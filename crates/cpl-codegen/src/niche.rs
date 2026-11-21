@@ -152,7 +152,7 @@ fn only_computes(e: &Expr) -> bool {
                 | ExprKind::Do(_)
                 | ExprKind::Closure(_)
                 | ExprKind::Read(_)
-                | ExprKind::Print(_)
+                | ExprKind::Print(..)
         );
     });
     pure
@@ -272,7 +272,7 @@ impl<'p> Tables<'p> {
                 .max()
                 .unwrap_or(EMPTY),
             Spec::Array { elem, .. } => self.spec(home, elem),
-            Spec::Opt(inner) => self.spec(home, inner),
+            Spec::Opt(inner, _) => self.spec(home, inner),
         }
     }
 
@@ -306,6 +306,7 @@ impl<'p> Tables<'p> {
             ExprKind::Read(spec) => self.spec(home, spec),
             ExprKind::Builtin(op, args) => match op {
                 Builtin::Len
+                | Builtin::AxisLen
                 | Builtin::Abs
                 | Builtin::Isqrt
                 | Builtin::Popcount

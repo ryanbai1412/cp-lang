@@ -1222,7 +1222,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 self.traced(|tracer, view| tracer.debugged(view, span, &name, text, json));
                 Value::Unit
             }
-            ExprKind::Print(args) => {
+            ExprKind::Print(args, end) => {
                 let start = self.out.len();
                 for (i, arg) in args.iter().enumerate() {
                     let value = self.eval(&arg.value)?;
@@ -1233,7 +1233,15 @@ impl<'p, 'o> Interp<'p, 'o> {
                     self.show_val(&mut buf, &value, &arg.value.ty, arg.digits, span)?;
                     self.out.extend_from_slice(&buf);
                 }
-                self.out.push(b'\n');
+                match end {
+                    Some(end) => {
+                        let value = self.eval(end)?;
+                        let mut buf = Vec::new();
+                        self.show_val(&mut buf, &value, &Ty::Str, 6, span)?;
+                        self.out.extend_from_slice(&buf);
+                    }
+                    None => self.out.push(b'\n'),
+                }
                 if self.tracer.is_some() {
                     let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..]).into_owned();
                     self.traced(|tracer, view| tracer.printed(view, span, &text));
@@ -1951,6 +1959,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::Popcount => Value::Int(i64::from(bits64(&first).count_ones())),
             Builtin::Ctz => Value::Int(i64::from(bits64(&first).trailing_zeros())),
             Builtin::Clz => Value::Int(i64::from(bits64(&first).leading_zeros())),
+            Builtin::AxisLen => match (&first, values.next()) {
+                (Value::Array(array), Some(Value::Int(axis))) => Value::Int(array.dims[axis as usize]),
+                _ => Value::Int(0),
+            },
             Builtin::BitWidth => {
                 let u = bits64(&first);
                 Value::Int(i64::from(64 - u.leading_zeros()))
@@ -2444,6 +2456,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Ty::U64 => Value::U64(self.input.wide("a `U64`").map_err(fail)?),
                 Ty::Float => Value::Float(self.input.float().map_err(fail)?),
                 Ty::Char => Value::Char(self.input.char().map_err(fail)?),
+                // A `Bool` is written `0` or `1`.
+                Ty::Bool => match self.input.int().map_err(fail)? {
+                    (bit @ (0 | 1), _) => Value::Bool(bit == 1),
+                    (other, start) => {
+                        let message = format!("{other} is not a `Bool`, which is read as 0 or 1");
+                        return Err(fail(self.input.fail(start, message)));
+                    }
+                },
                 Ty::Str => Value::Str(Rc::new(
                     self.input.token("a word").map_err(fail)?.0.to_vec(),
                 )),
@@ -2492,7 +2512,17 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::Array(Rc::new(Array { dims, data }))
             }
-            Spec::Opt(_) => Value::Opt(None),
+            Spec::Opt(inner, Some(absent)) => {
+                let absent = self.eval(absent)?.int();
+                let (value, start) = self.input.int().map_err(fail)?;
+                if value == absent {
+                    return Ok(Value::Opt(None));
+                }
+                // The number is already read; the inner type checks it.
+                self.input.rewind(start);
+                Value::Opt(Some(Rc::new(self.read(inner, span)?)))
+            }
+            Spec::Opt(..) => Value::Opt(None),
         })
     }
 }

@@ -10,7 +10,14 @@ pub(super) struct LoopFrame {
     iter: Iter,
     /// Statements that take the loop variable's pattern apart.
     pre: Vec<Stmt>,
-    cond: Option<Expr>,
+    /// The `if`s after the loop, in order: each is the statements that
+    /// work out its test, the test, and what it binds when it holds.
+    guards: Vec<(Vec<Stmt>, Expr, Vec<Stmt>)>,
+}
+
+/// True for a bare `..`, which as an index is all of one axis.
+fn is_whole(index: &ast::Expr) -> bool {
+    matches!(index.kind, ast::ExprKind::Range { lo: None, hi: None, step: None, .. })
 }
 
 /// True for `read()` and `ask(...)` written with no `::<T>`.
@@ -237,6 +244,40 @@ impl<'a> Lowerer<'a> {
                 }
                 if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
                     return self.slice_expr(base_expr, &indices[0], span);
+                }
+                // `g[r, ..]`, `g[.., c]`: one row or column, as a list.
+                if let Ty::Array { dims, elem } = &base_expr.ty {
+                    let whole: Vec<usize> = (0..indices.len()).filter(|&k| is_whole(&indices[k])).collect();
+                    if let ([axis], true) = (whole.as_slice(), dims.len() == indices.len()) {
+                        let (axis, elem) = (*axis, (**elem).clone());
+                        let at_ty = match dims[axis] {
+                            Dim::Pos(d) => Ty::Pos(d),
+                            Dim::Bound(d) => Ty::Bound(d),
+                            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                        };
+                        return self.collected(elem, span, |lw, out, push| {
+                            let base = lw.hold(base_expr, out);
+                            let at = lw.temp(at_ty);
+                            lw.whole_axis = Some(at);
+                            let (cell, ty) = lw.index_args(&base.ty, indices, span);
+                            lw.whole_axis = None;
+                            let cell: Vec<Expr> = cell
+                                .into_iter()
+                                .enumerate()
+                                .map(|(k, index)| if k == axis { index } else { lw.hold(index, out) })
+                                .collect();
+                            let len = lw.mk(
+                                ExprKind::Builtin(Builtin::AxisLen, vec![base.clone(), lw.int_lit(axis as i64, span)]),
+                                Ty::Int,
+                                span,
+                            );
+                            let value = lw.mk(ExprKind::Index(Box::new(base), cell), ty, span);
+                            let lid = lw.fresh_loop();
+                            let iter = Iter::Range { lo: lw.int_lit(0, span), hi: len, step: None, rev: false };
+                            let body = Block { stmts: vec![push(lw, value)] };
+                            out.push(Stmt::For(lid, at, iter, body));
+                        });
+                    }
                 }
                 // Runtime `Range<T>` value passed as an index (e.g. `vals[r]` inside `Compressed.get<Range<D>>`).
                 if indices.len() == 1
@@ -2034,6 +2075,10 @@ impl<'a> Lowerer<'a> {
                         Dim::Bound(d) => Ty::Bound(*d),
                         Dim::Int | Dim::IntFrom(_) => Ty::Int,
                     };
+                    if let (Some(slot), true) = (self.whole_axis, is_whole(index)) {
+                        out.push(self.mk(ExprKind::Local(slot), want, index.span));
+                        continue;
+                    }
                     let hint = if want == Ty::Int { None } else { Some(&want) };
                     let mut value = self.expr(index, hint);
                     // `b[i]` of a `[1..=9]T` is the cell `i - 1`.
@@ -2991,30 +3036,41 @@ impl<'a> Lowerer<'a> {
             self.cx.scopes.push(HashMap::new());
             let mut pre = Vec::new();
             let slot = self.loop_var(&clause.pat, elem, &mut pre);
-            let cond = match clause.conds.as_slice() {
-                [] => None,
-                [ast::Cond::Expr(c)] => Some(self.expect(c, &Ty::Bool)),
-                [first, ..] => {
-                    let span = match first {
-                        ast::Cond::Expr(e) | ast::Cond::Const(e) => e.span,
-                        ast::Cond::Let { value, .. } => value.span,
-                    };
-                    self.unsupported(
-                        span,
-                        "more than one `if`, or an `if let`, in a comprehension",
-                    );
-                    None
-                }
-            };
+            let mut guards = Vec::new();
+            for cond in &clause.conds {
+                self.guard(cond, &mut guards);
+            }
             frames.push(LoopFrame {
                 id,
                 slot,
                 iter,
                 pre,
-                cond,
+                guards,
             });
         }
         frames
+    }
+
+    /// One `if` of a comprehension: `if c`, `if let x = opt`, and what
+    /// follows its `and`. A name it binds is in scope for the later `if`s
+    /// and for the body.
+    fn guard(&mut self, cond: &ast::Cond, guards: &mut Vec<(Vec<Stmt>, Expr, Vec<Stmt>)>) {
+        match cond {
+            ast::Cond::Expr(c) => guards.push((Vec::new(), self.expect(c, &Ty::Bool), Vec::new())),
+            ast::Cond::Let { pat, value, and } => {
+                let mut before = Vec::new();
+                let Some((present, inner)) = self.optional(value, "if let", &mut before) else {
+                    return;
+                };
+                let mut bound = Vec::new();
+                self.bind(pat, inner, &mut bound);
+                guards.push((before, present, bound));
+                if let Some(and) = and {
+                    self.guard(and, guards);
+                }
+            }
+            ast::Cond::Const(c) => self.unsupported(c.span, "`if const` in a comprehension"),
+        }
     }
 
     /// One loop over the values of `seq`, shaped like a comprehension's.
@@ -3034,7 +3090,7 @@ impl<'a> Lowerer<'a> {
             slot,
             iter: Iter::Seq(seq, false),
             pre: Vec::new(),
-            cond: None,
+            guards: Vec::new(),
         };
         (vec![frame], value)
     }
@@ -3051,10 +3107,12 @@ impl<'a> Lowerer<'a> {
         for frame in frames.into_iter().rev() {
             self.cx.scopes.pop();
             let mut body = frame.pre;
-            match frame.cond {
-                Some(cond) => body.push(Stmt::If(cond, Block { stmts }, Block::default())),
-                None => body.extend(stmts),
+            for (before, test, mut bound) in frame.guards.into_iter().rev() {
+                bound.extend(stmts);
+                stmts = before;
+                stmts.push(Stmt::If(test, Block { stmts: bound }, Block::default()));
             }
+            body.extend(stmts);
             stmts = vec![Stmt::For(
                 frame.id,
                 frame.slot,

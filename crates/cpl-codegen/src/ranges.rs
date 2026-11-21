@@ -299,7 +299,7 @@ impl<'p> Facts<'p> {
                 BinOp::Shl => of(l),
                 _ => Unknown,
             },
-            ExprKind::Builtin(Builtin::Len, _) => NonNeg,
+            ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => NonNeg,
             ExprKind::Builtin(Builtin::Abs, _) => NonNeg,
             ExprKind::Builtin(Builtin::Min, args) => {
                 args.iter().map(of).reduce(both).unwrap_or(Unknown)

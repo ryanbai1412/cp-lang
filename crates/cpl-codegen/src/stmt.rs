@@ -80,7 +80,7 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            ExprKind::Print(args) => self.print_stmts(args, out),
+            ExprKind::Print(args, end) => self.print_stmts(args, end.as_deref(), out),
             ExprKind::Sort(place, sort_by) => self.sort_stmts(place, sort_by, out),
             ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {
                 let cond = self.expr(cond).text;

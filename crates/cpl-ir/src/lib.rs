@@ -219,7 +219,9 @@ pub enum Spec {
         dims: Vec<DimSpec>,
         elem: Box<Spec>,
     },
-    Opt(Box<Spec>),
+    /// `?T`, and the number that stands for `none` in the input, from
+    /// `read(none: 0)`.
+    Opt(Box<Spec>, Option<Box<Expr>>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -252,7 +254,7 @@ impl Spec {
                 dims: dims.iter().map(DimSpec::dim).collect(),
                 elem: Box::new(elem.ty()),
             },
-            Spec::Opt(inner) => Ty::opt(inner.ty()),
+            Spec::Opt(inner, _) => Ty::opt(inner.ty()),
         }
     }
 }
@@ -321,8 +323,9 @@ pub enum ExprKind {
     /// Sort in place, naturally, by key expression, or by fn/Order value.
     Sort(Box<Place>, SortBy),
     Read(Box<Spec>),
-    /// `print(a, b)`: the values space-separated, then a newline.
-    Print(Vec<FmtArg>),
+    /// `print(a, b)`: the values space-separated, then a newline, or the
+    /// text of `end: s` in its place.
+    Print(Vec<FmtArg>, Option<Box<Expr>>),
     /// `debug(a, b)`: shown on a local run and recorded as a checkpoint of
     /// its trace. The C++ for a judge has none of it.
     /// With its 1-based line.
@@ -491,6 +494,9 @@ pub enum Builtin {
     Clz,
     BitWidth,
     BitCeil,
+    /// The length of one axis of an array of two or more: the array, then
+    /// the axis as a literal.
+    AxisLen,
     /// `rand(lo, hi)`: inclusive integer in `lo..=hi`.
     Rand,
     /// `copy(x)`: explicit deep copy of a value.

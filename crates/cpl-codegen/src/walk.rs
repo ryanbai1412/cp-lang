@@ -91,7 +91,10 @@ pub(crate) fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
             let s: &'p Spec = s;
             spec_p(s, f);
         }
-        ExprKind::Print(args) => args.iter().for_each(|arg| f(&arg.value)),
+        ExprKind::Print(args, end) => {
+            args.iter().for_each(|arg| f(&arg.value));
+            end.iter().for_each(|end| f(end));
+        }
         // Only the variables a `debug(...)` names reach the C++.
         ExprKind::Debug(_, args) => args
             .iter()
@@ -136,7 +139,12 @@ fn spec_p<'p>(s: &'p Spec, f: &mut dyn FnMut(&'p Expr)) {
             }
             spec_p(elem, f);
         }
-        Spec::Opt(inner) => spec_p(inner, f),
+        Spec::Opt(inner, absent) => {
+            spec_p(inner, f);
+            if let Some(absent) = absent {
+                f(absent);
+            }
+        }
     }
 }
 

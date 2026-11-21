@@ -206,7 +206,7 @@ impl<'p> Emitter<'p> {
                     ..FnSummary::default()
                 };
                 walk::deep_exprs(&f.body, &mut |e| match &e.kind {
-                    ExprKind::Read(_) | ExprKind::Print(_) => summary.io = true,
+                    ExprKind::Read(_) | ExprKind::Print(..) => summary.io = true,
                     ExprKind::Global(id) => {
                         summary.reads.insert(*id);
                     }

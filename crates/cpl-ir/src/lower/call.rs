@@ -690,8 +690,13 @@ impl<'a> Lowerer<'a> {
                 let mut values = Vec::new();
                 let mut sep = None;
                 let mut none_text = None;
+                let mut end = None;
                 for arg in args {
                     match &arg.name {
+                        // `end: " "` is written in place of the newline.
+                        Some(arg_name) if arg_name.text == "end" => {
+                            end = Some(Box::new(self.expect(&arg.value, &Ty::Str)));
+                        }
                         // `sep: "\n"` goes between the arguments and between
                         // the items of a list; `none: "-1"` is what a `none`
                         // is written as.
@@ -741,7 +746,7 @@ impl<'a> Lowerer<'a> {
                     let line = self.mk(ExprKind::Format(pieces), Ty::Str, span);
                     values.push(FmtArg { value: line, digits });
                 }
-                self.mk(ExprKind::Print(values), Ty::Unit, span)
+                self.mk(ExprKind::Print(values, end), Ty::Unit, span)
             }
             // `debug(i, best)`: shown on a local run, and a checkpoint
             // of its trace. A string literal names the checkpoint.
@@ -816,7 +821,7 @@ impl<'a> Lowerer<'a> {
                     .into_iter()
                     .filter_map(|(value, at)| self.fmt_arg(value, 6, at))
                     .collect();
-                let query = self.mk(ExprKind::Print(values), Ty::Unit, span);
+                let query = self.mk(ExprKind::Print(values, None), Ty::Unit, span);
                 let counted = limit.map(|limit| {
                     self.mk(ExprKind::Builtin(Builtin::CountQuery, vec![limit]), Ty::Unit, span)
                 });
@@ -845,9 +850,14 @@ impl<'a> Lowerer<'a> {
                 })
             }
             "read" => {
+                // `read(none: 0)`: the number that a `?T` reads as `none`.
+                let absent = args
+                    .iter()
+                    .find(|a| a.name.as_ref().is_some_and(|n| n.text == "none"))
+                    .map(|a| self.expect(&a.value, &Ty::Int));
                 if !args
                     .iter()
-                    .all(|a| a.name.as_ref().is_some_and(|n| n.text == "gen"))
+                    .all(|a| a.name.as_ref().is_some_and(|n| n.text == "gen" || n.text == "none"))
                     && self.positional_any("read", args, 0, span).is_none()
                 {
                     return self.err_expr(span);
@@ -858,7 +868,18 @@ impl<'a> Lowerer<'a> {
                     return self.err_expr(span);
                 };
                 match self.spec_of(want) {
-                    Some(spec) => self.read(spec, span),
+                    Some(mut spec) => {
+                        if let Some(absent) = absent {
+                            if !reads_none_as(&mut spec, &absent) {
+                                let message = format!(
+                                    "`none:` is for reading a `?T`, and a `{}` has none",
+                                    self.show(want)
+                                );
+                                self.error(codes::UNKNOWN_ARG_NAME, span, message);
+                            }
+                        }
+                        self.read(spec, span)
+                    }
                     None => {
                         let message =
                             format!("`read()` can't tell how much a `{}` is", self.show(want));
@@ -1656,6 +1677,7 @@ impl<'a> Lowerer<'a> {
                     elem: Box::new(self.spec_of(elem)?),
                 }
             }
+            Ty::Opt(inner) => Spec::Opt(Box::new(self.spec_of(inner)?), None),
             other => Spec::Plain(other.clone()),
         })
     }
@@ -1665,18 +1687,26 @@ impl<'a> Lowerer<'a> {
         fn unreadable(spec: &Spec) -> Option<Ty> {
             match spec {
                 Spec::Plain(ty) => match ty {
-                    Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Str | Ty::Pos(_) | Ty::Error => None,
+                    Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Str | Ty::Bool | Ty::Pos(_) | Ty::Error => None,
                     other => Some(other.clone()),
                 },
                 Spec::Int { .. } => None,
                 Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
                 Spec::Array { elem, .. } => unreadable(elem),
-                Spec::Opt(_) => Some(spec.ty()),
+                Spec::Opt(inner, absent) => match (&**inner, absent) {
+                    (Spec::Plain(Ty::Int | Ty::Pos(_)) | Spec::Int { .. }, Some(_)) => None,
+                    _ => Some(spec.ty()),
+                },
             }
         }
         if let Some(ty) = unreadable(&spec) {
             let message = format!("`read()` has no input format for a `{}`", self.show(&ty));
             self.error(codes::UNSUPPORTED, span, message);
+            if let Ty::Opt(inner) = &ty {
+                if matches!(**inner, Ty::Int | Ty::Pos(_)) {
+                    self.help("say which number in the input stands for `none`: `read(none: 0)`");
+                }
+            }
             return self.err_expr(span);
         }
         if let Spec::Array { dims, elem } = &spec {
@@ -1691,7 +1721,7 @@ impl<'a> Lowerer<'a> {
         fn names_domain(spec: &Spec, own: &std::collections::HashSet<DomainId>) -> bool {
             match spec {
                 Spec::Fields(_, fields) => fields.iter().any(|f| names_domain(f, own)),
-                Spec::Opt(inner) => names_domain(inner, own),
+                Spec::Opt(inner, _) => names_domain(inner, own),
                 Spec::Array { dims, elem } => {
                     dims.iter().any(|d| matches!(d, DimSpec::Pos(d) if own.contains(d)))
                         || names_domain(elem, own)
@@ -3269,7 +3299,7 @@ impl<'a> Lowerer<'a> {
                 .into_iter()
                 .filter_map(|(value, at)| self.fmt_arg(value, 6, at))
                 .collect();
-            return self.mk(ExprKind::Print(values), Ty::Unit, span);
+            return self.mk(ExprKind::Print(values, None), Ty::Unit, span);
         }
         if !args.is_empty() {
             self.error(codes::WRONG_ARG_COUNT, span, "`recv` takes no arguments");
@@ -4499,7 +4529,7 @@ impl<'a> Lowerer<'a> {
 
     /// A `[]` list local, the loop that pushes `value` for each `item` of
     /// `iter`, and the list.
-    fn collected(
+    pub(super) fn collected(
         &mut self,
         elem: Ty,
         span: Span,
@@ -4828,5 +4858,25 @@ fn is_place(e: &ast::Expr) -> bool {
         ast::ExprKind::Paren(inner) => is_place(inner),
         ast::ExprKind::Field { base, .. } | ast::ExprKind::Index { base, .. } => is_place(base),
         _ => false,
+    }
+}
+
+/// Makes every `?T` of `spec` read `absent` as `none`; false when it has no
+/// `?T`.
+fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
+    match spec {
+        Spec::Plain(_) | Spec::Int { .. } => false,
+        Spec::Fields(_, fields) => {
+            let mut any = false;
+            for field in fields {
+                any |= reads_none_as(field, absent);
+            }
+            any
+        }
+        Spec::Array { elem, .. } => reads_none_as(elem, absent),
+        Spec::Opt(_, slot) => {
+            *slot = Some(Box::new(absent.clone()));
+            true
+        }
     }
 }

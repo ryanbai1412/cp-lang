@@ -120,7 +120,7 @@ impl<'p> Emitter<'p> {
                 touch.reads.insert((true, *id));
             }
             ExprKind::Read(_)
-            | ExprKind::Print(_)
+            | ExprKind::Print(..)
             | ExprKind::CallExpr(..)
             | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput, _) => touch.io = true,
             ExprKind::Call(id, args) => {
@@ -873,7 +873,7 @@ impl<'p> Emitter<'p> {
                 self.lambda("void", |this, out| this.sort_stmts(place, sort_by, out))
             }
             ExprKind::Read(spec) => self.read(spec),
-            ExprKind::Print(args) => self.lambda("void", |this, out| this.print_stmts(args, out)),
+            ExprKind::Print(args, end) => self.lambda("void", |this, out| this.print_stmts(args, end.as_deref(), out)),
             ExprKind::Format(pieces) => self.lambda("std::string", |this, out| {
                 // Values that run code are computed before the capture
                 // begins, so what they print goes out and not in.
@@ -1290,6 +1290,7 @@ impl<'p> Emitter<'p> {
                 self.need("bits");
                 Code::primary(format!("cpl::clz({})", text(0)))
             }
+            Builtin::AxisLen => Code::primary(format!("{}.n[{}]", codes[0].at(PRIMARY), text(1))),
             Builtin::BitWidth => {
                 self.need("bits");
                 Code::primary(format!("cpl::bit_width({})", text(0)))

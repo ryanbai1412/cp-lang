@@ -193,6 +193,13 @@ inline ll read_int() {
 ",
     },
     Piece {
+        name: "read_bool",
+        needs: &["read_int", "fail"],
+        code: "\
+inline bool read_bool() { ll x = read_int(); if (x != 0 && x != 1) fail(\"a Bool is read as 0 or 1\"); return x == 1; }
+",
+    },
+    Piece {
         name: "read_i128",
         needs: &["in"],
         code: "\

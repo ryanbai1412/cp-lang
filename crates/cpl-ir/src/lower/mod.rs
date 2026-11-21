@@ -460,6 +460,8 @@ struct Lowerer<'a> {
     warnings: Vec<Diagnostic>,
     /// How many `unchecked:` blocks the code being lowered is inside.
     unchecked: usize,
+    /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
+    whole_axis: Option<Slot>,
 
     structs: Vec<StructInfo<'a>>,
     gen_structs: Vec<GenStructTemplate<'a>>,
@@ -594,6 +596,7 @@ impl<'a> Lowerer<'a> {
             memo_fast: None,
             raw_lists: Vec::new(),
             unchecked: 0,
+            whole_axis: None,
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),
             memo_into: HashMap::new(),
@@ -1356,7 +1359,7 @@ impl<'a> Lowerer<'a> {
                     None => Spec::Plain(Ty::Error),
                 }
             }
-            ast::TypeKind::Optional(inner) => Spec::Opt(Box::new(self.resolve(inner, values))),
+            ast::TypeKind::Optional(inner) => Spec::Opt(Box::new(self.resolve(inner, values)), None),
             ast::TypeKind::Tuple(items) if items.is_empty() => Spec::Plain(Ty::Unit),
             ast::TypeKind::Tuple(items) => {
                 let specs: Vec<Spec> = items.iter().map(|t| self.resolve(t, values)).collect();
@@ -3110,7 +3113,12 @@ fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
             }
             collect_spec_calls(elem, out);
         }
-        Spec::Opt(inner) => collect_spec_calls(inner, out),
+        Spec::Opt(inner, absent) => {
+            collect_spec_calls(inner, out);
+            if let Some(absent) = absent {
+                collect_expr_calls(absent, out);
+            }
+        }
     }
 }
 
@@ -3191,9 +3199,12 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
             }
         }
         ExprKind::Read(spec) => collect_spec_calls(spec, out),
-        ExprKind::Print(args) => {
+        ExprKind::Print(args, end) => {
             for a in args {
                 collect_expr_calls(&a.value, out);
+            }
+            if let Some(end) = end {
+                collect_expr_calls(end, out);
             }
         }
         ExprKind::Debug(_, args) => {

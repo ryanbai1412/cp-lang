@@ -294,7 +294,7 @@ impl<'p> Emitter<'p> {
     }
 
     /// `print(a, b)` as one line of statements.
-    pub fn print_stmts(&mut self, args: &[FmtArg], out: &mut String) {
+    pub fn print_stmts(&mut self, args: &[FmtArg], end: Option<&cpl_ir::Expr>, out: &mut String) {
         self.need("out");
         let mut parts = Vec::new();
         for (i, arg) in args.iter().enumerate() {
@@ -304,7 +304,13 @@ impl<'p> Emitter<'p> {
             let code = self.expr(&arg.value);
             parts.push(self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string()));
         }
-        parts.push("cpl::put_line();".to_string());
+        match end {
+            Some(end) => {
+                let code = self.expr(end);
+                parts.push(self.show_stmt(&code, &Ty::Str, "6"));
+            }
+            None => parts.push("cpl::put_line();".to_string()),
+        }
         if self.program.interactive {
             parts.push("cpl::flush(); fflush(stdout);".to_string());
         }
@@ -324,6 +330,7 @@ impl<'p> Emitter<'p> {
             Spec::Plain(Ty::U64) => plain(self, "read_u64"),
             Spec::Plain(Ty::Float) => plain(self, "read_float"),
             Spec::Plain(Ty::Char) => plain(self, "read_char"),
+            Spec::Plain(Ty::Bool) => plain(self, "read_bool"),
             Spec::Plain(Ty::Str) => plain(self, "read_str"),
             Spec::Plain(Ty::Pos(d)) => {
                 self.need("read_int");
@@ -336,7 +343,23 @@ impl<'p> Emitter<'p> {
                 )
             }
             Spec::Plain(ty) => Code::primary(format!("{}()", self.ty(ty))),
-            Spec::Opt(_) => Code::primary(format!("{}()", self.ty(&spec.ty()))),
+            // `read(none: 0)`: the number, or `none` where the input has 0.
+            Spec::Opt(inner, Some(absent)) => {
+                self.need("read_int");
+                let ty = self.ty(&spec.ty());
+                let absent = self.expr(absent).text;
+                let value = match &**inner {
+                    Spec::Plain(Ty::Pos(d)) => format!("(int)(x - {}_lo)", ident(&program.domains[*d])),
+                    _ => "x".to_string(),
+                };
+                self.lambda(&ty, |this, out| {
+                    let lead = pad(this.indent);
+                    out.push_str(&format!("{lead}ll x = cpl::read_int();\n"));
+                    out.push_str(&format!("{lead}if (x == {absent}) return {ty}();\n"));
+                    out.push_str(&format!("{lead}return {ty}({value});\n"));
+                })
+            }
+            Spec::Opt(..) => Code::primary(format!("{}()", self.ty(&spec.ty()))),
             Spec::Fields(ty, fields) => {
                 // `{...}` runs its elements in order: so are the fields read.
                 let fields: Vec<String> =

@@ -82,6 +82,11 @@ impl<'a> Input<'a> {
         }
     }
 
+    /// Goes back to `start`, to read what is there another way.
+    pub fn rewind(&mut self, start: usize) {
+        self.pos = start;
+    }
+
     pub fn fail(&self, start: usize, message: String) -> InputError {
         InputError {
             message: format!("{message} ({})", self.at(start)),

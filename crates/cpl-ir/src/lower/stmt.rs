@@ -2409,7 +2409,7 @@ impl<'a> Lowerer<'a> {
 
     /// Evaluates the optional `value` into a temporary; gives the test
     /// that it is present and the value inside.
-    fn optional(
+    pub(super) fn optional(
         &mut self,
         value: &ast::Expr,
         what: &str,

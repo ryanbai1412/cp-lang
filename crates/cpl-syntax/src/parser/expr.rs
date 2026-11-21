@@ -800,14 +800,8 @@ impl<'a> Parser<'a> {
             // `for c in City if let b = buy[c] if b > 0`.
             let mut conds = Vec::new();
             while self.eat(T::If) {
-                conds.push(if self.eat(T::Let) {
-                    let pat = self.pattern();
-                    self.expect(T::Eq, "`=` after the pattern in `if let`");
-                    Cond::Let {
-                        pat,
-                        value: self.coalesce(),
-                        and: None,
-                    }
+                conds.push(if self.at(T::Let) {
+                    self.let_guard()
                 } else {
                     Cond::Expr(self.coalesce())
                 });
@@ -815,6 +809,24 @@ impl<'a> Parser<'a> {
             clauses.push(Clause { pat, iter, conds });
         }
         clauses
+    }
+
+    /// `let pat = value`, then `and` with a test or another `let`, as in
+    /// an `if let` statement. A `,` is not read as `and` here: it ends an
+    /// argument or a list item.
+    fn let_guard(&mut self) -> Cond {
+        self.bump();
+        let pat = self.pattern();
+        self.expect(T::Eq, "`=` after the pattern in `if let`");
+        let value = self.not();
+        let and = self.eat(T::And).then(|| {
+            Box::new(if self.at(T::Let) {
+                self.let_guard()
+            } else {
+                Cond::Expr(self.and())
+            })
+        });
+        Cond::Let { pat, value, and }
     }
 
     fn if_expr(&mut self) -> ExprKind {
