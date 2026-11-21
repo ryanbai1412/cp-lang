@@ -19,8 +19,8 @@ dp[Time.cuts.first] = 1
 var fixed_below = 0
 
 for f in Floor.init:
-    let fixed = a.count(where: x => x == f)
-    let min_used = match Time.last(where: t => a[t] == f):
+    let fixed = a.count(x => x == f)
+    let min_used = match Time.last(t => a[t] == f):
         some(t) => max(0, (t + 1) - c)
         none => 0
     dp = [Time.cuts] next => 0

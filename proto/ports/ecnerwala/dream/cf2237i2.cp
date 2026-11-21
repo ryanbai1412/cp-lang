@@ -45,9 +45,9 @@ for u in t.Pre.rev:
         let nh = max(cur.len, child.len + 1)
         var next: List<[Active, Bool]Z> = [[a, r => 0] for _ in 0..nh]
         for (d0, row0) in cur.items:
-            for ca in Active, cn in Bool where row0[ca, cn] != 0:
+            for ca in Active, cn in Bool if row0[ca, cn] != 0:
                 for (d1, row1) in child.items:
-                    for na in Active, nn in Bool where row1[na, nn] != 0:
+                    for na in Active, nn in Bool if row1[na, nn] != 0:
                         let ways = row0[ca, cn] * row1[na, nn]
                         for e in 0..2:
                             if (label[c] == Zero and e == 1) or (label[c] == One and e == 0): continue

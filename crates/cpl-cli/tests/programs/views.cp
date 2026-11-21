@@ -84,7 +84,7 @@ for x in arr_rev:
     arr_acc = arr_acc * 100 + x
 print(arr_acc)
 print(arr_rev.rev.to_list())
-print(arr.rev()[1..3].to_list())
+print(arr.rev[1..3].to_list())
 let h = Holder(arr)
 let post = h.at.rev
 var post_sum = 0

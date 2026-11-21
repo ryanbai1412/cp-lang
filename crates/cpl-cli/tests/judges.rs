@@ -366,7 +366,7 @@ fn a_statement_whose_value_is_dropped_writes_no_unused_value() {
     let file = scratch.join("a.cp");
     std::fs::write(
         &file,
-        "var seen = Set<Int>()\nfor x in [3, 1, 3]:\n    seen.insert(x)\nprint(seen.len())\n",
+        "var seen = Set<Int>()\nfor x in [3, 1, 3]:\n    seen.insert(x)\nprint(seen.len)\n",
     )
     .unwrap();
     let out = cpl_cli::run(&["build", file.to_str().unwrap(), "-o", "-"]);

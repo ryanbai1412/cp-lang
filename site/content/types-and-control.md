@@ -159,7 +159,7 @@ let sign = if x >= 0: 1 else: -1
 ```cp CP Lang
 fn first() -> ?Int: 2
 fn second(a: Int) -> ?Int: a + 1
-if let a = first(), b = second(a) where a + b > 0:
+if let a = first(), b = second(a) and a + b > 0:
     print(a + b)
 
 enum Event:
