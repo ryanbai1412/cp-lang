@@ -135,6 +135,26 @@ fn shadowing_a_top_level_let_is_reported_once_per_binding() {
 }
 
 #[test]
+fn domain_keyed_set_is_left_alone_when_sparse_or_ordered() {
+    let head = "let n: 1..=9 = read()\ndomain V = 1..=n\n";
+    // Plain membership: the array of `Bool` is the better shape.
+    let dense = format!("{head}var seen: Set<V> = Set<V>()\nseen.insert(V.first)\nprint(V.first in seen)\n");
+    assert_eq!(codes(&dense), ["L0412"]);
+    // A set per `V` holds few of them; `[V][V]Bool` would hold all.
+    let rows = format!("{head}var adj: [V]Set<V> = Set<V>()\nadj[V.first].insert(V.last)\nprint(adj[V.first].len)\n");
+    assert_eq!(codes(&rows), Vec::<&str>::new());
+    let listed = format!("{head}let groups: List<Set<V>> = []\nprint(groups.len)\n");
+    assert_eq!(codes(&listed), Vec::<&str>::new());
+    // Asked for its smallest or largest, which an array cannot answer.
+    for ask in ["free.first", "free.last", "free.pop_first()", "free.pop_last()", "free.first_ge(V.first)"] {
+        let src = format!("{head}var free: Set<V> = Set<V>()\nfree.insert(V.first)\nprint({ask})\n");
+        assert_eq!(codes(&src), Vec::<&str>::new(), "{ask}");
+    }
+    let inferred = format!("{head}var free = Set<V>()\nfree.insert(V.first)\nprint(free.first)\n");
+    assert_eq!(codes(&inferred), Vec::<&str>::new());
+}
+
+#[test]
 fn domain_keyed_map_names_the_array_to_use() {
     let src = "let n: 1..=9 = read()\ndomain V = 1..=n\nvar cnt: Map<V, Int> = Map<V, Int>()\ncnt[V.first] = 1\nprint(cnt)\n";
     let found = only(src);

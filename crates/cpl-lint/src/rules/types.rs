@@ -4,7 +4,7 @@
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, DOMAIN_KEYED_MAP, POSITION_ARITHMETIC};
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{BinOp, Expr, ExprKind, Stmt, StmtKind, Type, TypeKind};
+use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
 use std::collections::HashSet;
 
 /// The names of the file's domains, wherever they are declared.
@@ -27,6 +27,12 @@ struct Types<'a> {
     base: u32,
     domains: HashSet<String>,
     lines: cpl_diag::LineIndex,
+    /// Sets that are walked in order (`s.first`, `s.pop_last()`), by name:
+    /// an array of `Bool` has no order to ask.
+    ordered: HashSet<String>,
+    /// Types written inside another container, by where they start:
+    /// `[V]Set<V>` holds few of each `V`, and `[V][V]Bool` would hold all.
+    inner: HashSet<u32>,
     /// The line of the last `domain_keyed_map` finding.
     last_keyed_line: Option<u32>,
     findings: Vec<Finding>,
@@ -44,6 +50,11 @@ impl Types<'_> {
             _ => return,
         };
         if !self.domains.contains(key) {
+            return;
+        }
+        if name == "Set" && self.inner.contains(&span.shift(self.base).start) {
+            // The `Set<V>()` such a declaration starts from goes with it.
+            self.last_keyed_line = Some(self.lines.line_of(span.shift(self.base).start));
             return;
         }
         let (written, instead) = match (name, texts.as_slice()) {
@@ -99,8 +110,50 @@ fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr
     }
 }
 
+/// What only a set kept in order answers.
+const ORDERED: &[&str] = &[
+    "first", "last", "first_ge", "first_gt", "last_le", "last_lt", "pop_first", "pop_last",
+];
+
+/// The names `x` of the file with an `x.first`, `x.pop_last()` and so on.
+fn ordered(file: &File) -> HashSet<String> {
+    struct Ordered(HashSet<String>);
+    impl Visitor for Ordered {
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Field { base, name } = &expr.kind {
+                if let (ExprKind::Name(set), true) = (&unparen(base).kind, ORDERED.contains(&name.text.as_str())) {
+                    self.0.insert(set.clone());
+                }
+            }
+        }
+    }
+    let mut found = Ordered(HashSet::new());
+    file.walk(&mut found, |_, _| {});
+    found.0
+}
+
 impl Visitor for Types<'_> {
+    fn stmt(&mut self, stmt: &Stmt) {
+        // `var free: Set<V> = Set<V>()` with a `free.first` below.
+        if let StmtKind::Let { pat, ty, init, .. } = &stmt.kind {
+            if matches!(&pat.kind, PatternKind::Name(name) if self.ordered.contains(name)) {
+                let spans = ty.iter().map(|ty| ty.span).chain(init.iter().map(|init| init.span));
+                for span in spans {
+                    self.inner.insert(span.shift(self.base).start);
+                }
+            }
+        }
+    }
+
     fn ty(&mut self, ty: &Type) {
+        let held: Vec<&Type> = match &ty.kind {
+            TypeKind::Named { args, .. } => args.iter().collect(),
+            TypeKind::Array { elem, .. } | TypeKind::OwnDomain { elem, .. } => vec![&**elem],
+            _ => Vec::new(),
+        };
+        for held in held {
+            self.inner.insert(held.span.shift(self.base).start);
+        }
         if let TypeKind::Named { name, args } = &ty.kind {
             self.keyed(&name.text, args, ty.span);
         }
@@ -161,6 +214,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         domains: domains(file),
+        ordered: ordered(file),
+        inner: HashSet::new(),
         lines: cpl_diag::LineIndex::new(file.src),
         last_keyed_line: None,
         findings: Vec::new(),

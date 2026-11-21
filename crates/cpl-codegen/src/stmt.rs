@@ -103,6 +103,13 @@ impl<'p> Emitter<'p> {
                 }
                 self.line(out, "}");
             }
+            // `s.remove(x)` for its effect alone: whether `x` was there is
+            // not asked, so the comparison that answers it is not written.
+            ExprKind::Mutate(Mutation::Remove, _, _) => {
+                let text = self.expr(e).text;
+                let text = text.strip_suffix(" != 0").unwrap_or(&text);
+                self.line(out, &format!("{text};"));
+            }
             _ => {
                 let text = self.expr(e).text;
                 self.line(out, &format!("{text};"));

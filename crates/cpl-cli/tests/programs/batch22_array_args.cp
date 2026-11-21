@@ -46,3 +46,12 @@ var hs = HashMap<Str, Int>()
 for name in ["x", "y", "x", "z", "y"]:
     let next = hs.len
     print(hs.get_or_insert_with(name, () => next))
+
+// `s.remove(x)` for its effect alone, and for its answer.
+var seen = Set<Int>()
+seen.insert(3)
+seen.insert(4)
+seen.remove(3)
+let gone = seen.remove(9)
+if seen.remove(4): print("had 4")
+print(seen.len, gone)
