@@ -36,4 +36,8 @@ Both are core features, not library changes:
 - `Int` is 64-bit and fixed widths (`I32`) are not implemented yet, so the
   per-ancestor distance cannot be narrowed from the library.
 
+`Rooted.new` alone (build and read depth and size, seed 1) is 0.65 s and
+269 MB against 0.49 s and 158 MB; moving the arrays into the struct by hand
+brings it to 187 MB, and the rest is 64-bit `dep`, `far` and `sz`.
+
 `ancestors` already yields instead of building a list (decisions.md §45.9).

@@ -8,7 +8,6 @@ use std.seq.{buckets}
 // iff the max weight mx outside sub(v) exceeds w[v], and every node u with
 // w[u] > w[v] is either inside sub(v), attains mx outside sub(v), or is a
 // root-to-leaf path-max ancestor covering all mx-nodes outside sub(v).
-
 struct MaxInfo<P>:
     w: Int
     lo: ?P
@@ -29,19 +28,9 @@ let w: [V]W = read()
 let edges: [0..n - 1](u: V, v: V) = read()
 let t = Rooted.new(Graph.undirected(edges), V.first)
 
-// top_max[v] is the deepest path-maximum on root -> v (v is a path-max iff top_max[v] == v);
-// prev_max[v] is the preceding path-maximum above v.
-var top_max: [V]?V = none
-var prev_max: [V]?V = none
-for p in t.Pre:
-    let v = t.at[p]
-    let pv: ?V = if let par = t.par[v]: top_max[par] else: none
-    let is_new = if let u = pv: w[v] >= w[u] else: true
-    if is_new:
-        prev_max[v] = pv
-        top_max[v] = v
-    else:
-        top_max[v] = pv
+// top[v] is the deepest path-maximum on root -> v, so v is a path-max iff top[v] == v.
+let above: ?V = none
+let top = t.down(above, (s, v) => if let u = s, w[u] > w[v]: s else: some(v))
 
 let m_max = Monoid(MaxInfo<t.Pre>(0, none, none, 0), (a, b) => combine(a, b))
 let pre_info = [t.Pre] p => MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1)
@@ -61,12 +50,13 @@ for weight in W.rev:
         let mx = combine(pref[r.lo], suff[r.hi])
         if mx.w > w_val:
             var covered = sub_bit.sum(r) + mx.cnt
-            if let lp = prev_max[t.at[mx.lo!]], mx.hi! in t.sub(lp):
+            let lo = t.at[mx.lo!]
+            if top[lo] == lo, let p = t.parent(lo), let lp = top[p], mx.hi! in t.sub(lp):
                 covered += anc_bit.get(t.pos(lp))
             if covered == heavier:
                 winners.push(v)
     for v in by_w[weight]:
-        if top_max[v] == v:
+        if top[v] == v:
             anc_bit.add(t.sub(v), 1)
         sub_bit.add(t.pos(v), 1)
         heavier += 1
