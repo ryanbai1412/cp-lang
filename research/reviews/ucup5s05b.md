@@ -1,6 +1,7 @@
 # ucup5s05b
 
-Score: 3/5
+Score: pending (rewrite-c: one `corners` list gives each diamond side; segments push half-open x-spans and the answer is their union length, no +1/-1 event sweep; `repeat q`, `t: 0..`)
+Dream: pending (rewrite-c: new dream = port)
 
 The header (lines 1-8) is editorial quality: it states the folded diamond, why each piece is a straight segment, and the x-sweep. The body is still coordinate arithmetic over raw `Int` with a hand interval-union sweep. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
