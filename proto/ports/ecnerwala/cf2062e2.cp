@@ -24,8 +24,7 @@ let n: 1..=400_000 = read()
 domain V = 1..=n
 domain W = 1..=n
 let w: [V]W = read()
-let edges: [0..n - 1](u: V, v: V) = read()
-let t = Rooted.new(Graph.undirected(edges), V.first)
+let t = Rooted.new(Graph.undirected(read<[0..n - 1](V, V)>()), V.first)
 
 // top[v] is the deepest path-maximum on root -> v, so v is a path-max iff top[v] == v.
 let above: ?V = none
@@ -61,7 +60,4 @@ for weight in W.rev:
         heavier += 1
 
 winners.sort()
-if winners.is_empty:
-    print(0)
-else:
-    print(winners.len, winners)
+print(winners.len, winners)
