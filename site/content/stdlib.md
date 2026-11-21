@@ -31,7 +31,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.mo` | `mo_order`, `mo_steps` | Mo's offline range-query ordering and window transitions |
 | `std.mod` | `Mod<P>`, `Comb<M>` | Compile-time and runtime modular arithmetic and combinatorics |
 | `std.ntt` | `ntt`, `convolve`, `convolve_mod`, `convolve_int`, `SosOver`, `sos`, `convolve_or`, `convolve_and`, `convolve_xor` | NTT, linear/cyclic/3-prime/exact convolution, SOS, bitwise convolutions |
-| `std.poly` | `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all` | Formal power series & multipoint ops over NTT (`List<Mod<P>>`) |
+| `std.poly` | `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all`, `compose` | Formal power series & multipoint ops over NTT (`List<Mod<P>>`) |
 | `std.persistent` | `PersistentSegTree`, `Version`, `RangeKth` | Path-copying persistent segment tree and O(log n) range k-th smallest |
 | `std.prefix` | `Prefix1`, `Prefix2`, `PrefixN`, `prefix1`, `prefix2`, `prefix_n`, `prefix_fold`, `suffix_fold`, `Diff1`, `Diff2` | 1D/2D/N-D prefix sums, prefix/suffix monoid folds, difference arrays |
 | `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |

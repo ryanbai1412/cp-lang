@@ -102,9 +102,9 @@ pub fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
     if g.len > n: g.truncate(n)
     g
 
-/// Formal power `a(x)^k mod x^n` for `k >= 0`, handling leading zeros. O(n log n).
+/// Formal power `a(x)^k mod x^n` (supports `k < 0` when `a[0] != 0`). O(n log n).
 pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>:
-    assert n >= 0 and k >= 0, "poly.pow requires n >= 0 and k >= 0"
+    assert n >= 0, "poly.pow requires n >= 0"
     if n == 0: return []
     if k == 0:
         var out = List.filled(n, Mod<P>(0))
@@ -113,7 +113,9 @@ pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>:
     var d = 0
     let cap = min(a.len, n)
     while d < cap and a[d].v == 0: d += 1
-    if d == cap or (d > 0 and k > (n - 1) / d):
+    if k < 0:
+        assert a.len > 0 and d == 0, "poly.pow with k < 0 requires a[0] != 0"
+    elif d == cap or (d > 0 and k > (n - 1) / d):
         return List.filled(n, Mod<P>(0))
     let shift = k * d
     let m = n - shift
@@ -327,6 +329,106 @@ pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
         for i in 0..n: out[i] = down[n + i][0]
     out
 
+fn biv_advance<P>(mut c: List<Mod<P>>, l_big: Int, l_step: Int) -> List<Mod<P>>:
+    let b_sz = 4 << l_big
+    let half_b = 2 << l_big
+    var tq = [x for x in c]
+    ntt(mut tq)
+    var tn = List.filled(b_sz, Mod<P>(0))
+    var prod = List.filled(b_sz, Mod<P>(0))
+    unchecked:
+        for i in 0..half_b:
+            let u0 = tq[i]
+            let u1 = tq[i + half_b]
+            tn[i] = u1
+            tn[i + half_b] = u0
+            let r = u0 * u1
+            prod[i] = r
+            prod[i + half_b] = r
+    ntt(mut prod, inverse: true)
+    unchecked:
+        for j in 0..b_sz: c[j] = prod[j]
+        for j in 1..half_b: c[j] = c[2 * j]
+        let span = 2 << (l_big - l_step)
+        let stride = 1 << (l_big - l_step)
+        for j in 0..span:
+            c[half_b + j] = c[j]
+            c[j] = Mod<P>(0)
+        c[half_b] = c[half_b] - Mod<P>(1)
+        c[0] = Mod<P>(1)
+        for j in half_b + stride..b_sz: c[j] = Mod<P>(0)
+        var off = 0
+        while off < half_b:
+            for j in 0..stride: c[off + stride + j] = Mod<P>(0)
+            off += span
+    tn
+
+/// Formal power series composition `f(g(x)) mod x^n` via Kinoshita-Li.
+/// Handles any `g[0]` (shifts via `taylor_shift` when `g[0] != 0`). O(n log^2 n).
+pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+    assert n >= 0, "poly.compose requires n >= 0"
+    if n == 0: return []
+    if f.is_empty: return List.filled(n, Mod<P>(0))
+    if g.len > 0 and g[0].v != 0:
+        let f_shifted = taylor_shift(f, g[0])
+        let g_lim = min(g.len, n)
+        var g0 = List.filled(g_lim, Mod<P>(0))
+        unchecked:
+            for i in 1..g_lim: g0[i] = g[i]
+        return compose(f_shifted, g0, n)
+    if n == 1: return [f[0]]
+    let m = min(f.len, n)
+    let k = bit_ceil(n)
+    let l_big = ctz(k)
+    let b_sz = 4 * k
+    let half_b = 2 * k
+    var q_arr = List.filled(b_sz, Mod<P>(0))
+    q_arr[0] = Mod<P>(1)
+    let g_lim = min(g.len, n)
+    unchecked:
+        for i in 0..g_lim: q_arr[half_b + i] = -g[i]
+    let tneg: List<List<Mod<P>>> = [biv_advance(mut q_arr, l_big, l_step) for l_step in 1..=l_big]
+    var rev_f = List.filled(m, Mod<P>(0))
+    unchecked:
+        for i in 0..m: rev_f[i] = f[m - 1 - i]
+    var ql = List.filled(m, Mod<P>(0))
+    let ql_lim = min(k + 1, m)
+    unchecked:
+        for i in 0..ql_lim: ql[i] = q_arr[2 * i]
+    let p_base = convolve(rev_f, inv(ql, m))
+    var p_arr = List.filled(b_sz, Mod<P>(0))
+    unchecked:
+        for i in 0..m: p_arr[k - m + i] = p_base[i]
+        var idx = k - 1
+        while idx > 0:
+            p_arr[2 * idx] = p_arr[idx]
+            p_arr[idx] = Mod<P>(0)
+            idx -= 1
+    var l_cur = l_big - 1
+    while l_cur >= 0:
+        let bit_mask = 1 << (l_big - l_cur)
+        unchecked:
+            var j = half_b - 1
+            while j > 0:
+                let v = p_arr[j]
+                p_arr[2 * j] = if ((2 * j) & bit_mask) != 0: Mod<P>(0) else: v
+                p_arr[j] = Mod<P>(0)
+                j -= 1
+        ntt(mut p_arr)
+        let tn = tneg[l_cur]
+        unchecked:
+            for j in 0..b_sz: p_arr[j] = tn[j] * p_arr[j]
+        ntt(mut p_arr, inverse: true)
+        unchecked:
+            for j in 0..half_b:
+                p_arr[j] = p_arr[half_b + j]
+                p_arr[half_b + j] = Mod<P>(0)
+        l_cur -= 1
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..n: out[i] = p_arr[i]
+    out
+
 @test
 fn eval_div_shift_mpe_laws():
     type Z = Mod<998_244_353>
@@ -358,6 +460,26 @@ fn eval_div_shift_mpe_laws():
     for i in 0..xs.len: assert vals[i] == eval(a, xs[i])
     let vals_short = eval_all(b, xs)
     for i in 0..xs.len: assert vals_short[i] == eval(b, xs[i])
+
+    // Negative power law: a^k * a^{-k} == 1 (mod x^n)
+    let p_pos = pow(b, 5, 16)
+    let p_neg = pow(b, -5, 16)
+    let p_id = convolve(p_pos, p_neg)
+    assert p_id[0] == Z(1)
+    for i in 1..16: assert p_id[i] == Z(0)
+
+    // Composition law against Horner brute force (both g[0] == 0 and g[0] != 0)
+    let f_c: List<Z> = [Z(3), Z(5), Z(7), Z(11), Z(13), Z(17)]
+    for g0 in [Z(0), Z(4)]:
+        let g_c: List<Z> = [g0, Z(2), Z(9), Z(1), Z(6)]
+        let comp = compose(f_c, g_c, 12)
+        var brute = List.filled(12, Z(0))
+        var gp: List<Z> = [Z(1)]
+        for i in 0..f_c.len:
+            for j in 0..min(gp.len, 12): brute[j] = brute[j] + f_c[i] * gp[j]
+            gp = convolve(gp, g_c)
+            if gp.len > 12: gp.truncate(12)
+        assert comp == brute
 
 @test
 fn deriv_and_integral_laws():

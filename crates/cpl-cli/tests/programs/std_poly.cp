@@ -1,5 +1,5 @@
 use std.ntt.{convolve}
-use std.poly.{deriv, div_mod, eval, eval_all, exp, integral, inv, log, pow, prod_linear, sqrt, taylor_shift}
+use std.poly.{compose, deriv, div_mod, eval, eval_all, exp, integral, inv, log, pow, prod_linear, sqrt, taylor_shift}
 
 type Z = Mod<998_244_353>
 
@@ -43,3 +43,9 @@ print(eval(sh, Z(5)) == eval(a, Z(8)))
 let xs = [Z(i * 3 + 1) for i in 0..40]
 let ev = eval_all(a, xs)
 print(all(ev[i] == eval(a, xs[i]) for i in 0..xs.len))
+let pn = pow(a, -3, 8)
+let pp = pow(a, 3, 8)
+let pid = convolve(pp, pn)
+print(pid[0].v == 1 and all(pid[i].v == 0 for i in 1..8))
+print(compose([Z(3), Z(5), Z(7), Z(11)], [Z(0), Z(2), Z(3)], 6))
+print(compose([Z(3), Z(5), Z(7), Z(11)], [Z(4), Z(2), Z(3)], 6))
