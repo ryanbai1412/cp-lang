@@ -33,7 +33,8 @@ fn build_masks() -> [MaxVal]Mask:
     [MaxVal] v => out[v.ord]
 
 let masks = build_masks()
-let value_of = masks.inverse()
+var value_of: Map<Mask, MaxVal> = Map()
+for v in MaxVal: value_of[masks[v]] = v
 
 fn query_positions(q: Query, held: List<MaxVal>) -> List<Int>:
     let kind = if q == Query.first: 4 else: 2
@@ -42,7 +43,7 @@ fn query_positions(q: Query, held: List<MaxVal>) -> List<Int>:
 @!multitest
 let n: 2..=845 = read()
 domain Pos = 1..=n
-var mask: [Pos]Mask = {}
+var mask: [Pos]Mask = Set()
 for q in Query:
     let held = [v for v in MaxVal if v.ord < n and q in masks[v]]
     if not held.is_empty:
