@@ -20,16 +20,10 @@ fn cost(mv: Move) -> Int = match mv:
 fn step(mv: Move, st: State) -> ?State:
     let (r, s) = st
     match mv:
-        Create(t) => (R((r.to_idx + x[t]) % m), s.with(t))
-        Double(j) => if s.len == j: (R(2 * r.to_idx % m), s) else: none
+        Create(t) => (R((r.ord + x[t]) % m), s.with(t))
+        Double(j) => if s.len == j: (R(2 * r.ord % m), s) else: none
 
 let moves = [Create(t) for t in T] + [Double(j) for j in 1..=3]
 let goal: State = (R(0), Subset<T>.full)
-let dist = fixed_cost_paths(
-    from: [(R(0), Subset<T>.empty)],
-    moves: moves,
-    cost: cost,
-    step: step,
-    until: goal,
-)
+let dist = fixed_cost_paths(from: [(R(0), Subset<T>.empty)], moves:, cost:, step:, until: goal)
 print(dist[goal]! - x.sum())
