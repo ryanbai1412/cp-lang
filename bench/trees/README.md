@@ -17,6 +17,9 @@ seed 2 to one of the previous ten (long chains).
 | seed 1 | 2.67 s | 3.99 s | 1.49x | 520 MB | 1110 MB |
 | seed 2 | 3.54 s | 5.32 s | 1.50x | 706 MB | 1621 MB |
 
+With the breadth-first build (decisions.md §86) seed 1 is 3.45 s and 677 MB
+against 2.70 s and 520 MB (1.28x).
+
 This misses the 1.1x target. Rooting, rerooting and the queries are within
 about 1.5x; the centroid decomposition is most of the gap.
 
@@ -41,6 +44,27 @@ Both are core features, not library changes:
 brings it to 187 MB, and the rest is 64-bit `dep`, `far` and `sz`.
 
 `ancestors` already yields instead of building a list (decisions.md §45.9).
+
+## Building a `Rooted`
+
+`root_bench.cp` and `root_bench.cpp` root a tree from its edge list and run one
+bottom-up subtree sum. The C++ builds CSR adjacency, a BFS order and everything
+`Rooted` keeps (parent, depth, size, heavy child, chain top, heavy-first
+preorder and its inverse). Input: `python3 gen.py 1000000 0 1 | head -n -1`.
+
+n = 10^6, best of three, outputs identical (seed 2 within 0.03 s):
+
+| version | time | RSS |
+|---|---:|---:|
+| C++ | 0.27 s | 70 MB |
+| depth-first stack, one child list per vertex | 0.63 s | 175 MB |
+| breadth-first, flat child ranges (decisions.md §86) | 0.45 s | 178 MB |
+| the same, edges read as `[E](u: V, v: V)` over `domain E` | 0.30 s | 138 MB |
+
+The edge list as `Tree<V>` (`[0..n - 1]`) makes `Graph.undirected` build one
+`List` per vertex; over a declared domain `E` it builds the CSR `Graph`, and the
+build is 1.1x. The remaining RSS is 64-bit `dep`, `far` and `sz` (no `I32` yet)
+and the 64-bit child bounds.
 
 ## `LinkCut`
 

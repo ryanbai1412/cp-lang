@@ -3253,3 +3253,21 @@ also eliminates power-of-two stride clustering on adversarial inputs (`i * 64`,
 **Reversal.** Switch `names.rs` back to `std::unordered_map` / `std::unordered_set`,
 restore the `<unordered_map>` / `<unordered_set>` includes in `emit.rs`, and
 drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
+
+## 86. `Rooted` builds breadth-first with flat child ranges (2026-11-21)
+
+- **Decision.** `Rooted` roots its tree by breadth-first search and keeps the
+  children of `v` as the range `bfs[k0[v]..k1[v]]` of the search order instead
+  of one `List` per vertex; `from_parents` counting-sorts the parents into the
+  same form. On a graph with extra edges the tree is the breadth-first tree, so
+  `depth` is the distance from the root and the old depth-first promise (every
+  other edge joins an ancestor) is gone.
+- **Why.** Building the tree was 2.4x matched C++ (CSR + BFS): one heap list per
+  vertex and a stack of `(u, p, w)` triples. Breadth-first order makes the
+  children contiguous for free. Back edges and low-links belong to `std.graph`,
+  and no port relied on the depth-first tree.
+- **Evidence.** `bench/trees/root_bench`: 0.63 s to 0.45 s at n = 10^6 from a
+  `Tree<V>` edge list (the rest is `Graph.undirected` building per-vertex lists
+  for a list of pairs), and 0.30 s against 0.27 s (1.1x) from a `[E]` edge array.
+- **Reverse.** Restore the depth-first stack in `Rooted.build` and a `kid: [V]List<V>`
+  field; `children` keeps its signature either way.

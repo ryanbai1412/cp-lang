@@ -28,7 +28,10 @@ pub struct Rooted<V, Pre>:
     far: [V]Int
     /// The number of vertices in the subtree.
     sz: [V]Int
-    kid: [V]List<V>
+    /// Breadth-first order: the children of `v` are `bfs[k0[v]..k1[v]]`, so no vertex owns a list.
+    bfs: List<V>
+    k0: [V]Int
+    k1: [V]Int
     /// The child with the largest subtree; `none` at a leaf.
     heavy: [V]?V
     /// The highest vertex of the heavy chain through `v`.
@@ -41,22 +44,44 @@ pub struct Rooted<V, Pre>:
     /// `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and
     /// `Rooted(root: r, adj: u => ...)` for anything else. `adj` may list every neighbour
     /// (the parent is skipped) or only the children, as vertices or as arcs. The tree is the
-    /// depth-first spanning tree, so on a graph with extra edges every other edge joins a
-    /// vertex to one of its ancestors. Stops if some vertex is not reachable from the root.
+    /// breadth-first spanning tree, so on a graph with extra edges `depth` is the distance
+    /// from the root. Stops if some vertex is not reachable from the root.
     pub fn new<N>(adj: N, root: V) = Rooted.weighted(adj, root, a => 1)
 
     /// Build a rooted tree directly from a parent array `par: [V]?V` where the unique vertex
     /// with `par[v] == none` is the root. O(n).
     pub fn from_parents(par: [V]?V):
         var root: ?V = none
-        var kids: [V]List<V> = []
+        var start = List.filled(V.K + 1, 0)
         for v in V:
-            if let p = par[v]: kids[p].push(v)
+            if let p = par[v]: start[p.to_idx + 1] += 1
             else:
-                assert root == none
+                assert root == none, "from_parents needs exactly one vertex without a parent"
                 root = v
-        assert root != none
-        Rooted.weighted(u => kids[u], root!, a => 1)
+        assert root != none, "from_parents needs exactly one vertex without a parent"
+        for i in 0..V.K: start[i + 1] += start[i]
+        var flat = List.filled(V.K - 1, root!)
+        var fill = copy(start)
+        for v in V:
+            if let p = par[v]:
+                flat[fill[p.to_idx]] = v
+                fill[p.to_idx] += 1
+        var dep: [V]Int = 0
+        var k0: [V]Int = 0
+        var k1: [V]Int = 0
+        var order = [root!]
+        var i = 0
+        while i < order.len:
+            let u = order[i]
+            k0[u] = order.len
+            for j in start[u.to_idx]..start[u.to_idx + 1]:
+                let c = flat[j]
+                dep[c] = dep[u] + 1
+                order.push(c)
+            k1[u] = order.len
+            i += 1
+        assert order.len == V.K, "from_parents found a cycle among the parents"
+        Rooted.finish([root!], par, dep, copy(dep), order, k0, k1)
 
     /// The same for edges with lengths: `len(arc)` is the length of the edge an arc runs along,
     /// and `dist` adds lengths up instead of counting edges.
@@ -68,62 +93,74 @@ pub struct Rooted<V, Pre>:
     pub fn forest<N>(adj: N, roots: List<V>) = Rooted.build(adj, roots, a => 1)
 
     fn build<N, A>(adj: N, roots: List<V>, len: A -> Int):
-        domain P = 0..V.K
-        let root = roots[0]
         var par: [V]?V = none
         var dep: [V]Int = 0
         var far: [V]Int = 0
-        var kid: [V]List<V> = []
         var seen: [V]Bool = false
-        var order = List<V>()  // preorder of the depth-first search
-        var stack = [(r, r, 0) for r in roots.rev]
-        while not stack.is_empty:
-            let (u, p, w) = stack[stack.len - 1]
-            stack.pop()
-            if seen[u]: continue
-            seen[u] = true
-            if u != p:
-                par[u] = p
-                dep[u] = dep[p] + 1
-                far[u] = far[p] + w
-                kid[p].push(u)
-            order.push(u)
-            let base = stack.len
+        var k0: [V]Int = 0
+        var k1: [V]Int = 0
+        var order = List<V>()
+        for r in roots:
+            seen[r] = true
+            order.push(r)
+        var i = 0
+        while i < order.len:
+            let u = order[i]
+            k0[u] = order.len
             for a in adj.out(u):
                 let c = a.to
-                if not seen[c]: stack.push((c, u, len(a)))
-            var (l, r) = (base, stack.len - 1)
-            while l < r:
-                stack.swap(l, r)
-                l += 1
-                r -= 1
+                if not seen[c]:
+                    seen[c] = true
+                    par[c] = u
+                    dep[c] = dep[u] + 1
+                    far[c] = far[u] + len(a)
+                    order.push(c)
+            k1[u] = order.len
+            i += 1
         assert order.len == V.K
+        Rooted.finish(roots, par, dep, far, order, k0, k1)
+
+    fn finish(
+        roots: List<V>,
+        par: [V]?V,
+        dep: [V]Int,
+        far: [V]Int,
+        bfs: List<V>,
+        k0: [V]Int,
+        k1: [V]Int,
+    ):
+        domain P = 0..V.K
+        let root = roots[0]
         var sz: [V]Int = 1
-        for u in order.rev:
+        for u in bfs.rev:
             if let p = par[u]: sz[p] += sz[u]
         var heavy: [V]?V = none
-        for u in order:
-            for c in kid[u]:
+        for u in bfs:
+            for i in k0[u]..k1[u]:
+                let c = bfs[i]
                 if heavy[u] == none or sz[c] > sz[heavy[u]!]: heavy[u] = c
-        var top = [V] v => v
-        var tin = [V] v => P.first
+        var top: [V]V = root
+        var tin: [V]P = P.first
         var start = 0
         for r in roots:
+            top[r] = r
             tin[r] = P.nth(start)
             start += sz[r]
-        for u in order:
+        for u in bfs:
             var next = tin[u].ord + 1
             if let h = heavy[u]:
                 top[h] = top[u]
                 tin[h] = P.nth(next)
                 next += sz[h]
-            for c in kid[u]:
-                if c != heavy[u]:
+            for i in k0[u]..k1[u]:
+                let c = bfs[i]
+                if some(c) != heavy[u]:
+                    top[c] = c
                     tin[c] = P.nth(next)
                     next += sz[c]
-        var at = [P] p => root
+        var at: [P]V = root
         for v in V: at[tin[v]] = v
-        Rooted<V, P>(root, par, dep, far, sz, kid, heavy, top, tin, at)
+        Rooted<V, P>(root, par, dep, far, sz, bfs, k0, k1, heavy, top, tin, at)
 
     /// The position of `v` in this tree's value-owned preorder domain `t.Pre`. Inverse of `at`. O(1).
     pub fn pos(self, v: V) -> Pre = tin[v]
@@ -135,7 +172,7 @@ pub struct Rooted<V, Pre>:
     pub fn reorder<T>(self, a: [V]T) -> [Pre]T = [Pre] p => a[at[p]]
 
     /// The children of `v`, in the order `adj` listed them.
-    pub fn children(self, v: V) -> List<V> = kid[v]
+    pub fn children(self, v: V) -> List<V> = [bfs[i] for i in k0[v]..k1[v]]
 
     /// For each child `c` of `v`, in child order, the fold with `m` of `f` over `v`'s other
     /// children: the step of a rerooting DP, with no division or inverse needed. The fold keeps
@@ -145,7 +182,7 @@ pub struct Rooted<V, Pre>:
     ///     for (c, rest) in t.excl_fold(v, mul, c => down[c] + 1):
     ///         up[c] = (up[v] * rest + 1) % m
     pub fn excl_fold<T, M>(self, v: V, m: M, f: V -> T) -> yields (c: V, rest: T):
-        let cs = kid[v]
+        let cs = self.children(v)
         var i = 0
         for (_, rest) in [f(c) for c in cs].excl_fold(m):
             yield (c: cs[i], rest: rest)
@@ -160,8 +197,8 @@ pub struct Rooted<V, Pre>:
     /// The children of `v` other than `heavy[v]`, in child order. Every vertex has O(log n)
     /// light edges above it, which is what small-to-large merging pays for. O(children).
     pub fn light(self, v: V) -> yields V:
-        for c in kid[v]:
-            if some(c) != heavy[v]: yield c
+        for i in k0[v]..k1[v]:
+            if some(bfs[i]) != heavy[v]: yield bfs[i]
 
     /// The root of the tree that holds `v` (always `t.root` unless built with `forest`). O(log n).
     pub fn root_of(self, v: V) -> V:
@@ -192,7 +229,7 @@ pub struct Rooted<V, Pre>:
         for p in Pre.rev:
             let v = at[p]
             var acc = k.id
-            for c in kid[v]: acc = k.op(acc, lift(out[c]!, c, v))
+            for i in k0[v]..k1[v]: acc = k.op(acc, lift(out[bfs[i]]!, bfs[i], v))
             out[v] = some(finish(acc, v))
         [V] v => out[v]!
 
@@ -206,7 +243,7 @@ pub struct Rooted<V, Pre>:
         var out: [V]?T = none
         for p in Pre:
             let v = at[p]
-            let cs = kid[v]
+            let cs = self.children(v)
             let parts = [lift(below[c], c, v) for c in cs]
             var after = List.filled(cs.len + 1, k.id)
             for i in (0..cs.len).rev: after[i] = k.op(parts[i], after[i + 1])
@@ -225,7 +262,7 @@ pub struct Rooted<V, Pre>:
         var of: [V]Int = 0
         for p in Pre.rev:
             let v = at[p]
-            var key = [of[c] for c in kid[v]]
+            var key = [of[bfs[i]] for i in k0[v]..k1[v]]
             key.sort()
             of[v] = known.get_or_insert(key, known.len)
         domain Shape = 0..known.len
@@ -254,9 +291,9 @@ pub struct Rooted<V, Pre>:
         while not stack.is_empty:
             let (u, i) = stack[stack.len - 1]
             if i == 0: yield (v: u, entering: true)
-            if i < kid[u].len:
+            if k0[u] + i < k1[u]:
                 stack[stack.len - 1] = (u, i + 1)
-                stack.push((kid[u][i], 0))
+                stack.push((bfs[k0[u] + i], 0))
             else:
                 stack.pop()
                 yield (v: u, entering: false)
@@ -789,9 +826,9 @@ fn from_parents_tour_pos_and_value_owned_pre():
             assert ent_pos[v] < ent_pos[c] and ext_pos[c] < ext_pos[v]
 
 @test
-fn weighted_rooted_dfs_tree_on_cyclic_graph():
+fn weighted_rooted_bfs_tree_on_cyclic_graph():
     domain V = 0..6
-    // Cycle + chords + self-loop: DFS tree must have every non-tree edge connect ancestor/descendant
+    // Cycle + chords + self-loop: the breadth-first tree puts the ends of every edge at most one level apart
     let raw = [
         (0, 1, 3),
         (0, 2, 5),
@@ -810,9 +847,9 @@ fn weighted_rooted_dfs_tree_on_cyclic_graph():
     let r = Rooted.weighted(u => g[u], root: V(0), len: a => a.w)
     assert r.parent(V(0)) == none
     for (u, v, _) in raw:
-        assert r.is_anc(V(u), V(v)) or r.is_anc(V(v), V(u))
-    // DFS explores first neighbor 1 -> 2 -> 4 -> 3, 5; so 0's only tree child is 1
-    assert r.children(V(0)) == [V(1)] and r.dist(V(0), V(2)) == 10 and r.dist(V(0), V(5)) == 15
+        assert abs(r.depth(V(u)) - r.depth(V(v))) <= 1
+    assert r.children(V(0)) == [V(1), V(2), V(5)] and r.children(V(2)) == [V(4)]
+    assert r.dist(V(0), V(2)) == 5 and r.dist(V(0), V(5)) == 9 and r.dist(V(0), V(4)) == 9
 
 @test
 fn lower_is_the_child_end_of_an_edge():

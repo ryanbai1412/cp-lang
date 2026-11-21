@@ -71,6 +71,7 @@ g++ -std=c++17 -O2 -o cxx bench/trees/tree_bench.cpp
 /usr/bin/time -f '%es %MKB' ./cp < big.in; /usr/bin/time -f '%es %MKB' ./cxx < big.in
 ```
 
+`root_bench` measures building a `Rooted` alone the same way.
 Results and the remaining gap: `bench/trees/README.md`.
 
 ## Prototype harness: Max-N Judge & Constant-Factor Audit

@@ -98,8 +98,10 @@ struct Rooted<V, Pre>
 
 `adj` is anything with `Neighbours` (a `Graph`, `[V]List<V>`, a closure),
 so `Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)` reads a tree.
-`new` on a graph with cycles roots its DFS tree (documented, tested). A
-vertex the DFS never reaches traps; a forest says so with `forest`.
+`new` on a graph with cycles roots its breadth-first tree (documented,
+tested), so `depth` is the distance from the root; back edges and low-links
+are graph algorithms (`std.graph`). A vertex the search never reaches traps;
+a forest says so with `forest`.
 
 ### 3.2 Shape (all O(1))
 
