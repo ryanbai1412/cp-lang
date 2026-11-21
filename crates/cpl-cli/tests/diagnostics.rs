@@ -75,7 +75,8 @@ fn golden_diagnostics() {
 fn every_planned_feature_cites_a_section_of_the_design() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     for planned in cpl_syntax::planned::PLANNED {
-        let (path, section) = planned.see.split_once(" §").expect("`<file> §<section>`");
+        let Some(see) = planned.see else { continue };
+        let (path, section) = see.split_once(" §").expect("`<file> §<section>`");
         let doc = fs::read_to_string(root.join(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
         assert!(
             doc.lines()

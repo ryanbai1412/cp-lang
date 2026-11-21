@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: an array type whose length is read, `[read(…)]T` (not in the design)
+  --> planned_an_array_type_whose_length_is_read_read_t.cp:1:9
+  |
+1 | let a: [read(1..=5)]Int = read()
+  |         ^^^^^^^^^^^
+  = help: declare the index space first: `domain N = read(…)`, then `[N]T`
+
+planned_an_array_type_whose_length_is_read_read_t.cp: 1 error

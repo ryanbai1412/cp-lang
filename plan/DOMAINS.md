@@ -225,12 +225,19 @@ declares (a broken fn header is bound with an unknown type), and an
 unreadable character no longer drops its line. Broken-ports benchmark
 (`cpl-cli/tests/recovery.rs`, six single edits per port): 0.04 cascades per
 copy, first error on the right line 99.8%, ratchet at 0.05 per copy.
-Planned 0.3 forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
-"not implemented yet: ... (see design/...)"); two entries so far. Golden
-rendered diagnostics in `cpl-cli/tests/diagnostics/`.
+Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
+"not implemented yet: ... (see design/...)", or "(not in the design)" for
+forms only dreams use); 13 entries, each with a golden. Dreams are a corpus
+(`scripts/dream-gaps.py`, summary in the scoreboard): 28/28 first errors
+name their gap, 120/172 errors named; top blockers are wrap lines (10
+dreams) and a value after a top-level `return` (5). Unknown names say "not
+in the stdlib (yet)" with a did-you-mean against stdlib names and the `use`
+as a fix. Golden rendered diagnostics in `cpl-cli/tests/diagnostics/`.
 **Bar.** Golden diagnostics for every error code; a broken-ports benchmark
 with first-error accuracy and cascade counts.
-**Next.** Count cascades by root cause instead of "every error after the
+**Next.** Name every dream error, not just the first (52 unnamed: list
+comprehensions with `=>`, `Graph.undirected` argument shapes, missing
+named parameters); count cascades by root cause instead of "every error after the
 first"; struct/enum headers that fail to parse should also bind with an
 unknown shape; fn stubs `-> T: ...` and the rest of `design/DELTA.md` into
 the planned table or implemented; quick fixes on every syntax error;

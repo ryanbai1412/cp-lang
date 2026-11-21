@@ -220,6 +220,13 @@ impl<'a> Parser<'a> {
                 self.bump();
                 true
             });
+        if !ended && self.at(T::At) && self.peek_n(1) == T::Ident {
+            let at = self.start();
+            self.decorator();
+            let span = self.span_from(at);
+            self.planned(span, &crate::planned::VALUE_DECORATOR);
+            return self.end_stmt(start);
+        }
         if !ended {
             if self.at(T::Indent) {
                 // Reported by `stmt_into` as an unexpected indent.
@@ -268,6 +275,22 @@ impl<'a> Parser<'a> {
             T::Ident if self.text() == "guard" && self.peek_n(1) == T::Let => {
                 self.bump();
                 self.let_stmt()
+            }
+            T::Ident if self.text() == "with" && self.peek_n(1) == T::Ident => {
+                let start = self.start();
+                self.bump();
+                self.expr();
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::CONTEXT_LINE);
+                if self.at(T::Colon) {
+                    let block = self.colon_block("the context");
+                    StmtKind::Expr(Expr {
+                        kind: ExprKind::Block(block),
+                        span: self.span_from(start),
+                    })
+                } else {
+                    StmtKind::Error
+                }
             }
             T::Const => self.const_stmt(),
             T::Fn => StmtKind::Fn(self.fn_decl()),
@@ -348,6 +371,15 @@ impl<'a> Parser<'a> {
                     self.recovering = true;
                     self.skip_line();
                 }
+                StmtKind::Error
+            }
+            T::Minus if self.peek_n(1) == T::Minus && self.peek_n(2) == T::Minus => {
+                // `--- with multitest() ---`, and the `--- multitest ---`
+                // programs write while wrap lines do not exist.
+                let start = self.start();
+                self.skip_line();
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::WRAP_LINE);
                 StmtKind::Error
             }
             T::Ident if self.text() == "loop" && self.peek_n(1) == T::Colon => {
@@ -558,7 +590,24 @@ impl<'a> Parser<'a> {
             })
         });
         let init = if self.eat(T::Eq) {
-            Some(self.expr())
+            let init = self.expr();
+            let literal = matches!(
+                init.kind,
+                ExprKind::Int(_)
+                    | ExprKind::Float(_)
+                    | ExprKind::Bool(_)
+                    | ExprKind::Char(_)
+                    | ExprKind::Str(_)
+            );
+            if shared_count > 1 && literal {
+                self.planned(init.span, &crate::planned::BROADCAST);
+                Some(Expr {
+                    kind: ExprKind::Tuple(vec![init.clone(); shared_count]),
+                    span: init.span,
+                })
+            } else {
+                Some(init)
+            }
         } else {
             if ty.is_none() {
                 let word = if mutable { "var" } else { "let" };

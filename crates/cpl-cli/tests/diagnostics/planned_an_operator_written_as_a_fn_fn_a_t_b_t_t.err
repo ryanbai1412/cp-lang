@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: an operator written as a fn, `fn (a: T) + (b: T) -> T` (not in the design)
+  --> planned_an_operator_written_as_a_fn_fn_a_t_b_t_t.cp:2:4
+  |
+2 | fn (a: P) + (b: P) -> P = P(a.x + b.x)
+  |    ^^^^^^^^^^^^^^^
+  = help: implement its trait: `impl Add for T:` with `fn add(a: T, b: T) -> T`
+
+planned_an_operator_written_as_a_fn_fn_a_t_b_t_t.cp: 1 error

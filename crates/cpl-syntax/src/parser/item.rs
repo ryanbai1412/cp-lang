@@ -6,17 +6,55 @@ impl<'a> Parser<'a> {
     pub(super) fn fn_decl(&mut self) -> FnDecl {
         let start = self.start();
         self.bump();
-        let name = self.expect_name("a fn name after `fn`");
-        let (generics, mut bounds) = self.generic_params();
-        let params = if self.eat(T::LParen) {
-            self.params()
+        let operator = self.at(T::LParen)
+            && self
+                .tokens
+                .get(super::after_group(self.tokens, self.pos))
+                .is_some_and(|t| {
+                    matches!(
+                        t.kind,
+                        T::Plus
+                            | T::Minus
+                            | T::Star
+                            | T::Slash
+                            | T::Percent
+                            | T::Lt
+                            | T::Gt
+                            | T::LtEq
+                            | T::GtEq
+                            | T::EqEq
+                            | T::NotEq
+                    )
+                });
+        let (name, generics, mut bounds, params) = if operator {
+            let op_start = self.start();
+            self.bump();
+            let mut params = self.params();
+            let name = Name {
+                text: self.text().to_string(),
+                span: self.span(),
+            };
+            self.bump();
+            if self.eat(T::LParen) {
+                params.extend(self.params());
+            }
+            let span = self.span_from(op_start);
+            self.planned(span, &crate::planned::OPERATOR_FN);
+            (name, Vec::new(), Vec::new(), params)
         } else {
-            self.error_expected(
-                codes::EXPECTED_TOKEN,
-                "`(` to start the parameter list",
-                Some("()"),
-            );
-            Vec::new()
+            let name = self.expect_name("a fn name after `fn`");
+            let (generics, bounds) = self.generic_params();
+            let params = if self.eat(T::LParen) {
+                self.params()
+            } else {
+                self.error_expected(
+                    codes::EXPECTED_TOKEN,
+                    "`(` to start the parameter list",
+                    Some("()"),
+                );
+                Vec::new()
+            };
+            (name, generics, bounds, params)
         };
         let copies = std::mem::take(&mut self.var_params);
         let ret = self.eat(T::Arrow).then(|| self.ty());
@@ -435,6 +473,12 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         };
+        if self.at(T::Eq) {
+            self.bump();
+            self.unary();
+            let span = self.span_from(name.span.start);
+            self.planned(span, &crate::planned::ENUM_VALUE);
+        }
         Variant { name, fields }
     }
 

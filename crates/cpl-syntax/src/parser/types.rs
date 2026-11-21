@@ -38,6 +38,20 @@ impl<'a> Parser<'a> {
                         name,
                         elem: Box::new(self.ty()),
                     }
+                } else if self.at_ident("read") && self.peek_n(1) == T::LParen {
+                    let read = self.start();
+                    self.bump();
+                    self.pos = after_group(self.tokens, self.pos);
+                    let span = self.span_from(read);
+                    self.planned(span, &crate::planned::READ_LENGTH);
+                    self.expect(T::RBracket, "`]` after the index");
+                    TypeKind::Array {
+                        index: vec![Type {
+                            kind: TypeKind::Error,
+                            span,
+                        }],
+                        elem: Box::new(self.ty()),
+                    }
                 } else if self.at(T::LParen)
                     && self.tokens.get(after_group(self.tokens, self.pos)).map(|t| t.kind)
                         == Some(T::RBracket)
@@ -198,11 +212,22 @@ impl<'a> Parser<'a> {
                     name.text = format!("{}.{}", name.text, member.text);
                     name.span = name.span.to(member.span);
                 }
-                if name.text == "Str" && args.is_empty() && self.at(T::LParen) {
-                    let open = self.start();
+                // `Str(len: …)`, `Mint(mod: p)`: a type built from values.
+                if args.is_empty() && self.at(T::LParen) && self.span().start == name.span.end {
                     self.pos = after_group(self.tokens, self.pos);
-                    let span = self.span_from(open);
-                    self.planned(span, &crate::planned::BOUNDED_STR);
+                    let span = self.span_from(name.span.start);
+                    let planned = if name.text == "Str" {
+                        &crate::planned::BOUNDED_STR
+                    } else {
+                        &crate::planned::FRESH_TYPE
+                    };
+                    self.planned(span, planned);
+                }
+                if name.text == "Str" && self.at_ident("of") && self.peek_n(1) == T::Str {
+                    self.bump();
+                    self.bump();
+                    let span = self.span_from(name.span.start);
+                    self.planned(span, &crate::planned::STR_OF);
                 }
                 TypeKind::Named { name, args }
             }

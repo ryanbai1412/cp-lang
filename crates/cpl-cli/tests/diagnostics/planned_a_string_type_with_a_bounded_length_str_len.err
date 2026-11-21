@@ -1,8 +1,8 @@
 error[E0504]: not implemented yet: a string type with a bounded length, `Str(len: …)` (see design/spec/29-strings.md §29.1)
-  --> planned_a_string_type_with_a_bounded_length_str_len.cp:1:11
+  --> planned_a_string_type_with_a_bounded_length_str_len.cp:1:8
   |
 1 | let s: Str(len: 1..=10) = read()
-  |           ^^^^^^^^^^^^^
+  |        ^^^^^^^^^^^^^^^^
   = help: read a `Str` and check its `.len` where it is used
 
 planned_a_string_type_with_a_bounded_length_str_len.cp: 1 error

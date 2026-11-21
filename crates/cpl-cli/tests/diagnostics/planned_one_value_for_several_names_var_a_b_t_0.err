@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: one value for several names, `var a, b: T = 0` (not in the design)
+  --> planned_one_value_for_several_names_var_a_b_t_0.cp:1:17
+  |
+1 | var a, b: Int = 0
+  |                 ^
+  = help: give each name its value: `var a, b: T = (0, 0)`
+
+planned_one_value_for_several_names_var_a_b_t_0.cp: 1 error

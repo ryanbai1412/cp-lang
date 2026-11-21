@@ -414,10 +414,10 @@ impl<'a> Parser<'a> {
     /// written.
     fn planned(&mut self, span: Span, planned: &crate::planned::Planned) {
         if self.speculating == 0 {
-            let message = format!(
-                "not implemented yet: {} (see {})",
-                planned.feature, planned.see
-            );
+            let message = match planned.see {
+                Some(see) => format!("not implemented yet: {} (see {see})", planned.feature),
+                None => format!("not implemented yet: {} (not in the design)", planned.feature),
+            };
             self.sink
                 .push(Diagnostic::error(codes::NOT_IMPLEMENTED, span, message).with_help(planned.now));
             self.sink.poison(span);

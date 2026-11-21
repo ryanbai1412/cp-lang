@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a decorator after a value, `e @name(…)` (not in the design)
+  --> planned_a_decorator_after_a_value_e_name.cp:1:24
+  |
+1 | var dp: [0..=3]Int = 0 @rolling(1)
+  |                        ^^^^^^^^^^^
+  = help: write the value alone
+
+planned_a_decorator_after_a_value_e_name.cp: 1 error

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a lowercase variant in a pattern, `incr(l, r) =>` (see design/spec/11-types.md §11.2)
+  --> planned_a_lowercase_variant_in_a_pattern_incr_l_r.cp:3:5
+  |
+3 |     some(i) => print(i)
+  |     ^^^^^^^
+  = help: name the variant with a capital, `Incr(l, r)`, or match an optional with `if let`
+
+planned_a_lowercase_variant_in_a_pattern_incr_l_r.cp: 1 error

@@ -209,6 +209,19 @@ impl<'a> Parser<'a> {
         let stmt_head = std::mem::take(&mut self.stmt_head);
         let start = self.start();
         let target = self.chain();
+        if self.at_ident("is") && self.peek_n(1) == T::Ident && self.same_line() {
+            self.bump();
+            self.pattern();
+            let span = self.span_from(start);
+            self.planned(span, &crate::planned::IS_BINDING);
+            // What it binds is unknown, so the rest of the statement is
+            // read but not checked.
+            self.recovering = true;
+            return Expr {
+                kind: ExprKind::Error,
+                span,
+            };
+        }
         // `if dist[v] min= d:` binds like a comparison, and is a `Bool`.
         let keep = !stmt_head
             && self.peek() == T::Ident
@@ -755,6 +768,14 @@ impl<'a> Parser<'a> {
                 );
                 self.bump();
                 return self.unary();
+            }
+            T::Lt | T::Gt | T::LtEq | T::GtEq | T::Plus | T::Star | T::EqEq | T::NotEq
+                if matches!(self.peek_n(1), T::RParen | T::Comma) =>
+            {
+                let span = self.span();
+                self.bump();
+                self.planned(span, &crate::planned::OPERATOR_VALUE);
+                ExprKind::Error
             }
             _ => {
                 let after = self

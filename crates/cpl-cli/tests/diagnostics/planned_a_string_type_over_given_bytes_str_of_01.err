@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a string type over given bytes, `Str of "01?"` (not in the design)
+  --> planned_a_string_type_over_given_bytes_str_of_01.cp:1:8
+  |
+1 | let s: Str of "01" = read()
+  |        ^^^^^^^^^^^
+  = help: read a `Str` and check its bytes where it is used
+
+planned_a_string_type_over_given_bytes_str_of_01.cp: 1 error

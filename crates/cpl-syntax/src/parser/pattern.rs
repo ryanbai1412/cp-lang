@@ -44,6 +44,18 @@ impl<'a> Parser<'a> {
                 };
                 PatternKind::Variant { path, args }
             }
+            T::Ident if self.peek_n(1) == T::LParen => {
+                self.bump();
+                self.bump();
+                let mut args = self.comma_list(T::RParen, "the pattern", Self::pattern);
+                let span = self.span_from(start);
+                self.planned(span, &crate::planned::LOWER_VARIANT_PATTERN);
+                if args.len() == 1 {
+                    args.pop().unwrap().kind
+                } else {
+                    PatternKind::Tuple(args)
+                }
+            }
             T::Ident => PatternKind::Name(self.name().text),
             T::SelfKw => {
                 self.bump();

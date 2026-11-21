@@ -1915,6 +1915,27 @@ Reverse: drop the `proven` lookup in the `inlayHint` arm of `crates/cpl-lsp/src/
   `BLESS=1` rewrites them. *Reason:* the rendered text is what the contestant reads, including help
   lines and spans, so that is what is pinned. *Reversible:* delete the directory and `diagnostics.rs`.
 
+- **30.7 Dreams are a diagnostics corpus.** `scripts/dream-gaps.py` checks every
+  `proto/ports/*/dream/*.cp` and files each error under the gap it names: `syntax:` (an `E0504`
+  feature), `library:` (a name, module or method "not in the stdlib (yet)"), `import:` (a stdlib name
+  used without its `use`), `rule:` (a decided rule the dream breaks), or `unnamed:`. The scoreboard
+  prints the ranked summary. The bar is that every dream's first error names its gap. *Reason:* the
+  factory needs to see which missing construct blocks the most dreams, and a dream whose first error
+  is "expected X" teaches nothing. *Reversible:* drop the script and the scoreboard's `dreams` block.
+- **30.8 A planned form outside the design still gets `E0504`, marked "(not in the design)".**
+  Dreams reach for forms the design never specified (`fn (a: T) + (b: T)`, `by: <`, `Str of "01?"`,
+  `enum E: a = -1`, `e is x`, `var a, b: T = 0`). Each is read, reported once by name with today's
+  spelling as help, and recovered as today's nearest form. *Reason:* naming the feature is the useful
+  message, and the marker keeps the table from passing these off as designed; a design section
+  replaces the marker when the design takes the form up. *Reversible:* make `see` mandatory and turn
+  those entries back into parse errors.
+- **30.9 "Not in the stdlib (yet)" goes on names unknown everywhere, except one-letter names.** An
+  unresolved name with no close in-scope or prelude name, no stdlib module and no removed keyword gets
+  the suffix, plus a did-you-mean against stdlib names (with the `use` as a fix) when one is close; a
+  missing `std.` module or a name a `std.` module lacks gets it too. No stdlib export is one letter
+  and contest code is full of one-letter locals, so `no `w` in scope` stays bare. *Reversible:* the
+  `unknown` condition in `Checker::unresolved` and the two branches in `db.rs`.
+
 ## 31. Generated C++: stack, layout and niches (0.3)
 
 Settled by Ryan for 0.3: the judge gives a big stack, the generated C++ runs
