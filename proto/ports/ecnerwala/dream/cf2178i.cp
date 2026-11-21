@@ -3,12 +3,14 @@
 // neighbour. Sqrt(k)-apart lattice cities form a bipartite graph (parity);
 // enumerate which cities of the smaller side are outside T, then sweep the
 // other side, tracking which of those have picked a firework.
+use std.graph.two_color
+
 type Z = Mod<998_244_353>
 
 @!multitest
 let (n, k): (2..=31, 1..=2e4) = read()
 domain V = 0..n
-let p: [V]Vec2<1..=100> = read()
+let p: [V]Pt = read()
 fn near(u: V, v: V) -> Bool = (p[u] - p[v]).norm2 == k
 let side = two_color<V>(u => V.filter(v => near(u, v)))!
 let small = side.minority
