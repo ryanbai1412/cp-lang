@@ -3,75 +3,43 @@ let n: 3..=200 = read()
 let m: 2..=19_900 = read()
 domain V = 1..=n
 var adj: [V, V]Bool = false
+var tree: [V]List<V> = []
+var dsu = Dsu<V>()
 repeat m:
     let (u, v): (V, V) = read()
     adj[u, v] = true
     adj[v, u] = true
+    if dsu.unite(u, v):
+        tree[u].push(v)
+        tree[v].push(u)
 
-var tree: [V]List<V> = []
-var vis: [V]Bool = false
-var diam = 0
-fn build_tree(cur: V) -> Int:
-    vis[cur] = true
-    var d = 0
-    for nxt in V:
-        if not vis[nxt] and adj[cur, nxt]:
-            tree[cur].push(nxt)
-            tree[nxt].push(cur)
-            let nd = build_tree(nxt) + 1
-            diam max= d + nd
-            d max= nd
-    d
-
-let _ = build_tree(V.first)
+let T = Rooted(tree, V.first)
+let d = T.diameter()
 
 print(2)
 print(3)
 var ops1: List<(V, V, V)> = []
 for i in V:
     for j in tree[i]:
-        for k in tree[i]:
-            if j == k or adj[j, k]: continue
+        for k in tree[i] if j != k and not adj[j, k]:
             adj[j, k] = true
             adj[k, j] = true
             ops1.push((j, i, k))
 print(ops1.len)
 for (a, b, c) in ops1: print(a, b, c)
 
-let path_len = ceil_div(diam, 2)
+let path_len = ceil_div(d.len, 2)
 print(path_len + 1)
 var num_ops = 0
 for i in V:
-    for j in V:
-        if j > i and not adj[i, j]: num_ops += 1
+    for j in V if j > i and not adj[i, j]: num_ops += 1
 print(num_ops)
 
-fn furthest_from(cur: V, prv: ?V) -> (Int, V):
-    var best = (-1, cur)
-    for nxt in tree[cur]:
-        if nxt == prv: continue
-        best max= furthest_from(nxt, cur)
-    (best.0 + 1, best.1)
-
-fn tree_path(st: V, en: V) -> List<V>:
-    var path: List<V> = []
-    fn dfs(cur: V, prv: ?V) -> Bool:
-        path.push(cur)
-        if cur == en: return true
-        for nxt in tree[cur]:
-            if nxt == prv: continue
-            if dfs(nxt, cur): return true
-        let _ = path.pop()
-        false
-    let _ = dfs(st, none)
-    path
-
 for i in V:
-    let furthest = furthest_from(i, none).1
-    for j in V:
-        if j <= i or adj[i, j]: continue
+    let far = if T.dist(i, d.u) >= T.dist(i, d.v): d.u else: d.v
+    for j in V if j > i and not adj[i, j]:
         var resp: List<V> = []
-        let pij = tree_path(i, j)
+        let pij = T.path(i, j)
         let dij = pij.len - 1
         if dij >= path_len:
             var skip = dij - path_len
@@ -84,26 +52,20 @@ for i in V:
                 cur += 1
             resp.push(pij[cur])
         else:
-            var pif = tree_path(i, furthest)
-            var pjf = tree_path(j, furthest)
-            var extra = (pif.len + pjf.len - 2 - dij) / 2
+            var pif = T.path(i, far)
+            var pjf = T.path(j, far)
+            let extra = (pif.len + pjf.len - 2 - dij) / 2
             let need = path_len - dij
-            while extra > need:
-                let _ = pif.pop()
-                let _ = pjf.pop()
-                extra -= 1
-            var extras: List<V> = []
-            repeat extra + 1:
-                extras.push(pif.pop()!)
-                let _ = pjf.pop()
-            extras.reverse()
+            let drop = extra - need
+            pif.truncate(pif.len - drop)
+            pjf.truncate(pjf.len - drop)
+            let keep = need + 1
+            let extras = [pif[k] for k in pif.len - keep..pif.len]
+            pif.truncate(pif.len - keep)
+            pjf.truncate(pjf.len - keep)
             let f = if pjf.is_empty: 1 else: 0
-            for x in pif: resp.push(x)
-            for z in 0..extras.len:
-                if z % 2 == f: resp.push(extras[z])
-            var par = (extras.len - 1) % 2
-            for x in extras.rev:
-                if par != f: resp.push(x)
-                par = 1 - par
-            for x in pjf.rev: resp.push(x)
+            resp.extend(pif)
+            for (z, x) in extras.items if z % 2 == f: resp.push(x)
+            for (z, x) in extras.items.rev if z % 2 != f: resp.push(x)
+            resp.extend(pjf.rev)
         print(resp)
