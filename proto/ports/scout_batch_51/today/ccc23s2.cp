@@ -15,8 +15,7 @@ fn main_solve():
                 cur += abs(h[I(i - j)] - h[I(i + j + off)])
                 ans[L(2 * j + off)] min= cur
                 j += 1
-    var out: List<Int> = []
-    for k in L: out.push(ans[k]!)
+    var out: List<Int> = [ans[k]! for k in L]
     print(out)
 
 main_solve()

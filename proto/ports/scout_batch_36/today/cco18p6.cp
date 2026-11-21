@@ -35,8 +35,7 @@ fn lb(l0: Int, r0: Int, target: Int) -> Int:
 
 fn merge(l: Int, mid: Int, r: Int):
     if l == mid or mid == r: return
-    var sub: List<Int> = []
-    for i in l..r: sub.push(cur[i])
+    var sub: List<Int> = [cur[i] for i in l..r]
     sub.sort()
     let med = sub[sub.len / 2]
     let m1 = lb(l, mid, med)

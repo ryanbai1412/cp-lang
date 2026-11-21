@@ -35,11 +35,9 @@ fn compress_dp(f: List<Int>) -> List<(Int, Int)>:
     return out
 
 fn dp(u: Int) -> List<List<(Int, Int)>>:
-    var ord_kids: List<(Int, Int)> = []
-    for v in g_kids[u]: ord_kids.push((-g_sz[v], v))
+    var ord_kids: List<(Int, Int)> = [(-g_sz[v], v) for v in g_kids[u]]
     ord_kids.sort()
-    var child_dp: List<List<List<(Int, Int)>>> = []
-    for p in ord_kids: child_dp.push(dp(p.1))
+    var child_dp: List<List<List<(Int, Int)>>> = [dp(p.1) for p in ord_kids]
 
     var raw: List<List<(Int, Int)>> = []
     for v in 0..g_n:
@@ -59,12 +57,10 @@ fn dp(u: Int) -> List<List<(Int, Int)>>:
             csz += g_sz[ord_kids[ci].1]
         raw.push(compress_dp(f))
 
-    var ord_v: List<(Int, Int)> = []
-    for v in 0..g_n: ord_v.push((g_dist[u * g_n + v], v))
+    var ord_v: List<(Int, Int)> = [(g_dist[u * g_n + v], v) for v in 0..g_n]
     ord_v.sort()
 
-    var out: List<List<(Int, Int)>> = []
-    for _ in 0..g_n: out.push([])
+    var out: List<List<(Int, Int)>> = [[] for _ in 0..g_n]
     var cur = [0..g_m + 1] _ => INF
     for pair in ord_v:
         let a = pair.1

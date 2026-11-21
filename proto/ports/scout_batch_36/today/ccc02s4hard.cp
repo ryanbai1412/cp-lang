@@ -144,7 +144,6 @@ print("Total Time:", dp_c[0])
 var cur = 0
 while cur < n:
     let end = dp_nxt[cur]
-    var grp: List<Str> = []
-    for k in cur..end: grp.push(names[k])
+    var grp: List<Str> = [names[k] for k in cur..end]
     print(grp)
     cur = end

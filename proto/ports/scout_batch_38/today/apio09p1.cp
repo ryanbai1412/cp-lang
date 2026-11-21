@@ -9,8 +9,7 @@ domain Col = 0..m
 let g: [Row, Col]Int = read()
 
 fn best_oriented(r: Int, c: Int, flat: List<Int>) -> Int:
-    var psum: List<Int> = []
-    for _ in 0..(r + 1) * (c + 1): psum.push(0)
+    var psum: List<Int> = List.filled((r + 1) * (c + 1), 0)
     let w = c + 1
     for i in 0..r:
         for j in 0..c:

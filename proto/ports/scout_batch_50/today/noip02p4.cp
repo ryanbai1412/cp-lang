@@ -26,8 +26,7 @@ fn cover(ps: List<(Int, Int)>, k: Int) -> Int:
     if k == 1 or ps.len == 0: return area(ps)
     var best = 1e18
     for turn in 0..2:
-        var s: List<(Int, Int)> = []
-        for p in ps: s.push(if turn == 0: p else: (p.1, p.0))
+        var s: List<(Int, Int)> = [if turn == 0: p else: (p.1, p.0) for p in ps]
         sort(mut s)
         for i in 0..s.len:
             if i == 0 or s[i - 1].0 < s[i].0:

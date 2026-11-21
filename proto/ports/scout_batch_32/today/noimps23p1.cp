@@ -42,8 +42,7 @@ fn reach(start: Int, iv: List<(l: Int, r: Int)>) -> List<Bool>:
 
 let start = start1 - 1
 let right = reach(start, ivs)
-var mirrored: List<(l: Int, r: Int)> = []
-for iv in ivs: mirrored.push((l: n - 1 - iv.r, r: n - 1 - iv.l))
+var mirrored: List<(l: Int, r: Int)> = [(l: n - 1 - iv.r, r: n - 1 - iv.l) for iv in ivs]
 let left = reach(n - 1 - start, mirrored)
 for x in 0..n:
     if right[x] or left[n - 1 - x]: print(x + 1)

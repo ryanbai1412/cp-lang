@@ -11,8 +11,7 @@ fn main_solve():
 
     // Local grader: persistent list of DSU parent arrays
     var g_par: List<List<Int>> = []
-    var init_p: List<Int> = []
-    for i in 0..n: init_p.push(-1)
+    var init_p: List<Int> = [-1 for i in 0..n]
     g_par.push(init_p)
 
     fn g_find(ver: Int, x: Int) -> Int:
@@ -38,8 +37,7 @@ fn main_solve():
     fn query_conn(a: Int, u: Pin, v: Pin) -> Int:
         queries += 1
         if g_find(a, u.idx) == g_find(a, v.idx): return a
-        var copy: List<Int> = []
-        for x in g_par[a]: copy.push(x)
+        var copy: List<Int> = [x for x in g_par[a]]
         let nv = g_par.len
         g_par.push(copy)
         g_unite(nv, u.idx, v.idx)

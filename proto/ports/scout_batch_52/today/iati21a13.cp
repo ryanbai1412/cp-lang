@@ -113,8 +113,7 @@ for _ in 0..g_n - 1:
     let v = ri() - 1
     g_adj[u].push(v)
     g_adj[v].push(u)
-var init_on: List<Int> = []
-for _ in 0..g_n: init_on.push(ri())
+var init_on: List<Int> = [ri() for _ in 0..g_n]
 
 g_q = ri()
 var q_ty: List<Int> = []

@@ -41,8 +41,7 @@ var back: [State]List<(to: State)> = []
 for s in State: back[next(s)].push((to: s))
 
 domain Len = 0..=2 * n
-var ans: List<Int> = []
-for _ in 0..q: ans.push(0)
+var ans: List<Int> = List.filled(q, 0)
 var lengths: List<Int> = []
 for _ in 0..q:
     let k: Int = read()

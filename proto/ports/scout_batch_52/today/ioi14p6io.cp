@@ -55,8 +55,7 @@ fn solve_side(mul: Int, d: Int, a: List<Int>) -> List<Int>:
     g_gaps = []
     var ind = 0
     while ind <= n:
-        var s: List<Int> = []
-        for i in 0..ind: s.push(-a[i])
+        var s: List<Int> = [-a[i] for i in 0..ind]
         s.sort()
         var sp: List<Int> = []
         var ps: List<Int> = [0]
@@ -67,8 +66,7 @@ fn solve_side(mul: Int, d: Int, a: List<Int>) -> List<Int>:
         g_sorted_pref.push(sp)
         g_psum.push(ps)
         let hi = min(n, ind + 300)
-        var g: List<(Int, Int)> = []
-        for j in ind..hi: g.push((-a[j], j))
+        var g: List<(Int, Int)> = [(-a[j], j) for j in ind..hi]
         g.sort()
         g_gaps.push(g)
         ind += 300
@@ -81,8 +79,7 @@ fn one_way(n: Int, start: Int, d: Int, a: List<Int>) -> Int:
     while i >= 0:
         left_a.push(a[i])
         i -= 1
-    var right_a: List<Int> = []
-    for j in start + 1..n: right_a.push(a[j])
+    var right_a: List<Int> = [a[j] for j in start + 1..n]
     let ldp = solve_side(2, d, left_a)
     let rdp = solve_side(1, d, right_a)
     var best = 0
@@ -94,8 +91,7 @@ fn one_way(n: Int, start: Int, d: Int, a: List<Int>) -> Int:
 let n: Int = read()
 let start: Int = read()
 let d: Int = read()
-var a: List<Int> = []
-for _ in 0..n: a.push(ri())
+var a: List<Int> = [ri() for _ in 0..n]
 var rev_a: List<Int> = []
 var ii = n - 1
 while ii >= 0:

@@ -2213,7 +2213,9 @@ def g_ioi94p1(p, big, _):
 def g_noip00p4(p, big, _):
     rng = random.Random(4002)
     n = 9 if big else 4
-    cells = [f"{x} {y} {rng.randint(0, 1000)}" for x in range(1, n + 1) for y in range(1, n + 1)]
+    # the original is a bitmask DP over the non-empty cells, so the grid is sparse
+    picked = rng.sample([(x, y) for x in range(1, n + 1) for y in range(1, n + 1)], 12 if big else 4)
+    cells = [f"{x} {y} {rng.randint(1, 1000)}" for x, y in picked]
     W(p, [n] + cells + ["0 0 0"])
 
 
@@ -2232,7 +2234,10 @@ def g_noi19p4(p, big, _):
     pts = rng.sample([(x, y) for x in range(1, w + 1) for y in range(1, h + 1)], n) if not big else \
         list({(rng.randint(1, w), rng.randint(1, h)) for _ in range(2 * n)})[:n]
     lines = [f"{n} {m} {w} {h}"] + [f"{x} {y}" for x, y in pts]
-    for _ in range(m):
+    for i in range(1, n):  # every city reachable from city 1, as the statement guarantees
+        x, y = pts[i]
+        lines.append(f"{rng.randint(1, i)} {rng.randint(1, 10_000)} {x} {x} {y} {y}")
+    for _ in range(m - (n - 1)):
         lx, rx = sorted(rng.randint(1, w) for _ in range(2)); ly, ry = sorted(rng.randint(1, h) for _ in range(2))
         lines.append(f"{rng.randint(1, n)} {rng.randint(1, 10_000)} {lx} {rx} {ly} {ry}")
     W(p, lines)
@@ -2245,6 +2250,7 @@ def g_noi19p1(p, big, _):
     for _ in range(m):
         x, y = rng.sample(range(1, n + 1), 2); a, b = sorted(rng.sample(range(0, 1001), 2))
         lines.append(f"{x} {y} {a} {b}")
+    lines[1] = f"1 {n} 0 1000"  # a route to n exists, as the statement guarantees
     W(p, lines)
 
 
@@ -2329,7 +2335,7 @@ def g_ioi13p3io(p, big, _):
 
 SPECS += [
     ("ioi94p1", P("ioi94p1_orig.cpp"), "triangle DP", "n=100", g_ioi94p1, "exact"),
-    ("scout_batch_14/today/noip00p4", O(5067920), "grid DP", "n=9, full grid", g_noip00p4, "exact"),
+    ("scout_batch_14/today/noip00p4", O(5067920), "grid DP", "n=9, 12 cells", g_noip00p4, "exact"),
     ("scout_batch_30/noi06p1", O(5032743), "tree DP", "m=10, n=1024", g_noi06p1, "exact"),
     ("scout_batch_30/noi19p4", O(3800719), "Dijkstra+segtree", "n=7e4, m=1.5e5", g_noi19p4, "exact"),
     ("scout_batch_14/today/noi19p1", O(3790564), "slope DP", "n=1e5, m=2e5", g_noi19p1, "exact"),

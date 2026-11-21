@@ -9,13 +9,11 @@ let q: 0..=100000 = read()
 let parent: [0..n + m]Int = read()
 let lit: [0..m]Int = read()
 
-var kids: List<List<Int>> = []
-for _ in 0..n: kids.push([])
+var kids: List<List<Int>> = [[] for _ in 0..n]
 for v in 1..n + m: kids[parent[v]].push(v)
 
 // all[u]: parameter assignments inside u's subtree (a gate with c inputs has c choices)
-var all: List<Int> = []
-for _ in 0..n + m: all.push(1)
+var all: List<Int> = List.filled(n + m, 1)
 for u in (0..n).rev:
     all[u] = kids[u].len
     for v in kids[u]: all[u] = all[u] * all[v] % MOD
@@ -23,12 +21,10 @@ for u in (0..n).rev:
 // A lit source is worth the assignments of everything off its path to the
 // root: by linearity each gate on the path passes the count through once.
 // MOD is not prime, so "all but one child" is a prefix times a suffix product.
-var worth: List<Int> = []
-for _ in 0..n + m: worth.push(1)
+var worth: List<Int> = List.filled(n + m, 1)
 for u in 0..n:
     let c = kids[u].len
-    var after: List<Int> = []
-    for _ in 0..=c: after.push(1)
+    var after: List<Int> = [1 for _ in 0..=c]
     for i in (0..c).rev: after[i] = after[i + 1] * all[kids[u][i]] % MOD
     var before = worth[u]
     for i in 0..c:

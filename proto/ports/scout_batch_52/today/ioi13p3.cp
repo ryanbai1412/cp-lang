@@ -76,12 +76,10 @@ fn seg_update(o: Int, l: Int, rr: Int, blk: Int):
 g_r = ri()
 g_c = ri()
 for _ in 0..g_r:
-    var row: List<Int> = []
-    for _ in 0..g_c - 1: row.push(ri())
+    var row: List<Int> = [ri() for _ in 0..g_c - 1]
     g_h.push(row)
 for _ in 0..g_r - 1:
-    var row: List<Int> = []
-    for _ in 0..g_c: row.push(ri())
+    var row: List<Int> = [ri() for _ in 0..g_c]
     g_v.push(row)
 let blocks = ceil_div(g_r, BS)
 for _ in 0..4 * blocks + 5: g_seg.push([0..g_c * g_c] _ => INF)

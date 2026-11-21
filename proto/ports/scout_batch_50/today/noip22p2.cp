@@ -47,8 +47,7 @@ for _ in 0..tests:
     fn match_bottoms(s: Int, t: Int):
         script.push((2, s + 1, t + 1))
         for u in [s, t]:
-            var rest: List<Int> = []
-            for i in 1..stacks[u].len: rest.push(stacks[u][i])
+            var rest: List<Int> = [stacks[u][i] for i in 1..stacks[u].len]
             stacks[u] = rest
             refresh(u)
 

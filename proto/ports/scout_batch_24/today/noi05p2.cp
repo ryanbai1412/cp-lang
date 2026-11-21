@@ -161,8 +161,7 @@ fn build_cartesian(vals: List<Int>) -> Int:
     pull(stk[0])
     stk[0]
 
-var init_list: List<Int> = []
-for i in Init: init_list.push(init_a[i])
+var init_list: List<Int> = [init_a[i] for i in Init]
 var root = build_cartesian(init_list)
 
 for _ in 0..m:

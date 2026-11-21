@@ -38,8 +38,7 @@ elif max_a <= 1 and max_b <= 1:
         if arra[I(i)] != arrb[I(n - 1 - i)]: rev_eq = false
     if rev_eq:
         print(1)
-        var ones: List<Int> = []
-        for _ in 0..n: ones.push(1)
+        var ones: List<Int> = List.filled(n, 1)
         print(ones)
         print(ones)
     else:

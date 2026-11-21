@@ -17,9 +17,7 @@ for idx in 0..f_cnt:
     if l > max_len[g]:
         max_len[g] = l
 
-var gem_pairs: List<(Int, Int)> = []
-for g in 1..=k:
-    gem_pairs.push((max_len[g], g))
+var gem_pairs: List<(Int, Int)> = [(max_len[g], g) for g in 1..=k]
 gem_pairs.sort()
 
 var rank_of = List.filled(k + 1, 0)

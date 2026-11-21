@@ -39,9 +39,7 @@ fn rebuild_bucket(bi: Int):
             bcnt[bi][i] = bcnt[bi][nxt] + 1
 
 fn rebuild_all():
-    var all: List<Int> = []
-    for e in E:
-        all.push(pos[e])
+    var all: List<Int> = [pos[e] for e in E]
     all.sort()
     bxs.clear()
     bend.clear()

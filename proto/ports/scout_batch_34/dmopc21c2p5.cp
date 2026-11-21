@@ -55,9 +55,7 @@ for u in tree.postorder:
             csum += sz_v
             cur = nxt
 
-        var res: List<Z> = []
-        for i in 0..=sz_u:
-            res.push(sum(cur[d, i] * fact[d] for d in Deg))
+        var res: List<Z> = [sum(cur[d, i] * fact[d] for d in Deg) for i in 0..=sz_u]
         memo[u, par_used] = res
 
 print(if k <= n: memo[V.first, false][k] else: Z(0))

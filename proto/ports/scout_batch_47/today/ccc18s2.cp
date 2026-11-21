@@ -31,8 +31,7 @@ fn rotate_cw():
 for _ in 0..4:
     if is_valid():
         for r in 0..n:
-            var row: List<Int> = []
-            for c in 0..n: row.push(g[R(r), C(c)])
+            var row: List<Int> = [g[R(r), C(c)] for c in 0..n]
             print(row)
         break
     rotate_cw()

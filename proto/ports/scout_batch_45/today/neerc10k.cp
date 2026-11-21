@@ -36,8 +36,7 @@ while head < order.len:
 var colour: [V]Int = 0
 for at in (0..order.len).rev:
     let u = order[at]
-    var taken: List<Bool> = []
-    for _ in 0..=k: taken.push(false)
+    var taken: List<Bool> = [false for _ in 0..=k]
     for v in adj[u]: taken[colour[v]] = true
     var c = 1
     while taken[c]: c += 1

@@ -33,8 +33,7 @@ fn eval_mask(mask: Int, perm: List<Int>) -> Int:
     return ans
 
 fn make_base_perm(k: Int, x: Int, y: Int) -> List<Int>:
-    var p: List<Int> = []
-    for i in 0..k: p.push(i + 2)
+    var p: List<Int> = [i + 2 for i in 0..k]
     for _ in 0..x: p.push(0)
     for _ in 0..y: p.push(1)
     return p
@@ -43,8 +42,7 @@ fn compute_dt(k: Int, x: Int, y: Int) -> (List<Int>, List<List<Int>>, List<List<
     let tot = k + x + y
     var p = make_base_perm(k, x, y)
     while true:
-        var buckets: List<List<Int>> = []
-        for _ in 0..tot: buckets.push([])
+        var buckets: List<List<Int>> = [[] for _ in 0..tot]
         for mask in 0..(1 << k):
             buckets[eval_mask(mask, p)].push(mask)
         var leaf_q: List<List<Int>> = []
@@ -63,8 +61,7 @@ fn compute_dt(k: Int, x: Int, y: Int) -> (List<Int>, List<List<Int>>, List<List<
                         break
                     tbl[r] = m
                 if ok_leaf:
-                    var qcopy: List<Int> = []
-                    for z in p2: qcopy.push(z)
+                    var qcopy: List<Int> = [z for z in p2]
                     leaf_q.push(qcopy)
                     leaf_res.push(tbl)
                     found_leaf = true
@@ -74,16 +71,14 @@ fn compute_dt(k: Int, x: Int, y: Int) -> (List<Int>, List<List<Int>>, List<List<
                 ok_root = false
                 break
         if ok_root:
-            var rcopy: List<Int> = []
-            for z in p: rcopy.push(z)
+            var rcopy: List<Int> = [z for z in p]
             return (rcopy, leaf_q, leaf_res)
         if not next_perm(mut p): break
     return ([], [], [])
 
 fn main_solve():
     let n: Int = read()
-    var s: List<Int> = []
-    for _ in 0..n: s.push(ri())
+    var s: List<Int> = [ri() for _ in 0..n]
 
     fn use_machine(seq: List<Int>) -> Int:
         var ans = 0
@@ -132,8 +127,7 @@ fn main_solve():
         let k = min(want, n - pos)
         if k <= 0: return
         let id = get_dt(k, x, y)
-        var vars: List<Int> = []
-        for i in 0..k: vars.push(pos + i)
+        var vars: List<Int> = [pos + i for i in 0..k]
         pos += k
         let r1 = ask_pattern(cache_r[id], vars)
         let lq = cache_lq[id][r1]

@@ -6,8 +6,7 @@ let n: 1..=20000 = read()
 let m: 1..=50 = read()
 let w: 2..=50 = read()
 var park: [0..n]Int = read()
-var want: List<Int> = []
-for i in 0..n: want.push(park[i])
+var want: List<Int> = [park[i] for i in 0..n]
 sort(mut want)
 
 // cursor[t]: first slot of type t's block not yet known to hold a type-t car

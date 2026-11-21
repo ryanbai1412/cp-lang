@@ -109,8 +109,7 @@ fn solve_one():
         st[i] = to
         push_all(i, to)
 
-    var init_ord: List<(Int, Int)> = []
-    for i in 0..n: init_ord.push((-(a[i] + b[i]), i))
+    var init_ord: List<(Int, Int)> = [(-(a[i] + b[i]), i) for i in 0..n]
     init_ord.sort()
     for idx in 0..k: move_item(init_ord[idx].1, 2)
 

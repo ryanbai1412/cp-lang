@@ -9,8 +9,7 @@ fn ri() -> Int:
 
 fn main_solve():
     let n: Int = read()
-    var col: List<Int> = []
-    for _ in 0..n: col.push(ri())
+    var col: List<Int> = [ri() for _ in 0..n]
 
     var cnt = [0..n + 1] _ => 0
     var in_box = [0..n] _ => false
@@ -32,8 +31,7 @@ fn main_solve():
 
     fn press_button() -> Int = max_cnt
 
-    var perm: List<Int> = []
-    for i in 0..n: perm.push(i)
+    var perm: List<Int> = [i for i in 0..n]
     // Deterministic Fisher-Yates shuffle
     var seed = 1412345
     var idx = n - 1

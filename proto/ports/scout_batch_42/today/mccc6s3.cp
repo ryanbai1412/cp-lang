@@ -18,8 +18,7 @@ fn consider(d: Int, i1: Int, i2: Int):
         best_i2 = i2
 
 // Compress distinct values once so DSU jump pointers work for arbitrary 64-bit values.
-var all_v: List<Int> = []
-for p in Pos: all_v.push(a[p])
+var all_v: List<Int> = [a[p] for p in Pos]
 let sv = sorted(all_v)
 var vals: List<Int> = []
 for x in sv:

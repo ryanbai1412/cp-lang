@@ -15,8 +15,7 @@ for i in 0..n:
         let s = (seq[i] - 1 - i) % n
         if shift != -1 and shift != s: ok = false
         shift = s
-var sorted_seq: List<Int> = []
-for i in 0..n: sorted_seq.push(seq[i])
+var sorted_seq: List<Int> = [seq[i] for i in 0..n]
 sort(mut sorted_seq)
 for i in 1..n:
     if sorted_seq[i] == sorted_seq[i - 1]: ok = false
@@ -37,8 +36,7 @@ elif task == 2:
     // The slot with the largest number absorbs every replacement nobody else
     // ends on; a slot ending on g takes its final gondola at step g.
     if shift == -1: shift = n - 1
-    var now: List<Int> = []
-    for i in 0..n: now.push((i + shift) % n + 1)
+    var now: List<Int> = [(i + shift) % n + 1 for i in 0..n]
     var top = 0
     for i in 0..n:
         if seq[i] > seq[top]: top = i

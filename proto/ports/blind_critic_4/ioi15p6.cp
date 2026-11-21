@@ -84,9 +84,7 @@ for i in 0..n:
     drop[vi] = (d_u + d_0 - du0) / 2
 
 // Group all vertices by their coordinate along the diameter path from u.
-var coords: List<Int> = []
-for i in 0..n:
-    coords.push(dist_from_u[V.from_idx(i)!])
+var coords: List<Int> = [dist_from_u[V.from_idx(i)!] for i in 0..n]
 coords.sort()
 
 var uniq: List<Int> = []

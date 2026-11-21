@@ -3,8 +3,7 @@
 let s: [domain S]Char = read()
 let k: 0..=1000 = read()
 let n = S.len
-var head: List<Bool> = []
-for i in S: head.push(s[i] == 'H')
+var head: List<Bool> = [s[i] == 'H' for i in S]
 var heads: [0..=n]Int = 0
 for i in 0..n: heads[i + 1] = heads[i] + Int(head[i])
 

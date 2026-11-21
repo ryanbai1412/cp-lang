@@ -42,9 +42,7 @@ var total_sub = List.filled(1 << SMALL_CNT, 0)
 // Store only non-zero (big_id, mask, count) buckets per big prime, then SOS on demand
 // or precompute SOS over small_mask for total and per big prime that appears in input!
 var active_big = List.filled(big_cnt + 1, false)
-var big_vals: List<List<(Int, Int)>> = []
-for _ in 0..=big_cnt:
-    big_vals.push([])
+var big_vals: List<List<(Int, Int)>> = [[] for _ in 0..=big_cnt]
 
 for v in 1..=MAX_V:
     if cnt[v] > 0:

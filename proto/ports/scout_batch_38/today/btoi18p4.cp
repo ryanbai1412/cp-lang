@@ -178,8 +178,7 @@ fn solve():
     for i in K:
         let a = i.cyc(-1)
         let b = i.cyc(1)
-        var cur: List<(Int, Int)> = []
-        for s in child[i]: cur.push(s)
+        var cur: List<(Int, Int)> = [s for s in child[i]]
         cur.push((cl[a], cr[a]))
         cur.push((cl[b], cr[b]))
         if covers_arc(cur, cl[i], cr[i]):
@@ -195,8 +194,7 @@ fn solve():
         if can[b]: ccnt -= 1
         if can[c]: ccnt -= 1
         if ccnt != k - 2: continue
-        var cur: List<(Int, Int)> = []
-        for s in child[b]: cur.push(s)
+        var cur: List<(Int, Int)> = [s for s in child[b]]
         for s in child[c]: cur.push(s)
         cur.push((cl[a], cr[a]))
         cur.push((cl[d], cr[d]))

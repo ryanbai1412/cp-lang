@@ -8,8 +8,7 @@ let s: [domain S]Char = read()
 let w: [0..n]Int = read()
 
 // level[d]: weights of the brackets nested d deep
-var level: List<List<Int>> = []
-for _ in 0..n: level.push([])
+var level: List<List<Int>> = [[] for _ in 0..n]
 var depth = 0
 var opened = 0
 for i in S:

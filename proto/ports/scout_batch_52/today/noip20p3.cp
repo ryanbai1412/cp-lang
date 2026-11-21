@@ -56,8 +56,7 @@ fn solve_range(cols: List<Int>, ql: Int, qr: Int):
             transfer(helper, a, c0)
         transfer(g_empty, helper, c0)
 
-    var cur_cols: List<Int> = []
-    for x in cols: cur_cols.push(x)
+    var cur_cols: List<Int> = [x for x in cols]
 
     while true:
         var changed = false
@@ -113,8 +112,7 @@ for _ in 0..g_n + 1: g_stks.push([])
 for i in 0..g_n:
     for _ in 0..g_m: g_stks[i].push(ri() - 1)
 g_empty = g_n
-var init_cols: List<Int> = []
-for i in 0..g_n: init_cols.push(i)
+var init_cols: List<Int> = [i for i in 0..g_n]
 solve_range(init_cols, 0, g_n - 1)
 print(g_mu.len)
 for i in 0..g_mu.len: print(g_mu[i] + 1, g_mv[i] + 1)

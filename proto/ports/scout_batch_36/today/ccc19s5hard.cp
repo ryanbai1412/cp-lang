@@ -6,8 +6,7 @@ let k: 1..=n = read()
 fn tri(i: Int, j: Int) -> Int: i * (i + 1) / 2 + j
 
 let total = n * (n + 1) / 2
-var buf: List<Int> = []
-for _ in 0..2 * total: buf.push(0)
+var buf: List<Int> = List.filled(2 * total, 0)
 
 for i in 0..n:
     for j in 0..=i:
