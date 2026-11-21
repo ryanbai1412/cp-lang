@@ -1283,6 +1283,16 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversal:* remove the one-line colon branch in `crates/cpl-syntax/src/parser/item.rs` and restore 1-token
   `range_follows` in `crates/cpl-syntax/src/parser/types.rs`.
 
+- **22.6 Range-checked `read::<lo..=hi>()` in expression position and homogeneous multi-binding (`var a, b, c: Z = (0, 0, 0)`, `let n, m: 1..=20 = read()`).**
+  `read::<lo..=hi>()` in `cpl-ir` now lowers a `TypeKind::Range` type argument to `Spec::Int { lo, hi, text }`,
+  enforcing range bounds identically to `read(lo..=hi)` and `let x: 1..=3 = read()` while keeping `::<>`
+  turbofish for generic functions. Homogeneous multi-binding (`var a, b, c: T = ...` / `let n, m: T = ...`)
+  desugars in `let_stmt` to a tuple pattern with repeated tuple type `(T, T, ...)`, so `var ones, one_twos, ans: Z = (0, 0, 0)`
+  and `let n, m: 1..=20 = read()` both work while scalar broadcast (`var a, b: Int = 0`) remains rejected as a
+  tuple/scalar mismatch.
+  *Reversal:* remove the `TypeKind::Range` branch in `crates/cpl-ir/src/lower/call.rs` and remove `shared_count`
+  in `crates/cpl-syntax/src/parser/stmt.rs`.
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

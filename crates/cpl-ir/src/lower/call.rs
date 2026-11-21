@@ -268,9 +268,29 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Name(name) => name.as_str(),
             _ => "",
         };
-        // `read::<Int>()`: a read that says its own type.
+        // `read::<Int>()`, `read<1..=3>()`: a read that says its own type.
         if name == "read" && self.get_sym(name).is_none() {
             if let [ty] = types {
+                if args.is_empty() {
+                    if let ast::TypeKind::Range {
+                        lo,
+                        hi,
+                        inclusive,
+                    } = &ty.kind
+                    {
+                        let lo = self.expect(lo, &Ty::Int);
+                        let mut hi = self.expect(hi, &Ty::Int);
+                        if !inclusive {
+                            hi = self.int_add(hi, -1);
+                        }
+                        let spec = Spec::Int {
+                            lo: Some(Box::new(lo)),
+                            hi: Some(Box::new(hi)),
+                            text: self.source(ty.span),
+                        };
+                        return self.read(spec, span);
+                    }
+                }
                 let want = self.resolve_ty(ty);
                 return self.prelude(name, args, Some(&want), span);
             }

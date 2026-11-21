@@ -444,8 +444,40 @@ impl<'a> Parser<'a> {
     fn let_stmt(&mut self) -> StmtKind {
         let mutable = self.at(T::Var);
         self.bump();
-        let pat = self.pattern();
-        let ty = self.eat(T::Colon).then(|| self.ty());
+        let mut pat = self.pattern();
+        // `var ones, one_twos, ans: Z = (0, 0, 0)` and `let n, m: 1..=20 = read()`:
+        // homogeneous multi-binding desugars to a tuple pattern with a repeated
+        // tuple type `(T, T, ...)`, so scalar broadcast (`var a, b: Int = 0`) is
+        // cleanly rejected as a tuple/scalar mismatch.
+        let mut shared_count = 0usize;
+        if matches!(&pat.kind, PatternKind::Name(_))
+            && self.at(T::Comma)
+            && self.peek_n(1) == T::Ident
+            && matches!(self.peek_n(2), T::Comma | T::Colon)
+        {
+            let start = pat.span.start;
+            let mut pats = vec![pat];
+            while self.eat(T::Comma) {
+                pats.push(self.pattern());
+            }
+            shared_count = pats.len();
+            pat = Pattern {
+                kind: PatternKind::Tuple(pats),
+                span: self.span_from(start),
+            };
+        }
+        let ty = self.eat(T::Colon).then(|| {
+            let elem = self.ty();
+            if shared_count > 1 {
+                let span = elem.span;
+                Type {
+                    kind: TypeKind::Tuple(vec![elem; shared_count]),
+                    span,
+                }
+            } else {
+                elem
+            }
+        });
         let init = if self.eat(T::Eq) {
             Some(self.expr())
         } else {
