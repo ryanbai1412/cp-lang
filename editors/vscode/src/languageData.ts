@@ -70,7 +70,7 @@ export const PRELUDE_VALUES: readonly string[] = [
 export const STDLIB_VALUES: readonly string[] = [
     'affine_sum', 'angle_less', 'any_segments_meet', 'area2', 'area2_128', 'arg', 'argmins', 'articulation_points', 'bellman_ford', 'berlekamp_massey',
     'bfs01', 'biconnected_components', 'bit_len', 'borders', 'bridges', 'bsearch_real', 'buckets', 'choose', 'choose2', 'chunk_by',
-    'chunks', 'circle_intersect', 'circle_line_intersect', 'circle_polygon_area', 'circulation', 'circumcenter', 'close', 'closest_pair', 'closest_pair2', 'common_prefix_len',
+    'chunks', 'circle_circle_tangents', 'circle_intersect', 'circle_line_intersect', 'circle_polygon_area', 'circle_tangents', 'circles_union_area', 'circulation', 'circumcenter', 'close', 'closest_pair', 'closest_pair2', 'common_prefix_len',
     'common_suffix_len', 'components', 'compose', 'concavity_break', 'convex_hull', 'convex_hull_3d', 'convex_hull_idx', 'convexity_break', 'convolve', 'convolve_and',
     'convolve_int', 'convolve_mod', 'convolve_or', 'convolve_subset', 'convolve_xor', 'cross', 'cross128', 'cross3', 'crt', 'crt_all', 'cyclic_pairs',
     'decrease', 'dedup', 'deriv', 'det_real', 'diameter2', 'differences', 'dist', 'dist2', 'dist2_128', 'dist2_3',
@@ -80,7 +80,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'hull_tangents', 'idempotent', 'increase', 'integral', 'inv', 'inv_mod', 'inverse', 'inverse_real', 'inversions', 'is_palindrome',
     'is_prime', 'is_sorted', 'knuth_break', 'last_lt', 'lcp_array', 'line_dist', 'line_intersect', 'locate', 'locate_convex', 'log',
     'lower_hull', 'lt_fields', 'lyndon_factorization', 'manacher', 'max_bounded_flow', 'max_closure', 'max_matching', 'max_weight_general_matching', 'max_weight_matching', 'merge_sorted',
-    'min_bounded_flow', 'min_enclosing_circle', 'min_rotation', 'min_vertex_cover', 'min_weight_matching', 'minkowski_sum', 'minkowski_upper', 'mo_order', 'mo_steps', 'mod_log',
+    'min_bounded_flow', 'min_bounding_box', 'min_enclosing_circle', 'min_rotation', 'min_vertex_cover', 'min_weight_matching', 'minkowski_sum', 'minkowski_upper', 'mo_order', 'mo_steps', 'mod_log',
     'mod_sqrt', 'monge_break', 'mul_mod', 'newton', 'next_greater', 'next_less', 'next_permutation', 'nth_element', 'ntt', 'offline_over',
     'on_segment', 'overlap', 'pairs', 'period', 'perm_cycles', 'perm_pow', 'phi', 'poly_at', 'poly_degree', 'polygon_area',
     'polygon_cut', 'pow', 'pow_mod', 'prefix_fold', 'prefix_function', 'prefix_matches', 'prev_greater', 'prev_less', 'prev_permutation', 'primitive_root',

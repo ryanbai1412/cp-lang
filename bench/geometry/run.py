@@ -131,6 +131,22 @@ def gen_polygon_cuts(n, seed):
     return "\n".join(rows) + "\n"
 
 
+def gen_float_points(n, seed):
+    rng = random.Random(seed)
+    rows = [str(n)]
+    for _ in range(n):
+        rows.append(f"{rng.uniform(-1000.0, 1000.0):.4f} {rng.uniform(-1000.0, 1000.0):.4f}")
+    return "\n".join(rows) + "\n"
+
+
+def gen_circle_union(n, seed):
+    rng = random.Random(seed)
+    rows = [str(n)]
+    for _ in range(n):
+        rows.append(f"{rng.uniform(-50.0, 50.0):.4f} {rng.uniform(-50.0, 50.0):.4f} {rng.uniform(2.0, 15.0):.4f}")
+    return "\n".join(rows) + "\n"
+
+
 BENCHES = {
     "convex_hull": lambda: gen_points(200_000, 1),
     "half_plane_intersect": lambda: gen_half_planes(100_000, 2),
@@ -142,6 +158,10 @@ BENCHES = {
     "locate_convex": lambda: gen_locate_convex(50_000, 200_000, 6),
     "circle_intersect": lambda: gen_circles(100_000, 7),
     "polygon_cut": lambda: gen_polygon_cuts(4_000, 8),
+    "min_enclosing_circle": lambda: gen_float_points(200_000, 9),
+    "min_bounding_box": lambda: gen_convex_poly(100_000),
+    "circle_tangents": lambda: gen_circles(100_000, 10),
+    "circles_union_area": lambda: gen_circle_union(2_000, 11),
 }
 
 

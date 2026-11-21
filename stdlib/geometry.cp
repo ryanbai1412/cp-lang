@@ -391,6 +391,41 @@ pub fn diameter2(hull: List<Pt>) -> Int:
         best max= dist2(hull[ni], hull[j])
     best
 
+/// Minimum-area and minimum-perimeter enclosing rectangle of a CCW convex
+/// polygon `hull` via exact-`I128` rotating calipers. O(n).
+pub fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64):
+    let n = hull.len
+    if n <= 1: return (area: 0.0, perimeter: 0.0)
+    if n == 2: return (area: 0.0, perimeter: 2.0 * dist(hull[0], hull[1]))
+    var best_area = 1e300
+    var best_perim = 1e300
+    var right = 1
+    var top = 1
+    var left = 1
+    for i in 0..n:
+        let ni = if i + 1 == n: 0 else: i + 1
+        let e = hull[ni] - hull[i]
+        if e.x == 0 and e.y == 0: continue
+        while true:
+            let nr = if right + 1 == n: 0 else: right + 1
+            if dot128(e, hull[nr] - hull[right]) > I128(0): right = nr
+            else: break
+        while true:
+            let nt = if top + 1 == n: 0 else: top + 1
+            if cross128(e, hull[nt] - hull[top]) > I128(0): top = nt
+            else: break
+        if i == 0: left = top
+        while true:
+            let nl = if left + 1 == n: 0 else: left + 1
+            if dot128(e, hull[nl] - hull[left]) < I128(0): left = nl
+            else: break
+        let elen = sqrt(F64(dot128(e, e)))
+        let w = F64(dot128(e, hull[right] - hull[left])) / elen
+        let h = F64(cross128(e, hull[top] - hull[i])) / elen
+        best_area min= w * h
+        best_perim min= 2.0 * (w + h)
+    (area: best_area, perimeter: best_perim)
+
 fn better_dir(a: Pt, b: Pt, dir: Pt) -> Bool:
     let da = dot128(a, dir)
     let db = dot128(b, dir)
@@ -723,6 +758,105 @@ pub fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> 
     if h <= eps: return [base]
     let off = d_vec.perp * (h / d)
     [base - off, base + off]
+
+/// Tangent points (0, 1, or 2) from `p` to circle `(center, r)`. O(1).
+pub fn circle_tangents(center: Vec, r: F64, p: Vec, eps: F64 = 1e-9) -> List<Vec>:
+    let d_vec = p - center
+    let d = d_vec.len
+    if d + eps < r or d <= eps: return []
+    if d - r <= eps: return [center + d_vec * (r / d)]
+    let d2 = d_vec.norm2
+    let r2 = r * r
+    let h = sqrt(max(0.0, d2 - r2))
+    let base = center + d_vec * (r2 / d2)
+    let off = d_vec.perp * (r * h / d2)
+    [base - off, base + off]
+
+/// Common tangent segments `(a, b)` between circles `(c1, r1)` and `(c2, r2)`,
+/// where `a` lies on circle 1 and `b` lies on circle 2 (outer tangents by
+/// default, or inner tangents when `inner: true`). O(1).
+pub fn circle_circle_tangents(
+    c1: Vec,
+    r1: F64,
+    c2: Vec,
+    r2: F64,
+    inner: Bool = false,
+    eps: F64 = 1e-9,
+) -> List<(Vec, Vec)>:
+    let d_vec = c2 - c1
+    let d2 = d_vec.norm2
+    if d2 <= eps * eps: return []
+    let r2_signed = if inner: -r2 else: r2
+    let dr = r1 - r2_signed
+    let h2 = d2 - dr * dr
+    if h2 < -eps * max(1.0, d2): return []
+    let h = sqrt(max(0.0, h2))
+    if h <= eps:
+        let v = d_vec * (dr / d2)
+        return [(c1 + v * r1, c2 + v * r2_signed)]
+    let v1 = (d_vec * dr - d_vec.perp * h) / d2
+    let v2 = (d_vec * dr + d_vec.perp * h) / d2
+    [(c1 + v1 * r1, c2 + v1 * r2_signed), (c1 + v2 * r1, c2 + v2 * r2_signed)]
+
+/// Total area of the union of disks `(c, r)` via Green's theorem arc sweep.
+/// O(n^2 log n).
+pub fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64:
+    let pi = 3.14159265358979323846
+    let raw_n = circles.len
+    var cs: List<(c: Vec, r: F64)> = []
+    for i in 0..raw_n:
+        if circles[i].r <= eps: continue
+        var covered = false
+        for j in 0..raw_n:
+            if i == j or circles[j].r <= eps: continue
+            let d = (circles[i].c - circles[j].c).len
+            if d + circles[i].r <= circles[j].r + eps:
+                let same = d <= eps and abs(circles[i].r - circles[j].r) <= eps
+                if not same or j < i:
+                    covered = true
+                    break
+        if not covered: cs.push(circles[i])
+    let n = cs.len
+    var total = 0.0
+    for i in 0..n:
+        let ci = cs[i].c
+        let ri = cs[i].r
+        let seam = Vec(ci.x - ri, ci.y)
+        var ivs: List<(lo: F64, p_lo: Vec, hi: F64, p_hi: Vec)> = []
+        for j in 0..n:
+            if i == j: continue
+            let d_vec = cs[j].c - ci
+            let d = d_vec.len
+            if d >= ri + cs[j].r - eps or d <= eps: continue
+            let x = (d * d + ri * ri - cs[j].r * cs[j].r) / (2.0 * d)
+            let h = sqrt(max(0.0, ri * ri - x * x))
+            if h <= eps: continue
+            let base = ci + d_vec * (x / d)
+            let off = d_vec.perp * (h / d)
+            let p1 = base - off
+            let p2 = base + off
+            let a1 = atan2(p1.y - ci.y, p1.x - ci.x)
+            let a2 = atan2(p2.y - ci.y, p2.x - ci.x)
+            if a1 <= a2:
+                ivs.push((lo: a1, p_lo: p1, hi: a2, p_hi: p2))
+            else:
+                ivs.push((lo: a1, p_lo: p1, hi: pi, p_hi: seam))
+                ivs.push((lo: -pi, p_lo: seam, hi: a2, p_hi: p2))
+        if ivs.is_empty:
+            total += pi * ri * ri
+            continue
+        ivs.sort(by: iv => iv.lo)
+        var cur_ang = -pi
+        var cur_pt = seam
+        for iv in ivs:
+            if iv.lo > cur_ang:
+                total += 0.5 * (ri * ri * (iv.lo - cur_ang) + vcross(ci, iv.p_lo - cur_pt))
+            if iv.hi > cur_ang:
+                cur_ang = iv.hi
+                cur_pt = iv.p_hi
+        if pi > cur_ang:
+            total += 0.5 * (ri * ri * (pi - cur_ang) + vcross(ci, seam - cur_pt))
+    total
 
 // ---- half-plane intersection
 
@@ -1747,3 +1881,149 @@ fn test_float_eps_guards():
     assert cl.len == 1 and close(cl[0].y, 1e6, eps: 1e-6)
     let cc = circle_intersect(Vec(0.0, 0.0), 1e6, Vec(2e6 + 1e-11, 0.0), 1e6)
     assert cc.len == 1 and close(cc[0].x, 1e6, eps: 1e-6)
+
+@test
+fn test_min_bounding_box_against_brute():
+    assert close(min_bounding_box([]).area, 0.0)
+    assert close(min_bounding_box([Pt(3, 4)]).perimeter, 0.0)
+    let seg = min_bounding_box([Pt(0, 0), Pt(3, 4)])
+    assert close(seg.area, 0.0) and close(seg.perimeter, 10.0)
+    // Rotated unit square (vertices at (+/-1, 0), (0, +/-1)): area = 2, perim = 4*sqrt(2).
+    let diamond = convex_hull([Pt(1, 0), Pt(0, 1), Pt(-1, 0), Pt(0, -1)])
+    let db = min_bounding_box(diamond)
+    assert close(db.area, 2.0, eps: 1e-9)
+    assert close(db.perimeter, 4.0 * sqrt(2.0), eps: 1e-9)
+    // Randomized hulls vs O(n^2) brute force over all edge orientations.
+    for _ in 0..40:
+        let pts = [Pt(rand(-1000, 1000), rand(-1000, 1000)) for _ in 0..25]
+        let h = convex_hull(pts)
+        let got = min_bounding_box(h)
+        let n = h.len
+        if n <= 2: continue
+        var brute_area = 1e300
+        var brute_perim = 1e300
+        for i in 0..n:
+            let e = h[(i + 1) % n] - h[i]
+            let elen = sqrt(F64(dot128(e, e)))
+            var min_d = dot128(e, h[0])
+            var max_d = min_d
+            var max_c = I128(0)
+            for j in 0..n:
+                let d = dot128(e, h[j])
+                if d < min_d: min_d = d
+                if d > max_d: max_d = d
+                let c = cross128(e, h[j] - h[i])
+                if c > max_c: max_c = c
+            let w = F64(max_d - min_d) / elen
+            let ht = F64(max_c) / elen
+            brute_area min= w * ht
+            brute_perim min= 2.0 * (w + ht)
+        assert close(got.area, brute_area, eps: 1e-6 * max(1.0, brute_area))
+        assert close(got.perimeter, brute_perim, eps: 1e-6 * max(1.0, brute_perim))
+
+@test
+fn test_circle_tangents_and_circle_circle_tangents():
+    // Point inside, on, and outside circle.
+    assert circle_tangents(Vec(0.0, 0.0), 5.0, Vec(1.0, 1.0)).is_empty
+    let on = circle_tangents(Vec(0.0, 0.0), 5.0, Vec(3.0, 4.0))
+    assert on.len == 1 and close(on[0].x, 3.0) and close(on[0].y, 4.0)
+    // Randomized point-circle tangent laws.
+    for _ in 0..40:
+        let c = Vec(F64(rand(-50, 50)), F64(rand(-50, 50)))
+        let r = F64(rand(1, 30))
+        let p = Vec(F64(rand(-80, 80)), F64(rand(-80, 80)))
+        let ts = circle_tangents(c, r, p)
+        let d = (p - c).len
+        if d < r - 1e-6: assert ts.is_empty
+        elif d > r + 1e-6:
+            assert ts.len == 2
+            for t in ts:
+                assert close((t - c).len, r, eps: 1e-6)
+                assert close(vdot(t - c, t - p), 0.0, eps: 1e-5)
+    // Circle-circle tangents: disjoint, externally tangent, intersecting, internally tangent, nested.
+    let c1 = Vec(0.0, 0.0)
+    assert circle_circle_tangents(c1, 2.0, Vec(6.0, 0.0), 2.0).len == 2
+    assert circle_circle_tangents(c1, 2.0, Vec(6.0, 0.0), 2.0, inner: true).len == 2
+    assert circle_circle_tangents(c1, 2.0, Vec(4.0, 0.0), 2.0, inner: true).len == 1
+    assert circle_circle_tangents(c1, 2.0, Vec(3.0, 0.0), 2.0, inner: true).is_empty
+    assert circle_circle_tangents(c1, 5.0, Vec(3.0, 0.0), 2.0).len == 1
+    assert circle_circle_tangents(c1, 5.0, Vec(1.0, 0.0), 2.0).is_empty
+    // Randomized circle-circle tangent orthogonality & tangency laws.
+    for _ in 0..40:
+        let a = Vec(F64(rand(-40, 40)), F64(rand(-40, 40)))
+        let b = Vec(F64(rand(-40, 40)), F64(rand(-40, 40)))
+        let r1 = F64(rand(1, 25))
+        let r2 = F64(rand(1, 25))
+        for inner in [false, true]:
+            let segs = circle_circle_tangents(a, r1, b, r2, inner: inner)
+            for (p1, p2) in segs:
+                assert close((p1 - a).len, r1, eps: 1e-6)
+                assert close((p2 - b).len, r2, eps: 1e-6)
+                let dir = p2 - p1
+                assert close(vdot(p1 - a, dir), 0.0, eps: 1e-4)
+                assert close(vdot(p2 - b, dir), 0.0, eps: 1e-4)
+
+@test
+fn test_circles_union_area_against_analytic_and_grid():
+    let pi = 3.14159265358979323846
+    assert close(circles_union_area([]), 0.0)
+    // Single circle, duplicates, and nested circle.
+    assert close(circles_union_area([(c: Vec(0.0, 0.0), r: 2.0)]), 4.0 * pi, eps: 1e-7)
+    assert close(
+        circles_union_area([(c: Vec(0.0, 0.0), r: 2.0), (c: Vec(0.0, 0.0), r: 2.0)]),
+        4.0 * pi,
+        eps: 1e-7,
+    )
+    assert close(
+        circles_union_area([(c: Vec(0.0, 0.0), r: 3.0), (c: Vec(1.0, 0.0), r: 1.0)]),
+        9.0 * pi,
+        eps: 1e-7,
+    )
+    // Two unit circles separated by 1: 2*pi - (2*pi/3 - sqrt(3)/2) = 4*pi/3 + sqrt(3)/2.
+    let two_overlap = circles_union_area([(c: Vec(0.0, 0.0), r: 1.0), (c: Vec(1.0, 0.0), r: 1.0)])
+    assert close(two_overlap, 4.0 * pi / 3.0 + sqrt(3.0) * 0.5, eps: 1e-7)
+    // Circle completely covered by three surrounding circles (none individually contains it).
+    let covered = circles_union_area(
+        [
+            (c: Vec(0.0, 0.0), r: 1.0),
+            (c: Vec(1.0, 0.0), r: 2.0),
+            (c: Vec(-0.5, 0.86602540378), r: 2.0),
+            (c: Vec(-0.5, -0.86602540378), r: 2.0),
+        ]
+    )
+    let without_center = circles_union_area(
+        [
+            (c: Vec(1.0, 0.0), r: 2.0),
+            (c: Vec(-0.5, 0.86602540378), r: 2.0),
+            (c: Vec(-0.5, -0.86602540378), r: 2.0),
+        ]
+    )
+    assert close(covered, without_center, eps: 1e-6)
+    // Randomized multi-circle union vs fine Riemann grid integration.
+    let cs = [
+        (c: Vec(-1.2, 0.3), r: 1.8),
+        (c: Vec(0.9, -0.4), r: 1.5),
+        (c: Vec(0.1, 1.1), r: 1.4),
+        (c: Vec(-0.3, -1.0), r: 1.1),
+        (c: Vec(2.5, 1.8), r: 0.7),
+    ]
+    let exact = circles_union_area(cs)
+    let lo = -3.5
+    let hi = 3.5
+    let steps = 160
+    let step = (hi - lo) / F64(steps)
+    var hits = 0
+    for ix in 0..steps:
+        let x = lo + (F64(ix) + 0.5) * step
+        for iy in 0..steps:
+            let y = lo + (F64(iy) + 0.5) * step
+            var inside = false
+            for ci in cs:
+                let dx = x - ci.c.x
+                let dy = y - ci.c.y
+                if dx * dx + dy * dy <= ci.r * ci.r:
+                    inside = true
+                    break
+            if inside: hits += 1
+    let grid_area = F64(hits) * step * step
+    assert close(exact, grid_area, eps: 0.05)

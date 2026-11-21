@@ -484,12 +484,14 @@ is evidence, not a proof.
   `cross`/`cross128`, `dist2`/`dist`, `turn`, `same_dir`, `ByAngle`, `arg`,
   `on_segment`, `segments_meet`, `any_segments_meet`, `lower_hull`, `upper_hull`,
   `convex_hull`, `convex_hull_idx`, `minkowski_sum`, `minkowski_upper`,
-  `area2`/`area2_128`, `Location`, `locate`, `locate_convex`, `diameter2`, `hull_extreme`,
-  `hull_tangents`, `closest_pair2`, `closest_pair`), careful floating-point
-  geometry (`Vec`, `close`, `sign_eps`, `project`, `reflect`, `line_dist`,
-  `seg_dist`, `line_intersect`, `circumcenter`, `circle_line_intersect`,
-  `circle_intersect`, `HalfPlane`, `half_plane_intersect`, `polygon_area`,
-  `polygon_cut`, `min_enclosing_circle`, `circle_polygon_area`), and exact 3D
+  `area2`/`area2_128`, `Location`, `locate`, `locate_convex`, `diameter2`,
+  `min_bounding_box`, `hull_extreme`, `hull_tangents`, `closest_pair2`,
+  `closest_pair`), careful floating-point geometry (`Vec`, `close`, `sign_eps`,
+  `project`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`,
+  `circumcenter`, `circle_line_intersect`, `circle_intersect`,
+  `circle_tangents`, `circle_circle_tangents`, `circles_union_area`,
+  `HalfPlane`, `half_plane_intersect`, `polygon_area`, `polygon_cut`,
+  `min_enclosing_circle`, `circle_polygon_area`), and exact 3D
   geometry (`Pt3`, `dot3`/`dot3_128`, `cross3`, `dist2_3`, `convex_hull_3d`).
 - `spec.cp`: structure discovery.
 - `tour.cp`: the examples above, as tests.

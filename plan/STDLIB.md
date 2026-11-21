@@ -39,7 +39,7 @@ core feature goes through section 3 and the core lane.
 | trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). Label-ordered parent arrays stay loops (`cf2138c1`, `cf2187c`, `cf2089e`; design §5). Next: matched bench for `Rooted` construction (0.27 s vs 0.06 s for the loop at n=10^6); then lazy path updates on `LinkCut` |
 | flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched), unchecked hot loops in `std.flow` (min-cost flow 1.14x). Next: matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
 | strings | 4.13; O(1) slice and reverse views | done: slice and reverse views (decision 61). concat and print fusion with buffer reuse (`ucup4s25h` 1.17x, `cf2245a` 1.13x, `cf2096e` 1.05x). `.rev` as a first-class view value; algorithms over `Indexed` (`cf1909g` 1.15x, `cf1943b` 0.98x). matched benches: Z 1.09x, SA 1.05x, SAM 0.97x, Aho–Corasick 1.04x, rolling hash 1.23x. Next: rolling hash (`modp` sign fixup, `eq_sub` bounds checks); ports hand-rolling string algorithms |
-| geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`). five matched benches all at most 1.09x. unused `cpl_tie` operators pruned; four ports on `convex_hull_idx`/`Pt`/`arg`, `ucup4s25e` on `hull_extreme`. Ten matched benches at most 1.09x (Minkowski, diameter, `locate_convex`, circles, polygon cut); float audit with explicit `eps:`. Next: `sqrt` of a negative traps in interpreter and checked C++; remaining geometry frictions |
+| geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`), `min_bounding_box`, `circle_tangents`, `circle_circle_tangents`, `circles_union_area`, `sqrt` negative trap, 14 matched C++ benches all <=1.09x |
 
 ## 1. Principles
 
@@ -1499,6 +1499,7 @@ fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
 fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
 fn locate_convex(hull: List<Pt>, p: Pt) -> Location // O(log n), I128
 fn diameter2(hull: List<Pt>) -> Int // O(n) rotating calipers
+fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64) // O(n), I128 calipers
 fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int // O(log n), I128
 fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int) // O(log n), I128
 fn closest_pair2(pts: List<Pt>) -> Int // O(n log n)
@@ -1525,6 +1526,9 @@ fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64 // O(1)
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
 fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(1)
 fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec> // O(1)
+fn circle_tangents(center: Vec, r: F64, p: Vec, eps: F64 = 1e-9) -> List<Vec> // O(1)
+fn circle_circle_tangents(c1: Vec, r1: F64, c2: Vec, r2: F64, inner: Bool = false, eps: F64 = 1e-9) -> List<(Vec, Vec)> // O(1)
+fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64 // O(n^2 log n)
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
 struct HalfPlane(p: Vec, dir: Vec)
 fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec> // O(n log n)

@@ -176,6 +176,10 @@ fn diameter2(hull: List<Pt>) -> Int
     // O(n), I128; max squared distance on a CCW convex hull (0 for < 2 points)
 fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int
     // O(log n), I128; index in 0..hull.len maximizing dot(hull[i], dir) on a CCW hull
+fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int)
+    // O(log n), I128; tangent vertex indices from strictly outside point p to CCW hull
+fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64)
+    // O(n), I128 calipers; minimum-area and minimum-perimeter enclosing rectangle of a CCW hull
 ```
 
 ### 3.6 Closest pair
@@ -222,6 +226,12 @@ fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> Lis
     // O(1); 0, 1, or 2 intersection points of circle (c, r) with line ab
 fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec>
     // O(1); 0, 1, or 2 intersection points of two circles
+fn circle_tangents(center: Vec, r: F64, p: Vec, eps: F64 = 1e-9) -> List<Vec>
+    // O(1); 0, 1, or 2 tangent points from p to circle (center, r)
+fn circle_circle_tangents(c1: Vec, r1: F64, c2: Vec, r2: F64, inner: Bool = false, eps: F64 = 1e-9) -> List<(Vec, Vec)>
+    // O(1); 0, 1, or 2 outer (or inner when inner: true) common tangent segments (on c1, on c2)
+fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64
+    // O(n^2 log n); total area of the union of disks via Green's theorem arc sweep
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec
     // O(1); circumcenter of triangle abc, none if collinear
 
@@ -280,7 +290,11 @@ delivers them; neither blocks shipping the full API today:
   `examples/local-lib/ds/li_chao.cp`).
 - **3D geometry and 3D convex hull** (rare outside ICPC WF; belongs in
   `examples/local-lib/geom/`).
-- **Delaunay triangulation, Voronoi diagrams, and KD-trees** (heavy, niche).
+- **Delaunay triangulation, Voronoi diagrams, and KD-trees** (niche; exact integer
+  incircle is a degree-4 determinant reaching `16e36` for `1e9` coordinates,
+  overflowing `I128` without multi-precision integers).
+- **General non-convex polygon union area** (rare compared to circle union and
+  convex clipping; user code or `local-lib`).
 - **Exact homogeneous rational points** (`Hom(x, y, w)` as in `nccc10s4`):
   specialized to exact line-arrangement graphs; user code or `local-lib`.
 - **Sweep-line event loops**: problem-specific state transitions stay in user
