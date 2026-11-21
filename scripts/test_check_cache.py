@@ -125,7 +125,7 @@ class CheckCacheTest(unittest.TestCase):
             self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
             self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
 
-    def _train(self, gate_body, bad=None):
+    def _train(self, gate_body, bad=None, names=("first", "rider")):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         with tempfile.TemporaryDirectory() as tmp:
@@ -145,8 +145,8 @@ class CheckCacheTest(unittest.TestCase):
                         'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
             os.chmod(gate, 0o755)
             lanes = {}
-            for lane, path in (("first", "one.md"), ("rider", "two.md")):
-                path = "bad.md" if lane == bad else path
+            for lane in names:
+                path = "bad.md" if lane == bad else {"first": "one.md", "rider": "two.md"}.get(lane, lane + ".md")
                 work = os.path.join(tmp, lane)
                 git("clone", "-q", remote, work)
                 git("config", "user.name", lane, cwd=work)
@@ -162,7 +162,7 @@ class CheckCacheTest(unittest.TestCase):
             git("push", "-q", remote, f"{busy}:refs/locks/land", cwd=seed)
             land = os.path.join(root, "scripts", "land.sh")
             procs = {}
-            for lane in ("first", "rider"):
+            for lane in names:
                 procs[lane] = subprocess.Popen(
                     [land, remote], cwd=lanes[lane], stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE, text=True,
@@ -200,6 +200,18 @@ class CheckCacheTest(unittest.TestCase):
         self.assertEqual(out["rider"][2], 0, out["rider"][1])
         self.assertEqual(files, ["two.md"])
         self.assertNotIn("refs/locks/solo/", locks)
+
+    def test_land_splits_a_failing_train_and_lands_the_passing_prefix(self):
+        lanes = ("first", "rider", "breaker", "after")
+        out, files, locks = self._train("! test -e bad.md || exit 1\n", bad="breaker", names=lanes)
+        self.assertEqual(out["first"][2], 0, out["first"][1])
+        self.assertIn("breaker", out["first"][1].split("broke the train")[0].splitlines()[-1])
+        self.assertIn("pushed", out["first"][0])
+        self.assertIn("with 1 rider(s)", out["first"][0])
+        self.assertNotEqual(out["breaker"][2], 0)
+        self.assertEqual(out["after"][2], 0, out["after"][1])
+        self.assertEqual(sorted(files), ["after.md", "one.md", "two.md"])
+        self.assertNotIn("-after", locks)
 
 if __name__ == "__main__":
     unittest.main()

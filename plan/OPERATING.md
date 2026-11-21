@@ -123,7 +123,8 @@ added here.
   minutes is taken over; waiters queue in arrival order), so `main` holds still during the gate and nobody
   re-gates against a moving tip; set `CPL_LANE` to name yourself in it. The
   holder carries up to 8 queued lanes in a train gated once; if the train
-  fails, those riders only land alone, so one red lane costs one extra gate. Never
+  fails, it binary-searches the longest passing prefix and lands it, and only
+  the lane that broke it is marked to land alone. Never
   push to `main` any other way. The pre-push hook refuses a `main` tip whose tree has not
   passed the gate, so two green commits can no longer combine into a red tip. A broken
   tip on `main` is fixed by whoever broke it, before any other work.

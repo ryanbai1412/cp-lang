@@ -11,8 +11,8 @@
 # is the waiter's HEAD, so the lock holder can carry waiters in a train: it
 # rebases up to CPL_LAND_TRAIN queued lanes onto its own commits, gates the
 # train once and pushes it, marking each rider refs/locks/done/<ticket>. If
-# the train fails the gate, the holder gates alone; only if that passes are
-# its riders marked refs/locks/solo/<ticket>, after which they land alone.
+# the train fails, the holder binary-searches the longest passing prefix,
+# lands it, and marks only the breaking rider refs/locks/solo/<ticket>.
 # Remote calls retry, so one dropped connection does not lose a turn.
 #
 # Usage: scripts/land.sh [remote]   (a remote name or URL; default origin)
@@ -71,20 +71,13 @@ for attempt in 1 2 3 4 5; do
     fi
     riders=()
     tip=$own
+    prefix=("$own")
     [ "$train_max" -gt 0 ] && board
     git checkout -q --detach "$tip"
+    relock
     if [ ${#riders[@]} -gt 0 ]; then
         echo "land: gating a train of ${#riders[@]} rider(s): ${riders[*]}" >&2
-        if ! $gate; then
-            echo "land: the train failed the gate; gating alone" >&2
-            local failed=("${riders[@]}")
-            riders=()
-            tip=$own
-            git checkout -q -f --detach "$tip"
-            $gate
-            echo "land: alone it passes, so a rider broke the train; marking them solo" >&2
-            mark solo "${failed[@]}"
-        fi
+        $gate || bisect
     else
         $gate
     fi
@@ -247,6 +240,41 @@ mark() {
     done
 }
 
+# Keep the lock fresh across the several gates a split train can take.
+relock() {
+    local token
+    token=$(git commit-tree "$empty" -m "land lock: $me")
+    if retry git push -q --force-with-lease="$lock:$held" "$remote" "$token:$lock" 2>/dev/null; then
+        held=$token
+    else
+        echo "land: could not refresh the lock; gating anyway" >&2
+    fi
+}
+
+# The full train failed: binary-search the longest prefix that passes, land
+# it, and mark only the first rider past it solo. If the holder alone fails,
+# exit without marking anyone.
+bisect() {
+    local lo=-1 hi=${#riders[@]} mid
+    echo "land: the train failed the gate; splitting it" >&2
+    while [ $((hi - lo)) -gt 1 ]; do
+        mid=$(( (lo + hi) / 2 ))
+        git checkout -q -f --detach "${prefix[$mid]}"
+        relock
+        echo "land: gating the holder with ${mid} rider(s)" >&2
+        if $gate; then lo=$mid; else hi=$mid; fi
+    done
+    if [ "$lo" -lt 0 ]; then
+        echo "land: the holder fails the gate alone; nobody is marked solo" >&2
+        exit 1
+    fi
+    echo "land: ${riders[$lo]} broke the train; marking it solo" >&2
+    mark solo "${riders[$lo]}"
+    tip=${prefix[$lo]}
+    riders=("${riders[@]:0:$lo}")
+    git checkout -q -f --detach "$tip"
+}
+
 # Rebase queued lanes, oldest first, onto $tip; a lane that does not apply
 # cleanly or was marked solo waits for its own turn.
 board() {
@@ -263,6 +291,7 @@ board() {
         if git rebase -q --onto "$tip" "$from" "$cand" >/dev/null 2>&1; then
             tip=$(git rev-parse HEAD)
             riders+=("$r")
+            prefix+=("$tip")
         else
             git rebase --abort 2>/dev/null || true
             echo "land: ${r} does not apply on top of the train; it lands on its own turn" >&2
