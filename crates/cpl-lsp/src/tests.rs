@@ -404,8 +404,8 @@ fn quick_fixes_close_a_bracket_where_it_was_dropped() {
     assert_fixes_restore(
         "cf2084c",
         &[(
-            "target[i] = I(n / 2 + 1)",
-            "target[i = I(n / 2 + 1)",
+            "target[mid] = I(n / 2 + 1)",
+            "target[mid = I(n / 2 + 1)",
             "E0101",
             "insert `]`",
         )],
