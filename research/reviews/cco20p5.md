@@ -1,7 +1,7 @@
 # cco20p5
 
-Score: pending cold rescore (rewrote both dream and active port: `enum Kind: Add | Remove`, `Span(l: 1..=1_000_000, r: 1..=1_000_000)`, `State` struct with `?Int`/`?Span` eliminating `INF`/`PINF` sentinels and bit-packing, `HashMap<(Int, Int), List<Int>>` replacing hand-rolled linked list, `Undo` struct replacing 3 parallel arrays; verified on 50 ASan+UBSan traces vs `O(n^2)` brute force, `27,958 B`; `TimeSegTree` + `RollbackFenwick` filed in `research/frictions/cco20p5.md`)
-Dream: pending cold rescore (written: `proto/ports/scout_batch_36/dream/cco20p5.cp` with `TimeSegTree<Q, Span>` + `RollbackFenwick<Coord, Max>`)
+Score: 3/5
+Dream: 3/5
 
 Baseline review, cold, on main 96359635. The header (lines 4-8) names the plan: an offline segment tree over time for disjoint pairs, and heaps for overlapping pairs. Both structures are hand-rolled with node arithmetic, a rollback Fenwick written as `i & -i` loops, and negated heap keys. No dream exists, so the score is capped at 3.
 
@@ -23,3 +23,11 @@ Baseline review, cold, on main 96359635. The header (lines 4-8) names the plan: 
 ## Gaps that need the language
 
 - Offline segment tree over time (add over intervals, then DFS with rollback) and a rollback-able Fenwick or undo log. The stdlib doesn't have them, and no friction report exists; flag it.
+
+## Cold review (HEAD)
+
+Dream (new) 3/5, cold-reviewed on current main; sent back. The structure reads like the editorial: `enter`/`answer_at`/`leave` over a `TimeSegTree<Q, Span>`, with two `RollbackFenwick<Coord, Max>` (lines 57-104). The `TimeSegTree`, `RollbackFenwick` and `Max` errors are reported in research/frictions/cco20p5.md.
+- Owed now: lines 81-82 pass `fwd`/`mir` to `insert_pair`, which mutates its argument (E0402). Write `insert_pair(mut fwd, …)` / `insert_pair(mut mir, …)`; with that fix it's a 4.
+- Minor: `better_min_r`/`better_max_l` (lines 66-76) are one keyed `min`, written twice. `answer_at` compares `(inter, hull)` lexicographically by hand (lines 93, 96). Line 51's comma guard should be `and`: `if let … and cond` / `while let … and cond` is the guard spelling (decisions 4.9).
+
+Port 3/5 (new score): blocked by the reported gaps. It hand-writes the segment tree over time on raw `o * 2` node ids (`seg: [0..4 * q + 5]`, lines 42-50, 101-131) and the rollback Fenwick with an undo log (lines 68-84). Owed now: lines 57-59 test `contains` and then assign, where the dream's `active.entry(key).push(i)` already checks. `dfs` inlines the whole `answer_at` body (lines 110-124).
