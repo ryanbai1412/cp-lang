@@ -6,7 +6,6 @@
 // (70 lines). Here: the per-course count is a polynomial in top[i] of
 // degree at most m, so it is brute-forced at 0..=m + 1 and interpolated.
 // original: corpus/submissions/5445693.cpp
-use std.mod.{Mod, Comb}
 use std.poly.{lagrange_at}
 
 const P = 1000000007

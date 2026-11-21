@@ -1,5 +1,4 @@
 use std.tree.{LazyLinkCut}
-use std.lazy.{AddSum}
 
 let n: 2..=200_000 = read()
 domain V = 1..=n

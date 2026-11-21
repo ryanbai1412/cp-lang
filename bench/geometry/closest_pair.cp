@@ -1,4 +1,4 @@
-use std.geometry.{Pt, closest_pair}
+use std.geometry.{closest_pair}
 
 let n: Int = read()
 domain P = 0..n

@@ -1,4 +1,4 @@
-use std.seq.{scan, suffix_scan}
+use std.seq.{suffix_scan}
 
 let n = 10_000
 domain Pos = 0..n

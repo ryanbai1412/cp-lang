@@ -9,8 +9,7 @@
 // the blocks that cross it, a cut removes them: a hash of the worms up to u
 // joined to a hash of the worms from v.
 // original: corpus/submissions/5690636.cpp
-use std.strings.{HashVal, RollingHash}
-use std.mod.{Mod}
+use std.strings.{HashVal}
 
 type Z = Mod<998244353>
 let longest = 50

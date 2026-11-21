@@ -1,4 +1,4 @@
-use std.geometry.{Pt, minkowski_sum}
+use std.geometry.{minkowski_sum}
 
 let (na, nb): (Int, Int) = read()
 var a: List<Pt> = []

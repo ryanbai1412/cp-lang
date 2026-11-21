@@ -7,7 +7,6 @@
 // arrays accumulate how many squares start/end at each index.
 // original: corpus/submissions/4797772.cpp
 use std.strings.{lyndon_runs}
-use std.seq.{scan}
 
 let t: Int = read()
 for _ in 0..t:

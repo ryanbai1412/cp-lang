@@ -1,8 +1,6 @@
 // NOI 2020 Day 2 P1, Dishes (CP Lang 0.2.2): greedy pairing via `SortedBag` +
 // bitset subset-sum partition for the m = n - 2 case.
 // original: corpus/submissions/3890337.cpp
-use std.bag.{SortedBag}
-use std.bitset.{Bitset}
 
 type Stock = (grams: Int, id: Int)
 

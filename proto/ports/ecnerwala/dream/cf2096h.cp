@@ -13,7 +13,6 @@
 // (`odd_prod`), where `hx = (l ^ r) >> q`. A multiplicative butterfly over the
 // `m - q` high bits evaluates the product for every `hi`, and an inverse WHT
 // recovers `ways`.
-use std.mod.{Mod}
 use std.ntt.{fwht}
 
 type Z = Mod<998_244_353>

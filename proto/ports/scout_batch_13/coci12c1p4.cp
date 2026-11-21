@@ -2,7 +2,7 @@
 // child gets marbles of one colour only. Make the largest handful as small
 // as possible.
 // original: corpus/submissions/5245322.cpp
-use std.math.{ceil_div}  // WISH F1
+// WISH F1
 
 let kids: 1..=1e9 = read()
 let m: 1..=min(3e5, kids) = read()

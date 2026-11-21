@@ -1,5 +1,3 @@
-use std.dsu.{Dsu}
-
 // Matched Dsu bench: 500k nodes, 500k random unites + 1M same/size queries.
 let n = 500000
 domain V = 0..n

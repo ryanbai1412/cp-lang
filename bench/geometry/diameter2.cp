@@ -1,4 +1,4 @@
-use std.geometry.{Pt, diameter2}
+use std.geometry.{diameter2}
 
 let n: Int = read()
 var hull: List<Pt> = []

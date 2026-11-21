@@ -12,9 +12,6 @@
 // one sweep over the human order with a Fenwick tree over the wolf order.
 // original: corpus/submissions/4727179.cpp (the grader interface; check.py
 // wraps it in the stdin/stdout main of the DMOJ version)
-use std.graph.{Graph}
-use std.tree.{Rooted}
-use std.fenwick.{Fenwick}
 
 let (n, m, q): (2..=2e5, 1..=4e5, 1..=2e5) = read()
 domain V = 0..n

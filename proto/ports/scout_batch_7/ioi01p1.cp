@@ -3,8 +3,6 @@
 // total in the rectangle l..=r by b..=t. "0 n" opens the session and "3"
 // ends it.
 
-use std.fenwick.{Fenwick2D}
-
 let (_, n): (Int, Int) = read()
 domain X = 0..n
 domain Y = 0..n

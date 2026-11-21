@@ -1,5 +1,3 @@
-use std.heap.{MinHeap}
-
 let (n, k): (1..=100, 1..=100) = read()
 var pq = MinHeap<Int>()
 for _ in 0..n:

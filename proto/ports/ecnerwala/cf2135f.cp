@@ -8,7 +8,6 @@
 
 use std.rand.{Rng}
 use std.seq.{run_ranges}
-use std.tree.{Rooted}
 
 type Ix = 0..=10_000_000
 

@@ -6,7 +6,7 @@
 // the line in one point or, when parallel and on it, in a whole x-interval.
 // Sweeping the x-events counts distinct points (b != 0 after the swap, so x
 // determines the point).
-use std.geometry.{Pt, dot}
+use std.geometry.{dot}
 
 // Reflect a coordinate back into 0..=m.
 fn fold(v: Int, m: Int) -> Int:

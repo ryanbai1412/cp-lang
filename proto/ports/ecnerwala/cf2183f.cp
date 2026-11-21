@@ -5,7 +5,6 @@
 // every pair that starts strictly below u and strictly below v. In preorder a
 // subtree is a range, so "strictly below u and below v" is a rectangle of a 2D
 // suffix sum over the cuts of t.Pre, and the answer for i is sub(i) x sub(i).
-use std.graph.{Tree}
 type Z = Mod<998_244_353>
 
 @!multitest

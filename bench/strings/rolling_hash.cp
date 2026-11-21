@@ -1,5 +1,3 @@
-use std.strings.{RollingHash}
-
 let n = 500_000
 var s = List.filled(n, 0)
 var x = 987654321

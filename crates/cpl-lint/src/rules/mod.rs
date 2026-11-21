@@ -4,6 +4,7 @@
 mod bounds;
 mod fields;
 mod floats;
+mod imports;
 mod lists;
 mod memo;
 mod mod_div;
@@ -18,6 +19,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(floats::check(file));
+    findings.extend(imports::check(file));
     findings.extend(fields::check(file));
     findings.extend(memo::check(file, config.memory_mb));
     findings.extend(lists::check(file));

@@ -164,6 +164,16 @@ pub const IS_IN_COND_HEADER: Lint = Lint {
     trigger: "let x: ?Int = some(3)\nif x is v and v > 0:\n    print(v)\n",
     fix: "let x: ?Int = some(3)\nif let v = x, v > 0:\n    print(v)\n",
 };
+pub const REDUNDANT_PRELUDE_IMPORT: Lint = Lint {
+    code: Code("L0208"),
+    name: "redundant_prelude_import",
+    default: Level::Warn,
+    title: "`use` of a name the prelude already provides",
+    summary: "`use std.tree.{Rooted}` imports what the prelude gives every program",
+    explanation: "The prelude (`stdlib/prelude.cp`) brings in each of its names when a program uses it, so `use std.tree.{Rooted}` or `use std.mod.Mod` says nothing. `cpl fix` drops the name, and the `use` when nothing is left. An alias, a glob, a `pub use` and the imports of a library (a file with `pub` items) are left alone.",
+    trigger: "use std.tree.{Rooted}\ndomain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
+    fix: "domain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
+};
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
@@ -428,6 +438,7 @@ pub const LINTS: &[Lint] = &[
     POW_METHOD,
     GETTER_PARENS,
     IS_IN_COND_HEADER,
+    REDUNDANT_PRELUDE_IMPORT,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,

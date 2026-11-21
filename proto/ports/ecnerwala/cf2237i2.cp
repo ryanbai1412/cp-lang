@@ -22,8 +22,6 @@
 // `On` chain at u was already counted by the `Off` baseline). At the root,
 // `Deferred` states are excluded because no parent edge can close them.
 
-use std.tree.Rooted
-
 type Z = Mod<1_000_000_007>
 enum Label: Zero | One | Any
 enum Edge: Zero | One

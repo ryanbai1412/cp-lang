@@ -2,7 +2,6 @@
 // Count rectangles formed by two horizontal and two vertical segments. Fix the lower
 // horizontal level y1, keep the verticals that cross it in two Fenwick trees over x (count,
 // and pairs sharing an x), and sweep the upper level y2 upward, dropping verticals that end.
-use std.fenwick.{Fenwick}
 use std.seq.{dedup}
 
 type H = (y: Int, x1: Int, x2: Int)
@@ -34,8 +33,8 @@ var ans = 0
 for l1 in Y:
     let y1 = ys[l1.ord]
     var cnt: [X]Int = 0
-    var b1 = Fenwick<X>()               // verticals per x
-    var b2 = Fenwick<X>()               // pairs of verticals on the same x
+    var b1 = Fenwick<X>()  // verticals per x
+    var b2 = Fenwick<X>()  // pairs of verticals on the same x
     fn upd(i: X, d: Int):
         b1.add(i, d)
         let old = c2(cnt[i])

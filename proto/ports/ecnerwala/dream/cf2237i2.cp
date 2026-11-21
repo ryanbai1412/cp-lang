@@ -18,8 +18,6 @@
 // when `(depth: 0, active: Off)` merges across `Edge.One`. At the root,
 // `Deferred` states are excluded because no parent edge can close them.
 
-use std.tree.Rooted
-
 type Z = Mod<1_000_000_007>
 enum Label: Zero | One | Any
 enum Edge: Zero | One

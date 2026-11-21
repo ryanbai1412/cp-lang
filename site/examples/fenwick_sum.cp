@@ -1,5 +1,3 @@
-use std.fenwick.{Fenwick}
-
 let (n, q): (1..=100, 1..=100) = read()
 domain V = 1..=n
 let a: [V]Int = read()

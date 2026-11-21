@@ -1,5 +1,3 @@
-use std.interval.{IntervalMap}
-
 // Matched IntervalMap bench: 200k random range assigns with coalescing + on_old accumulation.
 fn run():
     let n = 1000000
@@ -14,9 +12,7 @@ fn run():
         let len = Int((s >> 33) % U64(5000)) + 1
         let r = min(n, a + len)
         let val = q % 17 + 1
-        im.assign(X(a)..=X(r - 1), val, on_old: (seg, old) => do:
-            total += seg.len * old
-        )
+        im.assign(X(a)..=X(r - 1), val, on_old: (seg, old) => do: total += seg.len * old)
     print(total)
 
 run()

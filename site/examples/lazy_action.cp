@@ -1,6 +1,3 @@
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
-
 let n: 1..=100 = read()
 let q: 1..=100 = read()
 domain V = 1..=n

@@ -8,7 +8,7 @@
 // every subtree, pouring the smaller set into the larger; a hash that is
 // already there when two branches meet is a shared block.
 // original: corpus/submissions/4899354.cpp
-use std.strings.{HashVal, RollingHash}
+use std.strings.{HashVal}
 
 let n: Int = read()
 domain V = 1..=n

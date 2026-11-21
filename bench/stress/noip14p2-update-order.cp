@@ -2,7 +2,6 @@
 // order bug: the top weight is raised before the second-best reads it, so a
 // lone neighbour pairs with itself. The edges are read as a `Tree<V>`, which
 // stress makes and shrinks as a tree, in place of the port's generator.
-use std.graph.{Tree}
 
 const P = 10007
 type Z = Mod<P>

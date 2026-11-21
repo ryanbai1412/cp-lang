@@ -5,7 +5,7 @@
 // Deduplicate the lowercased dictionary and build an Aho-Corasick automaton;
 // for each text, count distinct matched word IDs.
 // original: corpus/submissions/4340958.cpp
-use std.strings.{AhoCorasick, lower}
+use std.strings.{AhoCorasick}
 
 domain Letter = 'a'..='z'
 

@@ -4,7 +4,6 @@
 // atk * x >= a and atk * x = a (mod p). The smallest such x, or -1.
 // original: corpus/submissions/6517796.cpp
 use std.math.{ext_gcd, crt, mul_mod}
-use std.bag.{SortedBag}
 
 // The solutions of a * x = b (mod m) as one congruence x = r (mod m'), or none.
 fn solve_linear(a: Int, b: Int, m: Int) -> ?(Int, Int):

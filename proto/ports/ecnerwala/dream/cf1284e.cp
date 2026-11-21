@@ -7,7 +7,7 @@
 // center, sort the other rays by angle: the rays within the half-turn after a
 // ray are the next ones in cyclic order, `reach` counts them with two
 // pointers, and a ray with k of them starts choose(k, 3) missing quadruples.
-use std.geometry.{ByAngle, Pt, cross}
+use std.geometry.{cross}
 use std.math.choose
 
 let n: 5..=2500 = read()

@@ -6,7 +6,6 @@
 // width (`span_len`), and each even reflection (w + 1) * delta adds/subtracts a
 // flat interval of half-width `half_span` (`delta - 2` when delta ≡ n (mod 2),
 // `delta - 3` when delta ≢ n (mod 2)).
-use std.prefix.Diff
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

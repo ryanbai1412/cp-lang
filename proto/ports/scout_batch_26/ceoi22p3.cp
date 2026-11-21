@@ -13,7 +13,6 @@
 // them fixes every depth up to a shift, and a distance is
 // depth a + depth b - 2 * depth lca.
 // original: corpus/submissions/4728198.cpp
-use std.tree.{Rooted}
 
 let (n, k, q, t): (2..=1e6, 2..=1e5, Int, 1..=1e5) = read()
 domain V = 1..=n

@@ -1,4 +1,3 @@
-use std.dsu.Dsu
 let (n, m): (Int, Int) = read()
 domain V = 0..n
 var dsu = Dsu<V>()

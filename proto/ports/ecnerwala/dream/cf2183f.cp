@@ -4,7 +4,6 @@
 // and v: zero unless the letters match, else one (stop) plus every pair that
 // starts strictly below u and strictly below v. A subtree is a preorder
 // range, so that is a rectangle of f, and the answer for i is sub(i) x sub(i).
-use std.graph.{Tree}
 type Z = Mod<998244353>
 
 @!multitest

@@ -3,7 +3,7 @@
 // - each (triangle, interior point) pair extends to n - 4 five-subsets, counting 2*c4 + 4*c3;
 // - each (triangle, pair of interior points) uniquely counts a hull-3 five-subset (c3).
 // So c5 = C(n, 5) - interior_pairs * (n - 4) / 2 + hull3.
-use std.geometry.{Pt, turn}
+use std.geometry.{turn}
 
 let n: 5..=300 = read()
 domain V = 0..n

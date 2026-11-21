@@ -1,6 +1,6 @@
 // CCC 2020 S3 Searching for Strings: count the distinct substrings of the
 // haystack that are rearrangements of the needle.
-use std.strings.{HashVal, RollingHash}
+use std.strings.{HashVal}
 
 domain Letter = 'a'..='z'
 let needle: Str = read()

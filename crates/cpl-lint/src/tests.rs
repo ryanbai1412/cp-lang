@@ -924,7 +924,6 @@ fn f(p: Prefix1<V, Int>, q: Prefix2<R, C, Int>, r: PrefixN<Int>) -> Int = 0
     assert_eq!(
         fixed(src),
         "\
-use std.prefix.{Prefix, Diff}
 let xs = [3, 1, 4]
 let a = prefix(xs)
 let b = prefix([0..3] i => i)
@@ -1373,4 +1372,46 @@ while a < b:
 print(first_big([1, 9]), lo, steps)
 ";
     assert_eq!(taste_codes(clean), Vec::<&str>::new());
+}
+
+#[test]
+fn a_prelude_import_is_dropped() {
+    // proto/ports/ecnerwala/cf2124i.cp and fourteen more imported `Rooted`.
+    let src = "use std.tree.Rooted\nuse std.mod.{Mod, Comb}\nuse std.rand.{Rng}\nuse std.graph.{Graph, Tree}\nlet x = 1\n";
+    assert_eq!(codes(src), ["L0208"; 3]);
+    assert_eq!(fixed(src), "use std.rand.{Rng}\nlet x = 1\n");
+}
+
+#[test]
+fn a_prelude_name_from_another_module_or_renamed_is_kept() {
+    let src = "use std.graph.{Rooted}\nuse std.tree.Rooted as R\nuse std.tree.*\nstruct Mod:\n    x: Int\nuse std.mod.{Mod, Comb}\nlet x = 1\n";
+    assert_eq!(fixed(src).lines().filter(|l| l.starts_with("use")).count(), 4, "{}", fixed(src));
+    assert!(fixed(src).contains("use std.mod.{Mod}\n"));
+}
+
+#[test]
+fn a_library_keeps_its_prelude_imports() {
+    let src = "use std.tree.{Rooted}\npub fn f(x: Int) -> Int = x\n";
+    assert!(codes(src).is_empty());
+}
+
+#[test]
+fn dropping_a_prelude_import_keeps_its_comment() {
+    let src = "use std.geometry.{Pt, dot}  // WISH F1\nuse std.mod.{Mod}  // a note\nlet x = 1\n";
+    assert_eq!(
+        fixed(src),
+        "use std.geometry.{dot}  // WISH F1\n// a note\nlet x = 1\n"
+    );
+}
+
+#[test]
+fn dropping_a_prelude_import_leaves_no_double_blank_line() {
+    let src = "// a port\n\nuse std.tree.{Rooted}\n\nlet x = 1\n";
+    assert_eq!(fixed(src), "// a port\n\nlet x = 1\n");
+}
+
+#[test]
+fn dropping_leading_prelude_imports_leaves_no_leading_blank_line() {
+    let src = "use std.segtree.{SegTree}\nuse std.algebra.{Monoid}\n\nlet x = 1\n";
+    assert_eq!(fixed(src), "let x = 1\n");
 }

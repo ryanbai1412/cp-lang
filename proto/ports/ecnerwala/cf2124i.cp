@@ -10,7 +10,6 @@
 // with `u` placed before (`is_ext[u]`) or after (`not is_ext[u]`), the value
 // order is simply an Euler-style DFS emitting `u` in preorder when `is_ext[u]`
 // and postorder otherwise.
-use std.tree.Rooted
 
 @!multitest
 let n: 1..=200_000 = read()

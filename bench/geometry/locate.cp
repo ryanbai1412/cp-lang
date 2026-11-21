@@ -1,4 +1,4 @@
-use std.geometry.{Location, Pt, locate}
+use std.geometry.{Location, locate}
 
 let (n, q): (Int, Int) = read()
 var poly: List<Pt> = []

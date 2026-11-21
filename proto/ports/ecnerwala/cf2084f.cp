@@ -9,8 +9,6 @@
 
 @!multitest
 use std.algebra.Monoid
-use std.heap.MinHeap
-use std.segtree.SegTree
 
 let n: 2..=500_000 = read()
 domain Pos = 0..n

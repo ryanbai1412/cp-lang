@@ -4,7 +4,6 @@
 // the parity of its crossings. By the Lindstrom-Gessel-Viennot lemma that is
 // the determinant of the path-count matrix: the product of the layer matrices.
 // original: corpus/submissions/3893923.cpp
-use std.mod.{Mod}
 
 const P = 998244353
 type Z = Mod<P>

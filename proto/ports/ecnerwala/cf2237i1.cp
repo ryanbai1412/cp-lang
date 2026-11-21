@@ -12,8 +12,6 @@
 // subtracting ways from (active=true, resolved=hn) removes the duplicate
 // non-canonical representation.
 
-use std.tree.Rooted
-
 type Z = Mod<1_000_000_007>
 domain State = 0..4
 

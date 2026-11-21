@@ -1,7 +1,6 @@
 //! Worked contest examples: write the obvious brute force, dump its small answers into
 //! the `spec` helpers, read off the structure, and only then write the fast solution.
 //! Each test is one problem, start to finish.
-use std.mod.{Mod}
 use std.spec.{poly_degree}
 use lib.spec.recurrence.{integer_recurrence, show_recurrence, nth_term, extend}
 use lib.spec.interp.{closed_form, show_poly, lagrange_at}

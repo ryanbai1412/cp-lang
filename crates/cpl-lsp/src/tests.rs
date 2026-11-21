@@ -628,7 +628,7 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
     let file_path = repo_root.join("_lsp_imported_test.cp");
     let uri = format!("file://{}", file_path.display());
     let src =
-        "use std.mod.{Mod, Comb}\nlet c = Comb<Mod<1000000007>>.new(10)\nprint(c.choose(5, 2).v)\n";
+        "use std.rand.{Rng}\nvar r = Rng.new(7)\nprint(r.int(1, 6))\n";
 
     let mut server = Server::new();
     server.handle(&request(1, "initialize", obj([])));
@@ -662,8 +662,8 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
         .as_str()
         .unwrap_or("");
     assert!(
-        hover_text.contains("Comb"),
-        "expected Comb hover, got: {hover_text}"
+        hover_text.contains("Rng"),
+        "expected Rng hover, got: {hover_text}"
     );
 
     let def = server.handle(&request(
@@ -676,8 +676,8 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
     ));
     let def_uri = def[0].at(&["result", "uri"]).as_str().unwrap_or("");
     assert!(
-        def_uri.ends_with("/stdlib/mod.cp"),
-        "expected definition in stdlib/mod.cp, got: {def_uri}"
+        def_uri.ends_with("/stdlib/rand.cp"),
+        "expected definition in stdlib/rand.cp, got: {def_uri}"
     );
 }
 

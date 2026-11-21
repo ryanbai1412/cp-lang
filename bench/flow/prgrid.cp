@@ -1,6 +1,5 @@
 // Push-relabel on cf1404e's network for a 400 x 400 all-black grid: each cell takes
 // a unit from above (or the source) and passes one left (or to the sink).
-use std.flow.{FlowGraph}
 
 domain Row = 0..400
 domain Col = 0..400

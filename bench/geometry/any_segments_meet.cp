@@ -1,4 +1,4 @@
-use std.geometry.{Pt, any_segments_meet}
+use std.geometry.{any_segments_meet}
 
 let n: Int = read()
 var segs: List<(a: Pt, b: Pt)> = []

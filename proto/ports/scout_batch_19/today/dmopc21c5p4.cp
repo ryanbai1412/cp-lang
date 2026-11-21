@@ -1,6 +1,5 @@
 // DMOPC '21 Contest 5 P4, Permutations & Primes (multi-answer constructive, buildable today-form)
 // original: corpus/submissions/4223525.cpp
-use std.math.{Sieve}
 
 let maxn = 1000005
 let sv = Sieve.new(maxn)

@@ -4,8 +4,7 @@
 // subtree, so a lazy segment tree over preorder maintains `(ends, first, last)`
 // for both the active monster set and its complement, swapping on subtree flip.
 
-use std.lazy.{Flip, LazySegTree}
-use std.tree.Rooted
+use std.lazy.{Flip}
 
 @!multitest
 domain V = read(1..=250_000)

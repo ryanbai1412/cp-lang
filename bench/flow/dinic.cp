@@ -1,5 +1,4 @@
 // Dinic on a random network: 5000 vertices, 200000 arcs, capacities up to 10^6.
-use std.flow.{FlowGraph}
 
 domain V = 0..5000
 var seed = 1

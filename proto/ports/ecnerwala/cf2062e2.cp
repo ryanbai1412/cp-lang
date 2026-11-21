@@ -1,4 +1,3 @@
-use std.algebra.{Monoid}
 use std.fenwick.{DualFenwick}
 use std.prefix.{prefix_fold, suffix_fold}
 use std.seq.{buckets}
