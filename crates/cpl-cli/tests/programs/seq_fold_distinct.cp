@@ -39,3 +39,12 @@ let empty_view = empty[0..0]
 print(empty_view.min() ?? -3)
 print(empty_view.max() ?? -4)
 print(empty_view.fold((a, b) => a + b) ?? -5)
+
+// distinct(by:) keeps first-seen element per key across List, [D]T, Str, views
+let keyed = [10, 21, 30, 41, 52, 60]
+print(keyed.distinct(by: x => x % 10))
+print(keyed[1..5].distinct(by: x => x % 10))
+let karr: [0..4]Int = [15, 22, 35, 42]
+print(karr.distinct(by: x => x % 10))
+print("aAbBcA".distinct(by: c => if c >= 'a': c - 'a' else: c - 'A'))
+print(empty.distinct(by: x => x % 3))

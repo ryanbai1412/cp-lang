@@ -244,15 +244,15 @@ pub fn deduped<S: Seq, T>(self: S) -> List<T>:
             out.push(x)
     out
 
-/// Distinct values of `self` in first-seen order. Works on any `Seq`.
-/// O(n) expected time, O(n) space via `HashSet`. Unlike `dedup` / `deduped`
-/// (adjacent duplicates only, O(n) time without hashing), `distinct` drops
-/// duplicates anywhere in the sequence.
-pub fn distinct<S: Seq, T>(self: S) -> List<T>:
-    var seen = HashSet<T>()
+/// Distinct values of `self` in first-seen order (optionally keyed by `by:`).
+/// Works on any `Seq`. O(n) expected time, O(n) space via `HashSet`. Unlike
+/// `dedup` / `deduped` (adjacent duplicates only, O(n) time without hashing),
+/// `distinct` drops duplicates anywhere in the sequence.
+pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>:
+    var seen = HashSet<K>()
     var out: List<T> = []
     for x in self:
-        if seen.add(x):
+        if seen.add(by(x)):
             out.push(x)
     out
 
@@ -1462,3 +1462,16 @@ fn seq_and_indexed_traits_unify_sequences_and_views():
     assert sum(r) == 15 and min(r) == 1 and max(r) == 5 and prod(r) == 120
     assert [p for p in r.pairs()] == [(1, 2), (2, 3), (3, 4), (4, 5)]
     assert [e.rest for e in r.excl_fold(+)] == [14, 13, 12, 11, 10]
+
+@test
+fn distinct_with_by_key_keeps_first_seen():
+    let pairs = [(1, "a"), (2, "b"), (1, "c"), (3, "d"), (2, "e")]
+    assert pairs.distinct(by: p => p.0) == [(1, "a"), (2, "b"), (3, "d")]
+    let words = ["ant", "ape", "bat", "arc", "box"]
+    assert words.distinct(by: w => w[0]) == ["ant", "bat"]
+    let empty: List<(Int, Str)> = []
+    assert empty.distinct(by: p => p.0) == []
+    domain D = 0..5
+    let arr: [D]Int = [10, 21, 30, 41, 52]
+    assert arr.distinct(by: x => x % 10) == [10, 21, 52]
+    assert "aAbBcA".distinct(by: c => if c >= 'a': c - 'a' else: c - 'A') == ['a', 'b', 'c']
