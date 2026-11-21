@@ -28,7 +28,7 @@ fn build_masks() -> [MaxVal]Mask:
     for s in Query.subsets(size: ..=2): take(s)
     while out.len < MaxVal.count:
         let roomiest = Query.sort(by: q => desc(room[q]))
-        let next = roomiest.subsets(size: 3).find(s => s not in chosen and s.all(q => room[q] > 0))!
+        let next = roomiest.subsets(size: 3).first(s => s not in chosen and s.all(q => room[q] > 0))!
         take(next)
     [MaxVal] v => out[v.ord]
 
