@@ -139,11 +139,21 @@
       "rss_max_port": "ecnerwala/cf2261g"
     },
     "taste": {
-      "reviewed": 108,
-      "median": 2.0,
-      "under_4": 90,
+      "reviewed": 161,
+      "pending": 0,
+      "median": 3,
+      "under_4": 118,
       "min": 1,
-      "max": 4
+      "max": 5,
+      "histogram": {
+        "1": 4,
+        "2": 35,
+        "3": 79,
+        "4": 39,
+        "5": 4
+      },
+      "stale": 31,
+      "unreviewed": 159
     },
     "interp": {
       "measured": 137,
@@ -928,7 +938,9 @@
       "elapsed_s": 297.0,
       "budget_s": 180.0,
       "ok": false
-    }
+    },
+    "taste_stale": 31,
+    "taste_unreviewed": 159
   },
   "frictions": {
     "files": 86,
