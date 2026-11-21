@@ -826,6 +826,7 @@ struct Dsu<V> // O(alpha(n)), O(log n)
     fn same(mut self, a: V, b: V) -> Bool
     fn size(mut self, v: V) -> Int
     @get fn components(self) -> Int
+    fn roots(self) -> yields V // O(n), zero allocations
     fn groups(mut self) -> List<List<V>> // O(n alpha(n))
 struct DsuOf<V, T> // as Dsu, plus one join per merge; three [V] arrays
     fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T> // O(n)
@@ -837,6 +838,8 @@ struct DsuOf<V, T> // as Dsu, plus one join per merge; three [V] arrays
     fn same(mut self, a: V, b: V) -> Bool
     fn size(mut self, v: V) -> Int
     @get fn components(self) -> Int
+    fn roots(self) -> yields V // O(n), zero allocations
+    fn values(self) -> yields T // O(n), zero allocations
     fn groups(mut self) -> List<List<V>> // O(n alpha(n)) [new]
     fn mark(mut self) -> Mark // O(1)
     fn undo_to(mut self, snap: Mark) // O(1) per undone merge or set

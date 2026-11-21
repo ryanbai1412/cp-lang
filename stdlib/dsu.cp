@@ -78,12 +78,22 @@ pub struct Dsu<V>:
     /// The number of sets.
     pub @get fn components(self) -> Int = parts
 
+    /// Yield the representative root of each connected component. O(n), zero allocations.
+    pub fn roots(self) -> yields V:
+        for v in V:
+            if up[v] == v: yield v
+
     /// Every connected component as a list of its vertices, each vertex appearing once. O(n alpha(n)).
     pub fn groups(mut self) -> List<List<V>>:
-        let root_of = [V] v => self.find(v)
-        var buckets: [V]List<V> = []
-        for v in V: buckets[root_of[v]].push(v)
-        [buckets[v] for v in V if not buckets[v].is_empty]
+        var gid: [V]Int = -1
+        var out: List<List<V>> = []
+        for v in V:
+            if up[v] == v:
+                gid[v] = out.len
+                out.push([])
+        for v in V:
+            out[gid[self.find(v)]].push(v)
+        out
 
 /// Union-find where every set carries a value of type `T`. When two sets merge, the
 /// merged set gets `join(value of a's set, value of b's set)` for `unite(a, b)`, whichever
@@ -128,14 +138,10 @@ pub struct DsuOf<V, T>:
 
     /// Merge the sets of `a` and `b`, joining their values. Returns false if they were
     /// already one set (the value is left alone then).
-    pub fn unite(mut self, a: V, b: V) -> Bool = self.merge(a, b) != none
-
-    /// As `unite`, but says which root stayed and which went under it. `none` if `a` and
-    /// `b` were already one set.
-    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
+    pub fn unite(mut self, a: V, b: V) -> Bool:
         let ra = self.find(a)
         let rb = self.find(b)
-        if ra == rb: return none
+        if ra == rb: return false
         let joined = join(val[ra], val[rb])
         let (x, y) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
         if marked: log.push((y, x, val[x]))
@@ -143,6 +149,16 @@ pub struct DsuOf<V, T>:
         sz[x] += sz[y]
         val[x] = joined
         parts -= 1
+        true
+
+    /// As `unite`, but says which root stayed and which went under it. `none` if `a` and
+    /// `b` were already one set.
+    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
+        let ra = self.find(a)
+        let rb = self.find(b)
+        if ra == rb: return none
+        let (x, y) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
+        self.unite(ra, rb)
         some((kept: x, merged: y))
 
     /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
@@ -155,6 +171,16 @@ pub struct DsuOf<V, T>:
 
     /// The number of sets.
     pub @get fn components(self) -> Int = parts
+
+    /// Yield the representative root of each connected component. O(n), zero allocations.
+    pub fn roots(self) -> yields V:
+        for v in V:
+            if up[v] == v: yield v
+
+    /// Yield each connected component's payload once (one per root). O(n), zero allocations.
+    pub fn values(self) -> yields T:
+        for v in V:
+            if up[v] == v: yield val[v]
 
     /// The present, to return to with `undo_to`. O(1).
     pub fn mark(mut self) -> Mark:
@@ -547,3 +573,22 @@ fn parity_matches_a_brute_colouring_and_rolls_back():
                         let sides = [(f >> a.idx) % 2 != (f >> b.idx) % 2 for f in fits]
                         let want = if all(x == sides[0] for x in sides): some(sides[0]) else: none
                         assert d.diff(a, b) == want
+
+@test
+fn roots_and_values_yield_one_entry_per_component():
+    domain V = 0..6
+    var d = Dsu<V>()
+    let _ = d.unite(V(0), V(2))
+    let _ = d.unite(V(2), V(4))
+    let _ = d.unite(V(1), V(3))
+    let rs = [r for r in d.roots()]
+    assert rs.len == 3
+    for r in rs: assert d.find(r) == r
+    var w = DsuOf<V, Int>(v => v.ord + 1, +)
+    let _ = w.unite(V(0), V(2))
+    let _ = w.unite(V(2), V(4))
+    let _ = w.unite(V(1), V(3))
+    assert [r for r in w.roots()].len == 3
+    var vs = [x for x in w.values()]
+    vs.sort()
+    assert vs == [6, 6, 9]
