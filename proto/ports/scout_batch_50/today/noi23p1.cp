@@ -40,27 +40,16 @@ for s in diag: cells += s.2 - s.1 + 1
 
 // a cell on a horizontal and a vertical stroke was counted twice: sweep y
 // upward keeping the x of every vertical stroke alive at that height
-var xs: List<Int> = []
-for s in vert: xs.push(s.0)  // already sorted, one per stroke
+domain Vert = 0..vert.len
+let xs: [Vert]Int = [Vert] i => vert[i.ord].0  // already sorted, one per stroke
 fn first_ge(x: Int) -> Int:
-    var (lo, hi) = (0, xs.len)
+    var (lo, hi) = (0, vert.len)
     while lo < hi:
         let mid = (lo + hi) / 2
-        if xs[mid] < x: lo = mid + 1
+        if xs[Vert(mid)] < x: lo = mid + 1
         else: hi = mid
     lo
-var alive: [0..=xs.len]Int = 0
-fn add(at: Int, d: Int):
-    var i = at + 1
-    while i <= xs.len:
-        alive[i] += d
-        i += i & -i
-fn below(k: Int) -> Int:  // live strokes among the first k
-    var (i, total) = (k, 0)
-    while i > 0:
-        total += alive[i]
-        i -= i & -i
-    total
+var alive = Fenwick<Vert, Int>()
 
 var events: List<(Int, Int, Int, Int)> = []  // (y, order, a, b): leave, enter, then ask
 for i in 0..vert.len:
@@ -68,8 +57,11 @@ for i in 0..vert.len:
     events.push((vert[i].2 + 1, 0, i, -1))
 for s in hori: events.push((s.0, 2, s.1, s.2))
 for e in events.sorted():
-    if e.1 == 2: cells -= below(first_ge(e.3 + 1)) - below(first_ge(e.2))
-    else: add(e.2, e.3)
+    if e.1 == 2:
+        let lo = first_ge(e.2)
+        let hi = first_ge(e.3 + 1)
+        if lo < hi: cells -= alive.sum(Vert(lo)..=Vert(hi - 1))
+    else: alive.add(Vert(e.2), e.3)
 
 // a diagonal stroke meets each other stroke in at most one cell
 for d in diag:
