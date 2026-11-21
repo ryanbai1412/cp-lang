@@ -4162,9 +4162,9 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
     allows zero; `E.all.first` gives `?E`. Generic code writes
     `<domain D: NonEmpty>`.
   - `v + 1` is an `Int`; re-enter the domain with `v.next` or `V(x)`.
-  - `V(x)` is the only Int-to-position conversion: an expression traps
-    outside `V`, a pattern refutes (`if let V(j) = i - 10:`). `V.at` is
-    rejected as a second spelling.
+  - Int to position: `V(x)` traps outside `V`, `V.at(x)` returns `?V`
+    (the `a[i]` / `a.get(i)` split), and the pattern `V(j)` is `V.at` in
+    pattern position (`if let V(j) = i - 10:`). `V.try` rejected.
   - `r.bsearch(ok)` returns the cut where `ok` flips; `.r`/`.l`
     give the first true / last false position. Replaces `bsearch_first` and
     `bsearch_last`.
