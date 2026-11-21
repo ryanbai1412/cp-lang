@@ -4,7 +4,7 @@
 let a: [domain A]Char = read()
 let b: [domain B]Char = read()
 
-var dp: [A.bounds, B.bounds]Int = 0
+var dp: [A.cuts, B.cuts]Int = 0
 for i in A.rev:
     for j in B.rev:
         dp[i.l, j.l] = max(dp[i.r, j.l], dp[i.l, j.r])

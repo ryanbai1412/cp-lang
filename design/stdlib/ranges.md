@@ -61,7 +61,7 @@ gaps between today's `stdlib/` and `design/EXEMPLARS-PORTS.md`:
   (`cf2062e2.md`).** Range-add / point-get on a Fenwick repeats the
   right-endpoint `if let after = ...` guard, and prefix/suffix monoid
   tables over `t.Pre` manually index `[0..=n]` with `.ord` and `.ord + 1`
-  instead of returning `[D.bounds]T`.
+  instead of returning `[D.cuts]T`.
 - **Persistent hashed multisets and dynamic trees need raw arenas
   (`cf2135f.md`).** Hand-rolling `pool: List<Node>` with sentinel `0` and
   forged `Int` handles breaks index safety and adds 30 lines of ceremony.
@@ -102,9 +102,9 @@ guess any method from its neighbours:
   position in `r` (`LazySegTree`, `DualSegTree`); `t.add(r, x)` adds `x`
   to `r` (`DualFenwick`, `RangeFenwick`, `Diff`).
 - **Tree binary search:** `t.max_right(from, ok)` returns the furthest
-  `Bounds<D>` right of `from` with `ok(fold(from..b))`; `t.min_left(to,
-  ok)` returns the furthest `Bounds<D>` left of `to` with
-  `ok(fold(b..to))`. `Fenwick` keeps `lower_bound(target) -> ?Bounds<D>`
+  `Cut<D>` right of `from` with `ok(fold(from..b))`; `t.min_left(to,
+  ok)` returns the furthest `Cut<D>` left of `to` with
+  `ok(fold(b..to))`. `Fenwick` keeps `lower_bound(target) -> ?Cut<D>`
   and `kth(k) -> ?D` (1-based) for prefix-sum descent.
 - **Options are named arguments, never `_by` or `_filled` variants.**
   Constructors accept `a: ?[D]T = none` and `fill: ?T = none` so
@@ -176,7 +176,7 @@ code.
 ### 3.2 `std.prefix` — static prefix, suffix, and difference tables
 
 Static O(1) queries after O(n) or O(r * c) preprocessing, indexed by
-`Bounds<D>` so off-by-one cut shifts cannot compile.
+`Cut<D>` so off-by-one cut shifts cannot compile.
 
 ```cp
 enum FillOrder = Forward | Reverse
@@ -185,13 +185,13 @@ enum FillOrder = Forward | Reverse
 struct Prefix<D, T>                                 // 1-D over [D]T (zero-overhead static table)
     fn new(a: [D]T) -> Prefix<D, T>                 // O(|D|)
     fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>  // O(|D|)
-    fn prefix(self, b: Bounds<D>) -> T              // O(1)
+    fn prefix(self, b: Cut<D>) -> T              // O(1)
     fn sum(self, r: Range<D>) -> T                  // O(1)
 
 struct Prefix<R, C, T>                              // 2-D over [R, C]T (zero-overhead static table)
     fn new(a: [R, C]T) -> Prefix<R, C, T>           // O(|R| * |C|)
     fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>  // O(|R| * |C|)
-    fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T // O(1)
+    fn prefix(self, r: Cut<R>, c: Cut<C>) -> T // O(1)
     fn sum(self, rows: Range<R>, cols: Range<C>) -> T // O(1)
 
 struct Prefix<T>                                    // List<T> / [0..n]T (zero-overhead static table)
@@ -202,7 +202,7 @@ struct Prefix<T>                                    // List<T> / [0..n]T (zero-o
 
 struct FillPrefix<D, T>                             // also FillPrefix<R, C, T> and FillPrefix<T>
     fn set(mut self, i: D, x: T)                    // O(1), must follow fill order (row-major in 2D)
-    fn prefix(self, b: Bounds<D>) -> T              // O(1), must lie in filled region
+    fn prefix(self, b: Cut<D>) -> T              // O(1), must lie in filled region
     fn sum(self, r: Range<D>) -> T                  // O(1), must lie in filled region
 
 fn prefix(a)                                        // dispatches on [D]T, [R, C]T, or List<T>
@@ -223,7 +223,7 @@ count table after reading all points (pending a 3D slice / per-layer static
 Additions to `std.prefix`:
 
 - **`prefix_fold` and `suffix_fold`** (closing `cf2062e2.md`): return
-  `[D.bounds]T` where `pref[b]` is the fold of `..b` and `suff[b]` is the
+  `[D.cuts]T` where `pref[b]` is the fold of `..b` and `suff[b]` is the
   fold of `b..`, with `pref[D.start] == m.id` and `suff[D.end] == m.id`.
   Given any range `r: Range<D>`, the fold of everything *outside* `r` is
   simply `m.op(pref[r.start], suff[r.end])` — zero `.ord + 1` arithmetic.
@@ -233,8 +233,8 @@ Additions to `std.prefix`:
   manual right-end boundary checks in problems like `cf2084e`).
 
 ```cp
-fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T  // O(n)
-fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T  // O(n)
+fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T  // O(n)
+fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T  // O(n)
 
 struct Diff<D, T>
     fn new() -> Diff<D, T>                          // O(|D|)
@@ -267,15 +267,15 @@ suffices.
 struct Fenwick<D, T>                                // point add, range sum
     fn new(a: ?[D]T = none) -> Fenwick<D, T>        // O(n)
     fn add(mut self, i: D, x: T)                    // O(log n)
-    fn prefix(self, b: Bounds<D>) -> T              // O(log n)
+    fn prefix(self, b: Cut<D>) -> T              // O(log n)
     fn sum(self, r: Range<D>) -> T                  // O(log n)
-    fn first_ge(self, target: Int) -> ?Bounds<D> // O(log n), non-negative
+    fn first_ge(self, target: Int) -> ?Cut<D> // O(log n), non-negative
     fn kth(self, k: Int) -> ?D                      // O(log n), 1-based
 
 struct XorFenwick<D, T>                             // point xor, range xor
     fn new(a: ?[D]T = none) -> XorFenwick<D, T>     // O(n)
     fn flip(mut self, i: D, x: T)                   // O(log n)
-    fn prefix(self, b: Bounds<D>) -> T              // O(log n)
+    fn prefix(self, b: Cut<D>) -> T              // O(log n)
     fn xor(self, r: Range<D>) -> T                  // O(log n)
 
 struct Fenwick2D<R, C, T>                           // point add, rect sum
@@ -303,7 +303,7 @@ struct DualFenwick<D, T>                            // range add, point get
 struct RangeFenwick<D>                              // range add, range sum (Int)
     fn new(a: ?[D]Int = none) -> RangeFenwick<D>    // O(n)
     fn add(mut self, r: Range<D>, x: Int)           // O(log n)
-    fn prefix(self, b: Bounds<D>) -> Int            // O(log n)
+    fn prefix(self, b: Cut<D>) -> Int            // O(log n)
     fn sum(self, r: Range<D>) -> Int                // O(log n)
 ```
 
@@ -323,8 +323,8 @@ struct SegTree<D, T>(m: Monoid<T>)
     fn fold(self, r: Range<D>) -> T                 // O(log n)
     @get fn all(self) -> T                          // O(1)
     @get fn monoid(self) -> Monoid<T>               // O(1)
-    fn max_right(self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>  // O(log n)
-    fn min_left(self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>     // O(log n)
+    fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>  // O(log n)
+    fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>     // O(log n)
 ```
 
 Law for `max_right(from, ok)`: `ok(m.id)` must hold, and
@@ -350,8 +350,8 @@ struct LazySegTree<D, T, F>(act: Action<T, F>)
     fn apply(mut self, r: Range<D>, f: F)           // O(log n)
     @get fn all(self) -> T                          // O(1)
     @get fn monoid(self) -> Monoid<T>               // O(1)
-    fn max_right(mut self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>  // O(log n)
-    fn min_left(mut self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>     // O(log n)
+    fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D>  // O(log n)
+    fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D>     // O(log n)
 
 /// Range apply, point get — no fold monoid, no pulls, no span array.
 /// `compose(new_f, old_f)` applies `old_f` first, then `new_f`.
@@ -583,7 +583,7 @@ Every structure documents the exact law its operation must satisfy, and
 
 Every fixed-size range structure is parameterized by a domain `D` (or
 `R, C` in 2D) and accepts `Range<D>` (`l..=r`, `l..r`, `..i`, `i..`, `..`)
-and `Bounds<D>` (`i.l`, `i.r`, `D.start`, `D.end`). Passing an index from
+and `Cut<D>` (`i.l`, `i.r`, `D.start`, `D.end`). Passing an index from
 a different domain or an off-by-one raw `Int` is a compile-time error.
 Coordinate-free structures (`SparseSegTree`, `LiChao`) explicitly take
 `lo..hi` / `lo..=hi` over `Int` because their coordinates are dynamic and
@@ -605,9 +605,9 @@ range structures:
 2. **Niche packing `?Struct` and `const&` record parameters**
    (`cf2147f.md`, `cf2255e2.md`): eliminates `std::optional` padding and
    by-value tag copies in lazy/dual trees.
-3. **`Bounds<D>` as a first-class generic `Index` domain and
-   `Bounds<D>..Bounds<D>` intervals** (`cf2147f.md`, `cf2207f.md`,
-   `cf2165f.md`): lets `LazySegTree<Bounds<Val>, ...>` work directly
+3. **`Cut<D>` as a first-class generic `Index` domain and
+   `Cut<D>..Cut<D>` intervals** (`cf2147f.md`, `cf2207f.md`,
+   `cf2165f.md`): lets `LazySegTree<Cut<Val>, ...>` work directly
    without a parallel `domain Cut = 0..=n`, and lets `fold(a[j].r..a[i].l)`
    express exclusive-start intervals without `(a[j] + 1)!`.
 4. **Writable places / `Index` trait** (`design/spec/27`): lets `st[i]`
@@ -752,7 +752,7 @@ for _ in 0..q:
 
 ### 6.3 CF 2062E2 — The Game, Hard (`prefix_fold` + `suffix_fold` + `DualFenwick`)
 
-`prefix_fold` / `suffix_fold` index by `Bounds<t.Pre>` directly, and
+`prefix_fold` / `suffix_fold` index by `Cut<t.Pre>` directly, and
 `DualFenwick.add(t.sub(v), 1)` eliminates the manual right-end guard:
 
 ```cp
@@ -874,7 +874,7 @@ for i in Q: print(ans[i])
   if-conversion; logged in `research/frictions/cf2006d.md`).
 
 **Maximally ambitious version:** once the core lane delivers compile-time
-closure monomorphization, `?Struct` niche packing, and `Bounds<D>` as an
+closure monomorphization, `?Struct` niche packing, and `Cut<D>` as an
 `Index` domain, every range structure in `stdlib/` matches hand-rolled C++
 within 1.1x runtime and 1.0x memory while guaranteeing domain safety,
 checked algebraic laws via `cpl test`, and zero-boilerplate custom nodes.

@@ -98,8 +98,8 @@ var rng2 = Rng(7)
 rng2.shuffle(mut sh_arr[D(2)..D(6)])
 print(sh_arr[D(1)], sh_arr[D(6)], sh_arr[D(2)..D(6)].sorted())
 
-// 3. Cut-domain array [D.bounds]Int.
-var cuts: [D.bounds]Int = [D.bounds] c => 10 - c.ord
+// 3. Cut-domain array [D.cuts]Int.
+var cuts: [D.cuts]Int = [D.cuts] c => 10 - c.ord
 let c1 = D(2).l
 let c2 = D(5).r
 cuts[c1..c2].sort()

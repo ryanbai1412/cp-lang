@@ -15,7 +15,7 @@ follows the declared type; algorithms are named).
    Str (ASCII bytes, O(1) index), Float; I32/U64/I128 for bit work; `?T` with `!`, `??`, `?`, `if let`,
    `while let`, `match ... some(x)/none`; tuples and named tuples `(lo: Int, hi: V)`; struct (fields+methods,
    generated ctors, `with` update); enum (`A | B`, payloads); `Mod<P>`.
-4. Domains: nominal typed index spaces. Forms: `domain V = 1..=n`; `0..<n`; derived `I.bounds` (cuts between
+4. Domains: nominal typed index spaces. Forms: `domain V = 1..=n`; `0..<n`; derived `I.cuts` (cuts between
    elements; `x.before`, `x.after`, `b.count`); products `(Row, Col)`; sums `A + B`; stdlib shapes
    `grid(r, c)` (.adj4/.adj8), `ring(n)` (wrapping +, .next/.prev, `V.arc(from:, until:/through:)`),
    `heap_tree(levels:)` (.children/.parent/.depth); fresh domains `xs.indices`, `compress(xs)`.

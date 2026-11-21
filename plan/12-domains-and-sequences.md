@@ -18,7 +18,7 @@ error, or can't be written at all. And all of it costs the same as the
 hand-written C++ loop.
 
 Status: domains, typed arrays, `.next` / `.prev`, `x in V` refinement,
-`V.bounds`, tables, reductions, `.rev` and the `?V` niche are **built** in
+`V.cuts`, tables, reductions, `.rev` and the `?V` niche are **built** in
 the prototype. Generators, slices, `Range1`, sequence views and `sliding`
 are **proposed**; generators are the prerequisite for most of the rest.
 
@@ -109,12 +109,12 @@ for v in V:
 
 Many algorithms need a position *between* elements: prefix sums,
 insertion points, "the answer is after the last element". These get their
-own type, `V.bounds`, with `n + 1` values. A position has a bound on each
+own type, `V.cuts`, with `n + 1` values. A position has a bound on each
 side:
 
 ```
-v.l             // V.bounds: the gap just left of v   (long name: v.before)
-v.r             // V.bounds: the gap just right of v  (long name: v.after)
+v.l             // V.cuts: the gap just left of v   (long name: v.before)
+v.r             // V.cuts: the gap just right of v  (long name: v.after)
 v.l(k), v.r(k)  // the far end of the k-wide window that ends / starts at v; v.l == v.l(1)
 V.start, V.end  // the first and last gap
 ```
@@ -123,7 +123,7 @@ A prefix-sum array is indexed by bounds, not positions, so the `+ 1`
 shifts disappear:
 
 ```
-var pre: [V.bounds]Int = 0
+var pre: [V.cuts]Int = 0
 for v in V: pre[v.r] = pre[v.l] + a[v]
 
 fn sum(l: V, r: V) -> Int = pre[r.r] - pre[l.l]
@@ -140,7 +140,7 @@ Binary search on a sorted array returns a bound, since the answer can be
 "after everything":
 
 ```
-let b = V.partition_point(v => a[v] < x)  // V.bounds: the gap before the first a[v] >= x
+let b = V.partition_point(v => a[v] < x)  // V.cuts: the gap before the first a[v] >= x
 let first_big = b.right                   // ?V: none if every a[v] < x
 let cnt_small = b - V.start               // Int: bounds subtract like positions
 ```
@@ -209,7 +209,7 @@ let all = V.all
 s.len                         // Int, 0 if empty
 s.is_empty
 s.first, s.last               // ?V
-s.lo, s.hi                    // V.bounds, always defined (long names: s.before, s.after)
+s.lo, s.hi                    // V.cuts, always defined (long names: s.before, s.after)
 s.contains(v)
 s & t                         // intersection, may be empty
 ```
@@ -501,7 +501,7 @@ inside a range `s`) and yield positions; you read values with `a[u]`. Only
 ### 6.4 Prefix folds
 
 ```
-let pre = prefix(a)                     // Prefix<V, Int>, indexed by V.bounds
+let pre = prefix(a)                     // Prefix<V, Int>, indexed by V.cuts
 pre.sum(s)                              // any Range<V>
 let pre = prefix(a, Xor<Int>)           // any Group
 for (v, acc) in scan(a, Max<Int>): ...  // running fold, generator
@@ -579,7 +579,7 @@ reduce(g, Gcd<Int>)                      // any Monoid
 ```
 first_true(lo..=hi, x => feasible(x))    // ?Int: smallest x where feasible
 last_true(lo..=hi, x => feasible(x))     // ?Int
-V.partition_point(v => a[v] < x)         // V.bounds, for sorted arrays
+V.partition_point(v => a[v] < x)         // V.cuts, for sorted arrays
 xs.lower_bound(x)                        // Int
 ```
 

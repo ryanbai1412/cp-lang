@@ -2266,7 +2266,7 @@ impl<'a> Lowerer<'a> {
                 ("Range", Ty::Range(inner)) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], inner, tpl_mod, gen_names, env);
                 }
-                ("Bounds", Ty::Bound(d)) if args.len() == 1 => {
+                ("Cut", Ty::Bound(d)) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
                 }
                 (_, Ty::Struct(sid)) => {

@@ -1,6 +1,6 @@
 let n: 1..=9 = read()
 domain I = 1..=n
-type B = I.bounds
+type B = I.cuts
 let a: [I]Int = read()
 for i in I:
     if let j = i - 2 and let k = i + 2: print(i, j, k) else: print(i, "edge")

@@ -106,8 +106,8 @@ fn a_grid_takes_all_its_indices_in_one_bracket() {
 
 #[test]
 fn derived_domains_are_distinct_from_their_base() {
-    let d = one("let n: 1..=9 = read()\ndomain V = 1..=n\nvar pre: [V.bounds]Int = 0\nfor i in V:\n    pre[i] = 1\n");
-    assert_eq!(d.message, "`pre` is indexed by V.bounds, but `i` is a V");
+    let d = one("let n: 1..=9 = read()\ndomain V = 1..=n\nvar pre: [V.cuts]Int = 0\nfor i in V:\n    pre[i] = 1\n");
+    assert_eq!(d.message, "`pre` is indexed by V.cuts, but `i` is a V");
 }
 
 #[test]
@@ -1203,10 +1203,10 @@ fn code_after_a_lend_is_the_write_back_and_needs_mut_self() {
 
 #[test]
 fn boundaries_sit_on_either_side_of_a_position() {
-    let src = format!("{ARRAY}var pre: [V.bounds]Int = 0\nprint(pre[r.r] - pre[l.l], pre[r.r] - pre[r.l(2)], sum(a[l.l..r.r]))\n");
+    let src = format!("{ARRAY}var pre: [V.cuts]Int = 0\nprint(pre[r.r] - pre[l.l], pre[r.r] - pre[r.l(2)], sum(a[l.l..r.r]))\n");
     assert_eq!(check(&src), vec![]);
     let diag = one(&format!("{ARRAY}print(a[l.r])\n"));
-    assert_eq!(diag.message, "`a` is indexed by V, but `l.r` is a V.bounds");
+    assert_eq!(diag.message, "`a` is indexed by V, but `l.r` is a V.cuts");
     assert!(diag
         .help
         .as_deref()
@@ -2494,9 +2494,9 @@ let p: [Item]Cut = [Item] i => Cut(Int(i) - 1)
 let s: [Item]Cut = [Item] i => Cut(Int(i))
 let (lo, hi) = minmax(p[Item(1)], s[Item(1)])
 let r = lo..hi
-var st = SegTree<V.bounds, Int>(+, fill: 0)
-var lst = LazySegTree<V.bounds, Int>(AddMax, fill: 0)
-var fw = Fenwick<V.bounds, Int>()
+var st = SegTree<V.cuts, Int>(+, fill: 0)
+var lst = LazySegTree<V.cuts, Int>(AddMax, fill: 0)
+var fw = Fenwick<V.cuts, Int>()
 let v0 = V(2)
 st.set(v0.r, 5)
 lst.set(v0.r, 7)
@@ -3089,7 +3089,7 @@ fn bounds_ranges_and_domain_ranges_check_per_decision_124() {
         codes(
             "domain I = 1..=5\n\
              var s: Set<I> = Set()\n\
-             fn walk(c: I, stop: Bounds<I>) -> Int = s.range(c.l..stop).count()\n"
+             fn walk(c: I, stop: Cut<I>) -> Int = s.range(c.l..stop).count()\n"
         ),
         Vec::<&str>::new()
     );
@@ -3097,8 +3097,8 @@ fn bounds_ranges_and_domain_ranges_check_per_decision_124() {
         codes(
             "domain Seg = 0..2\n\
              domain PosB = 0..4\n\
-             var piece: [Seg]Range<PosB.bounds> = PosB.bounds.first..PosB.bounds.first\n\
-             piece[Seg(0)] = PosB.bounds.first..PosB.bounds.last\n"
+             var piece: [Seg]Range<PosB.cuts> = PosB.cuts.first..PosB.cuts.first\n\
+             piece[Seg(0)] = PosB.cuts.first..PosB.cuts.last\n"
         ),
         Vec::<&str>::new()
     );
@@ -3114,7 +3114,7 @@ fn bounds_ranges_and_domain_ranges_check_per_decision_124() {
 
 #[test]
 fn an_int_literal_is_a_position_of_an_integer_domain() {
-    let src = "let n: 1..=9 = read()\ndomain V = 0..n\nvar best: [V.bounds]V.bounds = 0\nlet v: V = 0\nbest[0] = 1\nfn f(k: Int):\n    domain K = 0..=k\n    var t: [K]Int = 0\n    t[0] = 1\n";
+    let src = "let n: 1..=9 = read()\ndomain V = 0..n\nvar best: [V.cuts]V.cuts = 0\nlet v: V = 0\nbest[0] = 1\nfn f(k: Int):\n    domain K = 0..=k\n    var t: [K]Int = 0\n    t[0] = 1\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
 

@@ -816,7 +816,7 @@ fn dim_len(dim: Dim, view: &View) -> Option<i64> {
 fn dim_name(dim: Dim, view: &View<'_>) -> Option<String> {
     match dim {
         Dim::Pos(d) => Some(view.program.domains[d].clone()),
-        Dim::Bound(d) => Some(format!("{}.bounds", view.program.domains[d])),
+        Dim::Bound(d) => Some(format!("{}.cuts", view.program.domains[d])),
         Dim::Sym(d) => Some(format!("Sym<{}>", view.program.domains[d])),
         Dim::Enum(e) => Some(view.program.enums[e].name.clone()),
         Dim::Int | Dim::IntFrom(_) => None,

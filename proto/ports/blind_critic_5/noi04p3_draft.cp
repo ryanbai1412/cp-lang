@@ -35,7 +35,7 @@ fn other(d: VDir) -> VDir:
         S => N
 
 for mask in Subset<Row>:
-    var dp: [Col.bounds, ?Col, VDir]?Int = none
+    var dp: [Col.cuts, ?Col, VDir]?Int = none
     var nxt: [Col, ?Col, VDir](VDir, ?Col, VDir) = (N, none, N)
 
     for p in ?Col:

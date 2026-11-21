@@ -105,7 +105,7 @@ Default `Str` is a flat, value-semantic, `0..s.len`-indexed ASCII byte sequence 
 
 ## Multi-dimensional boundaries in action
 
-Combining `I.bounds` with a structural range `0..=cap` gives a zero-boilerplate 0/1 knapsack table:
+Combining `I.cuts` with a structural range `0..=cap` gives a zero-boilerplate 0/1 knapsack table:
 
 ```example knapsack
 ```

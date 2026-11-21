@@ -42,7 +42,7 @@ for (int i = 0; i < n; i++) pre[i + 1] = pre[i] + a[i];
 long long sum = pre[r] - pre[l - 1];      // did you mean pre[r + 1]?
 
 // here
-var pre: [V.bounds]Int = 0
+var pre: [V.cuts]Int = 0
 for v in V: pre[v.after] = pre[v.before] + a[v]
 let sum = pre[r.after] - pre[l.before]   // pre[r] doesn't compile
 ```
@@ -140,7 +140,7 @@ The fastest way to learn the language is to solve problems in it, so the
 playground is mostly a problem set:
 
 - **The learning path:** about 50 short problems, each teaching one
-  feature. Problem 12 can only be solved cleanly with `V.bounds`; problem
+  feature. Problem 12 can only be solved cleanly with `V.cuts`; problem
   20 needs `runs`; problem 31 needs an operation value. Each has a hint that
   points to the guide chapter, and after an accepted submission it shows a
   model solution in the idiomatic style.

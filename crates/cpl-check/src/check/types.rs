@@ -194,7 +194,7 @@ impl<'a> Checker<'a> {
         if self.generics.iter().any(|g| g == name) {
             return Ty::Param(name.to_string());
         }
-        // `V.bounds` is a domain of its own, derived from `V`, and
+        // `V.cuts` is a domain of its own, derived from `V`, and
         // `Rooted<V>.Pre` is a domain the struct declares.
         if let Some((head, member)) = name.split_once('.') {
             let head_span = Span::new(span.start, span.start + head.len() as u32);
@@ -239,7 +239,7 @@ impl<'a> Checker<'a> {
             };
         }
         if let Some(local) = self.local(name) {
-            // `type Len = S.bounds` inside a fn.
+            // `type Len = S.cuts` inside a fn.
             if local.keyword == "type" {
                 return local.ty.clone();
             }

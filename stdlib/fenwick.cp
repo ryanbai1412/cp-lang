@@ -27,7 +27,7 @@ pub struct Fenwick<D, T>:
             p += p & -p
 
     /// The sum of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
-    pub fn prefix(self, b: Bounds<D>) -> T:
+    pub fn prefix(self, b: Cut<D>) -> T:
         var p = b.ord
         var acc = T.zero
         while p > 0:
@@ -51,8 +51,8 @@ pub struct Fenwick<D, T>:
 
     /// The first boundary where the prefix sum reaches `target`, for non-negative values:
     /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log n).
-    pub fn first_ge(self, target: Int) -> ?Bounds<D>:
-        if target <= 0: return D.bounds.nth(0)
+    pub fn first_ge(self, target: Int) -> ?Cut<D>:
+        if target <= 0: return D.cuts.nth(0)
         var p = 0
         var rest = target
         var step = bit_ceil(D.K + 1) / 2
@@ -64,7 +64,7 @@ pub struct Fenwick<D, T>:
                     p += step
                     rest -= t[p]
             step /= 2
-        if p == D.K: none else: D.bounds.nth(p + 1)
+        if p == D.K: none else: D.cuts.nth(p + 1)
 
     /// The `k`-th position, counting from 1, when each position stands for as many items as
     /// its value: the first `d` with `prefix` through `d` at least `k`, or `none` when there
@@ -99,7 +99,7 @@ pub struct XorFenwick<D, T>:
             p += p & -p
 
     /// The xor of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
-    pub fn prefix(self, b: Bounds<D>) -> T:
+    pub fn prefix(self, b: Cut<D>) -> T:
         var p = b.ord
         var acc = T.zero
         while p > 0:
@@ -226,7 +226,7 @@ pub struct RangeFenwick<D>:
         if hi < D.K: self.add_at(hi + 1, -x, -x * hi)
 
     /// The sum of everything left of boundary `b`. O(log n).
-    pub fn prefix(self, b: Bounds<D>) -> Int:
+    pub fn prefix(self, b: Cut<D>) -> Int:
         let k = b.ord
         var p = k
         var s1 = 0

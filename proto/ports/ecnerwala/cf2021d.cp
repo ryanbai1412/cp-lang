@@ -10,7 +10,7 @@
 let n: 1..=200_000 = read()
 let m: 3..=200_000 = read()
 domain Drink = 0..m
-type Cut = Drink.bounds
+type Cut = Drink.cuts
 
 fn sweep(order: List<Cut>, pref: Cut -> Int, opens: (Cut, ?Int) -> ?Int) -> [Cut]?Int:
     var best: [Cut]?Int = none
@@ -30,7 +30,7 @@ for _ in 0..n:
     fn ends(order: List<Cut>, pref: Cut -> Int) -> [Cut]?Int:
         if let e = end: sweep(order, pref, (p, low) => if let l = low: e[p] - l else: none)
         else: sweep(order, pref, (p, _) => -pref(p))
-    let right = ends(Drink.bounds, c => pre.prefix(c))
-    let left = ends(Drink.bounds.rev, c => -pre.prefix(c))
+    let right = ends(Drink.cuts, c => pre.prefix(c))
+    let left = ends(Drink.cuts.rev, c => -pre.prefix(c))
     end = [Cut] p => max(right[p], left[p])!
 print(end!.max())

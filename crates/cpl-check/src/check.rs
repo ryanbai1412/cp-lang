@@ -114,8 +114,8 @@ pub(crate) struct Checker<'a> {
     self_ty: Option<Ty>,
     /// What is lent and what is known, for the exclusivity of lends.
     lends: lends::Lends,
-    /// True when the enclosing context expects a `Range<D.bounds>` so ranges
-    /// over `D.bounds` keep `.bounds` and allow `..=`.
+    /// True when the enclosing context expects a `Range<D.cuts>` so ranges
+    /// over `D.cuts` keep `.cuts` and allow `..=`.
     expected_bounds_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
     pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
@@ -189,8 +189,8 @@ impl<'a> Checker<'a> {
     pub(crate) fn expects_bounds_range(ty: &Ty) -> bool {
         match ty {
             Ty::Named { name, args } if name == "Range" => match args.as_slice() {
-                [Ty::Pos(d) | Ty::Domain(d)] => d.ends_with(".bounds"),
-                [Ty::Named { name: inner, .. }] => inner == "Bounds",
+                [Ty::Pos(d) | Ty::Domain(d)] => d.ends_with(".cuts"),
+                [Ty::Named { name: inner, .. }] => inner == "Cut",
                 _ => false,
             },
             Ty::Array { elem, .. } | Ty::Optional(elem) => Self::expects_bounds_range(elem),

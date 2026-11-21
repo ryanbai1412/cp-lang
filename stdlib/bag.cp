@@ -901,7 +901,7 @@ fn sorted_set_operations_range_and_bsearch():
     assert s.remove(5) and not s.remove(5)
     assert s.len == 4
 
-    // Domain-keyed SortedSet with Range<V> and open Bounds (..r.start, r.end..), cf2062e2 shape
+    // Domain-keyed SortedSet with Range<V> and open cut ranges (..r.start, r.end..), cf2062e2 shape
     domain V = 0..8
     var ds = SortedSet<V>()
     for i in [1, 3, 5, 6]:

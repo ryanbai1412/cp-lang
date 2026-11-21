@@ -15,7 +15,7 @@ It recognizes the common contest idioms:
 - A `vector` sized `n` and indexed `0..n-1`, or sized `n + 1` and indexed
   `1..=n`, becomes a domain and a `[V]T` array. Arrays sized `n` and `m`
   that are indexed by the same loop variables get the same domain.
-- Prefix arrays (`pre[i + 1] = pre[i] + a[i]`) become `[V.bounds]` arrays.
+- Prefix arrays (`pre[i + 1] = pre[i] + a[i]`) become `[V.cuts]` arrays.
 - `INF`, `-1` and `1e18` used as "no value" become `?T` with `none`.
 - Template I/O (`cin >> n`, custom `read()` helpers) becomes typed `read()`
   using the constraints in comments if present.

@@ -55,7 +55,7 @@ print(empty.first ?? -1, empty.last ?? -1) // -1 -1
 
 ## Boundaries: `.l` and `.r`
 
-Prefix sums, difference arrays, and knapsack tables live on the `n + 1` gaps around `n` elements. Every ordered domain `V` has a companion boundary space `V.bounds` with `V.K + 1` positions.
+Prefix sums, difference arrays, and knapsack tables live on the `n + 1` gaps around `n` elements. Every ordered domain `V` has a companion boundary space `V.cuts` with `V.K + 1` positions.
 
 ```example bounds
 ```
@@ -66,7 +66,7 @@ Every element `v: V` sits between two boundaries:
 - `v.l(k)` and `v.r(k)` jump to the `k`-element window boundaries counting `v` (`v.l == v.l(1)`, `v.r == v.r(1)`).
 - `b.left -> ?V` and `b.right -> ?V` move from a boundary back to the adjacent element.
 
-The same `.l`/`.r` notation works directly in multi-dimensional DP tables such as 0/1 knapsack (`[I.bounds, 0..=cap]Int`):
+The same `.l`/`.r` notation works directly in multi-dimensional DP tables such as 0/1 knapsack (`[I.cuts, 0..=cap]Int`):
 
 ```example knapsack
 ```
@@ -194,7 +194,7 @@ let first_big = V.first(v => Int(v) > 2)
 print(vals[Sign.neg], rest.len, evens.len, odds.len, first_big!)
 ```
 
-Range structures (`SegTree<V.bounds, T>`, `LazySegTree<V.bounds, T>`, `Fenwick<V.bounds, T>`) also accept `V.bounds` directly as their index domain, so boundary updates (`seg.set(v.r, x)`, `seg.apply(..=v.l, 1)`) need no shadow `0..=n` domain. For divide-and-conquer over any `Range<I>`, `let (left, right) = r.halves()` splits `r` in O(1) with both halves non-empty whenever `r.len >= 2`.
+Range structures (`SegTree<V.cuts, T>`, `LazySegTree<V.cuts, T>`, `Fenwick<V.cuts, T>`) also accept `V.cuts` directly as their index domain, so boundary updates (`seg.set(v.r, x)`, `seg.apply(..=v.l, 1)`) need no shadow `0..=n` domain. For divide-and-conquer over any `Range<I>`, `let (left, right) = r.halves()` splits `r` in O(1) with both halves non-empty whenever `r.len >= 2`.
 
 ### Product domains
 

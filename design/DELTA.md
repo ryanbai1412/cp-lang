@@ -34,7 +34,7 @@ user traits and `impl`, operator impls (`impl Add for P`), `@memo`, `Mod<p>` wit
 | trait-based `?T` lifting (`impl<T: Add> Add for ?T`) | lifting is built in |
 | `@derive(...)` | parsed, back ends refuse; needs the comptime reflection decision |
 | library decorators/markers (`@droppable`, user decorators) | refused |
-| `.Cut` on arrays / domains, `x.before`/`x.after` | 0.2.2 has `V.bounds`, `v.l`/`v.r`; reconcile |
+| `.Cut` on arrays / domains, `x.before`/`x.after` | 0.2.2 has `V.cuts`, `v.l`/`v.r`; reconcile |
 | `x.Cut`-style anonymous-array domains | missing |
 | range inference model A (`let` keeps, `var` widens) | to audit |
 

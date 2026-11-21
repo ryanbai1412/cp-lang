@@ -18,7 +18,7 @@ for _ in 0..r:
 var have: [Sym]Int = 0
 // WISH C1: `count(need[s] > 0 for s in Sym)` is on the cheat sheet, not in the prelude.
 var unmet = sum(1 for s in Sym if need[s] > 0)
-var lo = Pos.bounds.first
+var lo = Pos.cuts.first
 var best: ?Int = none
 for hi in Pos:
     let s = dna[hi]

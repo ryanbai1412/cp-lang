@@ -206,7 +206,7 @@
         "kind": "output",
         "fixture": "bounds",
         "title": "Trace a boundary prefix sum",
-        "prompt": "The bounds program builds pre over V.bounds with pre[v.r] = pre[v.l] + a[v] and prints pre[V.last.r]. Predict the exact output for each input.",
+        "prompt": "The bounds program builds pre over V.cuts with pre[v.r] = pre[v.l] + a[v] and prints pre[V.last.r]. Predict the exact output for each input.",
         "hint": "pre at the leftmost boundary is 0. Each element moves the running total one boundary to the right; the last boundary holds everything.",
         "solution": "The prefix values are 0, 4, 3, 5 for the first input, so the last boundary holds 5. For -3 -3 7 -1 they are 0, -3, -6, 1, 0, so it prints 0. pre[V.last.r] is the total of the whole array.",
         "tests": [
@@ -255,11 +255,11 @@
       {
         "id": "domains-write-range-sum",
         "title": "Answer an inclusive range sum",
-        "prompt": "Read n, an array indexed by V = 1..=n, and two positions l and r with l <= r. Build prefix sums on V.bounds and print the sum from l through r, including both endpoints.",
+        "prompt": "Read n, an array indexed by V = 1..=n, and two positions l and r with l <= r. Build prefix sums on V.cuts and print the sum from l through r, including both endpoints.",
         "hint": "For each v, write pre[v.r] = pre[v.l] + a[v]. The query is the prefix at r.r minus the prefix at l.l.",
         "solution": "Each boundary stores the sum of all values to its left. Subtracting pre[l.l] from pre[r.r] keeps exactly the requested inclusive interval.",
-        "starter": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet (l, r): (V, V) = read()\nvar pre: [V.bounds]Int = 0\n// Build the prefix sums and print the requested sum.\nprint(0)\n",
-        "reference": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet (l, r): (V, V) = read()\nvar pre: [V.bounds]Int = 0\nfor v in V:\n    pre[v.r] = pre[v.l] + a[v]\nprint(pre[r.r] - pre[l.l])\n",
+        "starter": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet (l, r): (V, V) = read()\nvar pre: [V.cuts]Int = 0\n// Build the prefix sums and print the requested sum.\nprint(0)\n",
+        "reference": "let n: 1..=100 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet (l, r): (V, V) = read()\nvar pre: [V.cuts]Int = 0\nfor v in V:\n    pre[v.r] = pre[v.l] + a[v]\nprint(pre[r.r] - pre[l.l])\n",
         "tests": [
           {
             "input": "5\n3 1 4 1 5\n2 4\n",

@@ -71,9 +71,9 @@ for (s, e) in entries.items:
 var st = SegTree<Slot, Node>(Node(), (x, y) => x.merge(y), init)
 
 // FRICTION UD6: Splitting a `SegTree<Slot, Node>` at an arbitrary prefix length
-// `mid in 0..=pos_count` maps cleanly to `Bounds<Slot>`, but `bsearch_first`
+// `mid in 0..=pos_count` maps cleanly to `Cut<Slot>`, but `bsearch_first`
 // over `0..=pos_count` has to convert `mid` back into open ranges `..b` and `b..`
-// via `Slot.from_idx` (or `Slot.bounds` indexing, which lacks a direct `.from_idx`).
+// via `Slot.from_idx` (or `Slot.cuts` indexing, which lacks a direct `.from_idx`).
 fn split_fold(k: Int) -> (Node, Node):
     if k == 0: (Node(), st.fold(Slot.first..))
     elif k == Slot.K: (st.fold(..=Slot.last), Node())

@@ -39,13 +39,13 @@ else:
 
 // s[c]: sum of the values before cut c; from[c]: where the last block
 // of the best partition of those values starts.
-type Cut = Bounds<Pos>
-var s: [Cut]Int = [Pos.bounds] c => 0
+type Cut = Cut<Pos>
+var s: [Cut]Int = [Pos.cuts] c => 0
 for i in Pos: s[i.r] = s[i.l] + a[i]
-var from: [Cut]Cut = [Pos.bounds] c => Pos.bounds.first
+var from: [Cut]Cut = [Pos.cuts] c => Pos.cuts.first
 fn threshold(j: Cut) -> Int = 2 * s[j] - s[from[j]]
 
-var queue: List<Cut> = [Pos.bounds.first]
+var queue: List<Cut> = [Pos.cuts.first]
 var head = 0
 for i in Pos:
     let c = i.r
@@ -55,8 +55,8 @@ for i in Pos:
     queue.push(c)
 
 var total = Wide.of(0)
-var c = Pos.bounds.last
-while c != Pos.bounds.first:
+var c = Pos.cuts.last
+while c != Pos.cuts.first:
     total = total.plus(Wide.square(s[c] - s[from[c]]))
     c = from[c]
 print(total.show())

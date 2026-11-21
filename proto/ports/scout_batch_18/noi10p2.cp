@@ -21,24 +21,24 @@ domain I = 1..=n
 let a: [I]-1000..=1000 = read()
 
 fn solve() -> Int:
-    var pre: [I.bounds]Int = 0
+    var pre: [I.cuts]Int = 0
     for i in I: pre[i.r] = pre[i.l] + a[i]
 
-    // WISH W11: `SparseTable<I.bounds, ...>` over a boundary domain + argmax RMQ helper
-    let argmax_op = Semigroup<(val: Int, b: I.bounds)>((x, y) => if x.val >= y.val: x else: y)
-    let rmq = SparseTable<I.bounds, (val: Int, b: I.bounds)>(
+    // WISH W11: `SparseTable<I.cuts, ...>` over a boundary domain + argmax RMQ helper
+    let argmax_op = Semigroup<(val: Int, b: I.cuts)>((x, y) => if x.val >= y.val: x else: y)
+    let rmq = SparseTable<I.cuts, (val: Int, b: I.cuts)>(
         argmax_op,
-        [I.bounds] b => (val: pre[b], b: b)
+        [I.cuts] b => (val: pre[b], b: b)
     )
 
     struct Cand:
         score: Int
         start: I
-        lo: I.bounds
-        hi: I.bounds
-        best: I.bounds
+        lo: I.cuts
+        hi: I.cuts
+        best: I.cuts
 
-    fn make_cand(start: I, lo: I.bounds, hi: I.bounds) -> Cand:
+    fn make_cand(start: I, lo: I.cuts, hi: I.cuts) -> Cand:
         let mx = rmq.fold(lo..=hi)!
         Cand(mx.val - pre[start.l], start, lo, hi, mx.b)
 
@@ -47,7 +47,7 @@ fn solve() -> Int:
         let lo_idx = i.to_idx + lo_len
         if lo_idx <= n:
             let hi_idx = min(n, i.to_idx + hi_len)
-            pq.push(make_cand(i, I.bounds.nth(lo_idx), I.bounds.nth(hi_idx)))
+            pq.push(make_cand(i, I.cuts.nth(lo_idx), I.cuts.nth(hi_idx)))
 
     var total = 0
     for _ in 0..k:
@@ -62,14 +62,14 @@ fn solve() -> Int:
 @brute(solve)
 fn solve_brute() -> Int
     where n <= 80:
-    var pre: [I.bounds]Int = 0
+    var pre: [I.cuts]Int = 0
     for i in I: pre[i.r] = pre[i.l] + a[i]
     var sums: List<Int> = []
     for i in I:
         for len in lo_len..=hi_len:
             let r_idx = i.to_idx + len
             if r_idx <= n:
-                sums.push(pre[I.bounds.nth(r_idx)] - pre[i.l])
+                sums.push(pre[I.cuts.nth(r_idx)] - pre[i.l])
     sums.sort(by: x => -x)
     sum(sums[t] for t in 0..k)
 

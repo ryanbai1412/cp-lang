@@ -3,7 +3,7 @@ let (n, k): (1..=2e5, 0..=1e14) = read()
 domain I = 1..=n
 let a: [I]Int = read()
 
-var pre: [I.bounds]Int = 0
+var pre: [I.cuts]Int = 0
 for i in I: pre[i.after] = pre[i.before] + a[i]
 
 @brute(count_brute)

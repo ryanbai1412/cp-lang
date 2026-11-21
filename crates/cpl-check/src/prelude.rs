@@ -172,7 +172,7 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Str" => Ty::Str,
         "I128" => Ty::I128,
         "U64" => Ty::U64,
-        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Opt" | "Range" | "Bounds" | "SortedRange" | "Sym" | "Counter" => {
+        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Opt" | "Range" | "Cut" | "SortedRange" | "Sym" | "Counter" => {
             Ty::Named {
                 name: name.into(),
                 args: Vec::new(),
@@ -193,7 +193,7 @@ pub fn is_trait(name: &str) -> bool {
 }
 
 pub const TYPE_NAMES: &[&str] = &[
-    "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Bounds",
+    "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Cut",
     "Counter", "HashMap", "HashSet", "Interactor", "Subset", "Sym",
 ];
 
@@ -286,7 +286,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "Iter",
     "Opt",
     "Range",
-    "Bounds",
+    "Cut",
 ];
 
 /// The standard library module that declares the public name `name`, for

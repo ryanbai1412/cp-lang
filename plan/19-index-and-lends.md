@@ -87,7 +87,7 @@ compiler, not the library, defines behaviour.
 
 **Domains** (12 §1, decisions 2.1 to 2.9). The declaration `domain V =
 1..=n`, the 4-byte ordinal, the label, unchecked `[V]T` indexing, `V(x)`,
-`x in V`, `.next` / `.prev`, `V.bounds`, `Range<V>`, `Sub<V>` and its
+`x in V`, `.next` / `.prev`, `V.cuts`, `Range<V>`, `Sub<V>` and its
 implicit conversion to `V`, product domains and fresh domains returned by
 functions. The prototype's `compiler.py` refers to `TDom` 56 times.
 
@@ -187,13 +187,13 @@ trait Seq: Index + Ord                     // positions in a sequence
     fn prev(self) -> ?Self = Self.try_at(self.to_idx - 1)
     fn offset(self, d: Int) -> ?Self = Self.try_at(self.to_idx + d)
     fn cyc(self, k: Int) -> Self = Self.from_idx((self.to_idx + k) % Self.K)
-    @get fn l(self) -> Bounds<Self> = Bounds.from_idx(self.to_idx)          // the boundary left of v
-    @get fn r(self) -> Bounds<Self> = Bounds.from_idx(self.to_idx + 1)      // the boundary right of v
-    fn l(self, k: Int) -> Bounds<Self> = Bounds.at(self.to_idx + 1 - k)     // left end of the k-wide window ending at v
-    fn r(self, k: Int) -> Bounds<Self> = Bounds.at(self.to_idx + k)         // right end of the k-wide window starting at v
-    @get fn before(self) -> Bounds<Self> = self.l                           // the long names
-    @get fn after(self) -> Bounds<Self> = self.r
-    type bounds = Bounds<Self>             // so `V.bounds` keeps its spelling
+    @get fn l(self) -> Cut<Self> = Bounds.from_idx(self.to_idx)          // the boundary left of v
+    @get fn r(self) -> Cut<Self> = Bounds.from_idx(self.to_idx + 1)      // the boundary right of v
+    fn l(self, k: Int) -> Cut<Self> = Bounds.at(self.to_idx + 1 - k)     // left end of the k-wide window ending at v
+    fn r(self, k: Int) -> Cut<Self> = Bounds.at(self.to_idx + k)         // right end of the k-wide window starting at v
+    @get fn before(self) -> Cut<Self> = self.l                           // the long names
+    @get fn after(self) -> Cut<Self> = self.r
+    type bounds = Cut<Self>             // so `V.cuts` keeps its spelling
 ```
 
 **Boundaries are written `v.l` and `v.r`.** A position has a boundary on
@@ -213,7 +213,7 @@ like `v.offset`: leaving the array crashes with the position, `k` and the
 domain's name.
 
 `Bounds.from_idx(self.to_idx + 1)` inside `r` type-checks because
-`to_idx` returns `0..K` and `Bounds<Self>.K` is `K + 1`: the range checker
+`to_idx` returns `0..K` and `Cut<Self>.K` is `K + 1`: the range checker
 proves it, with no trusted code.
 
 `v + 1` was an error here (2.9), for the plainest reason: `V` has no
@@ -527,11 +527,11 @@ Rules:
 generic over any `Seq`:
 
 ```
-pub struct Bounds<I>(ord: 0..=I.K) where I: Seq:         // sealed; K + 1 values
+pub struct Cut<I>(ord: 0..=I.K) where I: Seq:         // sealed; K + 1 values
     pub @get fn left(self) -> ?I = I.try_at(self.ord - 1)
     pub @get fn right(self) -> ?I = I.try_at(self.ord)
 
-pub struct Range<I>(lo: Bounds<I>, hi: Bounds<I>) where I: Seq:     // 8 bytes
+pub struct Range<I>(lo: Cut<I>, hi: Cut<I>) where I: Seq:     // 8 bytes
     pub @get fn len(self) -> Int = max(0, hi.ord - lo.ord)
     pub @get fn first(self) -> ?I = if len > 0: lo.right else: none
     pub fn contains(self, i: I) -> Bool = lo.ord <= i.to_idx and i.to_idx < hi.ord
@@ -540,12 +540,12 @@ pub struct Range<I>(lo: Bounds<I>, hi: Bounds<I>) where I: Seq:     // 8 bytes
 Everything in 12 §1 and §2 reads the same as before:
 
 ```
-var pre: [V.bounds]Int = 0
+var pre: [V.cuts]Int = 0
 for v in V: pre[v.r] = pre[v.l] + a[v]
 fn sum(l: V, r: V) -> Int = pre[r.r] - pre[l.l]
 
-pre[v]            // error: pre is indexed by Bounds<V>, v is a V
-a[v.r]        // error: a is indexed by V, v.r is a Bounds<V>
+pre[v]            // error: pre is indexed by Cut<V>, v is a V
+a[v.r]        // error: a is indexed by V, v.r is a Cut<V>
 ```
 
 Both errors are now plain "wrong struct" errors. `l..=r` on two positions
@@ -707,7 +707,7 @@ z[t.Idx.first!]                            // error: z is indexed by s.Idx
 for (run, ch) in runs(s): ...              // every sequence view works: s is an array
 let mid = s[l..=r]                         // a Slice, as for any array
 
-var lcs: [s.Idx.bounds, t.Idx.bounds]Int = 0
+var lcs: [s.Idx.cuts, t.Idx.cuts]Int = 0
 for i in s.Idx:
     for j in t.Idx:
         lcs[i.r, j.r] = if s[i] == t[j]: lcs[i.l, j.l] + 1
@@ -1025,7 +1025,7 @@ first ones a fresh agent tries to break:
 22. `a[z.l..z.r(k)]` with `k` too large, `a[z.l(k)..z.r]` with
     `k = Int.min`, and `V.first + k` past the end: each stops with the
     expression, the domain and its size, the position and `k`, as in
-    "`z.r(k)` leaves V.bounds (2 values): from position 0, k = 2". The
+    "`z.r(k)` leaves V.cuts (2 values): from position 0, k = 2". The
     sum never wraps back into the domain.
 23. `V.first` and `V.last` when `V` is empty stop with "`V.first`: V is
     empty". A domain with one value has `first == last`, and every window
@@ -1091,7 +1091,7 @@ All of these are targets. None is measured yet.
 Plus four pieces of sugar with no semantics of their own: `domain X =
 range`, `[I]T` and `[A, B]T`, `a[i, j]`, and `x in V`.
 
-**Drops.** The domain type kind and its indexing rule; `V.bounds`,
+**Drops.** The domain type kind and its indexing rule; `V.cuts`,
 `Range`, `Range1` and `Sub<V>` as known types; slices and `a.map(f)` views
 as built-in borrowed forms; product-domain indexing and grid row views;
 `Str`; `Perm`; `pair_mut` and `swap` as intrinsics; the implicit
@@ -1125,7 +1125,7 @@ travel with them:
   check policy unchanged.
 - **3.5 Representation traits.** Adds `Seq` next to `Index`.
 - **3.8 Associated types.** Settled yes, justified by `Indexed.Elem` and
-  `Seq.bounds`. An associated size is `const K` when it is known at
+  `Seq.cuts`. An associated size is `const K` when it is known at
   compile time and `let K = n` when it is frozen from a run-time value.
 - **4.8 Views as array arguments.** Settled: a fn opts in with
   `A: Indexed<V, Elem = T>`; concrete `[V]T` parameters stay concrete.

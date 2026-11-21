@@ -69,7 +69,7 @@ pub(crate) fn ty_name(
         Ty::Char => "Char".into(),
         Ty::Str | Ty::StrView => "Str".into(),
         Ty::Pos(d) => domains[*d].clone(),
-        Ty::Bound(d) => format!("{}.bounds", domains[*d]),
+        Ty::Bound(d) => format!("{}.cuts", domains[*d]),
         Ty::Range(inner) => format!("Range<{}>", name(inner)),
         Ty::DomainVal => "domain".into(),
         Ty::Array { dims, elem } => {
@@ -77,7 +77,7 @@ pub(crate) fn ty_name(
                 .iter()
                 .map(|d| match d {
                     Dim::Pos(d) => domains[*d].clone(),
-                    Dim::Bound(d) => format!("{}.bounds", domains[*d]),
+                    Dim::Bound(d) => format!("{}.cuts", domains[*d]),
                     Dim::Sym(d) => format!("Sym<{}>", domains[*d]),
                     Dim::Enum(e) => enums[*e].name.clone(),
                     Dim::Int | Dim::IntFrom(_) => "Int".into(),

@@ -266,7 +266,7 @@ Ryan's C++ is 4.6 KB with a hand-made deque-of-deques structure.
 let (n, k): (1..=1e6, 1..=n) = read()
 domain I = 1..=n
 let a: [I]1..=1e9 = read()
-domain Cut = I.bounds                              // 0..=n: number of attractions before the cut
+domain Cut = I.cuts                              // 0..=n: number of attractions before the cut
 
 fn day(b: Cut) -> Int = ceil_div(b.count, k)
 fn day_cuts(d: Int) -> Range<Cut> =                // cuts that end day d
@@ -292,7 +292,7 @@ print(dp[Cut.last])
 
 **What it asks of the language.**
 
-- **Positions vs cuts.** `I` is the attractions and `Cut = I.bounds` the
+- **Positions vs cuts.** `I` is the attractions and `Cut = I.cuts` the
   gaps between them, with `x.before` and `x.after` moving from one to the
   other. `dp[x]` with an attraction doesn't compile, which is exactly the
   confusion between `dp[i]` and `dp[i+1]`.

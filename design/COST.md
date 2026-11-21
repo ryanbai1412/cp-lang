@@ -42,7 +42,7 @@ Rules every row follows:
 | Form | Lowers to | Time | Alloc | Debug | Release |
 |---|---|---|---|---|---|
 | `domain V = lo..=hi` | integer; runtime-sized domains read one hidden global slot (saved/restored on recursive re-entry) | O(1) | none | none | none |
-| `D.bounds` cut domain | integer | O(1) | none | none | none |
+| `D.cuts` cut domain | integer | O(1) | none | none | none |
 | `a[v]` with `v: V`, `a: [V]T` | unchecked load | O(1) | none | none | none |
 | `xs[i]` on `List`/`Str` | load | O(1) | none | bounds check unless proven | same |
 | range `l..r` / cut range `j..i` | two integers; cut range → position range is free (§124) | O(1) | none | none | none |

@@ -19,42 +19,42 @@ domain PosB = read(1..=500)
 let a: [PosA]-1e6..=1e6 = read()
 let b: [PosB]-1e6..=1e6 = read()
 
-fn cool(r: Range<PosA.bounds>) -> List<Range<PosA.bounds>> =
+fn cool(r: Range<PosA.cuts>) -> List<Range<PosA.cuts>> =
     if r.is_empty: []
     else:
         let m = a[r].max_subarray(widest: true)
         cool(r.l..m.lo) + [m] + cool(m.hi..r.r)
 
-let (domain Seg, span) = cool(PosA.bounds.first..PosA.bounds.last).indexed()
+let (domain Seg, span) = cool(PosA.cuts.first..PosA.cuts.last).indexed()
 let sum = [Seg] s => a[span[s]].sum()
-let mss = [PosB.bounds, PosB.bounds] (l, r) => b[l..r].max_subarray_sum()
+let mss = [PosB.cuts, PosB.cuts] (l, r) => b[l..r].max_subarray_sum()
 
-struct Plan(piece: [Seg]Range<PosB.bounds>, free: ?Seg)
+struct Plan(piece: [Seg]Range<PosB.cuts>, free: ?Seg)
 
 fn plan(x: Int) -> ?Plan:
-    var fit: [Seg.bounds, PosB.bounds, Bool]Bool = false
-    var came: [Seg, PosB.bounds, Bool]?(PosB.bounds, Bool) = none
-    fit[Seg.bounds.first, PosB.bounds.first, false] = true
-    fn link(s: Seg, j: PosB.bounds, spent: Bool, from: (PosB.bounds, Bool)):
+    var fit: [Seg.cuts, PosB.cuts, Bool]Bool = false
+    var came: [Seg, PosB.cuts, Bool]?(PosB.cuts, Bool) = none
+    fit[Seg.cuts.first, PosB.cuts.first, false] = true
+    fn link(s: Seg, j: PosB.cuts, spent: Bool, from: (PosB.cuts, Bool)):
         fit[s.r, j, spent] = true
         came[s, j, spent] = from
     for s in Seg:
         if sum[s] < x:
             for spent in Bool:
-                for j in PosB.bounds if fit[s.l, j, spent] and b[j..].starts_with(a[span[s]]):
+                for j in PosB.cuts if fit[s.l, j, spent] and b[j..].starts_with(a[span[s]]):
                     link(s, j + span[s].len, spent, from: (j, spent))
         else:
             for spent in Bool:
-                var latest: ?PosB.bounds = none
-                for j in PosB.bounds:
+                var latest: ?PosB.cuts = none
+                for j in PosB.cuts:
                     if let i = latest:
                         if mss[i, j]! <= x: link(s, j, spent, from: (i, spent))
                     if fit[s.l, j, spent]: latest = j
-            if let i = PosB.bounds.first(j => fit[s.l, j, false]):
-                for j in PosB.bounds if j > i: link(s, j, true, from: (i, false))
+            if let i = PosB.cuts.first(j => fit[s.l, j, false]):
+                for j in PosB.cuts if j > i: link(s, j, true, from: (i, false))
 
-    var (j, spent) = (PosB.bounds.last, [true, false].first(u => fit[Seg.bounds.last, PosB.bounds.last, u])?)
-    var piece: [Seg]Range<PosB.bounds> = PosB.bounds.first..PosB.bounds.first
+    var (j, spent) = (PosB.cuts.last, [true, false].first(u => fit[Seg.cuts.last, PosB.cuts.last, u])?)
+    var piece: [Seg]Range<PosB.cuts> = PosB.cuts.first..PosB.cuts.first
     var free: ?Seg = none
     for s in Seg.rev:
         let (i, before) = came[s, j, spent]!

@@ -6,7 +6,7 @@
 // be merged across turns (`must_rank[r] = true`).
 //
 // Each closed run [lo..=hi] is an interval contributing 1 to `total_intervals`.
-// Over the cut space `Rank.bounds`, `seg` maximizes the number of saved turns
+// Over the cut space `Rank.cuts`, `seg` maximizes the number of saved turns
 // (non-forced ranks plus absorbed runs): at rank r, placing a cut at r.r gains
 // `Int(not must_rank[r])` over the best previous cut, and every run [lo..=r]
 // ending at r adds 1 to all cuts <= lo.l. The minimum number of turns is
@@ -54,7 +54,7 @@ for c in Color:
     let (lo, hi) = run[c]!
     close_run(lo, hi, none)
 
-var seg = LazySegTree<Rank.bounds, Int>(AddMax, fill: 0)
+var seg = LazySegTree<Rank.cuts, Int>(AddMax, fill: 0)
 for r in Rank:
     let v = seg.all + Int(not must_rank[r])
     seg.set(r.r, v)

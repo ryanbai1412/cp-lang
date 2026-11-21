@@ -6,7 +6,7 @@ domain I = 1..=n
 let reqs: [0..q](l: I, r: I, x: 1..=16) = read()
 
 // delta[x, b]: change at boundary b in how many requirements with value x are open
-var delta: [0..=16, I.bounds]Int = 0
+var delta: [0..=16, I.cuts]Int = 0
 for (l, r, x) in reqs:
     delta[x, l.l] += 1
     delta[x, r.r] -= 1

@@ -4049,7 +4049,7 @@ impl<'a> Lowerer<'a> {
                 }
                 error(self)
             }
-            ast::ExprKind::Field { base, name } if name.text == "bounds" => {
+            ast::ExprKind::Field { base, name } if matches!(name.text.as_str(), "bounds" | "cuts") => {
                 let domain = match &base.kind {
                     ast::ExprKind::Name(n) if self.lookup(n).is_none() => {
                         self.resolve_domain_name(n)
@@ -4060,7 +4060,7 @@ impl<'a> Lowerer<'a> {
                     self.error(
                         codes::UNKNOWN_FIELD,
                         name.span,
-                        "`.bounds` belongs to a domain: `V.bounds`",
+                        "`.cuts` belongs to a domain: `V.cuts`",
                     );
                     return error(self);
                 };

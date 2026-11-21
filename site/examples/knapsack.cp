@@ -3,7 +3,7 @@ let cap: 1..=1000 = read()
 domain I = 1..=n
 let items: [I](w: 1..=1000, v: 0..=1e9) = read()
 
-var best: [I.bounds, 0..=cap]Int = 0
+var best: [I.cuts, 0..=cap]Int = 0
 for i in I:
     for c in 0..=cap:
         best[i.r, c] = best[i.l, c]

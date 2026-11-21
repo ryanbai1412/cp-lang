@@ -17,7 +17,7 @@ Recurring blockers worth fixing once, in the order they hurt most:
   and `l + 1..=I.last` over a domain is a range of `?I` (B20). This is what keeps ioi00p1 and noip04p3 on plain
   `0..n` instead of a `domain`.
 - A neighbour the guard already proves in range still needs `!`: `(l + 1)!` after `l == r` returned, `(m + 1)!`
-  for `m in l..r` (B5, B7). The suggested `.r` boundary does not help (`l.r` is an `I.bounds`).
+  for `m in l..r` (B5, B7). The suggested `.r` boundary does not help (`l.r` is an `I.cuts`).
 - `Graph` ergonomics: the edge list must be a named `domain E` (B10, B18, B26, B30), neighbours are
   `for (v, _) in g.out(u)` rather than `for v in g(u)` (B27, B31), `bfs` needs a `use` (B1, B29) and rejects a
   plain adjacency array with an error pointing at line 1 of the user's file (B2).
@@ -85,7 +85,7 @@ Fixable:
 Blocked:
 - **B5** line 10: `lead((l + 1)!, r)` and `lead(l, (r - 1)!)`; the `l == r` branch has already returned, so the
   `!` is noise. Without it: `error[E0301]: expected I, got ?I: `l + 1` may step outside I`. The boundary spelling
-  `lead(l.r!, r)` gives `error[E0302]: `!` takes the value out of an optional, but this is a `I.bounds``.
+  `lead(l.r!, r)` gives `error[E0302]: `!` takes the value out of an optional, but this is a `I.cuts``.
 
 ## dpm
 

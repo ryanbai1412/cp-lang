@@ -31,10 +31,10 @@ core feature goes through section 3 and the core lane.
 | Area | Owns | Done and next |
 |---|---|---|
 | sequences | 4.2 except the searches; the walk folds' library side; a `Seq`/`Indexed` trait | done: `_by` twins to `by:` with L0510, `.items` as the one enumerate, `Range` span traps that keep `bsearch_*` exact at any width, user `impl Ord` in the interpreter's `sorted`/`min`/`max`, `.len` typed so `0..xs.len` infers (decision 60), method `inverse` in 5 ports, `range:` on `reverse`/`rotate_*` (debt until mutable slice views, decision 76), `scan_in_place` with the mutator-vs-copy naming rule (decision 76.2), `argmax`/`prefix_n` in 5 ports, one `prefix(a)` with L0513 (decision 80), writable-from-docs fixes. `distinct`, `fold(f)`, `sort(cmp:)`, `reach(while:, cyclic:)` (`cf1284e`), `[D]T.map` keeping the domain (decision 104). Next: corpus audit for hand-rolled `argmax`/runs/compress/`next_permutation` with codemods, `by:` on `distinct`/`min`/`max` |
-| DP/search | 4.2 searches (`design/stdlib/search.md`); `std.dp` | done: `monge_path` and generic `aliens` in `cf2183h` (decisions 56, 65), online LARSCH and filled `val`/`prev` (decision 74, `cf2183h` 0.9x to 1.4x the original), `std.slope` concave/convex slope trick (decision 81, `cf2084g2`), lint `L0520` hand-rolled answer search with `cpl fix` (51 corpus loops, 0 false positives, 42 port sites moved), `List.reserve` on the LARSCH level stacks (`cf2183h` seed 2 0.40 to 0.29 s), `if let` payloads read in place, dense enum and `?enum` `@memo` keys, `D.bounds` as a range of cuts, matched C++17 benches for every entry point (`bash bench/dp/run.sh`: p50 0.85x, max 1.20x), 48-byte `LazyTreap` nodes (decision 122) and in-place tag pushes (`std.slope` 1.37x to 1.24x), a 4-byte `knuth` split table (1.24x to 1.11x). Next: 4-byte `?(0..2^31)` child links once flows' bounded optional lands, a gated port for Li Chao or Knuth when one appears |
+| DP/search | 4.2 searches (`design/stdlib/search.md`); `std.dp` | done: `monge_path` and generic `aliens` in `cf2183h` (decisions 56, 65), online LARSCH and filled `val`/`prev` (decision 74, `cf2183h` 0.9x to 1.4x the original), `std.slope` concave/convex slope trick (decision 81, `cf2084g2`), lint `L0520` hand-rolled answer search with `cpl fix` (51 corpus loops, 0 false positives, 42 port sites moved), `List.reserve` on the LARSCH level stacks (`cf2183h` seed 2 0.40 to 0.29 s), `if let` payloads read in place, dense enum and `?enum` `@memo` keys, `D.cuts` as a range of cuts, matched C++17 benches for every entry point (`bash bench/dp/run.sh`: p50 0.85x, max 1.20x), 48-byte `LazyTreap` nodes (decision 122) and in-place tag pushes (`std.slope` 1.37x to 1.24x), a 4-byte `knuth` split table (1.24x to 1.11x). Next: 4-byte `?(0..2^31)` child links once flows' bounded optional lands, a gated port for Li Chao or Knuth when one appears |
 | number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | done: `Comb<M>` (decision 55), 32-bit `Mod<P>` by ranged-field narrowing (plus `U32`-field non-negativity proving raw `%` in `Mod::mul`), `cf2245f` 7.3x to 0.64x. `std.poly` (decision 69) at 1.06x matched C++, L0415 loop-invariant `Mod` divisor lint (decision 75). `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all` (0.78x), `compose`, negative `pow`; `lib.math.poly` retired from ports. Generic `fwht`/`convolve_xor`/`convolve_subset`, `lagrange_at`/`interpolate`, one `factor` for every `Int` (decision 92), range-typed store checks (decision 100), 32-bit ranged array/2D/nested/tuple elements (decisions 106, 115), CSR `Adj` from pair/triple graphs (decision 110: `root_bench` 0.76x time, 1.14x memory), `divmod`, and `bench/math` matched C++17 suite (`p50=1.09x`, `max=1.17x`, 4.7–16.0 KB emitted; codegen-only notes in `research/frictions/bench-math.md`) |
 | containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`, `window`), `List` methods | done: heaps (`min_heap` 0.92x), potential DSU, 4 B/vertex single-array `Dsu` (`dsu` 1.15x wall / 1.10x user), `FlatMap` (0.95x), inline bounded `Bitset` (0.96x, decision 62), open-addressing `HashMap`/`HashSet` (0.64x–0.79x `gp_hash_table`, decision 85), `Map.keys`/`.values` O(1) views, `SortedSet` + `IntervalMap` in prelude (decisions 113, 117), `Set`/`Map.range(r)` zero-alloc `Iter::TreeRange` (`ordered_map_set` 0.96x), packed `BagNode` single-pass `SortedBag`/`SortedSet` (`sorted_range` 0.61x, `sorted_set` 1.26x vs PBDS `rb_tree_tag`), `drain(after:/before:, while:)` across `Set`/`SortedSet`/`SortedBag` via external parameter labels (`cf2262b`), single-iterator `IntervalMap.assign` (`interval_map` 0.56x, `cf2237h` 0.514 s / 0.321 s, decision 105), raw `List<T>` `Deque` + `Deque.reserve` (`deque` 1.14x), `List.reserve`, constant-length `std::array` lowering, `TimeTree.run`/`offline_over` (`cf2069f` RSS 356 to 146 MB), `Bitset.subset_sums` (`cf2187d` 4.3x faster), `Dsu.groups()`/`roots`/`values` (`cf2245e` 0.50 to 0.13 s); 13 matched C++17 benches (`bash bench/containers/run.sh`: p50 0.95x, max 1.26x) |
-| range structures | 4.10 | done: `Fenwick.first_ge` (decision 57), constant-init `LazySegTree`, `LazyTreap` (decision 68, matched 1.06x), `Flip`/`flip_action` with devirtualized combinators (decision 73), `LazySegTree` over `Bounds<D>` (`cf2207f`), `cf2057d` 2.01x to 1.12x. Next: the 5 open high frictions, all core/codegen-side (`?Struct` niche, `MinHeap.pop`) |
+| range structures | 4.10 | done: `Fenwick.first_ge` (decision 57), constant-init `LazySegTree`, `LazyTreap` (decision 68, matched 1.06x), `Flip`/`flip_action` with devirtualized combinators (decision 73), `LazySegTree` over `Cut<D>` (`cf2207f`), `cf2057d` 2.01x to 1.12x. Next: the 5 open high frictions, all core/codegen-side (`?Struct` niche, `MinHeap.pop`) |
 | graphs | 4.11 `std.graph`, 4.15 `std.grid` | done: `until:` early exit (46.11), hole-based heap sift, one `Paths.back` witness array (decision 78; matched `dijkstra` 1.44x to 1.18x), `cf2135c` on a named component domain. Next: `fixed_cost_paths(until:)` and CSR (held for a green rebase), then `cf2178h`; the rest of `dijkstra` (dead-field elimination in codegen); `divmod` and named edge tuples (cf2035f dream) |
 | trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). `PermTree` (`cf2187f1`/`f2`, one construction instead of two copies). Label-ordered parent arrays stay loops (`cf2138c1`, `cf2187c`, `cf2089e`; design §5). `Rooted` builds breadth-first with flat child ranges (1.1x matched, decision 86). `LazyLinkCut` with `apply_path` (at most 1.0x matched). `Rooted.virtual` with its own domain (decision 108, 0.78x–1.06x matched), 7 hand-rolled ports moved onto `Rooted.from_parents`/`centroid`/`virtual`. `t.up(+, finish:)` (cf2035f), `Tree` in the prelude (decision 119), L0208 for a `use` the prelude covers. Tree dreams cf2035f, cf2124i, cf2183d2, cf2183f, cf2237i1 check clean. Next: cf2135f waits on `PMultiset`; PathPaint waits for a second problem |
 | flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched), unchecked hot loops in `std.flow` (min-cost flow 1.14x). Next: matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
@@ -170,10 +170,10 @@ expected bounds say so in words after the bound (`// O(alpha(n)) amortized`,
 names another variable.
 
 **Index spaces.** A function over positions takes and returns the
-domain (`?D`, `Bounds<D>`, `Range<D>`), never a raw `Int`, when its
+domain (`?D`, `Cut<D>`, `Range<D>`), never a raw `Int`, when its
 input is a `[D]T`; over a `List<T>` it uses `Int`. A function that
-creates a new index space returns it (`scc` returns `domain C`). `D.bounds` is
-the value `Range<D.bounds>`, the cuts `0..=D.K`: pass it where a
+creates a new index space returns it (`scc` returns `domain C`). `D.cuts` is
+the value `Range<D.cuts>`, the cuts `0..=D.K`: pass it where a
 `Range` or `List` of cuts is expected; `D.all` is the positions.
 
 ## 3. Core features the stdlib relies on
@@ -204,7 +204,7 @@ Language features, with the modules that need them:
   `prefix`, `geometry`;
 - operation values (`Monoid`, `Action`, functions as values): `segtree`,
   `lazy`, `sparse`, `algebra`;
-- domains, `Bounds<D>`, `Range<D>` and fresh domains returned from a
+- domains, `Cut<D>`, `Range<D>` and fresh domains returned from a
   function (existential returns): `graph`, `tree`, `seq.compress`,
   `strings.suffix_array` [0.3: fresh `Rank`];
 - generators (`yields`): `bitset.each`, `graph.adj`, `tree.tour`,
@@ -281,8 +281,8 @@ struct Compressed<D, T>(vals: [D]T)
     fn first_ge(self, val: T) -> ?D // O(log n)
     fn last_le(self, val: T) -> ?D // O(log n)
 fn compress<T>(all: List<T>) // O(n log n)
-@get fn l<D>(self: Range<D>) -> Bounds<D>
-@get fn r<D>(self: Range<D>) -> Bounds<D>
+@get fn l<D>(self: Range<D>) -> Cut<D>
+@get fn r<D>(self: Range<D>) -> Cut<D>
 @get fn ends<D>(self: Range<D>) -> (Int, Int)
 fn first_ge_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int // O(log n)
 fn last_le_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int // O(log n)
@@ -950,9 +950,9 @@ struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int) // [new] O(1
 struct Fenwick<D, T> // O(n), O(log n)
     fn new(a: ?[D]T = none) -> Fenwick<D, T>
     fn add(mut self, i: D, x: T)
-    fn prefix(self, b: Bounds<D>) -> T
+    fn prefix(self, b: Cut<D>) -> T
     fn sum(self, r: Range<D>) -> T
-    fn first_ge(self, target: Int) -> ?Bounds<D> // O(log n)
+    fn first_ge(self, target: Int) -> ?Cut<D> // O(log n)
     fn kth(self, k: Int) -> ?D // O(log n)
 struct DualFenwick<D, T> // [new] range add, point get; O(n), O(log n)
     fn new(a: ?[D]T = none) -> DualFenwick<D, T>
@@ -961,12 +961,12 @@ struct DualFenwick<D, T> // [new] range add, point get; O(n), O(log n)
 struct RangeFenwick<D> // [new] range add, range sum (Int); O(n), O(log n)
     fn new(a: ?[D]Int = none) -> RangeFenwick<D>
     fn add(mut self, r: Range<D>, x: Int)
-    fn prefix(self, b: Bounds<D>) -> Int
+    fn prefix(self, b: Cut<D>) -> Int
     fn sum(self, r: Range<D>) -> Int
 struct XorFenwick<D, T> // O(n), O(log n)
     fn new(a: ?[D]T = none) -> XorFenwick<D, T>
     fn flip(mut self, i: D, x: T)
-    fn prefix(self, b: Bounds<D>) -> T
+    fn prefix(self, b: Cut<D>) -> T
     fn xor(self, r: Range<D>) -> T
 struct Fenwick2D<R, C, T> // O(log R * log C)
     fn new() -> Fenwick2D<R, C, T>
@@ -976,11 +976,11 @@ enum FillOrder = Forward | Reverse
 struct Prefix<D, T> // also Prefix<R, C, T> for 2D grids and Prefix<T> for List<T>
     fn new(a: [D]T) -> Prefix<D, T> // O(|D|); also [R, C]T in O(|R|*|C|) and List<T> in O(n)
     fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> // O(|D|) / O(|R|*|C|) / O(n) (takes n: Int for List<T>); append-only prefix/suffix table (`FillPrefix<D, T>`, `FillPrefix<R, C, T>`, `FillPrefix<T>`) with O(1) `.set`, `.prefix`, `.sum`
-    fn prefix(self, b: Bounds<D>) -> T // O(1); (r: Bounds<R>, c: Bounds<C>) for 2D, (k: Int) for List<T>
+    fn prefix(self, b: Cut<D>) -> T // O(1); (r: Cut<R>, c: Cut<C>) for 2D, (k: Int) for List<T>
     fn sum(self, r: Range<D>) -> T // O(1); (rows: Range<R>, cols: Range<C>) for 2D, (r: Range<Int>) for List<T>
 fn prefix(a) // prelude shape dispatch over [D]T, [R, C]T, and List<T>; L0513 + checker error migrate removed prefix1/prefix2/prefix_n/Prefix1/Prefix2/PrefixN/Diff1/Diff2
-fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T // [new] O(n)
-fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T // [new] O(n)
+fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T // [new] O(n)
+fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T // [new] O(n)
 struct Diff<D, T> // offline 1D/2D difference array (`Diff<D, T>()` or `Diff<R, C, T>()`); O(1) add, O(|D|) / O(|R|*|C|) finish
     fn new() -> Diff<D, T>
     fn add(mut self, r: Range<D>, x: T) // (rows: Range<R>, cols: Range<C>, x: T) for 2D
@@ -997,8 +997,8 @@ struct SegTree<D, T>(m: Monoid<T>) // O(log n)
     fn fold(self, r: Range<D>) -> T
     @get fn all(self) -> T // O(1)
     @get fn monoid(self) -> Monoid<T>
-    fn max_right(self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>
-    fn min_left(self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>
+    fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>
+    fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>
 struct LazySegTree<D, T, F>(act: Action<T, F>) // O(log n), O(1)
     fn new(act: Action<T, F>, a: ?[D]T = none, fill: ?T = none) -> LazySegTree<D, T, F> // O(n)
     fn set(mut self, i: D, x: T)
@@ -1009,8 +1009,8 @@ struct LazySegTree<D, T, F>(act: Action<T, F>) // O(log n), O(1)
     @get fn monoid(self) -> Monoid<T>
     fn fold(mut self, r: Range<D>) -> T
     fn apply(mut self, r: Range<D>, f: F)
-    fn max_right(mut self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>
-    fn min_left(mut self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>
+    fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D>
+    fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D>
 struct DualSegTree<D, T, F> // [new] range apply, point get; no monoid or pulls; O(log n)
     fn new(id: F, compose: (F, F) -> F, apply: (F, T) -> T,
            a: ?[D]T = none, fill: ?T = none) -> DualSegTree<D, T, F> // O(n)

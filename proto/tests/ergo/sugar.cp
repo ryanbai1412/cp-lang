@@ -7,10 +7,10 @@ print(m[3], m[5], m.len)
 let plain = [1: 2]
 print(plain[1])
 domain G = 1..=n
-fn two(x: G.bounds, y: G.bounds) -> Int:
+fn two(x: G.cuts, y: G.cuts) -> Int:
     let (g, h) = (x.right, y.right) else: return 0
     g.ord + h.ord + 1
-fn two2(x: G.bounds, y: G.bounds) -> Int:
+fn two2(x: G.cuts, y: G.cuts) -> Int:
     let g = x.right and let h = y.right else: return -1
     g.ord * 10 + h.ord
 print(two(G.first.l, G.last.l), two(G.last.r, G.first.l), two2(G.first.r, G.last.l), two2(G.first.l, G.last.r))

@@ -577,10 +577,10 @@ pub fn compress<S: Seq, T>(all: S):
 // ---- Range boundary cuts, keyed sorted lookup, ordered Map 4-lookups, and List/Array helpers
 
 /// Left boundary cut of a range (valid even when empty).
-pub @get fn l<D>(self: Range<D>) -> Bounds<D> = self.start
+pub @get fn l<D>(self: Range<D>) -> Cut<D> = self.start
 
 /// Right boundary cut of a range (valid even when empty).
-pub @get fn r<D>(self: Range<D>) -> Bounds<D> = self.end
+pub @get fn r<D>(self: Range<D>) -> Cut<D> = self.end
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers

@@ -1,4 +1,4 @@
-// Every in-place sequence mutator works uniformly over `IndexedMut` (`List<T>`, `[D]T`, `[1..=n]T`, `[V.bounds]T`, `Str`).
+// Every in-place sequence mutator works uniformly over `IndexedMut` (`List<T>`, `[D]T`, `[1..=n]T`, `[V.cuts]T`, `Str`).
 use std.rand.Rng
 use std.seq.{
     next_permutation, nth_element, prev_permutation, reverse, rotate_left, rotate_right,
@@ -48,8 +48,8 @@ print(one)
 one.scan_in_place(+)
 print(one)
 
-// 3. Cut-indexed array `[V.bounds]Int`
-var cut: [V.bounds]Int = [V.bounds] c => 10 - c.ord
+// 3. Cut-indexed array `[V.cuts]Int`
+var cut: [V.cuts]Int = [V.cuts] c => 10 - c.ord
 cut.swap(V(0).l, V(4).r)
 cut.scan_in_place(min)
 print(cut)

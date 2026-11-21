@@ -5,7 +5,7 @@ Ten previously unported accepted DMOJ CCC and CCO submissions ported idiomatical
 ## Problems
 
 - **`cco23p5.cp`** (orig `corpus/submissions/5580402.cpp`, 419 raw / 392 stripped C++ LOC -> 137 v2 / 229 today): Weighted tree k-jump path (`k in {1, 2, 3}`) with 4-state subtree DP, top-k distinct child matching, constructive walk recovery, and alternating pre/post-order DFS.
-- **`cco24p5.cp`** (orig `corpus/submissions/6435483.cpp`, 257 raw / 72 stripped C++ LOC -> 51 v2 / 92 today): Parity-alternating subarray partition DP mod `1_000_003` using two `LazySegTree<I.bounds, Node>` trees maintaining `(min_bad, ways)` over split boundaries.
+- **`cco24p5.cp`** (orig `corpus/submissions/6435483.cpp`, 257 raw / 72 stripped C++ LOC -> 51 v2 / 92 today): Parity-alternating subarray partition DP mod `1_000_003` using two `LazySegTree<I.cuts, Node>` trees maintaining `(min_bad, ways)` over split boundaries.
 - **`cco24p4.cp`** (orig `corpus/submissions/6435484.cpp`, 174 raw / 79 stripped C++ LOC -> 38 v2 / 56 today): Tree rendezvous schedule construction on `n = 100` trees using tree centering (`eccentricity <= 50`) and alternating climb bursts.
 - **`cco24p2.cp`** (orig `corpus/submissions/6435481.cpp`, 134 raw / 90 stripped C++ LOC -> 48 v2 / 74 today): Minimum stack-sorting partition (Pizza Party) combining multiset validation, binary reversal check, and reverse patience sorting / Dilworth LIS.
 - **`ccc20s2hard.cp`** (orig `corpus/submissions/4324075.cpp`, 112 raw / 47 stripped C++ LOC -> 22 v2 / 51 today): Tight-memory `4000 x 4000` Escape Room reachability using `@grader`, flat CSR `Graph.directed`, and `Bitset<Val>`.

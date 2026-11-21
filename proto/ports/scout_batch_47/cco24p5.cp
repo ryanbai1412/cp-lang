@@ -3,14 +3,14 @@
 // CP Lang v2 (locked spec, docs/one-page-cheat-sheet.md @ 3723dca)
 //
 // Count partitions (mod 1_000_003) of array a[0..n) into valid contiguous blocks
-// using two parity-indexed lazy segment trees over split boundaries I.bounds
+// using two parity-indexed lazy segment trees over split boundaries I.cuts
 // maintaining (min_bad, sum_dp_at_min) under range +1/-1 updates and point DP sets.
 const MOD = 1_000_003
 type Z = Mod<MOD>
 
 let n: 1..=5e5 = read()
 domain I = 0..n
-type B = I.bounds
+type B = I.cuts
 let a: [I](1..=n) = read()
 
 // Note: Z (Mod<MOD>) is not Ord, so Node does not auto-derive Ord — legal in v2.

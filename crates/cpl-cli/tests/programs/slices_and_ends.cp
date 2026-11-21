@@ -27,6 +27,6 @@ domain R = 0..2
 domain C = 0..3
 let g: [R, C]Int = [R, C] (r, c) => r.to_idx * 3 + c.to_idx
 print(g.first, g.last)
-var ends: [I.bounds]Int = 0
+var ends: [I.cuts]Int = 0
 ends[I.last.r] = 9
 print(ends.first, ends.last)

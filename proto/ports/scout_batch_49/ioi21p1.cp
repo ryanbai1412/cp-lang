@@ -17,7 +17,7 @@ fn distribute_candies(cap: [Box]Int, l: [Day]Box, r: [Day]Box, v: [Day]Int) -> [
     domain Box, Day                              // inferred from the argument shapes
     // Sweep the boxes keeping, per day, the change that day makes to the current box.
     var starts: [Box]List<Day> = []
-    var stops: [Box.bounds]List<Day> = []
+    var stops: [Box.cuts]List<Day> = []
     for d in Day:
         starts[l[d]].push(d)
         stops[r[d].r].push(d)

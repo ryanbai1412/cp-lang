@@ -26,7 +26,7 @@ against KACTL, AtCoder Library, and an empirical audit of two local corpora:
      adjacency-predicate split (`chunk_by`) for alternating runs.
    - `runs_by` allocated a `List<T>` per run and ran 50x slower than a manual
      loop on `cf2135f` ($n = 4 \cdot 10^5$, 18.6 s vs 0.35 s).
-   - No `prefix_fold` / `suffix_fold` returning `[D.bounds]T` (`cf2062e2`),
+   - No `prefix_fold` / `suffix_fold` returning `[D.cuts]T` (`cf2062e2`),
      forcing parallel `[0..=n]` arrays indexed by `.ord` and `.ord + 1`.
    - No `prod` reduction matching `sum` (`cf2201e`), and no `buckets` /
      `group_by` helper mapping a domain `D` into `[K]List<D>` (`cf2062e1`,
@@ -62,7 +62,7 @@ sequence families cover virtually all contest work:
 `[1..=n]T`, `List<T>` (with `D = Int`), and `Str` (with `D = Int, T = Char`)
 with one definition and zero runtime dispatch. Sequence algorithms take
 `self: [D]T` whenever they read by index, and return `?D`, `Range<D>`, `[D]?D`,
-or `[D.bounds]T` so index spaces are never downgraded to raw `Int`.
+or `[D.cuts]T` so index spaces are never downgraded to raw `Int`.
 
 **Options are named arguments, never `_by` proliferation.** Following
 `plan/STDLIB.md` section 2, key extractors use `by: T -> K = x => x` with
@@ -267,13 +267,13 @@ pub fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T
 // Exclusive cut-indexed prefix monoid fold: `pref[b]` is the fold of all
 // elements strictly left of cut `b`, with `pref[D.first.l] == m.id`.
 // O(n) calls of `m`, O(n) space.
-pub fn prefix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T
+pub fn prefix_fold<D, T, M>(xs: [D]T, m: M) -> [D.cuts]T
 
 // Exclusive cut-indexed suffix monoid fold: `suff[b]` is the fold of all
 // elements strictly right of cut `b`, with `suff[D.last.r] == m.id`.
 // For any range `r: Range<D>`, `m.op(pref[r.start], suff[r.end])` folds everything
 // outside `r` in O(1). O(n) calls of `m`, O(n) space.
-pub fn suffix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T
+pub fn suffix_fold<D, T, M>(xs: [D]T, m: M) -> [D.cuts]T
 
 // For each element, yield `(x, fold of all other elements in order)` with no
 // inverse required. O(n) calls of `m`, O(n) space.
@@ -282,7 +282,7 @@ pub fn excl_fold<T, M>(self: List<T>, m: M) -> yields (x: T, rest: T)
 
 Laws:
 - For `pref = prefix_fold(xs, m)` and `suff = suffix_fold(xs, m)`, at every cut
-  `b in D.bounds`, `op(pref[b], suff[b]) == fold(m, xs)`.
+  `b in D.cuts`, `op(pref[b], suff[b]) == fold(m, xs)`.
 - `scan(xs, op)[i] == prefix_fold(xs, m)[i.r]` for every `i in D`.
 - `suffix_scan(xs, op)[i] == suffix_fold(xs, m)[i.l]` for every `i in D`.
 
@@ -567,14 +567,14 @@ print(prev_dp * M(blocks.last!))
 
 ### 6.3 Codeforces 2062 E2 — The Game (Hard Version)
 
-`prefix_fold` and `suffix_fold` return `[t.Pre.bounds]MaxInfo<t.Pre>`, so the
+`prefix_fold` and `suffix_fold` return `[t.Pre.cuts]MaxInfo<t.Pre>`, so the
 maximum outside subtree `r = t.sub(v)` is `combine(pref[r.start], suff[r.end])`
 with zero `.ord` arithmetic, and `buckets(w)` groups `V` by weight `W` in one
 expression:
 
 ```cp
 // Flatten the tree by preorder so each subtree is a range r = t.sub(v).
-// The max weight outside r is combine(pref[r.start], suff[r.end]) over Bounds<Pre>.
+// The max weight outside r is combine(pref[r.start], suff[r.end]) over Cut<Pre>.
 use std.seq.{buckets, prefix_fold, suffix_fold}
 
 let empty_max = MaxInfo<t.Pre>(0, none, none, 0)

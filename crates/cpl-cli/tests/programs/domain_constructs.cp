@@ -41,10 +41,10 @@ let (lo, hi) = minmax(p[Item(1)], s[Item(1)])
 let r = lo..hi
 print(lo, hi, r.len, choose2(n + 1))
 
-// 5. D.bounds directly in SegTree, LazySegTree, Fenwick
-var st = SegTree<V.bounds, Int>(+, fill: 0)
-var lst = LazySegTree<V.bounds, Int>(AddMax, fill: 0)
-var fw = Fenwick<V.bounds, Int>()
+// 5. D.cuts directly in SegTree, LazySegTree, Fenwick
+var st = SegTree<V.cuts, Int>(+, fill: 0)
+var lst = LazySegTree<V.cuts, Int>(AddMax, fill: 0)
+var fw = Fenwick<V.cuts, Int>()
 let v2 = V(2)
 st.set(v2.l, 2)
 st.set(v2.r, 5)

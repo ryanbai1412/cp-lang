@@ -6,8 +6,8 @@ let a: [V]Int = [V] i => raw[i] - 1
 
 fn solve_dir(xs: [V]Int) -> Int:
     fn check(x: Int) -> Bool:
-        var diff: [V.bounds]Int = 0
-        fn add_seg(mut diff: [V.bounds]Int, lo: Int, hi: Int):
+        var diff: [V.cuts]Int = 0
+        fn add_seg(mut diff: [V.cuts]Int, lo: Int, hi: Int):
             let l = max(0, lo)
             let r = min(n - 1, hi)
             if l <= r:

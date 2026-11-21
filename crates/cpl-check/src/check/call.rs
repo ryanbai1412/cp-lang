@@ -138,9 +138,9 @@ impl<'a> Checker<'a> {
                     }
                     let fits_bound = match (&k_ty, &ety) {
                         (Ty::Pos(d), Ty::Pos(bd)) => {
-                            bd.strip_suffix(".bounds") == Some(d.as_str())
+                            bd.strip_suffix(".cuts") == Some(d.as_str())
                         }
-                        (Ty::Pos(d), Ty::Named { name, args }) if name == "Bounds" => {
+                        (Ty::Pos(d), Ty::Named { name, args }) if name == "Cut" => {
                             matches!(args.as_slice(), [Ty::Pos(bd)] if bd == d)
                         }
                         _ => false,
@@ -320,7 +320,7 @@ impl<'a> Checker<'a> {
                 matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last" | "rev")
             }
             Ty::Domain(_) => {
-                matches!(name.text.as_str(), "len" | "first" | "last" | "rev" | "bounds")
+                matches!(name.text.as_str(), "len" | "first" | "last" | "rev" | "bounds" | "cuts")
             }
             _ => false,
         };
@@ -496,8 +496,8 @@ impl<'a> Checker<'a> {
             }
             ("span", [Ty::Pos(a), Ty::Pos(b)]) => {
                 let (a, b) = (
-                    a.strip_suffix(".bounds").unwrap_or(a),
-                    b.strip_suffix(".bounds").unwrap_or(b),
+                    a.strip_suffix(".cuts").unwrap_or(a),
+                    b.strip_suffix(".cuts").unwrap_or(b),
                 );
                 if a != b {
                     let message = format!(
@@ -763,9 +763,9 @@ impl<'a> Checker<'a> {
             }
             // `v.l(k)`, `v.r(k)`: the far end of a window of `k` at `v`.
             Ty::Pos(domain)
-                if matches!(name.text.as_str(), "l" | "r") && !domain.ends_with(".bounds") =>
+                if matches!(name.text.as_str(), "l" | "r") && !domain.ends_with(".cuts") =>
             {
-                Some(Ty::Pos(format!("{domain}.bounds")))
+                Some(Ty::Pos(format!("{domain}.cuts")))
             }
             Ty::Named {
                 name: type_name, ..

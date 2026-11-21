@@ -52,7 +52,7 @@ for (day, raw_cur) in by_day:
             best max= rv + loc * up
         mval[i] = best
 
-    var psum: [I.bounds]Int = 0
+    var psum: [I.cuts]Int = 0
     for i in I:
         psum[i.r] = psum[i.l] + cur[i.idx].c
 

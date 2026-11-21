@@ -190,7 +190,7 @@ devirtualization inlines `min` / `max`; and the hot loops are `unchecked`.
 ## 3. Domains and index spaces
 
 - Searches return the position type of the range they search. Over a domain
-  `V`, `bsearch_first(V.all, ok)` is a `?V`; over cuts, a `?V.bounds`. The
+  `V`, `bsearch_first(V.all, ok)` is a `?V`; over cuts, a `?V.cuts`. The
   caller never converts between an index and an offset.
 - `MonoDeque` and `parallel_bsearch` number positions and queries with
   `Int`: a queue's positions are the loop variable of the DP that feeds it,

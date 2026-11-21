@@ -6,7 +6,7 @@ domain V = 1..=n
 let a: [V]-1e9..=1e9 = read()
 let qs: [q](l: V, r: V) = read() where all(x.l <= x.r for x in qs)
 
-var pre: [V.bounds]Int = 0
+var pre: [V.cuts]Int = 0
 for i in V:
     pre[i.after] = pre[i.before] + a[i]
 

@@ -56,9 +56,9 @@ fn solve() -> Int:
         let tail_cnt = H(m.h).r.ord - right_bound.ord
         let rem = m.k - tail_cnt
         if rem > 0:
-            // WISH A3: advancing a `Bounds<H>` by an integer offset `rem` has no
-            // ergonomic helper; `H.bounds.nth(left_end.ord + rem)` drops to raw `.ord`.
-            let tie_hi = H.bounds.nth(left_end.ord + rem)
+            // WISH A3: advancing a `Cut<H>` by an integer offset `rem` has no
+            // ergonomic helper; `H.cuts.nth(left_end.ord + rem)` drops to raw `.ord`.
+            let tie_hi = H.cuts.nth(left_end.ord + rem)
             st.apply(left_end..tie_hi, 1)
 
     var ans = 0

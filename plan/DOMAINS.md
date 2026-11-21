@@ -198,7 +198,7 @@ Domain-wide subsets (`V.all`, `Bitset<V>` with `for v in s`, `.without(v)`,
 fieldless enum-indexed arrays (`enum Sign: neg = -1, zero = 0, pos = 1`,
 `[Sign]T`, `[Sign] x => ...`, `for x in Sign:`), domain-level sequence ops
 (`D.partition`, `D.sort(by:)` including array keys, `D.group(by:)`, `D.at`,
-`D.first(p)`, `D.filter` with domains satisfying `Seq`/`Indexed`), `D.bounds`
+`D.first(p)`, `D.filter` with domains satisfying `Seq`/`Indexed`), `D.cuts`
 directly in `SegTree`/`LazySegTree`/`Fenwick` (`cf2207f`), algebraic product domains
 (`domain State = (V, K)` and named `(v: V, d: Dir, ok: Bool)` with flat `[State]T`,
 `for s in State`, `for (v, k) in State`, `dp[(v, k)]`/`dp[v, k]`, `State(v, k)`,
@@ -303,7 +303,7 @@ route new frictions; keep section 2 the single vocabulary (the `_by`
 renames, `find` vs `first`); bring section 3's remaining core asks (variadic
 `min`/`max`, scoped rollback) to the core lane; route the codegen
 frictions the ports keep finding (`if let` by const reference, enum
-`@memo` keys, iterable `D.bounds`) and keep the browser bundle under
+`@memo` keys, iterable `D.cuts`) and keep the browser bundle under
 its caps.
 
 ## 5. Diagnostics and front end (`plan/30` 3.7)
@@ -323,7 +323,7 @@ Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
 "not implemented yet: ... (see design/...)", or "(not in the design)" for
 forms only dreams use); 16 entries, each with a golden. Dreams are a corpus
 (`scripts/dream-gaps.py`, summary in the scoreboard): 41/44 first errors
-name their gap (the rest: a domain mismatch `PosA.Cut` vs `PosA.bounds`,
+name their gap (the rest: a domain mismatch `PosA.Cut` vs `PosA.cuts`,
 an unknown `Max`, `read()` of a `[Int]?Int`), 135/243 errors named; top
 blockers are context lines (5 dreams), fresh value types and `record` (3
 each). Unknown names say "not

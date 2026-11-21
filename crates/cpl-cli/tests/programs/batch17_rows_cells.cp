@@ -62,7 +62,7 @@ for (at, x) in e.items: print("never", at, x)
 print([x for ((r, c), x) in g.items if r == c])
 
 // `last(k)` on an array indexed by the bounds of a domain.
-var w: [V.bounds]Int = 0
+var w: [V.cuts]Int = 0
 for v in V: w[v.r] = w[v.l] + v.idx + 1
 print(w)
 print(w.last, w.last(0), w.last(1), w.last(n), w.last(n + 1), w.last(-1))

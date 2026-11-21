@@ -1435,7 +1435,7 @@ print(p[3] - p[1])
     let dom_pref = "\
 domain C = 0..=4
 let ways: [C]Int = [1, 2, 3, 4, 5]
-var pre: [C.bounds]Int = 0
+var pre: [C.cuts]Int = 0
 for c in C: pre[c.r] = pre[c.l] + ways[c]
 print(pre[C.last.r] - pre[C.first.l])
 ";
@@ -1472,7 +1472,7 @@ print(pre[n])
 domain R = 0..3
 domain C = 0..3
 let g: [R, C]Int = 1
-var p: [R.bounds, C.bounds]Int = 0
+var p: [R.cuts, C.cuts]Int = 0
 for r in R:
     for c in C:
         p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + g[r, c]

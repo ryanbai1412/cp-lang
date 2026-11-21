@@ -1,6 +1,6 @@
 let n: 1..=9 = read()
 domain I = 1..=n
-type B = I.bounds
+type B = I.cuts
 let a: [I]Int = read()
 fn total(rows: Range<I>) -> Int: sum(a[i] for i in rows)
 let i = I(3)

@@ -34,7 +34,7 @@ let a: [Pos]Int = read()
 
 let pref_min = a.scan(min)
 let orig_suff = pref_min.suffix_sums()
-let base_ans = orig_suff[Pos.bounds.first]
+let base_ans = orig_suff[Pos.cuts.first]
 
 // Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
 let suff_max = a.suffix_scan(max)
@@ -42,7 +42,7 @@ let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.n
 let top_val = a[suffix_max_pos.last!]
 
 var ans: [0..n]Int = base_ans
-var end_cut = Pos.bounds.last
+var end_cut = Pos.cuts.last
 
 for i in Pos.rev if pref_min[i] == a[i]:
     let ai = a[i]
@@ -55,7 +55,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
 
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
-        let split = blk.bounds.last(c => lifted[c.prev!] > cur_cap) ?? blk.bounds.first
+        let split = blk.cuts.last(c => lifted[c.prev!] > cur_cap) ?? blk.cuts.first
         let gain = (cur_cap - ai) * split.count_before + lifted_suff[split] - ai * split.count_after
         let loss = if pos.l < end_cut: block_loss[pos] else: orig_suff[pos]
         ans[pos - i] = max(ans[pos - i], base_ans + gain - loss)

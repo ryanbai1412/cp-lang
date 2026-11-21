@@ -2268,9 +2268,9 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // Check qualified module type `mod_alias.Type` or `D.bounds` or `Rooted.Pre`.
+        // Check qualified module type `mod_alias.Type` or `D.cuts` or `Rooted.Pre`.
         if let Some((prefix, rest)) = name.text.split_once('.') {
-            if rest == "bounds" {
+            if rest == "cuts" {
                 if let Some(GenArg::Domain(d)) = self.gen_env.get(prefix).cloned() {
                     return Spec::Plain(Ty::Bound(d));
                 }
@@ -2337,7 +2337,7 @@ impl<'a> Lowerer<'a> {
                     Ty::Error
                 }
             },
-            "Bounds" => match arg(self, 0) {
+            "Cut" if !args.is_empty() => match arg(self, 0) {
                 Ty::Pos(d) => Ty::Bound(d),
                 other => other,
             },
@@ -2609,7 +2609,7 @@ impl<'a> Lowerer<'a> {
                         return Some(DimSpec::Pos(id));
                     }
                 }
-                if let Some(domain) = name.text.strip_suffix(".bounds") {
+                if let Some(domain) = name.text.strip_suffix(".cuts") {
                     if let Some(GenArg::Domain(id)) = self.gen_env.get(domain).cloned() {
                         return Some(DimSpec::Bound(id));
                     }
@@ -2622,7 +2622,7 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Pos(id) = self.resolve_ty(ty) {
                     return Some(DimSpec::Pos(id));
                 }
-            } else if name.text == "Bounds" && args.len() == 1 {
+            } else if name.text == "Cut" && args.len() == 1 {
                 if let Ty::Pos(id) = self.resolve_ty(&args[0]) {
                     return Some(DimSpec::Bound(id));
                 }
@@ -2670,9 +2670,9 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // Anything else is a length: `[n]Int`, `[2 * n]Int`, `[0..n]Int`, `[V.bounds]Int`.
+        // Anything else is a length: `[n]Int`, `[2 * n]Int`, `[0..n]Int`, `[V.cuts]Int`.
         let text = self.source(ty.span);
-        if let Some(domain) = text.strip_suffix(".bounds") {
+        if let Some(domain) = text.strip_suffix(".cuts") {
             let dname = domain.trim();
             if let Some(GenArg::Domain(id)) = self.gen_env.get(dname).cloned() {
                 return Some(DimSpec::Bound(id));

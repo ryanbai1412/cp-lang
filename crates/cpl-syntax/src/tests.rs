@@ -559,7 +559,7 @@ fn types() {
 
 #[test]
 fn counted_arrays_derived_domains_generators_and_do_blocks() {
-    let s = stmts("let xs: [q]1..=1e9 = read()\nvar pre: [V.bounds]Int = 0\nfn divisors(n: 1..=1000) -> yields Int:\n    yield 1\nlet ans: ?Int = do:\n    let x = find(xs)?\n    x + 1\n");
+    let s = stmts("let xs: [q]1..=1e9 = read()\nvar pre: [V.cuts]Int = 0\nfn divisors(n: 1..=1000) -> yields Int:\n    yield 1\nlet ans: ?Int = do:\n    let x = find(xs)?\n    x + 1\n");
     let StmtKind::Let {
         ty: Some(Type {
             kind: TypeKind::Array { index, .. },
@@ -587,7 +587,7 @@ fn counted_arrays_derived_domains_generators_and_do_blocks() {
     else {
         panic!()
     };
-    assert!(matches!(&index[0].kind, TypeKind::Named { name, .. } if name.text == "V.bounds"));
+    assert!(matches!(&index[0].kind, TypeKind::Named { name, .. } if name.text == "V.cuts"));
     let StmtKind::Fn(f) = &s[2].kind else {
         panic!()
     };
@@ -952,7 +952,7 @@ fn structs_take_fields_in_the_header_and_declarations_in_the_body() {
 #[test]
 fn traits_and_impls_have_supertraits_bounds_and_optional_bodies() {
     assert!(matches!(
-        one_stmt("trait Seq: Index + Ord:\n    type bounds = Bounds<Self>\n    type Elem\n    fn next(self) -> ?Self\n").kind,
+        one_stmt("trait Seq: Index + Ord:\n    type bounds = Cut<Self>\n    type Elem\n    fn next(self) -> ?Self\n").kind,
         StmtKind::Trait { ref supers, ref body, .. } if supers.len() == 2 && body.stmts.len() == 3
     ));
     assert!(matches!(

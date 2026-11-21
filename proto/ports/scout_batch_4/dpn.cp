@@ -3,7 +3,7 @@
 // original: corpus/submissions/4131779.cpp
 let n: 1..=400 = read()
 domain I = 0..n
-type Cut = I.bounds
+type Cut = I.cuts
 let a: [I]1..=1e9 = read()
 let size = prefix(a)
 

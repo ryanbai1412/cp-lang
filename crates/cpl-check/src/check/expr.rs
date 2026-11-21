@@ -141,18 +141,18 @@ impl<'a> Checker<'a> {
                 let lo_ty = lo_ty.map(|t| self.unalias_bounds(t));
                 let hi_ty = hi_ty.map(|t| self.unalias_bounds(t));
                 let bounds_domain = |ty: &Option<Ty>| match ty {
-                    Some(Ty::Pos(d)) if d.ends_with(".bounds") => {
-                        Some((d.clone(), d.strip_suffix(".bounds").unwrap().to_string()))
+                    Some(Ty::Pos(d)) if d.ends_with(".cuts") => {
+                        Some((d.clone(), d.strip_suffix(".cuts").unwrap().to_string()))
                     }
-                    Some(Ty::Named { name, args }) if name == "Bounds" => match args.as_slice() {
-                        [Ty::Pos(d)] => Some((format!("{d}.bounds"), d.clone())),
+                    Some(Ty::Named { name, args }) if name == "Cut" => match args.as_slice() {
+                        [Ty::Pos(d)] => Some((format!("{d}.cuts"), d.clone())),
                         _ => None,
                     },
                     _ => None,
                 };
                 let elem = match (bounds_domain(&lo_ty), bounds_domain(&hi_ty), &lo_ty, &hi_ty) {
                     // Two boundaries enclose positions (`l.l..r.r` is a range of `V`),
-                    // except when the enclosing context explicitly expects `Range<V.bounds>`.
+                    // except when the enclosing context explicitly expects `Range<V.cuts>`.
                     (Some((bd, base)), _, _, _) | (_, Some((bd, base)), _, _) => {
                         if self.expected_bounds_range {
                             Ty::Pos(bd)
@@ -946,8 +946,8 @@ impl<'a> Checker<'a> {
         hi_ty: &Option<Ty>,
     ) {
         let domain = |ty: &Option<Ty>| match ty {
-            Some(Ty::Pos(d)) => Some(d.strip_suffix(".bounds").unwrap_or(d).to_string()),
-            Some(Ty::Named { name, args }) if name == "Bounds" => match args.as_slice() {
+            Some(Ty::Pos(d)) => Some(d.strip_suffix(".cuts").unwrap_or(d).to_string()),
+            Some(Ty::Named { name, args }) if name == "Cut" => match args.as_slice() {
                 [Ty::Pos(d)] => Some(d.clone()),
                 _ => None,
             },
@@ -966,8 +966,8 @@ impl<'a> Checker<'a> {
             return;
         };
         let hi_is_bounds = match hi_ty {
-            Some(Ty::Pos(d)) => d.ends_with(".bounds"),
-            Some(Ty::Named { name, .. }) if name == "Bounds" => true,
+            Some(Ty::Pos(d)) => d.ends_with(".cuts"),
+            Some(Ty::Named { name, .. }) if name == "Cut" => true,
             _ => false,
         };
         if inclusive && hi_is_bounds && !self.expected_bounds_range {
@@ -1295,11 +1295,11 @@ impl<'a> Checker<'a> {
                 };
             }
         }
-        // `D.bounds` is never empty: its first and last cuts are always there.
+        // `D.cuts` is never empty: its first and last cuts are always there.
         if let ExprKind::Field { base: inner, name: bounds } = &base.kind {
-            if bounds.text == "bounds" && matches!(name.text.as_str(), "first" | "last") {
+            if matches!(bounds.text.as_str(), "bounds" | "cuts") && matches!(name.text.as_str(), "first" | "last") {
                 if let Ty::Domain(d) = self.infer(inner) {
-                    return Ty::Pos(format!("{d}.bounds"));
+                    return Ty::Pos(format!("{d}.cuts"));
                 }
             }
         }
@@ -1537,10 +1537,10 @@ impl<'a> Checker<'a> {
                 if r == "Range" {
                     return match args.first() {
                         Some(Ty::Pos(d)) => {
-                            if d.ends_with(".bounds") {
+                            if d.ends_with(".cuts") {
                                 Ty::Pos(d.clone())
                             } else {
-                                Ty::Pos(format!("{d}.bounds"))
+                                Ty::Pos(format!("{d}.cuts"))
                             }
                         }
                         Some(Ty::I128) => Ty::I128,
@@ -1728,9 +1728,9 @@ impl<'a> Checker<'a> {
                     "first" | "last" => Ty::Pos(domain.clone()),
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
-                    "bounds" => Ty::Named {
+                    "bounds" | "cuts" => Ty::Named {
                         name: "Range".into(),
-                        args: vec![Ty::Pos(format!("{domain}.bounds"))],
+                        args: vec![Ty::Pos(format!("{domain}.cuts"))],
                     },
                     "pairs" => Ty::Named {
                         name: "List".into(),
@@ -1849,8 +1849,8 @@ impl<'a> Checker<'a> {
                         };
                     }
                     // The boundaries on either side of a position.
-                    "l" | "r" | "before" | "after" if !domain.ends_with(".bounds") => {
-                        return Ty::Pos(format!("{domain}.bounds"));
+                    "l" | "r" | "before" | "after" if !domain.ends_with(".cuts") => {
+                        return Ty::Pos(format!("{domain}.cuts"));
                     }
                     _ => {}
                 }
@@ -1894,10 +1894,10 @@ impl<'a> Checker<'a> {
                                 args: vec![elem],
                             };
                         }
-                        "bounds" => {
+                        "bounds" | "cuts" => {
                             return Ty::Named {
                                 name: "Range".into(),
-                                args: vec![Ty::Pos(format!("{type_name}.bounds"))],
+                                args: vec![Ty::Pos(format!("{type_name}.cuts"))],
                             };
                         }
                         _ => {}
@@ -2144,8 +2144,8 @@ impl<'a> Checker<'a> {
                     let index_text = self.quote(index_expr.span);
                     let boundary = match (got, want) {
                         (Ty::Pos(got), Ty::Pos(want)) => {
-                            got.strip_suffix(".bounds") == Some(want)
-                                || want.strip_suffix(".bounds") == Some(got)
+                            got.strip_suffix(".cuts") == Some(want)
+                                || want.strip_suffix(".cuts") == Some(got)
                         }
                         _ => false,
                     };
@@ -2352,14 +2352,14 @@ impl<'a> Checker<'a> {
 }
 
 impl Checker<'_> {
-    /// `domain Cut = Pos.bounds` names the cuts of `Pos`: as a range end it
-    /// is `Pos.bounds`.
+    /// `domain Cut = Pos.cuts` names the cuts of `Pos`: as a range end it
+    /// is `Pos.cuts`.
     fn unalias_bounds(&mut self, ty: Ty) -> Ty {
         if let Ty::Pos(d) = &ty {
-            if !d.ends_with(".bounds") {
+            if !d.ends_with(".cuts") {
                 if let Some(Def::Domain(info)) = self.type_def(d).as_deref() {
                     let text = info.text.trim();
-                    if let Some(base) = text.strip_suffix(".bounds") {
+                    if let Some(base) = text.strip_suffix(".cuts") {
                         if !base.is_empty() && base.chars().all(|c| c.is_alphanumeric() || c == '_') {
                             return Ty::Pos(text.to_string());
                         }
@@ -2384,7 +2384,7 @@ impl Checker<'_> {
             },
             _ => return false,
         };
-        let base = domain.strip_suffix(".bounds").unwrap_or(domain).to_string();
+        let base = domain.strip_suffix(".cuts").unwrap_or(domain).to_string();
         if self.local(&base).is_some_and(|l| matches!(l.ty, Ty::Domain(_))) {
             return !self.local_product_domains.contains_key(&base);
         }

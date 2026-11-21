@@ -21,7 +21,7 @@ let first_arc = prefix([V] u => g.deg(u))
 let q: 1..=150_000 = read()
 let asks: [0..q](l: V, r: V, k: Int) = read()
 let windows = [
-    Arc.bounds.nth(first_arc.prefix(x.l.l))..Arc.bounds.nth(first_arc.prefix(x.r.r)) for x in asks
+    Arc.cuts.nth(first_arc.prefix(x.l.l))..Arc.cuts.nth(first_arc.prefix(x.r.r)) for x in asks
 ]
 
 // Multiset of values in 0..vmax: add/remove O(1), k-th smallest O(sqrt vmax).

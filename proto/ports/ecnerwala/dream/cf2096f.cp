@@ -19,8 +19,8 @@ domain S = 1..=m
 let st: [S](some: Bool, a: V, b: V) = read()
 
 var cover = LazySegTree<V, Int>(AddMin, fill: 0)
-var ends: [V]MonoDeque<V.bounds> = MonoDeque()
-var shortest = SegTree<V, ?V.bounds>(min, fill: none)
+var ends: [V]MonoDeque<V.cuts> = MonoDeque()
+var shortest = SegTree<V, ?V.cuts>(min, fill: none)
 
 fn fits(i: S) -> Bool:
     let s = st[i]

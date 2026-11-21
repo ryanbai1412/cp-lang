@@ -93,7 +93,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 
     /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
     /// `ok` must hold for the identity and switch from true to false at most once.
-    pub fn max_right(self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>:
+    pub fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
         var l = from.ord + size
         var acc = m.id
         if from.ord == D.K: return from
@@ -105,14 +105,14 @@ pub struct SegTree<D, T>(m: Monoid<T>):
                     if ok(m.op(acc, t[l])):
                         acc = m.op(acc, t[l])
                         l += 1
-                return D.bounds.nth(min(l - size, D.K))
+                return D.cuts.nth(min(l - size, D.K))
             acc = m.op(acc, t[l])
             l += 1
             if (l & -l) == l: break
-        D.bounds.nth(D.K)
+        D.cuts.nth(D.K)
 
     /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
-    pub fn min_left(self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>:
+    pub fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
         var h = to.ord + size
         var acc = m.id
         if to.ord == 0: return to
@@ -125,10 +125,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
                     if ok(m.op(t[h], acc)):
                         acc = m.op(t[h], acc)
                         h -= 1
-                return D.bounds.nth(h + 1 - size)
+                return D.cuts.nth(h + 1 - size)
             acc = m.op(t[h], acc)
             if (h & -h) == h: break
-        D.bounds.nth(0)
+        D.cuts.nth(0)
 
 @test
 fn folds_match_a_plain_array():
@@ -212,7 +212,7 @@ fn max_right_and_min_left_binary_search():
     let st = SegTree<V, Int>(+, a)
     for l in 0..=7:
         for cap in 0..30:
-            let from = V.bounds.nth(l)
+            let from = V.cuts.nth(l)
             var want = l
             var acc = 0
             while want < 7 and acc + (want + 1) <= cap:
@@ -226,7 +226,7 @@ fn max_right_and_min_left_binary_search():
             while want > 0 and acc + want <= cap:
                 acc += want
                 want -= 1
-            assert st.min_left(V.bounds.nth(h), s => s <= cap).ord == want
+            assert st.min_left(V.cuts.nth(h), s => s <= cap).ord == want
 
 @test
 fn update_changes_one_value_in_place():

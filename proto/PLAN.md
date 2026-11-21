@@ -6,7 +6,7 @@ cpc/compiler.py (check+emit in one pass, TODO), cpc/runtime.hpp, cp.py CLI.
 Representation decisions
 - Int = ll; domain values = C++ int holding the 0-based ORDINAL (label = ord + lo).
   Domain globals D_<name>_lo / D_<name>_len. Arrays [D]T = vector<T>; [A,B]T flat
-  with stride; [A][B]T nested. V.bounds = cut domain, len+1, i.before=ord, i.after=ord+1.
+  with stride; [A][B]T nested. V.cuts = cut domain, len+1, i.before=ord, i.after=ord+1.
 - Anonymous count domains: [q]T, [0..=k]T. Indexed by Int -> runtime check unless
   proven (interval or loop fact with identical bound strings).
 - Indexing [V]T with Int or another domain = compile error (suggest V(x) / `x in V`).
@@ -83,7 +83,7 @@ Added: let-else (parser after_block flag), postfix `?` as whole let RHS (returns
 fields, last_read set after where (gen must run where before exiting).
 3 ports OK: mccc4j5, nccc10s2, apio07p1. Next in queue: ceoi09p3.
 22:09 Ryan asked about ADTs/enums: told him yes (in design since v0); prototype enums+match are NEXT after ceoi09p3. ceoi09p3 added: compress -> fresh domain (let (H, h) = compress(list)), arr.last_le/first_ge -> ?Dom, sorted(arr) keeps [D]T.
-22:09 ceoi09p3 port stress OK 300 (fresh domain via compress, 3-D table over P.bounds x P.bounds x H,
+22:09 ceoi09p3 port stress OK 300 (fresh domain via compress, 3-D table over P.cuts x P.cuts x H,
 nonzero flow fact after `if w == 0: return`). 4 ports OK: mccc4j5, nccc10s2, apio07p1, ceoi09p3.
 NEXT: enums + match (Ryan asked), then ioi05p6, ccc23s4, dmopc21c5p4. Then perf/size table + report.
 22:10 parser: enum (variants w/ named fields) + statement match (arms Name(binds) [if guard]: block, _ wildcard). Compiler TEnum + s_enum + s_match + enum read/construct TODO; test tests/enum1.cp.

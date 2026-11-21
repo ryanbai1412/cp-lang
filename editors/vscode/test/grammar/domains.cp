@@ -38,7 +38,7 @@ var grid: [Row, Col]Char = '.'
 //                  ^^^^ support.type.builtin.cp
 //                         ^^^ string.quoted.single.char.cp
 
-var pre: [V.bounds]Int = 0
+var pre: [V.cuts]Int = 0
 //        ^ entity.name.type.cp
 //          ^^^^^^ variable.other.property.cp
 
@@ -143,7 +143,7 @@ impl Index for V:
 //  ^^^ storage.type.let.cp
 //      ^ entity.name.type.cp
 
-    type bounds = Bounds<Self>
+    type bounds = Cut<Self>
 //  ^^^^ storage.type.alias.cp
 //       ^^^^^^ entity.name.type.alias.cp
 //                ^^^^^^ support.type.builtin.cp
@@ -153,13 +153,13 @@ trait Seq: Index + Ord
 //    ^^^ entity.name.type.trait.cp
 //                 ^^^ entity.name.type.cp
 
-    @get fn l(self) -> Bounds<Self> = Bounds.from_idx(self.to_idx)
+    @get fn l(self) -> Cut<Self> = Bounds.from_idx(self.to_idx)
 //   ^^^ entity.name.function.decorator.cp
 //          ^ entity.name.function.cp
 //                                           ^^^^^^^^ entity.name.function.method.cp
 //                                                         ^^^^^^ variable.other.property.cp
 
-pub struct Bounds<I: Seq>(ord: 0..=I.K):
+pub struct Cut<I: Seq>(ord: 0..=I.K):
 //         ^^^^^^ entity.name.type.struct.cp
 //                   ^^^ entity.name.type.cp
 //                        ^^^ variable.parameter.label.cp

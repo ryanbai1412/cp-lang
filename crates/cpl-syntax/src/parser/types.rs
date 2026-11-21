@@ -187,12 +187,16 @@ impl<'a> Parser<'a> {
                     && !self.range_follows() =>
             {
                 let mut name = self.name();
-                // `V.bounds`: a domain derived from another.
+                // `V.cuts`: a domain derived from another.
                 while self.at(T::Dot) && self.peek_n(1) == T::Ident {
                     self.bump();
                     let member = self.name();
-                    name.text = format!("{}.{}", name.text, member.text);
+                    let text = if member.text == "bounds" { "cuts" } else { member.text.as_str() };
+                    name.text = format!("{}.{text}", name.text);
                     name.span = name.span.to(member.span);
+                }
+                if name.text == "Bounds" {
+                    name.text = "Cut".into();
                 }
                 let args = if self.at(T::Lt) {
                     self.type_args()

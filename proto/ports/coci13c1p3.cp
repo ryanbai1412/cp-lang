@@ -12,8 +12,8 @@ fn matches(xs: List<Int>, ys: List<Int>) -> Int:
     sum(seen[y] for y in ys)
 
 var total = 0
-for r in I.bounds:
-    for c in I.bounds:
+for r in I.cuts:
+    for c in I.cuts:
         // sums of the rectangles with one corner at grid point (r, c) and the
         // opposite corner cell in the given quadrant
         fn corner(rows: Range<I>, cols: Range<I>) -> List<Int>:

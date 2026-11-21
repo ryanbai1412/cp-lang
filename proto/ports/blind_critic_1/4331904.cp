@@ -22,8 +22,8 @@ fn matches_at(pos: Int, d: D) -> Bool:
             return false
     true
 
-var dp: [S.bounds]?Int = none
-dp[S.bounds.last] = 0
+var dp: [S.cuts]?Int = none
+dp[S.cuts.last] = 0
 
 for i in S.rev:
     for d in D:

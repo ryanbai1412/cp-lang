@@ -48,7 +48,7 @@ What each port does differently from its original:
   numerator over three exponents and never needs a gcd or a wide
   division.
 - **noip19p5** (monotone-queue partition, n up to 4e7 from a generator,
-  answer up to 1.6e33): the cuts are `Bounds<Pos>`, the queue holds cuts,
+  answer up to 1.6e33): the cuts are `Cut<Pos>`, the queue holds cuts,
   and the answer is summed in `Wide`.
 - **noip19p4** (count meal plans with no ingredient in more than half):
   the "lead" of the fixed ingredient is `domain Lead = -n..=n`, so there

@@ -23,8 +23,8 @@ fn close_ell(z: Row, c: Col) -> Int = won([(z, c), (z, (c + 1)!), (other(z), (c 
 enum Front: Flush, Behind(Row)
 
 @memo
-fn best(c: Col.bounds, f: Front) -> Int = match f:
-    Flush if c == Col.bounds.last => 0
+fn best(c: Col.cuts, f: Front) -> Int = match f:
+    Flush if c == Col.cuts.last => 0
     Flush =>
         let col = c.right!
         let stacked = bar(Row.Top, col) + bar(Row.Bottom, col) + best(c + 3, Front.Flush)
@@ -39,4 +39,4 @@ fn best(c: Col.bounds, f: Front) -> Int = match f:
         else:
             close
 
-print(best(Col.bounds.first, Front.Flush))
+print(best(Col.cuts.first, Front.Flush))

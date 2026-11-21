@@ -20,7 +20,7 @@ fn tallest(l: P, i: P) -> H:
 
 const INF = 1000000000
 // dp[lo, hi, k]: rectangles to cover the points in lo..hi lying above height[k]
-var dp: [P.bounds, P.bounds, H]Int = [P.bounds, P.bounds, H] (a, b, _) => if a == b: 0 else: INF
+var dp: [P.cuts, P.cuts, H]Int = [P.cuts, P.cuts, H] (a, b, _) => if a == b: 0 else: INF
 for l in P.rev:
     for r in l..:
         let lo = l.l
@@ -32,4 +32,4 @@ for l in P.rev:
                 dp[lo, hi, k] = dp[lo, r.l, k]
             else:
                 dp[lo, hi, k] = min(dp[lo, i.r, tallest(l, i)] + dp[i.r, hi, k] + 1 for i in l..=r)!
-print(dp[P.bounds.first, P.bounds.last, H.first])
+print(dp[P.cuts.first, P.cuts.last, H.first])

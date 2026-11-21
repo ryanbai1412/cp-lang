@@ -12,7 +12,7 @@ pub enum FillOrder = Forward | Reverse
 
 /// Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
 pub struct FillPrefix<D, T>:
-    p: [D.bounds]T
+    p: [D.cuts]T
     rev: Bool
     next: Int
 
@@ -28,11 +28,11 @@ pub struct FillPrefix<D, T>:
             next += 1
 
     /// The sum of everything left of boundary `b`. O(1).
-    pub fn prefix(self, b: Bounds<D>) -> T:
+    pub fn prefix(self, b: Cut<D>) -> T:
         if b.ord == 0: return T.zero
         let in_filled = if rev: next < 0 else: b.ord <= next
         assert in_filled
-        return if rev: self.p[D.bounds.nth(0)] - self.p[b] else: self.p[b]
+        return if rev: self.p[D.cuts.nth(0)] - self.p[b] else: self.p[b]
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty. O(1).
     pub fn sum(self, r: Range<D>) -> T:
@@ -47,11 +47,11 @@ pub struct FillPrefix<D, T>:
 /// with `Prefix<...>.filling(order: FillOrder.Forward | FillOrder.Reverse)` and O(1) `.set(...)`
 /// in fill order; `.sum(...)` and `.prefix(...)` are O(1) over the already-filled prefix or suffix.
 pub struct Prefix<D, T>:
-    p: [D.bounds]T
+    p: [D.cuts]T
 
     /// Build 1-D prefix sums over `a: [D]T`. O(|D|).
     pub fn new(a: [D]T) -> Prefix<D, T>:
-        var p: [D.bounds]T = T.zero
+        var p: [D.cuts]T = T.zero
         for i in D:
             p[i.r] = p[i.l] + a[i]
         Prefix(p)
@@ -59,18 +59,18 @@ pub struct Prefix<D, T>:
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`. O(|D|).
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>:
         let rev = order == FillOrder.Reverse
-        var p: [D.bounds]T = T.zero
+        var p: [D.cuts]T = T.zero
         FillPrefix(p, rev, if rev: D.K - 1 else: 0)
 
     /// The sum of everything left of boundary `b`. O(1).
-    pub fn prefix(self, b: Bounds<D>) -> T = self.p[b]
+    pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty. O(1).
     pub fn sum(self, r: Range<D>) -> T = if r.is_empty: T.zero else: self.p[r.end] - self.p[r.start]
 
 /// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
 pub struct _FillPrefix2 < R, C, T >:
-    p: [R.bounds, C.bounds]T
+    p: [R.cuts, C.cuts]T
     rev: Bool
     next: Int
 
@@ -86,12 +86,12 @@ pub struct _FillPrefix2 < R, C, T >:
             next += 1
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`. O(1).
-    pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T:
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T:
         if r.ord == 0 or c.ord == 0: return T.zero
         let in_filled = if rev: next < 0 else: (r.ord - 1) * C.K + (c.ord - 1) < next
         assert in_filled
-        let r0 = R.bounds.nth(0)
-        let c0 = C.bounds.nth(0)
+        let r0 = R.cuts.nth(0)
+        let c0 = C.cuts.nth(0)
         return if rev:
             self.p[r0, c0] - self.p[r, c0] - self.p[r0, c] + self.p[r, c]
         else:
@@ -122,11 +122,11 @@ pub struct _FillPrefix2 < R, C, T >:
 
 /// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 pub struct _Prefix2 < R, C, T >:
-    p: [R.bounds, C.bounds]T
+    p: [R.cuts, C.cuts]T
 
     /// Build 2-D prefix sums over `a: [R, C]T`. O(|R| * |C|).
     pub fn new(a: [R, C]T) -> Prefix<R, C, T>:
-        var p: [R.bounds, C.bounds]T = T.zero
+        var p: [R.cuts, C.cuts]T = T.zero
         for r in R:
             for c in C:
                 p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + a[r, c]
@@ -135,11 +135,11 @@ pub struct _Prefix2 < R, C, T >:
     /// Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major `order`. O(|R| * |C|).
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>:
         let rev = order == FillOrder.Reverse
-        var p: [R.bounds, C.bounds]T = T.zero
+        var p: [R.cuts, C.cuts]T = T.zero
         _FillPrefix2(p, rev, if rev: R.K * C.K - 1 else: 0)
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`. O(1).
-    pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T = self.p[r, c]
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = self.p[r, c]
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty. O(1).
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T:
@@ -209,21 +209,21 @@ pub struct _PrefixList < T >:
         r: Range<Int>,
     ) -> T = if r.is_empty: T.zero else: self.p[r.end] - self.p[r.start]
 
-/// Prefix monoid folds of `a`, indexed by `Bounds<D>`: `p[b]` is the fold of `..b`,
-/// with `p[D.bounds.nth(0)] == m.id`. O(n).
-pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T:
+/// Prefix monoid folds of `a`, indexed by `Cut<D>`: `p[b]` is the fold of `..b`,
+/// with `p[D.cuts.nth(0)] == m.id`. O(n).
+pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
     let m = Monoid<T>.of(op)
-    var p: [D.bounds]T = m.id
+    var p: [D.cuts]T = m.id
     for i in D:
         p[i.r] = m.op(p[i.l], a[i])
     p
 
-/// Suffix monoid folds of `a`, indexed by `Bounds<D>`: `s[b]` is the fold of `b..`,
-/// with `s[D.bounds.nth(D.K)] == m.id`. With `prefix_fold`, the fold outside `r` is
+/// Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`,
+/// with `s[D.cuts.nth(D.K)] == m.id`. With `prefix_fold`, the fold outside `r` is
 /// `m.op(pref[r.start], suff[r.end])`. O(n).
-pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T:
+pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
     let m = Monoid<T>.of(op)
-    var s: [D.bounds]T = m.id
+    var s: [D.cuts]T = m.id
     for i in D.rev:
         s[i.l] = m.op(a[i], s[i.r])
     s
@@ -231,11 +231,11 @@ pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T:
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 /// O(1) range/rectangle `add`, O(|D|) or O(|R| * |C|) `finish`.
 pub struct Diff<D, T>:
-    d: [D.bounds]T
+    d: [D.cuts]T
 
     /// Create an all-zero 1-D difference array over `D`. O(|D|).
     pub fn new() -> Diff<D, T>:
-        var d: [D.bounds]T = T.zero
+        var d: [D.cuts]T = T.zero
         Diff(d)
 
     /// Add `x` to every position in `r`. O(1).
@@ -255,11 +255,11 @@ pub struct Diff<D, T>:
 
 /// Internal 2-D shape of `Diff<R, C, T>`: O(1) rectangle `add`, O(|R| * |C|) `finish`.
 pub struct _Diff2 < R, C, T >:
-    d: [R.bounds, C.bounds]T
+    d: [R.cuts, C.cuts]T
 
     /// Create an all-zero 2-D difference array over `(R, C)`. O(|R| * |C|).
     pub fn new() -> Diff<R, C, T>:
-        var d: [R.bounds, C.bounds]T = T.zero
+        var d: [R.cuts, C.cuts]T = T.zero
         _Diff2(d)
 
     /// Add `x` to every cell in `rows` by `cols`. O(1).
@@ -272,7 +272,7 @@ pub struct _Diff2 < R, C, T >:
 
     /// Materialize the accumulated grid across `(R, C)`. O(|R| * |C|).
     pub fn finish(self) -> [R, C]T:
-        var p: [R.bounds, C.bounds]T = T.zero
+        var p: [R.cuts, C.cuts]T = T.zero
         var out: [R, C]T = T.zero
         for r in R:
             for c in C:

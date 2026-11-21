@@ -21,8 +21,8 @@ fn min_total_length(red: List<Int>, blue: List<Int>) -> Int:
     // last point takes its own wire to the nearest other colour, or the block
     // since the last boundary with the same red-minus-blue balance is matched
     // like brackets, which costs exactly |sum of signed positions| over it.
-    var cost: [P.bounds]Int = 0
-    var last = HashMap<Int, (at: P.bounds, signed: Int)>()
+    var cost: [P.cuts]Int = 0
+    var last = HashMap<Int, (at: P.cuts, signed: Int)>()
     var (balance, signed) = (0, 0)
     last[0] = (P.first.l, 0)
     for p in P:

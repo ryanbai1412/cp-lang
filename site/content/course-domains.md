@@ -22,7 +22,7 @@ When you only need a scratch array indexed by `Int`—such as a frequency counte
 
 ## Boundaries: `.l` and `.r`
 
-Prefix sums, difference arrays, and DP transitions live on the `n + 1` gaps around `n` elements. Every ordered domain `V` has a companion boundary space `V.bounds`:
+Prefix sums, difference arrays, and DP transitions live on the `n + 1` gaps around `n` elements. Every ordered domain `V` has a companion boundary space `V.cuts`:
 
 - `v.l` is the gap immediately left of `v`; `v.r` is the gap immediately right of `v`.
 - `v.l(k)` and `v.r(k)` jump to the `k`-element window boundary counting `v` (`v.l == v.l(1)`, `v.r == v.r(1)`).
@@ -39,7 +39,7 @@ let q: 1..=2e5 = read()
 domain V = 1..=n
 let a: [V]Int = read()
 
-var pre: [V.bounds]Int = 0
+var pre: [V.cuts]Int = 0
 for v in V:
     pre[v.r] = pre[v.l] + a[v]
 
@@ -55,7 +55,7 @@ let k: 1..=n = read()
 domain V = 1..=n
 let a: [V]Int = read()
 
-var pre: [V.bounds]Int = 0
+var pre: [V.cuts]Int = 0
 for v in V:
     pre[v.r] = pre[v.l] + a[v]
 

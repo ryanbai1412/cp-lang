@@ -240,20 +240,20 @@ impl Ty {
                         && ar.fits_in(br, number)
                 }
             }
-            // `Bounds<V>` is how library code spells `V.bounds`.
+            // `Cut<V>` is how library code spells `V.cuts`.
             (Ty::Pos(bounds), Ty::Named { name, args })
             | (Ty::Named { name, args }, Ty::Pos(bounds))
-                if name == "Bounds" =>
+                if name == "Cut" =>
             {
                 match args.as_slice() {
-                    [Ty::Pos(domain)] => bounds.strip_suffix(".bounds") == Some(domain),
-                    _ => bounds.ends_with(".bounds"),
+                    [Ty::Pos(domain)] => bounds.strip_suffix(".cuts") == Some(domain),
+                    _ => bounds.ends_with(".cuts"),
                 }
             }
             // The boundaries of a plain `0..n` index are plain `Int`s:
             // `prefix(a).prefix(k)` on a `[0..n]T`.
             (a, Ty::Named { name, args }) | (Ty::Named { name, args }, a)
-                if name == "Bounds" && a.is_int() && matches!(args.as_slice(), [arg] if arg.is_int()) =>
+                if name == "Cut" && a.is_int() && matches!(args.as_slice(), [arg] if arg.is_int()) =>
             {
                 true
             }
@@ -317,7 +317,7 @@ impl Ty {
     }
 
     /// Replaces every mention of domain `from` (and derived domains like
-    /// `from.bounds`) with `to`.
+    /// `from.cuts`) with `to`.
     pub fn rename_domain(&self, from: &str, to: &str) -> Ty {
         if from == to {
             return self.clone();
@@ -338,7 +338,7 @@ impl Ty {
         })
     }
 
-    /// Base domain names mentioned anywhere in this type (stripping `.bounds`/`.subsets`).
+    /// Base domain names mentioned anywhere in this type (stripping `.cuts`/`.subsets`).
     pub fn mentioned_domains(&self) -> Vec<String> {
         let mut out = Vec::new();
         self.collect_domains(&mut out);

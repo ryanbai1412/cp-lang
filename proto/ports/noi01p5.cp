@@ -17,7 +17,7 @@ fn sums(ts: Range<T>) -> List<Int>:
         cur = [s + terms[t].k * pow(x, terms[t].p) for s in cur for x in 1..=m]
     cur
 
-type Cut = T.bounds
+type Cut = T.cuts
 let mid = Cut(n / 2)
 let seen = counts(sums(..mid))
 print(sum(seen[-s] for s in sums(mid..)))

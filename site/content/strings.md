@@ -42,7 +42,7 @@ When you are writing a two-string DP (such as LCS or edit distance) and want the
 let a: [domain A]Char = read()
 let b: [domain B]Char = read()
 
-var dp: [A.bounds, B.bounds]Int = 0
+var dp: [A.cuts, B.cuts]Int = 0
 for i in A:
     for j in B:
         dp[i.r, j.r] = if a[i] == b[j]: dp[i.l, j.l] + 1 else: max(dp[i.l, j.r], dp[i.r, j.l])

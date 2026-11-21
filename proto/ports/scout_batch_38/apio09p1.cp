@@ -8,9 +8,9 @@ domain Row = 0..n
 domain Col = 0..m
 let g: [Row, Col]Int = read()
 
-fn max_below<R, C>(g: [R, C]Int, k: Int) -> [R.bounds]?Int:
+fn max_below<R, C>(g: [R, C]Int, k: Int) -> [R.cuts]?Int:
     let pre = prefix(g)
-    var down: [R.bounds]?Int = none
+    var down: [R.cuts]?Int = none
     for rw in R.windows(k).rev:
         let b = rw.first!.l                       // FRICTION 38.2: non-empty window .first is ?R
         if let nxt = rw.first! + 1: down[b] = down[nxt.l]
@@ -22,15 +22,15 @@ fn best_oriented<R, C>(g: [R, C]Int, k: Int) -> Int:
     let pre = prefix(g)
     let down = max_below(g, k)
     // FRICTION 38.1: g.flipped is axis-ambiguous on 2D grids (row-flip vs col-flip)
-    var up: [R.bounds]?Int = none
+    var up: [R.cuts]?Int = none
     for rw in R.windows(k):
         let b = rw.last!.r
         if let prv = rw.last! - 1: up[b] = up[prv.r]
         for cw in C.windows(k):
             up[b] max= pre.sum(rw, cw)
 
-    var pref: [C.bounds]?Int = none
-    var suff: [C.bounds]?Int = none
+    var pref: [C.cuts]?Int = none
+    var suff: [C.cuts]?Int = none
     var two_above: ?Int = none
     var ans = 0
     for rw in R.windows(k):
@@ -46,7 +46,7 @@ fn best_oriented<R, C>(g: [R, C]Int, k: Int) -> Int:
         if let u = up[rw.first!.l]:
             two_above max= row_max! + u
         // FRICTION 38.4: `if let l = ... and let r = ...` is in decisions.md but omitted from cheat sheet
-        for b in C.bounds:
+        for b in C.cuts:
             if let l = pref[b] and let r = suff[b]:
                 two_above max= l + r
         if let t = two_above and let d = down[rw.last!.r]:

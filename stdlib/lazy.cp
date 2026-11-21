@@ -146,7 +146,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
 
     /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
     /// `ok` must hold for the identity and switch from true to false at most once.
-    pub fn max_right(mut self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D>:
+    pub fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
         let m = act.over
         if from.ord == D.K: return from
         var l = from.ord + size
@@ -161,14 +161,14 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
                     if ok(m.op(acc, t[l])):
                         acc = m.op(acc, t[l])
                         l += 1
-                return D.bounds.nth(min(l - size, D.K))
+                return D.cuts.nth(min(l - size, D.K))
             acc = m.op(acc, t[l])
             l += 1
             if (l & -l) == l: break
-        D.bounds.nth(D.K)
+        D.cuts.nth(D.K)
 
     /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
-    pub fn min_left(mut self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D>:
+    pub fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
         let m = act.over
         if to.ord == 0: return to
         var h = to.ord + size
@@ -184,10 +184,10 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
                     if ok(m.op(t[h], acc)):
                         acc = m.op(t[h], acc)
                         h -= 1
-                return D.bounds.nth(h + 1 - size)
+                return D.cuts.nth(h + 1 - size)
             acc = m.op(t[h], acc)
             if (h & -h) == h: break
-        D.bounds.nth(0)
+        D.cuts.nth(0)
 
 /// Add to every position, fold with `+`.
 pub const AddSum = Action<Int, Int>(0, +, (f, x, len) => x + f * len, over: +)
@@ -460,12 +460,12 @@ fn max_right_and_min_left_see_pending_updates():
                 while want < 7 and acc + a[V.nth(want)] <= cap:
                     acc += a[V.nth(want)]
                     want += 1
-                assert st.max_right(V.bounds.nth(from), s => s <= cap).ord == want
+                assert st.max_right(V.cuts.nth(from), s => s <= cap).ord == want
                 var (low, back) = (from, 0)
                 while low > 0 and back + a[V.nth(low - 1)] <= cap:
                     back += a[V.nth(low - 1)]
                     low -= 1
-                assert st.min_left(V.bounds.nth(from), s => s <= cap).ord == low
+                assert st.min_left(V.cuts.nth(from), s => s <= cap).ord == low
 
 fn ccc_compose(f: (?Int, ?Int, Int), g: (?Int, ?Int, Int)) -> (?Int, ?Int, Int):
     let nb = f.0 ?? g.0

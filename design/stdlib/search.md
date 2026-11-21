@@ -81,7 +81,7 @@ section 2 says this once for every area.
 
 **Answers are positions, never sentinels.** The integer searches return
 `?I`, a position of the searched range's own index space (a `V` for
-`V.all`, a cut for `V.bounds`, an `Int` for `lo..=hi`). `bsearch_real`
+`V.all`, a cut for `V.cuts`, an `Int` for `lo..=hi`). `bsearch_real`
 returns `?F64` because "nothing in `[lo, hi]` works" differs from `hi`.
 `steps` is the one knob, so it is a named argument with a default.
 

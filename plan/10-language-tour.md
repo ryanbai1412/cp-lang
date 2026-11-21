@@ -64,7 +64,7 @@ let (n, k): (1..=2e5, 0..=1e14) = read()
 domain I = 1..=n
 let a: [I]0..=1e9 = read()
 
-var pre: [I.bounds]Int = 0                // n + 1 boundaries between elements
+var pre: [I.cuts]Int = 0                // n + 1 boundaries between elements
 for i in I: pre[i.r] = pre[i.l] + a[i]
 
 @brute(count_brute)

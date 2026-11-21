@@ -20,7 +20,7 @@ fn rivalry(g: Game, h: Game) -> Bool:
 
 // most points from the geese games after bound x and the hawks games after y
 @memo
-fn best(x: Game.bounds, y: Game.bounds) -> Int:
+fn best(x: Game.cuts, y: Game.cuts) -> Int:
     let (g, h) = (x.right, y.right) else: return 0
     let paired = if rivalry(g, h): geese[g].points + hawks[h].points + best(g.r, h.r) else: 0
     max(best(g.r, y), best(x, h.r), paired)

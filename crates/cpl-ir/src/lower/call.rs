@@ -1709,7 +1709,7 @@ impl<'a> Lowerer<'a> {
                 ) || matches!(
                     &src.kind,
                     ast::ExprKind::Field { name, .. }
-                        if matches!(name.text.as_str(), "bounds" | "subsets")
+                        if matches!(name.text.as_str(), "bounds" | "cuts" | "subsets")
                 ) || matches!(
                     &src.kind,
                     ast::ExprKind::Name(n)
@@ -3723,7 +3723,7 @@ impl<'a> Lowerer<'a> {
             return self.sorted_view_field(base, &name.text, span);
         }
         if let ast::ExprKind::Field { name: bounds, .. } = &base.kind {
-            if bounds.text == "bounds" && matches!(name.text.as_str(), "first" | "last") {
+            if matches!(bounds.text.as_str(), "bounds" | "cuts") && matches!(name.text.as_str(), "first" | "last") {
                 let cuts = self.expr(base, None);
                 if let (ExprKind::Range { lo, hi }, Ty::Range(cut)) = (&cuts.kind, &cuts.ty) {
                     let end = if name.text == "first" {
@@ -3776,7 +3776,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // Generic parameter bound to a `.bounds` domain (`D = V.bounds`):
+        // Generic parameter bound to a `.cuts` domain (`D = V.cuts`):
         // `D.K` / `D.len` / `D.count` is `V.K + 1`, `D.first` is `0`, `D.last` is `V.K`.
         if let ast::ExprKind::Name(n) = &base.kind {
             if self.lookup(n).is_none() {
@@ -5543,7 +5543,7 @@ impl<'a> Lowerer<'a> {
                 );
             }
         }
-        // `D.nth(k)` where `D` is bound to `V.bounds`.
+        // `D.nth(k)` where `D` is bound to `V.cuts`.
         if name.text == "nth" {
             if let ast::ExprKind::Name(n) = &base.kind {
                 if self.lookup(n).is_none() {
@@ -5560,13 +5560,13 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // `D.bounds.nth(k)`
+        // `D.cuts.nth(k)`
         if let ast::ExprKind::Field {
             base: dbase,
             name: fname,
         } = &base.kind
         {
-            if fname.text == "bounds" && name.text == "nth" {
+            if matches!(fname.text.as_str(), "bounds" | "cuts") && name.text == "nth" {
                 let dom_id = if let Some(Sym::Domain(id)) = self.sym(dbase) {
                     Some(id)
                 } else if let ast::ExprKind::Name(n) = &dbase.kind {
@@ -7558,7 +7558,7 @@ impl<'a> Lowerer<'a> {
                 );
                 self.reversed_range(range, span)
             }
-            "bounds" => {
+            "bounds" | "cuts" => {
                 let hi = self.int_add(len, 1);
                 self.mk(
                     ExprKind::Range {

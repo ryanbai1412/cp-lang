@@ -201,8 +201,8 @@ fn trace_bound_cut_labels_use_domain_base() {
         "bound_labels",
         "\
 domain V = 1..=3
-var pre: [V.bounds]Int = 0
-var cut: V.bounds = V.first.l
+var pre: [V.cuts]Int = 0
+var cut: V.cuts = V.first.l
 for v in V:
     pre[v.r] = pre[v.l] + 1
     cut = v.r

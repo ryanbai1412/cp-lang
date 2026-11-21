@@ -91,11 +91,11 @@ No fixable findings. Blocked: the `use` on line 4 (see B1; not counted again).
 ## ccc21s5
 
 Fixable:
-- **F11** lines 9-14, 20, 22: two arrays `opens` / `closes` -> one difference array over boundaries, `var delta: [0..=16, I.bounds]Int`, `delta[x, l.l] += 1; delta[x, r.r] -= 1`, and a single `open += delta[x, i.l]` in the sweep.
+- **F11** lines 9-14, 20, 22: two arrays `opens` / `closes` -> one difference array over boundaries, `var delta: [0..=16, I.cuts]Int`, `delta[x, l.l] += 1; delta[x, r.r] -= 1`, and a single `open += delta[x, i.l]` in the sweep.
 - **F12** lines 6, 21, 25: `domain X = 1..=16` bought nothing but two `Int(x)` escapes. Read `x: 1..=16` as a plain range and both `Int(x)` go away (`lcm(a[i], x)`, `== x`).
 
 Blocked:
-- **B16** F12 wastes row 0 because the natural `[1..=16, I.bounds]Int` fails: `error[E0501]: `cpl run` and `cpl build` can't handle array dimensions that don't start at 0 yet`.
+- **B16** F12 wastes row 0 because the natural `[1..=16, I.cuts]Int` fails: `error[E0501]: `cpl run` and `cpl build` can't handle array dimensions that don't start at 0 yet`.
 
 ## ccc22s4
 
@@ -105,7 +105,7 @@ Fixable:
 
 Blocked:
 - **B17** line 4: `use std.math.{choose}` should not be needed. Without it: `error[E0201]: no `choose` in scope`.
-- **B18** line 13: the unrolled ring without a named domain, `prefix1([0..2 * c] t => at[t % c])`: `error[E0201]: `cpl run` doesn't know the name `D.bounds` here` (reported at 1:1, on the `use` line).
+- **B18** line 13: the unrolled ring without a named domain, `prefix1([0..2 * c] t => at[t % c])`: `error[E0201]: `cpl run` doesn't know the name `D.cuts` here` (reported at 1:1, on the `use` line).
 
 ## ceoi18p1
 

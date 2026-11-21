@@ -3819,7 +3819,7 @@ fn prefix_zero_decl<'a>(
             }
             let dim_src =
                 &src[(base + index[0].span.start) as usize..(base + index[0].span.end) as usize];
-            if dim_src == format!("{domain}.bounds") && is_zero_init(val) {
+            if dim_src == format!("{domain}.cuts") && is_zero_init(val) {
                 Some((idx, base, stmt))
             } else {
                 None
