@@ -1,6 +1,7 @@
 # ceoi22p1
 
-Score: 2/5
+Score: pending cold rescore (port = dream verbatim: `deck.inverse()`, `deck.next_greater()`, `Fenwick<Card, Int>()`, `Pos` domain stepping with `.offset`/`.next`/`.prev`, `cur_t: ?Int` replacing `fixed` flag, `[Q]?Card` replacing `Card.first` fake init, 0 lints, `17,936 B`, verified on 1,500 ASan+UBSan queries vs riffle simulation; `Perm<Card>` and `(p..=end_p).len` filed in `research/frictions/ceoi22p1.md`)
+Dream: pending cold rescore (written: `proto/ports/scout_batch_24/dream/ceoi22p1.cp`, port = dream 1.000x)
 
 Baseline review, cold, on main 96359635. The header (lines 4-13) is a real editorial with the run invariant. The body hand-rolls two stdlib algorithms and drops to `.to_idx` arithmetic for run slices (lines 50-60, 89-97), with a `fixed` flag in the shuffle loop. No dream exists, so the score is capped at 3.
 
