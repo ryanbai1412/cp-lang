@@ -2166,6 +2166,47 @@ impl<'a> Checker<'a> {
         {
             return true;
         }
+        // A list literal `[e0, e1, ...]` fits a 1D `[D]T` array when element
+        // types fit (and for a plain enum domain `D`, when the length equals |D|).
+        if let ExprKind::List(items) = &at.kind {
+            let inner_want = match want {
+                Ty::Optional(inner) => inner.as_ref(),
+                other => other,
+            };
+            if let (
+                Ty::Named { name, args },
+                Ty::Array { index, elem },
+            ) = (got, inner_want)
+            {
+                if name == "List" && index.len() == 1 {
+                    let elem_ok = args.first().is_none_or(|g| self.fits(g, elem));
+                    match &index[0] {
+                        Ty::Named { name: ename, .. } => {
+                            if let Some(Def::Enum { variants, .. }) =
+                                self.env.type_def(ename).as_deref().cloned()
+                            {
+                                if variants.iter().all(|(_, fs)| fs.is_empty()) {
+                                    if items.len() != variants.len() {
+                                        let msg = format!(
+                                            "`{inner_want}` holds {} elements (one per `{ename}` variant), found {}",
+                                            variants.len(),
+                                            items.len()
+                                        );
+                                        self.error(codes::TYPE_MISMATCH, at.span, msg);
+                                        return false;
+                                    }
+                                    if elem_ok {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                        Ty::Pos(_) if elem_ok => return true,
+                        _ => {}
+                    }
+                }
+            }
+        }
         if self.unhandled_step(got, want, at).is_some() {
             let text = format!(
                 "expected {want}, got {got}: `{}` may step outside {want}",

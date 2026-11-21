@@ -25,9 +25,24 @@ impl<'a> Checker<'a> {
 
     fn array_fills(&mut self, declared: &Ty, init_ty: &Ty, init: &Expr) -> bool {
         match (declared, init_ty) {
-            (Ty::Array { elem, .. }, Ty::Named { name, args })
+            (Ty::Array { index, elem }, Ty::Named { name, args })
                 if name == "List" && args.len() == 1 =>
             {
+                if index.len() == 1 {
+                    if let (ExprKind::List(items), Ty::Named { name: ename, .. }) =
+                        (&init.kind, &index[0])
+                    {
+                        if let Some(Def::Enum { variants, .. }) =
+                            self.env.type_def(ename).as_deref().cloned()
+                        {
+                            if variants.iter().all(|(_, fs)| fs.is_empty())
+                                && items.len() != variants.len()
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
                 self.fits(&args[0], elem)
                     || self.fits(init_ty, elem)
                     || self.rows_fit(declared, &args[0])

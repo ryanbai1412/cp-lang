@@ -2959,3 +2959,29 @@ let _ = d2.finish()
         );
     }
 }
+
+#[test]
+fn enum_array_literal_coercion_checks_variant_count() {
+    let ok = "\
+enum Side: X, Y
+struct Run(l: Int, r: Int)
+struct Block(seen: [Side]Run)
+let a: [Side]Int = [1, 2]
+let b = Block(seen: [Run(0, 1), Run(1, 2)])
+print(a[X], b.seen[Y].r)
+";
+    assert_eq!(check(ok), vec![]);
+
+    let bad = "\
+enum Side: X, Y
+let a: [Side]Int = [1, 2, 3]
+print(a[X])
+";
+    let errs = check(bad);
+    assert_eq!(errs.len(), 1, "{errs:?}");
+    assert_eq!(errs[0].code.0, "E0302");
+    assert!(
+        errs[0].message.contains("holds 2 elements") && errs[0].message.contains("found 3"),
+        "{errs:?}"
+    );
+}

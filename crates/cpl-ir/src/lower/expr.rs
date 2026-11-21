@@ -3079,8 +3079,11 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Tuple(values), ty.clone(), span)
             }
             // `let primes: [Small]Int = [2, 3, 5]`: one value per position,
-            // which is checked when the domain's size is known: at run time.
-            Some(ty @ Ty::Array { dims, elem }) if matches!(dims[..], [Dim::Pos(_) | Dim::Bound(_)]) => {
+            // which is checked when the domain's size is known: at run time
+            // (or statically for a plain enum domain `[Side]T`).
+            Some(ty @ Ty::Array { dims, elem })
+                if matches!(dims[..], [Dim::Pos(_) | Dim::Bound(_) | Dim::Enum(_)]) =>
+            {
                 let (dim, len) = match dims[0] {
                     Dim::Pos(d) => (DimSpec::Pos(d), self.mk(ExprKind::DomainLen(d), Ty::Int, span)),
                     Dim::Bound(d) => {
@@ -3089,7 +3092,11 @@ impl<'a> Lowerer<'a> {
                         let gaps = ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one));
                         (DimSpec::Bound(d), self.mk(gaps, Ty::Int, span))
                     }
-                    Dim::Enum(_) | Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
+                    Dim::Enum(e) => {
+                        let n = self.enums[e].variants.len() as i64;
+                        (DimSpec::Enum(e), self.mk(ExprKind::Int(n), Ty::Int, span))
+                    }
+                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
                 };
                 let index_ty = match dims[0] {
                     Dim::Bound(d) => Ty::Bound(d),
