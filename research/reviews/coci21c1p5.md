@@ -1,6 +1,7 @@
 # coci21c1p5
 
-Score: 2/5
+Score: pending cold rescore (port = dream verbatim via `scout_batch_35/coci21c1p5.cp`, also synced to `scout_batch_30/coci21c1p5.cp`: O(n log n) level-stack extraction with proof in header, `Pos = 1..=n`, `tails.first_ge(p[i]) ?? tails.len`, zero sentinels/flat-packing/SegTree, 0 lints, verified on 100 ASan+UBSan random permutations)
+Dream: pending cold rescore (written: `proto/ports/scout_batch_35/dream/coci21c1p5.cp`, port = dream 1.000x)
 
 Baseline review, cold, on main 96359635. The header (lines 1-7) states the plan. The body hand-rolls two binary searches, packs per-layer lists into a flat index space with `off[]` offsets, and runs the DFS through a global `cur` with `(INF, -1)` sentinels. No dream exists, so the score is capped at 3.
 
