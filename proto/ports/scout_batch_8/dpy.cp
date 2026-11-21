@@ -22,7 +22,7 @@ fn paths(
 // all paths, minus those whose first wall is an earlier stop j.
 var stops = sorted(walls)
 stops.push((r: h, c: w))
-var clean = List.filled(stops.len, Z(0))
+var clean = List.filled(stops.len, Z.zero)
 for i in 0..stops.len:
     clean[i] = paths((r: 1, c: 1), stops[i])
     for j in 0..i: clean[i] -= clean[j] * paths(stops[j], stops[i])

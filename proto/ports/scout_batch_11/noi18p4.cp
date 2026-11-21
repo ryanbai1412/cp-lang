@@ -24,7 +24,7 @@ for _ in 0..t:
     let reward: [Dragon]Int = read()
     domain Sword = 0..m
     let start: [Sword]Int = read()
-    var swords = SortedBag.of([s for s in start])
+    var swords = SortedBag.of(start)
 
     var at_least = 0
     var all: ?(Int, Int) = (0, 1)

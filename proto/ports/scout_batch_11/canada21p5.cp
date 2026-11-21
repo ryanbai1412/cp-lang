@@ -15,15 +15,15 @@ type Mat = [Off, Off]Z
 let comb = Comb<P>.new(n)
 
 fn mul(a: Mat, b: Mat) -> Mat:
-    var c: Mat = [Off, Off] (i, j) => Z(0)
+    var c: Mat = [Off, Off] (i, j) => Z.zero
     for i in Off:
         for j in Off:
-            if a[i, j] != Z(0):
+            if a[i, j] != Z.zero:
                 for l in Off: c[i, l] += a[i, j] * b[j, l]
     c
 
 fn power(x: Mat, e: Int) -> Mat:
-    var (base, acc, left) = (x, [Off, Off] (i, j) => Z(if i == j: 1 else: 0), e)
+    var (base, acc, left) = (x, [Off, Off] (i, j) => Z(Int(i == j)), e)
     while left > 0:
         if left % 2 == 1: acc = mul(acc, base)
         base = mul(base, base)
@@ -31,7 +31,7 @@ fn power(x: Mat, e: Int) -> Mat:
     acc
 
 // One round from i differing places: c of the m flips land on them.
-var step: Mat = [Off, Off] (i, j) => Z(0)
+var step: Mat = [Off, Off] (i, j) => Z.zero
 for i in Off:
     for c in 0..=min(i.to_idx, m):
         if let j = Off.from_idx(i.to_idx - c + (m - c)):

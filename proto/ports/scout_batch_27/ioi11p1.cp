@@ -47,7 +47,7 @@ for _ in 0..q:
     let k: Int = read()
     lengths.push(k)
 
-for by_best in [false, true]:
+for by_best in Bool:
     let goal = state(F(p), by_best)
     let dist = bfs(s => back[s], [goal])
     // starts[d]: fountains d trails away, summed with those a whole number

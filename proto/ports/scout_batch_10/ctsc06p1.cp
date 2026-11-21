@@ -19,7 +19,7 @@ for _ in 0..t:
     domain I = 0..n
     let name: [I]Int = read()
     let border = prefix_function([name[i] for i in I])
-    var (wait, b) = (Z(0), n)
+    var (wait, b) = (Z.zero, n)
     while b > 0:
         wait += Z(m).pow(b)
         b = border[b - 1]

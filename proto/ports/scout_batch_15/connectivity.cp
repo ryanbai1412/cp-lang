@@ -32,7 +32,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
                 frames.last! = (u, i + 1, pe)
                 let a = out[u][i]
                 let eid = a.e.to_idx
-                if pe != none and eid == pe!: continue
+                if pe == some(eid): continue
                 let v = a.to
                 if tin[v] == none:
                     frames.push((v, 0, eid))
@@ -75,7 +75,7 @@ pub fn articulation_points<V, A>(adj: V -> Iter<A>) -> [V]Bool:
             if i < out[u].len:
                 frames.last! = (u, i + 1, p)
                 let v = out[u][i]
-                if p != none and v == p!: continue
+                if p == some(v): continue
                 if tin[v] == none:
                     children[u] += 1
                     frames.push((v, 0, u))
@@ -118,7 +118,7 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
             if i < out[u].len:
                 frames.last! = (u, i + 1, p)
                 let v = out[u][i]
-                if p != none and v == p!: continue
+                if p == some(v): continue
                 if tin[v] == none:
                     frames.push((v, 0, u))
                 else:

@@ -14,10 +14,10 @@ domain Magnet = 0..n
 let radius: [Magnet]Int = read()
 
 // ways[j][k]: the magnets so far form j blocks, in a fixed order left to right, that take k cells
-var ways = [[Z(0) for _ in 0..=l] for _ in 0..=n + 1]
+var ways = [[Z.zero for _ in 0..=l] for _ in 0..=n + 1]
 ways[0][0] = 1
-for r in sorted([r for r in radius]):
-    var next = [[Z(0) for _ in 0..=l] for _ in 0..=n + 1]
+for r in sorted(radius):
+    var next = [[Z.zero for _ in 0..=l] for _ in 0..=n + 1]
     for j in 0..=n:
         for k in 0..=l:
             let w = ways[j][k]

@@ -13,7 +13,7 @@ fn mul(a: Mat, b: Mat) -> Mat:
     [V, V] (i, j) => sum(a[i, m] * b[m, j] for m in V)
 
 var step: Mat = [V, V] (i, j) => Z(edge[i, j])
-var walks: Mat = [V, V] (i, j) => Z(if i == j: 1 else: 0)
+var walks: Mat = [V, V] (i, j) => Z(Int(i == j))
 var left = k
 while left > 0:
     if left % 2 == 1: walks = mul(walks, step)

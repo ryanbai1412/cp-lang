@@ -27,12 +27,12 @@ for d in Deg if d.to_idx > 0:
 // total chosen edges inside u's subtree (plus the parent edge if `parent_used`).
 // FRICTION UD4: Dynamic per-node DP tables whose length depends on `tree.size(u)`
 // cannot use a fixed `[0..=n]` domain without wasting O(n^2) space, so they fall
-// back to `List<Z>` initialized via `[0..=sz] _ => Z(0)` or `List.filled(...)`.
+// back to `List<Z>` initialized via `[0..=sz] _ => Z.zero` or `List.filled(...)`.
 var memo: [V, Bool]List<Z> = []
 
 for u in tree.postorder:
     let sz_u = tree.size(u)
-    for par_used in [false, true]:
+    for par_used in Bool:
         let start = Int(par_used)
         var cur: [Deg, 0..=sz_u]Z = 0
         cur[Deg.from_idx(start)!, start] = 1
@@ -46,7 +46,7 @@ for u in tree.postorder:
             for d in Deg:
                 for i in 0..=csum:
                     let stay = cur[d, i]
-                    let prev_d = if let pd = d - 1: cur[pd, i] else: Z(0)
+                    let prev_d = if let pd = d - 1: cur[pd, i] else: Z.zero
                     if stay == 0 and prev_d == 0: continue
                     for j in 0..=min(sz_v, sz_u - i):
                         nxt[d, i + j] += stay * child0[j]
@@ -58,4 +58,4 @@ for u in tree.postorder:
         var res: List<Z> = [sum(cur[d, i] * fact[d] for d in Deg) for i in 0..=sz_u]
         memo[u, par_used] = res
 
-print(if k <= n: memo[V.first, false][k] else: Z(0))
+print(if k <= n: memo[V.first, false][k] else: Z.zero)

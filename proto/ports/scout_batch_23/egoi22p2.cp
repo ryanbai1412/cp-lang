@@ -17,13 +17,13 @@ type Z = Mod<1000000007>
 let (w, h): (1..=250000, 1..=250000) = read()
 assert w * h <= 250000
 
-var row = List.filled(w + 1, Z(0))
+var row = List.filled(w + 1, Z.zero)
 row[0] = 1
 row[1] = 1
 for i in 2..=w:
     row[i] = row[i - 1] + row[i - 2]
 
-var total = List.filled(w + 1, Z(0))
+var total = List.filled(w + 1, Z.zero)
 total[0] = 1
 for i in 1..=w:
     total[i] = row[i].pow(h)
@@ -34,7 +34,7 @@ for i in 1..=w:
 // an O(w^2) convolution for w <= 10^4 and a separate O(w * h^2) column-profile DP:
 //   let solid = Poly<Z>(1) - Poly<Z>(total).inv(w + 1)
 //   print(solid[w])
-var solid = List.filled(w + 1, Z(0))
+var solid = List.filled(w + 1, Z.zero)
 for i in 1..=w:
     var cur = total[i]
     for j in 1..i:

@@ -28,7 +28,7 @@ fn alternating(lines: Int, pins: List<(Int, Bool)>) -> Z:
     var seen = Map<Int, Bool>()
     for (line, starts_plus) in pins:
         if let was = seen.get(line):
-            if was != starts_plus: return Z(0)
+            if was != starts_plus: return Z.zero
         else:
             seen[line] = starts_plus
     Z(2) ** (lines - seen.len)

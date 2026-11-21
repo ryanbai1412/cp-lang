@@ -21,9 +21,9 @@ let comb = Comb<P>.new(m + 2)
 fn lagrange_at(ys: List<Z>, x: Int) -> Z:
     let d = ys.len - 1
     if x <= d: return ys[x]
-    var before = List.filled(d + 2, Z(1))  // (x - 0) * ... * (x - (i - 1))
+    var before = List.filled(d + 2, Z.one)  // (x - 0) * ... * (x - (i - 1))
     for i in 0..=d: before[i + 1] = before[i] * Z(x - i)
-    var (after, total) = (Z(1), Z(0))  // (x - (i + 1)) * ... * (x - d)
+    var (after, total) = (Z.one, Z.zero)  // (x - (i + 1)) * ... * (x - d)
     for i in (0..=d).rev:
         let term = ys[i] * before[i] * after * comb.inv_fact(i) * comb.inv_fact(d - i)
         total += if (d - i) % 2 == 0: term else: -term
@@ -32,21 +32,21 @@ fn lagrange_at(ys: List<Z>, x: Int) -> Z:
 
 // Score tables of one course: B scores s, `below` students at most s, `above` students more.
 fn tables(u: Int, above: Int, below: Int) -> Z:
-    var ys = [Z(0)]
+    var ys = [Z.zero]
     for limit in 1..=m + 1:
-        var total = Z(0)
+        var total = Z.zero
         for s in 1..=limit: total += Z(s).pow(below) * Z(limit - s).pow(above)
         ys.push(total)
     lagrange_at(ys, u)
 
 // still[j]: ways for the courses seen so far to leave exactly j students never above B
-var still = List.filled(m, Z(0))
+var still = List.filled(m, Z.zero)
 still[m - 1] = 1
 for c in Course:
     let (above, below) = (rank[c] - 1, m - rank[c])
     let ways = tables(top[c], above, below)
     // of the j candidates, `keep` stay at or below B here; the other below - keep were already out
-    var next = List.filled(m, Z(0))
+    var next = List.filled(m, Z.zero)
     for keep in 0..=below:
         for j in keep..m: next[keep] += still[j] * comb.choose(j, keep) * comb.choose(
             m - 1 - j,

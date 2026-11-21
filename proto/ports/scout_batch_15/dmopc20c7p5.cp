@@ -17,7 +17,6 @@ let cost: [Item]Int = read()
 // Flatten `Item + Pair + Src + Snk` into one domain for `FlowGraph`.
 domain Node = 0..n + m + 2
 let (src, snk) = (Node(n + m), Node(n + m + 1))
-const INF = 1000000000000000000
 
 var net = FlowGraph<Node>.new()
 for i in Item:
@@ -29,7 +28,7 @@ for e in Pair:
     let pnode = Node(n + e.to_idx)
     total_reward += w
     net.add(src, pnode, w)
-    net.add(pnode, Node(u - 1), INF)
-    net.add(pnode, Node(v - 1), INF)
+    net.add(pnode, Node(u - 1), cap: none)
+    net.add(pnode, Node(v - 1), cap: none)
 
 print(total_reward - net.max_flow(src, snk))

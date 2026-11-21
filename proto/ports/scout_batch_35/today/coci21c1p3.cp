@@ -52,6 +52,6 @@ fn blues(u: V, on: Bool, par_on: Bool, a_on: Bool, b_on: Bool) -> ?Int:
     if par_on or across: zero else: one
 
 var best: ?Int = none
-for a_on in [false, true]:
-    for b_on in [false, true]: best = min(best, blues(a, a_on, false, a_on, b_on))
+for a_on in Bool:
+    for b_on in Bool: best = min(best, blues(a, a_on, false, a_on, b_on))
 print(best ?? -1)

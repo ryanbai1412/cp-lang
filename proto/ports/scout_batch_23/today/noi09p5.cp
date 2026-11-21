@@ -7,11 +7,11 @@ let s1: Str = read()
 let s2: Str = read()
 
 let stride = n + 1
-var dp = List.filled(stride * stride, Z(0))
+var dp = List.filled(stride * stride, Z.zero)
 dp[0] = 1
 
 for k in 0..(n + m):
-    var nxt = List.filled(stride * stride, Z(0))
+    var nxt = List.filled(stride * stride, Z.zero)
     let lo = max(0, k - m)
     let hi = min(n, k)
     for i in lo..=hi:

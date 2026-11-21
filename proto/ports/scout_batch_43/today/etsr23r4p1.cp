@@ -52,8 +52,8 @@ if not bad_odd:
         if ok:
             var out = ""
             for v in V:
-                if cur[v] == -1: out = out + ")"
-                else: out = out + "("
+                if cur[v] == -1: out += ")"
+                else: out += "("
             print(out)
             found = true
             break

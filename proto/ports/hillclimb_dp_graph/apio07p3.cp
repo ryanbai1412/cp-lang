@@ -5,9 +5,9 @@ let n: 10..=1e4 = read()
 let c: 1..=5e4 = read()
 domain Pen = 1..=n
 domain Window = 0..5
-type View = Subset<Window>                  // which of the five pens in view are emptied
+type View = Subset<Window>  // which of the five pens in view are emptied
 
-var stand = Pen.first                       // generator: a child only names animals it can see
+var stand = Pen.first  // generator: a child only names animals it can see
 fn in_view() -> Pen: stand.cyc(rand(0, 4))
 
 // happy[p, gone]: children at pen p who are happy when `gone` is emptied in their view
@@ -40,7 +40,7 @@ for start in View:
         var next: [View]?Int = none
         for v in View:
             if let so_far = cur[v]:
-                for empty_new in [false, true]: next[slide(v, empty_new)] max= so_far + happy[p, v]
+                for empty_new in Bool: next[slide(v, empty_new)] max= so_far + happy[p, v]
         cur = next
     best max= cur[start]!
 print(best)

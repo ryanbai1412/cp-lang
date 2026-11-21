@@ -18,7 +18,7 @@ var fact: [F]Z = 1
 for f in F:
     if let p = f.prev: fact[f] = fact[p] * Z(f.label)
 
-var inv_fact: [F]Z = Z(1) / fact[F.last]
+var inv_fact: [F]Z = Z.one / fact[F.last]
 for f in F.rev:
     if let p = f.prev: inv_fact[p] = inv_fact[f] * Z(f.label)
 

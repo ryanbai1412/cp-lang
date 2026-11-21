@@ -40,7 +40,6 @@ while let u = q.pop_front():
 
 domain Node = 0..total_cells + 2
 let (src, snk) = (Node(total_cells), Node(total_cells + 1))
-let cap_inf = 1_000_000_000_000
 var net = FlowGraph<Node>()
 var positive = 0
 for u in Cell:
@@ -52,6 +51,6 @@ for u in Cell:
     elif score[u] < 0:
         net.add(nu, snk, -score[u])
     for v in deps[u]:
-        if v in eatable: net.add(nu, Node(v.idx), cap_inf)
+        if v in eatable: net.add(nu, Node(v.idx), cap: none)
 
 print(positive - net.max_flow(src, snk))

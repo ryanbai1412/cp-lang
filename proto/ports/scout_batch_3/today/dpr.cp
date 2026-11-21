@@ -9,7 +9,7 @@ let adj: [V, V]0..=1 = read()
 fn mul(a: [V, V]Z, b: [V, V]Z) -> [V, V]Z:
     [V, V] (i, j) => sum(a[i, m] * b[m, j] for m in V)
 var step: [V, V]Z = [V, V] (i, j) => Z(adj[i, j])
-var walks: [V, V]Z = [V, V] (i, j) => Z(if i == j: 1 else: 0)
+var walks: [V, V]Z = [V, V] (i, j) => Z(Int(i == j))
 var e = k
 while e > 0:
     if e % 2 == 1: walks = mul(walks, step)

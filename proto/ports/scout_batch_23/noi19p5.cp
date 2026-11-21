@@ -20,7 +20,7 @@ let asks: [Query](1..=n) = read()
 
 // Polynomial f(x) = a * x^2 + b * x + c over Mod<998244353>
 // WISH MG6: Poly<Z> with eval(x) and interpolate(pts) in std.poly
-var (a, b, c) = if kind == 1: (Z(0), Z(1), Z(0)) else: (Z(1), Z(0), Z(0))
+var (a, b, c) = if kind == 1: (Z.zero, Z.one, Z.zero) else: (Z.one, Z.zero, Z.zero)
 
 fn eval(a: Z, b: Z, c: Z, x: Int) -> Z:
     let zx = Z(x)

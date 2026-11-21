@@ -20,12 +20,12 @@ for x in 2..=top:
     let p = sieve.factor(x)[0].0
     mu[x] = if x / p % p == 0: 0 else: -mu[x / p]
 
-var fib = List.filled(top + 2, Z(1))
+var fib = List.filled(top + 2, Z.one)
 fib[0] = 0
 for i in 2..=top: fib[i] = fib[i - 1] + fib[i - 2]
 
 // g[T], then its prefix products and their inverses
-var g = List.filled(top + 1, Z(1))
+var g = List.filled(top + 1, Z.one)
 for d in 1..=top:
     let back = fib[d].inv
     var mult = d
@@ -33,12 +33,12 @@ for d in 1..=top:
         if mu[mult / d] == 1: g[mult] *= fib[d]
         if mu[mult / d] == -1: g[mult] *= back
         mult += d
-var upto = List.filled(top + 1, Z(1))
+var upto = List.filled(top + 1, Z.one)
 for i in 1..=top: upto[i] = upto[i - 1] * g[i]
 let undo = [x.inv for x in upto]
 
 for a in asks:
-    var (answer, l) = (Z(1), 1)
+    var (answer, l) = (Z.one, 1)
     while l <= min(a.n, a.m):
         let r = min(a.n / (a.n / l), a.m / (a.m / l))  // last T with the same two quotients
         answer *= (upto[r] * undo[l - 1]).pow((a.n / l) * (a.m / l))

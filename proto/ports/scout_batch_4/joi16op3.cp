@@ -32,4 +32,4 @@ for h in sorted(heights):
                     if g >= 2: next[g - 1, paid, e] += w * (g - 1)     // between two groups
     ways = next
     level = h
-print(if n == 1: Z(1) else: sum(ways[1, c, 2] for c in 0..=limit))
+print(if n == 1: Z.one else: sum(ways[1, c, 2] for c in 0..=limit))

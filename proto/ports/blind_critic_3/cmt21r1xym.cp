@@ -4,7 +4,7 @@ type Z = Mod<MOD>
 let n: Int = read()
 domain I = 0..n
 let g: [I, I]Char = read()
-var ncr: [0..=n, 0..=n]Z = Z(0)
+var ncr: [0..=n, 0..=n]Z = Z.zero
 for i in 0..=n:
     ncr[i, 0] = 1
     for j in 1..=i: ncr[i, j] = ncr[i - 1, j - 1] + ncr[i - 1, j]
@@ -30,7 +30,7 @@ var mb: [K]Int = 0
 var wb: [K]Z = 0
 solve(rows, mut ma, mut wa)
 solve(cols, mut mb, mut wb)
-var ans = Z(0)
+var ans = Z.zero
 for xa in 0..=n:
     for xb in 0..=n:
         if ma[K(xa)] + mb[K(xb)] - xa * xb - (n - xa) * (n - xb) == n * n: ans += wa[K(xa)] * wb[K(xb)]

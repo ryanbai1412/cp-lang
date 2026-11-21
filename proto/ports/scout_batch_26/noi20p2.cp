@@ -52,7 +52,7 @@ for x in t.preorder.rev:
             for i in 0..=d: row[i] *= (g[c][i] + g[c][d])
             g[c] = []
     else:
-        for i in 0..=d: row.push(Z(1))
+        for i in 0..=d: row.push(Z.one)
     for i in 0..need[x]: row[i] = 0
     g[x] = row
 print(g[V.first][0])

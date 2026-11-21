@@ -17,14 +17,14 @@ for c in Company:
         roads[c].push(e)
 
 fn det(mut a: [Rest, Rest]Z) -> Z:
-    var ans = Z(1)
+    var ans = Z.one
     for i in Rest:
         var pivot: ?Rest = none
         for r in i..:
-            if a[r, i] != Z(0):
+            if a[r, i] != Z.zero:
                 pivot = r
                 break
-        let p = pivot ?? return Z(0)
+        let p = pivot ?? return Z.zero
         if p != i:
             for c in Rest: (a[i, c], a[p, c]) = (a[p, c], a[i, c])
             ans = -ans
@@ -35,19 +35,19 @@ fn det(mut a: [Rest, Rest]Z) -> Z:
             for c in i..: a[r, c] -= f * a[i, c]
     ans
 
-var total = Z(0)
+var total = Z.zero
 for skipped in Subset<Company>:
     var lap: [Rest, Rest]Z = 0
     for c in Company:
         if c in skipped: continue
         for e in roads[c]:
             if e.u == e.v: continue
-            if let u = Rest.from_idx(e.u.label): lap[u, u] += Z(1)
-            if let v = Rest.from_idx(e.v.label): lap[v, v] += Z(1)
+            if let u = Rest.from_idx(e.u.label): lap[u, u] += Z.one
+            if let v = Rest.from_idx(e.v.label): lap[v, v] += Z.one
             if let u = Rest.from_idx(e.u.label):
                 if let v = Rest.from_idx(e.v.label):
-                    lap[u, v] -= Z(1)
-                    lap[v, u] -= Z(1)
+                    lap[u, v] -= Z.one
+                    lap[v, u] -= Z.one
     let trees = det(mut lap)
     if popcount(skipped.idx) % 2 == 0: total += trees else: total -= trees
 print(total)

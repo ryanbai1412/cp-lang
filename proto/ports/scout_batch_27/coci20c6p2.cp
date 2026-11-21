@@ -8,7 +8,7 @@ let m: Int = read()
 domain V = 0..n
 var ids = Map<Str, V>()
 fn id(name: Str) -> V:
-    if name not in ids: ids[name] = V(ids.len)
+    ids.get_or_insert(name, V(ids.len))
     ids[name]
 
 var out: [V]List<(to: V, time: Int)> = []

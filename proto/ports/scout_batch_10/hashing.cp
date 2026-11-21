@@ -11,8 +11,8 @@ type B = Mod<998244353>
 
 let base_a = A(rand(1000, 1000000000))
 let base_b = B(rand(1000, 990000000))
-var pow_a = [A(1)]
-var pow_b = [B(1)]
+var pow_a = [A.one]
+var pow_b = [B.one]
 
 fn grow(n: Int):
     while pow_a.len <= n:
@@ -23,7 +23,7 @@ fn grow(n: Int):
 /// amortized: the powers of the base are kept in a table that grows with the longest hash seen.
 pub struct Hash(len: Int, a: A, b: B):
     /// The empty sequence.
-    let empty = Hash(0, A(0), B(0))
+    let empty = Hash(0, A.zero, B.zero)
 
     /// A sequence of one item. Items are `Int`s; a `Char` is its code.
     pub fn one(x: Int) -> Hash = Hash(1, A.new(x + 1), B.new(x + 1))

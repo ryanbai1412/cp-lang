@@ -26,7 +26,7 @@ for u in tree.preorder.rev:
     let sz_u = tree.size(u)
 
     for par_used in 0..=1:
-        var cur: [Deg]List<Z> = [Deg] _ => [Z(0) for _ in 0..=sz_u]
+        var cur: [Deg]List<Z> = [Deg] _ => [Z.zero for _ in 0..=sz_u]
         cur[Deg(par_used)][par_used] = 1
         var csum = par_used
 
@@ -34,12 +34,12 @@ for u in tree.preorder.rev:
             let sz_v = tree.size(v)
             let c0 = memo0[v]
             let c1 = memo1[v]
-            var nxt: [Deg]List<Z> = [Deg] _ => [Z(0) for _ in 0..=sz_u]
+            var nxt: [Deg]List<Z> = [Deg] _ => [Z.zero for _ in 0..=sz_u]
             for d in Deg:
                 let di = d.to_idx
                 for i in 0..=csum:
                     let stay = cur[d][i]
-                    let prev_d = if di > 0: cur[Deg(di - 1)][i] else: Z(0)
+                    let prev_d = if di > 0: cur[Deg(di - 1)][i] else: Z.zero
                     if stay != 0 or prev_d != 0:
                         let jmax = min(sz_v, sz_u - i)
                         for j in 0..=jmax:

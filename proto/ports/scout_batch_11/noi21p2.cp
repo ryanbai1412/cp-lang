@@ -11,21 +11,21 @@ type Z = Mod<P>
 type Mat = List<List<Z>>
 
 fn mul(a: Mat, b: Mat) -> Mat:
-    var c = [[Z(0) for _ in 0..b[0].len] for _ in 0..a.len]
+    var c = [[Z.zero for _ in 0..b[0].len] for _ in 0..a.len]
     for i in 0..a.len:
         for j in 0..b.len:
-            if a[i][j] != Z(0):
+            if a[i][j] != Z.zero:
                 for k in 0..b[0].len: c[i][k] += a[i][j] * b[j][k]
     c
 
 // Row reduction to an upper triangle; a row swap flips the sign.
 fn det(m: Mat) -> Z:
-    var (a, d) = (m, Z(1))
+    var (a, d) = (m, Z.one)
     let n = a.len
     for c in 0..n:
         var pivot = c
-        while pivot < n and a[pivot][c] == Z(0): pivot += 1
-        if pivot == n: return Z(0)
+        while pivot < n and a[pivot][c] == Z.zero: pivot += 1
+        if pivot == n: return Z.zero
         if pivot != c:
             swap(a[pivot], a[c])
             d = -d
@@ -43,11 +43,11 @@ for _ in 0..t:
     domain Gap = 0..k - 1
     let size: [Layer]Int = read()  // 1..=200 vertices in each layer
     let edges: [Gap]Int = read()
-    var paths: Mat = [
-        [Z(if i == j: 1 else: 0) for j in 0..size[Layer.first]] for i in 0..size[Layer.first]
-    ]
+    var paths: Mat = [[Z(Int(i == j)) for j in 0..size[Layer.first]] for i in 0..size[Layer.first]]
     for g in Gap:
-        var step = [[Z(0) for _ in 0..size[Layer(g.to_idx + 1)]] for _ in 0..size[Layer(g.to_idx)]]
+        var step = [
+            [Z.zero for _ in 0..size[Layer(g.to_idx + 1)]] for _ in 0..size[Layer(g.to_idx)]
+        ]
         for _ in 0..edges[g]:
             let (u, v): (Int, Int) = read()
             step[u - 1][v - 1] = 1

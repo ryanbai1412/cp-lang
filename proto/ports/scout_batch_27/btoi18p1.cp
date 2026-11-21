@@ -11,7 +11,7 @@ let n: Int = read()
 domain P = 0..n
 var ids = Map<Str, P>()
 fn id(name: Str) -> P:
-    if name not in ids: ids[name] = P(ids.len)
+    ids.get_or_insert(name, P(ids.len))
     ids[name]
 
 var loves = [P] p => p

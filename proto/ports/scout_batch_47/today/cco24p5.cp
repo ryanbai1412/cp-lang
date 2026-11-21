@@ -11,7 +11,7 @@ for i in 0..n:
     arr[I(i)] = x - 1
 
 var sz = 1
-while sz < n + 1: sz = sz * 2
+while sz < n + 1: sz *= 2
 
 // Two mirrored tag-permanent lazy segtrees (parity 0 and parity 1), packed into
 // one flat array with base offset `cb * 2 * sz` since proto/cpc lacks struct methods.

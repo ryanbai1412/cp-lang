@@ -36,7 +36,7 @@ fn join(j: Int):
     let root = groups.find(a)
     (lo[root], hi[root]) = (min(lo[a], lo[b]), max(hi[a], hi[b]))
 
-let by_lcp = sorted([j for j in 0..n - 1], by: j => -lcp[j])
+let by_lcp = sorted(0..n - 1, by: j => -lcp[j])
 var joined = 0
 var answer: List<(Int, Int)> = []
 for r in (0..n).rev:

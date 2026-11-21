@@ -12,7 +12,7 @@ let height: [Pillar]1..=50 = read()
 domain Volume = 0..=50 * n
 
 fn volumes(height: [Pillar]1..=50) -> List<Int>:
-    let rising = sorted([x for x in height])
+    let rising = sorted(height)
     let tall = [rising[n - 1 - i] for i in 0..n]
     var reach: [Volume]Bool = false
     reach[Volume.first] = true

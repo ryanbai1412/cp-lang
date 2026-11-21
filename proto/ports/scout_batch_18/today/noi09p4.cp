@@ -52,7 +52,6 @@ fn id(r: Row, c: Col) -> Node = Node(r.to_idx * m + c.to_idx)
 
 var fg = FlowGraph<Node>.new()
 var pos_sum = 0
-let INF = 1000000000
 for r in Row:
     for c in Col:
         if not can_eat[r, c]: continue
@@ -64,6 +63,6 @@ for r in Row:
             fg.add(u, sink, -score[r, c])
         for nxt in dep[r, c]:
             if can_eat[nxt.r, nxt.c]:
-                fg.add(id(nxt.r, nxt.c), u, INF)
+                fg.add(id(nxt.r, nxt.c), u, cap: none)
 
 print(pos_sum - fg.max_flow(src, sink))

@@ -67,7 +67,6 @@ fn solve() -> Int:
 
     var fg = FlowGraph<Node>()
     var pos_sum = 0
-    const INF = 1_000_000_000
     for r in Row:
         for c in Col:
             if not can_eat[r, c]: continue
@@ -79,7 +78,7 @@ fn solve() -> Int:
                 fg.add(u, sink, -score[r, c])
             for (nr, nc) in dep[r, c]:
                 if can_eat[nr, nc]:
-                    fg.add(id(nr, nc), u, INF)
+                    fg.add(id(nr, nc), u, cap: none)
     pos_sum - fg.max_flow(src, sink)
 
 @brute(solve)

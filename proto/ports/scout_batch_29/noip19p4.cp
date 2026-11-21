@@ -18,7 +18,7 @@ let total = [Method] i => sum(a[i, j] for j in Food) % 998244353
 domain Lead = -n..=n
 var bad: Z = 0
 for j in Food:
-    var ways: [Lead]Z = [Lead] d => Z(0)
+    var ways: [Lead]Z = [Lead] d => Z.zero
     ways[Lead(0)] = 1
     for i in Method:
         var next = [Lead] d => ways[d]
@@ -31,4 +31,4 @@ for j in Food:
 
 var all: Z = 1
 for i in Method: all *= Z(total[i] + 1)
-print(all - Z(1) - bad)
+print(all - Z.one - bad)

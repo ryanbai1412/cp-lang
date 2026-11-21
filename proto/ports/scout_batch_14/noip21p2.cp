@@ -23,7 +23,7 @@ for w in val:
         for carry in 0..=used:
             for ones in 0..=k if dp[used, carry, ones] != 0:  // WISH P9
                 let cur = dp[used, carry, ones]
-                var pw = Z(1)
+                var pw = Z.one
                 for take in 0..=n - used:
                     let bits = carry + take
                     let n_ones = ones + (bits & 1)
@@ -36,7 +36,7 @@ for w in val:
                     pw *= w
     dp = next
 
-var ans = Z(0)
+var ans = Z.zero
 for carry in 0..=n:
     for ones in 0..=k if ones + popcount(carry) <= k:  // WISH P11, P9
         ans += dp[n, carry, ones]

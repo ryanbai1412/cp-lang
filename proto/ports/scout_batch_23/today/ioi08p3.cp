@@ -38,7 +38,7 @@ for (l, g) in fish: lens[g].push(l)
 
 domain Gem = 0..k
 var cnt = List.filled(k, 0)
-var seg = SegTree<Gem, Z>.of(*, _ => Z(1))
+var seg = SegTree<Gem, Z>.of(*, _ => Z.one)
 
 var p = 0
 var ans: Z = 0
@@ -50,7 +50,7 @@ for r in 0..k:
         seg.set(Gem(g), Z(cnt[g] + 1))
         p += 1
 
-    let ways_small = if r > 0: seg.fold(Gem(0)..=Gem(r - 1)) else: Z(1)
+    let ways_small = if r > 0: seg.fold(Gem(0)..=Gem(r - 1)) else: Z.one
 
     // Find first rank >= r whose max length >= 2 * lim_next? No: find last rank q >= r
     // whose fish with max_by_rank[q] < 2 * fish_len? Wait: exact condition for gem r to be
@@ -93,7 +93,7 @@ for r in 0..k:
     // Case 1: take 1..=cnt[r] fish of gem r (actually 0..=cnt[r]-1 + max fish -> cnt[r] choices
     //   when excluding the "all cnt[r]+1" case, wait: Case 1 = ways_small * cnt[r]
     //   Case 2 = ways_small * prod_{q in r+1..=q_hi} (cnt[q] + 1) )
-    let ways_hi = if r + 1 <= q_hi: seg.fold(Gem(r + 1)..=Gem(q_hi)) else: Z(1)
+    let ways_hi = if r + 1 <= q_hi: seg.fold(Gem(r + 1)..=Gem(q_hi)) else: Z.one
     let term1 = ways_small * Z(cnt[r])
     let term2 = ways_small * ways_hi
     ans += term1 + term2

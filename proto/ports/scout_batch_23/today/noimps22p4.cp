@@ -74,7 +74,7 @@ for b in 1..=big_cnt:
                     arr[mask] += arr[mask ^ step]
         big_sub[b] = arr
 
-var pow2: List<Z> = List.filled(n + 1, Z(1))
+var pow2: List<Z> = List.filled(n + 1, Z.one)
 for i in 1..=n:
     pow2[i] = pow2[i - 1] + pow2[i - 1]
 
@@ -116,7 +116,7 @@ for _ in 0..q:
             if let arr = big_sub.get(b):
                 cb = arr[comp]
             free_cnt -= cb
-            prod *= pow2[cb] - Z(1)
+            prod *= pow2[cb] - Z.one
         let term = pow2[free_cnt] * prod
         if popcount(sub) % 2 == 0:
             ans += term

@@ -38,5 +38,5 @@ for k in (0..6).rev:
     digits[k] = frac % 10
     frac /= 10
 var out = Str(whole) + "."
-for d in digits: out = out + Str(d)
+for d in digits: out += Str(d)
 print(out)

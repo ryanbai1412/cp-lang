@@ -14,7 +14,7 @@ type Mat = List<List<Z>>
 
 // Row reduction to an upper triangle; a row swap flips the sign.
 fn det(m: Mat) -> Z:
-    var (a, d) = (m, Z(1))
+    var (a, d) = (m, Z.one)
     let n = a.len
     for c in 0..n:
         var pivot = c
