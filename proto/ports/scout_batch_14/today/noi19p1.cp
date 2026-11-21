@@ -77,7 +77,7 @@ for i in 0..total_m:
     events.push((-routes[i].e, 1, i))
 
 var dp: [0..total_m]?Int = none
-for (_, kind, i) in sorted(events):
+for (_, kind, i) in events.sorted():
     let r = routes[i]
     if kind == 0:
         if let cost = dp[i]:

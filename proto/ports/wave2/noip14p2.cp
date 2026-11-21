@@ -15,6 +15,6 @@ var total: Z = 0
 for mid in V:
     let around = sorted(w[u] for (u, _) in tree.out(mid)).rev
     if around.len >= 2: best max= around[0] * around[1]
-    let all = sum(around)
+    let all = around.sum()
     total += Z(all) * all - sum(x * x for x in around)
 print(best, total)

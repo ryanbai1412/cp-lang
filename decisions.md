@@ -2615,3 +2615,30 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    - *Visibility (`cpl explain <file.cp>`):* `cpl explain <file.cp>` (and `--json`) runs `cpl_codegen::explain_closures` and reports every fn-typed site's lowering mode (`static: direct`, `static: template`, `static: auto`, or `dynamic: std::function` with reason), fulfilling the "nothing secret under the hood" rule.
    - *Return-tuple move:* returning a struct/tuple literal moves owned non-scalar local fields (`std::move(table)`) when unreferenced by sibling fields, preventing O(n log n) vector copies on range-structure constructors (`DisjointSparseTable` 35.4 ms / 1.98x → 18.9 ms / 1.09x vs matched C++17).
    *Reverse:* revert `elidable`, `template_params`, `local_auto`, and `explain_closures` in `crates/cpl-codegen/src/devirt.rs`, the `emit.rs`/`expr.rs`/`stmt.rs` hooks, and `explain_file` in `crates/cpl-cli/src/lib.rs`.
+
+## 53. Folds and sorts of a sequence are methods (2026-11-21)
+
+1. **Method form is canonical for a fold or sort of one sequence:**
+   `xs.sum()`, `xs.prod()`, `xs.min()`, `xs.max()`, `xs.count(p)`,
+   `xs.all(p)`, `xs.any(p)`, `xs.first(p)`, `xs.sorted(by: k)`,
+   `xs.sort(by: k)`. The free form stays only where it reads as math: a
+   generator (`sum(f(x) for x in xs)`, `count(c == x for c in cs)`) or two
+   or more values (`min(a, b)`). Every `List`, `[D]T`, `Range`, `Set` and
+   `Str` has the methods; each lowers to the same fold as the free form, so
+   the interpreter, C++, `xs.max()!`/`?? d` and the costs are identical.
+   Reason: ports mixed `count(xs, p)`, `sort(mut xs, by:)` and `xs.all(p)`
+   in one file; a receiver reads left to right, chains (`xs[1..].max()`),
+   and completes in the editor. Cost: one token per site (`a.sum()` is 5
+   tokens, `sum(a)` 4), which moved two dream gaps by under 0.5%.
+   Reverse: delete `free_fold` (L0509) and run the inverse rewrite; the
+   free forms never stopped working.
+2. **The element a test holds for is `first`, `find` is the index of a
+   value.** `xs.find(x => ..)` (batch 14) and `first(xs, p)` (§26.9) said
+   the same thing; `xs.first` is already the first element, so `xs.first(p)`
+   is the first one a test holds for, as `xs.count(p)` beside
+   `xs.count(x)`. L0509 rewrites `xs.find(lambda)` to `xs.first(lambda)`.
+   Reverse: drop that arm of `free_fold`.
+3. **`cpl lint --fix` (L0509) is the codemod.** It skips receivers that are
+   types or domains (`sorted(V, by: k)` walks a domain) and `min([a, b, c])`,
+   which waits on a variadic `min(a, b, c)` from the core lane. Dreams that
+   do not parse yet were migrated with the same patterns by hand.

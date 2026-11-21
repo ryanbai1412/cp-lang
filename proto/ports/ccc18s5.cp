@@ -18,7 +18,7 @@ let links: List<(cost: Int, link: Link)> = [(f.cost, Flight(f.a, f.b)) for f in 
 var cities = Dsu<City>()
 var planets = Dsu<Planet>()
 var kept = 0
-for (cost, link) in sorted(links, by: l => l.cost):
+for (cost, link) in links.sorted(by: l => l.cost):
     match link:
         Flight(a, b) => if cities.unite(a, b): kept += cost * planets.components
         Portal(a, b) => if planets.unite(a, b): kept += cost * cities.components

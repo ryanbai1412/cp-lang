@@ -11,7 +11,7 @@ let a: [n]1..=1e9 = read()
 // that was once a good neighbour stays one: `small` gives numbers out from its
 // front and promotes them from its back, and the promoted ones form a stack
 // with the smallest on top.
-var small = sorted(a)
+var small = a.sorted()
 var front = 0
 var partners: List<Int> = []
 var line: List<Int> = []

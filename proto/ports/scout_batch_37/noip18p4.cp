@@ -9,7 +9,7 @@ var adj: [V]List<V> = []
 for e in edges:
     adj[e.u].push(e.v)
     adj[e.v].push(e.u)
-for v in V: sort(mut adj[v])
+for v in V: adj[v].sort()
 
 // the walk from town 1 that always enters the smallest unvisited neighbour,
 // never using the edge `skip`

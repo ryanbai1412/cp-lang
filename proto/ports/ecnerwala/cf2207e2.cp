@@ -6,7 +6,7 @@ let n: Int = read()
 var a: [0..=n]Int = n
 for i in 1..=n: a[i] = read()
 
-if not all(1..=n, i => a[i] in (n - i)..=a[i - 1]):
+if not (1..=n).all(i => a[i] in (n - i)..=a[i - 1]):
     print(0)
     return
 

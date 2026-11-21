@@ -4,10 +4,10 @@
 let n: Int = read()
 domain I = 0..n
 let a: [I]Int = read()
-let sv = sieve(max(a))
+let sv = sieve(a.max())
 
 var kept = HashSet<Int>()
-for x in sorted(a):
+for x in a.sorted():
     // FRICTION F6: the sheet lists `sieve(n)` and `factor(x)` but no divisor walk.
     if not any(d in kept for d in sv.divisors(x)): kept.add(x)
 print(kept.len)

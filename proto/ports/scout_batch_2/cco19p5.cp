@@ -17,7 +17,7 @@ var total = 0
 for v in V:
     total += above[v].len
     if above[v].len == 0: continue
-    let f = min(above[v])
+    let f = above[v].min()
     above[v].remove(f)
     if above[f].len < above[v].len: swap(mut above[f], mut above[v])
     for x in above[v]: above[f].add(x)

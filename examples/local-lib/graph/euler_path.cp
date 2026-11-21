@@ -55,7 +55,7 @@ fn walks_are_valid_and_exist_exactly_when_brute_force_finds_one():
         let got = euler_path(edges, directed)
         assert (got != none) == has_walk(edges, directed)
         if let walk = got:
-            assert sorted(walk) == List(0..edges.len)
+            assert walk.sorted() == List(0..edges.len)
             assert any(follows(edges, walk, directed, s) for s in V)
 
 /// Does `walk` trace connected edges, starting at `start`?

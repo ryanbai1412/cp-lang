@@ -26,7 +26,7 @@ for r in (0..n).rev:
         if r == n - 1 and c == n - 1: cur.push(Mask.empty)
         if r + 1 < n: cur.extend(dp[r + 1, c])
         if c + 1 < n: cur.extend(dp[r, c + 1])
-        var uniq = sorted(cur, by: s => s.idx).dedup()            // WISH P14
+        var uniq = cur.sorted(by: s => s.idx).dedup()            // WISH P14
         let id = cell_id[r, c]
         if id != -1:
             let item = Item(id)

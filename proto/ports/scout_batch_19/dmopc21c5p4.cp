@@ -24,7 +24,7 @@ let t: 1..=1e5 = read()
 // WISH B19-3: multi-test sum-budget constraint `sum(ns) <= 1e6` expressed directly on the input vector
 // so `cpl stress` and `cpl bench` generate valid worst-case partitions (e.g. many small + one huge n)
 let ns: [domain Case = 0..t](1..=1e6) = read()
-assume sum(ns) <= 1_000_000
+assume ns.sum() <= 1_000_000
 
 for c in Case:
     print(solve_one(ns[c]), none: -1)

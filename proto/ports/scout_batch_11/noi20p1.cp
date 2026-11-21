@@ -49,7 +49,7 @@ while 2 ** pows.len <= t: pows.push(mul(pows.last!, pows.last!))
 var best: Row = [State] i => NONE
 best[at(City(1), 0)] = joy[City(1)]
 var now = 0
-for f in sorted([f for f in fests] + [(day: t, city: City(1), bonus: 0)]):
+for f in ([f for f in fests] + [(day: t, city: City(1), bonus: 0)]).sorted():
     for b in 0..pows.len:
         if (f.day - now) / 2 ** b % 2 == 1: best = apply(best, pows[b])
     now = f.day

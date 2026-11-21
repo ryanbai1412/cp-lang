@@ -25,6 +25,6 @@ for i in 1..n:
     gaps.push((cost: a[v] - a[u], u: u, v: v))
 
 var total = 0
-for g in sorted(gaps, by: g => g.cost):
+for g in gaps.sorted(by: g => g.cost):
     if net.unite(g.u, g.v): total += g.cost
 print(total)

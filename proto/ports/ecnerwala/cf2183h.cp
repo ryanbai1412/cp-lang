@@ -11,7 +11,7 @@ type Best = (cost: I128, groups: Int)
 let n: 1..=200_000 = read()
 let k: 1..=n = read()
 var a: [0..n]-1_000_000_000..=1_000_000_000 = read()
-sort(mut a)
+a.sort()
 var pref: [0..=n]Int = 0
 for i in 0..n: pref[i + 1] = pref[i] + a[i]
 var st = 0

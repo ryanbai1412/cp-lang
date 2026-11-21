@@ -45,8 +45,8 @@ for i in Fish:
     let g = rank_of[raw[i].gem]
     by_gem[g].push(raw[i].len)
     all_fish.push((len: raw[i].len, gem: g))
-for g in Gem: by_gem[g] = sorted(by_gem[g])
-all_fish = sorted(all_fish, by: x => x.len)
+for g in Gem: by_gem[g] = by_gem[g].sorted()
+all_fish = all_fish.sorted(by: x => x.len)
 
 let gem_max = [Gem] g => by_gem[g][by_gem[g].len - 1]
 var eaten: [Gem]Int = 0

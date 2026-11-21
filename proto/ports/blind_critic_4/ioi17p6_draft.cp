@@ -27,8 +27,8 @@ fn minimum_walk(p_raw: List<Int>, s_raw: Int) -> Int:
     var cyc_l: [V]V = [V] v => v
     var cyc_r: [V]V = [V] v => v
     for cyc in Perm<V>(p).cycles():
-        let lo = min(cyc)!
-        let hi = max(cyc)!
+        let lo = cyc.min()!
+        let hi = cyc.max()!
         for v in cyc:
             cyc_l[v] = lo
             cyc_r[v] = hi

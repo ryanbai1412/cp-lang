@@ -58,7 +58,7 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
                     evts.push((x + 1, -1))
 
     var (open, prev, ans) = (0, 0, 0)
-    for (x, d) in sorted(evts):
+    for (x, d) in evts.sorted():
         if open > 0: ans += x - prev
         open += d
         prev = x

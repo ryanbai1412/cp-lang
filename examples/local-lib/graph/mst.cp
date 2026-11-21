@@ -5,7 +5,7 @@
 use std.dsu.{Dsu}
 pub fn mst<V, E, W>(edges: [E](u: V, v: V, w: W)) -> (total: W, used: List<E>):
     var order = [e for e in E]
-    sort(mut order, by: e => edges[e].w)
+    order.sort(by: e => edges[e].w)
     var d = Dsu<V>()
     var used: List<E> = []
     var total = W.zero

@@ -10,7 +10,7 @@ domain Field = 1..=r
 fn along_the_road() -> [Field]1..=len:
     var spots: [Field]1..=len = 1
     for f in Field: spots[f] = rand(1, len)
-    sorted(spots)
+    spots.sorted()
 
 let x: [Field]1..=len = read(gen: along_the_road)
 

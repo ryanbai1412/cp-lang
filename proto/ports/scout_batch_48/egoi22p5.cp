@@ -4,7 +4,7 @@
 // original: corpus/submissions/5203693.cpp
 let (n, q): (1..=1e5, 0..=5000) = read()
 let raw: [0..n]Int = read()
-var a = sorted(raw, by: x => -x)
+var a = raw.sorted(by: x => -x)
 for _ in 0..q:
     let (x, c): (Int, 0..=n) = read()
     var merged: List<Int> = []

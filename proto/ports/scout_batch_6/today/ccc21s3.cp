@@ -16,7 +16,7 @@ for f in friends:
     ends.push((f.p - f.d, f.w))
     ends.push((f.p + f.d, f.w))
 var slope = -sum(f.w for f in friends)
-for e in sorted(ends):
+for e in ends.sorted():
     slope += e.w
     if slope >= 0:
         print(walk(e.at))

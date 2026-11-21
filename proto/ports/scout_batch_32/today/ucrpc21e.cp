@@ -12,7 +12,7 @@ fn read_team(cnt: Int, who: Int):
         evs.push((t: r + 1, d: -pts, who: who))
 read_team(n, 0)
 read_team(m, 1)
-sort(mut evs)
+evs.sort()
 
 var rate = [0, 0]
 var (ans, last_t) = (0, 0)

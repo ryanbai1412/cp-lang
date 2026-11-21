@@ -32,7 +32,7 @@ pub struct KruskalTree<V>:
 
     pub fn new(edges: List<(Int, V, V)>) -> KruskalTree<V>:
         let n = V.K
-        let sorted_e = sorted(edges, by: e => e.0)
+        let sorted_e = edges.sorted(by: e => e.0)
         var dsu = Dsu<V>()
         var comp_root = [i for i in 0..n]
         var weight = List.filled(n, 0)
@@ -142,7 +142,7 @@ fn spanning_and_kruskal_tree_match_bfs_and_minimax_paths():
             for s in V:
                 let dist = bfs(u => adj[u], [s])
                 let want = sorted([u for u in V if dist[u] != none])
-                let got = sorted(kt.reachable(s, limit))
+                let got = kt.reachable(s, limit).sorted()
                 assert got == want
         for a in V:
             for b in V:

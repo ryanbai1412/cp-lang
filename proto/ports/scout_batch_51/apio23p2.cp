@@ -39,7 +39,7 @@ fn solve_dom(blocks: List<Block>) -> Int:
     for (i, b) in blocks.items:
         evts.push((b.yl, false, i))
         evts.push((b.yr, true, i))
-    sort(mut evts, by: e => (desc(e.key), desc(e.is_q)))
+    evts.sort(by: e => (desc(e.key), desc(e.is_q)))
     var st = SegTree<ys.D, ?Int>(max, [ys.D] _ => none)
     var cur: [ys.D]?Int = none
     var best = 0

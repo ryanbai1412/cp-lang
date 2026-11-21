@@ -6,7 +6,7 @@ type M = Mod<998_244_353>
 
 let t: 1..=1e4 = read()
 let ns: [0..t](1..=2e7) = read()
-let lim = max(ns) + 1
+let lim = ns.max() + 1
 let comb = Comb<M>(lim)
 
 // Linear multiplicative sieve for odd_div_sum(x).

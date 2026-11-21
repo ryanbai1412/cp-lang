@@ -116,7 +116,7 @@ fn matches_and_counts_agree_with_checking_every_position():
                     text[i + j] == words[w][j] for j in 0..k
                 ): want.push((i, w))
         let got = [(m.at, m.word) for m in ac.matches(text)]
-        assert sorted(got) == sorted(want)
+        assert got.sorted() == want.sorted()
         assert ac.count_each(text) == [count(p.1 == w for p in want) for w in 0..words.len]
         assert ac.len <= 1 + sum(w.len for w in words)
 
@@ -153,4 +153,4 @@ fn count_texts_that_avoid_every_word():
         for code in 0..(1 << n):
             let text = [A((code >> i) % 2) for i in 0..n]
             if ac.matches(text).is_empty: brute += 1
-        assert sum(ways) == brute
+        assert ways.sum() == brute

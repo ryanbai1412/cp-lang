@@ -2,4 +2,4 @@
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-print(ceil_div(max(a)! - min(a)!, 2))
+print(ceil_div(a.max()! - a.min()!, 2))

@@ -47,7 +47,7 @@ fn union_area(rad: Int) -> Int:
         raw_y.push(y2)
         evs.push((x: x1, y1: y1, y2: y2, d: 1))
         evs.push((x: x2, y1: y1, y2: y2, d: -1))
-    let sy = sorted(raw_y)
+    let sy = raw_y.sorted()
     ys = []
     for y in sy:
         if ys.len == 0 or ys.last! != y:
@@ -55,7 +55,7 @@ fn union_area(rad: Int) -> Int:
     let segs = max(1, ys.len - 1)
     cnt = List.filled(4 * segs + 4, 0)
     cov = List.filled(4 * segs + 4, 0)
-    let sevs = sorted(evs)
+    let sevs = evs.sorted()
     var area = 0
     var prev_x = sevs[0].x
     for ev in sevs:

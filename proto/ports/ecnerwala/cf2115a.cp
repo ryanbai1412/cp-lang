@@ -21,7 +21,7 @@ if cnt1 > 0:
     print(n - cnt1)
     return
 
-let vmax = max(a)!
+let vmax = a.max()!
 var freq: [0..=vmax]Z = 0
 for x in a: freq[x] += rng.int(1, Z.MOD - 1)
 

@@ -53,7 +53,7 @@ pub fn count_in_rects(pts: List<(Int, Int)>, rects: List<(Int, Int, Int, Int)>) 
         all_y.push(r.1)
         all_y.push(r.3)
     let ys = compress(all_y)
-    let spts = sorted(pts, by: p => p.0)
+    let spts = pts.sorted(by: p => p.0)
     // Events: (x, sign, y1_idx, y2_idx, query_id)
     var events: List<(Int, Int, Int, Int, Int)> = []
     for i in 0..q:
@@ -63,7 +63,7 @@ pub fn count_in_rects(pts: List<(Int, Int)>, rects: List<(Int, Int, Int, Int)>) 
         let yi2 = ys.at(y2).to_idx
         events.push((x1 - 1, -1, yi1, yi2, i))
         events.push((x2, 1, yi1, yi2, i))
-    sort(mut events, by: e => e.0)
+    events.sort(by: e => e.0)
     domain Y = 0..ys.len
     var bit = Fenwick<Y, Int>()
     var ans = List.filled(q, 0)
@@ -96,7 +96,7 @@ fn ranks_and_lis_match_brute_force():
                 for j in 0..i:
                     let ok = if strict: xs[j] < xs[i] else: xs[j] <= xs[i]
                     if ok and dp[j] + 1 > dp[i]: dp[i] = dp[j] + 1
-            assert idxs.len == max(dp)
+            assert idxs.len == dp.max()
             for k in 1..idxs.len:
                 assert idxs[k - 1] < idxs[k]
                 if strict: assert xs[idxs[k - 1]] < xs[idxs[k]]

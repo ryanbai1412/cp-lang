@@ -59,7 +59,7 @@ for root in V:
 // Hang every other tree's centre off the centre of the tree with the largest
 // radius. The longest new walk joins the two largest radii, or the second and
 // third through two new trails.
-let r = sorted(radii, by: x => -x)
+let r = radii.sorted(by: x => -x)
 if r.len >= 2: longest max= r[0] + r[1] + l
 if r.len >= 3: longest max= r[1] + r[2] + 2 * l
 print(longest)

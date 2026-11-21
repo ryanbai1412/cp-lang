@@ -16,7 +16,7 @@ for i in I:
 
 var order: List<(Int, Int)> = []
 for i in I: order.push((xs[i], ys_in[i]))
-sort(mut order)
+order.sort()
 
 let (Y, yvals) = compress(ys_in)
 let m = Y.K

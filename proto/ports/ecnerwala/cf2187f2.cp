@@ -61,5 +61,5 @@ fn count(v: Int) -> Z:
         ends.push(0)
         if leaf:
             ends = scan(ends, (x, y) => x + y)
-    ways * sum(ends)
+    ways * ends.sum()
 print(count(stk[0].node))

@@ -1,7 +1,7 @@
 @!multitest
 let (n, m): (Int, Int) = read()
 let vals: [0..n]Int = read()
-let ord = sorted(0..n, by: i => vals[i])
+let ord = (0..n).sorted(by: i => vals[i])
 
 if 2 * m > n:
     print(-1)

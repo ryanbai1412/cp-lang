@@ -3,7 +3,7 @@
 @grader
 fn min_total_length(red: List<Int>, blue: List<Int>) -> Int:
     // every point as (position, +1 red / -1 blue), left to right
-    let (P, pts) = sorted([(x, 1) for x in red] + [(x, -1) for x in blue]).freeze()
+    let (P, pts) = ([(x, 1) for x in red] + [(x, -1) for x in blue]).sorted().freeze()
 
     // near[p]: distance to the closest point of the other colour
     // FRICTION: "nearest earlier element satisfying a predicate, from both sides" has no helper

@@ -5,6 +5,6 @@
 
 let n: 2..=100_000 = read()
 var obs: [0..n](t: Int, x: Int) = read()
-sort(mut obs)
+obs.sort()
 let ans = max(F64(abs(b.x - a.x)) / F64(b.t - a.t) for (a, b) in obs.adjacent)!
 print("{ans:.5f}")

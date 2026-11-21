@@ -80,7 +80,7 @@ fn decode(n: Int, l: Int, encoded: List<Int>):
         let k = min(n, start + BLOCK) - start
         // Pad with leading zeros to SYMS (since List.insert(0, 0) isn't in §9, prepend via List.filled + sorted!)
         var seq = List.filled(SYMS - buckets[bi].len, 0) + buckets[bi]
-        sort(mut seq)
+        seq.sort()
         var packed = rank(seq)
         for _ in 0..k:
             // BLIND-GUESS(H23): `Int(packed & 255)` narrowing I128 -> Int

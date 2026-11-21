@@ -78,7 +78,7 @@ fn solve():
         print("NO")
         return
 
-    sort(mut edges)
+    edges.sort()
     var keep: List<(V, V, Int)> = []
     var d1 = Dsu<V>()
     for idx in 0..edges.len:

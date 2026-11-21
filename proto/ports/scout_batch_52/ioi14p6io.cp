@@ -18,7 +18,7 @@ struct TopK:
         var psum: List<List<Int>> = []
         var gaps: List<List<(Int, Int)>> = []
         for ind in (0..=a.len).step(B):
-            let s = sorted(a[..ind], by: desc)
+            let s = a[..ind].sorted(by: desc)
             sorted_pref.push(s)
             psum.push([0] + scan(s, +))
             let hi = min(a.len, ind + B)

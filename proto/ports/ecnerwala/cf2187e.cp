@@ -5,7 +5,7 @@ let n: Int = read()
 let a: [0..n]Int = read()
 let s: Str = read()
 
-let t_inf = n + 1 + max(a)!
+let t_inf = n + 1 + a.max()!
 var dp: [0..=n + 1]Int = 0
 var len = 1
 var ans: [0..n]Int = 0

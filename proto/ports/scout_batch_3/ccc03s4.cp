@@ -8,5 +8,5 @@ fn solve():
     // Sort the suffixes. Each one shares `lcp` leading characters with the
     // suffix before it, so that many of its prefixes were counted already.
     let order = suffix_array(s)                                     // WISH G6: positions of s, not Ints
-    let repeated = sum(lcp_array(s, order))
+    let repeated = lcp_array(s, order).sum()
     print(1 + s.len * (s.len + 1) / 2 - repeated)

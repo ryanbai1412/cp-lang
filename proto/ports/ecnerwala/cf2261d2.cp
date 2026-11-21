@@ -15,7 +15,7 @@ let hash = scan(diff[0..n], (a, b) => a ^ b)
 // next[i]: the nearest later position with the same hash as i, else n
 var next: [0..n]Int = n
 var (first_bad, last_bad): (?Int, ?Int) = (none, none)
-let order = sorted(0..n, by: i => (hash[i], i))
+let order = (0..n).sorted(by: i => (hash[i], i))
 for (a, b) in order.adjacent if hash[a] == hash[b]:
     next[a] min= b
     first_bad min= a

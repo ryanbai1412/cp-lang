@@ -36,7 +36,7 @@ fn arrive(x: Pos) -> Int:
     best!
 
 for (_, day) in by_day.items:
-    let fs = sorted(day)
+    let fs = day.sorted()
     let m = fs.len
     let pre = prefix(f.gain for f in fs)
     let entry = [arrive(f.at) for f in fs]

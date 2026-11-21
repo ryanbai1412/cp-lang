@@ -18,6 +18,6 @@ fn rank(i: I) -> (-2..=2, Bool, Int):
     (pull, falling, if falling: -i.idx else: i.idx)
 
 var fence: [I]Int                       // every cell is written below                // WISH S10
-for (i, board) in zip(sorted(I, by: rank), sorted(boards)): fence[i] = board        // WISH S16, G21
+for (i, board) in zip(sorted(I, by: rank), boards.sorted()): fence[i] = board        // WISH S16, G21
 print(sum(abs(x - y) for (x, y) in fence.adjacent))                                 // WISH S17
 print(fence)

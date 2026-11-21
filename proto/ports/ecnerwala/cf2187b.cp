@@ -24,7 +24,7 @@ for dx in 0..2:
                             )
                             ndp[nx, ny] min= (nw, px * 2 + vx, py * 2 + vy)
             dp = ndp
-        ans min= min(dp)
+        ans min= dp.min()
 
 let (_, p, q) = ans!
 print(p, q)

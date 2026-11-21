@@ -6,7 +6,7 @@ use std.geometry.{turn, on_segment, area2, locate}
 /// without repeated or collinear points (Andrew's monotone chain). O(n log n).
 pub fn convex_hull(pts: List<Pt>) -> List<Pt>:
     var ps = copy(pts)
-    sort(mut ps, by: p => (p.x, p.y))
+    ps.sort(by: p => (p.x, p.y))
     var uniq = List<Pt>()
     for p in ps:
         if uniq.is_empty or uniq.last != p: uniq.push(p)
@@ -54,6 +54,6 @@ fn locate_agrees_with_half_planes_on_random_hulls():
             for y in -5..=5:
                 let p = Pt(x, y)
                 let turns = [turn(h[i], h[(i + 1) % h.len], p) for i in 0..h.len]
-                let want = if min(turns)! > 0: 1 else: if min(turns)! == 0: 0 else: -1
+                let want = if turns.min()! > 0: 1 else: if turns.min()! == 0: 0 else: -1
                 assert locate(h, p) == want
                 assert locate(h.rev, p) == want

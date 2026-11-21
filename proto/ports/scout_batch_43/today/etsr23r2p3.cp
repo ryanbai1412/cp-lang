@@ -4,7 +4,7 @@
 let tcs: Int = read()
 for _ in 0..tcs:
     let (a, b, c): (Int, Int, Int) = read()
-    let xs = sorted([a, b, c])
+    let xs = [a, b, c].sorted()
     let step = 1 << (ctz(xs[0]) + 1)
     if (xs[1] - xs[0]) % step == 0 and (xs[2] - xs[1]) % step == 0:
         print("YES")

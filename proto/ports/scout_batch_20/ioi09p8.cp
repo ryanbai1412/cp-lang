@@ -32,7 +32,7 @@ fn most() -> Int:
         from_below.set(x, max(from_below.query(x, x), money - up * x.label))
 
     stand(home, 0)
-    let order = sorted(fairs, by: f => (f.day, f.at))
+    let order = fairs.sorted(by: f => (f.day, f.at))
     var i = 0
     while i < n:
         var j = i

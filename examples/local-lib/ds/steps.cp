@@ -25,7 +25,7 @@ pub struct Steps:
         var out: List<(span: Range<Int>, value: Int)> = []
         if clip.len == 0: return out
         if sorted_upto < change.len:
-            sort(mut change)
+            change.sort()
             sorted_upto = change.len
         var (cur, at) = (0, clip.lo)
         for (x, d) in change:

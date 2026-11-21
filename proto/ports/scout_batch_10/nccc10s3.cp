@@ -15,4 +15,4 @@ for _ in 0..q:
     let (t, k): (Str, Int) = read()
     let r = sa.matches(t)
     if r.hi - r.lo < k: print(-1)
-    else: print(sorted(sa.sa[r.lo..r.hi])[k - 1] + 1)
+    else: print(sa.sa[r.lo..r.hi].sorted()[k - 1] + 1)

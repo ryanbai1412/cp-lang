@@ -29,7 +29,7 @@ for r in (0..n).rev:
             for s in dp[r + 1, c]: cur.push(s)
         if c + 1 < n:
             for s in dp[r, c + 1]: cur.push(s)
-        let sorted_cur = sorted(cur, by: s => s.idx)
+        let sorted_cur = cur.sorted(by: s => s.idx)
         var uniq: List<Mask> = []
         for s in sorted_cur:
             if uniq.len == 0 or uniq.last! != s: uniq.push(s)

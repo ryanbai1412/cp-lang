@@ -4,10 +4,10 @@
 let (n, a, b): (1..=1e6, 1..=1e6, 1..=1e6) = read()
 let heights: [0..n]0..=1e6 = read()
 
-var best = b * sum(heights)             // level 0
+var best = b * heights.sum()             // level 0
 var taller = 0                          // posts above the current level
 var taller_sum = 0
-for h in sorted(heights).rev:
+for h in heights.sorted().rev:
     best min= a * h + b * (taller_sum - taller * h)
     taller += 1
     taller_sum += h

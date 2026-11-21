@@ -7,7 +7,7 @@
 
 @multitest
 var xs: [0..3]Int = read()
-sort(mut xs)
+xs.sort()
 let step = 1 << (ctz(xs[0]) + 1)
 let ok = (xs[1] - xs[0]) % step == 0 and (xs[2] - xs[1]) % step == 0
 print(if ok: "YES" else: "NO")

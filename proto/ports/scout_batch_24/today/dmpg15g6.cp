@@ -79,7 +79,7 @@ for qi in Q:
 
 for b in 0..num_blk:
     if by_blk[b].len == 0: continue
-    let bucket = sorted(by_blk[b])
+    let bucket = by_blk[b].sorted()
     let border = min(n, (b + 1) * blk)
     let outer_mk = log_f.len
     var cur_r = border - 1

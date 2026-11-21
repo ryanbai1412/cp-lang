@@ -6,7 +6,7 @@
 let n: 1..=300 = read()
 let m: 1..=30 = read()
 let spots: [n]1..=10000 = read()
-let at = sorted(spots)
+let at = spots.sorted()
 
 // villages i..=j walking to one office at their median
 @memo

@@ -10,7 +10,7 @@ var xs: List<Int> = []
 for _ in 0..m:
     let x: Int = read()
     xs.push(x)
-sort(mut xs)
+xs.sort()
 
 // Number of values strictly below x.
 fn below(x: Int) -> Int:
@@ -30,7 +30,7 @@ fn dfs(u: Int, p: Int, l: Int, r: Int):
     var kids: List<(w: Int, v: Int)> = []
     for e in adj[u]:
         if e.v != p: kids.push(e)
-    sort(mut kids, by: e => e.w)
+    kids.sort(by: e => e.w)
     for i in 0..kids.len:
         let w = kids[i].w
         let cl = if i > 0: (kids[i - 1].w + w) / 2 + 1 else: l

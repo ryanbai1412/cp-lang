@@ -6,7 +6,7 @@
 let n: 1..=250 = read()
 let word: Str = read()
 let worth = [(c - 'A' + 1) * (c - 'A' + 1) for c in word]
-let whole = sum(worth)
+let whole = worth.sum()
 
 // Scan from the right. reach[open] holds the totals that leave `open`
 // right ends still waiting for a left end. A set can only be shifted up,

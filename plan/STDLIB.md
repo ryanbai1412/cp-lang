@@ -30,16 +30,16 @@ core feature goes through section 3 and the core lane.
 
 | Area | Owns | Handed over with its queue |
 |---|---|---|
-| sequences | 4.2 except the searches; the walk folds' library side | `runs`/`chunk_by` over any `Seq` incl. `Str` (`cf2084h`, `cf2069e`); `enumerate`; the `_by` renames |
-| DP/search | 4.2 searches; DP helpers | `bsearch_real`, `ternary_max` |
-| number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | exact-`Int` convolution, cyclic correlation, `Mod<P>`→`Int` (`cf2201e`); `Z.comb(n)` in place of `Comb<P>` (14 friction reports); RNG `pick`/`perm`/`sample` |
-| containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`), `List` methods | `SortedBag` O(1) cursors (`cf2066e`, 6.1x slow); `IntervalMap` (`cf2237h`); `Bits<D>` unifying `Bitset`/`Subset` (`cf2147h`); `List.truncate`/`extend` (`cf2084h`, `cf2178h`); offline divide and conquer over time, `offline_over` (`cf2069f`, `cf2222f`, `cf2237h`) |
+| sequences | 4.2 except the searches; the walk folds' library side; a `Seq`/`Indexed` trait | `runs`/`chunk_by` over any `Seq` incl. `Str` (`cf2084h`, `cf2069e`); `enumerate`; the `_by` renames (`argmax_by`, `min_by` to `by:`); the `Seq`/`Indexed` trait |
+| DP/search | 4.2 searches (`design/stdlib/search.md`); `std.dp` | `cf2183h` onto `bsearch_first` + `aliens` (blocked: `Range<I128>` E0302, core lane); a gated port for Li Chao or Knuth when one appears |
+| number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | `Comb<M>` keyed on the Mod type in place of `Comb<P>` (14 friction reports); `Mod<P>` in 32 bits via ranged-field narrowing (with codegen); exact-`Int` convolution, cyclic correlation, `Mod<P>`→`Int` (`cf2201e`); RNG `pick`/`perm`/`sample` |
+| containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`, `window`), `List` methods | `Bits<D>` unifying `Bitset`/`Subset` (`cf2147h`); `List.truncate`/`extend` (`cf2084h`, `cf2178h`); offline divide and conquer over time, `offline_over` (`cf2069f`, `cf2222f`, `cf2237h`) |
 | range structures | 4.10 | `LazySegTree` over `Bounds<D>` with constant init (`cf2207f`) |
 | graphs | 4.11 `std.graph`, 4.15 `std.grid` | `design/stdlib/graphs.md`; `std.grid` stays a thin module over `(R, C)` product domains (decision 46.9); product/enum state domains wait on the core lane |
 | trees | 4.11 `std.tree`, `std.tour` | link-cut tree (`cf2222f`, `cf2237h`) |
 | flows/matching | 4.12 | `FlowGraph.reset()` (`cf2147h`); `max_matching`, `CostFlow` |
-| strings | 4.13 | `manacher`, `AhoCorasick` |
-| geometry | 4.14 | `convex_hull` |
+| strings | 4.13; O(1) slice and reverse views | `manacher`, `AhoCorasick`; one `lcp` (merge `lcp_between`/`RollingHash.lcp`, `lcp_with` to a named argument); O(1) slice/reverse views |
+| geometry | 4.14 | `convex_hull`; `locate` returns an enum; `rot_by` to a named option |
 
 ## 1. Principles
 
@@ -80,8 +80,15 @@ in `snake_case`.** A type's constructor is its name called like a
 function: `Sieve(n)`, `Dsu<V>()`, `Rng(seed)`. `T.new(...)` is the
 declaration form and the explicit spelling.
 
+**A fold or sort of one sequence is a method.** `xs.sum()`, `xs.max()`,
+`xs.count(p)`, `xs.all(p)`, `xs.first(p)`, `xs.sorted(by: k)`,
+`xs.sort(by: k)`. The free form is for math: a generator
+(`sum(f(x) for x in xs)`) or two or more values (`min(a, b)`). `find(x)`
+is the index of a value; the element a test holds for is `first(p)`.
+Lint L0509 (`free_fold`) rewrites the rest (decisions.md §53).
+
 **Options are named arguments, not `_by` variants.** `runs(a, by: key)`,
-`sort(mut a, by: key)`, `bsearch_first(r, ok)`. Today's `runs_by`,
+`a.sort(by: key)`, `bsearch_first(r, ok)`. Today's `runs_by`,
 `first_ge_by` and `last_le_by` are [rename]s to `runs(a, by:)`,
 `first_ge(xs, x, by:)` and `last_le(xs, x, by:)`.
 

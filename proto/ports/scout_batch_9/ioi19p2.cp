@@ -23,7 +23,7 @@ let links: [Link](u: Spot, v: Spot) = read(gen: bushy)
 let land = Graph.undirected(links)
 
 // Make the two smaller parts connected; the largest takes what is left.
-let by_size = sorted([(a, 1), (b, 2), (n - a - b, 3)])
+let by_size = [(a, 1), (b, 2), (n - a - b, 3)].sorted()
 let (small, small_part) = by_size[0]
 let (mid, mid_part) = by_size[1]
 let (_, big_part) = by_size[2]

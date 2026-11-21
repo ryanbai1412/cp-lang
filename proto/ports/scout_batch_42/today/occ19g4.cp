@@ -33,7 +33,7 @@ for k in 0..n:
         all_v.push(vb + d)
         all_v.push(vb + d + 1)
 
-let sv = sorted(all_v)
+let sv = all_v.sorted()
 var ys: List<Int> = []
 for v in sv:
     if ys.len == 0 or ys.last! != v: ys.push(v)

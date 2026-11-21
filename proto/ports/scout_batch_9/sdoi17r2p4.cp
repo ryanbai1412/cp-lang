@@ -45,7 +45,7 @@ for _ in 0..tests:
     var arcs: List<(u: Node, v: Node, cost: Int)> = []
     var slot = 0
     for v in Town:
-        let here = sorted(ends[v])
+        let here = ends[v].sorted()
         for i in 0..here.len:
             let (_, r, leaving) = here[i]
             let s = slot + i

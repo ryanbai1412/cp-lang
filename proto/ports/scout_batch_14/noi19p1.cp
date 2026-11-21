@@ -28,7 +28,7 @@ for i in 0..routes.len:
     events.push((-routes[i].e, 1, i))
 
 var dp: [0..routes.len]?Int = none
-for ev in sorted(events):
+for ev in events.sorted():
     let r = routes[ev.ind]
     if ev.kind == 0:
         if let val = dp[ev.ind]:

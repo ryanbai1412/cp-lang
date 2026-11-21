@@ -26,7 +26,7 @@ fn count_tastiness(x: 1..=1e18, a: List<0..=1e18>) -> Int:
 
 @brute(count_tastiness)
 fn slow(x: Int, a: List<Int>) -> Int
-    where a.len <= 6 and sum(a) <= 40:
+    where a.len <= 6 and a.sum() <= 40:
     // y works iff, taking bits of y from the top, the biscuits of type <= i
     // not yet promised can cover x bags of 2^i.
     let total = sum(a[i] << i for i in 0..a.len)

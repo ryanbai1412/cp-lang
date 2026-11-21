@@ -45,7 +45,7 @@ fn square(x: Int, y: Int, dx: Int, dy: Int):
     for c in 0..4:
         if xs[c] < 0 or xs[c] > n or ys[c] < 0 or ys[c] > m: return
         codes.push(xs[c] * (m + 1) + ys[c])
-    sort(mut codes)
+    codes.sort()
     hit.push((codes[0], codes[1], codes[2], codes[3]))
 
 for i in 0..k:
@@ -57,7 +57,7 @@ for i in 0..k:
                 if ex % 2 == 0: square(pts[i].x, pts[i].y, ex / 2, ey / 2)
             square(pts[i].x, pts[i].y, pts[j].x - pts[i].x, pts[j].y - pts[i].y)
 
-sort(mut hit)
+hit.sort()
 var i = 0
 while i < hit.len:
     var j = i

@@ -13,7 +13,7 @@ fn completions(pin: [Letter]?Cell) -> Int:
     @memo
     fn ways(shape: Shape) -> Int:
         let len = [shape.0, shape.1, shape.2, shape.3, shape.4]
-        let letter = sum(len)
+        let letter = len.sum()
         if letter == 25: return 1
         var total = 0
         for r in 0..5 if len[r] < 5 and (r == 0 or len[r - 1] > len[r]):

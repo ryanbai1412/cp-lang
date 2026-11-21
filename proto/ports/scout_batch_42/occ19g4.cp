@@ -35,7 +35,7 @@ let ys = compress(all_v)
 var bit = Fenwick<ys.D, Int>()
 var ans: [P]Int = 0
 
-sort(mut pts, by: p => (desc(p.d), p.id))
+pts.sort(by: p => (desc(p.d), p.id))
 
 // Pass 1 (descending d): earlier points b have d_b >= d_a; query a's square [u-d..u+d] x [v-d..v+d].
 type RectQ = (u: Int, sgn: Int, lo: ys.D, hi: ys.D, id: P)
@@ -53,8 +53,8 @@ fn cdq_query(l: Int, r: Int):
         let (lo, hi) = (ys.at(p.v - p.d), ys.at(p.v + p.d))
         right.push((u: p.u + p.d, sgn: 1, lo: lo, hi: hi, id: p.id))
         right.push((u: p.u - p.d - 1, sgn: -1, lo: lo, hi: hi, id: p.id))
-    sort(mut left, by: e => e.u)
-    sort(mut right, by: e => e.u)
+    left.sort(by: e => e.u)
+    right.sort(by: e => e.u)
     var li = 0
     for q in right:
         while li < left.len and left[li].u <= q.u:
@@ -82,8 +82,8 @@ fn cdq_cover(l: Int, r: Int):
         left.push((u: p.u - p.d, sgn: 1, lo: lo, hi1: hi1))
         left.push((u: p.u + p.d + 1, sgn: -1, lo: lo, hi1: hi1))
     var right = [(u: pts[i].u, y: ys.at(pts[i].v), id: pts[i].id) for i in m..r]
-    sort(mut left, by: e => e.u)
-    sort(mut right, by: e => e.u)
+    left.sort(by: e => e.u)
+    right.sort(by: e => e.u)
     var li = 0
     for q in right:
         while li < left.len and left[li].u <= q.u:

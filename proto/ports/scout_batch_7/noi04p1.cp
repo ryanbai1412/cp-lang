@@ -23,7 +23,7 @@ for c in Cmd:
     elif op == 'S': raise -= x
     elif op == 'I' and x >= floor: seen.add(x - raise)
 
-let bases = sorted(seen)
+let bases = seen.sorted()
 domain Slot = 0..bases.len
 var slot = Map<Int, Slot>()
 for s in Slot: slot[bases[s.to_idx]] = s

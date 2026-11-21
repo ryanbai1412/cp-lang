@@ -10,7 +10,7 @@ for _ in 0..total:
     xs.push(2 * x)
 
 // rank[i]: leaf of person i when everyone is sorted by position.
-let order = sorted(0..total, by: i => (xs[i], i))
+let order = (0..total).sorted(by: i => (xs[i], i))
 var rank = List.filled(total, 0)
 for r in 0..total: rank[order[r]] = r
 

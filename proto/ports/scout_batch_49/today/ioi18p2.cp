@@ -60,7 +60,7 @@ fn account(r: Int, c: Int, d: Int):
     if me < covered: add(1, 0, people - 1, me, covered - 1, d)
     // a dent from my second neighbour's arrival until my own
     var around: List<Int> = [at(r - 1, c), at(r + 1, c), at(r, c - 1), at(r, c + 1)]
-    sort(mut around)
+    around.sort()
     if around[1] < me: add(1, 0, people - 1, around[1], me - 1, d)
 
 build(1, 0, people - 1)
@@ -78,7 +78,7 @@ for _ in 0..q:
         if row[p] + 1 < h: touched.push((row[p] + 1) * w + col[p])
         if col[p] > 0: touched.push(row[p] * w + col[p] - 1)
         if col[p] + 1 < w: touched.push(row[p] * w + col[p] + 1)
-    sort(mut touched)
+    touched.sort()
     var cells: List<Int> = []
     for x in touched:
         if cells.len == 0 or cells.last! != x: cells.push(x)

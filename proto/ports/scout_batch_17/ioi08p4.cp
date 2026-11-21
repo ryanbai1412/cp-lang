@@ -33,7 +33,7 @@ var ends: List<(Int, Tele)> = []
 for t in Tele:
     ends.push((teles[t].w, t))
     ends.push((teles[t].e, t))
-let order = sorted(ends)
+let order = ends.sorted()
 var partner: [Point]Point = [Point] p => p
 var first_end: [Tele]?Point = none
 for p in Point:
@@ -67,7 +67,7 @@ for s in 0..2 * n:
 // whole loop in: its jumps plus 2. With no loops left, two new teleporters
 // that cross each other add 4, and a single one adds 1.
 var spare = m
-for jumps in sorted(loops, by: x => -x):
+for jumps in loops.sorted(by: x => -x):
     if spare > 0:
         points += jumps + 2
         spare -= 1

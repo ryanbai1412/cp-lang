@@ -40,7 +40,7 @@ for qi in 0..q:
         q_kind.push(1)
         q_arg.push(t - 1)
 
-all_entries = sorted(all_entries)
+all_entries = all_entries.sorted()
 let total = all_entries.len
 domain Slot = 0..total
 domain Tag = 0..(n + q)

@@ -52,7 +52,7 @@ for _ in 0..q:
     let a: Int = read()
     arr.push(a)
 
-let sraw = sorted(arr)
+let sraw = arr.sorted()
 var uniq: List<Int> = []
 for v in sraw:
     if uniq.len == 0 or uniq.last! != v:

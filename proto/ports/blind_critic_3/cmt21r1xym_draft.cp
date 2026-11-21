@@ -6,9 +6,9 @@ domain I = 0..n
 let g: [I, I]Char = read()
 let comb = Comb<MOD>(n)
 fn solve(cnt: [I]Int) -> List<(Int, Z, Int)>:
-    let a = sorted(cnt, by: x => -x)
+    let a = cnt.sorted(by: x => -x)
     let pre = prefix(a)
-    let total = sum(a)
+    let total = a.sum()
     var out: List<(Int, Z, Int)> = []
     for i in 0..=n:
         var top = 0

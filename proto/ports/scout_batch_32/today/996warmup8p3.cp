@@ -46,6 +46,6 @@ else:
     let swap_sides = hr >= kr0
     let need = if swap_sides: kl0 - hl else: kr0 - hr
     var movers = [if swap_sides: L - at[i] else: at[i] for i in Ball if right[i] != swap_sides]
-    sort(mut movers, by: p => -p)
+    movers.sort(by: p => -p)
     if need < movers.len: print(t1 + 2 * L - movers[need - 1])
     else: print(t1 + 2 * L)

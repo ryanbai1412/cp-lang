@@ -10,19 +10,19 @@ let b: [C]Int = read()
 // FRICTION 38.5: Subset<C> has no .first (lowest set element / ctz) or .empty,
 // so O(2^n) subset-sum DP cannot peel one bit off `s: Subset<C>` without an
 // O(n) scan; we double a list instead.
-var boxes: List<(Int, Int)> = [(0, sum(b))]
+var boxes: List<(Int, Int)> = [(0, b.sum())]
 for c in C:
     let cur_len = boxes.len
     for i in 0..cur_len:
         let (sa, sb) = boxes[i]
         boxes.push((sa + a[c], sb - b[c]))
 
-sort(mut boxes)
+boxes.sort()
 var suff_b: [0..boxes.len]Int = [0..boxes.len] i => boxes[i].1
 for i in (0..boxes.len - 1).rev:
     suff_b[i] max= suff_b[i + 1]
 
-let (sa_tot, sb_tot) = (sum(a), sum(b))
+let (sa_tot, sb_tot) = (a.sum(), b.sum())
 var best: ?(Int, Int) = none
 for i in 0..boxes.len - 1:
     let x = boxes[i].0 + 1

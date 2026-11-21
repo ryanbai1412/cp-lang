@@ -1,7 +1,7 @@
 @!multitest
 let n: Int = read()
 var a: [0..n]Int = read()
-let tot = sum(a)
+let tot = a.sum()
 if tot % 2 == 1:
     print(-1)
     return

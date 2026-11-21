@@ -5,7 +5,7 @@ let n: 1..=3e5 = read()
 let p: [0..n]Int = read()
 var cnt = HashMap<Int, Int>()
 for x in p: cnt[x] += 1
-var total = sum(p)
+var total = p.sum()
 let q: 1..=1e5 = read()
 var inflation = 0
 for _ in 0..q:

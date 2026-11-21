@@ -45,7 +45,7 @@ fn is_disconnected(n: Int, m: Int, blocked: List<(Int, Int)>) -> Bool:
             for (_, _, sid) in segs: link(sid, id)
             segs = [(0, m - 1, id)]
         if r == n: continue
-        var cols = sorted(by_row[r])
+        var cols = by_row[r].sorted()
         cols.push(m)
         var (l, j) = (0, 0)
         var next_segs = List<(Int, Int, Int)>()

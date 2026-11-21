@@ -42,7 +42,7 @@ for i in 0..n:
     var found: List<Hom> = []
     for other in lines:
         if let p = crossing(lines[i], other): found.push(p)
-    sort(mut found)
+    found.sort()
     var ids: List<Int> = []
     for p in found:
         let key = (p.x, p.y, p.w)

@@ -30,7 +30,7 @@ for i in 0..n:
         let s = 2 / (cnt_l[i] + cnt_r[i])
         cnt_l[i] *= s
         cnt_r[i] *= s
-if sum(cnt_l) > m - l:
+if cnt_l.sum() > m - l:
     r = m
     cnt = cnt_l
 else:

@@ -42,5 +42,5 @@ for i in 0..n:
                     seen[q] = true
                     stack.push(q)
         sizes.push(size)
-sort(mut sizes, by: x => -x)
+sizes.sort(by: x => -x)
 print(sizes[0], sizes[1], sizes[2], sizes[3])

@@ -19,5 +19,5 @@ for i in (1..2 * n).step(2):
             if let door = p.step(d) and let q = door.step(d):
                 if not wall(door): rooms.unite(p, q)
 
-var sizes = sorted(rooms.components.map(c => c.len), by: s => -s)
+var sizes = rooms.components.map(c => c.len).sorted(by: s => -s)
 print(sizes[0], sizes[1], sizes[2], sizes[3])

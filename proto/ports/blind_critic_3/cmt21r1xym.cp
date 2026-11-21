@@ -10,8 +10,8 @@ for i in 0..=n:
     for j in 1..=i: ncr[i, j] = ncr[i - 1, j - 1] + ncr[i - 1, j]
 domain K = 0..=n
 fn solve(cnt: [I]Int, mut best: [K]Int, mut ways: [K]Z):
-    let a = sorted(cnt, by: x => -x)
-    let total = sum(a)
+    let a = cnt.sorted(by: x => -x)
+    let total = a.sum()
     var top = 0
     for i in 0..=n:
         if i > 0: top += a[i - 1]

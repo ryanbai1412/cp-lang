@@ -27,5 +27,5 @@ let runs = SegTree.of(Len, i => Run(0, have[i] % 2, 0).join(Run(0, 0, filed[i]))
 
 for (i, by) in changes:
     have[i] += by                           // `filed` and `runs` refresh the two slots that read have[i]
-    let spare = sum(pairs_of) - runs.all.made
+    let spare = pairs_of.sum() - runs.all.made
     print(runs.all.made + spare * 2 / 3)    // three spare pairs make two triangles

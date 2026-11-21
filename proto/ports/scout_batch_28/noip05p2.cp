@@ -14,7 +14,7 @@ let stones: [m]1..len = read()
 
 var spot: List<Int> = []                    // the stones, moved closer together
 var (before, shrunk) = (0, 0)
-for x in sorted(stones):
+for x in stones.sorted():
     let gap = x - before
     shrunk += if gap > CYCLE: gap % CYCLE + CYCLE else: gap
     spot.push(shrunk)

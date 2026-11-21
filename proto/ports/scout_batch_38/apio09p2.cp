@@ -10,7 +10,7 @@ type Seg = (l: Int, r: Int, id: Orig)
 var segs: [domain I = 0..n]Seg = [I] i =>
     let orig = Orig.from_idx(i.to_idx)!
     (raw[orig].l - 1, raw[orig].r, orig)
-sort(mut segs, by: s => (s.l, s.r))
+segs.sort(by: s => (s.l, s.r))
 
 var pos: [Orig]I = I.first
 for (i, s) in segs.items: pos[s.id] = i

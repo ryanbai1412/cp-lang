@@ -14,7 +14,7 @@ for i in 0..m:
     var r = r_in - 1
     if l > r: r += n
     arcs.push((l, -r, i))
-sort(mut arcs)
+arcs.sort()
 
 var al: [0..m]Int = 0
 var ar: [0..m]Int = 0
@@ -81,7 +81,7 @@ fn covers_arc(segs: List<(Int, Int)>, ql: Int, qr: Int) -> Bool:
         evts.push((r + 1, -1))
         evts.push((l + n, 1))
         evts.push((r + n + 1, -1))
-    sort(mut evts)
+    evts.sort()
     var prev: ?Int = none
     var cur = 0
     for idx in 0..evts.len:

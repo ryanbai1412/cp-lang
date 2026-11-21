@@ -24,7 +24,7 @@ fn cost(l: Int, r: Int) -> Int:
     (pre[r] - pre[r - h]) - (pre[l + h] - pre[l])
 
 fn solve(mut arr: List<(Int, Int)>) -> Int:
-    sort(mut arr)
+    arr.sort()
     var cadd = 0
     for i in 0..n:
         pre[i + 1] = pre[i] + arr[i].0

@@ -20,4 +20,4 @@ for len in 0..n - 1:  // the prefix has len + 1 values
             acc += ways[j]
             next[j] = acc
     ways = next
-print(sum(ways))
+print(ways.sum())

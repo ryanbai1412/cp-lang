@@ -22,7 +22,7 @@ for c in C:
             score += worth[t]
             tasks += 1
     ranking.push((-score, -tasks, c.to_idx + 1))
-sort(mut ranking)
+ranking.sort()
 
 for r in 0..N:
     if ranking[r].2 == P:

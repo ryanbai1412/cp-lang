@@ -18,8 +18,8 @@ fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
                 cyc.push(cur)
                 cur = perm[cur]
             cyc.sort()
-            let r = first(cyc, x => perm[x] < x)!
-            let l = first(cyc.rev, x => x < r) ?? i
+            let r = cyc.first(x => perm[x] < x)!
+            let l = cyc.rev.first(x => x < r) ?? i
             ops.push((l, r))
             perm.swap_at(l, r)
     ops

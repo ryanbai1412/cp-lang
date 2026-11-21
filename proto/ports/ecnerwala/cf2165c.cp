@@ -1,7 +1,7 @@
 @!multitest
 let (n0, q): (Int, Int) = read()
 let a: [0..n0]Int = read()
-let top = sorted(a, desc: true)[..min(n0, 30)]
+let top = a.sorted(desc: true)[..min(n0, 30)]
 let n = top.len
 
 for _ in 0..q:

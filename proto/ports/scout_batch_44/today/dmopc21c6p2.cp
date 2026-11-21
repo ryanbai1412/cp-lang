@@ -14,7 +14,7 @@ for c in s + "1":
         zero_runs.push(run)
         run = 0
 
-let longest = sorted(zero_runs, by: x => -x)
+let longest = zero_runs.sorted(by: x => -x)
 var ans = 0
 for i in 0..min(k, longest.len): ans += longest[i]
 print(ans)

@@ -9,8 +9,8 @@ let comb = Comb<MOD>()
 let n: 4..=2e5 = read()
 let a: [0..n]Int = read()
 let (top, half) = (a[n - 1], n / 2)
-let ds = sorted([top - a[n - 2], a[n - 2] / (half - 1)]).deduped()
+let ds = [top - a[n - 2], a[n - 2] / (half - 1)].sorted().deduped()
 let ok = count(
-    sorted([d * i for i in 0..half] + [top - d * i for i in 0..n - half]) == a for d in ds
+    ([d * i for i in 0..half] + [top - d * i for i in 0..n - half]).sorted() == a for d in ds
 )
 print(comb.fact(n - half - 2) * comb.fact(half) * ok)

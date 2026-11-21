@@ -70,7 +70,7 @@ fn solve_brute() -> Int
             let r_idx = i.to_idx + len
             if r_idx <= n:
                 sums.push(pre[I.bounds.nth(r_idx)] - pre[i.l])
-    sort(mut sums, by: x => -x)
+    sums.sort(by: x => -x)
     sum(sums[t] for t in 0..k)
 
 print(solve())

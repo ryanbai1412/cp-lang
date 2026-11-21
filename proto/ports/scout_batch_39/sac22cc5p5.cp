@@ -17,6 +17,6 @@ for c in 0..=m - k:
     for r in 0..=n - k:
         seen.push(col_h.get(r..r + k))
 
-sort(mut seen)
+seen.sort()
 dedup(mut seen)
 print(seen.len)

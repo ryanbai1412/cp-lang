@@ -35,7 +35,7 @@ fn solve():
             ans min= n - even[x] - odd[y] + extra
 
     var by_odd: List<(Int, Int)> = [(-odd[y], y) for y in 0..=n]
-    sort(mut by_odd)
+    by_odd.sort()
 
     for x in 0..=n:
         for p in by_odd:

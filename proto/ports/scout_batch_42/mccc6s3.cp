@@ -34,7 +34,7 @@ fn sweep(arr: [Pos]Int, prefer_first: Bool, emit: (Int, Pos, ?Pos) -> ()):
         active.add(x)
 
     var sum_l = 0
-    var sum_r = sum(arr)
+    var sum_r = arr.sum()
     for (i, x) in arr.items:
         sum_r -= x
         occ[x].pop_front()

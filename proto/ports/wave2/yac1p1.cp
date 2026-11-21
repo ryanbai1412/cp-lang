@@ -5,9 +5,9 @@ type Z = Mod<1_000_000_007>
 let (n, k): (1..=2e5, 0..=1e9) = read()
 let a: [0..n]1..=1e9 = read()
 let b: [0..n]1..=1e9 = read()
-let (lo_a, lo_b) = (sorted(a), sorted(b))
+let (lo_a, lo_b) = (a.sorted(), b.sorted())
 
-var (x, y) = (max(a), max(b))
+var (x, y) = (a.max(), b.max())
 let level = min(k, abs(x - y))          // first bring the smaller side up
 if x < y: x += level else: y += level
 x += (k - level) / 2                    // then split what is left

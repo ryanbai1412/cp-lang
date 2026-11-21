@@ -60,7 +60,7 @@ for t_now in Time(3)..:
         paint.assign(range.lo.ord, range.hi.ord, t_now, mut chunks)
     cur = c
 
-    sort(mut chunks, by: x => desc(x.t))
+    chunks.sort(by: x => desc(x.t))
     var matched = 0
     for chunk in chunks:
         var need = chunk.w

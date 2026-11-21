@@ -9,13 +9,10 @@ pub fn mo_order(n: Int, queries: List<(Int, Int)>) -> List<Int>:
     while block * block * max(queries.len, 1) < 3 * n * n: block += 1
     var order = [i for i in 0..queries.len]
     // even blocks sweep the right end up, odd blocks sweep it back down
-    sort(
-        mut order,
-        by: i => (
+    order.sort(by: i => (
             queries[i].0 / block,
             if (queries[i].0 / block) % 2 == 0: queries[i].1 else: -queries[i].1,
-        ),
-    )
+        ))
     order
 
 /// The window walk itself, for a window described by a state you fold yourself:
@@ -71,7 +68,7 @@ fn the_order_visits_every_query_once_and_stays_cheap():
     let n = 400
     let queries = [(min(x, y), max(x, y)) for (x, y) in [(rand(0, n), rand(0, n)) for _ in 0..400]]
     let order = mo_order(n, queries)
-    assert sorted(order) == [i for i in 0..400]
+    assert order.sorted() == [i for i in 0..400]
     var moves = 0
     var win = (0, 0)
     for qi in order:

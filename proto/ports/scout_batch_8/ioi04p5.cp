@@ -12,11 +12,11 @@ let fields: [Field]3..=150 = read()
 let strips: [Strip]2..=150 = read()
 
 fn most() -> Int:
-    let whole = sum(fields)
+    let whole = fields.sum()
     if q >= whole:
         // Every field, then the longest strips: each strip started loses one tree.
         var (left, got) = (q - whole, whole)
-        for len in sorted(strips).rev:
+        for len in strips.sorted().rev:
             let take = min(left, len)
             got += max(0, take - 1)
             left -= take

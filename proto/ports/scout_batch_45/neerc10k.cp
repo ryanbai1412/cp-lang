@@ -12,11 +12,11 @@ domain Colour = 1..=k
 // Start a BFS at a vertex with a spare colour (degree < k; n odd guarantees
 // one), then colour in reverse: everyone but the start still has an
 // uncoloured BFS parent, so at most k - 1 colours are taken around it.
-let start = V.find(v => g[v].len < k)!
+let start = V.first(v => g[v].len < k)!
 var colour: [V]?Colour = none
 for u in bfs(g, from: start).order.rev:
     let taken = Set(colour[v] for v in g[u])
-    colour[u] = Colour.find(c => c not in taken)
+    colour[u] = Colour.first(c => c not in taken)
 
 print(k)
 for v in V: print(colour[v]!)

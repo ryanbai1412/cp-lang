@@ -20,7 +20,7 @@ impl Ord for Rate:
 
 // Rates compare exactly by cross-multiplying: s and q are at most 2e4.
 var by_rate = [Rate(i, ask[i].s, ask[i].q) for i in Worker]
-sort(mut by_rate)
+by_rate.sort()
 
 type Plan = (setter: Worker, size: Int, points: Int)
 

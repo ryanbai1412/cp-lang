@@ -68,7 +68,7 @@ pub struct SuffixAutomaton<A>:
     pub fn occurrences(self) -> List<Int>:
         var occ = [Int(p) for p in prefix]
         var order = [v for v in 1..next.len]
-        sort(mut order, by: v => -longest[v])
+        order.sort(by: v => -longest[v])
         for v in order: occ[link[v]!] += occ[v]
         occ
 

@@ -13,7 +13,7 @@ var marks: [City]Int = 0
 for _ in 0..m:
     let s: 2..=1e5 = read()
     let plan: [0..s]City = read()
-    let tour = sorted(plan, by: tree.pos)
+    let tour = plan.sorted(by: tree.pos)
     for i in 0..s:
         marks[tour[i]] += 1
         marks[tree.lca(tour[i], tour[(i + 1) % s])] -= 1

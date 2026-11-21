@@ -7,7 +7,7 @@ for _ in 0..n:
     pts.push((u: x + y, v: x - y))
 
 // u descending, ties v descending; then the longest strictly increasing run of v.
-sort(mut pts, by: p => (-p.u, -p.v))
+pts.sort(by: p => (-p.u, -p.v))
 var tails: List<Int> = []
 for p in pts:
     var (lo, hi) = (0, tails.len)

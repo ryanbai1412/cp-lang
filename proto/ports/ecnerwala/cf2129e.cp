@@ -18,7 +18,7 @@ fn mo_key(qi: Int) -> (Int, Int):
     let b = queries[qi].ql / blk
     (b, if b % 2 == 0: queries[qi].qr else: -queries[qi].qr)
 
-let order = sorted(0..q, by: mo_key)
+let order = (0..q).sorted(by: mo_key)
 
 let vmax = bit_ceil(n + 1)
 let bsz = 512

@@ -32,7 +32,7 @@ const AddMin = Action<?Int, Int>(
 
 fn solve() -> Int:
     var masts = [masts_in[i] for i in M]
-    sort(mut masts, by: m => m.h)
+    masts.sort(by: m => m.h)
     let max_h = masts.last!.h
     domain H = 1..=max_h
 
@@ -71,12 +71,12 @@ fn solve() -> Int:
 fn solve_brute() -> Int
     where n <= 50:
     var masts = [masts_in[i] for i in M]
-    sort(mut masts, by: m => m.h)
+    masts.sort(by: m => m.h)
     let max_h = masts.last!.h
     var c = List.filled(max_h + 1, 0)
     for m in masts:
         var idxs = [i for i in 1..=m.h]
-        sort(mut idxs, by: i => c[i])
+        idxs.sort(by: i => c[i])
         for j in 0..m.k:
             c[idxs[j]] += 1
     sum(x * (x - 1) / 2 for x in c)

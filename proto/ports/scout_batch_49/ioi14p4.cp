@@ -14,7 +14,7 @@ fn rotation(n: Int, seq: [0..n]Int) -> ?Int:
 
 @grader
 fn valid(n: Int, seq: [0..n]Int) -> Bool:
-    rotation(n, seq) != none and all(a != b for (a, b) in sorted(seq).adjacent)
+    rotation(n, seq) != none and all(a != b for (a, b) in seq.sorted().adjacent)
 
 @grader
 fn replacement(n: Int, seq: [0..n]Int) -> List<Int>:

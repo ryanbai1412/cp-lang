@@ -21,7 +21,7 @@ fn link(mut g: Adj, r: Road):
 // network doesn't already connect its ends within its length.
 var g: Adj = []
 var total = 0
-for r in sorted(roads, by: r => (r.len, r.cost)):
+for r in roads.sorted(by: r => (r.len, r.cost)):
     if (dijkstra(g, r.u)[r.v] ?? inf) > r.len:
         total += r.cost
         link(mut g, r)

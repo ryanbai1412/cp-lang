@@ -7,7 +7,7 @@ let blocks: [n]Block = read()
 domain Load = 0..=20000
 
 var best: [Load]Int = 0                 // best value of a tower weighing at most this
-for b in sorted(blocks, by: b => b.w + b.s):
+for b in blocks.sorted(by: b => b.w + b.s):
     for above in (0..=b.s).rev:
         best[Load(above + b.w)] max= best[Load(above)] + b.v
 print(max(best[l] for l in Load))

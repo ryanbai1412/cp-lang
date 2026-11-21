@@ -65,7 +65,7 @@ for t in Q:
 let euler = human.preorder
 var placed = Fenwick<wolf.Pre, Int>.new()
 var next = 0
-for a in sorted(asks, by: a => a.at):
+for a in asks.sorted(by: a => a.at):
     while next < a.at:
         placed.add(wolf.pos(euler[next]), 1)
         next += 1

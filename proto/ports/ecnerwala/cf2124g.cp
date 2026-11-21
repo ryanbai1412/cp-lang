@@ -4,7 +4,7 @@ let a: [0..n]Int = read()
 var mins: [0..n]Int = a
 for i in 1..n: mins[i] min= mins[i - 1]
 
-let base_ans = sum(mins)
+let base_ans = mins.sum()
 var ans: [0..n]Int = base_ans
 var best_rem: List<(val: Int, pos: Int)> = []
 var suff_val: [0..=n]Int = 0

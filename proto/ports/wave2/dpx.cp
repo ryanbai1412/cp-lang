@@ -5,6 +5,6 @@ let n: 1..=1000 = read()
 let blocks: [0..n](w: 1..=1e4, s: 1..=1e4, v: 1..=1e9) = read()
 
 var best: [0..=20000]Int = 0            // best value of a tower of exactly this weight
-for (w, s, v) in sorted(blocks, by: b => b.w + b.s):
+for (w, s, v) in blocks.sorted(by: b => b.w + b.s):
     for above in (0..=s).rev: best[above + w] max= best[above] + v
-print(max(best))
+print(best.max())

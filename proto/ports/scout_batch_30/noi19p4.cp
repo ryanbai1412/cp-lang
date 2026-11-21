@@ -58,7 +58,7 @@ fn seg_insert(o: Int, l: Int, r: Int, x: Int, y: Int, id: Int):
     if x <= mid: seg_insert(o * 2, l, mid, x, y, id)
     else: seg_insert(o * 2 + 1, mid + 1, r, x, y, id)
 
-let by_y = sorted(cities, by: c => (c.y, c.id))
+let by_y = cities.sorted(by: c => (c.y, c.id))
 for c in by_y:
     seg_insert(1, 1, w, c.x, c.y, c.id)
 

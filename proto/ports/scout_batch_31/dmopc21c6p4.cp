@@ -16,7 +16,7 @@ fn solve() -> ?List<Int>:                     // FRICTION X1: no top-level early
     if any(c in [e.u, e.v] and d in [e.u, e.v] for e in edges): return none
     let dist = bfs((u, met) => arrive(v, met) for v in g[u], from: [arrive(a, (false, false))])
     let ends = [(dist[b, met]!, met) for met in Met if not (met.c and met.d) and dist[b, met] != none]
-    let rest = if min(ends)?.1.d: 2 else: 1
+    let rest = if ends.min()?.1.d: 2 else: 1
     [if c in [e.u, e.v]: 1 elif d in [e.u, e.v]: 2 else: rest for e in edges]
 
 if let colours = solve():

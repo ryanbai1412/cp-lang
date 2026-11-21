@@ -10,7 +10,7 @@ let a: [n]1..=1e9 = read()
 // that was once a good neighbour stays one: `small` gives numbers out from its
 // front and promotes them from its back, and the promoted ones form a stack
 // with the smallest on top.
-var small = Deque(sorted(a))                                                        // WISH S12
+var small = Deque(a.sorted())                                                        // WISH S12
 var partners: List<Int> = []
 var line: List<Int> = []
 while let x = small.pop_front() ?? partners.pop():                                  // WISH S12

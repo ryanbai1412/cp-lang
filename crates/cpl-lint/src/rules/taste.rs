@@ -5,7 +5,7 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, DISCARDED_RESULT, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL,
+    File, Finding, DISCARDED_RESULT, FREE_FOLD, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL,
     SEARCH_LOOP, SYMMETRIC_WRITE,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -70,6 +70,7 @@ impl Visitor for Blocks<'_, '_> {
     }
     fn expr(&mut self, expr: &Expr) {
         self.taste.none_check_unwrap(expr);
+        self.taste.free_fold(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -528,6 +529,83 @@ impl<'a> Taste<'a> {
         self.push(&NONE_CHECK_UNWRAP, diag);
     }
 
+    /// `sum(xs)`, `count(xs, p)`, `sorted(xs, by: k)`, `sort(mut xs)`:
+    /// a fold or sort of one sequence, which reads as its method.
+    fn free_fold(&mut self, expr: &Expr) {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return;
+        };
+        // `xs.find(x => ..)` is the element a test holds for: `xs.first(..)`,
+        // where `xs.find(x)` is the index of a value.
+        if let (ExprKind::Field { name: method, .. }, [test]) = (&callee.kind, &args[..]) {
+            if method.text == "find" && test.name.is_none() && matches!(test.value.kind, ExprKind::Lambda { .. }) {
+                let mut diag = Diagnostic::warning(
+                    FREE_FOLD.code,
+                    method.span,
+                    "the element a test holds for is `first`; `find` is the index of a value",
+                )
+                .with_help("write `.first(..)`");
+                diag.fixes.push(Fix {
+                    title: "use `.first`".to_string(),
+                    edits: vec![(method.span, "first".to_string())],
+                });
+                self.push(&FREE_FOLD, diag);
+            }
+            return;
+        }
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        let Some(seq) = args.first() else {
+            return;
+        };
+        if self.declared.contains(name.as_str())
+            || seq.name.is_some()
+            || matches!(seq.value.kind, ExprKind::Comprehension { .. })
+        {
+            return;
+        }
+        let positional = args.iter().all(|a| a.name.is_none() && !a.mutable);
+        let fits = match name.as_str() {
+            "sum" | "prod" | "min" | "max" => args.len() == 1 && !seq.mutable,
+            "count" | "all" | "any" | "first" => args.len() == 2 && positional && is_test(&args[1].value),
+            "sorted" => !seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
+            "sort" => seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
+            _ => false,
+        };
+        // `sorted(V, by: k)` walks a domain, not a value; `min([a, b, c])`
+        // is the values themselves, waiting on a variadic `min(a, b, c)`.
+        let skip = match &seq.value.kind {
+            ExprKind::Name(n) => n.starts_with(char::is_uppercase),
+            ExprKind::List(_) => matches!(name.as_str(), "min" | "max"),
+            _ => false,
+        };
+        if !fits || skip {
+            return;
+        }
+        let recv = self.text(seq.value.span);
+        let recv = if postfix(&seq.value) { recv.to_string() } else { format!("({recv})") };
+        let rest = match (args.get(1), args.last()) {
+            (Some(second), Some(last)) => {
+                let start = second.name.as_ref().map_or(second.value.span.start, |n| n.span.start);
+                self.text(Span { start, end: last.value.span.end })
+            }
+            _ => "",
+        };
+        let call = format!("{recv}.{name}({rest})");
+        let mut diag = Diagnostic::warning(
+            FREE_FOLD.code,
+            expr.span,
+            format!("`{name}` of one sequence reads as its method"),
+        )
+        .with_help(format!("write `{call}`"));
+        diag.fixes.push(Fix {
+            title: format!("use `.{name}`"),
+            edits: vec![(expr.span, call)],
+        });
+        self.push(&FREE_FOLD, diag);
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn reduce(
         &mut self,
@@ -865,4 +943,28 @@ fn repeated_literals(file: &File) -> Vec<Finding> {
         });
     }
     out
+}
+
+/// A test passed to a fold: a one-parameter lambda or a name.
+fn is_test(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Lambda { params, .. } => params.len() == 1,
+        ExprKind::Name(_) | ExprKind::Field { .. } => true,
+        _ => false,
+    }
+}
+
+/// Whether `.m()` binds to all of `e` without parentheses.
+fn postfix(e: &Expr) -> bool {
+    matches!(
+        e.kind,
+        ExprKind::Name(_)
+            | ExprKind::Field { .. }
+            | ExprKind::Call { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Paren(_)
+            | ExprKind::List(_)
+            | ExprKind::Tuple(_)
+            | ExprKind::Str(_)
+    )
 }

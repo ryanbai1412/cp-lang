@@ -22,4 +22,4 @@ for j in order:
     while any(busy[k, u] for u in t..t + d): t += 1
     for u in t..t + d: busy[k, u] = true
     ready[j] = t + d
-print(max(ready)!)
+print(ready.max()!)

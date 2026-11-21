@@ -7,8 +7,8 @@ let n: 1..=2e5 = read()
 let k: 0..=1e9 = read()
 let a_in: [n]1..=1e9 = read()
 let b_in: [n]1..=1e9 = read()
-let a = sorted(a_in)
-let b = sorted(b_in)
+let a = a_in.sorted()
+let b = b_in.sorted()
 
 var x = a.last!
 var y = b.last!

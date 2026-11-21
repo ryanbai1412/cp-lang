@@ -28,7 +28,7 @@ for _ in 0..tests:
             name(v)
             size[u] += size[v]
             below.push(shape[v])
-        sort(mut below)
+        below.sort()
         if names.get(below) == none: names[below] = names.len
         shape[u] = names[below]
     name(roots[0])
@@ -41,8 +41,8 @@ for _ in 0..tests:
         if size[u] <= size[v] or size[u] - size[v] > k or kids[u].len < kids[v].len: return false
         if let known = memo.get((shape[u], shape[v])): return known
         // children of equal shape pair off; what is left on each side, by shape
-        var mine = sorted(kids[u], by: c => shape[c])
-        var theirs = sorted(kids[v], by: c => shape[c])
+        var mine = kids[u].sorted(by: c => shape[c])
+        var theirs = kids[v].sorted(by: c => shape[c])
         var left: List<Int> = []
         var right: List<Int> = []
         var (i, j) = (0, 0)

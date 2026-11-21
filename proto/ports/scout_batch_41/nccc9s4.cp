@@ -40,7 +40,7 @@ else:
             buckets[ceil_div(l, B)].push((l: l, r: r, qi: qi))
 
     for bi in 0..=nb if not buckets[bi].is_empty:
-        sort(mut buckets[bi], by: e => e.r)
+        buckets[bi].sort(by: e => e.r)
         cnt.fill(0)
         var base = (0, vals.D.first)
         let mid = bi * B

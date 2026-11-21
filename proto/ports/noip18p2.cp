@@ -10,7 +10,7 @@ fn solve():
     var payable: [Amount]Bool = false
     payable[Amount(0)] = true
     var needed = 0
-    for c in sorted(coins):
+    for c in coins.sorted():
         if not payable[Amount(c)]:
             needed += 1
             for a in Amount:

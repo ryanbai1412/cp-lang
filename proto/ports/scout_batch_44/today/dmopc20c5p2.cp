@@ -18,5 +18,5 @@ for r in 0..=n:
         cells.add((r, c))
 
 print(cells.len)
-for cell in sorted(cells):
+for cell in cells.sorted():
     print(cell.0 + 1, cell.1 + 1)

@@ -12,7 +12,7 @@ for _ in 0..m:
 var ys: [Col]List<Int> = []
 var ps: [Col]List<Int> = []
 for c in Col:
-    sort(mut raw_fish[c])
+    raw_fish[c].sort()
     var run = 0
     for (y, w) in raw_fish[c]:
         ys[c].push(y)
@@ -37,8 +37,8 @@ for i in (0..n).rev:
     let c = Col(i)
     let cnt = ys[c].len
     let m2 = next_dp0.len
-    let max_n0 = max(next_dp0)!
-    let max_n1 = max(next_dp1)!
+    let max_n0 = next_dp0.max()!
+    let max_n1 = next_dp1.max()!
     let base0 = max(max_n0, max_n1)
 
     var cmx_up = 0
@@ -62,4 +62,4 @@ for i in (0..n).rev:
     next_dp0 = cur_dp0
     next_dp1 = cur_dp1
 
-print(max(next_dp1)!)
+print(next_dp1.max()!)

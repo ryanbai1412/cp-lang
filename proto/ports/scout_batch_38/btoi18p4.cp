@@ -8,7 +8,7 @@ var arcs: [domain I = 0..m]Arc = [I] i =>
     let (l, r): (1..=n, 1..=n) = read()
     let rr = if l - 1 > r - 1: r - 1 + n else: r - 1
     (l - 1, rr, Wire.from_idx(i.to_idx)!)
-sort(mut arcs, by: a => (a.l, -a.r))
+arcs.sort(by: a => (a.l, -a.r))
 for i in I:
     if arcs[i].r >= n: arcs[i].r -= n
 
@@ -65,7 +65,7 @@ fn covers_arc(segs: List<(Int, Int)>, ql: Int, qr: Int) -> Bool:
         for shift in [-n, 0, n]:
             evts.push((l + shift, 1))
             evts.push((r + shift + 1, -1))
-    sort(mut evts)
+    evts.sort()
     var prev: ?Int = none
     var cur = 0
     for (pos, delta) in evts:

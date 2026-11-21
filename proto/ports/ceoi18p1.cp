@@ -9,7 +9,7 @@ let orders: [0..m]Offer = read()
 
 // (rate, cores, gain); fastest first, at equal rate machines (positive cores) before orders
 var deals = [(o.rate, o.cores, -o.price) for o in machines] + [(o.rate, -o.cores, o.price) for o in orders]
-sort(mut deals)
+deals.sort()
 
 let top = 50 * n
 var best: [0..=top]?Int = none          // best profit leaving this many spare cores

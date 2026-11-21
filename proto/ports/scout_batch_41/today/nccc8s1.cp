@@ -27,7 +27,7 @@ for k in 0..al.len:
     for j in 0..n: app.push(s[j])
     app.push(al[k])
     out.push(app)
-sort(mut out)
+out.sort()
 var prev: ?Str = none
 for w in out:
     if w != s and prev != w:

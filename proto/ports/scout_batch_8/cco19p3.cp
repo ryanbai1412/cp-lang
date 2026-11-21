@@ -11,7 +11,7 @@ fn random_parents() -> [Kid]V:
     [Kid] v => V(rand(1, v.idx + 1))
 
 let parent: [Kid]V = read(gen: random_parents)
-let everyone = sum(a)
+let everyone = a.sum()
 
 // Every vertex after its parent, so the tree can be scanned up or down.
 var kids: [V]List<V> = []
@@ -34,13 +34,13 @@ fn sums(xs: List<Int>) -> List<Int>:           // the total of every subset
 
 // The largest total of some of the parts that is at most half of them all.
 fn near_half(parts: List<Int>) -> Int:
-    let whole = sum(parts)
-    let big = max(parts)!
+    let whole = parts.sum()
+    let big = parts.max()!
     if 2 * big >= whole: return whole - big    // one part outweighs the rest
     // Meet in the middle: all subsets of each half, then one sweep over both.
     let cut = parts.len / 2
-    let ls = sorted(sums([parts[i] for i in 0..cut]))
-    let rs = sorted(sums([parts[i] for i in cut..parts.len]))
+    let ls = sums([parts[i] for i in 0..cut]).sorted()
+    let rs = sums([parts[i] for i in cut..parts.len]).sorted()
     var best = 0
     var i = 0                                  // ls[i]: the largest that fits beside r
     for r in rs.rev:

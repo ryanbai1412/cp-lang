@@ -231,8 +231,8 @@ pub const REPEATED_LITERAL: Lint = Lint {
     title: "Repeated large literal",
     summary: "a big literal (a bound or modulus) written in several places",
     explanation: "A big literal (a bound, a modulus, an infinity) is written on several lines: facts that must agree but are kept apart. Equal bounds in the types of different `read()` inputs are separate facts and do not count. Name it once (`const P = 998244353`, a domain, a type alias) and use the name.",
-    trigger: "let a = [3, 4]\nprint(sum(a) % 998244353)\nprint(a[0] * a[1] % 998244353)\n",
-    fix: "const P = 998244353\nlet a = [3, 4]\nprint(sum(a) % P)\nprint(a[0] * a[1] % P)\n",
+    trigger: "let a = [3, 4]\nprint(a.sum() % 998244353)\nprint(a[0] * a[1] % 998244353)\n",
+    fix: "const P = 998244353\nlet a = [3, 4]\nprint(a.sum() % P)\nprint(a[0] * a[1] % P)\n",
 };
 pub const PUSH_LOOP: Lint = Lint {
     code: Code("L0507"),
@@ -253,6 +253,16 @@ pub const NONE_CHECK_UNWRAP: Lint = Lint {
     explanation: "`x != none and .. x! ..` tests the option and then unwraps it: the same fact twice, and the `!` stays if the test is edited away. Bind the value once with `if let v = x:`, or compare the option itself (`x == some(e)`).",
     trigger: "fn hit(p: ?Int, v: Int) -> Bool = p != none and v == p!\nprint(hit(none, 1))\n",
     fix: "fn hit(p: ?Int, v: Int) -> Bool = p == some(v)\nprint(hit(none, 1))\n",
+};
+pub const FREE_FOLD: Lint = Lint {
+    code: Code("L0509"),
+    name: "free_fold",
+    default: Level::Warn,
+    title: "Fold or sort of a sequence written as a free function",
+    summary: "`sum(xs)`, `count(xs, p)` or `sort(mut xs)`: the method reads on the sequence",
+    explanation: "A fold or sort of one sequence is a method on it: `xs.sum()`, `xs.count(p)`, `xs.all(p)`, `xs.first(p)`, `xs.max()`, `xs.sorted(by: k)`, `xs.sort()`. The free form stays where it reads as math: a generator (`sum(f(x) for x in xs)`) or two or more values (`min(a, b)`). `cpl lint --fix` rewrites it.",
+    trigger: "let xs = [3, 1, 4]\nprint(sum(xs), count(xs, x => x > 2))\n",
+    fix: "let xs = [3, 1, 4]\nprint(xs.sum(), xs.count(x => x > 2))\n",
 };
 
 /// Every lint, in code order.
@@ -275,6 +285,7 @@ pub const LINTS: &[Lint] = &[
     REPEATED_LITERAL,
     PUSH_LOOP,
     NONE_CHECK_UNWRAP,
+    FREE_FOLD,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

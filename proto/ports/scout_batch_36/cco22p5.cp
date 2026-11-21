@@ -16,8 +16,8 @@ type Edge = (u: V, v: V, w: Int)
 
 var ea: [0..ma]Edge = read()
 var eb: [0..mb]Edge = read()
-sort(mut ea, by: e => e.w)
-sort(mut eb, by: e => e.w)
+ea.sort(by: e => e.w)
+eb.sort(by: e => e.w)
 
 fn c2(x: Int) -> Int: x * (x - 1) / 2
 

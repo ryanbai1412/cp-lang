@@ -3,5 +3,5 @@
 @!multitest
 let (n, l, r): (Int, Int, Int) = read()
 let raw: [0..n]Int = read()
-let a = sorted(raw)
+let a = raw.sorted()
 print(sum(max(0, max(l, a[n - 1 - i]) - min(r, a[i])) for i in 0..n))

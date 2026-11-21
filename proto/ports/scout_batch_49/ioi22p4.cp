@@ -20,7 +20,7 @@ struct Circuit:
         var all: [Node]Z = 1
         for u in Node.rev if not kids[u].is_empty:           // parents are numbered before children
             all[u] = kids[u].len
-            for v in kids[u]: all[u] *= all[v]               // FRICTION: there is `sum(it)` but no `product(it)`
+            for v in kids[u]: all[u] *= all[v]               // FRICTION: there is `it.sum()` but no `product(it)`
 
         // A lit source is worth the assignments of everything off its path to
         // the root: by linearity each gate on the path passes the count on once.

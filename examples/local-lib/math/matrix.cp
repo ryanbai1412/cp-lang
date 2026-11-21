@@ -146,7 +146,7 @@ fn counting_walks_matches_dp():
 
 fn sum_mod<P>(xs: List<Mod<P>>) -> Mod<P>:
     var t: Mod<P> = 0
-    t += sum(xs)
+    t += xs.sum()
     t
 
 @test

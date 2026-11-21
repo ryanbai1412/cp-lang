@@ -4,7 +4,7 @@ let (n, m, w): (1..=20_000, 1..=50, 2..=50) = read()
 domain Slot = 1..=n
 type Kind = 1..=m
 var park: [Slot]Kind = read()
-let want = sorted(park)
+let want = park.sorted()
 
 // cursor[t]: first slot of type t's block not yet known to hold a type-t car
 var cursor: [Kind]?Slot = [Kind] t => want.first_ge(t)

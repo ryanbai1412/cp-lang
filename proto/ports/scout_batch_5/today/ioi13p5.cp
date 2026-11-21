@@ -8,9 +8,9 @@ let weak: [a]1..=2e9 = read()
 let small: [b]1..=2e9 = read()
 let toys: [t](weight: 1..=2e9, size: 1..=2e9) = read()
 
-let by_weight = sorted(toys)
-let weak_up = sorted(weak)
-let small_up = sorted(small)
+let by_weight = toys.sorted()
+let weak_up = weak.sorted()
+let small_up = small.sorted()
 
 fn done_in(minutes: Int) -> Bool:
     var left = MinHeap<Int>()

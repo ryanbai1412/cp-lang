@@ -20,7 +20,7 @@ fn paths(
 
 // clean[i]: paths from the start to stop i that touch no wall on the way:
 // all paths, minus those whose first wall is an earlier stop j.
-var stops = sorted(walls)
+var stops = walls.sorted()
 stops.push((r: h, c: w))
 var clean = List.filled(stops.len, Z.zero)
 for i in 0..stops.len:

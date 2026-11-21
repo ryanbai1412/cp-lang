@@ -14,8 +14,8 @@ struct Seg:
 
 let raw0: [n]Seg = read()
 let raw1: [m]Seg = read()
-let a0 = sorted(raw0, by: s => (s.l, s.r))
-let a1 = sorted(raw1, by: s => (s.l, s.r))
+let a0 = raw0.sorted(by: s => (s.l, s.r))
+let a1 = raw1.sorted(by: s => (s.l, s.r))
 
 // Last interval index with l <= t, or none if every interval starts after t.
 fn last_starting_le(xs: List<Seg>, t: Int) -> ?Int:

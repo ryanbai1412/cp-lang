@@ -6,7 +6,7 @@
 // original: corpus/submissions/4529987.cpp
 let n: 1..=500 = read()
 let rows: [0..n](name: Str, rounds: [0..5]0..=500) = read()
-let total = [0..n] i => sum(rows[i].rounds)
+let total = [0..n] i => rows[i].rounds.sum()
 
 // 1 + how many others finish ahead when i gains `mine` and the others `theirs`
 fn place(i: Int, mine: Int, theirs: Int) -> Int:

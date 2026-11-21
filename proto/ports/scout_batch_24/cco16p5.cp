@@ -67,7 +67,7 @@ fn union_area(rad: Int) -> Int:
         evs.push(SweepEvent(x1, y1, y2, 1))
         evs.push(SweepEvent(x2, y1, y2, -1))
 
-    sort(mut ys)
+    ys.sort()
     var uniq: List<Int> = []
     for y in ys:
         if uniq.is_empty or uniq.last! != y:
@@ -81,7 +81,7 @@ fn union_area(rad: Int) -> Int:
             else: hi = mid
         lo
 
-    sort(mut evs, by: e => e.x)
+    evs.sort(by: e => e.x)
     var st = CoverTree.new(uniq)
     var area = 0
     var prev_x = evs[0].x

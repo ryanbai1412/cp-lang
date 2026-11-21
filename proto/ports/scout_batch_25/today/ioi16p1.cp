@@ -11,7 +11,7 @@ let w: [I]Int = read()
 var order: List<(Int, Int)> = []          // (weight, index), lightest first
 for i in I:
     order.push((w[i], i.to_idx))
-sort(mut order)
+order.sort()
 
 var lo = 0
 var total = 0

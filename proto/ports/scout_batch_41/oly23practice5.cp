@@ -24,7 +24,7 @@ var ans = n
 for ((x, y), extra) in pen.items if x != y:
     ans min= n - even[x] - odd[y] + extra
 
-let by_odd = sorted(0..=n, by: y => -odd[y])
+let by_odd = (0..=n).sorted(by: y => -odd[y])
 for x in 0..=n:
     if let y = first(y for y in by_odd if y != x and (x, y) not in pen):
         ans min= n - even[x] - odd[y]

@@ -59,7 +59,7 @@ fn flatten_and_rebuild():
     build_buckets(all)
 
 var init_sorted = [pos[e] for e in E]
-sort(mut init_sorted)
+init_sorted.sort()
 build_buckets(init_sorted)
 
 var ops_since_rebuild = 0
@@ -114,7 +114,7 @@ fn slow():
     var cur = pos.copy()
     // Note: in standalone @brute, would need to replay queries; illustrates read() scoping question
     var tmp = [cur[e] for e in E]
-    sort(mut tmp)
+    tmp.sort()
     var cover: ?Int = none
     var ans = 0
     for x in tmp:

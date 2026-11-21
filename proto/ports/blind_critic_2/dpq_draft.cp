@@ -8,4 +8,4 @@ let a: [I]1..=1e9 = read()
 var best: [I]Int = 0
 for i in I:
     best[i] = a[i] + (max(best[j] for j in I.first..i if h[j] < h[i]) ?? 0)
-print(max(best))
+print(best.max())

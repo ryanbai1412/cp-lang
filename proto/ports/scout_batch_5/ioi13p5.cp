@@ -14,8 +14,8 @@ let toys: [t](weight: 1..=2e9, size: 1..=2e9) = read()
 // the biggest toys left, which must fit.
 fn done_in(minutes: Int) -> Bool:
     var left = MaxHeap<Int>()                                       // WISH K9
-    var light = sorted(toys).iter                                   // WISH K9: a cursor that survives the loop
-    for limit in sorted(weak):
+    var light = toys.sorted().iter                                   // WISH K9: a cursor that survives the loop
+    for limit in weak.sorted():
         left.push_all(toy.size for toy in light.take_while(toy => toy.weight < limit))
         left.pop(minutes)                                           // WISH K9: pop up to k
     left.push_all(toy.size for toy in light)

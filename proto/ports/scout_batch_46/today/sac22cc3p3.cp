@@ -14,7 +14,7 @@ while going:
     var idx: List<Int> = []
     for i in 0..n:
         idx.push(i)
-    sort(mut idx, by: i => (a[i] % p, i))
+    idx.sort(by: i => (a[i] % p, i))
     var row: List<Int> = []
     for i in 0..n:
         row.push(a[idx[i]])

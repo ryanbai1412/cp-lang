@@ -39,7 +39,7 @@ fn compress_dp(f: [0..=m]?Int) -> List<(Int, Int)>:
     out
 
 fn dp(u: V) -> [V]List<(Int, Int)>:
-    let kids = sorted(t.children(u), by: v => -t.size(v))
+    let kids = t.children(u).sorted(by: v => -t.size(v))
     let child_dp = [dp(v) for v in kids]
 
     var raw: [V]List<(Int, Int)> = []

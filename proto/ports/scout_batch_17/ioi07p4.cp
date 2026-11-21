@@ -32,4 +32,4 @@ for s in Ship:
                         next[b, f, c, d] max= dug + coal(a, b, f)
                         next[a, b, d, f] max= dug + coal(c, d, f)
     most = next
-print(max(most))
+print(most.max())

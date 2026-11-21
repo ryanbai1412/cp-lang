@@ -19,7 +19,7 @@ for c in C:
         let p = boxes[i]
         boxes.push((p.0 + a[c], p.1 - b[c]))
 
-sort(mut boxes)
+boxes.sort()
 let m = boxes.len
 var suff: [0..m]Int = 0
 for i in 0..m: suff[i] = boxes[i].1

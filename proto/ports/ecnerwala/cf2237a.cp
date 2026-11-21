@@ -2,4 +2,4 @@
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-print(sum(scan(a, min)))
+print(scan(a, min).sum())

@@ -9,7 +9,7 @@ for i in 0..n:
     let l: Int = read()
     let r: Int = read()
     segs.push((l - 1, r, i))
-sort(mut segs)
+segs.sort()
 
 var pos: [0..n]Int = 0
 for i in 0..n:

@@ -10,7 +10,7 @@ for _ in 0..n:
     fairs.push((t: t, at: at, gain: gain))
     top max= at
 fairs.push((t: 1 << 19, at: home, gain: 0))     // the trip ends back home
-sort(mut fairs)
+fairs.sort()
 
 // from_low[p] = best profit ending at p, plus p * down: a later stop x >= p
 // subtracts x * down. from_high mirrors it for stops x <= p. The interpreter

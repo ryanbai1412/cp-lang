@@ -14,7 +14,7 @@ var mask_to_val = Map<Int, Int>()
 fn try_add(bits: List<Int>) -> Bool:
     var m = 0
     for b in bits: m |= 1 << b
-    if mask_to_val.contains(m) or any(bits, b => cap[b] == 0): return false
+    if mask_to_val.contains(m) or bits.any(b => cap[b] == 0): return false
     num_masks += 1
     masks[num_masks] = m
     mask_to_val[m] = num_masks
@@ -41,7 +41,7 @@ for x in 0..9:
 
 while num_masks < 845:
     var order = List(1..30)
-    sort(mut order, by: b => desc(cap[b]))
+    order.sort(by: b => desc(cap[b]))
     add_next_triple(order)
 
 let t: 1..=40 = read()

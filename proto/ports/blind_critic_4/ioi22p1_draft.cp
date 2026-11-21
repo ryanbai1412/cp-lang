@@ -16,7 +16,7 @@ fn max_weights(n: Int, m: Int, xs: List<Int>, ys: List<Int>, ws: List<Int>) -> I
 
     // BLIND-GUESS(H8): does `for mut` work over `[Col]List<Fish>` and nested `List<Fish>` records?
     for mut col in cols:
-        sort(mut col, by: f => f.y)
+        col.sort(by: f => f.y)
         var run = 0
         for mut f in col:
             run += f.w
@@ -50,8 +50,8 @@ fn max_weights(n: Int, m: Int, xs: List<Int>, ys: List<Int>, ws: List<Int>) -> I
         let nxt_cnt = dp[i + 1, false].len
 
         // Tropical Optionals: max(gen) returns ?Int; BLIND-GUESS(H7): does max(Int, ?Int) return Int or ?Int?
-        let best_nxt_true = max(dp[i + 1, true]) ?? 0
-        let best_nxt_false = max(dp[i + 1, false]) ?? 0
+        let best_nxt_true = dp[i + 1, true].max() ?? 0
+        let best_nxt_false = dp[i + 1, false].max() ?? 0
 
         // State false (0): h[i] >= h[i+1] or reset
         dp[i, false] = List.filled(cnt + 1, max(best_nxt_true, best_nxt_false))
@@ -71,4 +71,4 @@ fn max_weights(n: Int, m: Int, xs: List<Int>, ys: List<Int>, ws: List<Int>) -> I
         for j in 0..=cnt:
             dp[i, true][j] max= best_fall + psum(i + 1, height(i, j))
 
-    return max(dp[0, true]) ?? 0
+    return dp[0, true].max() ?? 0

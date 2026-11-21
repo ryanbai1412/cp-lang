@@ -14,7 +14,7 @@ for i in 1..=n if seq[i] <= n:
     let s = (seq[i] - i) % n
     if let t = shift, t != s: ok = false
     shift = s
-let sorted_seq = sorted(seq)
+let sorted_seq = seq.sorted()
 if sorted_seq.deduped().len < n: ok = false
 
 if task == 1:
@@ -28,7 +28,7 @@ if task == 2:
     var now = [1..=n] i => (i - 1 + s) % n + 1
     var slot_of = HashMap<Int, Int>()
     for i in 1..=n: slot_of[seq[i]] = i
-    let last = max(seq)!
+    let last = seq.max()!
     let top = slot_of[last]
     var broken: List<Int> = []
     for g in n + 1..=last:

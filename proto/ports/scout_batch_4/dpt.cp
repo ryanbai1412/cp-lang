@@ -27,4 +27,4 @@ for g in Gap:
             run += ways[r]
             next[r] = run
     ways = next
-print(sum(ways))
+print(ways.sum())

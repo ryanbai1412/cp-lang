@@ -7,8 +7,8 @@
 let n: 1..=350 = read()
 let m: 1..=120 = read()
 let score: [n]0..=100 = read()
-let cards: [m]1..=4 = read() where sum(cards) == n - 1
-let have = [count(c == step for c in cards) for step in 1..=4] where max(have)! <= 40
+let cards: [m]1..=4 = read() where cards.sum() == n - 1
+let have = [count(c == step for c in cards) for step in 1..=4] where have.max()! <= 40
 domain Left = 0..=40
 
 // best score still to collect, standing on the square the played cards lead to

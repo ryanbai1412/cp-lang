@@ -19,7 +19,7 @@ fn cands_at(arr: [Col]Int, i: Int) -> List<Int>:
         let aj = arr[Col(j)]
         for k in max(ai, aj - 2)..=aj + 2: raw.push(k)
     var out: List<Int> = []
-    for v in sorted(raw):
+    for v in raw.sorted():
         if out.is_empty or out.last! != v: out.push(v)
     out
 

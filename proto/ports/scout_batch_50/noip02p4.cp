@@ -13,7 +13,7 @@ fn cover(ps: List<Pt>, k: Int) -> Int:
     if k == 1 or ps.is_empty: return area(ps)
     var best = area(ps)
     for axis in [p => (p.x, p.y), p => (p.y, p.x)]:
-        let s = sorted(ps, by: axis)
+        let s = ps.sorted(by: axis)
         for i in 1..s.len if axis(s[i - 1]).0 < axis(s[i]).0:
             for j in 1..k: best min= cover(s[..i], j) + cover(s[i..], k - j)
     best

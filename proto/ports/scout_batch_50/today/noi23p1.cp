@@ -23,7 +23,7 @@ for _ in 0..n:
 // strokes on one line that overlap or touch become one stroke
 fn merged(strokes: List<(Int, Int, Int)>) -> List<(Int, Int, Int)>:
     var out: List<(Int, Int, Int)> = []
-    for s in sorted(strokes):
+    for s in strokes.sorted():
         if let top = out.last and top.0 == s.0 and s.1 <= top.2 + 1:
             out.last! = (top.0, top.1, max(top.2, s.2))
         else: out.push(s)
@@ -67,7 +67,7 @@ for i in 0..vert.len:
     events.push((vert[i].1, 1, i, 1))
     events.push((vert[i].2 + 1, 0, i, -1))
 for s in hori: events.push((s.0, 2, s.1, s.2))
-for e in sorted(events):
+for e in events.sorted():
     if e.1 == 2: cells -= below(first_ge(e.3 + 1)) - below(first_ge(e.2))
     else: add(e.2, e.3)
 
@@ -80,7 +80,7 @@ for d in diag:
     for s in vert:
         let y = s.0 + d.0
         if d.1 <= s.0 and s.0 <= d.2 and s.1 <= y and y <= s.2: hits.push(s.0)
-    sort(mut hits)
+    hits.sort()
     for i in 0..hits.len:
         if i == 0 or hits[i] != hits[i - 1]: cells -= 1
 print(cells)

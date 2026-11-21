@@ -39,7 +39,7 @@ for i in Pick: picked.push(one_pre[i.ord])
 // WISH TR15: `print(picked)` should write the list on one line; the interpreter
 // shows `[1, 2]`, so the picks go out one per line (the judge reads tokens).
 for v in picked: print(v)
-sort(mut picked, by: v => two.tin[v].ord)
+picked.sort(by: v => two.tin[v].ord)
 for i in Ask: print("?", picked[i.ord], picked[i.ord + 1])
 // WISH TR16: an `interactor`/`ask` block would own the flush; the interpreter
 // has no `flush()`, and check.py runs it unbuffered instead.

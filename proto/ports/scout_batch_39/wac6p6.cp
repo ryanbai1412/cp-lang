@@ -6,7 +6,7 @@ enum Color = R | G | B
 
 @multitest
 var counts: [0..3]Int = read()
-sort(mut counts)
+counts.sort()
 let (a, b, c) = (counts[0], counts[1], counts[2])
 
 if a + b >= 46:

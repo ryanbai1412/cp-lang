@@ -9,7 +9,7 @@ let pts: [0..n](x: Int, y: Int, v: 0..=3) = read()
 // best cost on one axis: gather everyone at one median, or cut the sorted line
 // in two and gather each side, paying 1 for every point on the wrong side
 fn axis(line: List<(at: Int, low: Bool)>) -> Int:
-    let p = sorted(line)
+    let p = line.sorted()
     let pre = prefix(q.at for q in p)
     let lows = prefix(Int(q.low) for q in p)
 

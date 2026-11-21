@@ -8,7 +8,7 @@ type Z = Mod<MOD>
 let n: Int = read()
 domain U = 1..=n
 let raw: [0..n - 1](u: U, v: U, w: Int) = read()
-let edges = sorted(raw, by: e => e.w, desc: true)
+let edges = raw.sorted(by: e => e.w, desc: true)
 let max_w = edges[0].w * (n - 1)
 
 let m = 2 * (n - 1)

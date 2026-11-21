@@ -53,7 +53,7 @@ for qi in 0..q:
         all_entries.push((a: a, b: b, tag: tag))
         ops.push(Set(Item.from_idx(t - 1)!, tag))
 
-sort(mut all_entries, by: e => -(e.a - e.b))
+all_entries.sort(by: e => -(e.a - e.b))
 let (domain Slot, entries) = all_entries.freeze()
 
 var slot_of: [0..(n + q)]Slot = Slot.first

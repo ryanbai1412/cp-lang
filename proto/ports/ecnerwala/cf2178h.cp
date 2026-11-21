@@ -44,4 +44,4 @@ fn fixed_cost_paths(moves: List<Move>) -> Int:
     dist[R(0), S.full]!
 
 let moves = [Create(t) for t in T] + [Double(j) for j in 1..=3]
-print(fixed_cost_paths(moves) - sum(x))
+print(fixed_cost_paths(moves) - x.sum())

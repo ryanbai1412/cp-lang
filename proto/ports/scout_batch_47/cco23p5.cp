@@ -18,7 +18,7 @@ var walk: List<V> = []
 // Top-k distinct children maximizing callback scores (eliminates -1e18 / -1 sentinels).
 fn top_k(ch: [V], lim: Int, score: V -> Int) -> List<(Int, V)>:
     var items: List<(Int, V)> = [(score(v), v) for v in ch]
-    sort(mut items, by: x => -x.0)
+    items.sort(by: x => -x.0)
     if items.len > lim: items[..lim].copy() else: items
 
 fn opt2(ch: [V], f1: V -> Int, f2: V -> Int) -> ?(Int, V, V):

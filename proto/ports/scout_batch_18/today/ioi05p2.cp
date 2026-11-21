@@ -45,7 +45,7 @@ for i in 0..tags.len:
     if tags[i] == 0:
         pts.push(ca[i])
         pts.push(cb[i] + 1)
-pts = sorted(pts)
+pts = pts.sorted()
 var xs: List<Int> = []
 for x in pts:
     if xs.len == 0 or xs.last! != x: xs.push(x)

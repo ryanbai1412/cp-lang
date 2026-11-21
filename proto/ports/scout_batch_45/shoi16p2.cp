@@ -30,7 +30,7 @@ var pairs = HashMap<List<Pt>, Int>()
 fn square(a: Pt, side: Pt):
     let turn = Pt(-side.y, side.x)
     let sq = [a, a + side, a + side + turn, a + turn]
-    if all(p.x in 0..=n and p.y in 0..=m for p in sq): pairs[sorted(sq)] += 1
+    if all(p.x in 0..=n and p.y in 0..=m for p in sq): pairs[sq.sorted()] += 1
 
 for i in P:
     for j in P:

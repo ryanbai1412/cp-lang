@@ -14,4 +14,4 @@ for f in freq if f > 0:
     for i in (0..=sz).rev: dp[i + f] += dp[i] * f
     sz += f
 
-print(sum(dp[i] for i in max(freq)!..=n))
+print(sum(dp[i] for i in freq.max()!..=n))

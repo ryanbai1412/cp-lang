@@ -66,7 +66,7 @@ fn solve():
         if not found:
             print("detention")
             return
-        sort(mut cans)
+        cans.sort()
         blocks[u] = cans
 
     var vis: [V]Int = 0

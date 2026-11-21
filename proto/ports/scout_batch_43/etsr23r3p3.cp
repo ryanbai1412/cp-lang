@@ -29,7 +29,7 @@ var nodes: List<KNode> = [KNode(none, none, none, dist[v] ?? Int.MAX) for v in V
 var dsu = Dsu<V>()
 var root_of: [V]Int = [V] v => v.to_idx
 
-for e in sorted(edges, by: e => -e.alt):
+for e in edges.sorted(by: e => -e.alt):
     let ru = dsu.find(e.u)
     let rv = dsu.find(e.v)
     if ru != rv:

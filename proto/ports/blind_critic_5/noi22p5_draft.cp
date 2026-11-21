@@ -38,7 +38,7 @@ for i in Pos:
 
 var eqs: [Pos]Bool = false
 for v in Val:
-    sort(mut segs[v], by: desc)
+    segs[v].sort(by: desc)
     var mni: ?Pos = none
     for (l, r) in segs[v]:
         if let p = mni and p in l..=r:

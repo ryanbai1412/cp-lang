@@ -16,7 +16,7 @@ let radius: [Magnet]Int = read()
 // ways[j][k]: the magnets so far form j blocks, in a fixed order left to right, that take k cells
 var ways = [[Z.zero for _ in 0..=l] for _ in 0..=n + 1]
 ways[0][0] = 1
-for r in sorted(radius):
+for r in radius.sorted():
     var next = [[Z.zero for _ in 0..=l] for _ in 0..=n + 1]
     for j in 0..=n:
         for k in 0..=l:

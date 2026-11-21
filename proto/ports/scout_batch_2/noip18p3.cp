@@ -22,7 +22,7 @@ for (u, v, len) in roads:
 // the shortest partner that completes it. Returns the pairs made and the
 // longest chain left alone.
 fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
-    let a = sorted(chains)
+    let a = chains.sorted()
     var skip = [i for i in 0..=a.len]  // skip[i]: the first unused chain at or after i
     fn unused(i: Int) -> Int:
         var j = i

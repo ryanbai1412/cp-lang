@@ -9,4 +9,4 @@ var cur = 2 * a[0]
 for x in a[1..n]:
     best max= cur + x
     cur += max(0, 2 * x)
-print(best - sum(a))
+print(best - a.sum())

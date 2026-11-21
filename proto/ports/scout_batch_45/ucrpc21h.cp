@@ -8,9 +8,9 @@ let es: [0..m](u: V, v: V, w: Int) = read()
 
 let dist = dijkstra(Graph.undirected(es), from: V.first)
 let trips = [d! for d in dist]             // the statement promises a connected graph
-let total = sum(trips)
+let total = trips.sum()
 
-if any(e.w > LIMIT for e in es) or max(trips) > LIMIT or total > 4 * LIMIT:
+if any(e.w > LIMIT for e in es) or trips.max() > LIMIT or total > 4 * LIMIT:
     print("Impossible!")
     return
 

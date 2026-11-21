@@ -10,7 +10,7 @@ var pairs: List<(h: Int, k: Int)> = []
 for m in M:
     if masts[m].h > max_h: max_h = masts[m].h
     pairs.push(masts[m])
-pairs = sorted(pairs)
+pairs = pairs.sorted()
 
 domain H = 1..=max_h
 

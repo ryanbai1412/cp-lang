@@ -55,5 +55,5 @@ fn rounding_goes_the_right_way_for_negatives():
 @test
 fn sorting_slopes_exactly():
     var slopes = [Frac.new(1, 3), Frac.new(-1, 2), Frac.new(2, 6), Frac.new(5, 7), Frac.new(0, 9)]
-    sort(mut slopes)
+    slopes.sort()
     assert slopes == [Frac(-1, 2), Frac(0, 1), Frac(1, 3), Frac(1, 3), Frac(5, 7)]

@@ -523,7 +523,7 @@ mod cli {
             "var adj: [0..3]List<Int> = []\nlet (u, v) = (0, 2)\nadj[u].push(v)\nadj[v].push(u)\nvar total = 0\nprint(adj[0].len)\n",
         )
         .unwrap();
-        std::fs::write(dir.join("b.cp"), "print(sum([1, 2]))\n").unwrap();
+        std::fs::write(dir.join("b.cp"), "print([1, 2].sum())\n").unwrap();
         let (code, out, err) = lint(&["--taste", dir.to_str().unwrap()]);
         assert_eq!(code, 0, "{err}");
         let a = dir.join("a.cp");
@@ -609,7 +609,7 @@ mod cli {
 #[test]
 fn an_operator_passed_as_a_fn_hides_no_name() {
     // `+` stands for `(a, b) => a + b`; the `a` of that is not the writer's.
-    let src = "let a = [1, 2]\nlet it = 3\nfn total(f: (Int, Int) -> Int, xs: List<Int>) -> Int:\n    var t = 0\n    for x in xs: t = f(t, x)\n    return t\nfn go():\n    print(total(+, a), it)\n    print(sorted(a, by: .abs))\ngo()\n";
+    let src = "let a = [1, 2]\nlet it = 3\nfn total(f: (Int, Int) -> Int, xs: List<Int>) -> Int:\n    var t = 0\n    for x in xs: t = f(t, x)\n    return t\nfn go():\n    print(total(+, a), it)\n    print(a.sorted(by: .abs))\ngo()\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
 
@@ -780,7 +780,7 @@ fn none_check_unwrap_from_cco16p3() {
 #[test]
 fn repeated_literal_from_noip19p4() {
     // proto/ports/scout_batch_29/noip19p4.cp: the modulus in a type and again in a `%`.
-    let src = "type Z = Mod<998244353>\nlet a = [3, 4]\nlet total = sum(a) % 998244353\nprint(total, Z(total))\n";
+    let src = "type Z = Mod<998244353>\nlet a = [3, 4]\nlet total = a.sum() % 998244353\nprint(total, Z(total))\n";
     let found = only(src);
     assert_eq!(found.code, REPEATED_LITERAL.code);
     assert_eq!(found.message, "`998244353` is written on 2 lines; it is first on line 1");
@@ -799,4 +799,20 @@ fn turbofish_type_args_offers_plain_generic_fix() {
     assert_eq!(applied, 1);
     assert_eq!(fixed, "let x = read<Int>()\nprint(x)\n");
     assert!(lint(&fixed, &Config::default()).is_empty());
+}
+
+#[test]
+fn free_fold_becomes_a_method() {
+    // proto/ports: `sum(a)`, `count(xs, p)`, `sort(mut xs, by:)` beside `xs.all(p)`.
+    let src = "let xs = [3, 1, 4]\nvar ys = [2, 7]\nsort(mut ys, by: y => -y)\nprint(sum(xs), count(xs, x => x > 2), max(xs[1..]), sorted(xs + ys))\n";
+    assert_eq!(taste_codes(src), ["L0509"; 5]);
+    assert_eq!(
+        fixed(src),
+        "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => -y)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max(), (xs + ys).sorted())\n"
+    );
+    let find = "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3), xs.find(4))\n";
+    assert_eq!(fixed(find), "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.find(4))\n");
+    // Generators, two values, a domain, a list of values and a fn of the file stay free.
+    let math = "domain V = 0..3\nfn sum(a: Int) -> Int = a\nlet xs = [3, 1]\nprint(count(x > 1 for x in xs), min(xs[0], xs[1]), max([xs[0], 2]), sorted(V, by: v => -v.ord), sum(2))\n";
+    assert_eq!(taste_codes(math), Vec::<&str>::new());
 }

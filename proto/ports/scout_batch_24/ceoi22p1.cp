@@ -63,7 +63,7 @@ fn solve() -> [Q]Card:
 
     // Sort query indices offline by shuffle count `t`.
     var order = [qi for qi in Q]
-    sort(mut order, by: qi => qs[qi].t)
+    order.sort(by: qi => qs[qi].t)
 
     let half = n / 2
     var cur_t = 0

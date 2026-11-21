@@ -6,7 +6,7 @@ if k == 0:
     print("YES")
     return
 
-let thresh = sorted(a)[k - 1]
+let thresh = a.sorted()[k - 1]
 var freq: List<Int> = []
 var vals: List<Int> = []
 var cur_f = 0

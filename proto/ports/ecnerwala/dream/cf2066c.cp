@@ -9,4 +9,4 @@ var pre = 0
 for x in a:
     ways[pre] = 3 * ways[pre] + 2 * ways[pre ^ x]
     pre ^= x
-print(sum(ways.values))
+print(ways.values.sum())

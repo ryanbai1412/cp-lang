@@ -63,7 +63,7 @@ for c in 0..=m - k:
             hv2 += MOD2
         hashes.push(hv1 * MOD2 + hv2)
 
-sort(mut hashes)
+hashes.sort()
 var distinct = 0
 for i in 0..hashes.len:
     if i == 0 or hashes[i] != hashes[i - 1]:

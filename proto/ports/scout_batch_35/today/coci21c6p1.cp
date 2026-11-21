@@ -7,7 +7,7 @@ for _ in 0..n:
     let who: Str = read()
     let rounds: [5]Int = read()
     name.push(who)
-    total.push(sum(rounds))
+    total.push(rounds.sum())
 
 fn place(i: Int, mine: Int, theirs: Int) -> Int:
     let me = total[i] + mine

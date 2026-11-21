@@ -5,4 +5,4 @@ let s: Str = read()
 
 let zero_runs = [len for (c, len) in runs(s) if c == '0']
 // FRICTION F5: "k largest" is sort-descending + take; no `desc:` on `sorted`.
-print(sum(sorted(zero_runs, by: x => desc(x)).take(k)))
+print(zero_runs.sorted(by: x => desc(x)).take(k).sum())

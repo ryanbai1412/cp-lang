@@ -38,7 +38,7 @@ while true:
         cnt_r[i] = ask(i, m, r)
         cnt_l[i] = 1 - cnt_r[i]
 
-    if sum(cnt_l) > m - l:
+    if cnt_l.sum() > m - l:
         r = m
         cnt = cnt_l
     else:

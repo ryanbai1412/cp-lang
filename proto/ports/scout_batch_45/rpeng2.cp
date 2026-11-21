@@ -15,8 +15,8 @@ fn span(i: I, len: 0..n) -> (lo: Int, hi: Int):
         let (a, b) = (span(i, left), span(j, len - left - 1))
         let ends = if ring[j].op == 'x': [a.lo * b.lo, a.lo * b.hi, a.hi * b.lo, a.hi * b.hi]
                    else: [a.lo + b.lo, a.hi + b.hi]
-        lo min= min(ends)
-        hi max= max(ends)
+        lo min= ends.min()
+        hi max= ends.max()
     (lo, hi)
 
 let best = max(span(i, n - 1).hi for i in I)

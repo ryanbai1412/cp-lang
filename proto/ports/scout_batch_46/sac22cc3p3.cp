@@ -6,10 +6,10 @@
 let n: 1..=1000 = read()
 let a: [0..n]0..=1_000_000_000 = read()
 
-let top = max(a)!
+let top = a.max()!
 var p = 10
 while true:
     // FRICTION 46.11: the spec does not say whether sorted(by:) is stable
-    print(sorted(a, by: x => x % p))
+    print(a.sorted(by: x => x % p))
     if top < p: break
     p *= 10

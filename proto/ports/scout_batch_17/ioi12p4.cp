@@ -34,7 +34,7 @@ fn crossings(blocks: List<(Int, Int)>) -> Int:
     var run_of: Map<(Int, Int), Int> = []  // a HashMap keyed by a pair builds, then fails in g++
     var size: List<Int> = []
     var last = (-1, -1)
-    for (x, y) in sorted(blocks):
+    for (x, y) in blocks.sorted():
         if last != (x, y - 1): size.push(0)
         size.last! += 1
         run_of[(x, y)] = size.len - 1

@@ -151,7 +151,7 @@ fn rings_and_trees_partition_the_graph():
         var seen: [V]Int = 0
         for id in 0..g.rings.len:
             let ring = g.rings[id]
-            assert ring[0] == min(ring)
+            assert ring[0] == ring.min()
             for i in 0..ring.len:
                 assert next[ring[i]] == ring[(i + 1) % ring.len]
                 assert g.on_ring(ring[i]) and g.ring_of(ring[i]) == id and g.root(ring[i]) == ring[i]

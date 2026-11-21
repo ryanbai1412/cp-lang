@@ -13,7 +13,7 @@ var sums: [0..total_masks]Int = 0
 for i in 0..m:
     let bit = 1 << i
     for j in 0..bit: sums[bit + j] = sums[j] + a[i]
-let sorted_sums = sorted(sums)
+let sorted_sums = sums.sorted()
 let total_sum = sorted_sums.last!
 
 fn can_reach(thresh: Int) -> Bool:

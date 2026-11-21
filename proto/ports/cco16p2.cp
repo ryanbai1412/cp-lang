@@ -37,7 +37,7 @@ fn best_through(pivot: Hare) -> Int:
         if h != pivot:
             let v = pos(hares[h]) - pos(p)
             seen.push(if upper(v): (v, true, hares[h].w) else: (-v, false, hares[h].w))
-    sort(mut seen, by: s => ByAngle(s.dir))
+    seen.sort(by: s => ByAngle(s.dir))
 
     let everyone = sum(s.w for s in seen)
     var right = sum(s.w for s in seen if not s.ahead)  // right of the turning line, or behind the pivot on it

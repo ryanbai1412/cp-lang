@@ -23,7 +23,7 @@ for _ in 0..n:
 // the distinct values, sorted; a value's position is its cut number
 fn cuts(vals: List<Int>) -> List<Int>:
     var out: List<Int> = []
-    for v in sorted(vals):
+    for v in vals.sorted():
         if out.is_empty or out.last != v: out.push(v)
     out
 

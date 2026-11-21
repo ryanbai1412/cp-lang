@@ -20,4 +20,4 @@ fn step(mv: Move, (r, s): State) -> ?State = match mv:
     Double(j) => if s.len == j: (2 * r, s) else: none
 
 let dist: [State]?(0..=2e9) = fixed_cost_paths(from: (R(0), {}), moves: Move.all, cost, step)
-print(dist[(R(0), T.all)]! - sum(x))
+print(dist[(R(0), T.all)]! - x.sum())

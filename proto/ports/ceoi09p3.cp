@@ -4,7 +4,7 @@ let area: 1..=3e5 = read()
 domain P = 0..n
 type Pt = (x: 0..=3e5, y: 1..=3e5)
 let raw: [P]Pt = read()
-let pts = sorted(raw)
+let pts = raw.sorted()
 
 var ys: List<Int> = [0]
 for p in pts:

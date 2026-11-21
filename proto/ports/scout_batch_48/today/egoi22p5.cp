@@ -5,7 +5,7 @@
 let n: Int = read()
 let q: Int = read()
 let raw: [0..n]Int = read()
-var a = sorted(raw, by: x => -x)
+var a = raw.sorted(by: x => -x)
 for _ in 0..q:
     let x: Int = read()
     let c: Int = read()

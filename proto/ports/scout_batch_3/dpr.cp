@@ -12,4 +12,4 @@ fn times(a: [V, V]Z, b: [V, V]Z) -> [V, V]Z:
 let one: [V, V]Z = [V, V] (i, j) => if i == j: 1 else: 0
 
 let walks = power(step, k, times, one)                              // WISH G13: binary power of anything
-print(sum(walks))
+print(walks.sum())

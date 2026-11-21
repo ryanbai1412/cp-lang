@@ -30,7 +30,7 @@ for t_now in Time(3)..:
     ]
     cur = c
 
-    sort(mut chunks, by: x => desc(x.t))
+    chunks.sort(by: x => desc(x.t))
     var matched = 0
     for (t, mut need) in chunks:
         var it: ?Time = t

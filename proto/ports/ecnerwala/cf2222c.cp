@@ -3,7 +3,7 @@
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-let med = sorted(a)[n / 2]
+let med = a.sorted()[n / 2]
 let pref_lt = prefix_n([Int(x < med) for x in a])
 let pref_le = prefix_n([Int(x <= med) for x in a])
 

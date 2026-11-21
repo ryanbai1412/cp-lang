@@ -17,7 +17,7 @@ let (n, need): (Int, Int) = read()
 domain Pane = 0..n
 let panes: [Pane](x1: Int, y1: Int, x2: Int, y2: Int, tint: Int) = read()
 
-let ys = sorted(Set([panes[p].y1 for p in Pane] + [panes[p].y2 for p in Pane]))
+let ys = Set([panes[p].y1 for p in Pane] + [panes[p].y2 for p in Pane]).sorted()
 domain Strip = 0..ys.len - 1        // strip s lies between ys[s] and ys[s + 1]
 var first_strip = Map<Int, Int>()
 for i in 0..ys.len: first_strip[ys[i]] = i
@@ -32,7 +32,7 @@ var darkest: [Block]List<(tint: Int, height: Int)> = [Block] b => []    // darke
 
 fn rebuild(b: Block):
     var (rows, height) = ([], 0)
-    for s in sorted(strips(b), by: s => -tint[s]):
+    for s in strips(b).sorted(by: s => -tint[s]):
         height += ys[s.to_idx + 1] - ys[s.to_idx]
         rows.push((tint: tint[s], height: height))
     darkest[b] = rows
@@ -65,7 +65,7 @@ for p in Pane:
     events.push((x: x2, l: first_strip[y1], r: first_strip[y2], tint: -t))
 
 var (area, x) = (0, 0)
-for e in sorted(events, by: e => e.x):
+for e in events.sorted(by: e => e.x):
     if e.x > x: area += (e.x - x) * sum(tinted(b) for b in Block)
     x = e.x
     add(e.l, e.r, e.tint)

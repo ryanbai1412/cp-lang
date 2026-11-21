@@ -12,7 +12,7 @@ let comb = Comb<MOD>()
 fn paths(a: Cell, b: Cell) -> Z = comb.choose(b.r - a.r + b.c - a.c, b.r - a.r)
 
 var clean: List<(at: Cell, ways: Z)> = []
-for cell in sorted(walls) + [(h, w)]:
+for cell in walls.sorted() + [(h, w)]:
     var ways = paths((1, 1), cell)
     for (at, before) in clean if at.c <= cell.c: ways -= before * paths(at, cell)
     clean.push((cell, ways))

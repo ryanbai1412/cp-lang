@@ -9,7 +9,7 @@ let raw: [n](r: 0..=1000000, c: 0..=1000000) = read()
 // Normalize points into intervals [min(r, c), max(r, c)] and strip dominated ones.
 type Seg = (l: Int, r: Int)
 var intervals: List<Seg> = [(min(p.r, p.c), max(p.r, p.c)) for p in raw]
-let ordered = sorted(intervals, by: s => (s.l, -s.r))
+let ordered = intervals.sorted(by: s => (s.l, -s.r))
 var segs: List<Seg> = []
 var max_r = -1
 for s in ordered:

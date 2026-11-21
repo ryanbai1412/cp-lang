@@ -15,7 +15,7 @@ domain Chef = 0..m
 let need: [Meal]1..=300 = read()
 let hours: [Chef]1..=300 = read()
 
-domain Paid = 0..=sum(hours)
+domain Paid = 0..=hours.sum()
 
 fn least_waste() -> ?Int:
     if any(a < k for a in need): return none
@@ -25,7 +25,7 @@ fn least_waste() -> ?Int:
         for p in Paid.rev:
             if let q = p - b:
                 if let v = variety[q]: variety[p] max= v + min(b, n)
-    let work = sum(need)
+    let work = need.sum()
     for p in Paid:
         if p.idx >= work:
             if let v = variety[p]:

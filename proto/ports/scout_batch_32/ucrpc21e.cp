@@ -15,12 +15,12 @@ for (team, cnt) in [(Home, n), (Away, m)]:
         let pts = if bonus: 3 else: 1
         evs.push((l, team, pts))
         evs.push((r + 1, team, -pts))
-sort(mut evs, by: e => e.t)
+evs.sort(by: e => e.t)
 
 var rate: [Team]Int = 0
 var (total, last) = (0, 0)
 for (t, team, d) in evs:
-    total += (t - last) * max(rate)
+    total += (t - last) * rate.max()
     rate[team] += d
     last = t
 print(total)

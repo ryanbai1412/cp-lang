@@ -13,7 +13,7 @@ for _ in 0..n:
 // strokes on one line that overlap or touch become one stroke
 fn merged(strokes: List<Stroke>) -> List<Stroke>:
     var out: List<Stroke> = []
-    for s in sorted(strokes):
+    for s in strokes.sorted():
         if let top = out.last and top.line == s.line and s.lo <= top.hi + 1:
             out[out.len - 1].hi max= s.hi
         else: out.push(s)
@@ -27,7 +27,7 @@ enum Event = Leave(x: Int) | Enter(x: Int) | Ask(lo: Int, hi: Int)
 var events: List<(y: Int, e: Event)> = [(s.lo, Enter(s.line)) for s in vert] +
     [(s.hi + 1, Leave(s.line)) for s in vert] + [(s.line, Ask(s.lo, s.hi)) for s in hori]
 var alive = SortedBag<Int>()
-for (y, e) in sorted(events):
+for (y, e) in events.sorted():
     match e:
         Leave(x) => alive.remove(x)
         Enter(x) => alive.add(x)

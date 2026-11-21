@@ -58,7 +58,7 @@ fn solve() -> List<Int>:
                 pts.push(a)
                 pts.push(b + 1)
             _ => ()
-    sort(mut pts)
+    pts.sort()
     // WISH W8: `pts.dedup()` in stdlib for coordinate compression
     var xs: List<Int> = []
     for x in pts:

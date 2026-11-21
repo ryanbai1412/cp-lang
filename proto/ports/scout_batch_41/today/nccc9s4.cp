@@ -70,7 +70,7 @@ else:
 
     for bi in Bk:
         if buckets[bi].len == 0: continue
-        sort(mut buckets[bi])
+        buckets[bi].sort()
         for v in 0..V.K: cnt[v] = 0
         var base_c = 0
         var base_v = 0

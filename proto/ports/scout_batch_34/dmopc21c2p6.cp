@@ -81,7 +81,7 @@ solve_at_pos(Val.first, Val.last, q_at_pos)
 // FRICTION UD2: `sort(mut q_pos_of, by: q => -q.val.to_idx)` needs `.to_idx`
 // because `Desc<Val>` works inside tuples (`by: q => desc(q.val)`), which is
 // non-obvious compared to `-q.val.to_idx`.
-sort(mut q_pos_of, by: item => desc(item.val))
+q_pos_of.sort(by: item => desc(item.val))
 
 var cnt_bit = Fenwick<Pos, Int>(+)
 var idx_bit = Fenwick<Pos, Int>(+)

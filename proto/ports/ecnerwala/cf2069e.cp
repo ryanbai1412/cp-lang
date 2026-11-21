@@ -24,8 +24,8 @@ for r in s.chunk_by((x, y) => x != y):
         ba_runs.push(r.len / 2)
 
 need -= wild
-let sum_ab = sum(ab_runs)
-let sum_ba = sum(ba_runs)
+let sum_ab = ab_runs.sum()
+let sum_ba = ba_runs.sum()
 if sum_ab + sum_ba < need:
     print("NO")
     return

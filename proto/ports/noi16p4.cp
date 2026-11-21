@@ -13,7 +13,7 @@ fn short() -> Span:                         // few coordinates, so intervals pil
 fn tangle() -> [I]Span: [I] _ => short()
 let given: [I]Span = read(gen: tangle) where all(s.l <= s.r for s in given)
 fn length(s: Span) -> Int: s.r - s.l
-let spans = sorted(given, by: s => length(s))
+let spans = given.sorted(by: s => length(s))
 
 var ends: List<Int> = []
 for s in spans:

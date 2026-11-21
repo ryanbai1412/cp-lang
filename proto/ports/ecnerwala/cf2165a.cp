@@ -5,4 +5,4 @@ use std.seq.{cyclic_pairs}
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
-print(sum(max(x, y) for (x, y) in cyclic_pairs(a)) - max(a)!)
+print(sum(max(x, y) for (x, y) in cyclic_pairs(a)) - a.max()!)

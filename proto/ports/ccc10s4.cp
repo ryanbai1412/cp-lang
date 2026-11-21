@@ -19,7 +19,7 @@ for pen in Pen.first.r..:
         if let other = open.remove(side): fences.push((costs[j], pen, other.pen))
         else: open[side] = (costs[j], pen)
 for (_, (cost, pen)) in open: fences.push((cost, pen, Pen.first))
-sort(mut fences)
+fences.sort()
 
 fn spanning(outside: Bool) -> ?Int:
     var joined = Dsu<Pen>()

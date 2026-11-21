@@ -14,7 +14,7 @@ var norm: List<Seg> = []                                          // WISH P1
 for p in raw: norm.push((min(p.r, p.c), max(p.r, p.c)))
 var segs: List<Seg> = []
 var max_r = -1
-for s in sorted(norm, by: s => (s.l, -s.r)):
+for s in norm.sorted(by: s => (s.l, -s.r)):
     if s.r > max_r:
         max_r = s.r
         segs.push(s)

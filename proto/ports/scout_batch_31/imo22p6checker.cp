@@ -14,4 +14,4 @@ var ways: [Row, Col]Z = 0
 for p in sorted(Cell, by: p => a[p]):
     let lower = [q for q in p.adj4 if a[q] < a[p]]
     ways[p] = if lower.is_empty: 1 else: sum(ways[q] for q in lower)
-print(sum(ways))
+print(ways.sum())

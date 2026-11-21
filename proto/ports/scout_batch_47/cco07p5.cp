@@ -26,7 +26,7 @@ for v in 0..n:
         cands.push((Pos.first.cyc(x + v + j), v))
 
 while cands.len > 1:
-    sort(mut cands)
+    cands.sort()
     let mid = cands[(cands.len - 1) / 2].p
     let hit = look(0, mid.to_idx)
     cands = [

@@ -43,4 +43,4 @@ for k in 0..q:
         'N' => off[k]
         _ => 1..=n
     for c in side: hits[c] += 1
-print((1..=n).find(c => hits[c] == q)!)
+print((1..=n).first(c => hits[c] == q)!)

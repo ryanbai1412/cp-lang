@@ -59,7 +59,7 @@ for round in 2..:
     fn decompose(start: V):
         var rt = start
         let total = calc_sz(rt, none)
-        while let nxt = adj[rt].find(w => alive[w] and sz[w] < sz[rt] and sz[w] * 2 >= total):
+        while let nxt = adj[rt].first(w => alive[w] and sz[w] < sz[rt] and sz[w] * 2 >= total):
             rt = nxt
         bests = List.filled(total + 1, Best(none, none))
         offer(rt, rt, 0)

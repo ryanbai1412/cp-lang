@@ -16,4 +16,4 @@ for i in 1..n:
     if a[i] != 0:
         for x in 1..=m if x != a[i]: next[x] = 0
     swap(mut ways, mut next)
-print(sum(ways))
+print(ways.sum())

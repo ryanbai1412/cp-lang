@@ -6,7 +6,7 @@ var ns: List<Int> = []
 for _ in 0..t:
     let n: Int = read()
     ns.push(n)
-let limit = max(max(ns), 2)
+let limit = max(ns.max(), 2)
 let sieve = Sieve.new(limit)
 
 // win[i]: the player to move wins a pile of i when a move removes a prime.

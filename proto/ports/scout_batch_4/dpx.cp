@@ -10,7 +10,7 @@ let blocks: [n](w: 1..=1e4, s: 1..=1e4, v: 1..=1e9) = read()
 // passes s + w of the bottom block.
 var best: [0..=20000]?Int = none        // best[x]: most value in a tower weighing x
 best[0] = 0
-for b in sorted(blocks, by: b => b.s + b.w):
+for b in blocks.sorted(by: b => b.s + b.w):
     for x in (0..=b.s).rev:
         if let v = best[x]: best[x + b.w] max= v + b.v
-print(max(best))
+print(best.max())

@@ -29,7 +29,7 @@ domain V = 1..=n
 let w: [V]Int = read()
 let edges: [0..n - 1](u: V, v: V) = read()
 let t = Rooted(Graph.undirected(edges), root: V(1))
-let ch: [V]List<V> = [V] u => sorted(t.children(u), by: v => t.size(v))
+let ch: [V]List<V> = [V] u => t.children(u).sorted(by: v => t.size(v))
 
 var dp_down: [V]List<Int> = []
 var prefs: [V]List<List<Int>> = []

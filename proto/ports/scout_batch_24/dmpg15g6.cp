@@ -76,7 +76,7 @@ fn solve() -> [Q]Bool:
     for b in 0..num_blk:
         var bucket = by_blk[b]
         if bucket.is_empty: continue
-        sort(mut bucket, by: qi => qs[qi].r)
+        bucket.sort(by: qi => qs[qi].r)
         let border = min(n, (b + 1) * blk)
         undo freq, top:
             var cur_r = border - 1

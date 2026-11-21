@@ -10,7 +10,7 @@ pub fn divisors_of(n: Int) -> List<Int>:
         for _ in 0..e:
             scale *= p
             for d in base: ds.push(d * scale)
-    sort(mut ds)
+    ds.sort()
     ds
 
 @test

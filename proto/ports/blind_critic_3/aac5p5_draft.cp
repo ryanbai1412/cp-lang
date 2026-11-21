@@ -9,7 +9,7 @@ for h in hori:
     xs.push(h.x1)
     xs.push(h.x2)
 for v in vert: xs.push(v.x)
-sort(mut xs)
+xs.sort()
 dedup(mut xs)
 let K = xs.len
 fn cx(x: Int) -> Int: return xs.first_ge(x)!
@@ -31,7 +31,7 @@ for (y1, s1) in by_y.items:
         if v.y1 <= y1 and y1 < v.y2:
             upd(cx(v.x), 1)
             dels.push((v.y2, cx(v.x)))
-    sort(mut dels)
+    dels.sort()
     var j = 0
     for (y2, s2) in by_y.items:
         if y2 <= y1: continue

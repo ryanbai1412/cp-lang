@@ -10,10 +10,10 @@ let climbers: [m]Pt = read()
 // A climber crosses a sweeper when it stands at or before the sweeper's end
 // and climbs at least as high. Go down the heights: every climber met so far
 // is tall enough, so a sweeper counts those standing at or before its end.
-var coming = Deque(sorted(climbers, by: c => c.y))                                  // WISH S12
+var coming = Deque(climbers.sorted(by: c => c.y))                                  // WISH S12
 var standing = SortedBag<Int>()                                                     // WISH S14 (F13, B1, D1)
 var crossings = 0
-for s in sorted(sweepers, by: s => s.y).rev:
+for s in sweepers.sorted(by: s => s.y).rev:
     for c in coming.pop_back_while(c => c.y >= s.y): standing.add(c.x)              // WISH S12
     crossings += standing.count(..=s.x)                                             // WISH S14
 print(crossings)
