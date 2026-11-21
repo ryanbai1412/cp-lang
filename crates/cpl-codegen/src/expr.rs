@@ -900,92 +900,143 @@ impl<'p> Emitter<'p> {
                 })
             }
             ExprKind::Mutate(op, place, args) => {
-                let p = self.place(place);
-                let arg = args.first().map(|arg| self.expr(arg).text).unwrap_or_default();
-                let arg2 = args
-                    .get(1)
-                    .map(|arg| self.expr(arg).text)
-                    .unwrap_or_default();
-                match op {
-                    Mutation::Push if place.ty == Ty::Str => {
-                        Code::primary(format!("{p}.push_back((char){arg})"))
+                fn has_index(p: &Place) -> bool {
+                    match &p.kind {
+                        PlaceKind::Index(..) => true,
+                        PlaceKind::Field(base, _) | PlaceKind::Some(base) => has_index(base),
+                        PlaceKind::Local(_) | PlaceKind::Global(_) => false,
                     }
-                    Mutation::Push => Code::primary(format!("{p}.push_back({arg})")),
-                    Mutation::Take => Code::primary(format!("std::exchange({p}, {{}})")),
-                    Mutation::Pop => {
-                        self.need("pop");
-                        self.packed_result(&e.ty, Code::primary(format!("cpl::pop({p})")))
+                }
+                let impure_args = has_index(place)
+                    && args.iter().any(|a| {
+                        let mut impure = false;
+                        crate::walk::deep_expr(a, &mut |sub| {
+                            if matches!(
+                                sub.kind,
+                                ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Mutate(..)
+                            ) {
+                                impure = true;
+                            }
+                        });
+                        impure
+                    });
+                let emit_mutate = |this: &mut Self, p: String, arg: String, arg2: String| -> Code {
+                    match op {
+                        Mutation::Push if place.ty == Ty::Str => {
+                            Code::primary(format!("{p}.push_back((char){arg})"))
+                        }
+                        Mutation::Push => Code::primary(format!("{p}.push_back({arg})")),
+                        Mutation::Take => Code::primary(format!("std::exchange({p}, {{}})")),
+                        Mutation::Pop => {
+                            this.need("pop");
+                            this.packed_result(&e.ty, Code::primary(format!("cpl::pop({p})")))
+                        }
+                        Mutation::PopFirst | Mutation::PopLast => {
+                            this.need("ordered_near");
+                            let f = if *op == Mutation::PopFirst {
+                                "pop_first"
+                            } else {
+                                "pop_last"
+                            };
+                            this.packed_result(&e.ty, Code::primary(format!("cpl::{f}({p})")))
+                        }
+                        Mutation::PopVal => {
+                            this.need("pop_val");
+                            Code::primary(format!("cpl::pop_val({p})"))
+                        }
+                        Mutation::Insert => Code::primary(format!("{p}.insert({arg}).second")),
+                        Mutation::Remove => Code::new(format!("{p}.erase({arg}) != 0"), EQ),
+                        Mutation::Clear => Code::primary(format!("{p}.clear()")),
+                        Mutation::Reverse if this.place_is_plain(place) => {
+                            Code::primary(format!("std::reverse({p}.begin(), {p}.end())"))
+                        }
+                        Mutation::Reverse => this.lambda("void", |this, out| {
+                            let r = this.temp();
+                            out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
+                            out.push_str(&format!(
+                                "{}std::reverse({r}.begin(), {r}.end());\n",
+                                pad(this.indent)
+                            ));
+                        }),
+                        // Positions of a domain are already inside; anything
+                        // else is held to the length in every build.
+                        Mutation::Swap
+                            if args
+                                .iter()
+                                .all(|a| matches!(&a.kind, ExprKind::Cast(Cast::Ord, _))) =>
+                        {
+                            Code::primary(format!("std::swap({p}[{arg}], {p}[{arg2}])"))
+                        }
+                        Mutation::Swap => {
+                            this.need("swap_at");
+                            let is_grid =
+                                matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                            let seq = if is_grid { format!("{p}.d") } else { p };
+                            Code::primary(format!("cpl::swap_at({seq}, {arg}, {arg2})"))
+                        }
+                        Mutation::Resize => {
+                            Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})"))
+                        }
+                        Mutation::Truncate => {
+                            this.need("truncate");
+                            Code::primary(format!("cpl::truncate({p}, {arg})"))
+                        }
+                        Mutation::Extend => this.lambda("void", |this, out| {
+                            let src = this.temp();
+                            let r = this.temp();
+                            out.push_str(&format!("{}auto {src} = {arg};\n", pad(this.indent)));
+                            out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
+                            out.push_str(&format!(
+                                "{}{r}.insert({r}.end(), {src}.begin(), {src}.end());\n",
+                                pad(this.indent)
+                            ));
+                        }),
+                        Mutation::Shuffle => {
+                            this.need("rng");
+                            Code::primary(format!("cpl::shuffle({p})"))
+                        }
+                        Mutation::Fill => {
+                            let is_grid =
+                                matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                            let vec_expr = if is_grid { format!("{p}.d") } else { p };
+                            Code::primary(format!(
+                                "std::fill({vec_expr}.begin(), {vec_expr}.end(), {arg})"
+                            ))
+                        }
                     }
-                    Mutation::PopFirst | Mutation::PopLast => {
-                        self.need("ordered_near");
-                        let f = if *op == Mutation::PopFirst {
-                            "pop_first"
+                };
+                if impure_args && !matches!(op, Mutation::Extend) {
+                    let ret = if e.ty == Ty::Unit {
+                        "void".to_string()
+                    } else {
+                        self.ty(&e.ty)
+                    };
+                    self.lambda(&ret, |this, out| {
+                        let mut eval_args = Vec::with_capacity(args.len());
+                        for a in args {
+                            let v = this.temp();
+                            let code = this.expr(a).text;
+                            out.push_str(&format!("{}auto {v} = {code};\n", pad(this.indent)));
+                            eval_args.push(v);
+                        }
+                        let p = this.place(place);
+                        let a0 = eval_args.first().cloned().unwrap_or_default();
+                        let a1 = eval_args.get(1).cloned().unwrap_or_default();
+                        let body = emit_mutate(this, p, a0, a1).text;
+                        if e.ty == Ty::Unit {
+                            out.push_str(&format!("{}{body};\n", pad(this.indent)));
                         } else {
-                            "pop_last"
-                        };
-                        self.packed_result(&e.ty, Code::primary(format!("cpl::{f}({p})")))
-                    }
-                    Mutation::PopVal => {
-                        self.need("pop_val");
-                        Code::primary(format!("cpl::pop_val({p})"))
-                    }
-                    Mutation::Insert => Code::primary(format!("{p}.insert({arg}).second")),
-                    Mutation::Remove => Code::new(format!("{p}.erase({arg}) != 0"), EQ),
-                    Mutation::Clear => Code::primary(format!("{p}.clear()")),
-                    Mutation::Reverse if self.place_is_plain(place) => {
-                        Code::primary(format!("std::reverse({p}.begin(), {p}.end())"))
-                    }
-                    Mutation::Reverse => self.lambda("void", |this, out| {
-                        let r = this.temp();
-                        out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
-                        out.push_str(&format!(
-                            "{}std::reverse({r}.begin(), {r}.end());\n",
-                            pad(this.indent)
-                        ));
-                    }),
-                    // Positions of a domain are already inside; anything
-                    // else is held to the length in every build.
-                    Mutation::Swap
-                        if args
-                            .iter()
-                            .all(|a| matches!(&a.kind, ExprKind::Cast(Cast::Ord, _))) =>
-                    {
-                        Code::primary(format!("std::swap({p}[{arg}], {p}[{arg2}])"))
-                    }
-                    Mutation::Swap => {
-                        self.need("swap_at");
-                        let is_grid = matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
-                        let seq = if is_grid { format!("{p}.d") } else { p };
-                        Code::primary(format!("cpl::swap_at({seq}, {arg}, {arg2})"))
-                    }
-                    Mutation::Resize => {
-                        Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})"))
-                    }
-                    Mutation::Truncate => {
-                        self.need("truncate");
-                        Code::primary(format!("cpl::truncate({p}, {arg})"))
-                    }
-                    Mutation::Extend => self.lambda("void", |this, out| {
-                        let r = this.temp();
-                        let src = this.temp();
-                        out.push_str(&format!("{}auto& {r} = {p};\n", pad(this.indent)));
-                        out.push_str(&format!("{}auto {src} = {arg};\n", pad(this.indent)));
-                        out.push_str(&format!(
-                            "{}{r}.insert({r}.end(), {src}.begin(), {src}.end());\n",
-                            pad(this.indent)
-                        ));
-                    }),
-                    Mutation::Shuffle => {
-                        self.need("rng");
-                        Code::primary(format!("cpl::shuffle({p})"))
-                    }
-                    Mutation::Fill => {
-                        let is_grid = matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
-                        let vec_expr = if is_grid { format!("{p}.d") } else { p };
-                        Code::primary(format!(
-                            "std::fill({vec_expr}.begin(), {vec_expr}.end(), {arg})"
-                        ))
-                    }
+                            out.push_str(&format!("{}return {body};\n", pad(this.indent)));
+                        }
+                    })
+                } else {
+                    let p = self.place(place);
+                    let arg = args.first().map(|arg| self.expr(arg).text).unwrap_or_default();
+                    let arg2 = args
+                        .get(1)
+                        .map(|arg| self.expr(arg).text)
+                        .unwrap_or_default();
+                    emit_mutate(self, p, arg, arg2)
                 }
             }
             ExprKind::Sort(place, sort_by, desc) => self.lambda("void", |this, out| {

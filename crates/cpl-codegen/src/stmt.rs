@@ -124,6 +124,14 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn sort_stmts(&mut self, place: &Place, sort_by: &SortBy, desc: Option<&Expr>, out: &mut String) {
+        // Evaluate `desc` before binding `auto& r = p` so a side-effecting `desc`
+        // cannot rehash/reallocate the outer container holding `place`.
+        let desc = desc.map(|desc| {
+            let d = self.expr(desc).text;
+            let v = self.temp();
+            self.line(out, &format!("bool {v} = {d};"));
+            v
+        });
         let mut p = self.place(place);
         if !self.place_is_plain(place) {
             let r = self.temp();
@@ -137,7 +145,6 @@ impl<'p> Emitter<'p> {
         };
         // `desc:` asks the comparison the other way round, which leaves
         // equal elements in the order they had.
-        let desc = desc.map(|desc| self.expr(desc).at(crate::emit::COND + 1));
         let turned = |less: String, more: String| match &desc {
             None => less,
             Some(desc) => format!("{desc} ? {more} : {less}"),
@@ -722,7 +729,15 @@ impl<'p> Emitter<'p> {
                             AssignOp::Binary(BinOp::BitXor) => "^",
                             _ => "+",
                         };
-                        self.line(out, &format!("{b}[{k}] {sym}= {};", v.text));
+                        if matches!(base.ty, Ty::HashMap(..))
+                            && expr_may_alias_root(value, walk::root(base))
+                        {
+                            let tmp = self.temp();
+                            self.line(out, &format!("auto {tmp} = {};", v.text));
+                            self.line(out, &format!("{b}[{k}] {sym}= {tmp};"));
+                        } else {
+                            self.line(out, &format!("{b}[{k}] {sym}= {};", v.text));
+                        }
                         return;
                     }
                     _ => {}
@@ -731,6 +746,13 @@ impl<'p> Emitter<'p> {
         }
         let into_map = op == AssignOp::Set
             && matches!(&place.kind, PlaceKind::Index(base, _) if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)));
+        let hash_alias = op == AssignOp::Set
+            && matches!(
+                &place.kind,
+                PlaceKind::Index(base, _)
+                    if matches!(base.ty, Ty::HashMap(..))
+                        && expr_may_alias_root(value, walk::root(base))
+            );
         let p = self.place_at(place, into_map);
         let ty = self.ty(&place.ty);
         // `p = f(p, v)` names the place twice.
@@ -749,6 +771,11 @@ impl<'p> Emitter<'p> {
             }
         };
         match op {
+            AssignOp::Set if hash_alias => {
+                let tmp = self.temp();
+                self.line(out, &format!("auto {tmp} = {};", v.text));
+                self.line(out, &format!("{p} = std::move({tmp});"));
+            }
             AssignOp::Set => self.line(out, &format!("{p} = {};", v.text)),
             AssignOp::Max => twice(self, out, &|p, v| {
                 format!("{p} = std::max<{ty}>({p}, {v});")
@@ -1135,6 +1162,19 @@ impl<'p> Emitter<'p> {
             }
         }
     }
+}
+
+/// True when `e` may evaluate to a reference into the container at `root`
+/// (which an open-addressing `HashMap` insert/rehash on the LHS could invalidate).
+fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
+    let mut alias = false;
+    walk::deep_expr(e, &mut |sub| match &sub.kind {
+        ExprKind::Local(id) if !root.0 && *id == root.1 => alias = true,
+        ExprKind::Global(id) if root.0 && *id == root.1 => alias = true,
+        ExprKind::Call(..) | ExprKind::CallExpr(..) => alias = true,
+        _ => {}
+    });
+    alias
 }
 
 /// For `if k in m:` whose body reads `m[k]` and can't change `m` or

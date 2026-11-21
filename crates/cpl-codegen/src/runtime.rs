@@ -797,7 +797,7 @@ template <class K, class V, class H = CpHash> struct HashMap {
         return st.size();
     }
     std::pair<size_t, bool> slot(const K& k) {
-        if (2 * (n + 1) > st.size()) rehash(st.empty() ? 8 : st.size() * 2);
+        if (2 * (n + 1) > st.size()) { K kc = k; rehash(st.empty() ? 8 : st.size() * 2); return slot(kc); }
         size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
         while (st[i]) { if (st[i] == fp && kv[i].first == k) return {i, false}; i = (i + 1) & m; }
         st[i] = fp; kv[i].first = k; ++n; return {i, true};
@@ -813,6 +813,7 @@ template <class K, class V, class H = CpHash> struct HashMap {
     const V& at(const K& k) const { size_t i = locate(k); if (i == st.size()) fail(\"key not in map\"); return kv[i].second; }
     V& operator[](const K& k) { auto [i, nw] = slot(k); if (nw) kv[i].second = V{}; return kv[i].second; }
     std::pair<Iter, bool> emplace(const K& k, const V& v) {
+        if (2 * (n + 1) > st.size()) { K kc = k; V vc = v; rehash(st.empty() ? 8 : st.size() * 2); return emplace(kc, vc); }
         auto [i, nw] = slot(k); if (nw) kv[i].second = v;
         return {{st.data(), kv.data(), i, st.size()}, nw};
     }
@@ -883,7 +884,7 @@ template <class K, class H = CpHash> struct HashSet {
     CIter find(const K& k) const { return {st.data(), ks.data(), locate(k), st.size()}; }
     size_t count(const K& k) const { return locate(k) != st.size() ? 1 : 0; }
     std::pair<CIter, bool> insert(const K& k) {
-        if (2 * (n + 1) > st.size()) rehash(st.empty() ? 8 : st.size() * 2);
+        if (2 * (n + 1) > st.size()) { K kc = k; rehash(st.empty() ? 8 : st.size() * 2); return insert(kc); }
         size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
         while (st[i]) { if (st[i] == fp && ks[i][0] == k) return {{st.data(), ks.data(), i, st.size()}, false}; i = (i + 1) & m; }
         st[i] = fp; ks[i][0] = k; ++n; return {{st.data(), ks.data(), i, st.size()}, true};
