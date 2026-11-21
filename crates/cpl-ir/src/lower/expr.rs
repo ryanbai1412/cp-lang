@@ -1003,6 +1003,7 @@ impl<'a> Lowerer<'a> {
                 }
                 self.error(codes::UNRESOLVED_NAME, span, format!("`cpl run` doesn't know the name `{name}` here"));
             }
+            _ if name == "todo" => return self.err_expr(span),
             _ => {
                 if self.tail_names.contains(name) {
                     let gen = matches!(self.aside, Some(Aside::Gen(_)));
