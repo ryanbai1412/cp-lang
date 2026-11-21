@@ -7,12 +7,12 @@
 // the way down and rolling the DSUs back on the way up.
 domain V = read(2..=4e5)
 domain T = read(1..=4e5)
-let qs: [T](graph: Char, e: Pair<V>) = read()
+let qs: [T](graph: Char, e: (V, V)) = read()
 
 let present = qs.toggles(key: q => q)
 
 var dsu = (a: Dsu<V>(rollback: true), ab: Dsu<V>(rollback: true))
-fn add(q: (graph: Char, e: Pair<V>)):
+fn add(q: (graph: Char, e: (V, V))):
     if q.graph == 'A': dsu.a.unite(q.e.a, q.e.b)
     dsu.ab.unite(q.e.a, q.e.b)
 

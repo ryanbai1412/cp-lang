@@ -244,6 +244,10 @@ pub struct SortedSet<K>:
     /// 0-indexed `i`-th smallest key, or `none` if out of range. O(log n) expected.
     pub fn nth(self, i: Int) -> ?K = todo
 
+    /// The sum of the elements in `keys` (all of them by default), for additive `K`:
+    /// `set.sum(..b)` adds everything below `b`. O(log n): subtree sums are kept.
+    pub fn sum(self, keys: Range<K> = ..) -> K = todo
+
     /// Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `none`. O(log n) expected.
     pub fn first_true(self, ok: K -> Bool) -> ?K = todo
 
