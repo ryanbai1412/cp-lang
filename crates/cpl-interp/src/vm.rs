@@ -347,6 +347,10 @@ pub(crate) enum Op {
     StoreLList1V { list_v: u16, r_i: u16, r_val: u16 },
     LoadGList1V { dst: u16, gid: u16, r_i: u16 },
     LoadLList1V { dst: u16, list_v: u16, r_i: u16 },
+    LoadLList1OptI { dst_val: u16, dst_some: u16, list_v: u16, r_i: u16 },
+    ListPopFieldOptIL { dst_val: u16, dst_some: u16, obj_v: u16, field: u16 },
+    ListPopFieldLV { dst_v: u16, obj_v: u16, field: u16 },
+    MakeRange { dst: u16, r_lo: u16, r_hi: u16 },
     LoadGIdxFieldI { dst: u16, gid: u16, r_i: u16, field: u16 },
     StoreGIdxFieldI { gid: u16, r_i: u16, field: u16, r_val: u16, kind: ScalarKind },
     LoadLIdxFieldI { dst: u16, seq_v: u16, r_i: u16, field: u16 },
@@ -2618,14 +2622,24 @@ impl<'p> Compiler<'p> {
                 );
                 true
             }
-            (PlaceKind::Field(obj_place, field), AssignOp::Set, Some(kind), _) => {
+            (PlaceKind::Field(obj_place, field), op, Some(kind), _) => {
                 let PlaceKind::Local(slot) = obj_place.kind else {
                     return false;
                 };
                 let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
                     return false;
                 };
-                let src_i = self.compile_expr_i(value);
+                let src_i = if op == AssignOp::Set {
+                    self.compile_expr_i(value)
+                } else {
+                    let r_rhs = self.compile_expr_i(value);
+                    let cur = self.alloc_i();
+                    self.emit(Op::FieldI { dst: cur, obj_v, field: *field as u16 }, place.span);
+                    if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
+                        return false;
+                    }
+                    cur
+                };
                 self.emit(
                     Op::StoreLFieldI { obj_v, field: *field as u16, src_i, kind },
                     place.span,
@@ -2849,6 +2863,29 @@ impl<'p> Compiler<'p> {
                     self.emit(Op::ListPopOptIG { dst_val, dst_some, gid: *gid as u16 }, span);
                     (dst_val, dst_some)
                 }
+                PlaceKind::Field(obj_place, field) => {
+                    if let PlaceKind::Local(slot) = obj_place.kind {
+                        if let SlotLoc::V(obj_v) = self.slot_loc(slot) {
+                            let dst_val = self.alloc_i();
+                            let dst_some = self.alloc_i();
+                            self.emit(
+                                Op::ListPopFieldOptIL {
+                                    dst_val,
+                                    dst_some,
+                                    obj_v,
+                                    field: *field as u16,
+                                },
+                                span,
+                            );
+                            return (dst_val, dst_some);
+                        }
+                    }
+                    let src_v = self.emit_fallback_expr_v(expr);
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::UnboxOptI { dst_val, dst_some, src_v }, span);
+                    (dst_val, dst_some)
+                }
                 _ => {
                     let src_v = self.emit_fallback_expr_v(expr);
                     let dst_val = self.alloc_i();
@@ -2918,13 +2955,41 @@ impl<'p> Compiler<'p> {
                         }
                     }
                     _ => {
-                        let src_v = self.emit_fallback_expr_v(expr);
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
                         let dst_val = self.alloc_i();
                         let dst_some = self.alloc_i();
-                        self.emit(Op::UnboxOptI { dst_val, dst_some, src_v }, span);
+                        if indices.len() == 2 {
+                            let r_j = self.compile_expr_i(&indices[1]);
+                            self.emit(
+                                Op::LoadLArr2OptI { dst_val, dst_some, arr_v, r_i, r_j },
+                                span,
+                            );
+                        } else {
+                            self.emit(
+                                Op::LoadLArr1OptI { dst_val, dst_some, arr_v, r_i },
+                                span,
+                            );
+                        }
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
                         (dst_val, dst_some)
                     }
                 }
+            }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::List(_) | Ty::ListView(_)) && indices.len() == 1 =>
+            {
+                let list_v = self.compile_expr_v(base);
+                let r_i = self.compile_expr_i(&indices[0]);
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.emit(Op::LoadLList1OptI { dst_val, dst_some, list_v, r_i }, span);
+                if list_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: list_v }, span);
+                }
+                (dst_val, dst_some)
             }
             ExprKind::Field(base, idx) => {
                 let obj_v = self.compile_expr_v(base);
@@ -3840,8 +3905,28 @@ impl<'p> Compiler<'p> {
                     self.emit(Op::ListPopGV { dst_v, gid: *gid as u16 }, span);
                     dst_v
                 }
+                PlaceKind::Field(obj_place, field) => {
+                    if let PlaceKind::Local(slot) = obj_place.kind {
+                        if let SlotLoc::V(obj_v) = self.slot_loc(slot) {
+                            let dst_v = self.alloc_v();
+                            self.emit(
+                                Op::ListPopFieldLV { dst_v, obj_v, field: *field as u16 },
+                                span,
+                            );
+                            return dst_v;
+                        }
+                    }
+                    self.emit_fallback_expr_v(expr)
+                }
                 _ => self.emit_fallback_expr_v(expr),
             },
+            ExprKind::Range { lo, hi } => {
+                let r_lo = self.compile_expr_i(lo);
+                let r_hi = self.compile_expr_i(hi);
+                let dst = self.alloc_v();
+                self.emit(Op::MakeRange { dst, r_lo, r_hi }, span);
+                dst
+            }
             ExprKind::Call(fn_id, args) => {
                 if let Some((_, dst_v, _)) =
                     self.try_compile_call_mix(*fn_id, args, CallRet::V, span)
@@ -6680,6 +6765,70 @@ impl<'p, 'io> Interp<'p, 'io> {
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     }
                 }
+                Op::LoadLList1OptI { dst_val, dst_some, list_v, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    let (v, s) = match &regs_v[list_v as usize] {
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            ScalarKind::unbox_opt(&list[idx as usize])
+                        }
+                        Value::ListView(view) => {
+                            let len = view.len as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            ScalarKind::unbox_opt(view.get(idx as usize).unwrap_or(&Value::Unit))
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    };
+                    regs_i[dst_val as usize] = v;
+                    regs_i[dst_some as usize] = s;
+                }
+                Op::ListPopFieldOptIL { dst_val, dst_some, obj_v, field } => {
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        if let Value::List(items) = &mut Rc::make_mut(fs)[field as usize] {
+                            match Rc::make_mut(items).pop() {
+                                Some(v) => {
+                                    regs_i[dst_val as usize] = ScalarKind::unbox_val(&v);
+                                    regs_i[dst_some as usize] = 1;
+                                }
+                                None => {
+                                    regs_i[dst_val as usize] = 0;
+                                    regs_i[dst_some as usize] = 0;
+                                }
+                            }
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::ListPopFieldLV { dst_v, obj_v, field } => {
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        if let Value::List(items) = &mut Rc::make_mut(fs)[field as usize] {
+                            regs_v[dst_v as usize] =
+                                Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()));
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::MakeRange { dst, r_lo, r_hi } => {
+                    regs_v[dst as usize] =
+                        Value::Range(regs_i[r_lo as usize], regs_i[r_hi as usize]);
+                }
                 Op::LoadGIdxFieldI { dst, gid, r_i, field } => {
                     let idx = regs_i[r_i as usize];
                     let v = match &self.globals[gid as usize] {
@@ -7072,6 +7221,16 @@ fn expr_tag_short(expr: &Expr) -> &'static str {
         ExprKind::None => "None",
         ExprKind::IsSome(_) => "IsSome",
         ExprKind::Unwrap(..) => "Unwrap",
+        ExprKind::If(..) => "If",
+        ExprKind::Do(_) => "Do",
+        ExprKind::Range { .. } => "Range",
+        ExprKind::Cmp(..) => "Cmp",
+        ExprKind::Sort(..) => "Sort",
+        ExprKind::DomainVal(_) => "DomainVal",
+        ExprKind::DomainLen(_) => "DomainLen",
+        ExprKind::DomainLo(_) => "DomainLo",
+        ExprKind::Str(_) => "Str",
+        ExprKind::Float(_) => "Float",
         _ => "Other",
     }
 }

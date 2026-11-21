@@ -604,3 +604,26 @@ print(run_with_ref(), v[0], v[5], dp[0].0, dp[1].1)
     assert_eq!(trap, None);
     assert_eq!(out, "169 f a 5 9\n");
 }
+
+#[test]
+fn vm_opt_list_index_range_field_compound_and_field_pop() {
+    let source = "
+struct Boxed:
+    xs: List<?Int>
+    total: Int
+
+fn step(mut b: Boxed, r: Range<Int>) -> ?Int:
+    b.total += r.len
+    b.total -= 1
+    let last = b.xs.pop()
+    let first = b.xs[0]
+    first ?? last
+
+var b = Boxed(xs: [none, 42, 99], total: 10)
+let a = step(mut b, 2..7)
+print(b.total, a!)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "14 99\n");
+}
