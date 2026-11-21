@@ -1046,6 +1046,10 @@ impl<'p> Emitter<'p> {
                     self.line(out, "return;");
                 } else {
                     let is_return = matches!(stmt, Stmt::Return(_));
+                    self.last_use_call = is_return
+                        && self.closure_id.is_none()
+                        && self.fn_id.is_some()
+                        && matches!(value.kind, ExprKind::Call(..));
                     let text = if is_return && self.closure_id.is_none() {
                         if let ExprKind::Tuple(items) = &value.kind {
                             if !items.is_empty() && !matches!(value.ty, Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)) {
@@ -1066,7 +1070,8 @@ impl<'p> Emitter<'p> {
                                             return "false".to_string();
                                         }
                                         if let ExprKind::Local(slot) = item.kind {
-                                            if slot >= params
+                                            if (slot >= params
+                                                || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))
                                                 && !item.ty.is_scalar()
                                                 && !matches!(item.ty, Ty::Fn(..))
                                                 && !items.iter().enumerate().any(|(j, other)| {
@@ -1104,6 +1109,7 @@ impl<'p> Emitter<'p> {
                     } else {
                         self.expr(value).text
                     };
+                    self.last_use_call = false;
                     self.line(out, &format!("return {text};"));
                 }
             }

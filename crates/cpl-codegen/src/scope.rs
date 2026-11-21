@@ -378,6 +378,49 @@ pub(crate) fn rows(program: &Program, facts: &crate::ranges::Facts<'_>) -> BTree
     rows
 }
 
+/// Value parameters each fn returns as a field of the struct or tuple it
+/// builds, with nothing else in that return naming them. They are taken by
+/// value so the return moves them, and a caller at its last use moves in.
+pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
+    program
+        .fns
+        .iter()
+        .map(|f| {
+            let mut sunk = BTreeSet::new();
+            walk::deep_stmts(&f.body, &mut |stmt| {
+                let Stmt::Return(Some(value)) = stmt else { return };
+                let ExprKind::Tuple(items) = &value.kind else { return };
+                if matches!(value.ty, Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)) {
+                    return;
+                }
+                for (idx, item) in items.iter().enumerate() {
+                    let ExprKind::Local(slot) = item.kind else { continue };
+                    if slot >= f.params.len()
+                        || f.params[slot].mutable
+                        || item.ty.is_scalar()
+                        || matches!(item.ty, Ty::Fn(..))
+                    {
+                        continue;
+                    }
+                    let elsewhere = items.iter().enumerate().any(|(j, other)| {
+                        j != idx && {
+                            let mut used = false;
+                            walk::deep_expr(other, &mut |e| {
+                                used |= matches!(e.kind, ExprKind::Local(s) if s == slot);
+                            });
+                            used
+                        }
+                    });
+                    if !elsewhere {
+                        sunk.insert(slot);
+                    }
+                }
+            });
+            sunk
+        })
+        .collect()
+}
+
 /// Ranged `Int` struct fields that can be stored as 32-bit integers (`uint32_t`/`int32_t`).
 /// Fields passed by `mut` reference or updated with a compound operator stay `ll`.
 pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir::IntWidth> {

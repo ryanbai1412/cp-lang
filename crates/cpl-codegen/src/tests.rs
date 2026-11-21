@@ -866,3 +866,25 @@ fn trie_row_field_niches_opt_int_and_avoids_temp_vector() {
         "Row field comprehension must construct cpl::Row directly without a temporary std::vector: {out}"
     );
 }
+
+#[test]
+fn a_param_returned_in_a_struct_is_taken_by_value_and_moved_in() {
+    let cpp = cpp("struct Pack(xs: List<Int>, ys: List<Int>)
+fn pack(xs: List<Int>, ys: List<Int>) -> Pack:
+    Pack(xs, ys)
+fn twice(xs: List<Int>) -> Pack = Pack(xs, xs)
+fn make(n: Int) -> Pack:
+    let a = [i for i in 0..n]
+    let b = [i * i for i in 0..n]
+    return pack(a, b)
+let n: 1..=100 = read()
+let p = make(n)
+let q = twice(p.xs)
+print(p.xs.len + p.ys.len, q.xs.len)
+");
+    assert!(cpp.contains("Pack pack(std::vector<ll> xs, std::vector<ll> ys) {"), "{cpp}");
+    assert!(cpp.contains("return Pack{std::move(xs), std::move(ys)};"), "{cpp}");
+    assert!(cpp.contains("return ::prog::pack(std::move(a), std::move(b));"), "{cpp}");
+    assert!(cpp.contains("Pack twice(const std::vector<ll>& xs) {"), "named twice: copied, not sunk: {cpp}");
+    assert!(cpp.contains("::prog::twice(p.xs)"), "a global is not moved from: {cpp}");
+}

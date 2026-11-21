@@ -1537,6 +1537,7 @@ impl<'p> Emitter<'p> {
     }
 
     fn call(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Code {
+        let last_use = std::mem::take(&mut self.last_use_call);
         if let Some(code) = self.try_fused_bitset_op(e, id, args) {
             return code;
         }
@@ -1593,7 +1594,12 @@ impl<'p> Emitter<'p> {
                         // passes values.
                         let by_ref = !value.ty.is_scalar()
                             && this.devirt.template_param_index(id, slot).is_none()
-                            && this.facts.stores((Some(id), false, slot)) <= 2;
+                            && this.facts.stores((Some(id), false, slot)) <= 2
+                            && !this.sunk[id].contains(&slot);
+                        if last_use && !by_ref && this.moves_in(id, slot, value, args, &code.text) {
+                            texts.push(format!("std::move({})", code.text));
+                            continue;
+                        }
                         let shared = match walk::path_root(value) {
                             Some(root) => {
                                 lent.contains(&root)
@@ -1630,6 +1636,39 @@ impl<'p> Emitter<'p> {
             } else {
                 Code::primary(format!("({}, {call})", ran.join(", ")))
             }
+        })
+    }
+
+    /// True when `value`, an argument of the call a `return` makes, is a
+    /// local the caller owns and names nowhere else in the call, passed to a
+    /// parameter taken by value: moving it in skips a copy.
+    fn moves_in(&self, id: usize, slot: usize, value: &Expr, args: &[Arg], text: &str) -> bool {
+        let ExprKind::Local(local) = value.kind else { return false };
+        let Some(caller) = self.fn_id else { return false };
+        let cf = &self.program.fns[caller];
+        let owned = local >= cf.params.len()
+            || (!cf.params[local].mutable
+                && (self.sunk[caller].contains(&local) || self.facts.stores((Some(caller), false, local)) > 2));
+        if !owned
+            || value.ty.is_scalar()
+            || matches!(value.ty, Ty::Fn(..))
+            || self.devirt.param_known(id, slot)
+            || text != self.names[local]
+        {
+            return false;
+        }
+        !args.iter().enumerate().any(|(j, arg)| {
+            j != slot
+                && match arg {
+                    Arg::Mut(place) => walk::root(place) == (false, local),
+                    Arg::Value(other) => {
+                        let mut used = false;
+                        walk::deep_expr(other, &mut |e| {
+                            used |= matches!(e.kind, ExprKind::Local(s) if s == local);
+                        });
+                        used
+                    }
+                }
         })
     }
 

@@ -3345,3 +3345,18 @@ drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
 - **Decision:** Type and lower `a.inverse()` uniformly on 1D arrays in `cpl-check` and `cpl-ir`: a partial injection `a: [D]?E` (where `E` is an index domain, fieldless enum, or bounded integer range) returns `[E]?D` and traps on duplicate images (`Stmt::Trap` in both interpreter and C++); a total bijection `a: [D]E` keeps returning `[E]D` and traps on duplicate or missing images. Arrays with non-index elements (e.g. `[D]?Int`) are rejected at check time with `E0302`.
 - **Reason:** Partial permutations with holes (`a: [P]?(1..=n) = read(none: 0)` in `cf2084g1` and `a: [Pos]?(0..Pos.count) = read(none: -1)` in `cf2084e`) previously forced hand-written inversion loops because `std.seq.inverse` only accepted total bijections `[I]V`. Typing `.inverse()` by the input preserves one spelling across total and partial maps and works without extra imports.
 - **Reverse:** Remove `array_inverse_ret` in `crates/cpl-check/src/check/expr.rs`, the `inverse` arm in `crates/cpl-check/src/check/call.rs`, and `lower_array_inverse` + `local_specs`/`global_specs` in `crates/cpl-ir/src/lower/{mod,stmt,call}.rs`.
+||||||| parent of eb2d35c7 (codegen: move array params stored into a returned struct)
+
+## 91. Array parameters stored into a returned struct are taken by value and moved (2026-11-21)
+
+A non-scalar, non-`mut` parameter that a fn returns as one field of the
+tuple or struct it builds (and that nothing else in that return names) is a
+C++ by-value parameter, moved into the result. A `return f(...)` passes each
+local it owns, named once in the call, with `std::move`. Before, such a
+parameter was `const T&` and copied into the result: `Rooted.finish` copied
+six `[V]` arrays, and `bench/trees/root_bench` went from 178 MB to 139 MB RSS
+with identical output. A parameter used anywhere else in the return, a global,
+or a `mut` argument is never moved from. Test:
+`a_param_returned_in_a_struct_is_taken_by_value_and_moved_in` and the
+`sunk_params.cp` differential program. Reverse: drop `scope::sunk_params` and
+the `last_use_call` flag; parameters go back to `const&` plus a copy.

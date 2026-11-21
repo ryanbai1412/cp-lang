@@ -130,6 +130,12 @@ pub(crate) struct Emitter<'p> {
     pub rows: BTreeMap<(usize, usize), u32>,
     /// `(struct, field)` to 32-bit storage width for ranged `Int` fields.
     pub narrow_ints: BTreeMap<(usize, usize), cpl_ir::IntWidth>,
+    /// Per fn, the parameters it takes by value to move into its result:
+    /// see [`crate::scope::sunk_params`].
+    pub sunk: Vec<BTreeSet<usize>>,
+    /// Set while the call a `return` makes is written: its local arguments
+    /// are at their last use.
+    pub last_use_call: bool,
     pub pushers: BTreeMap<usize, usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
@@ -213,6 +219,8 @@ impl<'p> Emitter<'p> {
             reused: BTreeSet::new(),
             rows,
             narrow_ints: crate::scope::narrow_ints(program),
+            sunk: crate::scope::sunk_params(program),
+            last_use_call: false,
             pushers: BTreeMap::new(),
             pushing: None,
             bodies: Vec::new(),
@@ -401,7 +409,10 @@ impl<'p> Emitter<'p> {
                     format!("[[maybe_unused]] {by} {name}")
                 } else if param.mutable {
                     format!("{cpp}& {name}")
-                } else if ty.is_scalar() || self.facts.stores((Some(id), false, slot)) > 2 {
+                } else if ty.is_scalar()
+                    || self.facts.stores((Some(id), false, slot)) > 2
+                    || self.sunk[id].contains(&slot)
+                {
                     format!("{cpp} {name}")
                 } else {
                     format!("const {cpp}& {name}")
