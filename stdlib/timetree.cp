@@ -18,23 +18,24 @@ pub enum TimeStep:
 /// intervals `[lo, hi)`.
 pub struct TimeTree<E>:
     q: Int
+    size: Int
     events: List<E>
-    buckets: List<List<Int>>
+    head: List<-1..=2_000_000_000>
+    next: List<-1..=2_000_000_000>
+    ev_id: List<0..=2_000_000_000>
 
     /// Create a timeline for `q` time slots `0..q`. O(q).
     pub fn new(q: Int) -> TimeTree<E>:
         assert q >= 0, "TimeTree needs q >= 0"
-        let sz = max(1, 4 * max(1, q))
-        TimeTree(q, [], [[] for _ in 0..sz])
+        let size = bit_ceil(max(1, q))
+        TimeTree(q, size, [], List.filled(2 * size, -1), [], [])
 
-    fn add_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, id: Int):
-        if qr <= nl or nr <= ql: return
-        if ql <= nl and nr <= qr:
-            buckets[u].push(id)
-            return
-        let mid = (nl + nr) / 2
-        self.add_rec(2 * u, nl, mid, ql, qr, id)
-        self.add_rec(2 * u + 1, mid, nr, ql, qr, id)
+    fn link(mut self, u: Int, id: Int):
+        unchecked:
+            let idx = ev_id.len
+            ev_id.push(id)
+            next.push(head[u])
+            head[u] = idx
 
     /// Schedule event `ev` to be active across the half-open time interval `[lo, hi)`. O(log q).
     pub fn add_interval(mut self, lo: Int, hi: Int, ev: E):
@@ -43,21 +44,33 @@ pub struct TimeTree<E>:
         if ql >= qr: return
         let id = events.len
         events.push(ev)
-        self.add_rec(1, 0, q, ql, qr, id)
+        var (l, r) = (ql + size, qr + size)
+        while l < r:
+            if l % 2 == 1:
+                self.link(l, id)
+                l += 1
+            if r % 2 == 1:
+                r -= 1
+                self.link(r, id)
+            l /= 2
+            r /= 2
 
     /// Retrieve the event referenced by `Apply(id)`. O(1).
     pub fn event(self, id: Int) -> E = events[id]
 
     fn emit_dfs(self, u: Int, nl: Int, nr: Int, mut out: List<TimeStep>):
-        let k = buckets[u].len
-        for id in buckets[u]:
-            out.push(Apply(id))
+        var k = 0
+        var e = head[u]
+        while e != -1:
+            out.push(Apply(ev_id[e]))
+            k += 1
+            e = next[e]
         if nr - nl == 1:
-            out.push(Query(nl))
+            if nl < q: out.push(Query(nl))
         else:
             let mid = (nl + nr) / 2
             self.emit_dfs(2 * u, nl, mid, mut out)
-            self.emit_dfs(2 * u + 1, mid, nr, mut out)
+            if mid < q: self.emit_dfs(2 * u + 1, mid, nr, mut out)
         for _ in 0..k:
             out.push(Undo)
 
@@ -66,7 +79,7 @@ pub struct TimeTree<E>:
     pub fn steps(self) -> List<TimeStep>:
         var out: List<TimeStep> = []
         if q == 0: return out
-        self.emit_dfs(1, 0, q, mut out)
+        self.emit_dfs(1, 0, size, mut out)
         out
 
     fn run_node<M, R>(
@@ -81,23 +94,18 @@ pub struct TimeTree<E>:
         mut out: List<R>,
     ):
         unchecked:
-            if buckets[u].is_empty:
-                if nr - nl == 1:
-                    out.push(answer(nl))
-                else:
-                    let mid = (nl + nr) / 2
-                    self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
-                    self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
-                return
             let snap = mark()
-            for id in buckets[u]:
-                apply(events[id])
+            var e = head[u]
+            while e != -1:
+                apply(events[ev_id[e]])
+                e = next[e]
             if nr - nl == 1:
-                out.push(answer(nl))
+                if nl < q: out.push(answer(nl))
             else:
                 let mid = (nl + nr) / 2
                 self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
-                self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
+                if mid < q:
+                    self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
             undo(snap)
 
     /// Walk the segment tree over `0..q` with zero step-list allocation, returning
@@ -113,7 +121,7 @@ pub struct TimeTree<E>:
     ) -> List<R>:
         var out: List<R> = []
         if q == 0: return out
-        self.run_node(1, 0, q, mark, apply, answer, undo, mut out)
+        self.run_node(1, 0, size, mark, apply, answer, undo, mut out)
         out
 
 /// Offline divide-and-conquer over time `0..q` for `items` active on half-open

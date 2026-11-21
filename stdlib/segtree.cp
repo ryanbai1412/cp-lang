@@ -249,53 +249,63 @@ fn fill_option_initializes_leaves_without_array():
 /// Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 /// Build in O(n log n) time and memory; answer value-range counts over any `Range<D>` in O(log^2 n).
 pub struct MergeSortTree<D, T>:
-    nodes: List<List<T>>
+    data: List<T>
+    beg: List<0..=2_000_000_000>
+    fin: List<0..=2_000_000_000>
     size: Int
 
     /// Build from an array `a: [D]T`. O(n log n).
     pub fn new(a: [D]T) -> MergeSortTree<D, T>:
         let size = bit_ceil(D.K)
-        var nodes: List<List<T>> = [[] for _ in 0..(2 * size)]
-        for i in D:
-            nodes[size + i.to_idx] = [a[i]]
-        for p in (1..size).rev:
-            let l = nodes[2 * p]
-            let r = nodes[2 * p + 1]
-            var merged: List<T> = []
-            var (i, j) = (0, 0)
-            while i < l.len and j < r.len:
-                if l[i] <= r[j]:
-                    merged.push(l[i])
+        var data: List<T> = []
+        var beg: List<0..=2_000_000_000> = List.filled(2 * size, 0)
+        var fin: List<0..=2_000_000_000> = List.filled(2 * size, 0)
+        unchecked:
+            for i in D:
+                let p = size + i.to_idx
+                beg[p] = data.len
+                data.push(a[i])
+                fin[p] = data.len
+            for p in (1..size).rev:
+                let (li, le) = (beg[2 * p], fin[2 * p])
+                let (ri, re) = (beg[2 * p + 1], fin[2 * p + 1])
+                beg[p] = data.len
+                var (i, j) = (li, ri)
+                while i < le and j < re:
+                    if data[i] <= data[j]:
+                        data.push(data[i])
+                        i += 1
+                    else:
+                        data.push(data[j])
+                        j += 1
+                while i < le:
+                    data.push(data[i])
                     i += 1
-                else:
-                    merged.push(r[j])
+                while j < re:
+                    data.push(data[j])
                     j += 1
-            while i < l.len:
-                merged.push(l[i])
-                i += 1
-            while j < r.len:
-                merged.push(r[j])
-                j += 1
-            nodes[p] = merged
-        MergeSortTree(nodes, size)
+                fin[p] = data.len
+        MergeSortTree(data, beg, fin, size)
 
-    fn lower_idx(xs: List<T>, x: T) -> Int:
-        var (lo, hi) = (0, xs.len)
+    fn lower_idx(self, u: Int, x: T) -> Int:
         unchecked:
+            let base = beg[u]
+            var (lo, hi) = (base, fin[u])
             while lo < hi:
                 let mid = (lo + hi) / 2
-                if xs[mid] < x: lo = mid + 1
+                if data[mid] < x: lo = mid + 1
                 else: hi = mid
-        lo
+            return lo - base
 
-    fn upper_idx(xs: List<T>, x: T) -> Int:
-        var (lo, hi) = (0, xs.len)
+    fn upper_idx(self, u: Int, x: T) -> Int:
         unchecked:
+            let base = beg[u]
+            var (lo, hi) = (base, fin[u])
             while lo < hi:
                 let mid = (lo + hi) / 2
-                if xs[mid] <= x: lo = mid + 1
+                if data[mid] <= x: lo = mid + 1
                 else: hi = mid
-        lo
+            return lo - base
 
     /// Count elements in `r` strictly less than `x`. O(log^2 n).
     pub fn count_lt(self, r: Range<D>, x: T) -> Int:
@@ -304,11 +314,11 @@ pub struct MergeSortTree<D, T>:
         unchecked:
             while l < h:
                 if l % 2 == 1:
-                    ans += MergeSortTree.lower_idx(nodes[l], x)
+                    ans += self.lower_idx(l, x)
                     l += 1
                 if h % 2 == 1:
                     h -= 1
-                    ans += MergeSortTree.lower_idx(nodes[h], x)
+                    ans += self.lower_idx(h, x)
                 l /= 2
                 h /= 2
         ans
@@ -320,11 +330,11 @@ pub struct MergeSortTree<D, T>:
         unchecked:
             while l < h:
                 if l % 2 == 1:
-                    ans += MergeSortTree.upper_idx(nodes[l], x)
+                    ans += self.upper_idx(l, x)
                     l += 1
                 if h % 2 == 1:
                     h -= 1
-                    ans += MergeSortTree.upper_idx(nodes[h], x)
+                    ans += self.upper_idx(h, x)
                 l /= 2
                 h /= 2
         ans
@@ -337,8 +347,8 @@ pub struct MergeSortTree<D, T>:
 /// Dynamic (coordinate-sparse) segment tree over integer coordinates `[lo, hi)`.
 /// Allocates nodes on demand in an arena. Point update and range fold run in O(log(hi - lo)).
 pub struct SparseSegTree<T>(m: Monoid<T>, lo: Int, hi: Int):
-    left: List<Int>
-    right: List<Int>
+    left: List<-1..=2_000_000_000>
+    right: List<-1..=2_000_000_000>
     val: List<T>
     root: Int
 

@@ -11,8 +11,8 @@ pub struct Version(root: Int)
 /// Path-copying persistent segment tree over a domain `D` and monoid `Monoid<T>`.
 /// `set` and `update` return a new `Version` in O(log n) time and memory; `fold` and `get` take O(log n).
 pub struct PersistentSegTree<D, T>(m: Monoid<T>):
-    left: List<Int>
-    right: List<Int>
+    left: List<0..=2_000_000_000>
+    right: List<0..=2_000_000_000>
     val: List<T>
     base_root: Int
 
@@ -112,10 +112,10 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
 /// Built in O(n log n) using prefix versions of a persistent count tree; queries run in O(log n).
 pub struct RangeKth<D, T>:
     vals: List<T>
-    left: List<Int>
-    right: List<Int>
-    cnt: List<Int>
-    roots: List<Int>
+    left: List<0..=2_000_000_000>
+    right: List<0..=2_000_000_000>
+    cnt: List<0..=2_000_000_000>
+    roots: List<0..=2_000_000_000>
 
     /// Build from `a: [D]T`. O(n log n) time and memory.
     pub fn new(a: [D]T) -> RangeKth<D, T>:
@@ -128,7 +128,7 @@ pub struct RangeKth<D, T>:
         for i in D:
             let prev = rk.roots[rk.roots.len - 1]
             let pos = rk.lower_val(a[i])
-            let nxt = rk.inc(prev, 0, m, pos)
+            let nxt = rk.inc(prev, m, pos)
             rk.roots.push(nxt)
         rk
 
@@ -150,21 +150,28 @@ pub struct RangeKth<D, T>:
                 else: hi = mid
         lo
 
-    fn inc(mut self, u: Int, nl: Int, nr: Int, pos: Int) -> Int:
-        let id = cnt.len
+    fn inc(mut self, root: Int, m: Int, pos: Int) -> Int:
         unchecked:
-            left.push(left[u])
-            right.push(right[u])
-            cnt.push(cnt[u] + 1)
-            if nr - nl == 1: return id
-            let mid = (nl + nr) / 2
-            if pos < mid:
-                let c = self.inc(left[u], nl, mid, pos)
-                left[id] = c
-            else:
-                let c = self.inc(right[u], mid, nr, pos)
-                right[id] = c
-        id
+            let new_root = cnt.len
+            var (u, nl, nr) = (root, 0, m)
+            while true:
+                let id = cnt.len
+                let lu = left[u]
+                let ru = right[u]
+                left.push(lu)
+                right.push(ru)
+                cnt.push(cnt[u] + 1)
+                if nr - nl == 1: break
+                let mid = (nl + nr) / 2
+                if pos < mid:
+                    left[id] = id + 1
+                    u = lu
+                    nr = mid
+                else:
+                    right[id] = id + 1
+                    u = ru
+                    nl = mid
+            return new_root
 
     /// The `k`-th smallest element (0-based) in `r`. Traps if `k < 0` or `k >= r.len`. O(log n).
     pub fn kth(self, r: Range<D>, k: Int) -> T:
