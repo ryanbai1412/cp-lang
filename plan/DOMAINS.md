@@ -543,10 +543,13 @@ Both new files (cf2124h, cf2138c1) read sizes and parents as untyped
 `let a: List<T> = [read() for _ in 0..n]` reads `n` `T`s
 (`a_list_of_bare_reads_reads_the_element_type_it_is_declared_with`,
 25.30): 1,189.
+A top-level `if` on a tag read above it, as the last line that reads, is a
+choice (`a_top_level_branch_on_a_value_read_above_chooses_what_follows`,
+25.31): 1,193.
 Of the first five, ioi09p7 and noip19p2 read parents as plain `V`s
 and fail on the cycles generated, and etsr23r1p3 reads letters past its
 alphabet: typing gaps in the ports. Still refused: 27 loops a row can't
-describe, 16 reads in a branch or `while true`, 16 fns that read and take
+describe, 11 reads in a branch or `while true`, 16 fns that read and take
 parameters or are called in a branch.
 Stress under a judge is a gate regression: all 16 interactive and 5
 checker ecnerwala ports pass 20 generated cases each under the

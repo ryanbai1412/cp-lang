@@ -1825,6 +1825,12 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   read takes the element type the `let` declares, as `let a: [D]T = [D] _ => read()`
   already does; a comprehension with a filter or a named loop variable stays refused.
   Reverse: drop the `Comprehension` arm of `typed_read`.
+- **25.31 A top-level `if`/`match` on a value read above it is a choice.** The fields
+  from the tag on become one choice field, as a loop pass's row already does, so
+  `let k: 1..=2 = read()` then `if k == 2:` reading in each arm generates each arm.
+  Only when the branch is the last top-level line that reads, no reader fn is
+  inlined and no name is bound twice: a later read could need a name the arms now
+  hold. Reverse: drop `Builder::top_choice` and its call.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

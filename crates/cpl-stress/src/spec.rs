@@ -1561,6 +1561,44 @@ impl Builder<'_> {
         Ok(false)
     }
 
+    /// The top-level fields from a tag on, made one choice by the branch
+    /// `expr` on that tag; false when `expr` is not one.
+    fn top_choice(&mut self, expr: &Expr) -> Result<bool, SpecError> {
+        if !matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) {
+            return Ok(false);
+        }
+        // A tag named twice is ambiguous: which one the branch tests
+        // depends on scope the fields no longer carry.
+        let mut named = HashSet::new();
+        let names = self.spec.fields.iter().flat_map(|field| field.names.iter().flatten());
+        if !names.into_iter().all(|name| named.insert(name)) {
+            return Ok(false);
+        }
+        let fields = std::mem::take(&mut self.spec.fields);
+        let (mut parts, mut binds): (Vec<_>, Vec<_>) =
+            fields.iter().map(|field| (field.shape.clone(), field.names.clone())).unzip();
+        let mut inside = HashSet::new();
+        let chose = self.choice(expr, &mut inside, &mut parts, &mut binds);
+        match chose {
+            Ok(true) => {
+                let kept = parts.len() - 1;
+                let line = fields[kept].line;
+                self.spec.fields = fields;
+                self.spec.fields.truncate(kept);
+                self.spec.fields.push(Field {
+                    names: Vec::new(),
+                    shape: parts.pop().expect("the choice"),
+                    line,
+                });
+                Ok(true)
+            }
+            other => {
+                self.spec.fields = fields;
+                other
+            }
+        }
+    }
+
     /// The arms of `expr` as a choice on the tag `name`, and the tag's
     /// shape; `None` when `expr` is not a choice on it.
     fn arms_on(
@@ -2547,6 +2585,16 @@ impl InputSpec {
                 .any(|stmt| stmt.decorators.iter().any(|d| d.name.text == "multitest"))
         });
         let readers = readers(src, &parsed.items);
+        // Where the last top-level line that reads ends: a branch there
+        // may take the fields above it into its arms, since nothing
+        // after it reads by their names.
+        let last_read = parsed
+            .items
+            .iter()
+            .flat_map(|(base, item)| item.stmts.iter().map(move |stmt| stmt.span.shift(*base)))
+            .filter(|span| reads_inside(&src[span_range(*span)]))
+            .map(|span| span.end)
+            .max();
         let mut hidden = Vec::new();
         for (base, item) in &parsed.items {
             builder.base = *base;
@@ -2807,6 +2855,12 @@ impl InputSpec {
                         ));
                     }
                     _ if (in_judge || judge.is_none()) && builder.reads(stmt) => {
+                        if let StmtKind::Expr(expr) = &stmt.kind {
+                            let last = Some(stmt.span.shift(builder.base).end) == last_read;
+                            if !in_judge && last && readers.is_empty() && builder.top_choice(expr)? {
+                                continue;
+                            }
+                        }
                         if let Some(shapes) = builder.inlined(stmt)? {
                             let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
                             let fields = shapes.into_iter().map(|shape| Field {

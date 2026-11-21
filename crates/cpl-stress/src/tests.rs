@@ -2373,3 +2373,34 @@ print(a.sum)
         "let n: 1..=6 = read()\nlet a: List<Int> = [read() for i in 0..n if i > 1]\nprint(a.sum)\n";
     assert!(InputSpec::from_source(filtered).is_err());
 }
+
+#[test]
+fn a_top_level_branch_on_a_value_read_above_chooses_what_follows() {
+    let src = "let k: 1..=2 = read()
+let n: 1..=4 = read()
+if k == 2:
+    let a: [n]0..=9 = read()
+    print(a.sum)
+else:
+    let b: 5..=7 = read()
+    print(b * n)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let mut seen = HashSet::new();
+    for seed in 0..30 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(4))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text.split_whitespace().map(|t| t.parse().unwrap()).collect();
+        let (k, n) = (tokens[0], tokens[1]);
+        seen.insert(k);
+        match k {
+            2 => assert_eq!(tokens.len() as i128, 2 + n, "{text}"),
+            _ => assert!(tokens.len() == 3 && (5..=7).contains(&tokens[2]), "{text}"),
+        }
+    }
+    assert_eq!(seen.len(), 2);
+    // A read after the branch could use what it moved into the arms.
+    let after = "let k: 1..=2 = read()\nif k == 2:\n    let a: Int = read()\n    print(a)\nlet m: Int = read()\nprint(m)\n";
+    assert!(InputSpec::from_source(after).is_err());
+}
