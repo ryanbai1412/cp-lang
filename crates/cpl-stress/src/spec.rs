@@ -13,8 +13,8 @@
 
 use cpl_diag::Span;
 use cpl_syntax::ast::{
-    BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind, Type,
-    TypeKind, UnOp,
+    BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
+    StrPiece, Type, TypeKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -27,8 +27,14 @@ pub enum Shape {
     /// An integer in `lo..=hi`; the bounds are evaluated when a case is
     /// made, against the values read so far.
     Int { lo: Expr, hi: Expr },
-    /// `len` values of the same shape.
-    Array { len: Expr, elem: Box<Shape> },
+    /// `len` values of the same shape. With `index`, each value is made
+    /// with that name bound to `lo` plus its position, as the loop
+    /// `for r in 1..=n: let row: [r]Int = read()` binds `r`.
+    Array {
+        len: Expr,
+        elem: Box<Shape>,
+        index: Option<(String, Expr)>,
+    },
     /// A tuple, or a record `(u: V, v: V)`: its fields in order. A part
     /// binds the names in `binds` beside it (as a field does), for the
     /// bounds of the parts after it: one pass of a loop that reads `k`,
@@ -43,6 +49,8 @@ pub enum Shape {
     Bool,
     /// A word of letters, of any length from 1.
     Str,
+    /// One of these words: a `Str` tag a choice compares with literals.
+    Words(std::sync::Arc<[String]>),
     /// Every value of `lo..lo + len` once, in some order.
     Perm { lo: Expr, len: Expr },
     /// The `hi - lo` edges of a tree on the vertices `lo..=hi`, each a
@@ -526,12 +534,17 @@ struct Builder<'a> {
     records: HashMap<String, (u32, Record)>,
     /// How the `read()` being built writes `none`, from `read(none: x)`.
     none: Option<i128>,
+    /// Each fn whose call reads the same values wherever it is, with the
+    /// types it reads in order ([`values`]).
+    values: HashMap<String, (u32, Vec<Type>)>,
     spec: InputSpec,
 }
 
 #[derive(Clone)]
 enum Record {
     Struct(Vec<Type>),
+    /// A struct another module declares, its fields already shaped.
+    Shaped(Vec<Shape>),
     Enum(Vec<(u8, Vec<Type>)>),
 }
 
@@ -646,9 +659,17 @@ impl Builder<'_> {
             }
             TypeKind::Named { name, args } if args.is_empty() => {
                 match name.text.as_str() {
-                    "Int" => {
+                    // A whole number is an `F64` too; drawing fractions
+                    // waits for a fixed-point value (decision 25.21).
+                    "Int" | "I128" | "F64" => {
                         return Ok(Shape::Int {
                             lo: int(DEFAULT_INT.0),
+                            hi: int(DEFAULT_INT.1),
+                        })
+                    }
+                    "U64" => {
+                        return Ok(Shape::Int {
+                            lo: int(0),
                             hi: int(DEFAULT_INT.1),
                         })
                     }
@@ -667,7 +688,13 @@ impl Builder<'_> {
                     return shape;
                 }
                 let Some((base, alias)) = self.aliases.get(&name.text).cloned() else {
-                    return Err(unsupported(self));
+                    let module =
+                        cpl_check::std_module(&name.text).ok_or_else(|| unsupported(self))?;
+                    let module = ["std".to_string(), module.to_string()];
+                    return match std_structs(&module, &[name.text.as_str()], false).pop() {
+                        Some((_, parts)) => self.record(&name.text, &Record::Shaped(parts)),
+                        None => Err(unsupported(self)),
+                    };
                 };
                 let outer = std::mem::replace(&mut self.base, base);
                 // `type Perm = [V]V` and `type Tree = [E](u: V, v: V)`
@@ -682,6 +709,20 @@ impl Builder<'_> {
                 };
                 self.base = outer;
                 shape?.ok_or_else(|| unsupported(self))
+            }
+            // `Mod<P>` reads a residue, `0..P`.
+            TypeKind::Named { name, args } if name.text == "Mod" && args.len() == 1 => {
+                let p = match &args[0].kind {
+                    TypeKind::Value(p) => (**p).clone(),
+                    TypeKind::Named { name, args } if args.is_empty() => Expr {
+                        kind: ExprKind::Name(name.text.clone()),
+                        span: name.span,
+                    },
+                    _ => return Err(unsupported(self)),
+                };
+                let hi = binary(BinOp::Sub, p, int(1));
+                names_in(&hi, &mut self.spec.sizes);
+                Ok(Shape::Int { lo: int(0), hi })
             }
             // `Perm<V>` and `Tree<V>`: a permutation of a domain, and the
             // edges of a tree on it.
@@ -743,6 +784,7 @@ impl Builder<'_> {
                     shape = Shape::Array {
                         len,
                         elem: Box::new(shape),
+                        index: None,
                     };
                 }
                 Ok(shape)
@@ -842,7 +884,18 @@ impl Builder<'_> {
             return Ok(None);
         }
         let mut inside = outer.clone();
-        bind_names(pat, &mut inside);
+        // The loop's own name is each pass's position, so the reads
+        // may use it; any other pattern is left unknown.
+        let index = match &pat.kind {
+            PatternKind::Name(name) => {
+                inside.remove(name);
+                Some(name.clone())
+            }
+            _ => {
+                bind_names(pat, &mut inside);
+                None
+            }
+        };
         let mut parts = Vec::new();
         let mut binds = Vec::new();
         if !self.rows(&body.stmts, &mut inside, &mut parts, &mut binds)? {
@@ -857,8 +910,9 @@ impl Builder<'_> {
         names_in(&lo, &mut self.spec.sizes);
         names_in(&hi, &mut self.spec.sizes);
         Ok(Some(Shape::Array {
-            len: binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)),
+            len: binary(BinOp::Add, binary(BinOp::Sub, hi, lo.clone()), int(1)),
             elem: Box::new(elem),
+            index: index.map(|name| (name, lo)),
         }))
     }
 
@@ -875,6 +929,17 @@ impl Builder<'_> {
         if matches!(&expr.kind, ExprKind::Call { callee, .. } if matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
         {
             return Ok(false);
+        }
+        if let ExprKind::Call { callee, args } = &expr.kind {
+            if let (ExprKind::Name(name), []) = (&callee.kind, args.as_slice()) {
+                if let Some((base, types)) = self.values.get(name).cloned() {
+                    let outer = std::mem::replace(&mut self.base, base);
+                    let shapes: Result<Vec<_>, _> = types.iter().map(|ty| self.shape(ty)).collect();
+                    self.base = outer;
+                    out.extend(shapes?);
+                    return Ok(true);
+                }
+            }
         }
         let mut all = |this: &mut Self, exprs: &mut dyn Iterator<Item = &Expr>| {
             for expr in exprs {
@@ -900,6 +965,7 @@ impl Builder<'_> {
             out.push(Shape::Array {
                 len,
                 elem: Box::new(elem),
+                index: None,
             });
             Ok(true)
         };
@@ -988,13 +1054,26 @@ impl Builder<'_> {
     }
 
     fn reads_in(&self, expr: &Expr) -> bool {
-        reads_inside(&self.src[span_range(expr.span.shift(self.base))])
+        self.reads_code(&self.src[span_range(expr.span.shift(self.base))])
+    }
+
+    /// True when `code` reads: it calls `read`, or a fn of [`values`].
+    fn reads_code(&self, code: &str) -> bool {
+        reads_inside(code)
+            || (!self.values.is_empty()
+                && cpl_syntax::lex(code).tokens.windows(2).any(|pair| {
+                    pair[0].kind == cpl_syntax::TokenKind::Ident
+                        && pair[1].kind == cpl_syntax::TokenKind::LParen
+                        && self.values.contains_key(
+                            &code[pair[0].span.start as usize..pair[0].span.end as usize],
+                        )
+                }))
     }
 
     /// True when `whole` reads after its part `first` ends.
     fn reads_after(&self, first: &Expr, whole: Span) -> bool {
         let (first, whole) = (first.span.shift(self.base), whole.shift(self.base));
-        reads_inside(&self.src[first.end as usize..whole.end as usize])
+        self.reads_code(&self.src[first.end as usize..whole.end as usize])
     }
 
     /// The expression of a statement that only evaluates one: `let`,
@@ -1025,7 +1104,7 @@ impl Builder<'_> {
     }
 
     fn reads(&self, stmt: &Stmt) -> bool {
-        reads_inside(&self.src[span_range(stmt.span.shift(self.base))])
+        self.reads_code(&self.src[span_range(stmt.span.shift(self.base))])
     }
 
     /// The reads of `stmts`, one pass of a loop or one arm of a choice,
@@ -1145,8 +1224,10 @@ impl Builder<'_> {
         Ok(true)
     }
 
-    /// An `if` or `match` on the tag just read, each branch reading its
-    /// own values: `if op == 1: let (l, r) = read() else: let i = read()`.
+    /// An `if` or `match` on a tag read above it, each branch reading
+    /// its own values: `if op == 1: let (l, r) = read() else: let i = read()`.
+    /// The tag is a number read alone or first in a tuple; what is read
+    /// between it and the branch is read by every branch, before its own.
     fn choice(
         &mut self,
         expr: &Expr,
@@ -1154,18 +1235,97 @@ impl Builder<'_> {
         parts: &mut Vec<Shape>,
         binds: &mut Vec<Vec<Option<String>>>,
     ) -> Result<bool, SpecError> {
-        let Some([Some(name)]) = binds.last().map(Vec::as_slice) else {
-            return Ok(false);
+        let scalar = |shape: &Shape| {
+            matches!(
+                shape,
+                Shape::Int { .. } | Shape::Char { .. } | Shape::Bool | Shape::Str
+            )
         };
-        let name = name.clone();
-        if !matches!(
-            parts.last(),
-            Some(Shape::Int { .. } | Shape::Char { .. } | Shape::Bool)
-        ) {
-            return Ok(false);
+        for at in (0..parts.len()).rev() {
+            let Some(Some(name)) = binds[at].first().cloned() else {
+                continue;
+            };
+            let (tag, rest) = match &parts[at] {
+                shape if scalar(shape) && binds[at].len() == 1 => (shape.clone(), None),
+                Shape::Tuple {
+                    parts: inner,
+                    binds: inner_binds,
+                } if inner.len() > 1 && inner.len() == binds[at].len() && scalar(&inner[0]) => {
+                    let rest = Shape::Tuple {
+                        parts: inner[1..].to_vec(),
+                        binds: inner_binds.get(1..).unwrap_or_default().to_vec(),
+                    };
+                    (inner[0].clone(), Some((rest, binds[at][1..].to_vec())))
+                }
+                _ => continue,
+            };
+            let rebound = binds[at][1..]
+                .iter()
+                .chain(binds[at + 1..].iter().flatten())
+                .any(|n| n.as_deref() == Some(name.as_str()));
+            if rebound {
+                return Ok(false);
+            }
+            let Some((tag, mut arms)) = self.arms_on(expr, inside, &name, tag)? else {
+                continue;
+            };
+            let mut between: Vec<(Shape, Vec<Option<String>>)> = rest.into_iter().collect();
+            between.extend(parts.drain(at + 1..).zip(binds.drain(at + 1..)));
+            parts.pop();
+            binds.pop();
+            if !between.is_empty() && arms.iter().all(|arm| arm.tags.is_some()) {
+                arms.push(Arm {
+                    tags: None,
+                    parts: Vec::new(),
+                    binds: Vec::new(),
+                });
+            }
+            for arm in &mut arms {
+                let (shapes, names): (Vec<_>, Vec<_>) = between.iter().cloned().unzip();
+                arm.parts.splice(0..0, shapes);
+                arm.binds.splice(0..0, names);
+            }
+            inside.insert(name.clone());
+            parts.push(Shape::Choice {
+                tag: Box::new(tag),
+                name,
+                arms,
+            });
+            binds.push(Vec::new());
+            return Ok(true);
         }
+        Ok(false)
+    }
+
+    /// The arms of `expr` as a choice on the tag `name`, and the tag's
+    /// shape; `None` when `expr` is not a choice on it.
+    fn arms_on(
+        &mut self,
+        expr: &Expr,
+        inside: &HashSet<String>,
+        name: &str,
+        tag: Shape,
+    ) -> Result<Option<(Shape, Vec<Arm>)>, SpecError> {
         let consts = self.spec.consts.clone();
-        let literal = |expr: &Expr| eval(expr, &consts);
+        // A `Str` tag is compared with words: each is its position in
+        // the order the arms name them.
+        let words = std::cell::RefCell::new(Vec::<String>::new());
+        let word = matches!(tag, Shape::Str);
+        let literal = |expr: &Expr| match &expr.kind {
+            ExprKind::Str(pieces) if word => {
+                let [StrPiece::Text(text)] = pieces.as_slice() else {
+                    return None;
+                };
+                let mut words = words.borrow_mut();
+                let at = words.iter().position(|w| w == text).unwrap_or_else(|| {
+                    words.push(text.clone());
+                    words.len() - 1
+                });
+                Some(at as i128)
+            }
+            _ if word => None,
+            _ => eval(expr, &consts),
+        };
         // The tags `x == 1 or x == 2` takes, with `x` the tag.
         fn tags(
             cond: &Expr,
@@ -1212,23 +1372,23 @@ impl Builder<'_> {
             } => {
                 for (at, (cond, block)) in branches.iter().enumerate() {
                     let Cond::Expr(cond) = cond else {
-                        return Ok(false);
+                        return Ok(None);
                     };
-                    match tags(cond, &name, &literal) {
+                    match tags(cond, name, &literal) {
                         Some((values, false)) => ways.push((Some(values), Some(block))),
                         // `if x != 1: A else: B` is `B` for 1, else `A`.
                         Some((values, true)) if at == 0 && branches.len() == 1 => {
                             ways.push((Some(values), otherwise.as_ref()));
                             ways.push((None, Some(block)));
                         }
-                        _ => return Ok(false),
+                        _ => return Ok(None),
                     }
                 }
                 if !matches!(ways.last(), Some((None, _))) {
                     ways.push((None, otherwise.as_ref()));
                 }
             }
-            ExprKind::Match { scrutinee, arms } if matches!(&scrutinee.kind, ExprKind::Name(n) if *n == name) =>
+            ExprKind::Match { scrutinee, arms } if matches!(&scrutinee.kind, ExprKind::Name(n) if n == name) =>
             {
                 fn values(
                     pat: &Pattern,
@@ -1249,18 +1409,16 @@ impl Builder<'_> {
                 }
                 for arm in arms {
                     if arm.guard.is_some() {
-                        return Ok(false);
+                        return Ok(None);
                     }
                     let Some(tags) = values(&arm.pat, &literal) else {
-                        return Ok(false);
+                        return Ok(None);
                     };
                     ways.push((tags, Some(&arm.body)));
                 }
             }
-            _ => return Ok(false),
+            _ => return Ok(None),
         }
-        let tag = parts.pop().expect("tested above");
-        binds.pop();
         let mut arms = Vec::new();
         for (tags, block) in ways {
             let mut arm = Arm {
@@ -1271,7 +1429,7 @@ impl Builder<'_> {
             if let Some(block) = block {
                 let mut inside = inside.clone();
                 if !self.rows(&block.stmts, &mut inside, &mut arm.parts, &mut arm.binds)? {
-                    return Ok(false);
+                    return Ok(None);
                 }
             }
             arms.push(arm);
@@ -1297,16 +1455,28 @@ impl Builder<'_> {
                     _ => Shape::Int { lo, hi },
                 }
             }
+            Shape::Str => {
+                let mut words = words.into_inner();
+                if words.is_empty()
+                    || words
+                        .iter()
+                        .any(|w| w.is_empty() || w.contains(char::is_whitespace))
+                {
+                    return Ok(None);
+                }
+                // One more word for an arm that takes every other word.
+                if arms.iter().any(|arm| arm.tags.is_none()) {
+                    let mut other = String::from("x");
+                    while words.contains(&other) {
+                        other.push('x');
+                    }
+                    words.push(other);
+                }
+                Shape::Words(words.into())
+            }
             tag => tag,
         };
-        inside.insert(name.clone());
-        parts.push(Shape::Choice {
-            tag: Box::new(tag),
-            name,
-            arms,
-        });
-        binds.push(Vec::new());
-        Ok(true)
+        Ok(Some((tag, arms)))
     }
 
     /// The shape of `ty` read with `none` written as `none`.
@@ -1329,6 +1499,10 @@ impl Builder<'_> {
                 let binds = vec![Vec::new(); parts.len()];
                 Ok(Shape::Tuple { parts, binds })
             }
+            Record::Shaped(parts) => Ok(Shape::Tuple {
+                binds: vec![Vec::new(); parts.len()],
+                parts: parts.clone(),
+            }),
             Record::Enum(variants) => {
                 let mut arms = Vec::new();
                 for (tag, fields) in variants {
@@ -1480,6 +1654,197 @@ fn span_range(span: Span) -> std::ops::Range<usize> {
     span.start as usize..span.end as usize
 }
 
+/// The fns a call of which reads the same values wherever it is, so the
+/// call reads like `read<T>()` in any expression: no parameters, a body
+/// whose only reads are `let name: T = read()` lines with types that use
+/// no name the body binds, and no `return` but a last one.
+fn values(src: &str, items: &[(u32, cpl_syntax::ParsedItem)]) -> HashMap<String, (u32, Vec<Type>)> {
+    let mut values = HashMap::new();
+    for (base, item) in items {
+        for stmt in &item.stmts {
+            let StmtKind::Fn(decl) = &stmt.kind else {
+                continue;
+            };
+            let FnBody::Block(block) = &decl.body else {
+                continue;
+            };
+            if !decl.params.is_empty() || !decl.generics.is_empty() || !stmt.decorators.is_empty() {
+                continue;
+            }
+            let code = |stmt: &Stmt| &src[span_range(stmt.span.shift(*base))];
+            let returns = |stmt: &Stmt| {
+                cpl_syntax::lex(code(stmt))
+                    .tokens
+                    .iter()
+                    .any(|t| t.kind == cpl_syntax::TokenKind::Return)
+            };
+            let mut types = Vec::new();
+            let mut bound = HashSet::new();
+            let last = block.stmts.len().saturating_sub(1);
+            let fits = block.stmts.iter().enumerate().all(|(at, stmt)| {
+                if returns(stmt) && !(at == last && matches!(stmt.kind, StmtKind::Return(_))) {
+                    return false;
+                }
+                if let StmtKind::Let {
+                    pat,
+                    ty,
+                    init: Some(init),
+                    ..
+                } = &stmt.kind
+                {
+                    if let Some((ty, None)) = typed_read(ty.as_ref(), init) {
+                        let mut used = HashSet::new();
+                        Sizes(&mut used).of_type(&ty);
+                        if !used.is_disjoint(&bound) {
+                            return false;
+                        }
+                        types.push(ty.into_owned());
+                        bind_names(pat, &mut bound);
+                        return true;
+                    }
+                    bind_names(pat, &mut bound);
+                }
+                !reads_inside(code(stmt))
+            });
+            if fits && !types.is_empty() {
+                values.insert(decl.name.text.clone(), (*base, types));
+            }
+        }
+    }
+    values
+}
+
+/// The fns whose reads are their callers': no parameters, no `return`, and
+/// every call a whole top-level statement or a `let`'s whole value, so each
+/// call reads the body's input right there, in order.
+fn readers<'a>(
+    src: &str,
+    items: &'a [(u32, cpl_syntax::ParsedItem)],
+) -> HashMap<&'a str, (u32, &'a [Stmt])> {
+    let mut readers = HashMap::new();
+    for (base, item) in items {
+        for stmt in &item.stmts {
+            let StmtKind::Fn(decl) = &stmt.kind else {
+                continue;
+            };
+            let FnBody::Block(block) = &decl.body else {
+                continue;
+            };
+            let code = |stmt: &Stmt| &src[span_range(stmt.span.shift(*base))];
+            // A `return` after the last read ends the fn as its end
+            // would; one before it leaves later reads to the caller.
+            let last = block
+                .stmts
+                .iter()
+                .rposition(|stmt| reads_inside(code(stmt)));
+            let early = block.stmts.iter().enumerate().any(|(at, stmt)| {
+                let jumps = Jumps::of(stmt);
+                Some(at) <= last
+                    && jumps
+                        .returns
+                        .iter()
+                        .any(|&r| !Jumps::within(&jumps.calls, r))
+            });
+            if decl.params.is_empty()
+                && decl.generics.is_empty()
+                && stmt.decorators.is_empty()
+                && reads_inside(code(stmt))
+                && !early
+            {
+                readers.insert(decl.name.text.as_str(), (*base, &block.stmts[..]));
+            }
+        }
+    }
+    // A call anywhere else (in a branch, a loop or an argument) reads
+    // only some of the time, so its fn stays refused.
+    let mut sites: HashMap<&str, HashSet<u32>> = HashMap::new();
+    let mut seen = Vec::new();
+    for (base, item) in items {
+        for stmt in &item.stmts {
+            let body = match &stmt.kind {
+                StmtKind::Fn(decl)
+                    if stmt
+                        .decorators
+                        .iter()
+                        .any(|d| !d.directive && d.name.text == "multitest") =>
+                {
+                    match &decl.body {
+                        FnBody::Block(block) => &block.stmts[..],
+                        _ => &[],
+                    }
+                }
+                _ => &[],
+            };
+            for stmt in std::iter::once(stmt).chain(body) {
+                seen.push((*base, stmt));
+            }
+        }
+    }
+    for (base, stmts) in readers.values() {
+        seen.extend(stmts.iter().map(|stmt| (*base, stmt)));
+    }
+    for (base, stmt) in seen {
+        if let Some(name) = reader_call(stmt) {
+            sites
+                .entry(name)
+                .or_default()
+                .insert(base + stmt.span.start);
+        }
+    }
+    let lexed = cpl_syntax::lex(src).tokens;
+    readers.retain(|name, _| {
+        let calls = lexed
+            .windows(2)
+            .filter(|pair| {
+                pair[0].kind == cpl_syntax::TokenKind::Ident
+                    && pair[1].kind == cpl_syntax::TokenKind::LParen
+                    && &src[pair[0].span.start as usize..pair[0].span.end as usize] == *name
+            })
+            .count();
+        // One of them is the fn's own `fn name(`.
+        sites.get(name).map_or(0, HashSet::len) + 1 == calls
+    });
+    readers
+}
+
+/// The fn `stmt` calls with no arguments, as all it does or as all of a
+/// `let`'s value: `f()` or `let x = f()`.
+fn reader_call(stmt: &Stmt) -> Option<&str> {
+    let expr = match &stmt.kind {
+        StmtKind::Expr(expr) => expr,
+        StmtKind::Let {
+            init: Some(init), ..
+        } => init,
+        _ => return None,
+    };
+    match &expr.kind {
+        ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
+            ExprKind::Name(name) => Some(name.as_str()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// `stmt` with each reader call replaced by the reader's body, read
+/// where the call is; a reader that calls itself is left to be refused.
+fn expand<'a>(
+    base: u32,
+    stmt: &'a Stmt,
+    readers: &HashMap<&str, (u32, &'a [Stmt])>,
+    depth: usize,
+    out: &mut Vec<(u32, &'a Stmt)>,
+) {
+    match reader_call(stmt).and_then(|name| readers.get(name)) {
+        Some(&(body_base, body)) if depth < 16 => {
+            for inner in body {
+                expand(body_base, inner, readers, depth + 1, out);
+            }
+        }
+        _ => out.push((base, stmt)),
+    }
+}
+
 /// True when `code` calls `read()`, or `read` with named options such
 /// as `read(gen: f)`, outside `//` comments.
 fn reads_inside(code: &str) -> bool {
@@ -1620,6 +1985,44 @@ fn read_gen(expr: &Expr) -> Option<String> {
 
 /// `src` lowered to print what `func()` makes after reading the input
 /// above `line`. `None` when it does not build.
+/// The structs `use std.m.{X}` brings in, or a stdlib name used bare, whose fields are all `Int`,
+/// `Bool` or `Char`, shaped as a declared field of that type would be.
+fn std_structs(module: &[String], names: &[&str], glob: bool) -> Vec<(String, Vec<Shape>)> {
+    use cpl_check::Loader;
+    let Some((_, text)) = cpl_check::FsLoader.load("", module) else {
+        return Vec::new();
+    };
+    let field = |ty: &Type| match &ty.kind {
+        TypeKind::Named { name, args } if args.is_empty() => match name.text.as_str() {
+            "Int" => Some(Shape::Int {
+                lo: int(DEFAULT_INT.0),
+                hi: int(DEFAULT_INT.1),
+            }),
+            "Bool" => Some(Shape::Bool),
+            "Char" => Some(Shape::Char { lo: b'a', hi: b'z' }),
+            _ => None,
+        },
+        _ => None,
+    };
+    let parsed = cpl_syntax::parse_file(&text);
+    let mut out = Vec::new();
+    for (_, item) in &parsed.items {
+        for stmt in &item.stmts {
+            let StmtKind::Struct(decl) = &stmt.kind else {
+                continue;
+            };
+            let wanted = glob || names.contains(&decl.name.text.as_str());
+            if !wanted || !decl.generics.is_empty() {
+                continue;
+            }
+            if let Some(parts) = decl.fields.iter().map(|f| field(&f.ty)).collect() {
+                out.push((decl.name.text.clone(), parts));
+            }
+        }
+    }
+    out
+}
+
 fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_ir::Program> {
     let name = "input.cp";
     let mut db = cpl_check::Database::new();
@@ -1713,6 +2116,7 @@ impl InputSpec {
             aliases: HashMap::new(),
             records: HashMap::new(),
             none: None,
+            values: values(src, &parsed.items),
             spec: InputSpec::default(),
         };
         // What is read above `@!multitest`, once the divider is seen.
@@ -1740,6 +2144,7 @@ impl InputSpec {
                 .iter()
                 .any(|stmt| stmt.decorators.iter().any(|d| d.name.text == "multitest"))
         });
+        let readers = readers(src, &parsed.items);
         let mut hidden = Vec::new();
         for (base, item) in &parsed.items {
             builder.base = *base;
@@ -1757,20 +2162,25 @@ impl InputSpec {
                     },
                     _ => &[],
                 };
-                std::iter::once(stmt).chain(body).map(|stmt| (stmt, false))
+                std::iter::once(stmt).chain(body)
             });
-            let stmts = stmts.chain(
-                judge
-                    .iter()
-                    .flat_map(|(_, block)| &block.stmts)
-                    .map(|stmt| (stmt, true)),
-            );
-            for (stmt, in_judge) in stmts {
-                // The interactor's lines are offset from its own item.
-                builder.base = match judge {
-                    Some((judge_base, _)) if in_judge => judge_base,
-                    _ => *base,
-                };
+            let mut expanded = Vec::new();
+            for stmt in stmts {
+                expand(*base, stmt, &readers, 0, &mut expanded);
+            }
+            let stmts = expanded
+                .into_iter()
+                .map(|(base, stmt)| (base, stmt, false))
+                .chain(judge.iter().flat_map(|(judge_base, block)| {
+                    block
+                        .stmts
+                        .iter()
+                        .map(move |stmt| (*judge_base, stmt, true))
+                }));
+            for (base, stmt, in_judge) in stmts {
+                // A reader's lines, like the interactor's, are offset from
+                // its own item.
+                builder.base = base;
                 // Decorated fns (`@brute`, `@checker`, `@interactor`)
                 // read for themselves; the divider splits the input.
                 if let Some(divider) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
@@ -1831,6 +2241,18 @@ impl InputSpec {
                         builder
                             .aliases
                             .insert(name.text.clone(), (builder.base, ty.clone()));
+                    }
+                    StmtKind::Use {
+                        path, names, glob, ..
+                    } if path.first().is_some_and(|root| root.text == "std") => {
+                        let module: Vec<String> = path.iter().map(|n| n.text.clone()).collect();
+                        let names: Vec<&str> = names.iter().map(|n| n.text.as_str()).collect();
+                        for (name, parts) in std_structs(&module, &names, *glob) {
+                            builder
+                                .records
+                                .entry(name)
+                                .or_insert((0, Record::Shaped(parts)));
+                        }
                     }
                     StmtKind::Struct(decl) if decl.generics.is_empty() => {
                         let fields = decl.fields.iter().map(|f| f.ty.clone()).collect();
@@ -1907,6 +2329,7 @@ impl InputSpec {
                         let shape = Shape::Array {
                             len,
                             elem: Box::new(builder.shape(builder.cell(ty).expect("tested above"))?),
+                            index: None,
                         };
                         let field = Field {
                             names: Builder::names(pat, &shape),
@@ -1920,8 +2343,7 @@ impl InputSpec {
                         }
                     }
                     StmtKind::For { .. }
-                        if (in_judge || judge.is_none())
-                            && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
+                        if (in_judge || judge.is_none()) && builder.reads(stmt) =>
                     {
                         let Some(shape) = builder.pass(stmt, &HashSet::new())? else {
                             if let Some(shapes) = builder.inlined(stmt)? {
@@ -1955,8 +2377,10 @@ impl InputSpec {
                     // A fn the program calls reads input no field
                     // describes; `@brute`, `@checker` and the like read for
                     // themselves.
-                    StmtKind::Fn(_)
+                    StmtKind::Fn(decl)
                         if (in_judge || judge.is_none())
+                            && !readers.contains_key(decl.name.text.as_str())
+                            && !builder.values.contains_key(&decl.name.text)
                             && stmt
                                 .decorators
                                 .iter()
@@ -1980,9 +2404,7 @@ impl InputSpec {
                             "`cpl stress` makes a `read(gen: ..)` or `read(none: ..)` only as a top-level `let name: Type = read(..)` outside a test case, so a generated input would leave this one out; write a `@gen fn` that prints a whole input, or pass `--gen <program>`".into(),
                         ));
                     }
-                    _ if (in_judge || judge.is_none())
-                        && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
-                    {
+                    _ if (in_judge || judge.is_none()) && builder.reads(stmt) => {
                         if let Some(shapes) = builder.inlined(stmt)? {
                             let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
                             let fields = shapes.into_iter().map(|shape| Field {

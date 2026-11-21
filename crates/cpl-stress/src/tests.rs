@@ -62,12 +62,12 @@ fn the_spec_is_read_from_the_types_of_read() {
 
 #[test]
 fn types_the_generator_cannot_make_are_reported_where_they_are() {
-    let src = "let n: 1..=5 = read()\nlet x: F64 = read()\n";
+    let src = "let n: 1..=5 = read()\nlet x: Set<Int> = read()\n";
     let error = InputSpec::from_source(src).unwrap_err();
-    assert_eq!(error.span.text(src), "F64");
+    assert_eq!(error.span.text(src), "Set<Int>");
     assert_eq!(
         error.message,
-        "can't generate a `F64` yet; pass a generator with `--gen`"
+        "can't generate a `Set<Int>` yet; pass a generator with `--gen`"
     );
     let untyped = InputSpec::from_source("let n = read()\n").unwrap_err();
     assert!(
@@ -629,10 +629,13 @@ mod cli {
         let (code, _, err) = stress(&[path, "--fast", &good]);
         assert_eq!(code, 1);
         assert!(err.contains("there is nothing to compare"), "{err}");
-        std::fs::write(&file, "let x: F64 = read()\n").unwrap();
+        std::fs::write(&file, "let x: Set<Int> = read()\n").unwrap();
         let (code, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert_eq!(code, 1);
-        assert!(err.contains("d.cp:1: can't generate a `F64` yet"), "{err}");
+        assert!(
+            err.contains("d.cp:1: can't generate a `Set<Int>` yet"),
+            "{err}"
+        );
         std::fs::write(&file, "print(1)\n").unwrap();
         let (_, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert!(err.contains("has no typed `read()`"), "{err}");
@@ -1278,8 +1281,7 @@ for _ in 0..q:
 #[test]
 fn loops_whose_reads_a_field_cannot_describe_are_refused() {
     let refused = [
-        // The type uses the loop variable, or a value worked out in the pass.
-        "let n: 1..=5 = read()\nfor i in 1..=n:\n    let a: [i]Int = read()\n    print(a)\n",
+        // The type uses a value worked out in the pass.
         "let n: 1..=5 = read()\nfor _ in 0..n:\n    let k: 1..=3 = read()\n    let m = k + 1\n    let a: [m]Int = read()\n",
         // The loop can stop early.
         "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: Int = read()\n    if a == 0: break\n",
@@ -1534,7 +1536,7 @@ for _ in 0..n:
 #[test]
 fn reads_no_field_describes_are_refused_not_left_out() {
     let cases = [
-        ("let n: 1..=5 = read()\nfn row() -> Int:\n    let x: Int = read()\n    x\nprint(row())\n", "this fn reads input"),
+        ("let n: 1..=5 = read()\nfn row() -> Int:\n    let x: Int = read()\n    if x > 0: return x\n    x\nprint(row())\n", "this fn reads input"),
         ("let n: 1..=5 = read()\n@memo\nfn row(i: Int) -> Int:\n    let x: Int = read()\n    x\nprint(row(n))\n", "this fn reads input"),
         (
             "@!multitest\nlet n: 2..=9 = read()\nfn pick() -> Int: n\nlet x: 1..=n = read(gen: pick)\n",
@@ -1588,6 +1590,251 @@ print(p)
         sizes.insert(n);
     }
     assert!(sizes.len() > 3);
+}
+
+#[test]
+fn a_fn_that_reads_is_read_where_each_call_is() {
+    let src = "fn read_pair() -> (Int, Int):
+    let a: 1..=3 = read()
+    let b: 7..=8 = read()
+    (a, b)
+
+fn solve():
+    let p = read_pair()
+    let k: 20..=29 = read()
+    print(p.0 + k)
+
+let first = read_pair()
+solve()
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len(), 5, "{tokens:?}");
+        assert!((1..=3).contains(&tokens[0]) && (7..=8).contains(&tokens[1]));
+        assert!((1..=3).contains(&tokens[2]) && (7..=8).contains(&tokens[3]));
+        assert!((20..=29).contains(&tokens[4]), "{tokens:?}");
+    }
+    // A call that runs only some of the time, a reader with a parameter
+    // or an early `return` reads what no field can describe.
+    for refused in [
+        "fn one() -> Int:\n    let a: 1..=3 = read()\n    a\nlet c: 0..=1 = read()\nif c == 1: print(one())\n",
+        "fn one(m: Int) -> Int:\n    let a: 1..=3 = read()\n    a + m\nlet b = one(2)\n",
+        "fn one() -> Int:\n    let c: 0..=1 = read()\n    if c == 0: return 0\n    let a: 1..=3 = read()\n    a\nlet b = one()\n",
+    ] {
+        let error = InputSpec::from_source(refused).unwrap_err();
+        assert!(
+            ["this fn reads input", "is not a top-level"].iter().any(|m| error.message.contains(m)),
+            "{refused}: {}",
+            error.message
+        );
+    }
+}
+
+#[test]
+fn a_fn_that_reads_fixed_values_reads_them_in_any_expression() {
+    let src = "fn ri() -> Int:
+    let x: 1..=9 = read()
+    return x
+
+let n: 1..=4 = read()
+var a = List<Int>()
+for _ in 0..n: a.push(ri() + ri())
+print(a.sum())
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("value-reader-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len() as i128, 1 + 2 * tokens[0], "{text}");
+        assert!(tokens[1..].iter().all(|t| (1..=9).contains(t)), "{text}");
+    }
+    std::fs::remove_file(&path).ok();
+    // Called only some of the time, its reads are not a field.
+    let branch = "fn ri() -> Int:\n    let x: Int = read()\n    x\nlet c: 0..=1 = read()\nif c == 1: print(ri())\n";
+    assert!(InputSpec::from_source(branch).is_err());
+    // A type that uses a value the body read is not the same each call.
+    let dependent = "fn row() -> Int:\n    let k: 1..=3 = read()\n    let a: [k]Int = read()\n    a.sum()\nfor _ in 0..2: print(row())\n";
+    assert!(InputSpec::from_source(dependent).is_err());
+}
+
+#[test]
+fn a_loop_read_may_use_the_loop_name() {
+    let src = "let n: 1..=5 = read()
+var best = 0
+for r in 1..=n:
+    let row: [0..r]0..=9 = read()
+    best = max(best, row.sum())
+print(best)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("loop-index-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let n: i128 = text.split_whitespace().next().unwrap().parse().unwrap();
+        assert_eq!(
+            text.split_whitespace().count() as i128,
+            1 + n * (n + 1) / 2,
+            "{text}"
+        );
+        // Shrinking keeps row `r` at `r` values.
+        let shrunk = crate::shrink::fit(&spec, &case).unwrap().render();
+        assert_eq!(
+            shrunk.split_whitespace().count(),
+            text.split_whitespace().count()
+        );
+    }
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn a_word_tag_chooses_by_the_words_the_program_compares_it_with() {
+    let src = "let q: 1..=6 = read()
+var total = 0
+for _ in 0..q:
+    let op: Str = read()
+    if op == \"ADD\":
+        let x: 1..=9 = read()
+        total += x
+    elif op == \"SHOW\": print(total)
+    else:
+        let (a, b): (1..=9, 1..=9) = read()
+        total -= a * b
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("word-tag-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    let mut seen = HashSet::new();
+    for seed in 0..60 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(6)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let mut tokens = text.split_whitespace();
+        for _ in 0..tokens.next().unwrap().parse::<usize>().unwrap() {
+            let op = tokens.next().unwrap();
+            seen.insert(op.to_string());
+            let more = match op {
+                "ADD" => 1,
+                "SHOW" => 0,
+                _ => 2,
+            };
+            for _ in 0..more {
+                assert!(
+                    (1..=9).contains(&tokens.next().unwrap().parse::<i128>().unwrap()),
+                    "{text}"
+                );
+            }
+        }
+        assert!(tokens.next().is_none(), "{text}");
+        let fitted = crate::shrink::fit(&spec, &case).unwrap();
+        assert_eq!(fitted.render(), text);
+    }
+    assert_eq!(seen.len(), 3, "{seen:?}");
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn a_reader_may_return_once_its_reads_are_done() {
+    let src = "fn main_solve():
+    let n: 1..=4 = read()
+    let xs: [0..n]0..=9 = read()
+    fn deep(i: Int) -> Int:
+        if i == n: return 0
+        xs[i] + deep(i + 1)
+    if deep(0) == 0:
+        print(\"none\")
+        return
+    print(deep(0))
+
+main_solve()
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(4)).unwrap();
+        let text = case.render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len() as i128, tokens[0] + 1, "{text}");
+    }
+}
+
+#[test]
+fn floats_and_wide_ints_are_read_as_whole_numbers() {
+    let src = "let (k, n): (F64, 1..=5) = read()
+let xs: [0..n]F64 = read()
+let w: I128 = read()
+print(k + xs.sum(), w)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("floats-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len() as i128, tokens[1] + 3, "{text}");
+    }
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn a_tag_read_first_in_a_tuple_or_above_other_reads_still_chooses() {
+    let src = "domain Cell = 1..=9
+let q: 1..=6 = read()
+for _ in 0..q:
+    let (kind, l): (0..=2, Cell) = read()
+    let r: Cell = read()
+    match kind:
+        1 =>
+            let (a, b): (Cell, Cell) = read()
+            print(a + b + l + r)
+        _ => print(l + r)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let mut kinds = HashSet::new();
+    for seed in 0..100 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        let mut tokens = text.split_whitespace().map(|t| t.parse::<i128>().unwrap());
+        for _ in 0..tokens.next().unwrap() {
+            let kind = tokens.next().unwrap();
+            assert!((0..=2).contains(&kind), "{text}");
+            kinds.insert(kind);
+            for _ in 0..if kind == 1 { 4 } else { 2 } {
+                assert!((1..=9).contains(&tokens.next().unwrap()), "{text}");
+            }
+        }
+        assert!(tokens.next().is_none(), "{text}");
+    }
+    assert_eq!(kinds.len(), 3);
+    let shadowed = "let (kind, l): (0..=1, 0..=1) = read()
+let kind: 5..=6 = read()
+if kind == 5:
+    let x: Int = read()
+    print(x)
+";
+    assert!(InputSpec::from_source(shadowed).is_err());
 }
 
 #[test]
@@ -1663,6 +1910,58 @@ for _ in 0..q:
         "from {}",
         start.render()
     );
+}
+
+#[test]
+fn stdlib_structs_residues_and_unsigned_values_are_generated() {
+    let src = "const P = 7
+let p: Pt = read()
+let q: Pt3 = read()
+let r: Mod<P> = read()
+let s: Mod<5> = read()
+let u: U64 = read()
+print(p.x + p.y + q.z, r, s, u)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("std-structs-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    for seed in 0..40 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len(), 8, "{text}");
+        assert!(
+            (0..7).contains(&tokens[5]) && (0..5).contains(&tokens[6]),
+            "{text}"
+        );
+        assert!(tokens[7] >= 0, "{text}");
+    }
+    let min = shrink(
+        &spec,
+        &generate(&spec, &mut Rng::new(1), Size::Small(8)).unwrap(),
+        2000,
+        &mut |_| true,
+    );
+    let text = min.render();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines[2..], ["0", "0", "0"]);
+    let shadowed = "struct Pt(x: 1..=2)\nlet p: Pt = read()\nprint(p.x)\n";
+    let case = generate(
+        &InputSpec::from_source(shadowed).unwrap(),
+        &mut Rng::new(3),
+        Size::Small(8),
+    )
+    .unwrap();
+    assert!(
+        ["1\n", "2\n"].contains(&case.render().as_str()),
+        "{}",
+        case.render()
+    );
+    std::fs::remove_file(&path).ok();
 }
 
 #[test]

@@ -495,6 +495,20 @@ decision 25.16): 1,193 to 1,198 of 1,402 files. Generic reads were
 invisible before, so 4 ports that had been accepted with their input
 silently left out are now refused with a message (a read in a branch, a
 read in a type's length, `read<T>(base: 1)`).
+On today's tree (1,343 files, the batch and `today/` copies counted once
+each as the scans above do), five general read shapes take stress from
+1,150 to 1,227 files it makes inputs for, 63 of them reading nothing:
+fns that read, read where each call is or wherever they read fixed values
+(`a_fn_that_reads_is_read_where_each_call_is`,
+`a_reader_may_return_once_its_reads_are_done`, decision 25.19);
+`U64`, `Mod<P>`, whole-number `F64` and `I128`, and stdlib structs such
+as `Pt` (`stdlib_structs_residues_and_unsigned_values_are_generated`,
+`floats_and_wide_ints_are_read_as_whole_numbers`, decision 25.20); a tag
+read first in a tuple (`a_tag_read_first_in_a_tuple_or_above_other_reads_still_chooses`,
+25.21); a loop read whose type uses the loop's name
+(`a_loop_read_may_use_the_loop_name`, 25.22); and a `Str` tag compared
+with words (`a_word_tag_chooses_by_the_words_the_program_compares_it_with`,
+25.23).
 Stress under a judge is a gate regression: all 16 interactive and 5
 checker ecnerwala ports pass 20 generated cases each under the
 interactor or checker `gate.sh` uses, and a solution printing `1` fails
@@ -510,10 +524,12 @@ nothing the solution does gets no explanation beyond its `debug(...)` stages.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
-**Next.** loops that `break`, or whose types use values worked out in
-the pass (71 ports refused); `read(gen: f)` inside a test case or a loop;
-types with no generator yet (`F64`, `Pt`, `U64`, `Mod<P>`: about 35); reads in fns the program calls
-(44); reads in a nested block that is not a choice (23); generators keyed to the
+**Next.** loops whose reads a row cannot describe (40 files: nested
+loops with counts worked out in the pass, `a[i] = read()`, a `continue`
+past a read, `read(gen: f)` in a loop); reads in a branch or a `while
+true` that is not a choice (22); fns that read and take parameters,
+return early or are called in a branch (15, 6 of them interactive);
+generators keyed to the
 stdlib declarations, not their names; worst-case values and anti-hash generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)

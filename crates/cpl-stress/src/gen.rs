@@ -14,6 +14,12 @@ pub enum Value {
     Char(i128),
     Seq(Vec<Value>),
     Tuple(Vec<Value>),
+    /// The word at `at` of `words`, the tag of a choice the program
+    /// makes by comparing a `Str` with literals.
+    Word {
+        at: i128,
+        words: std::sync::Arc<[String]>,
+    },
     /// What a `read(gen: f)` fn printed when its `rand` started from
     /// `seed`; another seed is another value.
     Drawn {
@@ -26,7 +32,7 @@ impl Value {
     /// The number a number or a byte holds.
     pub fn number(&self) -> Option<i128> {
         match self {
-            Value::Int(v) | Value::Char(v) => Some(*v),
+            Value::Int(v) | Value::Char(v) | Value::Word { at: v, .. } => Some(*v),
             _ => None,
         }
     }
@@ -35,6 +41,10 @@ impl Value {
     pub fn with(&self, to: i128) -> Value {
         match self {
             Value::Char(_) => Value::Char(to),
+            Value::Word { words, .. } => Value::Word {
+                at: to.clamp(0, words.len() as i128 - 1),
+                words: words.clone(),
+            },
             _ => Value::Int(to),
         }
     }
@@ -172,10 +182,18 @@ fn choose_tag(tag: &Shape, arms: &[Arm], env: &Env, pick: &mut dyn Pick) -> Opti
         Shape::Int { lo, hi } => (eval(lo, env)?, eval(hi, env)?, false),
         Shape::Char { lo, hi } => (i128::from(*lo), i128::from(*hi), true),
         Shape::Bool => (0, 1, false),
+        Shape::Words(words) => (0, words.len() as i128 - 1, false),
         _ => return None,
     };
     (lo <= hi).then_some(())?;
-    let wrap = |v: i128| if char { Value::Char(v) } else { Value::Int(v) };
+    let wrap = |v: i128| match tag {
+        Shape::Words(words) => Value::Word {
+            at: v,
+            words: words.clone(),
+        },
+        _ if char => Value::Char(v),
+        _ => Value::Int(v),
+    };
     let at = usize::try_from(pick.pick(0, arms.len().saturating_sub(1) as i128, false)).ok()?;
     let arm = arms.get(at)?;
     if let Some(tags) = &arm.tags {
@@ -220,11 +238,11 @@ fn build(
             let (lo, hi) = (eval(lo, env)?, eval(hi, env)?);
             (lo <= hi).then(|| Value::Int(pick.pick(lo, hi, is_size)))
         }
-        Shape::Array { len, elem } => {
+        Shape::Array { len, elem, index } => {
             let len = eval(len, env)?.max(0);
             (len <= MAX_LEN).then_some(())?;
             (0..len)
-                .map(|_| build(elem, env, sizes, false, pick))
+                .map(|at| build(elem, &*indexed(index, at, env)?, sizes, false, pick))
                 .collect::<Option<_>>()
                 .map(Value::Seq)
         }
@@ -248,6 +266,10 @@ fn build(
             false,
         ))),
         Shape::Bool => Some(Value::Int(pick.pick(0, 1, false))),
+        Shape::Words(words) => Some(Value::Word {
+            at: pick.pick(0, words.len() as i128 - 1, false),
+            words: words.clone(),
+        }),
         Shape::Maybe { inner, none } => match pick.pick(0, 3, false) {
             0 => Some(Value::Int(*none)),
             _ => build(inner, env, sizes, false, pick),
@@ -393,13 +415,27 @@ fn shuffle<T>(items: &mut [T], pick: &mut dyn Pick) {
 /// The integers of `value`, in the order a pattern names them.
 fn leaves(value: &Value, out: &mut Vec<Option<i128>>) {
     match value {
-        Value::Int(v) => out.push(Some(*v)),
+        Value::Int(v) | Value::Word { at: v, .. } => out.push(Some(*v)),
         Value::Tuple(parts) => parts.iter().for_each(|part| leaves(part, out)),
         Value::Seq(_) | Value::Char(_) | Value::Drawn { .. } => out.push(None),
     }
 }
 
 /// Adds the names a field binds to `env`.
+/// `env` with an array's index name bound for its element at `at`.
+pub(crate) fn indexed<'a>(
+    index: &Option<(String, cpl_syntax::ast::Expr)>,
+    at: i128,
+    env: &'a Env,
+) -> Option<Cow<'a, Env>> {
+    let Some((name, lo)) = index else {
+        return Some(Cow::Borrowed(env));
+    };
+    let mut env = env.clone();
+    env.insert(name.clone(), eval(lo, &env)? + at);
+    Some(Cow::Owned(env))
+}
+
 pub(crate) fn bind(names: &[Option<String>], value: &Value, env: &mut Env) {
     let mut values = Vec::new();
     leaves(value, &mut values);
@@ -504,6 +540,7 @@ fn flat(value: &Value) -> Option<String> {
             .map(|item| number(item).or_else(|| letter(item).map(String::from)))
             .collect::<Option<Vec<_>>>()
             .map(|parts| parts.join(" ")),
+        Value::Word { at, words } => words.get(*at as usize).cloned(),
         Value::Drawn { text, .. } => Some(text.trim_end().to_string()),
     }
 }
@@ -517,7 +554,7 @@ fn write(value: &Value, out: &mut String) {
         (None, Value::Seq(items) | Value::Tuple(items)) => {
             items.iter().for_each(|item| write(item, out))
         }
-        (None, Value::Int(_) | Value::Char(_) | Value::Drawn { .. }) => {
+        (None, Value::Int(_) | Value::Char(_) | Value::Word { .. } | Value::Drawn { .. }) => {
             unreachable!("a number and a drawn value are always flat")
         }
     }
@@ -535,6 +572,7 @@ fn show(value: &Value) -> String {
         }
         Value::Seq(items) => format!("[{}]", joined(items)),
         Value::Tuple(items) => format!("({})", joined(items)),
+        Value::Word { .. } => format!("\"{}\"", flat(value).unwrap_or_default()),
         Value::Drawn { text, .. } => text.split_whitespace().collect::<Vec<_>>().join(" "),
     }
 }
@@ -588,7 +626,7 @@ impl Case {
     pub fn weight(&self) -> (usize, u128) {
         fn walk(value: &Value, count: &mut usize, sum: &mut u128) {
             match value {
-                Value::Int(v) | Value::Char(v) => {
+                Value::Int(v) | Value::Char(v) | Value::Word { at: v, .. } => {
                     *count += 1;
                     *sum = sum.saturating_add(v.unsigned_abs());
                 }

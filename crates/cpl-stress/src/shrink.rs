@@ -55,6 +55,10 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             Some(Value::Char((*c).clamp(i128::from(*lo), i128::from(*hi))))
         }
         (Shape::Bool, Value::Int(v)) => Some(Value::Int((*v).clamp(0, 1))),
+        (Shape::Words(words), Value::Word { at, .. }) => Some(Value::Word {
+            at: (*at).clamp(0, words.len() as i128 - 1),
+            words: words.clone(),
+        }),
         (Shape::Maybe { none, .. }, Value::Int(v)) if v == none => Some(Value::Int(*none)),
         (Shape::Maybe { inner, .. }, value) => fit_value(inner, value, env),
         // A word keeps at least one letter.
@@ -207,13 +211,16 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             }
             Some(Value::Seq(edges))
         }
-        (Shape::Array { len, elem }, Value::Seq(items)) => {
+        (Shape::Array { len, elem, index }, Value::Seq(items)) => {
             let len = usize::try_from(eval(len, env)?.max(0)).ok()?;
             // An array can lose elements, not gain them.
             (len <= items.len()).then_some(())?;
             items[..len]
                 .iter()
-                .map(|item| fit_value(elem, item, env))
+                .enumerate()
+                .map(|(at, item)| {
+                    fit_value(elem, item, &*crate::gen::indexed(index, at as i128, env)?)
+                })
                 .collect::<Option<_>>()
                 .map(Value::Seq)
         }
@@ -341,7 +348,7 @@ fn at<'a>(case: &'a mut Case, path: &[usize]) -> &'a mut Value {
     for index in &path[1..] {
         value = match value {
             Value::Seq(items) | Value::Tuple(items) => &mut items[*index],
-            Value::Int(_) | Value::Char(_) | Value::Drawn { .. } => {
+            Value::Int(_) | Value::Char(_) | Value::Word { .. } | Value::Drawn { .. } => {
                 unreachable!("a path ends at a number")
             }
         };
@@ -356,7 +363,9 @@ fn number_at(case: &Case, path: &[usize]) -> Option<i128> {
     for index in rest {
         value = match value {
             Value::Seq(items) | Value::Tuple(items) => items.get(*index)?,
-            Value::Int(_) | Value::Char(_) | Value::Drawn { .. } => return None,
+            Value::Int(_) | Value::Char(_) | Value::Word { .. } | Value::Drawn { .. } => {
+                return None
+            }
         };
     }
     value.number()
@@ -485,10 +494,18 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     }
                 }
             }
-            (Shape::Array { elem, .. }, Value::Seq(items)) => {
+            (
+                Shape::Array {
+                    elem, index: at, ..
+                },
+                Value::Seq(items),
+            ) => {
                 for (index, item) in items.iter().enumerate() {
+                    let Some(env) = crate::gen::indexed(at, index as i128, env) else {
+                        continue;
+                    };
                     path.push(index);
-                    walk(elem, item, env, path, out);
+                    walk(elem, item, &env, path, out);
                     path.pop();
                 }
             }
@@ -544,10 +561,18 @@ fn tags(spec: &InputSpec, case: &Case) -> Vec<(Path, Vec<i128>)> {
         out: &mut Vec<(Path, Vec<i128>)>,
     ) {
         match (shape, value) {
-            (Shape::Array { elem, .. }, Value::Seq(items)) => {
+            (
+                Shape::Array {
+                    elem, index: at, ..
+                },
+                Value::Seq(items),
+            ) => {
                 for (index, item) in items.iter().enumerate() {
+                    let Some(env) = crate::gen::indexed(at, index as i128, env) else {
+                        continue;
+                    };
                     path.push(index);
-                    walk(elem, item, env, path, out);
+                    walk(elem, item, &env, path, out);
                     path.pop();
                 }
             }

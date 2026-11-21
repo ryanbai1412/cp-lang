@@ -1756,6 +1756,37 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   when no shared name differs it says so and the `debug(...)` stages remain the guide. Off by
   default: logging every assignment slows a run. Reverse: drop the flag, `assignments` and
   `first_divergence`.
+- **25.19 A fn that reads is read where it is called, when every call always runs.** A fn with
+  no parameters, called only as a whole top-level statement or a `let`'s whole value
+  (`read_moves()`, `let a = read_sym()`), reads its body's input at each call, in order, so its
+  body is walked there as if written inline, nested calls included. A parameterless fn whose
+  only reads are fixed `let name: T = read()` lines reads the same values in any expression, so
+  such a call is a field wherever it is. A `return` after the body's last read ends the fn as
+  its end would and is allowed; one inside a nested fn or lambda is not the reader's. Any other
+  call (in a branch, a loop, an argument), a parameter its reads could depend on, or a `return`
+  before a read reads only some of the time, and the fn stays refused. Reverse: drop `readers`,
+  `values` and `expand` in `spec.rs`.
+- **25.20 Types with a fixed text form are generated from that form.** `U64` is `0..=2^64-1`,
+  `Mod<P>` is `0..P`, `F64` and `I128` are whole numbers in the `Int` default range (any
+  whole number is a valid `F64` token, and the shrinker lowers them like integers), and a
+  stdlib struct (`Pt`, `Pt3`) is read field by field like a user struct, looked up in its
+  stdlib module, unless the file declares its own type of that name. Fractions and values past
+  `i64` are left to `--gen`. Reverse: drop those arms of `Builder::shape`.
+- **25.21 A tag read first in a tuple or above the reads it chooses still chooses.**
+  `let (kind, l): (0..=2, Cell) = read()` then `match kind` is a `Choice` whose shared parts
+  are the tuple's other parts and any reads between the tag and the branch; a tag rebound
+  before the branch is refused, not trusted. Reverse: drop the tuple case of `Builder::choice`.
+- **25.22 A loop read's type may use the loop's own name.** `for r in 1..=n: let row:
+  [0..r]Int = read()` is an array whose element `at` is made, fitted and shrunk with `r` bound
+  to `lo + at`, so a triangle stays a triangle as `n` shrinks. Only a plain name pattern is
+  bound; a value worked out in the pass is still refused. Reverse: drop `index` from
+  `Shape::Array` and refuse the loop name again.
+- **25.23 A `Str` tag compared with words is one of those words.** `let op: Str = read()` then
+  `if op == "ADD" ... elif op == "SHOW" ...` is a `Choice` over `Shape::Words`, the literals in
+  the order the branches name them, plus one word none of them is when an arm takes the rest.
+  A word is drawn and shrunk as its position, so the shrinker moves to the first-named arm.
+  Words with spaces, or an interpolated string, are refused. Reverse: drop `Shape::Words` and
+  `Value::Word`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 
