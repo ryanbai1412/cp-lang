@@ -1450,9 +1450,9 @@ pub struct Matching<L, R>:
     /// O(1). Allow `l` to match `r`. Does not augment.
     pub fn add(mut self, l: L, r: R) = todo
 
-    /// O(V + E). Look for one augmenting path from the unmatched `l`; true when it
-    /// grew the matching. False also when `l` is already matched.
-    pub fn augment(mut self, l: L) -> Bool = todo
+    /// O(V + E). Look for one augmenting path from the unmatched `from`; true when it
+    /// grew the matching. False also when `from` is already matched.
+    pub fn augment(mut self, from: L) -> Bool = todo
 
     /// O(E sqrt V) Hopcroft-Karp from the current matching. Returns the size added.
     pub fn augment_all(mut self) -> Int = todo
