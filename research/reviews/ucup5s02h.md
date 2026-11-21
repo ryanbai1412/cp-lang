@@ -1,7 +1,7 @@
 # ucup5s02h
 
 Score: 3/5
-Dream: pending cold rescore (rewritten: `Hull<Id>` stores `(ch, id)` so `h.id: C` is typed, computes `gap` once per candidate, and comments the `idx + 1 < pts.len` pointer invariant)
+Dream: 4/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -47,3 +47,9 @@ Dream 3/5, rescored cold on current main; sent back. `never_weakest` is now deri
 - Owed: `gap(h, ch[c])` is computed in `min_by` (line 82) and again on line 84; keep the minimum with its gap.
 - Owed: the `idx + 1 < pts.len` guard inside the `pop_while` (line 47) keeps the query pointer valid, but nothing says so.
 - Reported gaps: `Frac`, the `C | Pin` sum domain, `ParityDsu.components`/`component_ids`/`side`/`unite_new`, `GroupTree.others`/`path`, `min_by` and `pop_while`.
+
+## Cold review (HEAD, port rescore)
+
+Dream 3/5 → 4/5, rescored cold on current main. `Hull<Id>` stores `(ch, id)`, so the edge's `j: C` is typed; `gap` is computed once per candidate (line 83); line 46 explains the `idx + 1 < pts.len` guard.
+- The only errors are reported gaps: `Frac`, the `C | Pin` sum domain (and the two E0301s it causes on `colour.unite`), `ParityDsu.components`/`component_ids`/`side`/`unite_new`, `GroupTree`, `min_by` and `pop_while`.
+- Minor: `hull_pairs` makes a `Hull<Int>` only to throw the ids away (line 58). Line 83 is 114 characters. "It is enough to two-colour the spanning tree of weakest pulls" (line 6) is asserted, not argued.

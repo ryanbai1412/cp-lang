@@ -1,6 +1,6 @@
 # agc077c
 
-Score: pending cold rescore (port updated to match 4/5 dream: full parity proof in header, paired edge loop eliminating L0503, local `complement_components()` + `count(odd_out[v] for v in comp)`, gated 150/150; emitted C++ 13,036 -> 13,811 B, 0 scoreboard regressions)
+Score: 3/5
 Dream: 4/5
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -38,3 +38,9 @@ Dream 3 → 4/5, rescored after ce8206db. The header now proves that the parity 
 - `std.graph.complement_components` (line 20) isn't in the stdlib (E0201); file it in the friction report if it isn't there.
 
 The port score (2/5) holds; it doesn't use the dream's component intervals yet.
+
+## Cold review (HEAD, port rescore)
+
+Port pending → 3/5, rescored cold on current main (dream stays 4/5). The header now carries the dream's full parity proof, and the paired edge loop is gone.
+- Blocked by a reported gap: the port hand-writes `complement_components` (lines 41-60) because `std.graph.complement_components` doesn't exist yet. The hand version is a cursor walk with a second pointer `ai` into a sorted adjacency list (lines 49-57).
+- Owed now: lines 36-39 build and sort the adjacency by hand, where the dream uses `undirected_of_pairs`. `count(odd_out[v] for v in comp)` (line 66) is a canonical generator fold (§53.1).
