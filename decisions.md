@@ -2457,7 +2457,6 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    `Functional` move unchanged in shape; `shortest`/`walk_back` are
    subsumed by `Paths`. Minimum spanning trees stay with `std.dsu`'s
    owner. Reverse: keep the local modules.
-<<<<<<< HEAD
 
 ## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
 
