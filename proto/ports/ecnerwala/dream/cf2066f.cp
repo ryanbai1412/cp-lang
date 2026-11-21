@@ -29,7 +29,7 @@ let (domain Seg, span) = cool(PosA.bounds.first..PosA.bounds.last).indexed()
 let sum = [Seg] s => a[span[s]].sum()
 let mss = [PosB.bounds, PosB.bounds] (l, r) => b[l..r].max_subarray_sum()
 
-struct Plan(piece: [Seg]Range<PosB.bounds>, free: ?Seg)
+struct Plan(piece: [Seg]Range<PosB>, free: ?Seg)
 
 fn plan(x: Int) -> ?Plan:
     var fit: [Seg.bounds, PosB.bounds, Bool]Bool = false
@@ -54,7 +54,7 @@ fn plan(x: Int) -> ?Plan:
                 for j in PosB.bounds if j > i: link(s, j, true, from: (i, false))
 
     var (j, spent) = (PosB.bounds.last, [true, false].first(u => fit[Seg.bounds.last, PosB.bounds.last, u])?)
-    var piece: [Seg]Range<PosB.bounds> = PosB.bounds.first..PosB.bounds.first
+    var piece: [Seg]Range<PosB> = PosB.bounds.first..PosB.bounds.first
     var free: ?Seg = none
     for s in Seg.rev:
         let (i, before) = came[s, j, spent]!
@@ -64,7 +64,7 @@ fn plan(x: Int) -> ?Plan:
     Plan(piece, free)
 
 let thresholds = sum.values.distinct().sort(by: x => -x)
-let (x, p) = thresholds.first_some(x => (x, plan(x)?)) else:
+let (x, p) = thresholds.first_some(x => plan(x).map(p => (x, p))) else:
     print(-1)
     return
 

@@ -25,7 +25,7 @@ var fixed_below = 0
 
 for f in Floor.init:
     let fixed = a.count(x => x == f)
-    let min_used = match Time.last(t => a[t] == f):
+    let min_used = match Time.rev.first(t => a[t] == f):
         some(t) => Used(max(0, t.ord + 1 - c))
         none => Used.first
     var next: [Used]M = 0

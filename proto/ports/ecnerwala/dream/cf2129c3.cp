@@ -38,12 +38,11 @@ let blk = weights.len
 let n: 2..=1000 = read()
 domain Pos = 1..=n
 
-fn ask(inds: Seq<Pos>) -> Int:
+fn ask<S: Seq>(inds: S) -> Int:
     print("?", inds.len, inds)
     read()
 
-let open_i = bsearch_first(Pos(2)..=Pos.last, p => ask(Pos.first..=p) > 0)
-    .map(r => r.prev!) ?? Pos.last
+let open_i = bsearch_first(Pos(2)..=Pos.last, p => ask(Pos.first..=p) > 0).map(r => r.prev!) ?? Pos.last
 
 var ans: [Pos]Char = '?'
 for inds in Pos.chunks_padded(blk, pad: Pos.last):
