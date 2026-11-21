@@ -722,7 +722,7 @@ fuzzer proves the server never dies, and a latency benchmark guards 6.1.
 diagnostics on open and on incremental change, hover, definition (into
 `stdlib/` files too: `Fenwick` jumps to `stdlib/fenwick.cp`), references,
 rename across every open file, the user library that declares the name and each file of the project on disk that imports it
-(the stdlib's names refused, a name already declared refused), document symbols, document highlights, folding
+(the stdlib's names refused; refused too when, re-checked with the edits applied, any use of the old or new name would resolve to a different declaration: two locals merged, a use captured by a nearer binding, a top-level name shadowed), document symbols, document highlights, folding
 (blocks, comment runs, imports), semantic tokens (each resolved name as a
 type, fn, method, field, variable or parameter, marking declarations and
 immutable bindings), workspace symbols (fuzzy, over open files and the

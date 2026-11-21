@@ -2566,3 +2566,35 @@ fn loop_counts_read_as_a_number_and_its_size() {
         ["7", "9999", "10000 (1e4)", "99999 (1e5)", "200000 (2e5)", "249999500000 (2.5e11)"]
     );
 }
+
+/// A rename that would make a use resolve to a different binding (two
+/// locals merged, a local capturing a global, a global shadowed by a local)
+/// is refused; one that changes no resolution goes through.
+#[test]
+fn rename_refuses_a_name_that_would_capture_or_be_captured() {
+    let rename = |src: &str, to: &str| {
+        ask_at_with("textDocument/rename", src, obj([("newName", to.into())]))
+    };
+    let refused = [
+        ("fn f(n: Int) -> Int:\n    let a| = 1\n    let b = 2\n    a + b\nprint(f(1))\n", "b"),
+        ("fn f(n: Int) -> Int:\n    let a| = 1\n    a + n\nprint(f(1))\n", "n"),
+        ("let x| = 1\nfn f() -> Int:\n    let y = 2\n    x + y\nprint(f())\n", "y"),
+        ("let g = 5\nfn f() -> Int:\n    let a| = 1\n    a + g\nprint(f())\n", "g"),
+        ("let g = 5\nfor i| in 0..3:\n    print(i + g)\n", "g"),
+        ("let x| = 1\nlet f = (y) => x + y\nprint(f(2))\n", "y"),
+    ];
+    for (src, to) in refused {
+        let reply = rename(src, to);
+        let message = reply.get("message").as_str().unwrap_or_else(|| panic!("{src}: {reply:?}"));
+        assert!(message.contains(&format!("`{to}`")), "{src}: {message}");
+    }
+    let allowed = [
+        ("fn f() -> Int:\n    let a| = 1\n    a\nfn g() -> Int:\n    let b = 2\n    b\nprint(f() + g())\n", "b"),
+        ("fn f(n: Int) -> Int:\n    let a| = 1\n    a + n\nprint(f(1))\n", "c"),
+        ("let x = 1\nfn f() -> Int:\n    let a| = 2\n    a\nprint(f() + x)\n", "x"),
+    ];
+    for (src, to) in allowed {
+        let reply = rename(src, to);
+        assert!(matches!(reply.get("changes"), Value::Object(_)), "{src}: {reply:?}");
+    }
+}

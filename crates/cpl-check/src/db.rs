@@ -316,6 +316,19 @@ impl Database {
         self.files.get(path).map(|f| f.text.clone())
     }
 
+    /// Whether the file's text was read from disk rather than set by the editor.
+    pub fn file_loaded(&self, path: &str) -> bool {
+        self.files.get(path).is_some_and(|f| f.loaded)
+    }
+
+    /// Puts back what `file_text` and `file_loaded` said before a trial edit.
+    pub fn restore_file(&mut self, path: &str, text: Arc<str>, loaded: bool) {
+        self.store(path, text, false);
+        if let Some(file) = self.files.get_mut(path) {
+            file.loaded = loaded;
+        }
+    }
+
     pub fn stats(&self) -> Stats {
         self.stats
     }

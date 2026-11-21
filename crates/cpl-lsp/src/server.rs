@@ -404,7 +404,13 @@ impl Server {
                     }
                     files.push(path);
                 }
+                let top_level = self
+                    .db
+                    .symbols(&target.path)
+                    .iter()
+                    .any(|s| s.name_span == target.span);
                 let mut changes = Vec::new();
+                let mut planned = Vec::new();
                 for file in files {
                     let spans = if file == uri {
                         spans.clone()
@@ -415,8 +421,11 @@ impl Server {
                     else {
                         continue;
                     };
-                    let taken = analysis.imports().contains_key(&new_name)
-                        || self.db.symbols(&file).iter().any(|s| s.name == new_name);
+                    // A local may shadow a top-level name it doesn't use;
+                    // `changed_meaning` refuses one that captures a use.
+                    let taken = top_level
+                        && (analysis.imports().contains_key(&new_name)
+                            || self.db.symbols(&file).iter().any(|s| s.name == new_name));
                     if taken {
                         let shown = path_of_uri(&file).unwrap_or(file);
                         return Err((
@@ -424,6 +433,7 @@ impl Server {
                             format!("`{new_name}` is already a name in {shown}"),
                         ));
                     }
+                    planned.push((file.clone(), spans.clone()));
                     let edits: Vec<Value> = spans
                         .into_iter()
                         .map(|span| {
@@ -439,6 +449,10 @@ impl Server {
                         uri_of_path(&file)
                     };
                     changes.push((file_uri, Value::Array(edits)));
+                }
+                if let Some(why) = rename::changed_meaning(&mut self.db, &planned, &name, &new_name)
+                {
+                    return Err((INVALID_PARAMS, why));
                 }
                 Ok(Reply::result(obj([("changes", Value::Object(changes))])))
             }

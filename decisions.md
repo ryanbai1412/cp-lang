@@ -2331,6 +2331,15 @@ relations. A difference that is a constant only because of a relation hovers as 
 body passes cost at most four times a loop's analysis, more for nested searches; the latency gate
 still passes. Reverse: drop `carried`, `join` and `loop_invariant`.
 
+29.35. **Rename is refused when it would change what a name means.** Before answering, the server
+applies the edits to every file it renames in, re-checks them, and asks go-to-definition again at
+each use of the old and the new name; if any resolves to a different declaration than before (two
+locals merged, `x` captured by a nearer `let y` once `x` becomes `y`, a global shadowed), the rename
+is refused with the line of the first such use. With that check, the old blanket refusal of a name
+already declared at the top level applies only when the renamed declaration is itself top-level, so
+a local may take a global's name it doesn't use. Uses in files the rename doesn't edit are not
+re-checked. Reverse by dropping `rename::changed_meaning` and the `top_level` condition.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

@@ -248,6 +248,76 @@ pub fn project_files(uri: &str, name: &str) -> Vec<String> {
     found
 }
 
+/// Why replacing `spans` of `old` with `new` in each file would make some
+/// name resolve to a different declaration than it does now: two locals
+/// merged, a use captured by a nearer binding, a declaration shadowed. The
+/// files are re-checked with the edits applied and restored afterwards.
+pub fn changed_meaning(
+    db: &mut Database,
+    edits: &[(String, Vec<Span>)],
+    old: &str,
+    new: &str,
+) -> Option<String> {
+    let grow = new.len() as i64 - old.len() as i64;
+    let moved = |file: &str, at: u32| -> u32 {
+        let spans = edits
+            .iter()
+            .find(|(f, _)| same_file(f, file))
+            .map_or(&[][..], |(_, s)| s.as_slice());
+        let before = spans.iter().filter(|s| s.start < at).count() as i64;
+        (at as i64 + before * grow) as u32
+    };
+    let mut expected = Vec::new();
+    for (file, _) in edits {
+        let Some(text) = db.file_text(file) else { continue };
+        for at in words(&text, old).chain(words(&text, new)) {
+            if let Some(def) = db.definition_location(file, at) {
+                let def_at = moved(&def.path, def.span.start);
+                expected.push((file.clone(), at, moved(file, at), def.path, def_at));
+            }
+        }
+    }
+    // An open library is also in the database under the path its importers
+    // read it by.
+    let mut originals = Vec::new();
+    for (file, spans) in edits {
+        let alias = crate::server::path_of_uri(file).filter(|p| p != file);
+        for path in std::iter::once(file.clone()).chain(alias) {
+            let Some(text) = db.file_text(&path) else { continue };
+            let mut edited = text.to_string();
+            for span in spans.iter().rev() {
+                edited.replace_range(span.start as usize..span.end as usize, new);
+            }
+            originals.push((path.clone(), text, db.file_loaded(&path)));
+            db.set_file(&path, edited);
+        }
+    }
+    let broken = expected.into_iter().find(|(file, _, at, path, def_at)| {
+        db.definition_location(file, *at)
+            .is_none_or(|d| !same_file(&d.path, path) || d.span.start != *def_at)
+    });
+    for (path, text, loaded) in originals {
+        db.restore_file(&path, text, loaded);
+    }
+    let (file, at, ..) = broken?;
+    let text = db.file_text(&file)?;
+    let line = text[..at as usize].matches('\n').count() + 1;
+    let (_, word) = word_at(&text, at)?;
+    Some(format!(
+        "renaming `{old}` to `{new}` would make `{word}` on line {line} refer to another declaration"
+    ))
+}
+
+/// The start of each whole-word occurrence of `name` in `text`.
+fn words<'t>(text: &'t str, name: &'t str) -> impl Iterator<Item = u32> + 't {
+    text.match_indices(name).filter_map(move |(i, _)| {
+        let end = i + name.len();
+        let open = !text[..i].ends_with(is_ident);
+        let close = !text[end..].starts_with(is_ident);
+        (open && close).then_some(i as u32)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::word_at;
@@ -261,4 +331,3 @@ mod tests {
         assert_eq!(word_at(text, text.rfind('Σ').unwrap() as u32 + 1), None);
     }
 }
-
