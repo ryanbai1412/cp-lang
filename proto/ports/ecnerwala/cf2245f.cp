@@ -43,7 +43,7 @@ fn solve() -> Z:
             if v == 0: continue
             for k in first_right[j + 1]..r:
                 if let nk = nxt_right[k]:
-                    dp[i, nk] += v * dp[j + 1, k] / (right_idx[k] - i)
+                    dp[i, nk] += v * dp[j + 1, k] * comb.inv(right_idx[k] - i)
     dp[0, last_right[n]] * comb.fact(n)
 
 print(solve())
