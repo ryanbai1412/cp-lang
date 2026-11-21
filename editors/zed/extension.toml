@@ -1,0 +1,18 @@
+id = "cp-lang"
+name = "CP Lang"
+version = "0.1.0"
+schema_version = 1
+authors = ["CP Lang contributors"]
+description = "CP Lang: highlighting and the `cpl lsp` language server"
+repository = "https://github.com/ryanbai1412/cp-lang"
+
+[language_servers.cpl]
+name = "cpl lsp"
+languages = ["CP Lang"]
+
+# The grammar is editors/tree-sitter-cp at this commit; editors/smoke.sh checks
+# that the commit has it and that it matches the one in the tree.
+[grammars.cp]
+repository = "https://github.com/ryanbai1412/cp-lang"
+rev = "2dfa78bd986e88b1e64e1d16faa7f89ea1863d8c"
+path = "editors/tree-sitter-cp"

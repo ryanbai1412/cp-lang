@@ -3,7 +3,7 @@
 #
 #   editors/smoke.sh              keyword lists against the compiler, then each
 #                                 editor's own smoke test when it is installed
-#                                 (Neovim, Emacs, Helix), the tree-sitter grammar
+#                                 (Neovim, Emacs, Helix, Zed), the tree-sitter grammar
 #                                 when the tree-sitter CLI is, and the JetBrains
 #                                 plugin's build when java is (others are skipped,
 #                                 and say so)
@@ -67,6 +67,13 @@ if command -v "${HX:-hx}" >/dev/null; then
     "$root/editors/helix/smoke.sh" "$cpl"
 else
     echo "editors: SKIPPED helix (set \$HX)"
+fi
+
+if rustup target list --installed 2>/dev/null | grep -qx wasm32-wasip1; then
+    echo "editors: zed"
+    "$root/editors/zed/smoke.sh" "$cpl"
+else
+    echo "editors: SKIPPED zed (rustup target add wasm32-wasip1)"
 fi
 
 # The committed parser is what grammar.js generates (with tree-sitter 0.25), every port

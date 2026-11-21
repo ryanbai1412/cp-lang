@@ -2194,6 +2194,14 @@ the grammar build, then `editors/lsp-smoke.py` starts the command its `languages
 and checks `initialize` and the published error. Reverse: drop `lsp-smoke.py` and keep
 `--health`.
 
+29.23. **Zed gets an extension that pins the grammar's commit.** A Zed language comes only from
+an extension, and Zed builds an extension's grammar from a git repository at a fixed commit, so
+`editors/zed/extension.toml` names the commit that last changed `editors/tree-sitter-cp`, and
+`editors/zed/smoke.sh` fails when the tree's grammar differs from that commit's (move `rev`
+forward in the same push). The extension starts `cpl lsp` from the PATH unless Zed's
+`lsp.cpl.binary` setting names another. `zed_extension_api` pulls `smallvec`, pinned in its
+`Cargo.lock` to a release old enough for the package proxy. Reverse: delete `editors/zed`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

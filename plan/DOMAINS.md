@@ -688,21 +688,25 @@ platform tests (lexer, and a headless IDE smoke test of each piece) have not
 run yet: the test framework's download host was not reachable here.
 `editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax or
 tree-sitter, `cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
-(`languages.toml`, the grammar and its queries); `editors/smoke.sh`, in `--full`,
+(`languages.toml`, the grammar and its queries) and Zed (an extension in
+`editors/zed/`: the language, the grammar at a pinned commit, `cpl lsp`);
+`editors/smoke.sh`, in `--full`,
 checks their keyword lists against the compiler and runs each editor's own smoke
 test, every one of which starts `cpl lsp` the way that editor's setup does and
 checks `initialize` and the published error: Neovim also checks hover, the run
 lens through `cpl.exec` and tree-sitter captures; Emacs its faces and the eglot
 entry, talking to the server over jsonrpc.el; Helix (no headless mode) builds
 the grammar, `--health` finds the server and queries, and `editors/lsp-smoke.py`
-starts the command its `languages.toml` names. The grammar check regenerates
+starts the command its `languages.toml` names; Zed (no headless mode either)
+builds the extension to wasm, checks its pinned grammar commit matches the tree,
+and `lsp-smoke.py` starts the server. The grammar check regenerates
 the parser, parses every port and library without an error, and checks each
 editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
 **Next.** Fixture tests; proven ranges of expressions and `var`s
 (needs the checker's own range analysis); a test lens; run the JetBrains tests and add them to `--full`, then
-the trace's step sync in its tool window; a Zed extension on the grammar; fuzzer.
+the trace's step sync in its tool window; publish the Zed extension; fuzzer.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a

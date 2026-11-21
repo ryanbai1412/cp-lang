@@ -13,13 +13,14 @@ formatting, quick fixes and inlay hints. Put `cpl` on the `PATH`
 | Emacs | `editors/emacs/` | font-lock | `M-x compile` with `cpl run` |
 | JetBrains IDEs | `editors/jetbrains/` | lexer, color settings | run configurations, gutter marker, trace tab |
 | Helix | `editors/helix/` | tree-sitter (`editors/tree-sitter-cp/`) | `:sh cpl run %` |
-| Zed | not yet | needs a tree-sitter grammar | |
+| Zed | `editors/zed/` | tree-sitter (`editors/tree-sitter-cp/`) | `cpl run` in a terminal |
 
 `editors/smoke.sh` checks the keyword lists against the compiler, then runs
 each editor's smoke test when the editor is installed: each starts `cpl lsp`
 the way that editor's setup does and checks `initialize` and the error it
 publishes for a file (`editors/neovim/test/smoke.lua`, `editors/emacs/smoke.el`,
-`editors/helix/smoke.sh`). With the `tree-sitter` CLI it checks the grammar,
+`editors/helix/smoke.sh`, and `editors/zed/smoke.sh` when Rust has the
+`wasm32-wasip1` target). With the `tree-sitter` CLI it checks the grammar,
 and with `java` it builds the JetBrains plugin. `scripts/check.sh --full` runs
 it.
 
@@ -104,5 +105,14 @@ hx --grammar build
 
 ## Zed
 
-Zed adds a language only through an extension with a tree-sitter grammar, so
-it waits on that grammar. Until then, open `.cp` files in another editor.
+`editors/zed/` is a Zed extension: the language, highlighting from the
+tree-sitter grammar, and `cpl lsp` as its server. In Zed, run
+`zed: install dev extension` and pick `editors/zed` (it needs Rust with the
+`wasm32-wasip1` target). It starts `cpl` from the PATH; to use another, set
+
+```json
+{ "lsp": { "cpl": { "binary": { "path": "/path/to/cpl", "arguments": ["lsp"] } } } }
+```
+
+Zed fetches the grammar at the commit `extension.toml` names; when
+`editors/tree-sitter-cp` changes, point `rev` at the new commit.
