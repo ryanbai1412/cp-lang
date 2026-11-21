@@ -1318,3 +1318,50 @@ fn plus_plus_is_a_lexer_error_with_plus_fix_it() {
         assert_eq!(d.fixes[0].edits[0].1, "+");
     }
 }
+
+#[test]
+fn trailing_binary_operator_continues_indented_next_line() {
+    let src = "\
+if a == 1 and
+    b == 2 and
+    c == 3:
+    f()
+elif d == 4 or
+        e == 5:
+    g()
+while i < n and
+    a[i] > 0:
+    i += 1
+if let x = p and
+    let y = q and
+    x < y:
+    h(x, y)
+let total = a +
+    // middle comment
+    b *
+    c
+";
+    assert_eq!(codes(src), Vec::<&str>::new());
+    assert_eq!(stmts(src).len(), 4);
+
+    // Same-indent continuation after `and`/`or` also works when not a statement keyword.
+    let same_indent = "if a == 1 and\nb == 2:\n    f()\n";
+    assert_eq!(codes(same_indent), Vec::<&str>::new());
+    assert_eq!(stmts(same_indent).len(), 1);
+
+    // `>` closes generic types, so it does not continue a line.
+    let gen_src = "var xs: List<Int>\n    let bad = 1\n";
+    assert_eq!(codes(gen_src), vec!["E0006"]);
+
+    // Breaking *before* a binary operator in a condition gives a clear hint.
+    let lead = "if a == 1\n    and b == 2:\n    f()\n";
+    let parsed = parse_file(lead);
+    assert!(
+        parsed
+            .diagnostics
+            .iter()
+            .any(|d| d.help.as_deref().is_some_and(|h| h.contains("wrap it in `(...)`"))),
+        "{:?}",
+        parsed.diagnostics
+    );
+}

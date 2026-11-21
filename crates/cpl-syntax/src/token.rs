@@ -209,6 +209,34 @@ impl TokenKind {
         )
     }
 
+    /// True for binary operators that cannot end a statement, so a newline
+    /// right after them continues the same logical line outside brackets.
+    /// `>` and `>>` are excluded because they close generic type arguments.
+    pub fn continues_line(self) -> bool {
+        use TokenKind::*;
+        matches!(
+            self,
+            And | Or
+                | Plus
+                | Minus
+                | Star
+                | StarStar
+                | Slash
+                | Percent
+                | Pipe
+                | Caret
+                | Amp
+                | Shl
+                | QuestionQuestion
+                | EqEq
+                | NotEq
+                | Lt
+                | LtEq
+                | GtEq
+                | Spaceship
+        )
+    }
+
     /// How the token is named in a diagnostic.
     pub fn describe(self) -> &'static str {
         use TokenKind::*;

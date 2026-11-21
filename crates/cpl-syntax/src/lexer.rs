@@ -108,8 +108,12 @@ impl<'a> Lexer<'a> {
                     let at = self.pos;
                     self.pos += 1;
                     if self.openers.is_empty() {
-                        self.end_line(at);
-                        self.line_start();
+                        if self.last_kind().is_some_and(TokenKind::continues_line) {
+                            self.operator_continuation_line(at);
+                        } else {
+                            self.end_line(at);
+                            self.line_start();
+                        }
                     } else if self
                         .layout_blocks
                         .last()
@@ -208,6 +212,48 @@ impl<'a> Lexer<'a> {
                 .push(Span::new(start as u32, self.pos as u32));
         }
         Some(width)
+    }
+
+    /// Continues a logical line after a trailing binary operator outside
+    /// brackets when the next non-blank line is more indented than the
+    /// current block, or at the same indent after `and`/`or` when it does
+    /// not start a statement keyword. A same-indent line after arithmetic
+    /// operators (e.g. a half-typed `let b = x +` before `a + b`) still ends
+    /// the statement so it reports one local error.
+    fn operator_continuation_line(&mut self, at: usize) {
+        let saved = self.pos;
+        let Some(width) = self.measure_indent() else {
+            return;
+        };
+        let top = *self.indents.last().unwrap();
+        let same_indent_logical = width == top
+            && matches!(self.last_kind(), Some(TokenKind::And | TokenKind::Or))
+            && !self.starts_statement_keyword();
+        if width <= top && !same_indent_logical {
+            self.end_line(at);
+            self.pos = saved;
+            self.line_start();
+        }
+    }
+
+    fn starts_statement_keyword(&self) -> bool {
+        let rest = &self.bytes[self.pos..];
+        let first = rest.first().copied().unwrap_or(0);
+        if first == b'@' {
+            return true;
+        }
+        if !(first.is_ascii_alphabetic() || first == b'_') {
+            return false;
+        }
+        let word_len = rest
+            .iter()
+            .take_while(|b| b.is_ascii_alphanumeric() || **b == b'_')
+            .count();
+        let word = &self.src[self.pos..self.pos + word_len];
+        matches!(
+            TokenKind::keyword(word),
+            Some(k) if k.starts_statement() || matches!(k, TokenKind::If | TokenKind::Elif | TokenKind::Else | TokenKind::Match)
+        )
     }
 
     /// Handles the start of a line outside brackets: emits `Indent` or

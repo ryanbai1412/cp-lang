@@ -114,7 +114,7 @@ match move:
 
 ## A few C++ habits to leave behind
 
-- Write `and`, `or`, and `not` for logical operators, and `elif`, never `else if`. Wrap multi-line expressions in `(...)` (newlines end statements outside parentheses).
+- Write `and`, `or`, and `not` for logical operators, and `elif`, never `else if`. Multi-line expressions continue inside `(...)`/`[...]`/`{...}` or after a trailing binary operator (`and`, `or`, `+`, `-`, `*`, ...); breaking *before* an operator requires `(...)`.
 - Mutate elements through an indexed loop (`for i in 0..xs.len: xs[i].f()`); there is no `for mut x in xs`.
 - `..` excludes the end; `..=` includes it. Open-ended ranges `..i`, `..=i`, and `i..` work in slices and range structures (`st.fold(..i)`).
 - Stepping a nominal domain position with `v + k` or `v - k` returns `?V`: handle it with `if let`, `??`, or `!`. `v.cyc(k)` wraps cyclically.

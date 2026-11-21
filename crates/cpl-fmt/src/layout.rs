@@ -64,6 +64,7 @@ pub(crate) fn render(src: &str, lexed: &Lexed) -> String {
             toks: &line.toks,
             roles: &roles,
             out: &mut out,
+            base_indent: line.depth * INDENT,
             cont: line.depth * INDENT,
             pending: None,
             at_line_start: true,
@@ -326,6 +327,8 @@ struct Emitter<'a, 'b> {
     toks: &'a [Tok<'b>],
     roles: &'a [Role],
     out: &'a mut Vec<OutLine>,
+    /// Base indentation of the logical line (outside any brackets).
+    base_indent: usize,
     /// Indentation of a line started in the middle of an element.
     cont: usize,
     /// A trailing comment waiting for the comma that may follow its token.
@@ -335,6 +338,15 @@ struct Emitter<'a, 'b> {
 }
 
 impl<'a, 'b> Emitter<'a, 'b> {
+    fn continuation_indent(&self) -> usize {
+        if self.cont == self.base_indent
+            && self.prev.is_some_and(|p| self.toks[p].kind.continues_line())
+        {
+            self.cont + INDENT
+        } else {
+            self.cont
+        }
+    }
     fn start_line(&mut self, indent: usize, blank_before: bool) {
         self.at_line_start = true;
         if let Some(last) = self.out.last_mut().filter(|_| self.prev.is_some()) {
@@ -399,13 +411,14 @@ impl<'a, 'b> Emitter<'a, 'b> {
             return;
         }
         if self.flush_pending() {
-            self.start_line(self.cont, false);
+            self.start_line(self.continuation_indent(), false);
         }
         if !tok.leading.is_empty() && self.prev.is_some() {
+            let ind = self.continuation_indent();
             for comment in &tok.leading {
-                self.comment_line(self.cont, comment);
+                self.comment_line(ind, comment);
             }
-            self.start_line(self.cont, false);
+            self.start_line(ind, false);
         }
         if !self.at_line_start {
             if let Some(p) = self.prev {

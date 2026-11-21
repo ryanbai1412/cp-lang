@@ -484,3 +484,12 @@ fn formats_indented_lambda_blocks() {
     assert_eq!(fmt(src), want);
     assert_eq!(fmt(want), want);
 }
+
+#[test]
+fn formats_trailing_binary_operator_continuations() {
+    let src = "if a == 1 and\n    b == 2:\n    f()\n";
+    assert_eq!(fmt(src), "if a == 1 and b == 2:\n    f()\n");
+
+    let with_comment = "if a == 1 and  // check\n    b == 2:\n    f()\n";
+    assert_eq!(fmt(with_comment), with_comment);
+}

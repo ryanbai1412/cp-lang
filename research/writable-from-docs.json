@@ -7,11 +7,11 @@
     "date": "2026-11-21",
     "model": "gpt-5.4",
     "total": 55,
-    "compiled": 51,
-    "built": 51,
-    "passed": 50,
-    "compile_rate": 0.9273,
-    "pass_rate": 0.9091
+    "compiled": 52,
+    "built": 52,
+    "passed": 49,
+    "compile_rate": 0.9455,
+    "pass_rate": 0.8909
   },
   "history": [
     {
@@ -98,7 +98,7 @@
       "compiled": 44,
       "built": 44,
       "passed": 25,
-      "compile_rate": 0.8000,
+      "compile_rate": 0.8,
       "pass_rate": 0.4545,
       "round": "round-7-canonical-spellings-audit"
     },
@@ -109,7 +109,7 @@
       "compiled": 44,
       "built": 44,
       "passed": 43,
-      "compile_rate": 0.8000,
+      "compile_rate": 0.8,
       "pass_rate": 0.7818,
       "round": "round-8-mod-v-lent-slices-and-reasoning-medium"
     },
@@ -134,6 +134,17 @@
       "compile_rate": 0.9273,
       "pass_rate": 0.9091,
       "round": "round-10-isqrt-prelude-adj4-grid-multiline-streaming"
+    },
+    {
+      "date": "2026-11-21",
+      "model": "gpt-5.4",
+      "total": 55,
+      "compiled": 52,
+      "built": 52,
+      "passed": 49,
+      "compile_rate": 0.9455,
+      "pass_rate": 0.8909,
+      "round": "round-11-trailing-binop"
     }
   ]
 }

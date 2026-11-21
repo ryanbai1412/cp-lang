@@ -1271,14 +1271,38 @@ impl<'a> Parser<'a> {
         if !self.eat(T::Colon) {
             let at = self.error_span();
             let found = self.peek().describe();
-            self.error(
-                Diagnostic::error(
-                    codes::EXPECTED_TOKEN,
-                    at,
-                    format!("expected `:` after {after}, found {found}"),
-                )
-                .with_fix("insert `:`", Span::point(at.start), ":"),
-            );
+            let next_after_nl = if self.at(T::Newline) {
+                if self.peek_n(1) == T::Indent {
+                    self.peek_n(2)
+                } else {
+                    self.peek_n(1)
+                }
+            } else {
+                T::Eof
+            };
+            if self.at(T::Newline)
+                && (next_after_nl.continues_line() || matches!(next_after_nl, T::Gt | T::Shr))
+            {
+                self.error(
+                    Diagnostic::error(
+                        codes::EXPECTED_TOKEN,
+                        at,
+                        format!("expected `:` after {after}, found {found}"),
+                    )
+                    .with_help(
+                        "for a multi-line condition, wrap it in `(...)` or put the operator at the end of the previous line",
+                    ),
+                );
+            } else {
+                self.error(
+                    Diagnostic::error(
+                        codes::EXPECTED_TOKEN,
+                        at,
+                        format!("expected `:` after {after}, found {found}"),
+                    )
+                    .with_fix("insert `:`", Span::point(at.start), ":"),
+                );
+            }
             // The body is still read if it is there.
             if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
                 self.skip_line();
