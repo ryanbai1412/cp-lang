@@ -315,14 +315,18 @@ impl<'a> Parser<'a> {
                 _ => false,
             }
         }
-        let rev = matches!(&walk.kind, ExprKind::Field { base, name } if name.text == "rev" && range(base));
-        if !(rev || range(&walk)) || !self.at_ident("by") {
+        // `V by 2` and `V.rev by 2` step along a domain, named with a capital.
+        fn domain(e: &Expr) -> bool {
+            matches!(&e.kind, ExprKind::Name(name) if name.starts_with(|c: char| c.is_ascii_uppercase()))
+        }
+        let rev = matches!(&walk.kind, ExprKind::Field { base, name } if name.text == "rev" && (range(base) || domain(base)));
+        if !(rev || range(&walk) || domain(&walk)) || !self.at_ident("by") {
             return walk;
         }
         self.bump();
         let step = Box::new(self.bit_or());
         let span = self.span_from(start);
-        if rev {
+        if rev || domain(&walk) {
             return Expr { kind: ExprKind::By { walk: Box::new(walk), step }, span };
         }
         let mut inner = walk;

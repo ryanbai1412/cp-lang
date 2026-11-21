@@ -91,11 +91,6 @@ const NOT_BUILT: &[&str] = &[
     "proto/tests/redteam/list_expr_once.cp",
 ];
 
-/// Passing tests the language has since moved away from, which the
-/// prototype rejects too: `offset_check` indexes with `i + 1`, and a step
-/// is a `?V` now.
-const STALE: &[&str] = &["proto/tests/ok/offset_check.cp"];
-
 #[test]
 fn the_libraries_ports_and_passing_tests_check_clean() {
     let mut failures = Vec::new();
@@ -115,9 +110,6 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         ("proto/tests/redteam", false),
     ] {
         for path in sources(dir, nested) {
-            if STALE.iter().any(|file| path.ends_with(file)) {
-                continue;
-            }
             checked += 1;
             let out = check(&path);
             let pending = PENDING

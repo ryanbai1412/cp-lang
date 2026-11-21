@@ -2870,7 +2870,8 @@ impl<'a> Lowerer<'a> {
                             Ty::Int,
                             span,
                         );
-                        let size = lw.size_domain(d, 0, len, span);
+                        let first = lw.range_domains.get(&d).copied().unwrap_or(0);
+                        let size = lw.size_domain(d, first, len, span);
                         out.push(size);
                         let array = ExprKind::Builtin(Builtin::ListToArray, vec![held]);
                         out.push(Stmt::Give(lw.mk(array, want.clone(), span)));

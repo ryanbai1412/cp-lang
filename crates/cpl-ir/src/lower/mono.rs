@@ -1435,7 +1435,27 @@ impl<'a> Lowerer<'a> {
         }
         // `[1, 2, 3]` and `[x for ..]` written at the call are lists.
         let written = matches!(arg.kind, ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. });
+        // A part of an array keeps the first index of the axis it runs
+        // along: `one[.., 3]` of a `[1..=2, 1..=3]T` is indexed from 1.
+        let mut part = arg;
+        while let ast::ExprKind::Paren(inner) = &part.kind {
+            part = inner;
+        }
+        let part_from = match &part.kind {
+            ast::ExprKind::Index { base, indices } => match self.probe_ty_silent(base) {
+                Some(Ty::Array { dims, .. }) if dims.len() == indices.len() => {
+                    let mut along = indices.iter().zip(&dims).filter(|(index, _)| matches!(index.kind, ast::ExprKind::Range { .. }));
+                    match (along.next(), along.next()) {
+                        (Some((_, Dim::IntFrom(first))), None) => Some(*first),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
+            _ => None,
+        };
         let (lo, list) = match self.probe_ty_silent(arg) {
+            Some(Ty::Array { .. } | Ty::List(_)) if part_from.is_some() => (part_from.unwrap_or(0), true),
             Some(Ty::Array { .. }) if written => (0, true),
             Some(Ty::Array { dims, .. }) => match dims.as_slice() {
                 [Dim::Int] => (0, false),

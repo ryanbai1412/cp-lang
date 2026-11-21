@@ -2414,7 +2414,11 @@ impl<'a> Lowerer<'a> {
         let beyond = cmp(self, CmpOp::Gt, &hi_e, &len);
         let bad = self.mk(ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(reversed)), Ty::Bool, span);
         let bad = self.mk(ExprKind::Binary(BinOp::Or, Box::new(bad), Box::new(beyond)), Ty::Bool, span);
-        let trap = Stmt::Trap("a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length".to_string(), self.span(span));
+        let message = match first {
+            0 => "a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length".to_string(),
+            _ => format!("a part `lo..hi` of a row or column indexed from {first} needs {first} <= lo <= hi <= {first} + its length"),
+        };
+        let trap = Stmt::Trap(message, self.span(span));
         out.push(Stmt::If(bad, Block { stmts: vec![trap] }, Block::default()));
         (lo_e, hi_e)
     }
@@ -2450,6 +2454,14 @@ impl<'a> Lowerer<'a> {
             }
         }
         let is_str = base.ty == Ty::Str;
+        // `a[2..=4]` of a `[1..=4]T` is said in the array's own indices.
+        let first = match &base.ty {
+            Ty::Array { dims, .. } => match dims[..] {
+                [Dim::IntFrom(first)] => first,
+                _ => 0,
+            },
+            _ => 0,
+        };
         let (elem_ty, dim_dom) = match &base.ty {
             Ty::List(e) => ((**e).clone(), None),
             Ty::Str => (Ty::Char, None),
@@ -2482,13 +2494,7 @@ impl<'a> Lowerer<'a> {
             let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
                 let v = lw.expr(e, None);
                 match v.ty {
-                    Ty::Int => {
-                        if is_end && *inclusive {
-                            lw.int_add(v, 1)
-                        } else {
-                            v
-                        }
-                    }
+                    Ty::Int => lw.int_add(v, i64::from(is_end && *inclusive) - first),
                     Ty::Pos(_) => {
                         let ord = lw.cast(Cast::Ord, v, Ty::Int);
                         if is_end && *inclusive {
@@ -2528,7 +2534,10 @@ impl<'a> Lowerer<'a> {
             let beyond = cmp(lw, CmpOp::Gt, &hi_e, &len_expr);
             let bad = or(lw, below, reversed);
             let bad = or(lw, bad, beyond);
-            let message = "a slice `a[lo..hi]` needs 0 <= lo <= hi <= a.len".to_string();
+            let message = match first {
+                0 => "a slice `a[lo..hi]` needs 0 <= lo <= hi <= a.len".to_string(),
+                _ => format!("a slice `a[lo..hi]` of an array indexed from {first} needs {first} <= lo <= hi <= {first} + a.len"),
+            };
             out.push(Stmt::If(
                 bad,
                 Block {
@@ -3027,7 +3036,7 @@ impl<'a> Lowerer<'a> {
                     lo,
                     hi,
                     step: None,
-                    rev: true,
+                    rev,
                     closed,
                 } = iter
                 else {
@@ -3039,7 +3048,8 @@ impl<'a> Lowerer<'a> {
                     );
                     return (iter, ty);
                 };
-                if ty != Ty::Int {
+                // `for v in V by 2` steps along the positions of `V`.
+                if !matches!(ty, Ty::Int | Ty::Pos(_)) {
                     self.error(
                         codes::TYPE_MISMATCH,
                         span,
@@ -3050,11 +3060,21 @@ impl<'a> Lowerer<'a> {
                             lo,
                             hi,
                             step: None,
-                            rev: true,
+                            rev,
                             closed,
                         },
                         ty,
                     );
+                }
+                if !rev {
+                    let iter = Iter::Range {
+                        lo,
+                        hi,
+                        step: Some(step),
+                        rev,
+                        closed,
+                    };
+                    return (iter, ty);
                 }
                 let down = |lw: &mut Self, lo: Expr, hi: Expr, step: Expr| {
                     let bin = |lw: &mut Self, op, l: Expr, r: Expr| lw.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), Ty::Int, span);
