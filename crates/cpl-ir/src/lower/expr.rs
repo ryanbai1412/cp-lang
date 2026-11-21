@@ -4057,6 +4057,9 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
+        if let Some(filled) = self.comprehension_filled(body, clauses, hint, span) {
+            return filled;
+        }
         let frames = self.open_loops(clauses);
         let (elem_hint, is_set) = match hint {
             Some(Ty::List(elem)) => (Some((**elem).clone()), false),
@@ -4098,6 +4101,48 @@ impl<'a> Lowerer<'a> {
         stmts.extend(loops);
         stmts.push(Stmt::Give(self.local(acc, span)));
         self.mk(ExprKind::Do(Block { stmts }), ty, span)
+    }
+
+    /// `[List<V>() for _ in lo..hi]`: the body names no loop variable and
+    /// has no effects, so every element is the same fresh value and the list
+    /// is `List.filled(max(hi - lo, 0), body)` instead of a push loop.
+    fn comprehension_filled(
+        &mut self,
+        body: &ast::Expr,
+        clauses: &[ast::Clause],
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Option<Expr> {
+        let [clause] = clauses else { return None };
+        if !clause.conds.is_empty() || !matches!(clause.pat.kind, ast::PatternKind::Wildcard) {
+            return None;
+        }
+        let ast::ExprKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            inclusive: false,
+            step: None,
+        } = &clause.iter.kind
+        else {
+            return None;
+        };
+        if matches!(hint, Some(Ty::Set(_))) || !fresh_constant(body) {
+            return None;
+        }
+        let lo = self.expect(lo, &Ty::Int);
+        let hi = self.expect(hi, &Ty::Int);
+        let value = match hint {
+            Some(Ty::List(elem)) if !matches!(**elem, Ty::Error) => {
+                let elem = (**elem).clone();
+                self.expect(body, &elem)
+            }
+            _ => self.expr(body, None),
+        };
+        let len = self.mk(ExprKind::Binary(BinOp::Sub, Box::new(hi), Box::new(lo)), Ty::Int, span);
+        let zero = self.int_lit(0, span);
+        let count = self.mk(ExprKind::Builtin(Builtin::Max, vec![len, zero]), Ty::Int, span);
+        let ty = Ty::list(value.ty.clone());
+        Some(self.mk(ExprKind::Builtin(Builtin::ListFilled, vec![count, value]), ty, span))
     }
 
     /// `[deg[u] * 2 for u in V]` where a `[V]T` is declared builds the
@@ -4696,5 +4741,31 @@ fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
         Ty::List(e) | Ty::ListView(e) => Some(e),
         Ty::Array { dims, elem } if dims.len() == 1 => Some(elem),
         _ => None,
+    }
+}
+
+/// A literal, an empty collection or a tuple of them: evaluating it once or
+/// once per element gives equal values and no effects.
+fn fresh_constant(e: &ast::Expr) -> bool {
+    match &e.kind {
+        ast::ExprKind::Int(_)
+        | ast::ExprKind::Float(_)
+        | ast::ExprKind::Char(_)
+        | ast::ExprKind::Bool(_)
+        | ast::ExprKind::None => true,
+        ast::ExprKind::Str(pieces) => pieces.iter().all(|p| matches!(p, ast::StrPiece::Text(_))),
+        ast::ExprKind::Unary { expr, .. } => fresh_constant(expr),
+        ast::ExprKind::Tuple(items) => items.iter().all(fresh_constant),
+        ast::ExprKind::List(items) => items.is_empty(),
+        ast::ExprKind::Call { callee, args } => {
+            args.is_empty()
+                && match &callee.kind {
+                    ast::ExprKind::Generic { base, .. } => {
+                        matches!(&base.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "List" | "Set" | "Map"))
+                    }
+                    _ => false,
+                }
+        }
+        _ => false,
     }
 }
