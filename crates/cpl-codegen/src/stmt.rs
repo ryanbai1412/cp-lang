@@ -1098,6 +1098,20 @@ impl<'p> Emitter<'p> {
             Stmt::Continue(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
                 self.line(out, "return 0;")
             }
+            Stmt::Let(slot, Some(init))
+                if matches!(self.locals()[*slot].ty, Ty::Fn(..))
+                    && self.closure_id.is_none()
+                    && !self.hoisted.contains(slot)
+                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_rec(*slot, cid))
+                    && self.facts.stores((self.fn_id, false, *slot)) <= 1 =>
+            {
+                let ExprKind::Closure(cid) = init.kind else { unreachable!() };
+                self.need("rec");
+                self.rec_slot = Some(*slot);
+                let text = self.emit_closure(cid, false).text;
+                let name = self.names[*slot].clone();
+                self.line(out, &format!("auto {name} = cpl::rec({text});"));
+            }
             Stmt::Let(slot, init) => {
                 let tail = self.tail.take();
                 let ty = self.locals()[*slot].ty.clone();

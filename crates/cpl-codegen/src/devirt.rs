@@ -154,6 +154,15 @@ impl<'p> Devirt<'p> {
             .any(|c| !c.is_global && c.outer == slot)
     }
 
+    /// Whether a local `let name = <closure>` that names itself can bind
+    /// `auto`: the closure takes itself as a parameter instead of capturing
+    /// its own `std::function`.
+    pub fn local_rec(&self, slot: usize, cid: ClosureId) -> bool {
+        let caps = &self.program.closures[cid].captures;
+        caps.iter().any(|c| !c.is_global && c.outer == slot)
+            && caps.iter().all(|c| c.is_global || c.outer != slot || c.by_ref)
+    }
+
     fn compute_elidable(&mut self) {
         let mut assigned_fields: BTreeSet<(usize, usize)> = BTreeSet::new();
         let mut captured_params: BTreeSet<(FnId, usize)> = BTreeSet::new();
@@ -800,7 +809,8 @@ fn explain_locals_in_block(
         let site = format!("{owner} local {}", locals[*slot].name);
         let mode = match init.kind {
             ExprKind::Closure(cid)
-                if stores.get(slot).copied().unwrap_or(0) <= 1 && devirt.local_auto(*slot, cid) =>
+                if stores.get(slot).copied().unwrap_or(0) <= 1
+                    && (devirt.local_auto(*slot, cid) || devirt.local_rec(*slot, cid)) =>
             {
                 ClosureMode::StaticLocalAuto
             }

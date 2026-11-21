@@ -120,6 +120,8 @@ pub(crate) struct Emitter<'p> {
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
+    /// The slot the next emitted closure is bound to when it names itself.
+    pub rec_slot: Option<usize>,
     /// Globals stored once, with a literal: emitted as `static constexpr`.
     pub const_globals: BTreeSet<usize>,
     /// What follows the `let` being written, in its block.
@@ -223,6 +225,7 @@ impl<'p> Emitter<'p> {
             closure_id: None,
             names: Vec::new(),
             hoisted: BTreeSet::new(),
+            rec_slot: None,
             const_globals: BTreeSet::new(),
             tail: None,
             in_setup: false,

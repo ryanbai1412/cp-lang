@@ -861,6 +861,34 @@ print(b.find_first(4) ?? -1)
 }
 
 #[test]
+fn recursive_local_closure_takes_itself_instead_of_std_function() {
+    let src = concat!(
+        "fn count(n: Int) -> Int:\n",
+        "    var seen = 0\n",
+        "    fn go(u: Int):\n",
+        "        if u >= n: return\n",
+        "        seen += 1\n",
+        "        go(u * 2 + 1)\n",
+        "        go(u * 2 + 2)\n",
+        "    go(0)\n",
+        "    seen\n",
+        "print(count(10))\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function") && !out.contains("<functional>"), "{out}");
+    assert!(out.contains("auto go = cpl::rec(["), "{out}");
+    assert!(out.contains("](auto& go_2, ll u)"), "{out}");
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained.iter().all(|e| e.mode == crate::ClosureMode::StaticLocalAuto),
+        "{explained:?}"
+    );
+}
+
+#[test]
 fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
     let src = concat!(
         "struct Box(op: Int -> Int)\n",

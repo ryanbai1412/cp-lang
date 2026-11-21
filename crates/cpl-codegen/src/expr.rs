@@ -2327,6 +2327,7 @@ impl<'p> Emitter<'p> {
 
     pub(crate) fn emit_closure(&mut self, cid: usize, skip_captures: bool) -> Code {
         let def = &self.program.closures[cid];
+        let rec_slot = self.rec_slot.take();
         // Prepare inner names for the closure's locals.
         let mut inner_taken = self.taken.clone();
         let mut inner_names = Vec::with_capacity(def.locals.len());
@@ -2364,6 +2365,9 @@ impl<'p> Emitter<'p> {
             for cap in &def.captures {
                 let inner = &inner_names[cap.inner];
                 let non_scalar = !def.locals[cap.inner].ty.is_scalar();
+                if !cap.is_global && Some(cap.outer) == rec_slot {
+                    continue;
+                }
                 if cap.is_global {
                     let gname = ident(&self.program.globals[cap.outer].name);
                     if cap.by_ref
@@ -2389,6 +2393,11 @@ impl<'p> Emitter<'p> {
 
         // Parameters.
         let mut params = Vec::new();
+        for cap in &def.captures {
+            if !cap.is_global && Some(cap.outer) == rec_slot {
+                params.push(("auto&".to_string(), inner_names[cap.inner].clone()));
+            }
+        }
         for &slot in &def.params {
             let ty = &def.locals[slot].ty;
             let cpp = self.ty(ty);

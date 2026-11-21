@@ -3099,8 +3099,8 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
 1. **Three-tier static closure lowering in `cpl-codegen` (`devirt.rs`, `emit.rs`, `expr.rs`, `stmt.rs`), with `std::function` only for genuinely dynamic values.**
    - *Direct elision (`StaticDirect`):* when a struct fn-field or fn parameter holds a single statically known zero-capture closure and never escapes to a dynamic `std::function` home or assignment, calls emit directly as `cpl_fnN(...)` and the `std::function` field/parameter is replaced with a 1-byte `bool` placeholder (`false` at construction/call sites). Eliminates `std::function` completely from `Monoid`, `Action`, `SegTree`, `LazySegTree`, `DualSegTree`, `SparseTable`, `DisjointSparseTable`.
    - *Template functor parameters (`StaticTemplate`):* any non-recursive, non-entry/judge/hook function with a non-`mut`, non-reassigned `Ty::Fn` parameter that is not directly elided lowers to a C++17 function template (`template <class F0, ...>`, `F0&& p`), passing lambdas (including capturing/mutable ones) by type with zero `std::function` and full inlining.
-   - *Local `auto` bindings (`StaticLocalAuto`):* any non-hoisted, non-reassigned, non-recursive local closure binding (`let f = ...` or nested `fn via(...) = ...`) emits `auto f = [...](...) { ... };` instead of `std::function<...>`.
-   - *Dynamic fallback (`DynamicStdFunction`):* genuinely dynamic fn values (struct fields holding multiple or capturing closures, recursive local closures, recursive/entry/judge fn parameters, mutable/reassigned fn slots) retain `std::function`. `#include <functional>` is emitted only when `std::function` appears in the output.
+   - *Local `auto` bindings (`StaticLocalAuto`):* any non-hoisted, non-reassigned local closure binding (`let f = ...` or nested `fn via(...) = ...`) emits `auto f = [...](...) { ... };` instead of `std::function<...>`.
+   - *Dynamic fallback (`DynamicStdFunction`):* genuinely dynamic fn values (struct fields holding multiple or capturing closures, recursive/entry/judge fn parameters, mutable/reassigned fn slots) retain `std::function`. `#include <functional>` is emitted only when `std::function` appears in the output.
    - *Visibility (`cpl explain <file.cp>`):* `cpl explain <file.cp>` (and `--json`) runs `cpl_codegen::explain_closures` and reports every fn-typed site's lowering mode (`static: direct`, `static: template`, `static: auto`, or `dynamic: std::function` with reason), fulfilling the "nothing secret under the hood" rule.
    - *Return-tuple move:* returning a struct/tuple literal moves owned non-scalar local fields (`std::move(table)`) when unreferenced by sibling fields, preventing O(n log n) vector copies on range-structure constructors (`DisjointSparseTable` 35.4 ms / 1.98x → 18.9 ms / 1.09x vs matched C++17).
    *Reverse:* revert `elidable`, `template_params`, `local_auto`, and `explain_closures` in `crates/cpl-codegen/src/devirt.rs`, the `emit.rs`/`expr.rs`/`stmt.rs` hooks, and `explain_file` in `crates/cpl-cli/src/lib.rs`.
@@ -4107,3 +4107,20 @@ ucup5s01a's `dp = next` per round copied a 500-element row: 1.16-1.25 s
 before, 1.10-1.17 s after, vs 1.08-1.23 s for the original (same input,
 same g++). Corpus: +1,111 B over 87 programs, none broken. Reverse: return
 false from `last_read` in `crates/cpl-codegen/src/stmt.rs`.
+## 136. A recursive local closure is passed itself, not a `std::function` (2026-11-21)
+
+Implements §127 for nested `fn`s. A local closure or nested `fn` that
+calls itself, bound once and not hoisted, emits
+`auto go = cpl::rec([...](auto& go_2, ll u) { ... go_2(...) })`: the
+lambda takes itself as its first parameter instead of capturing its own
+`std::function`, so every call is a direct, inlinable call of one
+closure type. `cpl::Rec` passes `*this` first, so `go(1)`, `go` passed on
+as a value and the body's own calls all keep the source's argument list.
+`cpl explain` reports it `static: auto`. Why: the indirect call through
+`std::function` blocked inlining on every recursive step; on a 2e6-node
+subtree-size DFS run 20 times, 1.09 s -> 0.97 s against 0.83 s for the
+hand-written self-passing lambda (the rest is the checked `adj[u]` and
+the reading loop). Corpus: programs emitting `std::function` 61 -> 37;
+the 24 programs that lost it grow +143 to +201 B (+4,366 B in total),
+the price of `Rec` over `#include <functional>`. Reverse: drop the
+`local_rec` arm of `Stmt::Let` in `crates/cpl-codegen/src/stmt.rs`.

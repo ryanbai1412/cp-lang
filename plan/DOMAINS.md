@@ -251,6 +251,18 @@ running.)
 **Bar.** Per-port runtime and memory on max inputs, measured on every push.
 **Next.** Heap for runtime-sized
 arrays; niches; a matched-algorithm benchmark harness.
+**`std::function` debt.** Every fn value lowers to a monomorphized,
+inlinable C++ form except these, which keep `std::function` (37 corpus
+programs; `cpl explain` names each):
+- an optional fn field, `source: ?(D -> T)` in `SegTree` and
+  `LazySegTree` (22 programs), even when every construction leaves it
+  `none`;
+- a struct field holding more than one closure, or a capturing one
+  (8 programs);
+- the recursive body of a `@memo` fn (3 programs);
+- a fn value whose closure is chosen at run time (3 programs);
+- a fn-typed parameter of a closure, a recursive fn or the judge entry;
+- a reassigned or hoisted fn slot, and a top-level closure var.
 
 ## 4. Standard library (`plan/STDLIB.md`, `plan/20`)
 **North star.** A standard library that covers everything ever asked at the hardest

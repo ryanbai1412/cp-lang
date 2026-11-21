@@ -1598,6 +1598,15 @@ template <class A, class B> auto list_concat_at(const A& a, const B& b, ll i) ->
 ",
     },
     Piece {
+        name: "rec",
+        needs: &[],
+        code: "\
+// A recursive local closure, passed itself first.
+template <class F> struct Rec { F f; template <class... A> decltype(auto) operator()(A&&... a) { return f(*this, (A&&)a...); } };
+template <class F> Rec<F> rec(F f) { return {f}; }
+",
+    },
+    Piece {
         name: "lazy",
         needs: &[],
         code: "\
