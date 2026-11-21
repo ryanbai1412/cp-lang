@@ -40,11 +40,11 @@ for len in 1..=n:
     var t0 = Time.first
     while t0 < Time.last:
         heap.push(Seg(v0, len, t0, t0.ord + 1))
-        let t1 = Time(min(t0.ord + len, Time.last.ord))
+        let t1 = Time(min(t0.ord + 1 + len, 2 * n - 1))
         let v1 = query(len, t1)
         var (lo, hi) = (t0, t1)
         while hi.ord - lo.ord > 1:
-            let mid = Time((lo.ord + hi.ord) / 2)
+            let mid = Time((lo.ord + hi.ord) / 2 + 1)
             let v_mid = query(len, mid)
             if diag[v_mid] < t0.ord + n:
                 heap.push(Seg(v_mid, len, mid, lo.ord))
@@ -61,6 +61,6 @@ repeat m:
     ans.push(seg.val)
     let next_ord = seg.cur.ord + (seg.end - seg.cur.ord).sign
     if next_ord != seg.end:
-        let next_t = Time(next_ord)
+        let next_t = Time(next_ord + 1)
         heap.push(Seg(query(seg.len, next_t), seg.len, next_t, seg.end))
 print("!", ans)

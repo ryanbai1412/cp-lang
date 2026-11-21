@@ -1,66 +1,68 @@
-// Codeforces 2159 F: Grand Finale: Snakes.
-// An `n x n` grid holds a permutation of `1..=n^2`. A snake of length `l`
-// (`1 <= l <= n`) walks along the `2n - 1` steps `t in 0..=2n - 2`; `query(l, t)`
-// returns the maximum value on the snake at time `t`.
-// Each grid value `v` enters the snake's sweep at diagonal index
-// `diag[v] = (n - 1) - j` on row 0 and `(n - 1) + i + j` on rows `i >= 1`.
-// Over any stride `[t0, t1]` of length `<= l`, the query sequence is bitonic
-// (decreasing while `diag[v] < t0 + n`, then increasing), so binary search
-// splits `[t0, t1]` into monotone runs `Seg(val, len, cur, end)` whose values
-// increase as `cur` steps toward `end`. A `MinHeap` over these monotone runs
-// yields the `m` smallest query values in order.
+// Codeforces 2159 F: Grand Finale: Snakes (interactive).
+// An `n x n` grid holds a permutation of `Val = 1..=n^2`. A snake of length
+// `len` (`1 <= len <= n`) advances across `Time = 1..=2n - 1`; `query(len, t)`
+// returns the maximum value currently on the snake.
+//
+// Arrival diagonal: at `t = 1` the snake covers row 0 from column `n - 1` down
+// to `0`, so cell `(0, j)` enters at `diag = (n - 1) - j`; cells on rows
+// `i >= 1` enter along anti-diagonals `i + j` at `diag = (n - 1) + i + j`.
+// Over any stride `[t0, t1]` of length `<= len`, cells leaving the snake have
+// `diag < t0.ord + n` while newly entering cells have `diag >= t0.ord + n`, so
+// `query(len, t)` is bitonic (decreasing until the old max leaves, then
+// increasing as new maxima enter). Binary search splits each stride into
+// monotone runs `Seg(val, len, cur, end)` stepping toward `end`; a `MinHeap`
+// merges all runs to emit the `m` smallest answers.
+
 @!interactive
-
-// A monotone run of query values for snake length `len`, starting at time `cur`
-// (value `val`) and stepping by `(end - cur).sign` toward exclusive `end`.
-struct Seg(val: Int, len: Int, cur: Int, end: Int)
-
-fn query(len: Int, t: Int) -> Int:
-    print("?", len, t + 1)
-    read<Int>() - 1
 
 @!multitest
 let n: 1..=500 = read()
 let m: 1..=250_000 = read()
-let max_t = 2 * n - 2
-let a: [0..n, 0..n]1..=250_000 = read()
+domain Val = 1..=n * n
+domain Time = 1..=2 * n - 1
 
-// Diagonal arrival index of each 0-based grid value `v`.
-var diag: [0..n * n]Int = 0
+struct Seg(val: Val, len: Int, cur: Time, end: Int)
+
+fn query(len: Int, t: Time) -> Val:
+    print("?", len, t)
+    read<Val>()
+
+let a: [0..n, 0..n]Val = read()
+var diag: [Val]Int = 0
 for i in 0..n:
     for j in 0..n:
-        diag[a[i, j] - 1] = if i == 0: n - 1 - j else: n - 1 + i + j
+        diag[a[i, j]] = if i == 0: n - 1 - j else: n - 1 + i + j
 
-var heap = MinHeap<(Int, Seg)>()
-fn push_seg(val: Int, len: Int, cur: Int, end: Int):
+var heap = MinHeap<(Val, Seg)>()
+fn push_seg(val: Val, len: Int, cur: Time, end: Int):
     heap.push((val, Seg(val, len, cur, end)))
 
 for len in 1..=n:
-    var v0 = max(a[0, j] - 1 for j in 0..len)
-    var t0 = 0
-    while t0 < max_t:
-        push_seg(v0, len, t0, t0 + 1)
-        let t1 = min(t0 + len, max_t)
+    var v0 = max(a[0, j] for j in 0..len)
+    var t0 = Time.first
+    while t0 < Time.last:
+        push_seg(v0, len, t0, t0.ord + 1)
+        let t1 = Time(min(t0.ord + 1 + len, 2 * n - 1))
         let v1 = query(len, t1)
-        // Bisect the bitonic valley in `(t0, t1)`, pushing each monotone half.
         var (lo, hi) = (t0, t1)
-        while hi - lo > 1:
-            let mid = (lo + hi) / 2
+        while hi.ord - lo.ord > 1:
+            let mid = Time((lo.ord + hi.ord) / 2 + 1)
             let v_mid = query(len, mid)
-            if diag[v_mid] < t0 + n:
-                push_seg(v_mid, len, mid, lo)
+            if diag[v_mid] < t0.ord + n:
+                push_seg(v_mid, len, mid, lo.ord)
                 lo = mid
             else:
-                push_seg(v_mid, len, mid, hi)
+                push_seg(v_mid, len, mid, hi.ord)
                 hi = mid
         (t0, v0) = (t1, v1)
-    push_seg(v0, len, t0, t0 + 1)
+    push_seg(v0, len, t0, t0.ord + 1)
 
-var ans: List<Int> = []
+var ans: List<Val> = []
 repeat m:
     let (_, seg) = heap.pop()!
-    ans.push(seg.val + 1)
-    let next_t = seg.cur + (seg.end - seg.cur).sign
-    if next_t != seg.end:
+    ans.push(seg.val)
+    let next_ord = seg.cur.ord + (seg.end - seg.cur.ord).sign
+    if next_ord != seg.end:
+        let next_t = Time(next_ord + 1)
         push_seg(query(seg.len, next_t), seg.len, next_t, seg.end)
 print("!", ans)
