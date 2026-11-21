@@ -1,70 +1,41 @@
 // Codeforces 2150 F: Cycle Closing (dream).
-// Build a spanning tree T of diameter d.
-// Op 1 (k = 3): connect every pair of tree neighbors to form T^2.
-// Op 2 (k = ceil(d / 2) + 1): connect every remaining non-edge (i, j) by a
-// simple path of length path_len in T^2, skipping along T.path(i, j) when long
-// enough or zigzagging out and back toward the further diameter endpoint.
+// Take any spanning tree T, of diameter D, and let L = ceil(D / 2).
+// Operation 1 (k = 3) joins the two ends of every tree path j - i - k, so after it
+// any two vertices at tree distance 2 are adjacent: one step can skip a vertex.
+// Operation 2 (k = L + 1) closes each remaining pair (i, j) with a path of exactly
+// L steps. The tree path i..j has d steps, 3 <= d <= D <= 2L.
+// - d >= L: walk it, skipping d - L vertices.
+// - d < L: let far be the diameter end farther from i (so dist(i, far) >= L) and m
+//   the vertex where i..j turns toward far. Replace m by a detour over the first
+//   L - d + 1 vertices of the stem m..far: out on every other vertex, back on the
+//   rest. Every step is a tree edge or a skip, and no vertex repeats.
 with io(base: 1)
 
---- with multitest() ---
-
+@!multitest
 domain V = read(3..=200)
-let m: 2..=19_900 = read()
-var adj: [V, V]Bool = false
-var tree: [V]List<V> = []
-var dsu = Dsu<V>()
-repeat m:
-    let (u, v): (V, V) = read()
-    adj[u, v] = adj[v, u] = true
-    if dsu.unite(u, v):
-        tree[u].push(v)
-        tree[v].push(u)
+let g = Graph<V>.undirected(edges: read<[read(V.count - 1..=V.count * (V.count - 1) / 2)](V, V)>())
+let t = g.spanning_tree()
+let d = t.diameter()
+let L = ceil_div(d.len, 2)
 
-let T = Rooted(tree, V.first)
-let d = T.diameter()
+let skips = [(j, i, k) for i in V for (j, k) in t.adj[i].pairs if not g.has(j, k)]
+fn joined(i: V, j: V) -> Bool = g.has(i, j) or t.dist(i, j) == 2
+
+fn route(i: V, j: V) -> List<V>:
+    let p = t.path(i, j)
+    let s = p.len - 1 - L
+    if s >= 0: return p[..2 * s].even ++ p[2 * s..]
+    let far = max(d.u, d.v, by: f => t.dist(i, f))
+    let m = t.median(i, j, far)
+    let stem = t.path(m, far)[..=-s]
+    let detour = if m == j: stem.odd ++ stem.even.rev else: stem.even ++ stem.odd.rev
+    t.path(i, m).drop_last ++ detour ++ t.path(m, j).drop_first
 
 print(2)
 print(3)
-var ops1: List<(V, V, V)> = []
-for i in V:
-    for j in tree[i], k in tree[i] where j != k and not adj[j, k]:
-        adj[j, k] = adj[k, j] = true
-        ops1.push((j, i, k))
-print(ops1.len)
-for (a, b, c) in ops1: print(a, b, c)
-
-let path_len = ceil_div(d.len, 2)
-print(path_len + 1)
-print(count(for i in V, j in V.after(i) where not adj[i, j]))
-
-for i in V:
-    let far = if T.dist(i, d.u) >= T.dist(i, d.v): d.u else: d.v
-    for j in V.after(i) where not adj[i, j]:
-        let pij = T.path(i, j)
-        let dij = pij.len - 1
-        var resp: List<V> = []
-        if dij >= path_len:
-            var skip = dij - path_len
-            var cur = 0
-            repeat path_len:
-                resp.push(pij[cur])
-                if skip > 0: cur += 1; skip -= 1
-                cur += 1
-            resp.push(pij[cur])
-        else:
-            var pif = T.path(i, far)
-            var pjf = T.path(j, far)
-            let extra = (pif.len + pjf.len - 2 - dij) / 2
-            let drop = extra - (path_len - dij)
-            pif.truncate(pif.len - drop)
-            pjf.truncate(pjf.len - drop)
-            let keep = path_len - dij + 1
-            let extras = pif[pif.len - keep..]
-            pif.truncate(pif.len - keep)
-            pjf.truncate(pjf.len - keep)
-            let f = if pjf.is_empty: 1 else: 0
-            resp.extend(pif)
-            for (z, x) in extras.items where z % 2 == f: resp.push(x)
-            for (z, x) in extras.items.rev where z % 2 != f: resp.push(x)
-            resp.extend(pjf.rev)
-        print(resp)
+print(skips.len)
+for s in skips: print(s)
+let rest = [route(i, j) for (i, j) in V.pairs if not joined(i, j)]
+print(L + 1)
+print(rest.len)
+for r in rest: print(r)
