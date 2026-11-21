@@ -1136,7 +1136,7 @@ fn general_matching_matches_brute_force():
 @test
 fn weighted_general_matching_matches_brute_force():
     domain V = 0..8
-    for _ in 0..60:
+    for _ in 0..700:
         let cnt = rand(0, 20)
         domain E = 0..cnt
         let edges = [E] _ => (u: V.nth(rand(0, 7)), v: V.nth(rand(0, 7)), w: rand(-3, 20))
