@@ -5649,7 +5649,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 19139,
+      "emitted_bytes": 24209,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 485,
