@@ -17,7 +17,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.dsu` | `Dsu` | Disjoint set union with `.mark()` / `.undo_to(snap)` rollback |
 | `std.fenwick` | `Fenwick`, `XorFenwick`, `Fenwick2D`, `DualFenwick`, `RangeFenwick` | 1D/2D Fenwick, XOR, range-add/point-get, and range-add/range-sum |
 | `std.flow` | `Arc`, `FlowGraph`, `max_weight_matching` | Dinic max flow and Hungarian matching |
-| `std.geometry` | `Pt`, `dot`, `cross`, `turn`, `ByAngle`, `area2`, `locate` | Exact 2D geometry and angular sorting |
+| `std.geometry` | `Pt`, `Vec`, `turn`, `ByAngle`, `convex_hull`, `minkowski_sum`, `closest_pair`, `hull_tangents`, `half_plane_intersect`, `min_enclosing_circle`, `circle_polygon_area` | Exact 2D integer geometry (`I128` predicates, hulls, calipers, closest pair) and careful floating-point geometry |
 | `std.graph` | `Graph`, `Tree<V>`, `bfs`, `dijkstra`, `peel`, `topo`, `scc`, `two_color` | CSR graphs, implicit-neighbor algorithms, `Tree<V>` alias |
 | `std.grid` | `Dir4`, `Dir8`, `step`, `ray` | 4- and 8-direction grid movement helpers |
 | `std.heap` | `MinHeap`, `MaxHeap` | Binary priority queues |

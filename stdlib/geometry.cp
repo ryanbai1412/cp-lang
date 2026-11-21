@@ -403,6 +403,48 @@ pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int:
         if better_dir(hull[idx], hull[best], dir): best = idx
     best
 
+fn tangent_cmp(p: Pt, a: Pt, b: Pt, sign: Int) -> Bool:
+    let t = turn(p, b, a) * sign
+    if t != 0: return t > 0
+    dist2_128(p, a) < dist2_128(p, b)
+
+fn find_tangent(hull: List<Pt>, p: Pt, sign: Int) -> Int:
+    let n = hull.len
+    if n <= 4:
+        var best = 0
+        for i in 1..n:
+            if tangent_cmp(p, hull[i], hull[best], sign): best = i
+        return best
+    if tangent_cmp(p, hull[0], hull[1], sign) and tangent_cmp(p, hull[0], hull[n - 1], sign):
+        return 0
+    var lo = 0
+    var hi = n
+    while hi - lo > 2:
+        let mid = (lo + hi) / 2
+        let up_lo = tangent_cmp(p, hull[(lo + 1) % n], hull[lo], sign)
+        let up_mid = tangent_cmp(p, hull[(mid + 1) % n], hull[mid], sign)
+        if not up_mid and tangent_cmp(p, hull[mid], hull[(mid + n - 1) % n], sign):
+            return mid
+        if up_lo:
+            if up_mid and tangent_cmp(p, hull[mid], hull[lo], sign): lo = mid
+            else: hi = mid
+        else:
+            if not up_mid and tangent_cmp(p, hull[mid], hull[lo], sign): hi = mid
+            else: lo = mid
+    var best = lo
+    for k in lo..hi:
+        let idx = k % n
+        if tangent_cmp(p, hull[idx], hull[best], sign): best = idx
+    best
+
+/// Indices `(left, right)` of the two tangent vertices from a strictly
+/// exterior point `p` to a strictly convex CCW polygon `hull` (`hull.len >= 3`).
+/// Every vertex `q` satisfies `turn(p, hull[left], q) <= 0` and
+/// `turn(p, hull[right], q) >= 0`. O(log n).
+pub fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int):
+    assert hull.len >= 3, "hull_tangents requires at least 3 hull vertices"
+    (left: find_tangent(hull, p, 1), right: find_tangent(hull, p, -1))
+
 // ---- closest pair
 
 fn cp_solve(
@@ -703,6 +745,97 @@ pub fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Ve
         if vcross(a.dir, b.dir) <= eps: return []
         poly.push(hp_cross(a, b))
     poly
+
+/// Signed area of a floating-point polygon (positive for CCW, negative for CW). O(n).
+pub fn polygon_area(poly: List<Vec>) -> F64:
+    let n = poly.len
+    if n < 3: return 0.0
+    var s = 0.0
+    for i in 0..n:
+        s += vcross(poly[i], poly[(i + 1) % n])
+    0.5 * s
+
+/// Clip `poly` to the closed left half-plane of directed line `a -> b`. O(n).
+pub fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>:
+    let n = poly.len
+    if n == 0: return []
+    let d = b - a
+    var out: List<Vec> = []
+    for i in 0..n:
+        let cur = poly[i]
+        let nxt = poly[(i + 1) % n]
+        let sc = vcross(d, cur - a)
+        let sn = vcross(d, nxt - a)
+        if sc >= -eps: out.push(cur)
+        if (sc > eps and sn < -eps) or (sc < -eps and sn > eps):
+            let t = sc / (sc - sn)
+            out.push(cur + (nxt - cur).scale(t))
+    out
+
+/// Smallest enclosing circle of `pts` via deterministic Welzl's algorithm.
+/// Expected O(n). Returns `(center: Vec(0.0, 0.0), radius: 0.0)` for empty input.
+pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, radius: F64):
+    let n = pts.len
+    if n == 0: return (center: Vec(0.0, 0.0), radius: 0.0)
+    if n == 1: return (center: pts[0], radius: 0.0)
+    var ps = copy(pts)
+    var rng = 123456789
+    for i in (1..n).rev:
+        rng = (rng * 1103515245 + 12345) % 2147483647
+        let j = rng % (i + 1)
+        let tmp = ps[i]
+        ps[i] = ps[j]
+        ps[j] = tmp
+    var c = ps[0]
+    var r = 0.0
+    for i in 0..n:
+        if vdist(c, ps[i]) > r + eps:
+            c = ps[i]
+            r = 0.0
+            for j in 0..i:
+                if vdist(c, ps[j]) > r + eps:
+                    c = (ps[i] + ps[j]).scale(0.5)
+                    r = vdist(c, ps[i])
+                    for k in 0..j:
+                        if vdist(c, ps[k]) > r + eps:
+                            if let o = circumcenter(ps[i], ps[j], ps[k], eps: eps):
+                                c = o
+                                r = vdist(c, ps[i])
+    (center: c, radius: r)
+
+fn tri_circle_area(a: Vec, b: Vec, r: F64, eps: F64) -> F64:
+    let r2 = r * r
+    let d = b - a
+    let a2 = vdot(d, d)
+    if a2 <= eps * eps: return 0.0
+    let s = vcross(a, b)
+    if abs(s) <= eps * eps: return 0.0
+    if a.norm2 <= r2 + eps and b.norm2 <= r2 + eps:
+        return 0.5 * s
+    let t_mid = -vdot(a, d) / a2
+    let foot = a + d.scale(t_mid)
+    let h2 = foot.norm2
+    if h2 >= r2 - eps:
+        return 0.5 * r2 * atan2(s, vdot(a, b))
+    let dt = sqrt(max(0.0, r2 - h2) / a2)
+    let t1 = max(0.0, min(1.0, t_mid - dt))
+    let t2 = max(0.0, min(1.0, t_mid + dt))
+    let p1 = a + d.scale(t1)
+    let p2 = a + d.scale(t2)
+    var res = 0.0
+    if t1 > eps: res += 0.5 * r2 * atan2(vcross(a, p1), vdot(a, p1))
+    res += 0.5 * vcross(p1, p2)
+    if 1.0 - t2 > eps: res += 0.5 * r2 * atan2(vcross(p2, b), vdot(p2, b))
+    res
+
+/// Signed area of intersection of disk `(c, r)` with polygon `poly`. O(n).
+pub fn circle_polygon_area(c: Vec, r: F64, poly: List<Vec>, eps: F64 = 1e-9) -> F64:
+    let n = poly.len
+    if n < 3 or r <= eps: return 0.0
+    var total = 0.0
+    for i in 0..n:
+        total += tri_circle_area(poly[i] - c, poly[(i + 1) % n] - c, r, eps)
+    total
 
 // ---- tests
 
@@ -1005,3 +1138,65 @@ fn hull_extreme_and_locate_convex_edge_cases():
                 let idx = hull_extreme(h, dir)
                 let best_dot = max(dot128(p, dir) for p in h)!
                 assert dot128(h[idx], dir) == best_dot
+
+@test
+fn hull_tangents_matches_brute():
+    for _ in 0..50:
+        let h = convex_hull(random_points(24, 8))
+        if h.len < 3: continue
+        for _ in 0..15:
+            let p = Pt(rand(-15, 15), rand(-15, 15))
+            if locate_convex(h, p) >= 0: continue
+            let t = hull_tangents(h, p)
+            for q in h:
+                assert turn(p, h[t.left], q) <= 0
+                assert turn(p, h[t.right], q) >= 0
+
+@test
+fn polygon_area_and_cut():
+    let sq = [Vec(0.0, 0.0), Vec(4.0, 0.0), Vec(4.0, 4.0), Vec(0.0, 4.0)]
+    assert close(polygon_area(sq), 16.0)
+    // Cut square by diagonal (0, 0) -> (4, 4): keeps upper-left triangle (area 8)
+    let tri = polygon_cut(sq, Vec(0.0, 0.0), Vec(4.0, 4.0))
+    assert tri.len == 3 and close(polygon_area(tri), 8.0)
+    // Cut again by x <= 2 (directed line (2, 0) -> (2, 4))
+    let trap = polygon_cut(tri, Vec(2.0, 0.0), Vec(2.0, 4.0))
+    assert close(polygon_area(trap), 6.0)
+    // Cut completely away
+    assert polygon_cut(sq, Vec(0.0, 5.0), Vec(4.0, 5.0)).is_empty
+
+@test
+fn min_enclosing_circle_and_circle_polygon_area():
+    assert min_enclosing_circle([]).radius == 0.0
+    assert close(min_enclosing_circle([Vec(3.0, 4.0)]).radius, 0.0)
+    let sq = [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]
+    let mc = min_enclosing_circle(sq)
+    assert close(mc.center.x, 1.0) and close(mc.center.y, 1.0) and close(mc.radius, sqrt(2.0))
+    // Randomized stress against brute-force over all pairs & triples
+    for _ in 0..25:
+        let pts = [Vec(F64(rand(-10, 10)), F64(rand(-10, 10))) for _ in 0..10]
+        let got = min_enclosing_circle(pts)
+        for p in pts:
+            assert vdist(got.center, p) <= got.radius + 1e-6
+        var best_r = 1.0e18
+        for i in 0..pts.len:
+            for j in i + 1..pts.len:
+                let c2 = (pts[i] + pts[j]).scale(0.5)
+                let r2 = vdist(c2, pts[i])
+                if all(vdist(c2, q) <= r2 + 1e-7 for q in pts): best_r = min(best_r, r2)
+                for k in j + 1..pts.len:
+                    if let c3 = circumcenter(pts[i], pts[j], pts[k]):
+                        let r3 = vdist(c3, pts[i])
+                        if all(vdist(c3, q) <= r3 + 1e-7 for q in pts): best_r = min(best_r, r3)
+        if best_r < 1.0e17:
+            assert close(got.radius, best_r, eps: 1e-5)
+    // Circle-polygon intersection area
+    let pi = 4.0 * atan2(1.0, 1.0)
+    // Disk radius 0.5 strictly inside [0,2]^2 -> area = pi * 0.25
+    assert close(circle_polygon_area(Vec(1.0, 1.0), 0.5, sq), pi * 0.25, eps: 1e-6)
+    // Square strictly inside disk radius 5 -> area = 4.0
+    assert close(circle_polygon_area(Vec(1.0, 1.0), 5.0, sq), 4.0, eps: 1e-6)
+    // Quarter disk at corner (0, 0) with radius 1 -> area = pi / 4
+    assert close(circle_polygon_area(Vec(0.0, 0.0), 1.0, sq), pi * 0.25, eps: 1e-6)
+    // Disk centered at (1, 0) with radius 1 -> half disk = pi / 2
+    assert close(circle_polygon_area(Vec(1.0, 0.0), 1.0, sq), pi * 0.5, eps: 1e-6)

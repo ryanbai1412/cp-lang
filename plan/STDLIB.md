@@ -1417,6 +1417,7 @@ fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
 fn locate_convex(hull: List<Pt>, p: Pt) -> Int // O(log n), I128
 fn diameter2(hull: List<Pt>) -> Int // O(n) rotating calipers
 fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int // O(log n), I128
+fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int) // O(log n), I128
 fn closest_pair2(pts: List<Pt>) -> Int // O(n log n)
 fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) // O(n log n)
 
@@ -1445,6 +1446,10 @@ fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
 struct HalfPlane(p: Vec, dir: Vec)
 fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec> // O(n log n)
+fn polygon_area(poly: List<Vec>) -> F64 // O(n)
+fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(n)
+fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, radius: F64) // expected O(n)
+fn circle_polygon_area(c: Vec, r: F64, poly: List<Vec>, eps: F64 = 1e-9) -> F64 // O(n)
 ```
 
 ### 4.15 `std.grid` and `std.spec`

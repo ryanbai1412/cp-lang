@@ -483,7 +483,8 @@ is evidence, not a proof.
   `closest_pair2`, `closest_pair`) and careful floating-point geometry (`Vec`,
   `close`, `sign_eps`, `project`, `reflect`, `line_dist`, `seg_dist`,
   `line_intersect`, `circumcenter`, `circle_line_intersect`,
-  `circle_intersect`, `HalfPlane`, `half_plane_intersect`).
+  `circle_intersect`, `HalfPlane`, `half_plane_intersect`, `polygon_area`,
+  `polygon_cut`, `min_enclosing_circle`, `circle_polygon_area`, `hull_tangents`).
 - `spec.cp`: structure discovery.
 - `tour.cp`: the examples above, as tests.
 
