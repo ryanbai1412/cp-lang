@@ -1,15 +1,16 @@
-type M = Mod<998_244_353>
+// Codeforces 2135 E2: Beyond the Palindrome (Hard Version).
+// Count length-n arrays in {-1, 0, 1} whose adjacent-sum graph has an even
+// spanning-tree weight, via inclusion-exclusion on the odd-divisor sum
+// odd_div_sum(x) = 2^{v_2(x)} * sigma_1(x / 2^{v_2(x)}).
+const P = 998_244_353
+type M = Mod<P>
 
 let t: 1..=10_000 = read()
 let ns: [0..t](1..=20_000_000) = read()
+let lim = max(n + 1 for n in ns)
+let comb = Comb<P>(lim)
 
-var lim = 1
-for n in ns: lim max= n + 1
-
-let comb = Comb<998_244_353>(lim)
-
-// Multiplicative sieve for odd_div_sum(x) = sum of divisors d | x with x / d odd
-// (= 2^{v_2(x)} * sigma_1(x / 2^{v_2(x)})).
+// Linear multiplicative sieve for odd_div_sum(x).
 var primes = List<Int>()
 var pfac: [0..=lim]Int = 0
 var odd_div_sum: [0..=lim]Int = 0
@@ -47,8 +48,6 @@ for n in ns:
         else:
             if i <= n: cnt[(n + i) / 2] -= 4 * v
 
-    var ans: M = 0
-    for i in 0..=n:
-        ans += comb.inv_fact(i) * comb.inv_fact(n - i) * cnt[i]
-    ans = ans * comb.fact(n) + M(2).pow(n)
-    print(ans)
+    let total = sum(comb.inv_fact(i) * comb.inv_fact(n - i) * cnt[i] for i in 0..=n)
+    let two: M = 2
+    print(total * comb.fact(n) + two.pow(n))
