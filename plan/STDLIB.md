@@ -36,7 +36,7 @@ core feature goes through section 3 and the core lane.
 | containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`, `window`), `List` methods | done: heaps, potential DSU, `FlatMap`, inline bounded `Bitset` (decision 62). zero-allocation `IntervalMap.assign` (decision 67, `cf2237h` 1.66 s to 1.26 s). `TimeTree.run`/`offline_over` (`cf2069f` RSS 356 to 146 MB). `Bitset.subset_sums` in `cf2187d` (4.3x faster). `Dsu.groups()` and `roots`/`values` generators (`cf2245e` 0.50 to 0.13 s). Next: hash maps matched against `gp_hash_table`; Bitset, IntervalMap, Dsu, MonoDeque, FlatMap benches |
 | range structures | 4.10 | done: `Fenwick.first_ge` (decision 57), constant-init `LazySegTree`, `LazyTreap` (decision 68, matched 1.06x), `Flip`/`flip_action` with devirtualized combinators (decision 73), `LazySegTree` over `Bounds<D>` (`cf2207f`), `cf2057d` 2.01x to 1.12x. Next: the 5 open high frictions, all core/codegen-side (`?Struct` niche, `MinHeap.pop`) |
 | graphs | 4.11 `std.graph`, 4.15 `std.grid` | done: `until:` early exit (46.11), hole-based heap sift, one `Paths.back` witness array (decision 78; matched `dijkstra` 1.44x to 1.18x), `cf2135c` on a named component domain. Next: `cf2178h` on `fixed_cost_paths(until:)`; the rest of `dijkstra` (dead-field elimination in codegen) |
-| trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). Label-ordered parent arrays stay loops (`cf2138c1`, `cf2187c`, `cf2089e`; design §5). `Rooted` builds breadth-first with flat child ranges (1.1x matched, decision 86). `LazyLinkCut` with `apply_path` (at most 1.0x matched). Next: cf2237h path paint on `LazyLinkCut` |
+| trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). `PermTree` (`cf2187f1`/`f2`, one construction instead of two copies). Label-ordered parent arrays stay loops (`cf2138c1`, `cf2187c`, `cf2089e`; design §5). `Rooted` builds breadth-first with flat child ranges (1.1x matched, decision 86). `LazyLinkCut` with `apply_path` (at most 1.0x matched). Next: PathPaint waits for a second problem; cf2237h stays on chains + `IntervalMap` |
 | flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched), unchecked hot loops in `std.flow` (min-cost flow 1.14x). Next: matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
 | strings | 4.13; O(1) slice and reverse views | done: slice and reverse views (decision 61). concat and print fusion with buffer reuse (`ucup4s25h` 1.17x, `cf2245a` 1.13x, `cf2096e` 1.05x). `.rev` as a first-class view value; algorithms over `Indexed` (`cf1909g` 1.15x, `cf1943b` 0.98x). matched benches: Z 1.09x, SA 1.05x, SAM 0.97x, Aho–Corasick 1.04x, rolling hash 1.23x. Next: rolling hash (`modp` sign fixup, `eq_sub` bounds checks); ports hand-rolling string algorithms |
 | geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`), `min_bounding_box`, `circle_tangents`, `circle_circle_tangents`, `circles_union_area`, `sqrt` negative trap, 14 matched C++ benches all <=1.09x |
@@ -1240,6 +1240,15 @@ struct LazyLinkCut<V, T, F> // [new] LinkCut's verbs plus path updates under an 
     fn new(act: Action<T, F>, a: ?[V]T = none) -> LazyLinkCut<V, T, F> // O(n)
     fn apply_path(mut self, u: V, v: V, f: F) // amortized O(log n)
     fn get(mut self, v: V) -> T // amortized O(log n): pending tags
+enum PermKind: Leaf, Incr, Decr, Partial, Full
+struct PermTree<I, V, Node> // [new] binary permutation tree of a bijection [I]V
+    fn of(p: [I]V) -> PermTree<I, V, _> // O(n), fresh node domain of 2n - 1
+    kind: [Node]PermKind; first, last: [Node]I; lo, hi: [Node]V; root: Node
+    fn leaf(self, i: I) -> Node // O(1)
+    fn left(self, v: Node) -> Node // O(1), traps on a leaf
+    fn right(self, v: Node) -> Node // O(1), traps on a leaf
+    fn span(self, v: Node) -> Range<I> // O(1), positions
+    fn vals(self, v: Node) -> Range<V> // O(1), exact unless Partial
 struct JumpTree<V> // [new] forest grown leaf by leaf; skew-binary jumps
     fn new() -> JumpTree<V> // O(n), every vertex a root
     fn add(mut self, v: V, p: V) // O(1), hang the lone vertex v below p

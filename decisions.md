@@ -3549,3 +3549,8 @@ count is `r.len`. `.lo`/`.hi` on ranges become errors with a type-directed
   codemod backwards.
 - **Status.** Accepted by the syntax owner; implementation (parser, checker,
   interpreter, codegen, LSP, docs, codemod) is with the syntax lane.
+
+## 102. `PermTree` is a binary permutation tree over a fresh node domain (2026-11-21)
+
+- **Decision.** Add `PermTree.of(p: [I]V)` and `PermKind` to `std.tree`: the binary interval-decomposition tree in O(n), nodes in a fresh domain of 2n - 1 members, kinds `Leaf`, `Incr`, `Decr`, `Partial`, `Full` (a `Partial` left child closed by its right one), with `left`/`right` (trap on a leaf), `span` (positions) and `vals` (value interval, exact unless `Partial`). The tree stays binary rather than ecnerwala's n-ary `FULL` nodes: a chain of `Decr` nodes is the n-ary decreasing node read in order, and both corpus folds walk exactly that chain. `cf2187f1`/`f2` drop their two copies of the construction (634 -> 200 and 750 -> 314 tokens).
+- **Reverse.** Remove `PermTree`/`PermKind` from `stdlib/tree.cp` and restore the hand-built trees in the two ports from history.

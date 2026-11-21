@@ -1528,3 +1528,127 @@ fn lazy_link_cut_keeps_path_order_under_assignment():
     lct.apply_path(V(5), V(4), some(2))
     assert lct.fold_path(V(1), V(5)).best == 4 and lct.fold_path(V(4), V(2)).pre == 2
     assert lct.get(V(3)) == MaxSub.of(-2) and lct.lca(V(2), V(6), V(4)) == some(V(4))
+
+/// How a permutation-tree node joins its two children `l` (earlier positions) and `r`.
+/// `Incr`: `r`'s values sit just above `l`'s; `Decr`: just below; `Partial`: the union is
+/// not an interval on its own and only closes further up; `Full`: `r` fills the gaps of a
+/// `Partial` `l`, closing an interval in neither order.
+pub enum PermKind: Leaf, Incr, Decr, Partial, Full
+
+/// The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node
+/// covers a run of positions, leaves are single positions, a node's children split its run in
+/// two, and the values of every node but a `Partial` one form an interval. Nodes have their own
+/// domain `t.Node` of 2n - 1 members; `kind`, `first`, `last`, `lo` and `hi` are arrays over it. Built in O(n) by one stack pass.
+pub struct PermTree<I, V, Node>:
+    root: Node
+    kind: [Node]PermKind
+    l: [Node]Node
+    r: [Node]Node
+    first: [Node]I
+    last: [Node]I
+    lo: [Node]V
+    hi: [Node]V
+
+    /// The tree of `p`, which must be a bijection between two domains of equal size. O(n).
+    pub fn of(p: [I]V):
+        let n = I.K
+        assert n == V.K and n > 0, "PermTree needs a bijection between equal non-empty domains"
+        domain N = 0..2 * n - 1
+        var prv = [0..n] v => v - 1
+        var nxt = [0..n] v => v + 1
+        for i in I.rev:
+            let x = p[i].ord
+            let (a, b) = (prv[x], nxt[x])
+            if a >= 0: nxt[a] = b
+            if b < n: prv[b] = a
+        var kind: [N]PermKind = Leaf
+        var l: [N]N = N.first
+        var r: [N]N = N.first
+        var first: [N]I = I.first
+        var last: [N]I = I.first
+        var lo: [N]V = V.first
+        var hi: [N]V = V.first
+        type Open = (left: Int, lo: Int, lo_gap: Int, hi: Int, hi_gap: Int, node: Int)
+        var stk = List<Open>()
+        fn join(u: Open, t: Open, k: PermKind, end: Int) -> Open:
+            let id = N(2 * t.left - 1)
+            kind[id] = k
+            l[id] = N(u.node)
+            r[id] = N(t.node)
+            first[id] = I.nth(u.left)
+            last[id] = I.nth(end)
+            let (a, b) = (min(u.lo, t.lo), max(u.hi, t.hi))
+            lo[id] = V.nth(a)
+            hi[id] = V.nth(b)
+            (left: u.left, lo: a, lo_gap: u.lo_gap, hi: b, hi_gap: u.hi_gap, node: id.ord)
+        for i in I:
+            let (j, x) = (i.ord, p[i].ord)
+            while let top = stk.last, x < top.lo_gap or x > top.hi_gap:
+                let t = stk.pop()!
+                stk.push(join(stk.pop()!, t, Partial, j - 1))
+            let leaf = N(2 * j)
+            first[leaf] = i
+            last[leaf] = i
+            lo[leaf] = p[i]
+            hi[leaf] = p[i]
+            var t = (left: j, lo: x, lo_gap: prv[x] + 1, hi: x, hi_gap: nxt[x] - 1, node: 2 * j)
+            while let u = stk.last, max(u.hi, t.hi) - min(u.lo, t.lo) == j - u.left:
+                let k = if t.lo < u.lo: Decr elif t.hi > u.hi: Incr else: Full
+                t = join(stk.pop()!, t, k, j)
+            stk.push(t)
+        assert stk.len == 1
+        PermTree<I, V, N>(N(stk[0].node), kind, l, r, first, last, lo, hi)
+
+    /// The leaf of position `i`. O(1).
+    pub fn leaf(self, i: I) -> Node = Node(2 * i.ord)
+
+    /// The earlier child of `v`, an inner node. O(1).
+    pub fn left(self, v: Node) -> Node:
+        assert kind[v] != Leaf, "a leaf has no children"
+        l[v]
+
+    /// The later child of `v`, an inner node. O(1).
+    pub fn right(self, v: Node) -> Node:
+        assert kind[v] != Leaf, "a leaf has no children"
+        r[v]
+
+    /// The positions `v` covers. O(1).
+    pub fn span(self, v: Node) -> Range<I> = first[v].l..last[v].r
+
+    /// From the least to the greatest value `v` covers: exactly its values unless `v` is `Partial`. O(1).
+    pub fn vals(self, v: Node) -> Range<V> = lo[v].l..hi[v].r
+
+@test
+fn perm_tree_nodes_cover_intervals_of_values():
+    var rng = Rng(5)
+    for _ in 0..200:
+        let n = rand(1, 12)
+        domain I = 0..n
+        var vs = [i for i in 0..n]
+        rng.shuffle(mut vs)
+        let p = [I] i => I(vs[i.ord])
+        let t = PermTree.of(p)
+        assert t.span(t.root) == I.first.l..I.last.r
+        var leaves = 0
+        for v in t.Node:
+            let s = t.span(v)
+            let w = t.vals(v)
+            assert (s.len == w.len) == (t.kind[v] != Partial)
+            for i in s: assert w.contains(p[i])
+            if t.kind[v] == Leaf:
+                leaves += 1
+                assert t.leaf(t.first[v]) == v and s.len == 1
+            else:
+                let (a, b) = (t.left(v), t.right(v))
+                assert t.span(a).r == t.span(b).l and t.span(a).l == s.l and t.span(b).r == s.r
+                if t.kind[v] == Incr: assert t.vals(a).r == t.vals(b).l
+                if t.kind[v] == Decr: assert t.vals(b).r == t.vals(a).l
+        assert leaves == n
+
+@test
+fn perm_tree_of_a_small_permutation():
+    domain I = 0..4
+    let p: [I]I = [I] i => I([1, 0, 3, 2][i.ord])
+    let t = PermTree.of(p)
+    assert t.kind[t.root] == Incr
+    assert t.kind[t.left(t.root)] == Decr and t.span(t.left(t.root)) == I(0).l..I(1).r

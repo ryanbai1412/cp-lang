@@ -263,6 +263,31 @@ struct JumpTree<V>
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V
 ```
 
+A permutation's interval structure is a tree too. `PermTree.of(p)` builds the
+binary permutation tree of a bijection `p: [I]V` in one O(n) stack pass:
+every node covers a run of positions, its children split the run, and its
+values form an interval unless the node is `Partial` (a run that closes only
+further up, as a `Full` node whose right child fills its gaps). Nodes get a fresh domain of 2n - 1 members, so the per-node
+facts are arrays over it and a leaf's missing children are a trap, not a
+`-1`:
+
+```cp
+enum PermKind: Leaf, Incr, Decr, Partial, Full
+struct PermTree<I, V, Node>
+    root: Node; kind: [Node]PermKind; first, last: [Node]I; lo, hi: [Node]V
+    fn of(p: [I]V) -> PermTree<I, V, _>           // O(n)
+    fn leaf(self, i: I) -> Node                   // O(1)
+    fn left(self, v: Node) -> Node                // O(1), traps on a leaf
+    fn right(self, v: Node) -> Node
+    fn span(self, v: Node) -> Range<I>            // positions
+    fn vals(self, v: Node) -> Range<V>            // exact unless Partial
+```
+
+Folds over it are plain recursion (`cf2187f1`, `cf2187f2`). A top-level `fn`
+cannot yet name `t.Node` in its signature (the core gap logged in
+`research/frictions/cf2183f.md`), so today it is written generic,
+`fn depth<Node>(v: Node)`.
+
 Skew-binary jump pointers (one jump per vertex, Myers 1983) keep it at three
 arrays; the queries mean what `Rooted`'s do, so a port switches between them
 by changing the constructor.
