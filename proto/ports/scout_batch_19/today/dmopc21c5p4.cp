@@ -1,26 +1,14 @@
 // DMOPC '21 Contest 5 P4, Permutations & Primes (multi-answer constructive, buildable today-form)
 // original: corpus/submissions/4223525.cpp
-let maxn = 1000005
-domain P = 0..=maxn
-var is_prime: [P]Bool = true
-is_prime[P(0)] = false
-is_prime[P(1)] = false
-var primes: List<Int> = []
+use std.math.{Sieve}
 
-for i in 2..=maxn:
-    if is_prime[P(i)]:
-        primes.push(i)
-        if i * i <= maxn:
-            var j = i * i
-            while j <= maxn:
-                is_prime[P(j)] = false
-                j += i
+let maxn = 1000005
+let sv = Sieve.new(maxn)
 
 fn find_pair(target: Int) -> (Int, Int):
-    for idx in 0..primes.len:
-        let a = primes[idx]
+    for a in sv.primes:
         let b = target - a
-        if b > a and is_prime[P(b)]:
+        if b > a and sv.is_prime(b):
             return (a, b)
     (0, 0)
 
