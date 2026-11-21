@@ -104,7 +104,8 @@ python3 site/bundle.py
 
 The single HTML includes the complete course and reference, full-text keyboard search, an
 editable compiler playground, and the complete trace debugger. It stores
-shared CSS, scripts, gzipped/base64 WASM, and the search index once, with no inline font blobs
+shared CSS, scripts, gzipped/base64 WASM, and the search index (titles only; the
+shell rebuilds each entry's text from its page on load) once, with no inline font blobs
 or automatic network requests. Pages, assets and the search index ship as one more
 gzip/base64 blob that the shell unpacks with `DecompressionStream` on load, which keeps
 the file well under the 2,600,000-byte cap that `site/test_site.py` and

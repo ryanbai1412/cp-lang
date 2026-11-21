@@ -28,6 +28,14 @@
   const packed = Uint8Array.from(atob(data.docs), c => c.charCodeAt(0));
   const unpacked = new Blob([packed]).stream().pipeThrough(new DecompressionStream("gzip"));
   Object.assign(data, JSON.parse(await new Response(unpacked).text()));
+  const parser = new DOMParser();
+  const index = JSON.parse(data.search);
+  for (const entry of index) {
+    const article = parser.parseFromString(data.pages[entry.url] || "", "text/html").querySelector("article");
+    article?.querySelectorAll("details.exercise-sandbox, noscript").forEach(e => e.remove());
+    entry.text = (article?.textContent || "").replace(/\s+/g, " ");
+  }
+  data.search = JSON.stringify(index);
   let activePage;
   function script(source) {
     // Escape closing tags even if future example strings contain HTML.

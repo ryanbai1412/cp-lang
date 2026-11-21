@@ -61,7 +61,9 @@ def bundle():
         app=(ROOT / "assets/app.js").read_text(),
         playground=(ROOT / "assets/playground.js").read_text(),
         course=(ROOT / "assets/course.js").read_text(),
-        search=(target / "search.json").read_text(),
+        # Entry text repeats each page's prose; offline.html rebuilds it from the pages.
+        search=json.dumps([{k: v for k, v in e.items() if k != "text"}
+                           for e in json.loads((target / "search.json").read_text())]),
     )
     payload = dict(
         compiler=(target / "assets/compiler.js").read_text(),
