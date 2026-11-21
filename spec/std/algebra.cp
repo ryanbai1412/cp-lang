@@ -313,6 +313,15 @@ fn max_sub_monoid_laws_and_kadane():
     let b = MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2)
     assert a.rev() == b
 
+/// O(1). Three-way ordering result returned by `cmp`.
+pub enum Ordering:
+    Less
+    Equal
+    Greater
+
+/// O(1). Three-way comparison of `a` and `b`.
+pub fn cmp<T: Ord>(a: T, b: T) -> Ordering = todo
+
 /// O(1). Semiring `(zero, one, add, mul)` for generic matrix products and path algebras.
 pub struct Semiring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T):
     /// O(1). Tropical `(min, +)` semiring on `Int`.

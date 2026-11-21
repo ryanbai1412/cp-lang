@@ -576,18 +576,18 @@ pub fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int = todo
 pub fn continued_fraction(p: Int, q: Int) -> List<Int> = todo
 
 /// O(log max_den). Closest reduced fraction `p / q` (`1 <= q <= max_den`) to `num / den` via Stern-Brocot.
-pub fn best_rational(num: Int, den: Int, max_den: Int) -> Frac = todo
+pub fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio = todo
 
 /// O(1) storage. Exact reduced rational `p / q` (`q > 0`, `gcd(|p|, q) == 1`).
-pub struct Frac(p: Int, q: Int):
+pub struct Ratio(p: Int, q: Int):
     /// O(log min(|p|, |q|)). Reduced fraction `p / q`; traps on `q == 0`.
-    pub fn new(p: Int, q: Int = 1) -> Frac = todo
+    pub fn new(p: Int, q: Int = 1) -> Ratio = todo
 
-    /// O(1). Lift an `Int` to `Frac(n, 1)`.
-    pub fn from_int(n: Int) -> Frac = todo
+    /// O(1). Lift an `Int` to `Ratio(n, 1)`.
+    pub fn from_int(n: Int) -> Ratio = todo
 
     /// O(1). Multiplicative inverse `q / p`; traps on `p == 0`.
-    pub @get fn inv(self) -> Frac = todo
+    pub @get fn inv(self) -> Ratio = todo
 
     /// O(1). Floor `p / q` (Euclidean).
     pub @get fn floor(self) -> Int = todo
@@ -596,27 +596,27 @@ pub struct Frac(p: Int, q: Int):
     pub @get fn ceil(self) -> Int = todo
 
     /// O(1). Absolute value `|p| / q`.
-    pub @get fn abs(self) -> Frac = todo
+    pub @get fn abs(self) -> Ratio = todo
 
-impl Add for Frac:
+impl Add for Ratio:
     fn add(a, b) = todo
 
-impl Sub for Frac:
+impl Sub for Ratio:
     fn sub(a, b) = todo
 
-impl Neg for Frac:
+impl Neg for Ratio:
     fn neg(a) = todo
 
-impl Mul for Frac:
+impl Mul for Ratio:
     fn mul(a, b) = todo
 
-impl Div for Frac:
+impl Div for Ratio:
     fn div(a, b) = todo
 
-impl Ord for Frac:
+impl Ord for Ratio:
     fn lt(a, b) = todo
 
-impl Show for Frac:
+impl Show for Ratio:
     fn show(a) = todo
 
 /// O(n) storage in base-10^9 limbs. Arbitrary-precision signed integer.

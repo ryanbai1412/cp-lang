@@ -9,7 +9,7 @@
 //! compiler. A library module says what it uses: only the program being
 //! checked or run gets the prelude.
 
-use std.algebra.{Action, Desc, Monoid, desc, fold}
+use std.algebra.{Action, Desc, Monoid, Ordering, cmp, desc, fold}
 use std.bag.{BucketCount, SortedBag, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque, LinkedList}
@@ -23,7 +23,7 @@ use std.heap.{MaxHeap, MinHeap}
 use std.interval.{IntervalMap}
 use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
 use std.marks.{Marks}
-use std.math.{Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm}
+use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm, sign}
 use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix}
 use std.search.{bsearch_first, bsearch_last}
