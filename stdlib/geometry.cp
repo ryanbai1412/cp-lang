@@ -467,8 +467,8 @@ pub fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int):
 // ---- closest pair
 
 fn cp_solve(
-    mut ord: List<(p: Pt, id: Int)>,
-    mut buf: List<(p: Pt, id: Int)>,
+    mut ord: List<(x: Int, y: Int, id: Int)>,
+    mut buf: List<(x: Int, y: Int, id: Int)>,
     l: Int,
     r: Int,
 ) -> (a: Int, b: Int, dist2: Int):
@@ -477,8 +477,12 @@ fn cp_solve(
         var ba = ord[l].id
         var bb = ord[l + 1].id
         for i in l..r:
+            let xi = ord[i].x
+            let yi = ord[i].y
             for j in i + 1..r:
-                let d = dist2(ord[i].p, ord[j].p)
+                let dx = xi - ord[j].x
+                let dy = yi - ord[j].y
+                let d = dx * dx + dy * dy
                 if d < best:
                     best = d
                     ba = ord[i].id
@@ -486,14 +490,14 @@ fn cp_solve(
         // sort ord[l..r] by y
         for i in l + 1..r:
             var k = i
-            while k > l and ord[k].p.y < ord[k - 1].p.y:
+            while k > l and ord[k].y < ord[k - 1].y:
                 let tmp = ord[k]
                 ord[k] = ord[k - 1]
                 ord[k - 1] = tmp
                 k -= 1
         return (ba, bb, best)
     let mid = (l + r) / 2
-    let mid_x = ord[mid].p.x
+    let mid_x = ord[mid].x
     let left = cp_solve(mut ord, mut buf, l, mid)
     let right = cp_solve(mut ord, mut buf, mid, r)
     var best = left.dist2
@@ -508,7 +512,7 @@ fn cp_solve(
     var j = mid
     var k = l
     while i < mid and j < r:
-        if ord[i].p.y <= ord[j].p.y:
+        if ord[i].y <= ord[j].y:
             buf[k] = ord[i]
             i += 1
         else:
@@ -526,17 +530,22 @@ fn cp_solve(
     for t in l..r: ord[t] = buf[t]
     // reuse buf[l..r] as the strip scratch buffer (zero allocation per recursive call)
     var s_end = l
+    let best128 = I128(best)
     for t in l..r:
-        let dx = I128(ord[t].p.x) - I128(mid_x)
-        if dx * dx < I128(best):
+        let dx = I128(ord[t].x) - I128(mid_x)
+        if dx * dx < best128:
             buf[s_end] = ord[t]
             s_end += 1
     for si in l..s_end:
+        let xsi = buf[si].x
+        let ysi = buf[si].y
         var sj = si + 1
         while sj < s_end:
-            let dy = I128(buf[sj].p.y) - I128(buf[si].p.y)
+            let dy = I128(buf[sj].y) - I128(ysi)
             if dy * dy >= I128(best): break
-            let d = dist2(buf[si].p, buf[sj].p)
+            let dx = xsi - buf[sj].x
+            let dy_i = ysi - buf[sj].y
+            let d = dx * dx + dy_i * dy_i
             if d < best:
                 best = d
                 ba = buf[si].id
@@ -548,22 +557,29 @@ fn cp_solve(
 /// Requires `pts.len >= 2`. O(n log n).
 pub fn closest_pair2(pts: List<Pt>) -> Int:
     assert pts.len >= 2, "closest_pair2 requires at least 2 points"
-    var ord = [(p: pts[i], id: i) for i in 0..pts.len]
-    sort(mut ord, by: q => q.p)
+    var ord: List<(x: Int, y: Int, id: Int)> = []
+    for i in 0..pts.len: ord.push((x: pts[i].x, y: pts[i].y, id: i))
+    sort(mut ord)
     for i in 1..ord.len:
-        if ord[i].p == ord[i - 1].p: return 0
+        if ord[i].x == ord[i - 1].x and ord[i].y == ord[i - 1].y: return 0
     var buf = copy(ord)
     cp_solve(mut ord, mut buf, 0, ord.len).dist2
 
 /// Closest pair of distinct positions in a domain-indexed point array.
 /// Requires at least 2 points. O(n log n).
 pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
-    let ids = [i for i in D]
+    var ids: List<D> = []
+    var ord: List<(x: Int, y: Int, id: Int)> = []
+    var k = 0
+    for i in D:
+        ids.push(i)
+        let p = pts[i]
+        ord.push((x: p.x, y: p.y, id: k))
+        k += 1
     assert ids.len >= 2, "closest_pair requires at least 2 points"
-    var ord = [(p: pts[ids[k]], id: k) for k in 0..ids.len]
-    sort(mut ord, by: q => q.p)
+    sort(mut ord)
     for i in 1..ord.len:
-        if ord[i].p == ord[i - 1].p:
+        if ord[i].x == ord[i - 1].x and ord[i].y == ord[i - 1].y:
             return (ids[ord[i - 1].id], ids[ord[i].id], 0)
     var buf = copy(ord)
     let res = cp_solve(mut ord, mut buf, 0, ord.len)
@@ -871,10 +887,10 @@ fn sh_seg_cmp(
     cur_x: Int,
     right_eps: Bool,
 ) -> Int:
-    let dx1 = I128(b1.x) - I128(a1.x)
-    let dx2 = I128(b2.x) - I128(a2.x)
-    let lhs = (I128(a1.y) * dx1 + (I128(b1.y) - I128(a1.y)) * (I128(cur_x) - I128(a1.x))) * dx2
-    let rhs = (I128(a2.y) * dx2 + (I128(b2.y) - I128(a2.y)) * (I128(cur_x) - I128(a2.x))) * dx1
+    let dx1 = I128(b1.x - a1.x)
+    let dx2 = I128(b2.x - a2.x)
+    let lhs = (I128(a1.y) * dx1 + I128(b1.y - a1.y) * I128(cur_x - a1.x)) * dx2
+    let rhs = (I128(a2.y) * dx2 + I128(b2.y - a2.y) * I128(cur_x - a2.x)) * dx1
     if lhs != rhs:
         return if lhs < rhs: -1 else: 1
     let c = cross128(b1 - a1, b2 - a2)
@@ -884,10 +900,112 @@ fn sh_seg_cmp(
     if id1 < id2: -1 elif id1 > id2: 1 else: 0
 
 fn sh_seg_above_y(a: Pt, b: Pt, cur_x: Int, y: Int, strict: Bool) -> Bool:
-    let dx = I128(b.x) - I128(a.x)
-    let num = I128(a.y) * dx + (I128(b.y) - I128(a.y)) * (I128(cur_x) - I128(a.x))
+    let dx = I128(b.x - a.x)
+    let num = I128(a.y) * dx + I128(b.y - a.y) * I128(cur_x - a.x)
     let rhs = I128(y) * dx
     if strict: num > rhs else: num >= rhs
+
+fn sh_merge(
+    a: Int,
+    b: Int,
+    mut left_ch: List<Int>,
+    mut right_ch: List<Int>,
+    prio: List<Int>,
+) -> Int:
+    if a == -1: return b
+    if b == -1: return a
+    if prio[a] > prio[b]:
+        let r = sh_merge(right_ch[a], b, mut left_ch, mut right_ch, prio)
+        right_ch[a] = r
+        a
+    else:
+        let l = sh_merge(a, left_ch[b], mut left_ch, mut right_ch, prio)
+        left_ch[b] = l
+        b
+
+fn sh_split_lt(
+    u: Int,
+    id: Int,
+    lo_id: Pt,
+    hi_id: Pt,
+    cur_x: Int,
+    right_eps: Bool,
+    mut left_ch: List<Int>,
+    mut right_ch: List<Int>,
+    lo: List<Pt>,
+    hi: List<Pt>,
+) -> (Int, Int):
+    if u == -1: return (-1, -1)
+    if sh_seg_cmp(lo[u], hi[u], u, lo_id, hi_id, id, cur_x, right_eps) < 0:
+        let (rl, rr) = sh_split_lt(
+            right_ch[u],
+            id,
+            lo_id,
+            hi_id,
+            cur_x,
+            right_eps,
+            mut left_ch,
+            mut right_ch,
+            lo,
+            hi,
+        )
+        right_ch[u] = rl
+        (u, rr)
+    else:
+        let (ll, lr) = sh_split_lt(
+            left_ch[u],
+            id,
+            lo_id,
+            hi_id,
+            cur_x,
+            right_eps,
+            mut left_ch,
+            mut right_ch,
+            lo,
+            hi,
+        )
+        left_ch[u] = lr
+        (ll, u)
+
+fn sh_pop_leftmost(u: Int, mut left_ch: List<Int>, right_ch: List<Int>) -> Int:
+    if u == -1: return -1
+    if left_ch[u] == -1: return right_ch[u]
+    var p = u
+    while left_ch[left_ch[p]] != -1: p = left_ch[p]
+    left_ch[p] = right_ch[left_ch[p]]
+    u
+
+fn sh_leftmost(u0: Int, left_ch: List<Int>) -> Int:
+    var u = u0
+    if u == -1: return -1
+    while left_ch[u] != -1: u = left_ch[u]
+    u
+
+fn sh_rightmost(u0: Int, right_ch: List<Int>) -> Int:
+    var u = u0
+    if u == -1: return -1
+    while right_ch[u] != -1: u = right_ch[u]
+    u
+
+fn sh_first_above_y(
+    u0: Int,
+    cur_x: Int,
+    y: Int,
+    strict: Bool,
+    left_ch: List<Int>,
+    right_ch: List<Int>,
+    lo: List<Pt>,
+    hi: List<Pt>,
+) -> Int:
+    var u = u0
+    var best = -1
+    while u != -1:
+        if sh_seg_above_y(lo[u], hi[u], cur_x, y, strict):
+            best = u
+            u = left_ch[u]
+        else:
+            u = right_ch[u]
+    best
 
 /// Detect whether any two segments in `segs` intersect via Shamos-Hoey sweep
 /// line with exact `I128` comparisons (valid for `|x|, |y| <= 1e12`). Returns
@@ -902,6 +1020,10 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
     // strict == false: kind 0 = non-vert insert, 1 = vertical query, 2 = non-vert delete
     // strict == true:  kind 0 = non-vert delete, 1 = vertical query, 2 = non-vert insert
     var events: List<(x: Int, kind: Int, y: Int, id: Int)> = []
+    var left_ch: List<Int> = []
+    var right_ch: List<Int> = []
+    var prio: List<Int> = []
+    var rng = 987654321
     for i in 0..n:
         let s = segs[i]
         let (p, q) = if s.a.x < s.b.x or (s.a.x == s.b.x and s.a.y <= s.b.y):
@@ -910,6 +1032,10 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
             (s.b, s.a)
         lo.push(p)
         hi.push(q)
+        rng = (rng * 1103515245 + 12345) % 2147483647
+        left_ch.push(-1)
+        right_ch.push(-1)
+        prio.push(rng)
         if p.x == q.x:
             events.push((x: p.x, kind: 1, y: p.y, id: i))
         elif strict:
@@ -920,81 +1046,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
             events.push((x: q.x, kind: 2, y: q.y, id: i))
     sort(mut events)
 
-    // Deterministic treap over active non-vertical segment indices.
-    var left_ch: List<Int> = []
-    var right_ch: List<Int> = []
-    var prio: List<Int> = []
-    var val: List<Int> = []
     var root = -1
-    var rng = 987654321
-
-    fn new_node(id: Int) -> Int:
-        rng = (rng * 1103515245 + 12345) % 2147483647
-        let u = val.len
-        left_ch.push(-1)
-        right_ch.push(-1)
-        prio.push(rng)
-        val.push(id)
-        u
-
-    fn merge(a: Int, b: Int) -> Int:
-        if a == -1: return b
-        if b == -1: return a
-        if prio[a] > prio[b]:
-            right_ch[a] = merge(right_ch[a], b)
-            a
-        else:
-            left_ch[b] = merge(a, left_ch[b])
-            b
-
-    fn split_lt(u: Int, id: Int, cur_x: Int, right_eps: Bool) -> (Int, Int):
-        if u == -1: return (-1, -1)
-        let vid = val[u]
-        if sh_seg_cmp(lo[vid], hi[vid], vid, lo[id], hi[id], id, cur_x, right_eps) < 0:
-            let (rl, rr) = split_lt(right_ch[u], id, cur_x, right_eps)
-            right_ch[u] = rl
-            (u, rr)
-        else:
-            let (ll, lr) = split_lt(left_ch[u], id, cur_x, right_eps)
-            left_ch[u] = lr
-            (ll, u)
-
-    fn split_le(u: Int, id: Int, cur_x: Int, right_eps: Bool) -> (Int, Int):
-        if u == -1: return (-1, -1)
-        let vid = val[u]
-        if sh_seg_cmp(lo[vid], hi[vid], vid, lo[id], hi[id], id, cur_x, right_eps) <= 0:
-            let (rl, rr) = split_le(right_ch[u], id, cur_x, right_eps)
-            right_ch[u] = rl
-            (u, rr)
-        else:
-            let (ll, lr) = split_le(left_ch[u], id, cur_x, right_eps)
-            left_ch[u] = lr
-            (ll, u)
-
-    fn leftmost(u0: Int) -> Int:
-        var u = u0
-        if u == -1: return -1
-        while left_ch[u] != -1: u = left_ch[u]
-        val[u]
-
-    fn rightmost(u0: Int) -> Int:
-        var u = u0
-        if u == -1: return -1
-        while right_ch[u] != -1: u = right_ch[u]
-        val[u]
-
-    fn first_above_y(u0: Int, cur_x: Int, y: Int) -> Int:
-        var u = u0
-        var best = -1
-        while u != -1:
-            let vid = val[u]
-            if sh_seg_above_y(lo[vid], hi[vid], cur_x, y, strict):
-                best = vid
-                u = left_ch[u]
-            else:
-                u = right_ch[u]
-        best
-
     var last_vert_x = 0
     var last_vert_hi = 0
     var last_vert_id = -1
@@ -1010,23 +1062,50 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
                     last_vert_x = cur_x
                     last_vert_hi = hi[id].y
                     last_vert_id = id
-            let cand = first_above_y(root, cur_x, lo[id].y)
+            let cand = sh_first_above_y(root, cur_x, lo[id].y, strict, left_ch, right_ch, lo, hi)
             if cand != -1 and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict: strict):
                 return some((id, cand))
         elif (not strict and ev.kind == 0) or (strict and ev.kind == 2):
-            let (l, r) = split_lt(root, id, cur_x, true)
-            let pred = rightmost(l)
-            let succ = leftmost(r)
-            if pred != -1 and segments_meet(lo[id], hi[id], lo[pred], hi[pred], strict: strict):
+            let lo_id = lo[id]
+            let hi_id = hi[id]
+            let (l, r) = sh_split_lt(
+                root,
+                id,
+                lo_id,
+                hi_id,
+                cur_x,
+                true,
+                mut left_ch,
+                mut right_ch,
+                lo,
+                hi,
+            )
+            let pred = sh_rightmost(l, right_ch)
+            let succ = sh_leftmost(r, left_ch)
+            if pred != -1 and segments_meet(lo_id, hi_id, lo[pred], hi[pred], strict: strict):
                 return some((id, pred))
-            if succ != -1 and segments_meet(lo[id], hi[id], lo[succ], hi[succ], strict: strict):
+            if succ != -1 and segments_meet(lo_id, hi_id, lo[succ], hi[succ], strict: strict):
                 return some((id, succ))
-            root = merge(merge(l, new_node(id)), r)
+            let lm = sh_merge(l, id, mut left_ch, mut right_ch, prio)
+            root = sh_merge(lm, r, mut left_ch, mut right_ch, prio)
         else:
-            let (l, mr) = split_lt(root, id, cur_x, false)
-            let (_, r) = split_le(mr, id, cur_x, false)
-            let pred = rightmost(l)
-            let succ = leftmost(r)
+            let lo_id = lo[id]
+            let hi_id = hi[id]
+            let (l, mr) = sh_split_lt(
+                root,
+                id,
+                lo_id,
+                hi_id,
+                cur_x,
+                false,
+                mut left_ch,
+                mut right_ch,
+                lo,
+                hi,
+            )
+            let r = sh_pop_leftmost(mr, mut left_ch, right_ch)
+            let pred = sh_rightmost(l, right_ch)
+            let succ = sh_leftmost(r, left_ch)
             if pred != -1 and succ != -1 and segments_meet(
                 lo[pred],
                 hi[pred],
@@ -1035,7 +1114,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
                 strict: strict,
             ):
                 return some((pred, succ))
-            root = merge(l, r)
+            root = sh_merge(l, r, mut left_ch, mut right_ch, prio)
     none
 
 // ---- 3D exact integer geometry
@@ -1081,12 +1160,16 @@ pub fn cross3(a: Pt3, b: Pt3) -> Pt3 =
 pub fn dist2_3(a: Pt3, b: Pt3) -> Int = (a - b).norm2
 
 fn face_side128(a: Pt3, b: Pt3, c: Pt3, p: Pt3) -> I128:
-    let (ux, uy, uz) = (I128(b.x) - I128(a.x), I128(b.y) - I128(a.y), I128(b.z) - I128(a.z))
-    let (vx, vy, vz) = (I128(c.x) - I128(a.x), I128(c.y) - I128(a.y), I128(c.z) - I128(a.z))
+    let ux = I128(b.x - a.x)
+    let uy = I128(b.y - a.y)
+    let uz = I128(b.z - a.z)
+    let vx = I128(c.x - a.x)
+    let vy = I128(c.y - a.y)
+    let vz = I128(c.z - a.z)
     let nx = uy * vz - uz * vy
     let ny = uz * vx - ux * vz
     let nz = ux * vy - uy * vx
-    nx * (I128(p.x) - I128(a.x)) + ny * (I128(p.y) - I128(a.y)) + nz * (I128(p.z) - I128(a.z))
+    nx * I128(p.x - a.x) + ny * I128(p.y - a.y) + nz * I128(p.z - a.z)
 
 fn col3(a: Pt3, b: Pt3, c: Pt3) -> Bool:
     let (ux, uy, uz) = (I128(b.x) - I128(a.x), I128(b.y) - I128(a.y), I128(b.z) - I128(a.z))
@@ -1125,29 +1208,46 @@ pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>:
         let tmp = i1
         i1 = i2
         i2 = tmp
-    var faces: List<(Int, Int, Int)> = [(i0, i1, i2), (i0, i3, i1), (i1, i3, i2), (i2, i3, i0)]
-    var mark: [0..n * n]Int = 0
-    var round = 0
-    for i in 0..n:
-        if i == i0 or i == i1 or i == i2 or i == i3: continue
-        round += 1
-        var kept: List<(Int, Int, Int)> = []
-        var vis: List<(Int, Int, Int)> = []
+    domain V = 0..n
+    let p: [V]Pt3 = [pts[v.to_idx] for v in V]
+    let v0 = V.at(i0)
+    let v1 = V.at(i1)
+    let v2 = V.at(i2)
+    let v3 = V.at(i3)
+    var faces: List<(V, V, V)> = [(v0, v1, v2), (v0, v3, v1), (v1, v3, v2), (v2, v3, v0)]
+    var kept: List<(V, V, V)> = []
+    var edges: List<(key: Int, u: V, v: V)> = []
+    for i in V:
+        if i == v0 or i == v1 or i == v2 or i == v3: continue
+        let pi = p[i]
+        var any_vis = false
         for (a, b, c) in faces:
-            if face_side128(pts[a], pts[b], pts[c], pts[i]) > I128(0):
-                vis.push((a, b, c))
-                mark[a * n + b] = round
-                mark[b * n + c] = round
-                mark[c * n + a] = round
+            if face_side128(p[a], p[b], p[c], pi) > I128(0):
+                any_vis = true
+                break
+        if not any_vis: continue
+        kept.clear()
+        edges.clear()
+        for (a, b, c) in faces:
+            if face_side128(p[a], p[b], p[c], pi) > I128(0):
+                let ai = a.to_idx
+                let bi = b.to_idx
+                let ci = c.to_idx
+                edges.push((key: min(ai, bi) * n + max(ai, bi), u: a, v: b))
+                edges.push((key: min(bi, ci) * n + max(bi, ci), u: b, v: c))
+                edges.push((key: min(ci, ai) * n + max(ci, ai), u: c, v: a))
             else:
                 kept.push((a, b, c))
-        if vis.is_empty: continue
-        for (a, b, c) in vis:
-            if mark[b * n + a] != round: kept.push((a, b, i))
-            if mark[c * n + b] != round: kept.push((b, c, i))
-            if mark[a * n + c] != round: kept.push((c, a, i))
-        faces = kept
-    faces
+        sort(mut edges)
+        var ei = 0
+        while ei < edges.len:
+            if ei + 1 < edges.len and edges[ei].key == edges[ei + 1].key:
+                ei += 2
+            else:
+                kept.push((edges[ei].u, edges[ei].v, i))
+                ei += 1
+        swap(mut faces, mut kept)
+    [(a.to_idx, b.to_idx, c.to_idx) for (a, b, c) in faces]
 
 // ---- tests
 
