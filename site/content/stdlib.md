@@ -20,7 +20,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.flow` | `Arc`, `FlowGraph`, `CostFlow`, `max_matching`, `max_weight_matching`, `max_closure`, `gomory_hu`, `global_min_cut` | Dinic, min-cost flow, matchings, closure, bounded flows, cut trees |
 | `std.geometry` | `Pt`, `Vec`, `turn`, `ByAngle`, `convex_hull`, `minkowski_sum`, `closest_pair`, `hull_tangents`, `half_plane_intersect`, `min_enclosing_circle`, `circle_polygon_area` | Exact 2D integer geometry (`I128` predicates, hulls, calipers, closest pair) and careful floating-point geometry |
 | `std.graph` | `Graph`, `Tree<V>`, `bfs`, `dijkstra`, `peel`, `topo`, `scc`, `two_color` | CSR graphs, implicit-neighbor algorithms, `Tree<V>` alias |
-| `std.grid` | `Dir4`, `Dir8`, `step`, `ray` | 4- and 8-direction grid movement helpers |
+| `std.grid` | `adj4`, `adj8`, `step`, `ray`, `Dir4`, `Dir8`, `transposed` | No grid type: a cell is a `(Row, Col)` pair over two domains, so `p.adj4` and `p.adj8` are its in-bounds neighbours, `p.step(d)` and `p.ray(d)` walk a `Dir4`/`Dir8`, and `bfs(p => [q for q in p.adj4 if open[q]], [start])` searches the grid |
 | `std.heap` | `MinHeap`, `MaxHeap` | Binary priority queues |
 | `std.interval` | `IntervalMap` | Maximal-run interval partition over a domain with O(log n) amortized range assign |
 | `std.lazy` | `LazySegTree`, `DualSegTree`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`, `AffineSum`, `affine_sum` | Lazy and dual segment trees and stock actions |

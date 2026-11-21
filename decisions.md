@@ -2500,6 +2500,11 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    and the list form already picks pairs or triples from the tuple shape.
    `euler_walk` takes `directed:` because its `next` cannot say. Reverse:
    add `Graph(edges, directed:)` with the two as spellings.
+9. **`std.grid` stays a thin module over `(R, C)` product domains.** A
+   cell is a pair of domain values, so `[R, C]T` indexes by it and every
+   graph algorithm takes `p => [q for q in p.adj4 if ...]` as `next`; a
+   `Grid` type would only rename the pair. Reverse: add `struct Grid<R, C>`
+   wrapping the cell pair with `adj4`/`adj8` as methods.
 
 ## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
 

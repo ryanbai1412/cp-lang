@@ -35,7 +35,7 @@ core feature goes through section 3 and the core lane.
 | number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | exact-`Int` convolution, cyclic correlation, `Mod<P>`→`Int` (`cf2201e`); `Z.comb(n)` in place of `Comb<P>` (14 friction reports); RNG `pick`/`perm`/`sample` |
 | containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`), `List` methods | `SortedBag` O(1) cursors (`cf2066e`, 6.1x slow); `IntervalMap` (`cf2237h`); `Bits<D>` unifying `Bitset`/`Subset` (`cf2147h`); `List.truncate`/`extend` (`cf2084h`, `cf2178h`); offline divide and conquer over time, `offline_over` (`cf2069f`, `cf2222f`, `cf2237h`) |
 | range structures | 4.10 | `LazySegTree` over `Bounds<D>` with constant init (`cf2207f`) |
-| graphs | 4.11 `std.graph`, 4.15 `std.grid` | (design not yet written) |
+| graphs | 4.11 `std.graph`, 4.15 `std.grid` | `design/stdlib/graphs.md`; `std.grid` stays a thin module over `(R, C)` product domains (decision 46.9); product/enum state domains wait on the core lane |
 | trees | 4.11 `std.tree`, `std.tour` | link-cut tree (`cf2222f`, `cf2237h`) |
 | flows/matching | 4.12 | `FlowGraph.reset()` (`cf2147h`); `max_matching`, `CostFlow` |
 | strings | 4.13 | `manacher`, `AhoCorasick` |
@@ -1478,11 +1478,11 @@ struct Dir8(k: Int)
     @get fn ccw(self) -> Dir8
     @get fn back(self) -> Dir8
     @get fn delta(self) -> (Int, Int)
-fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C)
-fn ray<R, C, D>(self: (R, C), d: D) -> List<(R, C)>
-@get fn adj4<R, C>(self: (R, C)) -> List<(R, C)>
-@get fn adj8<R, C>(self: (R, C)) -> List<(R, C)>
-@get fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T
+fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C) // O(1)
+fn ray<R, C, D>(self: (R, C), d: D) -> List<(R, C)> // O(length of the ray)
+@get fn adj4<R, C>(self: (R, C)) -> List<(R, C)> // O(1)
+@get fn adj8<R, C>(self: (R, C)) -> List<(R, C)> // O(1)
+@get fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T // O(|R| * |C|)
 fn decrease<T>(xs: List<T>) -> ?Int // O(n)
 fn increase<T>(xs: List<T>) -> ?Int // O(n)
 fn convexity_break(xs: List<Int>) -> ?Int // O(n)
