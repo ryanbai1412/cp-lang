@@ -2013,7 +2013,6 @@ Reverse: none needed; this is general range-type lowering.
 7. **The friction detector `negative_slice` gets no lint:** `a[..-k]` is
    already the check error E0309 with the same fix, so the friction script's
    one `wa_trap` is stale. Reverse: none needed.
-<<<<<<< HEAD
 
 ## 36. Symmetric storage, derived domains, and domain iteration helpers (0.3, 2026-11-21)
 
@@ -2045,6 +2044,7 @@ Reverse: none needed; this is general range-type lowering.
   and are queued as the next step in `plan/DOMAINS.md`. Reason: keep commits small and avoid
   shipping half-baked product destructuring. Reverse: implement product-domain packing in `cpl-ir`
   and `cpl-check`.
+<<<<<<< HEAD
 ## 37. Taste review gate (2026-11-21)
 
 37.1. **Ports newer than the dream-first rule need a dream and a review; old ports are a
@@ -2208,3 +2208,35 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
 - **43.4 `cap: none` is 2^60.** An unbounded arc is a capacity no finite cut picks, with room
   for eight of them in a sum before 63-bit overflow. Reason: matches the shipped `FlowGraph.add`;
   a true infinity would need a sum type in the inner loop. Reverse: a `Cap` enum.
+
+## 44. Containers area design (§4.8–4.9, 2026-11-21)
+
+- **44.1 `SortedBag` cursors are read-only opaque handles (`BagCursor`) with O(1) amortized
+  `next_cursor`/`prev_cursor`, plus `entries()`/`entries_rev()` generators.**
+  `SortedBag` adds parent pointers and a recycled free list so removed nodes do not leak RSS
+  (`cf2066e.md` #1, #2). Cursors stay read-only rather than supporting erase-by-cursor because
+  treap split/merge invalidates structural paths and O(log n) erase by key is already fast;
+  the hot path in `cf2066e` is O(1)-per-step local walking (`entries_rev` + `prev`/`next`).
+  `OrderedSet<K>` is its unique-key twin with `rank`, `count_range`, and `first_where` (`cf2262b.md`).
+  Reverse: drop `BagCursor` and parent pointers from `stdlib/bag.cp`.
+- **44.2 `IntervalMap<D, T>.assign` returns `List<(range: Range<D>, val: T)>`, not a `yields`
+  generator.**
+  Returning the overwritten runs guarantees the maximal-run partition invariant always holds even
+  if the caller `break`s or `return`s early, and costs zero extra asymptotic time because total
+  overwritten runs across `q` calls is O(n + q). Built directly over `Range<D>` so callers stay
+  in their nominal domain (`tree.Pre`, `cf2237h.md`).
+  Reverse: change `assign` to `yields` once mutating generators guarantee post-break cleanup.
+- **44.3 `Bitset.subset_sums<D>` uses binary-carry grouping; `shift_or` mutates in place.**
+  Naive `reach.union(reach.shifted(w))` allocates per item and hits a 10x TLE on duplicate
+  weights (`cf2187d.md`). `shift_or(k)` eliminates per-step allocation for custom shift DPs,
+  and `subset_sums<D>(weights)` provides the O(K sqrt(S) / 64) binary-carry knapsack in stdlib.
+  Reverse: remove `subset_sums` or `shift_or` from `stdlib/bitset.cp`.
+- **44.4 `PotentialDsu<V>` and `RollbackArray<D, T>` share `std.dsu.Mark`.**
+  All rollbackable structures in `std.dsu` use the same nominal `Mark` handle and `mark()`/
+  `undo_to(snap)` protocol so multi-structure divide-and-conquer rollback is uniform.
+  Reverse: move `PotentialDsu`/`RollbackArray` back to `examples/local-lib/ds/`.
+- **44.5 `FlatMap<V>` in `std.hashmap` is an explicit opt-in open-addressing `Int` hash table.**
+  Builtin `HashMap<K, V>` remains the default for arbitrary keys; `FlatMap<V>` uses per-instance
+  salted `splitmix64` and backward-shift deletion for low RSS and cache locality on large `Int`
+  key sets without silently substituting for `HashMap`.
+  Reverse: remove `stdlib/hashmap.cp`.
