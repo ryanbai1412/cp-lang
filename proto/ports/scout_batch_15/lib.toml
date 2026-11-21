@@ -1,4 +1,3 @@
-# Proposed graph-connectivity, virtual-tree, min-cost flow, and weighted
-# matching modules for Stage-1 scout batch 15. Ports import them as
-# `use scout.*`; see research/friction-backlog-batch-15.md.
+# Proposed graph-connectivity and virtual-tree modules for Stage-1 scout
+# batch 15. Ports import them as `use scout.*`; see research/friction-backlog-batch-15.md.
 name = "scout"

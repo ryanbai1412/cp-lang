@@ -39,9 +39,8 @@ edits to `stdlib/`:
   the bridge tree directly), `articulation_points`, `biconnected_components`
   (vertex-biconnected blocks), `virtual_tree` on `std.tree.Rooted<V>`,
   and `two_color` (rollback parity union-find is now `std.dsu.ParityDsu`).
-- `flow_ext.cp`: `MinCostFlow` (SPFA + Johnson potentials + Dijkstra) and
-  `max_weight_matching` (O(n^3) Hungarian), cross-tested against each other on
-  random signed matrices.
+- `flow_ext.cp` (removed): its `MinCostFlow` and Hungarian `max_weight_matching`
+  became `std.flow.CostFlow` and `std.flow.max_weight_matching`.
 
 ## Ports and LOC comparison
 
