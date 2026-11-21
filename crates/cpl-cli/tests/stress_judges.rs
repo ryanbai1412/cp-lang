@@ -8,7 +8,7 @@ use std::process::Command;
 
 /// The checkers that compare with the original's answer, so the original
 /// runs as the brute.
-const NEEDS_ANSWER: &[&str] = &["cf2062g", "cf2187b"];
+const NEEDS_ANSWER: &[&str] = &["cf2062g", "cf2066f", "cf2187b"];
 
 fn dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/ports/ecnerwala")

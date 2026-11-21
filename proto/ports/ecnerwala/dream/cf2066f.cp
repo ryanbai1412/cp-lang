@@ -5,11 +5,11 @@
 // threshold x among the segment sums, b is the cool segments in order where
 //   - a segment with sum < x stays as it is,
 //   - a segment with sum >= x becomes a non-empty array with max subarray sum <= x,
-//   - except at most one, the free segment, which becomes anything.
-// For each threshold, largest first, fill
-//   fit[k, j, spent] = segments before cut k can make b[..j], free segment spent or not.
-// A tame piece that may start at cut j may start at any later cut too (a subarray's
-// max subarray sum is no larger), so the latest reachable start is the only one to try.
+//   - except one, the free segment, which becomes anything non-empty.
+// For each threshold, largest first, `came[k, j, spent]` is how the segments
+// before cut k make b[..j], the free segment spent or not. A tame piece that may
+// start at cut j may start at any later cut too (a subarray's max subarray sum is
+// no larger), so the latest reachable start is the only one to try.
 //
 // Output: replace the segments with sum >= x in decreasing sum order, the free one
 // by [x], then replace [x] by its piece. Each step replaces a maximum-sum segment.
@@ -19,64 +19,63 @@ domain PosB = read(1..=500)
 let a: [PosA]-1e6..=1e6 = read()
 let b: [PosB]-1e6..=1e6 = read()
 
-fn cool(r: Range<PosA.bounds>) -> List<Range<PosA.bounds>> =
-    if r.is_empty: []
-    else:
-        let m = a[r].max_subarray(widest: true)
-        cool(r.start..m.lo) + [m] + cool(m.hi..r.end)
+fn cool(r: Range<PosA>) -> List<Range<PosA>>:
+    if r.is_empty: return []
+    let m = a[r].max_subarray(widest: true)
+    cool(r.start..m.start) + [m] + cool(m.end..r.end)
 
-let (domain Seg, span) = cool(PosA.bounds.first..PosA.bounds.last).indexed()
-let sum = [Seg] s => a[span[s]].sum()
+let (domain Seg, span) = cool(PosA.first..=PosA.last).indexed()
+let total = [Seg] s => a[span[s]].sum()
 let mss = [PosB.bounds, PosB.bounds] (l, r) => b[l..r].max_subarray_sum()
 
-struct Plan(piece: [Seg]Range<PosB.bounds>, free: ?Seg)
+struct Back(from: PosB.bounds, spent: Bool)
+struct Plan(piece: [Seg]Range<PosB>, free: Seg)
 
 fn plan(x: Int) -> ?Plan:
-    var fit: [Seg.bounds, PosB.bounds, Bool]Bool = false
-    var came: [Seg, PosB.bounds, Bool]?(PosB.bounds, Bool) = none
-    fit[Seg.bounds.first, PosB.bounds.first, false] = true
-    fn link(s: Seg, j: PosB.bounds, spent: Bool, from: (PosB.bounds, Bool)):
-        fit[s.r, j, spent] = true
-        came[s, j, spent] = from
+    var came: [Seg.bounds, PosB.bounds, Bool]?Back = none
+    fn fit(k: Seg.bounds, j: PosB.bounds, spent: Bool) -> Bool =
+        came[k, j, spent] != none or (
+            k == Seg.bounds.first and j == PosB.bounds.first and not spent
+        )
     for s in Seg:
-        if sum[s] < x:
-            for spent in Bool:
-                for j in PosB.bounds if fit[s.l, j, spent] and b[j..].starts_with(a[span[s]]):
-                    link(s, j + span[s].len, spent, from: (j, spent))
+        if total[s] < x:
+            for spent in [false, true]:
+                for j in PosB.bounds:
+                    if fit(s.l, j, spent) and b[j..].starts_with(a[span[s]]):
+                        came[s.r, j + span[s].len, spent] = Back(j, spent)
         else:
-            for spent in Bool:
+            for spent in [false, true]:
                 var latest: ?PosB.bounds = none
                 for j in PosB.bounds:
-                    if let i = latest:
-                        if mss[i, j]! <= x: link(s, j, spent, from: (i, spent))
-                    if fit[s.l, j, spent]: latest = j
-            if let i = PosB.bounds.first(j => fit[s.l, j, false]):
-                for j in PosB.bounds if j > i: link(s, j, true, from: (i, false))
-
-    var (j, spent) = (PosB.bounds.last, [true, false].first(u => fit[Seg.bounds.last, PosB.bounds.last, u])?)
-    var piece: [Seg]Range<PosB.bounds> = PosB.bounds.first..PosB.bounds.first
+                    if let i = latest, mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
+                    if fit(s.l, j, spent): latest = j
+            if let i = PosB.bounds.first(j => fit(s.l, j, false)):
+                for j in PosB.bounds:
+                    if j > i: came[s.r, j, true] = Back(i, false)
+    var at = Back(PosB.bounds.last, true)
+    if not fit(Seg.bounds.last, at.from, true): return none
+    var piece: [Seg]Range<PosB> = PosB.bounds.first..PosB.bounds.first
     var free: ?Seg = none
     for s in Seg.rev:
-        let (i, before) = came[s, j, spent]!
-        piece[s] = i..j
-        if before != spent: free = s
-        (j, spent) = (i, before)
-    Plan(piece, free)
+        let back = came[s.r, at.from, at.spent]!
+        piece[s] = back.from..at.from
+        if back.spent != at.spent: free = s
+        at = back
+    Plan(piece, free!)
 
-let thresholds = sum.values.distinct().sort(by: x => -x)
-let (x, p) = thresholds.first_some(x => (x, plan(x)?)) else:
+let thresholds = [total[s] for s in Seg].sorted(by: t => -t).distinct()
+let (x, plan_x) = thresholds.first_some(t => plan(t).map(p => (t, p))) else:
     print(-1)
     return
 
 var len = [Seg] s => span[s].len
-let start = s => sum(len[t] for t in Seg.before(s))
+fn start(s: Seg) -> Int = sum(len[t] for t in Seg if t < s)
 var ops: List<(Int, Int, List<Int>)> = []
-for s in Seg.filter(s => sum[s] >= x).sort(by: s => -sum[s]):
-    let into = if p.free == some(s): [x] else: b[p.piece[s]].to_list()
+for s in Seg.filter(s => total[s] >= x).sorted(by: s => -total[s]):
+    let into = if s == plan_x.free: [x] else: b[plan_x.piece[s]].to_list()
     ops.push((start(s) + 1, start(s) + len[s], into))
     len[s] = into.len
-if let s = p.free:
-    ops.push((start(s) + 1, start(s) + 1, b[p.piece[s]].to_list()))
+ops.push((start(plan_x.free) + 1, start(plan_x.free) + 1, b[plan_x.piece[plan_x.free]].to_list()))
 
 print(ops.len)
 for (l, r, into) in ops:
