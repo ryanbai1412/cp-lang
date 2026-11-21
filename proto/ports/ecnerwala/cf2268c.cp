@@ -7,7 +7,7 @@
 // neighbouring boundaries, keeping the extreme boundary of each parity.
 const INF = 1e9
 
-struct Ends(lo: [0..2]Int, hi: [0..2]Int)  // leftmost / rightmost boundary per parity
+struct Ends(lo0: Int, lo1: Int, hi0: Int, hi1: Int)  // leftmost / rightmost boundary per parity
 
 @!multitest
 domain I = read(1..=2e5)
@@ -31,16 +31,15 @@ fn feasible(v: Int) -> Bool:
             peak.fold(I(b.pos)..=I(bounds[t + 1].pos - 1))
         else:
             INF
-        var cur = Ends([INF, INF], [-INF, -INF])
-        cur.lo[b.par] = b.pos
-        cur.hi[b.par] = b.pos
+        var cur = if b.par == 0: Ends(b.pos, INF, b.pos, -INF) else: Ends(INF, b.pos, -INF, b.pos)
         while let s = stk.last, top >= s.top:
             let (m, left) = stk.pop()!
-            if m & v == v and (cur.hi[1] - left.lo[0] > 1 or cur.hi[0] - left.lo[1] > 1):
+            if m & v == v and (cur.hi1 - left.lo0 > 1 or cur.hi0 - left.lo1 > 1):
                 return true
-            for z in 0..2:
-                cur.lo[z] min= left.lo[z]
-                cur.hi[z] max= left.hi[z]
+            cur.lo0 min= left.lo0
+            cur.lo1 min= left.lo1
+            cur.hi0 max= left.hi0
+            cur.hi1 max= left.hi1
         if top < INF: stk.push((top, cur))
     false
 
