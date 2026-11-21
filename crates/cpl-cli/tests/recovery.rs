@@ -22,10 +22,18 @@ fn root() -> PathBuf {
 
 /// The errors `cpl check` reports for `src`, read as if it were at `path`
 /// so that its `cp.toml` libraries resolve.
+///
+/// Each thread keeps one database, so the stdlib and the unbroken items of
+/// a port are checked once rather than once per broken copy, the way the
+/// editor sees a stream of edits.
 fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
-    let mut db = cpl_check::Database::new();
-    db.set_file(path, src);
-    let analysis = db.analyze(path).expect("the file was just set");
+    thread_local! {
+        static DB: std::cell::RefCell<cpl_check::Database> = Default::default();
+    }
+    let analysis = DB.with_borrow_mut(|db| {
+        db.set_file(path, src);
+        db.analyze(path).expect("the file was just set")
+    });
     let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis)
         .into_iter()
         .filter(|d| d.severity == Severity::Error)
@@ -237,20 +245,23 @@ fn score(b: &Broken) -> (Tally, Option<(String, FirstFix)>) {
 fn scoreboard_broken_ports() -> Tally {
     let broken = broken_ports();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let chunk = broken.len().div_ceil(threads).max(1);
+    let ports: Vec<&[Broken]> = broken.chunk_by(|a, b| a.path == b.path).collect();
+    let next = std::sync::atomic::AtomicUsize::new(0);
     type Part<'a> = (BTreeMap<&'a str, Tally>, BTreeMap<String, FirstFix>);
     let per_edit: Vec<Part> = std::thread::scope(|s| {
-        let handles: Vec<_> = broken
-            .chunks(chunk)
-            .map(|part| {
-                s.spawn(move || {
+        let handles: Vec<_> = (0..threads)
+            .map(|_| {
+                s.spawn(|| {
                     let mut m: BTreeMap<&str, Tally> = BTreeMap::new();
                     let mut codes: BTreeMap<String, FirstFix> = BTreeMap::new();
-                    for b in part {
-                        let (tally, first) = score(b);
-                        m.entry(b.edit).or_default().add(tally);
-                        if let Some((code, fix)) = first {
-                            codes.entry(code).or_default().add(fix);
+                    let ordering = std::sync::atomic::Ordering::Relaxed;
+                    while let Some(port) = ports.get(next.fetch_add(1, ordering)) {
+                        for b in *port {
+                            let (tally, first) = score(b);
+                            m.entry(b.edit).or_default().add(tally);
+                            if let Some((code, fix)) = first {
+                                codes.entry(code).or_default().add(fix);
+                            }
                         }
                     }
                     (m, codes)
