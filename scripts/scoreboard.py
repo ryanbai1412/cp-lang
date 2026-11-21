@@ -1784,6 +1784,29 @@ def print_frictions_report(fr, quiet=False):
             print(f"    ! {w}")
 
 
+def dream_gaps():
+    """scripts/dream-gaps.py, which a hyphen keeps from a plain import."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "dream_gaps", os.path.join(os.path.dirname(os.path.abspath(__file__)), "dream-gaps.py")
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def dreams_report(cpl):
+    """What the port dreams need (plan/PORTING.md), without the per-file detail."""
+    dg = dream_gaps()
+    paths = dg.dreams()
+    if not paths or not os.path.isfile(cpl):
+        return None
+    report = dg.report(cpl, paths)
+    report.pop("files")
+    return report
+
+
 def print_summary(report, diff, show_ports=False, quiet=False):
     t = report["totals"]
     m = report["meta"]
@@ -1884,6 +1907,9 @@ def print_summary(report, diff, show_ports=False, quiet=False):
             f"({cur['pass_rate']:.1%}, floor {wfd['min_pass_rate']:.1%}) [{cur['model']}]"
         )
     print_frictions_report(report["frictions"], quiet=quiet)
+    if report.get("dreams"):
+        for line in dream_gaps().summary_lines(report["dreams"], top=5 if quiet else 10):
+            print("  " + line)
 
     if diff["has_baseline"]:
         print(
@@ -2116,6 +2142,7 @@ def main(argv=None):
         return 0
 
     report, diff = build_report(args)
+    report["dreams"] = dreams_report(find_cpl_binary(args.cpl))
     if args.write:
         os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
         with open(args.out, "w", encoding="utf-8") as f:

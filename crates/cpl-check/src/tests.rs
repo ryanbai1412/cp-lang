@@ -942,11 +942,17 @@ fn a_bad_import_is_one_error_on_the_use() {
     assert_eq!(messages(&diags), ["`hidden` is private to `std.dsu`"]);
     assert_eq!(diags[0].code.0, "E0207");
     let diags = check_with(&modules, "use std.dsv.{Dsu}\nlet d = Dsu()\n");
-    assert_eq!(messages(&diags), ["no module `std.dsv`"]);
+    assert_eq!(
+        messages(&diags),
+        ["no module `std.dsv`, and not in the stdlib (yet)"]
+    );
     // A name that was not imported is not in scope, even though the
     // module that defines it was loaded.
     let diags = check_with(&modules, "use std.dsu.{Dsu}\nprint(hidden())\n");
-    assert_eq!(messages(&diags), ["no `hidden` in scope"]);
+    assert_eq!(
+        messages(&diags),
+        ["no `hidden` in scope, and not in the stdlib (yet)"]
+    );
     let cycle = [
         ("a.x", "use a.y.{g}\npub fn f() -> Int = 1\n"),
         ("a.y", "use a.x.{f}\npub fn g() -> Int = 2\n"),
@@ -2182,4 +2188,39 @@ print(apply(5, (a: Str) => 1))
 
     let bad_ty = "let f = (a: Nope) => a\n";
     assert_eq!(codes(bad_ty), vec![cpl_diag::codes::UNKNOWN_TYPE.0]);
+}
+
+#[test]
+fn a_name_in_no_scope_and_no_library_says_so_and_offers_the_closest_library_name() {
+    let diags = check("print(fixed_cost_paths(3))\n");
+    assert_eq!(
+        messages(&diags),
+        ["no `fixed_cost_paths` in scope, and not in the stdlib (yet)"]
+    );
+    let name = crate::prelude::STD_NAMES
+        .iter()
+        .map(|(n, _)| *n)
+        .find(|n| {
+            n.len() > 5
+                && n.chars().all(|c| c.is_ascii_lowercase())
+                && crate::check::closest(
+                    &format!("{n}x"),
+                    crate::prelude::VALUE_NAMES.iter().copied(),
+                )
+                .is_none()
+        })
+        .expect("a stdlib function no prelude name is close to");
+    let typo = format!("{name}x");
+    let diags = check(&format!("print({typo}(1))\n"));
+    assert!(
+        diags[0].message.ends_with("and not in the stdlib (yet)"),
+        "{diags:#?}"
+    );
+    let help = diags[0].help.as_deref().unwrap_or_default();
+    assert!(
+        help.starts_with(&format!("did you mean `{name}`, from `std.")),
+        "{help}"
+    );
+    let fix = &diags[0].fixes[0];
+    assert_eq!(fix.edits.len(), 2, "rename and import: {fix:#?}");
 }

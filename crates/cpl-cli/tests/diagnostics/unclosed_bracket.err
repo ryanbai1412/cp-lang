@@ -7,7 +7,7 @@ error[E0101]: this `[` is never closed
   | - a new statement starts here
   = help: add `]` at the end of the expression
 
-error[E0201]: no `missin` in scope
+error[E0201]: no `missin` in scope, and not in the stdlib (yet)
   --> unclosed_bracket.cp:3:11
   |
 3 | print(n + missin)

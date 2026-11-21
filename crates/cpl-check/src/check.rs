@@ -460,10 +460,27 @@ impl<'a> Checker<'a> {
             }
         }
         let suggestion = closest(name, candidates.iter().map(String::as_str));
-        let message = if value {
-            format!("no `{name}` in scope")
+        // Neither here nor in `stdlib/`: say so, and offer the closest
+        // library name, since a program reaching for a helper that does not
+        // exist yet usually means one that does under another name.
+        // No stdlib export is one character long, and contest code is full
+        // of one-letter locals, so "not in the stdlib" there is only noise.
+        let unknown = suggestion.is_none()
+            && name.chars().nth(1).is_some()
+            && prelude::std_module(name).is_none()
+            && cpl_syntax::removed_keyword(name).is_none();
+        let library = if unknown {
+            closest(name, prelude::STD_NAMES.iter().map(|(n, _)| *n))
         } else {
-            format!("no type or domain named `{name}`")
+            None
+        };
+        let message = match (value, unknown) {
+            (true, false) => format!("no `{name}` in scope"),
+            (false, false) => format!("no type or domain named `{name}`"),
+            (true, true) => format!("no `{name}` in scope, and not in the stdlib (yet)"),
+            (false, true) => {
+                format!("no type or domain named `{name}`, and not in the stdlib (yet)")
+            }
         };
         if let Some(diag) = self.error(code, span, message) {
             match suggestion {
@@ -487,6 +504,16 @@ impl<'a> Checker<'a> {
                     diag.fixes.push(cpl_diag::Fix {
                         title: format!("change to `{s}`"),
                         edits: vec![(span, s)],
+                    });
+                }
+                None if library.is_some() => {
+                    let s = library.unwrap_or_default();
+                    let module = prelude::std_module(&s).unwrap_or_default();
+                    let import = format!("use std.{module}.{{{s}}}");
+                    diag.help = Some(format!("did you mean `{s}`, from `std.{module}`?"));
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("change to `{s}` and add `{import}`"),
+                        edits: vec![(Span::point(0), format!("{import}\n")), (span, s)],
                     });
                 }
                 None if value => {

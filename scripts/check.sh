@@ -194,8 +194,8 @@ cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted;
 # and regression check against research/scoreboard.json.
 step "validation scoreboard (--fast --check against research/scoreboard.json)"
 cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
-python3 -m unittest scripts/test_scoreboard.py >/dev/null \
-    || fail "scripts/test_scoreboard.py failed; rerun: python3 -m unittest scripts/test_scoreboard.py -v"
+python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py >/dev/null \
+    || fail "scoreboard unit tests failed; rerun: python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py -v"
 python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl" \
     || fail "scoreboard regression detected; rerun: python3 scripts/scoreboard.py --fast --check"
 

@@ -716,7 +716,11 @@ impl Database {
                     Diagnostic::error(
                         codes::UNRESOLVED_MODULE,
                         whole,
-                        format!("no module `{dotted}`"),
+                        if first.text == "std" {
+                            format!("no module `{dotted}`, and not in the stdlib (yet)")
+                        } else {
+                            format!("no module `{dotted}`")
+                        },
                     )
                     .with_help(help),
                 );
@@ -758,10 +762,22 @@ impl Database {
                         name.span,
                         format!("`{module_name}` has no `{}`", name.text),
                     );
+                    let std = module_name.starts_with("std.");
                     if let Some(s) =
                         crate::check::closest(&name.text, public.iter().map(String::as_str))
                     {
-                        diag = diag.with_help(format!("did you mean `{s}`?"));
+                        diag = diag.with_help(format!("did you mean `{s}`?")).with_fix(
+                            format!("change to `{s}`"),
+                            name.span,
+                            s,
+                        );
+                    } else if let Some(m) = std
+                        .then(|| crate::prelude::std_module(&name.text))
+                        .flatten()
+                    {
+                        diag = diag.with_help(format!("`{}` is in `std.{m}`", name.text));
+                    } else if std {
+                        diag.message.push_str(", and not in the stdlib (yet)");
                     }
                     diags.push(diag);
                 }
