@@ -3,6 +3,8 @@
 // So the answer is n(n+1)/2 plus sum d(d-1)/2 over gaps d between consecutive free
 // cuts. Item i covers cuts min(p, s) ..< max(p, s): keep, under range add, the cuts
 // at the minimum cover (always 0, since cuts 0 and n are free) and their gap sum.
+use std.math.choose2
+
 @!multitest
 let n: 2..=100_000 = read()
 let q: 1..=100_000 = read()
@@ -12,8 +14,6 @@ var p: [Item]Cut = read()
 var s: [Item]Cut = read()
 
 struct Low(cover: Int, first: Cut, last: Cut, gaps: Int)
-
-fn choose2(k: Int) -> Int = k * (k - 1) / 2
 
 fn merge(a: ?Low, b: ?Low) -> ?Low:
     let a = a ?? return b
