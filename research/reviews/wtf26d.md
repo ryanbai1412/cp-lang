@@ -1,6 +1,6 @@
 # wtf26d
 
-Score: 2/5
+Score: pending cold rescore (rewrote active port to match the 4/5 dream at `1.019x` tokens: `p.inverse()`, `Pos.first`, `unused_pos.scan(min_pos)`, `CondStack` methods, pure `required_cap`/`can_place`/`commit_place`, `pick_witness`, `Val.rev.first`, `q[start..] = suffix`; gated 150/150, 0 lints; emitted C++ grew `20,980 -> 27,232 B` (< 48 KB) from `std.seq.inverse` + `scan` + optional `.filter`/`.map` helpers, rebaselined via `--update`)
 Dream: 4/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
