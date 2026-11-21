@@ -28,8 +28,13 @@ let l = common_prefix_len(xs, ys)
 let r = n - 1 - common_suffix_len(xs, ys)
 if xs[l] != 'A' or xs[r] != 'B': return print("No")
 
-let bs_x = prefix([Int(c == 'B') for c in xs])
-let bs_y = prefix([Int(c == 'B') for c in ys])
+// Each string is one side of the big reversal: reversals on X happen before
+// it, reversals on Y after it (so they are undone, last first).
+enum Side:
+    X
+    Y
+let text = [Side] s => if s == X: xs else: ys
+let count_b = [Side] s => prefix([Int(c == 'B') for c in text[s]])
 
 // Positions at, at + d, ..., end of a string.
 struct Run(at: Int, end: Int, d: Int):
@@ -39,35 +44,35 @@ struct Run(at: Int, end: Int, d: Int):
     fn take(self, k: Int) -> Run = Run(at, at + d * (k - 1), d)
     fn drop(self, k: Int) -> Run = Run(at + d * k, end, d)
 
-// One stretch of the middle seen four ways: x and y read its current
-// contents out of the input strings; before and after place it in the real
-// string before and after the big reversal.
-struct Block(x: Run, y: Run, before: Run, after: Run):
-    fn each(self, f: Run -> Run) -> Block = Block(f(x), f(y), f(before), f(after))
+// One stretch of the middle: per side, where its current letters are read
+// in the input (`seen`) and where it sits in the real string on that side of
+// the big reversal (`real`).
+struct Block(seen: [Side]Run, real: [Side]Run):
+    @get fn len(self) -> Int = seen[X].len
+    fn each(self, f: Run -> Run) -> Block = Block(seen.map(f), real.map(f))
+    fn head(self, s: Side) -> Char = text[s][seen[s].at]
+    fn bs(self, s: Side, k: Int) -> Int = count_b[s].sum(seen[s].take(k).span)
 
-var before_big: List<Run> = []
-var after_big: List<Run> = []
+var ops: [Side]List<Run> = []
 
 fn reconcile(var b: Block):
-    while b.x.len > 0 and xs[b.x.at] == ys[b.y.at]: b = b.each(v => v.drop(1))
-    if b.x.len == 0: return
-    let lead = if xs[b.x.at] == 'B': 1 else: -1
-    fn gap(k: Int) -> Int = bs_x.sum(b.x.take(k).span) - bs_y.sum(b.y.take(k).span)
-    let k = bsearch_last(1..b.x.len, k => gap(k) * lead > 0)! + 1
+    while b.len > 0 and b.head(X) == b.head(Y): b = b.each(v => v.drop(1))
+    if b.len == 0: return
+    let lead = if b.head(X) == 'B': 1 else: -1
+    let k = bsearch_last(1..b.len, k => (b.bs(X, k) - b.bs(Y, k)) * lead > 0)! + 1
     reconcile(b.each(v => v.drop(k)))
     var blk = b.each(v => v.take(k))
-    if xs[blk.x.at] == 'B': blk = blk.each(v => v.rev)
-    if blk.before.d == 1:
-        before_big.push(blk.before)
-        blk.x = blk.x.rev
-    else:
-        after_big.push(blk.after)
-        blk.y = blk.y.rev
+    if blk.head(X) == 'B': blk = blk.each(v => v.rev)
+    // The prefix is A…B on one side and B…A on the other: reverse it on the
+    // side where its real position reads left to right.
+    let side = if blk.real[X].d == 1: X else: Y
+    ops[side].push(blk.real[side])
+    blk.seen[side] = blk.seen[side].rev
     reconcile(blk)
 
 let middle = Run(l + 1, r - 1, 1)
-reconcile(Block(middle, middle.rev, middle, middle.rev))
-let ops = before_big + [Run(l, r, 1)] + after_big.rev
+reconcile(Block(seen: [middle, middle.rev], real: [middle, middle.rev]))
+let plan = ops[X] + [Run(l, r, 1)] + ops[Y].rev
 print("Yes")
-print(ops.len)
-for op in ops: print(op.span.lo + 1, op.span.hi)
+print(plan.len)
+for op in plan: print(op.span.start + 1, op.span.end)
