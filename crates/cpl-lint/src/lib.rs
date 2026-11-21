@@ -264,6 +264,16 @@ pub const FREE_FOLD: Lint = Lint {
     trigger: "let xs = [3, 1, 4]\nprint(sum(xs), count(xs, x => x > 2))\n",
     fix: "let xs = [3, 1, 4]\nprint(xs.sum(), xs.count(x => x > 2))\n",
 };
+pub const BY_TWIN: Lint = Lint {
+    code: Code("L0510"),
+    name: "by_twin",
+    default: Level::Warn,
+    title: "`_by` twin instead of a `by:` option",
+    summary: "`min_by`, `max_by`, `argmax_by`, `runs_by`, `first_ge_by`: pass `by:` to the base operation",
+    explanation: "Keyed sequence operations take a `by:` named option on the base function rather than a `_by` twin: `xs.min(by: k)`, `xs.max(by: k)`, `xs.argmax(by: k)`, `xs.is_sorted(by: k)`, `xs.runs(by: k)`, `xs.run_ranges(by: k)`, `xs.first_ge(x, by: k)`. `cpl lint --fix` rewrites both method and free `_by` calls.",
+    trigger: "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(min_by(xs, s => s.len))\n",
+    fix: "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(xs.min(by: s => s.len))\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -286,6 +296,7 @@ pub const LINTS: &[Lint] = &[
     PUSH_LOOP,
     NONE_CHECK_UNWRAP,
     FREE_FOLD,
+    BY_TWIN,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

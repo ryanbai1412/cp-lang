@@ -14,7 +14,7 @@ let sz = t.subtree_sizes
 var ans: [0..=n]Int = 0
 ans[n] = n
 if n > 1:
-    let excl = max_by(t.children(rt), c => sz[c])!
+    let excl = t.children(rt).max(by: c => sz[c])!
 
     for v in V:
         var mp: Map<Int, Int> = Map()

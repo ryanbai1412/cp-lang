@@ -10,7 +10,7 @@ var m = m0
 var idx = 0
 
 for t in 1..=l:
-    let best = min_by(0..m, i => vals[i])!
+    let best = (0..m).min(by: i => vals[i])!
     vals[best] += 1
     if idx < n and t == a[idx]:
         idx += 1

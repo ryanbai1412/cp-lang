@@ -816,3 +816,22 @@ fn free_fold_becomes_a_method() {
     let math = "domain V = 0..3\nfn sum(a: Int) -> Int = a\nlet xs = [3, 1]\nprint(count(x > 1 for x in xs), min(xs[0], xs[1]), max([xs[0], 2]), sorted(V, by: v => -v.ord), sum(2))\n";
     assert_eq!(taste_codes(math), Vec::<&str>::new());
 }
+
+#[test]
+fn by_twin_becomes_by_option() {
+    let src = "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(min_by(xs, s => s.len), max_by(0..3, i => -i), xs.runs_by(s => s.len), xs.first_ge_by(2, s => s.len))\n";
+    assert_eq!(taste_codes(src), ["L0510"; 4]);
+    assert_eq!(
+        fixed(src),
+        "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(xs.min(by: s => s.len), (0..3).max(by: i => -i), xs.runs(by: s => s.len), xs.first_ge(2, by: s => s.len))\n"
+    );
+    // Domain and comprehension free calls stay free with `by:`.
+    let dom = "domain V = 0..3\nprint(max_by(V, v => v.ord), xs.run_ranges_by(by: x => x))\n";
+    assert_eq!(
+        fixed(dom),
+        "domain V = 0..3\nprint(max(V, by: v => v.ord), xs.run_ranges(by: x => x))\n"
+    );
+    // `chunk_by` takes a binary predicate, not a `by:` key, so it is untouched.
+    let chunk = "let xs = [1, 1, 2]\nprint(xs.chunk_by((a, b) => a == b))\n";
+    assert_eq!(taste_codes(chunk), Vec::<&str>::new());
+}

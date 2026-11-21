@@ -1638,7 +1638,7 @@ fn the_std_name_table_is_read_off_the_standard_library() {
     assert!(names.windows(2).all(|pair| pair[0].0 < pair[1].0));
     assert_eq!(crate::prelude::std_module("Fenwick"), Some("fenwick"));
     assert_eq!(crate::prelude::std_module("no_such_name"), None);
-    assert_eq!(crate::prelude::std_module("min_by"), Some("seq"));
+    assert_eq!(crate::prelude::std_module("runs"), Some("seq"));
 }
 
 /// `plan/STDLIB.md` is the design of the whole surface, so a public
@@ -2290,5 +2290,22 @@ print(bad.x)
             .iter()
             .any(|d| d.code == cpl_diag::codes::MISSING_IMPL && d.message.contains("impl Mul<Str> for Vec")),
         "expected MISSING_IMPL for Vec * Str, got: {diags:#?}"
+    );
+}
+
+#[test]
+fn enumerate_points_to_items() {
+    let free = check("let xs = [1, 2]\nfor (i, x) in enumerate(xs): print(i, x)\n");
+    assert!(!free.is_empty());
+    assert!(
+        free[0].help.as_deref().unwrap_or_default().contains(".items"),
+        "expected `.items` hint on bare `enumerate`: {free:#?}"
+    );
+    let method = check("let xs = [1, 2]\nfor (i, x) in xs.enumerate(): print(i, x)\n");
+    assert!(!method.is_empty());
+    assert!(
+        method[0].message.contains(".items")
+            || method[0].help.as_deref().unwrap_or_default().contains(".items"),
+        "expected `.items` hint on `.enumerate()`: {method:#?}"
     );
 }

@@ -1,5 +1,5 @@
 use std.rand.{Rng}
-use std.seq.{run_ranges_by}
+use std.seq.{run_ranges}
 use std.tree.{Rooted}
 
 // f_u = x ^ (the product of f over the right children down u's left spine), so a node is
@@ -68,7 +68,7 @@ for g in 0..n:
         if let (l, r) = split(v): set[v] = insert(set[l], 0, n, key[r])
     var ranked = [Ranked(set[v], v) for v in by_gen[g]]
     ranked.sort()
-    for r in ranked.run_ranges_by(by: x => pool[x.t].h):
+    for r in ranked.run_ranges(by: x => pool[x.t].h):
         for i in r:
             key[ranked[i].v] = keys
             order.push(ranked[i].v)

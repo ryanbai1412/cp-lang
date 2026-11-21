@@ -189,7 +189,7 @@ Sorted lookup distinguishes sequences from ordered collections by return
 type:
 
 - Sorted `List<T>` and `[D]T`: `first_ge(x)` / `last_le(x)` return the
-  index (`?Int` / `?D`); `first_ge_by` / `last_le_by` take a key function
+  index (`?Int` / `?D`); `first_ge(x, by:)` / `last_le(x, by:)` take a key function
   and return `?Int`.
 - Ordered `Map<K, V>`: `first_ge`, `first_gt`, `last_le`, `last_lt`
   return `?(K, V)` pairs. Missing-key reads `m[k]` trap (use `m.get(k)`
@@ -440,9 +440,9 @@ is evidence, not a proof.
   `heap.cp` (`MinHeap`, `MaxHeap`, with `take`), `deque.cp` (`Deque` with
   `take`), `bag.cp` (`SortedBag` ordered multiset with `rank`/`nth` and
   4-lookups), `bitset.cp`: the data structures.
-- `seq.cp`: `scan`, `bsearch_first` / `bsearch_last`, `min_by` / `max_by`
+- `seq.cp`: `scan`, `bsearch_first` / `bsearch_last`, `min(by:)` / `max(by:)`
   (first-extremum tie-breaking, `none` on empty), `compress` (with range
-  slicing), `Range.l` / `Range.r`, `first_ge_by` / `last_le_by` (`?Int`),
+  slicing), `Range.l` / `Range.r`, `first_ge` / `last_le` (with optional `by:`),
   ordered `Map` 4-lookups (`first_ge`, `first_gt`, `last_le`, `last_lt`
   returning `?(K, V)`), `swap_at`, `List.take`, `List.insert`,
   `List.remove`, `reverse`, `dedup`, `rotate_left` (signed Euclidean `k`),

@@ -14,7 +14,7 @@ for _ in 0..q:
         if cnt > want: break
         if cnt < want:
             let mask = (1 << b) - 1
-            let best_i = max_by(0..n, i => buf[i] & mask)!
+            let best_i = (0..n).max(by: i => buf[i] & mask)!
             let add = (1 << b) - (buf[best_i] & mask)
             ans += add
             buf[best_i] += add

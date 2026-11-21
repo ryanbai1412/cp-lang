@@ -1,7 +1,6 @@
 //! Order-statistic sequence helpers: `ranks`, `lis`, and 2D offline `count_in_rects`.
-use std.seq.{compress, first_ge_by}
+use std.seq.{compress}
 use std.fenwick.{Fenwick}
-use std.seq.{first_ge_by}
 
 /// Dense 0-based sorted rank of every element in `xs`: equal elements get the same rank,
 /// and `ranks([30, 10, 30, 20]) == [2, 0, 2, 1]`. O(n log n).

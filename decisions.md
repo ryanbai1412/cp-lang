@@ -2724,3 +2724,37 @@ the core lane in `plan/OPERATING.md`.
 
 1. **Operator traits accept an optional `Rhs` type argument (defaulting to `Self`) and an optional `type Out = T` associated type (defaulting to the method's return type or `Self`).**
    For example, `impl Mul<F64> for Vec: fn mul(a, k) = Vec(a.x * k, a.y * k)` and `impl Mul<Vec> for Mat2: type Out = Vec; fn mul(lhs, rhs) -> Out = ...` coexist on the same struct alongside homogeneous `impl Mul for Mat2` without colliding in `cpl-check` (keyed by `trait_impl_key`) or `cpl-ir` (dispatched by `(method, rhs_ty)` in `StructInfo.op_methods`). Reason: eliminates `.scale(k)` / `.div(k)` workarounds in `std.geometry` (`research/frictions/cf2138f.md`), `std.mod`, and `std.matrix` with one general mechanism available to all user and stdlib structs, while keeping every existing `impl Add/Sub/Mul/Div for T` unchanged. Reverse: revert `trait_impl_key`/`Def::Impl.trait_args`/`out_ty` in `cpl-check` and `StructInfo.op_methods`/`struct_op_fn_for` in `cpl-ir`.
+
+## 60. Sequence `by:` options replace `_by` twins; `.items` is the one `enumerate` (2026-11-21)
+
+1. **Remove `_by` twins in favour of `by:` on the base operation.**
+   `min_by`, `max_by`, `argmax_by`, `argmin_by`, `is_sorted_by`, `runs_by`,
+   `run_ranges_by`, `first_ge_by`, `last_le_by`, `first_gt_by`, and
+   `last_lt_by` are removed from `stdlib/seq.cp` and `stdlib/prelude.cp`.
+   `min(xs, by: k)` / `xs.min(by: k)` and `max(xs, by: k)` / `xs.max(by: k)`
+   lower in one pass with first-extremum tie-breaking (matching `min`/`max`
+   and `argmax`/`argmin`); `is_sorted`, `runs`, `run_ranges`, `argmax`,
+   `argmin`, `first_ge`, `last_le`, `first_gt`, and `last_lt` take an
+   optional `by: T -> K = x => x` parameter. `chunk_by` stays because it
+   takes a binary adjacency predicate `(T, T) -> Bool`, not a key function.
+   `cpl lint --fix` (L0510 `by_twin`) rewrites both method and free `_by`
+   calls to base + `by:`. Reason: one naming scheme (`AGENTS.md`,
+   `plan/STDLIB.md` §1) without duplicate twin entries. Reverse: re-add the
+   `_by` wrappers in `stdlib/seq.cp` and drop L0510.
+2. **`.items` is the one spelling for index-element iteration; no `enumerate`.**
+   Sequences (`List`, `[D]T`, `Str`, views) and maps both iterate pairs via
+   `.items` (`for (i, x) in xs.items:`), preserving domain index types `D`
+   on `[D]T`. Bare `enumerate(xs)` and `xs.enumerate()` are rejected with a
+   diagnostic pointing directly to `.items`. Reason: one spelling across
+   sequences and maps, already uniform in ports. Reverse: add an `enumerate`
+   helper to `std.seq` and remove the diagnostic hint.
+3. **Variadic `min(a, b, c)` / `max(a, b, c)` already works** in checker,
+   IR (`ExprKind::Builtin(Min/Max, args)`), interpreter, and C++17
+   (`std::min<T>({...})`), including optional skipping; no core extension
+   is needed.
+4. **Wide `Range<I>` binary/ternary searches keep bounds in `I`.**
+   `bsearch_first`, `bsearch_last`, `ternary_max`, and `ternary_min` in
+   `stdlib/seq.cp` track `lo`/`hi` directly in `I` (`lo + (hi - lo) / 2`)
+   rather than `Int` offsets from `r.len`, preventing 64-bit overflow on
+   `Range<I128>` wider than `2^63` while preserving domain-safe `Pos(D)`
+   arithmetic. Reverse: restore `r.len - 1` offset arithmetic.

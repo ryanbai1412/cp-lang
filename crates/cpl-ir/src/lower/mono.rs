@@ -1336,10 +1336,17 @@ impl<'a> Lowerer<'a> {
                 }
             }
             for (param, arg) in ast_params.iter().zip(&matched) {
-                let (Some(pty), Some(arg)) = (&param.ty, arg) else {
+                let Some(pty) = &param.ty else {
                     continue;
                 };
-                let ast::ExprKind::Lambda { params: lparams, body: lbody, .. } = &arg.value.kind else {
+                let expr = match arg {
+                    Some(a) => &a.value,
+                    None => match &param.default {
+                        Some(d) => d,
+                        None => continue,
+                    },
+                };
+                let ast::ExprKind::Lambda { params: lparams, body: lbody, .. } = &expr.kind else {
                     continue;
                 };
                 if let ast::TypeKind::Named { name, args: targs } = &pty.kind {

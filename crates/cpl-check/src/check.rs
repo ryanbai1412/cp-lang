@@ -478,6 +478,7 @@ impl<'a> Checker<'a> {
         let unknown = suggestion.is_none()
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
+            && name != "enumerate"
             && prelude::std_module(name).is_none()
             && cpl_syntax::removed_keyword(name).is_none();
         let library = if unknown {
@@ -504,6 +505,12 @@ impl<'a> Checker<'a> {
                 _ if cpl_syntax::removed_keyword(name).is_some() => {
                     let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
                     diag.help = Some(format!("`{name}` was removed in CP Lang 0.2.2: {fix}"));
+                }
+                _ if name == "enumerate" => {
+                    diag.help = Some(
+                        "CP Lang spells index-element pairs `.items`: `for (i, x) in xs.items:`"
+                            .to_string(),
+                    );
                 }
                 _ if prelude::std_module(name).is_some() => {
                     let module = prelude::std_module(name).unwrap_or_default();

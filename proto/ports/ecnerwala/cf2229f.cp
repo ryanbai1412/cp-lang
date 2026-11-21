@@ -3,7 +3,7 @@
 @!multitest
 let (n, k): (Int, Int) = read()
 let a_in: [0..n]Int = read()
-let best_i = max_by(0..n, i => a_in[i])!
+let best_i = (0..n).max(by: i => a_in[i])!
 let fin = a_in[best_i]
 let a = [a_in[i] for i in 0..n if i != best_i]
 let m = a.len

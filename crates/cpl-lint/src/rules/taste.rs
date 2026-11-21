@@ -5,8 +5,8 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, DISCARDED_RESULT, FREE_FOLD, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL,
-    SEARCH_LOOP, SYMMETRIC_WRITE,
+    File, Finding, BY_TWIN, DISCARDED_RESULT, FREE_FOLD, INDEX_ONLY_LOOP, LOOP_REDUCTION,
+    NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SYMMETRIC_WRITE,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
@@ -71,6 +71,7 @@ impl Visitor for Blocks<'_, '_> {
     fn expr(&mut self, expr: &Expr) {
         self.taste.none_check_unwrap(expr);
         self.taste.free_fold(expr);
+        self.taste.by_twin(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -567,17 +568,22 @@ impl<'a> Taste<'a> {
         }
         let positional = args.iter().all(|a| a.name.is_none() && !a.mutable);
         let fits = match name.as_str() {
-            "sum" | "prod" | "min" | "max" => args.len() == 1 && !seq.mutable,
+            "sum" | "prod" => args.len() == 1 && !seq.mutable,
+            "min" | "max" => {
+                !seq.mutable
+                    && (args.len() == 1
+                        || (args.len() == 2 && args[1].name.as_ref().map(|n| n.text.as_str()) == Some("by")))
+            }
             "count" | "all" | "any" | "first" => args.len() == 2 && positional && is_test(&args[1].value),
             "sorted" => !seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
             "sort" => seq.mutable && args[1..].iter().all(|a| a.name.is_some()),
             _ => false,
         };
         // `sorted(V, by: k)` walks a domain, not a value; `min([a, b, c])`
-        // is the values themselves, waiting on a variadic `min(a, b, c)`.
+        // is a list literal rather than a named sequence.
         let skip = match &seq.value.kind {
             ExprKind::Name(n) => n.starts_with(char::is_uppercase),
-            ExprKind::List(_) => matches!(name.as_str(), "min" | "max"),
+            ExprKind::List(_) => matches!(name.as_str(), "min" | "max") && args.len() == 1,
             _ => false,
         };
         if !fits || skip {
@@ -604,6 +610,118 @@ impl<'a> Taste<'a> {
             edits: vec![(expr.span, call)],
         });
         self.push(&FREE_FOLD, diag);
+    }
+
+    /// `_by` twin (`min_by`, `max_by`, `argmax_by`, `runs_by`, `first_ge_by`, ...):
+    /// rewrite to the base function with a `by:` option.
+    fn by_twin(&mut self, expr: &Expr) {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return;
+        };
+        let twin_info = |name: &str| -> Option<(&'static str, usize, bool)> {
+            // (base_name, extra_args_before_key, takes_mut_seq_in_free_form)
+            match name {
+                "min_by" => Some(("min", 0, false)),
+                "max_by" => Some(("max", 0, false)),
+                "argmax_by" => Some(("argmax", 0, false)),
+                "argmin_by" => Some(("argmin", 0, false)),
+                "sort_by" => Some(("sort", 0, true)),
+                "sorted_by" => Some(("sorted", 0, false)),
+                "is_sorted_by" => Some(("is_sorted", 0, false)),
+                "runs_by" => Some(("runs", 0, false)),
+                "run_ranges_by" => Some(("run_ranges", 0, false)),
+                "first_ge_by" => Some(("first_ge", 1, false)),
+                "last_le_by" => Some(("last_le", 1, false)),
+                "first_gt_by" => Some(("first_gt", 1, false)),
+                "last_lt_by" => Some(("last_lt", 1, false)),
+                _ => None,
+            }
+        };
+
+        // Method form: `xs.<twin>(...args, [by:] k)` -> `xs.<base>(...args, by: k)`
+        if let ExprKind::Field { name: method, .. } = &callee.kind {
+            let Some((base, extra, _)) = twin_info(method.text.as_str()) else {
+                return;
+            };
+            if args.len() != extra + 1 {
+                return;
+            }
+            let key = &args[extra];
+            let key_is_by = key.name.as_ref().map(|n| n.text.as_str()) == Some("by");
+            if key.name.is_some() && !key_is_by {
+                return;
+            }
+            let mut edits = vec![(method.span, base.to_string())];
+            if !key_is_by {
+                edits.push((
+                    Span { start: key.value.span.start, end: key.value.span.start },
+                    "by: ".to_string(),
+                ));
+            }
+            let mut diag = Diagnostic::warning(
+                BY_TWIN.code,
+                method.span,
+                format!("`{}` is replaced by `.{base}(.., by:)`", method.text),
+            )
+            .with_help(format!("use `.{base}(.., by:)`"));
+            diag.fixes.push(Fix {
+                title: format!("use `.{base}(.., by:)`"),
+                edits,
+            });
+            self.push(&BY_TWIN, diag);
+            return;
+        }
+
+        // Free form: `<twin>(seq, ...args, [by:] k)`
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        let Some((base, extra, wants_mut)) = twin_info(name.as_str()) else {
+            return;
+        };
+        if self.declared.contains(name.as_str()) || args.len() != extra + 2 {
+            return;
+        }
+        let seq = &args[0];
+        if seq.name.is_some() || seq.mutable != wants_mut {
+            return;
+        }
+        let key = &args[extra + 1];
+        let key_is_by = key.name.as_ref().map(|n| n.text.as_str()) == Some("by");
+        if key.name.is_some() && !key_is_by {
+            return;
+        }
+        let key_text = self.text(key.value.span);
+        let prefix = if extra == 1 {
+            format!("{}, ", self.text(args[1].value.span))
+        } else {
+            String::new()
+        };
+        let keep_free = extra == 0
+            && matches!(base, "min" | "max" | "sorted")
+            && match &seq.value.kind {
+                ExprKind::Name(n) => n.starts_with(char::is_uppercase),
+                ExprKind::Comprehension { .. } => true,
+                _ => false,
+            };
+        let call = if keep_free {
+            format!("{base}({}, by: {key_text})", self.text(seq.value.span))
+        } else {
+            let recv = self.text(seq.value.span);
+            let recv = if postfix(&seq.value) { recv.to_string() } else { format!("({recv})") };
+            format!("{recv}.{base}({prefix}by: {key_text})")
+        };
+        let mut diag = Diagnostic::warning(
+            BY_TWIN.code,
+            expr.span,
+            format!("`{name}` is replaced by `{base}` with `by:`"),
+        )
+        .with_help(format!("write `{call}`"));
+        diag.fixes.push(Fix {
+            title: format!("use `{base}(.., by:)`"),
+            edits: vec![(expr.span, call)],
+        });
+        self.push(&BY_TWIN, diag);
     }
 
     #[allow(clippy::too_many_arguments)]

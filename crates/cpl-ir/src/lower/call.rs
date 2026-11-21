@@ -2179,8 +2179,221 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    fn apply_key(
+        &mut self,
+        key_ast: &ast::Expr,
+        elem_expr: Expr,
+        out: &mut Vec<Stmt>,
+        span: Span,
+    ) -> Option<Expr> {
+        // `by: f` where `f` is a top-level fn / builtin: wrap as `x => f(x)`.
+        if let ast::ExprKind::Name(fn_name) = &key_ast.kind {
+            if self.lookup(fn_name).is_none() {
+                let at = key_ast.span;
+                let mk_name = |text: &str| ast::Expr {
+                    kind: ast::ExprKind::Name(text.to_string()),
+                    span: at,
+                };
+                let lambda = ast::Expr {
+                    kind: ast::ExprKind::Lambda {
+                        params: vec![ast::Pattern {
+                            kind: ast::PatternKind::Name("x".to_string()),
+                            span: at,
+                        }],
+                        param_tys: Vec::new(),
+                        body: Box::new(ast::Expr {
+                            kind: ast::ExprKind::Call {
+                                callee: Box::new(mk_name(fn_name)),
+                                args: vec![ast::Arg {
+                                    name: None,
+                                    mutable: false,
+                                    value: mk_name("x"),
+                                }],
+                            },
+                            span: at,
+                        }),
+                    },
+                    span: at,
+                };
+                return self.apply_key(&lambda, elem_expr, out, span);
+            }
+        }
+        if let ast::ExprKind::Lambda { params, body, .. } = &key_ast.kind {
+            if params.len() == 1 {
+                self.cx.scopes.push(HashMap::new());
+                let mut pre = Vec::new();
+                let slot = self.loop_var(&params[0], elem_expr.ty.clone(), &mut pre);
+                out.push(Stmt::Let(slot, Some(elem_expr)));
+                out.extend(pre);
+                let key = self.expr(body, None);
+                self.cx.scopes.pop();
+                return Some(key);
+            }
+        }
+        let fv = self.expr(key_ast, None);
+        match &fv.ty {
+            Ty::Fn(ps, ret) if ps.len() == 1 => {
+                let ret = (**ret).clone();
+                Some(self.mk(
+                    ExprKind::CallExpr(Box::new(fv), vec![Arg::Value(elem_expr)]),
+                    ret,
+                    span,
+                ))
+            }
+            Ty::Error => None,
+            _ => {
+                self.error(
+                    codes::BAD_OPERANDS,
+                    key_ast.span,
+                    "`by:` expects a one-argument key function",
+                );
+                None
+            }
+        }
+    }
+
+    fn min_max_by(
+        &mut self,
+        is_max: bool,
+        seq_ast: &ast::Expr,
+        key_ast: &ast::Expr,
+        span: Span,
+    ) -> Expr {
+        if let Some(values) = self.walked(seq_ast) {
+            return self.min_max_by(is_max, &values, key_ast, span);
+        }
+        let name = if is_max { "max" } else { "min" };
+        let at = self.span(span);
+        let (frames, value) = match &seq_ast.kind {
+            ast::ExprKind::Comprehension { body, clauses } => {
+                let frames = self.open_loops(clauses);
+                let value = self.expr(body, None);
+                (frames, value)
+            }
+            _ => {
+                let seq = self.expr(seq_ast, None);
+                let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
+                    Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => {
+                        Some((**elem).clone())
+                    }
+                    _ => None,
+                }) {
+                    Some(e) => e,
+                    None if seq.ty == Ty::Error => return self.err_expr(span),
+                    None => {
+                        let message = format!(
+                            "this needs a sequence of values, not a `{}`",
+                            self.show(&seq.ty)
+                        );
+                        self.error(codes::TYPE_MISMATCH, seq_ast.span, message);
+                        return self.err_expr(span);
+                    }
+                };
+                self.open_seq(seq, elem)
+            }
+        };
+        let elem_ty = value.ty.clone();
+        if elem_ty == Ty::Error {
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        }
+        let local = |slot: Slot, ty: &Ty| Expr {
+            kind: ExprKind::Local(slot),
+            ty: ty.clone(),
+            span: at,
+        };
+        let place = |slot: Slot, ty: &Ty| Place {
+            kind: PlaceKind::Local(slot),
+            ty: ty.clone(),
+            span: at,
+        };
+        let mut inner = Vec::new();
+        let x_slot = self.temp(elem_ty.clone());
+        inner.push(Stmt::Let(x_slot, Some(value)));
+        let Some(key_expr) = self.apply_key(key_ast, local(x_slot, &elem_ty), &mut inner, span) else {
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        };
+        let key_ty = key_expr.ty.clone();
+        if key_ty == Ty::Error {
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        }
+        if !self.ordered(&key_ty) {
+            let message = format!("a `{}` has no order for `{name}`", self.show(&key_ty));
+            self.error(codes::BAD_OPERANDS, key_ast.span, message);
+            self.close_loops(frames, Vec::new());
+            return self.err_expr(span);
+        }
+        let out_ty = Ty::opt(elem_ty.clone());
+        let opt_key_ty = Ty::opt(key_ty.clone());
+        let best_slot = self.temp(out_ty.clone());
+        let best_key_slot = self.temp(opt_key_ty.clone());
+        let k_slot = self.temp(key_ty.clone());
+        inner.push(Stmt::Let(k_slot, Some(key_expr)));
+
+        let bk_is_some = self.mk(
+            ExprKind::IsSome(Box::new(local(best_key_slot, &opt_key_ty))),
+            Ty::Bool,
+            span,
+        );
+        let bk_none = self.mk(ExprKind::Unary(UnOp::Not, Box::new(bk_is_some)), Ty::Bool, span);
+        let bk_val = self.mk(
+            ExprKind::Unwrap(Box::new(local(best_key_slot, &opt_key_ty)), false),
+            key_ty.clone(),
+            span,
+        );
+        let k_val = local(k_slot, &key_ty);
+        let better_cmp = if is_max {
+            self.mk(ExprKind::Cmp(CmpOp::Lt, Box::new(bk_val), Box::new(k_val)), Ty::Bool, span)
+        } else {
+            self.mk(ExprKind::Cmp(CmpOp::Lt, Box::new(k_val), Box::new(bk_val)), Ty::Bool, span)
+        };
+        let take = self.mk(
+            ExprKind::If(
+                Box::new(bk_none),
+                Box::new(self.mk(ExprKind::Bool(true), Ty::Bool, span)),
+                Box::new(better_cmp),
+            ),
+            Ty::Bool,
+            span,
+        );
+        let set_best = Stmt::Assign(
+            place(best_slot, &out_ty),
+            AssignOp::Set,
+            self.mk(ExprKind::Some(Box::new(local(x_slot, &elem_ty))), out_ty.clone(), span),
+        );
+        let set_key = Stmt::Assign(
+            place(best_key_slot, &opt_key_ty),
+            AssignOp::Set,
+            self.mk(ExprKind::Some(Box::new(local(k_slot, &key_ty))), opt_key_ty.clone(), span),
+        );
+        inner.push(Stmt::If(
+            take,
+            Block { stmts: vec![set_best, set_key] },
+            Block::default(),
+        ));
+        let (loops, _) = self.close_loops(frames, inner);
+        let mut stmts = vec![
+            Stmt::Let(best_slot, Some(self.mk(ExprKind::None, out_ty.clone(), span))),
+            Stmt::Let(best_key_slot, Some(self.mk(ExprKind::None, opt_key_ty, span))),
+        ];
+        stmts.extend(loops);
+        stmts.push(Stmt::Give(local(best_slot, &out_ty)));
+        self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
+    }
+
     fn min_max(&mut self, is_max: bool, args: &[ast::Arg], span: Span) -> Expr {
         let name = if is_max { "max" } else { "min" };
+        if let [seq, by_arg] = args {
+            if seq.name.is_none()
+                && !seq.mutable
+                && by_arg.name.as_ref().is_some_and(|n| n.text == "by")
+                && !by_arg.mutable
+            {
+                return self.min_max_by(is_max, &seq.value, &by_arg.value, span);
+            }
+        }
         if let Some(named) = args.iter().find_map(|a| a.name.as_ref()) {
             let message = format!("`{name}` has no argument named `{}`", named.text);
             self.error(codes::UNKNOWN_ARG_NAME, named.span, message);
@@ -2539,10 +2752,16 @@ impl<'a> Lowerer<'a> {
             param_tys: Vec::new(),
             body: Box::new(key),
         });
-        let arg = |value: ast::Expr| ast::Arg { name: None, mutable: false, value };
         let call = mk(ast::ExprKind::Call {
-            callee: Box::new(name(if max { "max_by" } else { "min_by" })),
-            args: vec![arg(picks), arg(by)],
+            callee: Box::new(name(if max { "max" } else { "min" })),
+            args: vec![
+                ast::Arg { name: None, mutable: false, value: picks },
+                ast::Arg {
+                    name: Some(ast::Name { text: "by".to_string(), span: at }),
+                    mutable: false,
+                    value: by,
+                },
+            ],
         });
         self.expr(&call, None)
     }
@@ -3959,7 +4178,7 @@ impl<'a> Lowerer<'a> {
     }
 
 
-    /// Lowers `xs.first_ge(val)`, `xs.last_le(val)`, or `xs.find(val)` on a `List<T>` or 1D `[D]T`.
+    /// Lowers `xs.first_ge(val, [by:])`, `xs.last_le(val, [by:])`, or `xs.find(val)` on a `List<T>` or 1D `[D]T`.
     fn seq_search_method(
         &mut self,
         method: &str,
@@ -3969,9 +4188,34 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
-        let Some(target) = self.one_arg(method, args, &elem, span) else {
-            return self.err_expr(span);
+        let by_key: Option<&ast::Expr> = if method != "find" {
+            match args {
+                [first, second]
+                    if first.name.is_none()
+                        && !first.mutable
+                        && second.name.as_ref().is_some_and(|n| n.text == "by")
+                        && !second.mutable =>
+                {
+                    Some(&second.value)
+                }
+                _ => None,
+            }
+        } else {
+            None
         };
+        let target = if by_key.is_some() {
+            let t = self.expr(&args[0].value, None);
+            if t.ty == Ty::Error {
+                return self.err_expr(span);
+            }
+            t
+        } else {
+            let Some(t) = self.one_arg(method, args, &elem, span) else {
+                return self.err_expr(span);
+            };
+            t
+        };
+        let target_ty = target.ty.clone();
         let idx_ty = match dom {
             Some(d) => Ty::Pos(d),
             None => Ty::Int,
@@ -3982,7 +4226,7 @@ impl<'a> Lowerer<'a> {
             // `vals.first_ge(x)` searches `vals` where it is: holding a
             // field would copy the whole list on every call.
             let c_ref = lw.hold(container, out);
-            let t_slot = lw.temp(elem.clone());
+            let t_slot = lw.temp(target_ty.clone());
             out.push(Stmt::Let(t_slot, Some(target)));
             let t_ref = lw.local(t_slot, span);
             let n_expr = match dom {
@@ -4069,39 +4313,42 @@ impl<'a> Lowerer<'a> {
                 let mid_ref = lw.local(mid_slot, span);
                 let mid_pos = make_idx(lw, mid_ref.clone());
                 let cur = lw.mk(ExprKind::Index(Box::new(c_ref), vec![mid_pos]), elem, span);
-                let go_left = if is_ge {
-                    lw.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(cur), Box::new(t_ref)), Ty::Bool, span)
+                let mut loop_stmts = vec![Stmt::Let(mid_slot, Some(mid))];
+                let cur_val = if let Some(key_ast) = by_key {
+                    let Some(k) = lw.apply_key(key_ast, cur, &mut loop_stmts, span) else {
+                        out.push(Stmt::Give(lw.err_expr(span)));
+                        return;
+                    };
+                    k
                 } else {
-                    lw.mk(ExprKind::Cmp(CmpOp::Gt, Box::new(cur), Box::new(t_ref)), Ty::Bool, span)
+                    cur
                 };
-                let lid = lw.next_loop;
-                lw.next_loop += 1;
-                out.push(Stmt::While(
-                    lid,
-                    cond,
+                let t_cmp = lw.coerce(t_ref, &cur_val.ty, args[0].value.span);
+                let go_left = if is_ge {
+                    lw.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(cur_val), Box::new(t_cmp)), Ty::Bool, span)
+                } else {
+                    lw.mk(ExprKind::Cmp(CmpOp::Gt, Box::new(cur_val), Box::new(t_cmp)), Ty::Bool, span)
+                };
+                loop_stmts.push(Stmt::If(
+                    go_left,
                     Block {
-                        stmts: vec![
-                            Stmt::Let(mid_slot, Some(mid)),
-                            Stmt::If(
-                                go_left,
-                                Block {
-                                    stmts: vec![Stmt::Assign(
-                                        Place { kind: PlaceKind::Local(hi_slot), ty: Ty::Int, span },
-                                        AssignOp::Set,
-                                        mid_ref.clone(),
-                                    )],
-                                },
-                                Block {
-                                    stmts: vec![Stmt::Assign(
-                                        Place { kind: PlaceKind::Local(lo_slot), ty: Ty::Int, span },
-                                        AssignOp::Set,
-                                        lw.int_add(mid_ref, 1),
-                                    )],
-                                },
-                            ),
-                        ],
+                        stmts: vec![Stmt::Assign(
+                            Place { kind: PlaceKind::Local(hi_slot), ty: Ty::Int, span },
+                            AssignOp::Set,
+                            mid_ref.clone(),
+                        )],
+                    },
+                    Block {
+                        stmts: vec![Stmt::Assign(
+                            Place { kind: PlaceKind::Local(lo_slot), ty: Ty::Int, span },
+                            AssignOp::Set,
+                            lw.int_add(mid_ref, 1),
+                        )],
                     },
                 ));
+                let lid = lw.next_loop;
+                lw.next_loop += 1;
+                out.push(Stmt::While(lid, cond, Block { stmts: loop_stmts }));
                 let res = if is_ge {
                     let ok = lw.mk(
                         ExprKind::Cmp(CmpOp::Lt, Box::new(lo_ref.clone()), Box::new(n_ref)),
@@ -4274,6 +4521,11 @@ impl<'a> Lowerer<'a> {
                 }
                 ([], "min" | "max") if !matches!(seq_ty, Some(Ty::Set(_))) => {
                     return self.min_max(name.text == "max", &[seq], span);
+                }
+                ([by_arg], "min" | "max")
+                    if by_arg.name.as_ref().is_some_and(|n| n.text == "by") && !by_arg.mutable =>
+                {
+                    return self.min_max_by(name.text == "max", base, &by_arg.value, span);
                 }
                 ([test], "first") => {
                     if let Some(walk) = self.tested_walk("first", &[seq, test.clone()], true) {

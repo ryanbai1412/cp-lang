@@ -1240,9 +1240,7 @@ impl<'a> Checker<'a> {
             iter = match &iter.kind {
                 ExprKind::Field { base, name } if name.text == "rev" => unparen(base),
                 ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
-                    ExprKind::Field { base, name }
-                        if matches!(name.text.as_str(), "pairs" | "enumerate") =>
-                    {
+                    ExprKind::Field { base, name } if name.text == "pairs" => {
                         unparen(base)
                     }
                     _ => break,

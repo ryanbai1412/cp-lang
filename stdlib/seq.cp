@@ -1,9 +1,9 @@
 //! Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.
 //!
-//! - Reductions & extrema: `prod`, `is_sorted`/`is_sorted_by`, `min_by`/`max_by`, `argmax`/`argmin`/`argmax_by`/`argmin_by`.
+//! - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`).
 //! - Binary & unimodal search: `bsearch_first`, `bsearch_last`, `bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`.
-//! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (and `*_by`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
-//! - Runs, chunking & windows: `runs`, `run_ranges`/`run_ranges_by`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
+//! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
+//! - Runs, chunking & windows: `runs`, `run_ranges`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
 //! - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`).
 //! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `nth_element`, `merge_sorted`.
 //! - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`.
@@ -43,16 +43,8 @@ pub fn prod<S: Seq, T>(it: S) -> T:
     for x in it: out *= x
     out
 
-/// Whether `self` is non-decreasing. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). O(n).
-pub fn is_sorted<S: Seq, T>(self: S) -> Bool:
-    var prev: ?T = none
-    for x in self:
-        if let p = prev, x < p: return false
-        prev = x
-    true
-
-/// Whether `self` is non-decreasing under `by`. Works on any `Seq`. O(n).
-pub fn is_sorted_by<S: Seq, T, K>(self: S, by: T -> K) -> Bool:
+/// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`. O(n).
+pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
     var prev: ?K = none
     for x in self:
         let k = by(x)
@@ -64,26 +56,27 @@ pub fn is_sorted_by<S: Seq, T, K>(self: S, by: T -> K) -> Bool:
 /// along the range; the two ends are checked against that. O(log n) calls of `ok`.
 pub fn bsearch_first<I>(r: Range<I>, ok: I -> Bool) -> ?I:
     if r.is_empty: return none
-    let base = r.first!
-    if not ok(r.last!): return none
-    assert not (ok(base) and not ok(r.last!))  // `ok` must not switch back to false
-    var (lo, hi) = (0, r.len - 1)              // the answer is at an offset in lo..=hi
+    var lo = r.first!
+    var hi = r.last!
+    if not ok(hi): return none
+    assert not (ok(lo) and not ok(hi))  // `ok` must not switch back to false
     while lo < hi:
-        let mid = (lo + hi) / 2
-        if ok((base + mid)!): hi = mid else: lo = mid + 1
-    (base + lo)!
+        let mid = (lo + (hi - lo) / 2)!
+        if ok(mid): hi = mid else: lo = (mid + 1)!
+    lo
 
 /// The last position of `r` where `ok` holds, or `none`. `ok` must be true and then false
 /// along the range. O(log n) calls of `ok`.
 pub fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I:
     if r.is_empty: return none
-    let base = r.first!
-    if not ok(base): return none
-    var (lo, hi) = (0, r.len - 1)
+    var lo = r.first!
+    var hi = r.last!
+    if not ok(lo): return none
     while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        if ok((base + mid)!): lo = mid else: hi = mid - 1
-    (base + lo)!
+        let span = hi - lo
+        let mid = (lo + (span - span / 2))!
+        if ok(mid): lo = mid else: hi = (mid - 1)!
+    lo
 
 /// Fixed-iteration binary search on `[lo, hi]` for monotone `ok` (false then true).
 /// Returns the least `x` in `[lo, hi]` with `ok(x)` to within `(hi - lo) / 2^steps`, or `none`
@@ -100,23 +93,23 @@ pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 /// `f` must be strictly rising then falling (plateaus only at the optimum). O(log |r|) calls of `f`.
 pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
     if r.is_empty: return none
-    let base = r.first!
-    var (lo, hi) = (0, r.len - 1)
+    var lo = r.first!
+    var hi = r.last!
     while lo < hi:
-        let mid = (lo + hi) / 2
-        if f((base + mid)!) < f((base + (mid + 1))!): lo = mid + 1 else: hi = mid
-    (base + lo)!
+        let mid = (lo + (hi - lo) / 2)!
+        if f(mid) < f((mid + 1)!): lo = (mid + 1)! else: hi = mid
+    lo
 
 /// Position minimizing a discrete unimodal function `f` over `r`, or `none` if `r` is empty.
 /// `f` must be strictly falling then rising (plateaus only at the optimum). O(log |r|) calls of `f`.
 pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
     if r.is_empty: return none
-    let base = r.first!
-    var (lo, hi) = (0, r.len - 1)
+    var lo = r.first!
+    var hi = r.last!
     while lo < hi:
-        let mid = (lo + hi) / 2
-        if f((base + mid)!) > f((base + (mid + 1))!): lo = mid + 1 else: hi = mid
-    (base + lo)!
+        let mid = (lo + (hi - lo) / 2)!
+        if f(mid) > f((mid + 1)!): lo = (mid + 1)! else: hi = mid
+    lo
 
 /// Point in `[lo, hi]` maximizing continuous unimodal `f` via golden-section search.
 /// Within `(hi - lo) * 0.618^steps` of the optimum. `steps + 2` calls of `f`.
@@ -202,28 +195,6 @@ pub fn parallel_bsearch<I>(
                 let q = order[at]
                 if ok(q): hi[q] = t else: lo[q] = t + 1
     [if lo[q] == n: none else: (r.first! + lo[q])! for q in 0..queries]
-
-/// The element with the smallest `key`, the first of them on a tie; `none` for nothing.
-pub fn min_by<S, T, K>(it: S, key: T -> K) -> ?T:
-    var best: ?T = none
-    var low: ?K = none
-    for x in it:
-        let k = key(x)
-        if low == none or k < low!:
-            best = x
-            low = k
-    best
-
-/// The element with the largest `key`, the first of them on a tie; `none` for nothing.
-pub fn max_by<S, T, K>(it: S, key: T -> K) -> ?T:
-    var best: ?T = none
-    var high: ?K = none
-    for x in it:
-        let k = key(x)
-        if high == none or high! < k:
-            best = x
-            high = k
-    best
 
 /// Reverse `a` in place.
 pub fn reverse<T>(mut a: List<T>):
@@ -426,15 +397,18 @@ pub fn prev_permutation<T>(mut a: List<T>) -> Bool:
         r -= 1
     true
 
-/// The stretches of equal neighbours, in order: `runs("aabccc")` is `[('a', 2), ('b', 1), ('c', 3)]`.
+/// The stretches of equal neighbours (or equal `by:` keys), in order:
+/// `"aabccc".runs()` is `[('a', 2), ('b', 1), ('c', 3)]`, and
+/// `["ab", "ac", "b"].runs(by: s => s[0])` is `[('a', 2), ('b', 1)]`.
 /// Works on any `Seq` (`Str`, `List<T>`, `[D]T`, `Range<I>`, and O(1) views) without conversion. O(n).
-pub fn runs<S: Seq, T>(self: S) -> List<(val: T, len: Int)>:
-    var out: List<(val: T, len: Int)> = []
+pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<(val: K, len: Int)>:
+    var out: List<(val: K, len: Int)> = []
     for x in self:
-        if out.len > 0 and out[out.len - 1].val == x:
-            out[out.len - 1] = (val: x, len: out[out.len - 1].len + 1)
+        let k = by(x)
+        if out.len > 0 and out[out.len - 1].val == k:
+            out[out.len - 1] = (val: k, len: out[out.len - 1].len + 1)
         else:
-            out.push((val: x, len: 1))
+            out.push((val: k, len: 1))
     out
 
 /// Partition `self` into maximal contiguous `Range<D>` segments where `same(a, b)` holds on
@@ -453,23 +427,8 @@ pub fn chunk_by<D, T>(self: [D]T, same: (T, T) -> Bool) -> yields Range<D>:
     if let s = start, let p = prev:
         yield s..=p
 
-/// Maximal contiguous `Range<D>` runs of equal elements. Zero allocations, O(n).
-pub fn run_ranges<D, T>(self: [D]T) -> yields Range<D>:
-    var start: ?D = none
-    var prev: ?D = none
-    for i in D:
-        if let p = prev:
-            if self[i] != self[p]:
-                yield start!..=p
-                start = i
-        else:
-            start = i
-        prev = i
-    if let s = start, let p = prev:
-        yield s..=p
-
-/// Maximal contiguous `Range<D>` runs sharing the same `by` key. Zero allocations, O(n) calls of `by`.
-pub fn run_ranges_by<D, T, K>(self: [D]T, by: T -> K) -> yields Range<D>:
+/// Maximal contiguous `Range<D>` runs of equal elements (or equal `by:` keys). Zero allocations, O(n).
+pub fn run_ranges<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields Range<D>:
     var start: ?D = none
     var prev: ?D = none
     var prev_key: ?K = none
@@ -491,17 +450,6 @@ pub fn run_ranges_by<D, T, K>(self: [D]T, by: T -> K) -> yields Range<D>:
 pub fn buckets<D, K>(key: [D]K) -> [K]List<D>:
     var out: [K]List<D> = []
     for i in D: out[key[i]].push(i)
-    out
-
-/// The stretches of neighbours with the same `by`, in order, each with its values:
-/// `runs_by(["ab", "ac", "b"], s => s[0])` is `[('a', ["ab", "ac"]), ('b', ["b"])]`.
-/// Works on any `Seq`. O(n).
-pub fn runs_by<S: Seq, T, K>(a: S, by: T -> K) -> List<(key: K, items: List<T>)>:
-    var out: List<(key: K, items: List<T>)> = []
-    for x in a:
-        let k = by(x)
-        if out.len > 0 and out.last!.key == k: out.last!.items.push(x)
-        else: out.push((key: k, items: [x]))
     out
 
 /// For each value of `xs`, in order, the fold with `m` of all the others: what is left when
@@ -580,36 +528,8 @@ pub @get fn ends<D>(self: Range<D>) -> (Int, Int):
     assert self.lo.ord <= self.hi.ord, "the range runs backwards: its end is before its start"
     (self.lo.ord, self.hi.ord)
 
-/// First index in sorted list `xs` with `by(xs[i]) >= target`, or `none`. Returns `?Int`. O(log n).
-pub fn first_ge_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int:
-    if xs.is_empty or by(xs[xs.len - 1]) < target: return none
-    var (lo, hi) = (0, xs.len - 1)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if by(xs[mid]) >= target: hi = mid else: lo = mid + 1
-    lo
-
-/// Last index in sorted list `xs` with `by(xs[i]) <= target`, or `none`. Returns `?Int`. O(log n).
-pub fn last_le_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int:
-    if xs.is_empty or by(xs[0]) > target: return none
-    var (lo, hi) = (0, xs.len - 1)
-    while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        if by(xs[mid]) <= target: lo = mid else: hi = mid - 1
-    lo
-
-/// First index in sorted `self` with `self[i] > target`, or `none`. O(log n).
-pub fn first_gt<D, T>(self: [D]T, target: T) -> ?D:
-    if D.count == 0: return none
-    if self[D.last] <= target: return none
-    var (lo, hi) = (0, D.count - 1)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if self[D.nth(mid)] > target: hi = mid else: lo = mid + 1
-    D.nth(lo)
-
 /// First index in sorted `self` with `by(self[i]) > target`, or `none`. O(log n).
-pub fn first_gt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D:
+pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
     if D.count == 0: return none
     if by(self[D.last]) <= target: return none
     var (lo, hi) = (0, D.count - 1)
@@ -618,18 +538,8 @@ pub fn first_gt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D:
         if by(self[D.nth(mid)]) > target: hi = mid else: lo = mid + 1
     D.nth(lo)
 
-/// Last index in sorted `self` with `self[i] < target`, or `none`. O(log n).
-pub fn last_lt<D, T>(self: [D]T, target: T) -> ?D:
-    if D.count == 0: return none
-    if self[D.first] >= target: return none
-    var (lo, hi) = (0, D.count - 1)
-    while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        if self[D.nth(mid)] < target: lo = mid else: hi = mid - 1
-    D.nth(lo)
-
 /// Last index in sorted `self` with `by(self[i]) < target`, or `none`. O(log n).
-pub fn last_lt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D:
+pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
     if D.count == 0: return none
     if by(self[D.first]) >= target: return none
     var (lo, hi) = (0, D.count - 1)
@@ -899,9 +809,9 @@ fn sorted_lookup_and_linear_search():
     assert a.first_ge(4) == V(4) and a.last_le(3) == V(3) and a.find(10) == V(5)
     assert first(x for x in xs if x > 3) == 7 and first(x for x in xs if x > 10) == none
     let words = ["pear", "fig", "banana", "kiwi"]
-    assert min_by(words, w => w.len) == "fig" and max_by(words, w => w.len) == "banana"
+    assert words.min(by: w => w.len) == "fig" and words.max(by: w => w.len) == "banana"
     let nothing: List<Str> = []
-    assert min_by(nothing, w => w.len) == none
+    assert nothing.min(by: w => w.len) == none
     domain D = 0..5
     assert [w.len for w in D.windows(3)] == [3, 3, 3] and D.windows(3)[1] == (D(1)..=D(3))
 
@@ -978,14 +888,16 @@ fn min_max_by_tie_breaking():
         (20, "second_max"),
         (5, "c"),
     ]
-    assert min_by(items, p => p.0) == (5, "a")
-    assert max_by(items, p => p.0) == (20, "first_max")
-    assert min_by([("x", 1), ("y", 1), ("z", 1)], p => p.1) == ("x", 1)
-    assert max_by([("x", 1), ("y", 1), ("z", 1)], p => p.1) == ("x", 1)
+    assert items.min(by: p => p.0) == (5, "a")
+    assert items.max(by: p => p.0) == (20, "first_max")
+    assert [("x", 1), ("y", 1), ("z", 1)].min(by: p => p.1) == ("x", 1)
+    assert [("x", 1), ("y", 1), ("z", 1)].max(by: p => p.1) == ("x", 1)
     let empty: List<(Int, Str)> = []
-    assert min_by(empty, p => p.0) == none and max_by(empty, p => p.0) == none
-    assert min_by([x for x in items if x.0 < 0], p => p.0) == none
-    assert max_by([x for x in items if x.0 < 0], p => p.0) == none
+    assert empty.min(by: p => p.0) == none and empty.max(by: p => p.0) == none
+    assert [x for x in items if x.0 < 0].min(by: p => p.0) == none
+    assert [x for x in items if x.0 < 0].max(by: p => p.0) == none
+    // Variadic min / max
+    assert min(3, 1, 2) == 1 and max(3, 1, 2) == 3
 
 @test
 fn range_bounds_and_keyed_sorted_lookup():
@@ -995,13 +907,13 @@ fn range_bounds_and_keyed_sorted_lookup():
     assert empty.l == D(4).l and empty.r == D(4).l and empty.l == empty.r
     let seg = D(2)..=D(5)
     assert seg.l == D(2).l and seg.r == D(5).r
-    // first_ge_by / last_le_by return ?Int
+    // first_ge / last_le with by: return ?Int
     let pairs = [(1, "a"), (3, "b"), (3, "c"), (7, "d")]
-    assert first_ge_by(pairs, 3, by: p => p.0) == 1
-    assert first_ge_by(pairs, 4, by: p => p.0) == 3
-    assert first_ge_by(pairs, 9, by: p => p.0) == none
-    assert last_le_by(pairs, 3, by: p => p.0) == 2
-    assert last_le_by(pairs, 0, by: p => p.0) == none
+    assert pairs.first_ge(3, by: p => p.0) == 1
+    assert pairs.first_ge(4, by: p => p.0) == 3
+    assert pairs.first_ge(9, by: p => p.0) == none
+    assert pairs.last_le(3, by: p => p.0) == 2
+    assert pairs.last_le(0, by: p => p.0) == none
 
 @test
 fn list_insert_remove_take_and_swap_at():
@@ -1091,8 +1003,8 @@ fn map_entry_remove_and_four_lookups():
         for q in -12..=12:
             let want_ge = first((k, rm[k]) for k in ks if k >= q)
             let want_gt = first((k, rm[k]) for k in ks if k > q)
-            let want_le = max_by([(k, rm[k]) for k in ks if k <= q], p => p.0)
-            let want_lt = max_by([(k, rm[k]) for k in ks if k < q], p => p.0)
+            let want_le = [(k, rm[k]) for k in ks if k <= q].max(by: p => p.0)
+            let want_lt = [(k, rm[k]) for k in ks if k < q].max(by: p => p.0)
             assert rm.first_ge(q) == want_ge
             assert rm.first_gt(q) == want_gt
             assert rm.last_le(q) == want_le
@@ -1136,14 +1048,11 @@ fn update_starts_from_init_and_then_from_the_value():
     assert best["a"] == 2 and best["b"] == 4 and best.len == 2
 
 @test
-fn runs_by_groups_neighbours_with_the_same_key():
-    let rs = runs_by(["ab", "ac", "b", "ad"], s => s[0])
-    assert rs.len == 3
-    assert rs[0].key == 'a' and rs[0].items == ["ab", "ac"]
-    assert rs[1].key == 'b' and rs[1].items == ["b"]
-    assert rs[2].items == ["ad"]
+fn runs_with_by_groups_neighbours_with_the_same_key():
+    let rs = ["ab", "ac", "b", "ad"].runs(by: s => s[0])
+    assert rs == [('a', 2), ('b', 1), ('a', 1)]
     let none_yet: List<Int> = []
-    assert runs_by(none_yet, x => x).len == 0
+    assert none_yet.runs(by: x => x).len == 0
 
 @test
 fn excl_fold_folds_all_but_one():
@@ -1176,26 +1085,11 @@ fn cyclic_pairs_close_the_ring():
     let empty: List<Int> = []
     assert [p for p in empty.cyclic_pairs()].len == 0
 
-/// The index of the first largest value, or `none` when there is none: `[3, 9, 2, 9].argmax`
-/// is `some(1)`. It is an index of `self`, so `a[a.argmax!]` is the largest value of a
+/// The index of the first largest value (optionally under key `by:`), or `none` when empty:
+/// `[3, 9, 2, 9].argmax` is `some(1)` and `words.argmax(by: w => w.len)` is the index of the
+/// longest word. It is an index of `self`, so `a[a.argmax!]` is the largest value of a
 /// `List<T>`, a `[1..=n]T` or a `[V]T` alike. O(n).
-pub @get fn argmax<D, T>(self: [D]T) -> ?D:
-    var best: ?D = none
-    for i in D:
-        if let b = best, self[i] <= self[b]: continue
-        best = i
-    best
-
-/// The index of the first smallest value, or `none` when there is none. O(n).
-pub @get fn argmin<D, T>(self: [D]T) -> ?D:
-    var best: ?D = none
-    for i in D:
-        if let b = best, self[i] >= self[b]: continue
-        best = i
-    best
-
-/// The index of the first element with the largest `by` key, or `none` when empty. O(n).
-pub fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D:
+pub @get fn argmax<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D:
     var best: ?D = none
     var high: ?K = none
     for i in D:
@@ -1205,8 +1099,8 @@ pub fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D:
             high = k
     best
 
-/// The index of the first element with the smallest `by` key, or `none` when empty. O(n).
-pub fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D:
+/// The index of the first smallest value (optionally under key `by:`), or `none` when empty. O(n).
+pub @get fn argmin<D, T, K>(self: [D]T, by: T -> K = x => x) -> ?D:
     var best: ?D = none
     var low: ?K = none
     for i in D:
@@ -1229,13 +1123,13 @@ fn argmax_and_argmin_give_the_first_best_index():
         let lo = a.argmin ?? -1
         assert all(a[i] > a[lo] for i in 0..lo) and all(a[i] >= a[lo] for i in 0..a.len)
     let words = ["pear", "fig", "banana", "kiwi", "orange"]
-    assert words.argmax_by(w => w.len) == some(2)
-    assert words.argmin_by(w => w.len) == some(1)
+    assert words.argmax(by: w => w.len) == some(2)
+    assert words.argmin(by: w => w.len) == some(1)
     let no_words: List<Str> = []
-    assert no_words.argmax_by(w => w.len) == none and no_words.argmin_by(w => w.len) == none
+    assert no_words.argmax(by: w => w.len) == none and no_words.argmin(by: w => w.len) == none
     domain W = 1..=3
     let ws = [W] i => words[i.to_idx]
-    assert ws.argmax_by(w => w.len) == W(3) and ws.argmin_by(w => w.len) == W(2)
+    assert ws.argmax(by: w => w.len) == W(3) and ws.argmin(by: w => w.len) == W(2)
 
 @test
 fn prod_and_is_sorted_cover_sequences():
@@ -1249,8 +1143,8 @@ fn prod_and_is_sorted_cover_sequences():
     assert prod(x + 1 for x in 1..=4) == 120
     assert [1, 2, 2, 5].is_sorted() and not [1, 3, 2].is_sorted()
     assert empty_int.is_sorted() and [42].is_sorted()
-    assert ["a", "bb", "ccc"].is_sorted_by(by: s => s.len)
-    assert not ["bb", "a", "ccc"].is_sorted_by(by: s => s.len)
+    assert ["a", "bb", "ccc"].is_sorted(by: s => s.len)
+    assert not ["bb", "a", "ccc"].is_sorted(by: s => s.len)
     assert "aabbz".is_sorted() and not "abaz".is_sorted()
     domain V = 1..=4
     let sorted_v = [V] i => i.to_idx * 2
@@ -1295,7 +1189,7 @@ fn chunk_by_run_ranges_buckets_and_chunks():
     // Keyed run_ranges over a domain array
     domain V = 1..=5
     let vals = [V] i => [10, 12, 21, 23, 30][i.to_idx]
-    let tens = [r for r in vals.run_ranges_by(by: x => x / 10)]
+    let tens = [r for r in vals.run_ranges(by: x => x / 10)]
     assert tens == [V(1)..=V(2), V(3)..=V(4), V(5)..=V(5)]
     // Typed buckets
     domain K = 0..3
@@ -1330,8 +1224,8 @@ fn first_gt_and_last_lt_match_linear_scan():
     assert c.last_lt(3) == c.at(1) and c.last_lt(1) == none
     // Keyed lookup and domain array lookup
     let pairs = [(1, "a"), (3, "b"), (3, "c"), (7, "d")]
-    assert pairs.first_gt_by(3, by: p => p.0) == some(3)
-    assert pairs.last_lt_by(3, by: p => p.0) == some(0)
+    assert pairs.first_gt(3, by: p => p.0) == some(3)
+    assert pairs.last_lt(3, by: p => p.0) == some(0)
     domain V = 1..=5
     let va = [V] i => xs[i.to_idx]
     assert va.first_gt(3) == V(4) and va.last_lt(3) == V(1)

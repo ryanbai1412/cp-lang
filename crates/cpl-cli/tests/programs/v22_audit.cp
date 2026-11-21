@@ -1,5 +1,5 @@
 // The v2.2 forms the Blind Critic #5 drafts were written in.
-use std.seq.{min_by, max_by, reverse}
+use std.seq.{reverse}
 use std.algebra.{desc}
 
 fn key(x: Int) -> Int:
@@ -34,15 +34,15 @@ var best: ?F64 = none
 best max= mean
 print("{mean:.2f} {mean:.0f} {best ?? 0.0:.3f} {mean}")
 
-// An ordered set's ends, and the library's `reverse`, `desc`, `min_by`.
+// An ordered set's ends, and the library's `reverse`, `desc`, `min(by:)`.
 var seen = Set<Int>()
 for x in xs: seen.add(x)
 print(seen.first ?? -1, seen.last ?? -1, seen.len)
 reverse(mut xs)
 print(xs)
-sort(mut xs, by: desc)
+xs.sort(by: desc)
 print(xs)
-print(min_by(xs, x => (x - 4) * (x - 4)) ?? -1, max_by(xs, x => x % 4) ?? -1)
+print(xs.min(by: x => (x - 4) * (x - 4)) ?? -1, xs.max(by: x => x % 4) ?? -1)
 
 // A bodyless `@grader fn` is the judge's: it is read and checked, and
 // never called here.

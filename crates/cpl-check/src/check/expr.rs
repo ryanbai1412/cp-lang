@@ -1230,6 +1230,14 @@ impl<'a> Checker<'a> {
                 _ => {}
             }
         }
+        if name.text == "enumerate" && base_ty.is_seq() {
+            let message =
+                "no `enumerate` on sequences; CP Lang spells index-element pairs `.items`".to_string();
+            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                diag.help = Some("use `.items`: `for (i, x) in xs.items:`".to_string());
+            }
+            return Ty::Error;
+        }
         // `xs.items`: each element with its index, a position of `I` for
         // `[I]T` and an `Int` otherwise.
         if name.text == "items" {
