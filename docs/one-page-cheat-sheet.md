@@ -1,7 +1,7 @@
 # CP Lang 0.2.2 — One-Page Contest Cheat Sheet
 
 The contest essentials. Every CP block is a complete program verified with the Rust compiler and C++17.
-The prelude needs no imports: containers, `bsearch_first`, `bsearch_last`, `bfs`, `topo`, `peel`, and `resized` are available immediately.
+The prelude needs no imports.
 
 ## 1. Bindings, numbers, and operators
 
@@ -42,7 +42,7 @@ print(best[V(2)] ?? -1)             // fallback only on none
 - `min=`/`max=` return `Bool`: true exactly when the destination changes. Ties return false.
 - A `none` candidate is skipped; a present candidate improves an empty destination.
 - `+`/`-` lift over numeric optionals; `* / %`, bitwise ops, and `+=`/`-=` do not.
-- `opt!` asserts present; `opt ?? return none` exits early; `if let x = opt` unwraps safely.
+- `opt!` asserts present; `opt ?? return none` exits early; `if let x = opt` unwraps safely; `if let x = opt, x > 0:` guards.
 - `min`/`max` of a possibly empty iterable return `?T`; `sum` is for non-optional numbers.
 - `?T` and `Mod<P>` do not implement `Ord`; sort with an explicit non-optional key.
 - `m[k] ??= init` lazily initializes a missing map entry; map updates use operator identities.
@@ -59,7 +59,7 @@ count[3] += 1
 count.fill(0)
 ```
 
-- `[V]T` uses `v: V`; `[0..n]T` uses `i: Int`. Different nominal domains never mix.
+- `[V]T` uses `v: V`; `[0..n]T` uses `i: Int`. Different nominal domains never mix. `var dp: [0..n][0..4]Int = 0` fills nested arrays.
 - `V.K` is the size; `V.first`/`V.last` require a nonempty domain; `v.to_idx` is zero-based.
 - Array `.first`/`.last` return `?T`, or `none` when empty, not indices; unwrap a known nonempty end with `!`.
 - `v + k` / `v - k` return `?V`; `b - a` returns `Int`; `v.cyc(k)` wraps.
@@ -87,7 +87,7 @@ for i in 3..:                       // open-ended Int range; stop explicitly
 
 - Half-open `l..r`, inclusive `l..=r`; arithmetic binds tighter than ranges.
 - Finite ranges provide `.first`, `.last`, `.mid` (all optional), `.len`, `.is_empty`, `.rev`.
-- `for x in xs if predicate:` filters; `break 'outer` targets a labeled enclosing loop.
+- `for x in xs if predicate:` filters; `break 'outer` targets a labeled enclosing loop; `while let x = q.pop(), x > 0:` drops the `x` failing its guard.
 - Open-ended `Int` ranges need a stopping condition; do not collect an unbounded iteration.
 
 ## 5. Functions, closures, and ownership
@@ -140,7 +140,7 @@ print(out)
 print(s.starts_with("12"), s.find("ab"), 'a'.upper) // YES 3 A
 ```
 
-`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find(p) -> ?Int`, free function `find_all(s, p)` (not `s.find_all`); `Char.lower`/`.upper`/`.digit`.
+`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find(p) -> ?Int`, `s.find_all(p)` (every start, overlaps included); `Char.lower`/`.upper`/`.digit`.
 For nominal string positions, read `let s: [domain S]Char = read()`.
 
 ## 8. Collections and sequence construction
@@ -157,11 +157,11 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 - `List<T>`: `.push`, `.pop -> ?T`, `.insert`, `.remove`, `.swap`, `.first`/`.last -> ?T`, `xs[l..r]`.
 - `Deque<T>`: `.push`/`.pop -> ?T` at back, `.push_front`/`.pop_front -> ?T` at front, `q[i]`; all O(1).
 - `MinHeap<T>`/`MaxHeap<T>`: `.push`, `.pop -> ?T`, `.peek -> ?T`; `desc(x)` flips one key field: `MinHeap<(Desc<Int>, V)>`.
-- `Set<K>`/`SortedBag<K>`: `.add`, `.remove`, membership, `.first_ge`, `.last_le`; bag keeps duplicates.
-- `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value.
+- `Set<K>`/`SortedBag<K>`: `.add`, `.remove`, membership, `.first_ge`, `.last_le`, `.first`, `.last`, `.pop_first()`, `.pop_last()`; bag keeps duplicates.
+- `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value; `.first`, `.pop_first()` give `?(K, V)`.
 - `Bitset<D>`: `.add`, `.remove`, `.toggle`, set operations, `.len` (popcount), `.shifted(k)`.
 - `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `for sub in s.subsets`, `for v in s`.
-- Comprehensions `[f(x) for x in xs if ok(x)]`; `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`.
+- Comprehensions `[f(x) for x in xs if ok(x)]`; `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`, `sorted(0..n, by: f)`.
 - `xs.windows(k)` yields each length-`k` window; `zip(xs, ys)` pairs up to the shorter list.
 - Folds take a monoid such as `+`: `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)` yields `(x, rest)`; `runs`, `runs_by(xs, key)` yields `(key, items)`, `prefix`, `compress`.
 
@@ -204,7 +204,7 @@ for (c, rest) in t.excl_fold(V(1), *, c => down[c] + 1):
 - Grid cells are vertices: `bfs(p => [q for q in p.adj4 if not wall[q]], [(R(0), C(0))])` (`use std.grid.{adj4}`).
 - Unpeeled vertices can be on a cycle **or reachable from one**; not all are cycle vertices.
 - `t.excl_fold(v, m, f)` yields `(child, fold over other children)`, preserving child order.
-- This rerooting step is O(degree(v)), needs no inverse, and works for noncommutative monoids.
+- This rerooting step is O(degree(v)) and needs no inverse, so noncommutative monoids work.
 - `t.Pre`, `t.pos(v)`, `t.sub(v)` support subtrees; `.lca`, `.dist`, `.fold_path` support paths.
 - `a.e` (edge index) needs a graph built from `[E](u: V, v: V)` records: `dijkstra(g, from: [(s, 0)], w: a => wt[a.e])`.
 - Flow: `FlowGraph<V>()`, `.add(u, v, cap)`, `.max_flow(s, t)` over numeric vertex domains.
@@ -227,7 +227,7 @@ print(st.all)                       // 12
 ```
 
 `id` is the identity; `compose(new_f, old_f)` applies the old tag first; `span` counts leaves.
-`SegTree<D,T>(+, a)` accepts operators or a `Monoid`; lazy trees accept `AddSum` and other stock actions.
+`SegTree<D,T>(+, a)` accepts operators or a `Monoid`; lazy trees accept `AddSum` and other stock actions. `.fold(..)`, `.fold(l..)`, `.fold(..=r)` work.
 `Fenwick`: `.add`/`.sum`/`.kth(k) -> ?D`; `SparseTable`: nonempty `.fold`; segment trees: `.set`/`.fold`/`.all`.
 
 ## 12. Input, memoization, and testing
@@ -245,6 +245,6 @@ print(pref(V.last))
 debug(n, a)                        // local stderr; stripped on judge
 ```
 
-Co-locate `@brute`, `@gen`, and `@checker` for `cpl stress`; `@interactor` and `@grader` cover judge protocols.
+Co-locate `@brute`, `@gen`, and `@checker` for `cpl stress`; `@interactor` and `@grader` cover judge protocols. Interactive: `ask("?", x)` prints, flushes, reads; else `flush()` before `read()`.
 Run `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl test`, and `cpl doc`; use `cpl lsp` in the editor.
 For full APIs, see the [language reference](types-and-control.html), [standard library](stdlib.html), and [course](course.html).

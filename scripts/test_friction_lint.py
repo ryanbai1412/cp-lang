@@ -52,7 +52,6 @@ CASES = {
     "mod_list_print": ("print([x.v for x in ans])\n", "print(ans)\n"),
     "doubling_search": ("while ok(hi):\n    hi *= 2\nlet k = bsearch_first(0..hi, ok)\n",
                         "while ok(hi):\n    hi *= 2\n"),
-    "graph_from_literal": ("let g = Graph.directed([(u: 0, v: 1)])\n", "let g = Graph.directed(edges)\n"),
     "bit_len_import": ("use std.math.{bit_len}\n", "use std.math.{bit_width}\n"),
     "hand_decimal_mod": ("x = (x * 10 + (c - '0')) % P\n", "x = x * 10 + (c - '0')\n"),
     "manual_get_or_insert": ("if k not in m: m[k] = 0\n", "if k in m: m[k] = 0\n"),

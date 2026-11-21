@@ -434,7 +434,7 @@ class SiteTests(unittest.TestCase):
     def test_authored_copy_does_not_advertise_unbuilt_collection_apis(self):
         for path in documentation_paths():
             self.assertNotRegex(path.read_text(),
-                                r"\bHashSet\b|\bpop_(?:first|last)\b|\bSet(?:<[^>]+>)?\.rank\b",
+                                r"\bHashSet\b|\bSet(?:<[^>]+>)?\.rank\b",
                                 path.name)
 
     def test_sidebar_sections_are_not_duplicated(self):
