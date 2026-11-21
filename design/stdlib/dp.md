@@ -567,9 +567,13 @@ Signatures above that today's public language cannot write.
    `bsearch_first(0.0..1e9, ok, eps: 1e-9)`: `Range<F64>` with a resolution.
 3. **Typed bit sets `Bits<D>`.** `submasks`, `supermasks`,
    `masks_of_size`, `subset_folds` over a domain: `for s in
-   submasks(m: Bits<Item>)` yielding `Bits<Item>`, not `Int`.
+   submasks(m: Bits<Item>)` yielding `Bits<Item>`, not `Int`. The `Bits<D>`
+   forms replace the `Int` ones when the power lands; the two never sit side
+   by side (no overloading by argument type, decision 127).
 4. **Steered generators** (decision 126). `backtrack` and `Visit.prune()`:
-   `for v in backtrack(s0, next): if bad(v.state): v.prune()`.
+   `for v in backtrack(s0, next): if bad(v.state): v.prune()`. Early exit
+   is `break` or `return` in that `for` body, never a `found` flag or a
+   closure; the generator reads `prune()` after its `yield` returns.
 5. **Memo into a table.** `@memo(into: dp)` so a top-down DP flips to a
    bottom-up table with one edit, and `@rolling` layers (§6.1).
 6. **Cut ranges as pieces** (decision 124, accepted, not implemented). Every

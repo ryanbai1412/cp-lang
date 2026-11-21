@@ -2048,15 +2048,17 @@ fn quadrangle_break<D, K>(cost: Range<D> -> K) -> ?(Range<D>, Range<D>)         
 
 // Search that steers its own generator (decision 126)
 fn backtrack<S>(start: S, next: S -> yields S) -> yields Visit<S>
-    // O(visited); each Visit has .state, .depth and .prune(), which skips its subtree
+    // O(visited); each Visit has .state, .depth and .prune(), which skips its
+    // subtree; stop with break or return in the for body (decision 126)
 struct Visit<S>
     @get fn state(self) -> S
     @get fn depth(self) -> Int
     fn prune(self)
 ```
 
-[rename] once decision 124 lands: the `n: Int` forms of `knuth`,
-`dnc_layer` and `monge_path` become the cut forms above; `LiChao.new(pick,
+[rename] once decision 124 lands: the cut forms above replace the `n: Int`
+forms of `knuth`, `dnc_layer` and `monge_path` (no overloading by argument
+type, decision 127); `LiChao.new(pick,
 xs)` and `MonoDeque.new(by:)` are spelled `LiChao<L, K>(min, xs)` and
 `MonoDeque<T>(pick: min)`, `by:` there renamed `pick:` (it chooses, it is
 not a key).
