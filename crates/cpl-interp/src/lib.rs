@@ -1581,6 +1581,15 @@ impl<'p, 'o> Interp<'p, 'o> {
                     return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
                 }
                 if matches!(op, CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) {
+                    // One `lt` call per comparison, as the C++ makes, so the
+                    // profiler counts the same calls in both.
+                    if let Ty::Struct(id) = &lhs.ty {
+                        if let Some(lt_fn) = self.program.structs[*id].lt_fn {
+                            let (a, b) = if matches!(op, CmpOp::Lt | CmpOp::Ge) { (l, r) } else { (r, l) };
+                            let less = self.call_direct(lt_fn, vec![a, b], span)?.bool();
+                            return Ok(Value::Bool(if matches!(op, CmpOp::Lt | CmpOp::Gt) { less } else { !less }));
+                        }
+                    }
                     let ord = self.cmp_ty_val(&lhs.ty, &l, &r, span)?;
                     let res = match op {
                         CmpOp::Lt => ord.is_lt(),
