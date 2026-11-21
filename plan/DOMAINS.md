@@ -282,28 +282,28 @@ built from hundreds of real validated ports, interactive lessons that teach
 by solving, and a browser playground that runs the interpreter, C++17
 preview, trace viewer and a judge — every single code block and example
 executed in the gate so documentation never drifts.
-**Where we are.** Static site generator (`site/build.py`, 23 pages: 10-lesson
-course with 51 checked exercises, 12 reference pages including canonical
-`docs/one-page-cheat-sheet.md`), WASM playground (23 presets), canonical
-trace viewer, and offline bundle (`dist/cp-lang.html`, 1.83 MB < 2.6 MB
-cap). 100/100 doc `cp` fences and 22/22 `site/examples/*.cp` pass check/build;
-`site/check_docs.py` gates doc fences, example runs, links, and the
-cheat-sheet budget in `scripts/check.sh --fast`. Reference pages and syntax
+**Where we are.** Static site generator (`site/build.py`, 24 chapters + 61
+individual error/lint pages + playground + trace = 87 HTML pages: 10-lesson
+course with 51 checked exercises, 13 reference pages including canonical
+`docs/one-page-cheat-sheet.md` and `errors.html`), WASM playground (23 presets),
+canonical trace viewer, and offline bundle (`dist/cp-lang.html`, 1.87 MB < 2.6
+MB cap). 100/100 doc `cp` fences, 22/22 `site/examples/*.cp`, 10/10 course
+write-code refs, and 61/61 diagnostic/lint codes (`52 cpl-diag + 9 cpl-lint`,
+with 57 active trigger/fix pairs + 3 reserved + 1 internal) are verified in
+`scripts/check.sh --fast` via `site/check_docs.py`. Reference pages and syntax
 highlighter are updated for the landed 0.3 batch (`where` guards, `repeat`,
 `loop`, multi-binding, unary `+`, one-line enums, counted domains,
 `read(lo..=hi)`, `read(none: ...)`, stepped domains, 1-based/grid slices,
-`rfind`/`Str in Str`, `@!interactive`, `debug` purity). Gaps: no error index
-for the 52 `cpl-diag` + 9 `cpl-lint` codes; no cookbook from the 235 validated
-ecnerwala ports (only 5 showcase cards on `index.html`); `cpl doc stdlib`
-finds 715 items across 25 modules (334 undocumented, 0 doc-comment examples);
-course lessons still use pre-0.3 idioms in places.
+`rfind`/`Str in Str`, `@!interactive`, `debug` purity). Gaps: no cookbook from
+the 239 validated ecnerwala ports (only 5 showcase cards on `index.html`);
+`cpl doc stdlib` finds 715 items across 25 modules (334 undocumented, 0
+doc-comment examples); course lessons still use pre-0.3 idioms in places.
 **Bar.** A cold reader writes a correct solution from the docs alone; every
 doc `cp` block, example fixture, cookbook recipe, and error-index trigger/fix
 passes in `scripts/check.sh --fast`; 100% of diagnostic/lint codes have an
 error-index page; offline bundle stays under 2.6 MB.
-**Next.** Build the 61-code error index with verified trigger/fix pairs; build
-the cookbook from validated ports; sync `site/content/stdlib.md` with
-`stdlib/*.cp` and add tested `cpl doc` examples; refresh course lessons for
+**Next.** Build the cookbook from validated ports; sync `site/content/stdlib.md`
+with `stdlib/*.cp` and add tested `cpl doc` examples; refresh course lessons for
 0.3.
 
 ## 12. Validation: ports, scoreboard, differential testing (`plan/80`)

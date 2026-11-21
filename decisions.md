@@ -1328,6 +1328,18 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* remove the `site/check_docs.py` step from `scripts/check.sh` or replace with a faster
   Rust subcommand if the docs corpus grows past a few seconds.
 
+- **24.2 Generated Error & Lint Index (`site/errors.py`) with 100% compiler-code coverage.**
+  `site/build.py` generates `errors.html` plus one flat `error-<CODE>.html` page per diagnostic,
+  warning, runtime trap, and lint code (currently 61 codes: 52 from `cpl-diag` + 9 from `cpl-lint`),
+  indexed in `search.json` and packed into `dist/cp-lang.html`. `site/check_docs.py` parses
+  `crates/cpl-diag/src/lib.rs` and `crates/cpl-lint/src/lib.rs` directly, failing the fast gate if any
+  Rust code is missing or any trigger/fix pair stops reproducing its code or compiling cleanly.
+  *Reason:* flat filenames integrate automatically with `site/bundle.py` (`*.html` glob) and relative
+  asset paths, adding ~40 KiB gzipped; diffing against the Rust sources prevents the error index from
+  ever drifting behind new diagnostics or lints.
+  *Reversible:* move `site/errors.py` entries into Rust docstrings or a `cpl explain --dump` subcommand
+  once `cpl explain` exists, keeping the same `error-<CODE>.html` URLs.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and

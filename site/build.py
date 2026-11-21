@@ -11,6 +11,7 @@ import shutil
 import mistune
 from course import catalog_html, exercise_html, load_lessons, progress_html
 from compiler import build_compiler, editor_html
+from errors import ERROR_CATALOG, error_slug, render_error_index_html, render_error_page_html
 from showcase import showcase_html
 
 ROOT = Path(__file__).resolve().parent
@@ -41,8 +42,15 @@ REFERENCE_PAGES = [
         "cheat-sheet",
         "One-page cheat sheet",
         "Quick reference",
-        "Every CP Lang 0.2.2 construct, collection, and stdlib helper on one printable page.",
+        "Every CP Lang construct, collection, and stdlib helper on one printable page.",
         "1 page",
+    ),
+    (
+        "errors",
+        "Error & lint index",
+        "Quick reference",
+        "Every diagnostic, warning, runtime trap, and lint code with verified trigger and fix.",
+        f"{len(ERROR_CATALOG)} codes",
     ),
     (
         "types-and-control",
@@ -331,6 +339,8 @@ def load_page_source(name):
             "each feature in depth, or try any snippet live in the [playground](playground.html).\n\n---\n\n"
         )
         return intro + body, "docs/one-page-cheat-sheet.md"
+    if name == "errors":
+        return "", "site/errors.py"
     return (ROOT / "content" / f"{name}.md").read_text(), f"site/content/{name}.md"
 
 
@@ -343,15 +353,22 @@ def build():
     search = []
     for i, (name, title, section, description, duration) in enumerate(PAGES):
         raw_source, source_path = load_page_source(name)
-        source = interpolate_markdown(raw_source)
-        renderer = Renderer()
-        body = mistune.create_markdown(renderer=renderer)(source)
+        if name == "errors":
+            body = render_error_index_html()
+            toc = "".join(
+                f'<a href="#{m.group(1)}">{html.unescape(m.group(2))}</a>'
+                for m in re.finditer(r'<h2 id="([^"]+)">([^<]+)</h2>', body)
+            )
+        else:
+            source = interpolate_markdown(raw_source)
+            renderer = Renderer()
+            body = mistune.create_markdown(renderer=renderer)(source)
+            toc = "".join(
+                f'<a href="#{anchor}">{text}</a>' for anchor, text in renderer.headings
+            )
         is_course = section == "Course"
         if is_course:
             body = progress_html(LESSONS, name if name != "course" else None) + body
-        toc = "".join(
-            f'<a href="#{anchor}">{text}</a>' for anchor, text in renderer.headings
-        )
         pager = []
         sequence = ([("course", "Interactive course")]
                     + [(lesson["slug"], lesson["title"]) for lesson in LESSONS]
@@ -404,6 +421,58 @@ def build():
                 title=title,
                 section=section,
                 url=f"{name}.html",
+                text=re.sub(r"\s+", " ", plain),
+            )
+        )
+    for idx, entry in enumerate(ERROR_CATALOG):
+        code = entry["code"]
+        slug = error_slug(code)
+        title = f'{code}: {entry["title"]}'
+        body = render_error_page_html(entry, lambda src: highlight(src, "cp"))
+        pager = []
+        if idx > 0:
+            prev = ERROR_CATALOG[idx - 1]
+            pager.append(
+                f'<a class="pager-previous" href="{error_slug(prev["code"])}.html">'
+                f'<span>Previous &larr;</span>{html.escape(prev["code"])}: {html.escape(prev["title"])}</a>'
+            )
+        if idx + 1 < len(ERROR_CATALOG):
+            nxt = ERROR_CATALOG[idx + 1]
+            pager.append(
+                f'<a class="pager-next" href="{error_slug(nxt["code"])}.html">'
+                f'<span>Next &rarr;</span>{html.escape(nxt["code"])}: {html.escape(nxt["title"])}</a>'
+            )
+        values = dict(
+            title=html.escape(title),
+            heading=html.escape(title),
+            description=html.escape(entry["summary"]),
+            section="Error index",
+            duration=code,
+            number=code,
+            navigation=navigation("errors"),
+            content=body,
+            toc="",
+            pager="".join(pager),
+            name=slug,
+            source_path="site/errors.py",
+            repo=REPO,
+            page_class="chapter",
+            docs_current='aria-current="page"',
+            cheat_sheet_current="",
+            course_current="",
+            series="CP LANG ERROR INDEX",
+            playground_current="",
+        )
+        page = template
+        for key, value in values.items():
+            page = page.replace("{{" + key + "}}", value)
+        (target / f"{slug}.html").write_text(page)
+        plain = html.unescape(re.sub(r"<[^>]*>", " ", body))
+        search.append(
+            dict(
+                title=title,
+                section="Error index",
+                url=f"{slug}.html",
                 text=re.sub(r"\s+", " ", plain),
             )
         )

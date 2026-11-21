@@ -18,6 +18,7 @@ from urllib.parse import unquote, urlsplit
 import mistune
 
 import build
+import errors
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
@@ -184,6 +185,138 @@ def check_links():
     return len(pages)
 
 
+def check_error_index():
+    rust_codes = set(errors.discover_rust_codes(REPO))
+    catalog_codes = [e["code"] for e in errors.ERROR_CATALOG]
+    if len(catalog_codes) != len(set(catalog_codes)):
+        sys.exit("check_docs: duplicate codes in site/errors.py")
+    missing = sorted(rust_codes - set(catalog_codes))
+    extra = sorted(set(catalog_codes) - rust_codes)
+    if missing or extra:
+        sys.exit(f"check_docs: error index drift: missing={missing}, extra={extra}")
+
+    target = ROOT / "_build"
+    for entry in errors.ERROR_CATALOG:
+        page = target / f'{errors.error_slug(entry["code"])}.html'
+        if not page.is_file():
+            sys.exit(f"check_docs: missing generated error page {page.name}")
+
+    verified = 0
+    with tempfile.TemporaryDirectory(prefix="cpl-errors-fast-") as temporary:
+        tmp = Path(temporary)
+        # Batch-check all fixes first.
+        fix_files = []
+        for entry in errors.ERROR_CATALOG:
+            if not entry["fix"]:
+                continue
+            fix_path = tmp / f'{entry["code"]}_fix.cp'
+            fix_path.write_text(entry["fix"])
+            fix_files.append((entry, fix_path))
+        res = subprocess.run(
+            [str(CPL), "check", *[str(p) for _, p in fix_files]],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if res.returncode != 0:
+            sys.exit(f"check_docs: error-index fix failed `cpl check`:\n{res.stderr}\n{res.stdout}")
+
+        # Verify each trigger produces its exact diagnostic/lint/trap.
+        for entry in errors.ERROR_CATALOG:
+            code = entry["code"]
+            mode = entry["mode"]
+            if mode in ("internal", "reserved"):
+                verified += 1
+                continue
+            trig = tmp / f"{code}_trigger.cp"
+            trig.write_text(entry["trigger"])
+            fix = tmp / f"{code}_fix.cp"
+            if mode == "check":
+                r = subprocess.run(
+                    [str(CPL), "check", str(trig)],
+                    cwd=REPO,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                combined = r.stdout + "\n" + r.stderr
+                if f"[{code}]" not in combined:
+                    sys.exit(
+                        f"check_docs: error-index trigger for {code} did not emit [{code}]:\n{combined}"
+                    )
+                if code.startswith("W"):
+                    rf = subprocess.run(
+                        [str(CPL), "check", str(fix)],
+                        cwd=REPO,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
+                    )
+                    if f"[{code}]" in (rf.stdout + "\n" + rf.stderr):
+                        sys.exit(f"check_docs: error-index fix for {code} still emits [{code}]")
+            elif mode == "build":
+                r = subprocess.run(
+                    [str(CPL), "build", str(trig)],
+                    cwd=REPO,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                combined = r.stdout + "\n" + r.stderr
+                if f"[{code}]" not in combined:
+                    sys.exit(
+                        f"check_docs: error-index build trigger for {code} did not emit [{code}]:\n{combined}"
+                    )
+            elif mode == "lint":
+                r = subprocess.run(
+                    [str(CPL), "lint", str(trig)],
+                    cwd=REPO,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                combined = r.stdout + "\n" + r.stderr
+                if f"[{code}]" not in combined:
+                    sys.exit(
+                        f"check_docs: error-index lint trigger for {code} did not emit [{code}]:\n{combined}"
+                    )
+                rf = subprocess.run(
+                    [str(CPL), "lint", str(fix)],
+                    cwd=REPO,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                if f"[{code}]" in (rf.stdout + "\n" + rf.stderr):
+                    sys.exit(
+                        f"check_docs: error-index lint fix for {code} still emits [{code}]:\n{rf.stderr}"
+                    )
+            elif mode == "run":
+                r = subprocess.run(
+                    [str(CPL), "run", str(trig)],
+                    cwd=REPO,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                if r.returncode == 0:
+                    sys.exit(f"check_docs: error-index runtime trigger for {code} did not trap")
+                rf = subprocess.run(
+                    [str(CPL), "run", str(fix)],
+                    cwd=REPO,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                if rf.returncode != 0:
+                    sys.exit(f"check_docs: error-index runtime fix for {code} failed:\n{rf.stderr}")
+            else:
+                sys.exit(f"check_docs: unknown error-index mode {mode!r} for {code}")
+            verified += 1
+    return verified
+
+
 def main():
     t0 = time.monotonic()
     if not CPL.is_file():
@@ -192,12 +325,13 @@ def main():
     fence_count = check_doc_fences()
     ex_count, ex_cases = run_examples()
     ref_count, ref_cases = run_course_references()
+    err_count = check_error_index()
     page_count = check_links()
     ms = int((time.monotonic() - t0) * 1000)
     print(
         f"docs gate: {fence_count} cp fences, {ex_count} examples ({ex_cases} runs), "
-        f"{ref_count} course refs ({ref_cases} runs), {page_count} HTML pages, "
-        f"cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
+        f"{ref_count} course refs ({ref_cases} runs), {err_count} error codes, "
+        f"{page_count} HTML pages, cheat-sheet {cheat_lines}/250 lines — ok in {ms} ms"
     )
 
 
