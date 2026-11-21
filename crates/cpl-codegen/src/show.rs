@@ -297,12 +297,27 @@ impl<'p> Emitter<'p> {
     pub fn print_stmts(&mut self, args: &[FmtArg], end: Option<&cpl_ir::Expr>, out: &mut String) {
         self.need("out");
         let mut parts = Vec::new();
+        // An empty collection shows nothing and takes no space, so with
+        // one among the arguments a space goes only between two that
+        // showed something: `start` is where the line began.
+        let sparse = args.len() > 1 && args.iter().any(|arg| arg.value.ty.may_show_nothing());
+        if sparse {
+            parts.push("{ size_t start = cpl::out.size();".to_string());
+        }
         for (i, arg) in args.iter().enumerate() {
-            if i > 0 {
-                parts.push("cpl::put_char(' ');".to_string());
-            }
             let code = self.expr(&arg.value);
-            parts.push(self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string()));
+            let shown = self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string());
+            match (i > 0, sparse) {
+                (false, _) => parts.push(shown),
+                (true, false) => parts.push(format!("cpl::put_char(' '); {shown}")),
+                (true, true) if arg.value.ty.may_show_nothing() => parts.push(format!(
+                    "{{ size_t at = cpl::out.size(); if (at > start) cpl::put_char(' '); size_t from = cpl::out.size(); {shown} if (cpl::out.size() == from) cpl::out.resize(at); }}"
+                )),
+                (true, true) => parts.push(format!("if (cpl::out.size() > start) cpl::put_char(' '); {shown}")),
+            }
+        }
+        if sparse {
+            parts.push("}".to_string());
         }
         match end {
             Some(end) => {

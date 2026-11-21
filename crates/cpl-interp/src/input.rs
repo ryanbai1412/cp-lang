@@ -59,6 +59,12 @@ impl<'a> Input<'a> {
         Some(self.data[pos])
     }
 
+    /// True when the next read has to wait for bytes that have not
+    /// arrived: whoever sends them may be waiting for what was printed.
+    pub fn starved(&self) -> bool {
+        self.more.is_some() && self.data[self.pos.min(self.data.len())..].iter().all(u8::is_ascii_whitespace)
+    }
+
     /// True when only blanks are left to read.
     pub fn at_eof(&mut self) -> bool {
         self.skip_space();

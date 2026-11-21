@@ -775,3 +775,14 @@ fn reading_an_optional_says_how_none_is_written() {
     let stray = check_errors("read_none_of_int", "let b: Int = read(none: 0)\nprint(b)\n");
     assert!(stray.contains("`none:` is for reading a `?T`"), "{stray}");
 }
+
+#[test]
+fn a_part_of_a_row_past_its_end_is_not_called_a() {
+    let source = b"var g: [0..2, 0..3]Int = 0\nlet hi: Int = read()\nprint(g[1, 2..hi])\n";
+    let path = scratch("grid-part", "a.cp", source);
+    let out = cpl(&["run".as_ref(), path.as_os_str()], b"7\n");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert_eq!(out.status.code(), Some(3), "{stderr}");
+    assert!(stderr.contains("a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length"), "{stderr}");
+    assert!(!stderr.contains("a["), "{stderr}");
+}

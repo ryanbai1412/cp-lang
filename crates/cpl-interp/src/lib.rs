@@ -1247,13 +1247,18 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             ExprKind::Print(args, end) => {
                 let start = self.out.len();
+                let sparse = args.iter().any(|arg| arg.value.ty.may_show_nothing());
                 for (i, arg) in args.iter().enumerate() {
                     let value = self.eval(&arg.value)?;
-                    if i > 0 {
-                        self.out.push(b' ');
-                    }
                     let mut buf = Vec::new();
                     self.show_val(&mut buf, &value, &arg.value.ty, arg.digits, span)?;
+                    // An empty collection shows nothing and takes no space.
+                    if buf.is_empty() && arg.value.ty.may_show_nothing() {
+                        continue;
+                    }
+                    if i > 0 && (self.out.len() > start || !sparse) {
+                        self.out.push(b' ');
+                    }
                     self.out.extend_from_slice(&buf);
                 }
                 match end {
@@ -2482,6 +2487,13 @@ impl<'p, 'o> Interp<'p, 'o> {
     // ----- input -----
 
     fn read(&mut self, spec: &'p Spec, span: Span) -> Res<Value> {
+        // A read that waits shows what was printed first, as the C++
+        // does: a judge answers only what it has seen.
+        if !self.out.is_empty() && self.input.starved() {
+            let _ = self.sink.write_all(&self.out);
+            let _ = self.sink.flush();
+            self.out.clear();
+        }
         let fail = |error: input::InputError| -> Box<Trap> {
             Box::new(Trap {
                 message: error.message,

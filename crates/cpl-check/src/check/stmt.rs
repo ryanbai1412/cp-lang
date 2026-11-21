@@ -202,9 +202,44 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// True for `g[r, ..]`: an index with a range among several.
+    fn part_of_grid(e: &ast::Expr) -> bool {
+        match &e.kind {
+            ExprKind::Index { indices, .. } => {
+                indices.len() > 1 && indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. }))
+            }
+            _ => false,
+        }
+    }
+
     /// `a max= b` on a row (an array of one dimension, or a list) goes
     /// cell by cell, so `b` is a row of the same type.
     pub(crate) fn row_keep(&mut self, target: &ast::Expr, target_ty: &Ty, value: &ast::Expr, value_ty: &Ty) {
+        // `g[r, ..] max= g[v, ..]`: a row of a grid against cells of its kind.
+        if let (true, Ty::Array { index, elem: want }) = (Self::part_of_grid(target), target_ty) {
+            if index.len() > 1 {
+                let got = match value_ty {
+                    Ty::Array { index, elem } if index.len() == 1 || Self::part_of_grid(value) => Some((**elem).clone()),
+                    Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(args[0].clone()),
+                    other if other.is_vague() || *other == Ty::Error => return,
+                    _ => None,
+                };
+                if got.as_ref().is_some_and(|got| got.is_vague() || self.fits(got, want)) {
+                    return;
+                }
+                let message = format!(
+                    "`{}` is a row of {want}, so the other side is one too, cell for cell; `{}` is {}",
+                    self.quote(target.span),
+                    self.quote(value.span),
+                    match got {
+                        Some(got) => format!("a row of {got}"),
+                        None => value_ty.with_article(),
+                    }
+                );
+                self.error(codes::TYPE_MISMATCH, value.span, message);
+                return;
+            }
+        }
         let row = match target_ty {
             Ty::Array { index, .. } => index.len() == 1,
             Ty::Named { name, args } => name == "List" && args.len() == 1,

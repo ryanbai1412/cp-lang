@@ -1729,6 +1729,10 @@ impl<'a> Lowerer<'a> {
         value: &ast::Expr,
         out: &mut Vec<Stmt>,
     ) {
+        if matches!(op, ast::AssignOp::Max | ast::AssignOp::Min) && self.grid_row(target).is_some() {
+            self.grid_keep(target, op == ast::AssignOp::Max, value, false, out);
+            return;
+        }
         if let (ast::ExprKind::Tuple(targets), ast::AssignOp::Set) = (&target.kind, op) {
             // `(a[d], b[d]) = read()`: the places say what is read.
             let wanted: Option<Vec<Ty>> =
@@ -1898,6 +1902,164 @@ impl<'a> Lowerer<'a> {
             Ty::List(elem) => self.ordered(elem),
             _ => false,
         }
+    }
+
+    /// `g[r, ..]`, `g[.., c]` or `g[r, lo..hi]`: the grid, its indexes and
+    /// the axis the range runs along.
+    pub(super) fn grid_row<'e>(&mut self, e: &'e ast::Expr) -> Option<(&'e ast::Expr, &'e [ast::Expr], usize)> {
+        let ast::ExprKind::Index { base, indices } = &e.kind else {
+            return None;
+        };
+        let ranges: Vec<usize> = (0..indices.len()).filter(|&k| super::expr::is_whole(&indices[k])).collect();
+        let ([axis], true) = (ranges.as_slice(), indices.len() >= 2) else {
+            return None;
+        };
+        match self.probe_ty_silent(base)? {
+            Ty::Array { dims, .. } if dims.len() == indices.len() => Some((base, indices, *axis)),
+            _ => None,
+        }
+    }
+
+    /// `g[r, ..] max= g[v, ..]`: every cell of one row or column of a grid
+    /// takes the larger of the two, where it is, in one loop. The other
+    /// side is a row of a grid too, or any row of the same cells. When
+    /// `asked`, gives the slot that says whether any cell changed.
+    pub(super) fn grid_keep(
+        &mut self,
+        target: &ast::Expr,
+        max: bool,
+        value: &ast::Expr,
+        asked: bool,
+        out: &mut Vec<Stmt>,
+    ) -> Option<Slot> {
+        let span = target.span;
+        let word = if max { "max=" } else { "min=" };
+        let (base, indices, axis) = self.grid_row(target)?;
+        let place = self.place(base);
+        let place = self.settle_indexes(place, out);
+        if let PlaceKind::Local(s) = root_place(&place) {
+            self.cx.mut_slots.insert(s);
+        }
+        let Ty::Array { dims, elem } = place.ty.clone() else {
+            return None;
+        };
+        let elem = *elem;
+        if !self.ordered(&elem) {
+            let message = format!("`{word}` needs cells that have an order, and these are `{}`", self.show(&elem));
+            self.error(codes::TYPE_MISMATCH, span, message);
+            return None;
+        }
+        let slot_ty = |dim: Dim| match dim {
+            Dim::Pos(d) => Ty::Pos(d),
+            Dim::Bound(d) => Ty::Bound(d),
+            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+        };
+        let changed = asked.then(|| {
+            let changed = self.temp(Ty::Bool);
+            out.push(Stmt::Let(changed, Some(self.mk(ExprKind::Bool(false), Ty::Bool, span))));
+            changed
+        });
+        // The cell of the target the loop is at.
+        let at = self.temp(slot_ty(dims[axis]));
+        self.whole_axis = Some(at);
+        let (cell, _) = self.index_args(&place.ty, indices, span);
+        self.whole_axis = None;
+        let cell: Vec<Expr> =
+            cell.into_iter().enumerate().map(|(k, index)| if k == axis { index } else { self.hold(index, out) }).collect();
+        let grid = place_to_expr(&place);
+        let len = self.mk(
+            ExprKind::Builtin(Builtin::AxisLen, vec![grid, self.int_lit(axis as i64, span)]),
+            Ty::Int,
+            span,
+        );
+        let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
+        let (lo, hi) = (self.hold(lo, out), self.hold(hi, out));
+        let count = self.mk(ExprKind::Binary(BinOp::Sub, Box::new(hi.clone()), Box::new(lo.clone())), Ty::Int, span);
+        let cell = Place { kind: PlaceKind::Index(Box::new(place), cell), ty: elem.clone(), span: self.span(span) };
+        // The cell of the other side that goes with it.
+        let mut body = Vec::new();
+        let counter = self.cast(Cast::Trust, self.local(at, span), Ty::Int);
+        let offset = self.mk(ExprKind::Binary(BinOp::Sub, Box::new(counter), Box::new(lo.clone())), Ty::Int, span);
+        let (theirs, their_count) = match self.grid_row(value) {
+            Some((other, their_indices, their_axis)) => {
+                let other = self.expr(other, None);
+                let other = self.hold(other, out);
+                let Ty::Array { dims: their_dims, elem: their_elem } = other.ty.clone() else {
+                    return changed;
+                };
+                if *their_elem != elem {
+                    let message = format!(
+                        "`{word}` goes cell by cell: these are `{}`, and the other side has `{}`",
+                        self.show(&elem),
+                        self.show(&their_elem)
+                    );
+                    self.error(codes::TYPE_MISMATCH, value.span, message);
+                    return changed;
+                }
+                let their_at = self.temp(slot_ty(their_dims[their_axis]));
+                self.whole_axis = Some(their_at);
+                let (their_cell, _) = self.index_args(&other.ty, their_indices, value.span);
+                self.whole_axis = None;
+                let their_cell: Vec<Expr> = their_cell
+                    .into_iter()
+                    .enumerate()
+                    .map(|(k, index)| if k == their_axis { index } else { self.hold(index, out) })
+                    .collect();
+                let their_len = self.mk(
+                    ExprKind::Builtin(Builtin::AxisLen, vec![other.clone(), self.int_lit(their_axis as i64, span)]),
+                    Ty::Int,
+                    span,
+                );
+                let (their_lo, their_hi) = self.axis_part(&their_indices[their_axis], their_dims[their_axis], their_len, out);
+                let (their_lo, their_hi) = (self.hold(their_lo, out), self.hold(their_hi, out));
+                let step = self.mk(ExprKind::Binary(BinOp::Add, Box::new(their_lo.clone()), Box::new(offset)), Ty::Int, span);
+                let step = self.cast(Cast::Trust, step, slot_ty(their_dims[their_axis]));
+                body.push(Stmt::Let(their_at, Some(step)));
+                let their_count =
+                    self.mk(ExprKind::Binary(BinOp::Sub, Box::new(their_hi), Box::new(their_lo)), Ty::Int, span);
+                (self.mk(ExprKind::Index(Box::new(other), their_cell), elem.clone(), value.span), their_count)
+            }
+            None => {
+                let other = self.expr(value, Some(&Ty::list(elem.clone())));
+                let dim = match &other.ty {
+                    Ty::Array { dims, elem: theirs } if dims.len() == 1 && **theirs == elem => dims[0],
+                    Ty::List(theirs) if **theirs == elem => Dim::Int,
+                    Ty::Error => return changed,
+                    _ => {
+                        let message = format!(
+                            "`{word}` goes cell by cell: this side is a row of `{}`, and the other is `{}`",
+                            self.show(&elem),
+                            self.show(&other.ty)
+                        );
+                        self.error(codes::TYPE_MISMATCH, value.span, message);
+                        return changed;
+                    }
+                };
+                let other = self.hold(other, out);
+                let their_count = self.len_of(other.clone(), span);
+                let index = self.cast(Cast::Trust, offset, slot_ty(dim));
+                (self.mk(ExprKind::Index(Box::new(other), vec![index]), elem.clone(), value.span), their_count)
+            }
+        };
+        let differ = self.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(their_count), Box::new(count)), Ty::Bool, span);
+        let trap = Stmt::Trap(format!("`a {word} b` needs two rows of one length"), self.span(span));
+        out.push(Stmt::If(differ, Block { stmts: vec![trap] }, Block::default()));
+        let theirs = self.hold(theirs, &mut body);
+        let better = self.mk(
+            ExprKind::Cmp(if max { CmpOp::Gt } else { CmpOp::Lt }, Box::new(theirs.clone()), Box::new(place_to_expr(&cell))),
+            Ty::Bool,
+            span,
+        );
+        let mut take = vec![Stmt::Assign(cell, AssignOp::Set, theirs)];
+        if let Some(changed) = changed {
+            let flag = Place { kind: PlaceKind::Local(changed), ty: Ty::Bool, span: self.span(span) };
+            take.push(Stmt::Assign(flag, AssignOp::Set, self.mk(ExprKind::Bool(true), Ty::Bool, span)));
+        }
+        body.push(Stmt::If(better, Block { stmts: take }, Block::default()));
+        let iter = Iter::Range { lo, hi, step: None, rev: false };
+        let lid = self.fresh_loop();
+        out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
+        changed
     }
 
     /// `a max= b` on two rows: every cell of `a` takes the larger of the

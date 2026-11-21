@@ -453,3 +453,79 @@ print(known[if flag: true else: false][0])
     }
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+/// Runs `command` against a judge that answers each `? x` with `x * 10`
+/// only once it has read the line, and gives the lines the program said.
+/// A program that keeps its questions to itself until it has an answer
+/// never gets one: the test fails after ten seconds instead of hanging.
+fn asked_live(mut command: Command) -> Vec<String> {
+    use std::io::{BufRead, BufReader};
+    let mut child = command.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().expect("the program starts");
+    let mut to_program = child.stdin.take().unwrap();
+    let from_program = BufReader::new(child.stdout.take().unwrap());
+    let (send, lines) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        for line in from_program.lines().map_while(Result::ok) {
+            if send.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    let mut said = Vec::new();
+    while let Ok(line) = lines.recv_timeout(std::time::Duration::from_secs(10)) {
+        if let Some(asked) = line.strip_prefix("? ") {
+            // Both questions are out before the first answer goes in.
+            if said.iter().filter(|l: &&String| l.starts_with("? ")).count() % 2 == 1 {
+                let first: i64 = said.last().unwrap()[2..].parse().unwrap();
+                let second: i64 = asked.parse().unwrap();
+                writeln!(to_program, "{}\n{}", first * 10, second * 10).unwrap();
+                to_program.flush().unwrap();
+            }
+        }
+        let done = line.starts_with('!');
+        said.push(line);
+        if done {
+            break;
+        }
+    }
+    drop(to_program);
+    let _ = child.kill();
+    let _ = child.wait();
+    said
+}
+
+/// `print` then `read()` with no `flush()` and no `ask`: a read that has
+/// to wait shows what was printed first, in the interpreter and in the
+/// C++, so a judge that answers only what it has seen is answered.
+#[test]
+fn a_read_that_waits_shows_what_was_printed_before_it() {
+    let source = concat!(
+        "var total = 0\n",
+        "for round in 0..3:\n",
+        "    print(\"?\", round + 1)\n",
+        "    print(\"?\", round + 5)\n",
+        "    let (a, b): (Int, Int) = read()\n",
+        "    total += a + b\n",
+        "print(\"!\", total)\n",
+    );
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("differential/waits");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("waits.cp");
+    std::fs::write(&path, source).unwrap();
+    let path = path.to_string_lossy().into_owned();
+    let expected = ["? 1", "? 5", "? 2", "? 6", "? 3", "? 7", "! 240"];
+
+    let mut interpreted = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    interpreted.args(["run", &path]);
+    assert_eq!(asked_live(interpreted), expected, "`cpl run`");
+
+    let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+    assert_eq!(built.code, 0, "{}", built.stderr);
+    // Nothing is flushed line by line: a program that reads and then
+    // prints stays as fast as it was.
+    let cpp = String::from_utf8_lossy(&built.stdout);
+    let solve = cpp.split("void solve()").last().unwrap().split("int main").next().unwrap();
+    assert!(!solve.contains("flush"), "{solve}");
+    let binary = sanitized_binary(&built.stdout).unwrap();
+    assert_eq!(asked_live(Command::new(binary)), expected, "the C++");
+}

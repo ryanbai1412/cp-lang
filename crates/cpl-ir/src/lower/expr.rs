@@ -16,7 +16,7 @@ pub(super) struct LoopFrame {
 }
 
 /// True for a bare `..`, which as an index is all of one axis.
-fn is_whole(index: &ast::Expr) -> bool {
+pub(super) fn is_whole(index: &ast::Expr) -> bool {
     matches!(index.kind, ast::ExprKind::Range { step: None, .. })
 }
 
@@ -422,6 +422,15 @@ impl<'a> Lowerer<'a> {
             return self.mk(ExprKind::Bool(false), Ty::Bool, span);
         }
         let op = if max { ast::AssignOp::Max } else { ast::AssignOp::Min };
+        if self.grid_row(target).is_some() {
+            return self.do_expr(Some(&Ty::Bool), span, |lw, out| {
+                let changed = match lw.grid_keep(target, max, value, true, out) {
+                    Some(changed) => lw.local(changed, span),
+                    None => lw.err_expr(span),
+                };
+                out.push(Stmt::Give(changed));
+            });
+        }
         self.do_expr(Some(&Ty::Bool), span, |lw, out| {
             // What the place needs first (the check of `o! min= d`) runs
             // here, and not ahead of the whole statement.
@@ -1428,7 +1437,10 @@ impl<'a> Lowerer<'a> {
         // one: `let p: I128 = a * b` and `let top: U64 = 1 << 63` do not
         // overflow an `Int` on the way.
         let wide = hint.filter(|ty| matches!(ty, Ty::I128 | Ty::U64));
-        let mut l = unwrap_first_last(self.expr(lhs, wide));
+        // Where a list is wanted, a list written out on the left of `+`
+        // holds what the list wanted holds: `let xs: List<Z> = [0] + rest`.
+        let joined = hint.filter(|ty| op == Add && matches!(ty, Ty::List(_)) && matches!(lhs.kind, ast::ExprKind::List(_) | ast::ExprKind::Binary { .. } | ast::ExprKind::Paren(_)));
+        let mut l = unwrap_first_last(self.expr(lhs, wide.or(joined)));
         if let (Some(wide), Ty::Int) = (wide, &l.ty) {
             l = self.coerce(l, wide, lhs.span);
         }
@@ -2325,7 +2337,7 @@ impl<'a> Lowerer<'a> {
     /// cells, counted from 0. `..` is all of it. A part is
     /// `0 <= lo <= hi <= len`, as for a slice; anything else stops the
     /// program.
-    fn axis_part(&mut self, range: &ast::Expr, dim: Dim, len: Expr, out: &mut Vec<Stmt>) -> (Expr, Expr) {
+    pub(super) fn axis_part(&mut self, range: &ast::Expr, dim: Dim, len: Expr, out: &mut Vec<Stmt>) -> (Expr, Expr) {
         let span = range.span;
         let ast::ExprKind::Range { lo, hi, inclusive, .. } = &range.kind else {
             unreachable!("an axis is taken whole or in part by a range")
@@ -2378,7 +2390,7 @@ impl<'a> Lowerer<'a> {
         let beyond = cmp(self, CmpOp::Gt, &hi_e, &len);
         let bad = self.mk(ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(reversed)), Ty::Bool, span);
         let bad = self.mk(ExprKind::Binary(BinOp::Or, Box::new(bad), Box::new(beyond)), Ty::Bool, span);
-        let trap = Stmt::Trap("a slice `a[lo..hi]` needs 0 <= lo <= hi <= a.len".to_string(), self.span(span));
+        let trap = Stmt::Trap("a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length".to_string(), self.span(span));
         out.push(Stmt::If(bad, Block { stmts: vec![trap] }, Block::default()));
         (lo_e, hi_e)
     }

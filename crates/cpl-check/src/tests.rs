@@ -1811,3 +1811,38 @@ fn a_filled_list_holds_the_element_type_asked_for() {
     assert_eq!(codes(&format!("{src}let a: List<Z> = List.filled(3, 0)\nlet z: Z = a[0]\n")), Vec::<&str>::new());
     assert_eq!(codes(&format!("{src}let a: List<Z> = List.filled(3, \"x\")\n")), ["E0302"]);
 }
+
+#[test]
+fn a_row_of_a_grid_takes_the_larger_cells_of_another_row() {
+    let src = concat!(
+        "domain K = 0..3\n",
+        "var g: [K, 0..4]Int = 0\nvar s: [K, 0..4]Str = \"\"\nvar row: [0..4]Int = 0\n",
+        "let (k, v) = (K(0), K(2))\n",
+    );
+    for ok in [
+        "g[k, ..] max= g[v, ..]\n",
+        "if g[k, ..] min= g[v, ..]: print(g[k, ..])\n",
+        "g[.., 1] max= g[.., 2]\n",
+        "g[k, 1..3] min= g[v, 0..2]\n",
+        "g[k, ..] max= row\n",
+        "g[k, ..] max= [1, 2, 3, 4]\n",
+    ] {
+        assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new(), "{ok}");
+    }
+    for bad in ["g[k, ..] max= s[v, ..]\n", "print(g[k, ..] min= s[v, ..])\n", "g[k, ..] max= 3\n"] {
+        assert_eq!(codes(&format!("{src}{bad}")), ["E0302"], "{bad}");
+    }
+}
+
+#[test]
+fn a_list_written_out_beside_a_plus_holds_the_element_type_asked_for() {
+    let src = "type Z = Mod<998244353>\nlet rest: List<Z> = [Z(2), Z(3)]\nfn pad(a: List<Z>) -> List<Z>:\n    return [0] + a + [0]\n";
+    for ok in [
+        "let xs: List<Z> = [0] + rest\nlet z: Z = xs[0]\n",
+        "let xs: List<Z> = rest + [0, 1]\n",
+        "let xs: List<Z> = [1] + [2] + rest\n",
+        "let ys: List<F64> = [1] + [2.5]\n",
+    ] {
+        assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new(), "{ok}");
+    }
+}

@@ -135,6 +135,15 @@ pub enum Dim {
 }
 
 impl Ty {
+    /// True for a collection: with nothing in it, `print` shows nothing,
+    /// and puts no space around it (`print(1, [], 2)` is `1 2`).
+    pub fn may_show_nothing(&self) -> bool {
+        matches!(
+            self,
+            Ty::List(_) | Ty::Array { .. } | Ty::Map(..) | Ty::HashMap(..) | Ty::Set(_) | Ty::HashSet(_)
+        )
+    }
+
     /// True for a type that crosses to the judge's grader: numbers, text,
     /// and lists and tuples of them.
     pub fn crosses_to_judge(&self) -> bool {
