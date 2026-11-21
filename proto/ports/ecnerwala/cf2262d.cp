@@ -1,24 +1,31 @@
-// Codeforces 2262 D: a token sits on some cell; op 1 increments a[cur], op 2
-// jumps to cell a[cur]. Turn a into b or report -1. Only cells whose target
-// chain b[i] -> b[b[i]] -> .. reaches the last differing cell may change.
-// Scanning right to left, `via[i]` records where the token must travel next
-// from i (i itself: go back down first; none: just finish this cell).
+// Codeforces 2262 D: a token sits on some cell; Inc (1) increments a[cur],
+// Jump (2) moves to cell a[cur]. Turn a into b or report -1.
+// Only cells whose target chain b[i] -> b[b[i]] -> .. reaches the last
+// differing cell may change. Scanning right to left, `via[i]` tracks the phase
+// of cell i: detour to an earlier unfinished cell t != i, sweep unfinished
+// cells below i (`via[i] == i`), or finish up to b[i] (`via[i] == none`).
+enum Op: Inc | Jump
+
+fn op_code(op: Op) -> Int = match op:
+    Op.Inc => 1
+    Op.Jump => 2
+
 @!multitest
 let n: 1..=2000 = read()
-var a = [0..n] _ => read::<1..=n>() - 1
-let b = [0..n] _ => read::<1..=n>() - 1
+domain Cell = 1..=n
+var a: [Cell]Cell = read()
+let b: [Cell]Cell = read()
 
-fn plan() -> ?(start: Int, ops: List<Int>):
-    if any(a[i] > b[i] for i in 0..n): return none
-    var last = n - 1
-    while last > 0 and a[last] == b[last]: last -= 1
+fn plan() -> ?(start: Cell, ops: List<Op>):
+    if any(a[i] > b[i] for i in Cell): return none
+    let last = Cell.rev.first(i => a[i] != b[i]) ?? Cell.first
 
     var bound = last
-    var okay: [0..n]Bool = false
+    var okay: [Cell]Bool = false
     okay[last] = true
-    var via: [0..n]?Int = none
+    var via: [Cell]?Cell = none
     var low = last
-    for i in (0..last).rev:
+    for i in (Cell.first..last).rev:
         okay[i] = b[i] > i and b[i] <= bound and okay[b[i]]
         if a[i] == b[i]: continue
         if not okay[i]: return none
@@ -31,28 +38,29 @@ fn plan() -> ?(start: Int, ops: List<Int>):
             low = i
     via[low] = low
 
-    fn should_jump(cur: Int) -> Bool:
-        if let t = via[cur], t != cur:
-            if via[t] != none: return a[cur] == t
-            via[cur] = cur
-        if via[cur] == cur:
-            if a[cur] < cur: return a[a[cur]] != b[a[cur]]
-            via[cur] = none
-        a[cur] == b[cur]
+    fn advance_phase(cur: Cell):
+        if let t = via[cur], t != cur and via[t] == none: via[cur] = cur
+        if via[cur] == cur and a[cur] >= cur: via[cur] = none
 
-    var ops: List<Int> = []
+    fn next_op(cur: Cell) -> Op:
+        if let t = via[cur]:
+            if t != cur: return if a[cur] == t: Op.Jump else: Op.Inc
+            return if a[a[cur]] != b[a[cur]]: Op.Jump else: Op.Inc
+        if a[cur] == b[cur]: Op.Jump else: Op.Inc
+
+    var ops: List<Op> = []
     var cur = low
     while a[last] != b[last]:
-        if should_jump(cur):
-            ops.push(2)
-            cur = a[cur]
-        else:
-            ops.push(1)
-            a[cur] += 1
+        advance_phase(cur)
+        let op = next_op(cur)
+        ops.push(op)
+        match op:
+            Op.Jump => cur = a[cur]
+            Op.Inc => a[cur] = (a[cur] + 1)!
     (low, ops)
 
 if let (start, ops) = plan():
-    print(ops.len, start + 1)
-    print(ops)
+    print(ops.len, start)
+    print([op_code(op) for op in ops])
 else:
     print(-1)
