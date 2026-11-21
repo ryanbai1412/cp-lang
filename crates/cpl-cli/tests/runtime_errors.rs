@@ -529,3 +529,42 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
         assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
     }
 }
+
+#[test]
+fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
+    let msg = "an array literal needs one value per position";
+    let cases = [
+        "domain D = 0..3\nstruct Boxed(xs: [D]Int)\nlet b = Boxed(xs: [10, 20])\nprint(b.xs[D(0)])\n",
+        "domain D = 0..3\nlet xs: [D]Int = [10, 20]\nprint(xs[D(0)])\n",
+    ];
+    for (idx, src) in cases.iter().enumerate() {
+        let (code, err) = run_stderr(src, "");
+        assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
+        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
+        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+
+        let dir = std::env::temp_dir()
+            .join(format!("runtime_errors_dom_lit_{}_{idx}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.cp");
+        let cpp = dir.join("a.cpp");
+        let exe = dir.join("a.bin");
+        fs::write(&file, src).unwrap();
+        let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+            .output()
+            .expect("cpl build");
+        assert!(build.status.success(), "cpl build failed:\n{}", String::from_utf8_lossy(&build.stderr));
+        let compile = Command::new("g++")
+            .args(["-std=c++17", "-O1", "-DLOCAL", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+            .output()
+            .expect("g++");
+        assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
+        let out = Command::new(&exe).output().expect("run binary");
+        let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");
+        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+    }
+}
