@@ -268,14 +268,29 @@ fn sizes(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
 }
 
 /// The lengths of the top-level arrays, by field.
-fn lengths(case: &Case) -> Vec<Option<usize>> {
-    case.values
-        .iter()
-        .map(|value| match value {
-            Value::Seq(items) => Some(items.len()),
-            _ => None,
-        })
-        .collect()
+/// Removes element `position` from each array of `target` (a copy of
+/// `old`) that `new`, `old` fitted to a smaller size, has one fewer of.
+fn drop_where_shorter(old: &Value, new: &Value, target: &mut Value, position: usize) -> bool {
+    match (old, new, target) {
+        (Value::Seq(old), Value::Seq(new), Value::Seq(target)) if new.len() + 1 == old.len() => {
+            let fits = position < old.len();
+            if fits {
+                target.remove(position);
+            }
+            fits
+        }
+        (Value::Seq(old), Value::Seq(new), Value::Seq(target))
+        | (Value::Tuple(old), Value::Tuple(new), Value::Tuple(target))
+            if new.len() == old.len() =>
+        {
+            let mut any = false;
+            for ((old, new), target) in old.iter().zip(new).zip(target.iter_mut()) {
+                any |= drop_where_shorter(old, new, target, position);
+            }
+            any
+        }
+        _ => false,
+    }
 }
 
 /// Shrinks `case`, which must fail, to a smaller case that still does.
@@ -348,20 +363,12 @@ pub fn shrink(
                 }
                 let mut smaller = best.clone();
                 *at(&mut smaller, &path) = Value::Int(current - 1);
-                // Which arrays the smaller size shortens.
-                let before = lengths(&best);
-                let after = fit(spec, &smaller).map(|fitted| lengths(&fitted));
-                let Some(after) = after else { break };
+                // Which arrays the smaller size shortens, at any depth: a
+                // smaller `k` shortens every permutation in a list of them.
+                let Some(fitted) = fit(spec, &smaller) else { break };
                 let mut any = false;
-                for (field, (old, new)) in before.iter().zip(&after).enumerate() {
-                    if let (Some(old), Some(new), Value::Seq(items)) =
-                        (old, new, &mut smaller.values[field])
-                    {
-                        if new + 1 == *old && position < *old {
-                            items.remove(position);
-                            any = true;
-                        }
-                    }
+                for (field, new) in fitted.values.iter().enumerate() {
+                    any |= drop_where_shorter(&best.values[field], new, &mut smaller.values[field], position);
                 }
                 if !any {
                     break;
