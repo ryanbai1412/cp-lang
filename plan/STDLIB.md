@@ -1059,6 +1059,7 @@ struct WindowFold<T>(m: Monoid<T>) // [new] O(1) amortized inverse-free queue fo
     @get fn fold(self) -> T
     fn push(mut self, x: T)
     fn pop(mut self) -> ?T
+fn mo<D, R>(queries: List<Range<D>>, add: D -> (), remove: D -> (), answer: Int -> R) -> List<R> // O((n + q) sqrt n)
 fn mo_order<D>(queries: List<Range<D>>) -> List<Int> // [new] O(q log q)
 fn mo_steps<D>(from: Range<D>, to: Range<D>) -> yields (pos: D, entering: Bool) // [new]
 ```

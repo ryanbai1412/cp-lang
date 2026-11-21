@@ -509,6 +509,16 @@ fn mo_order<D>(queries: List<Range<D>>) -> List<Int>         // O(q log q)
 fn mo_steps<D>(from: Range<D>, to: Range<D>) -> yields (pos: D, entering: Bool)
                                                              // O(|dl| + |dr|)
 
+/// In-place Mo driver: calls `add(pos)` / `remove(pos)` O((n + q) sqrt n)
+/// times and `answer(qi)` q times, returning results in original query order.
+/// Allocates only the traversal order and the results.
+fn mo<D, R>(
+    queries: List<Range<D>>,
+    add: D -> (),
+    remove: D -> (),
+    answer: Int -> R,
+) -> List<R>                                                 // O((n + q) sqrt n)
+
 /// Offline divide-and-conquer over time `0..q`: attach events active on
 /// `r: Range<T>` and walk leaves in O((q + e) log q) push/undo calls.
 struct TimeTree<T, E>
@@ -805,13 +815,21 @@ for i in Q: print(ans[i])
 - `std.sparse`: `DisjointSparseTable`.
 - `std.window`: `MonoDeque`, `WindowFold` (promoted from
   `examples/local-lib/ds/`).
-- `std.mo`: `mo_order`, `mo_steps` (domain-typed promotion of
-  `examples/local-lib/ds/mo.cp`).
+- `std.mo`: `mo`, `mo_order`, `mo_steps` (in-place Mo driver plus
+  escape-hatch ordering and transitions).
 
 **Phase 2 (advanced range structures in `stdlib/`):**
 - `MergeSortTree`, `SparseSegTree`, `PersistentSegTree` + `RangeKth`,
   `LiChao` + `LiChaoTag` (with `add_segment`), `BeatsSegTree` (full
   `chmin` + `chmax` + `add`), and `TimeTree` (offline rollback D&C).
+
+**Open items:**
+- `Prefix.filling(order:)` (append-only fill-order prefix sums for
+  `cf2183f`, `cf2229e`, `ioi07p5`, `apio09p1`) — implemented in the
+  companion prefix-filling tranche.
+- `TimeTree` benchmark (`bench/ranges/time_tree.cp`) sits at 1.22–1.27x
+  vs matched C++17 (flat linked-list pool + iterative `add_interval`;
+  remaining gap is 64-bit `Dsu.sz` / `Dsu` layout in `std.dsu`).
 
 **Maximally ambitious version:** once the core lane delivers compile-time
 closure monomorphization, `?Struct` niche packing, and `Bounds<D>` as an

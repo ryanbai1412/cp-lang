@@ -36,6 +36,46 @@ pub fn mo_steps<D>(from: Range<D>, to: Range<D>) -> List<(pos: D, entering: Bool
         out.push((pos: D.nth(r), entering: false))
     out
 
+/// Answer offline range queries in Mo order using in-place window moves.
+/// Calls `add(pos)` / `remove(pos)` O((n + q) * sqrt(n)) times and `answer(qi)` `q` times
+/// (when `answer(qi)` runs, the active window is `queries[qi]`), returning results in original
+/// query order. Always expands before shrinking so the active window is never inverted.
+/// Allocates only the traversal order and the results.
+pub fn mo<D, R>(
+    queries: List<Range<D>>,
+    add: D -> (),
+    remove: D -> (),
+    answer: Int -> R,
+) -> List<R>:
+    let q = queries.len
+    if q == 0: return []
+    let order = mo_order(queries)
+    var (l, r) = (0, 0)
+    fn move_to(nl: Int, nr: Int):
+        while l > nl:
+            l -= 1
+            add(D.nth(l))
+        while r < nr:
+            add(D.nth(r))
+            r += 1
+        while l < nl:
+            remove(D.nth(l))
+            l += 1
+        while r > nr:
+            r -= 1
+            remove(D.nth(r))
+    unchecked:
+        let q0 = order[0]
+        let (nl0, nr0) = queries[q0].ends
+        move_to(nl0, nr0)
+        var out = List.filled(q, answer(q0))
+        for i in 1..q:
+            let qi = order[i]
+            let (nl, nr) = queries[qi].ends
+            move_to(nl, nr)
+            out[qi] = answer(qi)
+        return out
+
 @test
 fn mo_order_and_steps_answer_distinct_counts():
     domain I = 1..=20
@@ -65,3 +105,16 @@ fn mo_order_and_steps_answer_distinct_counts():
         var seen = List.filled(6, false)
         for i in queries[qi]: seen[a[i]] = true
         assert ans[qi] == count(seen[v] for v in 0..6)
+
+    var freq2 = List.filled(6, 0)
+    var distinct2 = 0
+    fn add_pos(p: I):
+        let v = a[p]
+        if freq2[v] == 0: distinct2 += 1
+        freq2[v] += 1
+    fn rem_pos(p: I):
+        let v = a[p]
+        freq2[v] -= 1
+        if freq2[v] == 0: distinct2 -= 1
+    let ans2 = mo(queries, add: add_pos, remove: rem_pos, answer: _ => distinct2)
+    assert ans2 == ans

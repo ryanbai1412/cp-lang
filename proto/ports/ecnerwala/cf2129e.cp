@@ -1,5 +1,5 @@
 @!multitest
-use std.mo.{mo_order}
+use std.mo.{mo}
 let (n, m): (Int, Int) = read()
 domain V = 1..=n
 domain E = 0..m
@@ -14,7 +14,7 @@ let raw_q: [0..q](V, V, Int) = read()
 let queries = [
     (ql: pref.prefix(l.l), qr: pref.prefix(r.r), need: k + n - (r - l + 1)) for (l, r, k) in raw_q
 ]
-let order = mo_order([Arc.bounds.nth(x.ql)..Arc.bounds.nth(x.qr) for x in queries])
+let windows = [Arc.bounds.nth(x.ql)..Arc.bounds.nth(x.qr) for x in queries]
 
 let vmax = bit_ceil(n + 1)
 let bsz = 512
@@ -33,37 +33,22 @@ fn upd(u: V, v: V):
     val_freq[val[u]] += 1
     b_freq[val[u] / bsz] += 1
 
-fn add_edge(ind: Int):
-    let (src, dst, e) = arcs[ind]
+fn add_arc(p: Arc):
+    let (src, dst, e) = arcs[p.to_idx]
     alive[e] += 1
     if alive[e] == 2:
         upd(src, dst)
         upd(dst, src)
 
-fn del_edge(ind: Int):
-    let (src, dst, e) = arcs[ind]
+fn del_arc(p: Arc):
+    let (src, dst, e) = arcs[p.to_idx]
     if alive[e] == 2:
         upd(src, dst)
         upd(dst, src)
     alive[e] -= 1
 
-var (cur_l, cur_r) = (0, 0)
-var ans: [0..q]Int = 0
-for qi in order:
-    let (ql, qr, need) = queries[qi]
-    while cur_l > ql:
-        cur_l -= 1
-        add_edge(cur_l)
-    while cur_r < qr:
-        add_edge(cur_r)
-        cur_r += 1
-    while cur_l < ql:
-        del_edge(cur_l)
-        cur_l += 1
-    while cur_r > qr:
-        cur_r -= 1
-        del_edge(cur_r)
-    var k = need
+fn kth_val(qi: Int) -> Int:
+    var k = queries[qi].need
     var b = 0
     while k > b_freq[b]:
         k -= b_freq[b]
@@ -72,5 +57,6 @@ for qi in order:
     while k > val_freq[i]:
         k -= val_freq[i]
         i += 1
-    ans[qi] = i
-print(ans, sep: "\n")
+    i
+
+print(mo(windows, add: add_arc, remove: del_arc, answer: kth_val), sep: "\n")

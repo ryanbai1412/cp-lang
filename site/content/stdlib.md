@@ -29,7 +29,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.marks` | `Marks`, `MarkMap`, `Interner` | Generation-stamped O(1)-reset visited set/map and online key interner |
 | `std.math` | `gcd`, `lcm`, `ext_gcd`, `ceil_div`, `choose2`, `Sieve`, `sieve_multiplicative`, `factor`, `divisors`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `floor_sum`, `bit_len` | Number theory, primes, CRT, discrete log/sqrt, bit helpers |
 | `std.matrix` | `Mat<T>`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `XorBasis` | Dense matrices, exact and floating-point Gaussian elimination, GF(2) XOR bases |
-| `std.mo` | `mo_order`, `mo_steps` | Mo's offline range-query ordering and window transitions |
+| `std.mo` | `mo`, `mo_order`, `mo_steps` | Mo's offline range-query driver, ordering, and window transitions |
 | `std.mod` | `Mod<P>`, `Comb<M>` | Compile-time and runtime modular arithmetic and combinatorics |
 | `std.ntt` | `ntt`, `convolve`, `convolve_mod`, `convolve_int`, `SosOver`, `sos`, `fwht`, `convolve_or`, `convolve_and`, `convolve_xor`, `convolve_subset` | NTT, linear/cyclic/3-prime/exact convolution, SOS, FWHT, bitwise/subset convolutions |
 | `std.poly` | `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all`, `compose`, `lagrange_at`, `interpolate` | Formal power series, multipoint ops & interpolation over NTT (`List<Mod<P>>`) |

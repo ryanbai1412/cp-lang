@@ -80,7 +80,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'hull_tangents', 'idempotent', 'increase', 'integral', 'interpolate', 'inv', 'inv_mod', 'inverse', 'inverse_real', 'inversions', 'is_palindrome',
     'is_prime', 'is_sorted', 'knuth_break', 'lagrange_at', 'last_lt', 'lcp_array', 'line_dist', 'line_intersect', 'locate', 'locate_convex', 'log',
     'lower_hull', 'lt_fields', 'lyndon_factorization', 'lyndon_runs', 'manacher', 'max_bounded_flow', 'max_closure', 'max_matching', 'max_weight_general_matching', 'max_weight_matching', 'merge_sorted',
-    'min_bounded_flow', 'min_bounding_box', 'min_enclosing_circle', 'min_rotation', 'min_vertex_cover', 'min_weight_matching', 'minkowski_sum', 'minkowski_upper', 'mo_order', 'mo_steps', 'mod_log',
+    'min_bounded_flow', 'min_bounding_box', 'min_enclosing_circle', 'min_rotation', 'min_vertex_cover', 'min_weight_matching', 'minkowski_sum', 'minkowski_upper', 'mo', 'mo_order', 'mo_steps', 'mod_log',
     'mod_sqrt', 'monge_break', 'mul_mod', 'newton', 'next_greater', 'next_less', 'next_permutation', 'nth_element', 'ntt', 'offline_over',
     'on_segment', 'overlap', 'pairs', 'period', 'perm_cycles', 'perm_pow', 'phi', 'poly_at', 'poly_degree', 'polygon_area',
     'polygon_cut', 'pow', 'pow_mod', 'prefix_fold', 'prefix_function', 'prefix_matches', 'prev_greater', 'prev_less', 'prev_permutation', 'primitive_root',
