@@ -154,7 +154,7 @@ impl<'a> Checker<'a> {
         else {
             return;
         };
-        if !matches!(self.env.type_def(name).as_deref(), Some(Def::Struct { .. })) {
+        if !matches!(self.type_def(name).as_deref(), Some(Def::Struct { .. })) {
             return;
         }
         let written = self.quote(range.span).to_string();
@@ -173,7 +173,7 @@ impl<'a> Checker<'a> {
             if args.is_empty() {
                 let value = match self.local(&name.text) {
                     Some(local) => Some(local.ty.clone()),
-                    None => match self.env.global(&name.text).as_deref() {
+                    None => match self.global(&name.text).as_deref() {
                         Some(Def::Value { ty, .. }) => Some(ty.clone()),
                         _ => None,
                     },
@@ -200,7 +200,7 @@ impl<'a> Checker<'a> {
             let head_span = Span::new(span.start, span.start + head.len() as u32);
             // `treap.Treap<Int>` after `use lib.treap`.
             if self.local(head).is_none() && self.env.is_module(head) {
-                return match self.env.global(name) {
+                return match self.global(name) {
                     Some(def) => self.def_type(&def, member, span, args),
                     None => {
                         let message = format!("module `{head}` has no public type `{member}`");
@@ -248,7 +248,7 @@ impl<'a> Checker<'a> {
             }
         }
         let lookup_name = prefix_shape_struct(name, args.len()).unwrap_or(name);
-        if let Some(def) = self.env.global(lookup_name) {
+        if let Some(def) = self.global(lookup_name) {
             self.refs.push(GlobalRef {
                 span,
                 name: lookup_name.to_string(),
@@ -321,7 +321,7 @@ impl<'a> Checker<'a> {
             ExprKind::Name(name) => {
                 let ty = match self.local(name) {
                     Some(local) => Some(local.ty.clone()),
-                    None => match self.env.global(name).as_deref() {
+                    None => match self.global(name).as_deref() {
                         Some(Def::Value { ty, .. }) => Some(ty.clone()),
                         _ => None,
                     },
@@ -520,7 +520,7 @@ impl<'a> Checker<'a> {
     /// A domain or constant that the struct `owner`, or an impl for it,
     /// declares in its body.
     pub(crate) fn owned_member(&mut self, owner: &str, member: &str) -> Option<Ty> {
-        if let Some(Def::Struct { owned, .. }) = self.env.type_def(owner).as_deref() {
+        if let Some(Def::Struct { owned, .. }) = self.type_def(owner).as_deref() {
             if let Some((_, ty)) = owned.iter().find(|(name, _)| name == member) {
                 return Some(ty.clone());
             }
@@ -690,7 +690,7 @@ impl<'a> Checker<'a> {
             TypeKind::Named { name, args } => {
                 if args.is_empty()
                     && self.local(&name.text).is_none()
-                    && self.env.global(&name.text).is_none()
+                    && self.global(&name.text).is_none()
                     && prelude::ty(&name.text).is_none()
                     && !out.contains(&name.text)
                 {
@@ -1080,7 +1080,7 @@ impl<'a> Checker<'a> {
                         return Some((Ty::Pos(d.clone()), None));
                     }
                 }
-                match self.env.global(name).as_deref() {
+                match self.global(name).as_deref() {
                     Some(Def::Domain(info)) => Some((Ty::Pos(name.clone()), info.max_size)),
                     _ => self.finite_index_enum_size(name).map(|max| {
                         (

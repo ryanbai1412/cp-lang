@@ -89,7 +89,7 @@ impl<'a> Checker<'a> {
                 if let ExprKind::Name(name) = &first.kind {
                     let generic = self.local(name).is_none()
                         && matches!(
-                            self.env.global(name).as_deref(),
+                            self.global(name).as_deref(),
                             Some(Def::Fn { generics, .. }) if !generics.is_empty()
                         );
                     if generic {
@@ -215,7 +215,7 @@ impl<'a> Checker<'a> {
                 if let ExprKind::Name(name) = &base.kind {
                     if self.local(name).is_none() {
                         if let Some(shape) = prefix_shape_struct(name, args.len()) {
-                            if self.env.global(shape).is_some() {
+                            if self.global(shape).is_some() {
                                 return Ty::Named {
                                     name: shape.to_string(),
                                     args,
@@ -229,7 +229,7 @@ impl<'a> Checker<'a> {
                 let declared =
                     match &base.kind {
                         ExprKind::Name(name) if self.local(name).is_none() => {
-                            match self.env.global(name).as_deref() {
+                            match self.global(name).as_deref() {
                                 Some(
                                     Def::Value { ty, generics, .. } | Def::Fn { ty, generics },
                                 ) if !generics.is_empty() => Some((ty.clone(), generics.clone())),
@@ -548,7 +548,7 @@ impl<'a> Checker<'a> {
         let Ty::Named { name, .. } = scrutinee else {
             return;
         };
-        let Some(Def::Enum { variants, .. }) = self.env.type_def(name).as_deref().cloned() else {
+        let Some(Def::Enum { variants, .. }) = self.type_def(name).as_deref().cloned() else {
             return;
         };
         if variants.iter().any(|(_, fields)| !fields.is_empty()) {
@@ -602,7 +602,7 @@ impl<'a> Checker<'a> {
             ExprKind::Bool(b) => Some(*b),
             ExprKind::Paren(inner) => self.const_bool(inner),
             ExprKind::Name(name) if self.local(name).is_none() => {
-                match self.env.global(name).as_deref() {
+                match self.global(name).as_deref() {
                     Some(Def::Value { settled, .. }) => *settled,
                     _ => None,
                 }
@@ -1032,7 +1032,7 @@ impl<'a> Checker<'a> {
         let Ty::Named { name, .. } = left else {
             return None;
         };
-        matches!(self.env.type_def(name).as_deref(), Some(Def::Struct { .. }))
+        matches!(self.type_def(name).as_deref(), Some(Def::Struct { .. }))
             .then(|| (trait_name, name.clone()))
     }
 
@@ -1205,7 +1205,7 @@ impl<'a> Checker<'a> {
                 out.members.push((name.clone(), ty));
             }
         };
-        match self.env.type_def(type_name).as_deref() {
+        match self.type_def(type_name).as_deref() {
             Some(Def::Struct {
                 generics,
                 fields,
@@ -1233,7 +1233,7 @@ impl<'a> Checker<'a> {
             if let Some(Def::Trait { methods, .. }) = trait_name
                 .as_deref()
                 .and_then(|t| t.split('<').next())
-                .and_then(|t| self.env.type_def(t))
+                .and_then(|t| self.type_def(t))
                 .as_deref()
             {
                 for method in methods {
@@ -1265,7 +1265,7 @@ impl<'a> Checker<'a> {
         let Ty::Named { name: on, .. } = base else {
             return None;
         };
-        let def = self.env.global(name)?;
+        let def = self.global(name)?;
         let Def::Fn {
             ty: Ty::Fn { params, ret }, ..
         } = &*def
@@ -1283,7 +1283,7 @@ impl<'a> Checker<'a> {
         // `treap.merge` after `use lib.treap`: a public name of a module.
         if let ExprKind::Name(alias) = &base.kind {
             if self.local(alias).is_none() && self.env.is_module(alias) {
-                return match self.env.global(&format!("{alias}.{}", name.text)) {
+                return match self.global(&format!("{alias}.{}", name.text)) {
                     Some(def) => def.value_ty(&name.text),
                     None if name.text.is_empty() => Ty::Error,
                     None => {
@@ -1871,7 +1871,7 @@ impl<'a> Checker<'a> {
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
-                if let Some(Def::Enum { variants, .. }) = self.env.type_def(type_name).as_deref() {
+                if let Some(Def::Enum { variants, .. }) = self.type_def(type_name).as_deref() {
                     if let Some((_, fields)) = variants.iter().find(|(v, _)| *v == name.text) {
                         let def = Def::Variant {
                             of: type_name.clone(),
@@ -2221,7 +2221,7 @@ impl<'a> Checker<'a> {
     /// and a `new(x: Int)`, so an `Int` is made into it where it is
     /// wanted. `Mod<P>` is one, and so is any struct written the same way.
     pub(crate) fn is_number(&mut self, name: &str) -> bool {
-        match self.env.type_def(name).as_deref() {
+        match self.type_def(name).as_deref() {
             Some(Def::Struct { ctor: Some(params), owned, .. }) => {
                 matches!(params.as_slice(), [only] if only.ty.is_int())
                     && ["zero", "one"].iter().all(|c| owned.iter().any(|(n, _)| n == c))
@@ -2297,7 +2297,7 @@ impl<'a> Checker<'a> {
                     match &index[0] {
                         Ty::Named { name: ename, .. } => {
                             if let Some(Def::Enum { variants, .. }) =
-                                self.env.type_def(ename).as_deref().cloned()
+                                self.type_def(ename).as_deref().cloned()
                             {
                                 if variants.iter().all(|(_, fs)| fs.is_empty()) {
                                     if items.len() != variants.len() {
@@ -2357,7 +2357,7 @@ impl Checker<'_> {
     fn unalias_bounds(&mut self, ty: Ty) -> Ty {
         if let Ty::Pos(d) = &ty {
             if !d.ends_with(".bounds") {
-                if let Some(Def::Domain(info)) = self.env.type_def(d).as_deref() {
+                if let Some(Def::Domain(info)) = self.type_def(d).as_deref() {
                     let text = info.text.trim();
                     if let Some(base) = text.strip_suffix(".bounds") {
                         if !base.is_empty() && base.chars().all(|c| c.is_alphanumeric() || c == '_') {
@@ -2388,7 +2388,7 @@ impl Checker<'_> {
         if self.local(&base).is_some_and(|l| matches!(l.ty, Ty::Domain(_))) {
             return !self.local_product_domains.contains_key(&base);
         }
-        matches!(self.env.type_def(&base).as_deref(), Some(Def::Domain(info)) if info.factors.is_empty())
+        matches!(self.type_def(&base).as_deref(), Some(Def::Domain(info)) if info.factors.is_empty())
     }
 }
 

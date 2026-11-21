@@ -119,6 +119,8 @@ pub(crate) struct Checker<'a> {
     expected_bounds_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
     pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
+    /// Structs and enums declared inside a fn body, visible to the whole block.
+    local_defs: HashMap<String, Arc<Def>>,
     /// The types a lambda passed to a built-in method gives its unwritten
     /// parameters, from the method's catalog row, by the lambda's span.
     lambda_params: Vec<(Span, Vec<Ty>)>,
@@ -153,7 +155,34 @@ impl<'a> Checker<'a> {
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             local_product_domains: HashMap::new(),
+            local_defs: HashMap::new(),
             lambda_params: Vec::new(),
+        }
+    }
+
+    pub(crate) fn type_def(&mut self, name: &str) -> Option<Arc<Def>> {
+        match self.local_defs.get(name) {
+            Some(def) => Some(def.clone()),
+            None => self.env.type_def(name),
+        }
+    }
+
+    pub(crate) fn global(&mut self, name: &str) -> Option<Arc<Def>> {
+        match self.local_defs.get(name) {
+            Some(def) => Some(def.clone()),
+            None => self.env.global(name),
+        }
+    }
+
+    /// `struct Eq(..)` inside a fn: its type and constructor are in scope
+    /// for the whole block, like a top-level struct for the whole file.
+    pub(crate) fn declare_local_types(&mut self, stmts: &[cpl_syntax::ast::Stmt]) {
+        for stmt in stmts {
+            if matches!(stmt.kind, cpl_syntax::ast::StmtKind::Struct(_) | cpl_syntax::ast::StmtKind::Enum(_)) {
+                for (name, def) in self.defs_of(stmt) {
+                    self.local_defs.insert(name, Arc::new(def));
+                }
+            }
         }
     }
 
@@ -173,7 +202,7 @@ impl<'a> Checker<'a> {
         if let Some(factors) = self.local_product_domains.get(domain) {
             return Some(factors.clone());
         }
-        match self.env.global(domain).as_deref() {
+        match self.global(domain).as_deref() {
             Some(Def::Domain(info)) if !info.factors.is_empty() => Some(info.factors.clone()),
             _ => None,
         }
@@ -452,7 +481,7 @@ impl<'a> Checker<'a> {
         if self.generics.iter().any(|g| g == name) {
             return Ty::Param(name.to_string());
         }
-        if let Some(def) = self.env.global(name) {
+        if let Some(def) = self.global(name) {
             let ty = match &*def {
                 // `Sum` without `<Int>`: nothing says what `T` is.
                 Def::Value { ty, generics, .. } if !generics.is_empty() => self.settle(ty),
@@ -640,7 +669,7 @@ impl<'a> Checker<'a> {
         };
         let (mutable, keyword, decl) = match self.local(name) {
             Some(local) => (local.mutable, local.keyword, Some(local.span)),
-            None => match self.env.global(name).as_deref() {
+            None => match self.global(name).as_deref() {
                 Some(Def::Value {
                     mutable, keyword, ..
                 }) => (*mutable, *keyword, None),

@@ -33,7 +33,7 @@ impl<'a> Checker<'a> {
                         (&init.kind, &index[0])
                     {
                         if let Some(Def::Enum { variants, .. }) =
-                            self.env.type_def(ename).as_deref().cloned()
+                            self.type_def(ename).as_deref().cloned()
                         {
                             if variants.iter().all(|(_, fs)| fs.is_empty())
                                 && items.len() != variants.len()
@@ -108,6 +108,9 @@ impl<'a> Checker<'a> {
     fn stmts(&mut self, stmts: &[Stmt], top_level: bool) -> Ty {
         let mut last = Ty::Unit;
         let present = self.present.len();
+        if !top_level {
+            self.declare_local_types(stmts);
+        }
         for (k, stmt) in stmts.iter().enumerate() {
             last = self.stmt(stmt, top_level);
             // `if x == none: return` leaves `x` holding a value.
@@ -180,7 +183,7 @@ impl<'a> Checker<'a> {
                 }
                 let fields = match path
                     .last()
-                    .and_then(|name| self.env.global(&name.text))
+                    .and_then(|name| self.global(&name.text))
                     .as_deref()
                 {
                     Some(Def::Variant { fields, .. }) => fields.clone(),
@@ -226,7 +229,7 @@ impl<'a> Checker<'a> {
                         variants,
                         tagged: false,
                         ..
-                    }) = self.env.type_def(name).as_deref().cloned()
+                    }) = self.type_def(name).as_deref().cloned()
                     else {
                         continue;
                     };
@@ -579,7 +582,7 @@ impl<'a> Checker<'a> {
                     Some(name)
                         if otherwise.is_none()
                             && !matches!(
-                                self.env.global(name).as_deref(),
+                                self.global(name).as_deref(),
                                 Some(Def::Variant { .. })
                             ) =>
                     {
@@ -787,7 +790,7 @@ impl<'a> Checker<'a> {
                 }
                 let owner = type_head(target).unwrap_or_default();
                 let owned_from_struct: Vec<(String, Ty)> =
-                    if let Some(Def::Struct { owned, .. }) = self.env.type_def(&owner).as_deref() {
+                    if let Some(Def::Struct { owned, .. }) = self.type_def(&owner).as_deref() {
                         owned.clone()
                     } else {
                         Vec::new()
@@ -1008,7 +1011,7 @@ impl<'a> Checker<'a> {
         // argument (e.g. `Compressed<D, T>`, `Rooted<V, P>`) packs that domain
         // existentially as a value-owned domain (`xs.D`, `t.Pre`).
         if let Ty::Named { name: sname, args } = value_ty {
-            if matches!(self.env.global(sname).as_deref(), Some(Def::Struct { .. })) {
+            if matches!(self.global(sname).as_deref(), Some(Def::Struct { .. })) {
                 for arg in args {
                     if let Ty::Pos(d) | Ty::Domain(d) = arg {
                         allowed.push(d.clone());
@@ -1092,7 +1095,7 @@ impl<'a> Checker<'a> {
     /// body. The struct's fields can be named in them without `self.`.
     fn methods(&mut self, methods: &[Stmt], self_ty: &Ty) {
         let fields = match self_ty {
-            Ty::Named { name, .. } => match self.env.global(name).as_deref() {
+            Ty::Named { name, .. } => match self.global(name).as_deref() {
                 Some(Def::Struct { fields, .. }) => fields.clone(),
                 _ => Vec::new(),
             },
@@ -1171,7 +1174,7 @@ impl<'a> Checker<'a> {
                         let mutable = match self.local(&name) {
                             Some(local) => local.mutable,
                             None => matches!(
-                                self.env.global(&name).as_deref(),
+                                self.global(&name).as_deref(),
                                 Some(Def::Value { mutable: true, .. })
                             ),
                         };
@@ -1210,7 +1213,7 @@ impl<'a> Checker<'a> {
         for arg in args {
             self.resolve_type(arg);
         }
-        match self.env.global(&name.text).as_deref() {
+        match self.global(&name.text).as_deref() {
             Some(Def::Trait { methods, .. }) => {
                 self.refs.push(GlobalRef {
                     span: name.span,
@@ -1359,7 +1362,7 @@ impl<'a> Checker<'a> {
         // Inside a method the struct's fields can be named without `self.`.
         let receiver = f.params.iter().find(|p| p.name.text == "self");
         if let (Some(receiver), Some(Ty::Named { name, .. })) = (receiver, self_ty) {
-            if let Some(Def::Struct { fields, .. }) = self.env.global(name).as_deref() {
+            if let Some(Def::Struct { fields, .. }) = self.global(name).as_deref() {
                 for field in fields {
                     self.scopes.last_mut().unwrap().insert(
                         field.name.clone(),
@@ -1533,7 +1536,7 @@ impl Checker<'_> {
         };
         (name == "fields"
             && self.local(name).is_none()
-            && self.env.global(name).is_none()
+            && self.global(name).is_none()
             && !args.is_empty()
             && args.iter().all(|a| a.name.is_none()))
         .then_some(args.as_slice())
@@ -1545,7 +1548,7 @@ impl Checker<'_> {
         let Ty::Named { name, .. } = ty else {
             return None;
         };
-        match self.env.global(name).as_deref() {
+        match self.global(name).as_deref() {
             Some(Def::Enum { variants, .. }) => Some(variants.iter().map(|(_, fs)| fs.clone()).collect()),
             _ => None,
         }

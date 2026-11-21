@@ -32,8 +32,9 @@ fn buy_souvenirs(n: 2..=100, p0: 1..=1e15):
     while T.any(i => price[i] == none):
         for i in T.rev:
             if let v = price[i]:
-                if T.after(i).any(j => price[j] == none): break pay(v - 1)
+                if price[i.r..].any(p => p == none): pay(v - 1); break
             elif let e = eq[i]:
-                break if e.types.len == 1: learn(i, e.sum) else: pay(e.sum / e.types.len)
+                if e.types.len == 1: learn(i, e.sum) else: pay(e.sum / e.types.len)
+                break
 
     for i in T: repeat i - bought[i]: transaction(price[i]!)

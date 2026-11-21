@@ -973,7 +973,7 @@ impl<'a> Checker<'a> {
         steps.reverse();
         let (root_mutable, lent) = match self.local(name) {
             Some(local) => (local.mutable, self.lends.views.get(&local.span).cloned()),
-            None => match self.env.global(name).as_deref() {
+            None => match self.global(name).as_deref() {
                 Some(Def::Value { mutable, .. }) => {
                     (*mutable, self.lends.global_views.get(name).cloned())
                 }
@@ -1358,7 +1358,7 @@ impl<'a> Checker<'a> {
         let mut writes = touched.written.0;
         for name in touched.calls {
             if self.local(&name).is_some()
-                || !matches!(self.env.global(&name).as_deref(), Some(Def::Fn { .. }))
+                || !matches!(self.global(&name).as_deref(), Some(Def::Fn { .. }))
             {
                 continue;
             }
@@ -1390,7 +1390,7 @@ impl<'a> Checker<'a> {
     /// would do so in `cpl run` and not on the judge.
     pub(crate) fn debug_changes(&mut self, callee: &Expr, args: &[Arg]) {
         let prelude = matches!(&callee.kind, ExprKind::Name(name)
-            if name == "debug" && self.local(name).is_none() && self.env.global(name).is_none());
+            if name == "debug" && self.local(name).is_none() && self.global(name).is_none());
         if !prelude {
             return;
         }
@@ -1445,7 +1445,7 @@ impl<'a> Checker<'a> {
                     }
                 }
                 ExprKind::Name(name) if self.local(name).is_none() => {
-                    let global = self.env.global(name);
+                    let global = self.global(name);
                     let Some(Def::Fn { .. }) = global.as_deref() else {
                         if let Some(what) = global.is_none().then(|| io_of(name)).flatten() {
                             return Some((call.span, what.to_string()));
@@ -1478,7 +1478,7 @@ impl<'a> Checker<'a> {
         };
         if let ExprKind::Name(n) = &base.kind {
             if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
-                || matches!(self.env.global(n).as_deref(), Some(Def::Domain { .. }))
+                || matches!(self.global(n).as_deref(), Some(Def::Domain { .. }))
             {
                 return;
             }
@@ -1506,7 +1506,7 @@ impl<'a> Checker<'a> {
                 return Some(format!("uses `{root}`"));
             }
             let global_fn = self.local(used).is_none()
-                && matches!(self.env.global(used).as_deref(), Some(Def::Fn { .. }));
+                && matches!(self.global(used).as_deref(), Some(Def::Fn { .. }));
             match (outer && global_fn).then(|| self.env.effects(used)) {
                 Some(effects) => effects.does(root).map(|what| format!("calls `{used}`, which {what} `{root}`")),
                 None => None,
@@ -1534,7 +1534,7 @@ impl<'a> Checker<'a> {
             return;
         };
         if self.local(name).is_some()
-            || !matches!(self.env.global(name).as_deref(), Some(Def::Fn { .. }))
+            || !matches!(self.global(name).as_deref(), Some(Def::Fn { .. }))
         {
             return;
         }
@@ -1888,7 +1888,7 @@ impl<'a> Checker<'a> {
             let ty = self
                 .local(name)
                 .map(|l| l.ty.clone())
-                .or_else(|| match self.env.global(name).as_deref() {
+                .or_else(|| match self.global(name).as_deref() {
                     Some(Def::Value { ty, .. }) => Some(ty.clone()),
                     _ => None,
                 });
@@ -1953,7 +1953,7 @@ impl<'a> Checker<'a> {
         if name.text == "sort" {
             if let ExprKind::Name(n) = &base.kind {
                 if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
-                    || matches!(self.env.global(n).as_deref(), Some(Def::Domain { .. }))
+                    || matches!(self.global(n).as_deref(), Some(Def::Domain { .. }))
                 {
                     return;
                 }

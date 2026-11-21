@@ -3117,3 +3117,15 @@ fn an_int_literal_is_a_position_of_an_integer_domain() {
     let src = "let n: 1..=9 = read()\ndomain V = 0..n\nvar best: [V.bounds]V.bounds = 0\nlet v: V = 0\nbest[0] = 1\nfn f(k: Int):\n    domain K = 0..=k\n    var t: [K]Int = 0\n    t[0] = 1\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
+
+#[test]
+fn a_struct_declared_in_a_fn_is_a_type_and_a_constructor_there() {
+    let src = "fn f(n: Int) -> Int:\n    struct Acc(sum: Int, count: Int)\n    var best: ?Acc = none\n    best = Acc(n, 1)\n    best!.sum\n";
+    assert_eq!(check(src), Vec::new());
+}
+
+#[test]
+fn inline_modules_extern_fns_and_pattern_params_check() {
+    let src = "mod m:\n    extern fn ask(x: Int) -> Int\n    fn swap((a, b): (Int, Int)) -> (Int, Int) = (b, a)\n    fn solve(n: Int) -> Int = swap((ask(n), n)).0\n";
+    assert_eq!(check(src), Vec::new());
+}

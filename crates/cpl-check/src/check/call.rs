@@ -72,7 +72,7 @@ impl<'a> Checker<'a> {
             return None;
         };
         let prelude = matches!(&base.kind, ExprKind::Name(list)
-            if list == "List" && self.local(list).is_none() && self.env.global(list).is_none());
+            if list == "List" && self.local(list).is_none() && self.global(list).is_none());
         let [count, value] = args else {
             return None;
         };
@@ -358,7 +358,7 @@ impl<'a> Checker<'a> {
             return None;
         };
         let is_getter = |getters: &[String]| getters.contains(&name.text);
-        let found = match self.env.type_def(&type_name).as_deref() {
+        let found = match self.type_def(&type_name).as_deref() {
             Some(Def::Struct { getters, .. }) => is_getter(getters),
             _ => false,
         } || self.env.impls(&type_name).into_iter().any(
@@ -397,7 +397,7 @@ impl<'a> Checker<'a> {
         if self.local(type_name).is_some() {
             return None;
         }
-        let Some(Def::Struct { generics: struct_generics, .. }) = self.env.type_def(type_name).as_deref().cloned() else {
+        let Some(Def::Struct { generics: struct_generics, .. }) = self.type_def(type_name).as_deref().cloned() else {
             return None;
         };
         let given = self.quietly(|c| c.infer(&only.value));
@@ -424,7 +424,7 @@ impl<'a> Checker<'a> {
             3 => "triples",
             _ => return None,
         };
-        let Some(Def::Fn { ty, generics }) = self.env.type_def(&format!("{}_of_{suffix}", name.text)).as_deref().cloned()
+        let Some(Def::Fn { ty, generics }) = self.type_def(&format!("{}_of_{suffix}", name.text)).as_deref().cloned()
         else {
             return None;
         };
@@ -457,7 +457,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &base.kind else {
             return;
         };
-        let prelude = name == "List" && self.local(name).is_none() && self.env.global(name).is_none();
+        let prelude = name == "List" && self.local(name).is_none() && self.global(name).is_none();
         if !prelude || args.is_empty() {
             return;
         }
@@ -472,7 +472,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
         };
-        if self.local(name).is_some() || self.env.global(name).is_some() {
+        if self.local(name).is_some() || self.global(name).is_some() {
             return None;
         }
         let tys: Vec<Ty> = args
@@ -991,7 +991,7 @@ impl<'a> Checker<'a> {
         args: &[Arg],
         call: &Expr,
     ) -> Ty {
-        if let Some(def) = self.env.type_def(name) {
+        if let Some(def) = self.type_def(name) {
             return match &*def {
                 Def::Struct {
                     generics,
@@ -1425,7 +1425,7 @@ impl Checker<'_> {
         let Some(Ty::Named { name: owner, .. }) = self.self_ty.clone() else {
             return None;
         };
-        let has = match self.env.global(&owner).as_deref() {
+        let has = match self.global(&owner).as_deref() {
             Some(Def::Struct { methods, getters, .. }) => {
                 methods.iter().any(|(m, _)| m == name) && !getters.iter().any(|g| g == name)
             }
