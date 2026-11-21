@@ -2450,7 +2450,15 @@ fn last_before(blacks: List<(Int, Int)>, r: Int) -> ?Int:
 fn first_after(s: Str, c: Char) -> ?Int:
     bsearch_first(0..s.len, i => s[i] >= c)
 
+fn getter_calls(xs: List<Int>, s: Str, r: Range<Int>) -> Int:
+    domain D = 0..3
+    let a: [D]Int = 0
+    if xs.is_empty() or s.is_empty() or a.is_empty() or r.is_empty():
+        return 0
+    xs.len() + s.len() + a.len() + r.len()
+
 print(last_before([(1, 2), (3, 4)], 3) ?? -1, first_after(\"abc\", 'b') ?? -1)
+print(getter_calls([1, 2], \"ab\", 0..4))
 ";
     assert_eq!(check(ok), vec![]);
 }

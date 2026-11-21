@@ -80,8 +80,9 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `x.inv()`: a `@get` method of a struct reads the same with empty
-    /// parentheses, unless what it gives is itself a fn to call.
+    /// `x.inv()`: a `@get` method of a struct or a builtin sequence getter
+    /// reads the same with empty parentheses, unless what it gives is itself
+    /// a fn to call.
     fn getter_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
@@ -89,7 +90,13 @@ impl<'a> Checker<'a> {
         if !args.is_empty() {
             return None;
         }
-        let Ty::Named { name: type_name, .. } = self.quietly(|c| c.infer(base)) else {
+        let base_ty = self.quietly(|c| c.infer(base));
+        if base_ty.seq_elem().is_some()
+            && matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last")
+        {
+            return Some(self.infer(callee));
+        }
+        let Ty::Named { name: type_name, .. } = base_ty else {
             return None;
         };
         let is_getter = |getters: &[String]| getters.contains(&name.text);
