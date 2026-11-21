@@ -1499,6 +1499,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   core does not have; three names over one shape need nothing new, and a weighted graph is a local
   alias with more fields (`type SimpleGraph = [E](u: V, v: V, w: W)`), as for `Tree`. The names
   are recognised by name, like 25.1. Reverse: delete the three aliases and `Shape::Graph`.
+- **25.5 Equal values are lowered together, sizes apart.** After lowering each number alone, the
+  shrinker lowers every number holding one value as one (in one input, and across the test cases
+  of a multitest), so a failure that needs two values equal (a count left over from an earlier
+  test, a repeated element) shrinks to `1 1`, not to wherever the first value stood. Sizes stay
+  out of the group: they are halved and stepped on their own, and a size that equals a value by
+  chance (`n = 2`, `a = [2, 2]`) would otherwise drag the array shorter and stop the group. The
+  cost is one more bisection per distinct value per round. Reverse: drop step 3b and the joint
+  step in `shrink_tests`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

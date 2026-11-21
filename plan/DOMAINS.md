@@ -300,13 +300,14 @@ one end of an edge), all shrunk to their known minimal input, median
 0.49 s. A recursive `@brute` works; a
 failure that needs several tests shrinks each of them; a smaller size drops
 elements from nested arrays (a list of permutations), not just top-level
-ones; letter bounds (`'A' + k`) evaluate. Values that only fail together
-(two tests that must repeat one number) still shrink one at a time, so they
-stop at the first such value, not at 1.
+ones; letter bounds (`'A' + k`) evaluate. Values that fail only while
+equal, in one test or across tests, are lowered together
+(`values_that_fail_only_while_equal_are_lowered_together`), so two tests
+that must repeat one number shrink to `1` and `1`, not `7` and `7`.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
-**Next.** Lowering equal values together; generators keyed to the
+**Next.** Generators keyed to the
 stdlib declarations, not their names; worst-case and anti-hash
 generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 

@@ -285,6 +285,82 @@ fn at<'a>(case: &'a mut Case, path: &[usize]) -> &'a mut Value {
     value
 }
 
+/// The number at `path` in `case`, if there is still one there.
+fn number_at(case: &Case, path: &[usize]) -> Option<i128> {
+    let (first, rest) = path.split_first()?;
+    let mut value = case.values.get(*first)?;
+    for index in rest {
+        value = match value {
+            Value::Seq(items) | Value::Tuple(items) => items.get(*index)?,
+            Value::Int(_) | Value::Char(_) => return None,
+        };
+    }
+    value.number()
+}
+
+/// Lowers every number of `cases` equal to `value` as one, as far as
+/// `accept` takes them; `accept` gives back the cases it keeps. Two
+/// values that fail only while equal stop each other when lowered one
+/// at a time. Sizes stay out: they have their own steps, and a size
+/// equal to a value by chance would hold the value up.
+fn lower_equal(
+    spec: &InputSpec,
+    cases: &mut Vec<Case>,
+    value: i128,
+    accept: &mut dyn FnMut(Vec<Case>) -> Option<Vec<Case>>,
+) -> bool {
+    let holding = |cases: &[Case], x: i128| {
+        let mut paths = Vec::new();
+        let mut floor = i128::MIN;
+        for (index, case) in cases.iter().enumerate() {
+            let sizes: Vec<Path> = sizes(spec, case).into_iter().map(|(path, _)| path).collect();
+            for (path, lo) in numbers(spec, case) {
+                if number_at(case, &path) == Some(x) && !sizes.contains(&path) {
+                    paths.push((index, path));
+                    floor = floor.max(lo);
+                }
+            }
+        }
+        (paths, floor)
+    };
+    let (mut paths, mut floor) = holding(cases, value);
+    let mut current = value;
+    while paths.len() >= 2 && floor < current {
+        let target = floor + (current - floor) / 2;
+        let mut candidate = cases.clone();
+        for (index, path) in &paths {
+            let slot = at(&mut candidate[*index], path);
+            *slot = slot.with(target);
+        }
+        match accept(candidate) {
+            Some(kept) => {
+                *cases = kept;
+                current = target;
+                let (now, least) = holding(cases, current);
+                paths = now;
+                floor = floor.max(least);
+            }
+            None => floor = target + 1,
+        }
+    }
+    current < value
+}
+
+/// The distinct numbers of `cases`, largest first.
+fn distinct_numbers(spec: &InputSpec, cases: &[Case]) -> Vec<i128> {
+    let mut all: Vec<i128> = cases
+        .iter()
+        .flat_map(|case| {
+            numbers(spec, case)
+                .into_iter()
+                .filter_map(|(path, _)| number_at(case, &path))
+        })
+        .collect();
+    all.sort_unstable_by(|a, b| b.cmp(a));
+    all.dedup();
+    all
+}
+
 /// Every number of a case with the lower bound of its range.
 fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
     fn walk(shape: &Shape, value: &Value, env: &Env, path: &mut Path, out: &mut Vec<(Path, i128)>) {
@@ -704,6 +780,14 @@ pub fn shrink(
                 improved |= lower(&mut best, &path, lo, &mut attempt);
             }
         }
+        // 3b. Equal values, together.
+        for value in distinct_numbers(spec, std::slice::from_ref(&best)) {
+            let mut cases = vec![best.clone()];
+            improved |= lower_equal(spec, &mut cases, value, &mut |candidate| {
+                let [candidate] = <[Case; 1]>::try_from(candidate).ok()?;
+                attempt(&mut best, candidate).then(|| vec![best.clone()])
+            });
+        }
         if !improved {
             break;
         }
@@ -780,6 +864,24 @@ fn shrink_tests(
             });
             left = left.saturating_sub(tries);
             best.cases[i] = shrunk;
+        }
+        // Equal values in different test cases, together.
+        for value in distinct_numbers(&scoped, &best.cases) {
+            let mut cases = best.cases.clone();
+            let lowered = lower_equal(&scoped, &mut cases, value, &mut |candidate| {
+                if left == 0 {
+                    return None;
+                }
+                left -= 1;
+                let fitted: Vec<Case> = candidate
+                    .iter()
+                    .map(|case| fit(&scoped, case))
+                    .collect::<Option<_>>()?;
+                still_fails(&with(fitted.clone())).then_some(fitted)
+            });
+            if lowered {
+                best.cases = cases;
+            }
         }
         if best.weight() >= before || left == 0 {
             return best;

@@ -843,9 +843,8 @@ fn a_bug_that_needs_two_tests_shrinks_both_of_them() {
     let mut start = start;
     start.cases[2] = test(&[7, 2]);
     let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| fails(case));
-    // Both tests shrink to one number each; the two 7s only move together,
-    // which a shrinker lowering one number at a time cannot do.
-    assert_eq!(smallest.render(), "2\n1\n7\n1\n7\n");
+    // Both tests shrink to one number each, and the two 7s move together.
+    assert_eq!(smallest.render(), "2\n1\n1\n1\n1\n");
 }
 
 #[test]
@@ -1143,4 +1142,26 @@ fn deleting_a_graph_vertex_renames_the_vertices_read_beside_it() {
     // vertex must carry `s` and `t` along with the edges.
     let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| joined(case));
     assert_eq!(smallest.render(), "2 1\n1 2\n1 2\n");
+}
+
+#[test]
+fn values_that_fail_only_while_equal_are_lowered_together() {
+    let src = "let n: 1..=5 = read()\nlet a: [0..n]1..=9 = read()\nprint(a.max)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let start = Case {
+        values: vec![
+            Value::Int(3),
+            Value::Seq(vec![Value::Int(7), Value::Int(4), Value::Int(7)]),
+        ],
+        cases: Vec::new(),
+        until_eof: false,
+    };
+    // Fails while two values repeat: lowering either 7 alone passes.
+    let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| {
+        let Value::Seq(a) = &case.values[1] else {
+            return false;
+        };
+        (0..a.len()).any(|i| (0..i).any(|j| a[i] == a[j]))
+    });
+    assert_eq!(smallest.render(), "2\n1 1\n");
 }
