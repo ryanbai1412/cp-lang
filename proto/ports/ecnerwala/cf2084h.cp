@@ -1,46 +1,46 @@
 @!multitest
 type M = Mod<1_000_000_007>
 
+struct Staircase:
+    steps: List<(top: Int, v: M)>
+    lift: Int
+    hidden: M
+
+    fn new() -> Staircase = Staircase([], 0, 0)
+
+    fn push(mut self, height: Int, v: M):
+        let top = height - lift
+        while let cur = steps.last, cur.top <= top:
+            steps.pop()
+            if let b = steps.last: hidden -= M(b.top - cur.top) * b.v
+        if let b = steps.last: hidden += M(b.top - top) * b.v
+        steps.push((top: top, v: v))
+
+    fn visible(self) -> M:
+        if let cur = steps.last: hidden + M(cur.top + lift) * cur.v else: hidden
+
 let n: 3..=2_000_000 = read()
 let s: Str = read()
 
-var runs = List<Int>()
+var blocks: List<Int> = []
 var run = 1
 for i in 1..n:
     if s[i] == s[i - 1]:
         run += 1
     else:
-        runs.push(run)
+        blocks.push(run)
         run = 1
-runs.push(run)
+blocks.push(run)
 
-if runs.len == 1:
+if blocks.len == 1:
     print(M(n - 1))
 else:
-    var offset: [0..2]Int = 0
-    var stk: [0..2]List<(len: Int, val: M)> = []
-    var stk_sum: [0..2]M = 0
-    var prev_dp: M = 1
-
-    for k in 0..runs.len - 1:
+    var stairs: [0..2]Staircase = [0..2] _ => Staircase.new()
+    var dp: M = 1
+    for k in 0..blocks.len - 1:
         let z = k % 2
-        offset[z] += 1
-        let shifted = runs[k] - offset[z]
-
-        if k >= 1:
-            while let top = stk[z].last, shifted >= top.len:
-                stk[z].pop()
-                if let below = stk[z].last:
-                    stk_sum[z] -= M(below.len - top.len) * below.val
-            if let below = stk[z].last:
-                stk_sum[z] += M(below.len - shifted) * below.val
-            stk[z].push((len: shifted, val: prev_dp))
-
-        var cur_dp = stk_sum[z]
-        if let top = stk[z].last:
-            cur_dp += M(top.len + offset[z]) * top.val
-        let base = if z == 0: runs[0] else: 1
-        cur_dp += M(base + offset[z] - 1)
-        prev_dp = cur_dp
-
-    print(prev_dp * M(runs.last!))
+        stairs[z].lift += 1
+        if k >= 1: stairs[z].push(blocks[k], dp)
+        let floor = if z == 0: blocks[0] else: 1
+        dp = stairs[z].visible() + M(floor + stairs[z].lift - 1)
+    print(dp * M(blocks.last!))
