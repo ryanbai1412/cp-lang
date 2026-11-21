@@ -3,11 +3,10 @@
 // bit can be located. Flipping node p also swaps its two subtrees, and
 // `untwist` undoes that: below a 1 the children are read in swapped order.
 let op: Str = read()
-let t: 1..=1e4 = read()
 
 fn untwist(h: Int, s: Str) -> Str:
     let size = (1 << h) - 1
-    var from = List.filled(size + 1, 1)  // from[i]: the node of `s` that lands on node i
+    var from: [1..=size]Int = 1  // from[i]: the node of `s` that lands on node i
     var out = s
     for i in 1..=size:
         out[i - 1] = s[from[i] - 1]
@@ -38,7 +37,7 @@ fn decode(n: Int, h: Int, sent: Str) -> Str:
     s[bad] = if s[bad] == '1': '0' else: '1'
     Str(s[i] for i in (0..s.len).rev if is_data(i))[0..n]
 
-for _ in 0..t:
-    let (n, h): (Int, 2..=20) = read()
-    let s: Str = read()
-    print(if op == "first": encode(h, s) else: decode(n, h, s))
+@!multitest
+let (n, h): (Int, 2..=20) = read()
+let msg: Str = read()
+print(if op == "first": encode(h, msg) else: decode(n, h, msg))

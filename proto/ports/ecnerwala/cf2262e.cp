@@ -8,24 +8,19 @@ let (n, m): (Int, Int) = read()
 type Z = Mod<m>
 let comb = Comb<m>()
 
-var symbol = List.filled(n + 2, 0)
-for i in 0..=n: symbol[i + 1] = (comb.catalan(i) * comb.catalan(i)).v
-
-var cur = List.filled(n + 2, 0)
-cur[0] = 1 % m
-var ans = List.filled(n + 1, Z(0))
+let symbol = [if i == 0: 0 else: (comb.catalan(i - 1) * comb.catalan(i - 1)).v for i in 0..=n + 1]
+var cur = [if i == 0: 1 % m else: 0 for i in 0..=n + 1]
+var ans: [0..=n]Z = 0
 for k in 0..=n:
     cur = convolve_mod(cur, symbol, m)[..n + 2]
-    ans[k] = Z(cur[n + 1]) * comb.fact(2 * n) * comb.inv_fact(k + 1) * comb.inv_fact(2 * n - k)
+    ans[k] = cur[n + 1] * comb.choose(2 * n, k) * comb.inv(k + 1)
 
 // ans(x - 1): out[j] = sum over k >= j of ans[k] * choose(k, j) * (-1)^(k - j)
-let out = [
-    (
-        sum(
-            (
-                if (k - j) % 2 == 0: 1 else: -1
-            ) * ans[k] * comb.fact(k) * comb.inv_fact(k - j) for k in j..=n
-        ) * comb.inv_fact(j)
-    ).v for j in 0..=n
-]
-print(out)
+fn shift(j: Int) -> Int:
+    var tot: Z = 0
+    for k in j..=n:
+        let term = ans[k] * comb.choose(k, j)
+        tot += if (k - j) % 2 == 0: term else: -term
+    tot.v
+
+print([shift(j) for j in 0..=n])
