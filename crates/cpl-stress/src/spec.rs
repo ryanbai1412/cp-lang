@@ -67,6 +67,8 @@ pub enum GraphKind {
     Connected,
     /// Directed, with no cycle.
     Dag,
+    /// Directed, nothing more: `u v` and `v u` are two arcs.
+    Digraph,
 }
 
 impl GraphKind {
@@ -75,8 +77,13 @@ impl GraphKind {
             "SimpleGraph" => Some(GraphKind::Simple),
             "ConnectedGraph" => Some(GraphKind::Connected),
             "Dag" => Some(GraphKind::Dag),
+            "Digraph" => Some(GraphKind::Digraph),
             _ => None,
         }
+    }
+
+    pub fn directed(self) -> bool {
+        matches!(self, GraphKind::Dag | GraphKind::Digraph)
     }
 }
 

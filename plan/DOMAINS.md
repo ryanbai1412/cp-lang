@@ -309,7 +309,7 @@ with its edges and every value read over its vertices renamed to match
 recursive `@brute`, multitest leak, DP order over permutations, update
 order over a weighted tree, a reachability step over a graph that checks
 one end of an edge), all shrunk to their known minimal input, median
-0.60 s. A recursive `@brute` works; a
+0.59 s. A recursive `@brute` works; a
 failure that needs several tests shrinks each of them; a smaller size drops
 elements from nested arrays (a list of permutations), not just top-level
 ones; letter bounds (`'A' + k`) evaluate. Values that fail only while
@@ -323,13 +323,14 @@ and star cases for `Tree<V>`, which it skipped before
 (`trees_are_shaped_as_a_path_and_a_star`). A shrunk graph has its vertex
 names swapped and its undirected edges turned low end first toward the
 plainest form, so a star shrinks to `1 2, 1 3, 1 4` from any centre.
+`std.graph.Digraph` is the directed simple graph: arcs both ways and
+cycles are made, and arcs keep their direction while shrinking
+(`shrinking_a_digraph_keeps_each_arc_the_way_it_points`).
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
 **Next.** Generators keyed to the
-stdlib declarations, not their names; a directed simple graph (the
-`noip14p5` port reads arcs, so its `SimpleGraph` shrinks with orientation
-it should not have); worst-case values and anti-hash generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
+stdlib declarations, not their names; worst-case values and anti-hash generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)
 **North star.** Every tool a contestant reaches for exists, is instant, and

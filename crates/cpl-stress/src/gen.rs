@@ -217,7 +217,11 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             let (lo, hi, m) = (eval(lo, env)?, eval(hi, env)?, eval(len, env)?.max(0));
             let n = (hi - lo + 1).max(0);
             (n <= MAX_LEN && m <= MAX_LEN).then_some(())?;
-            let room = n * (n - 1) / 2;
+            let room = if *kind == GraphKind::Digraph {
+                n * (n - 1)
+            } else {
+                n * (n - 1) / 2
+            };
             (m <= room).then_some(())?;
             // Position `i` of `names` is the `i`th vertex in a random
             // order: a DAG's edges run forward in it, and a connected
@@ -234,9 +238,10 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             let wanted = usize::try_from(m).ok()?;
             if room <= 4 * m + 64 {
                 // Dense: every pair not yet taken, in a random order.
+                let both = *kind == GraphKind::Digraph;
                 let mut rest: Vec<(i128, i128)> = (0..n)
-                    .flat_map(|b| (0..b).map(move |a| (a, b)))
-                    .filter(|pair| !seen.contains(pair))
+                    .flat_map(|b| (0..if both { n } else { b }).map(move |a| (a, b)))
+                    .filter(|&(a, b)| a != b && !seen.contains(&(a, b)))
                     .collect();
                 shuffle(&mut rest, pick);
                 rest.truncate(wanted - chosen.len());
@@ -244,7 +249,11 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             } else {
                 while chosen.len() < wanted {
                     let (a, b) = (pick.pick(0, n - 1, false), pick.pick(0, n - 1, false));
-                    let pair = (a.min(b), a.max(b));
+                    let pair = if *kind == GraphKind::Digraph {
+                        (a, b)
+                    } else {
+                        (a.min(b), a.max(b))
+                    };
                     if a != b && seen.insert(pair) {
                         chosen.push(pair);
                     }
@@ -254,7 +263,7 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
                 .into_iter()
                 .map(|(a, b)| {
                     let (a, b) = (names[a as usize], names[b as usize]);
-                    if *kind != GraphKind::Dag && pick.pick(0, 1, false) == 1 {
+                    if !kind.directed() && pick.pick(0, 1, false) == 1 {
                         (b, a)
                     } else {
                         (a, b)

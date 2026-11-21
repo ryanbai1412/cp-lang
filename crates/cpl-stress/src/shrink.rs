@@ -139,7 +139,7 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
                     ends.get(1)?.number()?.clamp(lo, hi),
                 );
                 let (x, y) = ((a - lo) as usize, (b - lo) as usize);
-                let key = if *kind == GraphKind::Dag {
+                let key = if kind.directed() {
                     (x, y)
                 } else {
                     (x.min(y), x.max(y))
@@ -160,7 +160,7 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
                 edges.push(Value::Tuple(edge));
             }
             match kind {
-                GraphKind::Simple => {}
+                GraphKind::Simple | GraphKind::Digraph => {}
                 GraphKind::Connected => (parts <= 1).then_some(())?,
                 GraphKind::Dag => {
                     let mut ready: Vec<usize> = (0..n).filter(|v| into[*v] == 0).collect();
@@ -252,7 +252,7 @@ fn disorder(spec: &InputSpec, case: &Case) -> u128 {
     for (field, value) in spec.fields.iter().zip(&case.values) {
         let undirected = match &field.shape {
             Shape::Tree { .. } => true,
-            Shape::Graph { kind, .. } => *kind != GraphKind::Dag,
+            Shape::Graph { kind, .. } => !kind.directed(),
             _ => false,
         };
         if let (true, Value::Seq(edges)) = (undirected, value) {
@@ -785,7 +785,7 @@ pub fn shrink(
         for field in 0..best.values.len() {
             let undirected = match &spec.fields[field].shape {
                 Shape::Tree { .. } => true,
-                Shape::Graph { kind, .. } => *kind != GraphKind::Dag,
+                Shape::Graph { kind, .. } => !kind.directed(),
                 _ => false,
             };
             let Value::Seq(items) = &best.values[field] else {

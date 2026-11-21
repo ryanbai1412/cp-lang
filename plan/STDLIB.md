@@ -1001,6 +1001,7 @@ type Tree<V> = [0..V.len - 1](u: V, v: V)
 type SimpleGraph<V, E> = [E](u: V, v: V)
 type ConnectedGraph<V, E> = [E](u: V, v: V)
 type Dag<V, E> = [E](u: V, v: V)
+type Digraph<V, E> = [E](u: V, v: V)
 trait Neighbours
 trait Target
 struct Graph<V, E> // O(n + m)

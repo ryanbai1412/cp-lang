@@ -989,7 +989,7 @@ fn a_weighted_tree_is_made_and_shrunk_as_a_tree_with_its_weights() {
 
 /// Whether `value` is `m` edges on `1..=n` with no loop and no pair twice,
 /// connected if asked, and with no directed cycle if `dag`.
-fn is_graph(value: &Value, n: i128, m: usize, connected: bool, dag: bool) -> bool {
+fn is_graph(value: &Value, n: i128, m: usize, connected: bool, directed: bool, dag: bool) -> bool {
     let Value::Seq(edges) = value else {
         return false;
     };
@@ -1002,12 +1002,16 @@ fn is_graph(value: &Value, n: i128, m: usize, connected: bool, dag: bool) -> boo
         let (Some(a), Some(b)) = (ends[0].number(), ends[1].number()) else {
             return false;
         };
-        let key = if dag { (a, b) } else { (a.min(b), a.max(b)) };
+        let key = if directed {
+            (a, b)
+        } else {
+            (a.min(b), a.max(b))
+        };
         if !(1..=n).contains(&a) || !(1..=n).contains(&b) || a == b || !pairs.insert(key) {
             return false;
         }
         reach[a as usize][b as usize] = true;
-        if !dag {
+        if !directed {
             reach[b as usize][a as usize] = true;
         }
     }
@@ -1024,7 +1028,7 @@ fn is_graph(value: &Value, n: i128, m: usize, connected: bool, dag: bool) -> boo
     edges.len() == m && (!connected || joined) && (!dag || !cycle)
 }
 
-const GRAPHS: &str = "use std.graph.{SimpleGraph, ConnectedGraph, Dag}\n\
+const GRAPHS: &str = "use std.graph.{SimpleGraph, ConnectedGraph, Dag, Digraph}\n\
 let (n, m): (2..=8, 1..=12) = read()\n\
 domain V = 1..=n\n\
 domain E = 0..m\n\
@@ -1033,6 +1037,7 @@ let b: ConnectedGraph<V, E> = read()\n\
 let c: Dag<V, E> = read()\n\
 type SimpleGraph = [E](u: V, v: V, w: 1..=9)\n\
 let d: SimpleGraph = read()\n\
+let e: Digraph<V, E> = read()\n\
 print(n)\n";
 
 fn graphs_valid(case: &Case) -> bool {
@@ -1040,10 +1045,11 @@ fn graphs_valid(case: &Case) -> bool {
         return false;
     };
     let (n, m) = (nm[0].number().unwrap(), nm[1].number().unwrap() as usize);
-    is_graph(&case.values[1], n, m, false, false)
-        && is_graph(&case.values[2], n, m, true, false)
-        && is_graph(&case.values[3], n, m, false, true)
-        && is_graph(&case.values[4], n, m, false, false)
+    is_graph(&case.values[1], n, m, false, false, false)
+        && is_graph(&case.values[2], n, m, true, false, false)
+        && is_graph(&case.values[3], n, m, false, true, true)
+        && is_graph(&case.values[4], n, m, false, false, false)
+        && is_graph(&case.values[5], n, m, false, true, false)
 }
 
 #[test]
@@ -1065,6 +1071,12 @@ fn simple_connected_and_acyclic_graphs_are_generated_valid() {
             .all(|e| matches!(e, Value::Tuple(ends) if matches!(ends[2], Value::Int(1..=9)))));
     }
     assert!(made >= 100, "only {made} of 300 seeds made a case");
+    // A `Digraph` may have a cycle, and an arc both ways; a `Dag` neither.
+    let cyclic = (0..300)
+        .filter_map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)))
+        .filter(|case| !is_graph(&case.values[5], 8, 0, false, true, true))
+        .count();
+    assert!(cyclic >= 20, "{cyclic} digraphs with a cycle");
     let full = generate(&spec, &mut Rng::new(1), Size::Full).map(|case| graphs_valid(&case));
     assert_ne!(full, Some(false));
 }
@@ -1082,6 +1094,7 @@ fn shrinking_keeps_graphs_simple_connected_and_acyclic() {
             nm[0].number().unwrap(),
             nm[1].number().unwrap() as usize,
             true,
+            false,
             false,
         )
     };
@@ -1196,4 +1209,23 @@ fn random_trees_include_paths_and_stars() {
     }
     eprintln!("{paths} paths and {stars} stars in 400 trees on 7 vertices");
     assert!(paths >= 20 && stars >= 20, "{paths} paths, {stars} stars");
+}
+
+#[test]
+fn shrinking_a_digraph_keeps_each_arc_the_way_it_points() {
+    let src = "use std.graph.{Digraph}\nlet (n, m): (2..=8, 1..=12) = read()\ndomain V = 1..=n\ndomain E = 0..m\nlet g: Digraph<V, E> = read()\nprint(n)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let pointing_down = |case: &Case| {
+        let Value::Seq(arcs) = &case.values[1] else {
+            return false;
+        };
+        arcs.iter()
+            .any(|arc| matches!(arc, Value::Tuple(ends) if ends[0].number() > ends[1].number()))
+    };
+    let start = (0..300)
+        .filter_map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)))
+        .find(|case| pointing_down(case) && case.weight().0 > 8)
+        .expect("an arc from a higher vertex to a lower one");
+    let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| pointing_down(case));
+    assert_eq!(smallest.render(), "2 1\n2 1\n");
 }

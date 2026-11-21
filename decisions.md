@@ -1560,6 +1560,13 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   centre. The seeded `noip14p5-unsafe-step` now reaches a lighter minimum (weight 15 for 16), so
   its `.min` changed (25.2). Reverse: make `Pick::tree` return `Random` and drop the swap and flip
   steps.
+- **25.7 `std.graph.Digraph` is a directed simple graph.** `SimpleGraph` is undirected, so the
+  seeded `noip14p5-unsafe-step`, which reads arcs, was made with every pair at most once (never
+  `u v` and `v u`) and shrunk by flipping arcs, which changes a directed graph. `Digraph<V, E>`
+  joins the other three aliases (25.4): no loop, no arc twice, `u v` and `v u` distinct, room
+  `n(n-1)`, arcs never flipped while shrinking (`shrinking_a_digraph_keeps_each_arc_the_way_it_points`).
+  The port now reads a `Digraph`; its `.min` is the same graph with its arcs in order. Reverse:
+  drop the alias and `GraphKind::Digraph` and point the port back at `SimpleGraph`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

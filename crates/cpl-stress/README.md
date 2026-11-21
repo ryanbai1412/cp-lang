@@ -44,7 +44,7 @@ The same seed makes the same case on every machine.
 
 Supported today: ranges, `Int`, `Char`, `Bool`, `Str`, domains, type
 aliases, tuples, records, `std.seq.Perm`, `std.graph.Tree`, `std.graph.SimpleGraph`,
-`std.graph.ConnectedGraph`, `std.graph.Dag` (with extra edge fields), `[read() for ...]`,
+`std.graph.ConnectedGraph`, `std.graph.Dag`, `std.graph.Digraph` (with extra edge fields), `[read() for ...]`,
 `@!multitest`, and arrays over one or more domains or ranges (`[R, C]T` is
 rows of columns). For anything else the error names the type and its line,
 and `--gen PROG` takes over: `PROG <seed> <size>` prints one input.

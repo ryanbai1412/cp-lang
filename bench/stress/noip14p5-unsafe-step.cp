@@ -1,14 +1,14 @@
 // NOIP 2014 Finding the Way (proto/ports/noip14p5.cp), with a planted bug:
 // the walk checks only the vertex it leaves, so it may step onto a vertex
-// whose out-neighbours cannot all reach t. The edges are read as a
-// `SimpleGraph`, which stress makes and shrinks as a graph.
-use std.graph.{SimpleGraph}
+// whose out-neighbours cannot all reach t. The arcs are read as a
+// `Digraph`, which stress makes and shrinks as one.
+use std.graph.{Digraph}
 
 let n: 1..=10000 = read()
 let m: 0..=200000 = read()
 domain V = 1..=n
 domain E = 0..m
-let edges: SimpleGraph<V, E> = read()
+let edges: Digraph<V, E> = read()
 let s: V = read()
 let t: V = read()
 

@@ -43,6 +43,10 @@ pub type ConnectedGraph<V, E> = [E](u: V, v: V)
 /// directed cycle. `cpl stress` makes and shrinks it so.
 pub type Dag<V, E> = [E](u: V, v: V)
 
+/// One arc `u -> v` on `V` for each value of `E`, with no loop and no arc
+/// twice; `u v` and `v u` are two arcs. `cpl stress` makes and shrinks it so.
+pub type Digraph<V, E> = [E](u: V, v: V)
+
 /// A fixed graph in compressed sparse row form: one offsets list and one arcs list.
 /// Built in O(n + m); memory is n + 1 offsets and one `(to, e)` per arc.
 /// An undirected edge is two arcs with the same `e`.
