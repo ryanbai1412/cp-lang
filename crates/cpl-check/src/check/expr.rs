@@ -1547,6 +1547,23 @@ impl<'a> Checker<'a> {
         }
         if let Ty::Named { name: sr, args } = &base_ty {
             if sr == "SortedRange" && args.len() == 1 {
+                if name.text == "len" {
+                    if let ExprKind::Field { base: recv, .. } = &expr.kind {
+                        if let Some(owner) = self.uncounted_sorted_range_owner(recv) {
+                            if let Some(diag) = self.error(
+                                codes::TYPE_MISMATCH,
+                                name.span,
+                                format!(
+                                    "`{owner}.range(...).len` is not available because counting a tree range costs O(log n + k)"
+                                ),
+                            ) {
+                                diag.help = Some(format!(
+                                    "use `SortedSet` or `SortedBag` for O(log n) `range(r).len`, or count by iterating `{owner}.range(...)`"
+                                ));
+                            }
+                        }
+                    }
+                }
                 return match name.text.as_str() {
                     "first" | "last" => Ty::Optional(Box::new(args[0].clone())),
                     "len" => Ty::Int,
@@ -2313,6 +2330,31 @@ impl Checker<'_> {
             diag.help = Some(format!(
                 "write `x = x {sign} y` when `none` should stay `none`, or `x min= y + w` for a transition"
             ));
+        }
+    }
+
+    fn uncounted_sorted_range_owner(&mut self, expr: &Expr) -> Option<&'static str> {
+        let mut cur = expr;
+        loop {
+            match &cur.kind {
+                ExprKind::Paren(inner) => cur = inner,
+                ExprKind::Field { base, name } if name.text == "rev" => cur = base,
+                ExprKind::Call { callee, .. } => {
+                    let ExprKind::Field { base, name } = &callee.kind else {
+                        return None;
+                    };
+                    if name.text != "range" {
+                        return None;
+                    }
+                    let base_ty = self.quietly(|c| c.infer(base));
+                    return match base_ty {
+                        Ty::Named { name, .. } if name == "Set" => Some("Set"),
+                        Ty::Named { name, .. } if name == "Map" => Some("Map"),
+                        _ => None,
+                    };
+                }
+                _ => return None,
+            }
         }
     }
 

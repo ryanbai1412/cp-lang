@@ -10,7 +10,7 @@
 //! checked or run gets the prelude.
 
 use std.algebra.{Action, Desc, Monoid, Reversible, desc, fold}
-use std.bag.{SortedBag}
+use std.bag.{SortedBag, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
 use std.dsu.{Dsu}

@@ -517,10 +517,18 @@ struct FnCx {
 }
 
 #[derive(Clone, Debug)]
+pub(super) enum SortedViewKind {
+    Bag(StructId),
+    Set,
+    Map,
+}
+
+#[derive(Clone, Debug)]
 pub(super) struct SortedView {
     pub base: Place,
-    pub sid: StructId,
+    pub kind: SortedViewKind,
     pub key_ty: Ty,
+    pub elem_ty: Ty,
     pub lo: Slot,
     pub lo_inc: Slot,
     pub hi: Slot,

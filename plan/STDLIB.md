@@ -695,7 +695,8 @@ struct SortedBag<K> // O(log n), O(1), O(n)
     fn range(self, r) -> SortedRange<K> // O(1) view; .first/.last/.len/.is_empty O(log n), iter/.rev O(log n + k)
     fn rank(self, k: K) -> Int // O(log n)
     fn nth(self, i: Int) -> ?K // O(log n)
-    fn first_where(self, ok: K -> Bool) -> ?K // O(log n) [new]
+    fn bsearch_first(self, ok: K -> Bool) -> ?K // O(log n), monotone ok (boundary-checked)
+    fn bsearch_last(self, ok: K -> Bool) -> ?K // O(log n), monotone ok (boundary-checked)
     fn cursor_first(self) -> ?BagCursor // O(log n) [new]
     fn cursor_last(self) -> ?BagCursor // O(log n) [new]
     fn cursor_at(self, k: K) -> ?BagCursor // O(log n) [new]
@@ -719,6 +720,7 @@ struct SortedSet<K> // [new] unique-key twin of SortedBag<K>
     fn take(mut self) -> SortedSet<K> // O(1)
     fn add(mut self, x: K) -> Bool // O(log n)
     fn remove(mut self, x: K) -> Bool // O(log n)
+    fn set(mut self, x: K, on: Bool) // O(log n)
     fn contains(self, x: K) -> Bool // O(log n)
     @get fn first(self) -> ?K // O(log n)
     @get fn last(self) -> ?K // O(log n)
@@ -727,7 +729,8 @@ struct SortedSet<K> // [new] unique-key twin of SortedBag<K>
     fn range(self, r) -> SortedRange<K> // O(1) view; .first/.last/.len/.is_empty O(log n), iter/.rev O(log n + k)
     fn rank(self, k: K) -> Int // O(log n)
     fn nth(self, i: Int) -> ?K // O(log n)
-    fn first_where(self, ok: K -> Bool) -> ?K // O(log n)
+    fn bsearch_first(self, ok: K -> Bool) -> ?K // O(log n), monotone ok (boundary-checked)
+    fn bsearch_last(self, ok: K -> Bool) -> ?K // O(log n), monotone ok (boundary-checked)
     fn each(self) -> yields K // O(n)
     fn each_rev(self) -> yields K // O(n)
     fn to_list(self) -> List<K> // O(n)

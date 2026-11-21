@@ -38,7 +38,7 @@ Contestants reach for ordered balanced trees for four distinct jobs:
 Builtin `Set<T>` and `Map<K, V>` cover basic ordered sets/maps (lowering to
 `std::set`/`std::map`, or salted `std::unordered_*` when order is never
 observed), but they do not carry subtree sizes, cannot answer `rank`/`nth`/
-`first_where`, and are not multisets. `std.bag` owns the augmented ordered
+`bsearch_first`/`bsearch_last`, and are not multisets. `std.bag` owns the augmented ordered
 containers: `SortedBag<K>` (multiset with rank, cursors, monotone search, and
 recycled nodes) and `OrderedSet<K>` / `OrderedMap<K, V>` when distinct keys
 with order statistics and cursors are needed.
@@ -268,7 +268,8 @@ struct SortedBag<K>                           // O(log n) ops, O(distinct) mem
     fn rank(self, k: K) -> Int                // O(log n), count strictly < k
     fn count_range(self, lo: K, hi: K) -> Int // O(log n), count in [lo, hi)
     fn nth(self, i: Int) -> ?K                // O(log n), 0-based
-    fn first_where(self, ok: K -> Bool) -> ?K // O(log n), monotone ok
+    fn bsearch_first(self, ok: K -> Bool) -> ?K // O(log n), monotone ok
+    fn bsearch_last(self, ok: K -> Bool) -> ?K  // O(log n), monotone ok
     // Cursor navigation: O(log n) to locate, O(1) amortized to step
     fn cursor_first(self) -> ?BagCursor       // O(log n)
     fn cursor_last(self) -> ?BagCursor        // O(log n)
@@ -288,7 +289,7 @@ struct SortedBag<K>                           // O(log n) ops, O(distinct) mem
 
 `OrderedSet<K>` wraps the same treap invariant with uniqueness (`add(x) -> Bool`
 is false if already present) and exposes the exact same `first_ge`/`first_gt`/
-`last_le`/`last_lt`, `rank`, `count_range`, `nth`, `first_where`, cursors, and
+`range(r)` views, `rank`, `nth`, `bsearch_first`/`bsearch_last`, cursors, and
 `each`/`each_rev`. This directly solves `cf2262b.md` (collapsing `Set<I>`,
 `Map<Int, I>`, and `Fenwick<I, Int>` into one `OrderedSet<I>`).
 
@@ -690,24 +691,21 @@ for i in reach.each():
 print(sum(Z(v) for v in cool))
 ```
 
-### 3.4 `cf2262b`: Prefix Maxima Champions (`OrderedSet` with `first_where` + `count_range`)
+### 3.4 `cf2262b`: Prefix Maxima Champions (`SortedSet` with `bsearch_first` + `range(r).len`)
 
 Problem: reverse removals into insertions; maintain prefix maxima and count how
-many prefix maxima are eaten by champions. `OrderedSet<I>` holds the prefix
+many prefix maxima are eaten by champions. `SortedSet<I>` holds the prefix
 maxima in one structure, answering both the monotone value search
-(`first_where`) and range count (`count_range`) in O(log n).
+(`bsearch_first`) and range count (`range(r).len`) in O(log n).
 
 ```cp
-// Prefix maxima increase in both position and value, so one OrderedSet<I>
-// answers both "first maximum > s" (first_where) and "how many in c..stop"
-// (count_range), replacing three structures kept in sync by hand.
-use std.bag.{OrderedSet}
-
-var tops = OrderedSet<I>()
+// Prefix maxima increase in both position and value, so one SortedSet<I>
+// answers both "first maximum > s" (bsearch_first) and "how many in c..stop"
+// (range(c.l..stop).len), replacing three structures kept in sync by hand.
+var tops = SortedSet<I>()
 let s = total.sum(c.l..stop)
-let reach = if let q = tops.first_where(q => a[q] > s): q.l else: I.end
-let eaten = if let hi = stop.after: tops.count_range(c, hi) - 1
-            else: tops.len - tops.rank(c) - 1
+let reach = if let q = tops.bsearch_first(q => a[q] > s): q.l else: I.end
+let eaten = tops.range(c.l..stop).len - 1
 ```
 
 ### 3.5 `cf2069f`: Graph Inclusion (`Dsu<V>` + `Mark` rollback)
@@ -747,6 +745,21 @@ After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
 - **B-tree / 4-byte-indexed `SortedBag` & `OrderedMap`:** once the core narrows
   range-typed struct fields to 4 bytes, shrink treap nodes (or move to a cache-
   friendly B-tree) to beat `std::set` in both time and RSS.
+
+---
+
+## 5. Deferred dream gaps (not in the design)
+
+- **`SortedBag.sum` (1 user):** deferred because only a single dream asks for
+  prefix/range sums on `SortedBag`. If a second user appears, the general
+  mechanism is a monoid-augmented `SortedBag<K, M: Monoid>` (matching `SegTree`
+  / `Fenwick`), not an ad-hoc `.sum` field on `SortedBag<K>`.
+- **`PMultiset` (1 user):** deferred because only a single dream asks for a
+  persistent multiset. Wait for a second user before adding a persistent treap
+  surface.
+- **`MinHeap(by:)` (resolved by existing idiom):** `cf2159f.cp` reads cleanly
+  with `stdlib/heap.cp`'s documented `(key, payload)` / `(key, desc(v))` entry
+  idiom (`var heap = MinHeap<(Int, Seg)>()`), with zero comparator indirection.
 - **Dynamic bitset (`DynBitset`):** for problems where the bitset width is
   computed inside a loop without a domain in scope.
 - **Persistent `Arena<T>` + `PMultiset<K>`:** typed 4-byte arena handles so

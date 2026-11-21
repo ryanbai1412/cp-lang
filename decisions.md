@@ -3784,3 +3784,14 @@ costs no program. An arc id past 2^31 traps with "is outside
 - **Decision.** Re-export `std.interval.IntervalMap` from `stdlib/prelude.cp` (allocated prelude slot under decision 118, cap 80).
 - **Evidence.** 2 corpus ports (`cf2237h.cp`, `cf2057f.cp`) and 2 dreams (`dream/cf2237h.cp`, `dream/cf2057f.cp`) use `IntervalMap`; 0 name collisions across the corpus; emitted C++ is byte-identical across measured ports (`cf2237h`, `cf2057f`, `cf2022c`, `cf2262b`) and build time is within noise (`+0.05..+3.7 ms`).
 - **Reverse.** Delete `use std.interval.{IntervalMap}` from `stdlib/prelude.cp` and restore explicit `use std.interval.{IntervalMap}` in callers.
+
+## 117. Add `SortedSet` to `stdlib/prelude.cp` (80/80 cap) and ordered-container API parity (2026-11-21)
+
+- **Decision.**
+  1. Re-export `std.bag.SortedSet` from `stdlib/prelude.cp` (prelude count 79 -> 80). **The prelude is now full at 80/80, so any later addition must remove an existing prelude name.**
+  2. Rename `SortedBag.first_where` / `SortedSet.first_where` to `bsearch_first(ok:)` and add `bsearch_last(ok:)`, matching `std.seq.bsearch_first`/`bsearch_last` labels and semantics, with boundary monotonicity debug assertions. Remove `first_where` outright.
+  3. Add `set(x, on: Bool)` on `Set`, `HashSet`, and `SortedSet`, matching `Bitset.set(i, on:)`.
+  4. Add `Set.range(r)` and `Map.range(r)` returning `SortedRange<T>` / `SortedRange<(K, V)>` views with O(log n) `.first`/`.last`/`.is_empty` and O(log n + k) forward/reverse iteration. Reject `.len` on `Set`/`Map` range views at typecheck time with help pointing to `SortedSet`/`SortedBag` (because counting a tree range costs O(log n + k), not O(1)/O(log n)). Enforce ordered-container catalog parity in `crates/cpl-cli/tests/builtin_catalog.rs`.
+  5. Hold `drain(after:/before:, while:)` pending the syntax lane's general answer on keyword-labelled parameters for ordinary functions.
+- **Evidence.** `SortedSet`: 2 corpus ports (`cf2066e.cp`, `cf2262b.cp`) and 3 dreams (`dream/cf2062e2.cp`, `dream/cf2066e.cp`, `dream/cf2262b.cp`) use it; 0 name collisions across the corpus; emitted C++ is byte-identical across measured ports (`cf2066e` 33,421 B, `cf2062e2` 28,364 B, `cf2262b` 17,270 B, `cf2022c` 9,560 B) and build time is within noise (`-25.6..+2.4 ms`). Rewriting `cf2262b` collapses 3 parallel structures (`Fenwick`, `Set`, `Map`) into one `SortedSet<I>` and passes `gate.sh cf2262b 20`.
+- **Reverse.** Remove `SortedSet` from `stdlib/prelude.cp`, restore `first_where` in `stdlib/bag.cp`, and remove `Set`/`Map` branches from `sorted_range_call`/`SortedView` and `Set.set` lowering.

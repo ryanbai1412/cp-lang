@@ -237,6 +237,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Map, "first_gt", Method, "k: K", "?(K, V)", false, "The smallest key `> k` with its value.", "m.first_gt(1)", "?(Int, Int)"),
     row!(Map, "last_le", Method, "k: K", "?(K, V)", false, "The largest key `<= k` with its value.", "m.last_le(4)", "?(Int, Int)"),
     row!(Map, "last_lt", Method, "k: K", "?(K, V)", false, "The largest key `< k` with its value.", "m.last_lt(5)", "?(Int, Int)"),
+    row!(Map, "range", Method, "r: Range<K>", "SortedRange<(K, V)>", false, "O(1) key-range view; `.first`, `.last`, `.is_empty` are O(log n) and iteration is O(log n + k). Use `SortedSet`/`SortedBag` for O(log n) `.len`.", "m.range(1..5).first", "?(Int, Int)"),
 
     row!(Set, "len", Get, "", "Int", false, "How many elements.", "st.len", "Int"),
     row!(Set, "is_empty", Get, "", "Bool", false, "True when there is no element.", "st.is_empty", "Bool"),
@@ -245,6 +246,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Set, "insert", Method, "x: T", "Bool", true, "Adds `x`; true when it was not there before.", "st.insert(5)", "Bool"),
     row!(Set, "add", Method, "x: T", "Bool", true, "The same as `insert`.", "st.add(5)", "Bool"),
     row!(Set, "remove", Method, "x: T", "Bool", true, "Takes `x` out; true when it was there.", "st.remove(4)", "Bool"),
+    row!(Set, "set", Method, "x: T, on: Bool", "", true, "Adds `x` when `on` is true, or removes it otherwise. O(log n) on `Set`, O(1) amortized on `HashSet`.", "st.set(5, on: true)", ""),
     row!(Set, "contains", Method, "x: T", "Bool", false, "True when `x` is in the set; `x in st` reads the same.", "st.contains(4)", "Bool"),
     row!(Set, "clear", Method, "", "", true, "Removes every element.", "st.clear()", ""),
     row!(Set, "copy", Method, "", "Set<T>", false, "A separate set with the same elements.", "st.copy()", "Set<Int>"),
@@ -257,6 +259,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Set, "first_gt", Method, "x: T", "?T", false, "The smallest element `> x`.", "st.first_gt(4)", "?Int"),
     row!(Set, "last_le", Method, "x: T", "?T", false, "The largest element `<= x`.", "st.last_le(5)", "?Int"),
     row!(Set, "last_lt", Method, "x: T", "?T", false, "The largest element `< x`.", "st.last_lt(9)", "?Int"),
+    row!(Set, "range", Method, "r: Range<T>", "SortedRange<T>", false, "O(1) key-range view; `.first`, `.last`, `.is_empty` are O(log n) and iteration is O(log n + k). Use `SortedSet`/`SortedBag` for O(log n) `.len`.", "st.range(4..9).first", "?Int"),
 
     row!(Array, "len", Get, "", "Int", false, "How many cells.", "a.len", "Int"),
     row!(Array, "is_empty", Get, "", "Bool", false, "True when the array has no cells.", "a.is_empty", "Bool"),

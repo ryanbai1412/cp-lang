@@ -9,7 +9,7 @@ pub struct BagCursor(id: Int)
 /// with recycled node slots and parent pointers for O(1) amortized cursor stepping.
 /// Keeps one node per distinct key with its multiplicity and subtree element count.
 /// `add`, `add_many`, `remove`, `remove_all`, `contains`, `count`, `first`, `last`,
-/// `pop_first`, `pop_last`, `rank`, `nth`, `first_where`, and `cursor_*` are O(log n) expected;
+/// `pop_first`, `pop_last`, `rank`, `nth`, `bsearch_first`, `bsearch_last`, and `cursor_*` are O(log n) expected;
 /// `range(r)` returns an O(1) view whose `.first`, `.last`, `.len`, `.is_empty` are O(log n)
 /// expected and whose iteration (`for x in b.range(r)` / `.rev`) is O(log n + k);
 /// `key_of` and `count_of` are O(1); `next_cursor` and `prev_cursor` are O(1) amortized;
@@ -326,17 +326,45 @@ pub struct SortedBag<K>:
                 u = right[u]
         none
 
-    /// Smallest key where monotone `ok(k)` is true (`false..false, true..true`), or `none`. O(log n) expected.
-    pub fn first_where(self, ok: K -> Bool) -> ?K:
-        var ans: ?K = none
+    /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `none`.
+    /// Checks monotonicity at the boundary. O(log n) expected.
+    pub fn bsearch_first(self, ok: K -> Bool) -> ?K:
+        var ans = -1
         var u = root
-        while u >= 0:
-            if ok(key[u]):
-                ans = key[u]
-                u = left[u]
-            else:
-                u = right[u]
-        ans
+        unchecked:
+            while u >= 0:
+                if ok(key[u]):
+                    ans = u
+                    u = left[u]
+                else:
+                    u = right[u]
+        if ans < 0:
+            if let lo = self.first: assert not ok(lo)
+            if let hi = self.last: assert not ok(hi)
+            return none
+        if let prev = self.prev_cursor(BagCursor(ans)):
+            assert not ok(key[prev.id])
+        key[ans]
+
+    /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `none`.
+    /// Checks monotonicity at the boundary. O(log n) expected.
+    pub fn bsearch_last(self, ok: K -> Bool) -> ?K:
+        var ans = -1
+        var u = root
+        unchecked:
+            while u >= 0:
+                if ok(key[u]):
+                    ans = u
+                    u = right[u]
+                else:
+                    u = left[u]
+        if ans < 0:
+            if let lo = self.first: assert not ok(lo)
+            if let hi = self.last: assert not ok(hi)
+            return none
+        if let next = self.next_cursor(BagCursor(ans)):
+            assert not ok(key[next.id])
+        key[ans]
 
     /// Cursor to the smallest key, or `none` when empty. O(log n) expected.
     pub fn cursor_first(self) -> ?BagCursor:
@@ -545,7 +573,7 @@ pub struct SortedBag<K>:
                 return b
 
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
-/// O(1) key-range views (`range(r)`), and monotone search (`first_where`). Backed by `SortedBag<K>`.
+/// O(1) key-range views (`range(r)`), and monotone search (`bsearch_first`/`bsearch_last`). Backed by `SortedBag<K>`.
 /// All single-key and range-summary operations are O(log n) expected;
 /// `range(r)` is O(1); range iteration is O(log n + k);
 /// `len`, `is_empty`, `clear`, `take` are O(1); `each`, `each_rev`, and `to_list` are O(n).
@@ -582,6 +610,13 @@ pub struct SortedSet<K>:
     /// Remove `x` if present; returns `true` if removed. O(log n) expected.
     pub fn remove(mut self, x: K) -> Bool = bag.remove(x)
 
+    /// Add `x` when `on` is true, or remove it otherwise, matching `Set.set` and `Bitset.set`. O(log n) expected.
+    pub fn set(mut self, x: K, on: Bool):
+        if on:
+            let _ = self.add(x)
+        else:
+            let _ = self.remove(x)
+
     /// Whether `x` is in the set. O(log n) expected.
     pub fn contains(self, x: K) -> Bool = bag.contains(x)
 
@@ -603,8 +638,11 @@ pub struct SortedSet<K>:
     /// 0-indexed `i`-th smallest key, or `none` if out of range. O(log n) expected.
     pub fn nth(self, i: Int) -> ?K = bag.nth(i)
 
-    /// Smallest key `k` where monotone `ok(k)` holds, or `none`. O(log n) expected.
-    pub fn first_where(self, ok: K -> Bool) -> ?K = bag.first_where(ok)
+    /// Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `none`. O(log n) expected.
+    pub fn bsearch_first(self, ok: K -> Bool) -> ?K = bag.bsearch_first(ok)
+
+    /// Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `none`. O(log n) expected.
+    pub fn bsearch_last(self, ok: K -> Bool) -> ?K = bag.bsearch_last(ok)
 
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K =
         bag.range_first(lo, lo_inc, hi, hi_inc)
@@ -753,7 +791,8 @@ fn sorted_bag_inversion_count_and_generic_keys():
     let words = SortedBag<Str>.of(["pear", "fig", "apple", "fig", "kiwi"])
     assert words.len == 5 and words.count("fig") == 2
     assert words.first == "apple" and words.last == "pear"
-    assert words.first_where(w => w > "fig") == "kiwi" and words.range(.."kiwi").last == "fig"
+    assert words.bsearch_first(w => w > "fig") == "kiwi" and words.range(.."kiwi").last == "fig"
+    assert words.bsearch_last(w => w <= "fig") == "fig"
     assert words.rank("fig") == 1 and words.nth(2) == "fig"
 
 @test
@@ -766,8 +805,10 @@ fn sorted_bag_cursors_entries_and_recycling():
     assert b.len == 10 and b.distinct == 4
     assert b.range(10..25).len == 8
     assert b.range(25..10).len == 0
-    assert b.first_where(x => x >= 16) == 20
-    assert b.first_where(x => x > 100) == none
+    assert b.bsearch_first(x => x >= 16) == 20
+    assert b.bsearch_first(x => x > 100) == none
+    assert b.bsearch_last(x => x <= 16) == 15
+    assert b.bsearch_last(x => x < 10) == none
 
     var fwd: List<(Int, Int)> = []
     for (k, c) in b.entries(): fwd.push((k, c))
@@ -796,14 +837,23 @@ fn sorted_bag_cursors_entries_and_recycling():
     assert b.key.len <= 10
 
 @test
-fn sorted_set_operations_range_and_first_where():
+fn sorted_set_operations_range_and_bsearch():
     var s = SortedSet<Int>.of([5, 1, 5, 3, 9, 3])
     assert s.len == 4 and not s.is_empty
     assert not s.add(3) and s.add(7)
     assert s.to_list() == [1, 3, 5, 7, 9]
     assert s.rank(5) == 2 and s.range(3..8).len == 3
     assert s.nth(2) == 5
-    assert s.first_where(x => x * x >= 25) == 5
+    assert s.bsearch_first(x => x * x >= 25) == 5
+    assert s.bsearch_last(x => x * x <= 30) == 5
+    s.set(6, on: true)
+    assert s.contains(6) and s.len == 6
+    s.set(6, on: true)
+    assert s.contains(6) and s.len == 6
+    s.set(6, on: false)
+    assert not s.contains(6) and s.len == 5
+    s.set(6, on: false)
+    assert not s.contains(6) and s.len == 5
     var rev: List<Int> = []
     for x in s.each_rev(): rev.push(x)
     assert rev == [9, 7, 5, 3, 1]

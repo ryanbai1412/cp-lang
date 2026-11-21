@@ -84,9 +84,9 @@ impl<'a> Checker<'a> {
         })
     }
 
-    /// `s.range(r)` on `SortedBag<K>` or `SortedSet<K>`: returns an O(1)
-    /// `SortedRange<K>` view over keys matching `r` (`a..b`, `a..=b`, `a..`,
-    /// `..b`, `..=b`, `..`, or a `Range<K>` value).
+    /// `s.range(r)` on `SortedBag<K>`, `SortedSet<K>`, `Set<K>`, or `Map<K, V>`:
+    /// returns an O(1) `SortedRange<E>` view over entries matching `r`
+    /// (`a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..`, or a `Range<K>` value).
     fn sorted_range_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
@@ -98,10 +98,11 @@ impl<'a> Checker<'a> {
         let Ty::Named { name: cname, args: targs } = &base_ty else {
             return None;
         };
-        if !matches!(cname.as_str(), "SortedBag" | "SortedSet") || targs.len() != 1 {
-            return None;
-        }
-        let k_ty = targs[0].clone();
+        let (k_ty, elem_ty) = match (cname.as_str(), targs.as_slice()) {
+            ("SortedBag" | "SortedSet" | "Set", [k]) => (k.clone(), k.clone()),
+            ("Map", [k, v]) => (k.clone(), Ty::Tuple(vec![k.clone(), v.clone()])),
+            _ => return None,
+        };
         if args.len() != 1 || args[0].name.is_some() {
             for a in args {
                 self.infer(&a.value);
@@ -113,7 +114,7 @@ impl<'a> Checker<'a> {
             );
             return Some(Ty::Named {
                 name: "SortedRange".into(),
-                args: vec![k_ty],
+                args: vec![elem_ty],
             });
         }
         let arg = &args[0].value;
@@ -175,7 +176,7 @@ impl<'a> Checker<'a> {
         }
         Some(Ty::Named {
             name: "SortedRange".into(),
-            args: vec![k_ty],
+            args: vec![elem_ty],
         })
     }
 
@@ -220,7 +221,7 @@ impl<'a> Checker<'a> {
                 let repl = if matches!(k_ty, Ty::Int | Ty::I128 | Ty::U64) {
                     format!("range({q} + 1..).first")
                 } else {
-                    format!("first_where(x => x > {q})")
+                    format!("bsearch_first(x => x > {q})")
                 };
                 (repl, Ty::Optional(Box::new(k_ty)))
             }
@@ -1292,7 +1293,11 @@ impl Checker<'_> {
             Ty::Str => ("Str", Some(Ty::Char)),
             Ty::Array { .. } => ("[D]T", base_ty.seq_elem()),
             Ty::Named { name, args } => (
-                name.as_str(),
+                match name.as_str() {
+                    "HashSet" => "Set",
+                    "HashMap" => "Map",
+                    other => other,
+                },
                 base_ty.seq_elem().or_else(|| (args.len() == 1).then(|| args[0].clone())),
             ),
             _ => return Vec::new(),

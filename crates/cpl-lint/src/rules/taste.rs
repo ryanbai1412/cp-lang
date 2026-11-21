@@ -1121,7 +1121,7 @@ impl<'a> Taste<'a> {
                 if is_int_key {
                     format!("range({q} + 1..).first")
                 } else {
-                    format!("first_where(x => x > {q})")
+                    format!("bsearch_first(x => x > {q})")
                 }
             }
             ("count_range", [lo, hi]) if lo.name.is_none() && hi.name.is_none() => format!(

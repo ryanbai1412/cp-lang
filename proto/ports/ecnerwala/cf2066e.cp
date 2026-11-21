@@ -10,8 +10,6 @@
 // more than doubles every two steps and there are O(log(total)) stuck points.
 // At each, some gap among the unique barrels >= b must be <= have.
 
-use std.bag.SortedSet
-
 let MAX_V = 1_000_000
 let INF = MAX_V + 1
 domain Vol = 0..=MAX_V

@@ -168,3 +168,81 @@ fn sequence_method_parity_across_list_array_str_and_views() {
         "interpreter and C++17 disagreed on seq_str_parity.cp"
     );
 }
+
+#[test]
+fn ordered_container_method_parity_and_range_len_guard() {
+    use std::collections::BTreeSet;
+    let set_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Set).map(|m| m.name).collect();
+    let map_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Map).map(|m| m.name).collect();
+
+    // Every ordered range/bound primitive shared by `Set` and `Map` must be present on both.
+    for required in ["first", "last", "first_ge", "first_gt", "last_le", "last_lt", "range", "len", "is_empty", "contains", "remove", "clear"] {
+        assert!(set_names.contains(required), "`Set` is missing ordered member `{required}`");
+        assert!(map_names.contains(required), "`Map` is missing ordered member `{required}`");
+    }
+    assert!(set_names.contains("set"), "`Set` is missing `set(x, on: Bool)`");
+
+    // `SortedSet` and `SortedBag` in `stdlib/bag.cp` must expose the ordered API surface.
+    let bag_src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib/bag.cp"),
+    )
+    .unwrap();
+    for required in ["fn bsearch_first(", "fn bsearch_last(", "fn range_first(", "fn range_last(", "fn range_len("] {
+        assert!(bag_src.contains(required), "`stdlib/bag.cp` is missing `{required}`");
+    }
+    assert!(!bag_src.contains("fn first_where("), "`stdlib/bag.cp` must not expose removed `first_where`");
+
+    // `Set.range(r).len` and `Map.range(r).len` must fail typecheck with help naming SortedSet/SortedBag.
+    for (idx, (label, code)) in [
+        ("Set", "var s: Set<Int> = Set()\nprint(s.range(1..5).len)\n"),
+        ("Map", "var m: Map<Int, Int> = Map()\nprint(m.range(1..5).len)\n"),
+        ("Set.rev", "var s: Set<Int> = Set()\nprint(s.range(1..5).rev.len)\n"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let path = std::env::temp_dir().join(format!(
+            "cpl_range_len_guard_{}_{idx}.cp",
+            std::process::id()
+        ));
+        std::fs::write(&path, code).unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .arg("check")
+            .arg(&path)
+            .output()
+            .unwrap();
+        let _ = std::fs::remove_file(&path);
+        assert!(!out.status.success(), "{label}.range(r).len unexpectedly passed `cpl check`");
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            stderr.contains("SortedSet") && stderr.contains("SortedBag"),
+            "{label}.range(r).len error help should name SortedSet and SortedBag, got:\n{stderr}"
+        );
+    }
+
+    // Run ordered_containers_parity.cp in both interpreter and compiled C++17.
+    let prog = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/programs/ordered_containers_parity.cp");
+    let expected = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/programs/ordered_containers_parity.out"),
+    )
+    .unwrap();
+    for (mode, args) in [("interp", vec!["run"]), ("cpp", vec!["run", "--release"])] {
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(&args)
+            .arg(&prog)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{mode} failed on ordered_containers_parity.cp:\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            expected,
+            "{mode} output mismatch on ordered_containers_parity.cp"
+        );
+    }
+}
