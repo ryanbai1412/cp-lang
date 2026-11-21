@@ -119,9 +119,9 @@ pub struct Graph<V, E>:
     /// vertex. Traps on an unreachable pair; a disconnected graph wants `bfs`.
     pub fn hops(self) -> [V, V]Int = todo
 
-    /// O(n + m): which vertices `from` reaches without crossing an arc `u -> v`
-    /// for which `skip(u, v)` holds.
-    pub fn reachable(self, from: V, skip: (V, V) -> Bool = (u, v) => false) -> [V]Bool = todo
+    /// O(n + m): which vertices some vertex of `from` reaches without crossing an
+    /// arc `u -> v` for which `skip(u, v)` holds.
+    pub fn reachable(self, from: List<V>, skip: (V, V) -> Bool = (u, v) => false) -> [V]Bool = todo
 
     /// O(n + m): `peel(g, ...)` as a method, with the same options.
     pub fn peel(
@@ -858,7 +858,7 @@ pub fn dijkstra<V, N, A, W>(
                 heap.push((nd, v))
     Paths(dist, back, order)
 
-/// O(|S| |M| log |S|).
+/// O(|S| |M|) time, O(|S|) memory.
 /// Shortest distances over a state space `S` whose moves have fixed non-negative
 /// costs: from every state of `from` at distance 0, `step(mv, s)` is where move `mv`
 /// leads from `s` (`none`: not allowed there), at cost `cost(mv)`. A cursor per move
