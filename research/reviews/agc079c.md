@@ -1,7 +1,7 @@
 # agc079c
 
-Score: pending (was 2/5: added dream, stated time-reversed parity-component invariant in header, domain Val/Pos, enum Side, Rel/Run structs, solve() -> ?Int, single face() helper; emitted C++ grew 18,275 -> 22,223 B (<48 KB) from Side enum, Rel/Run structs, and Val/Pos domains)
-Dream: pending (added dream using LinkedList<Val> with O(1) splice_back, Side enum, Val/Pos domains, and face() helper)
+Score: 3/5
+Dream: 3/5
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -21,3 +21,13 @@ The header states the two passes, but pass 1 is a hand linked-run stack with `pr
 ## Language gaps
 
 No friction report exists. None needed.
+
+## Cold review (HEAD)
+
+Dream 3/5 (new); sent back.
+- Pass 1 (lines 36-69) is the C++ run-stack machine: `runs.last!` five times, `pop_front` then re-read `runs.last!.vals.first`, and two nearly identical `rel[i] = Rel(runs.last!.vals.first, false)` arms (lines 48, 67).
+- The header asserts a "unique parity relation" per component and that reversing only when forced is optimal (lines 3-9), but derives neither.
+- `comp` (lines 71-77) is a hand-rolled parity-DSU path walk; `PotentialDsu` is additive, so it is a real gap, but it isn't in the friction report.
+- `LinkedList` (line 18) isn't in the stdlib; the friction report asks for it.
+
+Port 3/5: the dream's structure with `head`/`tail` runs in place of `LinkedList` (reported gap).

@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: pending cold rescore (rewritten: proves lexicographic greedy optimality and constraint-stack invariant in header, replaces nested optional `if let` clamps with `.somes.min()`, introduces `domain Block` with typed `block_cursor: [Block]Pos` instead of raw `Int` block shifts)
+Dream: 3/5
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 
@@ -49,3 +49,13 @@ Dream 2/5 (was 2), sent back. The first phase improved: `forms_inversion`/`requi
 - `seen_inversion` (line 49) and `filled` (line 80) are flags carried across helpers; `filled = i.ord + 1` is written twice (lines 85, 89).
 - `(print(q); return)` (line 37) doesn't parse (E0103), and `Val.last(pred)` (line 87) is a value, not a function: write `Val.rev.first(pred)`.
 - The header doesn't derive why the stack thresholds order the suffix blocks (lines 6-8).
+
+## Cold review (HEAD)
+
+Dream 2 → 3/5, rescored after 9aa24cb4; sent back. The header states the greedy and the monotone-stack invariant, and `CondStack` with `.somes.min()` replaces the nested optional clamps.
+- `?? (print(q); return)` (line 35) isn't CP Lang (E0103/E0102).
+- The block partition (lines 77-105) is hand bookkeeping: a nested drain that mutates `cond.max_p`, a manual `min_p` scan with `break`, then `p_to_block` and `block_cursor` arrays. Placing values into blocks in decreasing order is `group(by:)` over the block id followed by one sorted fill.
+- `seen_inversion` is mutable global state read inside `forms_inversion` and written in `commit_place` (lines 41-62), so `can_place` isn't pure.
+- The header claims, without proof, that the blocks are disjoint and that filling them in decreasing order is optimal (lines 11-14).
+
+The port score (2/5) holds.
