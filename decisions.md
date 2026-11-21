@@ -3309,3 +3309,18 @@ drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
 1. **Lower product domains (`domain State = (V, K)` and named `domain State = (v: V, d: Dir, ok: Bool)`) to a flat row-major `DomainId` with `lo = 0` and `len = Π len(F_i)`.**
    - **Reason:** Packing factors into a standard nominal `DomainId` (`idx = (...((ord_0 * len_1 + ord_1) * len_2)...)`) means `[State]T` is a single contiguous flat array with zero runtime representation overhead, and every existing domain-generic structure (`SegTree<State, T>`, `LazySegTree`, `Fenwick`, `Bitset<State>`, `for s in State`, `State.len`) works automatically in both `cpl-interp` and `cpl-codegen` with zero backend special cases. In `cpl-check` and `cpl-ir`, `(v, k)` tuples/records coerce to `State` (so `dp[(v, k)]`, `dp[v, k]`, `State(v, k)`, and `fn f() -> ?State: (v, k)` work while swapped order `(k, v)` is rejected with `E0301`), and `let (v, k) = s`, `for (v, k) in State`, `s.0`/`s.1`, and named `s.v` decode via div/rem. `DomainInfo` records factor types and combined `max_size` so LSP hover reports total state count and array byte size.
    - **Reverse:** Remove `factors` from `DomainInfo`, `product_domains` and its encode/decode helpers from `crates/cpl-ir/src/lower/{mod,stmt,expr,call}.rs`, and the product-factor checks from `crates/cpl-check/src/check/{types,stmt,expr,call}.rs`.
+
+## 89. `LazyLinkCut<V, T, F>` is a second type beside `LinkCut` (2026-11-21)
+
+- **Decision.** Path updates on a dynamic forest are `LazyLinkCut.new(act, a)`
+  with `apply_path(u, v, f)`, taking the `Action` that `LazySegTree` takes;
+  `LinkCut` keeps no tags. `get` is `mut` and splays.
+- **Why.** `SegTree` / `LazySegTree` already split this way, so the name is
+  guessable, and the tag and per-node count would cost `LinkCut` users (1.01x
+  matched today) memory and time for nothing.
+- **Law.** `apply(f, x.rev(), k) == apply(f, x, k).rev()`; every stock action
+  satisfies it.
+- **Evidence.** `bench/trees/lazy_lct_bench`: 1.82 s and 2.05 s against C++
+  2.11 s and 2.12 s at n = 2 * 10^5, 10^6 operations, identical output.
+- **Reverse.** Fold the tags into `LinkCut<V, T>` with an optional `act:`.
+

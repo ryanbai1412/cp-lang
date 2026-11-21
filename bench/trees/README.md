@@ -88,3 +88,15 @@ the C++ line for line (optional links are `-1`-niche ints, the monoid op is a
 direct call); without the `link` check the C++ runs in 0.94 s, and so does
 the generated C++ with that one call deleted. The RSS gap is CP Lang reading
 the 21 MB input in one buffer.
+
+`lazy_lct_bench.{cp,cpp}` replace `set` by `apply_path(u, v, x)` (add `x` along
+the path, both with a subtree count per splay node) on `python3 lct_gen.py
+200000 1000000 SEED lazy`. Best of three, outputs identical:
+
+| seed | C++ | CP Lang | C++ RSS | CP Lang RSS |
+|---:|---:|---:|---:|---:|
+| 1 | 2.11 s | 1.82 s | 11 MB | 21 MB |
+| 2 | 2.12 s | 2.05 s | 11 MB | 18 MB |
+
+The C++ reads with `scanf`, as in `lct_bench.cpp`; the generated splay and
+push match it.

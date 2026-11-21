@@ -240,6 +240,13 @@ struct LinkCut<V, T>
     fn lca(mut self, u: V, v: V, root: V) -> ?V
 ```
 
+Path updates are a second type, as `LazySegTree` is to `SegTree`, so a plain
+`LinkCut` pays for no tags: `LazyLinkCut<V, T, F>.new(act, a)` has the same
+verbs plus `apply_path(u, v, f)`, under the same `Action`. `get` splays
+because tags are pending. Reversing a path must commute with a tag,
+`apply(f, x.rev(), k) == apply(f, x, k).rev()`, true for commutative `over`
+and for assignment.
+
 A tree that only grows, one leaf at a time with its parent already in place
 (greedy "next jump" trees built right to left, offline insertions), needs
 neither `Rooted`'s full build nor splaying:
