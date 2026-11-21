@@ -480,6 +480,12 @@ interactor or checker `gate.sh` uses, and a solution printing `1` fails
 under every one of the 21 (`stress_judges`, 4.9 s, decision 25.17). These
 cases come from each port's `gen/` script, so they are not shrunk: the
 hidden input an external interactor reads has no type stress can see.
+`cpl stress --explain` names the first value the solution and its
+`@brute(main)` give a shared variable differently, on the shrunk case:
+on a planted sum of squares it reports `s`, its 2nd value, `4` at line 6
+against `2` at line 12 (`stress_explain_names_the_first_value_the_solution_and_brute_give_differently`,
+decision 25.18). It compares by variable name, so a brute that names
+nothing the solution does gets no explanation beyond its `debug(...)` stages.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).

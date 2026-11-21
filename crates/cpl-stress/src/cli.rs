@@ -4,6 +4,7 @@ use crate::judge::{declared, Judge};
 use crate::program::Program;
 use crate::run::{save, stress, Options, Report, Source};
 use crate::spec::InputSpec;
+use cpl_interp::trace::Divergence;
 use cpl_diag::Span;
 use std::collections::HashMap;
 use std::io::Write;
@@ -37,6 +38,9 @@ options:
                      shrunk case in the debug interpreter and save the two
                      traces side by side as <file>.tests/stress-<seed>.trace.html
                      (the solution's alone, when a `@checker` is the judge)
+  --explain          on a failure, run the solution and its `@brute(main)` on
+                     the shrunk case in the debug interpreter and name the
+                     first value they give a variable differently, with its line
   --format json      print the result as JSON, for an editor
 ";
 
@@ -57,11 +61,14 @@ pub struct Traced {
     pub stages: Vec<Stage>,
     /// The two traces as one self-contained page.
     pub html: String,
+    /// With `--explain`, the first value the two give a variable differently.
+    pub divergence: Option<cpl_interp::trace::Divergence>,
 }
 
 /// Runs a `.cp` file and its `@brute(main)` on an input in the debug
 /// interpreter. `cpl` passes its own; this crate does not link one.
-pub type Tracer<'a> = &'a dyn Fn(&Path, &str) -> Result<Traced, String>;
+/// The `bool` asks for [`Traced::divergence`].
+pub type Tracer<'a> = &'a dyn Fn(&Path, &str, bool) -> Result<Traced, String>;
 
 struct Args {
     file: PathBuf,
@@ -73,6 +80,7 @@ struct Args {
     options: Options,
     json: bool,
     trace: bool,
+    explain: bool,
 }
 
 fn parse(args: &[String]) -> Result<Args, String> {
@@ -87,6 +95,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         options: Options::default(),
         json: false,
         trace: false,
+        explain: false,
     };
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
@@ -111,6 +120,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--time-limit" => parsed.options.limit = Duration::from_millis(number(value()?)?),
             "--jobs" => parsed.options.jobs = number(value()?)?.max(1) as usize,
             "--trace" => parsed.trace = true,
+            "--explain" => parsed.explain = true,
             "--format" => match value()?.as_str() {
                 "json" => parsed.json = true,
                 "text" => parsed.json = false,
@@ -281,7 +291,13 @@ pub fn json_string(text: &str) -> String {
 }
 
 /// The report in the shape the editor reads (`editors/vscode/README.md`).
-fn json(report: &Report, saved: Option<&Path>, stages: &[Stage], trace: Option<&Path>) -> String {
+fn json(
+    report: &Report,
+    saved: Option<&Path>,
+    stages: &[Stage],
+    trace: Option<&Path>,
+    explained: Option<&Result<Option<Divergence>, String>>,
+) -> String {
     let Some(failure) = &report.failure else {
         return format!("{{\"status\":\"ok\",\"cases\":{}}}\n", report.cases);
     };
@@ -302,8 +318,25 @@ fn json(report: &Report, saved: Option<&Path>, stages: &[Stage], trace: Option<&
             json_string(&path.display().to_string())
         })
     };
+    let side = |side: &Option<(u32, String)>| {
+        side.as_ref().map_or("null".to_string(), |(line, value)| {
+            format!("{{\"line\":{line},\"value\":{}}}", json_string(value))
+        })
+    };
+    let explain = match explained {
+        None => String::new(),
+        Some(Ok(None)) => ",\"explain\":{\"divergence\":null}".to_string(),
+        Some(Ok(Some(d))) => format!(
+            ",\"explain\":{{\"divergence\":{{\"name\":{},\"nth\":{},\"fast\":{},\"brute\":{}}}}}",
+            json_string(&d.name),
+            d.nth,
+            side(&d.fast),
+            side(&d.brute)
+        ),
+        Some(Err(why)) => format!(",\"explain\":{{\"error\":{}}}", json_string(why)),
+    };
     format!(
-        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{},\"stages\":[{}],\"saved\":{},\"trace\":{}}}}}\n",
+        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{},\"stages\":[{}],\"saved\":{},\"trace\":{}{explain}}}}}\n",
         report.cases,
         failure.case,
         failure.seed,
@@ -316,6 +349,18 @@ fn json(report: &Report, saved: Option<&Path>, stages: &[Stage], trace: Option<&
         path(saved),
         path(trace),
     )
+}
+
+/// `1st`, `2nd`, `3rd`, `11th`.
+fn ordinal(n: usize) -> String {
+    let suffix = match (n % 10, n % 100) {
+        (_, 11..=13) => "th",
+        (1, _) => "st",
+        (2, _) => "nd",
+        (3, _) => "rd",
+        _ => "th",
+    };
+    format!("{n}{suffix}")
 }
 
 fn indent(text: &str) -> String {
@@ -499,13 +544,23 @@ pub fn run_with(
     let in_file = own_brute.is_some() || (args.brute.is_none() && judge != Judge::Tokens);
     let traced = match (&report.failure, tracer) {
         (Some(failure), Some(tracer)) if args.fast.is_none() && in_file => {
-            Some(tracer(&args.file, &failure.input))
+            Some(tracer(&args.file, &failure.input, args.explain))
         }
         _ => None,
     };
     let (stages, html) = match &traced {
         Some(Ok(traced)) => (traced.stages.as_slice(), Some(traced.html.as_str())),
         _ => (&[][..], None),
+    };
+    let explained = match (&report.failure, &traced) {
+        (Some(_), Some(Ok(traced))) if args.explain && own_brute.is_some() => {
+            Some(Ok(traced.divergence.clone()))
+        }
+        (Some(_), Some(Err(why))) if args.explain => Some(Err(why.clone())),
+        (Some(_), _) if args.explain => Some(Err(
+            "`--explain` runs the file against its own `@brute(main)` fn".to_string(),
+        )),
+        _ => None,
     };
     let mut trace_note = None;
     let trace_path = match (args.trace, &report.failure, html) {
@@ -537,7 +592,7 @@ pub fn run_with(
         let _ = write!(
             stdout,
             "{}",
-            json(&report, saved.as_deref(), stages, trace_path.as_deref())
+            json(&report, saved.as_deref(), stages, trace_path.as_deref(), explained.as_ref())
         );
         return report.failure.is_some() as u8;
     }
@@ -646,6 +701,28 @@ pub fn run_with(
                 let _ = writeln!(stdout, "    ^ the first one that differs");
             }
         }
+    }
+    match &explained {
+        Some(Ok(Some(d))) => {
+            let ordinal = ordinal(d.nth);
+            let _ = writeln!(stdout, "  first differing value: `{}`, its {ordinal} value", d.name);
+            for (who, side) in [("solution", &d.fast), ("brute", &d.brute)] {
+                let _ = match side {
+                    Some((line, value)) => writeln!(stdout, "    {who:<8} {} = {value} at line {line}", d.name),
+                    None => writeln!(stdout, "    {who:<8} never gives `{}` a {ordinal} value", d.name),
+                };
+            }
+        }
+        Some(Ok(None)) => {
+            let _ = writeln!(
+                stdout,
+                "  first differing value: none; no variable both name takes different values"
+            );
+        }
+        Some(Err(why)) => {
+            let _ = writeln!(stderr, "warning: no explanation: {why}");
+        }
+        None => {}
     }
     if let Some(path) = &trace_path {
         let _ = writeln!(stdout, "  trace {}", path.display());

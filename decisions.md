@@ -1744,6 +1744,18 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   are the ones stress runs under, not copies. `stress_judges` stresses all 16 and the 5
   checker ports on their `gen/` cases, and checks that a solution printing `1` is caught
   under each judge. Reverse: delete the stdio branch and the test.
+- **25.18 `cpl stress --explain` names the first value the two runs give a variable
+  differently.** On a failure against the file's own `@brute(main)`, both run on the shrunk
+  case in the tree-walking interpreter with `TraceConfig::assignments`, which logs every value
+  a `let`, an assignment, a mutation or a loop gives a named variable, in fns too. For each
+  name both runs use, the values it takes (repeats collapsed) are compared, and the one whose
+  first difference comes earliest in the solution's run is reported with its ordinal and the
+  line on each side. Comparing histories by name, not steps, lines up two programs that share
+  names but not shape; a history that is only a reordering ending on the same value is a loop
+  in another order and is not a divergence. Variables only one side names are skipped, so
+  when no shared name differs it says so and the `debug(...)` stages remain the guide. Off by
+  default: logging every assignment slows a run. Reverse: drop the flag, `assignments` and
+  `first_divergence`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

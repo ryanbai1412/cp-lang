@@ -3,7 +3,8 @@
 //! `@checker` and `@interactor` under `@!multitest`.
 //!
 //! The programs in `tests/debugger/` are Codeforces Round 1132 solutions
-//! from `research/blind-contest-sim-2.md`, two of them with a bug planted.
+//! from `research/blind-contest-sim-2.md`, two of them with a bug planted;
+//! `sum_planted.cp` is a sum with a bug planted for `--explain`.
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -151,6 +152,36 @@ fn stress_finds_the_planted_bug_with_the_files_own_brute_and_traces_both() {
     assert!(page.contains("\"runs\":{\"fast\":{\"label\":\"solution\""), "the solution's run");
     assert!(page.contains("\"slow\":{\"label\":\"slow\""), "the brute's run");
     assert!(page.contains("\"checkpoint\":\"case 1 · debug piles\""));
+}
+
+#[test]
+fn stress_explain_names_the_first_value_the_solution_and_brute_give_differently() {
+    let path = program("stress-explain", "sum_planted.cp");
+    let args = |json: bool| {
+        let mut args: Vec<&OsStr> = vec!["stress".as_ref(), path.as_os_str(), "--explain".as_ref()];
+        if json {
+            args.extend([OsStr::new("--format"), OsStr::new("json")]);
+        }
+        args
+    };
+    let out = cpl(&args(false), b"");
+    let report = text(&out.stdout);
+    assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
+    assert!(report.contains("that is: n = 1  a = [2]"), "{report}");
+    assert!(report.contains("first differing value: `s`, its 2nd value"), "{report}");
+    assert!(report.contains("solution s = 4 at line 6"), "{report}");
+    assert!(report.contains("brute    s = 2 at line 12"), "{report}");
+    let out = cpl(&args(true), b"");
+    let report = text(&out.stdout);
+    assert!(
+        report.contains(
+            "\"explain\":{\"divergence\":{\"name\":\"s\",\"nth\":2,\"fast\":{\"line\":6,\"value\":\"4\"},\"brute\":{\"line\":12,\"value\":\"2\"}}}"
+        ),
+        "{report}"
+    );
+    // Without the flag, nothing is traced and the report has no `explain`.
+    let out = cpl(&["stress".as_ref(), path.as_os_str(), "--format".as_ref(), "json".as_ref()], b"");
+    assert!(!text(&out.stdout).contains("\"explain\""), "{}", text(&out.stdout));
 }
 
 #[test]

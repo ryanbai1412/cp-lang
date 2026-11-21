@@ -491,6 +491,17 @@ fn root_global(place: &Place) -> Option<usize> {
     }
 }
 
+/// The local a place is in, when it is in one.
+fn root_local(place: &Place) -> Option<usize> {
+    match &place.kind {
+        PlaceKind::Local(slot) => Some(*slot),
+        PlaceKind::Global(_) => None,
+        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+            root_local(base)
+        }
+    }
+}
+
 /// How many indices of `place` lead straight from its variable: `2` in
 /// `dp[i][j]` and in `dp[i, j]`, `1` in `a[i].x`.
 fn leading_indices(place: &Place) -> usize {
@@ -657,6 +668,32 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.traced(|tracer, view| tracer.changed(global, view, place.span, path));
     }
 
+    fn assignments(&self) -> bool {
+        self.tracer.as_ref().is_some_and(|tracer| tracer.assignments)
+    }
+
+    /// With [`trace::TraceConfig::assignments`], the value of the
+    /// variable `place` is in, which was just given a value.
+    fn trace_assigned(&mut self, place: &Place) {
+        if !self.assignments() {
+            return;
+        }
+        let span = place.span;
+        if let Some(id) = root_global(place) {
+            self.traced(|tracer, view| tracer.assigned_global(view, span, id));
+        } else if let Some(slot) = root_local(place) {
+            self.trace_assigned_local(slot, span);
+        }
+    }
+
+    fn trace_assigned_local(&mut self, slot: usize, span: Span) {
+        if !self.assignments() {
+            return;
+        }
+        let name = self.locals()[slot].name.as_str();
+        self.traced(|tracer, view| tracer.assigned_local(view, span, name));
+    }
+
     fn flush_if_large(&mut self) {
         if self.out.len() >= 1 << 16 {
             let _ = self.sink.write_all(&self.out);
@@ -688,6 +725,9 @@ impl<'p, 'o> Interp<'p, 'o> {
                 };
                 let base = self.base;
                 self.stack[base + slot] = value;
+                if let Some(init) = init {
+                    self.trace_assigned_local(*slot, init.span);
+                }
             }
             Stmt::Assign(place, op, value) => {
                 if self.tracer.is_none() {
@@ -695,6 +735,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 } else {
                     let indices = self.assign(place, *op, value)?;
                     self.trace_change(place, &indices);
+                    self.trace_assigned(place);
                 }
             }
             Stmt::Expr(e) => {
@@ -775,9 +816,13 @@ impl<'p, 'o> Interp<'p, 'o> {
 
     fn for_loop(&mut self, id: LoopId, slot: usize, iter: &'p Iter, body: &'p Block) -> Res<Flow> {
         let base = self.base;
+        let span = match iter {
+            Iter::Range { lo: e, .. } | Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => e.span,
+        };
         macro_rules! round {
             ($value:expr) => {{
                 self.stack[base + slot] = $value;
+                self.trace_assigned_local(slot, span);
                 match self.block(body)? {
                     Flow::Next | Flow::Continue(None) => {}
                     Flow::Break(None) => break,
@@ -1839,6 +1884,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         tracer.step(view, span, None, None, None)
                     });
                 }
+                self.trace_assigned(place);
                 value
             }
             ExprKind::Sort(place, sort_by, desc) => {

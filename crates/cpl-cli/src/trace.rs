@@ -1,7 +1,7 @@
 //! `cpl run --trace`, `cpl run --format json` and the tracing half of
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
-use cpl_interp::trace::{document, stages, Recording, TraceConfig};
+use cpl_interp::trace::{document, first_divergence, stages, Recording, TraceConfig};
 use std::path::Path;
 
 /// The trace viewer: one page with nothing to fetch. A trace is put in
@@ -61,8 +61,10 @@ pub fn versus(path: &str, source: &str, brute_fn: &str, fast: &Recording, slow: 
 /// Runs the solution and the `@brute(main)` of the file at `path` on
 /// `input` in the debug interpreter: what `cpl stress` shows of a
 /// failing case. A file judged by its `@checker` alone has no brute to
-/// line up with, and its trace is the solution's own run.
-pub fn against_brute(path: &Path, input: &str) -> Result<cpl_stress::cli::Traced, String> {
+/// line up with, and its trace is the solution's own run. With `explain`,
+/// every value each run gives a variable is logged too, for the first one
+/// they give differently.
+pub fn against_brute(path: &Path, input: &str, explain: bool) -> Result<cpl_stress::cli::Traced, String> {
     let name = path.display().to_string();
     let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
     let mut db = cpl_check::Database::new();
@@ -80,7 +82,11 @@ pub fn against_brute(path: &Path, input: &str) -> Result<cpl_stress::cli::Traced
     let record = |program: &cpl_ir::Program| {
         let mut sink = Vec::new();
         let io = cpl_interp::Io::fixed(input.as_bytes());
-        cpl_interp::run_observed(program, io, &mut sink, Some(config(&source, None)))
+        let config = cpl_interp::trace::TraceConfig {
+            assignments: explain,
+            ..config(&source, None)
+        };
+        cpl_interp::run_observed(program, io, &mut sink, Some(config))
             .recording
             .unwrap_or_default()
     };
@@ -93,6 +99,7 @@ pub fn against_brute(path: &Path, input: &str) -> Result<cpl_stress::cli::Traced
         return Ok(cpl_stress::cli::Traced {
             stages: Vec::new(),
             html: html(&single(&name, &source, &fast)),
+            divergence: None,
         });
     };
     let slow = record(&slow);
@@ -107,6 +114,7 @@ pub fn against_brute(path: &Path, input: &str) -> Result<cpl_stress::cli::Traced
         .collect();
     Ok(cpl_stress::cli::Traced {
         stages,
+        divergence: explain.then(|| first_divergence(&fast, &slow)).flatten(),
         html: html(&versus(&name, &source, &brute_fn, &fast, &slow)),
     })
 }

@@ -31,6 +31,9 @@ pub struct TraceConfig {
     pub max_depth: Option<usize>,
     /// Record the full call stack (`(fn_name, line)`) on each step for DAP.
     pub record_frames: bool,
+    /// Log each value a named variable is given, in a fn too, in
+    /// [`Recording::assigned`]: what `cpl stress --explain` compares.
+    pub assignments: bool,
 }
 
 /// The most steps one run keeps; the viewer reads up to 100,000.
@@ -42,6 +45,8 @@ const SETUP_STEPS: usize = 2_000;
 const MAX_BYTES: usize = 48 << 20;
 /// A variable with more cells than this is shown by its size.
 const MAX_CELLS: usize = 20_000;
+/// The most values [`Recording::assigned`] keeps.
+const MAX_ASSIGNED: usize = 200_000;
 
 /// How the viewer draws a variable. It follows from the type alone.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -117,6 +122,15 @@ pub struct Shown {
     pub text: String,
 }
 
+/// A value a named variable was given.
+#[derive(Clone, Debug)]
+pub struct Assigned {
+    /// 1-based.
+    pub line: u32,
+    pub name: String,
+    pub value: String,
+}
+
 /// What a run left behind.
 #[derive(Clone, Debug, Default)]
 pub struct Recording {
@@ -126,6 +140,8 @@ pub struct Recording {
     pub truncated: bool,
     pub lives: Vec<Live>,
     pub shown: Vec<Shown>,
+    /// With [`TraceConfig::assignments`], in the order they ran.
+    pub assigned: Vec<Assigned>,
 }
 
 pub(crate) struct Tracer {
@@ -162,6 +178,7 @@ pub(crate) struct Tracer {
     prints: usize,
     pub case: Option<u64>,
     bytes: usize,
+    pub assignments: bool,
     pub rec: Recording,
 }
 
@@ -247,6 +264,7 @@ impl Tracer {
             prints: 0,
             case: None,
             bytes: 0,
+            assignments: config.assignments,
             rec: Recording::default(),
         };
         tracer.stdout = tracer.add_var(
@@ -572,6 +590,40 @@ impl Tracer {
             return;
         }
         self.step(view, span, None, None, Some((id, path)));
+    }
+
+    /// Local `name` of the innermost call was given a value.
+    pub fn assigned_local(&mut self, view: &View, span: Span, name: &str) {
+        if let Some((_, ty, value)) = view.locals.iter().rev().find(|(local, ..)| *local == name) {
+            self.assigned(view, span, name, ty, value);
+        }
+    }
+
+    /// Global `id` was given a value, or a part of it was.
+    pub fn assigned_global(&mut self, view: &View, span: Span, id: usize) {
+        let global = &view.program.globals[id];
+        self.assigned(view, span, &global.name, &global.ty, &view.globals[id]);
+    }
+
+    fn assigned(&mut self, view: &View, span: Span, name: &str, ty: &Ty, value: &Value) {
+        if !self.assignments
+            || self.rec.assigned.len() >= MAX_ASSIGNED
+            || name.is_empty()
+            || name.starts_with('_')
+            || matches!(value, Value::Unit | Value::Moved)
+            || matches!(ty, Ty::Unit | Ty::Fn(..) | Ty::DomainVal | Ty::Error)
+            || !self.recording(view.depth)
+        {
+            return;
+        }
+        let mut text = String::new();
+        if cells(value) > 200 {
+            text = format!("{} values", cells(value));
+        } else {
+            render(&mut text, value, ty, view, Mode::Text);
+        }
+        let line = self.line(span).max(1);
+        self.rec.assigned.push(Assigned { line, name: name.to_string(), value: text });
     }
 
     /// `print(...)` wrote `text`.
@@ -1487,6 +1539,70 @@ pub struct Stage {
     pub brute: String,
 }
 
+/// Where a solution and its brute first give a variable they both name
+/// different values: its `nth` value (1-based, a repeat of the value
+/// before not counted), with the line and the value on each side, `None`
+/// on a side that never gives it an `nth` value.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Divergence {
+    pub name: String,
+    pub nth: usize,
+    pub fast: Option<(u32, String)>,
+    pub brute: Option<(u32, String)>,
+}
+
+/// The first value the solution gives one of the variables both runs
+/// name that the brute does not give it, from [`Recording::assigned`]. A
+/// variable that takes the same values in another order and ends alike
+/// (a loop walked the other way) is not a divergence.
+pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence> {
+    fn histories(rec: &Recording) -> HashMap<&str, Vec<(usize, &Assigned)>> {
+        let mut out: HashMap<&str, Vec<(usize, &Assigned)>> = HashMap::new();
+        for (at, assigned) in rec.assigned.iter().enumerate() {
+            let history = out.entry(assigned.name.as_str()).or_default();
+            if history.last().is_none_or(|(_, last)| last.value != assigned.value) {
+                history.push((at, assigned));
+            }
+        }
+        out
+    }
+    let (ours, theirs) = (histories(fast), histories(slow));
+    let mut best: Option<(usize, &str, usize)> = None;
+    for (name, a) in &ours {
+        let Some(b) = theirs.get(name) else {
+            continue;
+        };
+        let values = |history: &[(usize, &Assigned)]| -> Vec<String> {
+            history.iter().map(|(_, assigned)| assigned.value.clone()).collect()
+        };
+        let (va, vb) = (values(a), values(b));
+        if va == vb {
+            continue;
+        }
+        let (mut sa, mut sb) = (va.clone(), vb.clone());
+        sa.sort();
+        sb.sort();
+        if sa == sb && va.last() == vb.last() {
+            continue;
+        }
+        let nth = va.iter().zip(&vb).take_while(|(x, y)| x == y).count();
+        let at = a.get(nth).map_or(fast.assigned.len(), |(at, _)| *at);
+        if best.is_none_or(|(best_at, best_name, _)| (at, *name) < (best_at, best_name)) {
+            best = Some((at, name, nth));
+        }
+    }
+    let (_, name, nth) = best?;
+    let side = |history: &Vec<(usize, &Assigned)>| {
+        history.get(nth).map(|(_, assigned)| (assigned.line, assigned.value.clone()))
+    };
+    Some(Divergence {
+        name: name.to_string(),
+        nth: nth + 1,
+        fast: side(&ours[name]),
+        brute: side(&theirs[name]),
+    })
+}
+
 /// The `debug(...)` checkpoints both runs reached, in the solution's
 /// order, and the last line each printed: where the two first differ is
 /// where to look.
@@ -1504,4 +1620,47 @@ pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
             })
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run(assigned: &[(u32, &str, &str)]) -> Recording {
+        Recording {
+            assigned: assigned
+                .iter()
+                .map(|&(line, name, value)| Assigned { line, name: name.to_string(), value: value.to_string() })
+                .collect(),
+            ..Recording::default()
+        }
+    }
+
+    #[test]
+    fn the_first_divergence_is_the_earliest_value_the_solution_gives_differently() {
+        let fast = run(&[(1, "i", "0"), (2, "s", "0"), (3, "s", "0"), (3, "t", "5"), (4, "s", "7")]);
+        let slow = run(&[(1, "i", "0"), (9, "s", "0"), (9, "t", "6"), (10, "s", "8")]);
+        // `s` repeats 0 and stays in step; `t` is the first value that differs.
+        assert_eq!(
+            first_divergence(&fast, &slow),
+            Some(Divergence {
+                name: "t".to_string(),
+                nth: 1,
+                fast: Some((3, "5".to_string())),
+                brute: Some((9, "6".to_string())),
+            })
+        );
+    }
+
+    #[test]
+    fn a_value_one_side_never_gives_is_a_divergence_and_loop_order_is_not() {
+        // The same values in another order, ending the same, are a loop in another order.
+        let fast = run(&[(1, "x", "1"), (1, "x", "2"), (1, "x", "3"), (2, "s", "1")]);
+        let slow = run(&[(5, "x", "2"), (5, "x", "1"), (5, "x", "3"), (6, "s", "1"), (6, "s", "3")]);
+        let d = first_divergence(&fast, &slow).unwrap();
+        assert_eq!((d.name.as_str(), d.nth, d.fast), ("s", 2, None));
+        assert_eq!(d.brute, Some((6, "3".to_string())));
+        // Names only one side has say nothing.
+        assert_eq!(first_divergence(&run(&[(1, "a", "1")]), &run(&[(1, "b", "2")])), None);
+    }
 }

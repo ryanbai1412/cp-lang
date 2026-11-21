@@ -32,7 +32,7 @@ fn check():
 
 When paired with `@brute(main)`, the brute settles **existence** (e.g., whether a valid coloring exists or the answer is `-1`), while `@checker` validates any constructive answer your fast solution prints.
 
-> **Browser vs. local CLI.** `@brute(main)`, `@checker` (including `read_output()`), and `@interactor` parse, check, and omit verification code from the executable C++17 body in both `cpl` and WebAssembly. In the [playground](playground.html), **Trace** runs `@brute(main)` beside your fast solution on the current input and opens the live diff in the [trace debugger](trace.html). The automated `cpl stress` random generator, shrinker, and `@checker`/`@interactor` harnesses run locally via `cpl stress` (with `--trace` for side-by-side HTML captures), not inside the browser sandbox.
+> **Browser vs. local CLI.** `@brute(main)`, `@checker` (including `read_output()`), and `@interactor` parse, check, and omit verification code from the executable C++17 body in both `cpl` and WebAssembly. In the [playground](playground.html), **Trace** runs `@brute(main)` beside your fast solution on the current input and opens the live diff in the [trace debugger](trace.html). The automated `cpl stress` random generator, shrinker, and `@checker`/`@interactor` harnesses run locally via `cpl stress` (with `--trace` for side-by-side HTML captures, and `--explain` to name the first value your solution and its `@brute(main)` give a variable differently, with the line on each side), not inside the browser sandbox.
 
 ```exercise verify-shrink
 ```
