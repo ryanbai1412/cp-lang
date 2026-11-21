@@ -1878,7 +1878,8 @@ fn span_range(span: Span) -> std::ops::Range<usize> {
 /// call reads like `read<T>()` in any expression: no parameters, a body
 /// whose only reads are `let name: T = read()` lines with types that use
 /// no name the body binds, and no `return` but a last one.
-/// Each name declared once in the file, as `var a: [I]T = ...`, with `T`
+/// Each name declared once in the file, as `var a: [I]T = ...` or
+/// `var a: List<T> = ...`, with `T`
 /// and the base its spans are relative to. A name declared twice is left
 /// out, since which one a write means depends on scope.
 fn elems(items: &[(u32, cpl_syntax::ParsedItem)]) -> HashMap<String, (u32, Type)> {
@@ -1891,6 +1892,11 @@ fn elems(items: &[(u32, cpl_syntax::ParsedItem)]) -> HashMap<String, (u32, Type)
                     let elem = match (&pat.kind, ty.as_ref().map(|ty| &ty.kind)) {
                         (PatternKind::Name(_), Some(TypeKind::Array { elem, .. })) => {
                             Some((base, (**elem).clone()))
+                        }
+                        (PatternKind::Name(_), Some(TypeKind::Named { name, args }))
+                            if name.text == "List" && args.len() == 1 =>
+                        {
+                            Some((base, args[0].clone()))
                         }
                         _ => None,
                     };

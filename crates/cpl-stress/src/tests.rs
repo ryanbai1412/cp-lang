@@ -2303,3 +2303,27 @@ for _ in 0..q:
 ";
     assert!(InputSpec::from_source(uses).is_err());
 }
+
+#[test]
+fn a_write_of_read_into_a_typed_list_reads_its_element_type() {
+    let src = "let n: 1..=5 = read()
+var cur: List<0..=9> = List.filled(n * (n + 1) / 2, 0)
+for i in 0..n:
+    for j in 0..=i:
+        cur[i * (i + 1) / 2 + j] = read()
+print(cur.sum)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..10 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(5))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let n = tokens[0];
+        assert_eq!(tokens.len() as i128, 1 + n * (n + 1) / 2, "{text}");
+        assert!(tokens[1..].iter().all(|v| (0..=9).contains(v)), "{text}");
+    }
+}

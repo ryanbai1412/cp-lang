@@ -534,9 +534,11 @@ and a read in one comparison, `read::<Int>() == 1`, is read
 a pass computes refuses only the reads that use it
 (`a_pass_that_skips_the_first_or_last_index_reads_from_the_rest`,
 `a_domain_a_pass_computes_refuses_only_the_reads_that_use_it`, 25.28):
-1,185 files. Of the five, ioi09p7 and noip19p2 read parents as plain `V`s
+1,185 files; a `List<T>` declared once takes writes of reads like an
+array (`a_write_of_read_into_a_typed_list_reads_its_element_type`): 1,186.
+Of the first five, ioi09p7 and noip19p2 read parents as plain `V`s
 and fail on the cycles generated, and etsr23r1p3 reads letters past its
-alphabet: typing gaps in the ports. Still refused: 29 loops a row can't
+alphabet: typing gaps in the ports. Still refused: 28 loops a row can't
 describe, 18 reads in a branch or `while true`, 16 fns that read and take
 parameters or are called in a branch.
 Stress under a judge is a gate regression: all 16 interactive and 5
