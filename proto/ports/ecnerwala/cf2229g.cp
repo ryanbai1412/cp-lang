@@ -1,11 +1,6 @@
 // Codeforces 2229 G: compute earliest arrival times left and right from X,
 // keep only prefix-record houses on each side, and merge them by increasing V.
-struct House:
-    x: Int
-    v: Int
-    d: Int
-    pref: Int
-    val: Int
+struct House(x: Int, v: Int, d: Int, pref: Int, val: Int)
 
 @!multitest
 let (n, k, x_raw): (Int, Int, Int) = read()
@@ -17,17 +12,16 @@ var d: [0..n]Int = 0
 for i in x + 1..n: d[i] = max(d[i - 1] + 1, road_d[i - 1])
 for i in (0..x).rev: d[i] = max(d[i + 1] + 1, road_d[i])
 
-var side: [0..2]List<House> = []
-var lp = 0
-for i in (0..=x).rev:
-    lp += v[i]
-    if side[0].is_empty or side[0].last!.v <= v[i]:
-        side[0].push(House(x - i, v[i], d[i], lp, 0))
-var rp = 0
-for i in x..n:
-    rp += v[i]
-    if side[1].is_empty or side[1].last!.v <= v[i]:
-        side[1].push(House(i - x, v[i], d[i], rp, 0))
+fn collect(ord: List<Int>) -> List<House>:
+    var out: List<House> = []
+    var pref = 0
+    for i in ord:
+        pref += v[i]
+        if out.is_empty or out.last!.v <= v[i]:
+            out.push(House(abs(i - x), v[i], d[i], pref, 0))
+    out
+
+var side: [0..2]List<House> = [collect(List((0..=x).rev)), collect(List(x..n))]
 
 var ans = v[x] * k
 var proc_it: [0..2]Int = 1

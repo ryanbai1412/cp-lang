@@ -1,8 +1,9 @@
 @!multitest
 let (n, k): (Int, Int) = read()
-let a: List<Int> = [read::<Int>() for _ in 0..n]
+let a: [0..n]Int = read()
 var cnt: [0..=n]Int = 0
 for x in a: cnt[x] += 1
+
 var base = 0
 while cnt[base] == 1: base += 1
 if base >= n - 1:
