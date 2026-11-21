@@ -252,19 +252,21 @@ known C++ library implementation (AtCoder Library, KACTL, ecnerwala's
 library) on matched benchmarks.
 The local library (`examples/local-lib/`) is the staging area: a module
 is promoted once it meets the stdlib bar.
-**Where we are.** 25 modules, 280 distinct public names (389 `pub`
-declarations including methods). Number theory is complete for single
-numbers (Miller-Rabin and Pollard's rho exact for every `Int`, `phi`,
-`primitive_root`, `floor_sum`, O(1) `mul_mod`). Rollback union-finds
-share a typed `Mark`; `DsuOf<V, T>` rolls a value per set back with the
-sets and `ParityDsu<V>` keeps sides (`cf2222f`, `cf2237h` pass 150
-random cases each). The test folds take a test after the sequence
-(`count(xs, p)`, `all`, `any`, `first(xs, p) -> ?T`, `xs.count(p)`) and
-`prod` joins `sum` (`tested_folds` differential fixture; `cf2207e2`
-passes 150 random cases). Present but thin: RNG, bitsets, flows,
-strings, geometry. Absent: NTT and convolution, matrices, search over
-reals. `plan/STDLIB.md` is the design of the whole surface; a test fails
-when a public name is missing from it.
+**Where we are.** 38 modules, 608 distinct public names (1,087 `pub`
+declarations including methods), every one in `plan/STDLIB.md` with its
+cost. All the module families the north star names exist: number theory
+(one `factor` for every `Int`, decision 92), NTT/FWHT/subset convolution
+and Lagrange interpolation, matrices, binary and ternary search over
+integers and reals, RNG and hashing, bitsets, flows and matchings,
+strings, geometry (2D, circles, 3D hull), trees (`Rooted`, `LinkCut`,
+`LazyLinkCut`), containers (open-addressing `HashMap`), sequences
+(`distinct`, `fold(f)`, `sort(cmp:)`, `+`). 57 matched C++ benches across
+eight areas; most areas sit at or under 1.15x. Open gaps: `Rooted` at
+2x time and 2x memory on a 10^6 tree (pair-list CSR in graphs; array
+element narrowing in core), cf2237h at 1.8x (discarded `Map.remove`
+still looks up first), interpreter 20-40x on `mut self` structures, and
+range-typed stores are not yet checked (a narrowed field wraps where the
+interpreter keeps the value; fix in progress).
 **Structure.** Ten area owners (graphs, trees, range structures,
 strings, number theory/combinatorics, flows/matching, containers,
 geometry, DP/search, sequences) each own their part of
