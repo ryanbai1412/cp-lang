@@ -134,7 +134,7 @@ for d in "${lib_dirs[@]}"; do
     lib_pids+=($!)
 done
 cleanup() {
-    kill "${lib_pids[@]}" ${recovery_pid:+"$recovery_pid"} 2>/dev/null || true
+    kill "${lib_pids[@]}" ${recovery_pid:+"$recovery_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -160,12 +160,12 @@ if cargo nextest --version >/dev/null 2>&1; then
     filter='binary(proto_fuzz) or binary(proto_tools) or binary(budget)'
     for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
     cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
-    # Run the recovery scoreboard in parallel with the remaining fast checks
-    # (nextest and LSP latency tests have already finished, so there is no contention).
-    cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
-    recovery_pid=$!
     step "cargo test --workspace --doc"
     cargo test -q --workspace --doc
+    # Run the recovery scoreboard in parallel with the remaining fast checks
+    # (nextest, doctests, and LSP latency tests have finished, so no Cargo lock contention).
+    cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
+    recovery_pid=$!
 else
     step "cargo test --workspace (without the --full tests)"
     skips=()
@@ -227,11 +227,13 @@ bundle_bytes=$(wc -c <dist/cp-lang.html)
 echo "dist/cp-lang.html: $bundle_bytes bytes"
 [ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
 
-step "docs examples, course references, cheat-sheet budget and links"
-python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_docs.py"
-
-step "site tests: built pages, links, reader copy, documented programs"
-python3 site/test_site.py >/dev/null 2>&1 || fail "site tests failed; rerun: python3 site/test_site.py"
+step "docs gate + site tests (in parallel)"
+CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1 &
+site_test_pid=$!
+python3 site/check_docs.py || { kill "$site_test_pid" 2>/dev/null || true; fail "docs gate failed; rerun: python3 site/check_docs.py"; }
+site_test_status=0
+wait "$site_test_pid" || site_test_status=1
+[ "$site_test_status" -eq 0 ] || { cat "$lib_logs/site_tests.log"; fail "site tests failed; rerun: python3 site/test_site.py"; }
 
 if [ -n "${recovery_pid:-}" ]; then
     step "cargo test: the recovery scoreboard (backgrounded)"

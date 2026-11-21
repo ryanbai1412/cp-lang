@@ -90,8 +90,9 @@ class Page(HTMLParser):
 class SiteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        subprocess.run(["cargo", "build", "-p", "cpl-cli"], cwd=REPO, check=True)
-        build.build()
+        if os.environ.get("CPL_SITE_PREBUILT") != "1":
+            subprocess.run(["cargo", "build", "-p", "cpl-cli"], cwd=REPO, check=True)
+            build.build()
 
     def test_every_documented_cp_block_checks_builds_and_emits_cpp17(self):
         programs = list(documented_programs())
