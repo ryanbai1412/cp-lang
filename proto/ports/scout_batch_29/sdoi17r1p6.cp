@@ -5,6 +5,7 @@
 //   2 l r S T  add S to every x and T to every y
 //   3 l r S T  set x[i] = S + i and y[i] = T + i
 // The slope is printed to 5 decimals (the original first cuts it to 6).
+// The sums fit an Int; the products in the slope do not, so it is formed in F64.
 //
 // Times the length m, the slope is (m sum xy - sum x sum y) /
 // (m sum x^2 - (sum x)^2), so a node keeps the four sums; it also keeps
@@ -71,7 +72,12 @@ for _ in 0..q:
     let (kind, l, r): (Int, Pos, Pos) = read()
     if kind == 1:
         let s = tree.fold(l..=r)
-        print(fixed(s.xy * s.len - s.x * s.y, s.len * s.xx - s.x * s.x, 5))
+        // m * sum xy reaches 4e20 at n = 1e5, past Int; the original works in doubles too
+        let m = F64(s.len)
+        print(
+            (m * F64(s.xy) - F64(s.x) * F64(s.y)) / (m * F64(s.xx) - F64(s.x) * F64(s.x)),
+            digits: 5,
+        )
     else:
         let (a, b): (Int, Int) = read()
         tree.apply(

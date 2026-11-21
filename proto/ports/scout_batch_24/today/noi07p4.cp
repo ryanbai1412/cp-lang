@@ -64,7 +64,7 @@ for _ in 0..q:
             st.apply(l.., x)
             st.apply(..=r, x)
     elif op == "C":
-        let all = st.fold(Pos.first..)
+        let all = st.fold(Pos.all)
         let cyc = if all.runs > 1 and all.lcol == all.rcol: all.runs - 1 else: all.runs
         print(cyc)
     else:

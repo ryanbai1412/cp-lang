@@ -21,5 +21,5 @@ for _ in 0..q:
         print(w)
         // WISH C3: `stack.remove_at(i)`; `rotate_left` on a slice would also do
         for j in i..stack.len - 1: stack[j] = stack[j + 1]
-        stack[stack.len - 1] = w
+        stack.last! = w
     else: print(0)

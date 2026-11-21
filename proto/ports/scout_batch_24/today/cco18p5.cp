@@ -46,7 +46,7 @@ fn refresh(p: I):
         pair_st.set(p, 0)
 
 for p in I: refresh(p)
-print(pair_st.fold(I.first..))
+print(pair_st.fold(I.all))
 
 for qi in Q:
     let pos = upds[qi].pos
@@ -57,4 +57,4 @@ for qi in Q:
     refresh(pos)
     if old_l.has: refresh(I.nth(old_l.idx))
     if old_r.has: refresh(I.nth(old_r.idx))
-    print(pair_st.fold(I.first..))
+    print(pair_st.fold(I.all))

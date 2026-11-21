@@ -14,7 +14,7 @@ let code: [0..m]Sym = read()
 var sym: List<Sym> = []
 var len: List<Int> = []
 fn add_run(s: Sym, k: Int):
-    if sym.len > 0 and sym.last! == s: len[len.len - 1] += k
+    if sym.len > 0 and sym.last! == s: len.last! += k
     else:
         sym.push(s)
         len.push(k)
@@ -64,7 +64,7 @@ for i in (0..runs).rev:
         if free == n or c < dflt or (c == dflt and e < free):
             opt = offset + c
             opt_sym = Sym(e)
-    x += 3 * ((k + n - 1) / n)
+    x += 3 * (ceil_div(k, n))
     if x > opt + 3:
         switch_to[R(i)] = opt_sym
         x = opt + 3

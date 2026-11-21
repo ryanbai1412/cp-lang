@@ -8,7 +8,7 @@ domain Slot = 0..k
 let edges: [E](a: Int, b: Int, t: Int) = read()
 let queries: [Q](a: Int, b: Int) = read()
 
-let layers = (n + k - 1) / k
+let layers = ceil_div(n, k)
 let num_gaps = if layers > 1: layers - 1 else: 1
 domain Gap = 0..num_gaps
 type Mat = [Slot, Slot]?Int

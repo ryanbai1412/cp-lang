@@ -30,6 +30,6 @@ for g in Group:
 
 var line = ""
 for i in 0..out.len:
-    if i > 0: line = line + " "
+    if i > 0: line += " "
     line += "{out[i]}"
 print(line)

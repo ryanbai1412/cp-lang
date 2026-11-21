@@ -50,7 +50,7 @@ print(2 * (best_len + 1))
 var line = ""
 var cur = start
 while let u = cur:
-    if line.len > 0: line = line + " "
+    if line.len > 0: line += " "
     line += "{mate[u]!.label} {u.label}"
     cur = nxt[u]
 print(line)

@@ -25,7 +25,7 @@ fn merged(strokes: List<(Int, Int, Int)>) -> List<(Int, Int, Int)>:
     var out: List<(Int, Int, Int)> = []
     for s in sorted(strokes):
         if let top = out.last and top.0 == s.0 and s.1 <= top.2 + 1:
-            out[out.len - 1] = (top.0, top.1, max(top.2, s.2))
+            out.last! = (top.0, top.1, max(top.2, s.2))
         else: out.push(s)
     out
 

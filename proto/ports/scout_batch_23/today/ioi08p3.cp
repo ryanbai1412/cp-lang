@@ -34,6 +34,9 @@ for idx in 0..f_cnt:
     let (l, g) = raw[idx]
     fish.push((l, rank_of[g]))
 fish.sort()
+// lengths of each gem's fish, increasing
+var lens: List<List<Int>> = [[] for _ in 0..k]
+for (l, g) in fish: lens[g].push(l)
 
 domain Gem = 0..k
 var cnt = List.filled(k, 0)
@@ -77,28 +80,17 @@ for r in 0..k:
     //   have replaced our choice of small fishes of gem q with gem q's max fish... UNLESS
     //   gem q has NO fish with length >= 2 * (some fish of gem r we must eat) i.e. unless
     //   max_by_rank[q] < 2 * next_fish_of_r!
-    // Let's find `next_r` = smallest length of a fish of gem r that is > lim:
-    var next_r = max_by_rank[r]
-    // Find via scan over fish[p..f_cnt] with gem == r (or precomputed)
-    var q_hi = r
+    // the shortest fish of gem r longer than lim: the first cnt[r] are the ones at most lim
+    let next_r = lens[r][cnt[r]]
     var lo = r + 1
     var hi = k
-    // Find first fish of gem r at index >= p
-    var found = false
-    var idx = p
-    while idx < f_cnt:
-        if fish[idx].1 == r:
-            next_r = fish[idx].0
-            found = true
-            break
-        idx += 1
     while lo < hi:
         let mid = (lo + hi) / 2
         if max_by_rank[mid] < 2 * next_r:
             lo = mid + 1
         else:
             hi = mid
-    q_hi = lo - 1
+    let q_hi = lo - 1
 
     // Case 1: take 1..=cnt[r] fish of gem r (actually 0..=cnt[r]-1 + max fish -> cnt[r] choices
     //   when excluding the "all cnt[r]+1" case, wait: Case 1 = ways_small * cnt[r]

@@ -96,7 +96,7 @@ for x in coords:
         uniq.push(x)
         cnts.push(1)
     else:
-        cnts[cnts.len - 1] += 1
+        cnts.last! += 1
 
 var radius = diam
 for ci in 0..uniq.len:

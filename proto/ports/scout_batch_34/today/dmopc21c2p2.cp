@@ -32,6 +32,6 @@ for _ in 0..q:
         let target: [Pos]Int = read()
         var out = ""
         for v in Val:
-            if v.to_idx > 0: out = out + " "
+            if v.to_idx > 0: out += " "
             out += "{target[inv[v]]}"
         print(out)

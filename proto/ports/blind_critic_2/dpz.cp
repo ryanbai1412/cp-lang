@@ -26,7 +26,7 @@ fn main():
                 head += 1
             dp[i] = lines[head].m * h[i] + lines[head].b + h[i] ** 2 + c
         let line = (m: -2 * h[i], b: dp[i] + h[i] ** 2)
-        while lines.len - head >= 2 and bad(lines[lines.len - 2], lines[lines.len - 1], line):
+        while lines.len - head >= 2 and bad(lines[lines.len - 2], lines.last!, line):
             lines.pop()
         lines.push(line)
     print(dp[I.last])

@@ -22,6 +22,6 @@ for _ in 0..t:
 
 var line = ""
 for p in Player:
-    if p.to_idx > 0: line = line + " "
+    if p.to_idx > 0: line += " "
     line += "{last[p]!}"
 print(line)

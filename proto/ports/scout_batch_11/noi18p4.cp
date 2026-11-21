@@ -4,6 +4,7 @@
 // atk * x >= a and atk * x = a (mod p). The smallest such x, or -1.
 // original: corpus/submissions/6517796.cpp
 use std.math.{ext_gcd, crt, mul_mod}
+use std.bag.{SortedBag}
 
 // The solutions of a * x = b (mod m) as one congruence x = r (mod m'), or none.
 fn solve_linear(a: Int, b: Int, m: Int) -> ?(Int, Int):
@@ -23,17 +24,15 @@ for _ in 0..t:
     let reward: [Dragon]Int = read()
     domain Sword = 0..m
     let start: [Sword]Int = read()
-    var swords = sorted([s for s in start])
+    var swords = SortedBag.of([s for s in start])
 
     var at_least = 0
     var all: ?(Int, Int) = (0, 1)
     for d in Dragon:
         // the strongest sword not above the dragon's life, else the weakest
-        var pick = 0
-        for i in 0..swords.len:
-            if swords[i] <= life[d]: pick = i
-        let atk = swords[pick]
-        swords = sorted([swords[i] for i in 0..swords.len if i != pick] + [reward[d]])
+        let atk = swords.last_le(life[d]) ?? swords.nth(0)!
+        swords.remove(atk)
+        swords.add(reward[d])
         at_least max= ceil_div(life[d], atk)
         let one = solve_linear(atk, life[d], regrow[d])
         all = if all == none or one == none: none else: crt(all!.0, all!.1, one!.0, one!.1)

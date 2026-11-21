@@ -19,7 +19,7 @@ while idx < n:
 
 let stride = 2 * k + 1
 fn blocks(x: Int) -> Int:
-    if x <= 0: 0 else: (x + stride - 1) / stride
+    if x <= 0: 0 else: ceil_div(x, stride)
 
 // States: 0 = Neutral, 1 = Push, 2 = Pull.
 domain Carry = 0..3

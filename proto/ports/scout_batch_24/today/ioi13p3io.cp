@@ -87,7 +87,7 @@ if r_cnt == 1:
             print(mat[v1 * c_cnt + v2])
 else:
     let n_trans = r_cnt - 1
-    let n_blk = (n_trans + BLOCK - 1) / BLOCK
+    let n_blk = ceil_div(n_trans, BLOCK)
     domain Blk = 0..n_blk
 
     fn blk_lo(b: Int) -> Int = b * BLOCK
@@ -98,6 +98,8 @@ else:
     let mat_monoid = Monoid<List<Int>>(id: id_mat, op: (a, b) => combine_monge(a, b))
     let init = [Blk] b => build_block(blk_lo(b.to_idx), blk_hi(b.to_idx))
     var st = SegTree<Blk, List<Int>>(mat_monoid, init)
+    // queries outnumber updates 400 to 1, so keep the whole product instead of folding per query
+    var top = st.fold(Blk.all)
 
     for _ in 0..e_cnt:
         let ev: Int = read()
@@ -106,12 +108,13 @@ else:
             h_cost[p][q] = w
             let b = min(p, n_trans - 1) / BLOCK
             st.set(Blk(b), build_block(blk_lo(b), blk_hi(b)))
+            top = st.fold(Blk.all)
         elif ev == 2:
             let (p, q, w): (Int, Int, Int) = read()
             v_cost[p][q] = w
             let b = p / BLOCK
             st.set(Blk(b), build_block(blk_lo(b), blk_hi(b)))
+            top = st.fold(Blk.all)
         else:
             let (v1, v2): (Int, Int) = read()
-            let top = st.fold(Blk.first..)
             print(top[v1 * c_cnt + v2])

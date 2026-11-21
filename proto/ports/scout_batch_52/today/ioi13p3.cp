@@ -83,7 +83,7 @@ for _ in 0..g_r - 1:
     var row: List<Int> = []
     for _ in 0..g_c: row.push(ri())
     g_v.push(row)
-let blocks = (g_r + BS - 1) / BS
+let blocks = ceil_div(g_r, BS)
 for _ in 0..4 * blocks + 5: g_seg.push([0..g_c * g_c] _ => INF)
 seg_build(1, 0, blocks - 1)
 

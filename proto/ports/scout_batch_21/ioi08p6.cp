@@ -40,7 +40,7 @@ fn cheapest(k: Int) -> Int:
     for x in X:
         for s in stops[x]: cost.apply(s.lo..=s.hi, -s.cost)
         for s in starts[x]: cost.apply(s.lo..=s.hi, s.cost)
-        best min= cost.fold(Y.first..)
+        best min= cost.fold(Y.all)
     best
 
 fn with_budget() -> Int:

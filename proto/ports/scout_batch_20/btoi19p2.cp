@@ -15,7 +15,7 @@ let signals: [m]Char = read()
 // 30 columns per word: the prototype emits `1 << k` as a 32-bit shift, so a
 // word must stay clear of bit 31.
 const B = 30
-domain Word = 0..(c + B - 1) / B
+domain Word = 0..ceil_div(c, B)
 let full = (1 << B) - 1
 
 fn sea_bits() -> [Row, Word]Int:

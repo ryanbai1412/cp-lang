@@ -50,6 +50,6 @@ while q.len > 0:
 var out = ""
 for u in V:
     let bit = if (state[u] ?? false): "1" else: "0"
-    if u.to_idx > 0: out = out + " "
+    if u.to_idx > 0: out += " "
     out += bit
 print(out)

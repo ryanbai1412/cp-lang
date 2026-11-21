@@ -70,7 +70,7 @@ for i in 0..tags.len:
     else:
         let h = ca[i]
         // LazySegTree lacks max_right, so binary search over segment count today:
-        if st.fold(Seg.first..).max_pre <= h:
+        if st.fold(Seg.all).max_pre <= h:
             print(n)
         else:
             var (lo, hi) = (0, xs.len - 1)
