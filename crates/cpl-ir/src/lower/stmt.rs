@@ -512,19 +512,22 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                let items = self.items_head(iter);
-                let (iter, elem) = match &items {
-                    Some(items) => (items.range(), Ty::Unit),
-                    None => self.iter(iter),
+                let cells = self.grid_items_head(iter, out);
+                let items = if cells.is_some() { None } else { self.items_head(iter) };
+                let (iter, elem) = match (&cells, &items) {
+                    (Some(cells), _) => (cells.range(), Ty::Unit),
+                    (None, Some(items)) => (items.range(), Ty::Unit),
+                    (None, None) => self.iter(iter),
                 };
                 let id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
                 self.cx.scopes.push(HashMap::new());
                 self.cx.local_syms.push(HashMap::new());
                 let mut stmts = Vec::new();
                 let elem_is_int = elem == Ty::Int;
-                let slot = match &items {
-                    Some(items) => self.items_bind(pat, items, &mut stmts),
-                    None => self.loop_var(pat, elem, &mut stmts),
+                let slot = match (&cells, &items) {
+                    (Some(cells), _) => self.grid_items_bind(pat, cells, &mut stmts),
+                    (None, Some(items)) => self.items_bind(pat, items, &mut stmts),
+                    (None, None) => self.loop_var(pat, elem, &mut stmts),
                 };
                 // If an `Int` loop variable is used as a runtime generic value arg (`for d in 0..=6: type F = Fixed<d>`),
                 // mirror it into a global so monomorphized methods can read it at run time.
@@ -1887,6 +1890,98 @@ impl<'a> Lowerer<'a> {
         Place { kind, ty, span }
     }
 
+    /// True for an array of one dimension, or a list, of values with an
+    /// order: what `a max= b` goes through cell by cell.
+    pub(super) fn is_row(&self, ty: &Ty) -> bool {
+        match ty {
+            Ty::Array { dims, elem } if dims.len() == 1 => !matches!(dims[0], Dim::Bound(_)) && self.ordered(elem),
+            Ty::List(elem) => self.ordered(elem),
+            _ => false,
+        }
+    }
+
+    /// `a max= b` on two rows: every cell of `a` takes the larger of the
+    /// two, in place. When `asked`, gives the slot that says whether any
+    /// cell changed.
+    pub(super) fn row_keep(
+        &mut self,
+        place: Place,
+        max: bool,
+        value: Expr,
+        asked: bool,
+        span: Span,
+        out: &mut Vec<Stmt>,
+    ) -> Option<Slot> {
+        let changed = asked.then(|| {
+            let changed = self.temp(Ty::Bool);
+            out.push(Stmt::Let(changed, Some(self.mk(ExprKind::Bool(false), Ty::Bool, span))));
+            changed
+        });
+        let value = self.coerce(value, &place.ty, span);
+        if value.ty != place.ty {
+            return changed;
+        }
+        let (dim, elem) = match &place.ty {
+            Ty::Array { dims, elem } => (dims[0], (**elem).clone()),
+            Ty::List(elem) => (Dim::Int, (**elem).clone()),
+            _ => unreachable!("the caller asked `is_row`"),
+        };
+        // A variable is read where it is; anything else is worked out once.
+        let other = match value.kind {
+            ExprKind::Local(_) | ExprKind::Global(_) => value,
+            _ => self.hold(value, out),
+        };
+        let row = place_to_expr(&place);
+        let len = match dim {
+            Dim::Pos(d) => self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+            _ => {
+                let len = self.len_of(row.clone(), span);
+                let len = self.hold(len, out);
+                let theirs = self.len_of(other.clone(), span);
+                let same = self.mk(
+                    ExprKind::Cmp(CmpOp::Ne, Box::new(theirs), Box::new(len.clone())),
+                    Ty::Bool,
+                    span,
+                );
+                let word = if max { "max=" } else { "min=" };
+                let trap = Stmt::Trap(format!("`a {word} b` needs two rows of one length"), self.span(span));
+                out.push(Stmt::If(same, Block { stmts: vec![trap] }, Block::default()));
+                len
+            }
+        };
+        let k = self.temp(Ty::Int);
+        let at = match dim {
+            // The loop keeps `k` under the domain's length.
+            Dim::Pos(d) => self.mk(ExprKind::Cast(Cast::Trust, Box::new(self.local(k, span))), Ty::Pos(d), span),
+            _ => self.local(k, span),
+        };
+        let cell = Place {
+            kind: PlaceKind::Index(Box::new(place), vec![at.clone()]),
+            ty: elem.clone(),
+            span: self.span(span),
+        };
+        let theirs = self.mk(ExprKind::Index(Box::new(other), vec![at]), elem, span);
+        let better = self.mk(
+            ExprKind::Cmp(
+                if max { CmpOp::Gt } else { CmpOp::Lt },
+                Box::new(theirs.clone()),
+                Box::new(place_to_expr(&cell)),
+            ),
+            Ty::Bool,
+            span,
+        );
+        let mut take = vec![Stmt::Assign(cell, AssignOp::Set, theirs)];
+        if let Some(changed) = changed {
+            let flag = Place { kind: PlaceKind::Local(changed), ty: Ty::Bool, span: self.span(span) };
+            take.push(Stmt::Assign(flag, AssignOp::Set, self.mk(ExprKind::Bool(true), Ty::Bool, span)));
+        }
+        let body = Block { stmts: vec![Stmt::If(better, Block { stmts: take }, Block::default())] };
+        let iter = Iter::Range { lo: self.int_lit(0, span), hi: len, step: None, rev: false };
+        let lid = self.fresh_loop();
+        out.push(Stmt::For(lid, k, iter, body));
+        changed
+    }
+
     pub(super) fn emit_assign_place(
         &mut self,
         place: Place,
@@ -1901,6 +1996,10 @@ impl<'a> Lowerer<'a> {
         }
         let (op, value) = match op {
             ast::AssignOp::Set => (AssignOp::Set, self.coerce(value, &place.ty, span)),
+            ast::AssignOp::Max | ast::AssignOp::Min if self.is_row(&place.ty) => {
+                self.row_keep(place, op == ast::AssignOp::Max, value, false, span, out);
+                return;
+            }
             ast::AssignOp::Max | ast::AssignOp::Min => {
                 if let Ty::Opt(inner) = place.ty.clone() {
                     if !matches!(*inner, Ty::Error) && !self.ordered(&inner) {

@@ -3232,6 +3232,112 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// `g.items` in a `for`, when `g` names a grid: one loop over the
+    /// cells, with a counter per axis stepped at the top of each round, so
+    /// no list of pairs is built. The counters are set up in `out`.
+    pub(super) fn grid_items_head(&mut self, e: &ast::Expr, out: &mut Vec<Stmt>) -> Option<GridItems> {
+        let ast::ExprKind::Field { base, name } = &e.kind else {
+            return None;
+        };
+        if name.text != "items" || !is_place(base) {
+            return None;
+        }
+        match self.probe_ty_silent(base) {
+            Some(Ty::Array { dims, .. }) if dims.len() >= 2 && !dims.iter().any(|d| matches!(d, Dim::Bound(_))) => {}
+            _ => return None,
+        }
+        let span = e.span;
+        let grid = self.expr(base, None);
+        let Ty::Array { dims, elem } = grid.ty.clone() else {
+            return None;
+        };
+        let mut lens = Vec::new();
+        let mut total = self.int_lit(1, span);
+        for axis in 0..dims.len() {
+            let len = self.mk(
+                ExprKind::Builtin(Builtin::AxisLen, vec![grid.clone(), self.int_lit(axis as i64, span)]),
+                Ty::Int,
+                span,
+            );
+            let len = self.hold(len, out);
+            total = self.mk(ExprKind::Binary(BinOp::Mul, Box::new(total), Box::new(len.clone())), Ty::Int, span);
+            lens.push(len);
+        }
+        let total = self.hold(total, out);
+        // The last counter starts one before the first cell.
+        let last = dims.len() - 1;
+        let counters: Vec<Slot> = (0..dims.len())
+            .map(|axis| {
+                let k = self.temp(Ty::Int);
+                let start = self.int_lit(if axis == last { -1 } else { 0 }, span);
+                out.push(Stmt::Let(k, Some(start)));
+                k
+            })
+            .collect();
+        Some(GridItems { grid, dims, elem: *elem, lens, total, counters })
+    }
+
+    /// Steps the counters of `for .. in g.items` and binds its pattern;
+    /// gives the slot the loop itself counts in.
+    pub(super) fn grid_items_bind(&mut self, pat: &ast::Pattern, items: &GridItems, body: &mut Vec<Stmt>) -> Slot {
+        let span = pat.span;
+        let place = |lw: &Self, k: Slot| Place { kind: PlaceKind::Local(k), ty: Ty::Int, span: lw.span(span) };
+        // `c += 1`, and at the end of the row `c = 0` and the same one axis up.
+        let mut step: Vec<Stmt> = Vec::new();
+        for (axis, &k) in items.counters.iter().enumerate() {
+            let bump = Stmt::Assign(place(self, k), AssignOp::Binary(BinOp::Add), self.int_lit(1, span));
+            if axis == 0 {
+                step = vec![bump];
+                continue;
+            }
+            let full = self.mk(
+                ExprKind::Cmp(CmpOp::Eq, Box::new(self.local(k, span)), Box::new(items.lens[axis].clone())),
+                Ty::Bool,
+                span,
+            );
+            let mut wrap = vec![Stmt::Assign(place(self, k), AssignOp::Set, self.int_lit(0, span))];
+            wrap.extend(step);
+            step = vec![bump, Stmt::If(full, Block { stmts: wrap }, Block::default())];
+        }
+        body.extend(step);
+        let mut named = Vec::new();
+        let mut stored = Vec::new();
+        for (dim, &k) in items.dims.iter().zip(&items.counters) {
+            let k = self.local(k, span);
+            match *dim {
+                Dim::Pos(d) => {
+                    // The counter stays under the axis's length.
+                    let at = self.mk(ExprKind::Cast(Cast::Trust, Box::new(k)), Ty::Pos(d), span);
+                    named.push(at.clone());
+                    stored.push(at);
+                }
+                Dim::IntFrom(first) => {
+                    named.push(self.int_add(k.clone(), first));
+                    stored.push(k);
+                }
+                _ => {
+                    named.push(k.clone());
+                    stored.push(k);
+                }
+            }
+        }
+        let at_ty = Ty::Tuple(named.iter().map(|e| e.ty.clone()).collect());
+        let at = self.mk(ExprKind::Tuple(named), at_ty.clone(), span);
+        let cell = self.mk(ExprKind::Index(Box::new(items.grid.clone()), stored), items.elem.clone(), span);
+        match &pat.kind {
+            ast::PatternKind::Tuple(parts) if parts.len() == 2 => {
+                self.bind(&parts[0], at, body);
+                self.bind(&parts[1], cell, body);
+            }
+            _ => {
+                let ty = Ty::Tuple(vec![at_ty, items.elem.clone()]);
+                let both = self.mk(ExprKind::Tuple(vec![at, cell]), ty, span);
+                self.bind(pat, both, body);
+            }
+        }
+        self.temp(Ty::Int)
+    }
+
     /// The index and the element `items` has at the counter `k`.
     fn item_at(&mut self, items: &Items, k: Slot, span: Span) -> (Expr, Expr) {
         let k = self.local(k, span);
@@ -5222,6 +5328,24 @@ fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
             *slot = Some(Box::new(absent.clone()));
             true
         }
+    }
+}
+
+/// What `for .. in g.items` goes through on a grid: `total` cells, and a
+/// counter per axis that says which one the loop is at.
+pub(super) struct GridItems {
+    grid: Expr,
+    dims: Vec<Dim>,
+    elem: Ty,
+    lens: Vec<Expr>,
+    total: Expr,
+    counters: Vec<Slot>,
+}
+
+impl GridItems {
+    pub(super) fn range(&self) -> Iter {
+        let lo = Expr { kind: ExprKind::Int(0), ty: Ty::Int, span: self.total.span };
+        Iter::Range { lo, hi: self.total.clone(), step: None, rev: false }
     }
 }
 

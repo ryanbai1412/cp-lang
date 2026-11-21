@@ -434,6 +434,15 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::Give(lw.err_expr(span)));
                 return;
             }
+            if lw.is_row(&place.ty) {
+                let changed = lw.row_keep(place, max, rhs, true, target.span, out);
+                let changed = match changed {
+                    Some(changed) => lw.local(changed, span),
+                    None => lw.err_expr(span),
+                };
+                out.push(Stmt::Give(changed));
+                return;
+            }
             let now = place_to_expr(&place);
             let old = lw.temp(place.ty.clone());
             // A key the map does not have yet takes the value.
