@@ -8,7 +8,7 @@ domain Letter = 'a'..='z'
 @multitest
 let s: Str = read()
 let n = s.len
-let z = z_function([c for c in s])
+let z = z_function(s)
 
 var odd_from: [0..=n]Int = 0
 var odd_to: [0..=n]Int = 0

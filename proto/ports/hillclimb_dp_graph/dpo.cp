@@ -11,8 +11,8 @@ let compatible: [Man, Woman]Bool = read()
 
 // ways[s]: matchings of the first |s| men with exactly the women in s.
 // The last of those men takes one of the women in s.
-var ways: [Taken]Z = Z(0)
-ways[Taken.empty] = Z(1)
+var ways: [Taken]Z = Z.zero
+ways[Taken.empty] = Z.one
 for s in Taken:
     if not s.is_empty:
         let man = Man.nth(s.len - 1)

@@ -52,4 +52,4 @@ for _ in 0..q:
             let b = fall()
             moving = a or b
     else:
-        for r in Row: print(g.row(r))
+        for r in Row: print(g[r, ..])

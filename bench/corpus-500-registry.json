@@ -39,7 +39,7 @@
    "canonical": {
     "ports": 594,
     "cp_loc": {
-     "total": 24506,
+     "total": 24512,
      "mean": 41.3,
      "median": 32.0
     },
@@ -68,8 +68,8 @@
    "canonical_verified": {
     "ports": 566,
     "cp_loc": {
-     "total": 22721,
-     "mean": 40.1,
+     "total": 22727,
+     "mean": 40.2,
      "median": 32.0
     },
     "cpp_raw_loc": {
@@ -126,7 +126,7 @@
    "spec_form_same_problems_runnable": {
     "ports": 305,
     "cp_loc": {
-     "total": 14553,
+     "total": 14559,
      "mean": 47.7,
      "median": 38
     },
@@ -330,8 +330,8 @@
     "COCI": {
      "ports": 33,
      "cp_loc": {
-      "total": 843,
-      "mean": 25.5,
+      "total": 844,
+      "mean": 25.6,
       "median": 23
      },
      "cpp_raw_loc": {
@@ -350,7 +350,7 @@
       "median": 72.9
      },
      "stripped_reduction_pct": {
-      "of_totals": 57.1,
+      "of_totals": 57.0,
       "mean": 51.4,
       "median": 51.1
      },
@@ -562,9 +562,9 @@
     "JOI": {
      "ports": 2,
      "cp_loc": {
-      "total": 60,
-      "mean": 30.0,
-      "median": 30.0
+      "total": 61,
+      "mean": 30.5,
+      "median": 30.5
      },
      "cpp_raw_loc": {
       "total": 174,
@@ -577,21 +577,21 @@
       "median": 54.0
      },
      "raw_reduction_pct": {
-      "of_totals": 65.5,
-      "mean": 65.5,
-      "median": 65.5
+      "of_totals": 64.9,
+      "mean": 65.0,
+      "median": 65.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 44.4,
-      "mean": 44.6,
-      "median": 44.6
+      "of_totals": 43.5,
+      "mean": 43.7,
+      "median": 43.7
      },
      "no_stripped_win": 0
     },
     "NOI (China)": {
      "ports": 77,
      "cp_loc": {
-      "total": 4334,
+      "total": 4338,
       "mean": 56.3,
       "median": 42
      },
@@ -607,12 +607,12 @@
      },
      "raw_reduction_pct": {
       "of_totals": 64.5,
-      "mean": 62.9,
+      "mean": 62.8,
       "median": 67.3
      },
      "stripped_reduction_pct": {
       "of_totals": 45.3,
-      "mean": 41.8,
+      "mean": 41.7,
       "median": 47.9
      },
      "no_stripped_win": 9
@@ -680,7 +680,7 @@
     "v1": {
      "ports": 358,
      "cp_loc": {
-      "total": 11730,
+      "total": 11732,
       "mean": 32.8,
       "median": 27.5
      },
@@ -738,8 +738,8 @@
     "v2.1": {
      "ports": 28,
      "cp_loc": {
-      "total": 2076,
-      "mean": 74.1,
+      "total": 2080,
+      "mean": 74.3,
       "median": 63.5
      },
      "cpp_raw_loc": {
@@ -753,13 +753,13 @@
       "median": 123.5
      },
      "raw_reduction_pct": {
-      "of_totals": 51.1,
-      "mean": 50.4,
+      "of_totals": 51.0,
+      "mean": 50.2,
       "median": 56.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 36.8,
-      "mean": 22.1,
+      "of_totals": 36.7,
+      "mean": 21.9,
       "median": 39.4
      },
      "no_stripped_win": 6
@@ -798,8 +798,8 @@
     "runnable": {
      "ports": 495,
      "cp_loc": {
-      "total": 22695,
-      "mean": 45.8,
+      "total": 22701,
+      "mean": 45.9,
       "median": 36
      },
      "cpp_raw_loc": {
@@ -814,7 +814,7 @@
      },
      "raw_reduction_pct": {
       "of_totals": 64.2,
-      "mean": 63.9,
+      "mean": 63.8,
       "median": 67.1
      },
      "stripped_reduction_pct": {
@@ -947,8 +947,8 @@
     "auto": {
      "ports": 503,
      "cp_loc": {
-      "total": 22909,
-      "mean": 45.5,
+      "total": 22915,
+      "mean": 45.6,
       "median": 36
      },
      "cpp_raw_loc": {
@@ -968,7 +968,7 @@
      },
      "stripped_reduction_pct": {
       "of_totals": 47.0,
-      "mean": 43.4,
+      "mean": 43.3,
       "median": 46.3
      },
      "no_stripped_win": 29
@@ -28851,7 +28851,7 @@
    "submission": "3744270",
    "original": "corpus/submissions/3744270.cpp",
    "generation": "v2.1",
-   "cp_loc": 24,
+   "cp_loc": 28,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_50/check.py",
    "cpp_raw_loc": 99,
@@ -30169,7 +30169,7 @@
    "submission": "5325112",
    "original": "corpus/submissions/5325112.cpp",
    "generation": "v1",
-   "cp_loc": 16,
+   "cp_loc": 17,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_6/check.sh",
    "cpp_raw_loc": 79,
@@ -30264,7 +30264,7 @@
    "submission": "5331716",
    "original": "corpus/submissions/5331716.cpp",
    "generation": "v1",
-   "cp_loc": 33,
+   "cp_loc": 34,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_6/check.sh",
    "cpp_raw_loc": 87,

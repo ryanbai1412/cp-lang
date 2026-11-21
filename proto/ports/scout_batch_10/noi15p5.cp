@@ -16,7 +16,7 @@ let s: Str = read()
 domain Glass = 0..n
 let score: [Glass]Int = read()
 
-let letters = [c for c in s]
+let letters = s
 let sa = suffix_array(letters)
 let lcp = lcp_array(letters, sa)
 

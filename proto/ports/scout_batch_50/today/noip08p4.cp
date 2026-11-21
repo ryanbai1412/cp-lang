@@ -64,6 +64,6 @@ else:
             script.push('c')
             next += 1
     for i in 0..script.len:
-        if i > 0: write(" ")
-        write(script[i])
+        if i > 0: print(" ", end: "")
+        print(script[i], end: "")
     print("")

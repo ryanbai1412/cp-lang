@@ -29,7 +29,7 @@ fn longest(s: List<Char>, t: List<Char>) -> (Int, Int, Int):
 
 let s: Str = read()
 let t: Str = read()
-let (a, b) = ([c for c in s], [c for c in t])
+let (a, b) = (s, t)
 let (len, in_s, in_t) = longest(a, b)
 let (flipped, flipped_s, flipped_t) = longest(a, b.rev)
 if len >= flipped:

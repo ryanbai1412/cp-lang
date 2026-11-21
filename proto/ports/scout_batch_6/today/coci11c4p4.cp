@@ -5,7 +5,8 @@
 // original: corpus/submissions/5325112.cpp
 let n: 2..=3e5 = read()
 domain I = 1..=n
-let old: [I]1..=1e9 = read() where all(old[i] != old[j] for i in I if let j = i + 1)
+let old: [I]1..=1e9 = read()
+assert all(old[i] != old[j] for i in I if let j = i + 1)
 let boards: [I]1..=1e9 = read()
 
 // A board counts once in the sum for each lower neighbour and once against it
@@ -20,7 +21,7 @@ fn rank(i: I) -> Rank:
     let falling = pull > 0 or (pull == 0 and old[i.prev!] > old[i])
     (pull, falling, if falling: -i.idx else: i.idx)
 
-var pile = sorted([b for b in boards], by: b => -b)     // the shortest board is on top
+var pile = sorted([b for b in boards], by: b => -b)  // the shortest board is on top
 var fence: [I]Int = 0
 for i in sorted([i for i in I], by: i => rank(i)): fence[i] = pile.pop()!
 print(sum(abs(fence[i] - fence[j]) for i in I if let j = i + 1))

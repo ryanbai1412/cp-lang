@@ -14,7 +14,7 @@ domain Col = 0..m
 type Cell = (Row, Col)
 let g: [Row, Col]Char = read()
 
-fn adj4(p: Cell) -> List<Cell>:               // v2: p.adj4
+fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
     var out: List<Cell> = []
     if let r = p.0 - 1: out.push((r, p.1))
     if let r = p.0 + 1: out.push((r, p.1))
@@ -66,4 +66,4 @@ for r in Row:
     for c in Col:
         if g[r, c] == '#':
             out[(r + drop[S(shape[r, c])]!)!, c] = '#'
-for r in Row: print(out.row(r))
+for r in Row: print(out[r, ..])

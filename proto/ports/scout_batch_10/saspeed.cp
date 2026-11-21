@@ -7,4 +7,4 @@
 use std.strings.{suffix_array}
 
 let s: Str = read()
-for start in suffix_array([c for c in s]): print(start)
+for start in suffix_array(s): print(start)

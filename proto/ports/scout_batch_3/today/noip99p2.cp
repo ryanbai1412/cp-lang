@@ -21,6 +21,6 @@ fn steps() -> ?Int:
         d = mirror_sum(d)
     none
 if let k = steps():
-    write("STEP=")
+    print("STEP=", end: "")
     print(k)
 else: print("Impossible!")

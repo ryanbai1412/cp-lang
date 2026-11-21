@@ -29,9 +29,13 @@ for i in 0..n:
             if let base = cost[i, k, j]:
                 for len in 1..=100 - k:
                     for parts in 1..=min(len, m - j):
-                        cost[i + 1, k + len, j + parts] min= base + a * len * len + b * even_split(len, parts)
+                        cost[
+                            i + 1,
+                            k + len,
+                            j + parts,
+                        ] min= base + a * len * len + b * even_split(len, parts)
 let best = cost[n, 100, m]!
 // no string interpolation in the prototype
-write(best / 10)
-write(".")
+print(best / 10, end: "")
+print(".", end: "")
 print(best % 10)

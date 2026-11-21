@@ -29,7 +29,7 @@ for n in ns:
     if n <= 2:
         print(-1)
     elif win[n - 1]:
-        show([i for i in 1..=n])
+        show(List(1..=n))
     else:
         // A losing pile: perturb the tail. Three sizes need the 3-cycle
         // (n, n-2, n-1); every other one is fixed by swapping the last two.

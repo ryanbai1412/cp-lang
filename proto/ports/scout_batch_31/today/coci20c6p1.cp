@@ -15,4 +15,4 @@ for r in Row:
         if let r2 = r + 1:
             out[r2, c] = '#'
             if let c2 = c + 1: out[r2, c2] = '#'
-for r in Row: print(out.row(r))
+for r in Row: print(out[r, ..])

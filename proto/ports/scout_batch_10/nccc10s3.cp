@@ -12,7 +12,7 @@ use std.strings.{suffix_array}
 let s: Str = read()
 let q: Int = read()
 let n = s.len
-let order = suffix_array([c for c in s])
+let order = suffix_array(s)
 
 /// How many suffixes, in sorted order, come before the first that fails `ok`.
 fn leading(ok: Str -> Bool) -> Int:

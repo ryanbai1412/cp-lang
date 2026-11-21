@@ -10,7 +10,7 @@ let m: 1..=1000 = read()
 domain Row = 0..n
 domain Col = 0..m
 let given: [Row, Col]Int = read()
-const TOP = 100000000000000000                // 1e17: room below for n + m blanks
+const TOP = 100000000000000000  // 1e17: room below for n + m blanks
 
 var a: [Row, Col]Int = 0
 for i in 0..n:
@@ -36,6 +36,6 @@ fn valid() -> Bool:
     true
 
 if valid():
-    for r in Row: print(a.row(r))
+    for r in Row: print(a[r, ..])
 else:
     print(-1)
