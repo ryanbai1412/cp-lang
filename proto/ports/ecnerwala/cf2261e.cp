@@ -4,13 +4,17 @@
 @!multitest
 let (n, k): (1..=2e5, 0..=2e5) = read()
 let s: Str = read()
-var open = [-1]
+
+var open: List<Int> = []
 var ans = 0
-for i in 0..n:
-    if s[i] == ')':
+for (i, c) in s.items:
+    if c == ')':
         open.pop()
         continue
     open.push(i)
-    let from = bsearch_first(0..open.len, j => (i + 1 - open[j]) - (open.len - j) <= 2 * k)!
-    ans max= if from == 0: k + open.len - 1 else: open.len - from
+    if i + 1 - open.len <= 2 * k:
+        ans max= k + open.len
+    else:
+        let from = bsearch_first(0..open.len, j => (i + 1 - open[j]) - (open.len - j) <= 2 * k)!
+        ans max= open.len - from
 print(min(ans, n / 2))

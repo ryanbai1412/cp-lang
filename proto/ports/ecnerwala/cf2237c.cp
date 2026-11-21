@@ -3,7 +3,5 @@
 let n: Int = read()
 let a: [0..n]Int = read()
 var cur = a[0]
-for i in 1..n:
-    if a[i] >= cur: cur = a[i]
-    else: cur += a[i]
+for x in a[1..n]: cur = if x >= cur: x else: cur + x
 print(cur)

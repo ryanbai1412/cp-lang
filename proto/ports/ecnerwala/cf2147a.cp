@@ -1,8 +1,4 @@
+// Codeforces 2147 A: minimum steps to reach (x, y) with alternating strictly increasing moves.
 @!multitest
 let (x, y): (Int, Int) = read()
-if x < y:
-    print(2)
-elif x - y <= 1 or y == 1:
-    print(-1)
-else:
-    print(3)
+print(if x < y: 2 elif x - y <= 1 or y == 1: -1 else: 3)

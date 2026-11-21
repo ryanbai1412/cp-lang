@@ -4,14 +4,16 @@
 const P = 998244353
 type Z = Mod<P>
 let comb = Comb<P>()
+
 @!multitest
 let n: 2..=3e5 = read()
 let p: [0..n - 1]1..=n = read()
-var blocks = List<(r: Int, size: Int)>()
+
+var blocks: List<(r: Int, size: Int)> = []
 var den: Z = 1
-for i in 0..n - 1:
+for (i, pi) in p.items:
     var size = 1
-    while let b = blocks.last and b.r >= p[i] - 1:
+    while let b = blocks.last and b.r >= pi - 1:
         size += b.size
         blocks.pop()
     den *= size

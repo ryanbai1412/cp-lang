@@ -3,10 +3,11 @@
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
+
 var ops: List<Int> = []
 var flip = false
-for i in (0..n).rev:
-    if (a[i] > 0) != flip:
+for (i, x) in a.items.rev:
+    if (x > 0) != flip:
         ops.push(i + 1)
         flip = not flip
 print(ops.len)
