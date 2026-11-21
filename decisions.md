@@ -3009,3 +3009,15 @@ Reverse by restoring `where` as a parser alias.
 
 1. **Add `TimeTree<E>.run<M, R>(self, mark:, apply:, answer:, undo:) -> List<R>` and `offline_over<E, M, R>(q, items, by:, mark:, apply:, answer:, undo:) -> List<R>` in `stdlib/timetree.cp`, keeping `steps()` for compatibility.**
    Reason: `TimeTree.steps()` materialized an `O(q + m log q)` `List<TimeStep>` and required callers to maintain a per-event `marks: List<Mark>` stack. Callback-driven `run` / `offline_over` takes one `mark()` per non-empty segment-tree node, devirtualizes all four callbacks in C++ codegen with zero `std::function`, and returns `[answer(0), ..., answer(q - 1)]` directly. On `cf2069f` (`n = 400k, q = 400k`), median user time dropped from `1.31s` to `1.05s` (-20%) and peak RSS dropped from `356 MB` to `146 MB` (2.44x less memory). Reverse: remove `run`, `run_node`, and `offline_over` from `stdlib/timetree.cp` and restore `tt.steps()` in `proto/ports/ecnerwala/cf2069f.cp`.
+
+## 72. The compiler bundles `stdlib/` without its `@test` fns (2026-11-21)
+
+`crates/cpl-check/build.rs` embeds every module so `use std.x` resolves in
+the browser and for a lone `cpl` binary. It embedded the files verbatim,
+tests included, though a program importing a module never runs them and
+`cpl test` reads the file itself. The build now blanks each `@test` fn to
+empty lines, so every span into a bundled module keeps its line, and
+`dist/cp-lang.html` drops from 2,490,285 to 2,448,349 bytes under the
+2.6 MB cap. Doc comments stay: hover and `cpl doc` read them. Test:
+`the_bundled_stdlib_drops_tests_and_keeps_every_line`. Reverse by
+embedding the files with `include_str!` again.
