@@ -28,4 +28,4 @@ Dream 3/5 (new), port → 3/5, rescored on current main; sent back. The header d
 - Reported gaps: `Frac`, the `C | Pin` sum domain, `ParityDsu` component ids and count, `GroupTree.others`, `pop_while`.
 - Minor: `colour.unite(c, Pin, ...)` (line 52) passes a `C` for a `Node` (E0301), which the sum domain would fix.
 
-Port 3/5: the hull is hand geometry with `I128` cross-multiplication (no `Frac`, reported), and the sweep is hand-indexed.
+Port 3/5: the hull test is hand `I128` cross-multiplication (lines 21-30, 57-62; `Frac` is reported).
