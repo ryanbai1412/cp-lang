@@ -21,20 +21,14 @@ pub type Perm<V> = [V]V
 /// is needed because the first value starts the fold. O(n) calls of `f`.
 pub fn scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T:
     var out = self
-    var before: ?D = none
-    for i in D:
-        if let b = before: out[i] = f(out[b], out[i])
-        before = i
+    out.scan_in_place(f)
     out
 
 /// Every suffix folded right-to-left with `f`: `out[i] = f(self[i], out[i + 1])`, as long as `self`
 /// and indexed as `self` is. No identity is needed. O(n) calls of `f`.
 pub fn suffix_scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T:
     var out = self
-    var after: ?D = none
-    for i in D.rev:
-        if let a = after: out[i] = f(out[i], out[a])
-        after = i
+    out.suffix_scan_in_place(f)
     out
 
 /// Fold every prefix of `self` in place with `f`: `self.at(i) = f(self.at(i - 1), self.at(i))`.
