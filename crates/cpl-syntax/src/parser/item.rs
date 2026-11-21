@@ -26,7 +26,16 @@ impl<'a> Parser<'a> {
                             | T::NotEq
                     )
                 });
-        let (name, generics, mut bounds, params) = if operator {
+        let negation = self.at(T::Minus) && self.peek_n(1) == T::LParen;
+        let (name, generics, mut bounds, params) = if negation {
+            let name = Name {
+                text: "-".to_string(),
+                span: self.span(),
+            };
+            self.bump();
+            self.bump();
+            (name, Vec::new(), Vec::new(), self.params())
+        } else if operator {
             let op_start = self.start();
             self.bump();
             let mut params = self.params();
@@ -39,7 +48,9 @@ impl<'a> Parser<'a> {
                 params.extend(self.params());
             }
             let span = self.span_from(op_start);
-            self.planned(span, &crate::planned::OPERATOR_FN);
+            if !matches!(name.text.as_str(), "+" | "-" | "*" | "/" | "%") {
+                self.planned(span, &crate::planned::OPERATOR_FN);
+            }
             (name, Vec::new(), Vec::new(), params)
         } else {
             let name = self.expect_name("a fn name after `fn`");
@@ -349,7 +360,12 @@ impl<'a> Parser<'a> {
                 p.expect(T::Colon, "`:` and the field's type");
                 let ty = p.ty();
                 let default = p.eat(T::Eq).then(|| p.expr());
-                FieldDecl { name, ty, default }
+                FieldDecl {
+                    name,
+                    ty,
+                    default,
+                    mutable: false,
+                }
             });
         }
         self.where_clause(&mut bounds);
@@ -368,6 +384,7 @@ impl<'a> Parser<'a> {
                         name,
                         ty: ty.clone(),
                         default: default.clone(),
+                        mutable: false,
                     });
                 }
                 if !self.eat(T::Comma) || self.at_line_end() {
@@ -394,22 +411,16 @@ impl<'a> Parser<'a> {
             });
         }
         let methods = self.members(&format!("`struct {}`", name.text), |p| {
-            if p.at(T::Var) {
-                let span = p.span();
-                p.planned(span, &crate::planned::VAR_FIELD);
-                p.bump();
-            }
+            let mutable = p.eat(T::Var);
             // `u, v: V` declares two fields of one type.
             let mut names = vec![p.expect_name("a field name")];
             while p.eat(T::Comma) {
                 names.push(p.expect_name("a field name"));
             }
             let ty = if p.at(T::Eq) {
-                let span = names[0].span.to(p.span());
-                p.planned(span, &crate::planned::FIELD_BY_DEFAULT);
                 Type {
-                    kind: TypeKind::Error,
-                    span,
+                    kind: TypeKind::Infer,
+                    span: names[0].span,
                 }
             } else {
                 p.expect(T::Colon, "`:` and the field's type");
@@ -421,6 +432,7 @@ impl<'a> Parser<'a> {
                     name,
                     ty: ty.clone(),
                     default: default.clone(),
+                    mutable,
                 });
             }
         });

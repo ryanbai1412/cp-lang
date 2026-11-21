@@ -132,8 +132,16 @@ impl<'a> Checker<'a> {
                 args: vec![self.resolve_type(elem)],
             },
             TypeKind::DomainBinder(name) => Ty::Domain(name.text.clone()),
-            TypeKind::Value(_) | TypeKind::NewDomain => Ty::Unknown,
+            TypeKind::Value(_) | TypeKind::NewDomain | TypeKind::Infer => Ty::Unknown,
             TypeKind::Error => Ty::Error,
+        }
+    }
+
+    /// A field's declared type, or its default's when written `total = 0`.
+    pub(crate) fn field_type(&mut self, f: &ast::FieldDecl) -> Ty {
+        match (&f.ty.kind, &f.default) {
+            (TypeKind::Infer, Some(default)) => self.quietly(|c| c.infer(default)).widen(),
+            _ => self.resolve_type(&f.ty),
         }
     }
 
@@ -847,7 +855,7 @@ impl<'a> Checker<'a> {
                     .iter()
                     .map(|f| Param {
                         name: f.name.text.clone(),
-                        ty: self.resolve_type(&f.ty),
+                        ty: self.field_type(f),
                         mutable: false,
                         has_default: f.default.is_some(),
                         named_only: false,

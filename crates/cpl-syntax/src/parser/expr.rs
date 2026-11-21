@@ -966,6 +966,11 @@ impl<'a> Parser<'a> {
         if self.eat(T::RBracket) {
             return ExprKind::List(Vec::new());
         }
+        if self.at(T::Colon) && self.peek_n(1) == T::RBracket {
+            self.bump();
+            self.bump();
+            return ExprKind::Map(Vec::new());
+        }
         let first = self.expr();
         if self.at(T::For) {
             let clauses = self.clauses();
@@ -1143,6 +1148,9 @@ impl<'a> Parser<'a> {
             self.skip_line();
             return ExprKind::Match { scrutinee, arms };
         }
+        if !self.at_line_end() {
+            return self.inline_match(scrutinee);
+        }
         if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
             let at = self.prev_end();
             self.error(
@@ -1185,6 +1193,54 @@ impl<'a> Parser<'a> {
         self.eat(T::Dedent);
         self.recovering = was_recovering;
         ExprKind::Match { scrutinee, arms }
+    }
+
+    /// `match k: 1 => a, 2 => b, _ => c` on one line. Each arm is a value;
+    /// a `,` continues the match when a `=>` follows before the next `,`, so
+    /// an inline match ends an argument list unless parenthesized.
+    fn inline_match(&mut self, scrutinee: Box<Expr>) -> ExprKind {
+        let mut arms = Vec::new();
+        loop {
+            let pat = self.pattern();
+            let guard = self.eat(T::If).then(|| self.expr());
+            self.expect(T::FatArrow, "`=>` after the pattern");
+            let value = self.expr();
+            let span = value.span;
+            arms.push(Arm {
+                pat,
+                guard,
+                body: Block {
+                    stmts: vec![Stmt {
+                        kind: StmtKind::Expr(value),
+                        span,
+                        decorators: Vec::new(),
+                        public: false,
+                    }],
+                    span,
+                },
+            });
+            if !(self.at(T::Comma) && self.arm_follows(self.pos + 1)) {
+                break;
+            }
+            self.bump();
+        }
+        ExprKind::Match { scrutinee, arms }
+    }
+
+    fn arm_follows(&self, from: usize) -> bool {
+        let mut depth = 0u32;
+        for t in &self.tokens[from.min(self.tokens.len())..] {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace if depth == 0 => return false,
+                T::RParen | T::RBracket | T::RBrace => depth -= 1,
+                T::Comma if depth == 0 => return false,
+                T::FatArrow if depth == 0 => return true,
+                T::Newline | T::Indent | T::Dedent | T::Eof => return false,
+                _ => {}
+            }
+        }
+        false
     }
 
     /// Splits an interpolating string and parses each `{expr}` in it.

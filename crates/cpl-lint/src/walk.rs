@@ -270,7 +270,7 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
             walk_ty(v, ret);
         }
         TypeKind::Value(expr) => walk_expr(v, expr),
-        TypeKind::NewDomain | TypeKind::DomainBinder(_) | TypeKind::Error => {}
+        TypeKind::NewDomain | TypeKind::DomainBinder(_) | TypeKind::Infer | TypeKind::Error => {}
     }
 }
 

@@ -7,6 +7,9 @@ use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Type};
 
 impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
+        if let Some(on_self) = self.implicit_self_method(callee) {
+            return self.call(call, &on_self, args);
+        }
         if let Some(ty) = self.builtin_getter_call(call, callee, args) {
             return ty;
         }
@@ -1193,7 +1196,7 @@ impl<'a> Checker<'a> {
                     got.with_article()
                 )
             });
-            if param.mutable && !arg.mutable {
+            if param.mutable && !arg.mutable && is_place(&arg.value) {
                 let quoted = self.quote(arg.value.span);
                 let message = format!(
                     "`{callee}` changes `{}`, so the argument must be passed as `mut {quoted}`",
@@ -1397,4 +1400,49 @@ fn split_top(text: &str) -> Vec<&str> {
         out.push(text[start..].trim());
     }
     out
+}
+
+/// Whether `e` names storage the caller keeps; a temporary may be passed to
+/// a `mut` parameter without `mut`, since nothing the caller holds changes.
+fn is_place(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Name(_) | ExprKind::SelfValue | ExprKind::Field { .. } | ExprKind::Index { .. } => true,
+        ExprKind::Paren(inner) => is_place(inner),
+        _ => false,
+    }
+}
+
+impl Checker<'_> {
+    /// `add(c, k)` inside a method of a struct with an `add` method is
+    /// `self.add(c, k)`, as its fields are named without `self.`.
+    fn implicit_self_method(&mut self, callee: &Expr) -> Option<Expr> {
+        let ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        if self.local(name).is_some() || self.local("self").is_none() {
+            return None;
+        }
+        let Some(Ty::Named { name: owner, .. }) = self.self_ty.clone() else {
+            return None;
+        };
+        let has = match self.env.global(&owner).as_deref() {
+            Some(Def::Struct { methods, getters, .. }) => {
+                methods.iter().any(|(m, _)| m == name) && !getters.iter().any(|g| g == name)
+            }
+            _ => false,
+        };
+        has.then(|| Expr {
+            kind: ExprKind::Field {
+                base: Box::new(Expr {
+                    kind: ExprKind::SelfValue,
+                    span: callee.span,
+                }),
+                name: cpl_syntax::ast::Name {
+                    text: name.clone(),
+                    span: callee.span,
+                },
+            },
+            span: callee.span,
+        })
+    }
 }

@@ -644,7 +644,7 @@ impl<'a> Checker<'a> {
                 self.bounds_exist(&s.bounds);
                 self.owned(&s.name.text, &s.methods);
                 for field in &s.fields {
-                    let ty = self.resolve_type(&field.ty);
+                    let ty = self.field_type(field);
                     self.hovers.push(HoverEntry {
                         span: field.name.span,
                         name: field.name.text.clone(),

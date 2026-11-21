@@ -2221,7 +2221,7 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Value(_) => Spec::Plain(Ty::Int),
             ast::TypeKind::NewDomain | ast::TypeKind::DomainBinder(_) => Spec::Plain(Ty::DomainVal),
             ast::TypeKind::Yields(inner) => Spec::Plain(Ty::list(self.resolve_ty(inner))),
-            ast::TypeKind::Error => Spec::Plain(Ty::Error),
+            ast::TypeKind::Infer | ast::TypeKind::Error => Spec::Plain(Ty::Error),
         }
     }
 

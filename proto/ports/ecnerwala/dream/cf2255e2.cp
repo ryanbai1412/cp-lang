@@ -46,5 +46,5 @@ repeat q:
             last = U64.wrap(ans)
         kind =>
             let (l, r) = minmax(at(read()), at(read()))
-            st.apply(l..=r, match kind: 1 => assign(read()); 2 => negate; _ => clamp)
+            st.apply(l..=r, match kind: 1 => assign(read()), 2 => negate, _ => clamp)
     st.apply(.., record)

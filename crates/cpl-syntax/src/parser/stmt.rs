@@ -322,7 +322,7 @@ impl<'a> Parser<'a> {
                 self.struct_decl()
             }
             T::Const => self.const_stmt(),
-            T::Fn => StmtKind::Fn(self.fn_decl()),
+            T::Fn => operator_impl(self.fn_decl()),
             T::Struct => self.struct_decl(),
             T::Enum => self.enum_decl(),
             T::Domain => self.domain_decl(),
@@ -1422,5 +1422,51 @@ impl<'a> Parser<'a> {
             stmts,
             span: self.span_from(start),
         }
+    }
+}
+
+/// `fn (a: P) + (b: P) -> P = …` is `impl Add for P` with that `add`, so
+/// operators written as fns use the same machinery as trait impls.
+fn operator_impl(f: FnDecl) -> StmtKind {
+    let (trait_name, method) = match (f.name.text.as_str(), f.params.len()) {
+        ("+", 2) => ("Add", "add"),
+        ("-", 2) => ("Sub", "sub"),
+        ("-", 1) => ("Neg", "neg"),
+        ("*", 2) => ("Mul", "mul"),
+        ("/", 2) => ("Div", "div"),
+        ("%", 2) => ("Rem", "rem"),
+        _ => return StmtKind::Fn(f),
+    };
+    let Some(target) = f.params.first().and_then(|p| p.ty.clone()) else {
+        return StmtKind::Fn(f);
+    };
+    let span = f.sig_span;
+    let at = f.name.span;
+    let named = |text: &str| Name {
+        text: text.to_string(),
+        span: at,
+    };
+    let trait_ty = Type {
+        kind: TypeKind::Named {
+            name: named(trait_name),
+            args: Vec::new(),
+        },
+        span: at,
+    };
+    let mut f = f;
+    f.name = named(method);
+    StmtKind::Impl {
+        trait_name: Some(trait_ty),
+        target,
+        bounds: Vec::new(),
+        body: Block {
+            stmts: vec![Stmt {
+                kind: StmtKind::Fn(f),
+                span,
+                decorators: Vec::new(),
+                public: false,
+            }],
+            span,
+        },
     }
 }

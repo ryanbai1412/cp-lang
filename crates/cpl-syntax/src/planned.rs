@@ -101,26 +101,6 @@ match x:
 ",
 };
 
-pub const VAR_FIELD: Planned = Planned {
-    feature: "a `var` field, `var steps: List<Int> = []`",
-    see: None,
-    now: "drop `var`: a field changes wherever its struct is a `var`",
-    example: "struct S:
-    var n: Int = 0
-print(1)
-",
-};
-
-pub const FIELD_BY_DEFAULT: Planned = Planned {
-    feature: "a field typed by its default, `total = 0`",
-    see: None,
-    now: "give the field its type: `total: Int = 0`",
-    example: "struct S:
-    total = 0
-print(1)
-",
-};
-
 pub const RECORD_DECL: Planned = Planned {
     feature: "a named record, `record Side(a: Int):`",
     see: None,
@@ -149,8 +129,6 @@ pub const PLANNED: &[&Planned] = &[
     &OPERATOR_FN,
     &STR_OF,
     &LOWER_VARIANT_PATTERN,
-    &VAR_FIELD,
-    &FIELD_BY_DEFAULT,
     &RECORD_DECL,
     &TRAILING_LAMBDA,
 ];

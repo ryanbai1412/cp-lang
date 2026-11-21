@@ -240,6 +240,8 @@ pub struct FieldDecl {
     pub name: Name,
     pub ty: Type,
     pub default: Option<Expr>,
+    /// `var top = 0`: assignable after construction.
+    pub mutable: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -617,5 +619,7 @@ pub enum TypeKind {
     /// `domain P` in a returned tuple, `-> (domain P, [P]Int)`: an
     /// existential fresh domain bound for later elements of the tuple.
     DomainBinder(Name),
+    /// A field written `total = 0`: its type is its default's.
+    Infer,
     Error,
 }

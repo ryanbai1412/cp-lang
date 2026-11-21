@@ -3112,6 +3112,7 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         ast::TypeKind::Range { .. }
         | ast::TypeKind::NewDomain
         | ast::TypeKind::DomainBinder(_)
+        | ast::TypeKind::Infer
         | ast::TypeKind::Error => false,
     }
 }
