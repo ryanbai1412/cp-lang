@@ -3,6 +3,7 @@
 // neighbour. Sqrt(k)-apart lattice cities form a bipartite graph (parity);
 // enumerate which cities of the smaller side are outside T, then sweep the
 // other side, tracking which of those have picked a firework.
+use std.graph.{two_color}
 type Z = Mod<998_244_353>
 
 @!multitest

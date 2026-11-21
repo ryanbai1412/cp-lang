@@ -157,6 +157,18 @@ impl<'a> Checker<'a> {
         }
     }
 
+    pub(crate) fn expects_bounds_range(ty: &Ty) -> bool {
+        match ty {
+            Ty::Named { name, args } if name == "Range" => match args.as_slice() {
+                [Ty::Pos(d) | Ty::Domain(d)] => d.ends_with(".bounds"),
+                [Ty::Named { name: inner, .. }] => inner == "Bounds",
+                _ => false,
+            },
+            Ty::Array { elem, .. } | Ty::Optional(elem) => Self::expects_bounds_range(elem),
+            _ => false,
+        }
+    }
+
     pub(crate) fn product_factors(&mut self, domain: &str) -> Option<Vec<(Option<String>, Ty)>> {
         if let Some(factors) = self.local_product_domains.get(domain) {
             return Some(factors.clone());

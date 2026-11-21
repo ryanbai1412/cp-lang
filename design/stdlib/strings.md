@@ -534,7 +534,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | --- | --- | --- | --- |
 | Basic `Str` ops (`repeat`, `starts_with`, `ends_with`, `find`, `rfind`, `count`) | stdlib | have | `repeat`, `starts_with<S, P>`, `ends_with<S, P>`, `find`, `rfind`, `count` (`starts_with`/`ends_with` generalized to `Indexed`) |
 | ASCII `Char` helpers (`lower`, `upper`, `digit`, predicates) | Contest basics | have / new | `Char.{lower,upper,digit}` (have); `Char.{is_digit,is_lower,is_upper,is_alpha,is_alnum,is_space}` (new) |
-| `Str` utilities (`to_lower`, `to_upper`, `trim`, `split`, `split_whitespace`, `join`, `replace`, `parse_int`) | Contest I/O & parsing | new | `Str.{to_lower,to_upper,trim,split,split_whitespace,join,replace,parse_int}` |
+| `Str` utilities (`to_lower`, `to_upper`, `trim`, `split`, `split_first`, `split_whitespace`, `join`, `replace`, `parse_int`) | Contest I/O & parsing | new | `Str.{to_lower,to_upper,trim,split,split_first,split_whitespace,join,replace,parse_int}` |
 | Z-algorithm | ACL `z_algorithm`, KACTL `Zfunc`, cp-alg | have | `z_function<S: Indexed>` |
 | Prefix function / KMP | KACTL `KMP`, cp-alg | have | `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `period` |
 | KMP prefix automaton (O(1) DP transitions) | cp-alg, Benq | new | `KmpAutomaton<A>.{new,len,step,link,matches}` |
@@ -555,7 +555,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occurrences,lcs}` (have); `{reset_last,push_seq,kth_substring}` (new) |
 | Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,odd_root,even_root,len,pal_len,link,step,diff,series_link,occurrences}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
 | Prefix trie + order statistics | cp-alg, contest templates | have / new | `Trie<A>.{new,root,len,step,find,add,remove,count,count_prefix,ends_at,pass_at}` (have); `{contains,clear,kth,count_less}` (new) |
-| Binary XOR trie (max/min XOR, count `< limit`, k-th XOR) | Benq, jiangly, cp-alg | new | `XorTrie.{new(bits:),len,is_empty,add,remove,count,max_xor,min_xor,count_xor_less,kth_xor,clear}` |
+| Binary XOR trie (max/min XOR, count `< limit`, k-th XOR) | Benq, jiangly, cp-alg | out | Owned by `std.bitset` (`std.bitset.XorTrie`). |
 | Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,patterns_len,step,link,hit,words_at,matches,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
 | Dynamic / online Aho-Corasick (log-decomposed buckets) | cp-alg, contest templates | new | `DynamicAhoCorasick<A>.{new,add,remove,count_matches}` |
 | `HashInterval` single-mod `2^64` hash | KACTL `Hashing` | out | Omitted because `RollingHash` (double 31-bit salted) and `RollingHash61` (Mersenne `2^61 - 1` salted) cover both fast-32-bit and single-64-bit hashing without hackable power-of-2 mod (Thue-Morse collision). |
@@ -574,7 +574,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 
 - **`std.seq`:** `count`, `find`, `rfind`, `starts_with`, `ends_with` overlap conceptually with sequence queries on `List<T>`/`[D]T`. Keeping `starts_with`/`ends_with` generic over `Indexed` avoids duplication; `Str.count(c: Char)` / `Str.find(p)` / `Str.rfind(p)` remain `Str`-specific because they accept a `Str` or `Char` pattern.
 - **`std.math` / `std.poly`:** `wildcard_matches` can also be implemented via NTT for large alphabets (O(n log n) vs O(n * |pat| / 64)); the strings spec exposes the single name `wildcard_matches`, independent of backend.
-- **`std.bit` / `std.ds`:** `XorTrie` lives in `std.strings` alongside `Trie<A>` (both are prefix tries) rather than `std.ds`, with a cross-reference so users find it in either mental model.
+- **`std.bitset`:** Binary `XorTrie` is owned by `std.bitset` rather than `std.strings`; `std.strings.Trie<A>` covers general-alphabet prefix tries.
 - **`std.segtree`:** `DynamicHash` is a monoid-over-segment-tree hash specialized for string range hashing and palindrome checks; it avoids making users wire up custom `HashMonoid` structs and power tables manually.
 
 ## Powers
@@ -591,9 +591,9 @@ Every power from `spec/POWERS.md` (and any gap beyond it) needed by `spec/std/st
    - Signatures: `DynamicHash.{get,set}` (so `dh[i] = c` updates the hashed element in O(log n) and `dh[l..r]` queries the range hash).
    - Smallest example: `dh[i] = 'a'; if dh.is_palindrome(l..r): ans += 1`.
 4. **W12 (Cost on first `///` line):**
-   - Signatures: All 188 public declarations in `spec/std/strings.cp`.
+   - Signatures: All 177 public declarations in `spec/std/strings.cp`.
 5. **Defaulted named arguments (Decision 134 / `spec/SYNTAX.md`):**
-   - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = none)`, `RollingHash61.new(s, base: ?Int = none)`, `DynamicHash.new(s, bases: ?(Int, Int) = none)`, `wildcard_matches(self, pat, wildcard: Char = '?')`, `XorTrie.new(bits: Int = 60)`.
+   - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = none)`, `RollingHash61.new(s, base: ?Int = none)`, `DynamicHash.new(s, bases: ?(Int, Int) = none)`, `wildcard_matches(self, pat, wildcard: Char = '?')`.
    - Smallest example: `let h2 = RollingHash.new(t, bases: h1.bases)`.
 6. **Gaps beyond `spec/POWERS.md`:**
    - **Existential / struct-owned domains** (for `SuffixArray` rank domain `sa.Rank` and `SuffixAutomaton`/`PalindromicTree`/`AhoCorasick` state domains): today states and SA ranks are plain `Int`, so `sam.step(v, c)` and `sa.lcp_of_ranks(l, r)` cannot statically distinguish state IDs from string positions. Smallest example: `struct SuffixArray<T>: domain Rank = 0..s.len; sa: [Rank]Int`.
@@ -608,4 +608,4 @@ All dreams in `proto/ports/*/dream/` touching strings:
 - `proto/ports/ecnerwala/dream/cf2124d.cp`: uses `std.strings.is_palindrome` — in spec (`have`), passes.
 - `proto/ports/ecnerwala/dream/cf1909g.cp`: uses `std.strings.{common_prefix_len, common_suffix_len}` — in spec (`have`), passes.
 - `proto/ports/ecnerwala/dream/ucup5s05f.cp`: imports `std.strings.suffix_tree_edges` — **now in spec (`new`)**; both `std.strings.suffix_tree_edges` and `suffix_tree_edges` errors are resolved (remaining error in `ucup5s05f.cp` is `std.poly.SubproductTree`).
-- `proto/ports/ecnerwala/dream/cf2187d.cp`: uses `Str of "01?"` — language syntax (Decision 134 in `spec/SYNTAX.md`), not a `std.strings` library API.
+- `proto/ports/ecnerwala/dream/cf2187d.cp`: uses `Str of "01?"` (language syntax, Decision 134 in `spec/SYNTAX.md`) and `s.split_first('?')` (**now in spec (`new`)**).

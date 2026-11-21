@@ -10,7 +10,8 @@
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
 use std.algebra.{Reversible}
-use std.graph.{Neighbours, Target, Graph}
+use std.graph.{Neighbours, Target, Graph, Visit}
+use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.lazy.{LazySegTree, AddMax, AddSum}
@@ -41,14 +42,14 @@ pub struct Rooted<V, Pre>:
     /// The inverse of `tin` / `pos`.
     at: [Pre]V
 
-    /// O(n). Root the tree given by `adj` at `root`: `Rooted(g, root: r)` for a `Graph`,
+    /// O(n). Root the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`,
     /// `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and
-    /// `Rooted(root: r, adj: u => ...)` for anything else. `adj` may list every neighbour
+    /// `Rooted(root: r, next: u => ...)` for anything else. `next` may list every neighbour
     /// (the parent is skipped) or only the children, as vertices or as arcs. The tree is the
     /// breadth-first spanning tree, so on a graph with extra edges `depth` is the distance
     /// from the root. Stops if some vertex is not reachable from the root.
     /// With `w:`, edges have lengths `w(arc)` and `dist`, `w` and `diameter` use them.
-    pub fn new<N, A>(adj: N, root: V, w: A -> Int = a => 1) = Rooted.build(adj, [root], w)
+    pub fn new<N, A>(next: N, root: V, w: A -> Int = a => 1) = Rooted.build(next, [root], w)
 
     /// O(n). Build a rooted tree directly from a parent array `par: [V]?V` where the unique vertex
     /// with `par[v] == none` is the root.
@@ -86,12 +87,12 @@ pub struct Rooted<V, Pre>:
         let far: [V]Int = [V] v => dep[v]
         Rooted.finish([root!], par, dep, far, order, k0, k1)
 
-    /// O(n). One tree per root: `adj` must reach every vertex from exactly one of `roots`. The
-    /// trees sit one after another in `t.Pre`, in the order of `roots`; `t.root` is the first root.
+    /// O(n). One tree per root: `next` must reach every vertex from exactly one of `from`. The
+    /// trees sit one after another in `t.Pre`, in the order of `from`; `t.root` is the first root.
     /// Paths and lowest common ancestors exist only within one tree (`root_of` tells).
-    pub fn forest<N, A>(adj: N, roots: List<V>, w: A -> Int = a => 1) = Rooted.build(adj, roots, w)
+    pub fn forest<N, A>(next: N, from: List<V>, w: A -> Int = a => 1) = Rooted.build(next, from, w)
 
-    fn build<N, A>(adj: N, roots: List<V>, len: A -> Int):
+    fn build<N, A>(next: N, roots: List<V>, len: A -> Int):
         var par: [V]?V = none
         var dep: [V]0..=V.count = 0
         var far: [V]Int = 0
@@ -109,7 +110,7 @@ pub struct Rooted<V, Pre>:
             while i < tail:
                 let u = order[i]
                 k0[u] = tail
-                for a in adj.out(u):
+                for a in next.out(u):
                     let c = a.to
                     if not seen[c]:
                         seen[c] = true
@@ -177,7 +178,7 @@ pub struct Rooted<V, Pre>:
     /// a[v]`).
     pub fn reorder<T>(self, a: [V]T) -> [Pre]T = [Pre] p => a[at[p]]
 
-    /// O(children). The children of `v`, in the order `adj` listed them.
+    /// O(children). The children of `v`, in the order `next` listed them.
     pub fn children(self, v: V) -> List<V> = [bfs[i] for i in k0[v]..k1[v]]
 
     /// O(children) calls of `f`. For each child `c` of `v`, in child order, the fold with `m` of
@@ -299,19 +300,19 @@ pub struct Rooted<V, Pre>:
         let c = self.centroid
         if let h = heavy[c], 2 * sz[h] == sz[root]: [c, h] else: [c]
 
-    /// O(n). Iterative enter/exit Euler tour: yields `Enter(v)` when entering `v` and
-    /// `Exit(v)` when leaving `v`'s subtree, without recursion.
+    /// O(n). Iterative enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: yields
+    /// `Enter(v, parent)` when entering `v` and `Exit(v, parent)` when leaving its subtree.
     pub @get fn tour(self) -> yields Visit<V>:
         var stack = [(at[p], 0) for p in Pre.rev if par[at[p]] == none]
         while not stack.is_empty:
             let (u, i) = stack[stack.len - 1]
-            if i == 0: yield Enter(u)
+            if i == 0: yield Visit.Enter(u, par[u])
             if k0[u] + i < k1[u]:
                 stack[stack.len - 1] = (u, i + 1)
                 stack.push((bfs[k0[u] + i], 0))
             else:
                 stack.pop()
-                yield Exit(u)
+                yield Visit.Exit(u, par[u])
 
     /// O(1). The positions of `v`'s subtree, `v` first.
     pub fn sub(self, v: V) -> Range<Pre> = tin[v].l..tin[v].r(sz[v])
@@ -534,9 +535,10 @@ pub struct Rooted<V, Pre>:
     /// O(n). The long-path decomposition, for DP indexed by depth merged in O(n) in total.
     pub fn long_paths(self) -> LongPaths<V, _> = todo
 
-    /// O(size(v)) and less when pruned. The subtree of `v` in preorder as steps: `step.v` is
-    /// the vertex and `step.prune()` skips the rest of its subtree (decision 126).
-    pub fn walk(self, v: V) -> yields Step<V> = todo
+    /// O(size(v)) and less when pruned. The subtree of `v` in preorder as `std.dp` steps:
+    /// `step.state` is the vertex, `step.depth` its depth below `v`, and `step.prune()` skips
+    /// the rest of its subtree (decision 126).
+    pub fn preorder(self, v: V) -> yields Step<V> = todo
 
 /// A virtual tree from `Rooted.virtual`: a few vertices of a tree and their pairwise lowest
 /// common ancestors, over its own domain `K` in preorder.
@@ -561,9 +563,9 @@ pub struct Centroids<V>:
     /// For each centroid, the vertices of its piece in breadth-first order from it.
     held: [V]List<V>
 
-    /// O(n log n). Decompose the tree given by `adj` (as for `Rooted`: a `Graph`, neighbour lists
+    /// O(n log n). Decompose the tree given by `next` (as for `Rooted`: a `Graph`, neighbour lists
     /// or a fn).
-    pub fn new<N>(adj: N) -> Centroids<V>:
+    pub fn new<N>(next: N) -> Centroids<V>:
         var dead: [V]Bool = false
         var sz: [V]Int = 0
         var cpar: [V]?V = none
@@ -582,7 +584,7 @@ pub struct Centroids<V>:
             while head < order.len:
                 let u = order[head]
                 head += 1
-                for a in adj.out(u):
+                for a in next.out(u):
                     let w = a.to
                     if not dead[w] and some(w) != bpar[u] and w != entry:
                         bpar[w] = u
@@ -594,7 +596,7 @@ pub struct Centroids<V>:
             var moved = true
             while moved:
                 moved = false
-                for a in adj.out(c):
+                for a in next.out(c):
                     let w = a.to
                     if not dead[w] and some(w) != bpar[c] and w != entry and 2 * sz[w] > total:
                         c = w
@@ -612,13 +614,13 @@ pub struct Centroids<V>:
                 qh += 1
                 anc[u].push((c: c, dist: du, branch: b))
                 held[c].push(u)
-                for a in adj.out(u):
+                for a in next.out(u):
                     let w = a.to
                     if not dead[w] and some(w) != from[u]:
                         from[w] = u
                         let nb = if u == c: w else: b
                         q.push((w, du + 1, nb))
-            for a in adj.out(c):
+            for a in next.out(c):
                 if not dead[a.to]: todo.push((a.to, some(c), d + 1))
         for v in V: anc[v].reverse()
         Centroids(root, cpar, cdep, anc, held)
@@ -674,7 +676,7 @@ fn subtrees_and_chains_are_contiguous():
     domain V = 1..=14
     for _ in 0..10:
         let adj = random_tree(V.first)
-        let r = Rooted(root: V.nth(rand(0, 13)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 13)), next: v => adj[v])
         assert r.size(r.root) == 14 and r.parent(r.root) == none
         for v in V:
             assert r.at[r.tin[v]] == v
@@ -698,7 +700,7 @@ fn lca_dist_ancestor_and_step_match_climbing():
     domain V = 0..13
     for _ in 0..10:
         let adj = random_tree(V.first)
-        let r = Rooted(root: V.nth(rand(0, 12)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 12)), next: v => adj[v])
         for a in V:
             for b in V:
                 let path = slow_path(r, a, b)
@@ -722,7 +724,7 @@ fn weighted_dist_adds_the_lengths_on_the_path():
     let r = Rooted(v => adj[v], V(0), w: a => a.len)
     assert [r.far[v] for v in V] == [0, 3, 7, 13, 7] and r.depth(V(3)) == 2
     assert r.dist(V(2), V(3)) == 14 and r.dist(V(4), V(2)) == 14 and r.dist(V(3), V(3)) == 0
-    let plain = Rooted(root: V(0), adj: v => adj[v])
+    let plain = Rooted(root: V(0), next: v => adj[v])
     assert plain.dist(V(2), V(3)) == 2 and plain.far[V(3)] == plain.depth(V(3))
 
 @test
@@ -730,7 +732,7 @@ fn path_folds_keep_the_order_from_a_to_b():
     domain V = 0..12
     for _ in 0..12:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V.nth(rand(0, 11)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 11)), next: v => adj[v])
         var name = [V] v => Word(Str([Char(97 + v.to_idx)]))
         var st = SegTree(Monoid<Word>(Word(""), (a, b) => Word(a.s + b.s)), r.reorder(name))
         for _ in 0..12:
@@ -753,7 +755,7 @@ fn path_updates_and_subtree_folds_over_one_lazy_tree():
     domain V = 0..11
     for _ in 0..10:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V(0), adj: v => adj[v])
+        let r = Rooted(root: V(0), next: v => adj[v])
         var val = [V] v => rand(0, 9)
         var st = LazySegTree(AddMax, r.reorder(val))
         for _ in 0..20:
@@ -769,7 +771,7 @@ fn centroids_leave_no_piece_over_half():
     domain V = 0..9
     for _ in 0..40:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V(0), adj: v => adj[v])
+        let r = Rooted(root: V(0), next: v => adj[v])
         let good = [
             v for v in V if 2 * (V.len - r.size(v)) <= V.len and all(
                 2 * r.size(c) <= V.len for c in r.children(v)
@@ -787,7 +789,7 @@ fn excl_fold_folds_the_other_children():
     domain V = 0..12
     for _ in 0..10:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V(0), adj: v => adj[v])
+        let r = Rooted(root: V(0), next: v => adj[v])
         let w = [V] v => rand(0, 9)
         for v in V:
             let cs = r.children(v)
@@ -809,7 +811,7 @@ fn rerooting_counts_connected_sets_through_every_vertex():
     let mul = Monoid<Int>(1, (a, b) => a * b % mod)
     for _ in 0..5:
         let adj = random_tree(V(0))
-        let t = Rooted(root: V(0), adj: v => adj[v])
+        let t = Rooted(root: V(0), next: v => adj[v])
         var down: [V]Int = 1
         for v in t.at.rev:
             for c in t.children(v): down[v] = down[v] * (down[c] + 1) % mod
@@ -835,7 +837,7 @@ fn orders_lifting_and_the_virtual_tree():
     domain V = 0..13
     for _ in 0..15:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V.nth(rand(0, 12)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 12)), next: v => adj[v])
         var seen: [V]Bool = false
         for v in r.at.rev:
             for c in r.children(v): assert seen[c]
@@ -906,10 +908,10 @@ fn from_parents_tour_pos_and_value_owned_pre():
     var stack: List<V> = []
     for e in t1.tour:
         match e:
-            Enter(v):
+            Enter(v, _):
                 entered.push(v)
                 stack.push(v)
-            Exit(v):
+            Exit(v, _):
                 assert stack.pop() == v
                 exited.push(v)
     assert stack.is_empty and entered.len == V.K and exited.len == V.K
@@ -979,7 +981,7 @@ fn heavy_light_and_subtree_cover_the_children():
     domain V = 0..12
     for _ in 0..10:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V.nth(rand(0, 11)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 11)), next: v => adj[v])
         for v in V:
             var cs = [c for c in r.light(v)]
             if let h = r.heavy[v]:
@@ -1014,7 +1016,7 @@ fn down_and_up_match_depth_size_and_height():
     domain V = 0..12
     for _ in 0..10:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V.nth(rand(0, 11)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 11)), next: v => adj[v])
         let w = [V] v => rand(0, 9)
         let best = r.down(0, (m, v) => max(m, w[v]))
         let size = r.up(+, (s, c, p) => s, (s, v) => s + 1)
@@ -1030,7 +1032,7 @@ fn reroot_matches_up_from_every_root():
     let cat = Monoid<Str>("", (a, b) => a + b)
     for _ in 0..6:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V.nth(rand(0, 9)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 9)), next: v => adj[v])
         // far: the farthest vertex; shape: a child-order-sensitive fold, to check the order
         let far = r.reroot(max, (h, c, p) => h + 1, (h, v) => max(h, 0))
         let shape = r.reroot(cat, (s, c, p) => s, (s, v) => "(" + s + ")")
@@ -1040,7 +1042,7 @@ fn reroot_matches_up_from_every_root():
         let size = r.up(+, finish: (s, v) => s + 1)
         assert all(size[v] == r.sub(v).len for v in V)
         for v in V:
-            let at = Rooted(root: v, adj: u => adj[u])
+            let at = Rooted(root: v, next: u => adj[u])
             assert far[v] == max(r.dist(v, u) for u in V)
             assert at.up(max, (h, c, p) => h + 1, (h, u) => max(h, 0))[v] == far[v]
             assert shape[v].len == 2 * V.K and label[v].len == at.up(
@@ -1054,7 +1056,7 @@ fn shapes_match_the_canonical_string():
     domain V = 0..14
     for _ in 0..10:
         let adj = random_tree(V(0))
-        let r = Rooted(root: V.nth(rand(0, 13)), adj: v => adj[v])
+        let r = Rooted(root: V.nth(rand(0, 13)), next: v => adj[v])
         var canon: [V]Str = ""
         for v in r.at.rev:
             var parts = [canon[c] for c in r.children(v)]
@@ -1661,6 +1663,10 @@ fn lazy_link_cut_keeps_path_order_under_assignment():
 /// `Partial` `l`, closing an interval in neither order.
 pub enum PermKind: Leaf, Incr, Decr, Partial, Full
 
+/// A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`, or
+/// `Inner(l, r, kind)` with its two children and how they join.
+pub enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)
+
 /// The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node
 /// covers a run of positions, leaves are single positions, a node's children split its run in
 /// two, and the values of every node but a `Partial` one form an interval. Nodes have their own
@@ -1726,6 +1732,9 @@ pub struct PermTree<I, V, Node>:
         assert stk.len == 1
         PermTree<I, V, N>(N(stk[0].node), kind, l, r, first, last, lo, hi)
 
+    /// O(1). The view of `v` to match on (decision 132): `Leaf(i)` or `Inner(l, r, kind)`.
+    pub fn node(self, v: Node) -> PermNode<I, Node> = todo
+
     /// O(1). The leaf of position `i`.
     pub fn leaf(self, i: I) -> Node = Node(2 * i.ord)
 
@@ -1781,18 +1790,6 @@ fn perm_tree_of_a_small_permutation():
     assert t.kind[t.root] == Incr
     assert t.kind[t.left(t.root)] == Decr and t.span(t.left(t.root)) == I(0).l..I(1).r
 
-/// One event of an enter/exit walk: `Enter(v)` before `v`'s subtree, `Exit(v)` after it.
-pub enum Visit<V>: Enter(v: V), Exit(v: V)
-
-/// A vertex yielded by a steerable walk (`Rooted.walk`); the walk reads `prune` after the
-/// body runs.
-pub struct Step<V>:
-    v: V
-    pruned: Bool
-
-    /// O(1). Skip the rest of this vertex's subtree.
-    pub fn prune(mut self) = todo
-
 /// The vertices of a `Rooted` tree by depth, each depth in preorder, over their own domain
 /// `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
 pub struct Layers<V, B>:
@@ -1807,23 +1804,23 @@ pub struct Layers<V, B>:
     /// O(log n). The descendants of `v` at depth `d`; empty when there are none.
     pub fn below(self, v: V, d: Int) -> Range<B> = todo
 
-/// The enter and exit events of a `Rooted` tree's `tour` over their own domain `E` of 2n
+/// The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` of 2n
 /// members, for Mo's algorithm on trees.
-pub struct Events<V, E>:
-    at: [E]Visit<V>
+pub struct Events<V, P>:
+    at: [P]Visit<V>
 
     /// O(1). The event that enters `v`.
-    pub fn enter(self, v: V) -> E = todo
+    pub fn enter(self, v: V) -> P = todo
 
     /// O(1). The event that leaves `v`.
-    pub fn exit(self, v: V) -> E = todo
+    pub fn exit(self, v: V) -> P = todo
 
     /// O(1). The events inside `v`'s subtree, `enter(v)` through `exit(v)`.
-    pub fn sub(self, v: V) -> Range<E> = todo
+    pub fn sub(self, v: V) -> Range<P> = todo
 
     /// O(log n). The vertices met an odd number of times in `range`, plus `extra` when
     /// present, are exactly the vertices of the path from `a` to `b`.
-    pub fn path(self, a: V, b: V) -> (range: Range<E>, extra: ?V) = todo
+    pub fn path(self, a: V, b: V) -> (range: Range<P>, extra: ?V) = todo
 
 /// The long-path decomposition of a `Rooted` tree: each vertex continues the path of its
 /// tallest child, so a DP indexed by depth below `v` lives in one shared buffer over `L`,
@@ -1952,9 +1949,10 @@ pub struct KruskalTree<V, N, W>:
     /// when they are not connected, and at `a == b`.
     pub fn bottleneck(self, a: V, b: V) -> ?W = todo
 
-/// O(m log m). The Kruskal reconstruction tree of `edges` over the vertices `V`; its nodes are
-/// a fresh domain of at most 2|V| - 1 members.
-pub fn kruskal_tree<V, W>(edges: List<(u: V, v: V, w: W)>) -> KruskalTree<V, _, W> = todo
+/// O(m log m). The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices
+/// `V`, taking the same arguments as `std.graph.kruskal`; its nodes are a fresh domain of at
+/// most 2|V| - 1 members.
+pub fn kruskal_tree<V, E, W>(edges: [E](u: V, v: V), w: E -> W) -> KruskalTree<V, _, W> = todo
 
 /// O(n). The Prüfer code of a tree on `V`, which needs at least two vertices: `V.count - 2`
 /// vertices, in bijection with the labelled trees.

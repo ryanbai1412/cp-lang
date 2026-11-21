@@ -7,6 +7,7 @@
 // O(m log m).
 
 @!multitest
+use std.dsu.{DsuOf}
 let (n, m, q): (1..=300_000, 1..=300_000, 1..=300_000) = read()
 domain V = 1..=n
 domain W = 0..=m

@@ -2,6 +2,7 @@
 // If it is not 1, one color. Otherwise two colors always suffice (Gallai): split V
 // so each side's odd-weight edges give every vertex even degree; then every cut
 // inside a side has even weight, so 2 divides all its max flows.
+use std.flow.{gomory_hu}
 @!multitest
 domain V = read(1..=50)
 let m: 0..=choose2(V.count) = read()
@@ -13,7 +14,7 @@ fn answer(colors: List<Bitset<V>>):
         print(c.len)
         print(c)
 
-if gcd(gomory_hu(edges).map(e => e.w)) != 1: return answer([V.all])
+if fold(gcd, gomory_hu(edges).map(e => e.w)) != 1: return answer([V.all])
 
 var odd = adjacency(edges.filter(e => e.w % 2 == 1), into: Bitset)
 

@@ -4064,3 +4064,43 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   statement facts that should be written once, like integer ranges.
 - **Reverse.** Delete the forms; constructors pass every field.
 - **Status.** Accepted in the spec; not parsed yet.
+
+## 135. Syntax batch from the dream corpus (2026-11-21)
+
+- **Decision.** Accepted, each because two or more dreams reached for it or
+  it removes a hand-written loop or temporary:
+  - Multi-clause loop headers: `for i in V, j in V.after(i) if c:` nests
+    left to right, later clauses see earlier bindings, `if` filters. The
+    same header works in comprehensions, `[f(i, j) for i in A, j in B]`.
+    It replaces Python's chained `for ... for` in comprehensions.
+  - `and` / `or` are operation values like `+` and `min`: `fold(xs, or)`,
+    `(count: +, taken: or)`.
+  - `var` inside a pattern makes that binding mutable:
+    `for (var left, v) in items:`.
+  - One-line `match`: `match x: A(l) => e1, B(l) => e2`, the inline form
+    beside `if c: a else: b`. Multi-arm bodies still use the block form.
+  - A lambda body may be an assignment statement; the lambda returns
+    nothing: `on_remove: (v, a) => cnt[a] -= 1`.
+  - Partial indexing: `a[i]` on `[I, J]T` is the row, a `[J]T` place
+    (mutable when `a` is). No copy.
+  - Destructuring parameters: `fn step(mv: Move, (r, s): State)`.
+  - `domain` as a kind on type parameters: `fn f<domain I, domain J>()`
+    gives the body `I.all`, `I.bounds`, `[I]T`.
+  - `..` alone is the full range wherever a range is taken: `fen.sum(..)`.
+  - Range types are types, including as generic arguments:
+    `PMultiset<0..n>`.
+  - Literal-union types: `'+' | '-'` and `"add" | "del"` are types whose
+    values are those literals; `read` validates and `match` is exhaustive
+    over them. `Str of "01?"` (134) is the string form of the same idea.
+- **Rejected** (dreams using them are fixed): `{k: v}` map literals (`[k: v]`
+  is the map literal, decision 2.x); `[x; n]` repeat lists (use
+  `[x] * n` or a typed `[n]T`); `then` comparator chaining (sort by a key
+  tuple with `desc(...)`); `lazy[D] i => e` (use `@memo fn` or the eager
+  table `[D] i => e`); `(let a = ...; e)` block expressions (use a block
+  lambda); `.empty` implicit members (they collide with leading-dot
+  continuation lines).
+- **Why.** Each accepted form says what a nested loop, a temporary or a
+  wrapper fn said in more tokens, and each composes with existing rules.
+- **Reverse.** Drop a form; `cpl fix` expands it (nested loops, explicit
+  lambdas, copies of the row).
+- **Status.** Accepted in the spec (`spec/SYNTAX.md`); not parsed yet.

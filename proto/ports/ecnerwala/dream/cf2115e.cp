@@ -27,7 +27,7 @@ var ans = [small[x.at, min(x.budget, cap)] for x in queries]
 
 for p in V:
     let (pc, pw) = item[p]
-    let through = next.reachable(from: V.first, skip: (u, v) => u < p and p < v)
+    let through = next.reachable(from: [V.first], skip: (u, v) => u < p and p < v)
     var best: [V, 0..pc]Int = 0
     for v in V if through[v]:
         if item[v].worth * pc <= pw * item[v].cost:

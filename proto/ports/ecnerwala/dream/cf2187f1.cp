@@ -3,7 +3,7 @@
 // A decreasing node whose right child is one vertex hangs its left part one
 // level deeper; any other node is as deep as its deeper child.
 use std.seq.{Perm}
-use std.tree.{PermTree}
+use std.tree.{PermKind, PermTree}
 
 @!multitest
 let n: 2..=1e6 = read()
@@ -11,8 +11,8 @@ domain V = 1..=n
 let (a, b) = read<(Perm<V>, Perm<V>)>()
 let t = PermTree(b.rev.map(a.inverse))
 
-fn depth(v: t.Node) -> Int = match t[v]:
-    leaf => 1
-    decr(l, r: leaf) => depth(l) + 1
-    node(l, r) => max(depth(l), depth(r))
+fn depth(v: t.Node) -> Int = match t.node(v):
+    Leaf(_) => 1
+    Inner(l, r, Decr) if t.kind[r] == PermKind.Leaf => depth(l) + 1
+    Inner(l, r, _) => max(depth(l), depth(r))
 print(depth(t.root))

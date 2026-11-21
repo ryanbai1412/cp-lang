@@ -10,10 +10,10 @@
 //! checked or run gets the prelude.
 
 use std.algebra.{Action, Desc, Monoid, desc, fold}
-use std.bag.{BucketCount, SortedBag, SortedSet}
+use std.bag.{SortedBag, SortedSet}
 use std.bitset.{Bitset}
-use std.deque.{Deque, LinkedList}
-use std.dsu.{Dsu, DsuOf, PotentialDsu}
+use std.deque.{Deque}
+use std.dsu.{Dsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}
 use std.geometry.{ByAngle, Pt}
@@ -26,22 +26,64 @@ use std.marks.{Marks}
 use std.math.{Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix}
+use std.search.{bsearch_first, bsearch_last}
 use std.segtree.{SegTree}
 use std.seq.{
-    bsearch_first,
-    bsearch_last,
+    argsort,
+    buckets,
+    chain,
+    chunks,
+    chunks_padded,
     compress,
+    cyclic_pairs,
+    dedup,
     deduped,
     distinct,
+    drop_while,
+    equal_range,
     excl_fold,
+    first_gt,
+    flat_map,
+    flatten,
     get_or_insert,
+    group_by,
     insert,
+    inverse,
+    inversions,
+    is_sorted,
+    is_subsequence,
+    iterate,
+    last_lt,
+    lis,
+    next_greater,
+    next_less,
+    next_permutation,
+    nth_element,
+    pairs,
     partition,
+    partition_point,
+    prev_greater,
+    prev_less,
+    prev_permutation,
+    prod,
+    reduce,
     remove,
     resized,
+    reverse,
+    rotate_left,
+    rotate_right,
+    rotated_left,
+    rotated_right,
+    run_ranges,
     runs,
     scan,
+    sliding_max,
+    sliding_min,
+    suffix_scan,
+    take_while,
+    tally,
     windows,
+    with_prev,
     zip,
 }
 use std.sparse.{SparseTable}
