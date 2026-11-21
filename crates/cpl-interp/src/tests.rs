@@ -636,6 +636,21 @@ print(dp[3].0, dp[3].1, adj[2].len, popcount(x), ctz(x))
 }
 
 #[test]
+fn vm_nested_array_filled_by_a_named_tuple_of_mods() {
+    let source = "
+type Z = Mod<1e9 + 7>
+type Tally = (ways: Z, boxes: Z)
+domain Row = 0..3
+var a: [Row][Row]Tally = (ways: 1, boxes: 0)
+a[Row.last][Row.last].ways += Z(1e9 + 6)
+print(a[Row.first][Row.last].ways, a[Row.last][Row.last].ways, a[Row.last][Row.first].boxes)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "1 0 0\n");
+}
+
+#[test]
 fn vm_by_ref_closure_passed_to_vm_hof_str_view_and_small_tuple_if() {
     let source = "
 fn apply(n: Int, f: (Int) -> Int) -> Int:

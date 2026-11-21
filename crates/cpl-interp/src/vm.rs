@@ -11066,22 +11066,14 @@ fn walk_place_mut<'a>(
                 }
                 Value::Array(arr) => {
                     let flat = array_flat_index(arr, step, regs_i, span)?;
-                    let a = Rc::make_mut(arr);
-                    match &mut a.data {
-                        ArrayData::Values(vs) => cur = &mut vs[flat],
-                        _ => return trap(span, "internal: expected boxed array element"),
-                    }
+                    cur = &mut Rc::make_mut(arr).as_mut_values()[flat];
                 }
                 _ => return trap(span, "internal: expected array or list"),
             },
             PlaceStep::Index2(..) => match cur {
                 Value::Array(arr) => {
                     let flat = array_flat_index(arr, step, regs_i, span)?;
-                    let a = Rc::make_mut(arr);
-                    match &mut a.data {
-                        ArrayData::Values(vs) => cur = &mut vs[flat],
-                        _ => return trap(span, "internal: expected boxed array element"),
-                    }
+                    cur = &mut Rc::make_mut(arr).as_mut_values()[flat];
                 }
                 _ => return trap(span, "internal: expected array"),
             },

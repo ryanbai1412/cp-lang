@@ -264,6 +264,14 @@ fn declared_types_are_checked_against_values_and_returns() {
 }
 
 #[test]
+fn a_literal_tuple_fills_every_cell_of_a_nested_array() {
+    let src = "type Z = Mod<1e9 + 7>\ntype Tally = (ways: Z, boxes: Z)\ndomain Row = 0..3\nvar a: [Row][Row]Tally = (ways: 0, boxes: 0)\nvar b: [Row][Row](Z, Bool) = (0, false)\nvar c: [Row][Row]?Int = none\nprint(a[Row.first][Row.first].ways, b[Row.first][Row.first].0, c[Row.first][Row.first] ?? 1)\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+    let d = one("domain Row = 0..3\nvar a: [Row][Row](Int, Bool) = (0, 0)\n");
+    assert_eq!(d.code.0, "E0302");
+}
+
+#[test]
 fn top_level_names_have_one_definition_and_are_set_before_use() {
     let src = "type R = Int\ntype R = Bool\n";
     let d = one(src);

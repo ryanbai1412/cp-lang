@@ -4919,6 +4919,7 @@ pub(super) fn is_literal(e: &ast::Expr) -> bool {
         ast::ExprKind::Str(pieces) => pieces.iter().all(|p| matches!(p, ast::StrPiece::Text(_))),
         ast::ExprKind::Unary { expr, .. } | ast::ExprKind::Paren(expr) => is_literal(expr),
         ast::ExprKind::Tuple(items) => items.iter().all(is_literal),
+        ast::ExprKind::Record(fields) => fields.iter().all(|(_, x)| is_literal(x)),
         ast::ExprKind::List(items) => items.is_empty(),
         _ => false,
     }
