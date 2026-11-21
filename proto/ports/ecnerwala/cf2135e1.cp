@@ -1,48 +1,34 @@
-// Codeforces 2135 E1: Beyond the Palindrome (easy version).
-// Count valid ±1 walks of length n by their final height x = 2k - n (k in 0..=n
-// is the number of +1 steps), then weight each height by C(n, k).
-// By the reflection principle across two barriers separated by `delta`, each
-// odd reflection w * delta subtracts/adds a point mass proportional to the span
-// width (`span_len`), and each even reflection (w + 1) * delta adds/subtracts a
-// flat interval of half-width `half_span` (`delta - 2` when delta ≡ n (mod 2),
-// `delta - 3` when delta ≢ n (mod 2)).
+// Codeforces 2135 E1: Beyond the Palindrome (Easy Version).
+//
+// Read 1 as a step up and 0 as a step down. s is an almost-palindrome iff
+// its walk (prefix heights from 0) has max + min = end; see the E2 dream for
+// the derivation. Count the complement by the reflection principle summed
+// over every band: walks ending at ±d carry weight
+// 2 * (2g(d) - g(d-1) - g(d+1)), with g(i) the sum of the periods p that can
+// hold a bad walk among p | i with i / p odd. Period 1 is never possible and
+// period 2 only for even n. The same closed form solves both versions; E1's
+// smaller n only lets the odd-divisor sums come from a plain divisor sieve.
+use std.math.{sieve_multiplicative}
 
-type Z = Mod<998_244_353>
-let comb = Comb<Z>()
+type M = Mod<998_244_353>
+// g reads odd_div_sum up to n + 1.
+let lim = 2e5 + 2
+let comb = Comb<M>(lim)
+let odd_div_sum = sieve_multiplicative(
+    lim,
+    (p, _, pe) => if p == 2: pe else: (pe * p - 1) / (p - 1),
+)
 
 @!multitest
-let n: 1..=200_000 = read()
-domain Step = 0..=n
+let n: 1..=2e5 = read()
 
-var diff = Diff<Step, Z>()
+fn g(i: Int) -> M =
+    if i <= 0: 0
+    else:
+        let narrow = (if i % 2 == 1: 1 else: 0) + (if n % 2 == 1 and i % 4 == 2: 2 else: 0)
+        M(odd_div_sum[i] - narrow)
 
-fn add_height_range(lo_x: Int, hi_x: Int, v: Z):
-    if lo_x > n or hi_x < -n: return
-    let lo = Step((max(lo_x, -n) + n) / 2)
-    let hi = Step((min(hi_x, n) + n) / 2)
-    diff.add(lo..=hi, v)
-
-fn add_height(x: Int, v: Z): add_height_range(x, x, v)
-
-add_height_range(-n, n, 1)
-
-// Same-parity barriers (delta ≡ n mod 2): single center at w * delta.
-for delta in (2 + n % 2..=n + 2).step(2):
-    let half_span = delta - 2
-    let span_len = half_span + 1
-    let mult = if delta == n + 2: 2 else: 4
-    for w in (1..=n / delta).step(2):
-        add_height(w * delta, -(mult * span_len))
-        add_height_range((w + 1) * delta - half_span, (w + 1) * delta + half_span, mult)
-
-// Opposite-parity barriers (delta ≢ n mod 2): split centers at w * delta ± 1.
-for delta in (3 + n % 2..=n + 1).step(2):
-    let half_span = delta - 3
-    let span_len = half_span + 1
-    for w in (1..=(n + 1) / delta).step(2):
-        add_height(w * delta - 1, 2 * span_len)
-        add_height(w * delta + 1, 2 * span_len)
-        add_height_range((w + 1) * delta - half_span, (w + 1) * delta + half_span, -4)
-
-let counts = diff.finish()
-print([comb.choose(n, k.ord) * counts[k] for k in Step].sum())
+let bad = sum(
+    2 * (2 * g(d) - g(d - 1) - g(d + 1)) * comb.choose(n, (n + d) / 2) for d in (n % 2..=n).step(2)
+)
+print(M(2) ** n - bad)
