@@ -413,6 +413,13 @@ impl<'a> Checker<'a> {
                 self.plain_args(args);
                 callee_ty
             }
+            // `xs.len()`, `xs.is_empty()`: zero-arg getter calls on built-in sequences.
+            ty @ (Ty::Int | Ty::Bool)
+                if args.is_empty()
+                    && matches!(&callee.kind, ExprKind::Field { name, .. } if matches!(name.text.as_str(), "len" | "is_empty")) =>
+            {
+                ty
+            }
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Str | Ty::Char | Ty::Pos(_)) => {
                 self.plain_args(args);
                 let message = format!("`{callee_text}` is {}, not a fn", ty.with_article());
