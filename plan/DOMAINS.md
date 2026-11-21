@@ -28,14 +28,22 @@ mechanisms (compile-time reflection over fields and variants, variadic
 generics as tuple packs, lazy parameters, writable places returned from
 methods), user optionals reach 8 bytes through a library `Niche`, and a
 library can say in its own words why a call does not type-check.
-**Where we are** (audited 2026-11-21 at `68ab60c`+). Working: `repeat`,
-`loop`, one-line enums and structs (paren and colon forms), multi-binding `let`/`var`, unary
-`+`, counted domains, `read(lo..=hi)`, `D.count`, `for ... if`/`where`,
-`if let`/`while let` with `where` and multi-binding `if let a = x, b = y`,
-`let ... else`, `if x max= y:`, `?T` arithmetic and bitwise lifting (`+ - * / % ** & | ^ << >>`, unary `-`, `~`),
+**Where we are** (audited 2026-11-21 at `c25cc7e9`+). Working: `repeat`,
+`loop`, one-line enums and structs (paren and colon forms), multi-binding `let`/`var`
+(tuple and scalar-fill broadcast `var a, b, c: Z = 0`), typed tuple patterns
+`let (a: T, b: U) = ...`, unary `+`, counted domains, `read(lo..=hi)`,
+`read<[n]T>()` / `read<1..=3>()`, `x with field: v` record/struct update,
+typed lambda params `(x: T) => ...`, `--- multitest ---` / `--- with multitest() ---`
+wrap-lines, enum-indexed arrays `[Sign]T`, `Mod<1e9 + 7>` additive value type args,
+multi-clause `for a in ..., b in ...:`, `guard let ... else:`, unit-valued
+top-level `return print(...)`, `D.count`, `for ... if`/`where`,
+`if let`/`while let` (statement and `if let ... else:` expression) with `where`
+and multi-binding `if let a = x, b = y`, `let ... else`, `if x max= y:`,
+`?T` arithmetic and bitwise lifting (`+ - * / % ** & | ^ << >>`, unary `-`, `~`),
 `max(?T, T)`, `max=`/`min=` on optionals, `[A, B]T`, `[(A, B)]T` and `[A][B]T`,
 `pairs()`/`with_prev()` in `std.seq`, `Self` (including dotted range bounds `Self.min..=Self.max`)
-and associated types in traits. Structs get `Eq`, `Ord`, `Hash`, `Show` and
+and associated types in traits. Dream-port audit (`proto/ports/*/dream/*.cp`):
+**1/42** passing `cpl check` (`cf2069c.cp`, up from 0/29). Structs get `Eq`, `Ord`, `Hash`, `Show` and
 `Read` from the compiler, structurally, with `impl Show/Eq/Ord` as hooks
 (`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is stdlib privilege, not library
 code. Enums order by variant, then payload (decision 28.2).

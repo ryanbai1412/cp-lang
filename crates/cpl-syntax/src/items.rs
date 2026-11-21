@@ -28,8 +28,8 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
         }
         let first = i;
         let mut depth = 0i32;
-        // A line of decorators belongs to the statement after it.
-        let mut decorator_line = tokens[i].kind == T::At;
+        // A line of decorators (or a `--- multitest ---` wrap-line) belongs to the statement after it.
+        let mut decorator_line = is_directive_line(tokens, i);
         loop {
             match tokens[i].kind {
                 T::Eof => break,
@@ -43,7 +43,7 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
                         break;
                     }
                     if decorator_line {
-                        decorator_line = next == T::At;
+                        decorator_line = is_directive_line(tokens, i + 1);
                     }
                 }
                 _ => {}
@@ -74,4 +74,11 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
         });
     }
     items
+}
+
+fn is_directive_line(tokens: &[Token], i: usize) -> bool {
+    tokens.get(i).is_some_and(|t| t.kind == T::At)
+        || (tokens.get(i).is_some_and(|t| t.kind == T::Minus)
+            && tokens.get(i + 1).is_some_and(|t| t.kind == T::Minus)
+            && tokens.get(i + 2).is_some_and(|t| t.kind == T::Minus))
 }

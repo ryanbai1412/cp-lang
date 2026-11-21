@@ -116,6 +116,14 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
             K::Minus if after_standalone && toks.get(i + 1).is_some_and(|n| !n.space_before) => {
                 Role::Prefix
             }
+            K::Minus
+                if i >= 2
+                    && toks[i - 1].kind == K::Minus
+                    && toks[i - 2].kind == K::Minus
+                    && toks.get(i + 1).is_some_and(|n| n.space_before) =>
+            {
+                Role::Plain
+            }
             K::Minus | K::Plus | K::Amp if !after_value => Role::Prefix,
             K::Tilde => Role::Prefix,
             // `@!multitest`: the `!` belongs to the attribute it opens.
@@ -180,6 +188,9 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         _ => {}
     }
     if matches!(prev.kind, K::Dot | K::ColonColon) || matches!(next.kind, K::Dot | K::ColonColon) {
+        return false;
+    }
+    if prev.kind == K::Minus && next.kind == K::Minus && !next.space_before {
         return false;
     }
     if next.kind == K::At || matches!(prev.kind, K::Comma | K::Semi | K::Colon) {

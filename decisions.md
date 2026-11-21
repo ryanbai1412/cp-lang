@@ -2334,6 +2334,7 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    `Functional` move unchanged in shape; `shortest`/`walk_back` are
    subsumed by `Paths`. Minimum spanning trees stay with `std.dsu`'s
    owner. Reverse: keep the local modules.
+<<<<<<< HEAD
 
 ## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
 
@@ -2358,3 +2359,12 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    state living in user variables written by named fns. Reason: any
    structure works, and lambdas cannot assign. Reverse: take a state
    value and `(S, I) -> S`.
+
+## 48. Dream-port core syntax batch (2026-11-21)
+
+1. **`--- multitest ---` / `--- with multitest() ---` wrap-lines lower to the same `Decorator { directive: true }` AST node as `@!multitest`.**
+   Reason: reuses checker, IR, interpreter, C++17 codegen, stress, judge, LSP, and trace identically without adding an AST variant, while keeping `@!multitest` working for all existing ports (no breaking spelling change). Reverse: remove `wrap_line` from `cpl-syntax/src/parser/stmt.rs` and `is_directive_line` from `items.rs`.
+2. **Typed tuple patterns `let (a: T, b: U) = ...` desugar to `let (a, b): (T, U) = ...`.**
+   Reason: zero AST/IR/codegen duplication; works identically with `read()` and any tuple expression. Reverse: remove `has_typed_tuple_pattern` in `cpl-syntax/src/parser/stmt.rs`.
+3. **Fieldless enum-indexed arrays `[Sign]T` lower to `DimSpec::Int(k)` and tag-checked indexing.**
+   Reason: matches `[Bool]T` without new IR ops, interpreter changes, or C++ runtime types; evaluates the index expression once via a temp. Reverse: remove the `Sym::Enum` arm in `cpl-ir/src/lower/mod.rs` (`dim`) and `expr.rs` (`index_expr`).

@@ -2332,6 +2332,37 @@ impl<'a> Lowerer<'a> {
                         ));
                         continue;
                     }
+                    // A fieldless enum variant picks a cell of `[E]T` by its tag.
+                    if let (Dim::Int, Ty::Enum(eid)) = (dim, &value.ty) {
+                        let eid = *eid;
+                        let count = self.enums[eid].variants.len();
+                        if count > 0 && self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty()) {
+                            let tag_expr = self.do_expr(Some(&Ty::Int), index.span, |lw, stmts| {
+                                let tmp = lw.temp(Ty::Enum(eid));
+                                stmts.push(Stmt::Let(tmp, Some(value)));
+                                let mut acc = lw.int_lit((count - 1) as i64, index.span);
+                                for tag in (0..count - 1).rev() {
+                                    let is_t = lw.mk(
+                                        ExprKind::IsVariant(
+                                            Box::new(lw.local(tmp, index.span)),
+                                            tag,
+                                        ),
+                                        Ty::Bool,
+                                        index.span,
+                                    );
+                                    let idx_lit = lw.int_lit(tag as i64, index.span);
+                                    acc = lw.mk(
+                                        ExprKind::If(Box::new(is_t), Box::new(idx_lit), Box::new(acc)),
+                                        Ty::Int,
+                                        index.span,
+                                    );
+                                }
+                                stmts.push(Stmt::Give(acc));
+                            });
+                            out.push(tag_expr);
+                            continue;
+                        }
+                    }
                     if value.ty != want && value.ty != Ty::Error {
                         let message = format!(
                             "this is indexed by `{}`, but the index is a `{}`",

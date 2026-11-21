@@ -1950,6 +1950,17 @@ impl<'a> Lowerer<'a> {
             {
                 Some(DimSpec::Int(Box::new(self.int_lit(2, ty.span))))
             }
+            // `[Sign]T` for a fieldless enum `Sign`: one cell per variant.
+            ast::TypeKind::Named { name, args }
+                if args.is_empty()
+                    && matches!(self.get_sym(&name.text), Some(Sym::Enum(eid)) if !self.enums[eid].variants.is_empty() && self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty())) =>
+            {
+                let Some(Sym::Enum(eid)) = self.get_sym(&name.text) else {
+                    unreachable!()
+                };
+                let n = self.enums[eid].variants.len() as i64;
+                Some(DimSpec::Int(Box::new(self.int_lit(n, ty.span))))
+            }
             ast::TypeKind::Named { name, args } if args.is_empty() => {
                 if !values {
                     return Some(DimSpec::Int(Box::new(self.int_lit(0, ty.span))));

@@ -62,13 +62,20 @@ impl<'a> Parser<'a> {
                 public,
             };
         }
-        while self.at(T::At) {
-            decorators.push(self.decorator());
-            if !self.eat(T::Newline)
-                && !self.at_line_end()
-                && decorators.last().is_some_and(|d| d.name.text.is_empty())
-            {
-                break;
+        while self.at(T::At)
+            || (self.at(T::Minus) && self.peek_n(1) == T::Minus && self.peek_n(2) == T::Minus)
+        {
+            if self.at(T::At) {
+                decorators.push(self.decorator());
+                if !self.eat(T::Newline)
+                    && !self.at_line_end()
+                    && decorators.last().is_some_and(|d| d.name.text.is_empty())
+                {
+                    break;
+                }
+            } else {
+                decorators.push(self.wrap_line());
+                self.eat(T::Newline);
             }
         }
         if self.eat(T::Pub) {
@@ -84,6 +91,29 @@ impl<'a> Parser<'a> {
             span: self.span_from(start),
             decorators,
             public,
+        }
+    }
+
+    /// `--- multitest ---` or `--- with multitest() ---`: 0.3 wrap-line form
+    /// of a file-level directive (`@!multitest`, `@!interactive`).
+    fn wrap_line(&mut self) -> Decorator {
+        let start = self.start();
+        while self.eat(T::Minus) {}
+        if self.at_ident("with") {
+            self.bump();
+        }
+        let name = self.expect_name("a directive name in the `--- ... ---` wrap-line");
+        let args = if self.eat(T::LParen) {
+            self.comma_list(T::RParen, "the directive arguments", Self::arg)
+        } else {
+            Vec::new()
+        };
+        while self.eat(T::Minus) {}
+        Decorator {
+            name,
+            args,
+            directive: true,
+            span: self.span_from(start),
         }
     }
 
@@ -445,11 +475,56 @@ impl<'a> Parser<'a> {
         self.at_line_end() || (self.brace_depth > 0 && matches!(self.peek(), T::Semi | T::RBrace))
     }
 
+    fn has_typed_tuple_pattern(&self) -> bool {
+        let end = after_group(self.tokens, self.pos);
+        let mut depth = 0usize;
+        for t in &self.tokens[self.pos + 1..end.saturating_sub(1)] {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => depth = depth.saturating_sub(1),
+                T::Colon if depth == 0 => return true,
+                _ => {}
+            }
+        }
+        false
+    }
+
     fn let_stmt(&mut self) -> StmtKind {
         let stmt_start = self.start();
         let mutable = self.at(T::Var);
         self.bump();
-        let mut pat = self.pattern();
+        // `let (a: Int, b: Str) = ...`: typed tuple pattern desugars to
+        // `let (a, b): (Int, Str) = ...`.
+        let mut tuple_elem_tys: Option<Type> = None;
+        let mut pat = if self.at(T::LParen) && self.has_typed_tuple_pattern() {
+            let pstart = self.start();
+            self.bump();
+            let mut pats = Vec::new();
+            let mut tys = Vec::new();
+            let items = self.comma_list(T::RParen, "the typed tuple pattern", |p| {
+                let pat = p.pattern();
+                let ty = p.eat(T::Colon).then(|| p.ty());
+                (pat, ty)
+            });
+            for (p, t) in items {
+                pats.push(p);
+                if let Some(t) = t {
+                    tys.push(t);
+                }
+            }
+            if tys.len() == pats.len() && !tys.is_empty() {
+                tuple_elem_tys = Some(Type {
+                    kind: TypeKind::Tuple(tys),
+                    span: self.span_from(pstart),
+                });
+            }
+            Pattern {
+                kind: PatternKind::Tuple(pats),
+                span: self.span_from(pstart),
+            }
+        } else {
+            self.pattern()
+        };
         // `var ones, open, ans: Z = 0`, `var ones, one_twos, ans: Z = (0, 0, 0)`,
         // and `let n, m: 1..=20 = read()`: homogeneous multi-binding.
         let mut shared_pats: Vec<Pattern> = Vec::new();
@@ -469,16 +544,18 @@ impl<'a> Parser<'a> {
             };
         }
         let shared_elem_ty = self.eat(T::Colon).then(|| self.ty());
-        let ty = shared_elem_ty.as_ref().map(|elem| {
-            if shared_pats.len() > 1 {
-                let span = elem.span;
-                Type {
-                    kind: TypeKind::Tuple(vec![elem.clone(); shared_pats.len()]),
-                    span,
+        let ty = tuple_elem_tys.or_else(|| {
+            shared_elem_ty.as_ref().map(|elem| {
+                if shared_pats.len() > 1 {
+                    let span = elem.span;
+                    Type {
+                        kind: TypeKind::Tuple(vec![elem.clone(); shared_pats.len()]),
+                        span,
+                    }
+                } else {
+                    elem.clone()
                 }
-            } else {
-                elem.clone()
-            }
+            })
         });
         let init = if self.eat(T::Eq) {
             Some(self.expr())
