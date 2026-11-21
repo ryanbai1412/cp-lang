@@ -170,6 +170,14 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// one compression cannot be used in another. Works on any `Seq`. O(n log n).
 pub fn compress<S: Seq, T>(all: S) = todo
 
+/// Kadane: the largest sum of a non-empty contiguous piece, and where it is (the
+/// shortest such piece, or the widest with `widest: true`); `none` when empty. O(n).
+pub fn max_subarray<D, T>(self: [D]T, widest: Bool = false) -> ?(sum: T, at: Range<D>) = todo
+
+/// The first `f(x)` that is not `none`, stopping there; `none` if every one is.
+/// O(1) per element walked.
+pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
+
 /// Gives the items of a list a fresh domain, so arrays over them are index-safe:
 /// `let (domain Arc, arcs) = [...].with_domain()`. Moves the list, O(1).
 pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T) = todo

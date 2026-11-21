@@ -22,12 +22,12 @@ let b: [PosB]-1e6..=1e6 = read()
 fn cool(r: Range<PosA.cuts>) -> List<Range<PosA.cuts>> =
     if r.is_empty: []
     else:
-        let m = a[r].max_subarray(widest: true)
-        cool(r.l..m.lo) + [m] + cool(m.hi..r.r)
+        let m = a[r].max_subarray(widest: true)!.at
+        cool(r.l..m.l) + [m] + cool(m.r..r.r)
 
-let (domain Seg, span) = cool(PosA.cuts.first..PosA.cuts.last).indexed()
+let (domain Seg, span) = cool(PosA.cuts.first!..PosA.cuts.last!).with_domain()
 let sum = [Seg] s => a[span[s]].sum()
-let mss = [PosB.cuts, PosB.cuts] (l, r) => b[l..r].max_subarray_sum()
+let mss = [PosB.cuts, PosB.cuts] (l, r) => b[l..r].max_subarray()?.sum
 
 struct Plan(piece: [Seg]Range<PosB.cuts>, free: ?Seg)
 
@@ -63,8 +63,8 @@ fn plan(x: Int) -> ?Plan:
         (j, spent) = (i, before)
     Plan(piece, free)
 
-let thresholds = sum.values.distinct().sort(by: x => -x)
-let (x, p) = thresholds.first_some(x => (x, plan(x)?)) else:
+let thresholds = sum.values.distinct().sorted(by: x => desc(x))
+let (x, p) = thresholds.first_some(x => if let p = plan(x): some((x, p)) else: none) else:
     print(-1)
     return
 
