@@ -1,51 +1,58 @@
+// Codeforces 2150 E2: Hidden Single (Hard Version).
+// An array of length `2n - 1` holds every value in `1..=n` twice except one
+// hidden single `v*` that appears once. `has(v, l, r)` queries whether `v`
+// occurs in the shuffled position slice `perm[l..r]`.
+// Split `0..2n - 1` at midpoint `m` and assign each value a 2-unit weight:
+//   - present in both halves -> 1 to left, 1 to right;
+//   - present in only one half -> 2 to that half (0 to the other).
+// Every normal value contributes its true count to each half, while `v*`
+// contributes 2 to its half despite occupying only 1 slot. Thus the half whose
+// weight sum exceeds its length contains `v*` (with weight 2).
+// For each candidate `v` with weight 2 in that half, `is_single` bisects the
+// interval: a normal value eventually splits across both sub-halves (false),
+// whereas `v*` narrows all the way down to a single index (true).
 @!interactive
 use std.rand.Rng
 
 var rng = Rng.new(48)
 
 @!multitest
-let n: Int = read()
-if n == 1:
-    print("!", 1)
-    return
+let n: 1..=300 = read()
+domain Val = 1..=n
 
-var p = List(1..2 * n)
-rng.shuffle(mut p)
+var perm = List(1..2 * n)
+rng.shuffle(mut perm)
 
-fn ask(v: Int, l: Int, r: Int) -> Int:
-    print("?", v + 1, r - l, p[l..r])
-    read()
+fn has(v: Val, lo: Int, hi: Int) -> Bool:
+    if lo == hi: return false
+    print("?", v, hi - lo, perm[lo..hi])
+    read::<Int>() == 1
 
-var cnt: [0..n]Int = 2
-var (l, r) = (0, 2 * n - 1)
-let m = (l + r) / 2
-var cnt_l: [0..n]Int = 0
-var cnt_r: [0..n]Int = 0
-for i in 0..n:
-    cnt_l[i] = ask(i, l, m)
-    if cnt_l[i] == 0:
-        cnt_r[i] = 2
+let mid = (2 * n - 1) / 2
+var weight_l: [Val]Int = 0
+var weight_r: [Val]Int = 0
+for v in Val:
+    if not has(v, 0, mid):
+        weight_r[v] = 2
+    elif has(v, mid, 2 * n - 1):
+        weight_l[v] = 1
+        weight_r[v] = 1
     else:
-        cnt_r[i] = ask(i, m, r)
-        let s = 2 / (cnt_l[i] + cnt_r[i])
-        cnt_l[i] *= s
-        cnt_r[i] *= s
-if cnt_l.sum() > m - l:
-    r = m
-    cnt = cnt_l
-else:
-    l = m
-    cnt = cnt_r
+        weight_l[v] = 2
 
-var ans = 0
-'outer: for i in 0..n if cnt[i] == 2:
-    var (mi, ma) = (l, r)
-    while true:
-        if ma - mi == 1:
-            ans = i
-            break 'outer
-        let md = (mi + ma) / 2
-        if ask(i, mi, md) == 0: mi = md
-        elif ask(i, md, ma) == 0: ma = md
-        else: break
-print("!", ans + 1)
+let (lo, hi, only_here) = if weight_l.sum() > mid:
+    (0, mid, [Val] v => weight_l[v] == 2)
+else:
+    (mid, 2 * n - 1, [Val] v => weight_r[v] == 2)
+
+fn is_single(v: Val, start: Int, stop: Int) -> Bool:
+    var (l, r) = (start, stop)
+    while r - l > 1:
+        let m = (l + r) / 2
+        if not has(v, l, m): l = m
+        elif not has(v, m, r): r = m
+        else: return false
+    true
+
+let ans = [v for v in Val if only_here[v]].first(v => is_single(v, lo, hi))!
+print("!", ans)
