@@ -2,43 +2,29 @@
 // case, which does not count. For each text print how many different words
 // occur in it. A word has at most 25 letters and a text at most 500.
 //
-// Put the words in a trie. From every place in a text walk down the trie as
-// far as the text allows: every word node on the way is a word that occurs.
-// A node remembers the last text it was counted for. The original hashes
-// every block of up to 25 letters into a hand-built table instead.
+// Deduplicate the lowercased dictionary and build an Aho-Corasick automaton;
+// for each text, count distinct matched word IDs.
 // original: corpus/submissions/4340958.cpp
+use std.strings.{AhoCorasick, lower}
+
 domain Letter = 'a'..='z'
 
-struct Node:
-    kid: [Letter]?Int
-    word: Bool
-    counted: Int    // the last text this word was counted for
-
-var trie = [Node([Letter] c => none, false, 0)]
-
-fn letter(c: Char) -> Letter = if c.is_upper: Letter.nth(c - 'A') else: Letter(c)
+fn to_letters(s: Str) -> List<Letter> = [Letter(c.lower) for c in s]
 
 let (n, m): (Int, Int) = read()
+var seen_words = Set<Str>()
+var words: List<List<Letter>> = []
 for _ in 0..n:
-    let word: Str = read()
-    var at = 0
-    for c in word:
-        if let next = trie[at].kid[letter(c)]: at = next
-        else:
-            trie.push(Node([Letter] c => none, false, 0))
-            trie[at].kid[letter(c)] = some(trie.len - 1)
-            at = trie.len - 1
-    trie[at].word = true
+    let raw: Str = read()
+    var w = ""
+    for c in raw: w.push(c.lower)
+    if w not in seen_words:
+        seen_words.insert(w)
+        words.push(to_letters(w))
+let ac = AhoCorasick<Letter>.new(words)
 
-for text in 1..=m:
-    let s: Str = read()
-    var found = 0
-    for start in 0..s.len:
-        var at = 0
-        for i in start..s.len:
-            if let next = trie[at].kid[letter(s[i])]: at = next
-            else: break
-            if trie[at].word and trie[at].counted != text:
-                trie[at].counted = text
-                found += 1
-    print(found)
+for _ in 0..m:
+    var matched = Set<Int>()
+    for (_, id) in ac.matches(to_letters(read())):
+        matched.insert(id)
+    print(matched.len)

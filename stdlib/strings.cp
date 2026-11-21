@@ -816,6 +816,25 @@ pub struct SuffixAutomaton<A>:
             if p != -1: occ[p] += occ[v]
         occ
 
+    /// Longest common substring of the indexed string and `other`: returns `(len, end)` where
+    /// `other[end - len..end]` is a longest common substring. O(|other|).
+    @allow(unproven_list_index)
+    pub fn lcs(self, other: List<A>) -> (len: Int, end: Int):
+        var (v, l, best_len, best_end) = (0, 0, 0, 0)
+        for i in 0..other.len:
+            let c = other[i].to_idx
+            while v != 0 and next[v * alpha + c] == -1:
+                v = links[v]
+                l = max_len[v]
+            let nxt = next[v * alpha + c]
+            if nxt != -1:
+                v = nxt
+                l += 1
+            if l > best_len:
+                best_len = l
+                best_end = i + 1
+        (len: best_len, end: best_end)
+
 /// Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
 /// for O(n log n) palindromic partition DP.
 /// State `0` is the odd root (`pal_len == -1`); state `1` is the even root (`pal_len == 0`).
@@ -1447,6 +1466,15 @@ fn suffix_automaton_matches_brute_and_linear_occurrences():
             for r in l + 1..=n: seen.add([s[j] for j in l..r])
         assert sam.distinct == seen.len
         assert sam.len <= max(2 * n, 1)
+        let m = rand(0, 10)
+        let t = [A(rand(0, 1)) for _ in 0..m]
+        let (lcs_len, lcs_end) = sam.lcs(t)
+        var brute_lcs = 0
+        for i in 0..m:
+            for j in i + 1..=m:
+                if [t[k] for k in i..j] in seen: brute_lcs max= j - i
+        assert lcs_len == brute_lcs
+        if lcs_len > 0: assert [t[k] for k in lcs_end - lcs_len..lcs_end] in seen
 
 @test
 fn palindromic_tree_distinct_occurrences_and_series_dp():

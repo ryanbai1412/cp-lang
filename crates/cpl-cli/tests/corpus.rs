@@ -60,8 +60,6 @@ const PENDING: &[&str] = &[
 /// file leaves this list when it builds, and the test below says so;
 /// nothing is to be added to it.
 const NOT_BUILT: &[&str] = &[
-    "proto/ports/ccc03s4.cp",
-    "proto/ports/ccc20s3.cp",
     "proto/ports/ccc23s4.cp",
     "proto/ports/cco18p1.cp",
     "proto/ports/ceoi09p3.cp",

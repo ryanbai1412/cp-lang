@@ -35,7 +35,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `bsearch_first`, `bsearch_last` | Sequence views, searches, folds, `Perm<V>` alias |
 | `std.sparse` | `SparseTable`, `DisjointSparseTable`, `idempotent` | O(1) idempotent and non-idempotent associative range folds |
 | `std.spec` | `convexity_break`, `monge_break`, `dnc_break`, `knuth_break`, `berlekamp_massey`, `differences`, `newton` | Conjecture checking and sequence/recurrence discovery |
-| `std.strings` | `z_function`, `prefix_function`, `suffix_array`, `lcp_array`, `rfind`, `period`, `HashVal` | Linear-time string algorithms and rolling hashes |
+| `std.strings` | `z_function`, `prefix_function`, `manacher`, `SuffixArray`, `SuffixAutomaton`, `PalindromicTree`, `Trie`, `AhoCorasick`, `RollingHash`, `Hash2D` | Pattern matching, palindromes, suffix structures, tries, and rolling hashes |
 | `std.timetree` | `TimeTree`, `TimeStep` | Offline segment tree over time for rollback-based dynamic structures |
 | `std.tour` | Tour re-exports | Euler tour utilities |
 | `std.tree` | `Rooted<V>` | Rooted tree, Euler tour, LCA, HLD path queries, virtual trees |

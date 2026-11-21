@@ -1,18 +1,34 @@
-// cp: 0.1 6ac88e2+dirty
 // CCC 2020 S3 Searching for Strings: count the distinct substrings of the
 // haystack that are rearrangements of the needle.
-domain Letter = 'a'..='z'
-let needle: [domain N]Letter = read()
-let hay: [domain H]Letter = read()
+use std.strings.{HashVal, RollingHash}
 
-// Slide a window of the needle's length over the haystack. `missing` is the
-// needle's letters minus the window's: the window is a rearrangement exactly
-// when every count in it is zero.
-var missing = counts(needle)
-let hash = StrHash(hay)
-var found: Set<Int> = []
-for i in H:
-    missing[hay[i]] -= 1
-    if let gone = i - N.len: missing[hay[gone]] += 1
-    if missing.distinct == 0: found.insert(hash.of((..=i).suffix(N.len)))
+domain Letter = 'a'..='z'
+let needle: Str = read()
+let hay: Str = read()
+
+if needle.len > hay.len:
+    print(0)
+    return
+
+var missing: [Letter]Int = 0
+var nonzero = 0
+for c in needle:
+    let k = Letter(c)
+    if missing[k] == 0: nonzero += 1
+    missing[k] += 1
+
+let rh = RollingHash.new(hay)
+var found = Set<HashVal>()
+for i in 0..hay.len:
+    let add = Letter(hay[i])
+    if missing[add] == 0: nonzero += 1
+    missing[add] -= 1
+    if missing[add] == 0: nonzero -= 1
+    if i >= needle.len:
+        let drop = Letter(hay[i - needle.len])
+        if missing[drop] == 0: nonzero += 1
+        missing[drop] += 1
+        if missing[drop] == 0: nonzero -= 1
+    if i + 1 >= needle.len and nonzero == 0:
+        found.insert(rh.slice(i + 1 - needle.len, i + 1))
 print(found.len)
