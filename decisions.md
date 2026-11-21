@@ -3228,12 +3228,7 @@ alias such a global by reference bind `const auto&`. Test:
 `global_stored_once_with_a_literal_is_constexpr`. Reverse by deleting
 `Emitter::const_global` and the `const_globals` checks in `stmt.rs` and
 `expr.rs`.
-<<<<<<< HEAD
-<<<<<<< HEAD
-||||||| parent of 12932e01 (docs: document product domains and log decision 86)
-=======
 
->>>>>>> 12932e01 (docs: document product domains and log decision 86)
 ## 83. Canonical-spelling docs gate and reasoning-enabled writable-from-docs harness (2026-11-21)
 
 1. **Enforce accepted CP Lang spellings in `site/check_docs.py` (`check_canonical_spellings`).**
