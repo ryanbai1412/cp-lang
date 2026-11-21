@@ -594,7 +594,17 @@ impl<'a> Parser<'a> {
             })
         });
         let init = if self.eat(T::Eq) {
-            Some(self.expr())
+            if self.at(T::Mut) {
+                let mstart = self.start();
+                self.bump();
+                let inner = self.expr();
+                Some(Expr {
+                    kind: ExprKind::Mut(Box::new(inner)),
+                    span: self.span_from(mstart),
+                })
+            } else {
+                Some(self.expr())
+            }
         } else {
             if ty.is_none() {
                 let word = if mutable { "var" } else { "let" };
@@ -1097,7 +1107,39 @@ impl<'a> Parser<'a> {
         if self.eat(T::Comma) {
             return Cond::Guard { test, and: Box::new(self.more_clauses()) };
         }
-        Cond::Expr(test)
+        fn unwrap_is_cond(expr: Expr) -> Cond {
+            let is_match = matches!(
+                &expr.kind,
+                ExprKind::If {
+                    branches,
+                    otherwise: Some(otherwise),
+                } if branches.len() == 1
+                    && matches!(branches[0].0, Cond::Let { and: None, .. })
+                    && branches[0].1.stmts.len() == 1
+                    && matches!(branches[0].1.stmts[0].kind, StmtKind::Expr(_))
+                    && otherwise.stmts.len() == 1
+                    && matches!(otherwise.stmts[0].kind, StmtKind::Expr(Expr { kind: ExprKind::Bool(false), .. }))
+            );
+            if is_match {
+                let ExprKind::If { mut branches, .. } = expr.kind else {
+                    unreachable!()
+                };
+                let (Cond::Let { pat, value, .. }, mut then) = branches.pop().unwrap() else {
+                    unreachable!()
+                };
+                let StmtKind::Expr(rhs) = then.stmts.pop().unwrap().kind else {
+                    unreachable!()
+                };
+                let and = if matches!(rhs.kind, ExprKind::Bool(true)) {
+                    None
+                } else {
+                    Some(Box::new(unwrap_is_cond(rhs)))
+                };
+                return Cond::Let { pat, value, and };
+            }
+            Cond::Expr(expr)
+        }
+        unwrap_is_cond(test)
     }
 
     /// Parses `pat = value` after `let` (or after `,` in multi-binding

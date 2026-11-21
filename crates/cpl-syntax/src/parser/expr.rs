@@ -163,9 +163,55 @@ impl<'a> Parser<'a> {
         lhs
     }
 
+    fn at_is_pattern(&self) -> bool {
+        self.at_ident("is")
+            && self.same_line()
+            && matches!(self.peek_n(1), T::Ident | T::LParen)
+    }
+
     pub(super) fn and(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.not();
+        if self.at_is_pattern() {
+            self.bump();
+            let pat = self.pattern();
+            let rhs = if self.at(T::And) && self.peek_n(1) != T::Let {
+                self.bump();
+                self.and()
+            } else {
+                Expr {
+                    kind: ExprKind::Bool(true),
+                    span: self.span_from(start),
+                }
+            };
+            let span = self.span_from(start);
+            let wrap_block = |e: Expr| Block {
+                stmts: vec![Stmt {
+                    public: false,
+                    decorators: Vec::new(),
+                    kind: StmtKind::Expr(e),
+                    span,
+                }],
+                span,
+            };
+            return Expr {
+                kind: ExprKind::If {
+                    branches: vec![(
+                        Cond::Let {
+                            pat,
+                            value: lhs,
+                            and: None,
+                        },
+                        wrap_block(rhs),
+                    )],
+                    otherwise: Some(wrap_block(Expr {
+                        kind: ExprKind::Bool(false),
+                        span,
+                    })),
+                },
+                span,
+            };
+        }
         // `and let` goes on to another binding, not another operand.
         while self.at(T::And) && self.peek_n(1) != T::Let {
             lhs = self.binary(start, BinOp::And, lhs, Self::not);
@@ -485,23 +531,41 @@ impl<'a> Parser<'a> {
             };
             (vec![param("it")], body)
         } else if matches!(self.peek_n(1), T::Comma | T::RParen) {
-            let op = match self.peek() {
-                T::Plus => BinOp::Add,
-                T::Minus => BinOp::Sub,
-                T::Star => BinOp::Mul,
-                T::Pipe => BinOp::BitOr,
-                T::Caret => BinOp::BitXor,
-                T::Amp => BinOp::BitAnd,
-                _ => return None,
+            let cmp = match self.peek() {
+                T::Lt => Some(CmpOp::Lt),
+                T::LtEq => Some(CmpOp::Le),
+                T::Gt => Some(CmpOp::Gt),
+                T::GtEq => Some(CmpOp::Ge),
+                T::EqEq => Some(CmpOp::Eq),
+                T::NotEq => Some(CmpOp::Ne),
+                _ => None,
             };
-            self.bump();
-            let body = ExprKind::Binary {
-                op,
-                op_span: span,
-                lhs: name("a"),
-                rhs: name("b"),
-            };
-            (vec![param("a"), param("b")], body)
+            if let Some(op) = cmp {
+                self.bump();
+                let body = ExprKind::Compare {
+                    first: name("a"),
+                    rest: vec![(op, *name("b"))],
+                };
+                (vec![param("a"), param("b")], body)
+            } else {
+                let op = match self.peek() {
+                    T::Plus => BinOp::Add,
+                    T::Minus => BinOp::Sub,
+                    T::Star => BinOp::Mul,
+                    T::Pipe => BinOp::BitOr,
+                    T::Caret => BinOp::BitXor,
+                    T::Amp => BinOp::BitAnd,
+                    _ => return None,
+                };
+                self.bump();
+                let body = ExprKind::Binary {
+                    op,
+                    op_span: span,
+                    lhs: name("a"),
+                    rhs: name("b"),
+                };
+                (vec![param("a"), param("b")], body)
+            }
         } else {
             return None;
         };

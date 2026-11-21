@@ -718,12 +718,20 @@ impl<'a> Checker<'a> {
                     (None, None) => Ty::Error,
                 };
                 let mut out = Vec::new();
+                let is_mut = *mutable
+                    || matches!(
+                        init,
+                        Some(ast::Expr {
+                            kind: ast::ExprKind::Mut(_),
+                            ..
+                        })
+                    );
                 let mut value = |name: &str, ty: Ty| {
                     out.push((
                         name.to_string(),
                         Def::Value {
                             ty,
-                            mutable: *mutable,
+                            mutable: is_mut,
                             keyword,
                             generics: Vec::new(),
                             settled: None,

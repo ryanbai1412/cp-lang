@@ -90,6 +90,10 @@ impl Visitor for Scopes<'_> {
     }
 
     fn expr(&mut self, expr: &Expr) {
+        if let ExprKind::Mut(inner) = &expr.kind {
+            self.changes(inner);
+            return;
+        }
         let ExprKind::Call { callee, args } = &expr.kind else {
             return;
         };

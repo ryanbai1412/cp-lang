@@ -113,7 +113,12 @@ impl<'a> Lowerer<'a> {
                     self.err_expr(span)
                 }
             },
-            ast::ExprKind::Name(name) => self.name(name, inner_hint, span),
+            ast::ExprKind::Name(name) => {
+                if let Some(p) = self.cx.mut_aliases.get(name) {
+                    return place_to_expr(p);
+                }
+                self.name(name, inner_hint, span)
+            }
             ast::ExprKind::SelfValue => {
                 if let Some(slot) = self.lookup("self") {
                     return self.local(slot, span);
@@ -478,6 +483,7 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(built));
                 })
             }
+            ast::ExprKind::Mut(inner) => self.expr(inner, inner_hint),
             ast::ExprKind::Try(inner) => self.try_expr(inner, span),
             ast::ExprKind::Unwrap(inner) => {
                 self.cx.as_written = narrow::asks_optional(inner);
@@ -1031,6 +1037,28 @@ impl<'a> Lowerer<'a> {
                             hi: Box::new(hi),
                         },
                         Ty::Range(Box::new(Ty::Int)),
+                        span,
+                    )
+                }
+                (Ty::I128, Ty::I128) | (Ty::I128, Ty::Int) | (Ty::Int, Ty::I128) => {
+                    let l = self.coerce(l, &Ty::I128, span);
+                    let r = self.coerce(r, &Ty::I128, span);
+                    let hi = if inclusive {
+                        let one = self.coerce(self.int_lit(1, span), &Ty::I128, span);
+                        self.mk(
+                            ExprKind::Binary(BinOp::Add, Box::new(r), Box::new(one)),
+                            Ty::I128,
+                            span,
+                        )
+                    } else {
+                        r
+                    };
+                    self.mk(
+                        ExprKind::Range {
+                            lo: Box::new(l),
+                            hi: Box::new(hi),
+                        },
+                        Ty::Range(Box::new(Ty::I128)),
                         span,
                     )
                 }

@@ -192,6 +192,8 @@ pub(crate) enum Value {
     Opt(OptVal),
     /// A half-open range `(lo, hi)`.
     Range(i64, i64),
+    /// A half-open 128-bit integer range `(lo, hi)`.
+    Range128(i128, i128),
     /// A runtime domain handle `(lo, len)`.
     DomainVal(i64, i64),
     /// A closure value referencing `Program::closures[id]` with captured environment.
@@ -557,6 +559,7 @@ impl Value {
             Value::Moved => 16,
             Value::I128(_) => 17,
             Value::U64(_) => 18,
+            Value::Range128(..) => 19,
         }
     }
 }
@@ -578,6 +581,7 @@ impl Ord for Value {
             (Value::Str(a), Value::Str(b)) => a.cmp(b),
             (Value::Opt(a), Value::Opt(b)) => a.cmp(b),
             (Value::Range(a1, a2), Value::Range(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
+            (Value::Range128(a1, a2), Value::Range128(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
             (Value::DomainVal(a1, a2), Value::DomainVal(b1, b2)) => (a1, a2).cmp(&(b1, b2)),
             (Value::Closure(a, _), Value::Closure(b, _)) => a.cmp(b),
             (Value::Tuple(a), Value::Tuple(b)) => a.cmp(b),
@@ -617,6 +621,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Char => Value::Char(0),
         Ty::Str => Value::Str(Rc::new(Vec::new())),
         Ty::Opt(_) => Value::Opt(OptVal::None),
+        Ty::Range(inner) if **inner == Ty::I128 => Value::Range128(0, 0),
         Ty::Range(_) => Value::Range(0, 0),
         Ty::DomainVal => Value::DomainVal(0, 0),
         Ty::Fn(..) | Ty::Mut(_) => Value::Unit,
@@ -768,6 +773,9 @@ pub(crate) fn show(
                 out.push(b' ');
                 rec(out, value, value_ty);
             }
+        }
+        (Value::Range128(lo, hi), Ty::Range(_)) => {
+            let _ = write!(out, "{lo}..{hi}");
         }
         (Value::Range(lo, hi), Ty::Range(inner)) => {
             if let Ty::Pos(d) = **inner {

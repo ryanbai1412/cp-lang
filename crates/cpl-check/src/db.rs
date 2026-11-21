@@ -1333,10 +1333,19 @@ impl FileCtx<'_> {
         let items = self.items.clone();
         let vars = self.vars.get_or_insert_with(|| {
             let mutable = |item: &&Arc<ItemSyntax>| {
-                item.parsed
-                    .stmts
-                    .iter()
-                    .any(|stmt| matches!(stmt.kind, StmtKind::Let { mutable: true, .. }))
+                item.parsed.stmts.iter().any(|stmt| {
+                    matches!(
+                        stmt.kind,
+                        StmtKind::Let { mutable: true, .. }
+                            | StmtKind::Let {
+                                init: Some(cpl_syntax::ast::Expr {
+                                    kind: cpl_syntax::ast::ExprKind::Mut(_),
+                                    ..
+                                }),
+                                ..
+                            }
+                    )
+                })
             };
             items
                 .iter()

@@ -155,6 +155,54 @@ impl<'a> Lowerer<'a> {
                     Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
                     Some(Sym::GenStruct(gid)) => self.call_gen_struct(gid, Vec::new(), args, hint, span),
                     Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
+                    Some(Sym::Enum(eid))
+                        if !self.enums[eid].variants.is_empty()
+                            && self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty()) =>
+                    {
+                        let Some(exprs) = self.positional_any(name, args, 1, span) else {
+                            return self.err_expr(span);
+                        };
+                        let v = self.expr(exprs[0], None);
+                        let iv = self.coerce(v, &Ty::Int, exprs[0].span);
+                        let loc = self.temp(Ty::Int);
+                        let init = Stmt::Let(loc, Some(iv));
+                        let discs = self.enum_discriminants.get(eid).cloned().unwrap_or_default();
+                        let n = self.enums[eid].variants.len();
+                        let mut acc = self.mk(
+                            ExprKind::Variant(n - 1, Vec::new()),
+                            Ty::Enum(eid),
+                            span,
+                        );
+                        for tag in (0..n.saturating_sub(1)).rev() {
+                            let disc = discs.get(tag).copied().unwrap_or(tag as i64);
+                            let cond = self.mk(
+                                ExprKind::Cmp(
+                                    CmpOp::Eq,
+                                    Box::new(self.mk(ExprKind::Local(loc), Ty::Int, span)),
+                                    Box::new(self.int_lit(disc, span)),
+                                ),
+                                Ty::Bool,
+                                span,
+                            );
+                            let then = self.mk(
+                                ExprKind::Variant(tag, Vec::new()),
+                                Ty::Enum(eid),
+                                span,
+                            );
+                            acc = self.mk(
+                                ExprKind::If(Box::new(cond), Box::new(then), Box::new(acc)),
+                                Ty::Enum(eid),
+                                span,
+                            );
+                        }
+                        self.mk(
+                            ExprKind::Do(Block {
+                                stmts: vec![init, Stmt::Give(acc)],
+                            }),
+                            Ty::Enum(eid),
+                            span,
+                        )
+                    }
                     Some(Sym::Domain(id)) => {
                         let Some(exprs) = self.positional_any(name, args, 1, span) else {
                             return self.err_expr(span);
@@ -1579,6 +1627,41 @@ impl<'a> Lowerer<'a> {
                     span,
                 );
             }
+            ("Int", Ty::Enum(eid))
+                if !self.enums[*eid].variants.is_empty()
+                    && self.enums[*eid].variants.iter().all(|(_, fs)| fs.is_empty()) =>
+            {
+                let eid = *eid;
+                let loc = self.temp(Ty::Enum(eid));
+                let init = Stmt::Let(loc, Some(value));
+                let discs = self.enum_discriminants.get(eid).cloned().unwrap_or_default();
+                let n = self.enums[eid].variants.len();
+                let mut acc = self.int_lit(discs.get(n - 1).copied().unwrap_or((n - 1) as i64), span);
+                for tag in (0..n.saturating_sub(1)).rev() {
+                    let disc = discs.get(tag).copied().unwrap_or(tag as i64);
+                    let cond = self.mk(
+                        ExprKind::IsVariant(
+                            Box::new(self.mk(ExprKind::Local(loc), Ty::Enum(eid), span)),
+                            tag,
+                        ),
+                        Ty::Bool,
+                        span,
+                    );
+                    let then = self.int_lit(disc, span);
+                    acc = self.mk(
+                        ExprKind::If(Box::new(cond), Box::new(then), Box::new(acc)),
+                        Ty::Int,
+                        span,
+                    );
+                }
+                return self.mk(
+                    ExprKind::Do(Block {
+                        stmts: vec![init, Stmt::Give(acc)],
+                    }),
+                    Ty::Int,
+                    span,
+                );
+            }
             ("F64", Ty::Int) => (Cast::IntToFloat, Ty::Float),
             ("I128", Ty::Int) => (Cast::IntToI128, Ty::I128),
             ("Int", Ty::I128) => (Cast::I128ToInt, Ty::Int),
@@ -2989,7 +3072,8 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::Range(inner), "lo") => {
                 let inner = (**inner).clone();
-                let lo = builtin(self, Builtin::RangeLo, vec![value], Ty::Int);
+                let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
+                let lo = builtin(self, Builtin::RangeLo, vec![value], res_ty);
                 match inner {
                     Ty::Pos(d) => self.cast(Cast::Trust, lo, Ty::Bound(d)),
                     _ => lo,
@@ -2997,7 +3081,8 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::Range(inner), "hi") => {
                 let inner = (**inner).clone();
-                let hi = builtin(self, Builtin::RangeHi, vec![value], Ty::Int);
+                let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
+                let hi = builtin(self, Builtin::RangeHi, vec![value], res_ty);
                 match inner {
                     Ty::Pos(d) => self.cast(Cast::Trust, hi, Ty::Bound(d)),
                     _ => hi,

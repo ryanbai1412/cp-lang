@@ -131,6 +131,13 @@ impl<'a> Checker<'a> {
                     (Some(Ty::Pos(d)), _) | (_, Some(Ty::Pos(d))) => {
                         Ty::Pos(d.strip_suffix(".bounds").unwrap_or(d).to_string())
                     }
+                    (Some(a), Some(b))
+                        if (*a == Ty::I128 && (*b == Ty::I128 || b.is_int()))
+                            || (*b == Ty::I128 && a.is_int()) =>
+                    {
+                        Ty::I128
+                    }
+                    (Some(Ty::I128), None) | (None, Some(Ty::I128)) => Ty::I128,
                     (Some(a), Some(b)) if a.is_int() && b.is_int() => {
                         let lo_min = lo.as_ref().and_then(|e| self.bounds(e).0);
                         let hi_max = hi.as_ref().and_then(|e| self.bounds(e).1).map(|h| {
@@ -471,6 +478,7 @@ impl<'a> Checker<'a> {
                 self.row_keep(target, &target_ty, value, &value_ty);
                 Ty::Bool
             }
+            ExprKind::Mut(inner) => self.infer(inner),
             ExprKind::Try(inner) | ExprKind::Unwrap(inner) => match self.infer_optional(inner) {
                 Ty::Optional(inner) => *inner,
                 Ty::Error => Ty::Error,

@@ -301,6 +301,7 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
         | ExprKind::Paren(expr)
         | ExprKind::Try(expr)
         | ExprKind::Unwrap(expr)
+        | ExprKind::Mut(expr)
         | ExprKind::Field { base: expr, .. } => walk_expr(v, expr),
         ExprKind::Binary { lhs, rhs, .. }
         | ExprKind::Keep {
@@ -436,7 +437,8 @@ pub(crate) fn root_name(expr: &Expr) -> Option<&str> {
         ExprKind::Index { base, .. }
         | ExprKind::Field { base, .. }
         | ExprKind::Paren(base)
-        | ExprKind::Unwrap(base) => root_name(base),
+        | ExprKind::Unwrap(base)
+        | ExprKind::Mut(base) => root_name(base),
         _ => None,
     }
 }

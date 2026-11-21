@@ -436,6 +436,8 @@ struct FnCx {
     local_syms: Vec<HashMap<String, Sym>>,
     /// Parameters bound to compile-time `BareOp` values (`+`, `min`, `max`, `gcd`, etc.).
     op_locals: HashMap<String, BareOp>,
+    /// Named mutable aliases (`let st = mut a[i]`): resolved to their underlying `Place`.
+    mut_aliases: HashMap<String, Place>,
     /// Block-scoped `type Alias = ...` resolved to concrete types (e.g. `type Cell = (Row, Col)`).
     local_type_aliases: HashMap<String, Ty>,
     /// Local slots declared `var` or mutated, so closures capture them by reference.
@@ -498,6 +500,7 @@ struct Lowerer<'a> {
     list_domains: HashSet<DomainId>,
 
     enums: Vec<EnumDef>,
+    enum_discriminants: Vec<Vec<i64>>,
     enum_decls: Vec<(ModId, u32, &'a ast::EnumDecl)>,
     gen_enums: Vec<GenEnumTemplate<'a>>,
     enum_insts: HashMap<(GenEnumId, Vec<GenArg>), EnumId>,
@@ -602,6 +605,7 @@ impl<'a> Lowerer<'a> {
             call_sized: None,
             list_domains: HashSet::new(),
             enums: Vec::new(),
+            enum_discriminants: Vec::new(),
             enum_decls: Vec::new(),
             gen_enums: Vec::new(),
             enum_insts: HashMap::new(),
@@ -999,6 +1003,7 @@ impl<'a> Lowerer<'a> {
                                 name: ename,
                                 variants: Vec::new(),
                             });
+                            self.enum_discriminants.push(Vec::new());
                             self.enum_decls.push((m, offset, decl));
                         }
                     }
@@ -1228,14 +1233,24 @@ impl<'a> Lowerer<'a> {
             let (m, offset, decl) = self.enum_decls[id];
             self.cur_mod = m;
             self.offset = offset;
+            let mut next_disc: i64 = 0;
+            let mut discs = Vec::with_capacity(decl.variants.len());
             let variants = decl
                 .variants
                 .iter()
                 .map(|v| {
+                    let disc = if let Some(val) = &v.value {
+                        self.eval_const_int(val).unwrap_or(next_disc)
+                    } else {
+                        next_disc
+                    };
+                    discs.push(disc);
+                    next_disc = disc.saturating_add(1);
                     let fields = v.fields.iter().map(|(_, t)| self.resolve_ty(t)).collect();
                     (v.name.text.clone(), fields)
                 })
                 .collect();
+            self.enum_discriminants[id] = discs;
             self.enums[id].variants = variants;
         }
         let num_sigs = self.sigs.len();

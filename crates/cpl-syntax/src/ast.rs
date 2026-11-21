@@ -242,6 +242,7 @@ pub struct EnumDecl {
 pub struct Variant {
     pub name: Name,
     pub fields: Vec<(Option<Name>, Type)>,
+    pub value: Option<Expr>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -385,6 +386,8 @@ pub enum ExprKind {
     Try(Box<Expr>),
     /// Postfix `!`: the value of an optional that is known to be there.
     Unwrap(Box<Expr>),
+    /// `mut place` in `let st = mut a[i]`: a named mutable alias to a place.
+    Mut(Box<Expr>),
     /// An expression was expected and nothing was there. Already reported.
     Missing,
     /// Tokens the parser could not read as an expression. Already reported.

@@ -28,13 +28,13 @@ mechanisms (compile-time reflection over fields and variants, variadic
 generics as tuple packs, lazy parameters, writable places returned from
 methods), user optionals reach 8 bytes through a library `Niche`, and a
 library can say in its own words why a call does not type-check.
-**Where we are** (audited 2026-11-21 at `c25cc7e9`+). Working: `repeat`,
-`loop`, one-line enums and structs (paren and colon forms), multi-binding `let`/`var`
+**Where we are** (audited 2026-11-21 at `815c21e4`+). Working: `repeat`,
+`loop`, one-line enums (including explicit integer discriminants `enum Sign: neg = -1, zero = 0, pos = 1` with `Int(s)`/`Sign(n)` conversion) and structs (paren and colon forms), multi-binding `let`/`var`
 (tuple and scalar-fill broadcast `var a, b, c: Z = 0`), typed tuple patterns
-`let (a: T, b: U) = ...`, unary `+`, counted domains, `read(lo..=hi)`,
-`read<[n]T>()` / `read<1..=3>()`, `x with field: v` record/struct update,
-typed lambda params `(x: T) => ...`, `--- multitest ---` / `--- with multitest() ---`
-wrap-lines, enum-indexed arrays `[Sign]T`, `Mod<1e9 + 7>` additive value type args,
+`let (a: T, b: U) = ...`, named mutable aliases `let st = mut a[i]` (with once-evaluated index temps), unary `+`, counted domains, `read(lo..=hi)`,
+`read<[n]T>()` / `read<1..=3>()` (canonical `f<T>(...)` with `L0204` warning + `cpl fix` codemod for legacy `f::<T>(...)`), `x with field: v` record/struct update,
+typed lambda params `(x: T) => ...` (typechecked in `cpl-check` and `cpl-ir`), comparison operator sections (`by: <`, `by: >`, etc.), `x is name` pattern-test expressions (`x is v and v > 5`, `if x is v:`, `while cur is n:`), `--- multitest ---` / `--- with multitest() ---`
+wrap-lines (provisional; `@!multitest` remains canonical in ports), enum-indexed arrays `[Sign]T`, `Mod<1e9 + 7>` additive value type args,
 multi-clause `for a in ..., b in ...:`, `guard let ... else:`, unit-valued
 top-level `return print(...)`, `D.count`, `for ... if`/`where`,
 `if let`/`while let` (statement and `if let ... else:` expression) with `where`
@@ -43,7 +43,7 @@ and multi-binding `if let a = x, b = y`, `let ... else`, `if x max= y:`,
 `max(?T, T)`, `max=`/`min=` on optionals, `[A, B]T`, `[(A, B)]T` and `[A][B]T`,
 `pairs()`/`with_prev()` in `std.seq`, `Self` (including dotted range bounds `Self.min..=Self.max`)
 and associated types in traits. Dream-port audit (`proto/ports/*/dream/*.cp`):
-**1/42** passing `cpl check` (`cf2069c.cp`, up from 0/29). Structs get `Eq`, `Ord`, `Hash`, `Show` and
+**1/45** passing `cpl check` (`cf2069c.cp`, up from 0/29; 22 of the 44 remaining are now first-blocked on stdlib rather than core syntax). Structs get `Eq`, `Ord`, `Hash`, `Show` and
 `Read` from the compiler, structurally, with `impl Show/Eq/Ord` as hooks
 (`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is stdlib privilege, not library
 code. Enums order by variant, then payload (decision 28.2).
@@ -114,6 +114,57 @@ type-param defaults, one-sided range types, postfix `?` extent, and remaining
 | `40-signatures.md#5` | `E0103`: bodyless `fn undirected(...)` in `impl Graph<V, W>` (`W = ()` default now implemented) | §1 core syntax |
 | `40-signatures.md#6` | `E0103`: bodyless `fn len(self) -> Int` in `impl Str` (opaque `struct Str` now parses) | §1 core syntax |
 | `40-signatures.md#7` | `E0103`: `fn read<T: Read>() -> T uses io` (bodyless fn + `uses` + variadics) | §1 core syntax + core-extensions |
+
+**Dream-port audit (`proto/ports/*/dream/*.cp`, 1/45 passing `cpl check`).**
+Each dream's first blocker and owning lane (22 stdlib, 22 core syntax/semantics, 1 pass):
+
+| Dream | First blocker | Owner |
+|---|---|---|
+| `cf2069c.cp` | PASS | — |
+| `cf2062e1.cp` | `E0107`: `with io(base: 1)` context directive | §1 core syntax |
+| `cf2062e2.cp` | `E0107`: `with io(base: 1)` context directive | §1 core syntax |
+| `cf2062g.cp` | `E0107`: `with io(base: 1)` context directive | §1 core syntax |
+| `cf2062h.cp` | `E0204`: no type or domain named `Bits` | stdlib |
+| `cf2066b.cp` | `E0310`: `count` has no argument named `where` | stdlib |
+| `cf2066c.cp` | `E0105`: inline `let a: [read(1..=2e5)]1..=1e9` | §1 core syntax |
+| `cf2066d1.cp` | `E0107`: parameterized alias `type M = Mint(mod: ...)` | §1 core syntax |
+| `cf2066d2.cp` | `E0107`: parameterized alias `type M = Mint(mod: ...)` | §1 core syntax |
+| `cf2066e.cp` | `E0103`: struct field default `field = val` | §1 core syntax |
+| `cf2066f.cp` | `E0302`: tuple element widening to `?Tuple` (`PosA.Cut`) | §1 core syntax / §2 domains |
+| `cf2069f.cp` | `E0204`: no type or domain named `Pair` | stdlib |
+| `cf2084e.cp` | `E0203`: `[Pos]Int` has no method `map` | stdlib |
+| `cf2084f.cp` | `E0204`: no type or domain named `Max` | stdlib |
+| `cf2084g1.cp` | `E0107`: `@rolling` array attribute | §1 core syntax |
+| `cf2084g2.cp` | `E0201`: no `LazyTreap` in scope | stdlib |
+| `cf2084h.cp` | `E0108`: `var` field inside `struct` | §1 core syntax |
+| `cf2129f1.cp` | `E0501`: generic fn/type lowering gap | §1 core syntax / IR |
+| `cf2129f2.cp` | `E0203`: `Range<Int>` has no method `group` | stdlib |
+| `cf2135e2.cp` | `E0203`: `Sieve` has no field or method `multiplicative` | stdlib |
+| `cf2135f.cp` | `E0206`: no module `std.persistent` | stdlib |
+| `cf2138e1.cp` | `E0201`: no `phi` in scope | stdlib |
+| `cf2138e2.cp` | `E0201`: no `phi` in scope | stdlib |
+| `cf2138f.cp` | `E0401`: `mut` parameter mutability on array element | §1 core syntax |
+| `cf2147f.cp` | `E0108`: anonymous/operator `fn (...)` decl | §1 core syntax |
+| `cf2147h.cp` | `E0201`: no `choose2` in scope | stdlib |
+| `cf2150f.cp` | `E0107`: `with io(...)` / statement form | §1 core syntax |
+| `cf2150g.cp` | `E0201`: `z` scope in multi-clause `for` | §1 core syntax |
+| `cf2152g.cp` | `E0107`: `record` declaration syntax | §1 core syntax |
+| `cf2159e.cp` | `E0107`: comma-separated `const A = ..., B = ...` | §1 core syntax |
+| `cf2165f.cp` | `E0302`: open-left range `a[j] <.. a[i]` (passed `by: <`) | §1 core syntax |
+| `cf2178h.cp` | `E0201`: no `Zmod` in scope | stdlib |
+| `cf2178i.cp` | `E0204`: no type or domain named `Vec2` | stdlib |
+| `cf2180f1.cp` | `E0107`: `record` declaration syntax | §1 core syntax |
+| `cf2180f2.cp` | `E0107`: `record` declaration syntax | §1 core syntax |
+| `cf2183e.cp` | `E0302`: `read()` on `[Int]?Int` | §1 core syntax |
+| `cf2183f.cp` | `E0204`: no type or domain named `Tree` | stdlib |
+| `cf2183h.cp` | `E0103`: `{ ... }` block/closure argument syntax | §1 core syntax |
+| `cf2187d.cp` | `E0107`: `Str of "01?"` bounded alphabet type | §1 core syntax |
+| `cf2187f1.cp` | `E0204`: no type or domain named `Perm` | stdlib |
+| `cf2187f2.cp` | `E0204`: no type or domain named `Perm` | stdlib |
+| `cf2222f.cp` | `E0201`: no `DsuOf` in scope | stdlib |
+| `cf2237h.cp` | `E0201`: no `IntervalMap` in scope | stdlib |
+| `cf2255e2.cp` | `E0204`: no type or domain named `MaxSub` (passed `enum Sign: neg = -1`) | stdlib |
+| `cf2262b.cp` | `E0201`: no `fixpoint` in scope (passed `x is q and ...`) | stdlib |
 
 ## 2. Index spaces and fresh domains (`plan/12`, `plan/19`)
 **North star.** Every index-space bug in the P0 list is unwritable: indices from one

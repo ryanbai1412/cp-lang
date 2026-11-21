@@ -158,6 +158,7 @@ pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {
         | ExprKind::Paren(inner)
         | ExprKind::Try(inner)
         | ExprKind::Unwrap(inner)
+        | ExprKind::Mut(inner)
         | ExprKind::Generic { base: inner, .. }
         | ExprKind::Field { base: inner, .. } => walk_expr(inner, v),
         ExprKind::Binary { lhs, rhs, .. }

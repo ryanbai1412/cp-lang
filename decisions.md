@@ -2528,13 +2528,22 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
 
 ## 48. Dream-port core syntax batch (2026-11-21)
 
-1. **`--- multitest ---` / `--- with multitest() ---` wrap-lines lower to the same `Decorator { directive: true }` AST node as `@!multitest`.**
-   Reason: reuses checker, IR, interpreter, C++17 codegen, stress, judge, LSP, and trace identically without adding an AST variant, while keeping `@!multitest` working for all existing ports (no breaking spelling change). Reverse: remove `wrap_line` from `cpl-syntax/src/parser/stmt.rs` and `is_directive_line` from `items.rs`.
+1. **`--- multitest ---` / `--- with multitest() ---` wrap-lines are provisional (program shape is a deferred design question).**
+   They lower to the same `Decorator { directive: true }` AST node as `@!multitest` so dream files parse and check today, while `@!multitest` remains the canonical spelling for corpus ports — do not codemod ports onto wrap-lines until program shape settles. Reverse: remove `wrap_line` from `cpl-syntax/src/parser/stmt.rs` and `is_directive_line` from `items.rs`.
 2. **Typed tuple patterns `let (a: T, b: U) = ...` desugar to `let (a, b): (T, U) = ...`.**
    Reason: zero AST/IR/codegen duplication; works identically with `read()` and any tuple expression. Reverse: remove `has_typed_tuple_pattern` in `cpl-syntax/src/parser/stmt.rs`.
 3. **Fieldless enum-indexed arrays `[Sign]T` lower to `DimSpec::Int(k)` and tag-checked indexing.**
    Reason: matches `[Bool]T` without new IR ops, interpreter changes, or C++ runtime types; evaluates the index expression once via a temp. Reverse: remove the `Sym::Enum` arm in `cpl-ir/src/lower/mod.rs` (`dim`) and `expr.rs` (`index_expr`).
-<<<<<<< HEAD
+4. **Canonical generic call spelling is `f<T>(...)` without `::`; `f::<T>(...)` is warned by `L0204` (`turbofish_type_args`) with a `cpl fix` / `cpl lint --fix` codemod.**
+   Reason: eliminates two spellings for one idea (`read::<T>()` vs `read<T>()`, `topo::<V>(...)` vs `topo<V>(...)`) while preserving backwards compatibility during migration. Reverse: remove `TURBOFISH_TYPE_ARGS` from `cpl-lint` and `"fix"` from `cpl-cli`.
+5. **Typed lambda parameter annotations `(x: T) => body` are retained in `ExprKind::Lambda.param_tys` and typechecked in both `cpl-check` and `cpl-ir`, with `Ty::fits_in` checking `Ty::Fn` parameter/return compatibility.**
+   Reason: parsed-but-ignored type annotations are a silent-wrongness trap. Reverse: revert `param_tys` checks.
+6. **`x is pat` (optionally chained with `and cond`) desugars to `if let pat = x: cond else: false` (and `Cond::Let` in `if`/`while` headers), and comparison operators (`<`, `>`, `<=`, `>=`, `==`, `!=`) are accepted as operator-section arguments (`by: <`).**
+   Reason: reuses existing `Cond::Let` narrowing and lambda lowering with zero new IR ops. Reverse: remove `at_is_pattern` and comparison arms in `cpl-syntax/src/parser/expr.rs`.
+7. **Fieldless enums accept explicit integer discriminants (`enum Sign: neg = -1, zero = 0, pos = 1`) with `Int(e)` and `Enum(i)` conversions lowered via `IsVariant`/equality chains.**
+   Reason: supports signed/custom discriminants without changing enum tag representation (`0..n`). Reverse: remove `Variant.value` and `enum_discriminants`.
+8. **Named mutable aliases (`let st = mut a[i]`) bind to a frozen `Place` whose index subexpressions are evaluated once into temp locals.**
+   Reason: preserves value semantics for ordinary `let` while giving zero-copy mutable element aliases (`st.lift += 1`) that agree across interpreter and C++17 codegen. Reverse: remove `ExprKind::Mut` and `FnCx.mut_aliases`.
 
 ## 49. `Int` stops one above `-2^63` (codegen and performance, 2026-11-21)
 

@@ -487,13 +487,16 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         };
-        if self.at(T::Eq) {
-            self.bump();
-            self.unary();
-            let span = self.span_from(name.span.start);
-            self.planned(span, &crate::planned::ENUM_VALUE);
+        let value = if fields.is_empty() && self.eat(T::Eq) {
+            Some(self.expr())
+        } else {
+            None
+        };
+        Variant {
+            name,
+            fields,
+            value,
         }
-        Variant { name, fields }
     }
 
     pub(super) fn domain_decl(&mut self) -> StmtKind {

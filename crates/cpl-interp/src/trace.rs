@@ -979,6 +979,14 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
                 out.push_str(&text);
             }
         }
+        (Value::Range128(lo, hi), _) => {
+            let text = format!("{lo}..{hi}");
+            if json {
+                string(out, &text);
+            } else {
+                out.push_str(&text);
+            }
+        }
         (Value::Tuple(fields), _) => {
             let mut scratch = [Value::Unit];
             let fields = fields.as_slice(&mut scratch);

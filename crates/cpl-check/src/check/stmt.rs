@@ -514,6 +514,14 @@ impl<'a> Checker<'a> {
                 let mut bound = Vec::new();
                 pattern_types(pat, &ty, &mut |name, _| bound.push(name.to_string()));
                 self.drop_facts(&bound);
+                let is_mut = *mutable
+                    || matches!(
+                        init,
+                        Some(Expr {
+                            kind: ExprKind::Mut(_),
+                            ..
+                        })
+                    );
                 match super::types::domain_binding(pat) {
                     // `let LIM = 100`: with no `else` there is no variant
                     // to match, so a capitalized name is bound to the value.
@@ -524,9 +532,9 @@ impl<'a> Checker<'a> {
                                 Some(Def::Variant { .. })
                             ) =>
                     {
-                        self.declare(name, pat.span, ty.clone(), *mutable, keyword);
+                        self.declare(name, pat.span, ty.clone(), is_mut, keyword);
                     }
-                    _ => self.bind(pat, &ty, *mutable, keyword),
+                    _ => self.bind(pat, &ty, is_mut, keyword),
                 }
                 if let Some(guard) = guard {
                     let ty = self.infer(guard);

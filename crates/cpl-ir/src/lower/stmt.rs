@@ -261,6 +261,21 @@ impl<'a> Lowerer<'a> {
                 init,
                 ..
             } => {
+                // `let st = mut a[i]`: bind `st` as a mutable alias to the place `a[i]`,
+                // evaluating any index subexpressions once into temporary locals.
+                if let (
+                    ast::PatternKind::Name(alias_name),
+                    Some(ast::Expr {
+                        kind: ast::ExprKind::Mut(target),
+                        ..
+                    }),
+                ) = (&pat.kind, init)
+                {
+                    let raw = self.place(target);
+                    let frozen = self.freeze_place(raw, out);
+                    self.cx.mut_aliases.insert(alias_name.clone(), frozen);
+                    return;
+                }
                 // Handle untyped `var m = Map()` / `HashMap()` by peeking subsequent uses in the block.
                 let inferred_map_ty = if ty.is_none() {
                     if let (
@@ -3110,6 +3125,39 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Evaluate index subexpressions in `place` once into temp locals so a named
+    /// mutable alias (`let st = mut a[k % 2]`) stays bound to the same element even
+    /// if `k` changes later.
+    fn freeze_place(&mut self, place: Place, out: &mut Vec<Stmt>) -> Place {
+        let Place { kind, ty, span } = place;
+        let kind = match kind {
+            PlaceKind::Local(_) | PlaceKind::Global(_) => kind,
+            PlaceKind::Field(base, fi) => {
+                PlaceKind::Field(Box::new(self.freeze_place(*base, out)), fi)
+            }
+            PlaceKind::Some(base) => PlaceKind::Some(Box::new(self.freeze_place(*base, out))),
+            PlaceKind::Index(base, idxs) => {
+                let base = self.freeze_place(*base, out);
+                let frozen_idxs = idxs
+                    .into_iter()
+                    .map(|idx| {
+                        let slot = self.temp(idx.ty.clone());
+                        let ispan = idx.span;
+                        let ity = idx.ty.clone();
+                        out.push(Stmt::Let(slot, Some(idx)));
+                        Expr {
+                            kind: ExprKind::Local(slot),
+                            ty: ity,
+                            span: ispan,
+                        }
+                    })
+                    .collect();
+                PlaceKind::Index(Box::new(base), frozen_idxs)
+            }
+        };
+        Place { kind, ty, span }
+    }
+
     /// `e` as something to store into.
     pub(super) fn place(&mut self, e: &ast::Expr) -> Place {
         let span = self.span(e.span);
@@ -3131,6 +3179,11 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::ExprKind::Name(_) | ast::ExprKind::SelfValue => {
+                if let ast::ExprKind::Name(n) = &e.kind {
+                    if let Some(aliased) = self.cx.mut_aliases.get(n).cloned() {
+                        return aliased;
+                    }
+                }
                 // Inside an inlined `lends` projection, `self` or bare fields of `self` refer to `inline_self`.
                 if let Some((ref recv_place, sid)) = self.cx.inline_self.clone() {
                     match &e.kind {

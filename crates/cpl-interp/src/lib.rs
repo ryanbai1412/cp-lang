@@ -865,28 +865,45 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                 }
             }
-            Iter::RangeVal(expr, rev) => {
-                if let Value::Range(lo, hi) = self.eval(expr)? {
-                    if lo < hi {
-                        if *rev {
-                            let mut v = hi - 1;
-                            while v >= lo {
-                                round!(Value::Int(v));
-                                if v == lo {
-                                    break;
-                                }
-                                v -= 1;
+            Iter::RangeVal(expr, rev) => match self.eval(expr)? {
+                Value::Range(lo, hi) if lo < hi => {
+                    if *rev {
+                        let mut v = hi - 1;
+                        while v >= lo {
+                            round!(Value::Int(v));
+                            if v == lo {
+                                break;
                             }
-                        } else {
-                            let mut v = lo;
-                            while v < hi {
-                                round!(Value::Int(v));
-                                v += 1;
-                            }
+                            v -= 1;
+                        }
+                    } else {
+                        let mut v = lo;
+                        while v < hi {
+                            round!(Value::Int(v));
+                            v += 1;
                         }
                     }
                 }
-            }
+                Value::Range128(lo, hi) if lo < hi => {
+                    if *rev {
+                        let mut v = hi - 1;
+                        while v >= lo {
+                            round!(Value::I128(v));
+                            if v == lo {
+                                break;
+                            }
+                            v -= 1;
+                        }
+                    } else {
+                        let mut v = lo;
+                        while v < hi {
+                            round!(Value::I128(v));
+                            v += 1;
+                        }
+                    }
+                }
+                _ => {}
+            },
             Iter::Subsets(mask_expr) => {
                 let mask = self.eval(mask_expr)?.int();
                 let mut g = mask;
@@ -1747,9 +1764,15 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Closure(*cid, Rc::new(caps))
             }
             ExprKind::Range { lo, hi } => {
-                let lo = self.eval(lo)?.int();
-                let hi = self.eval(hi)?.int();
-                Value::Range(lo, hi)
+                if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
+                    let lo = self.eval(lo)?.i128();
+                    let hi = self.eval(hi)?.i128();
+                    Value::Range128(lo, hi)
+                } else {
+                    let lo = self.eval(lo)?.int();
+                    let hi = self.eval(hi)?.int();
+                    Value::Range(lo, hi)
+                }
             }
             ExprKind::DomainVal(id) => {
                 let (lo, len) = self.domains[*id];
@@ -3052,6 +3075,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Map(entries) => entries.len() as i64,
                 Value::Set(items) => items.len() as i64,
                 Value::Range(lo, hi) => (hi - lo).max(0),
+                Value::Range128(lo, hi) => (hi - lo).max(0) as i64,
                 Value::DomainVal(_, len) => *len,
                 _ => 0,
             }),
@@ -3059,12 +3083,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::List(items) => optional(items.first().cloned()),
                 Value::Array(array) => optional(array.first()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
+                Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*lo))),
                 _ => Value::Opt(OptVal::None),
             },
             Builtin::Last => match &first {
                 Value::List(items) => optional(items.last().cloned()),
                 Value::Array(array) => optional(array.last()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
+                Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*hi - 1))),
                 _ => Value::Opt(OptVal::None),
             },
             Builtin::FirstVal => match &first {
@@ -3097,6 +3123,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                     },
                     Value::Range(lo, hi) => {
                         let x = needle.int();
+                        x >= *lo && x < *hi
+                    }
+                    Value::Range128(lo, hi) => {
+                        let x = needle.i128();
                         x >= *lo && x < *hi
                     }
                     _ => false,
@@ -3261,10 +3291,12 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             Builtin::RangeLo => match first {
                 Value::Range(lo, _) => Value::Int(lo),
+                Value::Range128(lo, _) => Value::I128(lo),
                 _ => Value::Int(0),
             },
             Builtin::RangeHi => match first {
                 Value::Range(_, hi) => Value::Int(hi),
+                Value::Range128(_, hi) => Value::I128(hi),
                 _ => Value::Int(0),
             },
             Builtin::RangeRev => match first {
@@ -3273,6 +3305,18 @@ impl<'p, 'o> Interp<'p, 'o> {
                     let mut v = hi - 1;
                     while v >= lo {
                         out.push(Value::Int(v));
+                        if v == lo {
+                            break;
+                        }
+                        v -= 1;
+                    }
+                    Value::List(Rc::new(out))
+                }
+                Value::Range128(lo, hi) => {
+                    let mut out = Vec::with_capacity((hi - lo).max(0) as usize);
+                    let mut v = hi - 1;
+                    while v >= lo {
+                        out.push(Value::I128(v));
                         if v == lo {
                             break;
                         }
