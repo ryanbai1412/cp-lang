@@ -11,7 +11,11 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct FnSummary {
     pub io: bool,
-    /// It calls a fn value or makes a closure, so what it does is not known.
+    /// It calls a fn value or makes a closure, so it cannot be turned
+    /// inside out to feed a loop.
+    pub calls_values: bool,
+    /// What it does is not known: a fn value it may call writes a variable
+    /// it captured by reference.
     pub opaque: bool,
     /// It sizes a domain, which changes what later code sees.
     pub sizes: bool,
@@ -20,50 +24,72 @@ pub struct FnSummary {
 }
 
 /// What each fn reads, writes and prints, through the fns it calls.
+/// A call through a fn value may run any closure of the program, so it
+/// does what all of them do together: the last summary, at index
+/// `program.fns.len()`, is that union.
 pub fn summarize(program: &Program) -> Vec<FnSummary> {
-    let direct: Vec<(FnSummary, BTreeSet<usize>)> = program
-        .fns
-        .iter()
-        .map(|f| {
-            let effects = Effects::of_block(&f.body);
-            let mut summary = FnSummary {
-                writes: effects.globals.clone(),
-                ..FnSummary::default()
-            };
-            walk::deep_exprs(&f.body, &mut |e| match &e.kind {
-                ExprKind::Read(_) | ExprKind::Print(..) => summary.io = true,
-                ExprKind::CallExpr(..) | ExprKind::Closure(_) => summary.opaque = true,
-                ExprKind::Global(id) => {
-                    summary.reads.insert(*id);
-                }
-                _ => {}
-            });
-            walk::deep_stmts(&f.body, &mut |stmt| {
-                // Sizing a domain changes what later code sees.
-                if matches!(stmt, Stmt::DefDomain { .. }) {
-                    summary.io = true;
-                    summary.sizes = true;
-                }
-            });
-            (summary, effects.calls)
-        })
-        .collect();
-    let mut summaries: Vec<FnSummary> = direct.iter().map(|(s, _)| s.clone()).collect();
+    let direct_of = |body: &Block, by_ref: bool| {
+        let effects = Effects::of_block(body);
+        let mut summary = FnSummary {
+            writes: effects.globals.clone(),
+            opaque: by_ref,
+            ..FnSummary::default()
+        };
+        let mut through = false;
+        walk::deep_exprs(body, &mut |e| match &e.kind {
+            ExprKind::Read(_) | ExprKind::Print(..) => summary.io = true,
+            ExprKind::CallExpr(..) => through = true,
+            ExprKind::Closure(_) => summary.calls_values = true,
+            ExprKind::Global(id) => {
+                summary.reads.insert(*id);
+            }
+            _ => {}
+        });
+        walk::deep_stmts(body, &mut |stmt| {
+            // Sizing a domain changes what later code sees.
+            if matches!(stmt, Stmt::DefDomain { .. }) {
+                summary.io = true;
+                summary.sizes = true;
+            }
+        });
+        summary.calls_values |= through;
+        (summary, effects.calls, through)
+    };
+    let values = program.fns.len();
+    let mut direct: Vec<(FnSummary, BTreeSet<usize>, bool)> =
+        program.fns.iter().map(|f| direct_of(&f.body, false)).collect();
+    let mut all = (FnSummary::default(), BTreeSet::new(), false);
+    for c in &program.closures {
+        let (summary, calls, through) = direct_of(&c.body, c.captures.iter().any(|cap| cap.by_ref));
+        all.0.merge(&summary);
+        all.1.extend(calls);
+        all.2 |= through;
+    }
+    direct.push(all);
+    let mut summaries: Vec<FnSummary> = direct.iter().map(|(s, ..)| s.clone()).collect();
     loop {
         let before = summaries.clone();
-        for (id, (_, calls)) in direct.iter().enumerate() {
-            for callee in calls {
-                let other = before[*callee].clone();
-                summaries[id].io |= other.io;
-                summaries[id].opaque |= other.opaque;
-                summaries[id].sizes |= other.sizes;
-                summaries[id].reads.extend(other.reads);
-                summaries[id].writes.extend(other.writes);
+        for (id, (_, calls, through)) in direct.iter().enumerate() {
+            let through_values = through.then_some(values);
+            for callee in calls.iter().copied().chain(through_values) {
+                let other = before[callee].clone();
+                summaries[id].merge(&other);
             }
         }
         if summaries == before {
             return summaries;
         }
+    }
+}
+
+impl FnSummary {
+    fn merge(&mut self, other: &FnSummary) {
+        self.io |= other.io;
+        self.opaque |= other.opaque;
+        self.calls_values |= other.calls_values;
+        self.sizes |= other.sizes;
+        self.reads.extend(other.reads.iter().copied());
+        self.writes.extend(other.writes.iter().copied());
     }
 }
 
@@ -76,7 +102,7 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
 /// or call a fn value.
 fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
     let acc = f.locals.iter().position(|local| local.name == "__yields")?;
-    if acc < f.params.len() || f.params.iter().any(|p| p.mutable) || summary.sizes || summary.opaque {
+    if acc < f.params.len() || f.params.iter().any(|p| p.mutable) || summary.sizes || summary.opaque || summary.calls_values {
         return None;
     }
     let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
@@ -131,12 +157,15 @@ impl Feeds {
         // changing: a global it touches, or a list handed to it.
         let summary = &self.summaries[*callee];
         let effects = Effects::of_block(body);
-        let mut opaque = false;
+        let mut calls = effects.calls.clone();
         walk::deep_exprs(body, &mut |e| {
-            opaque |= matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_));
+            if matches!(e.kind, ExprKind::CallExpr(..)) {
+                calls.insert(self.summaries.len() - 1);
+            }
         });
+        let mut opaque = false;
         let mut writes = effects.globals.clone();
-        for f in &effects.calls {
+        for f in &calls {
             opaque |= self.summaries[*f].opaque;
             writes.extend(self.summaries[*f].writes.iter().copied());
         }

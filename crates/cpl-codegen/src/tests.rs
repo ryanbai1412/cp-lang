@@ -798,3 +798,20 @@ fn a_str_grows_in_place_when_appended_to() {
     assert!(body.contains("t.push_back((char)c)"), "{body}");
     assert!(!body.contains("Capture"), "{body}");
 }
+
+#[test]
+fn a_yields_loop_whose_body_calls_a_fn_value_runs_as_the_fn_yields() {
+    let src = |closure: &str| {
+        format!(
+            "var seen = 0\nfn upto(n: Int) -> yields Int:\n    for i in 0..n:\n        seen += 1\n        yield i * seen\n\
+             fn total(n: Int, w: Int -> Int) -> Int:\n    var t = 0\n    for x in upto(n): t += w(x)\n    t\n\
+             print(total(4, {closure}))\n"
+        )
+    };
+    let pure = cpp(&src("x => x * 2"));
+    assert!(pure.contains("cpl_each_upto(n, "), "{pure}");
+    assert!(!pure.contains("= upto(n)"), "{pure}");
+    // The body would change what `upto` reads between its yields.
+    let bumps = cpp(&src("x => { seen += 10; x }"));
+    assert!(bumps.contains("= upto(n)"), "{bumps}");
+}
