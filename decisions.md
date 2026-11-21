@@ -1708,7 +1708,6 @@ shows the doc that states its cost. A member access records its owner type (`Hov
 hover and go-to-definition on `bit.prefix` reach the method in `stdlib/fenwick.cp`. The doc is the one
 place a cost is written today; a computed cost line can join it later. Reverse: drop `Hover::doc` and
 `HoverEntry::owner` in `crates/cpl-check/src/{hover,check}.rs`.
-<<<<<<< HEAD
 
 29.2. **Neovim, Emacs and Helix get thin setups over `cpl lsp`, smoke-tested in the gate.** Each
 setup is the editor's own idiom (a Neovim runtime folder, an Emacs major mode registering with eglot
@@ -1981,3 +1980,14 @@ Reverse: none needed; this is general range-type lowering.
   and are queued as the next step in `plan/DOMAINS.md`. Reason: keep commits small and avoid
   shipping half-baked product destructuring. Reverse: implement product-domain packing in `cpl-ir`
   and `cpl-check`.
+
+## 37. Taste review gate (2026-11-21)
+
+37.1. **Ports newer than the dream-first rule need a dream and a review; old ports are a
+baseline.** `research/reviews/baseline.json` lists the 261 ports that predate `plan/PORTING.md`;
+`scripts/review-check.py` (in `scripts/check.sh --fast`) fails on any later port without
+`proto/ports/<group>/dream/NAME.cp` or `research/reviews/NAME.md`, and reports the median score,
+the count under 4 and the port/dream token ratio. The count of later ports scoring under 4 is
+ratcheted (`new_under_4_max`), and the ratchet only blocks commits that add a port, so a review
+that lowers a score never breaks main. Reason: taste was self-reviewed and nothing checked it.
+Reverse: delete the step from `scripts/check.sh`.

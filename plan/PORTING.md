@@ -21,8 +21,9 @@ Every dream must be at that level, and every port is scored against it.
 4. **Report every gap** between port and dream in
    `research/frictions/NAME.md`: the snippet, the dream lines that remove it,
    the goal it hurts, a general fix (never a one-problem helper), severity.
-5. **Self-review against the checklist below**, then commit port, dream and
-   report together: `port(NAME): <what the program does>`.
+5. **Self-review against the checklist below**, then commit port, dream,
+   report and `research/reviews/NAME.md` holding `Score: pending` together:
+   `port(NAME): <what the program does>`.
 
 ## Taste checklist
 
@@ -41,6 +42,11 @@ A port fails review if any of these hold and the gap is not reported:
 - Each fact is not in one place: the bound, base or modulus is repeated.
 - It is slower than the C++ by more than 1.1x on max input without a
   performance friction filed.
+- It drops a statement constraint today's types can hold
+  (`let x: Int = read()` for `1 <= x <= 1e7`, `-1` sentinels for
+  `-1 <= a_i < n`).
+- A friction says the language lacks something without a run showing it
+  fails: try the dream line in `cpl run` first, and quote the error.
 
 ## Review
 
@@ -51,3 +57,11 @@ reads like `design/EXEMPLARS-PORTS.md`. It also scores the dream itself: a
 dream that reads like the C++ is sent back before the port is judged.
 Ports under 4 go back to their author with the review before the wave
 counts as done. Recurring findings become lane work or checklist lines.
+
+The review lives in `research/reviews/NAME.md` (format in that directory's
+README) and its score shows in `research/PORTS.md`. `scripts/check.sh
+--fast` runs `scripts/review-check.py`, which fails when a port newer than
+`research/reviews/baseline.json` has no dream or no review, and when a
+commit adds a port while more new ports score under 4 than the ratchet in
+the baseline allows. Lower the ratchet when a rewrite lifts a port; never
+raise it.

@@ -3,7 +3,8 @@
 
 Each row links the CP Lang program, the accepted C++ it was ported from, the
 statement and the friction report, with contestant-token counts against the
-C++ (library code stripped). Dates are when the port was first committed.
+C++ (library code stripped) and the taste-review score
+(research/reviews/). Dates are when the port was first committed.
 """
 import json, os, re, subprocess, sys
 

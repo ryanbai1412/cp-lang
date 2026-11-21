@@ -199,6 +199,14 @@ python3 -m unittest scripts/test_scoreboard.py >/dev/null \
 python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl" \
     || fail "scoreboard regression detected; rerun: python3 scripts/scoreboard.py --fast --check"
 
+# Taste reviews: every port newer than research/reviews/baseline.json has a
+# dream and a review, and the count of those scoring under 4 may not grow.
+step "taste reviews (scripts/review-check.py --check)"
+python3 -m unittest scripts/test_review_check.py >/dev/null 2>&1 \
+    || fail "scripts/test_review_check.py failed; rerun: python3 -m unittest scripts/test_review_check.py -v"
+python3 scripts/review-check.py --check \
+    || fail "taste review gate failed; see research/reviews/README.md"
+
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
 step "site bundle: dist/cp-lang.html under 2,600,000 bytes"
