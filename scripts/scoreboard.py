@@ -775,12 +775,15 @@ def parse_review_score(port_name, reviews_dir=REVIEWS_DIR):
 
 def _git_last_touch_order(repo_root, paths):
     """Return {rel_path: commit_index} where 0 is the most recent commit touching rel_path."""
-    if not os.path.isdir(os.path.join(repo_root, ".git")):
+    if not os.path.exists(os.path.join(repo_root, ".git")):
         return {}
+    # A commit hook exports GIT_DIR and GIT_INDEX_FILE; inherited, they override repo_root.
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
         r = subprocess.run(
             ["git", "log", "--format=format:COMMIT", "--name-only", "--", *paths],
             cwd=repo_root,
+            env=env,
             capture_output=True,
             text=True,
             check=True,

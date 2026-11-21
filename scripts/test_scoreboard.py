@@ -1286,8 +1286,11 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         # 2. summarize_taste_reviews includes non-active/rewrite-lane review files,
         # computes taste_stale via git commit order, and counts taste_unreviewed.
         with tempfile.TemporaryDirectory() as tmp:
+            # A commit hook exports GIT_DIR and GIT_INDEX_FILE; inherited, they aim these at the real repo.
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
             def git(*args):
-                subprocess.run(["git", *args], cwd=tmp, check=True, capture_output=True, text=True)
+                subprocess.run(["git", *args], cwd=tmp, env=env, check=True, capture_output=True, text=True)
 
             git("init", "-q")
             git("config", "user.email", "test@example.com")
