@@ -1974,6 +1974,11 @@ Reverse: none needed; this is general range-type lowering.
   glue, so the parts add up to the file by construction. A fn is named as its source names it (`Rooted.path`),
   its instances summed. Shown on `--size` and on every build over the limit, the one time it is needed.
   Reverse: drop `Emitter::chunks` and `cpl_codegen::sizes`.
+- **34.11 `cpl profile --native` builds for the file's judge.** It resolves the profile like `cpl build`,
+  writes the counted C++ for that target (its thread stack, its OS's threads), builds with
+  the judge's flags this compiler accepts and runs on the judge's stack, the same `Profile::on_stack` command
+  the stress runner uses; a profile timed on another build can rank the lines differently. `CXX` still
+  overrides the compiler. Reverse: `emit_profiled` without a target and `g++ -std=c++17 -O2`.
 
 ## 35. Taste lints (§8 tooling, 2026-11-21)
 

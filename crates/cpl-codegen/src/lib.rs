@@ -137,15 +137,16 @@ pub fn emit_for(program: &cpl_ir::Program, name: &str, source: Option<&str>, tar
     narrow(&emitter.file(name, source))
 }
 
-/// [`emit`] with every statement counting its starts and the time until
+/// [`emit_for`] with every statement counting its starts and the time until
 /// the next one starts, the books `cpl_interp::profile` keeps. The tally is
 /// written when the program exits, to the file named by `CPL_PROFILE`, a
 /// line `site hits nanos` for each site that ran; the spans are the sites
 /// by number.
-pub fn emit_profiled(program: &cpl_ir::Program, name: &str) -> (String, Vec<cpl_diag::Span>) {
+pub fn emit_profiled(program: &cpl_ir::Program, name: &str, target: &Target) -> (String, Vec<cpl_diag::Span>) {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     let mut emitter = emit::Emitter::new(&program);
+    emitter.target = target.clone();
     emitter.sites = Some(Vec::new());
     emitter.counted = cpl_ir::sites::user_stmts(&program);
     let (cpp, sites) = emitter.file_with_sites(name, None);

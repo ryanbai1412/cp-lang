@@ -20,7 +20,7 @@ output is not shown.
 
 options:
   --native         profile the C++ of `cpl build`, built with a counter at
-                   each statement (`g++ -std=c++17 -O2`); the counts are the
+                   each statement (with the flags of the file's judge, on its stack); the counts are the
                    interpreter's, the times are the judge's
   --format json    one JSON object: the lines with their hits and nanoseconds
 ";
@@ -83,9 +83,9 @@ struct Run {
     failure: Option<String>,
 }
 
-fn run(compiled: &Compiled, input: &[u8], native: bool) -> Result<Run, String> {
+fn run(file: &str, compiled: &Compiled, input: &[u8], native: bool) -> Result<Run, String> {
     if native {
-        return run_native(compiled, input);
+        return run_native(file, compiled, input);
     }
     let mut sink = Vec::new();
     let observed =
@@ -101,8 +101,16 @@ fn run(compiled: &Compiled, input: &[u8], native: bool) -> Result<Run, String> {
     })
 }
 
-fn run_native(compiled: &Compiled, input: &[u8]) -> Result<Run, String> {
-    let (cpp, spans) = cpl_codegen::emit_profiled(&compiled.program, "profile");
+/// The program built as the file's judge builds it, with the judge's flags
+/// this compiler accepts, and run on the judge's stack.
+fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, String> {
+    let judge = cpl_judge::resolve(Path::new(file), &compiled.text, None)?;
+    let target = cpl_codegen::Target {
+        stamp: Some(judge.stamp()),
+        thread_stack: judge.thread_stack,
+        windows: judge.os == cpl_judge::Os::Windows,
+    };
+    let (cpp, spans) = cpl_codegen::emit_profiled(&compiled.program, "profile", &target);
     let dir = std::env::temp_dir().join(format!("cpl-profile-{}", std::process::id()));
     std::fs::create_dir_all(&dir).map_err(|e| format!("can't make `{}`: {e}", dir.display()))?;
     let (source, binary, tally) = (
@@ -111,9 +119,11 @@ fn run_native(compiled: &Compiled, input: &[u8]) -> Result<Run, String> {
         dir.join("profile.txt"),
     );
     std::fs::write(&source, cpp).map_err(|e| format!("can't write `{}`: {e}", source.display()))?;
-    let compiler = std::env::var("CXX").unwrap_or_else(|_| "g++".into());
+    let host = judge.host();
+    let compiler = std::env::var("CXX").unwrap_or(host.compiler);
     let built = std::process::Command::new(&compiler)
-        .args(["-std=c++17", "-O2", "-o"])
+        .args(&host.flags)
+        .arg("-o")
         .arg(&binary)
         .arg(&source)
         .output()
@@ -128,7 +138,9 @@ fn run_native(compiled: &Compiled, input: &[u8]) -> Result<Run, String> {
         ));
     }
     let _ = std::fs::remove_file(&tally);
-    let mut child = std::process::Command::new(&binary)
+    let argv = judge.on_stack(binary.display().to_string());
+    let mut child = std::process::Command::new(&argv[0])
+        .args(&argv[1..])
         .env("CPL_PROFILE", &tally)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
@@ -244,7 +256,7 @@ pub fn profile(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8
             return EXIT_USAGE;
         }
     };
-    let run = match run(&compiled, &input, options.native) {
+    let run = match run(options.file, &compiled, &input, options.native) {
         Ok(run) => run,
         Err(message) => {
             *stderr += &format!("cpl: {message}\n");
@@ -426,7 +438,7 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
                 return EXIT_USAGE;
             }
         };
-        let run = match run(&compiled, &bytes, options.native) {
+        let run = match run(options.file, &compiled, &bytes, options.native) {
             Ok(run) => run,
             Err(message) => {
                 *stderr += &format!("cpl: {message}\n");

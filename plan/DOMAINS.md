@@ -386,15 +386,16 @@ calls run on each judge's stack and agree with the interpreter. `run --release`,
 `cpl build --size` (and any over-limit build) says where the bytes go
 by part and piece: across the ports, 3.6% (p50; at most 8.2%) is
 namespaces and `main`, the rest is named. `run --release`, `test`,
-`stress` and `hunt` build a `.cp` file with its judge's flags (those g++
-here accepts) and run it under `ulimit -s` of the judge's stack; `bench`
-and `profile` still use `g++ -std=c++17 -O2`. The compilers here are g++
+`stress`, `hunt`, `bench` and `profile --native` build a `.cp` file with
+its judge's flags (those g++ here accepts) and run it under `ulimit -s` of
+the judge's stack. Time and memory limits are the problem's, not the
+judge's (`// limits:` or `[limits]` in `cp.toml`). The compilers here are g++
 11, clang 14 and MinGW 10, not the judges' versions.
 **Bar.** Every profile: every port builds within its limit, compiles with
 its flags (as accepted here), and the deep-recursion run passes on its
 stack; each fact in a profile cites a source or says it is unconfirmed.
-**Next.** `bench` and `profile` with the profile's flags; the judge's
-time and memory limits on local runs; a readable minimisation rung
+**Next.** `cpl test` judging memory against the problem's limit (as `bench`
+does); a readable minimisation rung
 before dropping the source header; clang `-Wunused-value` in 6
 ports; USACO and grader profiles; judge-version containers.
 

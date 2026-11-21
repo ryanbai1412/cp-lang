@@ -309,12 +309,7 @@ fn build_judged(source: &Path, part: Part) -> Result<Vec<String>, BuildError> {
     if current_stack().as_deref() == Some(stack.as_str()) {
         return Ok(vec![binary]);
     }
-    let script = format!(
-        "ulimit -s {stack} 2>/dev/null || {{ echo \"cpl: can't give the program the {} of judge \\`{}\\` here\" >&2; exit 125; }}; exec \"$0\" \"$@\"",
-        profile.stack.describe(),
-        profile.name
-    );
-    Ok(vec!["sh".into(), "-c".into(), script, binary])
+    Ok(profile.on_stack(binary))
 }
 
 /// The `ulimit -s` programs started from here get.

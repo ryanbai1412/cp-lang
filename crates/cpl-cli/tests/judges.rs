@@ -240,3 +240,22 @@ fn a_file_over_its_judges_limit_says_where_its_bytes_go() {
     let names: Vec<&str> = parts.iter().map(|(name, _)| name.as_str()).collect();
     assert!(names.contains(&"runtime") && names.contains(&"your code"), "{}", out.stderr);
 }
+
+#[test]
+fn a_native_profile_builds_with_the_judges_flags_on_the_judges_stack() {
+    if !has("g++") {
+        eprintln!("skipped: no g++");
+        return;
+    }
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-profile");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let deep = std::fs::read_to_string(root().join("crates/cpl-cli/tests/judges/deep.cp")).unwrap();
+    let file = scratch.join("deep.cp");
+    std::fs::write(&file, format!("// judge: icpc\n{deep}")).unwrap();
+    let input = scratch.join("deep.in");
+    std::fs::write(&input, "1000000\n").unwrap();
+    let out = cpl_cli::run(&["profile", file.to_str().unwrap(), input.to_str().unwrap(), "--native", "--format", "json"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let json = String::from_utf8_lossy(&out.stdout);
+    assert!(json.contains("\"hits\":1000001"), "{json}");
+}

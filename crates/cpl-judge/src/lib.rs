@@ -157,6 +157,18 @@ impl Profile {
         self.local_with(compiler)
     }
 
+    /// The command that runs `binary` on the judge's stack, or exits 125
+    /// saying so when this machine can't give it that stack.
+    pub fn on_stack(&self, binary: String) -> Vec<String> {
+        let script = format!(
+            "ulimit -s {} 2>/dev/null || {{ echo \"cpl: can't give the program the {} of judge \\`{}\\` here\" >&2; exit 125; }}; exec \"$0\" \"$@\"",
+            self.ulimit(),
+            self.stack.describe(),
+            self.name
+        );
+        vec!["sh".into(), "-c".into(), script, binary]
+    }
+
     /// The `ulimit -s` that gives a program the judge's stack.
     pub fn ulimit(&self) -> String {
         match self.stack {
