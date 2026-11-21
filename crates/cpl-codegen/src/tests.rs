@@ -1099,3 +1099,27 @@ print(sum_all<V>(a))
         "widened array must not emit uint32_t:\n{widened}"
     );
 }
+
+#[test]
+fn unchecked_nested_index_assign_keeps_raw_cast() {
+    let out = cpp(
+        "@allow(unproven_list_index)
+fn scatter(mut sa: List<Int>, mut bkt: List<Int>, vec: List<Int>):
+    unchecked:
+        for k in 0..vec.len:
+            let c = vec[k]
+            bkt[c] -= 1
+            sa[bkt[c]] = k
+var sa = [0, 0, 0]
+var bkt = [3]
+scatter(mut sa, mut bkt, [0, 0, 0])
+print(sa[0])
+",
+    );
+    let scatter_body = out.split("void scatter").nth(1).expect("scatter fn emitted");
+    let scatter_body = scatter_body.split("\n}").next().unwrap();
+    assert!(
+        !scatter_body.contains("cpl::at"),
+        "nested index assignment inside `unchecked:` should not emit `cpl::at`:\n{scatter_body}"
+    );
+}

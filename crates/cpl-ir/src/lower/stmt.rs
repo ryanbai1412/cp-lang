@@ -2514,14 +2514,27 @@ impl<'a> Lowerer<'a> {
                         if settled(&index) {
                             return index;
                         }
+                        let wrap = match &index.kind {
+                            ExprKind::Cast(cast @ (Cast::Raw | Cast::Trust), _) => Some(*cast),
+                            _ => None,
+                        };
                         let slot = self.temp(index.ty.clone());
+                        let ispan = index.span;
+                        let ity = index.ty.clone();
                         let held = Expr {
                             kind: ExprKind::Local(slot),
-                            ty: index.ty.clone(),
-                            span: index.span,
+                            ty: ity.clone(),
+                            span: ispan,
                         };
                         out.push(Stmt::Let(slot, Some(index)));
-                        held
+                        match wrap {
+                            Some(cast) => Expr {
+                                kind: ExprKind::Cast(cast, Box::new(held)),
+                                ty: ity,
+                                span: ispan,
+                            },
+                            None => held,
+                        }
                     })
                     .collect();
                 PlaceKind::Index(Box::new(base), indexes)
@@ -3382,14 +3395,26 @@ impl<'a> Lowerer<'a> {
                 let frozen_idxs = idxs
                     .into_iter()
                     .map(|idx| {
+                        let wrap = match &idx.kind {
+                            ExprKind::Cast(cast @ (Cast::Raw | Cast::Trust), _) => Some(*cast),
+                            _ => None,
+                        };
                         let slot = self.temp(idx.ty.clone());
                         let ispan = idx.span;
                         let ity = idx.ty.clone();
                         out.push(Stmt::Let(slot, Some(idx)));
-                        Expr {
+                        let held = Expr {
                             kind: ExprKind::Local(slot),
-                            ty: ity,
+                            ty: ity.clone(),
                             span: ispan,
+                        };
+                        match wrap {
+                            Some(cast) => Expr {
+                                kind: ExprKind::Cast(cast, Box::new(held)),
+                                ty: ity,
+                                span: ispan,
+                            },
+                            None => held,
                         }
                     })
                     .collect();

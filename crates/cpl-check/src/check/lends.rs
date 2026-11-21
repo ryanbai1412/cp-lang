@@ -1806,7 +1806,33 @@ impl<'a> Checker<'a> {
     /// The arguments of a call that stores them must not be lent views.
     pub(crate) fn no_escape_args(&mut self, callee: &Expr, callee_ty: &Ty, args: &[Arg]) {
         let what = match (&callee.kind, callee_ty) {
-            (ExprKind::Field { name, .. }, _) if STORES.contains(&name.text.as_str()) => {
+            (ExprKind::Field { base, name }, _) if STORES.contains(&name.text.as_str()) => {
+                // Only collection types store their `.push`/`.insert`/`.set`/`.add`
+                // argument; user/stdlib structs such as `Trie<A>.add(word)` only read
+                // the sequence without retaining the view.
+                let base_ty = self.quietly(|c| c.infer(base));
+                let stores_elem = match &base_ty {
+                    Ty::Named { name: ty_name, .. } => matches!(
+                        ty_name.as_str(),
+                        "List"
+                            | "Set"
+                            | "HashSet"
+                            | "Map"
+                            | "HashMap"
+                            | "Deque"
+                            | "Heap"
+                            | "Stack"
+                            | "Queue"
+                            | "Bag"
+                            | "SortedSet"
+                            | "SortedBag"
+                            | "SortedMap"
+                    ),
+                    _ => true,
+                };
+                if !stores_elem {
+                    return;
+                }
                 format!("`.{}(...)`", name.text)
             }
             (_, Ty::TypeName(name) | Ty::Named { name, .. }) => {

@@ -268,36 +268,37 @@ fn induced_sort(
     let n = vec.len
     let alpha = counts.len
     var bkt = List.filled(alpha, 0)
-    var sum = 0
-    for c in 0..alpha:
-        sum += counts[c]
-        bkt[c] = sum
-    for i in 0..n: sa[i] = -1
-    for k in (0..lms.len).rev:
-        let pos = lms[k]
-        let c = vec[pos]
-        bkt[c] -= 1
-        sa[bkt[c]] = pos
-    sum = 0
-    for c in 0..alpha:
-        bkt[c] = sum
-        sum += counts[c]
-    for k in 0..n:
-        let p = sa[k] - 1
-        if p >= 0 and is_l[p]:
-            let c = vec[p]
-            sa[bkt[c]] = p
-            bkt[c] += 1
-    sum = 0
-    for c in 0..alpha:
-        sum += counts[c]
-        bkt[c] = sum
-    for k in (1..n).rev:
-        let p = sa[k] - 1
-        if p >= 0 and not is_l[p]:
-            let c = vec[p]
+    unchecked:
+        var sum = 0
+        for c in 0..alpha:
+            sum += counts[c]
+            bkt[c] = sum
+        for i in 0..n: sa[i] = -1
+        for k in (0..lms.len).rev:
+            let pos = lms[k]
+            let c = vec[pos]
             bkt[c] -= 1
-            sa[bkt[c]] = p
+            sa[bkt[c]] = pos
+        sum = 0
+        for c in 0..alpha:
+            bkt[c] = sum
+            sum += counts[c]
+        for k in 0..n:
+            let p = sa[k] - 1
+            if p >= 0 and is_l[p]:
+                let c = vec[p]
+                sa[bkt[c]] = p
+                bkt[c] += 1
+        sum = 0
+        for c in 0..alpha:
+            sum += counts[c]
+            bkt[c] = sum
+        for k in (1..n).rev:
+            let p = sa[k] - 1
+            if p >= 0 and not is_l[p]:
+                let c = vec[p]
+                bkt[c] -= 1
+                sa[bkt[c]] = p
 
 @allow(unproven_list_index)
 fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
@@ -305,120 +306,129 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
     var sa = List.filled(n, 0)
     if n <= 1: return sa
     var counts = List.filled(alpha, 0)
-    for c in vec: counts[c] += 1
     var is_l = List.filled(n, false)
     var lms = List<Int>()
-    for i in (0..n - 1).rev:
-        is_l[i] = vec[i] > vec[i + 1] or (vec[i] == vec[i + 1] and is_l[i + 1])
-        if is_l[i] and not is_l[i + 1]: lms.push(i + 1)
+    unchecked:
+        for c in vec: counts[c] += 1
+        for i in (0..n - 1).rev:
+            is_l[i] = vec[i] > vec[i + 1] or (vec[i] == vec[i + 1] and is_l[i + 1])
+            if is_l[i] and not is_l[i + 1]: lms.push(i + 1)
     reverse(mut lms)
     induced_sort(vec, counts, is_l, lms, mut sa)
     let m = lms.len
     var sorted_lms = List.filled(m, 0)
-    var k_lms = 0
-    for x in sa:
-        if x >= 1 and not is_l[x] and is_l[x - 1]:
-            sorted_lms[k_lms] = x
-            k_lms += 1
     var name = 0
-    sa[n - 1] = 0
-    for k in 1..m:
-        let i = sorted_lms[k - 1]
-        let j = sorted_lms[k]
-        var diff = vec[i] != vec[j]
-        if not diff:
-            var (a, b) = (i + 1, j + 1)
-            while true:
-                if vec[a] != vec[b]:
-                    diff = true
-                    break
-                let la = not is_l[a] and is_l[a - 1]
-                let lb = not is_l[b] and is_l[b - 1]
-                if la or lb:
-                    diff = not (la and lb)
-                    break
-                a += 1
-                b += 1
-        if diff: name += 1
-        sa[j] = name
+    unchecked:
+        var k_lms = 0
+        for x in sa:
+            if x >= 1 and not is_l[x] and is_l[x - 1]:
+                sorted_lms[k_lms] = x
+                k_lms += 1
+        sa[n - 1] = 0
+        for k in 1..m:
+            let i = sorted_lms[k - 1]
+            let j = sorted_lms[k]
+            var diff = vec[i] != vec[j]
+            if not diff:
+                var (a, b) = (i + 1, j + 1)
+                while true:
+                    if vec[a] != vec[b]:
+                        diff = true
+                        break
+                    let la = not is_l[a] and is_l[a - 1]
+                    let lb = not is_l[b] and is_l[b - 1]
+                    if la or lb:
+                        diff = not (la and lb)
+                        break
+                    a += 1
+                    b += 1
+            if diff: name += 1
+            sa[j] = name
     if name + 1 < m:
         var lms_vec = List.filled(m, 0)
-        for i in 0..m: lms_vec[i] = sa[lms[i]]
+        unchecked:
+            for i in 0..m: lms_vec[i] = sa[lms[i]]
         let lms_sa = sa_is(lms_vec, name + 1)
-        for i in 0..m: sorted_lms[i] = lms[lms_sa[i]]
+        unchecked:
+            for i in 0..m: sorted_lms[i] = lms[lms_sa[i]]
     induced_sort(vec, counts, is_l, sorted_lms, mut sa)
     sa
 
 /// The starts of the suffixes of `s` in sorted order (SA-IS).
-/// O(n) for bounded alphabets (<= 256 distinct values) and O(n log n) for general `T`.
+/// O(n) for bounded alphabets (<= 256 distinct values) and O(n log n) for general elements.
 @allow(unproven_list_index)
-pub fn suffix_array<T>(s: List<T>) -> List<Int>:
+pub fn suffix_array<S: Indexed>(s: S) -> List<Int>:
     let n = s.len
     if n <= 1: return [i for i in 0..n]
     var vec = List.filled(n + 1, 0)
     var alpha = 0
     // Fast path for bounded alphabets (e.g. ASCII/Str): avoid O(n log n) sort.
-    var uniq = List<T>()
-    var ids = List<Int>()
+    var uniq = [s.at(0)]
+    var ids = [0]
     var small = true
-    for i in 0..n:
-        let x = s[i]
-        var (lo, hi) = (0, uniq.len)
-        while lo < hi:
-            let mid = (lo + hi) >> 1
-            if uniq[mid] < x: lo = mid + 1 else: hi = mid
-        if lo < uniq.len and uniq[lo] == x:
-            vec[i] = ids[lo]
-        elif uniq.len == 256:
-            small = false
-            break
-        else:
-            let id = uniq.len
-            uniq.push(x)
-            ids.push(id)
-            for j in (lo + 1..uniq.len).rev:
-                uniq[j] = uniq[j - 1]
-                ids[j] = ids[j - 1]
-            uniq[lo] = x
-            ids[lo] = id
-            vec[i] = id
+    unchecked:
+        for i in 1..n:
+            let x = s.at(i)
+            var (lo, hi) = (0, uniq.len)
+            while lo < hi:
+                let mid = (lo + hi) >> 1
+                if uniq[mid] < x: lo = mid + 1 else: hi = mid
+            if lo < uniq.len and uniq[lo] == x:
+                vec[i] = ids[lo]
+            elif uniq.len == 256:
+                small = false
+                break
+            else:
+                let id = uniq.len
+                uniq.push(x)
+                ids.push(id)
+                for j in (lo + 1..uniq.len).rev:
+                    uniq[j] = uniq[j - 1]
+                    ids[j] = ids[j - 1]
+                uniq[lo] = x
+                ids[lo] = id
+                vec[i] = id
     if small:
         alpha = uniq.len
         if alpha == 1: return [n - 1 - i for i in 0..n]
         var remap = List.filled(alpha, 0)
-        for r in 0..alpha: remap[ids[r]] = r + 1
-        for i in 0..n: vec[i] = remap[vec[i]]
+        unchecked:
+            for r in 0..alpha: remap[ids[r]] = r + 1
+            for i in 0..n: vec[i] = remap[vec[i]]
     else:
         var order = [i for i in 0..n]
-        order.sort(by: i => s[i])
+        order.sort(by: i => s.at(i))
         alpha = 1
-        vec[order[0]] = 1
-        for j in 1..n:
-            if s[order[j - 1]] < s[order[j]]: alpha += 1
-            vec[order[j]] = alpha
+        unchecked:
+            vec[order[0]] = 1
+            for j in 1..n:
+                if s.at(order[j - 1]) < s.at(order[j]): alpha += 1
+                vec[order[j]] = alpha
         if alpha == n: return order
     var sa = sa_is(vec, alpha + 1)
-    for i in 0..n: sa[i] = sa[i + 1]
+    unchecked:
+        for i in 0..n: sa[i] = sa[i + 1]
     sa.pop()
     sa
 
 /// `lcp[j]` is the length of the longest common prefix of the suffixes at `sa[j]` and `sa[j + 1]`
 /// (Kasai). O(n); the result has `n - 1` entries.
 @allow(unproven_list_index)
-pub fn lcp_array<T>(s: List<T>, sa: List<Int>) -> List<Int>:
+pub fn lcp_array<S: Indexed>(s: S, sa: List<Int>) -> List<Int>:
     let n = s.len
     var lcp = List.filled(max(n - 1, 0), 0)
     var rank = List.filled(n, 0)
-    for j in 0..n: rank[sa[j]] = j
-    var k = 0
-    for i in 0..n:
-        if rank[i] == n - 1:
-            k = 0
-            continue
-        let j = sa[rank[i] + 1]
-        while i + k < n and j + k < n and s[i + k] == s[j + k]: k += 1
-        lcp[rank[i]] = k
-        if k > 0: k -= 1
+    unchecked:
+        for j in 0..n: rank[sa[j]] = j
+        var k = 0
+        for i in 0..n:
+            if rank[i] == n - 1:
+                k = 0
+                continue
+            let j = sa[rank[i] + 1]
+            while i + k < n and j + k < n and s.at(i + k) == s.at(j + k): k += 1
+            lcp[rank[i]] = k
+            if k > 0: k -= 1
     lcp
 
 /// Suffix array + rank + LCP + sparse-table RMQ for O(1) LCP and substring comparison.
@@ -437,7 +447,8 @@ pub struct SuffixArray<T>:
         let n = s.len
         let sa = suffix_array(s)
         var rank = List.filled(n, 0)
-        for j in 0..n: rank[sa[j]] = j
+        unchecked:
+            for j in 0..n: rank[sa[j]] = j
         let lcp = lcp_array(s, sa)
         let m = lcp.len
         var rmq: List<Int> = []
@@ -445,13 +456,14 @@ pub struct SuffixArray<T>:
             var lg = 1
             while (1 << lg) <= m: lg += 1
             rmq = List.filled(lg * m, 0)
-            for i in 0..m: rmq[i] = lcp[i]
-            for b in 1..lg:
-                let step = 1 << (b - 1)
-                let lim = m - (1 << b) + 1
-                let cur = b * m
-                let prev = (b - 1) * m
-                for i in 0..lim: rmq[cur + i] = min(rmq[prev + i], rmq[prev + i + step])
+            unchecked:
+                for i in 0..m: rmq[i] = lcp[i]
+                for b in 1..lg:
+                    let step = 1 << (b - 1)
+                    let lim = m - (1 << b) + 1
+                    let cur = b * m
+                    let prev = (b - 1) * m
+                    for i in 0..lim: rmq[cur + i] = min(rmq[prev + i], rmq[prev + i + step])
         SuffixArray(s, sa, rank, lcp, rmq, m)
 
     /// Length of the indexed sequence. O(1).
@@ -461,7 +473,9 @@ pub struct SuffixArray<T>:
     fn rmq_min(self, lo: Int, hi: Int) -> Int:
         let k = bit_width(hi - lo) - 1
         let base = k * rmq_n
-        min(rmq[base + lo], rmq[base + hi - (1 << k)])
+        unchecked:
+            return min(rmq[base + lo], rmq[base + hi - (1 << k)])
+        0
 
     /// Longest common prefix of suffixes `s[i..]` and `s[j..]`. O(1).
     @allow(unproven_list_index)
@@ -469,13 +483,15 @@ pub struct SuffixArray<T>:
         let n = s.len
         assert 0 <= i and i < n and 0 <= j and j < n, "`lcp_between(i, j)` needs `0 <= i, j < len`"
         if i == j: return n - i
-        let a = min(rank[i], rank[j])
-        let b = max(rank[i], rank[j])
-        self.rmq_min(a, b)
+        unchecked:
+            let a = min(rank[i], rank[j])
+            let b = max(rank[i], rank[j])
+            return self.rmq_min(a, b)
+        0
 
     /// Rank range `lo..hi` in `sa` of all suffixes starting with `pat`. O(|pat| log n).
     @allow(unproven_list_index)
-    pub fn matches(self, pat: List<T>) -> Range<Int>:
+    pub fn matches<P: Indexed>(self, pat: P) -> Range<Int>:
         let n = s.len
         let m = pat.len
         if m == 0: return 0..n
@@ -484,8 +500,8 @@ pub struct SuffixArray<T>:
             let mid = (lo + hi) >> 1
             let st = sa[mid]
             var k = 0
-            while k < m and st + k < n and s[st + k] == pat[k]: k += 1
-            let less = if k == m: false elif st + k == n: true else: s[st + k] < pat[k]
+            while k < m and st + k < n and s[st + k] == pat.at(k): k += 1
+            let less = if k == m: false elif st + k == n: true else: s[st + k] < pat.at(k)
             if less: lo = mid + 1 else: hi = mid
         let left = lo
         lo = left
@@ -494,13 +510,13 @@ pub struct SuffixArray<T>:
             let mid = (lo + hi) >> 1
             let st = sa[mid]
             var k = 0
-            while k < m and st + k < n and s[st + k] == pat[k]: k += 1
-            let le = if k == m: true elif st + k == n: true else: s[st + k] < pat[k]
+            while k < m and st + k < n and s[st + k] == pat.at(k): k += 1
+            let le = if k == m: true elif st + k == n: true else: s[st + k] < pat.at(k)
             if le: lo = mid + 1 else: hi = mid
         left..lo
 
     /// Number of occurrences of `pat` in `s`. O(|pat| log n).
-    pub fn count(self, pat: List<T>) -> Int:
+    pub fn count<P: Indexed>(self, pat: P) -> Int:
         let r = self.matches(pat)
         r.end - r.start
 
@@ -551,12 +567,12 @@ pub struct SuffixArray<T>:
 /// length `r - l >= 2 * period`, that cannot be extended left or right with period `period`.
 /// Returned sorted by `(l, r)`. O(n log n) time and memory.
 @allow(unproven_list_index)
-pub fn lyndon_runs<T>(s: List<T>) -> List<(l: Int, r: Int, period: Int)>:
+pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
     let n = s.len
     if n < 2: return []
-    let sa = SuffixArray.new(s)
-    var rev = List<T>()
-    for i in (0..n).rev: rev.push(s[i])
+    let fwd = [s.at(i) for i in 0..n]
+    let sa = SuffixArray.new(fwd)
+    let rev = [s.at(i) for i in (0..n).rev]
     let rsa = SuffixArray.new(rev)
     var raw = List<(l: Int, r: Int, period: Int)>()
     unchecked:
@@ -567,7 +583,7 @@ pub fn lyndon_runs<T>(s: List<T>) -> List<(l: Int, r: Int, period: Int)>:
                     let top = st[st.len - 1]
                     let common = sa.lcp_between(i, top)
                     if top + common == n: break
-                    let less = (s[i + common] < s[top + common]) != rev_ord
+                    let less = (fwd[i + common] < fwd[top + common]) != rev_ord
                     if less: st.pop() else: break
                 let j = if st.is_empty: n else: st[st.len - 1]
                 st.push(i)
@@ -810,7 +826,7 @@ pub struct SuffixAutomaton<A>:
         SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0)
 
     /// Build the suffix automaton of `s`. O(|s| * |A|) memory, O(|s|) amortized time.
-    pub fn of(s: List<A>) -> SuffixAutomaton<A>:
+    pub fn of<S: Seq>(s: S) -> SuffixAutomaton<A>:
         var sam = SuffixAutomaton<A>.new()
         for a in s: sam.push(a)
         sam
@@ -896,7 +912,7 @@ pub struct SuffixAutomaton<A>:
 
     /// State of `word`, or `none` if `word` is not a substring. O(|word|).
     @allow(unproven_list_index)
-    pub fn find(self, word: List<A>) -> ?Int:
+    pub fn find<S: Seq>(self, word: S) -> ?Int:
         var at = 0
         for a in word:
             let t = next[at * alpha + a.to_idx]
@@ -905,7 +921,7 @@ pub struct SuffixAutomaton<A>:
         at
 
     /// True when `word` is a substring of the indexed string. O(|word|).
-    pub fn contains(self, word: List<A>) -> Bool = self.find(word) != none
+    pub fn contains<S: Seq>(self, word: S) -> Bool = self.find(word) != none
 
     /// Number of distinct non-empty substrings. O(states).
     pub @get fn distinct(self) -> Int = sum(max_len[v] - max_len[links[v]] for v in 1..links.len)
@@ -939,10 +955,10 @@ pub struct SuffixAutomaton<A>:
     /// Longest common substring of the indexed string and `other`: returns `(len, end)` where
     /// `other[end - len..end]` is a longest common substring. O(|other|).
     @allow(unproven_list_index)
-    pub fn lcs(self, other: List<A>) -> (len: Int, end: Int):
-        var (v, l, best_len, best_end) = (0, 0, 0, 0)
-        for i in 0..other.len:
-            let c = other[i].to_idx
+    pub fn lcs<S: Seq>(self, other: S) -> (len: Int, end: Int):
+        var (v, l, best_len, best_end, i) = (0, 0, 0, 0, 0)
+        for a in other:
+            let c = a.to_idx
             while v != 0 and next[v * alpha + c] == -1:
                 v = links[v]
                 l = max_len[v]
@@ -953,6 +969,7 @@ pub struct SuffixAutomaton<A>:
             if l > best_len:
                 best_len = l
                 best_end = i + 1
+            i += 1
         (len: best_len, end: best_end)
 
 /// Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
@@ -975,7 +992,7 @@ pub struct PalindromicTree<A>:
         PalindromicTree(k, List.filled(2 * k, -1), [0, 0], [-1, 0], [0, 0], [0, 0], [0, 0], [], 1)
 
     /// Build the palindromic tree of `s`. O(|s| * |A|) flat memory, O(|s|) amortized time.
-    pub fn of(s: List<A>) -> PalindromicTree<A>:
+    pub fn of<S: Seq>(s: S) -> PalindromicTree<A>:
         var pt = PalindromicTree<A>.new()
         for a in s: let _ = pt.push(a)
         pt
@@ -1080,7 +1097,7 @@ pub struct Trie<A>:
 
     /// Node of `word`, or `none` if no added word starts with it. O(|word|).
     @allow(unproven_list_index)
-    pub fn find(self, word: List<A>) -> ?Int:
+    pub fn find<S: Seq>(self, word: S) -> ?Int:
         var at = 0
         for a in word:
             let t = next[at * alpha + a.to_idx]
@@ -1090,7 +1107,7 @@ pub struct Trie<A>:
 
     /// Insert one copy of `word` and return its terminal node. O(|word|).
     @allow(unproven_list_index)
-    pub fn add(mut self, word: List<A>) -> Int:
+    pub fn add<S: Seq>(mut self, word: S) -> Int:
         var at = 0
         pass[0] += 1
         for a in word:
@@ -1108,7 +1125,7 @@ pub struct Trie<A>:
 
     /// Remove one copy of `word`. Returns `false` (no change) if absent. O(|word|).
     @allow(unproven_list_index)
-    pub fn remove(mut self, word: List<A>) -> Bool:
+    pub fn remove<S: Seq>(mut self, word: S) -> Bool:
         let node = self.find(word)
         if node == none or ends[node!] == 0: return false
         var at = 0
@@ -1121,13 +1138,13 @@ pub struct Trie<A>:
 
     /// Copies of `word` currently in the trie. O(|word|).
     @allow(unproven_list_index)
-    pub fn count(self, word: List<A>) -> Int:
+    pub fn count<S: Seq>(self, word: S) -> Int:
         let node = self.find(word)
         if node == none: 0 else: ends[node!]
 
     /// Added words starting with `prefix`. O(|prefix|).
     @allow(unproven_list_index)
-    pub fn count_prefix(self, prefix: List<A>) -> Int:
+    pub fn count_prefix<S: Seq>(self, prefix: S) -> Int:
         let node = self.find(prefix)
         if node == none: 0 else: pass[node!]
 
@@ -1152,14 +1169,14 @@ pub struct AhoCorasick<A>:
 
     @allow(unproven_list_index)
     /// Build an Aho-Corasick automaton over `patterns`. O(total pattern length).
-    pub fn new(patterns: List<List<A>>) -> AhoCorasick<A>:
+    pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
         let k = A.K
         var goto = List.filled(k, -1)
         var ends: List<List<Int>> = [[]]
         var lens = List.filled(patterns.len, 0)
         for i in 0..patterns.len:
-            lens[i] = patterns[i].len
             var at = 0
+            var plen = 0
             for a in patterns[i]:
                 let idx = at * k + a.to_idx
                 if goto[idx] == -1:
@@ -1168,6 +1185,8 @@ pub struct AhoCorasick<A>:
                     ends.push([])
                     goto[idx] = nw
                 at = goto[idx]
+                plen += 1
+            lens[i] = plen
             ends[at].push(i)
         let n = ends.len
         var fail = List.filled(n, 0)
@@ -1223,18 +1242,20 @@ pub struct AhoCorasick<A>:
     /// Yield every occurrence `(at, pattern)` in `text`, ordered by end position.
     /// O(|text| + output).
     @allow(unproven_list_index)
-    pub fn matches(self, text: List<A>) -> yields (at: Int, pattern: Int):
+    pub fn matches<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
         var state = 0
-        for i in 0..text.len:
-            state = goto[state * alpha + text[i].to_idx]
+        var i = 0
+        for a in text:
+            state = goto[state * alpha + a.to_idx]
             var at = state
             while at != -1:
                 for w in ends[at]: yield (at: i + 1 - lens[w], pattern: w)
                 at = exit[at]
+            i += 1
 
     /// Occurrence count of every pattern in `text` (overlaps included). O(|text| + states).
     @allow(unproven_list_index)
-    pub fn counts(self, text: List<A>) -> List<Int>:
+    pub fn counts<S: Seq>(self, text: S) -> List<Int>:
         var visits = List.filled(fail.len, 0)
         var state = 0
         for a in text:
@@ -1767,3 +1788,102 @@ fn lyndon_runs_matches_brute():
                 seed = (seed * 1103515245 + 12345) & 0x7fffffff
                 s.push((seed >> 16) % 3)
             assert lyndon_runs(s) == brute_runs(s)
+
+@test
+fn sequence_generality_parity_across_list_array_and_views():
+    let xs = [1, 2, 1, 3, 1, 2, 1]
+    let pat = [1, 2, 1]
+    domain P = 1..=7
+    domain Q = 1..=3
+    let arr: [P]Int = [P] i => xs[i.ord]
+    let parr: [Q]Int = [Q] i => pat[i.ord]
+    let padded = [9, 1, 2, 1, 3, 1, 2, 1, 9]
+    let view = padded[1..8]
+    let pview = padded[1..4]
+
+    // KMP / Z / structural helpers over List<Int>, [D]Int, ListView<Int>, Str, StrView
+    assert prefix_function(arr) == prefix_function(xs)
+    assert prefix_function(view) == prefix_function(xs)
+    assert z_function(arr) == z_function(xs)
+    assert z_function(view) == z_function(xs)
+    assert [i for i in find_all(arr, parr)] == [0, 4]
+    assert [i for i in find_all(view, pview)] == [0, 4]
+    assert prefix_matches(arr, parr) == prefix_matches(xs, pat)
+    assert prefix_matches(view, pview) == prefix_matches(xs, pat)
+    assert period(arr) == period(xs)
+    assert period(view) == period(xs)
+    assert borders(arr) == borders(xs)
+    assert borders(view) == borders(xs)
+    assert overlap(arr, [2, 1, 7]) == overlap(xs, [2, 1, 7])
+    assert common_prefix_len(arr, view) == 7
+    assert common_suffix_len(arr, view) == 7
+
+    // RollingHash over List<Int>, [D]Int, ListView<Int>, Str, StrView
+    let bases = (131, 137)
+    let hl = RollingHash.with_bases(xs, bases)
+    let ha = RollingHash.with_bases(arr, bases)
+    let hv = RollingHash.with_bases(view, bases)
+    assert ha.all == hl.all and hv.all == hl.all
+    assert ha.get(P(2)..P(6)) == hl.get(1..5) and hv.get(1..5) == hl.get(1..5)
+    let hs = RollingHash.with_bases("xabacabay"[1..8], bases)
+    assert hs.all == RollingHash.with_bases("abacaba", bases).all
+
+    // Suffix array / LCP / SuffixArray.matches over List<Int>, [D]Int, ListView<Int>, Str, StrView
+    let sa_l = suffix_array(xs)
+    assert suffix_array(arr) == sa_l
+    assert suffix_array(view) == sa_l
+    assert lcp_array(arr, sa_l) == lcp_array(xs, sa_l)
+    assert lcp_array(view, sa_l) == lcp_array(xs, sa_l)
+    let sa_s = suffix_array("abacaba")
+    assert suffix_array("xabacabay"[1..8]) == sa_s
+    assert lcp_array("xabacabay"[1..8], sa_s) == lcp_array("abacaba", sa_s)
+    let sa_obj = SuffixArray.new(xs)
+    assert sa_obj.matches(parr) == sa_obj.matches(pat)
+    assert sa_obj.count(pview) == 2
+
+    // Manacher / Lyndon / runs over List<Int>, [D]Int, ListView<Int>, StrView
+    assert is_palindrome(arr) and is_palindrome(view)
+    assert manacher(arr).is_palindrome(P(1)..=P(7))
+    assert manacher(view).is_palindrome(0..7)
+    assert lyndon_factorization(arr) == lyndon_factorization(xs)
+    assert lyndon_factorization(view) == lyndon_factorization(xs)
+    assert min_rotation(arr) == min_rotation(xs)
+    assert min_rotation(view) == min_rotation(xs)
+    assert lyndon_runs(arr) == lyndon_runs(xs)
+    assert lyndon_runs(view) == lyndon_runs(xs)
+    assert lyndon_runs("xabababy"[1..7]) == lyndon_runs("ababab")
+
+    // Alphabet-domain automata over List<Sym>, [D]Sym, ListView<Sym>
+    domain Sym = 0..4
+    let syms = [Sym(x) for x in xs]
+    let sarr: [P]Sym = [P] i => syms[i.ord]
+    let spadded = [Sym(0), Sym(1), Sym(2), Sym(1), Sym(3), Sym(1), Sym(2), Sym(1), Sym(0)]
+    let sview = spadded[1..8]
+    let spat: [Q]Sym = [Q] i => Sym(pat[i.ord])
+    let spview = spadded[1..4]
+
+    let sam_l = SuffixAutomaton<Sym>.of(syms)
+    let sam_a = SuffixAutomaton<Sym>.of(sarr)
+    let sam_v = SuffixAutomaton<Sym>.of(sview)
+    assert sam_a.distinct == sam_l.distinct and sam_v.distinct == sam_l.distinct
+    assert sam_a.contains(spat) and sam_v.contains(spview)
+    assert sam_a.lcs(spview) == sam_l.lcs(spview)
+
+    let pt_l = PalindromicTree<Sym>.of(syms)
+    let pt_a = PalindromicTree<Sym>.of(sarr)
+    let pt_v = PalindromicTree<Sym>.of(sview)
+    assert pt_a.distinct == pt_l.distinct and pt_v.distinct == pt_l.distinct
+
+    var tr = Trie<Sym>.new()
+    let _ = tr.add(sarr)
+    let _ = tr.add(spview)
+    assert tr.count(sview) == 1
+    assert tr.count_prefix(spat) == 2
+    assert tr.remove(spview)
+    assert tr.count_prefix(spat) == 1
+
+    let ac = AhoCorasick<Sym>.new([spat])
+    assert ac.counts(sarr) == [2]
+    assert ac.counts(sview) == [2]
+    assert [m.at for m in ac.matches(sarr)] == [0, 4]
+    assert [m.at for m in ac.matches(sview)] == [0, 4]
