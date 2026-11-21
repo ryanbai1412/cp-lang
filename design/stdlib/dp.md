@@ -450,3 +450,152 @@ The next step after this design lands: law checks in debug builds for
 `bsearch_*` (already checks the ends), `ternary_*` (sampled unimodality)
 and `dnc_layer`/`knuth` (sampled quadrangle inequality), behind the
 existing `std.spec` checkers.
+
+## Coverage
+
+The topics a strong contest library covers for DP and search, from the
+AtCoder Library, KACTL, cp-algorithms and top competitors' personal
+libraries. **have** is on main (in this area or the one named), **new** is
+in the plan/STDLIB.md `[new]` block, **out** says why it stays out.
+
+| topic | status | where, or why out |
+|---|---|---|
+| binary search on an integer answer | have | `bsearch_first`/`bsearch_last`, lint `L0520` |
+| binary search on a real answer | have | `bsearch_real` |
+| exponential (galloping) search, no upper end | new | `gallop_first` |
+| warm-started binary search | new | `bsearch_first(warm:)` |
+| ternary search, integers | have | `ternary_max`/`ternary_min` (strict unimodal) |
+| ternary / golden-section search, reals | have | `ternary_max_real`/`ternary_min_real` |
+| convex minimum with plateaus | out | one line: `bsearch_first(r, i => f(i + 1) >= f(i))`; a name would hide the law |
+| fractional programming (Dinkelbach) | new | `dinkelbach` |
+| parallel binary search | have | `parallel_bsearch` |
+| search on a structure (segment tree descent) | have | `max_right`/`min_left`, ranges lane |
+| binary lifting search | have | trees lane (`Lift`) |
+| sorted lookup (lower/upper bound) | have | `first_ge`/`first_gt`/`last_le`/`last_lt`, seq lane |
+| two pointers | out | a `while` over two cuts says it best; no shape to name |
+| memoized recursion | have | `@memo` (core), enum and `?enum` keys |
+| rolling DP layers | out | core: `@rolling` or move semantics (§6.1), not a library type |
+| top-down to bottom-up flip | out | core: `@memo(into:)` (Powers) |
+| sliding-window optimum (monotone queue) | have | `MonoDeque`, containers lane (`std.window`) |
+| convex hull trick, Li Chao | have | `LiChao<L, K>`, segment adds |
+| convex hull trick, monotone deque | new | `MonotoneHull` |
+| convex hull trick, dynamic (KACTL LineContainer) | new | `LineContainer` |
+| kinetic segment tree | out | rare in contests; `LiChao` and `LineContainer` cover the uses seen |
+| divide and conquer optimization | have | `dnc_layer`; cut form new |
+| Knuth optimization | have | `knuth`; cut form `Knuth<D, K>` new |
+| Monge shortest path (LARSCH) | have | `monge_path`; online `MongePath` new |
+| SMAWK row minima | new | `smawk` |
+| monotone minima | have | `monotone_minima` |
+| min-plus / max-plus convolution of convex sequences | new | `min_plus_convolve`/`max_plus_convolve` |
+| Aliens trick (Lagrangian, WQS) | have | `aliens` |
+| slope trick | have | `std.slope` `Concave`/`Convex` |
+| slope trick: hinge adds, prefix minima, shifts | new | `add_left`, `add_right`, `prefix_min`, `shift`, `slide_min`, ... |
+| longest increasing subsequence | new | `lis`, `lis_len` |
+| sum over subsets (zeta / Mobius) | have | `sos`, math lane (`std.ntt`) |
+| submask / supermask / fixed-size mask enumeration | new | `submasks`, `supermasks`, `masks_of_size` |
+| meet in the middle | have | `subset_sums`; generic `subset_folds`, `meet_in_middle` new |
+| subset sum by bitset | have | `Bitset.subset_sums`, containers lane |
+| 0/1, bounded and unbounded knapsack | out | the recurrence is the problem; 3 lines over a list, bounded is `MonoDeque` |
+| digit DP | out | `@memo` over (position, tight, state) is the clear form (§5.5) |
+| interval DP, general O(n^3) | out | user code; `knuth` when the quadrangle law holds |
+| bitmask DP (TSP, Hamiltonian paths) | out | `@memo` or a `[1 << n]` table with `submasks` |
+| broken-profile DP | out | the profile is problem-specific; user code over masks |
+| Steiner tree DP | out | graphs lane: needs shortest paths per mask |
+| tree DP, rerooting | out | trees lane (`reroot`) |
+| CDQ divide and conquer | out | each use differs in the merge; user code over `Range.halves` |
+| LCS, edit distance, Hirschberg | out | strings lane |
+| linear recurrences, matrix power | have | `std.matrix`, `std.spec.berlekamp_massey`, `guess_at` |
+| law checks for each optimization | have | `std.spec` `monge_break`, `dnc_break`, `knuth_break`, `convexity_break`; `total_monotone_break`, `quadrangle_break` new |
+| backtracking with pruning | new | `backtrack`, steered by `Visit.prune()` (decision 126) |
+| A*, best-first over states | out | graphs lane: `dijkstra` over implicit states |
+
+Totals: 22 have, 11 new, 15 out (48 topics).
+
+## Conventions
+
+The coherence pass over the area, against plan/STDLIB.md §2.
+
+- **Construction.** The type called like a function: `LiChao<Line,
+  Int>(min, 0..n)`, `MonoDeque<Int>(pick: max)`, `MongePath<D, K>(w)`.
+  `T.new(...)` is the explicit spelling; named constructors only for an
+  alternative form (`Concave.point(d)`, `Concave.flat(r)`). Drift left
+  to fix when the [rename] lands: `MonoDeque<Int>.new(min)` in `ucup4s24f`
+  and `bench/dp/mono.cp`, `.new(by: min)` in `bench/containers/monodeque.cp`.
+- **Argument vocabulary.** A binary chooser (`min`, `max`, any `(K, K) ->
+  K`) is `pick:`; a key is `by:`; a predicate is `keep:`; a starting value
+  is `init:`. `MonoDeque.new(by:)` takes a chooser and is a [rename] to
+  `pick:`.
+- **Spaces.** Searches take `r: Range<I>` and return `?I`, never a
+  sentinel. Optimizations over a sequence take pieces, `cost: Range<D> ->
+  K`, and return tables over the cuts `D.bounds` (decision 124); the
+  `n: Int` forms are the [rename] path. Matrix searches (`monotone_minima`,
+  `smawk`) keep `rows`/`cols` integers: a matrix is not a cut space.
+- **Results.** An optimum and where it is attained is `(val:, at:)`; a
+  path is `(val:, prev:)`.
+- **Costs.** Counted in calls of the user's operation when that dominates
+  (`O(n log n) calls`).
+- **Real searches.** `bsearch_real(lo, hi, ...)` and `ternary_*_real`
+  take two ends, not a range, because `Range<F64>` does not exist; see
+  Powers.
+
+## Cross-area
+
+| name here | collides or duplicates | resolution |
+|---|---|---|
+| `subset_sums` (`std.dp`, sorted `List<Int>`) | `Bitset.subset_sums` (containers, reachable sums) | both stay: different results; each doc names the other |
+| `sos` (math, `std.ntt`) | dreams spell `zeta` (`cf2178i`) | `sos(over:, inverse:)` is the name; no `zeta` |
+| `sos(inverse: true)` | `Sieve.mobius` (math, number-theoretic) | the subset form is never called `mobius` |
+| `Line` (`std.dp`) | a future geometry line | geometry keeps `HalfPlane`/`Vec`; a geometry line is not named `Line` |
+| `at` (evaluate: `Line`, `LiChao`, `Concave`) | `Compressed.at(val)` (seq, a position) | flagged to seq: `Compressed.at` reads as evaluation |
+| `MonoDeque`, `WindowFold` (containers) | `sliding_min`/`sliding_max` (seq) | `sliding_*` for a fixed `k` in one call, `MonoDeque` for moving ends |
+| `Concave.max_convolve` | `max_plus_convolve` (new, lists) | the method on a treap-kept function, the free fn on sequences |
+| `compose` (seq, permutations) | `Action.compose` (algebra) | both kept: different receivers |
+| `bsearch_first`/`bsearch_last` | `max_right`/`min_left` (ranges) | same monotone law, structure-specific descent; docs cross-reference |
+| `parallel_bsearch` | `std.mo`, `TimeTree.offline_over` | three offline frameworks with different shapes; each doc says which to use |
+| `reserve` | `List.reserve` | same meaning everywhere |
+| `convexity_break` and friends (`std.spec`) | grid/spec lane (4.15) | the laws are owned here, the module there |
+
+## Powers
+
+Signatures above that today's public language cannot write.
+
+1. **Debug-only law checks.** `knuth`, `dnc_layer`, `smawk`, `ternary_*`,
+   `Concave.add_quadratic`, `bsearch_*`. Example: `law quadrangle_break(cost)
+   == none` checked in debug builds on sampled inputs and free in release.
+   Today `add_quadratic` checks in every build.
+2. **Real ranges.** `bsearch_real`, `ternary_*_real`, `dinkelbach` as
+   `bsearch_first(0.0..1e9, ok, eps: 1e-9)`: `Range<F64>` with a resolution.
+3. **Typed bit sets `Bits<D>`.** `submasks`, `supermasks`,
+   `masks_of_size`, `subset_folds` over a domain: `for s in
+   submasks(m: Bits<Item>)` yielding `Bits<Item>`, not `Int`.
+4. **Steered generators** (decision 126). `backtrack` and `Visit.prune()`:
+   `for v in backtrack(s0, next): if bad(v.state): v.prune()`.
+5. **Memo into a table.** `@memo(into: dp)` so a top-down DP flips to a
+   bottom-up table with one edit, and `@rolling` layers (§6.1).
+6. **Cut ranges as pieces** (decision 124, accepted, not implemented). Every
+   cut form: `knuth(cost: Range<D> -> K)` called as `cost(j..i)` with cuts
+   `j, i`.
+7. **Default arguments over enums.** `min_plus_convolve(convex: Shape =
+   Both)`; to confirm against the checker, else an overload set.
+
+## Dreams
+
+Dreams in `proto/ports/*/dream/` that use this area, and how the spec spells
+what they use.
+
+| dream | uses | in the spec |
+|---|---|---|
+| `agc077a` | `bsearch_last` | have |
+| `cf2022c` | `@memo` on enum keys | have (core) |
+| `cf2035f` | `bsearch_first` | have |
+| `cf2039f1` | `mobius` | math lane's `Sieve.mobius` |
+| `cf2057f` | `bsearch_last` | have |
+| `cf2084g2` | `Concave` | have |
+| `cf2096f` | `MonoDeque` | have (containers) |
+| `cf2115c` | DP along a diagonal | rejected, user code (§6.8) |
+| `cf2129c3` | `bsearch_first` | have |
+| `cf2178d` | `bsearch_last` | have |
+| `cf2178i` | `zeta` | spelled `sos(f)` |
+| `cf2183h` | `aliens`, `monge_path` | have; the cut form after decision 124 |
+| `cf2187d` | `subset_sums` | have |
+| `cf2262b` | `bsearch_first`, `first_ge`, `first_gt`, `last_lt` | have |

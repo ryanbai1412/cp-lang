@@ -1956,6 +1956,111 @@ fn max(mut self) -> Int                      // O(n)
 struct Convex // same, with min_convolve, min and q'' >= 0
 ```
 
+#### DP and search: the complete surface [new]
+
+Everything the area should offer and does not yet, at signature level.
+Coverage audit, conventions, cross-area names, the powers these need and
+the dreams that use them: `design/stdlib/dp.md` (Coverage, Conventions,
+Cross-area, Powers, Dreams). Construction is
+one convention across the area: the type called like a function
+(`LiChao<Line, Int>(min, 0..n)`, `MonoDeque<Int>(pick: max)`); `T.new` is
+the explicit spelling and `T.point`/`T.flat` name the alternative forms. A
+binary chooser such as `min` is `pick:`, a key is `by:`, a predicate is
+`keep:`, a starting value is `init:`.
+
+```cp
+// Search on answers (std.seq)
+fn gallop_first<I>(from: I, ok: I -> Bool) -> ?I
+    // O(log d) calls, d the distance to the answer: the first i >= from
+    // with ok(i), ok false then true and no upper end known; none past I's end
+fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64
+    // O(log(1/eps)) calls, superlinear in practice: the largest num / den,
+    // where solve(l) returns the choice maximizing num - l * den, den > 0, lo below
+fn bsearch_first<I>(r: Range<I>, ok: I -> Bool, warm: ?I = none) -> ?I
+    // [new] warm start: O(log d) calls from a guess at distance d
+
+// Optimizations, cut forms (decision 124): ranges of D are the pieces
+// between two cuts, results are indexed by the cuts D.bounds
+fn knuth<D, K>(cost: Range<D> -> K) -> Knuth<D, K>      // O(n^2) calls, O(n^2) memory
+struct Knuth<D, K>
+    fn best(self, piece: Range<D>) -> K                  // O(1); the optimum on piece
+    fn split(self, piece: Range<D>) -> ?D.bounds         // O(1); its best split, none for one position
+fn dnc_layer<D, K>(prev: [D.bounds]?K, cost: Range<D> -> K) -> [D.bounds]?K
+    // O(n log n) calls; next[i] = min over j < i of prev[j] + cost(j..i)
+fn monge_path<D, K>(w: Range<D> -> K) -> (val: [D.bounds]K, prev: [D.bounds]?D.bounds)
+    // O(n) calls (LARSCH); shortest D.bounds.first -> i over Monge pieces
+struct MongePath<D, K>                                   // the online form
+    fn new(w: Range<D> -> K) -> MongePath<D, K>          // O(1); val[first] = K.zero
+    fn next(mut self) -> (val: K, prev: D.bounds)        // O(1) amortized calls of w; the next cut's optimum
+fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)>
+    // O(rows + cols) calls; leftmost row minima of a totally monotone matrix
+fn min_plus_convolve(a: List<Int>, b: List<Int>, convex: Shape = Both) -> List<Int>
+fn max_plus_convolve(a: List<Int>, b: List<Int>, concave: Shape = Both) -> List<Int>
+    // c[k] = best over i + j = k of a[i] + b[j]; Both: O(n + m) by merging
+    // differences; Right (only b shaped): O((n + m) log n) by monotone minima;
+    // Neither: O(n m)
+enum Shape: Both | Right | Neither
+
+// Convex hull trick, online
+struct MonotoneHull                                      // lines in slope order
+    fn new(pick: (Int, Int) -> Int = min) -> MonotoneHull
+    fn add(mut self, l: Line)                            // O(1) amortized; slopes monotone for pick
+    fn at(self, x: Int) -> ?Int                          // O(log n)
+    fn at_next(mut self, x: Int) -> ?Int                 // O(1) amortized; x never decreases between calls
+    @get fn len(self) -> Int
+    fn clear(mut self)
+struct LineContainer                                     // any order, no coordinate range
+    fn new(pick: (Int, Int) -> Int = min) -> LineContainer
+    fn add(mut self, l: Line)                            // O(log n) amortized
+    fn at(self, x: Int) -> ?Int                          // O(log n)
+    fn line_at(self, x: Int) -> ?Line                    // O(log n)
+    @get fn len(self) -> Int
+
+// Subsequences and subsets
+fn lis<D, T, K>(xs: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>
+    // O(n log n); the positions of one longest increasing subsequence
+fn lis_len<D, T, K>(xs: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int
+    // O(n log n); the longest increasing subsequence ending at each position
+fn submasks(m: Int) -> yields Int                        // O(2^popcount(m)); m down to 0
+fn supermasks(m: Int, bits: Int) -> yields Int           // O(2^(bits - popcount(m))); m up to 2^bits - 1
+fn masks_of_size(bits: Int, k: Int) -> yields Int        // O(C(bits, k)); increasing (Gosper)
+fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>
+    // O(2^n), O(2^n) memory; out[mask] = fold of xs[i] for i in mask, out[0] = op's identity
+fn meet_in_middle<T, K>(xs: List<T>, op: (T, T) -> T, join: (List<T>, List<T>) -> K) -> K
+    // O(2^(n/2) log) for a sorted join; subset_folds of each half, both sorted, then join
+
+// The slope trick, completed (std.slope): Convex shown, Concave mirrors with max
+fn add_left(mut self, a: Int)                // O(log n) expected; adds max(0, a - x)
+fn add_right(mut self, a: Int)               // O(log n) expected; adds max(0, x - a)
+fn add_abs(mut self, a: Int)                 // O(log n) expected; adds |x - a|
+fn add_const(mut self, c: Int)               // O(1)
+fn add_linear(mut self, k: Int)              // O(1) lazy; adds k * x
+fn prefix_min(mut self)                      // O(log n) expected; f(x) = min over y <= x of f(y)
+fn suffix_min(mut self)                      // O(log n) expected; f(x) = min over y >= x of f(y)
+fn shift(mut self, d: Int)                   // O(1) lazy; f(x) = f(x - d)
+fn slide_min(mut self, a: Int, b: Int)       // O(log n) expected; f(x) = min over x - b <= y <= x - a of f(y)
+fn argmin(mut self) -> Range<Int>            // O(log n) expected; where the minimum is attained
+@get fn domain(self) -> Range<Int>           // O(1)
+
+// Law checkers (std.spec), the sampled form of each law above
+fn total_monotone_break(f: (Int, Int) -> Int, rows: Int, cols: Int) -> ?(Int, Int) // O(rows cols)
+fn quadrangle_break<D, K>(cost: Range<D> -> K) -> ?(Range<D>, Range<D>)          // O(n^4) on small n
+
+// Search that steers its own generator (decision 126)
+fn backtrack<S>(start: S, next: S -> yields S) -> yields Visit<S>
+    // O(visited); each Visit has .state, .depth and .prune(), which skips its subtree
+struct Visit<S>
+    @get fn state(self) -> S
+    @get fn depth(self) -> Int
+    fn prune(self)
+```
+
+[rename] once decision 124 lands: the `n: Int` forms of `knuth`,
+`dnc_layer` and `monge_path` become the cut forms above; `LiChao.new(pick,
+xs)` and `MonoDeque.new(by:)` are spelled `LiChao<L, K>(min, xs)` and
+`MonoDeque<T>(pick: min)`, `by:` there renamed `pick:` (it chooses, it is
+not a key).
+
 ### 4.17 `std.derive`: field-wise traits
 
 The `Eq`, `Ord` and `Show` a struct gets field by field, written on
