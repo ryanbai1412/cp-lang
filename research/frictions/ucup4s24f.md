@@ -46,6 +46,7 @@ window minimum is the DP area's sliding-window optimization.
   on `MonoDeque.new`, or `drop_after` beside `drop_before`), so either scan
   order states its bound directly. Helps every suffix DP over a window.
 - **Severity:** low
+- **Status:** fixed: `MonoDeque.drop_after(pos)` (`d5b7b545`) supports right-to-left scans directly; `proto/ports/ecnerwala/ucup4s24f.cp` now uses `window.drop_after(first_full)` and positive positions `window.push(i, dp[i])`.
 
 ## Measurements
 
