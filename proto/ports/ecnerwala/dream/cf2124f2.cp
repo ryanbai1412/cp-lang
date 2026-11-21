@@ -13,7 +13,7 @@
 // already counted as a single cyclic shift.
 
 use std.mod.{Mod}
-use std.prefix.SweepAdd
+use std.prefix.Diff
 
 type Z = Mod<998_244_353>
 
@@ -37,8 +37,8 @@ fn wrap_limit(c: Cut) -> Cut = if c < Cut.last: next_bad(diag_of(c, 0), from: c)
 
 var dp: [Cut]Z = 0
 dp[Cut.first] = 1
-var overcount = SweepAdd<Cut, Z>()
-var wrap: [0..n]SweepAdd<Cut, Z> = SweepAdd<Cut, Z>()
+var overcount = Diff<Cut, Z>()
+var wrap: [0..n]Diff<Cut, Z> = Diff<Cut, Z>()
 
 for c in Cut:
     dp[c] -= overcount.advance(c)
