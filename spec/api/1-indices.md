@@ -39,6 +39,10 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts |
 | cut `c` | `c.prev`, `c.next`: `?V.bounds` | `c.l`, `c.r`: the positions beside it, `?V` |
 
+`v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too); `.next` is
+`.next(k = 1)`: an `@get` method whose parameters all have defaults reads
+without parentheses.
+
 One rule: `.l`/`.r` switch kind (left or right side), `.prev`/`.next` keep it.
 The receiver's kind is static, so a mix-up is a type error. `v.l..v.r` is
 exactly `v`; a prefix DP reads `dp[v.r] = f(dp[v.l], a[v])`.

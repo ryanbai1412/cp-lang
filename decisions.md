@@ -4145,6 +4145,10 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
     (`?V.bounds`); the positions beside it `c.l`, `c.r` (`?V`). Range `r`:
     its end cuts `r.l`, `r.r`. `v.l..v.r` is `v`. The receiver's kind is
     static, so reusing the word is a type error when misused, never silent.
+  - `v.next(k)`, `v.prev(k)`, `c.next(k)`, `c.prev(k)` step k at once
+    (optional). General rule: an `@get` method whose parameters all have
+    defaults may be read without parentheses, so `.next` is `.next(1)`; one
+    method, no overloading (127).
   - Domains may be empty. `D.first`/`D.last` return a plain `D` and exist
     only on `D: NonEmpty`, which the checker derives at each use: the lower
     bound of `D.count`'s range is at least 1. Guards narrow it
