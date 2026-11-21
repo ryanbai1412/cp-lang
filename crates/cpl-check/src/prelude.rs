@@ -58,6 +58,34 @@ pub fn std_method(name: &str) -> String {
     format!("{name} of std")
 }
 
+/// Every member name the active standard library declares anywhere: fns,
+/// methods, getters and fields. Under `CPL_SPEC`, a member of a built-in
+/// type that the checker can't type and no module declares is a spec gap.
+pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
+    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        let ident = |s: &str| -> String { s.chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect() };
+        let mut names = std::collections::HashSet::new();
+        for (_, text) in crate::modules::active_std_modules() {
+            for line in text.lines() {
+                let code = line.split('#').next().unwrap_or("").trim_start();
+                if code.starts_with("///") {
+                    continue;
+                }
+                if let Some(at) = code.find("fn ") {
+                    names.insert(ident(&code[at + 3..]));
+                } else if line.starts_with(char::is_whitespace) {
+                    let name = ident(code);
+                    if !name.is_empty() && code[name.len()..].trim_start().starts_with(':') {
+                        names.insert(name);
+                    }
+                }
+            }
+        }
+        names
+    })
+}
+
 /// The methods the standard library adds to the types of the language:
 /// each `pub fn name(self: T, ..)` at the top of a module, with that
 /// module. A program that writes `.name` gets the fn without a `use`,

@@ -1315,6 +1315,17 @@ impl<'a> Checker<'a> {
         }
         let base_ty = self.infer(base);
         let ty = self.member_ty(expr, name, base_ty.clone());
+        let built_in = matches!(&base_ty, Ty::Str | Ty::Range { .. } | Ty::Pos(_) | Ty::Domain(_) | Ty::Array { .. })
+            || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+        if ty == Ty::Unknown
+            && built_in
+            && std::env::var_os("CPL_SPEC").is_some()
+            && !crate::prelude::spec_member_names().contains(&name.text)
+            && !crate::builtins::BUILTIN_MEMBERS.iter().any(|m| m.name == name.text)
+        {
+            let message = format!("{base_ty} has no `{}` in the spec: no std module declares it", name.text);
+            self.error(codes::UNKNOWN_FIELD, name.span, message);
+        }
         // A built-in member (`xs.len`, `v.next`) answers before the hover
         // the struct path records, so it gets its hover here.
         let hovered = self.hovers.last().is_some_and(|h| h.span == name.span);
