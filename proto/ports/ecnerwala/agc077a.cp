@@ -6,6 +6,7 @@
 // suffix (`drop(ma)`) and a balanced prefix (`take(ma)`) that starts with 'A'
 // and ends with 'B' (after orienting) so one pre- or post-reversal fixes its ends.
 use std.prefix.Prefix1
+use std.strings.{common_prefix_len, common_suffix_len}
 
 struct Seg(l: Int, r: Int, d: Int):
     @get fn len(self) -> Int = (r - l) * d + 1
@@ -28,9 +29,8 @@ if xs == ys:
     print(0)
     return
 
-var (l, r) = (0, n - 1)
-while xs[l] == ys[l]: l += 1
-while xs[r] == ys[r]: r -= 1
+let l = common_prefix_len(xs, ys)
+let r = n - 1 - common_suffix_len(xs, ys)
 if xs[l] != 'A' or xs[r] != 'B':
     print("No")
     return

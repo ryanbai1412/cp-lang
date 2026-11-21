@@ -54,12 +54,11 @@ for i in V:
             pif.truncate(pif.len - drop)
             pjf.truncate(pjf.len - drop)
             let keep = need + 1
-            let extras = [pif[k] for k in pif.len - keep..pif.len]
-            pif.truncate(pif.len - keep)
-            pjf.truncate(pjf.len - keep)
-            let f = if pjf.is_empty: 1 else: 0
-            resp.extend(pif)
+            let split = pif.len - keep
+            let extras = pif[split..]
+            let f = if pjf.len == keep: 1 else: 0
+            resp.extend(pif[..split])
             for (z, x) in extras.items if z % 2 == f: resp.push(x)
             for (z, x) in extras.items.rev if z % 2 != f: resp.push(x)
-            resp.extend(pjf.rev)
+            resp.extend(pjf[..pjf.len - keep].rev)
         print(resp)

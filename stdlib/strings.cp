@@ -204,13 +204,16 @@ pub fn min_rotation<S: Indexed>(s: S) -> Int:
 /// Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
 pub struct Palindromes(odd: List<Int>, even: List<Int>):
-    /// True when `s[l..r]` is a palindrome. O(1).
-    pub fn is_palindrome(self, l: Int, r: Int) -> Bool:
+    /// True when the range `r` (`l..r`, `l..=r`, or `Range<D>`) is a palindrome. O(1).
+    pub fn is_palindrome<R>(self, r: R) -> Bool:
+        if r.is_empty: return true
+        let l = r.lo.ord
+        let hi = r.hi.ord
         let n = odd.len
-        assert 0 <= l and l <= r and r <= n, "`is_palindrome(l, r)` needs `0 <= l <= r <= len`"
-        let m = r - l
+        assert 0 <= l and l <= hi and hi <= n, "`is_palindrome(r)` needs `0 <= lo <= hi <= len`"
+        let m = hi - l
         if m <= 1: return true
-        if m % 2 == 1: odd[(l + r) / 2] * 2 - 1 >= m else: even[(l + r) / 2] * 2 >= m
+        if m % 2 == 1: odd[(l + hi) / 2] * 2 - 1 >= m else: even[(l + hi) / 2] * 2 >= m
 
     /// Total number of non-empty palindromic substrings. O(n).
     pub @get fn count(self) -> Int = sum(x for x in odd) + sum(x for x in even)
@@ -588,10 +591,11 @@ pub struct RollingHash:
             h2 = (h2 * b2 + x2) % 1_000_000_009
             w1 = w1 * b1 % 1_000_000_007
             w2 = w2 * b2 % 1_000_000_009
-            p1[idx] = h1
-            p2[idx] = h2
-            pow1[idx] = w1
-            pow2[idx] = w2
+            unchecked:
+                p1[idx] = h1
+                p2[idx] = h2
+                pow1[idx] = w1
+                pow2[idx] = w2
         RollingHash((b1, b2), p1, p2, pow1, pow2)
 
     /// Build a `RollingHash` reusing another instance's salted `bases` so their hashes compare directly.
@@ -609,19 +613,23 @@ pub struct RollingHash:
     @allow(unproven_list_index)
     fn raw_slice(self, l: Int, r: Int) -> HashVal:
         let d = r - l
-        HashVal(
-            (p1[r] - p1[l] * pow1[d]) % 1_000_000_007,
-            (p2[r] - p2[l] * pow2[d]) % 1_000_000_009,
-        )
+        unchecked:
+            return HashVal(
+                (p1[r] - p1[l] * pow1[d]) % 1_000_000_007,
+                (p2[r] - p2[l] * pow2[d]) % 1_000_000_009,
+            )
+        HashVal(0, 0)
 
     @allow(unproven_list_index)
     fn eq_sub(self, a: Int, b: Int, len: Int) -> Bool:
-        let a1 = (p1[a + len] - p1[a] * pow1[len]) % 1_000_000_007
-        let b1 = (p1[b + len] - p1[b] * pow1[len]) % 1_000_000_007
-        if a1 != b1: return false
-        let a2 = (p2[a + len] - p2[a] * pow2[len]) % 1_000_000_009
-        let b2 = (p2[b + len] - p2[b] * pow2[len]) % 1_000_000_009
-        a2 == b2
+        unchecked:
+            let a1 = (p1[a + len] - p1[a] * pow1[len]) % 1_000_000_007
+            let b1 = (p1[b + len] - p1[b] * pow1[len]) % 1_000_000_007
+            if a1 != b1: return false
+            let a2 = (p2[a + len] - p2[a] * pow2[len]) % 1_000_000_009
+            let b2 = (p2[b + len] - p2[b] * pow2[len]) % 1_000_000_009
+            return a2 == b2
+        false
 
     /// Hash of the half-open 0-based slice `[l, r)`; `HashVal(0, 0)` when `l == r`. Stops on
     /// `l > r` or an end outside the sequence. O(1).
@@ -1417,7 +1425,7 @@ fn manacher_and_is_palindrome_match_brute():
         for l in 0..n:
             for r in l..=n:
                 let ok = is_palindrome([s[j] for j in l..r])
-                assert p.is_palindrome(l, r) == ok
+                assert p.is_palindrome(l..r) == ok
                 if r > l and ok:
                     total += 1
                     if r - l > best.r - best.l: best = (l: l, r: r)
@@ -1660,10 +1668,12 @@ fn indexed_views_and_common_prefix_suffix():
     assert lyndon_factorization("bbab") == [0, 1, 2]
     assert min_rotation("cab") == 1
     let pal = manacher("abacaba")
-    assert pal.is_palindrome(0, 7)
-    assert pal.is_palindrome(1, 6)
-    assert not pal.is_palindrome(0, 4)
+    assert pal.is_palindrome(0..7)
+    assert pal.is_palindrome(1..6)
+    assert pal.is_palindrome(1..=5)
+    assert not pal.is_palindrome(0..4)
     domain Pos = 1..=5
     let arr: [Pos]Char = [Pos] i => "ababa"[i.ord]
-    assert manacher(arr).is_palindrome(0, 5)
+    assert manacher(arr).is_palindrome(Pos(1)..=Pos(5))
+    assert not manacher(arr).is_palindrome(Pos(1)..=Pos(4))
     assert period(arr) == 2

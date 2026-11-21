@@ -1368,7 +1368,7 @@ fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int           // O(|a| + |b|)
 fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>          // O(n)
 fn min_rotation<S: Indexed>(s: S) -> Int                        // O(n)
 struct Palindromes(odd: List<Int>, even: List<Int>)
-    fn is_palindrome(self, l: Int, r: Int) -> Bool              // O(1)
+    fn is_palindrome<R>(self, r: R) -> Bool                     // O(1), Range<Int> or Range<D>
     @get fn count(self) -> Int                                  // O(n)
     @get fn longest(self) -> (l: Int, r: Int)                   // O(n)
 fn manacher<S: Indexed>(s: S) -> Palindromes                    // O(n)

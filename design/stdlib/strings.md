@@ -180,7 +180,7 @@ Laws:
 
 ```cp
 struct Palindromes(odd: List<Int>, even: List<Int>):
-    fn is_palindrome(self, l: Int, r: Int) -> Bool   // O(1); s[l..r]
+    fn is_palindrome<R>(self, r: R) -> Bool          // O(1); Range<Int> or Range<D>
     @get fn count(self) -> Int                       // O(n); total palindromic substrings
     @get fn longest(self) -> (l: Int, r: Int)        // O(n); longest palindromic range
 
@@ -203,7 +203,7 @@ struct PalindromicTree<A>:
 Laws:
 - For `p = manacher(s)`: `p.odd[i]` is the maximum `k` with `s[i - k + 1..i + k]`
   palindromic; `p.even[i]` is the maximum `k` with `s[i - k..i + k]` palindromic.
-- `p.is_palindrome(l, r) == is_palindrome(s[l..r])` for all `0 <= l <= r <= n`.
+- `p.is_palindrome(l..r) == is_palindrome(s[l..r])` for all `0 <= l <= r <= n`.
 - `p.count == sum(p.odd) + sum(p.even)`, and equals
   `sum(pt.occurrences()[2..])` on `pt = PalindromicTree<A>.of(s)`.
 - `pt.distinct` equals the number of distinct non-empty palindromic substrings

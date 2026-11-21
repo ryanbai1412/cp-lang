@@ -19,7 +19,7 @@ for i in Pos:
             if s[i] == s[p2]: alt_run[i] = alt_run[p2] + 1
 
 fn non_pal_score(l: Pos, r: Pos) -> Int:
-    let m = r.ord - l.ord + 1
+    let m = (l..=r).len
     let prev = r.prev!
     let has_period2 = alt_run[r] >= (m + 1) / 2 and alt_run[prev] >= m / 2
     if has_period2:
@@ -27,7 +27,7 @@ fn non_pal_score(l: Pos, r: Pos) -> Int:
         let evens = m / 2
         return evens * (evens + 1)
     let total = m * (m + 1) / 2 - 1
-    if pal.is_palindrome(l.ord, r.ord + 1): total - m else: total
+    if pal.is_palindrome(l..=r): total - m else: total
 
 repeat q:
     let (l, r): (Pos, Pos) = read()
