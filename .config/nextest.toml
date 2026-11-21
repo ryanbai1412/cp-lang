@@ -1,0 +1,13 @@
+# Start the longest tests first so none of them begins near the end of the
+# run and becomes its tail. Ordered by measured wall time on the fast gate.
+[[profile.default.overrides]]
+filter = 'test(every_port_is_written_for_every_judge_within_its_limit) | test(formats_the_whole_corpus)'
+priority = 100
+
+[[profile.default.overrides]]
+filter = 'test(/^native_profile_counts_what_the_interpreter_counts_/) | test(=run_matches_cpl_run) | test(golden_runaway_recursion_summarizes_deep_call_stack) | test(the_libraries_ports_and_passing_tests_check_clean)'
+priority = 50
+
+[[profile.default.overrides]]
+filter = 'test(every_row_of_the_catalog_runs_with_the_type_it_names) | test(stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input) | test(=build_matches_cpl_build) | test(deep_recursion_runs_on_the_stack_each_judge_gives) | test(every_runtime_error_of_cpl_run_stops_the_judge_build_too) | test(swaps_truncations_fills_and_repeats_at_the_edges)'
+priority = 20
