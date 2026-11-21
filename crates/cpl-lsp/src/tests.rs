@@ -1987,8 +1987,8 @@ fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
     for (port, good, bad, code) in [
         (
             "cf2066b",
-            "for i in I if a[i] == 0]",
-            "for i in I where a[i] == 0]",
+            "in a.items if x != 0",
+            "in a.items where x != 0",
             "E0503",
         ),
         ("agc077a", "@!multitest\n", "--- multitest ---\n", "E0503"),
@@ -2029,7 +2029,7 @@ fn fix_all_rewrites_removed_syntax_then_the_lints_it_uncovers() {
         "cf2066b",
         ("(0..b.len).rev:", "(0..b.len()).rev:"),
     );
-    let text = text.replacen("for i in I if a[i] == 0]", "for i in I where a[i] == 0]", 1);
+    let text = text.replacen("in a.items if x != 0", "in a.items where x != 0", 1);
     let change = obj([
         (
             "textDocument",
