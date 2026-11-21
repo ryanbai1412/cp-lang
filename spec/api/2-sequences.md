@@ -16,7 +16,8 @@ ends, `.first`/`.last` are optional.
    only at `.collect()`, a comprehension or `List(...)`. Lint flags a chain
    walked twice and side-effecting closures.
 4. **Identity vs offset.** A domain slice keeps its positions
-   (`a[l..=r][i] == a[i]`); a `List`/`Str` slice counts from 0.
+   (`a[l..=r][i] == a[i]`); a `List`/`Str` slice counts from 0 (pending:
+   2a recommends keeping keys there too).
 5. **Views are borrows with the rules of `mut a[i]`.** No lifetime
    annotations, never stored, returned only through `lends`. In-place verbs
    work on views (`a[l..=r].sort()`); each has a copying twin (`sorted`).
@@ -25,17 +26,37 @@ ends, `.first`/`.last` are optional.
 7. **Costs show.** O(1) things are getters or views, allocation is named,
    options are named arguments (`max(by:)`), and there is no overloading.
 
-## The model in one paragraph
+## Terms
 
-There is one protocol and one capability on top of it. A **`Seq<T>`** is
-anything a `for` can walk: it has `iter() -> yields T`. A **generator**
-(`fn f(...) -> yields T`) is the only iterator; there is no `next()`. An
-**`Indexed<D, T>`** is a `Seq` with O(1) `s[i]` over a domain `D` and a
-known index range `s.keys: Range<D>`. Every array, list, string, range and
-view is `Indexed`. A **view** is a source plus a range and a direction. A
-domain position is an identity, so a slice of a `[V]T` keeps `V`'s
-positions; an `Int` index into a `List` or `Str` is an offset, so a slice
-of one counts from 0.
+Every word below means one thing in this doc, in the stubs and in errors.
+
+| Term | Means | Owns its elements? | Examples |
+|---|---|---|---|
+| **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in this table |
+| **indexed sequence** (`Indexed<K, T>`) | a sequence that also has O(1) `s[k]`, `.keys` and `.len` | either | `[V]T`, `List<T>`, `Str`, ranges, slices, `.rev` |
+| **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` offset (`List`, `Str`) | | `i: V`, `3` |
+| **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` arrays, `List`, `Str`, `Set`, `Map` |
+| **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behind it (round 1) | nothing to own | `l..=r`, `..i`, `V.range` |
+| **view** | a sequence made from a source without copying it: O(1) to make, borrows the source, does its work as you walk or read it | no | `a[l..=r]`, `a.rev`, `a.map(f)`, `a.filter(p)` |
+| **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l..=r]`, `s[i..]`, `grid[r]` (a row) |
+| **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, `.take`, `zip` |
+| **chain** | adapters applied one after another; still a view, still lazy | no | `a.filter(p).map(f)` |
+| **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the body on each walk | no | `divisors(n)`, `dfs(g, s)` |
+| **materialize** | copy a sequence into a new collection: the only allocation step | | `.collect()`, `List(s)`, `[f(x) for x in s]` |
+| **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]` |
+
+How they relate:
+- **Two capabilities.** A view is indexed when its adapter can answer
+  `w[k]` in O(1): slices, `.rev`, `.map`, `.items`, `zip`, `take`/`drop`.
+  It is only a sequence (walk-only) otherwise: `filter`, `take_while`,
+  `chain`, generators.
+- **Slices are the views that narrow keys.** Every other indexed view keeps
+  its source's keys unchanged.
+- **Ranges are indexed sequences but not views:** they have no source.
+  Slicing *with* a range gives a view.
+- **Lazy means a view or generator.** Its work happens at each walk or
+  read, never up front. Materializing is the only step that does the work
+  once and keeps the result.
 
 ```python
 a[l..=r]          # view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
@@ -46,19 +67,24 @@ a.map(f)          # Indexed<D, U>: (a.map(f))[i] is f(a[i]), O(1) per read
 a.items           # (i, a[i]) pairs with a's own indices
 ```
 
-## Kinds
+## The two capabilities
 
-| Kind | What it guarantees | Examples |
+| Capability | What it guarantees | Examples |
 |---|---|---|
-| `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generators, `s.filter(p)`, `chain(a, b)`, `g.out(u)` |
+| `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generators, `s.filter(p)`, `chain(a, b)`, `g[u]` |
 | `Indexed<D, T>` | `Seq` + `s[i]` for `i: D` in O(1), `s.keys: Range<D>`, `s.len` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices, `.rev`, `.map(f)`, `zip(a, b)` |
 
-**Cost rule.** Views and adapters are O(1) to make and allocate nothing. A
+**Cost rule.** Views are O(1) to make and allocate nothing. A
 loop over them compiles to the loop you would write by hand. Anything that
 builds a container says so: a comprehension, `List(s)`, or a method named
 for its result (`sorted`, `tally`, `scan`).
 
-## Domain views keep their positions; offset views count from 0
+## Slices: which keys survive
+
+> **Pending:** the rule below is the current hybrid.
+> `2a-identity-vs-offset.md` recommends identity everywhere instead: `List`
+> and `Str` slices would keep their keys too, and `w.rebase` would give the
+> rare 0-based view. That needs Ryan's call.
 
 The key type decides. A domain position names an element (round 1's index
 safety), so it means the same element in the array and in every view of it:
@@ -140,7 +166,7 @@ a[l..=r].rev.map(f)       # Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
 - **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed`
   over `V`; it is a template parameter, so each call site gets its own fused
   loop.
-- **Filtered sources.** `filter`, `take_while` and generators are `Seq`
+- **Walk-only views.** `filter`, `take_while` and generators are `Seq`
   only: the `if` or the generator body is inlined into the `for`.
 
 ## Generators
@@ -169,7 +195,7 @@ for d in divisors(n):
   wants to own the loop. Materialize one (`List(g)`), or zip indexed
   sequences. `zip` takes only `Indexed`.
 
-## Adapters (O(1) to make, lazy)
+## Adapters (each makes a view: O(1), lazy)
 
 | Form | Result | Note |
 |---|---|---|
