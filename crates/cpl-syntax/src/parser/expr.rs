@@ -19,7 +19,13 @@ impl<'a> Parser<'a> {
         };
         if lambda {
             let params = if self.eat(T::LParen) {
-                self.comma_list(T::RParen, "the lambda's parameters", Self::pattern)
+                self.comma_list(T::RParen, "the lambda's parameters", |p| {
+                    let pat = p.pattern();
+                    if p.eat(T::Colon) {
+                        let _ty = p.ty();
+                    }
+                    pat
+                })
             } else {
                 vec![self.pattern()]
             };
@@ -1107,6 +1113,7 @@ fn names_a_type(ty: &crate::ast::Type) -> bool {
         TypeKind::Tuple(items) => items.iter().all(names_a_type),
         TypeKind::Optional(t) => names_a_type(t),
         TypeKind::Array { elem, .. } => names_a_type(elem),
+        TypeKind::Range { .. } => true,
         TypeKind::Record(fields) => fields.iter().all(|(_, t)| names_a_type(t)),
         _ => false,
     }

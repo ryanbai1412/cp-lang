@@ -446,40 +446,38 @@ impl<'a> Parser<'a> {
     }
 
     fn let_stmt(&mut self) -> StmtKind {
+        let stmt_start = self.start();
         let mutable = self.at(T::Var);
         self.bump();
         let mut pat = self.pattern();
-        // `var ones, one_twos, ans: Z = (0, 0, 0)` and `let n, m: 1..=20 = read()`:
-        // homogeneous multi-binding desugars to a tuple pattern with a repeated
-        // tuple type `(T, T, ...)`, so scalar broadcast (`var a, b: Int = 0`) is
-        // cleanly rejected as a tuple/scalar mismatch.
-        let mut shared_count = 0usize;
+        // `var ones, open, ans: Z = 0`, `var ones, one_twos, ans: Z = (0, 0, 0)`,
+        // and `let n, m: 1..=20 = read()`: homogeneous multi-binding.
+        let mut shared_pats: Vec<Pattern> = Vec::new();
         if matches!(&pat.kind, PatternKind::Name(_))
             && self.at(T::Comma)
             && self.peek_n(1) == T::Ident
             && matches!(self.peek_n(2), T::Comma | T::Colon)
         {
             let start = pat.span.start;
-            let mut pats = vec![pat];
+            shared_pats.push(pat);
             while self.eat(T::Comma) {
-                pats.push(self.pattern());
+                shared_pats.push(self.pattern());
             }
-            shared_count = pats.len();
             pat = Pattern {
-                kind: PatternKind::Tuple(pats),
+                kind: PatternKind::Tuple(shared_pats.clone()),
                 span: self.span_from(start),
             };
         }
-        let ty = self.eat(T::Colon).then(|| {
-            let elem = self.ty();
-            if shared_count > 1 {
+        let shared_elem_ty = self.eat(T::Colon).then(|| self.ty());
+        let ty = shared_elem_ty.as_ref().map(|elem| {
+            if shared_pats.len() > 1 {
                 let span = elem.span;
                 Type {
-                    kind: TypeKind::Tuple(vec![elem; shared_count]),
+                    kind: TypeKind::Tuple(vec![elem.clone(); shared_pats.len()]),
                     span,
                 }
             } else {
-                elem
+                elem.clone()
             }
         });
         let init = if self.eat(T::Eq) {
@@ -495,6 +493,45 @@ impl<'a> Parser<'a> {
             }
             None
         };
+        // `var ones, open, ans: Z = 0` or `var ways, next: [1..=m]Z = 0`:
+        // a single non-tuple, non-`read()` initializer fills each binding with
+        // its own copy of the declared type and value.
+        let is_tuple_or_read = init.as_ref().is_some_and(|e| {
+            matches!(e.kind, ExprKind::Tuple(_))
+                || matches!(
+                    &e.kind,
+                    ExprKind::Call { callee, .. }
+                        if matches!(&callee.kind, ExprKind::Name(n) if n == "read")
+                )
+        });
+        if shared_pats.len() > 1 && init.is_some() && !is_tuple_or_read {
+            let full_span = self.span_from(stmt_start);
+            let mut iter = shared_pats.into_iter();
+            let first = iter.next().unwrap();
+            for next_pat in iter {
+                self.extra_stmts.push(Stmt {
+                    kind: StmtKind::Let {
+                        mutable,
+                        pat: next_pat,
+                        ty: shared_elem_ty.clone(),
+                        init: init.clone(),
+                        guard: None,
+                        otherwise: None,
+                    },
+                    span: full_span,
+                    decorators: Vec::new(),
+                    public: false,
+                });
+            }
+            return StmtKind::Let {
+                mutable,
+                pat: first,
+                ty: shared_elem_ty,
+                init,
+                guard: None,
+                otherwise: None,
+            };
+        }
         // `var best = 0, ways = 1` is two bindings.
         while init.is_some()
             && self.at(T::Comma)

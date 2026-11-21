@@ -1323,6 +1323,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   4) `StmtKind::Return(Some(e))` is accepted at top level (and in `Unit`-returning fns) when `e` has type `Unit` (e.g. `return print(ans)`), lowering to `Stmt::Expr(e); Stmt::Return(None)` while still rejecting non-unit top-level return values.
   *Reversal:* revert the four parser/check/IR hunks in `types.rs`, `stmt.rs`, `check/stmt.rs`, and `lower/stmt.rs`.
 
+- **22.11 Dream ergonomics batch 2: typed streaming reads `read<[n]T>()`, `x with field: v` record update, scalar-fill multi-binding `var a, b: T = 0`, and typed lambda params.**
+  1) `names_a_type` in `cpl-syntax` now accepts `TypeKind::Range`, `index_ty` treats arithmetic index expressions (`[V.count - 1]`) as counted arrays `0..expr`, `cpl-fmt` recognizes lowercase generic calls `f<...>(...)` via `closes_before_lparen`, and `cpl-ir` lowers zero-arg `read<T>()` / `read::<T>()` via `self.resolve(ty, true)` + `self.read(spec, span)` — one general path for ranges, counted arrays, grids, tuples, and structs.
+  2) `ExprKind::With { base, updates }` is now lowered in `cpl-ir` for structs and records via a `Do` block binding `base` once and reconstructing the struct/record tuple with updated fields, removing the E0501 `with` stub.
+  3) `var ones, open, ans: Z = 0` and `var ways, next: [1..=m]Z = 0` desugar to N separate `StmtKind::Let` declarations when the initializer is not a tuple or `read()`, while keeping tuple/read destructuring intact.
+  4) Lambda parameter lists accept optional `: Type` annotations (`(d: Int, l: Low) => ...`).
+  This brings `proto/ports/ecnerwala/dream/cf2069c.cp` (exemplar #1 in `design/EXEMPLARS-PORTS.md`) to 0 errors in `cpl check`, and `proto/ports/ecnerwala/cf2069c.cp` now matches its dream exemplar.
+  *Reversal:* revert the parser/IR/fmt hunks in `expr.rs`, `types.rs`, `stmt.rs`, `call.rs`, `lower/expr.rs`, and `spacing.rs`.
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

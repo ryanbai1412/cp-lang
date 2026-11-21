@@ -125,7 +125,13 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
             K::Lt => {
                 let tight_after = toks.get(i + 1).is_some_and(|next| !next.space_before);
                 let declares = i >= 2 && toks[i - 1].kind == K::Ident && toks[i - 2].kind == K::Fn;
+                let generic_call = i > 0
+                    && toks[i - 1].kind == K::Ident
+                    && !tok.space_before
+                    && tight_after
+                    && closes_before_lparen(toks, i);
                 let names_type = declares
+                    || generic_call
                     || i > 0
                         && (toks[i - 1].kind == K::ColonColon
                             || (toks[i - 1].kind == K::Ident && starts_upper(toks[i - 1].text)));
@@ -288,4 +294,36 @@ fn fuses(prev: &Tok, next: &Tok) -> bool {
         .collect();
     let split = lexed.tokens.first().map(|t| t.span.end as usize);
     kinds != [prev.kind, next.kind] || split != Some(prev.text.len())
+}
+
+/// True when `<` at `open` closes with a matching `>` followed immediately by `(`.
+fn closes_before_lparen(toks: &[Tok], open: usize) -> bool {
+    let mut angle = 0usize;
+    let mut group = 0usize;
+    for (j, t) in toks.iter().enumerate().skip(open) {
+        match t.kind {
+            K::LParen | K::LBracket | K::LBrace => group += 1,
+            K::RParen | K::RBracket | K::RBrace => {
+                if group == 0 {
+                    return false;
+                }
+                group -= 1;
+            }
+            K::Lt if group == 0 => angle += 1,
+            K::Gt if group == 0 => {
+                angle = angle.saturating_sub(1);
+                if angle == 0 {
+                    return toks.get(j + 1).is_some_and(|n| n.kind == K::LParen);
+                }
+            }
+            K::Shr if group == 0 => {
+                angle = angle.saturating_sub(2);
+                if angle == 0 {
+                    return toks.get(j + 1).is_some_and(|n| n.kind == K::LParen);
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }

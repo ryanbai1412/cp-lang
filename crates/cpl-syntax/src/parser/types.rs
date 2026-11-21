@@ -285,14 +285,21 @@ impl<'a> Parser<'a> {
     fn index_ty(&mut self) -> Type {
         // A count is an `Int` expression, `n` or `n - 1`; a range has
         // its `..`, and a domain starts with a capital.
-        let entry = self.tokens[self.pos..]
+        let entry: Vec<T> = self.tokens[self.pos..]
             .iter()
-            .take_while(|t| !matches!(t.kind, T::RBracket | T::Comma | T::Newline | T::Eof));
-        let counted = matches!(self.peek(), T::Ident | T::Int)
-            && !self.text().starts_with(|c: char| c.is_ascii_uppercase())
-            && !entry
-                .into_iter()
-                .any(|t| matches!(t.kind, T::DotDot | T::DotDotEq | T::LParen | T::LBracket));
+            .take_while(|t| !matches!(t.kind, T::RBracket | T::Comma | T::Newline | T::Eof))
+            .map(|t| t.kind)
+            .collect();
+        let has_range_or_group = entry
+            .iter()
+            .any(|t| matches!(t, T::DotDot | T::DotDotEq | T::LParen | T::LBracket));
+        let has_arith = entry
+            .iter()
+            .any(|t| matches!(t, T::Plus | T::Minus | T::Star | T::Slash));
+        let counted = !has_range_or_group
+            && (has_arith
+                || (matches!(self.peek(), T::Ident | T::Int)
+                    && !self.text().starts_with(|c: char| c.is_ascii_uppercase())));
         if !counted {
             return self.ty();
         }
