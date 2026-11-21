@@ -6,6 +6,8 @@
 // `mid + 1`), building the minimum spanning forest over colored vertices in
 // O(m log m).
 
+use std.dsu.DsuOf
+
 @!multitest
 let (n, m, q): (1..=300_000, 1..=300_000, 1..=300_000) = read()
 domain V = 1..=n
