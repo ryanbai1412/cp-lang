@@ -2681,7 +2681,6 @@ ratchet against accidental growth: 2,800,000 is about 7% headroom. Reason:
 every lane's gate was red on bytes no single commit owned. Reverse: set the
 number back in scripts/check.sh and site/test_site.py once the bundle is
 under it, e.g. by running wasm-opt -Os in the bundle build.
-
 Reversed the same day: the search index shipped every page's prose a second
 time (571 kB of text, 178 kB gzipped). The offline shell now rebuilds each
 entry's text from its page on load (1013fbfe), which brought the bundle to
@@ -2691,8 +2690,6 @@ about 2,400,000 bytes, so the cap is back at 2,600,000.
 
 1. **`Comb<M>` replaces `Comb<P>` as the single combinatorics table spelling (supersedes 40.1).**
    `Comb<M>` takes the modular type `M = Mod<P>` directly — `type Z = Mod<998_244_353>; let comb = Comb<Z>(n)` (or inline `Comb<Mod<P>>(n)`) — so the modulus is written once for both compile-time and runtime moduli, and there is one way per job instead of both `Comb<P>` and `Z.comb()`. `Comb<M>(limit)` pre-sizes `f` and `g` to exact capacity `limit + 1` (clamped at `M.MOD`), while lazy `ensure(n)` continues to double capacity for amortized O(1) growth. All ports, tests, examples, docs, and snippets are migrated in the same commit. Reverse: change `pub struct Comb<M>` back to `pub struct Comb<P>` in `stdlib/mod.cp` (replacing `M` with `Mod<P>` and `M.MOD` with `P`) and rewrite `Comb<Z>` callers back to `Comb<P>` or `Comb<Z.MOD>`.
-||||||| parent of 0648c0ea (stdlib: add monge_path and use it in cf2183h)
-
 
 ## 56. `monge_path` returns two lists (2026-11-21)
 
@@ -2703,3 +2700,7 @@ field as `_` under `cpl run`, and two flat lists are what the caller walks.
 It is the O(n log n) candidate deque; online LARSCH (O(n)) is the next step
 and keeps the signature. Reverse: return the pair list.
 
+## 57. `Fenwick.first_ge` replaces `Fenwick.lower_bound` (2026-11-21)
+
+1. **Rename `Fenwick.lower_bound(target)` to `Fenwick.first_ge(target)`** and migrate all callers (6 ports + stdlib tests + docs).
+   Reason: `lower_bound` is the C++ name; `plan/STDLIB.md` §2 standardizes sorted/monotone prefix lookup on the four-name family `first_ge`/`first_gt`/`last_le`/`last_lt` (`first_ge(target)` returns the first boundary `b` with `prefix(b) >= target`, or `none`). Keeps `kth(k)` as the 1-based position convenience over `first_ge(k)`. Reverse: rename `first_ge` back to `lower_bound` in `stdlib/fenwick.cp`, `plan/STDLIB.md`, `design/stdlib/ranges.md`, and the 6 caller ports.

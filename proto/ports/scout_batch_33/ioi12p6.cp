@@ -29,10 +29,10 @@ for round in 0..c:
     let node = Node(n + round)
     // WISH C7: an order-statistics `Set` (`line.nth(s)`, `line.remove_range(s..=e)`)
     // is what the original uses; here the k-th survivor is a Fenwick descent.
-    let first = alive.lower_bound(s + 1)!.left!
+    let first = alive.first_ge(s + 1)!.left!
     kids[node].push(head[first])
     for _ in s..e:
-        let gone = alive.lower_bound(s + 2)!.left!
+        let gone = alive.first_ge(s + 2)!.left!
         kids[node].push(head[gone])
         alive.add(gone, -1)
     head[first] = node

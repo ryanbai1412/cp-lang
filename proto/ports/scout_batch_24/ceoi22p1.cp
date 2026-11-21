@@ -74,7 +74,7 @@ fn solve() -> [Q]Card:
         let target_t = qs[qi].t
         while not fixed and cur_t < target_t:
             // Find the run containing the `half`-th card (1-based).
-            let b = bit.lower_bound(half)!
+            let b = bit.first_ge(half)!
             let leader = b.left!
             let before = bit.prefix(leader.l)
             let keep = half - before
@@ -91,7 +91,7 @@ fn solve() -> [Q]Card:
             cur_t += 1
 
         let pos1 = qs[qi].i.to_idx + 1
-        let b = bit.lower_bound(pos1)!
+        let b = bit.first_ge(pos1)!
         let leader = b.left!
         let off = pos1 - bit.prefix(leader.l) - 1
         ans[qi] = deck[Pos.nth(pos_of[leader].to_idx + off)]

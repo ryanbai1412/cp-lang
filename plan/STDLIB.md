@@ -912,7 +912,7 @@ struct Fenwick<D, T> // O(n), O(log n)
     fn add(mut self, i: D, x: T)
     fn prefix(self, b: Bounds<D>) -> T
     fn sum(self, r: Range<D>) -> T
-    fn lower_bound(self, target: Int) -> ?Bounds<D> // O(log n)
+    fn first_ge(self, target: Int) -> ?Bounds<D> // O(log n)
     fn kth(self, k: Int) -> ?D // O(log n)
 struct DualFenwick<D, T> // [new] range add, point get; O(n), O(log n)
     fn new(a: ?[D]T = none) -> DualFenwick<D, T>

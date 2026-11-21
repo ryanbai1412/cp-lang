@@ -239,7 +239,7 @@ struct Fenwick<D, T>                                // point add, range sum
     fn add(mut self, i: D, x: T)                    // O(log n)
     fn prefix(self, b: Bounds<D>) -> T              // O(log n)
     fn sum(self, r: Range<D>) -> T                  // O(log n)
-    fn lower_bound(self, target: Int) -> ?Bounds<D> // O(log n), non-negative
+    fn first_ge(self, target: Int) -> ?Bounds<D> // O(log n), non-negative
     fn kth(self, k: Int) -> ?D                      // O(log n), 1-based
 
 struct XorFenwick<D, T>                             // point xor, range xor

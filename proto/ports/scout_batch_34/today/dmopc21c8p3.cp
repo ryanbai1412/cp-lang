@@ -35,7 +35,7 @@ else:
     var bit = Fenwick<Pos, Int>([Pos] _ => 1)
     var perm: [Pos]Int = [Pos] _ => 0
     for v in Val:
-        let b = bit.lower_bound(offsets[v] + 1)!
+        let b = bit.first_ge(offsets[v] + 1)!
         let p = b.left!
         perm[p] = v.to_idx + 1
         bit.add(p, -1)

@@ -42,7 +42,7 @@ for c in Cmd:
     elif op == 'S':
         raise -= x
         while size > 0:
-            let lowest = staff.lower_bound(1)!.left!
+            let lowest = staff.first_ge(1)!.left!
             if bases[lowest.to_idx] + raise >= floor: break
             let leaving = staff.sum(lowest..=lowest)
             staff.add(lowest, -leaving)
@@ -51,6 +51,6 @@ for c in Cmd:
     elif x > size:
         print(-1)
     else:
-        let kth = staff.lower_bound(size - x + 1)!.left!
+        let kth = staff.first_ge(size - x + 1)!.left!
         print(bases[kth.to_idx] + raise)
 print(left)

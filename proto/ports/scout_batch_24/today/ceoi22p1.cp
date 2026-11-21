@@ -51,7 +51,7 @@ for pair in order:
     let target_t = pair.0
     let qi = Q(pair.1)
     while not fixed and cur_t < target_t:
-        let b = bit.lower_bound(half)!
+        let b = bit.first_ge(half)!
         let leader = b.left!
         let before = bit.prefix(leader.l)
         let keep = half - before
@@ -67,7 +67,7 @@ for pair in order:
         cur_t += 1
 
     let pos1 = qs[qi].i.to_idx + 1
-    let b = bit.lower_bound(pos1)!
+    let b = bit.first_ge(pos1)!
     let leader = b.left!
     let off = pos1 - bit.prefix(leader.l) - 1
     ans[qi] = deck[Pos.nth(pos_of[leader].to_idx + off)].to_idx + 1

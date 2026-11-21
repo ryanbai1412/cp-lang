@@ -42,7 +42,7 @@ pub struct Fenwick<D, T>:
 
     /// The first boundary where the prefix sum reaches `target`, for non-negative values:
     /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log n).
-    pub fn lower_bound(self, target: Int) -> ?Bounds<D>:
+    pub fn first_ge(self, target: Int) -> ?Bounds<D>:
         if target <= 0: return D.bounds.nth(0)
         var p = 0
         var rest = target
@@ -50,7 +50,7 @@ pub struct Fenwick<D, T>:
         while step > 0:
             if p + step <= D.K:
                 // The walk is a binary search, so it is wrong once a block sums below zero.
-                assert t[p + step] >= 0, "`lower_bound` and `kth` need non-negative values"
+                assert t[p + step] >= 0, "`first_ge` and `kth` need non-negative values"
                 if t[p + step] < rest:
                     p += step
                     rest -= t[p]
@@ -62,7 +62,7 @@ pub struct Fenwick<D, T>:
     /// are fewer than `k` items. For non-negative values. O(log n).
     pub fn kth(self, k: Int) -> ?D:
         assert k >= 1, "`kth` counts from 1"
-        let b = self.lower_bound(k)
+        let b = self.first_ge(k)
         if b == none: none else: b!.left
 
 /// Point xor and range xor over anything with `^` (`Int`, `U64`): the Fenwick tree whose
@@ -261,14 +261,14 @@ fn empty_and_half_open_ranges():
     assert f.sum(V(2)..V(2)) == 0
 
 @test
-fn lower_bound_finds_the_kth():
+fn first_ge_finds_the_kth():
     domain V = 0..8
     var f = Fenwick<V, Int>()
     for v in [1, 4, 4, 6]: f.add(V(v), 1)
-    assert f.lower_bound(1)!.left == V(1)
-    assert f.lower_bound(3)!.left == V(4)
-    assert f.lower_bound(4)!.left == V(6)
-    assert f.lower_bound(5) == none
+    assert f.first_ge(1)!.left == V(1)
+    assert f.first_ge(3)!.left == V(4)
+    assert f.first_ge(4)!.left == V(6)
+    assert f.first_ge(5) == none
     assert f.kth(1) == V(1)
     assert f.kth(3) == V(4)
     assert f.kth(4) == V(6)
