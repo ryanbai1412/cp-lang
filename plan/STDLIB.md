@@ -901,43 +901,71 @@ fn mst<V>(edges: List<(u: V, v: V, w: Int)>) -> (total: Int, used: List<Int>)
     // O(m log m) Kruskal; indices of the chosen edges
 ```
 
-### 4.12 `std.flow`: flows and matchings
+### 4.12 `std.flow`: flows, cuts and matchings
 
-Dinic's max flow on `FlowGraph<V>` with arcs as handles, the min cut,
-and the assignment problem.
+The design and its reasons are in `design/stdlib/flows.md`. Two networks
+share `Arc` and one accessor vocabulary (`flow`, `cap`, `source`,
+`target`, `rev`); everything whose input is a table or an edge list is a
+function returning a value. Objectives are named (`max_`/`min_`), never
+encoded by negating weights; options are named arguments (`limit:`,
+`cap: none`). Sides, vertices and input edges are domains: a matching is
+`[L]?R`, a bounded flow is `[E]Int`.
 
 ```cp
 struct Arc(id: Int)
-    @get fn rev(self) -> Arc
-struct FlowGraph<V> // O(1), O(V^2 E), O(E sqrt(V))
-    fn new() -> FlowGraph<V>
-    fn add(mut self, u: V, v: V, cap: ?Int) -> Arc
-    fn add_both(mut self, u: V, v: V, cap: Int) -> Arc
-    fn flow(self, a: Arc) -> Int
-    fn cap(self, a: Arc) -> Int
-    fn target(self, a: Arc) -> V
-    fn max_flow(mut self, s: V, t: V) -> Int
-    fn min_cut(self, s: V) -> [V]Bool
-    fn reset(mut self) // O(E)
-// O(n^3)
-fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R)
+    @get fn rev(self) -> Arc                                  // O(1)
+struct FlowGraph<V>                    // [have] Dinic
+    fn new() -> FlowGraph<V>                                  // O(V)
+    fn add(mut self, u: V, v: V, cap: ?Int) -> Arc            // O(1)
+    fn add_both(mut self, u: V, v: V, cap: Int) -> Arc        // O(1)
+    fn flow(self, a: Arc) -> Int                              // O(1)
+    fn cap(self, a: Arc) -> Int                               // O(1)
+    fn source(self, a: Arc) -> V                              // O(1) [new]
+    fn target(self, a: Arc) -> V                              // O(1)
+    fn max_flow(mut self, s: V, t: V, limit: ?Int = none) -> Int
+        // O(V^2 E); O(E sqrt V) on unit networks; limit: [new]
+    fn min_cut(self, s: V) -> [V]Bool                         // O(V + E)
+    fn reset(mut self)                                        // O(E)
+struct CostFlow<V>                     // [local] successive shortest paths
+    fn new() -> CostFlow<V>                                   // O(V)
+    fn add(mut self, u: V, v: V, cap: ?Int, cost: Int) -> Arc // O(1)
+    fn flow(self, a: Arc) -> Int                              // O(1)
+    fn cap(self, a: Arc) -> Int                               // O(1)
+    fn cost(self, a: Arc) -> Int                              // O(1)
+    fn source(self, a: Arc) -> V                              // O(1)
+    fn target(self, a: Arc) -> V                              // O(1)
+    fn min_cost_flow(mut self, s: V, t: V, limit: ?Int = none)
+        -> (flow: Int, cost: Int)
+        // O(F E log V); plus O(V E) once when a cost is negative
+    fn slope(mut self, s: V, t: V, limit: ?Int = none)
+        -> List<(flow: Int, cost: Int)>                       // same
+fn max_closure<V, E>(profit: [V]Int, needs: [E](u: V, v: V))
+    -> (value: Int, take: [V]Bool)               // [new] one max flow
+fn max_matching<L, R>(adj: [L]List<R>)
+    -> (size: Int, mate: [L]?R, back: [R]?L)     // [local] O(E sqrt V)
+fn min_vertex_cover<L, R>(adj: [L]List<R>)
+    -> (left: [L]Bool, right: [R]Bool)           // [local] O(E sqrt V)
+fn max_weight_matching<L, R>(weight: (L, R) -> Int)
+    -> (total: Int, mate: [L]R)                  // [have] O(L^2 R), L <= R
+fn min_weight_matching<L, R>(weight: (L, R) -> Int)
+    -> (total: Int, mate: [L]R)                  // [new] O(L^2 R), L <= R
+fn general_matching<V>(adj: [V]List<V>)
+    -> (size: Int, mate: [V]?V)                  // [new] O(V^3) Edmonds
+fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int
+fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
+    -> ?(value: Int, flow: [E]Int)
+fn min_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
+    -> ?(value: Int, flow: [E]Int)
+    // [local] each two max flows on V + 2 vertices
+fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int))
+    -> List<(u: V, v: V, w: Int)>                // [new] V - 1 max flows
 ```
 
-[new], promoted from `examples/local-lib/graph/matching.cp` and
-`min_cost_flow.cp`:
-
-```cp
-fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R)
-    // O(m sqrt n) Hopcroft-Karp
-fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool)
-    // O(m sqrt n); Konig's theorem from the matching
-struct CostFlow<V>
-fn CostFlow.new() -> CostFlow<V>
-fn add(mut self, u: V, v: V, cap: Int, cost: Int) -> Arc     // O(1)
-fn flow(mut self, s: V, t: V, limit: ?Int = none) -> (flow: Int, cost: Int)
-    // O(F m log n) successive shortest paths with potentials;
-    // costs may be negative on the first pass (Bellman-Ford start)
-```
+Staged (design section 7): `global_min_cut`, weighted general matching,
+`min_cost_circulation`, `set_cap`, matroid intersection. Network nodes
+built from several domains wait on sum domains (spec §21.11, core lane);
+until then `max_closure`, the bounded flows and the matchings keep their
+source and sink inside the library.
 
 ### 4.13 `std.strings`: strings
 

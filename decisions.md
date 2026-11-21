@@ -2183,3 +2183,28 @@ Reverse: delete the step from `scripts/check.sh`.
   overhead is a general closure-monomorphization pass in `cpl-codegen`,
   not a stdlib-specific hack. Reverse: switch to traits once associated
   constants land.
+
+## 43. Flows and matching (`std.flow`, 2026-11-21)
+
+The area's design is `design/stdlib/flows.md`; these are its calls.
+
+- **43.1 Two networks, one arc vocabulary.** `FlowGraph<V>` (Dinic) and `CostFlow<V>`
+  (successive shortest paths with potentials) stay separate types sharing `Arc` and the
+  accessors `flow`, `cap`, `source`, `target`. The cost solver is `min_cost_flow`, not
+  `flow(s, t)`, because `flow(a)` already means an arc's flow. Reason: one name, one meaning;
+  their solvers have different cost contracts. Reverse: merge into one type with an optional
+  cost per arc.
+- **43.2 Objectives are named, never negated.** `min_weight_matching` exists beside
+  `max_weight_matching`; bounded flows are `max_bounded_flow`/`min_bounded_flow`. Reason:
+  `research/frictions/cf2062g.md`, where a minimum was written as `-max(-w)`. Reverse: keep one
+  of each pair.
+- **43.3 Reductions are functions over the user's domains.** `max_closure`, the matchings,
+  bounded flows and `gomory_hu` take domains and edge tables (`[E](u: V, v: V, ...)`) and build
+  their network, source and sink inside a fresh domain. Reason: the corpus flattens
+  `Item + Pair + Src + Snk` into one numbered domain (`noi06p4` K11, `dmopc20c7p5`,
+  `noi09p4`); the general fix is sum domains (spec §21.11), a core feature, and until it lands
+  the library keeps the extra vertices out of user code. Reverse: once sum domains land these
+  stay; nothing to undo.
+- **43.4 `cap: none` is 2^60.** An unbounded arc is a capacity no finite cut picks, with room
+  for eight of them in a sum before 63-bit overflow. Reason: matches the shipped `FlowGraph.add`;
+  a true infinity would need a sum type in the inner loop. Reverse: a `Cap` enum.
