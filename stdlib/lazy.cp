@@ -89,6 +89,14 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         for k in (1..=log).rev: self.push(p >> k)
         t[p]
 
+    /// Position `i` as a writable place: `st.at(i) += x`. Pending tags on its path are
+    /// pushed first and the ancestors pulled when the write ends. O(log |D|).
+    pub fn at(mut self, i: D) lends mut T:
+        let p = i.to_idx + size
+        for k in (1..=log).rev: self.push(p >> k)
+        lend mut t[p]
+        for k in 1..=log: self.pull((i.to_idx + size) >> k)
+
     /// The fold of every position. O(1).
     pub @get fn all(self) -> T = t[1]
 
@@ -237,7 +245,7 @@ pub fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>:
 
 /// Range update, point query: no fold monoid, no pulls, no span array.
 /// `compose(new_f, old_f)` applies `old_f` first then `new_f`; `apply(f, x)` updates a single leaf.
-/// `apply`, `get`, `set`, and `update` are O(log n); memory is n leaves plus bit_ceil(n) tags.
+/// `apply`, `get`, `set`, `at` and `update` are O(log n); memory is n leaves plus bit_ceil(n) tags.
 pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) -> T):
     val: List<T>
     lz: List<F>
@@ -310,6 +318,12 @@ pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) ->
         for k in (1..=log).rev: self.push(p >> k)
         val[i.to_idx] = x
 
+    /// Position `i` as a writable place: `st.at(i) += x`, after pushing the tags above it. O(log n).
+    pub fn at(mut self, i: D) lends mut T:
+        let p = i.to_idx + size
+        for k in (1..=log).rev: self.push(p >> k)
+        lend mut val[i.to_idx]
+
     /// Replace position `i` with `f(cur)` in one O(log n) pass.
     pub fn update(mut self, i: D, f: T -> T):
         let p = i.to_idx + size
@@ -348,6 +362,27 @@ fn the_stock_actions_match_brute_force():
                 assert st.fold(l..) == brute(a, l.., k)
         for v in V: assert st.get(v) == a[v]
         assert st.all == brute(a, V.first..=V.last, k)
+
+@test
+fn at_writes_through_pending_tags():
+    domain V = 1..=10
+    var a = [V] v => rand(-9, 9)
+    var st = LazySegTree<V, Int>(AddSum, a)
+    var d = DualSegTree<V, Int, Int>(0, (f, g) => f + g, (f, x) => f + x, a)
+    for _ in 0..60:
+        let l = V.nth(rand(0, 9))
+        let r = V.nth(rand(l.to_idx, 9))
+        let x = rand(-5, 5)
+        if rand(0, 1) == 0:
+            for v in l..=r: a[v] += x
+            st.apply(l..=r, x)
+            d.apply(l..=r, x)
+        else:
+            a[l] *= 2
+            st.at(l) *= 2
+            d.at(l) *= 2
+        assert st.fold(l..=r) == sum(a[v] for v in l..=r)
+    for v in V: assert st.get(v) == a[v] and d.get(v) == a[v]
 
 @test
 fn stock_actions_obey_their_laws():

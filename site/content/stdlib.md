@@ -160,7 +160,7 @@ affine.apply(V.first..=V.last, (2, 1))
 print(bit.sum(V.first..=V.last), rmq.fold(V.first..=V.last), st.all, mx.all.value, lz.all, affine.all)
 ```
 
-- `SegTree` and `LazySegTree` both provide `.set(pos, val)`, `.fold(l..=r)`, `.all` (`O(1)` root fold), and `O(log n)` binary search on the tree via `.max_right(l, ok)` and `.min_left(r, ok)`. Empty and inverted ranges are valid no-ops (except `SparseTable.fold`, which asserts a non-empty range and returns `T`).
+- `SegTree` and `LazySegTree` both provide `.set(pos, val)`, `.at(pos)` (the leaf as a writable place: `st.at(i) += x`, `st.at(i) max= x`, each write `O(log n)`), `.fold(l..=r)`, `.all` (`O(1)` root fold), and `O(log n)` binary search on the tree via `.max_right(l, ok)` and `.min_left(r, ok)`. Empty and inverted ranges are valid no-ops (except `SparseTable.fold`, which asserts a non-empty range and returns `T`).
 - `Fenwick2D` handles 2D prefix sums; `Fenwick` stays dedicated to sums (`+`/`-`). `bit.kth(k) -> ?V` finds the first index whose prefix sum reaches `k` (non-negative counts).
 - `Dsu<V>()` provides `.unite(a, b) -> Bool`, `.find(v) -> V`, `.same(a, b)`, `.size(v)`, `.components`, `.groups() -> List<List<V>>`, plus `.mark() -> Mark` and `.undo_to(snap)` for `O(1)` rollback DSU. `DsuOf<V, T>(init, join)` keeps a value per set (joined on merge, restored on `undo_to`), and `ParityDsu<V>` tracks same/opposite sides with `.unite(a, b, differ:)`, `.diff(a, b) -> ?Bool` and `.consistent`.
 - `std.marks.Marks<D>` is an opt-in 32-bit generation-stamp visited table (`O(1)` reset); for most problems, `[D]Bool` with a touched-list reset is simpler and equally fast.

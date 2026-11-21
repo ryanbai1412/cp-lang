@@ -29,13 +29,15 @@ if ! rustc --print target-libdir --target "$target" 2>/dev/null | xargs test -d;
 fi
 
 # A profile of its own, set here so the workspace's Cargo.toml stays as it
-# is. A panic ends the call as a trap that cpl.js reports. The level is 2
-# and not "s": "s" is 60 kB smaller gzipped, but its frames are larger, and
-# a program can then nest about half as many calls on a browser's stack.
+# is. A panic ends the call as a trap that cpl.js reports. The interpreter is
+# built at level 2 and not "s": its frames are a program's recursion, and at
+# "s" a program can nest about half as many calls on a browser's stack. The
+# rest is built at "s", about 240 kB smaller gzipped.
 cd "$root"
 cargo build -p cpl-wasm --target "$target" --profile wasm \
     --config 'profile.wasm.inherits="release"' \
-    --config "profile.wasm.opt-level=2" \
+    --config 'profile.wasm.opt-level="s"' \
+    --config 'profile.wasm.package.cpl-interp.opt-level=2' \
     --config 'profile.wasm.lto=true' \
     --config 'profile.wasm.panic="abort"' \
     --config 'profile.wasm.strip=true'

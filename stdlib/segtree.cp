@@ -47,8 +47,17 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 
     /// Assign leaf `i` to `x` and pull ancestors. O(log |D|).
     pub fn set(mut self, i: D, x: T):
+        t[size + i.to_idx] = x
+        self.pull(i)
+
+    /// Leaf `i` as a writable place: `st.at(i) += x`, `st.at(i) max= x`. The ancestors
+    /// are pulled when the write ends, so each use is O(log |D|); read with `get`.
+    pub fn at(mut self, i: D) lends mut T:
+        lend mut t[size + i.to_idx]
+        self.pull(i)
+
+    fn pull(mut self, i: D):
         var p = i.to_idx + size
-        t[p] = x
         unchecked:
             while p > 1:
                 p /= 2
@@ -137,6 +146,25 @@ fn folds_match_a_plain_array():
     assert st.fold(V(3)..V(3)) == Int.MIN
     assert st.fold(..V(4)) == max(a[v] for v in V if v < V(4))
     assert st.fold(V(4)..) == max(a[v] for v in V if v >= V(4))
+
+@test
+fn at_is_a_writable_leaf():
+    domain V = 1..=9
+    var a = [V] v => rand(-20, 20)
+    var st = SegTree<V, Int>(+, a)
+    for _ in 0..60:
+        let i = V.nth(rand(0, 8))
+        let x = rand(-9, 9)
+        if rand(0, 1) == 0:
+            a[i] += x
+            st.at(i) += x
+        else:
+            a[i] = max(a[i], x)
+            st.at(i) max= x
+        let l = V.nth(rand(0, 8))
+        let r = V.nth(rand(l.to_idx, 8))
+        assert st.fold(l..=r) == sum(a[v] for v in l..=r)
+    assert st.all == sum(a)
 
 @test
 fn every_bare_operator_folds():
