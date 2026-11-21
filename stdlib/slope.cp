@@ -27,6 +27,9 @@ pub struct Concave(start: Int, base: Int):
         for _ in 0..r.len - 1: f.slopes.insert(0)
         f
 
+    /// Make room for `n` slopes in total without regrowing. O(n).
+    pub fn reserve(mut self, n: Int): slopes.reserve(n)
+
     /// The first point of the domain. O(1).
     pub @get fn lo(self) -> Int = start
 
@@ -36,11 +39,9 @@ pub struct Concave(start: Int, base: Int):
     /// `f = max over a + b = c of f(a) + g(b)`: the domains add and the slope
     /// multisets merge. O(|g| log n) expected; convolve the smaller into the larger.
     pub fn max_convolve(mut self, g: Concave):
-        var h = g
-        start += h.start
-        base += h.base
-        if h.slopes.len > 0:
-            for s in h.slopes.to_list(): slopes.insert(s)
+        start += g.start
+        base += g.base
+        for s in g.slopes.to_list(): slopes.insert(s)
 
     /// `f(c) += q(c)` for a quadratic `q` with leading coefficient at most 0,
     /// read at three points (a fourth checks it is quadratic). O(1).

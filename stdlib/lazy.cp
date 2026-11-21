@@ -691,6 +691,9 @@ pub struct LazyTreap<T, F>(
     @get
     pub fn len(self) -> Int = self.sz_of(root)
 
+    /// Make room for `n` elements in total without regrowing. O(n).
+    pub fn reserve(mut self, n: Int): nodes.reserve(n)
+
     /// Whether the treap is empty. O(1).
     @get
     pub fn is_empty(self) -> Bool = root == none
@@ -834,24 +837,38 @@ pub struct LazyTreap<T, F>(
             assert false
             return nodes[0].val
 
-    fn walk(mut self, u: ?Int, lim: Int, mut out: List<T>):
+    // A read leaves the tree as it is: the tags still pending above a node
+    // ride along as `pend` instead of being pushed into it.
+    fn walk(self, u: ?Int, pend: ?F, lim: Int, mut out: List<T>):
         if out.len >= lim: return
-        if let i = u:
-            self.down(i)
-            unchecked:
-                self.walk(nodes[i].l, lim, mut out)
+        let i = u ?? return
+        unchecked:
+            let ls = self.sz_of(nodes[i].l)
+            var down = nodes[i].tag
+            var v = nodes[i].val
+            if let p = pend:
+                v = apply_fn(v, ls, p)
+                if let t = down: down = compose_fn(p, t) else: down = p
+            if let d = down:
+                let (fl, fr) = split_fn(d, ls)
+                self.walk(nodes[i].l, fl, lim, mut out)
                 if out.len < lim:
-                    out.push(nodes[i].val)
-                    self.walk(nodes[i].r, lim, mut out)
+                    out.push(v)
+                    self.walk(nodes[i].r, fr, lim, mut out)
+            else:
+                self.walk(nodes[i].l, none, lim, mut out)
+                if out.len < lim:
+                    out.push(v)
+                    self.walk(nodes[i].r, none, lim, mut out)
 
-    /// Return the first `min(k, len)` elements in order after pushing lazy tags. O(k + log n).
-    pub fn take(mut self, k: Int) -> List<T>:
+    /// The first `min(k, len)` elements in order. O(k + log n).
+    pub fn take(self, k: Int) -> List<T>:
         var out: List<T> = []
-        if k > 0: self.walk(root, k, mut out)
+        if k > 0: self.walk(root, none, k, mut out)
         out
 
-    /// Return all elements in order after pushing lazy tags. O(n).
-    pub fn to_list(mut self) -> List<T> = self.take(self.len)
+    /// All elements in order. O(n).
+    pub fn to_list(self) -> List<T> = self.take(self.len)
 
 @test
 fn lazy_treap_slope_trick_and_implicit_ops_match_brute():

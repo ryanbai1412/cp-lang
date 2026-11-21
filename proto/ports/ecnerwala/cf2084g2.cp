@@ -17,6 +17,7 @@ for i in Pos:
 fn gain(k: Int, c: Int) -> Int = (2 * c - k) * (2 * (half - c) - (n - k))
 
 var dp = Concave.point(0)
+dp.reserve(n)
 for k in 0..n:
     dp.add_quadratic(c => gain(k, c))
     if let is_even = fixed_even[k + 1]:
