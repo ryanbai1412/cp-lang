@@ -1,47 +1,42 @@
-@!multitest
+@! multitest
 let n: Int = read()
-let x: List<Int> = [read::<Int>() for _ in 0..n]
-var stk: [0..(n + 1)]Int = -1
+let x: [0..n]Int = read()
+var stk: [0..=n]?Int = none
 stk[x[0]] = 0
-var par: [0..n]Int = -1
+var par: [0..n]?Int = none
 var is_ext: [0..n]Bool = false
 for i in 1..n:
     if x[i] > x[i - 1] + 1 or x[i] == 1:
         print("NO")
         return
-    par[i] = stk[x[i] - 1]
-    if x[i] <= x[i - 1]: is_ext[par[i]] = true
+    let p = stk[x[i] - 1]!
+    par[i] = p
+    if x[i] <= x[i - 1]: is_ext[p] = true
     stk[x[i]] = i
-for i in 1..n:
-    if is_ext[i] and is_ext[par[i]]:
-        print("NO")
-        return
-var nxt: [0..n]Int = -1
-var hd: [0..n]Int = -1
-var tl: [0..n]Int = -1
-fn merge(ah: Int, at: Int, bh: Int, bt: Int) -> (Int, Int):
-    if at == -1: return (bh, bt)
-    if bt == -1: return (ah, at)
+
+if any(is_ext[i] and is_ext[par[i]!] for i in 1..n):
+    print("NO")
+    return
+
+var nxt: [0..n]?Int = none
+var lst: [0..n]?(Int, Int) = none
+
+fn merge(a: ?(Int, Int), b: ?(Int, Int)) -> ?(Int, Int):
+    let (ah, at) = a ?? return b
+    let (bh, bt) = b ?? return a
     nxt[at] = bh
     (ah, bt)
+
 for i in (0..n).rev:
-    if is_ext[i]:
-        let (h, t) = merge(i, i, hd[i], tl[i])
-        hd[i] = h
-        tl[i] = t
-    else:
-        let (h, t) = merge(hd[i], tl[i], i, i)
-        hd[i] = h
-        tl[i] = t
-    if i == 0: break
-    let p = par[i]
-    let (h, t) = merge(hd[i], tl[i], hd[p], tl[p])
-    hd[p] = h
-    tl[p] = t
-var res = List.filled(n, 0)
-var cur = hd[0]
-for v in 0..n:
-    res[cur] = v + 1
-    cur = nxt[cur]
+    lst[i] = if is_ext[i]: merge((i, i), lst[i]) else: merge(lst[i], (i, i))
+    if let p = par[i]: lst[p] = merge(lst[i], lst[p])
+
+var res: [0..n]Int = 0
+var cur: ?Int = lst[0]!.0
+var v = 1
+while let c = cur:
+    res[c] = v
+    v += 1
+    cur = nxt[c]
 print("YES")
 print(res)
