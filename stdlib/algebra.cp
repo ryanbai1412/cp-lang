@@ -77,8 +77,8 @@ pub fn desc<T>(x: T) -> Desc<T> = Desc(x)
 pub trait Reversible:
     fn rev(self) -> Self = self
 
-/// `xs` folded left to right with `m`.
-pub fn fold<T, M>(m: M, xs: List<T>) -> T:
+/// `xs` folded left to right with `m`. Works on any `Seq`. O(n).
+pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
     let k = Monoid<T>.of(m)
     var acc = k.id
     for x in xs:
@@ -151,6 +151,12 @@ fn a_monoid_of_your_own_is_a_pair():
     assert fold::<Str>(cat, ["ab", "c", "de"]) == "abcde"
     assert fold::<Int>(+, [1, 2, 3]) == 6
     assert fold::<Int>(max, [1, 5, 3]) == 5
+    let xs = [12, 18, 30]
+    assert xs.fold(gcd) == 6
+    assert xs[1..].fold(gcd) == 6
+    let a: [0..3]Int = [12, 18, 30]
+    assert a.fold(gcd) == 6
+    assert (1..=4).fold(+) == 10
 
 @test
 fn affine_action_laws():

@@ -164,7 +164,7 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 - `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `for sub in s.subsets`, `for v in s`.
 - Comprehensions `[f(x) for x in xs if ok(x)]`, `[b for v in V if let b = boss[v] and b != v]` (`and`, not `,`); `xs += ys`; `for b in Bool`; `xs.sort()`, `xs.sorted(by: desc)`, `xs.reverse()`, `D.sort(by: f)` (returns `List`).
 - `xs.windows(k)` yields each length-`k` window; `zip(xs, ys)` pairs up to the shorter list.
-- Folds: `xs.sum()`, `xs.min()`, `xs.max()`, `xs.count(p)`, `xs.all(p)`, `xs.any(p)`, `xs.first(p)`, `xs.runs(by: key)`, `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)`; generators use free form (`sum(f(x) for x in xs)`).
+- Folds: `xs.sum()`, `xs.min()`, `xs.max()`, `xs.count(p)`, `xs.all(p)`, `xs.any(p)`, `xs.first(p)`, `xs.runs(by: key)`, `xs.fold(+)`, `scan(xs, +)`, `xs.excl_fold(+)`; generators use free form (`sum(f(x) for x in xs)`).
 
 ## 9. Search and modular arithmetic
 

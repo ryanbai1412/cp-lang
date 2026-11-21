@@ -18,8 +18,7 @@ var rng = Rng.new(48)
 @!multitest
 let n: 1..=5_000 = read()
 let raw: [0..n]1..=5_000 = read()
-var g = raw[0]
-for x in raw: g = gcd(g, x)
+let g = raw.fold(gcd)
 let a = [x / g for x in raw]
 let cnt1 = a.count(1)
 if cnt1 > 0:

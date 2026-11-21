@@ -4858,6 +4858,18 @@ impl<'a> Lowerer<'a> {
             match (args, name.text.as_str()) {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
                 ([], "prod") => return self.reduce(Reduce::Prod, base, span),
+                ([op], "fold") if op.name.is_none() && !op.mutable => {
+                    let callee = ast::Expr { kind: ast::ExprKind::Name("fold".into()), span: name.span };
+                    let call_args = vec![op.clone(), seq];
+                    let whole = ast::Expr {
+                        kind: ast::ExprKind::Call {
+                            callee: Box::new(callee.clone()),
+                            args: call_args.clone(),
+                        },
+                        span,
+                    };
+                    return self.call(&whole, &callee, &call_args, None);
+                }
                 (_, "sorted")
                     if !matches!(
                         seq_ty,
