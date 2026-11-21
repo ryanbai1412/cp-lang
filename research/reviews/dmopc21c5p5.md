@@ -1,7 +1,7 @@
 # dmopc21c5p5
 
-Score: pending cold rescore (header now explicitly states DMOJ partial-scoring optimization rule — any valid permutation accepted, scored proportionally to `score(p)` — with exact Held-Karp for `n <= 12` and 64-start 2-opt for `n > 12`; `port = dream`, 0 errors, 0 lints)
-Dream: pending cold rescore (states DMOJ partial-scoring optimization rule explicitly in header alongside prime-parity obstruction and exact vs 2-opt split)
+Score: 4/5
+Dream: 4/5
 
 Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype deltas. The general case is a random restart plus a 2-opt heuristic with no argument that it reaches the optimum. The body hand-rolls a sieve and an RNG, and drives the search with `-1` sentinels and an `improved` flag. No dream exists, so the score is capped at 3.
 
@@ -55,3 +55,9 @@ Port 3/5 and dream 3/5 (port = dream), rescored cold on current main; still sent
   - Evidence that the 64 starts reach the optimum for every `n` in `13..=100`, for example an exhaustive check against an exact solver, cited in the header.
   - A statement that the judge scores partially, if it does.
 - Minor: line 42's `dp[nmask, nxt].map(old => cand > old) ?? true` is a hand-written optional `max=` that also has to record a witness.
+
+## Cold review (HEAD)
+
+Port and dream 3 → 4/5, rescored cold on current main (port = dream, zero errors). The header (lines 1-6) now states that the task is a DMOJ partial-scoring optimization task that accepts any valid permutation. That answers the last round's obligation: the `n > 12` 2-opt search (lines 58-97) no longer has to be exact. Exact Held-Karp handles `n <= 12` (lines 31-56).
+- Unverified: the partial-scoring claim is the author's. The problem page wasn't readable here, so a reader with the statement should confirm it.
+- Minor: line 43's `dp[nmask, nxt].map(old => cand > old) ?? true` is a hand-written optional `max=` that also records a witness. Line 79's random tiebreak inside `argmax` is undocumented.
