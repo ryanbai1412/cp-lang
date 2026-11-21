@@ -9,9 +9,15 @@
 // Over any stride `[t0, t1]` of length `<= len`, cells leaving the snake have
 // `diag < t0.ord + n` while newly entering cells have `diag >= t0.ord + n`, so
 // `query(len, t)` is bitonic (decreasing until the old max leaves, then
-// increasing as new maxima enter). Binary search splits each stride into
-// monotone runs `Seg(val, len, cur, end)` stepping toward `end`; a `MinHeap`
-// merges all runs to emit the `m` smallest answers.
+// increasing as new maxima enter).
+//
+// Partitioning each stride: binary search maintains `(lo, hi)` straddling the
+// valley. Probing `mid` lands on either the decreasing half (emitting the
+// strictly increasing run `mid` down to `lo + 1`, then raising `lo = mid`) or
+// the increasing half (emitting `mid` up to `hi - 1`, then lowering `hi = mid`).
+// Together with the endpoints `t0` and `t1`, the pushed runs partition `[t0, t1]`
+// into disjoint monotone runs — emitting each `(len, t)` once — in
+// `O(sum_{len=1}^n (n / len) log(len) + m) = O(n log^2 n + m)` queries.
 
 @!interactive
 
@@ -21,7 +27,9 @@ let m: 1..=250_000 = read()
 domain Val = 1..=n * n
 domain Time = 1..=2 * n - 1
 
-struct Seg(val: Val, len: Int, cur: Time, end: Int)
+// Monotone run starting at `cur` (value `val`) stepping by `dir` (-1 or +1)
+// through `end` inclusive.
+struct Seg(val: Val, len: Int, cur: Time, end: Time, dir: Int)
 
 fn query(len: Int, t: Time) -> Val:
     print("?", len, t)
@@ -34,35 +42,34 @@ for i in 0..n:
         diag[a[i, j]] = if i == 0: n - 1 - j else: n - 1 + i + j
 
 var heap = MinHeap<(Val, Seg)>()
-fn push_seg(val: Val, len: Int, cur: Time, end: Int):
-    heap.push((val, Seg(val, len, cur, end)))
+fn push_seg(val: Val, len: Int, cur: Time, end: Time, dir: Int):
+    heap.push((val, Seg(val, len, cur, end, dir)))
 
 for len in 1..=n:
     var v0 = max(a[0, j] for j in 0..len)
     var t0 = Time.first
     while t0 < Time.last:
-        push_seg(v0, len, t0, t0.ord + 1)
-        let t1 = Time(min(t0.ord + 1 + len, 2 * n - 1))
+        push_seg(v0, len, t0, t0, 1)
+        let t1 = Time.at(min(t0.ord + len, Time.count - 1))
         let v1 = query(len, t1)
         var (lo, hi) = (t0, t1)
-        while hi.ord - lo.ord > 1:
-            let mid = Time((lo.ord + hi.ord) / 2 + 1)
+        while hi - lo > 1:
+            let mid = Time.at((lo.ord + hi.ord) / 2)
             let v_mid = query(len, mid)
             if diag[v_mid] < t0.ord + n:
-                push_seg(v_mid, len, mid, lo.ord)
+                push_seg(v_mid, len, mid, lo.next!, -1)
                 lo = mid
             else:
-                push_seg(v_mid, len, mid, hi.ord)
+                push_seg(v_mid, len, mid, hi.prev!, 1)
                 hi = mid
         (t0, v0) = (t1, v1)
-    push_seg(v0, len, t0, t0.ord + 1)
+    push_seg(v0, len, t0, t0, 1)
 
 var ans: List<Val> = []
 repeat m:
     let (_, seg) = heap.pop()!
     ans.push(seg.val)
-    let next_ord = seg.cur.ord + (seg.end - seg.cur.ord).sign
-    if next_ord != seg.end:
-        let next_t = Time(next_ord + 1)
-        push_seg(query(seg.len, next_t), seg.len, next_t, seg.end)
+    if seg.cur != seg.end:
+        let next_t = seg.cur.offset(seg.dir)!
+        push_seg(query(seg.len, next_t), seg.len, next_t, seg.end, seg.dir)
 print("!", ans)
