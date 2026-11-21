@@ -150,6 +150,35 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// The span of the token `n` ahead, relative to the item.
+    fn span_n(&self, n: usize) -> Span {
+        match self.tokens.get(self.pos + n) {
+            Some(t) => self.rel(t.span),
+            None => Span::point(self.prev_end()),
+        }
+    }
+
+    /// Past `..` or `..=`, and past a `<` written right after `..`, which
+    /// is reported with the fix to drop it.
+    fn range_op(&mut self) {
+        let inclusive = self.at(T::DotDotEq);
+        self.bump();
+        if !inclusive && self.at(T::Lt) && self.span().start == self.prev_end() {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`..<` is `..` in cp")
+                    .with_help("`lo..hi` already leaves out `hi`; `lo..=hi` keeps it")
+                    .with_fix("write `..`", span, ""),
+            );
+            self.bump();
+        }
+    }
+
+    /// `half` twice with nothing between: `&&` or `||`.
+    fn doubled(&self, half: TokenKind) -> bool {
+        self.at(half) && self.peek_n(1) == half && self.span().end == self.span_n(1).start
+    }
+
     fn start(&self) -> u32 {
         self.span().start
     }

@@ -254,7 +254,7 @@ impl<'a> Parser<'a> {
             T::DotDot | T::DotDotEq => {
                 // One-sided upper-bounded range type: `..n`, `..=8`.
                 let inclusive = self.at(T::DotDotEq);
-                self.bump();
+                self.range_op();
                 let hi = self.additive();
                 TypeKind::Range {
                     lo: None,
@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
                     );
                     TypeKind::Error
                 } else {
-                    self.bump();
+                    self.range_op();
                     let hi = if inclusive
                         || matches!(
                             self.peek(),

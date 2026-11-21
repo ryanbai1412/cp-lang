@@ -1365,3 +1365,28 @@ let total = a +
         parsed.diagnostics
     );
 }
+
+#[test]
+fn c_style_logic_and_ranges_are_reported_with_the_cp_spelling_as_a_fix() {
+    let cases = [
+        ("let a = true\nlet b = a && a\n", "`&&` is `and` in cp", "and"),
+        ("let a = true\nlet b = a || a\n", "`||` is `or` in cp", "or"),
+        ("for i in 0..<3:\n    print(i)\n", "`..<` is `..` in cp", ""),
+        ("let a: [0..<3]Int = read()\n", "`..<` is `..` in cp", ""),
+        ("if let x = f() && x > 0:\n    print(x)\n", "`&&` is `and` in cp", "and"),
+        ("while x > 0 || y > 0:\n    x -= 1\n", "`||` is `or` in cp", "or"),
+    ];
+    for (src, message, replacement) in cases {
+        let d = one_diag(src);
+        assert_eq!(d.message, message, "{src:?}");
+        assert_eq!(d.fixes[0].edits[0].1, replacement, "{src:?}");
+    }
+    let d = one_diag("let a = true\nlet b = !a\n");
+    assert_eq!(d.fixes[0].edits[0].1, "not ");
+}
+
+#[test]
+fn single_bitwise_operators_are_not_c_style_logic() {
+    assert_eq!(codes("let b = 6 & 3 | 1\nlet c = 6 & &3\n").len(), 1);
+    assert!(codes("let b = 6 & 3 | 1\n").is_empty());
+}

@@ -179,7 +179,7 @@ impl<'a> Parser<'a> {
     pub(super) fn or(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.and();
-        while self.at(T::Or) {
+        while self.at(T::Or) || self.c_logic(T::Pipe, "or") {
             lhs = self.binary(start, BinOp::Or, lhs, Self::and);
         }
         lhs
@@ -235,10 +235,36 @@ impl<'a> Parser<'a> {
             };
         }
         // `and let` goes on to another binding, not another operand.
-        while self.at(T::And) && self.peek_n(1) != T::Let {
+        while (self.at(T::And) && self.peek_n(1) != T::Let) || self.c_logic(T::Amp, "and") {
             lhs = self.binary(start, BinOp::And, lhs, Self::not);
         }
         lhs
+    }
+
+    /// `&&` where `and` goes on to another condition: reported, then
+    /// read as `and`.
+    pub(super) fn c_and(&mut self) -> bool {
+        let found = self.c_logic(T::Amp, "and");
+        if found {
+            self.bump();
+        }
+        found
+    }
+
+    /// `&&` or `||` from C: reported with the word to write, then read as
+    /// that word. Leaves the second character for [`Self::binary`].
+    fn c_logic(&mut self, half: TokenKind, word: &str) -> bool {
+        if !self.doubled(half) {
+            return false;
+        }
+        let span = Span::new(self.start(), self.span_n(1).end);
+        let op = if half == T::Amp { "&&" } else { "||" };
+        self.error(
+            Diagnostic::error(codes::UNEXPECTED_TOKEN, span, format!("`{op}` is `{word}` in cp"))
+                .with_fix(format!("replace with `{word}`"), span, word),
+        );
+        self.bump();
+        true
     }
 
     pub(super) fn not(&mut self) -> Expr {
@@ -350,7 +376,7 @@ impl<'a> Parser<'a> {
             Some(Box::new(lo))
         };
         let inclusive = self.at(T::DotDotEq);
-        self.bump();
+        self.range_op();
         let hi = if self.starts_expr() {
             Some(Box::new(self.bit_or()))
         } else {
@@ -412,7 +438,7 @@ impl<'a> Parser<'a> {
     fn bit_or(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.bit_xor();
-        while self.at(T::Pipe) {
+        while self.at(T::Pipe) && !self.doubled(T::Pipe) {
             lhs = self.binary(start, BinOp::BitOr, lhs, Self::bit_xor);
         }
         lhs
@@ -430,7 +456,7 @@ impl<'a> Parser<'a> {
     fn bit_and(&mut self) -> Expr {
         let start = self.start();
         let mut lhs = self.shift();
-        while self.at(T::Amp) {
+        while self.at(T::Amp) && !self.doubled(T::Amp) {
             lhs = self.binary(start, BinOp::BitAnd, lhs, Self::shift);
         }
         lhs
@@ -1096,7 +1122,7 @@ impl<'a> Parser<'a> {
         let pat = self.pattern();
         self.expect(T::Eq, "`=` after the pattern in `if let`");
         let value = self.not();
-        let and = if self.eat(T::And) {
+        let and = if self.eat(T::And) || self.c_and() {
             Some(Box::new(if self.at(T::Let) {
                 self.let_guard()
             } else {

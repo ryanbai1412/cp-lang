@@ -1228,7 +1228,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.more_clauses()
             }))
-        } else if self.eat(T::And) {
+        } else if self.eat(T::And) || self.c_and() {
             Some(Box::new(if self.at(T::Let) {
                 self.bump();
                 self.let_cond()
