@@ -1,18 +1,22 @@
 // Codeforces 2124 G: Maximise Sum.
 // For each k in 0..n, maximise sum_t pref_min[t] after at most one operation
 // choosing i < pos with cost `pos - i >= k` (setting a[i] += a[pos], a[pos] = 0).
-// Recording each operation's total at `ans[pos - i]` and taking `suffix_scan(max)`
-// propagates every higher-cost solution down to every smaller k.
+// Storing each operation's total at `ans[pos - i]` and taking `suffix_scan(max)`
+// propagates every cost >= k down to k.
 //
-// Only a prefix-minimum position i benefits: lifting a[i] raises prefix minima
-// on the block `blk = a[i..end_cut]` (up to the next prefix minimum) toward
-// `cur_cap = min(cap, a[i] + a[pos])`, where `cap = pref_min[i - 1]` (uncapped
-// at `i = 0`). Zeroing a[pos] drops the suffix from pos onward to 0, losing
-// `block_loss[pos - i]` if `pos < end_cut`, or `orig_suff[pos]` otherwise.
-// Only suffix maxima (strictly increasing value from the right) can be optimal
-// removals. Because `lifted` is non-increasing on `blk`, `split` partitions
-// `blk` into `lifted[..split] > cur_cap` (each gaining `cur_cap - a[i]`) and
-// `lifted[split..]` (gaining `lifted_suff[split] - a[i] * (blk.len - split)`).
+// Invariants:
+// - Only a prefix-minimum position `i` (`a[i] == pref_min[i]`) can gain: any
+//   non-prefix-minimum is already capped by an earlier smaller element, so
+//   raising `a[i]` changes no prefix minimum.
+// - Only a strict suffix maximum `pos` (`a[pos] > max(a[pos + 1..])`) can be
+//   an optimal removal: if `pos' > pos` has `a[pos'] >= a[pos]`, removing `pos'`
+//   yields a larger distance `pos' - i`, at least as large an addition, and no
+//   larger a suffix loss (`orig_suff[pos'] <= orig_suff[pos]`).
+// - Raising `a[i]` lifts prefix minima on `blk = a[i..end_cut]` (to the next
+//   prefix minimum) to `min(lifted, cur_cap)` where `cur_cap = min(cap, a[i] + a[pos])`
+//   and `cap = pref_min[i - 1]` (uncapped at `i = 0`). Because `lifted` is
+//   non-increasing on `blk`, its partition cut `split` separates elements capped
+//   at `cur_cap` from the uncapped tail.
 
 use std.seq.suffix_scan
 
@@ -25,29 +29,32 @@ let pref_min = a.scan(min)
 let orig_suff = pref_min.suffix_sums()
 let base_ans = orig_suff[Pos.bounds.first]
 
+// Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
+let suffix_max_pos = [p for p in Pos.rev if a[p] > a.suffix_max(after: p)]
+let top_val = a[suffix_max_pos.last!]
+
 var ans: [0..n]Int = base_ans
-var cands: List<(val: Int, pos: Pos)> = []
 var end_cut = Pos.bounds.last
 
-for i in Pos.rev:
+for i in Pos.rev if pref_min[i] == a[i]:
     let ai = a[i]
-    if pref_min[i] == ai and not cands.is_empty:
-        let cap = if i == Pos.first: ai + cands.last!.val else: pref_min[(i - 1)!]
-        let blk = a[i.l..end_cut]
-        let lifted = ([cap] + blk[1..]).scan(min)
-        let lifted_suff = lifted.suffix_sums()
-        let block_loss = lifted.suffix_sums(from: orig_suff[end_cut])
+    // Uncapped at Pos.first: use ai + top_val so no candidate exceeds cap.
+    let cap = i.prev.map(p => pref_min[p]) ?? ai + top_val
+    let blk = a[i.l..end_cut]
+    let lifted = ([cap] + blk[1..]).scan(min)
+    let lifted_suff = lifted.suffix_sums()
+    let block_loss = lifted.suffix_sums(from: orig_suff[end_cut])
 
-        for (v_add, pos) in cands:
-            let cur_cap = min(cap, ai + v_add)
-            let split = bsearch_last(0..=blk.len, k => k == 0 or lifted[k - 1] > cur_cap)!
-            let capped_gain = (cur_cap - ai) * split
-            let tail_gain = lifted_suff[split] - ai * (blk.len - split)
-            let loss = if pos.l < end_cut: block_loss[pos - i] else: orig_suff[pos.l]
-            ans[pos - i] max= base_ans + capped_gain + tail_gain - loss
-            if cur_cap >= cap: break
-        end_cut = i.l
-    if cands.is_empty or ai > cands.last!.val:
-        cands.push((ai, i))
+    for pos in suffix_max_pos if pos > i:
+        let cur_cap = min(cap, ai + a[pos])
+        let split = blk.bounds.last(c => lifted[c.prev!] > cur_cap) ?? blk.bounds.first
+        let gain =
+            (cur_cap - ai) * split.count_before
+                + lifted_suff[split]
+                - ai * split.count_after
+        let loss = if pos < end_cut: block_loss[pos] else: orig_suff[pos]
+        ans[pos - i] = max(ans[pos - i], base_ans + gain - loss)
+
+    end_cut = i.l
 
 print(ans.suffix_scan(max))
