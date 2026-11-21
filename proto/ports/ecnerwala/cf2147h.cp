@@ -14,36 +14,30 @@ fn answer(colors: List<Bitset<V>>):
     print(colors.len)
     for c in colors:
         print(c.len)
-        print([v for v in c.each()])
+        print(c)
 
 var g = 0
 for e in gomory_hu(edges): g = gcd(g, e.w)
 
-let all = Bitset<V>.full()
 if g != 1:
-    answer([all])
+    answer([V.all])
 else:
-    var odd = [V] _ => Bitset<V>.new()
-    for e in edges if e.w % 2 == 1:
-        odd[e.u].toggle(e.v)
-        odd[e.v].toggle(e.u)
+    var odd = adjacency(edges.filter(e => e.w % 2 == 1), into: Bitset)
+
+    fn complement_within(s: Bitset<V>):
+        for u in s: odd[u] ^= s.without(u)
 
     // Gallai's induction: remove an odd-degree v after complementing its neighborhood;
     // on the way back v joins the side where its degree is even.
-    fn even_split(alive: Bitset<V>, odd: [V]Bitset<V>) -> Bitset<V>:
-        let v = first(
-            v for v in alive.each() if (odd[v] & alive).len % 2 == 1
-        ) ?? return Bitset<V>.new()
-        var rest = alive
-        rest.remove(v)
+    fn even_split(alive: Bitset<V>) -> Bitset<V>:
+        let v = alive.find(v => (odd[v] & alive).len % 2 == 1) ?? return Bitset<V>.empty
+        let rest = alive.without(v)
         let nbr = odd[v] & rest
-        var next_odd = odd
-        for u in nbr.each():
-            next_odd[u] ^= nbr
-            next_odd[u].remove(u)
-        var side = even_split(rest, next_odd)
+        complement_within(nbr)
+        var side = even_split(rest)
+        complement_within(nbr)
         if (nbr & side).len % 2 == 0: side.add(v)
         side
 
-    let side = even_split(all, odd)
-    answer([all - side, side])
+    let side = even_split(V.all)
+    answer([V.all - side, side])

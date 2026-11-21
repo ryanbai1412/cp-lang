@@ -31,8 +31,7 @@ let act = Action<?Low, Int>(
 var low = LazySegTree<Cut, ?Low>(act, [Cut] c => Low(0, c, c, 0))
 
 fn cover(i: Item, d: Int):
-    let lo = min(p[i], s[i])
-    let hi = max(p[i], s[i])
+    let (lo, hi) = minmax(p[i], s[i])
     low.apply(lo..hi, d)
 
 for i in Item: cover(i, 1)
