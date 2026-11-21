@@ -1640,6 +1640,11 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   for shrinking (lowered, or lowered with one element dropped). One mechanism serves rows at any
   depth, so no `Row` shape beside `Tuple`. Names worked out in the pass (`let m = k + 1`) are
   still refused. Reverse: drop `binds` and refuse a pass type that uses a name read in the pass.
+- **25.10 `domain V = read(lo..=hi)` is a size read where it is declared.** The design
+  declares an index space read from the input this way (`design/spec/21-index-spaces.md`); the
+  generator read its bounds as a fixed domain and left the count out. The count is now a field (or
+  a part of a loop row) at the place of the declaration, arrays over `V` take that many values,
+  and `V` is `0..count`. Reverse: drop `read_size` and the generator refuses such domains again.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

@@ -789,6 +789,37 @@ impl Builder<'_> {
                     binds.push(names);
                     parts.push(shape);
                 }
+                StmtKind::Domain { name, def } => {
+                    let (bounds, read) = match &def.kind {
+                        ExprKind::Range {
+                            lo: Some(lo),
+                            hi: Some(hi),
+                            inclusive,
+                            step: None,
+                        } => (Self::inclusive(lo, hi, *inclusive), None),
+                        _ => match read_size(def) {
+                            Some((lo, hi, inclusive)) => (
+                                counted(&name.text),
+                                Some(Self::inclusive(lo, hi, inclusive)),
+                            ),
+                            None => return Ok(None),
+                        },
+                    };
+                    let (lo, hi) = read.as_ref().unwrap_or(&bounds);
+                    let mut used = HashSet::new();
+                    names_in(lo, &mut used);
+                    names_in(hi, &mut used);
+                    if !used.is_disjoint(&inside) {
+                        return Ok(None);
+                    }
+                    self.spec.sizes.extend(used);
+                    if let Some((lo, hi)) = read {
+                        self.spec.sizes.insert(name.text.clone());
+                        binds.push(vec![Some(name.text.clone())]);
+                        parts.push(Shape::Int { lo, hi });
+                    }
+                    self.domains.insert(name.text.clone(), bounds);
+                }
                 StmtKind::For { .. } if reads(self, stmt) => match self.pass(stmt, &inside)? {
                     Some(shape) => {
                         binds.push(Vec::new());
@@ -951,6 +982,38 @@ fn read_count(expr: &Expr) -> Option<Expr> {
     Some(binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)))
 }
 
+/// The range of `read(1..=n)`: a size read from the input, as in
+/// `domain V = read(1..=2e5)`.
+fn read_size(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
+    let ExprKind::Call { callee, args } = &expr.kind else {
+        return None;
+    };
+    let [arg] = args.as_slice() else {
+        return None;
+    };
+    if !matches!(&callee.kind, ExprKind::Name(name) if name == "read") || arg.name.is_some() {
+        return None;
+    }
+    match &arg.value.kind {
+        ExprKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            inclusive,
+            step: None,
+        } => Some((lo, hi, *inclusive)),
+        _ => None,
+    }
+}
+
+/// A domain of `count` positions, `0..count`.
+fn counted(count: &str) -> (Expr, Expr) {
+    let count = Expr {
+        kind: ExprKind::Name(count.into()),
+        span: Span::new(0, 0),
+    };
+    (int(0), binary(BinOp::Sub, count, int(1)))
+}
+
 fn is_read(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
@@ -1063,6 +1126,24 @@ impl InputSpec {
                             names_in(&bounds.0, &mut builder.spec.sizes);
                             names_in(&bounds.1, &mut builder.spec.sizes);
                             builder.domains.insert(name.text.clone(), bounds);
+                        } else if let Some((lo, hi, inclusive)) = read_size(def) {
+                            let (lo, hi) = Builder::inclusive(lo, hi, inclusive);
+                            names_in(&lo, &mut builder.spec.sizes);
+                            names_in(&hi, &mut builder.spec.sizes);
+                            builder.spec.sizes.insert(name.text.clone());
+                            builder
+                                .domains
+                                .insert(name.text.clone(), counted(&name.text));
+                            let field = Field {
+                                names: vec![Some(name.text.clone())],
+                                shape: Shape::Int { lo, hi },
+                                line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                            };
+                            match (in_judge, judge.is_some()) {
+                                (true, _) => hidden.push(field),
+                                (false, false) => builder.spec.fields.push(field),
+                                (false, true) => {}
+                            }
                         }
                     }
                     StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {

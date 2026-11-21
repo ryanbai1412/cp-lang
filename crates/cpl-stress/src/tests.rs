@@ -1427,3 +1427,42 @@ fn reads_no_field_describes_are_refused_not_left_out() {
     let src = "let n: 1..=5 = read()\nfn read2(x: Int) -> Int: x\nprint(read2(n))\n";
     assert!(InputSpec::from_source(src).is_ok());
 }
+
+#[test]
+fn a_domain_read_as_a_size_is_generated_with_its_arrays() {
+    let src = "domain V = read(1..=6)
+let p: [V]V = read()
+let t: 1..=3 = read()
+for _ in 0..t:
+    domain S = read(0..=4)
+    let s: [S]V = read()
+    print(s)
+print(p)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let mut sizes = HashSet::new();
+    for seed in 0..100 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let n = tokens[0];
+        assert!((1..=6).contains(&n));
+        let p = &tokens[1..][..n as usize];
+        assert!(p.iter().all(|v| (0..n).contains(v)), "{tokens:?}");
+        let mut at = 1 + n as usize;
+        for _ in 0..tokens[at] {
+            at += 1;
+            let k = tokens[at];
+            assert!((0..=4).contains(&k));
+            let s = &tokens[at + 1..][..k as usize];
+            assert!(s.iter().all(|v| (0..n).contains(v)), "{tokens:?}");
+            at += k as usize;
+        }
+        assert_eq!(at + 1, tokens.len(), "{tokens:?}");
+        sizes.insert(n);
+    }
+    assert!(sizes.len() > 3);
+}
