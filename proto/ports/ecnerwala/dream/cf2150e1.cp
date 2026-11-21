@@ -53,9 +53,12 @@ while alive.len > 1:
     let mid = Pos.Cut((lo.ord + hi.ord) / 2)
     var left: [Val]Copies = Copies.None
     for v in alive:
-        left[v] = if not has(v, lo, mid): Copies.None
-            elif has(v, mid, hi): Copies.One
-            else: Copies.Both
+        left[v] = if not has(v, lo, mid):
+            Copies.None
+        elif has(v, mid, hi):
+            Copies.One
+        else:
+            Copies.Both
     for v in Val if copies[v] == Copies.One:
         left[v] = if has(v, mid, hi): Copies.None else: Copies.One
 

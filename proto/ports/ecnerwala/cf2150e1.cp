@@ -1,14 +1,18 @@
-// Codeforces 2150 E1 (interactive): find the unique value in 1..=n that appears
-// once in a hidden array of length 2n - 1 (all other values appear twice).
+// Codeforces 2150 E1: Hidden Single (Easy Version, interactive).
+// An array of length `2n - 1` holds every value in `1..=n` twice except one
+// hidden single `v*` that appears once. Shuffling positions with a fixed seed
+// breaks adversarial clustering so each halving drops ~half the active pairs
+// within the `4n + 2 log n` query budget.
 //
-// Shuffle the 2n - 1 positions with a fixed seed and binary-search [lo, hi):
-// every value in 1..=n has a known count in [lo, hi) — None (0), One (1), or
-// Both (2, assuming it is not the singleton). Splitting at mid:
-// - Both: absent on left => (None, Both); else present on right => (One, One),
-//   absent on right => (Both, None).
-// - One: present on right => (None, One); absent on right => (One, None).
-// Because every non-singleton contributes 2 units and the singleton contributes
-// 1, the half whose assigned weight exceeds its length contains the singleton.
+// Binary-search `[lo, hi)` (while `alive.len > 1`, `hi - lo >= 2` so `mid > lo`):
+// every value in `Val` has known multiplicity `copies[v]` in `[lo, hi)` (`None`,
+// `One`, or `Both`). Querying `left[v]` on `[lo, mid)` determines `right[v] =
+// copies[v] - left[v]`:
+//   - `Both`: absent on left -> `left = None`; else present on right -> `One`;
+//     else `Both`.
+//   - `One`: present on right -> `left = None`, else `One`.
+// Every non-singleton contributes 2 units and `v*` contributes 1, so the half
+// whose total weight exceeds its length contains `v*`.
 
 @!interactive
 use std.rand.Rng
@@ -19,6 +23,11 @@ fn weight(c: Copies) -> Int = match c:
     Copies.None => 0
     Copies.One => 1
     Copies.Both => 2
+
+fn complement(total: Copies, left: Copies) -> Copies = match weight(total) - weight(left):
+    0 => Copies.None
+    1 => Copies.One
+    _ => Copies.Both
 
 const SHUFFLE_SEED = 48
 var rng = Rng.new(SHUFFLE_SEED)
@@ -31,6 +40,7 @@ var perm = List(1..2 * n)
 rng.shuffle(mut perm)
 
 fn has(v: Val, lo: Int, hi: Int) -> Bool:
+    if lo == hi: return false
     print("?", v, hi - lo, perm[lo..hi])
     read<Int>() == 1
 
@@ -41,17 +51,15 @@ var alive = [v for v in Val]
 while alive.len > 1:
     let mid = (lo + hi) / 2
     var left: [Val]Copies = Copies.None
-    var right: [Val]Copies = Copies.None
     for v in alive:
-        if not has(v, lo, mid):
-            right[v] = Copies.Both
+        left[v] = if not has(v, lo, mid):
+            Copies.None
         elif has(v, mid, hi):
-            left[v] = Copies.One
-            right[v] = Copies.One
+            Copies.One
         else:
-            left[v] = Copies.Both
+            Copies.Both
     for v in Val if copies[v] == Copies.One:
-        if has(v, mid, hi): right[v] = Copies.One else: left[v] = Copies.One
+        left[v] = if has(v, mid, hi): Copies.None else: Copies.One
 
     let left_weight = [weight(left[v]) for v in Val].sum()
     if left_weight > mid - lo:
@@ -59,7 +67,7 @@ while alive.len > 1:
         copies = left
     else:
         lo = mid
-        copies = right
+        copies = [Val] v => complement(copies[v], left[v])
     alive = [v for v in Val if copies[v] == Copies.Both]
 
 print("!", alive[0])
