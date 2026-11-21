@@ -6196,7 +6196,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "swap") => {
+            (Ty::List(_) | Ty::MutView(_) | Ty::Array { .. } | Ty::Str, "swap") => {
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {
                         let idx_ty = match &ty {

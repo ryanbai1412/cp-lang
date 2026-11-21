@@ -48,6 +48,8 @@ print(fs)
 
 fs[1..4][1] = 42
 print(fs)
+fs[1..4].swap(0, 1)
+print(fs)
 
 var ss = [10, 1, 2, 3, 4, 20]
 var rng = Rng(42)
@@ -77,6 +79,8 @@ a[D(2)..D(6)].rotate_left(1)
 print(a)
 a[D(2)..D(5)].scan_in_place((x, y) => x + y)
 print(a)
+a[D(2)..D(6)].swap(0, 3)
+print(a)
 
 var p_arr: [D]Int = [D] i => i.ord
 let ok3 = next_permutation(mut p_arr[D(2)..D(5)])
@@ -98,6 +102,9 @@ print(cuts)
 cuts[c1..c2].rotate_right(1)
 print(cuts)
 cuts[c1..c2].scan_in_place((x, y) => min(x, y))
+print(cuts)
+cuts[c1..c2].set_at(0, 8)
+cuts[c1..c2].swap(0, 3)
 print(cuts)
 
 // 4. Range-indexed fixed array [0..6]Int.
