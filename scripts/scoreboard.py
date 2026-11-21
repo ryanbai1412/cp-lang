@@ -50,7 +50,9 @@ DEFAULT_BASELINE = os.path.join(ROOT, "research", "scoreboard.json")
 
 SIZE_WARN = 48 * 1024
 SIZE_LIMIT = 64 * 1024
-PERF_FLOOR_MS = 10.0
+# A runtime ratio counts only when the original runs at least this long on the
+# port's max input; shorter runs measure process startup, not the algorithm.
+PERF_FLOOR_MS = 100.0
 
 # Regression thresholds for --check against baseline
 EMITTED_GROWTH_RATIO = 1.05
@@ -878,6 +880,16 @@ def summarize_taste_reviews(port_records, reviews_dir=REVIEWS_DIR, repo_root=ROO
     }
 
 
+def perf_counts(perf):
+    """A max-input runtime measurement whose ratio means something: see PERF_FLOOR_MS."""
+    return bool(
+        perf
+        and perf.get("measured")
+        and perf.get("time_ratio") is not None
+        and (perf.get("orig_ms") or 0) >= PERF_FLOOR_MS
+    )
+
+
 def generate_max_input(p, orig_bin, work_dir, explicit_specs):
     """Produce a max-size deterministic input for benchmarking port vs orig.
 
@@ -1172,6 +1184,12 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
             "rss_ratio": round(port_rss / orig_rss, 3) if orig_rss > 0 else None,
             "output_match": matched,
         }
+        if orig_ms < PERF_FLOOR_MS:
+            out["perf"]["measured"] = False
+            out["perf"]["reason"] = (
+                f"original runs {orig_ms} ms on {max_label}, under {PERF_FLOOR_MS:.0f} ms: "
+                "needs a generator at the statement's max constraints"
+            )
         if not matched:
             out["diff_ok"] = False
             out["diff_detail"] = f"max-size output mismatch ({max_label})"
@@ -1858,19 +1876,9 @@ def compute_totals(
     emitted_vals = [b for b, _ in emitted]
     max_emitted, max_emitted_port = max(emitted, default=(None, None))
 
-    perf_recs = [r for r in port_records if (r.get("perf") or {}).get("measured")]
-    time_ratios = [
-        (r["perf"]["time_ratio"], r["id"])
-        for r in perf_recs
-        if r["perf"].get("time_ratio") is not None
-        and max(r["perf"].get("cpp_ms") or 0, r["perf"].get("orig_ms") or 0) >= PERF_FLOOR_MS
-    ]
-    all_time_ratios = [
-        (r["perf"]["time_ratio"], r["id"])
-        for r in perf_recs
-        if r["perf"].get("time_ratio") is not None
-    ]
-    t_use = time_ratios if time_ratios else all_time_ratios
+    perf_recs = [r for r in port_records if perf_counts(r.get("perf"))]
+    time_ratios = [(r["perf"]["time_ratio"], r["id"]) for r in perf_recs]
+    t_use = time_ratios
     t_vals = [v for v, _ in t_use]
     t_max, t_max_port = max(t_use, default=(None, None))
     t_p50 = round(statistics.median(t_vals), 3) if t_vals else None
@@ -1996,6 +2004,7 @@ def compute_totals(
         "perf": {
             "measured": len(perf_recs),
             "above_floor": len(time_ratios),
+            "unmeasured": sum(1 for r in port_records if (r.get("perf") or {}).get("reason")),
             "floor_ms": PERF_FLOOR_MS,
             "mismatches": sum(1 for r in perf_recs if not r["perf"].get("output_match", True)),
             "time_p50": t_p50,
@@ -2256,14 +2265,8 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=No
             cp = r.get("perf") or {}
             if bp.get("measured") and bp.get("output_match") and cp.get("measured") and not cp.get("output_match"):
                 record_regression(f"max-size output mismatch: {pid}", pid=pid)
-            if (
-                bp.get("measured")
-                and cp.get("measured")
-                and bp.get("time_ratio") is not None
-                and cp.get("time_ratio") is not None
-                and max(cp.get("cpp_ms") or 0, cp.get("orig_ms") or 0) >= PERF_FLOOR_MS
-                and max(bp.get("cpp_ms") or 0, bp.get("orig_ms") or 0) >= PERF_FLOOR_MS
-            ):
+            same_input = bp.get("input_source") == cp.get("input_source")
+            if perf_counts(bp) and perf_counts(cp) and same_input:
                 br = bp["time_ratio"]
                 cr = cp["time_ratio"]
                 if cr > br * PERF_REGRESSION_RATIO:
@@ -2281,6 +2284,7 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=No
                 and ci.get("ratio") is not None
                 and (ci.get("ratio_interp_ms") or 0) >= INTERP_FLOOR_MS
                 and (bi.get("ratio_interp_ms") or 0) >= INTERP_FLOOR_MS
+                and bi.get("ratio_source") == ci.get("ratio_source")
             ):
                 bir, cir = bi["ratio"], ci["ratio"]
                 if cir > bir * PERF_REGRESSION_RATIO:
@@ -2824,7 +2828,8 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         p50_tag = "PASS" if pf.get("p50_ok") else "FAIL"
         max_tag = "PASS" if pf.get("max_ok") else "FAIL"
         print(
-            f"  perf:      {pf['measured']} measured ({pf['above_floor']} >= {pf['floor_ms']:.0f}ms), "
+            f"  perf:      {pf['measured']} measured (original >= {pf['floor_ms']:.0f}ms; "
+            f"{pf.get('unmeasured', 0)} unmeasured), "
             f"time p50={pf['time_p50']}x (goal <={TIME_P50_GOAL}x: {p50_tag}) "
             f"p95={pf['time_p95']}x "
             f"max={pf['time_max']}x (goal <={TIME_MAX_GOAL}x: {max_tag}, {pf.get('over_1_5x', 0)} >{TIME_MAX_GOAL}x, {pf['time_max_port']}), "
@@ -2952,7 +2957,9 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         print("\nPer-port details:")
         for r in report["ports"]:
             perf_s = ""
-            if (r.get("perf") or {}).get("measured"):
+            if (r.get("perf") or {}).get("reason"):
+                perf_s = f" | perf: unmeasured ({r['perf']['reason']})"
+            elif (r.get("perf") or {}).get("measured"):
                 p = r["perf"]
                 rss_s = f"{p['rss_ratio']}x" if p.get("rss_ratio") is not None else "n/a"
                 perf_s = f" | t={p['cpp_ms']}ms/{p['orig_ms']}ms ({p['time_ratio']}x) rss={rss_s}"

@@ -357,20 +357,28 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
             )
             return {"ports": ports, "totals": totals}
 
-        base = make_rep([("t/fast", 1.0, 50.0), ("t/fast2", 1.0, 50.0), ("t/tiny", 1.0, 2.0), ("t/slow", 2.0, 100.0)])
+        base = make_rep([("t/fast", 1.0, 150.0), ("t/fast2", 1.0, 150.0), ("t/tiny", 1.0, 20.0), ("t/slow", 2.0, 300.0)])
         self.assertTrue(base["totals"]["perf"]["p50_ok"])
         self.assertFalse(base["totals"]["perf"]["max_ok"])
         self.assertEqual(base["totals"]["perf"]["over_1_5x"], 1)
         self.assertEqual(base["totals"]["perf"]["worst_10"][0]["id"], "t/slow")
+        self.assertNotIn("t/tiny", [w["id"] for w in base["totals"]["perf"]["worst_10"]])
+        self.assertEqual(base["totals"]["perf"]["above_floor"], 3)
 
-        # Sub-floor (<10ms) fluctuation should NOT trigger ratchet; >10% on >=10ms port MUST trigger
-        cur_ok = make_rep([("t/fast", 1.05, 50.0), ("t/fast2", 1.05, 50.0), ("t/tiny", 2.5, 2.0), ("t/slow", 2.05, 100.0)])
+        # A port whose original runs under 100 ms is not counted: its ratio measures startup
+        cur_ok = make_rep([("t/fast", 1.05, 150.0), ("t/fast2", 1.05, 150.0), ("t/tiny", 2.5, 20.0), ("t/slow", 2.05, 300.0)])
         diff_ok = sb.diff_against_baseline(cur_ok, base, mode="full")
         self.assertEqual(diff_ok["regressions"], [])
 
-        cur_reg = make_rep([("t/fast", 1.15, 50.0), ("t/fast2", 1.0, 50.0), ("t/tiny", 1.0, 2.0), ("t/slow", 2.0, 100.0)])
+        cur_reg = make_rep([("t/fast", 1.15, 150.0), ("t/fast2", 1.0, 150.0), ("t/tiny", 1.0, 20.0), ("t/slow", 2.0, 300.0)])
         diff_reg = sb.diff_against_baseline(cur_reg, base, mode="full")
         self.assertTrue(any("runtime regressed >10%: t/fast" in m for m in diff_reg["regressions"]))
+
+        # A new max input (another generator) is a new measurement, not a regression
+        cur_new_input = make_rep([("t/fast", 1.6, 150.0), ("t/fast2", 1.0, 150.0), ("t/tiny", 1.0, 20.0), ("t/slow", 2.0, 300.0)])
+        cur_new_input["ports"][0]["perf"]["input_source"] = "spec (n=2e5)"
+        diff_new_input = sb.diff_against_baseline(cur_new_input, base, mode="full")
+        self.assertFalse(any("t/fast " in m for m in diff_new_input["regressions"]))
 
     def test_dream_gap_ratchet_interp_ratio_ratchet_and_taste_score(self):
         with tempfile.TemporaryDirectory() as d:

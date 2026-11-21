@@ -4053,3 +4053,17 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Mechanism.** Parser-only desugaring in `Parser::arg` and `ExprKind::Record` (`crates/cpl-syntax/src/parser/expr.rs`): when a `name:` label is immediately followed by `,` or `)`, the parser builds `ExprKind::Name(name)` at `name.span`. No checker, IR, interpreter, or C++ codegen special case is needed; LSP hover resolves the local's type through the synthesized expression span. `cpl-fmt` preserves tokens strictly and formats punned calls/records without spaces before `:` or `,`. Lint `L0209` (`redundant_arg_name`) warns on `name: name` with a machine-applicable `cpl fix` to `name:`.
 - **Evidence.** Corpus audit found 155 exact `name: name` sites across 54 port files and 75 across 10 stdlib files (52 reviewed port files and all 10 stdlib files migrated via `L0209`; 2 unreviewed ports left untouched for review-check). Interp/C++17 parity test `crates/cpl-cli/tests/programs/named_arg_punning.cp` (`345 12 7`), formatter test `formats_punned_named_args_and_records`, LSP test `hover_on_punned_named_arg_shows_local_type`, lint test `redundant_arg_name_shortens_to_punning`, and docs in `site/content/types-and-control.md`.
 - **Reverse.** Remove the punning branch in `Parser::arg` and `ExprKind::Record`, remove `L0209`, and expand `name:` back to `name: name`.
+
+## 134. A runtime ratio counts only when the original runs 100 ms (2026-11-21)
+
+The scoreboard's runtime p50/max and the per-port runtime ratchet count a port
+only when its original runs at least 100 ms on the port's max input
+(`PERF_FLOOR_MS`, was 10 ms on either side). Below that the ratio measures
+process startup and the scanner, not the algorithm: 142 ports were measured,
+136 of them on inputs whose original ran 2-99 ms, and the 6 left had p50
+1.54x where the summary said about 1.0x. A port below the floor is recorded
+as `perf: unmeasured` with the reason; it gets counted again once its
+generator (or a spec in `bench/corpus_generators.py`) reaches the
+statement's max constraints. Specs at max constraints were added for
+cf2261g, cf2115f1 and ucup5s01a. Reverse: set `PERF_FLOOR_MS` back to 10
+and apply it to `max(cpp_ms, orig_ms)`.
