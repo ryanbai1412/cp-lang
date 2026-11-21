@@ -5,8 +5,9 @@
 // the prefix of length `used + c`. That requires `used + c > last[f]`, leaves
 // `open[used + c] + fixed_below - used` free slots in that prefix, and choosing
 // k launches for floor f multiplies by C(avail, k - fixed[f]).
-type M = Mod<1_000_000_007>
-let comb = Comb<1_000_000_007>(100)
+const P = 1_000_000_007
+type M = Mod<P>
+let comb = Comb<P>(100)
 
 let t: 1..=10_000 = read()
 for _ in 0..t:
