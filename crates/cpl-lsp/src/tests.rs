@@ -698,8 +698,14 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         .lines()
         .position(|l| l.trim_start().starts_with("pub fn choose("))
         .unwrap() as u32;
-    assert_eq!(def[0].at(&["result", "range", "start"]), &pos(choose_line, 11));
-    assert_eq!(def[0].at(&["result", "range", "end"]), &pos(choose_line, 17));
+    assert_eq!(
+        def[0].at(&["result", "range", "start"]),
+        &pos(choose_line, 11)
+    );
+    assert_eq!(
+        def[0].at(&["result", "range", "end"]),
+        &pos(choose_line, 17)
+    );
 }
 
 const V22: &str = "\
@@ -860,6 +866,73 @@ fn inlay_hints_skip_names_in_a_typed_tuple() {
         .collect();
     let at = |line, character| (line, character, ": Int".to_string());
     assert_eq!(shown, [at(1, 6), at(1, 9), at(2, 6), at(2, 9)]);
+}
+
+#[test]
+fn inlay_hints_show_the_index_space_of_lambda_parameters() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../proto/ports/ecnerwala/cf2062g.cp");
+    let text = std::fs::read_to_string(&path).unwrap();
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    let uri = format!("file://{}", path.display());
+    let opened = obj([
+        ("uri", uri.as_str().into()),
+        ("languageId", "cp".into()),
+        ("version", 1.into()),
+        ("text", text.as_str().into()),
+    ]);
+    server.handle(&notification(
+        "textDocument/didOpen",
+        obj([("textDocument", opened)]),
+    ));
+    let reply = server.handle(&request(
+        9,
+        "textDocument/inlayHint",
+        obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
+    ));
+    let line = text.lines().position(|l| l.contains("(i, j) =>")).unwrap() as u32;
+    let shown: Vec<(u32, String)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .filter(|hint| hint.at(&["position", "line"]).as_u32() == Some(line))
+        .map(|hint| {
+            (
+                hint.at(&["position", "character"]).as_u32().unwrap(),
+                hint.get("label").as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    // `let (_, mate) = min_weight_matching::<I, I>((i, j) => ...)`: the
+    // matching's `[I]I`, and both lambda parameters range over `I`.
+    let hint = |at: u32, label: &str| (at, label.to_string());
+    assert_eq!(
+        shown,
+        [hint(12, ": [I]I"), hint(46, ": I"), hint(49, ": I")]
+    );
+    // A fn's parameters have their types written, so they get none.
+    let (mut server, _) = open(
+        "fn twice(x: Int) -> Int = 2 * x\nfn apply(f: Int -> Int, v: Int) -> Int = f(v)\nprint(apply(y => twice(y), 3))\n",
+    );
+    let reply = server.handle(&request(
+        9,
+        "textDocument/inlayHint",
+        obj([("textDocument", doc())]),
+    ));
+    let labels: Vec<(u32, &str)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .filter(|hint| hint.get("kind").as_u32() == Some(1))
+        .map(|hint| {
+            (
+                hint.at(&["position", "line"]).as_u32().unwrap(),
+                hint.get("label").as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(labels, [(2, ": Int")]);
 }
 
 /// Opens `src` with the cursor at `|` (removed) and sends `method` there.

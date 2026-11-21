@@ -3,7 +3,7 @@
 use super::expr::{list_names, plural};
 use super::*;
 use crate::ty::{Bindings, Param};
-use cpl_syntax::ast::{Arg, Expr, ExprKind, PatternKind};
+use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Type};
 
 impl<'a> Checker<'a> {
     pub(crate) fn call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Ty {
@@ -682,6 +682,9 @@ impl<'a> Checker<'a> {
             let arg_ty = self.narrowed(&arg_ty, slot);
             slot.unify(&arg_ty, bindings);
             let want = slot.subst(bindings);
+            if let (ExprKind::Lambda { params, param_tys, .. }, Ty::Fn { params: wanted, .. }) = (&arg.value.kind, &want) {
+                self.type_lambda_params(params, param_tys, wanted);
+            }
             // `Node([none, none], 0)`: a list written out where an array is
             // wanted is the cells of that array, as in `let a: [0..2]?Int = [..]`.
             if let (ExprKind::List(_), Ty::Array { index, elem }, Ty::Named { name, args }) =
@@ -809,5 +812,23 @@ fn is_slice(expr: &Expr) -> bool {
             .iter()
             .any(|i| matches!(i.kind, ExprKind::Range { .. })),
         _ => false,
+    }
+}
+
+impl Checker<'_> {
+    /// `(i, j) => ...` passed where `(I, I) -> Int` is wanted: its unwritten
+    /// parameters are an `I` each, for hover and inlay hints.
+    fn type_lambda_params(&mut self, params: &[Pattern], written: &[Option<Type>], wanted: &[Param]) {
+        for (i, (param, want)) in params.iter().zip(wanted).enumerate() {
+            let ty = &want.ty;
+            if written.get(i).is_some_and(Option::is_some) || !matches!(param.kind, PatternKind::Name(_)) || ty.has_vague() {
+                continue;
+            }
+            for entry in &mut self.hovers {
+                if entry.decl == Some(param.span) && matches!(entry.ty, Ty::Unknown) {
+                    entry.ty = ty.clone();
+                }
+            }
+        }
     }
 }

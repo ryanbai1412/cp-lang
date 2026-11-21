@@ -566,8 +566,9 @@ impl Server {
                 }
                 Ok(Reply::result(Value::Array(actions)))
             }
-            // The type of each `let`, `var` and loop variable that is written
-            // without one, shown after its name, and the parameter each
+            // The type of each `let`, `var`, loop variable and lambda
+            // parameter that is written without one, shown after its name
+            // (an index space for a domain's), and the parameter each
             // literal argument fills.
             "textDocument/inlayHint" => {
                 let uri = uri_of(params)?;
@@ -583,7 +584,7 @@ impl Server {
                 for item in &analysis.items {
                     for entry in &item.check.hovers {
                         let declares = entry.decl == Some(entry.span)
-                            && matches!(entry.keyword, "let" | "var" | "for");
+                            && matches!(entry.keyword, "let" | "var" | "for" | "param");
                         let at = item.offset + entry.span.end;
                         let typed =
                             entry.keyword != "for" && annotated(&analysis.text[at as usize..]);
