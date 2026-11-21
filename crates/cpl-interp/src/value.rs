@@ -1138,7 +1138,7 @@ pub(crate) fn show(
             let sep = sep_of(elem, &program.structs);
             // The last dimension is a row; rows are one per line.
             let row = match dims.last() {
-                Some(Dim::Pos(_) | Dim::Bound(_) | Dim::Sym(_) | Dim::Int | Dim::IntFrom(_)) if dims.len() > 1 => {
+                Some(Dim::Pos(_) | Dim::Bound(_) | Dim::Sym(_) | Dim::Enum(_) | Dim::Int | Dim::IntFrom(_)) if dims.len() > 1 => {
                     array.dims.last().copied().unwrap_or(0).max(1) as usize
                 }
                 _ => usize::MAX,

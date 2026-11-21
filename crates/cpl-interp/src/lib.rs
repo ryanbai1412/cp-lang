@@ -772,6 +772,14 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
             }};
         }
+        let is_enum_slot = matches!(self.locals().get(slot), Some(l) if matches!(l.ty, Ty::Enum(_)));
+        let wrap = |v: i64| {
+            if is_enum_slot {
+                Value::Enum(v as u32, Rc::new(Vec::new()))
+            } else {
+                Value::Int(v)
+            }
+        };
         match iter {
             Iter::Range {
                 lo,
@@ -788,7 +796,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                             if *rev {
                                 let mut v = hi_i64;
                                 loop {
-                                    round!(Value::Int(v));
+                                    round!(wrap(v));
                                     if v == lo_i64 {
                                         break;
                                     }
@@ -797,7 +805,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                             } else {
                                 let mut v = lo_i64;
                                 loop {
-                                    round!(Value::Int(v));
+                                    round!(wrap(v));
                                     if v == hi_i64 {
                                         break;
                                     }
@@ -809,7 +817,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         if *rev {
                             let mut v = hi_i64 - 1;
                             loop {
-                                round!(Value::Int(v));
+                                round!(wrap(v));
                                 if v == lo_i64 {
                                     break;
                                 }
@@ -818,7 +826,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         } else {
                             let mut v = lo_i64;
                             while v < hi_i64 {
-                                round!(Value::Int(v));
+                                round!(wrap(v));
                                 v += 1;
                             }
                         }
@@ -2023,6 +2031,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     let n = self.domains[*d].1;
                     n * (n + 1) / 2
                 }
+                DimSpec::Enum(e) => self.program.enums[*e].variants.len() as i64,
                 DimSpec::Int(len) | DimSpec::IntFrom(_, len) => {
                     let len = self.eval(len)?.int();
                     if len < 0 {
@@ -2231,6 +2240,23 @@ impl<'p, 'o> Interp<'p, 'o> {
                     )
                 }
             },
+            Cast::EnumOrd(_) => match value {
+                Value::Enum(tag, _) => Value::Int(tag as i64),
+                other => other,
+            },
+            Cast::EnumVal(eid) => match value {
+                Value::Enum(tag, _) => {
+                    let val = self.program.enums[eid]
+                        .values
+                        .get(tag as usize)
+                        .copied()
+                        .flatten()
+                        .unwrap_or(tag as i64);
+                    Value::Int(val)
+                }
+                other => other,
+            },
+            Cast::OrdToEnum(_) => Value::Enum(value.int() as u32, Rc::new(Vec::new())),
             Cast::Ord | Cast::Trust | Cast::Raw => value,
             Cast::Label(d) => Value::Int(value.int() + self.domains[d].0),
             Cast::FromLabel(d) => {

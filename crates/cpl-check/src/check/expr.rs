@@ -985,12 +985,32 @@ impl<'a> Checker<'a> {
     pub(crate) fn element_ty(&mut self, ty: &Ty) -> Ty {
         match ty {
             Ty::Domain(name) => Ty::Pos(name.clone()),
+            Ty::TypeName(name) if name == "Bool" => Ty::Bool,
+            Ty::TypeName(name) => Ty::Named {
+                name: name.clone(),
+                args: Vec::new(),
+            },
             Ty::Array { elem, .. } => (**elem).clone(),
             Ty::Str => Ty::Char,
             Ty::Named { name, args }
                 if matches!(name.as_str(), "List" | "Set" | "Range" | "Gen") && args.len() == 1 =>
             {
                 args[0].clone()
+            }
+            Ty::Named { name, args } => {
+                if let Some(members) = self.members_of(name) {
+                    let bindings = members.bindings(args);
+                    if let Some((_, each_ty)) = members.members.iter().find(|(m, _)| m == "each") {
+                        if let Ty::Fn { ret, .. } = each_ty.subst(&bindings) {
+                            if let Ty::Named { name: rname, args: rargs } = ret.as_ref() {
+                                if matches!(rname.as_str(), "Gen" | "List") && rargs.len() == 1 {
+                                    return self.settle(&rargs[0]);
+                                }
+                            }
+                        }
+                    }
+                }
+                Ty::Unknown
             }
             Ty::Error => Ty::Error,
             _ => Ty::Unknown,
@@ -1314,6 +1334,7 @@ impl<'a> Checker<'a> {
             Ty::Domain(domain) => {
                 return match name.text.as_str() {
                     "first" | "last" => Ty::Pos(domain.clone()),
+                    "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
                     "bounds" => Ty::Domain(format!("{domain}.bounds")),
                     "pairs" => Ty::Named {
@@ -1338,6 +1359,91 @@ impl<'a> Checker<'a> {
                             args: vec![Ty::Pos(domain.clone())],
                         }),
                     },
+                    "at" => Ty::Fn {
+                        params: vec![crate::ty::Param {
+                            name: "k".into(),
+                            ty: Ty::Int,
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(Ty::Pos(domain.clone())),
+                    },
+                    "partition" => Ty::Fn {
+                        params: vec![crate::ty::Param {
+                            name: "pred".into(),
+                            ty: Ty::Fn {
+                                params: vec![crate::ty::Param {
+                                    name: "".into(),
+                                    ty: Ty::Pos(domain.clone()),
+                                    mutable: false,
+                                    has_default: false,
+                                    named_only: false,
+                                    variadic: false,
+                                    lazy: false,
+                                }],
+                                ret: Box::new(Ty::Bool),
+                            },
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(Ty::Tuple(vec![
+                            Ty::list(Ty::Pos(domain.clone())),
+                            Ty::list(Ty::Pos(domain.clone())),
+                        ])),
+                    },
+                    "group_by" => Ty::Fn {
+                        params: vec![crate::ty::Param {
+                            name: "key".into(),
+                            ty: Ty::Fn {
+                                params: vec![crate::ty::Param {
+                                    name: "".into(),
+                                    ty: Ty::Pos(domain.clone()),
+                                    mutable: false,
+                                    has_default: false,
+                                    named_only: false,
+                                    variadic: false,
+                                    lazy: false,
+                                }],
+                                ret: Box::new(Ty::Unknown),
+                            },
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(Ty::list(Ty::list(Ty::Pos(domain.clone())))),
+                    },
+                    "filter" => Ty::Fn {
+                        params: vec![crate::ty::Param {
+                            name: "pred".into(),
+                            ty: Ty::Fn {
+                                params: vec![crate::ty::Param {
+                                    name: "".into(),
+                                    ty: Ty::Pos(domain.clone()),
+                                    mutable: false,
+                                    has_default: false,
+                                    named_only: false,
+                                    variadic: false,
+                                    lazy: false,
+                                }],
+                                ret: Box::new(Ty::Bool),
+                            },
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(Ty::list(Ty::Pos(domain.clone()))),
+                    },
+                    "sorted" => Ty::Unknown,
                     _ => Ty::Unknown,
                 }
             }

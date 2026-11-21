@@ -144,6 +144,8 @@ pub enum Dim {
     /// Symmetric unordered pairs `{u, v}` (`u <= v`) of a domain: packed
     /// triangular storage of length `n * (n + 1) / 2`.
     Sym(DomainId),
+    /// Indexed by every variant of a plain (fieldless) enum.
+    Enum(EnumId),
     /// A plain `Int` from 0, checked against the length.
     Int,
     /// A plain `Int` from this first index: `[1..=9]T` starts at 1. The
@@ -288,6 +290,7 @@ pub enum DimSpec {
     Pos(DomainId),
     Bound(DomainId),
     Sym(DomainId),
+    Enum(EnumId),
     /// A count-indexed dimension and its length.
     Int(Box<Expr>),
     /// The same, indexed from a first index other than 0.
@@ -300,6 +303,7 @@ impl DimSpec {
             DimSpec::Pos(d) => Dim::Pos(*d),
             DimSpec::Bound(d) => Dim::Bound(*d),
             DimSpec::Sym(d) => Dim::Sym(*d),
+            DimSpec::Enum(e) => Dim::Enum(*e),
             DimSpec::Int(_) => Dim::Int,
             DimSpec::IntFrom(lo, _) => Dim::IntFrom(*lo),
         }
@@ -491,6 +495,12 @@ impl NumFmt {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Cast {
+    /// A plain enum variant to its 0-based tag ordinal.
+    EnumOrd(EnumId),
+    /// A plain enum variant to its `Int` value (explicit discriminant, or 0-based tag).
+    EnumVal(EnumId),
+    /// A 0-based tag ordinal to a plain enum variant.
+    OrdToEnum(EnumId),
     IntToFloat,
     /// An `Int` as an `I128`.
     IntToI128,
@@ -891,6 +901,7 @@ pub struct StructDef {
 pub struct EnumDef {
     pub name: String,
     pub variants: Vec<(String, Vec<Ty>)>,
+    pub values: Vec<Option<i64>>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

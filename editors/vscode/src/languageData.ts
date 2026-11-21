@@ -63,7 +63,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'ends_with', 'excl_fold', 'find', 'fixed', 'fold', 'gcd', 'get_or_insert', 'insert', 'lcm',
     'lower', 'partition', 'peel', 'prefix1', 'prefix2', 'prefix_n', 'remove',
     'repeat', 'resized', 'runs', 'scan', 'scc', 'starts_with', 'topo', 'upper', 'digit',
-    'find_all', 'step', 'windows', 'zip',
+    'find_all', 'step', 'windows', 'zip', 'adjacency', 'choose2', 'minmax',
 ];
 
 /** Public `stdlib/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */

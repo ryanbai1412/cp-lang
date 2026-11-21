@@ -63,7 +63,7 @@ pub struct Bitset<D>:
     /// Copy of `self` with `i` removed. O(K / 64).
     pub fn without(self, i: D) -> Bitset<D>:
         var out = Bitset(w)
-        out.remove(i)
+        out.w[i.to_idx / 64] &= ~bit(i.to_idx % 64)
         out
 
     /// Copy of `self` with `i` added if `on` or removed otherwise, matching `Subset<D>.set`. O(K / 64).
@@ -81,6 +81,19 @@ pub struct Bitset<D>:
     pub fn clear(mut self):
         for k in 0..w.len: w[k] = U64(0)
 
+    /// The first position in this set satisfying `pred`, or `none`.
+    pub fn find(self, pred: D -> Bool) -> ?D:
+        for k in 0..w.len:
+            var x = w[k]
+            while x != U64(0):
+                let b = ctz(x)
+                let v = D.nth(64 * k + b)
+                if pred(v): return v
+                x &= ~bit(b)
+        none
+
+    /// True when some position in this set satisfies `pred`.
+    pub fn any(self, pred: D -> Bool) -> Bool = self.find(pred) != none
     /// The number of positions in the set.
     pub @get fn len(self) -> Int = sum(popcount(x) for x in w)
 
@@ -274,6 +287,13 @@ impl Sub for Bitset<D>:
 /// Index of the highest set bit in non-zero `x` (0..64).
 fn msb(x: U64) -> Int = bit_width(x) - 1
 
+impl Show for Bitset<D>:
+    fn show(a):
+        var out = ""
+        for v in a.each():
+            if not out.is_empty: out += " "
+            out += "{v}"
+        out
 /// The word with only bit `k` set.
 fn bit(k: Int) -> U64 = U64(1) << k
 

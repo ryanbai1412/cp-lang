@@ -1011,6 +1011,7 @@ impl<'a> Lowerer<'a> {
                             self.enums.push(EnumDef {
                                 name: ename,
                                 variants: Vec::new(),
+                                values: Vec::new(),
                             });
                             self.enum_discriminants.push(Vec::new());
                             self.enum_decls.push((m, offset, decl));
@@ -1298,7 +1299,13 @@ impl<'a> Lowerer<'a> {
                 })
                 .collect();
             self.enum_discriminants[id] = discs;
+            let values = decl
+                .variants
+                .iter()
+                .map(|v| v.value.as_ref().and_then(|e| self.eval_const_int(e)))
+                .collect();
             self.enums[id].variants = variants;
+            self.enums[id].values = values;
         }
         let num_sigs = self.sigs.len();
         for id in 0..num_sigs {
@@ -1901,6 +1908,11 @@ impl<'a> Lowerer<'a> {
                 if let Some(Sym::Struct(sid)) = self.get_sym(&name.text) {
                     if let Some(dom_id) = self.structs[sid].index_domain {
                         return Some(DimSpec::Pos(dom_id));
+                    }
+                }
+                if let Some(Sym::Enum(eid)) = self.get_sym(&name.text) {
+                    if self.enums[eid].variants.iter().all(|(_, f)| f.is_empty()) {
+                        return Some(DimSpec::Enum(eid));
                     }
                 }
                 // `type Val = xs.D`, then `[Val]Int`.
@@ -3256,6 +3268,70 @@ impl<'a> Lowerer<'a> {
                 let ExprKind::Range { lo, hi } = e.kind else { unreachable!() };
                 Ok(self.range_list(*lo, *hi, (**elem).clone(), span))
             }
+            // `V.all` (or any `Range<V>`) where a `Bitset<V>` is wanted.
+            (Ty::Struct(sid), Ty::Range(of))
+                if matches!(of.as_ref(), Ty::Pos(dom) if self.is_bitset_of(*sid, *dom)) =>
+            {
+                let Ty::Pos(dom) = of.as_ref() else { unreachable!() };
+                let dom = *dom;
+                let sid = *sid;
+                if let ExprKind::Range { lo, hi } = &e.kind {
+                    if matches!(lo.kind, ExprKind::Int(0))
+                        && matches!(hi.kind, ExprKind::DomainLen(d) if d == dom)
+                    {
+                        return Ok(self.domain_bitset_full(dom, span));
+                    }
+                }
+                let Some(&new_fn) = self.structs[sid].methods.get("new") else {
+                    return Err(e);
+                };
+                let Some(&ins_fn) = self.structs[sid].methods.get("insert") else {
+                    return Err(e);
+                };
+                self.queue_fn(new_fn);
+                self.queue_fn(ins_fn);
+                let bs_ty = Ty::Struct(sid);
+                Ok(self.do_expr(Some(&bs_ty), span, |lw, out| {
+                    let bs = lw.temp(bs_ty.clone());
+                    let init = lw.mk(ExprKind::Call(new_fn, Vec::new()), bs_ty.clone(), span);
+                    out.push(Stmt::Let(bs, Some(init)));
+                    let v_slot = lw.temp(Ty::Pos(dom));
+                    let iter = match e.kind {
+                        ExprKind::Range { lo, hi } => Iter::Range {
+                            lo: *lo,
+                            hi: *hi,
+                            step: None,
+                            rev: false,
+                            closed: false,
+                        },
+                        _ => {
+                            let r = lw.hold(e, out);
+                            let lo = lw.mk(ExprKind::Field(Box::new(r.clone()), 0), Ty::Pos(dom), span);
+                            let hi = lw.mk(ExprKind::Field(Box::new(r), 1), Ty::Pos(dom), span);
+                            Iter::Range {
+                                lo,
+                                hi,
+                                step: None,
+                                rev: false,
+                                closed: false,
+                            }
+                        }
+                    };
+                    let place = Place {
+                        kind: PlaceKind::Local(bs),
+                        ty: bs_ty.clone(),
+                        span: lw.span(span),
+                    };
+                    let call = lw.mk(
+                        ExprKind::Call(ins_fn, vec![Arg::Mut(place), Arg::Value(lw.local(v_slot, span))]),
+                        Ty::Unit,
+                        span,
+                    );
+                    let lid = lw.fresh_loop();
+                    out.push(Stmt::For(lid, v_slot, iter, Block { stmts: vec![Stmt::Expr(call)] }));
+                    out.push(Stmt::Give(lw.local(bs, span)));
+                }))
+            }
             (Ty::List(elem), Ty::Array { elem: aelem, .. }) if *elem == *aelem => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ArrayToList, vec![e]),
                 ty: want.clone(),
@@ -3363,6 +3439,7 @@ impl<'a> Lowerer<'a> {
                                 Dim::Pos(d) => DimSpec::Pos(d),
                                 Dim::Bound(d) => DimSpec::Bound(d),
                                 Dim::Sym(d) => DimSpec::Sym(d),
+                                Dim::Enum(e) => DimSpec::Enum(e),
                                 Dim::Int | Dim::IntFrom(_) => {
                                     let sref = lw.local(src_slot, span);
                                     DimSpec::Int(Box::new(lw.len_of(sref, span)))
@@ -3376,6 +3453,7 @@ impl<'a> Lowerer<'a> {
                             let idx_ty = match dim {
                                 Dim::Pos(d) => Ty::Pos(d),
                                 Dim::Bound(d) => Ty::Bound(d),
+                                Dim::Enum(e) => Ty::Enum(e),
                                 Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             };
                             let idx_slot = lw.temp(idx_ty.clone());
@@ -3423,6 +3501,13 @@ impl<'a> Lowerer<'a> {
                                 Dim::Bound(d) => Iter::Range {
                                     lo: lw.int_lit(0, span),
                                     hi: lw.int_add(lw.mk(ExprKind::DomainLen(d), Ty::Int, span), 1),
+                                    step: None,
+                                    rev: false,
+                                    closed: false,
+                                },
+                                Dim::Enum(e) => Iter::Range {
+                                    lo: lw.int_lit(0, span),
+                                    hi: lw.int_lit(lw.enums[e].variants.len() as i64, span),
                                     step: None,
                                     rev: false,
                                     closed: false,

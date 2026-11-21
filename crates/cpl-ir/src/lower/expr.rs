@@ -263,6 +263,7 @@ impl<'a> Lowerer<'a> {
                         let at_ty = match dims[axis] {
                             Dim::Pos(d) => Ty::Pos(d),
                             Dim::Bound(d) => Ty::Bound(d),
+                            Dim::Enum(e) => Ty::Enum(e),
                             Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                         };
                         return self.collected(elem, span, |lw, out, push| {
@@ -315,7 +316,7 @@ impl<'a> Lowerer<'a> {
                 let indices = self.vouched(&base_expr.ty, indices);
                 self.mk(ExprKind::Index(Box::new(base_expr), indices), ty, span)
             }
-            ast::ExprKind::Field { base, name } => self.field(e, base, name),
+            ast::ExprKind::Field { base, name } => self.field(e, base, name, inner_hint),
             ast::ExprKind::Generic { base, args } => self.generic_expr(base, args, span),
             ast::ExprKind::Tuple(items) => {
                 let hints = inner_hint
@@ -1568,7 +1569,16 @@ impl<'a> Lowerer<'a> {
         // Where a list is wanted, a list written out on the left of `+`
         // holds what the list wanted holds: `let xs: List<Z> = [0] + rest`.
         let joined = hint.filter(|ty| op == Add && matches!(ty, Ty::List(_)) && matches!(lhs.kind, ast::ExprKind::List(_) | ast::ExprKind::Binary { .. } | ast::ExprKind::Paren(_)));
-        let mut l = unwrap_first_last(self.expr(lhs, wide.or(joined)));
+        let lhs_bitset_hint = if matches!(op, Sub | BitAnd | BitOr | BitXor)
+            && matches!(&lhs.kind, ast::ExprKind::Field { name, .. } if name.text == "all")
+        {
+            hint.filter(|ty| matches!(ty, Ty::Struct(_)))
+                .cloned()
+                .or_else(|| self.probe_ty_silent(rhs).filter(|ty| matches!(ty, Ty::Struct(_))))
+        } else {
+            None
+        };
+        let mut l = unwrap_first_last(self.expr(lhs, wide.or(joined).or(lhs_bitset_hint.as_ref())));
         if let (Some(wide), Ty::Int) = (wide, &l.ty) {
             l = self.coerce(l, wide, lhs.span);
         }
@@ -1607,6 +1617,30 @@ impl<'a> Lowerer<'a> {
                     ret,
                     span,
                 );
+            }
+        }
+        // `V.all - side` (or `&`, `|`, `^`) with `side: Bitset<V>`: lift `V.all` to `Bitset<V>`.
+        if let (Ty::Range(of), Ty::Struct(sid)) = (&l.ty, &r.ty) {
+            if let Ty::Pos(dom) = of.as_ref() {
+                let sid = *sid;
+                if self.is_bitset_of(sid, *dom) {
+                    let mname = match op {
+                        Sub => Some("sub"),
+                        BitOr => Some("bitor"),
+                        BitAnd => Some("bitand"),
+                        BitXor => Some("bitxor"),
+                        _ => None,
+                    };
+                    if let Some(fn_id) = mname.and_then(|m| self.struct_op_fn(sid, m)) {
+                        let l = self.coerce(l, &Ty::Struct(sid), lhs.span);
+                        let ret = self.ret_of(fn_id, span);
+                        return self.mk(
+                            ExprKind::Call(fn_id, vec![Arg::Value(l), Arg::Value(r)]),
+                            ret,
+                            span,
+                        );
+                    }
+                }
             }
         }
         // `1 - z` with `z: Mod<P>`: the number becomes a `Mod<P>` first,
@@ -2319,6 +2353,7 @@ impl<'a> Lowerer<'a> {
                             let want = match dim {
                                 Dim::Pos(d) => Ty::Pos(*d),
                                 Dim::Bound(d) => Ty::Bound(*d),
+                                Dim::Enum(e) => Ty::Enum(*e),
                                 Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                             };
                             let field_e = self.mk(
@@ -2326,7 +2361,13 @@ impl<'a> Lowerer<'a> {
                                 fty,
                                 indices[0].span,
                             );
-                            out.push(self.coerce(field_e, &want, indices[0].span));
+                            let idx_v = self.coerce(field_e, &want, indices[0].span);
+                            if let Dim::Enum(e) = dim {
+                                let ord = self.cast(Cast::EnumOrd(*e), idx_v, Ty::Int);
+                                out.push(self.cast(Cast::Raw, ord, Ty::Int));
+                            } else {
+                                out.push(idx_v);
+                            }
                         }
                         return (out, (**elem).clone());
                     }
@@ -2349,6 +2390,7 @@ impl<'a> Lowerer<'a> {
                     let want = match dim {
                         Dim::Pos(d) => Ty::Pos(*d),
                         Dim::Bound(d) => Ty::Bound(*d),
+                        Dim::Enum(e) => Ty::Enum(*e),
                         Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                     };
                     if let (Some(slot), true) = (self.whole_axis, is_whole(index)) {
@@ -2360,6 +2402,12 @@ impl<'a> Lowerer<'a> {
                     // `b[i]` of a `[1..=9]T` is the cell `i - 1`.
                     if let (Dim::IntFrom(lo), Ty::Int) = (dim, &value.ty) {
                         value = self.int_add(value, -*lo);
+                    }
+                    if let Dim::Enum(e) = dim {
+                        let checked = self.coerce(value, &Ty::Enum(*e), index.span);
+                        let ord = self.cast(Cast::EnumOrd(*e), checked, Ty::Int);
+                        out.push(self.cast(Cast::Raw, ord, Ty::Int));
+                        continue;
                     }
                     if let (Dim::Pos(d), Ty::Struct(sid)) = (dim, &value.ty) {
                         if self.structs[*sid].index_domain == Some(*d) {
@@ -2668,7 +2716,7 @@ impl<'a> Lowerer<'a> {
             let hint = match dim {
                 Dim::Pos(d) => Some(Ty::Pos(d)),
                 Dim::Bound(d) => Some(Ty::Bound(d)),
-                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => None,
+                Dim::Enum(_) | Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => None,
             };
             let v = lw.expr(e, hint.as_ref());
             let at = match v.ty {
@@ -2971,11 +3019,12 @@ impl<'a> Lowerer<'a> {
                         let gaps = ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one));
                         (DimSpec::Bound(d), self.mk(gaps, Ty::Int, span))
                     }
-                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
+                    Dim::Enum(_) | Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => unreachable!("matched above"),
                 };
                 let index_ty = match dims[0] {
                     Dim::Bound(d) => Ty::Bound(d),
                     Dim::Pos(d) => Ty::Pos(d),
+                    Dim::Enum(e) => Ty::Enum(e),
                     Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
                 };
                 let values: Vec<Expr> = items.iter().map(|item| self.expect(item, elem)).collect();
@@ -3335,6 +3384,24 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
+                    && matches!(self.get_sym(name), Some(Sym::Enum(eid)) if self.enums[eid].variants.iter().all(|(_, f)| f.is_empty())) =>
+            {
+                let Some(Sym::Enum(eid)) = self.get_sym(name) else { unreachable!() };
+                let lo = self.int_lit(0, span);
+                let hi = self.int_lit(self.enums[eid].variants.len() as i64, span);
+                (
+                    Iter::Range {
+                        lo,
+                        hi,
+                        step: None,
+                        rev: false,
+                        closed: false,
+                    },
+                    Ty::Enum(eid),
+                )
+            }
+            ast::ExprKind::Name(name)
+                if self.lookup(name).is_none()
                     && matches!(self.get_sym(name), Some(Sym::Struct(sid)) if self.structs[sid].index_domain.is_some()) =>
             {
                 let Some(Sym::Struct(sid)) = self.get_sym(name) else {
@@ -3634,6 +3701,22 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Pos(subset) = value.ty {
                     if let Some(base) = self.subset_base(subset) {
                         return (Iter::Members(value), Ty::Pos(base));
+                    }
+                }
+                // Any struct with a zero-arg `each(self)` method (such as `Bitset<D>`)
+                // is directly iterable by calling `each`.
+                if let Ty::Struct(sid) = value.ty {
+                    if let Some(&each_fn) = self.structs[sid].methods.get("each") {
+                        self.queue_fn(each_fn);
+                        let ret = self.ret_of(each_fn, span);
+                        if let Ty::List(elem) = ret {
+                            let call = self.mk(
+                                ExprKind::Call(each_fn, vec![Arg::Value(value)]),
+                                Ty::List(elem.clone()),
+                                span,
+                            );
+                            return (Iter::Seq(call, false), *elem);
+                        }
                     }
                 }
                 let elem = match &value.ty {
@@ -3946,6 +4029,10 @@ impl<'a> Lowerer<'a> {
                     let len = self.mk(ExprKind::Binary(BinOp::Div, Box::new(prod), Box::new(two)), Ty::Int, span);
                     (Ty::Int, len)
                 }
+                DimSpec::Enum(e) => (
+                    Ty::Enum(*e),
+                    self.int_lit(self.enums[*e].variants.len() as i64, span),
+                ),
                 DimSpec::Int(len) | DimSpec::IntFrom(_, len) => (Ty::Int, (**len).clone()),
             };
             let mut pre = Vec::new();
@@ -3970,6 +4057,13 @@ impl<'a> Lowerer<'a> {
                 kind: ExprKind::Local(slot),
                 ty,
                 span: at,
+            };
+            let index = match dim {
+                DimSpec::Enum(e) => {
+                    let ord = self.cast(Cast::EnumOrd(*e), index, Ty::Int);
+                    self.cast(Cast::Raw, ord, Ty::Int)
+                }
+                _ => index,
             };
             indices.push(if from == 0 { index } else { self.int_add(index, -from) });
             loops.push((id, slot, iter, pre));

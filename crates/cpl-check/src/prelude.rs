@@ -98,6 +98,7 @@ pub const BUILT_ON: &[(&str, &str)] = &[
     ("prefix", "prefix_n"),
     ("prefix", "prefix1"),
     ("prefix", "prefix2"),
+    ("adjacency", "Bitset"),
 ];
 
 fn int_fn(arity: usize) -> Ty {
@@ -203,6 +204,9 @@ pub const VALUE_NAMES: &[&str] = &[
     "read_output",
     "min",
     "max",
+    "minmax",
+    "choose2",
+    "adjacency",
     "abs",
     "sum",
     "prod",

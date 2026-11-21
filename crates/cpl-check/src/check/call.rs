@@ -18,7 +18,16 @@ impl<'a> Checker<'a> {
             None => self.infer(callee),
         };
         let receiver = self.receiver(call, callee);
-        let mut ty = self.call_kind(call, callee, callee_ty.clone(), args);
+        let mut ty = if receiver.is_some()
+            && !matches!(callee_ty, Ty::Fn { .. } | Ty::Unknown | Ty::Error | Ty::TypeName(_))
+        {
+            for arg in args {
+                self.infer(&arg.value);
+            }
+            Ty::Unknown
+        } else {
+            self.call_kind(call, callee, callee_ty.clone(), args)
+        };
         if let Some(known) = self.prelude_call(call, callee, args) {
             ty = known;
         }
@@ -222,6 +231,44 @@ impl<'a> Checker<'a> {
             ("max" | "min", [Ty::Array { elem, .. }]) if is_slice(&args[0].value) => {
                 Some(Ty::Optional(Box::new(elem.widen())))
             }
+            ("minmax", [a, b]) => {
+                let elem = if *a == Ty::Unknown { b.clone() } else { a.clone() };
+                Some(Ty::Tuple(vec![elem.clone(), elem]))
+            }
+            ("choose2", [_]) => Some(Ty::Int),
+            ("adjacency", [edges, ..]) => {
+                let elem = self.element_ty(edges);
+                let v_ty = match &elem {
+                    Ty::Record(fields) => fields
+                        .iter()
+                        .find(|(n, _)| n == "u")
+                        .map(|(_, t)| t.clone()),
+                    Ty::Tuple(parts) if parts.len() >= 2 => Some(parts[0].clone()),
+                    _ => None,
+                };
+                if let Some(Ty::Pos(dom)) = v_ty {
+                    let into_bitset = args.iter().any(|a| {
+                        a.name.as_ref().map(|n| n.text.as_str()) == Some("into")
+                            && matches!(&a.value.kind, ExprKind::Name(n) if n == "Bitset")
+                    });
+                    let cell = if into_bitset {
+                        Ty::Named {
+                            name: "Bitset".into(),
+                            args: vec![Ty::Pos(dom.clone())],
+                        }
+                    } else {
+                        Ty::Named {
+                            name: "List".into(),
+                            args: vec![Ty::Pos(dom.clone())],
+                        }
+                    };
+                    return Some(Ty::Array {
+                        index: vec![Ty::Pos(dom)],
+                        elem: Box::new(cell),
+                    });
+                }
+                None
+            }
             _ => None,
         }
     }
@@ -233,7 +280,42 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        match self.quietly(|c| c.infer(base)) {
+        let base_ty = self.quietly(|c| c.infer(base));
+        // Domain / sequence higher-order operations: `partition`, `sorted`,
+        // `group_by`, `first(where:)`, `at`, `filter`.
+        let seq_elem: Option<Ty> = match &base_ty {
+            Ty::Domain(d) => Some(Ty::Pos(d.clone())),
+            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => Some(args[0].clone()),
+            Ty::Array { elem, .. } => Some((**elem).clone()),
+            Ty::Named { name: n, args } if n == "Bitset" && args.len() == 1 => {
+                Some(args[0].clone())
+            }
+            _ => None,
+        };
+        if let Some(elem) = seq_elem {
+            match name.text.as_str() {
+                "partition" => {
+                    return Some(Ty::Tuple(vec![Ty::list(elem.clone()), Ty::list(elem)]));
+                }
+                "group_by" => {
+                    return Some(Ty::list(Ty::list(elem)));
+                }
+                "first" => {
+                    return Some(Ty::Optional(Box::new(elem)));
+                }
+                "filter" => {
+                    return Some(Ty::list(elem));
+                }
+                "sorted" if matches!(base_ty, Ty::Domain(_)) => {
+                    return Some(Ty::list(elem));
+                }
+                "at" if matches!(base_ty, Ty::Domain(_)) => {
+                    return Some(elem);
+                }
+                _ => {}
+            }
+        }
+        match base_ty {
             Ty::Array { index, elem } if name.text == "row" && index.len() > 1 => {
                 self.note_view(call, "row");
                 Some(Ty::Array {

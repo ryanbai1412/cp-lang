@@ -354,6 +354,7 @@ impl<'p> Emitter<'p> {
                 let dn = ident(&self.program.domains[*d]);
                 format!("({dn}_len * ({dn}_len + 1) / 2)")
             }
+            DimSpec::Enum(e) => self.program.enums[*e].variants.len().to_string(),
             DimSpec::Int(len) | DimSpec::IntFrom(_, len) => self.expr(len).text,
         }
     }
@@ -499,7 +500,30 @@ impl<'p> Emitter<'p> {
                     Cast::IntToFloat | Cast::I128ToFloat | Cast::U64ToFloat => c_cast("double"),
                     Cast::IntToI128 | Cast::U64ToI128 => c_cast("__int128"),
                     Cast::IntToU64 => c_cast("unsigned long long"),
-                    Cast::CharToInt | Cast::Ord => c_cast("ll"),
+                    Cast::CharToInt | Cast::Ord | Cast::EnumOrd(_) => c_cast("ll"),
+                    Cast::OrdToEnum(eid) => {
+                        let ename = ident(&self.program.enums[*eid].name);
+                        Code::primary(format!("static_cast<{ename}>({})", code.text))
+                    }
+                    Cast::EnumVal(eid) => {
+                        let def = &self.program.enums[*eid];
+                        if def.values.iter().any(|v| v.is_some()) {
+                            let vals: Vec<String> = def
+                                .values
+                                .iter()
+                                .enumerate()
+                                .map(|(i, v)| v.unwrap_or(i as i64).to_string())
+                                .collect();
+                            Code::primary(format!(
+                                "(std::array<ll, {}>{{{}}}[static_cast<size_t>({})])",
+                                vals.len(),
+                                vals.join(", "),
+                                code.text
+                            ))
+                        } else {
+                            c_cast("ll")
+                        }
+                    }
                     Cast::I128ToU64 => {
                         self.need("narrow");
                         Code::primary(format!("cpl::to_u64({})", code.text))

@@ -79,6 +79,7 @@ pub(crate) fn ty_name(
                     Dim::Pos(d) => domains[*d].clone(),
                     Dim::Bound(d) => format!("{}.bounds", domains[*d]),
                     Dim::Sym(d) => format!("Sym<{}>", domains[*d]),
+                    Dim::Enum(e) => enums[*e].name.clone(),
                     Dim::Int | Dim::IntFrom(_) => "Int".into(),
                 })
                 .collect();

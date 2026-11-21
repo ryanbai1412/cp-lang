@@ -739,6 +739,7 @@ impl<'a> Lowerer<'a> {
         self.enums.push(EnumDef {
             name: mangled,
             variants: Vec::new(),
+            values: Vec::new(),
         });
         self.enum_insts.insert(key, id);
 
@@ -2065,7 +2066,7 @@ impl<'a> Lowerer<'a> {
                             Dim::Pos(did) | Dim::Bound(did) | Dim::Sym(did) => {
                                 self.unify_ast_ty(ix, &Ty::Pos(*did), tpl_mod, gen_names, env);
                             }
-                            Dim::Int | Dim::IntFrom(_) => {}
+                            Dim::Enum(_) | Dim::Int | Dim::IntFrom(_) => {}
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);

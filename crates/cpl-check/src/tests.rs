@@ -2183,7 +2183,6 @@ let _ = adj[V.first, U.first]
 ";
     assert_eq!(codes(bad), vec![cpl_diag::codes::TYPE_MISMATCH.0]);
 }
-
 #[test]
 fn typed_lambda_parameter_annotations_are_checked() {
     let ok = "\
@@ -2376,4 +2375,40 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
         )),
         Vec::<&str>::new()
     );
+}
+
+#[test]
+fn domain_subsets_enum_arrays_seq_ops_and_cuts_typecheck() {
+    let ok = "\
+enum Sign: neg = -1, zero = 0, pos = 1
+domain V = 1..=5
+domain Item = 1..=5
+domain Cut = 0..=5
+let edges: List<(u: V, v: V)> = [(V(1), V(2))]
+let adj = adjacency(edges, into: Bitset)
+let full: Bitset<V> = V.all
+let diff = V.all - adj[V(1)]
+for v in diff: print(v)
+let vals: [Sign]Int = [Sign] s => Int(s)
+for s in Sign: print(vals[s])
+let (evens, odds) = V.partition(v => Int(v) % 2 == 0)
+let w: [V]Int = [V] v => Int(v)
+let order = V.sorted(by: w)
+let groups = V.group_by(v => Int(v) % 2)
+let picked = V.first(where: v => Int(v) > 2)
+let p: [Item]Cut = [Item] i => Cut(Int(i) - 1)
+let s: [Item]Cut = [Item] i => Cut(Int(i))
+let (lo, hi) = minmax(p[Item(1)], s[Item(1)])
+let r = lo..hi
+print(full.len, evens.len, odds.len, order.len, groups.len, picked, r.len)
+";
+    assert_eq!(check(ok), vec![]);
+
+    let bad_cut = "\
+domain Item = 1..=5
+domain Cut = 0..=5
+let a: [Cut]Int = 0
+let _ = a[Item(1)]
+";
+    assert_eq!(codes(bad_cut), vec![cpl_diag::codes::WRONG_DOMAIN.0]);
 }

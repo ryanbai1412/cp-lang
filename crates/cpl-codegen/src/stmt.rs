@@ -337,18 +337,26 @@ impl<'p> Emitter<'p> {
         let name = self.names[slot].clone();
         let stable = self.facts.stable((self.fn_id, false, slot));
         let hoisted = self.hoisted.contains(&slot);
+        let enum_range = matches!(ty, Ty::Enum(_)) && matches!(iter, Iter::Range { .. });
         // The loop's own counter, when the body may change the variable.
-        let var = if hoisted || !stable {
+        let var = if hoisted || !stable || enum_range {
             self.temp()
         } else {
             name.clone()
         };
         let mut first = Vec::new();
-        if hoisted {
+        if enum_range {
+            if hoisted {
+                first.push(format!("{name} = static_cast<{cpp}>({var});"));
+            } else {
+                first.push(format!("{cpp} {name} = static_cast<{cpp}>({var});"));
+            }
+        } else if hoisted {
             first.push(format!("{name} = {var};"));
         } else if !stable {
             first.push(format!("{cpp} {name} = {var};"));
         }
+        let cpp = if enum_range { "ll".to_string() } else { cpp };
         match iter {
             Iter::Range {
                 lo,

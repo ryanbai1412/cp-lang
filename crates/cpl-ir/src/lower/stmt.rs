@@ -2401,6 +2401,7 @@ impl<'a> Lowerer<'a> {
         let slot_ty = |dim: Dim| match dim {
             Dim::Pos(d) => Ty::Pos(d),
             Dim::Bound(d) => Ty::Bound(d),
+            Dim::Enum(e) => Ty::Enum(e),
             Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
         };
         let changed = asked.then(|| {
@@ -2621,6 +2622,7 @@ impl<'a> Lowerer<'a> {
         let index_ty = |dim: Dim| match dim {
             Dim::Pos(d) => Ty::Pos(d),
             Dim::Bound(d) => Ty::Bound(d),
+            Dim::Enum(e) => Ty::Enum(e),
             Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
         };
         let (at, from_at) = (self.temp(index_ty(dims[axis])), self.temp(index_ty(from_dims[from_axis])));
@@ -2714,6 +2716,7 @@ impl<'a> Lowerer<'a> {
         let at = self.temp(match dims[axis] {
             Dim::Pos(d) => Ty::Pos(d),
             Dim::Bound(d) => Ty::Bound(d),
+            Dim::Enum(e) => Ty::Enum(e),
             Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
         });
         let cell = self.axis_cell(&place.ty, indices, at, span);
@@ -3853,7 +3856,7 @@ fn find_pos_domain_in_ty(ty: &Ty) -> Option<DomainId> {
             .iter()
             .find_map(|dim| match dim {
                 Dim::Pos(d) | Dim::Bound(d) | Dim::Sym(d) => Some(*d),
-                Dim::Int | Dim::IntFrom(_) => None,
+                Dim::Enum(_) | Dim::Int | Dim::IntFrom(_) => None,
             })
             .or_else(|| find_pos_domain_in_ty(elem)),
         Ty::List(elem) | Ty::Opt(elem) | Ty::Range(elem) => find_pos_domain_in_ty(elem),
@@ -3879,6 +3882,7 @@ pub(super) fn remap_domain_ty(ty: &Ty, from: DomainId, to: DomainId) -> Ty {
                     Dim::Pos(d) => Dim::Pos(map_d(*d)),
                     Dim::Bound(d) => Dim::Bound(map_d(*d)),
                     Dim::Sym(d) => Dim::Sym(map_d(*d)),
+                    Dim::Enum(e) => Dim::Enum(*e),
                     Dim::Int => Dim::Int,
                     Dim::IntFrom(lo) => Dim::IntFrom(*lo),
                 })
