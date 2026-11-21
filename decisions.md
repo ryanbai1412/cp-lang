@@ -1996,7 +1996,6 @@ Reverse: none needed; this is general range-type lowering.
   and are queued as the next step in `plan/DOMAINS.md`. Reason: keep commits small and avoid
   shipping half-baked product destructuring. Reverse: implement product-domain packing in `cpl-ir`
   and `cpl-check`.
-
 ## 37. Taste review gate (2026-11-21)
 
 37.1. **Ports newer than the dream-first rule need a dream and a review; old ports are a
@@ -2007,7 +2006,6 @@ the count under 4 and the port/dream token ratio. The count of later ports scori
 ratcheted (`new_under_4_max`), and the ratchet only blocks commits that add a port, so a review
 that lowers a score never breaks main. Reason: taste was self-reviewed and nothing checked it.
 Reverse: delete the step from `scripts/check.sh`.
-
 ## 38. Geometry standard library (`design/stdlib/geometry.md`, 2026-11-21)
 
 - **38.1 Two distinct point types: `Pt` (exact `Int`) and `Vec` (careful `F64`).**
@@ -2030,3 +2028,26 @@ Reverse: delete the step from `scripts/check.sh`.
   divide-and-conquer hulls (`ucup4s25e`) stay O(n log n) alongside `minkowski_upper`. `locate` and
   `locate_convex` keep `1 / 0 / -1` for compatibility with `turn` and existing callers (`tour.cp`).
   Reverse: add an enum wrapper or rename.
+
+## 39. Strings stdlib (`std.strings`, 2026-11-21)
+
+- **39.1 Alphabet-domain automata (`Trie<A>`, `AhoCorasick<A>`, `SuffixAutomaton<A>`, `PalindromicTree<A>`).**
+  String automata parameterize over an alphabet domain `A` (such as `'a'..='z'` or `0..2`) rather
+  than hardcoding 26 lowercase letters. Reason: binary/digit/general alphabets avoid wasted memory
+  and `c - 'a'` arithmetic while keeping `[A]?Int` / `[A]Int` inline and bounds-checked at domain
+  entry (`design/stdlib/strings.md` §2). Reverse: add a concrete `Str`-specialized wrapper if ports
+  show repeated `[Letter(c) for c in s]` boilerplate.
+- **39.2 Layered suffix arrays: O(n) free functions plus O(n log n) `SuffixArray<T>`.**
+  `suffix_array(s)` and `lcp_array(s, sa)` stay O(n) SA-IS + Kasai with no hidden RMQ build;
+  `SuffixArray<T>(s)` builds `sa`, `rank`, `lcp`, and a sparse table for O(1) `lcp_between` and
+  `compare`, O(|pat| log n) `matches`/`count`, and O(log n) `lcp_range`. Reason: visible costs
+  (no secret O(n log n) work behind `suffix_array`) while eliminating repeated binary search and
+  RMQ boilerplate (`research/friction-backlog-batch-10.md` T4). Reverse: drop `SuffixArray<T>`.
+- **39.3 `manacher(s)` returns `Palindromes(odd, even)` with O(1) `is_palindrome(l, r)`.**
+  Keeping `odd` and `even` as public fields preserves direct radius access while adding
+  `is_palindrome(l, r)`, `count`, and `longest` so callers never re-derive the center formula.
+  Reason: eliminates a classic off-by-one bug class. Reverse: return a plain tuple `(odd, even)`.
+- **39.4 `Hash2D<R, C>` returns double-mod `HashVal`, not a single-mod `Int`.**
+  Promoted from `examples/local-lib/str/hash2d.cp`, upgraded to the same double-mod `HashVal` as
+  `RollingHash` so 2D hashes are anti-hack safe on Codeforces. Reason: single 31-bit hashes collide
+  easily at contest grid sizes. Reverse: revert to a single `Mod<2147483647>`.

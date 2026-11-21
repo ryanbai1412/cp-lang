@@ -782,8 +782,10 @@ fn flow(mut self, s: V, t: V, limit: ?Int = none) -> (flow: Int, cost: Int)
 
 ### 4.13 `std.strings`: strings
 
-ASCII byte strings, the prefix and Z functions, suffix array and LCP,
-and the polynomial rolling hash with two random bases.
+ASCII byte strings, KMP/prefix and Z functions, borders and Lyndon words,
+palindromes (Manacher and palindromic tree), suffix array/LCP and suffix
+automaton, tries and Aho-Corasick, and double-mod rolling hashing (1D and 2D).
+Full design and exemplars in `design/stdlib/strings.md`.
 
 ```cp
 fn repeat(self: Str, n: Int) -> Str
@@ -814,16 +816,85 @@ struct RollingHash // O(n), O(1)
     fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal // O(1)
 ```
 
-[new], promoted from `examples/local-lib/strings/`:
+[new], designed in `design/stdlib/strings.md` and promoted from
+`examples/local-lib/str/`:
 
 ```cp
-fn manacher(s: Str) -> (odd: List<Int>, even: List<Int>)   // O(n)
-fn is_palindrome(s: Str) -> Bool                           // O(n)
-struct AhoCorasick
-fn AhoCorasick.new(patterns: List<Str>) -> AhoCorasick     // O(sum |p| * 26)
-fn matches(self, text: Str) -> yields (at: Int, pattern: Int)
-    // O(|text| + output)
-fn counts(self, text: Str) -> List<Int>                    // O(|text| + nodes)
+fn is_palindrome<T>(s: List<T>) -> Bool                         // O(n)
+fn borders<T>(s: List<T>) -> yields Int                         // O(n)
+fn prefix_matches<T>(self: List<T>, pat: List<T>) -> List<Int>  // O(|self| + |pat|)
+fn overlap<T>(a: List<T>, b: List<T>) -> Int                    // O(|a| + |b|)
+fn lyndon_factorization<T>(s: List<T>) -> List<Int>             // O(n)
+fn min_rotation<T>(s: List<T>) -> Int                           // O(n)
+struct Palindromes(odd: List<Int>, even: List<Int>)
+    fn is_palindrome(self, l: Int, r: Int) -> Bool              // O(1)
+    @get fn count(self) -> Int                                  // O(n)
+    @get fn longest(self) -> (l: Int, r: Int)                   // O(n)
+fn manacher<T>(s: List<T>) -> Palindromes                       // O(n)
+struct PalindromicTree<A>
+    fn new() -> PalindromicTree<A>                              // O(|A|)
+    fn of(s: List<A>) -> PalindromicTree<A>                     // O(n * |A|) mem, O(n)
+    fn push(mut self, a: A) -> Int                              // O(1) amortized
+    @get fn len(self) -> Int                                    // O(1)
+    @get fn distinct(self) -> Int                               // O(1)
+    fn pal_len(self, state: Int) -> Int                         // O(1)
+    fn link(self, state: Int) -> Int                            // O(1)
+    fn step(self, state: Int, a: A) -> ?Int                     // O(1)
+    fn diff(self, state: Int) -> Int                            // O(1)
+    fn series_link(self, state: Int) -> Int                     // O(1)
+    fn occurrences(self) -> List<Int>                           // O(n)
+fn RollingHash.lcp(self, a: Int, b: Int) -> Int                 // O(log n)
+fn RollingHash.lcs(self, a: Int, b: Int) -> Int                 // O(log n)
+fn RollingHash.lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int // O(log n)
+struct Hash2D<R, C>
+    fn new(code: (R, C) -> Int, bases: ?(Int, Int) = none) -> Hash2D<R, C> // O(R * C)
+    fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal    // O(1)
+struct SuffixArray<T>
+    fn new(s: List<T>) -> SuffixArray<T>                        // O(n log n)
+    @get fn len(self) -> Int                                    // O(1)
+    fn lcp_between(self, i: Int, j: Int) -> Int                 // O(1)
+    fn matches(self, pat: List<T>) -> Range<Int>                // O(|pat| log n)
+    fn count(self, pat: List<T>) -> Int                         // O(|pat| log n)
+    fn lcp_range(self, i: Int, len: Int) -> Range<Int>          // O(log n)
+    fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int // O(1)
+    @get fn distinct(self) -> Int                               // O(n)
+struct SuffixAutomaton<A>
+    fn new() -> SuffixAutomaton<A>                              // O(|A|)
+    fn of(s: List<A>) -> SuffixAutomaton<A>                     // O(n * |A|) mem, O(n)
+    fn push(mut self, a: A)                                     // O(1) amortized
+    @get fn root(self) -> Int                                   // O(1)
+    @get fn len(self) -> Int                                    // O(1)
+    fn step(self, state: Int, a: A) -> ?Int                     // O(1)
+    fn link(self, state: Int) -> ?Int                           // O(1)
+    fn longest(self, state: Int) -> Int                         // O(1)
+    fn shortest(self, state: Int) -> Int                        // O(1)
+    fn find(self, word: List<A>) -> ?Int                        // O(|word|)
+    fn contains(self, word: List<A>) -> Bool                    // O(|word|)
+    @get fn distinct(self) -> Int                               // O(states)
+    fn topo_order(self) -> List<Int>                            // O(states)
+    fn occurrences(self) -> List<Int>                           // O(states)
+struct Trie<A>
+    fn new() -> Trie<A>                                         // O(|A|)
+    @get fn root(self) -> Int                                   // O(1)
+    @get fn len(self) -> Int                                    // O(1)
+    fn step(self, node: Int, a: A) -> ?Int                      // O(1)
+    fn find(self, word: List<A>) -> ?Int                        // O(|word|)
+    fn add(mut self, word: List<A>) -> Int                      // O(|word|)
+    fn remove(mut self, word: List<A>) -> Bool                  // O(|word|)
+    fn count(self, word: List<A>) -> Int                        // O(|word|)
+    fn count_prefix(self, prefix: List<A>) -> Int               // O(|prefix|)
+    fn ends_at(self, node: Int) -> Int                          // O(1)
+    fn pass_at(self, node: Int) -> Int                          // O(1)
+struct AhoCorasick<A>
+    fn new(patterns: List<List<A>>) -> AhoCorasick<A>           // O(sum |p| * |A|)
+    @get fn root(self) -> Int                                   // O(1)
+    @get fn len(self) -> Int                                    // O(1)
+    fn step(self, state: Int, a: A) -> Int                      // O(1)
+    fn link(self, state: Int) -> Int                            // O(1)
+    fn hit(self, state: Int) -> Bool                            // O(1)
+    fn words_at(self, state: Int) -> List<Int>                  // O(output)
+    fn matches(self, text: List<A>) -> yields (at: Int, pattern: Int) // O(|text| + output)
+    fn counts(self, text: List<A>) -> List<Int>                 // O(|text| + states)
 ```
 
 ### 4.14 `std.geometry`: 2D integer and floating-point geometry
