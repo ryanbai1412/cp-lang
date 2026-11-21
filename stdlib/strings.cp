@@ -30,6 +30,13 @@ pub fn count(self: Str, c: Char) -> Int:
         if x == c: n += 1
     n
 
+/// The last index where `c` stands in `s`, or `none`: `"banana".rfind('a')` is `some(5)`.
+/// O(s.len).
+pub fn rfind(self: Str, c: Char) -> ?Int:
+    for i in (0..self.len).rev:
+        if self[i] == c: return some(i)
+    none
+
 /// The small letter of a capital, and any other character as it is: `'A'.lower` is `'a'`.
 pub @get fn lower(self: Char) -> Char = if 'A' <= self and self <= 'Z': Char(self.ord + 32) else: self
 
@@ -470,3 +477,10 @@ fn digit_is_the_value_of_a_decimal_character():
 @test
 fn count_counts_one_character():
     assert "banana".count('a') == 3 and "banana".count('z') == 0 and "".count('a') == 0
+
+@test
+fn rfind_gives_the_last_place():
+    assert "banana".rfind('a') == some(5)
+    assert "banana".rfind('b') == some(0)
+    assert "banana".rfind('x') == none
+    assert "".rfind('a') == none

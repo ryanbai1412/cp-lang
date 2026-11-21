@@ -100,6 +100,9 @@ pub @get fn sign(self: Int) -> Int = if self > 0: 1 elif self < 0: -1 else: 0
 /// Whether bit `i` of `x` is set: `x.bit(i)`, bit 0 the lowest. No bit from 63 up is set in an `Int` that is not negative.
 pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
 
+/// Is `n` a power of two? `8.is_pow2` is true; `0`, `6` and negatives are not.
+pub @get fn is_pow2(self: Int) -> Bool = self > 0 and self & (self - 1) == 0
+
 /// The prime factorization of `x >= 1` by trial division. O(sqrt x).
 pub fn factor(x: Int) -> List<(Int, Int)>:
     var out = List<(Int, Int)>()
@@ -237,3 +240,8 @@ fn digits_are_lowest_first():
 @test
 fn sign_is_minus_one_zero_or_one():
     assert 5.sign == 1 and (-5).sign == -1 and 0.sign == 0 and (3 - 9).sign == -1
+
+@test
+fn is_pow2_is_one_set_bit():
+    assert 1.is_pow2 and 2.is_pow2 and 1024.is_pow2 and (1 << 62).is_pow2
+    assert not 0.is_pow2 and not 6.is_pow2 and not (-4).is_pow2 and not 1023.is_pow2

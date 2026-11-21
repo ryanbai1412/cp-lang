@@ -25,7 +25,8 @@
 #        11. the VS Code extension tests (editors/vscode: npm test)
 #        12. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
-# Needs cargo with clippy, python3 and the wasm target (rustup target add
+# Needs cargo with clippy, python3 with mistune (python3 -m pip install -r
+# site/requirements.txt) and the wasm target (rustup target add
 # wasm32-unknown-unknown, for the site bundle); --full also needs node, npm
 # and g++.
 set -euo pipefail
@@ -172,6 +173,9 @@ echo "${#ecn[@]} ports pass in $(( ($(date +%s%N) - ecn_start) / 1000000 )) ms"
 step "site bundle: dist/cp-lang.html under 2,600,000 bytes"
 rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
     || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
+need python3 "site/bundle.py runs on it"
+python3 -c 'import mistune' 2>/dev/null \
+    || fail "the site bundle needs the Python package \`mistune\`; run: python3 -m pip install -r site/requirements.txt"
 python3 site/bundle.py >/dev/null 2>&1 || fail "site/bundle.py failed; rerun: python3 site/bundle.py"
 bundle_bytes=$(wc -c <dist/cp-lang.html)
 echo "dist/cp-lang.html: $bundle_bytes bytes"

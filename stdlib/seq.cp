@@ -619,3 +619,33 @@ fn cyclic_pairs_close_the_ring():
     assert [p for p in [7].cyclic_pairs()] == [(7, 7)]
     let empty: List<Int> = []
     assert [p for p in empty.cyclic_pairs()].len == 0
+
+/// The first index of the largest value, or `none` for an empty list: `[3, 9, 2, 9].argmax`
+/// is `some(1)`. On an array the index counts from its first cell. O(n).
+pub @get fn argmax<T>(self: List<T>) -> ?Int:
+    if self.is_empty: return none
+    var best = 0
+    for i in 1..self.len:
+        if self[i] > self[best]: best = i
+    some(best)
+
+/// The first index of the smallest value, or `none` for an empty list. O(n).
+pub @get fn argmin<T>(self: List<T>) -> ?Int:
+    if self.is_empty: return none
+    var best = 0
+    for i in 1..self.len:
+        if self[i] < self[best]: best = i
+    some(best)
+
+@test
+fn argmax_and_argmin_give_the_first_best_index():
+    assert [3, 9, 2, 9].argmax == some(1)
+    assert [3, 2, 9, 2].argmin == some(1)
+    let empty: List<Int> = []
+    assert empty.argmax == none and empty.argmin == none
+    for _ in 0..50:
+        let a = [rand(0, 5) for _ in 0..rand(1, 8)]
+        let hi = a.argmax ?? -1
+        assert all(a[i] < a[hi] for i in 0..hi) and all(a[i] <= a[hi] for i in 0..a.len)
+        let lo = a.argmin ?? -1
+        assert all(a[i] > a[lo] for i in 0..lo) and all(a[i] >= a[lo] for i in 0..a.len)

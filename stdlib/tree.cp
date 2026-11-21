@@ -144,6 +144,22 @@ pub struct Rooted<V, Pre>:
     /// The number of vertices in the subtree of `v`.
     pub fn size(self, v: V) -> Int = sz[v]
 
+    /// The size of every subtree, by vertex: `t.subtree_sizes[v]` is `t.size(v)`.
+    pub @get fn subtree_sizes(self) -> [V]Int = sz
+
+    /// A centroid: a vertex whose removal leaves no piece larger than half the tree. When
+    /// there are two, this is the one nearer the root. O(depth).
+    pub @get fn centroid(self) -> V:
+        var v = root
+        while let h = heavy[v], 2 * sz[h] > sz[root]: v = h
+        v
+
+    /// Every centroid, one or two: the one nearer the root first. Two happen only when the
+    /// number of vertices is even and one edge splits the tree in halves. O(depth).
+    pub @get fn centroids(self) -> List<V>:
+        let c = self.centroid
+        if let h = heavy[c], 2 * sz[h] == sz[root]: [c, h] else: [c]
+
     /// Every vertex, each before its descendants (heavy child first): `at[p] for p in Pre`.
     pub @get fn preorder(self) -> List<V> = [at[p] for p in Pre]
 
@@ -408,6 +424,24 @@ fn path_updates_and_subtree_folds_over_one_lazy_tree():
             let (c, d) = (V.nth(rand(0, 10)), V.nth(rand(0, 10)))
             assert r.fold_path(c, d, st) == max(val[v] for v in slow_path(r, c, d))
             assert st.fold(r.sub(c)) == max(val[v] for v in V if r.is_anc(c, v))
+
+@test
+fn centroids_leave_no_piece_over_half():
+    domain V = 0..9
+    for _ in 0..40:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V(0), adj: v => adj[v])
+        let good = [
+            v for v in V if 2 * (V.len - r.size(v)) <= V.len and all(
+                2 * r.size(c) <= V.len for c in r.children(v)
+            )
+        ]
+        assert r.centroid in good
+        var got = r.centroids
+        got.sort()
+        assert got == good
+        assert r.centroids[0] == r.centroid
+        assert all(r.subtree_sizes[v] == r.size(v) for v in V)
 
 @test
 fn excl_fold_folds_the_other_children():
