@@ -4,6 +4,7 @@
 import os
 import subprocess
 import tempfile
+import time
 import unittest
 
 import scripts.check_cache as cc
@@ -122,8 +123,74 @@ class CheckCacheTest(unittest.TestCase):
             self.assertIn("taking over stale lock from land lock: other", r.stderr)
             self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
             self.assertEqual(git("ls-remote", remote, "refs/locks/land"), "")
-            self.assertEqual(git("ls-remote", remote, "refs/locks/queue/*"),
-                             f"{dead}\trefs/locks/queue/0000000000000000000-1-gone")
+            self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
+
+    def _train(self, gate_body, riders_ok):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        with tempfile.TemporaryDirectory() as tmp:
+            remote = os.path.join(tmp, "remote.git")
+            def git(*a, cwd=tmp):
+                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "--bare", "-b", "main", remote)
+            seed = os.path.join(tmp, "seed")
+            git("init", "-q", "-b", "main", seed)
+            git("-c", "user.name=t", "-c", "user.email=t@example.com",
+                "commit", "-q", "--allow-empty", "-m", "docs: seed", cwd=seed)
+            git("push", "-q", remote, "HEAD:main", cwd=seed)
+            gate = os.path.join(tmp, "gate.sh")
+            with open(gate, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\n" + gate_body +
+                        'git rev-parse "HEAD^{tree}" >> "$(git rev-parse --git-common-dir)/cpl-gate-passed"\n')
+            os.chmod(gate, 0o755)
+            lanes = {}
+            for lane, path in (("first", "one.md"), ("rider", "bad.md" if not riders_ok else "two.md")):
+                work = os.path.join(tmp, lane)
+                git("clone", "-q", remote, work)
+                git("config", "user.name", lane, cwd=work)
+                git("config", "user.email", "t@example.com", cwd=work)
+                with open(os.path.join(work, path), "w", encoding="utf-8") as f:
+                    f.write(lane + "\n")
+                git("add", path, cwd=work)
+                git("commit", "-qm", f"docs: {lane}", cwd=work)
+                git("config", "core.hooksPath", os.path.join(root, ".githooks"), cwd=work)
+                lanes[lane] = work
+            empty = git("hash-object", "-t", "tree", "-w", "/dev/null", cwd=seed)
+            busy = git("commit-tree", empty, "-m", "land lock: other", cwd=seed)
+            git("push", "-q", remote, f"{busy}:refs/locks/land", cwd=seed)
+            land = os.path.join(root, "scripts", "land.sh")
+            procs = {}
+            for lane in ("first", "rider"):
+                procs[lane] = subprocess.Popen(
+                    [land, remote], cwd=lanes[lane], stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, text=True,
+                    env={**env, "CPL_LAND_GATE": gate, "CPL_LANE": lane, "CPL_LAND_POLL": "1"})
+                deadline = time.time() + 30
+                while f"-{lane}" not in git("ls-remote", remote, "refs/locks/queue/*"):
+                    self.assertLess(time.time(), deadline, f"{lane} never queued")
+                    time.sleep(0.2)
+            git("push", "-q", remote, ":refs/locks/land", cwd=seed)
+            out = {lane: p.communicate(timeout=120) + (p.returncode,) for lane, p in procs.items()}
+            files = git("ls-tree", "--name-only", "main", cwd=remote).split()
+            return out, files, git("ls-remote", remote, "refs/locks/*")
+
+    def test_land_carries_queued_lanes_in_one_gated_train(self):
+        out, files, locks = self._train("", riders_ok=True)
+        self.assertEqual(out["first"][2], 0, out["first"][1])
+        self.assertEqual(out["rider"][2], 0, out["rider"][1])
+        self.assertIn("gating a train of 1 rider(s)", out["first"][1])
+        self.assertIn("carried to main in a train", out["rider"][0])
+        self.assertEqual(sorted(files), ["one.md", "two.md"])
+        self.assertEqual(locks, "")
+
+    def test_land_drops_a_failing_train_and_lands_alone(self):
+        out, files, locks = self._train("! test -e bad.md || exit 1\n", riders_ok=False)
+        self.assertEqual(out["first"][2], 0, out["first"][1])
+        self.assertIn("the train failed the gate", out["first"][1])
+        self.assertNotEqual(out["rider"][2], 0)
+        self.assertEqual(files, ["one.md"])
+        self.assertIn("refs/locks/solo/", locks)
 
 if __name__ == "__main__":
     unittest.main()

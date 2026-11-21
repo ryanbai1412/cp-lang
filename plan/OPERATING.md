@@ -121,7 +121,9 @@ added here.
   `scripts/check.sh --fast` on the exact rebased tip and pushes. Landers take
   turns through the `refs/locks/land` ref on the remote (a lock older than 20
   minutes is taken over; waiters queue in arrival order), so `main` holds still during the gate and nobody
-  re-gates against a moving tip; set `CPL_LANE` to name yourself in it. Never
+  re-gates against a moving tip; set `CPL_LANE` to name yourself in it. The
+  holder carries up to 8 queued lanes in a train gated once; if the train
+  fails, those riders only land alone, so one red lane costs one extra gate. Never
   push to `main` any other way. The pre-push hook refuses a `main` tip whose tree has not
   passed the gate, so two green commits can no longer combine into a red tip. A broken
   tip on `main` is fixed by whoever broke it, before any other work.
