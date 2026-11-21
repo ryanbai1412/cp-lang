@@ -38,11 +38,11 @@ export const PRELUDE_TYPES: readonly string[] = [
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
-    'Action', 'AhoCorasick', 'Arc', 'BeatsSegTree', 'Bitset', 'ByAngle', 'Centroids', 'Comb', 'Compressed', 'ConnectedGraph',
+    'Action', 'AhoCorasick', 'Arc', 'BagCursor', 'BeatsSegTree', 'Bitset', 'ByAngle', 'Centroids', 'Comb', 'Compressed', 'ConnectedGraph',
     'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff1', 'Diff2', 'Digraph', 'Dir4', 'Dir8',
     'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'Fenwick', 'Fenwick2D',
-    'FlowGraph', 'Graph', 'HalfPlane', 'Hash2D', 'HashVal', 'Hashable', 'LazySegTree', 'LiChao', 'Line', 'Mark',
-    'Marks', 'Mat', 'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours',
+    'FlowGraph', 'Graph', 'HalfPlane', 'Hash2D', 'HashVal', 'Hashable', 'IntervalMap', 'LazySegTree', 'LiChao', 'Line', 'Mark',
+    'Marks', 'Mat', 'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'OrderedSet',
     'Palindromes', 'PalindromicTree', 'ParityDsu', 'Perm', 'PersistentSegTree', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
     'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
     'SortedBag', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree', 'Tree', 'Trie', 'Vec',

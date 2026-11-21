@@ -598,7 +598,7 @@ fn count_below(self, i: D) -> Int     // O(K / 64); count < i
 fn shift_up(mut self, k: Int)         // O(K / 64) in place, k >= 0
 fn shift_or(mut self, k: Int)         // O(K / 64) in place: self |= self << k
 fn find(self, pred: D -> Bool) -> ?D  // O(K / 64 + visited)
-fn subset_sums<D>(weights: List<Int>) -> Bitset<D> // O(K sqrt(S) / 64)
+fn subset_sums(weights: List<Int>) -> Bitset<D> // O(K sqrt(S) / 64) (associated on Bitset<D>)
 ```
 
 ### 4.9 Containers: `std.bag`, `std.interval`, `std.deque`, `std.heap`, `std.dsu`, `std.marks`, `std.hashmap`
@@ -725,15 +725,16 @@ struct Deque<T> // O(1)
     fn get(self, i: Int) -> T
     fn set(mut self, i: Int, x: T) // O(1) [new]
     fn to_list(self) -> List<T> // O(n) [new]
-struct MonoDeque<T> // [new] O(1) amortized sliding min/max
-    fn new(pick: (T, T) -> T) -> MonoDeque<T>
-    fn by(better: (T, T) -> Bool) -> MonoDeque<T>
-    @get fn len(self) -> Int
-    @get fn is_empty(self) -> Bool
-    fn clear(mut self)
-    fn push(mut self, at: Int, val: T)
-    fn drop_before(mut self, min_at: Int)
-    @get fn best(self) -> ?T
+struct MonoDeque<T> // O(1) amortized sliding min/max (std.window)
+    fn new(by: (T, T) -> T = min) -> MonoDeque<T> // O(1)
+    @get fn len(self) -> Int // O(1)
+    @get fn is_empty(self) -> Bool // O(1)
+    fn clear(mut self) // O(1)
+    fn push(mut self, at: Int, val: T) // O(1) amortized
+    fn drop_before(mut self, min_at: Int) // O(1) amortized
+    fn drop_after(mut self, max_at: Int) // O(1) amortized
+    @get fn best(self) -> ?T // O(1)
+    @get fn best_at(self) -> ?Int // O(1)
 struct TwoStackFold<T> // [new] O(1) amortized queue monoid fold
     fn new<M>(op: M) -> TwoStackFold<T>
     @get fn len(self) -> Int

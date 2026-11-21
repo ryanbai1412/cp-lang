@@ -2515,6 +2515,7 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    Reason: zero AST/IR/codegen duplication; works identically with `read()` and any tuple expression. Reverse: remove `has_typed_tuple_pattern` in `cpl-syntax/src/parser/stmt.rs`.
 3. **Fieldless enum-indexed arrays `[Sign]T` lower to `DimSpec::Int(k)` and tag-checked indexing.**
    Reason: matches `[Bool]T` without new IR ops, interpreter changes, or C++ runtime types; evaluates the index expression once via a temp. Reverse: remove the `Sym::Enum` arm in `cpl-ir/src/lower/mod.rs` (`dim`) and `expr.rs` (`index_expr`).
+<<<<<<< HEAD
 
 ## 49. `Int` stops one above `-2^63` (codegen and performance, 2026-11-21)
 
@@ -2539,3 +2540,10 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   `-2^63`, which is no `Int`, and the old helpers built it from `Int.MIN`.
   With `U64` (wrapping, logical shifts) the helpers for bit 63 disappear.
   Reverse: none while `Int` stays symmetric.
+
+## 50. MonoDeque single constructor and Bitset.subset_sums (2026-11-21)
+
+1. **`MonoDeque<T>.new(by: (T, T) -> T = min)` replaces the two-constructor `new(pick)` + `by(better)` split, stores `by` directly without wrapping in a lambda, and adds `best_at -> ?Int` and `drop_after(max_at: Int)`.**
+   Reason: options are named arguments rather than separate constructors; storing `by` as-is lets C++ codegen inline `min`/`max` directly (~2x faster than wrapping `pick` in a lambda); `best_at` supplies DP argmin in O(1); `drop_after(max_at)` mirrors `drop_before(min_at)` for right-to-left sweeps without negating positions or adding state to `MonoDeque` (`research/frictions/ucup4s24f.md`). Reverse: restore `MonoDeque.by(better: (T, T) -> Bool)` beside `new(pick)` and drop `best_at`/`drop_after`.
+2. **Bitset knapsack is `Bitset<D>.subset_sums(weights)` rather than a free `std.bitset.subset_sums`.**
+   Reason: avoids colliding with `std.dp.subset_sums(xs) -> List<Int>` (meet-in-the-middle) and eliminates the turbofish at call sites (`Bitset<Sum>.subset_sums(ws)`). Reverse: expose a free `subset_sums<D>` in `std.bitset`.

@@ -9,7 +9,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | Module | Key exports | Purpose |
 | --- | --- | --- |
 | `std.algebra` | `Monoid`, `Action`, `Desc`, `desc`, `Reversible`, `MaxSub`, `fold` | Algebraic traits, Kadane monoid, descending key wrapper |
-| `std.bag` | `SortedBag` | Ordered multiset with `.count(x)` and `.remove_one(x)` |
+| `std.bag` | `SortedBag`, `OrderedSet`, `BagCursor` | Ordered multiset & unique-key set with rank, nth, cursors, and node recycling |
 | `std.beats` | `BeatsSegTree` | Ji Driver Segment Tree Beats (`chmin`, `chmax`, `add`, `sum`, `min_val`, `max_val`) |
 | `std.bitset` | `Bitset` | Fixed-domain bitset with bitwise ops and `.first_set` |
 | `std.derive` | `eq_fields`, `lt_fields`, `show_fields` | The field-by-field `Eq`, `Ord` and `Show`, written on `fields`; call one from an `impl` (`fn lt(a, b) = lt_fields(b, a)` orders the other way) |
@@ -22,6 +22,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.graph` | `Graph`, `Tree<V>`, `bfs`, `dijkstra`, `peel`, `topo`, `scc`, `two_color` | CSR graphs, implicit-neighbor algorithms, `Tree<V>` alias |
 | `std.grid` | `Dir4`, `Dir8`, `step`, `ray` | 4- and 8-direction grid movement helpers |
 | `std.heap` | `MinHeap`, `MaxHeap` | Binary priority queues |
+| `std.interval` | `IntervalMap` | Maximal-run interval partition over a domain with O(log n) amortized range assign |
 | `std.lazy` | `LazySegTree`, `DualSegTree`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`, `AffineSum`, `affine_sum` | Lazy and dual segment trees and stock actions |
 | `std.marks` | `Marks` | Generation-stamped O(1)-reset visited table |
 | `std.math` | `gcd`, `lcm`, `ext_gcd`, `ceil_div`, `choose2`, `Sieve`, `sieve_multiplicative`, `factor`, `factor_big`, `divisors`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `floor_sum`, `bit_len` | Number theory, primes, CRT, discrete log/sqrt, bit helpers |

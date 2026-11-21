@@ -39,14 +39,45 @@ pub struct Bitset<D>:
     pub fn toggle(mut self, i: D):
         w[i.to_idx / 64] ^= bit(i.to_idx % 64)
 
+    /// Copy of `self` with `i` added. O(K / 64).
+    pub fn with(self, i: D) -> Bitset<D>:
+        var out = Bitset(w)
+        out.add(i)
+        out
+
+    /// Copy of `self` with `i` removed. O(K / 64).
+    pub fn without(self, i: D) -> Bitset<D>:
+        var out = Bitset(w)
+        out.remove(i)
+        out
+
+    /// Remove every position from the set. O(K / 64).
+    pub fn clear(mut self):
+        for k in 0..w.len: w[k] = U64(0)
+
     /// The number of positions in the set.
     pub @get fn len(self) -> Int = sum(popcount(x) for x in w)
 
     /// The same number as `len`, under the name C++ gives it.
     pub @get fn count(self) -> Int = self.len
 
-    /// Whether no bits are set. O(|D| / 64).
-    pub @get fn is_empty(self) -> Bool = self.len == 0
+    /// Whether the set has no members; stops at the first non-zero word. O(K / 64).
+    pub @get fn is_empty(self) -> Bool:
+        for x in w:
+            if x != 0: return false
+        true
+
+    /// The smallest position in the set, or `none`. O(K / 64).
+    pub @get fn first(self) -> ?D:
+        for k in 0..w.len:
+            if w[k] != 0: return D.nth(64 * k + ctz(w[k]))
+        none
+
+    /// The largest position in the set, or `none`. O(K / 64).
+    pub @get fn last(self) -> ?D:
+        for k in (0..w.len).rev:
+            if w[k] != 0: return D.nth(64 * k + msb(w[k]))
+        none
 
     /// Replace `self` with `self | o` in place. O(|D| / 64).
     pub fn union(mut self, o: Bitset<D>):
@@ -89,13 +120,18 @@ pub struct Bitset<D>:
         false
 
     /// Move every position `k` places up (down for a negative `k`); positions that leave `D` are dropped.
-    /// This is the knapsack step: `reach.union(reach.shifted(weight))`.
+    /// O(K / 64) for both positive and negative `k`.
     pub fn shifted(self, k: Int) -> Bitset<D>:
         var out = Bitset<D>.new()
         if k < 0:
-            // towards lower positions: the ones that fall below the first are dropped
-            for i in self.each():
-                if let j = D.try_at(i.to_idx + k): out.add(j)
+            let d = -k
+            let (words, bits) = (d / 64, d % 64)
+            if words >= w.len: return out
+            for i in 0..w.len - words:
+                var x = w[i + words] >> bits
+                if bits > 0 and i + words + 1 < w.len:
+                    x |= w[i + words + 1] << (64 - bits)
+                out.w[i] = x
             return out
         let (words, bits) = (k / 64, k % 64)
         for i in (words..w.len).rev:
@@ -104,6 +140,33 @@ pub struct Bitset<D>:
             out.w[i] = x
         out.trim()
         out
+
+    /// Shift every position `k >= 0` places up in place; bits past `D` drop. O(K / 64).
+    pub fn shift_up(mut self, k: Int):
+        assert k >= 0
+        if k == 0: return
+        let (words, bits) = (k / 64, k % 64)
+        if words >= w.len:
+            self.clear()
+            return
+        for i in (words..w.len).rev:
+            var x = w[i - words] << bits
+            if bits > 0 and i > words: x |= w[i - words - 1] >> (64 - bits)
+            w[i] = x
+        for i in 0..words: w[i] = U64(0)
+        self.trim()
+
+    /// In-place `self |= self << k` for `k >= 0`, with zero allocation. O(K / 64).
+    pub fn shift_or(mut self, k: Int):
+        assert k >= 0
+        if k == 0: return
+        let (words, bits) = (k / 64, k % 64)
+        if words >= w.len: return
+        for i in (words..w.len).rev:
+            var x = w[i - words] << bits
+            if bits > 0 and i > words: x |= w[i - words - 1] >> (64 - bits)
+            w[i] |= x
+        self.trim()
 
     /// The positions in the set, in increasing order.
     pub fn each(self) -> yields D:
@@ -114,7 +177,13 @@ pub struct Bitset<D>:
                 yield D.nth(64 * k + b)
                 x &= ~bit(b)
 
-    /// The first position in the set at or after `i`, or `none`.
+    /// The first position in the set satisfying `pred`, or `none`. O(K / 64 + visited).
+    pub fn find(self, pred: D -> Bool) -> ?D:
+        for x in self.each():
+            if pred(x): return x
+        none
+
+    /// The first position in the set at or after `i`, or `none`. O(K / 64).
     pub fn next(self, i: D) -> ?D:
         var k = i.to_idx / 64
         var x = w[k] & ~low(i.to_idx % 64)
@@ -123,6 +192,45 @@ pub struct Bitset<D>:
             k += 1
             if k == w.len: return none
             x = w[k]
+
+    /// The last position in the set strictly before `i`, or `none`. O(K / 64).
+    pub fn prev(self, i: D) -> ?D:
+        let idx = i.to_idx
+        if idx == 0: return none
+        var k = idx / 64
+        var x = w[k] & low(idx % 64)
+        while true:
+            if x != 0: return D.nth(64 * k + msb(x))
+            if k == 0: return none
+            k -= 1
+            x = w[k]
+
+    /// Number of positions in the set strictly before `i`. O(K / 64).
+    pub fn count_below(self, i: D) -> Int:
+        let idx = i.to_idx
+        let (words, bits) = (idx / 64, idx % 64)
+        var ans = 0
+        for k in 0..words: ans += popcount(w[k])
+        if bits > 0 and words < w.len: ans += popcount(w[words] & low(bits))
+        ans
+
+    /// All subset sums in `0..D.K` reachable from non-negative `weights`.
+    /// Groups duplicate weights with binary carries so the work is O(K sqrt(S) / 64).
+    pub fn subset_sums(weights: List<Int>) -> Bitset<D>:
+        var reach = Bitset<D>.new()
+        if D.K == 0: return reach
+        reach.add(D.nth(0))
+        var cnt = List.filled(D.K, 0)
+        for w in weights:
+            if w > 0 and w < D.K: cnt[w] += 1
+        for w in 1..D.K:
+            let c = cnt[w]
+            if c > 2:
+                let carry = (c - 1) / 2
+                cnt[w] -= 2 * carry
+                if 2 * w < D.K: cnt[2 * w] += carry
+            for _ in 0..cnt[w]: reach.shift_or(w)
+        reach
 
     fn trim(mut self):
         if D.K % 64 != 0 and w.len > 0:
@@ -134,6 +242,9 @@ impl Sub for Bitset<D>:
         var out = Bitset<D>.new()
         for k in 0..a.w.len: out.w[k] = a.w[k] & ~b.w[k]
         out
+
+/// Index of the highest set bit in non-zero `x` (0..64).
+fn msb(x: U64) -> Int = bit_width(x) - 1
 
 /// The word with only bit `k` set.
 fn bit(k: Int) -> U64 = U64(1) << k
@@ -218,3 +329,57 @@ fn full_contains_every_position_and_nothing_past_end():
         assert f.len == sz
         for x in D: assert x in f
         assert (f & Bitset<D>.new()).is_empty
+
+@test
+fn nav_helpers_and_in_place_shifts():
+    domain P = 0..195
+    var b = Bitset<P>.new()
+    assert b.first == none and b.last == none
+    for idx in [0, 63, 64, 127, 128, 194]: b.add(P(idx))
+    assert b.first == P(0) and b.last == P(194)
+    assert b.prev(P(0)) == none
+    assert b.prev(P(64)) == P(63)
+    assert b.prev(P(128)) == P(127)
+    assert b.prev(P(194)) == P(128)
+    assert b.count_below(P(0)) == 0
+    assert b.count_below(P(64)) == 2
+    assert b.count_below(P(128)) == 4
+    assert b.count_below(P(194)) == 5
+    assert b.with(P(5)).contains(P(5)) and not b.contains(P(5))
+    assert not b.without(P(64)).contains(P(64)) and b.contains(P(64))
+    assert b.find(x => x.to_idx > 100) == P(127)
+    assert b.find(x => x.to_idx > 200) == none
+
+    // Word-level negative shifts across word boundaries.
+    for k in [1, 7, 63, 64, 65, 128, 194, 300]:
+        let s = b.shifted(-k)
+        for p in P:
+            let src = p.to_idx + k
+            assert s.contains(p) == (src < 195 and b.contains(P(src)))
+
+    // shift_up and shift_or agree with shifted.
+    var u = Bitset<P>.new()
+    for idx in [0, 1, 63, 64, 129]: u.add(P(idx))
+    let expected_up = u.shifted(65)
+    u.shift_up(65)
+    for p in P: assert u.contains(p) == expected_up.contains(p)
+
+    var o = Bitset<P>.new()
+    o.add(P(0))
+    for w in [3, 64, 65, 17]:
+        let exp = o | o.shifted(w)
+        o.shift_or(w)
+        for p in P: assert o.contains(p) == exp.contains(p)
+    o.clear()
+    assert o.is_empty and o.first == none and o.last == none
+
+@test
+fn subset_sums_matches_naive_with_duplicates():
+    domain S = 0..=150
+    let ws = [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 7, 7, 15, 40, 40, 200, 0]
+    let fast = Bitset<S>.subset_sums(ws)
+    var naive = Bitset<S>.new()
+    naive.add(S(0))
+    for w in ws:
+        if w > 0: naive.union(naive.shifted(w))
+    for s in S: assert fast.contains(s) == naive.contains(s)
