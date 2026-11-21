@@ -176,8 +176,10 @@ inline void need_input() {
     if (in.size() - in_at >= 512) return;
     for (size_t i = in_at;; i++) { if (i >= in.size() && !more()) return; if (is_space(in[i])) return; }
 }
-// A number that has no digit where it should start is not one.
-inline void need_digit() { if (in_at >= in.size() || in[in_at] < '0' || in[in_at] > '9') fail(\"the input has something else where a number was expected\"); }
+// A number starts with a digit and ends at a space or the end, so `12x` is
+// not one. `in[in.size()]` is '\\0', so a digit scan stops there unchecked.
+inline bool digit(char c) { return (unsigned char)(c - '0') <= 9; }
+inline void need_digit(bool end = false) { if (end ? in_at < in.size() && !is_space(in[in_at]) : !digit(in[in_at])) fail(\"the input has something else where a number was expected\"); }
 ",
     },
     Piece {
@@ -194,10 +196,11 @@ inline bool at_eof() { skip_space(); return in_at >= in.size(); }
 inline ll read_int() {
     need_input();
     bool negative = false;
-    if (in_at < in.size() && (in[in_at] == '-' || in[in_at] == '+')) negative = in[in_at++] == '-';
+    if (in[in_at] == '-' || in[in_at] == '+') negative = in[in_at++] == '-';
     need_digit();
     ll x = 0;  // built downward, so -2^63 reads without overflow
-    while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 - (in[in_at++] - '0');
+    while (digit(in[in_at])) x = x * 10 - (in[in_at++] - '0');
+    need_digit(true);
     if (x == (-0x7fffffffffffffffLL - 1)) fail(\"a number in the input does not fit in an `Int`\");
     return negative ? x : -x;
 }
@@ -224,10 +227,11 @@ inline bool read_bool() { ll x = read_int(); if (x != 0 && x != 1) fail(\"a Bool
 inline __int128 read_i128() {
     need_input();
     bool negative = false;
-    if (in_at < in.size() && (in[in_at] == '-' || in[in_at] == '+')) negative = in[in_at++] == '-';
+    if (in[in_at] == '-' || in[in_at] == '+') negative = in[in_at++] == '-';
     need_digit();
     __int128 x = 0;
-    while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 - (in[in_at++] - '0');
+    while (digit(in[in_at])) x = x * 10 - (in[in_at++] - '0');
+    need_digit(true);
     return negative ? x : -x;
 }
 ",
@@ -238,10 +242,11 @@ inline __int128 read_i128() {
         code: "\
 inline unsigned long long read_u64() {
     need_input();
-    if (in_at < in.size() && in[in_at] == '+') in_at++;
+    if (in[in_at] == '+') in_at++;
     need_digit();
     unsigned long long x = 0;
-    while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 + (unsigned long long)(in[in_at++] - '0');
+    while (digit(in[in_at])) x = x * 10 + (unsigned long long)(in[in_at++] - '0');
+    need_digit(true);
     return x;
 }
 ",

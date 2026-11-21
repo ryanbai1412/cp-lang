@@ -469,6 +469,15 @@ fn a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list
 }
 
 #[test]
+fn read_int_scans_digits_without_a_bound_check_per_char() {
+    let out = cpp("let n: Int = read()\nprint(n)\n");
+    let start = out.find("inline ll read_int()").expect("read_int is emitted");
+    let read_int = &out[start..start + out[start..].find("\n}").unwrap()];
+    assert!(read_int.contains("while (digit(in[in_at]))"), "{read_int}");
+    assert!(!read_int.contains("in.size()"), "{read_int}");
+}
+
+#[test]
 fn an_optional_struct_with_an_int_field_has_no_flag() {
     let cpp = cpp(concat!(
         "struct Edge(to: Int, w: Int)\n",
@@ -917,3 +926,4 @@ print(d.sum())
 ");
     assert!(cpp.contains("d = std::move(t"), "{cpp}");
 }
+
