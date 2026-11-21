@@ -542,3 +542,10 @@ mod cli {
         assert!(err.contains("can't read /no/such/file.cp"), "{err}");
     }
 }
+
+#[test]
+fn an_operator_passed_as_a_fn_hides_no_name() {
+    // `+` stands for `(a, b) => a + b`; the `a` of that is not the writer's.
+    let src = "let a = [1, 2]\nlet it = 3\nfn total(f: (Int, Int) -> Int, xs: List<Int>) -> Int:\n    var t = 0\n    for x in xs: t = f(t, x)\n    return t\nfn go():\n    print(total(+, a), it)\n    print(sorted(a, by: .abs))\ngo()\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}

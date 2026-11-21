@@ -52,4 +52,13 @@ if which == 30: out = Int(I128(Int.MAX) + I128(three))
 if which == 31: out = Int(U64(z - 1))
 if which == 32: out = Int(U64(I128(z - 1)) >> 40)
 if which == 33: out = table[(D.first + three)!]
+if which == 34:
+    let p: D = read()
+    out = table[p]
+if which == 35:
+    let (a, b): (Int, Int) = read()
+    out = a + b
+if which == 36:
+    let (a, on): (Int, Bool) = read()
+    out = if on: a else: 0
 print("fine", out)

@@ -14,6 +14,7 @@
 //! traits are later phases; where the checker does not know, it says
 //! nothing.
 
+mod builtins;
 mod check;
 mod db;
 mod def;
@@ -22,6 +23,7 @@ mod modules;
 mod prelude;
 mod ty;
 
+pub use builtins::{builtin_members, prelude_names, BuiltinMember, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS};
 pub use check::{GlobalRef, HoverEntry};
 pub use db::{Analysis, AnalyzedItem, Database, Decl, Import, ItemCheck, ItemSyntax, Module, Stats};
 pub use def::{DeclKind, Def, DomainInfo};

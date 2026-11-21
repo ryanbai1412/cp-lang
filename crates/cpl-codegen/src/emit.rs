@@ -773,8 +773,7 @@ impl<'p> Emitter<'p> {
         self.block(&program.main, &mut fns);
         fns.push_str("}\n");
 
-        // `main` reads and writes through the runtime.
-        self.need("in");
+        // `main` writes through the runtime; what reads asks for the input itself.
         self.need("out");
         if program.multitest {
             self.need(if program.until_eof { "at_eof" } else { "read_int" });
@@ -794,7 +793,7 @@ impl<'p> Emitter<'p> {
         }
         out.push_str(
             "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\
-             #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <vector>\n",
+             #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <vector>\n#include <unistd.h>\n",
         );
         if !program.closures.is_empty() {
             out.push_str("#include <functional>\n");
@@ -872,7 +871,7 @@ impl<'p> Emitter<'p> {
                 "}  // namespace prog\n\n// The judge's grader calls these.\n\
                  static void cpl_start() {\n    static bool started = false;\n    if (started) return;\n    started = true;\n",
             );
-            out.push_str("    cpl::live = true;\n    prog::solve();\n}\n");
+            out.push_str("    prog::solve();\n}\n");
             out.push_str(&entries);
             return out;
         }
@@ -884,11 +883,6 @@ impl<'p> Emitter<'p> {
             out.push_str(BIG_STACK);
         }
         out.push_str(if deep { "static void cpl_main() {\n" } else { "int main() {\n" });
-        out.push_str(if program.interactive {
-            "    cpl::live = true;\n"
-        } else {
-            "    cpl::read_all();\n"
-        });
         // Each test case has its own query limit.
         let case = if self.used.contains("count_query") {
             "{ cpl::asked = 0; prog::solve(); }"

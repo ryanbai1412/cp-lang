@@ -157,18 +157,27 @@ template <class... T> struct Judge<std::tuple<T...>> {
     },
     Piece {
         name: "in",
-        needs: &[],
+        needs: &["fail"],
         code: "\
-// All of the input, read once.
+// The input so far. It comes in as the program asks for it, and what the
+// program has printed goes out first: a judge that answers queries has
+// to see the query before it writes the answer.
 std::string in;
 size_t in_at = 0;
-inline void read_all() { char b[1 << 16]; size_t n; while ((n = fread(b, 1, sizeof b, stdin)) > 0) in.append(b, n); }
 inline bool is_space(char c) { return c == ' ' || c == '\\n' || c == '\\t' || c == '\\r' || c == '\\f'; }
-// An interactive program reads a line when it needs one: the judge
-// answers only after it has seen the query.
-bool live = false;
-inline bool more() { if (!live) return false; char b[1 << 12]; bool got = false; while (fgets(b, sizeof b, stdin)) { got = true; in += b; if (in.back() == '\\n') break; } return got; }
+inline bool more() { flush(); fflush(stdout); char b[1 << 16]; ssize_t n = read(0, b, sizeof b); if (n <= 0) return false; in.append(b, (size_t)n); return true; }
 inline void skip_space() { for (;;) { while (in_at < in.size() && is_space(in[in_at])) in_at++; if (in_at < in.size() || !more()) return; } }
+// Before a value is read: input that has run out stops the program, as it
+// stops `cpl run`. The input comes in pieces, so the rest of the value is
+// brought in too, up to the space after it.
+inline void need_input() {
+    skip_space();
+    if (in_at >= in.size()) fail(\"the input ended where a value was expected\");
+    if (in.size() - in_at >= 512) return;
+    for (size_t i = in_at;; i++) { if (i >= in.size() && !more()) return; if (is_space(in[i])) return; }
+}
+// A number that has no digit where it should start is not one.
+inline void need_digit() { if (in_at >= in.size() || in[in_at] < '0' || in[in_at] > '9') fail(\"the input has something else where a number was expected\"); }
 ",
     },
     Piece {
@@ -183,9 +192,10 @@ inline bool at_eof() { skip_space(); return in_at >= in.size(); }
         needs: &["in"],
         code: "\
 inline ll read_int() {
-    skip_space();
+    need_input();
     bool negative = false;
     if (in_at < in.size() && (in[in_at] == '-' || in[in_at] == '+')) negative = in[in_at++] == '-';
+    need_digit();
     ll x = 0;  // built downward, so the smallest Int reads without overflow
     while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 - (in[in_at++] - '0');
     return negative ? x : -x;
@@ -204,9 +214,10 @@ inline bool read_bool() { ll x = read_int(); if (x != 0 && x != 1) fail(\"a Bool
         needs: &["in"],
         code: "\
 inline __int128 read_i128() {
-    skip_space();
+    need_input();
     bool negative = false;
     if (in_at < in.size() && (in[in_at] == '-' || in[in_at] == '+')) negative = in[in_at++] == '-';
+    need_digit();
     __int128 x = 0;
     while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 - (in[in_at++] - '0');
     return negative ? x : -x;
@@ -218,8 +229,9 @@ inline __int128 read_i128() {
         needs: &["in"],
         code: "\
 inline unsigned long long read_u64() {
-    skip_space();
+    need_input();
     if (in_at < in.size() && in[in_at] == '+') in_at++;
+    need_digit();
     unsigned long long x = 0;
     while (in_at < in.size() && in[in_at] >= '0' && in[in_at] <= '9') x = x * 10 + (unsigned long long)(in[in_at++] - '0');
     return x;
@@ -230,21 +242,21 @@ inline unsigned long long read_u64() {
         name: "read_float",
         needs: &["in"],
         code: "\
-inline double read_float() { skip_space(); char* end; double x = strtod(in.c_str() + in_at, &end); in_at = (size_t)(end - in.c_str()); return x; }
+inline double read_float() { need_input(); char* end; double x = strtod(in.c_str() + in_at, &end); if (end == in.c_str() + in_at) fail(\"the input has something else where a number was expected\"); in_at = (size_t)(end - in.c_str()); return x; }
 ",
     },
     Piece {
         name: "read_char",
         needs: &["in"],
         code: "\
-inline u8 read_char() { skip_space(); return in_at < in.size() ? (u8)in[in_at++] : 0; }
+inline u8 read_char() { need_input(); return in_at < in.size() ? (u8)in[in_at++] : 0; }
 ",
     },
     Piece {
         name: "read_str",
         needs: &["in"],
         code: "\
-inline std::string read_str() { skip_space(); size_t start = in_at; while (in_at < in.size() && !is_space(in[in_at])) in_at++; return in.substr(start, in_at - start); }
+inline std::string read_str() { need_input(); size_t start = in_at; while ((in_at < in.size() || more()) && !is_space(in[in_at])) in_at++; return in.substr(start, in_at - start); }
 ",
     },
     Piece {

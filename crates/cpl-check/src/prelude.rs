@@ -137,13 +137,13 @@ pub fn is_trait(name: &str) -> bool {
     TRAIT_NAMES.contains(&name)
 }
 
-const TYPE_NAMES: &[&str] = &[
+pub const TYPE_NAMES: &[&str] = &[
     "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Bounds",
     "Counter", "HashMap",
 ];
 
 /// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.
-const TRAIT_NAMES: &[&str] = &[
+pub const TRAIT_NAMES: &[&str] = &[
     "Index",
     "Seq",
     "Indexed",

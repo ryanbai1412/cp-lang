@@ -400,3 +400,16 @@ print(zs)
     assert!(cpp.contains("zs = std::move(t0);"), "{cpp}");
     assert!(cpp.contains("zs = ys;"), "a named list is copied: {cpp}");
 }
+
+#[test]
+fn an_index_of_the_arrays_own_domain_has_no_bounds_test() {
+    // A `D` is one of `D`'s positions by construction; an `Int` is not.
+    let src = "let n: Int = read()\ndomain D = 0..n\ndomain R = 0..n\nvar a: [D]Int = 0\nvar g: [R, D]Int = 0\n\
+               var b: [0..n]Int = 0\nvar h: [0..n, 0..n]Int = 0\nlet k: Int = read()\n\
+               for r in R:\n    for d in D:\n        a[d] += g[r, d]\n        g[r, d] = a[d]\n\
+               b[k] = h[k, k]\nprint(a, g, b)\n";
+    let out = cpp(src);
+    assert!(out.contains("a[d] += g(r, d);"), "{out}");
+    assert!(out.contains("g(r, d) = a[d];"), "{out}");
+    assert!(out.contains("cpl::at(b, k) = h.ck(k, k);"), "{out}");
+}

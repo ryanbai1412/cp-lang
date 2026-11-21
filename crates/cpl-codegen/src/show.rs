@@ -333,14 +333,12 @@ impl<'p> Emitter<'p> {
             Spec::Plain(Ty::Bool) => plain(self, "read_bool"),
             Spec::Plain(Ty::Str) => plain(self, "read_str"),
             Spec::Plain(Ty::Pos(d)) => {
+                // A position from the input is checked like `V(x)`: nothing
+                // later tests an index of its domain.
                 self.need("read_int");
-                Code::new(
-                    format!(
-                        "(int)(cpl::read_int() - {}_lo)",
-                        ident(&program.domains[*d])
-                    ),
-                    UNARY,
-                )
+                self.need("at");
+                let d = ident(&program.domains[*d]);
+                Code::primary(format!("cpl::pos(cpl::read_int() - {d}_lo, {d}_len)"))
             }
             Spec::Plain(ty) => Code::primary(format!("{}()", self.ty(ty))),
             // `read(none: 0)`: the number, or `none` where the input has 0.
@@ -349,7 +347,11 @@ impl<'p> Emitter<'p> {
                 let ty = self.ty(&spec.ty());
                 let absent = self.expr(absent).text;
                 let value = match &**inner {
-                    Spec::Plain(Ty::Pos(d)) => format!("(int)(x - {}_lo)", ident(&program.domains[*d])),
+                    Spec::Plain(Ty::Pos(d)) => {
+                        self.need("at");
+                        let d = ident(&program.domains[*d]);
+                        format!("cpl::pos(x - {d}_lo, {d}_len)")
+                    }
                     _ => "x".to_string(),
                 };
                 self.lambda(&ty, |this, out| {

@@ -400,6 +400,15 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
 }
 
 fn walk_lambda(v: &mut dyn Visitor, params: &[Pattern], body: &Expr) {
+    // `+` and `.cost` as an argument stand for `(a, b) => a + b` and
+    // `it => it.cost`. Nobody wrote those names, so they bind nothing here;
+    // only the field of `.cost` is something the writer named.
+    if params.iter().all(|param| param.span.start == body.span.start) {
+        if matches!(body.kind, ExprKind::Field { .. }) {
+            walk_expr(v, body);
+        }
+        return;
+    }
     v.enter(Scope::Block);
     for param in params {
         walk_pattern(v, param, Bind::Pattern);

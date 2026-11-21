@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 /// The highest `which` in `trap_parity.cp`.
-const SITES: u32 = 33;
+const SITES: u32 = 36;
 
 fn run(mut command: Command, input: &str) -> std::process::Output {
     let mut child = command
@@ -65,7 +65,10 @@ fn every_runtime_error_of_cpl_run_stops_the_judge_build_too() {
     let bin = judge_build(&source);
     let mut wrong = Vec::new();
     for which in 0..=SITES {
-        let input = format!("{which} 0 3\n");
+        // The sites that read more get a 7, which is outside `D`, and then
+        // nothing; the last one gets `true` where a `Bool` is 0 or 1.
+        let more = if which == SITES { "7 true" } else { "7" };
+        let input = format!("{which} 0 3 {more}\n");
         let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));
         interp.arg("run").arg(&source);
         let interp = run(interp, &input);
@@ -107,4 +110,58 @@ fn every_known_trap_is_still_open() {
         }
     }
     assert!(closed.is_empty(), "{}", closed.join("\n"));
+}
+
+/// The judge build takes its input in pieces: a value that lies across
+/// two of them reads whole.
+#[test]
+fn input_longer_than_one_piece_reads_the_same_in_the_judge_build() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/input_pieces.cp");
+    let n = 40_000u64;
+    let mut input = format!("{n}\n");
+    for i in 0..n {
+        // Lengths vary, so the cuts fall inside numbers and inside words.
+        let x = (i * 2_654_435_761) % 1_000_000_007;
+        let word = "ab".repeat((i % 7 + 1) as usize);
+        input.push_str(&format!("{} {word} {}.5\n", x as i64 - 500_000_000, i % 100));
+    }
+    assert!(input.len() > 4 * (1 << 16), "several pieces");
+    let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    interp.arg("run").arg(&source);
+    let interp = run(interp, &input);
+    let judge = run(Command::new(judge_build(&source)), &input);
+    assert!(interp.status.success() && judge.status.success());
+    assert_eq!(String::from_utf8_lossy(&interp.stdout), String::from_utf8_lossy(&judge.stdout));
+}
+
+/// A program that asks and then reads has its question out before it
+/// waits, with no `@interactor` in the file: the judge answers only what
+/// it has seen.
+#[test]
+fn the_judge_build_asks_before_it_waits_for_the_answer() {
+    use std::io::{BufRead, BufReader};
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/live_guess.cp");
+    let mut child = Command::new(judge_build(&source))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("starts");
+    let mut answers = child.stdin.take().unwrap();
+    let mut asked = BufReader::new(child.stdout.take().unwrap());
+    let secret = 37;
+    let mut queries = 0;
+    let found = loop {
+        let mut line = String::new();
+        asked.read_line(&mut line).unwrap();
+        let (mark, number) = line.trim().split_once(' ').expect("`? x` or `! x`");
+        let number: i64 = number.parse().unwrap();
+        if mark == "!" {
+            break number;
+        }
+        queries += 1;
+        let answer = if secret < number { "<" } else { ">=" };
+        writeln!(answers, "{answer}").unwrap();
+    };
+    assert_eq!((found, queries), (secret, 7));
+    assert!(child.wait().unwrap().success());
 }
