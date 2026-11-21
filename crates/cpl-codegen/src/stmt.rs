@@ -49,9 +49,16 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn block(&mut self, block: &Block, out: &mut String) {
-        for stmt in &block.stmts {
+        for (k, stmt) in block.stmts.iter().enumerate() {
+            self.tail = match stmt {
+                Stmt::Let(_, Some(init)) if walk::path_root(init).is_some() => {
+                    Some(Tail::of(&block.stmts[k + 1..]))
+                }
+                _ => None,
+            };
             self.stmt(stmt, out);
         }
+        self.tail = None;
     }
 
     /// Writes the statements of a value block in line and gives back the
@@ -611,13 +618,15 @@ impl<'p> Emitter<'p> {
 
     /// Whether the `let` of `slot` can be a reference to what `init`
     /// names instead of a copy of it. It can when nothing changes either
-    /// while the fn runs: the name is set once and never changed, `init`
-    /// is a path into a global or a parameter that this fn never stores
-    /// to, and the fn calls nothing that could.
-    fn reads_in_place(&self, slot: usize, init: &Expr) -> bool {
-        let (Some(id), None) = (self.fn_id, self.closure_id) else {
+    /// for as long as the name lives: the name is set once and never
+    /// changed, `init` is a path into a global or a parameter, and the
+    /// statements after the `let` in its block (`tail`) neither store to
+    /// that variable nor call anything that could. Without a `tail` the
+    /// whole fn is held to that.
+    fn reads_in_place(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
+        if self.closure_id.is_some() {
             return false;
-        };
+        }
         if init.ty.is_scalar() || matches!(init.ty, Ty::Fn(..)) || self.spent.contains(&slot) {
             return false;
         }
@@ -627,34 +636,45 @@ impl<'p> Emitter<'p> {
         let Some((global, root)) = walk::path_root(init) else {
             return false;
         };
-        let f = &self.program.fns[id];
-        if !global && root >= f.params.len() {
+        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
+        if !global && root >= params {
             return false;
         }
-        if self.facts.stores((Some(id), false, slot)) > 1 {
+        if self.facts.stores((self.fn_id, false, slot)) > 1 {
             return false;
         }
-        let own = crate::ranges::Facts::of_fn(id, &f.body);
-        let stored = match global {
-            true => own.stores((None, true, root)),
-            false => own.stores((Some(id), false, root)),
+        let Some(tail) = tail else {
+            let Some(id) = self.fn_id else {
+                return false;
+            };
+            let body = &self.program.fns[id].body;
+            let own = crate::ranges::Facts::of_fn(id, body);
+            let stored = match global {
+                true => own.stores((None, true, root)),
+                false => own.stores((Some(id), false, root)),
+            };
+            return stored == 0 && !Tail::of(&body.stmts).calls;
         };
-        if stored > 0 {
+        if tail.opaque {
             return false;
         }
-        let mut quiet = true;
-        walk::deep_exprs(&f.body, &mut |e| {
-            if matches!(e.kind, ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_)) {
-                quiet = false;
+        let effects = &tail.effects;
+        match global {
+            // A parameter may be another name for the global.
+            true => {
+                !effects.globals.contains(&root)
+                    && effects.locals.iter().all(|local| *local >= params)
+                    && !effects.calls.iter().any(|f| self.summaries[*f].writes.contains(&root))
             }
-        });
-        quiet
+            false => !effects.locals.contains(&root) && !tail.calls,
+        }
     }
 
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
         let program = self.program;
         match stmt {
             Stmt::Let(slot, init) => {
+                let tail = self.tail.take();
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
                 let packed = self.is_packed(false, *slot);
@@ -714,7 +734,7 @@ impl<'p> Emitter<'p> {
                 } else if name.starts_with('_') {
                     // `_t` is a name for a value the program may not use.
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
-                } else if !packed && self.reads_in_place(*slot, init) {
+                } else if !packed && self.reads_in_place(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list.
                     self.line(out, &format!("const {cpp}& {name} = {text};"));
@@ -828,4 +848,31 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
         }
     });
     (reads && quiet).then_some((map, key))
+}
+
+/// What the statements after a `let` in its block can do, for
+/// [`Emitter::reads_in_place`].
+pub(crate) struct Tail {
+    effects: Effects,
+    /// A call of a fn of the program.
+    calls: bool,
+    /// A call through a fn value, or a closure: code whose stores are not
+    /// in `effects`.
+    opaque: bool,
+}
+
+impl Tail {
+    fn of(stmts: &[Stmt]) -> Tail {
+        let block = Block { stmts: stmts.to_vec() };
+        let (mut calls, mut opaque) = (false, false);
+        walk::deep_exprs(&block, &mut |e| match e.kind {
+            ExprKind::Call(..) => calls = true,
+            ExprKind::CallExpr(..) | ExprKind::Closure(_) => {
+                calls = true;
+                opaque = true;
+            }
+            _ => {}
+        });
+        Tail { effects: Effects::of_block(&block), calls, opaque }
+    }
 }

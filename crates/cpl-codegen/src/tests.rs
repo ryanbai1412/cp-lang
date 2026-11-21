@@ -437,3 +437,31 @@ fn a_let_of_a_list_nothing_changes_is_a_reference_not_a_copy() {
     // `vals.at(x)` searches the field where it is.
     assert!(!cpp.contains("= self.vals;"), "{cpp}");
 }
+
+#[test]
+fn a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "var rows: [0..n]List<Int> = []\n",
+        "fn bump(i: Int):\n    rows[i].push(100)\n",
+        "fn size(i: Int) -> Int: rows[i].len\n",
+        "var total = 0\n",
+        "for i in 0..n:\n    let row = rows[i]\n    total += row.len + size(i)\n",
+        "for i in 0..n:\n    let before = rows[i]\n    bump(i)\n    total += before.len\n",
+        "for i in 0..n:\n    let kept = rows[i]\n    rows[i].push(7)\n    total += kept.len\n",
+        "for i in 0..n:\n    let was = rows[i]\n    let f = k => rows[k].push(3)\n    f(i)\n    total += was.len\n",
+        "fn inside(i: Int) -> Int:\n",
+        "    if i > 0:\n        let a = rows[i]\n        return a.len + size(i)\n",
+        "    let b = rows[i]\n    bump(i)\n    b.len\n",
+        "print(total, inside(0))\n",
+    ));
+    // `size` reads `rows` and changes nothing.
+    assert!(cpp.contains("const std::vector<ll>& row = cpl::at(rows, "), "{cpp}");
+    assert!(cpp.contains("const std::vector<ll>& a = cpl::at(rows, i);"), "{cpp}");
+    // A fn that changes `rows`, a store, and a fn value that may do
+    // either: each name is what the row was.
+    for copied in ["before", "kept", "was", "b"] {
+        assert!(cpp.contains(&format!("std::vector<ll> {copied} = cpl::at(rows, ")), "{copied}: {cpp}");
+        assert!(!cpp.contains(&format!("& {copied} = ")), "{copied}: {cpp}");
+    }
+}

@@ -120,6 +120,8 @@ pub(crate) struct Emitter<'p> {
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
+    /// What follows the `let` being written, in its block.
+    pub tail: Option<crate::stmt::Tail>,
     /// Local lists kept in one buffer for the whole run: see [`crate::scope::reused`].
     pub reused: BTreeSet<usize>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
@@ -179,6 +181,7 @@ impl<'p> Emitter<'p> {
             closure_id: None,
             names: Vec::new(),
             hoisted: BTreeSet::new(),
+            tail: None,
             in_setup: false,
             spent: BTreeSet::new(),
             taken: BTreeSet::new(),
