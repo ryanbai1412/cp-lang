@@ -558,9 +558,16 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
             return Err(EXIT_USAGE);
         }
     };
-    let mut db = cpl_check::Database::new();
-    db.set_file(path, text.as_str());
-    let analysis = db.analyze(path).expect("the file was just set");
+    // One database per thread, as the language server keeps one: a process
+    // that compiles many files (the test suites, `cpl watch`) checks the
+    // standard library once. The loader rereads imports on every analysis.
+    thread_local! {
+        static DB: std::cell::RefCell<cpl_check::Database> = Default::default();
+    }
+    let analysis = DB.with_borrow_mut(|db| {
+        db.set_file(path, text.as_str());
+        db.analyze(path).expect("the file was just set")
+    });
     if !analysis.diagnostics.is_empty() {
         *stderr += &cpl_diag::render_all(&analysis.diagnostics, path, &text);
         if analysis
