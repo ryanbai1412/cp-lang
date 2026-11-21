@@ -1,7 +1,10 @@
+// Codeforces 2129 F1: Permutation (Easy Version).
+// Assign each value 1..=845 a distinct 30-bit query mask with bit 0 used
+// <= 300 times (one type-4 query) and each bit 1..29 used <= 60 times
+// (29 type-2 queries). The 30 query responses give each position a unique
+// signature that directly decodes the permutation.
 @!interactive
 
-// Build 845 distinct 30-bit query masks with bit 0 used <= 300 times
-// and each bit 1..29 used <= 60 times (no backtracking or RNG needed).
 var cap: [0..30]Int = 60
 cap[0] = 300
 var masks: [1..=845]Int = 0
@@ -11,14 +14,19 @@ var mask_to_val = Map<Int, Int>()
 fn try_add(bits: List<Int>) -> Bool:
     var m = 0
     for b in bits: m |= 1 << b
-    if mask_to_val.contains(m): return false
-    for b in bits:
-        if cap[b] == 0: return false
+    if mask_to_val.contains(m) or any(bits, b => cap[b] == 0): return false
     num_masks += 1
     masks[num_masks] = m
     mask_to_val[m] = num_masks
     for b in bits: cap[b] -= 1
     true
+
+fn add_next_triple(order: List<Int>):
+    for x in order:
+        for y in order:
+            for z in order:
+                if x < y and y < z and try_add([x, y, z]):
+                    return
 
 try_add([])
 for i in 0..30: try_add([i])
@@ -34,12 +42,7 @@ for x in 0..9:
 while num_masks < 845:
     var order = List(1..30)
     sort(mut order, by: b => desc(cap[b]))
-    var added = false
-    for x in order:
-        for y in order:
-            for z in order:
-                if not added and x < y and y < z and try_add([x, y, z]):
-                    added = true
+    add_next_triple(order)
 
 let t: 1..=40 = read()
 for _ in 0..t:
