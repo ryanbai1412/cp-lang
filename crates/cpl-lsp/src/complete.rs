@@ -178,7 +178,7 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
         if !name.is_empty() && !before.contains(['(', '[', '{']) {
             let sig = signature_of(cursor, std, item, callee_end, name)?;
             let index = active_param(&sig, text[arg_start..at].trim_start(), commas);
-            let (_, ty, _) = sig.params.get(index)?;
+            let ty = &sig.params.get(index)?.ty;
             return Some(ty.clone()).filter(|t| !t.is_empty());
         }
     }
@@ -611,6 +611,8 @@ fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry
             Param {
                 name: name.trim().to_string(),
                 ty: substitute(ty.trim(), bindings),
+                default: String::new(),
+                named_only: false,
             }
         })
         .collect();
@@ -874,10 +876,19 @@ fn open_call(text: &str, from: usize, to: usize) -> Option<(usize, usize, usize)
     ))
 }
 
+/// One parameter as signature help shows it, its parts as text.
+struct SigParam {
+    name: String,
+    ty: String,
+    variadic: bool,
+    default: String,
+    named_only: bool,
+}
+
 /// One signature to show: its parameters' names and types as text.
 struct Signature {
     name: String,
-    params: Vec<(String, String, bool)>,
+    params: Vec<SigParam>,
     ret: String,
     doc: String,
 }
@@ -893,21 +904,28 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
         return None;
     }
     let sig = signature_of(cursor, std, item, callee_end, name)?;
-    // `f(a, k = 3`: the argument named, else the one by position.
+    // `f(a, by: k`: the argument named, else the one by position.
     let active = active_param(&sig, text[arg_start..offset].trim_start(), commas);
 
     let mut label = format!("{}(", sig.name);
     let mut parameters = Vec::new();
-    for (i, (name, ty, variadic)) in sig.params.iter().enumerate() {
-        if i > 0 {
+    for (i, param) in sig.params.iter().enumerate() {
+        let first_named = param.named_only && (i == 0 || !sig.params[i - 1].named_only);
+        if first_named {
+            label.push_str(if i > 0 { "; " } else { ";" });
+        } else if i > 0 {
             label.push_str(", ");
         }
         let start = utf16_len(&label);
-        label.push_str(if *variadic { "..." } else { "" });
-        label.push_str(name);
-        if !ty.is_empty() {
+        label.push_str(if param.variadic { "..." } else { "" });
+        label.push_str(&param.name);
+        if !param.ty.is_empty() {
             label.push_str(": ");
-            label.push_str(ty);
+            label.push_str(&param.ty);
+        }
+        if !param.default.is_empty() {
+            label.push_str(" = ");
+            label.push_str(&param.default);
         }
         parameters.push(obj([(
             "label",
@@ -937,19 +955,26 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
     ]))
 }
 
-/// The parameter an argument is for: `f(a, k = 3`'s is `k`, else the one
-/// at its position, the last when that one is variadic.
+/// The parameter an argument is for: `f(a, by: k`'s is `by`, else the
+/// positional one at its place, the last when that one is variadic.
 fn active_param(sig: &Signature, arg: &str, commas: usize) -> usize {
     let named = arg
-        .split_once('=')
-        .filter(|(n, rest)| !rest.starts_with('=') && n.trim().chars().all(is_ident))
-        .and_then(|(n, _)| sig.params.iter().position(|(p, ..)| p == n.trim()));
-    let variadic_last = sig.params.last().is_some_and(|(.., v)| *v);
-    named.unwrap_or(if variadic_last {
-        commas.min(sig.params.len().saturating_sub(1))
-    } else {
-        commas
-    })
+        .split_once(':')
+        .filter(|(n, _)| !n.trim().is_empty() && n.trim().chars().all(is_ident))
+        .and_then(|(n, _)| sig.params.iter().position(|p| p.name == n.trim()));
+    if let Some(index) = named {
+        return index;
+    }
+    let positional: Vec<usize> = (0..sig.params.len())
+        .filter(|&i| !sig.params[i].named_only)
+        .collect();
+    match positional.get(commas) {
+        Some(&index) => index,
+        None => match positional.last() {
+            Some(&last) if sig.params[last].variadic => last,
+            _ => sig.params.len().max(commas),
+        },
+    }
 }
 
 fn utf16_len(s: &str) -> u32 {
@@ -992,7 +1017,23 @@ fn signature_of(
             params: params
                 .iter()
                 .filter(|p| p.name != "self")
-                .map(|p| (p.name.clone(), p.ty.to_string(), p.variadic))
+                .map(|p| {
+                    let written = declared
+                        .as_ref()
+                        .and_then(|e| e.params.iter().find(|w| w.name == p.name));
+                    let default = match written {
+                        Some(w) if !w.default.is_empty() => w.default.clone(),
+                        _ if p.has_default => "...".to_string(),
+                        _ => String::new(),
+                    };
+                    SigParam {
+                        name: p.name.clone(),
+                        ty: p.ty.to_string(),
+                        variadic: p.variadic,
+                        default,
+                        named_only: p.named_only,
+                    }
+                })
                 .collect(),
             ret: ret.to_string(),
             doc,
@@ -1004,7 +1045,13 @@ fn signature_of(
                     entry
                         .params
                         .iter()
-                        .map(|p| (p.name.clone(), p.ty.clone(), false))
+                        .map(|p| SigParam {
+                            name: p.name.clone(),
+                            ty: p.ty.clone(),
+                            variadic: false,
+                            default: p.default.clone(),
+                            named_only: p.named_only,
+                        })
                         .collect(),
                     entry
                         .detail
@@ -1019,7 +1066,13 @@ fn signature_of(
                         .filter(|m| m.kind == Kind::Field)
                         .map(|m| {
                             let ty = m.detail.split_once(": ").map_or("", |(_, t)| t);
-                            (m.name.clone(), ty.to_string(), false)
+                            SigParam {
+                                name: m.name.clone(),
+                                ty: ty.to_string(),
+                                variadic: false,
+                                default: String::new(),
+                                named_only: false,
+                            }
                         })
                         .collect(),
                     entry.name.clone(),

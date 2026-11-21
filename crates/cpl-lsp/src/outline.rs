@@ -51,6 +51,10 @@ pub struct Param {
     pub name: String,
     /// The type as written; empty when it is left to inference.
     pub ty: String,
+    /// The default as written; empty when there is none.
+    pub default: String,
+    /// After `;`: passed only by name.
+    pub named_only: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -211,6 +215,11 @@ impl Reader<'_> {
                             .ty
                             .as_ref()
                             .map_or(String::new(), |t| squash(self.slice(t.span))),
+                        default: p
+                            .default
+                            .as_ref()
+                            .map_or(String::new(), |d| squash(self.slice(d.span))),
+                        named_only: p.named_only,
                     })
                     .collect();
                 e

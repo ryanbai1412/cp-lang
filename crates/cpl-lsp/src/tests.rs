@@ -966,6 +966,7 @@ fn use_std_completes_module_names_and_then_their_exports() {
 
 fn signature(src: &str) -> (String, u32, Vec<String>) {
     let help = ask_at("textDocument/signatureHelp", src);
+    assert!(!help.is_null(), "no signature help in {src:?}");
     let sig = &help.get("signatures").as_array()[0];
     let label = sig.get("label").as_str().unwrap().to_string();
     let params = sig
@@ -1520,7 +1521,7 @@ fn completion_ranks_first_what_fits_the_expected_type() {
     let strs = ["name", "s"];
     // An argument: the parameter's type; a named one: that parameter's.
     fits(format!("{decls}print(area(k, |))\n"), &ints, &strs);
-    fits(format!("{decls}print(area(h = |))\n"), &ints, &strs);
+    fits(format!("{decls}print(area(h: |))\n"), &ints, &strs);
     // A `let` with its type written, and an assignment.
     fits(format!("{decls}let t: Str = |\n"), &strs, &ints);
     fits(format!("{decls}c = |\n"), &["area", "k"], &strs);
@@ -1535,4 +1536,28 @@ fn completion_ranks_first_what_fits_the_expected_type() {
         best_fits(&format!("{decls}print(|)\n")),
         Vec::<String>::new()
     );
+}
+
+#[test]
+fn signature_help_shows_defaults_and_named_only_parameters() {
+    let decl = "fn walk(from: Int, steps: Int = 1; back: Bool = false) -> Int = from\n";
+    let (label, active, params) = signature(&format!("{decl}print(walk(1, |))\n"));
+    assert_eq!(
+        label,
+        "walk(from: Int, steps: Int = 1; back: Bool = false) -> Int"
+    );
+    assert_eq!(
+        params,
+        ["from: Int", "steps: Int = 1", "back: Bool = false"]
+    );
+    assert_eq!(active, 1);
+    // A named argument is its parameter, even one only passed by name.
+    let (_, active, _) = signature(&format!("{decl}print(walk(1, back: |))\n"));
+    assert_eq!(active, 2);
+    // Past the positional ones nothing is active: `back` needs its name.
+    let (_, active, _) = signature(&format!("{decl}print(walk(1, 2, |))\n"));
+    assert!(active > 2, "{active}");
+    // A stdlib method's default, as its declaration writes it.
+    let (label, ..) = signature("use std.mod.{Comb}\nlet c = Comb<7>.new(|)\n");
+    assert!(label.starts_with("new(limit: Int = 0) -> Comb<"), "{label}");
 }

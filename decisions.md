@@ -1935,6 +1935,12 @@ generics and range-to-`Int` widening, but needs no inference at the cursor, whic
 mid-edit and unparsed. The general version asks the checker for the expected type of a hole and
 for assignability. Reverse: drop `expected_type` and `rank` in `crates/cpl-lsp/src/complete.rs`.
 
+29.9. **Signature help writes parameters as the declaration does.** A default shows as `= 1` and
+named-only parameters follow a `;`, so the label reads like the `fn` line. The active parameter is
+the one an argument names (`back: |`), else the positional one at its place; named-only ones are
+never positional, so past the last positional one none is active. Reverse: drop `default` and
+`named_only` from `SigParam` in `crates/cpl-lsp/src/complete.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
