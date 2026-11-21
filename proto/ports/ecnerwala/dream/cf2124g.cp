@@ -14,12 +14,14 @@
 // `blk` into `lifted[..split] > cur_cap` (each gaining `cur_cap - a[i]`) and
 // `lifted[split..]` (gaining `lifted_suff[split] - a[i] * (blk.len - split)`).
 
+use std.seq.suffix_scan
+
 @!multitest
 let n: 1..=1_000_000 = read()
 domain Pos = 0..n
 let a: [Pos]Int = read()
 
-let pref_min = a.prefix_mins()
+let pref_min = a.scan(min)
 let orig_suff = pref_min.suffix_sums()
 let base_ans = orig_suff[Pos.Cut.first]
 
@@ -32,7 +34,7 @@ for i in Pos.rev:
     if pref_min[i] == ai and not cands.is_empty:
         let cap = if i == Pos.first: ai + cands.last!.val else: pref_min[(i - 1)!]
         let blk = a[i.l..end_cut]
-        let lifted = blk.with_first(cap).prefix_mins()
+        let lifted = ([cap] + blk[1..]).scan(min)
         let lifted_suff = lifted.suffix_sums()
         let block_loss = lifted.suffix_sums(from: orig_suff[end_cut])
 
@@ -48,4 +50,4 @@ for i in Pos.rev:
     if cands.is_empty or ai > cands.last!.val:
         cands.push((ai, i))
 
-print(ans.suffix_maxs())
+print(ans.suffix_scan(max))
