@@ -1,7 +1,7 @@
 # wtf26a
 
-Score: pending (header derives the cut costs and states the clamp; one `Node` domain with a `?Cut` record per node replaces three parallel arrays and the `< m` sentinel; leaf counts via `DsuOf`; method `sorted` only)
-Dream: pending (new dream)
+Score: 3/5
+Dream: 4/5
 
 The header (lines 1-3) states the plan. The Kruskal reconstruction tree is hand-built from three parallel `cut_*` arrays over raw `Int` node ids with `n + e` offsets, and the overflow clamp (line 40) is not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -21,3 +21,11 @@ The header (lines 1-3) states the plan. The Kruskal reconstruction tree is hand-
 ## Language gaps
 
 No friction report exists. Missing and owed as a friction: a Kruskal reconstruction tree (DSU merge tree) in the stdlib.
+
+## Cold review (HEAD)
+
+Dream 4/5 (new), port → 3/5, rescored on current main. The header derives the reconstruction tree, the per-cut costs and the `max_w` clamp.
+- `KruskalTree`, `saturating` and `tree.down` (lines 18-23) are reported gaps.
+- Minor: `[v => ... for v in tree.non_root]` (line 21) mixes a table builder and a comprehension; neither spelling is accepted with both. `cost.edges(to: tree.parent)` (line 23) is unexplained.
+
+Port 3/5: a hand Kruskal with `Dsu`, a `top` array and `Node(n + e)` ids (lines 17-27); these are the reported gap.

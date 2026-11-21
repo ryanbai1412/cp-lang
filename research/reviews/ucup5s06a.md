@@ -1,8 +1,8 @@
 # ucup5s06a
 
-Score: pending (header derives `cyc(B)` as a cyclic block count and states the answer `cyc(B + x) - 2 cyc(B)`; second series is its own value, not an in-place `f[1] -= 1`; the `k == 1` exit is gone since it is `cyc(x) = 1`)
+Score: 3/5
 
-Dream: pending (new dream)
+Dream: 4/5
 
 Short, and `log_deriv_at` names the editorial's tool, but the second series is made by mutating the first in place and the closing `2a - b` is not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -22,3 +22,11 @@ Short, and `log_deriv_at` names the editorial's tool, but the second series is m
 ## Language gaps
 
 No friction report exists. None needed.
+
+## Cold review (HEAD)
+
+Dream 4/5 (new), port → 3/5, rescored on current main. The header derives `cyc(B)` as a weighted cyclic block count, and the program is three lines.
+- `Series` (lines 8-17) and the dependent bound `(Int, 1..n)` (line 14) are reported gaps.
+- Minor: "the editorial's answer is cyc(B + x) - 2 cyc(B)" (line 6) is cited, not derived. Say what the `+ x` and the `- 2` count.
+
+Port 3/5: bare `List<Z>` series with `inv(..., n + 1)` and `Z(Int(i == 0))`/`Z(Int(i == 1))` indicator arithmetic (lines 15, 19); these are the reported gaps.

@@ -1,7 +1,7 @@
 # ucup5s02h
 
-Score: pending (header derives the spanning-tree colouring and the hull; named `Pt` and gap records; one `ParityDsu` with a pin node replaces both DSUs and the `2i+1` encoding; mirrored sweep is one `sweep(order, sign)`; random generator added)
-Dream: pending (new dream)
+Score: 3/5
+Dream: 3/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -19,3 +19,13 @@ A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1`
 ## Language gaps
 
 No friction report exists. Missing: a parity (bipartite) DSU in the stdlib if the lane could not find one.
+
+## Cold review (HEAD)
+
+Dream 3/5 (new), port → 3/5, rescored on current main; sent back. The header derives the spanning-tree colouring and the hull's monotonicity.
+- Bug: `(a.x - b.x) ^ 2` (line 24) is xor; §70 spells powers `**`.
+- Owed: the dream calls `pull` (line 31), `never_weakest` (line 35) and `hull_pairs` (line 68), but defines none of them. Bring over the port's `never_weakest`, or name the stdlib facility a friction item asks for.
+- Reported gaps: `Frac`, the `C | Pin` sum domain, `ParityDsu` component ids and count, `GroupTree.others`, `pop_while`.
+- Minor: `colour.unite(c, Pin, ...)` (line 52) passes a `C` for a `Node` (E0301), which the sum domain would fix.
+
+Port 3/5: the hull is hand geometry with `I128` cross-multiplication (no `Frac`, reported), and the sweep is hand-indexed.
