@@ -324,7 +324,7 @@ pub struct Rooted<V, Pre>:
 
     /// The ancestor `k` edges above `v`, or `none` if that is above the root. O(log n).
     pub fn ancestor(self, v: V, k: Int) -> ?V:
-        if k > dep[v]: return none
+        if k < 0 or k > dep[v]: return none
         var (x, left) = (v, k)
         while dep[x] - dep[top[x]] < left:
             left -= dep[x] - dep[top[x]] + 1
@@ -949,6 +949,93 @@ fn centroid_ancestors_split_every_path():
                 assert r.dist(c, v) == d and (b == c) == (v == c)
                 assert v == c or (r.dist(c, b) == 1 and r.dist(b, v) == d - 1)
             assert count == [v for v in V if any(x.c == c for x in cd.ancestors(v))].len
+
+@test
+fn a_jump_tree_answers_what_the_rooted_tree_does():
+    domain V = 0..40
+    for _ in 0..20:
+        let par = [V] v => if v == V.first: none else: some(V(rand(0, v.ord - 1)))
+        let r = Rooted.from_parents(par)
+        var j = JumpTree<V>()
+        for v in V:
+            if let p = par[v]: j.add(v, p)
+        for v in V:
+            assert j.parent(v) == r.parent(v) and j.depth(v) == r.depth(v) and j.root_of(v) == V.first
+            for k in -1..=r.depth(v) + 1: assert j.ancestor(v, k) == r.ancestor(v, k)
+            let cap = rand(0, 8)
+            assert j.lift_while(
+                v,
+                u => r.depth(v) - r.depth(u) <= cap,
+            ) == r.ancestor(v, min(cap, r.depth(v)))
+            assert j.lift_while(v, u => false) == none
+            for u in V: assert j.lca(u, v) == some(r.lca(u, v))
+    var f = JumpTree<V>()
+    f.add(V(1), V(0))
+    f.add(V(3), V(2))
+    assert f.lca(V(1), V(0)) == some(V(0)) and f.lca(V(1), V(3)) == none and f.root_of(V(3)) == V(2)
+
+/// A rooted forest grown one leaf at a time, by skew-binary jump pointers: `add` is O(1),
+/// queries are O(log n), and it keeps three arrays. Every vertex starts as its own root.
+pub struct JumpTree<V>:
+    par: [V]?V
+    jump: [V]V
+    dep: [V]Int
+
+    /// A forest of lone vertices, each its own root. O(n).
+    pub fn new() -> JumpTree<V> = JumpTree([V] _ => none, [V] v => v, [V] _ => 0)
+
+    /// Hang `v`, a vertex not yet in any tree, below `p`. O(1).
+    pub fn add(mut self, v: V, p: V):
+        assert par[v] == none and jump[v] == v and v != p
+        par[v] = some(p)
+        dep[v] = dep[p] + 1
+        let j = jump[p]
+        jump[v] = if dep[p] - dep[j] == dep[j] - dep[jump[j]]: jump[j] else: p
+
+    /// The parent of `v`, or `none` at a root. O(1).
+    pub fn parent(self, v: V) -> ?V = par[v]
+
+    /// The number of edges from `v` up to its root. O(1).
+    pub fn depth(self, v: V) -> Int = dep[v]
+
+    /// The root of `v`'s tree. O(log n).
+    pub fn root_of(self, v: V) -> V:
+        var x = v
+        while jump[x] != x: x = jump[x]
+        x
+
+    /// The ancestor `k` edges above `v`, or `none` if that is above the root. O(log n).
+    pub fn ancestor(self, v: V, k: Int) -> ?V:
+        if k < 0 or k > dep[v]: return none
+        let d = dep[v] - k
+        var x = v
+        while dep[x] > d: x = if dep[jump[x]] >= d: jump[x] else: par[x]!
+        x
+
+    /// The lowest common ancestor of `a` and `b`, or `none` in different trees. O(log n).
+    pub fn lca(self, a: V, b: V) -> ?V:
+        var x = if dep[a] > dep[b]: self.ancestor(a, dep[a] - dep[b])! else: a
+        var y = if dep[b] > dep[a]: self.ancestor(b, dep[b] - dep[a])! else: b
+        while x != y:
+            if par[x] == none: return none
+            if jump[x] != jump[y]:
+                x = jump[x]
+                y = jump[y]
+            else:
+                x = par[x]!
+                y = par[y]!
+        x
+
+    /// The highest ancestor `u` of `v` such that `pred` holds for `u`, or `none` when it does not
+    /// hold for `v` itself. `pred` must be true and then false on the way up. O(log n) calls.
+    pub fn lift_while(self, v: V, pred: V -> Bool) -> ?V:
+        if not pred(v): return none
+        var x = v
+        while true:
+            if jump[x] != x and pred(jump[x]): x = jump[x]
+            elif par[x] != none and pred(par[x]!): x = par[x]!
+            else: return x
+        x
 
 /// A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set vertex
 /// values along paths, by a link-cut tree (splay trees over preferred paths). Values fold

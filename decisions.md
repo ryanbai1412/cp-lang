@@ -3127,3 +3127,10 @@ restoring the `fail` in `check.sh` and appending to `regressions` in
 
 1. **`Paths<V, W, A>` stores `back: [V]?(from: V, via: A)` in place of separate `parent: [V]?V` and `via: [V]?A`.**
    Reason: every search wrote both arrays on every improving relaxation, and g++ keeps those stores because the arrays escape through the returned struct, so a port that reads only `p[v]` paid two extra writes and two extra arrays of n. On `bench/graph/dijkstra` (n = 500k, m = 2M) the merge takes 0.478 s to 0.412 s against 0.350-0.368 s hand C++ (1.30x to 1.18x). One array of pairs makes that one write and one slot per vertex, with `path`/`arcs` unchanged; nothing read `.parent` or `.via` directly, so no accessor is kept. A program that never reads the witnesses at all is the codegen lane's general dead-field elimination over monomorphized structs, not a `_nopaths` twin. Reverse: restore the two fields in `stdlib/graph.cp` and the `parent[v] = u; via[v] = a` writes in each search.
+
+## 79. `JumpTree`: trees grown leaf by leaf (2026-11-21)
+
+1. **`std.tree.JumpTree<V>` keeps one skew-binary jump pointer per vertex: `add(v, p)` is O(1); `ancestor`, `lca`, `lift_while` and `root_of` are O(log n), with `Rooted`'s meanings.**
+   - **Reason:** cf2152f builds its trees right to left, each vertex's parent already placed. Building a `Rooted` for them made the port 2.7x slower than the C++ and use 4x the memory (0.60 s / 64 MB vs 0.22 s / 15 MB). The port's own jump pointers were the right structure, but no other port could reuse them. With `JumpTree` the port runs in 0.12 s vs 0.11 s for the C++, with identical output.
+   - **Also:** `Rooted.ancestor(v, k)` returns `none` for negative `k`; it used to return a descendant. The new test that checks `JumpTree` against `Rooted` found this.
+   - **Reverse:** move the struct back into `cf2152f.cp`.

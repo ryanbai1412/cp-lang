@@ -36,7 +36,7 @@ core feature goes through section 3 and the core lane.
 | containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`, `window`), `List` methods | done: heaps, potential DSU, `FlatMap`, inline bounded `Bitset` (decision 62). zero-allocation `IntervalMap.assign` (decision 67, `cf2237h` 1.66 s to 1.26 s). `TimeTree.run`/`offline_over` (`cf2069f` RSS 356 to 146 MB). `Bitset.subset_sums` in `cf2187d` (4.3x faster). Next: review the graph lane's hole-based `MinHeap` sift; `Dsu.groups()` (`cf2245e` 1.81x) |
 | range structures | 4.10 | done: `Fenwick.first_ge` (decision 57), constant-init `LazySegTree`, `LazyTreap` (decision 68, matched 1.06x), `Flip`/`flip_action` with devirtualized combinators (decision 73), `LazySegTree` over `Bounds<D>` (`cf2207f`), `cf2057d` 2.01x to 1.12x. Next: the 5 open high frictions, all core/codegen-side (`?Struct` niche, `MinHeap.pop`) |
 | graphs | 4.11 `std.graph`, 4.15 `std.grid` | done: `until:` early exit (46.11), `cf2135c`. Next: `dijkstra` 1.44x matched C++ (heap sift here; closure push-loop and projection copy in codegen; read in I/O); then `cf2178h` on `fixed_cost_paths` |
-| trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). Next: ports hand-rolling tree code (`cf2152f` on `lift_while`, `cf2187c`, `cf2138c1`, `cf2089e`) |
+| trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). Next: `cf2187c`, `cf2138c1`, `cf2089e` |
 | flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched). Next: costflow 1.41x; matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
 | strings | 4.13; O(1) slice and reverse views | done: slice and reverse views (decision 61). concat and print fusion with buffer reuse (`ucup4s25h` 1.17x, `cf2245a` 1.13x, `cf2096e` 1.05x). `.rev` as a first-class view value; algorithms over `Indexed` (`cf1909g` 1.15x, `cf1943b` 0.98x). Next: matched benches for SA+LCP, SAM, Aho–Corasick, Z, hashing; ports hand-rolling string algorithms |
 | geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`). five matched benches all at most 1.09x. unused `cpl_tie` operators pruned; four ports on `convex_hull_idx`/`Pt`/`arg`. Next: ports hand-rolling geometry; Minkowski sum, calipers, O(log n) point-in-convex, circles, polygon cut by port count; a float-exactness audit |
@@ -1229,6 +1229,15 @@ struct LinkCut<V, T> // [new] dynamic forest; amortized O(log n) per call
     fn get(self, v: V) -> T // O(1)
     fn set(mut self, v: V, x: T)
     fn lca(mut self, u: V, v: V, root: V) -> ?V
+struct JumpTree<V> // [new] forest grown leaf by leaf; skew-binary jumps
+    fn new() -> JumpTree<V> // O(n), every vertex a root
+    fn add(mut self, v: V, p: V) // O(1), hang the lone vertex v below p
+    fn parent(self, v: V) -> ?V // O(1)
+    fn depth(self, v: V) -> Int // O(1)
+    fn root_of(self, v: V) -> V // O(log n)
+    fn ancestor(self, v: V, k: Int) -> ?V // O(log n)
+    fn lca(self, a: V, b: V) -> ?V // O(log n), none across trees
+    fn lift_while(self, v: V, pred: V -> Bool) -> ?V // O(log n) calls
 ```
 
 [new], promoted from `examples/local-lib/graph/`:

@@ -1,65 +1,31 @@
-struct Jump<D>:
-    depth: [D]Int
-    par: [D]D
-    jloc: [D]D
-    jdist: [D]Int
-
-    fn new() -> Jump<D> = Jump([D] _ => 0, [D] v => v, [D] v => v, [D] _ => 0)
-
-    fn link(mut self, i: D, p: D, w: Int):
-        depth[i] = depth[p] + w
-        par[i] = p
-        if p != D.last and jloc[p] != D.last and self.jdist[p] == self.jdist[jloc[p]]:
-            jdist[i] = 1 + self.jdist[p] * 2
-            jloc[i] = jloc[jloc[p]]
-        else:
-            jdist[i] = 1
-            jloc[i] = p
-
-    fn lca(self, a0: D, b0: D) -> D:
-        var a = a0
-        var b = b0
-        if depth[a] > depth[b]: a = par[a]
-        if a == b: return a
-        while par[a] != par[b]:
-            if jloc[a] != jloc[b]:
-                a = jloc[a]
-                b = jloc[b]
-            else:
-                a = par[a]
-                b = par[b]
-        par[a]
+// Codeforces 2152 F. The greedy that starts at point i next takes the first
+// point more than z to the right: a tree on 0..=n, rooted at the sentinel n,
+// whose parents lie to the right, so it grows leaf by leaf from right to left.
+// The answer for [l, r) runs the greedy from l and from l + 1 side by side.
+// The two walks meet at their lca c and continue as the pair (c, c + 1), so
+// pairs form a second tree; `taken[i]` counts the points the walks from i and
+// i + 1 take up to n. A query climbs the pair tree while it stays left of r,
+// then finishes each walk of the last pair in the greedy tree.
+use std.tree.{JumpTree}
 
 @!multitest
-let (n, z): (Int, Int) = read()
+let (n, z) = read<(Int, Int)>()
 let x: [0..n]Int = read()
-let q: Int = read()
-let qs: [0..q](l: Int, r: Int) = read()
-
 domain V = 0..=n
-var j1 = Jump<V>()
-var j = n
-for i in (0..n).rev:
-    while x[j - 1] - x[i] > z: j -= 1
-    j1.link(V(i), V(j), 1)
+var (t, pair) = (JumpTree<V>(), JumpTree<V>())
+var taken: [V]Int = 0
+for i in V.rev if i != V.last:
+    t.add(i, V(bsearch_first(i.ord + 1..=n, j => j == n or x[j] > x[i.ord] + z)!))
+    let c = t.lca(i, i.next!)!
+    pair.add(i, c)
+    taken[i] = taken[c] + t.depth(i) + t.depth(i.next!) - 2 * t.depth(c)
 
-var j2 = Jump<V>()
-for i in (0..n).rev:
-    let vi = V(i)
-    let vn = V(i + 1)
-    let lca = j1.lca(vi, vn)
-    j2.link(vi, lca, j1.depth[vi] + j1.depth[vn] - 2 * j1.depth[lca])
-
-for (l_in, r_in) in qs:
-    let l0 = V(l_in - 1)
-    let r = V(r_in)
-    var cur = l0
-    while j2.par[cur] < r:
-        cur = if j2.jloc[cur] < r: j2.jloc[cur] else: j2.par[cur]
-    var ans = j2.depth[l0] - j2.depth[cur]
-    for st in [cur.ord, cur.ord + 1] if st < r_in:
-        var c = V(st)
-        while c < r:
-            c = if j1.jloc[c] < r: j1.jloc[c] else: j1.par[c]
-        ans += j1.depth[V(st)] - j1.depth[c]
-    print(ans)
+for (l, r) in read<[0..read()](l: V, r: V)>():
+    let l = l.prev!
+    let c = pair.lift_while(l, i => i < r)!
+    let walk = [st for st in [c, c.next!] if st < r]
+    print(
+        taken[l] - taken[c] + sum(
+            t.depth(st) - t.depth(t.lift_while(st, i => i < r)!) + 1 for st in walk
+        )
+    )

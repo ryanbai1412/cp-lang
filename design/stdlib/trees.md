@@ -238,6 +238,26 @@ struct LinkCut<V, T>
     fn lca(mut self, u: V, v: V, root: V) -> ?V
 ```
 
+A tree that only grows, one leaf at a time with its parent already in place
+(greedy "next jump" trees built right to left, offline insertions), needs
+neither `Rooted`'s full build nor splaying:
+
+```cp
+struct JumpTree<V>
+    fn new() -> JumpTree<V>                       // O(n), every vertex a root
+    fn add(mut self, v: V, p: V)                  // O(1), v a lone vertex
+    fn parent(self, v: V) -> ?V                   // O(1)
+    fn depth(self, v: V) -> Int                   // O(1)
+    fn root_of(self, v: V) -> V                   // O(log n)
+    fn ancestor(self, v: V, k: Int) -> ?V         // O(log n) each
+    fn lca(self, a: V, b: V) -> ?V                // none across trees
+    fn lift_while(self, v: V, pred: V -> Bool) -> ?V
+```
+
+Skew-binary jump pointers (one jump per vertex, Myers 1983) keep it at three
+arrays; the queries mean what `Rooted`'s do, so a port switches between them
+by changing the constructor.
+
 Every query restructures the splay trees, so even reads take `mut self`.
 Path updates (`apply_path` with an `Action`) and subtree aggregates are the
 next steps; edge values are a vertex per edge, as in every LCT.
@@ -434,4 +454,4 @@ Logged in `decisions.md` under "trees":
   different tree (its parent is not the rooted parent);
 - `step(a, b, 1)` covers "next vertex toward", no `toward`;
 - dynamic trees are a separate `LinkCut` with the same verbs, after the
-  static API is fast.
+  static API is fast; trees that only grow are `JumpTree`, same verbs again.
