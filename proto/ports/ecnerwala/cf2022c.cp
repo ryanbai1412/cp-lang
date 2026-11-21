@@ -1,9 +1,13 @@
 // Codeforces 2022 C: Gerrymandering.
-// Tile the 2 x n strip left to right. The filled part always ends flush at a
-// column, or with one row a cell behind the other, so a DP over the frontier
-// counts the most districts won right of it. Flush: two stacked bars stay
-// flush, and an L over the column leaves one row behind. Behind: an L closes
-// it to flush, and two staggered bars keep the same row behind.
+// Tile the 2 x n strip (3 | n) left to right. Every filled prefix ends either
+// Flush at cut c (2(n - c) cells left, so 3 | (n - c) and c + 3 <= n whenever
+// c < n) or Behind(z) with row z at c and other(z) at c + 1 (2(n - c) - 1 cells
+// left, so (n - c) % 3 == 2 and c + 2 <= n always).
+//   - Flush: two stacked bars advance to (c + 3, Flush); an opening L over c
+//     leaves one row behind at (c + 1, Behind(z)).
+//   - Behind(z): a closing L reaches (c + 2, Flush); two staggered bars reach
+//     (c + 3, Behind(z)) whenever the bar on other(z) fits (`c + 4 <= n`).
+
 @!multitest
 let n: 3..=100_000 = read()
 enum Row: Top, Bottom
@@ -12,24 +16,20 @@ fn other(r: Row) -> Row = if r == Row.Top: Row.Bottom else: Row.Top
 fn vote(r: Row, c: Int) -> Int = Int(s[r][c] == 'A')
 fn won(a: Int, b: Int, c: Int) -> Int = Int(a + b + c >= 2)
 fn bar(r: Row, c: Int) -> Int = won(vote(r, c), vote(r, c + 1), vote(r, c + 2))
-// The L over column c whose third cell sticks out in the row other than z.
-fn ell(z: Row, c: Int) -> Int = won(vote(z, c), vote(other(z), c), vote(other(z), c + 1))
+fn open_ell(z: Row, c: Int) -> Int = won(vote(z, c), vote(other(z), c), vote(other(z), c + 1))
+fn close_ell(z: Row, c: Int) -> Int = won(vote(z, c), vote(z, c + 1), vote(other(z), c + 1))
 
-// flush[c]: both rows are filled left of c. lag[z][c]: row z is filled left
-// of c and the other row left of c + 1. Cells left, 2(n - c) or 2(n - c) - 1,
-// are a multiple of 3, so each frontier lives on its own residue of n - c.
 var flush: [0..=n]Int = 0
 var lag: [Row][0..=n]Int = 0
 for c in (0..n).rev:
     if (n - c) % 3 == 0:
         let stacked = bar(Row.Top, c) + bar(Row.Bottom, c) + flush[c + 3]
-        flush[c] = max(stacked, max(ell(z, c) + lag[z][c + 1] for z in Row))
+        flush[c] = max(stacked, max(open_ell(z, c) + lag[z][c + 1] for z in Row))
     elif (n - c) % 3 == 2:
         for z in Row:
-            let o = other(z)
-            let close = won(vote(z, c), vote(z, c + 1), vote(o, c + 1)) + flush[c + 2]
+            let close = close_ell(z, c) + flush[c + 2]
             lag[z][c] = if c + 4 <= n: max(
                 close,
-                bar(z, c) + bar(o, c + 1) + lag[z][c + 3],
+                bar(z, c) + bar(other(z), c + 1) + lag[z][c + 3],
             ) else: close
 print(flush[0])
