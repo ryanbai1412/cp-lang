@@ -774,7 +774,11 @@ impl<'a> Checker<'a> {
             StmtKind::While { cond, body } => {
                 self.push_scope();
                 self.drop_facts_written(body, None);
+                // The test runs again each round, so a `?` in it is not
+                // in straight-line code.
+                self.branch += 1;
                 self.cond(cond);
+                self.branch -= 1;
                 let mark = self.lend_mark();
                 self.add_cond_facts(cond, false);
                 self.block(body);

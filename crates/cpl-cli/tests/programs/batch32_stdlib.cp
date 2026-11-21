@@ -18,7 +18,7 @@ let xs = [3, 9, 2, 9, 2]
 let none_here: List<Int> = []
 print(xs.argmax ?? -1, xs.argmin ?? -1, none_here.argmax ?? -1, none_here.argmin ?? -1)
 let w: [V]Int = [V] v => (v.ord * 5) % 7
-print(w, w.argmax ?? -1, w.argmin ?? -1)
+print(w, w.argmax, w.argmin, w[w.argmax!])
 print("banana".rfind('a') ?? -1, "banana".rfind('b') ?? -1, "banana".rfind('x') ?? -1)
 print([k for k in -2..=17 if k.is_pow2], (1 << 40).is_pow2, n.is_pow2)
 let a: [0..n]Int = [0..n] i => i * i

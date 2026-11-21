@@ -1189,7 +1189,7 @@ impl<'a> Lowerer<'a> {
                 }
                 ast::StrPiece::Expr(e) => {
                     let value = self.expr(e, None);
-                    if let Some(arg) = self.fmt_arg(value, 6, e.span) {
+                    if let Some(arg) = self.fmt_arg(value, crate::FLOAT_DIGITS, e.span) {
                         out.push(FmtPiece::Value(arg));
                     }
                 }
@@ -1262,7 +1262,7 @@ impl<'a> Lowerer<'a> {
             Ty::Char => {
                 let at = value.span;
                 Expr {
-                    kind: ExprKind::Format(vec![FmtPiece::Value(FmtArg { value, digits: 6 })]),
+                    kind: ExprKind::Format(vec![FmtPiece::Value(FmtArg { value, digits: crate::FLOAT_DIGITS })]),
                     ty: Ty::Str,
                     span: at,
                 }
@@ -3561,6 +3561,281 @@ fn tropical_side(ty: &Ty) -> Option<Ty> {
 }
 
 /// Turns each value the arms give into a store to `place`.
+/// A value block that can leave its fn or loop from inside: `x?`.
+fn leaves(e: &Expr) -> bool {
+    matches!(&e.kind, ExprKind::Do(block) if block_leaves(block))
+}
+
+fn block_leaves(block: &Block) -> bool {
+    let mut found = false;
+    crate::walk::deep_stmts(block, &mut |stmt| {
+        found |= matches!(stmt, Stmt::Return(_) | Stmt::Break(..) | Stmt::Continue(..));
+    });
+    found
+}
+
+impl Lowerer<'_> {
+    /// `a + x?` cannot leave the fn from the middle of an expression in
+    /// the C++, so the statements after `at` that hold such a value get
+    /// it worked out ahead of them, operand by operand in the order
+    /// written, and then use it.
+    pub(super) fn lift_leaving(&mut self, out: &mut Vec<Stmt>, at: usize) {
+        let mut done = Vec::with_capacity(out.len() - at);
+        for mut stmt in out.drain(at..) {
+            match &mut stmt {
+                // The whole value being such a block is written as it is.
+                Stmt::Let(_, Some(e))
+                | Stmt::Assign(_, _, e)
+                | Stmt::Return(Some(e))
+                | Stmt::Give(e) => self.lift_value(e, true, &mut done),
+                // A block run for what it does is its statements.
+                Stmt::Expr(e) => {
+                    self.lift_value(e, false, &mut done);
+                    if matches!(e.kind, ExprKind::Unit) {
+                        continue;
+                    }
+                }
+                // A test and the ends of a range are read once, before
+                // the statement.
+                Stmt::If(cond, _, otherwise) => {
+                    self.lift_value(cond, false, &mut done);
+                    // An `elif` is an `if` alone in the `else`.
+                    if matches!(otherwise.stmts.as_slice(), [Stmt::If(..)]) {
+                        self.lift_leaving(&mut otherwise.stmts, 0);
+                    }
+                }
+                Stmt::Assert { cond, .. } => self.lift_value(cond, false, &mut done),
+                Stmt::For(_, _, Iter::Range { lo, hi, .. }, _) => {
+                    self.lift_value(lo, false, &mut done);
+                    self.lift_value(hi, false, &mut done);
+                }
+                Stmt::For(_, _, Iter::RangeVal(e, _) | Iter::Seq(e, _), _) => {
+                    self.lift_value(e, false, &mut done);
+                }
+                _ => {}
+            }
+            done.push(stmt);
+        }
+        out.extend(done);
+    }
+
+    /// `value` with what leaves the fn worked out in `done` first.
+    /// `whole` leaves a value that is itself one such block as it is.
+    fn lift_value(&mut self, value: &mut Expr, whole: bool, done: &mut Vec<Stmt>) {
+        let as_it_is = whole && leaves(value);
+        let taken = std::mem::replace(
+            value,
+            Expr {
+                kind: ExprKind::Unit,
+                ty: Ty::Unit,
+                span: value.span,
+            },
+        );
+        let lifted = self.lifted(taken);
+        *value = match leaves(&lifted) {
+            true if !as_it_is => self.ahead(lifted, done),
+            _ => lifted,
+        };
+    }
+
+    /// The block's statements go to `out`; what it gives is held and read.
+    fn ahead(&mut self, e: Expr, out: &mut Vec<Stmt>) -> Expr {
+        let Expr {
+            kind: ExprKind::Do(mut block),
+            ty,
+            span,
+        } = e
+        else {
+            return e;
+        };
+        if ty == Ty::Unit {
+            run_gives(&mut block.stmts);
+            out.extend(block.stmts);
+            return Expr {
+                kind: ExprKind::Unit,
+                ty,
+                span,
+            };
+        }
+        let slot = self.temp(ty.clone());
+        let place = Place {
+            kind: PlaceKind::Local(slot),
+            ty: ty.clone(),
+            span,
+        };
+        store_gives(&mut block.stmts, &place);
+        out.push(Stmt::Let(slot, None));
+        out.extend(block.stmts);
+        Expr {
+            kind: ExprKind::Local(slot),
+            ty,
+            span,
+        }
+    }
+
+    /// `e` with every leaving block among its operands brought to the
+    /// front: the result is then one such block, or `e` as it was.
+    fn lifted(&mut self, e: Expr) -> Expr {
+        let Expr { kind, ty, span } = e;
+        let mut parts: Vec<Expr> = Vec::new();
+        // The operands that are always worked out, in order; `shape` puts
+        // them back.
+        let shape: Box<dyn FnOnce(Vec<Expr>) -> ExprKind> = match kind {
+            ExprKind::Binary(op, l, r)
+                if !matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce) =>
+            {
+                parts.extend([*l, *r]);
+                Box::new(move |p| {
+                    let [l, r]: [Expr; 2] = p.try_into().expect("two operands");
+                    ExprKind::Binary(op, Box::new(l), Box::new(r))
+                })
+            }
+            ExprKind::Cmp(op, l, r) => {
+                parts.extend([*l, *r]);
+                Box::new(move |p| {
+                    let [l, r]: [Expr; 2] = p.try_into().expect("two operands");
+                    ExprKind::Cmp(op, Box::new(l), Box::new(r))
+                })
+            }
+            ExprKind::Unary(op, x) => {
+                parts.push(*x);
+                Box::new(move |mut p| ExprKind::Unary(op, Box::new(p.remove(0))))
+            }
+            ExprKind::Cast(cast, x) => {
+                parts.push(*x);
+                Box::new(move |mut p| ExprKind::Cast(cast, Box::new(p.remove(0))))
+            }
+            ExprKind::Some(x) => {
+                parts.push(*x);
+                Box::new(|mut p| ExprKind::Some(Box::new(p.remove(0))))
+            }
+            ExprKind::Unwrap(x, checked) => {
+                parts.push(*x);
+                Box::new(move |mut p| ExprKind::Unwrap(Box::new(p.remove(0)), checked))
+            }
+            ExprKind::Field(x, at) => {
+                parts.push(*x);
+                Box::new(move |mut p| ExprKind::Field(Box::new(p.remove(0)), at))
+            }
+            ExprKind::Tuple(items) => {
+                parts = items;
+                Box::new(ExprKind::Tuple)
+            }
+            ExprKind::Index(base, at) => {
+                parts.push(*base);
+                parts.extend(at);
+                Box::new(|mut p| {
+                    let base = p.remove(0);
+                    ExprKind::Index(Box::new(base), p)
+                })
+            }
+            ExprKind::Call(id, args) => {
+                let mut places = Vec::new();
+                for arg in args {
+                    match arg {
+                        Arg::Value(e) => {
+                            parts.push(e);
+                            places.push(None);
+                        }
+                        Arg::Mut(place) => places.push(Some(place)),
+                    }
+                }
+                Box::new(move |p| {
+                    let mut values = p.into_iter();
+                    let args = places
+                        .into_iter()
+                        .map(|place| match place {
+                            Some(place) => Arg::Mut(place),
+                            None => Arg::Value(values.next().expect("one value per slot")),
+                        })
+                        .collect();
+                    ExprKind::Call(id, args)
+                })
+            }
+            // A block's own statements may hold values that leave.
+            ExprKind::Do(mut block) => {
+                self.lift_leaving(&mut block.stmts, 0);
+                return Expr {
+                    kind: ExprKind::Do(block),
+                    ty,
+                    span,
+                };
+            }
+            ExprKind::Mutate(how, place, args) => {
+                parts = args;
+                Box::new(move |p| ExprKind::Mutate(how, place, p))
+            }
+            ExprKind::Print(args, end) => {
+                let digits: Vec<_> = args.iter().map(|arg| arg.digits).collect();
+                parts = args.into_iter().map(|arg| arg.value).collect();
+                Box::new(move |p| {
+                    let args = p.into_iter().zip(digits).map(|(value, digits)| FmtArg { value, digits }).collect();
+                    ExprKind::Print(args, end)
+                })
+            }
+            ExprKind::Builtin(builtin, args) => {
+                parts = args;
+                Box::new(move |p| ExprKind::Builtin(builtin, p))
+            }
+            kind => return Expr { kind, ty, span },
+        };
+        let mut parts: Vec<Expr> = parts.into_iter().map(|part| self.lifted(part)).collect();
+        let Some(last) = parts.iter().rposition(leaves) else {
+            return Expr {
+                kind: shape(parts),
+                ty,
+                span,
+            };
+        };
+        let mut stmts = Vec::new();
+        for part in &mut parts[..=last] {
+            if steady(part) {
+                continue;
+            }
+            let taken = std::mem::replace(
+                part,
+                Expr {
+                    kind: ExprKind::Unit,
+                    ty: Ty::Unit,
+                    span,
+                },
+            );
+            *part = match leaves(&taken) {
+                true => self.ahead(taken, &mut stmts),
+                false => {
+                    let slot = self.temp(taken.ty.clone());
+                    let held = Expr {
+                        kind: ExprKind::Local(slot),
+                        ty: taken.ty.clone(),
+                        span: taken.span,
+                    };
+                    stmts.push(Stmt::Let(slot, Some(taken)));
+                    held
+                }
+            };
+        }
+        stmts.push(Stmt::Give(Expr {
+            kind: shape(parts),
+            ty: ty.clone(),
+            span,
+        }));
+        Expr {
+            kind: ExprKind::Do(Block { stmts }),
+            ty,
+            span,
+        }
+    }
+}
+
+/// A name or a field of one: reading it runs nothing, so it is read
+/// where it stands and not copied ahead.
+fn steady(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Field(of, _) => steady(of),
+        _ => crate::walk::is_simple(e),
+    }
+}
+
 fn store_gives(stmts: &mut [Stmt], place: &Place) {
     for stmt in stmts {
         match stmt {
@@ -3571,6 +3846,27 @@ fn store_gives(stmts: &mut [Stmt], place: &Place) {
             Stmt::If(_, then, otherwise) => {
                 store_gives(&mut then.stmts, place);
                 store_gives(&mut otherwise.stmts, place);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// A block with nothing to give has its last value run where it gave it.
+fn run_gives(stmts: &mut [Stmt]) {
+    for stmt in stmts {
+        match stmt {
+            Stmt::Give(value) => {
+                let unit = Expr {
+                    kind: ExprKind::Unit,
+                    ty: Ty::Unit,
+                    span: value.span,
+                };
+                *stmt = Stmt::Expr(std::mem::replace(value, unit));
+            }
+            Stmt::If(_, then, otherwise) => {
+                run_gives(&mut then.stmts);
+                run_gives(&mut otherwise.stmts);
             }
             _ => {}
         }

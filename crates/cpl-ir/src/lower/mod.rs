@@ -487,6 +487,9 @@ struct Lowerer<'a> {
     range_domain_sites: HashMap<(ModId, u32, String), DomainId>,
     /// Those one fn has for all its calls: a call puts the size back.
     range_domains_shared: HashSet<DomainId>,
+    /// Inside the arguments of one call: the domains an argument before
+    /// has sized. The next array given for the same `D` must be as long.
+    call_sized: Option<HashSet<DomainId>>,
     /// Those that stand for the positions of a `List<T>` given where a
     /// `[D]T` is asked for: a `[D]T` that comes back is a list again.
     list_domains: HashSet<DomainId>,
@@ -593,6 +596,7 @@ impl<'a> Lowerer<'a> {
             range_domains: HashMap::new(),
             range_domain_sites: HashMap::new(),
             range_domains_shared: HashSet::new(),
+            call_sized: None,
             list_domains: HashSet::new(),
             enums: Vec::new(),
             enum_decls: Vec::new(),
@@ -761,7 +765,20 @@ impl<'a> Lowerer<'a> {
         self.error(codes::TYPE_MISMATCH, span, message);
     }
 
+    /// Each domain by the name it is written with: one made for a `D`
+    /// of a generic fn is `D`, not the `D_0` it is in the C++.
+    pub(super) fn domain_said(&self, d: DomainId) -> String {
+        let name = &self.domains[d];
+        match name.rsplit_once('_') {
+            Some((written, _)) if self.range_domains.contains_key(&d) => written.to_string(),
+            _ => name.clone(),
+        }
+    }
+
     fn show(&self, ty: &Ty) -> String {
+        let domains: Vec<String> = (0..self.domains.len())
+            .map(|d| self.domain_said(d))
+            .collect();
         // A struct made from a generic one is shown as it is written,
         // `Mod<998244353>`, not by the name its copy has in the C++.
         let mut structs: Vec<StructDef> = self.structs.iter().map(|s| s.def.clone()).collect();
@@ -773,15 +790,15 @@ impl<'a> Lowerer<'a> {
                 .iter()
                 .map(|arg| match arg {
                     GenArg::Int(v) => v.to_string(),
-                    GenArg::Domain(d) => self.domains[*d].clone(),
-                    GenArg::Ty(ty) => crate::show::ty_name(ty, &self.domains, &structs, &self.enums),
+                    GenArg::Domain(d) => domains[*d].clone(),
+                    GenArg::Ty(ty) => crate::show::ty_name(ty, &domains, &structs, &self.enums),
                     GenArg::RuntimeInt(_) => "_".to_string(),
                     GenArg::Op(op) => format!("{op:?}"),
                 })
                 .collect();
             structs[sid].name = format!("{}<{}>", decl.name.text, args.join(", "));
         }
-        crate::show::ty_name(ty, &self.domains, &structs, &self.enums)
+        crate::show::ty_name(ty, &domains, &structs, &self.enums)
     }
 
     fn err_expr(&self, span: Span) -> Expr {
@@ -2807,6 +2824,29 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// What an array given for `D` does to it: the first sets its size,
+    /// each one after must have that size.
+    pub(super) fn size_domain(&mut self, d: DomainId, lo: i64, len: Expr, span: Span) -> Stmt {
+        let first = self.call_sized.as_mut().is_none_or(|sized| sized.insert(d));
+        if first {
+            return Stmt::DefDomain {
+                id: d,
+                lo: self.int_lit(lo, span),
+                len,
+            };
+        }
+        let sized = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+        let differ = self.mk(
+            ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(sized)),
+            Ty::Bool,
+            span,
+        );
+        let name = self.domain_said(d);
+        let message = format!("the arrays given for one `{name}` must have the same length");
+        let trap = Stmt::Trap(message, self.span(span));
+        Stmt::If(differ, Block { stmts: vec![trap] }, Block::default())
+    }
+
     /// Between an array's plain range and the domain a generic fn knows
     /// it by: `[0..n]T` to `[D]T` (which sets the size of `D`), an `Int`
     /// to a position or boundary (checked), and each of those back.
@@ -2824,12 +2864,13 @@ impl<'a> Lowerer<'a> {
                     // Passing the list sets the size of its domain.
                     return Ok(self.do_expr(Some(want), span, |lw, out| {
                         let held = lw.hold(e, out);
-                        let len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![held.clone()]), Ty::Int, span);
-                        out.push(Stmt::DefDomain {
-                            id: d,
-                            lo: lw.int_lit(0, span),
-                            len,
-                        });
+                        let len = lw.mk(
+                            ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
+                            Ty::Int,
+                            span,
+                        );
+                        let size = lw.size_domain(d, 0, len, span);
+                        out.push(size);
                         let array = ExprKind::Builtin(Builtin::ListToArray, vec![held]);
                         out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
                     }));
@@ -2978,12 +3019,13 @@ impl<'a> Lowerer<'a> {
                 };
                 Ok(self.do_expr(Some(want), span, |lw, out| {
                     let held = lw.hold(e, out);
-                    let len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![held.clone()]), Ty::Int, span);
-                    out.push(Stmt::DefDomain {
-                        id: d,
-                        lo: lw.int_lit(lo, span),
-                        len,
-                    });
+                    let len = lw.mk(
+                        ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
+                        Ty::Int,
+                        span,
+                    );
+                    let size = lw.size_domain(d, lo, len, span);
+                    out.push(size);
                     out.push(Stmt::Give(Expr {
                         ty: want.clone(),
                         ..held

@@ -38,11 +38,11 @@ export const PRELUDE_TYPES: readonly string[] = [
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
-    'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'Deque', 'Desc', 'Dir4', 'Dir8',
-    'Dsu', 'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HashVal', 'Hashable', 'LazySegTree',
-    'Marks', 'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'Prefix1', 'Prefix2', 'PrefixN',
-    'Pt', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SortedBag',
-    'SparseTable', 'Target',
+    'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'Deque', 'Desc', 'Dir4', 'Dir8', 'Dsu',
+    'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HashVal', 'Hashable', 'LazySegTree', 'Marks',
+    'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
+    'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SortedBag', 'SparseTable',
+    'Target', 'XorFenwick',
 ];
 
 /**
@@ -63,15 +63,16 @@ export const PRELUDE_VALUES: readonly string[] = [
 
 /** Public `stdlib/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
 export const STDLIB_VALUES: readonly string[] = [
-    'area2', 'argmins', 'articulation_points', 'berlekamp_massey', 'biconnected_components',
-    'bit_len', 'choose', 'components', 'concavity_break', 'convexity_break', 'cross', 'crt',
+    'area2', 'argmins', 'articulation_points', 'berlekamp_massey', 'biconnected_components', 'bit_len',
+    'choose', 'components', 'concavity_break', 'convexity_break', 'cross', 'crt', 'cyclic_pairs',
     'decrease', 'dedup', 'differences', 'directed_of_pairs', 'directed_of_triples', 'divisors',
-    'dnc_break', 'dot', 'ext_gcd', 'factor', 'first_ge_by', 'guess_at', 'idempotent', 'increase',
-    'knuth_break', 'last_le_by', 'lcp_array', 'locate', 'max_weight_matching', 'monge_break',
-    'mul_mod', 'newton', 'next_permutation', 'on_segment', 'period', 'poly_at', 'poly_degree',
-    'prefix_function', 'prev_permutation', 'ray', 'recurrence_at', 'reverse', 'rotate_left',
-    'segments_meet', 'suffix_array', 'swap_at', 'take', 'turn', 'two_color', 'two_edge_components',
-    'undirected_of_pairs', 'undirected_of_triples', 'unimodality_break', 'z_function',
+    'dnc_break', 'dot', 'ext_gcd', 'factor', 'first_ge_by', 'get_or_insert_with', 'guess_at',
+    'idempotent', 'increase', 'knuth_break', 'last_le_by', 'lcp_array', 'locate', 'max_weight_matching',
+    'monge_break', 'mul_mod', 'newton', 'next_permutation', 'on_segment', 'period', 'poly_at',
+    'poly_degree', 'prefix_function', 'prev_permutation', 'ray', 'recurrence_at', 'reverse', 'rfind',
+    'rotate_left', 'segments_meet', 'splitmix64', 'suffix_array', 'swap_at', 'take', 'turn',
+    'two_color', 'two_edge_components', 'undirected_of_pairs', 'undirected_of_triples',
+    'unimodality_break', 'update', 'z_function',
 ];
 
 /** Public `stdlib/*.cp` constants, all imported by `stdlib/prelude.cp` (no INF sentinel; use ?Int / none). */
@@ -92,6 +93,11 @@ export const FILE_DIRECTIVES: readonly DecoratorInfo[] = [
         name: 'multitest',
         insert: 'multitest',
         detail: 'file-level directive: precompute above, loop t test cases below with fresh scope and @memo resets',
+    },
+    {
+        name: 'interactive',
+        insert: 'interactive',
+        detail: 'file-level directive: every print is written out at once, for an interactive judge',
     },
 ];
 

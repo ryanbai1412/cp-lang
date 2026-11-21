@@ -577,6 +577,22 @@ impl<'a> Lowerer<'a> {
                 len: self.local(len, span),
             });
         }
+        // The domains a `mut` array sizes, known before the loop: its
+        // size is set ahead of every argument.
+        let mut sized = HashSet::new();
+        for (param, arg) in params.iter().zip(&given) {
+            let Some(arg) = arg.filter(|_| param.mutable) else {
+                continue;
+            };
+            if let Some((d, _)) = self
+                .probe_ty_silent(&arg.value)
+                .and_then(|ty| self.range_domain_of(&param.ty, &ty))
+            {
+                sized.insert(d);
+            }
+        }
+        let outer_sized = self.call_sized.replace(sized);
+        let mut mut_sized = HashSet::new();
         for (at, (param, arg)) in params.iter().zip(given).enumerate() {
             match arg {
                 Some(arg) if param.mutable => {
@@ -623,11 +639,17 @@ impl<'a> Lowerer<'a> {
                             Ty::Int,
                             arg.value.span,
                         );
-                        pre_stmts.push(Stmt::DefDomain {
-                            id: d,
-                            lo: self.int_lit(lo, arg.value.span),
-                            len,
-                        });
+                        // Before any argument is worked out, and so before
+                        // those given by value: they come second.
+                        let size = match mut_sized.insert(d) {
+                            true => Stmt::DefDomain {
+                                id: d,
+                                lo: self.int_lit(lo, arg.value.span),
+                                len,
+                            },
+                            false => self.size_domain(d, lo, len, arg.value.span),
+                        };
+                        pre_stmts.push(size);
                         place.ty = param.ty.clone();
                     }
                     if self.list_given(&param.ty).is_some_and(|list| list == place.ty) {
@@ -651,6 +673,15 @@ impl<'a> Lowerer<'a> {
                         // the list it is; passing it sizes `D`.
                         let value = self.expect(&arg.value, &list);
                         lowered.push(Arg::Value(self.coerce(value, &param.ty, arg.value.span)));
+                    } else if let Some((d, first, other)) = self.other_first(&param.ty, &arg.value)
+                    {
+                        let message = format!(
+                            "`{name}` takes `{}` indexed by the same `{}` as an argument before it, which starts at {first}; this one starts at {other}",
+                            param.name,
+                            self.domain_said(d)
+                        );
+                        self.error(codes::TYPE_MISMATCH, arg.value.span, message);
+                        ok = false;
                     } else {
                         let declared = self.sigs[id].decl.params.get(at).and_then(|p| p.ty.as_ref());
                         lowered.push(Arg::Value(self.expect_declared(&arg.value, &param.ty, declared)));
@@ -677,6 +708,7 @@ impl<'a> Lowerer<'a> {
                 },
             }
         }
+        self.call_sized = outer_sized;
         let ret = self.ret_of(id, span);
         if !ok {
             return self.err_expr(span);
@@ -762,6 +794,27 @@ impl<'a> Lowerer<'a> {
     /// `declared`. `Node([none, none], 0)`: a list written out where a
     /// one-index array is declared is the cells of that array, as in
     /// `let kid: [0..2]?Int = [none, none]`, with the same count check.
+    /// An array given for a `D` that an argument before bound to arrays
+    /// starting elsewhere: the domain, its first index, and this one's.
+    fn other_first(&mut self, want: &Ty, arg: &ast::Expr) -> Option<(DomainId, i64, i64)> {
+        let Ty::Array { dims, .. } = want else {
+            return None;
+        };
+        let [Dim::Pos(d)] = dims.as_slice() else {
+            return None;
+        };
+        let first = *self.range_domains.get(d)?;
+        let other = match self.probe_ty_silent(arg)? {
+            Ty::Array { dims, .. } => match dims.as_slice() {
+                [Dim::Int] => 0,
+                [Dim::IntFrom(lo)] => *lo,
+                _ => return None,
+            },
+            _ => return None,
+        };
+        (other != first).then_some((*d, first, other))
+    }
+
     fn expect_declared(&mut self, e: &ast::Expr, want: &Ty, declared: Option<&ast::Type>) -> Expr {
         let cells = matches!(&e.kind, ast::ExprKind::List(items) if !items.is_empty())
             && matches!(want, Ty::Array { dims, .. } if matches!(dims[..], [Dim::Int | Dim::IntFrom(_)]));
@@ -791,7 +844,7 @@ impl<'a> Lowerer<'a> {
     fn prelude(&mut self, name: &str, args: &[ast::Arg], hint: Option<&Ty>, span: Span) -> Expr {
         match name {
             "print" => {
-                let mut digits = 6;
+                let mut digits = crate::FLOAT_DIGITS;
                 let mut values = Vec::new();
                 let mut sep = None;
                 let mut none_text = None;
@@ -960,7 +1013,7 @@ impl<'a> Lowerer<'a> {
                 }
                 let values: Vec<FmtArg> = values
                     .into_iter()
-                    .filter_map(|(value, at)| self.fmt_arg(value, 6, at))
+                    .filter_map(|(value, at)| self.fmt_arg(value, crate::FLOAT_DIGITS, at))
                     .collect();
                 let query = self.mk(ExprKind::Print(values, None), Ty::Unit, span);
                 let counted = limit.map(|limit| {
@@ -3863,7 +3916,7 @@ impl<'a> Lowerer<'a> {
                 .collect();
             let values: Vec<FmtArg> = values
                 .into_iter()
-                .filter_map(|(value, at)| self.fmt_arg(value, 6, at))
+                .filter_map(|(value, at)| self.fmt_arg(value, crate::FLOAT_DIGITS, at))
                 .collect();
             return self.mk(ExprKind::Print(values, None), Ty::Unit, span);
         }

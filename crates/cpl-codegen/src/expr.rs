@@ -6,6 +6,8 @@ use crate::emit::{
 use crate::names::{elem_ty, fn_name, ident, is_plain_enum};
 use crate::ranges::Sign;
 use crate::walk;
+const FLOAT_DIGITS: &str = "10";
+
 use cpl_ir::{
     Arg, BinOp, Builtin, Cast, CmpOp, DimSpec, Expr, ExprKind, FmtPiece, Mutation, NumKind, Place,
     PlaceKind, Stmt, Ty, UnOp,
@@ -1393,10 +1395,10 @@ impl<'p> Emitter<'p> {
                     let item = Code::primary("item".to_string());
                     let stmt = match (&elem, &none_text) {
                         (Ty::Opt(inner), Some(text)) => {
-                            let some = this.show_stmt(&Code::new("*item", UNARY), inner, "6");
+                            let some = this.show_stmt(&Code::new("*item", UNARY), inner, FLOAT_DIGITS);
                             format!("if (item) {{ {some} }} else cpl::put_str({text});")
                         }
-                        _ => this.show_stmt(&item, &elem, "6"),
+                        _ => this.show_stmt(&item, &elem, FLOAT_DIGITS),
                     };
                     out.push_str(&format!("{lead}    {stmt}\n{lead}}}\n"));
                     out.push_str(&format!("{lead}return {cap}.take();\n"));
@@ -1416,7 +1418,7 @@ impl<'p> Emitter<'p> {
                     this.need("capture");
                     let cap = this.temp();
                     out.push_str(&format!("{}cpl::Capture {cap};\n", pad(this.indent)));
-                    let stmt = this.show_stmt(&code, &arg.ty, "6");
+                    let stmt = this.show_stmt(&code, &arg.ty, FLOAT_DIGITS);
                     out.push_str(&format!("{}{stmt}\n", pad(this.indent)));
                     out.push_str(&format!("{}return {cap}.take();\n", pad(this.indent)));
                 })

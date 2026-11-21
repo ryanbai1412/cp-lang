@@ -164,7 +164,7 @@ test('stale v1 and removed v2.1 names stay out of the tables; decorators match 0
     }
     assert.deepEqual(
         sorted(FILE_DIRECTIVES.map(d => d.name)),
-        ['multitest'],
+        ['interactive', 'multitest'],
     );
     const decoratorNames = DECORATORS.map(d => d.name);
     assert.deepEqual(

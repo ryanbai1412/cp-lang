@@ -137,45 +137,53 @@ impl<'a> Lowerer<'a> {
                 self.match_stmt(e, scrutinee, arms, tail, out)
             }
             ast::ExprKind::Block(block) => out.extend(self.block(block, tail).stmts),
-            _ => match tail {
-                Tail::Discard => {
-                    let value = self.expr(e, None);
-                    self.unused_value(&value, e.span);
-                    out.push(Stmt::Expr(value));
-                }
-                Tail::Return => {
-                    let hint = self.cx.ret.clone();
-                    let value = self.expr(e, hint.as_ref());
-                    match hint {
-                        Some(Ty::Unit) => out.push(Stmt::Expr(value)),
-                        Some(ty) => {
-                            let value = self.coerce(value, &ty, e.span);
+            _ => {
+                let at = out.len();
+                self.tail_value(e, tail, out);
+                self.lift_leaving(out, at);
+            }
+        }
+    }
+
+    fn tail_value(&mut self, e: &ast::Expr, tail: Tail, out: &mut Vec<Stmt>) {
+        match tail {
+            Tail::Discard => {
+                let value = self.expr(e, None);
+                self.unused_value(&value, e.span);
+                out.push(Stmt::Expr(value));
+            }
+            Tail::Return => {
+                let hint = self.cx.ret.clone();
+                let value = self.expr(e, hint.as_ref());
+                match hint {
+                    Some(Ty::Unit) => out.push(Stmt::Expr(value)),
+                    Some(ty) => {
+                        let value = self.coerce(value, &ty, e.span);
+                        out.push(Stmt::Return(Some(value)));
+                    }
+                    None => {
+                        self.cx.ret = Some(value.ty.clone());
+                        if value.ty == Ty::Unit {
+                            out.push(Stmt::Expr(value));
+                        } else {
                             out.push(Stmt::Return(Some(value)));
                         }
-                        None => {
-                            self.cx.ret = Some(value.ty.clone());
-                            if value.ty == Ty::Unit {
-                                out.push(Stmt::Expr(value));
-                            } else {
-                                out.push(Stmt::Return(Some(value)));
-                            }
+                    }
+                }
+            }
+            Tail::Give => {
+                let hint = self.cx.dos.last().and_then(|frame| frame.ty.clone());
+                let mut value = self.expr(e, hint.as_ref());
+                match hint {
+                    Some(ty) => value = self.coerce(value, &ty, e.span),
+                    None => {
+                        if let Some(frame) = self.cx.dos.last_mut() {
+                            frame.ty = Some(value.ty.clone());
                         }
                     }
                 }
-                Tail::Give => {
-                    let hint = self.cx.dos.last().and_then(|frame| frame.ty.clone());
-                    let mut value = self.expr(e, hint.as_ref());
-                    match hint {
-                        Some(ty) => value = self.coerce(value, &ty, e.span),
-                        None => {
-                            if let Some(frame) = self.cx.dos.last_mut() {
-                                frame.ty = Some(value.ty.clone());
-                            }
-                        }
-                    }
-                    out.push(Stmt::Give(value));
-                }
-            },
+                out.push(Stmt::Give(value));
+            }
         }
     }
 
@@ -221,6 +229,7 @@ impl<'a> Lowerer<'a> {
         self.cx.way_out = outer.0;
         self.cx.exits = outer.2;
         out.splice(at..at, pending);
+        self.lift_leaving(out, at);
     }
 
     fn stmt_inner(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {

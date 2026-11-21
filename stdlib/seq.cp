@@ -623,22 +623,23 @@ fn cyclic_pairs_close_the_ring():
     let empty: List<Int> = []
     assert [p for p in empty.cyclic_pairs()].len == 0
 
-/// The first index of the largest value, or `none` for an empty list: `[3, 9, 2, 9].argmax`
-/// is `some(1)`. On an array the index counts from its first cell. O(n).
-pub @get fn argmax<T>(self: List<T>) -> ?Int:
-    if self.is_empty: return none
-    var best = 0
-    for i in 1..self.len:
-        if self[i] > self[best]: best = i
-    some(best)
+/// The index of the first largest value, or `none` when there is none: `[3, 9, 2, 9].argmax`
+/// is `some(1)`. It is an index of `self`, so `a[a.argmax!]` is the largest value of a
+/// `List<T>`, a `[1..=n]T` or a `[V]T` alike. O(n).
+pub @get fn argmax<D, T>(self: [D]T) -> ?D:
+    var best: ?D = none
+    for i in D:
+        if let b = best, self[i] <= self[b]: continue
+        best = i
+    best
 
-/// The first index of the smallest value, or `none` for an empty list. O(n).
-pub @get fn argmin<T>(self: List<T>) -> ?Int:
-    if self.is_empty: return none
-    var best = 0
-    for i in 1..self.len:
-        if self[i] < self[best]: best = i
-    some(best)
+/// The index of the first smallest value, or `none` when there is none. O(n).
+pub @get fn argmin<D, T>(self: [D]T) -> ?D:
+    var best: ?D = none
+    for i in D:
+        if let b = best, self[i] >= self[b]: continue
+        best = i
+    best
 
 @test
 fn argmax_and_argmin_give_the_first_best_index():

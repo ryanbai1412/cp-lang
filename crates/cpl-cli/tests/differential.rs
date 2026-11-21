@@ -36,7 +36,9 @@ const GXX_FLAGS: [&str; 6] = [
 /// The programs of `tests/parity`: `mut` receivers, fields and cells
 /// read by closures and helpers while a call changes them, how often
 /// and when `sort(by:)` works out a key, `print` arguments that print,
-/// and stepped ranges at their edges. They are a test of their own,
+/// stepped ranges at their edges, arrays of two lengths given for one
+/// `D`, `argmin` on arrays that do not start at 0, `?` inside a larger
+/// expression, and how a `Float` prints. They are a test of their own,
 /// so a break in either is named as that.
 fn parity_programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity");
@@ -64,17 +66,24 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
     assert_eq!(
         names,
         [
+            "argmin_own_index",
+            "float_digits",
             "map_update_field",
             "mut_cell_receiver",
             "mut_field_after_closure",
             "mut_self_closure",
             "part_overlap",
             "print_args_first",
+            "same_domain_lengths",
+            "same_domain_longer_first",
+            "same_domain_mut",
             "sort_key_calls",
             "sort_key_one_traps",
             "sort_key_own_list",
             "step_at_int_max",
-            "step_not_positive"
+            "step_not_positive",
+            "try_inside_expr",
+            "try_inside_stmt",
         ]
     );
     let failures: Vec<String> = programs
@@ -619,5 +628,28 @@ fn interactive_writes_each_print_out_at_once() {
         let checked = cpl_cli::run(&["check", &write("refused.cp", source)]);
         assert_ne!(checked.code, 0, "{source}");
         assert!(checked.stderr.contains(said), "{}", checked.stderr);
+    }
+}
+
+/// Two arrays given for one `D` that start at different indexes are
+/// refused in both back ends, in the program's own words: the `D` the
+/// fn wrote, never the name the compiler made for it.
+#[test]
+fn arrays_for_one_domain_that_start_apart_are_refused_by_its_written_name() {
+    let dir = std::env::temp_dir().join(format!("cpl-one-domain-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("apart.cp");
+    let source = "fn dot<D: Index>(a: [D]Int, b: [D]Int) -> Int:\n    var s = 0\n    for i in D: s += a[i] * b[i]\n    s\nlet a: [0..3]Int = 1\nlet b: [1..=3]Int = 2\nprint(dot(a, b))\n";
+    std::fs::write(&path, source).unwrap();
+    let path = path.to_string_lossy().into_owned();
+    for command in [vec!["run", &path], vec!["build", &path, "-o", "-"]] {
+        let ran = cpl_cli::run(&command);
+        assert_ne!(ran.code, 0, "{command:?}");
+        assert!(
+            ran.stderr.contains("indexed by the same `D` as an argument before it, which starts at 0; this one starts at 1"),
+            "{}",
+            ran.stderr
+        );
+        assert!(!ran.stderr.contains("D_0"), "{}", ran.stderr);
     }
 }

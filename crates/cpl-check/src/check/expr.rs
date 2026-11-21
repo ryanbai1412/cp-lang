@@ -633,7 +633,12 @@ impl<'a> Checker<'a> {
         let past = self.present.len();
         let held = narrow::in_rhs(op, lhs, rhs, &mut |f, x| self.call_writes(f, x));
         self.present.extend(held.into_iter().map(String::from));
+        // The right side of `and`, `or` and `??` is not always worked
+        // out, so a `?` in it is in a branch.
+        let skipped = u32::from(matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce));
+        self.branch += skipped;
         let right = self.infer(rhs);
+        self.branch -= skipped;
         self.present.truncate(past);
         match op {
             BinOp::And | BinOp::Or => {

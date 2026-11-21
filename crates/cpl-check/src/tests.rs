@@ -1882,3 +1882,16 @@ fn one_variable_lent_twice_to_a_call_is_refused() {
     let closure = "domain P = 0..3\nvar m = Map<Str, P>()\nprint(m.get_or_insert_with(\"a\", () => P(m.len)))\n";
     assert_eq!(check(closure), vec![]);
 }
+
+#[test]
+fn a_try_is_refused_where_it_is_not_always_run() {
+    for source in [
+        "fn f(c: Bool, x: ?Int) -> ?Bool:\n    some(c and x? > 0)\n",
+        "fn f(c: Bool, x: ?Int) -> ?Bool:\n    some(c or 1 + x? > 0)\n",
+        "fn f(p: ?Int, x: ?Int) -> ?Int:\n    some(p ?? (1 + x?))\n",
+        "fn f(n: Int, x: ?Int) -> ?Int:\n    var i = 0\n    while i + x? < n: i += 1\n    some(i)\n",
+    ] {
+        let found = codes(source);
+        assert_eq!(found, ["E0309"], "{source}");
+    }
+}

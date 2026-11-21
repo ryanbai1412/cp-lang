@@ -13,6 +13,10 @@
 //! this point knows about UTF-8.
 
 mod lower;
+/// How many decimals a `Float` is written with when none are asked for:
+/// enough for a judge that compares to within 1e-9.
+pub const FLOAT_DIGITS: u32 = 10;
+
 pub mod pushed;
 mod show;
 pub mod walk;

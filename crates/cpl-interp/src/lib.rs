@@ -2279,7 +2279,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     }
                     match (item, &none_text) {
                         (Value::Opt(None), Some(text)) => buf.extend_from_slice(text),
-                        _ => self.show_val(&mut buf, item, &elem, 6, span)?,
+                        _ => self.show_val(&mut buf, item, &elem, cpl_ir::FLOAT_DIGITS, span)?,
                     }
                 }
                 Value::Str(Rc::new(buf))
@@ -2295,7 +2295,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::ShowStr => {
                 let mut buf = Vec::new();
                 let arg_ty = args.first().map(|a| &a.ty).unwrap_or(&Ty::Unit);
-                self.show_val(&mut buf, &first, arg_ty, 6, span)?;
+                self.show_val(&mut buf, &first, arg_ty, cpl_ir::FLOAT_DIGITS, span)?;
                 Value::Str(Rc::new(buf))
             }
             Builtin::ParseInt => match first {
