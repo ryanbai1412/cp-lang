@@ -6,20 +6,32 @@ use std.seq.{remove}
 /// `push_front` / `pop_front` at the front, all amortized O(1); `q[i]` is the `i`-th element
 /// from the front in O(1). Memory is a ring of at most twice the largest length.
 pub struct Deque<T>:
-    buf: List<?T>
+    buf: List<T>
     head: Int
     n: Int
     mask: Int
+    want: Int
 
     /// Create an empty `Deque<T>`. O(1).
-    pub fn new() -> Deque<T> = Deque([none], 0, 0, 0)
+    pub fn new() -> Deque<T> = Deque([], 0, 0, -1, 1)
 
     /// A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`,
     /// then `while let u = q.pop_front(): ...`. O(n).
     pub fn of(xs: List<T>) -> Deque<T>:
         var q = Deque<T>.new()
+        q.reserve(xs.len)
         for x in xs: q.push(x)
         q
+
+    /// Reserve capacity for at least `cap` elements without reallocating. O(1) when empty, O(cap) otherwise.
+    pub fn reserve(mut self, cap: Int):
+        var c = 1
+        while c < cap: c *= 2
+        if c <= mask + 1: return
+        if buf.is_empty:
+            if c > want: want = c
+        else:
+            self.grow_to(c, buf[head])
 
     /// Number of elements currently in the deque. O(1).
     pub @get fn len(self) -> Int = n
@@ -28,41 +40,46 @@ pub struct Deque<T>:
 
     /// Remove all elements from the deque. O(1).
     pub fn clear(mut self):
-        buf = [none]
+        buf = []
         head = 0
         n = 0
-        mask = 0
+        mask = -1
+        want = 1
 
     /// Move the deque's contents out in O(1), leaving `self` empty.
     pub fn take(mut self) -> Deque<T>:
-        let out = Deque(buf, head, n, mask)
-        buf = [none]
+        let out = Deque(buf, head, n, mask, want)
+        buf = []
         head = 0
         n = 0
-        mask = 0
+        mask = -1
+        want = 1
         out
 
-    fn grow(mut self):
-        let cap = mask + 1
+    fn grow_to(mut self, cap: Int, fill: T):
         let m = mask
-        var nb: List<?T> = List.filled(2 * cap, none)
+        var nb = List.filled(cap, fill)
         unchecked:
             for i in 0..n:
                 nb[i] = buf[(head + i) & m]
         swap(mut buf, mut nb)
         head = 0
-        mask = 2 * cap - 1
+        mask = cap - 1
 
     /// Append `x` to the back of the deque. O(1) amortized.
     pub fn push(mut self, x: T):
-        if n > mask: self.grow()
+        if n > mask:
+            let cap = if mask < 0: want else: 2 * (mask + 1)
+            self.grow_to(cap, x)
         unchecked:
             buf[(head + n) & mask] = x
         n += 1
 
     /// Prepend `x` to the front of the deque. O(1) amortized.
     pub fn push_front(mut self, x: T):
-        if n > mask: self.grow()
+        if n > mask:
+            let cap = if mask < 0: want else: 2 * (mask + 1)
+            self.grow_to(cap, x)
         unchecked:
             head = (head - 1) & mask
             buf[head] = x
@@ -73,7 +90,7 @@ pub struct Deque<T>:
         if n == 0: return none
         n -= 1
         unchecked:
-            return buf[(head + n) & mask]
+            return some(buf[(head + n) & mask])
 
     /// Remove and return the front, or `none` when empty.
     pub fn pop_front(mut self) -> ?T:
@@ -82,29 +99,29 @@ pub struct Deque<T>:
             let x = buf[head]
             head = (head + 1) & mask
             n -= 1
-            return x
+            return some(x)
 
     /// The front, or `none` when empty.
     pub @get fn first(self) -> ?T:
         if n == 0: return none
         unchecked:
-            return buf[head]
+            return some(buf[head])
 
     /// The back, or `none` when empty. `dq.last(k)` is the element `k`
     /// back from it, so `dq.last(1)` is the one before the back.
     pub @get fn last(self, k: Int = 0) -> ?T:
         if k < 0 or k >= n: return none
         unchecked:
-            return buf[(head + n - 1 - k) & mask]
+            return some(buf[(head + n - 1 - k) & mask])
 
     /// Each element with its place from the front: `for (i, x) in dq.items`. O(n).
-    pub @get fn items(self) -> List<(Int, T)> = [(i, buf[(head + i) & mask]!) for i in 0..n]
+    pub @get fn items(self) -> List<(Int, T)> = [(i, buf[(head + i) & mask]) for i in 0..n]
 
     /// The `i`-th element from the front.
     pub fn get(self, i: Int) -> T:
         assert 0 <= i and i < n
         unchecked:
-            return buf[(head + i) & mask]!
+            return buf[(head + i) & mask]
 
 @test
 fn a_deque_matches_a_list():
@@ -169,3 +186,15 @@ fn a_deque_of_a_list_is_a_bfs_queue():
                     q.push(w)
     assert [dist[v]! for v in V] == [0, 1, 2, 1, 0]
     assert Deque<Int>.of([]).is_empty
+
+@test
+fn a_deque_reserve_preserves_order():
+    var q: Deque<Int> = []
+    q.reserve(64)
+    for i in 0..20: q.push(i)
+    for i in 1..=10: q.push_front(-i)
+    q.reserve(256)
+    q.reserve(4)
+    assert q.len == 30
+    assert q[0] == -10 and q[10] == 0 and q[29] == 19
+    assert q.pop_front() == -10 and q.pop() == 19

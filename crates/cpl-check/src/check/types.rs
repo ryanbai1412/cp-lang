@@ -431,7 +431,7 @@ impl<'a> Checker<'a> {
             let seen = Local { ty: ty.clone(), mutable: p.mutable, span: p.name.span, keyword: "param" };
             self.scopes.last_mut().unwrap().insert(p.name.text.clone(), seen);
             params.push(Param {
-                name: p.name.text.clone(),
+                name: p.label_text().to_string(),
                 ty,
                 mutable: p.mutable,
                 has_default: p.default.is_some(),

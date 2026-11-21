@@ -210,7 +210,7 @@ impl Reader<'_> {
                     .iter()
                     .filter(|p| p.name.text != "self")
                     .map(|p| Param {
-                        name: p.name.text.clone(),
+                        name: p.label_text().to_string(),
                         ty: p
                             .ty
                             .as_ref()

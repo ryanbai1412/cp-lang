@@ -25,8 +25,7 @@ fn insert(i: I):
     if let c = before, a[c] >= a[i]:
         recheck(c)
         return
-    while let q = next_top(i), a[q] <= a[i]:
-        let _ = tops.remove(q)
+    for q in tops.drain(after: i, while: q => a[q] <= a[i]):
         eaters.remove(q)
     let _ = tops.add(i)
     if let c = before: recheck(c)

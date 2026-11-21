@@ -785,10 +785,11 @@ Profiling notes for the three rows above `1.10x`:
   packed 32-bit negative-size array (`4 B/vertex`) and `unchecked:` `find_ord`.
   The remaining ~3 ms is `cpl::umod` + `cpl::pos` in the benchmark's 3M random
   domain conversions (`V(Int((s >> 33) % U64(n)))`).
-- **`deque` (`1.17x`, `43.6 ms` vs `37.4 ms`):** single-allocation `grow()`
-  with `swap` and cached power-of-two `mask` brought `deque` down from `1.95x`.
-  The remaining ~6 ms vs `std::deque` is vector doubling during prefill plus
-  bounds/option checks on 2M random `get(i)` reads.
+- **`deque` (`1.14x`, `42.0 ms` vs `36.7 ms`):** raw `List<T>` ring storage
+  (eliminating `OptInt` and per-`get` option unwraps, 2x less memory),
+  `Deque.reserve(cap)` preallocation, and cached power-of-two `mask` brought
+  `deque` down from `1.95x`. The remaining ~5 ms vs `std::deque` is the
+  release `assert 0 <= i < n` bounds check and `cpl::umod` on 2M random reads.
 - **`sorted_set` (`1.26x`, `112.9 ms` vs `89.5 ms` PBDS `rb_tree_tag`):**
   packing `BagNode<K>` into one 40-byte struct array and switching `add`/`remove`
   to single-pass BST descent + rotation without sibling `pull` cut `sorted_set`

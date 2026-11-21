@@ -264,6 +264,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Set, "last_le", Method, "x: T", "?T", false, "The largest element `<= x`.", "st.last_le(5)", "?Int"),
     row!(Set, "last_lt", Method, "x: T", "?T", false, "The largest element `< x`.", "st.last_lt(9)", "?Int"),
     row!(Set, "range", Method, "r: Range<T>", "SortedRange<T>", false, "O(1) key-range view; `.first`, `.last`, `.is_empty` are O(log n) and iteration is O(log n + k). Use `SortedSet`/`SortedBag` for O(log n) `.len`.", "st.range(4..9).first", "?Int"),
+    row!(Set, "drain", Method, "; after: ?T = none, before: ?T = none, while ok: (T) -> Bool", "List<T>", true, "Removes and returns the maximal run strictly after `after` (ascending), strictly before `before` (descending), or from the smallest element (ascending) while `ok(k)` holds. O(k log n).", "st.drain(after: 4, while: x => x < 9)", "List<Int>"),
 
     row!(Array, "len", Get, "", "Int", false, "How many cells.", "a.len", "Int"),
     row!(Array, "is_empty", Get, "", "Bool", false, "True when the array has no cells.", "a.is_empty", "Bool"),

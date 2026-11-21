@@ -32,12 +32,12 @@ Summary across all 13 benchmarks (`bash bench/containers/run.sh`): **p50 = 0.95x
 | `sorted_set` | 100k inserts + 50k erases + 100k `rank` + 100k `nth` | `__gnu_pbds::tree` (`rb_tree_tag`) | 112.9 ms | 89.5 ms | **1.26x** |
 | `ordered_map_set` | 100k inserts + 100k `first_ge` + 100k `range` ends + 20k range iters | `std::map` + `std::set` | 178.3 ms | 185.3 ms | **0.96x** |
 | `min_heap` | 500k pushes + 500k push/pop + 500k drain | `std::priority_queue` | 115.8 ms | 125.7 ms | **0.92x** |
-| `deque` | 200k prefill + 4M push/pop both ends + 2M random `get` | `std::deque` | 43.6 ms | 37.4 ms | **1.17x** |
+| `deque` | 200k prefill + 4M push/pop both ends + 2M random `get` | `std::deque` | 42.0 ms | 36.7 ms | **1.14x** |
 
 Key optimizations landed while profiling this suite:
 - `cpl::HashMap` / `cpl::HashSet` open addressing with 7-bit fingerprints, backward-shift erase, and full salted `splitmix64` (`hash_*`: `1.32x–1.76x` -> `0.64x–0.79x`).
 - `MonoDeque` backed by flat `List<(Int, T)>` + `head` index (`monodeque`: `2.80x` -> `0.98x`).
-- `Deque` single-allocation `grow()` with `swap` + cached power-of-two `mask` + `unchecked:` hot ring ops (`deque`: `1.95x` -> `1.17x`; remaining ~6 ms vs `std::deque` is doubling realloc during prefill + `assert 0 <= i < n` / `OptInt` unwrap on 2M random `get`s).
+- `Deque` raw `List<T>` ring buffer (no `OptInt` storage or per-`get` option unwrap, 2x smaller memory) + `Deque.reserve(cap)` preallocation + cached power-of-two `mask` + `unchecked:` hot ring ops (`deque`: `1.95x` -> `1.14x`; remaining ~5 ms vs `std::deque` is `assert 0 <= i < n` + `cpl::umod` on 2M random reads).
 - `IntervalMap.assign` single-iterator `cpl::interval_assign` (`upper_bound(lo)` once + O(1) `erase(it)` + `emplace_hint` + in-place update) + `cpl::map_take` (`interval_map`: `2.49x` -> `1.14x` -> `0.56x`).
 - `Dsu` single packed 32-bit negative-size array `List<-2_147_483_648..=2_147_483_647>` (4 B/vertex, 3x less memory) + `unchecked:` `find_ord` (`dsu`: `33.5 ms` -> `32.9 ms` wall, `30 ms` vs `27 ms` user; remaining ~3 ms is `cpl::umod` + `cpl::pos` in the benchmark's 3M random vertex casts).
 - `SortedBag` / `SortedSet` single packed `BagNode<K>` array (32-bit `pri`/`left`/`right`/`par`, 40 B/node in one cache line instead of 7 separate vectors) + single-pass BST `insert_at`/`erase_at` (no sibling `pull` without rotation, no `contains` pre-check in `SortedSet.add`) (`sorted_set`: `2.55x` -> `1.26x` vs PBDS `rb_tree_tag`; `sorted_range`: `1.00x` -> `0.61x` vs C++ treap; remaining 1.26x vs PBDS is the expected randomized treap depth `1.386 log2 n` vs RB-tree `~1.05 log2 n`).

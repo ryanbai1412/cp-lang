@@ -572,7 +572,7 @@ impl<'a> Lowerer<'a> {
             let mut pos_idx = 0usize;
             for arg in args {
                 let param = if let Some(aname) = &arg.name {
-                    params.iter().find(|p| p.name.text == aname.text)
+                    params.iter().find(|p| p.label_text() == aname.text)
                 } else {
                     let p = params.get(pos_idx);
                     pos_idx += 1;
@@ -687,7 +687,7 @@ impl<'a> Lowerer<'a> {
         let mut ok = true;
         for arg in args {
             let index = match &arg.name {
-                Some(arg_name) => match params.iter().position(|p| p.name == arg_name.text) {
+                Some(arg_name) => match params.iter().position(|p| p.label == arg_name.text) {
                     Some(index) => index,
                     None => {
                         let message =
@@ -6377,6 +6377,200 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => self.err_expr(span),
                 }
+            }
+            (Ty::Set(_), "drain") => {
+                let mut after_ast = None;
+                let mut before_ast = None;
+                let mut while_ast = None;
+                let mut ok = true;
+                for a in args {
+                    match a.name.as_ref().map(|n| n.text.as_str()) {
+                        Some("after") if after_ast.is_none() => after_ast = Some(&a.value),
+                        Some("before") if before_ast.is_none() => before_ast = Some(&a.value),
+                        Some("while") if while_ast.is_none() => while_ast = Some(&a.value),
+                        Some(other) => {
+                            self.error(
+                                codes::UNKNOWN_ARG_NAME,
+                                a.name.as_ref().unwrap().span,
+                                format!("`drain` has no parameter named `{other}`"),
+                            );
+                            ok = false;
+                        }
+                        None => ok = false,
+                    }
+                }
+                let Some(while_ast) = while_ast.filter(|_| ok) else {
+                    return self.err_expr(span);
+                };
+                let opt_elem = Ty::opt(elem.clone());
+                let after_val = after_ast.map(|a| self.expect(a, &opt_elem));
+                let before_val = before_ast.map(|b| self.expect(b, &opt_elem));
+                let pred_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
+                let pred_val = self.expect(while_ast, &pred_ty);
+                let out_ty = Ty::list(elem.clone());
+                self.do_expr(Some(&out_ty), span, |lw, out| {
+                    let place = lw.place(base);
+                    let place = lw.settle_indexes(place, out);
+                    let pred_slot = lw.temp(pred_ty.clone());
+                    out.push(Stmt::Let(pred_slot, Some(pred_val)));
+                    let out_slot = lw.temp(out_ty.clone());
+                    out.push(Stmt::Let(
+                        out_slot,
+                        Some(lw.mk(ExprKind::Tuple(Vec::new()), out_ty.clone(), span)),
+                    ));
+                    let after_slot = after_val.map(|v| {
+                        let s = lw.temp(opt_elem.clone());
+                        out.push(Stmt::Let(s, Some(v)));
+                        s
+                    });
+                    let before_slot = before_val.map(|v| {
+                        let s = lw.temp(opt_elem.clone());
+                        out.push(Stmt::Let(s, Some(v)));
+                        s
+                    });
+                    if let (Some(a_s), Some(b_s)) = (after_slot, before_slot) {
+                        let both = lw.mk(
+                            ExprKind::Binary(
+                                BinOp::And,
+                                Box::new(lw.mk(ExprKind::IsSome(Box::new(lw.local(a_s, span))), Ty::Bool, span)),
+                                Box::new(lw.mk(ExprKind::IsSome(Box::new(lw.local(b_s, span))), Ty::Bool, span)),
+                            ),
+                            Ty::Bool,
+                            span,
+                        );
+                        let cond = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(both)), Ty::Bool, span);
+                        out.push(Stmt::Assert {
+                            cond,
+                            message: Some(lw.mk(
+                                ExprKind::Str("drain takes either after: or before:, not both".into()),
+                                Ty::Str,
+                                span,
+                            )),
+                            text: "not (after != none and before != none)".into(),
+                            line: lw.line(span),
+                            span,
+                        });
+                    }
+                    let build_loop = |lw: &mut Lowerer<'_>, next_opt: Expr| -> Stmt {
+                        let lid = lw.next_loop;
+                        lw.next_loop += 1;
+                        let opt_slot = lw.temp(opt_elem.clone());
+                        let k_slot = lw.temp(elem.clone());
+                        let is_some = lw.mk(
+                            ExprKind::IsSome(Box::new(lw.local(opt_slot, span))),
+                            Ty::Bool,
+                            span,
+                        );
+                        let not_some = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(is_some)), Ty::Bool, span);
+                        let unwrapped = lw.mk(
+                            ExprKind::Unwrap(Box::new(lw.local(opt_slot, span)), false),
+                            elem.clone(),
+                            span,
+                        );
+                        let ok_call = lw.mk(
+                            ExprKind::CallExpr(
+                                Box::new(lw.local(pred_slot, span)),
+                                vec![Arg::Value(lw.local(k_slot, span))],
+                            ),
+                            Ty::Bool,
+                            span,
+                        );
+                        let not_ok = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(ok_call)), Ty::Bool, span);
+                        let rem = lw.mk(
+                            ExprKind::Mutate(
+                                Mutation::Remove,
+                                Box::new(place.clone()),
+                                vec![lw.local(k_slot, span)],
+                            ),
+                            Ty::Bool,
+                            span,
+                        );
+                        let out_place = Place {
+                            kind: PlaceKind::Local(out_slot),
+                            ty: out_ty.clone(),
+                            span,
+                        };
+                        let push = lw.mk(
+                            ExprKind::Mutate(
+                                Mutation::Push,
+                                Box::new(out_place),
+                                vec![lw.local(k_slot, span)],
+                            ),
+                            Ty::Unit,
+                            span,
+                        );
+                        let body = vec![
+                            Stmt::Let(opt_slot, Some(next_opt)),
+                            Stmt::If(
+                                not_some,
+                                Block { stmts: vec![Stmt::Break(Some(lid))] },
+                                Block { stmts: Vec::new() },
+                            ),
+                            Stmt::Let(k_slot, Some(unwrapped)),
+                            Stmt::If(
+                                not_ok,
+                                Block { stmts: vec![Stmt::Break(Some(lid))] },
+                                Block { stmts: Vec::new() },
+                            ),
+                            Stmt::Expr(rem),
+                            Stmt::Expr(push),
+                        ];
+                        Stmt::While(lid, lw.mk(ExprKind::Bool(true), Ty::Bool, span), Block { stmts: body })
+                    };
+                    let set_read = super::stmt::place_to_expr(&place);
+                    let first_loop = build_loop(
+                        lw,
+                        lw.mk(ExprKind::Builtin(Builtin::SetMin, vec![set_read.clone()]), opt_elem.clone(), span),
+                    );
+                    let after_branch = match after_slot {
+                        Some(a_s) => {
+                            let a_val = lw.mk(
+                                ExprKind::Unwrap(Box::new(lw.local(a_s, span)), false),
+                                elem.clone(),
+                                span,
+                            );
+                            let after_loop = build_loop(
+                                lw,
+                                lw.mk(
+                                    ExprKind::Builtin(Builtin::FirstGt, vec![set_read.clone(), a_val]),
+                                    opt_elem.clone(),
+                                    span,
+                                ),
+                            );
+                            Stmt::If(
+                                lw.mk(ExprKind::IsSome(Box::new(lw.local(a_s, span))), Ty::Bool, span),
+                                Block { stmts: vec![after_loop] },
+                                Block { stmts: vec![first_loop] },
+                            )
+                        }
+                        None => first_loop,
+                    };
+                    let top_stmt = match before_slot {
+                        Some(b_s) => {
+                            let b_val = lw.mk(
+                                ExprKind::Unwrap(Box::new(lw.local(b_s, span)), false),
+                                elem.clone(),
+                                span,
+                            );
+                            let before_loop = build_loop(
+                                lw,
+                                lw.mk(
+                                    ExprKind::Builtin(Builtin::LastLt, vec![set_read, b_val]),
+                                    opt_elem.clone(),
+                                    span,
+                                ),
+                            );
+                            Stmt::If(
+                                lw.mk(ExprKind::IsSome(Box::new(lw.local(b_s, span))), Ty::Bool, span),
+                                Block { stmts: vec![before_loop] },
+                                Block { stmts: vec![after_branch] },
+                            )
+                        }
+                        None => after_branch,
+                    };
+                    out.push(top_stmt);
+                    out.push(Stmt::Give(lw.local(out_slot, span)));
+                })
             }
             (Ty::List(_) | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) | Ty::Str, "clear") => {
                 match self.positional_any(method, args, 0, span) {

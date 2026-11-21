@@ -181,13 +181,14 @@ fn ordered_container_method_parity_and_range_len_guard() {
         assert!(map_names.contains(required), "`Map` is missing ordered member `{required}`");
     }
     assert!(set_names.contains("set"), "`Set` is missing `set(x, on: Bool)`");
+    assert!(set_names.contains("drain"), "`Set` is missing `drain(after:/before:, while:)`");
 
     // `SortedSet` and `SortedBag` in `stdlib/bag.cp` must expose the ordered API surface.
     let bag_src = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib/bag.cp"),
     )
     .unwrap();
-    for required in ["fn bsearch_first(", "fn bsearch_last(", "fn range_first(", "fn range_last(", "fn range_len("] {
+    for required in ["fn bsearch_first(", "fn bsearch_last(", "fn drain(", "fn range_first(", "fn range_last(", "fn range_len("] {
         assert!(bag_src.contains(required), "`stdlib/bag.cp` is missing `{required}`");
     }
     assert!(!bag_src.contains("fn first_where("), "`stdlib/bag.cp` must not expose removed `first_where`");

@@ -336,6 +336,31 @@ pub struct SortedBag<K>:
             assert not ok(nodes[next.id].key)
         nodes[ans].key
 
+    /// Remove and return the maximal run of elements strictly after `after` (ascending),
+    /// strictly before `before` (descending), or from the smallest element (ascending)
+    /// while `ok(k)` holds. O(k log n) expected for `k` removed elements.
+    pub fn drain(mut self; after: ?K = none, before: ?K = none, while ok: K -> Bool) -> List<K>:
+        assert not (
+            after != none and before != none
+        ), "drain takes either after: or before:, not both"
+        var out: List<K> = []
+        if let b = before:
+            while let x = self.range_last(none, false, some(b), false):
+                if not ok(x): break
+                let _ = self.remove(x)
+                out.push(x)
+        elif let a = after:
+            while let x = self.range_first(some(a), false, none, false):
+                if not ok(x): break
+                let _ = self.remove(x)
+                out.push(x)
+        else:
+            while let x = self.first:
+                if not ok(x): break
+                let _ = self.remove(x)
+                out.push(x)
+        out
+
     /// Cursor to the smallest key, or `none` when empty. O(log n) expected.
     pub fn cursor_first(self) -> ?BagCursor:
         if root < 0: return none
@@ -652,6 +677,12 @@ pub struct SortedSet<K>:
     /// Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `none`. O(log n) expected.
     pub fn bsearch_last(self, ok: K -> Bool) -> ?K = bag.bsearch_last(ok)
 
+    /// Remove and return the maximal run of keys strictly after `after` (ascending),
+    /// strictly before `before` (descending), or from the smallest key (ascending)
+    /// while `ok(k)` holds. O(k log n) expected for `k` removed keys.
+    pub fn drain(mut self; after: ?K = none, before: ?K = none, while ok: K -> Bool) -> List<K> =
+        bag.drain(after: after, before: before, while: ok)
+
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K =
         bag.range_first(lo, lo_inc, hi, hi_inc)
 
@@ -884,3 +915,61 @@ fn sorted_set_operations_range_and_bsearch():
     assert [x.to_idx for x in ds.range(r).rev] == [5, 3]
     let full = ds.range(..)
     assert full.len == 4 and full.first == V.nth(1) and full.last == V.nth(6)
+
+@test
+fn sorted_set_and_bag_drain_after_before_and_random():
+    var s = SortedSet<Int>.of([1, 3, 5, 7, 9, 12])
+    assert s.drain(after: 3, while: x => x <= 9) == [5, 7, 9]
+    assert [x for x in s] == [1, 3, 12]
+    assert s.drain(before: 12, while: x => x >= 2) == [3]
+    assert [x for x in s] == [1, 12]
+    assert s.drain(while: x => x <= 5) == [1]
+    assert [x for x in s] == [12]
+    assert s.drain(after: 12, while: x => true) == []
+    assert s.drain(before: 12, while: x => true) == []
+
+    var b = SortedBag<Int>.of([2, 4, 4, 6, 8, 8, 10])
+    assert b.drain(after: 2, while: x => x <= 6) == [4, 4, 6]
+    assert b.drain(before: 10, while: x => x >= 8) == [8, 8]
+    assert [x for x in b.range(..)] == [2, 10]
+
+    // Randomized parity against a sorted list.
+    var rs = SortedSet<Int>()
+    var xs: List<Int> = []
+    for _ in 0..80:
+        let k = rand(0, 30)
+        if rs.add(k):
+            xs.push(k)
+            xs.sort()
+        if rand(0, 3) == 0:
+            let pivot = rand(0, 30)
+            let lim = rand(0, 30)
+            if rand(0, 1) == 0:
+                let got = rs.drain(after: pivot, while: x => x <= lim)
+                var want: List<Int> = []
+                var rest: List<Int> = []
+                var draining = true
+                for x in xs:
+                    if x > pivot and draining and x <= lim:
+                        want.push(x)
+                    else:
+                        if x > pivot: draining = false
+                        rest.push(x)
+                xs = rest
+                assert got == want
+            else:
+                let got = rs.drain(before: pivot, while: x => x >= lim)
+                var want: List<Int> = []
+                var rest: List<Int> = []
+                var draining = true
+                for i in (0..xs.len).rev:
+                    let x = xs[i]
+                    if x < pivot and draining and x >= lim:
+                        want.push(x)
+                    else:
+                        if x < pivot: draining = false
+                        rest.push(x)
+                rest.reverse()
+                xs = rest
+                assert got == want
+            assert [x for x in rs] == xs

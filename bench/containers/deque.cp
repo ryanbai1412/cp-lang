@@ -1,6 +1,7 @@
 // Matched Deque bench vs std::deque:
 // 200k prefill + 4M balanced push/push_front/pop_front/pop + 2M random index reads.
 var dq: Deque<Int> = []
+dq.reserve(200000)
 for i in 0..100000:
     dq.push(i)
     dq.push_front(i)

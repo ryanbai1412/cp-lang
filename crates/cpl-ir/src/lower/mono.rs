@@ -1368,7 +1368,7 @@ impl<'a> Lowerer<'a> {
         let mut next = 0;
         for arg in args {
             let idx = match &arg.name {
-                Some(n) => ast_params.iter().position(|p| p.name.text == n.text),
+                Some(n) => ast_params.iter().position(|p| p.label_text() == n.text),
                 None => {
                     while next < ast_params.len() && matched[next].is_some() {
                         next += 1;
@@ -3128,7 +3128,7 @@ pub(super) fn thunk_lazy_args(params: &[&ast::Param], args: &[ast::Arg]) -> Opti
         .iter()
         .map(|arg| {
             let param = match &arg.name {
-                Some(n) => params.iter().find(|p| p.name.text == n.text),
+                Some(n) => params.iter().find(|p| p.label_text() == n.text),
                 None => {
                     next += 1;
                     positional.get(next - 1).copied()
@@ -3173,7 +3173,7 @@ fn pack_args(params: &[&ast::Param], args: &[ast::Arg], span: Span) -> Option<Ve
     };
     kept.push(ast::Arg {
         name: Some(ast::Name {
-            text: param.name.text.clone(),
+            text: param.label_text().to_string(),
             span,
         }),
         mutable: false,

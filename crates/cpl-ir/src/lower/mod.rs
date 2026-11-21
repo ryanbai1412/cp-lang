@@ -406,6 +406,7 @@ struct StructInfo<'a> {
 
 #[derive(Clone)]
 struct SigParam<'a> {
+    label: String,
     name: String,
     ty: Ty,
     mutable: bool,
@@ -2043,6 +2044,7 @@ impl<'a> Lowerer<'a> {
                 }
             };
             params.push(SigParam {
+                label: param.label_text().to_string(),
                 name: param.name.text.clone(),
                 ty,
                 mutable: param.mutable,

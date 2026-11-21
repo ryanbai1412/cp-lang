@@ -251,6 +251,10 @@ impl<'a> Parser<'a> {
         }
         let mut mutable = self.eat(T::Mut);
         let copied = !mutable && self.eat(T::Var);
+        let label = (!self.at(T::SelfKw)
+            && (self.at(T::Ident) || TokenKind::keyword(self.text()).is_some())
+            && self.peek_n(1) == T::Ident)
+            .then(|| self.name());
         let name = if self.at(T::SelfKw) {
             self.name()
         } else {
@@ -273,6 +277,7 @@ impl<'a> Parser<'a> {
             variadic,
             lazy,
             named_only,
+            label,
             name,
             ty,
             default,

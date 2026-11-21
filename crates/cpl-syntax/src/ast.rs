@@ -203,10 +203,22 @@ pub struct Param {
     pub lazy: bool,
     /// After `;` in the parameter list: can only be passed by name.
     pub named_only: bool,
+    /// Optional external call-site label (`while ok: (K) -> Bool`), so any
+    /// function can declare a keyword-labelled parameter without shadowing.
+    pub label: Option<Name>,
     pub name: Name,
     pub ty: Option<Type>,
     pub default: Option<Expr>,
     pub span: Span,
+}
+
+impl Param {
+    /// Name callers write when passing this parameter by name.
+    pub fn label_text(&self) -> &str {
+        self.label
+            .as_ref()
+            .map_or(self.name.text.as_str(), |l| l.text.as_str())
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
