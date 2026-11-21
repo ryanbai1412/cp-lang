@@ -69,6 +69,71 @@ pub struct TimeTree<E>:
         self.emit_dfs(1, 0, q, mut out)
         out
 
+    fn run_node<M, R>(
+        self,
+        u: Int,
+        nl: Int,
+        nr: Int,
+        mark: () -> M,
+        apply: E -> (),
+        answer: Int -> R,
+        undo: M -> (),
+        mut out: List<R>,
+    ):
+        if buckets[u].is_empty:
+            if nr - nl == 1:
+                out.push(answer(nl))
+            else:
+                let mid = (nl + nr) / 2
+                self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
+                self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
+            return
+        let snap = mark()
+        for id in buckets[u]:
+            apply(events[id])
+        if nr - nl == 1:
+            out.push(answer(nl))
+        else:
+            let mid = (nl + nr) / 2
+            self.run_node(2 * u, nl, mid, mark, apply, answer, undo, mut out)
+            self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
+        undo(snap)
+
+    /// Walk the segment tree over `0..q` with zero step-list allocation, returning
+    /// `[answer(0), ..., answer(q - 1)]`. Calls `mark()` once on entering each non-empty
+    /// node, `apply(ev)` for each event active on that node, `answer(t)` at every leaf
+    /// `t in 0..q` in ascending order, and `undo(snap)` on exit. O(q + m log q).
+    pub fn run<M, R>(
+        self,
+        mark: () -> M,
+        apply: E -> (),
+        answer: Int -> R,
+        undo: M -> (),
+    ) -> List<R>:
+        var out: List<R> = []
+        if q == 0: return out
+        self.run_node(1, 0, q, mark, apply, answer, undo, mut out)
+        out
+
+/// Offline divide-and-conquer over time `0..q` for `items` active on half-open
+/// intervals `by(ev) = (lo, hi)`. Builds a `TimeTree<E>`, walks it with
+/// `mark`/`apply`/`answer`/`undo` callbacks (zero step-list allocation), and returns
+/// `[answer(0), ..., answer(q - 1)]`. O(q + m log q).
+pub fn offline_over<E, M, R>(
+    q: Int,
+    items: List<E>,
+    by: E -> (Int, Int),
+    mark: () -> M,
+    apply: E -> (),
+    answer: Int -> R,
+    undo: M -> (),
+) -> List<R>:
+    var tt = TimeTree<E>.new(q)
+    for ev in items:
+        let (lo, hi) = by(ev)
+        tt.add_interval(lo, hi, ev)
+    tt.run(mark: mark, apply: apply, answer: answer, undo: undo)
+
 @test
 fn timetree_dynamic_connectivity_with_rollback_dsu():
     domain V = 0..6
@@ -92,4 +157,35 @@ fn timetree_dynamic_connectivity_with_rollback_dsu():
                 comps[t] = dsu.components
             Undo:
                 if let m = marks.pop(): dsu.undo_to(m)
+    assert comps == [5, 5, 4, 4, 3, 4, 3, 4]
+
+    var dsu2 = Dsu<V>()
+    let comps2 = tt.run(
+        mark: () => dsu2.mark(),
+        apply: e => dsu2.unite(e.0, e.1),
+        answer: _ => dsu2.components,
+        undo: m => dsu2.undo_to(m),
+    )
+    assert comps2 == comps
+
+@test
+fn offline_over_matches_timetree():
+    domain V = 0..6
+    let q = 8
+    let items = [
+        (lo: 0, hi: 5, u: V(0), v: V(1)),
+        (lo: 2, hi: 7, u: V(1), v: V(2)),
+        (lo: 4, hi: 8, u: V(2), v: V(3)),
+        (lo: 6, hi: 8, u: V(0), v: V(3)),
+    ]
+    var dsu = Dsu<V>()
+    let comps = offline_over(
+        q,
+        items,
+        by: e => (e.lo, e.hi),
+        mark: () => dsu.mark(),
+        apply: e => dsu.unite(e.u, e.v),
+        answer: _ => dsu.components,
+        undo: m => dsu.undo_to(m),
+    )
     assert comps == [5, 5, 4, 4, 3, 4, 3, 4]

@@ -527,7 +527,7 @@ fn parity_matches_a_brute_colouring_and_rolls_back():
             if rand(0, 3) == 0 and not snaps.is_empty:
                 let (m, k) = snaps.pop()!
                 d.undo_to(m)
-                while cons.len > k: cons.pop()
+                cons.truncate(k)
             else:
                 if rand(0, 2) == 0: snaps.push((d.mark(), cons.len))
                 let c = (V.nth(rand(0, 6)), V.nth(rand(0, 6)), rand(0, 1) == 1)

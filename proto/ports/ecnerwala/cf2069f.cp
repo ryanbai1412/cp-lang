@@ -1,8 +1,8 @@
 // Codeforces 2069 F: A includes B after adding the fewest edges exactly when
 // every edge of B joins two vertices that A already connects, so the answer
 // is components(A) - components(A + B). Offline: each edge lives on a range
-// of query times; TimeTree walks the segment tree over time and emits
-// Apply/Query/Undo steps for the two rollback union-finds.
+// of query times; TimeTree.run walks the segment tree over time and rolls the
+// two union-finds back on exit from each node.
 use std.dsu.{Mark}
 use std.timetree.{TimeTree}
 
@@ -22,19 +22,17 @@ for t in T:
 for ((g, x, y), s) in since: tt.add_interval(s.ord, q, Edge(g == 'A', x, y))
 
 var (a, ab) = (Dsu<V>(), Dsu<V>())
-var marks: List<(Mark, Mark)> = []
-var ans: [T]Int = 0
-for step in tt.steps():
-    match step:
-        Apply(id):
-            let e = tt.event(id)
-            marks.push((a.mark(), ab.mark()))
-            if e.in_a: a.unite(e.x, e.y)
-            ab.unite(e.x, e.y)
-        Query(t):
-            ans[T(t)] = a.components - ab.components
-        Undo:
-            if let (ma, mab) = marks.pop():
-                a.undo_to(ma)
-                ab.undo_to(mab)
+fn add(e: Edge):
+    if e.in_a: a.unite(e.x, e.y)
+    let _ = ab.unite(e.x, e.y)
+fn rollback(m: (Mark, Mark)):
+    a.undo_to(m.0)
+    ab.undo_to(m.1)
+
+let ans = tt.run(
+    mark: () => (a.mark(), ab.mark()),
+    apply: add,
+    answer: _ => a.components - ab.components,
+    undo: rollback,
+)
 print(ans, sep: "\n")

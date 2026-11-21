@@ -1054,7 +1054,7 @@ Phase 2 additions (see `design/stdlib/ranges.md` §3.8):
 `MergeSortTree<D, T>` and `SparseSegTree<T>` (`std.segtree`),
 `PersistentSegTree<D, T>` + `Version` + `RangeKth<D, T>` (`std.persistent`),
 `BeatsSegTree<D>` (`std.beats`: `chmin`/`chmax`/`add`/`sum`/`min_val`/`max_val`),
-`TimeTree<E>` + `TimeStep` (`std.timetree`: offline time-interval divide-and-conquer),
+`TimeTree<E>` + `TimeTree.run` + `offline_over` + `TimeStep` (`std.timetree`: offline time-interval divide-and-conquer),
 and `LiChao` + `LiChaoTag<V>` (coordinated with the DP lane).
 
 ### 4.11 `std.graph`, `std.tree`, `std.tour`: graphs and trees

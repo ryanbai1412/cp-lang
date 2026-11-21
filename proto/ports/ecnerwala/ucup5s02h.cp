@@ -19,7 +19,7 @@ struct Hull:
                 let p0 = pts[pts.len - 2]
                 let p1 = pts.last!
                 if not cmp3(p0.0, p0.1, p1.0, p1.1, x, q): break
-                let _ = pts.pop()
+                pts.pop()
             pts.push((x, q, id))
         while idx + 1 < pts.len and cmp(pts[idx].0, pts[idx].1, pts[idx + 1].0, pts[idx + 1].1, x):
             idx += 1

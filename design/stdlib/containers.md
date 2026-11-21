@@ -327,13 +327,14 @@ struct IntervalMap<D, T>                      // O(runs) memory; amortized O(log
     @get fn runs(self) -> Int                 // O(1), number of maximal runs
 ```
 
-Why does `assign` return `List<(range: Range<D>, val: T)>` instead of being a
-`yields` generator? Because in CP Lang a generator borrowing `mut self` cannot
-yield while mutating and still guarantee the partition is left valid if the
-caller `break`s out of the loop early! Returning the overwritten runs (whose
-total count across `q` calls is O(n + q)) guarantees the partition invariant
-always holds even on early `break` or `return`, and costs zero extra asymptotic
-time.
+Why does `assign` take an optional `on_old: (Range<D>, T) -> ()` callback
+instead of returning a `List` or being a `yields` generator? A `yields`
+generator borrowing `mut self` cannot guarantee the partition is left valid if
+the caller `break`s out early (and `cpl_ir::pushed::Feeds` does not push `mut
+self` yields), while returning a `List` allocates per call. An optional callback
+enforces partition completion, devirtualizes to an inlined template functor in
+C++ with zero heap allocation, and defaults to a no-op when overwritten runs are
+not needed.
 
 Laws: `IntervalMap<D, T>` agrees at every `i in D` with a brute-force `[D]T`
 array under random `assign` and `assign_point` calls; adjacent runs in `each()`
@@ -508,8 +509,9 @@ tombstones never degrade performance.
   treap belongs in `local-lib`, not a one-size-fits-all stdlib container.
 - **Persistent hashed multisets** (`cf2135f`): waits for a general `Arena<T>`
   with 4-byte handles and struct field narrowing (`research/frictions/cf2135f.md`).
-- **Offline dynamic connectivity driver (`offline_over`)**: higher-order control
-  over rollbackable structures; waits on a `Rollback` trait or core `defer`.
+- **Offline dynamic connectivity driver (`TimeTree.run` / `offline_over`)**:
+  now ships in `std.timetree` using `mark`/`apply`/`answer`/`undo` callbacks
+  (zero `TimeStep` allocation, 1 mark per tree node, devirtualized in C++).
 - **Two-heap running median**: 6 lines over `MaxHeap` + `MinHeap` (or one
   `SortedBag.nth(len / 2)` when O(log n) tree cost is fine).
 
