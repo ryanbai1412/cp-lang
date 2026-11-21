@@ -12,9 +12,9 @@ let p: [V]Vec2<1..=100> = read()
 fn near(u: V, v: V) -> Bool = (p[u] - p[v]).norm2 == k
 let side = two_color<V>(u => V.filter(v => near(u, v)))!
 let small = side.minority
-domain A = V where side[v] == small
-domain B = V where side[v] != small
-let adj: [B]Subset<A> = [b => {a in A if near(a, b)}]
+domain A = V if side[v] == small
+domain B = V if side[v] != small
+let adj: [B]Subset<A> = [b => { a in A if near(a, b) }]
 
 fn ways(out: Subset<A>) -> Z:
     var dp: [Subset<out>]Z = 1
