@@ -1097,6 +1097,13 @@ inline ll steps(ll lo, ll hi, ll by, bool closed = false) { if (by <= 0) fail(\"
 ",
     },
     Piece {
+        name: "range_sum",
+        needs: &["fail"],
+        code: "\
+template <class R> inline ll range_sum(R r, ll by = 1) { if (by <= 0) fail(\"a range steps forward: `by` is not positive\"); if (r.lo >= r.hi) return 0; ll n = (ll)(((unsigned long long)r.hi - (unsigned long long)r.lo - 1) / (unsigned long long)by) + 1; return (n & 1) ? n * (r.lo + ((n - 1) / 2) * by) : (n / 2) * (r.lo + (r.lo + (n - 1) * by)); }
+",
+    },
+    Piece {
         name: "at",
         needs: &["fail"],
         code: "\

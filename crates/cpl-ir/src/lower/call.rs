@@ -2976,7 +2976,49 @@ impl<'a> Lowerer<'a> {
         self.expr(&call, None)
     }
 
+    /// O(1) closed-form arithmetic-series sum for `Range<Int>` and
+    /// `(Range<Int>).step(k)`. Returns `0` for empty ranges and traps on
+    /// `k <= 0` just like `step` iteration.
+    fn try_range_int_sum(&mut self, arg: &ast::Expr, span: Span) -> Option<Expr> {
+        let mut cur = arg;
+        while let ast::ExprKind::Paren(inner) = &cur.kind {
+            cur = inner;
+        }
+        if let ast::ExprKind::Call { callee, args } = &cur.kind {
+            if args.len() == 1 && args[0].name.is_none() && !args[0].mutable {
+                if let ast::ExprKind::Field { base, name } = &callee.kind {
+                    if name.text == "step"
+                        && matches!(self.probe_ty_silent(base), Some(Ty::Range(inner)) if *inner == Ty::Int)
+                    {
+                        let range_val = self.expr(base, None);
+                        let step_val = self.expr(&args[0].value, Some(&Ty::Int));
+                        let step_val = self.coerce(step_val, &Ty::Int, span);
+                        return Some(self.range_int_sum_closed(range_val, Some(step_val), span));
+                    }
+                }
+            }
+        }
+        if matches!(self.probe_ty_silent(cur), Some(Ty::Range(inner)) if *inner == Ty::Int) {
+            let range_val = self.expr(cur, None);
+            return Some(self.range_int_sum_closed(range_val, None, span));
+        }
+        None
+    }
+
+    fn range_int_sum_closed(&mut self, range_val: Expr, step_val: Option<Expr>, span: Span) -> Expr {
+        let mut args = vec![range_val];
+        if let Some(sv) = step_val {
+            args.push(sv);
+        }
+        self.mk(ExprKind::Builtin(Builtin::RangeSum, args), Ty::Int, span)
+    }
+
     fn reduce_opt(&mut self, kind: Reduce, arg: &ast::Expr, optional: bool, span: Span) -> Expr {
+        if matches!(kind, Reduce::Sum) && !optional {
+            if let Some(closed) = self.try_range_int_sum(arg, span) {
+                return closed;
+            }
+        }
         if let Some(values) = self.walked(arg) {
             return self.reduce_opt(kind, &values, optional, span);
         }

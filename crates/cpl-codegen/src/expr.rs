@@ -1982,6 +1982,14 @@ impl<'p> Emitter<'p> {
             Builtin::RangeLo => Code::primary(format!("{}.lo", codes[0].at(PRIMARY))),
             Builtin::RangeHi => Code::primary(format!("{}.hi", codes[0].at(PRIMARY))),
             Builtin::RangeRev => Code::primary(format!("{}.rev()", codes[0].at(PRIMARY))),
+            Builtin::RangeSum => {
+                self.need("range_sum");
+                if codes.len() == 2 {
+                    Code::primary(format!("cpl::range_sum({}, {})", text(0), text(1)))
+                } else {
+                    Code::primary(format!("cpl::range_sum({})", text(0)))
+                }
+            }
         }
     }
 

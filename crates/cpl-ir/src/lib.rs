@@ -656,6 +656,8 @@ pub enum Builtin {
     RangeLo,
     RangeHi,
     RangeRev,
+    /// O(1) arithmetic-series sum of a `Range<Int>`, with optional positive step.
+    RangeSum,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

@@ -3754,6 +3754,32 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::Range128(_, hi) => Value::I128(hi),
                 _ => Value::Int(0),
             },
+            Builtin::RangeSum => {
+                let by = values.next().map(|v| v.int()).unwrap_or(1);
+                if by <= 0 {
+                    return trap(
+                        span,
+                        format!("a range steps forward: `by {by}` is not positive"),
+                    );
+                }
+                let Value::Range(lo, hi) = first else {
+                    return Ok(Value::Int(0));
+                };
+                if hi <= lo {
+                    Value::Int(0)
+                } else {
+                    let span_u = (hi as u64).wrapping_sub(lo as u64).wrapping_sub(1);
+                    let cnt = (span_u / (by as u64)) as i64 + 1;
+                    let ans = if cnt & 1 == 0 {
+                        let last = lo.wrapping_add((cnt - 1).wrapping_mul(by));
+                        (cnt / 2).wrapping_mul(lo.wrapping_add(last))
+                    } else {
+                        let mid = lo.wrapping_add(((cnt - 1) / 2).wrapping_mul(by));
+                        cnt.wrapping_mul(mid)
+                    };
+                    Value::Int(ans)
+                }
+            }
             Builtin::RangeRev => match first {
                 Value::Range(lo, hi) => {
                     let mut out = Vec::with_capacity((hi - lo).max(0) as usize);

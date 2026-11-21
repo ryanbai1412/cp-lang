@@ -73,7 +73,7 @@ The same `.l`/`.r` notation works directly in multi-dimensional DP tables such a
 
 ## Ranges, open ends, and slices
 
-One `Range<I>` type covers half-open `l..r`, inclusive `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l` (strictly between `l` and `r`). Every range provides `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, and `(lo..=hi).clamp(D)`.
+One `Range<I>` type covers half-open `l..r`, inclusive `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l` (strictly between `l` and `r`). Every range provides `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, and `(lo..=hi).clamp(D)`; `Range<Int>.sum()` and `(a..b).step(k).sum()` are O(1) closed forms.
 
 Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.sum(..i)`. Array slices use the array's own index base (`a[2..=4]` on a `[1..=4]Int` is its last three cells), and grid slices `g[r, ..]` / `g[.., c]` act as 1-D `[D]T` arrays that can be passed directly to generic functions such as `sum` and `argmax`. In-place slice mutation remains specification work; use the explicit [copy-and-writeback example](course-index-slices.html#ranges-slices-and-compress-all) when sorting a window.
 

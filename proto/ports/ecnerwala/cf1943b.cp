@@ -24,10 +24,8 @@ fn non_pal_score(l: Pos, r: Pos) -> Int:
     let has_period2 = alt_run[r] >= (m + 1) / 2 and alt_run[prev] >= m / 2
     if has_period2:
         if s[r] == s[prev]: return 0
-        let evens = m / 2
-        return evens * (evens + 1)
-    let total = m * (m + 1) / 2 - 1
-    if pal.is_palindrome(l..=r): total - m else: total
+        return (2..=m).step(2).sum()
+    (2..m).sum() + (if pal.is_palindrome(l..=r): 0 else: m)
 
 repeat q:
     let (l, r): (Pos, Pos) = read()

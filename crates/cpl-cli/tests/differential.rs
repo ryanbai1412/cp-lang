@@ -80,6 +80,8 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "part_overlap",
             "part_past_last",
             "print_args_first",
+            "range_int_sum",
+            "range_int_sum_bad_step",
             "same_domain_lengths",
             "same_domain_longer_first",
             "same_domain_mut",
