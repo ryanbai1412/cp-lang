@@ -107,6 +107,19 @@ pub fn windows<T>(self: List<T>, k: Int) -> yields List<T>:
     assert k >= 1, "a window holds at least one element"
     for i in 0..self.len - k + 1: yield self[i..i + k]
 
+/// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].pairs()` gives
+/// `(10, 20)` then `(20, 30)`. Nothing when `self.len < 2`. O(1) per step.
+pub fn pairs<T>(self: List<T>) -> yields (T, T):
+    for i in 1..self.len: yield (self[i - 1], self[i])
+
+/// Every element paired with the previous one, starting with `(none, first)`:
+/// `[10, 20, 30].with_prev()` gives `(none, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
+pub fn with_prev<T>(self: List<T>) -> yields (?T, T):
+    var prev: ?T = none
+    for x in self:
+        yield (prev, x)
+        prev = x
+
 /// Every element with the one after it, the last with the first: the
 /// sides of a polygon, the links of a ring. One pair `(x, x)` for a
 /// single element, none for an empty list.
@@ -618,6 +631,16 @@ fn windows_and_zip_walk_in_step():
     assert [w for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
     assert [w for w in [1, 2].windows(2)] == [[1, 2]] and [w for w in [1, 2].windows(3)].len == 0
     assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
+
+@test
+fn pairs_and_with_prev_yield_neighbours():
+    assert [p for p in [10, 20, 30].pairs()] == [(10, 20), (20, 30)]
+    assert [p for p in [7].pairs()].len == 0
+    let empty: List<Int> = []
+    assert [p for p in empty.pairs()].len == 0
+    assert [(p ?? -1, x) for (p, x) in [10, 20, 30].with_prev()] == [(-1, 10), (10, 20), (20, 30)]
+    assert [(p ?? -1, x) for (p, x) in [7].with_prev()] == [(-1, 7)]
+    assert [p for p in empty.with_prev()].len == 0
 
 @test
 fn cyclic_pairs_close_the_ring():

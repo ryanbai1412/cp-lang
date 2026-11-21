@@ -1269,6 +1269,13 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   does not lift. Implemented via the existing `tropical` lowering in `cpl-ir` and matching rules in `cpl-check`.
   *Reversal:* narrow the `BinOp`/`UnOp` match arms in `crates/cpl-check/src/check/expr.rs` and `crates/cpl-ir/src/lower/expr.rs`.
 
+- **22.4 `pairs()` and `with_prev()` are ordinary `yields` library functions in `stdlib/seq.cp`.**
+  Per `22-sequences.md`, `xs.pairs()` yields adjacent `(prev, x)` and `xs.with_prev()` yields `(?T, T)`
+  starting with `(none, first)`, with no special loop syntax or compiler privilege. Written as `yields`
+  generators over `List<T>` (which also works on `[D]T` arrays via existing coercion) so they fuse into
+  loops in C++ and keep `stdlib/prelude.cp` at its 80-name cap (imported via `use std.seq.{pairs, with_prev}`).
+  *Reversal:* remove `pairs` and `with_prev` from `stdlib/seq.cp` (or add them to `stdlib/prelude.cp` if prelude slots open).
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

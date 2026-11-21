@@ -33,12 +33,13 @@ library can say in its own words why a call does not type-check.
 `+`, counted domains, `read(lo..=hi)`, `D.count`, `for ... if`/`where`,
 `if let`/`while let` with `where` and multi-binding `if let a = x, b = y`,
 `let ... else`, `if x max= y:`, `?T` arithmetic and bitwise lifting (`+ - * / % ** & | ^ << >>`, unary `-`, `~`),
-`max(?T, T)`, `max=`/`min=` on optionals, `[A, B]T`, `[(A, B)]T` and `[A][B]T`, `Self`
+`max(?T, T)`, `max=`/`min=` on optionals, `[A, B]T`, `[(A, B)]T` and `[A][B]T`,
+`pairs()`/`with_prev()` in `std.seq`, `Self`
 and associated types in traits. Structs get `Eq`, `Ord`, `Hash`, `Show` and
 `Read` from the compiler, structurally, with `impl Show/Eq/Ord` as hooks
 (`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is stdlib privilege, not library
 code. Enums, even fieldless ones, have no order (`E0309` on `d < Dir.S` and
-on sorting). Not built: postfix `x?` expression-extent lifting, `with_prev()`/`pairs()`,
+on sorting). Not built: postfix `x?` expression-extent lifting,
 one-line colon structs / opaque `struct List<T>` / struct type-param
 defaults / `Self` in trait range bounds / one-sided range types /
 `@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), variadic
@@ -49,7 +50,7 @@ target (`b.at() += 1` is `E0401`). 0 of the 35 `ideal-spec/spec/*.md`
 **Bar.** Every code block in the design spec passes `cpl check`; the stdlib
 needs no compiler knowledge beyond the documented intrinsics; each
 mechanism above has programs that the interpreter and the C++ agree on.
-**Next.** Postfix `?` extent; `with_prev`/`pairs`; remaining 0.3 syntax (`struct` forms,
+**Next.** Postfix `?` extent; remaining 0.3 syntax (`struct` forms,
 type-param defaults, `Self` in ranges, one-sided ranges, `@droppable`,
 `labels`, `Str(len:)`); reflection (`for f in fields(x)`, variants) and
 derives as trait defaults; variadic packs, then `print`/`read` on them;

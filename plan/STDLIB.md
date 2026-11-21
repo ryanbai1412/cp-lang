@@ -194,6 +194,8 @@ fn dedup<T>(mut a: List<T>)
 fn deduped<T>(self: List<T>) -> List<T>
 fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>)
 fn windows<T>(self: List<T>, k: Int) -> yields List<T> // O(k)
+fn pairs<T>(self: List<T>) -> yields (T, T)
+fn with_prev<T>(self: List<T>) -> yields (?T, T)
 fn cyclic_pairs<T>(self: List<T>) -> yields (T, T)
 fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)>
 fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V // O(log n)

@@ -68,11 +68,11 @@ export const STDLIB_VALUES: readonly string[] = [
     'decrease', 'dedup', 'differences', 'directed_of_pairs', 'directed_of_triples', 'divisors',
     'dnc_break', 'dot', 'ext_gcd', 'factor', 'first_ge_by', 'get_or_insert_with', 'guess_at',
     'idempotent', 'increase', 'knuth_break', 'last_le_by', 'lcp_array', 'locate', 'max_weight_matching',
-    'monge_break', 'mul_mod', 'newton', 'next_permutation', 'on_segment', 'period', 'poly_at',
+    'monge_break', 'mul_mod', 'newton', 'next_permutation', 'on_segment', 'pairs', 'period', 'poly_at',
     'poly_degree', 'prefix_function', 'prev_permutation', 'ray', 'recurrence_at', 'reverse', 'rfind',
     'rotate_left', 'segments_meet', 'splitmix64', 'suffix_array', 'swap_at', 'take', 'turn',
     'two_color', 'two_edge_components', 'undirected_of_pairs', 'undirected_of_triples',
-    'unimodality_break', 'update', 'z_function',
+    'unimodality_break', 'update', 'with_prev', 'z_function',
 ];
 
 /** Public `stdlib/*.cp` constants, all imported by `stdlib/prelude.cp` (no INF sentinel; use ?Int / none). */
