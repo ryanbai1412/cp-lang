@@ -42,6 +42,11 @@ What a profile changes today:
   error above the limit. The source header goes first, then half the
   indentation, only when the file would not fit otherwise.
 - `I128` on a profile with `int128 = false` is an error naming the judge.
+- `cpl build --size`, and every build over the limit, reports the bytes of
+  the file by part (header, includes, runtime, types, globals, library fns,
+  your code, glue) and names the three largest pieces of each part (a
+  runtime piece, a fn as the source names it). The parts add up to the
+  file.
 
 Proposed: `bits_stdcpp`, `pragmas`, memory accounting, the judge's time
 and memory limits feeding `cpl bench` and local runs.

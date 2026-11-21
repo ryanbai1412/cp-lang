@@ -367,6 +367,9 @@ header stamp, `__int128` support and whether deep recursion needs its own
 256 MB stack. All 257 ports fit every profile (max 59.4 KB) and compile
 with every profile's flags (1,799 compiles, `--full`); a million nested
 calls run on each judge's stack and agree with the interpreter. `run --release`, `test`,
+`cpl build --size` (and any over-limit build) says where the bytes go
+by part and piece: across the ports, 3.6% (p50; at most 8.2%) is
+namespaces and `main`, the rest is named. `run --release`, `test`,
 `stress` and `hunt` build a `.cp` file with its judge's flags (those g++
 here accepts) and run it under `ulimit -s` of the judge's stack; `bench`
 and `profile` still use `g++ -std=c++17 -O2`. The compilers here are g++
@@ -375,7 +378,7 @@ and `profile` still use `g++ -std=c++17 -O2`. The compilers here are g++
 its flags (as accepted here), and the deep-recursion run passes on its
 stack; each fact in a profile cites a source or says it is unconfirmed.
 **Next.** `bench` and `profile` with the profile's flags; the judge's
-time and memory limits on local runs; a size report (bytes per part) and a readable minimisation rung
+time and memory limits on local runs; a readable minimisation rung
 before dropping the source header; clang `-Wunused-value` in 6
 ports; USACO and grader profiles; judge-version containers.
 

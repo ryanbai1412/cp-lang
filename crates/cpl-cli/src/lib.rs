@@ -189,7 +189,9 @@ pub fn exec<S: AsRef<str>>(
         }
         Some("build") => {
             let checked = rest.contains(&"--checked");
-            let mut rest: Vec<&str> = rest.iter().copied().filter(|arg| *arg != "--checked").collect();
+            let size = rest.contains(&"--size");
+            let mut rest: Vec<&str> =
+                rest.iter().copied().filter(|arg| !matches!(*arg, "--checked" | "--size")).collect();
             let judge = match rest.iter().position(|arg| *arg == "--judge") {
                 Some(at) if at + 1 < rest.len() => {
                     let name = rest[at + 1];
@@ -200,9 +202,9 @@ pub fn exec<S: AsRef<str>>(
                 None => None,
             };
             match rest.as_slice() {
-                [file] => build_file(file, None, judge, checked, stdout, stderr),
+                [file] => build_file(file, None, judge, checked, size, stdout, stderr),
                 [file, "-o", out] | ["-o", out, file] => {
-                    build_file(file, Some(out), judge, checked, stdout, stderr)
+                    build_file(file, Some(out), judge, checked, size, stdout, stderr)
                 }
                 _ => usage_error(
                     "`build` takes one file: `cpl build a.cp`, `cpl build a.cp -o a.cpp` or \
@@ -249,6 +251,9 @@ options:
                     `judge` under `[judge]` in the nearest cp.toml, else
                     `generic`. `cpl judges` lists them
   --checked         also compile it with sanitizers into a program to run here
+  --size            say where the bytes go: header, runtime, library fns,
+                    your code, by part and by piece (said anyway when the
+                    file is over the judge's limit)
 ";
 
 const JUDGE_USAGE: &str = "\
@@ -944,6 +949,7 @@ fn build_file(
     out: Option<&str>,
     judge: Option<&str>,
     checked: bool,
+    size: bool,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -981,6 +987,11 @@ fn build_file(
                     if fitted.narrow { " and the lines are indented half as far" } else { "" }
                 );
             }
+            if size {
+                let source = fitted.header.then_some(compiled.text.as_str());
+                let sizes = cpl_codegen::sizes(&compiled.program, name, source, &target, fitted.narrow, fitted.cpp.len());
+                *stderr += &size_report(&sizes, limit, &profile.name);
+            }
             fitted.cpp
         }
         Err(bytes) => {
@@ -988,6 +999,8 @@ fn build_file(
                 "cpl: the C++ for `{path}` is {bytes} bytes, over the {limit}-byte limit of judge `{}`\n",
                 profile.name
             );
+            let sizes = cpl_codegen::sizes(&compiled.program, name, None, &target, true, bytes);
+            *stderr += &size_report(&sizes, limit, &profile.name);
             return EXIT_ERRORS;
         }
     };
@@ -1031,6 +1044,39 @@ fn build_file(
             EXIT_USAGE
         }
     }
+}
+
+/// Where the bytes of a built file go, by part, with the largest pieces of
+/// each part named.
+fn size_report(sizes: &[cpl_codegen::Size], limit: usize, judge: &str) -> String {
+    let total: usize = sizes.iter().map(|size| size.bytes).sum();
+    let mut out = format!("size of the C++ by part: {total} bytes, of the {limit} of judge `{judge}`\n");
+    let mut parts: Vec<cpl_codegen::Part> = sizes.iter().map(|size| size.part).collect();
+    parts.sort();
+    parts.dedup();
+    for part in parts {
+        let mut pieces: Vec<(&str, usize)> = Vec::new();
+        for size in sizes.iter().filter(|size| size.part == part) {
+            match pieces.iter_mut().find(|(name, _)| *name == size.name) {
+                Some((_, bytes)) => *bytes += size.bytes,
+                None => pieces.push((&size.name, size.bytes)),
+            }
+        }
+        let bytes: usize = pieces.iter().map(|(_, bytes)| bytes).sum();
+        if bytes == 0 {
+            continue;
+        }
+        pieces.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+        let mut named: Vec<String> = pieces.iter().take(3).map(|(name, bytes)| format!("{name} {bytes}")).collect();
+        if pieces.len() > 3 {
+            named.push(format!("{} more", pieces.len() - 3));
+        }
+        let named = if pieces.len() > 1 { named.join(", ") } else { String::new() };
+        let share = (bytes * 100).div_ceil(total.max(1));
+        out += format!("  {:<12}{bytes:>7} {share:>3}%  {named}", part.describe()).trim_end();
+        out.push('\n');
+    }
+    out
 }
 
 /// `cpl judges`: every judge profile, and with a file, the one its build is for.

@@ -1909,6 +1909,12 @@ Reverse: none needed; this is general range-type lowering.
   fits 8 MB here could overflow a judge, and the reverse). The `g++ -std=c++17 -O2` build keeps its
   precompiled header; other flag sets build without it. Reverse: `build_judged` back to
   `compile_cpp(&emit_cpp(..))`.
+- **34.10 The size report is measured on the file, by the code generator's own parts.** The emitter keeps
+  the text of each part it writes (the header, each runtime piece, the types, the globals, each fn, the
+  top-level code), the report measures it as the file has it (narrowed when the file is) and calls the rest
+  glue, so the parts add up to the file by construction. A fn is named as its source names it (`Rooted.path`),
+  its instances summed. Shown on `--size` and on every build over the limit, the one time it is needed.
+  Reverse: drop `Emitter::chunks` and `cpl_codegen::sizes`.
 
 ## 35. Taste lints (§8 tooling, 2026-11-21)
 

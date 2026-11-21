@@ -164,6 +164,8 @@ pub(crate) struct Emitter<'p> {
     /// The statements that count, from `cpl_ir::sites::user_stmts`.
     pub counted: std::collections::HashSet<*const Stmt>,
     pub target: crate::Target,
+    /// What each part of the file is, by its text: for the size report.
+    pub chunks: Vec<(crate::Part, String, String)>,
 }
 
 pub(crate) fn pad(indent: usize) -> String {
@@ -223,6 +225,7 @@ impl<'p> Emitter<'p> {
             sites: None,
             counted: Default::default(),
             target: crate::Target::default(),
+            chunks: Vec::new(),
         };
         let feeds = cpl_ir::pushed::Feeds::of(program);
         emitter.summaries = feeds.summaries;
@@ -620,6 +623,12 @@ impl<'p> Emitter<'p> {
         (cpp, self.sites.take().unwrap_or_default())
     }
 
+    /// [`Emitter::file`], with the text of each part of it.
+    pub fn file_with_chunks(mut self, name: &str, source: Option<&str>) -> (String, Vec<(crate::Part, String, String)>) {
+        let cpp = self.write(name, source);
+        (cpp, self.chunks)
+    }
+
     fn write(&mut self, name: &str, source: Option<&str>) -> String {
         let program = self.program;
 
@@ -717,6 +726,8 @@ impl<'p> Emitter<'p> {
             if !reachable.contains(&id) {
                 continue;
             }
+            let start = fns.len();
+            let part = if program.library_fns.get(id).copied().unwrap_or(false) { crate::Part::Library } else { crate::Part::Yours };
             self.enter(Some(id), &f.body, f.params.len());
             let signature = self.signature(f);
             let hook = program.structs.iter().any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)));
@@ -746,6 +757,7 @@ impl<'p> Emitter<'p> {
                     _ => format!("return cpl::Judge<{}>::from({call});", self.ty(&f.ret)),
                 };
                 fns.push_str(&format!("\n{signature} {{\n    {body}\n}}\n"));
+                self.chunks.push((part, f.name.clone(), fns[start..].to_string()));
                 continue;
             }
             if program.entry_fns.contains(&id) {
@@ -807,7 +819,9 @@ impl<'p> Emitter<'p> {
                 self.pushing = None;
                 fns.push_str("}\n");
             }
+            self.chunks.push((part, f.name.clone(), fns[start..].to_string()));
         }
+        let start = fns.len();
         if program.multitest {
             // What is above `@!multitest`. It gives false when a top-level
             // `return` there ended the program.
@@ -826,6 +840,7 @@ impl<'p> Emitter<'p> {
         self.hoisted_decls(&mut fns, 0);
         self.block(&program.main, &mut fns);
         fns.push_str("}\n");
+        self.chunks.push((crate::Part::Yours, "top-level code".into(), fns[start..].to_string()));
 
         // `main` writes through the runtime; what reads asks for the input itself.
         self.need("out");
@@ -835,6 +850,9 @@ impl<'p> Emitter<'p> {
 
         let mut out = String::new();
         out.push_str(&header(name, source, self.target.stamp.as_deref()));
+        let what = if source.is_some() { "the source" } else { "the note" };
+        self.chunks.push((crate::Part::Header, what.into(), out.clone()));
+        let includes = out.len();
         // Closures that are called by name (see `devirt`): one calling
         // another adds to the set, so emit until it stops growing.
         let mut direct = String::new();
@@ -856,6 +874,7 @@ impl<'p> Emitter<'p> {
             out.push_str("#include <chrono>\n#include <unordered_map>\n#include <unordered_set>\n");
         }
         out.push_str("\nusing ll = long long;\n\n");
+        self.chunks.push((crate::Part::Includes, "#include".into(), out[includes..].to_string()));
         if !judge_decls.is_empty() {
             out.push_str("// The judge's grader supplies these.\n");
             out.push_str(&judge_decls);
@@ -873,13 +892,18 @@ impl<'p> Emitter<'p> {
         for piece in PIECES {
             if self.used.contains(piece.name) {
                 out.push_str(piece.code);
+                self.chunks.push((crate::Part::Runtime, piece.name.into(), piece.code.into()));
             }
         }
         out.push_str("}  // namespace cpl\n\n// The program.\nnamespace prog {\n");
         if has_tie {
             out.push_str(TIE_OPS);
+            self.chunks.push((crate::Part::Runtime, "comparisons".into(), TIE_OPS.into()));
         }
         out.push_str(&types);
+        self.chunks.push((crate::Part::Types, "types".into(), types.clone()));
+        self.chunks.push((crate::Part::Globals, "globals".into(), vars.clone()));
+        self.chunks.push((crate::Part::Yours, "closures".into(), direct.clone()));
         if !types.is_empty() {
             out.push('\n');
         }
@@ -895,6 +919,7 @@ impl<'p> Emitter<'p> {
             let named = above.into_iter().chain(self.shows.iter().map(String::as_str)).any(|text| names(text, &proto.name));
             if proto.always || named {
                 out.push_str(&proto.line);
+                self.chunks.push((crate::Part::Glue, "declarations ahead".into(), proto.line.clone()));
             }
         }
         out.push_str(&direct);
@@ -925,6 +950,7 @@ impl<'p> Emitter<'p> {
         for show in &self.shows {
             out.push_str(show);
             out.push('\n');
+            self.chunks.push((crate::Part::Runtime, "show".into(), format!("{show}\n")));
         }
         out.push_str(&fns);
         if !program.entry_fns.is_empty() {
@@ -945,6 +971,7 @@ impl<'p> Emitter<'p> {
         let deep = deep && !self.target.deep_stack;
         if deep {
             out.push_str(BIG_STACK);
+            self.chunks.push((crate::Part::Runtime, "deep stack".into(), BIG_STACK.into()));
         }
         out.push_str(if deep { "static void cpl_main() {\n" } else { "int main() {\n" });
         // Each test case has its own query limit.

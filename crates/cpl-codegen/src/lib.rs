@@ -34,6 +34,92 @@ pub struct Target {
     pub deep_stack: bool,
 }
 
+/// Where the bytes of a file go, in the order the file has them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Part {
+    /// The opening comment: the source, or the note that it is left out.
+    Header,
+    Includes,
+    /// The runtime pieces the program leans on, and how it prints values.
+    Runtime,
+    Types,
+    Globals,
+    /// The fns of imported modules, the stdlib's among them.
+    Library,
+    /// The file's own fns, closures and top-level code.
+    Yours,
+    /// Namespaces, declarations ahead and `main`.
+    Glue,
+}
+
+impl Part {
+    pub fn describe(self) -> &'static str {
+        match self {
+            Part::Header => "header",
+            Part::Includes => "includes",
+            Part::Runtime => "runtime",
+            Part::Types => "types",
+            Part::Globals => "globals",
+            Part::Library => "library fns",
+            Part::Yours => "your code",
+            Part::Glue => "glue",
+        }
+    }
+}
+
+/// One named piece of a file and its length there.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Size {
+    pub part: Part,
+    pub name: String,
+    pub bytes: usize,
+}
+
+/// Where the bytes of a file of [`emit_within_for`] go: every piece of it,
+/// with what is not in any piece as [`Part::Glue`], so that the lengths add
+/// up to `total`. `source` is the header's, if it kept it, and `narrowed`
+/// whether its lines are indented half as far.
+pub fn sizes(
+    program: &cpl_ir::Program,
+    name: &str,
+    source: Option<&str>,
+    target: &Target,
+    narrowed: bool,
+    total: usize,
+) -> Vec<Size> {
+    let mut program = program.clone();
+    (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    let mut emitter = emit::Emitter::new(&program);
+    emitter.target = target.clone();
+    let (_, chunks) = emitter.file_with_chunks(name, source);
+    let fit = |text: &str| match narrowed {
+        true => narrow(&narrow(text)).len(),
+        false => narrow(text).len(),
+    };
+    let mut sizes: Vec<Size> = chunks
+        .iter()
+        .filter(|(_, _, text)| !text.is_empty())
+        .map(|(part, name, text)| Size { part: *part, name: unmangled(name), bytes: fit(text) })
+        .collect();
+    let named: usize = sizes.iter().map(|size| size.bytes).sum();
+    sizes.push(Size { part: Part::Glue, name: "namespaces and main".into(), bytes: total.saturating_sub(named) });
+    sizes
+}
+
+/// A fn's name as its source wrote it: `Rooted.path`, not the name of one
+/// instance, `Rooted_D0_V_Int_7.path_Arr1_84`. A part of an instance's name
+/// starts with `_` and a capital or a digit.
+fn unmangled(name: &str) -> String {
+    let cut = |segment: &str| {
+        let bytes = segment.as_bytes();
+        let at = (1..bytes.len())
+            .find(|&at| bytes[at - 1] == b'_' && bytes[at].is_ascii_uppercase() | bytes[at].is_ascii_digit())
+            .map_or(segment.len(), |at| at - 1);
+        segment[..at].to_string()
+    };
+    name.split('.').map(cut).collect::<Vec<_>>().join(".")
+}
+
 /// [`emit`] for a judge.
 pub fn emit_for(program: &cpl_ir::Program, name: &str, source: Option<&str>, target: &Target) -> String {
     let mut program = program.clone();

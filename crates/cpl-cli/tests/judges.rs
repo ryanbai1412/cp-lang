@@ -195,3 +195,53 @@ fn a_release_run_builds_with_the_judges_flags_on_the_judges_stack() {
     assert_eq!(ran.code, 0, "{}", ran.stderr);
     assert_eq!(ran.stdout, interpreted.stdout);
 }
+
+/// The parts of `cpl build --size`, and the total it gives.
+fn size_parts(report: &str) -> (usize, Vec<(String, usize)>) {
+    let mut lines = report.lines().skip_while(|line| !line.starts_with("size of the C++ by part"));
+    let head = lines.next().expect("a size report");
+    let total = head.split(": ").nth(1).and_then(|rest| rest.split(' ').next()).unwrap().parse().unwrap();
+    let parts = lines
+        .take_while(|line| line.starts_with("  "))
+        .map(|line| {
+            let line = line.trim_start();
+            let (name, rest) = line.split_at(12);
+            (name.trim().to_string(), rest.split_whitespace().next().unwrap().parse().unwrap())
+        })
+        .collect();
+    (total, parts)
+}
+
+#[test]
+fn the_size_report_of_every_port_adds_up_to_its_file() {
+    let ports = ports();
+    let glue = parallel(&ports, |port| {
+        let out = cpl_cli::run(&["build", port.to_str().unwrap(), "--size", "-o", "-"]);
+        assert_eq!(out.code, 0, "{}: {}", port.display(), out.stderr);
+        let (total, parts) = size_parts(&out.stderr);
+        assert_eq!(total, out.stdout.len(), "{}", port.display());
+        assert_eq!(parts.iter().map(|(_, bytes)| bytes).sum::<usize>(), total, "{}", port.display());
+        let glue = parts.iter().find(|(name, _)| name == "glue").map_or(0, |(_, bytes)| *bytes);
+        assert!(glue * 10 <= total, "{}: {glue} of {total} bytes are not in any piece", port.display());
+        glue * 1000 / total
+    });
+    let mut glue = glue;
+    glue.sort();
+    eprintln!("glue per mille: p50 {}, max {}", glue[glue.len() / 2], glue[glue.len() - 1]);
+}
+
+#[test]
+fn a_file_over_its_judges_limit_says_where_its_bytes_go() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-size");
+    std::fs::create_dir_all(&scratch).unwrap();
+    std::fs::write(scratch.join("cp.toml"), "[judge]\njudge = \"tiny\"\n\n[judge.tiny]\nextends = \"generic\"\nsource_kb = 1\n").unwrap();
+    let file = scratch.join("a.cp");
+    std::fs::write(&file, "let n: Int = read()\nvar xs: List<Int> = []\nrepeat n: xs.push(read())\nxs.sort()\nfor x in xs: print(x)\n").unwrap();
+    let out = cpl_cli::run(&["build", file.to_str().unwrap(), "-o", "-"]);
+    assert_eq!(out.code, 1, "{}", out.stderr);
+    assert!(out.stderr.contains("over the 1024-byte limit of judge `tiny`"), "{}", out.stderr);
+    let (total, parts) = size_parts(&out.stderr);
+    assert_eq!(parts.iter().map(|(_, bytes)| bytes).sum::<usize>(), total);
+    let names: Vec<&str> = parts.iter().map(|(name, _)| name.as_str()).collect();
+    assert!(names.contains(&"runtime") && names.contains(&"your code"), "{}", out.stderr);
+}
