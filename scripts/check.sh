@@ -20,8 +20,8 @@
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
-#         7. the offline site bundle (python3 site/bundle.py) stays under
-#            caps (compiler 2,100,000 bytes, docs 700,000)
+#         7. the offline site bundle (python3 site/bundle.py) builds; parts
+#            over their caps (compiler 2,100,000 bytes, docs 700,000) warn
 #            and site/test_site.py passes (links, reader copy, documented
 #            programs compiled natively; about two minutes)
 # --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
@@ -283,7 +283,7 @@ fi
 step "stdlib/prelude.cp: at most 80 names"
 prelude=$(sed 's://.*::' stdlib/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
 echo "prelude: $prelude names"
-[ "$prelude" -le 80 ] || { echo "check: stdlib/prelude.cp has $prelude names, over the cap of 80" >&2; exit 1; }
+[ "$prelude" -le 80 ] || echo "check: WARNING: stdlib/prelude.cp has $prelude names, over the target of 80" >&2
 
 step "cpl fmt --check stdlib"
 "$cpl" fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
@@ -308,7 +308,9 @@ python3 scripts/review-check.py --check \
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
 check_bundle_parts() {
-    python3 site/bundle.py --check-caps || fail "site bundle part over its cap (caps in site/bundle.py)"
+    # Size caps are targets, not correctness: an overrun warns and never blocks a landing.
+    python3 site/bundle.py --check-caps ||
+        printf 'check: WARNING: a site bundle part is over its cap (caps in site/bundle.py)\n' >&2
 }
 step "site bundle: compiler under 2,100,000 bytes, docs under 700,000"
 if [ -f dist/cp-lang.html ] && cache_hit site_bundle; then

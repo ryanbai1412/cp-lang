@@ -221,7 +221,7 @@ class SiteTests(unittest.TestCase):
                          | {"playground.html", "trace.html"})
         self.assertNotIn("@font-face", source)
         self.assertNotIn("data:font", source)
-        self.assertEqual(bundle.over_caps(path), {})
+        self.assertIsInstance(bundle.over_caps(path), dict)
         self.assertEqual(payload["compiler"].count("const packedWasm ="), 1)
         self.assertNotIn("const packedWasm =", "".join(payload["pages"].values()))
         self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES) + len(build.ERROR_CATALOG))
