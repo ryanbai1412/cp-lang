@@ -409,7 +409,8 @@ impl Server {
                         let declares = entry.decl == Some(entry.span)
                             && matches!(entry.keyword, "let" | "var" | "for");
                         let at = item.offset + entry.span.end;
-                        let typed = analysis.text[at as usize..].trim_start().starts_with(':');
+                        let typed =
+                            entry.keyword != "for" && annotated(&analysis.text[at as usize..]);
                         if !declares || typed || entry.ty.has_vague() {
                             continue;
                         }
@@ -589,6 +590,15 @@ fn publish(uri: &str, diagnostics: Vec<Value>) -> Value {
             obj([("uri", uri.into()), ("diagnostics", diagnostics.into())]),
         ),
     ])
+}
+
+/// Whether the `let` or `var` binding whose name ends where `rest` starts
+/// has its type written: `n: Int`, or `(m, k): (Int, Int)` after any name in the tuple.
+fn annotated(rest: &str) -> bool {
+    rest.trim_start_matches(|c: char| {
+        c.is_alphanumeric() || c == '_' || c == ',' || c == ')' || c.is_whitespace()
+    })
+    .starts_with(':')
 }
 
 fn hover_markdown(hover: &cpl_check::Hover) -> String {

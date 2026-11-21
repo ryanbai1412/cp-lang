@@ -687,7 +687,10 @@ fn formatting_replaces_the_file_with_what_cpl_fmt_writes() {
     ));
     let edits = reply[0].get("result").as_array().to_vec();
     assert_eq!(edits.len(), 1);
-    assert_eq!(edits[0].get("newText").as_str(), Some("let x = 1\nprint(x)\n"));
+    assert_eq!(
+        edits[0].get("newText").as_str(),
+        Some("let x = 1\nprint(x)\n")
+    );
     assert_eq!(edits[0].at(&["range", "start", "line"]).as_u32(), Some(0));
     assert_eq!(edits[0].at(&["range", "end", "line"]).as_u32(), Some(2));
 
@@ -703,7 +706,8 @@ fn formatting_replaces_the_file_with_what_cpl_fmt_writes() {
 
 #[test]
 fn inlay_hints_show_the_types_that_are_not_written() {
-    let (mut server, _) = open("let n = 3\nlet m: Int = 4\nvar xs = [n, m]\nfor x in xs:\n    print(x)\n");
+    let (mut server, _) =
+        open("let n = 3\nlet m: Int = 4\nvar xs = [n, m]\nfor x in xs:\n    print(x)\n");
     let reply = server.handle(&request(
         9,
         "textDocument/inlayHint",
@@ -721,7 +725,34 @@ fn inlay_hints_show_the_types_that_are_not_written() {
         })
         .collect();
     // `m` has its type written, so it gets none.
-    assert_eq!(shown, [(0, 5, ": Int"), (2, 6, ": List<Int>"), (3, 5, ": Int")]);
+    assert_eq!(
+        shown,
+        [(0, 5, ": Int"), (2, 6, ": List<Int>"), (3, 5, ": Int")]
+    );
+}
+
+#[test]
+fn inlay_hints_skip_names_in_a_typed_tuple() {
+    let (mut server, _) = open("let (m, k): (Int, Int) = (1, 2)\nlet (a, b) = (m, k)\nfor (i, x) in [(0, a)]:\n    print(i + x + b)\n");
+    let reply = server.handle(&request(
+        9,
+        "textDocument/inlayHint",
+        obj([("textDocument", doc())]),
+    ));
+    let shown: Vec<(u32, u32, String)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|hint| {
+            (
+                hint.at(&["position", "line"]).as_u32().unwrap(),
+                hint.at(&["position", "character"]).as_u32().unwrap(),
+                hint.get("label").as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    let at = |line, character| (line, character, ": Int".to_string());
+    assert_eq!(shown, [at(1, 6), at(1, 9), at(2, 6), at(2, 9)]);
 }
 
 /// Opens `src` with the cursor at `|` (removed) and sends `method` there.
