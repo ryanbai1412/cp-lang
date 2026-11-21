@@ -18,9 +18,11 @@ pub fn ends_with(self: Str, p: Str) -> Bool:
     let d = self.len - p.len
     d >= 0 and all(self[d + i] == p[i] for i in 0..p.len)
 
-/// Where `p` first stands in `s`, or `none`: `"banana".find("nan")` is `2`. O(s.len + p.len).
-pub fn find(self: Str, p: Str) -> ?Int:
-    for i in find_all([c for c in self], [c for c in p]): return i
+/// Where `p` first stands in `s`, or `none`: `"banana".find("nan")` is `2`. `p` is a `Str` or
+/// one `Char`: `"banana".find('n')` is `2`. O(s.len + p.len).
+pub fn find<P>(self: Str, p: P) -> ?Int:
+    let pat = "" + p
+    for i in find_all([c for c in self], [c for c in pat]): return i
     none
 
 /// How many times `c` stands in `s`: `"banana".count('a')` is `3`. O(s.len).

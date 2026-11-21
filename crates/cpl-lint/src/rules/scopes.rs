@@ -37,6 +37,8 @@ struct Scopes<'a> {
     fns: usize,
     /// Where `@!multitest` stands, if the file has it.
     divider: Option<u32>,
+    /// The top-level statement the walk is in.
+    statement: Span,
     findings: Vec<Finding>,
 }
 
@@ -67,6 +69,9 @@ impl Scopes<'_> {
 
 impl Visitor for Scopes<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
+        if self.scopes.len() == 1 {
+            self.statement = stmt.span.shift(self.base);
+        }
         match &stmt.kind {
             StmtKind::Let { mutable: true, .. } => {
                 // The statement's span starts at its decorators, if any.
@@ -120,7 +125,11 @@ impl Visitor for Scopes<'_> {
             // What is below `@!multitest` belongs to one test: a fn above
             // the line can't name it, so hides nothing there.
             let per_test = |b: &&Binding| self.divider.is_some_and(|at| span.start < at && at < b.span.start);
-            let in_reach = |b: &&Binding| (self.fns > 0 && !per_test(b)) || b.span.start < span.start;
+            // `let (i, j) = first((i, j) for i in 0..n ..)!`: the names the
+            // statement declares are not there yet on its right side.
+            let own = |b: &&Binding| self.statement.start <= b.span.start && b.span.start < self.statement.end;
+            let in_reach =
+                |b: &&Binding| (self.fns > 0 && !per_test(b)) || (b.span.start < span.start && !own(b));
             if let Some(hidden) = hidden.filter(|b| b.top_level).filter(in_reach) {
                 let what = match how {
                     Bind::Param => "parameter",
@@ -213,6 +222,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         vars: Vec::new(),
         current_var: None,
         fns: 0,
+        statement: Span::new(0, 0),
         divider: file
             .src
             .match_indices("@!multitest")

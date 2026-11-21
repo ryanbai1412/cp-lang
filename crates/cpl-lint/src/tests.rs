@@ -617,3 +617,11 @@ fn a_local_above_multitest_hides_nothing_below_it() {
     // What is above the line is still hidden by a local of a fn above it.
     assert_eq!(codes(&format!("let n = 3\n{helper}@!multitest\nlet total = helper(n)\nprint(total)\n")), ["L0203"]);
 }
+
+#[test]
+fn a_statement_s_own_names_are_not_hidden_on_its_right_side() {
+    let own = "let n = 3\nlet (i, j) = first((i, j) for i in 0..n for j in 0..n if i + j == 3)!\nprint(i, j)\n";
+    assert!(codes(own).is_empty());
+    let later = "let n = 3\nlet i = 1\nlet best = first(i for i in 0..n if i > 1)!\nprint(i, best)\n";
+    assert_eq!(codes(later), ["L0203"]);
+}

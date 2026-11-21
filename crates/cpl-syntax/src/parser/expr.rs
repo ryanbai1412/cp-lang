@@ -111,7 +111,7 @@ impl<'a> Parser<'a> {
                         "`??` mixed with `+ - * / %` needs parentheses",
                     )
                     .with_help(
-                        "write `(a ?? 0) + b` for a default on `a` alone, or `(a + b) ?? 0` for a default on the sum",
+                        "write `a ?? (b - 1)` for a default that is worked out, or `(a ?? b) - 1` to work on whichever is taken",
                     ),
                 );
             }
