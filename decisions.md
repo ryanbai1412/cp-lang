@@ -3703,12 +3703,15 @@ ordinal loop. Reverse by deleting `product_heads` in `lower/stmt.rs`.
 - **Why.** `Graph.undirected(edges)` on `n = 10^6` vertices previously allocated `n` separate `std::vector<int>` adjacency lists plus a 16 MB temporary edge-list copy, leaving `bench/trees/root_bench` at `0.35–0.41 s / 121–124 MB` (`1.52x` time, `1.77x` memory vs hand C++ `0.29 s / 69.8 MB`). CSR `Adj`, zero-copy `ArrayToList`, narrowing `start`/`at` through `Copy`/`ListFilled`, and pre-allocated `Rooted` BFS bring `root_bench` to `0.22 s / 79.8 MB` (`0.76x` time, `1.14x` memory vs hand C++).
 - **Reverse.** Change `directed_of_pairs`/`undirected_of_pairs`/`directed_of_triples`/`undirected_of_triples` in `stdlib/graph.cp` back to `[V]List<...>` and remove `Adj<V, A>`.
 
-## 111. Continue a logical line after an unambiguous trailing binary operator when the next line is indented (2026-11-21)
+## 111. `if let` binds in headers; `x is pat` is a Bool expression (2026-11-21)
 
-- **Decision.** Outside brackets, a newline immediately after an unambiguous binary operator (`and`, `or`, `+`, `-`, `*`, `**`, `/`, `%`, `|`, `^`, `&`, `<<`, `??`, `==`, `!=`, `<`, `<=`, `>=`, `<=>`) continues the same logical line whenever the next non-blank line is more indented than the current block (`width > top`), or at the same indent (`width == top`) after `and`/`or` when the next line does not start a statement keyword. `>` and `>>` are excluded because they close generic type arguments (`var xs: List<Int>`). A same- or less-indented line after arithmetic operators still ends the statement so half-typed lines in the editor (`let b = x +` followed by `a + b`) stay local errors. Breaking *before* an operator in a condition (`if a == 1\n    and b == 2:`) emits a `colon_block` help telling the user to wrap in `(...)` or put the operator at the end of the previous line.
-- **Reason.** Writable-from-docs Round 10 failed twice (`cf2036c`, `cf2036d`) on natural unwrapped multi-line `if ... and\n    ...:` conditions. Evaluated against a diagnostic-only `(...)` fix-it across all tools:
-  - *Parser/lexer:* a single lexer rule (`TokenKind::continues_line` + `width > top`, plus same-indent `and`/`or`) handles `if`, `elif`, `while`, `if let ... and`, and multi-line `let`/`return` expressions uniformly without complicating precedence or error recovery.
-  - *Formatter (`cpl-fmt`):* token-based; joins unwrapped continuations onto one line when uncommented and indents continuation lines after an inline comment (`continuation_indent`) so re-lexing is identical and idempotent across the whole corpus.
-  - *LSP (`cpl-lsp`) & `split_items`:* lexer-driven, so multi-line headers stay inside one item with zero special cases and full hover/completion/diagnostics recovery.
-  - *Tree-sitter (`editors/tree-sitter-cp`):* token-level grammar with `extras: [/\s/]`, unaffected.
-- **Reverse.** Remove `TokenKind::continues_line` in `crates/cpl-syntax/src/token.rs`, `operator_continuation_line` in `crates/cpl-syntax/src/lexer.rs`, `continuation_indent` in `crates/cpl-fmt/src/layout.rs`, and the leading-operator help branch in `crates/cpl-syntax/src/parser/stmt.rs`.
+- **Decision.** One spelling per position. In `if`/`elif`/`while` headers an
+  optional or pattern is bound with `if let p = x` / `while let p = x`, chained
+  with `, cond`. `x is pat` (with `and cond`) is for value position, where a
+  `Bool` is wanted (`eaters.set(c, on: tops.first_gt(c) is q and a[q] <= s)`,
+  `phase is Seeking`). A header written `if x is p:` or `while x is p:` gets a
+  lint with a machine-applicable `cpl fix` to the `let` form.
+- **Reason.** §48.6 made `is` desugar to `if let`, so both spellings reached
+  headers and dreams started mixing them. The rule keeps one spelling per
+  position without losing the expression form.
+- **Reverse.** Drop the lint and its codemod.
