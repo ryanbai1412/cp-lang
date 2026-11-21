@@ -1,37 +1,38 @@
-const MOD = 1000000007
-type Z = Mod<MOD>
+type Z = Mod<1_000_000_007>
+let comb = Comb<Z.MOD>()
 
-@!multitest
+@! multitest
 let (n, l, q): (Int, Int, Int) = read()
-let a: List<Int> = [read::<Int>() - 1 - i for i in 0..n]
-var ops: List<(Int, Int)> = []
-for _ in 0..q:
-    let (i0, x0): (Int, Int) = read()
-    let i = i0 - 1
-    ops.push((x0 - 1 - i, i))
-ops.sort()
+let raw_a: [0..n]Int = read()
+let a: [0..n]Int = [0..n] i => raw_a[i] - 1 - i
+let raw_ops: [0..q](Int, Int) = read()
+let ops = [(val: x - i, pos: i - 1) for (i, x) in raw_ops].sorted()
 
-let comb = Comb<MOD>()
 let fact_q = comb.fact(q)
-let inv_val: [0..=q]Z = [0..=q] i => if i == 0: 0 else: Z(i).inv()
+let inv: [0..=q]Z = [0..=q] i => if i == 0: 0 else: Z(i).inv
 
 var out: [0..n]Z = 0
 for i in 0..n:
+    let ai = a[i]
     var num_left = 0
-    var num_right = 0
-    for z in 0..q:
-        if ops[z].1 <= i: num_right += 1
+    var num_right = count(pos <= i for (_, pos) in ops)
     var ans: Z = 0
-    for z in 0..=q:
-        let lo = if z == 0: 0 else: ops[z - 1].0
-        let hi = if z == q: l else: ops[z].0
+    var lo = 0
+
+    fn sweep(hi: Int):
         if hi > lo:
             if num_left + num_right == 0:
-                ans += Z(min(max(a[i], lo), hi) - lo)
+                ans += Z(min(max(ai, lo), hi) - lo)
             else:
-                ans += Z(hi - lo) * Z(num_right) * inv_val[num_left + num_right]
-        if z < q:
-            if ops[z].1 <= i: num_right -= 1
-            if ops[z].1 >= i: num_left += 1
+                ans += Z(hi - lo) * Z(num_right) * inv[num_left + num_right]
+        lo = hi
+
+    for (hi, pos) in ops:
+        sweep(hi)
+        if pos <= i: num_right -= 1
+        if pos >= i: num_left += 1
+    sweep(l)
+
     out[i] = (ans + Z(i + 1)) * fact_q
+
 print(out)

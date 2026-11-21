@@ -1,23 +1,24 @@
-@!multitest
+@! multitest
 let (n, q): (Int, Int) = read()
-var a: List<Int> = [read::<Int>() - 1 for _ in 0..n]
-var prv0: [0..n]Int = 0
-var prv1: [0..n]Int = 0
-for z in 0..2:
-    var stk: List<(Int, Int)> = [(n, -1)]
-    for i in 0..n:
-        while stk.last!.0 < a[i]: let _ = stk.pop()
-        if z == 0: prv0[i] = stk.last!.1 else: prv1[i] = stk.last!.1
-        stk.push((a[i], i))
-    a = [n - 1 - a[n - 1 - i] for i in 0..n]
+let a: [1..=n]Int = read()
 
-var bad: [0..n]Int = n
-for i in 0..n:
-    let l = prv0[i]
-    let r = n - 1 - prv1[n - 1 - i]
-    if 0 <= l and r <= n - 1:
+var prev_gt: [1..=n]?Int = none
+var stk: List<Int> = []
+for i in 1..=n:
+    while let top = stk.last, a[top] < a[i]: let _ = stk.pop()
+    prev_gt[i] = stk.last
+    stk.push(i)
+
+var bad: [1..=n]Int = n + 1
+stk.clear()
+for i in (1..=n).rev:
+    while let top = stk.last, a[top] > a[i]: let _ = stk.pop()
+    if let l = prev_gt[i], let r = stk.last:
         bad[l] min= r
-for i in (0..(n - 1)).rev: bad[i] min= bad[i + 1]
+    stk.push(i)
+
+for i in (1..n).rev: bad[i] min= bad[i + 1]
+
 for _ in 0..q:
     let (l, r): (Int, Int) = read()
-    print(if r - 1 >= bad[l - 1]: "NO" else: "YES")
+    print(if r >= bad[l]: "NO" else: "YES")

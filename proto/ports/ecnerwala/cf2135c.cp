@@ -1,46 +1,41 @@
-type Z = Mod<998244353>
+type Z = Mod<998_244_353>
 
-@!multitest
-let (n, m, v0): (Int, Int, Int) = read()
-let v_mod: Z = v0
-let a: List<Int> = [read::<Int>() for _ in 0..n]
-var adj: [0..n]List<Int> = []
-for _ in 0..m:
-    let (u, v): (Int, Int) = read()
-    adj[u - 1].push(v - 1)
-    adj[v - 1].push(u - 1)
+@! multitest
+let (n, m, lim): (Int, Int, Int) = read()
+domain V = 1..=n
+domain E = 0..m
+let raw_a: [V]Int = read()
+let edges: [E](u: V, v: V) = read()
+let g = Graph.undirected(edges)
 
-var depth: [0..n]?Int = none
-var low: [0..n]Int = 0
-var must_val: [0..n]?Int = none
+var depth: [V]?Int = none
+var low: [V]Int = 0
+var must: [V]?Int = [V] u => if raw_a[u] < 0: none else: raw_a[u]
 var ans: Z = 1
 
-fn dfs(cur: Int, prv: Int):
-    let d = if prv < 0: 0 else: depth[prv]! + 1
-    depth[cur] = d
-    low[cur] = d
-    if a[cur] >= 0: must_val[cur] = a[cur]
-    for nxt in adj[cur]:
-        if nxt == prv: continue
-        if let nd = depth[nxt]:
-            if nd < d:
-                low[cur] min= nd
-                if ((1 ^ nd ^ d) & 1) != 0:
-                    if let mv = must_val[cur]:
-                        if mv != 0: ans = 0
-                    else:
-                        must_val[cur] = 0
-        else:
-            dfs(nxt, cur)
-            if low[nxt] <= d and low[nxt] != depth[nxt]!:
-                low[cur] min= low[nxt]
-                if let nm = must_val[nxt]:
-                    if let cm = must_val[cur]:
-                        if cm != nm: ans = 0
-                    else:
-                        must_val[cur] = nm
-    if low[cur] == d and must_val[cur] == none:
-        ans *= v_mod
+fn force(u: V, val: Int):
+    if let prev = must[u]:
+        if prev != val: ans = 0
+    else:
+        must[u] = val
 
-dfs(0, -1)
+fn dfs(u: V, p: ?V, d: Int):
+    depth[u] = d
+    low[u] = d
+    for a in g.adj(u):
+        let v = a.to
+        if p == v: continue
+        if let nd = depth[v]:
+            if nd < d:
+                low[u] min= nd
+                if (d - nd) % 2 == 0: force(u, 0)
+        else:
+            dfs(v, u, d + 1)
+            if low[v] <= d:
+                low[u] min= low[v]
+                if let mv = must[v]: force(u, mv)
+    if low[u] == d and must[u] == none:
+        ans *= Z(lim)
+
+dfs(V(1), none, 0)
 print(ans)
