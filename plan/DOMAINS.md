@@ -324,17 +324,28 @@ supports `--trace` globs/exclusions, `--test`, `--watch`, `--last` ring buffer,
 (breakpoints, call stacks, domain-labeled locals/globals, `next`/`stepIn`/`stepOut`/`continue`,
 backward `stepBack`/`reverseContinue`, hover/watch `evaluate`, replay of failing inputs,
 exception stops on traps; `crates/cpl-cli/tests/dap.rs`) wired into `editors/vscode`
-(`type: "cp"`, `cp.debug`); (4) interpreter speed on compute-heavy ports is 44x–261x slower than C++ `-O2`
-after unboxing `?Int`/1-field `Int` structs and removing hot-path allocations
-(`dph` 884 -> 693 ms, `dpl` 542 -> 483 ms, `dpk` 770 -> 728 ms, `dpm` 1288 ->
-1028 ms; closing the gap to <= 10x needs a typed bytecode VM);
+(`type: "cp"`, `cp.debug`); (4) plain untraced/unprofiled runs now execute on
+the typed register bytecode VM (`crates/cpl-interp/src/vm.rs`) with unboxed
+`i64`/`(val, some)`/small-tuple (`ArrayData::SmallIntTuple`) slots and flat
+typed arrays (`ArrayData` in `crates/cpl-interp/src/value.rs`), structural
+modular-arithmetic superinstructions (`ModAddI`/`ModSubI`/`ModMulI`/`ModNegI`/
+`Mod::new`), inlined pure leaf helpers, direct VM calls, and block-local
+last-use move semantics (`ways = next`). On the full 291-port scoreboard
+(`--full --interp-timeout 10 --jobs 4`), 287/291 pass, and across 208 ports
+with `interp >= 20 ms`: **p50 = 10.61x**, **p95 = 56.83x**, **max = 281.6x**
+(`cf2207f`, 110 ports > 10x; bar <= 10x not yet met); wave-12C heavy DP ports
+improved from 53–161 s / 3.1 GB to 11.62 s / 211 MB (`cf2180f1`, `n=5000, m=5000`,
+21.4x vs C++ 0.543 s) and 5.73 s / 223 MB (`cf2183f`, `n=5000` chain, 16.1x vs
+C++ 0.355 s);
 (5) no stage snapshots (`--stage`) or interactive exchange trace.
 **Bar.** Every runtime error class has a golden message with values and call
 path; trace filtering and index-space views tested end to end; DAP step
 debugger wired into VS Code and tested over stdio; interpreter within 10x of
 C++ `-O2` on ports (north star 5x).
-**Next.** (1) Typed register bytecode VM in `cpl-interp` (unboxed slots, resolved
-locals, monomorphized calls) to bring interpreter speed to <= 10x of C++ `-O2`; (2) stage snapshots (`--stage`) and interactive exchange traces;
+**Next.** (1) Close remaining bytecode VM gaps (mutable-arg calls, closures/hofs,
+`List`/`Map`/`Set`/string hot paths, `FromLabel` bounds hoisting, and `cpl run`
+startup/compilation overhead on short ports) to bring p50/p95 under 10x (north
+star 5x); (2) stage snapshots (`--stage`) and interactive exchange traces;
 (3) headless-browser test for `tools/trace/index.html`.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)

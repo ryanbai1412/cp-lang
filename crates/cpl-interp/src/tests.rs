@@ -315,3 +315,73 @@ print(s.first!, s.last!, r[2], sum(r), prod(r), is_sorted(r))
         );
     }
 }
+
+#[test]
+fn vm_small_tuple_arrays_mod_superops_and_rev_iter() {
+    let source = "
+type Z = Mod<1_000_000_007>
+type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
+
+let n = read(1..=100)
+domain I = 0..n
+domain P = 0..=n
+var ways: [I]Ways = (0, 0, 0, 0)
+ways[I.first] = (9, 3, 3, 1)
+var suf: [P, P]Z = 0
+fn rect(x0: Int, x1: Int, y0: Int, y1: Int) -> Z =
+    suf[P(x0), P(y0)] - suf[P(x1), P(y0)] - suf[P(x0), P(y1)] + suf[P(x1), P(y1)]
+
+for i in I:
+    var side: Ways = (0, 0, 0, 0)
+    for j in I:
+        let w = ways[j]
+        let (open, walled, shut) = (w.open + side.open, w.walled + side.walled, w.shut + side.shut)
+        let falls = open + walled
+        ways[j] = (6 * falls, 3 * falls, 2 * falls, falls)
+        let slides = open + 2 * shut
+        side = (3 * slides, slides, 3 * shut, shut)
+        suf[P(i.to_idx), P(j.to_idx)] = -falls + suf[P(i.to_idx + 1), P(j.to_idx)]
+
+var order_sum = 0
+let ord_arr = [I] i => i.to_idx
+for v in ord_arr.rev:
+    order_sum = order_sum * 10 + v
+print(ways[I.last].open, ways[I.last].boxed, rect(0, n, 0, n), order_sum)
+";
+    let (out, trap) = outcome(source, "4\n");
+    assert_eq!(trap, None);
+    assert!(out.ends_with(" 3210\n"), "unexpected output: {out}");
+}
+
+#[test]
+fn vm_from_label_out_of_range_traps_with_domain_info() {
+    let source = "
+let n = read(1..=10)
+domain P = 0..=n
+let bad = P(n + 1)
+print(bad.to_idx)
+";
+    let (_, trap) = outcome(source, "3\n");
+    let msg = trap.expect("expected out-of-range trap");
+    assert!(msg.contains("4 is not in `P`, which is 0..=3"), "unexpected trap: {msg}");
+}
+
+#[test]
+fn vm_rolling_array_move_semantics() {
+    let source = "
+let n = read(1..=20)
+domain I = 0..n
+var ways: [I]Int = 0
+ways[I.first] = 1
+for step in 0..n:
+    var next: [I]Int = 0
+    for i in I:
+        next[i] = ways[i] + (if let p = i - 1: ways[p] else: 0)
+    ways = next
+    ways[I.first] += 1
+print(ways[I.last])
+";
+    let (out, trap) = outcome(source, "5\n");
+    assert_eq!(trap, None);
+    assert_eq!(out, "6\n");
+}

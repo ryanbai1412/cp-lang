@@ -3936,7 +3936,7 @@ fn binop_sym(op: BinOp) -> &'static str {
 }
 
 /// A domain for a message: `1..=5`, or that it is empty.
-fn describe(lo: i64, len: i64) -> String {
+pub(crate) fn describe(lo: i64, len: i64) -> String {
     if len == 0 {
         "empty".into()
     } else {

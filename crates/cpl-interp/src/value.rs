@@ -411,9 +411,70 @@ impl ListViewVal {
     }
 }
 
+/// Kind of each scalar field inside a packed [`ArrayData::SmallIntTuple`].
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum SmallFieldKind {
+    Int,
+    OneIntStruct,
+    Bool,
+    Char,
+}
+
+impl SmallFieldKind {
+    #[inline]
+    pub fn try_unbox(v: &Value) -> Option<(Self, i64)> {
+        match v {
+            Value::Int(x) => Some((Self::Int, *x)),
+            Value::Tuple(TupleVal::OneInt(x)) => Some((Self::OneIntStruct, *x)),
+            Value::Bool(b) => Some((Self::Bool, i64::from(*b))),
+            Value::Char(c) => Some((Self::Char, i64::from(*c))),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn box_val(self, v: i64) -> Value {
+        match self {
+            Self::Int => Value::Int(v),
+            Self::OneIntStruct => Value::Tuple(TupleVal::OneInt(v)),
+            Self::Bool => Value::Bool(v != 0),
+            Self::Char => Value::Char(v as u8),
+        }
+    }
+}
+
+fn try_unbox_small_tuple(v: &Value) -> Option<(u8, [SmallFieldKind; 4], [i64; 4])> {
+    let Value::Tuple(TupleVal::Boxed(fs)) = v else {
+        return None;
+    };
+    let len = fs.len();
+    if !(2..=4).contains(&len) {
+        return None;
+    }
+    let mut kinds = [SmallFieldKind::Int; 4];
+    let mut vals = [0i64; 4];
+    for (i, f) in fs.iter().enumerate() {
+        let (k, x) = SmallFieldKind::try_unbox(f)?;
+        kinds[i] = k;
+        vals[i] = x;
+    }
+    Some((len as u8, kinds, vals))
+}
+
+#[inline]
+fn box_small_tuple(stride: u8, kinds: &[SmallFieldKind; 4], slice: &[i64]) -> Value {
+    let n = stride as usize;
+    let mut fs = Vec::with_capacity(n);
+    for i in 0..n {
+        fs.push(kinds[i].box_val(slice[i]));
+    }
+    Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
+}
+
 /// Typed flat backing storage for [`Array`] cells so primitive arrays
 /// (`Int`, `Pos`, `Bound`, 1-field `Int` structs like `Mod<P>`, `Bool`,
-/// `Char`, `Float`) avoid 24-byte `Value` tagging and `Clone`/`Drop` dispatch.
+/// `Char`, `Float`, and 2..=4-field scalar tuples/structs) avoid 24-byte
+/// `Value` tagging and `Rc`/`Clone`/`Drop` overhead.
 #[derive(Clone, Debug)]
 pub(crate) enum ArrayData {
     Int(Vec<i64>),
@@ -422,6 +483,11 @@ pub(crate) enum ArrayData {
     Bool(Vec<u8>),
     Char(Vec<u8>),
     Float(Vec<f64>),
+    SmallIntTuple {
+        stride: u8,
+        kinds: [SmallFieldKind; 4],
+        data: Vec<i64>,
+    },
     Values(Vec<Value>),
 }
 
@@ -444,7 +510,18 @@ impl Array {
             Value::Bool(b) => ArrayData::Bool(vec![u8::from(b); cells]),
             Value::Char(c) => ArrayData::Char(vec![c; cells]),
             Value::Float(f) => ArrayData::Float(vec![f; cells]),
-            other => ArrayData::Values(vec![other; cells]),
+            other => {
+                if let Some((stride, kinds, vals)) = try_unbox_small_tuple(&other) {
+                    let s = stride as usize;
+                    let mut data = Vec::with_capacity(cells * s);
+                    for _ in 0..cells {
+                        data.extend_from_slice(&vals[..s]);
+                    }
+                    ArrayData::SmallIntTuple { stride, kinds, data }
+                } else {
+                    ArrayData::Values(vec![other; cells])
+                }
+            }
         };
         Array { dims, data }
     }
@@ -493,6 +570,28 @@ impl Array {
             Some(Value::Float(_)) if values.iter().all(|v| matches!(v, Value::Float(_))) => {
                 ArrayData::Float(values.into_iter().map(|v| v.float()).collect())
             }
+            Some(first) if try_unbox_small_tuple(first).is_some() => {
+                let (stride, kinds, _) = try_unbox_small_tuple(first).unwrap();
+                let s = stride as usize;
+                let mut data = Vec::with_capacity(values.len() * s);
+                let mut ok = true;
+                for v in &values {
+                    match try_unbox_small_tuple(v) {
+                        Some((st, ks, vals)) if st == stride && ks[..s] == kinds[..s] => {
+                            data.extend_from_slice(&vals[..s]);
+                        }
+                        _ => {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if ok {
+                    ArrayData::SmallIntTuple { stride, kinds, data }
+                } else {
+                    ArrayData::Values(values)
+                }
+            }
             _ => ArrayData::Values(values),
         };
         Array { dims, data }
@@ -504,6 +603,7 @@ impl Array {
             ArrayData::OptInt(v) => v.len(),
             ArrayData::Bool(v) | ArrayData::Char(v) => v.len(),
             ArrayData::Float(v) => v.len(),
+            ArrayData::SmallIntTuple { stride, data, .. } => data.len() / (*stride as usize),
             ArrayData::Values(v) => v.len(),
         }
     }
@@ -526,6 +626,12 @@ impl Array {
             ArrayData::Bool(v) => v.get(idx).copied().map(|b| Value::Bool(b != 0)),
             ArrayData::Char(v) => v.get(idx).copied().map(Value::Char),
             ArrayData::Float(v) => v.get(idx).copied().map(Value::Float),
+            ArrayData::SmallIntTuple { stride, kinds, data } => {
+                let s = *stride as usize;
+                let off = idx.checked_mul(s)?;
+                let slice = data.get(off..off + s)?;
+                Some(box_small_tuple(*stride, kinds, slice))
+            }
             ArrayData::Values(v) => v.get(idx).cloned(),
         }
     }
@@ -542,7 +648,49 @@ impl Array {
             ArrayData::Bool(v) => Value::Bool(v[idx] != 0),
             ArrayData::Char(v) => Value::Char(v[idx]),
             ArrayData::Float(v) => Value::Float(v[idx]),
+            ArrayData::SmallIntTuple { stride, kinds, data } => {
+                let s = *stride as usize;
+                let off = idx * s;
+                box_small_tuple(*stride, kinds, &data[off..off + s])
+            }
             ArrayData::Values(v) => v[idx].clone(),
+        }
+    }
+
+    #[inline]
+    pub fn get_small_tuple(&self, idx: usize, len: usize, out: &mut [i64]) {
+        match &self.data {
+            ArrayData::SmallIntTuple { stride, data, .. } if *stride as usize == len => {
+                let off = idx * len;
+                out[..len].copy_from_slice(&data[off..off + len]);
+            }
+            _ => {
+                if let Some(Value::Tuple(TupleVal::Boxed(fs))) = self.get(idx) {
+                    for (i, f) in fs.iter().take(len).enumerate() {
+                        out[i] = SmallFieldKind::try_unbox(f).map_or(0, |(_, x)| x);
+                    }
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn set_small_tuple(
+        &mut self,
+        idx: usize,
+        len: usize,
+        vals: &[i64],
+        kinds: &[SmallFieldKind; 4],
+    ) {
+        match &mut self.data {
+            ArrayData::SmallIntTuple { stride, data, .. } if *stride as usize == len => {
+                let off = idx * len;
+                data[off..off + len].copy_from_slice(&vals[..len]);
+            }
+            _ => {
+                let v = box_small_tuple(len as u8, kinds, &vals[..len]);
+                self.set(idx, v);
+            }
         }
     }
 
@@ -556,6 +704,20 @@ impl Array {
             (ArrayData::Bool(v), Value::Bool(b)) => v[idx] = u8::from(b),
             (ArrayData::Char(v), Value::Char(c)) => v[idx] = c,
             (ArrayData::Float(v), Value::Float(f)) => v[idx] = f,
+            (
+                ArrayData::SmallIntTuple { stride, kinds, data },
+                other,
+            ) => {
+                let s = *stride as usize;
+                if let Some((st, ks, vals)) = try_unbox_small_tuple(&other) {
+                    if st == *stride && ks[..s] == kinds[..s] {
+                        let off = idx * s;
+                        data[off..off + s].copy_from_slice(&vals[..s]);
+                        return;
+                    }
+                }
+                self.as_mut_values()[idx] = other;
+            }
             (ArrayData::Values(v), other) => v[idx] = other,
             (_, other) => {
                 self.as_mut_values()[idx] = other;
@@ -591,6 +753,17 @@ impl Array {
             ArrayData::OptInt(v) => v.reverse(),
             ArrayData::Bool(v) | ArrayData::Char(v) => v.reverse(),
             ArrayData::Float(v) => v.reverse(),
+            ArrayData::SmallIntTuple { stride, data, .. } => {
+                let s = *stride as usize;
+                let n = data.len() / s;
+                for i in 0..n / 2 {
+                    let a = i * s;
+                    let b = (n - 1 - i) * s;
+                    for k in 0..s {
+                        data.swap(a + k, b + k);
+                    }
+                }
+            }
             ArrayData::Values(v) => v.reverse(),
         }
     }
@@ -601,6 +774,14 @@ impl Array {
             ArrayData::OptInt(v) => v.swap(i, j),
             ArrayData::Bool(v) | ArrayData::Char(v) => v.swap(i, j),
             ArrayData::Float(v) => v.swap(i, j),
+            ArrayData::SmallIntTuple { stride, data, .. } => {
+                let s = *stride as usize;
+                let a = i * s;
+                let b = j * s;
+                for k in 0..s {
+                    data.swap(a + k, b + k);
+                }
+            }
             ArrayData::Values(v) => v.swap(i, j),
         }
     }
@@ -614,6 +795,18 @@ impl Array {
             (ArrayData::Bool(v), Value::Bool(b)) => v.fill(u8::from(b)),
             (ArrayData::Char(v), Value::Char(c)) => v.fill(c),
             (ArrayData::Float(v), Value::Float(f)) => v.fill(f),
+            (ArrayData::SmallIntTuple { stride, kinds, data }, other) => {
+                let s = *stride as usize;
+                if let Some((st, ks, vals)) = try_unbox_small_tuple(&other) {
+                    if st == *stride && ks[..s] == kinds[..s] {
+                        for chunk in data.chunks_exact_mut(s) {
+                            chunk.copy_from_slice(&vals[..s]);
+                        }
+                        return;
+                    }
+                }
+                self.as_mut_values().fill(other);
+            }
             (ArrayData::Values(v), other) => v.fill(other),
             (_, other) => {
                 self.as_mut_values().fill(other);
@@ -640,6 +833,12 @@ impl Array {
             ArrayData::Bool(v) => v.iter().copied().map(|b| Value::Bool(b != 0)).collect(),
             ArrayData::Char(v) => v.iter().copied().map(Value::Char).collect(),
             ArrayData::Float(v) => v.iter().copied().map(Value::Float).collect(),
+            ArrayData::SmallIntTuple { stride, kinds, data } => {
+                let s = *stride as usize;
+                data.chunks_exact(s)
+                    .map(|chunk| box_small_tuple(*stride, kinds, chunk))
+                    .collect()
+            }
             ArrayData::Values(v) => v.clone(),
         }
     }

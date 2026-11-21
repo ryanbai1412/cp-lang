@@ -20,8 +20,8 @@
 //!   `FallbackExpr`, syncing live local slots with `Interp` so 100% of CP Lang
 //!   features work identically.
 
-use crate::value::{Array, ArrayData, OptVal, TupleVal, Value};
-use crate::{trap, Flow, Interp, Res};
+use crate::value::{Array, ArrayData, OptVal, SmallFieldKind, TupleVal, Value};
+use crate::{describe, trap, Flow, Interp, Res};
 use cpl_diag::Span;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId,
@@ -109,11 +109,35 @@ impl ScalarKind {
     }
 }
 
+fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, [SmallFieldKind; 4])> {
+    let field_tys: Vec<&Ty> = match ty {
+        Ty::Tuple(fs) => fs.iter().collect(),
+        Ty::Struct(id) => program.structs[*id].fields.iter().map(|(_, t)| t).collect(),
+        _ => return None,
+    };
+    let len = field_tys.len();
+    if !(2..=4).contains(&len) {
+        return None;
+    }
+    let mut kinds = [SmallFieldKind::Int; 4];
+    for (i, t) in field_tys.iter().enumerate() {
+        let sk = ScalarKind::of_ty(t, program)?;
+        kinds[i] = match sk {
+            ScalarKind::Int => SmallFieldKind::Int,
+            ScalarKind::OneIntStruct => SmallFieldKind::OneIntStruct,
+            ScalarKind::Bool => SmallFieldKind::Bool,
+            ScalarKind::Char => SmallFieldKind::Char,
+        };
+    }
+    Some((len as u8, kinds))
+}
+
 /// Where a local `Slot` lives inside a VM frame.
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum SlotLoc {
     I(u16, ScalarKind),
     OptI { val: u16, some: u16, kind: ScalarKind },
+    SmallTuple { base: u16, len: u8, kinds: [SmallFieldKind; 4] },
     V(u16),
 }
 
@@ -132,6 +156,7 @@ pub(crate) enum Op {
     ConstI { dst: u16, idx: u32 },
     MoveI { dst: u16, src: u16 },
     MoveV { dst: u16, src: u16 },
+    MoveVConsume { dst: u16, src: u16 },
     BoxI { dst_v: u16, src_i: u16, kind: ScalarKind },
     UnboxI { dst_i: u16, src_v: u16 },
     BoxOptI { dst_v: u16, val: u16, some: u16, kind: ScalarKind },
@@ -144,6 +169,7 @@ pub(crate) enum Op {
     StoreGlobalOptI { gid: u16, val: u16, some: u16, kind: ScalarKind },
     LoadGlobalV { dst: u16, gid: u16 },
     StoreGlobalV { gid: u16, src: u16 },
+    StoreGlobalVMove { gid: u16, src: u16 },
 
     // Checked i64 arithmetic
     AddI { dst: u16, a: u16, b: u16 },
@@ -151,6 +177,10 @@ pub(crate) enum Op {
     MulI { dst: u16, a: u16, b: u16 },
     DivI { dst: u16, a: u16, b: u16 },
     RemI { dst: u16, a: u16, b: u16 },
+    ModAddI { dst: u16, a: u16, b: u16, modulus: u32 },
+    ModSubI { dst: u16, a: u16, b: u16, modulus: u32 },
+    ModMulI { dst: u16, a: u16, b: u16, modulus: u32 },
+    ModNegI { dst: u16, a: u16, modulus: u32 },
     AddImmI { dst: u16, a: u16, imm: i32 },
     NegI { dst: u16, a: u16 },
     BitAndI { dst: u16, a: u16, b: u16 },
@@ -166,6 +196,8 @@ pub(crate) enum Op {
     // Domain/Pos/Bound & Option superinstructions
     DomainLen { dst: u16, dom: u16 },
     DomainLo { dst: u16, dom: u16 },
+    FromLabel { dst: u16, src: u16, dom: u16 },
+    FromOrd { dst: u16, src: u16, dom: u16 },
     PosNext { dst_val: u16, dst_some: u16, src: u16, len: u16 },
     PosPrev { dst_val: u16, dst_some: u16, src: u16 },
     PosOffset { dst_val: u16, dst_some: u16, src: u16, delta: u16, dom: u16 },
@@ -173,6 +205,18 @@ pub(crate) enum Op {
     BoundStepL { dst: u16, ord: u16, k: u16, dom: u16 },
     BoundStepR { dst: u16, ord: u16, k: u16, dom: u16 },
     UnwrapOptI { dst: u16, val: u16, some: u16 },
+
+    // Small unboxed scalar tuples (2..=4 fields)
+    LoadGArr1SmallTuple { dst_base: u16, len: u8, gid: u16, r_i: u16 },
+    LoadLArr1SmallTuple { dst_base: u16, len: u8, arr_v: u16, r_i: u16 },
+    StoreGArr1SmallTuple { gid: u16, r_i: u16, src_base: u16, len: u8, kinds: [SmallFieldKind; 4] },
+    StoreLArr1SmallTuple { arr_v: u16, r_i: u16, src_base: u16, len: u8, kinds: [SmallFieldKind; 4] },
+    LoadGArr2SmallTuple { dst_base: u16, len: u8, gid: u16, r_i: u16, r_j: u16 },
+    LoadLArr2SmallTuple { dst_base: u16, len: u8, arr_v: u16, r_i: u16, r_j: u16 },
+    StoreGArr2SmallTuple { gid: u16, r_i: u16, r_j: u16, src_base: u16, len: u8, kinds: [SmallFieldKind; 4] },
+    StoreLArr2SmallTuple { arr_v: u16, r_i: u16, r_j: u16, src_base: u16, len: u8, kinds: [SmallFieldKind; 4] },
+    BoxSmallTuple { dst_v: u16, src_base: u16, len: u8, kinds: [SmallFieldKind; 4] },
+    UnboxSmallTuple { dst_base: u16, len: u8, src_v: u16 },
 
     // Comparisons & branches
     CmpI { dst: u16, a: u16, b: u16, op: CmpOp },
@@ -281,7 +325,7 @@ impl<'p> CompiledProgram<'p> {
             if has_mut || has_guarded || f.locals.len() > 512 {
                 fns.push(None);
             } else {
-                let mut c = Compiler::new(program, &f.locals, Some(id));
+                let mut c = Compiler::new(program, &f.locals, Some(id), f.params.len());
                 let ret_kind = ScalarKind::of_ty(&f.ret, program);
                 c.compile_block(&f.body, ret_kind, true);
                 let mut chunk = c.finish();
@@ -290,7 +334,7 @@ impl<'p> CompiledProgram<'p> {
                 fns.push(Some(chunk));
             }
         }
-        let mut main_c = Compiler::new(program, &program.main_locals, None);
+        let mut main_c = Compiler::new(program, &program.main_locals, None, 0);
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let main = main_c.finish();
@@ -302,6 +346,15 @@ struct LoopTargets {
     id: LoopId,
     breaks: Vec<usize>,
     continues: Vec<usize>,
+}
+
+#[derive(Clone, Copy)]
+enum ModSuperOp {
+    Add(u32),
+    Sub(u32),
+    Mul(u32),
+    Neg(u32),
+    New(u32),
 }
 
 struct Compiler<'p> {
@@ -323,11 +376,16 @@ struct Compiler<'p> {
 }
 
 impl<'p> Compiler<'p> {
-    fn new(program: &'p Program, locals: &'p [Local], cur_fn: Option<FnId>) -> Self {
+    fn new(
+        program: &'p Program,
+        locals: &'p [Local],
+        cur_fn: Option<FnId>,
+        param_count: usize,
+    ) -> Self {
         let mut slot_map = Vec::with_capacity(locals.len());
         let mut next_i: u16 = 0;
         let mut next_v: u16 = 0;
-        for local in locals {
+        for (idx, local) in locals.iter().enumerate() {
             if let Some(kind) = ScalarKind::of_ty(&local.ty, program) {
                 slot_map.push(SlotLoc::I(next_i, kind));
                 next_i += 1;
@@ -336,6 +394,15 @@ impl<'p> Compiler<'p> {
                 let some = next_i + 1;
                 next_i += 2;
                 slot_map.push(SlotLoc::OptI { val, some, kind });
+            } else if idx >= param_count {
+                if let Some((len, kinds)) = small_tuple_shape(&local.ty, program) {
+                    let base = next_i;
+                    next_i += len as u16;
+                    slot_map.push(SlotLoc::SmallTuple { base, len, kinds });
+                } else {
+                    slot_map.push(SlotLoc::V(next_v));
+                    next_v += 1;
+                }
             } else {
                 slot_map.push(SlotLoc::V(next_v));
                 next_v += 1;
@@ -540,6 +607,124 @@ impl<'p> Compiler<'p> {
         }
     }
 
+    fn recognize_mod_op(program: &Program, fn_id: FnId) -> Option<ModSuperOp> {
+        let f = &program.fns[fn_id];
+        if f.params.iter().any(|p| p.mutable) || f.body.stmts.len() != 1 {
+            return None;
+        }
+        let ret_expr = match &f.body.stmts[0] {
+            Stmt::Return(Some(e)) | Stmt::Give(e) => e,
+            _ => return None,
+        };
+        let inner = match &ret_expr.kind {
+            ExprKind::Tuple(fs) if fs.len() == 1 => &fs[0],
+            _ => ret_expr,
+        };
+        let is_param_field = |e: &Expr, p: Slot| -> bool {
+            match &e.kind {
+                ExprKind::Field(base, 0) => matches!(base.kind, ExprKind::Local(s) if s == p),
+                ExprKind::Local(s) => *s == p,
+                _ => false,
+            }
+        };
+        if f.params.len() == 1 {
+            if let ExprKind::Binary(BinOp::Rem, a, m_e) = &inner.kind {
+                if let ExprKind::Int(m) = m_e.kind {
+                    if m > 0 && m <= u32::MAX as i64 && is_param_field(a, 0) {
+                        return Some(ModSuperOp::New(m as u32));
+                    }
+                }
+            }
+        }
+        let ExprKind::If(cond, then_e, else_e) = &inner.kind else {
+            return None;
+        };
+        if f.params.len() == 2 {
+            if let (
+                ExprKind::Cmp(CmpOp::Ge, lhs, rhs),
+                ExprKind::Binary(BinOp::Sub, t_lhs, t_rhs),
+                ExprKind::Binary(BinOp::Add, e_a, e_b),
+            ) = (&cond.kind, &then_e.kind, &else_e.kind)
+            {
+                if let (
+                    ExprKind::Binary(BinOp::Add, c_a, c_b),
+                    ExprKind::Int(m1),
+                    ExprKind::Binary(BinOp::Add, t_a, t_b),
+                    ExprKind::Int(m2),
+                ) = (&lhs.kind, &rhs.kind, &t_lhs.kind, &t_rhs.kind)
+                {
+                    if m1 == m2
+                        && *m1 > 0
+                        && *m1 <= u32::MAX as i64
+                        && is_param_field(c_a, 0)
+                        && is_param_field(c_b, 1)
+                        && is_param_field(t_a, 0)
+                        && is_param_field(t_b, 1)
+                        && is_param_field(e_a, 0)
+                        && is_param_field(e_b, 1)
+                    {
+                        return Some(ModSuperOp::Add(*m1 as u32));
+                    }
+                }
+            }
+            if let (
+                ExprKind::Cmp(CmpOp::Ge, c_a, c_b),
+                ExprKind::Binary(BinOp::Sub, t_a, t_b),
+                ExprKind::Binary(BinOp::Add, e_lhs, e_rhs),
+            ) = (&cond.kind, &then_e.kind, &else_e.kind)
+            {
+                if let (ExprKind::Binary(BinOp::Sub, e_a, e_b), ExprKind::Int(m)) =
+                    (&e_lhs.kind, &e_rhs.kind)
+                {
+                    if *m > 0
+                        && *m <= u32::MAX as i64
+                        && is_param_field(c_a, 0)
+                        && is_param_field(c_b, 1)
+                        && is_param_field(t_a, 0)
+                        && is_param_field(t_b, 1)
+                        && is_param_field(e_a, 0)
+                        && is_param_field(e_b, 1)
+                    {
+                        return Some(ModSuperOp::Sub(*m as u32));
+                    }
+                }
+            }
+            if Self::const_bool(cond) == Some(true) {
+                if let ExprKind::Binary(BinOp::Rem, mul_e, mod_e) = &then_e.kind {
+                    if let (ExprKind::Binary(BinOp::Mul, m_a, m_b), ExprKind::Int(m)) =
+                        (&mul_e.kind, &mod_e.kind)
+                    {
+                        if *m > 0
+                            && *m <= 3_037_000_499
+                            && is_param_field(m_a, 0)
+                            && is_param_field(m_b, 1)
+                        {
+                            return Some(ModSuperOp::Mul(*m as u32));
+                        }
+                    }
+                }
+            }
+        } else if f.params.len() == 1 {
+            if let (
+                ExprKind::Cmp(CmpOp::Eq, c_a, c_z),
+                ExprKind::Int(0),
+                ExprKind::Binary(BinOp::Sub, e_m, e_a),
+            ) = (&cond.kind, &then_e.kind, &else_e.kind)
+            {
+                if let (ExprKind::Int(0), ExprKind::Int(m)) = (&c_z.kind, &e_m.kind) {
+                    if *m > 0
+                        && *m <= u32::MAX as i64
+                        && is_param_field(c_a, 0)
+                        && is_param_field(e_a, 0)
+                    {
+                        return Some(ModSuperOp::Neg(*m as u32));
+                    }
+                }
+            }
+        }
+        None
+    }
+
     fn is_pure_leaf_fn(&self, fn_id: FnId) -> bool {
         if self.cur_fn == Some(fn_id) || self.inline_slots.is_some() {
             return false;
@@ -611,6 +796,16 @@ impl<'p> Compiler<'p> {
                     simple_expr(a, program) && simple_expr(b, program)
                 }
                 ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], program),
+                ExprKind::Index(base, indices) => {
+                    matches!(base.ty, Ty::Array { .. })
+                        && (indices.len() == 1 || indices.len() == 2)
+                        && matches!(base.kind, ExprKind::Global(_))
+                        && indices.iter().all(|i| simple_expr(i, program))
+                }
+                ExprKind::Call(callee, args) => {
+                    Compiler::recognize_mod_op(program, *callee).is_some()
+                        && args.iter().all(|a| matches!(a, Arg::Value(e) if simple_expr(e, program)))
+                }
                 ExprKind::If(c, t, e) => {
                     if let Some(b) = Compiler::const_bool(c) {
                         if b { simple_expr(t, program) } else { simple_expr(e, program) }
@@ -627,10 +822,205 @@ impl<'p> Compiler<'p> {
         simple_block(&f.body, self.program)
     }
 
-    fn compile_block(&mut self, block: &'p Block, ret_kind: Option<ScalarKind>, emit_ret: bool) {
-        for stmt in &block.stmts {
+    fn stmt_mentions_slot(stmt: &Stmt, target: Slot) -> bool {
+        match stmt {
+            Stmt::Let(s, init) => {
+                *s == target || init.as_ref().is_some_and(|e| Self::expr_mentions_slot(e, target))
+            }
+            Stmt::Assign(p, _, e) => {
+                Self::place_mentions_slot(p, target) || Self::expr_mentions_slot(e, target)
+            }
+            Stmt::Expr(e) | Stmt::Give(e) => Self::expr_mentions_slot(e, target),
+            Stmt::Return(e) => e.as_ref().is_some_and(|e| Self::expr_mentions_slot(e, target)),
+            Stmt::If(c, t, e) => {
+                Self::expr_mentions_slot(c, target)
+                    || t.stmts.iter().any(|s| Self::stmt_mentions_slot(s, target))
+                    || e.stmts.iter().any(|s| Self::stmt_mentions_slot(s, target))
+            }
+            Stmt::While(_, c, b) => {
+                Self::expr_mentions_slot(c, target)
+                    || b.stmts.iter().any(|s| Self::stmt_mentions_slot(s, target))
+            }
+            Stmt::For(_, var, iter, body) => {
+                *var == target
+                    || Self::iter_mentions_slot(iter, target)
+                    || body.stmts.iter().any(|s| Self::stmt_mentions_slot(s, target))
+            }
+            Stmt::Assert { cond, message, .. } => {
+                Self::expr_mentions_slot(cond, target)
+                    || message.as_ref().is_some_and(|m| Self::expr_mentions_slot(m, target))
+            }
+            Stmt::DefDomain { lo, len, .. } => {
+                Self::expr_mentions_slot(lo, target) || Self::expr_mentions_slot(len, target)
+            }
+            Stmt::DefDomainFromVal { val, .. } => Self::expr_mentions_slot(val, target),
+            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(_, _) => false,
+        }
+    }
+
+    fn iter_mentions_slot(iter: &Iter, target: Slot) -> bool {
+        match iter {
+            Iter::Range { lo, hi, .. } => {
+                Self::expr_mentions_slot(lo, target) || Self::expr_mentions_slot(hi, target)
+            }
+            Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
+                Self::expr_mentions_slot(e, target)
+            }
+        }
+    }
+
+    fn place_mentions_slot(p: &Place, target: Slot) -> bool {
+        match &p.kind {
+            PlaceKind::Local(s) => *s == target,
+            PlaceKind::Global(_) => false,
+            PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+                Self::place_mentions_slot(base, target)
+            }
+            PlaceKind::Index(base, idxs) => {
+                Self::place_mentions_slot(base, target)
+                    || idxs.iter().any(|i| Self::expr_mentions_slot(i, target))
+            }
+        }
+    }
+
+    fn expr_mentions_slot(e: &Expr, target: Slot) -> bool {
+        match &e.kind {
+            ExprKind::Local(s) => *s == target,
+            ExprKind::Closure(_) => true,
+            ExprKind::Unary(_, a)
+            | ExprKind::Cast(_, a)
+            | ExprKind::Field(a, _)
+            | ExprKind::Some(a)
+            | ExprKind::IsSome(a)
+            | ExprKind::IsVariant(a, _)
+            | ExprKind::Payload(a, _, _)
+            | ExprKind::Unwrap(a, _) => Self::expr_mentions_slot(a, target),
+            ExprKind::Binary(_, a, b) | ExprKind::Cmp(_, a, b) => {
+                Self::expr_mentions_slot(a, target) || Self::expr_mentions_slot(b, target)
+            }
+            ExprKind::Range { lo, hi } => {
+                Self::expr_mentions_slot(lo, target) || Self::expr_mentions_slot(hi, target)
+            }
+            ExprKind::If(c, t, f) => {
+                Self::expr_mentions_slot(c, target)
+                    || Self::expr_mentions_slot(t, target)
+                    || Self::expr_mentions_slot(f, target)
+            }
+            ExprKind::Index(b, idxs) => {
+                Self::expr_mentions_slot(b, target)
+                    || idxs.iter().any(|i| Self::expr_mentions_slot(i, target))
+            }
+            ExprKind::Tuple(es) | ExprKind::Variant(_, es) | ExprKind::Builtin(_, es) => {
+                es.iter().any(|x| Self::expr_mentions_slot(x, target))
+            }
+            ExprKind::Call(_, args) => args.iter().any(|a| match a {
+                Arg::Value(x) => Self::expr_mentions_slot(x, target),
+                Arg::Mut(p) => Self::place_mentions_slot(p, target),
+            }),
+            ExprKind::CallExpr(f, args) => {
+                Self::expr_mentions_slot(f, target)
+                    || args.iter().any(|a| match a {
+                        Arg::Value(x) => Self::expr_mentions_slot(x, target),
+                        Arg::Mut(p) => Self::place_mentions_slot(p, target),
+                    })
+            }
+            ExprKind::Mutate(_, p, args) => {
+                Self::place_mentions_slot(p, target)
+                    || args.iter().any(|x| Self::expr_mentions_slot(x, target))
+            }
+            ExprKind::Sort(p, _, desc) => {
+                Self::place_mentions_slot(p, target)
+                    || desc.as_ref().is_some_and(|x| Self::expr_mentions_slot(x, target))
+                    || true
+            }
+            ExprKind::Do(b) => b.stmts.iter().any(|s| Self::stmt_mentions_slot(s, target)),
+            ExprKind::Fill(_, fill) => {
+                fill.as_ref().is_some_and(|x| Self::expr_mentions_slot(x, target))
+            }
+            ExprKind::Print(args, end) => {
+                args.iter().any(|a| Self::expr_mentions_slot(&a.value, target))
+                    || end.as_ref().is_some_and(|x| Self::expr_mentions_slot(x, target))
+            }
+            ExprKind::Debug(_, args) => {
+                args.iter().any(|a| Self::expr_mentions_slot(&a.value, target))
+            }
+            ExprKind::Format(pieces) => pieces.iter().any(|p| match p {
+                cpl_ir::FmtPiece::Text(_) => false,
+                cpl_ir::FmtPiece::Value(a) => Self::expr_mentions_slot(&a.value, target),
+                cpl_ir::FmtPiece::Number(e, _) => Self::expr_mentions_slot(e, target),
+            }),
+            ExprKind::Read(_) => true,
+            ExprKind::Unit
+            | ExprKind::Int(_)
+            | ExprKind::Float(_)
+            | ExprKind::Bool(_)
+            | ExprKind::Char(_)
+            | ExprKind::Str(_)
+            | ExprKind::None
+            | ExprKind::Global(_)
+            | ExprKind::DomainVal(_)
+            | ExprKind::DomainLen(_)
+            | ExprKind::DomainLo(_)
+            | ExprKind::Error => false,
+        }
+    }
+
+    fn stmts_have_closure(stmts: &[Stmt]) -> bool {
+        stmts.iter().any(|s| Self::stmt_mentions_slot(s, usize::MAX))
+    }
+
+    fn compile_stmts(&mut self, stmts: &'p [Stmt]) {
+        let has_closure = Self::stmts_have_closure(stmts);
+        let mut declared = Vec::new();
+        for (i, stmt) in stmts.iter().enumerate() {
+            if let Stmt::Let(slot, _) = stmt {
+                declared.push(*slot);
+            }
+            if !has_closure {
+                if let Stmt::Assign(place, AssignOp::Set, rhs) = stmt {
+                    if let ExprKind::Local(src_slot) = rhs.kind {
+                        if declared.contains(&src_slot)
+                            && !stmts[i + 1..].iter().any(|s| Self::stmt_mentions_slot(s, src_slot))
+                        {
+                            if let SlotLoc::V(src_reg) = self.slot_loc(src_slot) {
+                                match &place.kind {
+                                    PlaceKind::Global(gid) => {
+                                        self.emit(
+                                            Op::StoreGlobalVMove {
+                                                gid: *gid as u16,
+                                                src: src_reg,
+                                            },
+                                            rhs.span,
+                                        );
+                                        continue;
+                                    }
+                                    PlaceKind::Local(dst_slot) => {
+                                        if let SlotLoc::V(dst_reg) = self.slot_loc(*dst_slot) {
+                                            if dst_reg != src_reg {
+                                                self.emit(
+                                                    Op::MoveVConsume {
+                                                        dst: dst_reg,
+                                                        src: src_reg,
+                                                    },
+                                                    rhs.span,
+                                                );
+                                            }
+                                            continue;
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             self.compile_stmt(stmt);
         }
+    }
+
+    fn compile_block(&mut self, block: &'p Block, ret_kind: Option<ScalarKind>, emit_ret: bool) {
+        self.compile_stmts(&block.stmts);
         if emit_ret {
             if ret_kind.is_some() {
                 let r = self.alloc_i();
@@ -666,6 +1056,15 @@ impl<'p> Compiler<'p> {
                         }
                     } else {
                         self.emit(Op::ConstImmI { dst: some, val: 0 }, Span::default());
+                    }
+                }
+                SlotLoc::SmallTuple { base, len, .. } => {
+                    if let Some(expr) = init {
+                        self.compile_expr_small_tuple(expr, base, len);
+                    } else {
+                        for k in 0..len as u16 {
+                            self.emit(Op::ConstImmI { dst: base + k, val: 0 }, Span::default());
+                        }
                     }
                 }
                 SlotLoc::V(dst) => {
@@ -732,9 +1131,7 @@ impl<'p> Compiler<'p> {
                     breaks: Vec::new(),
                     continues: Vec::new(),
                 });
-                for s in &body.stmts {
-                    self.compile_stmt(s);
-                }
+                self.compile_stmts(&body.stmts);
                 let lt = self.loops.pop().unwrap();
                 for c in lt.continues {
                     self.patch(c, head);
@@ -859,9 +1256,7 @@ impl<'p> Compiler<'p> {
                     breaks: Vec::new(),
                     continues: Vec::new(),
                 });
-                for s in &body.stmts {
-                    self.compile_stmt(s);
-                }
+                self.compile_stmts(&body.stmts);
                 let lt = self.loops.pop().unwrap();
                 let step_pc = self.ops.len() as u32;
                 for c in lt.continues {
@@ -912,9 +1307,7 @@ impl<'p> Compiler<'p> {
                     breaks: Vec::new(),
                     continues: Vec::new(),
                 });
-                for s in &body.stmts {
-                    self.compile_stmt(s);
-                }
+                self.compile_stmts(&body.stmts);
                 let lt = self.loops.pop().unwrap();
                 let step_pc = self.ops.len() as u32;
                 for c in lt.continues {
@@ -928,7 +1321,7 @@ impl<'p> Compiler<'p> {
                 }
                 true
             }
-            Iter::Seq(seq_expr, false) => {
+            Iter::Seq(seq_expr, rev) => {
                 let is_array = matches!(
                     &seq_expr.ty,
                     Ty::Array { dims, elem }
@@ -964,11 +1357,17 @@ impl<'p> Compiler<'p> {
                         seq_expr.span,
                     ),
                 };
-                self.emit(Op::ConstImmI { dst: r_idx, val: 0 }, seq_expr.span);
-                let j_skip = self.emit(
-                    Op::JmpGeI { a: r_idx, b: r_len, target: 0 },
-                    seq_expr.span,
-                );
+                let r_zero = self.alloc_i();
+                let j_skip = if *rev {
+                    let r_one = self.alloc_i();
+                    self.emit(Op::ConstImmI { dst: r_zero, val: 0 }, seq_expr.span);
+                    self.emit(Op::ConstImmI { dst: r_one, val: 1 }, seq_expr.span);
+                    self.emit(Op::SubI { dst: r_idx, a: r_len, b: r_one }, seq_expr.span);
+                    self.emit(Op::JmpLtI { a: r_idx, b: r_zero, target: 0 }, seq_expr.span)
+                } else {
+                    self.emit(Op::ConstImmI { dst: r_idx, val: 0 }, seq_expr.span);
+                    self.emit(Op::JmpGeI { a: r_idx, b: r_len, target: 0 }, seq_expr.span)
+                };
                 let body_pc = self.ops.len() as u32;
                 match (is_array, global_id) {
                     (true, Some(gid)) => self.emit(
@@ -997,19 +1396,24 @@ impl<'p> Compiler<'p> {
                 if let Some(lv) = local_v {
                     self.pinned_v = self.pinned_v.max(lv + 1);
                 }
-                for s in &body.stmts {
-                    self.compile_stmt(s);
-                }
+                self.compile_stmts(&body.stmts);
                 self.pinned_v = saved_pinned;
                 let lt = self.loops.pop().unwrap();
                 let step_pc = self.ops.len() as u32;
                 for c in lt.continues {
                     self.patch(c, step_pc);
                 }
-                self.emit(
-                    Op::ForInc { r_i: r_idx, r_hi: r_len, target: body_pc },
-                    seq_expr.span,
-                );
+                if *rev {
+                    self.emit(
+                        Op::ForDec { r_i: r_idx, r_lo: r_zero, target: body_pc },
+                        seq_expr.span,
+                    );
+                } else {
+                    self.emit(
+                        Op::ForInc { r_i: r_idx, r_hi: r_len, target: body_pc },
+                        seq_expr.span,
+                    );
+                }
                 let end_pc = self.ops.len() as u32;
                 self.patch(j_skip, end_pc);
                 for b in lt.breaks {
@@ -1048,16 +1452,20 @@ impl<'p> Compiler<'p> {
                 }
                 true
             }
-            (PlaceKind::Local(slot), AssignOp::Set, None, None) => {
-                let SlotLoc::V(dst) = self.slot_loc(*slot) else {
-                    return false;
-                };
-                let r = self.compile_expr_v(value);
-                if r != dst {
-                    self.emit(Op::MoveV { dst, src: r }, place.span);
+            (PlaceKind::Local(slot), AssignOp::Set, None, None) => match self.slot_loc(*slot) {
+                SlotLoc::SmallTuple { base, len, .. } => {
+                    self.compile_expr_small_tuple(value, base, len);
+                    true
                 }
-                true
-            }
+                SlotLoc::V(dst) => {
+                    let r = self.compile_expr_v(value);
+                    if r != dst {
+                        self.emit(Op::MoveV { dst, src: r }, place.span);
+                    }
+                    true
+                }
+                _ => false,
+            },
             (PlaceKind::Local(slot), op, Some(ScalarKind::Int), _) => {
                 let SlotLoc::I(dst, _) = self.slot_loc(*slot) else {
                     return false;
@@ -1295,6 +1703,75 @@ impl<'p> Compiler<'p> {
                 }
             }
             (PlaceKind::Index(base, indices), AssignOp::Set, None, None)
+                if matches!(base.ty, Ty::Array { .. })
+                    && (indices.len() == 1 || indices.len() == 2)
+                    && small_tuple_shape(&place.ty, self.program).is_some() =>
+            {
+                let (len, kinds) = small_tuple_shape(&place.ty, self.program).unwrap();
+                let src_base = self.next_i;
+                self.next_i += len as u16;
+                match &base.kind {
+                    PlaceKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_j = (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
+                        self.compile_expr_small_tuple(value, src_base, len);
+                        if let Some(r_j) = r_j {
+                            self.emit(
+                                Op::StoreGArr2SmallTuple {
+                                    gid: *gid as u16,
+                                    r_i,
+                                    r_j,
+                                    src_base,
+                                    len,
+                                    kinds,
+                                },
+                                place.span,
+                            );
+                        } else {
+                            self.emit(
+                                Op::StoreGArr1SmallTuple {
+                                    gid: *gid as u16,
+                                    r_i,
+                                    src_base,
+                                    len,
+                                    kinds,
+                                },
+                                place.span,
+                            );
+                        }
+                        true
+                    }
+                    PlaceKind::Local(slot) => {
+                        let SlotLoc::V(arr_v) = self.slot_loc(*slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_j = (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
+                        self.compile_expr_small_tuple(value, src_base, len);
+                        if let Some(r_j) = r_j {
+                            self.emit(
+                                Op::StoreLArr2SmallTuple {
+                                    arr_v,
+                                    r_i,
+                                    r_j,
+                                    src_base,
+                                    len,
+                                    kinds,
+                                },
+                                place.span,
+                            );
+                        } else {
+                            self.emit(
+                                Op::StoreLArr1SmallTuple { arr_v, r_i, src_base, len, kinds },
+                                place.span,
+                            );
+                        }
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            (PlaceKind::Index(base, indices), AssignOp::Set, None, None)
                 if matches!(base.ty, Ty::Array { .. }) && indices.len() == 1 =>
             {
                 match &base.kind {
@@ -1413,6 +1890,11 @@ impl<'p> Compiler<'p> {
                     let s = self.alloc_i();
                     self.emit(Op::ConstImmI { dst: s, val: 1 }, span);
                     (v, s)
+                }
+                SlotLoc::SmallTuple { base, .. } => {
+                    let s = self.alloc_i();
+                    self.emit(Op::ConstImmI { dst: s, val: 0 }, span);
+                    (base, s)
                 }
             },
             ExprKind::Global(gid) => {
@@ -1612,6 +2094,7 @@ impl<'p> Compiler<'p> {
                     dst
                 }
                 SlotLoc::OptI { val, .. } => val,
+                SlotLoc::SmallTuple { base, .. } => base,
             },
             ExprKind::Global(gid) => {
                 let dst = self.alloc_i();
@@ -1665,6 +2148,18 @@ impl<'p> Compiler<'p> {
                 self.compile_expr_i(base)
             }
             ExprKind::Field(base, idx) => {
+                if let ExprKind::Local(slot) = &base.kind {
+                    if let SlotLoc::SmallTuple { base: b, len, .. } = self.slot_loc(*slot) {
+                        if *idx < len as usize {
+                            return b + *idx as u16;
+                        }
+                    }
+                }
+                if let ExprKind::Tuple(fs) = &base.kind {
+                    if *idx < fs.len() {
+                        return self.compile_expr_i(&fs[*idx]);
+                    }
+                }
                 let obj_v = self.compile_expr_v(base);
                 let dst = self.alloc_i();
                 self.emit(Op::FieldI { dst, obj_v, field: *idx as u16 }, span);
@@ -1776,6 +2271,18 @@ impl<'p> Compiler<'p> {
                 self.emit(Op::DomainLo { dst: lo, dom: *d as u16 }, span);
                 let dst = self.alloc_i();
                 self.emit(Op::AddI { dst, a, b: lo }, span);
+                dst
+            }
+            ExprKind::Cast(Cast::FromLabel(d), inner) => {
+                let src = self.compile_expr_i(inner);
+                let dst = self.alloc_i();
+                self.emit(Op::FromLabel { dst, src, dom: *d as u16 }, span);
+                dst
+            }
+            ExprKind::Cast(Cast::FromOrd(d), inner) => {
+                let src = self.compile_expr_i(inner);
+                let dst = self.alloc_i();
+                self.emit(Op::FromOrd { dst, src, dom: *d as u16 }, span);
                 dst
             }
             ExprKind::Builtin(Builtin::BoundStepL(d), args) if args.len() == 2 => {
@@ -1980,6 +2487,48 @@ impl<'p> Compiler<'p> {
                 dst
             }
             ExprKind::Call(fn_id, args) => {
+                if let Some(mop) = Self::recognize_mod_op(self.program, *fn_id) {
+                    if args.iter().all(|a| matches!(a, Arg::Value(_))) {
+                        let dst = self.alloc_i();
+                        match (mop, args.as_slice()) {
+                            (ModSuperOp::Add(modulus), [Arg::Value(a), Arg::Value(b)]) => {
+                                let ra = self.compile_expr_i(a);
+                                let rb = self.compile_expr_i(b);
+                                self.emit(Op::ModAddI { dst, a: ra, b: rb, modulus }, span);
+                                return dst;
+                            }
+                            (ModSuperOp::Sub(modulus), [Arg::Value(a), Arg::Value(b)]) => {
+                                let ra = self.compile_expr_i(a);
+                                let rb = self.compile_expr_i(b);
+                                self.emit(Op::ModSubI { dst, a: ra, b: rb, modulus }, span);
+                                return dst;
+                            }
+                            (ModSuperOp::Mul(modulus), [Arg::Value(a), Arg::Value(b)]) => {
+                                let ra = self.compile_expr_i(a);
+                                let rb = self.compile_expr_i(b);
+                                self.emit(Op::ModMulI { dst, a: ra, b: rb, modulus }, span);
+                                return dst;
+                            }
+                            (ModSuperOp::Neg(modulus), [Arg::Value(a)]) => {
+                                let ra = self.compile_expr_i(a);
+                                self.emit(Op::ModNegI { dst, a: ra, modulus }, span);
+                                return dst;
+                            }
+                            (ModSuperOp::New(modulus), [Arg::Value(a)]) => {
+                                if let ExprKind::Int(v) = a.kind {
+                                    self.emit_const_i(dst, v.rem_euclid(modulus as i64), span);
+                                    return dst;
+                                }
+                                let ra = self.compile_expr_i(a);
+                                let rm = self.alloc_i();
+                                self.emit_const_i(rm, modulus as i64, span);
+                                self.emit(Op::RemI { dst, a: ra, b: rm }, span);
+                                return dst;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 if self.is_pure_leaf_fn(*fn_id) {
                     let f = &self.program.fns[*fn_id];
                     let mut arg_regs = Vec::with_capacity(args.len());
@@ -2089,6 +2638,11 @@ impl<'p> Compiler<'p> {
                     self.emit(Op::BoxOptI { dst_v, val, some, kind }, span);
                     dst_v
                 }
+                SlotLoc::SmallTuple { base, len, kinds } => {
+                    let dst_v = self.alloc_v();
+                    self.emit(Op::BoxSmallTuple { dst_v, src_base: base, len, kinds }, span);
+                    dst_v
+                }
             },
             ExprKind::Global(gid) => {
                 let dst = self.alloc_v();
@@ -2173,6 +2727,101 @@ impl<'p> Compiler<'p> {
         dst
     }
 
+    fn compile_expr_small_tuple(&mut self, expr: &'p Expr, dst_base: u16, len: u8) {
+        let span = expr.span;
+        match &expr.kind {
+            ExprKind::Tuple(fs) if fs.len() == len as usize => {
+                let mut regs = [0u16; 4];
+                for (k, f) in fs.iter().enumerate() {
+                    regs[k] = self.compile_expr_i(f);
+                }
+                for (k, &r) in regs.iter().enumerate().take(len as usize) {
+                    let d = dst_base + k as u16;
+                    if r != d {
+                        self.emit(Op::MoveI { dst: d, src: r }, span);
+                    }
+                }
+            }
+            ExprKind::Local(slot) => match self.slot_loc(*slot) {
+                SlotLoc::SmallTuple { base, len: slen, .. } if slen == len => {
+                    for k in 0..len as u16 {
+                        if dst_base + k != base + k {
+                            self.emit(Op::MoveI { dst: dst_base + k, src: base + k }, span);
+                        }
+                    }
+                }
+                SlotLoc::V(src_v) => {
+                    self.emit(Op::UnboxSmallTuple { dst_base, len, src_v }, span);
+                }
+                _ => {
+                    let src_v = self.emit_fallback_expr_v(expr);
+                    self.emit(Op::UnboxSmallTuple { dst_base, len, src_v }, span);
+                }
+            },
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::Array { .. })
+                    && (indices.len() == 1 || indices.len() == 2) =>
+            {
+                match &base.kind {
+                    ExprKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        if indices.len() == 2 {
+                            let r_j = self.compile_expr_i(&indices[1]);
+                            self.emit(
+                                Op::LoadGArr2SmallTuple {
+                                    dst_base,
+                                    len,
+                                    gid: *gid as u16,
+                                    r_i,
+                                    r_j,
+                                },
+                                span,
+                            );
+                        } else {
+                            self.emit(
+                                Op::LoadGArr1SmallTuple {
+                                    dst_base,
+                                    len,
+                                    gid: *gid as u16,
+                                    r_i,
+                                },
+                                span,
+                            );
+                        }
+                    }
+                    ExprKind::Local(slot) => {
+                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
+                            let r_i = self.compile_expr_i(&indices[0]);
+                            if indices.len() == 2 {
+                                let r_j = self.compile_expr_i(&indices[1]);
+                                self.emit(
+                                    Op::LoadLArr2SmallTuple { dst_base, len, arr_v, r_i, r_j },
+                                    span,
+                                );
+                            } else {
+                                self.emit(
+                                    Op::LoadLArr1SmallTuple { dst_base, len, arr_v, r_i },
+                                    span,
+                                );
+                            }
+                        } else {
+                            let src_v = self.emit_fallback_expr_v(expr);
+                            self.emit(Op::UnboxSmallTuple { dst_base, len, src_v }, span);
+                        }
+                    }
+                    _ => {
+                        let src_v = self.emit_fallback_expr_v(expr);
+                        self.emit(Op::UnboxSmallTuple { dst_base, len, src_v }, span);
+                    }
+                }
+            }
+            _ => {
+                let src_v = self.compile_expr_v(expr);
+                self.emit(Op::UnboxSmallTuple { dst_base, len, src_v }, span);
+            }
+        }
+    }
+
     fn emit_fallback_expr_v(&mut self, expr: &'p Expr) -> u16 {
         let idx = self.fallback_exprs.len() as u32;
         self.fallback_exprs.push(expr);
@@ -2195,6 +2844,14 @@ fn sync_to_stack(
             SlotLoc::OptI { val, some, kind } => {
                 kind.box_opt(regs_i[val as usize], regs_i[some as usize])
             }
+            SlotLoc::SmallTuple { base: b, len, kinds } => {
+                let n = len as usize;
+                let mut fs = Vec::with_capacity(n);
+                for k in 0..n {
+                    fs.push(kinds[k].box_val(regs_i[b as usize + k]));
+                }
+                Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
+            }
             SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
         };
     }
@@ -2215,6 +2872,13 @@ fn sync_from_stack(
                 regs_i[val as usize] = v;
                 regs_i[some as usize] = s;
             }
+            SlotLoc::SmallTuple { base: b, len, .. } => {
+                if let Value::Tuple(TupleVal::Boxed(fs)) = &stack[base + slot] {
+                    for (k, f) in fs.iter().take(len as usize).enumerate() {
+                        regs_i[b as usize + k] = ScalarKind::unbox_val(f);
+                    }
+                }
+            }
             SlotLoc::V(r) => {
                 regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
             }
@@ -2230,7 +2894,7 @@ fn read_array_i(arr: &Array, at: usize) -> i64 {
             ArrayData::Bool(v) | ArrayData::Char(v) => i64::from(*v.get_unchecked(at)),
             ArrayData::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
             ArrayData::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
-            ArrayData::Float(_) => 0,
+            ArrayData::Float(_) | ArrayData::SmallIntTuple { .. } => 0,
         }
     }
 }
@@ -2244,7 +2908,7 @@ fn write_array_i(arr: &mut Array, at: usize, val: i64) {
             ArrayData::Char(v) => *v.get_unchecked_mut(at) = val as u8,
             ArrayData::Values(v) => *v.get_unchecked_mut(at) = Value::Int(val),
             ArrayData::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
-            ArrayData::Float(_) => {}
+            ArrayData::Float(_) | ArrayData::SmallIntTuple { .. } => {}
         }
     }
 }
@@ -2379,6 +3043,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     regs_v[r as usize] = std::mem::replace(&mut args_v[iv], Value::Unit);
                     iv += 1;
                 }
+                SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
             }
         }
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
@@ -2421,6 +3086,10 @@ impl<'p, 'io> Interp<'p, 'io> {
                     };
                     regs_v[dst as usize] = v;
                 }
+                Op::MoveVConsume { dst, src } => {
+                    regs_v[dst as usize] =
+                        std::mem::replace(&mut regs_v[src as usize], Value::Unit);
+                }
                 Op::BoxI { dst_v, src_i, kind } => {
                     regs_v[dst_v as usize] = kind.box_val(regs_i[src_i as usize]);
                 }
@@ -2459,6 +3128,10 @@ impl<'p, 'io> Interp<'p, 'io> {
                     } else {
                         regs_v[src as usize].clone()
                     };
+                }
+                Op::StoreGlobalVMove { gid, src } => {
+                    self.globals[gid as usize] =
+                        std::mem::replace(&mut regs_v[src as usize], Value::Unit);
                 }
                 Op::AddI { dst, a, b } => {
                     let av = regs_i[a as usize];
@@ -2502,6 +3175,28 @@ impl<'p, 'io> Interp<'p, 'io> {
                         return trap(spans[cur_pc], format!("remainder by zero: `{av} % 0`"));
                     }
                     regs_i[dst as usize] = av.checked_rem_euclid(bv).unwrap_or(0);
+                }
+                Op::ModAddI { dst, a, b, modulus } => {
+                    let s = regs_i[a as usize] + regs_i[b as usize];
+                    let m = modulus as i64;
+                    regs_i[dst as usize] = if s >= m { s - m } else { s };
+                }
+                Op::ModSubI { dst, a, b, modulus } => {
+                    let av = regs_i[a as usize];
+                    let bv = regs_i[b as usize];
+                    let m = modulus as i64;
+                    regs_i[dst as usize] = if av >= bv { av - bv } else { av - bv + m };
+                }
+                Op::ModMulI { dst, a, b, modulus } => {
+                    let av = regs_i[a as usize];
+                    let bv = regs_i[b as usize];
+                    let m = modulus as i64;
+                    let prod = av * bv;
+                    regs_i[dst as usize] = if prod >= 0 { prod % m } else { prod.rem_euclid(m) };
+                }
+                Op::ModNegI { dst, a, modulus } => {
+                    let av = regs_i[a as usize];
+                    regs_i[dst as usize] = if av == 0 { 0 } else { modulus as i64 - av };
                 }
                 Op::AddImmI { dst, a, imm } => {
                     let av = regs_i[a as usize];
@@ -2570,6 +3265,205 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::DomainLo { dst, dom } => {
                     regs_i[dst as usize] = self.domains[dom as usize].0;
+                }
+                Op::FromLabel { dst, src, dom } => {
+                    let (lo, len) = self.domains[dom as usize];
+                    let label = regs_i[src as usize];
+                    if label < lo || label - lo >= len {
+                        let name = &self.program.domains[dom as usize];
+                        return trap(
+                            spans[cur_pc],
+                            format!("{label} is not in `{name}`, which is {}", describe(lo, len)),
+                        );
+                    }
+                    regs_i[dst as usize] = label - lo;
+                }
+                Op::FromOrd { dst, src, dom } => {
+                    let (lo, len) = self.domains[dom as usize];
+                    let ord = regs_i[src as usize];
+                    if ord < 0 || ord >= len {
+                        let name = &self.program.domains[dom as usize];
+                        return trap(
+                            spans[cur_pc],
+                            format!("`{name}` has no position {ord}: it is {}", describe(lo, len)),
+                        );
+                    }
+                    regs_i[dst as usize] = ord;
+                }
+                Op::LoadGArr1SmallTuple { dst_base, len, gid, r_i } => {
+                    let i = regs_i[r_i as usize];
+                    if let Value::Array(arr) = &self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array of length {d0}"),
+                            );
+                        }
+                        let b = dst_base as usize;
+                        let n = len as usize;
+                        arr.get_small_tuple(i as usize, n, &mut regs_i[b..b + n]);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::LoadLArr1SmallTuple { dst_base, len, arr_v, r_i } => {
+                    let i = regs_i[r_i as usize];
+                    if let Value::Array(arr) = &regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array of length {d0}"),
+                            );
+                        }
+                        let b = dst_base as usize;
+                        let n = len as usize;
+                        arr.get_small_tuple(i as usize, n, &mut regs_i[b..b + n]);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::StoreGArr1SmallTuple { gid, r_i, src_base, len, kinds } => {
+                    let i = regs_i[r_i as usize];
+                    let b = src_base as usize;
+                    let n = len as usize;
+                    if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array of length {d0}"),
+                            );
+                        }
+                        Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::StoreLArr1SmallTuple { arr_v, r_i, src_base, len, kinds } => {
+                    let i = regs_i[r_i as usize];
+                    let b = src_base as usize;
+                    let n = len as usize;
+                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array of length {d0}"),
+                            );
+                        }
+                        Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::LoadGArr2SmallTuple { dst_base, len, gid, r_i, r_j } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    if let Value::Array(arr) = &self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 || j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index ({i}, {j}) is outside an array of shape ({d0}, {d1})"),
+                            );
+                        }
+                        let b = dst_base as usize;
+                        let n = len as usize;
+                        arr.get_small_tuple((i * d1 + j) as usize, n, &mut regs_i[b..b + n]);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::LoadLArr2SmallTuple { dst_base, len, arr_v, r_i, r_j } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    if let Value::Array(arr) = &regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 || j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index ({i}, {j}) is outside an array of shape ({d0}, {d1})"),
+                            );
+                        }
+                        let b = dst_base as usize;
+                        let n = len as usize;
+                        arr.get_small_tuple((i * d1 + j) as usize, n, &mut regs_i[b..b + n]);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::StoreGArr2SmallTuple { gid, r_i, r_j, src_base, len, kinds } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let b = src_base as usize;
+                    let n = len as usize;
+                    if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 || j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index ({i}, {j}) is outside an array of shape ({d0}, {d1})"),
+                            );
+                        }
+                        Rc::make_mut(arr).set_small_tuple(
+                            (i * d1 + j) as usize,
+                            n,
+                            &regs_i[b..b + n],
+                            &kinds,
+                        );
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::StoreLArr2SmallTuple { arr_v, r_i, r_j, src_base, len, kinds } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let b = src_base as usize;
+                    let n = len as usize;
+                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 || j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index ({i}, {j}) is outside an array of shape ({d0}, {d1})"),
+                            );
+                        }
+                        Rc::make_mut(arr).set_small_tuple(
+                            (i * d1 + j) as usize,
+                            n,
+                            &regs_i[b..b + n],
+                            &kinds,
+                        );
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::BoxSmallTuple { dst_v, src_base, len, kinds } => {
+                    let b = src_base as usize;
+                    let n = len as usize;
+                    let mut fs = Vec::with_capacity(n);
+                    for k in 0..n {
+                        fs.push(kinds[k].box_val(regs_i[b + k]));
+                    }
+                    regs_v[dst_v as usize] = Value::Tuple(TupleVal::Boxed(Rc::new(fs)));
+                }
+                Op::UnboxSmallTuple { dst_base, len, src_v } => {
+                    let b = dst_base as usize;
+                    let n = len as usize;
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[src_v as usize] {
+                        for (k, f) in fs.iter().take(n).enumerate() {
+                            regs_i[b + k] = ScalarKind::unbox_val(f);
+                        }
+                    }
+                    if src_v as usize >= chunk.num_local_v {
+                        regs_v[src_v as usize] = Value::Unit;
+                    }
                 }
                 Op::PosNext { dst_val, dst_some, src, len } => {
                     let next = regs_i[src as usize] + 1;
@@ -3029,17 +3923,29 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::LoadGList1I { dst, gid, r_i } => {
                     let idx = regs_i[r_i as usize];
-                    if let Value::List(list) = &self.globals[gid as usize] {
-                        let len = list.len() as i64;
-                        if idx < 0 || idx >= len {
-                            return trap(
-                                spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
-                            );
+                    match &self.globals[gid as usize] {
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
                         }
-                        regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected list");
+                        Value::ListView(view) => {
+                            let len = view.len as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_i[dst as usize] =
+                                ScalarKind::unbox_val(view.get(idx as usize).unwrap());
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
                     }
                 }
                 Op::StoreGList1I { gid, r_i, r_val, kind } => {
@@ -3060,17 +3966,29 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::LoadLList1I { dst, list_v, r_i } => {
                     let idx = regs_i[r_i as usize];
-                    if let Value::List(list) = &regs_v[list_v as usize] {
-                        let len = list.len() as i64;
-                        if idx < 0 || idx >= len {
-                            return trap(
-                                spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
-                            );
+                    match &regs_v[list_v as usize] {
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
                         }
-                        regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected list");
+                        Value::ListView(view) => {
+                            let len = view.len as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_i[dst as usize] =
+                                ScalarKind::unbox_val(view.get(idx as usize).unwrap());
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
                     }
                 }
                 Op::StoreLList1I { list_v, r_i, r_val, kind } => {
@@ -3104,18 +4022,18 @@ impl<'p, 'io> Interp<'p, 'io> {
                     }
                 }
                 Op::GListLen { dst, gid } => {
-                    if let Value::List(list) = &self.globals[gid as usize] {
-                        regs_i[dst as usize] = list.len() as i64;
-                    } else {
-                        regs_i[dst as usize] = 0;
-                    }
+                    regs_i[dst as usize] = match &self.globals[gid as usize] {
+                        Value::List(list) => list.len() as i64,
+                        Value::ListView(view) => view.len as i64,
+                        _ => 0,
+                    };
                 }
                 Op::LListLen { dst, list_v } => {
-                    if let Value::List(list) = &regs_v[list_v as usize] {
-                        regs_i[dst as usize] = list.len() as i64;
-                    } else {
-                        regs_i[dst as usize] = 0;
-                    }
+                    regs_i[dst as usize] = match &regs_v[list_v as usize] {
+                        Value::List(list) => list.len() as i64,
+                        Value::ListView(view) => view.len as i64,
+                        _ => 0,
+                    };
                 }
                 Op::LoadGArr1V { dst, gid, r_i } => {
                     let idx = regs_i[r_i as usize];
@@ -3372,6 +4290,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                             SlotLoc::I(..) => ni += 1,
                             SlotLoc::OptI { .. } => ni += 2,
                             SlotLoc::V(_) => nv += 1,
+                            SlotLoc::SmallTuple { .. } => {
+                                unreachable!("params are never SmallTuple")
+                            }
                         }
                     }
                     let mut arg_buf_i = [0i64; 8];
