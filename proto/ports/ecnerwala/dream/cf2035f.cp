@@ -12,8 +12,12 @@ fn settle(need: Int) = if need < 0: need % 2 else: need
 
 fn works(ops: Int) -> Bool:
     let (round, rest) = ops.divmod(V.count)
-    t.up(+, finish: (s, v) => settle(s + a[v] - round - (v <= rest).int))[root] == 0
+    t.up(+, finish: (s, v) => settle(s + a[v] - round - Int(v.ord < rest)))[root] == 0
 
 let cycle = 2 * V.count
 let rounds = 0..=2 * (V.count + a.max())
-print(min(k * cycle + r for r in 0..cycle if let k = bsearch_first(rounds, k => works(k * cycle + r))) ?? -1)
+print(
+    min(
+        k * cycle + r for r in 0..cycle if let k = bsearch_first(rounds, k => works(k * cycle + r))
+    ) ?? -1
+)

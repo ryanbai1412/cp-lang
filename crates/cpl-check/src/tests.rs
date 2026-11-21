@@ -1621,6 +1621,18 @@ fn a_tree_reads_without_a_use() {
     assert!(codes(src).is_empty(), "{:?}", check(src));
 }
 
+/// The tree dreams that the stdlib covers check clean, so a change that breaks
+/// their spelling (`t.up(+, finish:)`, `t.virtual`, `t.below`) fails here.
+#[test]
+fn the_tree_dreams_check() {
+    for dream in ["cf2035f", "cf2124i", "cf2183d2", "cf2237i1"] {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../proto/ports/ecnerwala/dream/{dream}.cp"));
+        let found = check(&std::fs::read_to_string(path).unwrap());
+        assert!(found.is_empty(), "{dream}: {found:?}");
+    }
+}
+
 #[test]
 fn reading_an_enum_needs_its_tags() {
     let rest = "let n: 1..=3 = read()\ndomain Row = 1..=n\nlet g: [Row, Row]Tile = read()\n";
