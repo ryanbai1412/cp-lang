@@ -523,7 +523,7 @@ for r in 0..3:
 print(zs)
 ");
     assert!(cpp.contains("zs = std::move(t0);"), "{cpp}");
-    assert!(cpp.contains("zs = ys;"), "a named list is copied: {cpp}");
+    assert!(cpp.contains("zs = std::move(ys);"), "ys is not read again: {cpp}");
 }
 
 #[test]
@@ -1580,4 +1580,17 @@ print(g, x)
         out.contains("((uint64_t)a | (uint64_t)b) <= 0xFFFFFFFFULL"),
         "cpl::ediv should emit 32-bit unsigned fast path:\n{out}"
     );
+}
+
+#[test]
+fn a_local_read_for_the_last_time_moves_into_its_place() {
+    let src = |after: &str| {
+        format!(
+            "let n: Int = read()\nvar dp = [0 for _ in 0..n]\nfor _ in 0..n:\n    let next = [dp[i] + i for i in 0..n]\n    dp = next\n{after}print(dp[0])\n"
+        )
+    };
+    let moved = cpp(&src(""));
+    assert!(moved.contains("dp = std::move(next);"), "{moved}");
+    let read = cpp(&src("").replace("    dp = next\n", "    dp = next\n    print(next[0])\n"));
+    assert!(!read.contains("dp = std::move(next);"), "next is read after the store: {read}");
 }

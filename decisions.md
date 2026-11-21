@@ -4094,3 +4094,16 @@ the row never checks it, so traps and output are unchanged: it majorizes
 original's 0.46 s; with this it runs 0.39 s. Corpus: +10,314 B over 29
 programs (max +4.7%, cf2062h), none broken. Reverse: return no rows from
 `Emitter::loop_rows` in `crates/cpl-codegen/src/rowcache.rs`.
+
+## 123. A local read for the last time moves into its place (2026-11-21)
+
+`x = y`, where `y` is a local its block declared and the rest of the block
+never names (no read, store or `mut` argument) and the block has no closure,
+writes `x = std::move(y)`. The next pass of a loop declares `y` afresh, so
+nothing can see the moved-from value: output and traps are unchanged and
+the store is never slower, so it majorizes. Comprehension blocks already
+moved their result this way; this is the same rule for any block. Why now:
+ucup5s01a's `dp = next` per round copied a 500-element row: 1.16-1.25 s
+before, 1.10-1.17 s after, vs 1.08-1.23 s for the original (same input,
+same g++). Corpus: +1,111 B over 87 programs, none broken. Reverse: return
+false from `last_read` in `crates/cpl-codegen/src/stmt.rs`.

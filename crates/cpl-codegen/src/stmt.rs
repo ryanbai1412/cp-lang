@@ -56,7 +56,9 @@ impl<'p> Emitter<'p> {
                 }
                 _ => None,
             };
+            self.moves_last = last_read(block, k);
             self.stmt(stmt, out);
+            self.moves_last = false;
         }
         self.tail = None;
     }
@@ -837,10 +839,14 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
-        // A value built by its own block (a comprehension) is not
-        // read again: it moves into the place.
-        if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) = (op, &value.kind, flat(whole)) {
-            let made_here = stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built));
+        // A value built by its own block (a comprehension), or a block's
+        // local read for the last time, is not read again: it moves.
+        let last = std::mem::take(&mut self.moves_last);
+        if let (AssignOp::Set, ExprKind::Local(built)) = (op, &value.kind) {
+            let made_here = last && std::ptr::eq(value, whole)
+                || flat(whole).is_some_and(|(stmts, _)| {
+                    stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built))
+                });
             if made_here && !value.ty.is_scalar() && !matches!(value.ty, Ty::Fn(..)) {
                 v.text = format!("std::move({})", v.text);
             }
@@ -1466,6 +1472,26 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
         }
     });
     (reads && quiet).then_some((map, key))
+}
+
+/// True when statement `k` of `block` is `x = y` with `y` a local the
+/// block declared and never mentions again. The next pass of a loop
+/// declares `y` afresh, so nothing can read it after the store.
+fn last_read(block: &Block, k: usize) -> bool {
+    let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else { return false };
+    let (ExprKind::Local(slot), PlaceKind::Local(_) | PlaceKind::Global(_)) = (&value.kind, &place.kind) else {
+        return false;
+    };
+    if walk::root(place) == (false, *slot)
+        || !block.stmts[..k].iter().any(|stmt| matches!(stmt, Stmt::Let(s, _) if s == slot))
+    {
+        return false;
+    }
+    let mut seen = false;
+    walk::deep_exprs(block, &mut |e| seen |= matches!(e.kind, ExprKind::Closure(_)));
+    let rest = Block { stmts: block.stmts[k + 1..].to_vec() };
+    walk::deep_exprs(&rest, &mut |e| seen |= matches!(e.kind, ExprKind::Local(s) if s == *slot));
+    !seen && !Effects::of_block(&rest).locals.contains(slot)
 }
 
 /// What the statements after a `let` in its block can do, for
