@@ -86,6 +86,33 @@ the goal, the relevant chapters, the tests to pass, the files it owns. Long
 histories poison judgment. Agents report evidence against a commitment; they
 never silently override it.
 
+### Standing systems
+
+These run every round without anyone asking for them. The retro checks each
+one is alive and asks what a demanding owner would add next; the answer is
+added here.
+
+- **Gold standard.** `design/EXEMPLARS-PORTS.md` is the bar for every dream
+  and port; the taste reviewer scores against it, and briefs link it.
+- **Dream gap queue.** Every gap between a port and its dream is a friction
+  citing dream lines. Triage clusters them into general mechanisms, ranked
+  by how many ports they unblock, and assigns them to lanes. The scoreboard
+  ratchets the port/dream token ratio so the gap only closes.
+- **Two ways to grow the stdlib.** Bottom up: ports find what is missing.
+  Top down: one owner per area (graphs, trees, range structures, strings,
+  number theory and combinatorics, flows and matching, containers, geometry,
+  DP and search, sequences) designs the area as a whole against the contest
+  patterns it must cover. Port frictions in an area go to its owner, who
+  fixes them inside the design, never as a one-off helper.
+- **Ports are the benchmark and test suite.** Runtime vs C++, interpreter vs
+  C++, emitted bytes and tokens are measured on the corpus and ratcheted.
+- **Codemods, not hand migration.** A rename or syntax change ships with a
+  `cpl fix` rule that rewrites the whole corpus mechanically. Moving a port
+  toward its dream is a reviewed rewrite, not a codemod.
+- **Manual inspection.** Each round the coordinator reads a sample of new
+  ports, dreams and lane commits side by side, and turns what it finds into
+  brief edits, checklist lines or lane work.
+
 ## Working on this repository
 
 - `scripts/check.sh --fast` is the gate before every push to `main`. It

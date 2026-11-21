@@ -1,8 +1,10 @@
 # PORTING.md
 
 How to port an accepted solution. A port is evidence about the language, so
-the bar is the exemplars (`design/EXEMPLARS.md`, `design/sketches/`), not
-"it passes the gate".
+the bar is the exemplars, not "it passes the gate". The gold standard is
+`design/EXEMPLARS-PORTS.md`: five real ports written as they should read.
+Every dream must be at that level, and every port is scored against it.
+`design/EXEMPLARS.md` and `design/sketches/` show more of the style.
 
 ## Order of work
 
@@ -44,6 +46,8 @@ A port fails review if any of these hold and the gap is not reported:
 
 Every new port gets a cold taste review: a fresh agent with only
 `AGENTS.md`, this file, the exemplars, the statement, the dream and the
-port. It scores the port 1 to 5 against the dream and lists the failures.
+port. It scores the port 1 to 5 against the dream and lists the failures; a 5
+reads like `design/EXEMPLARS-PORTS.md`. It also scores the dream itself: a
+dream that reads like the C++ is sent back before the port is judged.
 Ports under 4 go back to their author with the review before the wave
 counts as done. Recurring findings become lane work or checklist lines.
