@@ -80,39 +80,12 @@ print(1)
 ",
 };
 
-pub const OPERATOR_VALUE: Planned = Planned {
-    feature: "an operator as a value, `by: <`",
-    see: None,
-    now: "write the lambda: `by: (a, b) => a < b`",
-    example: "fn pick(by: (Int, Int) -> Bool) -> Bool = by(1, 2)
-print(pick(by: <))
-",
-};
-
 pub const STR_OF: Planned = Planned {
     feature: "a string type over given bytes, `Str of \"01?\"`",
     see: None,
     now: "read a `Str` and check its bytes where it is used",
     example: "let s: Str of \"01\" = read()
 print(s.len)
-",
-};
-
-pub const ENUM_VALUE: Planned = Planned {
-    feature: "a value for an enum variant, `enum E: a = -1`",
-    see: None,
-    now: "give the values with a `match`: `fn value(e: E) -> Int = match e: …`",
-    example: "enum Sign: neg = -1, pos = 1
-print(1)
-",
-};
-
-pub const IS_BINDING: Planned = Planned {
-    feature: "a test that binds, `e is x`",
-    see: None,
-    now: "bind it first: `if let x = e:`",
-    example: "let a = [3, 0, 2]
-if a.find(0) is i and i > 0: print(i)
 ",
 };
 
@@ -173,10 +146,7 @@ pub const PLANNED: &[&Planned] = &[
     &READ_LENGTH,
     &CONTEXT_LINE,
     &OPERATOR_FN,
-    &OPERATOR_VALUE,
     &STR_OF,
-    &ENUM_VALUE,
-    &IS_BINDING,
     &LOWER_VARIANT_PATTERN,
     &VAR_FIELD,
     &FIELD_BY_DEFAULT,

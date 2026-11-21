@@ -1,8 +1,0 @@
-error[E0504]: not implemented yet: a test that binds, `e is x` (not in the design)
-  --> planned_a_test_that_binds_e_is_x.cp:2:4
-  |
-2 | if a.find(0) is i and i > 0: print(i)
-  |    ^^^^^^^^^^^^^^
-  = help: bind it first: `if let x = e:`
-
-planned_a_test_that_binds_e_is_x.cp: 1 error

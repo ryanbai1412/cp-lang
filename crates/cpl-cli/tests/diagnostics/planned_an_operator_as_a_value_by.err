@@ -1,8 +1,0 @@
-error[E0504]: not implemented yet: an operator as a value, `by: <` (not in the design)
-  --> planned_an_operator_as_a_value_by.cp:2:16
-  |
-2 | print(pick(by: <))
-  |                ^
-  = help: write the lambda: `by: (a, b) => a < b`
-
-planned_an_operator_as_a_value_by.cp: 1 error
