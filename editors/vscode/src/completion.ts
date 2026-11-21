@@ -11,6 +11,7 @@ import {
     FILE_DIRECTIVES,
     KEYWORDS,
     PRELUDE_CONSTANTS,
+    STDLIB_CONSTANTS,
     PRELUDE_TYPES,
     PRELUDE_VALUES,
     STDLIB_TYPES,
@@ -73,6 +74,7 @@ export function registerFallbackCompletion(selector: vscode.DocumentSelector): v
         ...items(PRELUDE_VALUES, vscode.CompletionItemKind.Function, 'prelude fn'),
         ...items(STDLIB_VALUES, vscode.CompletionItemKind.Function, 'stdlib fn (needs a `use`)'),
         ...items(PRELUDE_CONSTANTS, vscode.CompletionItemKind.Constant, 'prelude constant'),
+        ...items(STDLIB_CONSTANTS, vscode.CompletionItemKind.Constant, 'stdlib constant (needs a `use`)'),
     ];
     const provider: vscode.CompletionItemProvider = {
         provideCompletionItems(document, position) {

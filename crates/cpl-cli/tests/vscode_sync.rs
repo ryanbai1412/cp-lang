@@ -120,7 +120,7 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     }
 
     let ts = read("editors/vscode/src/languageData.ts");
-    let tables = ["PRELUDE_TYPES", "STDLIB_TYPES", "PRELUDE_VALUES", "STDLIB_VALUES", "PRELUDE_CONSTANTS"];
+    let tables = ["PRELUDE_TYPES", "STDLIB_TYPES", "PRELUDE_VALUES", "STDLIB_VALUES", "PRELUDE_CONSTANTS", "STDLIB_CONSTANTS"];
     let listed: BTreeSet<String> = tables.iter().flat_map(|name| table(&ts, name)).collect();
 
     let shipped: BTreeSet<String> = builtins
@@ -147,9 +147,15 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
         ("support.type.stdlib.cp", "STDLIB_TYPES"),
         ("support.function.builtin.cp", "PRELUDE_VALUES"),
         ("support.function.stdlib.cp", "STDLIB_VALUES"),
-        ("support.constant.stdlib.cp", "PRELUDE_CONSTANTS"),
     ];
     for (scope, name) in scopes {
         assert_eq!(alternation(&grammar, scope), table(&ts, name), "the grammar rule {scope} and {name} differ");
     }
+    let constants: BTreeSet<String> =
+        ["PRELUDE_CONSTANTS", "STDLIB_CONSTANTS"].iter().flat_map(|name| table(&ts, name)).collect();
+    assert_eq!(
+        alternation(&grammar, "support.constant.stdlib.cp"),
+        constants,
+        "the grammar rule support.constant.stdlib.cp and PRELUDE_CONSTANTS + STDLIB_CONSTANTS differ"
+    );
 }

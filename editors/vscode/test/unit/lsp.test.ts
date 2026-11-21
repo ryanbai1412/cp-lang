@@ -13,7 +13,7 @@ const binary = process.env.CPL ?? resolveServer('cpl', { pathEnv: '', workspaceF
 const URI = 'file:///work/d.cp';
 
 // One unclosed `(` on line 4 (0-based 3), with a fix; `dist` on line 3 is hoverable.
-const SOURCE = ['let n: 1..=10 = read()', 'domain V = 1..=n', 'var dist: [V]Int = 0', 'let s = sum(dist[v] for v in V', 'print(s)', ''].join('\n');
+const SOURCE = ['let n: 1..=10 = read()', 'domain V = 1..=n', 'let dist: [V]Int = 0', 'let s = sum(dist[v] for v in V', 'print(s)', ''].join('\n');
 
 interface Diagnostic {
     range: { start: { line: number; character: number }; end: { line: number; character: number } };
@@ -62,7 +62,7 @@ test('cpl lsp serves diagnostics, hover, quick fixes, completion, references, re
             triggerCharacters: ['(', ','],
             retriggerCharacters: [','],
         });
-        assert.deepEqual(init.capabilities.codeActionProvider, { codeActionKinds: ['quickfix'] });
+        assert.deepEqual(init.capabilities.codeActionProvider, { codeActionKinds: ['quickfix', 'source.fixAll.cpl'] });
         assert.deepEqual(init.capabilities.textDocumentSync, { openClose: true, change: 2 });
         await connection.sendNotification('initialized', {});
 

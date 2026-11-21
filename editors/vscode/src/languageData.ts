@@ -33,7 +33,7 @@ export const CONTEXTUAL_KEYWORDS: readonly string[] = [
  */
 export const PRELUDE_TYPES: readonly string[] = [
     'Bool', 'Bounds', 'Char', 'F64', 'HashMap', 'HashSet', 'I128', 'Int', 'Interactor', 'Iter', 'List', 'Map',
-    'Range', 'Set', 'Str', 'Subset', 'Sym', 'U64',
+    'Range', 'Set', 'SortedRange', 'Str', 'Subset', 'Sym', 'U64',
 ];
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
@@ -46,7 +46,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'Palindromes',
     'PalindromicTree', 'ParityDsu', 'Paths', 'Perm', 'PermKind', 'PermTree', 'PersistentSegTree', 'PotentialDsu', 'Prefix', 'Pt',
     'Pt3', 'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollbackArray', 'RollingHash', 'Rooted', 'SegTree', 'Sieve',
-    'SimpleGraph', 'SortedBag', 'SortedRange', 'SortedSet', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree',
+    'SimpleGraph', 'SortedBag', 'SortedSet', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree',
     'Tree', 'Trie', 'TwoSat', 'Vec', 'Version', 'VirtualTree', 'Walk', 'WindowFold', 'XorBasis', 'XorFenwick',
 ];
 
@@ -59,7 +59,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'ctz', 'debug', 'first', 'floor', 'flush', 'isqrt', 'laws_hold', 'len', 'max', 'min',
     'popcount', 'prefix', 'print', 'rand', 'read', 'read_output', 'round', 'shuffle', 'some',
     'sort', 'sorted', 'span', 'sqrt', 'sum', 'prod', 'swap', 'trunc', 'bfs', 'bit', 'bsearch_first',
-    'bsearch_last', 'ceil_div', 'compress', 'condense', 'deduped', 'desc', 'digits', 'dijkstra', 'distinct', 'divmod',
+    'bsearch_last', 'ceil_div', 'common_prefix_len', 'common_suffix_len', 'compress', 'condense', 'deduped', 'desc', 'digits', 'dijkstra', 'distinct',
     'ends_with', 'excl_fold', 'find', 'fixed', 'fold', 'gcd', 'get_or_insert', 'insert', 'lcm',
     'lower', 'partition', 'peel', 'remove',
     'repeat', 'resized', 'runs', 'scan', 'scc', 'starts_with', 'topo', 'upper', 'digit',
@@ -70,11 +70,10 @@ export const PRELUDE_VALUES: readonly string[] = [
 export const STDLIB_VALUES: readonly string[] = [
     'affine_sum', 'angle_less', 'any_segments_meet', 'area2', 'area2_128', 'arg', 'argmins', 'articulation_points', 'bellman_ford', 'berlekamp_massey',
     'bfs01', 'biconnected_components', 'bit_len', 'borders', 'bridges', 'bsearch_real', 'buckets', 'choose', 'choose2', 'chunk_by',
-    'chunks', 'circle_circle_tangents', 'circle_intersect', 'circle_line_intersect', 'circle_polygon_area', 'circle_tangents', 'circles_union_area', 'circulation', 'circumcenter', 'close', 'closest_pair', 'closest_pair2', 'common_prefix_len',
-    'common_suffix_len', 'components', 'compose', 'concavity_break', 'convex_hull', 'convex_hull_3d', 'convex_hull_idx', 'convexity_break', 'convolve', 'convolve_and',
+    'chunks', 'circle_circle_tangents', 'circle_intersect', 'circle_line_intersect', 'circle_polygon_area', 'circle_tangents', 'circles_union_area', 'circulation', 'circumcenter', 'close', 'closest_pair', 'closest_pair2', 'components', 'compose', 'concavity_break', 'convex_hull', 'convex_hull_3d', 'convex_hull_idx', 'convexity_break', 'convolve', 'convolve_and',
     'convolve_int', 'convolve_mod', 'convolve_or', 'convolve_subset', 'convolve_xor', 'cross', 'cross128', 'cross3', 'crt', 'crt_all', 'cyclic_pairs',
     'decrease', 'dedup', 'deriv', 'det_real', 'diameter2', 'differences', 'dist', 'dist2', 'dist2_128', 'dist2_3',
-    'div_mod', 'divisors', 'divisors_from_factors', 'dnc_break', 'dot', 'dot128', 'dot3', 'dot3_128', 'eq_fields', 'euler_walk',
+    'div_mod', 'divisors', 'divisors_from_factors', 'divmod', 'dnc_break', 'dot', 'dot128', 'dot3', 'dot3_128', 'eq_fields', 'euler_walk',
     'eval', 'eval_all', 'exp', 'ext_gcd', 'factor', 'find_cycle', 'first_gt', 'fixed_cost_paths', 'flip_action',
     'floor_sum', 'floyd_warshall', 'fwht', 'gen', 'gen_fields', 'general_matching', 'get_or_insert_with', 'global_min_cut', 'gomory_hu', 'guess_at', 'half_plane_intersect', 'hash_fields', 'hull_extreme',
     'hull_tangents', 'idempotent', 'increase', 'integral', 'interpolate', 'inv', 'inv_mod', 'inverse', 'inverse_real', 'inversions', 'is_palindrome',
@@ -92,10 +91,13 @@ export const STDLIB_VALUES: readonly string[] = [
     'aliens', 'dnc_layer', 'knuth', 'monge_path', 'monotone_minima', 'parallel_bsearch', 'subset_sums',
 ];
 
-/** Public `stdlib/*.cp` constants (no INF sentinel; use ?Int / none). */
+/** Public `stdlib/*.cp` constants the prelude imports (no INF sentinel; use ?Int / none). */
 export const PRELUDE_CONSTANTS: readonly string[] = [
-    'AddMax', 'AddMin', 'AddSum', 'AffineSum', 'AssignMax', 'AssignMin', 'AssignSum',
+    'AddMax', 'AddMin', 'AddSum', 'AssignMax', 'AssignMin', 'AssignSum',
 ];
+
+/** Public `stdlib/*.cp` constants that need a `use`. */
+export const STDLIB_CONSTANTS: readonly string[] = ['AffineSum'];
 
 export interface DecoratorInfo {
     name: string;

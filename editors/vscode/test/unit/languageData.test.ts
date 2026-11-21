@@ -14,6 +14,7 @@ import {
     KEYWORDS,
     LIBRARY_KEYWORDS,
     PRELUDE_CONSTANTS,
+    STDLIB_CONSTANTS,
     PRELUDE_TYPES,
     PRELUDE_VALUES,
     STDLIB_TYPES,
@@ -37,8 +38,8 @@ const REMOVED_V21_KEYWORDS = ['defer', 'assume', 'where', 'inline', 'lend'];
 const STALE_V1_TYPES = ['Float', 'I32', 'U8', 'I64', 'U32', 'ModR'];
 
 const REMOVED_V21_BUILTINS = [
-    'bsearch_first_some', 'slide_until', 'rotate_right', 'prod',
-    'sliding_min', 'sliding_max', 'topo_prefix',
+    'bsearch_first_some', 'slide_until',
+    'topo_prefix',
 ];
 
 const STALE_V1_DECORATORS = ['local', 'derive', 'once', 'wire', 'invariant', 'sample'];
@@ -91,7 +92,8 @@ function shipped() {
         for (const line of fs.readFileSync(path.join(stdlib, file), 'utf8').split('\n')) {
             const decl = /^pub (@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
             // `<fn>_of_pairs`/`<fn>_of_triples` are what `T.fn(list)` resolves to, not names to type.
-            if (decl && (!decl[1] || imported.has(decl[3])) && !/_of_(pairs|triples)$/.test(decl[3])) {
+            // A `_` name is the stdlib's own helper, not one a contestant types.
+            if (decl && !decl[3].startsWith('_') && (!decl[1] || imported.has(decl[3])) && !/_of_(pairs|triples)$/.test(decl[3])) {
                 declared.set(decl[3], decl[2]);
             }
         }
@@ -141,6 +143,11 @@ test('every table entry is a name CP Lang 0.2.2 ships: no phantom symbols', () =
         [],
         'PRELUDE_CONSTANTS not a stdlib const imported by stdlib/prelude.cp',
     );
+    assert.deepEqual(
+        phantoms(STDLIB_CONSTANTS, name => real.stdlibConsts.includes(name) && !fromPrelude(name)),
+        [],
+        'STDLIB_CONSTANTS not a stdlib const that needs a `use`',
+    );
     for (const name of [...PRELUDE_TYPES, ...PRELUDE_VALUES]) {
         assert.ok(!(name in UNLISTED_BUILTINS), `${name} is listed, but ${UNLISTED_BUILTINS[name]}`);
     }
@@ -148,7 +155,7 @@ test('every table entry is a name CP Lang 0.2.2 ships: no phantom symbols', () =
 
 test('every name CP Lang 0.2.2 ships is in a table: no missing symbols', () => {
     const real = shipped();
-    const listed = new Set([...PRELUDE_TYPES, ...STDLIB_TYPES, ...PRELUDE_VALUES, ...STDLIB_VALUES, ...PRELUDE_CONSTANTS]);
+    const listed = new Set([...PRELUDE_TYPES, ...STDLIB_TYPES, ...PRELUDE_VALUES, ...STDLIB_VALUES, ...PRELUDE_CONSTANTS, ...STDLIB_CONSTANTS]);
     const builtins = [...real.builtinTypes, ...real.builtinValues].filter(name => !(name in UNLISTED_BUILTINS));
     assert.deepEqual(builtins.filter(name => !listed.has(name)), [], 'prelude.rs names missing from the tables');
     const stdlib = [...real.stdlibFns, ...real.stdlibTypes, ...real.stdlibConsts, ...real.imported];
@@ -191,7 +198,7 @@ test('the grammar lists the exact same prelude and stdlib tables as languageData
     assert.deepEqual(sorted(alternation('support.type.stdlib.cp')), sorted(STDLIB_TYPES));
     assert.deepEqual(sorted(alternation('support.function.builtin.cp')), sorted(PRELUDE_VALUES));
     assert.deepEqual(sorted(alternation('support.function.stdlib.cp')), sorted(STDLIB_VALUES));
-    assert.deepEqual(sorted(alternation('support.constant.stdlib.cp')), sorted(PRELUDE_CONSTANTS));
+    assert.deepEqual(sorted(alternation('support.constant.stdlib.cp')), sorted([...PRELUDE_CONSTANTS, ...STDLIB_CONSTANTS]));
 });
 
 test('the grammar gives every 0.2.2 reserved word a keyword/storage/literal scope', async () => {

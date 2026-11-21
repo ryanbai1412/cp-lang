@@ -212,5 +212,5 @@ let total = fold(+, xs) + ceil_div(n, k) + scan(xs, +).len
 //          ^^^^ support.function.builtin.cp
 //                        ^^^^^^^^ support.function.builtin.cp
 //                                         ^^^^ support.function.builtin.cp
-for r in runs_by(sorted(xs, by: desc), x => x % 2): print(r.key)
-//       ^^^^^^^ support.function.builtin.cp
+for r in runs(sorted(xs, by: desc), by: x => x % 2): print(r.key)
+//       ^^^^ support.function.builtin.cp
