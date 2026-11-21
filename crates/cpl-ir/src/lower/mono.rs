@@ -506,6 +506,39 @@ impl<'a> Lowerer<'a> {
         rows
     }
 
+    /// The ranged `Int` fields of `decl` whose static bounds fit in 32 bits.
+    pub(super) fn narrow_int_fields(
+        &self,
+        decl: &ast::StructDecl,
+    ) -> std::collections::BTreeMap<usize, IntWidth> {
+        let mut narrow = std::collections::BTreeMap::new();
+        for (at, field) in decl.fields.iter().enumerate() {
+            let ast::TypeKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+            } = &field.ty.kind
+            else {
+                continue;
+            };
+            let (Some(lo), Some(hi)) = (self.eval_const_int(lo), self.eval_const_int(hi)) else {
+                continue;
+            };
+            let Some(hi_inc) = (if *inclusive { Some(hi) } else { hi.checked_sub(1) }) else {
+                continue;
+            };
+            if lo > hi_inc {
+                continue;
+            }
+            if lo >= 0 && hi_inc < (1i64 << 31) {
+                narrow.insert(at, IntWidth::U32);
+            } else if lo >= i64::from(i32::MIN) && hi_inc <= i64::from(i32::MAX) {
+                narrow.insert(at, IntWidth::I32);
+            }
+        }
+        narrow
+    }
+
     /// Instantiates a generic struct template with concrete `args`, memoized.
     pub(super) fn instantiate_struct(&mut self, gid: GenStructId, mut args: Vec<GenArg>) -> StructId {
         let tpl_mod = self.gen_structs[gid].mod_id;
@@ -551,6 +584,7 @@ impl<'a> Lowerer<'a> {
                 name: mangled,
                 fields: Vec::new(),
                 fixed: Default::default(),
+                narrow_ints: Default::default(),
                 show_fn: None,
                 eq_fn: None,
                 lt_fn: None,
@@ -604,6 +638,7 @@ impl<'a> Lowerer<'a> {
             .collect();
         self.structs[id].def.fields = fields;
         self.structs[id].def.fixed = self.fixed_rows(decl);
+        self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
 
         // 3. Collect methods, getters, projections, laws, constants.
         let struct_env = self.gen_env.clone();

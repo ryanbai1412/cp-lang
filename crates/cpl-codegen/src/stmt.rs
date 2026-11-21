@@ -1013,7 +1013,14 @@ impl<'p> Emitter<'p> {
                                                 return format!("std::move({})", self.names[slot]);
                                             }
                                         }
-                                        self.expr(item).text
+                                        let v = self.expr(item).text;
+                                        match struct_id
+                                            .and_then(|s| self.narrow_ints.get(&(s, idx)))
+                                        {
+                                            Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
+                                            Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
+                                            None => v,
+                                        }
                                     })
                                     .collect();
                                 format!("{ty}{{{}}}", rendered.join(", "))

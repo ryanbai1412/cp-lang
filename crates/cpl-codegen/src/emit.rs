@@ -126,6 +126,8 @@ pub(crate) struct Emitter<'p> {
     /// `(struct, field)` to the cell count of a field kept inside the
     /// struct as a `cpl::Row<T, K>`, not as a `std::vector` of its own.
     pub rows: BTreeMap<(usize, usize), u32>,
+    /// `(struct, field)` to 32-bit storage width for ranged `Int` fields.
+    pub narrow_ints: BTreeMap<(usize, usize), cpl_ir::IntWidth>,
     pub pushers: BTreeMap<usize, usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
@@ -205,6 +207,7 @@ impl<'p> Emitter<'p> {
             continue_targets: BTreeSet::new(),
             reused: BTreeSet::new(),
             rows: crate::scope::rows(program),
+            narrow_ints: crate::scope::narrow_ints(program),
             pushers: BTreeMap::new(),
             pushing: None,
             bodies: Vec::new(),
@@ -516,6 +519,11 @@ impl<'p> Emitter<'p> {
                     ) {
                         cpp = format!("cpl::Row<{cell}, {k}>");
                         self.need("row");
+                    } else if let Some(w) = self.narrow_ints.get(&(*id, names.len())) {
+                        cpp = match w {
+                            cpl_ir::IntWidth::U32 => "uint32_t".into(),
+                            cpl_ir::IntWidth::I32 => "int32_t".into(),
+                        };
                     }
                     out.push_str(&format!(
                         "    {} {}{};\n",

@@ -12,7 +12,7 @@ use std.math.{gcd}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are O(1); `/` and `inv` are O(log P) and need `gcd(x, P) == 1`.
-pub struct Mod<P>(v: Int):
+pub struct Mod<P>(v: 0..P):
     /// The modulus: `Z.MOD`.
     let MOD = P
     let zero = Mod(0)

@@ -336,3 +336,51 @@ pub(crate) fn rows(program: &Program) -> BTreeMap<(usize, usize), u32> {
     }
     rows
 }
+
+/// Ranged `Int` struct fields that can be stored as 32-bit integers (`uint32_t`/`int32_t`).
+/// Fields passed by `mut` reference or updated with a compound operator stay `ll`.
+pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir::IntWidth> {
+    let mut narrow = BTreeMap::new();
+    for (id, def) in program.structs.iter().enumerate() {
+        for (field, width) in &def.narrow_ints {
+            if matches!(def.fields.get(*field).map(|(_, t)| t), Some(Ty::Int)) {
+                narrow.insert((id, *field), *width);
+            }
+        }
+    }
+    if narrow.is_empty() {
+        return narrow;
+    }
+    fn widen(place: &Place, narrow: &mut BTreeMap<(usize, usize), cpl_ir::IntWidth>) {
+        if let PlaceKind::Field(base, field) = &place.kind {
+            if let Ty::Struct(id) = base.ty {
+                narrow.remove(&(id, *field));
+            }
+        }
+    }
+    let bodies = [&program.setup, &program.main]
+        .into_iter()
+        .chain(program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body));
+    for body in bodies {
+        crate::walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::Assign(place, op, _) = stmt {
+                if *op != cpl_ir::AssignOp::Set {
+                    widen(place, &mut narrow);
+                }
+            }
+        });
+        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
+            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => widen(place, &mut narrow),
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                for arg in args {
+                    if let cpl_ir::Arg::Mut(place) = arg {
+                        widen(place, &mut narrow);
+                    }
+                }
+            }
+            _ => {}
+        });
+    }
+    narrow
+}

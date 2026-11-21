@@ -683,3 +683,30 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
         "{explained:?}"
     );
 }
+
+#[test]
+fn ranged_int_struct_fields_narrow_to_32_bits() {
+    let cpp = cpp(concat!(
+        "type Z = Mod<998244353>\n",
+        "type BigZ = Mod<1_000_000_000_000_000_007>\n",
+        "struct Edge(w: -1000..=1000)\n",
+        "struct MutBox(x: 0..1000)\n",
+        "fn bump(mut a: Int): a += 1\n",
+        "let p: Int = read()\n",
+        "type DynZ = Mod<p>\n",
+        "var b = MutBox(1)\n",
+        "bump(mut b.x)\n",
+        "print(Z(998244352) * Z(998244352), BigZ(5), Edge(-7).w, DynZ(3), b.x)\n",
+    ));
+    assert!(cpp.contains("uint32_t v = 0;"), "Mod<998244353> should narrow to uint32_t: {cpp}");
+    assert!(cpp.contains("int32_t w = 0;"), "signed range should narrow to int32_t: {cpp}");
+    assert!(cpp.contains("ll(a.v)"), "narrowed field reads should widen to ll: {cpp}");
+    assert!(
+        cpp.contains("struct MutBox {\n  ll x = 0;"),
+        "field taken by mut reference should stay ll: {cpp}"
+    );
+    assert!(
+        cpp.contains("struct Mod_1000000000000000007_"),
+        "wide Mod should stay ll: {cpp}"
+    );
+}

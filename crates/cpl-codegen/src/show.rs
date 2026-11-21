@@ -385,8 +385,22 @@ impl<'p> Emitter<'p> {
             Spec::Opt(..) => Code::primary(format!("{}()", self.ty(&spec.ty()))),
             Spec::Fields(ty, fields) => {
                 // `{...}` runs its elements in order: so are the fields read.
-                let fields: Vec<String> =
-                    fields.iter().map(|field| self.read(field).text).collect();
+                let struct_id = match ty {
+                    Ty::Struct(id) => Some(*id),
+                    _ => None,
+                };
+                let fields: Vec<String> = fields
+                    .iter()
+                    .enumerate()
+                    .map(|(i, field)| {
+                        let v = self.read(field).text;
+                        match struct_id.and_then(|id| self.narrow_ints.get(&(id, i))) {
+                            Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
+                            Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
+                            None => v,
+                        }
+                    })
+                    .collect();
                 Code::primary(format!("{}{{{}}}", self.ty(ty), fields.join(", ")))
             }
             Spec::Array { dims, elem } => {

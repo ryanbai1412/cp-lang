@@ -843,6 +843,13 @@ pub struct ClosureDef {
     pub body: Block,
 }
 
+/// Narrow storage width for a struct field whose declared range fits in 32 bits.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum IntWidth {
+    U32,
+    I32,
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct StructDef {
     pub name: String,
@@ -851,6 +858,8 @@ pub struct StructDef {
     /// [0..2]?Int`, by position: every value of the struct holds exactly
     /// that many cells there.
     pub fixed: std::collections::BTreeMap<usize, u32>,
+    /// Ranged `Int` fields whose static bounds fit in 32 bits, by position.
+    pub narrow_ints: std::collections::BTreeMap<usize, IntWidth>,
     /// From `impl Show for S`: `fn show(a: S) -> Str`.
     pub show_fn: Option<FnId>,
     /// From `impl Eq for S`: `fn eq(a: S, b: S) -> Bool`.

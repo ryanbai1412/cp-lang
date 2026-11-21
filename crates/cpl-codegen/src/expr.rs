@@ -641,16 +641,20 @@ impl<'p> Emitter<'p> {
                 match &base.ty {
                     // A row kept inside the struct is a list to whatever
                     // takes it whole; an index or a length reads it in place.
-                    Ty::Struct(id) => Code::primary(format!(
-                        "{}.{}{}",
-                        b.at(PRIMARY),
-                        ident(&program.structs[*id].fields[*index].0),
+                    Ty::Struct(id) => {
+                        let access = format!(
+                            "{}.{}",
+                            b.at(PRIMARY),
+                            ident(&program.structs[*id].fields[*index].0),
+                        );
                         if self.rows.contains_key(&(*id, *index)) {
-                            ".vec()"
+                            Code::primary(format!("{access}.vec()"))
+                        } else if self.narrow_ints.contains_key(&(*id, *index)) {
+                            Code::primary(format!("ll({access})"))
                         } else {
-                            ""
+                            Code::primary(access)
                         }
-                    )),
+                    }
                     _ => Code::primary(format!("std::get<{index}>({})", b.text)),
                 }
             }
@@ -676,7 +680,12 @@ impl<'p> Emitter<'p> {
                                 }) {
                                     "false".to_string()
                                 } else {
-                                    self.braced(item)
+                                    let v = self.braced(item);
+                                    match struct_id.and_then(|s| self.narrow_ints.get(&(s, idx))) {
+                                        Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
+                                        Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
+                                        None => v,
+                                    }
                                 }
                             })
                             .collect();

@@ -875,6 +875,7 @@ impl<'a> Lowerer<'a> {
                                     name: sname,
                                     fields: Vec::new(),
                                     fixed: Default::default(),
+                                    narrow_ints: Default::default(),
                                     show_fn: None,
                                     eq_fn: None,
                                     lt_fn: None,
@@ -1266,8 +1267,8 @@ impl<'a> Lowerer<'a> {
                 .map(|f| (f.name.text.clone(), self.resolve_ty(&f.ty)))
                 .collect();
             self.structs[id].def.fields = fields;
-        self.structs[id].def.fixed = self.fixed_rows(decl);
             self.structs[id].def.fixed = self.fixed_rows(decl);
+            self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
             self.self_struct = None;
         }
         // Attach `impl` blocks for non-generic structs.
@@ -2865,6 +2866,7 @@ impl<'a> Lowerer<'a> {
                 name,
                 fields,
                 fixed: Default::default(),
+                narrow_ints: Default::default(),
                 show_fn: None,
                 eq_fn: None,
                 lt_fn: None,
