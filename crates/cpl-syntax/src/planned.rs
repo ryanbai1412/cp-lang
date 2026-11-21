@@ -15,15 +15,6 @@ pub struct Planned {
     pub example: &'static str,
 }
 
-pub const DOMAIN_PATTERN: Planned = Planned {
-    feature: "`domain` in a binding pattern",
-    see: "design/spec/12-scoped-types.md §12.2",
-    now: "write the domain's name alone, capitalized: `let (C, comp) = scc(g)`",
-    example:
-        "fn split(n: Int) -> (domain C, size: Int):\n    domain C = 0..n\n    (C: C, size: n)\n\
-              let (domain P, k) = split(4)\nlet a: [P]Int = [P] p => 0\nprint(k + a.len)\n",
-};
-
 pub const TYPE_PARAM_DEFAULT: Planned = Planned {
     feature: "a default for a type parameter",
     see: "design/spec/40-signatures.md §40.6",
@@ -38,4 +29,4 @@ pub const BOUNDED_STR: Planned = Planned {
     example: "let s: Str(len: 1..=10) = read()\nprint(s.len)\n",
 };
 
-pub const PLANNED: &[&Planned] = &[&DOMAIN_PATTERN, &TYPE_PARAM_DEFAULT, &BOUNDED_STR];
+pub const PLANNED: &[&Planned] = &[&TYPE_PARAM_DEFAULT, &BOUNDED_STR];

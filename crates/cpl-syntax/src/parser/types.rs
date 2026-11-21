@@ -202,7 +202,7 @@ impl<'a> Parser<'a> {
                     let open = self.start();
                     self.pos = after_group(self.tokens, self.pos);
                     let span = self.span_from(open);
-                    self.planned(span, &crate::planned::BOUNDED_STR, None);
+                    self.planned(span, &crate::planned::BOUNDED_STR);
                 }
                 TypeKind::Named { name, args }
             }
@@ -378,7 +378,7 @@ impl<'a> Parser<'a> {
                 p.bump();
                 p.ty();
                 let span = p.span_from(start);
-                p.planned(span, &crate::planned::TYPE_PARAM_DEFAULT, None);
+                p.planned(span, &crate::planned::TYPE_PARAM_DEFAULT);
             }
             name
         });

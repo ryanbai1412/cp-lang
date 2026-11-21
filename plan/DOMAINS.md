@@ -201,7 +201,7 @@ unreadable character no longer drops its line. Broken-ports benchmark
 (`cpl-cli/tests/recovery.rs`, six single edits per port): 0.04 cascades per
 copy, first error on the right line 99.8%, ratchet at 0.05 per copy.
 Planned 0.3 forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
-"not implemented yet: ... (see design/...)"); three entries so far. Golden
+"not implemented yet: ... (see design/...)"); two entries so far. Golden
 rendered diagnostics in `cpl-cli/tests/diagnostics/`.
 **Bar.** Golden diagnostics for every error code; a broken-ports benchmark
 with first-error accuracy and cascade counts.

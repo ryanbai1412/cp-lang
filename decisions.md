@@ -1566,9 +1566,9 @@ any language. Reverse: delete `editors/{neovim,emacs,helix,smoke.sh}` and the `-
   lists each 0.3 form this version does not implement: its feature name, the design section that
   specifies it, what to write today, and an example whose one error is that one. The parser reads the
   form (so the statement and its names survive), reports "not implemented yet: <feature> (see
-  <section>)" with the help line, and poisons the form's span. First entries: `domain` in a binding
-  pattern (binds the name as today's `let (C, x)` does, with a quick fix that drops `domain`), a
-  type-parameter default (ignored), and `Str(len: ...)` (read as `Str`). *Reason:* one mechanism for
+  <section>)" with the help line, and poisons the form's span. First entries: a type-parameter default
+  (ignored) and `Str(len: ...)` (read as `Str`); `domain` in a binding pattern was an entry until
+  the core lane implemented it the same day, and the entry went with it. *Reason:* one mechanism for
   every planned form instead of per-site messages; the generated golden test and the section-exists
   test keep each entry honest, and an entry is deleted when its feature lands. Forms that already
   parse (`repeat`, `loop`, one-line `enum`, unary plus, `var a = 0, b = 1`) need no entry.
