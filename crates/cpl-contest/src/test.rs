@@ -172,6 +172,10 @@ pub(crate) struct Ready {
 }
 
 /// Resolves what the test, bench and watch commands all need.
+/// The options of `cpl test` (and `cpl watch`) that take a value; the
+/// first three name programs.
+pub(crate) const VALUED: &[&str] = &["--fast", "--checker", "--interactor", "--time-limit", "--memory-limit"];
+
 pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, String> {
     let name = source.display().to_string();
     let path = |flag: &str| args.value(flag).map(Path::new);
@@ -199,11 +203,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
-    let parsed = Args::parse(
-        args,
-        &["--fast", "--checker", "--interactor", "--time-limit"],
-        &[],
-    )
+    let parsed = Args::parse(args, VALUED, &[])
     .and_then(|args| {
         args.file("test")
             .map(source_path)

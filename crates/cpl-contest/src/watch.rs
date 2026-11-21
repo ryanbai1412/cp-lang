@@ -124,7 +124,7 @@ fn plural(count: usize, noun: &str) -> String {
     format!("{count} {noun}{}", if count == 1 { "" } else { "s" })
 }
 
-const VALUED: &[&str] = &["--fast", "--checker", "--interactor", "--time-limit"];
+use crate::test::VALUED;
 
 /// Runs `cpl watch`. Prints as it goes, so it takes the real stdout.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {

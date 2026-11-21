@@ -732,4 +732,16 @@ fn test_judges_memory_against_the_problems_limit() {
     assert!(render(&results).contains("     peak memory "), "{}", render(&results));
     let roomy = run_cases(&sh(&hungry), &Judge::Tokens, &cases(&source), Limits { memory_kb: 1 << 30, ..tight }).unwrap();
     assert_eq!(roomy[0].verdict, Some(Verdict::Accepted));
+    let path = source.to_str().unwrap();
+    let hungry = script(
+        &dir,
+        "hungry",
+        "exec awk 'BEGIN { s = sprintf(\"%64000000s\", \"\"); system(\"sleep 0.1\") } NR == 1'",
+    );
+    let (_, out, err) = cli(test::run, &[path, "--fast", &hungry, "--memory-limit", "16"]);
+    assert_eq!(err, "");
+    assert!(out.starts_with("  1     MLE"), "{out}");
+    let (_, out, err) = cli(test::run, &[path, "--fast", &hungry, "--memory-limit", "1024"]);
+    assert_eq!(err, "");
+    assert!(!out.contains("MLE"), "{out}");
 }
