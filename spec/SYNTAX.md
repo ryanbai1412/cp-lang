@@ -21,6 +21,17 @@ front end (parse and type check) first.
 | Field defaults | `struct S: steps: List<Int> = [], total = 0` | 134 | E0504 |
 | Alphabet strings | `read<Str of "01?">()`; its chars form a domain | 134 | E0504 |
 | Bounded strings | `Str(len: 1..=n)` | 134 | E0504 |
+| Multi-clause loop headers | `for i in V, j in V.after(i) if c:` | 135 | E0107 |
+| `and`/`or` as operation values | `(count: +, taken: or)` | 135 | E0102 |
+| `var` in patterns | `for (var left, v) in items:` | 135 | E0102 |
+| One-line `match` | `match x: A(l) => e1, B(l) => e2` | 135 | E0104 |
+| Statement lambda bodies | `(v, a) => cnt[a] -= 1` | 135 | E0103 |
+| Partial indexing (rows) | `a[i]` on `[I, J]T` is a `[J]T` place | 135 | E0301 |
+| Destructuring parameters | `fn step(mv: Move, (r, s): State)` | 135 | E0102 |
+| `domain` type parameters | `fn f<domain I, domain J>()` | 135 | E0102 |
+| Full range `..` | `fen.sum(..)` | 135 | E0102 |
+| Range types as generic args | `PMultiset<0..n>` | 135 | E0301 |
+| Literal-union types | `let (op, v): ('+' \| '-', Vol) = read()` | 135 | E0105 |
 
 ## Rejected (a dream using one is fixed instead)
 
@@ -33,6 +44,12 @@ front end (parse and type check) first.
 | `[read(...)]T` | `domain V = read(...)`, then `[V]T` | the domain names the index space |
 | `type Z = Mint(mod: p)` | `Mod<p>` with runtime `p` | one modular type |
 | `e @name(...)` | a call | decorators sit on declarations |
+| `{k: v}` map literal | `[k: v]` | one map literal |
+| `[x; n]` | `[x] * n`, or a typed `[n]T` | one repeat form |
+| `cmp ... then ...` | `sort(by: u => (desc(a[u]), u))` | keys, not comparators |
+| `lazy[D] i => e` | `@memo fn`, or the eager table `[D] i => e` | memo is the one lazy form |
+| `(let a = ...; e)` | a block lambda or a `let` before | no `;` blocks |
+| `.empty` implicit member | `MaxSub.empty` | collides with leading-dot continuation |
 
 ## Deferred
 
