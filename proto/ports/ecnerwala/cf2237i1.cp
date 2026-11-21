@@ -1,59 +1,91 @@
-// Codeforces 2237 I1: bottom-up tree DP counting canonical valid assignments
-// by depth and (has_active, has_next) cut flags.
+// Codeforces 2237 I1: bottom-up tree DP counting canonical valid 0/1 edge
+// assignments matching a template string ('0', '1', or '?').
+//
+// At each vertex u, dp[u][d][st] counts valid assignments in u's subtree with
+// max chain depth d and cut state st = (active, resolved):
+//   - active: an open active chain reaches u (at most one, cannot follow a
+//     0-edge, and cannot coexist with depth > 0).
+//   - resolved: a resolved chain already sits strictly deepest among processed
+//     children (at most one, strictly deeper than all other children).
+// Crossing a 1-edge resolves an active chain to (active=false, resolved=true,
+// depth=1); otherwise the edge adds e to depth. When ca=false, e=1, and d0=0,
+// subtracting ways from (active=true, resolved=hn) removes the duplicate
+// non-canonical representation.
+
+use std.tree.Rooted
+
 type Z = Mod<1_000_000_007>
+domain State = 0..4
+
+fn make_state(active: Bool, resolved: Bool) -> State =
+    State((if active: 2 else: 0) + (if resolved: 1 else: 0))
+
+fn is_active(st: State) -> Bool = st.ord >= 2
+fn is_resolved(st: State) -> Bool = st.ord % 2 == 1
+
+fn matches_edge(ch: Char, e: Int) -> Bool =
+    ch == '?' or (e == 0 and ch == '0') or (e == 1 and ch == '1')
+
+fn can_merge(d0: Int, ca: Bool, cn: Bool, nd1: Int, n_na: Bool, n_nn: Bool, e: Int) -> Bool:
+    if ca and (n_na or e == 0): return false
+    if cn and (n_nn or d0 <= nd1): return false
+    if n_nn and d0 > nd1: return false
+    if n_na and e == 0 and d0 > 0: return false
+    true
 
 @!multitest
-let n: Int = read()
+let n: 1..=500 = read()
 domain V = 1..=n
-let s_in: Str = read()
-let s = "0" + s_in
+let raw_s: Str = read()
+let label: [V]Char = [V] v => if v == V.first: '0' else: raw_s[v.ord - 1]
 
-var ch: [V]List<V> = []
+var par: [V]?V = none
+var children: [V]List<V> = []
 for u in V:
-    let l: Int = read()
-    let kids: [0..l]V = read()
-    for v in kids: ch[u].push(v)
+    let deg: 0..n = read()
+    for _ in 0..deg:
+        let c: V = read()
+        par[c] = u
+        children[u].push(c)
+let t = Rooted.from_parents(par)
 
-var dp: [V]List<[0..2, 0..2]Z> = []
+var dp: [V]List<[State]Z> = []
+for p in t.Pre.rev:
+    let u = t.at[p]
+    var init_row: [State]Z = 0
+    init_row[make_state(false, false)] = 1
+    var cur: List<[State]Z> = [init_row]
+    for c in children[u]:
+        let child = dp[c]
+        let nh = max(cur.len, child.len + 1)
+        var next: List<[State]Z> = [[State] _ => Z(0) for _ in 0..nh]
+        let ch = label[c]
+        for (d0, row0) in cur.items:
+            for cs in State:
+                let v0 = row0[cs]
+                if v0 == 0: continue
+                let (ca, cn) = (is_active(cs), is_resolved(cs))
+                for (d1, row1) in child.items:
+                    for ns in State:
+                        let v1 = row1[ns]
+                        if v1 == 0: continue
+                        let ways = v0 * v1
+                        let (na, nn) = (is_active(ns), is_resolved(ns))
+                        for e in 0..=1:
+                            if not matches_edge(ch, e): continue
+                            let (
+                                n_na,
+                                n_nn,
+                                nd1,
+                            ) = if e == 1 and na: (false, true, 1) else: (na, nn, d1 + e)
+                            if not can_merge(d0, ca, cn, nd1, n_na, n_nn, e): continue
+                            let nd = max(d0, nd1)
+                            let ha = ca or n_na
+                            let hn = cn or n_nn
+                            next[nd][make_state(ha, hn)] += ways
+                            if not ca and e == 1 and d0 == 0:
+                                next[nd][make_state(true, hn)] -= ways
+        cur = next
+    dp[u] = cur
 
-fn dfs(cur: V):
-    var base: [0..2, 0..2]Z = 0
-    base[0, 0] = 1
-    var cur_dp: List<[0..2, 0..2]Z> = [base]
-    for nxt in ch[cur]:
-        dfs(nxt)
-        let nxt_dp = dp[nxt]
-        let sz = max(cur_dp.len, nxt_dp.len + 1)
-        var ndp: [0..sz, 0..2, 0..2]Z = 0
-        let ch_s = s[nxt.ord]
-        for d0 in 0..cur_dp.len:
-            for d1 in 0..nxt_dp.len:
-                for ca in 0..2:
-                    for cn in 0..2:
-                        let v_cur = cur_dp[d0][ca, cn]
-                        if v_cur == 0: continue
-                        for na in 0..2:
-                            for nn in 0..2:
-                                let v_nxt = nxt_dp[d1][na, nn]
-                                if v_nxt == 0: continue
-                                let v = v_cur * v_nxt
-                                for e in 0..2:
-                                    if ch_s != '?' and ch_s != Char('0'.ord + e): continue
-                                    var (n_na, n_nn, nd1) = (na, nn, d1 + e)
-                                    if e == 1 and na == 1:
-                                        (n_na, n_nn, nd1) = (0, 1, 1)
-                                    if ca == 1 and (n_na == 1 or e == 0): continue
-                                    if cn == 1 and (n_nn == 1 or d0 <= nd1): continue
-                                    if n_nn == 1 and d0 > nd1: continue
-                                    if n_na == 1 and e == 0 and d0 > 0: continue
-                                    let nd = max(d0, nd1)
-                                    let has_a = Int(ca == 1 or n_na == 1)
-                                    let has_n = Int(cn == 1 or n_nn == 1)
-                                    ndp[nd, has_a, has_n] += v
-                                    if ca == 0 and e == 1 and d0 == 0:
-                                        ndp[nd, 1, has_n] -= v
-        cur_dp = [[0..2, 0..2] (a, b) => ndp[d, a, b] for d in 0..sz]
-    dp[cur] = cur_dp
-
-dfs(V(1))
-print(sum(row[a, b] for row in dp[V(1)] for a in 0..2 for b in 0..2))
+print([row[st] for row in dp[V.first] for st in State].sum())
