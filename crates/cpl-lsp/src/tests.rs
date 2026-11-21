@@ -1484,3 +1484,55 @@ fn inlay_hints_show_the_range_the_bounds_prove() {
         .collect();
     assert_eq!(labels, [(1, ": Int in 2..=10001"), (2, ": Int")]);
 }
+
+/// The labels completion ranks first, the ones that fit the expected type.
+fn best_fits(src: &str) -> Vec<String> {
+    let mut fits: Vec<String> = ask_at("textDocument/completion", src)
+        .get("items")
+        .as_array()
+        .iter()
+        .filter(|item| item.get("sortText").as_str().unwrap().starts_with('0'))
+        .map(|item| item.get("label").as_str().unwrap().to_string())
+        .collect();
+    fits.sort();
+    fits
+}
+
+#[test]
+fn completion_ranks_first_what_fits_the_expected_type() {
+    let decls = "fn area(w: Int, h: Int) -> Int = w * h\nfn name() -> Str = \"a\"\nlet k: Int = 3\nlet s = \"x\"\nvar c = 0\n";
+    let fits = |src: String, want: &[&str], not: &[&str]| {
+        let got = best_fits(&src);
+        for w in want {
+            assert!(
+                got.iter().any(|g| g == w),
+                "{w} should fit in {src:?}: {got:?}"
+            );
+        }
+        for n in not {
+            assert!(
+                !got.iter().any(|g| g == n),
+                "{n} should not fit in {src:?}: {got:?}"
+            );
+        }
+    };
+    let ints = ["area", "c", "k", "gcd"];
+    let strs = ["name", "s"];
+    // An argument: the parameter's type; a named one: that parameter's.
+    fits(format!("{decls}print(area(k, |))\n"), &ints, &strs);
+    fits(format!("{decls}print(area(h = |))\n"), &ints, &strs);
+    // A `let` with its type written, and an assignment.
+    fits(format!("{decls}let t: Str = |\n"), &strs, &ints);
+    fits(format!("{decls}c = |\n"), &["area", "k"], &strs);
+    fits(format!("{decls}c += |\n"), &["area", "k"], &strs);
+    // After a dot, the members of the right type.
+    assert_eq!(
+        best_fits(&format!("{ROAD}let r = Road(1, 2)\nlet b: Bool = r.|\n")),
+        ["heavy"]
+    );
+    // Nothing expected: no ranking by type.
+    assert_eq!(
+        best_fits(&format!("{decls}print(|)\n")),
+        Vec::<String>::new()
+    );
+}

@@ -1927,6 +1927,14 @@ the checker that hover, hints, widths and overflow proofs all read, which this s
 Reverse: drop the `proven` lookup in the `inlayHint` arm of `crates/cpl-lsp/src/server.rs` and
 `proven_ranges` in `crates/cpl-lint`.
 
+29.8. **Completion ranks by the expected type as text.** The expected type comes from where the
+cursor is (the parameter an argument is for, by name or position; a `let x: T =`; the variable an
+`=` or `op=` assigns), and an item fits when its type, or the return type of a fn, is the same
+text. Fits sort first; the rest keep their order. Comparing printed types misses fits through
+generics and range-to-`Int` widening, but needs no inference at the cursor, which is usually
+mid-edit and unparsed. The general version asks the checker for the expected type of a hole and
+for assignability. Reverse: drop `expected_type` and `rank` in `crates/cpl-lsp/src/complete.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

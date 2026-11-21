@@ -554,7 +554,8 @@ immutable bindings), workspace symbols (fuzzy, over open files and the
 public names of every module they use), Run/Trace/Stress code lenses on
 the first sample (asked for with `initializationOptions.codeLens`, each a
 `cpl` argument list under the client command `cpl.exec`), formatting, completion (members
-after `.`, names in scope, `use std.`), signature help, inlay hints
+after `.`, names in scope, `use std.`; what fits the expected type first: the
+parameter an argument is for, a `let`'s written type, an assigned variable's), signature help, inlay hints
 (unwritten types, with the index space of a loop variable (`v: V`,
 `i: 0..n`) and the range the input bounds prove for a top-level `let`
 (`m: Int in 2..=10001`); parameter names of literal arguments) and quick fixes
@@ -572,7 +573,7 @@ cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; no proven range of an
 expression; proven ranges in inlay hints are top-level only; no cost or overflow
 warnings; rename is one file; no refactorings or "fix all"; no
-expected-type ranking or auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
+auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
 run from a shell command; no JetBrains plugin, no fixture tests, fuzzer, DAP or
 tree-sitter grammar, so Helix has no highlighting and Zed no setup.
 `editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax,

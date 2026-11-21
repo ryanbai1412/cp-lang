@@ -138,14 +138,113 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib) -> Vec<Value> {
     if let Some(path) = line.trim_start().strip_prefix("use ") {
         return use_completion(cursor, std, path, word);
     }
+    let expected = expected_type(cursor, std, offset - word.len());
+    let rank = |entry: &Entry, sort: u8| match &expected {
+        Some(want)
+            if type_of_entry(entry)
+                .or_else(|| inferred_type(cursor.analysis, entry))
+                .is_some_and(|ty| same_type(&ty, want)) =>
+        {
+            0
+        }
+        _ => sort + 1,
+    };
     if head.ends_with('.') && !head.ends_with("..") {
         let dot = (offset - word.len() - 1) as u32;
         return dot_completion(cursor, std, dot)
             .into_iter()
-            .map(|(entry, sort)| item_json(&entry, sort))
+            .map(|(entry, sort)| item_json(&entry, rank(&entry, sort)))
             .collect();
     }
-    scope_completion(cursor, std, word)
+    scope_completion(cursor, std, word, &rank)
+}
+
+/// The type the expression starting at `at` should have: the parameter it
+/// is an argument for, the written type of the `let` it initializes, or the
+/// type of the variable it is assigned to.
+fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String> {
+    let text = &*cursor.analysis.text;
+    let item = item_at(cursor.analysis, cursor.offset);
+    let line_start = text[..at].rfind('\n').map_or(0, |i| i + 1);
+    let call = item.and_then(|item| Some((item, open_call(text, item.offset as usize, at)?)));
+    let start = call.map_or(line_start, |(_, (.., arg))| arg.max(line_start));
+    // After `r.` the expected type is the whole `r.member`'s.
+    let before = text[start..at]
+        .trim_end_matches(|c| is_ident(c) || c == '.')
+        .trim();
+    if let Some((item, (paren, commas, arg_start))) = call {
+        let callee_end = text[..paren].trim_end().len();
+        let name = ident_before(text, callee_end);
+        if !name.is_empty() && !before.contains(['(', '[', '{']) {
+            let sig = signature_of(cursor, std, item, callee_end, name)?;
+            let index = active_param(&sig, text[arg_start..at].trim_start(), commas);
+            let (_, ty, _) = sig.params.get(index)?;
+            return Some(ty.clone()).filter(|t| !t.is_empty());
+        }
+    }
+    let lhs = before.strip_suffix('=')?;
+    if lhs.ends_with(['=', '!', '<', '>']) {
+        return None;
+    }
+    let lhs = lhs
+        .trim_end_matches(['+', '-', '*', '/', '%', '^', '|', '&'])
+        .trim();
+    let decl = lhs
+        .strip_prefix("let ")
+        .or_else(|| lhs.strip_prefix("var "));
+    if let Some((_, ty)) = decl.and_then(|d| d.split_once(':')) {
+        return Some(ty.trim().to_string());
+    }
+    if decl.is_none() && !lhs.is_empty() && lhs.chars().all(is_ident) {
+        if let Some((_, ty)) = locals(cursor).into_iter().find(|(name, _)| name == lhs) {
+            return Some(ty.to_string());
+        }
+        let entry = outline_of(cursor.analysis).find(lhs)?.clone();
+        return type_of_entry(&entry).or_else(|| inferred_type(cursor.analysis, &entry));
+    }
+    None
+}
+
+/// What the entry gives when used as a value: a variable's or field's
+/// type, or what a fn returns.
+fn type_of_entry(entry: &Entry) -> Option<String> {
+    let detail = entry.detail.as_str();
+    match entry.kind {
+        Kind::Fn | Kind::Method | Kind::Getter if detail.contains("->") => {
+            detail.rsplit_once("->").map(|(_, r)| r.trim().to_string())
+        }
+        Kind::Field | Kind::Value | Kind::Const | Kind::Getter => {
+            let rest = detail
+                .trim_start_matches("pub ")
+                .trim_start_matches("let ")
+                .trim_start_matches("var ")
+                .trim_start_matches("const ");
+            let (_, ty) = rest.split_once(':')?;
+            Some(ty.split(" = ").next()?.trim().to_string())
+        }
+        _ => None,
+    }
+}
+
+/// The checked type of a top-level `let` or `var` written without one.
+fn inferred_type(analysis: &Analysis, entry: &Entry) -> Option<String> {
+    if entry.kind != Kind::Value {
+        return None;
+    }
+    analysis.items.iter().find_map(|item| {
+        item.check
+            .hovers
+            .iter()
+            .find(|e| {
+                e.decl == Some(e.span) && e.name == entry.name && matches!(e.keyword, "let" | "var")
+            })
+            .filter(|e| !e.ty.has_vague())
+            .map(|e| e.ty.to_string())
+    })
+}
+
+fn same_type(a: &str, b: &str) -> bool {
+    a.split_whitespace().eq(b.split_whitespace())
 }
 
 /// A line-comment, or an odd number of quotes, before the cursor.
@@ -607,13 +706,18 @@ fn type_members(
     out
 }
 
-fn scope_completion(cursor: &Cursor, std: &mut StdLib, word: &str) -> Vec<Value> {
+fn scope_completion(
+    cursor: &Cursor,
+    std: &mut StdLib,
+    word: &str,
+    rank: &dyn Fn(&Entry, u8) -> u8,
+) -> Vec<Value> {
     let analysis = cursor.analysis;
     let mut seen = HashSet::new();
     let mut items = Vec::new();
     let mut add = |entry: &Entry, sort: u8, items: &mut Vec<Value>| {
         if entry.name != word && seen.insert(entry.name.clone()) {
-            items.push(item_json(entry, sort));
+            items.push(item_json(entry, rank(entry, sort)));
         }
     };
     for (name, ty) in locals(cursor) {
@@ -790,17 +894,7 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
     }
     let sig = signature_of(cursor, std, item, callee_end, name)?;
     // `f(a, k = 3`: the argument named, else the one by position.
-    let arg = text[arg_start..offset].trim_start();
-    let named = arg
-        .split_once('=')
-        .filter(|(n, rest)| !rest.starts_with('=') && n.trim().chars().all(is_ident))
-        .and_then(|(n, _)| sig.params.iter().position(|(p, ..)| p == n.trim()));
-    let variadic_last = sig.params.last().is_some_and(|(.., v)| *v);
-    let active = named.unwrap_or(if variadic_last {
-        commas.min(sig.params.len().saturating_sub(1))
-    } else {
-        commas
-    });
+    let active = active_param(&sig, text[arg_start..offset].trim_start(), commas);
 
     let mut label = format!("{}(", sig.name);
     let mut parameters = Vec::new();
@@ -841,6 +935,21 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
         ("activeSignature", 0.into()),
         ("activeParameter", (active as u32).into()),
     ]))
+}
+
+/// The parameter an argument is for: `f(a, k = 3`'s is `k`, else the one
+/// at its position, the last when that one is variadic.
+fn active_param(sig: &Signature, arg: &str, commas: usize) -> usize {
+    let named = arg
+        .split_once('=')
+        .filter(|(n, rest)| !rest.starts_with('=') && n.trim().chars().all(is_ident))
+        .and_then(|(n, _)| sig.params.iter().position(|(p, ..)| p == n.trim()));
+    let variadic_last = sig.params.last().is_some_and(|(.., v)| *v);
+    named.unwrap_or(if variadic_last {
+        commas.min(sig.params.len().saturating_sub(1))
+    } else {
+        commas
+    })
 }
 
 fn utf16_len(s: &str) -> u32 {
