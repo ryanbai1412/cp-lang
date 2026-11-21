@@ -3,11 +3,11 @@
 // maximizing sum(a) / sum(b), printed to 6 decimal places.
 //
 // Fractional programming: ratio >= r iff max_matching(a[i][j] - r * b[i][j]) >= 0.
-// Binary search `r` scaled by 10^7 using `scout.flow_ext.max_weight_matching`
+// Binary search `r` scaled by 10^7 using `std.flow.max_weight_matching`
 // (O(n^3) Hungarian), replacing the original's 90-line `__int128` dense flow.
 // Bounding `hi` by `max(a) * SCALE` avoids 128-bit arithmetic completely.
 // original: corpus/submissions/5466798.cpp
-use scout.flow_ext.{max_weight_matching}
+use std.flow.{max_weight_matching}
 
 let n: Int = read()
 domain Boy = 0..n

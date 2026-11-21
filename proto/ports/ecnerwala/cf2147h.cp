@@ -2,6 +2,7 @@
 // If it is not 1, one color. Otherwise two colors always suffice (Gallai): split V
 // so each side's odd-weight edges give every vertex even degree; then every cut
 // inside a side has even weight, so 2 divides all its max flows.
+use std.flow.{gomory_hu}
 @!multitest
 let n: 1..=50 = read()
 let m: 0..=1225 = read()
@@ -14,15 +15,8 @@ fn answer(colors: List<Bitset<V>>):
         print(c.len)
         print([v for v in c.each()])
 
-var fg = FlowGraph<V>()
-for e in edges: fg.add_both(e.u, e.v, e.w)
-var par: [V]V = V.first
 var g = 0
-for i in V if i != V.first:
-    fg.reset()
-    g = gcd(g, fg.max_flow(i, par[i]))
-    let cut = fg.min_cut(i)
-    for j in V.after(i) if par[j] == par[i] and cut[j]: par[j] = i
+for e in gomory_hu(edges): g = gcd(g, e.w)
 
 let all = Bitset<V>.full()
 if g != 1:

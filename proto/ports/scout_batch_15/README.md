@@ -59,7 +59,7 @@ structures (**44.5%** reduction).
   scaling with sparse Dinic via `std.flow.FlowGraph`.
 - `sdoi17r1p4.cp` (27 vs 168 raw / 28 stripped; `5466798.cpp`): fractional
   programming + weighted bipartite matching. Replaces 90 lines of `__int128`
-  dense flow with `scout.flow_ext.max_weight_matching` and a tighter upper
+  dense flow with `std.flow.max_weight_matching` and a tighter upper
   bound that stays in 64-bit `Int`.
 - `noi09p1.cp` (63 vs 120 raw / 88 stripped; `5102817.cpp`): lexicographically
   smallest perfect bipartite matching via leaf peeling and cycle orientation.

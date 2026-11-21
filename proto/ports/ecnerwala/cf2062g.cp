@@ -5,7 +5,7 @@
 // bound. It is always achieved in two stages: first sort positions i -> mate[i]
 // by swaps reducing position distance, then sort values p[i] -> q[mate[i]] by
 // swaps reducing value distance.
-use std.flow.{max_weight_matching}
+use std.flow.{min_weight_matching}
 use std.seq.{swap_at}
 
 fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
@@ -30,9 +30,7 @@ domain I = 1..=n
 let p: [I]I = read()
 let q: [I]I = read()
 
-let (_, mate) = max_weight_matching < I, I > (
-    (i, j) => -(abs(i.ord - j.ord) + abs(p[i].ord - q[j].ord))
-)
+let (_, mate) = min_weight_matching::<I, I>((i, j) => abs(i.ord - j.ord) + abs(p[i].ord - q[j].ord))
 
 var pos_perm: [I]I = [I] i => mate[i]
 var ops = sort_perm(mut pos_perm)
