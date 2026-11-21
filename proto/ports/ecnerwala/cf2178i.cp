@@ -11,7 +11,7 @@ let (n, k): (2..=31, 1..=20_000) = read()
 domain V = 0..n
 let p: [V]Pt = read()
 fn near(u: V, v: V) -> Bool = (p[u] - p[v]).norm2 == k
-let side = two_color::<V>(u => [v for v in V if near(u, v)])!
+let side = two_color<V>(u => [v for v in V if near(u, v)])!
 let left = count(side[v] for v in V) * 2 <= n
 let a = [v for v in V if side[v] == left]
 let b = [v for v in V if side[v] != left]

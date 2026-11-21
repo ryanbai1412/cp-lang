@@ -10,17 +10,17 @@ let (n, k): (2..=31, 1..=2e4) = read()
 domain V = 0..n
 let p: [V]Vec2<1..=100> = read()
 fn near(u: V, v: V) -> Bool = (p[u] - p[v]).norm2 == k
-let side = two_color::<V>(u => V.filter(v => near(u, v)))!
+let side = two_color<V>(u => V.filter(v => near(u, v)))!
 let small = side.minority
 domain A = V where side[v] == small
 domain B = V where side[v] != small
 let adj: [B]Subset<A> = [b => {a in A if near(a, b)}]
 
-var ans: Z = 0
-for out in Subset<A>.all:
+fn ways(out: Subset<A>) -> Z:
     var dp: [Subset<out>]Z = 1
     for b in B:
         let stay = (adj[b] - out).len + 1
-        dp = [s => dp[s] * stay + (dp[s - {a}] for a in s & adj[b]).sum()]
-    ans += dp[out]
-print(ans - 1)
+        // any of the outsiders next to b may pick it: a zeta over adj[b]
+        dp = stay * dp + dp.zeta(over: adj[b])
+    return dp[out]
+print(Subset<A>.all.map(ways).sum() - 1)
