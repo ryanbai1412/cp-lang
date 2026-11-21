@@ -21,3 +21,10 @@ fn digits(order: List<Cut>) -> Int:
     t
 fn span(cuts: Range<Cut>) -> Int = cuts.len
 print(digits(V.bounds), digits(V.bounds.rev), span(V.bounds))
+
+// `.bounds` is never empty, so its first and last cuts need no `!`.
+fn ends<D>(a: [D]Int) -> Int = D.bounds.last.ord * 10 + D.bounds.first.ord
+var pre: [V.bounds]Int = 0
+let top: Cut = V.bounds.last
+pre[top] = 7
+print(ends(a), pre[V.bounds.last], V.bounds.first.ord)

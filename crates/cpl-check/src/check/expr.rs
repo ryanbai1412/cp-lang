@@ -1271,6 +1271,14 @@ impl<'a> Checker<'a> {
                 };
             }
         }
+        // `D.bounds` is never empty: its first and last cuts are always there.
+        if let ExprKind::Field { base: inner, name: bounds } = &base.kind {
+            if bounds.text == "bounds" && matches!(name.text.as_str(), "first" | "last") {
+                if let Ty::Domain(d) = self.infer(inner) {
+                    return Ty::Pos(format!("{d}.bounds"));
+                }
+            }
+        }
         let base_ty = self.infer(base);
         let ty = self.member_ty(expr, name, base_ty.clone());
         // A built-in member (`xs.len`, `v.next`) answers before the hover

@@ -3716,6 +3716,19 @@ impl<'a> Lowerer<'a> {
         {
             return self.sorted_view_field(base, &name.text, span);
         }
+        if let ast::ExprKind::Field { name: bounds, .. } = &base.kind {
+            if bounds.text == "bounds" && matches!(name.text.as_str(), "first" | "last") {
+                let cuts = self.expr(base, None);
+                if let (ExprKind::Range { lo, hi }, Ty::Range(cut)) = (&cuts.kind, &cuts.ty) {
+                    let end = if name.text == "first" {
+                        (**lo).clone()
+                    } else {
+                        self.int_add((**hi).clone(), -1)
+                    };
+                    return self.cast(Cast::Trust, end, (**cut).clone());
+                }
+            }
+        }
         // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
         if let ast::ExprKind::Generic { base: gbase, args: gtypes } = &base.kind {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
