@@ -13,7 +13,7 @@ fn answer(colors: List<Bitset<V>>):
         print(c.len)
         print(c)
 
-if gcd(gomory_hu(edges).map(e => e.w)) != 1: return answer([V.all])
+if fold(gcd, gomory_hu(edges).map(e => e.w)) != 1: return answer([V.all])
 
 var odd = adjacency(edges.filter(e => e.w % 2 == 1), into: Bitset)
 
