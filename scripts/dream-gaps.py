@@ -58,11 +58,32 @@ def errors(cpl, path):
     return [tuple(e) for e in found]
 
 
+# A domain or its bounds by name, not a built-in type.
+DOM = r"(?!(?:Int|Str|Char|Bool|Float|List|Map|Set|Mod)\b)[A-Z]\w*(?:\.bounds)?"
+
+# Checker rules a dream breaks because it assumes the rule away; each names the rule.
+RULES = [
+    ("a position of a domain and an Int are different types",
+     rf"^expected `Int`, found `\(?{DOM}[`,]|^expected `{DOM}`, found `Int`$|"
+     rf"^can't compare a `{DOM}` with a `Int`$|^`[-+*/]` can't be applied to `{DOM}` and `Int`$"),
+    ("an array over a domain and a List are different types",
+     r"is a \[[^\]]+\]\S*, but .* is a List<|^expected `List<.*>`, found `\["),
+    ("an index is a position of the array's own domain",
+     r"is indexed by \S+, but|but the index is a|: it may step outside|"
+     r"positions of different domains|is a Bounds<\S+>, expected an"),
+    ("an array is indexed in every dimension at once", r"takes \d+ indices \(.*\), but \d+ (?:was|were) given"),
+    ("an argument the fn changes is passed with `mut`", r"so the argument must be passed as `mut "),
+    ("`??` next to arithmetic needs parentheses", r"^`\?\?` mixed with"),
+    ("a name `cpl run` can't see from here", r"^`cpl run` doesn't know the name"),
+    ("a binding in a `let` condition can't change", r"^a binding in a `let` condition can't be `mut`$"),
+]
+
+
 def gap(code, message, help_text):
     """The missing feature or name an error reports, or None if it names none."""
-    m = re.match(r"not implemented yet: (.*) \((?:see .*|not in the design)\)$", message)
+    m = re.match(r"not implemented yet(?:, and (deferred))?: (.*) \((?:see .*|not in the design)\)$", message)
     if code == "E0504" and m:
-        return "syntax: " + m.group(1)
+        return ("deferred: " if m.group(1) else "syntax: ") + m.group(2)
     m = re.match(r"no (?:`(\S+)` in scope|type or domain named `(\S+)`), and not in the stdlib \(yet\)", message)
     if m:
         return "library: " + (m.group(1) or m.group(2))
@@ -79,9 +100,9 @@ def gap(code, message, help_text):
         return "syntax: a method that uses fields without taking `self`"
     if message == "a top-level `return` takes no value":
         return "rule: a value after a top-level `return` (decision 20.3)"
-    m = re.match(r"(\S+) has no field or method `(\S+)`", message)
+    m = re.match(r"(.+?) has no field or method `(\S+)`", message)
     if m:
-        return "library: %s.%s" % (m.group(1), m.group(2))
+        return "library: %s.%s" % (re.sub(r"<.*", "", m.group(1)), m.group(2))
     m = re.match(r"a `(.+)` has no (?:method|member) `(\S+)` that `cpl run` knows", message)
     if m:
         return "library: %s.%s" % (m.group(1), m.group(2))
@@ -99,6 +120,9 @@ def gap(code, message, help_text):
         return "spelling: %s (write `%s`)" % (m.group(1), m.group(2))
     if code == "E0309" and message.endswith("can't leave the fn from there"):
         return "rule: `?` that leaves the fn from a branch, lambda or comprehension"
+    for rule, pattern in RULES:
+        if re.search(pattern, message):
+            return "rule: " + rule
     m = re.match(r"`(\S+)` is in the standard library", help_text)
     if m:
         return "import: " + m.group(1)
