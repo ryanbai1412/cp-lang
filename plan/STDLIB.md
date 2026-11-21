@@ -372,11 +372,10 @@ builtins and getters accept optional `by:`.
 ### 4.3 `std.math`: number theory
 
 Integer helpers and number theory with every cost in the name or the
-type. Full design and contest survey: `design/stdlib/math.md`. Three
-ways to factor, from cheapest setup to largest input:
-`Sieve(n).factor(x)` for many x up to n, `factor(x)` by trial division
-for one x up to about 1e12, `factor_big(x)` by Pollard's rho for x up
-to 4e18.
+type. Full design and contest survey: `design/stdlib/math.md`. Two
+ways to factor: `Sieve(n).factor(x)` in O(log x) for many x up to n,
+and `factor(x)` for any 64-bit `Int` (trial division for `x <= 1e6`,
+Pollard's rho + Miller-Rabin above).
 
 ```cp
 fn gcd(a: Int, b: Int) -> Int // O(log min(a, b))
@@ -397,15 +396,14 @@ fn digits(self: Int, base: Int = 10) -> List<Int>
 fn bit(self: Int, i: Int) -> Bool
 @get fn is_pow2(self: Int) -> Bool
 fn splitmix64(x: U64) -> U64
-fn factor(x: Int) -> List<(Int, Int)> // O(sqrt x)
+fn factor(x: Int) -> List<(Int, Int)> // O(sqrt x) for x <= 1e6; O(x^(1/4) log x) expected above
 fn divisors(x: Int) -> List<Int> // O(sqrt x)
 fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)
 fn mul_mod(a: Int, b: Int, m: Int) -> Int // O(1), through I128 if needed
 fn pow_mod(a: Int, e: Int, m: Int) -> Int // O(log e); 1 <= m
 fn is_prime(x: Int) -> Bool // O(log^2 x); deterministic Miller-Rabin, every Int
-fn factor_big(x: Int) -> List<(Int, Int)> // expected O(x^(1/4) log x)
-fn phi(x: Int) -> Int // O(sqrt x)
-fn primitive_root(p: Int) -> Int // expected O(p^(1/4) log p), prime p
+fn phi(x: Int) -> Int // O(sqrt x) for x <= 1e6; O(x^(1/4) log x) expected above
+fn primitive_root(p: Int) -> Int // O(p^(1/4) log p) expected, prime p
 fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int
     // O(log m); sum of (a*i + b) / m for i in 0..n, floor division
 ```

@@ -3360,3 +3360,10 @@ or a `mut` argument is never moved from. Test:
 `a_param_returned_in_a_struct_is_taken_by_value_and_moved_in` and the
 `sunk_params.cp` differential program. Reverse: drop `scope::sunk_params` and
 the `last_use_call` flag; parameters go back to `const&` plus a copy.
+
+## 92. Unify `factor_big` into `factor` in `std.math` (2026-11-21)
+
+- **Decision.** Remove `factor_big(x)` from `std.math`; `factor(x: Int)` handles every 64-bit `Int >= 1` using trial division for `x <= 1_000_000` (`O(sqrt x)`) and trial division below 100 + deterministic Miller-Rabin + Pollard's rho above (`O(x^(1/4) log x)` expected). `Sieve(n).factor(x)` remains the `O(log x)` bulk-query path.
+- **Why.** `factor_big` beside `factor` was a width twin violating one-spelling-per-job. A single threshold branch at `1_000_000` keeps small inputs as fast as plain trial division while preventing `O(sqrt x)` TLE on 64-bit inputs (including `phi(x)`). Zero corpus ports called `factor_big`.
+- **Evidence.** `cf2201e` emitted C++ grew by only +82 B (`35,974 -> 36,056 B`); `cf2147g` is `20,364 B` (32% of 64 KB cap); all 19 tests in `stdlib/math.cp` and `examples/local-lib/math/primes.cp` pass across `1..2000`, random `1..1e12`, and 64-bit semiprimes/primes.
+- **Reverse.** Restore `pub fn factor_big(x: Int)` in `stdlib/math.cp` and revert `factor(x)` to trial division only.

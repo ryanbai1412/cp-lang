@@ -75,7 +75,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'convolve_int', 'convolve_mod', 'convolve_or', 'convolve_subset', 'convolve_xor', 'cross', 'cross128', 'cross3', 'crt', 'crt_all', 'cyclic_pairs',
     'decrease', 'dedup', 'deriv', 'det_real', 'diameter2', 'differences', 'dist', 'dist2', 'dist2_128', 'dist2_3',
     'div_mod', 'divisors', 'divisors_from_factors', 'dnc_break', 'dot', 'dot128', 'dot3', 'dot3_128', 'eq_fields', 'euler_walk',
-    'eval', 'eval_all', 'exp', 'ext_gcd', 'factor', 'factor_big', 'find_cycle', 'first_gt', 'fixed_cost_paths', 'flip_action',
+    'eval', 'eval_all', 'exp', 'ext_gcd', 'factor', 'find_cycle', 'first_gt', 'fixed_cost_paths', 'flip_action',
     'floor_sum', 'floyd_warshall', 'fwht', 'gen', 'gen_fields', 'general_matching', 'get_or_insert_with', 'global_min_cut', 'gomory_hu', 'guess_at', 'half_plane_intersect', 'hash_fields', 'hull_extreme',
     'hull_tangents', 'idempotent', 'increase', 'integral', 'interpolate', 'inv', 'inv_mod', 'inverse', 'inverse_real', 'inversions', 'is_palindrome',
     'is_prime', 'is_sorted', 'knuth_break', 'lagrange_at', 'last_lt', 'lcp_array', 'line_dist', 'line_intersect', 'locate', 'locate_convex', 'log',

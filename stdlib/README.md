@@ -323,7 +323,7 @@ var f = Fenwick<I, M>()
 `floor(a / b)` for `b > 0`, and `Mod(-1)` needs no fix-up.
 `math.cp` has `gcd`, `ext_gcd`, `ceil_div`, `choose2`, `bit_len`, a linear
 `Sieve` (with `phi_table`, `mobius_table`, `div_count_table`, `div_sum_table`,
-and generic `sieve_multiplicative`), `factor`, `factor_big`, `divisors`,
+and generic `sieve_multiplicative`), `factor`, `divisors`,
 `divisors_from_factors`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`,
 `primitive_root`, and `floor_sum`.
 
@@ -465,7 +465,7 @@ is evidence, not a proof.
 - `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), interior-mutable
   auto-growing `Comb<M>()` (including `multinomial`), number theory (`gcd`,
   `ext_gcd`, `ceil_div`, `choose2`, `bit_len`, `Sieve`, `sieve_multiplicative`,
-  `factor`, `factor_big`, `divisors`, `divisors_from_factors`, `inv_mod`,
+  `factor`, `divisors`, `divisors_from_factors`, `inv_mod`,
   `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`).
 - `ntt.cp`: `ntt<P>`, `convolve<P>`, `convolve_mod`, `convolve_int` (`cyclic:`),
   `SosOver`, `sos` (`over:`, `inverse:`), `fwht` (`inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`, `convolve_subset`.

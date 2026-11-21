@@ -216,19 +216,44 @@ pub fn splitmix64(x: U64) -> U64:
     z = (z ^ (z >> 27)) * 0x94d049bb133111eb
     z ^ (z >> 31)
 
-/// The prime factorization of `x >= 1` by trial division. O(sqrt x).
+/// The prime factorization of `x >= 1` as `(prime, exponent)` pairs, smallest prime first,
+/// for any 64-bit `Int`: trial division for `x <= 1_000_000` (O(sqrt x)), Pollard's rho +
+/// deterministic Miller-Rabin above (O(x^(1/4) log x) expected).
 pub fn factor(x: Int) -> List<(Int, Int)>:
+    assert x >= 1
+    if x <= 1_000_000:
+        var out = List<(Int, Int)>()
+        var (rest, p) = (x, 2)
+        while p * p <= rest:
+            if rest % p == 0:
+                var e = 0
+                while rest % p == 0:
+                    rest /= p
+                    e += 1
+                out.push((p, e))
+            p += 1
+        if rest > 1: out.push((rest, 1))
+        return out
+    var primes = List<Int>()
+    var rest = x
+    for p in 2..100:
+        while rest % p == 0:
+            primes.push(p)
+            rest /= p
+    var todo = [rest]
+    while let m = todo.pop():
+        if m == 1: continue
+        if is_prime(m):
+            primes.push(m)
+        else:
+            let d = rho(m)
+            todo.push(d)
+            todo.push(m / d)
+    sort(mut primes)
     var out = List<(Int, Int)>()
-    var (rest, p) = (x, 2)
-    while p * p <= rest:
-        if rest % p == 0:
-            var e = 0
-            while rest % p == 0:
-                rest /= p
-                e += 1
-            out.push((p, e))
-        p += 1
-    if rest > 1: out.push((rest, 1))
+    for p in primes:
+        if not out.is_empty and out.last!.0 == p: out.last! = (p, out.last!.1 + 1)
+        else: out.push((p, 1))
     out
 
 /// The divisors of `x >= 1`, sorted. O(sqrt x).
@@ -353,45 +378,19 @@ fn rho(x: Int) -> Int:
         c += 1
     x
 
-/// The prime factorization of `x >= 1` as `(prime, exponent)` pairs, smallest prime first,
-/// for any `Int`: trial division below 100, then Pollard's rho. Expected
-/// O(x^(1/4) log x); `factor(x)` is simpler for `x` up to about 1e12.
-pub fn factor_big(x: Int) -> List<(Int, Int)>:
-    assert x >= 1
-    var primes = List<Int>()
-    var rest = x
-    for p in 2..100:
-        while rest % p == 0:
-            primes.push(p)
-            rest /= p
-    var todo = [rest]
-    while let m = todo.pop():
-        if m == 1: continue
-        if is_prime(m):
-            primes.push(m)
-        else:
-            let d = rho(m)
-            todo.push(d)
-            todo.push(m / d)
-    sort(mut primes)
-    var out = List<(Int, Int)>()
-    for p in primes:
-        if not out.is_empty and out.last!.0 == p: out.last! = (p, out.last!.1 + 1)
-        else: out.push((p, 1))
-    out
-
-/// Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`. O(sqrt x).
+/// Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`.
+/// O(sqrt x) for `x <= 1_000_000`, O(x^(1/4) log x) expected above.
 pub fn phi(x: Int) -> Int:
     var acc = x
     for (p, _) in factor(x): acc = acc / p * (p - 1)
     acc
 
 /// The smallest primitive root modulo the prime `p`: a `g` whose powers reach every
-/// non-zero residue. Expected O(p^(1/4) log p) to factor `p - 1`, then O(log^2 p) per try.
+/// non-zero residue. O(p^(1/4) log p) expected to factor `p - 1`, then O(log^2 p) per try.
 pub fn primitive_root(p: Int) -> Int:
     assert is_prime(p)
     if p == 2: return 1
-    let parts = [q for (q, _) in factor_big(p - 1)]
+    let parts = [q for (q, _) in factor(p - 1)]
     var g = 2
     while any(pow_mod(g, (p - 1) / q, p) == 1 for q in parts): g += 1
     g
@@ -588,18 +587,23 @@ fn miller_rabin_agrees_with_the_sieve_and_refuses_pseudoprimes():
         assert not is_prime(x)
 
 @test
-fn factor_big_agrees_with_trial_division_and_handles_big_semiprimes():
-    for x in 1..2000: assert factor_big(x) == factor(x)
-    for _ in 0..200:
+fn factor_agrees_with_sieve_and_handles_big_semiprimes():
+    let s = Sieve(2000)
+    for x in 1..2000: assert factor(x) == s.factor(x)
+    for _ in 0..100:
         let x = rand(1, 1_000_000_000_000)
-        assert factor_big(x) == factor(x)
-    assert factor_big(1_000_003 * 998244353) == [(1_000_003, 1), (998244353, 1)]
-    assert factor_big(999_999_937 * 999_999_929) == [(999_999_929, 1), (999_999_937, 1)]
-    assert factor_big(2 ** 20 * 3 ** 5 * 10007 ** 2) == [(2, 20), (3, 5), (10007, 2)]
-    assert factor_big(2 ** 62) == [(2, 62)]
-    assert factor_big(1) == []
+        let f = factor(x)
+        assert all(is_prime(q) for (q, _) in f)
+        var back = 1
+        for (q, e) in f: back *= q ** e
+        assert back == x
+    assert factor(1_000_003 * 998244353) == [(1_000_003, 1), (998244353, 1)]
+    assert factor(999_999_937 * 999_999_929) == [(999_999_929, 1), (999_999_937, 1)]
+    assert factor(2 ** 20 * 3 ** 5 * 10007 ** 2) == [(2, 20), (3, 5), (10007, 2)]
+    assert factor(2 ** 62) == [(2, 62)]
+    assert factor(1) == []
     for x in [9_223_372_036_854_775_783, 3_037_000_493 * 3_037_000_453, 9_223_372_036_854_775_807]:
-        let f = factor_big(x)
+        let f = factor(x)
         assert all(is_prime(q) for (q, _) in f)
         var back = 1
         for (q, e) in f: back *= q ** e

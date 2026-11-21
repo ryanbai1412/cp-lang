@@ -36,7 +36,7 @@ multiplicative function (`phi`, `mobius`, divisor sums, or custom recurrences
 like `cf2135e2`'s `odd_div_sum`). For a single number up to `1e12`, trial
 division (`factor`, `divisors`, `phi`) is `O(sqrt x)` with no setup. For
 numbers up to `2^62`, deterministic 12-base Miller-Rabin (`is_prime`) and
-Pollard's rho with Brent batching (`factor_big`) handle arbitrary 64-bit
+Pollard's rho with Brent batching (`factor` above `10^6`) handle arbitrary 64-bit
 inputs. Rounding out elementary number theory are `crt` / `crt_all` (general
 non-coprime moduli), `primitive_root`, `mod_log` (BSGS discrete logarithm),
 and `mod_sqrt` (Tonelli-Shanks).
@@ -84,8 +84,8 @@ with a `Monoid` combinator eliminates a recurring 20-line template.
 
 Every function documents its cost and its regime. Where two algorithms exist
 for the same mathematical operation, the cost is visible in the name or type:
-`factor(x)` is `O(sqrt x)`, `Sieve(n).factor(x)` is `O(log x)` after `O(n)`
-setup, and `factor_big(x)` is expected `O(x^(1/4) log x)`.
+`Sieve(n).factor(x)` is `O(log x)` after `O(n)` setup, and standalone
+`factor(x)` is `O(sqrt x)` for `x <= 1e6` and `O(x^(1/4) log x)` expected above.
 
 ```cp
 // Divisibility, division, and exact combinatorics
@@ -121,8 +121,7 @@ fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int // O(log m); sum_{i in 0..n}
 
 // Primality and factorization (single-input)
 fn is_prime(x: Int) -> Bool                         // O(log^2 x); deterministic Miller-Rabin, all Int
-fn factor(x: Int) -> List<(Int, Int)>               // O(sqrt x); (prime, exp) sorted
-fn factor_big(x: Int) -> List<(Int, Int)>           // expected O(x^(1/4) log x); Pollard's rho
+fn factor(x: Int) -> List<(Int, Int)>               // O(sqrt x) <= 1e6, O(x^(1/4) log x) expected above
 fn divisors(x: Int) -> List<Int>                    // O(sqrt x); sorted
 fn divisors_from_factors(fs: List<(Int, Int)>) -> List<Int>
                                                     // O(d(x) log d(x)); sorted divisors from factors
@@ -380,7 +379,7 @@ Every module enforces its mathematical laws in `@test`:
   `e = ext_gcd(a, b)`; `crt(r1, m1, r2, m2)` returns `(r, lcm(m1, m2))` with
   `r % m1 == r1 % m1` and `r % m2 == r2 % m2`, or `none` iff no solution
   exists; `is_prime(x)` agrees with `Sieve` and rejects Carmichael numbers
-  and strong pseudoprimes; `factor(x) == factor_big(x) == s.factor(x)` and
+  and strong pseudoprimes; `factor(x) == s.factor(x)` and
   their product equals `x`; `pow_mod(a, mod_log(a, b, m)!, m) == b % m`;
   `mod_sqrt(a, p)! ** 2 % p == a % p`; `sieve_multiplicative` satisfies
   `f[a * b] == mul(f[a], f[b])` for coprime `a, b`.

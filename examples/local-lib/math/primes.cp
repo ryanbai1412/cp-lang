@@ -1,10 +1,10 @@
-//! Divisors of numbers too large for trial division, from `std.math.factor_big`.
-use std.math.{factor_big}
+//! Divisors of large 64-bit numbers, from `std.math.factor`.
+use std.math.{factor}
 
-/// Every divisor of `n >= 1`, ascending. O(number of divisors) after `factor_big`.
+/// Every divisor of `n >= 1`, ascending. O(number of divisors) after `factor`.
 pub fn divisors_of(n: Int) -> List<Int>:
     var ds = [1]
-    for (p, e) in factor_big(n):
+    for (p, e) in factor(n):
         let base = [d for d in ds]
         var scale = 1
         for _ in 0..e:
