@@ -1,8 +1,7 @@
 @!multitest
 let n: Int = read()
-let b: List<Int> = [read::<Int>() for _ in 0..n]
+let b: [0..n]Int = read()
 var res = 1
-for i in 0..(n - 1):
-    if b[i + 1] % b[i] != 0:
-        res = lcm(res, b[i] / gcd(b[i], b[i + 1]))
+for (x, y) in b.adjacent if y % x != 0:
+    res = lcm(res, x / gcd(x, y))
 print(res)

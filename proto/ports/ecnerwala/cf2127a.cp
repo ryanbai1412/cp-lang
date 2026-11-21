@@ -1,13 +1,6 @@
 @!multitest
 let n: Int = read()
-var v: ?Int = none
-var bad = false
-for _ in 0..n:
-    let a: Int = read()
-    if a >= 0:
-        if let cur = v:
-            if a != cur: bad = true
-        else:
-            v = a
-if v == 0: bad = true
-print(if bad: "NO" else: "YES")
+let a: [0..n]Int = read()
+let pos = [x for x in a if x >= 0]
+let ok = pos.is_empty or (pos[0] > 0 and all(x == pos[0] for x in pos))
+print(if ok: "YES" else: "NO")

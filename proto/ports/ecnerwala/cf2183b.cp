@@ -3,7 +3,5 @@
 let (n, k): (Int, Int) = read()
 let a: [0..n]Int = read()
 var has: [0..=n]Bool = false
-for i in 0..n: has[a[i]] = true
-var ans = 0
-while ans < k - 1 and has[ans]: ans += 1
-print(ans)
+for x in a: has[x] = true
+print(first(x for x in 0..k - 1 if not has[x]) ?? (k - 1))
