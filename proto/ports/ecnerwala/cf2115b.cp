@@ -1,42 +1,55 @@
-@!multitest
-let (n, q): (Int, Int) = read()
-let b: [1..=n]Int = read()
-let ops: [0..q](Int, Int, Int) = read()
+// Codeforces 2115 B: Gellyfish and Camellia Japonica.
+// Each operation `c[z] = min(c[x], c[y])` creates a version node `v` with
+// edges `cur[x] -> v` and `cur[y] -> v` in a version DAG (`val(v) = min` of
+// its two predecessors). Processing final values `(b[i], cur[i])` in
+// decreasing order of `b[i]`:
+//   - every unfixed predecessor `p` of `u` must have `val(p) >= val(u)`, so
+//     fixing `p = val(u)` assigns its tightest lower bound;
+//   - when both predecessors of a node `w` are fixed (`indeg[w] == 0`), the
+//     last one fixed equals `val(u)` (the minimum so far), forcing `val(w) = val(u)`.
+// Any initial slot left unconstrained after all constraints is set to `0`.
 
+@!multitest
+let (n, q): (1..=300_000, 0..=300_000) = read()
+domain Slot = 1..=n
 domain V = 1..=n + q
-domain E = 0..2 * q
-var cur: [1..=n]V = [1..=n] i => V(i)
-var edges: [E](u: V, v: V) = (u: V(1), v: V(1))
+struct Op(x: Slot, y: Slot, z: Slot)
+
+let b: [Slot]Int = read()
+let ops: [0..q]Op = read()
+
+var cur: [Slot]V = [Slot] i => V(i.ord + 1)
+var edges: List<(V, V)> = []
 for i in 0..q:
-    let (x, y, z) = ops[i]
+    let op = ops[i]
     let v = V(n + 1 + i)
-    edges[E(2 * i)] = (u: cur[x], v: v)
-    edges[E(2 * i + 1)] = (u: cur[y], v: v)
-    cur[z] = v
+    edges.push((cur[op.x], v))
+    edges.push((cur[op.y], v))
+    cur[op.z] = v
 
 let g = Graph.directed(edges)
-let rev = g.transpose()
-var indeg: [V]Int = [V] u => rev.deg(u)
-var ans: [V]?Int = none
+let rev = Graph.directed([(v, u) for (u, v) in edges])
+var indeg: [V]Int = [V] u => rev[u].len
+var val_of: [V]?Int = none
 
-let evts = [(val: b[i], st: cur[i]) for i in 1..=n].sorted(by: e => -e.val)
-var stk: List<V> = []
+let targets = [(val: b[i], node: cur[i]) for i in Slot].sorted(by: e => e.val, desc: true)
+var work: List<V> = []
+fn fix(u: V, v: Int):
+    if val_of[u] == none:
+        val_of[u] = v
+        work.push(u)
 
-fn mark(u: V, val: Int):
-    if ans[u] == none:
-        ans[u] = val
-        stk.push(u)
+for (val, st) in targets:
+    if let prev = val_of[st]:
+        if prev != val:
+            print(-1)
+            return
+    else:
+        fix(st, val)
+        while let u = work.pop():
+            for p in rev[u]: fix(p, val)
+            for w in g[u]:
+                indeg[w] -= 1
+                if indeg[w] == 0: fix(w, val)
 
-for (val, st) in evts:
-    if let prev = ans[st]:
-        if prev == val: continue
-        print(-1)
-        return
-    mark(st, val)
-    while let u = stk.pop():
-        for a in rev.out(u): mark(a.to, val)
-        for a in g.out(u):
-            indeg[a.to] -= 1
-            if indeg[a.to] == 0: mark(a.to, val)
-
-print([ans[V(i)] ?? 0 for i in 1..=n])
+print([val_of[V(i.ord + 1)] ?? 0 for i in Slot])
