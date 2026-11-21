@@ -3132,7 +3132,7 @@ fn find_pos_domain_in_ty(ty: &Ty) -> Option<DomainId> {
     }
 }
 
-fn root_place(place: &Place) -> PlaceKind {
+pub(super) fn root_place(place: &Place) -> PlaceKind {
     match &place.kind {
         PlaceKind::Local(s) => PlaceKind::Local(*s),
         PlaceKind::Global(g) => PlaceKind::Global(*g),

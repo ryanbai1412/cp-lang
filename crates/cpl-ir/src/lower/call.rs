@@ -3110,6 +3110,42 @@ impl<'a> Lowerer<'a> {
         if !has_self {
             return None;
         }
+        // `m.get_or_insert(k, init)` of `std.seq`: `init` runs only when
+        // the map has no `k`, as in `m[k] ??= init`, so `ids.len` as the
+        // next id is read only for a new name.
+        if let (Sym::GenFn(gfid), "get_or_insert", [key, init]) = (sym, name, args) {
+            let std_seq = self.gen_fns[gfid].decl.params.len() == 3 && self_mut;
+            if let (true, Some(Ty::Map(k, v) | Ty::HashMap(k, v))) = (std_seq, self.probe_ty_silent(base)) {
+                let (k, v) = (*k, *v);
+                return Some(self.do_expr(Some(&v), span, |lw, out| {
+                    let map = lw.place(base);
+                    let map = lw.settle_indexes(map, out);
+                    if let PlaceKind::Local(s) = super::stmt::root_place(&map) {
+                        lw.cx.mut_slots.insert(s);
+                    }
+                    let key = lw.expect(&key.value, &k);
+                    let key = lw.hold(key, out);
+                    let has = lw.mk(
+                        ExprKind::Builtin(Builtin::Contains, vec![super::stmt::place_to_expr(&map), key.clone()]),
+                        Ty::Bool,
+                        span,
+                    );
+                    let missing = lw.mk(ExprKind::Unary(UnOp::Not, Box::new(has)), Ty::Bool, span);
+                    let mut fill = Vec::new();
+                    let fresh = lw.expect(&init.value, &v);
+                    let fresh = lw.hold(fresh, &mut fill);
+                    let entry = Place {
+                        kind: PlaceKind::Index(Box::new(map.clone()), vec![key.clone()]),
+                        ty: v.clone(),
+                        span: lw.span(span),
+                    };
+                    fill.push(Stmt::Assign(entry, AssignOp::Set, fresh));
+                    out.push(Stmt::If(missing, Block { stmts: fill }, Block::default()));
+                    let held = lw.mk(ExprKind::Index(Box::new(super::stmt::place_to_expr(&map)), vec![key]), v.clone(), span);
+                    out.push(Stmt::Give(held));
+                }));
+            }
+        }
         let mut all_args = Vec::with_capacity(args.len() + 1);
         all_args.push(ast::Arg {
             name: None,
