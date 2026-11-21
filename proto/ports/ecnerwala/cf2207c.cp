@@ -1,27 +1,22 @@
 // Codeforces 2207 C: build a max-Cartesian tree over column heights and run a
 // 2-state tree DP tracking the best 1-bucket and 2-bucket drained water volumes.
-struct Node:
-    l: Int
-    m: Int
-    r: Int
-    c0: ?Int
-    c1: ?Int
+struct Node(l: Int, m: Int, r: Int, c0: ?Int, c1: ?Int)
 
-@!multitest
+@! multitest
 let (n, h): (Int, Int) = read()
 let a: [0..n]Int = read()
 
-var nodes: List<Node> = List.filled(2 * n + 1, Node(0, 0, 0, none, none))
+var nodes: [0..=2 * n]Node = Node(0, 0, 0, none, none)
 var stk: List<Int> = []
 var root = 0
 for i in 0..=n:
     var cur = 2 * i
     nodes[cur] = Node(i, i - 1, i - 1, none, none)
-    while not stk.is_empty and (i == n or a[i] > a[nodes[stk.last!].m]):
-        let nxt = stk.pop()!
-        nodes[nxt].c1 = cur
-        nodes[nxt].r = nodes[cur].r
-        cur = nxt
+    while let top = stk.last, (i == n or a[i] > a[nodes[top].m]):
+        stk.pop()
+        nodes[top].c1 = cur
+        nodes[top].r = nodes[cur].r
+        cur = top
     if i == n:
         root = cur
         break
