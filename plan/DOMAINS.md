@@ -277,14 +277,20 @@ multitest cut to the one failing test), and an in-file `@gen` fn shrinks
 through its recorded `rand`/`shuffle` choices. Gaps found: `Perm<V>` and
 `Tree<V>` are known only to stress (the compiler rejects them with E0204,
 so only a local alias named `Perm` or `Tree` works); a weighted tree
-(`(u: V, v: V, w: W)`) is generated as random pairs, not a tree; there are
-no simple or connected graphs; an edge list shrinks by clamping, which can
-make self-loops. `Perm<V>` (`std.seq`) and `Tree<V>` (`std.graph`) are now
-stdlib aliases every tool accepts. The seeded-bug benchmark
-(`bench/stress/`, `tests/seeded_bugs.rs`) runs in the gate: 7 bugs
+(`(u: V, v: V, w: W)`) was generated as random pairs, not a tree; there
+were no simple or connected graphs. `Perm<V>` (`std.seq`), `Tree<V>`,
+`SimpleGraph<V, E>`, `ConnectedGraph<V, E>` and `Dag<V, E>` (`std.graph`)
+are now stdlib aliases every tool accepts; stress makes a weighted tree as
+a tree with its weights, and the three graphs with no loop or repeated
+edge, connected or acyclic as named, and shrinks each by deleting a vertex
+with its edges and every value read over its vertices renamed to match
+(`deleting_a_graph_vertex_renames_the_vertices_read_beside_it`). The seeded-bug benchmark
+(`bench/stress/`, `tests/seeded_bugs.rs`) runs in the gate: 9 bugs
 (sentinel, item reuse, memo bound, heap direction, off-by-one under a
-recursive `@brute`, multitest leak, DP order over permutations), all shrunk
-to their known minimal input, median 0.45 s. A recursive `@brute` works; a
+recursive `@brute`, multitest leak, DP order over permutations, update
+order over a weighted tree, a reachability step over a graph that checks
+one end of an edge), all shrunk to their known minimal input, median
+0.49 s. A recursive `@brute` works; a
 failure that needs several tests shrinks each of them; a smaller size drops
 elements from nested arrays (a list of permutations), not just top-level
 ones; letter bounds (`'A' + k`) evaluate. Values that only fail together
@@ -293,9 +299,9 @@ stop at the first such value, not at 1.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
-**Next.** Weighted trees; simple, connected and DAG graphs with
-edge-deleting shrinking that never makes a self-loop or a repeated edge; a
-tree and a graph bug in the benchmark; lowering equal values together.
+**Next.** Lowering equal values together; generators keyed to the
+stdlib declarations, not their names; worst-case and anti-hash
+generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)
 **North star.** Every tool a contestant reaches for exists, is instant, and
