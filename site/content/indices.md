@@ -140,6 +140,23 @@ print(ans)
 
 You never accidentally pass an uncompressed value into `bit` or mix a compressed index with raw coordinates.
 
+## Fresh runtime domains and existential returns
+
+A domain can be declared from any runtime expression that yields a count, a range, a sequence, or another domain — including `domain V = read(1..=n)` and `domain C = compress(xs)`. Each declaration site owns one runtime slot (saved and restored automatically across recursive calls), and runtime-sized arrays live on the heap rather than the stack.
+
+A fresh domain cannot escape the block or function that declares it (`E0313`) unless the function exposes it explicitly in an existential return type:
+
+```cp CP Lang 0.2.2
+fn make_seq(k: Int) -> (domain P, [P]Int):
+    domain Local = 0..k
+    (Local, [Local] i => i.to_idx * 2)
+
+let (domain Q, vals) = make_seq(4)
+print(Q.count, sum(vals))
+```
+
+Standard-library functions that introduce a new index space (`components`, `scc`, `two_edge_components`) use the same pattern: `let (domain C, comp) = scc(adj)`. Record types read by `read()` may also bound fields by earlier runtime values, e.g. `let edges: [0..m](u: V, v: V, w: 0..=m) = read()`.
+
 ## Algebraic `Index` and escape hatches
 
 The language's `Index` model covers `Bool`, finite enums, `?T`, integer ranges, tuples/records, and `Subset<D>` for bitmask DP. Support across generic library calls is still being completed: for example, flow over payload-enum vertices is not yet runnable. The [graph course](course-graphs-math.html#network-flow-with-typed-vertices) shows a working flow network over a numeric vertex domain.

@@ -112,13 +112,27 @@ one-local-edit conversions, and every range check the compiler can prove
 disappears. Runtime-sized and fresh spaces (compressed values, components,
 rooted trees, subsets, grids, intervals, cuts) compose freely, cost nothing
 over raw `int`, and are shown in the contestant's own base by every tool.
-**Where we are.** Counted domains and ranged reads work; domains from any
-runtime expression are refused by the back ends; existential returns are
-missing. (Lane running.)
+**Where we are** (updated 2026-11-21). Counted domains, ranged reads,
+arbitrary runtime-expression domains (`domain V = read(1..=n)`,
+`domain C = compress(xs)`), existential tuple and record returns
+(`fn f(..) -> (domain P, [P]Int)`, `let (domain P, part) = f(..)` including
+multiple existential domains and renamed local domains), recursive
+save/restore (`cpl::DomGuard` + interpreter restore stack), fresh-domain
+escape diagnostics (`E0313` on return, outer assignment, outer container
+store, and closure capture), heap storage for runtime-sized arrays
+(`std::vector` / `cpl::Grid`), and runtime-bounded fields in `read()`
+records (`w: 0..=m`) all work across checker, interpreter, C++ codegen,
+formatter, linter, LSP, and docs. Four ports converted (`ucup4s25c`,
+`cf2222f`, `cf2101b`, `cf2268c`). Remaining: eliminating redundant runtime
+bounds checks when indexing `[0..=m]` by a `0..=m` record field in C++
+codegen, and explicit `domain` field syntax on domain-carrying structs.
 **Bar.** Settled semantics in `plan/OPERATING.md` implemented across
-checker, interpreter and C++; three ports converted.
-**Next.** Fresh domains end to end; escape diagnostics; stdlib functions
-that return a new index space.
+checker, interpreter and C++; three ports converted. (Met: 4 ports
+converted and passing `gate.sh`.)
+**Next.** Propagate runtime range-field facts (`w: 0..=m`) into C++ bounds
+elimination (`cpl-codegen/src/facts.rs`); migrate remaining stdlib
+existential signatures to tuple syntax where appropriate; explicit
+`domain` field syntax for value-owned structs.
 
 ## 3. Codegen and performance (`plan/30`)
 **North star.** The generated C++ is what a world-class contestant would hand-write:

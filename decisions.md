@@ -1445,6 +1445,7 @@ errors to explain what happened in one screen with values, call path, and test c
 normal execution. Reverse: remove `call_stack`/`case` from `Trap`, `call_frames`/`current_case` from
 `Interp`, and `Trap::to_diagnostic`.
 
+<<<<<<< HEAD
 27.2. **Unboxed `OptVal::Int` / `TupleVal::OneInt` and zero-allocation interpreter hot paths.**
 `Value::Opt` stores `OptVal::{None, Int(i64), Boxed(Rc<Value>)}` and `Value::Tuple` stores
 `TupleVal::{OneInt(i64), Boxed(Rc<Vec<Value>>)}` (promoting to `Boxed` only on in-place field/option
@@ -1456,6 +1457,10 @@ domain steps (`?Pos`) and 1-field `Int` structs (`Mod<P>`). Untraced `assign`, 1
 is tree-walking `eval`/`stmt` dispatch overhead (future bytecode VM). Reverse: revert `OptVal`,
 `TupleVal`, and `assign_untraced` in `crates/cpl-interp`.
 
+||||||| parent of c9932ae (docs: document fresh domains, existential returns and decisions)
+=======
+<<<<<<< Updated upstream
+>>>>>>> c9932ae (docs: document fresh domains, existential returns and decisions)
 ## 28. Core mechanisms for a library-only stdlib (0.3, §1)
 
 - **28.1 Reflection is a loop: `for f in fields(x)`.** The body runs once per field of a struct, record
@@ -1507,6 +1512,7 @@ shows the doc that states its cost. A member access records its owner type (`Hov
 hover and go-to-definition on `bit.prefix` reach the method in `stdlib/fenwick.cp`. The doc is the one
 place a cost is written today; a computed cost line can join it later. Reverse: drop `Hover::doc` and
 `HoverEntry::owner` in `crates/cpl-check/src/{hover,check}.rs`.
+<<<<<<< HEAD
 
 29.2. **Neovim, Emacs and Helix get thin setups over `cpl lsp`, smoke-tested in the gate.** Each
 setup is the editor's own idiom (a Neovim runtime folder, an Emacs major mode registering with eglot
@@ -1577,10 +1583,6 @@ Unoptimized, a call took about seven times the stack, so a debug-built
 few seconds more on a clean debug build. Reverse: drop
 `[profile.dev.package.cpl-interp]` from `Cargo.toml`.
 
-||||||| parent of 069359d4 (tools: add cpl profile and cpl cover for both engines)
-
-||||||| Stash base
-
 ## 32. Profiling and coverage (§8 tooling, 2026-11-21)
 
 - **32.1 A profile counts statements, keyed by their span in the user's file.** `cpl profile` and
@@ -1598,3 +1600,38 @@ few seconds more on a clean debug build. Reverse: drop
   disagree on 126 of 183 programs. Reverse: give lowered blocks their own spans and mark them in codegen.
 - **32.4 Branch coverage comes from the same counts.** An `if` that ran and whose first statement ran
   every time, or never, went one way. No separate instrumentation. Reverse: count arms explicitly.
+
+## 33. Fresh domains and existential returns (2026-11-21)
+
+33.1. **Existential return syntax `-> (domain P, [P]Int)` and `let (domain P, part) = f(..)`**
+uses `TypeKind::DomainBinder(Name)` in parenthesized tuple types and `PatternKind::Domain(Name)` in
+patterns, alongside existing record-based `(new domain C, ...)` syntax. Reason: matches the 0.3
+spec while keeping existing stdlib signatures (`components`, `scc`) working without breaking ports.
+Reverse: unify record and tuple syntax under one AST form once all stdlib signatures migrate.
+
+33.2. **One hidden runtime slot per fresh declaration site, saved and restored on function re-entry.**
+Each `domain D = <expr>` declaration owns one `(lo, len)` slot in both `cpl-interp` and `cpl-codegen`
+(generic functions specialize per domain and read the slot directly with no hidden witness parameter).
+Shared `Program::fn_guarded_domains` collects local domains defined in a function body that do not
+escape through its return type; `cpl-interp` saves/restores them on function entry/exit and
+`cpl-codegen` emits an RAII `cpl::DomGuard` at the top of the function body. Reason: zero overhead for
+generic code, correct recursion, escaping value-owned domains (`Compressed<D, T>`, `Rooted<V, P>`)
+survive return, and identical semantics across interpreter and C++. Reverse: pass explicit `(lo, len)`
+witness structs to generic functions if re-entrant closures ever need independent live instances of the
+same declaration site.
+
+33.3. **Fresh-domain escape checking (`E0313`) allows explicitly existential returns and
+domain-carrying structs.** Returning a fresh domain value, assigning it to an outer variable,
+storing it into an outer container (`.push`/`.insert`/`.set`/`.add`), or capturing it in a returned
+closure is rejected with `E0313`, naming the domain and pointing to `-> (domain P, ...)` syntax.
+User-defined structs parameterized by a fresh domain (e.g. `Compressed<D, T>`, `Rooted<V, P>`) pack
+the domain existentially as a value-owned domain (`xs.D`, `t.Pre`). Reason: prevents dangling
+index-space escapes while keeping value-owned stdlib domains (`compress`, `Rooted`) ergonomic.
+Reverse: require explicit `domain D` field annotations on domain-carrying structs instead of
+inferring from struct type arguments.
+
+33.4. **Runtime-bounded fields in `read()` records (`w: 0..=m`) keep `Int` arithmetic and validate
+against the runtime bound.** `let edges: [0..m](u: V, v: V, w: 0..=m) = read()` validates `0 <= w <= m`
+in both interpreter (`R0001`) and C++ (`cpl::read_in(0, m)`), preserving `Int` arithmetic on `e.w`
+without duplicating the maximum constant. Reason: resolves `research/frictions/cf2222f.md`.
+Reverse: none needed; this is general range-type lowering.
