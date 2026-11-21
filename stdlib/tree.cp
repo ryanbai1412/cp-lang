@@ -460,6 +460,7 @@ pub struct Rooted<V, Pre>:
         var len: [K]Int = 0
         var key: [K]Bool = false
         var st = List<K>()
+        st.reserve(K.count)
         var j = 0
         for x in K:
             vs[x] = at[ps[x.ord]]
