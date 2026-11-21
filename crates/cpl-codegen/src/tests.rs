@@ -1714,3 +1714,38 @@ fn a_local_memo_body_is_an_auto_lambda_and_its_wrapper_is_explained() {
         "{explained:?}"
     );
 }
+
+#[test]
+fn a_bound_method_value_is_its_lambda_not_a_std_function() {
+    let src = concat!(
+        "struct P:\n",
+        "    w: Int\n",
+        "    pub fn key(self, x: Int) -> Int = (x * w) % 7\n",
+        "let p = P(read::<Int>())\n",
+        "fn go(xs: List<Int>) -> List<Int> = xs.sorted(by: p.key)\n",
+        "print(go([1, 2, 3, 4, 5]))\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+}
+
+#[test]
+fn explain_names_closure_params_and_top_level_fn_vars() {
+    let src = concat!(
+        "let k = read::<Int>()\n",
+        "let g = x => x + k\n",
+        "let h = (f: Int -> Int, x: Int) => f(x) * 2\n",
+        "print(h(g, 3), g(1))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let reasons: Vec<String> = crate::explain_closures(&program)
+        .into_iter()
+        .filter_map(|e| match e.mode {
+            crate::ClosureMode::DynamicStdFunction { reason } => Some(reason),
+            _ => None,
+        })
+        .collect();
+    assert!(reasons.iter().any(|r| r == "fn parameter of a closure"), "{reasons:?}");
+}

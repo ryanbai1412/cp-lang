@@ -252,9 +252,11 @@ running.)
 **Next.** Heap for runtime-sized
 arrays; niches; a matched-algorithm benchmark harness.
 **`std::function` debt.** Every fn value lowers to a monomorphized,
-inlinable C++ form except these, which keep `std::function` (22 corpus
-programs, one of them the intentional parity case of §138; a fn or `?fn`
-field nothing reads is dropped, §140):
+inlinable C++ form except these, which keep `std::function` (26 of the
+1,781 corpus and test programs, one of them the intentional parity case of
+§138; a fn or `?fn` field nothing reads is dropped, §140; a block that gives
+one closure, such as the bound method in `sorted(by: tree.pos)`, is that
+closure's own lambda type). `cpl explain` names each one:
 - `Monoid<T>.op` when one program builds two monoids over the same `T`
   (`+` and `max` trees): the struct is shared, so the field holds more than
   one closure (8 programs). The static form is a monoid monomorphized per
@@ -265,12 +267,10 @@ field nothing reads is dropped, §140):
 - the wrapper of a local `@memo` fn, which its body calls before it is
   assigned (3 programs; the body itself is an `auto` lambda);
 - a fn-typed parameter of a closure, a closure returning a closure and a
-  recursive closure inside another closure (4 programs, which `cpl explain`
-  does not yet name);
+  recursive closure inside another closure (4 programs);
 - a fn-typed parameter of the judge entry, and one of a recursive fn whose
   recursion passes it a different closure (§138);
-- a reassigned or hoisted fn slot, and a top-level fn var (2 programs, not
-  yet named by `cpl explain`).
+- a reassigned or hoisted fn slot, and a top-level fn var (2 programs).
 
 ## 4. Standard library (`plan/STDLIB.md`, `plan/20`)
 **North star.** A standard library that covers everything ever asked at the hardest

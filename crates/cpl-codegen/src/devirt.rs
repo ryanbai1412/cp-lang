@@ -945,6 +945,36 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
     }
 
     explain_locals_in_block(&devirt, "main", &program.main_locals, &program.main, &mut out);
+
+    for g in &program.globals {
+        if matches!(g.ty, Ty::Fn(..)) {
+            out.push(ClosureLowering {
+                site: format!("top-level {}", g.name),
+                mode: ClosureMode::DynamicStdFunction { reason: "top-level fn var".to_string() },
+            });
+        }
+    }
+    for (cid, c) in program.closures.iter().enumerate() {
+        let dynamic = |site: String, reason: &str| ClosureLowering {
+            site,
+            mode: ClosureMode::DynamicStdFunction { reason: reason.to_string() },
+        };
+        for &slot in &c.params {
+            if matches!(c.locals[slot].ty, Ty::Fn(..)) {
+                out.push(dynamic(format!("closure {cid} param {}", c.locals[slot].name), "fn parameter of a closure"));
+            }
+        }
+        if matches!(c.ret, Ty::Fn(..)) {
+            out.push(dynamic(format!("closure {cid} result"), "closure returning a closure"));
+        }
+        walk::deep_stmts(&c.body, &mut |stmt| {
+            if let Stmt::Let(slot, _) = stmt {
+                if matches!(c.locals[*slot].ty, Ty::Fn(..)) {
+                    out.push(dynamic(format!("closure {cid} local {}", c.locals[*slot].name), "fn local inside a closure"));
+                }
+            }
+        });
+    }
     out
 }
 

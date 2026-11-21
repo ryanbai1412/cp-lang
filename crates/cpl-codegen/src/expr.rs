@@ -1050,6 +1050,9 @@ impl<'p> Emitter<'p> {
                 }
                 let ret = if let Some(k) = self.expr_fixed_len(e) {
                     self.fixed_array_cpp(&e.ty, k)
+                } else if gives_one_closure(block) {
+                    // `plan.sorted(by: tree.pos)`: the lambda's own type, not a std::function.
+                    "auto".to_string()
                 } else {
                     self.ty(&e.ty)
                 };
@@ -2732,4 +2735,14 @@ fn fn_param_only_called(program: &cpl_ir::Program, fn_id: usize, param_slot: usi
         _ => {}
     });
     !escapes && total_uses == indirect_callees
+}
+
+fn gives_one_closure(block: &cpl_ir::Block) -> bool {
+    let mut gives = Vec::new();
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::Give(value) = stmt {
+            gives.push(matches!(value.kind, ExprKind::Closure(_)));
+        }
+    });
+    gives == [true]
 }
