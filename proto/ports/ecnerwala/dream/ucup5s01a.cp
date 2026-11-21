@@ -26,12 +26,13 @@ for (j, c) in unmarked.items: dp[deg.count(0), j] = c
 for z in 0..m:
     let others = n + z
     // `i` leaves and `j` unmarked; every other vertex is marked internal
-    dp = [Count, Count] (i, j) =>
+    dp = [Count, Count] (i, j) => (
         // below a leaf: it becomes internal, marked now (j) or later (j - 1)
-        i * (dp[i, j] + dp.get(i, j - 1)) +
+        i * (dp[i, j] + dp.get(i, j - 1))
         // below an unmarked vertex, marking the new leaf now
-        (j + 1) * dp.get(i - 1, j + 1) +
+        + (j + 1) * dp.get(i - 1, j + 1)
         // below an unmarked vertex without marking, or below a marked one
-        (others - (i - 1)) * dp.get(i - 1, j)
+        + (others - (i - 1)) * dp.get(i - 1, j)
+    )
 
-print(sum(dp[i, 0] / i for i in 1..=n + m) / prod(Z(n + z) for z in 0..m))
+print(sum(dp[i, Count.first] / Z(i.ord) for i in Count if i > Count.first) / prod(Z(n + z) for z in 0..m))
