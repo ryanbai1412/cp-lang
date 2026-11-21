@@ -833,6 +833,98 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         self.assertEqual(sb._port_id_from_relpath("proto/ports/ecnerwala/samples/cf2124f2.1.in"), "ecnerwala/cf2124f2")
         self.assertIsNone(sb._port_id_from_relpath("proto/ports/scout_batch_1/foo.cp"))
 
+    def test_interp_ratio_section_and_max_p50_ratchet(self):
+        base = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "perf": {},
+                "interp": {
+                    "measured": 10,
+                    "passed": 10,
+                    "failed": 0,
+                    "median_ms": 15.0,
+                    "p95_ms": 40.0,
+                    "max_ms": 60.0,
+                    "max_port": "ecnerwala/a",
+                    "ratio_above_floor": 10,
+                    "ratio_p50": 6.0,
+                    "ratio_p95": 25.0,
+                    "ratio_max": 50.0,
+                    "ratio_max_port": "ecnerwala/a",
+                    "bar_ok": True,
+                    "north_star_ok": False,
+                    "over_10x": 3,
+                },
+            },
+        }
+        cur_bad = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "perf": {},
+                "interp": {
+                    **base["totals"]["interp"],
+                    "ratio_p50": 7.0,
+                    "ratio_max": 60.0,
+                },
+            },
+        }
+        diff_bad = sb.diff_against_baseline(cur_bad, base, mode="full")
+        self.assertTrue(any("interp ratio p50 regressed" in m for m in diff_bad["regressions"]))
+        self.assertTrue(any("interp ratio max regressed" in m for m in diff_bad["regressions"]))
+
+        cur_good = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "perf": {},
+                "interp": {
+                    **base["totals"]["interp"],
+                    "ratio_p50": 4.5,
+                    "ratio_max": 40.0,
+                },
+            },
+        }
+        diff_good = sb.diff_against_baseline(cur_good, base, mode="full")
+        self.assertEqual(diff_good["regressions"], [])
+        self.assertTrue(any("interp ratio p50 improved" in m for m in diff_good["improvements"]))
+        self.assertTrue(any("interp ratio max improved" in m for m in diff_good["improvements"]))
+
+        # Verify print_summary emits the interp-ratio section with p50, p95, max, and >10x.
+        import io
+        from contextlib import redirect_stdout
+
+        rep = {
+            "meta": {"mode": "fast", "commit": "abc1234", "elapsed_s": 1.0},
+            "totals": {
+                "ports_passed": 1,
+                "ports_total": 1,
+                "tokens": {"cp_total": 10, "orig_total": 20, "median_ratio": 0.5, "median_stripped_ratio": 0.5, "over_1_0x_raw": 0, "over_1_0x_stripped": 0},
+                "emitted_bytes": {"max": None},
+                "perf": {"measured": 0},
+                "interp": {**base["totals"]["interp"], "cached": True},
+                "friction_lint": {"wa_trap": 0, "real_gap": 0, "stale_port": 0},
+            },
+            "frictions": {"files": 0, "open": 0, "closed": 0, "by_severity": {"blocker": 0, "high": 0, "medium": 0, "low": 0}, "by_goal": {}, "open_blockers": [], "open_highs": [], "warnings": []},
+            "ports": [],
+        }
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            sb.print_summary(rep, {"has_baseline": False, "added_ports": [], "removed_ports": [], "regressions": [], "improvements": []}, quiet=True)
+        out = buf.getvalue()
+        self.assertIn("interp-ratio: p50=6.0x", out)
+        self.assertIn("p95=25.0x", out)
+        self.assertIn("max=50.0x", out)
+        self.assertIn(">10x: 3", out)
+        self.assertIn("(cached)", out)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2018,8 +2018,18 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                     regressions.append(f"{label} regressed >10%: {bv:.3f}x -> {cv:.3f}x")
             bi_p50 = bt.get("interp", {}).get("ratio_p50")
             ci_p50 = ct.get("interp", {}).get("ratio_p50")
-            if bi_p50 is not None and ci_p50 is not None and ci_p50 > bi_p50 * PERF_REGRESSION_RATIO:
-                regressions.append(f"interp ratio p50 regressed >10%: {bi_p50:.2f}x -> {ci_p50:.2f}x")
+            if bi_p50 is not None and ci_p50 is not None:
+                if ci_p50 > bi_p50 * PERF_REGRESSION_RATIO:
+                    regressions.append(f"interp ratio p50 regressed >10%: {bi_p50:.2f}x -> {ci_p50:.2f}x")
+                elif ci_p50 < bi_p50 / PERF_REGRESSION_RATIO:
+                    improvements.append(f"interp ratio p50 improved: {bi_p50:.2f}x -> {ci_p50:.2f}x")
+            bi_max = bt.get("interp", {}).get("ratio_max")
+            ci_max = ct.get("interp", {}).get("ratio_max")
+            if bi_max is not None and ci_max is not None:
+                if ci_max > bi_max * PERF_REGRESSION_RATIO:
+                    regressions.append(f"interp ratio max regressed >10%: {bi_max:.2f}x -> {ci_max:.2f}x")
+                elif ci_max < bi_max / PERF_REGRESSION_RATIO:
+                    improvements.append(f"interp ratio max improved: {bi_max:.2f}x -> {ci_max:.2f}x")
 
     return {
         "has_baseline": baseline is not None,
@@ -2307,20 +2317,19 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         )
     ip = t["interp"]
     if ip["measured"]:
-        ratio_str = ""
-        if ip.get("ratio_p50") is not None:
-            bar_tag = "PASS" if ip.get("bar_ok") else "FAIL"
-            ns_tag = "PASS" if ip.get("north_star_ok") else "FAIL"
-            ratio_str = (
-                f"; vs C++ -O2 ({ip['ratio_above_floor']} >= {INTERP_FLOOR_MS:.0f}ms): "
-                f"p50={ip['ratio_p50']}x (bar <={INTERP_RATIO_BAR:.0f}x: {bar_tag}, "
-                f"north star <={INTERP_RATIO_NORTH_STAR:.0f}x: {ns_tag}) "
-                f"max={ip['ratio_max']}x ({ip['ratio_max_port']}, {ip.get('over_10x', 0)} >10x)"
-            )
         print(
             f"  interp:    {ip['passed']}/{ip['passed'] + ip['failed']} ok, "
             f"median {ip['median_ms']}ms, p95 {ip['p95_ms']}ms, max {ip['max_ms']}ms ({ip['max_port']})"
-            f"{ratio_str}"
+        )
+    if ip.get("ratio_p50") is not None:
+        bar_tag = "PASS" if ip.get("bar_ok") else "FAIL"
+        ns_tag = "PASS" if ip.get("north_star_ok") else "FAIL"
+        src_tag = " (cached)" if ip.get("cached") else ""
+        print(
+            f"  interp-ratio: p50={ip['ratio_p50']}x (bar <={INTERP_RATIO_BAR:.0f}x: {bar_tag}, "
+            f"north star <={INTERP_RATIO_NORTH_STAR:.0f}x: {ns_tag}), "
+            f"p95={ip['ratio_p95']}x, max={ip['ratio_max']}x ({ip['ratio_max_port']}), "
+            f">10x: {ip.get('over_10x', 0)} ({ip['ratio_above_floor']} >= {INTERP_FLOOR_MS:.0f}ms){src_tag}"
         )
     tl = t.get("taste_lints")
     if tl:
@@ -2550,6 +2559,12 @@ def build_report(args):
         dream_scores=dream_scores,
         gate_fast=gate_fast,
     )
+    if mode == "fast" and not only and baseline and totals["interp"].get("ratio_p50") is None:
+        base_ip = (baseline.get("totals") or {}).get("interp") or {}
+        if base_ip.get("ratio_p50") is not None:
+            cached_ip = dict(base_ip)
+            cached_ip["cached"] = True
+            totals["interp"] = cached_ip
     wfd_path = os.path.join(ROOT, "research", "writable-from-docs.json")
     wfd_data = None
     if os.path.isfile(wfd_path):
