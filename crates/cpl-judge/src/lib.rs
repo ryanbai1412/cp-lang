@@ -135,7 +135,25 @@ impl Profile {
     /// is dropped; a `-std=` it rejects becomes the older spelling of the
     /// same standard (`gnu++2b` for `gnu++23`) when that is accepted.
     pub fn local(&self) -> Local {
-        let compiler = self.local_compiler();
+        self.local_with(self.local_compiler())
+    }
+
+    /// The judge's build as a program run on this machine: the compiler
+    /// here, for a Windows judge too, with the judge's flags it accepts.
+    pub fn host(&self) -> Local {
+        let compiler = if accepts(&self.compiler, None) { self.compiler.clone() } else { "g++".into() };
+        self.local_with(compiler)
+    }
+
+    /// The `ulimit -s` that gives a program the judge's stack.
+    pub fn ulimit(&self) -> String {
+        match self.stack {
+            Stack::Unlimited => "unlimited".into(),
+            stack => (stack.assured().unwrap_or(8 << 20) >> 10).to_string(),
+        }
+    }
+
+    fn local_with(&self, compiler: String) -> Local {
         let mut local = Local { compiler: compiler.clone(), flags: Vec::new(), dropped: Vec::new() };
         if accepts_all(&compiler, &self.flags) {
             local.flags = self.flags.clone();

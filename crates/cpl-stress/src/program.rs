@@ -183,8 +183,18 @@ fn starts_with_std(text: &[u8]) -> bool {
 /// Builds `source`. `ours` is for C++ the compiler emitted: it includes
 /// standard headers only, and no macro of its own comes before them.
 fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
-    let text = std::fs::read(source)
+    let flags = CXX_FLAGS.map(String::from);
+    compile_with(source, ours, "g++", &flags)
+}
+
+fn compile_with(source: &Path, ours: bool, compiler: &str, flags: &[String]) -> Result<String, BuildError> {
+    let mut text = std::fs::read(source)
         .map_err(|e| BuildError(format!("can't read {}: {e}", source.display())))?;
+    let usual = compiler == "g++" && flags.iter().eq(CXX_FLAGS.iter());
+    let source_len = text.len();
+    if !usual {
+        text.extend(format!("\0{compiler} {}", flags.join(" ")).bytes());
+    }
     let dir = cache_dir();
     std::fs::create_dir_all(&dir)
         .map_err(|e| BuildError(format!("can't create {}: {e}", dir.display())))?;
@@ -198,9 +208,9 @@ fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
             hash(&text),
             std::process::id()
         ));
-        let mut build = Command::new("g++");
-        build.args(CXX_FLAGS);
-        if ours || starts_with_std(&text) {
+        let mut build = Command::new(compiler);
+        build.args(flags);
+        if usual && (ours || starts_with_std(&text[..source_len])) {
             if let Some(header) = std_header() {
                 build.arg("-include").arg(header);
             }
@@ -210,7 +220,7 @@ fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
             .arg(&partial)
             .arg(source)
             .output()
-            .map_err(|e| BuildError(format!("can't run g++ to build {}: {e}", source.display())))?;
+            .map_err(|e| BuildError(format!("can't run {compiler} to build {}: {e}", source.display())))?;
         if !output.status.success() {
             let errors = String::from_utf8_lossy(&output.stderr);
             let shown: Vec<&str> = errors.lines().take(20).collect();
@@ -237,10 +247,11 @@ enum Part {
 
 /// Emits the C++ for a `.cp` file into the cache, through the same front
 /// end and back end as `cpl build`. Returns the path of the C++ file.
-fn emit_cpp(source: &Path, part: Part) -> Result<PathBuf, BuildError> {
+fn emit_cpp(source: &Path, part: Part) -> Result<(PathBuf, cpl_judge::Profile), BuildError> {
     let name = source.display().to_string();
     let text = std::fs::read_to_string(source)
         .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
+    let profile = cpl_judge::resolve(source, &text, None).map_err(BuildError)?;
     let errors = |diagnostics: &[cpl_diag::Diagnostic]| {
         BuildError(format!(
             "{name} does not build:\n{}",
@@ -268,7 +279,8 @@ fn emit_cpp(source: &Path, part: Part) -> Result<PathBuf, BuildError> {
     };
     let program = lowered.map_err(|diagnostics| errors(&diagnostics))?;
     let file = source.file_name().unwrap_or_default().to_string_lossy();
-    let mut cpp = cpl_codegen::emit(&program, &file, None);
+    let target = cpl_codegen::Target { stamp: Some(profile.stamp()), deep_stack: profile.deep_stack() };
+    let mut cpp = cpl_codegen::emit_for(&program, &file, None, &target);
     if matches!(part, Part::Gen(_)) {
         // Its `rand` and `shuffle` draw from the choices `cpl stress` keeps.
         cpp.insert_str(0, "#define CPL_GEN 1\n");
@@ -280,7 +292,36 @@ fn emit_cpp(source: &Path, part: Part) -> Result<PathBuf, BuildError> {
     let out = dir.join(format!("{stem}-{:016x}.cpp", hash(cpp.as_bytes())));
     std::fs::write(&out, cpp)
         .map_err(|e| BuildError(format!("can't write {}: {e}", out.display())))?;
-    Ok(out)
+    Ok((out, profile))
+}
+
+/// Builds the C++ of a `.cp` file as its judge does, as far as the
+/// compiler here allows, and runs it on the judge's stack.
+fn build_judged(source: &Path, part: Part) -> Result<Vec<String>, BuildError> {
+    let (cpp, profile) = emit_cpp(source, part)?;
+    let host = profile.host();
+    let binary = compile_with(&cpp, true, &host.compiler, &host.flags)?;
+    let stack = profile.ulimit();
+    if current_stack().as_deref() == Some(stack.as_str()) {
+        return Ok(vec![binary]);
+    }
+    let script = format!(
+        "ulimit -s {stack} 2>/dev/null || {{ echo \"cpl: can't give the program the {} of judge \\`{}\\` here\" >&2; exit 125; }}; exec \"$0\" \"$@\"",
+        profile.stack.describe(),
+        profile.name
+    );
+    Ok(vec!["sh".into(), "-c".into(), script, binary])
+}
+
+/// The `ulimit -s` programs started from here get.
+fn current_stack() -> Option<String> {
+    static STACK: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    STACK
+        .get_or_init(|| {
+            let out = Command::new("sh").args(["-c", "ulimit -s"]).output().ok()?;
+            Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+        })
+        .clone()
 }
 
 impl Program {
@@ -310,7 +351,7 @@ impl Program {
         let argv = match extension {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
             "py" => vec!["python3".to_string(), name.clone()],
-            "cp" => vec![compile_cpp(&emit_cpp(path, Part::Solution)?, true)?],
+            "cp" => build_judged(path, Part::Solution)?,
             // Relative paths need `./` to be found.
             _ => vec![path
                 .canonicalize()
@@ -326,7 +367,7 @@ impl Program {
     pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.display()),
-            argv: vec![compile_cpp(&emit_cpp(path, Part::Brute)?, true)?],
+            argv: build_judged(path, Part::Brute)?,
             env: Vec::new(),
         })
     }
@@ -336,7 +377,7 @@ impl Program {
     pub fn resolve_gen(path: &Path, fn_name: &str, size: i64) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.display()),
-            argv: vec![compile_cpp(&emit_cpp(path, Part::Gen(size))?, true)?],
+            argv: build_judged(path, Part::Gen(size))?,
             env: Vec::new(),
         })
     }

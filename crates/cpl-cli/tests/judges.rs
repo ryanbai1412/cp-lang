@@ -173,3 +173,25 @@ fn every_port_compiles_with_every_judges_flags() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+#[test]
+fn a_release_run_builds_with_the_judges_flags_on_the_judges_stack() {
+    if !has("g++") {
+        eprintln!("skipped: no g++");
+        return;
+    }
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-release");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let source = root().join("crates/cpl-cli/tests/judges/deep.cp");
+    let deep = std::fs::read_to_string(&source).unwrap();
+    let interpreted = cpl_cli::run_with_input(&["run", source.to_str().unwrap()], b"1000000\n");
+    // DOMjudge's stack is unlimited, so the C++ keeps its recursion on the
+    // judge's stack, which only the judge's stack holds.
+    let file = scratch.join("deep.cp");
+    std::fs::write(&file, format!("// judge: icpc\n{deep}")).unwrap();
+    let cpp = build(&file, "icpc").unwrap();
+    assert!(!cpp.contains("cpl_switch_stack"));
+    let ran = cpl_cli::run_with_input(&["run", file.to_str().unwrap(), "--release"], b"1000000\n");
+    assert_eq!(ran.code, 0, "{}", ran.stderr);
+    assert_eq!(ran.stdout, interpreted.stdout);
+}

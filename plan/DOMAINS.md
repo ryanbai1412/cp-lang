@@ -358,14 +358,16 @@ are unconfirmed). The profile sets the source limit (warning at 75%), the
 header stamp, `__int128` support and whether deep recursion needs its own
 256 MB stack. All 257 ports fit every profile (max 59.4 KB) and compile
 with every profile's flags (1,799 compiles, `--full`); a million nested
-calls run on each judge's stack and agree with the interpreter. Local runs still use `g++ -std=c++17 -O2`
-and an 8 MB stack whatever the profile; the compilers here are g++ 11,
-clang 14 and MinGW 10, not the judges' versions.
+calls run on each judge's stack and agree with the interpreter. `run --release`, `test`,
+`stress` and `hunt` build a `.cp` file with its judge's flags (those g++
+here accepts) and run it under `ulimit -s` of the judge's stack; `bench`
+and `profile` still use `g++ -std=c++17 -O2`. The compilers here are g++
+11, clang 14 and MinGW 10, not the judges' versions.
 **Bar.** Every profile: every port builds within its limit, compiles with
 its flags (as accepted here), and the deep-recursion run passes on its
 stack; each fact in a profile cites a source or says it is unconfirmed.
-**Next.** `run --release`/`stress`/`bench` with the profile's flags and
-stack; a size report (bytes per part) and a readable minimisation rung
+**Next.** `bench` and `profile` with the profile's flags; the judge's
+time and memory limits on local runs; a size report (bytes per part) and a readable minimisation rung
 before dropping the source header; clang `-Wunused-value` in 6
 ports; USACO and grader profiles; judge-version containers.
 

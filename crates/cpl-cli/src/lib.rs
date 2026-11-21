@@ -301,7 +301,8 @@ options:
                     one self-contained page on standard output
   --brute           run the file's `@brute(main)` fn in place of the solution
   --release         run what a judge runs: the C++ of `cpl build`, built with
-                    `g++ -std=c++17 -O2` and kept until the file changes.
+                    the judge's flags (those g++ here accepts) on the judge's
+                    stack, and kept until the file changes.
                     Fast, and without the interpreter's checks
 ";
 

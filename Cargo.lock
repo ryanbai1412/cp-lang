@@ -123,6 +123,7 @@ dependencies = [
  "cpl-diag",
  "cpl-interp",
  "cpl-ir",
+ "cpl-judge",
  "cpl-syntax",
 ]
 

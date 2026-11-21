@@ -44,8 +44,14 @@ What a profile changes today:
 - `I128` on a profile with `int128 = false` is an error naming the judge.
 
 Proposed: `bits_stdcpp`, `pragmas`, memory accounting, the judge's time
-and memory limits feeding `cpl bench`, and `cpl run --release --judge`
-building with the profile's flags and stack.
+and memory limits feeding `cpl bench` and local runs.
+
+Local runs of a `.cp` file (`cpl run --release`, `test`, `stress`, `hunt`)
+emit the C++ for the file's judge, build it with the judge's flags that
+the g++ here accepts (a Windows judge's too, with its `-Wl,--stack` left
+out), and run it under `ulimit -s` of the judge's stack (8 MB when it is
+undocumented), so a recursion that would overflow on the judge overflows
+here.
 
 How profiles are tested (`crates/cpl-cli/tests/judges.rs`):
 
