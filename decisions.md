@@ -2246,8 +2246,9 @@ Reverse: delete the step from `scripts/check.sh`.
   `segments_meet(..., strict: Bool = false)` and `convex_hull(..., collinear: Bool = false)` avoid
   suffixed variants. `lower_hull` and `upper_hull` take already `(x, y)`-sorted input in O(n) so
   divide-and-conquer hulls (`ucup4s25e`) stay O(n log n) alongside `minkowski_upper`. `locate` and
-  `locate_convex` keep `1 / 0 / -1` for compatibility with `turn` and existing callers (`tour.cp`).
-  Reverse: add an enum wrapper or rename.
+  `locate_convex` return `Location` (`Inside | Boundary | Outside`) rather than `1 / 0 / -1`, and
+  `Vec.rot(by: Vec)` uses a named option instead of a `_by` twin (coordinator round, §2).
+  Reverse: return `Int` or add a separate method.
 
 ## 39. Strings stdlib (`std.strings`, 2026-11-21)
 

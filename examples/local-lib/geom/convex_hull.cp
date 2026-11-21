@@ -1,6 +1,5 @@
 //! Convex hull of integer points (Andrew's monotone chain).
-use std.geometry.{Pt, turn, on_segment, area2, locate}
-use std.geometry.{turn, on_segment, area2, locate}
+use std.geometry.{Pt, Location, turn, on_segment, area2, locate}
 
 /// The convex hull, counter-clockwise from the lowest of the leftmost points,
 /// without repeated or collinear points (Andrew's monotone chain). O(n log n).
@@ -39,8 +38,8 @@ fn hull_is_convex_and_contains_every_point():
             assert h[i] in pts
             assert turn(h[i], h[(i + 1) % h.len], h[(i + 2) % h.len]) == 1
         for p in pts:
-            assert locate(h, p) >= 0
-            assert (locate(h, p) == 0) == (
+            assert locate(h, p) != Location.Outside
+            assert (locate(h, p) == Location.Boundary) == (
                 sum(1 for i in 0..h.len if on_segment(p, h[i], h[(i + 1) % h.len])) > 0
             )
         assert area2(h) > 0 and area2(h.rev) == -area2(h)
@@ -54,6 +53,6 @@ fn locate_agrees_with_half_planes_on_random_hulls():
             for y in -5..=5:
                 let p = Pt(x, y)
                 let turns = [turn(h[i], h[(i + 1) % h.len], p) for i in 0..h.len]
-                let want = if turns.min()! > 0: 1 else: if turns.min()! == 0: 0 else: -1
+                let want = if turns.min()! > 0: Location.Inside elif turns.min()! == 0: Location.Boundary else: Location.Outside
                 assert locate(h, p) == want
                 assert locate(h.rev, p) == want

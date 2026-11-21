@@ -167,10 +167,11 @@ essential for O(n log n) divide-and-conquer hulls (such as `ucup4s25e`).
 ```cp
 fn area2(poly: List<Pt>) -> Int
     // O(n); twice signed area (+ CCW, - CW)
-fn locate(poly: List<Pt>, p: Pt) -> Int
-    // O(n), I128; simple polygon (either winding): 1 inside, 0 boundary, -1 outside
-fn locate_convex(hull: List<Pt>, p: Pt) -> Int
-    // O(log n), I128; CCW convex polygon (no 3 collinear): 1 inside, 0 boundary, -1 outside
+enum Location = Inside | Boundary | Outside
+fn locate(poly: List<Pt>, p: Pt) -> Location
+    // O(n), I128; simple polygon (either winding)
+fn locate_convex(hull: List<Pt>, p: Pt) -> Location
+    // O(log n), I128; CCW convex polygon (no 3 collinear)
 fn diameter2(hull: List<Pt>) -> Int
     // O(n), I128; max squared distance on a CCW convex hull (0 for < 2 points)
 fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int
@@ -207,7 +208,7 @@ struct Vec(x: F64, y: F64)                             // Add, Sub, Neg; intenti
     fn cross(self, o: Vec) -> F64                      // O(1)
     fn dist2(self, o: Vec) -> F64                      // O(1)
     fn dist(self, o: Vec) -> F64                       // O(1)
-    fn rot_by(self, u: Vec) -> Vec                     // O(1); rotate by unit vector u
+    fn rot(self, by: Vec) -> Vec                      // O(1); rotate by unit vector `by`
 
 fn poly_area(poly: List<Vec>) -> F64                   // O(n); signed area (+ CCW, - CW)
 fn project(p: Vec, a: Vec, b: Vec) -> Vec              // O(1); orthogonal projection onto line ab
@@ -247,7 +248,7 @@ Every implementation test verifies these laws on random and degenerate inputs:
   and `a <-> b`, and `strict: true` implies `strict: false`.
 - **Convex hull**: every vertex of `h = convex_hull(pts)` is in `pts`; every
   consecutive triple turns strictly left (`collinear: false`) or non-right
-  (`collinear: true`); every `p in pts` satisfies `locate(h, p) >= 0`;
+  (`collinear: true`); every `p in pts` satisfies `locate(h, p) != Location.Outside`;
   `area2(h) > 0` for non-collinear inputs and `area2(h.rev) == -area2(h)`.
 - **Fast convex queries**: `locate_convex(h, p) == locate(h, p)` for all `p` on
   every random hull `h`; `dot(h[hull_extreme(h, d)], d) == max(dot(v, d) for v
@@ -271,7 +272,7 @@ delivers them; neither blocks shipping the full API today:
   `v.scale(k)` and `v.div(k)` on both `Pt` and `Vec` (filed in
   `research/frictions/cf2138f.md`).
 - **`sin` and `cos` intrinsics** (listed in `decisions.md` 1.5): enables
-  `Vec.rot(rad: F64) -> Vec` alongside `Vec.rot_by(u: Vec)`.
+  `Vec.rot(by: u)` rotates by a unit vector without `sin`/`cos` (avoiding a `_by` twin per §2).
 
 ## 6. What stays user code or `examples/local-lib/geom/`
 
@@ -333,7 +334,7 @@ Keep collinear points on the convex hull using domain handles so every vertex
 carries its 1-based input index directly without a wrapper struct.
 
 ```cp
-use std.geometry.{Pt, turn, convex_hull_idx, locate_convex}
+use std.geometry.{Pt, Location, turn, convex_hull_idx, locate_convex}
 
 @!multitest
 let (n, q): (3..=2e5, 1..=2e5) = read()
@@ -350,7 +351,7 @@ else: none
 let hull_pts = [pts[s] for s in hull]
 for _ in 0..q:
     let c: Pt = read()
-    if locate_convex(hull_pts, c) <= 0:
+    if locate_convex(hull_pts, c) != Location.Inside:
         print(-1)
         continue
     // Pick candidate vertices around c.x and check triples with turn(...).
@@ -455,3 +456,25 @@ for _ in 0..n:
 let poly = half_plane_intersect(planes)
 print("{poly_area(poly):.10f}")
 ```
+
+## 10. Overflow bounds, Shamos–Hoey, float-free `arg`, and 3D hull
+
+### Coordinate-range overflow table
+
+Exact integer geometry is the default path. Coordinate bounds in declarations
+(e.g. `Pt<-1e9..=1e9>` once parameterized ranged structs land; today documented
+on `Pt`/`Pt3`) determine which width is overflow-free:
+
+| Coordinate bound | Max diff | `dot` / `cross` / `dist2` | `turn` / `cross128` / `dot128` | `any_segments_meet` (`I128`) | `convex_hull_3d` (`I128`) |
+| --- | --- | --- | --- | --- | --- |
+| `\|c\| <= 1e6` | `2e6` | `8e12` (`Int` safe) | `8e12` (`I128` safe) | `1.6e19` (`I128` safe) | `4.8e19` (`I128` safe) |
+| `\|c\| <= 1e9` (`Pt<-1e9..=1e9>`) | `2e9` | `8e18` (2-pt diff fits `Int`; `dot`/`cross` of single vectors <= `2e18`) | `8e18` (`I128` safe, 19 orders spare) | `1.6e28` (`I128` safe) | `4.8e28` (`I128` safe) |
+| `\|c\| <= 1e12` | `2e12` | overflows `Int` | `8e24` (`I128` safe) | `1.6e37` (`I128` safe) | `4.8e37` (`I128` safe) |
+| `\|c\| <= 2e18` | `4e18` | overflows `Int` | `3.2e37` (`I128` safe) | overflows `I128` | overflows `I128` |
+
+### Additional exact API
+
+- `arg(p: Pt) -> ByAngle` — float-free angular sort key (`sort(mut pts, by: arg)` or `sort(mut pts, by: p => arg(p - base))`).
+- `any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int)` — O(n log n) Shamos–Hoey sweep line using an exact `I128` comparator in a deterministic treap (handles vertical segments, shared endpoints, and both `strict: false` and `strict: true`).
+- `Pt3(x: Int, y: Int, z: Int)` with `Add`, `Sub`, `Neg`, `Show`, `norm2`, `norm2_128`, `len`, `scale`, `dot3`, `dot3_128`, `cross3`, `dist2_3`, and O(n^2) exact `I128` `convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>`.
+

@@ -17,6 +17,7 @@ use std.geometry.{
     closest_pair2,
     convex_hull,
     diameter2,
+    Location,
     locate,
     locate_convex,
     reflect,
@@ -156,8 +157,11 @@ fn strings_and_points():
     assert suffix_array("abracadabra") == [10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2]
     assert [i for i in find_all("abracadabra", "abra")] == [0, 7]
     let square = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
-    assert area2(square) == 8 and locate(square, Pt(1, 1)) == 1 and locate(square, Pt(3, 1)) == -1
-    assert locate_convex(square, Pt(1, 1)) == 1 and diameter2(square) == 8
+    assert area2(square) == 8 and locate(square, Pt(1, 1)) == Location.Inside and locate(
+        square,
+        Pt(3, 1),
+    ) == Location.Outside
+    assert locate_convex(square, Pt(1, 1)) == Location.Inside and diameter2(square) == 8
     assert convex_hull([Pt(1, 1), Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == square
     assert closest_pair2(square) == 4
     let r = reflect(Vec(1.0, 3.0), Vec(0.0, 0.0), Vec(4.0, 0.0))

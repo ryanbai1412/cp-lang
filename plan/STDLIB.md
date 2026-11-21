@@ -1382,7 +1382,8 @@ struct ByAngle(p: Pt) // Ord: CCW in [0, 2*pi) from +x, zero first, I128
 fn on_segment(p: Pt, a: Pt, b: Pt) -> Bool // O(1), I128
 fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt) -> Bool // O(1), I128
 fn area2(poly: List<Pt>) -> Int // O(n)
-fn locate(poly: List<Pt>, p: Pt) -> Int // O(n), I128: 1 inside, 0 on, -1 out
+enum Location = Inside | Boundary | Outside
+fn locate(poly: List<Pt>, p: Pt) -> Location // O(n), I128
 ```
 
 [new]:
@@ -1416,7 +1417,7 @@ fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n log n)
 fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> // O(n log n)
 fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
 fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
-fn locate_convex(hull: List<Pt>, p: Pt) -> Int // O(log n), I128
+fn locate_convex(hull: List<Pt>, p: Pt) -> Location // O(log n), I128
 fn diameter2(hull: List<Pt>) -> Int // O(n) rotating calipers
 fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int // O(log n), I128
 fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int) // O(log n), I128
@@ -1434,6 +1435,7 @@ struct Vec(x: F64, y: F64) // Add, Sub, Neg; no Show (precision required)
     @get fn angle(self) -> F64 // O(1)
     fn scale(self, k: F64) -> Vec // O(1)
     fn div(self, k: F64) -> Vec // O(1)
+    fn rot(self, by: Vec) -> Vec // O(1), rotate by unit direction vector
 fn vdot(a: Vec, b: Vec) -> F64 // O(1)
 fn vcross(a: Vec, b: Vec) -> F64 // O(1)
 fn vdist(a: Vec, b: Vec) -> F64 // O(1)
@@ -1452,6 +1454,18 @@ fn polygon_area(poly: List<Vec>) -> F64 // O(n)
 fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(n)
 fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, radius: F64) // expected O(n)
 fn circle_polygon_area(c: Vec, r: F64, poly: List<Vec>, eps: F64 = 1e-9) -> F64 // O(n)
+fn arg(p: Pt) -> ByAngle // O(1), float-free exact angular sort key
+fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int) // O(n log n), I128
+struct Pt3(x: Int, y: Int, z: Int) // Add, Sub, Neg, Eq, Show
+    @get fn norm2(self) -> Int // O(1)
+    @get fn norm2_128(self) -> I128 // O(1)
+    @get fn len(self) -> F64 // O(1)
+    fn scale(self, k: Int) -> Pt3 // O(1)
+fn dot3(a: Pt3, b: Pt3) -> Int // O(1)
+fn dot3_128(a: Pt3, b: Pt3) -> I128 // O(1)
+fn cross3(a: Pt3, b: Pt3) -> Pt3 // O(1)
+fn dist2_3(a: Pt3, b: Pt3) -> Int // O(1)
+fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)> // O(n^2), I128
 ```
 
 ### 4.15 `std.grid` and `std.spec`

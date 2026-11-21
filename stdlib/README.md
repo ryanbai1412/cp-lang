@@ -360,7 +360,7 @@ to `1e18` coordinates. Floating-point helpers (`Vec`, `close`,
 
 ```
 let square = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
-assert area2(square) == 8 and locate_convex(square, Pt(1, 1)) == 1
+assert area2(square) == 8 and locate_convex(square, Pt(1, 1)) == Location.Inside
 assert diameter2(square) == 8 and closest_pair2(square) == 4
 ```
 
@@ -476,15 +476,16 @@ is evidence, not a proof.
   `AhoCorasick<A>`, generalized `RollingHash` (`lcp`, `lcs`, `lcp_with`),
   `HashVal`, and `Hash2D<R, C>`.
 - `geometry.cp`: exact integer points (`Pt` with `Ord`/`Show`, `dot`/`dot128`,
-  `cross`/`cross128`, `dist2`/`dist`, `turn`, `same_dir`, `ByAngle`,
-  `on_segment`, `segments_meet`, `lower_hull`, `upper_hull`,
+  `cross`/`cross128`, `dist2`/`dist`, `turn`, `same_dir`, `ByAngle`, `arg`,
+  `on_segment`, `segments_meet`, `any_segments_meet`, `lower_hull`, `upper_hull`,
   `convex_hull`, `convex_hull_idx`, `minkowski_sum`, `minkowski_upper`,
-  `area2`/`area2_128`, `locate`, `locate_convex`, `diameter2`, `hull_extreme`,
-  `closest_pair2`, `closest_pair`) and careful floating-point geometry (`Vec`,
-  `close`, `sign_eps`, `project`, `reflect`, `line_dist`, `seg_dist`,
-  `line_intersect`, `circumcenter`, `circle_line_intersect`,
+  `area2`/`area2_128`, `Location`, `locate`, `locate_convex`, `diameter2`, `hull_extreme`,
+  `hull_tangents`, `closest_pair2`, `closest_pair`), careful floating-point
+  geometry (`Vec`, `close`, `sign_eps`, `project`, `reflect`, `line_dist`,
+  `seg_dist`, `line_intersect`, `circumcenter`, `circle_line_intersect`,
   `circle_intersect`, `HalfPlane`, `half_plane_intersect`, `polygon_area`,
-  `polygon_cut`, `min_enclosing_circle`, `circle_polygon_area`, `hull_tangents`).
+  `polygon_cut`, `min_enclosing_circle`, `circle_polygon_area`), and exact 3D
+  geometry (`Pt3`, `dot3`/`dot3_128`, `cross3`, `dist2_3`, `convex_hull_3d`).
 - `spec.cp`: structure discovery.
 - `tour.cp`: the examples above, as tests.
 

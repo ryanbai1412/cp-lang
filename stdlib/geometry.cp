@@ -1,6 +1,14 @@
-//! Plane geometry on exact integer points (`Pt`) and careful floating-point
-//! vectors (`Vec`). Exact predicates compute cross and dot signs in `I128`,
-//! staying overflow-free for coordinates up to `1e18`.
+//! Plane and 3D geometry on exact integer points (`Pt`, `Pt3`) and careful
+//! floating-point vectors (`Vec`). Exact predicates compute cross and dot signs
+//! in `I128` so integer geometry is the default overflow-free path:
+//!
+//! - `|x|, |y| <= 1e9` (e.g. `Pt<-1e9..=1e9>`): differences in `[-2e9, 2e9]`;
+//!   single-vector `dot`/`cross` <= `2e18` fit `Int`, `turn`/`cross128`/`dot128`
+//!   <= `8e18` fit `I128` with 19 orders of magnitude to spare, and `any_segments_meet`
+//!   sweep comparisons <= `1.6e28` fit `I128`.
+//! - `|x|, |y| <= 2e18`: `turn`/`cross128`/`dot128`/`dist2_128` <= `8e36` fit `I128`.
+//! - 3D `|x|, |y|, |z| <= 1e9`: `cross3` components <= `8e18` fit `Int` (or `I128`
+//!   up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
 fn igcd(a0: Int, b0: Int) -> Int:
     var a = a0
@@ -114,11 +122,15 @@ pub fn angle_less(a: Pt, b: Pt) -> Bool:
 
 /// Counter-clockwise by direction, starting from the positive x axis. Exact;
 /// vectors in the same direction compare equal, the zero vector comes first.
-/// For sorting around an origin `base`, use `ByAngle(p - base)`.
+/// For sorting around an origin `base`, use `arg(p - base)` or `ByAngle(p - base)`.
 pub struct ByAngle(p: Pt)
 
 impl Ord for ByAngle:
     fn lt(a, b) = angle_less(a.p, b.p)
+
+/// Exact float-free angular sort key for `p`: use `sort(mut pts, by: arg)` or
+/// `sort(mut pts, by: p => arg(p - base))`. O(1).
+pub fn arg(p: Pt) -> ByAngle = ByAngle(p)
 
 // ---- segments
 
@@ -312,31 +324,38 @@ pub fn area2_128(poly: List<Pt>) -> I128:
     for i in 0..poly.len: total += cross128(poly[i], poly[(i + 1) % poly.len])
     total
 
+/// Position of a point relative to a polygon.
+pub enum Location = Inside | Boundary | Outside
+
 /// Where `p` is relative to a simple polygon (either orientation):
-/// 1 inside, 0 on the boundary, -1 outside. Exact in `I128`. O(n).
-pub fn locate(poly: List<Pt>, p: Pt) -> Int:
-    if poly.len == 0: return -1
-    if poly.len == 1: return if p == poly[0]: 0 else: -1
+/// `Location.Inside`, `Location.Boundary`, or `Location.Outside`. Exact in `I128`. O(n).
+pub fn locate(poly: List<Pt>, p: Pt) -> Location:
+    if poly.len == 0: return Location.Outside
+    if poly.len == 1: return if p == poly[0]: Location.Boundary else: Location.Outside
     var inside = false
     for i in 0..poly.len:
         var (a, b) = (poly[i], poly[(i + 1) % poly.len])
-        if on_segment(p, a, b): return 0
+        if on_segment(p, a, b): return Location.Boundary
         if a.y > b.y: swap(mut a, mut b)
         if a.y <= p.y and p.y < b.y and cross128_3(p, a, b) > I128(0): inside = not inside
-    if inside: 1 else: -1
+    if inside: Location.Inside else: Location.Outside
 
 /// Where `p` is relative to a CCW convex polygon:
-/// 1 inside, 0 on the boundary, -1 outside. Exact in `I128`. O(log n).
-pub fn locate_convex(hull: List<Pt>, p: Pt) -> Int:
+/// `Location.Inside`, `Location.Boundary`, or `Location.Outside`. Exact in `I128`. O(log n).
+pub fn locate_convex(hull: List<Pt>, p: Pt) -> Location:
     let n = hull.len
-    if n == 0: return -1
-    if n == 1: return if p == hull[0]: 0 else: -1
-    if n == 2: return if on_segment(p, hull[0], hull[1]): 0 else: -1
+    if n == 0: return Location.Outside
+    if n == 1: return if p == hull[0]: Location.Boundary else: Location.Outside
+    if n == 2: return if on_segment(p, hull[0], hull[1]): Location.Boundary else: Location.Outside
     let t1 = turn(hull[0], hull[1], p)
     let t2 = turn(hull[0], hull[n - 1], p)
-    if t1 < 0 or t2 > 0: return -1
-    if t1 == 0: return if on_segment(p, hull[0], hull[1]): 0 else: -1
-    if t2 == 0: return if on_segment(p, hull[0], hull[n - 1]): 0 else: -1
+    if t1 < 0 or t2 > 0: return Location.Outside
+    if t1 == 0: return if on_segment(p, hull[0], hull[1]): Location.Boundary else: Location.Outside
+    if t2 == 0: return if on_segment(
+        p,
+        hull[0],
+        hull[n - 1],
+    ): Location.Boundary else: Location.Outside
     var lo = 1
     var hi = n - 1
     while hi - lo > 1:
@@ -344,7 +363,7 @@ pub fn locate_convex(hull: List<Pt>, p: Pt) -> Int:
         if turn(hull[0], hull[mid], p) >= 0: lo = mid
         else: hi = mid
     let t = turn(hull[lo], hull[lo + 1], p)
-    if t > 0: 1 else: if t == 0: 0 else: -1
+    if t > 0: Location.Inside elif t == 0: Location.Boundary else: Location.Outside
 
 /// Squared diameter of a CCW convex polygon by rotating calipers. O(n).
 pub fn diameter2(hull: List<Pt>) -> Int:
@@ -584,6 +603,9 @@ pub struct Vec(x: F64, y: F64):
 
     /// Divide by `k`. O(1).
     pub fn div(self, k: F64) -> Vec = Vec(x / k, y / k)
+
+    /// Rotate by unit direction vector `by` (complex multiply `self * by`). O(1).
+    pub fn rot(self, by: Vec) -> Vec = Vec(x * by.x - y * by.y, x * by.y + y * by.x)
 
 impl Add for Vec:
     fn add(a, b) = Vec(a.x + b.x, a.y + b.y)
@@ -837,6 +859,296 @@ pub fn circle_polygon_area(c: Vec, r: F64, poly: List<Vec>, eps: F64 = 1e-9) -> 
         total += tri_circle_area(poly[i] - c, poly[(i + 1) % n] - c, r, eps)
     total
 
+// ---- Shamos-Hoey segment intersection detection
+
+fn sh_seg_cmp(
+    a1: Pt,
+    b1: Pt,
+    id1: Int,
+    a2: Pt,
+    b2: Pt,
+    id2: Int,
+    cur_x: Int,
+    right_eps: Bool,
+) -> Int:
+    let dx1 = I128(b1.x) - I128(a1.x)
+    let dx2 = I128(b2.x) - I128(a2.x)
+    let lhs = (I128(a1.y) * dx1 + (I128(b1.y) - I128(a1.y)) * (I128(cur_x) - I128(a1.x))) * dx2
+    let rhs = (I128(a2.y) * dx2 + (I128(b2.y) - I128(a2.y)) * (I128(cur_x) - I128(a2.x))) * dx1
+    if lhs != rhs:
+        return if lhs < rhs: -1 else: 1
+    let c = cross128(b1 - a1, b2 - a2)
+    if c != I128(0):
+        let lt = if right_eps: c > I128(0) else: c < I128(0)
+        return if lt: -1 else: 1
+    if id1 < id2: -1 elif id1 > id2: 1 else: 0
+
+fn sh_seg_above_y(a: Pt, b: Pt, cur_x: Int, y: Int, strict: Bool) -> Bool:
+    let dx = I128(b.x) - I128(a.x)
+    let num = I128(a.y) * dx + (I128(b.y) - I128(a.y)) * (I128(cur_x) - I128(a.x))
+    let rhs = I128(y) * dx
+    if strict: num > rhs else: num >= rhs
+
+/// Detect whether any two segments in `segs` intersect via Shamos-Hoey sweep
+/// line with exact `I128` comparisons (valid for `|x|, |y| <= 1e12`). Returns
+/// an intersecting index pair `some((i, j))` or `none`. Set `strict: true` to
+/// require a proper interior crossing. O(n log n).
+pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int):
+    let n = segs.len
+    if n < 2: return none
+    var lo: List<Pt> = []
+    var hi: List<Pt> = []
+    // Event: (x, kind, y_tie, id)
+    // strict == false: kind 0 = non-vert insert, 1 = vertical query, 2 = non-vert delete
+    // strict == true:  kind 0 = non-vert delete, 1 = vertical query, 2 = non-vert insert
+    var events: List<(x: Int, kind: Int, y: Int, id: Int)> = []
+    for i in 0..n:
+        let s = segs[i]
+        let (p, q) = if s.a.x < s.b.x or (s.a.x == s.b.x and s.a.y <= s.b.y):
+            (s.a, s.b)
+        else:
+            (s.b, s.a)
+        lo.push(p)
+        hi.push(q)
+        if p.x == q.x:
+            events.push((x: p.x, kind: 1, y: p.y, id: i))
+        elif strict:
+            events.push((x: p.x, kind: 2, y: p.y, id: i))
+            events.push((x: q.x, kind: 0, y: q.y, id: i))
+        else:
+            events.push((x: p.x, kind: 0, y: p.y, id: i))
+            events.push((x: q.x, kind: 2, y: q.y, id: i))
+    sort(mut events)
+
+    // Deterministic treap over active non-vertical segment indices.
+    var left_ch: List<Int> = []
+    var right_ch: List<Int> = []
+    var prio: List<Int> = []
+    var val: List<Int> = []
+    var root = -1
+    var rng = 987654321
+
+    fn new_node(id: Int) -> Int:
+        rng = (rng * 1103515245 + 12345) % 2147483647
+        let u = val.len
+        left_ch.push(-1)
+        right_ch.push(-1)
+        prio.push(rng)
+        val.push(id)
+        u
+
+    fn merge(a: Int, b: Int) -> Int:
+        if a == -1: return b
+        if b == -1: return a
+        if prio[a] > prio[b]:
+            right_ch[a] = merge(right_ch[a], b)
+            a
+        else:
+            left_ch[b] = merge(a, left_ch[b])
+            b
+
+    fn split_lt(u: Int, id: Int, cur_x: Int, right_eps: Bool) -> (Int, Int):
+        if u == -1: return (-1, -1)
+        let vid = val[u]
+        if sh_seg_cmp(lo[vid], hi[vid], vid, lo[id], hi[id], id, cur_x, right_eps) < 0:
+            let (rl, rr) = split_lt(right_ch[u], id, cur_x, right_eps)
+            right_ch[u] = rl
+            (u, rr)
+        else:
+            let (ll, lr) = split_lt(left_ch[u], id, cur_x, right_eps)
+            left_ch[u] = lr
+            (ll, u)
+
+    fn split_le(u: Int, id: Int, cur_x: Int, right_eps: Bool) -> (Int, Int):
+        if u == -1: return (-1, -1)
+        let vid = val[u]
+        if sh_seg_cmp(lo[vid], hi[vid], vid, lo[id], hi[id], id, cur_x, right_eps) <= 0:
+            let (rl, rr) = split_le(right_ch[u], id, cur_x, right_eps)
+            right_ch[u] = rl
+            (u, rr)
+        else:
+            let (ll, lr) = split_le(left_ch[u], id, cur_x, right_eps)
+            left_ch[u] = lr
+            (ll, u)
+
+    fn leftmost(u0: Int) -> Int:
+        var u = u0
+        if u == -1: return -1
+        while left_ch[u] != -1: u = left_ch[u]
+        val[u]
+
+    fn rightmost(u0: Int) -> Int:
+        var u = u0
+        if u == -1: return -1
+        while right_ch[u] != -1: u = right_ch[u]
+        val[u]
+
+    fn first_above_y(u0: Int, cur_x: Int, y: Int) -> Int:
+        var u = u0
+        var best = -1
+        while u != -1:
+            let vid = val[u]
+            if sh_seg_above_y(lo[vid], hi[vid], cur_x, y, strict):
+                best = vid
+                u = left_ch[u]
+            else:
+                u = right_ch[u]
+        best
+
+    var last_vert_x = 0
+    var last_vert_hi = 0
+    var last_vert_id = -1
+
+    for ev in events:
+        let cur_x = ev.x
+        let id = ev.id
+        if ev.kind == 1:
+            if not strict:
+                if last_vert_id != -1 and last_vert_x == cur_x and last_vert_hi >= lo[id].y:
+                    return some((last_vert_id, id))
+                if last_vert_id == -1 or last_vert_x != cur_x or hi[id].y > last_vert_hi:
+                    last_vert_x = cur_x
+                    last_vert_hi = hi[id].y
+                    last_vert_id = id
+            let cand = first_above_y(root, cur_x, lo[id].y)
+            if cand != -1 and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict: strict):
+                return some((id, cand))
+        elif (not strict and ev.kind == 0) or (strict and ev.kind == 2):
+            let (l, r) = split_lt(root, id, cur_x, true)
+            let pred = rightmost(l)
+            let succ = leftmost(r)
+            if pred != -1 and segments_meet(lo[id], hi[id], lo[pred], hi[pred], strict: strict):
+                return some((id, pred))
+            if succ != -1 and segments_meet(lo[id], hi[id], lo[succ], hi[succ], strict: strict):
+                return some((id, succ))
+            root = merge(merge(l, new_node(id)), r)
+        else:
+            let (l, mr) = split_lt(root, id, cur_x, false)
+            let (_, r) = split_le(mr, id, cur_x, false)
+            let pred = rightmost(l)
+            let succ = leftmost(r)
+            if pred != -1 and succ != -1 and segments_meet(
+                lo[pred],
+                hi[pred],
+                lo[succ],
+                hi[succ],
+                strict: strict,
+            ):
+                return some((pred, succ))
+            root = merge(l, r)
+    none
+
+// ---- 3D exact integer geometry
+
+/// A 3D point or vector with exact integer coordinates.
+pub struct Pt3(x: Int, y: Int, z: Int):
+    /// The squared Euclidean length (`x*x + y*y + z*z`). O(1).
+    pub @get fn norm2(self) -> Int = x * x + y * y + z * z
+
+    /// The exact 128-bit squared Euclidean length. O(1).
+    pub @get fn norm2_128(self) -> I128 = I128(x) * I128(x) + I128(y) * I128(y) + I128(z) * I128(z)
+
+    /// The Euclidean length as `F64`. O(1).
+    pub @get fn len(self) -> F64 = sqrt(F64(x) * F64(x) + F64(y) * F64(y) + F64(z) * F64(z))
+
+    /// Scale by an integer factor `k`. O(1).
+    pub fn scale(self, k: Int) -> Pt3 = Pt3(x * k, y * k, z * k)
+
+impl Add for Pt3:
+    fn add(a, b) = Pt3(a.x + b.x, a.y + b.y, a.z + b.z)
+
+impl Sub for Pt3:
+    fn sub(a, b) = Pt3(a.x - b.x, a.y - b.y, a.z - b.z)
+
+impl Neg for Pt3:
+    fn neg(a) = Pt3(-a.x, -a.y, -a.z)
+
+impl Show for Pt3:
+    fn show(a) = "{a.x} {a.y} {a.z}"
+
+/// 3D dot product of `a` and `b`. O(1).
+pub fn dot3(a: Pt3, b: Pt3) -> Int = a.x * b.x + a.y * b.y + a.z * b.z
+
+/// Exact 128-bit 3D dot product of `a` and `b`. O(1).
+pub fn dot3_128(a: Pt3, b: Pt3) -> I128 =
+    I128(a.x) * I128(b.x) + I128(a.y) * I128(b.y) + I128(a.z) * I128(b.z)
+
+/// 3D cross product of `a` and `b`. O(1).
+pub fn cross3(a: Pt3, b: Pt3) -> Pt3 =
+    Pt3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)
+
+/// Squared Euclidean distance between 3D points `a` and `b`. O(1).
+pub fn dist2_3(a: Pt3, b: Pt3) -> Int = (a - b).norm2
+
+fn face_side128(a: Pt3, b: Pt3, c: Pt3, p: Pt3) -> I128:
+    let (ux, uy, uz) = (I128(b.x) - I128(a.x), I128(b.y) - I128(a.y), I128(b.z) - I128(a.z))
+    let (vx, vy, vz) = (I128(c.x) - I128(a.x), I128(c.y) - I128(a.y), I128(c.z) - I128(a.z))
+    let nx = uy * vz - uz * vy
+    let ny = uz * vx - ux * vz
+    let nz = ux * vy - uy * vx
+    nx * (I128(p.x) - I128(a.x)) + ny * (I128(p.y) - I128(a.y)) + nz * (I128(p.z) - I128(a.z))
+
+fn col3(a: Pt3, b: Pt3, c: Pt3) -> Bool:
+    let (ux, uy, uz) = (I128(b.x) - I128(a.x), I128(b.y) - I128(a.y), I128(b.z) - I128(a.z))
+    let (vx, vy, vz) = (I128(c.x) - I128(a.x), I128(c.y) - I128(a.y), I128(c.z) - I128(a.z))
+    uy * vz == uz * vy and uz * vx == ux * vz and ux * vy == uy * vx
+
+/// Exact 3D convex hull of `pts` via O(n^2) incremental hull in `I128`
+/// (valid for `|x|, |y|, |z| <= 1e12`). Returns outward-oriented triangular
+/// faces `(a, b, c)` of indices into `pts` such that
+/// `dot3(cross3(pts[b] - pts[a], pts[c] - pts[a]), p - pts[a]) <= 0` for all
+/// `p in pts`. Returns `[]` if fewer than 4 points or all points are coplanar.
+/// Assumes general position (no 4 coplanar hull vertices). O(n^2).
+pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>:
+    let n = pts.len
+    if n < 4: return []
+    var i0 = 0
+    var i1 = -1
+    for i in 1..n:
+        if pts[i] != pts[i0]:
+            i1 = i
+            break
+    if i1 == -1: return []
+    var i2 = -1
+    for i in i1 + 1..n:
+        if not col3(pts[i0], pts[i1], pts[i]):
+            i2 = i
+            break
+    if i2 == -1: return []
+    var i3 = -1
+    for i in i2 + 1..n:
+        if face_side128(pts[i0], pts[i1], pts[i2], pts[i]) != I128(0):
+            i3 = i
+            break
+    if i3 == -1: return []
+    if face_side128(pts[i0], pts[i1], pts[i2], pts[i3]) > I128(0):
+        let tmp = i1
+        i1 = i2
+        i2 = tmp
+    var faces: List<(Int, Int, Int)> = [(i0, i1, i2), (i0, i3, i1), (i1, i3, i2), (i2, i3, i0)]
+    var mark: [0..n * n]Int = 0
+    var round = 0
+    for i in 0..n:
+        if i == i0 or i == i1 or i == i2 or i == i3: continue
+        round += 1
+        var kept: List<(Int, Int, Int)> = []
+        var vis: List<(Int, Int, Int)> = []
+        for (a, b, c) in faces:
+            if face_side128(pts[a], pts[b], pts[c], pts[i]) > I128(0):
+                vis.push((a, b, c))
+                mark[a * n + b] = round
+                mark[b * n + c] = round
+                mark[c * n + a] = round
+            else:
+                kept.push((a, b, c))
+        if vis.is_empty: continue
+        for (a, b, c) in vis:
+            if mark[b * n + a] != round: kept.push((a, b, i))
+            if mark[c * n + b] != round: kept.push((b, c, i))
+            if mark[a * n + c] != round: kept.push((c, a, i))
+        faces = kept
+    faces
+
 // ---- tests
 
 fn random_points(n: Int, span: Int) -> List<Pt> = [
@@ -958,7 +1270,7 @@ fn convex_hull_and_domain_indices():
             for i in 0..h.len:
                 assert turn(h[i], h[(i + 1) % h.len], h[(i + 2) % h.len]) == 1
             for p in pts:
-                assert locate(h, p) >= 0
+                assert locate(h, p) != Location.Outside
                 assert locate_convex(h, p) == locate(h, p)
     // domain-indexed hull matches value hull
     domain P = 1..=12
@@ -997,15 +1309,27 @@ fn area_locate_diameter_and_extreme():
         for y in -1..=5:
             let p = Pt(x, y)
             let turns = [turn(poly[i], poly[(i + 1) % poly.len], p) for i in 0..poly.len]
-            let want = if min(turns)! > 0: 1 else: if min(turns)! == 0: 0 else: -1
+            let want = if min(turns)! > 0: Location.Inside elif min(turns)! == 0: Location.Boundary else: Location.Outside
             assert locate(poly, p) == want
             assert locate(poly.rev, p) == want
             assert locate_convex(poly, p) == want
     // concave L shape
     let l = [Pt(0, 0), Pt(4, 0), Pt(4, 2), Pt(2, 2), Pt(2, 4), Pt(0, 4)]
     assert area2(l) == 24
-    assert locate(l, Pt(1, 3)) == 1 and locate(l, Pt(3, 3)) == -1 and locate(l, Pt(2, 3)) == 0
-    assert locate(l, Pt(3, 1)) == 1 and locate(l, Pt(5, 2)) == -1 and locate(l, Pt(-1, 0)) == -1
+    assert locate(l, Pt(1, 3)) == Location.Inside and locate(
+        l,
+        Pt(3, 3),
+    ) == Location.Outside and locate(
+        l,
+        Pt(2, 3),
+    ) == Location.Boundary
+    assert locate(l, Pt(3, 1)) == Location.Inside and locate(
+        l,
+        Pt(5, 2),
+    ) == Location.Outside and locate(
+        l,
+        Pt(-1, 0),
+    ) == Location.Outside
     // diameter2 and hull_extreme vs brute force on random hulls
     for _ in 0..60:
         let pts = random_points(20, 10)
@@ -1123,11 +1447,13 @@ fn float_vec_circles_and_half_planes():
 @test
 fn hull_extreme_and_locate_convex_edge_cases():
     // degenerate 0/1/2-point hulls
-    assert locate_convex([], Pt(0, 0)) == -1
-    assert locate_convex([Pt(1, 2)], Pt(1, 2)) == 0
-    assert locate_convex([Pt(1, 2)], Pt(1, 3)) == -1
-    assert locate_convex([Pt(0, 0), Pt(4, 0)], Pt(2, 0)) == 0
-    assert locate_convex([Pt(0, 0), Pt(4, 0)], Pt(2, 1)) == -1
+    assert locate_convex([], Pt(0, 0)) == Location.Outside
+    assert locate_convex([Pt(1, 2)], Pt(1, 2)) == Location.Boundary
+    assert locate_convex([Pt(1, 2)], Pt(1, 3)) == Location.Outside
+    assert locate_convex([Pt(0, 0), Pt(4, 0)], Pt(2, 0)) == Location.Boundary
+    assert locate_convex([Pt(0, 0), Pt(4, 0)], Pt(2, 1)) == Location.Outside
+    let r90 = Vec(3.0, 4.0).rot(by: Vec(0.0, 1.0))
+    assert close(r90.x, -4.0) and close(r90.y, 3.0)
     // hull_extreme on collinear: true hulls
     for _ in 0..40:
         let pts = random_points(20, 4)
@@ -1146,7 +1472,7 @@ fn hull_tangents_matches_brute():
         if h.len < 3: continue
         for _ in 0..15:
             let p = Pt(rand(-15, 15), rand(-15, 15))
-            if locate_convex(h, p) >= 0: continue
+            if locate_convex(h, p) != Location.Outside: continue
             let t = hull_tangents(h, p)
             for q in h:
                 assert turn(p, h[t.left], q) <= 0
@@ -1200,3 +1526,100 @@ fn min_enclosing_circle_and_circle_polygon_area():
     assert close(circle_polygon_area(Vec(0.0, 0.0), 1.0, sq), pi * 0.25, eps: 1e-6)
     // Disk centered at (1, 0) with radius 1 -> half disk = pi / 2
     assert close(circle_polygon_area(Vec(1.0, 0.0), 1.0, sq), pi * 0.5, eps: 1e-6)
+
+@test
+fn arg_exact_angular_sort_without_floats():
+    let big = 1_000_000_000_000_000_000
+    var pts = [Pt(big, 2), Pt(big, 1), Pt(-1, 0), Pt(0, -1), Pt(1, 0), Pt(0, 1)]
+    sort(mut pts, by: arg)
+    assert pts == [Pt(1, 0), Pt(big, 1), Pt(big, 2), Pt(0, 1), Pt(-1, 0), Pt(0, -1)]
+    let base = Pt(10, 20)
+    var around = [Pt(9, 20), Pt(10, 19), Pt(11, 20), Pt(10, 21)]
+    sort(mut around, by: p => arg(p - base))
+    assert around == [Pt(11, 20), Pt(10, 21), Pt(9, 20), Pt(10, 19)]
+
+@test
+fn shamos_hoey_matches_brute():
+    assert any_segments_meet([]) == none
+    assert any_segments_meet([(a: Pt(0, 0), b: Pt(1, 1))]) == none
+    // Simple square: touches at corners (strict: false), no proper crossing (strict: true)
+    let square = [
+        (a: Pt(0, 0), b: Pt(2, 0)),
+        (a: Pt(2, 0), b: Pt(2, 2)),
+        (a: Pt(2, 2), b: Pt(0, 2)),
+        (a: Pt(0, 2), b: Pt(0, 0)),
+    ]
+    assert any_segments_meet(square) != none
+    assert any_segments_meet(square, strict: true) == none
+    // Vertical-horizontal strict crossing
+    let cross_vh = [(a: Pt(1, 0), b: Pt(1, 4)), (a: Pt(0, 2), b: Pt(3, 2))]
+    assert any_segments_meet(cross_vh, strict: true) != none
+    // Randomized stress against O(n^2) brute force for both strict modes
+    for _ in 0..80:
+        let m = rand(2, 16)
+        var segs: List<(a: Pt, b: Pt)> = []
+        for _ in 0..m:
+            let a = Pt(rand(-6, 6), rand(-6, 6))
+            let b = Pt(rand(-6, 6), rand(-6, 6))
+            segs.push((a: a, b: b))
+        for strict_mode in [false, true]:
+            var brute = false
+            for i in 0..m:
+                for j in i + 1..m:
+                    if segments_meet(
+                        segs[i].a,
+                        segs[i].b,
+                        segs[j].a,
+                        segs[j].b,
+                        strict: strict_mode,
+                    ):
+                        brute = true
+            let got = any_segments_meet(segs, strict: strict_mode)
+            assert (got != none) == brute
+            if let (i, j) = got:
+                assert i != j and segments_meet(
+                    segs[i].a,
+                    segs[i].b,
+                    segs[j].a,
+                    segs[j].b,
+                    strict: strict_mode,
+                )
+
+@test
+fn pt3_and_convex_hull_3d():
+    let (a, b) = (Pt3(1, 2, 3), Pt3(4, -5, 6))
+    assert a + b == Pt3(5, -3, 9) and a - b == Pt3(-3, 7, -3) and -a == Pt3(-1, -2, -3)
+    assert a.scale(2) == Pt3(2, 4, 6) and a.norm2 == 14 and dot3(a, b) == 12
+    assert cross3(Pt3(1, 0, 0), Pt3(0, 1, 0)) == Pt3(0, 0, 1)
+    assert dist2_3(Pt3(1, 2, 3), Pt3(4, 6, 3)) == 25
+    assert "{a}" == "1 2 3"
+    // Degenerate / coplanar
+    assert convex_hull_3d([]).is_empty
+    assert convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(1, 1, 0)]).is_empty
+    // Tetrahedron (4 faces) and octahedron (8 faces)
+    let tet = [Pt3(0, 0, 0), Pt3(2, 0, 0), Pt3(0, 2, 0), Pt3(0, 0, 2)]
+    assert convex_hull_3d(tet).len == 4
+    let oct = [
+        Pt3(1, 0, 0),
+        Pt3(-1, 0, 0),
+        Pt3(0, 1, 0),
+        Pt3(0, -1, 0),
+        Pt3(0, 0, 1),
+        Pt3(0, 0, -1),
+    ]
+    assert convex_hull_3d(oct).len == 8
+    // Randomized 3D point clouds: check outward normals & closed manifold
+    for _ in 0..20:
+        let pts = [Pt3(rand(-50, 50), rand(-50, 50), rand(-50, 50)) for _ in 0..18]
+        let faces = convex_hull_3d(pts)
+        assert faces.len >= 4
+        var edges: Map<(Int, Int), Int> = []
+        for (u, v, w) in faces:
+            assert not col3(pts[u], pts[v], pts[w])
+            for p in pts:
+                assert face_side128(pts[u], pts[v], pts[w], p) <= I128(0)
+            edges[(u, v)] = (edges.get((u, v)) ?? 0) + 1
+            edges[(v, w)] = (edges.get((v, w)) ?? 0) + 1
+            edges[(w, u)] = (edges.get((w, u)) ?? 0) + 1
+        for ((u, v), cnt) in edges:
+            assert cnt == 1 and (edges.get((v, u)) ?? 0) == 1
