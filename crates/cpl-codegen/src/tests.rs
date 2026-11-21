@@ -116,10 +116,43 @@ fn strings_are_bytes_with_no_encoding_machinery() {
 
 #[test]
 fn bool_elements_are_bytes_not_vector_bool() {
-    let cpp = cpp("var seen: [10]Bool = false\nseen[3] = true\nprint(seen[3])\n");
+    let fixed = cpp("var seen: [10]Bool = false\nseen[3] = true\nprint(seen[3])\n");
     assert!(
-        cpp.contains("std::vector<char>") && !cpp.contains("std::vector<bool>"),
-        "{cpp}"
+        fixed.contains("std::array<char, 10>") && !fixed.contains("std::vector<bool>"),
+        "{fixed}"
+    );
+    let dyn_len = cpp("let n: Int = read()\nvar seen: [n]Bool = false\nseen[0] = true\nprint(seen[0])\n");
+    assert!(
+        dyn_len.contains("std::vector<char>") && !dyn_len.contains("std::vector<bool>"),
+        "{dyn_len}"
+    );
+}
+
+#[test]
+fn const_length_fixed_arrays_and_loop_literals_use_std_array() {
+    let source = "\
+enum Side:
+    Left
+    Mid
+    Right
+fn sum3(xs: [3]Int) -> Int = xs[0] + xs[1] + xs[2]
+let n: 1..=100 = read()
+var dp: [0..3]Int = [0, 0, 0]
+var cnt: [Side]Int = 0
+for i in 0..n:
+    var nxt: [0..3]Int = [dp[1] + 1, dp[2] + 2, dp[0] + 3]
+    dp = nxt
+    cnt[Side.Left] += 1
+var s = sum3([dp[0], dp[1], dp[2]])
+for x in [dp[0], dp[1], dp[2]]:
+    s += x
+print(s, cnt[Side.Left])
+";
+    let out = cpp(source);
+    let body = &out[out.find("namespace prog {").expect("prog")..];
+    assert!(
+        body.contains("std::array<ll, 3>") && !body.contains("std::vector<"),
+        "{body}"
     );
 }
 

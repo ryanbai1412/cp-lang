@@ -288,7 +288,11 @@ impl<'p> Emitter<'p> {
                         format!("{b}.ck({})", at.join(", "))
                     }
                     Ty::Array { .. } | Ty::Str if !proven(indices) => {
-                        self.need("at");
+                        if self.place_fixed_len(base).is_some() {
+                            self.need("at_array");
+                        } else {
+                            self.need("at");
+                        }
                         format!("cpl::at({b}, {})", at[0])
                     }
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
@@ -429,6 +433,35 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Do(block) => {
                 let ret = self.ty_with_elem_width(&e.ty, Some(w));
+                self.lambda(&ret, |this, out| this.block(block, out))
+            }
+            _ => self.expr(e),
+        }
+    }
+
+    /// Emits `e` with a target `std::array<Cell, K>` representation when `fixed` is `Some(k)`.
+    pub fn expr_with_fixed_len(&mut self, e: &Expr, fixed: Option<u32>) -> Code {
+        let Some(k) = fixed else {
+            return self.expr(e);
+        };
+        match &e.kind {
+            ExprKind::Fill(dims, value) if dims.len() == 1 => {
+                let arr_ty = self.fixed_array_cpp(&e.ty, k);
+                match value {
+                    Some(v) => {
+                        let Ty::Array { elem, .. } = &e.ty else {
+                            return self.expr(e);
+                        };
+                        let cell = elem_ty(self.program, self.niches, elem);
+                        self.need("filled_array");
+                        let val = self.expr(v).text;
+                        Code::primary(format!("cpl::filled_array<{cell}, {k}>({val})"))
+                    }
+                    None => Code::primary(format!("{arr_ty}{{}}")),
+                }
+            }
+            ExprKind::Do(block) => {
+                let ret = self.fixed_array_cpp(&e.ty, k);
                 self.lambda(&ret, |this, out| this.block(block, out))
             }
             _ => self.expr(e),
@@ -683,7 +716,11 @@ impl<'p> Emitter<'p> {
                 if (matches!(base_ty, Ty::List(_) | Ty::ListView(_)) && !raw_list)
                     || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str | Ty::StrView))
                 {
-                    self.need("at");
+                    if self.expr_fixed_len(base).is_some() {
+                        self.need("at_array");
+                    } else {
+                        self.need("at");
+                    }
                 }
                 if checked && matches!(base_ty, Ty::Range(_)) {
                     self.need("range_at");
@@ -934,7 +971,11 @@ impl<'p> Emitter<'p> {
                         Code::primary(format!("cpl::map_take({p}, {k})")),
                     );
                 }
-                let ret = self.ty(&e.ty);
+                let ret = if let Some(k) = self.expr_fixed_len(e) {
+                    self.fixed_array_cpp(&e.ty, k)
+                } else {
+                    self.ty(&e.ty)
+                };
                 self.lambda(&ret, |this, out| this.block(block, out))
             }
             ExprKind::Call(id, args) => self.call(e, *id, args),
@@ -1703,7 +1744,11 @@ impl<'p> Emitter<'p> {
                             None => false,
                         };
                         if by_ref && shared {
-                            let ty = this.ty_with_elem_width(&value.ty, this.expr_elem_width(value));
+                            let ty = if let Some(k) = this.expr_fixed_len(value) {
+                                this.fixed_array_cpp(&value.ty, k)
+                            } else {
+                                this.ty_with_elem_width(&value.ty, this.expr_elem_width(value))
+                            };
                             texts.push(format!("{ty}({})", code.text));
                         } else {
                             texts.push(code.text);

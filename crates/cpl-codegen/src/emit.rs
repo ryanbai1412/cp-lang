@@ -132,6 +132,8 @@ pub(crate) struct Emitter<'p> {
     pub narrow_ints: BTreeMap<(usize, usize), cpl_ir::IntWidth>,
     /// 1D ranged-`Int` arrays, lists, and list views with narrowed 32-bit elements.
     pub narrow_elems: BTreeMap<cpl_ir::ElemLoc, cpl_ir::IntWidth>,
+    /// 1D constant-length arrays (`1..=64`) in locals/globals lowered to `std::array<T, K>`.
+    pub fixed_arrays: Vec<(cpl_ir::ElemLoc, u8)>,
     /// Per fn, the parameters it takes by value to move into its result:
     /// see [`crate::scope::sunk_params`].
     pub sunk: Vec<BTreeSet<usize>>,
@@ -192,6 +194,8 @@ impl<'p> Emitter<'p> {
         }
         let facts = Facts::collect(program);
         let rows = crate::scope::rows(program, &facts);
+        let narrow_elems = crate::scope::narrow_elems(program, &rows);
+        let fixed_arrays = crate::scope::fixed_arrays(program, &narrow_elems);
         let mut emitter = Emitter {
             program,
             facts,
@@ -220,7 +224,8 @@ impl<'p> Emitter<'p> {
             continue_targets: BTreeSet::new(),
             reused: BTreeSet::new(),
             narrow_ints: crate::scope::narrow_ints(program),
-            narrow_elems: crate::scope::narrow_elems(program, &rows),
+            narrow_elems,
+            fixed_arrays,
             rows,
             sunk: crate::scope::sunk_params(program),
             last_use_call: false,
@@ -431,9 +436,9 @@ impl<'p> Emitter<'p> {
                         format!("F{ti}&& {name}")
                     };
                 }
-                let cpp = self.ty_with_elem_width(
+                let cpp = self.ty_for_loc(
                     ty,
-                    self.elem_width(cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot)),
+                    cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot),
                 );
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
@@ -485,16 +490,19 @@ impl<'p> Emitter<'p> {
                 continue;
             }
             let ty = &locals[slot].ty;
-            let cpp = self.ty_with_elem_width(
-                ty,
-                self.elem_width(cpl_ir::ElemLoc::Local(scope, slot)),
-            );
+            let loc = cpl_ir::ElemLoc::Local(scope, slot);
+            let cpp = self.ty_for_loc(ty, loc);
+            let init = if self.fixed_array_len(loc).is_some() {
+                "{}"
+            } else {
+                self.zero_init(ty)
+            };
             out.push_str(&format!(
                 "{}{} {}{};\n",
                 pad(self.indent),
                 cpp,
                 self.names[slot],
-                self.zero_init(ty)
+                init
             ));
         }
     }
@@ -547,6 +555,50 @@ impl<'p> Emitter<'p> {
             },
             _ => None,
         }
+    }
+
+    pub fn fixed_array_len(&self, loc: cpl_ir::ElemLoc) -> Option<u32> {
+        self.fixed_arrays
+            .iter()
+            .find(|(l, _)| *l == loc)
+            .map(|(_, k)| *k as u32)
+    }
+
+    pub fn place_fixed_len(&self, p: &cpl_ir::Place) -> Option<u32> {
+        let scope = self.current_scope();
+        match &p.kind {
+            cpl_ir::PlaceKind::Global(g) => self.fixed_array_len(cpl_ir::ElemLoc::Global(*g)),
+            cpl_ir::PlaceKind::Local(s) => self.fixed_array_len(cpl_ir::ElemLoc::Local(scope, *s)),
+            _ => None,
+        }
+    }
+
+    pub fn expr_fixed_len(&self, e: &cpl_ir::Expr) -> Option<u32> {
+        let scope = self.current_scope();
+        match &e.kind {
+            cpl_ir::ExprKind::Global(g) => self.fixed_array_len(cpl_ir::ElemLoc::Global(*g)),
+            cpl_ir::ExprKind::Local(s) => self.fixed_array_len(cpl_ir::ElemLoc::Local(scope, *s)),
+            cpl_ir::ExprKind::Do(b) => match b.stmts.last() {
+                Some(cpl_ir::Stmt::Give(inner)) => self.expr_fixed_len(inner),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn fixed_array_cpp(&self, ty: &Ty, k: u32) -> String {
+        if let Ty::Array { elem, .. } = ty {
+            let cell = crate::names::elem_ty(self.program, self.niches, elem);
+            return format!("std::array<{cell}, {k}>");
+        }
+        self.ty(ty)
+    }
+
+    pub fn ty_for_loc(&self, ty: &Ty, loc: cpl_ir::ElemLoc) -> String {
+        if let Some(k) = self.fixed_array_len(loc) {
+            return self.fixed_array_cpp(ty, k);
+        }
+        self.ty_with_elem_width(ty, self.elem_width(loc))
     }
 
     pub fn ty_with_elem_width(&self, ty: &Ty, w: Option<cpl_ir::IntWidth>) -> String {
@@ -1103,20 +1155,23 @@ impl<'p> Emitter<'p> {
             if global.ty == Ty::Unit {
                 continue;
             }
-            let cpp = self.ty_with_elem_width(
-                &global.ty,
-                self.elem_width(cpl_ir::ElemLoc::Global(id)),
-            );
+            let loc = cpl_ir::ElemLoc::Global(id);
+            let cpp = self.ty_for_loc(&global.ty, loc);
             if let Some(value) = self.const_global(id) {
                 vars.push_str(&format!("static constexpr {cpp} {} = {value};\n", ident(&global.name)));
                 self.const_globals.insert(id);
                 continue;
             }
+            let init = if self.fixed_array_len(loc).is_some() {
+                "{}"
+            } else {
+                self.zero_init(&global.ty)
+            };
             vars.push_str(&format!(
                 "{} {}{};\n",
                 cpp,
                 ident(&global.name),
-                self.zero_init(&global.ty)
+                init
             ));
         }
 

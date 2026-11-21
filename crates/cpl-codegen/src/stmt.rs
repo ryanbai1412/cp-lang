@@ -598,14 +598,45 @@ impl<'p> Emitter<'p> {
                         return;
                     }
                 }
-                let seq_code = self.expr(seq);
-                let opened = !(untouched && !rev && !is_map);
-                let holder = if opened {
+                let lit_arr = match (&seq.kind, &seq.ty) {
+                    (ExprKind::Tuple(items), Ty::List(elem)) if items.len() <= 64 => {
+                        if items.is_empty() {
+                            return;
+                        }
+                        Some((items, elem))
+                    }
+                    _ => None,
+                };
+                let opened = lit_arr.is_some() || !(untouched && !rev && !is_map);
+                let holder = if let Some((items, elem)) = lit_arr {
+                    let elem_cpp = if matches!(elem.as_ref(), Ty::Bool) {
+                        "bool".to_string()
+                    } else {
+                        self.ty(elem)
+                    };
+                    let vals: Vec<String> = items.iter().map(|it| self.expr(it).text).collect();
+                    let held = self.temp();
+                    self.line(out, "{");
+                    self.indent += 1;
+                    self.line(
+                        out,
+                        &format!(
+                            "std::array<{elem_cpp}, {}> {held} = {{{}}};",
+                            items.len(),
+                            vals.join(", ")
+                        ),
+                    );
+                    held
+                } else if opened {
+                    let seq_code = self.expr(seq);
                     self.line(out, "{");
                     self.indent += 1;
                     let held = self.temp();
-                    let holder_ty =
-                        self.ty_with_elem_width(&seq.ty, self.expr_elem_width(seq));
+                    let holder_ty = if let Some(k) = self.expr_fixed_len(seq) {
+                        self.fixed_array_cpp(&seq.ty, k)
+                    } else {
+                        self.ty_with_elem_width(&seq.ty, self.expr_elem_width(seq))
+                    };
                     if untouched {
                         self.line(
                             out,
@@ -616,7 +647,7 @@ impl<'p> Emitter<'p> {
                     }
                     held
                 } else {
-                    seq_code.at(PRIMARY)
+                    self.expr(seq).at(PRIMARY)
                 };
                 let items = if is_grid {
                     format!("{holder}.d")
@@ -699,8 +730,11 @@ impl<'p> Emitter<'p> {
                 _ => {}
             }
         }
+        let place_fixed = self.place_fixed_len(place);
         let place_w = self.place_elem_width(place);
-        let mut v = if op == AssignOp::Set && place_w.is_some() {
+        let mut v = if op == AssignOp::Set && place_fixed.is_some() {
+            self.expr_with_fixed_len(value, place_fixed)
+        } else if op == AssignOp::Set && place_w.is_some() {
             self.expr_with_elem_width(value, place_w)
         } else {
             self.expr(value)
@@ -961,15 +995,18 @@ impl<'p> Emitter<'p> {
                 let tail = self.tail.take();
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
-                let elem_w = self.elem_width(cpl_ir::ElemLoc::Local(self.current_scope(), *slot));
-                let cpp = self.ty_with_elem_width(&ty, elem_w);
+                let loc = cpl_ir::ElemLoc::Local(self.current_scope(), *slot);
+                let fixed_len = self.fixed_array_len(loc);
+                let elem_w = self.elem_width(loc);
+                let cpp = self.ty_for_loc(&ty, loc);
                 let hoisted = self.hoisted.contains(slot);
                 let Some(init) = init else {
                     if ty != Ty::Unit {
                         if hoisted {
                             self.line(out, &format!("{name} = {cpp}();"));
                         } else {
-                            self.line(out, &format!("{cpp} {name}{};", self.zero_init(&ty)));
+                            let z = if fixed_len.is_some() { "{}" } else { self.zero_init(&ty) };
+                            self.line(out, &format!("{cpp} {name}{z};"));
                         }
                     }
                     return;
@@ -996,6 +1033,14 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     ExprKind::Fill(dims, value) if !hoisted && dims.len() == 1 => {
+                        if fixed_len.is_some() {
+                            self.line(out, &format!("{cpp} {name}{{}};"));
+                            if let Some(v) = value {
+                                let val = self.expr(v).text;
+                                self.line(out, &format!("{name}.fill({val});"));
+                            }
+                            return;
+                        }
                         let args = self.fill_args_with_width(dims, value.as_deref(), elem_w);
                         if reused {
                             // One buffer, filled again each time round.
@@ -1019,9 +1064,17 @@ impl<'p> Emitter<'p> {
                         ExprKind::Local(of) if self.spent.contains(of) => {
                             format!("std::get<{index}>(std::move({}))", self.names[*of])
                         }
-                        _ => self.expr_with_elem_width(init, elem_w).text,
+                        _ => if fixed_len.is_some() {
+                            self.expr_with_fixed_len(init, fixed_len).text
+                        } else {
+                            self.expr_with_elem_width(init, elem_w).text
+                        },
                     },
-                    _ => self.expr_with_elem_width(init, elem_w).text,
+                    _ => if fixed_len.is_some() {
+                        self.expr_with_fixed_len(init, fixed_len).text
+                    } else {
+                        self.expr_with_elem_width(init, elem_w).text
+                    },
                 };
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));

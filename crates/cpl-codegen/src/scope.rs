@@ -1045,3 +1045,398 @@ pub(crate) fn narrow_elems(
     }
     narrow
 }
+
+/// 1D fixed-size arrays in locals and globals whose length is a compile-time
+/// constant in `1..=64` and that never escape to a `std::vector`-requiring context.
+#[inline(never)]
+pub(crate) fn fixed_arrays(
+    program: &Program,
+    narrow_elems: &BTreeMap<cpl_ir::ElemLoc, cpl_ir::IntWidth>,
+) -> Vec<(cpl_ir::ElemLoc, u8)> {
+    use cpl_ir::{Builtin, DimSpec, ElemLoc, Iter, Mutation, ScopeId};
+
+    let is_1d = |ty: &Ty| matches!(ty, Ty::Array { dims, .. } if dims.len() == 1);
+    let get = |v: &[(ElemLoc, u8)], l: ElemLoc| v.iter().find(|(x, _)| *x == l).map(|(_, k)| *k);
+    let del = |v: &mut Vec<(ElemLoc, u8)>, l: ElemLoc| -> bool {
+        v.iter().position(|(x, _)| *x == l).map(|i| v.swap_remove(i)).is_some()
+    };
+    let fill_k = |dims: &[DimSpec]| -> Option<u8> {
+        if dims.len() != 1 {
+            return None;
+        }
+        let n = match &dims[0] {
+            DimSpec::Int(e) | DimSpec::IntFrom(_, e) => match e.kind {
+                ExprKind::Int(k) => k,
+                _ => return None,
+            },
+            DimSpec::Enum(eid) => program.enums[*eid].variants.len() as i64,
+            _ => return None,
+        };
+        (1..=64).contains(&n).then_some(n as u8)
+    };
+    let p_loc = |s: ScopeId, p: &Place| match &p.kind {
+        PlaceKind::Global(g) => Some(ElemLoc::Global(*g)),
+        PlaceKind::Local(l) => Some(ElemLoc::Local(s, *l)),
+        _ => None,
+    };
+    fn e_loc(s: ScopeId, e: &Expr) -> Option<ElemLoc> {
+        match &e.kind {
+            ExprKind::Global(g) => Some(ElemLoc::Global(*g)),
+            ExprKind::Local(l) => Some(ElemLoc::Local(s, *l)),
+            ExprKind::Do(b) => match b.stmts.last() {
+                Some(Stmt::Give(x)) => e_loc(s, x),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    let mut fixed: Vec<(ElemLoc, u8)> = Vec::new();
+    let mut banned: Vec<ElemLoc> = narrow_elems.keys().copied().collect();
+    let mut ban = |l: ElemLoc| {
+        if !banned.contains(&l) {
+            banned.push(l);
+        }
+    };
+    for &fid in program.judge_fns.iter().chain(program.entry_fns.iter()) {
+        for slot in 0..program.fns[fid].params.len() {
+            ban(ElemLoc::Local(ScopeId::Fn(fid), slot));
+        }
+    }
+    for (cid, c) in program.closures.iter().enumerate() {
+        for slot in 0..c.params.len() {
+            ban(ElemLoc::Local(ScopeId::Closure(cid), slot));
+        }
+        for cap in &c.captures {
+            ban(ElemLoc::Local(ScopeId::Closure(cid), cap.inner));
+            if cap.is_global {
+                ban(ElemLoc::Global(cap.outer));
+            }
+        }
+    }
+    let bodies: Vec<(ScopeId, &cpl_ir::Block)> = [
+        (ScopeId::Main, &program.setup),
+        (ScopeId::Main, &program.main),
+    ]
+    .into_iter()
+    .chain(program.fns.iter().enumerate().map(|(i, f)| (ScopeId::Fn(i), &f.body)))
+    .chain(program.closures.iter().enumerate().map(|(i, c)| (ScopeId::Closure(i), &c.body)))
+    .collect();
+    for &(scope, body) in &bodies {
+        crate::walk::deep_exprs(body, &mut |e| {
+            if let ExprKind::Closure(cid) = &e.kind {
+                for cap in &program.closures[*cid].captures {
+                    if !cap.is_global {
+                        ban(ElemLoc::Local(scope, cap.outer));
+                    }
+                }
+            }
+        });
+    }
+
+    // Pass 1: seed constant lengths from Fill and propagate across Let/Assign(Set).
+    loop {
+        let mut changed = false;
+        for &(scope, body) in &bodies {
+            crate::walk::deep_stmts(body, &mut |stmt| {
+                let (loc, src) = match stmt {
+                    Stmt::Let(slot, Some(init)) if is_1d(&init.ty) => {
+                        (ElemLoc::Local(scope, *slot), Some(init))
+                    }
+                    Stmt::Let(slot, None) => (ElemLoc::Local(scope, *slot), None),
+                    Stmt::Assign(p, cpl_ir::AssignOp::Set, v) if is_1d(&p.ty) => {
+                        let Some(l) = p_loc(scope, p) else { return };
+                        (l, Some(v))
+                    }
+                    _ => return,
+                };
+                if banned.contains(&loc) {
+                    return;
+                }
+                let Some(val) = src else {
+                    changed |= del(&mut fixed, loc);
+                    banned.push(loc);
+                    return;
+                };
+                let mut cur = val;
+                while let ExprKind::Do(b) = &cur.kind {
+                    if let Some(Stmt::Give(x)) = b.stmts.last() {
+                        cur = x;
+                    } else {
+                        break;
+                    }
+                }
+                let k = match &cur.kind {
+                    ExprKind::Fill(dims, _) => fill_k(dims),
+                    _ => e_loc(scope, cur).and_then(|l| get(&fixed, l)),
+                };
+                if let Some(k) = k {
+                    match get(&fixed, loc) {
+                        Some(p) if p == k => {}
+                        Some(_) => {
+                            del(&mut fixed, loc);
+                            banned.push(loc);
+                            changed = true;
+                        }
+                        None => {
+                            fixed.push((loc, k));
+                            changed = true;
+                        }
+                    }
+                } else if e_loc(scope, val).is_none() {
+                    del(&mut fixed, loc);
+                    banned.push(loc);
+                    changed = true;
+                }
+            });
+            crate::walk::deep_exprs(body, &mut |e| {
+                let ExprKind::Call(fid, args) = &e.kind else { return };
+                let f = &program.fns[*fid];
+                for (slot, arg) in args.iter().enumerate() {
+                    if slot >= f.params.len() || !is_1d(&f.locals[slot].ty) {
+                        continue;
+                    }
+                    let loc = ElemLoc::Local(ScopeId::Fn(*fid), slot);
+                    if banned.contains(&loc) {
+                        continue;
+                    }
+                    let src_loc = match arg {
+                        Arg::Value(v) => e_loc(scope, v),
+                        Arg::Mut(p) => p_loc(scope, p),
+                    };
+                    if let Some(k) = src_loc.and_then(|l| get(&fixed, l)) {
+                        match get(&fixed, loc) {
+                            Some(p) if p == k => {}
+                            Some(_) => {
+                                del(&mut fixed, loc);
+                                banned.push(loc);
+                                changed = true;
+                            }
+                            None => {
+                                fixed.push((loc, k));
+                                changed = true;
+                            }
+                        }
+                    } else if src_loc.is_none() {
+                        del(&mut fixed, loc);
+                        banned.push(loc);
+                        changed = true;
+                    }
+                }
+            });
+        }
+        if !changed {
+            break;
+        }
+    }
+    if fixed.is_empty() {
+        return fixed;
+    }
+
+    // Pass 2: disqualify any candidate that escapes to an unsupported context.
+    // Every `Expr`/`Place` pointer that is an *allowed* direct use of a fixed array
+    // is skipped; any other occurrence of a fixed-array `Local`/`Global` bans it.
+    let mut allowed_exprs: Vec<*const Expr> = Vec::new();
+    let mut allowed_places: Vec<*const Place> = Vec::new();
+    let mut flow_edges: Vec<(ElemLoc, ElemLoc)> = Vec::new();
+    let mut non_flow_dst: Vec<ElemLoc> = Vec::new();
+
+    for &(scope, body) in &bodies {
+        crate::walk::deep_stmts(body, &mut |stmt| match stmt {
+            Stmt::Let(slot, Some(init)) if is_1d(&init.ty) => {
+                let dst = ElemLoc::Local(scope, *slot);
+                let mut cur = init;
+                while let ExprKind::Do(b) = &cur.kind {
+                    allowed_exprs.push(cur as *const Expr);
+                    if let Some(Stmt::Give(x)) = b.stmts.last() {
+                        cur = x;
+                    } else {
+                        break;
+                    }
+                }
+                if let ExprKind::Fill(dims, _) = &cur.kind {
+                    if fill_k(dims).is_some() {
+                        allowed_exprs.push(cur as *const Expr);
+                    } else {
+                        non_flow_dst.push(dst);
+                    }
+                } else if let Some(src) = e_loc(scope, cur) {
+                    allowed_exprs.push(cur as *const Expr);
+                    flow_edges.push((dst, src));
+                } else {
+                    non_flow_dst.push(dst);
+                }
+            }
+            Stmt::Assign(pl, cpl_ir::AssignOp::Set, val) if is_1d(&pl.ty) => {
+                if let Some(dst) = p_loc(scope, pl) {
+                    allowed_places.push(pl as *const Place);
+                    let mut cur = val;
+                    while let ExprKind::Do(b) = &cur.kind {
+                        allowed_exprs.push(cur as *const Expr);
+                        if let Some(Stmt::Give(x)) = b.stmts.last() {
+                            cur = x;
+                        } else {
+                            break;
+                        }
+                    }
+                    if let ExprKind::Fill(dims, _) = &cur.kind {
+                        if fill_k(dims).is_some() {
+                            allowed_exprs.push(cur as *const Expr);
+                        } else {
+                            non_flow_dst.push(dst);
+                        }
+                    } else if let Some(src) = e_loc(scope, cur) {
+                        allowed_exprs.push(cur as *const Expr);
+                        flow_edges.push((dst, src));
+                    } else {
+                        non_flow_dst.push(dst);
+                    }
+                }
+            }
+            Stmt::For(_, _, Iter::Seq(seq, _), _)
+                if is_1d(&seq.ty) && matches!(seq.kind, ExprKind::Local(_) | ExprKind::Global(_)) =>
+            {
+                allowed_exprs.push(seq as *const Expr);
+            }
+            _ => {}
+        });
+        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
+            ExprKind::Index(base, idx)
+                if idx.len() == 1
+                    && is_1d(&base.ty)
+                    && matches!(base.kind, ExprKind::Local(_) | ExprKind::Global(_)) =>
+            {
+                allowed_exprs.push(&**base as *const Expr);
+            }
+            ExprKind::Builtin(Builtin::Len | Builtin::First | Builtin::Last, args) => {
+                for a in args {
+                    if is_1d(&a.ty) && matches!(a.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+                        allowed_exprs.push(a as *const Expr);
+                    }
+                }
+            }
+            ExprKind::Cmp(_, l, r) if is_1d(&l.ty) && is_1d(&r.ty) => {
+                if let (Some(a), Some(b)) = (e_loc(scope, l), e_loc(scope, r)) {
+                    allowed_exprs.push(&**l as *const Expr);
+                    allowed_exprs.push(&**r as *const Expr);
+                    flow_edges.push((a, b));
+                }
+            }
+            ExprKind::Mutate(m, pl, _)
+                if matches!(m, Mutation::Fill | Mutation::Swap | Mutation::Reverse)
+                    && is_1d(&pl.ty) =>
+            {
+                allowed_places.push(&**pl as *const Place);
+            }
+            ExprKind::Call(fid, args) => {
+                let f = &program.fns[*fid];
+                for (slot, arg) in args.iter().enumerate() {
+                    if slot >= f.params.len() || !is_1d(&f.locals[slot].ty) {
+                        continue;
+                    }
+                    let dst = ElemLoc::Local(ScopeId::Fn(*fid), slot);
+                    match arg {
+                        Arg::Value(v) => {
+                            let mut cur = v;
+                            while let ExprKind::Do(b) = &cur.kind {
+                                allowed_exprs.push(cur as *const Expr);
+                                if let Some(Stmt::Give(x)) = b.stmts.last() {
+                                    cur = x;
+                                } else {
+                                    break;
+                                }
+                            }
+                            if let Some(src) = e_loc(scope, cur) {
+                                allowed_exprs.push(cur as *const Expr);
+                                flow_edges.push((dst, src));
+                            } else {
+                                non_flow_dst.push(dst);
+                            }
+                        }
+                        Arg::Mut(pl) => {
+                            if let Some(src) = p_loc(scope, pl) {
+                                allowed_places.push(pl as *const Place);
+                                flow_edges.push((dst, src));
+                            } else {
+                                non_flow_dst.push(dst);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        });
+    }
+
+    for dst in non_flow_dst {
+        del(&mut fixed, dst);
+    }
+    // Any unallowed Local/Global expression or place occurrence bans its ElemLoc.
+    let check_place_root = |scope: ScopeId, pl: &Place, fixed: &mut Vec<(ElemLoc, u8)>| {
+        let mut cur = pl;
+        loop {
+            match &cur.kind {
+                PlaceKind::Index(base, idx) if idx.len() == 1 && is_1d(&base.ty) => {
+                    if p_loc(scope, base).is_some() {
+                        return;
+                    }
+                    cur = base;
+                }
+                PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+                    cur = base;
+                }
+                PlaceKind::Local(_) | PlaceKind::Global(_) => {
+                    if !allowed_places.contains(&(cur as *const Place)) {
+                        if let Some(l) = p_loc(scope, cur) {
+                            del(fixed, l);
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+    };
+    for &(scope, body) in &bodies {
+        crate::walk::deep_exprs(body, &mut |e| {
+            if matches!(e.kind, ExprKind::Local(_) | ExprKind::Global(_))
+                && !allowed_exprs.contains(&(e as *const Expr))
+            {
+                if let Some(l) = e_loc(scope, e) {
+                    del(&mut fixed, l);
+                }
+            }
+            match &e.kind {
+                ExprKind::Mutate(_, pl, _) | ExprKind::Sort(pl, _, _) => {
+                    check_place_root(scope, pl, &mut fixed);
+                }
+                ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                    for a in args {
+                        if let cpl_ir::Arg::Mut(pl) = a {
+                            check_place_root(scope, pl, &mut fixed);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        });
+        crate::walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::Assign(pl, _, _) = stmt {
+                check_place_root(scope, pl, &mut fixed);
+            }
+        });
+    }
+    // Propagate bans across flow_edges (Let / Assign / Cmp pairs).
+    loop {
+        let mut changed = false;
+        for &(a, b) in &flow_edges {
+            if get(&fixed, a) != get(&fixed, b) {
+                changed |= del(&mut fixed, a);
+                changed |= del(&mut fixed, b);
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    fixed
+}

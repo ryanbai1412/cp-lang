@@ -1179,6 +1179,21 @@ inline int pos(ll ord, ll len) { if ((unsigned long long)ord >= (unsigned long l
 ",
     },
     Piece {
+        name: "at_array",
+        needs: &["fail"],
+        code: "\
+template <class T, size_t K> T& at(std::array<T, K>& v, ll i) { if ((unsigned long long)i >= K) fail(\"index outside the list\"); return v[(size_t)i]; }
+template <class T, size_t K> const T& at(const std::array<T, K>& v, ll i) { if ((unsigned long long)i >= K) fail(\"index outside the list\"); return v[(size_t)i]; }
+",
+    },
+    Piece {
+        name: "filled_array",
+        needs: &[],
+        code: "\
+template <class T, size_t K> inline std::array<T, K> filled_array(const T& x) { std::array<T, K> a; a.fill(x); return a; }
+",
+    },
+    Piece {
         name: "sort_by",
         needs: &[],
         code: "\
