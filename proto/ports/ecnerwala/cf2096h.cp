@@ -66,8 +66,8 @@ for q in 1..=m:
 fwht(mut hat, inverse: true)
 
 var checksum = 0
-var coeff = Z(1)
+var pow2: Z = 1
 for ways in hat:
-    checksum ^= (ways * coeff).v
-    coeff *= 2
+    checksum ^= (ways * pow2).v
+    pow2 *= 2
 print(checksum)
