@@ -1,59 +1,75 @@
 // Codeforces 2124 G: Maximise Sum.
 // For each k in 0..n, maximise sum_t pref_min[t] after at most one operation
 // choosing i < pos with cost `pos - i >= k` (setting a[i] += a[pos], a[pos] = 0).
-// Recording each operation's total at `ans[pos - i]` and taking a suffix max
-// propagates every higher-cost solution down to every smaller k.
+// Storing each operation's total at `ans[pos - i]` and taking `suffix_scan(max)`
+// propagates every cost >= k down to k.
 //
-// Only a prefix-minimum position i benefits: lifting a[i] raises prefix minima
-// on the block [i, j) (up to the next prefix minimum j) toward
-// `cur_cap = min(cap, a[i] + a[pos])`, where `cap = pref_min[i - 1]` (uncapped
-// at `i = 0`). Zeroing a[pos] drops the suffix from pos onward to 0, losing
-// `block_loss[pos]` if `pos < j`, or `orig_suff[pos]` otherwise. Only suffix
-// maxima (strictly increasing value from the right) can be optimal removals;
-// as their value rises, the split in [i, j] where `lifted[t] <= cur_cap`
-// sweeps left monotonically.
+// Invariants:
+// - Only a prefix-minimum position `i` (`a[i] == pref_min[i]`) can gain: any
+//   non-prefix-minimum is already capped by an earlier smaller element, so
+//   raising `a[i]` changes no prefix minimum.
+// - Only a strict suffix maximum `pos` (`a[pos] > max(a[pos + 1..])`) can be
+//   an optimal removal: if `pos' > pos` has `a[pos'] >= a[pos]`, removing `pos'`
+//   yields a larger distance `pos' - i`, at least as large an addition, and no
+//   larger a suffix loss (`orig_suff[pos'] <= orig_suff[pos]`).
+// - Raising `a[i]` lifts prefix minima on the block `[i, next_min)` (up to the
+//   next prefix minimum) to `min(lifted, cur_cap)` where `cur_cap = min(cap, a[i] + a[pos])`
+//   and `cap = pref_min[i - 1]` (uncapped at `i = 0`). Because `lifted` is
+//   non-increasing on the block, `first_uncapped` splits capped elements from
+//   the uncapped tail.
+// - Complexity proof: scanning `suffix_max_pos` in reverse (decreasing `pos`,
+//   strictly increasing `a[pos]`), once `ai + a[pos] >= cap` the first such
+//   `pos` has the smallest suffix loss `orig_suff[pos]` and largest distance
+//   `pos - i`, dominating all earlier `pos'` — so the inner loop breaks there.
+//   At `i = Pos.first` there are at most `n` iterations. For every later prefix
+//   minimum `i > Pos.first`, there is at most one breaking iteration plus the
+//   non-breaking iterations with `0 <= a[pos] < cap - ai`; because `a[pos]` is
+//   strictly increasing along `suffix_max_pos`, at most `cap - ai` suffix
+//   maxima satisfy `a[pos] < cap - ai`. Summing `cap - ai = pref_min[i - 1] - pref_min[i]`
+//   over all prefix minima telescopes to `a[0] - pref_min[n - 1] <= 2n`, so
+//   the inner loop runs O(n) times total (`O(n log n)` with binary search).
 
 use std.seq.suffix_scan
 
 @!multitest
 let n: 1..=1_000_000 = read()
 domain Pos = 0..n
-let a: [Pos]Int = read()
+let a: [Pos]0..=2_000_000 = read()
 
 let pref_min = a.scan(min)
 let orig_suff = pref_min.suffix_scan(+)
 let base_ans = orig_suff[Pos.first]
 
+// Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
+let suff_max = a.suffix_scan(max)
+let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.next!]]
+let top_val = a[suffix_max_pos.last!]
+
 var ans: [0..n]Int = base_ans
-var cands: List<(val: Int, pos: Pos)> = []
-var lifted: [Pos]Int = pref_min
-var block_loss: [0..=n]Int = 0
-var j = n
+var next_min: ?Pos = none
 
-for i in Pos.rev:
+for i in Pos.rev if pref_min[i] == a[i]:
     let ai = a[i]
-    if pref_min[i] == ai:
-        if not cands.is_empty:
-            let cap = if i == Pos.first: ai + cands.last!.val else: pref_min[(i - 1)!]
-            for t in i.ord..j:
-                lifted[Pos(t)] = if t == i.ord: cap else: min(lifted[Pos(t - 1)], a[Pos(t)])
-            block_loss[j] = if j < n: orig_suff[Pos(j)] else: 0
-            for t in (i.ord..j).rev:
-                block_loss[t] = block_loss[t + 1] + lifted[Pos(t)]
+    // Uncapped at Pos.first: use ai + top_val so no candidate exceeds cap.
+    let cap = (i.prev.map(p => pref_min[p])) ?? (ai + top_val)
+    let blk_end = next_min.map(j => j.ord) ?? n
+    let blk_len = blk_end - i.ord
+    let tail_loss = next_min.map(j => orig_suff[j]) ?? 0
+    domain Blk = 0..blk_len
+    let lifted = ([Blk] t => if t == Blk.first: cap else: a[i.offset(t.ord)!]).scan(min)
+    let lifted_suff = lifted.suffix_scan(+)
 
-            var split = j
-            var tail_gain = 0
-            for (v_add, pos) in cands:
-                let cur_cap = min(cap, ai + v_add)
-                while split > i.ord and lifted[Pos(split - 1)] <= cur_cap:
-                    split -= 1
-                    tail_gain += lifted[Pos(split)] - ai
-                let capped_gain = (cur_cap - ai) * (split - i.ord)
-                let loss = if pos.ord < j: block_loss[pos.ord] else: orig_suff[pos]
-                ans[pos.ord - i.ord] max= base_ans + capped_gain + tail_gain - loss
-                if cur_cap >= cap: break
-        j = i.ord
-    if cands.is_empty or ai > cands.last!.val:
-        cands.push((ai, i))
+    for pos in suffix_max_pos if pos > i:
+        let cur_cap = min(cap, ai + a[pos])
+        let last_capped = bsearch_last(Blk.first..=Blk.last, t => lifted[t] > cur_cap)
+        let first_uncapped = if let s = last_capped: s.next else: some(Blk.first)
+        let capped_cnt = if let t = first_uncapped: t.ord else: blk_len
+        let uncapped_gain = if let t = first_uncapped: lifted_suff[t] - ai * (blk_len - t.ord) else: 0
+        let gain = (cur_cap - ai) * capped_cnt + uncapped_gain
+        let loss = if pos.ord < blk_end: lifted_suff[Blk(pos - i)] + tail_loss else: orig_suff[pos]
+        ans[pos - i] max= base_ans + gain - loss
+        if ai + a[pos] >= cap: break
+
+    next_min = some(i)
 
 print(ans.suffix_scan(max))
