@@ -263,21 +263,31 @@ known C++ library implementation (AtCoder Library, KACTL, ecnerwala's
 library) on matched benchmarks.
 The local library (`examples/local-lib/`) is the staging area: a module
 is promoted once it meets the stdlib bar.
-**Where we are.** 38 modules, 608 distinct public names (1,087 `pub`
-declarations including methods), every one in `plan/STDLIB.md` with its
-cost. All the module families the north star names exist: number theory
-(one `factor` for every `Int`, decision 92), NTT/FWHT/subset convolution
-and Lagrange interpolation, matrices, binary and ternary search over
-integers and reals, RNG and hashing, bitsets, flows and matchings,
-strings, geometry (2D, circles, 3D hull), trees (`Rooted`, `LinkCut`,
-`LazyLinkCut`), containers (open-addressing `HashMap`), sequences
-(`distinct`, `fold(f)`, `sort(cmp:)`, `+`). 57 matched C++ benches across
-eight areas; most areas sit at or under 1.15x. Open gaps: `Rooted` at
-2x time and 2x memory on a 10^6 tree (pair-list CSR in graphs; array
-element narrowing in core), cf2237h at 1.8x (discarded `Map.remove`
-still looks up first), interpreter 20-40x on `mut self` structures, and
-range-typed stores are not yet checked (a narrowed field wraps where the
-interpreter keeps the value; fix in progress).
+**Where we are** (updated 2026-11-21 at `df99fea2`). 38 modules; the
+docs gate finds all 956 `pub` items documented, each in `plan/STDLIB.md`
+with its cost. All the module families the north star names exist:
+number theory (one `factor` for every `Int`, decision 92),
+NTT/FWHT/subset convolution and Lagrange interpolation, matrices, binary
+and ternary search over integers and reals, RNG and hashing, bitsets,
+flows and matchings, strings (every algorithm over any `Indexed`/`Seq`,
+`lyndon_runs`, lint L0516 for hand-rolled ones), geometry (2D, circles,
+3D hull), trees (`Rooted`, `Rooted.virtual`, `PermTree`, `LinkCut`,
+`LazyLinkCut`), containers (open-addressing `HashMap`,
+`SortedSet`/`SortedBag.range(r)` views, single-walk `IntervalMap.assign`,
+`List.reserve`), sequences (`distinct`, `fold(f)`, `sort(cmp:)`,
+`reach(while:, cyclic:)`, `[D]T.map` keeping its domain). Range-typed
+stores trap in the interpreter and checked C++ (decision 100); ranged 1D
+arrays store 32-bit elements (decision 106); segment trees lend a leaf as
+a writable place (`st.at(i) += x`). 63 matched C++ benches across nine
+areas (geometry 14, flow 10, containers 9, strings 9, ranges 7, trees 5,
+dp 4, graph 4, io 1): strings all at most 1.07x, sorted range views
+1.00x, cf2237h at the original's speed (0.51 s vs 0.53 s). Open gaps:
+`Rooted` build at 1.5x time and 1.8x memory on a 10^6 tree (0.35 s /
+124 MB vs 0.23 s / 70 MB; the CSR fix measures 0.76x / 1.14x and is
+landing), `dijkstra` 1.18x, weighted blossom 1.30x, the interpreter on
+`mut self` structures, `if let` copying its payload every loop
+iteration (cf2021d, 9.5 s vs 0.01 s), and constant-length `[3]T`
+literals on the heap (cf2022c, 2.28x until rewritten; in progress).
 **Structure.** Ten area owners (graphs, trees, range structures,
 strings, number theory/combinatorics, flows/matching, containers,
 geometry, DP/search, sequences) each own their part of
@@ -291,9 +301,11 @@ landed with tests; every public name is used by a port or an example;
 the [rename]s have codemods and the ports are moved.
 **Next (coordinator).** Review the ten area designs as they arrive;
 route new frictions; keep section 2 the single vocabulary (the `_by`
-renames, `find` vs `first`); bring section 3's core asks (variadic
-`min`/`max`, scoped rollback, writable places through methods) to the
-core lane.
+renames, `find` vs `first`); bring section 3's remaining core asks (variadic
+`min`/`max`, scoped rollback) to the core lane; route the codegen
+frictions the ports keep finding (`if let` by const reference, enum
+`@memo` keys, iterable `D.bounds`) and keep the browser bundle under
+its caps.
 
 ## 5. Diagnostics and front end (`plan/30` 3.7)
 **North star.** Every error is the message an expert coach would give: what is wrong,
