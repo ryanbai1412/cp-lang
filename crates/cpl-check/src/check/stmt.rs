@@ -678,7 +678,43 @@ impl<'a> Checker<'a> {
                 } else {
                     target_ty
                 };
-                if *op == AssignOp::Set {
+                let target_ty =
+                    if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
+                        self.element_ty(&target_ty)
+                    } else {
+                        target_ty
+                    };
+                // `dp[k, ..] = row`, `a[l..r] = [x, y]`: a part of an array takes
+                // a row, cell for cell.
+                let cells = match (&target_ty, &value_ty) {
+                    (
+                        Ty::Array { index, .. },
+                        Ty::Array {
+                            index: theirs,
+                            elem,
+                        },
+                    ) if (index.len() > 1 || index != theirs) && theirs.len() == 1 => {
+                        Some((**elem).clone())
+                    }
+                    (Ty::Array { .. }, Ty::Named { name, args })
+                        if name == "List" && args.len() == 1 =>
+                    {
+                        Some(args[0].clone())
+                    }
+                    _ => None,
+                };
+                if let (AssignOp::Set, true, Some(cells)) = (*op, part, cells) {
+                    let want = self.element_ty(&target_ty);
+                    if !cells.is_vague() && !self.fits(&cells, &want) {
+                        let message = format!(
+                            "`{}` is a row of {want}, but `{}` is {}",
+                            self.quote(target.span),
+                            self.quote(value.span),
+                            value_ty.with_article()
+                        );
+                        self.error(codes::TYPE_MISMATCH, value.span, message);
+                    }
+                } else if *op == AssignOp::Set {
                     self.expect_fits(&value_ty, &target_ty, value, |c, got, want| {
                         format!(
                             "`{}` is {}, but `{}` is {}",

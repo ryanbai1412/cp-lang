@@ -33,6 +33,55 @@ const GXX_FLAGS: [&str; 6] = [
     "-o",
 ];
 
+/// The programs of `tests/parity`: `mut` receivers, fields and cells
+/// read by closures and helpers while a call changes them, and how often
+/// and when `sort(by:)` works out a key. They are a test of their own,
+/// so a break in either is named as that.
+fn parity_programs() -> Vec<PathBuf> {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity");
+    let mut found: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|_| panic!("{} exists", dir.display()))
+        .map(|entry| entry.expect("readable entry").path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
+        .collect();
+    found.sort();
+    found
+}
+
+#[test]
+fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
+    let programs = parity_programs();
+    let names: Vec<_> = programs
+        .iter()
+        .map(|p| {
+            p.file_stem()
+                .expect("a name")
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "map_update_field",
+            "mut_cell_receiver",
+            "mut_field_after_closure",
+            "mut_self_closure",
+            "sort_key_calls",
+            "sort_key_one_traps"
+        ]
+    );
+    let failures: Vec<String> = programs
+        .iter()
+        .filter_map(|program| {
+            check(program, "parity")
+                .err()
+                .map(|why| format!("{}: {why}", program.display()))
+        })
+        .collect();
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
 fn programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
     // The prototype's program-structure cases (decision 20: the
@@ -204,7 +253,7 @@ fn compile_and_run(
     Ok((ran.stdout, ran.status.code()))
 }
 
-fn check(program: &Path, shard: usize) -> Result<(), String> {
+fn check(program: &Path, group: &str) -> Result<(), String> {
     let name = program
         .file_stem()
         .expect("a file name")
@@ -263,13 +312,7 @@ fn check(program: &Path, shard: usize) -> Result<(), String> {
 
     // An interactive problem is run against the judge in its file.
     let interactor = source.contains("\n@interactor").then_some(program);
-    let (stdout, code) = compile_and_run(
-        &name,
-        &format!("shard-{shard}"),
-        &built.stdout,
-        &input,
-        interactor,
-    )?;
+    let (stdout, code) = compile_and_run(&name, group, &built.stdout, &input, interactor)?;
     if stdout != interpreted.stdout {
         return Err(format!(
             "the C++ printed\n{}\nbut the interpreter printed\n{}",
@@ -297,7 +340,7 @@ fn agree_on_shard(shard: usize) {
     let failures: Vec<String> = mine
         .iter()
         .filter_map(|program| {
-            check(program, shard)
+            check(program, &format!("shard-{shard}"))
                 .err()
                 .map(|why| format!("{}: {why}", program.display()))
         })

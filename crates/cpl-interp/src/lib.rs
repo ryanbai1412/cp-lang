@@ -23,7 +23,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Write;
 use std::rc::Rc;
-use value::{show, zero, Array, CaptureVal, Value};
+use value::{show, zero, Array, CaptureVal, Part, Step, Value};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -445,6 +445,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let value = match value {
                     Value::Alias(true, id) => self.globals.get(*id)?,
                     Value::Alias(false, at) => self.stack.get(*at)?,
+                    Value::Part(part) => self.part(part)?,
                     value => value,
                 };
                 Some((local.name.as_str(), &local.ty, value))
@@ -810,63 +811,169 @@ impl<'p, 'o> Interp<'p, 'o> {
         match &place.kind {
             PlaceKind::Local(slot) => {
                 let at = self.base + slot;
-                match self.stack[at] {
-                    Value::Alias(true, id) => Ok(&mut self.globals[id]),
-                    Value::Alias(false, at) => Ok(&mut self.stack[at]),
-                    _ => Ok(&mut self.stack[at]),
-                }
+                let part = match &self.stack[at] {
+                    Value::Alias(global, at) => Part {
+                        global: *global,
+                        at: *at,
+                        steps: Vec::new(),
+                    },
+                    Value::Part(part) => return self.part_mut(&Rc::clone(part), span),
+                    _ => Part {
+                        global: false,
+                        at,
+                        steps: Vec::new(),
+                    },
+                };
+                self.part_mut(&part, span)
             }
             PlaceKind::Global(id) => Ok(&mut self.globals[*id]),
-            PlaceKind::Field(base, index) => match self.resolve(base, indices)? {
-                Value::Tuple(fields) => Ok(&mut Rc::make_mut(fields)[*index]),
-                Value::Moved => trap(span, LENT),
-                _ => trap(span, "internal: field of a value without fields"),
-            },
-            PlaceKind::Some(base) => match self.resolve(base, indices)? {
-                Value::Opt(Some(inner)) => Ok(Rc::make_mut(inner)),
-                Value::Moved => trap(span, LENT),
-                _ => trap(span, "there is no value here: it is `none`"),
-            },
+            PlaceKind::Field(base, index) => field_mut(self.resolve(base, indices)?, *index, span),
+            PlaceKind::Some(base) => inside_mut(self.resolve(base, indices)?, span),
             PlaceKind::Index(base, exprs) => {
-                let base_ty = &base.ty;
                 let holder = self.resolve(base, indices)?;
-                match holder {
-                    Value::Array(array) => {
-                        let at =
-                            array_offset(&array.dims, indices.by_ref().take(exprs.len()), span)?;
-                        Ok(&mut Rc::make_mut(array).data[at])
-                    }
-                    Value::List(items) => {
-                        let index = indices.next().map_or(0, Value::int);
-                        let len = items.len();
-                        match usize::try_from(index).ok().filter(|i| *i < len) {
-                            Some(i) => Ok(&mut Rc::make_mut(items)[i]),
-                            None => trap(
-                                span,
-                                format!("index {index} is outside a list of length {len}"),
-                            ),
-                        }
-                    }
-                    Value::Map(entries) => {
-                        let key = indices.next().cloned().unwrap_or_default();
-                        match Rc::make_mut(entries).get_mut(&key) {
-                            Some(value) => Ok(value),
-                            None => trap(
-                                span,
-                                "this key is not in the map; store with `m[k] = v` first",
-                            ),
-                        }
-                    }
-                    Value::Moved => trap(span, LENT),
-                    _ => {
-                        let _ = base_ty;
-                        trap(span, "internal: index of a value that has no elements")
-                    }
-                }
+                cell_mut(holder, indices, exprs.len(), span)
             }
         }
     }
 
+    /// The part of a variable `place` names, with its indices evaluated.
+    fn part_of(&self, place: &Place, indices: &mut std::vec::IntoIter<Value>) -> Part {
+        let (base, step) = match &place.kind {
+            PlaceKind::Global(id) => {
+                return Part {
+                    global: true,
+                    at: *id,
+                    steps: Vec::new(),
+                }
+            }
+            PlaceKind::Local(slot) => {
+                let at = self.base + slot;
+                return match &self.stack[at] {
+                    Value::Alias(global, at) => Part {
+                        global: *global,
+                        at: *at,
+                        steps: Vec::new(),
+                    },
+                    Value::Part(part) => Part::clone(part),
+                    _ => Part {
+                        global: false,
+                        at,
+                        steps: Vec::new(),
+                    },
+                };
+            }
+            PlaceKind::Field(base, index) => (base, Step::Field(*index)),
+            PlaceKind::Some(base) => (base, Step::Some),
+            PlaceKind::Index(base, exprs) => {
+                let mut part = self.part_of(base, indices);
+                part.steps
+                    .push(Step::Index(indices.by_ref().take(exprs.len()).collect()));
+                return part;
+            }
+        };
+        let mut part = self.part_of(base, indices);
+        part.steps.push(step);
+        part
+    }
+
+    /// The storage of `part`.
+    fn part_mut(&mut self, part: &Part, span: Span) -> Res<&mut Value> {
+        let mut value = if part.global {
+            &mut self.globals[part.at]
+        } else {
+            &mut self.stack[part.at]
+        };
+        for step in &part.steps {
+            value = match step {
+                Step::Field(index) => field_mut(value, *index, span)?,
+                Step::Some => inside_mut(value, span)?,
+                Step::Index(indices) => cell_mut(value, &mut indices.iter(), indices.len(), span)?,
+            };
+        }
+        Ok(value)
+    }
+
+    /// The value of `part`, if it is still there.
+    fn part(&self, part: &Part) -> Option<&Value> {
+        let mut value = if part.global {
+            self.globals.get(part.at)?
+        } else {
+            self.stack.get(part.at)?
+        };
+        for step in &part.steps {
+            value = match (step, value) {
+                (Step::Field(index), Value::Tuple(fields)) => fields.get(*index)?,
+                (Step::Some, Value::Opt(Some(inner))) => inner,
+                (Step::Index(indices), Value::Array(array)) => {
+                    let at = array_offset(&array.dims, indices.iter(), Span::new(0, 0)).ok()?;
+                    array.data.get(at)?
+                }
+                (Step::Index(indices), Value::List(items)) => {
+                    items.get(usize::try_from(indices.first()?.int()).ok()?)?
+                }
+                (Step::Index(indices), Value::Map(entries)) => entries.get(indices.first()?)?,
+                _ => return None,
+            };
+        }
+        Some(value)
+    }
+}
+
+fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mut Value> {
+    match holder {
+        Value::Tuple(fields) => Ok(&mut Rc::make_mut(fields)[index]),
+        Value::Moved => trap(span, LENT),
+        _ => trap(span, "internal: field of a value without fields"),
+    }
+}
+
+fn inside_mut(holder: &mut Value, span: Span) -> Res<&mut Value> {
+    match holder {
+        Value::Opt(Some(inner)) => Ok(Rc::make_mut(inner)),
+        Value::Moved => trap(span, LENT),
+        _ => trap(span, "there is no value here: it is `none`"),
+    }
+}
+
+/// The cell of `holder` at the next `count` of `indices`.
+fn cell_mut<'s>(
+    holder: &'s mut Value,
+    indices: &mut std::slice::Iter<'_, Value>,
+    count: usize,
+    span: Span,
+) -> Res<&'s mut Value> {
+    match holder {
+        Value::Array(array) => {
+            let at = array_offset(&array.dims, indices.by_ref().take(count), span)?;
+            Ok(&mut Rc::make_mut(array).data[at])
+        }
+        Value::List(items) => {
+            let index = indices.next().map_or(0, Value::int);
+            let len = items.len();
+            match usize::try_from(index).ok().filter(|i| *i < len) {
+                Some(i) => Ok(&mut Rc::make_mut(items)[i]),
+                None => trap(
+                    span,
+                    format!("index {index} is outside a list of length {len}"),
+                ),
+            }
+        }
+        Value::Map(entries) => {
+            let key = indices.next().cloned().unwrap_or_default();
+            match Rc::make_mut(entries).get_mut(&key) {
+                Some(value) => Ok(value),
+                None => trap(
+                    span,
+                    "this key is not in the map; store with `m[k] = v` first",
+                ),
+            }
+        }
+        Value::Moved => trap(span, LENT),
+        _ => trap(span, "internal: index of a value that has no elements"),
+    }
+}
+
+impl<'p, 'o> Interp<'p, 'o> {
     /// Stores into `place`, and gives the indices it was reached by.
     fn assign(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> Res<Vec<Value>> {
         // As in C++17: the right side first, then the place.
@@ -1145,6 +1252,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                         caps.push(match self.stack[self.base + cap.outer] {
                             Value::Alias(true, id) => CaptureVal::GlobalRef(id),
                             Value::Alias(false, at) => CaptureVal::StackRef(at),
+                            Value::Part(ref part) => CaptureVal::PartRef(Rc::clone(part)),
                             _ => CaptureVal::StackRef(self.base + cap.outer),
                         });
                     } else {
@@ -1597,37 +1705,21 @@ impl<'p, 'o> Interp<'p, 'o> {
                 values[i] = self.eval(e)?;
             }
         }
-        // `mut` arguments are lent: taken out of the caller's variable for
-        // the call and put back after. Touching the variable meanwhile is
-        // the aliasing the language forbids, and it traps.
-        let mut lent: Vec<(usize, &'p Place, Vec<Value>)> = Vec::new();
+        // A `mut` argument names the caller's variable or the part of it:
+        // the callee, and a fn value it runs (`() => ids.len`), read and
+        // write the one value, as in the C++, where it is a reference.
         for (i, arg) in args.iter().enumerate() {
             if let Arg::Mut(place) = arg {
-                // A whole variable is named, not taken: a fn value the
-                // call runs may still read it (`() => ids.len`), as in
-                // the C++, where it is a reference.
-                let named = match place.kind {
-                    PlaceKind::Global(id) => Some(Value::Alias(true, id)),
-                    PlaceKind::Local(slot) => Some(match self.stack[self.base + slot] {
-                        Value::Alias(global, at) => Value::Alias(global, at),
-                        Value::Moved => return trap(place.span, LENT),
-                        _ => Value::Alias(false, self.base + slot),
-                    }),
-                    _ => None,
-                };
-                if let Some(named) = named {
-                    values[i] = named;
-                    continue;
-                }
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
-                let cell = self.resolve(place, &mut indices.iter())?;
-                let value = std::mem::replace(cell, Value::Moved);
-                if matches!(value, Value::Moved) {
+                let part = self.part_of(place, &mut indices.into_iter());
+                if matches!(self.part_mut(&part, place.span)?, Value::Moved) {
                     return trap(place.span, LENT);
                 }
-                values[i] = value;
-                lent.push((i, place, indices));
+                values[i] = match part.steps.is_empty() {
+                    true => Value::Alias(part.global, part.at),
+                    false => Value::Part(Rc::new(part)),
+                };
             }
         }
         let here = 0u8;
@@ -1672,10 +1764,6 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
         }
         let flow = flow?;
-        for (i, place, indices) in lent {
-            let value = std::mem::take(&mut self.stack[base + i]);
-            *self.resolve(place, &mut indices.iter())? = value;
-        }
         self.stack.truncate(base);
         Ok(match flow {
             Flow::Return(value) => value,
@@ -1688,6 +1776,8 @@ impl<'p, 'o> Interp<'p, 'o> {
         match &self.stack[self.base + slot] {
             Value::Alias(true, id) => &self.globals[*id],
             Value::Alias(false, at) => &self.stack[*at],
+            // A part that is gone (its list shrank) reads as lent out.
+            Value::Part(part) => self.part(part).unwrap_or(&Value::Moved),
             value => value,
         }
     }
@@ -1723,6 +1813,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 // every call, however deep, reads and writes the one value.
                 CaptureVal::StackRef(at) => Value::Alias(false, *at),
                 CaptureVal::GlobalRef(id) => Value::Alias(true, *id),
+                CaptureVal::PartRef(part) => Value::Part(Rc::clone(part)),
             };
             self.stack[base + cap.inner] = v;
         }

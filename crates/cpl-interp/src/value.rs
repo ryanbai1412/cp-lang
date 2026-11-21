@@ -14,6 +14,26 @@ pub(crate) enum CaptureVal {
     Val(Value),
     StackRef(usize),
     GlobalRef(usize),
+    PartRef(Rc<Part>),
+}
+
+/// One step from a value to a value inside it.
+#[derive(Clone, Debug)]
+pub(crate) enum Step {
+    Field(usize),
+    /// Into an optional that holds a value.
+    Some,
+    /// A cell, by the indices it was reached with.
+    Index(Vec<Value>),
+}
+
+/// A part of a variable: the variable, on the stack or (`global`) among
+/// the globals, and the steps from it to the part.
+#[derive(Clone, Debug)]
+pub(crate) struct Part {
+    pub global: bool,
+    pub at: usize,
+    pub steps: Vec<Step>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -38,6 +58,9 @@ pub(crate) enum Value {
     /// A closure's slot for a variable it captured by reference: where
     /// the variable lives, on the stack or (`true`) among the globals.
     Alias(bool, usize),
+    /// The slot of a `mut` parameter given a field or a cell: it names
+    /// the part, so the callee and whatever it calls see one value.
+    Part(Rc<Part>),
     /// A tuple, record or struct: its fields.
     Tuple(Rc<Vec<Value>>),
     Enum(u32, Rc<Vec<Value>>),
@@ -109,7 +132,7 @@ impl Value {
             Value::Opt(_) => 6,
             Value::Range(..) => 7,
             Value::DomainVal(..) => 8,
-            Value::Closure(..) | Value::Alias(..) => 9,
+            Value::Closure(..) | Value::Alias(..) | Value::Part(_) => 9,
             Value::Tuple(_) => 10,
             Value::Enum(..) => 11,
             Value::Array(_) => 12,

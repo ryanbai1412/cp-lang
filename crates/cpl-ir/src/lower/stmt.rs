@@ -1735,11 +1735,16 @@ impl<'a> Lowerer<'a> {
     ) {
         if self.grid_row(target).is_some() {
             if matches!(op, ast::AssignOp::Max | ast::AssignOp::Min) {
-                self.grid_keep(target, op == ast::AssignOp::Max, value, false, out);
+                self.grid_keep(target, Some(op == ast::AssignOp::Max), value, false, out);
                 return;
             }
             if self.one_cell(value) {
                 self.grid_fill(target, op, value, out);
+                return;
+            }
+            // `dp[k, ..] = row`: the row's cells, stored one by one.
+            if op == ast::AssignOp::Set {
+                self.grid_keep(target, None, value, false, out);
                 return;
             }
         }
@@ -1974,13 +1979,17 @@ impl<'a> Lowerer<'a> {
     pub(super) fn grid_keep(
         &mut self,
         target: &ast::Expr,
-        max: bool,
+        max: Option<bool>,
         value: &ast::Expr,
         asked: bool,
         out: &mut Vec<Stmt>,
     ) -> Option<Slot> {
         let span = target.span;
-        let word = if max { "max=" } else { "min=" };
+        let word = match max {
+            Some(true) => "max=",
+            Some(false) => "min=",
+            None => "=",
+        };
         let (base, indices, axis) = self.grid_row(target)?;
         let place = self.place(base);
         let place = self.settle_indexes(place, out);
@@ -1988,8 +1997,11 @@ impl<'a> Lowerer<'a> {
             self.cx.mut_slots.insert(s);
         }
         let (dims, elem) = Self::axes_of(&place.ty)?;
-        if !self.ordered(&elem) {
-            let message = format!("`{word}` needs cells that have an order, and these are `{}`", self.show(&elem));
+        if max.is_some() && !self.ordered(&elem) {
+            let message = format!(
+                "`{word}` needs cells that have an order, and these are `{}`",
+                self.show(&elem)
+            );
             self.error(codes::TYPE_MISMATCH, span, message);
             return None;
         }
@@ -2083,6 +2095,18 @@ impl<'a> Lowerer<'a> {
             let trap = Stmt::Trap(format!("`a {word} b` needs two rows of one length"), self.span(span));
             out.push(Stmt::If(differ, Block { stmts: vec![trap] }, Block::default()));
         }
+        let Some(max) = max else {
+            body.push(Stmt::Assign(cell, AssignOp::Set, theirs));
+            let iter = Iter::Range {
+                lo,
+                hi,
+                step: None,
+                rev: false,
+            };
+            let lid = self.fresh_loop();
+            out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
+            return changed;
+        };
         let theirs = self.hold(theirs, &mut body);
         let better = self.mk(
             ExprKind::Cmp(if max { CmpOp::Gt } else { CmpOp::Lt }, Box::new(theirs.clone()), Box::new(place_to_expr(&cell))),

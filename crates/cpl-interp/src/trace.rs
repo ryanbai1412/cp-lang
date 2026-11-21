@@ -358,7 +358,10 @@ impl Tracer {
         values.sort_by_key(|(var, _)| *var);
         let mut locals = String::from("{");
         for (name, ty, value) in &view.locals {
-            if matches!(value, Value::Unit | Value::Moved | Value::Closure(..) | Value::Alias(..)) {
+            if matches!(
+                value,
+                Value::Unit | Value::Moved | Value::Closure(..) | Value::Alias(..) | Value::Part(_)
+            ) {
                 continue;
             }
             if locals.len() > 1 {

@@ -428,7 +428,7 @@ impl<'a> Lowerer<'a> {
         let op = if max { ast::AssignOp::Max } else { ast::AssignOp::Min };
         if self.grid_row(target).is_some() {
             return self.do_expr(Some(&Ty::Bool), span, |lw, out| {
-                let changed = match lw.grid_keep(target, max, value, true, out) {
+                let changed = match lw.grid_keep(target, Some(max), value, true, out) {
                     Some(changed) => lw.local(changed, span),
                     None => lw.err_expr(span),
                 };

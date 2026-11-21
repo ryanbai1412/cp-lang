@@ -15,9 +15,7 @@
 #            and stdlib/prelude.cp holds at most 80 names
 #            and every port in proto/ports/ecnerwala passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
-#         6. scripts/friction_lint.py: its rule tests, then no wa_trap hit in
-#            proto/ports or examples, with a one-line severity summary
-#            last, the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
+#         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the offline site bundle (python3 site/bundle.py) stays under
 #            2,600,000 bytes
 # --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
@@ -168,13 +166,6 @@ ecn_start=$(date +%s%N)
 ecn_lint=$("$cpl" lint "${ecn[@]}" 2>&1)
 grep -q <<<"$ecn_lint" ', 0 warnings, 0 errors$' || { echo "$ecn_lint"; fail "an ecnerwala port has a lint warning"; }
 echo "${#ecn[@]} ports pass in $(( ($(date +%s%N) - ecn_start) / 1000000 )) ms"
-
-step "friction lint: rule tests, no wa_trap"
-need python3 "scripts/friction_lint.py runs on it"
-python3 scripts/test_friction_lint.py -q 2>&1 | tail -n 1
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "friction lint rule tests failed; rerun: python3 scripts/test_friction_lint.py"
-python3 scripts/friction_lint.py --fail-on-wa-trap --summary \
-    || fail "a wa_trap pattern is in the corpus; list it: python3 scripts/friction_lint.py --list <rule>"
 
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.

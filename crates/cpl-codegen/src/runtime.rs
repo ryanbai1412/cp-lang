@@ -854,6 +854,28 @@ inline int pos(ll ord, ll len) { if ((unsigned long long)ord >= (unsigned long l
 ",
     },
     Piece {
+        name: "sort_by",
+        needs: &[],
+        code: "\
+// `sort(by: key)`: each key is worked out once, in order, before any is
+// compared; equal keys keep their order.
+template <class S, class F> void sort_by(S& seq, F&& key, bool desc) {
+    using K = std::decay_t<decltype(key(*seq.begin()))>;
+    using T = typename S::value_type;
+    std::vector<K> keys;
+    keys.reserve(seq.size());
+    for (const auto& x : seq) keys.push_back(key(x));
+    std::vector<size_t> order(keys.size());
+    for (size_t i = 0; i < order.size(); i++) order[i] = i;
+    std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) { return desc ? keys[b] < keys[a] : keys[a] < keys[b]; });
+    std::vector<T> sorted;
+    sorted.reserve(order.size());
+    for (size_t i : order) sorted.push_back(std::move(seq[i]));
+    std::move(sorted.begin(), sorted.end(), seq.begin());
+}
+",
+    },
+    Piece {
         name: "pop_val",
         needs: &["fail"],
         code: "\
