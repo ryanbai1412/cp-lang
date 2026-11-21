@@ -3,15 +3,9 @@
 @!multitest
 let (p, q): (Int, Int) = read()
 let cnd = (p + 2 * q) * 2 + 1
-var found: ?(Int, Int) = none
-var i = 3
-while i * i <= cnd:
-    if cnd % i == 0:
-        let n = i / 2
-        let m = (cnd / i) / 2
-        if q <= n * m + n:
-            found = (n, m)
-            break
-    i += 2
-if let (n, m) = found: print(n, m)
-else: print(-1)
+for i in 3..=isqrt(cnd) by 2 if cnd % i == 0:
+    let (n, m) = (i / 2, cnd / i / 2)
+    if q <= n * m + n:
+        print(n, m)
+        return
+print(-1)

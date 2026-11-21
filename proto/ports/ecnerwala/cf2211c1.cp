@@ -6,16 +6,14 @@ let a: [0..n]Int = read()
 let b: [0..n]Int = read()
 
 fn ok() -> Bool:
-    for i in 0..n - k:
-        if b[i] != -1 and a[i] != b[i]: return false
-    for i in k..n:
-        if b[i] != -1 and a[i] != b[i]: return false
+    if any(b[i] != -1 and a[i] != b[i] for i in 0..n - k): return false
+    if any(b[i] != -1 and a[i] != b[i] for i in k..n): return false
     if n - k <= k:
         var cnt: [0..=n]Int = 0
         for i in n - k..k:
             cnt[a[i]] += 1
             if b[i] != -1: cnt[b[i]] -= 1
-        if any(cnt[v] < 0 for v in 0..=n): return false
+        return all(v >= 0 for v in cnt)
     true
 
 print(if ok(): "YES" else: "NO")

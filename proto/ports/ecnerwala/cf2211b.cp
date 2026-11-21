@@ -5,20 +5,11 @@ type Z = Mod<MOD>
 
 @!multitest
 let (x_in, y_in): (Int, Int) = read()
-let x = min(x_in, y_in)
-let y = max(x_in, y_in)
+let (x, y) = (min(x_in, y_in), max(x_in, y_in))
 let vx = if x_in > y_in: -1 else: 1
-let vy = -vx
 
-if x == y:
-    print(1)
-else:
-    let d = y - x
-    var cnt: Z = 0
-    for a in 1..=d:
-        if d % a == 0: cnt += 1
-    print(cnt)
-
-var out: [0..x + y]Int = vy
-for i in 0..x: out[i] = vx
+let cnt: Z = if x == y: 1 else: count((y - x) % a == 0 for a in 1..=y - x)
+print(cnt)
+var out: [0..x + y]Int = -vx
+out[0..x] = vx
 print(out)
