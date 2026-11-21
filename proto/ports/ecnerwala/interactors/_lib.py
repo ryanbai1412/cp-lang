@@ -41,6 +41,14 @@ class PipeIO:
             pass
 
 
+class StdioProc:
+    """This process's own stdin and stdout, as a `PipeIO` proc."""
+
+    def __init__(self):
+        self.stdin = sys.stdout
+        self.stdout = sys.stdin
+
+
 def run_interactor(drive_fn):
     args = sys.argv[1:]
     case_path = args[0]
@@ -56,9 +64,17 @@ def run_interactor(drive_fn):
         else:
             raise SystemExit(f"unknown arg: {args[i]}")
     cmd = args[i + 1 :]
-    if not cmd:
-        raise SystemExit("missing command after --")
     case_text = open(case_path).read()
+    if not cmd:
+        # No `-- cmd`: the solution is on our stdin and stdout, the way
+        # `cpl stress --interactor` and `cpl judge` connect one.
+        io = PipeIO(StdioProc(), log_in=log_in, log_out=log_out)
+        try:
+            drive_fn(case_text, io)
+        except Exception as e:
+            sys.stderr.write(f"interactor error: {e}\n")
+            sys.exit(1)
+        return
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,

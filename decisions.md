@@ -1738,6 +1738,12 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   = read()` (no sure order) are refused. Before this, generic reads were not seen at all, so
   their input was silently left out. Reverse: drop `Builder::inline` and refuse every read
   that is not a whole `let`.
+- **25.17 The ecnerwala interactors also talk over their own stdio.** With no `-- cmd`,
+  `interactors/_lib.py` drives the solution on its stdin and stdout, the way `cpl stress
+  --interactor` and `cpl judge` connect one, so the 16 interactors `gate.sh` already trusts
+  are the ones stress runs under, not copies. `stress_judges` stresses all 16 and the 5
+  checker ports on their `gen/` cases, and checks that a solution printing `1` is caught
+  under each judge. Reverse: delete the stdio branch and the test.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

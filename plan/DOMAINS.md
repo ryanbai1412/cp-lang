@@ -474,6 +474,12 @@ decision 25.16): 1,193 to 1,198 of 1,402 files. Generic reads were
 invisible before, so 4 ports that had been accepted with their input
 silently left out are now refused with a message (a read in a branch, a
 read in a type's length, `read<T>(base: 1)`).
+Stress under a judge is a gate regression: all 16 interactive and 5
+checker ecnerwala ports pass 20 generated cases each under the
+interactor or checker `gate.sh` uses, and a solution printing `1` fails
+under every one of the 21 (`stress_judges`, 4.9 s, decision 25.17). These
+cases come from each port's `gen/` script, so they are not shrunk: the
+hidden input an external interactor reads has no type stress can see.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
