@@ -8,7 +8,7 @@ Baseline review, cold, on main 2cca08a5. Two ports share the name: proto/ports/s
 
 - batch_15: `n` and `m` unbounded (line 6); no `Row`/`Col` domains, so `cell(r, c)` takes raw `Int` (line 8).
 - batch_15: `needs` (line 26) has `(u, v)` as protected-before-protector, while batch_18 (line 69) writes `(u: v, v: u)`; the edge direction isn't stated in either.
-- batch_18: brute (lines 72-90) uses a `grew` flag loop (lines 82-87) and free `all(...)`/`sum(...)` (lines 85, 88-89), against §53.
+- batch_18: brute (lines 72-90) uses a `grew` flag loop (lines 82-87) and free `all(...)`/`sum(...)` (lines 85, 88-89), against §53. Withdrawn: §53.1 keeps the free generator form canonical.
 - batch_18: `.to_idx` arithmetic (line 49, 80).
 
 ## Rewrites owed with today's language

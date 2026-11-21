@@ -6,7 +6,7 @@ Baseline review, cold, on main 96359635. Reads like the editorial. The header (l
 
 ## Checklist failures
 
-- Free `all(...)` (line 75) breaks §53; write `pairs.all(...)`.
+- Free `all(...)` (line 75) breaks §53; write `pairs.all(...)`. Withdrawn: §53.1 keeps the free generator form canonical.
 - `where N <= 60` on the checker (line 74): check it against §70.
 - `size` built in a hand reverse loop (lines 27-28) where a `scan` over `FANOUT.rev` says it.
 - `for _ in 0..500` (line 79) is an unexplained step bound; the protocol bound is `x + 1` moves.

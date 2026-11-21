@@ -10,7 +10,7 @@ Short, and `log_deriv_at` names the editorial's tool, but the second series is m
 - Hidden second series (line 24): `f[1] -= 1` turns `f` into `f - x` between the two calls; declare `g = f - x` as its own value.
 - Unexplained closing formula (line 25): `Z(2) * a - log_deriv_at(f, n)`.
 - Special case (lines 15-17): `k == 1` exit without a reason.
-- Mixed spelling (line 11): free `sum(...)`.
+- Mixed spelling (line 11): free `sum(...)`. Withdrawn: §53.1 keeps the free generator form canonical.
 - Unbounded input (line 14): `(Int, Int)`.
 
 ## Owed rewrites
