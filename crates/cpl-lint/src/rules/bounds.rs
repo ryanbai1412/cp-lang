@@ -331,8 +331,21 @@ impl Bounds {
         self.diffs.insert(key, diff);
     }
 
+    /// Every name some relation is about.
+    pub(crate) fn related(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.diffs.keys().flat_map(|(a, b)| [a.clone(), b.clone()]).collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
+    /// `name` was assigned: what a condition proved about it may not hold.
+    pub(crate) fn unrelate(&mut self, name: &str) {
+        self.diffs.retain(|(a, b), _| a != name && b != name);
+    }
+
     /// What the relations between two names prove about `a - b`.
-    fn diff(&self, a: &Expr, b: &Expr) -> Option<Interval> {
+    pub(crate) fn diff(&self, a: &Expr, b: &Expr) -> Option<Interval> {
         fn name(e: &Expr) -> Option<&str> {
             match &e.kind {
                 ExprKind::Name(n) => Some(n),

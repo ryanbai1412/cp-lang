@@ -153,8 +153,28 @@ fn ranges_in(
     bounds: &mut bounds::Bounds,
     proven: &mut Proven,
 ) {
-    use cpl_syntax::ast::{Cond, ExprKind, FnBody, PatternKind, StmtKind};
     for (i, stmt) in stmts.iter().enumerate() {
+        // Before the statement, so what a loop's exit proves survives it.
+        for name in bounds.related() {
+            if assigned_in(&name, std::slice::from_ref(stmt)) {
+                bounds.unrelate(&name);
+            }
+        }
+        ranges_of_stmt(base, stmts, i, top, bounds, proven);
+    }
+}
+
+fn ranges_of_stmt(
+    base: u32,
+    stmts: &[cpl_syntax::ast::Stmt],
+    i: usize,
+    top: &[&cpl_syntax::ast::Stmt],
+    bounds: &mut bounds::Bounds,
+    proven: &mut Proven,
+) {
+    use cpl_syntax::ast::{Cond, ExprKind, FnBody, PatternKind, StmtKind};
+    let stmt = &stmts[i];
+    {
         match &stmt.kind {
             StmtKind::Let { init: Some(e), .. }
             | StmtKind::Return(Some(e))
@@ -218,6 +238,7 @@ fn ranges_in(
                         (_, None, Some(init)) if !mutable => {
                             bounds.bind(name, value);
                             bounds.define(name, init);
+                            relate_midpoint(name, init, bounds);
                         }
                         _ => bounds.bind(name, value),
                     }
@@ -673,7 +694,7 @@ fn narrow(
                         // A branch the bounds prove dead claims nothing.
                         bounds.bind(name, (lo <= hi).then_some(bounds::Interval { lo, hi }));
                     }
-                    relate(left, *op, right, block, bounds);
+                    relate(left, *op, right, bounds);
                 }
                 left = right;
             }
@@ -682,20 +703,54 @@ fn narrow(
     }
 }
 
+/// `let m = (x + y) / 2` is `x + (y - x) / 2` rounded down, so a relation
+/// between `x` and `y` bounds `m - x` and `y - m`.
+fn relate_midpoint(m: &str, init: &cpl_syntax::ast::Expr, bounds: &mut bounds::Bounds) {
+    use cpl_syntax::ast::{BinOp, ExprKind};
+    fn strip(e: &cpl_syntax::ast::Expr) -> &cpl_syntax::ast::Expr {
+        match &e.kind {
+            ExprKind::Paren(inner) => strip(inner),
+            _ => e,
+        }
+    }
+    let ExprKind::Binary { op: BinOp::Div, lhs, rhs, .. } = &strip(init).kind else {
+        return;
+    };
+    if !matches!(strip(rhs).kind, ExprKind::Int(2)) {
+        return;
+    }
+    let ExprKind::Binary { op: BinOp::Add, lhs: x, rhs: y, .. } = &strip(lhs).kind else {
+        return;
+    };
+    let (ExprKind::Name(xn), ExprKind::Name(yn)) = (&strip(x).kind, &strip(y).kind) else {
+        return;
+    };
+    if xn == m || yn == m || bounds.written_by_fn(m) {
+        return;
+    }
+    let Some(d) = bounds.diff(y, x) else {
+        return;
+    };
+    // `y - x` is in `d`; `m - x` is its half rounded down, `y - m` rounded up.
+    let (down, up) = (|v: i128| v.div_euclid(2), |v: i128| -(-v).div_euclid(2));
+    bounds.relate(m, xn, bounds::Interval { lo: down(d.lo), hi: down(d.hi) });
+    bounds.relate(yn, m, bounds::Interval { lo: up(d.lo), hi: up(d.hi) });
+}
+
 /// Records what `a op b` proves about `a - b` when both are bounded names
-/// the block leaves alone.
+/// no fn assigns. It holds where the condition was tested; `ranges_in`
+/// drops it before the first statement that assigns either name.
 fn relate(
     a: &cpl_syntax::ast::Expr,
     op: cpl_syntax::ast::CmpOp,
     b: &cpl_syntax::ast::Expr,
-    block: &dyn Fn(&str) -> bool,
     bounds: &mut bounds::Bounds,
 ) {
     use cpl_syntax::ast::{BinOp, CmpOp, ExprKind};
     let (ExprKind::Name(x), ExprKind::Name(y)) = (&a.kind, &b.kind) else {
         return;
     };
-    if x == y || [x, y].iter().any(|n| block(n) || bounds.written_by_fn(n)) {
+    if x == y || [x, y].iter().any(|n| bounds.written_by_fn(n)) {
         return;
     }
     let (Some(vx), Some(vy)) = (bounds.expr_name(x), bounds.expr_name(y)) else {

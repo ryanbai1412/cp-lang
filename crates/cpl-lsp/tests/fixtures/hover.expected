@@ -133,3 +133,8 @@ small: Int in 3..=27
 for: runs at most 7 times
   1400000 (1.4e6) times in all, with the loops around it
 ```
+
+== hover @ 44:13
+```cp
+b - c: Int in 1..=100000
+```

@@ -2310,6 +2310,14 @@ examples 12 of 1307 counted loops pass 1e10 in all, in solutions that pass their
 bound overstates the work there and a warning on it would be a false alarm; the warning waits for
 a cost the checker derives. Reverse: drop `proven_loops` and `loop_hover`.
 
+29.33. **A relation holds until a statement assigns one of its names.** 29.31 recorded no relation
+for a name the block assigns anywhere, so a binary search's body, which always assigns `lo` or
+`hi`, got none. A loop's condition holds at the top of each pass, so the relation is now recorded
+regardless and dropped before the first statement that assigns either name (a compound statement
+counts as a whole, so a nested loop that writes the name drops it before it is entered). `let m =
+(x + y) / 2` relates `m` to both ends: `m - x` is half of `y - x` rounded down, `y - m` half rounded
+up. Reverse: pass the block back to `relate` and drop `relate_midpoint`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

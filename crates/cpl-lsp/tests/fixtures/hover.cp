@@ -37,3 +37,12 @@ print(small)
 for v in V:
     f$0or j in 0..k:
         print(v, j)
+var a = 0
+var b = n
+while a < b:
+    let c = (a + b) / 2
+    print(b $0- c)
+    if xs[V.first] < c:
+        a = c + 1
+    else:
+        b = c
