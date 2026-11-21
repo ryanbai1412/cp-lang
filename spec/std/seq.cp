@@ -1520,3 +1520,7 @@ fn scan_prod_and_rotate_method_syntax():
     assert m == [2, 3, 4, 1]
     m.rotate_right(2)
     assert m == [4, 1, 2, 3]
+
+/// `from`, `step(from)`, `step(step(from))`, ... up to the first `none`, lazily: O(1) per
+/// item beyond the cost of `step`.
+pub fn iterate<T>(from: ?T, step: T -> ?T) -> yields T = todo
