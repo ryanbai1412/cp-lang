@@ -426,3 +426,112 @@ fn the_sample_program_is_the_size_it_claims() {
         );
     }
 }
+
+/// The 95th percentile of the keystroke-to-diagnostics round trip while typing
+/// `insert` one character at a time at `at`, after opening `src`.
+fn keystroke_p95(src: &str, at: usize, insert: &str) -> (Duration, Duration, bool) {
+    let mut server = Server::new();
+    server.handle(&message(Some(1), "initialize", obj([])));
+    let doc = |version: usize, text: &str| {
+        obj([
+            ("uri", URI.into()),
+            ("version", (version as u32).into()),
+            ("text", text.into()),
+        ])
+    };
+    server.handle(&message(None, "textDocument/didOpen", obj([("textDocument", doc(1, src))])));
+    let mut samples = Samples(Vec::new());
+    let mut errors = false;
+    for round in 0..3 {
+        for typed in 1..=insert.len() {
+            let text = format!("{}{}{}", &src[..at], &insert[..typed], &src[at..]);
+            let change = message(
+                None,
+                "textDocument/didChange",
+                obj([
+                    ("textDocument", doc(2 + round * insert.len() + typed, "")),
+                    ("contentChanges", Value::Array(vec![obj([("text", text.as_str().into())])])),
+                ]),
+            );
+            let (replies, took) = round_trip(&mut server, &change);
+            assert!(replies.iter().any(|r| r.contains("publishDiagnostics")), "no diagnostics");
+            errors |= replies.iter().any(|r| r.contains(r#""severity":1"#));
+            samples.0.push(took);
+        }
+    }
+    let median = samples.median();
+    samples.0.sort();
+    (samples.0[(samples.0.len() - 1) * 95 / 100], median, errors)
+}
+
+/// The budget at the 95th percentile: the LSP budget in an optimized build,
+/// twice it unoptimized (several times slower, and the gate runs every test at
+/// once).
+fn p95_budget() -> Duration {
+    if cfg!(debug_assertions) {
+        2 * LSP_BUDGET
+    } else {
+        LSP_BUDGET
+    }
+}
+
+/// The ten largest ports, typed into in the middle of an indented body, and a
+/// 300-line file with errors throughout: each keystroke's diagnostics arrive
+/// within the budget at the 95th percentile.
+#[test]
+fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() {
+    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../proto/ports");
+    let mut files = Vec::new();
+    for author in std::fs::read_dir(&ports).unwrap().flatten() {
+        let Ok(entries) = std::fs::read_dir(author.path()) else { continue };
+        for file in entries.flatten() {
+            let path = file.path();
+            if path.extension().is_some_and(|e| e == "cp") {
+                let src = std::fs::read_to_string(&path).unwrap();
+                files.push((src.lines().count(), path, src));
+            }
+        }
+    }
+    files.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    files.truncate(10);
+    assert_eq!(files.len(), 10);
+
+    let broken = {
+        let mut lines: Vec<String> = program(300).lines().map(String::from).collect();
+        for (i, line) in lines.iter_mut().enumerate() {
+            if i % 25 == 12 && line.starts_with("    ") {
+                *line = line.replacen(')', "", 1).replacen(" = ", " = = ", 1);
+            }
+        }
+        lines.join("\n") + "\n"
+    };
+    let budget = p95_budget();
+    let mut worst = Duration::ZERO;
+    let mut cases: Vec<(String, String)> = files
+        .into_iter()
+        .map(|(_, path, src)| (path.file_name().unwrap().to_string_lossy().into_owned(), src))
+        .collect();
+    cases.push(("300-line file with errors".into(), broken));
+    for (index, (name, src)) in cases.iter().enumerate() {
+        let middle = src.len() / 2;
+        let at = middle
+            + src[middle..]
+                .find("\n    ")
+                .expect("an indented line after the middle")
+            + 5;
+        let (p95, median, errors) = keystroke_p95(src, at, "best = best + 1 + ");
+        let lines = src.lines().count();
+        println!(
+            "lsp: keystroke on {name:<32} {lines:>5} lines   median {:>10}   p95 {:>10}   budget {}",
+            ms(median),
+            ms(p95),
+            ms(budget)
+        );
+        if index == cases.len() - 1 {
+            assert!(errors, "the broken file has no errors");
+        }
+        worst = worst.max(p95);
+        assert!(p95 < budget, "a keystroke on {name} took {} at the 95th percentile", ms(p95));
+    }
+    println!("lsp: worst keystroke p95 {}", ms(worst));
+}

@@ -659,7 +659,9 @@ spellings, `where`, `--- multitest ---`, `.pow` and getter `()`, each a quick fi
 real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
-6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a
+6 ms, hover 0.06 ms, completion 1.8 ms), and gates the 95th percentile of
+keystroke to diagnostics on the 10 largest ports and a 300-line file with
+errors (debug build, under load budget 200 ms: worst p95 68 ms, `ioi20p1`). The VS Code extension has a
 TextMate grammar, snippets, the client, Run/Stress/Trace lenses, live
 sample values, counterexample overlays and a trace view (one panel per
 file over `cpl run --trace --format html`; the editor highlights the line
