@@ -1,11 +1,11 @@
 // Codeforces 2229 F: remove the maximum element, then binary search over all
 // subset sums with a bitmask DP verifying K disjoint blocks of sum >= thresh.
+use std.seq.{max_by}
+
 @!multitest
 let (n, k): (Int, Int) = read()
 let a_in: [0..n]Int = read()
-var best_i = 0
-for i in 1..n:
-    if a_in[i] > a_in[best_i]: best_i = i
+let best_i = max_by(0..n, i => a_in[i])!
 let fin = a_in[best_i]
 let a = [a_in[i] for i in 0..n if i != best_i]
 let m = a.len
@@ -14,21 +14,18 @@ let total_masks = 1 << m
 var sums: [0..total_masks]Int = 0
 for i in 0..m:
     let bit = 1 << i
-    for j in 0..bit:
-        sums[bit + j] = sums[j] + a[i]
-let sorted_sums = sorted([sums[mask] for mask in 0..total_masks])
+    for j in 0..bit: sums[bit + j] = sums[j] + a[i]
+let sorted_sums = sorted(sums)
 let total_sum = sorted_sums.last!
 
 fn can_reach(thresh: Int) -> Bool:
     if thresh > total_sum / k: return false
     var dp: [0..total_masks](Int, Int) = (0, 0)
     for mask in 1..total_masks:
-        for i in 0..m:
-            if not mask.bit(i): continue
+        for i in 0..m if mask.bit(i):
             let (cnt, rem) = dp[mask - (1 << i)]
             let nrem = rem + a[i]
-            let cnd = if nrem >= thresh: (cnt + 1, 0) else: (cnt, nrem)
-            dp[mask] max= cnd
+            dp[mask] max= if nrem >= thresh: (cnt + 1, 0) else: (cnt, nrem)
     dp[total_masks - 1].0 >= k
 
 let ans_idx = bsearch_last(0..total_masks, idx => can_reach(sorted_sums[idx])) ?? 0
