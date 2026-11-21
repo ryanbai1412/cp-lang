@@ -9,23 +9,9 @@ domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
 let g = Graph.undirected(edges)
 
-let t0 = Rooted(g, root: V(1))
-var sz: [V]Int = 1
-for u in t0.postorder:
-    for c in t0.children(u): sz[u] += sz[c]
-
-var rt = V(1)
-while true:
-    var next_rt: ?V = none
-    for c in t0.children(rt) if sz[c] * 2 > n:
-        next_rt = c
-    if let nr = next_rt: rt = nr
-    else: break
-
+let rt = Rooted(g, root: V(1)).centroid
 let t = Rooted(g, root: rt)
-sz = [V] _ => 1
-for u in t.postorder:
-    for c in t.children(u): sz[u] += sz[c]
+let sz = t.subtree_sizes
 
 var ans: [0..=n]Int = 0
 ans[n] = n
@@ -34,16 +20,13 @@ if n > 1:
 
     for v in V:
         var mp: Map<Int, Int> = Map()
-        for c in t.children(v):
-            if v == rt and c == excl: continue
+        for c in t.children(v) if not (v == rt and c == excl):
             mp[sz[c]] += 1
         let freqs = [(k, c) for (k, c) in mp]
-        for i in 0..freqs.len:
-            let (s1, c1) = freqs[i]
+        for (i, (s1, c1)) in freqs.items:
             ans[n - s1] += s1 * c1
             if c1 >= 2: ans[n - 2 * s1] += (c1 * (c1 - 1) / 2) * s1 * s1
-            for j in i + 1..freqs.len:
-                let (s2, c2) = freqs[j]
+            for (s2, c2) in freqs[i + 1..freqs.len]:
                 ans[n - s1 - s2] += (s1 * c1) * (s2 * c2)
 
     ans[n - sz[excl]] += sz[excl]
@@ -62,8 +45,7 @@ if n > 1:
             in_excl[c] = in_excl[u]
             best[c] = max(best[u], sz[u] - sz[c])
 
-    var p_excl = 0
-    var p_easy = 0
+    var (p_excl, p_easy) = (0, 0)
     for i in 0..=n:
         ans[i] += p_excl * easy_sz[i] + p_easy * excl_sz[i] + easy_sz[i] * excl_sz[i]
         p_excl += excl_sz[i]

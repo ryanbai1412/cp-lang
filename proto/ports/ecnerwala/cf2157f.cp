@@ -1,15 +1,11 @@
+// Codeforces 2157 F: choose the optimal number of layers d and max weight by
+// binomial counts, then emit layer-ordered jump operations recursively.
 let n: Int = read()
-var best_d = 1
-var best_cost = n * (n - 1) / 2
-var max_w = n - 1
-var max_w_cnt = 1
+var (best_d, best_cost, max_w, max_w_cnt) = (1, n * (n - 1) / 2, n - 1, 1)
 
 for d in 2..=n:
-    var rem = n
-    var cnt = 1
-    var cost = (d - 1) * 1000
+    var (rem, cnt, cost, w) = (n, 1, (d - 1) * 1000, 0)
     if cost >= best_cost: break
-    var w = 0
     while rem > 0:
         if w > 0: cnt = cnt * (d + w - 1) / w
         cnt min= rem
@@ -18,10 +14,7 @@ for d in 2..=n:
         rem -= cnt
         w += 1
     if cost < best_cost:
-        best_cost = cost
-        best_d = d
-        max_w = w
-        max_w_cnt = rem
+        (best_cost, best_d, max_w, max_w_cnt) = (cost, d, w, rem)
 
 let d = best_d
 var layer_ops: [0..d]List<(Int, Int)> = []
@@ -41,7 +34,7 @@ fn go(cur_layer: Int, cur_w: Int, start: Int) -> Int:
     cur
 
 go(0, 0, n - 1)
-let ops = [op for layer in (0..d).rev for op in layer_ops[layer]]
+let ops = [op for layer in layer_ops.rev for op in layer]
 
 print(ops.len)
 for (x, l) in ops: print(x + 1, l)

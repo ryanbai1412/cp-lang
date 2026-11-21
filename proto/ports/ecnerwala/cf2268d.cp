@@ -7,7 +7,7 @@
 let n: 1..=5e5 = read()
 let p: [0..n]Int = read()
 
-var up: [0..n]Int = n
+var up: [0..n]?Int = none
 var first: [0..n]?Int = none
 var kids: [0..n]Int = 0
 var stk: List<Int> = []
@@ -23,19 +23,15 @@ var ans = n * (n - 1) / 2
 var l = 0
 while l < n:
     var r = l
-    while up[r] < n: r = up[r]
+    while let u = up[r]: r = u
     var i = l
-    while i != r:
-        let u = up[i]
+    while let u = up[i]:
         let inside = u - i - 1
-        ans += (i - l + 1) * (r - i)
-        ans += (i - l + 1) * inside
+        ans += (i - l + 1) * (r - i + inside)
         ans += (r - u) * (2 * inside - (kids[u] - 1))
-        var two = sum(up[a] - a - 1 for a in i + 1..u)
-        for b in i + 1..=u:
-            if let fb = first[b]:
-                two += b - fb - kids[b]
-                if b < u: two += kids[fb]
+        var two = sum(up[a]! - a - 1 for a in i + 1..u)
+        for b in i + 1..=u if let fb = first[b]:
+            two += b - fb - kids[b] + (if b < u: kids[fb] else: 0)
         let three = (u - i) * inside / 2 - inside - two
         ans += inside + 2 * two + 3 * three
         i = u
