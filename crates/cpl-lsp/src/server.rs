@@ -247,6 +247,46 @@ impl Server {
                     .collect();
                 Ok(Reply::result(Value::Array(locations)))
             }
+            // The references in this file, the declaration marked as the
+            // write: the same answer as find-references.
+            "textDocument/documentHighlight" => {
+                let (uri, offset) = self.position(params)?;
+                let Some((target, spans)) = rename::references(&mut self.db, &uri, offset) else {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                };
+                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
+                let highlights = spans
+                    .into_iter()
+                    .map(|span| {
+                        let declared = target.path == uri && span == target.span;
+                        obj([
+                            ("range", range_json(span, &analysis.text, &analysis.lines)),
+                            ("kind", if declared { 3 } else { 1 }.into()),
+                        ])
+                    })
+                    .collect();
+                Ok(Reply::result(Value::Array(highlights)))
+            }
+            "textDocument/foldingRange" => {
+                let uri = uri_of(params)?;
+                let Some(analysis) = self.db.analyze(uri) else {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                };
+                let ranges = folding_ranges(&analysis.text)
+                    .into_iter()
+                    .map(|(start, end, kind)| {
+                        let mut range = vec![
+                            ("startLine".to_string(), start.into()),
+                            ("endLine".to_string(), end.into()),
+                        ];
+                        if let Some(kind) = kind {
+                            range.push(("kind".to_string(), kind.into()));
+                        }
+                        Value::Object(range)
+                    })
+                    .collect();
+                Ok(Reply::result(Value::Array(ranges)))
+            }
             // Only a name declared in this file can be renamed: a library's
             // names belong to the library.
             "textDocument/prepareRename" => {
@@ -549,6 +589,8 @@ fn capabilities() -> Value {
                 ("referencesProvider", true.into()),
                 ("renameProvider", obj([("prepareProvider", true.into())])),
                 ("documentSymbolProvider", true.into()),
+                ("documentHighlightProvider", true.into()),
+                ("foldingRangeProvider", true.into()),
                 ("documentFormattingProvider", true.into()),
                 ("inlayHintProvider", true.into()),
                 (
@@ -590,6 +632,51 @@ fn publish(uri: &str, diagnostics: Vec<Value>) -> Value {
             obj([("uri", uri.into()), ("diagnostics", diagnostics.into())]),
         ),
     ])
+}
+
+/// The lines that fold, as `(first, last, kind)`: each block under the line
+/// that opens it (an indented body runs to its last non-blank line), and
+/// each run of two or more comment or `use` lines.
+fn folding_ranges(text: &str) -> Vec<(u32, u32, Option<&'static str>)> {
+    let lines: Vec<&str> = text.lines().collect();
+    let indent = |line: &str| line.len() - line.trim_start().len();
+    let mut out = Vec::new();
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.is_empty() || trimmed.starts_with("//") {
+            continue;
+        }
+        let mut last = i;
+        for (j, below) in lines.iter().enumerate().skip(i + 1) {
+            if below.trim().is_empty() {
+                continue;
+            }
+            if indent(below) <= indent(line) {
+                break;
+            }
+            last = j;
+        }
+        if last > i {
+            out.push((i as u32, last as u32, None));
+        }
+    }
+    let runs = [("comment", "//"), ("imports", "use ")];
+    for (kind, prefix) in runs {
+        let mut i = 0;
+        while i < lines.len() {
+            let starts = |line: &str| line.trim_start().starts_with(prefix);
+            let first = i;
+            while i < lines.len() && starts(lines[i]) {
+                i += 1;
+            }
+            if i > first + 1 {
+                out.push((first as u32, i as u32 - 1, Some(kind)));
+            }
+            i = i.max(first + 1);
+        }
+    }
+    out.sort();
+    out
 }
 
 /// Whether the `let` or `var` binding whose name ends where `rest` starts

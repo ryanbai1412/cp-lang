@@ -353,7 +353,8 @@ fuzzer proves the server never dies, and a latency benchmark guards 6.1.
 **Where we are** (audited 2026-11-21). `cpl lsp` (crates/cpl-lsp) answers
 diagnostics on open and on incremental change, hover, definition (into
 `stdlib/` files too: `Fenwick` jumps to `stdlib/fenwick.cp`), references,
-rename within a file, document symbols, formatting, completion (members
+rename within a file, document symbols, document highlights, folding
+(blocks, comment runs, imports), formatting, completion (members
 after `.`, names in scope, `use std.`), signature help, inlay hints
 (unwritten types, parameter names of literal arguments) and quick fixes
 from diagnostic fixes; a panic becomes an error reply plus an
@@ -363,11 +364,13 @@ measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 TextMate grammar, snippets, the client, Run/Stress/Trace lenses, live
 sample values, counterexample overlays and a trace webview; its unit
 tests run in `--full`, its extension-host suite in no gate.
-Hover appends the declaration's `///` doc, which in the stdlib states the
+Hover shows the index space and its bound for arrays and positions
+(`xs: [V]Int`, `domain V = 0..n, n <= 100`, storage per element and in
+total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
-Gaps against `plan/60`: no computed cost on hover; no hover for the index space of a subscript or for a
-proven range; no inlay hints for index spaces or ranges; no semantic
-tokens, workspace symbols, document highlights or folding; no cost or
+Gaps against `plan/60`: no computed cost on hover; no proven range of an
+expression; no inlay hints for index spaces or ranges; no semantic
+tokens or workspace symbols; no cost or
 overflow warnings; rename is one file; no refactorings or "fix all"; no
 expected-type ranking or auto-import; run/test/trace exist only in the VS
 Code client; no JetBrains plugin, no fixture tests, fuzzer, DAP or

@@ -1233,3 +1233,70 @@ fn bare_names_include_the_compiler_prelude() {
     // A stdlib fn that needs a `use` is not in scope.
     assert!(!labels(&completions("z_|\n")).contains(&"z_function"));
 }
+
+#[test]
+fn document_highlight_marks_the_uses_and_the_declaration() {
+    let src = "let n = 3\nfn twice(x: Int) -> Int = 2 * x\nprint(twice(n) + n)\n";
+    let (mut server, _) = open(src);
+    let reply = server.handle(&request(
+        30,
+        "textDocument/documentHighlight",
+        obj([("textDocument", doc()), ("position", pos(2, 18))]),
+    ));
+    let marks: Vec<(u32, u32, u32)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|h| {
+            (
+                h.at(&["range", "start", "line"]).as_u32().unwrap(),
+                h.at(&["range", "start", "character"]).as_u32().unwrap(),
+                h.get("kind").as_u32().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(marks, [(0, 4, 3), (2, 12, 1), (2, 17, 1)]);
+}
+
+#[test]
+fn folding_ranges_cover_blocks_comments_and_imports() {
+    let src = "\
+use std.fenwick.{Fenwick}
+use std.dsu.{Dsu}
+// Two lines
+// of comment.
+fn f(x: Int) -> Int:
+    if x > 0:
+        return x
+
+    0
+print(f(1))
+";
+    let (mut server, _) = open(src);
+    let reply = server.handle(&request(
+        31,
+        "textDocument/foldingRange",
+        obj([("textDocument", doc())]),
+    ));
+    let ranges: Vec<(u32, u32, Option<&str>)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|r| {
+            (
+                r.get("startLine").as_u32().unwrap(),
+                r.get("endLine").as_u32().unwrap(),
+                r.get("kind").as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        ranges,
+        [
+            (0, 1, Some("imports")),
+            (2, 3, Some("comment")),
+            (4, 8, None),
+            (5, 6, None)
+        ]
+    );
+}
