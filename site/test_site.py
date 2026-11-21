@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Build/link checks and native execution through the Rust compiler."""
 
+from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 import html as html_lib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -97,34 +99,44 @@ class SiteTests(unittest.TestCase):
         passed = 0
         with tempfile.TemporaryDirectory(prefix="cpl-docs-") as temporary:
             documentation_workspace(temporary)
-            for path, number, source in programs:
-                with self.subTest(document=str(path.relative_to(REPO)), block=number):
-                    cp = Path(temporary) / f"{path.stem}-{number}.cp"
-                    cp.write_text(source)
-                    cpl("check", cp)
-                    cpp = cp.with_suffix(".cpp")
-                    cpl("build", cp, "-o", cpp)
-                    result = subprocess.run(["g++", "-std=c++17", "-fsyntax-only", str(cpp)],
-                                            capture_output=True, text=True, timeout=60)
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    passed += 1
+
+            def check_block(item):
+                path, number, source = item
+                cp = Path(temporary) / f"{path.stem}-{number}.cp"
+                cp.write_text(source)
+                cpl("check", cp)
+                cpp = cp.with_suffix(".cpp")
+                cpl("build", cp, "-o", cpp)
+                result = subprocess.run(["g++", "-std=c++17", "-fsyntax-only", str(cpp)],
+                                        capture_output=True, text=True, timeout=60)
+                return path, number, result
+
+            with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
+                for path, number, result in pool.map(check_block, programs):
+                    with self.subTest(document=str(path.relative_to(REPO)), block=number):
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        passed += 1
         print(f"Documentation CP blocks: {passed}/{len(programs)} pass check/build/C++17", flush=True)
 
     def test_every_showcase_port_checks_builds_and_emits_valid_cpp17(self):
         from showcase import SHOWCASE_ITEMS
         with tempfile.TemporaryDirectory(prefix="cpl-showcase-") as temporary:
-            for item in SHOWCASE_ITEMS:
-                with self.subTest(port=item["cp_path"]):
-                    source = REPO / item["cp_path"]
-                    counted = [line for line in source.read_text().splitlines()
-                               if line.strip() and not line.lstrip().startswith("//")]
-                    self.assertEqual(item["cp_loc"], len(counted))
-                    cpl("check", source)
-                    cpp = Path(temporary) / f'{item["id"]}.cpp'
-                    cpl("build", source, "-o", cpp)
-                    result = subprocess.run(["g++", "-std=c++17", "-fsyntax-only", str(cpp)],
-                                            capture_output=True, text=True, timeout=60)
-                    self.assertEqual(result.returncode, 0, result.stderr)
+            def check_item(item):
+                source = REPO / item["cp_path"]
+                counted = [line for line in source.read_text().splitlines()
+                           if line.strip() and not line.lstrip().startswith("//")]
+                cpl("check", source)
+                cpp = Path(temporary) / f'{item["id"]}.cpp'
+                cpl("build", source, "-o", cpp)
+                result = subprocess.run(["g++", "-std=c++17", "-fsyntax-only", str(cpp)],
+                                        capture_output=True, text=True, timeout=60)
+                return item, len(counted), result
+
+            with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
+                for item, loc, result in pool.map(check_item, SHOWCASE_ITEMS):
+                    with self.subTest(port=item["cp_path"]):
+                        self.assertEqual(item["cp_loc"], loc)
+                        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_all_local_links_and_fragments_resolve(self):
         target = ROOT / "_build"
@@ -310,16 +322,22 @@ class SiteTests(unittest.TestCase):
                         self.assertEqual(run.stdout.split(), expected.split())
 
     def test_every_write_code_reference_passes_all_cases_as_native_cpp(self):
+        exercises = [e for e in build.EXERCISES.values() if e["kind"] == "code"]
         with tempfile.TemporaryDirectory(prefix="cpl-exercises-") as temporary:
-            for exercise in build.EXERCISES.values():
-                if exercise["kind"] != "code":
-                    continue
-                with self.subTest(exercise=exercise["id"]):
-                    executable = compile_native(exercise["reference"], exercise["id"], temporary)
-                    for case in exercise["tests"]:
-                        run = subprocess.run([str(executable)], input=case["input"], text=True,
-                                             capture_output=True, check=True, timeout=5)
-                        self.assertEqual(run.stdout.split(), case["expected"].split())
+            def run_exercise(exercise):
+                executable = compile_native(exercise["reference"], exercise["id"], temporary)
+                outputs = []
+                for case in exercise["tests"]:
+                    run = subprocess.run([str(executable)], input=case["input"], text=True,
+                                         capture_output=True, check=True, timeout=5)
+                    outputs.append((run.stdout.split(), case["expected"].split()))
+                return exercise["id"], outputs
+
+            with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
+                for ex_id, outputs in pool.map(run_exercise, exercises):
+                    with self.subTest(exercise=ex_id):
+                        for got, expected in outputs:
+                            self.assertEqual(got, expected)
 
     def test_every_example_runs_as_native_cpp(self):
         fixtures = {
@@ -347,20 +365,28 @@ class SiteTests(unittest.TestCase):
             {p.stem for p in (ROOT / "examples").glob("*.cp")}, set(fixtures)
         )
         with tempfile.TemporaryDirectory(prefix="cpl-docs-") as temporary:
-            for name, cases in fixtures.items():
-                with self.subTest(example=name):
-                    source = (ROOT / "examples" / f"{name}.cp").read_text()
-                    executable = compile_native(source, name, temporary)
-                    for data, expected in cases:
-                        run = subprocess.run(
-                            [str(executable)],
-                            input=data,
-                            text=True,
-                            capture_output=True,
-                            check=True,
-                            timeout=5,
-                        )
-                        self.assertEqual(run.stdout.split(), expected.split())
+            def run_example(item):
+                name, cases = item
+                source = (ROOT / "examples" / f"{name}.cp").read_text()
+                executable = compile_native(source, name, temporary)
+                outputs = []
+                for data, expected in cases:
+                    run = subprocess.run(
+                        [str(executable)],
+                        input=data,
+                        text=True,
+                        capture_output=True,
+                        check=True,
+                        timeout=5,
+                    )
+                    outputs.append((run.stdout.split(), expected.split()))
+                return name, outputs
+
+            with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
+                for name, outputs in pool.map(run_example, fixtures.items()):
+                    with self.subTest(example=name):
+                        for got, expected in outputs:
+                            self.assertEqual(got, expected)
 
     def test_no_truncated_showcase_stubs_and_full_highlighting(self):
         index_html = (ROOT / "_build/index.html").read_text()
