@@ -1,7 +1,7 @@
 # dmopc21c5p5
 
-Score: pending cold rescore (port = dream verbatim: editorial header explaining exact Held-Karp DP for `n <= 12` and 64-start greedy + 2-opt local search for `n > 12`, prelude `Sieve.new(n)`, `std.rand.Rng`, `Subset<V>` with `?Int`/`?V` and `argmax`, `[Pos]Int` zero-bounds-check `two_opt_step`, 0 lints, `23,309 B`, verified exact optimal `n = 1..8` + ASan/UBSan `n = 9..100` + interpreter agreement)
-Dream: pending cold rescore (written: `proto/ports/blind_critic_4/dream/dmopc21c5p5.cp`, port = dream 1.000x)
+Score: 3/5
+Dream: 3/5
 
 Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype deltas. The general case is a random restart plus a 2-opt heuristic with no argument that it reaches the optimum. The body hand-rolls a sieve and an RNG, and drives the search with `-1` sentinels and an `improved` flag. No dream exists, so the score is capped at 3.
 
@@ -23,3 +23,12 @@ Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype 
 ## Gaps that need the language
 
 - None needed: the prototype deltas listed in lines 2-3 (`Sieve`, labeled loops) are available today. The port has no friction report.
+
+## Cold review (HEAD)
+
+Dream (new) 3/5, port 3/5 (port = dream), cold-reviewed on current main; sent back. It checks with zero errors. The header separates exact Held-Karp for `n <= 12` from the 64-start 2-opt search.
+- Owed: line 39 is `if if let old = dp[nmask, nxt]: cand > old else: true:`; write `if dp[nmask, nxt].all(old => cand > old):`.
+- Owed: the 2-opt move reverses `perm[i1..=j]` by a hand swap loop (lines 60-64); `perm[i1..=j].reverse()` exists.
+- Owed: `greedy_start` picks the next vertex with `nxt = 0` and `best_d = -1` sentinels and a raw `used` list of values (lines 69-84). Name the candidate pick (an `argmax` with a random tie-break).
+- Minor: the path reconstruction (lines 44-52) is a hand `while let` walk plus `reverse`, and `while two_opt_step(mut perm): continue` (lines 95-96) hides the loop body in the condition.
+- No friction report is needed: everything owed exists.
