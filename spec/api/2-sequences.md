@@ -10,11 +10,14 @@ anything a `for` can walk: it has `iter() -> yields T`. A **generator**
 (`fn f(...) -> yields T`) is the only iterator; there is no `next()`. An
 **`Indexed<D, T>`** is a `Seq` with O(1) `s[i]` over a domain `D` and a
 known index range `s.keys: Range<D>`. Every array, list, string, range and
-view is `Indexed`. A **view** is a source plus a range and a direction: it
-keeps the source's indices, so a slice of a `[V]T` is still indexed by `V`.
+view is `Indexed`. A **view** is a source plus a range and a direction. A
+domain position is an identity, so a slice of a `[V]T` keeps `V`'s
+positions; an `Int` index into a `List` or `Str` is an offset, so a slice
+of one counts from 0.
 
 ```python
 a[l..=r]          # view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
+s[2..5]           # a List/Str slice counts from 0: s[2..5][0] is s[2]
 a[l..=r].keys     # l..=r
 a.rev             # walks a backwards; a.rev[i] is still a[i]
 a.map(f)          # Indexed<D, U>: (a.map(f))[i] is f(a[i]), O(1) per read
@@ -33,22 +36,29 @@ loop over them compiles to the loop you would write by hand. Anything that
 builds a container says so: a comprehension, `List(s)`, or a method named
 for its result (`sorted`, `tally`, `scan`).
 
-## Views keep their source's indices
+## Domain views keep their positions; offset views count from 0
 
-This is round 1's index safety carried through: a position means the same
-element in the array and in every view of it, so an index taken from a view
-is valid on the source and vice versa, and nothing is ever rebased.
+The key type decides. A domain position names an element (round 1's index
+safety), so it means the same element in the array and in every view of it:
+an index taken from a view is valid on the source, and nothing is rebased.
 
 ```python
 let w = a[l..=r]
 let best = w.keys.max(by: i => a[i])!    # a position of a, usable anywhere
 for (i, x) in w.items: ...               # i runs l..=r, not 0..
-w[0]                                     # traps unless 0 is in l..=r
+w[V(0)]                                  # traps unless V(0) is in l..=r
 ```
 
-`List<T>` and `Str` are indexed by `Int` from 0, so for them this reads like
-Python except that a slice doesn't renumber: `s[2..5][3]` is `s[3]`. To get a
-fresh 0-based copy, say so: `List(s[2..5])`, `Str(s[2..5])`, O(n).
+`List<T>` and `Str` are indexed by `Int` offsets, and an offset has no
+identity to keep, so their slices count from 0, as in Python:
+`s[2..5][0]` is `s[2]`, still an O(1) view. Keeping offsets would make
+`rest[i]` for `i in 0..rest.len` silently read the wrong element whenever
+`i` lands inside the slice, and no type stops a plain `Int`. A domain slice
+can't have that bug: `w[i]` takes a `V`, and a `V` outside the slice traps.
+
+An integer literal is never a position into a domain slice: `blk[1..]` on
+`blk = a[l..r]` is an error ("slices keep their positions"), suggesting
+`blk.drop(1)`. On a whole array the literal reads as round 1 says.
 
 | View | Indexed by | Walks | Cost |
 |---|---|---|---|
@@ -57,10 +67,14 @@ fresh 0-based copy, say so: `List(s[2..5])`, `Str(s[2..5])`, O(n).
 | `a.items` | `D`, gives `(i, a[i])` | in order | O(1) |
 | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | O(1); `f` per read |
 | `zip(a, b)` | the shared `D`, gives `(a[i], b[i])` over `a.keys.clip(b.keys)` | in order | O(1) |
+| `w.drop(k)`, `w.take(k)`, `w.drop_last(k)`, `w.take_last(k)` | same as `w`, clamped: `w.drop(k)` is `w[w.l.next(k) ?? w.r..]` | in order | O(1) |
 | `grid[r]` | the column domain: row `r` of a `[R, C]T` | in order | O(1) |
 
 `zip` needs both sides indexed by the same domain, so zipping a `[V]T` with
 an `[E]T` is a type error. Two lists zip over the shorter one's indices.
+Writing a sequence into a range is slice assignment, not a zip:
+`q[start..] = suffix` copies in order, O(k), and traps in every build if the
+lengths differ.
 
 A view borrows its source. Through a `var` source a view is writable and
 every in-place verb works on it: `a[l..r].sort()`, `a[l..=r].reverse()`,
@@ -139,7 +153,7 @@ for d in divisors(n):
 |---|---|---|
 | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read |
 | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` | |
-| `s.take(k)`, `s.skip(k)` | `Seq`; on an `Indexed`, write the slice instead | |
+| `s.take(k)`, `s.drop(k)` | an O(1) view on an `Indexed`; a `Seq` otherwise | consuming a view from the front is `w = w.drop(1)` |
 | `chain(a, b)` | `Seq` | |
 | `s.pairs` | `Seq<(T, T)>`, adjacent pairs | `@get`, O(1) per step |
 | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings |
@@ -155,8 +169,18 @@ Every O(1) view and adapter that takes no arguments is an `@get` property
 ```python
 [f(x) for x in s if p(x)]      # List<U>; reserves exactly when there's no filter
 [V] v => f(v)                  # [V]U, filled by f
-List(s)   Set(s)   Map(s)      # collect any Seq: the one spelling for "materialize"
+s.filter(p).map(f).collect()   # end of a chain: the type the context expects, else List
+List(s)   Set(s)   Str(s)      # conversions of anything that isn't a chain: List(0..n)
 ```
+
+`.collect()` and the constructors are one operation, O(n) and allocating;
+the postfix form is for chains, the prefix form for single values.
+
+**Lazy chains redo their work on every consumption.** A `map` calls `f` on
+every read; a `filter` calls `p` on every walk. Lint flags a lazy chain
+walked twice, or built outside a loop and consumed inside it, and a lazy
+`map`/`filter` whose closure mutates anything (`rng.int(..)`, `count += 1`),
+suggesting `.collect()` or a comprehension.
 
 ## Folds
 
@@ -187,9 +211,14 @@ cuts. Walking backwards gives suffix folds, indexed by the same cuts:
 let pre = a.scan(+)        # pre[c]: fold of everything left of cut c
 let suf = a.rev.scan(+)    # suf[c]: fold of everything right of cut c
 pre[r.r] - pre[r.l]        # any range r
+pre[v]                     # a position: the fold through v, same as pre[v.r]
 pre.fold(r)                # same, for any op with an inverse; matches seg.fold(r)
 pre[v.l] + a[v] + suf[v.r] # the whole array, split at position v
 ```
+
+A `Prefix` takes both kinds of index and the types keep them apart: a cut
+folds what lies left of it, a position folds through itself. The inclusive
+query (`pref_min[v]`) is the common one and needs no `.r`.
 
 O(n) time and memory. This replaces `scan`, `suffix_scan`, `excl_fold`,
 `scan_in_place` and `Prefix(...)` construction.
@@ -224,13 +253,12 @@ place) are different jobs, not twins.
   `s.all(p)` (the predicate), and there's no overloading (§127). Proposed:
   `a.keys` for every indexed sequence (as `Map.keys`), `V.range` for a
   domain. Round 1 is updated to match.
-- **`map` reads call `f` again.** `a.map(f)[i]` costs one `f` per read; a
-  loop that reads it twice calls `f` twice. Lint flags a mapped view read
-  more than once per index in a loop and suggests `[D] i => f(a[i])`.
+- **`.collect()` naming.** Rust's word; `.list()` is the alternative if
+  the target is almost always a `List`.
 
 ## What goes away
 
 `View<T>`, `view()`, 0-based `.at(i)` / `.try_at(i)` on `Indexed`,
-`drop_first`, `step_by`, `with_prev`, `argmin`/`argmax`, `first_at`,
+`drop_first` (now `drop`), `skip`, `step_by`, `with_prev`, `argmin`/`argmax`, `first_at`,
 `order`, `chunk_by`, `run_ranges`, `excl_fold`, `suffix_scan`,
 `scan_in_place`. Each is a view, a fold over `.keys`, or `.rev.scan`.

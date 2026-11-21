@@ -4209,7 +4209,13 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Sequences.** One protocol, `Seq<T>` (`iter() -> yields T`); generators
   are the only iterator, push-based, and a generator value is a recipe
   rerun by each `for`. `Indexed<D, T>` adds O(1) `s[i]` and `s.keys`.
-  Views keep their source's indices (`a[l..=r][i]` is `a[i]`), replacing
+  The key type decides slicing: domain slices keep positions (`a[l..=r][i]`
+  is `a[i]`), `List`/`Str` slices count from 0, since an `Int` offset has no
+  identity and no type would stop `rest[i]` reading the wrong element. A
+  literal is never a position into a domain slice. `drop`/`take` are O(1)
+  views, `q[r] = s` is length-checked slice assignment, `.collect()` ends a
+  chain, `pre[v]` is the inclusive prefix next to `pre[c]`, and lint flags
+  lazy chains consumed twice or with mutating closures. These replace
   0-based `View<T>` and `.at(i)`. `a.map(f)` stays indexed. Position
   queries are folds over `a.keys` (no `argmin`/`order` twins). `a.scan(op)`
   is cut-indexed; `a.rev.scan(op)` gives suffix folds on the same cuts.
