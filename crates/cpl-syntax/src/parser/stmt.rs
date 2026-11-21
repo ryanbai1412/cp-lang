@@ -235,6 +235,10 @@ impl<'a> Parser<'a> {
     pub(super) fn stmt_kind(&mut self) -> StmtKind {
         match self.peek() {
             T::Let | T::Var => self.let_stmt(),
+            T::Ident if self.text() == "guard" && self.peek_n(1) == T::Let => {
+                self.bump();
+                self.let_stmt()
+            }
             T::Const => self.const_stmt(),
             T::Fn => StmtKind::Fn(self.fn_decl()),
             T::Struct => self.struct_decl(),
@@ -629,47 +633,73 @@ impl<'a> Parser<'a> {
             );
             self.bump();
         }
-        let pat = self.pattern();
-        self.expect(T::In, "`in` after the loop variable");
-        let iter = if self.at(T::Question) {
-            self.optional_type_iter()
-        } else {
-            self.expr()
-        };
-        // `for x in xs where cond:` (0.3) or `for x in xs if cond:` (0.2.2)
-        // runs the body for the `x` that pass: the body is an `if`.
-        let has_filter = self.eat(T::If)
-            || (self.at_ident("where") && {
-                self.bump();
-                true
-            });
-        let filter = has_filter.then(|| (self.start(), self.cond()));
-        let mut body = self.colon_block("the `for` header");
-        if let Some((start, cond)) = filter {
-            let span = self.span_from(start);
-            let test = Expr {
-                kind: ExprKind::If {
-                    branches: vec![(cond, body)],
-                    otherwise: None,
-                },
-                span,
+        let mut clauses = Vec::new();
+        loop {
+            let pat = self.pattern();
+            self.expect(T::In, "`in` after the loop variable");
+            let iter = if self.at(T::Question) {
+                self.optional_type_iter()
+            } else {
+                self.expr()
             };
-            body = Block {
-                stmts: vec![Stmt {
-                    kind: StmtKind::Expr(test),
+            // `for x in xs where cond:` (0.3) or `for x in xs if cond:` (0.2.2)
+            // runs the body for the `x` that pass: the body is an `if`.
+            let has_filter = self.eat(T::If)
+                || (self.at_ident("where") && {
+                    self.bump();
+                    true
+                });
+            let filter = has_filter.then(|| (self.start(), self.cond()));
+            clauses.push((pat, iter, filter));
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        let body = self.colon_block("the `for` header");
+        let mut out_stmt: Option<StmtKind> = None;
+        for (idx, (pat, iter, filter)) in clauses.into_iter().enumerate().rev() {
+            let mut inner_body = if let Some(prev) = out_stmt.take() {
+                let span = body.span;
+                Block {
+                    stmts: vec![Stmt {
+                        kind: prev,
+                        span,
+                        decorators: Vec::new(),
+                        public: false,
+                    }],
                     span,
-                    decorators: Vec::new(),
-                    public: false,
-                }],
-                span,
+                }
+            } else {
+                body.clone()
             };
+            if let Some((start, cond)) = filter {
+                let span = self.span_from(start);
+                let test = Expr {
+                    kind: ExprKind::If {
+                        branches: vec![(cond, inner_body)],
+                        otherwise: None,
+                    },
+                    span,
+                };
+                inner_body = Block {
+                    stmts: vec![Stmt {
+                        kind: StmtKind::Expr(test),
+                        span,
+                        decorators: Vec::new(),
+                        public: false,
+                    }],
+                    span,
+                };
+            }
+            let clause_label = if idx == 0 { label.clone() } else { None };
+            out_stmt = Some(StmtKind::For {
+                label: clause_label,
+                pat,
+                iter,
+                body: inner_body,
+            });
         }
-        StmtKind::For {
-            label,
-            pat,
-            iter,
-            body,
-        }
+        out_stmt.unwrap()
     }
 
     /// `?Col` where a `for` walks: every value of the type, `none` first.

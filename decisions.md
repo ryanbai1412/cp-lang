@@ -1315,6 +1315,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   one monomorphized struct. Removed the `planned::TYPE_PARAM_DEFAULT` stub.
   *Reversal:* restore `planned::TYPE_PARAM_DEFAULT` in `crates/cpl-syntax/src/planned.rs` and remove `generic_defaults`/`defaults`.
 
+- **22.10 Dream ergonomics batch 1: additive const type args (`Mod<1e9 + 7>`), multi-clause `for`, `guard let`, and top-level `return <unit>`.**
+  Auditing all 29 dream files (`proto/ports/*/dream/*.cp`) showed these four forms recurring across 13 dreams:
+  1) `type_args` parses additive value expressions (`1e9 + 7`, `n - 1`) as `TypeKind::Value` when the token after an int/ident/minus is `,`, `>`, `>>`, `+`, `-`, `*`, or `**`.
+  2) `for_stmt` parses comma-separated `pat in iter [where cond]` clauses and folds them right-to-left into nested `StmtKind::For`.
+  3) `guard let ... else:` delegates directly to `let_stmt()`.
+  4) `StmtKind::Return(Some(e))` is accepted at top level (and in `Unit`-returning fns) when `e` has type `Unit` (e.g. `return print(ans)`), lowering to `Stmt::Expr(e); Stmt::Return(None)` while still rejecting non-unit top-level return values.
+  *Reversal:* revert the four parser/check/IR hunks in `types.rs`, `stmt.rs`, `check/stmt.rs`, and `lower/stmt.rs`.
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

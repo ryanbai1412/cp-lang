@@ -334,13 +334,16 @@ impl<'a> Parser<'a> {
             if self.at_type_args_end() || self.at_line_end() {
                 break;
             }
-            // `Mod<7>`, `Fixed<d>`: a value argument.
-            let value = (matches!(self.peek(), T::Int)
+            // `Mod<7>`, `Mod<1e9 + 7>`, `Fixed<d>`: a value argument.
+            let value = (matches!(self.peek(), T::Int | T::Minus)
                 || (self.at(T::Ident)
                     && !self.text().starts_with(|c: char| c.is_ascii_uppercase())))
-                && matches!(self.peek_n(1), T::Comma | T::Gt | T::Shr);
+                && matches!(
+                    self.peek_n(1),
+                    T::Comma | T::Gt | T::Shr | T::Plus | T::Minus | T::Star | T::StarStar
+                );
             if value {
-                let expr = self.unary();
+                let expr = self.additive();
                 args.push(Type {
                     span: expr.span,
                     kind: TypeKind::Value(Box::new(expr)),

@@ -847,23 +847,29 @@ impl<'a> Checker<'a> {
             }
             StmtKind::Return(value) => {
                 let value_ty = value.as_ref().map(|v| self.infer(v));
-                if let (Some(value), true) = (value, self.fns.is_empty()) {
-                    // Decision 20.3: there is no caller to receive it.
-                    let diag = self.error(
-                        codes::UNEXPECTED_TOKEN,
-                        value.span,
-                        "a top-level `return` takes no value".to_string(),
-                    );
-                    if let Some(diag) = diag {
-                        diag.help = Some(
-                            "write a bare `return`: it ends the program, or the test case below `@!multitest`"
-                                .to_string(),
+                if let (Some(value), Some(ty), true) =
+                    (value, value_ty.as_ref(), self.fns.is_empty())
+                {
+                    if !matches!(ty, Ty::Unit | Ty::Unknown | Ty::Error) {
+                        // Decision 20.3: there is no caller to receive a non-unit value.
+                        let diag = self.error(
+                            codes::UNEXPECTED_TOKEN,
+                            value.span,
+                            "a top-level `return` takes no value".to_string(),
                         );
+                        if let Some(diag) = diag {
+                            diag.help = Some(
+                                "write a bare `return`: it ends the program, or the test case below `@!multitest`"
+                                    .to_string(),
+                            );
+                        }
                     }
                 }
                 if let (Some(value), Some(value_ty)) = (value, value_ty) {
-                    self.returns(value, &value_ty);
-                    self.no_escape(value, "`return`");
+                    if !(self.fns.is_empty() && matches!(value_ty, Ty::Unit)) {
+                        self.returns(value, &value_ty);
+                        self.no_escape(value, "`return`");
+                    }
                 }
             }
             StmtKind::Yield { value, .. } => {

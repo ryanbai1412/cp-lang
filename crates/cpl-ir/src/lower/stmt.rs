@@ -684,11 +684,21 @@ impl<'a> Lowerer<'a> {
                     Some(e) => {
                         let hint = self.cx.ret.clone();
                         let mut value = self.expr(e, hint.as_ref());
+                        if matches!(hint, Some(Ty::Unit)) && matches!(value.ty, Ty::Unit) {
+                            out.push(Stmt::Expr(value));
+                            out.push(Stmt::Return(None));
+                            return;
+                        }
                         match hint {
                             Some(ty) => value = self.coerce(value, &ty, e.span),
                             None => self.cx.ret = Some(value.ty.clone()),
                         }
-                        out.push(Stmt::Return(Some(value)));
+                        if matches!(value.ty, Ty::Unit) {
+                            out.push(Stmt::Expr(value));
+                            out.push(Stmt::Return(None));
+                        } else {
+                            out.push(Stmt::Return(Some(value)));
+                        }
                     }
                 }
             }
