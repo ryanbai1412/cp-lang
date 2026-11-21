@@ -85,7 +85,7 @@ impl<'a> Checker<'a> {
                         );
                         if let Some(diag) = self.error(codes::BAD_OPERANDS, expr.span, message) {
                             diag.help = Some(format!(
-                                "to name one that no argument gives, write `{name}::<T>(...)`"
+                                "to name one that no argument gives, write `{name}<T>(...)`"
                             ));
                         }
                         return Ty::Error;

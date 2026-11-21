@@ -145,7 +145,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
 # The spellings Synthesis #2 rejects must be rejected by the interpreter too, where it can tell without static types
 # (run_all.sh checks every tests/bad/*.cp against cpc).
-for name in ("s2_read_no_type", "s2_read_angle", "s2_fmt_align", "s2_fmt_nested_width", "s2_fmt_float_width_only",
+for name in ("s2_read_no_type", "s2_fmt_align", "s2_fmt_nested_width", "s2_fmt_float_width_only",
              "s2_fmt_hex_float", "s2_int_of_f64", "s2_char_of_digit", "s2_for_mut", "s2_array_default_literal"):
     r = subprocess.run(CP + ["lib-run", os.path.join(HERE, "bad", name + ".cp")], input="", capture_output=True, text=True,
                        timeout=20, cwd=PROTO)

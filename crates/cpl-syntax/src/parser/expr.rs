@@ -663,9 +663,14 @@ impl<'a> Parser<'a> {
                 // `Name<` starts type arguments only for a capitalized name
                 // whose arguments parse and close, so `INF < x` stays a
                 // comparison.
-                if type_like && self.at(T::Lt) {
+                // A lowercase fn takes them when they are all types and a
+                // call follows: `read<(Int, Int)>()`.
+                if self.at(T::Lt) {
                     let args = self.speculate(|p| {
                         let args = p.type_args();
+                        if !type_like && (p.peek() != T::LParen || !args.iter().all(names_a_type)) {
+                            p.speculation_failed = true;
+                        }
                         if args.is_empty()
                             || !matches!(
                                 p.peek(),
@@ -1092,3 +1097,18 @@ pub(crate) fn unescape(text: &str) -> String {
     }
     out
 }
+
+/// Written as only a type can be: a capitalized name, or a tuple, array,
+/// optional or record of them.
+fn names_a_type(ty: &crate::ast::Type) -> bool {
+    use crate::ast::TypeKind;
+    match &ty.kind {
+        TypeKind::Named { name, args } => name.is_type_like() && args.iter().all(names_a_type),
+        TypeKind::Tuple(items) => items.iter().all(names_a_type),
+        TypeKind::Optional(t) => names_a_type(t),
+        TypeKind::Array { elem, .. } => names_a_type(elem),
+        TypeKind::Record(fields) => fields.iter().all(|(_, t)| names_a_type(t)),
+        _ => false,
+    }
+}
+

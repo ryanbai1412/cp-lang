@@ -376,6 +376,10 @@ fn capitalized_name_with_closed_type_arguments_is_generic() {
         "((cmp A Lt B) and (cmp C Gt d))"
     );
     assert_eq!(show(&expr("f::<Int>(x)\n")), "f<1>(x)");
+    assert_eq!(show(&expr("read<(Int, Int)>()\n")), "read<1>()");
+    assert_eq!(show(&expr("read<Int>()\n")), "read<1>()");
+    assert_eq!(show(&expr("i < n and m > (k)\n")), "((cmp i Lt n) and (cmp m Gt k))");
+    assert!(!show(&expr("a < b > (c)\n")).contains("a<"));
 }
 
 #[test]

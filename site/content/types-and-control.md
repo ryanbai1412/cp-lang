@@ -129,7 +129,7 @@ enum Dir: N, E, S, W            // one-line plain enum (commas or `|`)
               n += 1
       n
   ```
-- Generic functions and types use angle brackets (`fn swap<T>(mut a: T, mut b: T)`), with explicit turbofish `f::<T>()` at call sites when type arguments cannot be inferred.
+- Generic functions and types use angle brackets (`fn swap<T>(mut a: T, mut b: T)`), with explicit type arguments at call sites when they cannot be inferred: `read<(Int, Int)>()`, or `f::<T>()`.
 
 ## Control flow, pattern matching, and functions
 

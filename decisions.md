@@ -1479,6 +1479,15 @@ is tree-walking `eval`/`stmt` dispatch overhead (future bytecode VM). Reverse: r
   `E0501` in `cpl-ir` `lower/mod.rs` signature lowering and drop `pack_args` and the pack branch of
   `args` in `cpl-check`.
 
+- **28.4 `f<T>()` on a lowercase fn.** `read<(Int, Int)>()` and `read<Int>()` parse as type arguments,
+  as the spec writes them, when every argument is spelled as only a type can be (a capitalized name,
+  or a tuple, array, optional or record of them) and `(` follows. `a < b > (c)` stays a comparison
+  because `b` is lowercase; `i < N > (k)` with a capitalized `N` would now parse as a call, a shape no
+  program in the corpus has. `f::<T>()` still works. This reverses synthesis #2's deletion of
+  `read<Int>()` (its `s2_read_angle` case is now `ok_s2_read_angle`), because `design/spec` writes
+  `read<T>()` throughout and a pack type `read<(A, B)>()` needs a spelling. To reverse: restore the `type_like &&` gate in
+  `cpl-syntax` `parser/expr.rs` and drop `names_a_type`.
+
 ## 29. Editor and LSP (2026-11-21)
 
 29.1. **Hover shows the declaration's `///` doc, wherever it is declared.** `Hover` gains `doc`, read
