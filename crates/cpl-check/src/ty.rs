@@ -104,6 +104,16 @@ impl Ty {
         self.seq_elem().is_some()
     }
 
+    /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).
+    pub fn is_indexed_mut(&self) -> bool {
+        match self {
+            Ty::Str => true,
+            Ty::Array { index, .. } if index.len() == 1 => true,
+            Ty::Named { name, args } if name == "List" && args.len() == 1 => true,
+            _ => false,
+        }
+    }
+
     /// True when nothing can be said about this type.
     pub fn is_vague(&self) -> bool {
         matches!(self, Ty::Unknown | Ty::Error)

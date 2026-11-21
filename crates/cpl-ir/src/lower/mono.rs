@@ -1689,6 +1689,7 @@ impl<'a> Lowerer<'a> {
                 let ok = match tr_name.text.as_str() {
                     "Seq" => ty.is_seq(),
                     "Indexed" => ty.is_indexed(),
+                    "IndexedMut" => ty.is_indexed_mut(),
                     name => self.implements(ty, name),
                 };
                 if !ok {

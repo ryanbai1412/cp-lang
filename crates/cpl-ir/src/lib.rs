@@ -259,6 +259,15 @@ impl Ty {
     pub fn is_indexed(&self) -> bool {
         self.seq_elem().is_some()
     }
+
+    /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).
+    pub fn is_indexed_mut(&self) -> bool {
+        match self {
+            Ty::List(_) | Ty::Str => true,
+            Ty::Array { dims, .. } if dims.len() == 1 => true,
+            _ => false,
+        }
+    }
 }
 
 /// A type as it was written, keeping what the type alone forgets: the

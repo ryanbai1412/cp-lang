@@ -23,9 +23,9 @@ pub struct Rng(s: U64):
     /// A number in `0.0..1.0`.
     pub fn float(mut self) -> F64 = F64(Int(self.next() >> 11)) / 9007199254740992.0
 
-    /// `a` in a random order, in place. O(n).
-    pub fn shuffle<T>(mut self, mut a: List<T>):
-        for i in (1..a.len).rev: a.swap(i, self.int(0, i))
+    /// `a` in a random order, in place. Works on any `IndexedMut` (`List`, `[D]T`, `Str`). O(n).
+    pub fn shuffle<S: IndexedMut>(mut self, mut a: S):
+        for i in (1..a.len).rev: a.swap_idx(i, self.int(0, i))
 
 @test
 fn the_same_seed_gives_the_same_numbers():

@@ -24,11 +24,11 @@ use std::collections::HashSet;
 
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
-    "push", "pop", "sort", "reverse", "clear", "insert", "remove", "swap", "set", "add",
-    "resize", "truncate", "reserve", "fill",
+    "push", "pop", "sort", "reverse", "clear", "insert", "remove", "swap", "swap_idx", "set",
+    "set_at", "add", "resize", "truncate", "reserve", "fill",
 ];
 /// Methods that store their arguments in the receiver.
-const STORES: &[&str] = &["push", "insert", "set", "add"];
+const STORES: &[&str] = &["push", "insert", "set", "set_at", "add"];
 
 /// `lhs op rhs` is known to hold here. `names` are the names it mentions:
 /// assigning any of them forgets it.

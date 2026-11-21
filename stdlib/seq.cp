@@ -37,23 +37,23 @@ pub fn suffix_scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T:
         after = i
     out
 
-/// Fold every prefix of `self` in place with `f`: `self[i] = f(self[i - 1], self[i])`.
-/// Zero allocations. O(n) calls of `f`.
-pub fn scan_in_place<T>(mut self: List<T>, f: (T, T) -> T):
+/// Fold every prefix of `self` in place with `f`: `self.at(i) = f(self.at(i - 1), self.at(i))`.
+/// Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). Zero allocations. O(n) calls of `f`.
+pub fn scan_in_place<S: IndexedMut, T>(mut self: S, f: (T, T) -> T):
     if self.len <= 1: return
-    var acc = self[0]
+    var acc = self.at(0)
     for i in 1..self.len:
-        acc = f(acc, self[i])
-        self[i] = acc
+        acc = f(acc, self.at(i))
+        self.set_at(i, acc)
 
-/// Fold every suffix of `self` right-to-left in place with `f`: `self[i] = f(self[i], self[i + 1])`.
-/// Zero allocations. O(n) calls of `f`.
-pub fn suffix_scan_in_place<T>(mut self: List<T>, f: (T, T) -> T):
+/// Fold every suffix of `self` right-to-left in place with `f`: `self.at(i) = f(self.at(i), self.at(i + 1))`.
+/// Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). Zero allocations. O(n) calls of `f`.
+pub fn suffix_scan_in_place<S: IndexedMut, T>(mut self: S, f: (T, T) -> T):
     if self.len <= 1: return
-    var acc = self[self.len - 1]
+    var acc = self.at(self.len - 1)
     for i in (0..self.len - 1).rev:
-        acc = f(self[i], acc)
-        self[i] = acc
+        acc = f(self.at(i), acc)
+        self.set_at(i, acc)
 
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
 pub fn prod<S: Seq, T>(self: S) -> T:
@@ -214,8 +214,8 @@ pub fn parallel_bsearch<I>(
                 if ok(q): hi[q] = t else: lo[q] = t + 1
     [if lo[q] == n: none else: (r.first! + lo[q])! for q in 0..queries]
 
-/// Reverse `a` in place (or only the subrange `range` when given). O(n).
-pub fn reverse<T>(mut a: List<T>, range: ?Range<Int> = none):
+/// Reverse `a` in place (or only the subrange `range` when given). Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). O(n).
+pub fn reverse<S: IndexedMut>(mut a: S, range: ?Range<Int> = none):
     var lo = 0
     var hi = a.len
     if let r = range:
@@ -224,7 +224,7 @@ pub fn reverse<T>(mut a: List<T>, range: ?Range<Int> = none):
         hi = r.last! + 1
     var (i, j) = (lo, hi - 1)
     while i < j:
-        a.swap(i, j)
+        a.swap_idx(i, j)
         i += 1
         j -= 1
 
@@ -266,23 +266,23 @@ pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
         else: no.push(x)
     (yes, no)
 
-/// Partition `a` in place so `a[k]` holds the element that would sit at `k` in sorted order,
-/// with `a[i] <= a[k]` for `i < k` and `a[i] >= a[k]` for `i > k`. O(n) expected, O(1) extra space.
-pub fn nth_element<T>(mut a: List<T>, k: Int):
+/// Partition `a` in place so `a.at(k)` holds the element that would sit at `k` in sorted order,
+/// with `a.at(i) <= a.at(k)` for `i < k` and `a.at(i) >= a.at(k)` for `i > k`. Works on any `IndexedMut`. O(n) expected, O(1) extra space.
+pub fn nth_element<S: IndexedMut>(mut a: S, k: Int):
     assert 0 <= k and k < a.len, "nth_element index out of range"
     var (lo, hi) = (0, a.len - 1)
     var state = 1_234_567
     while lo < hi:
         state = (state * 48271) % 2_147_483_647
-        let piv = a[lo + (state % (hi - lo + 1))]
+        let piv = a.at(lo + (state % (hi - lo + 1)))
         var (lt, i, gt) = (lo, lo, hi)
         while i <= gt:
-            if a[i] < piv:
-                a.swap(lt, i)
+            if a.at(i) < piv:
+                a.swap_idx(lt, i)
                 lt += 1
                 i += 1
-            elif piv < a[i]:
-                a.swap(i, gt)
+            elif piv < a.at(i):
+                a.swap_idx(i, gt)
                 gt -= 1
             else:
                 i += 1
@@ -384,8 +384,8 @@ pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
 
 /// Rotate `self` left by `k` in place (or only the subrange `range` when given):
 /// what was at offset `k % len` comes first. Signed Euclidean `k`: negative `k`
-/// rotates right. O(n), O(1) extra space.
-pub fn rotate_left<T>(mut self: List<T>, k: Int, range: ?Range<Int> = none):
+/// rotates right. Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). O(n), O(1) extra space.
+pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = none):
     var lo = 0
     var hi = self.len
     if let r = range:
@@ -400,8 +400,8 @@ pub fn rotate_left<T>(mut self: List<T>, k: Int, range: ?Range<Int> = none):
     reverse(mut self, range: lo + s..hi)
     reverse(mut self, range: lo..hi)
 
-/// Rotate `self` right by `k` in place (or only the subrange `range` when given). O(n).
-pub fn rotate_right<T>(mut self: List<T>, k: Int, range: ?Range<Int> = none):
+/// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`. O(n).
+pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = none):
     rotate_left(mut self, -k, range: range)
 
 /// A new list rotated left by `k`: what was at offset `k % len` comes first.
@@ -428,37 +428,37 @@ pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>:
     rotated_left(self, -k)
 
 /// Step `a` to the next arrangement in sorted order, in place. Returns false, leaving `a`
-/// sorted ascending, when it was the last one. O(n), amortized O(1).
-pub fn next_permutation<T>(mut a: List<T>) -> Bool:
+/// sorted ascending, when it was the last one. Works on any `IndexedMut`. O(n), amortized O(1).
+pub fn next_permutation<S: IndexedMut>(mut a: S) -> Bool:
     var i = a.len - 2
-    while i >= 0 and not (a[i] < a[i + 1]): i -= 1
+    while i >= 0 and not (a.at(i) < a.at(i + 1)): i -= 1
     if i < 0:
         reverse(mut a)
         return false
     var j = a.len - 1
-    while not (a[i] < a[j]): j -= 1
-    a.swap(i, j)
+    while not (a.at(i) < a.at(j)): j -= 1
+    a.swap_idx(i, j)
     var (l, r) = (i + 1, a.len - 1)
     while l < r:
-        a.swap(l, r)
+        a.swap_idx(l, r)
         l += 1
         r -= 1
     true
 
 /// Step `a` to the previous arrangement in sorted order, in place. Returns false, leaving `a`
-/// sorted descending, when it was the first (ascending) one. O(n), amortized O(1).
-pub fn prev_permutation<T>(mut a: List<T>) -> Bool:
+/// sorted descending, when it was the first (ascending) one. Works on any `IndexedMut`. O(n), amortized O(1).
+pub fn prev_permutation<S: IndexedMut>(mut a: S) -> Bool:
     var i = a.len - 2
-    while i >= 0 and not (a[i + 1] < a[i]): i -= 1
+    while i >= 0 and not (a.at(i + 1) < a.at(i)): i -= 1
     if i < 0:
         reverse(mut a)
         return false
     var j = a.len - 1
-    while not (a[j] < a[i]): j -= 1
-    a.swap(i, j)
+    while not (a.at(j) < a.at(i)): j -= 1
+    a.swap_idx(i, j)
     var (l, r) = (i + 1, a.len - 1)
     while l < r:
-        a.swap(l, r)
+        a.swap_idx(l, r)
         l += 1
         r -= 1
     true

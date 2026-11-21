@@ -6134,6 +6134,46 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            (ty, "set_at") if ty.is_indexed_mut() => {
+                let elem = ty.seq_elem().unwrap();
+                let ty_owned = ty.clone();
+                match self.positional_any(method, args, 2, span) {
+                    Some(exprs) => {
+                        let at = self.expect(exprs[0], &Ty::Int);
+                        let val = self.expect(exprs[1], &elem);
+                        let val_span = exprs[1].span;
+                        self.do_expr(Some(&Ty::Unit), span, |lw, out| {
+                            let place = lw.place(base);
+                            let val = match lw
+                                .place_range(&place)
+                                .and_then(|r| r.elem().and_then(|e| e.scalar()).cloned())
+                            {
+                                Some(b) => lw.check_range(val, &b, val_span),
+                                None => val,
+                            };
+                            let indices = lw.vouched(&ty_owned, vec![at]);
+                            let cell = Place {
+                                kind: PlaceKind::Index(Box::new(place), indices),
+                                ty: elem,
+                                span: lw.span(span),
+                            };
+                            out.push(Stmt::Assign(cell, AssignOp::Set, val));
+                            out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
+                        })
+                    }
+                    None => self.err_expr(span),
+                }
+            }
+            (ty, "swap_idx") if ty.is_indexed_mut() => {
+                match self.positional_any(method, args, 2, span) {
+                    Some(exprs) => {
+                        let a = self.expect(exprs[0], &Ty::Int);
+                        let b = self.expect(exprs[1], &Ty::Int);
+                        mutate(self, Mutation::Swap, vec![a, b], Ty::Unit)
+                    }
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::List(_) | Ty::Str, "push") => match self.one_arg(method, args, &elem, span) {
                 Some(arg) => {
                     let place = self.place(base);
@@ -6214,8 +6254,16 @@ impl<'a> Lowerer<'a> {
                         };
                         let a = self.expect(exprs[0], &idx_ty);
                         let b = self.expect(exprs[1], &idx_ty);
-                        let a = if matches!(a.ty, Ty::Pos(_)) { self.cast(Cast::Ord, a, Ty::Int) } else { a };
-                        let b = if matches!(b.ty, Ty::Pos(_)) { self.cast(Cast::Ord, b, Ty::Int) } else { b };
+                        let a = if matches!(a.ty, Ty::Pos(_) | Ty::Bound(_)) {
+                            self.cast(Cast::Ord, a, Ty::Int)
+                        } else {
+                            a
+                        };
+                        let b = if matches!(b.ty, Ty::Pos(_) | Ty::Bound(_)) {
+                            self.cast(Cast::Ord, b, Ty::Int)
+                        } else {
+                            b
+                        };
                         mutate(self, Mutation::Swap, vec![a, b], Ty::Unit)
                     }
                     None => self.err_expr(span),

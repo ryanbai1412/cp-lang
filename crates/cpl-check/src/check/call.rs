@@ -259,7 +259,12 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return;
         };
-        let Ty::Named { name: type_name, .. } = self.quietly(|c| c.infer(base)) else {
+        let base_ty = self.quietly(|c| c.infer(base));
+        if matches!(name.text.as_str(), "set_at" | "swap_idx") && base_ty.is_indexed_mut() {
+            self.require_mutable(base, &format!("changed by `{}`", name.text));
+            return;
+        }
+        let Ty::Named { name: type_name, .. } = base_ty else {
             return;
         };
         if self.members_of(&type_name).is_some_and(|m| m.mutators.contains(&name.text)) {
