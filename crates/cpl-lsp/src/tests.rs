@@ -937,12 +937,12 @@ fn inlay_hints_show_the_index_space_of_lambda_parameters() {
             )
         })
         .collect();
-    // `let (_, mate) = min_weight_matching::<I, I>((i, j) => ...)`: the
+    // `let (_, mate) = min_weight_matching<I, I>((i, j) => ...)`: the
     // matching's `[I]I`, and both lambda parameters range over `I`.
     let hint = |at: u32, label: &str| (at, label.to_string());
     assert_eq!(
         shown,
-        [hint(12, ": [I]I"), hint(46, ": I"), hint(49, ": I")]
+        [hint(12, ": [I]I"), hint(44, ": I"), hint(47, ": I")]
     );
     // A fn's parameters have their types written, so they get none.
     let (mut server, _) = open(
@@ -1900,7 +1900,7 @@ fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
         .join("../../proto/ports/ecnerwala/cf2062g.cp");
     let original = std::fs::read_to_string(&path).unwrap();
     let uri = format!("file://{}", path.display());
-    let (good, bad) = ("let p: [I]I = read()", "var p: [I]I = read()");
+    let (good, bad) = ("let q: [I]I = read()", "var q: [I]I = read()");
     assert!(original.contains(good));
     let broken = original.replacen(good, bad, 1);
     let mut server = Server::new();
