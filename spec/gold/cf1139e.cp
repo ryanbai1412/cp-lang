@@ -21,7 +21,7 @@ for s in Student if stays[s]: matching.add(p[s], c[s])
 var mex: Potential.bounds = 0   // every potential before this cut is matched
 var answer: [d]Potential.bounds = 0
 for (day, s) in leaves.items.rev:
-    while let v = mex.next and matching.augment(from: v): mex = v.after
+    while let v = mex.r and matching.augment(from: v): mex = v.r
     answer[day] = mex
     matching.add(p[s], c[s])
 for x in answer: print(x)
