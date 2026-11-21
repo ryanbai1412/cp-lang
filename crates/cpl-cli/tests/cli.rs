@@ -864,3 +864,44 @@ fn a_judge_without_threads_gets_a_plain_main_and_a_warning() {
     let cpp = std::fs::read_to_string(path.with_extension("cpp")).unwrap();
     assert!(cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"), "{cpp}");
 }
+
+#[test]
+fn user_library_sees_prelude_in_check_run_and_build() {
+    let main = scratch(
+        "user-lib-prelude",
+        "main.cp",
+        b"use mylib.dq.{firsts}\nprint(firsts(3))\n",
+    );
+    let root = main.parent().unwrap();
+    let lib_dir = root.join("mylib");
+    std::fs::create_dir_all(&lib_dir).unwrap();
+    std::fs::write(root.join("cp.toml"), "[libs]\nmylib = \"mylib\"\n").unwrap();
+    std::fs::write(lib_dir.join("lib.toml"), "name = \"mylib\"\n").unwrap();
+    std::fs::write(
+        lib_dir.join("dq.cp"),
+        "pub fn firsts(n: Int) -> Int:\n    var d = Deque<Int>()\n    for i in 0..n:\n        d.push(i)\n    d.pop_front()!\n",
+    )
+    .unwrap();
+
+    let checked = cpl(&["check".as_ref(), main.as_os_str()], b"");
+    assert!(checked.status.success(), "{checked:?}");
+
+    let ran = cpl(&["run".as_ref(), main.as_os_str()], b"");
+    assert!(ran.status.success(), "{ran:?}");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "0\n");
+
+    let built = cpl(&["build".as_ref(), main.as_os_str()], b"");
+    assert!(built.status.success(), "{built:?}");
+    let cpp = main.with_extension("cpp");
+    let bin = root.join("main_bin");
+    let compiled = Command::new("g++")
+        .args(["-std=c++17", "-O2", "-o"])
+        .arg(&bin)
+        .arg(&cpp)
+        .output()
+        .unwrap();
+    assert!(compiled.status.success(), "{compiled:?}");
+    let native = Command::new(&bin).output().unwrap();
+    assert!(native.status.success(), "{native:?}");
+    assert_eq!(String::from_utf8_lossy(&native.stdout), "0\n");
+}

@@ -409,8 +409,16 @@ impl<'a> Lowerer<'a> {
                 }
                 self.err_expr(span)
             }
+            None => {
+                self.error(
+                    codes::UNSUPPORTED,
+                    span,
+                    format!("`{name}` is not in scope during lowering"),
+                );
+                self.err_expr(span)
+            }
             _ => {
-                self.unsupported(span, "generic fns and types");
+                self.unsupported(span, &format!("generic call to `{name}`"));
                 self.err_expr(span)
             }
         }

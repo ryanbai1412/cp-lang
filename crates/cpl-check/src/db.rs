@@ -435,33 +435,50 @@ impl Database {
                 }
             }
         }
-        // The prelude (`stdlib/prelude.cp`): a name it lists that the
-        // file uses and neither declares nor imports is imported for it,
-        // so `Mod<P>` works as if `use std.mod.{Mod}` were written. Only
-        // the file being checked gets this; a module says what it uses.
+        // The prelude (`stdlib/prelude.cp`): every module — root, std and
+        // user libraries alike — sees the same prelude. A name the prelude
+        // lists that the file uses and neither declares nor imports is
+        // imported for it, so `Deque<Int>` and `Mod<P>` work everywhere.
         // A `use` that failed may have been meant to bring the name.
-        if self.analyzing.len() == 1 && import_diags.is_empty() && !is_prelude(path) {
+        if import_diags.is_empty() && !is_prelude(path) {
             let declared: std::collections::HashSet<&str> = items
                 .iter()
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
                 .collect();
-            let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
-            let uses = |name: &str| {
-                items.iter().any(|item| {
-                    item.text.match_indices(name).any(|(at, _)| {
-                        !item.text[..at].ends_with(word)
-                            && !item.text[at + name.len()..].starts_with(word)
+            let imported_module = self.analyzing.len() > 1;
+            let mut ident_tokens: std::collections::HashSet<&str> = std::collections::HashSet::new();
+            let mut dot_ident_tokens: std::collections::HashSet<&str> =
+                std::collections::HashSet::new();
+            for item in &items {
+                if imported_module
+                    && item.parsed.stmts.iter().any(|s| {
+                        s.decorators.iter().any(|d| {
+                            !d.directive
+                                && matches!(
+                                    d.name.text.as_str(),
+                                    "test" | "checker" | "interactor" | "brute"
+                                )
+                        })
                     })
-                })
-            };
+                {
+                    continue;
+                }
+                let lexed = cpl_syntax::lex(&item.text);
+                let mut prev_dot = false;
+                for tok in &lexed.tokens {
+                    if tok.kind == cpl_syntax::TokenKind::Ident {
+                        let s = &item.text[tok.span.start as usize..tok.span.end as usize];
+                        ident_tokens.insert(s);
+                        if prev_dot {
+                            dot_ident_tokens.insert(s);
+                        }
+                    }
+                    prev_dot = tok.kind == cpl_syntax::TokenKind::Dot;
+                }
+            }
+            let uses = |name: &str| ident_tokens.contains(name);
             // A method the library adds to a type is used as `.name`.
-            let calls = |name: &str| {
-                items.iter().any(|item| {
-                    item.text.match_indices(name).any(|(at, _)| {
-                        item.text[..at].ends_with('.') && !item.text[at + name.len()..].starts_with(word)
-                    })
-                })
-            };
+            let calls = |name: &str| dot_ident_tokens.contains(name);
             let listed = crate::prelude::names().iter().map(|entry| (entry, false));
             let methods = crate::prelude::methods().iter().map(|entry| (entry, true));
             for ((module, name), method) in listed.chain(methods) {
@@ -484,6 +501,8 @@ impl Database {
                 if own && !method {
                     continue;
                 }
+                let had_imports = scope.has_imports;
+                let mods_before = scope.modules.len();
                 let mut diags = Vec::new();
                 self.import(
                     path,
@@ -494,6 +513,18 @@ impl Database {
                     &mut scope,
                     &mut diags,
                 );
+                scope.has_imports = had_imports;
+                let cycled = scope.modules[mods_before..].iter().any(|m| {
+                    m.analysis
+                        .diagnostics
+                        .iter()
+                        .any(|d| d.code == codes::UNRESOLVED_MODULE)
+                });
+                if cycled || !diags.is_empty() {
+                    scope.modules.truncate(mods_before);
+                    scope.imports.remove(&name.text);
+                    continue;
+                }
                 // Beside a name the file declares itself, the library's
                 // method stays reachable for the types the file's own fn
                 // does not take, under a name no program can write.
@@ -562,6 +593,7 @@ impl Database {
                 sink.push(diag.clone().shift(offset));
             }
         }
+        let imports_ok = import_diags.is_empty();
         for (index, diag) in import_diags {
             sink.push(diag.shift(ranges[index].span.start));
         }
@@ -665,8 +697,10 @@ impl Database {
             scope,
         });
         self.collect_garbage(items.len());
-        if let Some(file) = self.files.get_mut(path) {
-            file.analysis = Some(analysis.clone());
+        if imports_ok {
+            if let Some(file) = self.files.get_mut(path) {
+                file.analysis = Some(analysis.clone());
+            }
         }
         Some(analysis)
     }
