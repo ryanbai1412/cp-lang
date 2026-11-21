@@ -1709,3 +1709,23 @@ fn a_getter_reads_the_same_with_empty_parentheses() {
     let src = "struct P(x: Int):\n    pub @get fn twice(self) -> Int = 2 * x\nfn f(p: P) -> Int = p.twice() + p.twice\n";
     assert!(check(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn a_method_that_calls_a_mut_self_method_takes_mut_self() {
+    let src = |receiver: &str| {
+        format!(
+            "struct C:\n    n: Int\n    fn bump(mut self):\n        n += 1\n    fn peek({receiver}) -> Int:\n        self.bump()\n        n\n"
+        )
+    };
+    assert_eq!(check(&src("mut self")), vec![]);
+    assert_eq!(
+        messages(&check(&src("self"))),
+        ["this method takes `self` without `mut`, so `self` can't be changed by `bump`"]
+    );
+    // A field of `self` is part of it.
+    let nested = "struct C:\n    n: Int\n    fn bump(mut self):\n        n += 1\nstruct Pair:\n    a: C\n    fn peek(self) -> Int:\n        a.bump()\n        a.n\n";
+    assert_eq!(
+        messages(&check(nested)),
+        ["this method takes `self` without `mut`, so `self` can't be changed by `bump`"]
+    );
+}

@@ -251,8 +251,9 @@ impl<'p> Emitter<'p> {
                                 ));
                                 at.push(name);
                             }
+                            let call = if proven(indices) { "" } else { ".ck" };
                             out.push_str(&format!(
-                                "{}return {b}({});\n",
+                                "{}return {b}{call}({});\n",
                                 pad(this.indent),
                                 at.join(", ")
                             ));
@@ -271,7 +272,12 @@ impl<'p> Emitter<'p> {
                     })
                     .collect();
                 match &base.ty {
-                    Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}({})", at.join(", ")),
+                    Ty::Array { dims, .. } if dims.len() > 1 && proven(indices) => format!("{b}({})", at.join(", ")),
+                    Ty::Array { dims, .. } if dims.len() > 1 => format!("{b}.ck({})", at.join(", ")),
+                    Ty::Array { .. } | Ty::Str if !proven(indices) => {
+                        self.need("at");
+                        format!("cpl::at({b}, {})", at[0])
+                    }
                     Ty::Map(..) | Ty::HashMap(..) if !store => format!("{b}.at({})", at.join(", ")),
                     Ty::List(_) if matches!(base.kind, PlaceKind::Global(id) if self.program.raw_lists.contains(&id)) => format!("{b}[{}]", at[0]),
                     Ty::List(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => format!("{b}[{}]", at[0]),
@@ -472,7 +478,7 @@ impl<'p> Emitter<'p> {
                     prec,
                 )
             }),
-            ExprKind::Cast(Cast::Trust | Cast::FromOrd(_), inner) if neighbour(inner).is_some() => {
+            ExprKind::Cast(Cast::Trust, inner) if neighbour(inner).is_some() => {
                 // `v.after`, `v.prev`: a position a small step away
                 // stays an `int`.
                 let (pos, op, step) = neighbour(inner).expect("checked");
@@ -487,10 +493,21 @@ impl<'p> Emitter<'p> {
                 match cast {
                     Cast::IntToFloat | Cast::I128ToFloat | Cast::U64ToFloat => c_cast("double"),
                     Cast::IntToI128 | Cast::U64ToI128 => c_cast("__int128"),
-                    Cast::IntToU64 | Cast::I128ToU64 => c_cast("unsigned long long"),
-                    Cast::I128ToInt | Cast::U64ToInt => c_cast("ll"),
-                    Cast::FloatToInt | Cast::CharToInt | Cast::Ord => c_cast("ll"),
-                    Cast::IntToChar => c_cast("cpl::u8"),
+                    Cast::IntToU64 => c_cast("unsigned long long"),
+                    Cast::CharToInt | Cast::Ord => c_cast("ll"),
+                    Cast::I128ToU64 => {
+                        self.need("narrow");
+                        Code::primary(format!("cpl::to_u64({})", code.text))
+                    }
+                    Cast::I128ToInt | Cast::U64ToInt | Cast::FloatToInt => {
+                        self.need("narrow");
+                        Code::primary(format!("cpl::to_int({})", code.text))
+                    }
+                    Cast::IntToChar if matches!(inner.kind, ExprKind::Int(0..=255)) => c_cast("cpl::u8"),
+                    Cast::IntToChar => {
+                        self.need("narrow");
+                        Code::primary(format!("cpl::to_char({})", code.text))
+                    }
                     Cast::StepToChar => {
                         self.need("char_step");
                         Code::primary(format!("cpl::char_step({})", code.text))
@@ -499,15 +516,16 @@ impl<'p> Emitter<'p> {
                         format!("{} + {}_lo", code.at(ADD), ident(&program.domains[*d])),
                         ADD,
                     ),
-                    Cast::FromLabel(d) => Code::new(
-                        format!(
-                            "(int)({} - {}_lo)",
-                            code.at(ADD),
-                            ident(&program.domains[*d])
-                        ),
-                        UNARY,
-                    ),
-                    Cast::FromOrd(_) => c_cast("int"),
+                    Cast::FromLabel(d) => {
+                        self.need("at");
+                        let d = ident(&program.domains[*d]);
+                        Code::primary(format!("cpl::pos({} - {d}_lo, {d}_len)", code.at(ADD)))
+                    }
+                    Cast::FromOrd(d) => {
+                        self.need("at");
+                        let d = ident(&program.domains[*d]);
+                        Code::primary(format!("cpl::pos({}, {d}_len)", code.text))
+                    }
                     Cast::Raw => code,
                     Cast::Trust if matches!(inner.ty, Ty::Pos(_) | Ty::Bound(_)) => code,
                     Cast::Trust => c_cast("int"),
@@ -527,7 +545,10 @@ impl<'p> Emitter<'p> {
                 let base_ty = &base.ty;
                 let raw_list = matches!(base.kind, ExprKind::Global(id) if self.program.raw_lists.contains(&id))
                     || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _));
-                if matches!(base_ty, Ty::List(_)) && !raw_list {
+                let checked = !proven(indices);
+                if (matches!(base_ty, Ty::List(_)) && !raw_list)
+                    || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str))
+                {
                     self.need("at");
                 }
                 // A cell of a packed table is a `std::optional` to whatever
@@ -547,7 +568,8 @@ impl<'p> Emitter<'p> {
                         .collect();
                     let cell = match base_ty {
                         Ty::Array { dims, elem } if dims.len() > 1 => {
-                            let cell = format!("{b}({})", at.join(", "));
+                            let call = if checked { ".ck" } else { "" };
+                            let cell = format!("{b}{call}({})", at.join(", "));
                             if **elem == Ty::Bool {
                                 Code::new(format!("(bool){cell}"), UNARY)
                             } else {
@@ -565,6 +587,17 @@ impl<'p> Emitter<'p> {
                         Ty::List(_) => {
                             Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
+                        Ty::Array { elem, .. } if checked && **elem == Ty::Bool => Code::new(
+                            format!("(bool)cpl::at({}, {})", codes[0].text, at[0]),
+                            UNARY,
+                        ),
+                        Ty::Array { .. } if checked => {
+                            Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
+                        }
+                        Ty::Str if checked => Code::new(
+                            format!("(cpl::u8)cpl::at({}, {})", codes[0].text, at[0]),
+                            UNARY,
+                        ),
                         Ty::Array { elem, .. } if **elem == Ty::Bool => {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
@@ -1631,4 +1664,12 @@ impl<'p> Emitter<'p> {
 
         Code::primary(text)
     }
+}
+
+/// True when no index is a bare `Int`: each is a position of the
+/// dimension's domain, or an `Int` the writer vouched for in `unchecked:`.
+fn proven(indices: &[Expr]) -> bool {
+    indices.iter().all(|index| {
+        index.ty != Ty::Int || matches!(index.kind, ExprKind::Cast(Cast::Raw | Cast::Trust, _))
+    })
 }

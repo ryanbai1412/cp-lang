@@ -512,13 +512,15 @@ impl<'a> Checker<'a> {
             .collect()
     }
 
-    /// The signatures of the fns in a body, and which of them are `@get`.
+    /// The signatures of the fns in a body, which of them are `@get`, and
+    /// which take `mut self`.
     pub(crate) fn method_sigs(
         &mut self,
         methods: &[ast::Stmt],
         self_ty: &Ty,
-    ) -> (Vec<(String, Ty)>, Vec<String>) {
+    ) -> (Vec<(String, Ty)>, Vec<String>, Vec<String>) {
         let mut getters = Vec::new();
+        let mut mutators = Vec::new();
         let sigs = methods
             .iter()
             .filter_map(|m| match &m.kind {
@@ -526,12 +528,15 @@ impl<'a> Checker<'a> {
                     if m.decorators.iter().any(|d| d.name.text == "get") {
                         getters.push(f.name.text.clone());
                     }
+                    if f.params.first().is_some_and(|p| p.mutable && p.name.text == "self") {
+                        mutators.push(f.name.text.clone());
+                    }
                     Some((f.name.text.clone(), self.fn_sig(f, Some(self_ty))))
                 }
                 _ => None,
             })
             .collect();
-        (sigs, getters)
+        (sigs, getters, mutators)
     }
 
     /// The type an impl is for, with the type parameters its header names:
@@ -681,7 +686,7 @@ impl<'a> Checker<'a> {
                         variadic: false,
                     })
                     .collect();
-                let (methods, getters) = self.method_sigs(&s.methods, &self_ty);
+                let (methods, getters, mutators) = self.method_sigs(&s.methods, &self_ty);
                 self.leave_body(body);
                 // `fn new(..)` without `self` says how the struct is built.
                 let ctor = s.methods.iter().find_map(|m| match &m.kind {
@@ -704,6 +709,7 @@ impl<'a> Checker<'a> {
                         methods,
                         ctor,
                         getters,
+                        mutators,
                         owned,
                         projections: self.projections(&s.methods),
                     },
@@ -729,7 +735,7 @@ impl<'a> Checker<'a> {
                         )
                     })
                     .collect();
-                let (methods, _) = self.method_sigs(&e.methods, &self_ty);
+                let (methods, _, _) = self.method_sigs(&e.methods, &self_ty);
                 self.leave_body(body);
                 let mut out: Vec<(String, Def)> = variants
                     .iter()
@@ -806,7 +812,7 @@ impl<'a> Checker<'a> {
                 let self_ty = self.quietly(|c| c.resolve_type(target));
                 self.self_ty = Some(self_ty.clone());
                 let owned = self.owned(&target_name, &body.stmts);
-                let (methods, getters) = self.method_sigs(&body.stmts, &self_ty);
+                let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
                 self.leave_body(scope);
                 let trait_head = trait_name.as_ref().and_then(type_head);
                 vec![(
@@ -814,6 +820,7 @@ impl<'a> Checker<'a> {
                     Def::Impl {
                         methods,
                         getters,
+                        mutators,
                         owned,
                         projections: self.projections(&body.stmts),
                     },

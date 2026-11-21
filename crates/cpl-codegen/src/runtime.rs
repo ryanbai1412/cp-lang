@@ -111,6 +111,18 @@ inline u8 char_step(ll c) { if (c < 0 || c > 127) fail(\"`Char + Int` left ASCII
 ",
     },
     Piece {
+        name: "narrow",
+        needs: &["fail"],
+        code: "\
+// A value written as a smaller type must be one of that type's values.
+inline u8 to_char(ll c) { if ((unsigned long long)c > 255) fail(\"not a byte, so not a `Char`\"); return (u8)c; }
+inline ll to_int(__int128 x) { if (x < (__int128)(-9223372036854775807LL - 1) || x > (__int128)9223372036854775807LL) fail(\"an `I128` outside `Int`\"); return (ll)x; }
+inline ll to_int(unsigned long long x) { if (x > 9223372036854775807ULL) fail(\"a `U64` outside `Int`\"); return (ll)x; }
+inline ll to_int(double x) { if (!(x > -9223372036854775809.0 && x < 9223372036854775808.0)) fail(\"a float outside `Int`\"); return (ll)x; }
+inline unsigned long long to_u64(__int128 x) { if (x < 0 || x > (__int128)~0ULL) fail(\"an `I128` outside `U64`\"); return (unsigned long long)x; }
+",
+    },
+    Piece {
         name: "judge",
         needs: &["fail"],
         code: "\
@@ -401,7 +413,7 @@ inline ll ipow(ll a, ll b) {
     },
     Piece {
         name: "grid",
-        needs: &[],
+        needs: &["fail"],
         code: "\
 // An array with K dimensions, stored flat in row-major order.
 template <class T, int K> struct Grid {
@@ -410,6 +422,10 @@ template <class T, int K> struct Grid {
     template <class... I> size_t at(I... i) const { ll ix[K] = {(ll)i...}; ll p = 0; for (int k = 0; k < K; k++) p = p * n[k] + ix[k]; return (size_t)p; }
     template <class... I> T& operator()(I... i) { return d[at(i...)]; }
     template <class... I> const T& operator()(I... i) const { return d[at(i...)]; }
+    // Indexed by an `Int` that nothing has proved in range.
+    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}; for (int k = 0; k < K; k++) if ((unsigned long long)ix[k] >= (unsigned long long)n[k]) fail(\"index outside the array\"); return at(i...); }
+    template <class... I> T& ck(I... i) { return d[in(i...)]; }
+    template <class... I> const T& ck(I... i) const { return d[in(i...)]; }
     bool operator==(const Grid& o) const { return d == o.d; }
     bool operator<(const Grid& o) const { return d < o.d; }
 };
@@ -754,6 +770,10 @@ inline void count_query(ll limit) { if (++asked > limit) fail((\"query limit exc
 // A list is indexed by an `Int`, which nothing has proved in range.
 template <class T> T& at(std::vector<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
 template <class T> const T& at(const std::vector<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
+inline char& at(std::string& s, ll i) { if ((unsigned long long)i >= s.size()) fail(\"index outside the string\"); return s[(size_t)i]; }
+inline const char& at(const std::string& s, ll i) { if ((unsigned long long)i >= s.size()) fail(\"index outside the string\"); return s[(size_t)i]; }
+// `V(x)` and `V.at(i)`: an ordinal that must be one of the domain's `len`.
+inline int pos(ll ord, ll len) { if ((unsigned long long)ord >= (unsigned long long)len) fail(\"outside the domain\"); return (int)ord; }
 ",
     },
     Piece {

@@ -1923,13 +1923,24 @@ impl<'a> Lowerer<'a> {
     /// The indices of `base[...]` and the type of the element.
     /// Inside `unchecked:`, the `Int` that indexes a list is marked as
     /// vouched for.
-    pub(super) fn vouched(&mut self, base: &Ty, mut indices: Vec<Expr>) -> Vec<Expr> {
-        if self.unchecked > 0 && matches!(base, Ty::List(_)) && indices.len() == 1 && indices[0].ty == Ty::Int {
-            let index = indices.remove(0);
-            let span = index.span;
-            indices.push(Expr { kind: ExprKind::Cast(Cast::Raw, Box::new(index)), ty: Ty::Int, span });
+    pub(super) fn vouched(&mut self, base: &Ty, indices: Vec<Expr>) -> Vec<Expr> {
+        if self.unchecked == 0 || !matches!(base, Ty::List(_) | Ty::Array { .. } | Ty::Str) {
+            return indices;
         }
         indices
+            .into_iter()
+            .map(|index| match index.ty {
+                Ty::Int => {
+                    let span = index.span;
+                    Expr {
+                        kind: ExprKind::Cast(Cast::Raw, Box::new(index)),
+                        ty: Ty::Int,
+                        span,
+                    }
+                }
+                _ => index,
+            })
+            .collect()
     }
 
     pub(super) fn index_args(

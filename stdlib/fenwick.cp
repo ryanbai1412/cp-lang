@@ -47,9 +47,12 @@ pub struct Fenwick<D, T>:
         var rest = target
         var step = bit_ceil(D.K + 1) / 2
         while step > 0:
-            if p + step <= D.K and t[p + step] < rest:
-                p += step
-                rest -= t[p]
+            if p + step <= D.K:
+                // The walk is a binary search, so it is wrong once a block sums below zero.
+                assert t[p + step] >= 0, "`lower_bound` and `kth` need non-negative values"
+                if t[p + step] < rest:
+                    p += step
+                    rest -= t[p]
             step /= 2
         if p == D.K: none else: D.bounds.nth(p + 1)
 

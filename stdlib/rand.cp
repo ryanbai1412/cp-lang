@@ -15,7 +15,10 @@ pub struct Rng(s: U64):
     /// A whole number in `lo..=hi`, each about equally likely.
     pub fn int(mut self, lo: Int, hi: Int) -> Int:
         assert lo <= hi, "`int` needs `lo <= hi`"
-        lo + Int(self.next() % U64(hi - lo + 1))
+        // `hi - lo + 1` is up to 2 ** 64, past an `Int`, when `lo` is negative.
+        if lo >= 0: return lo + Int(self.next() % (U64(hi - lo) + U64(1)))
+        let width = I128(hi) - I128(lo) + I128(1)
+        Int(I128(lo) + I128(self.next()) % width)
 
     /// A number in `0.0..1.0`.
     pub fn float(mut self) -> F64 = F64(Int(self.next() >> 11)) / 9007199254740992.0
@@ -34,3 +37,16 @@ fn the_same_seed_gives_the_same_numbers():
     var xs = [i for i in 0..20]
     r.shuffle(mut xs)
     assert sorted(xs) == [i for i in 0..20] and xs != [i for i in 0..20]
+
+@test
+fn int_covers_the_widest_ranges():
+    var rng = Rng.new(7)
+    for _ in 0..200:
+        assert rng.int(0, Int.MAX) >= 0
+        assert rng.int(Int.MIN, -1) < 0
+        let x = rng.int(Int.MIN, Int.MAX)
+        assert Int.MIN <= x and x <= Int.MAX
+        let y = rng.int(-3, 3)
+        assert -3 <= y and y <= 3
+    assert rng.int(Int.MAX, Int.MAX) == Int.MAX
+    assert rng.int(Int.MIN, Int.MIN) == Int.MIN

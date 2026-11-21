@@ -413,6 +413,11 @@ impl<'a> Lowerer<'a> {
                 if let Some(Sym::Domain(d)) = self.get_sym(&name.text) {
                     return GenArg::Domain(d);
                 }
+                // A `const` with a known value is that number, so `Comb<MOD>`
+                // and `Mod<998244353>` share one `Mod`.
+                if let Some(v) = self.const_ints.get(&name.text) {
+                    return GenArg::Int(*v);
+                }
                 if let Some(Sym::Global(gid)) = self.get_sym(&name.text) {
                     if self.globals[gid].ty == Ty::Int {
                         return GenArg::RuntimeInt(gid);

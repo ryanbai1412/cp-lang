@@ -36,6 +36,8 @@ pub enum Def {
         ctor: Option<Vec<crate::ty::Param>>,
         /// Methods marked `@get`: read like fields, without `()`.
         getters: Vec<String>,
+        /// Methods that take `mut self`.
+        mutators: Vec<String>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         projections: Vec<Projection>,
@@ -65,6 +67,7 @@ pub enum Def {
     Impl {
         methods: Vec<(String, Ty)>,
         getters: Vec<String>,
+        mutators: Vec<String>,
         owned: Vec<(String, Ty)>,
         projections: Vec<Projection>,
     },

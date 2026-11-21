@@ -66,7 +66,6 @@ const NOT_BUILT: &[&str] = &[
     "proto/ports/cco18p1.cp",
     "proto/ports/ceoi09p3.cp",
     "proto/ports/coci20c6p3.cp",
-    "proto/ports/dpr.cp",
     "proto/ports/hillclimb_dp_graph/dpo.cp",
     "proto/ports/hillclimb_dp_graph/dpp.cp",
     "proto/ports/hillclimb_dp_graph/noi15p2.cp",

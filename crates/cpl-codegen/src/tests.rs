@@ -380,3 +380,9 @@ fn a_local_list_that_stays_in_its_fn_is_one_buffer() {
     assert!(!cpp.contains("static std::vector<ll> seen;"), "{cpp}");
     assert!(!cpp.contains("static std::vector<ll> out;"), "{cpp}");
 }
+
+#[test]
+fn a_const_as_a_type_argument_is_its_number() {
+    let cpp = cpp("const MOD = 998244353\ntype Z = Mod<998244353>\nlet c = Comb<MOD>()\nlet x: Z = Z(5)\nprint(c.choose(5, 2), x * x)\n");
+    assert_eq!(cpp.matches("\nstruct Mod_").count(), 1, "{cpp}");
+}

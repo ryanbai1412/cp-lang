@@ -301,10 +301,11 @@ pub struct RollingHash:
     /// Hash of the entire sequence. O(1).
     pub @get fn all(self) -> HashVal = self.slice(0, p1.len - 1)
 
-    /// Hash of the half-open 0-based slice `[l, r)`, or `HashVal(0, 0)` when `l >= r`. O(1).
+    /// Hash of the half-open 0-based slice `[l, r)`; `HashVal(0, 0)` when `l == r`. Stops on
+    /// `l > r` or an end outside the sequence. O(1).
     pub fn slice(self, l: Int, r: Int) -> HashVal:
-        if l >= r: return HashVal(0, 0)
-        assert 0 <= l and r <= p1.len - 1
+        assert 0 <= l and l <= r and r <= p1.len - 1, "`slice(l, r)` needs `0 <= l <= r <= len`"
+        if l == r: return HashVal(0, 0)
         let d = r - l
         HashVal((p1[r] - p1[l] * pow1[d]) % RH_M1, (p2[r] - p2[l] * pow2[d]) % RH_M2)
 

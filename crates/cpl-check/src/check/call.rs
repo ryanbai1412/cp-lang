@@ -24,7 +24,29 @@ impl<'a> Checker<'a> {
         self.call_effects(call, callee, args);
         self.no_escape_args(callee, &callee_ty, args);
         self.mutates_view(call, callee);
+        self.mutates_self(callee);
         receiver.unwrap_or(ty)
+    }
+
+    /// `self.bump()` where `bump` takes `mut self` changes `self`, so the
+    /// method that calls it takes `mut self` too. Without this the call
+    /// works on a copy and the change is lost.
+    fn mutates_self(&mut self, callee: &Expr) {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return;
+        };
+        let of_self = Self::root_name(base)
+            .and_then(|(root, _)| self.local(root))
+            .is_some_and(|local| local.keyword == "self" && !local.mutable);
+        if !of_self {
+            return;
+        }
+        let Ty::Named { name: type_name, .. } = self.quietly(|c| c.infer(base)) else {
+            return;
+        };
+        if self.members_of(&type_name).is_some_and(|m| m.mutators.contains(&name.text)) {
+            self.require_mutable(base, &format!("changed by `{}`", name.text));
+        }
     }
 
     /// `x.inv()`: a `@get` method of a struct reads the same with empty

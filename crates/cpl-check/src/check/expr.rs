@@ -949,10 +949,12 @@ impl<'a> Checker<'a> {
                 fields,
                 methods,
                 getters,
+                mutators,
                 owned,
                 projections,
                 ..
             }) => {
+                out.mutators.extend(mutators.iter().cloned());
                 out.generics = generics.clone();
                 out.fields = fields.clone();
                 add(&mut out, methods, getters);
@@ -976,10 +978,12 @@ impl<'a> Checker<'a> {
             if let Def::Impl {
                 methods,
                 getters,
+                mutators,
                 owned,
                 projections,
             } = &*def
             {
+                out.mutators.extend(mutators.iter().cloned());
                 add(&mut out, methods, getters);
                 out.members.extend(owned.iter().cloned());
                 out.projections.extend(projections.iter().cloned());
@@ -1328,6 +1332,8 @@ pub(crate) struct Members {
     pub(crate) fields: Vec<crate::ty::Param>,
     members: Vec<(String, Ty)>,
     pub(crate) projections: Vec<crate::def::Projection>,
+    /// The methods that take `mut self`.
+    pub(crate) mutators: Vec<String>,
 }
 
 impl Members {
