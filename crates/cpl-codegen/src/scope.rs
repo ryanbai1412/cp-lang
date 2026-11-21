@@ -291,12 +291,53 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
 /// can be kept inside the struct: `(struct, field)` to the count. A field
 /// that is somewhere sorted, grown, filled, updated as a whole or handed
 /// to a call as `mut` stays a `std::vector`, which those work on.
-pub(crate) fn rows(program: &Program) -> BTreeMap<(usize, usize), u32> {
+pub(crate) fn rows(program: &Program, facts: &crate::ranges::Facts<'_>) -> BTreeMap<(usize, usize), u32> {
     let mut rows = BTreeMap::new();
     for (id, def) in program.structs.iter().enumerate() {
         for (field, cells) in &def.fixed {
             if matches!(&def.fields[*field].1, Ty::Array { dims, .. } if dims.len() == 1) {
                 rows.insert((id, *field), *cells);
+            }
+        }
+        // A Bitset<D> over a domain with a small static upper bound (<= 4096 bits)
+        // keeps its U64 words inline in a `cpl::Row<U64, W>` instead of heap-allocating.
+        if def.name.starts_with("Bitset")
+            && def.fields.len() == 1
+            && def.fields[0].0 == "w"
+            && matches!(&def.fields[0].1, Ty::List(elem) if elem.as_ref() == &Ty::U64)
+        {
+            let prefix = format!("{}_", crate::names::fn_name(&def.name));
+            let mut domain_id = None;
+            for f in &program.fns {
+                if !crate::names::fn_name(&f.name).starts_with(&prefix) {
+                    continue;
+                }
+                for local in f.locals.iter().take(f.params.len()) {
+                    if let Ty::Pos(d) = local.ty {
+                        domain_id = Some(d);
+                        break;
+                    }
+                }
+                if domain_id.is_none() {
+                    crate::walk::deep_exprs(&f.body, &mut |e| {
+                        if domain_id.is_none() {
+                            if let ExprKind::DomainLen(d) = e.kind {
+                                domain_id = Some(d);
+                            }
+                        }
+                    });
+                }
+                if domain_id.is_some() {
+                    break;
+                }
+            }
+            if let Some(d) = domain_id {
+                if let Some(max_k) = facts.domain_max_len(d) {
+                    if (0..=4096).contains(&max_k) {
+                        let words = ((max_k + 63) / 64).max(1) as u32;
+                        rows.insert((id, 0), words);
+                    }
+                }
             }
         }
     }

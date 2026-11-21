@@ -162,9 +162,18 @@ impl<'p> Emitter<'p> {
                     out,
                     &format!("auto {kf} = [&]({param}) -> {key_ty} {{ return {key_text}; }};"),
                 );
-                self.need("sort_by");
-                let desc = desc.clone().unwrap_or_else(|| "false".to_string());
-                self.line(out, &format!("cpl::sort_by({seq}, {kf}, {desc});"));
+                if is_cheap_pure_key(key) {
+                    let (a, b) = (self.temp(), self.temp());
+                    let cmp = turned(format!("{kf}({a}) < {kf}({b})"), format!("{kf}({b}) < {kf}({a})"));
+                    self.line(
+                        out,
+                        &format!("std::stable_sort({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),
+                    );
+                } else {
+                    self.need("sort_by");
+                    let desc = desc.clone().unwrap_or_else(|| "false".to_string());
+                    self.line(out, &format!("cpl::sort_by({seq}, {kf}, {desc});"));
+                }
             }
             SortBy::Fn { func, is_order } => {
                 let f_text = self.expr(func).text;
@@ -1168,4 +1177,25 @@ fn sized_ctor<'t>(cpp: &str, text: &'t str) -> Option<&'t str> {
         }
     }
     (depth == 0 && !args.contains('"') && !args.contains('\'')).then_some(args)
+}
+
+/// True when a `sort(by:)` key expression is pure, trap-free, and O(1), so comparing
+/// `kf(a) < kf(b)` in-place is safe and avoids allocating `keys`/`order`/`sorted` buffers.
+fn is_cheap_pure_key(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Unit
+        | ExprKind::Int(_)
+        | ExprKind::Float(_)
+        | ExprKind::Bool(_)
+        | ExprKind::Char(_)
+        | ExprKind::None
+        | ExprKind::Local(_)
+        | ExprKind::Global(_) => true,
+        ExprKind::Some(inner) | ExprKind::Field(inner, _) => is_cheap_pure_key(inner),
+        ExprKind::Unary(cpl_ir::UnOp::Not | cpl_ir::UnOp::BitNot, inner) => is_cheap_pure_key(inner),
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => {
+            items.iter().all(is_cheap_pure_key)
+        }
+        _ => false,
+    }
 }

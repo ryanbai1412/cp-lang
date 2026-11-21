@@ -2770,3 +2770,12 @@ the core lane in `plan/OPERATING.md`.
    - **Lifetime & mutability safety:** Views are tracked as read-only lends in `cpl-check`. Mutating the base while a view is live is diagnosed (`E0602`), mutating a read-only view is diagnosed (`E0401`), and escaping a view from its lending scope is diagnosed (`E0603`, suggesting `.to_str()` / `.to_list()`). Direct range-place updates (`a[l..r] = 0`, `a[l..r] min= b[l..r]`) remain in-place writes to `var a`.
    - **Visibility:** `cpl explain <file>` prints each lowered slice/reverse view (`O(1), read-only`) and explicit copy/concat (`O(n), owned`) with its C++ representation.
    - **Reverse:** Remove `Ty::StrView`/`Ty::ListView` and lower slices/`.rev` back to allocating `std::string`/`std::vector` copies, dropping the read-only lend flags in `cpl-check/src/check/lends.rs`.
+
+## 62. Containers Batch 2 and wave-12A perf lowerings (2026-11-21)
+
+1. **`Bitset<D>` adopts `Subset<D>` parity (`empty`, `full` as `@get`, `single`, `complement`, `set`, plus `of(xs: List<D>)` for generators) while staying ordinary stdlib code.**
+   Reason: matches `Subset<D>` constructors/operations and accepts `Bitset<V>.of(k for k in V if ...)`; direct `for v in b` stays a general core-lane iteration protocol (no `Bitset` compiler privilege). Reverse: revert the added methods in `stdlib/bitset.cp`.
+2. **Bounded-domain `Bitset<D>` (`D.K <= 4096` statically provable) reuses `cpl::Row<U64, W>` inline storage and `cpl-codegen` fuses `(a & b & ...).len`/`.count`/`.is_empty` into one zero-allocation popcount pass.**
+   Reason: eliminates O(n^3) heap allocations on `cf1146h` (`2.82x` -> `1.29x` matched C++) without adding a new runtime container type. Reverse: remove the `Bitset` branch in `cpl-codegen/src/scope.rs::rows` and `try_fused_bitset_op` in `expr.rs`.
+3. **`sort(by: key)` with a cheap pure key expression lowers to in-place `std::stable_sort` with an inlined comparator instead of `cpl::sort_by`'s three auxiliary vectors.**
+   Reason: preserves stability and interpreter parity while eliminating O(n) temp allocations and index indirection (`cf1284e`: `1.63x` -> `1.14x` matched C++, -709 B emitted). Reverse: remove the `is_cheap_pure_key` branch in `cpl-codegen/src/stmt.rs`.

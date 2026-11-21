@@ -180,9 +180,11 @@ impl<'p> Emitter<'p> {
             top_names.insert(format!("{d}_len"));
             top_names.insert(d);
         }
+        let facts = Facts::collect(program);
+        let rows = crate::scope::rows(program, &facts);
         let mut emitter = Emitter {
             program,
-            facts: Facts::collect(program),
+            facts,
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
@@ -206,7 +208,7 @@ impl<'p> Emitter<'p> {
             break_targets: BTreeSet::new(),
             continue_targets: BTreeSet::new(),
             reused: BTreeSet::new(),
-            rows: crate::scope::rows(program),
+            rows,
             narrow_ints: crate::scope::narrow_ints(program),
             pushers: BTreeMap::new(),
             pushing: None,

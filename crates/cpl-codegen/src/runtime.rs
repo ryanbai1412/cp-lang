@@ -854,6 +854,7 @@ inline void count_query(ll limit) { if (++asked > limit) fail((\"query limit exc
 template <class T, int K> struct Row {
     std::array<T, K> a{};
     Row() = default;
+    static Row filled(const T& x) { Row r; r.a.fill(x); return r; }
     Row(const std::vector<T>& v) {
         if (v.size() != (size_t)K) fail(\"a row of another length than its field has\");
         std::copy(v.begin(), v.end(), a.begin());

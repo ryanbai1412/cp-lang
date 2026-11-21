@@ -680,14 +680,45 @@ impl<'p> Emitter<'p> {
                                     self.devirt.field_elidable(s, idx)
                                         && crate::devirt::skippable_value(program, item)
                                 }) {
-                                    "false".to_string()
-                                } else {
-                                    let v = self.braced(item);
-                                    match struct_id.and_then(|s| self.narrow_ints.get(&(s, idx))) {
-                                        Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
-                                        Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
-                                        None => v,
+                                    return "false".to_string();
+                                }
+                                if let Some(sid) = struct_id {
+                                    if let Some(&k) = self.rows.get(&(sid, idx)) {
+                                        let cell = self
+                                            .ty(&item.ty)
+                                            .strip_prefix("std::vector<")
+                                            .and_then(|c| c.strip_suffix('>'))
+                                            .map(str::to_string);
+                                        if let Some(cell) = cell {
+                                            if let ExprKind::Builtin(Builtin::ListFilled, fargs) =
+                                                &item.kind
+                                            {
+                                                if fargs.len() == 2 {
+                                                    let val = self.expr(&fargs[1]).text;
+                                                    self.need("row");
+                                                    return format!(
+                                                        "cpl::Row<{cell}, {k}>::filled({val})"
+                                                    );
+                                                }
+                                            }
+                                            if let ExprKind::Field(base, fidx) = &item.kind {
+                                                if base.ty == Ty::Struct(sid) && *fidx == idx {
+                                                    let b = self.expr(base);
+                                                    return format!(
+                                                        "{}.{}",
+                                                        b.at(PRIMARY),
+                                                        ident(&program.structs[sid].fields[idx].0)
+                                                    );
+                                                }
+                                            }
+                                        }
                                     }
+                                }
+                                let v = self.braced(item);
+                                match struct_id.and_then(|s| self.narrow_ints.get(&(s, idx))) {
+                                    Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
+                                    Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
+                                    None => v,
                                 }
                             })
                             .collect();
@@ -1243,6 +1274,9 @@ impl<'p> Emitter<'p> {
     }
 
     fn call(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Code {
+        if let Some(code) = self.try_fused_bitset_op(e, id, args) {
+            return code;
+        }
         let program = self.program;
         let f = &program.fns[id];
         let operands: Vec<&Expr> = args
@@ -1870,6 +1904,136 @@ impl<'p> Emitter<'p> {
 
         Code::primary(text)
     }
+
+    /// Fuse `(a & b & ...).len` / `.count` / `.is_empty` on `Bitset<D>` into a single
+    /// zero-allocation word-wise loop over `U64` words.
+    fn try_fused_bitset_op(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Option<Code> {
+        enum BitsetFold {
+            Len,
+            IsEmpty,
+        }
+        enum BitsetTree<'a> {
+            Leaf(usize),
+            Bin(&'static str, Box<BitsetTree<'a>>, Box<BitsetTree<'a>>),
+            _Phantom(std::marker::PhantomData<&'a ()>),
+        }
+
+        if args.len() != 1 {
+            return None;
+        }
+        let Arg::Value(inner) = &args[0] else {
+            return None;
+        };
+        let fname = fn_name(&self.program.fns[id].name);
+        let fold = if fname.ends_with("_len") || fname.ends_with("_count") {
+            BitsetFold::Len
+        } else if fname.ends_with("_is_empty") {
+            BitsetFold::IsEmpty
+        } else {
+            return None;
+        };
+        if !is_bitset_ty(&inner.ty, self.program) {
+            return None;
+        }
+
+        fn parse_tree<'a>(
+            expr: &'a Expr,
+            target_ty: &Ty,
+            program: &cpl_ir::Program,
+            leaves: &mut Vec<&'a Expr>,
+            has_op: &mut bool,
+        ) -> BitsetTree<'a> {
+            if let ExprKind::Call(cid, cargs) = &expr.kind {
+                if cargs.len() == 2 {
+                    if let (Arg::Value(a), Arg::Value(b)) = (&cargs[0], &cargs[1]) {
+                        if &a.ty == target_ty && &b.ty == target_ty {
+                            let cname = fn_name(&program.fns[*cid].name);
+                            let op = if cname.ends_with("_bitand") {
+                                Some("&")
+                            } else if cname.ends_with("_bitor") {
+                                Some("|")
+                            } else if cname.ends_with("_bitxor") {
+                                Some("^")
+                            } else {
+                                None
+                            };
+                            if let Some(op) = op {
+                                *has_op = true;
+                                let l = parse_tree(a, target_ty, program, leaves, has_op);
+                                let r = parse_tree(b, target_ty, program, leaves, has_op);
+                                return BitsetTree::Bin(op, Box::new(l), Box::new(r));
+                            }
+                        }
+                    }
+                }
+            }
+            let idx = leaves.len();
+            leaves.push(expr);
+            BitsetTree::Leaf(idx)
+        }
+
+        fn emit_word_expr(tree: &BitsetTree<'_>, vars: &[String], wi: &str) -> String {
+            match tree {
+                BitsetTree::Leaf(i) => format!("{}.w[{wi}]", vars[*i]),
+                BitsetTree::Bin(op, l, r) => format!(
+                    "({} {op} {})",
+                    emit_word_expr(l, vars, wi),
+                    emit_word_expr(r, vars, wi)
+                ),
+                BitsetTree::_Phantom(_) => unreachable!(),
+            }
+        }
+
+        let mut leaves = Vec::new();
+        let mut has_op = false;
+        let tree = parse_tree(inner, &inner.ty, self.program, &mut leaves, &mut has_op);
+        if !has_op {
+            return None;
+        }
+
+        let ret = self.ty(&e.ty);
+        Some(self.lambda(&ret, |this, out| {
+            let p = pad(this.indent);
+            let mut vars = Vec::with_capacity(leaves.len());
+            for leaf in &leaves {
+                let code = this.expr(leaf).text;
+                let v = this.temp();
+                out.push_str(&format!("{p}const auto& {v} = {code};\n"));
+                vars.push(v);
+            }
+            let wi = this.temp();
+            let word_expr = emit_word_expr(&tree, &vars, &wi);
+            match fold {
+                BitsetFold::Len => {
+                    let acc = this.temp();
+                    out.push_str(&format!("{p}ll {acc} = 0;\n"));
+                    out.push_str(&format!(
+                        "{p}for (size_t {wi} = 0; {wi} < {}.w.size(); ++{wi}) {acc} += (ll)__builtin_popcountll({word_expr});\n",
+                        vars[0]
+                    ));
+                    out.push_str(&format!("{p}return {acc};\n"));
+                }
+                BitsetFold::IsEmpty => {
+                    out.push_str(&format!(
+                        "{p}for (size_t {wi} = 0; {wi} < {}.w.size(); ++{wi}) if (({word_expr}) != 0ULL) return false;\n",
+                        vars[0]
+                    ));
+                    out.push_str(&format!("{p}return true;\n"));
+                }
+            }
+        }))
+    }
+}
+
+fn is_bitset_ty(ty: &Ty, program: &cpl_ir::Program) -> bool {
+    let Ty::Struct(sid) = ty else {
+        return false;
+    };
+    let s = &program.structs[*sid];
+    s.name.starts_with("Bitset")
+        && s.fields.len() == 1
+        && s.fields[0].0 == "w"
+        && matches!(&s.fields[0].1, Ty::List(elem) if elem.as_ref() == &Ty::U64)
 }
 
 /// True when no index is a bare `Int`: each is a position of the

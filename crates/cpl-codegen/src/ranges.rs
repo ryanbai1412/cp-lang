@@ -35,6 +35,8 @@ pub(crate) struct Facts<'p> {
     init: BTreeMap<Var, &'p Expr>,
     /// Loop variables: the low end of the range they run over.
     loop_lo: BTreeMap<Var, &'p Expr>,
+    /// Each domain's length expression, when defined once.
+    domain_len: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -130,7 +132,11 @@ impl<'p> Facts<'p> {
                         self.expr(fn_id, message);
                     }
                 }
-                Stmt::DefDomain { lo, len, .. } => {
+                Stmt::DefDomain { id, lo, len, .. } => {
+                    self.domain_len
+                        .entry(*id)
+                        .and_modify(|slot| *slot = None)
+                        .or_insert(Some((fn_id, len)));
                     self.expr(fn_id, lo);
                     self.expr(fn_id, len);
                 }
@@ -200,6 +206,72 @@ impl<'p> Facts<'p> {
     /// How many times the variable is stored to. A parameter starts at two.
     pub fn stores(&self, v: Var) -> u32 {
         self.stores.get(&v).copied().unwrap_or(0)
+    }
+
+    /// A static upper bound on `domain`'s length when provable from literals
+    /// and declared input ranges (`let n: 5..=300 = read()`).
+    pub fn domain_max_len(&self, id: usize) -> Option<i64> {
+        let (fn_id, len) = self.domain_len.get(&id).copied().flatten()?;
+        self.upper_bound(fn_id, len, 0)
+    }
+
+    fn upper_bound(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
+        if depth > 8 {
+            return None;
+        }
+        match &e.kind {
+            ExprKind::Int(n) => Some(*n),
+            ExprKind::Read(spec) => match spec.as_ref() {
+                Spec::Int { hi: Some(hi), .. } => self.upper_bound(fn_id, hi, depth + 1),
+                _ => None,
+            },
+            ExprKind::Local(slot) => {
+                let v = (fn_id, false, *slot);
+                if self.stores(v) == 1 {
+                    self.init
+                        .get(&v)
+                        .and_then(|init| self.upper_bound(fn_id, init, depth + 1))
+                } else {
+                    None
+                }
+            }
+            ExprKind::Global(id) => {
+                let v = (None, true, *id);
+                if self.stores(v) == 1 {
+                    self.init
+                        .get(&v)
+                        .and_then(|init| self.upper_bound(None, init, depth + 1))
+                } else {
+                    None
+                }
+            }
+            ExprKind::Binary(BinOp::Add, l, r) => self
+                .upper_bound(fn_id, l, depth + 1)?
+                .checked_add(self.upper_bound(fn_id, r, depth + 1)?),
+            ExprKind::Binary(BinOp::Sub, l, r) => {
+                let l_hi = self.upper_bound(fn_id, l, depth + 1)?;
+                if let ExprKind::Int(c) = r.kind {
+                    l_hi.checked_sub(c)
+                } else if self.sign(fn_id, r) != Sign::Unknown {
+                    Some(l_hi)
+                } else {
+                    None
+                }
+            }
+            ExprKind::Builtin(Builtin::Max, args) if !args.is_empty() => {
+                let mut hi = i64::MIN;
+                for arg in args {
+                    hi = hi.max(self.upper_bound(fn_id, arg, depth + 1)?);
+                }
+                Some(hi)
+            }
+            ExprKind::If(_, then, otherwise) => Some(
+                self.upper_bound(fn_id, then, depth + 1)?
+                    .max(self.upper_bound(fn_id, otherwise, depth + 1)?),
+            ),
+            ExprKind::Cast(_, inner) => self.upper_bound(fn_id, inner, depth + 1),
+            _ => None,
+        }
     }
 
     /// True when the variable is stored once, so its first value is its

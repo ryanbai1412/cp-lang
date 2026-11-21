@@ -710,3 +710,30 @@ fn ranged_int_struct_fields_narrow_to_32_bits() {
         "wide Mod should stay ll: {cpp}"
     );
 }
+
+#[test]
+fn cheap_pure_sort_key_avoids_sort_by_buffers() {
+    let cpp = cpp(concat!(
+        "struct Pt(x: Int, y: Int)\n",
+        "var xs = [Pt(2, 1), Pt(1, 3)]\n",
+        "xs.sort(by: p => (p.x, p.y))\n",
+        "print(xs[0].x)\n",
+    ));
+    assert!(cpp.contains("std::stable_sort("), "{cpp}");
+    assert!(!cpp.contains("cpl::sort_by("), "{cpp}");
+}
+
+#[test]
+fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
+    let cpp = cpp(concat!(
+        "let n: 1..=300 = read()\n",
+        "domain V = 0..n\n",
+        "let a = Bitset<V>.full\n",
+        "let b = Bitset<V>.single(V(0))\n",
+        "let c = Bitset<V>.full\n",
+        "print((a & b & c).len)\n",
+    ));
+    assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
+    assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
+    assert!(!cpp.contains("_bitand(a, b)"), "{cpp}");
+}
