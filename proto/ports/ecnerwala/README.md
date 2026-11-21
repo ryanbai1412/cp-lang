@@ -14,6 +14,18 @@ Each `NAME.cp` sits beside `NAME_orig.cpp`, the submission as committed
 upstream. `samples/` holds the sample files upstream kept next to it, and
 `gen/NAME.py SEED SIZE` prints one random input.
 
+Non-exact judging hooks sit beside `gen/`:
+- `gen/NAME.eps`: floating-point relative/absolute tolerance.
+- `interactors/NAME.py CASE -- CMD [ARGS...]`: interactive judge for
+  interactive problems (samples use `samples/NAME.*.case`).
+- `checkers/NAME.py INPUT OUTPUT ANSWER`: custom checker for constructive
+  problems with many valid answers, following the `cpl stress` / testlib
+  argument order (`INPUT` test case, `OUTPUT` candidate stdout, `ANSWER`
+  original C++ stdout). Exit `0` accepts; any non-zero exit rejects and
+  prints the reason on stderr. `gate.sh` checks `orig` against itself as a
+  sanity check, then checks both the sanitized C++ build and `cpl run`
+  against `orig`'s output.
+
 The port names map to upstream paths like this: `agc079a` is
 `AtCoder/AGC079/A/A.cpp`, `cf2261g` is `CF/2261/G/G.cpp`, `ucup5s06g` is
 `ACM/UCup5/Stage06-Hyakumanben/G/G.cpp`, and `ucup5s05e` is

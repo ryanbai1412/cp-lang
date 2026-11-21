@@ -46,6 +46,7 @@ for x, y in zip(a, b):
   fi
 }
 INTERACTOR="$D/interactors/$n.py"
+CHECKER="$D/checkers/$n.py"
 one() { # one INPUT LABEL
   if [ -f "$INTERACTOR" ]; then
     timeout 10 python3 "$INTERACTOR" "$1" -- "$T/orig" > $T/o0 2>$T/err || { echo "FAIL $n original interactive, $2"; head -12 $T/err; exit 1; }
@@ -56,9 +57,16 @@ one() { # one INPUT LABEL
   timeout 10 $T/orig < $1 > $T/o0 2>/dev/null || { echo "FAIL $n original crashed, $2"; exit 1; }
   timeout 20 $T/san < $1 > $T/o1 2>$T/err || { echo "FAIL $n sanitizer run, $2"; head -8 $T/err; exit 1; }
   timeout ${INTERP_TIMEOUT:-20} $C run $src < $1 > $T/o2 2>$T/err || { echo "FAIL $n interpreter run, $2"; head -8 $T/err; exit 1; }
-  for o in o1 o2; do
-    cmp_out $T/o0 $T/$o || { echo "FAIL $n differs ($o), $2"; head -20 $1; exit 1; }
-  done
+  if [ -f "$CHECKER" ]; then
+    timeout 10 python3 "$CHECKER" "$1" "$T/o0" "$T/o0" >/dev/null 2>$T/err || { echo "FAIL $n checker rejected original, $2"; head -12 $T/err; exit 1; }
+    for o in o1 o2; do
+      timeout 10 python3 "$CHECKER" "$1" "$T/$o" "$T/o0" >/dev/null 2>$T/err || { echo "FAIL $n checker ($o), $2"; head -12 $T/err; head -20 $1; exit 1; }
+    done
+  else
+    for o in o1 o2; do
+      cmp_out $T/o0 $T/$o || { echo "FAIL $n differs ($o), $2"; head -20 $1; exit 1; }
+    done
+  fi
 }
 S=0
 if [ -f "$INTERACTOR" ]; then

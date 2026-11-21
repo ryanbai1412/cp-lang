@@ -242,6 +242,7 @@ def discover_ports(port_dirs=None, only=None):
             gen_path = os.path.join(d, "gen", f"{stem}.py")
             eps_path = os.path.join(d, "gen", f"{stem}.eps")
             interactor_path = os.path.join(d, "interactors", f"{stem}.py")
+            checker_path = os.path.join(d, "checkers", f"{stem}.py")
             sample_ext = "case" if os.path.isfile(interactor_path) else "in"
             samples = sorted(glob.glob(os.path.join(d, "samples", f"{stem}.*.{sample_ext}")))
             ports.append(
@@ -256,6 +257,7 @@ def discover_ports(port_dirs=None, only=None):
                     "gen": gen_path if os.path.isfile(gen_path) else None,
                     "eps": float(_read_text(eps_path).strip()) if os.path.isfile(eps_path) else None,
                     "interactor": interactor_path if os.path.isfile(interactor_path) else None,
+                    "checker": checker_path if os.path.isfile(checker_path) else None,
                     "samples": samples,
                 }
             )
@@ -344,6 +346,30 @@ def run_interactive(interactor, case_path, binary_cmd, out_path, timeout):
         detail = (err.decode("utf-8", errors="replace").strip().splitlines() or [f"exit {pr.returncode}"])[0][:120]
         return wall, f"exit {pr.returncode}: {detail}"
     return wall, "ok"
+
+
+def run_checker(checker_path, inp_path, out_path, ans_path, timeout=10.0):
+    """Run checkers/NAME.py INPUT OUTPUT ANSWER. Returns (ok, err_summary)."""
+    try:
+        pr = subprocess.run(
+            [sys.executable, checker_path, inp_path, out_path, ans_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        if pr.returncode == 0:
+            return True, None
+        msg = (pr.stderr.strip().splitlines() or pr.stdout.strip().splitlines() or [f"exit {pr.returncode}"])[0]
+        return False, msg[:120]
+    except subprocess.TimeoutExpired:
+        return False, "checker timeout"
+
+
+def judge_output(p, inp_path, ans_path, cand_path):
+    """Judge candidate output against original answer using checker (if present) or token/eps compare."""
+    if p.get("checker"):
+        return run_checker(p["checker"], inp_path, cand_path, ans_path)
+    return (outputs_match(ans_path, cand_path, p.get("eps")), None)
 
 
 def outputs_match(path_a, path_b, eps=None):
@@ -698,22 +724,30 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
                 if st0 != "ok":
                     diff_ok, diff_fail = False, f"orig {label}: {st0}"
                     break
+                if p.get("checker"):
+                    ok_chk0, err_chk0 = run_checker(p["checker"], inp, o0, o0)
+                    if not ok_chk0:
+                        diff_ok, diff_fail = False, f"checker rejected orig on {label}: {err_chk0}"
+                        break
                 _, _, st1 = run_timed([san_bin or port_bin], inp, o1, 15.0, rss=False)
                 if st1 != "ok":
                     diff_ok, diff_fail = False, f"port {label}: {st1}"
                     break
-                if not outputs_match(o0, o1, p["eps"]):
-                    diff_ok, diff_fail = False, f"cpp mismatch on {label}"
+                ok1, err1 = judge_output(p, inp, o0, o1)
+                if not ok1:
+                    diff_ok, diff_fail = False, f"cpp mismatch on {label}" + (f": {err1}" if err1 else "")
                     break
                 if idx < 3:
                     iw, _, st2 = run_timed([cpl, "run", p["abs_path"]], inp, o2, interp_timeout, rss=False)
                     if st2 != "ok":
                         interp_ok, interp_err = False, f"{label}: {st2}"
-                    elif not outputs_match(o0, o2, p["eps"]):
-                        interp_ok, interp_err = False, f"interp mismatch on {label}"
-                        diff_ok, diff_fail = False, f"interp mismatch on {label}"
-                        break
                     else:
+                        ok2, err2 = judge_output(p, inp, o0, o2)
+                        if not ok2:
+                            msg = f"interp mismatch on {label}" + (f": {err2}" if err2 else "")
+                            interp_ok, interp_err = False, msg
+                            diff_ok, diff_fail = False, msg
+                            break
                         interp_times.append(iw * 1000.0)
                         if interp_src_label is None:
                             interp_src_label = label
@@ -778,7 +812,7 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
                 "reason": f"orig={st0}, port={st1}",
             }
             return out
-        matched = outputs_match(o_orig, o_port, p["eps"])
+        matched, _ = judge_output(p, max_inp, o_orig, o_port)
         orig_times = [orig_wall_rss]
         port_times = [port_wall_rss]
         for _ in range(max(0, runs - 1)):
@@ -813,7 +847,19 @@ def evaluate_full_port(p, fast_res, cpl, explicit_specs, runs, cases, interp_tim
 # Friction report summary over research/frictions/*.md
 # ---------------------------------------------------------------------------
 
-_FIELD_RE = re.compile(r"^\s*[-*]\s*\*\*([^*:]+):?\*\*:?\s*(.*)$")
+_FIELD_RE = re.compile(r"^\s*(?:[-*]\s*)?\*\*([^*:]+):?\*\*:?\s*(.*)$")
+_NON_FRICTION_SECTIONS = {
+    "measurements",
+    "measurement",
+    "metrics",
+    "summary",
+    "algorithm summary",
+    "what worked well",
+    "verification",
+    "notes",
+    "context",
+    "status",
+}
 
 
 def parse_friction_file(path):
@@ -822,17 +868,27 @@ def parse_friction_file(path):
     rel = os.path.relpath(path, ROOT) if os.path.isabs(path) else path
     items = []
     warnings = []
-    sections = re.split(r"(?m)^##\s+", text)
-    for sec in sections[1:]:
+    raw_sections = []
+    for sec in re.split(r"(?m)^##\s+", text)[1:]:
         lines = sec.splitlines()
         if not lines:
             continue
         title = lines[0].strip()
-        if title.lower() in ("measurements", "measurement", "metrics", "summary"):
+        low = title.lower()
+        if low in _NON_FRICTION_SECTIONS:
             continue
+        if low in ("frictions", "friction", "friction items"):
+            for sub in re.split(r"(?m)^###\s+", "\n".join(lines[1:]))[1:]:
+                sub_lines = sub.splitlines()
+                if sub_lines:
+                    raw_sections.append((sub_lines[0].strip(), sub_lines[1:]))
+            continue
+        raw_sections.append((title, lines[1:]))
+
+    for title, body_lines in raw_sections:
         fields = {}
         cur_key = None
-        for line in lines[1:]:
+        for line in body_lines:
             m = _FIELD_RE.match(line)
             if m:
                 key = m.group(1).strip().rstrip(":").lower()
@@ -840,7 +896,6 @@ def parse_friction_file(path):
                 fields[key] = val
                 cur_key = key
             elif cur_key and line.startswith("  ") and not line.strip().startswith("```"):
-                # Keep first line concise; only append plain prose continuations
                 pass
 
         # Severity
@@ -1030,6 +1085,8 @@ def compute_totals(port_records, fl_summary, fr_summary):
         "ports_total": total,
         "ports_passed": passed,
         "ports_failed": failed,
+        "interactive_ports": sum(1 for r in port_records if r.get("interactive")),
+        "checker_ports": sum(1 for r in port_records if r.get("has_checker")),
         "tokens": {
             "cp_total": sum(cp_toks),
             "orig_total": sum(orig_toks),
@@ -1230,7 +1287,8 @@ def print_summary(report, diff, show_ports=False):
     m = report["meta"]
     print(
         f"CP Lang Scoreboard ({m['mode']} mode, commit {m['commit']}, {m['elapsed_s']:.2f}s): "
-        f"{t['ports_passed']}/{t['ports_total']} ports pass"
+        f"{t['ports_passed']}/{t['ports_total']} ports pass "
+        f"({t.get('interactive_ports', 0)} interactive, {t.get('checker_ports', 0)} checker)"
     )
     tok = t["tokens"]
     print(
@@ -1377,6 +1435,7 @@ def build_report(args):
             "has_gen": p["gen"] is not None,
             "has_samples": bool(p["samples"]),
             "interactive": p["interactor"] is not None,
+            "has_checker": p["checker"] is not None,
             "perf": None,
             "interp": None,
         }
