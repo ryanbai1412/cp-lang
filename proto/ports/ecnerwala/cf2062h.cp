@@ -1,4 +1,3 @@
-// Codeforces 2062 H: Galaxy Generator.
 // Merging stops exactly when the galaxies' bounding boxes have pairwise
 // disjoint row and column projections, so a subset's value is its number of
 // boxes. ways[hi][lo][cols] counts star subsets of rows lo..hi whose boxes all
