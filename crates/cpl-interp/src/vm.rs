@@ -33,6 +33,7 @@ use std::rc::Rc;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum ScalarKind {
     Int,
+    U64,
     Bool,
     Char,
     OneIntStruct,
@@ -42,6 +43,7 @@ impl ScalarKind {
     pub fn of_ty(ty: &Ty, program: &Program) -> Option<ScalarKind> {
         match ty {
             Ty::Int | Ty::Pos(_) | Ty::Bound(_) => Some(ScalarKind::Int),
+            Ty::U64 => Some(ScalarKind::U64),
             Ty::Bool => Some(ScalarKind::Bool),
             Ty::Char => Some(ScalarKind::Char),
             Ty::Struct(id) => {
@@ -69,6 +71,7 @@ impl ScalarKind {
     pub fn box_val(self, raw: i64) -> Value {
         match self {
             ScalarKind::Int => Value::Int(raw),
+            ScalarKind::U64 => Value::U64(raw as u64),
             ScalarKind::Bool => Value::Bool(raw != 0),
             ScalarKind::Char => Value::Char(raw as u8),
             ScalarKind::OneIntStruct => Value::Tuple(TupleVal::OneInt(raw)),
@@ -90,6 +93,7 @@ impl ScalarKind {
     pub fn unbox_val(val: &Value) -> i64 {
         match val {
             Value::Int(v) => *v,
+            Value::U64(v) => *v as i64,
             Value::Bool(b) => i64::from(*b),
             Value::Char(c) => i64::from(*c),
             Value::Tuple(TupleVal::OneInt(v)) => *v,
@@ -127,6 +131,7 @@ fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, [SmallFieldKind;
             ScalarKind::OneIntStruct => SmallFieldKind::OneIntStruct,
             ScalarKind::Bool => SmallFieldKind::Bool,
             ScalarKind::Char => SmallFieldKind::Char,
+            ScalarKind::U64 => return None,
         };
     }
     Some((len as u8, kinds))
@@ -147,6 +152,25 @@ pub(crate) enum CallRet {
     I,
     OptI,
     V,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum PlaceRoot {
+    LocalV(u16),
+    Global(u16),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum PlaceStep {
+    Field(u16),
+    Index1(u16),
+    Index2(u16, u16),
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PlacePath {
+    pub root: PlaceRoot,
+    pub steps: Vec<PlaceStep>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -377,6 +401,30 @@ pub(crate) enum Op {
     LStrLen { dst: u16, str_v: u16 },
     ClearV { reg: u16 },
 
+    // Wrapping u64 arithmetic, casts & comparisons
+    AddU64 { dst: u16, a: u16, b: u16 },
+    SubU64 { dst: u16, a: u16, b: u16 },
+    MulU64 { dst: u16, a: u16, b: u16 },
+    DivU64 { dst: u16, a: u16, b: u16 },
+    RemU64 { dst: u16, a: u16, b: u16 },
+    PowU64 { dst: u16, a: u16, b: u16 },
+    ShlU64 { dst: u16, a: u16, b: u16 },
+    ShrU64 { dst: u16, a: u16, b: u16 },
+    NegU64 { dst: u16, a: u16 },
+    BitNotI { dst: u16, a: u16 },
+    CmpU64 { dst: u16, a: u16, b: u16, op: CmpOp },
+    U64ToInt { dst: u16, src: u16 },
+
+    // General nested PlacePath mutations & sort
+    StorePlaceI { path: u16, r_val: u16, kind: ScalarKind },
+    StorePlaceOptI { path: u16, r_val: u16, r_some: u16, kind: ScalarKind },
+    StorePlaceV { path: u16, r_val: u16 },
+    AssignPlaceI { path: u16, r_rhs: u16, op: AssignOp, kind: ScalarKind },
+    ListPopDiscardPlace { path: u16 },
+    ListPushPlaceI { path: u16, val_i: u16, kind: ScalarKind },
+    ListPushPlaceV { path: u16, val_v: u16 },
+    SortPlace { path: u16, desc_r: u16 },
+
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
     FallbackExprI { idx: u32, dst: u16, in_loop: bool },
@@ -387,6 +435,7 @@ pub(crate) struct Chunk<'p> {
     pub ops: Vec<Op>,
     pub spans: Vec<Span>,
     pub consts_i: Vec<i64>,
+    pub places: Vec<PlacePath>,
     pub fallback_stmts: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
     pub fill_tys: Vec<&'p Ty>,
@@ -589,6 +638,7 @@ struct Compiler<'p, 'f> {
     ops: Vec<Op>,
     spans: Vec<Span>,
     consts_i: Vec<i64>,
+    places: Vec<PlacePath>,
     fallback_stmts: Vec<&'p Stmt>,
     fallback_exprs: Vec<&'p Expr>,
     fill_tys: Vec<&'p Ty>,
@@ -644,6 +694,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ops: Vec::new(),
             spans: Vec::new(),
             consts_i: Vec::new(),
+            places: Vec::new(),
             fallback_stmts: Vec::new(),
             fallback_exprs: Vec::new(),
             fill_tys: Vec::new(),
@@ -666,6 +717,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ops: self.ops,
             spans: self.spans,
             consts_i: self.consts_i,
+            places: self.places,
             fallback_stmts: self.fallback_stmts,
             fallback_exprs: self.fallback_exprs,
             fill_tys: self.fill_tys,
@@ -1705,6 +1757,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if !self.try_compile_mutate_stmt(*op, place, args, expr.span) {
                         self.emit_fallback_stmt(stmt);
                     }
+                } else if let ExprKind::Sort(place, cpl_ir::SortBy::Natural, desc) = &expr.kind {
+                    if !self.try_compile_sort_stmt(place, desc.as_deref(), expr.span) {
+                        self.emit_fallback_stmt(stmt);
+                    }
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
                     if self
                         .try_compile_call_mix(*fn_id, args, CallRet::Unit, expr.span)
@@ -2219,6 +2275,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     fn try_compile_assign(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> bool {
+        if self.try_compile_assign_fast(place, op, value) {
+            return true;
+        }
+        self.try_compile_assign_place_path(place, op, value)
+    }
+
+    fn try_compile_assign_fast(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> bool {
         let val_kind = ScalarKind::of_ty(&place.ty, self.program);
         let opt_kind = ScalarKind::of_opt_ty(&place.ty, self.program);
         match (&place.kind, op, val_kind, opt_kind) {
@@ -2971,6 +3034,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 true
             }
             (PlaceKind::Field(obj_place, field), op, Some(kind), _) => {
+                if op != AssignOp::Set && kind != ScalarKind::Int {
+                    return false;
+                }
                 let PlaceKind::Local(slot) = obj_place.kind else {
                     return false;
                 };
@@ -3026,6 +3092,207 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    fn compile_place_path(&mut self, place: &'p Place) -> Option<u16> {
+        let mut chain: Vec<&'p Place> = Vec::new();
+        let mut cur = place;
+        let root = loop {
+            match &cur.kind {
+                PlaceKind::Local(slot) => match self.slot_loc(*slot) {
+                    SlotLoc::V(v) => break PlaceRoot::LocalV(v),
+                    _ => return None,
+                },
+                PlaceKind::Global(gid) => break PlaceRoot::Global(*gid as u16),
+                PlaceKind::Field(base, _) => {
+                    chain.push(cur);
+                    cur = base;
+                }
+                PlaceKind::Index(base, indices)
+                    if matches!(base.ty, Ty::Array { .. } | Ty::List(_))
+                        && (indices.len() == 1 || indices.len() == 2) =>
+                {
+                    if matches!(base.ty, Ty::List(_)) && indices.len() != 1 {
+                        return None;
+                    }
+                    chain.push(cur);
+                    cur = base;
+                }
+                _ => return None,
+            }
+        };
+        if chain.is_empty() && !matches!(place.ty, Ty::List(_) | Ty::Array { .. } | Ty::Str) {
+            return None;
+        }
+        let mut steps = Vec::with_capacity(chain.len());
+        for p in chain.into_iter().rev() {
+            match &p.kind {
+                PlaceKind::Field(_, field) => steps.push(PlaceStep::Field(*field as u16)),
+                PlaceKind::Index(_, indices) if indices.len() == 1 => {
+                    let r_i = self.compile_expr_i(&indices[0]);
+                    steps.push(PlaceStep::Index1(r_i));
+                }
+                PlaceKind::Index(_, indices) if indices.len() == 2 => {
+                    let r_i = self.compile_expr_i(&indices[0]);
+                    let r_j = self.compile_expr_i(&indices[1]);
+                    steps.push(PlaceStep::Index2(r_i, r_j));
+                }
+                _ => return None,
+            }
+        }
+        let idx = u16::try_from(self.places.len()).ok()?;
+        self.places.push(PlacePath { root, steps });
+        Some(idx)
+    }
+
+    fn try_compile_assign_place_path(
+        &mut self,
+        place: &'p Place,
+        op: AssignOp,
+        value: &'p Expr,
+    ) -> bool {
+        let val_kind = ScalarKind::of_ty(&place.ty, self.program);
+        let opt_kind = ScalarKind::of_opt_ty(&place.ty, self.program);
+        if val_kind == Some(ScalarKind::U64) && op != AssignOp::Set {
+            match &place.kind {
+                PlaceKind::Local(slot) => {
+                    let SlotLoc::I(dst, _) = self.slot_loc(*slot) else {
+                        return false;
+                    };
+                    let r_rhs = self.compile_expr_i(value);
+                    return self.emit_assign_op_u64(dst, dst, r_rhs, op, place.span);
+                }
+                PlaceKind::Global(gid) => {
+                    let r_rhs = self.compile_expr_i(value);
+                    let cur = self.alloc_i();
+                    self.emit(Op::LoadGlobalI { dst: cur, gid: *gid as u16 }, place.span);
+                    if !self.emit_assign_op_u64(cur, cur, r_rhs, op, place.span) {
+                        return false;
+                    }
+                    self.emit(
+                        Op::StoreGlobalI { gid: *gid as u16, src: cur, kind: ScalarKind::U64 },
+                        place.span,
+                    );
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) {
+            return false;
+        }
+        let saved_ops = self.ops.len();
+        let saved_spans = self.spans.len();
+        let saved_places = self.places.len();
+        let Some(path) = self.compile_place_path(place) else {
+            self.ops.truncate(saved_ops);
+            self.spans.truncate(saved_spans);
+            self.places.truncate(saved_places);
+            return false;
+        };
+        match (op, val_kind, opt_kind) {
+            (AssignOp::Set, Some(kind), _) => {
+                let r_val = self.compile_expr_i(value);
+                self.emit(Op::StorePlaceI { path, r_val, kind }, place.span);
+                true
+            }
+            (AssignOp::Set, None, Some(kind)) => {
+                let (r_val, r_some) = self.compile_expr_opt_i(value);
+                self.emit(Op::StorePlaceOptI { path, r_val, r_some, kind }, place.span);
+                true
+            }
+            (AssignOp::Set, None, None) => {
+                let r_val = self.compile_expr_v(value);
+                self.emit(Op::StorePlaceV { path, r_val }, place.span);
+                true
+            }
+            (op, Some(kind @ (ScalarKind::Int | ScalarKind::U64)), _)
+                if matches!(
+                    op,
+                    AssignOp::Binary(
+                        BinOp::Add
+                            | BinOp::Sub
+                            | BinOp::Mul
+                            | BinOp::Div
+                            | BinOp::Rem
+                            | BinOp::BitAnd
+                            | BinOp::BitOr
+                            | BinOp::BitXor
+                            | BinOp::Shl
+                            | BinOp::Shr
+                    ) | AssignOp::Min
+                        | AssignOp::Max
+                ) =>
+            {
+                let r_rhs = self.compile_expr_i(value);
+                self.emit(Op::AssignPlaceI { path, r_rhs, op, kind }, place.span);
+                true
+            }
+            _ => {
+                self.ops.truncate(saved_ops);
+                self.spans.truncate(saved_spans);
+                self.places.truncate(saved_places);
+                false
+            }
+        }
+    }
+
+    fn emit_assign_op_u64(
+        &mut self,
+        dst: u16,
+        a: u16,
+        b: u16,
+        op: AssignOp,
+        span: Span,
+    ) -> bool {
+        let inst = match op {
+            AssignOp::Binary(BinOp::Add) => Op::AddU64 { dst, a, b },
+            AssignOp::Binary(BinOp::Sub) => Op::SubU64 { dst, a, b },
+            AssignOp::Binary(BinOp::Mul) => Op::MulU64 { dst, a, b },
+            AssignOp::Binary(BinOp::Div) => Op::DivU64 { dst, a, b },
+            AssignOp::Binary(BinOp::Rem) => Op::RemU64 { dst, a, b },
+            AssignOp::Binary(BinOp::BitAnd) => Op::BitAndI { dst, a, b },
+            AssignOp::Binary(BinOp::BitOr) => Op::BitOrI { dst, a, b },
+            AssignOp::Binary(BinOp::BitXor) => Op::BitXorI { dst, a, b },
+            AssignOp::Binary(BinOp::Shl) => Op::ShlU64 { dst, a, b },
+            AssignOp::Binary(BinOp::Shr) => Op::ShrU64 { dst, a, b },
+            AssignOp::Set => Op::MoveI { dst, src: b },
+            _ => return false,
+        };
+        self.emit(inst, span);
+        true
+    }
+
+    fn try_compile_sort_stmt(
+        &mut self,
+        place: &'p Place,
+        desc: Option<&'p Expr>,
+        span: Span,
+    ) -> bool {
+        let elem_ty_ok = match &place.ty {
+            Ty::List(elem) => ty_uses_structural_cmp(elem, self.program),
+            Ty::Array { elem, dims } => dims.len() == 1 && ty_uses_structural_cmp(elem, self.program),
+            Ty::Str => true,
+            _ => false,
+        };
+        if !elem_ty_ok {
+            return false;
+        }
+        let saved_ops = self.ops.len();
+        let saved_spans = self.spans.len();
+        let saved_places = self.places.len();
+        let Some(path) = self.compile_place_path(place) else {
+            self.ops.truncate(saved_ops);
+            self.spans.truncate(saved_spans);
+            self.places.truncate(saved_places);
+            return false;
+        };
+        let desc_r = match desc {
+            Some(e) => self.compile_expr_i(e),
+            None => u16::MAX,
+        };
+        self.emit(Op::SortPlace { path, desc_r }, span);
+        true
+    }
+
     fn emit_assign_op_i(
         &mut self,
         dst: u16,
@@ -3069,6 +3336,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if let ExprKind::Cmp(op, lhs, rhs) = &cond.kind {
             if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
                 && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
+                && lhs.ty != Ty::U64
+                && rhs.ty != Ty::U64
                 && ty_uses_structural_cmp(&lhs.ty, self.program)
                 && matches!(
                     op,
@@ -3548,6 +3817,56 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::NegI { dst, a }, span);
                 dst
             }
+            ExprKind::Unary(UnOp::Neg, inner) if expr.ty == Ty::U64 => {
+                let a = self.compile_expr_i(inner);
+                let dst = self.alloc_i();
+                self.emit(Op::NegU64 { dst, a }, span);
+                dst
+            }
+            ExprKind::Unary(UnOp::BitNot, inner) if matches!(expr.ty, Ty::Int | Ty::U64) => {
+                let a = self.compile_expr_i(inner);
+                let dst = self.alloc_i();
+                self.emit(Op::BitNotI { dst, a }, span);
+                dst
+            }
+            ExprKind::Unary(UnOp::Pos, inner) => self.compile_expr_i(inner),
+            ExprKind::Binary(op, lhs, rhs)
+                if expr.ty == Ty::U64 && lhs.ty == Ty::U64 && rhs.ty == Ty::U64 =>
+            {
+                let a = self.compile_expr_i(lhs);
+                let b = self.compile_expr_i(rhs);
+                let dst = self.alloc_i();
+                let inst = match op {
+                    BinOp::Add => Op::AddU64 { dst, a, b },
+                    BinOp::Sub => Op::SubU64 { dst, a, b },
+                    BinOp::Mul => Op::MulU64 { dst, a, b },
+                    BinOp::Div => Op::DivU64 { dst, a, b },
+                    BinOp::Rem => Op::RemU64 { dst, a, b },
+                    BinOp::Pow => Op::PowU64 { dst, a, b },
+                    BinOp::BitAnd => Op::BitAndI { dst, a, b },
+                    BinOp::BitOr => Op::BitOrI { dst, a, b },
+                    BinOp::BitXor => Op::BitXorI { dst, a, b },
+                    _ => return self.emit_fallback_expr_i(expr),
+                };
+                self.emit(inst, span);
+                dst
+            }
+            ExprKind::Binary(op, lhs, rhs)
+                if expr.ty == Ty::U64
+                    && lhs.ty == Ty::U64
+                    && matches!(op, BinOp::Shl | BinOp::Shr) =>
+            {
+                let a = self.compile_expr_i(lhs);
+                let b = self.compile_expr_i(rhs);
+                let dst = self.alloc_i();
+                let inst = match op {
+                    BinOp::Shl => Op::ShlU64 { dst, a, b },
+                    BinOp::Shr => Op::ShrU64 { dst, a, b },
+                    _ => unreachable!(),
+                };
+                self.emit(inst, span);
+                dst
+            }
             ExprKind::Binary(op, lhs, rhs)
                 if matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
                     && matches!(lhs.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
@@ -3620,8 +3939,24 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Cmp(op, lhs, rhs)
+                if lhs.ty == Ty::U64
+                    && rhs.ty == Ty::U64
+                    && matches!(
+                        op,
+                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
+                    ) =>
+            {
+                let a = self.compile_expr_i(lhs);
+                let b = self.compile_expr_i(rhs);
+                let dst = self.alloc_i();
+                self.emit(Op::CmpU64 { dst, a, b, op: *op }, span);
+                dst
+            }
+            ExprKind::Cmp(op, lhs, rhs)
                 if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
                     && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
+                    && lhs.ty != Ty::U64
+                    && rhs.ty != Ty::U64
                     && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
@@ -3635,8 +3970,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Cmp(op, lhs, rhs)
-                if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some()
-                    && ScalarKind::of_opt_ty(&rhs.ty, self.program).is_some()
+                if matches!(
+                    ScalarKind::of_opt_ty(&lhs.ty, self.program),
+                    Some(k) if k != ScalarKind::U64
+                )
+                    && matches!(
+                        ScalarKind::of_opt_ty(&rhs.ty, self.program),
+                        Some(k) if k != ScalarKind::U64
+                    )
                     && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
@@ -3681,8 +4022,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 dst
             }
-            ExprKind::Cast(Cast::Ord | Cast::Trust | Cast::Raw | Cast::CharToInt, inner) => {
-                self.compile_expr_i(inner)
+            ExprKind::Cast(
+                Cast::Ord | Cast::Trust | Cast::Raw | Cast::CharToInt | Cast::IntToU64,
+                inner,
+            ) => self.compile_expr_i(inner),
+            ExprKind::Cast(Cast::U64ToInt, inner) => {
+                let src = self.compile_expr_i(inner);
+                let dst = self.alloc_i();
+                self.emit(Op::U64ToInt { dst, src }, span);
+                dst
             }
             ExprKind::Cast(Cast::Label(d), inner) => {
                 let a = self.compile_expr_i(inner);
@@ -4718,7 +5066,41 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     _ => false,
                 }
             }
-            _ => false,
+            _ => match op {
+                Mutation::Pop if args.is_empty() => {
+                    let saved_ops = self.ops.len();
+                    let saved_spans = self.spans.len();
+                    let saved_places = self.places.len();
+                    let Some(path) = self.compile_place_path(place) else {
+                        self.ops.truncate(saved_ops);
+                        self.spans.truncate(saved_spans);
+                        self.places.truncate(saved_places);
+                        return false;
+                    };
+                    self.emit(Op::ListPopDiscardPlace { path }, span);
+                    true
+                }
+                Mutation::Push if args.len() == 1 => {
+                    let saved_ops = self.ops.len();
+                    let saved_spans = self.spans.len();
+                    let saved_places = self.places.len();
+                    let Some(path) = self.compile_place_path(place) else {
+                        self.ops.truncate(saved_ops);
+                        self.spans.truncate(saved_spans);
+                        self.places.truncate(saved_places);
+                        return false;
+                    };
+                    if let Some(kind) = ScalarKind::of_ty(&args[0].ty, self.program) {
+                        let val_i = self.compile_expr_i(&args[0]);
+                        self.emit(Op::ListPushPlaceI { path, val_i, kind }, span);
+                    } else {
+                        let val_v = self.compile_expr_v(&args[0]);
+                        self.emit(Op::ListPushPlaceV { path, val_v }, span);
+                    }
+                    true
+                }
+                _ => false,
+            },
         }
     }
 
@@ -8178,6 +8560,284 @@ impl<'p, 'io> Interp<'p, 'io> {
                         _ => 0,
                     };
                 }
+                Op::AddU64 { dst, a, b } => {
+                    regs_i[dst as usize] =
+                        (regs_i[a as usize] as u64).wrapping_add(regs_i[b as usize] as u64) as i64;
+                }
+                Op::SubU64 { dst, a, b } => {
+                    regs_i[dst as usize] =
+                        (regs_i[a as usize] as u64).wrapping_sub(regs_i[b as usize] as u64) as i64;
+                }
+                Op::MulU64 { dst, a, b } => {
+                    regs_i[dst as usize] =
+                        (regs_i[a as usize] as u64).wrapping_mul(regs_i[b as usize] as u64) as i64;
+                }
+                Op::DivU64 { dst, a, b } => {
+                    let av = regs_i[a as usize] as u64;
+                    let bv = regs_i[b as usize] as u64;
+                    if bv == 0 {
+                        return trap(spans[cur_pc], format!("division by zero: `{av} / 0`"));
+                    }
+                    regs_i[dst as usize] = (av / bv) as i64;
+                }
+                Op::RemU64 { dst, a, b } => {
+                    let av = regs_i[a as usize] as u64;
+                    let bv = regs_i[b as usize] as u64;
+                    if bv == 0 {
+                        return trap(spans[cur_pc], format!("division by zero: `{av} % 0`"));
+                    }
+                    regs_i[dst as usize] = (av % bv) as i64;
+                }
+                Op::PowU64 { dst, a, b } => {
+                    let mut base = regs_i[a as usize] as u64;
+                    let mut exp = regs_i[b as usize] as u64;
+                    let mut result = 1u64;
+                    while exp > 0 {
+                        if exp & 1 == 1 {
+                            result = result.wrapping_mul(base);
+                        }
+                        base = base.wrapping_mul(base);
+                        exp >>= 1;
+                    }
+                    regs_i[dst as usize] = result as i64;
+                }
+                Op::ShlU64 { dst, a, b } => {
+                    let av = regs_i[a as usize] as u64;
+                    let bv = regs_i[b as usize];
+                    if !(0..64).contains(&bv) {
+                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
+                    }
+                    regs_i[dst as usize] = (av << bv) as i64;
+                }
+                Op::ShrU64 { dst, a, b } => {
+                    let av = regs_i[a as usize] as u64;
+                    let bv = regs_i[b as usize];
+                    if !(0..64).contains(&bv) {
+                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
+                    }
+                    regs_i[dst as usize] = (av >> bv) as i64;
+                }
+                Op::NegU64 { dst, a } => {
+                    regs_i[dst as usize] = (regs_i[a as usize] as u64).wrapping_neg() as i64;
+                }
+                Op::BitNotI { dst, a } => {
+                    regs_i[dst as usize] = !regs_i[a as usize];
+                }
+                Op::CmpU64 { dst, a, b, op } => {
+                    let av = regs_i[a as usize] as u64;
+                    let bv = regs_i[b as usize] as u64;
+                    let res = match op {
+                        CmpOp::Eq => av == bv,
+                        CmpOp::Ne => av != bv,
+                        CmpOp::Lt => av < bv,
+                        CmpOp::Le => av <= bv,
+                        CmpOp::Gt => av > bv,
+                        CmpOp::Ge => av >= bv,
+                        _ => false,
+                    };
+                    regs_i[dst as usize] = i64::from(res);
+                }
+                Op::U64ToInt { dst, src } => {
+                    let v = regs_i[src as usize] as u64;
+                    match i64::try_from(v) {
+                        Ok(iv) => regs_i[dst as usize] = iv,
+                        Err(_) => {
+                            return trap(spans[cur_pc], format!("{v} does not fit in an `Int`"));
+                        }
+                    }
+                }
+                Op::StorePlaceI { path, r_val, kind } => {
+                    let pp = &chunk.places[path as usize];
+                    let raw = regs_i[r_val as usize];
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
+                    let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                    store_place_leaf_scalar(container, last, raw, kind, regs_i, spans[cur_pc])?;
+                }
+                Op::StorePlaceOptI { path, r_val, r_some, kind } => {
+                    let pp = &chunk.places[path as usize];
+                    let raw = regs_i[r_val as usize];
+                    let some = regs_i[r_some as usize];
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
+                    let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                    store_place_leaf_opt_scalar(
+                        container,
+                        last,
+                        raw,
+                        some,
+                        kind,
+                        regs_i,
+                        spans[cur_pc],
+                    )?;
+                }
+                Op::StorePlaceV { path, r_val } => {
+                    let pp = &chunk.places[path as usize];
+                    let val = regs_v[r_val as usize].clone();
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
+                    let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                    store_place_leaf_val(container, last, val, regs_i, spans[cur_pc])?;
+                }
+                Op::AssignPlaceI { path, r_rhs, op, kind } => {
+                    let pp = &chunk.places[path as usize];
+                    let rhs = regs_i[r_rhs as usize];
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
+                    let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                    assign_place_leaf_scalar(
+                        container,
+                        last,
+                        rhs,
+                        op,
+                        kind,
+                        regs_i,
+                        spans[cur_pc],
+                    )?;
+                }
+                Op::ListPopDiscardPlace { path } => {
+                    let pp = &chunk.places[path as usize];
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                    match target {
+                        Value::List(items) => {
+                            Rc::make_mut(items).pop();
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    }
+                }
+                Op::ListPushPlaceI { path, val_i, kind } => {
+                    let pp = &chunk.places[path as usize];
+                    let val = kind.box_val(regs_i[val_i as usize]);
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                    match target {
+                        Value::List(items) => {
+                            Rc::make_mut(items).push(val);
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    }
+                }
+                Op::ListPushPlaceV { path, val_v } => {
+                    let pp = &chunk.places[path as usize];
+                    let val = regs_v[val_v as usize].clone();
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                    match target {
+                        Value::List(items) => {
+                            Rc::make_mut(items).push(val);
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    }
+                }
+                Op::SortPlace { path, desc_r } => {
+                    let pp = &chunk.places[path as usize];
+                    let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
+                    let root = match pp.root {
+                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
+                    };
+                    let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                    match target {
+                        Value::List(items) => {
+                            let v = Rc::make_mut(items);
+                            if desc {
+                                v.sort_by(|a, b| b.cmp(a));
+                            } else {
+                                v.sort();
+                            }
+                        }
+                        Value::Str(bytes) => {
+                            let v = Rc::make_mut(bytes);
+                            if desc {
+                                v.sort_by(|a, b| b.cmp(a));
+                            } else {
+                                v.sort();
+                            }
+                        }
+                        Value::Array(arr) => {
+                            let a = Rc::make_mut(arr);
+                            match &mut a.data {
+                                ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
+                                    if desc {
+                                        v.sort_by(|x, y| y.cmp(x));
+                                    } else {
+                                        v.sort();
+                                    }
+                                }
+                                ArrayData::OptInt(v) => {
+                                    if desc {
+                                        v.sort_by(|x, y| y.cmp(x));
+                                    } else {
+                                        v.sort();
+                                    }
+                                }
+                                ArrayData::Bool(v) => {
+                                    if desc {
+                                        v.sort_by(|x, y| y.cmp(x));
+                                    } else {
+                                        v.sort();
+                                    }
+                                }
+                                ArrayData::Char(v) => {
+                                    if desc {
+                                        v.sort_by(|x, y| y.cmp(x));
+                                    } else {
+                                        v.sort();
+                                    }
+                                }
+                                ArrayData::Values(v) => {
+                                    if desc {
+                                        v.sort_by(|x, y| y.cmp(x));
+                                    } else {
+                                        v.sort();
+                                    }
+                                }
+                                ArrayData::Float(v) => {
+                                    if desc {
+                                        v.sort_by(|x, y| y.total_cmp(x));
+                                    } else {
+                                        v.sort_by(|x, y| x.total_cmp(y));
+                                    }
+                                }
+                                ArrayData::SmallIntTuple { .. } => {
+                                    let mut boxed: Vec<Value> =
+                                        (0..a.len()).map(|i| a.get_unchecked_val(i)).collect();
+                                    if desc {
+                                        boxed.sort_by(|x, y| y.cmp(x));
+                                    } else {
+                                        boxed.sort();
+                                    }
+                                    for (i, val) in boxed.into_iter().enumerate() {
+                                        a.set(i, val);
+                                    }
+                                }
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: cannot sort this value"),
+                    }
+                }
                 Op::ClearV { reg } => {
                     regs_v[reg as usize] = Value::Unit;
                 }
@@ -8229,6 +8889,428 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
             }
         }
+    }
+}
+
+fn array_flat_index(arr: &Array, step: PlaceStep, regs_i: &[i64], span: Span) -> Res<usize> {
+    match step {
+        PlaceStep::Index1(r_i) => {
+            let idx = regs_i[r_i as usize];
+            let len = arr.dims[0];
+            if idx < 0 || idx >= len {
+                return trap(
+                    span,
+                    format!("index {idx} is outside an array dimension of length {len}"),
+                );
+            }
+            Ok(idx as usize)
+        }
+        PlaceStep::Index2(r_i, r_j) => {
+            let i = regs_i[r_i as usize];
+            let j = regs_i[r_j as usize];
+            let d0 = arr.dims[0];
+            let d1 = arr.dims[1];
+            if i < 0 || i >= d0 {
+                return trap(
+                    span,
+                    format!("index {i} is outside an array dimension of length {d0}"),
+                );
+            }
+            if j < 0 || j >= d1 {
+                return trap(
+                    span,
+                    format!("index {j} is outside an array dimension of length {d1}"),
+                );
+            }
+            Ok((i * d1 + j) as usize)
+        }
+        PlaceStep::Field(_) => trap(span, "internal: expected index step"),
+    }
+}
+
+fn walk_place_mut<'a>(
+    mut cur: &'a mut Value,
+    steps: &[PlaceStep],
+    regs_i: &[i64],
+    span: Span,
+) -> Res<&'a mut Value> {
+    for &step in steps {
+        match step {
+            PlaceStep::Field(f) => match cur {
+                Value::Tuple(TupleVal::Boxed(fs)) => {
+                    cur = &mut Rc::make_mut(fs)[f as usize];
+                }
+                _ => return trap(span, "internal: expected tuple"),
+            },
+            PlaceStep::Index1(r_i) => match cur {
+                Value::List(items) => {
+                    let idx = regs_i[r_i as usize];
+                    let len = items.len() as i64;
+                    if idx < 0 || idx >= len {
+                        return trap(span, format!("index {idx} is outside a list of length {len}"));
+                    }
+                    cur = &mut Rc::make_mut(items)[idx as usize];
+                }
+                Value::Array(arr) => {
+                    let flat = array_flat_index(arr, step, regs_i, span)?;
+                    let a = Rc::make_mut(arr);
+                    match &mut a.data {
+                        ArrayData::Values(vs) => cur = &mut vs[flat],
+                        _ => return trap(span, "internal: expected boxed array element"),
+                    }
+                }
+                _ => return trap(span, "internal: expected array or list"),
+            },
+            PlaceStep::Index2(..) => match cur {
+                Value::Array(arr) => {
+                    let flat = array_flat_index(arr, step, regs_i, span)?;
+                    let a = Rc::make_mut(arr);
+                    match &mut a.data {
+                        ArrayData::Values(vs) => cur = &mut vs[flat],
+                        _ => return trap(span, "internal: expected boxed array element"),
+                    }
+                }
+                _ => return trap(span, "internal: expected array"),
+            },
+        }
+    }
+    Ok(cur)
+}
+
+fn store_place_leaf_scalar(
+    container: &mut Value,
+    last: PlaceStep,
+    raw: i64,
+    kind: ScalarKind,
+    regs_i: &[i64],
+    span: Span,
+) -> Res<()> {
+    match last {
+        PlaceStep::Field(f) => match container {
+            Value::Tuple(TupleVal::Boxed(fs)) => {
+                Rc::make_mut(fs)[f as usize] = kind.box_val(raw);
+                Ok(())
+            }
+            Value::Tuple(TupleVal::OneInt(x)) if f == 0 => {
+                *x = raw;
+                Ok(())
+            }
+            _ => trap(span, "internal: expected tuple"),
+        },
+        PlaceStep::Index1(r_i) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                let a = Rc::make_mut(arr);
+                match &mut a.data {
+                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v[flat] = raw,
+                    ArrayData::Bool(v) => v[flat] = u8::from(raw != 0),
+                    ArrayData::Char(v) => v[flat] = raw as u8,
+                    ArrayData::Values(v) => v[flat] = kind.box_val(raw),
+                    _ => a.set(flat, kind.box_val(raw)),
+                }
+                Ok(())
+            }
+            Value::List(items) => {
+                let idx = regs_i[r_i as usize];
+                let len = items.len() as i64;
+                if idx < 0 || idx >= len {
+                    return trap(span, format!("index {idx} is outside a list of length {len}"));
+                }
+                Rc::make_mut(items)[idx as usize] = kind.box_val(raw);
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array or list"),
+        },
+        PlaceStep::Index2(..) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                let a = Rc::make_mut(arr);
+                match &mut a.data {
+                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v[flat] = raw,
+                    ArrayData::Bool(v) => v[flat] = u8::from(raw != 0),
+                    ArrayData::Char(v) => v[flat] = raw as u8,
+                    ArrayData::Values(v) => v[flat] = kind.box_val(raw),
+                    _ => a.set(flat, kind.box_val(raw)),
+                }
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array"),
+        },
+    }
+}
+
+fn store_place_leaf_opt_scalar(
+    container: &mut Value,
+    last: PlaceStep,
+    raw: i64,
+    some: i64,
+    kind: ScalarKind,
+    regs_i: &[i64],
+    span: Span,
+) -> Res<()> {
+    match last {
+        PlaceStep::Field(f) => match container {
+            Value::Tuple(TupleVal::Boxed(fs)) => {
+                Rc::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
+                Ok(())
+            }
+            _ => trap(span, "internal: expected tuple"),
+        },
+        PlaceStep::Index1(r_i) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                let a = Rc::make_mut(arr);
+                match &mut a.data {
+                    ArrayData::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
+                    ArrayData::Values(v) => v[flat] = kind.box_opt(raw, some),
+                    _ => a.set(flat, kind.box_opt(raw, some)),
+                }
+                Ok(())
+            }
+            Value::List(items) => {
+                let idx = regs_i[r_i as usize];
+                let len = items.len() as i64;
+                if idx < 0 || idx >= len {
+                    return trap(span, format!("index {idx} is outside a list of length {len}"));
+                }
+                Rc::make_mut(items)[idx as usize] = kind.box_opt(raw, some);
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array or list"),
+        },
+        PlaceStep::Index2(..) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                let a = Rc::make_mut(arr);
+                match &mut a.data {
+                    ArrayData::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
+                    ArrayData::Values(v) => v[flat] = kind.box_opt(raw, some),
+                    _ => a.set(flat, kind.box_opt(raw, some)),
+                }
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array"),
+        },
+    }
+}
+
+fn store_place_leaf_val(
+    container: &mut Value,
+    last: PlaceStep,
+    val: Value,
+    regs_i: &[i64],
+    span: Span,
+) -> Res<()> {
+    match last {
+        PlaceStep::Field(f) => match container {
+            Value::Tuple(TupleVal::Boxed(fs)) => {
+                Rc::make_mut(fs)[f as usize] = val;
+                Ok(())
+            }
+            _ => trap(span, "internal: expected tuple"),
+        },
+        PlaceStep::Index1(r_i) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                Rc::make_mut(arr).set(flat, val);
+                Ok(())
+            }
+            Value::List(items) => {
+                let idx = regs_i[r_i as usize];
+                let len = items.len() as i64;
+                if idx < 0 || idx >= len {
+                    return trap(span, format!("index {idx} is outside a list of length {len}"));
+                }
+                Rc::make_mut(items)[idx as usize] = val;
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array or list"),
+        },
+        PlaceStep::Index2(..) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                Rc::make_mut(arr).set(flat, val);
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array"),
+        },
+    }
+}
+
+fn apply_scalar_assign_op(
+    cur: i64,
+    rhs: i64,
+    op: AssignOp,
+    kind: ScalarKind,
+    span: Span,
+) -> Res<i64> {
+    if kind == ScalarKind::U64 {
+        let a = cur as u64;
+        let b = rhs as u64;
+        let out = match op {
+            AssignOp::Binary(BinOp::Add) => a.wrapping_add(b),
+            AssignOp::Binary(BinOp::Sub) => a.wrapping_sub(b),
+            AssignOp::Binary(BinOp::Mul) => a.wrapping_mul(b),
+            AssignOp::Binary(BinOp::Div) => {
+                if b == 0 {
+                    return trap(span, format!("division by zero: `{a} / 0`"));
+                }
+                a / b
+            }
+            AssignOp::Binary(BinOp::Rem) => {
+                if b == 0 {
+                    return trap(span, format!("division by zero: `{a} % 0`"));
+                }
+                a % b
+            }
+            AssignOp::Binary(BinOp::BitAnd) => a & b,
+            AssignOp::Binary(BinOp::BitOr) => a | b,
+            AssignOp::Binary(BinOp::BitXor) => a ^ b,
+            AssignOp::Binary(BinOp::Shl) => {
+                if !(0..64).contains(&rhs) {
+                    return trap(span, format!("a shift by {rhs} is outside 0..64"));
+                }
+                a << rhs
+            }
+            AssignOp::Binary(BinOp::Shr) => {
+                if !(0..64).contains(&rhs) {
+                    return trap(span, format!("a shift by {rhs} is outside 0..64"));
+                }
+                a >> rhs
+            }
+            AssignOp::Min => a.min(b),
+            AssignOp::Max => a.max(b),
+            _ => b,
+        };
+        return Ok(out as i64);
+    }
+    let out = match op {
+        AssignOp::Binary(BinOp::Add) => match cur.checked_add(rhs) {
+            Some(v) => v,
+            None => return trap(span, format!("integer overflow: `{cur} + {rhs}` does not fit in an `Int` (64 bits)")),
+        },
+        AssignOp::Binary(BinOp::Sub) => match cur.checked_sub(rhs) {
+            Some(v) => v,
+            None => return trap(span, format!("integer overflow: `{cur} - {rhs}` does not fit in an `Int` (64 bits)")),
+        },
+        AssignOp::Binary(BinOp::Mul) => match cur.checked_mul(rhs) {
+            Some(v) => v,
+            None => return trap(span, format!("integer overflow: `{cur} * {rhs}` does not fit in an `Int` (64 bits)")),
+        },
+        AssignOp::Binary(BinOp::Div) => {
+            if rhs == 0 {
+                return trap(span, format!("division by zero: `{cur} / 0`"));
+            }
+            match cur.checked_div_euclid(rhs) {
+                Some(v) => v,
+                None => return trap(span, format!("integer overflow: `{cur} / {rhs}` does not fit in an `Int` (64 bits)")),
+            }
+        }
+        AssignOp::Binary(BinOp::Rem) => {
+            if rhs == 0 {
+                return trap(span, format!("division by zero: `{cur} % 0`"));
+            }
+            match cur.checked_rem_euclid(rhs) {
+                Some(v) => v,
+                None => return trap(span, format!("integer overflow: `{cur} % {rhs}` does not fit in an `Int` (64 bits)")),
+            }
+        }
+        AssignOp::Binary(BinOp::BitAnd) => cur & rhs,
+        AssignOp::Binary(BinOp::BitOr) => cur | rhs,
+        AssignOp::Binary(BinOp::BitXor) => cur ^ rhs,
+        AssignOp::Binary(BinOp::Shl) => {
+            if !(0..64).contains(&rhs) {
+                return trap(span, format!("a shift by {rhs} is outside 0..64"));
+            }
+            cur.wrapping_shl(rhs as u32)
+        }
+        AssignOp::Binary(BinOp::Shr) => {
+            if !(0..64).contains(&rhs) {
+                return trap(span, format!("a shift by {rhs} is outside 0..64"));
+            }
+            cur.wrapping_shr(rhs as u32)
+        }
+        AssignOp::Min => cur.min(rhs),
+        AssignOp::Max => cur.max(rhs),
+        _ => rhs,
+    };
+    Ok(out)
+}
+
+fn assign_place_leaf_scalar(
+    container: &mut Value,
+    last: PlaceStep,
+    rhs: i64,
+    op: AssignOp,
+    kind: ScalarKind,
+    regs_i: &[i64],
+    span: Span,
+) -> Res<()> {
+    match last {
+        PlaceStep::Field(f) => match container {
+            Value::Tuple(TupleVal::Boxed(fs)) => {
+                let slice = Rc::make_mut(fs);
+                let cur = ScalarKind::unbox_val(&slice[f as usize]);
+                let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
+                slice[f as usize] = kind.box_val(next);
+                Ok(())
+            }
+            Value::Tuple(TupleVal::OneInt(x)) if f == 0 => {
+                *x = apply_scalar_assign_op(*x, rhs, op, kind, span)?;
+                Ok(())
+            }
+            _ => trap(span, "internal: expected tuple"),
+        },
+        PlaceStep::Index1(r_i) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                let a = Rc::make_mut(arr);
+                match &mut a.data {
+                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
+                        v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
+                    }
+                    ArrayData::Values(v) => {
+                        let cur = ScalarKind::unbox_val(&v[flat]);
+                        let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
+                        v[flat] = kind.box_val(next);
+                    }
+                    _ => return trap(span, "internal: unsupported array assign"),
+                }
+                Ok(())
+            }
+            Value::List(items) => {
+                let idx = regs_i[r_i as usize];
+                let len = items.len() as i64;
+                if idx < 0 || idx >= len {
+                    return trap(span, format!("index {idx} is outside a list of length {len}"));
+                }
+                let slice = Rc::make_mut(items);
+                let cur = ScalarKind::unbox_val(&slice[idx as usize]);
+                let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
+                slice[idx as usize] = kind.box_val(next);
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array or list"),
+        },
+        PlaceStep::Index2(..) => match container {
+            Value::Array(arr) => {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                let a = Rc::make_mut(arr);
+                match &mut a.data {
+                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
+                        v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
+                    }
+                    ArrayData::Values(v) => {
+                        let cur = ScalarKind::unbox_val(&v[flat]);
+                        let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
+                        v[flat] = kind.box_val(next);
+                    }
+                    _ => return trap(span, "internal: unsupported array assign"),
+                }
+                Ok(())
+            }
+            _ => trap(span, "internal: expected array"),
+        },
     }
 }
 

@@ -810,3 +810,35 @@ print(r.len)
     let msg = trap.expect("expected wide range span overflow trap");
     assert!(msg.contains("integer overflow: range"), "got: {msg}");
 }
+
+#[test]
+fn vm_u64_ops_nested_place_path_and_sort() {
+    let src = "\
+struct Node(cnt: Int, kid: [0..2]?Int)
+var nodes = [Node(1, [0..2] _ => none), Node(2, [0..2] _ => none)]
+nodes[0].kid[1] = 1
+nodes[0].cnt += 5
+var buckets: [0..2]List<Int> = []
+buckets[1].push(3)
+buckets[1].push(1)
+buckets[1].push(4)
+buckets[1].sort(desc: true)
+buckets[1].pop()
+var u: U64 = U64(5)
+u = u * U64(7) + U64(1)
+u -= U64(6)
+let big = U64(-1)
+print(nodes[0].cnt, nodes[0].kid[1]!, buckets[1], Int(u), big > U64(10))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "6 1 4 3 30 YES\n");
+
+    let trap_src = "\
+let big = U64(-1)
+print(Int(big))
+";
+    let (_, trap) = outcome(trap_src, "");
+    let msg = trap.expect("expected U64ToInt overflow trap");
+    assert!(msg.contains("does not fit in an `Int`"), "got: {msg}");
+}
