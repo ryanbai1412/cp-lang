@@ -105,6 +105,13 @@ name.** `m[k]` traps when `k` is absent and `m.get(k)` is `?V`;
 `?Mod<P>`. A fallible twin is named `try_<verb>` unless a established
 name exists (`get`, `pop`, `first`, `find`).
 
+**Mutator vs copy twins.** Where mutation is the default, the mutator
+takes the bare verb and the copy takes the participle (`a.sort()` /
+`a.sorted()`, `reverse(mut a)` / `a.rev`). Where the pure copy is the
+established default verb (`scan`, `suffix_scan`), the zero-allocation
+mutating twin uses `_in_place` (`a.scan_in_place(f)`,
+`a.suffix_scan_in_place(f)`).
+
 **Collection verbs.** Every container speaks the same verbs:
 
 ```

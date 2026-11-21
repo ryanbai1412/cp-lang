@@ -10,15 +10,12 @@ fn place_weight(bins: Int, balls: Int) -> Z = if balls <= 0: Z(0) else: comb.cho
 
 @!multitest
 let n: Int = read()
-let a: [0..n]Z = read()
+let a: [0..n]Int = read()
 
-var pref: [0..=n]Z = 0
-var pref_i: [0..=n]Z = 0
-for i in 0..n:
-    pref[i + 1] = pref[i] + a[i]
-    pref_i[i + 1] = pref_i[i] + a[i] * i
+let pref = prefix_n([Z(x) for x in a])
+let pref_i = prefix_n([Z(a[i]) * i for i in 0..n])
 
-var ans = pref[n] * n
+var ans = pref.prefix(n) * n
 for l in 2..=n:
     let extras = n - l
     let k = extras / 2
@@ -28,9 +25,9 @@ for l in 2..=n:
         place_ways(l, k) + place_ways(l, k - 1) + (place_weight(l, k) + place_weight(l, k - 1)) * 2
     let edge_w = mid_w + place_ways(l, if extras % 2 == 1: k else: k - 1)
 
-    ans += edge_w * (pref[n - l + 1] + pref[n] - pref[l - 1])
+    ans += edge_w * (pref.prefix(n - l + 1) + pref.sum(l - 1..n))
     let cap = min(l - 2, n - l + 1)
-    let incr = pref_i[cap] + (pref[n - cap] - pref[cap]) * cap + (pref[n] - pref[n - cap]) * (n - 1) - (pref_i[n] - pref_i[n - cap])
+    let incr = pref_i.prefix(cap) + pref.sum(cap..n - cap) * cap + pref.sum(n - cap..n) * (n - 1) - pref_i.sum(n - cap..n)
     ans += mid_w * incr
 
 print(ans)

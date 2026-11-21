@@ -1,8 +1,9 @@
+use std.seq.{argmax}
+
 @!multitest
 let (n0, q): (Int, Int) = read()
 let a: [0..n0]Int = read()
-let top = a.sorted(desc: true)[..min(n0, 30)]
-let n = top.len
+let top = a.sorted(desc: true)[..min(n0, 30)].to_list()
 
 for _ in 0..q:
     var buf = top
@@ -14,7 +15,7 @@ for _ in 0..q:
         if cnt > want: break
         if cnt < want:
             let mask = (1 << b) - 1
-            let best_i = (0..n).max(by: i => buf[i] & mask)!
+            let best_i = buf.argmax(by: x => x & mask)!
             let add = (1 << b) - (buf[best_i] & mask)
             ans += add
             buf[best_i] += add

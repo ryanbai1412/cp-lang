@@ -1,9 +1,11 @@
 // Codeforces 2229 F: remove the maximum element, then binary search over all
 // subset sums with a bitmask DP verifying K disjoint blocks of sum >= thresh.
+use std.seq.{argmax}
+
 @!multitest
 let (n, k): (Int, Int) = read()
 let a_in: [0..n]Int = read()
-let best_i = (0..n).max(by: i => a_in[i])!
+let best_i = a_in.argmax()!
 let fin = a_in[best_i]
 let a = [a_in[i] for i in 0..n if i != best_i]
 let m = a.len

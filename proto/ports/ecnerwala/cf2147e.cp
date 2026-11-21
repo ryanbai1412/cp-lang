@@ -1,3 +1,5 @@
+use std.seq.{argmax}
+
 @!multitest
 let (n, q): (Int, Int) = read()
 var a: [0..n]Int = read()
@@ -11,7 +13,7 @@ var pops = [popcount(v)]
 for b in 0..31 if not v.bit(b):
     for x in (0..=b).rev if not v.bit(x):
         let mask = (1 << x) - 1
-        let idx = (0..n).min(by: i => (1 << x) - (a[i] & mask))!
+        let idx = a.argmax(by: y => y & mask)!
         let cheapest = (1 << x) - (a[idx] & mask)
         a[idx] += cheapest
         cur_cost += cheapest

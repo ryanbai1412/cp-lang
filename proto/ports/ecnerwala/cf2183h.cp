@@ -11,29 +11,28 @@ let n: 1..=200_000 = read()
 let k: 1..=n = read()
 var a: [0..n]-1_000_000_000..=1_000_000_000 = read()
 a.sort()
-var pref: [0..=n]Int = 0
-for i in 0..n: pref[i + 1] = pref[i] + a[i]
+let pref = prefix_n([Int(x) for x in a])
 var st = 0
-while st < n and pref[st] + a[st] * st <= 0: st += 1
+while st < n and pref.prefix(st) + a[st] * st <= 0: st += 1
 
 let w = I128(n + 1)
 fn solve(pen: I128) -> (val: I128, count: Int):
     fn cost(p: Int, q: Int) -> I128:
         let (j, i) = (if p == 0: 0 else: st + p - 1, st + q - 1)
-        (I128(pref[i] - pref[j]) * (i - j) + pen) * w + 1
+        (I128(pref.sum(j..i)) * (i - j) + pen) * w + 1
     let path = monge_path(n - st + 2, cost)
     var (at, groups) = (path.val.len - 1, 0)
     while at > 0:
         (at, groups) = (path.prev[at], groups + 1)
     (val: (path.val.last! - groups) / w, count: groups)
 
-let one_group = I128(pref[n]) * n
+let one_group = I128(pref.prefix(n)) * n
 let most_groups = n - st + 1
 if k == 1:
     print(one_group)
 elif k >= most_groups:
     let rest = n - k + 1
-    print(I128(pref[rest]) * rest + (pref[n] - pref[rest]))
+    print(I128(pref.prefix(rest)) * rest + pref.sum(rest..n))
 else:
-    let fewest = I128(pref[st]) * st + (pref[n] - pref[st]) - one_group
+    let fewest = I128(pref.prefix(st)) * st + pref.sum(st..n) - one_group
     print(aliens(k, I128(0)..=1 - fewest, solve))
