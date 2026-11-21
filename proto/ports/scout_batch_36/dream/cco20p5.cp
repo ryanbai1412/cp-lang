@@ -59,7 +59,7 @@ var mir = RollbackFenwick<Coord, Max>()
 
 fn insert_pair(mut bit: RollbackFenwick<Coord, Max>, l: Coord, r: Coord, cur: ?Int) -> ?Int:
     var best = cur
-    if let hi = bit.prefix(l.r): best min= r.ord - hi
+    if let hi = bit.prefix(l): best min= r.ord - hi
     bit.update(r, l.ord)
     best
 

@@ -1,7 +1,7 @@
 # cco20p5
 
 Score: 3/5
-Dream: 3/5
+Dream: pending cold rescore (fixed `bit.prefix(l.r)` -> `bit.prefix(l)` on line 62; remaining errors are all reported gaps `TimeSegTree`, `RollbackFenwick`, `Max`, `HashMap.entry`)
 
 Baseline review, cold, on main 96359635. The header (lines 4-8) names the plan: an offline segment tree over time for disjoint pairs, and heaps for overlapping pairs. Both structures are hand-rolled with node arithmetic, a rollback Fenwick written as `i & -i` loops, and negated heap keys. No dream exists, so the score is capped at 3.
 
