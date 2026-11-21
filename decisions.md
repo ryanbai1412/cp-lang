@@ -1247,7 +1247,6 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   `let (s, k): ([domain Pos]Char, Int) = read()`, used to read no values; it is now a compile error. A
   `match` on an enum without fields needs an arm for every variant.
 
-<<<<<<< HEAD
 ## 22. Core syntax to 0.3 (2026-11-21)
 
 - **22.1 `where` is the 0.3 guard keyword alongside `if` for loops and `let` conditions.**
@@ -1374,3 +1373,16 @@ errors to explain what happened in one screen with values, call path, and test c
 normal execution. Reverse: remove `call_stack`/`case` from `Trap`, `call_frames`/`current_case` from
 `Interp`, and `Trap::to_diagnostic`.
 
+## 28. Core mechanisms for a library-only stdlib (0.3, §1)
+
+- **28.1 Reflection is a loop: `for f in fields(x)`.** The body runs once per field of a struct, record
+  or tuple, in declaration order, with `f` bound to that field at its own type; `fields(a, b)` walks
+  values of one type in step, binding a tuple. It is unrolled in lowering, so the interpreter and the
+  C++ see ordinary code and no new IR, and a generic body (`fn show_all<T>(x: T)`) is checked per
+  instantiation like any other generic body. It is the base the derives, variadic packs and
+  `print`/`read` move onto (`plan/DOMAINS.md` §1). Why a loop and not a macro or a `comptime` block:
+  it is the one construct a contestant already reads as "for each", it needs no new keyword, and it
+  keeps generated code visible to the trace and the formatter. `break`/`continue` are refused (`E0501`)
+  because an unrolled body has nowhere to jump to; `fields` is not reserved, so a user `fn fields`
+  wins. To reverse: delete the `fields_loop` paths in `cpl-check` and `cpl-ir` lowering; nothing else
+  depends on them yet.

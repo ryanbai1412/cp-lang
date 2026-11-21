@@ -501,6 +501,10 @@ impl<'a> Lowerer<'a> {
                 iter,
                 body,
             } => {
+                if let Some(values) = self.reflected_values(iter) {
+                    self.fields_loop(pat, values, body, out);
+                    return;
+                }
                 // Support compile-time unrolling of heterogeneous literal lists like
                 // `for (k, act) in [(0, AddSum), ..., (0, AssignSum)]:` where items have different struct types.
                 if let ast::ExprKind::List(items) = &iter.kind {
@@ -1610,6 +1614,74 @@ impl<'a> Lowerer<'a> {
             },
         };
         self.mk(kind, ty, span)
+    }
+
+    /// The values of `fields(a, b, ..)` in a `for` head (decision 28.1).
+    fn reflected_values<'e>(&self, iter: &'e ast::Expr) -> Option<&'e [ast::Arg]> {
+        let ast::ExprKind::Call { callee, args } = &iter.kind else {
+            return None;
+        };
+        let ast::ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        (name == "fields"
+            && self.lookup(name).is_none()
+            && self.get_sym(name).is_none()
+            && !args.is_empty()
+            && args.iter().all(|a| a.name.is_none()))
+        .then_some(args.as_slice())
+    }
+
+    /// `for f in fields(x):`, unrolled: the body once per field of `x`, in
+    /// declaration order, with `f` that field. With several values, `f` is
+    /// the tuple of their fields at that position.
+    fn fields_loop(&mut self, pat: &ast::Pattern, values: &[ast::Arg], body: &ast::Block, out: &mut Vec<Stmt>) {
+        let mut temps = Vec::new();
+        for a in values {
+            let v = self.expr(&a.value, None);
+            let ty = v.ty.clone();
+            let slot = self.temp(ty.clone());
+            out.push(Stmt::Let(slot, Some(v)));
+            temps.push((slot, ty, a.value.span));
+        }
+        let field_tys: Vec<Ty> = match &temps[0].1 {
+            Ty::Struct(sid) => self.structs[*sid].def.fields.iter().map(|(_, t)| t.clone()).collect(),
+            Ty::Tuple(items) => items.clone(),
+            Ty::Record(fields) => fields.iter().map(|(_, t)| t.clone()).collect(),
+            Ty::Error => return,
+            ty => {
+                let message = format!("`fields` walks the fields of a struct or a tuple, not of a `{}`", self.show(ty));
+                self.error(codes::TYPE_MISMATCH, temps[0].2, message);
+                return;
+            }
+        };
+        if let Some((_, ty, span)) = temps.iter().find(|(_, ty, _)| *ty != temps[0].1) {
+            let message = format!("`fields` walks values of one type together; this is a `{}`", self.show(ty));
+            self.error(codes::TYPE_MISMATCH, *span, message);
+            return;
+        }
+        for (i, fty) in field_tys.iter().enumerate() {
+            let mut items: Vec<Expr> = temps
+                .iter()
+                .map(|(slot, _, span)| {
+                    let base = self.local(*slot, *span);
+                    self.mk(ExprKind::Field(Box::new(base), i), fty.clone(), *span)
+                })
+                .collect();
+            let value = if items.len() == 1 {
+                items.pop().unwrap()
+            } else {
+                let ty = Ty::Tuple(vec![fty.clone(); items.len()]);
+                let span = temps[0].2;
+                self.mk(ExprKind::Tuple(items), ty, span)
+            };
+            self.cx.scopes.push(HashMap::new());
+            self.cx.local_syms.push(HashMap::new());
+            self.bind(pat, value, out);
+            out.extend(self.block(body, Tail::Discard).stmts);
+            self.cx.local_syms.pop();
+            self.cx.scopes.pop();
+        }
     }
 
     /// Binds the names in `pat` to `value`.

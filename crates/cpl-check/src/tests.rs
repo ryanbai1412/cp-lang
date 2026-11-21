@@ -1957,3 +1957,20 @@ fn an_unreadable_character_is_reported_where_it_is() {
     assert_eq!(diags[0].code.0, "E0004", "{diags:#?}");
     assert_eq!(diags[0].span, Span::new(4, 5));
 }
+
+#[test]
+fn fields_loops_check_each_field_and_refuse_what_has_none() {
+    let src = "struct P(x: Int, s: Str)\nlet p = P(1, \"a\")\nfor f in fields(p):\n    print(f + 1)\n";
+    let d = one(src);
+    assert_eq!(d.code.0, "E0309", "{d:#?}");
+    let d = one("for f in fields(3):\n    print(f)\n");
+    assert_eq!(
+        (d.code.0, d.message.as_str()),
+        ("E0302", "`fields` walks the fields of a struct or a tuple, not of a `Int`")
+    );
+    let d = one("for f in fields((1, 2)):\n    if f > 1:\n        break\n");
+    assert_eq!(d.code.0, "E0501");
+    let d = one("for (a, b) in fields((1, 2), (1, 2, 3)):\n    print(a)\n");
+    assert_eq!(d.code.0, "E0302");
+    assert!(codes("fn fields(x: Int) -> List<Int> = [x]\nfor f in fields(3):\n    print(f)\n").is_empty());
+}

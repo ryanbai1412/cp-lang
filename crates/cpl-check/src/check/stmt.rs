@@ -792,6 +792,11 @@ impl<'a> Checker<'a> {
             }
             StmtKind::For {
                 pat, iter, body, ..
+            } if self.reflected_values(iter).is_some() => {
+                self.fields_loop(pat, iter, body);
+            }
+            StmtKind::For {
+                pat, iter, body, ..
             } => {
                 let iter_ty = self.infer(iter);
                 let elem = self.element_ty(&iter_ty);
@@ -1296,4 +1301,146 @@ fn name_spans(pat: &Pattern, out: &mut Vec<Span>) {
         }
         _ => {}
     }
+}
+
+impl Checker<'_> {
+    /// The values of `fields(a, b, ..)` in a `for` head: the compile-time
+    /// loop over a struct's or a tuple's fields (decision 28.1).
+    pub(crate) fn reflected_values<'e>(&mut self, iter: &'e Expr) -> Option<&'e [cpl_syntax::ast::Arg]> {
+        let ExprKind::Call { callee, args } = &iter.kind else {
+            return None;
+        };
+        let ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        (name == "fields"
+            && self.local(name).is_none()
+            && self.env.global(name).is_none()
+            && !args.is_empty()
+            && args.iter().all(|a| a.name.is_none()))
+        .then_some(args.as_slice())
+    }
+
+    /// The fields of a value of type `ty`, by name, in declaration order;
+    /// `Ok(None)` when the type is not known until the code is instantiated.
+    pub(crate) fn reflect(&mut self, ty: &Ty) -> Result<Option<Vec<(String, Ty)>>, ()> {
+        match ty {
+            Ty::Tuple(items) => Ok(Some(
+                items
+                    .iter()
+                    .enumerate()
+                    .map(|(i, t)| (i.to_string(), t.clone()))
+                    .collect(),
+            )),
+            Ty::Record(fields) => Ok(Some(fields.clone())),
+            Ty::Named { name, args } => {
+                let Some(members) = self.members_of(name) else {
+                    return Ok(None);
+                };
+                if members.fields.is_empty() {
+                    return Err(());
+                }
+                let bindings = members.bindings(args);
+                let fields: Vec<_> = members
+                    .fields
+                    .iter()
+                    .map(|f| (f.name.clone(), f.ty.subst(&bindings)))
+                    .collect();
+                Ok(Some(
+                    fields
+                        .into_iter()
+                        .map(|(n, t)| (n, self.settle(&t)))
+                        .collect(),
+                ))
+            }
+            Ty::Param(_) | Ty::Unknown | Ty::Error => Ok(None),
+            ty if ty.is_vague() => Ok(None),
+            _ => Err(()),
+        }
+    }
+
+    /// `for f in fields(x):` is checked once per field, with `f` of that
+    /// field's type, as the back ends unroll it; inside a generic body the
+    /// field types are not known yet and `f` is checked once, untyped.
+    fn fields_loop(&mut self, pat: &Pattern, iter: &Expr, body: &cpl_syntax::ast::Block) {
+        let values = self.reflected_values(iter).unwrap_or_default();
+        let mut shapes = Vec::new();
+        let mut first: Option<Ty> = None;
+        for v in values {
+            let ty = self.infer(&v.value);
+            if let Some(first) = &first {
+                if !first.is_vague() && !ty.is_vague() && *first != ty {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        v.value.span,
+                        format!(
+                            "`fields` walks values of one type together; this is a `{ty}`, the first is a `{first}`"
+                        ),
+                    );
+                }
+            } else {
+                first = Some(ty.clone());
+            }
+            match self.reflect(&ty) {
+                Ok(fields) => shapes.push(fields),
+                Err(()) => {
+                    if let Some(d) = self.error(
+                        codes::TYPE_MISMATCH,
+                        v.value.span,
+                        format!("`fields` walks the fields of a struct or a tuple, not of a `{ty}`"),
+                    ) {
+                        d.help = Some("pass a struct or tuple value: `for f in fields(p):`".to_string());
+                    }
+                    shapes.push(None);
+                }
+            }
+        }
+        if let Some(stmt) = loop_exit(&body.stmts) {
+            self.error(
+                codes::UNSUPPORTED,
+                stmt,
+                "a `fields` loop runs its body once per field at compile time, so it has no `break` or `continue`".to_string(),
+            );
+        }
+        let elem = |i: Option<usize>, shapes: &[Option<Vec<(String, Ty)>>]| -> Ty {
+            let one = |s: &Option<Vec<(String, Ty)>>| match (i, s) {
+                (Some(i), Some(f)) => f.get(i).map(|(_, t)| t.clone()).unwrap_or(Ty::Unknown),
+                _ => Ty::Unknown,
+            };
+            if shapes.len() == 1 {
+                one(&shapes[0])
+            } else {
+                Ty::Tuple(shapes.iter().map(one).collect())
+            }
+        };
+        let count = shapes.first().and_then(|s| s.as_ref().map(Vec::len));
+        let passes: Vec<Option<usize>> = match count {
+            Some(n) => (0..n).map(Some).collect(),
+            None => vec![None],
+        };
+        for i in passes {
+            let ty = elem(i, &shapes);
+            self.push_scope();
+            self.bind(pat, &ty, false, "for");
+            self.block(body);
+            self.pop_scope();
+        }
+    }
+}
+
+/// The span of a `break` or `continue` that leaves this loop, outside any
+/// loop nested in it.
+fn loop_exit(stmts: &[Stmt]) -> Option<Span> {
+    stmts.iter().find_map(|s| match &s.kind {
+        StmtKind::Break(None) | StmtKind::Continue(None) => Some(s.span),
+        StmtKind::Expr(Expr {
+            kind: ExprKind::If { branches, otherwise },
+            ..
+        }) => branches
+            .iter()
+            .map(|(_, b)| b)
+            .chain(otherwise)
+            .find_map(|b| loop_exit(&b.stmts)),
+        _ => None,
+    })
 }

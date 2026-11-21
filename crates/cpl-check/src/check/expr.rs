@@ -1454,7 +1454,7 @@ pub(crate) struct Members {
 
 impl Members {
     /// What each type parameter is for a value of the type with `args`.
-    fn bindings(&self, args: &[Ty]) -> crate::ty::Bindings {
+    pub(crate) fn bindings(&self, args: &[Ty]) -> crate::ty::Bindings {
         if args.len() != self.generics.len() {
             return crate::ty::Bindings::new();
         }

@@ -117,6 +117,16 @@ enum Dir: N, E, S, W            // one-line plain enum (commas or `|`)
 - **Records (`type`)** are structural and support both field names (`p.x`) and positional indexing (`p.0`).
 - **Structs and enums** are nominal. Seven core traits derive automatically whenever all fields support them: `Index`, `Seq`, `Eq`, `Ord`, `Hash`, `Show`, and `Read`.
 - Automatic tagged-enum input with `@tags("...")` is specified but not yet implemented. Use explicit character matching as shown in [I/O & formatting](io-and-formatting.html).
+- **`for f in fields(x)`** runs its body once per field of a struct, record or tuple, in declaration order, with `f` that field; `for (a, b) in fields(x, y)` walks two values of one type in step. The loop is unrolled when the program is compiled, so each `f` has its own type, the body has no `break` or `continue`, and a generic fn can use it on whatever it is given:
+
+  ```cp CP Lang 0.3
+  fn same<T>(a: T, b: T) -> Int:
+      var n = 0
+      for (x, y) in fields(a, b):
+          if x == y:
+              n += 1
+      n
+  ```
 - Generic functions and types use angle brackets (`fn swap<T>(mut a: T, mut b: T)`), with explicit turbofish `f::<T>()` at call sites when type arguments cannot be inferred.
 
 ## Control flow, pattern matching, and functions
