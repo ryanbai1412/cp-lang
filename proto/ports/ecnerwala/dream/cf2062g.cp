@@ -15,7 +15,7 @@
 use std.flow.min_weight_matching
 use std.seq.inverse
 
-fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
+fn sort_perm<D>(var perm: [D]D) -> List<(D, D)>:
     var ops: List<(D, D)> = []
     while let r = D.first(x => perm[x] < x):
         let l = perm.cycle(from: r).filter(x => x < r).max()!
