@@ -229,6 +229,9 @@ if [ "$mode" = full ]; then
     cargo test -p cpl-verify --lib -- --exact fuzz::shrink::tests::shrinks_a_failing_program_to_a_few_lines
     cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
 
+    step "cargo test: every port compiled with every judge profile's flags"
+    cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
+
     step "cargo test: budget, then the front-end latency, each on its own"
     cargo test -p cpl-cli --test budget -- --test-threads=1
     cargo test -p cpl-lsp --test latency -- --exact front_end_check_is_under_50_ms

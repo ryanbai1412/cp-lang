@@ -56,7 +56,7 @@ print(dist[t] ?? -1)
 
 ## What `cpl build` emits
 
-`cpl build solve.cp -o solve.cpp` produces a single, self-contained, human-readable C++17 file designed to pass every online judge (Codeforces, AtCoder, DMOJ, Kattis, ICPC):
+`cpl build solve.cp -o solve.cpp` produces a single, self-contained, human-readable C++17 file for one judge's profile (see [Judge profiles](#judge-profiles)):
 
 - **Original `.cp` source included as a header comment** at the top of the `.cpp` file so judges and reviewers always see the clean source rather than opaque codegen.
 - **Tree-shaken standard and local libraries:** only the data structures and helpers reachable from your program are emitted; `@brute`, `@checker`, `@interactor`, `@gen`, `@test`, and `@law` blocks are stripped completely so submissions stay compact (well under 64 KB).
@@ -66,6 +66,32 @@ print(dist[t] ?? -1)
 - **Flat CSR graphs:** `Graph<V>` packs adjacency lists into two contiguous arrays (`head` + `edges`) rather than `vector<vector<...>>`, avoiding heap fragmentation and pointer chasing.
 - **Salted hash maps:** `HashMap` uses splitmix64 with a runtime-seeded salt to resist predictable collision patterns. For unique ordered keys, use `Set<T>`.
 - **Smart `@memo` lowering:** state spaces up to `2^24` entries lower to a flat contiguous table; larger spaces fall back automatically to a salted hash map.
+
+## Judge profiles
+
+`cpl build` writes the C++ for one judge, named by a profile: `generic` (the default), `codeforces`, `atcoder`, `cses`, `icpc` (DOMjudge's defaults), `kattis` and `dmoj`. A profile fixes the compiler and flags the judge builds with, its platform, the stack it gives the program and the longest source it accepts. `cpl judges` lists them, with where each fact comes from, and marks the one a build uses.
+
+The judge is chosen, first match wins:
+
+- `cpl build a.cp --judge atcoder`
+- a `// judge: atcoder` line in the file
+- `judge = "atcoder"` under `[judge]` in the nearest `cp.toml`
+
+A `[judge.<name>]` table in `cp.toml` changes a profile, or adds one that says what it `extends`:
+
+```toml
+[judge]
+judge = "school"
+
+[judge.school]
+extends = "icpc"
+stack_mb = 64              # or "unlimited"
+source_kb = 100
+flags = ["-std=c++17", "-O2"]
+int128 = false             # `I128` is then a build error naming the judge
+```
+
+What the profile changes in the file: the header names the judge and its command; deep recursion runs on a 256 MB stack of the program's own unless the judge's stack is at least that deep (Codeforces, DOMjudge); the source limit is the judge's, with a warning past three quarters of it and the source header left out (then the indentation halved) only when the file would not fit otherwise. `cpl build` prints the file's size as a share of that limit.
 
 ## Performance controls and escape hatches
 

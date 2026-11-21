@@ -44,7 +44,9 @@ commands:
                         `@checker`; exit status 0 accepts
   build <file> [-o out] check, then write one C++17 file to submit: next to
                         the source by default, to standard output with `-o -`;
-                        `--checked` also builds it with sanitizers to run here
+                        `--checked` also builds it with sanitizers to run here;
+                        `--judge <name>` writes it for that judge
+  judges [file]         list the judge profiles, marking the one a build uses
   fmt [path]...         format files in the one canonical style
   lint [path]...        warn about code that is legal but probably wrong or slow
   doc [path]...         build HTML documentation from `///` comments
@@ -187,11 +189,20 @@ pub fn exec<S: AsRef<str>>(
         }
         Some("build") => {
             let checked = rest.contains(&"--checked");
-            let rest: Vec<&str> = rest.iter().copied().filter(|arg| *arg != "--checked").collect();
+            let mut rest: Vec<&str> = rest.iter().copied().filter(|arg| *arg != "--checked").collect();
+            let judge = match rest.iter().position(|arg| *arg == "--judge") {
+                Some(at) if at + 1 < rest.len() => {
+                    let name = rest[at + 1];
+                    rest.drain(at..at + 2);
+                    Some(name)
+                }
+                Some(_) => return usage_error("`--judge` takes a judge's name: `cpl build a.cp --judge codeforces`".into()),
+                None => None,
+            };
             match rest.as_slice() {
-                [file] => build_file(file, None, checked, stdout, stderr),
+                [file] => build_file(file, None, judge, checked, stdout, stderr),
                 [file, "-o", out] | ["-o", out, file] => {
-                    build_file(file, Some(out), checked, stdout, stderr)
+                    build_file(file, Some(out), judge, checked, stdout, stderr)
                 }
                 _ => usage_error(
                     "`build` takes one file: `cpl build a.cp`, `cpl build a.cp -o a.cpp` or \
@@ -199,6 +210,11 @@ pub fn exec<S: AsRef<str>>(
                         .into(),
                 ),
             }
+        }
+        Some("judges") => match rest.as_slice() {
+            [] => list_judges(None, stdout, stderr),
+            [file] => list_judges(Some(file), stdout, stderr),
+            _ => usage_error("`judges` takes at most a file: `cpl judges` or `cpl judges a.cp`".into()),
         }
         Some("test") if should_run_unit_tests(&rest) => run_unit_tests(&rest, stdout, stderr),
         Some(command) if tool(command).is_some() => {
@@ -228,8 +244,11 @@ usage: cpl build <file.cp> [options]
 Checks the file, then writes one C++17 file to submit, next to the source.
 
 options:
-  -o <out>     write to <out> instead; `-o -` writes to standard output
-  --checked    also compile it with sanitizers into a program to run here
+  -o <out>          write to <out> instead; `-o -` writes to standard output
+  --judge <name>    for that judge; else the file's `// judge:` line, else
+                    `judge` under `[judge]` in the nearest cp.toml, else
+                    `generic`. `cpl judges` lists them
+  --checked         also compile it with sanitizers into a program to run here
 ";
 
 const JUDGE_USAGE: &str = "\
@@ -922,6 +941,7 @@ fn observe_file(
 fn build_file(
     path: &str,
     out: Option<&str>,
+    judge: Option<&str>,
     checked: bool,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
@@ -934,19 +954,29 @@ fn build_file(
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
+    let profile = match cpl_judge::resolve(std::path::Path::new(path), &compiled.text, judge) {
+        Ok(profile) => profile,
+        Err(error) => {
+            *stderr += &format!("cpl: {error}\n");
+            return EXIT_USAGE;
+        }
+    };
     let name = std::path::Path::new(path)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(path);
-    let cpp = match cpl_codegen::emit_within(&compiled.program, name, &compiled.text, MAX_CPP_BYTES) {
+    let limit = profile.source_limit;
+    let target = cpl_codegen::Target { stamp: Some(profile.stamp()), deep_stack: profile.deep_stack() };
+    let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, &compiled.text, limit, &target) {
         Ok(fitted) => {
             if !fitted.header {
                 // The source in the header is for the reader; a file the
                 // judge turns away helps nobody.
                 *stderr += &format!(
                     "cpl: with its source in the header the C++ for `{path}` would be {} bytes, over the \
-                     {MAX_CPP_BYTES}-byte limit judges accept; the header is left out{}\n",
+                     {limit}-byte limit of judge `{}`; the header is left out{}\n",
                     fitted.full,
+                    profile.name,
                     if fitted.narrow { " and the lines are indented half as far" } else { "" }
                 );
             }
@@ -954,11 +984,24 @@ fn build_file(
         }
         Err(bytes) => {
             *stderr += &format!(
-                "cpl: the C++ for `{path}` is {bytes} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n"
+                "cpl: the C++ for `{path}` is {bytes} bytes, over the {limit}-byte limit of judge `{}`\n",
+                profile.name
             );
             return EXIT_ERRORS;
         }
     };
+    if let Some(problem) = profile.unsupported(&cpp) {
+        *stderr += &format!("cpl: `{path}` can't be submitted as it is: {problem}\n");
+        return EXIT_ERRORS;
+    }
+    if cpp.len() > profile.warn_at() {
+        *stderr += &format!(
+            "cpl: warning: the C++ for `{path}` is {} bytes, {}% of the {limit}-byte limit of judge `{}`\n",
+            cpp.len(),
+            cpp.len() * 100 / limit,
+            profile.name
+        );
+    }
     if out == Some("-") {
         let _ = stdout.write_all(cpp.as_bytes());
         return 0;
@@ -969,7 +1012,14 @@ fn build_file(
     };
     match std::fs::write(&target, &cpp) {
         Ok(()) => {
-            let _ = writeln!(stdout, "wrote {} ({} bytes)", target.display(), cpp.len());
+            let _ = writeln!(
+                stdout,
+                "wrote {} ({} bytes, {}% of the limit of judge `{}`)",
+                target.display(),
+                cpp.len(),
+                (cpp.len() * 100).div_ceil(profile.source_limit),
+                profile.name
+            );
             if checked {
                 return build_checked(&target, stdout, stderr);
             }
@@ -980,6 +1030,45 @@ fn build_file(
             EXIT_USAGE
         }
     }
+}
+
+/// `cpl judges`: every judge profile, and with a file, the one its build is for.
+fn list_judges(file: Option<&str>, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let path = std::path::Path::new(file.unwrap_or("./a.cp"));
+    let source = match file {
+        Some(file) => match std::fs::read_to_string(file) {
+            Ok(text) => text,
+            Err(error) => {
+                *stderr += &format!("cpl: can't read `{file}`: {error}\n");
+                return EXIT_USAGE;
+            }
+        },
+        None => String::new(),
+    };
+    let chosen = match cpl_judge::resolve(path, &source, None) {
+        Ok(profile) => profile,
+        Err(error) => {
+            *stderr += &format!("cpl: {error}\n");
+            return EXIT_USAGE;
+        }
+    };
+    let config = cpl_judge::project_config(path).unwrap_or_default();
+    for name in config.names() {
+        let Some(profile) = config.profile(&name) else { continue };
+        let mark = if profile.name == chosen.name { "*" } else { " " };
+        let _ = writeln!(
+            stdout,
+            "{mark} {:<11}{}\n    {}\n    {}, {}, source up to {} KB\n    from: {}",
+            profile.name,
+            profile.title,
+            profile.command(),
+            if profile.os == cpl_judge::Os::Windows { "Windows" } else { "Linux" },
+            profile.stack_text(),
+            profile.source_limit / 1024,
+            profile.evidence
+        );
+    }
+    0
 }
 
 /// `cpl build --checked`: the C++ file built to run here, with the

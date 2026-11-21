@@ -1727,3 +1727,40 @@ against the runtime bound.** `let edges: [0..m](u: V, v: V, w: 0..=m) = read()` 
 in both interpreter (`R0001`) and C++ (`cpl::read_in(0, m)`), preserving `Int` arithmetic on `e.w`
 without duplicating the maximum constant. Reason: resolves `research/frictions/cf2222f.md`.
 Reverse: none needed; this is general range-type lowering.
+
+## 34. Judge profiles (§9, 0.2.2, 2026-11-21)
+
+- **34.1 A judge is a profile, in its own crate.** `crates/cpl-judge` holds the profile type, the
+  built-ins (`generic`, `codeforces`, `atcoder`, `cses`, `icpc`, `kattis`, `dmoj`) and their selection.
+  It depends on nothing, so the CLI, the wasm playground and the stress tools can share it; codegen takes
+  only a `cpl_codegen::Target` (a header stamp and whether the judge's stack is deep), so it knows no
+  judge by name. Reverse: fold the crate into `cpl-cli` and pass the limit alone.
+- **34.2 The flag beats the file, which beats the project, which beats `generic`.** `--judge`, then a
+  `// judge:` line (like `// limits:`), then `judge = "<name>"` under `[judge]` in the nearest `cp.toml`.
+  `[judge.<name>]` tables change a built-in's fields or add one with `extends`, so a course's judge needs
+  no code. Unknown names and keys are errors listing what is allowed. Reverse: drop a source from
+  `cpl_judge::resolve`.
+- **34.3 The default stays `generic`, the old behaviour.** `g++ -std=c++17 -O2`, an 8 MB stack and
+  64 KB: the floor most judges clear, so a file built with no profile is what 0.2.1 wrote plus one header
+  line. Reverse: change the `None` arm of `resolve`.
+- **34.4 A profile records the judge's real command and says where each fact comes from.** Flags are
+  copied from the judge's published command (AtCoder's library and link flags left out); a fact that could
+  not be read from a public source is marked unconfirmed in `evidence`, shown by `cpl judges` (the
+  Codeforces page sits behind a browser check). Reverse: none needed; correct a fact when a source says so.
+- **34.5 Deep recursion skips its own stack only when the judge's stack is known to be deep.** At least
+  256 MB or unlimited (`codeforces` links with a 256 MB stack, DOMjudge's runguard sets it unlimited); an
+  undocumented stack counts as 8 MB. The switch is harmless where it is not needed, so the error is on the
+  safe side. Reverse: `Profile::deep_stack` returning `false`.
+- **34.6 The source limit is the profile's, with a warning above 75%.** The 48 KB warning of goal 5 for a
+  64 KB judge, scaled. The size line names the judge and the share used. Reverse: `Profile::warn_at`.
+- **34.7 Locally, a judge's flags are used as far as the compiler here accepts them.** Each profile's
+  command is probed once (an empty program built with `-Werror`); a rejected flag is dropped or given the
+  older spelling of the same standard, and reported. A flag and its value (`-x c++`) and a
+  `--whole-archive` span are probed as one. A Windows profile builds with a MinGW cross compiler when one
+  is installed. This tests what the judge's flags mean for the generated code without the judge's exact
+  compiler version; containers with those versions remain open. Reverse: probe nothing and require every
+  flag.
+- **34.8 Every port under every profile's flags is a `--full` check.** 1,799 compiles take about two
+  and a half minutes on eight cores, too slow for `--fast`; `--fast` builds every port for every profile (size, stamp,
+  stack rule) and compiles and runs the deep-recursion program under each. Reverse: move the ignored test
+  into `--fast`.

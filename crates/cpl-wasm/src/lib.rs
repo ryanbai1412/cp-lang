@@ -34,8 +34,6 @@ pub const EXIT_ERRORS: u8 = 1;
 /// index out of range, input outside its declared range.
 pub const EXIT_FAILED: u8 = 3;
 
-/// The emitted C++ has to fit a judge's source limit.
-pub const MAX_CPP_BYTES: usize = 64 * 1024;
 
 /// Bytes of stack a program's calls may take in the browser, unless the
 /// caller of [`Playground::run_with_stack`] says otherwise. Only the bytes
@@ -203,15 +201,31 @@ impl Playground {
             }
         };
         let (mut code, mut stderr) = (0, compiled.stderr);
-        let cpp = match cpl_codegen::emit_within(&compiled.program, name, source, MAX_CPP_BYTES) {
+        // The browser has no `cp.toml`: the file's `// judge:` line or `generic`.
+        let profile = match cpl_judge::named_in(source) {
+            Some(judge) => cpl_judge::builtin(judge),
+            None => cpl_judge::builtin("generic"),
+        };
+        let Some(profile) = profile else {
+            stderr += &format!(
+                "cpl: the `// judge:` line names judge `{}`, which is not one of: {}\n",
+                cpl_judge::named_in(source).unwrap_or_default(),
+                cpl_judge::Config::default().names().join(", ")
+            );
+            return outcome(2, &compiled.diagnostics, source, stderr, [("cpp", Value::Null)]);
+        };
+        let limit = profile.source_limit;
+        let target = cpl_codegen::Target { stamp: Some(profile.stamp()), deep_stack: profile.deep_stack() };
+        let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, source, limit, &target) {
             Ok(fitted) => {
                 if !fitted.header {
                     // The source in the header is for the reader; a file
                     // the judge turns away helps nobody.
                     stderr += &format!(
                         "cpl: with its source in the header the C++ for `{name}` would be {} bytes, over the \
-                         {MAX_CPP_BYTES}-byte limit judges accept; the header is left out{}\n",
+                         {limit}-byte limit of judge `{}`; the header is left out{}\n",
                         fitted.full,
+                        profile.name,
                         if fitted.narrow { " and the lines are indented half as far" } else { "" }
                     );
                 }
@@ -219,12 +233,17 @@ impl Playground {
             }
             Err(bytes) => {
                 stderr += &format!(
-                    "cpl: the C++ for `{name}` is {bytes} bytes, over the {MAX_CPP_BYTES}-byte limit judges accept\n"
+                    "cpl: the C++ for `{name}` is {bytes} bytes, over the {limit}-byte limit of judge `{}`\n",
+                    profile.name
                 );
                 code = EXIT_ERRORS;
                 String::new()
             }
         };
+        if let Some(problem) = profile.unsupported(&cpp).filter(|_| code == 0) {
+            stderr += &format!("cpl: `{name}` can't be submitted as it is: {problem}\n");
+            code = EXIT_ERRORS;
+        }
         let cpp = if code == 0 { cpp.into() } else { Value::Null };
         outcome(code, &compiled.diagnostics, source, stderr, [("cpp", cpp)])
     }

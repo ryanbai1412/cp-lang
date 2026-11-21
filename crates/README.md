@@ -6,7 +6,8 @@ The front end and both back ends are built: `cpl check`, `cpl run`,
 interpreter and the C++ cannot disagree about what a program means
 without a test saying so. `cpl-verify`, the verification harness, is
 built too, and so is the tooling around the compiler: `cpl-fmt`,
-`cpl-lint`, `cpl-doc`, `cpl-stress` and `cpl-contest`. The
+`cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-contest` and `cpl-judge` (judge
+profiles: compiler, flags, stack and source limit). The
 split is a starting point so that work can go on in parallel without two
 people editing the same crate; change it when the code says it is wrong.
 

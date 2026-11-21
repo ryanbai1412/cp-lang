@@ -1,0 +1,6 @@
+[package]
+name = "cpl-judge"
+description = "Judge profiles: the compiler, flags, stack and limits a submission meets."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

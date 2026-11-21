@@ -17,6 +17,7 @@ cpl-diag.workspace = true
 cpl-doc.workspace = true
 cpl-fmt.workspace = true
 cpl-interp.workspace = true
+cpl-judge.workspace = true
 cpl-ir.workspace = true
 cpl-lint.workspace = true
 cpl-lsp.workspace = true

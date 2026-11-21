@@ -326,16 +326,34 @@ the C++ checks (codegen to report its checked indexes); lints from the friction
 detectors (`wa_trap` first); profile against `@cost` and the time limit.
 
 ## 9. Judges and submission (`plan/70`)
-**North star.** Submission is boring and always right: one self-contained file per judge
-profile (every major judge and ICPC-style local setups), compiled and run in
-CI against each judge's real compiler and flags, under 64 KB, identical
-behaviour everywhere, function-style and interactive judges included, and a
-submit command that checks samples, size and profile before sending.
-**Where we are.** One C++17 output; 64 KB check in the gate; no judge
-profiles.
-**Bar.** Profiles for Codeforces, AtCoder, CSES, ICPC-style; each tested
-with the target compiler flags.
-**Next.** Judge profiles (stack, compiler, I/O); profile tests.
+**North star.** What passed here passes on the judge, and the contestant
+never thinks about it. Each named judge (Codeforces, AtCoder, CSES, ICPC
+on DOMjudge, Kattis, DMOJ, USACO, IOI-style graders, a generic floor, or a
+project's own) is a profile fixing compiler, flags, platform, stack, widths,
+libraries and limits; function-style and interactive judges included. `cpl build` writes one deterministic, readable C++17
+file for it, within its source limit, free of UB, quick to compile; local
+runs (`run --release`, `test`, `stress`, `bench`) build with the same flags
+and stack; the recursion contract and the size report say what the judge
+will do before it does. Every port is compiled, run and size-checked under
+every profile on every gate, on the judge's own compiler version, and a
+submit command checks samples, size and profile before sending.
+**Where we are.** Seven built-in profiles (`crates/cpl-judge`), chosen by
+`--judge`, a `// judge:` line or `cp.toml`, which can also change or add
+profiles; `cpl judges` lists them with their sources (the Codeforces facts
+are unconfirmed). The profile sets the source limit (warning at 75%), the
+header stamp, `__int128` support and whether deep recursion needs its own
+256 MB stack. All 257 ports fit every profile (max 59.4 KB) and compile
+with every profile's flags (1,799 compiles, `--full`); a million nested
+calls run on each judge's stack and agree with the interpreter. Local runs still use `g++ -std=c++17 -O2`
+and an 8 MB stack whatever the profile; the compilers here are g++ 11,
+clang 14 and MinGW 10, not the judges' versions.
+**Bar.** Every profile: every port builds within its limit, compiles with
+its flags (as accepted here), and the deep-recursion run passes on its
+stack; each fact in a profile cites a source or says it is unconfirmed.
+**Next.** `run --release`/`stress`/`bench` with the profile's flags and
+stack; a size report (bytes per part) and a readable minimisation rung
+before dropping the source header; clang `-Wunused-value` in 6
+ports; USACO and grader profiles; judge-version containers.
 
 ## 10. Editor and LSP (`plan/60`)
 **North star.** An editor that knows everything the compiler knows, in every

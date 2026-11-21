@@ -1,41 +1,62 @@
 # 7. Judges and submission
 
-Status: proposed. Goal G6: one C++ file that any judge accepts, under 64 KB
-as a hard limit. The user's corpus is mostly from DMOJ, so DMOJ is the
-first profile to get right.
+Status: profiles, selection and the profile matrix are built (0.2.2);
+the rest of this chapter is proposed. Goal 5 (dependable submission):
+one C++17 file the named judge accepts and runs as it ran here.
 
 ## 7.1 Judge profiles
 
-A profile describes one judge. `cp build --judge dmoj` uses it, and
-`cp.toml` sets a default per project folder (doc 4), so a Codeforces folder
-and a DMOJ folder can live side by side.
+A profile describes one judge (`crates/cpl-judge`): the compiler and the
+flags the judge builds with, its platform, the stack it gives, the longest
+source it accepts, whether it has `__int128`, and where each fact comes
+from. Built in: `generic` (the default: `g++ -std=c++17 -O2`, 8 MB stack,
+64 KB), `codeforces`, `atcoder`, `cses`, `icpc` (DOMjudge's defaults),
+`kattis` and `dmoj`. `cpl judges` lists them and marks the one a build uses.
+
+The judge is chosen by `cpl build --judge <name>`, else the file's
+`// judge: <name>` line, else `judge = "<name>"` under `[judge]` in the
+nearest `cp.toml`. A `[judge.<name>]` table changes a profile's fields or,
+with `extends`, adds one:
 
 ```toml
-[judge.dmoj]
-std = "c++17"            # newest standard the emitter may use
-compiler = "g++ 11"      # version the profile is tested against
-int128 = true            # __int128 available
-bits_stdcpp = true       # <bits/stdc++.h> available
-pragmas = true           # #pragma GCC optimize / target accepted
-stack = "unlimited"      # or a size, e.g. "256MB"
-source_limit = "64KB"
-memory = "rss"           # how memory is accounted
+[judge]
+judge = "school"
+
+[judge.school]
+extends = "icpc"
+title = "School judge"
+stack_mb = 64            # or "unlimited"
+source_kb = 100
+flags = ["-std=c++17", "-O2"]
+os = "linux"             # or "windows"
+int128 = false
 ```
 
-The emitter reads the profile:
+What a profile changes today:
 
-- It targets C++17 unless the profile allows newer, and never emits a
-  feature the profile lacks.
-- A feature the judge can't support is a compile error naming the judge:
-  `I128 needs __int128, which the leetcode profile doesn't have`.
-- With `bits_stdcpp = false`, it emits the exact standard headers used.
-- Pragmas are emitted only if the profile allows them and the program asks
-  for them (`@target("avx2")`), never by default.
-- The size check uses the profile's `source_limit`: a warning at 75%, an
-  error above it, with the size report (doc 4) showing what to cut.
+- The header names the judge, its command and its stack.
+- Deep recursion gets a 256 MB stack of its own unless the judge's stack is
+  known to be at least that deep (`codeforces`, `icpc`): 742 bytes fewer
+  in `agc077a`.
+- The size check uses the profile's source limit: a warning above 75%, an
+  error above the limit. The source header goes first, then half the
+  indentation, only when the file would not fit otherwise.
+- `I128` on a profile with `int128 = false` is an error naming the judge.
 
-Initial profiles: DMOJ, Codeforces, AtCoder, CSES, USACO, Kattis, QOJ,
-LeetCode-style function judges, and `gcc` (generic, the default).
+Proposed: `bits_stdcpp`, `pragmas`, memory accounting, the judge's time
+and memory limits feeding `cpl bench`, and `cpl run --release --judge`
+building with the profile's flags and stack.
+
+How profiles are tested (`crates/cpl-cli/tests/judges.rs`):
+
+- Every port is written for every profile within its limit, stamped with
+  it, and without the stack switch where the judge's stack is deep.
+- A million nested calls, which crash an 8 MB stack, run under each Linux
+  profile's flags on the stack that judge gives (`ulimit -s`), and agree
+  with the interpreter. The Windows profile is built
+  with a MinGW cross compiler when there is one.
+- `scripts/check.sh --full` compiles every port with every profile's flags,
+  as far as the compiler here accepts them; flags it rejects are reported.
 
 ## 7.2 Things judges disagree on
 
@@ -106,7 +127,7 @@ IOI-style tasks with a grader), `@graded fn` marks the entry point
 judge expects, converting `List<Int>` to `std::vector<int>` and so on, and
 `cp run` provides a local stand-in grader that reads the sample format.
 
-## 7.7 How profiles are tested
+## 7.7 How profiles are tested (proposed beyond 7.1)
 
 - Each profile has a container with the judge's compiler version.
 - CI compiles every corpus port with every profile, runs it on stored

@@ -20,6 +20,7 @@ cpl-doc = { path = "crates/cpl-doc" }
 cpl-stress = { path = "crates/cpl-stress" }
 cpl-contest = { path = "crates/cpl-contest" }
 cpl-lsp = { path = "crates/cpl-lsp" }
+cpl-judge = { path = "crates/cpl-judge" }
 
 [profile.release]
 lto = "thin"

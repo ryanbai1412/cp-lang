@@ -163,6 +163,7 @@ pub(crate) struct Emitter<'p> {
     pub sites: Option<Vec<cpl_diag::Span>>,
     /// The statements that count, from `cpl_ir::sites::user_stmts`.
     pub counted: std::collections::HashSet<*const Stmt>,
+    pub target: crate::Target,
 }
 
 pub(crate) fn pad(indent: usize) -> String {
@@ -221,6 +222,7 @@ impl<'p> Emitter<'p> {
             indent: 0,
             sites: None,
             counted: Default::default(),
+            target: crate::Target::default(),
         };
         let feeds = cpl_ir::pushed::Feeds::of(program);
         emitter.summaries = feeds.summaries;
@@ -832,7 +834,7 @@ impl<'p> Emitter<'p> {
         }
 
         let mut out = String::new();
-        out.push_str(&header(name, source));
+        out.push_str(&header(name, source, self.target.stamp.as_deref()));
         // Closures that are called by name (see `devirt`): one calling
         // another adds to the set, so emit until it stops growing.
         let mut direct = String::new();
@@ -940,6 +942,7 @@ impl<'p> Emitter<'p> {
         // gives the stack (a chain of 5e4 `@memo` calls does).
         let deep = recursive(program, &reachable);
         out.push_str("}  // namespace prog\n\n");
+        let deep = deep && !self.target.deep_stack;
         if deep {
             out.push_str(BIG_STACK);
         }
@@ -1076,16 +1079,17 @@ template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie
 
 /// The comment that opens the file: what it is, and the source it was
 /// built from, so that whoever reads the C++ can read the program.
-fn header(name: &str, source: Option<&str>) -> String {
+fn header(name: &str, source: Option<&str>, stamp: Option<&str>) -> String {
     let version = env!("CARGO_PKG_VERSION");
+    let stamp = stamp.map(|stamp| format!("// For {stamp}.\n")).unwrap_or_default();
     let Some(source) = source else {
         return format!(
             "// {name}: C++17 written by cpl {version} from CP Lang source, which is left out\n\
-             // here to keep this file within the size a judge accepts.\n\n"
+             // here to keep this file within the size a judge accepts.\n{stamp}\n"
         );
     };
     let mut out =
-        format!("// {name}: C++17 written by cpl {version} from the CP Lang source below.\n//\n");
+        format!("// {name}: C++17 written by cpl {version} from the CP Lang source below.\n{stamp}//\n");
     for line in source.lines() {
         let line = line.trim_end();
         if line.is_empty() {

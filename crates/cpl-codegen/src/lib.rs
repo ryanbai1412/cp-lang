@@ -21,9 +21,26 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 /// reads the C++ can read what it was written from. With no `source` the
 /// file opens with a note saying it was left out.
 pub fn emit(program: &cpl_ir::Program, name: &str, source: Option<&str>) -> String {
+    emit_for(program, name, source, &Target::default())
+}
+
+/// What the C++ is written for: the judge it is submitted to.
+#[derive(Clone, Debug, Default)]
+pub struct Target {
+    /// A line for the header that names the judge.
+    pub stamp: Option<String>,
+    /// Whether the judge's stack holds deep recursion, so the program
+    /// needs no stack of its own.
+    pub deep_stack: bool,
+}
+
+/// [`emit`] for a judge.
+pub fn emit_for(program: &cpl_ir::Program, name: &str, source: Option<&str>, target: &Target) -> String {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
-    narrow(&emit::Emitter::new(&program).file(name, source))
+    let mut emitter = emit::Emitter::new(&program);
+    emitter.target = target.clone();
+    narrow(&emitter.file(name, source))
 }
 
 /// [`emit`] with every statement counting its starts and the time until
@@ -98,6 +115,18 @@ pub struct Fitted {
 /// header, then half of what indentation is left. `Err` is the length of
 /// the shortest file when even that is over.
 pub fn emit_within(program: &cpl_ir::Program, name: &str, source: &str, limit: usize) -> Result<Fitted, usize> {
+    emit_within_for(program, name, source, limit, &Target::default())
+}
+
+/// [`emit_within`] for a judge.
+pub fn emit_within_for(
+    program: &cpl_ir::Program,
+    name: &str,
+    source: &str,
+    limit: usize,
+    target: &Target,
+) -> Result<Fitted, usize> {
+    let emit = |program, name, source| emit_for(program, name, source, target);
     let cpp = emit(program, name, Some(source));
     let full = cpp.len();
     if full <= limit {
