@@ -17,7 +17,7 @@ struct Seg(val: Int, len: Int, cur: Int, end: Int)
 
 fn query(len: Int, t: Int) -> Int:
     print("?", len, t + 1)
-    read::<Int>() - 1
+    read<Int>() - 1
 
 @!multitest
 let n: 1..=500 = read()

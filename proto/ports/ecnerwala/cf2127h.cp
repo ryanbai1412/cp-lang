@@ -1,82 +1,106 @@
-type Edge = [0..3, 0..3]Int
-type Vert = [0..3]Int
+// Codeforces 2127 H: maximum-size subgraph of a series-parallel graph where
+// every vertex has degree at most 2.
+//
+// Repeatedly eliminate degree-1 and degree-2 vertices until one vertex remains:
+// - Edge[du, dv] is the max edges chosen inside a collapsed generalized edge
+//   (u, v) using at most du incident edges at u and at most dv at v.
+// - Vert[d] is the max edges chosen inside leaves already absorbed into a
+//   vertex using at most d incident edges at that vertex.
+// When the final vertex reaches degree 0, vert[cur][Deg(2)] is the answer.
 
-let init_e: Edge = [[0, 0, 0], [0, 1, 1], [0, 1, 1]]
+domain Deg = 0..=2
+type Edge = [Deg, Deg]Int
+type Vert = [Deg]Int
 
-fn edge_key(a: Int, b: Int) -> (Int, Int) = if a < b: (a, b) else: (b, a)
+let unit_edge: Edge = [Deg, Deg] (du, dv) => if du.ord >= 1 and dv.ord >= 1: 1 else: 0
 
-fn rev_edge(e: Edge) -> Edge = [0..3, 0..3] (i, j) => e[j, i]
+fn flip(e: Edge) -> Edge = [Deg, Deg] (du, dv) => e[dv, du]
 
-fn merge_parallel(a: Edge, b: Edge) -> Edge:
-    var r: Edge = 0
-    for ai in 0..3:
-        for bi in 0..3 - ai:
-            for aj in 0..3:
-                for bj in 0..3 - aj:
-                    r[ai + bi, aj + bj] max= a[ai, aj] + b[bi, bj]
-    r
+fn parallel(a: Edge, b: Edge) -> Edge:
+    var res: Edge = 0
+    for au in Deg:
+        for bu in 0..=2 - au.ord:
+            for av in Deg:
+                for bv in 0..=2 - av.ord:
+                    res[Deg(au.ord + bu), Deg(av.ord + bv)] max= a[au, av] + b[Deg(bu), Deg(bv)]
+    res
 
-fn merge_series(a: Edge, v: Vert, b: Edge) -> Edge:
-    var r: Edge = 0
-    for ai in 0..3:
-        for aj in 0..3:
-            for bj in 0..3 - aj:
-                for bk in 0..3:
-                    r[ai, bk] max= a[ai, aj] + v[2 - (aj + bj)] + b[bj, bk]
-    r
+fn series(a: Edge, mid: Vert, b: Edge) -> Edge:
+    var res: Edge = 0
+    for au in Deg:
+        for ac in Deg:
+            for bc in 0..=2 - ac.ord:
+                let rem = Deg(2 - ac.ord - bc)
+                for bv in Deg:
+                    res[au, bv] max= a[au, ac] + mid[rem] + b[Deg(bc), bv]
+    res
 
-fn merge_leaf(v: Vert, e: Edge, l: Vert) -> Vert:
-    var r: Vert = 0
-    for a in 0..3:
-        for i in 0..3 - a:
-            for j in 0..3:
-                r[a + i] max= v[a] + e[i, j] + l[2 - j]
-    r[1] max= r[0]
-    r[2] max= r[1]
-    r
+fn absorb_leaf(host: Vert, e: Edge, leaf: Vert) -> Vert:
+    var res: Vert = 0
+    for dh in Deg:
+        for eh in 0..=2 - dh.ord:
+            for el in Deg:
+                let rem = Deg(2 - el.ord)
+                res[Deg(dh.ord + eh)] max= host[dh] + e[Deg(eh), el] + leaf[rem]
+    // Keep Vert monotone so Vert[d] means "at most d incident edges".
+    res[Deg(1)] max= res[Deg(0)]
+    res[Deg(2)] max= res[Deg(1)]
+    res
 
 @!multitest
-let (n, m): (Int, Int) = read()
-var mp: Map<(Int, Int), Edge> = Map()
-var adj: [1..=n]Set<Int> = Set()
-var vert: [1..=n]Vert = 0
+let n: 1..=300_000 = read()
+let m: 0..=600_000 = read()
+domain V = 1..=n
+
+fn canon(u: V, v: V) -> (V, V) = if u < v: (u, v) else: (v, u)
+
+var edges: Map<(V, V), Edge> = Map()
+var adj: [V]Set<V> = Set<V>()
+var vert: [V]Vert = 0
 
 for _ in 0..m:
-    let (u, v): (Int, Int) = read()
-    mp[edge_key(u, v)] = init_e
+    let (u, v): (V, V) = read()
+    edges[canon(u, v)] = unit_edge
     adj[u].add(v)
     adj[v].add(u)
 
-var in_q: [1..=n]Bool = false
-var q: Deque<Int> = Deque()
-fn enqueue(v: Int):
-    if not in_q[v] and adj[v].len <= 2:
-        in_q[v] = true
-        q.push(v)
+var queued: [V]Bool = false
+var ready: Deque<V> = Deque()
+fn try_queue(v: V):
+    if not queued[v] and adj[v].len <= 2:
+        queued[v] = true
+        ready.push(v)
 
-fn pop_edge(a: Int, b: Int) -> Edge:
-    let raw = mp.remove(edge_key(a, b))!
-    if a < b: raw else: rev_edge(raw)
+fn pop_edge(u: V, v: V) -> Edge:
+    let raw = edges.remove(canon(u, v))!
+    if u < v: raw else: flip(raw)
 
-for v in 1..=n: enqueue(v)
+fn add_edge(u: V, v: V, e: Edge):
+    let key = canon(u, v)
+    let oriented = if u < v: e else: flip(e)
+    if let old = edges.get(key):
+        edges[key] = parallel(old, oriented)
+    else:
+        edges[key] = oriented
 
-while let cur = q.pop_front():
+for v in V: try_queue(v)
+
+while let cur = ready.pop_front():
     if adj[cur].len == 2:
         let u = adj[cur].pop_first()!
         let v = adj[cur].pop_last()!
         adj[u].remove(cur)
         adj[v].remove(cur)
-        let e = merge_series(pop_edge(u, cur), vert[cur], pop_edge(cur, v))
-        if let old = mp.get((u, v)): mp[(u, v)] = merge_parallel(old, e)
-        else: mp[(u, v)] = e
+        let merged = series(pop_edge(u, cur), vert[cur], pop_edge(cur, v))
+        add_edge(u, v, merged)
         adj[u].add(v)
         adj[v].add(u)
-        enqueue(u)
-        enqueue(v)
+        try_queue(u)
+        try_queue(v)
     elif adj[cur].len == 1:
-        let o = adj[cur].pop_first()!
-        adj[o].remove(cur)
-        vert[o] = merge_leaf(vert[o], pop_edge(o, cur), vert[cur])
-        enqueue(o)
+        let host = adj[cur].pop_first()!
+        adj[host].remove(cur)
+        vert[host] = absorb_leaf(vert[host], pop_edge(host, cur), vert[cur])
+        try_queue(host)
     else:
-        print(vert[cur][2])
+        print(vert[cur][Deg(2)])

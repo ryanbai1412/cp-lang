@@ -26,7 +26,7 @@ rng.shuffle(mut perm)
 fn has(v: Val, lo: Int, hi: Int) -> Bool:
     if lo == hi: return false
     print("?", v, hi - lo, perm[lo..hi])
-    read::<Int>() == 1
+    read<Int>() == 1
 
 let mid = (2 * n - 1) / 2
 var weight_l: [Val]Int = 0
