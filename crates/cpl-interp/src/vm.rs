@@ -491,14 +491,14 @@ pub(crate) struct CompiledProgram<'p> {
 }
 
 impl<'p> CompiledProgram<'p> {
-    pub fn compile(program: &'p Program) -> Self {
+    pub fn compile(program: &'p Program, feeds: &cpl_ir::pushed::Feeds) -> Self {
         let mut fns = Vec::with_capacity(program.fns.len());
         for (id, f) in program.fns.iter().enumerate() {
             let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
-            if f.locals.len() > 512 {
+            if f.locals.len() > 512 || program.judge_fns.contains(&id) {
                 fns.push(None);
             } else {
-                let mut c = Compiler::new(program, &f.locals, Some(id), f.params.len());
+                let mut c = Compiler::new(program, feeds, &f.locals, Some(id), f.params.len());
                 let ret_kind = ScalarKind::of_ty(&f.ret, program);
                 c.compile_block(&f.body, ret_kind, true);
                 let mut chunk = c.finish();
@@ -524,7 +524,7 @@ impl<'p> CompiledProgram<'p> {
                 closures.push(None);
             } else {
                 let guarded_domains = program.fn_guarded_domains(&def.ret, &def.body);
-                let mut c = Compiler::new(program, &def.locals, None, def.params.len());
+                let mut c = Compiler::new(program, feeds, &def.locals, None, def.params.len());
                 let ret_kind = ScalarKind::of_ty(&def.ret, program);
                 c.compile_block(&def.body, ret_kind, true);
                 let mut chunk = c.finish();
@@ -538,7 +538,7 @@ impl<'p> CompiledProgram<'p> {
                 closures.push(Some(chunk));
             }
         }
-        let mut main_c = Compiler::new(program, &program.main_locals, None, 0);
+        let mut main_c = Compiler::new(program, feeds, &program.main_locals, None, 0);
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let mut main = main_c.finish();
@@ -583,8 +583,9 @@ enum ModSuperOp {
     New(u32),
 }
 
-struct Compiler<'p> {
+struct Compiler<'p, 'f> {
     program: &'p Program,
+    feeds: &'f cpl_ir::pushed::Feeds,
     ops: Vec<Op>,
     spans: Vec<Span>,
     consts_i: Vec<i64>,
@@ -603,9 +604,10 @@ struct Compiler<'p> {
     inline_ret: Option<(u16, Vec<usize>)>,
 }
 
-impl<'p> Compiler<'p> {
+impl<'p, 'f> Compiler<'p, 'f> {
     fn new(
         program: &'p Program,
+        feeds: &'f cpl_ir::pushed::Feeds,
         locals: &'p [Local],
         cur_fn: Option<FnId>,
         param_count: usize,
@@ -638,6 +640,7 @@ impl<'p> Compiler<'p> {
         }
         Self {
             program,
+            feeds,
             ops: Vec::new(),
             spans: Vec::new(),
             consts_i: Vec::new(),
@@ -717,7 +720,11 @@ impl<'p> Compiler<'p> {
             .iter()
             .take(f.params.len())
             .any(|l| matches!(l.ty, Ty::Fn(..)));
-        if f.locals.len() > 512 || args.len() != f.params.len() || (has_mut && has_fn_param) {
+        if f.locals.len() > 512
+            || self.program.judge_fns.contains(&fn_id)
+            || args.len() != f.params.len()
+            || (has_mut && has_fn_param)
+        {
             return None;
         }
         // Check that all mut args are simple local/global places or a single 1D indexed V place.
@@ -1306,7 +1313,10 @@ impl<'p> Compiler<'p> {
     }
 
     fn is_pure_leaf_fn(&self, fn_id: FnId) -> bool {
-        if self.cur_fn == Some(fn_id) || self.inline_slots.is_some() {
+        if self.cur_fn == Some(fn_id)
+            || self.inline_slots.is_some()
+            || self.program.judge_fns.contains(&fn_id)
+        {
             return false;
         }
         let f = &self.program.fns[fn_id];
@@ -1710,9 +1720,12 @@ impl<'p> Compiler<'p> {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Do(block) = &expr.kind {
+                    let prev_pinned = self.pinned_v;
+                    self.pinned_v = self.next_v;
                     self.give_targets.push(GiveTarget::Discard { exits: Vec::new() });
                     self.compile_stmts(&block.stmts);
                     let mut target = self.give_targets.pop().unwrap();
+                    self.pinned_v = prev_pinned;
                     let end_pc = self.ops.len() as u32;
                     for j in target.exits_mut().drain(..) {
                         self.patch(j, end_pc);
@@ -1908,6 +1921,9 @@ impl<'p> Compiler<'p> {
         body: &'p Block,
     ) -> bool {
         if let Iter::Seq(seq_expr, rev) = iter {
+            if !*rev && self.feeds.feeds(id, seq_expr, body).is_some() {
+                return false;
+            }
             return self.try_compile_for_seq(id, slot, seq_expr, *rev, body);
         }
         let SlotLoc::I(r_var, _) = self.slot_loc(slot) else {
@@ -3053,6 +3069,7 @@ impl<'p> Compiler<'p> {
         if let ExprKind::Cmp(op, lhs, rhs) = &cond.kind {
             if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
                 && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
+                && ty_uses_structural_cmp(&lhs.ty, self.program)
                 && matches!(
                     op,
                     CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
@@ -3386,9 +3403,12 @@ impl<'p> Compiler<'p> {
             ExprKind::Do(block) => {
                 let dst_val = self.alloc_i();
                 let dst_some = self.alloc_i();
+                let prev_pinned = self.pinned_v;
+                self.pinned_v = self.next_v;
                 self.give_targets.push(GiveTarget::OptI { dst_val, dst_some, exits: Vec::new() });
                 self.compile_stmts(&block.stmts);
                 let mut target = self.give_targets.pop().unwrap();
+                self.pinned_v = prev_pinned;
                 let end_pc = self.ops.len() as u32;
                 for j in target.exits_mut().drain(..) {
                     self.patch(j, end_pc);
@@ -3600,6 +3620,7 @@ impl<'p> Compiler<'p> {
             ExprKind::Cmp(op, lhs, rhs)
                 if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
                     && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
+                    && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
                         CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
@@ -3614,6 +3635,7 @@ impl<'p> Compiler<'p> {
             ExprKind::Cmp(op, lhs, rhs)
                 if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some()
                     && ScalarKind::of_opt_ty(&rhs.ty, self.program).is_some()
+                    && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
                         CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
@@ -3645,9 +3667,12 @@ impl<'p> Compiler<'p> {
             }
             ExprKind::Do(block) => {
                 let dst = self.alloc_i();
+                let prev_pinned = self.pinned_v;
+                self.pinned_v = self.next_v;
                 self.give_targets.push(GiveTarget::I { dst, exits: Vec::new() });
                 self.compile_stmts(&block.stmts);
                 let mut target = self.give_targets.pop().unwrap();
+                self.pinned_v = prev_pinned;
                 let end_pc = self.ops.len() as u32;
                 for j in target.exits_mut().drain(..) {
                     self.patch(j, end_pc);
@@ -3998,38 +4023,34 @@ impl<'p> Compiler<'p> {
                         }
                     }
                 }
-                if self.is_pure_leaf_fn(*fn_id) {
+                let can_inline_pure_leaf = self.is_pure_leaf_fn(*fn_id) && {
+                    let f = &self.program.fns[*fn_id];
+                    args.iter().enumerate().all(|(i, a)| {
+                        let Arg::Value(ae) = a else { return false; };
+                        if ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some() {
+                            true
+                        } else if let ExprKind::Local(slot) = &ae.kind {
+                            matches!(self.slot_loc(*slot), SlotLoc::V(r) if r < self.num_local_v)
+                        } else {
+                            false
+                        }
+                    })
+                };
+                if can_inline_pure_leaf {
                     let f = &self.program.fns[*fn_id];
                     let mut map = Vec::with_capacity(f.locals.len());
-                    let mut temp_v_to_clear: Vec<u16> = Vec::new();
                     for (i, a) in args.iter().enumerate() {
-                        let Arg::Value(ae) = a else {
-                            return self.emit_fallback_expr_i(expr);
-                        };
+                        let Arg::Value(ae) = a else { unreachable!() };
                         if let Some(kind) = ScalarKind::of_ty(&f.locals[i].ty, self.program) {
                             let src = self.compile_expr_i(ae);
                             let reg = self.alloc_i();
                             self.emit(Op::MoveI { dst: reg, src }, span);
                             map.push(SlotLoc::I(reg, kind));
+                        } else if let ExprKind::Local(slot) = &ae.kind {
+                            let SlotLoc::V(r) = self.slot_loc(*slot) else { unreachable!() };
+                            map.push(SlotLoc::V(r));
                         } else {
-                            let reused = if let ExprKind::Local(slot) = &ae.kind {
-                                if let SlotLoc::V(r) = self.slot_loc(*slot) {
-                                    Some(r)
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            };
-                            if let Some(r) = reused {
-                                map.push(SlotLoc::V(r));
-                            } else {
-                                let r = self.compile_expr_v(ae);
-                                if r >= self.num_local_v {
-                                    temp_v_to_clear.push(r);
-                                }
-                                map.push(SlotLoc::V(r));
-                            }
+                            unreachable!()
                         }
                     }
                     for l in f.locals.iter().skip(args.len()) {
@@ -4051,13 +4072,11 @@ impl<'p> Compiler<'p> {
                     for j in jumps {
                         self.patch(j, end_pc);
                     }
-                    for r in temp_v_to_clear {
-                        self.emit(Op::ClearV { reg: r }, span);
-                    }
                     dst
                 } else {
                     let f = &self.program.fns[*fn_id];
-                    let can_vm = !f.params.iter().any(|p| p.mutable)
+                    let can_vm = !self.program.judge_fns.contains(fn_id)
+                        && !f.params.iter().any(|p| p.mutable)
                         && f.locals.len() <= 512
                         && self.program.fn_guarded_domains(&f.ret, &f.body).is_empty()
                         && (0..f.params.len()).all(|i| {
@@ -4540,9 +4559,12 @@ impl<'p> Compiler<'p> {
             }
             ExprKind::Do(block) => {
                 let dst = self.alloc_v();
+                let prev_pinned = self.pinned_v;
+                self.pinned_v = self.next_v;
                 self.give_targets.push(GiveTarget::V { dst, exits: Vec::new() });
                 self.compile_stmts(&block.stmts);
                 let mut target = self.give_targets.pop().unwrap();
+                self.pinned_v = prev_pinned;
                 let end_pc = self.ops.len() as u32;
                 for j in target.exits_mut().drain(..) {
                     self.patch(j, end_pc);

@@ -703,6 +703,24 @@ print(round(dp[1, 2] * 100.0))
 }
 
 #[test]
+fn vm_pure_leaf_temp_struct_arg_not_consumed_early() {
+    let src = "\
+struct P:
+    x: Int
+    y: Int
+
+fn norm2(p: P) -> Int = p.x * p.x + p.y * p.y
+fn cross(a: P, b: P) -> Int = a.x * b.y - a.y * b.x
+
+let ps = [P(x: 3, y: 4), P(x: 5, y: 12)]
+print(norm2(ps[0]), norm2(ps[1]), cross(ps[0], ps[1]))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "25 169 16\n");
+}
+
+#[test]
 fn vm_list_literals_filled_to_list_and_structural_cmp_v() {
     let source = "
 var xs: List<Int> = []
@@ -717,4 +735,55 @@ print(xs.len, ys[2], zs[1], ls[0], p1 < p2, p1 == p1, ys < zs)
     let (out, trap) = outcome(source, "");
     assert_eq!(trap, None);
     assert_eq!(out, "0 3 5 3 YES YES YES\n");
+}
+
+#[test]
+fn vm_do_fallback_preserves_outer_call_args() {
+    let src = "\
+use std.sparse.{SparseTable}
+
+let n: Int = read()
+let xs: [0..n]Int = read()
+let st = SparseTable(min, xs)
+print(st.fold(0..n), st.fold(1..2))
+";
+    let (out, trap) = outcome(src, "3\n4 2 9\n");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "2 2\n");
+}
+
+#[test]
+fn vm_yields_infinite_generator_stays_lazy() {
+    let src = "\
+fn nat() -> yields Int:
+    var i = 0
+    while true:
+        yield i
+        i += 1
+
+var sum = 0
+for x in nat():
+    if x > 4: break
+    sum += x
+print(sum)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "10\n");
+}
+
+#[test]
+fn vm_one_int_struct_custom_ord_cmp() {
+    let src = "\
+use std.heap.{MaxHeap}
+
+let xs = [3, 1, 4, 1, 5, 9, 2, 6]
+var h = MaxHeap<Int>.of(xs)
+var out: List<Int> = []
+while let x = h.pop(): out.push(x)
+print(out)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "9 6 5 4 3 2 1 1\n");
 }

@@ -661,7 +661,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.base = 0;
         let use_vm = self.tracer.is_none() && self.profiler.is_none();
         if use_vm {
-            self.vm = Some(Rc::new(vm::CompiledProgram::compile(program)));
+            self.vm = Some(Rc::new(vm::CompiledProgram::compile(program, &self.feeds)));
         }
         if !program.multitest {
             if let Some(compiled) = self.vm.clone() {
