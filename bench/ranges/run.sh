@@ -6,7 +6,7 @@ cpl="$root/target/debug/cpl"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-for name in range_fenwick disjoint_sparse; do
+for name in range_fenwick disjoint_sparse lazy_treap; do
     "$cpl" build "$root/bench/ranges/$name.cp" -o "$tmp/${name}_cp.cpp" >/dev/null
     g++ -std=c++17 -O2 "$tmp/${name}_cp.cpp" -o "$tmp/${name}_cp"
     g++ -std=c++17 -O2 "$root/bench/ranges/$name.cpp" -o "$tmp/${name}_ref"

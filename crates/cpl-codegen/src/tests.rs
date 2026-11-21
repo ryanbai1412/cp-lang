@@ -737,3 +737,17 @@ fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
     assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
     assert!(!cpp.contains("_bitand(a, b)"), "{cpp}");
 }
+
+#[test]
+fn higher_order_combinator_devirtualizes_to_zero_std_function() {
+    let cpp = cpp(concat!(
+        "use std.lazy.{Flip, flip_action}\n",
+        "domain I = 0..4\n",
+        "let m = Monoid<Int>(0, (a, b) => a + b)\n",
+        "var st = LazySegTree<I, Flip<Int>>(flip_action<Int>(m), [I] i => Flip<Int>.of(i.ord % 2 == 0, 1, 0))\n",
+        "st.apply(I(0)..I(3), true)\n",
+        "print(st.all.now)\n",
+    ));
+    assert!(!cpp.contains("std::function"), "{cpp}");
+    assert!(!cpp.contains("#include <functional>"), "{cpp}");
+}

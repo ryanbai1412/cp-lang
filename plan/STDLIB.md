@@ -1023,6 +1023,9 @@ const AssignMin: Action<Int, ?Int>   // assign over min
 const AssignMax: Action<Int, ?Int>   // assign over max
 const AffineSum: Action<Int, (Int, Int)> // [new] (mul, add) over sum
 fn affine_sum<T>() -> Action<T, (T, T)>  // [new] generic (Int, Mod<P>)
+struct Flip<T>(now: T, flipped: T)       // [new] paired aggregate for range toggle
+    fn of(on: Bool, x: T, id: T) -> Flip<T> // O(1)
+fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool> // [new] range-toggle action over `m`
 struct SparseTable<D, T>(op: (T, T) -> T) // O(n log n), O(1) idempotent
     fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>
     fn fold(self, r: Range<D>) -> T // O(1)

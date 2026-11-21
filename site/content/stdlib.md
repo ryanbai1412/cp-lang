@@ -24,7 +24,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.hashmap` | `FlatMap` | Open-addressing splitmix64-salted flat hash map for `Int` keys |
 | `std.heap` | `MinHeap`, `MaxHeap`, `ErasableMinHeap`, `ErasableMaxHeap`, `IndexedMinHeap`, `IndexedMaxHeap` | Binary, lazy-delete, and domain-keyed priority queues |
 | `std.interval` | `IntervalMap` | Maximal-run interval partition over a domain with O(log n) amortized range assign |
-| `std.lazy` | `LazySegTree`, `DualSegTree`, `LazyTreap`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`, `AffineSum`, `affine_sum` | Lazy/dual segment trees, lazy treap, and stock actions |
+| `std.lazy` | `LazySegTree`, `DualSegTree`, `LazyTreap`, `Flip`, `flip_action`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`, `AffineSum`, `affine_sum` | Lazy/dual segment trees, lazy treap, and stock actions |
 | `std.marks` | `Marks`, `MarkMap`, `Interner` | Generation-stamped O(1)-reset visited set/map and online key interner |
 | `std.math` | `gcd`, `lcm`, `ext_gcd`, `ceil_div`, `choose2`, `Sieve`, `sieve_multiplicative`, `factor`, `factor_big`, `divisors`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `floor_sum`, `bit_len` | Number theory, primes, CRT, discrete log/sqrt, bit helpers |
 | `std.matrix` | `Mat<T>`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `XorBasis` | Dense matrices, exact and floating-point Gaussian elimination, GF(2) XOR bases |

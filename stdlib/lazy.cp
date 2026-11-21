@@ -202,6 +202,26 @@ pub fn affine_sum<T>() -> Action<T, (T, T)>:
         over: +,
     )
 
+/// Paired aggregate `(now, flipped)` for range-toggle / complement updates on a `LazySegTree`.
+/// Build the toggle action with `flip_action(m)` (tag `Bool`: `true` swaps `now` and `flipped`).
+pub struct Flip<T>(now: T, flipped: T):
+    /// Leaf value for an element that is currently `on`: `(x, id)` if `on`, else `(id, x)`. O(1).
+    pub fn of(on: Bool, x: T, id: T) -> Flip<T>:
+        if on: Flip(x, id) else: Flip(id, x)
+
+/// Range-toggle `Action<Flip<T>, Bool>` over monoid `m`: `true` swaps `now` and `flipped`. O(1).
+pub fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>:
+    let k = Monoid<T>.of(m)
+    Action<Flip<T>, Bool>(
+        id: false,
+        compose: (f, g) => f != g,
+        apply: (f, x, span) => if f: Flip(x.flipped, x.now) else: x,
+        over: Monoid<Flip<T>>(
+            Flip(k.id, k.id),
+            (x, y) => Flip(k.op(x.now, y.now), k.op(x.flipped, y.flipped)),
+        ),
+    )
+
 /// Range update, point query: no fold monoid, no pulls, no span array.
 /// `compose(new_f, old_f)` applies `old_f` first then `new_f`; `apply(f, x)` updates a single leaf.
 /// `apply`, `get`, `set`, and `update` are O(log n); memory is n leaves plus bit_ceil(n) tags.
@@ -636,21 +656,24 @@ pub struct LazyTreap<T, F>(
                 else:
                     nodes[i].tag = f
 
+    fn push_tag(mut self, i: Int, f: F):
+        unchecked:
+            let (fl, fr) = split_fn(f, self.sz_of(nodes[i].l))
+            self.put(nodes[i].l, fl)
+            self.put(nodes[i].r, fr)
+            nodes[i].tag = none
+
     fn down(mut self, i: Int):
         unchecked:
-            if let f = nodes[i].tag:
-                let (fl, fr) = split_fn(f, self.sz_of(nodes[i].l))
-                self.put(nodes[i].l, fl)
-                self.put(nodes[i].r, fr)
-                nodes[i].tag = none
+            if let f = nodes[i].tag: self.push_tag(i, f)
 
     fn pull(mut self, i: Int):
         unchecked: nodes[i].sz = 1 + self.sz_of(nodes[i].l) + self.sz_of(nodes[i].r)
 
     fn split_val(mut self, u: ?Int, x: T) -> (?Int, ?Int):
         let i = u ?? return (none, none)
-        self.down(i)
         unchecked:
+            if let f = nodes[i].tag: self.push_tag(i, f)
             if before_fn(x, nodes[i].val):
                 let (a, b) = self.split_val(nodes[i].l, x)
                 nodes[i].l = b
@@ -671,12 +694,12 @@ pub struct LazyTreap<T, F>(
                 nodes[idx].r = b
                 self.pull(idx)
                 return idx
-            self.down(i)
+            if let f = nodes[i].tag: self.push_tag(i, f)
+            nodes[i].sz += 1
             if before_fn(x, nodes[i].val):
                 nodes[i].l = self.ins(nodes[i].l, idx, x, p)
             else:
                 nodes[i].r = self.ins(nodes[i].r, idx, x, p)
-            self.pull(i)
             return i
 
     fn split_pos(mut self, u: ?Int, k: Int) -> (?Int, ?Int):
@@ -825,3 +848,16 @@ fn lazy_treap_slope_trick_and_implicit_ops_match_brute():
         let q = rand(0, arr.len - 1)
         assert seq.get(q) == arr[q]
     assert seq.to_list() == arr
+
+@test
+fn flip_action_toggles_ranges():
+    domain I = 0..6
+    let init = [I] i => Flip<Int>.of(i.ord % 2 == 0, 1, 0)
+    var st = LazySegTree<I, Flip<Int>>(flip_action<Int>(+), init)
+    assert st.all.now == 3
+    assert st.all.flipped == 3
+    st.apply(I(1)..I(5), true)
+    assert st.all.now == 3
+    assert st.fold(I(1)..I(5)).now == 2
+    st.apply(I(0)..I(3), true)
+    assert st.all.now == 2

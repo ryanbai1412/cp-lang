@@ -727,7 +727,7 @@ impl<'p> Emitter<'p> {
                             .map(|(idx, item)| {
                                 if struct_id.is_some_and(|s| {
                                     self.devirt.field_elidable(s, idx)
-                                        && crate::devirt::skippable_value(program, item)
+                                        && self.devirt.skippable_value(item)
                                 }) {
                                     return "false".to_string();
                                 }
@@ -876,7 +876,7 @@ impl<'p> Emitter<'p> {
                     Code::primary(format!("{f}({})", ps.join(", ")))
                 })
             }
-            ExprKind::Closure(cid) => self.emit_closure(*cid),
+            ExprKind::Closure(cid) => self.emit_closure(*cid, false),
             ExprKind::Range { lo, hi } => {
                 self.need("range");
                 let rty = self.ty(&e.ty);
@@ -1334,7 +1334,7 @@ impl<'p> Emitter<'p> {
             .filter_map(|(slot, arg)| match arg {
                 Arg::Value(value) => {
                     if self.devirt.param_elidable(id, slot)
-                        && crate::devirt::skippable_value(program, value)
+                        && self.devirt.skippable_value(value)
                     {
                         None
                     } else {
@@ -1362,7 +1362,7 @@ impl<'p> Emitter<'p> {
                     Arg::Mut(place) => texts.push(this.place(place)),
                     Arg::Value(value) => {
                         if this.devirt.param_elidable(id, slot)
-                            && crate::devirt::skippable_value(program, value)
+                            && this.devirt.skippable_value(value)
                         {
                             texts.push("false".to_string());
                             continue;
@@ -1794,7 +1794,7 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    pub(crate) fn emit_closure(&mut self, cid: usize) -> Code {
+    pub(crate) fn emit_closure(&mut self, cid: usize, skip_captures: bool) -> Code {
         let def = &self.program.closures[cid];
         // Prepare inner names for the closure's locals.
         let mut inner_taken = self.taken.clone();
@@ -1828,21 +1828,23 @@ impl<'p> Emitter<'p> {
         // Build C++17 capture list from enclosing names/globals.
         let mut cap_parts = Vec::new();
         let mut global_ref_aliases = Vec::new();
-        for cap in &def.captures {
-            let inner = &inner_names[cap.inner];
-            if cap.is_global {
-                let gname = ident(&self.program.globals[cap.outer].name);
-                if cap.by_ref {
-                    global_ref_aliases.push(format!("auto& {inner} = {gname};"));
+        if !skip_captures {
+            for cap in &def.captures {
+                let inner = &inner_names[cap.inner];
+                if cap.is_global {
+                    let gname = ident(&self.program.globals[cap.outer].name);
+                    if cap.by_ref {
+                        global_ref_aliases.push(format!("auto& {inner} = {gname};"));
+                    } else {
+                        cap_parts.push(format!("{inner} = {gname}"));
+                    }
                 } else {
-                    cap_parts.push(format!("{inner} = {gname}"));
-                }
-            } else {
-                let outer = &self.names[cap.outer];
-                if cap.by_ref {
-                    cap_parts.push(format!("&{inner} = {outer}"));
-                } else {
-                    cap_parts.push(format!("{inner} = {outer}"));
+                    let outer = &self.names[cap.outer];
+                    if cap.by_ref {
+                        cap_parts.push(format!("&{inner} = {outer}"));
+                    } else {
+                        cap_parts.push(format!("{inner} = {outer}"));
+                    }
                 }
             }
         }

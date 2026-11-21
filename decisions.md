@@ -3000,6 +3000,7 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
 
 1. **`IntervalMap.assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` reports overwritten runs via an optional callback instead of returning a `List` or `-> yields`.**
    Reason: `cpl_ir::pushed::Feeds` intentionally does not push `-> yields` on `mut self` methods (an early `break` could leave the partition half-mutated), whereas a callback parameter both enforces partition completion and devirtualizes to an inlined template functor in C++ with zero heap allocation. Combined with a single-run fast path, `cf2237h` dropped from `1.66s` to `1.26s` on max binary-tree input and `IntervalMap` runs at `1.15x` matched C++ `std::map` ODT (`0.15s` vs `0.13s`). Reverse: change `assign` back to return `List<(range: Range<D>, val: T)>` in `stdlib/interval.cp` and restore `for (r, t) in paint.assign(...)` in `proto/ports/ecnerwala/cf2237h.cp`.
+
 ## 68. `LazyTreap` in `std.lazy` and flat `SparseTable` storage (2026-11-21)
 
 1. **Add `LazyTreap<T, F>` to `std.lazy` (no new module, no compiler privilege).**
@@ -3039,3 +3040,12 @@ empty lines, so every span into a bundled module keeps its line, and
 2.6 MB cap. Doc comments stay: hover and `cpl doc` read them. Test:
 `the_bundled_stdlib_drops_tests_and_keeps_every_line`. Reverse by
 embedding the files with `include_str!` again.
+
+## 73. `Flip<T>` / `flip_action` in `std.lazy`, combinator devirtualization, and `LazyTreap` fast path (2026-11-21)
+
+1. **Add `Flip<T>` (`Flip.of`) and `flip_action<T, M>(m)` to `std.lazy`.**
+   Encapsulates the paired-complement range-toggle pattern (`(now, flipped)` with `Bool` XOR tag) for any monoid `m` with zero compiler privilege. Adopted by `proto/ports/ecnerwala/cf2152g.cp` (387 -> 280 tokens, 1.27x of dream; 35,469 -> 30,720 B emitted). Reverse: remove `Flip` and `flip_action` from `stdlib/lazy.cp` and restore the hand-rolled `Action` in `cf2152g.cp`.
+2. **Treat closures whose captures are only used as `StaticDirect` callees as captureless in `cpl-codegen`.**
+   In `crates/cpl-codegen/src/devirt.rs`, a closure that captures a `Monoid` or `Action` solely to invoke its `StaticDirect` `op`/`apply`/`compose` field has zero live captures in emitted C++, so it lowers to a top-level `static auto cpl_fnN` (emitted in dependency order in `emit.rs`) with zero `std::function`. Gives 0 `std::function` on `flip_action` (`cf2152g`: 8 static direct, 0 dynamic) and any user-written `Monoid`/`Action` combinator. Reverse: restore `captures.is_empty()` in `devirt.rs`.
+3. **Avoid sibling cache misses and tagless pushdown calls in `LazyTreap.ins` / `split_val`.**
+   Increment `nodes[i].sz` directly on descent in `ins` and guard `push_tag` with `if let f = nodes[i].tag:` in `ins`/`split_val`, bringing `bench/ranges/lazy_treap` from `111.9 ms` (`1.34x`) down to `85.8 ms` vs `81.1 ms` matched C++17 (`1.06x`). Reverse: restore `down`/`pull` calls in `stdlib/lazy.cp`.

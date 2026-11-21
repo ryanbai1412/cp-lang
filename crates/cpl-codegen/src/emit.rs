@@ -1048,15 +1048,50 @@ impl<'p> Emitter<'p> {
         let what = if source.is_some() { "the source" } else { "the note" };
         self.chunks.push((crate::Part::Header, what.into(), out.clone()));
         let includes = out.len();
-        // Closures that are called by name (see `devirt`): one calling
-        // another adds to the set, so emit until it stops growing.
+        // Closures that are called by name (see `devirt`): emit dependencies
+        // before callers so higher-order combinators (e.g. `flip_action`) can
+        // call another `cpl_fnM` regardless of closure id order.
         let mut direct = String::new();
-        let mut done: Vec<usize> = Vec::new();
-        while let Some(cid) = self.direct.iter().copied().find(|cid| !done.contains(cid)) {
-            done.push(cid);
-            self.enter(None, &program.closures[cid].body, 0);
-            let body = self.emit_closure(cid).text;
-            direct.push_str(&format!("static auto {} = {body};\n", crate::devirt::name(cid)));
+        let mut emitted_direct: BTreeSet<usize> = BTreeSet::new();
+        let mut visiting: Vec<(usize, bool)> = Vec::new();
+        loop {
+            let next = self
+                .direct
+                .iter()
+                .copied()
+                .find(|cid| !emitted_direct.contains(cid));
+            let Some(root) = next else { break };
+            visiting.push((root, false));
+            while let Some((cid, ready)) = visiting.pop() {
+                if emitted_direct.contains(&cid) {
+                    continue;
+                }
+                if ready {
+                    emitted_direct.insert(cid);
+                    self.enter(None, &program.closures[cid].body, 0);
+                    let body = self.emit_closure(cid, true).text;
+                    direct.push_str(&format!(
+                        "static auto {} = {body};\n",
+                        crate::devirt::name(cid)
+                    ));
+                } else {
+                    visiting.push((cid, true));
+                    let mut deps = Vec::new();
+                    crate::walk::deep_exprs(&program.closures[cid].body, &mut |e| {
+                        if let cpl_ir::ExprKind::CallExpr(callee, _) = &e.kind {
+                            if let Some(dep) = self.devirt.target(None, callee) {
+                                if dep != cid && !emitted_direct.contains(&dep) {
+                                    deps.push(dep);
+                                }
+                            }
+                        }
+                    });
+                    for dep in deps {
+                        self.direct.insert(dep);
+                        visiting.push((dep, false));
+                    }
+                }
+            }
         }
         out.push_str(
             "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\

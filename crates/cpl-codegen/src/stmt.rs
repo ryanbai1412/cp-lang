@@ -1025,7 +1025,7 @@ impl<'p> Emitter<'p> {
                                     .map(|(idx, item)| {
                                         if struct_id.is_some_and(|s| {
                                             self.devirt.field_elidable(s, idx)
-                                                && crate::devirt::skippable_value(self.program, item)
+                                                && self.devirt.skippable_value(item)
                                         }) {
                                             return "false".to_string();
                                         }

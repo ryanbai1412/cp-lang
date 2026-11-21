@@ -40,7 +40,7 @@ export const PRELUDE_TYPES: readonly string[] = [
 export const STDLIB_TYPES: readonly string[] = [
     'Action', 'AhoCorasick', 'Arc', 'BagCursor', 'BeatsSegTree', 'Bitset', 'ByAngle', 'Centroids', 'Comb', 'Compressed',
     'ConnectedGraph', 'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff1', 'Diff2', 'Digraph', 'Dir4', 'Dir8',
-    'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'ErasableMaxHeap', 'ErasableMinHeap', 'Fenwick', 'Fenwick2D', 'FlatMap',
+    'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'ErasableMaxHeap', 'ErasableMinHeap', 'Fenwick', 'Fenwick2D', 'FlatMap', 'Flip',
     'FlowGraph', 'Graph', 'HalfPlane', 'Hash', 'Hash2D', 'HashVal', 'Hashable', 'IndexedMaxHeap', 'IndexedMinHeap', 'Interner',
     'IntervalMap', 'LazySegTree', 'LazyTreap', 'LiChao', 'LinkCut', 'Line', 'Lit', 'Location', 'Mark', 'MarkMap', 'Marks', 'Mat',
     'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'OrderedSet', 'Palindromes',
@@ -78,7 +78,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'convolve_xor', 'cross', 'cross128', 'cross3', 'crt', 'crt_all', 'cyclic_pairs', 'decrease', 'dedup',
     'deriv', 'det_real', 'diameter2', 'differences', 'dist',
     'dist2', 'dist2_128', 'dist2_3', 'divisors', 'divisors_from_factors', 'dnc_break', 'dot', 'dot128', 'dot3', 'dot3_128', 'euler_walk', 'eq_fields', 'exp',
-    'ext_gcd', 'factor', 'factor_big', 'find_cycle', 'first_gt', 'fixed_cost_paths', 'floor_sum', 'floyd_warshall',
+    'ext_gcd', 'factor', 'factor_big', 'find_cycle', 'first_gt', 'fixed_cost_paths', 'flip_action', 'floor_sum', 'floyd_warshall',
     'general_matching', 'get_or_insert_with', 'global_min_cut', 'gomory_hu', 'guess_at', 'half_plane_intersect', 'hash_fields',
     'hull_extreme', 'hull_tangents', 'idempotent', 'increase', 'integral', 'inv', 'inv_mod', 'inverse', 'inverse_real', 'inversions',
     'is_palindrome', 'is_prime', 'is_sorted', 'knuth_break',

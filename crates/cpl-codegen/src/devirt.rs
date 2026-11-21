@@ -349,7 +349,7 @@ impl<'p> Devirt<'p> {
                     match arg {
                         Arg::Value(v) => {
                             let ok = self.elidable.contains(&Home::Param(*callee, slot))
-                                && skippable_value(self.program, v);
+                                && self.skippable_value(v);
                             self.find_escapes_expr(home, v, ok, out);
                         }
                         Arg::Mut(p) => walk::place_exprs(p, &mut |x| self.find_escapes_expr(home, x, false, out)),
@@ -364,7 +364,7 @@ impl<'p> Devirt<'p> {
                 for (i, item) in items.iter().enumerate() {
                     let ok = s.is_some_and(|s| {
                         self.elidable.contains(&Home::Field(s, i))
-                            && skippable_value(self.program, item)
+                            && self.skippable_value(item)
                     });
                     self.find_escapes_expr(home, item, ok, out);
                 }
@@ -404,7 +404,7 @@ impl<'p> Devirt<'p> {
     /// `None`: nothing has been stored there yet.
     fn value(&self, home: Option<FnId>, e: &Expr) -> Option<Held> {
         match &e.kind {
-            ExprKind::Closure(cid) if self.program.closures[*cid].captures.is_empty() => {
+            ExprKind::Closure(cid) if self.closure_effectively_captureless(*cid) => {
                 Some(Held::One(*cid))
             }
             ExprKind::Local(slot) => match home {
@@ -418,6 +418,135 @@ impl<'p> Devirt<'p> {
                 _ => Some(Held::Many),
             },
             _ => Some(Held::Many),
+        }
+    }
+
+    /// True if closure `cid` has no live captures in emitted C++: either
+    /// `captures` is empty, or every captured local is only ever read as the
+    /// callee of a `StaticDirect` `CallValue` (which lowers to a direct
+    /// `cpl_fnN(...)` call and never touches the captured variable).
+    pub(crate) fn closure_effectively_captureless(&self, cid: ClosureId) -> bool {
+        let def = &self.program.closures[cid];
+        if def.captures.is_empty() {
+            return true;
+        }
+        let cap_slots: BTreeSet<usize> = def.captures.iter().map(|c| c.inner).collect();
+        self.block_captures_unused(&def.body, &cap_slots)
+    }
+
+    /// Whether evaluating a fn-valued argument or field initializer can be skipped
+    /// when the destination field or parameter is elided.
+    pub(crate) fn skippable_value(&self, e: &Expr) -> bool {
+        pure_path(e)
+            || matches!(e.kind, ExprKind::Closure(cid) if self.closure_effectively_captureless(cid))
+    }
+
+    fn block_captures_unused(&self, block: &Block, cap_slots: &BTreeSet<usize>) -> bool {
+        block
+            .stmts
+            .iter()
+            .all(|s| self.stmt_captures_unused(s, cap_slots))
+    }
+
+    fn place_captures_unused(&self, place: &cpl_ir::Place, cap_slots: &BTreeSet<usize>) -> bool {
+        match &place.kind {
+            PlaceKind::Local(slot) => !cap_slots.contains(slot),
+            PlaceKind::Global(_) => true,
+            PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+                self.place_captures_unused(base, cap_slots)
+            }
+            PlaceKind::Index(base, idxs) => {
+                self.place_captures_unused(base, cap_slots)
+                    && idxs
+                        .iter()
+                        .all(|i| self.expr_captures_unused(i, cap_slots))
+            }
+        }
+    }
+
+    fn stmt_captures_unused(&self, stmt: &Stmt, cap_slots: &BTreeSet<usize>) -> bool {
+        match stmt {
+            Stmt::Let(_, init) => init
+                .as_ref()
+                .is_none_or(|e| self.expr_captures_unused(e, cap_slots)),
+            Stmt::Assign(place, _, value) => {
+                self.place_captures_unused(place, cap_slots)
+                    && self.expr_captures_unused(value, cap_slots)
+            }
+            Stmt::Expr(e) | Stmt::Give(e) | Stmt::DefDomainFromVal { val: e, .. } => {
+                self.expr_captures_unused(e, cap_slots)
+            }
+            Stmt::Return(value) => value
+                .as_ref()
+                .is_none_or(|e| self.expr_captures_unused(e, cap_slots)),
+            Stmt::If(cond, then, otherwise) => {
+                self.expr_captures_unused(cond, cap_slots)
+                    && self.block_captures_unused(then, cap_slots)
+                    && self.block_captures_unused(otherwise, cap_slots)
+            }
+            Stmt::While(_, cond, body) => {
+                self.expr_captures_unused(cond, cap_slots)
+                    && self.block_captures_unused(body, cap_slots)
+            }
+            Stmt::For(_, _, iter, body) => {
+                let iter_ok = match iter {
+                    cpl_ir::Iter::Range { lo, hi, step, .. } => {
+                        self.expr_captures_unused(lo, cap_slots)
+                            && self.expr_captures_unused(hi, cap_slots)
+                            && step
+                                .as_ref()
+                                .is_none_or(|s| self.expr_captures_unused(s, cap_slots))
+                    }
+                    cpl_ir::Iter::RangeVal(e, _)
+                    | cpl_ir::Iter::Seq(e, _)
+                    | cpl_ir::Iter::Subsets(e)
+                    | cpl_ir::Iter::Members(e) => self.expr_captures_unused(e, cap_slots),
+                };
+                iter_ok && self.block_captures_unused(body, cap_slots)
+            }
+            Stmt::Assert { cond, message, .. } => {
+                self.expr_captures_unused(cond, cap_slots)
+                    && message
+                        .as_ref()
+                        .is_none_or(|m| self.expr_captures_unused(m, cap_slots))
+            }
+            Stmt::DefDomain { lo, len, .. } => {
+                self.expr_captures_unused(lo, cap_slots)
+                    && self.expr_captures_unused(len, cap_slots)
+            }
+            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => true,
+        }
+    }
+
+    fn expr_captures_unused(&self, e: &Expr, cap_slots: &BTreeSet<usize>) -> bool {
+        match &e.kind {
+            ExprKind::Local(slot) => !cap_slots.contains(slot),
+            ExprKind::CallExpr(callee, args) => {
+                let callee_ok = self.target(None, callee).is_some_and(|_| skippable(callee))
+                    || self.expr_captures_unused(callee, cap_slots);
+                callee_ok
+                    && args.iter().all(|a| match a {
+                        Arg::Value(v) => self.expr_captures_unused(v, cap_slots),
+                        Arg::Mut(p) => self.place_captures_unused(p, cap_slots),
+                    })
+            }
+            ExprKind::Closure(inner_cid) => {
+                let inner = &self.program.closures[*inner_cid];
+                !inner
+                    .captures
+                    .iter()
+                    .any(|c| !c.is_global && cap_slots.contains(&c.outer))
+            }
+            ExprKind::Do(b) => self.block_captures_unused(b, cap_slots),
+            _ => {
+                let mut ok = true;
+                walk::children(e, &mut |child| {
+                    if ok && !self.expr_captures_unused(child, cap_slots) {
+                        ok = false;
+                    }
+                });
+                ok
+            }
         }
     }
 
@@ -507,13 +636,6 @@ fn pure_path(e: &Expr) -> bool {
 /// Whether evaluating `callee` can be skipped when its value is known.
 pub(crate) fn skippable(callee: &Expr) -> bool {
     pure_path(callee)
-}
-
-/// Whether evaluating a fn-valued argument or field initializer can be skipped
-/// when the destination field or parameter is elided.
-pub(crate) fn skippable_value(program: &Program, e: &Expr) -> bool {
-    pure_path(e)
-        || matches!(e.kind, ExprKind::Closure(cid) if program.closures[cid].captures.is_empty())
 }
 
 /// The name of closure `cid` as a fn of the emitted program.
