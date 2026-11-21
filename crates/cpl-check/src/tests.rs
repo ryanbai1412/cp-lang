@@ -2832,6 +2832,14 @@ let _ = fg_tup.max_flow((Row(0), Col(0)), (Row(1), Col(2)))
 var fg_rec = FlowGraph<(r: Row, c: Col)>()
 fg_rec.add((r: Row(0), c: Col(0)), (r: Row(1), c: Col(2)), 3)
 let _ = fg_rec.max_flow((r: Row(0), c: Col(0)), (r: Row(1), c: Col(2)))
+
+fn walk_anon() -> Int:
+    var total = 0
+    for (r, c) in (Row, Col):
+        total += r.ord + c.ord
+    let xs = [r.ord + c.ord for (r, c) in (Row, Col)]
+    total + xs.len
+let _ = walk_anon()
 ";
     assert_eq!(check(ok), vec![]);
 

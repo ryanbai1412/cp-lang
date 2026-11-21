@@ -3286,6 +3286,62 @@ impl<'a> Lowerer<'a> {
         };
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.iter(inner),
+            ast::ExprKind::Tuple(items) if !items.is_empty() => {
+                let factors: Option<Vec<(Option<String>, ProductFactor)>> = items
+                    .iter()
+                    .map(|it| self.expr_to_product_factor(it).map(|f| (None, f)))
+                    .collect();
+                if let Some(factors) = factors {
+                    let d = self.intern_anon_product_domain(factors);
+                    let mut defs = Vec::new();
+                    self.def_anon_product_domain(d, span, &mut defs);
+                    self.cx.pending.extend(defs);
+                    let lo = self.int_lit(0, span);
+                    let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    return (
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: None,
+                            rev: false,
+                            closed: false,
+                        },
+                        Ty::Pos(d),
+                    );
+                }
+                let value = self.expr(e, None);
+                let message = format!("a `for` can't walk over a `{}`", self.show(&value.ty));
+                self.error(codes::TYPE_MISMATCH, span, message);
+                error(self)
+            }
+            ast::ExprKind::Record(fields) if !fields.is_empty() => {
+                let factors: Option<Vec<(Option<String>, ProductFactor)>> = fields
+                    .iter()
+                    .map(|(n, it)| self.expr_to_product_factor(it).map(|f| (Some(n.text.clone()), f)))
+                    .collect();
+                if let Some(factors) = factors {
+                    let d = self.intern_anon_product_domain(factors);
+                    let mut defs = Vec::new();
+                    self.def_anon_product_domain(d, span, &mut defs);
+                    self.cx.pending.extend(defs);
+                    let lo = self.int_lit(0, span);
+                    let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    return (
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: None,
+                            rev: false,
+                            closed: false,
+                        },
+                        Ty::Pos(d),
+                    );
+                }
+                let value = self.expr(e, None);
+                let message = format!("a `for` can't walk over a `{}`", self.show(&value.ty));
+                self.error(codes::TYPE_MISMATCH, span, message);
+                error(self)
+            }
             // `for mask in Subset<Row>:` walks every subset, and `for p in
             // ?Col:` walks `none` and then every `Col`.
             ast::ExprKind::Generic { base, args }

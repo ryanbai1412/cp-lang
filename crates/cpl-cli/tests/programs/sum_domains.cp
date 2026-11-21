@@ -57,3 +57,12 @@ var s_arr: [State]Int = 0
 s_arr[State.Idle] = 1
 s_arr[State.Moving(Row(1), Dir.Down, true)] = 99
 print(s_arr[State.Idle], s_arr[State.Moving(Row(1), Dir.Down, true)])
+
+// Anonymous product iteration and comprehensions inside a fn.
+fn sum_anon_grid() -> Int:
+    var total = 0
+    for (r, c) in (Row, Col):
+        total += r.ord * 10 + c.ord
+    let cells = [r.ord * 10 + c.ord for (r, c) in (Row, Col)]
+    total + cells.len
+print(sum_anon_grid())

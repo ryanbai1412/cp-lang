@@ -1379,6 +1379,31 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    pub(super) fn expr_to_product_factor(&mut self, e: &ast::Expr) -> Option<ProductFactor> {
+        match &e.kind {
+            ast::ExprKind::Paren(inner) => self.expr_to_product_factor(inner),
+            ast::ExprKind::Name(name) if name == "Bool" && self.lookup(name).is_none() => {
+                Some(ProductFactor::Bool)
+            }
+            _ => match self.sym(e) {
+                Some(Sym::Domain(id)) => Some(ProductFactor::Domain(id)),
+                Some(Sym::Enum(eid)) => {
+                    if let Some(&sum_dom) = self.enum_to_sum_domain.get(&eid) {
+                        Some(ProductFactor::Domain(sum_dom))
+                    } else if self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty()) {
+                        Some(ProductFactor::Enum {
+                            enum_id: eid,
+                            len: self.enums[eid].variants.len() as i64,
+                        })
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+        }
+    }
+
     pub(super) fn intern_anon_product_domain(
         &mut self,
         factors: Vec<(Option<String>, ProductFactor)>,
@@ -3865,6 +3890,36 @@ impl<'a> Lowerer<'a> {
                 } else {
                     stmts.push(Stmt::Give(encoded));
                     Ok(self.mk(ExprKind::Do(Block { stmts }), Ty::Pos(d), span))
+                }
+            }
+            (Ty::Tuple(ts), Ty::Pos(d))
+                if self.anon_product_domain_set.contains(d)
+                    && self.product_domains.get(d).is_some_and(|fs| fs.len() == ts.len()) =>
+            {
+                let d = *d;
+                let mut stmts = Vec::new();
+                let parts = self.decode_product(d, e, span, &mut stmts);
+                let tup = self.mk(ExprKind::Tuple(parts), want.clone(), span);
+                if stmts.is_empty() {
+                    Ok(tup)
+                } else {
+                    stmts.push(Stmt::Give(tup));
+                    Ok(self.mk(ExprKind::Do(Block { stmts }), want.clone(), span))
+                }
+            }
+            (Ty::Record(rfs), Ty::Pos(d))
+                if self.anon_product_domain_set.contains(d)
+                    && self.product_domains.get(d).is_some_and(|fs| fs.len() == rfs.len()) =>
+            {
+                let d = *d;
+                let mut stmts = Vec::new();
+                let parts = self.decode_product(d, e, span, &mut stmts);
+                let rec = self.mk(ExprKind::Tuple(parts), want.clone(), span);
+                if stmts.is_empty() {
+                    Ok(rec)
+                } else {
+                    stmts.push(Stmt::Give(rec));
+                    Ok(self.mk(ExprKind::Do(Block { stmts }), want.clone(), span))
                 }
             }
             (Ty::Pos(d), Ty::DomainVal) => Ok(Expr {

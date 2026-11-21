@@ -1024,6 +1024,27 @@ impl<'a> Checker<'a> {
                 name: name.clone(),
                 args: Vec::new(),
             },
+            Ty::Tuple(items)
+                if !items.is_empty()
+                    && items
+                        .iter()
+                        .all(|t| matches!(t, Ty::Domain(_) | Ty::TypeName(_))) =>
+            {
+                let elems = items.iter().map(|t| self.element_ty(t)).collect();
+                Ty::Tuple(elems)
+            }
+            Ty::Record(fields)
+                if !fields.is_empty()
+                    && fields
+                        .iter()
+                        .all(|(_, t)| matches!(t, Ty::Domain(_) | Ty::TypeName(_))) =>
+            {
+                let elems = fields
+                    .iter()
+                    .map(|(n, t)| (n.clone(), self.element_ty(t)))
+                    .collect();
+                Ty::Record(elems)
+            }
             Ty::Array { elem, .. } => (**elem).clone(),
             Ty::Str => Ty::Char,
             Ty::Named { name, args }
