@@ -43,7 +43,8 @@ The factory runs continuously, as a pipeline: every stage runs all the time
 against the latest `main`.
 
 1. **Port waves.** Port agents take five to ten accepted solutions each from
-   the corpus. Each writes the best program in the language, differential-tests
+   the corpus, picked by `scripts/pick-ports.py` (accepted verdict, complete
+   original; source repos also hold drafts). Each writes the best program in the language, differential-tests
    it against the accepted C++ (interpreter and generated C++), measures tokens,
    runtime, memory and bytes, and files friction reports: the snippet, what
    felt hacky, which goal it hurts, and a proposed general fix.
