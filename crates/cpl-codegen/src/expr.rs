@@ -1797,7 +1797,17 @@ impl<'p> Emitter<'p> {
                 Arg::Value(_) => None,
             })
             .collect();
-        self.sequence(&operands, &e.ty, |this, codes| {
+        let mut borrowed = Vec::new();
+        for (slot, arg) in args.iter().enumerate() {
+            if let Arg::Value(value) = arg {
+                if let ExprKind::Closure(cid) = value.kind {
+                    if fn_param_only_called(program, id, slot) && self.borrow_closures.insert(cid) {
+                        borrowed.push(cid);
+                    }
+                }
+            }
+        }
+        let result = self.sequence(&operands, &e.ty, |this, codes| {
             let mut codes = codes.into_iter();
             let mut texts = Vec::with_capacity(args.len());
             // Arguments for parameters that hold no value: they are run
@@ -1872,7 +1882,11 @@ impl<'p> Emitter<'p> {
             } else {
                 Code::primary(format!("({}, {call})", ran.join(", ")))
             }
-        })
+        });
+        for cid in borrowed {
+            self.borrow_closures.remove(&cid);
+        }
+        result
     }
 
     /// True when `value`, an argument of the call a `return` makes, is a
@@ -2339,12 +2353,18 @@ impl<'p> Emitter<'p> {
         // Build C++17 capture list from enclosing names/globals.
         let mut cap_parts = Vec::new();
         let mut global_ref_aliases = Vec::new();
+        let borrow_immutable = self.borrow_closures.contains(&cid);
         if !skip_captures {
             for cap in &def.captures {
                 let inner = &inner_names[cap.inner];
+                let non_scalar = !def.locals[cap.inner].ty.is_scalar();
                 if cap.is_global {
                     let gname = ident(&self.program.globals[cap.outer].name);
-                    if cap.by_ref {
+                    if cap.by_ref
+                        || (borrow_immutable
+                            && non_scalar
+                            && self.const_globals.contains(&cap.outer))
+                    {
                         let constant = if self.const_globals.contains(&cap.outer) { "const " } else { "" };
                         global_ref_aliases.push(format!("{constant}auto& {inner} = {gname};"));
                     } else {
@@ -2352,7 +2372,7 @@ impl<'p> Emitter<'p> {
                     }
                 } else {
                     let outer = &self.names[cap.outer];
-                    if cap.by_ref {
+                    if cap.by_ref || (borrow_immutable && non_scalar) {
                         cap_parts.push(format!("&{inner} = {outer}"));
                     } else {
                         cap_parts.push(format!("{inner} = {outer}"));
@@ -2643,4 +2663,58 @@ pub(crate) fn map_remove_do(e: &Expr) -> Option<(&[Stmt], &Place, &Expr)> {
     } else {
         None
     }
+}
+
+/// True when `param_slot` of `fn_id` is only ever invoked as the direct callee
+/// of `CallExpr` (never stored, returned, passed on, mutated, or captured),
+/// so a closure passed to it cannot outlive the call.
+fn fn_param_only_called(program: &cpl_ir::Program, fn_id: usize, param_slot: usize) -> bool {
+    let f = &program.fns[fn_id];
+    if param_slot >= f.params.len() || f.params[param_slot].mutable {
+        return false;
+    }
+    let mut total_uses = 0usize;
+    let mut indirect_callees = 0usize;
+    let mut escapes = false;
+    walk::deep_stmts(&f.body, &mut |stmt| {
+        if let Stmt::Assign(place, _, _) = stmt {
+            if walk::root(place) == (false, param_slot) {
+                escapes = true;
+            }
+        }
+    });
+    walk::deep_exprs(&f.body, &mut |e| match &e.kind {
+        ExprKind::Local(s) if *s == param_slot => total_uses += 1,
+        ExprKind::CallExpr(callee, args) => {
+            if matches!(callee.kind, ExprKind::Local(s) if s == param_slot) {
+                indirect_callees += 1;
+            }
+            for arg in args {
+                if let Arg::Mut(place) = arg {
+                    if walk::root(place) == (false, param_slot) {
+                        escapes = true;
+                    }
+                }
+            }
+        }
+        ExprKind::Call(_, args) => {
+            for arg in args {
+                if let Arg::Mut(place) = arg {
+                    if walk::root(place) == (false, param_slot) {
+                        escapes = true;
+                    }
+                }
+            }
+        }
+        ExprKind::Closure(cid)
+            if program.closures[*cid]
+                .captures
+                .iter()
+                .any(|c| !c.is_global && c.outer == param_slot) =>
+        {
+            escapes = true;
+        }
+        _ => {}
+    });
+    !escapes && total_uses == indirect_callees
 }

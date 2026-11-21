@@ -96,6 +96,9 @@ pub(crate) struct Emitter<'p> {
     pub devirt: crate::devirt::Devirt<'p>,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
+    /// Non-escaping closures passed to call-only parameters; immutable non-scalar
+    /// captures can be borrowed by reference instead of deep-copied.
+    pub borrow_closures: BTreeSet<usize>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
     /// the file names, as bits.
     pub niche_types: std::cell::Cell<u8>,
@@ -202,6 +205,7 @@ impl<'p> Emitter<'p> {
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
+            borrow_closures: BTreeSet::new(),
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),
             top_names,

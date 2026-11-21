@@ -845,6 +845,22 @@ fn multi_closure_fn_param_lowers_to_template_functor() {
 }
 
 #[test]
+fn non_escaping_closure_borrows_immutable_non_scalar_captures() {
+    let out = cpp(
+        "struct Box(xs: List<Int>):
+    fn find_first(self, target: Int) -> ?Int:
+        bsearch_first(0..xs.len, i => self.xs[i] >= target)
+let b = Box([1, 3, 5, 7])
+print(b.find_first(4) ?? -1)
+",
+    );
+    assert!(
+        out.contains("[&self_2 = self"),
+        "expected non-escaping closure passed to bsearch_first to capture `self` by reference:\n{out}"
+    );
+}
+
+#[test]
 fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
     let src = concat!(
         "struct Box(op: Int -> Int)\n",
