@@ -663,3 +663,79 @@ fn unused_structs_and_their_trait_hooks_are_omitted() {
     assert!(!cpp.contains("Unused_lt"), "{cpp}");
     assert!(!cpp.contains("Unused_show"), "{cpp}");
 }
+
+#[test]
+fn static_struct_and_param_ops_eliminate_std_function() {
+    let src = concat!(
+        "struct Box(op: (Int, Int) -> Int, base: Int)\n",
+        "fn apply_box(b: Box, x: Int) -> Int = b.op(b.base, x)\n",
+        "let b = Box((x, y) => x + y, 10)\n",
+        "print(apply_box(b, 5))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let out = crate::emit(&program, "t.cp", None);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("cpl_fn0("), "{out}");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained.iter().any(|e| matches!(e.mode, crate::ClosureMode::StaticDirect { .. })),
+        "{explained:?}"
+    );
+    assert!(
+        explained.iter().all(|e| !matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
+        "{explained:?}"
+    );
+}
+
+#[test]
+fn multi_closure_fn_param_lowers_to_template_functor() {
+    let src = concat!(
+        "fn twice(f: Int -> Int, x: Int) -> Int = f(f(x))\n",
+        "let k = 3\n",
+        "print(twice(x => x + 1, 2), twice(x => x + k, 2))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let out = crate::emit(&program, "t.cp", None);
+    assert!(out.contains("template <class F0>"), "{out}");
+    assert!(!out.contains("std::function"), "{out}");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained.iter().any(|e| e.mode == crate::ClosureMode::StaticTemplate),
+        "{explained:?}"
+    );
+}
+
+#[test]
+fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
+    let src = concat!(
+        "struct Box(op: Int -> Int)\n",
+        "fn run(k: Int) -> Int:\n",
+        "    let loc = (x: Int) => x + k\n",
+        "    loc(1)\n",
+        "let k = 5\n",
+        "let a = Box(x => x + 1)\n",
+        "let b = Box(x => x + k)\n",
+        "print(run(k), a.op(2), b.op(3))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let out = crate::emit(&program, "t.cp", None);
+    assert!(out.contains("auto loc ="), "{out}");
+    assert!(out.contains("std::function<ll(ll)> op;"), "{out}");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained.iter().any(|e| e.mode == crate::ClosureMode::StaticLocalAuto),
+        "{explained:?}"
+    );
+    assert!(
+        explained
+            .iter()
+            .any(|e| matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
+        "{explained:?}"
+    );
+}

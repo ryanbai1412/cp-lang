@@ -700,8 +700,24 @@ impl<'p> Emitter<'p> {
                     _ if items.is_empty() => Code::primary(format!("{ty}()")),
                     _ => {
                         // `{...}` runs its elements left to right.
-                        let items: Vec<String> =
-                            items.iter().map(|item| self.braced(item)).collect();
+                        let struct_id = match e.ty {
+                            Ty::Struct(s) => Some(s),
+                            _ => None,
+                        };
+                        let items: Vec<String> = items
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, item)| {
+                                if struct_id.is_some_and(|s| {
+                                    self.devirt.field_elidable(s, idx)
+                                        && crate::devirt::skippable_value(program, item)
+                                }) {
+                                    "false".to_string()
+                                } else {
+                                    self.braced(item)
+                                }
+                            })
+                            .collect();
                         Code::primary(format!("{ty}{{{}}}", items.join(", ")))
                     }
                 }
@@ -1278,8 +1294,17 @@ impl<'p> Emitter<'p> {
         let f = &program.fns[id];
         let operands: Vec<&Expr> = args
             .iter()
-            .filter_map(|arg| match arg {
-                Arg::Value(value) => Some(value),
+            .enumerate()
+            .filter_map(|(slot, arg)| match arg {
+                Arg::Value(value) => {
+                    if self.devirt.param_elidable(id, slot)
+                        && crate::devirt::skippable_value(program, value)
+                    {
+                        None
+                    } else {
+                        Some(value)
+                    }
+                }
                 Arg::Mut(_) => None,
             })
             .collect();
@@ -1300,6 +1325,12 @@ impl<'p> Emitter<'p> {
                 match arg {
                     Arg::Mut(place) => texts.push(this.place(place)),
                     Arg::Value(value) => {
+                        if this.devirt.param_elidable(id, slot)
+                            && crate::devirt::skippable_value(program, value)
+                        {
+                            texts.push("false".to_string());
+                            continue;
+                        }
                         let code = codes.next().expect("one per value");
                         if slot < f.params.len() && f.locals[slot].ty == Ty::Unit {
                             if code.text != "(void)0" {
@@ -1311,6 +1342,7 @@ impl<'p> Emitter<'p> {
                         // callee change what it refers to: the language
                         // passes values.
                         let by_ref = !value.ty.is_scalar()
+                            && this.devirt.template_param_index(id, slot).is_none()
                             && this.facts.stores((Some(id), false, slot)) <= 2;
                         let shared = match walk::path_root(value) {
                             Some(root) => {

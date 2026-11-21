@@ -953,6 +953,12 @@ impl<'p> Emitter<'p> {
                 } else if let Some(args) = sized_ctor(&cpp, &text) {
                     // `std::vector<ll> f((size_t)(n), 1);`: the type once.
                     self.line(out, &format!("{cpp} {name}({args});"));
+                } else if matches!(ty, Ty::Fn(..))
+                    && self.closure_id.is_none()
+                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_auto(*slot, cid))
+                    && self.facts.stores((self.fn_id, false, *slot)) <= 1
+                {
+                    self.line(out, &format!("auto {name} = {text};"));
                 } else {
                     self.line(out, &format!("{cpp} {name} = {text};"));
                 }
@@ -982,7 +988,58 @@ impl<'p> Emitter<'p> {
                     self.expr_stmt(value, out);
                     self.line(out, "return;");
                 } else {
-                    let text = self.expr(value).text;
+                    let is_return = matches!(stmt, Stmt::Return(_));
+                    let text = if is_return && self.closure_id.is_none() {
+                        if let ExprKind::Tuple(items) = &value.kind {
+                            if !items.is_empty() && !matches!(value.ty, Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)) {
+                                let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
+                                let ty = self.ty(&value.ty);
+                                let struct_id = match value.ty {
+                                    Ty::Struct(s) => Some(s),
+                                    _ => None,
+                                };
+                                let rendered: Vec<String> = items
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(idx, item)| {
+                                        if struct_id.is_some_and(|s| {
+                                            self.devirt.field_elidable(s, idx)
+                                                && crate::devirt::skippable_value(self.program, item)
+                                        }) {
+                                            return "false".to_string();
+                                        }
+                                        if let ExprKind::Local(slot) = item.kind {
+                                            if slot >= params
+                                                && !item.ty.is_scalar()
+                                                && !matches!(item.ty, Ty::Fn(..))
+                                                && !items.iter().enumerate().any(|(j, other)| {
+                                                    j != idx && {
+                                                        let mut used = false;
+                                                        crate::walk::deep_expr(other, &mut |e| {
+                                                            if matches!(e.kind, ExprKind::Local(s) if s == slot) {
+                                                                used = true;
+                                                            }
+                                                        });
+                                                        used
+                                                    }
+                                                })
+                                            {
+                                                return format!("std::move({})", self.names[slot]);
+                                            }
+                                        }
+                                        self.expr(item).text
+                                    })
+                                    .collect();
+                                format!("{ty}{{{}}}", rendered.join(", "))
+                            } else {
+                                self.expr(value).text
+                            }
+                        } else {
+                            self.expr(value).text
+                        }
+                    } else {
+                        self.expr(value).text
+                    };
                     self.line(out, &format!("return {text};"));
                 }
             }

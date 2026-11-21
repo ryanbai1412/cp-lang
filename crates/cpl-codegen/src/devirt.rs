@@ -11,11 +11,35 @@
 //! A call through such a field or parameter is emitted as a direct call
 //! of the closure, which the C++ compiler then inlines.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
 
 use crate::walk;
+
+/// How a fn-typed slot (struct field, fn parameter, or local closure binding)
+/// lowers to C++17.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClosureMode {
+    /// Single statically known zero-capture closure: called directly as
+    /// `cpl_fnN(...)`, and the `std::function` storage/parameter is elided.
+    StaticDirect { closure: ClosureId },
+    /// C++ function template functor parameter (`template <class F>`):
+    /// lambdas (including capturing ones) are passed by type and inlined.
+    StaticTemplate,
+    /// Local `auto` closure binding: no `std::function` wrapper or heap
+    /// allocation.
+    StaticLocalAuto,
+    /// Genuinely dynamic fn value: falls back to `std::function`.
+    DynamicStdFunction { reason: String },
+}
+
+/// One fn-typed site reported by `cpl explain <file>`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClosureLowering {
+    pub site: String,
+    pub mode: ClosureMode,
+}
 
 /// Somewhere a fn value is kept.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -34,6 +58,10 @@ enum Held {
 pub(crate) struct Devirt<'p> {
     program: &'p Program,
     held: BTreeMap<Home, Held>,
+    elidable: BTreeSet<Home>,
+    template_params: BTreeMap<FnId, Vec<usize>>,
+    reassigned_params: BTreeSet<(FnId, usize)>,
+    recursive_fns: BTreeSet<FnId>,
     changed: bool,
 }
 
@@ -42,6 +70,10 @@ impl<'p> Devirt<'p> {
         let mut pass = Devirt {
             program,
             held: BTreeMap::new(),
+            elidable: BTreeSet::new(),
+            template_params: BTreeMap::new(),
+            reassigned_params: BTreeSet::new(),
+            recursive_fns: recursive_fns(program),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -61,6 +93,8 @@ impl<'p> Devirt<'p> {
                 pass.block(None, &closure.body);
             }
         }
+        pass.compute_elidable();
+        pass.compute_template_params();
         pass
     }
 
@@ -77,6 +111,294 @@ impl<'p> Devirt<'p> {
     /// calls go to the closure and the parameter itself may go unread.
     pub fn param_known(&self, id: FnId, slot: usize) -> bool {
         matches!(self.held.get(&Home::Param(id, slot)), Some(Held::One(_)))
+    }
+
+    /// Struct field `(struct_id, index)` is a single statically known closure
+    /// that never escapes to a dynamic `std::function`, so its `std::function`
+    /// storage is replaced by a 1-byte `bool` placeholder.
+    pub fn field_elidable(&self, struct_id: usize, index: usize) -> bool {
+        self.elidable.contains(&Home::Field(struct_id, index))
+    }
+
+    /// Fn parameter `(id, slot)` is a single statically known closure that
+    /// never escapes, so its `std::function` parameter is replaced by a
+    /// `[[maybe_unused]] bool` placeholder and callers pass `false`.
+    pub fn param_elidable(&self, id: FnId, slot: usize) -> bool {
+        self.elidable.contains(&Home::Param(id, slot))
+    }
+
+    /// Parameter slots of `id` lowered as C++ template functor parameters
+    /// (`template <class F0, ...>`).
+    pub fn template_params(&self, id: FnId) -> &[usize] {
+        self.template_params.get(&id).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    /// Index into `template_params(id)` if `slot` is a template functor param.
+    pub fn template_param_index(&self, id: FnId, slot: usize) -> Option<usize> {
+        self.template_params(id).iter().position(|&s| s == slot)
+    }
+
+    /// Whether a non-hoisted, non-reassigned local `let name = <closure>` can
+    /// be emitted as `auto name = ...;` instead of `std::function<...>`.
+    pub fn local_auto(&self, slot: usize, cid: ClosureId) -> bool {
+        !self.program.closures[cid]
+            .captures
+            .iter()
+            .any(|c| !c.is_global && c.outer == slot)
+    }
+
+    fn compute_elidable(&mut self) {
+        let mut assigned_fields: BTreeSet<(usize, usize)> = BTreeSet::new();
+        let mut captured_params: BTreeSet<(FnId, usize)> = BTreeSet::new();
+        let mut scan_assigns = |home: Option<FnId>, block: &Block| {
+            walk::deep_stmts(block, &mut |stmt| {
+                if let Stmt::Assign(place, _, _) = stmt {
+                    if let (PlaceKind::Field(base, index), Ty::Struct(s)) = (&place.kind, place_base_ty(place)) {
+                        let _ = base;
+                        assigned_fields.insert((*s, *index));
+                    }
+                    if let (PlaceKind::Local(slot), Some(id)) = (&place.kind, home) {
+                        if *slot < self.program.fns[id].params.len() {
+                            self.reassigned_params.insert((id, *slot));
+                        }
+                    }
+                }
+            });
+            walk::deep_exprs(block, &mut |e| {
+                if let (ExprKind::Closure(cid), Some(id)) = (&e.kind, home) {
+                    for cap in &self.program.closures[*cid].captures {
+                        if !cap.is_global && cap.outer < self.program.fns[id].params.len() {
+                            captured_params.insert((id, cap.outer));
+                        }
+                    }
+                }
+                if let ExprKind::Call(_, args) = &e.kind {
+                    for arg in args {
+                        if let Arg::Mut(place) = arg {
+                            if let (PlaceKind::Field(_, index), Ty::Struct(s)) = (&place.kind, place_base_ty(place)) {
+                                assigned_fields.insert((*s, *index));
+                            }
+                            if let (PlaceKind::Local(slot), Some(id)) = (&place.kind, home) {
+                                if *slot < self.program.fns[id].params.len() {
+                                    self.reassigned_params.insert((id, *slot));
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        scan_assigns(None, &self.program.setup);
+        scan_assigns(None, &self.program.main);
+        for (id, f) in self.program.fns.iter().enumerate() {
+            scan_assigns(Some(id), &f.body);
+        }
+        for closure in &self.program.closures {
+            scan_assigns(None, &closure.body);
+        }
+
+        for (&home, &held) in &self.held {
+            if !matches!(held, Held::One(_)) {
+                continue;
+            }
+            match home {
+                Home::Field(s, idx) => {
+                    if !assigned_fields.contains(&(s, idx)) {
+                        self.elidable.insert(home);
+                    }
+                }
+                Home::Param(id, slot) => {
+                    let f = &self.program.fns[id];
+                    let forbidden = self.program.entry_fns.contains(&id)
+                        || self.program.judge_fns.contains(&id)
+                        || is_hook_fn(self.program, id)
+                        || f.params[slot].mutable
+                        || self.reassigned_params.contains(&(id, slot))
+                        || captured_params.contains(&(id, slot));
+                    if !forbidden {
+                        self.elidable.insert(home);
+                    }
+                }
+            }
+        }
+
+        // Fixed-point shrink: remove any home read in an escaping position.
+        loop {
+            let mut removed = Vec::new();
+            self.find_escapes(None, &self.program.setup, &mut removed);
+            self.find_escapes(None, &self.program.main, &mut removed);
+            for (id, f) in self.program.fns.iter().enumerate() {
+                self.find_escapes(Some(id), &f.body, &mut removed);
+            }
+            for closure in &self.program.closures {
+                self.find_escapes(None, &closure.body, &mut removed);
+            }
+            let before = self.elidable.len();
+            for h in removed {
+                self.elidable.remove(&h);
+            }
+            if self.elidable.len() == before {
+                break;
+            }
+        }
+    }
+
+    fn find_escapes(&self, home: Option<FnId>, block: &Block, out: &mut Vec<Home>) {
+        for stmt in &block.stmts {
+            self.find_escapes_stmt(home, stmt, out);
+        }
+    }
+
+    fn find_escapes_stmt(&self, home: Option<FnId>, stmt: &Stmt, out: &mut Vec<Home>) {
+        match stmt {
+            Stmt::Let(_, init) => {
+                if let Some(e) = init {
+                    self.find_escapes_expr(home, e, false, out);
+                }
+            }
+            Stmt::Assign(place, _, value) => {
+                walk::place_exprs(place, &mut |e| self.find_escapes_expr(home, e, false, out));
+                self.find_escapes_expr(home, value, false, out);
+            }
+            Stmt::Expr(e) | Stmt::Give(e) | Stmt::DefDomainFromVal { val: e, .. } => {
+                self.find_escapes_expr(home, e, false, out);
+            }
+            Stmt::Return(value) => {
+                if let Some(e) = value {
+                    self.find_escapes_expr(home, e, false, out);
+                }
+            }
+            Stmt::If(cond, then, otherwise) => {
+                self.find_escapes_expr(home, cond, false, out);
+                self.find_escapes(home, then, out);
+                self.find_escapes(home, otherwise, out);
+            }
+            Stmt::While(_, cond, body) => {
+                self.find_escapes_expr(home, cond, false, out);
+                self.find_escapes(home, body, out);
+            }
+            Stmt::For(_, _, iter, body) => {
+                match iter {
+                    cpl_ir::Iter::Range { lo, hi, step, .. } => {
+                        self.find_escapes_expr(home, lo, false, out);
+                        self.find_escapes_expr(home, hi, false, out);
+                        if let Some(step) = step {
+                            self.find_escapes_expr(home, step, false, out);
+                        }
+                    }
+                    cpl_ir::Iter::RangeVal(e, _)
+                    | cpl_ir::Iter::Seq(e, _)
+                    | cpl_ir::Iter::Subsets(e)
+                    | cpl_ir::Iter::Members(e) => {
+                        self.find_escapes_expr(home, e, false, out);
+                    }
+                }
+                self.find_escapes(home, body, out);
+            }
+            Stmt::Assert { cond, message, .. } => {
+                self.find_escapes_expr(home, cond, false, out);
+                if let Some(msg) = message {
+                    self.find_escapes_expr(home, msg, false, out);
+                }
+            }
+            Stmt::DefDomain { lo, len, .. } => {
+                self.find_escapes_expr(home, lo, false, out);
+                self.find_escapes_expr(home, len, false, out);
+            }
+            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
+        }
+    }
+
+    fn find_escapes_expr(&self, home: Option<FnId>, e: &Expr, elided_ctx: bool, out: &mut Vec<Home>) {
+        match &e.kind {
+            ExprKind::Local(slot) => {
+                if !elided_ctx {
+                    if let Some(id) = home {
+                        if *slot < self.program.fns[id].params.len() {
+                            let h = Home::Param(id, *slot);
+                            if self.elidable.contains(&h) {
+                                out.push(h);
+                            }
+                        }
+                    }
+                }
+            }
+            ExprKind::Field(base, index) => {
+                if !elided_ctx {
+                    if let Ty::Struct(s) = base.ty {
+                        let h = Home::Field(s, *index);
+                        if self.elidable.contains(&h) {
+                            out.push(h);
+                        }
+                    }
+                }
+                self.find_escapes_expr(home, base, false, out);
+            }
+            ExprKind::CallExpr(callee, args) => {
+                let direct = self.target(home, callee).is_some() && skippable(callee);
+                self.find_escapes_expr(home, callee, direct, out);
+                for arg in args {
+                    match arg {
+                        Arg::Value(v) => self.find_escapes_expr(home, v, false, out),
+                        Arg::Mut(p) => walk::place_exprs(p, &mut |x| self.find_escapes_expr(home, x, false, out)),
+                    }
+                }
+            }
+            ExprKind::Call(callee, args) => {
+                for (slot, arg) in args.iter().enumerate() {
+                    match arg {
+                        Arg::Value(v) => {
+                            let ok = self.elidable.contains(&Home::Param(*callee, slot))
+                                && skippable_value(self.program, v);
+                            self.find_escapes_expr(home, v, ok, out);
+                        }
+                        Arg::Mut(p) => walk::place_exprs(p, &mut |x| self.find_escapes_expr(home, x, false, out)),
+                    }
+                }
+            }
+            ExprKind::Tuple(items) => {
+                let s = match e.ty {
+                    Ty::Struct(s) => Some(s),
+                    _ => None,
+                };
+                for (i, item) in items.iter().enumerate() {
+                    let ok = s.is_some_and(|s| {
+                        self.elidable.contains(&Home::Field(s, i))
+                            && skippable_value(self.program, item)
+                    });
+                    self.find_escapes_expr(home, item, ok, out);
+                }
+            }
+            ExprKind::Do(block) => {
+                self.find_escapes(home, block, out);
+            }
+            _ => {
+                walk::children(e, &mut |child| self.find_escapes_expr(home, child, false, out));
+            }
+        }
+    }
+
+    fn compute_template_params(&mut self) {
+        for (id, f) in self.program.fns.iter().enumerate() {
+            if self.program.entry_fns.contains(&id)
+                || self.program.judge_fns.contains(&id)
+                || is_hook_fn(self.program, id)
+                || self.recursive_fns.contains(&id)
+            {
+                continue;
+            }
+            let slots: Vec<usize> = (0..f.params.len())
+                .filter(|&slot| {
+                    matches!(f.locals[slot].ty, Ty::Fn(..))
+                        && !f.params[slot].mutable
+                        && !self.elidable.contains(&Home::Param(id, slot))
+                        && !self.reassigned_params.contains(&(id, slot))
+                })
+                .collect();
+            if !slots.is_empty() {
+                self.template_params.insert(id, slots);
+            }
+        }
     }
 
     /// `None`: nothing has been stored there yet.
@@ -187,7 +509,161 @@ pub(crate) fn skippable(callee: &Expr) -> bool {
     pure_path(callee)
 }
 
+/// Whether evaluating a fn-valued argument or field initializer can be skipped
+/// when the destination field or parameter is elided.
+pub(crate) fn skippable_value(program: &Program, e: &Expr) -> bool {
+    pure_path(e)
+        || matches!(e.kind, ExprKind::Closure(cid) if program.closures[cid].captures.is_empty())
+}
+
 /// The name of closure `cid` as a fn of the emitted program.
 pub(crate) fn name(cid: ClosureId) -> String {
     format!("cpl_fn{cid}")
+}
+
+fn is_hook_fn(program: &Program, id: FnId) -> bool {
+    program
+        .structs
+        .iter()
+        .any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)))
+}
+
+fn recursive_fns(program: &Program) -> BTreeSet<FnId> {
+    let n = program.fns.len();
+    let mut adj: Vec<BTreeSet<FnId>> = vec![BTreeSet::new(); n];
+    for (id, f) in program.fns.iter().enumerate() {
+        walk::deep_exprs(&f.body, &mut |e| {
+            if let ExprKind::Call(callee, _) = e.kind {
+                adj[id].insert(callee);
+            }
+        });
+    }
+    let mut rec = BTreeSet::new();
+    for start in 0..n {
+        let mut seen = BTreeSet::new();
+        let mut stack: Vec<FnId> = adj[start].iter().copied().collect();
+        while let Some(u) = stack.pop() {
+            if u == start {
+                rec.insert(start);
+                break;
+            }
+            if seen.insert(u) {
+                stack.extend(adj[u].iter().copied());
+            }
+        }
+    }
+    rec
+}
+
+/// Report how every fn-typed struct field, fn parameter, and local closure
+/// binding in `program` lowers to C++17 (static vs dynamic `std::function`).
+pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
+    let devirt = Devirt::collect(program);
+    let mut out = Vec::new();
+
+    for (sid, s) in program.structs.iter().enumerate() {
+        for (idx, (fname, fty)) in s.fields.iter().enumerate() {
+            if !matches!(fty, Ty::Fn(..)) {
+                continue;
+            }
+            let site = format!("struct {}.{}", s.name, fname);
+            let mode = if devirt.field_elidable(sid, idx) {
+                let Some(Held::One(cid)) = devirt.held.get(&Home::Field(sid, idx)).copied() else {
+                    continue;
+                };
+                ClosureMode::StaticDirect { closure: cid }
+            } else {
+                let reason = match devirt.held.get(&Home::Field(sid, idx)) {
+                    Some(Held::One(_)) => "field escapes or is reassigned".to_string(),
+                    Some(Held::Many) => "multiple or capturing closures stored in field".to_string(),
+                    None => continue,
+                };
+                ClosureMode::DynamicStdFunction { reason }
+            };
+            out.push(ClosureLowering { site, mode });
+        }
+    }
+
+    for (fid, f) in program.fns.iter().enumerate() {
+        for slot in 0..f.params.len() {
+            if !matches!(f.locals[slot].ty, Ty::Fn(..)) {
+                continue;
+            }
+            let site = format!("fn {} param {}", f.name, f.locals[slot].name);
+            let mode = if devirt.param_elidable(fid, slot) {
+                let Some(Held::One(cid)) = devirt.held.get(&Home::Param(fid, slot)).copied() else {
+                    continue;
+                };
+                ClosureMode::StaticDirect { closure: cid }
+            } else if devirt.template_param_index(fid, slot).is_some() {
+                ClosureMode::StaticTemplate
+            } else {
+                let reason = if program.entry_fns.contains(&fid) || program.judge_fns.contains(&fid) {
+                    "judge/entry function boundary".to_string()
+                } else if devirt.recursive_fns.contains(&fid) {
+                    "recursive function parameter".to_string()
+                } else if f.params[slot].mutable {
+                    "mut fn parameter".to_string()
+                } else if devirt.reassigned_params.contains(&(fid, slot)) {
+                    "reassigned parameter".to_string()
+                } else {
+                    "dynamic fn parameter".to_string()
+                };
+                ClosureMode::DynamicStdFunction { reason }
+            };
+            out.push(ClosureLowering { site, mode });
+        }
+
+        explain_locals_in_block(&devirt, &format!("fn {}", f.name), &f.locals, &f.body, &mut out);
+    }
+
+    explain_locals_in_block(&devirt, "main", &program.main_locals, &program.main, &mut out);
+    out
+}
+
+fn explain_locals_in_block(
+    devirt: &Devirt<'_>,
+    owner: &str,
+    locals: &[cpl_ir::Local],
+    block: &Block,
+    out: &mut Vec<ClosureLowering>,
+) {
+    let mut stores: BTreeMap<usize, usize> = BTreeMap::new();
+    walk::deep_stmts(block, &mut |stmt| match stmt {
+        Stmt::Let(slot, Some(_)) => *stores.entry(*slot).or_default() += 1,
+        Stmt::Assign(place, _, _) => {
+            if let PlaceKind::Local(slot) = place.kind {
+                *stores.entry(slot).or_default() += 1;
+            }
+        }
+        _ => {}
+    });
+    walk::deep_stmts(block, &mut |stmt| {
+        let Stmt::Let(slot, Some(init)) = stmt else {
+            return;
+        };
+        if !matches!(locals[*slot].ty, Ty::Fn(..)) {
+            return;
+        }
+        let site = format!("{owner} local {}", locals[*slot].name);
+        let mode = match init.kind {
+            ExprKind::Closure(cid)
+                if stores.get(slot).copied().unwrap_or(0) <= 1 && devirt.local_auto(*slot, cid) =>
+            {
+                ClosureMode::StaticLocalAuto
+            }
+            ExprKind::Closure(cid) if !devirt.local_auto(*slot, cid) => {
+                ClosureMode::DynamicStdFunction {
+                    reason: "recursive local closure".to_string(),
+                }
+            }
+            ExprKind::Closure(_) => ClosureMode::DynamicStdFunction {
+                reason: "reassigned local closure".to_string(),
+            },
+            _ => ClosureMode::DynamicStdFunction {
+                reason: "dynamic fn value".to_string(),
+            },
+        };
+        out.push(ClosureLowering { site, mode });
+    });
 }

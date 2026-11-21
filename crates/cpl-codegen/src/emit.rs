@@ -398,6 +398,7 @@ impl<'p> Emitter<'p> {
     fn signature(&self, f: &Function) -> String {
         let id = self.fn_id.expect("a fn");
         let named = crate::scope::named_params(&f.body, f.params.len());
+        let tparams = self.devirt.template_params(id);
         let params: Vec<String> = f
             .params
             .iter()
@@ -408,6 +409,16 @@ impl<'p> Emitter<'p> {
             .map(|(slot, param)| {
                 let ty = &f.locals[slot].ty;
                 let name = &self.names[slot];
+                if self.devirt.param_elidable(id, slot) {
+                    return format!("[[maybe_unused]] bool {name}");
+                }
+                if let Some(ti) = self.devirt.template_param_index(id, slot) {
+                    return if self.devirt.param_known(id, slot) || !named.contains(&slot) {
+                        format!("[[maybe_unused]] F{ti}&& {name}")
+                    } else {
+                        format!("F{ti}&& {name}")
+                    };
+                }
                 let cpp = self.ty(ty);
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
@@ -424,8 +435,14 @@ impl<'p> Emitter<'p> {
                 }
             })
             .collect();
+        let prefix = if tparams.is_empty() {
+            String::new()
+        } else {
+            let args: Vec<String> = (0..tparams.len()).map(|i| format!("class F{i}")).collect();
+            format!("template <{}>\n", args.join(", "))
+        };
         format!(
-            "{} {}({})",
+            "{prefix}{} {}({})",
             self.ty(&f.ret),
             fn_name(&f.name),
             params.join(", ")
@@ -526,10 +543,16 @@ impl<'p> Emitter<'p> {
                 out.push_str(&format!("struct {} {{\n", ident(&def.name)));
                 let mut names = Vec::new();
                 for (field, field_ty) in &def.fields {
-                    self.need_ty(field_ty);
+                    let field_idx = names.len();
                     let name = ident(field);
+                    if self.devirt.field_elidable(*id, field_idx) {
+                        out.push_str(&format!("    bool {name} = false;\n"));
+                        names.push(name);
+                        continue;
+                    }
+                    self.need_ty(field_ty);
                     let mut cpp = self.ty(field_ty);
-                    let cells = self.rows.get(&(*id, names.len()));
+                    let cells = self.rows.get(&(*id, field_idx));
                     if let (Some(k), Some(cell)) = (
                         cells,
                         cpp.strip_prefix("std::vector<").and_then(|c| c.strip_suffix('>')),
@@ -991,7 +1014,11 @@ impl<'p> Emitter<'p> {
             "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\
              #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <vector>\n#include <unistd.h>\n",
         );
-        if !program.closures.is_empty() {
+        if types.contains("std::function")
+            || vars.contains("std::function")
+            || fns.contains("std::function")
+            || direct.contains("std::function")
+        {
             out.push_str("#include <functional>\n");
         }
         if self.used.contains("cphash") {

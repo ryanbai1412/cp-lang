@@ -1509,6 +1509,14 @@ fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u
             let _ = writeln!(stdout, "\n]");
             0
         }
+        [arg] if arg.ends_with(".cp") || std::path::Path::new(arg).is_file() => {
+            explain_file(arg, false, stdout, stderr)
+        }
+        [arg, "--json"] | ["--json", arg]
+            if arg.ends_with(".cp") || std::path::Path::new(arg).is_file() =>
+        {
+            explain_file(arg, true, stdout, stderr)
+        }
         [code] => {
             if let Some(info) = cpl_diag::lookup(code) {
                 let _ = writeln!(stdout, "{}: {}", info.code.0, info.title);
@@ -1535,10 +1543,95 @@ fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u
             EXIT_USAGE
         }
         _ => {
-            *stderr += "usage: cpl explain <CODE> | cpl explain --json\n";
+            *stderr += "usage: cpl explain <CODE | FILE.cp> [--json]\n";
             EXIT_USAGE
         }
     }
+}
+
+fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut String) -> u8 {
+    let compiled = match compile(path, stderr) {
+        Ok(c) => c,
+        Err(code) => return code,
+    };
+    let entries = cpl_codegen::explain_closures(&compiled.program);
+    if json {
+        let _ = writeln!(stdout, "[");
+        for (i, entry) in entries.iter().enumerate() {
+            let comma = if i + 1 == entries.len() { "" } else { "," };
+            let (kind, detail) = match &entry.mode {
+                cpl_codegen::ClosureMode::StaticDirect { closure } => {
+                    ("static_direct", format!("cpl_fn{closure}"))
+                }
+                cpl_codegen::ClosureMode::StaticTemplate => {
+                    ("static_template", "template functor parameter".to_string())
+                }
+                cpl_codegen::ClosureMode::StaticLocalAuto => {
+                    ("static_local_auto", "local auto lambda".to_string())
+                }
+                cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
+                    ("dynamic_std_function", reason.clone())
+                }
+            };
+            let _ = writeln!(
+                stdout,
+                "  {{\"site\":{},\"lowering\":{},\"detail\":{}}}{comma}",
+                json_escape(&entry.site),
+                json_escape(kind),
+                json_escape(&detail),
+            );
+        }
+        let _ = writeln!(stdout, "]");
+        return 0;
+    }
+    if entries.is_empty() {
+        let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
+        return 0;
+    }
+    let mut static_count = 0usize;
+    let mut dynamic_count = 0usize;
+    let _ = writeln!(stdout, "Closure & operation lowering for {path}:");
+    for entry in &entries {
+        match &entry.mode {
+            cpl_codegen::ClosureMode::StaticDirect { closure } => {
+                static_count += 1;
+                let _ = writeln!(
+                    stdout,
+                    "  [static: direct]   {} -> cpl_fn{closure} (no std::function)",
+                    entry.site
+                );
+            }
+            cpl_codegen::ClosureMode::StaticTemplate => {
+                static_count += 1;
+                let _ = writeln!(
+                    stdout,
+                    "  [static: template] {} -> template functor param (no std::function)",
+                    entry.site
+                );
+            }
+            cpl_codegen::ClosureMode::StaticLocalAuto => {
+                static_count += 1;
+                let _ = writeln!(
+                    stdout,
+                    "  [static: auto]     {} -> local auto lambda (no std::function)",
+                    entry.site
+                );
+            }
+            cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
+                dynamic_count += 1;
+                let _ = writeln!(
+                    stdout,
+                    "  [dynamic: std::function] {} ({reason})",
+                    entry.site
+                );
+            }
+        }
+    }
+    let _ = writeln!(
+        stdout,
+        "Summary: {static_count} static (inlinable), {dynamic_count} dynamic (std::function)"
+    );
+    0
 }
 
 #[cfg(test)]

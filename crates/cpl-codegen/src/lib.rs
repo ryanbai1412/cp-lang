@@ -13,6 +13,8 @@ mod stmt;
 mod unordered;
 mod walk;
 
+pub use devirt::{ClosureLowering, ClosureMode, explain_closures};
+
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 

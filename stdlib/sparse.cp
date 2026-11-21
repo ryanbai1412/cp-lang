@@ -36,44 +36,54 @@ pub fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool:
 /// operation — no idempotence and no inverse required (matrix products, `Mod<P>` products,
 /// `MaxSub`, string concatenation). Asserts `not r.is_empty`.
 pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
-    base: List<T>
-    levels: List<List<T>>
+    n: Int
+    table: List<T>
 
     /// Build an associative O(1)-query disjoint sparse table for `op` over `a`. O(|D| log |D|).
     pub fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>:
         let n = D.K
-        let base = [a[i] for i in D]
-        var levels: List<List<T>> = []
-        if n <= 1: return DisjointSparseTable(op, base, levels)
-        var k = 0
-        var half = 1
-        while half < n:
-            var row = base
+        if n == 0: return DisjointSparseTable(op, 0, [])
+        let levels = if n <= 1: 1 else: bit_width(n - 1)
+        var table = List.filled(levels * n, a[D.first])
+        var idx = 0
+        for p in D:
+            unchecked: table[idx] = a[p]
+            idx += 1
+        var k = 1
+        var half = 2
+        while k < levels:
+            let off = k * n
             var mid = half
             while mid < n:
-                var i = mid - 2
-                while i >= mid - half:
-                    row[i] = op(base[i], row[i + 1])
-                    i -= 1
-                var j = mid + 1
-                let hi = min(mid + half, n)
-                while j < hi:
-                    row[j] = op(row[j - 1], base[j])
-                    j += 1
+                unchecked:
+                    table[off + mid - 1] = table[mid - 1]
+                    var i = mid - 2
+                    let lo_lim = mid - half
+                    while i >= lo_lim:
+                        table[off + i] = op(table[i], table[off + i + 1])
+                        i -= 1
+                    table[off + mid] = table[mid]
+                    var j = mid + 1
+                    let hi = min(mid + half, n)
+                    while j < hi:
+                        table[off + j] = op(table[off + j - 1], table[j])
+                        j += 1
                 mid += 2 * half
-            levels.push(row)
             half *= 2
             k += 1
-        DisjointSparseTable(op, base, levels)
+        DisjointSparseTable(op, n, table)
 
     /// Fold of a non-empty range `r`, left to right. O(1). Asserts `not r.is_empty`.
     pub fn fold(self, r: Range<D>) -> T:
-        let (lo, hi) = r.ends
+        let lo = r.lo.ord
+        let hi = r.hi.ord
         assert lo < hi
         let r1 = hi - 1
-        if lo == r1: return base[lo]
+        if lo == r1:
+            unchecked: return table[lo]
         let k = bit_width(lo ^ r1) - 1
-        op(levels[k][lo], levels[k][r1])
+        let off = k * n
+        unchecked: return op(table[off + lo], table[off + r1])
 
 @test
 fn range_min_matches_brute_force():
