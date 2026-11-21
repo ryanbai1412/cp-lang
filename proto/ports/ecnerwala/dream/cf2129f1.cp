@@ -1,49 +1,34 @@
-// Assign each value 1..=845 a distinct 30-bit query mask with bit 0 used
-// <= 300 times (one type-4 query) and each bit 1..29 used <= 60 times
-// (29 type-2 queries). The 30 query responses give each position a unique
-// signature that directly decodes the permutation.
-@!interactive
+// Give each value its own set of queries (a mask over 30 queries) and put the
+// value in every query of its set. Query 0 is the single type-4 query, which
+// returns up to 300 positions; queries 1..30 are type-2, 60 each. A query that
+// holds no more values than it returns gives back the positions of all of them,
+// so each position collects exactly its value's mask. 845 masks fit the room:
+// every mask of size at most 2, then masks of size 3, each on the three queries
+// with the most room left.
+@interactive
+type Query = 0..30
+let room_of: [Query]Int = [q => if q == 0: 300 else: 60]
 
-let (masks, mask_to_val) = do:
-    var cap: [0..30]Int = 60
-    cap[0] = 300
-    var ms: [1..=845]Int = 0
-    var inv = Map<Int, Int>()
-    var k = 0
-
-    fn try_add(bits: List<Int>) -> Bool:
-        let m = sum(1 << b for b in bits)
-        if inv.contains(m) or any(bits, b => cap[b] == 0): return false
-        k += 1
-        ms[k] = m
-        inv[m] = k
-        for b in bits: cap[b] -= 1
-        true
-
-    try_add([])
-    for i in 0..30: try_add([i])
-    for i in 0..30:
-        for j in i + 1..30: try_add([i, j])
-    for d in 1..=9:
-        for x in 0..29: try_add([0, 1 + x, 1 + (x + d) % 29])
-    for x in 0..9: try_add([0, 1 + x, 1 + (x + 10) % 29])
-
-    while k < 845:
-        var order = List(1..30)
-        sort(mut order, by: b => desc(cap[b]))
-        first([(x, y, z) for x in order for y in order for z in order where x < y and y < z],
-              t => try_add([t.0, t.1, t.2]))
-    (ms, inv)
+let masks: List<Set<Query>> = do:
+    var room = room_of
+    var chosen = SortedSet<Set<Query>>()
+    fn take(s: Set<Query>):
+        chosen.add(s)
+        for q in s: room[q] -= 1
+    for s in Query.subsets(size: ..=2): take(s)
+    while chosen.len < 845:
+        let roomiest = Query.sorted(by: q => desc(room[q]))
+        take(roomiest.subsets(size: 3).first(where: s => s not in chosen and s.all(q => room[q] > 0))!)
+    chosen.to_list()
+let value_of = masks.inverse()
 
 --- multitest ---
 let n: 2..=845 = read()
+domain Val = 1..=n
 domain Pos = 1..=n
-var sig: [Pos]Int = 0
-
-for q in 0..30:
-    let vals = [v for v in 1..=n where masks[v].bit(q)]
-    if vals.is_empty: continue
-    let qtype = if q == 0: 4 else: 2
-    for p in ask<[vals.len]Pos>(qtype, vals.len, vals): sig[p] |= 1 << q
-
-print("!", [mask_to_val[sig[p]] for p in Pos])
+var mask: [Pos]Set<Query> = {}
+for q in Query:
+    let held = [v for v in Val where q in masks[v - 1]]
+    if held.is_empty: continue
+    for p in ask<[held.len]Pos>(if q == 0: 4 else: 2, held.len, held): mask[p].add(q)
+print("!", [value_of[mask[p]]! + 1 for p in Pos])

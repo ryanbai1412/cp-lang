@@ -1401,7 +1401,11 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
         if pid in base_ports:
             b_dr = base_ports[pid].get("dream_ratio")
             c_dr = r.get("dream_ratio")
-            if b_dr is not None and c_dr is not None:
+            dream_rewritten = base_ports[pid].get("dream_tokens") != r.get("dream_tokens")
+            if b_dr is not None and c_dr is not None and dream_rewritten:
+                # A rewritten dream is a new target; the ratchet restarts from it.
+                improvements.append(f"dream rewritten: {pid} ({b_dr:.4f}x -> {c_dr:.4f}x)")
+            elif b_dr is not None and c_dr is not None:
                 if c_dr > b_dr + 1e-6:
                     regressions.append(
                         f"dream gap regressed: {pid} ({b_dr:.4f}x -> {c_dr:.4f}x, "

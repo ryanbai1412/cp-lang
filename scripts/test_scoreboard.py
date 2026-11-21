@@ -429,6 +429,11 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
         cur_reg = rep(1.6, 9.5, 4)
         diff_fast = sb.diff_against_baseline(cur_reg, base, mode="fast")
         self.assertTrue(any("dream gap regressed: t/p1" in m for m in diff_fast["regressions"]))
+        rewritten = rep(1.6, 8.0, 4)
+        rewritten["ports"][0]["dream_tokens"] = 9
+        diff_rw = sb.diff_against_baseline(rewritten, base, mode="fast")
+        self.assertFalse(any("dream gap regressed" in m for m in diff_rw["regressions"]))
+        self.assertTrue(any("dream rewritten: t/p1" in m for m in diff_rw["improvements"]))
         diff_full = sb.diff_against_baseline(cur_reg, base, mode="full")
         self.assertTrue(any("interp ratio regressed >10%: t/p1" in m for m in diff_full["regressions"]))
         self.assertTrue(any("interp ratio p50 regressed >10%" in m for m in diff_full["regressions"]))

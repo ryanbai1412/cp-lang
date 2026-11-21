@@ -1,33 +1,50 @@
-// Cell (row i, column j) is free when T[i] > H[j]. Grow the free columns in
-// increasing humidity (Kruskal over columns), each entering at the first row where
-// the running max temperature beats it. When a column joins a neighbouring
-// component, crossing between them needs a row as warm as the coldest row between
-// their two entry rows, so it needs the component's first and last columns colder
-// than that: those two columns are the join's needs. Two row-0 cells connect inside
-// columns L..=R iff every join on their path in the join tree needs nothing right of
-// R and nothing left of L: two path folds on a static tree.
+// Going down to a warmer row only widens what is reachable, so only the rows
+// where the temperature reaches a new maximum matter. At such a row r the free
+// columns form maximal runs with h < t[r]; each run is a layer. Every earlier
+// layer lies inside one run of the new row, and the llama can drop from it into
+// that run through any of its columns drier than every row in between; the first
+// and last such columns are the drop. Layers and drops form a forest. With
+// s ≤ d, (0, s) and (0, d) connect inside l..=r iff their row-0 layers have a
+// common ancestor, every drop on s's path has its last column ≥ l, and every
+// drop on d's path has its first column ≤ r.
 @grader
 mod obstacles:
-    var joins: Tree<Col, (first: ?Col, last: ?Col)>   // filled by initialize
+    domain Row, Col                                    // sized by initialize
+    struct Layer(row: Row, cols: Range<Col>)
+    struct Drop(first: Col, last: Col)
+
+    // A path's binding drops: the rightmost `first` and the leftmost `last`.
+    fn tightest(a: Drop, b: Drop) -> Drop = Drop(max(a.first, b.first), min(a.last, b.last))
+
+    var layers: Lifted<Layer, Drop>                    // forest + binary lifting: lca, path fold
+    var home: [Col]?Node                               // row-0 layer of each free column
 
     fn initialize(t: [Row]0..=1e9, h: [Col]0..=1e9):
-        let warmest = t.prefix_max()
-        let entry: [Col]?Row = [Col] j => Row.first(where: i => warmest[i] > h[j])
         let coldest = RangeMin(t)
-        let colder = SegTree(h, min)                   // first/last column below a temperature
-
-        var parts = Dsu<Col>(payload: j => (span: j..=j, root: j))
-        var edges: List<(Col, Col, (first: ?Col, last: ?Col))> = []
-        for j in Col.sorted(by: h):
-            for nb in [j - 1, j + 1] where nb in Col and parts.alive(nb):
-                let p = parts.payload(nb)
-                let need = if let (a, b) = (entry[p.root], entry[j])?: coldest[minmax(a, b)] else: 0
-                edges.push((p.root, j, (first: colder.first(in: p.span, where: x => x < need),
-                                        last: colder.last(in: p.span, where: x => x < need))))
-                parts.union(nb, j, keep: (span: p.span ∪ parts.payload(j).span, root: j))
-            parts.activate(j)
-        joins = Tree.from_edges(edges, root: Col.max_by(h))
+        let driest = RangeMin(h)
+        let wettest = RangeMax(h)
+        var forest = Forest<Layer, Drop>()
+        var open = SortedMap<Col, Node>()              // layers not yet inside a later run
+        var waiting = Queue(Col.sorted(by: h))         // columns not yet free, driest first
+        home = none
+        for r in t.record_highs():                     // rows with a new maximum temperature
+            let runs = waiting.pop_while(c => h[c] < t[r])
+                .map(c => wettest.span(around: c, while: x => x < t[r]))
+                .distinct()
+            for run in runs:
+                let layer = forest.add(Layer(r, run))
+                for (_, child) in open.drain(in: run):
+                    let warm = coldest[forest[child].row..=r]
+                    let cols = forest[child].cols
+                    if let first = driest.first(in: cols, where: x => x < warm):
+                        let last = driest.last(in: cols, where: x => x < warm)!
+                        forest.link(child, parent: layer, Drop(first, last))
+                open[run.start] = layer
+                if r == Row.first: home[run] = layer
+        layers = forest.lift(tightest, identity: Drop(Col.first, Col.last))
 
     fn can_reach(l: Col, r: Col, s: Col, d: Col) -> Bool:
-        let path = joins.path_edges(s, d)              // binary lifting, O(log M)
-        path.all(e => e.first? <= r ?? false) and path.all(e => e.last? >= l ?? false)
+        let (s, d) = minmax(s, d)
+        let (a, b) = (home[s]!, home[d]!)
+        let top = layers.lca(a, b) ?? return false
+        layers.fold(a, up_to: top).last >= l and layers.fold(b, up_to: top).first <= r

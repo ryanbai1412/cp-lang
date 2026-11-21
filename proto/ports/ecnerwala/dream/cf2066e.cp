@@ -1,78 +1,43 @@
-// A multiset of barrels can merge to one iff no threshold k >= 1 traps barrels >= k:
-// specifically, no k with >= 2 barrels >= k, sum of barrels < k strictly < k, and
-// no adjacent gap < k occurring at or above k. Split at B = 1000 = sqrt(max a):
-// k > B walks down from max(cur) in O(sqrt(M)) steps; k <= B sweeps tracked small gaps.
+// Two equal barrels either expose the poison or are both safe, so every barrel
+// whose amount repeats is safe water. Check the barrels with a unique amount,
+// lightest first. With `have` kilograms of safe water, a barrel b can be checked
+// if b <= have (pour until equal, compare), and two unchecked barrels can be if
+// their gap is <= have (top up the lighter, compare); each check adds to `have`.
+// Identification works iff this never gets stuck while two or more barrels are
+// unchecked. It can only get stuck at a b with b > have, and `have` more than
+// doubles between two such points, so there are O(log) of them; at each, some
+// gap among the heavier unique barrels must fit.
+type Vol = 1..=1e6
+
+var count: [Vol]Int = 0
+var total = 0
+var unique = SortedSet<Vol>()                  // amounts held by exactly one barrel
+var alone = Fenwick<Vol>()                     // at each unique amount: that amount
+var gap = SegTree<Vol, ?Int>(min)              // at each unique amount: gap to the next one
+
+fn put(v: Vol, delta: -1..=1):
+    count[v] += delta
+    total += delta * v
+    let is_alone = count[v] == 1
+    if is_alone == (v in unique): return
+    unique.toggle(v)
+    alone[v] = if is_alone: v else: 0
+    gap[v] = if is_alone: unique.after(v) - v      // none at the heaviest
+    if let u = unique.before(v): gap[u] = unique.after(u) - u
+
+fn identifiable() -> Bool:
+    let shared = total - alone.sum()
+    var next = unique.first
+    while let b = next and b != unique.last:
+        let have = shared + alone.sum(..b)         // once everything lighter is checked
+        if b > have and gap.min(b..)! > have: return false
+        next = unique.first(above: max(have, b))
+    true
+
 let (n, q): (1..=2e5, 1..=2e5) = read()
-const B = 1000
-domain Small = 0..=B
-
-struct Barrels:
-    bag = SortedBag<Int>()
-    gaps: [Small]SortedBag<Int> = [Small] _ => SortedBag<Int>()
-    small_cnt: [Small]Int = 0
-    total = 0
-
-    fn update_gap(mut self, lo: Int, hi: Int, add: Bool):
-        if hi - lo > B: return
-        let d = Small(hi - lo)
-        if add: gaps[d].add(lo) else: gaps[d].remove(lo)
-
-    fn add(mut self, v: Int):
-        total += v
-        if v <= B: small_cnt[Small(v)] += 1
-        let had = bag.count(v)
-        bag.add(v)
-        if had >= 1:
-            update_gap(v, v, true)
-        else:
-            let (prv, nxt) = (bag.last_lt(v), bag.first_gt(v))
-            if let (p, x) = (prv, nxt): update_gap(p, x, false)
-            if let p = prv: update_gap(p, v, true)
-            if let x = nxt: update_gap(v, x, true)
-
-    fn remove(mut self, v: Int):
-        let had = bag.count(v)
-        bag.remove(v)
-        if had >= 2:
-            update_gap(v, v, false)
-        else:
-            let (prv, nxt) = (bag.last_lt(v), bag.first_gt(v))
-            if let p = prv: update_gap(p, v, false)
-            if let x = nxt: update_gap(v, x, false)
-            if let (p, x) = (prv, nxt): update_gap(p, x, true)
-        if v <= B: small_cnt[Small(v)] -= 1
-        total -= v
-
-    fn can_merge(self) -> Bool:
-        // Large k > B: walk down from the largest barrel using O(1) cursor steps.
-        var cur = bag.last!
-        if bag.count(cur) == 1:
-            var rem = total - cur
-            var min_gap = cur
-            for nxt in bag.cursor(cur).prevs():
-                rem -= nxt
-                min_gap = min(min_gap, cur - nxt, nxt)
-                if rem < min_gap: return false
-                if min_gap <= B or bag.count(nxt) >= 2: break
-                cur = nxt
-        // Small k <= B: sweep gap lengths 0..B.
-        var max_gap_pos = 0
-        var big_cnt = bag.len
-        var small_sum = 0
-        for k in 1..=B:
-            let d = Small(k - 1)
-            max_gap_pos max= gaps[d].last ?? 0
-            big_cnt -= small_cnt[d]
-            small_sum += (k - 1) * small_cnt[d]
-            if big_cnt < 2: break
-            if max_gap_pos < k and small_sum < k: return false
-        true
-
-var barrels = Barrels()
-for v in read<[n]1..=1e6>(): barrels.add(v)
-print(if barrels.can_merge(): "Yes" else: "No")
-
+for v in read<[n]Vol>(): put(v, +1)
+print(identifiable(), as: .yes_no)
 repeat q:
-    let (op, v): (Char, 1..=1e6) = read()
-    if op == '+': barrels.add(v) else: barrels.remove(v)
-    print(if barrels.can_merge(): "Yes" else: "No")
+    let (op, v): ('+' | '-', Vol) = read()
+    put(v, if op == '+': +1 else: -1)
+    print(identifiable(), as: .yes_no)

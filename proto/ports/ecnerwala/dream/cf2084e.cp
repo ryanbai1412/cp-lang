@@ -1,61 +1,36 @@
-// Maintain `freq[f]` = count of subarrays [l..=r] containing every placed value <= v
-// and `f` missing (-1) cells. As v grows from 0 to n-1, either v is placed (so valid
-// subarrays must cover its position, removing one rectangle of (l, r) pairs as the
-// required span extends) or v is unplaced (incrementing `need`). Each v contributes
-// Σ freq[f] · P(f, need) · (m - need)! across all completions of the missing cells.
-@!multitest
-type Z = Mod<1_000_000_007>
+// mex(segment) counts the v ≥ 1 with all of 0..v inside it, so the answer sums,
+// over v and segments, the fillings that put every value below v inside. With f
+// blanks in the segment, the `need` unplaced values below v go to those blanks in
+// P(f, need) ways and the other blanks fill in (m − need)! ways, provided every
+// placed value below v is inside: the segment covers their span lo..=hi. Count
+// segments by blanks; as v grows the span only widens, and each segment drops
+// out once, when the span first leaves it. O(n²) per test.
+type Z = Mod<1e9 + 7>
 
+--- multitest ---
 domain Pos = read(1..=5000)
-domain Val = 0..Pos.count
-let a: [Pos]-1..Pos.count = read()
-
-var pos: [Val]?Pos = none
-for i in Pos where a[i] >= 0: pos[Val(a[i])] = i
-
-let missing = a.map(x => Int(x == -1)).prefix_sums(at: .cuts)
-let m = missing[Pos.Cut.last]
+let a: [Pos]?(0..Pos.count) = read(none: -1)
+let at = a.inverse()                                   // position of each placed value
+let blanks = a.map(x => x == none).prefix_sums(at: .cuts)
+fn blank(l: Pos, r: Pos) -> Int = blanks[r.after] - blanks[l.before]
+let m = blanks.last
 let comb = Z.comb(Pos.count)
 
-var freq: [0..=m]Int = 0
+var covering: [0..=m]Int = 0                           // segments covering the span, by blanks
 for l in Pos:
-    for r in l..=Pos.last:
-        freq[missing[r.after] - missing[l.before]] += 1
-
-struct Span:
-    bounds: ?(Pos, Pos)
-
-    // Extend the covered span to include `p`; returns the rectangle of subarrays
-    // that no longer contain all placed values (or `none` if already covered).
-    fn extend(mut self, p: Pos) -> ?(Range<Pos>, Range<Pos>):
-        if let (lo, hi) = bounds:
-            if p < lo:
-                bounds = (p, hi)
-                (p.next!..=lo, hi..=Pos.last)
-            elif p > hi:
-                bounds = (lo, p)
-                (Pos.first..=lo, hi..p)
-            else:
-                none
-        else:
-            bounds = (p, p)
-            none
-
-var span = Span(none)
+    for r in l..=Pos.last: covering[blank(l, r)] += 1
+var (lo, hi) = (Pos.last, Pos.first)                   // empty span: every segment covers it
 var need = 0
-var ans: Z = 0
-for v in Val:
-    if let p = pos[v]:
-        if span.bounds == none:
-            freq.fill(0)
-            for l in Pos.first..=p:
-                for r in p..=Pos.last:
-                    freq[missing[r.after] - missing[l.before]] += 1
-        if let (ls, rs) = span.extend(p):
-            for l in ls:
-                for r in rs:
-                    freq[missing[r.after] - missing[l.before]] -= 1
+var answer: Z = 0
+for v in 0..Pos.count:                                 // term for mex > v
+    if let p = at[v]:
+        let (lo2, hi2) = (min(lo, p), max(hi, p))
+        for l in (lo2..=lo).skip(1):
+            for r in max(l, hi)..=Pos.last: covering[blank(l, r)] -= 1
+        for l in Pos.first..=lo2:
+            for r in max(l, hi)..hi2: covering[blank(l, r)] -= 1
+        (lo, hi) = (lo2, hi2)
     else:
         need += 1
-    ans += sum(Z(freq[f]) * comb.arrange(f, need) * comb.fact(m - need) for f in need..=m)
-print(ans)
+    answer += sum(Z(covering[f]) * comb.arrange(f, need) for f in need..=m) * comb.fact(m - need)
+print(answer)
