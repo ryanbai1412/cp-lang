@@ -23,15 +23,15 @@ pub struct Rooted<V, Pre>:
     root: V
     /// The parent; `none` at the root.
     par: [V]?V
-    dep: [V]Int
+    dep: [V]0..=V.count
     /// The total edge length from the root; equal to the depth when the edges have no lengths.
     far: [V]Int
     /// The number of vertices in the subtree.
-    sz: [V]Int
+    sz: [V]1..=V.count
     /// Breadth-first order: the children of `v` are `bfs[k0[v]..k1[v]]`, so no vertex owns a list.
     bfs: List<V>
-    k0: [V]Int
-    k1: [V]Int
+    k0: [V]0..=V.count
+    k1: [V]0..=V.count
     /// The child with the largest subtree; `none` at a leaf.
     heavy: [V]?V
     /// The highest vertex of the heavy chain through `v`.
@@ -66,9 +66,9 @@ pub struct Rooted<V, Pre>:
             if let p = par[v]:
                 flat[fill[p.to_idx]] = v
                 fill[p.to_idx] += 1
-        var dep: [V]Int = 0
-        var k0: [V]Int = 0
-        var k1: [V]Int = 0
+        var dep: [V]0..=V.count = 0
+        var k0: [V]0..=V.count = 0
+        var k1: [V]0..=V.count = 0
         var order = [root!]
         var i = 0
         while i < order.len:
@@ -81,7 +81,8 @@ pub struct Rooted<V, Pre>:
             k1[u] = order.len
             i += 1
         assert order.len == V.K, "from_parents found a cycle among the parents"
-        Rooted.finish([root!], par, dep, copy(dep), order, k0, k1)
+        let far: [V]Int = [V] v => dep[v]
+        Rooted.finish([root!], par, dep, far, order, k0, k1)
 
     /// The same for edges with lengths: `len(arc)` is the length of the edge an arc runs along,
     /// and `dist` adds lengths up instead of counting edges.
@@ -94,11 +95,11 @@ pub struct Rooted<V, Pre>:
 
     fn build<N, A>(adj: N, roots: List<V>, len: A -> Int):
         var par: [V]?V = none
-        var dep: [V]Int = 0
+        var dep: [V]0..=V.count = 0
         var far: [V]Int = 0
         var seen: [V]Bool = false
-        var k0: [V]Int = 0
-        var k1: [V]Int = 0
+        var k0: [V]0..=V.count = 0
+        var k1: [V]0..=V.count = 0
         var order = List<V>()
         for r in roots:
             seen[r] = true
@@ -123,15 +124,15 @@ pub struct Rooted<V, Pre>:
     fn finish(
         roots: List<V>,
         par: [V]?V,
-        dep: [V]Int,
+        dep: [V]0..=V.count,
         far: [V]Int,
         bfs: List<V>,
-        k0: [V]Int,
-        k1: [V]Int,
+        k0: [V]0..=V.count,
+        k1: [V]0..=V.count,
     ):
         domain P = 0..V.K
         let root = roots[0]
-        var sz: [V]Int = 1
+        var sz: [V]1..=V.count = 1
         for u in bfs.rev:
             if let p = par[u]: sz[p] += sz[u]
         var heavy: [V]?V = none

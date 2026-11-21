@@ -130,6 +130,8 @@ pub(crate) struct Emitter<'p> {
     pub rows: BTreeMap<(usize, usize), u32>,
     /// `(struct, field)` to 32-bit storage width for ranged `Int` fields.
     pub narrow_ints: BTreeMap<(usize, usize), cpl_ir::IntWidth>,
+    /// 1D ranged-`Int` arrays, lists, and list views with narrowed 32-bit elements.
+    pub narrow_elems: BTreeMap<cpl_ir::ElemLoc, cpl_ir::IntWidth>,
     /// Per fn, the parameters it takes by value to move into its result:
     /// see [`crate::scope::sunk_params`].
     pub sunk: Vec<BTreeSet<usize>>,
@@ -217,8 +219,9 @@ impl<'p> Emitter<'p> {
             break_targets: BTreeSet::new(),
             continue_targets: BTreeSet::new(),
             reused: BTreeSet::new(),
-            rows,
             narrow_ints: crate::scope::narrow_ints(program),
+            narrow_elems: crate::scope::narrow_elems(program, &rows),
+            rows,
             sunk: crate::scope::sunk_params(program),
             last_use_call: false,
             pushers: BTreeMap::new(),
@@ -428,7 +431,10 @@ impl<'p> Emitter<'p> {
                         format!("F{ti}&& {name}")
                     };
                 }
-                let cpp = self.ty(ty);
+                let cpp = self.ty_with_elem_width(
+                    ty,
+                    self.elem_width(cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot)),
+                );
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
                 } else if !named.contains(&slot) && !param.mutable {
@@ -455,7 +461,7 @@ impl<'p> Emitter<'p> {
         };
         format!(
             "{prefix}{} {}({})",
-            self.ty(&f.ret),
+            self.ty_with_elem_width(&f.ret, self.elem_width(cpl_ir::ElemLoc::FnRet(id))),
             fn_name(&f.name),
             params.join(", ")
         )
@@ -473,12 +479,16 @@ impl<'p> Emitter<'p> {
     /// are first set.
     fn hoisted_decls(&mut self, out: &mut String, params: usize) {
         let locals = self.locals();
+        let scope = self.current_scope();
         for slot in self.hoisted.clone() {
             if slot < params || locals[slot].ty == Ty::Unit {
                 continue;
             }
             let ty = &locals[slot].ty;
-            let cpp = self.ty(ty);
+            let cpp = self.ty_with_elem_width(
+                ty,
+                self.elem_width(cpl_ir::ElemLoc::Local(scope, slot)),
+            );
             out.push_str(&format!(
                 "{}{} {}{};\n",
                 pad(self.indent),
@@ -487,6 +497,74 @@ impl<'p> Emitter<'p> {
                 self.zero_init(ty)
             ));
         }
+    }
+
+    pub fn current_scope(&self) -> cpl_ir::ScopeId {
+        if let Some(cid) = self.closure_id {
+            cpl_ir::ScopeId::Closure(cid)
+        } else if let Some(fid) = self.fn_id {
+            cpl_ir::ScopeId::Fn(fid)
+        } else {
+            cpl_ir::ScopeId::Main
+        }
+    }
+
+    pub fn elem_width(&self, loc: cpl_ir::ElemLoc) -> Option<cpl_ir::IntWidth> {
+        self.narrow_elems.get(&loc).copied()
+    }
+
+    pub fn expr_elem_width(&self, e: &cpl_ir::Expr) -> Option<cpl_ir::IntWidth> {
+        use cpl_ir::{Builtin, ElemLoc, ExprKind, Stmt};
+        let scope = self.current_scope();
+        match &e.kind {
+            ExprKind::Global(g) => self.elem_width(ElemLoc::Global(*g)),
+            ExprKind::Local(s) => self.elem_width(ElemLoc::Local(scope, *s)),
+            ExprKind::Field(base, f) => match base.ty {
+                Ty::Struct(id) => self.elem_width(ElemLoc::Field(id, *f)),
+                _ => None,
+            },
+            ExprKind::Call(fid, _) => self.elem_width(ElemLoc::FnRet(*fid)),
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+                args.first().and_then(|a| self.expr_elem_width(a))
+            }
+            ExprKind::Do(blk) => match blk.stmts.last() {
+                Some(Stmt::Give(inner)) => self.expr_elem_width(inner),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn place_elem_width(&self, p: &cpl_ir::Place) -> Option<cpl_ir::IntWidth> {
+        use cpl_ir::{ElemLoc, PlaceKind};
+        let scope = self.current_scope();
+        match &p.kind {
+            PlaceKind::Global(g) => self.elem_width(ElemLoc::Global(*g)),
+            PlaceKind::Local(s) => self.elem_width(ElemLoc::Local(scope, *s)),
+            PlaceKind::Field(base, f) => match base.ty {
+                Ty::Struct(id) => self.elem_width(ElemLoc::Field(id, *f)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn ty_with_elem_width(&self, ty: &Ty, w: Option<cpl_ir::IntWidth>) -> String {
+        if let Some(w) = w {
+            match ty {
+                Ty::Array { dims, elem } if dims.len() == 1 && matches!(elem.as_ref(), Ty::Int) => {
+                    return format!("std::vector<{}>", w.cpp());
+                }
+                Ty::List(elem) if matches!(elem.as_ref(), Ty::Int) => {
+                    return format!("std::vector<{}>", w.cpp());
+                }
+                Ty::ListView(elem) if matches!(elem.as_ref(), Ty::Int) => {
+                    return format!("cpl::ListView<{}>", w.cpp());
+                }
+                _ => {}
+            }
+        }
+        self.ty(ty)
     }
 
     /// The initializer that gives a new variable its type's zero.
@@ -569,10 +647,11 @@ impl<'p> Emitter<'p> {
                         cpp = format!("cpl::Row<{cell}, {k}>");
                         self.need("row");
                     } else if let Some(w) = self.narrow_ints.get(&(*id, names.len())) {
-                        cpp = match w {
-                            cpl_ir::IntWidth::U32 => "uint32_t".into(),
-                            cpl_ir::IntWidth::I32 => "int32_t".into(),
-                        };
+                        cpp = w.cpp().into();
+                    } else if let Some(w) =
+                        self.narrow_elems.get(&cpl_ir::ElemLoc::Field(*id, names.len()))
+                    {
+                        cpp = self.ty_with_elem_width(field_ty, Some(*w));
                     }
                     out.push_str(&format!(
                         "    {} {}{};\n",
@@ -1024,7 +1103,10 @@ impl<'p> Emitter<'p> {
             if global.ty == Ty::Unit {
                 continue;
             }
-            let cpp = self.ty(&global.ty);
+            let cpp = self.ty_with_elem_width(
+                &global.ty,
+                self.elem_width(cpl_ir::ElemLoc::Global(id)),
+            );
             if let Some(value) = self.const_global(id) {
                 vars.push_str(&format!("static constexpr {cpp} {} = {value};\n", ident(&global.name)));
                 self.const_globals.insert(id);

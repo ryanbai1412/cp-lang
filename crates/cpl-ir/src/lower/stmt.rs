@@ -356,6 +356,12 @@ impl<'a> Lowerer<'a> {
                     self.let_value_with_rest(ty.as_ref(), init.as_ref(), pat, rest, stmt.span)
                 };
                 if let Some(value) = val {
+                    let inferred_rinfo = if ty.is_none() {
+                        self.expr_range(&value)
+                            .filter(|r| r.narrow_elem_width().is_some())
+                    } else {
+                        None
+                    };
                     let single_name = match &pat.kind {
                         ast::PatternKind::Name(n) => Some(n.clone()),
                         ast::PatternKind::Variant { path, args }
@@ -400,6 +406,8 @@ impl<'a> Lowerer<'a> {
                         if let Some(rinfo) = self.range_info_from_ast(ty_ast) {
                             self.bind_range_info(pat, &rinfo);
                         }
+                    } else if let Some(rinfo) = inferred_rinfo {
+                        self.bind_range_info(pat, &rinfo);
                     }
                     if let (Some(ty_ast), Some(vname)) = (array_ty_ast, single_name) {
                         if self.cx.is_main && self.cx.scopes.len() == 1 {

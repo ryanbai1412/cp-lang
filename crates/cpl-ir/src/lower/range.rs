@@ -23,6 +23,50 @@ pub(super) enum RangeInfo {
     Tuple(Vec<Option<RangeInfo>>),
 }
 
+impl RangeBounds {
+    pub(super) fn narrow_width(&self) -> Option<IntWidth> {
+        let lo_min = self
+            .lo_const
+            .or_else(|| self.lo.as_ref().and_then(expr_limits).map(|(lo, _)| lo))?;
+        let hi_max = self
+            .hi_const
+            .or_else(|| self.hi.as_ref().and_then(expr_limits).map(|(_, hi)| hi))?;
+        if lo_min > hi_max {
+            return None;
+        }
+        if lo_min >= 0 && hi_max <= i64::from(u32::MAX) {
+            Some(IntWidth::U32)
+        } else if lo_min >= i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX) {
+            Some(IntWidth::I32)
+        } else {
+            None
+        }
+    }
+}
+
+fn expr_limits(e: &Expr) -> Option<(i64, i64)> {
+    match &e.kind {
+        ExprKind::Int(v) => Some((*v, *v)),
+        ExprKind::DomainLen(_) => Some((0, i64::from(i32::MAX))),
+        ExprKind::Unary(UnOp::Neg, inner) => {
+            let (lo, hi) = expr_limits(inner)?;
+            Some((hi.checked_neg()?, lo.checked_neg()?))
+        }
+        ExprKind::Binary(BinOp::Add, a, b) => {
+            let (alo, ahi) = expr_limits(a)?;
+            let (blo, bhi) = expr_limits(b)?;
+            Some((alo.checked_add(blo)?, ahi.checked_add(bhi)?))
+        }
+        ExprKind::Binary(BinOp::Sub, a, b) => {
+            let (alo, ahi) = expr_limits(a)?;
+            let (blo, bhi) = expr_limits(b)?;
+            Some((alo.checked_sub(bhi)?, ahi.checked_sub(blo)?))
+        }
+        ExprKind::RangeCheck { value, .. } => expr_limits(value),
+        _ => None,
+    }
+}
+
 impl RangeInfo {
     pub(super) fn scalar(&self) -> Option<&RangeBounds> {
         match self {
@@ -36,6 +80,10 @@ impl RangeInfo {
             RangeInfo::Elem(inner) => Some(inner),
             _ => None,
         }
+    }
+
+    pub(super) fn narrow_elem_width(&self) -> Option<IntWidth> {
+        self.elem()?.scalar()?.narrow_width()
     }
 
     pub(super) fn from_spec(spec: &Spec) -> Option<Self> {
@@ -108,7 +156,30 @@ fn is_minus_one_of(hi_expr: &Expr, divisor: &Expr) -> bool {
     }
 }
 
+pub(super) fn is_narrowable_elem_ty(ty: &Ty) -> bool {
+    match ty {
+        Ty::Array { dims, elem } => dims.len() == 1 && matches!(elem.as_ref(), Ty::Int),
+        Ty::List(elem) | Ty::ListView(elem) => matches!(elem.as_ref(), Ty::Int),
+        _ => false,
+    }
+}
+
 impl<'a> Lowerer<'a> {
+    pub(super) fn record_narrow_locals(
+        &mut self,
+        scope: ScopeId,
+        locals: &[Local],
+        ranges: &HashMap<Slot, RangeInfo>,
+    ) {
+        for (&slot, info) in ranges {
+            if locals.get(slot).is_some_and(|l| is_narrowable_elem_ty(&l.ty)) {
+                if let Some(w) = info.narrow_elem_width() {
+                    self.narrow_elems.insert(ElemLoc::Local(scope, slot), w);
+                }
+            }
+        }
+    }
+
     /// Extracts `RangeInfo` from an AST type, following type aliases and handling
     /// `lo..hi`, `[dims]T`, `List<T>`, tuples, and records.
     pub(super) fn range_info_from_ast(&mut self, ty: &ast::Type) -> Option<RangeInfo> {
@@ -294,7 +365,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Looks up `RangeInfo` for a value expression (used to prove sub-range sources).
-    fn expr_range(&self, e: &Expr) -> Option<RangeInfo> {
+    pub(super) fn expr_range(&self, e: &Expr) -> Option<RangeInfo> {
         match &e.kind {
             ExprKind::Local(slot) => self.cx.local_ranges.get(slot).cloned(),
             ExprKind::Global(gid) => self.global_ranges.get(gid).cloned(),
@@ -309,6 +380,13 @@ impl<'a> Lowerer<'a> {
             }
             ExprKind::Index(base, _) => match self.expr_range(base)? {
                 RangeInfo::Elem(inner) => Some(*inner),
+                _ => None,
+            },
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+                args.first().and_then(|a| self.expr_range(a))
+            }
+            ExprKind::Do(blk) => match blk.stmts.last() {
+                Some(Stmt::Give(e)) => self.expr_range(e),
                 _ => None,
             },
             _ => None,

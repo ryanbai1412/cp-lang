@@ -1014,3 +1014,83 @@ print(x, m.v)
         "proven stores (literal, narrower range var, k % P into 0..P) must elide check_range:\n{proven_store}"
     );
 }
+
+#[test]
+fn ranged_array_elements_narrow_to_32_bit_and_widen_on_plain_flow() {
+    let top_level = cpp(
+        "let n: 1..=100 = read()
+domain V = 1..=n
+var a: [V]0..=1_000_000 = 0
+var b: [V]-1_000_000..=1_000_000 = 0
+for v in V:
+    a[v] = 500_000
+    b[v] = -500_000
+var total = 0
+for v in V:
+    total += a[v] * a[v] + b[v]
+print(total)
+",
+    );
+    assert!(
+        top_level.contains("std::vector<uint32_t> a"),
+        "expected [V]0..=1_000_000 to emit std::vector<uint32_t>:\n{top_level}"
+    );
+    assert!(
+        top_level.contains("std::vector<int32_t> b"),
+        "expected [V]-1_000_000..=1_000_000 to emit std::vector<int32_t>:\n{top_level}"
+    );
+    assert!(
+        top_level.contains("ll(a["),
+        "expected narrowed array read to widen to ll before arithmetic:\n{top_level}"
+    );
+
+    let generic_field = cpp(
+        "struct Tree<V>(dep: [V]0..=V.count, far: [V]Int)
+fn make<V>() -> Tree<V>:
+    var dep: [V]0..=V.count = 0
+    var far: [V]Int = 0
+    for v in V:
+        dep[v] = v.ord
+        far[v] = v.ord * 1_000_000_000
+    return Tree(dep, far)
+let n: 1..=100 = read()
+domain V = 1..=n
+let t = make<V>()
+var ans = 0
+for v in V:
+    ans += t.dep[v] * t.dep[v] + t.far[v]
+print(ans)
+",
+    );
+    assert!(
+        generic_field.contains("std::vector<uint32_t> dep;"),
+        "expected generic struct field [V]0..=V.count to emit std::vector<uint32_t>:\n{generic_field}"
+    );
+    assert!(
+        generic_field.contains("std::vector<ll> far;"),
+        "expected plain [V]Int field to stay std::vector<ll>:\n{generic_field}"
+    );
+
+    let widened = cpp(
+        "fn sum_all<V>(xs: [V]Int) -> Int:
+    var s = 0
+    for v in V:
+        s += xs[v]
+    return s
+let n: 1..=100 = read()
+domain V = 1..=n
+var a: [V]0..=1_000_000 = 0
+for v in V:
+    a[v] = v.ord
+print(sum_all<V>(a))
+",
+    );
+    assert!(
+        widened.contains("std::vector<ll> a"),
+        "expected array passed to [V]Int param to widen to std::vector<ll>:\n{widened}"
+    );
+    assert!(
+        !widened.contains("std::vector<uint32_t>"),
+        "widened array must not emit uint32_t:\n{widened}"
+    );
+}

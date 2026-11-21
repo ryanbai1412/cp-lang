@@ -594,34 +594,91 @@ impl<'a> Lowerer<'a> {
         rows
     }
 
-    /// The ranged `Int` fields of `decl` whose static bounds fit in 32 bits.
+    /// Conservative `(min, max)` bounds for an AST range bound expression,
+    /// including compile-time constants and domain counts (`V.count` / `V.K` <= `i32::MAX`).
+    pub(super) fn range_bound_limits(&self, e: &ast::Expr) -> Option<(i64, i64)> {
+        if let Some(v) = self.eval_const_int(e) {
+            return Some((v, v));
+        }
+        match &e.kind {
+            ast::ExprKind::Field { base, name }
+                if matches!(name.text.as_str(), "count" | "K" | "len" | "size") =>
+            {
+                if let ast::ExprKind::Name(dname) = &base.kind {
+                    let is_dom = matches!(self.gen_env.get(dname), Some(GenArg::Domain(_)))
+                        || matches!(
+                            self.mod_syms[self.cur_mod].get(dname),
+                            Some(Sym::Domain(_))
+                        );
+                    if is_dom {
+                        return Some((0, i64::from(i32::MAX)));
+                    }
+                }
+                None
+            }
+            ast::ExprKind::Unary { op: ast::UnOp::Neg, expr, .. } => {
+                let (lo, hi) = self.range_bound_limits(expr)?;
+                Some((hi.checked_neg()?, lo.checked_neg()?))
+            }
+            ast::ExprKind::Binary { op: ast::BinOp::Add, lhs, rhs, .. } => {
+                let (alo, ahi) = self.range_bound_limits(lhs)?;
+                let (blo, bhi) = self.range_bound_limits(rhs)?;
+                Some((alo.checked_add(blo)?, ahi.checked_add(bhi)?))
+            }
+            ast::ExprKind::Binary { op: ast::BinOp::Sub, lhs, rhs, .. } => {
+                let (alo, ahi) = self.range_bound_limits(lhs)?;
+                let (blo, bhi) = self.range_bound_limits(rhs)?;
+                Some((alo.checked_sub(bhi)?, ahi.checked_sub(blo)?))
+            }
+            _ => None,
+        }
+    }
+
+    pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
+        let ast::TypeKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            inclusive,
+        } = &ty.kind
+        else {
+            return None;
+        };
+        let (lo_min, _) = self.range_bound_limits(lo)?;
+        let (_, hi_raw) = self.range_bound_limits(hi)?;
+        let hi_max = if *inclusive { hi_raw } else { hi_raw.checked_sub(1)? };
+        if lo_min > hi_max {
+            return None;
+        }
+        if lo_min >= 0 && hi_max <= i64::from(u32::MAX) {
+            Some(IntWidth::U32)
+        } else if lo_min >= i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX) {
+            Some(IntWidth::I32)
+        } else {
+            None
+        }
+    }
+
+    /// The ranged `Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.
     pub(super) fn narrow_int_fields(
         &self,
         decl: &ast::StructDecl,
     ) -> std::collections::BTreeMap<usize, IntWidth> {
         let mut narrow = std::collections::BTreeMap::new();
         for (at, field) in decl.fields.iter().enumerate() {
-            let ast::TypeKind::Range {
-                lo: Some(lo),
-                hi: Some(hi),
-                inclusive,
-            } = &field.ty.kind
-            else {
-                continue;
+            let width = match &field.ty.kind {
+                ast::TypeKind::Range { .. } => self.narrow_range_width(&field.ty),
+                ast::TypeKind::Array { index, elem } if index.len() == 1 => {
+                    self.narrow_range_width(elem)
+                }
+                ast::TypeKind::Named { name, args }
+                    if (name.text == "List" || name.text == "ListView") && args.len() == 1 =>
+                {
+                    self.narrow_range_width(&args[0])
+                }
+                _ => None,
             };
-            let (Some(lo), Some(hi)) = (self.eval_const_int(lo), self.eval_const_int(hi)) else {
-                continue;
-            };
-            let Some(hi_inc) = (if *inclusive { Some(hi) } else { hi.checked_sub(1) }) else {
-                continue;
-            };
-            if lo > hi_inc {
-                continue;
-            }
-            if lo >= 0 && hi_inc < (1i64 << 31) {
-                narrow.insert(at, IntWidth::U32);
-            } else if lo >= i64::from(i32::MIN) && hi_inc <= i64::from(i32::MAX) {
-                narrow.insert(at, IntWidth::I32);
+            if let Some(w) = width {
+                narrow.insert(at, w);
             }
         }
         narrow
@@ -1883,6 +1940,7 @@ impl<'a> Lowerer<'a> {
 
         let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
         let cid = self.closures.len();
+        self.record_narrow_locals(ScopeId::Closure(cid), &inner_cx.locals, &inner_cx.local_ranges);
         let muts = decl.params.iter().zip(&param_slots).filter(|(p, _)| p.mutable).map(|(_, slot)| *slot).collect();
         self.closures.push(ClosureDef {
             params: param_slots,
@@ -2298,6 +2356,7 @@ impl<'a> Lowerer<'a> {
 
         let finished = std::mem::replace(&mut self.cx, self.outer_cxs.pop().expect("parent cx"));
         let cid = self.closures.len();
+        self.record_narrow_locals(ScopeId::Closure(cid), &finished.locals, &finished.local_ranges);
         self.closures.push(ClosureDef {
             params: param_slots,
             muts: Vec::new(),

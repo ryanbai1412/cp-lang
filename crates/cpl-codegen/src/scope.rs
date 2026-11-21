@@ -468,3 +468,579 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
     }
     narrow
 }
+
+fn is_1d_int_seq(ty: &Ty) -> bool {
+    match ty {
+        Ty::Array { dims, elem } => dims.len() == 1 && matches!(elem.as_ref(), Ty::Int),
+        Ty::List(elem) | Ty::ListView(elem) => matches!(elem.as_ref(), Ty::Int),
+        _ => false,
+    }
+}
+
+/// 1D ranged-`Int` arrays, lists, and list views whose elements can be stored as
+/// 32-bit integers (`uint32_t` / `int32_t`) consistently across every value flow.
+pub(crate) fn narrow_elems(
+    program: &Program,
+    rows: &BTreeMap<(usize, usize), u32>,
+) -> BTreeMap<cpl_ir::ElemLoc, cpl_ir::IntWidth> {
+    use cpl_ir::{Arg, Builtin, ElemLoc, IntWidth, Iter, Mutation, ScopeId};
+
+    let mut narrow = program.narrow_elems.clone();
+    for (id, def) in program.structs.iter().enumerate() {
+        for (&field, &width) in &def.narrow_ints {
+            if rows.contains_key(&(id, field)) {
+                continue;
+            }
+            if def.fields.get(field).is_some_and(|(_, t)| is_1d_int_seq(t)) {
+                narrow.insert(ElemLoc::Field(id, field), width);
+            }
+        }
+    }
+    // Propagate outer widths into closure captures so closures capturing a narrowed
+    // array can stay narrow if all uses inside the closure are compatible.
+    let mut cap_links: Vec<(ElemLoc, ElemLoc)> = Vec::new();
+    let collect_caps = |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, ElemLoc)>| {
+        crate::walk::deep_exprs(body, &mut |e| {
+            if let ExprKind::Closure(cid) = &e.kind {
+                let c = &program.closures[*cid];
+                for cap in &c.captures {
+                    if c.locals.get(cap.inner).is_some_and(|l| is_1d_int_seq(&l.ty)) {
+                        let outer = if cap.is_global {
+                            ElemLoc::Global(cap.outer)
+                        } else {
+                            ElemLoc::Local(scope, cap.outer)
+                        };
+                        let inner = ElemLoc::Local(ScopeId::Closure(*cid), cap.inner);
+                        links.push((outer, inner));
+                    }
+                }
+            }
+        });
+    };
+    collect_caps(ScopeId::Main, &program.setup, &mut cap_links);
+    collect_caps(ScopeId::Main, &program.main, &mut cap_links);
+    for (fid, f) in program.fns.iter().enumerate() {
+        collect_caps(ScopeId::Fn(fid), &f.body, &mut cap_links);
+    }
+    for (cid, c) in program.closures.iter().enumerate() {
+        collect_caps(ScopeId::Closure(cid), &c.body, &mut cap_links);
+    }
+    for &(outer, inner) in &cap_links {
+        if let Some(&w) = narrow.get(&outer) {
+            narrow.entry(inner).or_insert(w);
+        }
+    }
+    // Grader/judge functions keep wide `ll` signatures to match `cpl::Judge<T>`.
+    for &fid in program.judge_fns.iter().chain(program.entry_fns.iter()) {
+        narrow.remove(&ElemLoc::FnRet(fid));
+        for i in 0..program.fns[fid].params.len() {
+            narrow.remove(&ElemLoc::Local(ScopeId::Fn(fid), i));
+        }
+    }
+    if narrow.is_empty() {
+        return narrow;
+    }
+
+    fn place_loc(scope: ScopeId, place: &Place) -> Option<ElemLoc> {
+        match &place.kind {
+            PlaceKind::Global(g) => Some(ElemLoc::Global(*g)),
+            PlaceKind::Local(s) => Some(ElemLoc::Local(scope, *s)),
+            PlaceKind::Field(base, f) => match base.ty {
+                Ty::Struct(id) => Some(ElemLoc::Field(id, *f)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn expr_loc(scope: ScopeId, e: &Expr) -> Option<ElemLoc> {
+        match &e.kind {
+            ExprKind::Global(g) => Some(ElemLoc::Global(*g)),
+            ExprKind::Local(s) => Some(ElemLoc::Local(scope, *s)),
+            ExprKind::Field(base, f) => match base.ty {
+                Ty::Struct(id) => Some(ElemLoc::Field(id, *f)),
+                _ => None,
+            },
+            ExprKind::Call(fid, _) => Some(ElemLoc::FnRet(*fid)),
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+                args.first().and_then(|a| expr_loc(scope, a))
+            }
+            ExprKind::Do(blk) => match blk.stmts.last() {
+                Some(Stmt::Give(inner)) => expr_loc(scope, inner),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn is_fresh_adaptable(e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Fill(..) => true,
+            ExprKind::Tuple(_) if matches!(e.ty, Ty::List(_)) => true,
+            ExprKind::Read(spec) if matches!(spec.as_ref(), cpl_ir::Spec::Array { .. }) => true,
+            _ => false,
+        }
+    }
+
+    fn widen_loc(loc: ElemLoc, narrow: &mut BTreeMap<ElemLoc, IntWidth>, changed: &mut bool) {
+        if narrow.remove(&loc).is_some() {
+            *changed = true;
+        }
+    }
+
+    fn widen_expr(
+        scope: ScopeId,
+        e: &Expr,
+        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        changed: &mut bool,
+    ) {
+        if let Some(loc) = expr_loc(scope, e) {
+            widen_loc(loc, narrow, changed);
+        }
+    }
+
+    fn check_flow(
+        scope: ScopeId,
+        src: &Expr,
+        dst: ElemLoc,
+        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        changed: &mut bool,
+    ) {
+        if is_fresh_adaptable(src) {
+            return;
+        }
+        if let Some(src_loc) = expr_loc(scope, src) {
+            if narrow.get(&src_loc) != narrow.get(&dst) {
+                widen_loc(src_loc, narrow, changed);
+                widen_loc(dst, narrow, changed);
+            }
+        } else {
+            widen_loc(dst, narrow, changed);
+        }
+    }
+
+    fn check_expr(
+        program: &Program,
+        scope: ScopeId,
+        e: &Expr,
+        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        changed: &mut bool,
+    ) {
+        match &e.kind {
+            ExprKind::Index(base, indices) if indices.len() == 1 && is_1d_int_seq(&base.ty) => {
+                // Element read on a narrowed 1D sequence is safe (widened to `ll` on read).
+                check_nested_base(program, scope, base, narrow, changed);
+                for idx in indices {
+                    check_val(program, scope, idx, narrow, changed);
+                }
+            }
+            ExprKind::Builtin(Builtin::Len, args) => {
+                for a in args {
+                    if is_1d_int_seq(&a.ty) {
+                        check_nested_base(program, scope, a, narrow, changed);
+                    } else {
+                        check_val(program, scope, a, narrow, changed);
+                    }
+                }
+            }
+            ExprKind::Print(parts, end) => {
+                for p in parts {
+                    check_val(program, scope, &p.value, narrow, changed);
+                }
+                if let Some(e) = end {
+                    check_val(program, scope, e, narrow, changed);
+                }
+            }
+            ExprKind::Debug(_, parts) => {
+                for p in parts {
+                    check_val(program, scope, &p.value, narrow, changed);
+                }
+            }
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+                // When reached via check_val (not as a safe consumer), widen the base.
+                for a in args {
+                    check_val(program, scope, a, narrow, changed);
+                }
+            }
+            ExprKind::Mutate(m, place, args) => {
+                let safe_mut = matches!(
+                    m,
+                    Mutation::Push
+                        | Mutation::Pop
+                        | Mutation::Clear
+                        | Mutation::Fill
+                        | Mutation::Resize
+                        | Mutation::Reverse
+                        | Mutation::Truncate
+                        | Mutation::Swap
+                        | Mutation::Remove
+                );
+                if safe_mut && is_1d_int_seq(&place.ty) {
+                    check_place_nested(program, scope, place, narrow, changed);
+                    for a in args {
+                        check_val(program, scope, a, narrow, changed);
+                    }
+                } else if matches!(m, Mutation::Extend) && is_1d_int_seq(&place.ty) && args.len() == 1 {
+                    check_place_nested(program, scope, place, narrow, changed);
+                    if let Some(dst) = place_loc(scope, place) {
+                        check_flow(scope, &args[0], dst, narrow, changed);
+                        check_nested_base(program, scope, &args[0], narrow, changed);
+                    } else {
+                        check_val(program, scope, &args[0], narrow, changed);
+                    }
+                } else {
+                    if is_1d_int_seq(&place.ty) {
+                        if let Some(loc) = place_loc(scope, place) {
+                            widen_loc(loc, narrow, changed);
+                        }
+                    }
+                    check_place_nested(program, scope, place, narrow, changed);
+                    for a in args {
+                        check_val(program, scope, a, narrow, changed);
+                    }
+                }
+            }
+            ExprKind::Sort(place, by, _) => {
+                if matches!(by, cpl_ir::SortBy::Natural) && is_1d_int_seq(&place.ty) {
+                    check_place_nested(program, scope, place, narrow, changed);
+                } else {
+                    if is_1d_int_seq(&place.ty) {
+                        if let Some(loc) = place_loc(scope, place) {
+                            widen_loc(loc, narrow, changed);
+                        }
+                    }
+                    check_place_nested(program, scope, place, narrow, changed);
+                    match by {
+                        cpl_ir::SortBy::Natural => {}
+                        cpl_ir::SortBy::Key(_, k) => check_val(program, scope, k, narrow, changed),
+                        cpl_ir::SortBy::Fn { func, .. } => {
+                            check_val(program, scope, func, narrow, changed)
+                        }
+                    }
+                }
+            }
+            ExprKind::Tuple(values) => {
+                if let Ty::Struct(sid) = e.ty {
+                    for (idx, val) in values.iter().enumerate() {
+                        if is_1d_int_seq(&val.ty) {
+                            check_flow(scope, val, ElemLoc::Field(sid, idx), narrow, changed);
+                            check_nested_base(program, scope, val, narrow, changed);
+                        } else {
+                            check_val(program, scope, val, narrow, changed);
+                        }
+                    }
+                } else {
+                    for val in values {
+                        check_val(program, scope, val, narrow, changed);
+                    }
+                }
+            }
+            ExprKind::Call(fid, args) => {
+                let f = &program.fns[*fid];
+                for (i, arg) in args.iter().enumerate() {
+                    let p_ty = f.locals.get(i).map(|l| &l.ty);
+                    let p_loc = ElemLoc::Local(ScopeId::Fn(*fid), i);
+                    match arg {
+                        Arg::Value(v) => {
+                            if p_ty.is_some_and(is_1d_int_seq) {
+                                check_flow(scope, v, p_loc, narrow, changed);
+                                check_nested_base(program, scope, v, narrow, changed);
+                            } else {
+                                check_val(program, scope, v, narrow, changed);
+                            }
+                        }
+                        Arg::Mut(p) => {
+                            if p_ty.is_some_and(is_1d_int_seq) {
+                                if let Some(src_loc) = place_loc(scope, p) {
+                                    if narrow.get(&src_loc) != narrow.get(&p_loc) {
+                                        widen_loc(src_loc, narrow, changed);
+                                        widen_loc(p_loc, narrow, changed);
+                                    }
+                                } else {
+                                    widen_loc(p_loc, narrow, changed);
+                                }
+                                check_place_nested(program, scope, p, narrow, changed);
+                            } else {
+                                if is_1d_int_seq(&p.ty) {
+                                    if let Some(loc) = place_loc(scope, p) {
+                                        widen_loc(loc, narrow, changed);
+                                    }
+                                }
+                                check_place_nested(program, scope, p, narrow, changed);
+                            }
+                        }
+                    }
+                }
+            }
+            ExprKind::CallExpr(callee, args) => {
+                check_val(program, scope, callee, narrow, changed);
+                for arg in args {
+                    match arg {
+                        Arg::Value(v) => check_val(program, scope, v, narrow, changed),
+                        Arg::Mut(p) => {
+                            if is_1d_int_seq(&p.ty) {
+                                if let Some(loc) = place_loc(scope, p) {
+                                    widen_loc(loc, narrow, changed);
+                                }
+                            }
+                            check_place_nested(program, scope, p, narrow, changed);
+                        }
+                    }
+                }
+            }
+            ExprKind::Do(blk) => {
+                check_block(program, scope, blk, narrow, changed, false);
+            }
+            ExprKind::If(c, t, f) => {
+                check_val(program, scope, c, narrow, changed);
+                check_val(program, scope, t, narrow, changed);
+                check_val(program, scope, f, narrow, changed);
+            }
+            ExprKind::Unary(_, a)
+            | ExprKind::Cast(_, a)
+            | ExprKind::Some(a)
+            | ExprKind::IsSome(a)
+            | ExprKind::Unwrap(a, _)
+            | ExprKind::RangeCheck { value: a, .. } => {
+                check_val(program, scope, a, narrow, changed);
+                if let ExprKind::RangeCheck { lo, hi, .. } = &e.kind {
+                    if let Some(l) = lo {
+                        check_val(program, scope, l, narrow, changed);
+                    }
+                    if let Some(h) = hi {
+                        check_val(program, scope, h, narrow, changed);
+                    }
+                }
+            }
+            ExprKind::Binary(_, a, b) | ExprKind::Cmp(_, a, b) => {
+                check_val(program, scope, a, narrow, changed);
+                check_val(program, scope, b, narrow, changed);
+            }
+            ExprKind::Field(base, _) => {
+                check_val(program, scope, base, narrow, changed);
+            }
+            ExprKind::Index(base, indices) => {
+                check_val(program, scope, base, narrow, changed);
+                for idx in indices {
+                    check_val(program, scope, idx, narrow, changed);
+                }
+            }
+            ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
+                for item in items {
+                    check_val(program, scope, item, narrow, changed);
+                }
+            }
+            ExprKind::Fill(dims, val) => {
+                for d in dims {
+                    if let cpl_ir::DimSpec::Int(n) | cpl_ir::DimSpec::IntFrom(_, n) = d {
+                        check_val(program, scope, n, narrow, changed);
+                    }
+                }
+                if let Some(val) = val {
+                    check_val(program, scope, val, narrow, changed);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn check_val(
+        program: &Program,
+        scope: ScopeId,
+        e: &Expr,
+        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        changed: &mut bool,
+    ) {
+        if is_1d_int_seq(&e.ty) {
+            widen_expr(scope, e, narrow, changed);
+        }
+        check_expr(program, scope, e, narrow, changed);
+    }
+
+    fn check_nested_base(
+        program: &Program,
+        scope: ScopeId,
+        e: &Expr,
+        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        changed: &mut bool,
+    ) {
+        match &e.kind {
+            ExprKind::Global(_) | ExprKind::Local(_) => {}
+            ExprKind::Field(base, _) => check_val(program, scope, base, narrow, changed),
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList, args) => {
+                if let Some((first, rest)) = args.split_first() {
+                    check_nested_base(program, scope, first, narrow, changed);
+                    for a in rest {
+                        check_val(program, scope, a, narrow, changed);
+                    }
+                }
+            }
+            ExprKind::Do(blk) => {
+                check_block(program, scope, blk, narrow, changed, true);
+            }
+            _ => check_expr(program, scope, e, narrow, changed),
+        }
+    }
+
+    fn check_place_nested(
+        program: &Program,
+        scope: ScopeId,
+        p: &Place,
+        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        changed: &mut bool,
+    ) {
+        match &p.kind {
+            PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
+                check_place_nested(program, scope, base, narrow, changed)
+            }
+            PlaceKind::Index(base, indices) => {
+                if indices.len() == 1 && is_1d_int_seq(&base.ty) {
+                    check_place_nested(program, scope, base, narrow, changed);
+                } else {
+                    if is_1d_int_seq(&base.ty) {
+                        if let Some(loc) = place_loc(scope, base) {
+                            widen_loc(loc, narrow, changed);
+                        }
+                    }
+                    check_place_nested(program, scope, base, narrow, changed);
+                }
+                for idx in indices {
+                    check_val(program, scope, idx, narrow, changed);
+                }
+            }
+            PlaceKind::Global(_) | PlaceKind::Local(_) => {}
+        }
+    }
+
+    fn check_block(
+        program: &Program,
+        scope: ScopeId,
+        blk: &cpl_ir::Block,
+        narrow: &mut BTreeMap<ElemLoc, IntWidth>,
+        changed: &mut bool,
+        allow_narrow_give: bool,
+    ) {
+        let len = blk.stmts.len();
+        for (idx, stmt) in blk.stmts.iter().enumerate() {
+            let is_last = idx + 1 == len;
+            match stmt {
+                Stmt::Let(slot, Some(val)) => {
+                    if is_1d_int_seq(&val.ty) {
+                        check_flow(scope, val, ElemLoc::Local(scope, *slot), narrow, changed);
+                        check_nested_base(program, scope, val, narrow, changed);
+                    } else {
+                        check_val(program, scope, val, narrow, changed);
+                    }
+                }
+                Stmt::Let(_, None) => {}
+                Stmt::Assign(place, op, val) => {
+                    if is_1d_int_seq(&place.ty) {
+                        if *op != cpl_ir::AssignOp::Set {
+                            if let Some(loc) = place_loc(scope, place) {
+                                widen_loc(loc, narrow, changed);
+                            }
+                            check_place_nested(program, scope, place, narrow, changed);
+                            check_val(program, scope, val, narrow, changed);
+                        } else if let Some(dst) = place_loc(scope, place) {
+                            check_flow(scope, val, dst, narrow, changed);
+                            check_place_nested(program, scope, place, narrow, changed);
+                            check_nested_base(program, scope, val, narrow, changed);
+                        } else {
+                            check_place_nested(program, scope, place, narrow, changed);
+                            check_val(program, scope, val, narrow, changed);
+                        }
+                    } else {
+                        check_place_nested(program, scope, place, narrow, changed);
+                        check_val(program, scope, val, narrow, changed);
+                    }
+                }
+                Stmt::Return(Some(val)) => {
+                    if is_1d_int_seq(&val.ty) {
+                        if let ScopeId::Fn(fid) = scope {
+                            check_flow(scope, val, ElemLoc::FnRet(fid), narrow, changed);
+                            check_nested_base(program, scope, val, narrow, changed);
+                        } else {
+                            check_val(program, scope, val, narrow, changed);
+                        }
+                    } else {
+                        check_val(program, scope, val, narrow, changed);
+                    }
+                }
+                Stmt::Give(val) => {
+                    if allow_narrow_give && is_last && is_1d_int_seq(&val.ty) {
+                        check_nested_base(program, scope, val, narrow, changed);
+                    } else {
+                        check_val(program, scope, val, narrow, changed);
+                    }
+                }
+                Stmt::Expr(e) => check_val(program, scope, e, narrow, changed),
+                Stmt::Assert { cond, message, .. } => {
+                    check_val(program, scope, cond, narrow, changed);
+                    if let Some(m) = message {
+                        check_val(program, scope, m, narrow, changed);
+                    }
+                }
+                Stmt::If(cond, then, otherwise) => {
+                    check_val(program, scope, cond, narrow, changed);
+                    check_block(program, scope, then, narrow, changed, false);
+                    check_block(program, scope, otherwise, narrow, changed, false);
+                }
+                Stmt::While(_, cond, body) => {
+                    check_val(program, scope, cond, narrow, changed);
+                    check_block(program, scope, body, narrow, changed, false);
+                }
+                Stmt::For(_, _, iter, body) => {
+                    match iter {
+                        Iter::Seq(e, _) if is_1d_int_seq(&e.ty) => {
+                            check_nested_base(program, scope, e, narrow, changed);
+                        }
+                        Iter::Seq(e, _)
+                        | Iter::RangeVal(e, _)
+                        | Iter::Subsets(e)
+                        | Iter::Members(e) => {
+                            check_val(program, scope, e, narrow, changed);
+                        }
+                        Iter::Range { lo, hi, step, .. } => {
+                            check_val(program, scope, lo, narrow, changed);
+                            check_val(program, scope, hi, narrow, changed);
+                            if let Some(s) = step {
+                                check_val(program, scope, s, narrow, changed);
+                            }
+                        }
+                    }
+                    check_block(program, scope, body, narrow, changed, false);
+                }
+                Stmt::DefDomain { lo, len, .. } => {
+                    check_val(program, scope, lo, narrow, changed);
+                    check_val(program, scope, len, narrow, changed);
+                }
+                Stmt::DefDomainFromVal { val, .. } => {
+                    check_val(program, scope, val, narrow, changed);
+                }
+                Stmt::Return(None) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
+            }
+        }
+    }
+
+    loop {
+        let mut changed = false;
+        for &(outer, inner) in &cap_links {
+            if narrow.get(&outer) != narrow.get(&inner) {
+                widen_loc(outer, &mut narrow, &mut changed);
+                widen_loc(inner, &mut narrow, &mut changed);
+            }
+        }
+        check_block(program, ScopeId::Main, &program.setup, &mut narrow, &mut changed, false);
+        check_block(program, ScopeId::Main, &program.main, &mut narrow, &mut changed, false);
+        for (fid, f) in program.fns.iter().enumerate() {
+            check_block(program, ScopeId::Fn(fid), &f.body, &mut narrow, &mut changed, false);
+        }
+        for (cid, c) in program.closures.iter().enumerate() {
+            check_block(program, ScopeId::Closure(cid), &c.body, &mut narrow, &mut changed, false);
+        }
+        if !changed {
+            break;
+        }
+    }
+    narrow
+}

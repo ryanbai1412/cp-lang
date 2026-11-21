@@ -1086,7 +1086,13 @@ impl<'a> Lowerer<'a> {
     fn expect_declared(&mut self, e: &ast::Expr, want: &Ty, declared: Option<&ast::Type>) -> Expr {
         let cells = matches!(&e.kind, ast::ExprKind::List(items) if !items.is_empty())
             && matches!(want, Ty::Array { dims, .. } if matches!(dims[..], [Dim::Int | Dim::IntFrom(_)]));
-        match declared.filter(|_| cells) {
+        let ranged_comp = matches!(&e.kind, ast::ExprKind::Table { .. })
+            && declared.is_some_and(|d| {
+                self.range_info_from_ast(d)
+                    .and_then(|r| r.elem().and_then(|e| e.scalar()).cloned())
+                    .is_some()
+            });
+        match declared.filter(|_| cells || ranged_comp) {
             Some(declared) => match self.let_value(Some(declared), Some(e), e.span) {
                 Some(value) => self.coerce(value, want, e.span),
                 None => self.err_expr(e.span),

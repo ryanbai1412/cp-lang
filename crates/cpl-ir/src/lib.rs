@@ -889,11 +889,38 @@ pub struct ClosureDef {
     pub body: Block,
 }
 
-/// Narrow storage width for a struct field whose declared range fits in 32 bits.
+/// Narrow storage width for a ranged `Int` field or 1D ranged-`Int` array/list element.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum IntWidth {
     U32,
     I32,
+}
+
+impl IntWidth {
+    pub fn cpp(self) -> &'static str {
+        match self {
+            IntWidth::U32 => "uint32_t",
+            IntWidth::I32 => "int32_t",
+        }
+    }
+}
+
+/// Identifies a local-slot scope in a [`Program`].
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum ScopeId {
+    Main,
+    Fn(FnId),
+    Closure(ClosureId),
+}
+
+/// Storage location that may hold a 1D array/list/view with narrowed 32-bit `Int` elements.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum ElemLoc {
+    Global(GlobalId),
+    Local(ScopeId, Slot),
+    Field(StructId, usize),
+    FnRet(FnId),
+    ClosureRet(ClosureId),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -949,6 +976,9 @@ pub struct Program {
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.
     pub library_fns: Vec<bool>,
     pub closures: Vec<ClosureDef>,
+    /// Declared 32-bit element storage widths for 1D ranged-`Int` arrays/lists
+    /// (globals, locals/params, fn/closure returns; struct fields live in `StructDef.narrow_ints`).
+    pub narrow_elems: std::collections::BTreeMap<ElemLoc, IntWidth>,
     /// The file's top-level code and its locals.
     pub main: Block,
     pub main_locals: Vec<Local>,

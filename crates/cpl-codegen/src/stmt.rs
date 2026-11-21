@@ -604,7 +604,8 @@ impl<'p> Emitter<'p> {
                     self.line(out, "{");
                     self.indent += 1;
                     let held = self.temp();
-                    let holder_ty = self.ty(&seq.ty);
+                    let holder_ty =
+                        self.ty_with_elem_width(&seq.ty, self.expr_elem_width(seq));
                     if untouched {
                         self.line(
                             out,
@@ -685,7 +686,8 @@ impl<'p> Emitter<'p> {
             match &**spec {
                 Spec::Array { dims, elem } => {
                     let name = self.place(place);
-                    self.read_array(&name, false, dims, elem, out);
+                    let w = self.place_elem_width(place);
+                    self.read_array_with_width(&name, false, dims, elem, w, out);
                     return;
                 }
                 Spec::Plain(Ty::Str) => {
@@ -697,7 +699,19 @@ impl<'p> Emitter<'p> {
                 _ => {}
             }
         }
-        let mut v = self.expr(value);
+        let place_w = self.place_elem_width(place);
+        let mut v = if op == AssignOp::Set && place_w.is_some() {
+            self.expr_with_elem_width(value, place_w)
+        } else {
+            self.expr(value)
+        };
+        if let PlaceKind::Index(base, _) = &place.kind {
+            if op == AssignOp::Set {
+                if let Some(w) = self.place_elem_width(base) {
+                    v.text = format!("{}({})", w.cpp(), v.text);
+                }
+            }
+        }
         // A value built by its own block (a comprehension) is not
         // read again: it moves into the place.
         if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) = (op, &value.kind, flat(whole)) {
@@ -947,7 +961,8 @@ impl<'p> Emitter<'p> {
                 let tail = self.tail.take();
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
-                let cpp = self.ty(&ty);
+                let elem_w = self.elem_width(cpl_ir::ElemLoc::Local(self.current_scope(), *slot));
+                let cpp = self.ty_with_elem_width(&ty, elem_w);
                 let hoisted = self.hoisted.contains(slot);
                 let Some(init) = init else {
                     if ty != Ty::Unit {
@@ -976,12 +991,12 @@ impl<'p> Emitter<'p> {
                 match &init.kind {
                     ExprKind::Read(spec) => {
                         if let Spec::Array { dims, elem } = &**spec {
-                            self.read_array(&name, !hoisted, dims, elem, out);
+                            self.read_array_with_width(&name, !hoisted, dims, elem, elem_w, out);
                             return;
                         }
                     }
                     ExprKind::Fill(dims, value) if !hoisted && dims.len() == 1 => {
-                        let args = self.fill_args(dims, value.as_deref());
+                        let args = self.fill_args_with_width(dims, value.as_deref(), elem_w);
                         if reused {
                             // One buffer, filled again each time round.
                             self.line(out, &format!("static {cpp} {name};"));
@@ -1004,9 +1019,9 @@ impl<'p> Emitter<'p> {
                         ExprKind::Local(of) if self.spent.contains(of) => {
                             format!("std::get<{index}>(std::move({}))", self.names[*of])
                         }
-                        _ => self.expr(init).text,
+                        _ => self.expr_with_elem_width(init, elem_w).text,
                     },
-                    _ => self.expr(init).text,
+                    _ => self.expr_with_elem_width(init, elem_w).text,
                 };
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
@@ -1099,25 +1114,44 @@ impl<'p> Emitter<'p> {
                                                 return format!("std::move({})", self.names[slot]);
                                             }
                                         }
+                                        if let Some(w) = struct_id.and_then(|s| {
+                                            self.elem_width(cpl_ir::ElemLoc::Field(s, idx))
+                                        }) {
+                                            return self.expr_with_elem_width(item, Some(w)).text;
+                                        }
                                         let v = self.expr(item).text;
                                         match struct_id
                                             .and_then(|s| self.narrow_ints.get(&(s, idx)))
                                         {
-                                            Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
-                                            Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
+                                            Some(w) => format!("{}({v})", w.cpp()),
                                             None => v,
                                         }
                                     })
                                     .collect();
                                 format!("{ty}{{{}}}", rendered.join(", "))
                             } else {
-                                self.expr(value).text
+                                let ret_w = if is_return {
+                                    self.fn_id.and_then(|id| self.elem_width(cpl_ir::ElemLoc::FnRet(id)))
+                                } else {
+                                    None
+                                };
+                                self.expr_with_elem_width(value, ret_w).text
                             }
                         } else {
-                            self.expr(value).text
+                            let ret_w = if is_return {
+                                self.fn_id.and_then(|id| self.elem_width(cpl_ir::ElemLoc::FnRet(id)))
+                            } else {
+                                None
+                            };
+                            self.expr_with_elem_width(value, ret_w).text
                         }
                     } else {
-                        self.expr(value).text
+                        let ret_w = if is_return {
+                            self.fn_id.and_then(|id| self.elem_width(cpl_ir::ElemLoc::FnRet(id)))
+                        } else {
+                            None
+                        };
+                        self.expr_with_elem_width(value, ret_w).text
                     };
                     self.last_use_call = false;
                     self.line(out, &format!("return {text};"));

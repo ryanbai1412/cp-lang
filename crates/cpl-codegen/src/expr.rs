@@ -361,10 +361,69 @@ impl<'p> Emitter<'p> {
 
     /// The arguments of a 1-D vector's constructor: `n, value`.
     pub fn fill_args(&mut self, dims: &[DimSpec], value: Option<&Expr>) -> String {
+        self.fill_args_with_width(dims, value, None)
+    }
+
+    pub fn fill_args_with_width(
+        &mut self,
+        dims: &[DimSpec],
+        value: Option<&Expr>,
+        width: Option<cpl_ir::IntWidth>,
+    ) -> String {
         let n = self.dim(&dims[0]);
         match value.map(|value| self.expr(value).text) {
-            Some(text) => format!("{n}, {text}"),
+            Some(text) => match width {
+                Some(w) => format!("{n}, {}({text})", w.cpp()),
+                None => format!("{n}, {text}"),
+            },
             None => n,
+        }
+    }
+
+    pub fn expr_with_elem_width(&mut self, e: &Expr, width: Option<cpl_ir::IntWidth>) -> Code {
+        let Some(w) = width else {
+            return self.expr(e);
+        };
+        let cpp_cell = w.cpp();
+        match &e.kind {
+            ExprKind::Fill(dims, value)
+                if dims.len() == 1
+                    && matches!(&e.ty, Ty::Array { elem, .. } if matches!(elem.as_ref(), Ty::Int)) =>
+            {
+                let args = self.fill_args_with_width(dims, value.as_deref(), Some(w));
+                Code::primary(format!("std::vector<{cpp_cell}>({args})"))
+            }
+            ExprKind::Tuple(items)
+                if matches!(&e.ty, Ty::List(elem) if matches!(elem.as_ref(), Ty::Int)) =>
+            {
+                if items.is_empty() {
+                    Code::primary(format!("std::vector<{cpp_cell}>()"))
+                } else {
+                    let rendered: Vec<String> = items
+                        .iter()
+                        .map(|item| format!("{cpp_cell}({})", self.expr(item).text))
+                        .collect();
+                    Code::primary(format!("std::vector<{cpp_cell}>{{{}}}", rendered.join(", ")))
+                }
+            }
+            ExprKind::Read(spec) => {
+                if let cpl_ir::Spec::Array { dims, elem } = &**spec {
+                    if dims.len() == 1 && elem.ty() == Ty::Int {
+                        let ty = format!("std::vector<{cpp_cell}>");
+                        return self.lambda(&ty, |this, out| {
+                            let name = this.temp();
+                            this.read_array_with_width(&name, true, dims, elem, Some(w), out);
+                            out.push_str(&format!("{}return {name};\n", pad(this.indent)));
+                        });
+                    }
+                }
+                self.expr(e)
+            }
+            ExprKind::Do(block) => {
+                let ret = self.ty_with_elem_width(&e.ty, Some(w));
+                self.lambda(&ret, |this, out| this.block(block, out))
+            }
+            _ => self.expr(e),
         }
     }
 
@@ -622,6 +681,7 @@ impl<'p> Emitter<'p> {
                     self.need("range_at");
                 }
                 let in_place = self.is_row(base);
+                let narrow_elem = indices.len() == 1 && self.expr_elem_width(base).is_some();
                 self.sequence(&operands, &e.ty, |_, mut codes| {
                     if in_place {
                         if let Some(row) = codes[0].text.strip_suffix(".vec()") {
@@ -639,7 +699,7 @@ impl<'p> Emitter<'p> {
                             }
                         })
                         .collect();
-                    match base_ty {
+                    let code = match base_ty {
                         Ty::Array { dims, elem } if dims.len() > 1 => {
                             let call = if checked { ".ck" } else { "" };
                             let cell = format!("{b}{call}({})", at.join(", "));
@@ -685,6 +745,11 @@ impl<'p> Emitter<'p> {
                             Code::primary(format!("{b}.at({})", at[0]))
                         }
                         _ => Code::primary(format!("{b}[{}]", at[0])),
+                    };
+                    if narrow_elem {
+                        Code::primary(format!("ll({})", code.text))
+                    } else {
+                        code
                     }
                 })
             }
@@ -748,10 +813,14 @@ impl<'p> Emitter<'p> {
                                         }
                                     }
                                 }
+                                if let Some(w) = struct_id
+                                    .and_then(|s| self.elem_width(cpl_ir::ElemLoc::Field(s, idx)))
+                                {
+                                    return self.expr_with_elem_width(item, Some(w)).text;
+                                }
                                 let v = self.braced(item);
                                 match struct_id.and_then(|s| self.narrow_ints.get(&(s, idx))) {
-                                    Some(cpl_ir::IntWidth::U32) => format!("uint32_t({v})"),
-                                    Some(cpl_ir::IntWidth::I32) => format!("int32_t({v})"),
+                                    Some(w) => format!("{}({v})", w.cpp()),
                                     None => v,
                                 }
                             })
@@ -947,12 +1016,16 @@ impl<'p> Emitter<'p> {
                         });
                         impure
                     });
+                let narrow_elem = self.place_elem_width(place);
                 let emit_mutate = |this: &mut Self, p: String, arg: String, arg2: String| -> Code {
                     match op {
                         Mutation::Push if place.ty == Ty::Str => {
                             Code::primary(format!("{p}.push_back((char){arg})"))
                         }
-                        Mutation::Push => Code::primary(format!("{p}.push_back({arg})")),
+                        Mutation::Push => match narrow_elem {
+                            Some(w) => Code::primary(format!("{p}.push_back({}({arg}))", w.cpp())),
+                            None => Code::primary(format!("{p}.push_back({arg})")),
+                        },
                         Mutation::Take => Code::primary(format!("std::exchange({p}, {{}})")),
                         Mutation::Pop => {
                             this.need("pop");
@@ -1004,9 +1077,12 @@ impl<'p> Emitter<'p> {
                         Mutation::Resize if place.ty == Ty::Str => {
                             Code::primary(format!("{p}.resize((size_t)({arg}), (char){arg2})"))
                         }
-                        Mutation::Resize => {
-                            Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})"))
-                        }
+                        Mutation::Resize => match narrow_elem {
+                            Some(w) => {
+                                Code::primary(format!("{p}.resize((size_t)({arg}), {}({arg2}))", w.cpp()))
+                            }
+                            None => Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})")),
+                        },
                         Mutation::Truncate => {
                             this.need("truncate");
                             Code::primary(format!("cpl::truncate({p}, {arg})"))
@@ -1032,8 +1108,12 @@ impl<'p> Emitter<'p> {
                             let is_grid =
                                 matches!(&place.ty, Ty::Array { dims, .. } if dims.len() > 1);
                             let vec_expr = if is_grid { format!("{p}.d") } else { p };
+                            let v = match narrow_elem {
+                                Some(w) => format!("{}({arg})", w.cpp()),
+                                None => arg,
+                            };
                             Code::primary(format!(
-                                "std::fill({vec_expr}.begin(), {vec_expr}.end(), {arg})"
+                                "std::fill({vec_expr}.begin(), {vec_expr}.end(), {v})"
                             ))
                         }
                     }
@@ -1611,7 +1691,8 @@ impl<'p> Emitter<'p> {
                             None => false,
                         };
                         if by_ref && shared {
-                            texts.push(format!("{}({})", this.ty(&value.ty), code.text));
+                            let ty = this.ty_with_elem_width(&value.ty, this.expr_elem_width(value));
+                            texts.push(format!("{ty}({})", code.text));
                         } else {
                             texts.push(code.text);
                         }

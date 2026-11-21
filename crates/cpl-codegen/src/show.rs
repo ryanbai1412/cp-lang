@@ -439,8 +439,24 @@ impl<'p> Emitter<'p> {
         elem: &Spec,
         out: &mut String,
     ) {
+        self.read_array_with_width(name, declare, dims, elem, None, out);
+    }
+
+    pub fn read_array_with_width(
+        &mut self,
+        name: &str,
+        declare: bool,
+        dims: &[DimSpec],
+        elem: &Spec,
+        width: Option<cpl_ir::IntWidth>,
+        out: &mut String,
+    ) {
         let elem_ty_ir = elem.ty();
-        let cell = elem_ty(self.program, self.niches, &elem_ty_ir);
+        let narrow = width.filter(|_| dims.len() == 1 && elem_ty_ir == Ty::Int);
+        let cell = match narrow {
+            Some(w) => w.cpp().to_string(),
+            None => elem_ty(self.program, self.niches, &elem_ty_ir),
+        };
         let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
         let lead = pad(self.indent);
         let items = if dims.len() == 1 {
@@ -469,6 +485,10 @@ impl<'p> Emitter<'p> {
         };
         let x = self.temp();
         let value = self.read(elem).text;
-        out.push_str(&format!("{lead}for (auto& {x} : {items}) {x} = {value};\n"));
+        let rhs = match narrow {
+            Some(w) => format!("{}({value})", w.cpp()),
+            None => value,
+        };
+        out.push_str(&format!("{lead}for (auto& {x} : {items}) {x} = {rhs};\n"));
     }
 }

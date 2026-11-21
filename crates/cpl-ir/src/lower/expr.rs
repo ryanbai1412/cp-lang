@@ -4254,6 +4254,14 @@ impl<'a> Lowerer<'a> {
             elem: Box::new(value.ty.clone()),
         };
         let acc = self.temp(ty.clone());
+        if dims.len() == 1 {
+            if let Some(bounds) = elem_range {
+                self.cx.local_ranges.insert(
+                    acc,
+                    RangeInfo::Elem(Box::new(RangeInfo::Scalar(bounds.clone()))),
+                );
+            }
+        }
         let cell = Place {
             kind: PlaceKind::Index(
                 Box::new(Place {

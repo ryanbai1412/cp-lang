@@ -320,6 +320,13 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
         .collect();
     lw.warnings.sort_by_key(|d| (d.span.start, d.span.end));
     lw.warnings.dedup();
+    for (&gid, info) in &lw.global_ranges {
+        if lw.globals.get(gid).is_some_and(|g| is_narrowable_elem_ty(&g.ty)) {
+            if let Some(w) = info.narrow_elem_width() {
+                lw.narrow_elems.insert(ElemLoc::Global(gid), w);
+            }
+        }
+    }
     Ok(Program {
         warnings: lw.warnings,
         unordered_maps: Vec::new(),
@@ -342,6 +349,7 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
         judge_fns,
         entry_fns,
         raw_lists: lw.raw_lists,
+        narrow_elems: lw.narrow_elems,
     })
 }
 }
@@ -580,6 +588,8 @@ struct Lowerer<'a> {
     /// Declared integer range bounds for globals and struct fields.
     global_ranges: HashMap<GlobalId, RangeInfo>,
     struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
+    /// Declared 32-bit element widths for 1D ranged-`Int` arrays/lists/views.
+    narrow_elems: std::collections::BTreeMap<ElemLoc, IntWidth>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
     const_bools: HashMap<String, bool>,
@@ -699,6 +709,7 @@ impl<'a> Lowerer<'a> {
             domain_lens: HashMap::new(),
             global_ranges: HashMap::new(),
             struct_field_ranges: HashMap::new(),
+            narrow_elems: std::collections::BTreeMap::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
             mutators: Default::default(),
@@ -2857,6 +2868,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let cx = std::mem::take(&mut self.cx);
+        self.record_narrow_locals(ScopeId::Main, &cx.locals, &cx.local_ranges);
         self.main_body = Block { stmts: out };
         self.main_locals = cx.locals;
     }
@@ -2963,6 +2975,7 @@ impl<'a> Lowerer<'a> {
             );
         }
         let cx = std::mem::take(&mut self.cx);
+        self.record_narrow_locals(ScopeId::Main, &cx.locals, &cx.local_ranges);
         self.main_body = Block { stmts: out };
         self.main_locals = cx.locals;
     }
@@ -3097,6 +3110,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let cx = std::mem::take(&mut self.cx);
+        self.record_narrow_locals(ScopeId::Main, &cx.locals, &cx.local_ranges);
         self.main_body = Block { stmts: out };
         self.main_locals = cx.locals;
     }
@@ -3383,7 +3397,18 @@ impl<'a> Lowerer<'a> {
                 out = self.memo_lookup(fast, fill, &ret, decl.name.span);
             }
         }
+        if is_narrowable_elem_ty(&ret) {
+            if let Some(ret_ty) = decl.ret.as_ref() {
+                if let Some(w) = self
+                    .range_info_from_ast(ret_ty)
+                    .and_then(|r| r.narrow_elem_width())
+                {
+                    self.narrow_elems.insert(ElemLoc::FnRet(id), w);
+                }
+            }
+        }
         let cx = std::mem::replace(&mut self.cx, saved_cx);
+        self.record_narrow_locals(ScopeId::Fn(id), &cx.locals, &cx.local_ranges);
         self.cur_mod = saved_mod;
         self.offset = saved_offset;
         self.gen_env = saved_env;
