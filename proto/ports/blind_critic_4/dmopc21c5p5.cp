@@ -1,6 +1,9 @@
-// DMOPC '21 Contest 5 P5 — Prime Difference Permutation: find a permutation of
-// `1..=n` (`n <= 100`) maximizing `sum_i w(p_i, p_{i+1})`, where
-// `w(a, b) = |a - b|` if `|a - b|` is prime and `0` otherwise.
+// DMOPC '21 Contest 5 P5 — Prime Difference Permutation (DMOJ partial-scoring
+// optimization task): output any permutation of `1..=n` (`n <= 100`) to
+// maximize `score(p) = sum_i w(p_i, p_{i+1})`, where `w(a, b) = |a - b|` if
+// `|a - b|` is prime and `0` otherwise. The judge accepts any valid
+// permutation and awards partial credit proportional to `score(p)` (full
+// credit for matching the optimum on small `n`).
 //
 // Any permutation satisfies the unconstrained alternating bound
 // `sum |p_i - p_{i+1}| <= (n * n) / 2 - 1`, which is strict for `n >= 13`
@@ -9,11 +12,9 @@
 //
 // - For `n <= 12`, Held-Karp DP over `(Subset<V>, V)` finds the provably exact
 //   maximum-weight Hamiltonian path in `O(n^2 2^n)` with `?Int`/`?V`.
-// - For `n > 12`, this implements the reference heuristic: 64 deterministic
-//   `Rng`-seeded greedy starts refined to 2-opt local maxima (no reversal
-//   `perm[i + 1..=j]` strictly increases `score(perm)`), keeping the highest-
-//   scoring permutation found. No global optimality guarantee is claimed for
-//   `n > 12`; the output is guaranteed to be a valid 2-opt local optimum.
+// - For `n > 12`, 64 deterministic `Rng`-seeded greedy starts refined to 2-opt
+//   local maxima (no reversal `perm[i + 1..=j]` strictly increases `score`)
+//   return the highest-scoring permutation found for partial/full scoring.
 
 use std.rand.{Rng}
 
