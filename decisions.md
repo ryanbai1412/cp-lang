@@ -1999,3 +1999,26 @@ the count under 4 and the port/dream token ratio. The count of later ports scori
 ratcheted (`new_under_4_max`), and the ratchet only blocks commits that add a port, so a review
 that lowers a score never breaks main. Reason: taste was self-reviewed and nothing checked it.
 Reverse: delete the step from `scripts/check.sh`.
+
+## 38. Geometry standard library (`design/stdlib/geometry.md`, 2026-11-21)
+
+- **38.1 Two distinct point types: `Pt` (exact `Int`) and `Vec` (careful `F64`).**
+  Integer and floating-point geometry have different safe operations: `Pt` has exact equality,
+  lexicographic `Ord`, `Hash`, `Show` (`"x y"`), `unit_dir`, and epsilon-free predicates; `Vec` has
+  `unit`, `scale`, `div`, `project`, `reflect`, epsilon-parameterized predicates, and omits `Show`
+  to respect decision 1.5 (no bare float printing). Separating them keeps `Pt` non-generic in
+  `std.prelude` (no default type parameters needed) and makes the exact-vs-approximate boundary
+  visible in the type (`p.to_vec`). Reverse: unify into `Pt<T = Int>` if default type parameters
+  and conditional impls land.
+- **38.2 Exact orientation predicates compute cross and dot signs in `I128`.**
+  `dot` and `cross` stay `Int` for arithmetic ergonomics, with `dot128`/`cross128` alongside;
+  `turn`, `ByAngle`, `ByAngleFrom`, `angle_less`, `same_dir`, `on_segment`, `segments_meet`,
+  `locate`, `locate_convex`, hulls, and Minkowski sums compute orientation signs in `I128`,
+  eliminating silent 64-bit overflow up to `1e18` coordinates at negligible cost (`imul` 64x64->128).
+  Reverse: switch internal helpers back to `Int` cross/dot.
+- **38.3 Options as named defaults and O(n) chain builders.**
+  `segments_meet(..., strict: Bool = false)` and `convex_hull(..., collinear: Bool = false)` avoid
+  suffixed variants. `lower_hull` and `upper_hull` take already `(x, y)`-sorted input in O(n) so
+  divide-and-conquer hulls (`ucup4s25e`) stay O(n log n) alongside `minkowski_upper`. `locate` and
+  `locate_convex` keep `1 / 0 / -1` for compatibility with `turn` and existing callers (`tour.cp`).
+  Reverse: add an enum wrapper or rename.

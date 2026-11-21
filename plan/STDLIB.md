@@ -826,33 +826,97 @@ fn matches(self, text: Str) -> yields (at: Int, pattern: Int)
 fn counts(self, text: Str) -> List<Int>                    // O(|text| + nodes)
 ```
 
-### 4.14 `std.geometry`: integer geometry
+### 4.14 `std.geometry`: 2D integer and floating-point geometry
 
-Exact integer points; anything with an angle or a length that is not an
-integer is F64 and says so in its type.
+Exact integer points (`Pt`) and careful floating-point vectors (`Vec`),
+kept as distinct types so exact predicates never silently mix with
+approximate arithmetic. Full design and contest examples live in
+`design/stdlib/geometry.md`. Orientation predicates compute cross and dot
+signs in `I128`, staying exact for coordinates up to `1e18`.
 
 ```cp
-struct Pt(x: Int, y: Int)
-    @get fn norm2(self) -> Int
-    @get fn len(self) -> F64
-    @get fn perp(self) -> Pt
-fn dot(a: Pt, b: Pt) -> Int
-fn cross(a: Pt, b: Pt) -> Int
-fn turn(a: Pt, b: Pt, c: Pt) -> Int
-struct ByAngle(p: Pt)
-fn on_segment(p: Pt, a: Pt, b: Pt) -> Bool
-fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt) -> Bool
+struct Pt(x: Int, y: Int) // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show
+    @get fn norm2(self) -> Int // O(1)
+    @get fn len(self) -> F64 // O(1)
+    @get fn perp(self) -> Pt // O(1), 90 deg CCW
+fn dot(a: Pt, b: Pt) -> Int // O(1)
+fn cross(a: Pt, b: Pt) -> Int // O(1)
+fn turn(a: Pt, b: Pt, c: Pt) -> Int // O(1), I128: 1 CCW, -1 CW, 0 collinear
+struct ByAngle(p: Pt) // Ord: CCW in [0, 2*pi) from +x, zero first, I128
+fn on_segment(p: Pt, a: Pt, b: Pt) -> Bool // O(1), I128
+fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt) -> Bool // O(1), I128
 fn area2(poly: List<Pt>) -> Int // O(n)
-fn locate(poly: List<Pt>, p: Pt) -> Int // O(n)
+fn locate(poly: List<Pt>, p: Pt) -> Int // O(n), I128: 1 inside, 0 on, -1 out
 ```
 
-[new], promoted from `examples/local-lib/geometry/convex_hull.cp`:
+[new]:
 
 ```cp
-fn convex_hull(pts: List<Pt>) -> List<Pt>    // O(n log n) monotone chain,
-                                             // counter-clockwise, no collinear
-fn diameter2(hull: List<Pt>) -> Int          // O(n) rotating calipers
-fn closest_pair2(pts: List<Pt>) -> Int       // O(n log n)
+// Pt methods and exact integer helpers
+    @get fn perp_cw(self) -> Pt // O(1), 90 deg CW
+    @get fn angle(self) -> F64 // O(1), atan2(y, x)
+    @get fn unit_dir(self) -> Pt // O(log min(|x|, |y|)), reduced by gcd
+    @get fn to_vec(self) -> Vec // O(1)
+    fn scale(self, k: Int) -> Pt // O(1)
+    fn dot(self, o: Pt) -> Int // O(1)
+    fn cross(self, o: Pt) -> Int // O(1)
+    fn dist2(self, o: Pt) -> Int // O(1)
+    fn dist(self, o: Pt) -> F64 // O(1)
+fn dot128(a: Pt, b: Pt) -> I128 // O(1)
+fn cross128(a: Pt, b: Pt) -> I128 // O(1)
+fn dist2(a: Pt, b: Pt) -> Int // O(1)
+fn dist(a: Pt, b: Pt) -> F64 // O(1)
+fn manhattan(a: Pt, b: Pt) -> Int // O(1)
+fn same_dir(a: Pt, b: Pt) -> Bool // O(1), I128
+struct ByAngleFrom(base: Pt, p: Pt) // Ord: CCW in [base, base + 2*pi), I128
+fn angle_less(base: Pt, a: Pt, b: Pt) -> Bool // O(1), I128
+fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool // O(1)
+
+// Convex hulls, chains, Minkowski sums, calipers, closest pair
+fn lower_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n), sorted
+fn upper_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n), sorted
+fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> // O(n log n)
+fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> // O(n log n)
+fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
+fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> // O(|a| + |b|)
+fn locate_convex(hull: List<Pt>, p: Pt) -> Int // O(log n), I128
+fn diameter2(hull: List<Pt>) -> Int // O(n) rotating calipers
+fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int // O(log n), I128
+fn closest_pair2(pts: List<Pt>) -> Int // O(n log n)
+fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) // O(n log n)
+
+// Careful floating-point geometry and half-plane intersection
+const PI: F64
+fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool // O(1)
+fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int // O(1)
+struct Vec(x: F64, y: F64) // Add, Sub, Neg; no Show (precision required)
+    @get fn norm2(self) -> F64 // O(1)
+    @get fn len(self) -> F64 // O(1)
+    @get fn unit(self) -> Vec // O(1)
+    @get fn perp(self) -> Vec // O(1)
+    @get fn perp_cw(self) -> Vec // O(1)
+    @get fn angle(self) -> F64 // O(1)
+    fn scale(self, k: F64) -> Vec // O(1)
+    fn div(self, k: F64) -> Vec // O(1)
+    fn dot(self, o: Vec) -> F64 // O(1)
+    fn cross(self, o: Vec) -> F64 // O(1)
+    fn dist2(self, o: Vec) -> F64 // O(1)
+    fn dist(self, o: Vec) -> F64 // O(1)
+    fn rot_by(self, u: Vec) -> Vec // O(1)
+fn poly_area(poly: List<Vec>) -> F64 // O(n)
+fn project(p: Vec, a: Vec, b: Vec) -> Vec // O(1)
+fn reflect(p: Vec, a: Vec, b: Vec) -> Vec // O(1)
+fn dist_to_segment(p: Vec, a: Vec, b: Vec) -> F64 // O(1)
+fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
+fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(n)
+fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
+fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec>
+fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
+struct HalfPlane(p: Vec, dir: Vec)
+    fn through(a: Vec, b: Vec) -> HalfPlane // O(1)
+    fn from_line(a: F64, b: F64, c: F64) -> HalfPlane // O(1)
+    fn side(self, q: Vec) -> F64 // O(1)
+fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec> // O(n log n)
 ```
 
 ### 4.15 `std.grid` and `std.spec`
