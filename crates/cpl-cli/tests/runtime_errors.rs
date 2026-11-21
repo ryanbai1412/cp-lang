@@ -495,6 +495,11 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             "2147483648\n",
             "2147483648 is outside `0..2_147_483_648`",
         ),
+        (
+            "struct Node(l: ?Int, pri: 0..2_147_483_648, sz: 0..2_147_483_648)\nlet k: Int = read()\nvar n = Node(none, 0, 1)\nn.sz += k\nprint(n.sz)\n",
+            "2147483647\n",
+            "2147483648 is outside `0..2_147_483_648`",
+        ),
     ];
     for (idx, (src, input, msg)) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, input);

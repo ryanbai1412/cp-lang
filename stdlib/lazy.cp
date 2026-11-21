@@ -650,7 +650,14 @@ fn dual_segtree_non_commutative_tags_match_brute():
         assert st.get(q) == a[q]
     for v in V: assert st.get(v) == a[v]
 
-struct TreapNode<T, F>(l: ?Int, r: ?Int, pri: U64, sz: Int, val: T, tag: ?F)
+struct TreapNode<T, F>(
+    l: ?Int,
+    r: ?Int,
+    pri: 0..2_147_483_648,
+    sz: 0..2_147_483_648,
+    val: T,
+    tag: ?F,
+)
 
 /// Arena-backed randomized treap with subtree-size-aware lazy tag propagation.
 /// Supports value-ordered insertion (`insert`, using `before`) for slope-trick / priority
@@ -660,7 +667,8 @@ struct TreapNode<T, F>(l: ?Int, r: ?Int, pri: U64, sz: Int, val: T, tag: ?F)
 /// `split(f, left_sz)` splits a tag `f` for the left and right subtrees (default `(f, f)`);
 /// `compose(new_f, old_f)` applies `old_f` first then `new_f`.
 /// `insert`, `insert_at`, `push`, `apply_range`, `get` are O(log n) expected; `apply_all` is O(1);
-/// `take(k)` is O(k + log n); `to_list` is O(n). Memory is O(n) in a contiguous node arena.
+/// `take(k)` is O(k + log n); `to_list` is O(n). Memory is O(n) in a contiguous node arena;
+/// sizes and priorities are `0..2^31`, so a treap holds fewer than 2^31 elements.
 pub struct LazyTreap<T, F>(
     apply_fn: (T, Int, F) -> T,
     split_fn: (F, Int) -> (F, F),
@@ -681,6 +689,8 @@ pub struct LazyTreap<T, F>(
         before: (T, T) -> Bool = (_, _) => false,
     ) -> LazyTreap<T, F>:
         LazyTreap(apply, split, compose, before, [], none, Rng(48))
+
+    fn priority(mut self) -> Int = Int(rng.next() >> 33)
 
     fn sz_of(self, u: ?Int) -> Int:
         if let i = u:
@@ -736,7 +746,7 @@ pub struct LazyTreap<T, F>(
                 self.pull(i)
                 return (i, b)
 
-    fn ins(mut self, u: ?Int, idx: Int, x: T, p: U64) -> Int:
+    fn ins(mut self, u: ?Int, idx: Int, x: T, p: Int) -> Int:
         let i = u ?? return idx
         unchecked:
             if p < nodes[i].pri:
@@ -787,21 +797,21 @@ pub struct LazyTreap<T, F>(
     /// Insert `x` at the first position where `before(x, elem)` holds. O(log n) expected.
     pub fn insert(mut self, x: T):
         let idx = nodes.len
-        let p = rng.next()
+        let p = self.priority()
         nodes.push(TreapNode(none, none, p, 1, x, none))
         root = self.ins(root, idx, x, p)
 
     /// Append `x` at the end of the sequence. O(log n) expected.
     pub fn push(mut self, x: T):
         let idx = nodes.len
-        nodes.push(TreapNode(none, none, rng.next(), 1, x, none))
+        nodes.push(TreapNode(none, none, self.priority(), 1, x, none))
         root = self.merge(root, idx)
 
     /// Insert `x` at 0-based position `pos` (`0 <= pos <= len`). O(log n) expected.
     pub fn insert_at(mut self, pos: Int, x: T):
         assert 0 <= pos and pos <= self.len
         let idx = nodes.len
-        nodes.push(TreapNode(none, none, rng.next(), 1, x, none))
+        nodes.push(TreapNode(none, none, self.priority(), 1, x, none))
         let (a, b) = self.split_pos(root, pos)
         root = self.merge(self.merge(a, idx), b)
 

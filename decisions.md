@@ -3837,3 +3837,15 @@ Four names with users who write them without a `use` were queued for a prelude t
 is the return type of `compress` and no port or dream names it, and `Reversible` is a trait bound named
 only in `stdlib/` and `examples/local-lib`. Programs that call `compress` are unchanged. Reverse by
 restoring the two lines in `stdlib/prelude.cp` and dropping two of the four.
+
+## 122. `std.lazy.LazyTreap` sizes and priorities are `0..2^31` (2026-11-21)
+
+`TreapNode.sz` and `TreapNode.pri` are `0..2_147_483_648` (priorities are
+the top 31 bits of `Rng.next()`), so a node with an `Int` value and a
+two-word tag is 48 B instead of 56 B, as decision 120 did for arcs. A treap
+of 2^31 nodes does not fit in memory, so the bound costs no program; a size
+past it traps in the interpreter and in checked C++ (`runtime_errors.rs`).
+The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
+`OptInt` in the C++. cf2084g2 at n = 5e5, best of 9: 130.0 -> 127.4 ms with
+`reserve`, 146.5 -> 138.3 ms without. Reverse: `pri: U64`, `sz: Int`.
+
