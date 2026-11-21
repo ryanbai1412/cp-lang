@@ -75,7 +75,7 @@ pub const OPERATOR_FN: Planned = Planned {
     see: None,
     now: "implement its trait: `impl Add for T:` with `fn add(a: T, b: T) -> T`",
     example: "struct P(x: Int)
-fn (a: P) + (b: P) -> P = P(a.x + b.x)
+fn (a: P) ^ (b: P) -> P = P(a.x ^ b.x)
 print(1)
 ",
 };
