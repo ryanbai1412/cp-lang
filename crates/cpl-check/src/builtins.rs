@@ -21,13 +21,8 @@ pub enum Receiver {
 }
 
 impl Receiver {
-    pub const ALL: [Receiver; 5] = [
-        Receiver::List,
-        Receiver::Str,
-        Receiver::Map,
-        Receiver::Set,
-        Receiver::Array,
-    ];
+    pub const ALL: [Receiver; 5] =
+        [Receiver::List, Receiver::Str, Receiver::Map, Receiver::Set, Receiver::Array];
 
     /// The name as written in a type: `List`, and `[D]T` for an array.
     pub fn name(self) -> &'static str {
@@ -74,11 +69,7 @@ pub struct BuiltinMember {
 impl BuiltinMember {
     /// `len: Int` for a `Get`, `swap(i: Int, j: Int)` for a method.
     pub fn signature(&self) -> String {
-        let ret = if self.ret.is_empty() {
-            String::new()
-        } else {
-            format!(" -> {}", self.ret)
-        };
+        let ret = if self.ret.is_empty() { String::new() } else { format!(" -> {}", self.ret) };
         match self.kind {
             MemberKind::Get => format!("{}: {}", self.name, self.ret),
             MemberKind::Method => format!("{}({}){ret}", self.name, self.params),
@@ -88,9 +79,7 @@ impl BuiltinMember {
 
 /// The members of one built-in type.
 pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static BuiltinMember> {
-    BUILTIN_MEMBERS
-        .iter()
-        .filter(move |member| member.receiver == receiver)
+    BUILTIN_MEMBERS.iter().filter(move |member| member.receiver == receiver)
 }
 
 /// The catalog row for `name` on the built-in type written `owner`
@@ -120,22 +109,12 @@ pub fn prelude_names() -> Vec<(&'static str, PreludeKind)> {
     let own = prelude::TYPE_NAMES
         .iter()
         .map(|name| (*name, PreludeKind::Type))
-        .chain(
-            prelude::TRAIT_NAMES
-                .iter()
-                .map(|name| (*name, PreludeKind::Trait)),
-        )
-        .chain(
-            prelude::VALUE_NAMES
-                .iter()
-                .map(|name| (*name, PreludeKind::Value)),
-        );
+        .chain(prelude::TRAIT_NAMES.iter().map(|name| (*name, PreludeKind::Trait)))
+        .chain(prelude::VALUE_NAMES.iter().map(|name| (*name, PreludeKind::Value)));
     // `STD_NAMES` is every name of the library; a file gets only the ones
     // the prelude lists.
     let std = prelude::names().iter().filter_map(|(_, name)| {
-        let (name, module) = prelude::STD_NAMES
-            .iter()
-            .find(|(known, _)| *known == name.text)?;
+        let (name, module) = prelude::STD_NAMES.iter().find(|(known, _)| *known == name.text)?;
         Some((*name, PreludeKind::Std(module)))
     });
     own.chain(std).collect()

@@ -916,8 +916,7 @@ impl<'a> Checker<'a> {
                             "slice",
                             "Array.at(Range)",
                             Law::Source {
-                                source: "law disjoint(s, t) = s.end <= t.start or t.end <= s.start"
-                                    .into(),
+                                source: "law disjoint(s, t) = s.end <= t.start or t.end <= s.start".into(),
                                 shown: "s.end <= t.start or t.end <= s.start".into(),
                             },
                             indices,
@@ -1197,9 +1196,7 @@ impl<'a> Checker<'a> {
                 let found = self.quietly(|c| {
                     c.infer(init);
                     let ro = c.is_readonly_view(init);
-                    c.view_kind(init)
-                        .zip(c.place(init))
-                        .map(|(k, p)| (k, p, ro))
+                    c.view_kind(init).zip(c.place(init)).map(|(k, p)| (k, p, ro))
                 });
                 // Its spans are positions in another item's text.
                 self.lends.view_exprs.clear();
@@ -1319,7 +1316,9 @@ impl<'a> Checker<'a> {
             iter = match &iter.kind {
                 ExprKind::Field { base, name } if name.text == "rev" => unparen(base),
                 ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
-                    ExprKind::Field { base, name } if name.text == "pairs" => unparen(base),
+                    ExprKind::Field { base, name } if name.text == "pairs" => {
+                        unparen(base)
+                    }
                     _ => break,
                 },
                 _ => break,
@@ -1327,10 +1326,7 @@ impl<'a> Checker<'a> {
         }
         let stored = match iter_ty {
             Ty::Array { .. } => true,
-            Ty::Named { name, .. } => matches!(
-                name.as_str(),
-                "List" | "Set" | "HashSet" | "Map" | "HashMap"
-            ),
+            Ty::Named { name, .. } => matches!(name.as_str(), "List" | "Set" | "HashSet" | "Map" | "HashMap"),
             _ => false,
         };
         if !stored && self.view_kind(iter).is_none() {
@@ -1489,11 +1485,8 @@ impl<'a> Checker<'a> {
         }
         let (Some(root), Some(key)) = (
             root_name(base).filter(|_| name.text == "sort"),
-            args.iter().find(|a| {
-                a.name
-                    .as_ref()
-                    .is_some_and(|n| matches!(n.text.as_str(), "by" | "cmp"))
-            }),
+            args.iter()
+                .find(|a| a.name.as_ref().is_some_and(|n| matches!(n.text.as_str(), "by" | "cmp"))),
         ) else {
             return;
         };
@@ -1515,9 +1508,7 @@ impl<'a> Checker<'a> {
             let global_fn = self.local(used).is_none()
                 && matches!(self.global(used).as_deref(), Some(Def::Fn { .. }));
             match (outer && global_fn).then(|| self.env.effects(used)) {
-                Some(effects) => effects
-                    .does(root)
-                    .map(|what| format!("calls `{used}`, which {what} `{root}`")),
+                Some(effects) => effects.does(root).map(|what| format!("calls `{used}`, which {what} `{root}`")),
                 None => None,
             }
         });
@@ -1526,8 +1517,7 @@ impl<'a> Checker<'a> {
         };
         let opt = key.name.as_ref().map(|n| n.text.as_str()).unwrap_or("by");
         let role = if opt == "cmp" { "comparator" } else { "key" };
-        let message =
-            format!("the {role} of `{root}.sort({opt}:)` {what} while `{root}` is being sorted");
+        let message = format!("the {role} of `{root}.sort({opt}:)` {what} while `{root}` is being sorted");
         if let Some(diag) = self.error(codes::USED_WHILE_LENT, key.value.span, message) {
             diag.help = Some(format!(
                 "sort a copy, whose key may use the list: `{root} = {root}.sorted(by: ..)`"
@@ -1895,12 +1885,13 @@ impl<'a> Checker<'a> {
             ExprKind::Index { indices, .. }
                 if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. }))
         ) && Self::root_name(target).is_some_and(|(name, _)| {
-            let ty = self.local(name).map(|l| l.ty.clone()).or_else(|| {
-                match self.global(name).as_deref() {
+            let ty = self
+                .local(name)
+                .map(|l| l.ty.clone())
+                .or_else(|| match self.global(name).as_deref() {
                     Some(Def::Value { ty, .. }) => Some(ty.clone()),
                     _ => None,
-                }
-            });
+                });
             matches!(ty, Some(Ty::Named { name, .. }) if name == "List")
         });
         let mut e = target;
@@ -1908,7 +1899,10 @@ impl<'a> Checker<'a> {
         loop {
             if !(first && direct_list_range) && self.is_readonly_view(e) {
                 let kind = self.view_kind(e).unwrap_or("view");
-                let message = format!("`{}` is a read-only {kind} and can't be modified", show(e));
+                let message = format!(
+                    "`{}` is a read-only {kind} and can't be modified",
+                    show(e)
+                );
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, target.span, message) {
                     diag.help = Some(
                         "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
@@ -1988,7 +1982,9 @@ impl<'a> Checker<'a> {
                     show(call)
                 );
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
-                    diag.help = Some("copy it into an owned list first with `.to_list()`".into());
+                    diag.help = Some(
+                        "copy it into an owned list first with `.to_list()`".into(),
+                    );
                 }
                 return;
             }

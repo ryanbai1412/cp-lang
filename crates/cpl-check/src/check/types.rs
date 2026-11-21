@@ -289,9 +289,7 @@ impl<'a> Checker<'a> {
                     self.error(
                         codes::TYPE_MISMATCH,
                         span,
-                        format!(
-                            "`{name}` is a built-in type that takes {want} type argument{plural}"
-                        ),
+                        format!("`{name}` is a built-in type that takes {want} type argument{plural}"),
                     );
                     return Ty::Error;
                 }
@@ -412,11 +410,7 @@ impl<'a> Checker<'a> {
         // `fn valid(n: Int, seq: [0..n]Int)`. So can the result's.
         self.push_scope();
         let mut params = Vec::new();
-        for p in f
-            .params
-            .iter()
-            .filter(|p| !(self_ty.is_some() && p.name.text == "self"))
-        {
+        for p in f.params.iter().filter(|p| !(self_ty.is_some() && p.name.text == "self")) {
             let ty = match &p.ty {
                 Some(ty) => self.resolve_type(ty),
                 None => Ty::Unknown,
@@ -433,10 +427,7 @@ impl<'a> Checker<'a> {
                     ));
                 }
             }
-            if p.lazy
-                && !matches!(&ty, Ty::Fn { params, .. } if params.is_empty())
-                && ty != Ty::Error
-            {
+            if p.lazy && !matches!(&ty, Ty::Fn { params, .. } if params.is_empty()) && ty != Ty::Error {
                 let message = format!(
                     "`lazy {}` is passed as an expression the fn runs when it calls `{}()`, so its type is `() -> T`, not `{ty}`",
                     p.name.text, p.name.text
@@ -445,16 +436,8 @@ impl<'a> Checker<'a> {
                     diag.help = Some(format!("write `lazy {}: () -> {ty}`", p.name.text));
                 }
             }
-            let seen = Local {
-                ty: ty.clone(),
-                mutable: p.mutable,
-                span: p.name.span,
-                keyword: "param",
-            };
-            self.scopes
-                .last_mut()
-                .unwrap()
-                .insert(p.name.text.clone(), seen);
+            let seen = Local { ty: ty.clone(), mutable: p.mutable, span: p.name.span, keyword: "param" };
+            self.scopes.last_mut().unwrap().insert(p.name.text.clone(), seen);
             params.push(Param {
                 name: p.label_text().to_string(),
                 ty,
@@ -677,10 +660,7 @@ impl<'a> Checker<'a> {
                     if m.decorators.iter().any(|d| d.name.text == "get") {
                         getters.push(f.name.text.clone());
                     }
-                    if f.params
-                        .first()
-                        .is_some_and(|p| p.mutable && p.name.text == "self")
-                    {
+                    if f.params.first().is_some_and(|p| p.mutable && p.name.text == "self") {
                         mutators.push(f.name.text.clone());
                     }
                     Some((f.name.text.clone(), self.fn_sig(f, Some(self_ty))))
@@ -694,11 +674,7 @@ impl<'a> Checker<'a> {
     /// The type an impl is for, with the type parameters its header names:
     /// `impl Add for Mod<P>` is generic over `P`, and `impl<T: Add> Add for ?T`
     /// is generic over `T`.
-    pub(crate) fn impl_generics(
-        &mut self,
-        target: &ast::Type,
-        bounds: &[ast::Bound],
-    ) -> Vec<String> {
+    pub(crate) fn impl_generics(&mut self, target: &ast::Type, bounds: &[ast::Bound]) -> Vec<String> {
         let mut out = Vec::new();
         for b in bounds {
             if !out.contains(&b.name.text) {

@@ -145,7 +145,8 @@ impl<'a> Checker<'a> {
                 let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
                     if let Ty::Pos(dom) = ty {
                         if let Some(factors) = self.product_factors(dom) {
-                            effective_ty = Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
+                            effective_ty =
+                                Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
                             &effective_ty
                         } else {
                             ty
@@ -157,9 +158,7 @@ impl<'a> Checker<'a> {
                     ty
                 };
                 let mut names = Vec::new();
-                pattern_types(pat, bind_ty, &mut |name, ty| {
-                    names.push((name.to_string(), ty))
-                });
+                pattern_types(pat, bind_ty, &mut |name, ty| names.push((name.to_string(), ty)));
                 let mut spans = Vec::new();
                 name_spans(pat, &mut spans);
                 for ((name, ty), span) in names.into_iter().zip(spans) {
@@ -297,10 +296,7 @@ impl<'a> Checker<'a> {
     fn part_of_grid(e: &ast::Expr) -> bool {
         match &e.kind {
             ExprKind::Index { indices, .. } => {
-                indices.len() > 1
-                    && indices
-                        .iter()
-                        .any(|i| matches!(i.kind, ExprKind::Range { .. }))
+                indices.len() > 1 && indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. }))
             }
             _ => false,
         }
@@ -314,20 +310,12 @@ impl<'a> Checker<'a> {
             matches!(&e.kind, ExprKind::Index { indices, .. }
                 if indices.iter().filter(|i| matches!(i.kind, ExprKind::Range { step: None, .. })).count() == 1)
         };
-        let ExprKind::Binary {
-            op: bin, lhs, rhs, ..
-        } = &value.kind
-        else {
+        let ExprKind::Binary { op: bin, lhs, rhs, .. } = &value.kind else {
             return None;
         };
         let worked = matches!(
             bin,
-            ast::BinOp::Add
-                | ast::BinOp::Sub
-                | ast::BinOp::Mul
-                | ast::BinOp::BitAnd
-                | ast::BinOp::BitOr
-                | ast::BinOp::BitXor
+            ast::BinOp::Add | ast::BinOp::Sub | ast::BinOp::Mul | ast::BinOp::BitAnd | ast::BinOp::BitOr | ast::BinOp::BitXor
         );
         if op != AssignOp::Set || !worked || !is_part(target) || is_part(lhs) == is_part(rhs) {
             return None;
@@ -335,18 +323,12 @@ impl<'a> Checker<'a> {
         let (part, one) = if is_part(lhs) { (lhs, rhs) } else { (rhs, lhs) };
         let (part_ty, one_ty) = (self.infer(part), self.infer(one));
         let cell = self.element_ty(&part_ty);
-        let row = |ty: &Ty| {
-            matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
-        };
+        let row = |ty: &Ty| matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List");
         if part_ty == Ty::Error || one_ty == Ty::Error {
             return Some(Ty::Error);
         }
         let number = cell.is_int() || cell == Ty::Float;
-        if !row(&part_ty)
-            || row(&one_ty)
-            || !number
-            || !(one_ty.is_vague() || self.fits(&one_ty, &cell))
-        {
+        if !row(&part_ty) || row(&one_ty) || !number || !(one_ty.is_vague() || self.fits(&one_ty, &cell)) {
             let message = format!(
                 "`{}` works each cell of `{}` with one number, but `{}` is {}",
                 self.quote(value.span),
@@ -355,10 +337,7 @@ impl<'a> Checker<'a> {
                 one_ty.with_article()
             );
             if let Some(diag) = self.error(codes::BAD_OPERANDS, value.span, message) {
-                diag.help = Some(
-                    "the cells and the value are one kind of number: `a[l..r] = b[l2..r2] + x`"
-                        .to_string(),
-                );
+                diag.help = Some("the cells and the value are one kind of number: `a[l..r] = b[l2..r2] + x`".to_string());
             }
             return Some(Ty::Error);
         }
@@ -367,13 +346,7 @@ impl<'a> Checker<'a> {
 
     /// `a max= b` on a row (an array of one dimension, or a list) goes
     /// cell by cell, so `b` is a row of the same type.
-    pub(crate) fn row_keep(
-        &mut self,
-        target: &ast::Expr,
-        target_ty: &Ty,
-        value: &ast::Expr,
-        value_ty: &Ty,
-    ) {
+    pub(crate) fn row_keep(&mut self, target: &ast::Expr, target_ty: &Ty, value: &ast::Expr, value_ty: &Ty) {
         // `a[l..r] max= x`, `g[r, ..] min= x`: one value against every cell
         // of the part.
         let part = matches!(&target.kind, ExprKind::Index { indices, .. } if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. })));
@@ -383,8 +356,7 @@ impl<'a> Checker<'a> {
             _ => None,
         };
         if let (true, Some(cell)) = (part, cell) {
-            let row = matches!(value_ty, Ty::Array { .. })
-                || matches!(value_ty, Ty::Named { name, .. } if name == "List");
+            let row = matches!(value_ty, Ty::Array { .. }) || matches!(value_ty, Ty::Named { name, .. } if name == "List");
             if !row && !value_ty.is_vague() && self.fits(value_ty, cell) {
                 return;
             }
@@ -570,9 +542,7 @@ impl<'a> Checker<'a> {
                 // `var seen: [V]Bool = false` fills the array with the value.
                 // A comprehension builds the array when one is declared.
                 let fills = match (&declared, &init_ty, init) {
-                    (Some(decl), Some(ity), Some(init_expr)) => {
-                        self.array_fills(decl, ity, init_expr)
-                    }
+                    (Some(decl), Some(ity), Some(init_expr)) => self.array_fills(decl, ity, init_expr),
                     _ => false,
                 };
                 if let (Some(declared), Some(init_ty), Some(init), false) =
@@ -876,15 +846,13 @@ impl<'a> Checker<'a> {
                     self.row_keep(target, &target_ty, value, &value_ty);
                 }
                 let row = |ty: &Ty| {
-                    matches!(ty, Ty::Array { .. })
-                        || matches!(ty, Ty::Named { name, .. } if name == "List")
+                    matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
                 };
-                let target_ty =
-                    if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
-                        self.element_ty(&target_ty)
-                    } else {
-                        target_ty
-                    };
+                let target_ty = if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
+                    self.element_ty(&target_ty)
+                } else {
+                    target_ty
+                };
                 let target_ty =
                     if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
                         self.element_ty(&target_ty)
@@ -1331,14 +1299,7 @@ impl<'a> Checker<'a> {
     /// arguments, and run the fn as written when they can't: the program
     /// would be right and, without a word, as slow as if `@memo` were not
     /// there.
-    fn memo_fits(
-        &mut self,
-        f: &ast::FnDecl,
-        self_ty: Option<&Ty>,
-        generator: bool,
-        unit: bool,
-        memo: Span,
-    ) {
+    fn memo_fits(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>, generator: bool, unit: bool, memo: Span) {
         let name = &f.name.text;
         let changed = f.params.iter().find(|p| p.mutable && p.name.text != "self");
         let (message, help) = if let Some(owner) = self_ty {
@@ -1566,10 +1527,7 @@ fn name_spans(pat: &Pattern, out: &mut Vec<Span>) {
 impl Checker<'_> {
     /// The values of `fields(a, b, ..)` in a `for` head: the compile-time
     /// loop over a struct's or a tuple's fields (decision 28.1).
-    pub(crate) fn reflected_values<'e>(
-        &mut self,
-        iter: &'e Expr,
-    ) -> Option<&'e [cpl_syntax::ast::Arg]> {
+    pub(crate) fn reflected_values<'e>(&mut self, iter: &'e Expr) -> Option<&'e [cpl_syntax::ast::Arg]> {
         let ExprKind::Call { callee, args } = &iter.kind else {
             return None;
         };
@@ -1591,9 +1549,7 @@ impl Checker<'_> {
             return None;
         };
         match self.global(name).as_deref() {
-            Some(Def::Enum { variants, .. }) => {
-                Some(variants.iter().map(|(_, fs)| fs.clone()).collect())
-            }
+            Some(Def::Enum { variants, .. }) => Some(variants.iter().map(|(_, fs)| fs.clone()).collect()),
             _ => None,
         }
     }
@@ -1668,12 +1624,9 @@ impl Checker<'_> {
                     if let Some(d) = self.error(
                         codes::TYPE_MISMATCH,
                         v.value.span,
-                        format!(
-                            "`fields` walks the fields of a struct or a tuple, not of a `{ty}`"
-                        ),
+                        format!("`fields` walks the fields of a struct or a tuple, not of a `{ty}`"),
                     ) {
-                        d.help =
-                            Some("pass a struct or tuple value: `for f in fields(p):`".to_string());
+                        d.help = Some("pass a struct or tuple value: `for f in fields(p):`".to_string());
                     }
                     shapes.push(None);
                 }
@@ -1733,10 +1686,7 @@ fn loop_exit(stmts: &[Stmt]) -> Option<Span> {
     stmts.iter().find_map(|s| match &s.kind {
         StmtKind::Break(None) | StmtKind::Continue(None) => Some(s.span),
         StmtKind::Expr(Expr {
-            kind: ExprKind::If {
-                branches,
-                otherwise,
-            },
+            kind: ExprKind::If { branches, otherwise },
             ..
         }) => branches
             .iter()

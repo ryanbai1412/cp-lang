@@ -40,10 +40,8 @@ impl<'a> Checker<'a> {
             }
         }
         let mut ty = if receiver.is_some()
-            && !matches!(
-                callee_ty,
-                Ty::Fn { .. } | Ty::Unknown | Ty::Error | Ty::TypeName(_)
-            ) {
+            && !matches!(callee_ty, Ty::Fn { .. } | Ty::Unknown | Ty::Error | Ty::TypeName(_))
+        {
             for arg in args {
                 self.infer(&arg.value);
             }
@@ -100,11 +98,7 @@ impl<'a> Checker<'a> {
             return None;
         }
         let base_ty = self.infer(base);
-        let Ty::Named {
-            name: cname,
-            args: targs,
-        } = &base_ty
-        else {
+        let Ty::Named { name: cname, args: targs } = &base_ty else {
             return None;
         };
         let (k_ty, elem_ty) = match (cname.as_str(), targs.as_slice()) {
@@ -119,10 +113,7 @@ impl<'a> Checker<'a> {
             self.error(
                 codes::WRONG_ARG_COUNT,
                 call.span,
-                format!(
-                    "`{cname}.range` takes 1 range argument, found {}",
-                    args.len()
-                ),
+                format!("`{cname}.range` takes 1 range argument, found {}", args.len()),
             );
             return Some(Ty::Named {
                 name: "SortedRange".into(),
@@ -146,7 +137,9 @@ impl<'a> Checker<'a> {
                         return;
                     }
                     let fits_bound = match (&k_ty, &ety) {
-                        (Ty::Pos(d), Ty::Pos(bd)) => bd.strip_suffix(".cuts") == Some(d.as_str()),
+                        (Ty::Pos(d), Ty::Pos(bd)) => {
+                            bd.strip_suffix(".cuts") == Some(d.as_str())
+                        }
                         (Ty::Pos(d), Ty::Named { name, args }) if name == "Cut" => {
                             matches!(args.as_slice(), [Ty::Pos(bd)] if bd == d)
                         }
@@ -207,11 +200,7 @@ impl<'a> Checker<'a> {
             return None;
         }
         let base_ty = self.infer(base);
-        let Ty::Named {
-            name: cname,
-            args: targs,
-        } = &base_ty
-        else {
+        let Ty::Named { name: cname, args: targs } = &base_ty else {
             return None;
         };
         if !matches!(cname.as_str(), "SortedBag" | "SortedSet") || targs.len() != 1 {
@@ -254,7 +243,10 @@ impl<'a> Checker<'a> {
             _ => return None,
         };
         let replace_span = Span::new(name.span.start, call.span.end);
-        let msg = format!("`{cname}.{}` was replaced by `{replacement}`", name.text);
+        let msg = format!(
+            "`{cname}.{}` was replaced by `{replacement}`",
+            name.text
+        );
         if let Some(diag) = self.error(codes::UNKNOWN_FIELD, call.span, msg) {
             diag.help = Some(format!(
                 "write `{replacement}` (or run `cpl fix` to migrate)"
@@ -279,16 +271,10 @@ impl<'a> Checker<'a> {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
             return;
         }
-        let Ty::Named {
-            name: type_name, ..
-        } = base_ty
-        else {
+        let Ty::Named { name: type_name, .. } = base_ty else {
             return;
         };
-        if self
-            .members_of(&type_name)
-            .is_some_and(|m| m.mutators.contains(&name.text))
-        {
+        if self.members_of(&type_name).is_some_and(|m| m.mutators.contains(&name.text)) {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
         }
     }
@@ -331,16 +317,10 @@ impl<'a> Checker<'a> {
                 )
             }
             Ty::Named { name: n, .. } if n == "SortedRange" => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "is_empty" | "first" | "last" | "rev"
-                )
+                matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last" | "rev")
             }
             Ty::Domain(_) => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "first" | "last" | "rev" | "bounds" | "cuts"
-                )
+                matches!(name.text.as_str(), "len" | "first" | "last" | "rev" | "bounds" | "cuts")
             }
             _ => false,
         };
@@ -374,21 +354,16 @@ impl<'a> Checker<'a> {
         if !args.is_empty() {
             return None;
         }
-        let Ty::Named {
-            name: type_name, ..
-        } = self.quietly(|c| c.infer(base))
-        else {
+        let Ty::Named { name: type_name, .. } = self.quietly(|c| c.infer(base)) else {
             return None;
         };
         let is_getter = |getters: &[String]| getters.contains(&name.text);
         let found = match self.type_def(&type_name).as_deref() {
             Some(Def::Struct { getters, .. }) => is_getter(getters),
             _ => false,
-        } || self
-            .env
-            .impls(&type_name)
-            .into_iter()
-            .any(|(_, def)| matches!(&*def, Def::Impl { getters, .. } if is_getter(getters)));
+        } || self.env.impls(&type_name).into_iter().any(
+            |(_, def)| matches!(&*def, Def::Impl { getters, .. } if is_getter(getters)),
+        );
         if !found {
             return None;
         }
@@ -422,11 +397,7 @@ impl<'a> Checker<'a> {
         if self.local(type_name).is_some() {
             return None;
         }
-        let Some(Def::Struct {
-            generics: struct_generics,
-            ..
-        }) = self.type_def(type_name).as_deref().cloned()
-        else {
+        let Some(Def::Struct { generics: struct_generics, .. }) = self.type_def(type_name).as_deref().cloned() else {
             return None;
         };
         let given = self.quietly(|c| c.infer(&only.value));
@@ -439,10 +410,7 @@ impl<'a> Checker<'a> {
             },
             // An array over a plain range names no edge domain either,
             // and the cells of one of plain tuples have no `u` and `v`.
-            Ty::Array { index, elem }
-                if matches!(index.as_slice(), [Ty::Int])
-                    || (index.len() == 1 && matches!(*elem, Ty::Tuple(_))) =>
-            {
+            Ty::Array { index, elem } if matches!(index.as_slice(), [Ty::Int]) || (index.len() == 1 && matches!(*elem, Ty::Tuple(_))) => {
                 match *elem {
                     Ty::Tuple(fields) => fields.len(),
                     Ty::Record(fields) => fields.len(),
@@ -456,10 +424,7 @@ impl<'a> Checker<'a> {
             3 => "triples",
             _ => return None,
         };
-        let Some(Def::Fn { ty, generics }) = self
-            .type_def(&format!("{}_of_{suffix}", name.text))
-            .as_deref()
-            .cloned()
+        let Some(Def::Fn { ty, generics }) = self.type_def(&format!("{}_of_{suffix}", name.text)).as_deref().cloned()
         else {
             return None;
         };
@@ -552,15 +517,13 @@ impl<'a> Checker<'a> {
                 Some(Ty::Optional(Box::new(elem.widen())))
             }
             ("minmax", [a, b]) => {
-                let elem = if *a == Ty::Unknown {
-                    b.clone()
-                } else {
-                    a.clone()
-                };
+                let elem = if *a == Ty::Unknown { b.clone() } else { a.clone() };
                 Some(Ty::Tuple(vec![elem.clone(), elem]))
             }
             ("prefix", [arg]) => match arg {
-                Ty::Array { index, elem } if index.len() == 1 && matches!(index[0], Ty::Pos(_)) => {
+                Ty::Array { index, elem }
+                    if index.len() == 1 && matches!(index[0], Ty::Pos(_)) =>
+                {
                     Some(Ty::Named {
                         name: "Prefix".into(),
                         args: vec![index[0].clone(), (**elem).clone()],
@@ -636,29 +599,23 @@ impl<'a> Checker<'a> {
         // Fixed array `.map(f)`: shape-preserving element-wise map `[D...]T -> [D...]U`
         // (including 1D `[D]T` and multi-dimensional `[D, E]T`).
         if name.text == "map" {
-            if let Ty::Array {
-                ref index,
-                ref elem,
-            } = base_ty
-            {
+            if let Ty::Array { ref index, ref elem } = base_ty {
                 let out = if let [arg] = args {
                     match &arg.value.kind {
-                        ExprKind::Lambda {
-                            params,
-                            param_tys,
-                            body,
-                        } if params.len() == 1 => self.quietly(|c| {
-                            c.push_scope();
-                            let pty = param_tys
-                                .first()
-                                .and_then(|t| t.as_ref())
-                                .map(|t| c.resolve_type(t))
-                                .unwrap_or_else(|| (**elem).clone());
-                            c.bind(&params[0], &pty, false, "param");
-                            let ret = c.infer(body).widen();
-                            c.pop_scope();
-                            ret
-                        }),
+                        ExprKind::Lambda { params, param_tys, body } if params.len() == 1 => {
+                            self.quietly(|c| {
+                                c.push_scope();
+                                let pty = param_tys
+                                    .first()
+                                    .and_then(|t| t.as_ref())
+                                    .map(|t| c.resolve_type(t))
+                                    .unwrap_or_else(|| (**elem).clone());
+                                c.bind(&params[0], &pty, false, "param");
+                                let ret = c.infer(body).widen();
+                                c.pop_scope();
+                                ret
+                            })
+                        }
                         _ => match self.quietly(|c| c.infer(&arg.value)) {
                             Ty::Fn { ret, .. } => (*ret).clone(),
                             _ => Ty::Unknown,
@@ -688,22 +645,20 @@ impl<'a> Checker<'a> {
                 "map" => {
                     let out = if let [arg] = args {
                         match &arg.value.kind {
-                            ExprKind::Lambda {
-                                params,
-                                param_tys,
-                                body,
-                            } if params.len() == 1 => self.quietly(|c| {
-                                c.push_scope();
-                                let pty = param_tys
-                                    .first()
-                                    .and_then(|t| t.as_ref())
-                                    .map(|t| c.resolve_type(t))
-                                    .unwrap_or_else(|| elem.clone());
-                                c.bind(&params[0], &pty, false, "param");
-                                let ret = c.infer(body).widen();
-                                c.pop_scope();
-                                ret
-                            }),
+                            ExprKind::Lambda { params, param_tys, body } if params.len() == 1 => {
+                                self.quietly(|c| {
+                                    c.push_scope();
+                                    let pty = param_tys
+                                        .first()
+                                        .and_then(|t| t.as_ref())
+                                        .map(|t| c.resolve_type(t))
+                                        .unwrap_or_else(|| elem.clone());
+                                    c.bind(&params[0], &pty, false, "param");
+                                    let ret = c.infer(body).widen();
+                                    c.pop_scope();
+                                    ret
+                                })
+                            }
                             _ => match self.quietly(|c| c.infer(&arg.value)) {
                                 Ty::Fn { ret, .. } => (*ret).clone(),
                                 _ => Ty::Unknown,
@@ -772,10 +727,7 @@ impl<'a> Checker<'a> {
                 }
                 None
             }
-            Ty::Array {
-                ref index,
-                ref elem,
-            } if name.text == "inverse" => {
+            Ty::Array { ref index, ref elem } if name.text == "inverse" => {
                 if let Some(ret) = self.array_inverse_ret(index, elem) {
                     Some(ret)
                 } else if !elem.is_vague() {
@@ -803,8 +755,7 @@ impl<'a> Checker<'a> {
                     && !matches!(&*elem, Ty::Named { name, .. } if name == "List") =>
             {
                 let shown = Ty::Array { index, elem }.to_string();
-                let message =
-                    format!("`.out(v)` reads a table of neighbour lists, not a `{shown}`");
+                let message = format!("`.out(v)` reads a table of neighbour lists, not a `{shown}`");
                 if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                     diag.help = Some("index it: `a[v]`".to_string());
                 }
@@ -954,8 +905,7 @@ impl<'a> Checker<'a> {
             if let ExprKind::Name(n) = &v.value.kind {
                 if self.local(n).is_none() && n.starts_with(|c: char| c.is_ascii_uppercase()) {
                     if let Some((name, _)) = own.filter(|(name, _)| n != name) {
-                        let message =
-                            format!("`fields({n})` here names the type it builds, `{name}`");
+                        let message = format!("`fields({n})` here names the type it builds, `{name}`");
                         self.error(codes::TYPE_MISMATCH, v.value.span, message);
                     }
                     continue;
@@ -972,8 +922,7 @@ impl<'a> Checker<'a> {
             shapes.push(self.reflect(&ty).ok().flatten());
         }
         if !clause.conds.is_empty() {
-            let message =
-                "a `fields` constructor gives every field a value, so it has no `if`".to_string();
+            let message = "a `fields` constructor gives every field a value, so it has no `if`".to_string();
             self.error(codes::UNSUPPORTED, clause.iter.span, message);
         }
         if shapes.is_empty() && !matches!(clause.pat.kind, PatternKind::Wildcard) {
@@ -1058,8 +1007,7 @@ impl<'a> Checker<'a> {
                         Some(params) if !inside => ("takes", params),
                         _ => ("has", fields),
                     };
-                    let own = (generics.is_empty() && (ctor.is_none() || inside))
-                        .then_some((name, &fields[..]));
+                    let own = (generics.is_empty() && (ctor.is_none() || inside)).then_some((name, &fields[..]));
                     if self.fields_ctor(own, args) {
                         return Ty::Named {
                             name: name.to_string(),
@@ -1214,9 +1162,7 @@ impl<'a> Checker<'a> {
             // A `lazy d: () -> T` is given the `T` its lambda gives back.
             let slot = match &param.ty {
                 Ty::Fn { params, ret }
-                    if param.lazy
-                        && params.is_empty()
-                        && !matches!(arg.value.kind, ExprKind::Lambda { .. }) =>
+                    if param.lazy && params.is_empty() && !matches!(arg.value.kind, ExprKind::Lambda { .. }) =>
                 {
                     ret.as_ref()
                 }
@@ -1225,13 +1171,7 @@ impl<'a> Checker<'a> {
             let arg_ty = self.narrowed(&arg_ty, slot);
             slot.unify(&arg_ty, bindings);
             let want = slot.subst(bindings);
-            if let (
-                ExprKind::Lambda {
-                    params, param_tys, ..
-                },
-                Ty::Fn { params: wanted, .. },
-            ) = (&arg.value.kind, &want)
-            {
+            if let (ExprKind::Lambda { params, param_tys, .. }, Ty::Fn { params: wanted, .. }) = (&arg.value.kind, &want) {
                 self.type_lambda_params(params, param_tys, wanted);
             }
             // `Node([none, none], 0)`: a list written out where an array is
@@ -1239,11 +1179,7 @@ impl<'a> Checker<'a> {
             if let (ExprKind::List(_), Ty::Array { index, elem }, Ty::Named { name, args }) =
                 (&arg.value.kind, &want, &arg_ty)
             {
-                if index.len() == 1
-                    && name == "List"
-                    && args.len() == 1
-                    && self.fits(&args[0], elem)
-                {
+                if index.len() == 1 && name == "List" && args.len() == 1 && self.fits(&args[0], elem) {
                     continue;
                 }
             }
@@ -1386,9 +1322,7 @@ impl Checker<'_> {
                     "HashMap" => "Map",
                     other => other,
                 },
-                base_ty
-                    .seq_elem()
-                    .or_else(|| (args.len() == 1).then(|| args[0].clone())),
+                base_ty.seq_elem().or_else(|| (args.len() == 1).then(|| args[0].clone())),
             ),
             _ => return Vec::new(),
         };
@@ -1397,10 +1331,9 @@ impl Checker<'_> {
         };
         let params = split_top(member.params);
         let slot = match &arg.name {
-            Some(given) => params.iter().find(|p| {
-                p.split_once(':')
-                    .is_some_and(|(n, _)| n.trim() == given.text)
-            }),
+            Some(given) => params
+                .iter()
+                .find(|p| p.split_once(':').is_some_and(|(n, _)| n.trim() == given.text)),
             None => args
                 .iter()
                 .filter(|a| a.name.is_none())
@@ -1433,18 +1366,10 @@ impl Checker<'_> {
 
     /// `(i, j) => ...` passed where `(I, I) -> Int` is wanted: its unwritten
     /// parameters are an `I` each, for hover and inlay hints.
-    fn type_lambda_params(
-        &mut self,
-        params: &[Pattern],
-        written: &[Option<Type>],
-        wanted: &[Param],
-    ) {
+    fn type_lambda_params(&mut self, params: &[Pattern], written: &[Option<Type>], wanted: &[Param]) {
         for (i, (param, want)) in params.iter().zip(wanted).enumerate() {
             let ty = &want.ty;
-            if written.get(i).is_some_and(Option::is_some)
-                || !matches!(param.kind, PatternKind::Name(_))
-                || ty.has_vague()
-            {
+            if written.get(i).is_some_and(Option::is_some) || !matches!(param.kind, PatternKind::Name(_)) || ty.has_vague() {
                 continue;
             }
             for entry in &mut self.hovers {
@@ -1481,10 +1406,7 @@ fn split_top(text: &str) -> Vec<&str> {
 /// a `mut` parameter without `mut`, since nothing the caller holds changes.
 fn is_place(e: &Expr) -> bool {
     match &e.kind {
-        ExprKind::Name(_)
-        | ExprKind::SelfValue
-        | ExprKind::Field { .. }
-        | ExprKind::Index { .. } => true,
+        ExprKind::Name(_) | ExprKind::SelfValue | ExprKind::Field { .. } | ExprKind::Index { .. } => true,
         ExprKind::Paren(inner) => is_place(inner),
         _ => false,
     }
@@ -1504,9 +1426,9 @@ impl Checker<'_> {
             return None;
         };
         let has = match self.global(&owner).as_deref() {
-            Some(Def::Struct {
-                methods, getters, ..
-            }) => methods.iter().any(|(m, _)| m == name) && !getters.iter().any(|g| g == name),
+            Some(Def::Struct { methods, getters, .. }) => {
+                methods.iter().any(|(m, _)| m == name) && !getters.iter().any(|g| g == name)
+            }
             _ => false,
         };
         has.then(|| Expr {
