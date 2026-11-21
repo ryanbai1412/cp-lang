@@ -650,6 +650,12 @@ fn an_end_of_another_domain_or_a_changed_name_proves_no_step() {
 }
 
 #[test]
+fn a_parameter_type_sees_only_the_parameters_before_it() {
+    let stderr = check_errors("param-size-later", "fn valid(seq: [0..n]Int, n: Int) -> Int: n\nprint(valid([1], 1))\n");
+    assert!(stderr.contains("no `n` in scope"), "{stderr}");
+}
+
+#[test]
 fn a_fn_inside_a_fn_says_which_arguments_are_mut() {
     let head = "fn main_like():\n    var xs: List<Int> = []\n    fn add(mut ys: List<Int>, x: Int):\n        ys.push(x)\n";
     let stderr = check_errors("nested-mut-missing", &format!("{head}    add(xs, 1)\nmain_like()\n"));

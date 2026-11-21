@@ -350,22 +350,26 @@ impl<'a> Checker<'a> {
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
         self.in_fn += 1;
-        let params = f
-            .params
-            .iter()
-            .filter(|p| !(self_ty.is_some() && p.name.text == "self"))
-            .map(|p| Param {
+        // A parameter's type can use the ones before it:
+        // `fn valid(n: Int, seq: [0..n]Int)`. So can the result's.
+        self.push_scope();
+        let mut params = Vec::new();
+        for p in f.params.iter().filter(|p| !(self_ty.is_some() && p.name.text == "self")) {
+            let ty = match &p.ty {
+                Some(ty) => self.resolve_type(ty),
+                None => Ty::Unknown,
+            };
+            let seen = Local { ty: ty.clone(), mutable: p.mutable, span: p.name.span, keyword: "param" };
+            self.scopes.last_mut().unwrap().insert(p.name.text.clone(), seen);
+            params.push(Param {
                 name: p.name.text.clone(),
-                ty: match &p.ty {
-                    Some(ty) => self.resolve_type(ty),
-                    None => Ty::Unknown,
-                },
+                ty,
                 mutable: p.mutable,
                 has_default: p.default.is_some(),
                 named_only: p.named_only,
                 variadic: p.variadic,
-            })
-            .collect();
+            });
+        }
         let ret = match (&f.ret, &f.body) {
             (Some(ty), _) => self.resolve_type(ty),
             // A projection's caller works with the value it lends.
@@ -373,6 +377,7 @@ impl<'a> Checker<'a> {
             (None, ast::FnBody::Expr(_)) => Ty::Unknown,
             (None, _) => Ty::Unit,
         };
+        self.scopes.pop();
         self.in_fn -= 1;
         self.generics.truncate(outer);
         Ty::Fn {

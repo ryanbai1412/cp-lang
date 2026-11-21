@@ -402,6 +402,7 @@ impl<'p> Emitter<'p> {
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
     fn signature(&self, f: &Function) -> String {
         let id = self.fn_id.expect("a fn");
+        let named = crate::scope::named_params(&f.body, f.params.len());
         let params: Vec<String> = f
             .params
             .iter()
@@ -415,6 +416,10 @@ impl<'p> Emitter<'p> {
                 let cpp = self.ty(ty);
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
+                } else if !named.contains(&slot) && !param.mutable {
+                    // g++ warns of a parameter the body never names.
+                    let by = if ty.is_scalar() { cpp } else { format!("const {cpp}&") };
+                    format!("[[maybe_unused]] {by} {name}")
                 } else if param.mutable {
                     format!("{cpp}& {name}")
                 } else if ty.is_scalar() || self.facts.stores((Some(id), false, slot)) > 2 {

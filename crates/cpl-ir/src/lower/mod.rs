@@ -1751,6 +1751,12 @@ impl<'a> Lowerer<'a> {
                         _ => {}
                     }
                 }
+                // `[xs.D]`: the domain a value such as `compress(all)` brought.
+                if let Some((owner, member)) = name.text.split_once('.') {
+                    if let Some(id) = self.domain_of_value(owner, member) {
+                        return Some(DimSpec::Pos(id));
+                    }
+                }
                 if let Some(domain) = name.text.strip_suffix(".bounds") {
                     if let Some(GenArg::Domain(id)) = self.gen_env.get(domain).cloned() {
                         return Some(DimSpec::Bound(id));
@@ -1787,18 +1793,9 @@ impl<'a> Lowerer<'a> {
                         return Some(DimSpec::Pos(dom_id));
                     }
                 }
-                if let Some(slot) = self.lookup(prefix) {
-                    if let Ty::Struct(sid) = self.cx.locals[slot].ty {
-                        match self.structs[sid].env.get(rest).cloned() {
-                            Some(GenArg::Domain(dom_id)) | Some(GenArg::Ty(Ty::Pos(dom_id))) => {
-                                return Some(DimSpec::Pos(dom_id));
-                            }
-                            _ => {}
-                        }
-                        if let Some(&dom_id) = self.structs[sid].owned_domains.get(rest) {
-                            return Some(DimSpec::Pos(dom_id));
-                        }
-                    }
+                // `[xs.D]`: the domain a value such as `compress(all)` brought.
+                if let Some(dom_id) = self.domain_of_value(prefix, rest) {
+                    return Some(DimSpec::Pos(dom_id));
                 }
             }
         }
@@ -1806,18 +1803,8 @@ impl<'a> Lowerer<'a> {
         if let ast::TypeKind::Value(e) = &ty.kind {
             if let ast::ExprKind::Field { base, name } = &e.kind {
                 if let ast::ExprKind::Name(prefix) = &base.kind {
-                    if let Some(slot) = self.lookup(prefix) {
-                        if let Ty::Struct(sid) = self.cx.locals[slot].ty {
-                            match self.structs[sid].env.get(&name.text).cloned() {
-                                Some(GenArg::Domain(dom_id)) | Some(GenArg::Ty(Ty::Pos(dom_id))) => {
-                                    return Some(DimSpec::Pos(dom_id));
-                                }
-                                _ => {}
-                            }
-                            if let Some(&dom_id) = self.structs[sid].owned_domains.get(&name.text) {
-                                return Some(DimSpec::Pos(dom_id));
-                            }
-                        }
+                    if let Some(dom_id) = self.domain_of_value(prefix, &name.text) {
+                        return Some(DimSpec::Pos(dom_id));
                     }
                     if let Some(Sym::Struct(sid)) = self.get_sym(prefix) {
                         if let Some(&dom_id) = self.structs[sid].owned_domains.get(&name.text) {

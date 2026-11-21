@@ -25,6 +25,12 @@ pub(crate) fn hoisted(body: &Block, params: usize) -> BTreeSet<usize> {
     scopes.hoisted
 }
 
+/// The parameters, of the first `params` slots, that the body names.
+pub(crate) fn named_params(body: &Block, params: usize) -> BTreeSet<usize> {
+    // With no parameter in sight, each one the body names is "hoisted".
+    hoisted(body, 0).into_iter().filter(|slot| *slot < params).collect()
+}
+
 impl Scopes {
     fn declare(&mut self, slot: usize) {
         let count = self.declared.entry(slot).or_default();
