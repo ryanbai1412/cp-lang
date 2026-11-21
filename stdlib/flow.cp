@@ -97,34 +97,36 @@ pub struct FlowGraph<V>:
         level[s] = 0
         var queue = [s]
         var at = 0
-        while at < queue.len:
-            let u = queue[at]
-            at += 1
-            for a in head[u]:
-                let v = to[a.id]
-                if left[a.id] > 0 and level[v] == none:
-                    level[v] = level[u]! + 1
-                    queue.push(v)
+        unchecked:
+            while at < queue.len:
+                let u = queue[at]
+                at += 1
+                for a in head[u]:
+                    let v = to[a.id]
+                    if left[a.id] > 0 and level[v] == none:
+                        level[v] = level[u]! + 1
+                        queue.push(v)
         level
 
     /// One augmenting path in the level graph, found without recursion.
     fn augment(mut self, s: V, t: V, level: [V]?Int, mut next: [V]Int, most: Int) -> Int:
         var path = List<Arc>()
         var u = s
-        while u != t:
-            if next[u] < head[u].len:
-                let a = head[u][next[u]]
-                let v = to[a.id]
-                if left[a.id] > 0 and level[v] == level[u]! + 1:
-                    path.push(a)
-                    u = v
+        unchecked:
+            while u != t:
+                if next[u] < head[u].len:
+                    let a = head[u][next[u]]
+                    let v = to[a.id]
+                    if left[a.id] > 0 and level[v] == level[u]! + 1:
+                        path.push(a)
+                        u = v
+                    else:
+                        next[u] += 1
                 else:
+                    if path.is_empty: return 0
+                    let a = path.pop()
+                    u = to[a.rev.id]
                     next[u] += 1
-            else:
-                if path.is_empty: return 0
-                let a = path.pop()
-                u = to[a.rev.id]
-                next[u] += 1
         let amount = min(most, min(left[a.id] for a in path))
         for a in path:
             left[a.id] -= amount
@@ -198,48 +200,49 @@ pub struct CostFlow<V>:
         var curve = [(flow: 0, cost: 0)]
         var (flow, total) = (0, 0)
         var last_unit: ?Int = none
-        while flow < limit:
-            var dist: [V]?Int = none
-            var via: [V]?Arc = none
-            var done: [V]Bool = false
-            dist[s] = 0
-            var heap = MinHeap<(Int, V)>()
-            heap.push((0, s))
-            while let (d, u) = heap.pop():
-                if done[u]: continue
-                done[u] = true
-                if u == t: break
-                for a in head[u]:
-                    if left[a.id] == 0: continue
-                    let v = to[a.id]
-                    let nd = d + price[a.id] + pot[u] - pot[v]
-                    if dist[v] == none or nd < dist[v]!:
-                        dist[v] = nd
-                        via[v] = a
-                        heap.push((nd, v))
-            if not done[t]: break
-            let dt = dist[t]!
-            for v in V:
-                if done[v]: pot[v] += dist[v]!
-                else: pot[v] += dt
-            var amount = limit - flow
-            var v = t
-            while v != s:
-                let a = via[v]!
-                amount min= left[a.id]
-                v = to[a.id ^ 1]
-            v = t
-            while v != s:
-                let a = via[v]!
-                left[a.id] -= amount
-                left[a.id ^ 1] += amount
-                v = to[a.id ^ 1]
-            let unit = pot[t] - pot[s]
-            flow += amount
-            total += amount * unit
-            if last_unit == unit: curve.pop()
-            curve.push((flow: flow, cost: total))
-            last_unit = unit
+        unchecked:
+            while flow < limit:
+                var dist: [V]?Int = none
+                var via: [V]?Arc = none
+                var done: [V]Bool = false
+                dist[s] = 0
+                var heap = MinHeap<(Int, V)>()
+                heap.push((0, s))
+                while let (d, u) = heap.pop():
+                    if done[u]: continue
+                    done[u] = true
+                    if u == t: break
+                    for a in head[u]:
+                        if left[a.id] == 0: continue
+                        let v = to[a.id]
+                        let nd = d + price[a.id] + pot[u] - pot[v]
+                        if dist[v] == none or nd < dist[v]!:
+                            dist[v] = nd
+                            via[v] = a
+                            heap.push((nd, v))
+                if not done[t]: break
+                let dt = dist[t]!
+                for v in V:
+                    if done[v]: pot[v] += dist[v]!
+                    else: pot[v] += dt
+                var amount = limit - flow
+                var v = t
+                while v != s:
+                    let a = via[v]!
+                    amount min= left[a.id]
+                    v = to[a.id ^ 1]
+                v = t
+                while v != s:
+                    let a = via[v]!
+                    left[a.id] -= amount
+                    left[a.id ^ 1] += amount
+                    v = to[a.id ^ 1]
+                let unit = pot[t] - pot[s]
+                flow += amount
+                total += amount * unit
+                if last_unit == unit: curve.pop()
+                curve.push((flow: flow, cost: total))
+                last_unit = unit
         curve
 
     /// Potentials under which every residual arc has a nonnegative reduced cost: all zero
@@ -377,39 +380,40 @@ fn hungarian<L, R>(cost: (L, R) -> Int) -> [L]R:
     var way = List.filled(m + 1, 0)
     var minv = List.filled(m + 1, 0)
     var used = List.filled(m + 1, false)
-    for i in 1..=n:
-        p[0] = i
-        var j0 = 0
-        for j in 0..=m:
-            minv[j] = Int.MAX
-            used[j] = false
-        while true:
-            used[j0] = true
-            let i0 = p[j0]
-            let row = L.nth(i0 - 1)
-            var delta = Int.MAX
-            var j1 = 0
-            for j in 1..=m:
-                if used[j]: continue
-                let cur = cost(row, R.nth(j - 1)) - u[i0] - v[j]
-                if cur < minv[j]:
-                    minv[j] = cur
-                    way[j] = j0
-                if minv[j] < delta:
-                    delta = minv[j]
-                    j1 = j
+    unchecked:
+        for i in 1..=n:
+            p[0] = i
+            var j0 = 0
             for j in 0..=m:
-                if used[j]:
-                    u[p[j]] += delta
-                    v[j] -= delta
-                else:
-                    minv[j] -= delta
-            j0 = j1
-            if p[j0] == 0: break
-        while j0 != 0:
-            let j1 = way[j0]
-            p[j0] = p[j1]
-            j0 = j1
+                minv[j] = Int.MAX
+                used[j] = false
+            while true:
+                used[j0] = true
+                let i0 = p[j0]
+                let row = L.nth(i0 - 1)
+                var delta = Int.MAX
+                var j1 = 0
+                for j in 1..=m:
+                    if used[j]: continue
+                    let cur = cost(row, R.nth(j - 1)) - u[i0] - v[j]
+                    if cur < minv[j]:
+                        minv[j] = cur
+                        way[j] = j0
+                    if minv[j] < delta:
+                        delta = minv[j]
+                        j1 = j
+                for j in 0..=m:
+                    if used[j]:
+                        u[p[j]] += delta
+                        v[j] -= delta
+                    else:
+                        minv[j] -= delta
+                j0 = j1
+                if p[j0] == 0: break
+            while j0 != 0:
+                let j1 = way[j0]
+                p[j0] = p[j1]
+                j0 = j1
     var col = List.filled(n, 0)
     for j in 1..=m:
         if p[j] != 0: col[p[j] - 1] = j - 1
@@ -521,15 +525,19 @@ struct Blossom:
     queue: List<Int>
     at: Int
 
-    fn delta(self, k: Int) -> Int = lab[eu[k]] + lab[ev[k]] - 2 * ew[k]
+    fn delta(self, k: Int) -> Int:
+        unchecked:
+            return lab[eu[k]] + lab[ev[k]] - 2 * ew[k]
 
     fn update_slack(mut self, u: Int, x: Int):
-        if slack[x] == 0 or self.delta(u * m + x) < self.delta(slack[x] * m + x): slack[x] = u
+        unchecked:
+            if slack[x] == 0 or self.delta(u * m + x) < self.delta(slack[x] * m + x): slack[x] = u
 
     fn set_slack(mut self, x: Int):
         slack[x] = 0
-        for u in 1..=n:
-            if ew[u * m + x] > 0 and st[u] != x and side[st[u]] == 0: self.update_slack(u, x)
+        unchecked:
+            for u in 1..=n:
+                if ew[u * m + x] > 0 and st[u] != x and side[st[u]] == 0: self.update_slack(u, x)
 
     fn push(mut self, x: Int):
         if x <= n: queue.push(x)
