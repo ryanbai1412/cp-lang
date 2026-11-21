@@ -1,6 +1,6 @@
 //! Undirected connectivity helpers: 2-edge-connected components (bridges),
 //! vertex-biconnected components (blocks), articulation points, bipartite
-//! 2-coloring, and virtual trees on `Rooted<V>`; the rollback bipartite DSU is
+//! and 2-coloring; the rollback bipartite DSU is
 //! `std.dsu.ParityDsu`. Proposed additions to `std.graph` and `std.tree`.
 use std.dsu.{ParityDsu}
 
@@ -140,36 +140,6 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
                     stack.pop()
     blocks
 
-/// Compressed (virtual / auxiliary) tree induced by `keys` inside `tree`:
-/// contains every vertex in `keys` together with all pairwise LCAs, linked by
-/// directed parent-to-child edges in `tree`. O(k log k + k log n).
-pub fn virtual_tree<V>(tree: Rooted<V>, keys: List<V>) -> (
-    nodes: List<V>,
-    edges: List<(u: V, v: V)>,
-):
-    if keys.is_empty: return (nodes: [], edges: [])
-    var by_tin = [(tree.tin[v].ord, v) for v in keys]
-    by_tin.sort()
-    var uniq = List<V>()
-    for p in by_tin:
-        if uniq.is_empty or uniq.last != p.1: uniq.push(p.1)
-    var all = [(tree.tin[v].ord, v) for v in uniq]
-    for i in 0..uniq.len - 1:
-        let l = tree.lca(uniq[i], uniq[i + 1])
-        all.push((tree.tin[l].ord, l))
-    all.sort()
-    var nodes = List<V>()
-    for p in all:
-        if nodes.is_empty or nodes.last != p.1: nodes.push(p.1)
-    var edges: List<(u: V, v: V)> = []
-    var st = [nodes[0]]
-    for i in 1..nodes.len:
-        let u = nodes[i]
-        while not tree.is_anc(st.last, u): st.pop()
-        edges.push((u: st.last, v: u))
-        st.push(u)
-    (nodes: nodes, edges: edges)
-
 /// Bipartite 2-coloring of an undirected graph. Returns `none` if an odd cycle
 /// exists, otherwise a coloring `side: [V]Bool` with `side[u] != side[v]` on
 /// every edge. O(n + m).
@@ -245,7 +215,7 @@ fn coloring_and_bipartite_dsu_rollback():
     assert d.consistent
 
 @test
-fn bcc_and_virtual_tree():
+fn bcc_sizes():
     domain V = 0..6
     domain E = 0..7
     // 0-1-2 triangle, bridge 2-3, triangle 3-4-5
@@ -256,13 +226,3 @@ fn bcc_and_virtual_tree():
     var sizes = [b.len for b in blocks]
     sizes.sort()
     assert sizes == [2, 3, 3]
-
-    domain T = 0..6
-    domain TE = 0..5
-    let traw = [(0, 1), (1, 2), (1, 3), (0, 4), (4, 5)]
-    let tedges = [TE] e => (u: T(traw[e.to_idx].0), v: T(traw[e.to_idx].1))
-    let tg = Graph<T, TE>.undirected(tedges)
-    let tree = Rooted<T>.new(u => tg.out(u), T(0))
-    let vt = virtual_tree(tree, [T(2), T(3), T(5)])
-    assert vt.nodes.len == 5  // 0, 1, 2, 3, 5
-    assert vt.edges.len == 4

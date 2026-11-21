@@ -30,7 +30,7 @@ let g = Graph<V, E>.undirected(roads)
 // rewritten here.
 fn reach_tree(order: List<V>, earlier: (V, V) -> Bool):
     var top: [V]V = [V] v => v
-    var kids: [V]List<(to: V)> = [V] _ => []
+    var boss: [V]?V = none
     fn find(v: V) -> V:
         var x = v
         while top[x] != x:
@@ -43,8 +43,8 @@ fn reach_tree(order: List<V>, earlier: (V, V) -> Bool):
             let c = find(a.to)
             if c != v:
                 top[c] = v
-                kids[v].push((to: c))
-    Rooted(u => kids[u], order.last)
+                boss[c] = v
+    Rooted.from_parents(boss)
 
 let down: List<V> = [v for v in V.rev]
 let up: List<V> = [v for v in V]
@@ -60,8 +60,8 @@ for i in Trip:
     let trip = trips[i]
     let h = human.sub(human.lift_while(trip.s, c => c >= trip.l)!)
     wolf_range[i] = wolf.sub(wolf.lift_while(trip.e, c => c <= trip.r)!)
-    asks[Cut(h.lo.ord)].push((trip: i, sign: -1))
-    asks[Cut(h.hi.ord)].push((trip: i, sign: 1))
+    asks[Cut(h.start.ord)].push((trip: i, sign: -1))
+    asks[Cut(h.end.ord)].push((trip: i, sign: 1))
 
 let horder = [v for v in human.at]
 var shared: [Trip]Int = 0

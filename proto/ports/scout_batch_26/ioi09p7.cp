@@ -12,18 +12,15 @@ domain V = 1..=n
 domain Region = 1..=r
 
 var home: [V]Region = [V] _ => Region.first
-var kids: [V]List<(to: V)> = [V] _ => []
+var boss: [V]?V = none
 let head: Region = read()
 home[V.first] = head
 for v in V:
     if v == V.first: continue
-    // WISH TR3: `let boss: [V]?V = read()` with "the root has no entry" said
-    // in the type, then `Rooted<V>.from_parents(boss)`; today the child lists
-    // are built by hand only to be handed to `Rooted.new` as an adjacency.
-    let (boss, h): (V, Region) = read()
-    kids[boss].push((to: v))
+    let (b, h): (V, Region) = read()
+    boss[v] = b
     home[v] = h
-let t = Rooted(u => kids[u], V.first)
+let t = Rooted.from_parents(boss)
 
 var members: [Region]List<V> = [Region] _ => []
 // spots[x]: preorder positions of the employees of region x, increasing

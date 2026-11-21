@@ -173,9 +173,10 @@ wants wide intermediates: `I128` and `U64` are built-in types.
 `noip19p2` (TR9) says `let s: [V]Char = read()` reads numbers. On `main` it
 reads `abc` as three characters.
 
-**Trees from a parent list, and post-order** [ALREADY SHIPPED — port cleanup].
-`ioi09p7` and `noip19p2` (TR3) build child lists by hand to pass to
-`Rooted.new`. `Rooted.from_parents(par)` takes the `[V]?V` directly.
+**Trees from a parent list, and post-order** [DONE].
+`ioi09p7`, `noip19p2`, `ceoi22p3`, `ioi18p3` and `noi15p2` (TR3) built child
+lists by hand to pass to `Rooted.new`; they now call
+`Rooted.from_parents(par)` on the `[V]?V`.
 `ccc22s5` (W20) wants `postorder()`: `for p in t.Pre.rev: f(t.at[p])`
 already visits children before parents.
 

@@ -37,8 +37,7 @@ edits to `stdlib/`:
 - `connectivity.cp`: iterative `two_edge_components` (handling parallel edges
   via `a.e` and returning a fresh domain `C` so `std.graph.condense` builds
   the bridge tree directly), `articulation_points`, `biconnected_components`
-  (vertex-biconnected blocks), `virtual_tree` on `std.tree.Rooted<V>`,
-  and `two_color` (rollback parity union-find is now `std.dsu.ParityDsu`).
+  (vertex-biconnected blocks) and `two_color` (rollback parity union-find is now `std.dsu.ParityDsu`).
 - `flow_ext.cp` (removed): its `MinCostFlow` and Hungarian `max_weight_matching`
   became `std.flow.CostFlow` and `std.flow.max_weight_matching`.
 
@@ -79,7 +78,7 @@ structures (**44.5%** reduction).
 - `noi21p3.cp` (85 vs 379 raw / 163 stripped; `5669954.cpp`): directed graph
   connectivity — SCC condensation via `std.graph.scc`, transitive-reduction
   spanning tree via Kahn peeling, root-to-node vertex weights via
-  `std.tree.Rooted.weighted`, and per-query `scout.connectivity.virtual_tree`
+  `std.tree.Rooted.weighted`, and per-query `tree.virtual(keys)`
   plus forward/backward reachability (eliminating the original's custom
   `FastCin`, bump allocator, sparse table, Kosaraju SCC, and `Tree` classes).
 - `noi16p2.cp` (99 vs 237 raw / 189 stripped; `4798070.cpp`): articulation

@@ -2,12 +2,11 @@
 // Condense the directed graph into SCCs (`std.graph.scc`), peel the unique
 // transitive-reduction spanning tree via Kahn's algorithm, weight it with
 // `Rooted<C>.weighted`, and answer each query by building the virtual tree
-// (`virtual_tree`) plus k <= 2 extra directed edges and running forward /
+// (`tree.virtual`) plus k <= 2 extra directed edges and running forward /
 // backward reachability.
 
 use std.graph.{Graph, scc}
 use std.tree.{Rooted}
-use scout.connectivity.{virtual_tree}
 
 let (n, m, q, kv): (Int, Int, Int, Int) = read()
 domain V = 1..=n
@@ -43,7 +42,7 @@ while not stack.is_empty:
             tree_adj[u].push(v)
             stack.push(v)
 
-let tree = Rooted<C>.weighted(u => [(to: v) for v in tree_adj[u]], root, a => wt[a.to])
+let tree = Rooted.weighted(u => [(to: v) for v in tree_adj[u]], root, a => wt[a.to])
 
 // 3. Per-query virtual tree + forward/backward reachability.
 var fwd: [C]List<C> = []
@@ -63,15 +62,16 @@ for _ in 0..q:
         keys.push(cu)
         keys.push(cv)
 
-    let vt = virtual_tree(tree, keys)
-    for u in vt.nodes:
+    let vt = tree.virtual(keys)
+    for u in vt.at:
         fwd[u] = []
         rev[u] = []
         vis_f[u] = false
         vis_r[u] = false
-    for e in vt.edges:
-        fwd[e.u].push(e.v)
-        rev[e.v].push(e.u)
+    for x in vt.K:
+        if let p = vt.up[x]:
+            fwd[vt.at[p]].push(vt.at[x])
+            rev[vt.at[x]].push(vt.at[p])
     for e in extra:
         fwd[e.u].push(e.v)
         rev[e.v].push(e.u)
@@ -101,9 +101,8 @@ for _ in 0..q:
                 qr.push(v)
 
     var ans = 0
-    for u in vt.nodes:
+    for x in vt.K:
+        let u = vt.at[x]
         if vis_f[u] and vis_r[u]: ans += wt[u]
-    for e in vt.edges:
-        if vis_f[e.u] and vis_r[e.v]:
-            ans += tree.far[e.v] - tree.far[e.u] - wt[e.v]
+        if let p = vt.up[x], vis_f[vt.at[p]] and vis_r[u]: ans += vt.len[x] - wt[u]
     print(ans)

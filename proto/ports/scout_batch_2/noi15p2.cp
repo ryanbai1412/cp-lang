@@ -9,11 +9,11 @@
 
 let n: Int = read()
 domain Pkg = 0..n
-domain Dep = 1..n                           // the packages that need another
+domain Dep = 1..n  // the packages that need another
 let needs: [Dep]Pkg = read()
-var needed_by: [Pkg]List<(to: Pkg)> = []
-for d in Dep: needed_by[needs[d]].push((to: Pkg(d.label)))
-let tree = Rooted(u => needed_by[u], Pkg.first)
+var boss: [Pkg]?Pkg = none
+for d in Dep: boss[Pkg(d.label)] = needs[d]
+let tree = Rooted.from_parents(boss)
 
 var installed = LazySegTree<tree.Pre, Int, ?Int>(AssignSum)
 

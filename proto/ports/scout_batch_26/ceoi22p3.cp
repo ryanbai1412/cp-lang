@@ -20,18 +20,11 @@ domain V = 1..=n
 domain Pick = 0..k
 domain Ask = 0..(k - 1)
 
-// WISH TR3: `let boss: [V]?V(none: -1) = read()` and `Rooted<V>.from_parents(boss)`
-fn read_tree():
-    let boss: [V]Int = read()
-    var kids: [V]List<(to: V)> = [V] _ => []
-    var root = V.first
-    for v in V:
-        if boss[v] == -1: root = v
-        else: kids[V(boss[v])].push((to: v))
-    Rooted(u => kids[u], root)
-
-let one = read_tree()
-let two = read_tree()
+// WISH TR3: `let boss: [V]?V(none: -1) = read()`
+let boss_one: [V]Int = read()
+let one = Rooted.from_parents([V] v => if boss_one[v] == -1: none else: some(V(boss_one[v])))
+let boss_two: [V]Int = read()
+let two = Rooted.from_parents([V] v => if boss_two[v] == -1: none else: some(V(boss_two[v])))
 
 let one_pre = [v for v in one.at]
 var picked: List<V> = [one_pre[i.ord] for i in Pick]
@@ -45,11 +38,11 @@ for i in Ask: print("?", picked[i.ord], picked[i.ord + 1])
 print("!")
 
 // ties[x]: (y, d) with depth[y] = depth[x] + d
-fn depths<Pre>(r: Rooted<V, Pre>, col: Int, replies: [Ask](Int, Int, Int, Int)) -> [V]Int:
+fn depths(lca: (V, V) -> V, col: Int, replies: [Ask](Int, Int, Int, Int)) -> [V]Int:
     var ties: [V]List<(to: V, d: Int)> = [V] _ => []
     for i in Ask:
         let (a, b) = (picked[i.ord], picked[i.ord + 1])
-        let top = r.lca(a, b)
+        let top = lca(a, b)
         let (da, db) = if col == 1: (replies[i].0, replies[i].1) else: (replies[i].2, replies[i].3)
         ties[top].push((to: a, d: da))
         ties[a].push((to: top, d: -da))
@@ -71,9 +64,12 @@ fn depths<Pre>(r: Rooted<V, Pre>, col: Int, replies: [Ask](Int, Int, Int, Int)) 
     depth
 
 let replies: [Ask](Int, Int, Int, Int) = read()
-let d1 = depths(one, 1, replies)
-let d2 = depths(two, 2, replies)
+let d1 = depths((a, b) => one.lca(a, b), 1, replies)
+let d2 = depths((a, b) => two.lca(a, b), 2, replies)
 domain Query = 0..t
 let pairs: [Query](a: V, b: V) = read()
 for p in pairs:
-    print(d1[p.a] + d1[p.b] - 2 * d1[one.lca(p.a, p.b)], d2[p.a] + d2[p.b] - 2 * d2[two.lca(p.a, p.b)])
+    print(
+        d1[p.a] + d1[p.b] - 2 * d1[one.lca(p.a, p.b)],
+        d2[p.a] + d2[p.b] - 2 * d2[two.lca(p.a, p.b)],
+    )
