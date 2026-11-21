@@ -218,7 +218,14 @@ fn ranges_in(
                 }
                 ranges_in(base, &body.stmts, &[], &mut inner, proven);
             }
-            StmtKind::While { body, .. } | StmtKind::Unchecked(body) => {
+            StmtKind::While { cond, body, .. } => {
+                let mut inner = bounds.clone();
+                if let Cond::Expr(test) = cond {
+                    narrow(test, true, &body.stmts, &mut inner);
+                }
+                ranges_in(base, &body.stmts, &[], &mut inner, proven);
+            }
+            StmtKind::Unchecked(body) => {
                 ranges_in(base, &body.stmts, &[], &mut bounds.clone(), proven);
             }
             StmtKind::Expr(expr) => {
@@ -228,15 +235,25 @@ fn ranges_in(
                 } = &expr.kind
                 {
                     // An `if let` binds names the branch would see through.
+                    let mut failed = Vec::new();
                     for (cond, block) in branches {
-                        if let Cond::Expr(test) = cond {
-                            let mut inner = bounds.clone();
-                            narrow(test, &block.stmts, &mut inner);
-                            ranges_in(base, &block.stmts, &[], &mut inner, proven);
+                        let Cond::Expr(test) = cond else {
+                            continue;
+                        };
+                        let mut inner = bounds.clone();
+                        for &earlier in &failed {
+                            narrow(earlier, false, &block.stmts, &mut inner);
                         }
+                        narrow(test, true, &block.stmts, &mut inner);
+                        ranges_in(base, &block.stmts, &[], &mut inner, proven);
+                        failed.push(test);
                     }
                     if let Some(block) = otherwise {
-                        ranges_in(base, &block.stmts, &[], &mut bounds.clone(), proven);
+                        let mut inner = bounds.clone();
+                        for &earlier in &failed {
+                            narrow(earlier, false, &block.stmts, &mut inner);
+                        }
+                        ranges_in(base, &block.stmts, &[], &mut inner, proven);
                     }
                 }
             }
@@ -375,25 +392,40 @@ fn var_range(
     None
 }
 
-/// Inside a block that runs only when `test` holds, each bounded name a
-/// comparison in `test` limits is in the tighter range, unless the block
+/// Inside a block that runs only when `test` is `holds`, each bounded name
+/// a comparison in `test` limits is in the tighter range, unless the block
 /// assigns it.
-fn narrow(test: &cpl_syntax::ast::Expr, block: &[cpl_syntax::ast::Stmt], bounds: &mut bounds::Bounds) {
-    use cpl_syntax::ast::{BinOp, CmpOp, ExprKind};
+fn narrow(
+    test: &cpl_syntax::ast::Expr,
+    holds: bool,
+    block: &[cpl_syntax::ast::Stmt],
+    bounds: &mut bounds::Bounds,
+) {
+    use cpl_syntax::ast::{BinOp, CmpOp, ExprKind, UnOp};
     match &test.kind {
-        ExprKind::Paren(inner) => narrow(inner, block, bounds),
-        ExprKind::Binary {
-            op: BinOp::And,
-            lhs,
-            rhs,
-            ..
-        } => {
-            narrow(lhs, block, bounds);
-            narrow(rhs, block, bounds);
+        ExprKind::Paren(inner) => narrow(inner, holds, block, bounds),
+        ExprKind::Unary { op: UnOp::Not, expr } => narrow(expr, !holds, block, bounds),
+        ExprKind::Binary { op, lhs, rhs, .. }
+            if (*op == BinOp::And && holds) || (*op == BinOp::Or && !holds) =>
+        {
+            narrow(lhs, holds, block, bounds);
+            narrow(rhs, holds, block, bounds);
         }
-        ExprKind::Compare { first, rest } => {
+        ExprKind::Compare { first, rest } if holds || rest.len() == 1 => {
             let mut left = first.as_ref();
             for (op, right) in rest {
+                let op = &if holds {
+                    *op
+                } else {
+                    match op {
+                        CmpOp::Lt => CmpOp::Ge,
+                        CmpOp::Le => CmpOp::Gt,
+                        CmpOp::Gt => CmpOp::Le,
+                        CmpOp::Ge => CmpOp::Lt,
+                        CmpOp::Ne => CmpOp::Eq,
+                        _ => CmpOp::Ne,
+                    }
+                };
                 let flipped = match op {
                     CmpOp::Lt => Some(CmpOp::Gt),
                     CmpOp::Le => Some(CmpOp::Ge),

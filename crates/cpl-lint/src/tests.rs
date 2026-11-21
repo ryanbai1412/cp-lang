@@ -1718,6 +1718,15 @@ fn an_if_condition_narrows_the_names_it_compares() {
     for (body, want) in cases {
         assert_eq!(range_of(&format!("{head}{body}"), "let x"), want, "{body}");
     }
-    let otherwise = format!("{head}if n < 10:\n    print(n)\nelse:\n    let y = n\n    print(y)\n");
-    assert_eq!(range_of(&otherwise, "let y"), Some((1, 100)), "an else learns nothing yet");
+    let otherwise = [
+        ("if n < 10:\n    print(n)\nelse:\n    let y = n\n    print(y)\n", Some((10, 100))),
+        ("if n < 10:\n    print(n)\nelif a != 4:\n    print(a)\nelse:\n    let y = n * a\n    print(y)\n", Some((40, 400))),
+        ("if not (n > 30 or a < 2):\n    let y = n + a\n    print(y)\n", Some((3, 39))),
+        ("if a < 2 and n < 5:\n    print(n)\nelse:\n    let y = n\n    print(y)\n", Some((1, 100))),
+        ("if 2 < a < 5:\n    print(a)\nelse:\n    let y = a\n    print(y)\n", Some((0, 9))),
+        ("var i = 0\nwhile a < 5 and i < n:\n    let y = a\n    print(y)\n    i += 1\n", Some((0, 4))),
+    ];
+    for (body, want) in otherwise {
+        assert_eq!(range_of(&format!("{head}{body}"), "let y"), want, "{body}");
+    }
 }

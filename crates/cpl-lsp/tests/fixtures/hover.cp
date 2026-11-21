@@ -18,3 +18,5 @@ for v in V:
 print(area, wide, ys, back, slot, be$0st)
 if n > 50:
     print(n $0- 50)
+else:
+    print(n $0- 10)
