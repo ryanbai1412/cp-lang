@@ -1,46 +1,52 @@
 // Codeforces 2268 C: largest v such that some subarray of length >= 2 has
 // both its maximum and its xor containing every bit of v. Build v greedily
-// from the top bit. For a fixed v, boundaries whose masked prefix xors agree
-// up to `^ v` form a class with a parity; a subarray works when its two
-// boundaries share a class with opposite parity and its maximum contains v.
-// Each class is folded along the Cartesian tree of the maxima between
-// neighbouring boundaries, keeping the extreme boundary of each parity.
-const INF = 1e9
-
-struct Ends(lo0: Int, lo1: Int, hi0: Int, hi1: Int)  // leftmost / rightmost boundary per parity
+// from the top bit. For a fixed v, a subarray is a pair of cuts; its masked
+// xor is v exactly when the masked prefix xors p, q at its cuts satisfy
+// q = p ^ v, i.e. both lie in the class min(p, p ^ v) with opposite parity
+// (whether the prefix is the larger of the pair). Within a class, the pair's
+// maximum is the largest gap maximum between them, so folding the class's
+// gaps from the smallest maximum up (a Cartesian tree of the gaps) meets
+// every pair exactly once, at the gap that is its maximum.
+use std.prefix.{prefix_fold}
 
 @!multitest
 domain I = read(1..=2e5)
-let n = I.count
+
+struct Span(lo: I.bounds, hi: I.bounds)  // leftmost and rightmost cut of one parity
+
+fn hull(x: ?Span, y: ?Span) -> ?Span:
+    if let a = x, let b = y: Span(min(a.lo, b.lo), max(a.hi, b.hi)) else: x ?? y
+
+fn wide(left: ?Span, right: ?Span) -> Bool:
+    if let l = left, let r = right: r.hi.ord - l.lo.ord > 1 else: false
+
+// The extreme cuts of each parity on one side of a gap.
+struct Ends(even: ?Span, odd: ?Span):
+    fn join(self, o: Ends) -> Ends = Ends(hull(even, o.even), hull(odd, o.odd))
+    // some cut here and an opposite-parity cut in `right` are at least 2 apart
+    fn reaches(self, right: Ends) -> Bool = wide(even, right.odd) or wide(odd, right.even)
+
 let a: [I]Int = read()
 let peak = SparseTable<I, Int>(max, a)
 
 fn feasible(v: Int) -> Bool:
-    var pre = 0
-    var bounds: List<(key: Int, pos: Int, par: Int)> = []
-    for i in 0..=n:
-        let key = min(pre, pre ^ v)
-        bounds.push((key, i, Int(pre != key)))
-        if i < n: pre ^= a[I(i)] & v
-    bounds.sort()
-
+    let pre = prefix_fold((x, y) => x ^ y, [I] i => a[i] & v)
+    var cuts = [
+        (class: min(pre[c], pre[c] ^ v), at: c, odd: (pre[c] ^ v) < pre[c]) for c in I.bounds
+    ]
+    cuts.sort()
     var stk: List<(top: Int, ends: Ends)> = []
-    for (t, b) in bounds.items:
-        // maximum up to the next boundary of this class; the last one folds everything
-        let top = if t < n and bounds[t + 1].key == b.key:
-            peak.fold(I(b.pos)..=I(bounds[t + 1].pos - 1))
-        else:
-            INF
-        var cur = if b.par == 0: Ends(b.pos, INF, b.pos, -INF) else: Ends(INF, b.pos, -INF, b.pos)
-        while let s = stk.last, top >= s.top:
+    for (t, b) in cuts.items:
+        let here = Span(b.at, b.at)
+        var ends = if b.odd: Ends(none, here) else: Ends(here, none)
+        let next = cuts.get(t + 1).filter(x => x.class == b.class)
+        let top = next.map(x => peak.fold(b.at..x.at))
+        while let s = stk.last, (top ?? s.top) >= s.top:
             let (m, left) = stk.pop()!
-            if m & v == v and (cur.hi1 - left.lo0 > 1 or cur.hi0 - left.lo1 > 1):
+            if m & v == v and left.reaches(ends):
                 return true
-            cur.lo0 min= left.lo0
-            cur.lo1 min= left.lo1
-            cur.hi0 max= left.hi0
-            cur.hi1 max= left.hi1
-        if top < INF: stk.push((top, cur))
+            ends = left.join(ends)
+        if let m = top: stk.push((m, ends))
     false
 
 var ans = 0
