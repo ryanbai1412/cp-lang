@@ -1,7 +1,7 @@
 @!multitest
 let (n, m, q): (1..=300_000, 1..=300_000, 1..=300_000) = read()
 domain V = 1..=n
-let edges: [0..m](u: V, v: V, w: 0..=300_000) = read()
+let edges: [0..m](u: V, v: V, w: 0..=m) = read()
 let colors: [0..q]V = read()
 
 var rep: [V]?V = none

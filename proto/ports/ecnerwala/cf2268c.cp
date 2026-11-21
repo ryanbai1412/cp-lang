@@ -10,8 +10,8 @@ const INF = 1e9
 struct Ends(lo: [0..2]Int, hi: [0..2]Int)  // leftmost / rightmost boundary per parity
 
 @!multitest
-let n: 1..=2e5 = read()
-domain I = 0..n
+domain I = read(1..=2e5)
+let n = I.count
 let a: [I]Int = read()
 let peak = SparseTable<I, Int>(max, a)
 

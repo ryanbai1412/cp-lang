@@ -16,10 +16,10 @@ for _ in 0..m:
     for (x, y, z) in [(a, b, c), (a, c, b), (b, a, c), (b, c, a), (c, a, b), (c, b, a)]:
         raw_edges.push((id((x, y)), id((y, z))))
 
-domain V = 0..verts.len
+domain V = verts.len
 let edges = [(V(u), V(v)) for (u, v) in raw_edges]
 let adj = directed_of_pairs(edges)
-let (C, comp) = scc(adj)
+let (domain C, comp) = scc(adj)
 var rep: [C]?V = none
 for u in V: rep[comp[u]] = u
 let roots = [u for c in C if let u = rep[c]]

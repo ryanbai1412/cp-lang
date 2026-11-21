@@ -1,7 +1,7 @@
 @!multitest
-let n: Int = read()
+domain V = read(1..=2e5)
+let n = V.count
 var a = [0..n] _ => read::<Int>() - 1
-domain V = 0..n
 
 fn parity(vals: List<Int>) -> Int:
     var bit = Fenwick<V, Int>()
