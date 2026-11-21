@@ -49,9 +49,8 @@ INTERACTOR="$D/interactors/$n.py"
 one() { # one INPUT LABEL
   if [ -f "$INTERACTOR" ]; then
     timeout 10 python3 "$INTERACTOR" "$1" -- "$T/orig" > $T/o0 2>$T/err || { echo "FAIL $n original interactive, $2"; head -12 $T/err; exit 1; }
-    timeout 20 python3 "$INTERACTOR" "$1" --log-in "$T/tr.in" --log-out "$T/o1" -- "$T/san" > /dev/null 2>$T/err || { echo "FAIL $n sanitizer interactive, $2"; head -12 $T/err; exit 1; }
-    timeout ${INTERP_TIMEOUT:-20} $C run $src < "$T/tr.in" > $T/o2 2>$T/err || { echo "FAIL $n interpreter replay, $2"; head -8 $T/err; exit 1; }
-    cmp_out $T/o1 $T/o2 || { echo "FAIL $n interpreter differs from sanitizer transcript, $2"; head -20 "$1"; exit 1; }
+    timeout 20 python3 "$INTERACTOR" "$1" -- "$T/san" > /dev/null 2>$T/err || { echo "FAIL $n sanitizer interactive, $2"; head -12 $T/err; exit 1; }
+    timeout ${INTERP_TIMEOUT:-20} python3 "$INTERACTOR" "$1" -- "$C" run "$src" > /dev/null 2>$T/err || { echo "FAIL $n interpreter interactive, $2"; head -12 $T/err; exit 1; }
     return
   fi
   timeout 10 $T/orig < $1 > $T/o0 2>/dev/null || { echo "FAIL $n original crashed, $2"; exit 1; }
