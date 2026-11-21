@@ -1687,10 +1687,16 @@ print(a.sum() + grid[n - 1, 0])
         let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
         let text = case.render();
         assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
-        let words: Vec<i128> = text.split_whitespace().map(|w| w.parse().unwrap()).collect();
+        let words: Vec<i128> = text
+            .split_whitespace()
+            .map(|w| w.parse().unwrap())
+            .collect();
         let n = words[0];
         assert_eq!(words.len() as i128, 1 + n + n * (n + 1) / 2, "{text}");
-        assert!(words[1..=n as usize].iter().all(|v| (0..=9).contains(v)), "{text}");
+        assert!(
+            words[1..=n as usize].iter().all(|v| (0..=9).contains(v)),
+            "{text}"
+        );
     }
     std::fs::remove_file(&path).ok();
 }
@@ -1949,12 +1955,17 @@ print(lit.count(true))
         let text = generate(&spec, &mut Rng::new(seed), Size::Small(4))
             .unwrap()
             .render();
-        let tokens: Vec<i128> = text.split_whitespace().map(|t| t.parse().unwrap()).collect();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
         assert_eq!(tokens.len() as i128, 1 + tokens[0], "{text}");
         assert!(tokens[1..].iter().all(|v| (0..=1).contains(v)), "{text}");
     }
     // A chain may stop early, so how many of its reads run is unknown.
-    assert!(InputSpec::from_source("let a = 0 < read::<Int>() < read::<Int>()\nprint(a)\n").is_err());
+    assert!(
+        InputSpec::from_source("let a = 0 < read::<Int>() < read::<Int>()\nprint(a)\n").is_err()
+    );
 }
 
 #[test]
@@ -1976,12 +1987,20 @@ print(g.deg(V.first) + s.l + s.r)
         let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
         let text = case.render();
         assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
-        let tokens: Vec<i128> = text.split_whitespace().map(|t| t.parse().unwrap()).collect();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
         let (n, m) = (tokens[0], tokens[1]);
         assert_eq!(tokens.len() as i128, 2 + 2 * m + 2, "{text}");
         let edges = &tokens[2..2 + 2 * m as usize];
         assert!(edges.iter().all(|v| (1..=n).contains(v)), "{text}");
-        assert!(tokens[tokens.len() - 2..].iter().all(|v| (1..=9).contains(v)), "{text}");
+        assert!(
+            tokens[tokens.len() - 2..]
+                .iter()
+                .all(|v| (1..=9).contains(v)),
+            "{text}"
+        );
     }
     std::fs::remove_file(&path).ok();
 }
@@ -2226,4 +2245,61 @@ fn a_swapped_in_brute_builds_once_and_leaves_no_file_beside_the_source() {
         .map(|e| e.unwrap().file_name())
         .collect();
     assert_eq!(left, ["p.cp"]);
+}
+
+#[test]
+fn a_pass_that_skips_the_first_or_last_index_reads_from_the_rest() {
+    let src = "let n: 1..=6 = read()
+domain V = 1..=n
+var up: [V]Int = 0
+for v in V:
+    if v == V.first: continue
+    let b: 0..=9 = read()
+    up[v] = b
+for i in 0..n:
+    if i == n - 1: continue
+    let c: 0..=9 = read()
+    up[V.first] += c
+print(up[V.first])
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..10 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(6))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len() as i128, 1 + 2 * (tokens[0] - 1), "{text}");
+    }
+    // Skipping a pass in the middle leaves a row out of the count.
+    let middle = "let n: 1..=6 = read()\nfor i in 0..n:\n    if i == 2: continue\n    let c: Int = read()\n    print(c)\n";
+    assert!(InputSpec::from_source(middle).is_err());
+}
+
+#[test]
+fn a_domain_a_pass_computes_refuses_only_the_reads_that_use_it() {
+    let src = "let q: 1..=4 = read()
+for _ in 0..q:
+    let k: 1..=5 = read()
+    let w = k * 2
+    domain W = 0..w
+    let picks: [k]0..=9 = read()
+    print(picks.sum + W.size)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let text = generate(&spec, &mut Rng::new(1), Size::Small(4))
+        .unwrap()
+        .render();
+    assert!(!text.is_empty());
+    let uses = "let q: 1..=4 = read()
+for _ in 0..q:
+    let k: 1..=5 = read()
+    let w = k * 2
+    domain W = 0..w
+    let p: W = read()
+    print(p)
+";
+    assert!(InputSpec::from_source(uses).is_err());
 }

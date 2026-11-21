@@ -529,9 +529,16 @@ that fixes their type read that type: `Graph<V, E>.undirected(read())`
 reads `[E](V, V)` and a struct `Seg(read(), read())` reads a `Seg`
 (`bare_reads_take_the_type_the_call_they_are_passed_to_wants`, 25.27),
 and a read in one comparison, `read::<Int>() == 1`, is read
-(`a_read_in_one_comparison_is_read`): 1,180 files. Still refused: 35
-loops a row can't describe, 18 reads in a branch or `while true`, 15 fns that read
-and take parameters or are called in a branch.
+(`a_read_in_one_comparison_is_read`): 1,180 files. A pass that starts
+`if v == V.first: continue` reads from the second index on, and a `domain`
+a pass computes refuses only the reads that use it
+(`a_pass_that_skips_the_first_or_last_index_reads_from_the_rest`,
+`a_domain_a_pass_computes_refuses_only_the_reads_that_use_it`, 25.28):
+1,185 files. Of the five, ioi09p7 and noip19p2 read parents as plain `V`s
+and fail on the cycles generated, and etsr23r1p3 reads letters past its
+alphabet: typing gaps in the ports. Still refused: 29 loops a row can't
+describe, 18 reads in a branch or `while true`, 16 fns that read and take
+parameters or are called in a branch.
 Stress under a judge is a gate regression: all 16 interactive and 5
 checker ecnerwala ports pass 20 generated cases each under the
 interactor or checker `gate.sh` uses, and a solution printing `1` fails

@@ -13,8 +13,8 @@
 
 use cpl_diag::Span;
 use cpl_syntax::ast::{
-    AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
-    StrPiece, Type, TypeKind, UnOp,
+    AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt,
+    StmtKind, StrPiece, Type, TypeKind, UnOp,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -877,9 +877,23 @@ impl Builder<'_> {
         else {
             return Ok(None);
         };
-        let Some((lo, hi)) = self.over(iter) else {
+        let Some((mut lo, mut hi)) = self.over(iter) else {
             return Ok(None);
         };
+        let mut stmts = body.stmts.as_slice();
+        // `if v == V.first: continue` first in the body: the passes that
+        // read start at the second.
+        if let (PatternKind::Name(name), Some(first)) = (&pat.kind, stmts.first()) {
+            let skipped = Self::skipped_end(first, name, iter, &lo, &hi);
+            match skipped {
+                Some(true) => lo = binary(BinOp::Add, lo, int(1)),
+                Some(false) => hi = binary(BinOp::Sub, hi, int(1)),
+                None => {}
+            }
+            if skipped.is_some() {
+                stmts = &stmts[1..];
+            }
+        }
         let mut used = HashSet::new();
         names_in(&lo, &mut used);
         names_in(&hi, &mut used);
@@ -901,7 +915,7 @@ impl Builder<'_> {
         };
         let mut parts = Vec::new();
         let mut binds = Vec::new();
-        if !self.rows(&body.stmts, &mut inside, &mut parts, &mut binds)? {
+        if !self.rows(stmts, &mut inside, &mut parts, &mut binds)? {
             return Ok(None);
         }
         let elem = match parts.len() {
@@ -917,6 +931,60 @@ impl Builder<'_> {
             elem: Box::new(elem),
             index: index.map(|name| (name, lo)),
         }))
+    }
+
+    /// Whether `stmt` is `if name == first: continue` (`Some(true)`) or
+    /// the same at the last pass (`Some(false)`), for a loop over `iter`
+    /// from `lo` to `hi`.
+    fn skipped_end(stmt: &Stmt, name: &str, iter: &Expr, lo: &Expr, hi: &Expr) -> Option<bool> {
+        let StmtKind::Expr(Expr {
+            kind:
+                ExprKind::If {
+                    branches,
+                    otherwise: None,
+                },
+            ..
+        }) = &stmt.kind
+        else {
+            return None;
+        };
+        let [(Cond::Expr(cond), then)] = branches.as_slice() else {
+            return None;
+        };
+        if !matches!(
+            then.stmts.as_slice(),
+            [Stmt {
+                kind: StmtKind::Continue(None),
+                ..
+            }]
+        ) {
+            return None;
+        }
+        let ExprKind::Compare { first, rest } = &cond.kind else {
+            return None;
+        };
+        let [(CmpOp::Eq, end)] = rest.as_slice() else {
+            return None;
+        };
+        let is_name = |expr: &Expr| matches!(&expr.kind, ExprKind::Name(at) if at == name);
+        let end = match (is_name(first), is_name(end)) {
+            (true, false) => end,
+            (false, true) => &**first,
+            _ => return None,
+        };
+        let ends = |field: &str| match (&end.kind, &iter.kind) {
+            (ExprKind::Field { base, name }, ExprKind::Name(domain)) => {
+                name.text == field && matches!(&base.kind, ExprKind::Name(d) if d == domain)
+            }
+            _ => false,
+        };
+        if same(end, lo) || ends("first") {
+            Some(true)
+        } else if same(end, hi) || ends("last") {
+            Some(false)
+        } else {
+            None
+        }
     }
 
     /// The type a call whose arguments are all bare `read()`s gives
@@ -963,15 +1031,13 @@ impl Builder<'_> {
                 )
             }
             ExprKind::Name(record) => match self.records.get(record) {
-                Some((_, Record::Struct(fields))) if fields.len() == args.len() => {
-                    Some(named(
-                        &cpl_syntax::ast::Name {
-                            text: record.clone(),
-                            span: callee.span,
-                        },
-                        Vec::new(),
-                    ))
-                }
+                Some((_, Record::Struct(fields))) if fields.len() == args.len() => Some(named(
+                    &cpl_syntax::ast::Name {
+                        text: record.clone(),
+                        span: callee.span,
+                    },
+                    Vec::new(),
+                )),
                 _ => None,
             },
             _ => None,
@@ -1220,6 +1286,7 @@ impl Builder<'_> {
                     let (ty, none) = typed_read(ty.as_ref(), init).expect("tested above");
                     let mut used = HashSet::new();
                     Sizes(&mut used).of_type(&ty);
+                    type_names(&ty, &mut used);
                     if !used.is_disjoint(inside) {
                         return Ok(false);
                     }
@@ -1259,6 +1326,14 @@ impl Builder<'_> {
                     let mut used = HashSet::new();
                     names_in(lo, &mut used);
                     names_in(hi, &mut used);
+                    // A domain over values the pass computes is unknown
+                    // here, like those values: only a read that uses it
+                    // is refused.
+                    if !used.is_disjoint(inside) && read.is_none() {
+                        self.domains.remove(&name.text);
+                        inside.insert(name.text.clone());
+                        continue;
+                    }
                     if !used.is_disjoint(inside) {
                         return Ok(false);
                     }
@@ -1303,6 +1378,7 @@ impl Builder<'_> {
                     let (base, ty) = self.elem_read(target, value).expect("tested above");
                     let mut used = HashSet::new();
                     Sizes(&mut used).of_type(&ty);
+                    type_names(&ty, &mut used);
                     if !used.is_disjoint(inside) {
                         return Ok(false);
                     }
@@ -1673,6 +1749,45 @@ impl Builder<'_> {
                 .collect(),
             _ => vec![None],
         }
+    }
+}
+
+/// Whether `a` and `b` are the same arithmetic on the same names, whatever
+/// their spans.
+fn same(a: &Expr, b: &Expr) -> bool {
+    match (&a.kind, &b.kind) {
+        (ExprKind::Paren(a), _) => same(a, b),
+        (_, ExprKind::Paren(b)) => same(a, b),
+        (ExprKind::Int(x), ExprKind::Int(y)) => x == y,
+        (ExprKind::Name(x), ExprKind::Name(y)) => x == y,
+        (
+            ExprKind::Binary { op, lhs, rhs, .. },
+            ExprKind::Binary {
+                op: op2,
+                lhs: lhs2,
+                rhs: rhs2,
+                ..
+            },
+        ) => op == op2 && same(lhs, lhs2) && same(rhs, rhs2),
+        _ => false,
+    }
+}
+
+/// The names of the types `ty` is made of: `V` and `Int` in `[V]Int`.
+fn type_names(ty: &Type, out: &mut HashSet<String>) {
+    match &ty.kind {
+        TypeKind::Named { name, args } => {
+            out.insert(name.text.clone());
+            args.iter().for_each(|arg| type_names(arg, out));
+        }
+        TypeKind::Array { index, elem } => {
+            index.iter().for_each(|ty| type_names(ty, out));
+            type_names(elem, out);
+        }
+        TypeKind::OwnDomain { elem: ty, .. } | TypeKind::Optional(ty) => type_names(ty, out),
+        TypeKind::Tuple(tys) => tys.iter().for_each(|ty| type_names(ty, out)),
+        TypeKind::Record(fields) => fields.iter().for_each(|(_, ty)| type_names(ty, out)),
+        _ => {}
     }
 }
 

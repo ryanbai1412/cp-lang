@@ -1808,6 +1808,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   struct constructor reads the struct field by field, as the interpreter does. The edges
   are any `[E](V, V)`: a port that needs a DAG or a connected map should say `Dag` or
   `ConnectedGraph`, as a typed `let` would have to. Reverse: drop `Builder::read_as`.
+- **25.28 A pass that skips its first or last index reads from the rest.** A loop
+  whose body starts `if v == V.first: continue` (or `== lo`, `== V.last`, `== hi`) is
+  read as a loop over the other indices, so `for v in V` reading each vertex's parent
+  but the root's is a row per non-root vertex. A skip in the middle stays refused. A
+  `domain` a pass computes from its own values is unknown like those values: only a
+  read whose type names it is refused. The parents read this way are any `V`s, not a
+  tree; a port that needs a tree should read `Tree`. Reverse: drop `skipped_end` and
+  return to refusing such domains.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 
