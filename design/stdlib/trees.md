@@ -299,6 +299,12 @@ Every law is a property test in `stdlib/tree.cp`.
   eccentricity for all vertices (law 9 is the whole algorithm).
 - Tree generation and reading formats: `Tree<V>`, parent arrays and edge
   lists are input types, not tree methods.
+- A parent array in label order (every parent has a smaller, or every one a
+  larger, label: cf2138c1, cf2187c, cf2089e). Then `for v in V` already visits
+  parents first and `for v in V.rev` children first, and `dep[v] = dep[p] + 1`
+  is the whole traversal. Building a `Rooted` for it computes the heavy
+  order nobody asked for: cf2138c1 at n = 10^6 took 0.27 s / 160 MB against
+  0.06 s / 66 MB for the loop, with identical output.
 
 ## 6. Problems written against the API
 
