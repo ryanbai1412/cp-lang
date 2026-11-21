@@ -8,7 +8,7 @@ trap 'rm -rf "$tmp"' EXIT
 
 benches=("$@")
 if [ "${#benches[@]}" -eq 0 ]; then
-    benches=(hash_insert hash_lookup hash_antihash)
+    benches=(hash_insert hash_lookup hash_antihash bitset interval_map dsu monodeque flatmap)
 fi
 
 for name in "${benches[@]}"; do

@@ -4,48 +4,74 @@
 //! `WindowFold<T>` (the two-stack trick) maintains the fold of any monoid without inverses
 //! (such as `gcd`, bitwise `|`, or matrix products).
 use std.algebra.{Monoid}
-use std.deque.{Deque}
 use std.math.{gcd}
 
 /// Sliding-window min or max over positions pushed in monotone order.
 /// `push`, `drop_before`, `drop_after` are O(1) amortized; `best`, `best_at`, `len`, `is_empty`, `clear` are O(1).
 pub struct MonoDeque<T>(by: (T, T) -> T):
-    q: Deque<(Int, T)>
+    q: List<(Int, T)>
+    head: Int
 
     /// A window keeping the `min`, `max`, or any binary selector `by` of active elements. O(1).
-    pub fn new(by: (T, T) -> T = min) -> MonoDeque<T> = MonoDeque(by, Deque())
+    pub fn new(by: (T, T) -> T = min) -> MonoDeque<T> = MonoDeque(by, [], 0)
 
     /// Number of elements currently in the monotonic deque. O(1).
-    pub @get fn len(self) -> Int = q.len
+    pub @get fn len(self) -> Int = q.len - head
 
     /// Whether the monotonic deque is empty. O(1).
-    pub @get fn is_empty(self) -> Bool = q.is_empty
+    pub @get fn is_empty(self) -> Bool = head == q.len
 
     /// Best value currently in the window, or `none` when empty. O(1).
-    pub @get fn best(self) -> ?T = if let f = q.first: f.1 else: none
+    pub @get fn best(self) -> ?T:
+        if head == q.len: return none
+        unchecked: return q[head].1
 
     /// Position of the best value currently in the window, or `none` when empty. O(1).
-    pub @get fn best_at(self) -> ?Int = if let f = q.first: f.0 else: none
+    pub @get fn best_at(self) -> ?Int:
+        if head == q.len: return none
+        unchecked: return q[head].0
 
     /// Remove all elements from the monotonic deque. O(1).
     pub fn clear(mut self):
         q.clear()
+        head = 0
+
+    fn compact(mut self):
+        if head == q.len:
+            q.clear()
+            head = 0
+        elif head >= 65536 and head * 2 >= q.len:
+            let rem = q.len - head
+            unchecked:
+                for i in 0..rem:
+                    q[i] = q[head + i]
+            q.truncate(rem)
+            head = 0
 
     /// Push `(at, val)` at the right end of the window (`at` non-decreasing). O(1) amortized.
     pub fn push(mut self, at: Int, val: T):
-        while not q.is_empty and by(q.last!.1, val) == val:
-            q.pop()
+        var sz = q.len
+        unchecked:
+            while sz > head and by(q[sz - 1].1, val) == val:
+                sz -= 1
+        if sz < q.len: q.truncate(sz)
         q.push((at, val))
 
     /// Drop every entry with position strictly less than `min_at` (for left-to-right sweeps). O(1) amortized.
     pub fn drop_before(mut self, min_at: Int):
-        while not q.is_empty and q.first!.0 < min_at:
-            q.pop_front()
+        unchecked:
+            while head < q.len and q[head].0 < min_at:
+                head += 1
+        if head == q.len or (head >= 65536 and head * 2 >= q.len):
+            self.compact()
 
     /// Drop every entry with position strictly greater than `max_at` (for right-to-left sweeps). O(1) amortized.
     pub fn drop_after(mut self, max_at: Int):
-        while not q.is_empty and q.first!.0 > max_at:
-            q.pop_front()
+        unchecked:
+            while head < q.len and q[head].0 > max_at:
+                head += 1
+        if head == q.len or (head >= 65536 and head * 2 >= q.len):
+            self.compact()
 
 /// FIFO queue supporting O(1) monoid fold of all elements without inverses (two-stack trick).
 /// `push` and `fold` are O(1); `pop` is O(1) amortized. Keeps queue order for non-commutative monoids.

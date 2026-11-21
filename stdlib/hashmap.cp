@@ -68,9 +68,10 @@ pub struct FlatMap<V>:
     pub fn get(self, k: Int) -> ?V:
         let mask = state.len - 1
         var i = self.slot(k)
-        while state[i] != 0:
-            if state[i] == 1 and keys[i] == k: return vals[i]
-            i = (i + 1) & mask
+        unchecked:
+            while state[i] != 0:
+                if state[i] == 1 and keys[i] == k: return vals[i]
+                i = (i + 1) & mask
         none
 
     /// Whether `k` is currently present. O(1) expected.
@@ -84,17 +85,18 @@ pub struct FlatMap<V>:
         let mask = state.len - 1
         var i = self.slot(k)
         var tomb = -1
-        while state[i] != 0:
-            if state[i] == 1 and keys[i] == k:
-                vals[i] = v
-                return
-            if state[i] == 2 and tomb < 0: tomb = i
-            i = (i + 1) & mask
-        let dst = if tomb >= 0: tomb else: i
-        if state[dst] == 0: used += 1
-        keys[dst] = k
-        vals[dst] = v
-        state[dst] = 1
+        unchecked:
+            while state[i] != 0:
+                if state[i] == 1 and keys[i] == k:
+                    vals[i] = v
+                    return
+                if state[i] == 2 and tomb < 0: tomb = i
+                i = (i + 1) & mask
+            let dst = if tomb >= 0: tomb else: i
+            if state[dst] == 0: used += 1
+            keys[dst] = k
+            vals[dst] = v
+            state[dst] = 1
         live += 1
 
     /// Return the value for `k`, inserting `v` first if `k` is absent. O(1) expected amortized.
@@ -107,12 +109,13 @@ pub struct FlatMap<V>:
     pub fn remove(mut self, k: Int) -> ?V:
         let mask = state.len - 1
         var i = self.slot(k)
-        while state[i] != 0:
-            if state[i] == 1 and keys[i] == k:
-                state[i] = 2
-                live -= 1
-                return vals[i]
-            i = (i + 1) & mask
+        unchecked:
+            while state[i] != 0:
+                if state[i] == 1 and keys[i] == k:
+                    state[i] = 2
+                    live -= 1
+                    return vals[i]
+                i = (i + 1) & mask
         none
 
 @test

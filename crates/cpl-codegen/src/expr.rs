@@ -830,6 +830,36 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Do(block) => {
+                if let [
+                    Stmt::Let(key_id, Some(key_val)),
+                    Stmt::Let(
+                        held_id,
+                        Some(Expr { kind: ExprKind::Builtin(Builtin::MapGet, get_args), .. }),
+                    ),
+                    Stmt::If(
+                        Expr { kind: ExprKind::Mutate(Mutation::Remove, place, rem_args), .. },
+                        then_b,
+                        else_b,
+                    ),
+                    Stmt::Give(Expr { kind: ExprKind::Local(give_id), .. }),
+                ] = block.stmts.as_slice()
+                {
+                    if then_b.stmts.is_empty()
+                        && else_b.stmts.is_empty()
+                        && give_id == held_id
+                        && matches!(get_args.as_slice(), [_, Expr { kind: ExprKind::Local(k), .. }] if k == key_id)
+                        && matches!(rem_args.as_slice(), [Expr { kind: ExprKind::Local(k), .. }] if k == key_id)
+                        && matches!(place.ty, Ty::Map(..) | Ty::HashMap(..))
+                    {
+                        self.need("map_take");
+                        let p = self.place(place);
+                        let k = self.expr(key_val).text;
+                        return self.packed_result(
+                            &e.ty,
+                            Code::primary(format!("cpl::map_take({p}, {k})")),
+                        );
+                    }
+                }
                 let ret = self.ty(&e.ty);
                 self.lambda(&ret, |this, out| this.block(block, out))
             }

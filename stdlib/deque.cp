@@ -41,7 +41,8 @@ pub struct Deque<T>:
 
     fn grow(mut self):
         if n < buf.len: return
-        let old = [buf[(head + i) % buf.len] for i in 0..n]
+        let mask = buf.len - 1
+        let old = [buf[(head + i) & mask] for i in 0..n]
         buf = List.filled(2 * old.len, none)
         for i in 0..n: buf[i] = old[i]
         head = 0
@@ -49,13 +50,13 @@ pub struct Deque<T>:
     /// Append `x` to the back of the deque. O(1) amortized.
     pub fn push(mut self, x: T):
         self.grow()
-        buf[(head + n) % buf.len] = x
+        buf[(head + n) & (buf.len - 1)] = x
         n += 1
 
     /// Prepend `x` to the front of the deque. O(1) amortized.
     pub fn push_front(mut self, x: T):
         self.grow()
-        head = (head - 1) % buf.len
+        head = (head - 1) & (buf.len - 1)
         buf[head] = x
         n += 1
 
@@ -63,13 +64,13 @@ pub struct Deque<T>:
     pub fn pop(mut self) -> ?T:
         if n == 0: return none
         n -= 1
-        buf[(head + n) % buf.len]
+        buf[(head + n) & (buf.len - 1)]
 
     /// Remove and return the front, or `none` when empty.
     pub fn pop_front(mut self) -> ?T:
         if n == 0: return none
         let x = buf[head]
-        head = (head + 1) % buf.len
+        head = (head + 1) & (buf.len - 1)
         n -= 1
         x
 
@@ -80,15 +81,17 @@ pub struct Deque<T>:
     /// back from it, so `dq.last(1)` is the one before the back.
     pub @get fn last(self, k: Int = 0) -> ?T:
         if k < 0 or k >= n: return none
-        buf[(head + n - 1 - k) % buf.len]
+        buf[(head + n - 1 - k) & (buf.len - 1)]
 
     /// Each element with its place from the front: `for (i, x) in dq.items`. O(n).
-    pub @get fn items(self) -> List<(Int, T)> = [(i, buf[(head + i) % buf.len]!) for i in 0..n]
+    pub @get fn items(self) -> List<(Int, T)> = [
+        (i, buf[(head + i) & (buf.len - 1)]!) for i in 0..n
+    ]
 
     /// The `i`-th element from the front.
     pub fn get(self, i: Int) -> T:
         assert 0 <= i and i < n
-        buf[(head + i) % buf.len]!
+        buf[(head + i) & (buf.len - 1)]!
 
 @test
 fn a_deque_matches_a_list():

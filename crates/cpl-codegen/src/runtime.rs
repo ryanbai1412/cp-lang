@@ -817,15 +817,19 @@ template <class K, class V, class H = CpHash> struct HashMap {
         auto [i, nw] = slot(k); if (nw) kv[i].second = v;
         return {{st.data(), kv.data(), i, st.size()}, nw};
     }
-    size_t erase(const K& k) {
-        size_t i = locate(k); if (i == st.size()) return 0;
+    void erase_at(size_t i) {
         --n; size_t m = st.size() - 1, j = i;
         for (;;) {
             j = (j + 1) & m; if (!st[j]) break;
             size_t home = H{}(kv[j].first) & m;
             if (((j - home) & m) >= ((j - i) & m)) { st[i] = st[j]; kv[i] = std::move(kv[j]); i = j; }
         }
-        st[i] = 0; kv[i] = {}; return 1;
+        st[i] = 0; kv[i] = {};
+    }
+    void erase(Iter it) { erase_at(it.i); }
+    size_t erase(const K& k) {
+        size_t i = locate(k); if (i == st.size()) return 0;
+        erase_at(i); return 1;
     }
     bool operator==(const HashMap& o) const {
         if (n != o.n) return false;
@@ -1204,6 +1208,16 @@ inline u8 last_val(const std::string& s) { if (s.empty()) fail(\"the string is e
         code: "\
 template <class M, class Q> auto map_get(const M& m, const Q& k) -> std::optional<typename M::mapped_type> {
     auto it = m.find(k); return it == m.end() ? std::nullopt : std::optional<typename M::mapped_type>(it->second);
+}
+",
+    },
+    Piece {
+        name: "map_take",
+        needs: &[],
+        code: "\
+template <class M, class Q> auto map_take(M& m, const Q& k) -> std::optional<typename M::mapped_type> {
+    auto it = m.find(k); if (it == m.end()) return std::nullopt;
+    auto v = std::move(it->second); m.erase(it); return v;
 }
 ",
     },

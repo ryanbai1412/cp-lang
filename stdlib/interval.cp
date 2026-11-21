@@ -52,33 +52,58 @@ pub struct IntervalMap<D, T>:
     pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()):
         let (lo, hi) = r.ends
         if lo >= hi: return
+        var new_lo = lo
+        var new_hi = hi
+        var check_left = true
+        var check_right = true
         if let (sl, seg) = segs.last_le(lo):
             if seg.hi >= hi:
                 on_old(r, seg.val)
                 if seg.val == val: return
-                if sl < lo: segs[sl] = (hi: lo, val: seg.val)
-                else: let _ = segs.remove(lo)
-                if seg.hi > hi: segs[hi] = (hi: seg.hi, val: seg.val)
-                if sl < lo and seg.hi > hi:
+                if sl < lo:
+                    segs[sl] = (hi: lo, val: seg.val)
+                    check_left = false
+                else:
+                    let _ = segs.remove(lo)
+                if seg.hi > hi:
+                    segs[hi] = (hi: seg.hi, val: seg.val)
+                    check_right = false
+                if not check_left and not check_right:
                     segs[lo] = (hi: hi, val: val)
                     return
             else:
-                self.split(lo)
-                self.split(hi)
-                var pos = lo
+                on_old(D.nth(lo).l..D.nth(seg.hi - 1).r, seg.val)
+                if sl < lo:
+                    if seg.val == val:
+                        new_lo = sl
+                    else:
+                        segs[sl] = (hi: lo, val: seg.val)
+                    check_left = false
+                else:
+                    let _ = segs.remove(lo)
+                var pos = seg.hi
                 while pos < hi:
                     let old = segs.remove(pos)!
-                    on_old(D.nth(pos).l..D.nth(old.hi - 1).r, old.val)
-                    pos = old.hi
-        var new_lo = lo
-        var new_hi = hi
-        if let (pl, pseg) = segs.last_lt(new_lo):
-            if pseg.val == val:
-                new_lo = pl
-        if let nseg = segs.get(new_hi):
-            if nseg.val == val:
-                let _ = segs.remove(new_hi)
-                new_hi = nseg.hi
+                    if old.hi <= hi:
+                        on_old(D.nth(pos).l..D.nth(old.hi - 1).r, old.val)
+                        pos = old.hi
+                    else:
+                        on_old(D.nth(pos).l..D.nth(hi - 1).r, old.val)
+                        if old.val == val:
+                            new_hi = old.hi
+                        else:
+                            segs[hi] = (hi: old.hi, val: old.val)
+                        check_right = false
+                        break
+        if check_left:
+            if let (pl, pseg) = segs.last_lt(new_lo):
+                if pseg.val == val:
+                    new_lo = pl
+        if check_right:
+            if let nseg = segs.get(new_hi):
+                if nseg.val == val:
+                    let _ = segs.remove(new_hi)
+                    new_hi = nseg.hi
         segs[new_lo] = (hi: new_hi, val: val)
 
     /// Paint the single position `i` with `val` and return its previous value. O(log runs).
