@@ -575,6 +575,18 @@ impl<'a> Parser<'a> {
             self.bump();
             name
         });
+        if matches!(self.peek(), T::Comma | T::RParen) {
+            if let Some(ref label) = name {
+                return Arg {
+                    name: Some(label.clone()),
+                    mutable: false,
+                    value: Expr {
+                        kind: ExprKind::Name(label.text.clone()),
+                        span: label.span,
+                    },
+                };
+            }
+        }
         let mutable = self.eat(T::Mut);
         let start = self.start();
         let mut value = match self.fn_shorthand() {
@@ -842,7 +854,15 @@ impl<'a> Parser<'a> {
                     let fields = self.comma_list(T::RParen, "the record", |p| {
                         let name = p.expect_name("a field name");
                         p.expect(T::Colon, "`:` after the field name");
-                        (name, p.expr())
+                        let value = if matches!(p.peek(), T::Comma | T::RParen) {
+                            Expr {
+                                kind: ExprKind::Name(name.text.clone()),
+                                span: name.span,
+                            }
+                        } else {
+                            p.expr()
+                        };
+                        (name, value)
                     });
                     ExprKind::Record(fields)
                 } else if self.eat(T::RParen) {

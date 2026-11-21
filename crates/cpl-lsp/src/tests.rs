@@ -2386,3 +2386,18 @@ print(vals[Node.Src], ys, xs.map(y => y + 1))
         )],
     );
 }
+
+#[test]
+fn hover_on_punned_named_arg_shows_local_type() {
+    let src = "\
+fn f(moves: Int, cost: Int) -> Int = moves + cost
+let moves = 3
+let cost = 4
+print(f(moves:, cost:))
+";
+    let (mut server, diagnostics) = open(src);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let hover = hover_at(&mut server, 3, 10);
+    let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(text.contains("Int"), "expected Int hover on punned arg, got: {hover:?}");
+}

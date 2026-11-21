@@ -493,3 +493,11 @@ fn formats_trailing_binary_operator_continuations() {
     let with_comment = "if a == 1 and  // check\n    b == 2:\n    f()\n";
     assert_eq!(fmt(with_comment), with_comment);
 }
+
+#[test]
+fn formats_punned_named_args_and_records() {
+    let src = "let s = State(moves : , cost : , step : )\nlet r = (val : , prev : )\n";
+    let want = "let s = State(moves:, cost:, step:)\nlet r = (val:, prev:)\n";
+    assert_eq!(fmt(src), want);
+    assert_eq!(fmt(want), want);
+}
