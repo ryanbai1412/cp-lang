@@ -1217,24 +1217,6 @@ impl<'a> Checker<'a> {
     }
 
     fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
-        let ty = self.field_ty(expr, base, name);
-        // A built-in member (`xs.len`, `v.next`) answers before the hover
-        // the struct path records, so it gets its hover here.
-        let hovered = self.hovers.last().is_some_and(|h| h.span == name.span);
-        if !hovered && !name.text.is_empty() && !matches!(ty, Ty::Error | Ty::Unknown) {
-            self.hovers.push(HoverEntry {
-                span: name.span,
-                name: name.text.clone(),
-                ty: ty.clone(),
-                keyword: "field",
-                decl: None,
-                owner: None,
-            });
-        }
-        ty
-    }
-
-    fn field_ty(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
         // `treap.merge` after `use lib.treap`: a public name of a module.
         if let ExprKind::Name(alias) = &base.kind {
             if self.local(alias).is_none() && self.env.is_module(alias) {
@@ -1251,6 +1233,39 @@ impl<'a> Checker<'a> {
             }
         }
         let base_ty = self.infer(base);
+        let ty = self.member_ty(expr, name, base_ty.clone());
+        // A built-in member (`xs.len`, `v.next`) answers before the hover
+        // the struct path records, so it gets its hover here.
+        let hovered = self.hovers.last().is_some_and(|h| h.span == name.span);
+        let owner = match &base_ty {
+            Ty::Str => Some("Str".to_string()),
+            Ty::Array { .. } => Some("[D]T".to_string()),
+            Ty::Named { name, .. } => Some(name.clone()),
+            _ => None,
+        };
+        // A catalog method the call types later (`xs.sorted()`) is still
+        // known here, by its catalog signature.
+        let known = match ty {
+            Ty::Error => false,
+            Ty::Unknown => owner
+                .as_deref()
+                .is_some_and(|o| crate::builtins::builtin_member(o, &name.text).is_some()),
+            _ => true,
+        };
+        if !hovered && !name.text.is_empty() && known {
+            self.hovers.push(HoverEntry {
+                span: name.span,
+                name: name.text.clone(),
+                ty: ty.clone(),
+                keyword: "field",
+                decl: None,
+                owner,
+            });
+        }
+        ty
+    }
+
+    fn member_ty(&mut self, expr: &Expr, name: &ast::Name, base_ty: Ty) -> Ty {
         if name.text.is_empty() {
             return Ty::Error;
         }

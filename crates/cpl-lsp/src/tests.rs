@@ -2122,3 +2122,35 @@ print(b.|)
     let len = shown(&mut server, 18);
     assert!(len.contains("len") && len.contains("Int"), "{len}");
 }
+
+#[test]
+fn hover_shows_the_documented_cost_and_the_proven_range() {
+    let src = "\
+use std.algebra.{fold, Monoid}
+let n: 1..=100 = read()
+let m = n * n + 1
+let xs = [3, 1, 2]
+print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
+";
+    let (mut server, _) = open(src);
+    let shown = |server: &mut Server, line, character| {
+        hover_at(server, line, character)
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap_or("")
+            .to_string()
+    };
+    let sorted = shown(&mut server, 4, 10);
+    assert!(
+        sorted.starts_with("```cp\nsorted() -> List<T>\ncost: O(n log n)\n```"),
+        "{sorted}"
+    );
+    let rev = shown(&mut server, 4, 23);
+    assert!(
+        rev.starts_with("```cp\nrev: List<Int>\ncost: O(1)\n```"),
+        "{rev}"
+    );
+    let fold = shown(&mut server, 4, 28);
+    assert!(fold.contains("-> T\ncost: O(n)\n```"), "{fold}");
+    assert_eq!(shown(&mut server, 2, 4), "```cp\nm: Int in 2..=10001\n```");
+}

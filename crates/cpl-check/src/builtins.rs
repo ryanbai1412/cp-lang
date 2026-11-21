@@ -82,6 +82,14 @@ pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static Buil
     BUILTIN_MEMBERS.iter().filter(move |member| member.receiver == receiver)
 }
 
+/// The catalog row for `name` on the built-in type written `owner`
+/// (`List`, `Str`, `[D]T`).
+pub fn builtin_member(owner: &str, name: &str) -> Option<&'static BuiltinMember> {
+    BUILTIN_MEMBERS
+        .iter()
+        .find(|m| m.receiver.name() == owner && m.name == name)
+}
+
 /// What kind of thing a name every file can use is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PreludeKind {

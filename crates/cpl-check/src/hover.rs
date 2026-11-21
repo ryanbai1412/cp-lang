@@ -8,6 +8,7 @@
 //!   storage: 8 bytes per element, 1.6 MB max
 //! ```
 
+use crate::builtins::builtin_member;
 use crate::check::HoverEntry;
 use crate::db::{Analysis, Database};
 use crate::def::{DeclKind, Def};
@@ -52,7 +53,13 @@ impl Database {
         let entry = innermost(&item.check.hovers, at)?;
         let span = entry.span.shift(item.offset);
         let mut lookup = |name: &str| self.lookup(path, &analysis, name);
-        let text = render(entry, &mut lookup);
+        let builtin = (entry.keyword == "field")
+            .then(|| builtin_member(entry.owner.as_deref()?, &entry.name))
+            .flatten();
+        let text = match builtin {
+            Some(member) if entry.ty == Ty::Unknown => member.signature(),
+            _ => render(entry, &mut lookup),
+        };
         let doc = self.definition_location(path, offset).and_then(|def| {
             let source = if def.path == path {
                 analysis.text.clone()
@@ -67,6 +74,13 @@ impl Database {
             };
             doc_above(&source, def.span.start)
         });
+        let doc = doc.or_else(|| builtin.map(|m| m.doc.to_string()));
+        let text = match doc.as_deref().and_then(cost_of) {
+            Some(cost) if matches!(entry.ty, Ty::Fn { .. }) || entry.keyword == "field" => {
+                format!("{text}\ncost: {cost}")
+            }
+            _ => text,
+        };
         Some(Hover { span, text, doc })
     }
 
@@ -202,6 +216,33 @@ fn doc_above(text: &str, at: u32) -> Option<String> {
 }
 
 /// The smallest entry under the cursor.
+/// The first `O(...)` a doc states, with what qualifies it: `O(log n)
+/// amortized`.
+fn cost_of(doc: &str) -> Option<String> {
+    let start = doc.find("O(")?;
+    let mut depth = 0;
+    for (i, c) in doc[start..].char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    let end = start + i + 1;
+                    let amortized = doc[end..].trim_start().starts_with("amortized");
+                    let cost = &doc[start..end];
+                    return Some(if amortized {
+                        format!("{cost} amortized")
+                    } else {
+                        cost.to_string()
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 fn innermost(hovers: &[HoverEntry], at: u32) -> Option<&HoverEntry> {
     hovers
         .iter()

@@ -182,10 +182,22 @@ impl Server {
             }
             "textDocument/hover" => {
                 let (uri, offset) = self.position(params)?;
-                let Some(hover) = self.db.hover(&uri, offset) else {
+                let Some(mut hover) = self.db.hover(&uri, offset) else {
                     return Ok(Reply::default());
                 };
                 let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
+                let proven = cpl_lint::proven_ranges(&analysis.text)
+                    .into_iter()
+                    .find(|&(at, lo, hi)| at == hover.span.start && lo != hi);
+                if let Some((_, lo, hi)) = proven {
+                    let (first, rest) = hover.text.split_once('\n').unwrap_or((&hover.text, ""));
+                    let rest = if rest.is_empty() {
+                        String::new()
+                    } else {
+                        format!("\n{rest}")
+                    };
+                    hover.text = format!("{first} in {lo}..={hi}{rest}");
+                }
                 Ok(Reply::result(obj([
                     (
                         "contents",

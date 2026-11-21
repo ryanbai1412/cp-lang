@@ -2111,6 +2111,15 @@ hover. `field` now wraps the lookup and records the entry when the lookup did no
 read without parentheses hovers its type whatever owns it. Reverse: inline `field_ty` back
 into `field` in `crates/cpl-check/src/check/expr.rs`.
 
+29.18. **Hover states the documented cost and the proven range.** A hover on a fn or member
+whose `///` doc (stdlib) or catalog line (built-in members) states an `O(...)` adds a
+`cost:` line with the first one, so the cost is read without parsing prose; a built-in
+method whose call is typed later (`xs.sorted()`) hovers its catalog signature. A top-level
+`let` hovers the range `cpl_lint::proven_ranges` proves, the same one its inlay hint shows.
+The cost comes from the docs because the docs already state every stdlib cost (AGENTS.md); a
+computed cost would need a cost analysis the checker does not have. Reverse: drop `cost_of`
+in `crates/cpl-check/src/hover.rs` and the range branch of `textDocument/hover`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
