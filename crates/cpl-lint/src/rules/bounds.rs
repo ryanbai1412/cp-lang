@@ -55,7 +55,16 @@ pub(crate) struct Bounds {
     /// The value a `var` holds where nothing has assigned it since it was
     /// declared or last set, which its hull over the whole scope cannot say.
     now: HashMap<String, Interval>,
+    /// Sequences whose `.len` names one value for as long as they live:
+    /// bound once, never assigned, passed `mut` or a method's receiver.
+    fixed: HashSet<String>,
+    /// Names some binding or assignment of reads a `.len`: their intervals
+    /// reach `LEN_MAX`, which says nothing worth showing.
+    long: HashSet<String>,
 }
+
+/// The most a `.len` is taken to be: only relations bound it usefully.
+pub(crate) const LEN_MAX: i128 = i64::MAX as i128;
 
 /// A name the prover can be told about: an input of a declared range, or an
 /// immutable `let` of arithmetic over such names, as prover text.
@@ -176,11 +185,23 @@ impl Bounds {
         use cpl_syntax::ast::{Pattern, Stmt};
         use cpl_syntax::visit::{walk_expr, walk_stmt, Visitor};
         struct Count<'a>(&'a mut HashMap<String, u32>, &'a mut HashSet<String>);
-        struct Writes<'a>(&'a mut HashSet<String>);
-        fn written(e: &Expr, out: &mut HashSet<String>) {
+        struct Writes<'a>(&'a mut HashSet<(String, u32)>);
+        struct Decls(Vec<(String, u32)>);
+        impl Visitor for Decls {
+            fn pattern(&mut self, pat: &Pattern) {
+                match &pat.kind {
+                    PatternKind::Name(n) => self.0.push((n.clone(), pat.span.start)),
+                    PatternKind::Domain(n) => self.0.push((n.text.clone(), pat.span.start)),
+                    PatternKind::Tuple(parts) | PatternKind::Or(parts) => parts.iter().for_each(|p| self.pattern(p)),
+                    PatternKind::Variant { args, .. } => args.iter().for_each(|p| self.pattern(p)),
+                    PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
+                }
+            }
+        }
+        fn written(e: &Expr, out: &mut HashSet<(String, u32)>) {
             match &e.kind {
                 ExprKind::Name(n) => {
-                    out.insert(n.clone());
+                    out.insert((n.clone(), e.span.start));
                 }
                 ExprKind::Paren(inner) => written(inner, out),
                 ExprKind::Tuple(items) | ExprKind::List(items) => items.iter().for_each(|i| written(i, out)),
@@ -224,7 +245,14 @@ impl Bounds {
                 match &stmt.kind {
                     StmtKind::Fn(decl) => {
                         decl.params.iter().for_each(|p| self.add(&p.name.text));
-                        walk_stmt(stmt, &mut Writes(self.1));
+                        // A write to a name this fn declared before it is to
+                        // the fn's own local, which no call can see.
+                        let mut writes = HashSet::new();
+                        walk_stmt(stmt, &mut Writes(&mut writes));
+                        let mut decls = Decls(decl.params.iter().map(|p| (p.name.text.clone(), 0)).collect());
+                        walk_stmt(stmt, &mut decls);
+                        let local = |(n, at): &(String, u32)| decls.0.iter().any(|(d, from)| d == n && from < at);
+                        self.1.extend(writes.iter().filter(|w| !local(w)).map(|(n, _)| n.clone()));
                     }
                     StmtKind::Const { name, .. } => self.add(&name.text),
                     _ => {}
@@ -232,7 +260,9 @@ impl Bounds {
             }
             fn expr(&mut self, expr: &Expr) {
                 if let ExprKind::Lambda { body, .. } = &expr.kind {
-                    walk_expr(body, &mut Writes(self.1));
+                    let mut writes = HashSet::new();
+                    walk_expr(body, &mut Writes(&mut writes));
+                    self.1.extend(writes.into_iter().map(|(n, _)| n));
                 }
             }
             fn pattern(&mut self, pat: &Pattern) {
@@ -241,12 +271,138 @@ impl Bounds {
         }
         let mut count = Count(&mut self.bindings, &mut self.fn_writes);
         file.top_level().for_each(|(_, s)| walk_stmt(s, &mut count));
+        self.find_fixed(file);
+    }
+
+    fn find_fixed(&mut self, file: &File) {
+        use cpl_syntax::ast::{Pattern, Stmt};
+        use cpl_syntax::visit::{walk_stmt, Visitor};
+        #[derive(Default)]
+        struct Scan {
+            changed: HashSet<String>,
+            sources: Vec<(String, Expr)>,
+            seqs: HashSet<String>,
+        }
+        fn root(e: &Expr) -> Option<&str> {
+            match &e.kind {
+                ExprKind::Name(n) => Some(n),
+                ExprKind::Paren(inner) => root(inner),
+                _ => None,
+            }
+        }
+        impl Visitor for Scan {
+            fn stmt(&mut self, stmt: &Stmt) {
+                match &stmt.kind {
+                    StmtKind::Assign { target, value, .. } => {
+                        if let Some(n) = root(target) {
+                            self.changed.insert(n.to_string());
+                            self.sources.push((n.to_string(), value.clone()));
+                        }
+                    }
+                    StmtKind::Lend { place, .. } => {
+                        if let Some(n) = root(place) {
+                            self.changed.insert(n.to_string());
+                        }
+                    }
+                    StmtKind::Let { pat, init: Some(init), .. } => {
+                        if let PatternKind::Name(n) = &pat.kind {
+                            self.sources.push((n.clone(), init.clone()));
+                        }
+                        if let (PatternKind::Tuple(ps), ExprKind::Tuple(es)) = (&pat.kind, &init.kind) {
+                            for (p, e) in ps.iter().zip(es) {
+                                if let PatternKind::Name(n) = &p.kind {
+                                    self.sources.push((n.clone(), e.clone()));
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            fn expr(&mut self, expr: &Expr) {
+                match &expr.kind {
+                    ExprKind::Call { callee, args } => {
+                        if let ExprKind::Field { base, .. } = &callee.kind {
+                            if let Some(n) = root(base) {
+                                self.changed.insert(n.to_string());
+                            }
+                        }
+                        for a in args.iter().filter(|a| a.mutable) {
+                            if let Some(n) = root(&a.value) {
+                                self.changed.insert(n.to_string());
+                            }
+                        }
+                    }
+                    ExprKind::Field { base, name } if name.text == "len" => {
+                        if let Some(n) = root(base) {
+                            self.seqs.insert(n.to_string());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            fn pattern(&mut self, _: &Pattern) {}
+        }
+        let mut scan = Scan::default();
+        file.top_level().for_each(|(_, s)| walk_stmt(s, &mut scan));
+        self.fixed = scan
+            .seqs
+            .into_iter()
+            .filter(|n| self.bound_once(n) && !scan.changed.contains(n) && !self.fn_writes.contains(n))
+            .collect();
+        loop {
+            let more: Vec<String> = scan
+                .sources
+                .iter()
+                .filter(|(n, e)| !self.long.contains(n) && self.reads_len(e))
+                .map(|(n, _)| n.clone())
+                .collect();
+            if more.is_empty() {
+                break;
+            }
+            self.long.extend(more);
+        }
+    }
+
+    /// `xs.len` for a sequence whose length is fixed, as the name relations use.
+    pub(crate) fn atom(&self, e: &Expr) -> Option<String> {
+        match &e.kind {
+            ExprKind::Name(n) => Some(n.clone()),
+            ExprKind::Paren(inner) => self.atom(inner),
+            ExprKind::Field { base, name } if name.text == "len" => match &base.kind {
+                ExprKind::Name(n) if self.fixed.contains(n) => Some(format!("{n}.len")),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Whether `e` reads a `.len` or a name whose value comes from one.
+    pub(crate) fn reads_len(&self, e: &Expr) -> bool {
+        use cpl_syntax::visit::{walk_expr, Visitor};
+        struct Reads<'a>(&'a Bounds, bool);
+        impl Visitor for Reads<'_> {
+            fn expr(&mut self, e: &Expr) {
+                self.1 |= match &e.kind {
+                    ExprKind::Name(n) => self.0.long.contains(n),
+                    ExprKind::Field { name, .. } => name.text == "len",
+                    _ => false,
+                };
+            }
+        }
+        let mut reads = Reads(self, false);
+        walk_expr(e, &mut reads);
+        reads.1
+    }
+
+    pub(crate) fn is_long(&self, name: &str) -> bool {
+        self.long.contains(name)
     }
 
     /// Whether one place in the file binds `name`, so every use of it
     /// that resolves at all reads that binding.
     pub(crate) fn written_by_fn(&self, name: &str) -> bool {
-        self.fn_writes.contains(name)
+        self.fn_writes.contains(name.strip_suffix(".len").unwrap_or(name))
     }
 
     pub(crate) fn bound_once(&self, name: &str) -> bool {
@@ -378,14 +534,7 @@ impl Bounds {
 
     /// What the relations between two names prove about `a - b`.
     pub(crate) fn diff(&self, a: &Expr, b: &Expr) -> Option<Interval> {
-        fn name(e: &Expr) -> Option<&str> {
-            match &e.kind {
-                ExprKind::Name(n) => Some(n),
-                ExprKind::Paren(inner) => name(inner),
-                _ => None,
-            }
-        }
-        self.name_diff(name(a)?, name(b)?)
+        self.name_diff(&self.atom(a)?, &self.atom(b)?)
     }
 
     pub(crate) fn name_diff(&self, a: &str, b: &str) -> Option<Interval> {
@@ -402,8 +551,7 @@ impl Bounds {
     /// Everything known here about `a - b`: their relation, and the values
     /// they hold now or else anywhere in scope.
     pub(crate) fn current_diff(&self, a: &str, b: &str) -> Option<Interval> {
-        let value = |n: &str| self.now.get(n).or_else(|| self.values.get(n)).copied();
-        let d = Self::combine(BinOp::Sub, value(a)?, value(b)?)?;
+        let d = self.value_diff(a, b)?;
         let d = match self.name_diff(a, b) {
             Some(r) => Interval { lo: d.lo.max(r.lo), hi: d.hi.min(r.hi) },
             None => d,
@@ -411,9 +559,18 @@ impl Bounds {
         (d.lo <= d.hi).then_some(d)
     }
 
+    /// What the names' values alone allow `a - b` to be.
+    pub(crate) fn value_diff(&self, a: &str, b: &str) -> Option<Interval> {
+        let value = |n: &str| self.now.get(n).copied().or_else(|| self.expr_name(n));
+        Self::combine(BinOp::Sub, value(a)?, value(b)?)
+    }
+
     /// The interval a bounded name is in.
     pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
-        self.values.get(name).copied()
+        match name.strip_suffix(".len") {
+            Some(seq) if self.fixed.contains(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
+            _ => self.values.get(name).copied(),
+        }
     }
 
     /// The values `lo..hi` or `lo..=hi` can cover.
@@ -449,6 +606,7 @@ impl Bounds {
             }),
             ExprKind::Name(name) => self.values.get(name).copied(),
             ExprKind::Paren(inner) => self.expr(inner),
+            ExprKind::Field { .. } => self.atom(expr).and_then(|a| self.expr_name(&a)),
             ExprKind::Unary {
                 op: UnOp::Neg,
                 expr,

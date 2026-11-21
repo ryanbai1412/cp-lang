@@ -5,6 +5,8 @@ help: from here on `n` means the binding; give it another name if the top-level 
 help: write `max(min(n, 50) * 2 for v in V)`
 25:1-31:1 L0520 a hand-rolled binary search: this is `bsearch_first`
 help: `let lo = bsearch_first(.., mid => ..)`: the predicate must be monotone along the range
+51:5-55:5 L0520 a hand-rolled binary search: this is `bsearch_first`
+help: `let left = bsearch_first(.., at => ..)`: the predicate must be monotone along the range
 11:12-11:23 overflow `area * area` overflows Int when n = 55109
 11:12-11:30 overflow `area * area * area` overflows Int when n = 1448
 
@@ -137,4 +139,15 @@ for: runs at most 7 times
 == hover @ 44:13
 ```cp
 b - c: Int in 1..=100000
+```
+
+== hover @ 53:14
+```cp
+zs[at]: in bounds, 0 <= left <= at < right <= zs.len
+```
+
+== hover @ 53:16
+```cp
+at: Int
+  in bounds of zs[at]: 0 <= left <= at < right <= zs.len
 ```

@@ -570,6 +570,30 @@ pub struct ProvenLoop {
     pub total: Option<u128>,
 }
 
+/// An index `i` in `xs[i]` the bounds and relations prove is in
+/// `0..xs.len`, for a sequence whose length never changes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenIndex {
+    /// `xs[i]`, `xs` and `i`.
+    pub access: (u32, u32),
+    pub seq: (u32, u32),
+    pub index: (u32, u32),
+    /// Why: `0 <= lo <= mid < hi <= xs.len`.
+    pub proof: String,
+}
+
+/// Each index proven in bounds; a file with a syntax error has none.
+pub fn proven_indexes(src: &str) -> Vec<ProvenIndex> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_indexes(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
 /// Each `for` over a bounded range or domain, with how often it runs.
 pub fn proven_loops(src: &str) -> Vec<ProvenLoop> {
     let parsed = cpl_syntax::parse_file(src);

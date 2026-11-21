@@ -46,3 +46,11 @@ while a < b:
         a = c + 1
     else:
         b = c
+fn count(zs: List<Int>, p: Int) -> Int:
+    var (left, right) = (0, zs.len)
+    while left < right:
+        let at = (left + right) / 2
+        if zs$0[a$0t] < p: left = at + 1
+        else: right = at
+    zs.len - left
+print(count([1, 2], 2))

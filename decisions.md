@@ -2340,6 +2340,19 @@ already declared at the top level applies only when the renamed declaration is i
 a local may take a global's name it doesn't use. Uses in files the rename doesn't edit are not
 re-checked. Reverse by dropping `rename::changed_meaning` and the `top_level` condition.
 
+29.36. **Hover shows why an index is in bounds.** `xs.len` becomes a name the relations track
+(`xs.len`) when `xs` is bound once and never assigned, lent, passed `mut` or the receiver of a
+method call anywhere in the file, so its length never changes; it is in `0..=i64::MAX`. Then
+`var hi = xs.len` relates `hi` to it, `var (lo, hi) = (0, xs.len)` binds each name as its own `var`,
+`let mid = (lo + hi) / 2` relates `mid` to whatever `lo` and `hi` are related to, and `for i in
+0..xs.len` keeps `i < xs.len`. An index `xs[i]` with `i` at least 0 and `i - xs.len` below 0 hovers
+the chain that proves it (`0 <= lo <= mid < hi <= ys.len`). Ranges a `.len` bounds only by that
+type limit are not shown. Two changes came with it: a `while` invariant that still moves after two
+rounds widens to what the names' values allow instead of being dropped, and a write in a fn to a
+name that fn declared earlier no longer counts as a write some call could make, so a fn's own locals
+get relations; an `if` test is read before the branches' assignments clear relations. Reverse by
+dropping `Bounds::fixed`/`atom` (back to plain names), `in_bounds` and `index_hover`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

@@ -1828,3 +1828,28 @@ fn a_loop_that_exits_leaves_its_condition_false() {
         assert_eq!(range_of(&format!("{head}{body}"), "let y"), want, "{body}");
     }
 }
+
+/// A binary search over a list it never resizes keeps `0 <= lo <= mid <
+/// hi <= ys.len`, so `ys[mid]` is in bounds; so is `ys[i]` under
+/// `for i in 0..ys.len`. A list that is pushed to, or an index past the
+/// end, proves nothing.
+#[test]
+fn an_index_below_a_fixed_length_is_proven_in_bounds() {
+    let search = "fn count(ys: List<Int>, p: Int) -> Int:\n    var (lo, hi) = (0, ys.len)\n    while lo < hi:\n        let mid = (lo + hi) / 2\n        if ys[mid] < p: lo = mid + 1\n        else: hi = mid\n    ys.len - lo\nprint(count([1, 2], 2))\n";
+    let proven = |src: &str| -> Vec<(String, String)> {
+        crate::proven_indexes(src)
+            .into_iter()
+            .map(|p| (src[p.access.0 as usize..p.access.1 as usize].to_string(), p.proof))
+            .collect()
+    };
+    let pair = |i: &str, l: &str| (i.to_string(), l.to_string());
+    assert_eq!(proven(search), [pair("ys[mid]", "0 <= lo <= mid < hi <= ys.len")]);
+    let pushed = search.replace("print(count", "fn grow(ys: List<Int>):\n    ys.push(1)\nprint(count");
+    assert_eq!(proven(&pushed), []);
+    let past = search.replace("(0, ys.len)", "(0, ys.len + 1)");
+    assert_eq!(proven(&past), []);
+    let each = "fn f(xs: List<Int>) -> Int:\n    var s = 0\n    for i in 0..xs.len:\n        s += xs[i] + xs[i + 1]\n    s\nprint(f([1]))\n";
+    assert_eq!(proven(each), [pair("xs[i]", "0 <= i < xs.len")]);
+    // No hover or hint shows a range a `.len` bounds only by its type.
+    assert!(crate::proven_ranges(search).is_empty(), "{:?}", crate::proven_ranges(search));
+}

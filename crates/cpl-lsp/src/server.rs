@@ -183,6 +183,7 @@ impl Server {
             "textDocument/hover" => {
                 let (uri, offset) = self.position(params)?;
                 let proven = self.loop_hover(&uri, offset);
+                let proven = proven.or_else(|| self.index_hover(&uri, offset, false));
                 if let Some(hover) = proven.or_else(|| self.arith_hover(&uri, offset)) {
                     let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                     return Ok(Reply::result(obj([
@@ -226,6 +227,10 @@ impl Server {
                     };
                     hover.text = format!("{first} in {lo}..={hi}{rest}");
                 }
+                if let Some(index) = self.index_hover(&uri, offset, true) {
+                    hover.text = format!("{}\n  {}", hover.text, index.text);
+                }
+                let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                 Ok(Reply::result(obj([
                     (
                         "contents",
@@ -815,6 +820,28 @@ impl Server {
         }
         Some(cpl_check::Hover {
             span: Span::new(proven.head.0, proven.head.1),
+            text,
+            doc: None,
+        })
+    }
+
+    /// On the brackets of an index the bounds prove in range, or (`on_index`)
+    /// on the index itself: why it is in bounds.
+    fn index_hover(&mut self, uri: &str, offset: u32, on_index: bool) -> Option<cpl_check::Hover> {
+        let analysis = self.db.analyze(uri)?;
+        let inside = |(start, end): (u32, u32)| start <= offset && offset < end;
+        let proven = cpl_lint::proven_indexes(&analysis.text).into_iter().find(|p| {
+            inside(p.access) && !inside(p.seq) && inside(p.index) == on_index
+        })?;
+        let (start, end) = if on_index { proven.index } else { proven.access };
+        let access = analysis.text.get(proven.access.0 as usize..proven.access.1 as usize)?;
+        let access = access.split_whitespace().collect::<Vec<_>>().join(" ");
+        let text = match on_index {
+            true => format!("in bounds of {access}: {}", proven.proof),
+            false => format!("{access}: in bounds, {}", proven.proof),
+        };
+        Some(cpl_check::Hover {
+            span: Span { start, end },
             text,
             doc: None,
         })
