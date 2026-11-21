@@ -745,9 +745,11 @@ impl<'p> Emitter<'p> {
                 let def = &program.structs[*id];
                 out.push_str(&format!("struct {} {{\n", ident(&def.name)));
                 let mut names = Vec::new();
-                for (field, field_ty) in &def.fields {
-                    let field_idx = names.len();
+                for (field_idx, (field, field_ty)) in def.fields.iter().enumerate() {
                     let name = ident(field);
+                    if self.devirt.unread_field(*id, field_idx) {
+                        continue;
+                    }
                     if self.devirt.field_elidable(*id, field_idx) {
                         out.push_str(&format!("    bool {name} = false;\n"));
                         names.push(name);
@@ -762,10 +764,10 @@ impl<'p> Emitter<'p> {
                     ) {
                         cpp = format!("cpl::Row<{cell}, {k}>");
                         self.need("row");
-                    } else if let Some(w) = self.narrow_ints.get(&(*id, names.len())) {
+                    } else if let Some(w) = self.narrow_ints.get(&(*id, field_idx)) {
                         cpp = w.cpp().into();
                     } else if let Some(l) =
-                        self.narrow_elems.get(&cpl_ir::ElemLoc::Field(*id, names.len()))
+                        self.narrow_elems.get(&cpl_ir::ElemLoc::Field(*id, field_idx))
                     {
                         cpp = self.ty_with_elem_layout(field_ty, Some(l));
                     }

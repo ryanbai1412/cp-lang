@@ -16,6 +16,12 @@ fn cpp(source: &str) -> String {
     emit(&program, "t.cp", Some(source))
 }
 
+fn lower(source: &str) -> cpl_ir::Program {
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    cpl_ir::lower(&db.analyze("t.cp").expect("the file was just set")).expect("lowers")
+}
+
 /// The statements of the program: the C++ after the runtime it leans on.
 fn body(source: &str) -> String {
     let cpp = cpp(source);
@@ -876,7 +882,8 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
         "print(a.total + b.total, t.pick == none)\n",
     );
     let out = cpp(src);
-    assert!(out.contains("bool hook = false;"), "{out}");
+    let acc = &out[out.find("struct Acc {").expect("Acc")..];
+    assert!(!acc[..acc.find("};").unwrap()].contains("hook"), "{out}");
     assert!(out.contains("std::optional<std::function<ll(ll)>> pick;"), "{out}");
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", src);
@@ -1749,3 +1756,59 @@ fn explain_names_closure_params_and_top_level_fn_vars() {
         .collect();
     assert!(reasons.iter().any(|r| r == "fn parameter of a closure"), "{reasons:?}");
 }
+
+#[test]
+fn a_field_nothing_reads_is_dropped_with_its_stores_and_the_local_feeding_it() {
+    let src = concat!(
+        "domain V = 0..4\n",
+        "struct Paths:\n",
+        "    dist: [V]Int\n",
+        "    back: [V]?(Int, V)\n",
+        "    order: List<V>\n",
+        "fn walk(k: Int) -> Paths:\n",
+        "    var dist: [V]Int = 0\n",
+        "    var back: [V]?(Int, V) = none\n",
+        "    var order: List<V> = []\n",
+        "    for i in V:\n",
+        "        dist[i] = k\n",
+        "        back[i] = (k, i)\n",
+        "        order.push(i)\n",
+        "    Paths(dist, back, order)\n",
+        "let p = walk(read::<Int>())\n",
+        "print(p.dist[V(3)], p.order.len)\n",
+    );
+    let out = cpp(src);
+    let def = &out[out.find("struct Paths {").expect("Paths")..];
+    let def = &def[..def.find("};").unwrap()];
+    assert!(!def.contains("back") && def.contains("dist") && def.contains("order"), "{out}");
+    let walk = &out[out.find("inline Paths walk").expect("walk")..];
+    let walk = &walk[..walk.find("\n}\n").unwrap()];
+    assert!(!walk.contains(" back") && walk.contains("order.push_back"), "{out}");
+    let dropped = crate::explain_dropped_fields(&lower(src));
+    assert_eq!(dropped, vec!["struct Paths.back".to_string()], "{out}");
+}
+
+#[test]
+fn a_field_is_kept_when_a_store_can_trap_or_the_whole_value_is_seen() {
+    let traps = concat!(
+        "struct P:\n",
+        "    a: Int\n",
+        "    b: [0..2]Int\n",
+        "fn make(k: Int) -> P:\n",
+        "    var b: [0..2]Int = 0\n",
+        "    b[k] = 1\n",
+        "    P(k, b)\n",
+        "print(make(read::<Int>()).a)\n",
+    );
+    let out = cpp(traps);
+    assert!(out.contains("cpl::at(b, k"), "an index that can trap stays: {out}");
+    let compared = concat!(
+        "struct Q:\n",
+        "    a: Int\n",
+        "    b: Int\n",
+        "let k = read::<Int>()\n",
+        "print(Q(k, 1) == Q(k, 2))\n",
+    );
+    assert!(crate::explain_dropped_fields(&lower(compared)).is_empty());
+}
+

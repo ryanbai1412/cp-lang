@@ -908,9 +908,13 @@ impl<'p> Emitter<'p> {
                             Ty::Struct(s) => Some(s),
                             _ => None,
                         };
+                        let dropped: Vec<bool> = (0..items.len())
+                            .map(|idx| struct_id.is_some_and(|s| self.devirt.unread_field(s, idx)))
+                            .collect();
                         let items: Vec<String> = items
                             .iter()
                             .enumerate()
+                            .filter(|(idx, _)| !dropped[*idx])
                             .map(|(idx, item)| {
                                 if struct_id.is_some_and(|s| {
                                     self.devirt.field_elidable(s, idx)

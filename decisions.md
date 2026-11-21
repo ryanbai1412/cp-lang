@@ -4234,7 +4234,8 @@ programs emitting `std::function` 37 -> 22; the 15 that changed shrink
 81-157 B each (1,480 B total); no g++ syntax failure is new. Parity test
 `unread_fn_field`. Reverse: drop `drop_unread_fn_fields` in
 `crates/cpl-codegen/src/devirt.rs` and the unread-store skip in
-`StmtEmitter::assign`.
+`StmtEmitter::assign`. *Amended by §142:* such a field is now left out of
+the struct entirely, like any unread field, instead of a `bool` placeholder.
 
 ## 141. Dream gaps get one error that names the construct (2026-11-21)
 
@@ -4242,3 +4243,29 @@ programs emitting `std::function` 37 -> 22; the 15 that changed shrink
 - **Why.** The dream gate counted 29/60 dreams whose first error named the missing capability; generic "expected X" and mismatch errors hid what each dream needs. Each fix is a class of construct with a golden in `crates/cpl-cli/tests/diagnostics/`.
 - **Reverse.** Drop the entries from `PLANNED` in `crates/cpl-syntax/src/planned.rs` with their parser/checker call sites, the `speculative_planned` queue in `crates/cpl-syntax/src/parser.rs`, the `E0504` dedup in `Sink::finish`, and the `Dim::Enum` arm in `Lowerer::list`.
 - **Addendum.** More classes are named the same way: `match` arms on the `match` line (`match x: 0 => a; _ => b`, read into real arms), `let … in`, maps `{k: v}` and sets `{x for x in xs}` in braces, `m default 0`, `lazy[D] i => …`, `domain A = V if p(v)`, a pattern in place of a parameter name (`fn f((r, c): Pt)`, design §14.1; the parameter binds and the pattern is unpacked on the body's first line, so later errors surface), `some x` patterns, `[_]T`, `a <=> b then c <=> d`, `.member` without its type, and types of literal values (`'+' | '-'`). A context `with io(...)` says "not implemented yet, and deferred" (`DEFERRED` in `planned.rs`). An indented `if` or `match` after `=` is the value (the core lane implemented it); any other indented value stays planned. `let mut x` is read as `var x` with a fix, and `mut` in a `let` condition is an error whose fix removes it. A capitalized unknown name is offered only capitalized names, since it is a type or a variant. *Why:* the owner's dream buckets (indented arms, stray tokens, `?` in a branch, contexts); the gate went from 64/84 first errors and 167/219 errors named to 68/84 and 182/219. *Reverse:* drop the entries and their call sites, `DEFERRED` with `Planned::deferred`, and the `let mut` and label arms in `stmt.rs`, `pattern.rs` and `item.rs`.
+
+## 142. A field nothing reads is left out, with its stores (2026-11-21)
+
+- **Decision.** §140 for every field type. A struct field that no
+  expression reads is left out of the emitted struct, its constructors and
+  its `cpl_tie`. A read is `s.f`, `mut s.f` as an argument, a store that is
+  not a plain `=` (`s.f += 1` reads `s.f`), or any operation that sees the
+  whole value: comparing, ordering, hashing, printing, reading from input,
+  sorting naturally, or using the struct as a map key or set element, which
+  keeps every field of that struct and of the structs inside it. A store
+  `place = v` into a dropped field writes nothing; it is left out only when
+  the place cannot trap (every index is a position of the domain its array
+  is over), and `v` is still evaluated as `(void)(v);` unless it runs
+  nothing, so its traps and effects stay. A local whose only uses are such
+  stores, `xs.push(v)` of a value that runs nothing, and being placed in a
+  dropped field is left out with them, which is what removes the work. A
+  method that is never called reads nothing. `cpl explain` lists each
+  dropped field as `[dropped] struct S.f`.
+- **Why.** Result structs carry witnesses most callers never read:
+  `Paths.back` and `Paths.order` in std.graph. g++ keeps the stores because
+  the arrays escape through the returned struct. The interpreter still
+  computes every field; since nothing reads a dropped field, both print the
+  same and trap at the same place.
+- **Reverse.** Drop `drop_unread_fields`/`drop_dead_locals` in
+  `crates/cpl-codegen/src/devirt.rs` (back to fn fields only) and the
+  `dropped_store` skips in `crates/cpl-codegen/src/stmt.rs`.

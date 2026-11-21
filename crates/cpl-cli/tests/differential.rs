@@ -67,6 +67,8 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
         names,
         [
             "argmin_own_index",
+            "dead_field",
+            "dead_field_store_traps",
             "domain_step",
             "domain_step_not_positive",
             "float_digits",

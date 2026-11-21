@@ -785,13 +785,25 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// A store into a dropped field or local (decision 142).
+    fn dropped_store(&self, place: &Place, op: AssignOp) -> bool {
+        let dead_root = matches!(crate::walk::root(place), (false, slot)
+            if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, slot));
+        (dead_root || self.devirt.in_unread_field(place)) && self.devirt.skippable_store(place, op)
+    }
+
+    fn dropped_value(&mut self, value: &Expr, out: &mut String) {
+        if !self.devirt.skippable_value(value) {
+            let value = self.flatten(value, out);
+            let text = self.expr(value).text;
+            self.line(out, &format!("(void)({text});"));
+        }
+    }
+
     fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
-        if let PlaceKind::Field(base, idx) = &place.kind {
-            if let Ty::Struct(s) = &base.ty {
-                if self.devirt.unread_field(*s, *idx) && self.devirt.skippable_field_store(place, op, value) {
-                    return;
-                }
-            }
+        if self.dropped_store(place, op) {
+            self.dropped_value(value, out);
+            return;
         }
         if let (AssignOp::Set, PlaceKind::Global(id)) = (op, &place.kind) {
             if self.const_globals.contains(id) {
@@ -1067,6 +1079,11 @@ impl<'p> Emitter<'p> {
         }
         let program = self.program;
         match stmt {
+            Stmt::Let(slot, _) if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, *slot) => {}
+            Stmt::Assign(place, op, value) if self.dropped_store(place, *op) => self.dropped_value(value, out),
+            Stmt::Expr(e)
+                if self.closure_id.is_none()
+                    && self.devirt.skippable_push(e).is_some_and(|slot| self.devirt.dead_local(self.fn_id, slot)) => {}
             // A fn written as `cpl_each_f`: its list is the callback.
             Stmt::Let(slot, _) if self.pushing == Some(*slot) && self.closure_id.is_none() => {}
             Stmt::Expr(Expr { kind: ExprKind::Mutate(how, place, items), .. })
@@ -1288,9 +1305,13 @@ impl<'p> Emitter<'p> {
                                     Ty::Struct(s) => Some(s),
                                     _ => None,
                                 };
+                                let dropped: Vec<bool> = (0..items.len())
+                                    .map(|idx| struct_id.is_some_and(|s| self.devirt.unread_field(s, idx)))
+                                    .collect();
                                 let rendered: Vec<String> = items
                                     .iter()
                                     .enumerate()
+                                    .filter(|(idx, _)| !dropped[*idx])
                                     .map(|(idx, item)| {
                                         if struct_id.is_some_and(|s| {
                                             self.devirt.field_elidable(s, idx)

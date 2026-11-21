@@ -1711,10 +1711,12 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
         Err(code) => return code,
     };
     let entries = cpl_codegen::explain_closures(&compiled.program);
+    let dropped = cpl_codegen::explain_dropped_fields(&compiled.program);
+    const DROPPED: &str = "never read; it and its stores are left out";
     if json {
         let _ = writeln!(stdout, "[");
         for (i, entry) in entries.iter().enumerate() {
-            let comma = if i + 1 == entries.len() { "" } else { "," };
+            let comma = if i + 1 == entries.len() && dropped.is_empty() { "" } else { "," };
             let (kind, detail) = match &entry.mode {
                 cpl_codegen::ClosureMode::StaticDirect { closure } => {
                     ("static_direct", format!("cpl_fn{closure}"))
@@ -1738,11 +1740,29 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
                 json_escape(&detail),
             );
         }
+        for (i, site) in dropped.iter().enumerate() {
+            let comma = if i + 1 == dropped.len() { "" } else { "," };
+            let _ = writeln!(
+                stdout,
+                "  {{\"site\":{},\"lowering\":\"dropped_field\",\"detail\":{}}}{comma}",
+                json_escape(site),
+                json_escape(DROPPED),
+            );
+        }
         let _ = writeln!(stdout, "]");
         return 0;
     }
     let view_ops = explain_views(&compiled.text, &compiled.program);
+    if !dropped.is_empty() {
+        let _ = writeln!(stdout, "Dropped fields for {path}:");
+        for site in &dropped {
+            let _ = writeln!(stdout, "  [dropped] {site} -> {DROPPED}");
+        }
+    }
     if entries.is_empty() && view_ops.is_empty() {
+        if !dropped.is_empty() {
+            return 0;
+        }
         let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         return 0;
     }
