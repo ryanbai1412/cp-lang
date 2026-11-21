@@ -5,13 +5,16 @@
 // - Every leaf `l` must appear before any strict ancestor in the order, so no
 //   valid prefix can end below `max_leaf = max(u for u in V if g.deg(u) == 1)`:
 //   `max_leaf` is the unique starting state (`dp[max_leaf] = 1`).
-// - For each vertex `u > max_leaf`, `prv_val[u]` is the largest vertex label in
-//   any child subtree of `u` (at `root = V.last`, the child subtree containing
-//   `root.prev!` — i.e., `n - 1` — is excluded because `n - 1` sits on the
-//   final branch into `n` and cannot block earlier transitions).
-// - `dp[u]` counts valid sequences ending at `u`: the previous chosen vertex
-//   `w < u` must exceed every child-subtree maximum of `u` (`prv_val[u] < w < u`),
-//   so `dp[u] = sum(dp[w] for w in (prv_val[u] + 1)..u)` when `prv_val[u] < u`,
+// - For any non-root vertex `u > max_leaf`, the last chosen vertex `w < u`
+//   must exceed every label in `u`'s proper child subtrees, so `w > prv_val[u]`
+//   where `prv_val[u] = max(sub_max[c] for c in t.children(u))`.
+// - At `root = V.last` (`n`), the child subtree holding `n - 1` (`root.prev!`)
+//   is excluded from `prv_val[root]`: the penultimate chosen vertex `w` is
+//   allowed to lie inside that subtree (even `w = n - 1`), whereas every other
+//   child subtree of `root` has maximum `< n - 1` and must be cleared before
+//   `w`, so `w` only needs to exceed the largest label in the *other* child
+//   subtrees of `root`.
+// - Therefore `dp[u] = sum(dp[w] for w in pv.next!..u)` when `pv = prv_val[u] < u`,
 //   maintained in O(1) per vertex via `Prefix<Z>.filling(n)`.
 const MOD = 998_244_353
 type Z = Mod<MOD>
@@ -28,10 +31,8 @@ let max_leaf = max(u for u in V if g.deg(u) == 1)!
 var sub_max = [V] u => u
 var prv_val: [V]?V = none
 for u in t.at.rev:
-    var max_ch: ?V = none
-    for c in t.children(u):
-        if u == root and sub_max[c] == root.prev!: continue
-        max_ch = if let mc = max_ch: some(max(mc, sub_max[c])) else: some(sub_max[c])
+    let ch = [sub_max[c] for c in t.children(u) if not (u == root and sub_max[c] == root.prev!)]
+    let max_ch: ?V = if ch.is_empty: none else: some(ch.max())
     prv_val[u] = max_ch
     if let mc = max_ch: sub_max[u] max= mc
 
@@ -42,4 +43,4 @@ for u in V:
         if let pv = prv_val[u], pv < u: dp.sum(pv.ord + 1..u.ord) else: Z(0)
     else: Z(0)
     dp.set(u.ord, val)
-print(dp.sum(n - 1..n))
+print(dp.sum(root.ord..root.ord + 1))
