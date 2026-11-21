@@ -1,36 +1,47 @@
-// Codeforces 2245 D2: every vertex gets a non-zero value; an edge of kind 0
-// or 1 constrains the sign of the sum of its endpoints.  Peel vertices that
-// only have edges of one kind left: the z-th peeled vertex gets magnitude
-// n - z, large enough to dominate everything peeled later.
+// Codeforces 2245 D2: assign each vertex a non-zero integer so every kind-1
+// edge has a[u] + a[v] > 0 and every kind-2 edge has a[u] + a[v] < 0.
+//
+// Peel any vertex whose remaining incident edges all have the same kind (at
+// least one kind count is 0). Give the z-th peeled vertex magnitude n - z,
+// positive if its remaining edges are kind 1 (cnt[v, 2] == 0) and negative if
+// they are kind 2 (cnt[v, 1] == 0). Since later vertices have strictly smaller
+// magnitude, each vertex's sign decides every edge incident to it at peel time.
+// If peeling stalls before all n vertices are removed, no assignment exists.
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()
-let edges: [0..m](kind: 1..=2, u: 1..=n, v: 1..=n) = read()
-var adj: [0..n]List<Int> = []
-var cnt: [0..n, 0..2]Int = 0
-for (e, ed) in edges.items:
-    for x in [ed.u - 1, ed.v - 1]:
-        adj[x].push(e)
-        cnt[x, ed.kind - 1] += 1
+domain V = 1..=n
+domain E = 0..m
+domain Kind = 1..=2
+let raw: [E](kind: Kind, u: V, v: V) = read()
+let g = Graph.undirected([E] e => (u: raw[e].u, v: raw[e].v))
 
-var order = [v for v in 0..n if cnt[v, 0] == 0 or cnt[v, 1] == 0]
-var queued = [0..n] v => cnt[v, 0] == 0 or cnt[v, 1] == 0
-var ans: [0..n]Int = 0
-var z = 0
-while z < order.len:
-    let v = order[z]
-    ans[v] = if cnt[v, 0] == 0: z - n else: n - z
-    for e in adj[v]:
-        let ed = edges[e]
-        let u = ed.u - 1 + ed.v - 1 - v
-        if queued[u]: continue
-        cnt[u, ed.kind - 1] -= 1
-        if cnt[u, 0] == 0 or cnt[u, 1] == 0:
-            order.push(u)
-            queued[u] = true
-    z += 1
+fn solve() -> ?[V]Int:
+    var cnt: [V, Kind]Int = 0
+    for e in E:
+        cnt[raw[e].u, raw[e].kind] += 1
+        cnt[raw[e].v, raw[e].kind] += 1
 
-if order.len < n:
+    fn ready(v: V) -> Bool = cnt[v, Kind(1)] == 0 or cnt[v, Kind(2)] == 0
+
+    var order = [v for v in V if ready(v)]
+    var queued: [V]Bool = [V] v => ready(v)
+    var ans: [V]Int = 0
+    var z = 0
+    while z < order.len:
+        let v = order[z]
+        let mag = n - z
+        ans[v] = if cnt[v, Kind(1)] == 0: -mag else: mag
+        for a in g.out(v) if not queued[a.to]:
+            cnt[a.to, raw[a.e].kind] -= 1
+            if ready(a.to):
+                order.push(a.to)
+                queued[a.to] = true
+        z += 1
+
+    if order.len < n: none else: ans
+
+if let ans = solve():
+    print("YES")
+    print(ans)
+else:
     print("NO")
-    return
-print("YES")
-print(ans)
