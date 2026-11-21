@@ -1608,16 +1608,29 @@ fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u
     }
 }
 
+const DROPPED_WHY: &str = "never read: no code takes the field, and no print, debug, ==, ordering, hash, sort, read or builtin sees its struct whole; the C++ keeps a `bool` in its place and still runs what filling it does";
+
 fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     let compiled = match compile(path, stderr) {
         Ok(c) => c,
         Err(code) => return code,
     };
     let entries = cpl_codegen::explain_closures(&compiled.program);
+    let dropped = cpl_codegen::explain_dead_fields(&compiled.program);
     if json {
         let _ = writeln!(stdout, "[");
+        let total = entries.len() + dropped.len();
+        for (i, entry) in dropped.iter().enumerate() {
+            let comma = if i + 1 == total { "" } else { "," };
+            let _ = writeln!(
+                stdout,
+                "  {{\"site\":{},\"lowering\":\"dropped_field\",\"detail\":{}}}{comma}",
+                json_escape(&entry.site),
+                json_escape(DROPPED_WHY),
+            );
+        }
         for (i, entry) in entries.iter().enumerate() {
-            let comma = if i + 1 == entries.len() { "" } else { "," };
+            let comma = if dropped.len() + i + 1 == total { "" } else { "," };
             let (kind, detail) = match &entry.mode {
                 cpl_codegen::ClosureMode::StaticDirect { closure } => {
                     ("static_direct", format!("cpl_fn{closure}"))
@@ -1644,9 +1657,18 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
         return 0;
     }
     let view_ops = explain_views(&compiled.text, &compiled.program);
-    if entries.is_empty() && view_ops.is_empty() {
+    if entries.is_empty() && view_ops.is_empty() && dropped.is_empty() {
         let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         return 0;
+    }
+    if !dropped.is_empty() {
+        let _ = writeln!(stdout, "Dropped fields ({DROPPED_WHY}):");
+        for entry in &dropped {
+            let _ = writeln!(stdout, "  [dropped] {}", entry.site);
+        }
+        if let Some(entry) = dropped.first().filter(|e| !e.fills.is_empty()) {
+            let _ = writeln!(stdout, "  with the locals that only fill them: {}", entry.fills.join(", "));
+        }
     }
     if !entries.is_empty() {
         let mut static_count = 0usize;

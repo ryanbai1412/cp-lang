@@ -94,6 +94,7 @@ pub(crate) struct Emitter<'p> {
     pub facts: Facts<'p>,
     pub niches: Niches,
     pub devirt: crate::devirt::Devirt<'p>,
+    pub dead: crate::deadfield::DeadFields,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
@@ -204,6 +205,7 @@ impl<'p> Emitter<'p> {
             facts,
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
+            dead: crate::deadfield::DeadFields::collect(program),
             direct: BTreeSet::new(),
             borrow_closures: BTreeSet::new(),
             niche_types: std::cell::Cell::new(0),
@@ -494,7 +496,7 @@ impl<'p> Emitter<'p> {
         let locals = self.locals();
         let scope = self.current_scope();
         for slot in self.hoisted.clone() {
-            if slot < params || locals[slot].ty == Ty::Unit {
+            if slot < params || locals[slot].ty == Ty::Unit || self.dead.local(scope, slot) {
                 continue;
             }
             let ty = &locals[slot].ty;
@@ -513,6 +515,32 @@ impl<'p> Emitter<'p> {
                 init
             ));
         }
+    }
+
+    /// The C++ for `item` stored into a dropped field: `false`, after
+    /// running whatever the item does.
+    pub fn dropped_field(&mut self, struct_id: Option<usize>, idx: usize, item: &Expr) -> Option<String> {
+        if !struct_id.is_some_and(|s| self.dead.field(s, idx)) {
+            return None;
+        }
+        Some(if crate::deadfield::pure(item) || self.devirt.skippable_value(item) {
+            let mut parts = self.quiet_uses(None, Some(item));
+            parts.push("false".to_string());
+            if parts.len() == 1 { parts.remove(0) } else { format!("({})", parts.join(", ")) }
+        } else {
+            format!("(static_cast<void>({}), false)", self.expr(item).text)
+        })
+    }
+
+    /// `static_cast<void>(x)` for each kept local nothing but a dropped write
+    /// reads, so g++ does not warn that it is unused.
+    pub fn quiet_uses(&self, stmt: Option<&cpl_ir::Stmt>, item: Option<&cpl_ir::Expr>) -> Vec<String> {
+        let scope = self.current_scope();
+        crate::deadfield::quiet_reads(stmt, item)
+            .into_iter()
+            .filter(|&slot| self.dead.unheard(scope, slot))
+            .map(|slot| format!("static_cast<void>({})", self.names[slot]))
+            .collect()
     }
 
     pub fn current_scope(&self) -> cpl_ir::ScopeId {
@@ -738,7 +766,7 @@ impl<'p> Emitter<'p> {
                 for (field, field_ty) in &def.fields {
                     let field_idx = names.len();
                     let name = ident(field);
-                    if self.devirt.field_elidable(*id, field_idx) {
+                    if self.devirt.field_elidable(*id, field_idx) || self.dead.field(*id, field_idx) {
                         out.push_str(&format!("    bool {name} = false;\n"));
                         names.push(name);
                         continue;

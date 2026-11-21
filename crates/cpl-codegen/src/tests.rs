@@ -1580,3 +1580,55 @@ print(g, x)
         "cpl::ediv should emit 32-bit unsigned fast path:\n{out}"
     );
 }
+
+const DEAD_FIELDS: &str = "let n: 1..=10 = read()
+domain V = 0..n
+var calls = 0
+fn noisy(x: Int) -> Int:
+    calls += 1
+    x * 2
+
+struct Run:
+    total: Int
+    trail: [V]Int
+    log: List<Int>
+    extra: Int
+
+fn go() -> Run:
+    var trail: [V]Int = 0
+    var log = List<Int>()
+    var total = 0
+    for v in V:
+        trail[v] = total
+        log.push(noisy(total))
+        total += 1
+    Run(total, trail, log, noisy(100))
+
+let r = go()
+";
+
+#[test]
+fn unread_fields_are_dropped_but_their_writes_still_run() {
+    let out = cpp(&format!("{DEAD_FIELDS}print(r.total, calls)\n"));
+    for field in ["trail", "log", "extra"] {
+        assert!(out.contains(&format!("bool {field} = false;")), "expected `{field}` dropped:\n{out}");
+    }
+    assert!(!out.contains("std::vector<ll> trail"), "expected the local `trail` dropped:\n{out}");
+    assert!(out.contains("noisy(total)"), "expected the pushed value still made:\n{out}");
+    assert!(out.contains("(static_cast<void>(noisy(100)), false)"), "expected the field's value still made:\n{out}");
+}
+
+#[test]
+fn a_field_read_in_a_print_is_kept() {
+    let one = cpp(&format!("{DEAD_FIELDS}print(r.total, r.extra, r.log.len)\n"));
+    assert!(one.contains("ll extra"), "expected `extra` kept:\n{one}");
+    assert!(one.contains("std::vector<ll> log"), "expected `log` kept:\n{one}");
+    assert!(one.contains("bool trail = false;"), "expected `trail` still dropped:\n{one}");
+    let whole = cpp(&format!("{DEAD_FIELDS}print(r)\n"));
+    assert!(!whole.contains("= false;\n  auto cpl_tie"), "expected printing the struct to keep every field:\n{whole}");
+    for field in ["trail", "log", "extra"] {
+        assert!(!whole.contains(&format!("bool {field} = false;")), "expected `{field}` kept:\n{whole}");
+    }
+    let compared = cpp(&format!("{DEAD_FIELDS}print(r == go())\n"));
+    assert!(!compared.contains("bool trail = false;"), "expected == to keep every field:\n{compared}");
+}

@@ -912,6 +912,9 @@ impl<'p> Emitter<'p> {
                                 }) {
                                     return "false".to_string();
                                 }
+                                if let Some(dropped) = self.dropped_field(struct_id, idx, item) {
+                                    return dropped;
+                                }
                                 if let Some(sid) = struct_id {
                                     if let Some(&k) = self.rows.get(&(sid, idx)) {
                                         let cell = self

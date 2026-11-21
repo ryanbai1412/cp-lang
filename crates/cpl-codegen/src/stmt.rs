@@ -74,6 +74,15 @@ impl<'p> Emitter<'p> {
         e
     }
 
+    fn dropped_write(&mut self, stmt: &Stmt, out: &mut String) {
+        for used in self.quiet_uses(Some(stmt), None) {
+            out.push_str(&format!("{}{used};\n", pad(self.indent)));
+        }
+        for e in crate::deadfield::effects(stmt) {
+            self.expr_stmt(e, out);
+        }
+    }
+
     fn expr_stmt(&mut self, e: &Expr, out: &mut String) {
         if let Some((prefix, place, key_val)) = crate::expr::map_remove_do(e) {
             for stmt in prefix {
@@ -1053,7 +1062,13 @@ impl<'p> Emitter<'p> {
             }
         }
         let program = self.program;
+        let scope = self.current_scope();
         match stmt {
+            Stmt::Let(slot, _) if self.dead.local(scope, *slot) => self.dropped_write(stmt, out),
+            Stmt::Assign(place, ..) if self.dead.place(scope, place) => self.dropped_write(stmt, out),
+            Stmt::Expr(Expr { kind: ExprKind::Mutate(_, place, _), .. }) if self.dead.place(scope, place) => {
+                self.dropped_write(stmt, out)
+            }
             // A fn written as `cpl_each_f`: its list is the callback.
             Stmt::Let(slot, _) if self.pushing == Some(*slot) && self.closure_id.is_none() => {}
             Stmt::Expr(Expr { kind: ExprKind::Mutate(how, place, items), .. })
@@ -1255,6 +1270,9 @@ impl<'p> Emitter<'p> {
                                                 && self.devirt.skippable_value(item)
                                         }) {
                                             return "false".to_string();
+                                        }
+                                        if let Some(dropped) = self.dropped_field(struct_id, idx, item) {
+                                            return dropped;
                                         }
                                         if let Some(sid) = struct_id {
                                             if let Some(&k) = self.rows.get(&(sid, idx)) {

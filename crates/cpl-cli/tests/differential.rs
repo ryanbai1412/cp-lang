@@ -865,3 +865,42 @@ print(a[n - 1], b[n / 2])
         elapsed
     );
 }
+
+/// Decision 124: every program whose C++ drops a field prints the same with
+/// `CPL_KEEP_FIELDS` set, which keeps them all, as it does without.
+#[test]
+fn dropping_unread_fields_changes_no_output() {
+    let programs = programs();
+    let dropped: Vec<(&PathBuf, Vec<u8>)> = programs
+        .iter()
+        .filter_map(|program| {
+            let path = program.to_string_lossy().into_owned();
+            let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+            (built.code == 0).then_some((program, built.stdout))
+        })
+        .collect();
+    std::env::set_var("CPL_KEEP_FIELDS", "1");
+    let mut checked = 0;
+    let mut failures = Vec::new();
+    for (program, without) in dropped {
+        let path = program.to_string_lossy().into_owned();
+        let kept = cpl_cli::run(&["build", &path, "-o", "-"]).stdout;
+        if kept == without {
+            continue;
+        }
+        checked += 1;
+        let name = program.file_stem().expect("a file name").to_string_lossy().into_owned();
+        let input = input_of(program);
+        let source = std::fs::read_to_string(program).expect("source");
+        let interactor = source.contains("\n@interactor").then_some(program.as_path());
+        let runs = [("kept", &kept), ("dropped", &without)]
+            .map(|(how, cpp)| compile_and_run(&format!("{name}-{how}"), "fields", cpp, &input, interactor));
+        match runs {
+            [Ok(a), Ok(b)] if a == b => {}
+            [a, b] => failures.push(format!("{}: kept {a:?}, dropped {b:?}", program.display())),
+        }
+    }
+    std::env::remove_var("CPL_KEEP_FIELDS");
+    assert!(checked > 0, "no program drops a field");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

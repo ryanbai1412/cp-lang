@@ -1,5 +1,6 @@
 //! Lowering of a checked program to a single C++17 file.
 
+mod deadfield;
 mod devirt;
 mod emit;
 mod expr;
@@ -13,6 +14,7 @@ mod stmt;
 mod unordered;
 mod walk;
 
+pub use deadfield::{DroppedField, explain_dead_fields};
 pub use devirt::{ClosureLowering, ClosureMode, explain_closures};
 
 /// Name of this crate.
