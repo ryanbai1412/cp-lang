@@ -275,3 +275,38 @@ fn interval_map_matches_dense_array():
             covered += rg.len
             for i in rg: assert ref_a[i] == cur_v
         assert covered == 25
+
+/// Interval partition map over unbounded `Int` coordinates `[lo, hi)` (ODT without coordinate compression).
+/// Maintains maximal constant runs; `assign` / `replace` are O((1 + removed) log runs) amortized.
+pub struct SparseIntervalMap<T>:
+    _init: T
+
+    /// Create an interval map covering `lo..hi` initialized to `init`. O(1).
+    pub fn new(lo: Int, hi: Int, init: T) -> SparseIntervalMap<T> = todo
+
+    /// Number of maximal constant runs. O(1).
+    pub @get fn runs(self) -> Int = todo
+
+    /// Value at coordinate `i`. O(log runs).
+    pub fn get(self, i: Int) -> T = todo
+
+    /// Maximal run `(range, val)` containing `i`. O(log runs).
+    pub fn run_at(self, i: Int) -> (range: Range<Int>, val: T) = todo
+
+    /// Paint `r` with `val` and coalesce neighbours. O((1 + removed) log runs) amortized.
+    pub fn assign(mut self, r: Range<Int>, val: T) = todo
+
+    /// Paint `r` with `val`, yielding each overwritten `(range, val)` piece in ascending order. O((1 + removed) log runs) amortized.
+    pub fn replace(mut self, r: Range<Int>, val: T) -> yields (range: Range<Int>, val: T) = todo
+
+    /// Transform every run overlapping `r` by `f(old)` and coalesce neighbours. O((1 + touched) log runs).
+    pub fn update(mut self, r: Range<Int>, f: T -> T) = todo
+
+    /// Yield maximal sub-runs overlapping `r` (clipped to `r`) in ascending order. O(log runs + k).
+    pub fn range(self, r: Range<Int>) -> yields (range: Range<Int>, val: T) = todo
+
+    /// Yield all maximal runs in ascending order. O(runs).
+    pub fn each(self) -> yields (range: Range<Int>, val: T) = todo
+
+    /// Yield all maximal runs in descending order. O(runs).
+    pub fn each_rev(self) -> yields (range: Range<Int>, val: T) = todo
