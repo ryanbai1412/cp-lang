@@ -411,6 +411,12 @@ impl<'a> Lowerer<'a> {
                 if let Some(a) = self.gen_env.get(&name.text).cloned() {
                     return a;
                 }
+                // `Comb<Z.MOD>`: a number a type holds, by the type's name.
+                if let Some((owner, member)) = name.text.split_once('.') {
+                    if let Some(v) = self.const_of_type(owner, member, name.span) {
+                        return GenArg::Int(v);
+                    }
+                }
                 if let Some(Sym::Domain(d)) = self.get_sym(&name.text) {
                     return GenArg::Domain(d);
                 }
@@ -446,6 +452,30 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+    }
+
+    /// The number `Owner.member` names: a generic number of the type
+    /// (`Mod<P>`'s `P`) or one of its `let` constants (`Z.MOD`).
+    fn const_of_type(&mut self, owner: &str, member: &str, span: Span) -> Option<i64> {
+        let owner = ast::Type {
+            kind: ast::TypeKind::Named { name: ast::Name { text: owner.to_string(), span }, args: Vec::new() },
+            span,
+        };
+        let dlen = self.diags.len();
+        let resolved = self.resolve_ty(&owner);
+        self.diags.truncate(dlen);
+        let Ty::Struct(sid) = resolved else {
+            return None;
+        };
+        if let Some(GenArg::Int(v)) = self.structs[sid].env.get(member) {
+            return Some(*v);
+        }
+        let init = self.structs[sid].consts.get(member)?.init;
+        let env = self.structs[sid].env.clone();
+        let outer = std::mem::replace(&mut self.gen_env, env);
+        let value = self.eval_const_int(init);
+        self.gen_env = outer;
+        value
     }
 
     /// Instantiates a generic struct template with concrete `args`, memoized.

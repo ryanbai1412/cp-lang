@@ -3072,12 +3072,19 @@ impl<'a> Lowerer<'a> {
     pub(super) fn open_loops(&mut self, clauses: &[ast::Clause]) -> Vec<LoopFrame> {
         let mut frames = Vec::new();
         for clause in clauses {
-            let (iter, elem) = self.iter(&clause.iter);
+            let items = self.items_head(&clause.iter);
+            let (iter, elem) = match &items {
+                Some(items) => (items.range(), Ty::Unit),
+                None => self.iter(&clause.iter),
+            };
             let id = self.next_loop;
             self.next_loop += 1;
             self.cx.scopes.push(HashMap::new());
             let mut pre = Vec::new();
-            let slot = self.loop_var(&clause.pat, elem, &mut pre);
+            let slot = match &items {
+                Some(items) => self.items_bind(&clause.pat, items, &mut pre),
+                None => self.loop_var(&clause.pat, elem, &mut pre),
+            };
             let mut guards = Vec::new();
             for cond in &clause.conds {
                 self.guard(cond, &mut guards);

@@ -512,13 +512,20 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                let (iter, elem) = self.iter(iter);
+                let items = self.items_head(iter);
+                let (iter, elem) = match &items {
+                    Some(items) => (items.range(), Ty::Unit),
+                    None => self.iter(iter),
+                };
                 let id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
                 self.cx.scopes.push(HashMap::new());
                 self.cx.local_syms.push(HashMap::new());
                 let mut stmts = Vec::new();
                 let elem_is_int = elem == Ty::Int;
-                let slot = self.loop_var(pat, elem, &mut stmts);
+                let slot = match &items {
+                    Some(items) => self.items_bind(pat, items, &mut stmts),
+                    None => self.loop_var(pat, elem, &mut stmts),
+                };
                 // If an `Int` loop variable is used as a runtime generic value arg (`for d in 0..=6: type F = Fixed<d>`),
                 // mirror it into a global so monomorphized methods can read it at run time.
                 if elem_is_int
@@ -1371,6 +1378,15 @@ impl<'a> Lowerer<'a> {
             }
             if let Some(table) = self.comprehension_table(init, dims, &elem_ty) {
                 return Some(table);
+            }
+            // `var ways: [0..n]List<Z> = [Z(1)]`: where a cell is a list, a
+            // list of what it holds fills every cell with a copy.
+            if let (Ty::List(_), ast::ExprKind::List(items)) = (&elem_ty, &init.kind) {
+                let holds = items.first().and_then(|item| self.probe_ty_silent(item));
+                if holds.is_some_and(|ty| !matches!(ty, Ty::List(_))) {
+                    let value = self.expect(init, &elem_ty);
+                    return Some(self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span));
+                }
             }
             // `var dp: [Bool]Z = [1, 0]`: a list of as many values as the
             // array has cells, when that count is written as a number.

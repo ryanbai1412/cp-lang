@@ -316,7 +316,9 @@ impl<'a> Checker<'a> {
                     (Some(Ty::Array { elem, .. }), Some(Ty::Named { name, args }))
                         if name == "List" && args.len() == 1 =>
                     {
-                        self.fits(&args[0], elem)
+                        // `[1, 2, 3]` is the cells; `var ways: [0..n]List<Z> = [Z(1)]`
+                        // fills each cell with the list.
+                        self.fits(&args[0], elem) || self.fits(init_ty.as_ref().expect("matched"), elem)
                     }
                     (Some(Ty::Array { elem, .. }), Some(init_ty)) => {
                         // A literal fills the cells of an array of arrays too.

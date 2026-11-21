@@ -2818,6 +2818,29 @@ impl<'a> Lowerer<'a> {
                 let none = self.mk(ExprKind::None, opt.clone(), span);
                 self.mk(ExprKind::If(Box::new(filled), Box::new(some), Box::new(none)), opt, span)
             }
+            // `xs.items` kept as a value: the list of `(index, element)`.
+            (Ty::List(_) | Ty::Array { .. }, "items") if self.items_of(&value, span).is_some() => {
+                let pair = |items: &Items| Ty::Tuple(vec![items.index.clone(), items.elem.clone()]);
+                let held_ty = value.ty.clone();
+                let Some(shape) = self.items_of(&value, span) else { unreachable!("checked above") };
+                let list_ty = Ty::List(Box::new(pair(&shape)));
+                self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
+                    let held = lw.temp(held_ty);
+                    out.push(Stmt::Let(held, Some(value)));
+                    let seq = lw.local(held, span);
+                    let items = lw.items_of(&seq, span).expect("the same type");
+                    let acc = lw.temp(list_ty.clone());
+                    out.push(Stmt::Let(acc, Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span))));
+                    let k = lw.temp(Ty::Int);
+                    let (at, cell) = lw.item_at(&items, k, span);
+                    let both = lw.mk(ExprKind::Tuple(vec![at, cell]), pair(&items), span);
+                    let place = Place { kind: PlaceKind::Local(acc), ty: list_ty.clone(), span: lw.span(span) };
+                    let push = lw.mk(ExprKind::Mutate(Mutation::Push, Box::new(place), vec![both]), Ty::Unit, span);
+                    let lid = lw.fresh_loop();
+                    out.push(Stmt::For(lid, k, items.range(), Block { stmts: vec![Stmt::Expr(push)] }));
+                    out.push(Stmt::Give(lw.local(acc, span)));
+                })
+            }
             (Ty::List(elem), "first") => {
                 let opt = Ty::opt((**elem).clone());
                 builtin(self, Builtin::First, vec![value], opt)
@@ -3094,6 +3117,110 @@ impl<'a> Lowerer<'a> {
             _ => None,
         }
     }
+    /// `xs.items` in a `for` or a comprehension, when `xs` names a
+    /// variable, a field or a cell: the loop counts through the indices
+    /// and reads each element in place, so no list of pairs is built.
+    pub(super) fn items_head(&mut self, e: &ast::Expr) -> Option<Items> {
+        let ast::ExprKind::Field { base, name } = &e.kind else {
+            return None;
+        };
+        if name.text != "items" || !is_place(base) {
+            return None;
+        }
+        if !matches!(self.probe_ty_silent(base), Some(Ty::List(_) | Ty::Array { .. })) {
+            return None;
+        }
+        let seq = self.expr(base, None);
+        self.items_of(&seq, e.span)
+    }
+
+    /// The indices and element type `seq.items` goes through; `None`
+    /// when `seq` is not a list or an array of one dimension.
+    fn items_of(&mut self, seq: &Expr, span: Span) -> Option<Items> {
+        let (dim, elem) = match &seq.ty {
+            Ty::List(elem) => (Dim::Int, (**elem).clone()),
+            Ty::Array { dims, elem } if dims.len() == 1 => (dims[0], (**elem).clone()),
+            _ => return None,
+        };
+        // The loop counts the cells from 0; `[1..=9]T` names them from 1.
+        let (len, index, first) = match dim {
+            Dim::Pos(d) => (self.mk(ExprKind::DomainLen(d), Ty::Int, span), Ty::Pos(d), 0),
+            Dim::Int => (self.len_of(seq.clone(), span), Ty::Int, 0),
+            Dim::IntFrom(first) => (self.len_of(seq.clone(), span), Ty::Int, first),
+            _ => return None,
+        };
+        Some(Items { seq: seq.clone(), len, index, first, elem })
+    }
+
+    /// The index and the element `items` has at the counter `k`.
+    fn item_at(&mut self, items: &Items, k: Slot, span: Span) -> (Expr, Expr) {
+        let k = self.local(k, span);
+        let (at, stored) = match items.index {
+            Ty::Pos(d) => {
+                let at = self.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(k)), Ty::Pos(d), span);
+                (at.clone(), at)
+            }
+            _ if items.first == 0 => (k.clone(), k),
+            _ => (self.int_add(k.clone(), items.first), k),
+        };
+        let cell = self.mk(ExprKind::Index(Box::new(items.seq.clone()), vec![stored]), items.elem.clone(), span);
+        (at, cell)
+    }
+
+    /// Binds the pattern of `for (i, x) in xs.items` and gives the
+    /// loop's counter.
+    pub(super) fn items_bind(&mut self, pat: &ast::Pattern, items: &Items, body: &mut Vec<Stmt>) -> Slot {
+        let k = self.temp(Ty::Int);
+        let (at, cell) = self.item_at(items, k, pat.span);
+        match &pat.kind {
+            ast::PatternKind::Tuple(parts) if parts.len() == 2 => {
+                self.bind(&parts[0], at, body);
+                self.bind(&parts[1], cell, body);
+            }
+            _ => {
+                let ty = Ty::Tuple(vec![items.index.clone(), items.elem.clone()]);
+                let both = self.mk(ExprKind::Tuple(vec![at, cell]), ty, pat.span);
+                self.bind(pat, both, body);
+            }
+        }
+        k
+    }
+
+    /// `xs.find(x => ..)`: the first of a range, list or array the test
+    /// holds for, `none` when there is none.
+    fn find_first(&mut self, value: Expr, elem: Ty, test: &ast::Expr, span: Span) -> Expr {
+                let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
+                let test = self.expect(test, &test_ty);
+                let found_ty = Ty::opt(elem.clone());
+                self.do_expr(Some(&found_ty), span, |lw, out| {
+                    let holds = lw.temp(test_ty);
+                    out.push(Stmt::Let(holds, Some(test)));
+                    let found = lw.temp(found_ty.clone());
+                    out.push(Stmt::Let(found, Some(lw.mk(ExprKind::None, found_ty.clone(), span))));
+                    let item = lw.temp(elem.clone());
+                    let lid = lw.fresh_loop();
+                    let asked = vec![Arg::Value(lw.local(item, span))];
+                    let fits = lw.mk(ExprKind::CallExpr(Box::new(lw.local(holds, span)), asked), Ty::Bool, span);
+                    let some = lw.mk(ExprKind::Some(Box::new(lw.local(item, span))), found_ty.clone(), span);
+                    let place = Place { kind: PlaceKind::Local(found), ty: found_ty.clone(), span: lw.span(span) };
+                    let hit = Block { stmts: vec![Stmt::Assign(place, AssignOp::Set, some), Stmt::Break(None)] };
+                    let body = Block { stmts: vec![Stmt::If(fits, hit, Block::default())] };
+                    let iter = match value.kind {
+                        ExprKind::Range { lo, hi } => Iter::Range { lo: *lo, hi: *hi, step: None, rev: false },
+                        _ if matches!(value.ty, Ty::Range(_)) => Iter::RangeVal(value, false),
+                        _ => Iter::Seq(value, false),
+                    };
+                    out.push(Stmt::For(lid, item, iter, body));
+                    out.push(Stmt::Give(lw.local(found, span)));
+                })
+                }
+
+    /// Whether `e` is a test to search with (`x => x > 3`, or a fn value)
+    /// rather than a value to search for.
+    fn is_test(&mut self, e: &ast::Expr) -> bool {
+        matches!(e.kind, ast::ExprKind::Lambda { .. }) || matches!(self.probe_ty_silent(e), Some(Ty::Fn(..)))
+    }
+
 
     /// Lowers `xs.first_ge(val)`, `xs.last_le(val)`, or `xs.find(val)` on a `List<T>` or 1D `[D]T`.
     fn seq_search_method(
@@ -3725,7 +3852,7 @@ impl<'a> Lowerer<'a> {
         }
         // Members that read like fields can be called too: `xs.len()`.
         if args.is_empty()
-            && matches!(method, "len" | "is_empty" | "first" | "last")
+            && matches!(method, "len" | "is_empty" | "first" | "last" | "items")
             && !matches!(ty, Ty::Struct(_))
         {
             return self.field(whole, base, name);
@@ -4214,6 +4341,18 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(lw.local(acc_slot, span)));
                 })
             }
+            // `xs.find(x => x > 3)` is the first element the test holds
+            // for; `xs.find(3)` is where the value 3 is.
+            (Ty::List(e), "find") if args.len() == 1 && self.is_test(&args[0].value) => {
+                let elem = (**e).clone();
+                self.find_first(value, elem, &args[0].value, span)
+            }
+            (Ty::Array { dims, elem: e }, "find")
+                if dims.len() == 1 && args.len() == 1 && self.is_test(&args[0].value) =>
+            {
+                let elem = (**e).clone();
+                self.find_first(value, elem, &args[0].value, span)
+            }
             (Ty::List(e), "first_ge" | "last_le" | "find") => {
                 let e = (**e).clone();
                 self.seq_search_method(method, value, e, None, args, span)
@@ -4395,29 +4534,7 @@ impl<'a> Lowerer<'a> {
             // and stops there.
             (Ty::Range(elem), "find") if args.len() == 1 => {
                 let elem = (**elem).clone();
-                let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
-                let test = self.expect(&args[0].value, &test_ty);
-                let found_ty = Ty::opt(elem.clone());
-                self.do_expr(Some(&found_ty), span, |lw, out| {
-                    let holds = lw.temp(test_ty);
-                    out.push(Stmt::Let(holds, Some(test)));
-                    let found = lw.temp(found_ty.clone());
-                    out.push(Stmt::Let(found, Some(lw.mk(ExprKind::None, found_ty.clone(), span))));
-                    let item = lw.temp(elem.clone());
-                    let lid = lw.fresh_loop();
-                    let asked = vec![Arg::Value(lw.local(item, span))];
-                    let fits = lw.mk(ExprKind::CallExpr(Box::new(lw.local(holds, span)), asked), Ty::Bool, span);
-                    let some = lw.mk(ExprKind::Some(Box::new(lw.local(item, span))), found_ty.clone(), span);
-                    let place = Place { kind: PlaceKind::Local(found), ty: found_ty.clone(), span: lw.span(span) };
-                    let hit = Block { stmts: vec![Stmt::Assign(place, AssignOp::Set, some), Stmt::Break(None)] };
-                    let body = Block { stmts: vec![Stmt::If(fits, hit, Block::default())] };
-                    let iter = match value.kind {
-                        ExprKind::Range { lo, hi } => Iter::Range { lo: *lo, hi: *hi, step: None, rev: false },
-                        _ => Iter::RangeVal(value, false),
-                    };
-                    out.push(Stmt::For(lid, item, iter, body));
-                    out.push(Stmt::Give(lw.local(found, span)));
-                })
+                self.find_first(value, elem, &args[0].value, span)
             }
             // A sequence walked backwards is something to loop over. As a
             // value it would be the sequence unchanged, which is not what
@@ -4986,7 +5103,7 @@ fn retarget_break(stmts: &mut [Stmt], outer: LoopId, depth: usize) {
 
 /// Whether `e` names somewhere a value lives: a variable, a field or an
 /// element of one.
-fn is_place(e: &ast::Expr) -> bool {
+pub(super) fn is_place(e: &ast::Expr) -> bool {
     match &e.kind {
         ast::ExprKind::Name(_) | ast::ExprKind::SelfValue => true,
         ast::ExprKind::Paren(inner) => is_place(inner),
@@ -5012,5 +5129,22 @@ fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
             *slot = Some(Box::new(absent.clone()));
             true
         }
+    }
+}
+
+/// What `xs.items` goes through: each of the `len` cells of `seq`, with
+/// its index. An `Int` index starts at `first`.
+pub(super) struct Items {
+    seq: Expr,
+    len: Expr,
+    index: Ty,
+    first: i64,
+    elem: Ty,
+}
+
+impl Items {
+    pub(super) fn range(&self) -> Iter {
+        let lo = Expr { kind: ExprKind::Int(0), ty: Ty::Int, span: self.len.span };
+        Iter::Range { lo, hi: self.len.clone(), step: None, rev: false }
     }
 }
