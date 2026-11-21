@@ -30,7 +30,7 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 | `x in V` | is integer `x` a position | O(1) |
 | `V.at(x)` | integer to position, trapping outside `V` | O(1) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free |
-| `5` where a `V` is expected | constant literal, checked against `V` at compile time | free |
+| `5` where a `V` or `V.bounds` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.bounds = 0`); outside a static bound it is a compile error | free |
 
 ## Positions and cuts move the same way
 
@@ -39,9 +39,10 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts |
 | cut `c` | `c.prev`, `c.next`: `?V.bounds` | `c.l`, `c.r`: the positions beside it, `?V` |
 
-`v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too); `.next` is
-`.next(k = 1)`: an `@get` method whose parameters all have defaults reads
-without parentheses.
+`v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too). `.next` is
+`.next(k = 1)`: only methods marked `@get` (which promises O(1)) read without
+parentheses, and an `@get` method may take defaulted parameters. A plain
+method always needs `()`, so nothing costly hides behind a bare name.
 
 One rule: `.l`/`.r` switch kind (left or right side), `.prev`/`.next` keep it.
 The receiver's kind is static, so a mix-up is a type error. `v.l..v.r` is
@@ -110,7 +111,19 @@ let e = E.first              # fine: E.count is m, and m >= 1 here
 - Generic code asks for it: `fn f<domain D: NonEmpty>()`.
 - The check compares one lower bound with 1, so it stays linear.
 
-## Open questions (my recommendation first)
+## Decided (decision 137)
 
-1. **Position arithmetic.** `v + 1` is an `Int`, never a `V`. Alternative: `v + k` is `?V`.
-2. **Binary search spelling.** `r.bsearch(ok)` returning a cut. Alternative: keep `bsearch_first` / `bsearch_last`.
+- `.l`/`.r` switch kind, `.prev`/`.next` keep it; `.next(k)`/`.prev(k)` step k.
+- Position arithmetic gives an `Int`; back into the domain is explicit.
+- `r.bsearch(ok)` returns a cut and replaces `bsearch_first`/`bsearch_last`.
+- Empty domains are valid; `first`/`last` need `NonEmpty`, derived and narrowed.
+- Integer literals convert to positions and cuts of integer domains.
+
+Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
+`.n`/`.p` (`n` reads as a count, `p` as parent); `V.first` always trapping
+(hides the n = 1 case until a hidden test hits it); `@get`-free bare calls
+(silent cost).
+
+## Open
+
+Nothing yet. New questions land here first.

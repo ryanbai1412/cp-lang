@@ -4148,7 +4148,12 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   - `v.next(k)`, `v.prev(k)`, `c.next(k)`, `c.prev(k)` step k at once
     (optional). General rule: an `@get` method whose parameters all have
     defaults may be read without parentheses, so `.next` is `.next(1)`; one
-    method, no overloading (127).
+    method, no overloading (127). Only `@get` methods (O(1) by contract) read
+    bare; a plain method always needs `()`.
+  - An integer literal where a position or cut of an integer domain is
+    expected is that position (`var mex: P.bounds = 0`, `[d]P.bounds = 0`).
+    Non-literal Ints still convert explicitly (`V(i)`, `V.at(i)`).
+  - Rejected: `.n`/`.p` (`n` reads as a count, `p` as parent or prime).
   - Domains may be empty. `D.first`/`D.last` return a plain `D` and exist
     only on `D: NonEmpty`, which the checker derives at each use: the lower
     bound of `D.count`'s range is at least 1. Guards narrow it
