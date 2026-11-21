@@ -35,6 +35,7 @@ fn solve() -> Z:
             r += 1
         last_right[i] = r - 1
 
+    let invs: [0..=n]Z = [0..=n] x => if x == 0: 0 else: comb.inv(x)
     var dp: [0..=n, 0..r]Z = 0
     for i in (0..=n).rev:
         dp[i, first_right[i]] = 1
@@ -43,7 +44,7 @@ fn solve() -> Z:
             if v == 0: continue
             for k in first_right[j + 1]..r:
                 if let nk = nxt_right[k]:
-                    dp[i, nk] += v * dp[j + 1, k] * comb.inv(right_idx[k] - i)
+                    dp[i, nk] += v * dp[j + 1, k] * invs[right_idx[k] - i]
     dp[0, last_right[n]] * comb.fact(n)
 
 print(solve())
