@@ -21,6 +21,10 @@ class ParseScoreTest(unittest.TestCase):
         self.assertEqual(rc.parse_score("Score: pending\n"), "pending")
         self.assertIsNone(rc.parse_score("no score here, Score: 4/5 mid-line"))
 
+    def test_reads_dream_score(self):
+        self.assertEqual(rc.parse_dream_score("Score: 4/5\nDream: 3/5\n"), 3)
+        self.assertIsNone(rc.parse_dream_score("Score: 4/5\n"))
+
 
 class EvaluateTest(unittest.TestCase):
     base = {"ports": ["old"], "new_under_4_max": 0}

@@ -25,6 +25,7 @@ import scoreboard as sb
 REVIEWS_DIR = os.path.join(sb.ROOT, "research", "reviews")
 BASELINE = os.path.join(REVIEWS_DIR, "baseline.json")
 SCORE_RE = re.compile(r"(?m)^Score:\s*(?:(\d)\s*/\s*5|(pending))\b")
+DREAM_RE = re.compile(r"(?m)^Dream:\s*(\d)\s*/\s*5\b")
 
 
 def parse_score(text):
@@ -33,6 +34,12 @@ def parse_score(text):
     if not m:
         return None
     return "pending" if m[2] else int(m[1])
+
+
+def parse_dream_score(text):
+    """The dream's own 1 to 5 score; under 4 means the dream is sent back."""
+    m = DREAM_RE.search(text)
+    return int(m[1]) if m else None
 
 
 def review_path(name):
@@ -126,6 +133,10 @@ def main():
     reviews = {n: s for n, (s, _) in load_reviews(ports).items()}
     dreams = {p["name"] for p in ports if os.path.isfile(dream_path(p))}
     new = {p["name"] for p in ports} - set(baseline["ports"])
+    dream_scores = {p["name"]: parse_dream_score(sb._read_text(review_path(p["name"])))
+                    for p in ports if os.path.isfile(review_path(p["name"]))}
+    dream_scores = {n: s for n, s in dream_scores.items() if s is not None}
+    sent_back = sorted(n for n, s in dream_scores.items() if s < 4)
     errors, st = evaluate(ports, baseline, reviews, dreams, added_port_names(new) if args.check else set())
     gaps = [g for g in (dream_gap(p) for p in ports) if g]
     gap = f"{statistics.median(gaps):.2f}x over {len(gaps)}" if gaps else "none"
@@ -133,6 +144,9 @@ def main():
     print(f"reviews: {st['reviewed']}/{st['ports']} scored, median {median}, {st['under_4']} under 4, "
           f"{st['pending']} pending; new ports {st['new']}, {st['new_under_4']} under 4 "
           f"(ratchet {st['cap']}); dream-token gap {gap}")
+    dmed = f"{statistics.median(dream_scores.values()):g}" if dream_scores else "none"
+    print(f"dreams: {len(dream_scores)} scored, median {dmed}, {len(sent_back)} sent back"
+          + (f" ({', '.join(sent_back)})" if sent_back else ""))
     if not args.quiet:
         for p in ports:
             s = reviews.get(p["name"])
