@@ -1267,6 +1267,8 @@ fn min_weight_matching<L, R>(weight: (L, R) -> Int)
     -> (total: Int, mate: [L]R)                  // O(L^2 R), L <= R
 fn general_matching<V>(adj: [V]List<V>)
     -> (size: Int, mate: [V]?V)                  // O(V^3) Edmonds
+fn max_weight_general_matching<V, E>(edges: [E](u: V, v: V, w: Int))
+    -> (total: Int, mate: [V]?V)                 // O(V^3), O(V^2) memory
 fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int
 fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
     -> ?(value: Int, flow: [E]Int)
@@ -1279,7 +1281,7 @@ fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int))
     -> (w: Int, side: [V]Bool)                   // Stoer-Wagner, O(V^3)
 ```
 
-Staged (design section 7): weighted general matching,
+Staged (design section 7):
 `min_cost_circulation`, `set_cap`, matroid intersection. Network nodes
 built from several domains wait on sum domains (spec §21.11, core lane);
 until then `max_closure`, the bounded flows and the matchings keep their

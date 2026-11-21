@@ -2501,6 +2501,14 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   V <= ~500, where the dense scan beats the heap and has no `Int.MAX` sentinel trick
   (merged vertices are dropped by an `alive` table). Reverse: switch the phase scan to
   `MinHeap` if a port needs sparse V in the thousands.
+- **43.7 `max_weight_general_matching(edges)` is the dense O(V^3) weighted blossom.**
+  It takes `[E](u, v, w)` like `gomory_hu` and returns `(total, mate: [V]?V)` like
+  `general_matching`; it maximizes weight, not size, so edges with `w <= 0` are dropped.
+  No `perfect:` option and no `min_` twin yet: min-weight perfect matching is the same call
+  on `big - w`, and no corpus port asks for it. Reason: contest instances have V <= ~500,
+  where the (2V+1)^2 edge table is a few MB and beats sparse forms. Reverse: add
+  `perfect: Bool = false` (labels start at `big`), or a sparse priority-queue variant if a
+  port needs V in the thousands.
 
 ## 44. Containers area design (§4.8–4.9, 2026-11-21)
 

@@ -84,7 +84,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'is_palindrome', 'is_prime', 'is_sorted', 'knuth_break',
     'last_lt', 'lcp_array', 'line_dist', 'line_intersect', 'locate', 'locate_convex', 'log',
     'lower_hull', 'lt_fields', 'lyndon_factorization', 'manacher', 'max_bounded_flow', 'max_closure',
-    'max_matching', 'max_weight_matching', 'merge_sorted', 'min_bounded_flow', 'min_enclosing_circle', 'min_rotation',
+    'max_matching', 'max_weight_general_matching', 'max_weight_matching', 'merge_sorted', 'min_bounded_flow', 'min_enclosing_circle', 'min_rotation',
     'min_vertex_cover', 'min_weight_matching', 'minkowski_sum', 'minkowski_upper', 'mo_order',
     'mo_steps', 'mod_log', 'mod_sqrt', 'monge_break', 'mul_mod', 'newton', 'next_greater',
     'next_less', 'next_permutation', 'nth_element', 'ntt', 'offline_over', 'on_segment', 'overlap', 'pairs',

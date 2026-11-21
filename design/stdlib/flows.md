@@ -40,7 +40,7 @@ The patterns, in order of frequency, and what each needs from the library:
 9. **General matching.** Maximum cardinality matching in a non-bipartite
    graph.
 
-Deliberately not here yet (section 7): weighted general matching, matroid intersection, push–relabel, dynamic
+Deliberately not here yet (section 7): matroid intersection, push–relabel, dynamic
 capacity changes.
 
 ## 2. The API
@@ -92,6 +92,8 @@ fn min_weight_matching<L, R>(weight: (L, R) -> Int)
     -> (total: Int, mate: [L]R)                      // O(L^2 R) Hungarian, L <= R
 fn general_matching<V>(adj: [V]List<V>)
     -> (size: Int, mate: [V]?V)                      // O(V^3) Edmonds' blossoms
+fn max_weight_general_matching<V, E>(edges: [E](u: V, v: V, w: Int))
+    -> (total: Int, mate: [V]?V)                     // O(V^3) weighted blossoms, O(V^2) memory
 
 fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int
 fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
@@ -339,7 +341,8 @@ The whole area, in the order the corpus is likely to want it:
    The largest single friction in the area.
 2. **`global_min_cut(edges)`** (Stoer–Wagner, O(V^3)) next to `gomory_hu`.
    Shipped: the dense form, since a global cut problem has small `V`.
-3. **`max_weight_general_matching`** (Edmonds weighted, O(V^3)) and
+3. **`max_weight_general_matching`** (Edmonds weighted, O(V^3)): shipped, dense, like
+   `global_min_cut`. Still open:
    `max_weight_matching` over sparse edges (min-cost flow on unit arcs).
 4. **`min_cost_circulation`** with negative cycles (cycle cancelling or
    cost scaling), and `min_cost_flow` over bounded arcs.

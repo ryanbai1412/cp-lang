@@ -21,6 +21,7 @@ prints the best of five wall-clock runs.
 | `max_matching` (Hopcroft-Karp) | 100000 + 100000, 400000 edges | 0.087 s | 0.073 s | 1.19 |
 | `CostFlow.min_cost_flow` | 2002 vertices, 64000 arcs | 1.619 s | 1.148 s | 1.41 |
 | `general_matching` (Edmonds) | 10000 vertices, 15000 edges | 0.047 s | 0.049 s | 0.96 |
+| `max_weight_general_matching` (weighted blossoms) | 800 vertices, 160000 edges | 1.241 s | 0.979 s | 1.27 |
 | `max_closure` (Dinic) | 50000 vertices, 300000 needs | 0.163 s | 0.144 s | 1.13 |
 | `max_bounded_flow` (two Dinics) | 5000 vertices, 210000 arcs | 0.089 s | 0.071 s | 1.25 |
 | `gomory_hu` (Gusfield) | 500 vertices, 5000 edges | 0.119 s | 0.107 s | 1.11 |

@@ -1,5 +1,6 @@
 //! Flows, cuts and matchings: Dinic's max flow and min cut, min-cost flow, maximum
-//! closure, bipartite and general matching, assignment, bounded flows, Gomory-Hu.
+//! closure, bipartite and general matching (weighted too), assignment, bounded flows,
+//! Gomory-Hu and global min cut.
 //!
 //! Two networks, `FlowGraph` and `CostFlow`, share `Arc` and the accessors `flow`, `cap`,
 //! `source`, `target`. Everything whose input is a table or an edge list is a function
@@ -497,6 +498,277 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
             y = next
     (size: size, mate: [V] v => if mate[v.to_idx] == -1: none else: V.nth(mate[v.to_idx]))
 
+/// Weighted blossom state over vertices 1..=n and blossoms n+1..=2n; index 0 is "none".
+/// Edge cells are a (2n+1)^2 table: cell k = u * m + v holds the original edge (eu, ev, ew)
+/// that represents u -> v once u or v is a blossom.
+struct Blossom:
+    n: Int
+    m: Int
+    nx: Int
+    eu: List<Int>
+    ev: List<Int>
+    ew: List<Int>
+    lab: List<Int>
+    mate: List<Int>
+    slack: List<Int>
+    st: List<Int>
+    pa: List<Int>
+    from: List<Int>
+    side: List<Int>
+    vis: List<Int>
+    stamp: Int
+    flower: List<List<Int>>
+    queue: List<Int>
+    at: Int
+
+    fn delta(self, k: Int) -> Int = lab[eu[k]] + lab[ev[k]] - 2 * ew[k]
+
+    fn update_slack(mut self, u: Int, x: Int):
+        if slack[x] == 0 or self.delta(u * m + x) < self.delta(slack[x] * m + x): slack[x] = u
+
+    fn set_slack(mut self, x: Int):
+        slack[x] = 0
+        for u in 1..=n:
+            if ew[u * m + x] > 0 and st[u] != x and side[st[u]] == 0: self.update_slack(u, x)
+
+    fn push(mut self, x: Int):
+        if x <= n: queue.push(x)
+        else:
+            for i in 0..flower[x].len: self.push(flower[x][i])
+
+    fn set_st(mut self, x: Int, b: Int):
+        st[x] = b
+        if x > n:
+            for i in 0..flower[x].len: self.set_st(flower[x][i], b)
+
+    fn get_pr(mut self, b: Int, xr: Int) -> Int:
+        var pr = 0
+        while flower[b][pr] != xr: pr += 1
+        if pr % 2 == 0: return pr
+        var (i, j) = (1, flower[b].len - 1)
+        while i < j:
+            flower[b].swap(i, j)
+            i += 1
+            j -= 1
+        flower[b].len - pr
+
+    fn set_match(mut self, u: Int, v: Int):
+        let k = u * m + v
+        mate[u] = ev[k]
+        if u <= n: return
+        let xr = from[u * (n + 1) + eu[k]]
+        let pr = self.get_pr(u, xr)
+        for i in 0..pr: self.set_match(flower[u][i], flower[u][i ^ 1])
+        self.set_match(xr, v)
+        let f = flower[u].copy()
+        flower[u] = [f[(i + pr) % f.len] for i in 0..f.len]
+
+    fn augment(mut self, u: Int, v: Int):
+        var (u, v) = (u, v)
+        while true:
+            let xnv = st[mate[u]]
+            self.set_match(u, v)
+            if xnv == 0: return
+            self.set_match(xnv, st[pa[xnv]])
+            u = st[pa[xnv]]
+            v = xnv
+
+    fn get_lca(mut self, u: Int, v: Int) -> Int:
+        stamp += 1
+        var (a, b) = (u, v)
+        while a != 0 or b != 0:
+            if a != 0:
+                if vis[a] == stamp: return a
+                vis[a] = stamp
+                a = st[mate[a]]
+                if a != 0: a = st[pa[a]]
+            (a, b) = (b, a)
+        0
+
+    fn add_blossom(mut self, u: Int, lca: Int, v: Int):
+        var b = n + 1
+        while b <= nx and st[b] != 0: b += 1
+        if b > nx: nx += 1
+        lab[b] = 0
+        side[b] = 0
+        mate[b] = mate[lca]
+        flower[b] = [lca]
+        for (start, flip) in [(u, true), (v, false)]:
+            var x = start
+            while x != lca:
+                flower[b].push(x)
+                let y = st[mate[x]]
+                flower[b].push(y)
+                self.push(y)
+                x = st[pa[y]]
+            if flip:
+                var (i, j) = (1, flower[b].len - 1)
+                while i < j:
+                    flower[b].swap(i, j)
+                    i += 1
+                    j -= 1
+        self.set_st(b, b)
+        for x in 1..=nx:
+            ew[b * m + x] = 0
+            ew[x * m + b] = 0
+        for x in 1..=n: from[b * (n + 1) + x] = 0
+        for i in 0..flower[b].len:
+            let xs = flower[b][i]
+            for x in 1..=nx:
+                if ew[b * m + x] == 0 or self.delta(xs * m + x) < self.delta(b * m + x):
+                    let (bx, sx) = (b * m + x, xs * m + x)
+                    (eu[bx], ev[bx], ew[bx]) = (eu[sx], ev[sx], ew[sx])
+                    let (xb, xxs) = (x * m + b, x * m + xs)
+                    (eu[xb], ev[xb], ew[xb]) = (eu[xxs], ev[xxs], ew[xxs])
+            for x in 1..=n:
+                if from[xs * (n + 1) + x] != 0: from[b * (n + 1) + x] = xs
+        self.set_slack(b)
+
+    fn expand_blossom(mut self, b: Int):
+        for i in 0..flower[b].len: self.set_st(flower[b][i], flower[b][i])
+        let xr = from[b * (n + 1) + eu[b * m + pa[b]]]
+        let pr = self.get_pr(b, xr)
+        var i = 0
+        while i < pr:
+            let (xs, xns) = (flower[b][i], flower[b][i + 1])
+            pa[xs] = eu[xns * m + xs]
+            side[xs] = 1
+            side[xns] = 0
+            slack[xs] = 0
+            self.set_slack(xns)
+            self.push(xns)
+            i += 2
+        side[xr] = 1
+        pa[xr] = pa[b]
+        for i in pr + 1..flower[b].len:
+            let xs = flower[b][i]
+            side[xs] = -1
+            self.set_slack(xs)
+        st[b] = 0
+
+    fn on_found(mut self, k: Int) -> Bool:
+        let (u, v) = (st[eu[k]], st[ev[k]])
+        if side[v] == -1:
+            pa[v] = eu[k]
+            side[v] = 1
+            let nu = st[mate[v]]
+            slack[v] = 0
+            slack[nu] = 0
+            side[nu] = 0
+            self.push(nu)
+        elif side[v] == 0:
+            let lca = self.get_lca(u, v)
+            if lca == 0:
+                self.augment(u, v)
+                self.augment(v, u)
+                return true
+            self.add_blossom(u, lca, v)
+        false
+
+    /// One augmentation with dual adjustments; false when no augmenting path pays.
+    fn phase(mut self) -> Bool:
+        for x in 1..=nx:
+            side[x] = -1
+            slack[x] = 0
+        queue = []
+        at = 0
+        for x in 1..=nx:
+            if st[x] == x and mate[x] == 0:
+                pa[x] = 0
+                side[x] = 0
+                self.push(x)
+        if queue.is_empty: return false
+        while true:
+            while at < queue.len:
+                let u = queue[at]
+                at += 1
+                if side[st[u]] == 1: continue
+                for v in 1..=n:
+                    let k = u * m + v
+                    if ew[k] > 0 and st[u] != st[v]:
+                        if self.delta(k) == 0:
+                            if self.on_found(k): return true
+                        else: self.update_slack(u, st[v])
+            var d = Int.MAX
+            for b in n + 1..=nx:
+                if st[b] == b and side[b] == 1: d min= lab[b] / 2
+            for x in 1..=nx:
+                if st[x] == x and slack[x] != 0:
+                    if side[x] == -1: d min= self.delta(slack[x] * m + x)
+                    elif side[x] == 0: d min= self.delta(slack[x] * m + x) / 2
+            for u in 1..=n:
+                if side[st[u]] == 0 and lab[u] <= d: return false
+            for u in 1..=n:
+                if side[st[u]] == 0: lab[u] -= d
+                elif side[st[u]] == 1: lab[u] += d
+            for b in n + 1..=nx:
+                if st[b] == b:
+                    if side[b] == 0: lab[b] += 2 * d
+                    elif side[b] == 1: lab[b] -= 2 * d
+            queue = []
+            at = 0
+            for x in 1..=nx:
+                if st[x] == x and slack[x] != 0 and st[slack[x]] != x and self.delta(slack[x] * m + x) == 0:
+                    if self.on_found(slack[x] * m + x): return true
+            for b in n + 1..=nx:
+                if st[b] == b and side[b] == 1 and lab[b] == 0: self.expand_blossom(b)
+        false
+
+/// A maximum-weight matching in the undirected graph `edges`: no vertex in two chosen
+/// edges, maximizing `total`, the sum of chosen `w`. Edges with `w <= 0` never help and
+/// are ignored; of parallel edges the heaviest counts. Edmonds' weighted blossom
+/// algorithm with dual labels, O(V^3) time, O(V^2) memory.
+pub fn max_weight_general_matching<V, E>(
+    edges: [E](u: V, v: V, w: Int)
+) -> (total: Int, mate: [V]?V):
+    let n = V.K
+    let m = 2 * n + 1
+    var eu = List.filled(m * m, 0)
+    var ev = List.filled(m * m, 0)
+    var ew = List.filled(m * m, 0)
+    for u in 1..=n:
+        for v in 1..=n:
+            eu[u * m + v] = u
+            ev[u * m + v] = v
+    var top = 0
+    for e in E:
+        let (a, b, w) = (edges[e].u.to_idx + 1, edges[e].v.to_idx + 1, edges[e].w)
+        if a != b and w > ew[a * m + b]:
+            ew[a * m + b] = w
+            ew[b * m + a] = w
+            top max= w
+    var from = List.filled(m * (n + 1), 0)
+    for u in 1..=n: from[u * (n + 1) + u] = u
+    var g = Blossom(
+        n,
+        m,
+        n,
+        eu,
+        ev,
+        ew,
+        [if 1 <= i and i <= n: top else: 0 for i in 0..m],
+        List.filled(m, 0),
+        List.filled(m, 0),
+        [i for i in 0..m],
+        List.filled(m, 0),
+        from,
+        List.filled(m, -1),
+        List.filled(m, 0),
+        0,
+        [[] for _ in 0..m],
+        [],
+        0,
+    )
+    var more = true
+    while more: more = g.phase()
+    var total = 0
+    for u in 1..=n:
+        if g.mate[u] > u: total += g.ew[u * m + g.mate[u]]
+    (
+        total: total,
+        mate: [V] v => if g.mate[v.to_idx + 1] == 0: none else: V.nth(g.mate[v.to_idx + 1] - 1),
+    )
+
 /// A flow `f` on every arc with `lo <= f[e] <= hi` that is conserved at every vertex, or
 /// `none` when there is none. One `max_flow` on V + 2 vertices and E + V arcs.
 pub fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int:
@@ -860,6 +1132,37 @@ fn general_matching_matches_brute_force():
                 let bits = (1 << u.to_idx) | (1 << v.to_idx)
                 if u.to_idx == lo and mask & bits == bits: best[mask] max= best[mask ^ bits] + 1
         assert m.size == best[(1 << V.K) - 1]
+
+@test
+fn weighted_general_matching_matches_brute_force():
+    domain V = 0..8
+    for _ in 0..60:
+        let cnt = rand(0, 20)
+        domain E = 0..cnt
+        let edges = [E] _ => (u: V.nth(rand(0, 7)), v: V.nth(rand(0, 7)), w: rand(-3, 20))
+        let m = max_weight_general_matching(edges)
+        var got = 0
+        for v in V:
+            if let w = m.mate[v]:
+                assert m.mate[w] == v and w != v
+                if v < w: got += max(
+                    edges[e].w for e in E if (edges[e].u, edges[e].v) == (v, w) or (
+                        edges[e].u,
+                        edges[e].v,
+                    ) == (w, v)
+                )
+        assert got == m.total
+        var best = List.filled(1 << V.K, 0)
+        for mask in 1..1 << V.K:
+            var lo = 0
+            while (mask >> lo) & 1 == 0: lo += 1
+            best[mask] = best[mask ^ (1 << lo)]
+            for e in E:
+                let (u, v) = (edges[e].u.to_idx, edges[e].v.to_idx)
+                let bits = (1 << u) | (1 << v)
+                if u != v and (u == lo or v == lo) and mask & bits == bits:
+                    best[mask] max= best[mask ^ bits] + edges[e].w
+        assert m.total == best[(1 << V.K) - 1]
 
 fn all_bounded_flows<V, E>(
     arcs: [E](u: V, v: V, lo: Int, hi: Int),
