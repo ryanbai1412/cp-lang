@@ -1577,6 +1577,20 @@ def percentile(xs, q):
     return s[idx]
 
 
+def summarize_dream_compile(dreams_rep):
+    """Compute share of dream/*.cp files that pass `cpl check` with zero errors."""
+    if not dreams_rep or not dreams_rep.get("dreams"):
+        return None
+    total = int(dreams_rep["dreams"])
+    with_errors = int(dreams_rep.get("with_errors", 0))
+    compiled = max(0, total - with_errors)
+    return {
+        "compiled": compiled,
+        "total": total,
+        "rate_pct": round(100.0 * compiled / total, 1) if total else 0.0,
+    }
+
+
 def compute_totals(
     port_records,
     fl_summary,
@@ -1585,6 +1599,7 @@ def compute_totals(
     revision=None,
     spelling_drift=None,
     dream_scores=None,
+    dream_compile=None,
     gate_fast=None,
 ):
     total = len(port_records)
@@ -1796,6 +1811,7 @@ def compute_totals(
         "revision": revision,
         "spelling_drift": spelling_drift,
         "dream_scores": dream_scores,
+        "dream_compile": dream_compile,
         "gate_fast": gate_fast,
     }
 
@@ -1989,6 +2005,28 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                 regressions.append(f"dream-score under-4 count grew: {b_u4} -> {c_u4}")
             elif c_u4 < b_u4:
                 improvements.append(f"dream-score under-4 count shrank: {b_u4} -> {c_u4}")
+
+        bdc = bt.get("dream_compile")
+        cdc = ct.get("dream_compile")
+        if bdc and cdc and bdc.get("total", 0) > 0 and cdc.get("total", 0) > 0:
+            b_comp = bdc.get("compiled", 0)
+            c_comp = cdc.get("compiled", 0)
+            b_rate = bdc.get("rate_pct", 0.0)
+            c_rate = cdc.get("rate_pct", 0.0)
+            if c_comp < b_comp:
+                regressions.append(
+                    f"dream-compile count regressed: {b_comp}/{bdc['total']} ({b_rate}%) -> "
+                    f"{c_comp}/{cdc['total']} ({c_rate}%)"
+                )
+            elif cdc["total"] <= bdc["total"] and c_rate + 1e-6 < b_rate:
+                regressions.append(
+                    f"dream-compile share regressed: {b_rate}% -> {c_rate}%"
+                )
+            elif c_comp > b_comp or c_rate > b_rate + 1e-6:
+                improvements.append(
+                    f"dream-compile improved: {b_comp}/{bdc['total']} ({b_rate}%) -> "
+                    f"{c_comp}/{cdc['total']} ({c_rate}%)"
+                )
 
         cgf = ct.get("gate_fast")
         if cgf and cgf.get("elapsed_s") is not None and cgf["elapsed_s"] > GATE_FAST_BUDGET_S:
@@ -2184,6 +2222,7 @@ def merge_baseline_ports(existing_baseline, new_report, touched_ids=None):
         revision=nt.get("revision") if nt.get("revision") is not None else et.get("revision"),
         spelling_drift=nt.get("spelling_drift") if nt.get("spelling_drift") is not None else et.get("spelling_drift"),
         dream_scores=nt.get("dream_scores") if nt.get("dream_scores") is not None else et.get("dream_scores"),
+        dream_compile=nt.get("dream_compile") if nt.get("dream_compile") is not None else et.get("dream_compile"),
         gate_fast=nt.get("gate_fast") if nt.get("gate_fast") is not None else et.get("gate_fast"),
     )
 
@@ -2375,6 +2414,11 @@ def print_summary(report, diff, show_ports=False, quiet=False):
             f"  dreams:    {ds['scored']} scored, median {ds['median']}/5, "
             f"{ds['under_4']} under 4 (range {ds['min']}..{ds['max']})"
         )
+    dc = t.get("dream_compile")
+    if dc and dc.get("total"):
+        print(
+            f"  dream-ok:  {dc['compiled']}/{dc['total']} ({dc['rate_pct']}%) check with zero errors"
+        )
     gf = t.get("gate_fast")
     if gf and gf.get("elapsed_s") is not None:
         tag = "PASS" if gf.get("ok") else "FAIL"
@@ -2538,6 +2582,8 @@ def build_report(args):
     revision = run_revision_suite(cpl) if not only else None
     spelling_drift = measure_spelling_drift() if not only else None
     dream_scores = summarize_dream_scores() if not only else None
+    dreams_rep = dreams_report(cpl) if not only else None
+    dream_compile = summarize_dream_compile(dreams_rep) if dreams_rep else None
 
     baseline = None
     if args.baseline and os.path.isfile(args.baseline):
@@ -2557,6 +2603,7 @@ def build_report(args):
         revision=revision,
         spelling_drift=spelling_drift,
         dream_scores=dream_scores,
+        dream_compile=dream_compile,
         gate_fast=gate_fast,
     )
     if mode == "fast" and not only and baseline and totals["interp"].get("ratio_p50") is None:
@@ -2584,6 +2631,7 @@ def build_report(args):
         "frictions": fr_summary,
         "friction_lint": fl_summary,
         "writable_from_docs": wfd_data,
+        "dreams": dreams_rep,
         "ports": port_records,
     }
     diff = diff_against_baseline(report, baseline, mode=mode, subset=bool(only))
@@ -2639,7 +2687,8 @@ def main(argv=None):
         return 0
 
     report, diff = build_report(args)
-    report["dreams"] = dreams_report(find_cpl_binary(args.cpl))
+    if report.get("dreams") is None:
+        report["dreams"] = dreams_report(find_cpl_binary(args.cpl))
     if args.write:
         to_write = report
         if not args.all_ports and os.path.isfile(args.out):

@@ -925,6 +925,53 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         self.assertIn(">10x: 3", out)
         self.assertIn("(cached)", out)
 
+    def test_dream_compile_metric_and_ratchet(self):
+        dc = sb.summarize_dream_compile({"dreams": 60, "with_errors": 54})
+        self.assertEqual(dc, {"compiled": 6, "total": 60, "rate_pct": 10.0})
+
+        base = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "dream_compile": {"compiled": 6, "total": 60, "rate_pct": 10.0},
+            },
+        }
+        # Breaking a compiling dream must fail.
+        cur_bad = {
+            "ports": [],
+            "totals": {
+                **base["totals"],
+                "dream_compile": {"compiled": 5, "total": 60, "rate_pct": 8.3},
+            },
+        }
+        diff_bad = sb.diff_against_baseline(cur_bad, base, mode="fast")
+        self.assertTrue(any("dream-compile count regressed" in m for m in diff_bad["regressions"]))
+
+        # Adding a new uncompilable dream without breaking existing compiling dreams must pass.
+        cur_new_dream = {
+            "ports": [],
+            "totals": {
+                **base["totals"],
+                "dream_compile": {"compiled": 6, "total": 62, "rate_pct": 9.7},
+            },
+        }
+        diff_new = sb.diff_against_baseline(cur_new_dream, base, mode="fast")
+        self.assertEqual(diff_new["regressions"], [])
+
+        # Compiling more dreams records an improvement.
+        cur_good = {
+            "ports": [],
+            "totals": {
+                **base["totals"],
+                "dream_compile": {"compiled": 9, "total": 60, "rate_pct": 15.0},
+            },
+        }
+        diff_good = sb.diff_against_baseline(cur_good, base, mode="fast")
+        self.assertEqual(diff_good["regressions"], [])
+        self.assertTrue(any("dream-compile improved" in m for m in diff_good["improvements"]))
+
 
 if __name__ == "__main__":
     unittest.main()
