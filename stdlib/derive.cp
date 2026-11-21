@@ -7,6 +7,7 @@
 //! hash_fields(self)` is the whole derive.
 
 use std.math.splitmix64
+use std.rand.Rng
 
 /// `a == b` field by field, in declaration order.
 pub fn eq_fields<T>(a: T, b: T) -> Bool:
@@ -68,3 +69,28 @@ pub fn hash_fields<T>(a: T) -> U64:
     for f in fields(a):
         h = splitmix64(h ^ f.hash())
     h
+
+/// A small random value of a type, for stress generators: the same `Rng`
+/// seed gives the same values in `cpl run` and in the built C++. O(1).
+@on_unimplemented(
+    "`{T}` has no `gen`; for a struct, `impl Gen for {T}: fn gen(mut r: Rng) -> {T} = gen_fields(mut r)`"
+)
+pub trait Gen:
+    fn gen(mut r: Rng) -> Self
+
+/// `0..=9`.
+impl Gen for Int:
+    fn gen(mut r: Rng) -> Int = r.int(0, 9)
+
+impl Gen for Bool:
+    fn gen(mut r: Rng) -> Bool = r.int(0, 1) == 1
+
+/// `'a'..='z'`.
+impl Gen for Char:
+    fn gen(mut r: Rng) -> Char = Char(Int('a') + r.int(0, 25))
+
+/// A value of the type wanted, `let x: Int = gen(mut r)`. O(1).
+pub fn gen<T: Gen>(mut r: Rng) -> T = T.gen(mut r)
+
+/// A `T` with each field drawn by its own `Gen`, in declaration order.
+pub fn gen_fields<T>(mut r: Rng) -> T = T(gen(mut r) for _ in fields(T))

@@ -151,7 +151,10 @@ impl<'a> Lowerer<'a> {
                 }
                 match self.get_sym(name) {
                     Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
-                    Some(Sym::GenFn(gfid)) => self.call_gen_fn(gfid, Vec::new(), None, args, span),
+                    Some(Sym::GenFn(gfid)) => {
+                        self.call_hint = hint.cloned();
+                        self.call_gen_fn(gfid, Vec::new(), None, args, span)
+                    }
                     Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
                     Some(Sym::GenStruct(gid)) => self.call_gen_struct(gid, Vec::new(), args, hint, span),
                     Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
@@ -5141,6 +5144,21 @@ impl<'a> Lowerer<'a> {
                         format!("`{}` has no fn `{}`", self.structs[sid].def.name, name.text),
                     );
                     return self.err_expr(span);
+                }
+            }
+        }
+        // `T.gen(r)` for a type parameter filled by a built-in type: the
+        // fn its `impl` declares.
+        if let ast::ExprKind::Name(tname) = &base.kind {
+            if let (None, Some(GenArg::Ty(ty))) = (self.lookup(tname), self.gen_env.get(tname)) {
+                let ty = ty.clone();
+                let found = self
+                    .prim_methods
+                    .iter()
+                    .find(|(t, m, _)| *t == ty && *m == name.text)
+                    .map(|p| p.2);
+                if let Some(fn_id) = found {
+                    return self.user_call(fn_id, None, args, span);
                 }
             }
         }

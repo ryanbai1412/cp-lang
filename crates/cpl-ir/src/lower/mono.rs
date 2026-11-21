@@ -1146,6 +1146,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        let hint = self.call_hint.take();
         let tpl_mod = self.gen_fns[gfid].mod_id;
         let tpl_offset = self.gen_fns[gfid].offset;
         let owner_env = self.gen_fns[gfid].owner_env.clone();
@@ -1471,6 +1472,13 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     }
+                }
+            }
+        }
+        if let (Some(ret_ast), Some(want)) = (decl.ret.as_ref(), hint.filter(|t| *t != Ty::Error)) {
+            if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
+                if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text) {
+                    inferred.insert(rn.text.clone(), GenArg::Ty(want));
                 }
             }
         }

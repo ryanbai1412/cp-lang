@@ -1666,10 +1666,14 @@ fn show_fields<T>(a: T) -> Str // O(fields)
 fn read_fields<T>() -> T // O(fields): T(read() for _ in fields(T))
 trait Hash: fn hash(self) -> U64 // Int, U64, Char, Bool, Str here (decision 28.8)
 fn hash_fields<T>(a: T) -> U64 // O(fields)
+trait Gen: fn gen(mut r: Rng) -> Self // Int 0..=9, Bool, Char 'a'..='z' (decision 28.12)
+fn gen<T: Gen>(mut r: Rng) -> T // O(1); T from the type wanted
+fn gen_fields<T>(mut r: Rng) -> T // O(fields)
 ```
 
 `impl Hash for P: fn hash(self) = hash_fields(self)` derives a struct's
-`Hash` from its fields'.
+`Hash` from its fields'; `impl Gen for P: fn gen(mut r: Rng) -> P =
+gen_fields(mut r)` derives a stress generator the same way.
 
 ## 5. Not here yet
 

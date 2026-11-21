@@ -599,6 +599,9 @@ struct Lowerer<'a> {
     cx: FnCx,
     outer_cxs: Vec<FnCx>,
     gen_env: GenEnv,
+    /// The type wanted of the generic call being lowered, which fills a
+    /// type parameter only its return type names: `let x: Int = gen(r)`.
+    call_hint: Option<Ty>,
     self_struct: Option<StructId>,
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
@@ -684,6 +687,7 @@ impl<'a> Lowerer<'a> {
             cx: FnCx::default(),
             outer_cxs: Vec::new(),
             gen_env: HashMap::new(),
+            call_hint: None,
             self_struct: None,
             offset: 0,
             asked_at: Span::default(),

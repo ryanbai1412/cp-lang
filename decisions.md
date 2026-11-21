@@ -2156,6 +2156,22 @@ Reverse: delete `editors/jetbrains/` and its block in `editors/smoke.sh`.
   type counts as met, so no valid program is newly rejected (291/291 ports
   pass `scoreboard.py --fast`). Test: `diagnostics/trait_names_its_own_fix`.
   Reverse: return `true` from `implements` in `cpl-ir/src/lower/mono.rs`.
+- **28.12 `Gen` is a trait of static fns, and a generic call takes its
+  return type from the type wanted.** `trait Gen: fn gen(mut r: Rng) ->
+  Self` has no `self`; `T.gen(mut r)` inside `fn gen<T: Gen>` calls the
+  `impl` of whatever fills `T`, built-in types included. A generic fn whose
+  type parameter appears only in its return type (`fn gen<T: Gen>(mut r:
+  Rng) -> T`) takes it from the expected type, so `let x: Int = gen(mut r)`
+  and `P(gen(mut r) for _ in fields(P))` draw each field by its own type;
+  before, such a parameter silently defaulted to `Int`. `gen_fields<T>`
+  is then one line of `std.derive`, and `impl Gen for S: fn gen(mut r: Rng)
+  -> S = gen_fields(mut r)` derives a generator for a stress test. Same
+  seed, same values in `cpl run` and the C++ (`programs/derive_gen`).
+  *Reason:* generators derived from types are the stress goal, and the
+  missing pieces were general (static trait calls, return-type inference),
+  not generator-specific. *Reverse:* drop `call_hint` in
+  `cpl-ir/src/lower/mono.rs` and the built-in arm before `match
+  self.sym(base)` in `Lowerer::method`.
 
 - **30.7 Dreams are a diagnostics corpus.** `scripts/dream-gaps.py` checks every
   `proto/ports/*/dream/*.cp` and files each error under the gap it names: `syntax:` (an `E0504`

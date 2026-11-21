@@ -57,7 +57,7 @@ walks the active variant's payload (28.6). `std.derive` has `eq_fields`,
 default derive is not on them yet because hooking every struct grew emitted
 C++ past the 5% gate. An `impl` gives a built-in type methods, so `Hash`
 and `hash_fields` are library code (28.8); `P(e for f in fields(..))`
-builds a struct field by field, so `read_fields` is too (28.9). A projection is a writable place through a method
+builds a struct field by field, so `read_fields` is too (28.9). `trait Gen` has static fns (`T.gen(mut r)`), and a generic call takes a return-only type parameter from the type wanted, so `gen_fields` is one line too (28.12). A projection is a writable place through a method
 (`b.at(i) += 10`, `b.name(1) = ...`, a read-only `lends` rejected), pinned by
 `programs/lends_through_methods`. Not built: postfix `x?` expression-extent lifting,
 opaque `struct List<T>` / struct type-param
