@@ -79,11 +79,14 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
                 BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Pow
             ) {
                 if let Some(v) = bounds.expr(expr).filter(|v| v.lo != v.hi) {
+                    let int = i64::MAX as i128;
+                    let leaves = v.lo < -int - 1 || v.hi > int;
                     out.push(crate::ProvenExpr {
                         op: (base + op_span.start, base + op_span.end),
                         expr: (base + expr.span.start, base + expr.span.end),
                         lo: v.lo,
                         hi: v.hi,
+                        overflow: leaves.then(|| bounds.overflow(expr)).flatten(),
                     });
                 }
             }
@@ -188,7 +191,14 @@ fn ranges_in(
                 }
                 forget(pat, bounds);
                 if let PatternKind::Name(name) = &pat.kind {
-                    bounds.bind(name, value);
+                    match (value, ty, init) {
+                        (Some(v), Some(_), _) => bounds.input(name, v),
+                        (_, None, Some(init)) if !mutable => {
+                            bounds.bind(name, value);
+                            bounds.define(name, init);
+                        }
+                        _ => bounds.bind(name, value),
+                    }
                 }
             }
             StmtKind::Const { name, init, .. } => {
@@ -261,10 +271,10 @@ fn ranges_in(
                 bounds.declare_fn(&decl.name.text);
                 let mut inner = bounds.clone();
                 for param in &decl.params {
-                    inner.bind(
-                        &param.name.text,
-                        param.ty.as_ref().and_then(|t| inner.range(t)),
-                    );
+                    match param.ty.as_ref().and_then(|t| inner.range(t)) {
+                        Some(range) => inner.input(&param.name.text, range),
+                        None => inner.bind(&param.name.text, None),
+                    }
                 }
                 if let FnBody::Block(block) = &decl.body {
                     inner.declare_fn(&decl.name.text);

@@ -744,7 +744,7 @@ no longer shows first as a wrong argument or index count); the lints
 `cpl lint` reports, each with its `cpl fix` fix as a quick fix, and
 `cpl fix` on the buffer as a `source.fixAll.cpl` action, removed syntax first (the replaced
 spellings, `where`, `--- multitest ---`, `.pow` and getter `()`, each a quick fix tested on a
-real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too, at its declaration and at each use, and for a `var` the range every assignment in its scope keeps (`best max= 2 * a`; `c += 1` in a loop has none), narrowed by the comparisons an `if`, `elif` or `while` condition makes, and by the ones each earlier branch failed (`if n > 50:` gives `n - 50: Int in 1..=199950`, its `else` `n - 10: Int in -9..=40`), and on a `+`, `-`, `*`, `/`, `%` or `**`, or a call of `min`, `max` or `abs`, the range of its value (`n * n: Int in 1..=40000000000`) with `can overflow Int` when it leaves `Int`; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
+real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too, at its declaration and at each use, and for a `var` the range every assignment in its scope keeps (`best max= 2 * a`; `c += 1` in a loop has none), narrowed by the comparisons an `if`, `elif` or `while` condition makes, and by the ones each earlier branch failed (`if n > 50:` gives `n - 50: Int in 1..=199950`, its `else` `n - 10: Int in -9..=40`), and on a `+`, `-`, `*`, `/`, `%` or `**`, or a call of `min`, `max` or `abs`, the range of its value (`n * n: Int in 1..=40000000000`) with, when it leaves `Int`, the inputs the prover finds that overflow it (`overflows Int when n = 55109`, also a soft note on the line) or else `may overflow Int`; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms), and gates the 95th percentile of
@@ -759,9 +759,9 @@ Hover shows the index space and its bound for arrays and positions
 (`xs: [V]Int`, `domain V = 0..n, n <= 100`, storage per element and in
 total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
-Gaps against `plan/60`: no computed cost on hover; no proven range of an
-expression or a `var`; no cost or overflow
-warnings; rename sees open files, not the folder on disk, and misses
+Gaps against `plan/60`: no computed cost on hover; overflow notes only on names the prover can follow (range-typed inputs and
+params and `let`s of arithmetic over them, not narrowed names, loop
+variables or `var`s); no cost warnings; rename sees open files, not the folder on disk, and misses
 local shadowing; no refactorings; no
 auto-import; Emacs (eglot draws no lenses) and Helix
 run from a shell command; no DAP. Fixture tests (`crates/cpl-lsp/tests/fixtures/`: a `.cp` with `$0` cursor markers and the requests to send, checked against a readable `.expected` snapshot, `BLESS=1` to rewrite) cover hover, completion, signature help, definition, references, highlights, rename, code actions, inlay hints, folding and the outline. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter

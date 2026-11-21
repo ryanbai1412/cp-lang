@@ -2248,6 +2248,16 @@ gives each unwritten parameter its type, with `T` the receiver's element, before
 inferred: one rule for every built-in method that takes a lambda, and the body is checked with
 real types. Reverse: drop `catalog_lambda_params` and the `lambda_params` field.
 
+29.25. **The editor's overflow warning names inputs the prover found, and is a note.** An
+interval hull that leaves `Int` is only a suspicion (`a - b` with `a >= b` known, a `var`'s
+hull), so the editor asks `cpl-prover` for inputs in their declared ranges that overflow the
+operation and shows a soft note only when it finds some: `area * area overflows Int when n =
+55109`. Only names it can follow take part (range-typed inputs and params, immutable `let`s of
+arithmetic over them); a narrowed name, a loop variable or a `var` makes it say nothing, so a
+note is never a false alarm. It is a note in the editor, not a lint, until the checker owns
+ranges; it fires on none of the 305 ports and examples. Reverse: drop `Bounds::overflow` and
+`overflows` in the server.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

@@ -743,6 +743,7 @@ impl Server {
         let items = cpl_ir::check(&analysis)
             .iter()
             .chain(&lints(uri, &analysis.text))
+            .chain(&overflows(&analysis.text))
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
         publish(uri, items)
@@ -783,10 +784,10 @@ impl Server {
         let source = analysis.text.get(start as usize..end as usize)?;
         let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
         let int = i64::MAX as i128;
-        let fits = if proven.lo < -int || proven.hi > int {
-            "\n  can overflow Int"
-        } else {
-            ""
+        let fits = match &proven.overflow {
+            Some(inputs) => format!("\n  overflows Int when {inputs}"),
+            None if proven.lo < -int - 1 || proven.hi > int => "\n  may overflow Int".to_string(),
+            None => String::new(),
         };
         Some(cpl_check::Hover {
             span: Span { start, end },
@@ -1176,6 +1177,27 @@ fn fix_file(uri: &str, text: &str) -> Option<String> {
         &lint_config(uri),
     );
     (applied > 0).then_some(fixed)
+}
+
+/// A soft note on each operation the prover shows leaves `Int` for inputs
+/// in their declared ranges, naming those inputs.
+fn overflows(text: &str) -> Vec<Diagnostic> {
+    cpl_lint::proven_expr_ranges(text)
+        .into_iter()
+        .filter_map(|e| {
+            let inputs = e.overflow?;
+            let span = Span::new(e.expr.0, e.expr.1);
+            let source = text.get(e.expr.0 as usize..e.expr.1 as usize)?;
+            let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
+            let mut diag = Diagnostic::warning(
+                cpl_diag::Code("overflow"),
+                span,
+                format!("`{source}` overflows Int when {inputs}"),
+            );
+            diag.severity = cpl_diag::Severity::Note;
+            Some(diag)
+        })
+        .collect()
 }
 
 #[cfg(target_arch = "wasm32")]

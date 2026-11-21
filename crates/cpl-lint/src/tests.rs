@@ -1730,3 +1730,19 @@ fn an_if_condition_narrows_the_names_it_compares() {
         assert_eq!(range_of(&format!("{head}{body}"), "let y"), want, "{body}");
     }
 }
+
+#[test]
+fn the_prover_names_the_inputs_an_overflow_needs() {
+    let overflows = |src: &str| -> Vec<Option<String>> {
+        crate::proven_expr_ranges(src).into_iter().map(|e| e.overflow).collect()
+    };
+    let head = "let n: 1..=200000 = read()\nlet a: -1e9..=1e9 = read()\nlet m = n * n\n";
+    let some = |s: &str| Some(s.to_string());
+    assert_eq!(overflows(&format!("{head}print(m * m)\n")), [None, some("n = 55109")]);
+    assert_eq!(overflows(&format!("{head}print(a * a * a)\n")), [None, None, some("a = 2097152")]);
+    assert_eq!(overflows(&format!("{head}print(n * n * n)\n")), [None, None, None]);
+    let narrowed = format!("{head}if n < 1000:\n    print(n * n * n * n * n)\n");
+    assert!(overflows(&narrowed).iter().all(Option::is_none), "a narrowed name is not an input");
+    let var = format!("{head}var t = n\nt = n * n\nprint(t * t)\n");
+    assert!(overflows(&var).iter().all(Option::is_none), "a var is not followed");
+}

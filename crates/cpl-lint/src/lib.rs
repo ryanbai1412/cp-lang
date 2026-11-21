@@ -553,6 +553,9 @@ pub struct ProvenExpr {
     pub expr: (u32, u32),
     pub lo: i128,
     pub hi: i128,
+    /// When the value can leave `Int`: inputs in their declared ranges for
+    /// which it does, found and checked by the prover (`n = 55110`).
+    pub overflow: Option<String>,
 }
 
 /// What the declared bounds prove about each `+`, `-`, `*`, `/`, `%` and `**` outside
