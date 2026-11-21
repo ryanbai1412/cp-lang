@@ -598,6 +598,13 @@ fn counted_arrays_derived_domains_generators_and_do_blocks() {
 }
 
 #[test]
+fn grader_domain_without_range() {
+    let s = stmts("domain Row\ndomain Col = 0..m\n");
+    assert!(matches!(&s[0].kind, StmtKind::Domain { name, .. } if name.text == "Row"));
+    assert!(matches!(&s[1].kind, StmtKind::Domain { name, .. } if name.text == "Col"));
+}
+
+#[test]
 fn structs_enums_domains_and_match() {
     let s = stmts("domain V = 1..=n\nstruct Road:\n    u, v: V\n    len: 1..=1e9 = 1\n    fn other(self, x: V) -> V:\n        if x == self.u: self.v else: self.u\nenum Dir = L | R | U | D\nenum Op:\n    Add(l: V, r: V)\n    Ask(V)\nmatch op:\n    Add(l, r) => st.add(l, r)\n    Ask(i) =>\n        let x = st.get(i)\n        print(x)\n    _ => print(0)\nuse std.segtree\nuse lib.treap.{Treap, Node}\nuse lib.graph.flow as fl\n");
     assert!(matches!(&s[0].kind, StmtKind::Domain { name, .. } if name.text == "V"));

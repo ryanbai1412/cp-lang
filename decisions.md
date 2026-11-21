@@ -4234,3 +4234,15 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   storage follows the vertex type; groupings return fresh domains;
   `t.order` (parents first) gives recursion-free tree DP.
 - **Reverse.** Each doc's "Open" section lists the alternative per call.
+
+## 139. Grader domains sized by the judge (2026-11-21)
+
+- **Decision.** In a `@grader` module, `domain Row` with no range is sized by
+  the first grader call that binds a `[Row]T` argument; later bindings must
+  match, and use before binding traps. See `design/spec/32-graders-bundling.md`.
+- **Why.** IOI-style tasks hand sizes to `init`, while module state (`var
+  home: [Col]?Node`) must be typed over those index spaces at module level.
+  A generic `fn init<domain Row>` ends with the call; a module `var n` read
+  by `domain Row = 0..n` would fix the size at declaration time.
+- **Reverse.** Require `domain Row = 0..n` inside each grader fn and pass
+  state explicitly.

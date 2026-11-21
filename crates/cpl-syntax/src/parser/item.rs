@@ -550,6 +550,14 @@ impl<'a> Parser<'a> {
     pub(super) fn domain_decl(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a domain name after `domain`");
+        // `domain Row` in a grader module: sized when a grader fn first binds a `[Row]T` argument.
+        if self.at_line_end() {
+            let def = Expr {
+                kind: ExprKind::Name("todo".into()),
+                span: Span::point(self.prev_end()),
+            };
+            return StmtKind::Domain { name, def };
+        }
         self.expect(
             T::Eq,
             "`=` and the domain's range, as in `domain V = 1..=n`",

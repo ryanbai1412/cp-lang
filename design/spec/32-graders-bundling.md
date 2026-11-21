@@ -16,7 +16,12 @@ body, and the bundler falls back to the body when the judge profile lacks the ta
 ## 32.2 Graders
 
 `@grader fn init(…)` and similar export functions with the judge's C signature. Grader arguments never
-convert under `io(base:)`. `@gen` for a grader problem produces the argument tuple. Stress runs the grader
+convert under `io(base:)`.
+
+A grader module's index spaces are sized by the judge, not by the source. A module-level `domain Row` with
+no `= range` is fixed by the first grader call that binds an argument of type `[Row]T`: its length becomes
+`Row.count`, and every later binding must match (trap otherwise). Module state like `var home: [Col]?Node`
+is declared over it as usual; using `Row` before it is bound traps, naming the domain. `@gen` for a grader problem produces the argument tuple. Stress runs the grader
 functions through a generated harness.
 
 `@judge_fn(limit: n + 2) fn press(p: Str) -> I32` declares a function the judge provides. Stress
