@@ -726,7 +726,7 @@ expression or a `var`; no cost or overflow
 warnings; rename sees open files, not the folder on disk, and misses
 local shadowing; no refactorings; no
 auto-import; Emacs (eglot draws no lenses) and Helix
-run from a shell command; no fixture tests, fuzzer or DAP. The tree-sitter
+run from a shell command; no fixture tests or DAP. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter
 grammar (`editors/tree-sitter-cp/`) is token-level: it highlights, but gives
 no tree for folding, indents or text objects (the server folds).
 The JetBrains plugin (`editors/jetbrains/`, IntelliJ Platform LSP API, 2024.3

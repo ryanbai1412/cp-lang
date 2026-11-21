@@ -519,7 +519,7 @@ fn a_panic_is_contained_and_reported() {
         .at(&["error", "message"])
         .as_str()
         .unwrap()
-        .contains("deliberate test panic"));
+        .contains("internal error in cpl while handling `cpl/testPanic`: deliberate test panic"));
     let diagnostics = diagnostics_of(&reply[1..]);
     assert_eq!(diagnostics[0].get("code").as_str(), Some("E9999"));
     // The open document survived, and the next request is answered.
