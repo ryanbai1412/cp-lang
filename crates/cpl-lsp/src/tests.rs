@@ -861,6 +861,27 @@ fn builtin_domain_and_position_members_are_the_checkers() {
 }
 
 #[test]
+fn completion_and_hover_see_names_from_a_declaration_that_did_not_parse() {
+    let src = "let total = 2 * $x\nfn main(n: Int):\n    let half = n / $2\n    print(to|)\n";
+    let names = labels(&completions(src))
+        .into_iter()
+        .map(String::from)
+        .collect::<Vec<_>>();
+    assert!(
+        names.contains(&"total".into()) && names.contains(&"half".into()),
+        "{names:?}"
+    );
+    let hover = ask_at(
+        "textDocument/hover",
+        "let ($left, right) = (4, 6)\nprint(ri|ght)\n",
+    );
+    assert_eq!(
+        hover.at(&["contents", "value"]).as_str(),
+        Some("```cp\nright: Int\n```")
+    );
+}
+
+#[test]
 fn completion_offers_locals_declarations_and_the_prelude_with_signatures() {
     let src = format!("{ROAD}/// Adds one.\nfn inc(x: Int) -> Int = x + 1\nfn main(n: Int):\n    let total = n * 2\n    pr|\n");
     let items = completions(&src);

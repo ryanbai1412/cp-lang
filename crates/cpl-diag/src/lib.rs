@@ -150,6 +150,8 @@ pub mod codes {
     pub const NON_ASCII: Code = Code("E0502");
     /// A spelling an earlier version of the language had and v2.2 removed.
     pub const REMOVED_SYNTAX: Code = Code("E0503");
+    /// Syntax the 0.3 design has and this version does not implement yet.
+    pub const NOT_IMPLEMENTED: Code = Code("E0504");
 
     pub const LENT_TWICE: Code = Code("E0601");
     pub const USED_WHILE_LENT: Code = Code("E0602");

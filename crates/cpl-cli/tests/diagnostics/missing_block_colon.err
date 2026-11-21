@@ -1,0 +1,7 @@
+error[E0103]: expected `:` or `=` to start the body of `f`, found the end of the line
+  --> missing_block_colon.cp:1:20
+  |
+1 | fn f(a: Int) -> Int
+  |                    ^
+
+missing_block_colon.cp: 1 error

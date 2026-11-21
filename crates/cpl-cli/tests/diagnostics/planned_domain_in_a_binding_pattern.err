@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: `domain` in a binding pattern (see design/spec/12-scoped-types.md §12.2)
+  --> planned_domain_in_a_binding_pattern.cp:4:6
+  |
+4 | let (domain P, k) = split(4)
+  |      ^^^^^^^^
+  = help: write the domain's name alone, capitalized: `let (C, comp) = scc(g)`
+
+planned_domain_in_a_binding_pattern.cp: 1 error

@@ -1,0 +1,13 @@
+error[E0102]: expected a value after `*`, found `*`
+  --> doubled_operator.cp:1:13
+  |
+1 | let a = 1 * * 2
+  |             ^
+
+error[E0102]: expected a value after `+`, found `)`
+  --> doubled_operator.cp:3:10
+  |
+3 | print(a +)
+  |          ^
+
+doubled_operator.cp: 2 errors

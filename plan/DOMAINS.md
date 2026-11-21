@@ -195,12 +195,21 @@ and completion; there are zero cascades; every planned feature names itself;
 and libraries can attach their own errors. Measured against a benchmark of
 real contestant mistakes, the first error points at the real cause almost
 always.
-**Where we are.** Line-level recovery; cascades from failed declarations;
-generic messages for planned syntax. (Lane running.)
+**Where we are.** Statement recovery keeps the names a broken declaration
+declares (a broken fn header is bound with an unknown type), and an
+unreadable character no longer drops its line. Broken-ports benchmark
+(`cpl-cli/tests/recovery.rs`, six single edits per port): 0.04 cascades per
+copy, first error on the right line 99.8%, ratchet at 0.05 per copy.
+Planned 0.3 forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
+"not implemented yet: ... (see design/...)"); three entries so far. Golden
+rendered diagnostics in `cpl-cli/tests/diagnostics/`.
 **Bar.** Golden diagnostics for every error code; a broken-ports benchmark
 with first-error accuracy and cascade counts.
-**Next.** Error nodes, unknown-type bindings, "not implemented yet" for
-planned syntax.
+**Next.** Count cascades by root cause instead of "every error after the
+first"; struct/enum headers that fail to parse should also bind with an
+unknown shape; fn stubs `-> T: ...` and the rest of `design/DELTA.md` into
+the planned table or implemented; quick fixes on every syntax error;
+top-level tuple-destructured names in LSP completion.
 
 ## 6. Interpreter, debugger and traces (`plan/50`)
 **North star.** Doubt becomes evidence in seconds. A time-travel debugger over

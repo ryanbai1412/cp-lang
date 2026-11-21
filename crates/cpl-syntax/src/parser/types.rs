@@ -198,6 +198,12 @@ impl<'a> Parser<'a> {
                     name.text = format!("{}.{}", name.text, member.text);
                     name.span = name.span.to(member.span);
                 }
+                if name.text == "Str" && args.is_empty() && self.at(T::LParen) {
+                    let open = self.start();
+                    self.pos = after_group(self.tokens, self.pos);
+                    let span = self.span_from(open);
+                    self.planned(span, &crate::planned::BOUNDED_STR, None);
+                }
                 TypeKind::Named { name, args }
             }
             // `xs.D`: the domain a value brought with it, as `compress` does.
@@ -366,6 +372,13 @@ impl<'a> Parser<'a> {
                         traits,
                     });
                 }
+            }
+            if p.at(T::Eq) {
+                let start = p.start();
+                p.bump();
+                p.ty();
+                let span = p.span_from(start);
+                p.planned(span, &crate::planned::TYPE_PARAM_DEFAULT, None);
             }
             name
         });

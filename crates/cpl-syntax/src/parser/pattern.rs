@@ -44,6 +44,20 @@ impl<'a> Parser<'a> {
                 };
                 PatternKind::Variant { path, args }
             }
+            T::Domain if self.peek_n(1) == T::Ident => {
+                self.bump();
+                let name = self.name();
+                let span = self.span_from(start);
+                self.planned(
+                    span,
+                    &crate::planned::DOMAIN_PATTERN,
+                    Some(name.text.clone()),
+                );
+                PatternKind::Variant {
+                    path: vec![name],
+                    args: Vec::new(),
+                }
+            }
             T::Ident => PatternKind::Name(self.name().text),
             T::SelfKw => {
                 self.bump();

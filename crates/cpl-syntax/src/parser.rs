@@ -409,6 +409,26 @@ impl<'a> Parser<'a> {
         out
     }
 
+    /// Reports `span` as planned syntax. The parser has read it, so it is
+    /// poisoned rather than recovered from: what it declares stays as
+    /// written.
+    /// `rewrite`, if given, is the spelling of today that replaces `span`.
+    fn planned(&mut self, span: Span, planned: &crate::planned::Planned, rewrite: Option<String>) {
+        if self.speculating == 0 {
+            let message = format!(
+                "not implemented yet: {} (see {})",
+                planned.feature, planned.see
+            );
+            let mut diag =
+                Diagnostic::error(codes::NOT_IMPLEMENTED, span, message).with_help(planned.now);
+            if let Some(text) = rewrite {
+                diag = diag.with_fix(format!("write `{text}`"), span, text);
+            }
+            self.sink.push(diag);
+            self.sink.poison(span);
+        }
+    }
+
     /// Ends error recovery for a statement that began at `start`: later
     /// phases stay quiet about the part the parser could not read.
     fn end_recovery(&mut self, start: u32) {

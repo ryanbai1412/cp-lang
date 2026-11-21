@@ -411,6 +411,14 @@ ERROR_CATALOG: list[dict] = [
         "if true:\n    print(1)\nelse if false:\n    print(2)",
         "if true:\n    print(1)\nelif false:\n    print(2)",
     ),
+    _entry(
+        "E0504",
+        "Planned syntax, not implemented yet",
+        "The CP Lang 0.3 design has this form, and this version does not implement it yet. The message names the design section that specifies it.",
+        "Follow the help line to write it the way this version reads it; the rest of the program is still checked.",
+        "let s: Str(len: 1..=10) = read()\nprint(s.len)",
+        "let s: Str = read()\nprint(s.len)",
+    ),
     # --- E06xx: Lends, Projections & Traits ---
     _entry(
         "E0601",

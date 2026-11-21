@@ -1,0 +1,7 @@
+error[E0102]: expected a value after `=`, found the end of the line
+  --> missing_initializer.cp:1:8
+  |
+1 | let a = 
+  |        ^
+
+missing_initializer.cp: 1 error

@@ -1552,6 +1552,21 @@ any language. Reverse: delete `editors/{neovim,emacs,helix,smoke.sh}` and the `-
   and `var total = 0 +` should still hover as `Int`. Struct and enum headers keep their parsed shape
   (open: a struct missing its `)` still reports every later field use). *Reversible:* drop the
   `head_is_poisoned` branch in `FileCtx::def`.
+- **30.5 Planned syntax is one table, parsed and reported as `E0504`.** `cpl-syntax/src/planned.rs`
+  lists each 0.3 form this version does not implement: its feature name, the design section that
+  specifies it, what to write today, and an example whose one error is that one. The parser reads the
+  form (so the statement and its names survive), reports "not implemented yet: <feature> (see
+  <section>)" with the help line, and poisons the form's span. First entries: `domain` in a binding
+  pattern (binds the name as today's `let (C, x)` does, with a quick fix that drops `domain`), a
+  type-parameter default (ignored), and `Str(len: ...)` (read as `Str`). *Reason:* one mechanism for
+  every planned form instead of per-site messages; the generated golden test and the section-exists
+  test keep each entry honest, and an entry is deleted when its feature lands. Forms that already
+  parse (`repeat`, `loop`, one-line `enum`, unary plus, `var a = 0, b = 1`) need no entry.
+  *Reversible:* delete `planned.rs` and the three `Parser::planned` call sites.
+- **30.6 Golden diagnostics are rendered `cpl check` output.** `cpl-cli/tests/diagnostics/*.cp` with
+  the exact stderr beside it in `.err`; planned-syntax examples are written there from the table.
+  `BLESS=1` rewrites them. *Reason:* the rendered text is what the contestant reads, including help
+  lines and spans, so that is what is pinned. *Reversible:* delete the directory and `diagnostics.rs`.
 
 ## 31. Generated C++: stack, layout and niches (0.3)
 

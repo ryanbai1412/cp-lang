@@ -1,0 +1,17 @@
+error[E0101]: this `[` is never closed
+  --> unclosed_bracket.cp:1:10
+  |
+1 | let xs = [1, 2, 3
+  |          ^
+2 | let n = xs.len
+  | - a new statement starts here
+  = help: add `]` at the end of the expression
+
+error[E0201]: no `missin` in scope
+  --> unclosed_bracket.cp:3:11
+  |
+3 | print(n + missin)
+  |           ^^^^^^
+  = help: declare it first: `let missin = ...`
+
+unclosed_bracket.cp: 2 errors

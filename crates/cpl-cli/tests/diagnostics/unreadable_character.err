@@ -1,0 +1,7 @@
+error[E0004]: `$` isn't used in cp
+  --> unreadable_character.cp:1:5
+  |
+1 | let $x = 1
+  |     ^
+
+unreadable_character.cp: 1 error

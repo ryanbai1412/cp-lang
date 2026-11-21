@@ -2025,6 +2025,19 @@ fn names_from_a_declaration_that_failed_to_parse_stay_bound() {
 }
 
 #[test]
+fn planned_domain_pattern_binds_the_domain_and_offers_todays_spelling() {
+    let src = cpl_syntax::planned::DOMAIN_PATTERN.example;
+    let diags = check(src);
+    assert_eq!(codes(src), ["E0504"], "{diags:#?}");
+    let fix = &diags[0].fixes[0];
+    assert_eq!(fix.edits[0].1, "P");
+    assert_eq!(
+        &src[fix.edits[0].0.start as usize..fix.edits[0].0.end as usize],
+        "domain P"
+    );
+}
+
+#[test]
 fn a_recovered_name_still_reports_errors_unrelated_to_it() {
     let src = "let ($l, b) = (4, 6)\nprint(l + b)\nprint(missing)\n";
     assert_eq!(codes(src), ["E0004", "E0201"], "{:#?}", check(src));
