@@ -147,6 +147,13 @@ fn unknown_names_suggest_the_closest_one() {
 }
 
 #[test]
+fn a_capitalized_name_is_never_suggested_a_lowercase_local() {
+    let d = one("let rope = 1\nprint(Rope)\nprint(rope)\n");
+    assert_eq!(d.code.0, "E0201");
+    assert!(!d.help.as_deref().unwrap_or("").contains("`rope`"), "{:?}", d.help);
+}
+
+#[test]
 fn unknown_fields_suggest_the_closest_one() {
     let d = one(&roads_with("total += r.cost", "total += r.cots"));
     assert_eq!(
