@@ -91,6 +91,8 @@ fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
         ("proto/ports/ecnerwala/cf2207f.cp", "proto/ports/ecnerwala/samples/cf2207f.1.in"),
         ("proto/ports/ecnerwala/cf2261g.cp", "proto/ports/ecnerwala/samples/cf2261g.sample1.in"),
         ("proto/ports/ecnerwala/cf2138f.cp", "proto/ports/ecnerwala/samples/cf2138f.1.in"),
+        ("proto/ports/ecnerwala/cf2150c.cp", "proto/ports/ecnerwala/samples/cf2150c.sample1.in"),
+        ("proto/ports/ecnerwala/cf2127h.cp", "proto/ports/ecnerwala/samples/cf2127h.sample1.in"),
     ];
     for (port_rel, sample_rel) in cases {
         let port = repo_root().join(port_rel);

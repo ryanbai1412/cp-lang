@@ -443,6 +443,8 @@ pub(crate) enum Op {
     MapIndexV { dst: u16, map_v: u16, key_v: u16, key_ty: u16 },
     SetMapMutPlace { dst: u16, path: u16, val_v: u16, is_remove: bool },
     MapPlaceAssign { path: u16, key_v: u16, val_v: u16, op: AssignOp, val_ty: u16 },
+    SetMapBoundV { dst: u16, src_v: u16, key_v: u16, mode: u8 },
+    SetMapPopEndPlace { dst: u16, path: u16, is_last: bool },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
@@ -3374,7 +3376,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 _ => return None,
             }
         };
-        if chain.is_empty() && !matches!(place.ty, Ty::List(_) | Ty::Array { .. } | Ty::Str) {
+        if chain.is_empty()
+            && !matches!(
+                place.ty,
+                Ty::List(_) | Ty::Array { .. } | Ty::Str | Ty::Set(_) | Ty::Map(_, _)
+            )
+        {
             return None;
         }
         let mut steps = Vec::with_capacity(chain.len());
@@ -3745,6 +3752,84 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let dst_some = self.alloc_i();
                 self.emit(Op::SeqFirstOptI { dst_val, dst_some, seq_v }, span);
                 (dst_val, dst_some)
+            }
+            ExprKind::Builtin(Builtin::MapGet, args)
+                if args.len() == 2 && matches!(args[0].ty, Ty::Map(_, _)) =>
+            {
+                let map_v = self.compile_expr_v(&args[0]);
+                let key_v = self.compile_expr_v(&args[1]);
+                let tmp_v = self.alloc_v();
+                self.emit(Op::MapGetV { dst: tmp_v, map_v, key_v }, span);
+                if key_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: key_v }, span);
+                }
+                if map_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: map_v }, span);
+                }
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.emit(Op::UnboxOptI { dst_val, dst_some, src_v: tmp_v }, span);
+                self.emit(Op::ClearV { reg: tmp_v }, span);
+                (dst_val, dst_some)
+            }
+            ExprKind::Builtin(
+                b @ (Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt),
+                args,
+            ) if args.len() == 2 && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _)) => {
+                let mode = match b {
+                    Builtin::FirstGe => 0,
+                    Builtin::FirstGt => 1,
+                    Builtin::LastLe => 2,
+                    Builtin::LastLt => 3,
+                    _ => unreachable!(),
+                };
+                let src_v = self.compile_expr_v(&args[0]);
+                let key_v = self.compile_expr_v(&args[1]);
+                let tmp_v = self.alloc_v();
+                self.emit(Op::SetMapBoundV { dst: tmp_v, src_v, key_v, mode }, span);
+                if key_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: key_v }, span);
+                }
+                if src_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.emit(Op::UnboxOptI { dst_val, dst_some, src_v: tmp_v }, span);
+                self.emit(Op::ClearV { reg: tmp_v }, span);
+                (dst_val, dst_some)
+            }
+            ExprKind::Mutate(m @ (Mutation::PopFirst | Mutation::PopLast), place, args)
+                if args.is_empty() && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _)) =>
+            {
+                let saved_ops = self.ops.len();
+                let saved_spans = self.spans.len();
+                let saved_places = self.places.len();
+                if let Some(path) = self.compile_place_path(place) {
+                    let tmp_v = self.alloc_v();
+                    self.emit(
+                        Op::SetMapPopEndPlace {
+                            dst: tmp_v,
+                            path,
+                            is_last: matches!(m, Mutation::PopLast),
+                        },
+                        span,
+                    );
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::UnboxOptI { dst_val, dst_some, src_v: tmp_v }, span);
+                    self.emit(Op::ClearV { reg: tmp_v }, span);
+                    (dst_val, dst_some)
+                } else {
+                    self.ops.truncate(saved_ops);
+                    self.spans.truncate(saved_spans);
+                    self.places.truncate(saved_places);
+                    let src_v = self.emit_fallback_expr_v(expr);
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::UnboxOptI { dst_val, dst_some, src_v }, span);
+                    (dst_val, dst_some)
+                }
             }
             ExprKind::Mutate(Mutation::Pop, place, args)
                 if args.is_empty() && matches!(place.ty, Ty::List(_)) =>
@@ -5461,6 +5546,53 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 dst
             }
+            ExprKind::Builtin(
+                b @ (Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt),
+                args,
+            ) if args.len() == 2 && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _)) => {
+                let mode = match b {
+                    Builtin::FirstGe => 0,
+                    Builtin::FirstGt => 1,
+                    Builtin::LastLe => 2,
+                    Builtin::LastLt => 3,
+                    _ => unreachable!(),
+                };
+                let src_v = self.compile_expr_v(&args[0]);
+                let key_v = self.compile_expr_v(&args[1]);
+                let dst = self.alloc_v();
+                self.emit(Op::SetMapBoundV { dst, src_v, key_v, mode }, span);
+                if key_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: key_v }, span);
+                }
+                if src_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                dst
+            }
+            ExprKind::Mutate(m @ (Mutation::PopFirst | Mutation::PopLast), place, args)
+                if args.is_empty() && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _)) =>
+            {
+                let saved_ops = self.ops.len();
+                let saved_spans = self.spans.len();
+                let saved_places = self.places.len();
+                if let Some(path) = self.compile_place_path(place) {
+                    let dst = self.alloc_v();
+                    self.emit(
+                        Op::SetMapPopEndPlace {
+                            dst,
+                            path,
+                            is_last: matches!(m, Mutation::PopLast),
+                        },
+                        span,
+                    );
+                    dst
+                } else {
+                    self.ops.truncate(saved_ops);
+                    self.spans.truncate(saved_spans);
+                    self.places.truncate(saved_places);
+                    self.emit_fallback_expr_v(expr)
+                }
+            }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Map(_, _)) && indices.len() == 1 =>
             {
@@ -5508,6 +5640,30 @@ impl<'p, 'f> Compiler<'p, 'f> {
             let saved_places = self.places.len();
             if let Some(path) = self.compile_place_path(place) {
                 self.emit(Op::ReversePlace { path }, span);
+                return true;
+            }
+            self.ops.truncate(saved_ops);
+            self.spans.truncate(saved_spans);
+            self.places.truncate(saved_places);
+        }
+        if matches!(op, Mutation::PopFirst | Mutation::PopLast)
+            && args.is_empty()
+            && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _))
+        {
+            let saved_ops = self.ops.len();
+            let saved_spans = self.spans.len();
+            let saved_places = self.places.len();
+            if let Some(path) = self.compile_place_path(place) {
+                let dst = self.alloc_v();
+                self.emit(
+                    Op::SetMapPopEndPlace {
+                        dst,
+                        path,
+                        is_last: matches!(op, Mutation::PopLast),
+                    },
+                    span,
+                );
+                self.emit(Op::ClearV { reg: dst }, span);
                 return true;
             }
             self.ops.truncate(saved_ops);
@@ -9420,6 +9576,58 @@ impl<'p, 'io> Interp<'p, 'io> {
                     } else {
                         return trap(spans[cur_pc], "internal: expected map");
                     }
+                }
+                Op::SetMapBoundV { dst, src_v, key_v, mode } => {
+                    use std::ops::Bound::{Excluded, Included, Unbounded};
+                    let key = regs_v[key_v as usize].clone();
+                    let range = match mode {
+                        0 => (Included(key), Unbounded),
+                        1 => (Excluded(key), Unbounded),
+                        2 => (Unbounded, Included(key)),
+                        _ => (Unbounded, Excluded(key)),
+                    };
+                    let first_in = mode <= 1;
+                    regs_v[dst as usize] = match &regs_v[src_v as usize] {
+                        Value::Set(items) => {
+                            let mut found = items.range(range);
+                            let item = if first_in { found.next() } else { found.next_back() };
+                            Value::Opt(OptVal::from_option(item.cloned()))
+                        }
+                        Value::Map(entries) => {
+                            let mut found = entries.range(range);
+                            let entry = if first_in { found.next() } else { found.next_back() };
+                            Value::Opt(OptVal::from_option(
+                                entry.map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()])),
+                            ))
+                        }
+                        _ => Value::Opt(OptVal::None),
+                    };
+                }
+                Op::SetMapPopEndPlace { dst, path, is_last } => {
+                    let pp = &chunk.places[path as usize];
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                    let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                    regs_v[dst as usize] = match target {
+                        Value::Set(items) => {
+                            let items = Rc::make_mut(items);
+                            let v = if is_last { items.pop_last() } else { items.pop_first() };
+                            Value::Opt(OptVal::from_option(v))
+                        }
+                        Value::Map(entries) => {
+                            let entries = Rc::make_mut(entries);
+                            let v =
+                                if is_last { entries.pop_last() } else { entries.pop_first() };
+                            Value::Opt(OptVal::from_option(
+                                v.map(|(k, v)| Value::tuple(vec![k, v])),
+                            ))
+                        }
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                "internal: this value can't be changed that way",
+                            );
+                        }
+                    };
                 }
                 Op::MakeClosure { dst, spec } => {
                     let cs = &chunk.closure_specs[spec as usize];

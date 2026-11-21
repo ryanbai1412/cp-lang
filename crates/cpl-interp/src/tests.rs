@@ -915,4 +915,25 @@ print(m[42])
     let (_, trap) = outcome(miss, "");
     let msg = trap.expect("expected missing map key trap");
     assert!(msg.contains("is not in the map"), "got: {msg}");
+
+    let ordered = "\
+var s = Set<Int>()
+for x in [10, 20, 30]: s.insert(x)
+let ge = s.first_ge(20)!
+let gt = s.first_gt(20)!
+let le = s.last_le(20)!
+let lt = s.last_lt(20)!
+let pf = s.pop_first()!
+let pl = s.pop_last()!
+var m = Map<Int, Int>()
+m[1] = 100
+m[2] = 200
+m[3] = 300
+let (mk, mv) = m.first_gt(1)!
+let (pk, pv) = m.pop_last()!
+print(ge, gt, le, lt, pf, pl, s.len, mk, mv, pk, pv, m.len)
+";
+    let (out, trap) = outcome(ordered, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "20 30 20 10 10 30 1 2 200 3 300 2\n");
 }
