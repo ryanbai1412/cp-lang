@@ -2,20 +2,18 @@
 // `1..=n` (`n <= 100`) maximizing `sum_i w(p_i, p_{i+1})`, where
 // `w(a, b) = |a - b|` if `|a - b|` is prime and `0` otherwise.
 //
-// This is Maximum-Weight Hamiltonian Path on the prime-difference graph, an
-// NP-hard optimization problem with no known polynomial exact construction for
-// general `n`. Any permutation satisfies the unconstrained alternating upper
-// bound `sum |p_i - p_{i+1}| <= (n * n) / 2 - 1` (each interior element adds
-// at most `±2x` and each endpoint `±x`, maximized by alternating `<= n / 2`
-// and `> n / 2` with `n / 2` and `n / 2 + 1` at the ends).
+// Any permutation satisfies the unconstrained alternating bound
+// `sum |p_i - p_{i+1}| <= (n * n) / 2 - 1`, which is strict for `n >= 13`
+// because every odd prime flips parity (disconnecting the low/high bipartite
+// halves except via the single even prime `2`).
 //
 // - For `n <= 12`, Held-Karp DP over `(Subset<V>, V)` finds the provably exact
-//   maximum in `O(n^2 2^n)` with `?Int`/`?V` (no sentinels).
-// - For `n > 12`, because prime gaps are dense across `[n / 2, n]`, 64
-//   deterministic `Rng`-seeded greedy starts refined to 2-opt local maxima
-//   (reversing `perm[i + 1..=j]` whenever the two boundary edges strictly gain
-//   weight, terminating early if the alternating upper bound is met) reliably
-//   recover the optimum for `n <= 100`.
+//   maximum-weight Hamiltonian path in `O(n^2 2^n)` with `?Int`/`?V`.
+// - For `n > 12`, this implements the reference heuristic: 64 deterministic
+//   `Rng`-seeded greedy starts refined to 2-opt local maxima (no reversal
+//   `perm[i + 1..=j]` strictly increases `score(perm)`), keeping the highest-
+//   scoring permutation found. No global optimality guarantee is claimed for
+//   `n > 12`; the output is guaranteed to be a valid 2-opt local optimum.
 
 use std.rand.{Rng}
 
@@ -85,7 +83,6 @@ fn greedy_start(mut rng: Rng, trial: Int) -> [Pos]Int:
 if n <= 12:
     print(solve_exact(n), sep: "\n")
 else:
-    let upper_bound = (n * n) / 2 - 1
     var rng = Rng.new(123456789)
     var best_perm: [Pos]Int = [Pos] p => p.ord + 1
     var best_sc = score(best_perm)
@@ -96,5 +93,4 @@ else:
         if sc > best_sc:
             best_sc = sc
             best_perm = perm
-            if best_sc == upper_bound: break
     print(best_perm, sep: "\n")
