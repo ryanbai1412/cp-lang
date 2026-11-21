@@ -2278,3 +2278,36 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
 7. **Dynamic trees are a separate `LinkCut` with `Rooted`'s verbs**
    (`fold_path`, `lca`), after the static API matches C++. Reverse: drop it
    from the plan.
+
+## 46. Graphs stdlib design (`design/stdlib/graphs.md`, 2026-11-21)
+
+1. **Searches return `Paths`, not a bare distance array.** `bfs`, `bfs01`,
+   `dijkstra`, `fixed_cost_paths` and `bellman_ford` return
+   `Paths<V, W, A>`: `p[v]` is the distance (so existing `dist[v]` code reads
+   the same), and `parent`, `via`, `order` and `path(t)` answer the
+   follow-up (print the path, DP over the shortest-path DAG) without a second
+   search. Reason: the local `shortest`/`walk_back` pair and every port that
+   printed a path re-derived parents by hand. Cost: two more arrays of n and
+   one store per settled vertex, measured in `bench/graph/`. Reverse: return
+   `.dist` and drop the struct.
+2. **0-1 BFS and fixed-cost searches are named algorithms** (`bfs01`,
+   `fixed_cost_paths`), not a `dijkstra` option. Reason: AGENTS.md "name the
+   algorithm"; the deque and the per-move FIFOs have different costs and
+   different preconditions (weights in {0, 1}; fixed non-negative move
+   costs), and each traps when its precondition fails. Reverse: fold into
+   `dijkstra(.., via: Deque)`.
+3. **Unit and 0-1 searches take `from: List<V>`; weighted ones take
+   `from: List<(V, W)>`.** The starting distance is the super source without
+   an extra vertex; a unit search has nothing to offset. Reverse: accept
+   both shapes everywhere.
+4. **`euler_walk`, returning `Walk<V, E>` (start vertex plus arcs).** The
+   local `euler_path` returned bare edge indices, losing the direction an
+   undirected edge was walked. `Walk` is the same arc shape a `Graph` yields,
+   so `w.vertices` and `w.arcs` need no translation. Reverse: rename back
+   and return `List<E>`.
+5. **One spelling: `two_color`.** A scout port wished for `two_colour`; the
+   stdlib keeps one name per idea. Reverse: none needed.
+6. **Promoted from `examples/local-lib/graph/`:** `TwoSat`/`Lit` and
+   `Functional` move unchanged in shape; `shortest`/`walk_back` are
+   subsumed by `Paths`. Minimum spanning trees stay with `std.dsu`'s
+   owner. Reverse: keep the local modules.

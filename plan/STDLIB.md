@@ -999,22 +999,63 @@ struct Graph<V, E> // O(n + m)
     fn get(self, u: V) -> List<(to: V, e: E)>
     fn deg(self, u: V) -> Int // O(1)
     fn transpose(self) -> Graph<V, E> // O(n + m)
-fn bfs<V, N>(next: N, from: List<V>) -> [V]?Int // O(n + m)
-// O((n + m) log m)
-fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> [V]?W
-fn peel<V, N>(next: N) -> List<V> // O(n + m)
-fn topo<V, N>(next: N) -> ?List<V> // O(n + m)
-fn scc<V, N>(next: N) -> (domain C, comp: [V]C) // O(n + m)
 fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>
 fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>
 fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>
 fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)>
+struct Paths<V, W, A> // dist, parent, via: [V]?_; order: List<V>
+    fn get(self, v: V) -> ?W // O(1)
+    fn reached(self, v: V) -> Bool // O(1)
+    fn path(self, t: V) -> ?List<V> // O(len)
+    fn arcs(self, t: V) -> ?List<A> // O(len)
+fn bfs<V, N>(next: N, from: List<V>) -> Paths<V, Int, A> // O(n + m)
+// O(n + m) deque; traps unless every weight is 0 or 1
+fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int) -> Paths<V, Int, A>
+// O((n + m) log m)
+fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W)
+    -> Paths<V, W, A>
+// O(|S| |moves|): one FIFO per move, no heap
+fn fixed_cost_paths<S, M, W>(from: List<S>, moves: List<M>, cost: M -> W,
+    step: (M, S) -> ?S) -> Paths<S, W, M>
+// O(n m); none on a reachable negative cycle
+fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W)
+    -> ?Paths<V, W, A>
+fn floyd_warshall<V, W>(w: [V, V]?W) -> ?[V, V]?W // O(n^3)
+fn topo<V, N>(next: N) -> ?List<V> // O(n + m)
+fn peel<V, N>(next: N) -> List<V> // O(n + m)
+fn find_cycle<V, N>(next: N) -> ?List<V> // O(n + m)
 fn components<V, N>(next: N) -> (domain C, comp: [V]C) // O(n + m)
+fn scc<V, N>(next: N) -> (domain C, comp: [V]C) // O(n + m), C topological
 fn condense<V, N, C>(next: N, comp: [V]C) -> [C]List<(to: C)>
 fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C) // O(n + m)
+fn bridges<V, E, N>(next: N) -> [E]Bool // O(n + m)
 fn articulation_points<V, N>(next: N) -> [V]Bool // O(n + m)
-fn biconnected_components<V, N>(next: N) -> List<List<V>>
+fn biconnected_components<V, N>(next: N) -> List<List<V>> // O(n + m)
 fn two_color<V, N>(next: N) -> ?[V]Bool // O(n + m)
+struct Walk<V, E> // start: V, arcs: List<(to: V, e: E)>
+    @get fn vertices(self) -> List<V> // O(len)
+// O(n + m) Hierholzer
+fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>
+struct Lit<X>(x: X, value: Bool)
+    @get fn flip(self) -> Lit<X>
+struct TwoSat<X>
+    fn new() -> TwoSat<X>
+    fn add_or(mut self, a: Lit<X>, b: Lit<X>) // O(1)
+    fn implies(mut self, a: Lit<X>, b: Lit<X>) // O(1)
+    fn must(mut self, a: Lit<X>) // O(1)
+    fn at_most_one(mut self, lits: List<Lit<X>>) // O(k)
+    fn solve(self) -> ?[X]Bool // O(|X| + clauses)
+struct Functional<V> // O(n log n)
+    fn new(next: [V]V) -> Functional<V>
+    fn on_ring(self, v: V) -> Bool // O(1)
+    fn ring_of(self, v: V) -> Int // O(1)
+    fn steps_to_ring(self, v: V) -> Int // O(1)
+    fn root(self, v: V) -> V // O(1)
+    fn jump(self, v: V, k: Int) -> V // O(log n)
+    fn dist(self, a: V, b: V) -> ?Int // O(log n)
+    fn orbit(self, v: V) -> Int // O(1)
+    fn jump_while(self, v: V, pred: V -> Bool, max_steps: Int = V.K)
+        -> ?(V, Int) // O(log n)
 struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     fn new<N>(adj: N, root: V)
     fn from_parents(par: [V]?V) // O(n)
