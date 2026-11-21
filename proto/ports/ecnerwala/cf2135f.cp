@@ -16,6 +16,7 @@ struct Node(l: Ix, r: Ix, cnt: 0..=400_000, h: U64)
 @!multitest
 let n: 1..=400_000 = read()
 domain V = 1..=n
+domain Gen = 0..n
 let kids: [V](Int, Int) = read()
 
 fn split(v: V) -> ?(l: V, r: V):
@@ -23,11 +24,12 @@ fn split(v: V) -> ?(l: V, r: V):
     if l == 0: none else: some((V(l), V(r)))
 
 let tree = Rooted(root: V.first, adj: v => if let (l, r) = split(v): [l, r] else: List<V>())
-var gen: [V]Int = 0
-var by_gen: [0..n]List<V> = []
+var gen: [V]Gen = Gen.first
+// Keep each generation in bottom-up (`tree.Pre.rev`) order so `l` precedes `v` when `gen[l] == gen[v]`.
+var by_gen: [Gen]List<V> = []
 for p in tree.Pre.rev:
     let v = tree.at[p]
-    if let (l, r) = split(v): gen[v] = max(gen[l], gen[r] + 1)
+    if let (l, r) = split(v): gen[v] = max(gen[l], (gen[r] + 1)!)
     by_gen[gen[v]].push(v)
 
 var rng = Rng.new(2135)
@@ -56,17 +58,17 @@ fn less(a0: Ix, b0: Ix) -> Bool:
 
 var set: [V]Ix = 0
 var key: [V]Int = 0
-var keys = 0
+var next_key = 0
 var order: List<V> = []
-for g in 0..n:
+for g in Gen:
     for v in by_gen[g]:
         if let (l, r) = split(v): set[v] = insert(set[l], 0, n, key[r])
     let ranked = by_gen[g].sorted(
         cmp: (a, b) => if pool[set[a]].h == pool[set[b]].h: a < b else: less(set[a], set[b])
     )
-    for r in ranked.run_ranges(by: v => pool[set[v]].h):
-        for i in r:
-            key[ranked[i]] = keys
-            order.push(ranked[i])
-        keys += 1
+    let runs = ranked.run_ranges(by: v => pool[set[v]].h)
+    for (r, span) in runs.items:
+        for i in span: key[ranked[i]] = next_key + r
+    next_key += runs.len
+    order.extend(ranked)
 print(order)
