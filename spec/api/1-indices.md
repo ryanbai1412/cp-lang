@@ -56,35 +56,80 @@ domain is explicit (`v.next`, `V(x)`). Arrays over an anonymous range
 
 ## Ranges
 
-A range's elements are the kind of its ends.
+### Two kinds of range, one type
 
-```python
-l..r   l..=r   # positions                        Range<V>
-j..=i          # cuts j through i                 Range<V.bounds>
-j..i           # cuts j to i-1, and also the piece between them wherever a Range<V> is expected (§124)
-..i   j..   .. # open ends default to V's start and end
-```
+`Range<D>` is a contiguous run of a domain `D`. `V.bounds` is a domain like
+any other, so there are two kinds you meet in practice, and every method
+below is generic over `D`: it means the same thing on both.
 
-So the commonest DP line reads as written, and split points are plain:
-
-```python
-for j in lo..i: dp[i] min= dp[j] + cost(j..i)    # j a cut; j..i the piece
-for k in opt[l][r-1]..=opt[l+1][r]: …            # Knuth: candidate cuts
-```
-
-The two readings of `j..i` are the same set (each cut `c` with `c.r`), so the
-conversion never changes meaning. A range's cuts are `r.l..=r.r`.
-
-| Form | Meaning | Cost |
+| | `Range<V>`: over positions | `Range<V.bounds>`: over cuts |
 |---|---|---|
-| `r.len`, `r.is_empty`, `x in r` | | O(1) |
-| `r.l`, `r.r` | the end cuts | O(1) |
-| `r.first`, `r.last` | end positions, `?V` | O(1) |
-| `for v in r`, `r.rev`, `r.step(k)` | iteration | O(1) per step |
-| `r.clip(s)` | intersection | O(1) |
-| `r.halve()` | `?(left, right)`: two non-empty halves meeting at the middle cut; `none` when `r.len <= 1` (the base case) | O(1) |
-| `r.mid` | the middle position, `?V`, for D&C that handles one element and recurses around it | O(1) |
-| `r.bsearch(ok)` | **the cut** where monotone `ok` turns from false to true | O(log n) calls |
+| written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends |
+| elements (`for`, `in`, `len`) | positions | cuts |
+| typical use | a piece of the array: slice, fold, cost | split points, prefix lengths, answers that may be 0 or n |
+| example | `a[l..=r]`, `seg.fold(l..r)` | `for j in lo..i`, `for k in a..=b` |
+
+**The rule: a range's elements are the kind of its ends.** Cuts in, cuts out:
+`for k in a..=b` walks cuts a through b, `for j in lo..i` walks cuts lo to i-1.
+
+### One exception, in how a literal is typed: the piece
+
+Cuts `j` and `i` bound a piece of the array: the positions between them. So
+a half-open range literal with cut ends, written where a `Range<V>` is
+expected, builds that `Range<V>` directly:
+
+```python
+for j in lo..i:                      # lo..i: no Range<V> expected, so cuts
+    dp[i] min= dp[j] + cost(j..i)    # cost takes Range<V>: j..i is the piece
+pre.sum(j..i)   a[j..i]   seg.fold(j..i)       # same: these take Range<V>
+```
+
+This is **not a conversion and there is no implicit `Into`.** It decides what
+the literal builds, exactly like `5` becoming a position where a `V` is
+expected. Consequences:
+- Only the literal `a..b` does it. A stored cut range never becomes a piece:
+  `let s = j..i; cost(s)` is a type error whose fix is to write `cost(j..i)`.
+- Only half-open: `j..=i` on cuts names no piece, so it's an error where a
+  `Range<V>` is expected.
+- It's safe because the two readings are the same set: cut `c` in `j..i`
+  stands for the position `c.r`, and the cuts j..i-1 are exactly the left
+  edges of the positions between `j` and `i`.
+
+The language's implicit conversions stay a closed list, none user-extensible:
+`T` to `?T`, a range type to a wider one (`1..=5` to `Int`), and literal
+typing (integer to position or cut, cut range to piece). A general implicit
+`Into` is the C++ trap: conversions that don't show and overloads that turn
+ambiguous.
+
+### Methods
+
+All of these are on every `Range<D>`. The two right columns spell out what
+the generic meaning comes to for each kind.
+
+| Form | On `Range<V>` (positions) | On `Range<V.bounds>` (cuts) | Cost |
+|---|---|---|---|
+| `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count of cuts; membership of a cut | O(1) |
+| `for x in r`, `r.rev`, `r.step(k)` | positions | cuts | O(1) per step |
+| `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.bounds` | O(1) |
+| `r.l`, `r.r` | the bounding cuts, `V.bounds` | the bounds one level up (see below); write `r.first`/`r.last` instead | O(1) |
+| `r.clip(s)` | intersection | intersection | O(1) |
+| `r.halve()` | `?(left, right)`, two non-empty halves meeting at the middle cut; `none` when `len <= 1` | same, over cuts | O(1) |
+| `r.mid` | middle position, `?V` | middle cut, `?V.bounds` | O(1) |
+| `r.bsearch(ok)` | where monotone `ok` on positions flips; `.l`/`.r` give the last false and first true position | where `ok` on cuts flips; `.l`/`.r` give the last false and first true cut | O(log n) calls |
+| `a[r]`, `pre.sum(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal `j..i` is the piece | as the API says |
+
+**Ends one level up.** A range's ends are cuts of its domain. For a range
+over positions those are `V.bounds`, which is what you want. For a range over
+cuts they are `V.bounds.bounds`, the gaps between cuts, which you only meet as
+`bsearch`'s answer and immediately turn into a cut with `.l`/`.r`, the same
+one rule as everywhere else:
+
+```python
+let k = V.bounds.all.bsearch(c => pre[c] > s).l!   # longest prefix with sum <= s: a cut
+```
+
+Answer spaces that aren't a domain are integer ranges, an anonymous domain
+whose positions and cuts are both `Int`: `(0..=1e18).bsearch(t => fits(t)).r`.
 
 ```python
 fn inversions(r: Range<Pos>) -> Int:          # merge-sort shape
@@ -101,8 +146,7 @@ fn solve(rows: Range<Pos>, opts: Range<Pos>): # D&C DP optimisation
 
 Binary search returns a cut, so "first true" vs "last false" is a one-word
 change: `r.bsearch(ok).r` vs `r.bsearch(ok).l`. This replaces
-`bsearch_first` and `bsearch_last`. Answer spaces that aren't a domain use
-plain integer ranges: `(0..=1e18).bsearch(t => fits(t)).r`.
+`bsearch_first` and `bsearch_last`.
 
 ## Arrays over domains
 
@@ -145,9 +189,11 @@ let e = E.first              # fine: E.count is m, and m >= 1 here
 - Position arithmetic gives an `Int`; back into the domain is explicit.
 - `r.bsearch(ok)` returns a cut and replaces `bsearch_first`/`bsearch_last`.
 - Empty domains are valid; `first`/`last` need `NonEmpty`, derived and narrowed.
-- A range's elements are the kind of its ends; `a..=b` on cuts is cuts; half-open
-  cut ranges double as the piece (124). A position-only reading was rejected:
-  it broke `for j in lo..i: dp[j] + cost(j..i)`.
+- One generic `Range<D>`; elements are the kind of the ends, so `a..=b` on cuts
+  is cuts. The half-open literal `j..i` with cut ends builds the piece where a
+  `Range<V>` is expected (124): literal typing, not a conversion; no implicit
+  `Into`. A position-only reading was rejected: it broke
+  `for j in lo..i: dp[j] + cost(j..i)`.
 - `r.halve()` is `?(left, right)`, `none` at length <= 1; `r.mid` is `?V`.
 - Integer literals convert to positions and cuts of integer domains.
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.

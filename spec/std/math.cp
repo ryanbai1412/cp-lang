@@ -12,6 +12,9 @@ pub fn isqrt(x: Int) -> Int = todo
 /// O(1). Exact integer ceiling square root `ceil(sqrt(x))` for `x >= 0`.
 pub fn ceil_sqrt(x: Int) -> Int = todo
 
+/// O(log x). Exact integer floor `k`-th root of `x >= 0`, `k >= 1`: `iroot(x, 3)` is `floor(cbrt(x))`.
+pub fn iroot(x: Int, k: Int) -> Int = todo
+
 /// O(log k + log x). Exact integer `floor(x^(1/k))` for `x >= 0, k >= 1`.
 pub fn nth_root(x: Int, k: Int) -> Int = todo
 

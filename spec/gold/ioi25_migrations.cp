@@ -8,6 +8,8 @@
 // phases each list has at most 4 sites, and each of the last three sites sends a
 // symbol that narrows the end pairs still possible: the editorial's case tables,
 // written once and shared by both sides.
+use std.math.{iroot}
+
 @grader(two_phase)
 mod migrations:
     type Site = 0..10_000
@@ -18,14 +20,14 @@ mod migrations:
         fn pairs(self) -> List<(Int, Int)> =
             [(x, y) for x in 0..self.b for y in (if self.first: x else: 0)..self.b]
 
-    fn phase_plan(n: Int) -> List<Phase> =
+    fn phase_plan(n: Int) -> List<Phase>:
         for start in 4..n - 3:
             var plan: List<Phase> = []
             var (m, at) = (start - 1, start - 1)
             while at < n - 3 and plan.len < 5:
                 let first = plan.is_empty
                 fn pairs(b: Int) -> Int = if first: b * (b + 1) / 2 else: b * b
-                let b = (1..=floor(2 * cbrt(m + 1)) + 2)
+                let b = (1..=2 * iroot(m + 1, 3) + 3)
                     .min_by(b => ceil_div(m + 1, b) + ceil_div(pairs(b) - 1, 4))
                 let k = ceil_div(pairs(b) - 1, 4)
                 plan.push(Phase(at, m, b, k, first))
@@ -35,7 +37,8 @@ mod migrations:
 
     // A signal is an index c sent over a window: 0 is silence, otherwise
     // site (c − 1) / 4 of the window says (c − 1) % 4 + 1.
-    fn signal(c: Int, from: Site) -> ?(Site, 1..=4) = if c > 0: (from + (c - 1) / 4, (c - 1) % 4 + 1)
+    fn signal(c: Int, from: Site) -> ?(Site, 1..=4) =
+        if c > 0: (from + (c - 1) / 4, (c - 1) % 4 + 1) else: none
     fn heard(s: [Site]0..=4, window: Range<Site>) -> Int =
         window.first(where: j => s[j] != 0).map(j => 4 * (j - window.start) + s[j]) ?? 0
 

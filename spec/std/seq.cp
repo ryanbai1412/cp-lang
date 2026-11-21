@@ -609,3 +609,9 @@ fn distinct_with_by_key_keeps_first_seen() = todo
 
 @test
 fn scan_prod_and_rotate_method_syntax() = todo
+
+/// O(1). The pair the other way round: `(a, b).rev` is `(b, a)`; an edge `(u, v)` turned around.
+pub @get fn rev<A>(self: (A, A)) -> (A, A) = todo
+
+/// O(1). An oriented edge the other way round: `(u: a, v: b).rev` is `(u: b, v: a)`.
+pub @get fn rev<A>(self: (u: A, v: A)) -> (u: A, v: A) = todo

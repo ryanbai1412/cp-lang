@@ -5,7 +5,7 @@
 // which places each back edge side by side. Diagonals shrink toward the far corner;
 // touring the deepest root path last keeps every ancestor list inside its diagonal.
 @grader
-fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n][2 * n]1..=n:
+fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n, 2 * n]1..=n:
     domain V = 1..=n
     let g = Graph<V>.undirected(zip(a, b))
     let tree = g.dfs_tree(root: V.first)
@@ -19,6 +19,6 @@ fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n][2 * n]1..=
         if up[v].len > 0 and expanded.add(v): diags.extend([up[v], [v]])
     diags.pad_to(4 * n - 1, with: diags.last!)
 
-    return [2 * n][2 * n] (x, y) =>
+    return [2 * n, 2 * n] (x, y) =>
         let d = diags[x + y]
-        d.get(x - max(0, x + y - (2 * n - 1))) ?? d.last!
+        Int(d.get(x - max(0, x + y - (2 * n - 1))) ?? d.last!)

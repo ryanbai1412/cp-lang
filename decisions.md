@@ -4158,7 +4158,11 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
     position for D&C that recurses around one element.
   - Ranges keep 124: a range's elements are the kind of its ends. `j..=i`
     over cuts iterates cuts j through i; `j..i` iterates cuts j to i-1 and is
-    also the piece where a `Range<V>` is expected. Considered and rejected:
+    also the piece where a `Range<V>` is expected. The piece is literal
+    typing, not a conversion: only a half-open `a..b` literal with cut ends
+    builds it, a stored cut range never converts, and there is no implicit
+    `Into` (implicit conversions stay closed: `T` to `?T`, range widening,
+    literal typing). Considered and rejected:
     every range is positions with cut ends, plus `r.cuts` (cleaner model,
     but `for j in lo..i: dp[i] min= dp[j] + cost(j..i)` stops type-checking
     and `a..=b` over cuts stops meaning cuts).
