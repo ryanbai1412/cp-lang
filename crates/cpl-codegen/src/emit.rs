@@ -158,6 +158,11 @@ pub(crate) struct Emitter<'p> {
     pub inside: Vec<(usize, usize)>,
     /// How deep the statement being written is indented.
     pub indent: usize,
+    /// For a profiled build: the span of each statement that counts its
+    /// starts, by the number it counts in.
+    pub sites: Option<Vec<cpl_diag::Span>>,
+    /// The statements that count, from `cpl_ir::sites::user_stmts`.
+    pub counted: std::collections::HashSet<*const Stmt>,
 }
 
 pub(crate) fn pad(indent: usize) -> String {
@@ -214,6 +219,8 @@ impl<'p> Emitter<'p> {
             found: Vec::new(),
             inside: Vec::new(),
             indent: 0,
+            sites: None,
+            counted: Default::default(),
         };
         let feeds = cpl_ir::pushed::Feeds::of(program);
         emitter.summaries = feeds.summaries;
@@ -598,6 +605,20 @@ impl<'p> Emitter<'p> {
 
     /// The whole file.
     pub fn file(mut self, name: &str, source: Option<&str>) -> String {
+        self.write(name, source)
+    }
+
+    /// [`Emitter::file`], with the profiled statements' spans.
+    pub fn file_with_sites(
+        mut self,
+        name: &str,
+        source: Option<&str>,
+    ) -> (String, Vec<cpl_diag::Span>) {
+        let cpp = self.write(name, source);
+        (cpp, self.sites.take().unwrap_or_default())
+    }
+
+    fn write(&mut self, name: &str, source: Option<&str>) -> String {
         let program = self.program;
 
         // Ensure runtime types used by globals, fns, closures, and main are registered.

@@ -89,3 +89,20 @@ print(show_recurrence(coeffs)) // "a[n] = 4 a[n-2] - a[n-4]"
 Every run in the [playground](playground.html) has a **Trace** button that records every top-level variable change, every `print`, and every `debug(...)` call — and runs `@brute(main)` side by side when the file defines one — then opens the interactive [Trace debugger](trace.html).
 
 You can inspect arrays, 2D DP tables, grids, trees, and graphs step by step, scrub backward and forward through execution, and pinpoint the exact step where your fast solution diverges from `@brute(main)`.
+
+## Profiling with `cpl profile`
+
+`cpl profile a.cp input.txt` runs the program and prints every source line with how many times it ran and its share of the time:
+
+```text
+profile of a.cp (interpreter): 1.2 ms
+ line         hits       time    %
+    3            1     2.1 us   0%  for i in 0..n:
+    4      1000000   612.0 us  51%      s += i
+```
+
+Time spent in library code is charged to the line that called it. `--native` profiles the C++ of `cpl build` instead, compiled with `g++ -O2` and a counter at each statement: the hit counts are the interpreter's, and the times are what the judge sees. `--format json` gives the same numbers to scripts.
+
+## Coverage with `cpl cover`
+
+`cpl cover a.cp` runs the program on every case in `a.tests/` (or the inputs you name; a directory stands for its `.in` files) and lists the lines no input reached and every `if` that went only one way. A sample set that never takes a branch is a test set that cannot catch a bug there.

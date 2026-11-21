@@ -3,6 +3,7 @@
 
 mod interact;
 mod laws;
+mod profile;
 mod trace;
 
 use std::io::Write;
@@ -50,6 +51,10 @@ commands:
   test <problem>        run every case in <problem>.tests/
   stress <file>         run against a brute on random inputs; shrink the failure
   bench <problem>       run on maximum-size worst-case inputs against the limits
+  profile <file> [input]
+                        run, then show each line's hits and share of the time
+  cover <file> [input]...
+                        list the lines and branches no input reached
   watch <problem>       check, lint and test on every save
   lsp                   serve the language server protocol on stdio
 
@@ -135,6 +140,8 @@ pub fn exec<S: AsRef<str>>(
             let _ = stdout.write_all(help.as_bytes());
             0
         }
+        Some("profile") => profile::profile(&rest, stdout, stderr),
+        Some("cover") => profile::cover(&rest, stdout, stderr),
         Some("check") if rest.is_empty() => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }

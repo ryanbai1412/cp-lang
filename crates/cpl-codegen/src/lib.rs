@@ -26,6 +26,50 @@ pub fn emit(program: &cpl_ir::Program, name: &str, source: Option<&str>) -> Stri
     narrow(&emit::Emitter::new(&program).file(name, source))
 }
 
+/// [`emit`] with every statement counting its starts and the time until
+/// the next one starts, the books `cpl_interp::profile` keeps. The tally is
+/// written when the program exits, to the file named by `CPL_PROFILE`, a
+/// line `site hits nanos` for each site that ran; the spans are the sites
+/// by number.
+pub fn emit_profiled(program: &cpl_ir::Program, name: &str) -> (String, Vec<cpl_diag::Span>) {
+    let mut program = program.clone();
+    (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    let mut emitter = emit::Emitter::new(&program);
+    emitter.sites = Some(Vec::new());
+    emitter.counted = cpl_ir::sites::user_stmts(&program);
+    let (cpp, sites) = emitter.file_with_sites(name, None);
+    let tally = PROFILE_TALLY.replace("SITES", &sites.len().max(1).to_string());
+    let at = cpp
+        .rfind("#include")
+        .and_then(|at| cpp[at..].find('\n').map(|end| at + end + 1))
+        .unwrap_or(0);
+    (format!("{}{tally}{}", &cpp[..at], &cpp[at..]), sites)
+}
+
+const PROFILE_TALLY: &str = r#"#include <chrono>
+namespace cpl_prof {
+static unsigned long long hits[SITES], nanos[SITES];
+static long long last = -1;
+static std::chrono::steady_clock::time_point since = std::chrono::steady_clock::now();
+inline void charge(std::chrono::steady_clock::time_point now) {
+    if (last >= 0) nanos[last] += std::chrono::duration_cast<std::chrono::nanoseconds>(now - since).count();
+    since = now;
+}
+inline void mark(long long site) { charge(std::chrono::steady_clock::now()); last = site; ++hits[site]; }
+struct Tally {
+    ~Tally() {
+        charge(std::chrono::steady_clock::now());
+        const char* path = std::getenv("CPL_PROFILE");
+        FILE* out = path ? std::fopen(path, "w") : stderr;
+        if (!out) return;
+        for (long long i = 0; i < SITES; ++i)
+            if (hits[i]) std::fprintf(out, "%lld %llu %llu\n", i, hits[i], nanos[i]);
+        if (out != stderr) std::fclose(out);
+    }
+} tally;
+}
+"#;
+
 /// The file with two spaces a level, not the four it is written with.
 fn narrow(cpp: &str) -> String {
     let mut narrowed = String::with_capacity(cpp.len());

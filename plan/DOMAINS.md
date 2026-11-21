@@ -258,18 +258,34 @@ accepts; weighted trees; simple and connected graphs; edge-deleting graph
 shrinking.
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)
-**North star.** Every tool a contestant reaches for exists, is instant, and understands
-the language's ideas: a formatter with one style; a linter whose every rule
-comes from a real bug, with zero false positives; a profiler that explains
-time and memory per line and per index space, with predicted versus actual
-complexity; coverage; benchmarks against limits on worst-case inputs; a
-documentation generator; a REPL; and refactorings through the LSP.
-**Where we are.** fmt, lint, doc, bench exist; profiler and coverage do
-not.
+**North star.** Every tool a contestant reaches for exists, is instant, and
+understands the language's ideas, and each answers a doubt in one command
+from the facts the compiler uses: a formatter with one style that never
+moves twice; a linter whose every rule comes from a real friction or bug,
+with zero false positives on the corpus and a fix where one exists; a
+profiler that explains time and memory per line and per index space, in the
+interpreter and in the judge's build, with predicted (`@cost`) versus actual
+complexity; coverage of lines and branches the samples never reach;
+benchmarks against limits on worst-case inputs; a documentation generator;
+a REPL; and refactorings through the LSP. Every new language feature arrives
+with its line in each of these tools.
+**Where we are.** fmt, lint (8 rules), doc and bench exist with tests.
+`cpl profile` counts each statement's starts and time in the interpreter
+and, with `--native`, in the C++ built with a counter at each statement;
+the counts agree on all 183 programs of `crates/cpl-cli/tests/programs`.
+`cpl cover` lists unreached lines and one-way `if`s over a problem's cases.
+fmt is stable on all 1,337 parseable corpus files (3 do not lex), but its
+corpus test reads only the top level of `proto/ports`. lint on the 996
+corpus files that check: 535 warnings (424 `L0414`, 51 `L0201`, 49
+`L0203`, 6 `L0412`, 4 `L0101`, 1 `L0202`), not yet triaged into true and
+false positives. No lint is yet mined from `scripts/friction_lint.py`.
+Profile time is not yet compared with `@cost`.
 **Bar.** Each tool has tests and a doc page; lint has zero false positives
-on the corpus.
-**Next.** Profiler (per-line time and counts); coverage; lint rules from
-friction reports.
+on the corpus; fmt is idempotent on every port; interpreter and native
+profiles agree on every count.
+**Next.** fmt corpus test over every port; triage the `L0414` warnings
+against the code generator's index proofs; lints from the friction
+detectors (`wa_trap` first); profile against `@cost` and the time limit.
 
 ## 9. Judges and submission (`plan/70`)
 **North star.** Submission is boring and always right: one self-contained file per judge

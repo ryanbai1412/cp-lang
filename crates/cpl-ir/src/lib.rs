@@ -19,6 +19,7 @@ pub const FLOAT_DIGITS: u32 = 10;
 
 pub mod pushed;
 mod show;
+pub mod sites;
 pub mod walk;
 
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
@@ -693,6 +694,42 @@ pub enum Stmt {
     Trap(String, Span),
 }
 
+impl Stmt {
+    /// Where the statement is in the user's file: what its line is for a
+    /// profile or a coverage report. `None` for one with nothing written
+    /// (`break`, a bare `return`, a compiler-made zero) or made by the
+    /// compiler.
+    pub fn span(&self) -> Option<Span> {
+        let span = match self {
+            Stmt::Let(_, None) | Stmt::Return(None) | Stmt::Break(_) | Stmt::Continue(_) => {
+                return None
+            }
+            Stmt::Let(_, Some(e)) | Stmt::Expr(e) | Stmt::Return(Some(e)) | Stmt::Give(e) => e.span,
+            Stmt::Assign(place, _, value) => join(place.span, value.span),
+            Stmt::If(cond, ..) | Stmt::While(_, cond, _) => cond.span,
+            Stmt::For(_, _, iter, _) => match iter {
+                Iter::Range { lo, hi, .. } => join(lo.span, hi.span),
+                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
+                    e.span
+                }
+            },
+            Stmt::Assert { span, .. } | Stmt::Trap(_, span) => *span,
+            Stmt::DefDomain { len, .. } => len.span,
+            Stmt::DefDomainFromVal { val, .. } => val.span,
+        };
+        (span != Span::default()).then_some(span)
+    }
+}
+
+/// The span over both, ignoring one the compiler made.
+fn join(a: Span, b: Span) -> Span {
+    match (a == Span::default(), b == Span::default()) {
+        (true, _) => b,
+        (_, true) => a,
+        _ => a.to(b),
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum Iter {
     /// Integers, or the ordinals of a domain. `hi` is exclusive, or the
@@ -808,6 +845,8 @@ pub struct Program {
     pub domains: Vec<String>,
     pub globals: Vec<Global>,
     pub fns: Vec<Function>,
+    /// By [`FnId`]: whether the fn is an imported module's, not the file's.
+    pub library_fns: Vec<bool>,
     pub closures: Vec<ClosureDef>,
     /// The file's top-level code and its locals.
     pub main: Block,

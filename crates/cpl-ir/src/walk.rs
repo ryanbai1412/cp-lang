@@ -190,7 +190,7 @@ fn stmt_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
 }
 
 /// The blocks directly inside a statement.
-fn stmt_blocks<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Block)) {
+pub fn stmt_blocks<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Block)) {
     match stmt {
         Stmt::If(_, then, otherwise) => {
             f(then);

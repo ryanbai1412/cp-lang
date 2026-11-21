@@ -9,6 +9,7 @@
 //! Strings are byte vectors. Nothing here decodes or validates text.
 
 mod input;
+pub mod profile;
 pub mod trace;
 mod value;
 
@@ -123,6 +124,8 @@ pub struct Observed {
     pub debug: Vec<u8>,
     /// The trace, when one was asked for.
     pub recording: Option<trace::Recording>,
+    /// The profile, when one was asked for.
+    pub profile: Option<profile::Profile>,
 }
 
 /// What a program reads.
@@ -182,6 +185,22 @@ pub fn run_observed(
     output: &mut (dyn Write + Send),
     trace: Option<trace::TraceConfig>,
 ) -> Observed {
+    observe(program, io, output, trace, false)
+}
+
+/// [`run_with`], keeping how often each statement ran and the time spent
+/// there, as [`profile::Profile`] says.
+pub fn run_profiled(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Observed {
+    observe(program, io, output, None, true)
+}
+
+fn observe(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    trace: Option<trace::TraceConfig>,
+    profile: bool,
+) -> Observed {
     let io = std::sync::Mutex::new(Some(io));
     let trace = std::sync::Mutex::new(trace);
     // The writer is shared by reference so that a spawn that fails (too
@@ -220,7 +239,7 @@ pub fn run_observed(
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner())
                             .take();
-                        run_io(program, io, &mut **output, limits, trace)
+                        run_io(program, io, &mut **output, limits, trace, profile)
                     });
             if let Ok(handle) = spawned {
                 return handle
@@ -241,7 +260,7 @@ pub fn run_on_this_thread(
     output: &mut (dyn Write + Send),
     limits: Limits,
 ) -> Result<(), Trap> {
-    match run_io(program, Io::fixed(input), output, limits, None).trap {
+    match run_io(program, Io::fixed(input), output, limits, None, false).trap {
         Some(trap) => Err(trap),
         None => Ok(()),
     }
@@ -255,7 +274,7 @@ pub fn observe_on_this_thread(
     limits: Limits,
     trace: Option<trace::TraceConfig>,
 ) -> Observed {
-    run_io(program, Io::fixed(input), output, limits, trace)
+    run_io(program, Io::fixed(input), output, limits, trace, false)
 }
 
 fn run_io(
@@ -264,6 +283,7 @@ fn run_io(
     output: &mut (dyn Write + Send),
     limits: Limits,
     trace: Option<trace::TraceConfig>,
+    profile: bool,
 ) -> Observed {
     let top = 0u8;
     let mut interp = Interp {
@@ -287,6 +307,7 @@ fn run_io(
         current_case: None,
         rng_state: 0x9e3779b97f4a7c15u64,
         tracer: trace.map(|config| Box::new(trace::Tracer::new(config, program))),
+        profiler: profile.then(|| Box::new(profile::Profiler::new(program))),
         debug_out: Vec::new(),
         feeds: cpl_ir::pushed::Feeds::of(program),
         fed: HashMap::new(),
@@ -344,6 +365,7 @@ fn run_io(
         trap,
         debug: std::mem::take(&mut interp.debug_out),
         recording,
+        profile: interp.profiler.take().map(|profiler| profiler.finish()),
     }
 }
 
@@ -395,6 +417,7 @@ struct Interp<'p, 'o> {
     rng_state: u64,
     /// Records the trace of the run, when one was asked for.
     tracer: Option<Box<trace::Tracer>>,
+    profiler: Option<Box<profile::Profiler>>,
     /// What `debug(...)` showed.
     debug_out: Vec<u8>,
     /// Which loops over a `yields` fn run their body as the fn yields.
@@ -602,6 +625,9 @@ impl<'p, 'o> Interp<'p, 'o> {
     }
 
     fn stmt(&mut self, stmt: &'p Stmt) -> Res<Flow> {
+        if let Some(profiler) = &mut self.profiler {
+            profiler.enter(stmt);
+        }
         match stmt {
             Stmt::Let(slot, init) => {
                 let value = match init {

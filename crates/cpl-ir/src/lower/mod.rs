@@ -281,6 +281,7 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
     // Ensure any unlowered non-generic fns from imported modules (unused) don't panic:
     // keep only lowered fns or fill unused bodies with empty blocks, and deduplicate names.
     let mut used_fn_names: HashSet<String> = HashSet::new();
+    let library_fns: Vec<bool> = lw.sigs.iter().take(lw.bodies.len()).map(|sig| sig.mod_id != 0).collect();
     let fns = lw
         .bodies
         .into_iter()
@@ -312,6 +313,7 @@ fn finish(self, analysis: &Analysis, whole: bool) -> Result<Program, Vec<Diagnos
         subsets: lw.subsets,
         globals: lw.globals,
         fns,
+        library_fns,
         closures: lw.closures,
         main: lw.main_body,
         main_locals: lw.main_locals,

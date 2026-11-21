@@ -821,6 +821,13 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+        if let (Some(sites), Some(span)) = (&mut self.sites, stmt.span()) {
+            if self.counted.contains(&(stmt as *const Stmt)) {
+                sites.push(span);
+                let id = sites.len() - 1;
+                self.line(out, &format!("cpl_prof::mark({id});"));
+            }
+        }
         let program = self.program;
         match stmt {
             // A fn written as `cpl_each_f`: its list is the callback.

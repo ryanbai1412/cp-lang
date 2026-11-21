@@ -1548,3 +1548,25 @@ Unoptimized, a call took about seven times the stack, so a debug-built
 `cpl` and the tests rejected recursion the release build runs. Cost: a
 few seconds more on a clean debug build. Reverse: drop
 `[profile.dev.package.cpl-interp]` from `Cargo.toml`.
+
+||||||| parent of 069359d4 (tools: add cpl profile and cpl cover for both engines)
+
+||||||| Stash base
+
+## 32. Profiling and coverage (§8 tooling, 2026-11-21)
+
+- **32.1 A profile counts statements, keyed by their span in the user's file.** `cpl profile` and
+  `cpl cover` read one tally: how many times each statement began and the time until the next one began
+  (a sampler's attribution). The interpreter keeps it in `cpl_interp::profile`; `cpl_codegen::emit_profiled`
+  writes the same books into the C++ as a counter call before each statement, so the two agree on every
+  count (`native_profile_counts_what_the_interpreter_counts_*`). Reason: one model serves both engines and
+  coverage, and parity is testable. Reverse: drop `emit_profiled` and sample the native binary with `perf`.
+- **32.2 Library code is the caller's line.** Imported modules' fns (`Program.library_fns`) and the
+  closures they make are not counted; their time lands on the user's statement that called them, which
+  is the line the contestant can change. Reverse: count them under their own module's file.
+- **32.3 A statement inside an expression, or an `if` that is the next arm of a chain, is not its own
+  site.** Statements of `ExprKind::Do` blocks are how an expression is lowered and the C++ may write it
+  another way; an `elif` or `match` arm may become one `switch`. Counting them made the two engines
+  disagree on 126 of 183 programs. Reverse: give lowered blocks their own spans and mark them in codegen.
+- **32.4 Branch coverage comes from the same counts.** An `if` that ran and whose first statement ran
+  every time, or never, went one way. No separate instrumentation. Reverse: count arms explicitly.
