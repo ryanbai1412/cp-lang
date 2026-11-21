@@ -2,6 +2,8 @@
 // prefix 0..st, each of whose elements lowers its cost. Past it the cost
 // (P_i - P_j)(i - j) is Monge, so f(k) is convex in k: Aliens over an O(n)
 // Monge shortest path.
+use std.dp.{aliens, monge_path}
+
 @!multitest
 let n: 1..=2e5 = read()
 let k: 1..=n = read()

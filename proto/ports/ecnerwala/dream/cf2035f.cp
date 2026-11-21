@@ -16,4 +16,4 @@ fn works(ops: Int) -> Bool:
 
 let cycle = 2 * V.count
 let rounds = 0..=2 * (V.count + a.max())
-print(min(k * cycle + r for r in 0..cycle if let k = rounds.bsearch_first(k => works(k * cycle + r))) ?? -1)
+print(min(k * cycle + r for r in 0..cycle if let k = bsearch_first(rounds, k => works(k * cycle + r))) ?? -1)

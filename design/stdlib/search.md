@@ -115,6 +115,11 @@ scratch list and `pop`s it back; the copy is a slice question for the
 sequences area, not a search option. Choosing the answer space is user
 code too: `0..=2e18` is fine, since the midpoint never overflows.
 
+Not in the design, one dream each: a monotone search over an ordered
+`Set`'s elements (`tops.bsearch_first(q => a[q] > s)`, `cf2262b`); the set's
+own ordered queries cover it once a second problem needs it. A method form
+`r.bsearch_first(ok)` is the free form until decision 53 covers searches.
+
 ## 5. Worked problem: AGC 002 D, Stamp Rally
 
 `design/stdlib/dp.md` 5.3 is the full program: one `Dsu` built by

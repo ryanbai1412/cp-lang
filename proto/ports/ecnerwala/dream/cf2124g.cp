@@ -23,11 +23,11 @@ let a: [Pos]Int = read()
 
 let pref_min = a.scan(min)
 let orig_suff = pref_min.suffix_sums()
-let base_ans = orig_suff[Pos.Cut.first]
+let base_ans = orig_suff[Pos.bounds.first]
 
 var ans: [0..n]Int = base_ans
 var cands: List<(val: Int, pos: Pos)> = []
-var end_cut = Pos.Cut.last
+var end_cut = Pos.bounds.last
 
 for i in Pos.rev:
     let ai = a[i]

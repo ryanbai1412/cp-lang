@@ -40,17 +40,17 @@ domain Pos = 0..2 * n - 1
 var perm: [Pos]Int = [Pos] p => p.ord + 1
 rng.shuffle(mut perm)
 
-fn has(v: Val, lo: Pos.Cut, hi: Pos.Cut) -> Bool:
+fn has(v: Val, lo: Pos.bounds, hi: Pos.bounds) -> Bool:
     if lo == hi: return false
     print("?", v, hi.ord - lo.ord, perm[lo..hi])
     read<Int>() == 1
 
 var copies: [Val]Copies = Copies.Both
-var (lo, hi) = (Pos.Cut.first, Pos.Cut.last)
+var (lo, hi) = (Pos.bounds.first, Pos.bounds.last)
 var alive = [v for v in Val]
 
 while alive.len > 1:
-    let mid = Pos.Cut((lo.ord + hi.ord) / 2)
+    let mid = Pos.bounds.nth((lo.ord + hi.ord) / 2)
     var left: [Val]Copies = Copies.None
     for v in alive:
         left[v] = if not has(v, lo, mid):

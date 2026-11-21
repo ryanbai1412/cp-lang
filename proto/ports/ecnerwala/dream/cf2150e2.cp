@@ -29,30 +29,30 @@ domain Pos = 0..2 * n - 1
 var perm: [Pos]Int = [Pos] p => p.ord + 1
 rng.shuffle(mut perm)
 
-fn has(v: Val, lo: Pos.Cut, hi: Pos.Cut) -> Bool:
+fn has(v: Val, lo: Pos.bounds, hi: Pos.bounds) -> Bool:
     if lo == hi: return false
     print("?", v, hi.ord - lo.ord, perm[lo..hi])
     read<Int>() == 1
 
-let mid = Pos.Cut((2 * n - 1) / 2)
+let mid = Pos.bounds.nth((2 * n - 1) / 2)
 var left_w: [Val]0..=2 = 0
 for v in Val:
-    left_w[v] = if not has(v, Pos.Cut.first, mid):
+    left_w[v] = if not has(v, Pos.bounds.first, mid):
         0
-    elif has(v, mid, Pos.Cut.last):
+    elif has(v, mid, Pos.bounds.last):
         1
     else:
         2
 
 let (lo, hi, only_here) = if left_w.sum() > mid.ord:
-    (Pos.Cut.first, mid, [Val] v => left_w[v] == 2)
+    (Pos.bounds.first, mid, [Val] v => left_w[v] == 2)
 else:
-    (mid, Pos.Cut.last, [Val] v => 2 - left_w[v] == 2)
+    (mid, Pos.bounds.last, [Val] v => 2 - left_w[v] == 2)
 
-fn is_single(v: Val, start: Pos.Cut, stop: Pos.Cut) -> Bool:
+fn is_single(v: Val, start: Pos.bounds, stop: Pos.bounds) -> Bool:
     var (l, r) = (start, stop)
     while r.ord - l.ord > 1:
-        let m = Pos.Cut((l.ord + r.ord) / 2)
+        let m = Pos.bounds.nth((l.ord + r.ord) / 2)
         if not has(v, l, m): l = m
         elif not has(v, m, r): r = m
         else: return false
