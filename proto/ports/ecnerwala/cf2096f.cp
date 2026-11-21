@@ -1,86 +1,59 @@
+// Codeforces 2096 F: Wonderful Impostors.
+// Statements l..r can all be true iff every "some impostor" interval keeps a viewer
+// no "no impostor" interval covers: then make every uncovered viewer an impostor.
+// That only gets easier as the window shrinks, so two pointers give, for each r, the
+// smallest l that still fits, and a query l r asks whether l reaches it.
+// - A "no impostor" interval [a, b] merges the covered run around it into the gap
+//   between the nearest uncovered viewers; it fits iff no live "some impostor"
+//   interval lies inside that gap.
+// - A "some impostor" interval fits iff it has an uncovered viewer.
+// `cover` counts the live "no impostor" intervals over each viewer (min 0 means one
+// is uncovered). The live "some impostor" intervals starting at v are a sliding
+// window over the statements, so `ends[v]` keeps their shortest right end, and
+// `shortest` is a min tree over those.
+use std.window.{MonoDeque}
 @!multitest
-let (n, m): (Int, Int) = read()
-domain Pos = 0..n
-let ev: [0..m](t: Int, l: Int, r: Int) = read()
+let (n, m): (1..=200_000, 1..=200_000) = read()
+domain V = 1..=n
+let st: [0..m](some: Bool, a: V, b: V) = read()
 
-let sz = 4 * n + 4
-var zero_lazy: [0..sz]Int = 0
-var zero_full: [0..sz]Bool = false
+var cover = LazySegTree<V, Int>(AddMin, fill: 0)
+var ends: [V]MonoDeque<Int> = MonoDeque()
+var shortest = SegTree<V, Int>(min, fill: n + 1)
 
-fn zero_upd(node: Int, lo: Int, hi: Int, ql: Int, qr: Int, delta: Int):
-    if qr <= lo or hi <= ql: return
-    if ql <= lo and hi <= qr:
-        zero_lazy[node] += delta
-        zero_full[node] = zero_lazy[node] > 0 or (
-            lo + 1 < hi and zero_full[node * 2] and zero_full[node * 2 + 1]
-        )
-        return
-    let mid = (lo + hi) / 2
-    zero_upd(node * 2, lo, mid, ql, qr, delta)
-    zero_upd(node * 2 + 1, mid, hi, ql, qr, delta)
-    zero_full[node] = zero_lazy[node] > 0 or (zero_full[node * 2] and zero_full[node * 2 + 1])
+fn fits(i: Int) -> Bool:
+    let s = st[i]
+    if s.some: return cover.fold(s.a..=s.b) == 0
+    let lo = cover.min_left(to: s.a.l, ok: c => c > 0)
+    let hi = cover.max_right(from: s.b.r, ok: c => c > 0)
+    lo == hi or shortest.fold(lo..hi) >= hi.ord
 
-fn find_prev_empty(node: Int, lo: Int, hi: Int, limit: Int) -> ?Int:
-    if zero_full[node] or lo >= limit: return none
-    if lo + 1 == hi: return lo
-    let mid = (lo + hi) / 2
-    if limit > mid:
-        if let res = find_prev_empty(node * 2 + 1, mid, hi, limit): return res
-    find_prev_empty(node * 2, lo, mid, limit)
+fn take(i: Int):
+    let s = st[i]
+    if s.some:
+        ends[s.a].push(at: i, val: s.b.ord)
+        shortest.set(s.a, ends[s.a].best!)
+    else:
+        cover.apply(s.a..=s.b, 1)
 
-fn find_next_empty(node: Int, lo: Int, hi: Int, start: Int) -> ?Int:
-    if zero_full[node] or hi <= start: return none
-    if lo + 1 == hi: return lo
-    let mid = (lo + hi) / 2
-    if start < mid:
-        if let res = find_next_empty(node * 2, lo, mid, start): return res
-    find_next_empty(node * 2 + 1, mid, hi, start)
+fn drop(i: Int):
+    let s = st[i]
+    if s.some:
+        ends[s.a].drop_before(i + 1)
+        shortest.set(s.a, ends[s.a].best ?? (n + 1))
+    else:
+        cover.apply(s.a..=s.b, -1)
 
-fn has_empty(node: Int, lo: Int, hi: Int, ql: Int, qr: Int) -> Bool:
-    if zero_full[node] or qr <= lo or hi <= ql: return false
-    if ql <= lo and hi <= qr: return true
-    let mid = (lo + hi) / 2
-    has_empty(node * 2, lo, mid, ql, qr) or has_empty(node * 2 + 1, mid, hi, ql, qr)
+var first_fit: [0..m]Int = 0
+var l = 0
+for r in 0..m:
+    while not fits(r):
+        drop(l)
+        l += 1
+    take(r)
+    first_fit[r] = l
 
-var one = SegTree<Pos, Int>(min)
-var live: [Pos]Map<Int, Int> = Map()
-
-fn sync_one(p: Pos):
-    one.set(p, if let f = live[p].first: f.0 else: n + 1)
-
-var min_l: [0..m]Int = 0
-var l_ptr = 0
-for r_ptr in 0..m:
-    let (t, l0, ar) = ev[r_ptr]
-    let al = l0 - 1
-    while true:
-        let ok = if t == 0:
-            let prv = if al == 0: -1 else: find_prev_empty(1, 0, n, al) ?? -1
-            let nxt = if ar == n: n else: find_next_empty(1, 0, n, ar) ?? n
-            prv + 1 >= nxt or one.fold(Pos(prv + 1)..=Pos(nxt - 1)) > nxt
-        else:
-            has_empty(1, 0, n, al, ar)
-        if ok:
-            min_l[r_ptr] = l_ptr
-            if t == 0:
-                zero_upd(1, 0, n, al, ar, 1)
-            else:
-                let p = Pos(al)
-                live[p][ar] += 1
-                sync_one(p)
-            break
-        let (lt, ll0, lr) = ev[l_ptr]
-        let ll = ll0 - 1
-        if lt == 0:
-            zero_upd(1, 0, n, ll, lr, -1)
-        else:
-            let p = Pos(ll)
-            live[p][lr] -= 1
-            if live[p][lr] == 0: live[p].remove(lr)
-            sync_one(p)
-        l_ptr += 1
-
-let q_cnt: Int = read()
-for _ in 0..q_cnt:
-    let (ql, qr): (Int, Int) = read()
-    print(if ql - 1 >= min_l[qr - 1]: "YES" else: "NO")
+let q: Int = read()
+for _ in 0..q:
+    let (ql, qr): (1..=m, 1..=m) = read()
+    print(if ql - 1 >= first_fit[qr - 1]: "YES" else: "NO")
