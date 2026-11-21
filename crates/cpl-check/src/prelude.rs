@@ -139,7 +139,7 @@ pub fn is_trait(name: &str) -> bool {
 
 pub const TYPE_NAMES: &[&str] = &[
     "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Bounds",
-    "Counter", "HashMap",
+    "Counter", "HashMap", "Interactor", "Subset",
 ];
 
 /// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.
@@ -170,7 +170,6 @@ pub const TRAIT_NAMES: &[&str] = &[
 ];
 
 pub const VALUE_NAMES: &[&str] = &[
-    "INF",
     "print",
     "read",
     "debug",

@@ -81,6 +81,13 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
         assert!(names.contains(&(name, kind)), "`{name}` is a {kind:?}");
     }
     assert!(names.iter().any(|(name, kind)| *name == "SegTree" && matches!(kind, PreludeKind::Std(_))));
+    for name in ["Interactor", "Subset"] {
+        assert!(names.contains(&(name, PreludeKind::Type)), "`{name}` is a type");
+    }
+    // Only what `stdlib/prelude.cp` lists, which `scripts/check.sh` holds to 80.
+    let std = names.iter().filter(|(_, kind)| matches!(kind, PreludeKind::Std(_))).count();
+    assert!((1..=80).contains(&std), "{std} names from the prelude");
+    assert!(!names.iter().any(|(name, _)| *name == "INF"));
     let mut seen = std::collections::HashSet::new();
     // `List` is a type and, called, a value: once of each kind.
     for (name, kind) in &names {

@@ -216,7 +216,7 @@ impl Visitor for Indexes<'_> {
             format!("`{list}[{written}]` is bounds-checked on every pass of a nested loop"),
         )
         .with_help(format!(
-            "loop over the values (`for x in {list}`) or the indices (`for i in {list}.indices`), or index an array by a domain: `[D]T` needs no check"
+            "loop over the values (`for x in {list}`) or the indices (`for i in 0..{list}.len`), or index an array by a domain: `[D]T` needs no check"
         ));
         self.findings.push(Finding {
             lint: &UNPROVEN_LIST_INDEX,

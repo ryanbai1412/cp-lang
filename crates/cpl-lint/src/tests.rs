@@ -549,3 +549,15 @@ fn an_operator_passed_as_a_fn_hides_no_name() {
     let src = "let a = [1, 2]\nlet it = 3\nfn total(f: (Int, Int) -> Int, xs: List<Int>) -> Int:\n    var t = 0\n    for x in xs: t = f(t, x)\n    return t\nfn go():\n    print(total(+, a), it)\n    print(sorted(a, by: .abs))\ngo()\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
+
+#[test]
+fn a_top_level_loop_hides_no_name_written_below_it() {
+    // Top-level code runs in order, so `i` of the loop is gone before
+    // `var i` exists. A fn sees the top level whole, so there it does hide.
+    let src = "for i in 0..3:\n    print(i)\nvar i = 5\ni += 1\nprint(i)\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+    let src = "fn go():\n    for i in 0..3:\n        print(i)\nvar i = 5\ni += 1\ngo()\nprint(i)\n";
+    assert_eq!(codes(src), vec!["L0203"]);
+    let src = "var i = 5\ni += 1\nfor i in 0..3:\n    print(i)\n";
+    assert_eq!(codes(src), vec!["L0203"]);
+}

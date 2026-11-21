@@ -103,7 +103,12 @@ pub fn prelude_names() -> Vec<(&'static str, PreludeKind)> {
         .map(|name| (*name, PreludeKind::Type))
         .chain(prelude::TRAIT_NAMES.iter().map(|name| (*name, PreludeKind::Trait)))
         .chain(prelude::VALUE_NAMES.iter().map(|name| (*name, PreludeKind::Value)));
-    let std = prelude::STD_NAMES.iter().map(|(name, module)| (*name, PreludeKind::Std(module)));
+    // `STD_NAMES` is every name of the library; a file gets only the ones
+    // the prelude lists.
+    let std = prelude::names().iter().filter_map(|(_, name)| {
+        let (name, module) = prelude::STD_NAMES.iter().find(|(known, _)| *known == name.text)?;
+        Some((*name, PreludeKind::Std(module)))
+    });
     own.chain(std).collect()
 }
 

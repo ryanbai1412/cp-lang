@@ -33,6 +33,8 @@ struct Scopes<'a> {
     vars: Vec<VarStmt>,
     /// The `var` statement whose pattern is being bound.
     current_var: Option<usize>,
+    /// How many `fn` bodies enclose the walk.
+    fns: usize,
     findings: Vec<Finding>,
 }
 
@@ -106,7 +108,11 @@ impl Visitor for Scopes<'_> {
         }
         if !top_level && name != "_" {
             let hidden = self.scopes[0].get(name).map(|id| &self.bindings[*id]);
-            if let Some(hidden) = hidden.filter(|b| b.top_level) {
+            // A fn can name a top-level `let` written below it, so there a
+            // later one is hidden too. Top-level code runs in order: a loop
+            // that ends before `var i` is written hides nothing.
+            let in_reach = |b: &&Binding| self.fns > 0 || b.span.start < span.start;
+            if let Some(hidden) = hidden.filter(|b| b.top_level).filter(in_reach) {
                 let what = match how {
                     Bind::Param => "parameter",
                     Bind::Pattern => "binding",
@@ -148,11 +154,13 @@ impl Visitor for Scopes<'_> {
         self.scopes.last_mut().unwrap().insert(name.to_string(), id);
     }
 
-    fn enter(&mut self, _scope: Scope) {
+    fn enter(&mut self, scope: Scope) {
+        self.fns += usize::from(scope == Scope::Fn);
         self.scopes.push(HashMap::new());
     }
 
-    fn exit(&mut self, _scope: Scope) {
+    fn exit(&mut self, scope: Scope) {
+        self.fns -= usize::from(scope == Scope::Fn);
         self.scopes.pop();
     }
 }
@@ -195,6 +203,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         scopes: vec![HashMap::new()],
         vars: Vec::new(),
         current_var: None,
+        fns: 0,
         findings: Vec::new(),
     };
     let mut top = TopLevel {

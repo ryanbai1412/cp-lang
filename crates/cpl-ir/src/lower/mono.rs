@@ -1335,6 +1335,15 @@ impl<'a> Lowerer<'a> {
             .as_ref()
             .map(|r| self.resolve_ty(r))
             .unwrap_or(Ty::Unit);
+        // A fn value's type has no `mut` in it, so a call through one
+        // would change a copy and leave the caller's variable as it was.
+        for p in decl.params.iter().filter(|p| p.mutable) {
+            let message = format!("a fn inside a fn can't take `mut {}`", p.name.text);
+            self.error(codes::ASSIGN_TO_LET, p.name.span, message);
+            self.help(
+                "it already sees the variables around it: drop the parameter and change the variable itself, or move the fn to the top level",
+            );
+        }
         let fn_ty = Ty::Fn(param_tys.clone(), Box::new(ret_ty.clone()));
         let fn_slot = self.cx.locals.len();
         self.cx.locals.push(Local {

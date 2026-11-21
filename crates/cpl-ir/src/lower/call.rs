@@ -1459,6 +1459,18 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// The list of what `lo..hi` goes over, in order.
+    pub(super) fn range_list(&mut self, lo: Expr, hi: Expr, elem: Ty, span: Span) -> Expr {
+        self.collected(elem.clone(), span, |lw, out, push| {
+            let item = lw.temp(elem);
+            let lid = lw.fresh_loop();
+            let at = lw.local(item, span);
+            let body = Block { stmts: vec![push(lw, at)] };
+            let iter = Iter::Range { lo, hi, step: None, rev: false };
+            out.push(Stmt::For(lid, item, iter, body));
+        })
+    }
+
     /// `sorted(xs, by: ...)`
     fn sorted_by(&mut self, value: Expr, args: &[ast::Arg], span: Span) -> Expr {
         // `sorted(V, by: ...)`: the positions of a domain, in another order.
@@ -1466,17 +1478,7 @@ impl<'a> Lowerer<'a> {
             (ExprKind::DomainVal(d), _) => self.positions(d, span),
             // `sorted(D.all, by: ...)`, `sorted(0..n, by: ...)`: a range
             // written out is the list of what it goes over.
-            (ExprKind::Range { lo, hi }, Ty::Range(of)) => {
-                let elem = (**of).clone();
-                self.collected(elem.clone(), span, |lw, out, push| {
-                    let item = lw.temp(elem);
-                    let lid = lw.fresh_loop();
-                    let at = lw.local(item, span);
-                    let body = Block { stmts: vec![push(lw, at)] };
-                    let iter = Iter::Range { lo: *lo, hi: *hi, step: None, rev: false };
-                    out.push(Stmt::For(lid, item, iter, body));
-                })
-            }
+            (ExprKind::Range { lo, hi }, Ty::Range(of)) => self.range_list(*lo, *hi, (**of).clone(), span),
             (kind, _) => Expr { kind, ..value },
         };
         let list_ty = match value.ty.clone() {

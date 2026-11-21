@@ -2366,8 +2366,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Rc::make_mut(entries).clear();
                 Value::Unit
             }
+            (Mutation::Clear, Value::Str(bytes)) => {
+                Rc::make_mut(bytes).clear();
+                Value::Unit
+            }
             (Mutation::Reverse, Value::List(items)) => {
                 Rc::make_mut(items).reverse();
+                Value::Unit
+            }
+            (Mutation::Reverse, Value::Array(arr)) => {
+                Rc::make_mut(arr).data.reverse();
                 Value::Unit
             }
             (Mutation::Swap, Value::List(items)) => {

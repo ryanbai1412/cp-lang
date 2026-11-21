@@ -638,6 +638,15 @@ fn the_users_own_error_hides_the_ones_it_causes_in_library_code() {
 }
 
 #[test]
+fn a_fn_inside_a_fn_takes_no_mut_parameter() {
+    // A fn value's type carries no `mut`, so the call would change a copy.
+    let source = "let n: Int = read()\nfor _ in 0..2:\n    var par: [0..=n]Int = -1\n    fn touch(mut par: [0..=n]Int, x: Int) -> Int:\n        par[x] = 0\n        x\n    print(touch(mut par, 0))\n";
+    let stderr = check_errors("nested-mut", source);
+    assert!(stderr.contains("a fn inside a fn can't take `mut par`"), "{stderr}");
+    assert!(stderr.contains("a.cp:4:18"), "{stderr}");
+}
+
+#[test]
 fn an_arc_without_a_record_says_how_to_read_it() {
     let pairs = "use std.graph.{undirected_of_pairs}\ndomain V = 0..3\nlet adj = undirected_of_pairs([(V(0), V(1))])\nfor a in adj[V(0)]: print(a.e)\n";
     let stderr = check_errors("arc-e", pairs);

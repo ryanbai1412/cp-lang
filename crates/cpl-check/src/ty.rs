@@ -174,6 +174,13 @@ impl Ty {
             (Ty::Tuple(a), Ty::Record(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits_in(b, number))
             }
+            // A range written out is the list of what it goes over:
+            // `place(D.all)` where a `List<D>` is wanted.
+            (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba })
+                if an == "Range" && bn == "List" && aa.len() == 1 && ba.len() == 1 =>
+            {
+                aa[0].fits_in(&ba[0], number)
+            }
             (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba }) => {
                 // `[k: v]` is written the same for either kind of map.
                 (an == bn || (an == "Map" && bn == "HashMap"))

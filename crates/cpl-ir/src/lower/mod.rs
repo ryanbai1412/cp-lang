@@ -2783,6 +2783,12 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Str,
                 span,
             }),
+            // `place(D.all)` where a `List<D>` is wanted: a range written
+            // out is the list of what it goes over.
+            (Ty::List(elem), Ty::Range(of)) if elem == of && matches!(e.kind, ExprKind::Range { .. }) => {
+                let ExprKind::Range { lo, hi } = e.kind else { unreachable!() };
+                Ok(self.range_list(*lo, *hi, (**elem).clone(), span))
+            }
             (Ty::List(elem), Ty::Array { elem: aelem, .. }) if *elem == *aelem => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ArrayToList, vec![e]),
                 ty: want.clone(),
