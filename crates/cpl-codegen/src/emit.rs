@@ -632,17 +632,175 @@ impl<'p> Emitter<'p> {
     fn write(&mut self, name: &str, source: Option<&str>) -> String {
         let program = self.program;
 
-        // Ensure runtime types used by globals, fns, closures, and main are registered.
+        // Compute reachable fns, closures, structs, and enums together so uncalled
+        // stdlib functions, unused types, and their trait hooks are omitted.
+        let mut reachable: BTreeSet<usize> = BTreeSet::new();
+        let mut reachable_closures: BTreeSet<usize> = BTreeSet::new();
+        let mut reachable_structs: BTreeSet<usize> = BTreeSet::new();
+        let mut reachable_enums: BTreeSet<usize> = BTreeSet::new();
+        let mut fn_work: Vec<usize> = Vec::new();
+        let mut closure_work: Vec<usize> = Vec::new();
+
+        fn mark_ty(
+            ty: &Ty,
+            program: &Program,
+            reachable: &mut BTreeSet<usize>,
+            fn_work: &mut Vec<usize>,
+            reachable_structs: &mut BTreeSet<usize>,
+            reachable_enums: &mut BTreeSet<usize>,
+        ) {
+            match ty {
+                Ty::Struct(sid) => {
+                    if reachable_structs.insert(*sid) {
+                        let s = &program.structs[*sid];
+                        for (_, fty) in &s.fields {
+                            mark_ty(fty, program, reachable, fn_work, reachable_structs, reachable_enums);
+                        }
+                        for hook in [s.eq_fn, s.lt_fn, s.show_fn].into_iter().flatten() {
+                            if reachable.insert(hook) {
+                                fn_work.push(hook);
+                            }
+                        }
+                    }
+                }
+                Ty::Enum(eid) => {
+                    if reachable_enums.insert(*eid) {
+                        for (_, fields) in &program.enums[*eid].variants {
+                            for fty in fields {
+                                mark_ty(fty, program, reachable, fn_work, reachable_structs, reachable_enums);
+                            }
+                        }
+                    }
+                }
+                Ty::Range(t)
+                | Ty::Opt(t)
+                | Ty::List(t)
+                | Ty::Set(t)
+                | Ty::HashSet(t)
+                | Ty::Mut(t) => mark_ty(t, program, reachable, fn_work, reachable_structs, reachable_enums),
+                Ty::Array { elem, .. } => {
+                    mark_ty(elem, program, reachable, fn_work, reachable_structs, reachable_enums);
+                }
+                Ty::Map(k, v) | Ty::HashMap(k, v) => {
+                    mark_ty(k, program, reachable, fn_work, reachable_structs, reachable_enums);
+                    mark_ty(v, program, reachable, fn_work, reachable_structs, reachable_enums);
+                }
+                Ty::Fn(args, ret) => {
+                    for a in args {
+                        mark_ty(a, program, reachable, fn_work, reachable_structs, reachable_enums);
+                    }
+                    mark_ty(ret, program, reachable, fn_work, reachable_structs, reachable_enums);
+                }
+                Ty::Tuple(ts) => {
+                    for t in ts {
+                        mark_ty(t, program, reachable, fn_work, reachable_structs, reachable_enums);
+                    }
+                }
+                Ty::Record(fs) => {
+                    for (_, t) in fs {
+                        mark_ty(t, program, reachable, fn_work, reachable_structs, reachable_enums);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let scan_block = |b: &Block,
+                          reachable: &mut BTreeSet<usize>,
+                          fn_work: &mut Vec<usize>,
+                          reachable_closures: &mut BTreeSet<usize>,
+                          closure_work: &mut Vec<usize>,
+                          reachable_structs: &mut BTreeSet<usize>,
+                          reachable_enums: &mut BTreeSet<usize>| {
+            walk::deep_exprs(b, &mut |e| {
+                mark_ty(&e.ty, program, reachable, fn_work, reachable_structs, reachable_enums);
+                match &e.kind {
+                    ExprKind::Call(fid, _) if reachable.insert(*fid) => fn_work.push(*fid),
+                    ExprKind::Closure(cid) if reachable_closures.insert(*cid) => {
+                        closure_work.push(*cid);
+                    }
+                    _ => {}
+                }
+            });
+        };
+
+        for g in &program.globals {
+            mark_ty(&g.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+        }
+        for l in &program.main_locals {
+            mark_ty(&l.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+        }
+        for &entry in &program.entry_fns {
+            if reachable.insert(entry) {
+                fn_work.push(entry);
+            }
+        }
+        scan_block(
+            &program.setup,
+            &mut reachable,
+            &mut fn_work,
+            &mut reachable_closures,
+            &mut closure_work,
+            &mut reachable_structs,
+            &mut reachable_enums,
+        );
+        scan_block(
+            &program.main,
+            &mut reachable,
+            &mut fn_work,
+            &mut reachable_closures,
+            &mut closure_work,
+            &mut reachable_structs,
+            &mut reachable_enums,
+        );
+        while !fn_work.is_empty() || !closure_work.is_empty() {
+            while let Some(fid) = fn_work.pop() {
+                let f = &program.fns[fid];
+                mark_ty(&f.ret, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                for l in &f.locals {
+                    mark_ty(&l.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                }
+                scan_block(
+                    &f.body,
+                    &mut reachable,
+                    &mut fn_work,
+                    &mut reachable_closures,
+                    &mut closure_work,
+                    &mut reachable_structs,
+                    &mut reachable_enums,
+                );
+            }
+            while let Some(cid) = closure_work.pop() {
+                let c = &program.closures[cid];
+                mark_ty(&c.ret, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                for l in &c.locals {
+                    mark_ty(&l.ty, program, &mut reachable, &mut fn_work, &mut reachable_structs, &mut reachable_enums);
+                }
+                scan_block(
+                    &c.body,
+                    &mut reachable,
+                    &mut fn_work,
+                    &mut reachable_closures,
+                    &mut closure_work,
+                    &mut reachable_structs,
+                    &mut reachable_enums,
+                );
+            }
+        }
+
+        // Ensure runtime types used by reachable globals, fns, closures, and main are registered.
         for g in &program.globals {
             self.need_ty(&g.ty);
         }
-        for f in &program.fns {
+        for &fid in &reachable {
+            let f = &program.fns[fid];
             self.need_ty(&f.ret);
             for l in &f.locals {
                 self.need_ty(&l.ty);
             }
         }
-        for c in &program.closures {
+        for &cid in &reachable_closures {
+            let c = &program.closures[cid];
             self.need_ty(&c.ret);
             for l in &c.locals {
                 self.need_ty(&l.ty);
@@ -655,10 +813,10 @@ impl<'p> Emitter<'p> {
         // The program first, since writing it finds out what it needs.
         let mut types = String::new();
         let mut done = BTreeSet::new();
-        for id in 0..program.structs.len() {
+        for &id in &reachable_structs {
             self.type_def(&Ty::Struct(id), &mut done, &mut types);
         }
-        for id in 0..program.enums.len() {
+        for &id in &reachable_enums {
             self.type_def(&Ty::Enum(id), &mut done, &mut types);
         }
         let has_tie = types.contains("cpl_tie");
@@ -682,40 +840,6 @@ impl<'p> Emitter<'p> {
                 ident(&global.name),
                 self.zero_init(&global.ty)
             ));
-        }
-
-        // Compute reachable fns so uncalled stdlib stubs are omitted from the emitted C++17.
-        let mut reachable: BTreeSet<usize> = BTreeSet::new();
-        let mut work: Vec<usize> = Vec::new();
-        let enqueue = |fid: usize, reachable: &mut BTreeSet<usize>, work: &mut Vec<usize>| {
-            if reachable.insert(fid) {
-                work.push(fid);
-            }
-        };
-        let scan_block = |b: &Block, reachable: &mut BTreeSet<usize>, work: &mut Vec<usize>| {
-            walk::deep_exprs(b, &mut |e| {
-                if let ExprKind::Call(fid, _) = &e.kind {
-                    if reachable.insert(*fid) {
-                        work.push(*fid);
-                    }
-                }
-            });
-        };
-        for &entry in &program.entry_fns {
-            enqueue(entry, &mut reachable, &mut work);
-        }
-        scan_block(&program.setup, &mut reachable, &mut work);
-        scan_block(&program.main, &mut reachable, &mut work);
-        for c in &program.closures {
-            scan_block(&c.body, &mut reachable, &mut work);
-        }
-        for s in &program.structs {
-            for hook in [s.eq_fn, s.lt_fn, s.show_fn].into_iter().flatten() {
-                enqueue(hook, &mut reachable, &mut work);
-            }
-        }
-        while let Some(fid) = work.pop() {
-            scan_block(&program.fns[fid].body, &mut reachable, &mut work);
         }
 
         let mut protos: Vec<Proto> = Vec::new();

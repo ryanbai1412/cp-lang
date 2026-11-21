@@ -565,3 +565,19 @@ fn a_judge_without_threads_has_main_run_the_program() {
     assert!(cpp.contains("The judge allows no threads"), "{cpp}");
     assert!(cpp.contains("int main() {") && !cpp.contains("pthread") && !cpp.contains("cpl_main"), "{cpp}");
 }
+
+#[test]
+fn unused_structs_and_their_trait_hooks_are_omitted() {
+    let cpp = cpp(concat!(
+        "struct Used(x: Int)\n",
+        "struct Unused(x: Int)\n",
+        "impl Ord for Unused:\n    fn lt(a, b) = a.x < b.x\n",
+        "impl Show for Unused:\n    fn show(a) = \"{a.x}\"\n",
+        "let u = Used(7)\n",
+        "print(u.x)\n",
+    ));
+    assert!(cpp.contains("struct Used {"), "{cpp}");
+    assert!(!cpp.contains("struct Unused {"), "{cpp}");
+    assert!(!cpp.contains("Unused_lt"), "{cpp}");
+    assert!(!cpp.contains("Unused_show"), "{cpp}");
+}
