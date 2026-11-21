@@ -235,7 +235,15 @@ impl<'p> Emitter<'p> {
         let cpp = cty(self.program, self.niches, ty);
         // A packed optional can be the type of an expression alone, so
         // what the file needs is noted where the type is written.
-        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar", "cpl::OptTuple"].iter().enumerate() {
+        for (at, name) in [
+            "cpl::OptPos",
+            "cpl::OptBool",
+            "cpl::OptChar",
+            "cpl::OptTuple",
+        ]
+        .iter()
+        .enumerate()
+        {
             if cpp.contains(name) {
                 self.niche_types.set(self.niche_types.get() | 1 << at);
             }
@@ -269,8 +277,6 @@ impl<'p> Emitter<'p> {
             _ => format!("cpl::OptInt({text})"),
         }
     }
-
-
 
     /// A name nothing else in this fn or at the top level has.
     pub fn temp(&mut self) -> String {
@@ -311,7 +317,9 @@ impl<'p> Emitter<'p> {
             Ty::Map(k, v) if self.program.unordered_maps.contains(k) => {
                 self.need_ty(&Ty::HashMap(k.clone(), v.clone()))
             }
-            Ty::Set(e) if self.program.unordered_sets.contains(e) => self.need_ty(&Ty::HashSet(e.clone())),
+            Ty::Set(e) if self.program.unordered_sets.contains(e) => {
+                self.need_ty(&Ty::HashSet(e.clone()))
+            }
             Ty::HashMap(k, v) => {
                 self.need("cphash");
                 self.need_ty(k);
@@ -401,7 +409,11 @@ impl<'p> Emitter<'p> {
                     format!("[[maybe_unused]] const {cpp}& {name}")
                 } else if !named.contains(&slot) && !param.mutable {
                     // g++ warns of a parameter the body never names.
-                    let by = if ty.is_scalar() { cpp } else { format!("const {cpp}&") };
+                    let by = if ty.is_scalar() {
+                        cpp
+                    } else {
+                        format!("const {cpp}&")
+                    };
                     format!("[[maybe_unused]] {by} {name}")
                 } else if param.mutable {
                     format!("{cpp}& {name}")
@@ -454,7 +466,9 @@ impl<'p> Emitter<'p> {
     /// The initializer that gives a new variable its type's zero.
     pub fn zero_init(&self, ty: &Ty) -> &'static str {
         match ty {
-            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Pos(_) | Ty::Bound(_) => " = 0",
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Pos(_) | Ty::Bound(_) => {
+                " = 0"
+            }
             Ty::Bool => " = false",
             Ty::Enum(id) if is_plain_enum(self.program, *id) => "{}",
             _ => "",
@@ -520,7 +534,8 @@ impl<'p> Emitter<'p> {
                     let cells = self.rows.get(&(*id, names.len()));
                     if let (Some(k), Some(cell)) = (
                         cells,
-                        cpp.strip_prefix("std::vector<").and_then(|c| c.strip_suffix('>')),
+                        cpp.strip_prefix("std::vector<")
+                            .and_then(|c| c.strip_suffix('>')),
                     ) {
                         cpp = format!("cpl::Row<{cell}, {k}>");
                         self.need("row");
@@ -696,7 +711,10 @@ impl<'p> Emitter<'p> {
             }
             self.enter(Some(id), &f.body, f.params.len());
             let signature = self.signature(f);
-            let hook = program.structs.iter().any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)));
+            let hook = program
+                .structs
+                .iter()
+                .any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)));
             protos.push(Proto {
                 name: fn_name(&f.name),
                 line: format!("{signature};\n"),
@@ -761,9 +779,13 @@ impl<'p> Emitter<'p> {
                 // with no list. It may be running twice (a loop body can
                 // walk it again), so it keeps no buffer of its own.
                 let name = fn_name(&f.name);
-                let params = signature.split_once(&format!(" {name}(")).map(|(_, p)| p.trim_end_matches(')')).unwrap_or("");
+                let params = signature
+                    .split_once(&format!(" {name}("))
+                    .map(|(_, p)| p.trim_end_matches(')'))
+                    .unwrap_or("");
                 let sep = if params.is_empty() { "" } else { ", " };
-                let head = format!("template <class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)");
+                let head =
+                    format!("template <class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)");
                 protos.push(Proto {
                     name: format!("cpl_each_{name}"),
                     line: format!("{head};\n"),
@@ -801,7 +823,11 @@ impl<'p> Emitter<'p> {
         // `main` writes through the runtime; what reads asks for the input itself.
         self.need("out");
         if program.multitest {
-            self.need(if program.until_eof { "at_eof" } else { "read_int" });
+            self.need(if program.until_eof {
+                "at_eof"
+            } else {
+                "read_int"
+            });
         }
 
         let mut out = String::new();
@@ -814,7 +840,10 @@ impl<'p> Emitter<'p> {
             done.push(cid);
             self.enter(None, &program.closures[cid].body, 0);
             let body = self.emit_closure(cid).text;
-            direct.push_str(&format!("static auto {} = {body};\n", crate::devirt::name(cid)));
+            direct.push_str(&format!(
+                "static auto {} = {body};\n",
+                crate::devirt::name(cid)
+            ));
         }
         out.push_str(
             "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\
@@ -836,7 +865,10 @@ impl<'p> Emitter<'p> {
         out.push_str(
             "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
         );
-        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple"].into_iter().enumerate() {
+        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple"]
+            .into_iter()
+            .enumerate()
+        {
             if self.niche_types.get() & 1 << at != 0 {
                 self.need(piece);
             }
@@ -863,7 +895,10 @@ impl<'p> Emitter<'p> {
         // comes first. The rest are defined before they are used.
         for proto in &protos {
             let above = [direct.as_str(), &fns[..proto.at]];
-            let named = above.into_iter().chain(self.shows.iter().map(String::as_str)).any(|text| names(text, &proto.name));
+            let named = above
+                .into_iter()
+                .chain(self.shows.iter().map(String::as_str))
+                .any(|text| names(text, &proto.name));
             if proto.always || named {
                 out.push_str(&proto.line);
             }
@@ -916,7 +951,11 @@ impl<'p> Emitter<'p> {
         if deep {
             out.push_str(BIG_STACK);
         }
-        out.push_str(if deep { "static void cpl_main() {\n" } else { "int main() {\n" });
+        out.push_str(if deep {
+            "static void cpl_main() {\n"
+        } else {
+            "int main() {\n"
+        });
         // Each test case has its own query limit.
         let case = if self.used.contains("count_query") {
             "{ cpl::asked = 0; prog::solve(); }"
@@ -924,7 +963,9 @@ impl<'p> Emitter<'p> {
             "prog::solve();"
         };
         if program.until_eof {
-            out.push_str(&format!("    if (prog::setup()) while (!cpl::at_eof()) {case}\n"));
+            out.push_str(&format!(
+                "    if (prog::setup()) while (!cpl::at_eof()) {case}\n"
+            ));
         } else if program.multitest {
             out.push_str(&format!(
                 "    if (prog::setup()) for (ll tests = cpl::read_int(); tests > 0; tests--) {case}\n",
@@ -1008,7 +1049,9 @@ fn recursive(program: &Program, reachable: &BTreeSet<usize>) -> bool {
     // calls a closure value may.
     program.closures.iter().any(|c| {
         let mut found = false;
-        walk::deep_exprs(&c.body, &mut |e| found |= matches!(e.kind, ExprKind::CallExpr(..)));
+        walk::deep_exprs(&c.body, &mut |e| {
+            found |= matches!(e.kind, ExprKind::CallExpr(..))
+        });
         found
     })
 }

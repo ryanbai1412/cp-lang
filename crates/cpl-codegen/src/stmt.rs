@@ -5,7 +5,8 @@ use crate::expr::string_literal;
 use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
-    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec, Stmt, Ty,
+    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec,
+    Stmt, Ty,
 };
 
 /// A block with a value that is statements and then the value, with no
@@ -88,7 +89,9 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Print(args, end) => self.print_stmts(args, end.as_deref(), out),
-            ExprKind::Sort(place, sort_by, desc) => self.sort_stmts(place, sort_by, desc.as_deref(), out),
+            ExprKind::Sort(place, sort_by, desc) => {
+                self.sort_stmts(place, sort_by, desc.as_deref(), out)
+            }
             ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {
                 let cond = self.expr(cond).text;
                 self.line(out, &format!("if ({cond}) {{"));
@@ -117,7 +120,13 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    pub fn sort_stmts(&mut self, place: &Place, sort_by: &SortBy, desc: Option<&Expr>, out: &mut String) {
+    pub fn sort_stmts(
+        &mut self,
+        place: &Place,
+        sort_by: &SortBy,
+        desc: Option<&Expr>,
+        out: &mut String,
+    ) {
         let mut p = self.place(place);
         if !self.place_is_plain(place) {
             let r = self.temp();
@@ -195,7 +204,9 @@ impl<'p> Emitter<'p> {
         let fused = found_entry(cond, then);
         if let Some((map, key)) = fused {
             let (m, k, it) = (self.expr(map).text, self.expr(key).text, self.temp());
-            out.push_str(&format!("{lead}if (auto {it} = {m}.find({k}); {it} != {m}.end()) {{\n"));
+            out.push_str(&format!(
+                "{lead}if (auto {it} = {m}.find({k}); {it} != {m}.end()) {{\n"
+            ));
             self.found.push((map.clone(), key.clone(), it));
         } else {
             let c = self.expr(cond).text;
@@ -258,7 +269,15 @@ impl<'p> Emitter<'p> {
     /// `for x in f(..)` over a `yields` fn as `cpl_each_f(.., body)`: the
     /// body runs on each value as `f` makes it and no list is built.
     /// False when the loop has to walk the list instead.
-    fn pushed_loop(&mut self, id: LoopId, decl: &str, first: &[String], seq: &Expr, body: &Block, out: &mut String) -> bool {
+    fn pushed_loop(
+        &mut self,
+        id: LoopId,
+        decl: &str,
+        first: &[String],
+        seq: &Expr,
+        body: &Block,
+        out: &mut String,
+    ) -> bool {
         let ExprKind::Call(callee, _) = &seq.kind else {
             return false;
         };
@@ -278,12 +297,17 @@ impl<'p> Emitter<'p> {
         let returns = cpl_ir::pushed::returns(body);
         let call = self.expr(seq).text;
         let name = fn_name(&self.program.fns[*callee].name);
-        let Some(call) = call.strip_prefix(&format!("{name}(")).and_then(|rest| rest.strip_suffix(')')) else {
+        let Some(call) = call
+            .strip_prefix(&format!("{name}("))
+            .and_then(|rest| rest.strip_suffix(')'))
+        else {
             return false;
         };
         let sep = if call.is_empty() { "" } else { ", " };
         let ret = match self.fn_id {
-            Some(f) if self.program.fns[f].ret != Ty::Unit => Some(self.ty(&self.program.fns[f].ret)),
+            Some(f) if self.program.fns[f].ret != Ty::Unit => {
+                Some(self.ty(&self.program.fns[f].ret))
+            }
             _ => None,
         };
         let outermost = self.bodies.is_empty();
@@ -299,12 +323,19 @@ impl<'p> Emitter<'p> {
             _ => None,
         };
         let open = if returns { "if (" } else { "" };
-        self.line(out, &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"));
+        self.line(
+            out,
+            &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"),
+        );
         self.indent += 1;
         for line in first {
             self.line(out, line);
         }
-        self.bodies.push(Pushed { id, depth: 0, result: result.clone() });
+        self.bodies.push(Pushed {
+            id,
+            depth: 0,
+            result: result.clone(),
+        });
         self.block(body, out);
         self.bodies.pop();
         self.line(out, "return 0;");
@@ -645,8 +676,12 @@ impl<'p> Emitter<'p> {
         }
         // A list built by the value's own block (a comprehension) is not
         // read again: it moves into the place.
-        if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) = (op, &value.kind, flat(whole)) {
-            let made_here = stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built));
+        if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) =
+            (op, &value.kind, flat(whole))
+        {
+            let made_here = stmts
+                .iter()
+                .any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built));
             if made_here && matches!(value.ty, Ty::List(_) | Ty::Str) {
                 v.text = format!("std::move({})", v.text);
             }
@@ -736,7 +771,11 @@ impl<'p> Emitter<'p> {
                     twice(self, out, &|p, v| format!("{p} = cpl::ipow({p}, {v});"));
                 }
                 (Ty::I128, BinOp::Div | BinOp::Rem) => {
-                    let helper = if bop == BinOp::Div { "ediv128" } else { "emod128" };
+                    let helper = if bop == BinOp::Div {
+                        "ediv128"
+                    } else {
+                        "emod128"
+                    };
                     self.need(helper);
                     twice(self, out, &|p, v| format!("{p} = cpl::{helper}({p}, {v});"));
                 }
@@ -814,7 +853,10 @@ impl<'p> Emitter<'p> {
             true => {
                 !effects.globals.contains(&root)
                     && effects.locals.iter().all(|local| *local >= params)
-                    && !effects.calls.iter().any(|f| self.summaries[*f].writes.contains(&root))
+                    && !effects
+                        .calls
+                        .iter()
+                        .any(|f| self.summaries[*f].writes.contains(&root))
             }
             false => !effects.locals.contains(&root) && !tail.calls,
         }
@@ -825,10 +867,12 @@ impl<'p> Emitter<'p> {
         match stmt {
             // A fn written as `cpl_each_f`: its list is the callback.
             Stmt::Let(slot, _) if self.pushing == Some(*slot) && self.closure_id.is_none() => {}
-            Stmt::Expr(Expr { kind: ExprKind::Mutate(how, place, items), .. })
-                if self.pushing.is_some()
-                    && self.closure_id.is_none()
-                    && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
+            Stmt::Expr(Expr {
+                kind: ExprKind::Mutate(how, place, items),
+                ..
+            }) if self.pushing.is_some()
+                && self.closure_id.is_none()
+                && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
             {
                 let item = self.flatten(&items[0], out);
                 let text = self.expr(item).text;
@@ -837,10 +881,15 @@ impl<'p> Emitter<'p> {
                         let x = self.temp();
                         self.line(out, &format!("for (auto&& {x} : {text}) if (int cpl_r = cpl_f({x})) return cpl_r;"));
                     }
-                    _ => self.line(out, &format!("if (int cpl_r = cpl_f({text})) return cpl_r;")),
+                    _ => self.line(
+                        out,
+                        &format!("if (int cpl_r = cpl_f({text})) return cpl_r;"),
+                    ),
                 }
             }
-            Stmt::Return(Some(_)) if self.pushing.is_some() && self.closure_id.is_none() => self.line(out, "return 0;"),
+            Stmt::Return(Some(_)) if self.pushing.is_some() && self.closure_id.is_none() => {
+                self.line(out, "return 0;")
+            }
             // In the body of a loop over a `yields` fn, which is a callback.
             Stmt::Return(value) if !self.bodies.is_empty() => {
                 if let Some(value) = value {
@@ -855,10 +904,20 @@ impl<'p> Emitter<'p> {
                 }
                 self.line(out, "return 2;");
             }
-            Stmt::Break(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
+            Stmt::Break(to)
+                if self
+                    .bodies
+                    .last()
+                    .is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) =>
+            {
                 self.line(out, "return 1;")
             }
-            Stmt::Continue(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
+            Stmt::Continue(to)
+                if self
+                    .bodies
+                    .last()
+                    .is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) =>
+            {
                 self.line(out, "return 0;")
             }
             Stmt::Let(slot, init) => {
@@ -965,7 +1024,8 @@ impl<'p> Emitter<'p> {
                 let inside = walk::inside_list(*slot, iter, body, self.locals());
                 self.inside.extend(inside);
                 self.for_stmt(*id, *slot, iter, body, out);
-                self.inside.truncate(self.inside.len() - usize::from(inside.is_some()));
+                self.inside
+                    .truncate(self.inside.len() - usize::from(inside.is_some()));
             }
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),
@@ -1051,12 +1111,22 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
     }
     let (mut reads, mut quiet) = (false, true);
     walk::deep_exprs(then, &mut |e| match &e.kind {
-        ExprKind::Index(base, at) if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind => reads = true,
-        ExprKind::Mutate(..) | ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => quiet = false,
+        ExprKind::Index(base, at)
+            if base.kind == map.kind && at.len() == 1 && at[0].kind == key.kind =>
+        {
+            reads = true
+        }
+        ExprKind::Mutate(..)
+        | ExprKind::Call(..)
+        | ExprKind::CallExpr(..)
+        | ExprKind::Closure(_) => quiet = false,
         _ => {}
     });
     walk::deep_stmts(then, &mut |stmt| {
-        if !matches!(stmt, Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)) {
+        if !matches!(
+            stmt,
+            Stmt::Expr(_) | Stmt::Return(_) | Stmt::Give(_) | Stmt::If(..) | Stmt::Let(..)
+        ) {
             quiet = false;
         }
     });
@@ -1076,7 +1146,9 @@ pub(crate) struct Tail {
 
 impl Tail {
     fn of(stmts: &[Stmt]) -> Tail {
-        let block = Block { stmts: stmts.to_vec() };
+        let block = Block {
+            stmts: stmts.to_vec(),
+        };
         let (mut calls, mut opaque) = (false, false);
         walk::deep_exprs(&block, &mut |e| match e.kind {
             ExprKind::Call(..) => calls = true,
@@ -1086,7 +1158,11 @@ impl Tail {
             }
             _ => {}
         });
-        Tail { effects: Effects::of_block(&block), calls, opaque }
+        Tail {
+            effects: Effects::of_block(&block),
+            calls,
+            opaque,
+        }
     }
 }
 
@@ -1094,7 +1170,10 @@ impl Tail {
 /// a container of the declared type built with a size. The size cast
 /// first means the arguments can't be read as a declaration.
 fn sized_ctor<'t>(cpp: &str, text: &'t str) -> Option<&'t str> {
-    let args = text.strip_prefix(cpp)?.strip_prefix('(')?.strip_suffix(')')?;
+    let args = text
+        .strip_prefix(cpp)?
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
     if !args.starts_with("(size_t)(") {
         return None;
     }

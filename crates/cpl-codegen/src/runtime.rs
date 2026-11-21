@@ -203,6 +203,13 @@ inline ll read_int() {
 ",
     },
     Piece {
+        name: "read_in",
+        needs: &["read_int", "fail"],
+        code: "\
+inline ll read_in(ll lo, ll hi) { ll x = read_int(); if (x < lo || x > hi) fail(\"a number in the input is outside its range\"); return x; }
+",
+    },
+    Piece {
         name: "read_bool",
         needs: &["read_int", "fail"],
         code: "\

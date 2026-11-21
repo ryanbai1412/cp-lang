@@ -276,7 +276,9 @@ impl<'p> Emitter<'p> {
                     ));
                 } else {
                     self.need("put_int");
-                    b.push_str("    cpl::put_int(v.lo); cpl::put_str(\"..\"); cpl::put_int(v.hi);\n");
+                    b.push_str(
+                        "    cpl::put_int(v.lo); cpl::put_str(\"..\"); cpl::put_int(v.hi);\n",
+                    );
                 }
             }
             _ => {}
@@ -340,7 +342,20 @@ impl<'p> Emitter<'p> {
             Code::primary(format!("cpl::{name}()"))
         };
         match spec {
-            Spec::Int { .. } | Spec::Plain(Ty::Int) => plain(self, "read_int"),
+            Spec::Int {
+                lo: None, hi: None, ..
+            }
+            | Spec::Plain(Ty::Int) => plain(self, "read_int"),
+            Spec::Int { lo, hi, .. } => {
+                self.need("read_in");
+                let lo = lo
+                    .as_ref()
+                    .map_or("LLONG_MIN".to_string(), |e| self.expr(e).text);
+                let hi = hi
+                    .as_ref()
+                    .map_or("LLONG_MAX".to_string(), |e| self.expr(e).text);
+                Code::primary(format!("cpl::read_in({lo}, {hi})"))
+            }
             Spec::Plain(Ty::I128) => plain(self, "read_i128"),
             Spec::Plain(Ty::U64) => plain(self, "read_u64"),
             Spec::Plain(Ty::Float) => plain(self, "read_float"),

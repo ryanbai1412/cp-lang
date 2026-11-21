@@ -118,9 +118,10 @@ impl<'p> Facts<'p> {
                                 self.expr(fn_id, step);
                             }
                         }
-                        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
-                            self.expr(fn_id, e)
-                        }
+                        Iter::RangeVal(e, _)
+                        | Iter::Seq(e, _)
+                        | Iter::Subsets(e)
+                        | Iter::Members(e) => self.expr(fn_id, e),
                     }
                     self.block(fn_id, body);
                 }

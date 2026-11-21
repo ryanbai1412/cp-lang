@@ -16,9 +16,7 @@ editor plugin, docs site and playground.
 The repository is `ryanbai1412/cp-lang` on GitHub (private). Ryan owns it
 and asked for work to go **straight to `main`**: no pull requests and no
 review gate, so keep `main` green (`cargo test` passes) on every push, and
-rebase instead of merging when someone else pushed first. Agents push with
-the `a repository token` secret; his personal GitHub account is not
-connected to the organization, on purpose.
+rebase instead of merging when someone else pushed first.
 
 The command-line tool is called **`cpl`** for now, because `cp` clashes
 with Unix `cp`; Ryan will pick the final name. Source files end in `.cp`.
