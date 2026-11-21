@@ -95,12 +95,12 @@ guess any method from its neighbours:
   it (`XorFenwick`).
 - **Range query:** `t.fold(r)` folds range `r` under the structure's
   monoid or semigroup; `t.sum(r)` is used where the operation is addition
-  and nothing else makes sense (`Prefix1`, `Prefix2`, `PrefixN`,
+  and nothing else makes sense (`Prefix`,
   `Fenwick`, `Fenwick2D`, `RangeFenwick`, `ChminSegTree`); `t.xor(r)` on
   `XorFenwick`; `t.all` is an O(1) `@get` property for the whole domain.
 - **Range update:** `t.apply(r, f)` applies lazy tag `f` to every
   position in `r` (`LazySegTree`, `DualSegTree`); `t.add(r, x)` adds `x`
-  to `r` (`DualFenwick`, `RangeFenwick`, `Diff1`).
+  to `r` (`DualFenwick`, `RangeFenwick`, `Diff`).
 - **Tree binary search:** `t.max_right(from, ok)` returns the furthest
   `Bounds<D>` right of `from` with `ok(fold(from..b))`; `t.min_left(to,
   ok)` returns the furthest `Bounds<D>` left of `to` with
@@ -112,7 +112,7 @@ guess any method from its neighbours:
   `SegTree<V, Int>(max, a)` share one constructor.
 - **Every function documents its time and memory cost.** O(1) vs O(log n)
   vs amortized O(log^2 n) vs O(n log n) is part of the contract.
-- **Nothing hidden under the hood.** `Prefix1` is static O(1), `Fenwick`
+- **Nothing hidden under the hood.** `Prefix` is static O(1), `Fenwick`
   is O(log n) group sum, `SparseTable` requires idempotence,
   `DisjointSparseTable` does not, `DualSegTree` skips pulls, `LiChao` is
   dynamic pointer-arena over `lo..=hi`. The type name chooses the
@@ -179,24 +179,23 @@ Static O(1) queries after O(n) or O(r * c) preprocessing, indexed by
 `Bounds<D>` so off-by-one cut shifts cannot compile.
 
 ```cp
-// Existing
-struct Prefix1<D, T>
-    fn new(a: [D]T) -> Prefix1<D, T>                // O(n)
+// Unified shape-dispatched Prefix family (constructed via `prefix(a)`)
+struct Prefix<D, T>                                 // 1-D over [D]T
+    fn new(a: [D]T) -> Prefix<D, T>                 // O(|D|)
     fn prefix(self, b: Bounds<D>) -> T              // O(1)
     fn sum(self, r: Range<D>) -> T                  // O(1)
 
-struct Prefix2<R, C, T>
-    fn new(a: [R, C]T) -> Prefix2<R, C, T>          // O(r * c)
-    fn sum(self, rows: Range<R>, cols: Range<C>) -> T  // O(1)
+struct Prefix<R, C, T>                              // 2-D over [R, C]T
+    fn new(a: [R, C]T) -> Prefix<R, C, T>           // O(|R| * |C|)
+    fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T // O(1)
+    fn sum(self, rows: Range<R>, cols: Range<C>) -> T // O(1)
 
-struct PrefixN<T>
-    fn new(a: List<T>) -> PrefixN<T>                // O(n)
+struct Prefix<T>                                    // List<T> / [0..n]T
+    fn new(a: List<T>) -> Prefix<T>                 // O(n)
     fn prefix(self, k: Int) -> T                    // O(1)
     fn sum(self, r: Range<Int>) -> T                // O(1)
 
-fn prefix1<D, T>(a: [D]T) -> Prefix1<D, T>          // O(n)
-fn prefix2<R, C, T>(a: [R, C]T) -> Prefix2<R, C, T> // O(r * c)
-fn prefix_n<T>(a: List<T>) -> PrefixN<T>            // O(n)
+fn prefix(a)                                        // dispatches on [D]T, [R, C]T, or List<T>
 ```
 
 Additions to `std.prefix`:
@@ -206,8 +205,8 @@ Additions to `std.prefix`:
   fold of `b..`, with `pref[D.start] == m.id` and `suff[D.end] == m.id`.
   Given any range `r: Range<D>`, the fold of everything *outside* `r` is
   simply `m.op(pref[r.start], suff[r.end])` — zero `.ord + 1` arithmetic.
-- **`Diff1<D, T>` and `Diff2<R, C, T>`**: offline range-add difference
-  arrays that accumulate O(1) `add(r, x)` calls and materialize `[D]T` or
+- **`Diff<D, T>` and `Diff<R, C, T>`**: offline range-add difference
+  arrays that accumulate O(1) `add(...)` calls and materialize `[D]T` or
   `[R, C]T` in one O(n) / O(r * c) `finish()` pass (eliminating the
   manual right-end boundary checks in problems like `cf2084e`).
 
@@ -215,15 +214,15 @@ Additions to `std.prefix`:
 fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T  // O(n)
 fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T  // O(n)
 
-struct Diff1<D, T>
-    fn new() -> Diff1<D, T>                         // O(n)
+struct Diff<D, T>
+    fn new() -> Diff<D, T>                          // O(|D|)
     fn add(mut self, r: Range<D>, x: T)             // O(1)
-    fn finish(self) -> [D]T                         // O(n)
+    fn finish(self) -> [D]T                         // O(|D|)
 
-struct Diff2<R, C, T>
-    fn new() -> Diff2<R, C, T>                      // O(r * c)
+struct Diff<R, C, T>
+    fn new() -> Diff<R, C, T>                       // O(|R| * |C|)
     fn add(mut self, rows: Range<R>, cols: Range<C>, x: T)  // O(1)
-    fn finish(self) -> [R, C]T                      // O(r * c)
+    fn finish(self) -> [R, C]T                      // O(|R| * |C|)
 ```
 
 ### 3.3 `std.fenwick` — Fenwick trees (point, dual, range, xor, 2D)
@@ -529,7 +528,7 @@ Every structure documents the exact law its operation must satisfy, and
   `PersistentSegTree`: associative `op` (and identity `id` where empty
   ranges are allowed).
 - `SparseTable`: associative and idempotent `op` (`op(x, x) == x`).
-- `Fenwick`, `DualFenwick`, `RangeFenwick`, `Prefix1`, `Prefix2`: abelian
+- `Fenwick`, `DualFenwick`, `RangeFenwick`, `Prefix`: abelian
   group (`+`, `-`, `zero`); `XorFenwick`: self-inverse `^`.
 - `LazySegTree`: `Action` identity, composition order
   `apply(compose(f, g), x) == apply(f, apply(g, x))`, and distributivity
@@ -798,7 +797,7 @@ for i in Q: print(ans[i])
 **Phase 1 (ship now in `stdlib/`):**
 - `std.algebra`: `MaxSub` (with `Reversible`, `+`, `*`, `of`, `empty`,
   `monoid`).
-- `std.prefix`: `prefix_fold`, `suffix_fold`, `Diff1`, `Diff2`.
+- `std.prefix`: `prefix_fold`, `suffix_fold`, `Diff`.
 - `std.fenwick`: `DualFenwick`, `RangeFenwick`.
 - `std.segtree`: `fill: ?T = none` on `SegTree.new`.
 - `std.lazy`: `DualSegTree`, `AffineSum`, `fill: ?T = none` on

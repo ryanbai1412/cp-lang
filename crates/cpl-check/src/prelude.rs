@@ -93,14 +93,23 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
 
 /// The words of the language that are written with a library fn: a
 /// program that uses the word gets the fn, as if it had named it.
-/// `prefix(a)` is one of three fns by what `a` is.
+/// `prefix(a)` dispatches by what `a` is (`[D]T`, `[R, C]T`, or `List<T>`).
 pub const BUILT_ON: &[(&str, &str)] = &[
-    ("prefix", "prefix_n"),
-    ("prefix", "prefix1"),
-    ("prefix", "prefix2"),
+    ("prefix", "Prefix"),
     ("adjacency", "Bitset"),
     ("all", "Bitset"),
     ("without", "Bitset"),
+];
+
+/// Internal shape specializations brought in from a stdlib module when a
+/// file uses the unified family name (`prefix`, `Prefix`, `Diff`), without
+/// spending prelude slots or exposing internal names to users.
+pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
+    ("prefix", "prefix", "_Prefix2"),
+    ("prefix", "prefix", "_PrefixList"),
+    ("Prefix", "prefix", "_Prefix2"),
+    ("Prefix", "prefix", "_PrefixList"),
+    ("Diff", "prefix", "_Diff2"),
 ];
 
 fn int_fn(arity: usize) -> Ty {

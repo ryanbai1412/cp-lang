@@ -318,9 +318,9 @@ pub const PREFIX_TWIN: Lint = Lint {
     code: Code("L0513"),
     name: "prefix_twin",
     default: Level::Warn,
-    title: "Dimension-suffixed prefix helper instead of `prefix`",
-    summary: "`prefix1(a)`, `prefix2(a)` or `prefix_n(a)`: write `prefix(a)`",
-    explanation: "`prefix(a)` in the prelude dispatches by argument type to 1-D `[D]T`, 2-D `[R, C]T`, or `List<T>` prefix sums (`Prefix1`, `Prefix2`, `PrefixN`). `cpl lint --fix` rewrites `prefix1`, `prefix2`, and `prefix_n` calls to `prefix`.",
+    title: "Dimension-suffixed prefix or diff helper instead of `prefix`/`Prefix`/`Diff`",
+    summary: "`prefix1`/`prefix2`/`prefix_n`, `Prefix1`/`Prefix2`/`PrefixN`, `Diff1`/`Diff2`: write `prefix`, `Prefix`, or `Diff`",
+    explanation: "`prefix(a)` dispatches by shape across `[D]T`, `[R, C]T`, and `List<T>` under one `Prefix` type family, and `Diff` covers both 1-D `Diff<D, T>` and 2-D `Diff<R, C, T>`. `cpl fix` rewrites the removed arity-suffixed names (`prefix1`, `prefix2`, `prefix_n`, `Prefix1`, `Prefix2`, `PrefixN`, `Diff1`, `Diff2`) to `prefix`, `Prefix`, and `Diff`.",
     trigger: "let xs = [3, 1, 4]\nlet p = prefix_n(xs)\nprint(p.sum(0..3))\n",
     fix: "let xs = [3, 1, 4]\nlet p = prefix(xs)\nprint(p.sum(0..3))\n",
 };

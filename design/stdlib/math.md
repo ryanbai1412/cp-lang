@@ -602,7 +602,6 @@ permutation `a`. Using `Z.comb(n)` keeps the modulus in one place.
 
 ```cp
 @!multitest
-use std.prefix.{prefix1}
 
 type Z = Mod<1_000_000_007>
 
@@ -614,7 +613,7 @@ let a: [Pos]Int = read()
 var pos: [Val]?Pos = none
 for i in Pos if a[i] >= 0: pos[Val(a[i])] = i
 
-let missing = prefix1([Pos] i => if a[i] == -1: 1 else: 0)
+let missing = prefix([Pos] i => if a[i] == -1: 1 else: 0)
 let m = missing.prefix(Pos.last.r)
 let comb = Z.comb(n)
 // ... sweep Val, accumulating Z(freq[f]) * comb.arrange(f, need) * comb.fact(m - need)

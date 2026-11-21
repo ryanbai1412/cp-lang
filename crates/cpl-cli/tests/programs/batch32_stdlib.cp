@@ -1,5 +1,3 @@
-use std.prefix.{prefix1, prefix_n}
-
 let n: Int = read()
 domain V = 0..n
 var adj: [V]List<V> = []
@@ -22,9 +20,9 @@ print(w, w.argmax, w.argmin, w[w.argmax!])
 print("banana".rfind('a') ?? -1, "banana".rfind('b') ?? -1, "banana".rfind('x') ?? -1)
 print([k for k in -2..=17 if k.is_pow2], (1 << 40).is_pow2, n.is_pow2)
 let a: [0..n]Int = [0..n] i => i * i
-let p = prefix_n(a)
+let p = prefix(a)
 print(p.prefix(0), p.prefix(2), p.prefix(n), p.sum(1..3), p.sum(1..=3), p.sum(2..2))
 let k = 3
 print(p.prefix(k), p.sum(k - 1..k + 2))
-let q = prefix1(w)
+let q = prefix(w)
 print(q.prefix(V(2).l), q.sum(V(1)..V(3)), q.sum(V(1)..=V(3)))

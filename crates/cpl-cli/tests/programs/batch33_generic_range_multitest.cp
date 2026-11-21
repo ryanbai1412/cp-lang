@@ -1,4 +1,3 @@
-use std.prefix.{prefix1}
 use std.sparse.{SparseTable}
 
 fn best<D>(a: [D]Int) -> ?D:
@@ -10,7 +9,7 @@ fn best<D>(a: [D]Int) -> ?D:
 
 fn solve(k: Int) -> Int:
     let a: [0..k]Int = [0..k] i => (i * 7) % 5
-    let p = prefix1(a)
+    let p = prefix(a)
     let at = best(a) ?? -1
     p.sum(0..k) * 100 + at + p.prefix(k / 2)
 

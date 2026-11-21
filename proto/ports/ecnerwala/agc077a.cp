@@ -5,7 +5,7 @@
 // search finds the first balanced prefix `ma`, splitting into an independent
 // suffix (`drop(ma)`) and a balanced prefix (`take(ma)`) that starts with 'A'
 // and ends with 'B' (after orienting) so one pre- or post-reversal fixes its ends.
-use std.prefix.Prefix1
+use std.prefix.Prefix
 use std.strings.{common_prefix_len, common_suffix_len}
 
 struct Seg(l: Int, r: Int, d: Int):
@@ -38,7 +38,7 @@ if xs[l] != 'A' or xs[r] != 'B':
 let pref_x = prefix([Pos] p => Int(xs[p.ord] == 'B'))
 let pref_y = prefix([Pos] p => Int(ys[p.ord] == 'B'))
 
-fn count_b(pref: Prefix1<Pos, Int>, s: Seg) -> Int =
+fn count_b(pref: Prefix<Pos, Int>, s: Seg) -> Int =
     if s.d == 1: pref.sum(Pos(s.l + 1)..=Pos(s.r + 1)) else: pref.sum(Pos(s.r + 1)..=Pos(s.l + 1))
 
 var pre_ops: List<(Pos, Pos)> = []

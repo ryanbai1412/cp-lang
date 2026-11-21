@@ -79,6 +79,9 @@ fn std_names(modules: &[(String, PathBuf)]) -> String {
                 .chars()
                 .take_while(|c| c.is_alphanumeric() || *c == '_')
                 .collect();
+            if name.starts_with('_') {
+                continue;
+            }
             found.entry(name).or_default().push(module);
         }
     }

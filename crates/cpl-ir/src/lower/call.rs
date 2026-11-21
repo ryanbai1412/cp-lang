@@ -435,7 +435,8 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
-        match self.get_sym(name) {
+        let lookup = prefix_shape_struct(name, types.len()).unwrap_or(name);
+        match self.get_sym(lookup) {
             Some(Sym::GenStruct(gid)) => {
                 let gargs = self.resolve_gen_args(types);
                 self.call_gen_struct(gid, gargs, args, hint, span)
@@ -3718,7 +3719,8 @@ impl<'a> Lowerer<'a> {
         // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
         if let ast::ExprKind::Generic { base: gbase, args: gtypes } = &base.kind {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
-                if let Some(Sym::GenStruct(gid)) = self.get_sym(gname) {
+                let lookup = prefix_shape_struct(gname, gtypes.len()).unwrap_or(gname);
+                if let Some(Sym::GenStruct(gid)) = self.get_sym(lookup) {
                     let gargs = self.resolve_gen_args(gtypes);
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {
@@ -5587,7 +5589,8 @@ impl<'a> Lowerer<'a> {
         } = &base.kind
         {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
-                if let Some(Sym::GenStruct(gid)) = self.get_sym(gname) {
+                let lookup = prefix_shape_struct(gname, gtypes.len()).unwrap_or(gname);
+                if let Some(Sym::GenStruct(gid)) = self.get_sym(lookup) {
                     let gargs = self.resolve_gen_args(gtypes);
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
@@ -8829,9 +8832,9 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// `prefix(a)` is `prefix_n`, `prefix1` or `prefix2` of `std.prefix`, by
-    /// what `a` is: a list, a `[D]T` or a `[R, C]T`. The three are found by
-    /// name like any fn the program calls (`cpl_check::prelude::BUILT_ON`).
+    /// `prefix(a)` dispatches on the shape of `a`: `List<T>` / `[0..n]T`,
+    /// `[D]T`, or `[R, C]T`, constructing the matching `Prefix` shape from
+    /// `std.prefix`.
     fn lower_prefix(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         let Some(exprs) = self.positional_any("prefix", args, 1, span) else {
             return self.err_expr(span);
@@ -8867,32 +8870,47 @@ impl<'a> Lowerer<'a> {
             _ => false,
         };
         if counted && adds {
-            let Some(Sym::GenFn(gfid)) = self.get_sym("prefix_n") else {
-                self.unsupported(span, "`prefix` without `std.prefix.prefix_n` in scope");
+            let Some(Sym::GenStruct(gid)) = self.get_sym("_PrefixList") else {
+                self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
                 return self.err_expr(span);
             };
             let list = Ty::List(Box::new(elem_ty.clone()));
             let src = self.coerce(src, &list, span);
-            let fn_id = self.instantiate_fn(gfid, vec![GenArg::Ty(elem_ty)]);
+            let sid = self.instantiate_struct(gid, vec![GenArg::Ty(elem_ty)]);
+            let Some(&fn_id) = self.structs[sid].methods.get("new") else {
+                self.unsupported(span, "`Prefix` has no `new` constructor");
+                return self.err_expr(span);
+            };
             let ret = self.ret_of(fn_id, span);
             return self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span);
         }
+        if adds && matches!(&src.ty, Ty::Array { dims, .. } if matches!(dims[..], [Dim::IntFrom(_)])) {
+            let Some(Sym::GenStruct(gid)) = self.get_sym("Prefix") else {
+                self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
+                return self.err_expr(span);
+            };
+            return self.call_gen_struct(gid, Vec::new(), args, None, span);
+        }
         let Some(doms) = doms else {
             let message = format!(
-                "`prefix` takes a `[D]T` or a `[R, C]T` of numbers over domains, found `{}`",
+                "`prefix` takes a `[D]T`, `[R, C]T`, or `List<T>` of numbers, found `{}`",
                 self.show(&src.ty)
             );
             self.error(codes::TYPE_MISMATCH, span, message);
             return self.err_expr(span);
         };
-        let fn_name = if doms.len() == 1 { "prefix1" } else { "prefix2" };
-        let Some(Sym::GenFn(gfid)) = self.get_sym(fn_name) else {
-            self.unsupported(span, &format!("`prefix` without `std.prefix.{fn_name}` in scope"));
+        let struct_name = if doms.len() == 1 { "Prefix" } else { "_Prefix2" };
+        let Some(Sym::GenStruct(gid)) = self.get_sym(struct_name) else {
+            self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
             return self.err_expr(span);
         };
         let mut gargs: Vec<GenArg> = doms.into_iter().map(GenArg::Domain).collect();
         gargs.push(GenArg::Ty(elem_ty));
-        let fn_id = self.instantiate_fn(gfid, gargs);
+        let sid = self.instantiate_struct(gid, gargs);
+        let Some(&fn_id) = self.structs[sid].methods.get("new") else {
+            self.unsupported(span, "`Prefix` has no `new` constructor");
+            return self.err_expr(span);
+        };
         let ret = self.ret_of(fn_id, span);
         self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span)
     }

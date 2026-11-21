@@ -2857,7 +2857,6 @@ enum Node:
         "expected E0202 at declaration when variant collides with domain, got: {errs:?}"
     );
 }
-
 #[test]
 fn range_lo_hi_are_rejected_with_start_end_fixes_and_user_fields_stay() {
     let ok = "\
@@ -2878,7 +2877,6 @@ print(s.lo, s.hi, r.start, r.end, r.last, r.len)
     assert_eq!(errs[0].fixes[0].edits[0].1, "start");
     assert_eq!(errs[1].fixes[0].edits[0].1, "end");
 }
-
 #[test]
 fn array_map_preserves_index_domain() {
     let ok = "\
@@ -2918,4 +2916,46 @@ print(b)
         errs.iter().any(|d| d.code == cpl_diag::codes::TYPE_MISMATCH),
         "expected E0302 when assigning `[A]Int` map result to `[B]Int`, got: {errs:?}"
     );
+}
+
+#[test]
+fn unified_prefix_and_diff_accept_all_shapes_and_reject_old_names() {
+    let ok = "\
+domain V = 0..4
+domain R = 0..2
+domain C = 0..3
+let a: [V]Int = [1, 2, 3, 4]
+let g: [R, C]Int = 1
+let xs = [1, 2, 3]
+let p1: Prefix<V, Int> = prefix(a)
+let p2: Prefix<R, C, Int> = prefix(g)
+let pn: Prefix<Int> = prefix(xs)
+let _ = p1.sum(V(0)..=V(3)) + p1.prefix(V(2).r)
+let _ = p2.sum(R(0)..=R(1), C(0)..=C(2)) + p2.prefix(R(1).r, C(2).r)
+let _ = pn.sum(0..3) + pn.prefix(2)
+var d1: Diff<V, Int> = Diff<V, Int>()
+d1.add(V(0)..=V(2), 5)
+let _ = d1.finish()
+var d2: Diff<R, C, Int> = Diff<R, C, Int>()
+d2.add(R(0)..=R(1), C(0)..=C(2), 5)
+let _ = d2.finish()
+";
+    assert_eq!(check(ok), vec![]);
+
+    for (old, want) in [
+        ("let _ = prefix1([0..3] i => i)", "prefix"),
+        ("let _ = prefix2([0..2, 0..2] (r, c) => r + c)", "prefix"),
+        ("let _ = prefix_n([1, 2, 3])", "prefix"),
+        ("domain V = 0..3\nlet _ = Diff1<V, Int>()", "Diff"),
+        ("domain R = 0..2\ndomain C = 0..2\nlet _ = Diff2<R, C, Int>()", "Diff"),
+        ("domain V = 0..3\nfn f(p: Prefix1<V, Int>) -> Int = 0", "Prefix"),
+        ("domain R = 0..2\ndomain C = 0..2\nfn f(p: Prefix2<R, C, Int>) -> Int = 0", "Prefix"),
+        ("fn f(p: PrefixN<Int>) -> Int = 0", "Prefix"),
+    ] {
+        let errs = check(old);
+        assert!(
+            errs.iter().any(|d| d.message.contains(want) && !d.fixes.is_empty()),
+            "expected error + fix mentioning `{want}` for:\n{old}\ngot: {errs:?}"
+        );
+    }
 }

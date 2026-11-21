@@ -239,21 +239,35 @@ impl<'a> Checker<'a> {
                 return Ty::Pos(domain.clone());
             }
         }
-        if let Some(def) = self.env.global(name) {
+        let lookup_name = prefix_shape_struct(name, args.len()).unwrap_or(name);
+        if let Some(def) = self.env.global(lookup_name) {
             self.refs.push(GlobalRef {
                 span,
-                name: name.to_string(),
+                name: lookup_name.to_string(),
                 top_level: false,
             });
             self.hovers.push(HoverEntry {
                 span,
                 name: name.to_string(),
-                ty: Ty::TypeName(name.to_string()),
+                ty: Ty::TypeName(lookup_name.to_string()),
                 keyword: "type",
                 decl: None,
                 owner: None,
             });
-            return self.def_type(&def, name, span, args);
+            return self.def_type(&def, lookup_name, span, args);
+        }
+        if let Some(replacement) = renamed_prefix_name(name) {
+            let msg = format!("`{name}` was replaced by `{replacement}`");
+            if let Some(diag) = self.error(codes::UNKNOWN_TYPE, span, msg) {
+                diag.help = Some(format!(
+                    "write `{replacement}` (or run `cpl fix` to migrate)"
+                ));
+                diag.fixes.push(cpl_diag::Fix {
+                    title: format!("replace `{name}` with `{replacement}`"),
+                    edits: vec![(span, replacement.to_string())],
+                });
+            }
+            return Ty::Error;
         }
         if let Some(ty) = prelude::ty(name) {
             let expected_arity = match name {

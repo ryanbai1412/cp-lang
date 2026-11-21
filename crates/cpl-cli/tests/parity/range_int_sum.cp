@@ -1,5 +1,3 @@
-use std.prefix.prefix1
-
 // Exhaustive brute check of Range<Int>.sum() and (Range<Int>).step(k).sum().
 for lo in -6..=6:
     for hi in -6..=6:
@@ -29,10 +27,10 @@ print((2..1_000_000_000).step(2).sum())
 print((3..1_000_000_000).step(2).sum())
 print((5..2).step(2).sum())
 
-// Prefix1.sum accepts any Range<D>, including empty and reversed ranges.
+// Prefix.sum accepts any Range<D>, including empty and reversed ranges.
 domain Pos = 1..=5
 let a: [Pos]Int = [Pos] i => i.ord * 10
-let pref = prefix1(a)
+let pref = prefix(a)
 assert pref.sum(Pos(3)..Pos(3)) == 0
 assert pref.sum(Pos(4)..Pos(2)) == 0
 assert pref.sum(Pos(2)..=Pos(4)) == 60

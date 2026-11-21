@@ -240,7 +240,7 @@ impl Ty {
                 }
             }
             // The boundaries of a plain `0..n` index are plain `Int`s:
-            // `prefix1(a).prefix(k)` on a `[0..n]T`.
+            // `prefix(a).prefix(k)` on a `[0..n]T`.
             (a, Ty::Named { name, args }) | (Ty::Named { name, args }, a)
                 if name == "Bounds" && a.is_int() && matches!(args.as_slice(), [arg] if arg.is_int()) =>
             {
@@ -591,7 +591,12 @@ impl fmt::Display for Ty {
                 f.write_str(")")
             }
             Ty::Named { name, args } => {
-                f.write_str(name)?;
+                let shown = match name.as_str() {
+                    "_Prefix2" | "_PrefixList" => "Prefix",
+                    "_Diff2" => "Diff",
+                    other => other,
+                };
+                f.write_str(shown)?;
                 if !args.is_empty() {
                     f.write_str("<")?;
                     list(f, args)?;

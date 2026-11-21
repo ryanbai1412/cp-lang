@@ -477,6 +477,36 @@ impl<'a> Checker<'a> {
                 let elem = if *a == Ty::Unknown { b.clone() } else { a.clone() };
                 Some(Ty::Tuple(vec![elem.clone(), elem]))
             }
+            ("prefix", [arg]) => match arg {
+                Ty::Array { index, elem }
+                    if index.len() == 1 && matches!(index[0], Ty::Pos(_)) =>
+                {
+                    Some(Ty::Named {
+                        name: "Prefix".into(),
+                        args: vec![index[0].clone(), (**elem).clone()],
+                    })
+                }
+                Ty::Array { index, elem }
+                    if index.len() == 2
+                        && matches!((&index[0], &index[1]), (Ty::Pos(_), Ty::Pos(_))) =>
+                {
+                    Some(Ty::Named {
+                        name: "_Prefix2".into(),
+                        args: vec![index[0].clone(), index[1].clone(), (**elem).clone()],
+                    })
+                }
+                Ty::Array { index, elem } if index.len() == 1 && index[0].is_int() => {
+                    Some(Ty::Named {
+                        name: "_PrefixList".into(),
+                        args: vec![(**elem).clone()],
+                    })
+                }
+                Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(Ty::Named {
+                    name: "_PrefixList".into(),
+                    args: vec![args[0].clone()],
+                }),
+                _ => None,
+            },
             ("choose2", [_]) => Some(Ty::Int),
             ("adjacency", [edges, ..]) => {
                 let elem = self.element_ty(edges);

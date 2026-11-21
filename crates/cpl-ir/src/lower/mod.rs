@@ -18,6 +18,15 @@ mod stmt;
 use crate::*;
 use cpl_check::Analysis;
 use cpl_diag::{codes, Diagnostic, Span};
+
+pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static str> {
+    match (name, arity) {
+        ("Prefix", 1) => Some("_PrefixList"),
+        ("Prefix", 3) => Some("_Prefix2"),
+        ("Diff", 3) => Some("_Diff2"),
+        _ => None,
+    }
+}
 use cpl_syntax::ast;
 use cpl_syntax::narrow;
 use mono::*;
@@ -2321,7 +2330,7 @@ impl<'a> Lowerer<'a> {
             },
             "I128" => Ty::I128,
             "U64" => Ty::U64,
-            _ => match self.get_sym(&name.text) {
+            _ => match self.get_sym(prefix_shape_struct(&name.text, args.len()).unwrap_or(&name.text)) {
                 Some(Sym::Struct(id)) if values => return self.struct_spec(id),
                 Some(Sym::Struct(id)) => Ty::Struct(id),
                 Some(Sym::GenStruct(gid)) => {

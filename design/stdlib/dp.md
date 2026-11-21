@@ -262,7 +262,7 @@ inequality, so each layer is a monotone argmin.
 let (n, k): (1..=4000, 1..=800) = read()
 domain P = 0..n
 let u: [P, P]0..=9 = read()
-let pre = prefix2(u)
+let pre = prefix(u)
 fn cost(j: Int, i: Int) -> Int = pre.sum(j..i, j..i) / 2
 var best: List<?Int> = [if i == 0: 0 else: none for i in 0..=n]
 for _ in 0..k: best = dnc_layer(best, cost)
@@ -308,7 +308,7 @@ into `O(n^2)`, which matters at `n = 5000` variants).
 let n: 2..=400 = read()
 domain S = 0..n
 let a: [S]1..=1e9 = read()
-let pre = prefix1(a)
+let pre = prefix(a)
 print(knuth(n, (l, r) => pre.sum(l..r))[0][n])
 ```
 

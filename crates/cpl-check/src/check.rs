@@ -460,6 +460,19 @@ impl<'a> Checker<'a> {
         if let Some(ty) = prelude::value(name) {
             return ty;
         }
+        if let Some(replacement) = renamed_prefix_name(name) {
+            let msg = format!("`{name}` was replaced by `{replacement}`");
+            if let Some(diag) = self.error(codes::UNRESOLVED_NAME, span, msg) {
+                diag.help = Some(format!(
+                    "write `{replacement}` (or run `cpl fix` to migrate)"
+                ));
+                diag.fixes.push(cpl_diag::Fix {
+                    title: format!("replace `{name}` with `{replacement}`"),
+                    edits: vec![(span, replacement.to_string())],
+                });
+            }
+            return Ty::Error;
+        }
         if self.env.has_imports() || (self.in_fn > 0 && is_implicit_generic(name)) {
             return Ty::Unknown;
         }
@@ -696,6 +709,24 @@ fn collect_expr_names(expr: &cpl_syntax::ast::Expr, out: &mut Vec<(String, Span)
         }
     }
     walk_expr(expr, &mut NameCollector(out));
+}
+
+pub(crate) fn renamed_prefix_name(name: &str) -> Option<&'static str> {
+    match name {
+        "prefix1" | "prefix2" | "prefix_n" => Some("prefix"),
+        "Prefix1" | "Prefix2" | "PrefixN" => Some("Prefix"),
+        "Diff1" | "Diff2" => Some("Diff"),
+        _ => None,
+    }
+}
+
+pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static str> {
+    match (name, arity) {
+        ("Prefix", 1) => Some("_PrefixList"),
+        ("Prefix", 3) => Some("_Prefix2"),
+        ("Diff", 3) => Some("_Diff2"),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

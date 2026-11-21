@@ -535,6 +535,42 @@ impl Database {
                     }
                 }
             }
+            if !is_std_path(path) {
+                let bare = |text: &str| cpl_syntax::ast::Name {
+                    text: text.to_string(),
+                    span: Span::new(0, 0),
+                };
+                for &(word, std_mod, sym) in crate::prelude::INTERNAL_BUILT_ON {
+                    if !uses(word) || scope.imports.contains_key(sym) {
+                        continue;
+                    }
+                    let had_imports = scope.has_imports;
+                    let mods_before = scope.modules.len();
+                    let mut diags = Vec::new();
+                    let module = vec![bare("std"), bare(std_mod)];
+                    let name = bare(sym);
+                    self.import(
+                        path,
+                        &module,
+                        std::slice::from_ref(&name),
+                        false,
+                        None,
+                        &mut scope,
+                        &mut diags,
+                    );
+                    scope.has_imports = had_imports;
+                    let cycled = scope.modules[mods_before..].iter().any(|m| {
+                        m.analysis
+                            .diagnostics
+                            .iter()
+                            .any(|d| d.code == codes::UNRESOLVED_MODULE)
+                    });
+                    if cycled || !diags.is_empty() {
+                        scope.modules.truncate(mods_before);
+                        scope.imports.remove(sym);
+                    }
+                }
+            }
         }
         self.analyzing.pop();
         // Loading the modules analyzed them, which moved the revision on.

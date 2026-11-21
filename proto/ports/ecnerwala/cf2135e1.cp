@@ -6,7 +6,7 @@
 // width (`span_len`), and each even reflection (w + 1) * delta adds/subtracts a
 // flat interval of half-width `half_span` (`delta - 2` when delta ≡ n (mod 2),
 // `delta - 3` when delta ≢ n (mod 2)).
-use std.prefix.Diff1
+use std.prefix.Diff
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
@@ -15,7 +15,7 @@ let comb = Comb<Z>()
 let n: 1..=200_000 = read()
 domain Step = 0..=n
 
-var diff = Diff1<Step, Z>()
+var diff = Diff<Step, Z>()
 
 fn add_height_range(lo_x: Int, hi_x: Int, v: Z):
     if lo_x > n or hi_x < -n: return

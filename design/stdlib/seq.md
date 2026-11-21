@@ -252,8 +252,8 @@ Laws:
 
 ### 3.4 Prefix, suffix, and exclusive scans
 
-Static invertible range sums (`+`/`-`) live in `std.prefix` (`Prefix1`,
-`Prefix2`, `PrefixN`). General semigroup/monoid scans live here:
+Static invertible range sums (`+`/`-`) live in `std.prefix` (`prefix(a)` /
+`Prefix`). General semigroup/monoid scans live here:
 
 ```cp
 // Inclusive prefix scan (no identity needed): out[i] = f(out[prev], xs[i]).

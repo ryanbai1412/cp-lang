@@ -195,6 +195,20 @@ impl<'a> Checker<'a> {
                     self.range_as_type_arg(name, args);
                 }
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
+                // `Prefix<T>`, `Prefix<R, C, T>`, `Diff<R, C, T>`: shape-dispatched
+                // struct families resolve to their internal specialization.
+                if let ExprKind::Name(name) = &base.kind {
+                    if self.local(name).is_none() {
+                        if let Some(shape) = prefix_shape_struct(name, args.len()) {
+                            if self.env.global(shape).is_some() {
+                                return Ty::Named {
+                                    name: shape.to_string(),
+                                    args,
+                                };
+                            }
+                        }
+                    }
+                }
                 // `Sum<Int>`, `f::<Int>`: the declared type with its
                 // parameters filled in.
                 let declared =

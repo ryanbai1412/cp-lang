@@ -131,7 +131,7 @@ the front; `first` and `last` read the ends as `?T`.
 **Range structures.** `t.get(i)`, `t.set(i, x)`, `t.update(i, f)` for a
 point; `t.fold(r)` for a range under the structure's monoid, `t.sum(r)`
 where the operation is addition and nothing else makes sense
-(`Fenwick`, `Prefix1`); `t.apply(r, f)` for a lazy action; `t.all` for
+(`Fenwick`, `Prefix`); `t.apply(r, f)` for a lazy action; `t.all` for
 the fold of everything; `t.max_right(from, ok)` and `t.min_left(to, ok)`
 for searches, returning boundaries.
 
@@ -963,31 +963,17 @@ struct Fenwick2D<R, C, T> // O(log R * log C)
     fn new() -> Fenwick2D<R, C, T>
     fn add(mut self, r: R, c: C, x: T)
     fn sum(self, rows: Range<R>, cols: Range<C>) -> T
-struct Prefix1<D, T>
-    fn new(a: [D]T) -> Prefix1<D, T>
-    fn prefix(self, b: Bounds<D>) -> T
-    fn sum(self, r: Range<D>) -> T
-struct Prefix2<R, C, T>
-    fn new(a: [R, C]T) -> Prefix2<R, C, T>
-    fn sum(self, rows: Range<R>, cols: Range<C>) -> T
-struct PrefixN<T>
-    fn new(a: List<T>) -> PrefixN<T>
-    fn prefix(self, k: Int) -> T
-    fn sum(self, r: Range<Int>) -> T
-fn prefix(a) // prelude overload: dispatches to prefix_n (List<T>), prefix1 ([D]T), or prefix2 ([R, C]T); L0513 rewrites the suffixed helpers to prefix(a)
-fn prefix_n<T>(a: List<T>) -> PrefixN<T>
-fn prefix1<D, T>(a: [D]T) -> Prefix1<D, T>
-fn prefix2<R, C, T>(a: [R, C]T) -> Prefix2<R, C, T>
+struct Prefix<D, T> // also Prefix<R, C, T> for 2D grids and Prefix<T> for List<T>
+    fn new(a: [D]T) -> Prefix<D, T> // O(|D|); also [R, C]T in O(|R|*|C|) and List<T> in O(n)
+    fn prefix(self, b: Bounds<D>) -> T // O(1); (r: Bounds<R>, c: Bounds<C>) for 2D, (k: Int) for List<T>
+    fn sum(self, r: Range<D>) -> T // O(1); (rows: Range<R>, cols: Range<C>) for 2D, (r: Range<Int>) for List<T>
+fn prefix(a) // prelude shape dispatch over [D]T, [R, C]T, and List<T>; L0513 + checker error migrate removed prefix1/prefix2/prefix_n/Prefix1/Prefix2/PrefixN/Diff1/Diff2
 fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T // [new] O(n)
 fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T // [new] O(n)
-struct Diff1<D, T> // [new] offline 1D range add; O(1) add, O(n) finish
-    fn new() -> Diff1<D, T>
-    fn add(mut self, r: Range<D>, x: T)
-    fn finish(self) -> [D]T
-struct Diff2<R, C, T> // [new] offline 2D rect add; O(1) add, O(r * c) finish
-    fn new() -> Diff2<R, C, T>
-    fn add(mut self, rows: Range<R>, cols: Range<C>, x: T)
-    fn finish(self) -> [R, C]T
+struct Diff<D, T> // offline 1D/2D difference array (`Diff<D, T>()` or `Diff<R, C, T>()`); O(1) add, O(|D|) / O(|R|*|C|) finish
+    fn new() -> Diff<D, T>
+    fn add(mut self, r: Range<D>, x: T) // (rows: Range<R>, cols: Range<C>, x: T) for 2D
+    fn finish(self) -> [D]T // [R, C]T for 2D
 struct SegTree<D, T>(m: Monoid<T>) // O(log n)
     fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> SegTree<D, T> // O(n)
     fn of<M>(op: M, f: D -> T) -> SegTree<D, T> // O(n)

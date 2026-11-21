@@ -34,7 +34,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.ntt` | `ntt`, `convolve`, `convolve_mod`, `convolve_int`, `SosOver`, `sos`, `fwht`, `convolve_or`, `convolve_and`, `convolve_xor`, `convolve_subset` | NTT, linear/cyclic/3-prime/exact convolution, SOS, FWHT, bitwise/subset convolutions |
 | `std.poly` | `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all`, `compose`, `lagrange_at`, `interpolate` | Formal power series, multipoint ops & interpolation over NTT (`List<Mod<P>>`) |
 | `std.persistent` | `PersistentSegTree`, `Version`, `RangeKth` | Path-copying persistent segment tree and O(log n) range k-th smallest |
-| `std.prefix` | `prefix`, `Prefix1`, `Prefix2`, `PrefixN`, `prefix_fold`, `suffix_fold`, `Diff1`, `Diff2` | 1D/2D prefix sums (`prefix(a)` dispatches across `List`, `[D]T`, `[R, C]T`), monoid folds, difference arrays |
+| `std.prefix` | `prefix`, `Prefix`, `prefix_fold`, `suffix_fold`, `Diff` | 1D/2D/list prefix sums (`prefix(a)` dispatches across `[D]T`, `[R, C]T`, `List<T>`), monoid folds, 1D/2D difference arrays |
 | `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |
 | `std.segtree` | `SegTree`, `MergeSortTree`, `SparseSegTree` | Segment tree, orthogonal 2D merge-sort tree, and coordinate-sparse segment tree |
 | `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `scan_in_place`, `argmax`, `inversions`, `prev_less`, `next_less`, `sliding_min`, `inverse`, `perm_cycles`, `bsearch_first`, `bsearch_last` | Sequence views, searches, monotone stacks, permutations, folds, `Perm<V>` alias |

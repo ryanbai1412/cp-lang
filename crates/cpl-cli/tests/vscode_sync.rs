@@ -109,7 +109,11 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
             };
             let name: String =
                 words.next().unwrap_or("").chars().take_while(|c| c.is_ascii_alphanumeric() || *c == '_').collect();
-            if is_word(&name) && (!getter || imported.contains(&name)) && !cpl_check::is_list_form_hook(&name) {
+            if is_word(&name)
+                && !name.starts_with('_')
+                && (!getter || imported.contains(&name))
+                && !cpl_check::is_list_form_hook(&name)
+            {
                 declared.insert(name, kind);
             }
         }
