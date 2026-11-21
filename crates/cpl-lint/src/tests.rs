@@ -1705,3 +1705,19 @@ fn a_var_is_in_the_hull_every_assignment_keeps() {
     let shadowed = format!("{head}fn max(a: Int, b: Int) -> Int = a + b\nlet m = max(a, 3)\nprint(m)\n");
     assert_eq!(range_of(&shadowed, "let m"), None, "a user fn named max");
 }
+
+#[test]
+fn an_if_condition_narrows_the_names_it_compares() {
+    let head = "let n: 1..=100 = read()\nlet a: 0..=9 = read()\n";
+    let cases = [
+        ("if 3 <= a < n:\n    let x = a + 0\n    print(x)\n", Some((3, 9))),
+        ("if n > 50 and a == 2:\n    let x = n * a\n    print(x)\n", Some((102, 200))),
+        ("if n < 10:\n    let x = n\n    print(x)\nelse:\n    let y = n\n    print(y)\n", Some((1, 9))),
+        ("if a >= 20:\n    let x = a\n    print(x)\n", None),
+    ];
+    for (body, want) in cases {
+        assert_eq!(range_of(&format!("{head}{body}"), "let x"), want, "{body}");
+    }
+    let otherwise = format!("{head}if n < 10:\n    print(n)\nelse:\n    let y = n\n    print(y)\n");
+    assert_eq!(range_of(&otherwise, "let y"), Some((1, 100)), "an else learns nothing yet");
+}

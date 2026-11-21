@@ -229,8 +229,10 @@ fn ranges_in(
                 {
                     // An `if let` binds names the branch would see through.
                     for (cond, block) in branches {
-                        if matches!(cond, Cond::Expr(_)) {
-                            ranges_in(base, &block.stmts, &[], &mut bounds.clone(), proven);
+                        if let Cond::Expr(test) = cond {
+                            let mut inner = bounds.clone();
+                            narrow(test, &block.stmts, &mut inner);
+                            ranges_in(base, &block.stmts, &[], &mut inner, proven);
                         }
                     }
                     if let Some(block) = otherwise {
@@ -371,6 +373,96 @@ fn var_range(
         hull = next;
     }
     None
+}
+
+/// Inside a block that runs only when `test` holds, each bounded name a
+/// comparison in `test` limits is in the tighter range, unless the block
+/// assigns it.
+fn narrow(test: &cpl_syntax::ast::Expr, block: &[cpl_syntax::ast::Stmt], bounds: &mut bounds::Bounds) {
+    use cpl_syntax::ast::{BinOp, CmpOp, ExprKind};
+    match &test.kind {
+        ExprKind::Paren(inner) => narrow(inner, block, bounds),
+        ExprKind::Binary {
+            op: BinOp::And,
+            lhs,
+            rhs,
+            ..
+        } => {
+            narrow(lhs, block, bounds);
+            narrow(rhs, block, bounds);
+        }
+        ExprKind::Compare { first, rest } => {
+            let mut left = first.as_ref();
+            for (op, right) in rest {
+                let flipped = match op {
+                    CmpOp::Lt => Some(CmpOp::Gt),
+                    CmpOp::Le => Some(CmpOp::Ge),
+                    CmpOp::Gt => Some(CmpOp::Lt),
+                    CmpOp::Ge => Some(CmpOp::Le),
+                    CmpOp::Eq => Some(CmpOp::Eq),
+                    _ => None,
+                };
+                if let Some(flipped) = flipped {
+                    for (name, op, other) in [(left, *op, right), (right, flipped, left)] {
+                        let ExprKind::Name(name) = &name.kind else {
+                            continue;
+                        };
+                        let (Some(have), Some(other)) = (bounds.expr_name(name), bounds.expr(other)) else {
+                            continue;
+                        };
+                        if assigned_in(name, block) {
+                            continue;
+                        }
+                        let (lo, hi) = match op {
+                            CmpOp::Lt => (have.lo, have.hi.min(other.hi - 1)),
+                            CmpOp::Le => (have.lo, have.hi.min(other.hi)),
+                            CmpOp::Gt => (have.lo.max(other.lo + 1), have.hi),
+                            CmpOp::Ge => (have.lo.max(other.lo), have.hi),
+                            _ => (have.lo.max(other.lo), have.hi.min(other.hi)),
+                        };
+                        // A branch the bounds prove dead claims nothing.
+                        bounds.bind(name, (lo <= hi).then_some(bounds::Interval { lo, hi }));
+                    }
+                }
+                left = right;
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Whether `stmts` can change the value of `name`.
+fn assigned_in(name: &str, stmts: &[cpl_syntax::ast::Stmt]) -> bool {
+    use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+    struct Writes<'a>(&'a str, bool);
+    impl Writes<'_> {
+        fn mentions(&self, e: &Expr) -> bool {
+            match &e.kind {
+                ExprKind::Name(n) => n == self.0,
+                ExprKind::Paren(inner) => self.mentions(inner),
+                ExprKind::Tuple(items) | ExprKind::List(items) => items.iter().any(|i| self.mentions(i)),
+                _ => false,
+            }
+        }
+    }
+    impl Visitor for Writes<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            match &stmt.kind {
+                StmtKind::Assign { target, .. } => self.1 |= self.mentions(target),
+                StmtKind::Lend { place, .. } => self.1 |= self.mentions(place),
+                _ => {}
+            }
+        }
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Call { args, .. } = &expr.kind {
+                self.1 |= args.iter().any(|a| a.mutable && self.mentions(&a.value));
+            }
+        }
+    }
+    let mut writes = Writes(name, false);
+    stmts.iter().for_each(|s| walk_stmt(s, &mut writes));
+    writes.1
 }
 
 /// Every name `pat` binds stops being bounded.

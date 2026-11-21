@@ -119,6 +119,11 @@ impl Bounds {
         };
     }
 
+    /// The interval a bounded name is in.
+    pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
+        self.values.get(name).copied()
+    }
+
     /// The values `lo..hi` or `lo..=hi` can cover.
     pub(crate) fn span(&self, lo: &Expr, hi: &Expr, inclusive: bool) -> Option<Interval> {
         let (lo, hi) = (self.expr(lo)?, self.expr(hi)?);

@@ -16,3 +16,5 @@ var be$0st = 0
 for v in V:
     best max= min(n, 50) $0* 2
 print(area, wide, ys, back, slot, be$0st)
+if n > 50:
+    print(n $0- 50)
