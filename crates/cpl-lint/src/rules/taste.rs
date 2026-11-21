@@ -7,7 +7,7 @@ use crate::walk::{self, Bind, Visitor};
 use crate::{
     File, Finding, BY_TWIN, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD, HAND_ROLLED_RANGE_TREE,
     INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN, PUSH_LOOP, REPEATED_LITERAL,
-    SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
+    SEARCH_LOOP, SORTED_RANGE_METHOD, SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
@@ -20,6 +20,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         next_base: 0,
         valued_fns: HashSet::new(),
         declared: HashSet::new(),
+        sorted_containers: HashMap::new(),
         idents: idents(file.src),
         findings: Vec::new(),
     };
@@ -32,15 +33,22 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     let top: Vec<(u32, &Stmt)> = file.top_level().collect();
     rule.sequence(&top);
-    struct Declared<'s>(&'s mut HashSet<String>);
+    struct Declared<'s>(&'s mut HashSet<String>, &'s mut HashMap<String, bool>);
     impl Visitor for Declared<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
             if let StmtKind::Fn(decl) = &stmt.kind {
                 self.0.insert(decl.name.text.clone());
             }
+            if let StmtKind::Let { pat, ty, init, .. } = &stmt.kind {
+                if let PatternKind::Name(vname) = &pat.kind {
+                    if let Some(is_int) = sorted_container_binding(ty.as_ref(), init.as_ref()) {
+                        self.1.insert(vname.clone(), is_int);
+                    }
+                }
+            }
         }
     }
-    file.walk(&mut Declared(&mut rule.declared), |_, _| {});
+    file.walk(&mut Declared(&mut rule.declared, &mut rule.sorted_containers), |_, _| {});
     let mut blocks = Blocks { taste: &mut rule };
     file.walk(&mut blocks, |b, base| b.taste.base = base);
     rule.findings.extend(repeated_literals(file));
@@ -77,6 +85,7 @@ impl Visitor for Blocks<'_, '_> {
         self.taste.tree_order(expr);
         self.taste.domain_spelling(expr);
         self.taste.prefix_twin(expr);
+        self.taste.sorted_range_method(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -106,6 +115,8 @@ struct Taste<'a> {
     /// Every fn and method the file declares: a rewrite to `count(..)`
     /// would call the file's own `count`.
     declared: HashSet<String>,
+    /// Variables known to hold `SortedBag<K>` or `SortedSet<K>` (`bool` = integer key).
+    sorted_containers: HashMap<String, bool>,
     /// Every identifier-like word in the file, for picking fresh names.
     idents: HashSet<&'a str>,
     findings: Vec<Finding>,
@@ -833,6 +844,66 @@ impl<'a> Taste<'a> {
             edits: vec![(callee.span, "prefix".into())],
         });
         self.push(&PREFIX_TWIN, diag);
+    }
+
+    /// `s.first_ge(k)` / `first_gt(k)` / `last_le(k)` / `last_lt(k)` / `count_range(lo, hi)`
+    /// on `SortedBag`/`SortedSet` -> `s.range(...)`.
+    fn sorted_range_method(&mut self, expr: &Expr) {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return;
+        };
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return;
+        };
+        if !matches!(
+            name.text.as_str(),
+            "first_ge" | "first_gt" | "last_le" | "last_lt" | "count_range"
+        ) {
+            return;
+        }
+        let is_int_key = match &base.kind {
+            ExprKind::Name(v) => match self.sorted_containers.get(v) {
+                Some(&b) => b,
+                None if name.text == "count_range" => true,
+                None => return,
+            },
+            _ if name.text == "count_range" => true,
+            _ => return,
+        };
+        let replacement = match (name.text.as_str(), args.as_slice()) {
+            ("first_ge", [a]) if a.name.is_none() => format!("range({}..).first", self.text(a.value.span)),
+            ("last_le", [a]) if a.name.is_none() => format!("range(..={}).last", self.text(a.value.span)),
+            ("last_lt", [a]) if a.name.is_none() => format!("range(..{}).last", self.text(a.value.span)),
+            ("first_gt", [a]) if a.name.is_none() => {
+                let q = self.text(a.value.span);
+                if is_int_key {
+                    format!("range({q} + 1..).first")
+                } else {
+                    format!("first_where(x => x > {q})")
+                }
+            }
+            ("count_range", [lo, hi]) if lo.name.is_none() && hi.name.is_none() => format!(
+                "range({}..{}).len",
+                self.text(lo.value.span),
+                self.text(hi.value.span)
+            ),
+            _ => return,
+        };
+        let replace_span = Span {
+            start: name.span.start,
+            end: expr.span.end,
+        };
+        let mut diag = Diagnostic::warning(
+            SORTED_RANGE_METHOD.code,
+            expr.span,
+            format!("use `.{replacement}` instead of `.{}`", name.text),
+        )
+        .with_help(format!("`cpl fix` rewrites `.{}` to `.{replacement}`", name.text));
+        diag.fixes.push(Fix {
+            title: format!("rewrite `.{}` to `.{replacement}`", name.text),
+            edits: vec![(replace_span, replacement)],
+        });
+        self.push(&SORTED_RANGE_METHOD, diag);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1640,4 +1711,46 @@ fn is_recursive_segtree_fn(decl: &FnDecl, body: &Block) -> bool {
     };
     walk_block(&mut c, body);
     c.has_mid && c.has_left_rec && c.has_right_rec && c.has_range_or_point_guard
+}
+
+fn sorted_container_binding(ty: Option<&Type>, init: Option<&Expr>) -> Option<bool> {
+    let key_is_int = |args: &[Type]| match args.first() {
+        Some(Type {
+            kind: TypeKind::Named { name, .. },
+            ..
+        }) => matches!(name.text.as_str(), "Int" | "I128" | "U64"),
+        None => true,
+        _ => false,
+    };
+    if let Some(Type {
+        kind: TypeKind::Named { name, args },
+        ..
+    }) = ty
+    {
+        if matches!(name.text.as_str(), "SortedBag" | "SortedSet" | "OrderedSet") {
+            return Some(key_is_int(args));
+        }
+    }
+    let init = init?;
+    let ExprKind::Call { callee, .. } = &walk::unparen(init).kind else {
+        return None;
+    };
+    let head = match &callee.kind {
+        ExprKind::Field { base, .. } => base.as_ref(),
+        _ => callee.as_ref(),
+    };
+    match &head.kind {
+        ExprKind::Generic { base, args } => {
+            if let ExprKind::Name(n) = &base.kind {
+                if matches!(n.as_str(), "SortedBag" | "SortedSet" | "OrderedSet") {
+                    return Some(key_is_int(args));
+                }
+            }
+            None
+        }
+        ExprKind::Name(n) if matches!(n.as_str(), "SortedBag" | "SortedSet" | "OrderedSet") => {
+            Some(true)
+        }
+        _ => None,
+    }
 }

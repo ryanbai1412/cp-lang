@@ -9,7 +9,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | Module | Key exports | Purpose |
 | --- | --- | --- |
 | `std.algebra` | `Monoid`, `Action`, `Desc`, `desc`, `Reversible`, `MaxSub`, `fold` | Algebraic traits, Kadane monoid, descending key wrapper |
-| `std.bag` | `SortedBag`, `OrderedSet`, `BagCursor` | Ordered multiset & unique-key set with rank, nth, cursors, and node recycling |
+| `std.bag` | `SortedBag`, `SortedSet`, `BagCursor` | Ordered multiset & unique-key set with `.range(r)` views, rank, nth, cursors, and node recycling |
 | `std.beats` | `BeatsSegTree` | Ji Driver Segment Tree Beats (`chmin`, `chmax`, `add`, `sum`, `min_val`, `max_val`) |
 | `std.bitset` | `Bitset` | Fixed-domain bitset with bitwise ops and `.first_set` |
 | `std.derive` | `eq_fields`, `lt_fields`, `show_fields`, `read_fields`, `Hash`, `hash_fields`, `Gen`, `gen`, `gen_fields` | The field-by-field `Eq`, `Ord`, `Show`, `Read`, `Hash` and `Gen` (a seeded random value for stress tests: `let p: P = gen_fields(mut rng)`), written on `fields`; call one from an `impl` (`fn lt(a, b) = lt_fields(b, a)` orders the other way, `fn hash(self) = hash_fields(self)` hashes a struct) |
@@ -66,7 +66,7 @@ pq.push((dist, desc(u)))
 items.sort(by: x => (x.cost, desc(x.value)))
 ```
 
-- **`Set<T>()` / `SortedBag<T>()`:** `.add(x)`, `.remove(x)`, `x in s`, `.first`, `.last`, `.first_ge(k)`, `.first_gt(k)`, `.last_le(k)`, `.last_lt(k)`. A `Set` stores unique keys; a `SortedBag` keeps duplicates and provides `.count(x)` and `.remove_one(x)` to delete one copy. Neighbor lookups return `?K`, so an absent key is `none` rather than a sentinel.
+- **`Set<T>()` / `SortedSet<T>()` / `SortedBag<T>()`:** `.add(x)`, `.remove(x)`, `x in s`, `.first`, `.last`. `Set` supports `.first_ge(k)`/`.first_gt(k)`/`.last_le(k)`/`.last_lt(k)`. `SortedSet` (unique keys) and `SortedBag` (keeps duplicates, with `.count(x)` and `.remove_one(x)`) support `.range(r)` — an O(1) view over any range (including open-ended `..b`, `..=b`, `a..`, `..`) whose `.first`, `.last`, `.len`, `.is_empty` cost O(log n) and whose iteration (`for x in s.range(r)` / `.rev`) costs O(log n + k). Neighbor lookups return `?K`, so an absent key is `none` rather than a sentinel.
 - **`Map<K, V>()` / `HashMap<K, V>()`:** `m[k]` traps if `k` is absent (store `m[k] = v` first, or use `m.get(k) -> ?V` which never traps or inserts), `m[k] f= x` (auto-inserts from the operator identity: `0` for `+=`/`-=`, `none` for `min=`/`max=`), `(m[k] ??= init).push(x)` (always parenthesize `??=` when chaining or using as an expression — never `let v = m[k] ??= init`), `m.remove(k) -> ?V`, `k in m`, `for (k, v) in m.items`. Ordered `Map` lookups (`.first_ge(k)`, `.last_le(k)`) return `?(K, V)`. All hash tables use per-process splitmix64 salting to defeat anti-hash tests. `m.get_or_insert(k, v)` stores `v` when `k` is absent and returns the stored value.
 - **`Bitset<D>()` & `Subset<D>`:** `Bitset<D>` provides `.add(v)`, `.remove(v)`, `.toggle(v)`, `v in s`, `|`, `&`, `-`, `^`, `.len` (popcount), `.first_set -> ?D`, `s.shifted(k)`. `Subset<D>` (`D.K <= 25`) is a 4-byte `Index` value for bitmask DP: `Subset<D>.empty`, `Subset<D>.full`, `Subset<D>.single(v)`, `s.first -> ?D`, `s.with(v)`, `s.without(v)`, `s.complement`, `for mask in Subset<D>`, `for v in mask`, and `for sub in mask.subsets`. `s = s.set(v, on)` returns a copy with `v` put in or taken out by a `Bool`; on its own, `s.set(v, on)` leaves `s` unchanged.
 

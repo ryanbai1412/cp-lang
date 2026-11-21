@@ -43,10 +43,10 @@ export const STDLIB_TYPES: readonly string[] = [
     'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'ErasableMaxHeap', 'ErasableMinHeap', 'Fenwick', 'Fenwick2D', 'FlatMap', 'Flip',
     'FlowGraph', 'Gen', 'Graph', 'HalfPlane', 'Hash', 'Hash2D', 'HashVal', 'Hashable', 'IndexedMaxHeap', 'IndexedMinHeap', 'Interner',
     'IntervalMap', 'JumpTree', 'LazyLinkCut', 'LazySegTree', 'LazyTreap', 'LiChao', 'LinkCut', 'Line', 'Lit', 'Location', 'Mark', 'MarkMap', 'Marks', 'Mat',
-    'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'OrderedSet', 'Palindromes',
+    'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'Palindromes',
     'PalindromicTree', 'ParityDsu', 'Paths', 'Perm', 'PermKind', 'PermTree', 'PersistentSegTree', 'PotentialDsu', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
     'Pt3', 'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollbackArray', 'RollingHash', 'Rooted', 'SegTree', 'Sieve',
-    'SimpleGraph', 'SortedBag', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree',
+    'SimpleGraph', 'SortedBag', 'SortedRange', 'SortedSet', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree',
     'Tree', 'Trie', 'TwoSat', 'Vec', 'Version', 'Walk', 'WindowFold', 'XorBasis', 'XorFenwick',
 ];
 

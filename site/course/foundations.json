@@ -497,7 +497,7 @@
         ],
         "answer": 2,
         "hint": "Arrays are indexed by positions; sets hold values without positional indices.",
-        "solution": "On an array or slice `[D]T`, `.first_ge` returns `?D` (an optional index). On a `Set<T>` or `SortedBag<T>`, it returns `?T` (the optional element itself).",
+        "solution": "On an array or slice `[D]T`, `.first_ge` returns `?D` (an optional index). On a `Set<T>`, it returns `?T` (the optional element itself); `SortedSet<T>` and `SortedBag<T>` use `.range(x..).first`.",
         "explanation": "Neither ever traps on a miss — both return `none` when no element is `>= x`. Returning `?D` for indexed sequences lets you inspect neighbors or slice directly at that position, while sets return the value itself."
       },
       {

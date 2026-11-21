@@ -257,7 +257,7 @@ impl<'a> Checker<'a> {
         }
         if let Some(ty) = prelude::ty(name) {
             let expected_arity = match name {
-                "List" | "Set" | "HashSet" | "Range" | "Iter" | "Gen" => Some(1),
+                "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Iter" | "Gen" => Some(1),
                 "Map" | "HashMap" => Some(2),
                 _ => None,
             };

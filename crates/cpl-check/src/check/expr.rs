@@ -1027,7 +1027,7 @@ impl<'a> Checker<'a> {
             Ty::Array { elem, .. } => (**elem).clone(),
             Ty::Str => Ty::Char,
             Ty::Named { name, args }
-                if matches!(name.as_str(), "List" | "Set" | "HashSet" | "Range" | "Gen") && args.len() == 1 =>
+                if matches!(name.as_str(), "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Gen") && args.len() == 1 =>
             {
                 args[0].clone()
             }
@@ -1450,6 +1450,17 @@ impl<'a> Checker<'a> {
                 return Ty::Named {
                     name: "List".into(),
                     args: vec![Ty::Tuple(vec![at, elem])],
+                };
+            }
+        }
+        if let Ty::Named { name: sr, args } = &base_ty {
+            if sr == "SortedRange" && args.len() == 1 {
+                return match name.text.as_str() {
+                    "first" | "last" => Ty::Optional(Box::new(args[0].clone())),
+                    "len" => Ty::Int,
+                    "is_empty" => Ty::Bool,
+                    "rev" => base_ty.clone(),
+                    _ => Ty::Unknown,
                 };
             }
         }

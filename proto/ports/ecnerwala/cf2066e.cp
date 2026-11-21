@@ -19,42 +19,28 @@ fn update_gap(lo: Int, hi: Int, add: Bool):
     if add: gaps[d].add(lo) else: gaps[d].remove(lo)
     last_gap_at[d] = gaps[d].last ?? 0
 
-fn add_barrel(v: Int):
-    total += v
-    if v <= B: small_cnt[Small(v)] += 1
+fn change(v: Int, add: Bool):
+    let d = if add: 1 else: -1
     let had = bag.count(v)
-    bag.add(v)
-    if had >= 1:
-        update_gap(v, v, true)
+    if add: bag.add(v) else: bag.remove(v)
+    if had >= (if add: 1 else: 2):
+        update_gap(v, v, add)
     else:
-        let prv = bag.last_lt(v)
-        let nxt = bag.first_gt(v)
+        let prv = bag.range(..v).last
+        let nxt = bag.range(v + 1..).first
+        if let p = prv: update_gap(p, v, add)
+        if let x = nxt: update_gap(v, x, add)
         if let p = prv:
-            if let x = nxt: update_gap(p, x, false)
-            update_gap(p, v, true)
-        if let x = nxt: update_gap(v, x, true)
-
-fn remove_barrel(v: Int):
-    let had = bag.count(v)
-    bag.remove(v)
-    if had >= 2:
-        update_gap(v, v, false)
-    else:
-        let prv = bag.last_lt(v)
-        let nxt = bag.first_gt(v)
-        if let p = prv: update_gap(p, v, false)
-        if let x = nxt: update_gap(v, x, false)
-        if let p = prv:
-            if let x = nxt: update_gap(p, x, true)
-    if v <= B: small_cnt[Small(v)] -= 1
-    total -= v
+            if let x = nxt: update_gap(p, x, not add)
+    if v <= B: small_cnt[Small(v)] += d
+    total += d * v
 
 fn can_merge() -> Bool:
     var cur = bag.last!
     if bag.count(cur) == 1:
         var rem = total - cur
         var min_gap = cur
-        while let nxt = bag.last_lt(cur):
+        while let nxt = bag.range(..cur).last:
             rem -= nxt
             min_gap = min(min_gap, min(cur - nxt, nxt))
             if rem < min_gap: return false
@@ -77,11 +63,11 @@ type Vol = 1..=1_000_000
 
 repeat n:
     let a: Vol = read()
-    add_barrel(a)
+    change(a, true)
 print(if can_merge(): "Yes" else: "No")
 
 repeat q:
     let op: Char = read()
     let a: Vol = read()
-    if op == '+': add_barrel(a) else: remove_barrel(a)
+    change(a, op == '+')
     print(if can_merge(): "Yes" else: "No")

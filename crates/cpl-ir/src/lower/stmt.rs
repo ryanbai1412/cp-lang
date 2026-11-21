@@ -279,6 +279,48 @@ impl<'a> Lowerer<'a> {
                     self.cx.mut_aliases.insert(alias_name.clone(), frozen);
                     return;
                 }
+                // `let v = s.range(r)` (or `let (a, b) = (s.range(r1), s.range(r2))`):
+                // bind zero-copy O(1) `SortedView` handles in `self.cx.sorted_views`.
+                if let Some(init_expr) = init {
+                    if let ast::PatternKind::Name(vname) = &pat.kind {
+                        if self.is_sorted_range_expr(init_expr) {
+                            if let Some(view) = self.sorted_view_from_expr(init_expr, out) {
+                                let slot = self.temp(Ty::Unit);
+                                if let Some(scope) = self.cx.scopes.last_mut() {
+                                    scope.insert(vname.clone(), slot);
+                                }
+                                self.cx.sorted_views.insert(slot, view);
+                                return;
+                            }
+                        }
+                    } else if let (
+                        ast::PatternKind::Tuple(pats),
+                        ast::ExprKind::Tuple(exprs),
+                    ) = (&pat.kind, &init_expr.kind)
+                    {
+                        if pats.len() == exprs.len()
+                            && exprs.iter().any(|e| self.is_sorted_range_expr(e))
+                        {
+                            for (p, e) in pats.iter().zip(exprs.iter()) {
+                                if let ast::PatternKind::Name(vname) = &p.kind {
+                                    if self.is_sorted_range_expr(e) {
+                                        if let Some(view) = self.sorted_view_from_expr(e, out) {
+                                            let slot = self.temp(Ty::Unit);
+                                            if let Some(scope) = self.cx.scopes.last_mut() {
+                                                scope.insert(vname.clone(), slot);
+                                            }
+                                            self.cx.sorted_views.insert(slot, view);
+                                            continue;
+                                        }
+                                    }
+                                }
+                                let val = self.expr(e, None);
+                                self.bind_mut(p, val, *mutable, out);
+                            }
+                            return;
+                        }
+                    }
+                }
                 // Handle untyped `var m = Map()` / `HashMap()` by peeking subsequent uses in the block.
                 let inferred_map_ty = if ty.is_none() {
                     if let (

@@ -3704,6 +3704,11 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        if matches!(name.text.as_str(), "first" | "last" | "len" | "is_empty")
+            && self.is_sorted_range_expr(base)
+        {
+            return self.sorted_view_field(base, &name.text, span);
+        }
         // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
         if let ast::ExprKind::Generic { base: gbase, args: gtypes } = &base.kind {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
@@ -5406,19 +5411,21 @@ impl<'a> Lowerer<'a> {
         // A fold over a sequence reads as its method: `xs.sum()` is
         // `sum(xs)`, `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
         let seq_ty = self.probe_ty_silent(base);
-        if matches!(
-            seq_ty,
-            Some(
-                Ty::List(_)
-                    | Ty::ListView(_)
-                    | Ty::Array { .. }
-                    | Ty::Range(_)
-                    | Ty::Set(_)
-                    | Ty::HashSet(_)
-                    | Ty::Str
-                    | Ty::StrView
+        if self.is_sorted_range_expr(base)
+            || matches!(
+                seq_ty,
+                Some(
+                    Ty::List(_)
+                        | Ty::ListView(_)
+                        | Ty::Array { .. }
+                        | Ty::Range(_)
+                        | Ty::Set(_)
+                        | Ty::HashSet(_)
+                        | Ty::Str
+                        | Ty::StrView
+                )
             )
-        ) {
+        {
             let seq = ast::Arg { name: None, mutable: false, value: base.clone() };
             match (args, name.text.as_str()) {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
@@ -8848,5 +8855,391 @@ impl Items {
             rev: false,
             closed: false,
         }
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    pub(super) fn sorted_container_key(&self, sid: StructId) -> Option<Ty> {
+        let info = &self.structs[sid];
+        if !info.def.name.starts_with("SortedBag") && !info.def.name.starts_with("SortedSet") {
+            return None;
+        }
+        let (_, gargs) = info.origin_gen.as_ref()?;
+        match gargs.first()? {
+            GenArg::Ty(k) => Some(k.clone()),
+            GenArg::Domain(d) => Some(Ty::Pos(*d)),
+            _ => None,
+        }
+    }
+
+    pub(super) fn is_sorted_range_expr(&mut self, mut e: &ast::Expr) -> bool {
+        loop {
+            match &e.kind {
+                ast::ExprKind::Paren(inner) => e = inner,
+                ast::ExprKind::Name(n) => {
+                    return self
+                        .lookup(n)
+                        .is_some_and(|slot| self.cx.sorted_views.contains_key(&slot));
+                }
+                ast::ExprKind::Field { base, name } if name.text == "rev" => e = base,
+                ast::ExprKind::Call { callee, args } if args.len() == 1 => {
+                    if let ast::ExprKind::Field { base, name } = &callee.kind {
+                        if name.text == "range" {
+                            if let Some(Ty::Struct(sid)) = self.probe_ty_silent(base) {
+                                return self.sorted_container_key(sid).is_some();
+                            }
+                        }
+                    }
+                    return false;
+                }
+                _ => return false,
+            }
+        }
+    }
+
+    fn sorted_domain_bounds(
+        &mut self,
+        d: DomainId,
+        lo_ord: Expr,
+        hi_ord: Expr,
+        span: Span,
+        out: &mut Vec<Stmt>,
+    ) -> (Expr, Expr, Expr, Expr, Option<Expr>) {
+        let lo_s = self.temp(Ty::Int);
+        out.push(Stmt::Let(lo_s, Some(lo_ord)));
+        let hi_s = self.temp(Ty::Int);
+        out.push(Stmt::Let(hi_s, Some(hi_ord)));
+        let dlen_s = self.temp(Ty::Int);
+        let dlen = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+        out.push(Stmt::Let(dlen_s, Some(dlen)));
+
+        let lo_l = self.local(lo_s, span);
+        let hi_l = self.local(hi_s, span);
+        let dlen_l = self.local(dlen_s, span);
+        let zero = self.int_lit(0, span);
+
+        let c1 = self.mk(
+            ExprKind::Cmp(CmpOp::Ge, Box::new(lo_l.clone()), Box::new(hi_l.clone())),
+            Ty::Bool,
+            span,
+        );
+        let c2 = self.mk(
+            ExprKind::Cmp(CmpOp::Ge, Box::new(lo_l.clone()), Box::new(dlen_l.clone())),
+            Ty::Bool,
+            span,
+        );
+        let c3 = self.mk(
+            ExprKind::Cmp(CmpOp::Le, Box::new(hi_l.clone()), Box::new(zero.clone())),
+            Ty::Bool,
+            span,
+        );
+        let c12 = self.mk(ExprKind::Binary(BinOp::Or, Box::new(c1), Box::new(c2)), Ty::Bool, span);
+        let empty = self.mk(ExprKind::Binary(BinOp::Or, Box::new(c12), Box::new(c3)), Ty::Bool, span);
+        let empty_s = self.temp(Ty::Bool);
+        out.push(Stmt::Let(empty_s, Some(empty)));
+        let empty_l = self.local(empty_s, span);
+        let not_empty = self.mk(ExprKind::Unary(UnOp::Not, Box::new(empty_l.clone())), Ty::Bool, span);
+
+        let opt_k = Ty::opt(Ty::Pos(d));
+        let lo_gt_zero = self.mk(
+            ExprKind::Cmp(CmpOp::Gt, Box::new(lo_l.clone()), Box::new(zero)),
+            Ty::Bool,
+            span,
+        );
+        let has_lo = self.mk(
+            ExprKind::Binary(BinOp::And, Box::new(not_empty.clone()), Box::new(lo_gt_zero)),
+            Ty::Bool,
+            span,
+        );
+        let lo_pos = self.cast(Cast::Trust, lo_l, Ty::Pos(d));
+        let lo_some = self.mk(ExprKind::Some(Box::new(lo_pos)), opt_k.clone(), span);
+        let lo_none = self.mk(ExprKind::None, opt_k.clone(), span);
+        let lo_expr = self.mk(
+            ExprKind::If(Box::new(has_lo), Box::new(lo_some), Box::new(lo_none)),
+            opt_k.clone(),
+            span,
+        );
+
+        let hi_lt_len = self.mk(
+            ExprKind::Cmp(CmpOp::Lt, Box::new(hi_l.clone()), Box::new(dlen_l)),
+            Ty::Bool,
+            span,
+        );
+        let has_hi = self.mk(
+            ExprKind::Binary(BinOp::And, Box::new(not_empty), Box::new(hi_lt_len)),
+            Ty::Bool,
+            span,
+        );
+        let hi_pos = self.cast(Cast::Trust, hi_l, Ty::Pos(d));
+        let hi_some = self.mk(ExprKind::Some(Box::new(hi_pos)), opt_k.clone(), span);
+        let hi_none = self.mk(ExprKind::None, opt_k.clone(), span);
+        let hi_expr = self.mk(
+            ExprKind::If(Box::new(has_hi), Box::new(hi_some), Box::new(hi_none)),
+            opt_k,
+            span,
+        );
+
+        let lo_inc = self.mk(ExprKind::Bool(true), Ty::Bool, span);
+        let hi_inc = self.mk(ExprKind::Bool(false), Ty::Bool, span);
+        (lo_expr, lo_inc, hi_expr, hi_inc, Some(empty_l))
+    }
+
+    pub(super) fn sorted_view_from_expr(
+        &mut self,
+        e: &ast::Expr,
+        out: &mut Vec<Stmt>,
+    ) -> Option<SortedView> {
+        let mut cur = e;
+        let mut flip = false;
+        loop {
+            match &cur.kind {
+                ast::ExprKind::Paren(inner) => cur = inner,
+                ast::ExprKind::Field { base, name } if name.text == "rev" => {
+                    flip = !flip;
+                    cur = base;
+                }
+                ast::ExprKind::Name(n) => {
+                    let slot = self.lookup(n)?;
+                    let mut v = self.cx.sorted_views.get(&slot)?.clone();
+                    if flip {
+                        v.rev = !v.rev;
+                    }
+                    return Some(v);
+                }
+                ast::ExprKind::Call { callee, args } if args.len() == 1 => {
+                    let ast::ExprKind::Field { base, name } = &callee.kind else {
+                        return None;
+                    };
+                    if name.text != "range" {
+                        return None;
+                    }
+                    let Some(Ty::Struct(sid)) = self.probe_ty_silent(base) else {
+                        return None;
+                    };
+                    let key_ty = self.sorted_container_key(sid)?;
+                    let span = cur.span;
+                    let raw_place = self.place(base);
+                    let place = self.settle_indexes(raw_place, out);
+                    let arg = &args[0].value;
+                    let opt_k = Ty::opt(key_ty.clone());
+
+                    let (lo_expr, lo_inc_expr, hi_expr, hi_inc_expr, empty_expr) = match &arg.kind {
+                        ast::ExprKind::Range { lo, hi, inclusive, step: None } => {
+                            let use_domain_ords = if let Ty::Pos(d) = key_ty {
+                                let lo_is_bound = lo
+                                    .as_deref()
+                                    .and_then(|x| self.probe_ty_silent(x))
+                                    .is_some_and(|t| t == Ty::Bound(d));
+                                let hi_is_bound = hi
+                                    .as_deref()
+                                    .and_then(|x| self.probe_ty_silent(x))
+                                    .is_some_and(|t| t == Ty::Bound(d));
+                                lo_is_bound || hi_is_bound
+                            } else {
+                                false
+                            };
+                            if use_domain_ords {
+                                let Ty::Pos(d) = key_ty else { unreachable!() };
+                                let lo_ord = match lo.as_deref() {
+                                    Some(l) => {
+                                        let le = self.expr(l, None);
+                                        self.cast(Cast::Ord, le, Ty::Int)
+                                    }
+                                    None => self.int_lit(0, span),
+                                };
+                                let hi_ord = match hi.as_deref() {
+                                    Some(h) => {
+                                        let he = self.expr(h, None);
+                                        let is_pos = he.ty == Ty::Pos(d);
+                                        let ho = self.cast(Cast::Ord, he, Ty::Int);
+                                        if is_pos && *inclusive {
+                                            self.int_add(ho, 1)
+                                        } else {
+                                            ho
+                                        }
+                                    }
+                                    None => self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                                };
+                                self.sorted_domain_bounds(d, lo_ord, hi_ord, span, out)
+                            } else {
+                                let lo_e = match lo.as_deref() {
+                                    Some(l) => {
+                                        let lv = self.expect(l, &key_ty);
+                                        self.mk(ExprKind::Some(Box::new(lv)), opt_k.clone(), span)
+                                    }
+                                    None => self.mk(ExprKind::None, opt_k.clone(), span),
+                                };
+                                let hi_e = match hi.as_deref() {
+                                    Some(h) => {
+                                        let hv = self.expect(h, &key_ty);
+                                        self.mk(ExprKind::Some(Box::new(hv)), opt_k.clone(), span)
+                                    }
+                                    None => self.mk(ExprKind::None, opt_k.clone(), span),
+                                };
+                                (
+                                    lo_e,
+                                    self.mk(ExprKind::Bool(true), Ty::Bool, span),
+                                    hi_e,
+                                    self.mk(ExprKind::Bool(*inclusive), Ty::Bool, span),
+                                    None,
+                                )
+                            }
+                        }
+                        _ => {
+                            let want_r = Ty::Range(Box::new(key_ty.clone()));
+                            let rv = self.expr(arg, Some(&want_r));
+                            let r_slot = self.temp(rv.ty.clone());
+                            out.push(Stmt::Let(r_slot, Some(rv)));
+                            let r_l = self.local(r_slot, span);
+                            let r_lo = self.mk(
+                                ExprKind::Builtin(Builtin::RangeLo, vec![r_l.clone()]),
+                                Ty::Int,
+                                span,
+                            );
+                            let r_hi = self.mk(
+                                ExprKind::Builtin(Builtin::RangeHi, vec![r_l]),
+                                Ty::Int,
+                                span,
+                            );
+                            if let Ty::Pos(d) = key_ty {
+                                self.sorted_domain_bounds(d, r_lo, r_hi, span, out)
+                            } else {
+                                let r_lo = self.coerce(r_lo, &key_ty, span);
+                                let r_hi = self.coerce(r_hi, &key_ty, span);
+                                (
+                                    self.mk(ExprKind::Some(Box::new(r_lo)), opt_k.clone(), span),
+                                    self.mk(ExprKind::Bool(true), Ty::Bool, span),
+                                    self.mk(ExprKind::Some(Box::new(r_hi)), opt_k.clone(), span),
+                                    self.mk(ExprKind::Bool(false), Ty::Bool, span),
+                                    None,
+                                )
+                            }
+                        }
+                    };
+
+                    let lo_s = self.temp(opt_k.clone());
+                    out.push(Stmt::Let(lo_s, Some(lo_expr)));
+                    let lo_inc_s = self.temp(Ty::Bool);
+                    out.push(Stmt::Let(lo_inc_s, Some(lo_inc_expr)));
+                    let hi_s = self.temp(opt_k);
+                    out.push(Stmt::Let(hi_s, Some(hi_expr)));
+                    let hi_inc_s = self.temp(Ty::Bool);
+                    out.push(Stmt::Let(hi_inc_s, Some(hi_inc_expr)));
+                    let empty_s = empty_expr.map(|ee| {
+                        let s = self.temp(Ty::Bool);
+                        out.push(Stmt::Let(s, Some(ee)));
+                        s
+                    });
+                    return Some(SortedView {
+                        base: place,
+                        sid,
+                        key_ty,
+                        lo: lo_s,
+                        lo_inc: lo_inc_s,
+                        hi: hi_s,
+                        hi_inc: hi_inc_s,
+                        empty: empty_s,
+                        rev: flip,
+                    });
+                }
+                _ => return None,
+            }
+        }
+    }
+
+    pub(super) fn call_sorted_view(
+        &mut self,
+        view: &SortedView,
+        method: &str,
+        ret_ty: Ty,
+        empty_default: Expr,
+        span: Span,
+    ) -> Expr {
+        let Some(fn_id) = self.struct_op_fn(view.sid, method) else {
+            return empty_default;
+        };
+        let args = vec![
+            Arg::Value(super::stmt::place_to_expr(&view.base)),
+            Arg::Value(self.local(view.lo, span)),
+            Arg::Value(self.local(view.lo_inc, span)),
+            Arg::Value(self.local(view.hi, span)),
+            Arg::Value(self.local(view.hi_inc, span)),
+        ];
+        let call = self.mk(ExprKind::Call(fn_id, args), ret_ty.clone(), span);
+        if let Some(emp) = view.empty {
+            let cond = self.local(emp, span);
+            self.mk(
+                ExprKind::If(Box::new(cond), Box::new(empty_default), Box::new(call)),
+                ret_ty,
+                span,
+            )
+        } else {
+            call
+        }
+    }
+
+    fn sorted_view_field(&mut self, base: &ast::Expr, field: &str, span: Span) -> Expr {
+        let mut res_ty = Ty::Error;
+        let mut e = self.do_expr(None, span, |lw, out| {
+            let Some(view) = lw.sorted_view_from_expr(base, out) else {
+                out.push(Stmt::Give(lw.err_expr(span)));
+                return;
+            };
+            let opt_k = Ty::opt(view.key_ty.clone());
+            let res = match field {
+                "first" => {
+                    let m = if view.rev { "range_last" } else { "range_first" };
+                    let d = lw.mk(ExprKind::None, opt_k.clone(), span);
+                    lw.call_sorted_view(&view, m, opt_k, d, span)
+                }
+                "last" => {
+                    let m = if view.rev { "range_first" } else { "range_last" };
+                    let d = lw.mk(ExprKind::None, opt_k.clone(), span);
+                    lw.call_sorted_view(&view, m, opt_k, d, span)
+                }
+                "len" => {
+                    let d = lw.int_lit(0, span);
+                    lw.call_sorted_view(&view, "range_len", Ty::Int, d, span)
+                }
+                "is_empty" => {
+                    let d = lw.int_lit(0, span);
+                    let len = lw.call_sorted_view(&view, "range_len", Ty::Int, d, span);
+                    let zero = lw.int_lit(0, span);
+                    lw.mk(
+                        ExprKind::Cmp(CmpOp::Eq, Box::new(len), Box::new(zero)),
+                        Ty::Bool,
+                        span,
+                    )
+                }
+                _ => lw.err_expr(span),
+            };
+            res_ty = res.ty.clone();
+            out.push(Stmt::Give(res));
+        });
+        e.ty = res_ty;
+        e
+    }
+
+    pub(super) fn sorted_view_iter(&mut self, e: &ast::Expr, span: Span) -> Option<(Iter, Ty)> {
+        if !self.is_sorted_range_expr(e) {
+            return None;
+        }
+        let mut elem_ty = Ty::Error;
+        let mut seq_ty = Ty::Error;
+        let mut seq = self.do_expr(None, span, |lw, out| {
+            let Some(view) = lw.sorted_view_from_expr(e, out) else {
+                out.push(Stmt::Give(lw.err_expr(span)));
+                return;
+            };
+            elem_ty = view.key_ty.clone();
+            let list_ty = Ty::List(Box::new(view.key_ty.clone()));
+            let m = if view.rev { "range_each_rev" } else { "range_each" };
+            let empty_list = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
+            let res = lw.call_sorted_view(&view, m, list_ty.clone(), empty_list, span);
+            seq_ty = list_ty;
+            out.push(Stmt::Give(res));
+        });
+        seq.ty = seq_ty;
+        Some((Iter::Seq(seq, false), elem_ty))
     }
 }

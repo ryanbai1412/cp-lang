@@ -642,7 +642,7 @@ fn subset_sums(weights: List<Int>) -> Bitset<D> // O(K sqrt(S) / 64) (associated
 See `design/stdlib/containers.md` for the full pattern survey, laws, and
 worked contest examples. `SortedBag<K>` is an ordered multiset with order
 statistics, monotone search, recycled treap nodes, and O(1)-amortized
-cursors (`BagCursor`, `entries`, `entries_rev`); `OrderedSet<K>` is its
+cursors (`BagCursor`, `entries`, `entries_rev`) and O(1) `.range(r)` views; `SortedSet<K>` is its
 unique-key twin; `IntervalMap<D, T>` (`std.interval`) maintains a maximal-run
 partition of domain `D` under range assignment; `Deque<T>`, `MonoDeque<T>`,
 and `TwoStackFold<T>` cover ring buffers and sliding-window queries;
@@ -688,12 +688,8 @@ struct SortedBag<K> // O(log n), O(1), O(n)
     @get fn last(self) -> ?K // O(log n)
     fn pop_first(mut self) -> ?K // O(log n)
     fn pop_last(mut self) -> ?K // O(log n)
-    fn first_ge(self, k: K) -> ?K // O(log n)
-    fn first_gt(self, k: K) -> ?K // O(log n)
-    fn last_le(self, k: K) -> ?K // O(log n)
-    fn last_lt(self, k: K) -> ?K // O(log n)
+    fn range(self, r) -> SortedRange<K> // O(1) view; .first/.last/.len/.is_empty O(log n), iter/.rev O(log n + k)
     fn rank(self, k: K) -> Int // O(log n)
-    fn count_range(self, lo: K, hi: K) -> Int // O(log n) [new]
     fn nth(self, i: Int) -> ?K // O(log n)
     fn first_where(self, ok: K -> Bool) -> ?K // O(log n) [new]
     fn cursor_first(self) -> ?BagCursor // O(log n) [new]
@@ -710,13 +706,13 @@ struct SortedBag<K> // O(log n), O(1), O(n)
     fn entries(self) -> yields (key: K, count: Int) // O(n) [new]
     fn entries_rev(self) -> yields (key: K, count: Int) // O(n) [new]
     fn to_list(self) -> List<K> // O(n)
-struct OrderedSet<K> // [new] unique-key twin of SortedBag<K>
-    fn new() -> OrderedSet<K>
-    fn of(xs: List<K>) -> OrderedSet<K> // O(n log n)
+struct SortedSet<K> // [new] unique-key twin of SortedBag<K>
+    fn new() -> SortedSet<K>
+    fn of(xs: List<K>) -> SortedSet<K> // O(n log n)
     @get fn len(self) -> Int // O(1)
     @get fn is_empty(self) -> Bool
     fn clear(mut self)
-    fn take(mut self) -> OrderedSet<K> // O(1)
+    fn take(mut self) -> SortedSet<K> // O(1)
     fn add(mut self, x: K) -> Bool // O(log n)
     fn remove(mut self, x: K) -> Bool // O(log n)
     fn contains(self, x: K) -> Bool // O(log n)
@@ -724,12 +720,8 @@ struct OrderedSet<K> // [new] unique-key twin of SortedBag<K>
     @get fn last(self) -> ?K // O(log n)
     fn pop_first(mut self) -> ?K // O(log n)
     fn pop_last(mut self) -> ?K // O(log n)
-    fn first_ge(self, k: K) -> ?K // O(log n)
-    fn first_gt(self, k: K) -> ?K // O(log n)
-    fn last_le(self, k: K) -> ?K // O(log n)
-    fn last_lt(self, k: K) -> ?K // O(log n)
+    fn range(self, r) -> SortedRange<K> // O(1) view; .first/.last/.len/.is_empty O(log n), iter/.rev O(log n + k)
     fn rank(self, k: K) -> Int // O(log n)
-    fn count_range(self, lo: K, hi: K) -> Int // O(log n)
     fn nth(self, i: Int) -> ?K // O(log n)
     fn first_where(self, ok: K -> Bool) -> ?K // O(log n)
     fn each(self) -> yields K // O(n)

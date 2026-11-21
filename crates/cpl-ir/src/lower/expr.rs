@@ -3167,7 +3167,10 @@ impl<'a> Lowerer<'a> {
         while let ast::ExprKind::Paren(next) = &inner.kind {
             inner = next;
         }
-        let walks = match &inner.kind {
+        let walks = if self.is_sorted_range_expr(inner) {
+            true
+        } else {
+            match &inner.kind {
             ast::ExprKind::Range { .. } => true,
             ast::ExprKind::Name(name) if self.lookup(name).is_none() => {
                 name == "Bool"
@@ -3194,6 +3197,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             _ => false,
+            }
         };
         let item = "item";
         walks.then(|| ast::Expr {
@@ -3217,6 +3221,9 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn iter(&mut self, e: &ast::Expr) -> (Iter, Ty) {
         let span = e.span;
+        if let Some(res) = self.sorted_view_iter(e, span) {
+            return res;
+        }
         // Direct zero-overhead range iteration for `V.after(pos)` and `V.before(pos)`.
         if let ast::ExprKind::Call { callee, args } = &e.kind {
             if let ast::ExprKind::Field { base, name } = &callee.kind {

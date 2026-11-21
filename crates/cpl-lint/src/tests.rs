@@ -885,6 +885,30 @@ let c = V.group(by: v => Int(v) % 2)
 }
 
 #[test]
+fn sorted_range_method_codemod() {
+    let src = "\
+var s = SortedBag<Int>()
+let a = s.first_ge(3)
+let b = s.first_gt(3)
+let c = s.last_le(5)
+let d = s.last_lt(5)
+let e = s.count_range(1, 5)
+";
+    assert_eq!(taste_codes(src), ["L0515", "L0515", "L0515", "L0515", "L0515"]);
+    assert_eq!(
+        fixed(src),
+        "\
+var s = SortedBag<Int>()
+let a = s.range(3..).first
+let b = s.range(3 + 1..).first
+let c = s.range(..=5).last
+let d = s.range(..5).last
+let e = s.range(1..5).len
+"
+    );
+}
+
+#[test]
 fn prefix_twin_becomes_prefix() {
     let src = "\
 let xs = [3, 1, 4]

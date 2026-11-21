@@ -67,11 +67,11 @@ for cid in hs.D:
 var seen = SortedBag<Int>()
 for i in V:
     seen.add(h[i])
-    for (x, m) in pq[i]: ans += Z(m) * Z(seen.first_gt(x)!)
+    for (x, m) in pq[i]: ans += Z(m) * Z(seen.range(x + 1..).first!)
 
 seen.clear()
 for i in V.rev:
     seen.add(h[i])
-    for (x, m) in sq[i]: ans += Z(m) * Z(seen.first_gt(x)!)
+    for (x, m) in sq[i]: ans += Z(m) * Z(seen.range(x + 1..).first!)
 
 print(ans)

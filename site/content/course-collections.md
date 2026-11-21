@@ -28,7 +28,7 @@ For heaps, `std.heap` provides `MinHeap<T>` and `MaxHeap<T>`. If you need a mixe
 
 CP Lang separates unique ordered sets (`Set<T>`, like `std::set`) from ordered multisets (`SortedBag<T>`, like `std::multiset`) so you never accidentally erase all duplicates with `.erase(x)`:
 
-- `SortedBag<T>` has `.insert(x)`, `.remove_one(x)` (removes a single copy), `.count(x)`, `.min`, `.max`, `.first_ge(x)`, `.last_le(x)`.
+- `SortedBag<T>` / `SortedSet<T>` have `.add(x)`, `.remove(x)` (removes a single copy on `SortedBag`), `.count(x)`, `.first`, `.last`, `.rank(x)`, `.nth(i)`, and `.range(r)` (`.first`, `.last`, `.len`, iteration, `.rev`).
 - `Map<K, V>` is an ordered tree map; `HashMap<K, V>` is a splitmix64-salted hash map that is immune to standard anti-hash blow-up tests on Codeforces.
 - Reading `m[k]` returns `?V` (never silently inserts a default value the way C++ `map::operator[]` does!).
 - Updating or initializing an entry uses compound operators directly:

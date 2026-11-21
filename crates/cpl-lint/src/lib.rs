@@ -345,6 +345,16 @@ pub const HAND_ROLLED_RANGE_TREE: Lint = Lint {
     trigger: "var bit: [0..=8]Int = 0\nvar p = 3\nwhile p <= 8:\n    bit[p] += 1\n    p += p & -p\nprint(bit[4])\n",
     fix: "domain Pos = 1..=8\nvar bit = Fenwick<Pos, Int>()\nbit.add(Pos(3), 1)\nprint(bit.prefix(Pos(4).r))\n",
 };
+pub const SORTED_RANGE_METHOD: Lint = Lint {
+    code: Code("L0515"),
+    name: "sorted_range_method",
+    default: Level::Warn,
+    title: "Removed bound-query method on `SortedBag` or `SortedSet`",
+    summary: "`first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` on `SortedBag`/`SortedSet`: use `.range(r)`",
+    explanation: "`SortedBag.range(r)` and `SortedSet.range(r)` return an O(1) view whose `.first`, `.last`, and `.len` cost O(log n) and whose iteration costs O(log n + k). `cpl fix` rewrites `first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` to `.range(...)` calls.",
+    trigger: "var s = SortedBag<Int>()\nprint(s.first_ge(3), s.last_lt(5), s.count_range(1, 5))\n",
+    fix: "var s = SortedBag<Int>()\nprint(s.range(3..).first, s.range(..5).last, s.range(1..5).len)\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -375,6 +385,7 @@ pub const LINTS: &[Lint] = &[
     DOMAIN_SPELLING,
     PREFIX_TWIN,
     HAND_ROLLED_RANGE_TREE,
+    SORTED_RANGE_METHOD,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

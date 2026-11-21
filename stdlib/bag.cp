@@ -1,4 +1,4 @@
-//! Ordered multiset and set with order statistics and cursors: `SortedBag<K>`, `OrderedSet<K>`.
+//! Ordered multiset and set with order statistics, range views, and cursors: `SortedBag<K>`, `SortedSet<K>`.
 
 use std.seq.{remove}
 
@@ -9,8 +9,9 @@ pub struct BagCursor(id: Int)
 /// with recycled node slots and parent pointers for O(1) amortized cursor stepping.
 /// Keeps one node per distinct key with its multiplicity and subtree element count.
 /// `add`, `add_many`, `remove`, `remove_all`, `contains`, `count`, `first`, `last`,
-/// `pop_first`, `pop_last`, `first_ge`, `first_gt`, `last_le`, `last_lt`, `rank`,
-/// `count_range`, `nth`, `first_where`, and `cursor_*` are O(log n) expected;
+/// `pop_first`, `pop_last`, `rank`, `nth`, `first_where`, and `cursor_*` are O(log n) expected;
+/// `range(r)` returns an O(1) view whose `.first`, `.last`, `.len`, `.is_empty` are O(log n)
+/// expected and whose iteration (`for x in b.range(r)` / `.rev`) is O(log n + k);
 /// `key_of` and `count_of` are O(1); `next_cursor` and `prev_cursor` are O(1) amortized;
 /// `len`, `distinct`, `is_empty`, `clear`, and `take` are O(1);
 /// `entries`, `entries_rev`, and `to_list` are O(n).
@@ -179,54 +180,6 @@ pub struct SortedBag<K>:
         self.remove(x!)
         x
 
-    /// Smallest element `>= k`, or `none`. O(log n) expected.
-    pub fn first_ge(self, k: K) -> ?K:
-        var ans: ?K = none
-        var u = root
-        while u >= 0:
-            if not (key[u] < k):
-                ans = key[u]
-                u = left[u]
-            else:
-                u = right[u]
-        ans
-
-    /// Smallest element `> k`, or `none`. O(log n) expected.
-    pub fn first_gt(self, k: K) -> ?K:
-        var ans: ?K = none
-        var u = root
-        while u >= 0:
-            if k < key[u]:
-                ans = key[u]
-                u = left[u]
-            else:
-                u = right[u]
-        ans
-
-    /// Largest element `<= k`, or `none`. O(log n) expected.
-    pub fn last_le(self, k: K) -> ?K:
-        var ans: ?K = none
-        var u = root
-        while u >= 0:
-            if not (k < key[u]):
-                ans = key[u]
-                u = right[u]
-            else:
-                u = left[u]
-        ans
-
-    /// Largest element `< k`, or `none`. O(log n) expected.
-    pub fn last_lt(self, k: K) -> ?K:
-        var ans: ?K = none
-        var u = root
-        while u >= 0:
-            if key[u] < k:
-                ans = key[u]
-                u = right[u]
-            else:
-                u = left[u]
-        ans
-
     /// Number of elements strictly less than `k` (counting duplicates). O(log n) expected.
     pub fn rank(self, k: K) -> Int:
         var ans = 0
@@ -239,10 +192,115 @@ pub struct SortedBag<K>:
                 u = left[u]
         ans
 
-    /// Number of elements in `[lo, hi)` (counting duplicates; 0 when `hi <= lo`). O(log n) expected.
-    pub fn count_range(self, lo: K, hi: K) -> Int:
-        if not (lo < hi): return 0
-        self.rank(hi) - self.rank(lo)
+    fn rank_le(self, k: K) -> Int:
+        var ans = 0
+        var u = root
+        while u >= 0:
+            if not (k < key[u]):
+                ans += self.sub_of(left[u]) + cnt[u]
+                u = right[u]
+            else:
+                u = left[u]
+        ans
+
+    fn lo_ok(self, x: K, lo: ?K, lo_inc: Bool) -> Bool:
+        if let a = lo:
+            if lo_inc: not (x < a) else: a < x
+        else:
+            true
+
+    fn hi_ok(self, x: K, hi: ?K, hi_inc: Bool) -> Bool:
+        if let b = hi:
+            if hi_inc: not (b < x) else: x < b
+        else:
+            true
+
+    fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
+        var ans = -1
+        if let a = lo:
+            var u = root
+            if lo_inc:
+                while u >= 0:
+                    if not (key[u] < a):
+                        ans = u
+                        u = left[u]
+                    else:
+                        u = right[u]
+            else:
+                while u >= 0:
+                    if a < key[u]:
+                        ans = u
+                        u = left[u]
+                    else:
+                        u = right[u]
+        else:
+            var u = root
+            while u >= 0:
+                ans = u
+                u = left[u]
+        if ans < 0: return none
+        let k = key[ans]
+        if self.hi_ok(k, hi, hi_inc): k else: none
+
+    fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
+        var ans = -1
+        if let b = hi:
+            var u = root
+            if hi_inc:
+                while u >= 0:
+                    if not (b < key[u]):
+                        ans = u
+                        u = right[u]
+                    else:
+                        u = left[u]
+            else:
+                while u >= 0:
+                    if key[u] < b:
+                        ans = u
+                        u = right[u]
+                    else:
+                        u = left[u]
+        else:
+            var u = root
+            while u >= 0:
+                ans = u
+                u = right[u]
+        if ans < 0: return none
+        let k = key[ans]
+        if self.lo_ok(k, lo, lo_inc): k else: none
+
+    fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int:
+        let cnt_hi = if let b = hi:
+            if hi_inc: self.rank_le(b) else: self.rank(b)
+        else:
+            self.len
+        let cnt_lo = if let a = lo:
+            if lo_inc: self.rank(a) else: self.rank_le(a)
+        else:
+            0
+        if cnt_hi > cnt_lo: cnt_hi - cnt_lo else: 0
+
+    fn range_each(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
+        var cur = if let a = lo:
+            if lo_inc: self.cursor_ge(a) else: self.cursor_gt(a)
+        else:
+            self.cursor_first()
+        while let c = cur:
+            let k = key[c.id]
+            if not self.hi_ok(k, hi, hi_inc): break
+            for _ in 0..cnt[c.id]: yield k
+            cur = self.next_cursor(c)
+
+    fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
+        var cur = if let b = hi:
+            if hi_inc: self.cursor_le(b) else: self.cursor_lt(b)
+        else:
+            self.cursor_last()
+        while let c = cur:
+            let k = key[c.id]
+            if not self.lo_ok(k, lo, lo_inc): break
+            for _ in 0..cnt[c.id]: yield k
+            cur = self.prev_cursor(c)
 
     /// 0-indexed `i`-th smallest element (counting duplicates), or `none` if out of bounds. O(log n) expected.
     pub fn nth(self, i: Int) -> ?K:
@@ -464,19 +522,20 @@ pub struct SortedBag<K>:
             self.pull(b)
             b
 
-/// An ordered set of unique keys `K` with order statistics (`rank`, `count_range`, `nth`)
-/// and monotone search (`first_where`). Backed by `SortedBag<K>`.
-/// All single-key operations are O(log n) expected; `len`, `is_empty`, `clear`, `take` are O(1);
-/// `each`, `each_rev`, and `to_list` are O(n).
-pub struct OrderedSet<K>:
+/// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
+/// O(1) key-range views (`range(r)`), and monotone search (`first_where`). Backed by `SortedBag<K>`.
+/// All single-key and range-summary operations are O(log n) expected;
+/// `range(r)` is O(1); range iteration is O(log n + k);
+/// `len`, `is_empty`, `clear`, `take` are O(1); `each`, `each_rev`, and `to_list` are O(n).
+pub struct SortedSet<K>:
     bag: SortedBag<K>
 
-    /// Create an empty `OrderedSet<K>`. O(1).
-    pub fn new() -> OrderedSet<K> = OrderedSet(SortedBag<K>.new())
+    /// Create an empty `SortedSet<K>`. O(1).
+    pub fn new() -> SortedSet<K> = SortedSet(SortedBag<K>.new())
 
-    /// Build an `OrderedSet` containing the distinct elements of `xs`. O(n log n) expected.
-    pub fn of(xs: List<K>) -> OrderedSet<K>:
-        var s = OrderedSet<K>.new()
+    /// Build a `SortedSet` containing the distinct elements of `xs`. O(n log n) expected.
+    pub fn of(xs: List<K>) -> SortedSet<K>:
+        var s = SortedSet<K>.new()
         for x in xs: let _ = s.add(x)
         s
 
@@ -490,7 +549,7 @@ pub struct OrderedSet<K>:
     pub fn clear(mut self): bag.clear()
 
     /// Move all keys out, leaving `self` empty. O(1).
-    pub fn take(mut self) -> OrderedSet<K> = OrderedSet(bag.take())
+    pub fn take(mut self) -> SortedSet<K> = SortedSet(bag.take())
 
     /// Insert `x` if absent; returns `true` when `x` was newly inserted. O(log n) expected.
     pub fn add(mut self, x: K) -> Bool:
@@ -516,29 +575,29 @@ pub struct OrderedSet<K>:
     /// Remove and return the largest key, or `none`. O(log n) expected.
     pub fn pop_last(mut self) -> ?K = bag.pop_last()
 
-    /// Smallest key `>= k`, or `none`. O(log n) expected.
-    pub fn first_ge(self, k: K) -> ?K = bag.first_ge(k)
-
-    /// Smallest key `> k`, or `none`. O(log n) expected.
-    pub fn first_gt(self, k: K) -> ?K = bag.first_gt(k)
-
-    /// Largest key `<= k`, or `none`. O(log n) expected.
-    pub fn last_le(self, k: K) -> ?K = bag.last_le(k)
-
-    /// Largest key `< k`, or `none`. O(log n) expected.
-    pub fn last_lt(self, k: K) -> ?K = bag.last_lt(k)
-
     /// Number of keys strictly less than `k`. O(log n) expected.
     pub fn rank(self, k: K) -> Int = bag.rank(k)
-
-    /// Number of keys in `[lo, hi)`. O(log n) expected.
-    pub fn count_range(self, lo: K, hi: K) -> Int = bag.count_range(lo, hi)
 
     /// 0-indexed `i`-th smallest key, or `none` if out of range. O(log n) expected.
     pub fn nth(self, i: Int) -> ?K = bag.nth(i)
 
     /// Smallest key `k` where monotone `ok(k)` holds, or `none`. O(log n) expected.
     pub fn first_where(self, ok: K -> Bool) -> ?K = bag.first_where(ok)
+
+    fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K =
+        bag.range_first(lo, lo_inc, hi, hi_inc)
+
+    fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K =
+        bag.range_last(lo, lo_inc, hi, hi_inc)
+
+    fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int =
+        bag.range_len(lo, lo_inc, hi, hi_inc)
+
+    fn range_each(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
+        for k in bag.range_each(lo, lo_inc, hi, hi_inc): yield k
+
+    fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
+        for k in bag.range_each_rev(lo, lo_inc, hi, hi_inc): yield k
 
     /// Visit every key in ascending order. O(1) amortized per step.
     pub fn each(self) -> yields K:
@@ -567,8 +626,8 @@ fn sorted_bag_basics_duplicates_and_take():
     assert b.contains(2) and not b.contains(3)
     assert b.first == 1 and b.last == 9
 
-    assert b.first_ge(2) == 2 and b.first_gt(2) == 5 and b.first_ge(10) == none and b.first_gt(9) == none
-    assert b.last_le(5) == 5 and b.last_lt(5) == 2 and b.last_le(0) == none and b.last_lt(1) == none
+    assert b.range(2..).first == 2 and b.range(3..).first == 5 and b.range(10..).first == none and b.range(10..).first == none
+    assert b.range(..=5).last == 5 and b.range(..5).last == 2 and b.range(..=0).last == none and b.range(..1).last == none
     assert b.rank(1) == 0 and b.rank(2) == 1 and b.rank(3) == 3 and b.rank(5) == 3 and b.rank(6) == 6 and b.rank(10) == 7
     assert [b.nth(i)! for i in 0..b.len] == [1, 2, 2, 5, 5, 5, 9]
     assert b.nth(-1) == none and b.nth(7) == none
@@ -625,10 +684,27 @@ fn sorted_bag_matches_sorted_list_on_random_ops():
                 assert bag.first == plain.first and bag.last == plain.last
                 assert bag.count(q) == count(x == q for x in plain)
                 assert bag.contains(q) == (q in plain)
-                assert bag.first_ge(q) == first(x for x in plain if x >= q)
-                assert bag.first_gt(q) == first(x for x in plain if x > q)
-                assert bag.last_le(q) == max(x for x in plain if x <= q)
-                assert bag.last_lt(q) == max(x for x in plain if x < q)
+                assert bag.range(q..).first == first(x for x in plain if x >= q)
+                assert bag.range(q + 1..).first == first(x for x in plain if x > q)
+                assert bag.range(..=q).last == max(x for x in plain if x <= q)
+                assert bag.range(..q).last == max(x for x in plain if x < q)
+                let lo = rand(-12, 12)
+                let hi = rand(-12, 12)
+                let slice = [x for x in plain if lo <= x and x < hi]
+                let v = bag.range(lo..hi)
+                assert v.len == slice.len and v.is_empty == slice.is_empty
+                assert v.first == slice.first and v.last == slice.last
+                assert [x for x in v] == slice
+                assert [x for x in v.rev] == slice.rev
+                let inc = [x for x in plain if lo <= x and x <= hi]
+                assert bag.range(lo..=hi).len == inc.len
+                assert bag.range(lo..=hi).first == inc.first
+                assert bag.range(lo..=hi).last == inc.last
+                assert [x for x in bag.range(lo..=hi)] == inc
+                let (before, after) = (bag.range(..q), bag.range(q..))
+                assert before.len + after.len == plain.len
+                assert before.last == max(x for x in plain if x < q)
+                assert after.first == first(x for x in plain if x >= q)
                 assert bag.rank(q) == count(x < q for x in plain)
                 if not plain.is_empty:
                     let i = rand(0, plain.len - 1)
@@ -655,7 +731,7 @@ fn sorted_bag_inversion_count_and_generic_keys():
     let words = SortedBag<Str>.of(["pear", "fig", "apple", "fig", "kiwi"])
     assert words.len == 5 and words.count("fig") == 2
     assert words.first == "apple" and words.last == "pear"
-    assert words.first_gt("fig") == "kiwi" and words.last_lt("kiwi") == "fig"
+    assert words.first_where(w => w > "fig") == "kiwi" and words.range(.."kiwi").last == "fig"
     assert words.rank("fig") == 1 and words.nth(2) == "fig"
 
 @test
@@ -666,8 +742,8 @@ fn sorted_bag_cursors_entries_and_recycling():
     b.add_many(30, 2)
     b.add_many(15, 4)
     assert b.len == 10 and b.distinct == 4
-    assert b.count_range(10, 25) == 8
-    assert b.count_range(25, 10) == 0
+    assert b.range(10..25).len == 8
+    assert b.range(25..10).len == 0
     assert b.first_where(x => x >= 16) == 20
     assert b.first_where(x => x > 100) == none
 
@@ -698,16 +774,33 @@ fn sorted_bag_cursors_entries_and_recycling():
     assert b.key.len <= 10
 
 @test
-fn ordered_set_operations_and_first_where():
-    var s = OrderedSet<Int>.of([5, 1, 5, 3, 9, 3])
+fn sorted_set_operations_range_and_first_where():
+    var s = SortedSet<Int>.of([5, 1, 5, 3, 9, 3])
     assert s.len == 4 and not s.is_empty
     assert not s.add(3) and s.add(7)
     assert s.to_list() == [1, 3, 5, 7, 9]
-    assert s.rank(5) == 2 and s.count_range(3, 8) == 3
+    assert s.rank(5) == 2 and s.range(3..8).len == 3
     assert s.nth(2) == 5
     assert s.first_where(x => x * x >= 25) == 5
     var rev: List<Int> = []
     for x in s.each_rev(): rev.push(x)
     assert rev == [9, 7, 5, 3, 1]
+    assert [x for x in s.range(3..=7)] == [3, 5, 7]
+    assert [x for x in s.range(3..=7).rev] == [7, 5, 3]
     assert s.remove(5) and not s.remove(5)
     assert s.len == 4
+
+    // Domain-keyed SortedSet with Range<V> and open Bounds (..r.lo, r.hi..), cf2062e2 shape
+    domain V = 0..8
+    var ds = SortedSet<V>()
+    for i in [1, 3, 5, 6]:
+        let _ = ds.add(V.nth(i))
+    let r = V.nth(2)..V.nth(6)
+    let (before, after) = (ds.range(..r.lo), ds.range(r.hi..))
+    assert before.len == 1 and before.first == V.nth(1) and before.last == V.nth(1)
+    assert after.len == 1 and after.first == V.nth(6) and after.last == V.nth(6)
+    assert ds.range(r).len == 2 and ds.range(r).first == V.nth(3) and ds.range(r).last == V.nth(5)
+    assert [x.to_idx for x in ds.range(r)] == [3, 5]
+    assert [x.to_idx for x in ds.range(r).rev] == [5, 3]
+    let full = ds.range(..)
+    assert full.len == 4 and full.first == V.nth(1) and full.last == V.nth(6)

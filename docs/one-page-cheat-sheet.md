@@ -158,7 +158,7 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 - `List<T>`: `.push`, `.pop -> ?T`, `.insert`, `.remove`, `.swap`, `.first`/`.last -> ?T`, `xs[l..r]`.
 - `Deque<T>`: `.push`/`.pop -> ?T` at back (no `.push_back`), `.push_front`/`.pop_front -> ?T` at front, `q[i]`; all O(1).
 - `MinHeap<T>`/`MaxHeap<T>`: `.push`, `.pop -> ?T`, `.peek -> ?T`; `desc(x)` flips one key field: `MinHeap<(Desc<Int>, V)>`.
-- `Set<K>`/`SortedBag<K>`: `.add`, `.remove`, membership, `.first_ge`, `.last_le`, `.first`, `.last`, `.pop_first()`, `.pop_last()`; bag keeps duplicates.
+- `Set<K>`/`SortedSet<K>`/`SortedBag<K>`: `.add`, `.remove`, membership, `.first`, `.last`, `.pop_first()`, `.pop_last()`; `SortedSet`/`SortedBag` provide `.range(r)` (`.first`/`.last`/`.len`/iter/`.rev`), `.rank(k)`, `.nth(i)`; bag keeps duplicates.
 - `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value; `.first`, `.pop_first()` give `?(K, V)`.
 - `Bitset<D>`: `.add`, `.remove`, `.toggle`, set operations, `.len` (popcount), `.shifted(k)`.
 - `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `for sub in s.subsets`, `for v in s`.

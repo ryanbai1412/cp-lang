@@ -456,6 +456,8 @@ struct FnCx {
     op_locals: HashMap<String, BareOp>,
     /// Named mutable aliases (`let st = mut a[i]`): resolved to their underlying `Place`.
     mut_aliases: HashMap<String, Place>,
+    /// Local zero-copy range views over `SortedBag<K>` / `SortedSet<K>`.
+    sorted_views: HashMap<Slot, SortedView>,
     /// Block-scoped `type Alias = ...` resolved to concrete types (e.g. `type Cell = (Row, Col)`).
     local_type_aliases: HashMap<String, Ty>,
     /// Local slots declared `var` or mutated, so closures capture them by reference.
@@ -486,6 +488,19 @@ struct FnCx {
     is_closure: bool,
     captures: Vec<Capture>,
     captured_names: HashMap<String, Slot>,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct SortedView {
+    pub base: Place,
+    pub sid: StructId,
+    pub key_ty: Ty,
+    pub lo: Slot,
+    pub lo_inc: Slot,
+    pub hi: Slot,
+    pub hi_inc: Slot,
+    pub empty: Option<Slot>,
+    pub rev: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

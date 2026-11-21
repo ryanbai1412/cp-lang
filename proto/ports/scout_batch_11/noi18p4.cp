@@ -30,7 +30,7 @@ for _ in 0..t:
     var all: ?(Int, Int) = (0, 1)
     for d in Dragon:
         // the strongest sword not above the dragon's life, else the weakest
-        let atk = swords.last_le(life[d]) ?? swords.nth(0)!
+        let atk = swords.range(..=life[d]).last ?? swords.nth(0)!
         swords.remove(atk)
         swords.add(reward[d])
         at_least max= ceil_div(life[d], atk)

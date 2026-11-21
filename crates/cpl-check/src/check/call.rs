@@ -16,6 +16,12 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.filled(callee, args) {
             return ty;
         }
+        if let Some(ty) = self.sorted_range_call(call, callee, args) {
+            return ty;
+        }
+        if let Some(ty) = self.sorted_legacy_bound_call(call, callee, args) {
+            return ty;
+        }
         let callee_ty = match self.list_form(callee, args) {
             Some(ty) => ty,
             None => self.infer(callee),
@@ -68,6 +74,173 @@ impl<'a> Checker<'a> {
         })
     }
 
+    /// `s.range(r)` on `SortedBag<K>` or `SortedSet<K>`: returns an O(1)
+    /// `SortedRange<K>` view over keys matching `r` (`a..b`, `a..=b`, `a..`,
+    /// `..b`, `..=b`, `..`, or a `Range<K>` value).
+    fn sorted_range_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        if name.text != "range" {
+            return None;
+        }
+        let base_ty = self.infer(base);
+        let Ty::Named { name: cname, args: targs } = &base_ty else {
+            return None;
+        };
+        if !matches!(cname.as_str(), "SortedBag" | "SortedSet") || targs.len() != 1 {
+            return None;
+        }
+        let k_ty = targs[0].clone();
+        if args.len() != 1 || args[0].name.is_some() {
+            for a in args {
+                self.infer(&a.value);
+            }
+            self.error(
+                codes::WRONG_ARG_COUNT,
+                call.span,
+                format!("`{cname}.range` takes 1 range argument, found {}", args.len()),
+            );
+            return Some(Ty::Named {
+                name: "SortedRange".into(),
+                args: vec![k_ty],
+            });
+        }
+        let arg = &args[0].value;
+        match &arg.kind {
+            ExprKind::Range { lo, hi, step, .. } => {
+                if let Some(st) = step {
+                    self.infer(st);
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        st.span,
+                        format!("`{cname}.range` does not take a stepped range"),
+                    );
+                }
+                let check_end = |this: &mut Self, e: &Expr| {
+                    let ety = this.infer(e);
+                    if matches!(ety, Ty::Error | Ty::Unknown) {
+                        return;
+                    }
+                    let fits_bound = matches!(
+                        (&k_ty, &ety),
+                        (Ty::Pos(d), Ty::Pos(bd))
+                            if bd.strip_suffix(".bounds").is_some_and(|b| b == d)
+                    );
+                    if !fits_bound {
+                        this.expect_fits(&ety, &k_ty, e, |c, got, want| {
+                            format!(
+                                "range bound `{}` is {}, expected {}",
+                                c.quote(e.span),
+                                got.with_article(),
+                                want.with_article()
+                            )
+                        });
+                    }
+                };
+                if let Some(l) = lo {
+                    check_end(self, l);
+                }
+                if let Some(h) = hi {
+                    check_end(self, h);
+                }
+            }
+            _ => {
+                let want = Ty::Named {
+                    name: "Range".into(),
+                    args: vec![k_ty.clone()],
+                };
+                let got = self.infer(arg);
+                if !matches!(got, Ty::Error | Ty::Unknown) {
+                    self.expect_fits(&got, &want, arg, |c, g, w| {
+                        format!(
+                            "`{}` is {}, expected {}",
+                            c.quote(arg.span),
+                            g.with_article(),
+                            w.with_article()
+                        )
+                    });
+                }
+            }
+        }
+        Some(Ty::Named {
+            name: "SortedRange".into(),
+            args: vec![k_ty],
+        })
+    }
+
+    /// Migration codemod (`cpl fix`) for removed `SortedBag`/`SortedSet`
+    /// bound-query methods (`first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range`).
+    fn sorted_legacy_bound_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        if !matches!(
+            name.text.as_str(),
+            "first_ge" | "first_gt" | "last_le" | "last_lt" | "count_range"
+        ) {
+            return None;
+        }
+        let base_ty = self.infer(base);
+        let Ty::Named { name: cname, args: targs } = &base_ty else {
+            return None;
+        };
+        if !matches!(cname.as_str(), "SortedBag" | "SortedSet") || targs.len() != 1 {
+            return None;
+        }
+        let k_ty = targs[0].clone();
+        for a in args {
+            self.infer(&a.value);
+        }
+        let (replacement, ret_ty) = match (name.text.as_str(), args) {
+            ("first_ge", [a]) => (
+                format!("range({}..).first", self.quote(a.value.span)),
+                Ty::Optional(Box::new(k_ty)),
+            ),
+            ("last_le", [a]) => (
+                format!("range(..={}).last", self.quote(a.value.span)),
+                Ty::Optional(Box::new(k_ty)),
+            ),
+            ("last_lt", [a]) => (
+                format!("range(..{}).last", self.quote(a.value.span)),
+                Ty::Optional(Box::new(k_ty)),
+            ),
+            ("first_gt", [a]) => {
+                let q = self.quote(a.value.span);
+                let repl = if matches!(k_ty, Ty::Int | Ty::I128 | Ty::U64) {
+                    format!("range({q} + 1..).first")
+                } else {
+                    format!("first_where(x => x > {q})")
+                };
+                (repl, Ty::Optional(Box::new(k_ty)))
+            }
+            ("count_range", [lo, hi]) => (
+                format!(
+                    "range({}..{}).len",
+                    self.quote(lo.value.span),
+                    self.quote(hi.value.span)
+                ),
+                Ty::Int,
+            ),
+            _ => return None,
+        };
+        let replace_span = Span::new(name.span.start, call.span.end);
+        let msg = format!(
+            "`{cname}.{}` was replaced by `{replacement}`",
+            name.text
+        );
+        if let Some(diag) = self.error(codes::UNKNOWN_FIELD, call.span, msg) {
+            diag.help = Some(format!(
+                "write `{replacement}` (or run `cpl fix` to migrate)"
+            ));
+            diag.fixes.push(cpl_diag::Fix {
+                title: format!("replace `{}` with `{replacement}`", name.text),
+                edits: vec![(replace_span, replacement)],
+            });
+        }
+        Some(ret_ty)
+    }
+
     /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
     /// `var`, a `mut` parameter, or the `mut self` of the calling method.
     /// Without this the call works on a copy and the change is lost.
@@ -114,7 +287,7 @@ impl<'a> Checker<'a> {
             }
             Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
                 .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
-            Ty::Named { name: n, .. } if n == "Range" => {
+            Ty::Named { name: n, .. } if matches!(n.as_str(), "Range" | "SortedRange") => {
                 matches!(name.text.as_str(), "len" | "is_empty" | "first" | "last" | "rev")
             }
             Ty::Domain(_) => {
