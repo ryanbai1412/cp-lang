@@ -1610,6 +1610,7 @@ impl<'p> Emitter<'p> {
         let saved_names = std::mem::replace(&mut self.names, inner_names);
         let saved_hoisted = std::mem::replace(&mut self.hoisted, inner_hoisted);
         let saved_in_setup = std::mem::replace(&mut self.in_setup, false);
+        let saved_bodies = std::mem::take(&mut self.bodies);
         let inner_spent = crate::scope::spent(self.program, &def.body);
         let saved_spent = std::mem::replace(&mut self.spent, inner_spent);
         let saved_taken = std::mem::replace(&mut self.taken, inner_taken);
@@ -1682,6 +1683,7 @@ impl<'p> Emitter<'p> {
         self.names = saved_names;
         self.hoisted = saved_hoisted;
         self.in_setup = saved_in_setup;
+        self.bodies = saved_bodies;
         self.spent = saved_spent;
         self.taken = saved_taken;
         self.fresh = saved_fresh;

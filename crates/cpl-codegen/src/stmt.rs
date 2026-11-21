@@ -1,11 +1,11 @@
 //! Statements as C++.
 
-use crate::emit::{pad, Emitter, ADD, PRIMARY, REL, UNARY};
+use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL, UNARY};
 use crate::expr::string_literal;
-use crate::names::ident;
+use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
-    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Place, PlaceKind, SortBy, Spec, Stmt, Ty,
+    Arg, AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec, Stmt, Ty,
 };
 
 /// A block with a value that is statements and then the value, with no
@@ -212,6 +212,9 @@ impl<'p> Emitter<'p> {
         for line in first {
             self.line(out, line);
         }
+        if let Some(pushed) = self.bodies.last_mut() {
+            pushed.depth += 1;
+        }
         if self.continue_targets.contains(&id) {
             // In a block of its own, so the jump passes no declaration.
             self.line(out, "{");
@@ -223,11 +226,110 @@ impl<'p> Emitter<'p> {
         } else {
             self.block(body, out);
         }
+        if let Some(pushed) = self.bodies.last_mut() {
+            pushed.depth -= 1;
+        }
         self.indent -= 1;
         self.line(out, "}");
         if self.break_targets.contains(&id) {
             self.line(out, &format!("brk_{id}:;"));
         }
+    }
+
+    /// `for x in f(..)` over a `yields` fn as `cpl_each_f(.., body)`: the
+    /// body runs on each value as `f` makes it and no list is built.
+    /// False when the loop has to walk the list instead.
+    fn pushed_loop(&mut self, id: LoopId, decl: &str, first: &[String], seq: &Expr, body: &Block, out: &mut String) -> bool {
+        let ExprKind::Call(callee, args) = &seq.kind else {
+            return false;
+        };
+        if !self.pushers.contains_key(callee) || self.pushing.is_some() || self.closure_id.is_some() {
+            return false;
+        }
+        // The body must not change what the fn is still reading: a
+        // global it reads, or a list handed to it.
+        let summary = &self.summaries[*callee];
+        let effects = Effects::of_block(body);
+        let mut opaque = false;
+        walk::deep_exprs(body, &mut |e| {
+            opaque |= matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_));
+        });
+        let mut writes = effects.globals.clone();
+        for f in &effects.calls {
+            opaque |= self.summaries[*f].opaque;
+            writes.extend(self.summaries[*f].writes.iter().copied());
+        }
+        let mut shared = false;
+        for arg in args {
+            let Arg::Value(value) = arg else {
+                return false;
+            };
+            walk::deep_expr(value, &mut |e| match e.kind {
+                ExprKind::Local(slot) => shared |= !e.ty.is_scalar() && effects.locals.contains(&slot),
+                ExprKind::Global(g) => shared |= writes.contains(&g),
+                ExprKind::Call(f, _) => shared |= !self.summaries[f].reads.is_disjoint(&writes),
+                _ => {}
+            });
+        }
+        if opaque || shared || !summary.reads.is_disjoint(&writes) {
+            return false;
+        }
+        // A jump out of the body can only be to this loop.
+        let mut inner = vec![id];
+        let (mut jumps, mut returns) = (Vec::new(), false);
+        walk::deep_stmts(body, &mut |stmt| match stmt {
+            Stmt::For(id, ..) | Stmt::While(id, ..) => inner.push(*id),
+            Stmt::Break(Some(to)) | Stmt::Continue(Some(to)) => jumps.push(*to),
+            Stmt::Return(_) => returns = true,
+            _ => {}
+        });
+        if jumps.iter().any(|to| !inner.contains(to)) {
+            return false;
+        }
+        let call = self.expr(seq).text;
+        let name = fn_name(&self.program.fns[*callee].name);
+        let Some(call) = call.strip_prefix(&format!("{name}(")).and_then(|rest| rest.strip_suffix(')')) else {
+            return false;
+        };
+        let sep = if call.is_empty() { "" } else { ", " };
+        let ret = match self.fn_id {
+            Some(f) if self.program.fns[f].ret != Ty::Unit => Some(self.ty(&self.program.fns[f].ret)),
+            _ => None,
+        };
+        let outermost = self.bodies.is_empty();
+        self.line(out, "{");
+        self.indent += 1;
+        let result = match (outermost, returns, ret) {
+            (false, ..) => self.bodies[0].result.clone(),
+            (true, true, Some(ret)) => {
+                let held = self.temp();
+                self.line(out, &format!("std::optional<{ret}> {held};"));
+                Some(held)
+            }
+            _ => None,
+        };
+        let open = if returns { "if (" } else { "" };
+        self.line(out, &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"));
+        self.indent += 1;
+        for line in first {
+            self.line(out, line);
+        }
+        self.bodies.push(Pushed { id, depth: 0, result: result.clone() });
+        self.block(body, out);
+        self.bodies.pop();
+        self.line(out, "return 0;");
+        self.indent -= 1;
+        let close = match (returns, outermost, &result) {
+            (false, ..) => "});".to_string(),
+            (true, false, _) => "}) == 2) return 2;".to_string(),
+            (true, true, Some(held)) => format!("}}) == 2) return std::move(*{held});"),
+            (true, true, None) if self.in_setup => "}) == 2) return false;".to_string(),
+            (true, true, None) => "}) == 2) return;".to_string(),
+        };
+        self.line(out, &close);
+        self.indent -= 1;
+        self.line(out, "}");
+        true
     }
 
     fn for_stmt(&mut self, id: LoopId, slot: usize, iter: &Iter, body: &Block, out: &mut String) {
@@ -410,6 +512,16 @@ impl<'p> Emitter<'p> {
                 };
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                if !rev && matches!(seq.kind, ExprKind::Call(..)) {
+                    let decl = if ty.is_scalar() || var != name {
+                        format!("{cpp} {var}")
+                    } else {
+                        format!("const {cpp}& {var}")
+                    };
+                    if self.pushed_loop(id, &decl, &first, seq, body, out) {
+                        return;
+                    }
+                }
                 let seq_code = self.expr(seq);
                 let opened = !(untouched && !rev && !is_map);
                 let holder = if opened {
@@ -673,6 +785,44 @@ impl<'p> Emitter<'p> {
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
         let program = self.program;
         match stmt {
+            // A fn written as `cpl_each_f`: its list is the callback.
+            Stmt::Let(slot, _) if self.pushing == Some(*slot) && self.closure_id.is_none() => {}
+            Stmt::Expr(Expr { kind: ExprKind::Mutate(how, place, items), .. })
+                if self.pushing.is_some()
+                    && self.closure_id.is_none()
+                    && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
+            {
+                let item = self.flatten(&items[0], out);
+                let text = self.expr(item).text;
+                match how {
+                    Mutation::Extend => {
+                        let x = self.temp();
+                        self.line(out, &format!("for (auto&& {x} : {text}) if (int cpl_r = cpl_f({x})) return cpl_r;"));
+                    }
+                    _ => self.line(out, &format!("if (int cpl_r = cpl_f({text})) return cpl_r;")),
+                }
+            }
+            Stmt::Return(Some(_)) if self.pushing.is_some() && self.closure_id.is_none() => self.line(out, "return 0;"),
+            // In the body of a loop over a `yields` fn, which is a callback.
+            Stmt::Return(value) if !self.bodies.is_empty() => {
+                if let Some(value) = value {
+                    let value = self.flatten(value, out);
+                    match self.bodies[0].result.clone() {
+                        Some(held) if value.ty != Ty::Unit => {
+                            let text = self.expr(value).text;
+                            self.line(out, &format!("{held} = {text};"));
+                        }
+                        _ => self.expr_stmt(value, out),
+                    }
+                }
+                self.line(out, "return 2;");
+            }
+            Stmt::Break(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
+                self.line(out, "return 1;")
+            }
+            Stmt::Continue(to) if self.bodies.last().is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) => {
+                self.line(out, "return 0;")
+            }
             Stmt::Let(slot, init) => {
                 let tail = self.tail.take();
                 let ty = self.locals()[*slot].ty.clone();
@@ -697,7 +847,12 @@ impl<'p> Emitter<'p> {
                     self.expr_stmt(init, out);
                     return;
                 }
-                if self.reused.contains(slot) && !hoisted && !packed && self.closure_id.is_none() {
+                let reused = self.reused.contains(slot)
+                    && !hoisted
+                    && !packed
+                    && self.closure_id.is_none()
+                    && cpp.starts_with("std::vector<");
+                if reused && !matches!(init.kind, ExprKind::Fill(..)) {
                     self.line(out, &format!("static {cpp} {name};"));
                     self.line(out, &format!("{name}.clear();"));
                     return;
@@ -712,6 +867,18 @@ impl<'p> Emitter<'p> {
                     }
                     ExprKind::Fill(dims, value) if !hoisted && dims.len() == 1 => {
                         let args = self.fill_args(dims, value.as_deref(), packed);
+                        if reused {
+                            // One buffer, filled again each time round.
+                            self.line(out, &format!("static {cpp} {name};"));
+                            self.line(
+                                out,
+                                &match value {
+                                    Some(_) => format!("{name}.assign({args});"),
+                                    None => format!("{name}.clear(); {name}.resize({args});"),
+                                },
+                            );
+                            return;
+                        }
                         self.line(out, &format!("{cpp} {name}({args});"));
                         return;
                     }

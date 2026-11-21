@@ -80,8 +80,21 @@ impl Touch {
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct FnSummary {
     pub io: bool,
+    /// It calls a fn value or makes a closure, so what it does is not known.
+    pub opaque: bool,
     pub reads: BTreeSet<usize>,
     pub writes: BTreeSet<usize>,
+}
+
+/// A loop over a `yields` fn whose body is the fn's callback. The
+/// callback gives 0 to go on, 1 for `break`, 2 for a `return` of the fn
+/// the loop is in.
+pub(crate) struct Pushed {
+    pub id: cpl_ir::LoopId,
+    /// How many loops of the body are open around what is being written.
+    pub depth: usize,
+    /// Where a `return` in the body leaves its value.
+    pub result: Option<String>,
 }
 
 pub(crate) struct Emitter<'p> {
@@ -124,6 +137,13 @@ pub(crate) struct Emitter<'p> {
     pub tail: Option<crate::stmt::Tail>,
     /// Local lists kept in one buffer for the whole run: see [`crate::scope::reused`].
     pub reused: BTreeSet<usize>,
+    /// The `yields` fns that also exist as `cpl_each_f(args, body)`, with
+    /// the slot of the list each one builds: see [`crate::scope::pusher`].
+    pub pushers: BTreeMap<usize, usize>,
+    /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
+    pub pushing: Option<usize>,
+    /// The loops over a `yields` fn being written as its callback, innermost last.
+    pub bodies: Vec<Pushed>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
     /// ends the program.
     pub in_setup: bool,
@@ -189,10 +209,17 @@ impl<'p> Emitter<'p> {
             break_targets: BTreeSet::new(),
             continue_targets: BTreeSet::new(),
             reused: BTreeSet::new(),
+            pushers: BTreeMap::new(),
+            pushing: None,
+            bodies: Vec::new(),
             found: Vec::new(),
             indent: 0,
         };
         emitter.summaries = emitter.summarize();
+        emitter.pushers = (0..program.fns.len())
+            .filter(|id| !program.judge_fns.contains(id) && !program.entry_fns.contains(id))
+            .filter_map(|id| Some((id, crate::scope::pusher(&program.fns[id], &emitter.summaries[id])?)))
+            .collect();
         emitter
     }
 
@@ -210,6 +237,7 @@ impl<'p> Emitter<'p> {
                 };
                 walk::deep_exprs(&f.body, &mut |e| match &e.kind {
                     ExprKind::Read(_) | ExprKind::Print(..) => summary.io = true,
+                    ExprKind::CallExpr(..) | ExprKind::Closure(_) => summary.opaque = true,
                     ExprKind::Global(id) => {
                         summary.reads.insert(*id);
                     }
@@ -231,6 +259,7 @@ impl<'p> Emitter<'p> {
                 for callee in calls {
                     let other = before[*callee].clone();
                     summaries[id].io |= other.io;
+                    summaries[id].opaque |= other.opaque;
                     summaries[id].reads.extend(other.reads);
                     summaries[id].writes.extend(other.writes);
                 }
@@ -387,7 +416,7 @@ impl<'p> Emitter<'p> {
             self.names.push(name);
         }
         self.hoisted = crate::scope::hoisted(body, params);
-        self.reused = fn_id.map(|id| crate::scope::reused(self.program, id)).unwrap_or_default();
+        self.reused = crate::scope::reused(self.program, fn_id, body);
         self.spent = crate::scope::spent(self.program, body);
         self.break_targets.clear();
         self.continue_targets.clear();
@@ -761,6 +790,23 @@ impl<'p> Emitter<'p> {
             self.hoisted_decls(&mut fns, f.params.len());
             self.block(&f.body, &mut fns);
             fns.push_str("}\n");
+            if let Some(acc) = self.pushers.get(&id).copied() {
+                // The same fn handing each value to `cpl_f` as it is made,
+                // with no list. It may be running twice (a loop body can
+                // walk it again), so it keeps no buffer of its own.
+                let name = fn_name(&f.name);
+                let params = signature.split_once(&format!(" {name}(")).map(|(_, p)| p.trim_end_matches(')')).unwrap_or("");
+                let sep = if params.is_empty() { "" } else { ", " };
+                let head = format!("template <class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)");
+                protos.push_str(&format!("{head};\n"));
+                fns.push_str(&format!("\n{head} {{\n"));
+                self.reused.clear();
+                self.pushing = Some(acc);
+                self.hoisted_decls(&mut fns, f.params.len());
+                self.block(&f.body, &mut fns);
+                self.pushing = None;
+                fns.push_str("}\n");
+            }
         }
         if program.multitest {
             // What is above `@!multitest`. It gives false when a top-level

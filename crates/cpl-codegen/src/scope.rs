@@ -211,16 +211,19 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
 }
 
 /// The local lists of fn `id` that can live in one buffer for the whole
-/// run: each starts empty (`var xs: List<T> = []`), is only indexed,
+/// run: each starts empty (`var xs: List<T> = []`) or as one filled row
+/// (`var seen: [0..n]Bool = false`), is only indexed,
 /// measured, walked and changed in place, and the fn can't be running
 /// twice at once (neither it nor anything it calls reaches it again or
-/// calls a fn value). The C++ then clears the buffer instead of
+/// calls a fn value). The top-level code (`id` is `None`) is never
+/// running twice, so a scratch list made anew on every turn of a loop
+/// there keeps its buffer too. The C++ then clears the buffer instead of
 /// allocating a new one on every call.
-pub(crate) fn reused(program: &Program, id: usize) -> BTreeSet<usize> {
+pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTreeSet<usize> {
     let mut reach: BTreeSet<usize> = BTreeSet::new();
     let mut todo = vec![id];
     while let Some(f) = todo.pop() {
-        let body = &program.fns[f].body;
+        let body = f.map_or(body, |f| &program.fns[f].body);
         let mut opaque = false;
         walk::deep_exprs(body, &mut |e| {
             opaque |= matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_));
@@ -228,21 +231,25 @@ pub(crate) fn reused(program: &Program, id: usize) -> BTreeSet<usize> {
         if opaque {
             return BTreeSet::new();
         }
+        // Nothing calls the top-level code.
+        if id.is_none() {
+            break;
+        }
         for callee in walk::Effects::of_block(body).calls {
-            if callee == id {
+            if Some(callee) == id {
                 return BTreeSet::new();
             }
             if reach.insert(callee) {
-                todo.push(callee);
+                todo.push(Some(callee));
             }
         }
     }
-    let body = &program.fns[id].body;
     let mut starts: Vec<usize> = Vec::new();
     let mut twice: BTreeSet<usize> = BTreeSet::new();
     walk::deep_stmts(body, &mut |stmt| {
         if let Stmt::Let(slot, Some(init)) = stmt {
-            let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty()) && matches!(init.ty, Ty::List(_));
+            let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty()) && matches!(init.ty, Ty::List(_))
+                || matches!(&init.kind, ExprKind::Fill(dims, _) if dims.len() == 1);
             if !empty || starts.contains(slot) {
                 twice.insert(*slot);
             }
@@ -273,6 +280,43 @@ pub(crate) fn reused(program: &Program, id: usize) -> BTreeSet<usize> {
     starts
         .into_iter()
         .filter(|slot| !twice.contains(slot) && seen.get(slot).copied().unwrap_or(0) == 0)
-        .filter(|slot| *slot >= program.fns[id].params.len())
+        .filter(|slot| *slot >= id.map_or(0, |id| program.fns[id].params.len()))
         .collect()
+}
+
+/// The slot of the list a `yields` fn builds, when the fn can also hand
+/// each value to a callback as it is made: `for x in f(..)` then runs
+/// its body between the yields with no list. That shows only if the fn
+/// does something a loop body could see, so it must not read input,
+/// print, store to a global, change an argument or call a fn value.
+pub(crate) fn pusher(f: &cpl_ir::Function, summary: &crate::emit::FnSummary) -> Option<usize> {
+    let acc = f.locals.iter().position(|local| local.name == "__yields")?;
+    if acc < f.params.len()
+        || f.params.iter().any(|p| p.mutable)
+        || summary.io
+        || summary.opaque
+        || !summary.writes.is_empty()
+    {
+        return None;
+    }
+    let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
+    let fills = |e: &Expr| {
+        matches!(&e.kind, ExprKind::Mutate(cpl_ir::Mutation::Push | cpl_ir::Mutation::Extend, place, _)
+            if matches!(place.kind, cpl_ir::PlaceKind::Local(slot) if slot == acc))
+    };
+    // The list is only made, pushed to and returned.
+    let (mut lets, mut pushes, mut returns, mut odd) = (0, 0, 0, false);
+    walk::deep_stmts(&f.body, &mut |stmt| match stmt {
+        Stmt::Let(slot, _) if *slot == acc => lets += 1,
+        Stmt::Expr(e) if fills(e) => pushes += 1,
+        Stmt::Return(Some(e)) if is_acc(e) => returns += 1,
+        Stmt::Return(_) => odd = true,
+        _ => {}
+    });
+    let (mut named, mut filled) = (0, 0);
+    walk::deep_exprs(&f.body, &mut |e| {
+        named += usize::from(is_acc(e));
+        filled += usize::from(fills(e));
+    });
+    (!odd && lets == 1 && named == returns && filled == pushes).then_some(acc)
 }
