@@ -30,7 +30,7 @@ for _ in 0..n:
     fn ends(order: List<Cut>, pref: Cut -> Int) -> [Cut]?Int:
         if let e = end: sweep(order, pref, (p, low) => if let l = low: e[p] - l else: none)
         else: sweep(order, pref, (p, _) => -pref(p))
-    let right = ends([c for c in Drink.bounds], c => pre.prefix(c))
-    let left = ends([c for c in Drink.bounds.rev], c => -pre.prefix(c))
+    let right = ends(Drink.bounds, c => pre.prefix(c))
+    let left = ends(Drink.bounds.rev, c => -pre.prefix(c))
     end = [Cut] p => max(right[p], left[p])!
 print(end!.max())
