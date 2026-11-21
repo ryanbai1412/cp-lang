@@ -688,11 +688,11 @@ impl<'p> Emitter<'p> {
             }
         }
         let mut v = self.expr(value);
-        // A list built by the value's own block (a comprehension) is not
+        // A value built by its own block (a comprehension) is not
         // read again: it moves into the place.
         if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) = (op, &value.kind, flat(whole)) {
             let made_here = stmts.iter().any(|stmt| matches!(stmt, Stmt::Let(slot, _) if slot == built));
-            if made_here && matches!(value.ty, Ty::List(_) | Ty::Str) {
+            if made_here && !value.ty.is_scalar() && !matches!(value.ty, Ty::Fn(..)) {
                 v.text = format!("std::move({})", v.text);
             }
         }

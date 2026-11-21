@@ -906,3 +906,14 @@ fn closure_mutating_a_captured_local_is_not_hoisted_static() {
     ));
     assert!(!cpp.contains("static auto cpl_fn"), "{cpp}");
 }
+
+#[test]
+fn an_array_built_by_a_comprehension_moves_into_its_variable() {
+    let cpp = cpp("let n: 1..=10 = read()
+domain V = 0..n
+var d: [V]Int = [v.ord for v in V]
+d[V.first] += 5
+print(d.sum())
+");
+    assert!(cpp.contains("d = std::move(t"), "{cpp}");
+}
