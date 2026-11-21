@@ -373,17 +373,26 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        let ExprKind::Name(type_name) = &base.kind else {
-            return None;
+        // `Graph<V>.undirected(pairs)` is the same fn as `Graph.undirected(pairs)`:
+        // type arguments on the receiver fill the fn's like-named generics,
+        // they never pick a different fn.
+        let (type_name, type_args) = match &base.kind {
+            ExprKind::Name(type_name) => (type_name, &[][..]),
+            ExprKind::Generic { base, args } => match &base.kind {
+                ExprKind::Name(type_name) => (type_name, args.as_slice()),
+                _ => return None,
+            },
+            _ => return None,
         };
         let [only] = args else {
             return None;
         };
-        if self.local(type_name).is_some()
-            || !matches!(self.env.type_def(type_name).as_deref(), Some(Def::Struct { .. }))
-        {
+        if self.local(type_name).is_some() {
             return None;
         }
+        let Some(Def::Struct { generics: struct_generics, .. }) = self.env.type_def(type_name).as_deref().cloned() else {
+            return None;
+        };
         let given = self.quietly(|c| c.infer(&only.value));
         let array = matches!(given, Ty::Array { .. });
         let suffix = match given.clone() {
@@ -408,16 +417,27 @@ impl<'a> Checker<'a> {
             3 => "triples",
             _ => return None,
         };
-        match self.env.type_def(&format!("{}_of_{suffix}", name.text)).as_deref() {
+        let Some(Def::Fn { ty, generics }) = self.env.type_def(&format!("{}_of_{suffix}", name.text)).as_deref().cloned()
+        else {
+            return None;
+        };
+        let mut bindings = Bindings::new();
+        for (generic, arg) in struct_generics.iter().zip(type_args) {
+            if generics.contains(generic) {
+                let arg = self.type_arg(arg);
+                bindings.insert(generic.clone(), arg);
+            }
+        }
+        let ty = ty.subst(&bindings);
+        match ty {
             // The array is read as the list of its cells.
-            Some(Def::Fn { ty: Ty::Fn { params, ret }, .. }) if array => {
-                let mut params = params.clone();
+            Ty::Fn { mut params, ret } if array && bindings.is_empty() => {
                 if let Some(first) = params.first_mut() {
                     first.ty = given;
                 }
-                Some(Ty::Fn { params, ret: ret.clone() })
+                Some(Ty::Fn { params, ret })
             }
-            Some(Def::Fn { ty, .. }) => Some(ty.clone()),
+            Ty::Fn { .. } => Some(ty),
             _ => None,
         }
     }

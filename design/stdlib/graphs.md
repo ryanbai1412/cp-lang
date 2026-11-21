@@ -480,6 +480,15 @@ else:
   returning a `List` makes `bfs` over a grid allocation-free. The graph code
   already iterates successors with `for`, so it gains this for free.
 
+## 6a. Open questions
+
+- Naming fields in a pattern, `for (u, v, w: weight) in edges`, mirroring
+  the record literal `(w: x)`. Zero users: no dream port or friction report
+  uses it. Names are written once where the data enters
+  (`read<[m](u: V, v: V, w: Int)>()`), and positional destructuring already
+  binds any names (decision 116). Revisit when a port wants a subset of a
+  wide record by name.
+
 ## 7. The maximal version
 
 - `block_cut_tree` returning a `Rooted` over a fresh block-plus-vertex

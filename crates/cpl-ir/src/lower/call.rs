@@ -5610,6 +5610,12 @@ impl<'a> Lowerer<'a> {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
                 let lookup = prefix_shape_struct(gname, gtypes.len()).unwrap_or(gname);
                 if let Some(Sym::GenStruct(gid)) = self.get_sym(lookup) {
+                    if let Some(call) = self.list_form_call(gid, name, gtypes, args, span) {
+                        return call;
+                    }
+                    if let Some(call) = self.list_form_call(gid, name, gtypes, args, span) {
+                        return call;
+                    }
                     let gargs = self.resolve_gen_args(gtypes);
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
@@ -5680,58 +5686,8 @@ impl<'a> Lowerer<'a> {
                 let decl = self.gen_structs[gid].decl;
                 let tpl_mod = self.gen_structs[gid].mod_id;
                 let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
-                // A static fn can take a plain list of pairs or triples when
-                // its module declares `<name>_of_pairs` / `<name>_of_triples`:
-                // `Graph.undirected(pairs)` needs no edge domain.
-                if let [only] = args {
-                    let dlen = self.diags.len();
-                    let probed = self.expr(&only.value, None);
-                    self.diags.truncate(dlen);
-                    // So does an array over a plain range, `[0..m](u: V, v: V)`:
-                    // it names no edge domain either. And one of plain
-                    // tuples, `[E](V, V, W)`, whose cells have no `u` and `v`.
-                    let arity = match &probed.ty {
-                        Ty::List(elem) => elem.fields().map(|f| f.len()),
-                        Ty::Array { dims, elem }
-                            if matches!(dims.as_slice(), [Dim::Int])
-                                || (dims.len() == 1 && matches!(**elem, Ty::Tuple(_))) =>
-                        {
-                            elem.fields().map(|f| f.len())
-                        }
-                        _ => None,
-                    };
-                    let suffix = match arity {
-                        Some(2) => Some("pairs"),
-                        Some(3) => Some("triples"),
-                        _ => None,
-                    };
-                    let free = suffix
-                        .and_then(|s| self.mod_syms[tpl_mod].get(&format!("{}_of_{s}", name.text)).copied());
-                    if let Some(Sym::GenFn(gfid)) = free {
-                        if !matches!(probed.ty, Ty::Array { .. }) {
-                            return self.call_gen_fn(gfid, Vec::new(), None, args, span);
-                        }
-                        // A 1D array has the same backing storage as a list; `List(edges)`
-                        // lowers to `Builtin::ArrayToList`, avoiding a copy loop.
-                        let at = only.value.span;
-                        let list_call = ast::ExprKind::Call {
-                            callee: Box::new(ast::Expr {
-                                kind: ast::ExprKind::Name("List".into()),
-                                span: at,
-                            }),
-                            args: vec![ast::Arg {
-                                name: None,
-                                mutable: false,
-                                value: only.value.clone(),
-                            }],
-                        };
-                        let listed = ast::Arg {
-                            name: None,
-                            mutable: false,
-                            value: ast::Expr { kind: list_call, span: at },
-                        };
-                        return self.call_gen_fn(gfid, Vec::new(), None, &[listed], span);
-                    }
+                if let Some(call) = self.list_form_call(gid, name, &[], args, span) {
+                    return call;
                 }
                 let mut inferred: GenEnv = HashMap::new();
                 if let Some(Ty::Struct(hsid)) = hint {
@@ -9109,6 +9065,93 @@ impl<'a> Lowerer<'a> {
         let ret = self.ret_of(fn_id, span);
         self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span)
     }
+    /// `T.f(list)` where `list` is a plain list (or array over a plain
+    /// range) of pairs or triples: the `f_of_pairs` / `f_of_triples` fn
+    /// `T`'s module declares, if any.
+    fn list_form_call(
+        &mut self,
+        gid: GenStructId,
+        name: &ast::Name,
+        type_args: &[ast::Type],
+        args: &[ast::Arg],
+        span: Span,
+    ) -> Option<Expr> {
+        let tpl_mod = self.gen_structs[gid].mod_id;
+                // A static fn can take a plain list of pairs or triples when
+                // its module declares `<name>_of_pairs` / `<name>_of_triples`:
+                // `Graph.undirected(pairs)` needs no edge domain.
+                let [only] = args else {
+                    return None;
+                };
+                {
+                    let dlen = self.diags.len();
+                    let probed = self.expr(&only.value, None);
+                    self.diags.truncate(dlen);
+                    // So does an array over a plain range, `[0..m](u: V, v: V)`:
+                    // it names no edge domain either. And one of plain
+                    // tuples, `[E](V, V, W)`, whose cells have no `u` and `v`.
+                    let arity = match &probed.ty {
+                        Ty::List(elem) => elem.fields().map(|f| f.len()),
+                        Ty::Array { dims, elem }
+                            if matches!(dims.as_slice(), [Dim::Int])
+                                || (dims.len() == 1 && matches!(**elem, Ty::Tuple(_))) =>
+                        {
+                            elem.fields().map(|f| f.len())
+                        }
+                        _ => None,
+                    };
+                    let suffix = match arity {
+                        Some(2) => Some("pairs"),
+                        Some(3) => Some("triples"),
+                        _ => None,
+                    };
+                    let free = suffix
+                        .and_then(|s| self.mod_syms[tpl_mod].get(&format!("{}_of_{s}", name.text)).copied());
+                    if let Some(Sym::GenFn(gfid)) = free {
+                        // `Graph<V>.undirected(pairs)` is the fn `Graph.undirected(pairs)`
+                        // is: the receiver's type arguments fill its like-named generics.
+                        let struct_generics = &self.gen_structs[gid].decl.generics;
+                        let explicit: Vec<GenArg> = self.gen_fns[gfid]
+                            .decl
+                            .generics
+                            .iter()
+                            .map_while(|g| {
+                                let at = struct_generics.iter().position(|s| s.text == g.text)?;
+                                type_args.get(at)
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .iter()
+                            .map(|t| self.resolve_gen_arg(t))
+                            .collect();
+                        if !matches!(probed.ty, Ty::Array { .. }) {
+                            return Some(self.call_gen_fn(gfid, explicit, None, args, span));
+                        }
+                        // A 1D array has the same backing storage as a list; `List(edges)`
+                        // lowers to `Builtin::ArrayToList`, avoiding a copy loop.
+                        let at = only.value.span;
+                        let list_call = ast::ExprKind::Call {
+                            callee: Box::new(ast::Expr {
+                                kind: ast::ExprKind::Name("List".into()),
+                                span: at,
+                            }),
+                            args: vec![ast::Arg {
+                                name: None,
+                                mutable: false,
+                                value: only.value.clone(),
+                            }],
+                        };
+                        let listed = ast::Arg {
+                            name: None,
+                            mutable: false,
+                            value: ast::Expr { kind: list_call, span: at },
+                        };
+                        return Some(self.call_gen_fn(gfid, explicit, None, &[listed], span));
+                    }
+                }
+        None
+    }
+
 }
 
 /// Turns the `break` that ends an `all`/`any` early into one that leaves
