@@ -1,12 +1,11 @@
-// Codeforces 2069 C: Beautiful Sequence.
+@!multitest
 type Z = Mod<998_244_353>
 
-@!multitest
-let n: Int = read()
-var ones, one_twos, ans: Z = (0, 0, 0)
-for _ in 0..n:
+let n: 3..=200_000 = read()
+var ones, open, ans: Z = (0, 0, 0)
+repeat n:
     match read::<1..=3>():
         1 => ones += 1
-        2 => one_twos = one_twos * 2 + ones
-        3 => ans += one_twos
+        2 => open = 2 * open + ones
+        3 => ans += open
 print(ans)
