@@ -14,10 +14,14 @@ fn is_ident(c: char) -> bool {
 
 /// The identifier under `offset`, with its span.
 pub fn word_at(text: &str, offset: u32) -> Option<(Span, &str)> {
-    let at = (offset as usize).min(text.len());
+    let mut at = (offset as usize).min(text.len());
+    while !text.is_char_boundary(at) {
+        at -= 1;
+    }
     let start = text[..at]
-        .rfind(|c: char| !is_ident(c))
-        .map_or(0, |i| i + 1);
+        .char_indices()
+        .rfind(|&(_, c)| !is_ident(c))
+        .map_or(0, |(i, c)| i + c.len_utf8());
     let end = text[at..]
         .find(|c: char| !is_ident(c))
         .map_or(text.len(), |i| at + i);
@@ -194,4 +198,18 @@ fn field_references(
         span: decl,
     };
     Some((target, spans))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::word_at;
+
+    #[test]
+    fn the_word_after_a_wide_character_is_cut_at_a_character_boundary() {
+        let text = "let sΣx = Σ(xs)\n";
+        let (span, word) = word_at(text, text.find("(xs").unwrap() as u32 + 2).unwrap();
+        assert_eq!(word, "xs");
+        assert_eq!(&text[span.start as usize..span.end as usize], "xs");
+        assert_eq!(word_at(text, text.rfind('Σ').unwrap() as u32 + 1), None);
+    }
 }
