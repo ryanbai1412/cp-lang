@@ -140,6 +140,10 @@ pub struct Graph<V, E>:
     /// not the first of its component. `Rooted(g, root:)` gives the same tree rooted.
     pub fn spanning_tree(self) -> List<E> = todo
 
+    /// O(n + m), allocates. The out-neighbours of every vertex as plain lists, the shape
+    /// `std.flow` matchings take: `max_matching(g.lists())`.
+    pub fn lists(self) -> [V]List<V> = todo
+
 /// O(n + m).
 /// Kahn's peeling: repeatedly remove a vertex with no arcs left coming in, and return the
 /// vertices in the order they were removed. What stays is every vertex on a cycle or
@@ -774,6 +778,10 @@ pub struct Paths<V, W, A>:
     /// number type `T` (`Mod<P>` for counts modulo a prime): a sum over `dag` in `order`.
     pub fn count<T, N>(self, next: N, w: A -> W) -> [V]T = todo
 
+    /// O(1) per item. The reached vertices in settling order with their distances:
+    /// `for (v, d) in bfs(g, from: [s])`.
+    pub fn iter(self) -> Iter<(v: V, d: W)> = todo
+
 /// O(n + m).
 /// Fewest arcs from any of `from` to each vertex; `until: t` stops once `t` is
 /// reached. O(n + m).
@@ -1140,12 +1148,26 @@ pub enum Visit<V>:
 /// their own preorder, postorder or entry/exit times.
 pub fn dfs<V, N>(next: N, from: List<V>) -> Iter<Visit<V>> = todo
 
-/// O(n + m). Which vertices some path from `from` reaches.
-pub fn reachable<V, N>(next: N, from: List<V>) -> [V]Bool = todo
+/// O(n + m). Which vertices some path from `from` reaches without crossing an arc
+/// `u -> v` for which `skip(u, v)` holds.
+pub fn reachable<V, N>(
+    next: N,
+    from: List<V>,
+    skip: (V, V) -> Bool = (u, v) => false,
+) -> [V]Bool = todo
 
 /// O(n m / 64) time, O(n^2 / 64) memory. Which vertices each vertex reaches: one bitset
 /// row per vertex, filled in reverse topological order of the condensation.
 pub fn reachability<V, N>(next: N) -> [V, V]Bool = todo
+
+/// O(n + m). DP over a DAG in topological order: each vertex starts at `init(v)` and every
+/// arc `u -> a.to` folds `step(val[u], a)` into `val[a.to]` with `join` (W10: `join: max`
+/// gives longest paths, `join: +` counts). `none` if there is a cycle.
+pub fn dag_fold<V, N, A, T>(next: N, init: V -> T, step: (T, A) -> T, join: (T, T) -> T) -> ?[V]T = todo
+
+/// O(n + m). The number of paths of a DAG from any of `from` to each vertex, in any number
+/// type `T` (`Mod<P>` keeps it exact modulo a prime). `none` if there is a cycle.
+pub fn count_paths<T, V, N>(next: N, from: List<V>) -> ?[V]T = todo
 
 /// O((n + m) log n) like `dijkstra` but expanding by `dist + h(v)`; `h` must never
 /// overestimate the distance to `to` and must be consistent, or the answer can be wrong.
@@ -1233,6 +1255,10 @@ pub fn block_cut_tree<V, N>(
     next: N,
 ) -> (domain B, blocks: [B]List<V>, tree: [B]List<V>) = todo
 
+/// O(n + m). The biconnected block of every edge: edges, not vertices, are partitioned,
+/// since a cut vertex lies in several blocks.
+pub fn edge_blocks<V, E, N>(next: N) -> (domain B, block: [E]B) = todo
+
 /// O(m log m). Offline incremental strong connectivity: arcs are added in `E` order; for
 /// each arc, the first prefix of arcs after which its two ends lie in one strongly
 /// connected component, `none` if never. Feeds a `Dsu` to answer "when do u and v merge".
@@ -1279,6 +1305,13 @@ pub fn arborescence<V, E, W>(
 /// `terminals` (k of them) in an undirected graph.
 pub fn steiner_tree<V, N, A>(next: N, terminals: List<V>, w: A -> Int) -> Int = todo
 
+/// O(log n) rounds, each one `cheapest` call plus O(n α(n)). Boruvka's minimum spanning
+/// tree for implicit dense graphs (xor MST, Manhattan MST). Each round `cheapest(comp)` returns, for
+/// each component id, its lightest edge leaving it or `none`.
+pub fn boruvka<V, W>(
+    cheapest: [V]Int -> List<?(u: V, v: V, w: W)>,
+) -> (cost: W, edges: List<(u: V, v: V)>) = todo
+
 /// A functional graph: every vertex has exactly one successor `f[v]`. O(n log n) to build
 /// for `jump`; the cycle structure is O(n).
 pub struct Functional<V>:
@@ -1302,9 +1335,19 @@ pub struct Functional<V>:
     /// O(1). The first cycle vertex reached from `v`.
     pub fn entry(self, v: V) -> V = todo
 
+    /// O(log n). The fewest steps from `a` to `b`, or `none` if `b` is never reached.
+    pub fn steps(self, a: V, b: V) -> ?Int = todo
+
+    /// O(n), allocates. Every cycle once, each in walk order.
+    pub fn cycles(self) -> List<List<V>> = todo
+
 /// O(tail + period) time, O(1) memory. Brent's cycle detection on an implicit sequence
 /// `start, f(start), f(f(start)), ...` too large to store.
 pub fn rho<S>(start: S, f: S -> S) -> (tail: Int, period: Int) = todo
+
+/// O(k^n) output. The de Bruijn sequence of order `n` over `0 ..< k`, length `k^n`: an
+/// Euler walk of the de Bruijn graph.
+pub fn de_bruijn(k: Int, n: Int) -> List<Int> = todo
 
 
 @test
