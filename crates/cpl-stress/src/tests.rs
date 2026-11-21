@@ -1375,7 +1375,7 @@ print(a, b, c)
     // A read that may run another number of times is refused, not left out.
     for src in [
         "let n: 1..=5 = read()\nprint(read() + n)\n",
-        "let n: 1..=5 = read()\nlet a = [0..n] i => if i == 0: 0 else: read::<Int>()\n",
+        "let n: 1..=5 = read()\nlet a = [0..n] i => if i == 1: 0 else: read::<Int>()\n",
         "let n: 1..=5 = read()\nlet a = [read::<Int>() for x in 0..n if x > 1]\n",
         "let n: 1..=5 = read()\nfor a in read<[n]1..=3>():\n    print(read::<Int>())\n",
     ] {
@@ -2326,4 +2326,27 @@ print(cur.sum)
         assert_eq!(tokens.len() as i128, 1 + n * (n + 1) / 2, "{text}");
         assert!(tokens[1..].iter().all(|v| (0..=9).contains(v)), "{text}");
     }
+}
+
+#[test]
+fn a_table_that_skips_its_first_cell_reads_the_rest() {
+    let src = "let n: 1..=6 = read()
+domain V = 1..=n
+let par = [0..n] i => if i == 0: 0 else: read::<0..=9>()
+let up: [V]Int = [V] v => if v == V.last: 0 else: read::<0..=9>()
+print(par.sum + up.sum)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..10 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(6))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len() as i128, 1 + 2 * (tokens[0] - 1), "{text}");
+    }
+    let middle = "let n: 1..=6 = read()\nlet a = [0..n] i => if i == 2: 0 else: read::<Int>()\nprint(a.sum)\n";
+    assert!(InputSpec::from_source(middle).is_err());
 }

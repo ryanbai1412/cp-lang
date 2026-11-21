@@ -1817,6 +1817,10 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   read whose type names it is refused. The parents read this way are any `V`s, not a
   tree; a port that needs a tree should read `Tree`. Reverse: drop `skipped_end` and
   return to refusing such domains.
+- **25.29 A table that skips its first or last cell reads the rest.** `[D] i => if
+  i == D.first: x else: y`, with `x` reading nothing, reads `y` once per cell but one,
+  the same rule 25.28 gives a loop. A skip of any other cell stays refused. Reverse:
+  drop `skipped_cell`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

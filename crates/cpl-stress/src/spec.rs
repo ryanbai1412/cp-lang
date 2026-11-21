@@ -960,6 +960,12 @@ impl Builder<'_> {
         ) {
             return None;
         }
+        Self::end_compared(cond, name, iter, lo, hi)
+    }
+
+    /// Whether `cond` is `name == first` (`Some(true)`) or `name == last`
+    /// (`Some(false)`) for `name` running over `iter` from `lo` to `hi`.
+    fn end_compared(cond: &Expr, name: &str, iter: &Expr, lo: &Expr, hi: &Expr) -> Option<bool> {
         let ExprKind::Compare { first, rest } = &cond.kind else {
             return None;
         };
@@ -985,6 +991,72 @@ impl Builder<'_> {
         } else {
             None
         }
+    }
+
+    /// The bounds of a table's one domain: a range or a declared domain.
+    fn cells(&self, domain: &Type) -> Option<(Expr, Expr)> {
+        match &domain.kind {
+            TypeKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+            } => Some(Builder::inclusive(lo, hi, *inclusive)),
+            TypeKind::Named { name, args } if args.is_empty() => {
+                self.domains.get(&name.text).cloned()
+            }
+            _ => None,
+        }
+    }
+
+    /// For `[D] i => if i == D.first: x else: y` where `x` does not read,
+    /// `y` and whether the first cell (`true`) or the last is left out.
+    fn skipped_cell<'e>(
+        &self,
+        domains: &[Type],
+        params: &[Pattern],
+        body: &'e Expr,
+    ) -> Option<(&'e Expr, bool)> {
+        let (
+            [domain],
+            [Pattern {
+                kind: PatternKind::Name(name),
+                ..
+            }],
+        ) = (domains, params)
+        else {
+            return None;
+        };
+        let ExprKind::If {
+            branches,
+            otherwise: Some(otherwise),
+        } = &body.kind
+        else {
+            return None;
+        };
+        let [(Cond::Expr(cond), then)] = branches.as_slice() else {
+            return None;
+        };
+        let only = |block: &'e Block| match block.stmts.as_slice() {
+            [Stmt {
+                kind: StmtKind::Expr(expr),
+                ..
+            }] => Some(expr),
+            _ => None,
+        };
+        let (then, otherwise) = (only(then)?, only(otherwise)?);
+        if self.reads_in(then) {
+            return None;
+        }
+        let (lo, hi) = self.cells(domain)?;
+        let iter = match &domain.kind {
+            TypeKind::Named { name, .. } => Expr {
+                kind: ExprKind::Name(name.text.clone()),
+                span: domain.span,
+            },
+            _ => int(0),
+        };
+        let first = Self::end_compared(cond, name, &iter, &lo, &hi)?;
+        Some((otherwise, first))
     }
 
     /// The type a call whose arguments are all bare `read()`s gives
@@ -1125,6 +1197,17 @@ impl Builder<'_> {
             }
             ExprKind::Tuple(exprs) | ExprKind::List(exprs) => all(self, &mut exprs.iter()),
             ExprKind::Record(fields) => all(self, &mut fields.iter().map(|(_, expr)| expr)),
+            ExprKind::Table {
+                domains,
+                params,
+                body,
+            } if self.skipped_cell(domains, params, body).is_some() => {
+                let (body, _) = self
+                    .skipped_cell(domains, params, body)
+                    .expect("tested above");
+                let (lo, hi) = self.cells(&domains[0]).expect("tested above");
+                each(self, body, binary(BinOp::Sub, hi, lo), out)
+            }
             ExprKind::Table {
                 domains,
                 params,
