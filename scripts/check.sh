@@ -55,7 +55,19 @@ done
 [ "$mode" = full ] && use_cache=0
 cache_dir="${CARGO_TARGET_DIR:-target}/check-cache"
 
-step() { printf '\n==> %s\n' "$*"; }
+# Each step's wall time, so a slow gate shows where its time goes.
+step_name="setup"
+step_t0=$gate_t0
+step_times=()
+step_end() {
+    step_times+=("$(( $(date +%s) - step_t0 ))"$'\t'"$step_name")
+}
+step() {
+    step_end
+    step_name="$*"
+    step_t0=$(date +%s)
+    printf '\n==> %s\n' "$*"
+}
 fail() { echo "check: $*" >&2; exit 1; }
 cache_hit() {
     [ "$use_cache" -eq 1 ] || return 1
@@ -386,6 +398,9 @@ fi
 known_traps=$(grep -c '^if which == ' crates/cpl-cli/tests/known_traps.cp)
 printf '\nknown_traps: %s open (crates/cpl-cli/tests/known_traps.cp)\n' "$known_traps"
 
+step_end
+printf '\nstep times (s):\n'
+printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
 gate_elapsed=$(( $(date +%s) - gate_t0 ))
 if [ "$mode" = fast ]; then
     gate_time_file="${CARGO_TARGET_DIR:-target}/gate-fast-time.json"
