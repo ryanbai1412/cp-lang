@@ -335,14 +335,20 @@ assert suffix_array("abracadabra") == [10, 7, 0, 3, 5, 8, 1, 4, 6, 9, 2]
 assert [i for i in find_all("abracadabra", "abra")] == [0, 7]
 ```
 
-Geometry is on integer points and every predicate is exact: `Pt`, `dot`,
-`cross`, `turn`, `on_segment`, `segments_meet`, `area2`, `locate`, and
-the sort key `ByAngle` (which orders directions without `atan2`:
-`sort(mut dirs, by: ByAngle)`).
+Geometry separates exact integer points (`Pt`) from careful
+floating-point vectors (`Vec`). Exact predicates (`turn`, `ByAngle`,
+`on_segment`, `segments_meet`, `locate`, `locate_convex`,
+`convex_hull`, `minkowski_sum`, `diameter2`, `hull_extreme`,
+`closest_pair2`) compute orientation signs in `I128`, staying exact up
+to `1e18` coordinates. Floating-point helpers (`Vec`, `close`,
+`sign_eps`, `project`, `reflect`, `line_intersect`, `circumcenter`,
+`circle_line_intersect`, `circle_intersect`, `HalfPlane`,
+`half_plane_intersect`) take explicit `eps: F64 = 1e-9`.
 
 ```
 let square = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
-assert area2(square) == 8 and locate(square, Pt(1, 1)) == 1
+assert area2(square) == 8 and locate_convex(square, Pt(1, 1)) == 1
+assert diameter2(square) == 8 and closest_pair2(square) == 4
 ```
 
 ## Bitsets
@@ -419,8 +425,15 @@ is evidence, not a proof.
   `bit_len`, `Sieve`, `factor`, `divisors`, `crt`).
 - `strings.cp`: Z, prefix function, KMP `find_all`, `period`, suffix
   array, LCP, generalized `RollingHash` & `HashVal`.
-- `geometry.cp`: integer points (`Pt`, `dot`, `cross`, `turn`, `ByAngle`,
-  `on_segment`, `segments_meet`, `area2`, `locate`).
+- `geometry.cp`: exact integer points (`Pt` with `Ord`/`Show`, `dot`/`dot128`,
+  `cross`/`cross128`, `dist2`/`dist`, `turn`, `same_dir`, `ByAngle`,
+  `on_segment`, `segments_meet`, `lower_hull`, `upper_hull`,
+  `convex_hull`, `convex_hull_idx`, `minkowski_sum`, `minkowski_upper`,
+  `area2`/`area2_128`, `locate`, `locate_convex`, `diameter2`, `hull_extreme`,
+  `closest_pair2`, `closest_pair`) and careful floating-point geometry (`Vec`,
+  `close`, `sign_eps`, `project`, `reflect`, `line_dist`, `seg_dist`,
+  `line_intersect`, `circumcenter`, `circle_line_intersect`,
+  `circle_intersect`, `HalfPlane`, `half_plane_intersect`).
 - `spec.cp`: structure discovery.
 - `tour.cp`: the examples above, as tests.
 
@@ -453,5 +466,4 @@ library the way your own would be: `MonoDeque`, `Steps`, `TwoSat`, `Mat`,
 `Centroids`, `KruskalTree`, `MinCount`.
 
 Not written yet, in either place: ordered sets and maps as library code
-(`SortedBag` is in `bag.cp`), floating-point geometry, and a real-valued
-`bsearch`.
+(`SortedBag` is in `bag.cp`) and a real-valued `bsearch`.

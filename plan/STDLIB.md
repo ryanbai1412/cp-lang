@@ -1357,11 +1357,12 @@ fn locate(poly: List<Pt>, p: Pt) -> Int // O(n), I128: 1 inside, 0 on, -1 out
 fn dot128(a: Pt, b: Pt) -> I128 // O(1)
 fn cross128(a: Pt, b: Pt) -> I128 // O(1)
 fn dist2(a: Pt, b: Pt) -> Int // O(1)
+fn dist2_128(a: Pt, b: Pt) -> I128 // O(1)
 fn dist(a: Pt, b: Pt) -> F64 // O(1)
-fn manhattan(a: Pt, b: Pt) -> Int // O(1)
+fn area2_128(poly: List<Pt>) -> I128 // O(n)
 fn same_dir(a: Pt, b: Pt) -> Bool // O(1), I128
-struct ByAngleFrom(base: Pt, p: Pt) // Ord: CCW in [base, base + 2*pi), I128
-fn angle_less(base: Pt, a: Pt, b: Pt) -> Bool // O(1), I128
+fn angle_less(a: Pt, b: Pt) -> Bool // O(1), I128
+fn on_segment(p: Pt, a: Pt, b: Pt, strict: Bool = false) -> Bool // O(1), I128
 fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool // O(1)
 
 // Convex hulls, chains, Minkowski sums, calipers, closest pair
@@ -1378,7 +1379,6 @@ fn closest_pair2(pts: List<Pt>) -> Int // O(n log n)
 fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) // O(n log n)
 
 // Careful floating-point geometry and half-plane intersection
-const PI: F64
 fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool // O(1)
 fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int // O(1)
 struct Vec(x: F64, y: F64) // Add, Sub, Neg; no Show (precision required)
@@ -1386,28 +1386,22 @@ struct Vec(x: F64, y: F64) // Add, Sub, Neg; no Show (precision required)
     @get fn len(self) -> F64 // O(1)
     @get fn unit(self) -> Vec // O(1)
     @get fn perp(self) -> Vec // O(1)
-    @get fn perp_cw(self) -> Vec // O(1)
     @get fn angle(self) -> F64 // O(1)
     fn scale(self, k: F64) -> Vec // O(1)
     fn div(self, k: F64) -> Vec // O(1)
-    fn dot(self, o: Vec) -> F64 // O(1)
-    fn cross(self, o: Vec) -> F64 // O(1)
-    fn dist2(self, o: Vec) -> F64 // O(1)
-    fn dist(self, o: Vec) -> F64 // O(1)
-    fn rot_by(self, u: Vec) -> Vec // O(1)
-fn poly_area(poly: List<Vec>) -> F64 // O(n)
+fn vdot(a: Vec, b: Vec) -> F64 // O(1)
+fn vcross(a: Vec, b: Vec) -> F64 // O(1)
+fn vdist(a: Vec, b: Vec) -> F64 // O(1)
+fn vturn(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> Int // O(1)
 fn project(p: Vec, a: Vec, b: Vec) -> Vec // O(1)
 fn reflect(p: Vec, a: Vec, b: Vec) -> Vec // O(1)
-fn dist_to_segment(p: Vec, a: Vec, b: Vec) -> F64 // O(1)
+fn line_dist(p: Vec, a: Vec, b: Vec) -> F64 // O(1)
+fn seg_dist(p: Vec, a: Vec, b: Vec) -> F64 // O(1)
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
-fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(n)
 fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
 fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec>
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
 struct HalfPlane(p: Vec, dir: Vec)
-    fn through(a: Vec, b: Vec) -> HalfPlane // O(1)
-    fn from_line(a: F64, b: F64, c: F64) -> HalfPlane // O(1)
-    fn side(self, q: Vec) -> F64 // O(1)
 fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec> // O(n log n)
 ```
 

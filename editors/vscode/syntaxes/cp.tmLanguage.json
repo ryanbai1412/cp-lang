@@ -350,7 +350,7 @@
         },
         {
           "name": "support.function.stdlib.cp",
-          "match": "(?<![.A-Za-z0-9_])(area2|argmins|articulation_points|berlekamp_massey|biconnected_components|bit_len|choose|components|concavity_break|convexity_break|cross|crt|cyclic_pairs|decrease|dedup|differences|directed_of_pairs|directed_of_triples|divisors|dnc_break|dot|ext_gcd|factor|factor_big|first_ge_by|floor_sum|get_or_insert_with|guess_at|idempotent|increase|is_prime|knuth_break|last_le_by|lcp_array|locate|max_weight_matching|monge_break|mul_mod|newton|next_permutation|on_segment|pairs|period|phi|poly_at|poly_degree|pow_mod|prefix_function|prev_permutation|primitive_root|ray|recurrence_at|reverse|rfind|rotate_left|segments_meet|splitmix64|suffix_array|swap_at|take|turn|two_color|two_edge_components|undirected_of_pairs|undirected_of_triples|unimodality_break|update|with_prev|z_function)(?=\\s*\\(|::<)"
+          "match": "(?<![.A-Za-z0-9_])(angle_less|area2|area2_128|argmins|articulation_points|berlekamp_massey|biconnected_components|bit_len|choose|circle_intersect|circle_line_intersect|circumcenter|close|closest_pair|closest_pair2|components|concavity_break|convex_hull|convex_hull_idx|convexity_break|cross|cross128|crt|cyclic_pairs|decrease|dedup|diameter2|differences|directed_of_pairs|directed_of_triples|dist|dist2|dist2_128|divisors|dnc_break|dot|dot128|ext_gcd|factor|factor_big|first_ge_by|floor_sum|get_or_insert_with|guess_at|half_plane_intersect|hull_extreme|idempotent|increase|is_prime|knuth_break|last_le_by|lcp_array|line_dist|line_intersect|locate|locate_convex|lower_hull|max_weight_matching|minkowski_sum|minkowski_upper|monge_break|mul_mod|newton|next_permutation|on_segment|pairs|period|phi|poly_at|poly_degree|pow_mod|prefix_function|prev_permutation|primitive_root|project|ray|recurrence_at|reflect|reverse|rfind|rotate_left|same_dir|seg_dist|segments_meet|sign_eps|splitmix64|suffix_array|swap_at|take|turn|two_color|two_edge_components|undirected_of_pairs|undirected_of_triples|unimodality_break|update|upper_hull|vcross|vdist|vdot|vturn|with_prev|z_function)(?=\\s*\\(|::<)"
         },
         {
           "match": "(\\.)([a-z_][A-Za-z0-9_]*)(?=\\s*\\(|::<)",
@@ -373,7 +373,7 @@
         },
         {
           "name": "support.type.stdlib.cp",
-          "match": "\\b(Action|Arc|Bitset|ByAngle|Comb|Compressed|ConnectedGraph|Dag|Deque|Desc|Digraph|Dir4|Dir8|Dsu|DsuOf|Fenwick|Fenwick2D|FlowGraph|Graph|HashVal|Hashable|LazySegTree|Mark|Marks|MaxHeap|MinHeap|Mod|Monoid|Neighbours|ParityDsu|Perm|Prefix1|Prefix2|PrefixN|Pt|Reversible|Rng|RollingHash|Rooted|SegTree|Sieve|SimpleGraph|SortedBag|SparseTable|Target|Tree|XorFenwick)\\b"
+          "match": "\\b(Action|Arc|Bitset|ByAngle|Comb|Compressed|ConnectedGraph|Dag|Deque|Desc|Digraph|Dir4|Dir8|Dsu|DsuOf|Fenwick|Fenwick2D|FlowGraph|Graph|HalfPlane|HashVal|Hashable|LazySegTree|Mark|Marks|MaxHeap|MinHeap|Mod|Monoid|Neighbours|ParityDsu|Perm|Prefix1|Prefix2|PrefixN|Pt|Reversible|Rng|RollingHash|Rooted|SegTree|Sieve|SimpleGraph|SortedBag|SparseTable|Target|Tree|Vec|XorFenwick)\\b"
         },
         { "name": "support.constant.stdlib.cp", "match": "\\b(AddMax|AddMin|AddSum|AssignMax|AssignMin|AssignSum)\\b" },
         { "name": "constant.other.caps.cp", "match": "\\b[A-Z][A-Z0-9_]+\\b" },

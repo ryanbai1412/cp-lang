@@ -10,7 +10,18 @@ use std.flow.{FlowGraph}
 use std.tree.{Rooted}
 use std.mod.{Mod, Comb}
 use std.strings.{z_function, suffix_array, find_all}
-use std.geometry.{Pt, area2, locate}
+use std.geometry.{
+    Pt,
+    Vec,
+    area2,
+    closest_pair2,
+    convex_hull,
+    diameter2,
+    locate,
+    locate_convex,
+    reflect,
+    close,
+}
 use std.bitset.{Bitset}
 use std.spec.{poly_degree, poly_at, guess_at, dnc_break, convexity_break}
 
@@ -131,6 +142,11 @@ fn strings_and_points():
     assert [i for i in find_all("abracadabra", "abra")] == [0, 7]
     let square = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
     assert area2(square) == 8 and locate(square, Pt(1, 1)) == 1 and locate(square, Pt(3, 1)) == -1
+    assert locate_convex(square, Pt(1, 1)) == 1 and diameter2(square) == 8
+    assert convex_hull([Pt(1, 1), Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == square
+    assert closest_pair2(square) == 4
+    let r = reflect(Vec(1.0, 3.0), Vec(0.0, 0.0), Vec(4.0, 0.0))
+    assert close(r.x, 1.0) and close(r.y, -3.0)
 
 @test
 fn sets_of_indices():
