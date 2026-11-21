@@ -12,6 +12,7 @@ mod input;
 pub mod profile;
 pub mod trace;
 mod value;
+#[cfg(not(target_arch = "wasm32"))]
 mod vm;
 
 use cpl_diag::Span;
@@ -347,12 +348,17 @@ fn run_io(
         fed_loops: Vec::new(),
         in_closure: false,
         fed_left: None,
+        #[cfg(not(target_arch = "wasm32"))]
         vm: None,
+        #[cfg(not(target_arch = "wasm32"))]
         vm_regs_i: Vec::new(),
+        #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
+        #[cfg(not(target_arch = "wasm32"))]
         vm_stats: vm::VmStats::from_env(),
     };
     let result = interp.main();
+    #[cfg(not(target_arch = "wasm32"))]
     if let Some(stats) = &interp.vm_stats {
         stats.emit_stderr();
     }
@@ -576,12 +582,16 @@ struct Interp<'p, 'o> {
     /// was not a plain `break`: a `return`, or a jump to an outer loop.
     fed_left: Option<Flow>,
     /// Compiled register bytecode program for plain (untraced, unprofiled) runs.
+    #[cfg(not(target_arch = "wasm32"))]
     vm: Option<Rc<vm::CompiledProgram<'p>>>,
     /// Shared unboxed `i64` register stack for the VM.
+    #[cfg(not(target_arch = "wasm32"))]
     vm_regs_i: Vec<i64>,
     /// Reusable pool of `Value` register frames for VM calls.
+    #[cfg(not(target_arch = "wasm32"))]
     vm_pool_v: Vec<Vec<Value>>,
     /// Optional fallback counter enabled via `CPL_VM_STATS`.
+    #[cfg(not(target_arch = "wasm32"))]
     vm_stats: Option<vm::VmStats>,
 }
 
@@ -659,16 +669,20 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.stack.clear();
         self.stack.resize(program.main_locals.len(), Value::Unit);
         self.base = 0;
-        let use_vm = self.tracer.is_none() && self.profiler.is_none();
-        if use_vm {
-            self.vm = Some(Rc::new(vm::CompiledProgram::compile(program, &self.feeds)));
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let use_vm = self.tracer.is_none() && self.profiler.is_none();
+            if use_vm {
+                self.vm = Some(Rc::new(vm::CompiledProgram::compile(program, &self.feeds)));
+            }
         }
         if !program.multitest {
+            #[cfg(not(target_arch = "wasm32"))]
             if let Some(compiled) = self.vm.clone() {
                 self.run_main_vm(&compiled)?;
-            } else {
-                self.block(&program.main)?;
+                return Ok(());
             }
+            self.block(&program.main)?;
             return Ok(());
         }
         // Above `@!multitest`: once. A top-level `return` there ends the
@@ -721,11 +735,12 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             self.stack.clear();
             self.stack.resize(program.main_locals.len(), Value::Unit);
+            #[cfg(not(target_arch = "wasm32"))]
             if let Some(compiled) = self.vm.clone() {
                 self.run_main_vm(&compiled)?;
-            } else {
-                self.block(&program.main)?;
+                continue;
             }
+            self.block(&program.main)?;
         }
         Ok(())
     }
@@ -2761,6 +2776,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             .iter()
             .take(f.params.len())
             .any(|l| matches!(l.ty, Ty::Fn(..)));
+        #[cfg(not(target_arch = "wasm32"))]
         let mut flow = if !feeding && !has_part && !(has_alias && has_fn_param) {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
@@ -2779,6 +2795,11 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let why = if feeding { "feeding" } else { "part" };
                 stats.record(format!("fn:{}({why})", f.name));
             }
+            self.block(&f.body)
+        };
+        #[cfg(target_arch = "wasm32")]
+        let mut flow = {
+            let _ = (has_part, has_alias, has_fn_param);
             self.block(&f.body)
         };
         while self.saved_domains.len() > dom_mark {

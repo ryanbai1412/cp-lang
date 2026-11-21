@@ -402,14 +402,7 @@ pub(crate) enum Op {
     ClearV { reg: u16 },
 
     // Wrapping u64 arithmetic, casts & comparisons
-    AddU64 { dst: u16, a: u16, b: u16 },
-    SubU64 { dst: u16, a: u16, b: u16 },
-    MulU64 { dst: u16, a: u16, b: u16 },
-    DivU64 { dst: u16, a: u16, b: u16 },
-    RemU64 { dst: u16, a: u16, b: u16 },
-    PowU64 { dst: u16, a: u16, b: u16 },
-    ShlU64 { dst: u16, a: u16, b: u16 },
-    ShrU64 { dst: u16, a: u16, b: u16 },
+    BinU64 { dst: u16, a: u16, b: u16, op: BinOp },
     NegU64 { dst: u16, a: u16 },
     BitNotI { dst: u16, a: u16 },
     CmpU64 { dst: u16, a: u16, b: u16, op: CmpOp },
@@ -3244,16 +3237,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
         span: Span,
     ) -> bool {
         let inst = match op {
-            AssignOp::Binary(BinOp::Add) => Op::AddU64 { dst, a, b },
-            AssignOp::Binary(BinOp::Sub) => Op::SubU64 { dst, a, b },
-            AssignOp::Binary(BinOp::Mul) => Op::MulU64 { dst, a, b },
-            AssignOp::Binary(BinOp::Div) => Op::DivU64 { dst, a, b },
-            AssignOp::Binary(BinOp::Rem) => Op::RemU64 { dst, a, b },
+            AssignOp::Binary(
+                bop @ (BinOp::Add
+                | BinOp::Sub
+                | BinOp::Mul
+                | BinOp::Div
+                | BinOp::Rem
+                | BinOp::Shl
+                | BinOp::Shr),
+            ) => Op::BinU64 { dst, a, b, op: bop },
             AssignOp::Binary(BinOp::BitAnd) => Op::BitAndI { dst, a, b },
             AssignOp::Binary(BinOp::BitOr) => Op::BitOrI { dst, a, b },
             AssignOp::Binary(BinOp::BitXor) => Op::BitXorI { dst, a, b },
-            AssignOp::Binary(BinOp::Shl) => Op::ShlU64 { dst, a, b },
-            AssignOp::Binary(BinOp::Shr) => Op::ShrU64 { dst, a, b },
             AssignOp::Set => Op::MoveI { dst, src: b },
             _ => return false,
         };
@@ -3837,12 +3832,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let b = self.compile_expr_i(rhs);
                 let dst = self.alloc_i();
                 let inst = match op {
-                    BinOp::Add => Op::AddU64 { dst, a, b },
-                    BinOp::Sub => Op::SubU64 { dst, a, b },
-                    BinOp::Mul => Op::MulU64 { dst, a, b },
-                    BinOp::Div => Op::DivU64 { dst, a, b },
-                    BinOp::Rem => Op::RemU64 { dst, a, b },
-                    BinOp::Pow => Op::PowU64 { dst, a, b },
+                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Pow => {
+                        Op::BinU64 { dst, a, b, op: *op }
+                    }
                     BinOp::BitAnd => Op::BitAndI { dst, a, b },
                     BinOp::BitOr => Op::BitOrI { dst, a, b },
                     BinOp::BitXor => Op::BitXorI { dst, a, b },
@@ -3859,12 +3851,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let a = self.compile_expr_i(lhs);
                 let b = self.compile_expr_i(rhs);
                 let dst = self.alloc_i();
-                let inst = match op {
-                    BinOp::Shl => Op::ShlU64 { dst, a, b },
-                    BinOp::Shr => Op::ShrU64 { dst, a, b },
-                    _ => unreachable!(),
-                };
-                self.emit(inst, span);
+                self.emit(Op::BinU64 { dst, a, b, op: *op }, span);
                 dst
             }
             ExprKind::Binary(op, lhs, rhs)
@@ -8560,62 +8547,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                         _ => 0,
                     };
                 }
-                Op::AddU64 { dst, a, b } => {
+                Op::BinU64 { dst, a, b, op } => {
                     regs_i[dst as usize] =
-                        (regs_i[a as usize] as u64).wrapping_add(regs_i[b as usize] as u64) as i64;
-                }
-                Op::SubU64 { dst, a, b } => {
-                    regs_i[dst as usize] =
-                        (regs_i[a as usize] as u64).wrapping_sub(regs_i[b as usize] as u64) as i64;
-                }
-                Op::MulU64 { dst, a, b } => {
-                    regs_i[dst as usize] =
-                        (regs_i[a as usize] as u64).wrapping_mul(regs_i[b as usize] as u64) as i64;
-                }
-                Op::DivU64 { dst, a, b } => {
-                    let av = regs_i[a as usize] as u64;
-                    let bv = regs_i[b as usize] as u64;
-                    if bv == 0 {
-                        return trap(spans[cur_pc], format!("division by zero: `{av} / 0`"));
-                    }
-                    regs_i[dst as usize] = (av / bv) as i64;
-                }
-                Op::RemU64 { dst, a, b } => {
-                    let av = regs_i[a as usize] as u64;
-                    let bv = regs_i[b as usize] as u64;
-                    if bv == 0 {
-                        return trap(spans[cur_pc], format!("division by zero: `{av} % 0`"));
-                    }
-                    regs_i[dst as usize] = (av % bv) as i64;
-                }
-                Op::PowU64 { dst, a, b } => {
-                    let mut base = regs_i[a as usize] as u64;
-                    let mut exp = regs_i[b as usize] as u64;
-                    let mut result = 1u64;
-                    while exp > 0 {
-                        if exp & 1 == 1 {
-                            result = result.wrapping_mul(base);
-                        }
-                        base = base.wrapping_mul(base);
-                        exp >>= 1;
-                    }
-                    regs_i[dst as usize] = result as i64;
-                }
-                Op::ShlU64 { dst, a, b } => {
-                    let av = regs_i[a as usize] as u64;
-                    let bv = regs_i[b as usize];
-                    if !(0..64).contains(&bv) {
-                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
-                    }
-                    regs_i[dst as usize] = (av << bv) as i64;
-                }
-                Op::ShrU64 { dst, a, b } => {
-                    let av = regs_i[a as usize] as u64;
-                    let bv = regs_i[b as usize];
-                    if !(0..64).contains(&bv) {
-                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
-                    }
-                    regs_i[dst as usize] = (av >> bv) as i64;
+                        exec_bin_u64(regs_i[a as usize], regs_i[b as usize], op, spans[cur_pc])?;
                 }
                 Op::NegU64 { dst, a } => {
                     regs_i[dst as usize] = (regs_i[a as usize] as u64).wrapping_neg() as i64;
@@ -8649,10 +8583,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::StorePlaceI { path, r_val, kind } => {
                     let pp = &chunk.places[path as usize];
                     let raw = regs_i[r_val as usize];
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
                     let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
                     store_place_leaf_scalar(container, last, raw, kind, regs_i, spans[cur_pc])?;
@@ -8661,10 +8592,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let pp = &chunk.places[path as usize];
                     let raw = regs_i[r_val as usize];
                     let some = regs_i[r_some as usize];
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
                     let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
                     store_place_leaf_opt_scalar(
@@ -8680,10 +8608,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::StorePlaceV { path, r_val } => {
                     let pp = &chunk.places[path as usize];
                     let val = regs_v[r_val as usize].clone();
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
                     let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
                     store_place_leaf_val(container, last, val, regs_i, spans[cur_pc])?;
@@ -8691,10 +8616,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::AssignPlaceI { path, r_rhs, op, kind } => {
                     let pp = &chunk.places[path as usize];
                     let rhs = regs_i[r_rhs as usize];
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
                     let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
                     assign_place_leaf_scalar(
@@ -8709,10 +8631,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::ListPopDiscardPlace { path } => {
                     let pp = &chunk.places[path as usize];
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
                     match target {
                         Value::List(items) => {
@@ -8724,10 +8643,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::ListPushPlaceI { path, val_i, kind } => {
                     let pp = &chunk.places[path as usize];
                     let val = kind.box_val(regs_i[val_i as usize]);
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
                     match target {
                         Value::List(items) => {
@@ -8739,10 +8655,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::ListPushPlaceV { path, val_v } => {
                     let pp = &chunk.places[path as usize];
                     let val = regs_v[val_v as usize].clone();
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
                     match target {
                         Value::List(items) => {
@@ -8754,89 +8667,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::SortPlace { path, desc_r } => {
                     let pp = &chunk.places[path as usize];
                     let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
-                    let root = match pp.root {
-                        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
-                        PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
-                    };
+                    let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                     let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
-                    match target {
-                        Value::List(items) => {
-                            let v = Rc::make_mut(items);
-                            if desc {
-                                v.sort_by(|a, b| b.cmp(a));
-                            } else {
-                                v.sort();
-                            }
-                        }
-                        Value::Str(bytes) => {
-                            let v = Rc::make_mut(bytes);
-                            if desc {
-                                v.sort_by(|a, b| b.cmp(a));
-                            } else {
-                                v.sort();
-                            }
-                        }
-                        Value::Array(arr) => {
-                            let a = Rc::make_mut(arr);
-                            match &mut a.data {
-                                ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
-                                    if desc {
-                                        v.sort_by(|x, y| y.cmp(x));
-                                    } else {
-                                        v.sort();
-                                    }
-                                }
-                                ArrayData::OptInt(v) => {
-                                    if desc {
-                                        v.sort_by(|x, y| y.cmp(x));
-                                    } else {
-                                        v.sort();
-                                    }
-                                }
-                                ArrayData::Bool(v) => {
-                                    if desc {
-                                        v.sort_by(|x, y| y.cmp(x));
-                                    } else {
-                                        v.sort();
-                                    }
-                                }
-                                ArrayData::Char(v) => {
-                                    if desc {
-                                        v.sort_by(|x, y| y.cmp(x));
-                                    } else {
-                                        v.sort();
-                                    }
-                                }
-                                ArrayData::Values(v) => {
-                                    if desc {
-                                        v.sort_by(|x, y| y.cmp(x));
-                                    } else {
-                                        v.sort();
-                                    }
-                                }
-                                ArrayData::Float(v) => {
-                                    if desc {
-                                        v.sort_by(|x, y| y.total_cmp(x));
-                                    } else {
-                                        v.sort_by(|x, y| x.total_cmp(y));
-                                    }
-                                }
-                                ArrayData::SmallIntTuple { .. } => {
-                                    let mut boxed: Vec<Value> =
-                                        (0..a.len()).map(|i| a.get_unchecked_val(i)).collect();
-                                    if desc {
-                                        boxed.sort_by(|x, y| y.cmp(x));
-                                    } else {
-                                        boxed.sort();
-                                    }
-                                    for (i, val) in boxed.into_iter().enumerate() {
-                                        a.set(i, val);
-                                    }
-                                }
-                            }
-                        }
-                        _ => return trap(spans[cur_pc], "internal: cannot sort this value"),
-                    }
+                    exec_sort_place(target, desc, spans[cur_pc])?;
                 }
                 Op::ClearV { reg } => {
                     regs_v[reg as usize] = Value::Unit;
@@ -8892,6 +8725,109 @@ impl<'p, 'io> Interp<'p, 'io> {
     }
 }
 
+#[inline(always)]
+fn place_root_mut<'a>(
+    root: PlaceRoot,
+    regs_v: &'a mut [Value],
+    globals: &'a mut [Value],
+) -> &'a mut Value {
+    match root {
+        PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
+        PlaceRoot::Global(gid) => &mut globals[gid as usize],
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", inline(never))]
+fn exec_bin_u64(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> {
+    let av = a_raw as u64;
+    let bv = b_raw as u64;
+    let out = match op {
+        BinOp::Add => av.wrapping_add(bv),
+        BinOp::Sub => av.wrapping_sub(bv),
+        BinOp::Mul => av.wrapping_mul(bv),
+        BinOp::Div => {
+            if bv == 0 {
+                return trap(span, format!("division by zero: `{av} / 0`"));
+            }
+            av / bv
+        }
+        BinOp::Rem => {
+            if bv == 0 {
+                return trap(span, format!("division by zero: `{av} % 0`"));
+            }
+            av % bv
+        }
+        BinOp::Pow => {
+            let mut base = av;
+            let mut exp = bv;
+            let mut result = 1u64;
+            while exp > 0 {
+                if exp & 1 == 1 {
+                    result = result.wrapping_mul(base);
+                }
+                base = base.wrapping_mul(base);
+                exp >>= 1;
+            }
+            result
+        }
+        BinOp::Shl => {
+            if !(0..64).contains(&b_raw) {
+                return trap(span, format!("a shift by {b_raw} is outside 0..64"));
+            }
+            av << b_raw
+        }
+        BinOp::Shr => {
+            if !(0..64).contains(&b_raw) {
+                return trap(span, format!("a shift by {b_raw} is outside 0..64"));
+            }
+            av >> b_raw
+        }
+        _ => return trap(span, "internal: unsupported U64 op"),
+    };
+    Ok(out as i64)
+}
+
+#[inline(never)]
+fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res<()> {
+    fn sort_ord<T: Ord>(v: &mut [T], desc: bool) {
+        v.sort_unstable();
+        if desc {
+            v.reverse();
+        }
+    }
+    match target {
+        Value::List(items) => sort_ord(Rc::make_mut(items).as_mut_slice(), desc),
+        Value::Str(bytes) => sort_ord(Rc::make_mut(bytes).as_mut_slice(), desc),
+        Value::Array(arr) => {
+            let a = Rc::make_mut(arr);
+            match &mut a.data {
+                ArrayData::Int(v) | ArrayData::OneIntStruct(v) => sort_ord(v, desc),
+                ArrayData::OptInt(v) => sort_ord(v, desc),
+                ArrayData::Bool(v) => sort_ord(v, desc),
+                ArrayData::Char(v) => sort_ord(v, desc),
+                ArrayData::Values(v) => sort_ord(v, desc),
+                ArrayData::Float(v) => {
+                    v.sort_unstable_by(f64::total_cmp);
+                    if desc {
+                        v.reverse();
+                    }
+                }
+                ArrayData::SmallIntTuple { .. } => {
+                    let mut boxed: Vec<Value> =
+                        (0..a.len()).map(|i| a.get_unchecked_val(i)).collect();
+                    sort_ord(&mut boxed, desc);
+                    for (i, val) in boxed.into_iter().enumerate() {
+                        a.set(i, val);
+                    }
+                }
+            }
+        }
+        _ => return trap(span, "internal: cannot sort this value"),
+    }
+    Ok(())
+}
+
+#[inline(never)]
 fn array_flat_index(arr: &Array, step: PlaceStep, regs_i: &[i64], span: Span) -> Res<usize> {
     match step {
         PlaceStep::Index1(r_i) => {
@@ -8928,6 +8864,7 @@ fn array_flat_index(arr: &Array, step: PlaceStep, regs_i: &[i64], span: Span) ->
     }
 }
 
+#[inline(never)]
 fn walk_place_mut<'a>(
     mut cur: &'a mut Value,
     steps: &[PlaceStep],
@@ -8977,6 +8914,7 @@ fn walk_place_mut<'a>(
     Ok(cur)
 }
 
+#[inline(never)]
 fn store_place_leaf_scalar(
     container: &mut Value,
     last: PlaceStep,
@@ -9039,6 +8977,7 @@ fn store_place_leaf_scalar(
     }
 }
 
+#[inline(never)]
 fn store_place_leaf_opt_scalar(
     container: &mut Value,
     last: PlaceStep,
@@ -9094,6 +9033,7 @@ fn store_place_leaf_opt_scalar(
     }
 }
 
+#[inline(never)]
 fn store_place_leaf_val(
     container: &mut Value,
     last: PlaceStep,
@@ -9137,6 +9077,7 @@ fn store_place_leaf_val(
     }
 }
 
+#[inline(never)]
 fn apply_scalar_assign_op(
     cur: i64,
     rhs: i64,
@@ -9237,6 +9178,7 @@ fn apply_scalar_assign_op(
     Ok(out)
 }
 
+#[inline(never)]
 fn assign_place_leaf_scalar(
     container: &mut Value,
     last: PlaceStep,
