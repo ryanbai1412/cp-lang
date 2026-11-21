@@ -15,6 +15,8 @@ and reports best-of-7 wall time (`g++ -std=c++17 -O2`).
 | minkowski_sum | 2x50k poly (x20) | 0.025 | 0.030 | 0.83x |
 | diameter2 | 100k hull (x50) | 0.094 | 0.092 | 1.02x |
 | locate_convex | 50k hull, 200k q | 0.042 | 0.045 | 0.95x |
+| locate | 2k star poly, 20k q | 0.049 | 0.050 | 0.97x |
+| polygon_area | 100k poly (x100) | 0.021 | 0.022 | 0.98x |
 | circle_intersect | 100k circle pairs | 0.042 | 0.079 | 0.53x |
 | polygon_cut | 4k cuts | 0.004 | 0.004 | 0.94x |
 | min_enclosing_circle | 200k points | 0.036 | 0.059 | 0.61x |
@@ -22,8 +24,13 @@ and reports best-of-7 wall time (`g++ -std=c++17 -O2`).
 | circle_tangents | 100k circle pairs | 0.043 | 0.079 | 0.54x |
 | circles_union_area | 2k circles | 0.010 | 0.010 | 1.04x |
 
-All fourteen benchmarks are under the 1.1x target. Profiling the initial runs found
-and fixed four stdlib hot-path costs:
+All sixteen benchmarks are under the 1.1x target. Profiling the initial runs found
+and fixed five stdlib hot-path costs:
+
+- `locate` (2.43x -> 0.97x): replaced `(i + 1) % n` and per-edge `on_segment`
+  calls with `for cur in poly:` plus a `y`-interval guard before the `I128`
+  cross/dot check (also applied `for b in poly:` to `area2`, `area2_128`, and
+  `polygon_area`).
 
 - `minkowski_sum` (2.50x -> 0.83x): replaced the two `rotate_min_yx` full-list
   copies and four per-step `cpl::emod` calls with in-place index wrapping

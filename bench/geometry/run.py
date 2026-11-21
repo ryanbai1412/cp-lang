@@ -147,6 +147,21 @@ def gen_circle_union(n, seed):
     return "\n".join(rows) + "\n"
 
 
+def gen_star_poly_queries(n, q, seed):
+    rng = random.Random(seed)
+    # Non-convex star polygon (alternating radii) so ray-casting tests concavities.
+    pts = []
+    for i in range(n):
+        ang = 2.0 * math.pi * i / n
+        r = 10**7 if i % 2 == 0 else 4 * 10**6
+        pts.append((int(round(r * math.cos(ang))), int(round(r * math.sin(ang)))))
+    rows = [f"{len(pts)} {q}"]
+    rows.extend(f"{x} {y}" for x, y in pts)
+    for _ in range(q):
+        rows.append(f"{rng.randint(-12 * 10**6, 12 * 10**6)} {rng.randint(-12 * 10**6, 12 * 10**6)}")
+    return "\n".join(rows) + "\n"
+
+
 BENCHES = {
     "convex_hull": lambda: gen_points(200_000, 1),
     "half_plane_intersect": lambda: gen_half_planes(100_000, 2),
@@ -156,6 +171,8 @@ BENCHES = {
     "minkowski_sum": lambda: gen_minkowski(50_000, 50_000),
     "diameter2": lambda: gen_convex_poly(100_000),
     "locate_convex": lambda: gen_locate_convex(50_000, 200_000, 6),
+    "locate": lambda: gen_star_poly_queries(2_000, 20_000, 12),
+    "polygon_area": lambda: gen_convex_poly(100_000),
     "circle_intersect": lambda: gen_circles(100_000, 7),
     "polygon_cut": lambda: gen_polygon_cuts(4_000, 8),
     "min_enclosing_circle": lambda: gen_float_points(200_000, 9),

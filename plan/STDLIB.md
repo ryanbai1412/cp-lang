@@ -39,7 +39,7 @@ core feature goes through section 3 and the core lane.
 | trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). `PermTree` (`cf2187f1`/`f2`, one construction instead of two copies). Label-ordered parent arrays stay loops (`cf2138c1`, `cf2187c`, `cf2089e`; design §5). `Rooted` builds breadth-first with flat child ranges (1.1x matched, decision 86). `LazyLinkCut` with `apply_path` (at most 1.0x matched). Next: PathPaint waits for a second problem; cf2237h stays on chains + `IntervalMap` |
 | flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched), unchecked hot loops in `std.flow` (min-cost flow 1.14x). Next: matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
 | strings | 4.13; O(1) slice and reverse views | done: slice and reverse views (decision 61). concat and print fusion with buffer reuse (`ucup4s25h` 1.17x, `cf2245a` 1.13x, `cf2096e` 1.05x). `.rev` as a first-class view value; algorithms over `Indexed` (`cf1909g` 1.15x, `cf1943b` 0.98x). matched benches: Z 1.09x, SA 1.05x, SAM 0.97x, Aho–Corasick 1.04x, rolling hash 1.23x. Next: rolling hash (`modp` sign fixup, `eq_sub` bounds checks); ports hand-rolling string algorithms |
-| geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`), `min_bounding_box`, `circle_tangents`, `circle_circle_tangents`, `circles_union_area`, `sqrt` negative trap, 14 matched C++ benches all <=1.09x |
+| geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`), `min_bounding_box`, `circle_tangents`, `circle_circle_tangents`, `circles_union_area`, `sqrt` negative trap, 16 matched C++17 benches all <=1.09x |
 
 ## 1. Principles
 
@@ -1556,6 +1556,16 @@ fn cross3(a: Pt3, b: Pt3) -> Pt3 // O(1)
 fn dist2_3(a: Pt3, b: Pt3) -> Int // O(1)
 fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)> // O(n^2), I128
 ```
+
+Matched C++17 benchmarks (`python3 bench/geometry/run.py --runs 7`, all 16 <= 1.09x):
+`convex_hull` (200k pts) 1.06x (35 vs 33 ms), `half_plane_intersect` (100k planes) 0.81x (56 vs 68 ms),
+`closest_pair` (100k pts) 1.07x (30 vs 28 ms), `any_segments_meet` (100k segs) 1.06x (129 vs 122 ms),
+`convex_hull_3d` (20k pts) 1.09x (28 vs 25 ms), `minkowski_sum` (2×50k ×20) 0.83x (25 vs 30 ms),
+`diameter2` (100k hull ×50) 1.02x (94 vs 92 ms), `locate_convex` (50k hull, 200k q) 0.95x (42 vs 45 ms),
+`locate` (2k star poly, 20k q) 0.97x (49 vs 50 ms), `polygon_area` (100k poly ×100) 0.98x (21 vs 22 ms),
+`circle_intersect` (100k pairs) 0.53x (42 vs 79 ms), `polygon_cut` (4k cuts) 0.94x (4 vs 4 ms),
+`min_enclosing_circle` (200k pts) 0.61x (36 vs 59 ms), `min_bounding_box` (100k hull ×50) 1.05x (108 vs 103 ms),
+`circle_tangents` (100k pairs) 0.54x (43 vs 79 ms), `circles_union_area` (2k circles) 1.04x (10 vs 10 ms).
 
 ### 4.15 `std.grid` and `std.spec`
 

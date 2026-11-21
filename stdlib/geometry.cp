@@ -320,16 +320,24 @@ pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>:
 
 /// Twice the signed area of a polygon: positive when vertices run CCW. O(n).
 pub fn area2(poly: List<Pt>) -> Int:
-    if poly.len < 3: return 0
+    let n = poly.len
+    if n < 3: return 0
     var total = 0
-    for i in 0..poly.len: total += cross(poly[i], poly[(i + 1) % poly.len])
+    var a = poly[n - 1]
+    for b in poly:
+        total += a.x * b.y - a.y * b.x
+        a = b
     total
 
 /// Exact 128-bit twice signed area of a polygon. O(n).
 pub fn area2_128(poly: List<Pt>) -> I128:
-    if poly.len < 3: return I128(0)
+    let n = poly.len
+    if n < 3: return I128(0)
     var total = I128(0)
-    for i in 0..poly.len: total += cross128(poly[i], poly[(i + 1) % poly.len])
+    var a = poly[n - 1]
+    for b in poly:
+        total += cross128(a, b)
+        a = b
     total
 
 /// Position of a point relative to a polygon.
@@ -338,14 +346,26 @@ pub enum Location = Inside | Boundary | Outside
 /// Where `p` is relative to a simple polygon (either orientation):
 /// `Location.Inside`, `Location.Boundary`, or `Location.Outside`. Exact in `I128`. O(n).
 pub fn locate(poly: List<Pt>, p: Pt) -> Location:
-    if poly.len == 0: return Location.Outside
-    if poly.len == 1: return if p == poly[0]: Location.Boundary else: Location.Outside
+    let n = poly.len
+    if n == 0: return Location.Outside
+    if n == 1: return if p == poly[0]: Location.Boundary else: Location.Outside
     var inside = false
-    for i in 0..poly.len:
-        var (a, b) = (poly[i], poly[(i + 1) % poly.len])
-        if on_segment(p, a, b): return Location.Boundary
-        if a.y > b.y: swap(mut a, mut b)
-        if a.y <= p.y and p.y < b.y and cross128_3(p, a, b) > I128(0): inside = not inside
+    var prev = poly[n - 1]
+    for cur in poly:
+        var a = prev
+        var b = cur
+        prev = cur
+        if a.y > b.y:
+            let tmp = a
+            a = b
+            b = tmp
+        if a.y <= p.y and p.y <= b.y:
+            let c = I128(a.x - p.x) * I128(b.y - p.y) - I128(a.y - p.y) * I128(b.x - p.x)
+            if c == I128(0):
+                if I128(a.x - p.x) * I128(b.x - p.x) + I128(a.y - p.y) * I128(b.y - p.y) <= I128(0):
+                    return Location.Boundary
+            elif p.y < b.y and c > I128(0):
+                inside = not inside
     if inside: Location.Inside else: Location.Outside
 
 /// Where `p` is relative to a CCW convex polygon:
@@ -932,8 +952,10 @@ pub fn polygon_area(poly: List<Vec>) -> F64:
     let n = poly.len
     if n < 3: return 0.0
     var s = 0.0
-    for i in 0..n:
-        s += vcross(poly[i], poly[(i + 1) % n])
+    var a = poly[n - 1]
+    for b in poly:
+        s += a.x * b.y - a.y * b.x
+        a = b
     0.5 * s
 
 /// Clip `poly` to the closed left half-plane of directed line `a -> b`. O(n).
