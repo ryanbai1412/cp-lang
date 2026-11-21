@@ -10,6 +10,7 @@
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,
 //! `convexity_break`). A sliding-window optimum is `std.window.MonoDeque`.
 
+use std.deque.{Deque}
 use std.seq.{bsearch_first}
 
 /// The line `k * x + m`, the usual entry of a `LiChao`.
@@ -240,6 +241,34 @@ pub fn subset_sums(xs: List<Int>) -> List<Int>:
 struct Counted(k: Int, m: Int, used: Int):
     fn at(self, x: Int) -> (cost: Int, used: Int) = (cost: k * x + m, used: used)
 
+/// Shortest paths over nodes `0..n` along increasing edges `j -> i` of weight
+/// `w(j, i)`: `val[i]` is the least total weight from node 0 to `i`, and
+/// `prev[i]` the node before `i` on that path (`prev[0] == 0`). Ties go to
+/// the later `prev`. Law: `w` is Monge, `w(a, c) + w(b, d) <= w(a, d) +
+/// w(b, c)` for `a <= b <= c <= d` (`std.spec.monge_break` checks it).
+/// O(n log n) calls of `w`, O(n) memory.
+pub fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>):
+    var val: List<K> = [K.zero]
+    var prev = [0]
+    var cand = Deque<(j: Int, start: Int)>()
+    cand.push((j: 0, start: 1))
+    for i in 1..n:
+        while cand.len >= 2 and cand[1].start <= i: cand.pop_front()
+        let j = cand[0].j
+        val.push(val[j] + w(j, i))
+        prev.push(j)
+        if i == n - 1: break
+        while let last = cand.last:
+            let r = max(last.start, i + 1)
+            if val[last.j] + w(last.j, r) < val[i] + w(i, r): break
+            cand.pop()
+        if let last = cand.last:
+            let wins = r => val[i] + w(i, r) <= val[last.j] + w(last.j, r)
+            if let r = bsearch_first(max(last.start, i + 1)..n, wins): cand.push((j: i, start: r))
+        else:
+            cand.push((j: i, start: i + 1))
+    (val: val, prev: prev)
+
 @test
 fn li_chao_matches_a_scan_over_lines_and_segments():
     for _ in 0..100:
@@ -321,3 +350,17 @@ fn subset_sums_are_every_sum_sorted():
         for mask in 0..1 << xs.len:
             want.push(sum(xs[i] for i in 0..xs.len if (mask >> i) & 1 == 1))
         assert subset_sums(xs) == sorted(want)
+
+@test
+fn monge_paths_match_the_quadratic_dp():
+    for _ in 0..200:
+        let n = rand(1, 30)
+        var p = [0]
+        for _ in 1..n: p.push(p.last! + rand(0, 9))
+        let c = rand(-20, 20)
+        fn w(j: Int, i: Int) -> Int = (p[i] - p[j]) * (i - j) + c
+        let got = monge_path(n, w)
+        var best = [0]
+        for i in 1..n: best.push(min(best[j] + w(j, i) for j in 0..i)!)
+        assert got.val == best
+        for i in 1..n: assert best[got.prev[i]] + w(got.prev[i], i) == best[i]

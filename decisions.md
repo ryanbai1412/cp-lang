@@ -2686,3 +2686,15 @@ under it, e.g. by running wasm-opt -Os in the bundle build.
 
 1. **`Comb<M>` replaces `Comb<P>` as the single combinatorics table spelling (supersedes 40.1).**
    `Comb<M>` takes the modular type `M = Mod<P>` directly — `type Z = Mod<998_244_353>; let comb = Comb<Z>(n)` (or inline `Comb<Mod<P>>(n)`) — so the modulus is written once for both compile-time and runtime moduli, and there is one way per job instead of both `Comb<P>` and `Z.comb()`. `Comb<M>(limit)` pre-sizes `f` and `g` to exact capacity `limit + 1` (clamped at `M.MOD`), while lazy `ensure(n)` continues to double capacity for amortized O(1) growth. All ports, tests, examples, docs, and snippets are migrated in the same commit. Reverse: change `pub struct Comb<M>` back to `pub struct Comb<P>` in `stdlib/mod.cp` (replacing `M` with `Mod<P>` and `M.MOD` with `P`) and rewrite `Comb<Z>` callers back to `Comb<P>` or `Comb<Z.MOD>`.
+||||||| parent of 0648c0ea (stdlib: add monge_path and use it in cf2183h)
+
+
+## 56. `monge_path` returns two lists (2026-11-21)
+
+`std.dp.monge_path(n, w)` returns `(val: List<K>, prev: List<Int>)`, with
+`prev[0] = 0`, rather than a list of `(val:, from: ?Int)` pairs. Reason: an
+imported generic fn returning `List<(val: K, ...)>` instantiated its second
+field as `_` under `cpl run`, and two flat lists are what the caller walks.
+It is the O(n log n) candidate deque; online LARSCH (O(n)) is the next step
+and keeps the signature. Reverse: return the pair list.
+

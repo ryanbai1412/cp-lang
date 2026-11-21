@@ -98,7 +98,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'two_color', 'two_edge_components', 
     'unimodality_break', 'update', 'upper_hull', 'vcross', 'vdist', 'vdot', 'vturn', 'with_prev',
     'z_function',
-    'aliens', 'dnc_layer', 'knuth', 'monotone_minima', 'parallel_bsearch', 'subset_sums',
+    'aliens', 'dnc_layer', 'knuth', 'monge_path', 'monotone_minima', 'parallel_bsearch', 'subset_sums',
 ];
 
 /** Public `stdlib/*.cp` constants (no INF sentinel; use ?Int / none). */
