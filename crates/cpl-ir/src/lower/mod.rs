@@ -1027,6 +1027,36 @@ impl<'a> Lowerer<'a> {
                         self.domains.push(dname);
                         self.mod_syms[m].insert(name.text.clone(), Sym::Domain(d));
                     }
+                    ast::StmtKind::Let { pat, .. } => {
+                        fn register_pat_domains(
+                            pat: &ast::Pattern,
+                            m: usize,
+                            domains: &mut Vec<String>,
+                            mod_syms: &mut [HashMap<String, Sym>],
+                        ) {
+                            match &pat.kind {
+                                ast::PatternKind::Domain(name) => {
+                                    if !mod_syms[m].contains_key(&name.text) {
+                                        let d = domains.len();
+                                        let dname = if m == 0 {
+                                            name.text.clone()
+                                        } else {
+                                            format!("m{m}_{}", name.text)
+                                        };
+                                        domains.push(dname);
+                                        mod_syms[m].insert(name.text.clone(), Sym::Domain(d));
+                                    }
+                                }
+                                ast::PatternKind::Tuple(pats) => {
+                                    for p in pats {
+                                        register_pat_domains(p, m, domains, mod_syms);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        register_pat_domains(pat, m, &mut self.domains, &mut self.mod_syms);
+                    }
                     ast::StmtKind::TypeAlias { name, generics, ty } => {
                         if !generics.is_empty() {
                             let gaid = self.gen_aliases.len();
@@ -2464,6 +2494,9 @@ impl<'a> Lowerer<'a> {
         match &pat.kind {
             ast::PatternKind::Name(name) => {
                 out.insert(name.clone());
+            }
+            ast::PatternKind::Domain(name) => {
+                out.insert(name.text.clone());
             }
             ast::PatternKind::Tuple(pats) => pats.iter().for_each(|p| Self::pattern_names(p, out)),
             _ => {}

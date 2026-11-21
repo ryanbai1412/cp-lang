@@ -40,7 +40,18 @@ for e in edges:
 let g = Graph.undirected([(e.u, e.v) for e in edges])
 let (domain K, comp) = components(g)
 var comp_sz: [K]Int = 0
-for v in V: comp_sz[comp[v]] += 1
+
+fn bump_comp(c: K, delta: Int):
+    comp_sz[c] += delta
+
+for v in V: bump_comp(comp[v], 1)
+
+fn nested_destructured(k: Int) -> Int:
+    let (domain P, vals) = make_seq(k)
+    fn read_p(p: P) -> Int = vals[p]
+    var s = 0
+    for p in P: s += read_p(p)
+    s
 
 domain C = compress([100, 20, 100, 5, 20])
 let (domain Q, seq_vals) = make_seq(4)
@@ -49,4 +60,4 @@ let (domain A, domain B, xs, ys) = make_pair(3, 2)
 print(V.count, by_w[0].len, by_w[m].len)
 print(K.count, sum_dom(comp_sz))
 print(C.count, sum_dom(seq_vals), sum_dom(xs), sum_dom(ys))
-print(rec_sum(4))
+print(rec_sum(4), nested_destructured(3))

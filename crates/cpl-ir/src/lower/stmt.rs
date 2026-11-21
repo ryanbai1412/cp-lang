@@ -1937,21 +1937,29 @@ impl<'a> Lowerer<'a> {
             ast::PatternKind::Name(name) => self.declare(name, value, mutable, out),
             ast::PatternKind::Domain(name) => {
                 let dname = &name.text;
-                let dom_id = self.domains.len();
-                self.domains.push(format!("{dname}_{dom_id}"));
-                out.push(Stmt::DefDomainFromVal {
-                    id: dom_id,
-                    val: value,
-                });
-                if self.at_top_level() {
-                    self.mod_syms[self.cur_mod].insert(dname.clone(), Sym::Domain(dom_id));
+                let dom_id = if self.at_top_level() {
+                    if let Some(Sym::Domain(existing)) = self.mod_syms[self.cur_mod].get(dname).copied() {
+                        existing
+                    } else {
+                        let id = self.domains.len();
+                        self.domains.push(format!("{dname}_{id}"));
+                        self.mod_syms[self.cur_mod].insert(dname.clone(), Sym::Domain(id));
+                        id
+                    }
                 } else {
+                    let id = self.domains.len();
+                    self.domains.push(format!("{dname}_{id}"));
                     self.cx
                         .local_syms
                         .last_mut()
                         .unwrap()
-                        .insert(dname.clone(), Sym::Domain(dom_id));
-                }
+                        .insert(dname.clone(), Sym::Domain(id));
+                    id
+                };
+                out.push(Stmt::DefDomainFromVal {
+                    id: dom_id,
+                    val: value,
+                });
             }
             ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
                 // Uppercase variable binding like `let P = p` or `let V = g.V` (parsed as Variant).
@@ -2044,24 +2052,36 @@ impl<'a> Lowerer<'a> {
                             _ => None,
                         };
                         if let Some(dname) = dname_opt {
-                            // Each binding site gets its own fresh runtime slot so multiple
-                            // calls to the same existential-returning fn never alias slots.
-                            let fresh_id = self.domains.len();
-                            self.domains.push(format!("{dname}_{fresh_id}"));
-                            if let Some(orig) = callee_doms.get(dom_idx).copied().or(fallback_dom) {
-                                remaps.push((orig, fresh_id));
-                            }
-                            dom_idx += 1;
-                            if self.at_top_level() {
-                                self.mod_syms[self.cur_mod]
-                                    .insert(dname.clone(), Sym::Domain(fresh_id));
+                            // Reuse the pre-registered top-level domain slot when present so
+                            // sibling top-level `fn` signatures refer to the same `DomainId`.
+                            // Otherwise allocate a fresh runtime slot per binding site so
+                            // multiple calls to the same existential-returning fn never alias.
+                            let fresh_id = if self.at_top_level() {
+                                if let Some(Sym::Domain(existing)) =
+                                    self.mod_syms[self.cur_mod].get(&dname).copied()
+                                {
+                                    existing
+                                } else {
+                                    let id = self.domains.len();
+                                    self.domains.push(format!("{dname}_{id}"));
+                                    self.mod_syms[self.cur_mod]
+                                        .insert(dname.clone(), Sym::Domain(id));
+                                    id
+                                }
                             } else {
+                                let id = self.domains.len();
+                                self.domains.push(format!("{dname}_{id}"));
                                 self.cx
                                     .local_syms
                                     .last_mut()
                                     .unwrap()
-                                    .insert(dname.clone(), Sym::Domain(fresh_id));
+                                    .insert(dname.clone(), Sym::Domain(id));
+                                id
+                            };
+                            if let Some(orig) = callee_doms.get(dom_idx).copied().or(fallback_dom) {
+                                remaps.push((orig, fresh_id));
                             }
+                            dom_idx += 1;
                             out.push(Stmt::DefDomainFromVal {
                                 id: fresh_id,
                                 val: field,

@@ -2412,3 +2412,29 @@ let _ = a[Item(1)]
 ";
     assert_eq!(codes(bad_cut), vec![cpl_diag::codes::WRONG_DOMAIN.0]);
 }
+
+#[test]
+fn destructured_domain_in_scope_for_nested_fns() {
+    let ok = "\
+fn make(k: Int) -> (domain P, [P]Int):
+    domain L = 0..k
+    (L, [L] i => i.to_idx)
+
+let (domain C, comp) = make(3)
+var total = 0
+fn bump(c: C, v: Int):
+    total += comp[c] + v
+
+for c in C: bump(c, 1)
+
+fn outer() -> Int:
+    let (domain K, xs) = make(4)
+    fn pick(k: K) -> Int = xs[k]
+    var s = 0
+    for k in K: s += pick(k)
+    s
+
+print(total, outer())
+";
+    assert_eq!(check(ok), vec![]);
+}
