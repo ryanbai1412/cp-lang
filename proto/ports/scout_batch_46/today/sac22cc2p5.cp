@@ -2,39 +2,24 @@
 
 let n: 1..=1_000_000 = read()
 let q: 1..=1_000_000 = read()
+domain Pos = 1..=n
 
 // one Fenwick tree per index parity; an entry counts only in its own parity's tree
-var cur: [0..n]Int = 0
-var fen: [0..2, 0..=n]Int = 0
+var cur: [Pos]Int = 0
+var fen = [Fenwick<Pos, Int>(), Fenwick<Pos, Int>()]
 
-fn add(p: Int, i: Int, d: Int):
-    var j = i + 1
-    while j <= n:
-        fen[p, j] += d
-        j += j & (-j)
-
-fn pre(p: Int, i: Int) -> Int:
-    var j = i
-    var s = 0
-    while j > 0:
-        s += fen[p, j]
-        j -= j & (-j)
-    s
-
-for i in 0..n:
+for i in Pos:
     let x: -1_000_000_000..=1_000_000_000 = read()
     cur[i] = x
-    add(i % 2, i, x)
+    fen[i.ord % 2].add(i, x)
 
 for _ in 0..q:
     let ty: 1..=2 = read()
     if ty == 1:
-        let i: 1..=1_000_000 = read()
+        let i: Pos = read()
         let x: -1_000_000_000..=1_000_000_000 = read()
-        add((i - 1) % 2, i - 1, x - cur[i - 1])
-        cur[i - 1] = x
+        fen[i.ord % 2].add(i, x - cur[i])
+        cur[i] = x
     else:
-        let l: 1..=1_000_000 = read()
-        let r: 1..=1_000_000 = read()
-        let p = (l - 1) % 2
-        print(pre(p, r) - pre(p, l - 1))
+        let (l, r): (Pos, Pos) = read()
+        print(fen[l.ord % 2].sum(l..=r))
