@@ -103,6 +103,14 @@ pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
 /// Is `n` a power of two? `8.is_pow2` is true; `0`, `6` and negatives are not.
 pub @get fn is_pow2(self: Int) -> Bool = self > 0 and self & (self - 1) == 0
 
+/// SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart. The
+/// usual guard for `HashMap` keys and the step of a seeded generator; `U64` arithmetic wraps.
+pub fn splitmix64(x: U64) -> U64:
+    var z: U64 = x + 0x9e3779b97f4a7c15
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
+    z = (z ^ (z >> 27)) * 0x94d049bb133111eb
+    z ^ (z >> 31)
+
 /// The prime factorization of `x >= 1` by trial division. O(sqrt x).
 pub fn factor(x: Int) -> List<(Int, Int)>:
     var out = List<(Int, Int)>()
@@ -245,3 +253,9 @@ fn sign_is_minus_one_zero_or_one():
 fn is_pow2_is_one_set_bit():
     assert 1.is_pow2 and 2.is_pow2 and 1024.is_pow2 and (1 << 62).is_pow2
     assert not 0.is_pow2 and not 6.is_pow2 and not (-4).is_pow2 and not 1023.is_pow2
+
+@test
+fn splitmix64_matches_the_reference_values():
+    assert splitmix64(0) == 0xe220a8397b1dcdaf
+    assert splitmix64(0x9e3779b97f4a7c15) == 0x6e789e6aa1b965f4
+    assert splitmix64(1) != splitmix64(2)

@@ -472,6 +472,12 @@ struct Lowerer<'a> {
     structs: Vec<StructInfo<'a>>,
     gen_structs: Vec<GenStructTemplate<'a>>,
     struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
+    /// The domains made for arrays indexed by a plain range (`[0..n]T`,
+    /// `[1..=n]T`) where a fn asks for a `[D]T`, with their first index.
+    /// One per call and generic name; its size is set where the array is
+    /// passed.
+    range_domains: HashMap<DomainId, i64>,
+    range_domain_sites: HashMap<(ModId, u32, String), DomainId>,
 
     enums: Vec<EnumDef>,
     enum_decls: Vec<(ModId, u32, &'a ast::EnumDecl)>,
@@ -572,6 +578,8 @@ impl<'a> Lowerer<'a> {
             structs: Vec::new(),
             gen_structs: Vec::new(),
             struct_insts: HashMap::new(),
+            range_domains: HashMap::new(),
+            range_domain_sites: HashMap::new(),
             enums: Vec::new(),
             enum_decls: Vec::new(),
             gen_enums: Vec::new(),
@@ -2715,11 +2723,224 @@ impl<'a> Lowerer<'a> {
         id
     }
 
-    fn try_coerce(&mut self, e: Expr, want: &Ty) -> Result<Expr, Expr> {
+    /// Whether `d` stands for the plain range that indexes an array, and
+    /// this code is not the generic fn that was given it: here its
+    /// positions are the plain `Int`s the array is indexed with.
+    pub(super) fn is_range_domain(&self, d: DomainId) -> bool {
+        self.range_domains.contains_key(&d) && !self.gen_env.values().any(|ga| *ga == GenArg::Domain(d))
+    }
+
+    /// The type as the caller of a generic fn writes it: a position or
+    /// boundary of an array's plain range is an `Int`.
+    pub(super) fn plain_ty(&self, ty: &Ty) -> Ty {
+        match ty {
+            Ty::Pos(d) | Ty::Bound(d) if self.is_range_domain(*d) => Ty::Int,
+            Ty::Opt(inner) => Ty::Opt(Box::new(self.plain_ty(inner))),
+            Ty::Range(inner) => Ty::Range(Box::new(self.plain_ty(inner))),
+            Ty::Array { dims, elem } => Ty::Array {
+                dims: dims
+                    .iter()
+                    .map(|dim| match dim {
+                        Dim::Pos(d) if self.is_range_domain(*d) => match self.range_domains[d] {
+                            0 => Dim::Int,
+                            lo => Dim::IntFrom(lo),
+                        },
+                        other => *other,
+                    })
+                    .collect(),
+                elem: elem.clone(),
+            },
+            other => other.clone(),
+        }
+    }
+
+    /// The domain and first index when an array indexed by a plain range
+    /// is given where its `[D]T` is asked for.
+    pub(super) fn range_domain_of(&self, want: &Ty, have: &Ty) -> Option<(DomainId, i64)> {
+        let (Ty::Array { dims: want_dims, elem: want_elem }, Ty::Array { dims: have_dims, elem: have_elem }) =
+            (want, have)
+        else {
+            return None;
+        };
+        let lo = match have_dims.as_slice() {
+            [Dim::Int] => 0,
+            [Dim::IntFrom(lo)] => *lo,
+            _ => return None,
+        };
+        match want_dims.as_slice() {
+            [Dim::Pos(d)] if want_elem == have_elem && self.range_domains.get(d) == Some(&lo) => Some((*d, lo)),
+            _ => None,
+        }
+    }
+
+    /// Between an array's plain range and the domain a generic fn knows
+    /// it by: `[0..n]T` to `[D]T` (which sets the size of `D`), an `Int`
+    /// to a position or boundary (checked), and each of those back.
+    fn range_domain_coerce(&mut self, e: Expr, want: &Ty) -> Result<Expr, Expr> {
+        // `e.span` is already where the file's text is; `mk` shifts again.
+        let span = match self.cur_mod {
+            0 => Span::new(e.span.start.saturating_sub(self.offset), e.span.end.saturating_sub(self.offset)),
+            _ => e.span,
+        };
+        let have = e.ty.clone();
+        match (want, &have) {
+            (Ty::Pos(d), Ty::Int) if self.range_domains.contains_key(d) => Ok(self.cast(Cast::FromLabel(*d), e, want.clone())),
+            (Ty::Int, Ty::Pos(d)) if self.range_domains.contains_key(d) => Ok(self.cast(Cast::Label(*d), e, Ty::Int)),
+            (Ty::Int, Ty::Bound(d)) if self.range_domains.contains_key(d) => {
+                let ord = self.cast(Cast::Ord, e, Ty::Int);
+                let lo = self.mk(ExprKind::DomainLo(*d), Ty::Int, span);
+                Ok(self.mk(ExprKind::Binary(BinOp::Add, Box::new(ord), Box::new(lo)), Ty::Int, span))
+            }
+            (Ty::Bound(d), Ty::Int) if self.range_domains.contains_key(d) => {
+                let d = *d;
+                Ok(self.do_expr(Some(want), span, |lw, out| {
+                    let lo = lw.mk(ExprKind::DomainLo(d), Ty::Int, span);
+                    let ord = lw.mk(ExprKind::Binary(BinOp::Sub, Box::new(e), Box::new(lo)), Ty::Int, span);
+                    let slot = lw.temp(Ty::Int);
+                    out.push(Stmt::Let(slot, Some(ord)));
+                    let below = lw.mk(
+                        ExprKind::Cmp(CmpOp::Lt, Box::new(lw.local(slot, span)), Box::new(lw.int_lit(0, span))),
+                        Ty::Bool,
+                        span,
+                    );
+                    let len = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    let above = lw.mk(
+                        ExprKind::Cmp(CmpOp::Lt, Box::new(len), Box::new(lw.local(slot, span))),
+                        Ty::Bool,
+                        span,
+                    );
+                    let outside = lw.mk(ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(above)), Ty::Bool, span);
+                    let trap = Stmt::Trap("a boundary outside the array's range".to_string(), lw.span(span));
+                    out.push(Stmt::If(outside, Block { stmts: vec![trap] }, Block::default()));
+                    let bound = lw.cast(Cast::Trust, lw.local(slot, span), Ty::Bound(d));
+                    out.push(Stmt::Give(bound));
+                }))
+            }
+            (Ty::Range(want_of), Ty::Range(have_of)) => {
+                let (d, into) = match (&**want_of, &**have_of) {
+                    (Ty::Pos(d), Ty::Int) if self.range_domains.contains_key(d) => (*d, true),
+                    (Ty::Int, Ty::Pos(d)) if self.range_domains.contains_key(d) => (*d, false),
+                    _ => return Err(e),
+                };
+                Ok(self.do_expr(Some(want), span, |lw, out| {
+                    let held = lw.hold(e, out);
+                    let mut end = |lw: &mut Self, which: Builtin| {
+                        let at = lw.mk(ExprKind::Builtin(which, vec![held.clone()]), Ty::Int, span);
+                        let first = lw.mk(ExprKind::DomainLo(d), Ty::Int, span);
+                        let op = if into { BinOp::Sub } else { BinOp::Add };
+                        let moved = lw.mk(ExprKind::Binary(op, Box::new(at), Box::new(first)), Ty::Int, span);
+                        let slot = lw.temp(Ty::Int);
+                        out.push(Stmt::Let(slot, Some(moved)));
+                        lw.local(slot, span)
+                    };
+                    let (lo, hi) = (end(lw, Builtin::RangeLo), end(lw, Builtin::RangeHi));
+                    if into {
+                        // An empty range reads nothing, wherever it is.
+                        let cmp = |lw: &Self, a: Expr, b: Expr| {
+                            lw.mk(ExprKind::Cmp(CmpOp::Lt, Box::new(a), Box::new(b)), Ty::Bool, span)
+                        };
+                        let or = |lw: &Self, op: BinOp, a: Expr, b: Expr| {
+                            lw.mk(ExprKind::Binary(op, Box::new(a), Box::new(b)), Ty::Bool, span)
+                        };
+                        let len = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        let outside = or(
+                            lw,
+                            BinOp::Or,
+                            cmp(lw, lo.clone(), lw.int_lit(0, span)),
+                            cmp(lw, len, hi.clone()),
+                        );
+                        let wrong = or(lw, BinOp::And, cmp(lw, lo.clone(), hi.clone()), outside);
+                        let trap = Stmt::Trap("a range outside the array's range".to_string(), lw.span(span));
+                        out.push(Stmt::If(wrong, Block { stmts: vec![trap] }, Block::default()));
+                    }
+                    let range = ExprKind::Range {
+                        lo: Box::new(lo),
+                        hi: Box::new(hi),
+                    };
+                    out.push(Stmt::Give(lw.mk(range, want.clone(), span)));
+                }))
+            }
+            (Ty::Opt(want_inner), Ty::Opt(have_inner))
+                if want_inner != have_inner && self.plain_ty(want_inner) == self.plain_ty(have_inner) =>
+            {
+                let (want_inner, have) = ((**want_inner).clone(), have.clone());
+                Ok(self.do_expr(Some(want), span, |lw, out| {
+                    let slot = lw.temp(have);
+                    out.push(Stmt::Let(slot, Some(e)));
+                    let held = lw.local(slot, span);
+                    let inner_ty = match &held.ty {
+                        Ty::Opt(inner) => (**inner).clone(),
+                        _ => Ty::Error,
+                    };
+                    let inner = lw.mk(ExprKind::Unwrap(Box::new(held.clone()), false), inner_ty, span);
+                    let inner = lw.coerce(inner, &want_inner, span);
+                    let some = lw.mk(ExprKind::Some(Box::new(inner)), want.clone(), span);
+                    let none = lw.mk(ExprKind::None, want.clone(), span);
+                    let is_some = lw.mk(ExprKind::IsSome(Box::new(held)), Ty::Bool, span);
+                    out.push(Stmt::Give(lw.mk(
+                        ExprKind::If(Box::new(is_some), Box::new(some), Box::new(none)),
+                        want.clone(),
+                        span,
+                    )));
+                }))
+            }
+            (Ty::Array { dims: want_dims, elem: want_elem }, Ty::Array { dims: have_dims, elem: have_elem })
+                if want_elem == have_elem && want_dims != have_dims && want_dims.len() == have_dims.len() =>
+            {
+                let first = |dim: &Dim| match dim {
+                    Dim::Int => Some(0),
+                    Dim::IntFrom(lo) => Some(*lo),
+                    _ => None,
+                };
+                // To the domain sets its size; only a 1-D array has one.
+                let mut sized = None;
+                for (w, h) in want_dims.iter().zip(have_dims) {
+                    match (w, h) {
+                        _ if w == h => {}
+                        (Dim::Pos(d), h)
+                            if want_dims.len() == 1
+                                && self.range_domains.get(d).is_some_and(|lo| first(h) == Some(*lo)) =>
+                        {
+                            sized = Some((*d, self.range_domains[d]));
+                        }
+                        (w, Dim::Pos(d))
+                            if self.range_domains.get(d).is_some_and(|lo| first(w) == Some(*lo)) => {}
+                        _ => return Err(e),
+                    }
+                }
+                let Some((d, lo)) = sized else {
+                    return Ok(Expr {
+                        ty: want.clone(),
+                        ..e
+                    });
+                };
+                Ok(self.do_expr(Some(want), span, |lw, out| {
+                    let held = lw.hold(e, out);
+                    let len = lw.mk(ExprKind::Builtin(Builtin::Len, vec![held.clone()]), Ty::Int, span);
+                    out.push(Stmt::DefDomain {
+                        id: d,
+                        lo: lw.int_lit(lo, span),
+                        len,
+                    });
+                    out.push(Stmt::Give(Expr {
+                        ty: want.clone(),
+                        ..held
+                    }));
+                }))
+            }
+            _ => Err(e),
+        }
+    }
+
+    pub(super) fn try_coerce(&mut self, e: Expr, want: &Ty) -> Result<Expr, Expr> {
         if e.ty == *want || e.ty == Ty::Error || *want == Ty::Error {
             return Ok(e);
         }
         let span = e.span;
+        let e = match self.range_domain_coerce(e, want) {
+            Ok(done) => return Ok(done),
+            Err(e) => e,
+        };
         match (want, &e.ty) {
             (Ty::Pos(d), Ty::DomainVal) => Ok(Expr {
                 kind: ExprKind::Cast(

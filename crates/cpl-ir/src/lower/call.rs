@@ -437,6 +437,9 @@ impl<'a> Lowerer<'a> {
                     p
                 };
                 if let Some(p) = param {
+                    if let Some(pat_ty) = &p.ty {
+                        self.bind_range_domain(pat_ty, &arg.value, &gen_names, &mut inferred, span);
+                    }
                     if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
                         if let Some(pty) = self.probe_ty_silent(&arg.value) {
                             if let Some(pat_ty) = &p.ty {
@@ -448,6 +451,9 @@ impl<'a> Lowerer<'a> {
             }
         }
         for (f, arg) in decl.fields.iter().zip(args) {
+            if new_params.is_none() {
+                self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span);
+            }
             if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
                 if let Some(pty) = self.probe_ty_silent(&arg.value) {
                     self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
@@ -585,6 +591,20 @@ impl<'a> Lowerer<'a> {
                         self.unsupported(arg.value.span, "a `Bool` element passed as `mut`");
                         ok = false;
                     }
+                    let mut place = place;
+                    if let Some((d, lo)) = self.range_domain_of(&param.ty, &place.ty) {
+                        let len = self.mk(
+                            ExprKind::Builtin(Builtin::Len, vec![super::stmt::place_to_expr(&place)]),
+                            Ty::Int,
+                            arg.value.span,
+                        );
+                        pre_stmts.push(Stmt::DefDomain {
+                            id: d,
+                            lo: self.int_lit(lo, arg.value.span),
+                            len,
+                        });
+                        place.ty = param.ty.clone();
+                    }
                     if place.ty != param.ty && place.ty != Ty::Error && param.ty != Ty::Error {
                         self.mismatch(arg.value.span, &param.ty, &place.ty);
                         ok = false;
@@ -625,7 +645,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         let call_expr = self.mk(ExprKind::Call(id, lowered), ret.clone(), span);
-        if pre_stmts.is_empty() && post_stmts.is_empty() {
+        let call = if pre_stmts.is_empty() && post_stmts.is_empty() {
             call_expr
         } else {
             let mut stmts = pre_stmts;
@@ -640,7 +660,11 @@ impl<'a> Lowerer<'a> {
                 stmts.push(Stmt::Give(self.local(res_slot, span)));
             }
             self.mk(ExprKind::Do(Block { stmts }), ret, span)
-        }
+        };
+        // What the fn gives in terms of an array's plain range is the
+        // caller's plain `Int`s.
+        let plain = self.plain_ty(&call.ty);
+        self.try_coerce(call, &plain).unwrap_or_else(|call| call)
     }
 
     /// `Edge(u: a, v: b, w: 5)` or `Edge(a, b, 5)`.

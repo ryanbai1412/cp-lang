@@ -91,3 +91,13 @@ fn two_d_sums_match_brute():
                     assert pre.sum(r1..=r2, c1..=c2) == want
     assert pre.sum(R(2)..R(2), C(1)..=C(6)) == 0
     assert pre.sum(R(0)..=R(4), C(3)..C(3)) == 0
+
+@test
+fn a_plain_range_takes_plain_ints():
+    let a: [0..5]Int = [3, 1, 4, 1, 5]
+    let p = prefix1(a)
+    assert p.prefix(0) == 0 and p.prefix(2) == 4 and p.prefix(5) == 14
+    assert p.sum(1..3) == 5 and p.sum(1..=3) == 6 and p.sum(2..2) == 0
+    let b: [1..=3]Int = [10, 20, 30]
+    let q = prefix1(b)
+    assert q.sum(1..=3) == 60 and q.sum(2..=3) == 50 and q.prefix(1) == 0

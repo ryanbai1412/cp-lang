@@ -2168,6 +2168,14 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     }
+                    // A domain that stands for an array's plain range is
+                    // indexed by the plain `Int`, checked.
+                    if let (Dim::Pos(d), Ty::Int) = (dim, &value.ty) {
+                        if self.range_domains.contains_key(d) {
+                            out.push(self.cast(Cast::FromLabel(*d), value, Ty::Pos(*d)));
+                            continue;
+                        }
+                    }
                     // A `Bool` picks a cell of a `[Bool]T`: `false` the
                     // first, `true` the second. The checker has made
                     // sure the array is one.

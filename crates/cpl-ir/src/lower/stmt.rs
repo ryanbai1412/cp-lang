@@ -1738,6 +1738,19 @@ impl<'a> Lowerer<'a> {
                 self.grid_keep(target, Some(op == ast::AssignOp::Max), value, false, out);
                 return;
             }
+            // `a[l..r] = b[l2..r2] + x`: each cell worked out and stored.
+            if let (ast::AssignOp::Set, ast::ExprKind::Binary { op: bin, lhs, rhs, .. }) = (op, &value.kind) {
+                if matches!(bin, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor) {
+                    if self.grid_row(lhs).is_some() && self.one_cell(rhs) {
+                        self.part_map(target, *bin, lhs, rhs, false, out);
+                        return;
+                    }
+                    if self.grid_row(rhs).is_some() && self.one_cell(lhs) {
+                        self.part_map(target, *bin, rhs, lhs, true, out);
+                        return;
+                    }
+                }
+            }
             if self.one_cell(value) {
                 self.grid_fill(target, op, value, out);
                 return;
@@ -2163,6 +2176,117 @@ impl<'a> Lowerer<'a> {
             Some(ty) => !matches!(ty, Ty::List(_) | Ty::Array { .. }),
             None => !matches!(value.kind, ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. }),
         }
+    }
+
+    /// `a[l..r] = b[l2..r2] + x` (and `x + b[..]`, with `-`, `*`, `&`, `|`,
+    /// `^`): each cell of the part on the left takes the cell of the part
+    /// on the right worked with the one value, in one loop and no copy.
+    /// The two parts have one length. When they lie over each other in
+    /// one array the loop runs from the end that reads every cell before
+    /// it is stored to, so the result is that of working out the right
+    /// side first.
+    fn part_map(
+        &mut self,
+        target: &ast::Expr,
+        bin: BinOp,
+        source: &ast::Expr,
+        scalar: &ast::Expr,
+        scalar_first: bool,
+        out: &mut Vec<Stmt>,
+    ) {
+        let span = target.span;
+        let (Some((base, indices, axis)), Some((from, from_indices, from_axis))) =
+            (self.grid_row(target), self.grid_row(source))
+        else {
+            return;
+        };
+        let place = self.place(base);
+        let place = self.settle_indexes(place, out);
+        if let PlaceKind::Local(s) = root_place(&place) {
+            self.cx.mut_slots.insert(s);
+        }
+        // The other array is read where it is when it has a name.
+        let rows = match self.try_place(from) {
+            Some(theirs) => {
+                let theirs = self.settle_indexes(theirs, out);
+                place_to_expr(&theirs)
+            }
+            None => {
+                let theirs = self.expr(from, None);
+                self.hold(theirs, out)
+            }
+        };
+        let (Some((dims, elem)), Some((from_dims, from_elem))) = (Self::axes_of(&place.ty), Self::axes_of(&rows.ty))
+        else {
+            return;
+        };
+        if elem != from_elem || !matches!(elem, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float) {
+            if elem != Ty::Error && from_elem != Ty::Error {
+                self.unsupported(span, "a part worked with one value, cell for cell, on cells that are not one kind of number");
+            }
+            return;
+        }
+        let index_ty = |dim: Dim| match dim {
+            Dim::Pos(d) => Ty::Pos(d),
+            Dim::Bound(d) => Ty::Bound(d),
+            Dim::Int | Dim::IntFrom(_) => Ty::Int,
+        };
+        let (at, from_at) = (self.temp(index_ty(dims[axis])), self.temp(index_ty(from_dims[from_axis])));
+        let cell = self.axis_cell(&place.ty, indices, at, span);
+        let cell: Vec<Expr> =
+            cell.into_iter().enumerate().map(|(k, index)| if k == axis { index } else { self.hold(index, out) }).collect();
+        let from_cell = self.axis_cell(&rows.ty, from_indices, from_at, span);
+        let from_cell: Vec<Expr> = from_cell
+            .into_iter()
+            .enumerate()
+            .map(|(k, index)| if k == from_axis { index } else { self.hold(index, out) })
+            .collect();
+        let len = self.axis_len(place_to_expr(&place), axis, span);
+        let (lo, hi) = self.axis_part(&indices[axis], dims[axis], len, out);
+        let from_len = self.axis_len(rows.clone(), from_axis, span);
+        let (from_lo, from_hi) = self.axis_part(&from_indices[from_axis], from_dims[from_axis], from_len, out);
+        let sub = |lw: &Self, a: Expr, b: Expr| lw.mk(ExprKind::Binary(BinOp::Sub, Box::new(a), Box::new(b)), Ty::Int, span);
+        let count = sub(self, hi, lo.clone());
+        let count = self.hold(count, out);
+        let theirs = sub(self, from_hi, from_lo.clone());
+        let differ = self.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(theirs), Box::new(count.clone())), Ty::Bool, span);
+        let trap = Stmt::Trap(
+            format!("`a[l..r] = b[l2..r2] {} x` needs two parts of one length", bin.text()),
+            self.span(span),
+        );
+        out.push(Stmt::If(differ, Block { stmts: vec![trap] }, Block::default()));
+        let value = self.expect(scalar, &elem);
+        let value = self.hold(value, out);
+        let k = self.temp(Ty::Int);
+        let step = |lw: &Self, slot: Slot, first: &Expr, dim: Dim| {
+            let sum = lw.mk(
+                ExprKind::Binary(BinOp::Add, Box::new(first.clone()), Box::new(lw.local(k, span))),
+                Ty::Int,
+                span,
+            );
+            let sum = match index_ty(dim) {
+                Ty::Int => sum,
+                ty => lw.cast(Cast::Trust, sum, ty),
+            };
+            Stmt::Let(slot, Some(sum))
+        };
+        let read = self.mk(ExprKind::Index(Box::new(rows), from_cell), elem.clone(), span);
+        let (left, right) = if scalar_first { (value, read) } else { (read, value) };
+        let worked = self.mk(ExprKind::Binary(bin, Box::new(left), Box::new(right)), elem.clone(), span);
+        let store = Place { kind: PlaceKind::Index(Box::new(place), cell), ty: elem, span: self.span(span) };
+        let body = vec![
+            step(self, at, &lo, dims[axis]),
+            step(self, from_at, &from_lo, from_dims[from_axis]),
+            Stmt::Assign(store, AssignOp::Set, worked),
+        ];
+        let run = |lw: &mut Self, rev: bool| {
+            let iter = Iter::Range { lo: lw.int_lit(0, span), hi: count.clone(), step: None, rev };
+            let lid = lw.fresh_loop();
+            Block { stmts: vec![Stmt::For(lid, k, iter, Block { stmts: body.clone() })] }
+        };
+        let (forward, backward) = (run(self, false), run(self, true));
+        let later = self.mk(ExprKind::Cmp(CmpOp::Gt, Box::new(lo), Box::new(from_lo)), Ty::Bool, span);
+        out.push(Stmt::If(later, backward, forward));
     }
 
     /// `g[r, lo..hi] = 0`, `a[l..r] += x`, `g[.., c] min= x`: every cell of

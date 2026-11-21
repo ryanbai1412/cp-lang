@@ -199,6 +199,13 @@ impl Ty {
                     _ => bounds.ends_with(".bounds"),
                 }
             }
+            // The boundaries of a plain `0..n` index are plain `Int`s:
+            // `prefix1(a).prefix(k)` on a `[0..n]T`.
+            (a, Ty::Named { name, args }) | (Ty::Named { name, args }, a)
+                if name == "Bounds" && a.is_int() && matches!(args.as_slice(), [arg] if arg.is_int()) =>
+            {
+                true
+            }
             // A string is a list of its characters (decision 9: `Str` is
             // `[domain S]Char`, one flat byte array).
             (Ty::Str, Ty::Named { name, args }) if name == "List" => {

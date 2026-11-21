@@ -1063,6 +1063,12 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        for (param, arg) in ast_params.iter().zip(&matched) {
+            if let (Some(pty), Some(arg)) = (&param.ty, arg) {
+                self.bind_range_domain(pty, &arg.value, &gen_names, &mut inferred, span);
+            }
+        }
+
         // Pass 1: unify from non-lambda arguments (and detect bare operators passed for unbound type params).
         for (param, arg) in ast_params.iter().zip(&matched) {
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {
@@ -1356,6 +1362,56 @@ impl<'a> Lowerer<'a> {
             self.sigs[fn_id].params[0].ty = ty;
         }
         self.user_call(fn_id, receiver, args, span)
+    }
+
+    /// An array indexed by a plain range, `[0..n]T` or `[1..=n]T`, where
+    /// a `[D]T` (or `?[D]T`) is asked for: `D` is a domain of this call,
+    /// sized by the array where it is passed.
+    pub(super) fn bind_range_domain(
+        &mut self,
+        pty: &ast::Type,
+        arg: &ast::Expr,
+        gen_names: &[String],
+        inferred: &mut GenEnv,
+        span: Span,
+    ) {
+        let pty = match &pty.kind {
+            ast::TypeKind::Optional(inner) => inner,
+            _ => pty,
+        };
+        let ast::TypeKind::Array { index, .. } = &pty.kind else {
+            return;
+        };
+        let [ast::Type {
+            kind: ast::TypeKind::Named { name, args: targs },
+            ..
+        }] = index.as_slice()
+        else {
+            return;
+        };
+        if !targs.is_empty() || !gen_names.contains(&name.text) || inferred.contains_key(&name.text) {
+            return;
+        }
+        let lo = match self.probe_ty_silent(arg) {
+            Some(Ty::Array { dims, .. }) => match dims.as_slice() {
+                [Dim::Int] => 0,
+                [Dim::IntFrom(lo)] => *lo,
+                _ => return,
+            },
+            _ => return,
+        };
+        let site = (self.cur_mod, self.offset + span.start, name.text.clone());
+        let d = match self.range_domain_sites.get(&site) {
+            Some(d) => *d,
+            None => {
+                let d = self.domains.len();
+                self.domains.push(format!("{}_{d}", name.text));
+                self.range_domains.insert(d, lo);
+                self.range_domain_sites.insert(site, d);
+                d
+            }
+        };
+        inferred.insert(name.text.clone(), GenArg::Domain(d));
     }
 
     /// Evaluates a struct-associated constant (e.g. `Mod<P>.zero`, `Mod<P>.one`).

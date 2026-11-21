@@ -212,6 +212,48 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `a[l..r] = b[l2..r2] + x`, or `x + b[..]`: a part takes another
+    /// part worked with one value, cell for cell. Gives the type of the
+    /// part on the right, a row; `None` when the statement is not one.
+    fn part_map(&mut self, target: &ast::Expr, op: AssignOp, value: &ast::Expr) -> Option<Ty> {
+        let is_part = |e: &ast::Expr| {
+            matches!(&e.kind, ExprKind::Index { indices, .. }
+                if indices.iter().filter(|i| matches!(i.kind, ExprKind::Range { step: None, .. })).count() == 1)
+        };
+        let ExprKind::Binary { op: bin, lhs, rhs, .. } = &value.kind else {
+            return None;
+        };
+        let worked = matches!(
+            bin,
+            ast::BinOp::Add | ast::BinOp::Sub | ast::BinOp::Mul | ast::BinOp::BitAnd | ast::BinOp::BitOr | ast::BinOp::BitXor
+        );
+        if op != AssignOp::Set || !worked || !is_part(target) || is_part(lhs) == is_part(rhs) {
+            return None;
+        }
+        let (part, one) = if is_part(lhs) { (lhs, rhs) } else { (rhs, lhs) };
+        let (part_ty, one_ty) = (self.infer(part), self.infer(one));
+        let cell = self.element_ty(&part_ty);
+        let row = |ty: &Ty| matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List");
+        if part_ty == Ty::Error || one_ty == Ty::Error {
+            return Some(Ty::Error);
+        }
+        let number = cell.is_int() || cell == Ty::Float;
+        if !row(&part_ty) || row(&one_ty) || !number || !(one_ty.is_vague() || self.fits(&one_ty, &cell)) {
+            let message = format!(
+                "`{}` works each cell of `{}` with one number, but `{}` is {}",
+                self.quote(value.span),
+                self.quote(part.span),
+                self.quote(one.span),
+                one_ty.with_article()
+            );
+            if let Some(diag) = self.error(codes::BAD_OPERANDS, value.span, message) {
+                diag.help = Some("the cells and the value are one kind of number: `a[l..r] = b[l2..r2] + x`".to_string());
+            }
+            return Some(Ty::Error);
+        }
+        Some(part_ty)
+    }
+
     /// `a max= b` on a row (an array of one dimension, or a list) goes
     /// cell by cell, so `b` is a row of the same type.
     pub(crate) fn row_keep(&mut self, target: &ast::Expr, target_ty: &Ty, value: &ast::Expr, value_ty: &Ty) {
@@ -651,7 +693,10 @@ impl<'a> Checker<'a> {
             StmtKind::Expr(expr) => return self.infer(expr),
             StmtKind::Assign { target, op, value } => {
                 let target_ty = self.infer(target);
-                let value_ty = self.infer(value);
+                let value_ty = match self.part_map(target, *op, value) {
+                    Some(ty) => ty,
+                    None => self.infer(value),
+                };
                 self.optional_fold(target, &target_ty, *op);
                 self.map_fold(target, *op, value);
                 self.assign_alias(target, *op, value);
