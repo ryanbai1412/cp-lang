@@ -2267,6 +2267,12 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
 - **43.4 `cap: none` is 2^60.** An unbounded arc is a capacity no finite cut picks, with room
   for eight of them in a sum before 63-bit overflow. Reason: matches the shipped `FlowGraph.add`;
   a true infinity would need a sum type in the inner loop. Reverse: a `Cap` enum.
+- **43.5 Min-cost flow returns to `std`.** `CostFlow` replaces `examples/local-lib`'s
+  `MinCostFlow`, reversing its 0.2.2 relocation (section 19); `max_matching` and the
+  bounded flows move up with it. Reason: the area survey (design section 1) puts min-cost
+  flow beside Dinic in every contest library (AtCoder Library's `mcf_graph`, KACTL), and a
+  second network type outside `std` split the `Arc` vocabulary. Reverse: move `CostFlow`
+  back to the local library.
 
 ## 44. Containers area design (§4.8–4.9, 2026-11-21)
 

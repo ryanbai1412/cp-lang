@@ -1174,24 +1174,25 @@ share `Arc` and one accessor vocabulary (`flow`, `cap`, `source`,
 function returning a value. Objectives are named (`max_`/`min_`), never
 encoded by negating weights; options are named arguments (`limit:`,
 `cap: none`). Sides, vertices and input edges are domains: a matching is
-`[L]?R`, a bounded flow is `[E]Int`.
+`[L]?R`, a bounded flow is `[E]Int`. All of it ships in `stdlib/flow.cp`, with
+matched-C++ timings in `bench/flow/`.
 
 ```cp
 struct Arc(id: Int)
     @get fn rev(self) -> Arc                                  // O(1)
-struct FlowGraph<V>                    // [have] Dinic
+struct FlowGraph<V>                    // Dinic
     fn new() -> FlowGraph<V>                                  // O(V)
     fn add(mut self, u: V, v: V, cap: ?Int) -> Arc            // O(1)
     fn add_both(mut self, u: V, v: V, cap: Int) -> Arc        // O(1)
     fn flow(self, a: Arc) -> Int                              // O(1)
     fn cap(self, a: Arc) -> Int                               // O(1)
-    fn source(self, a: Arc) -> V                              // O(1) [new]
+    fn source(self, a: Arc) -> V                              // O(1)
     fn target(self, a: Arc) -> V                              // O(1)
     fn max_flow(mut self, s: V, t: V, limit: ?Int = none) -> Int
-        // O(V^2 E); O(E sqrt V) on unit networks; limit: [new]
+        // O(V^2 E); O(E sqrt V) on unit networks
     fn min_cut(self, s: V) -> [V]Bool                         // O(V + E)
     fn reset(mut self)                                        // O(E)
-struct CostFlow<V>                     // [local] successive shortest paths
+struct CostFlow<V>                     // successive shortest paths
     fn new() -> CostFlow<V>                                   // O(V)
     fn add(mut self, u: V, v: V, cap: ?Int, cost: Int) -> Arc // O(1)
     fn flow(self, a: Arc) -> Int                              // O(1)
@@ -1205,25 +1206,25 @@ struct CostFlow<V>                     // [local] successive shortest paths
     fn slope(mut self, s: V, t: V, limit: ?Int = none)
         -> List<(flow: Int, cost: Int)>                       // same
 fn max_closure<V, E>(profit: [V]Int, needs: [E](u: V, v: V))
-    -> (value: Int, take: [V]Bool)               // [new] one max flow
+    -> (value: Int, take: [V]Bool)               // one max flow
 fn max_matching<L, R>(adj: [L]List<R>)
-    -> (size: Int, mate: [L]?R, back: [R]?L)     // [local] O(E sqrt V)
+    -> (size: Int, mate: [L]?R, back: [R]?L)     // O(E sqrt V)
 fn min_vertex_cover<L, R>(adj: [L]List<R>)
-    -> (left: [L]Bool, right: [R]Bool)           // [local] O(E sqrt V)
+    -> (left: [L]Bool, right: [R]Bool)           // O(E sqrt V)
 fn max_weight_matching<L, R>(weight: (L, R) -> Int)
-    -> (total: Int, mate: [L]R)                  // [have] O(L^2 R), L <= R
+    -> (total: Int, mate: [L]R)                  // O(L^2 R), L <= R
 fn min_weight_matching<L, R>(weight: (L, R) -> Int)
-    -> (total: Int, mate: [L]R)                  // [new] O(L^2 R), L <= R
+    -> (total: Int, mate: [L]R)                  // O(L^2 R), L <= R
 fn general_matching<V>(adj: [V]List<V>)
-    -> (size: Int, mate: [V]?V)                  // [new] O(V^3) Edmonds
+    -> (size: Int, mate: [V]?V)                  // O(V^3) Edmonds
 fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int
 fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
     -> ?(value: Int, flow: [E]Int)
 fn min_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
     -> ?(value: Int, flow: [E]Int)
-    // [local] each two max flows on V + 2 vertices
+    // each two max flows on V + 2 vertices
 fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int))
-    -> List<(u: V, v: V, w: Int)>                // [new] V - 1 max flows
+    -> List<(u: V, v: V, w: Int)>                // V - 1 max flows
 ```
 
 Staged (design section 7): `global_min_cut`, weighted general matching,

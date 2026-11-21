@@ -10,7 +10,7 @@ examples/local-lib/
   lib.toml                    name = "lib"
   ds/                         data structures
   math/                       numbers, algebra, transforms
-  graph/                      graph decompositions, flow, 2-SAT
+  graph/                      graph decompositions, 2-SAT
   geom/                       computational geometry
   grid/                       grid extensions
   dp/                         DP optimizations
@@ -34,7 +34,7 @@ locked **CP Lang 0.2.2** architecture (`research/language-architecture-v2.2.md`)
 keeps `std` small enough to know by heart by placing specialized
 structures and algorithms — including the 11 0.2.2 relocations (`MonoDeque`,
 `Steps`, `TwoSat`, `Mat`, `palindromes`, `shortest`/`walk_back`, `mst`,
-`convex_hull`, `Dir8`, and `MinCostFlow`) plus the T13 library structures —
+`convex_hull`, `Dir8`, and `MinCostFlow`, since moved back to `std.flow` as `CostFlow`) plus the T13 library structures —
 in a local library like this one. Each module below is one file with its
 tests.
 
@@ -107,8 +107,6 @@ Graphs, in `graph/`:
   edge exactly once (Hierholzer), or `none`.
 - `two_sat.cp`: `TwoSat<X>` and `Lit<X>`, 2-SAT over a typed variable
   domain backed by `std.graph.scc`.
-- `min_cost_flow.cp`: `MinCostFlow<V>` and `CostArc`, successive shortest
-  paths with Johnson potentials (SPFA initialization + Dijkstra).
 - `functional.cp`: `Functional<V>`, the graph where every vertex has one
   way out, split into its rings and the trees draining into them, with
   `jump`, `dist`, and `jump_while`.
@@ -118,11 +116,6 @@ Graphs, in `graph/`:
   tree) and `spanning` forest selector.
 - `min_count.cp`: `MinCount<P>` shortest-path distance + count semiring and
   `floyd_warshall`.
-- `matching.cp`: `max_matching`, Hopcroft-Karp bipartite matching over two
-  typed sides, with the minimum vertex cover that proves it.
-- `bounded_flow.cp`: `circulation`, `max_bounded_flow` and
-  `min_bounded_flow`, flows whose arcs have lower bounds, on top of
-  `std.flow`.
 
 Geometry and grids, in `geom/` and `grid/`:
 
