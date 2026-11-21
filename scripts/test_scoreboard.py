@@ -651,7 +651,9 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             }
             diff_bad = sb.diff_against_baseline(cur_grew, base, mode="fast")
             self.assertTrue(any("spelling drift" in m for m in diff_bad["regressions"]))
-            self.assertTrue(any("active/dream spelling drift must be 0" in m for m in diff_bad["regressions"]))
+            self.assertTrue(
+                any("active/dream spelling drift" in m and "must be 0" in m for m in diff_bad["regressions"])
+            )
 
             cur_better = {
                 "ports": [],
@@ -664,8 +666,8 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
                         "total_non_canonical": 5,
                         "active_non_canonical": 0,
                         "constructs": {
-                            **sd["constructs"],
-                            "sum": {**sd["constructs"]["sum"], "non_canonical": 1},
+                            k: {**v, "active_non_canonical": 0, **({"non_canonical": 1} if k == "sum" else {})}
+                            for k, v in sd["constructs"].items()
                         },
                     },
                 },
@@ -971,6 +973,85 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         diff_good = sb.diff_against_baseline(cur_good, base, mode="fast")
         self.assertEqual(diff_good["regressions"], [])
         self.assertTrue(any("dream-compile improved" in m for m in diff_good["improvements"]))
+
+    def test_spelling_drift_construct_split(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ec = os.path.join(tmp, "ecnerwala")
+            os.makedirs(ec, exist_ok=True)
+            with open(os.path.join(ec, "a.cp"), "w", encoding="utf-8") as f:
+                f.write(
+                    "@multitest\n"
+                    "for i in Pos where a[i] > 0:\n"
+                    "    let x = a.count(where: v => v > 0)\n"
+                    "    let y = two.pow(n) + two ** n\n"
+                    "    let z = b.rev() + a.len() + a.len + a.max()\n"
+                )
+            sd = sb.measure_spelling_drift(tmp)
+            cs = sd["constructs"]
+            self.assertEqual(cs["multitest"]["active_non_canonical"], 1)
+            self.assertEqual(cs["where_filter"]["active_non_canonical"], 2)
+            self.assertEqual(cs["dot_pow"]["active_non_canonical"], 1)
+            self.assertEqual(cs["dot_pow"]["active_counts"]["a ** b"], 1)
+            self.assertEqual(cs["getter_parens"]["active_non_canonical"], 2)
+            self.assertEqual(cs["getter_parens"]["active_counts"][".getter"], 1)
+
+            # Growing a newly tracked construct's active drift must fail; reducing it records improvement.
+            base = {
+                "ports": [],
+                "totals": {
+                    "frictions": {"open_blockers": 0, "warnings": 0},
+                    "tokens": {},
+                    "friction_lint": {"wa_trap": 0},
+                    "spelling_drift": {
+                        "total_non_canonical": 5,
+                        "active_non_canonical": 5,
+                        "constructs": {
+                            "multitest": {"non_canonical": 0, "active_non_canonical": 0},
+                            "where_filter": {"non_canonical": 2, "active_non_canonical": 2},
+                            "dot_pow": {"non_canonical": 1, "active_non_canonical": 1},
+                            "getter_parens": {"non_canonical": 2, "active_non_canonical": 2},
+                        },
+                    },
+                },
+            }
+            cur_bad = {
+                "ports": [],
+                "totals": {
+                    **base["totals"],
+                    "spelling_drift": {
+                        "total_non_canonical": 6,
+                        "active_non_canonical": 6,
+                        "constructs": {
+                            "multitest": {"non_canonical": 0, "active_non_canonical": 0},
+                            "where_filter": {"non_canonical": 3, "active_non_canonical": 3},
+                            "dot_pow": {"non_canonical": 1, "active_non_canonical": 1},
+                            "getter_parens": {"non_canonical": 2, "active_non_canonical": 2},
+                        },
+                    },
+                },
+            }
+            d_bad = sb.diff_against_baseline(cur_bad, base, mode="fast")
+            self.assertTrue(any("where_filter" in m for m in d_bad["regressions"]))
+
+            cur_good = {
+                "ports": [],
+                "totals": {
+                    **base["totals"],
+                    "spelling_drift": {
+                        "total_non_canonical": 3,
+                        "active_non_canonical": 3,
+                        "constructs": {
+                            "multitest": {"non_canonical": 0, "active_non_canonical": 0},
+                            "where_filter": {"non_canonical": 1, "active_non_canonical": 1},
+                            "dot_pow": {"non_canonical": 0, "active_non_canonical": 0},
+                            "getter_parens": {"non_canonical": 2, "active_non_canonical": 2},
+                        },
+                    },
+                },
+            }
+            d_good = sb.diff_against_baseline(cur_good, base, mode="fast")
+            self.assertEqual(d_good["regressions"], [])
+            self.assertTrue(any("dot_pow" in m for m in d_good["improvements"]))
 
 
 if __name__ == "__main__":

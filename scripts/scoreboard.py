@@ -1368,6 +1368,31 @@ SPELLING_DRIFT_SPECS = {
             "sort(mut xs)": re.compile(r"(?<![.\w])(?<!fn )sort\s*\(\s*mut\b"),
         },
     },
+    "where_filter": {
+        "canonical": "if / positional",
+        "patterns": {
+            "if / positional": re.compile(r"\bfor\b[^\n]*\bif\b"),
+            "where filter": re.compile(r"\bwhere\s*:|\bfor\b[^\n]*\bwhere\b"),
+        },
+    },
+    "dot_pow": {
+        "canonical": "a ** b",
+        "patterns": {
+            "a ** b": re.compile(r"\*\*"),
+            ".pow(...)": re.compile(r"\.pow\s*\("),
+        },
+    },
+    "getter_parens": {
+        "canonical": ".getter",
+        "patterns": {
+            ".getter": re.compile(
+                r"\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\b(?!\s*\()"
+            ),
+            ".getter()": re.compile(
+                r"\.(?:len|is_empty|empty|size|rev|inv|last|front|back|top|keys|values|items|chars|bytes|popcount|bit_len)\s*\(\s*\)"
+            ),
+        },
+    },
 }
 
 
@@ -1964,22 +1989,42 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
 
         bsd = bt.get("spelling_drift")
         csd = ct.get("spelling_drift")
-        if csd and csd.get("active_non_canonical", 0) > 0:
-            regressions.append(
-                f"active/dream spelling drift must be 0, found {csd['active_non_canonical']} "
-                "(run `cpl lint --fix` and `python3 scripts/fix-spelling-drift.py --write`)"
-            )
+        zero_locked = {"multitest", "sum", "first", "sort"}
+        if csd:
+            b_cs = (bsd.get("constructs") or {}) if bsd else {}
+            c_cs = csd.get("constructs") or {}
+            for cname, cent in c_cs.items():
+                bent = b_cs.get(cname)
+                c_ca = cent.get("active_non_canonical", 0)
+                if cname in zero_locked or (bent is not None and bent.get("active_non_canonical", 0) == 0):
+                    if c_ca > 0:
+                        regressions.append(
+                            f"active/dream spelling drift ({cname}) must be 0, found {c_ca} "
+                            "(run `cpl lint --fix` and `python3 scripts/fix-spelling-drift.py --write`)"
+                        )
+                elif bent is not None:
+                    b_ca = bent.get("active_non_canonical", 0)
+                    if c_ca > b_ca:
+                        regressions.append(
+                            f"active/dream spelling drift ({cname}) grew: {b_ca} -> {c_ca}"
+                        )
+                    elif c_ca < b_ca:
+                        improvements.append(
+                            f"active/dream spelling drift ({cname}) reduced: {b_ca} -> {c_ca}"
+                        )
         if bsd and csd:
-            b_tot = bsd.get("total_non_canonical", 0)
-            c_tot = csd.get("total_non_canonical", 0)
+            b_cs = bsd.get("constructs") or {}
+            c_cs = csd.get("constructs") or {}
+            shared = [n for n in c_cs if n in b_cs]
+            b_tot = sum(b_cs[n]["non_canonical"] for n in shared)
+            c_tot = sum(c_cs[n]["non_canonical"] for n in shared)
             if c_tot > b_tot:
                 regressions.append(f"spelling drift non-canonical total grew: {b_tot} -> {c_tot}")
             elif c_tot < b_tot:
                 improvements.append(f"spelling drift reduced: {b_tot} -> {c_tot}")
-            for cname, cent in (csd.get("constructs") or {}).items():
-                bent = (bsd.get("constructs") or {}).get(cname)
-                if not bent:
-                    continue
+            for cname in shared:
+                bent = b_cs[cname]
+                cent = c_cs[cname]
                 if cent["non_canonical"] > bent["non_canonical"]:
                     regressions.append(
                         f"spelling drift ({cname}) grew: {bent['non_canonical']} -> {cent['non_canonical']}"
