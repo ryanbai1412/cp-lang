@@ -15,7 +15,7 @@ let n: 1..=400_000 = read()
 domain V = 1..=n
 let kids: [V]?(l: V, r: V) = read(none: (0, 0))
 
-let tree = Rooted(root: V.first, adj: v => kids[v].list)
+let tree = Rooted(root: V.first, next: v => kids[v].list)
 var gen: [V]Int = 0
 for v in tree.Pre.rev:
     if let (l, r) = kids[v]: gen[v] = max(gen[l], gen[r] + 1)
