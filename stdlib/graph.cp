@@ -96,6 +96,11 @@ pub struct Graph<V, E>:
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = start[u.to_idx + 1] - start[u.to_idx]
 
+    /// The `i`-th arc out of `u`, `0 <= i < deg(u)`, in the order `out(u)` yields them. O(1).
+    pub fn arc(self, u: V, i: Int) -> (to: V, e: E):
+        assert 0 <= i < self.deg(u)
+        unchecked: return arcs[start[u.to_idx] + i]
+
     /// The graph with every arc reversed. A rebuild, O(n + m).
     pub fn transpose(self) -> Graph<V, E>:
         var back: List<0..=2_000_000_000> = List.filled(V.K + 1, 0)
@@ -140,7 +145,7 @@ pub fn topo<V, N>(next: N) -> ?List<V>:
 /// every arc goes from a smaller or equal component to a larger or equal
 /// one (a topological order of the condensation). O(n + m), no recursion.
 pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
-    let out = [V] v => [a.to for a in next.out(v)]
+    let out = table::<V>(next, a => a.to)
     var seen: [V]?Int = none  // discovery time
     var low: [V]Int = 0
     var done: [V]?Int = none  // component, in order of completion
@@ -157,9 +162,9 @@ pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
                 low[u] = timer
                 timer += 1
                 stack.push(u)
-            if i < out[u].len:
+            if i < out.deg(u):
                 path.last! = (u, i + 1)
-                let v = out[u][i]
+                let v = out.arc(u, i)
                 if seen[v] == none: path.push((v, 0))
                 elif done[v] == none: low[u] min= seen[v]!
             else:
@@ -191,6 +196,21 @@ pub struct Adj<V, A>:
 
     /// The number of arcs out of `u`. O(1).
     pub fn deg(self, u: V) -> Int = start[u.to_idx + 1] - start[u.to_idx]
+
+    /// The `i`-th arc out of `u`, `0 <= i < deg(u)`, in the order `out(u)` yields them. O(1).
+    pub fn arc(self, u: V, i: Int) -> A:
+        assert 0 <= i < self.deg(u)
+        unchecked: return arcs[start[u.to_idx] + i]
+
+/// What `next` yields out of each vertex, each arc mapped by `f`, as one flat `Adj`: for a
+/// search that resumes at an arc by its index. O(n + m) and two lists, never one per vertex.
+fn table<V, N, A, R>(next: N, f: A -> R) -> Adj<V, R>:
+    var start: List<0..=2_000_000_000> = [0]
+    var arcs = List<R>()
+    for v in V:
+        for a in next.out(v): arcs.push(f(a))
+        start.push(arcs.len)
+    Adj(start, arcs)
 
 /// `Graph.directed(pairs)` on a plain list of `(u, v)`: CSR adjacency of each vertex.
 /// No edge domain, and `for v in g[u]` yields the vertex itself. O(n + m).
@@ -291,7 +311,7 @@ pub fn condense<V, N, C>(next: N, comp: [V]C) -> [C]List<(to: C)>:
 /// is a bridge, so `condense(next, comp)` yields the bridge tree.
 /// O(n + m), iterative Tarjan low-link.
 pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C):
-    let out = [V] v => [a for a in next.out(v)]
+    let out = table::<V>(next, a => a)
     var tin: [V]?Int = none
     var low: [V]Int = 0
     var cid: [V]?Int = none
@@ -309,9 +329,9 @@ pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C):
                 low[u] = timer
                 timer += 1
                 stack.push(u)
-            if i < out[u].len:
+            if i < out.deg(u):
                 frames.last! = (u, i + 1, pe)
-                let a = out[u][i]
+                let a = out.arc(u, i)
                 let eid = a.e.to_idx
                 if pe != none and eid == pe!: continue
                 let v = a.to
@@ -337,7 +357,7 @@ pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C):
 
 /// Handles disconnected graphs and root child count. O(n + m), iterative.
 pub fn articulation_points<V, N>(next: N) -> [V]Bool:
-    let out = [V] v => [a.to for a in next.out(v)]
+    let out = table::<V>(next, a => a.to)
     var tin: [V]?Int = none
     var low: [V]Int = 0
     var is_cut: [V]Bool = false
@@ -354,9 +374,9 @@ pub fn articulation_points<V, N>(next: N) -> [V]Bool:
                 tin[u] = timer
                 low[u] = timer
                 timer += 1
-            if i < out[u].len:
+            if i < out.deg(u):
                 frames.last! = (u, i + 1, p)
-                let v = out[u][i]
+                let v = out.arc(u, i)
                 if p != none and v == p!: continue
                 if tin[v] == none:
                     children[u] += 1
@@ -381,7 +401,7 @@ pub fn articulation_points<V, N>(next: N) -> [V]Bool:
 
 /// Vertex-biconnected components (blocks) of an undirected graph via Tarjan DFS. O(|V| + |E|).
 pub fn biconnected_components<V, N>(next: N) -> List<List<V>>:
-    let out = [V] v => [a.to for a in next.out(v)]
+    let out = table::<V>(next, a => a.to)
     var tin: [V]?Int = none
     var low: [V]Int = 0
     var stack = List<V>()
@@ -399,9 +419,9 @@ pub fn biconnected_components<V, N>(next: N) -> List<List<V>>:
                 low[u] = timer
                 timer += 1
                 stack.push(u)
-            if i < out[u].len:
+            if i < out.deg(u):
                 frames.last! = (u, i + 1, p)
-                let v = out[u][i]
+                let v = out.arc(u, i)
                 if p != none and v == p!: continue
                 if tin[v] == none:
                     frames.push((v, 0, u))
@@ -894,7 +914,7 @@ pub fn floyd_warshall<V>(w: [V, V]?Int) -> ?[V, V]?Int:
 /// One directed cycle, as its vertices in walking order (each is followed by the next,
 /// and the last by the first), or `none` if the graph is acyclic. O(n + m), no recursion.
 pub fn find_cycle<V, N>(next: N) -> ?List<V>:
-    let out = [V] v => [a.to for a in next.out(v)]
+    let out = table::<V>(next, a => a.to)
     var state: [V]Int = 0  // 0 unseen, 1 on the dfs path, 2 finished
     var path = List<(V, Int)>()
     for root in V:
@@ -903,9 +923,9 @@ pub fn find_cycle<V, N>(next: N) -> ?List<V>:
         path.push((root, 0))
         while not path.is_empty:
             let (u, i) = path.last!
-            if i < out[u].len:
+            if i < out.deg(u):
                 path.last! = (u, i + 1)
-                let v = out[u][i]
+                let v = out.arc(u, i)
                 if state[v] == 0:
                     state[v] = 1
                     path.push((v, 0))
@@ -959,16 +979,15 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
     if opens > (if directed: 1 else: 2): return none
     if start == none: start = first(v for v in V if g.deg(v) > 0)
     if start == none: return Walk(V.first, List<(to: V, e: E)>())
-    let out = [V] v => [a for a in g.out(v)]
     var at: [V]Int = 0
     var used: [E]Bool = false
     var stack: List<(v: V, came: ?(to: V, e: E))> = [(v: start!, came: none)]
     var arcs = List<(to: V, e: E)>()
     while not stack.is_empty:
         let v = stack.last!.v
-        while at[v] < out[v].len and used[out[v][at[v]].e]: at[v] += 1
-        if at[v] < out[v].len:
-            let a = out[v][at[v]]
+        while at[v] < g.deg(v) and used[g.arc(v, at[v]).e]: at[v] += 1
+        if at[v] < g.deg(v):
+            let a = g.arc(v, at[v])
             used[a.e] = true
             stack.push((v: a.to, came: a))
         else:

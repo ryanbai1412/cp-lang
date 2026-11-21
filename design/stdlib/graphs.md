@@ -115,6 +115,7 @@ struct Graph<V, E>          // CSR: O(n + m) memory, arcs grouped by tail
     fn out(self, u: V) -> yields (to: V, e: E)             // O(deg u)
     fn get(self, u: V) -> List<(to: V, e: E)>              // g[u], O(deg u), allocates
     fn deg(self, u: V) -> Int                              // O(1)
+    fn arc(self, u: V, i: Int) -> (to: V, e: E)            // O(1), the i-th of out(u)
     fn transpose(self) -> Graph<V, E>                      // O(n + m)
 // List-form hooks, never called by name: `Graph.directed(pairs)` with a plain
 // list resolves to `directed_of_pairs`, and a list of triples to
@@ -127,7 +128,15 @@ struct Adj<V, T>            // CSR like Graph, each entry the neighbour itself
     fn out(self, u: V) -> yields T                         // O(deg u)
     fn get(self, u: V) -> List<T>                          // g[u], O(deg u)
     fn deg(self, u: V) -> Int                              // O(1)
+    fn arc(self, u: V, i: Int) -> T                        // O(1), the i-th of out(u)
 ```
+
+The iterative depth-first searches (`scc`, `two_edge_components`,
+`articulation_points`, `biconnected_components`, `find_cycle`) keep a frame
+per vertex that resumes at its `i`-th arc, so they read `next` through one
+flat `Adj` built in a single O(n + m) pass over `next.out`, never a
+`[V]List` with one allocation per vertex. `euler_walk` builds its own
+`Graph` and reads it with `deg`/`arc` directly.
 
 One constructor per kind of graph, not a `directed: Bool` option. The
 contestant writes two spellings, `Graph.directed(edges)` and
