@@ -1661,6 +1661,10 @@ fn lazy_link_cut_keeps_path_order_under_assignment():
 /// `Partial` `l`, closing an interval in neither order.
 pub enum PermKind: Leaf, Incr, Decr, Partial, Full
 
+/// A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`, or
+/// `Inner(l, r, kind)` with its two children and how they join.
+pub enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)
+
 /// The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node
 /// covers a run of positions, leaves are single positions, a node's children split its run in
 /// two, and the values of every node but a `Partial` one form an interval. Nodes have their own
@@ -1725,6 +1729,9 @@ pub struct PermTree<I, V, Node>:
             stk.push(t)
         assert stk.len == 1
         PermTree<I, V, N>(N(stk[0].node), kind, l, r, first, last, lo, hi)
+
+    /// O(1). The view of `v` to match on (decision 132): `Leaf(i)` or `Inner(l, r, kind)`.
+    pub fn node(self, v: Node) -> PermNode<I, Node> = todo
 
     /// O(1). The leaf of position `i`.
     pub fn leaf(self, i: I) -> Node = Node(2 * i.ord)

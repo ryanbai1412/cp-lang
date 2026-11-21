@@ -5,7 +5,7 @@
 // climb; each such child adds a slot and lets every open one move up.
 use std.mod.{Mod}
 use std.seq.{Perm}
-use std.tree.{PermTree}
+use std.tree.{PermKind, PermTree}
 
 type Z = Mod<998_244_353>
 @!multitest
@@ -14,10 +14,10 @@ domain V = 1..=n
 let (a, b) = read<(Perm<V>, Perm<V>)>()
 let t = PermTree(b.rev.map(a.inverse))
 
-fn ends(v: t.Node) -> List<Z> = match t[v]:
-    leaf => [1]
-    decr(l, r: leaf) => (ends(l) + [0]).prefix_sums()
-    decr(l, r) => (ends(l) + [0]).map(e => e * ways(r))
-    node(l, r) => [ways(l) * ways(r)]
+fn ends(v: t.Node) -> List<Z> = match t.node(v):
+    Leaf(_) => [1]
+    Inner(l, r, Decr) if t.kind[r] == PermKind.Leaf => (ends(l) + [0]).prefix_sums()
+    Inner(l, r, Decr) => (ends(l) + [0]).map(e => e * ways(r))
+    Inner(l, r, _) => [ways(l) * ways(r)]
 fn ways(v: t.Node) -> Z = ends(v).sum()
 print(ways(t.root))
