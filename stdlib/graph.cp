@@ -28,6 +28,10 @@ pub trait Neighbours:
 pub trait Target:
     @get fn to(self) -> Self = self
 
+/// The `V.len - 1` edges of a tree on `V`, one `u v` pair per line, as an input
+/// gives them. `cpl stress` makes and shrinks it as a tree.
+pub type Tree<V> = [0..V.len - 1](u: V, v: V)
+
 /// A fixed graph in compressed sparse row form: one offsets list and one arcs list.
 /// Built in O(n + m); memory is n + 1 offsets and one `(to, e)` per arc.
 /// An undirected edge is two arcs with the same `e`.

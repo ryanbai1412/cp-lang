@@ -822,3 +822,18 @@ fn solve():
     }
     assert!(negative_shift);
 }
+
+#[test]
+fn the_stdlib_perm_and_tree_are_made_as_a_permutation_and_a_tree() {
+    let src = "use std.graph.{Tree}\nuse std.seq.{Perm}\nlet n: 1..=10 = read()\ndomain V = 1..=n\nlet p: Perm<V> = read()\nlet t: Tree<V> = read()\nprint(n)\n";
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let analysis = db.analyze("t.cp").expect("analyzed");
+    assert!(!analysis.has_errors(), "the compiler accepts both types: {:?}", analysis.diagnostics);
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        let n = case.values[0].number().unwrap();
+        assert!(is_perm(&case.values[1], n) && is_tree(&case.values[2], n), "{case:?}");
+    }
+}

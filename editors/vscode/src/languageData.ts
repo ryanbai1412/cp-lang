@@ -40,9 +40,9 @@ export const PRELUDE_TYPES: readonly string[] = [
 export const STDLIB_TYPES: readonly string[] = [
     'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'Deque', 'Desc', 'Dir4', 'Dir8', 'Dsu',
     'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HashVal', 'Hashable', 'LazySegTree', 'Marks',
-    'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
+    'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'Perm', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
     'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SortedBag', 'SparseTable',
-    'Target', 'XorFenwick',
+    'Target', 'Tree', 'XorFenwick',
 ];
 
 /**

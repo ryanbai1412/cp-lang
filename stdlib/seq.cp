@@ -8,6 +8,9 @@
 
 use std.algebra.{Monoid}
 
+/// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
+pub type Perm<V> = [V]V
+
 /// Every prefix folded with `f`: `[a0, f(a0, a1), f(f(a0, a1), a2), ...]`, as long as `xs`
 /// and indexed as `xs` is: a `List<T>` gives a `List<T>`, a `[D]T` a `[D]T`.
 /// `scan(xs, +)` is the running sum and `scan(xs, max)` the running maximum; no identity

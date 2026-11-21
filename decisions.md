@@ -1301,3 +1301,15 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   remains the full C++17 verification suite.
   *Reversible:* remove the `site/check_docs.py` step from `scripts/check.sh` or replace with a faster
   Rust subcommand if the docs corpus grows past a few seconds.
+||||||| parent of 3a69b04 (stdlib: Perm<V> and Tree<V> are types every tool accepts)
+
+## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
+
+- **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and
+  `std.graph.Tree<V> = [0..V.len - 1](u: V, v: V)`. Before, only `cpl stress` knew the names: the
+  compiler rejected `let t: Tree<V> = read()` with E0204, so a port had to declare a local alias
+  (and `proto/ports/nccc10s2.cp`, which uses `Perm<L>` bare, does not compile). As plain generic
+  aliases they read, print and index the same in `cpl run` and the C++, and stress still makes and
+  shrinks them as a permutation and a tree. They stay out of the prelude (21.5's budget), so a file
+  names them with a `use`. Stress still recognises the alias by its name; keying it to the stdlib
+  declaration instead is open. Reverse: delete the two aliases.
