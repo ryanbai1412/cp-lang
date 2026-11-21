@@ -787,3 +787,26 @@ print(out)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "9 6 5 4 3 2 1 1\n");
 }
+
+#[test]
+fn vm_str_pop_and_wide_range_overflow() {
+    let src = "\
+var s = \"abc\"
+s.pop()
+s.push('z')
+print(s)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "abz\n");
+
+    let wide = "\
+let lo = -6_000_000_000_000_000_000
+let hi = 6_000_000_000_000_000_000
+let r = lo..=hi
+print(r.len)
+";
+    let (_, trap) = outcome(wide, "");
+    let msg = trap.expect("expected wide range span overflow trap");
+    assert!(msg.contains("integer overflow: range"), "got: {msg}");
+}

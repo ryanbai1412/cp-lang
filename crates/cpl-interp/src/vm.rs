@@ -3191,7 +3191,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::SeqFirstOptI { dst_val, dst_some, seq_v }, span);
                 (dst_val, dst_some)
             }
-            ExprKind::Mutate(Mutation::Pop, place, args) if args.is_empty() => match &place.kind {
+            ExprKind::Mutate(Mutation::Pop, place, args)
+                if args.is_empty() && matches!(place.ty, Ty::List(_)) =>
+            match &place.kind {
                 PlaceKind::Local(slot) => {
                     if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
                         let dst_val = self.alloc_i();
@@ -4526,7 +4528,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::SeqFirstV { dst_v, seq_v }, span);
                 dst_v
             }
-            ExprKind::Mutate(Mutation::Pop, place, args) if args.is_empty() => match &place.kind {
+            ExprKind::Mutate(Mutation::Pop, place, args)
+                if args.is_empty() && matches!(place.ty, Ty::List(_)) =>
+            match &place.kind {
                 PlaceKind::Local(slot) => {
                     if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
                         let dst_v = self.alloc_v();
@@ -4609,6 +4613,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         args: &'p [Expr],
         span: Span,
     ) -> bool {
+        if !matches!(place.ty, Ty::List(_)) {
+            return false;
+        }
         match (op, &place.kind) {
             (Mutation::Push, PlaceKind::Local(slot)) if args.len() == 1 => {
                 let SlotLoc::V(list_v) = self.slot_loc(*slot) else {
@@ -7938,8 +7945,17 @@ impl<'p, 'io> Interp<'p, 'io> {
                     }
                 }
                 Op::MakeRange { dst, r_lo, r_hi } => {
-                    regs_v[dst as usize] =
-                        Value::Range(regs_i[r_lo as usize], regs_i[r_hi as usize]);
+                    let lo = regs_i[r_lo as usize];
+                    let hi = regs_i[r_hi as usize];
+                    if hi > lo && hi.checked_sub(lo).is_none() {
+                        return trap(
+                            spans[cur_pc],
+                            format!(
+                                "integer overflow: range `{lo}..{hi}` span does not fit in an `Int` (64 bits)"
+                            ),
+                        );
+                    }
+                    regs_v[dst as usize] = Value::Range(lo, hi);
                 }
                 Op::CmpOptI { dst, a_val, a_some, b_val, b_some, op } => {
                     let a = if regs_i[a_some as usize] != 0 {
