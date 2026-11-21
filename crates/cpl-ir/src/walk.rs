@@ -185,6 +185,15 @@ fn stmt_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
                 step.iter().for_each(f);
             }
             Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => f(e),
+            Iter::TreeRange { container, lo, hi, .. } => {
+                f(container);
+                if let Some((e, _)) = lo {
+                    f(e);
+                }
+                if let Some((e, _)) = hi {
+                    f(e);
+                }
+            }
         },
         Stmt::Assert { cond, message, .. } => {
             f(cond);

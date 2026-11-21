@@ -574,6 +574,85 @@ impl<'p> Emitter<'p> {
                 first.insert(0, format!("{cpp} {var} = ({cpp})__builtin_ctzll({left});"));
                 self.loop_body(id, &first, body, out);
             }
+            Iter::TreeRange { container, lo, hi, rev } => {
+                let effects = Effects::of_block(body);
+                let untouched = match walk::path_root(container) {
+                    Some((false, local)) => !effects.locals.contains(&local),
+                    Some((true, global)) => {
+                        !effects.globals.contains(&global)
+                            && !effects
+                                .calls
+                                .iter()
+                                .any(|f| self.summaries[*f].writes.contains(&global))
+                    }
+                    None => false,
+                };
+                let is_map = matches!(container.ty, Ty::Map(..));
+                let c_expr = self.expr(container);
+                let c_name = self.temp();
+                self.line(out, "{");
+                self.indent += 1;
+                if untouched {
+                    self.line(out, &format!("const auto& {c_name} = {};", c_expr.text));
+                } else {
+                    self.line(out, &format!("auto {c_name} = {};", c_expr.text));
+                }
+                let lo_var = lo.as_ref().map(|(e, inc)| {
+                    let v = self.temp();
+                    let code = self.expr(e);
+                    self.line(out, &format!("auto {v} = {};", code.text));
+                    (v, *inc)
+                });
+                let hi_var = hi.as_ref().map(|(e, inc)| {
+                    let v = self.temp();
+                    let code = self.expr(e);
+                    self.line(out, &format!("auto {v} = {};", code.text));
+                    (v, *inc)
+                });
+                let it = self.temp();
+                let key_expr = if is_map { format!("{it}->first") } else { format!("*{it}") };
+                let bind_line = if is_map {
+                    format!("{cpp} {var} = {cpp}{{{it}->first, {it}->second}};")
+                } else {
+                    format!("{cpp} {var} = *{it};")
+                };
+                let mut opening = vec![bind_line];
+                opening.extend(first);
+                if !rev {
+                    let start = match &lo_var {
+                        Some((v, true)) => format!("{c_name}.lower_bound({v})"),
+                        Some((v, false)) => format!("{c_name}.upper_bound({v})"),
+                        None => format!("{c_name}.begin()"),
+                    };
+                    let cond = match &hi_var {
+                        Some((v, true)) => format!("{it} != {c_name}.end() && !({v} < {key_expr})"),
+                        Some((v, false)) => format!("{it} != {c_name}.end() && ({key_expr} < {v})"),
+                        None => format!("{it} != {c_name}.end()"),
+                    };
+                    self.line(out, &format!("for (auto {it} = {start}; {cond}; ++{it}) {{"));
+                    self.loop_body(id, &opening, body, out);
+                } else {
+                    let start = match &hi_var {
+                        Some((v, true)) => format!("{c_name}.upper_bound({v})"),
+                        Some((v, false)) => format!("{c_name}.lower_bound({v})"),
+                        None => format!("{c_name}.end()"),
+                    };
+                    self.line(out, &format!("for (auto {it} = {start}; {it} != {c_name}.begin(); ) {{"));
+                    let mut rev_opening = vec![format!("--{it};")];
+                    if let Some((v, inc)) = &lo_var {
+                        let stop = if *inc {
+                            format!("if ({key_expr} < {v}) break;")
+                        } else {
+                            format!("if (!({v} < {key_expr})) break;")
+                        };
+                        rev_opening.push(stop);
+                    }
+                    rev_opening.extend(opening);
+                    self.loop_body(id, &rev_opening, body, out);
+                }
+                self.indent -= 1;
+                self.line(out, "}");
+            }
             Iter::Seq(seq, rev) => {
                 let effects = Effects::of_block(body);
                 // The loop walks the value as it was when the loop began,

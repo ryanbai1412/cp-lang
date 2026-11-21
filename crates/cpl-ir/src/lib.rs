@@ -811,9 +811,11 @@ impl Stmt {
             Stmt::If(cond, ..) | Stmt::While(_, cond, _) => cond.span,
             Stmt::For(_, _, iter, _) => match iter {
                 Iter::Range { lo, hi, .. } => join(lo.span, hi.span),
-                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
-                    e.span
-                }
+                Iter::RangeVal(e, _)
+                | Iter::Seq(e, _)
+                | Iter::Subsets(e)
+                | Iter::Members(e)
+                | Iter::TreeRange { container: e, .. } => e.span,
             },
             Stmt::Assert { span, .. } | Stmt::Trap(_, span) => *span,
             Stmt::DefDomain { len, .. } => len.span,
@@ -853,6 +855,14 @@ pub enum Iter {
     Subsets(Expr),
     /// The members of a `Subset<D>` bitmask, lowest first.
     Members(Expr),
+    /// Keys (for `Set`) or `(key, value)` pairs (for `Map`) in a bounded range,
+    /// walking the underlying ordered tree directly in O(log n + k).
+    TreeRange {
+        container: Expr,
+        lo: Option<(Expr, bool)>,
+        hi: Option<(Expr, bool)>,
+        rev: bool,
+    },
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -1244,6 +1254,15 @@ impl Program {
                         | Iter::Subsets(e)
                         | Iter::Members(e) => {
                             self.collect_defined_domains_expr(e, escaping, seen, out);
+                        }
+                        Iter::TreeRange { container, lo, hi, .. } => {
+                            self.collect_defined_domains_expr(container, escaping, seen, out);
+                            if let Some((e, _)) = lo {
+                                self.collect_defined_domains_expr(e, escaping, seen, out);
+                            }
+                            if let Some((e, _)) = hi {
+                                self.collect_defined_domains_expr(e, escaping, seen, out);
+                            }
                         }
                     }
                     self.collect_defined_domains_block(b, escaping, seen, out);

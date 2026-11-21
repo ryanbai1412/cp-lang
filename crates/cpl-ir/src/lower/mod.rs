@@ -4531,6 +4531,15 @@ fn collect_stmt_calls(stmt: &Stmt, out: &mut Vec<FnId>) {
                 Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
                     collect_expr_calls(e, out)
                 }
+                Iter::TreeRange { container, lo, hi, .. } => {
+                    collect_expr_calls(container, out);
+                    if let Some((e, _)) = lo {
+                        collect_expr_calls(e, out);
+                    }
+                    if let Some((e, _)) = hi {
+                        collect_expr_calls(e, out);
+                    }
+                }
             }
             collect_block_calls(body, out);
         }

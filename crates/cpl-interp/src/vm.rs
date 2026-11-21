@@ -1669,6 +1669,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
                 Self::expr_mentions_slot(e, target)
             }
+            Iter::TreeRange { container, lo, hi, .. } => {
+                Self::expr_mentions_slot(container, target)
+                    || lo.as_ref().is_some_and(|(e, _)| Self::expr_mentions_slot(e, target))
+                    || hi.as_ref().is_some_and(|(e, _)| Self::expr_mentions_slot(e, target))
+            }
         }
     }
 

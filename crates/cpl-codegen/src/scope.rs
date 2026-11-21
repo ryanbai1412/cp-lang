@@ -88,6 +88,15 @@ impl Scopes {
                         step.iter().for_each(|e| self.expr(e));
                     }
                     Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => self.expr(e),
+                    Iter::TreeRange { container, lo, hi, .. } => {
+                        self.expr(container);
+                        if let Some((e, _)) = lo {
+                            self.expr(e);
+                        }
+                        if let Some((e, _)) = hi {
+                            self.expr(e);
+                        }
+                    }
                 }
                 self.visible.push(BTreeSet::new());
                 self.declare(*slot);
@@ -1140,6 +1149,15 @@ pub(crate) fn narrow_elems(
                         | Iter::Subsets(e)
                         | Iter::Members(e) => {
                             check_val(program, scope, e, narrow, changed);
+                        }
+                        Iter::TreeRange { container, lo, hi, .. } => {
+                            check_val(program, scope, container, narrow, changed);
+                            if let Some((e, _)) = lo {
+                                check_val(program, scope, e, narrow, changed);
+                            }
+                            if let Some((e, _)) = hi {
+                                check_val(program, scope, e, narrow, changed);
+                            }
                         }
                         Iter::Range { lo, hi, step, .. } => {
                             check_val(program, scope, lo, narrow, changed);

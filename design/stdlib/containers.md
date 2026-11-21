@@ -742,9 +742,11 @@ fn solve(span: Range<T>, live: List<Edge>):
 After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
 `cf2237h`, `cf2187d`, `cf2262b`, `cf2147h`):
 
-- **B-tree / 4-byte-indexed `SortedBag` & `OrderedMap`:** once the core narrows
-  range-typed struct fields to 4 bytes, shrink treap nodes (or move to a cache-
-  friendly B-tree) to beat `std::set` in both time and RSS.
+- **B-tree `SortedBag` / `SortedSet` (optional):** `BagNode<K>` now packs
+  32-bit `pri`/`left`/`right`/`par` into one 40-byte cache line (`sorted_range`
+  `0.61x` vs C++ treap, `sorted_set` `1.26x` vs PBDS `rb_tree_tag`). Moving to
+  a cache-friendly B-tree would close the remaining 1.26x treap-depth gap vs
+  PBDS red-black trees if needed.
 
 ---
 
@@ -766,3 +768,30 @@ After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
   persistent segment trees, tries, and `cf2135f` need zero raw-int pools.
 - **Group-valued `PotentialDsu<V, G>`:** unify `ParityDsu` (Z/2Z) and
   `PotentialDsu` (Z) over any `Group` once `std.algebra` adds `Group`.
+
+---
+
+## 6. Matched C++17 benchmarks (`bench/containers/run.sh`)
+
+All 13 matched C++17 benchmarks (`g++ -std=c++17 -O2`, best of 3 runs,
+identical stdout verified): **p50 = 0.95x**, **max = 1.26x** (`sorted_set`).
+10 of 13 benches run at `<= 0.98x` matched C++ (`interval_map` `0.56x`,
+`sorted_range` `0.61x`, `hash_antihash` `0.64x`, `hash_insert` `0.68x`,
+`hash_lookup` `0.79x`, `min_heap` `0.92x`, `flatmap` `0.95x`, `bitset` `0.96x`,
+`ordered_map_set` `0.96x`, `monodeque` `0.98x`).
+
+Profiling notes for the three rows above `1.10x`:
+- **`dsu` (`1.15x` wall, `30 ms` vs `27 ms` user):** `Dsu<V>` now uses one
+  packed 32-bit negative-size array (`4 B/vertex`) and `unchecked:` `find_ord`.
+  The remaining ~3 ms is `cpl::umod` + `cpl::pos` in the benchmark's 3M random
+  domain conversions (`V(Int((s >> 33) % U64(n)))`).
+- **`deque` (`1.17x`, `43.6 ms` vs `37.4 ms`):** single-allocation `grow()`
+  with `swap` and cached power-of-two `mask` brought `deque` down from `1.95x`.
+  The remaining ~6 ms vs `std::deque` is vector doubling during prefill plus
+  bounds/option checks on 2M random `get(i)` reads.
+- **`sorted_set` (`1.26x`, `112.9 ms` vs `89.5 ms` PBDS `rb_tree_tag`):**
+  packing `BagNode<K>` into one 40-byte struct array and switching `add`/`remove`
+  to single-pass BST descent + rotation without sibling `pull` cut `sorted_set`
+  from `2.55x` (`240.8 ms`) to `1.26x` (`112.9 ms`) and `sorted_range` from
+  `1.00x` to `0.61x`. The remaining `1.26x` vs PBDS is the expected randomized
+  treap depth (`1.386 log2 n`) vs red-black tree (`~1.05 log2 n`).

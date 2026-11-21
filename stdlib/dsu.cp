@@ -5,31 +5,35 @@
 pub struct Mark(at: 0..=2_000_000_000)
 
 /// Union-find with path halving and union by size.
-/// `find`, `unite`, `same` and `size` are O(alpha(n)) amortized; memory is two `[V]` arrays.
+/// `find`, `unite`, `same` and `size` are O(alpha(n)) amortized; memory is one `[V]` array (4 B/vertex).
 ///
 /// It can also step back in time: `let snap = d.mark()` remembers the present and
 /// `d.undo_to(snap)` returns to it. From the first
 /// `mark` on, paths are no longer shortened (a shortened path cannot be restored), so every
 /// operation is O(log n) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
-    up: [V]V
-    sz: [V]1..=V.count
-    parts: 0..=2_000_000_000
-    /// The roots that were attached since the first `mark`, in order.
-    joined: List<V>
+    p: List<-2_147_483_648..=2_147_483_647>
+    parts: Int
+    /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
+    joined: List<Int>
     marked: Bool
 
     /// Every position starts in its own set. O(n).
     pub fn new() -> Dsu<V>:
-        Dsu([V] v => v, [V] v => 1, V.K, [], false)
+        Dsu(List.filled(V.K, -1), V.K, [], false)
+
+    fn find_ord(mut self, start: Int) -> Int:
+        var x = start
+        unchecked:
+            while p[x] >= 0:
+                let par = p[x]
+                if not marked and p[par] >= 0:
+                    p[x] = p[par]
+                x = par
+        x
 
     /// The representative of `v`'s set.
-    pub fn find(mut self, v: V) -> V:
-        var x = v
-        while up[x] != x:
-            if not marked: up[x] = up[up[x]]
-            x = up[x]
-        x
+    pub fn find(mut self, v: V) -> V = V.at(self.find_ord(v.ord))
 
     /// The present, to return to with `undo_to`. O(1).
     pub fn mark(mut self) -> Mark:
@@ -38,42 +42,60 @@ pub struct Dsu<V>:
 
     /// Undo every `unite` made since `snap = mark()`. O(1) per undone `unite`.
     pub fn undo_to(mut self, snap: Mark):
-        while joined.len > snap.at:
-            let y = joined.pop()!
-            sz[up[y]] -= sz[y]
-            up[y] = y
-            parts += 1
+        var i = joined.len
+        unchecked:
+            while i > snap.at:
+                i -= 2
+                let y = joined[i]
+                let neg_sy = joined[i + 1]
+                let r = p[y]
+                p[r] -= neg_sy
+                p[y] = neg_sy
+                parts += 1
+        joined.truncate(snap.at)
 
     /// Merge the sets of `a` and `b`. Returns false if they were already one set.
     pub fn unite(mut self, a: V, b: V) -> Bool:
-        var x = self.find(a)
-        var y = self.find(b)
+        var x = self.find_ord(a.ord)
+        var y = self.find_ord(b.ord)
         if x == y: return false
-        if sz[x] < sz[y]: swap(mut x, mut y)
-        up[y] = x
-        sz[x] += sz[y]
-        parts -= 1
-        if marked: joined.push(y)
+        unchecked:
+            if p[x] > p[y]: swap(mut x, mut y)
+            let neg_sy = p[y]
+            p[x] += neg_sy
+            p[y] = x
+            parts -= 1
+            if marked:
+                joined.push(y)
+                joined.push(neg_sy)
         true
 
     /// As `unite`, but says which root stayed and which went under it, so data kept per
     /// set can follow: `if let (kept, merged) = d.merge(a, b): sum[kept] += sum[merged]`.
     /// `none` if `a` and `b` were already one set.
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
-        var x = self.find(a)
-        var y = self.find(b)
+        var x = self.find_ord(a.ord)
+        var y = self.find_ord(b.ord)
         if x == y: return none
-        if sz[x] < sz[y]: swap(mut x, mut y)
-        self.unite(x, y)
-        some((kept: x, merged: y))
+        unchecked:
+            if p[x] > p[y]: swap(mut x, mut y)
+            let neg_sy = p[y]
+            p[x] += neg_sy
+            p[y] = x
+            parts -= 1
+            if marked:
+                joined.push(y)
+                joined.push(neg_sy)
+        some((kept: V.at(x), merged: V.at(y)))
 
     /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
-    pub fn same(mut self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
+    pub fn same(mut self, a: V, b: V) -> Bool = self.find_ord(a.ord) == self.find_ord(b.ord)
 
     /// The number of positions in `v`'s set.
     pub fn size(mut self, v: V) -> Int:
-        let r = self.find(v)
-        sz[r]
+        let r = self.find_ord(v.ord)
+        unchecked:
+            return -p[r]
 
     /// The number of sets.
     pub @get fn components(self) -> Int = parts
@@ -81,16 +103,18 @@ pub struct Dsu<V>:
     /// Yield the representative root of each connected component. O(n), zero allocations.
     pub fn roots(self) -> yields V:
         for v in V:
-            if up[v] == v: yield v
+            unchecked:
+                if p[v.ord] < 0: yield v
 
     /// Every connected component as a list of its vertices, each vertex appearing once. O(n alpha(n)).
     pub fn groups(mut self) -> List<List<V>>:
         var gid: [V]Int = -1
         var out: List<List<V>> = []
         for v in V:
-            if up[v] == v:
-                gid[v] = out.len
-                out.push([])
+            unchecked:
+                if p[v.ord] < 0:
+                    gid[v] = out.len
+                    out.push([])
         for v in V:
             out[gid[self.find(v)]].push(v)
         out

@@ -123,6 +123,15 @@ impl<'p> Facts<'p> {
                         Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
                             self.expr(fn_id, e)
                         }
+                        Iter::TreeRange { container, lo, hi, .. } => {
+                            self.expr(fn_id, container);
+                            if let Some((e, _)) = lo {
+                                self.expr(fn_id, e);
+                            }
+                            if let Some((e, _)) = hi {
+                                self.expr(fn_id, e);
+                            }
+                        }
                     }
                     self.block(fn_id, body);
                 }

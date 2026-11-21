@@ -5,7 +5,16 @@ use std.seq.{remove}
 /// Read-only handle into a `SortedBag<K>` node, valid until the next mutation.
 pub struct BagCursor(id: Int)
 
-/// An ordered multiset (bag) of `K` backed by a randomized treap over flat arrays
+struct BagNode<K>:
+    key: K
+    cnt: Int
+    sub: Int
+    pri: -2_147_483_648..=2_147_483_647
+    left: -2_147_483_648..=2_147_483_647
+    right: -2_147_483_648..=2_147_483_647
+    par: -2_147_483_648..=2_147_483_647
+
+/// An ordered multiset (bag) of `K` backed by a randomized treap over a single flat node array
 /// with recycled node slots and parent pointers for O(1) amortized cursor stepping.
 /// Keeps one node per distinct key with its multiplicity and subtree element count.
 /// `add`, `add_many`, `remove`, `remove_all`, `contains`, `count`, `first`, `last`,
@@ -16,19 +25,14 @@ pub struct BagCursor(id: Int)
 /// `len`, `distinct`, `is_empty`, `clear`, and `take` are O(1);
 /// `entries`, `entries_rev`, and `to_list` are O(n).
 pub struct SortedBag<K>:
-    key: List<K>
-    pri: List<Int>
-    cnt: List<Int>
-    sub: List<Int>
-    left: List<-1..=2_000_000_000>
-    right: List<-1..=2_000_000_000>
-    par: List<-1..=2_000_000_000>
-    free: List<0..=2_000_000_000>
-    live: 0..=2_000_000_000
-    root: -1..=2_000_000_000
+    nodes: List<BagNode<K>>
+    free: List<-2_147_483_648..=2_147_483_647>
+    live: Int
+    root: Int
+    rng: U64
 
     /// Create an empty `SortedBag<K>`. O(1).
-    pub fn new() -> SortedBag<K> = SortedBag([], [], [], [], [], [], [], [], 0, -1)
+    pub fn new() -> SortedBag<K> = SortedBag([], [], 0, -1, U64(0x5e3779b97f4a7c15))
 
     /// Build a `SortedBag` containing every element of `xs`. O(n log n) expected.
     pub fn of(xs: List<K>) -> SortedBag<K>:
@@ -47,27 +51,15 @@ pub struct SortedBag<K>:
 
     /// Remove all elements from the bag. O(1).
     pub fn clear(mut self):
-        key = []
-        pri = []
-        cnt = []
-        sub = []
-        left = []
-        right = []
-        par = []
+        nodes = []
         free = []
         live = 0
         root = -1
 
     /// Move the bag's contents out in O(1), leaving `self` empty.
     pub fn take(mut self) -> SortedBag<K>:
-        let out = SortedBag(key, pri, cnt, sub, left, right, par, free, live, root)
-        key = []
-        pri = []
-        cnt = []
-        sub = []
-        left = []
-        right = []
-        par = []
+        let out = SortedBag(nodes, free, live, root, rng)
+        nodes = []
         free = []
         live = 0
         root = -1
@@ -75,78 +67,52 @@ pub struct SortedBag<K>:
 
     /// Insert one copy of `x` into the bag. Always returns `true`. O(log n) expected.
     pub fn add(mut self, x: K) -> Bool:
-        let (lo, rest) = self.split_lt(root, x)
-        let (eq, hi) = self.split_le(rest, x)
-        var mid = eq
-        if mid >= 0:
-            cnt[mid] += 1
-            self.pull(mid)
-        else:
-            mid = self.make_node(x, 1)
-        let lm = self.merge(lo, mid)
-        root = self.merge(lm, hi)
-        if root >= 0: par[root] = -1
+        let (r, _) = self.insert_at(root, x, 1, false)
+        root = r
+        unchecked:
+            if root >= 0: nodes[root].par = -1
         true
+
+    fn add_unique(mut self, x: K) -> Bool:
+        let (r, added) = self.insert_at(root, x, 1, true)
+        root = r
+        unchecked:
+            if root >= 0: nodes[root].par = -1
+        added
 
     /// Insert `c >= 0` copies of `x` into the bag. O(log n) expected.
     pub fn add_many(mut self, x: K, c: Int):
         assert c >= 0
         if c == 0: return
-        let (lo, rest) = self.split_lt(root, x)
-        let (eq, hi) = self.split_le(rest, x)
-        var mid = eq
-        if mid >= 0:
-            cnt[mid] += c
-            self.pull(mid)
-        else:
-            mid = self.make_node(x, c)
-        let lm = self.merge(lo, mid)
-        root = self.merge(lm, hi)
-        if root >= 0: par[root] = -1
+        let (r, _) = self.insert_at(root, x, c, false)
+        root = r
+        unchecked:
+            if root >= 0: nodes[root].par = -1
 
     /// Remove one copy of `x` if present; returns `true` if a copy was removed. O(log n) expected.
     pub fn remove(mut self, x: K) -> Bool:
-        let (lo, rest) = self.split_lt(root, x)
-        let (eq, hi) = self.split_le(rest, x)
-        if eq < 0:
-            root = self.merge(lo, hi)
-            if root >= 0: par[root] = -1
-            return false
-        var mid = -1
-        if cnt[eq] > 1:
-            cnt[eq] -= 1
-            self.pull(eq)
-            mid = eq
-        else:
-            live -= 1
-            free.push(eq)
-        let lm = self.merge(lo, mid)
-        root = self.merge(lm, hi)
-        if root >= 0: par[root] = -1
-        true
+        let (r, removed) = self.erase_at(root, x, false)
+        root = r
+        unchecked:
+            if root >= 0: nodes[root].par = -1
+        removed > 0
 
     /// Remove all copies of `x` and return how many were removed. O(log n) expected.
     pub fn remove_all(mut self, x: K) -> Int:
-        let (lo, rest) = self.split_lt(root, x)
-        let (eq, hi) = self.split_le(rest, x)
-        if eq < 0:
-            root = self.merge(lo, hi)
-            if root >= 0: par[root] = -1
-            return 0
-        let removed = cnt[eq]
-        live -= 1
-        free.push(eq)
-        root = self.merge(lo, hi)
-        if root >= 0: par[root] = -1
+        let (r, removed) = self.erase_at(root, x, true)
+        root = r
+        unchecked:
+            if root >= 0: nodes[root].par = -1
         removed
 
     /// How many copies of `x` are currently in the bag. O(log n) expected.
     pub fn count(self, x: K) -> Int:
         var u = root
-        while u >= 0:
-            if x < key[u]: u = left[u]
-            elif key[u] < x: u = right[u]
-            else: return cnt[u]
+        unchecked:
+            while u >= 0:
+                if x < nodes[u].key: u = nodes[u].left
+                elif nodes[u].key < x: u = nodes[u].right
+                else: return nodes[u].cnt
         0
 
     /// Whether at least one copy of `x` is in the bag. O(log n) expected.
@@ -156,28 +122,30 @@ pub struct SortedBag<K>:
     pub @get fn first(self) -> ?K:
         if root < 0: return none
         var u = root
-        while left[u] >= 0: u = left[u]
-        key[u]
+        unchecked:
+            while nodes[u].left >= 0: u = nodes[u].left
+            return nodes[u].key
 
     /// The largest element, or `none` when empty. O(log n) expected.
     pub @get fn last(self) -> ?K:
         if root < 0: return none
         var u = root
-        while right[u] >= 0: u = right[u]
-        key[u]
+        unchecked:
+            while nodes[u].right >= 0: u = nodes[u].right
+            return nodes[u].key
 
     /// Remove and return one copy of the smallest element, or `none` when empty. O(log n) expected.
     pub fn pop_first(mut self) -> ?K:
         let x = self.first
         if x == none: return none
-        self.remove(x!)
+        let _ = self.remove(x!)
         x
 
     /// Remove and return one copy of the largest element, or `none` when empty. O(log n) expected.
     pub fn pop_last(mut self) -> ?K:
         let x = self.last
         if x == none: return none
-        self.remove(x!)
+        let _ = self.remove(x!)
         x
 
     /// Number of elements strictly less than `k` (counting duplicates). O(log n) expected.
@@ -186,12 +154,12 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if key[u] < k:
-                    let l = left[u]
-                    ans += (if l < 0: 0 else: sub[l]) + cnt[u]
-                    u = right[u]
+                if nodes[u].key < k:
+                    let l = nodes[u].left
+                    ans += (if l < 0: 0 else: nodes[l].sub) + nodes[u].cnt
+                    u = nodes[u].right
                 else:
-                    u = left[u]
+                    u = nodes[u].left
         ans
 
     fn rank_le(self, k: K) -> Int:
@@ -199,12 +167,12 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if not (k < key[u]):
-                    let l = left[u]
-                    ans += (if l < 0: 0 else: sub[l]) + cnt[u]
-                    u = right[u]
+                if not (k < nodes[u].key):
+                    let l = nodes[u].left
+                    ans += (if l < 0: 0 else: nodes[l].sub) + nodes[u].cnt
+                    u = nodes[u].right
                 else:
-                    u = left[u]
+                    u = nodes[u].left
         ans
 
     fn lo_ok(self, x: K, lo: ?K, lo_inc: Bool) -> Bool:
@@ -226,25 +194,25 @@ pub struct SortedBag<K>:
                 var u = root
                 if lo_inc:
                     while u >= 0:
-                        if not (key[u] < a):
+                        if not (nodes[u].key < a):
                             ans = u
-                            u = left[u]
+                            u = nodes[u].left
                         else:
-                            u = right[u]
+                            u = nodes[u].right
                 else:
                     while u >= 0:
-                        if a < key[u]:
+                        if a < nodes[u].key:
                             ans = u
-                            u = left[u]
+                            u = nodes[u].left
                         else:
-                            u = right[u]
+                            u = nodes[u].right
             else:
                 var u = root
                 while u >= 0:
                     ans = u
-                    u = left[u]
+                    u = nodes[u].left
             if ans < 0: return none
-            let k = key[ans]
+            let k = nodes[ans].key
             return if self.hi_ok(k, hi, hi_inc): k else: none
 
     fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
@@ -254,25 +222,25 @@ pub struct SortedBag<K>:
                 var u = root
                 if hi_inc:
                     while u >= 0:
-                        if not (b < key[u]):
+                        if not (b < nodes[u].key):
                             ans = u
-                            u = right[u]
+                            u = nodes[u].right
                         else:
-                            u = left[u]
+                            u = nodes[u].left
                 else:
                     while u >= 0:
-                        if key[u] < b:
+                        if nodes[u].key < b:
                             ans = u
-                            u = right[u]
+                            u = nodes[u].right
                         else:
-                            u = left[u]
+                            u = nodes[u].left
             else:
                 var u = root
                 while u >= 0:
                     ans = u
-                    u = right[u]
+                    u = nodes[u].right
             if ans < 0: return none
-            let k = key[ans]
+            let k = nodes[ans].key
             return if self.lo_ok(k, lo, lo_inc): k else: none
 
     fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int:
@@ -293,9 +261,9 @@ pub struct SortedBag<K>:
             self.cursor_first()
         unchecked:
             while let c = cur:
-                let k = key[c.id]
+                let k = nodes[c.id].key
                 if not self.hi_ok(k, hi, hi_inc): break
-                for _ in 0..cnt[c.id]: yield k
+                for _ in 0..nodes[c.id].cnt: yield k
                 cur = self.next_cursor(c)
 
     fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
@@ -305,9 +273,9 @@ pub struct SortedBag<K>:
             self.cursor_last()
         unchecked:
             while let c = cur:
-                let k = key[c.id]
+                let k = nodes[c.id].key
                 if not self.lo_ok(k, lo, lo_inc): break
-                for _ in 0..cnt[c.id]: yield k
+                for _ in 0..nodes[c.id].cnt: yield k
                 cur = self.prev_cursor(c)
 
     /// 0-indexed `i`-th smallest element (counting duplicates), or `none` if out of bounds. O(log n) expected.
@@ -315,15 +283,17 @@ pub struct SortedBag<K>:
         if i < 0 or i >= self.len: return none
         var k = i
         var u = root
-        while u >= 0:
-            let lsz = self.sub_of(left[u])
-            if k < lsz:
-                u = left[u]
-            elif k < lsz + cnt[u]:
-                return key[u]
-            else:
-                k -= lsz + cnt[u]
-                u = right[u]
+        unchecked:
+            while u >= 0:
+                let l = nodes[u].left
+                let lsz = if l < 0: 0 else: nodes[l].sub
+                if k < lsz:
+                    u = l
+                elif k < lsz + nodes[u].cnt:
+                    return nodes[u].key
+                else:
+                    k -= lsz + nodes[u].cnt
+                    u = nodes[u].right
         none
 
     /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `none`.
@@ -333,18 +303,18 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if ok(key[u]):
+                if ok(nodes[u].key):
                     ans = u
-                    u = left[u]
+                    u = nodes[u].left
                 else:
-                    u = right[u]
+                    u = nodes[u].right
         if ans < 0:
             if let lo = self.first: assert not ok(lo)
             if let hi = self.last: assert not ok(hi)
             return none
         if let prev = self.prev_cursor(BagCursor(ans)):
-            assert not ok(key[prev.id])
-        key[ans]
+            assert not ok(nodes[prev.id].key)
+        nodes[ans].key
 
     /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `none`.
     /// Checks monotonicity at the boundary. O(log n) expected.
@@ -353,40 +323,43 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if ok(key[u]):
+                if ok(nodes[u].key):
                     ans = u
-                    u = right[u]
+                    u = nodes[u].right
                 else:
-                    u = left[u]
+                    u = nodes[u].left
         if ans < 0:
             if let lo = self.first: assert not ok(lo)
             if let hi = self.last: assert not ok(hi)
             return none
         if let next = self.next_cursor(BagCursor(ans)):
-            assert not ok(key[next.id])
-        key[ans]
+            assert not ok(nodes[next.id].key)
+        nodes[ans].key
 
     /// Cursor to the smallest key, or `none` when empty. O(log n) expected.
     pub fn cursor_first(self) -> ?BagCursor:
         if root < 0: return none
         var u = root
-        while left[u] >= 0: u = left[u]
+        unchecked:
+            while nodes[u].left >= 0: u = nodes[u].left
         BagCursor(u)
 
     /// Cursor to the largest key, or `none` when empty. O(log n) expected.
     pub fn cursor_last(self) -> ?BagCursor:
         if root < 0: return none
         var u = root
-        while right[u] >= 0: u = right[u]
+        unchecked:
+            while nodes[u].right >= 0: u = nodes[u].right
         BagCursor(u)
 
     /// Cursor to exact key `k`, or `none` if absent. O(log n) expected.
     pub fn cursor_at(self, k: K) -> ?BagCursor:
         var u = root
-        while u >= 0:
-            if k < key[u]: u = left[u]
-            elif key[u] < k: u = right[u]
-            else: return BagCursor(u)
+        unchecked:
+            while u >= 0:
+                if k < nodes[u].key: u = nodes[u].left
+                elif nodes[u].key < k: u = nodes[u].right
+                else: return BagCursor(u)
         none
 
     /// Cursor to smallest key `>= k`, or `none`. O(log n) expected.
@@ -395,11 +368,11 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if not (key[u] < k):
+                if not (nodes[u].key < k):
                     ans = u
-                    u = left[u]
+                    u = nodes[u].left
                 else:
-                    u = right[u]
+                    u = nodes[u].right
         if ans >= 0: BagCursor(ans) else: none
 
     /// Cursor to smallest key `> k`, or `none`. O(log n) expected.
@@ -408,11 +381,11 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if k < key[u]:
+                if k < nodes[u].key:
                     ans = u
-                    u = left[u]
+                    u = nodes[u].left
                 else:
-                    u = right[u]
+                    u = nodes[u].right
         if ans >= 0: BagCursor(ans) else: none
 
     /// Cursor to largest key `<= k`, or `none`. O(log n) expected.
@@ -421,11 +394,11 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if not (k < key[u]):
+                if not (k < nodes[u].key):
                     ans = u
-                    u = right[u]
+                    u = nodes[u].right
                 else:
-                    u = left[u]
+                    u = nodes[u].left
         if ans >= 0: BagCursor(ans) else: none
 
     /// Cursor to largest key `< k`, or `none`. O(log n) expected.
@@ -434,30 +407,30 @@ pub struct SortedBag<K>:
         var u = root
         unchecked:
             while u >= 0:
-                if key[u] < k:
+                if nodes[u].key < k:
                     ans = u
-                    u = right[u]
+                    u = nodes[u].right
                 else:
-                    u = left[u]
+                    u = nodes[u].left
         if ans >= 0: BagCursor(ans) else: none
 
     /// Key stored at cursor `c`. O(1).
-    pub fn key_of(self, c: BagCursor) -> K = key[c.id]
+    pub fn key_of(self, c: BagCursor) -> K = nodes[c.id].key
 
     /// Multiplicity stored at cursor `c`. O(1).
-    pub fn count_of(self, c: BagCursor) -> Int = cnt[c.id]
+    pub fn count_of(self, c: BagCursor) -> Int = nodes[c.id].cnt
 
     /// Cursor to the next larger distinct key, or `none`. O(1) amortized.
     pub fn next_cursor(self, c: BagCursor) -> ?BagCursor:
         var u = c.id
         unchecked:
-            if right[u] >= 0:
-                u = right[u]
-                while left[u] >= 0: u = left[u]
+            if nodes[u].right >= 0:
+                u = nodes[u].right
+                while nodes[u].left >= 0: u = nodes[u].left
                 return BagCursor(u)
-            while par[u] >= 0:
-                let p = par[u]
-                if left[p] == u: return BagCursor(p)
+            while nodes[u].par >= 0:
+                let p = nodes[u].par
+                if nodes[p].left == u: return BagCursor(p)
                 u = p
         none
 
@@ -465,13 +438,13 @@ pub struct SortedBag<K>:
     pub fn prev_cursor(self, c: BagCursor) -> ?BagCursor:
         var u = c.id
         unchecked:
-            if left[u] >= 0:
-                u = left[u]
-                while right[u] >= 0: u = right[u]
+            if nodes[u].left >= 0:
+                u = nodes[u].left
+                while nodes[u].right >= 0: u = nodes[u].right
                 return BagCursor(u)
-            while par[u] >= 0:
-                let p = par[u]
-                if right[p] == u: return BagCursor(p)
+            while nodes[u].par >= 0:
+                let p = nodes[u].par
+                if nodes[p].right == u: return BagCursor(p)
                 u = p
         none
 
@@ -479,14 +452,14 @@ pub struct SortedBag<K>:
     pub fn entries(self) -> yields (key: K, count: Int):
         var cur = self.cursor_first()
         while let c = cur:
-            yield (key: key[c.id], count: cnt[c.id])
+            yield (key: nodes[c.id].key, count: nodes[c.id].cnt)
             cur = self.next_cursor(c)
 
     /// Visit every distinct `(key, count)` in descending order. O(1) amortized per step.
     pub fn entries_rev(self) -> yields (key: K, count: Int):
         var cur = self.cursor_last()
         while let c = cur:
-            yield (key: key[c.id], count: cnt[c.id])
+            yield (key: nodes[c.id].key, count: nodes[c.id].cnt)
             cur = self.prev_cursor(c)
 
     /// Every element in ascending order, repeated by multiplicity. O(n).
@@ -498,77 +471,115 @@ pub struct SortedBag<K>:
 
     fn sub_of(self, t: Int) -> Int:
         if t < 0: return 0
-        unchecked: return sub[t]
+        unchecked: return nodes[t].sub
 
     fn pull(mut self, u: Int):
         unchecked:
-            let l = left[u]
-            let r = right[u]
-            sub[u] = cnt[u] + (if l < 0: 0 else: sub[l]) + (if r < 0: 0 else: sub[r])
-            if l >= 0: par[l] = u
-            if r >= 0: par[r] = u
+            let l = nodes[u].left
+            let r = nodes[u].right
+            nodes[u].sub = nodes[u].cnt + (if l < 0: 0 else: nodes[l].sub) + (
+                if r < 0: 0 else: nodes[r].sub
+            )
+            if l >= 0: nodes[l].par = u
+            if r >= 0: nodes[r].par = u
 
     fn make_node(mut self, x: K, c: Int) -> Int:
         live += 1
-        let p = rand(0, 1 << 60)
-        if let u = free.pop():
-            key[u] = x
-            pri[u] = p
-            cnt[u] = c
-            sub[u] = c
-            left[u] = -1
-            right[u] = -1
-            par[u] = -1
-            return u
-        key.push(x)
-        pri.push(p)
-        cnt.push(c)
-        sub.push(c)
-        left.push(-1)
-        right.push(-1)
-        par.push(-1)
-        key.len - 1
-
-    /// Split `t` into `(keys < x, keys >= x)`.
-    fn split_lt(mut self, t: Int, x: K) -> (Int, Int):
-        if t < 0: return (-1, -1)
+        rng = rng * U64(6364136223846793005) + U64(1442695040888963407)
+        let p = Int((rng >> 33) & U64(0x7fffffff))
         unchecked:
-            if key[t] < x:
-                let (a, b) = self.split_lt(right[t], x)
-                right[t] = a
-                self.pull(t)
-                return (t, b)
-            else:
-                let (a, b) = self.split_lt(left[t], x)
-                left[t] = b
-                self.pull(t)
-                return (a, t)
+            if let u = free.pop():
+                nodes[u] = BagNode(x, c, c, p, -1, -1, -1)
+                return u
+            nodes.push(BagNode(x, c, c, p, -1, -1, -1))
+            return nodes.len - 1
 
-    /// Split `t` into `(keys <= x, keys > x)`.
-    fn split_le(mut self, t: Int, x: K) -> (Int, Int):
-        if t < 0: return (-1, -1)
+    fn insert_at(mut self, u: Int, x: K, c: Int, unique: Bool) -> (Int, Bool):
+        if u < 0:
+            return (self.make_node(x, c), true)
         unchecked:
-            if not (x < key[t]):
-                let (a, b) = self.split_le(right[t], x)
-                right[t] = a
-                self.pull(t)
-                return (t, b)
+            if x < nodes[u].key:
+                let old_l = nodes[u].left
+                let (nl, added) = self.insert_at(old_l, x, c, unique)
+                if not added: return (u, false)
+                if nl != old_l:
+                    nodes[u].left = nl
+                    if nodes[nl].pri > nodes[u].pri:
+                        let lr = nodes[nl].right
+                        nodes[u].left = lr
+                        nodes[nl].right = u
+                        self.pull(u)
+                        self.pull(nl)
+                        return (nl, true)
+                    nodes[nl].par = u
+                nodes[u].sub += c
+                return (u, true)
+            elif nodes[u].key < x:
+                let old_r = nodes[u].right
+                let (nr, added) = self.insert_at(old_r, x, c, unique)
+                if not added: return (u, false)
+                if nr != old_r:
+                    nodes[u].right = nr
+                    if nodes[nr].pri > nodes[u].pri:
+                        let rl = nodes[nr].left
+                        nodes[u].right = rl
+                        nodes[nr].left = u
+                        self.pull(u)
+                        self.pull(nr)
+                        return (nr, true)
+                    nodes[nr].par = u
+                nodes[u].sub += c
+                return (u, true)
             else:
-                let (a, b) = self.split_le(left[t], x)
-                left[t] = b
-                self.pull(t)
-                return (a, t)
+                if unique: return (u, false)
+                nodes[u].cnt += c
+                nodes[u].sub += c
+                return (u, true)
+
+    fn erase_at(mut self, u: Int, x: K, all: Bool) -> (Int, Int):
+        if u < 0: return (-1, 0)
+        unchecked:
+            if x < nodes[u].key:
+                let old_l = nodes[u].left
+                let (nl, rem) = self.erase_at(old_l, x, all)
+                if rem == 0: return (u, 0)
+                if nl != old_l:
+                    nodes[u].left = nl
+                    if nl >= 0: nodes[nl].par = u
+                nodes[u].sub -= rem
+                return (u, rem)
+            elif nodes[u].key < x:
+                let old_r = nodes[u].right
+                let (nr, rem) = self.erase_at(old_r, x, all)
+                if rem == 0: return (u, 0)
+                if nr != old_r:
+                    nodes[u].right = nr
+                    if nr >= 0: nodes[nr].par = u
+                nodes[u].sub -= rem
+                return (u, rem)
+            else:
+                if not all and nodes[u].cnt > 1:
+                    nodes[u].cnt -= 1
+                    nodes[u].sub -= 1
+                    return (u, 1)
+                let rem = nodes[u].cnt
+                let l = nodes[u].left
+                let r = nodes[u].right
+                live -= 1
+                free.push(u)
+                let m = self.merge(l, r)
+                return (m, rem)
 
     fn merge(mut self, a: Int, b: Int) -> Int:
         if a < 0: return b
         if b < 0: return a
         unchecked:
-            if pri[a] >= pri[b]:
-                right[a] = self.merge(right[a], b)
+            if nodes[a].pri >= nodes[b].pri:
+                nodes[a].right = self.merge(nodes[a].right, b)
                 self.pull(a)
                 return a
             else:
-                left[b] = self.merge(a, left[b])
+                nodes[b].left = self.merge(a, nodes[b].left)
                 self.pull(b)
                 return b
 
@@ -602,10 +613,7 @@ pub struct SortedSet<K>:
     pub fn take(mut self) -> SortedSet<K> = SortedSet(bag.take())
 
     /// Insert `x` if absent; returns `true` when `x` was newly inserted. O(log n) expected.
-    pub fn add(mut self, x: K) -> Bool:
-        if bag.contains(x): return false
-        let _ = bag.add(x)
-        true
+    pub fn add(mut self, x: K) -> Bool = bag.add_unique(x)
 
     /// Remove `x` if present; returns `true` if removed. O(log n) expected.
     pub fn remove(mut self, x: K) -> Bool = bag.remove(x)
@@ -834,7 +842,7 @@ fn sorted_bag_cursors_entries_and_recycling():
         let _ = b.add(1000 + i)
         assert b.remove(1000 + i)
     assert b.distinct == 3
-    assert b.key.len <= 10
+    assert b.nodes.len <= 10
 
 @test
 fn sorted_set_operations_range_and_bsearch():

@@ -950,7 +950,12 @@ impl<'p, 'o> Interp<'p, 'o> {
     fn for_loop(&mut self, id: LoopId, slot: usize, iter: &'p Iter, body: &'p Block) -> Res<Flow> {
         let base = self.base;
         let span = match iter {
-            Iter::Range { lo: e, .. } | Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => e.span,
+            Iter::Range { lo: e, .. }
+            | Iter::RangeVal(e, _)
+            | Iter::Seq(e, _)
+            | Iter::Subsets(e)
+            | Iter::Members(e)
+            | Iter::TreeRange { container: e, .. } => e.span,
         };
         macro_rules! round {
             ($value:expr) => {{
@@ -1123,6 +1128,56 @@ impl<'p, 'o> Interp<'p, 'o> {
                 while left != 0 {
                     round!(Value::Int(i64::from(left.trailing_zeros())));
                     left &= left - 1;
+                }
+            }
+            Iter::TreeRange { container, lo, hi, rev } => {
+                use std::ops::Bound;
+                let held = self.eval(container)?;
+                let lo_b = match lo {
+                    Some((e, true)) => Bound::Included(self.eval(e)?),
+                    Some((e, false)) => Bound::Excluded(self.eval(e)?),
+                    None => Bound::Unbounded,
+                };
+                let hi_b = match hi {
+                    Some((e, true)) => Bound::Included(self.eval(e)?),
+                    Some((e, false)) => Bound::Excluded(self.eval(e)?),
+                    None => Bound::Unbounded,
+                };
+                let empty = match (&lo_b, &hi_b) {
+                    (Bound::Included(a), Bound::Included(b)) => a > b,
+                    (Bound::Included(a), Bound::Excluded(b))
+                    | (Bound::Excluded(a), Bound::Included(b))
+                    | (Bound::Excluded(a), Bound::Excluded(b)) => a >= b,
+                    _ => false,
+                };
+                if !empty {
+                    match &held {
+                        Value::Set(items) => {
+                            let range = items.range((lo_b, hi_b));
+                            if *rev {
+                                for item in range.rev() {
+                                    round!(item.clone());
+                                }
+                            } else {
+                                for item in range {
+                                    round!(item.clone());
+                                }
+                            }
+                        }
+                        Value::Map(entries) => {
+                            let range = entries.range((lo_b, hi_b));
+                            if *rev {
+                                for (k, v) in range.rev() {
+                                    round!(Value::tuple(vec![k.clone(), v.clone()]));
+                                }
+                            } else {
+                                for (k, v) in range {
+                                    round!(Value::tuple(vec![k.clone(), v.clone()]));
+                                }
+                            }
+                        }
+                        _ => unreachable!("TreeRange only lowers on Set/Map"),
+                    }
                 }
             }
             Iter::Seq(seq, false) if self.is_fed(id, seq, body).is_some() => {

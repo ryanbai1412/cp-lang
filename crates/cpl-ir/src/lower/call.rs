@@ -9814,6 +9814,49 @@ impl<'a> Lowerer<'a> {
         if !self.is_sorted_range_expr(e) {
             return None;
         }
+        // Zero-allocation direct iterator walk for `Set.range(r)` / `Map.range(r)`
+        // when `r` is a syntactic range literal (`a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..`).
+        let mut cur = e;
+        let mut rev = false;
+        while let ast::ExprKind::Field { base, name } = &cur.kind {
+            if name.text == "rev" {
+                rev = !rev;
+                cur = base;
+            } else {
+                break;
+            }
+        }
+        if let ast::ExprKind::Call { callee, args } = &cur.kind {
+            if let ast::ExprKind::Field { base, name } = &callee.kind {
+                if name.text == "range" && args.len() == 1 {
+                    let base_ty = self.probe_ty_silent(base);
+                    if let Some((key_ty, elem_ty)) = match base_ty {
+                        Some(Ty::Set(k)) => Some(((*k).clone(), *k)),
+                        Some(Ty::Map(k, v)) => {
+                            let kt = *k;
+                            let et = Ty::Tuple(vec![kt.clone(), *v]);
+                            Some((kt, et))
+                        }
+                        _ => None,
+                    } {
+                        if let ast::ExprKind::Range { lo, hi, inclusive, .. } = &args[0].value.kind {
+                            let container = self.expr(base, None);
+                            let lo = lo.as_ref().map(|x| (self.expect(x, &key_ty), true));
+                            let hi = hi.as_ref().map(|x| (self.expect(x, &key_ty), *inclusive));
+                            return Some((
+                                Iter::TreeRange {
+                                    container,
+                                    lo,
+                                    hi,
+                                    rev,
+                                },
+                                elem_ty,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
         let mut elem_ty = Ty::Error;
         let mut seq_ty = Ty::Error;
         let mut seq = self.do_expr(None, span, |lw, out| {

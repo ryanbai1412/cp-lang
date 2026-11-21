@@ -118,7 +118,11 @@ impl Found {
         walk::deep_stmts(block, &mut |stmt| {
             if let Stmt::For(_, _, iter, _) = stmt {
                 match iter {
-                    Iter::Seq(seq, _) | Iter::RangeVal(seq, _) | Iter::Subsets(seq) | Iter::Members(seq) => {
+                    Iter::Seq(seq, _)
+                    | Iter::RangeVal(seq, _)
+                    | Iter::Subsets(seq)
+                    | Iter::Members(seq)
+                    | Iter::TreeRange { container: seq, .. } => {
                         self.order(program, &seq.ty)
                     }
                     Iter::Range { .. } => {}

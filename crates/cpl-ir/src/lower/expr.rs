@@ -3754,6 +3754,9 @@ impl<'a> Lowerer<'a> {
                     },
                     Iter::RangeVal(value, rev) => Iter::RangeVal(value, !rev),
                     Iter::Seq(value, rev) => Iter::Seq(value, !rev),
+                    Iter::TreeRange { container, lo, hi, rev } => {
+                        Iter::TreeRange { container, lo, hi, rev: !rev }
+                    }
                     walk @ (Iter::Subsets(_) | Iter::Members(_)) => {
                         let list_ty = Ty::list(ty.clone());
                         let collected = self.do_expr(Some(&list_ty), span, |lw, out| {
