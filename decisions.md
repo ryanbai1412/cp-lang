@@ -2849,7 +2849,6 @@ the core lane in `plan/OPERATING.md`.
    rather than `Int` offsets from `r.len`, preventing 64-bit overflow on
    `Range<I128>` wider than `2^63` while preserving domain-safe `Pos(D)`
    arithmetic. Reverse: restore `r.len - 1` offset arithmetic.
-<<<<<<< Updated upstream
 
 ## 61. O(1) slice and reverse views (2026-11-21)
 
@@ -2962,6 +2961,7 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
 
 1. **`IntervalMap.assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` reports overwritten runs via an optional callback instead of returning a `List` or `-> yields`.**
    Reason: `cpl_ir::pushed::Feeds` intentionally does not push `-> yields` on `mut self` methods (an early `break` could leave the partition half-mutated), whereas a callback parameter both enforces partition completion and devirtualizes to an inlined template functor in C++ with zero heap allocation. Combined with a single-run fast path, `cf2237h` dropped from `1.66s` to `1.26s` on max binary-tree input and `IntervalMap` runs at `1.15x` matched C++ `std::map` ODT (`0.15s` vs `0.13s`). Reverse: change `assign` back to return `List<(range: Range<D>, val: T)>` in `stdlib/interval.cp` and restore `for (r, t) in paint.assign(...)` in `proto/ports/ecnerwala/cf2237h.cp`.
+<<<<<<< HEAD
 
 ## 68. `LazyTreap` in `std.lazy` and flat `SparseTable` storage (2026-11-21)
 
@@ -2975,3 +2975,13 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
 1. **`std.poly` operates directly on `List<Mod<P>>` with explicit output length `n` (`inv`, `log`, `exp`, `pow`, `sqrt`, plus `deriv`, `integral`).**
    - **Reason:** Using plain `List<Mod<P>>` (lowest degree first) gives zero-overhead interop with `std.ntt.convolve<P>`, `Comb<M>`, and list comprehensions without introducing a wrapper `Poly<P>` type. Requiring explicit truncation length `n: Int` (modulo `x^n`) matches every contest FPS call site (`ucup5s06a`, `ucup5s03a`, `ucup5s05f`) and avoids sentinel defaults. `inv` uses half-size Newton doubling (5 NTTs of size `2m` per step), `integral` uses linear-time modular inverses `1..=m`, `pow` handles leading zeros and large `k` via `exp(k * log(...))`, and `sqrt` returns `?List<Mod<P>>` via Tonelli-Shanks + Newton doubling.
    - **Reverse:** Remove `stdlib/poly.cp`, remove its rows from `stdlib/README.md`, `site/content/stdlib.md`, `editors/vscode/`, `design/stdlib/math.md` §2.5, and `plan/STDLIB.md`, and switch the four migrated ports back to `lib.math.poly`.
+
+## 70. Comprehension filters are `if`; power is `**` (2026-11-21)
+
+The corpus spelled a comprehension filter two ways (`for x in xs if p` 543
+times, `for x in xs where p` 38) and a power three ways (`a ** b`,
+`a.pow(b)`, and `a ^ b` in one dream, where `^` is xor). One spelling each:
+filters are `if`, familiar from Python and already the majority; power is
+`**`, with `.pow` removed from the surface and `^` meaning only xor.
+`cpl fix` rewrites `where` filters to `if` and `.pow(e)` to `** e`.
+Reverse by restoring `where` as a parser alias.
