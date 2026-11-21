@@ -1,7 +1,6 @@
-# CP Lang 0.2.2 — One-Page Contest Cheat Sheet
+# CP Lang — One-Page Contest Cheat Sheet
 
-The contest essentials. Every CP block is a complete program verified with the Rust compiler and C++17.
-The prelude needs no imports.
+The contest essentials. Every CP block is verified with `cpl check`, `cpl build`, and C++17; the prelude needs no imports.
 
 ## 1. Bindings, numbers, and operators
 
@@ -59,14 +58,11 @@ count[3] += 1
 count.fill(0)
 ```
 
-- `[V]T` uses `v: V`; `[0..n]T` uses `i: Int`. Different nominal domains never mix. `var dp: [0..n][0..4]Int = 0` fills nested arrays.
-- `V.K` is the size; `V.first`/`V.last` require a nonempty domain; `v.to_idx` is zero-based.
-- Array `.first`/`.last` return `?T`, or `none` when empty, not indices; unwrap a known nonempty end with `!`.
-- `v + k` / `v - k` return `?V`; `b - a` returns `Int`; `v.cyc(k)` wraps.
-- `V.bounds` contains `V.K + 1` gaps; `v.l`/`v.r`, `v.l(k)`/`v.r(k)` select boundaries.
-- `b.left`/`b.right` return `?V`; range structures accept `..v`, `..=v`, and `v..`.
-- `[Row, Col]T` indexes with `g[r, c]`; `g[r, ..]`/`g[.., c]` give one row/column as a list; `p.step(d)` over `Dir4`/`Dir8` gives `?(Row, Col)`; `use std.grid.{adj4}` for `p.adj4`.
-- Read-only slice aggregates work; mutable slices and `a.raw[i]` remain specification work.
+- `[V]T` uses `v: V`; `[0..n]T` uses `i: Int`. `domain V = n` is `0..n`; `V.count` / `V.K` is the size; `V.first`/`V.last` need nonempty `V`; `v.to_idx` is 0-based.
+- `var dp: [0..n][0..4]Int = 0` fills nested arrays. Array `.first`/`.last` return `?T`; unwrap nonempty ends with `!`.
+- `v + k` / `v - k` return `?V`; `b - a` returns `Int`; `v.cyc(k)` wraps; `for v in V by k` steps a domain.
+- `V.bounds` has `V.K + 1` gaps; `v.l`/`v.r`, `v.l(k)`/`v.r(k)` pick boundaries; `b.left`/`b.right` give `?V`; range ops accept `..v`, `..=v`, `v..`.
+- `[Row, Col]T` indexes `g[r, c]`; `g[r, ..]`/`g[.., c]` give `[D]T`; `p.step(d)` over `Dir4`/`Dir8` gives `?(Row, Col)`; `use std.grid.{adj4}`.
 - Compression: `xs = compress(all)`, fresh domain `xs.D`, `xs.at(x)`, inverse `xs[id]`.
 
 ## 4. Control flow and ranges
@@ -146,8 +142,7 @@ print(out)
 print(s.starts_with("12"), s.find("ab"), 'a'.upper) // YES 3 A
 ```
 
-`Str` is a flat `0..s.len` byte sequence, never UTF-8. `s[..k]`, `s[k..]`, `.len`, `.is_empty`, `.starts_with`, `.ends_with`, `.find(p) -> ?Int`, `s.find_all(p)` (every start, overlaps included); `Char.lower`/`.upper`/`.digit`.
-For nominal string positions, read `let s: [domain S]Char = read()`.
+`Str` is `0..s.len` ASCII bytes: `s[..k]`, `s[k..]`, `.len`, `.starts_with`, `.ends_with`, `.find`/`.rfind` (Char or Str) `-> ?Int`, `sub in s`, `s.find_all(p)`, `Char.lower`/`.upper`/`.digit`. For nominal positions: `let s: [domain S]Char = read()`.
 
 ## 8. Collections and sequence construction
 
@@ -232,15 +227,14 @@ st.apply(V.first..=V.last, 2)
 print(st.all)                       // 12
 ```
 
-`id` is the identity; `compose(new_f, old_f)` applies the old tag first; `span` counts leaves.
-`SegTree<D,T>(+, a)` accepts operators or a `Monoid`; lazy trees accept `AddSum` and other stock actions. `.fold(..)`, `.fold(l..)`, `.fold(..=r)` work.
+`id` is the identity; `compose(new_f, old_f)` applies old first; `span` counts leaves. `SegTree<D,T>(+, a)` takes operators or a `Monoid`; lazy trees take `AddSum`/actions; `.fold(..)` / `l..` / `..=r` work.
 `Fenwick`: `.add`/`.sum`/`.kth(k) -> ?D`; `SparseTable`: nonempty `.fold`; segment trees: `.set`/`.fold`/`.all`.
 
 ## 12. Input, memoization, and testing
 
 ```cp
 @!multitest                        // reads t; fresh state and memo cache per case
-let n: 1..=20 = read()
+let n = read(1..=20)
 domain V = 1..=n
 let a: [V]Int = read()
 @memo
@@ -251,6 +245,6 @@ print(pref(V.last))
 debug(n, a)                        // local stderr; stripped on judge
 ```
 
-Co-locate `@brute`, `@gen`, and `@checker` for `cpl stress`; `@interactor` and `@grader` cover judge protocols. Interactive: `ask("?", x)` prints, flushes, reads; else `flush()` before `read()`.
-`read()` of a `Bool` takes `0`/`1`; `read(none: 0)` reads a `?Int` or `?V` with `0` as `none`; `print(x, end: " ")` replaces the newline.
-Run `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl test`, and `cpl doc`; use `cpl lsp` in the editor. For full APIs, see the [language reference](types-and-control.html), [standard library](stdlib.html), and [course](course.html).
+- `let n = read(1..=20)` reads a checked range. `read()` of `Bool` takes `0`/`1`; `read(none: 0)` maps `0` to `none`; `print(x, end: " ")` sets the suffix.
+- Co-locate `@brute`, `@gen`, `@checker` for `cpl stress`; `@interactor`/`@grader` for judge protocols; `ask("?", x)` prints, flushes, reads.
+- `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl test`, `cpl doc`, `cpl lsp`. See [reference](types-and-control.html), [stdlib](stdlib.html), [course](course.html).

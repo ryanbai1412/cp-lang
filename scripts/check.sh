@@ -198,6 +198,9 @@ bundle_bytes=$(wc -c <dist/cp-lang.html)
 echo "dist/cp-lang.html: $bundle_bytes bytes"
 [ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
 
+step "docs examples, course references, cheat-sheet budget and links"
+python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_docs.py"
+
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"
     need npm "the VS Code tests run on it"

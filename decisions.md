@@ -1287,3 +1287,17 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   files over 64 KB or growing > 5% and > 1,024 B, median token ratio regressions (> +0.02), `wa_trap`
   regressions, open `blocker` friction increases, and (in full mode) p50/p95 runtime or RSS regressions
   (> 1.10x baseline). *How to reverse:* adjust threshold constants at the top of `scripts/scoreboard.py`.
+
+## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
+
+- **24.1 Fast docs verification runs on every commit.** `site/check_docs.py` runs inside
+  `scripts/check.sh --fast` right after `site/bundle.py`. It checks every `cp` fence in
+  `site/content/*.md` and `docs/one-page-cheat-sheet.md` with one batched `cpl check`, executes every
+  `site/examples/*.cp` fixture and write-code course reference through `cpl run`, enforces the 250-line
+  cheat-sheet budget, and validates every local HTML link and heading fragment in `site/_build/`.
+  *Reason:* `site/test_site.py` compiles every snippet with `g++`, taking ~55 s, so it sat outside the
+  fast gate and docs drifted (the cheat sheet exceeded 250 lines). Running `cpl check` + `cpl run` keeps
+  the fast gate under a few seconds while catching broken examples immediately; `site/test_site.py`
+  remains the full C++17 verification suite.
+  *Reversible:* remove the `site/check_docs.py` step from `scripts/check.sh` or replace with a faster
+  Rust subcommand if the docs corpus grows past a few seconds.

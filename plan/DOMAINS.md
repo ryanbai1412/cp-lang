@@ -261,15 +261,33 @@ for run, test and trace; JetBrains plugin; other-editor setups; fuzzer.
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a
 guide with one chapter per idea, a complete reference, a stdlib reference
-with costs, an error index with one page per diagnostic, a cookbook built
-from hundreds of real ports, interactive lessons that teach by solving, and
-a browser playground that runs the interpreter, the trace viewer and a judge,
-every example executed in the gate.
-**Where we are.** Site generator, course, playground page, cheat sheet;
-docs lag the 0.3 changes.
+with costs and tested doc examples, an error index with one page per
+diagnostic and lint code (each with verified trigger and fix), a cookbook
+built from hundreds of real validated ports, interactive lessons that teach
+by solving, and a browser playground that runs the interpreter, C++17
+preview, trace viewer and a judge — every single code block and example
+executed in the gate so documentation never drifts.
+**Where we are.** Static site generator (`site/build.py`, 23 pages: 10-lesson
+course with 51 checked exercises, 12 reference pages including canonical
+`docs/one-page-cheat-sheet.md`), WASM playground (23 presets), canonical
+trace viewer, and offline bundle (`dist/cp-lang.html`, 1.83 MB < 2.6 MB
+cap). 99/99 doc `cp` fences and 22/22 `site/examples/*.cp` pass check/build;
+`site/check_docs.py` now gates doc fences, example runs, links, and the
+cheat-sheet budget in `scripts/check.sh --fast`. Gaps: reference pages lag
+the landed 0.3 batch (`repeat`, `loop`, multi-binding, one-line enums,
+counted domains, `read(lo..=hi)`, stepped domains, `rfind`/`Str in Str`,
+`debug` purity); no error index for the 52 `cpl-diag` + 9 `cpl-lint` codes;
+no cookbook from the 235 validated ecnerwala ports (only 5 showcase cards on
+`index.html`); `cpl doc stdlib` finds 715 items across 25 modules (334
+undocumented, 0 doc-comment examples).
 **Bar.** A cold reader writes a correct solution from the docs alone; every
-example in the docs is run in the gate.
-**Next.** Update to 0.3; error index; cookbook from ports.
+doc `cp` block, example fixture, cookbook recipe, and error-index trigger/fix
+passes in `scripts/check.sh --fast`; 100% of diagnostic/lint codes have an
+error-index page; offline bundle stays under 2.6 MB.
+**Next.** Update reference docs and playground to landed 0.3 features; build
+the 61-code error index with verified trigger/fix pairs; build the cookbook
+from validated ports; sync `site/content/stdlib.md` with `stdlib/*.cp` and
+add tested `cpl doc` examples.
 
 ## 12. Validation: ports, scoreboard, differential testing (`plan/80`)
 **North star.** Thousands of hard accepted solutions across CF, AtCoder,
