@@ -69,13 +69,13 @@ fn plan(x: Int) -> ?Plan:
         if total[s] < x:
             for spent in [false, true]:
                 for j in PosB.bounds:
-                    if fit(s.l, j, spent), let k = matches(j, s):
+                    if let k = matches(j, s) and fit(s.l, j, spent):
                         came[s.r, k, spent] = Back(j, spent)
         else:
             for spent in [false, true]:
                 var latest: ?PosB.bounds = none
                 for j in PosB.bounds:
-                    if let i = latest, mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
+                    if let i = latest and mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
                     if fit(s.l, j, spent): latest = j
             if let i = PosB.bounds.first(j => fit(s.l, j, false)):
                 for j in PosB.bounds:
