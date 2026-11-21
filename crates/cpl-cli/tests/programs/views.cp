@@ -96,3 +96,7 @@ var node_sum = 0
 for u in node_rev:
     node_sum = node_sum * 10 + u.ord + 1
 print(node_sum)
+
+// Slice of temporary literal inside an expression-bodied fn (pending hoisted base)
+fn digit_pair(i: Int) -> Str = "0123456789"[i..i + 2].to_str()
+print(digit_pair(0), digit_pair(7))

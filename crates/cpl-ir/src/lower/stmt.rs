@@ -138,8 +138,11 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Block(block) => out.extend(self.block(block, tail).stmts),
             _ => {
+                let outer_pending = std::mem::take(&mut self.cx.pending);
                 let at = out.len();
                 self.tail_value(e, tail, out);
+                let pending = std::mem::replace(&mut self.cx.pending, outer_pending);
+                out.splice(at..at, pending);
                 self.lift_leaving(out, at);
             }
         }
