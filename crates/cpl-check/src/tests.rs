@@ -2438,3 +2438,19 @@ print(total, outer())
 ";
     assert_eq!(check(ok), vec![]);
 }
+
+#[test]
+fn bsearch_last_over_seq_len_infers_opt_int() {
+    let ok = "\
+use std.seq.{bsearch_first, bsearch_last}
+
+fn last_before(blacks: List<(Int, Int)>, r: Int) -> ?Int:
+    bsearch_last(0..blacks.len, i => blacks[i].0 <= r)
+
+fn first_after(s: Str, c: Char) -> ?Int:
+    bsearch_first(0..s.len, i => s[i] >= c)
+
+print(last_before([(1, 2), (3, 4)], 3) ?? -1, first_after(\"abc\", 'b') ?? -1)
+";
+    assert_eq!(check(ok), vec![]);
+}

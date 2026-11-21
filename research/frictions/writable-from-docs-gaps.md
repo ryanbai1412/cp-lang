@@ -4,6 +4,7 @@ Observed while evaluating 55 unseen mixed-difficulty contest statements (`resear
 
 ## 1. `bsearch_last(0..n, ...)` return type fails to unify with `?Int`
 
+- **Status:** fixed: `cpl-check` now types `.len` as `Int` (and `.is_empty` as `Bool`) on built-in sequences and widens `0..unknown` ranges to `Range<Int>`, so `bsearch_last(0..blacks.len, ...)` infers `?Int` directly.
 - **Severity:** medium
 - **Goal it hurts:** express
 - **Owning lane:** typechecker / stdlib (`std.search`)

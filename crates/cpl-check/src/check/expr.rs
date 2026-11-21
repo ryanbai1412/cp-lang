@@ -154,6 +154,9 @@ impl<'a> Checker<'a> {
                         }
                     }
                     (Some(a), None) | (None, Some(a)) if a.is_int() => Ty::Int,
+                    (Some(a), Some(Ty::Unknown)) | (Some(Ty::Unknown), Some(a)) if a.is_int() => {
+                        Ty::Int
+                    }
                     _ => Ty::Unknown,
                 };
                 self.range_ends(expr, hi.as_deref(), *inclusive, &lo_ty, &hi_ty);
@@ -1216,6 +1219,8 @@ impl<'a> Checker<'a> {
         }
         if let Some(elem) = base_ty.seq_elem() {
             match name.text.as_str() {
+                "len" => return Ty::Int,
+                "is_empty" => return Ty::Bool,
                 "first" | "last" if base_ty == Ty::Str => {
                     return Ty::Optional(Box::new(elem));
                 }
