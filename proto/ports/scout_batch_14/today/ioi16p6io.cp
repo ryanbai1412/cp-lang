@@ -8,8 +8,7 @@ let raw: [n](r: 0..=1000000, c: 0..=1000000) = read()
 
 // Normalize points into intervals [min(r, c), max(r, c)] and strip dominated ones.
 type Seg = (l: Int, r: Int)
-var intervals: List<Seg> = []
-for p in raw: intervals.push((min(p.r, p.c), max(p.r, p.c)))
+var intervals: List<Seg> = [(min(p.r, p.c), max(p.r, p.c)) for p in raw]
 let ordered = sorted(intervals, by: s => (s.l, -s.r))
 var segs: List<Seg> = []
 var max_r = -1
@@ -124,6 +123,6 @@ fn eval_penalty(lam: Int) -> (cost: Int, used: Int):
             lc_add(-2 * r, cost + r * r, used)
     (dp_cost[0], dp_cnt[0])
 
-let lam = (0..=m * m).first_where(pen => eval_penalty(pen).used <= k) ?? (m * m)
+let lam = bsearch_first(0..=m * m, pen => eval_penalty(pen).used <= k) ?? (m * m)
 let res = eval_penalty(lam)
 print(res.cost - k * lam)

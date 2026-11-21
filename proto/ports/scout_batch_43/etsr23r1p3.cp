@@ -26,7 +26,7 @@ for i in 0..n:
 var dp: [Subset<Alpha>]?Int = none
 dp[Subset<Alpha>.first] = n
 
-for mask in Subset<Alpha> if mask.len > 0:
+for mask in Subset<Alpha>.all if mask.len > 0:
     var best: ?Int = n
     for c in Alpha if c in mask:
         if let prev_pos = dp[mask.without(c)] and let hit = prv[prev_pos, c]:

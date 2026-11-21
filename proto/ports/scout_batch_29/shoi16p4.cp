@@ -28,7 +28,7 @@ fn det(mut a: [Rest, Rest]Z) -> Z:
         if p != i:
             for c in Rest: (a[i, c], a[p, c]) = (a[p, c], a[i, c])
             ans = -ans
-        ans = ans * a[i, i]
+        ans *= a[i, i]
         let inv = a[i, i].inv
         for r in i.r..:
             let f = a[r, i] * inv
@@ -37,15 +37,15 @@ fn det(mut a: [Rest, Rest]Z) -> Z:
 
 var total = Z(0)
 for skipped in Subset<Company>:
-    var lap: [Rest, Rest]Z = Z(0)
+    var lap: [Rest, Rest]Z = 0
     for c in Company:
         if c in skipped: continue
         for e in roads[c]:
             if e.u == e.v: continue
-            if let u = Rest.try(e.u.label): lap[u, u] += Z(1)
-            if let v = Rest.try(e.v.label): lap[v, v] += Z(1)
-            if let u = Rest.try(e.u.label):
-                if let v = Rest.try(e.v.label):
+            if let u = Rest.from_idx(e.u.label): lap[u, u] += Z(1)
+            if let v = Rest.from_idx(e.v.label): lap[v, v] += Z(1)
+            if let u = Rest.from_idx(e.u.label):
+                if let v = Rest.from_idx(e.v.label):
                     lap[u, v] -= Z(1)
                     lap[v, u] -= Z(1)
     let trees = det(mut lap)

@@ -31,7 +31,7 @@ fn light(ones: Int) -> Bool:
 let dark = light(0)
 var word: [n]Char = '0'
 if dark != light(n):
-    let flip = (0..=n).first_where(k => light(k) != dark)! - 1
+    let flip = bsearch_first(0..=n, k => light(k) != dark)! - 1
     for i in 0..flip: word[i] = '1'
     word[flip] = 'x'
 print(word)

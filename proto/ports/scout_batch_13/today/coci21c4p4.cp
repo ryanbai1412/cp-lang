@@ -16,7 +16,7 @@ for (u, v, w) in roads:
     adj[u].push(v)
     adj[v].push(u)
 let tree = Rooted(adj, Town.first)
-var up: [Town]Int = 0                       // length of the road to the parent
+var up: [Town]Int = 0  // length of the road to the parent
 for (u, v, w) in roads:
     up[if tree.parent(u) == v: u else: v] = w
 
@@ -25,9 +25,9 @@ for (u, v, w) in roads:
 // could not reach anything higher.
 fn parks(reach: Int) -> List<Town>:
     var built: List<Town> = []
-    var far: [Town]?Int = 0                 // farthest town at or below v that no park serves yet
-    var near: [Town]?Int = none             // nearest park at or below v
-    for v in tree.preorder.rev:             // children before parents
+    var far: [Town]?Int = 0      // farthest town at or below v that no park serves yet
+    var near: [Town]?Int = none  // nearest park at or below v
+    for v in tree.preorder.rev:  // children before parents
         if let f = far[v]:
             if let d = near[v]:
                 if f + d <= reach: far[v] = none
@@ -43,7 +43,7 @@ fn parks(reach: Int) -> List<Town>:
             built.push(v)
     built
 
-let reach = (0..=2e14).first_where(x => parks(x).len <= k)!
+let reach = bsearch_first(0..=2e14, x => parks(x).len <= k)!
 print(reach)
 
 var chosen = parks(reach)

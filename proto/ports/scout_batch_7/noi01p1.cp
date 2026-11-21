@@ -13,7 +13,7 @@ let (n, k): (Int, Int) = read()
 domain Animal = 1..=n
 
 var up: [Animal]Animal = [Animal] a => a
-var ahead: [Animal]Int = 0                  // kind[a] - kind[up[a]], mod 3
+var ahead: [Animal]Int = 0  // kind[a] - kind[up[a]], mod 3
 
 // The root of a's group, and kind[a] - kind[root].
 fn root(a: Animal) -> (Animal, Int):
@@ -35,6 +35,6 @@ fn relate(x: Animal, y: Animal, d: Int) -> Bool:
 var lies = 0
 for _ in 0..k:
     let (kind, x, y): (Int, Int, Int) = read()
-    let (a, b) = (Animal.try(x), Animal.try(y))
+    let (a, b) = (Animal.from_idx(x), Animal.from_idx(y))
     if a == none or b == none or not relate(a!, b!, kind - 1): lies += 1
 print(lies)

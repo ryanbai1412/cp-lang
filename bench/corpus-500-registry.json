@@ -39,7 +39,7 @@
    "canonical": {
     "ports": 594,
     "cp_loc": {
-     "total": 24561,
+     "total": 24512,
      "mean": 41.3,
      "median": 32.0
     },
@@ -54,21 +54,21 @@
      "median": 66.0
     },
     "raw_reduction_pct": {
-     "of_totals": 65.7,
+     "of_totals": 65.8,
      "mean": 66.0,
      "median": 68.8
     },
     "stripped_reduction_pct": {
-     "of_totals": 47.5,
-     "mean": 44.6,
-     "median": 47.9
+     "of_totals": 47.6,
+     "mean": 44.7,
+     "median": 48.0
     },
-    "no_stripped_win": 33
+    "no_stripped_win": 32
    },
    "canonical_verified": {
     "ports": 566,
     "cp_loc": {
-     "total": 22754,
+     "total": 22727,
      "mean": 40.2,
      "median": 32.0
     },
@@ -88,16 +88,16 @@
      "median": 69.0
     },
     "stripped_reduction_pct": {
-     "of_totals": 48.3,
-     "mean": 45.2,
-     "median": 48.2
+     "of_totals": 48.4,
+     "mean": 45.3,
+     "median": 48.3
     },
-    "no_stripped_win": 29
+    "no_stripped_win": 28
    },
    "spec_form": {
     "ports": 313,
     "cp_loc": {
-     "total": 10604,
+     "total": 10602,
      "mean": 33.9,
      "median": 25
     },
@@ -126,8 +126,8 @@
    "spec_form_same_problems_runnable": {
     "ports": 305,
     "cp_loc": {
-     "total": 14612,
-     "mean": 47.9,
+     "total": 14554,
+     "mean": 47.7,
      "median": 38
     },
     "cpp_raw_loc": {
@@ -141,23 +141,23 @@
      "median": 72
     },
     "raw_reduction_pct": {
-     "of_totals": 61.5,
-     "mean": 62.1,
+     "of_totals": 61.6,
+     "mean": 62.2,
      "median": 64.2
     },
     "stripped_reduction_pct": {
-     "of_totals": 42.3,
-     "mean": 39.0,
-     "median": 41.3
+     "of_totals": 42.5,
+     "mean": 39.1,
+     "median": 41.5
     },
-    "no_stripped_win": 20
+    "no_stripped_win": 19
    },
    "canonical_by_family": {
     "APIO": {
      "ports": 8,
      "cp_loc": {
-      "total": 479,
-      "mean": 59.9,
+      "total": 478,
+      "mean": 59.8,
       "median": 41.5
      },
      "cpp_raw_loc": {
@@ -172,12 +172,12 @@
      },
      "raw_reduction_pct": {
       "of_totals": 57.5,
-      "mean": 57.5,
+      "mean": 57.6,
       "median": 57.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 35.2,
-      "mean": 35.3,
+      "of_totals": 35.3,
+      "mean": 35.5,
       "median": 39.5
      },
      "no_stripped_win": 1
@@ -214,8 +214,8 @@
     "BtOI": {
      "ports": 23,
      "cp_loc": {
-      "total": 1018,
-      "mean": 44.3,
+      "total": 1016,
+      "mean": 44.2,
       "median": 29
      },
      "cpp_raw_loc": {
@@ -229,13 +229,13 @@
       "median": 81
      },
      "raw_reduction_pct": {
-      "of_totals": 67.7,
+      "of_totals": 67.8,
       "mean": 69.4,
       "median": 74.3
      },
      "stripped_reduction_pct": {
       "of_totals": 54.6,
-      "mean": 56.0,
+      "mean": 56.1,
       "median": 56.8
      },
      "no_stripped_win": 0
@@ -243,7 +243,7 @@
     "CCC": {
      "ports": 41,
      "cp_loc": {
-      "total": 1195,
+      "total": 1194,
       "mean": 29.1,
       "median": 22
      },
@@ -259,12 +259,12 @@
      },
      "raw_reduction_pct": {
       "of_totals": 69.5,
-      "mean": 69.5,
+      "mean": 69.6,
       "median": 70.7
      },
      "stripped_reduction_pct": {
       "of_totals": 48.5,
-      "mean": 38.8,
+      "mean": 39.0,
       "median": 51.7
      },
      "no_stripped_win": 3
@@ -272,8 +272,8 @@
     "CCO": {
      "ports": 56,
      "cp_loc": {
-      "total": 2714,
-      "mean": 48.5,
+      "total": 2712,
+      "mean": 48.4,
       "median": 34.0
      },
      "cpp_raw_loc": {
@@ -293,10 +293,10 @@
      },
      "stripped_reduction_pct": {
       "of_totals": 47.0,
-      "mean": 44.6,
+      "mean": 44.7,
       "median": 46.0
      },
-     "no_stripped_win": 2
+     "no_stripped_win": 1
     },
     "CEOI": {
      "ports": 10,
@@ -330,7 +330,7 @@
     "COCI": {
      "ports": 33,
      "cp_loc": {
-      "total": 841,
+      "total": 843,
       "mean": 25.5,
       "median": 23
      },
@@ -345,13 +345,13 @@
       "median": 47
      },
      "raw_reduction_pct": {
-      "of_totals": 72.7,
-      "mean": 69.9,
+      "of_totals": 72.6,
+      "mean": 69.7,
       "median": 72.9
      },
      "stripped_reduction_pct": {
-      "of_totals": 57.2,
-      "mean": 51.7,
+      "of_totals": 57.1,
+      "mean": 51.4,
       "median": 51.1
      },
      "no_stripped_win": 0
@@ -359,8 +359,8 @@
     "Chinese provincial": {
      "ports": 13,
      "cp_loc": {
-      "total": 556,
-      "mean": 42.8,
+      "total": 563,
+      "mean": 43.3,
       "median": 42
      },
      "cpp_raw_loc": {
@@ -374,13 +374,13 @@
       "median": 100
      },
      "raw_reduction_pct": {
-      "of_totals": 77.3,
-      "mean": 74.6,
+      "of_totals": 77.1,
+      "mean": 74.3,
       "median": 76.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 64.0,
-      "mean": 58.3,
+      "of_totals": 63.6,
+      "mean": 57.9,
       "median": 60.0
      },
      "no_stripped_win": 0
@@ -388,8 +388,8 @@
     "DMOJ contests": {
      "ports": 97,
      "cp_loc": {
-      "total": 3673,
-      "mean": 37.9,
+      "total": 3670,
+      "mean": 37.8,
       "median": 28
      },
      "cpp_raw_loc": {
@@ -446,8 +446,8 @@
     "EGOI": {
      "ports": 15,
      "cp_loc": {
-      "total": 873,
-      "mean": 58.2,
+      "total": 871,
+      "mean": 58.1,
       "median": 67
      },
      "cpp_raw_loc": {
@@ -461,13 +461,13 @@
       "median": 103
      },
      "raw_reduction_pct": {
-      "of_totals": 60.8,
-      "mean": 62.4,
+      "of_totals": 60.9,
+      "mean": 62.5,
       "median": 63.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 45.1,
-      "mean": 40.4,
+      "of_totals": 45.2,
+      "mean": 40.5,
       "median": 38.6
      },
      "no_stripped_win": 0
@@ -475,8 +475,8 @@
     "IATI": {
      "ports": 4,
      "cp_loc": {
-      "total": 250,
-      "mean": 62.5,
+      "total": 249,
+      "mean": 62.2,
       "median": 47.0
      },
      "cpp_raw_loc": {
@@ -490,22 +490,22 @@
       "median": 91.0
      },
      "raw_reduction_pct": {
-      "of_totals": 58.9,
+      "of_totals": 59.1,
       "mean": 62.9,
       "median": 60.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 45.4,
-      "mean": 48.1,
-      "median": 47.7
+      "of_totals": 45.6,
+      "mean": 48.2,
+      "median": 47.9
      },
      "no_stripped_win": 0
     },
     "ICPC-style": {
      "ports": 6,
      "cp_loc": {
-      "total": 206,
-      "mean": 34.3,
+      "total": 205,
+      "mean": 34.2,
       "median": 36.5
      },
      "cpp_raw_loc": {
@@ -519,22 +519,22 @@
       "median": 69.0
      },
      "raw_reduction_pct": {
-      "of_totals": 64.5,
-      "mean": 65.3,
-      "median": 63.8
+      "of_totals": 64.7,
+      "mean": 65.5,
+      "median": 64.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 49.4,
-      "mean": 50.2,
-      "median": 48.5
+      "of_totals": 49.6,
+      "mean": 50.4,
+      "median": 49.1
      },
      "no_stripped_win": 0
     },
     "IOI": {
      "ports": 94,
      "cp_loc": {
-      "total": 4694,
-      "mean": 49.9,
+      "total": 4659,
+      "mean": 49.6,
       "median": 42.0
      },
      "cpp_raw_loc": {
@@ -548,14 +548,14 @@
       "median": 69.0
      },
      "raw_reduction_pct": {
-      "of_totals": 57.8,
-      "mean": 57.7,
+      "of_totals": 58.1,
+      "mean": 57.9,
       "median": 61.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 39.7,
-      "mean": 38.3,
-      "median": 41.5
+      "of_totals": 40.1,
+      "mean": 38.7,
+      "median": 42.1
      },
      "no_stripped_win": 9
     },
@@ -591,8 +591,8 @@
     "NOI (China)": {
      "ports": 77,
      "cp_loc": {
-      "total": 4344,
-      "mean": 56.4,
+      "total": 4335,
+      "mean": 56.3,
       "median": 42
      },
      "cpp_raw_loc": {
@@ -606,13 +606,13 @@
       "median": 88
      },
      "raw_reduction_pct": {
-      "of_totals": 64.4,
-      "mean": 62.8,
-      "median": 66.7
+      "of_totals": 64.5,
+      "mean": 62.9,
+      "median": 67.3
      },
      "stripped_reduction_pct": {
-      "of_totals": 45.2,
-      "mean": 41.7,
+      "of_totals": 45.3,
+      "mean": 41.8,
       "median": 47.9
      },
      "no_stripped_win": 9
@@ -620,8 +620,8 @@
     "NOIP": {
      "ports": 48,
      "cp_loc": {
-      "total": 1412,
-      "mean": 29.4,
+      "total": 1408,
+      "mean": 29.3,
       "median": 24.0
      },
      "cpp_raw_loc": {
@@ -635,23 +635,23 @@
       "median": 59.0
      },
      "raw_reduction_pct": {
-      "of_totals": 73.2,
+      "of_totals": 73.3,
       "mean": 73.4,
       "median": 73.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 57.1,
+      "of_totals": 57.2,
       "mean": 52.2,
-      "median": 54.0
+      "median": 54.4
      },
      "no_stripped_win": 1
     },
     "other": {
      "ports": 8,
      "cp_loc": {
-      "total": 274,
-      "mean": 34.2,
-      "median": 29.0
+      "total": 277,
+      "mean": 34.6,
+      "median": 30.0
      },
      "cpp_raw_loc": {
       "total": 1019,
@@ -664,14 +664,14 @@
       "median": 79.0
      },
      "raw_reduction_pct": {
-      "of_totals": 73.1,
-      "mean": 71.2,
-      "median": 80.0
+      "of_totals": 72.8,
+      "mean": 70.9,
+      "median": 78.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 55.7,
-      "mean": 56.1,
-      "median": 57.0
+      "of_totals": 55.3,
+      "mean": 55.6,
+      "median": 55.0
      },
      "no_stripped_win": 0
     }
@@ -680,7 +680,7 @@
     "v1": {
      "ports": 358,
      "cp_loc": {
-      "total": 11732,
+      "total": 11736,
       "mean": 32.8,
       "median": 27.5
      },
@@ -709,8 +709,8 @@
     "v2": {
      "ports": 208,
      "cp_loc": {
-      "total": 10744,
-      "mean": 51.7,
+      "total": 10700,
+      "mean": 51.4,
       "median": 38.0
      },
      "cpp_raw_loc": {
@@ -724,23 +724,23 @@
       "median": 72.0
      },
      "raw_reduction_pct": {
-      "of_totals": 57.7,
-      "mean": 59.7,
+      "of_totals": 57.8,
+      "mean": 59.9,
       "median": 62.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 38.2,
-      "mean": 37.6,
-      "median": 40.5
+      "of_totals": 38.4,
+      "mean": 37.8,
+      "median": 40.8
      },
-     "no_stripped_win": 14
+     "no_stripped_win": 13
     },
     "v2.1": {
      "ports": 28,
      "cp_loc": {
-      "total": 2085,
-      "mean": 74.5,
-      "median": 64.0
+      "total": 2076,
+      "mean": 74.1,
+      "median": 63.5
      },
      "cpp_raw_loc": {
       "total": 4247,
@@ -753,14 +753,14 @@
       "median": 123.5
      },
      "raw_reduction_pct": {
-      "of_totals": 50.9,
-      "mean": 50.1,
+      "of_totals": 51.1,
+      "mean": 50.4,
       "median": 56.8
      },
      "stripped_reduction_pct": {
-      "of_totals": 36.5,
-      "mean": 21.7,
-      "median": 38.9
+      "of_totals": 36.8,
+      "mean": 22.1,
+      "median": 39.4
      },
      "no_stripped_win": 6
     }
@@ -798,8 +798,8 @@
     "runnable": {
      "ports": 495,
      "cp_loc": {
-      "total": 22750,
-      "mean": 46.0,
+      "total": 22701,
+      "mean": 45.9,
       "median": 36
      },
      "cpp_raw_loc": {
@@ -813,16 +813,16 @@
       "median": 74
      },
      "raw_reduction_pct": {
-      "of_totals": 64.1,
-      "mean": 63.8,
+      "of_totals": 64.2,
+      "mean": 63.9,
       "median": 67.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 46.6,
-      "mean": 43.0,
+      "of_totals": 46.7,
+      "mean": 43.1,
       "median": 46.3
      },
-     "no_stripped_win": 30
+     "no_stripped_win": 29
     },
     "spec": {
      "ports": 8,
@@ -887,7 +887,7 @@
     "v2": {
      "ports": 193,
      "cp_loc": {
-      "total": 6287,
+      "total": 6285,
       "mean": 32.6,
       "median": 25
      },
@@ -907,8 +907,8 @@
       "median": 75.0
      },
      "stripped_reduction_pct": {
-      "of_totals": 60.9,
-      "mean": 59.4,
+      "of_totals": 61.0,
+      "mean": 59.5,
       "median": 59.7
      },
      "no_stripped_win": 2
@@ -947,8 +947,8 @@
     "auto": {
      "ports": 503,
      "cp_loc": {
-      "total": 22964,
-      "mean": 45.7,
+      "total": 22915,
+      "mean": 45.6,
       "median": 36
      },
      "cpp_raw_loc": {
@@ -962,16 +962,16 @@
       "median": 74
      },
      "raw_reduction_pct": {
-      "of_totals": 64.3,
-      "mean": 63.9,
+      "of_totals": 64.4,
+      "mean": 64.0,
       "median": 67.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 46.9,
+      "of_totals": 47.0,
       "mean": 43.3,
       "median": 46.3
      },
-     "no_stripped_win": 30
+     "no_stripped_win": 29
     },
     "hand": {
      "ports": 91,
@@ -9926,7 +9926,7 @@
    "submission": "3469626",
    "original": "corpus/submissions/3469626.cpp",
    "generation": "v2.1",
-   "cp_loc": 122,
+   "cp_loc": 120,
    "wish_markers": 0,
    "harness": "proto/ports/blind_critic_4/check.py",
    "cpp_raw_loc": 210,
@@ -10037,7 +10037,7 @@
    "submission": "5723344",
    "original": "corpus/submissions/5723344.cpp",
    "generation": "v2.1",
-   "cp_loc": 142,
+   "cp_loc": 140,
    "wish_markers": 0,
    "harness": "proto/ports/blind_critic_4/check.py",
    "cpp_raw_loc": 174,
@@ -15418,7 +15418,7 @@
    "submission": "3718293",
    "original": "corpus/submissions/3718293.cpp",
    "generation": "v1",
-   "cp_loc": 29,
+   "cp_loc": 32,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_11/check.py",
    "cpp_raw_loc": 133,
@@ -15475,7 +15475,7 @@
    "submission": "6517796",
    "original": "corpus/submissions/6517796.cpp",
    "generation": "v1",
-   "cp_loc": 33,
+   "cp_loc": 32,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_11/check.py",
    "cpp_raw_loc": 179,
@@ -15513,7 +15513,7 @@
    "submission": "3893923",
    "original": "corpus/submissions/3893923.cpp",
    "generation": "v1",
-   "cp_loc": 42,
+   "cp_loc": 44,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_11/check.py",
    "cpp_raw_loc": 166,
@@ -15589,7 +15589,7 @@
    "submission": "5445693",
    "original": "corpus/submissions/5445693.cpp",
    "generation": "v1",
-   "cp_loc": 36,
+   "cp_loc": 39,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_11/check.py",
    "cpp_raw_loc": 227,
@@ -15641,7 +15641,7 @@
    "submission": "4329580",
    "original": "corpus/submissions/4329580.cpp",
    "generation": "v1",
-   "cp_loc": 52,
+   "cp_loc": 55,
    "wish_markers": 6,
    "harness": "proto/ports/scout_batch_12/check.py",
    "cpp_raw_loc": 131,
@@ -16010,7 +16010,7 @@
    "submission": "5245322",
    "original": "corpus/submissions/5245322.cpp",
    "generation": "v1",
-   "cp_loc": 4,
+   "cp_loc": 6,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_13/check.sh",
    "cpp_raw_loc": 56,
@@ -16342,7 +16342,7 @@
    "submission": "4730558",
    "original": "corpus/submissions/4730558.cpp",
    "generation": "v1",
-   "cp_loc": 115,
+   "cp_loc": 114,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_14/check.py",
    "cpp_raw_loc": 171,
@@ -18797,7 +18797,7 @@
    "submission": "5032789",
    "original": "corpus/submissions/5032789.cpp",
    "generation": "v1",
-   "cp_loc": 66,
+   "cp_loc": 57,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 139,
@@ -18911,7 +18911,7 @@
    "submission": "4547602",
    "original": "corpus/submissions/4547602.cpp",
    "generation": "v1",
-   "cp_loc": 113,
+   "cp_loc": 111,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_23/check.py",
    "cpp_raw_loc": 166,
@@ -19205,7 +19205,7 @@
    "submission": "4722412",
    "original": "corpus/submissions/4722412.cpp",
    "generation": "v1",
-   "cp_loc": 103,
+   "cp_loc": 105,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 184,
@@ -19224,7 +19224,7 @@
    "submission": "7249409",
    "original": "corpus/submissions/7249409.cpp",
    "generation": "v1",
-   "cp_loc": 187,
+   "cp_loc": 186,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_24/check.py",
    "cpp_raw_loc": 193,
@@ -19936,7 +19936,7 @@
    "submission": "3732440",
    "original": "corpus/submissions/3732440.cpp",
    "generation": "v1",
-   "cp_loc": 45,
+   "cp_loc": 44,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_27/check.py",
    "cpp_raw_loc": 189,
@@ -20392,7 +20392,7 @@
    "submission": "5461671",
    "original": "corpus/submissions/5461671.cpp",
    "generation": "v1",
-   "cp_loc": 58,
+   "cp_loc": 62,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_29/check.py",
    "cpp_raw_loc": 200,
@@ -21705,7 +21705,7 @@
    "submission": "5556659",
    "original": "corpus/submissions/5556659.cpp",
    "generation": "v2",
-   "cp_loc": 43,
+   "cp_loc": 42,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_32/check.py",
    "cpp_raw_loc": 95,
@@ -22079,7 +22079,7 @@
    "submission": "3968384",
    "original": "corpus/submissions/3968384.cpp",
    "generation": "v2",
-   "cp_loc": 42,
+   "cp_loc": 40,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 119,
@@ -22946,7 +22946,7 @@
    "submission": "4157744",
    "original": "corpus/submissions/4157744.cpp",
    "generation": "v2",
-   "cp_loc": 133,
+   "cp_loc": 132,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_36/verify.py",
    "cpp_raw_loc": 200,
@@ -22965,7 +22965,7 @@
    "submission": "5119931",
    "original": "corpus/submissions/5119931.cpp",
    "generation": "v2",
-   "cp_loc": 31,
+   "cp_loc": 30,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_36/verify.py",
    "cpp_raw_loc": 82,
@@ -22984,7 +22984,7 @@
    "submission": "4575245",
    "original": "corpus/submissions/4575245.cpp",
    "generation": "v2",
-   "cp_loc": 71,
+   "cp_loc": 70,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_36/verify.py",
    "cpp_raw_loc": 101,
@@ -23686,7 +23686,7 @@
    "submission": "5536569",
    "original": "corpus/submissions/5536569.cpp",
    "generation": "v2",
-   "cp_loc": 65,
+   "cp_loc": 64,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_38/check.py",
    "cpp_raw_loc": 117,
@@ -23781,7 +23781,7 @@
    "submission": "4656863",
    "original": "corpus/submissions/4656863.cpp",
    "generation": "v2",
-   "cp_loc": 195,
+   "cp_loc": 193,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_38/check.py",
    "cpp_raw_loc": 268,
@@ -24564,7 +24564,7 @@
    "submission": "5339756",
    "original": "corpus/submissions/5339756.cpp",
    "generation": "v2",
-   "cp_loc": 20,
+   "cp_loc": 19,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_40/check.py",
    "cpp_raw_loc": 74,
@@ -24972,7 +24972,7 @@
    "submission": "6415646",
    "original": "corpus/submissions/6415646.cpp",
    "generation": "v2",
-   "cp_loc": 40,
+   "cp_loc": 39,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_41/check.py",
    "cpp_raw_loc": 134,
@@ -25323,7 +25323,7 @@
    "submission": "6103125",
    "original": "corpus/submissions/6103125.cpp",
    "generation": "v2",
-   "cp_loc": 89,
+   "cp_loc": 88,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_42/check.py",
    "cpp_raw_loc": 141,
@@ -26301,7 +26301,7 @@
    "submission": "5325567",
    "original": "corpus/submissions/5325567.cpp",
    "generation": "v2",
-   "cp_loc": 38,
+   "cp_loc": 37,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_45/check.py",
    "cpp_raw_loc": 104,
@@ -26320,7 +26320,7 @@
    "submission": "5448138",
    "original": "corpus/submissions/5448138.cpp",
    "generation": "v2",
-   "cp_loc": 54,
+   "cp_loc": 53,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_45/check.py",
    "cpp_raw_loc": 162,
@@ -27021,7 +27021,7 @@
    "submission": "4329456",
    "original": "corpus/submissions/4329456.cpp",
    "generation": "v2",
-   "cp_loc": 32,
+   "cp_loc": 31,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_47/verify.py",
    "cpp_raw_loc": 86,
@@ -27154,7 +27154,7 @@
    "submission": "6435481",
    "original": "corpus/submissions/6435481.cpp",
    "generation": "v2",
-   "cp_loc": 74,
+   "cp_loc": 73,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_47/verify.py",
    "cpp_raw_loc": 134,
@@ -27761,7 +27761,7 @@
    "submission": "4682555",
    "original": "corpus/submissions/4682555.cpp",
    "generation": "v2",
-   "cp_loc": 35,
+   "cp_loc": 34,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_49/check.py",
    "cpp_raw_loc": 85,
@@ -27799,7 +27799,7 @@
    "submission": "4689474",
    "original": "corpus/submissions/4689474.cpp",
    "generation": "v2",
-   "cp_loc": 65,
+   "cp_loc": 64,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_49/check.py",
    "cpp_raw_loc": 158,
@@ -27818,7 +27818,7 @@
    "submission": "4684567",
    "original": "corpus/submissions/4684567.cpp",
    "generation": "v2",
-   "cp_loc": 55,
+   "cp_loc": 53,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_49/check.py",
    "cpp_raw_loc": 110,
@@ -27913,7 +27913,7 @@
    "submission": "4783516",
    "original": "corpus/submissions/4783516.cpp",
    "generation": "v2",
-   "cp_loc": 63,
+   "cp_loc": 59,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_49/check.py",
    "cpp_raw_loc": 129,
@@ -28615,7 +28615,7 @@
    "submission": "5096459",
    "original": "corpus/submissions/5096459.cpp",
    "generation": "v2.1",
-   "cp_loc": 33,
+   "cp_loc": 32,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_50/check.py",
    "cpp_raw_loc": 97,
@@ -28653,7 +28653,7 @@
    "submission": "5445681",
    "original": "corpus/submissions/5445681.cpp",
    "generation": "v2.1",
-   "cp_loc": 66,
+   "cp_loc": 65,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_50/check.py",
    "cpp_raw_loc": 177,
@@ -28909,7 +28909,7 @@
    "submission": "5350805",
    "original": "corpus/submissions/5350805.cpp",
    "generation": "v2.1",
-   "cp_loc": 18,
+   "cp_loc": 17,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_51/check.py",
    "cpp_raw_loc": 58,
@@ -29023,7 +29023,7 @@
    "submission": "5203797",
    "original": "corpus/submissions/5203797.cpp",
    "generation": "v2.1",
-   "cp_loc": 97,
+   "cp_loc": 95,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_51/check.py",
    "cpp_raw_loc": 212,
@@ -29312,7 +29312,7 @@
    "submission": "4529641",
    "original": "corpus/submissions/4529641.cpp",
    "generation": "v2",
-   "cp_loc": 111,
+   "cp_loc": 107,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 198,
@@ -29330,7 +29330,7 @@
    "submission": "5052303",
    "original": "corpus/submissions/5052303.cpp",
    "generation": "v2",
-   "cp_loc": 140,
+   "cp_loc": 139,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 294,
@@ -29348,7 +29348,7 @@
    "submission": "4722414",
    "original": "corpus/submissions/4722414.cpp",
    "generation": "v2",
-   "cp_loc": 96,
+   "cp_loc": 94,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 184,
@@ -29384,7 +29384,7 @@
    "submission": "4691224",
    "original": "corpus/submissions/4691224.cpp",
    "generation": "v2",
-   "cp_loc": 93,
+   "cp_loc": 89,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 134,
@@ -29420,7 +29420,7 @@
    "submission": "4736004",
    "original": "corpus/submissions/4736004.cpp",
    "generation": "v2",
-   "cp_loc": 162,
+   "cp_loc": 156,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 210,
@@ -29438,7 +29438,7 @@
    "submission": "4786085",
    "original": "corpus/submissions/4786085.cpp",
    "generation": "v2",
-   "cp_loc": 70,
+   "cp_loc": 68,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 91,
@@ -29510,7 +29510,7 @@
    "submission": "5669058",
    "original": "corpus/submissions/5669058.cpp",
    "generation": "v2",
-   "cp_loc": 141,
+   "cp_loc": 140,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 245,
@@ -29564,7 +29564,7 @@
    "submission": "5445674",
    "original": "corpus/submissions/5445674.cpp",
    "generation": "v2",
-   "cp_loc": 105,
+   "cp_loc": 103,
    "wish_markers": 0,
    "harness": null,
    "cpp_raw_loc": 216,

@@ -22,7 +22,7 @@ let tedges: [TE](u: V, v: V) = read()
 let tree = Rooted<V>(Graph.undirected(tedges), root: V.first)
 
 var ans: U64 = 0
-for mask in Subset<V> if mask.len > 0:
+for mask in Subset<V>.all if mask.len > 0:
     let allowed = [v for v in V if v in mask]
     var dp: [V, V]U64 = 0
     for u in tree.postorder:

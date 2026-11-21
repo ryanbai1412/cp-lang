@@ -8,9 +8,9 @@ use std.mod.{Mod, Comb}
 const P = 1000000007
 type Z = Mod<P>
 
-let (n, m, k): (Int, Int, Int) = read()     // m <= n <= 128, k <= 1e9
+let (n, m, k): (Int, Int, Int) = read()  // m <= n <= 128, k <= 1e9
 let (s, t): (Str, Str) = read()
-domain Off = 0..=n                           // how many places differ
+domain Off = 0..=n  // how many places differ
 type Mat = [Off, Off]Z
 let comb = Comb<P>.new(n)
 
@@ -34,8 +34,11 @@ fn power(x: Mat, e: Int) -> Mat:
 var step: Mat = [Off, Off] (i, j) => Z(0)
 for i in Off:
     for c in 0..=min(i.to_idx, m):
-        if let j = Off.try(i.to_idx - c + (m - c)):
-            step[i, j] += comb.choose(i.to_idx, c) * comb.choose(n - i.to_idx, m - c) / comb.choose(n, m)
+        if let j = Off.from_idx(i.to_idx - c + (m - c)):
+            step[i, j] += comb.choose(i.to_idx, c) * comb.choose(
+                n - i.to_idx,
+                m - c,
+            ) / comb.choose(n, m)
 
 // Walk back from "equal": every string at distance d is equally likely.
 let d = sum(1 for i in 0..n if s[i] != t[i])

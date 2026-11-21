@@ -30,7 +30,7 @@ if m >= n - 1:
 let lowest = sum(min(d[i] - k, 0) for i in Item)
 let highest = sum(max(d[i] - k, 0) for i in Item)
 domain Raise = 0..=(highest - lowest)
-let goal = Raise.try(-k - lowest)
+let goal = Raise.from_idx(-k - lowest)
 var reach: List<Bitset<Raise>> = [Bitset<Raise>.new()]
 reach[0].add(Raise(0))
 for i in Item:
