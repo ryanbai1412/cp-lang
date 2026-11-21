@@ -1,29 +1,30 @@
+// Codeforces 2124 D: Make a Palindrome.
+//
+// An operation deletes the k-th smallest of a window of length >= k. Let
+// `thresh` be the (k - 1)-th smallest value. Fewer than k - 1 values lie below
+// it, so a window's k-th smallest is never one of them: every `small` value
+// stays, in order, and must already read as a palindrome. Values above `thresh`
+// can always go, and copies of `thresh` can go while at least k values remain,
+// so the question is whether a palindrome keeps `small` and at least k - 1
+// values in all.
+//
+// Cut the array at the small values: `gaps[i]` copies of `thresh` sit between
+// small i - 1 and small i. A palindrome keeps min(gaps[i], gaps[g - 1 - i]) of
+// each mirrored pair of gaps on both sides, and the whole middle gap; summing
+// min over `gaps` zipped with its reverse counts exactly that.
+@!multitest
 use std.strings.{is_palindrome}
 
-@!multitest
-let (n, k0): (Int, Int) = read()
-let a: [0..n]Int = read()
-let k = k0 - 1
-if k == 0:
-    print("YES")
-    return
+let (n, k): (1..=2e5, 1..=2e5) = read()
+let a: [0..n]1..=2e5 = read()
+if k == 1: return print("YES")
 
-let thresh = a.sorted()[k - 1]
-var freq: List<Int> = []
-var vals: List<Int> = []
-var cur_f = 0
+let thresh = a.sorted()[k - 2]
+let small = a.filter(v => v < thresh)
+var gaps = List.filled(small.len + 1, 0)
+var before = 0
 for v in a:
-    if v < thresh:
-        freq.push(cur_f)
-        cur_f = 0
-        vals.push(v)
-    elif v == thresh:
-        cur_f += 1
-freq.push(cur_f)
-
-let is_pal = is_palindrome(vals)
-let mid = freq.len / 2
-let cnt = vals.len + (if freq.len % 2 == 1: freq[mid] else: 0) + 2 * sum(
-    min(freq[i], freq[freq.len - 1 - i]) for i in 0..mid
-)
-print(if is_pal and cnt >= k: "YES" else: "NO")
+    if v < thresh: before += 1
+    elif v == thresh: gaps[before] += 1
+let kept = small.len + [min(x, y) for (x, y) in zip(gaps, gaps.rev)].sum()
+print(if is_palindrome(small) and kept >= k - 1: "YES" else: "NO")
