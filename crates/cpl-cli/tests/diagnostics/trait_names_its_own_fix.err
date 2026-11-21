@@ -1,0 +1,15 @@
+error[E0302]: `Bool` does not implement `Show2`
+  --> trait_names_its_own_fix.cp:17:16
+   |
+17 | print(both(1), both(true))
+   |                ^^^^^^^^^^
+   = help: `Bool` can't be shown; write `impl Show2 for Bool`
+
+error[E0302]: `P` does not implement `Hash`
+  --> trait_names_its_own_fix.cp:18:7
+   |
+18 | print(key(P(1)))
+   |       ^^^^^^^^^
+   = help: `P` has no `hash`; for a struct, `impl Hash for P: fn hash(self) -> U64 = hash_fields(self)`
+
+trait_names_its_own_fix.cp: 2 errors

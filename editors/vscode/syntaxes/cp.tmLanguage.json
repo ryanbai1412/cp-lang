@@ -52,7 +52,7 @@
       }
     },
     "decorators": {
-      "comment": "Item attributes (`@memo`, `@brute`, `@checker`, `@interactor`, `@law`, `@grader`, `@tags`, `@gen`, `@get`, `@test`).",
+      "comment": "Item attributes (`@memo`, `@brute`, `@checker`, `@interactor`, `@law`, `@grader`, `@tags`, `@gen`, `@get`, `@test`, `@on_unimplemented`).",
       "name": "meta.decorator.cp",
       "match": "(@)(?!!)([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {

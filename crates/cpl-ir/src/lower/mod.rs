@@ -856,7 +856,7 @@ impl<'a> Lowerer<'a> {
                             // Read once, before lowering: see `directed`.
                             "interactive" if decorator.directive => {}
                             "get" | "brute" | "test" | "solution" | "tags" | "memo" | "law" | "gen" | "checker"
-                            | "interactor" | "grader" | "" => {}
+                            | "interactor" | "grader" | "on_unimplemented" | "" => {}
                             // For `cpl lint` alone: it changes nothing a run does.
                             "allow" => {}
                             other => self.unsupported(
@@ -1164,11 +1164,23 @@ impl<'a> Lowerer<'a> {
                                 methods.push(f);
                             }
                         }
+                        let unimplemented = stmt
+                            .decorators
+                            .iter()
+                            .filter(|d| d.name.text == "on_unimplemented")
+                            .find_map(|d| {
+                                let arg = d.args.first()?;
+                                let ast::ExprKind::Str(_) = &arg.value.kind else { return None };
+                                let abs = arg.value.span.shift(offset);
+                                let raw = self.mods[m].text.get(abs.start as usize..abs.end as usize)?;
+                                Some(raw.trim_matches('"').to_string())
+                            });
                         self.traits.push(TraitInfo {
                             mod_id: m,
                             offset,
                             name: name.text.clone(),
                             methods,
+                            unimplemented,
                         });
                         self.mod_syms[m].insert(name.text.clone(), Sym::Trait(tid));
                     }

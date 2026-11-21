@@ -2110,6 +2110,19 @@ right line 99.7% before and after, `E0303` 17 → 0 and `E0305` 13 → 0 as firs
   `Ty::Struct` arm of `Ty::Opt` in `cpl-codegen/src/names.rs` and the
   `niche_field` runtime piece.
 
+- **28.11 A trait writes its own unimplemented message.** A call
+  `f(x)` whose `T: Tr` bound `x`'s type has no `impl Tr for` now fails at
+  the call, `` `Bool` does not implement `Tr` ``, instead of later inside
+  `f`'s body as "no method"; a trait declared with
+  `@on_unimplemented("...{T}...")` adds its text as the help, `{T}` the
+  type shown (spec 14 writes `#on_unimplemented`; `@` is the one
+  decorator sigil, CORE-ALIGN). Any library can declare it, so the stdlib
+  has no privilege (`std.derive.Hash` uses it to point at `hash_fields`).
+  Only traits declared in a module are checked; an `impl` over a generic
+  type counts as met, so no valid program is newly rejected (291/291 ports
+  pass `scoreboard.py --fast`). Test: `diagnostics/trait_names_its_own_fix`.
+  Reverse: return `true` from `implements` in `cpl-ir/src/lower/mono.rs`.
+
 - **30.7 Dreams are a diagnostics corpus.** `scripts/dream-gaps.py` checks every
   `proto/ports/*/dream/*.cp` and files each error under the gap it names: `syntax:` (an `E0504`
   feature), `library:` (a name, module or method "not in the stdlib (yet)"), `import:` (a stdlib name

@@ -37,6 +37,9 @@ pub fn read_fields<T>() -> T = T(read() for _ in fields(T))
 
 /// A 64-bit hash, mixed by `splitmix64`: equal values hash equal, and
 /// values close together land far apart. O(1), O(len) for a `Str`.
+@on_unimplemented(
+    "`{T}` has no `hash`; for a struct, `impl Hash for {T}: fn hash(self) -> U64 = hash_fields(self)`"
+)
 pub trait Hash:
     fn hash(self) -> U64
 
