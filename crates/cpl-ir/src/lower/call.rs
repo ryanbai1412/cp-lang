@@ -1044,6 +1044,28 @@ impl<'a> Lowerer<'a> {
                 })
             }
             "read" => {
+                // `read(1..=n)` reads an `Int` and checks it is in the range.
+                if let [ast::Arg { name: None, mutable: false, value }] = args {
+                    if let ast::ExprKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        inclusive,
+                        step: None,
+                    } = &value.kind
+                    {
+                        let lo = self.expect(lo, &Ty::Int);
+                        let mut hi = self.expect(hi, &Ty::Int);
+                        if !inclusive {
+                            hi = self.int_add(hi, -1);
+                        }
+                        let spec = Spec::Int {
+                            lo: Some(Box::new(lo)),
+                            hi: Some(Box::new(hi)),
+                            text: self.source(value.span),
+                        };
+                        return self.read(spec, span);
+                    }
+                }
                 // `read(none: 0)`: the number that a `?T` reads as `none`.
                 let absent = args
                     .iter()
@@ -2924,7 +2946,7 @@ impl<'a> Lowerer<'a> {
                 let inner = (**inner).clone();
                 builtin(self, Builtin::Last, vec![value], Ty::opt(inner))
             }
-            (Ty::DomainVal, "len" | "size" | "K") => {
+            (Ty::DomainVal, "len" | "size" | "K" | "count") => {
                 // If this is `xs.D.K` where `xs` is a struct holding a `[D]`-indexed array field,
                 // read the instance's own array length so multiple instances of `compress` don't alias one global domain length.
                 if let ast::ExprKind::Field { base: owner_ast, name: dom_field } = &base.kind {
@@ -3162,7 +3184,7 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(res));
                 })
             }
-            (Ty::Pos(d), "K" | "len") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+            (Ty::Pos(d), "K" | "len" | "count") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
             (Ty::DomainVal, "first") => {
                 let dom_id = match value.kind {
                     ExprKind::DomainVal(id) => Some(id),
@@ -5291,7 +5313,7 @@ impl<'a> Lowerer<'a> {
             self.cx.pending.push(Stmt::If(empty, Block { stmts: vec![trap] }, Block::default()));
         }
         match name.text.as_str() {
-            "len" | "size" | "K" => len,
+            "len" | "size" | "K" | "count" => len,
             "empty" if self.subset_base(id).is_some() => {
                 let zero = self.int_lit(0, span);
                 self.cast(Cast::Trust, zero, Ty::Pos(id))

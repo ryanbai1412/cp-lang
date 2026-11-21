@@ -765,7 +765,15 @@ impl<'a> Lowerer<'a> {
             step: None,
         } = &def.kind
         else {
-            self.unsupported(def.span, "a domain that is not a range such as `1..=n`");
+            // `domain V = n` counts: its positions are `0..n`.
+            let count = self.expr(def, Some(&Ty::Int));
+            if count.ty != Ty::Int {
+                self.unsupported(def.span, "a domain that is not a range such as `1..=n` or a count");
+                return;
+            }
+            let len = self.coerce(count, &Ty::Int, def.span);
+            let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
+            out.push(Stmt::DefDomain { id, lo, len });
             return;
         };
         let lo_e = self.expr(lo, None);
