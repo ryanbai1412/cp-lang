@@ -1625,6 +1625,14 @@ remove `--test`/`--watch`/`--last`/`--depth` from `RunArgs` in `crates/cpl-cli/s
   `Param::lazy` in `cpl-syntax`, the `slot` match in `cpl-check` `check/call.rs`, and
   `thunk_lazy_args` in `cpl-ir` `lower/mono.rs`.
 
+- **28.6 `fields` over an enum.** `for f in fields(e)` on an enum value runs the body over the
+  payload of the variant `e` is: lowering emits one `if` per variant, each unrolled over that
+  variant's fields, and the checker checks the body against every variant's field types.
+  `fields(a, b)` runs only when both are the same variant. One mechanism serves structs and enums;
+  what derives still need is the variant's index and name (`Ord`, `Hash`, `Show`), next. To reverse:
+  drop `variant_payloads` in `cpl-check` `check/stmt.rs` and the `Ty::Enum` branch of `fields_loop`
+  in `cpl-ir` `lower/stmt.rs`.
+
 ## 29. Editor and LSP (2026-11-21)
 
 29.1. **Hover shows the declaration's `///` doc, wherever it is declared.** `Hover` gains `doc`, read

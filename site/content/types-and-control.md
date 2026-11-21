@@ -129,6 +129,8 @@ enum Dir: N, E, S, W            // one-line plain enum (commas or `|`)
               n += 1
       n
   ```
+
+  On an enum value, `fields(e)` walks the payload of the variant `e` is (nothing for a variant without one); `fields(a, b)` runs only when both are the same variant.
 - Generic functions and types use angle brackets (`fn swap<T>(mut a: T, mut b: T)`), with explicit type arguments at call sites when they cannot be inferred: `read<(Int, Int)>()`, or `f::<T>()`.
 
 ## Control flow, pattern matching, and functions

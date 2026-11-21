@@ -1792,6 +1792,49 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Let(slot, Some(v)));
             temps.push((slot, ty, a.value.span));
         }
+        if let Ty::Enum(eid) = temps[0].1 {
+            if let Some((_, ty, span)) = temps.iter().find(|(_, ty, _)| *ty != temps[0].1) {
+                let message = format!("`fields` walks values of one type together; this is a `{}`", self.show(ty));
+                self.error(codes::TYPE_MISMATCH, *span, message);
+                return;
+            }
+            // Each value is the same variant, or the body doesn't run.
+            let variants = self.enums[eid].variants.clone();
+            for (tag, (_, payload)) in variants.iter().enumerate() {
+                let mut stmts = Vec::new();
+                for (i, fty) in payload.iter().enumerate() {
+                    let mut items: Vec<Expr> = temps
+                        .iter()
+                        .map(|(slot, _, span)| {
+                            let base = self.local(*slot, *span);
+                            self.mk(ExprKind::Payload(Box::new(base), tag, i), fty.clone(), *span)
+                        })
+                        .collect();
+                    let value = if items.len() == 1 {
+                        items.pop().unwrap()
+                    } else {
+                        let ty = Ty::Tuple(vec![fty.clone(); items.len()]);
+                        self.mk(ExprKind::Tuple(items), ty, temps[0].2)
+                    };
+                    self.cx.scopes.push(HashMap::new());
+                    self.cx.local_syms.push(HashMap::new());
+                    self.bind(pat, value, &mut stmts);
+                    stmts.extend(self.block(body, Tail::Discard).stmts);
+                    self.cx.local_syms.pop();
+                    self.cx.scopes.pop();
+                }
+                if stmts.is_empty() {
+                    continue;
+                }
+                for (slot, _, span) in temps.iter().rev() {
+                    let base = self.local(*slot, *span);
+                    let cond = self.mk(ExprKind::IsVariant(Box::new(base), tag), Ty::Bool, *span);
+                    stmts = vec![Stmt::If(cond, Block { stmts }, Block { stmts: Vec::new() })];
+                }
+                out.extend(stmts);
+            }
+            return;
+        }
         let field_tys: Vec<Ty> = match &temps[0].1 {
             Ty::Struct(sid) => self.structs[*sid].def.fields.iter().map(|(_, t)| t.clone()).collect(),
             Ty::Tuple(items) => items.clone(),

@@ -2030,6 +2030,14 @@ fn a_recovered_name_still_reports_errors_unrelated_to_it() {
     assert_eq!(codes(src), ["E0004", "E0201"], "{:#?}", check(src));
 }
 #[test]
+fn a_fields_loop_over_an_enum_checks_each_variant_payload() {
+    let head = "enum Op:\n    Add(Int, Int)\n    Name(Str)\n    Stop\n";
+    assert!(codes(&format!("{head}for f in fields(Op.Stop):\n    print(f)\n")).is_empty());
+    let d = one(&format!("{head}for f in fields(Op.Stop):\n    print(f + 1)\n"));
+    assert_eq!(d.code.0, "E0309", "{d:#?}");
+}
+
+#[test]
 fn a_lazy_parameter_takes_the_expression_its_lambda_gives_back() {
     let head = "fn or_else<T>(a: ?T, lazy d: () -> T) -> T:\n    if let v = a:\n        return v\n    d()\n";
     assert!(codes(&format!("{head}let x: ?Int = 3\nprint(or_else(x, 4), or_else(x, d: 5), or_else(x, () => 6))\n")).is_empty());

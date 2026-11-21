@@ -1435,6 +1435,16 @@ impl Checker<'_> {
 
     /// The fields of a value of type `ty`, by name, in declaration order;
     /// `Ok(None)` when the type is not known until the code is instantiated.
+    fn variant_payloads(&mut self, ty: &Ty) -> Option<Vec<Vec<Ty>>> {
+        let Ty::Named { name, .. } = ty else {
+            return None;
+        };
+        match self.env.global(name).as_deref() {
+            Some(Def::Enum { variants, .. }) => Some(variants.iter().map(|(_, fs)| fs.clone()).collect()),
+            _ => None,
+        }
+    }
+
     pub(crate) fn reflect(&mut self, ty: &Ty) -> Result<Option<Vec<(String, Ty)>>, ()> {
         match ty {
             Ty::Tuple(items) => Ok(Some(
@@ -1476,6 +1486,7 @@ impl Checker<'_> {
     /// field types are not known yet and `f` is checked once, untyped.
     fn fields_loop(&mut self, pat: &Pattern, iter: &Expr, body: &cpl_syntax::ast::Block) {
         let values = self.reflected_values(iter).unwrap_or_default();
+        let mut variant_shapes: Option<Vec<Vec<Ty>>> = None;
         let mut shapes = Vec::new();
         let mut first: Option<Ty> = None;
         for v in values {
@@ -1492,6 +1503,11 @@ impl Checker<'_> {
                 }
             } else {
                 first = Some(ty.clone());
+            }
+            if let Some(variants) = self.variant_payloads(&ty) {
+                variant_shapes = Some(variants);
+                shapes.push(None);
+                continue;
             }
             match self.reflect(&ty) {
                 Ok(fields) => shapes.push(fields),
@@ -1525,6 +1541,21 @@ impl Checker<'_> {
                 Ty::Tuple(shapes.iter().map(one).collect())
             }
         };
+        // An enum value walks the payload of the variant it is: the body is
+        // checked for each variant's fields.
+        if let Some(variants) = variant_shapes {
+            let n = shapes.len();
+            for fields in variants {
+                for ty in fields {
+                    let ty = if n == 1 { ty } else { Ty::Tuple(vec![ty; n]) };
+                    self.push_scope();
+                    self.bind(pat, &ty, false, "for");
+                    self.block(body);
+                    self.pop_scope();
+                }
+            }
+            return;
+        }
         let count = shapes.first().and_then(|s| s.as_ref().map(Vec::len));
         let passes: Vec<Option<usize>> = match count {
             Some(n) => (0..n).map(Some).collect(),
