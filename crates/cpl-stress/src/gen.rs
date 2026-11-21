@@ -60,6 +60,49 @@ pub trait Pick {
     /// A value in `lo..=hi`. `is_size` is true for a number that decides
     /// how much input follows (`n`, `q`).
     fn pick(&mut self, lo: i128, hi: i128, is_size: bool) -> i128;
+
+    /// How the next tree hangs together. Hanging each vertex under a
+    /// uniformly earlier one alone makes shallow trees, and misses the
+    /// deep and the wide ones that break solutions.
+    fn tree(&mut self) -> TreeShape {
+        match self.pick(0, 5, false) {
+            0..=2 => TreeShape::Random,
+            3 => TreeShape::Long,
+            4 => TreeShape::Path,
+            _ => TreeShape::Star,
+        }
+    }
+}
+
+/// The shape of a generated tree, or of the tree a connected graph
+/// starts from.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum TreeShape {
+    /// Each vertex under a uniformly earlier one.
+    Random,
+    /// Each vertex under one of the three before it: deep and bushy.
+    Long,
+    /// One chain.
+    Path,
+    /// Every vertex under the first.
+    Star,
+}
+
+/// The `(parent, child)` positions of a tree on `n` vertices, each child
+/// after its parent.
+fn hang(n: i128, pick: &mut dyn Pick) -> Vec<(i128, i128)> {
+    let shape = pick.tree();
+    (1..n)
+        .map(|child| {
+            let parent = match shape {
+                TreeShape::Random => pick.pick(0, child - 1, false),
+                TreeShape::Long => pick.pick((child - 3).max(0), child - 1, false),
+                TreeShape::Path => child - 1,
+                TreeShape::Star => 0,
+            };
+            (parent, child)
+        })
+        .collect()
 }
 
 /// The most elements one array of a generated case may have.
@@ -140,9 +183,9 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             // and the order of the edges are mixed.
             let mut names: Vec<i128> = (lo..=hi).collect();
             shuffle(&mut names, pick);
-            let mut edges: Vec<(i128, i128)> = (1..n)
-                .map(|child| {
-                    let parent = pick.pick(0, child - 1, false);
+            let mut edges: Vec<(i128, i128)> = hang(n, pick)
+                .into_iter()
+                .map(|(parent, child)| {
                     let (a, b) = (names[parent as usize], names[child as usize]);
                     if pick.pick(0, 1, false) == 0 {
                         (a, b)
@@ -185,7 +228,7 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             let mut chosen: Vec<(i128, i128)> = Vec::new();
             if *kind == GraphKind::Connected {
                 (m >= n - 1).then_some(())?;
-                chosen.extend((1..n).map(|child| (pick.pick(0, child - 1, false), child)));
+                chosen.extend(hang(n, pick));
             }
             let mut seen: HashSet<(i128, i128)> = chosen.iter().copied().collect();
             let wanted = usize::try_from(m).ok()?;

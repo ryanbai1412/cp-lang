@@ -12,7 +12,7 @@ pub mod run;
 pub mod shrink;
 pub mod spec;
 
-pub use gen::{generate, make, Case, Pick, Size, Value};
+pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Verdict};
 pub use program::{BuildError, Exit, Outcome, Program};
 pub use rng::Rng;

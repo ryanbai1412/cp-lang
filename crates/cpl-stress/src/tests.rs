@@ -1165,3 +1165,35 @@ fn values_that_fail_only_while_equal_are_lowered_together() {
     });
     assert_eq!(smallest.render(), "2\n1 1\n");
 }
+
+/// The degree of each vertex of an edge list on `1..=n`.
+fn degrees(value: &Value, n: i128) -> Vec<usize> {
+    let mut degree = vec![0; n as usize + 1];
+    let Value::Seq(edges) = value else {
+        return degree;
+    };
+    for edge in edges {
+        if let Value::Tuple(ends) = edge {
+            for end in &ends[..2] {
+                degree[end.number().unwrap() as usize] += 1;
+            }
+        }
+    }
+    degree
+}
+
+#[test]
+fn random_trees_include_paths_and_stars() {
+    let src = "use std.graph.{Tree}\nlet n: 7..=7 = read()\ndomain V = 1..=n\nlet t: Tree<V> = read()\nprint(n)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    let (mut paths, mut stars) = (0, 0);
+    for seed in 0..400 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).expect("a case");
+        assert!(is_tree(&case.values[1], 7), "{case:?}");
+        let degree = degrees(&case.values[1], 7);
+        paths += usize::from(degree.iter().all(|&d| d <= 2));
+        stars += usize::from(degree.contains(&6));
+    }
+    eprintln!("{paths} paths and {stars} stars in 400 trees on 7 vertices");
+    assert!(paths >= 20 && stars >= 20, "{paths} paths, {stars} stars");
+}

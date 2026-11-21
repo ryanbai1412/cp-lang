@@ -313,7 +313,10 @@ fn lower_equal(
         let mut paths = Vec::new();
         let mut floor = i128::MIN;
         for (index, case) in cases.iter().enumerate() {
-            let sizes: Vec<Path> = sizes(spec, case).into_iter().map(|(path, _)| path).collect();
+            let sizes: Vec<Path> = sizes(spec, case)
+                .into_iter()
+                .map(|(path, _)| path)
+                .collect();
             for (path, lo) in numbers(spec, case) {
                 if number_at(case, &path) == Some(x) && !sizes.contains(&path) {
                     paths.push((index, path));
@@ -626,6 +629,9 @@ fn drop_where_shorter(old: &Value, new: &Value, target: &mut Value, position: us
 
 /// Shrinks `case`, which must fail, to a smaller case that still does.
 /// `still_fails` runs a candidate; it is called at most `budget` times.
+/// Swapping vertex names is tried among the first this many vertices.
+const SWAP_LIMIT: i128 = 16;
+
 pub fn shrink(
     spec: &InputSpec,
     case: &Case,
@@ -746,12 +752,64 @@ pub fn shrink(
             for (field, value) in spec.fields.iter().zip(&best.values) {
                 bind(&field.names, value, &mut env);
             }
-            let plainer = eval(hi, &env).and_then(|hi| renumbered(spec, &best, field, lo, hi));
-            if let Some(plainer) = plainer {
+            let Some(hi) = eval(hi, &env) else {
+                continue;
+            };
+            if let Some(plainer) = renumbered(spec, &best, field, lo, hi) {
                 improved |= attempt(&mut best, plainer);
             }
+            // Two names swapped: a star whose centre is not vertex `lo`
+            // is written plainer with the centre renamed `lo`.
+            for a in lo..=hi.min(lo + SWAP_LIMIT) {
+                for b in a + 1..=hi.min(lo + SWAP_LIMIT) {
+                    let Value::Seq(items) = best.values[field].clone() else {
+                        break;
+                    };
+                    let swap = |v: i128| {
+                        Some(if v == a {
+                            b
+                        } else if v == b {
+                            a
+                        } else {
+                            v
+                        })
+                    };
+                    let swapped = with_vertices_renamed(spec, &best, field, &items, &swap);
+                    if let Some(swapped) = swapped {
+                        improved |= attempt(&mut best, swapped);
+                    }
+                }
+            }
         }
-        // 2b. Words: drop one letter at a time.
+        // 2b. Undirected edges, low end first.
+        for field in 0..best.values.len() {
+            let undirected = match &spec.fields[field].shape {
+                Shape::Tree { .. } => true,
+                Shape::Graph { kind, .. } => *kind != GraphKind::Dag,
+                _ => false,
+            };
+            let Value::Seq(items) = &best.values[field] else {
+                continue;
+            };
+            if !undirected {
+                continue;
+            }
+            let flipped = items
+                .iter()
+                .map(|item| match item {
+                    Value::Tuple(ends) if ends[0].number() > ends[1].number() => {
+                        let mut ends = ends.clone();
+                        ends.swap(0, 1);
+                        Value::Tuple(ends)
+                    }
+                    other => other.clone(),
+                })
+                .collect();
+            let mut plainer = best.clone();
+            plainer.values[field] = Value::Seq(flipped);
+            improved |= attempt(&mut best, plainer);
+        }
+        // 2c. Words: drop one letter at a time.
         for field in 0..best.values.len() {
             if spec.fields[field].shape != Shape::Str {
                 continue;

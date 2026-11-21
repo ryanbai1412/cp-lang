@@ -10,7 +10,7 @@ use crate::args::Args;
 use crate::problem::{source_path, Limits};
 use crate::test::ready;
 use cpl_stress::cli::json_string;
-use cpl_stress::{fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, Value};
+use cpl_stress::{fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, TreeShape, Value};
 use std::io::Write;
 use std::time::Duration;
 
@@ -94,6 +94,14 @@ impl Pick for Worst {
             WorstShape::Alternating => hi,
         }
     }
+
+    fn tree(&mut self) -> TreeShape {
+        match self.shape {
+            WorstShape::Path => TreeShape::Path,
+            WorstShape::Star => TreeShape::Star,
+            _ => TreeShape::Random,
+        }
+    }
 }
 
 /// True for `[..](a, b)`: a list of pairs, which is how edges are read.
@@ -115,7 +123,12 @@ pub fn worst_case(spec: &InputSpec, shape: WorstShape, seed: u64) -> Option<Case
     if !matches!(shape, WorstShape::Path | WorstShape::Star) {
         return Some(case);
     }
-    let mut any = false;
+    // A tree, and the tree a connected graph starts from, are made in
+    // the shape already.
+    let mut any = spec
+        .fields
+        .iter()
+        .any(|field| matches!(field.shape, Shape::Tree { .. } | Shape::Graph { .. }));
     for (field, value) in spec.fields.iter().zip(&mut case.values) {
         let (true, Value::Seq(edges)) = (is_edge_list(&field.shape), value) else {
             continue;

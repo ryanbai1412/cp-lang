@@ -477,6 +477,22 @@ fn edge_lists_are_shaped_as_a_path_and_a_star() {
 }
 
 #[test]
+fn trees_are_shaped_as_a_path_and_a_star() {
+    let spec = spec(
+        "use std.graph.{Tree}\nlet n: 2..=5 = read()\ndomain V = 1..=n\nlet t: Tree<V> = read()\n",
+    );
+    let render = |shape| worst_case(&spec, shape, 1).map(|case| case.render());
+    assert_eq!(
+        render(WorstShape::Path).as_deref(),
+        Some("5\n1 2\n2 3\n3 4\n4 5\n")
+    );
+    assert_eq!(
+        render(WorstShape::Star).as_deref(),
+        Some("5\n1 2\n1 3\n1 4\n1 5\n")
+    );
+}
+
+#[test]
 fn bench_compares_time_and_memory_with_the_limits() {
     let spec = spec("let n: 1..=50 = read()\nlet a: [0..n]0..=9 = read()\n");
     let limits = Limits {

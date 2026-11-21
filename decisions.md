@@ -1526,6 +1526,17 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   chance (`n = 2`, `a = [2, 2]`) would otherwise drag the array shorter and stop the group. The
   cost is one more bisection per distinct value per round. Reverse: drop step 3b and the joint
   step in `shrink_tests`.
+- **25.6 Trees are made in four shapes; graphs are renamed toward their plainest form.** Hanging
+  each vertex under a uniformly earlier one alone made 27 paths and 2 stars in 400 seven-vertex
+  trees (`random_trees_include_paths_and_stars`); deep and wide trees are what break recursion
+  and adjacency loops. `Pick::tree` now chooses random, long (under one of the three before),
+  path or star, for a `Tree` and the tree a `ConnectedGraph` starts from (68 paths, 100 stars),
+  and `cpl bench` overrides it, so its path and star cases now exist for `Tree<V>` (they were
+  skipped). Shrinking a graph also tries swapping two vertex names (among the first 16) and
+  writing every undirected edge low end first, so a star shrinks to `1 2, 1 3, 1 4` from any
+  centre. The seeded `noip14p5-unsafe-step` now reaches a lighter minimum (weight 15 for 16), so
+  its `.min` changed (25.2). Reverse: make `Pick::tree` return `Random` and drop the swap and flip
+  steps.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 
