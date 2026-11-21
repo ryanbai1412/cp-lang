@@ -8,7 +8,7 @@
 //
 // fewest[d], the fewest elements with gcd d, is a shortest path over values:
 // taking x from d reaches gcd(d, x) <= d with one more element. Settle d from
-// largest to smallest. O(V * distinct values).
+// largest to smallest. O(max * distinct values).
 @!multitest
 let n: 1..=5000 = read()
 type Val = 1..=5000
@@ -20,7 +20,7 @@ if at_g > 0: return print(n - at_g)
 let values = a.distinct()
 var fewest: [Val]?Int = none
 for x in values: fewest[x] = 1
-for d in Val.rev:
+for d in (1..=a.max()!).rev:
     let k = fewest[d] ?? continue
     for x in values:
         fewest[gcd(d, x)] min= k + 1
