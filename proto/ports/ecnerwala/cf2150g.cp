@@ -1,70 +1,93 @@
-// Count binary strings with x zeros and y ones, > a, having LNDS >= k.
-// Walk a; flipping a '0' to '1' produces strings strictly > a.
-// Before a's prefix reaches LNDS == k, accumulate diagonal difference updates
-// where LNDS first hits k, sweep diagonals, and close each suffix with choose.
-// After a's prefix reaches LNDS == k, reset and count each suffix directly.
+// Codeforces 2150 G: Counting Is Fun: The Finale.
+//
+// b > a means b = a[..i] + '1' + r for some i with a[i] = '0'. b is good iff
+// its shortest prefix with LNDS >= k leaves a suffix with LNDS >= k. Two
+// facts carry the count:
+// - z zeros and o ones make a string with LNDS >= m in exactly
+//       long_lnds(z, o, m) = C(z + o, max(z, o, m))
+//   ways;
+// - LNDS(s + r) = max(s.lnds + ones(r), s.zeros + LNDS(r)), so r completes s
+//   to LNDS >= k iff ones(r) >= k - s.lnds or LNDS(r) >= k - s.zeros.
+//
+// Walk a in two phases. While a's prefix has LNDS < k (Seeking), each flip
+// gives s, and the good b are summed over the state h where s + r first
+// reaches LNDS k, weighted long_lnds of what remains after h. With e0 = k -
+// s.zeros and e1 = k - s.lnds, the first hits d letters after s lie on one
+// anti-diagonal with two ballot counts:
+//     top(d)  = C(d - 1, e1 - 1) - C(d - 1, e0)  at the state with e1 more ones,
+//     main(d) = C(d - 1, e0 - 1) - C(d - 1, e0)  at every later
+// state on that diagonal, up to k zeros. Each is the walks whose d-th letter
+// completes the threshold (e1 ones, resp. e0 zeros), less by reflection the
+// walks that reached the zero threshold earlier.
+// Record each as a ray and sweep once, O(k^2).
+// Once a's prefix reaches k (Split), restart the walk there; each flip then
+// needs only a long suffix, which is the completion count.
 @!multitest
 use std.mod.{Comb, Mod}
 
-const MOD = 998_244_353
-type Z = Mod<MOD>
-
-struct Prefix(z: Int, o: Int, lnds: Int)
-
-fn push0(s: Prefix) -> Prefix = Prefix(s.z + 1, s.o, max(s.lnds, s.z + 1))
-fn push1(s: Prefix) -> Prefix = Prefix(s.z, s.o + 1, s.lnds + 1)
+type Z = Mod<998_244_353>
 
 let (x, y, k): (1..=5000, 1..=5000, 1..=9999) = read()
-let n = x + y
 let a: Str = read()
-let comb = Comb<Z>(n)
+let comb = Comb<Z>(x + y)
+
+struct Walk(zeros: Int, ones: Int, lnds: Int):
+    fn push(self, c: Char) -> Walk =
+        if c == '0': Walk(zeros + 1, ones, max(lnds, zeros + 1))
+        else: Walk(zeros, ones + 1, lnds + 1)
+
+enum Phase:
+    Seeking
+    Split(base: Walk)
+
+fn long_lnds(z: Int, o: Int, m: Int) -> Z = comb.choose(z + o, max(z, o, m))
+fn completions(s: Walk, z: Int, o: Int) -> Z =
+    if o >= k - s.lnds: comb.choose(z + o, z) else: long_lnds(z, o, k - s.zeros)
 
 domain Cnt = 0..=k
-var pref: [Cnt, Cnt]Z = Z.zero
-var ans = Z.zero
+var rays: [Cnt, Cnt]Z = Z.zero
+fn ray(z: Int, o: Int, w: Z): rays[Cnt(z), Cnt(o)] += w
 
-fn add_before_k(s: Prefix):
+fn first_hits_from(s: Walk):
     if s.lnds == k:
-        pref[Cnt(s.z), Cnt(s.o)] += Z.one
-        pref[Cnt(s.z + 1), Cnt(s.o - 1)] -= Z.one
+        ray(s.zeros, s.ones, Z.one)
+        ray(s.zeros + 1, s.ones - 1, -Z.one)
         return
-    let (e0, e1) = (k - s.z, k - s.lnds)
+    let (e0, e1) = (k - s.zeros, k - s.lnds)
     for d in e1..e0 + e1:
-        let top = comb.choose(d, e1) - comb.choose(d - 1, e1) - comb.choose(d - 1, e0)
-        let main = comb.choose(d, e0) - Z(2) * comb.choose(d - 1, e0)
-        let (px, py) = (s.z + d - e1, s.o + e1)
-        pref[Cnt(px), Cnt(py)] += top
-        pref[Cnt(px + 1), Cnt(py - 1)] += main - top
+        let top = comb.choose(d - 1, e1 - 1) - comb.choose(d - 1, e0)
+        let main = comb.choose(d - 1, e0 - 1) - comb.choose(d - 1, e0)
+        let (z, o) = (s.zeros + d - e1, s.ones + e1)
+        ray(z, o, top)
+        ray(z + 1, o - 1, main - top)
 
-var cur = Prefix(0, 0, 0)
-var base: ?(Int, Int) = none
-
-for ch in a:
-    if let (ox, oy) = base:
-        if ch == '0':
-            let s = push1(cur)
-            let (rx, ry) = (x - ox - s.z, y - oy - s.o)
-            let (e0, e1) = (k - s.z, k - s.lnds)
-            ans += comb.choose(rx + ry, if rx >= e0 or ry >= e1: rx else: e0)
-        cur = if ch == '0': push0(cur) else: push1(cur)
-    else:
-        if ch == '0': add_before_k(push1(cur))
-        cur = if ch == '0': push0(cur) else: push1(cur)
-        if cur.lnds >= k:
-            base = (cur.z, cur.o)
-            cur = Prefix(0, 0, 0)
-
-for i in 0..k:
-    for j in 1..=k:
-        pref[Cnt(i + 1), Cnt(j - 1)] += pref[Cnt(i), Cnt(j)]
-
-for px in Cnt:
-    for py in Cnt:
-        let w = pref[px, py]
-        if w != Z.zero:
-            ans += w * comb.choose(
-                n - px.to_idx - py.to_idx,
-                max(x - px.to_idx, max(y - py.to_idx, k)),
+var ans = Z.zero
+var walk = Walk(0, 0, 0)
+var phase = Phase.Seeking
+for c in a:
+    if c == '0':
+        let s = walk.push('1')
+        match phase:
+            Phase.Seeking => first_hits_from(s)
+            Phase.Split(base) => ans += completions(
+                s,
+                x - base.zeros - s.zeros,
+                y - base.ones - s.ones,
             )
+    walk = walk.push(c)
+    if let Phase.Seeking = phase and walk.lnds >= k:
+        phase = Phase.Split(walk)
+        walk = Walk(0, 0, 0)
 
-print(ans)
+for z in 0..k:
+    for o in 1..=k:
+        rays[Cnt(z + 1), Cnt(o - 1)] += rays[Cnt(z), Cnt(o)]
+print(
+    ans + sum(
+        rays[z, o] * long_lnds(
+            x - z.ord,
+            y - o.ord,
+            k,
+        ) for z in Cnt for o in Cnt if rays[z, o] != Z.zero
+    )
+)
