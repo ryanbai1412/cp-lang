@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: derives `min_p` witness optimality in header, replaces `.somes`/`.take_while`/`block_of` sentinel/`block_id` with `pick_witness` + disjoint `vals.sorted().rev` + `right_end: ?Pos` + `match_prefix` + `scan(min_pos)`; verified 150/150 random cases with only `pop_while` replaced, active port held pending `cpl-syntax` closer-recovery on lambda lines)
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 

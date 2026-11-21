@@ -11,10 +11,15 @@
 // decreasing).
 //
 // Suffix block optimality: once a position steps below Q, draining the stack
-// peels off disjoint P-intervals `[min_p..=last_thresh]` (shrinking `last_thresh`
-// to `p_thresh - 1` after each pop, so blocks never overlap). Any permutation
-// inside a block satisfies all remaining constraints, so sorting remaining
-// values by `(block_id, -val)` maximizes the suffix lexicographically.
+// peels off disjoint P-intervals. For the top group sharing earliest witness
+// `p_thresh = pref_min[cond.max_v]`, every unused element in `p_thresh..max_p`
+// up to the first unused element `> cond.max_v` is eligible to witness
+// `cond.max_v` (an unused element `> cond.max_v` cannot witness it and blocks
+// later positions from crossing left past it). Choosing `min_p` as the largest
+// eligible unused element maximizes the block's leading value while still
+// satisfying `cond.max_v`; every unused element in `min_p..=hi_bound` with
+// value `>= p[min_p]` can then move freely into this block in decreasing order,
+// and shrinking `right_end = p_thresh.prev` keeps all blocks pairwise disjoint.
 
 use std.seq.inverse
 
@@ -51,7 +56,9 @@ fn solve():
     for i in Pos.first..first_diff: used[q[i]] = true
 
     // Earliest P-position among unused values <= v.
-    let pref_min: [Val]?Pos = ([Val] v => if not used[v]: some(inv_p[v]) else: none).scan(min)
+    fn min_pos(a: ?Pos, b: ?Pos) -> ?Pos = if let x = a, let y = b: some(min(x, y)) else: a ?? b
+    let unused_pos: [Val]?Pos = [Val] v => if not used[v]: some(inv_p[v]) else: none
+    let pref_min = unused_pos.scan(min_pos)
 
     var conds = CondStack()
     var seen_inversion = false
@@ -63,7 +70,9 @@ fn solve():
         if i == first_diff and v == p[i]: return none
         let pos = inv_p[v]
         if not forms_inversion(i, v, had_inv):
-            [some(v), next_cap, conds.active_cap(pos)].somes.min()
+            let opts = [some(v), next_cap, conds.active_cap(pos)]
+            let caps = [u for opt in opts if let u = opt]
+            caps.min()
         elif let ac = conds.active_cap(pos), v > ac:
             ac
         else:
@@ -85,40 +94,48 @@ fn solve():
         q[i] = v
         used[v] = true
 
-    // Match Q as far as possible; on the first failure, step q[i] down and stop.
-    var suffix_start: ?Pos = none
-    for i in first_diff..=Pos.last:
-        let next_cap = i.next.map(nxt => q[nxt])
-        if can_place(i, q[i], next_cap, seen_inversion):
-            commit_place(i, q[i], next_cap)
-        else:
-            let v = Val.rev.first(u => u < q[i] and not used[u] and can_place(i, u, none, seen_inversion))!
-            commit_place(i, v, none)
-            suffix_start = i.next
-            break
+    // Largest unused witness in `p_thresh..=hi_p` before any unused value > max_v.
+    fn pick_witness(p_thresh: Pos, hi_p: Pos, max_v: Val) -> Pos:
+        var best = p_thresh
+        for pos in p_thresh..=hi_p if not used[p[pos]]:
+            if p[pos] > max_v: break
+            if p[pos] >= p[best]: best = pos
+        best
 
-    if let start = suffix_start:
-        // Partition remaining values into disjoint suffix blocks by draining the stack.
-        var block_of: [Pos]Int = n
-        var block_id = 0
-        var last_thresh = Pos.last
-        while let cond = conds.items.pop():
+    // Match Q as far as possible; on the first failure, step q[i] down and return the suffix start.
+    fn match_prefix() -> ?Pos:
+        for i in first_diff..=Pos.last:
+            let next_cap = i.next.map(nxt => q[nxt])
+            if can_place(i, q[i], next_cap, seen_inversion):
+                commit_place(i, q[i], next_cap)
+            else:
+                let v = Val.rev.first(u => u < q[i] and not used[u] and can_place(i, u, none, seen_inversion))!
+                commit_place(i, v, none)
+                return i.next
+        none
+
+    if let start = match_prefix():
+        var suffix: List<Val> = []
+        var right_end: ?Pos = some(Pos.last)
+        while let cond = conds.items.pop(), let hi_bound = right_end:
             let p_thresh = pref_min[cond.max_v]!
             var max_p = cond.max_p
             while let top = conds.items.last, pref_min[top.max_v] == some(p_thresh):
                 max_p = top.max_p
                 conds.items.pop()
-            let hi_p = min(max_p, last_thresh)
-            let min_p = (p_thresh..=hi_p).take_while(pos => used[p[pos]] or p[pos] <= cond.max_v).filter(pos => not used[p[pos]]).max(by: pos => p[pos])!
+            let min_p = pick_witness(p_thresh, min(max_p.prev!, hi_bound), cond.max_v)
             conds.pop_after(min_p)
-            for pos in min_p..=last_thresh if not used[p[pos]] and p[pos] >= p[min_p]:
-                block_of[pos] = block_id
-            block_id += 1
-            last_thresh = p_thresh.prev ?? Pos.first
-
-        let suffix = [v for v in Val if not used[v]].sorted(by: v => (block_of[inv_p[v]], -v.ord))
-        for (i, v) in zip(start..=Pos.last, suffix):
-            q[i] = v
+            let vals = [p[pos] for pos in min_p..=hi_bound if not used[p[pos]] and p[pos] >= p[min_p]]
+            for v in vals.sorted().rev:
+                used[v] = true
+                suffix.push(v)
+            right_end = p_thresh.prev
+        for v in Val.rev if not used[v]:
+            suffix.push(v)
+        var dst: ?Pos = some(start)
+        for v in suffix:
+            q[dst!] = v
+            dst = dst!.next
 
     print(q)
 
