@@ -1,57 +1,63 @@
-// Codeforces 2237 H: Slime and Queries.
-// Each query paints the path cur -> c with timestamp t_now. Every vertex on
-// the path whose last paint was t_old demands 1 unit of slime from the newest
-// non-empty supply bucket <= t_old; unmatched demand increases the answer, and
-// all matched slime moves into bucket t_now.
-@!multitest
-use std.dsu.{DsuOf}
+// Codeforces 2237 H.
+// Each query paints the path `cur -> c` with timestamp `t_now`. Every vertex on
+// the path whose last paint was `t_old` demands 1 unit of slime from some
+// non-empty supply bucket `u <= t_old`; unmatched demand increases `missing`,
+// and all matched slime moves into bucket `t_now`.
+//
+// Greedy optimality (exchange argument): a supply unit at timestamp `u <= t_old`
+// can serve any future demand with threshold `>= u`, so older buckets are
+// strictly more flexible than newer ones. Processing chunks in decreasing
+// `t_old` order and draining the newest eligible bucket `<= t_old` always leaves
+// the most flexible supply behind for tighter demands.
 
+use std.interval.IntervalMap
+
+@!multitest
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n
+domain Slime = 0..m
 domain Time = 1..=q + 2
-let edges: [0..n - 1](u: V, v: V) = read()
-let tree = Rooted(Graph.undirected(edges), V.first)
-let init_slime: [0..m]V = read()
+let never = Time.first
+let start = (Time.first + 1)!
+let tree = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), V.first)
+let init: [Slime]V = read()
 
 // Partition of preorder positions by last-painted timestamp.
-var init_time: [tree.Pre]Time = Time(1)
-for v in init_slime: init_time[tree.pos(v)] = Time(2)
-var paint = IntervalMap.from(init_time)
+var paint = IntervalMap<tree.Pre, Time>.new(never)
+for v in init: paint.assign(tree.pos(v)..=tree.pos(v), start)
 
-var supply = DsuOf<Time, (prv: ?Time, cnt: Int)>(_ => (prv: none, cnt: 0), (_, b) => b)
-supply.set(Time(2), (prv: none, cnt: m))
+// Slime waiting to move, keyed by the time it was last moved; only non-empty buckets.
+var supply = Map<Time, Int>()
+supply[start] = m
 
-var cur = init_slime[m - 1]
-var tot_ans = 0
-var ans = List<Int>()
-for t_now in Time(3)..:
-    let raw_c: V = read()
-    let c = raw_c.cyc(tot_ans)
+// Matches up to `need` units from the newest buckets at or before `t`.
+// Each emptied bucket leaves `supply`, so all calls cost O((q + m) log q) total.
+fn take(need: Int, t: Time) -> Int:
+    var got = 0
+    while got < need, let (u, cnt) = supply.last_le(t):
+        let k = min(cnt, need - got)
+        got += k
+        if k == cnt: supply.remove(u) else: supply[u] -= k
+    got
 
-    var chunks = List<(t: Time, w: Int)>()
+var cur = init[Slime.last]
+var missing = 0
+var ans: List<Int> = []
+
+for t_now in (Time.first + 2)!..=Time.last:
+    let c = read<V>().cyc(missing)
+    var pieces: List<(t: Time, need: Int)> = []
+    fn record(r: Range<tree.Pre>, t: Time):
+        pieces.push((t:, need: r.len))
     for (range, _) in tree.chains(cur, c):
-        paint.assign(range, t_now, on_old: (r, t) => chunks.push((t:, w: r.len)))
+        paint.assign(range, t_now, on_old: record)
+    let chunks = pieces.sorted(by: x => desc(x.t))
     cur = c
 
-    chunks.sort(by: x => desc(x.t))
-    var matched = 0
-    for chunk in chunks:
-        var need = chunk.w
-        var it: ?Time = chunk.t
-        while let u = it, need > 0:
-            let (prv, cnt) = supply.get(u)
-            let take = min(cnt, need)
-            matched += take
-            need -= take
-            supply.set(u, (prv:, cnt: cnt - take))
-            if take == cnt:
-                if let p = prv:
-                    supply.unite(u, p)
-                else:
-                    it = none
-        tot_ans += need
-
-    supply.set(t_now, (prv: t_now - 1, cnt: matched))
-    ans.push(tot_ans)
+    let demand = chunks.map(ch => ch.need).sum()
+    let moved = chunks.map(ch => take(ch.need, ch.t)).sum()
+    missing += demand - moved
+    if moved > 0: supply[t_now] = moved
+    ans.push(missing)
 
 print(ans)
