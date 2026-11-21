@@ -149,7 +149,7 @@ print(bit.sum(V.first..=V.last), rmq.fold(V.first..=V.last), st.all, mx.all.valu
 
 - `SegTree` and `LazySegTree` both provide `.set(pos, val)`, `.fold(l..=r)`, `.all` (`O(1)` root fold), and `O(log n)` binary search on the tree via `.max_right(l, ok)` and `.min_left(r, ok)`. Empty and inverted ranges are valid no-ops (except `SparseTable.fold`, which asserts a non-empty range and returns `T`).
 - `Fenwick2D` handles 2D prefix sums; `Fenwick` stays dedicated to sums (`+`/`-`). `bit.kth(k) -> ?V` finds the first index whose prefix sum reaches `k` (non-negative counts).
-- `Dsu<V>()` provides `.unite(a, b) -> Bool`, `.find(v) -> V`, `.same(a, b)`, `.size(v)`, `.components`, `.groups() -> List<List<V>>`, plus `.mark()` and `.undo_to(snap)` for `O(1)` rollback DSU.
+- `Dsu<V>()` provides `.unite(a, b) -> Bool`, `.find(v) -> V`, `.same(a, b)`, `.size(v)`, `.components`, `.groups() -> List<List<V>>`, plus `.mark() -> Mark` and `.undo_to(snap)` for `O(1)` rollback DSU. `DsuOf<V, T>(init, join)` keeps a value per set (joined on merge, restored on `undo_to`), and `ParityDsu<V>` tracks same/opposite sides with `.unite(a, b, differ:)`, `.diff(a, b) -> ?Bool` and `.consistent`.
 - `std.marks.Marks<D>` is an opt-in 32-bit generation-stamp visited table (`O(1)` reset); for most problems, `[D]Bool` with a touched-list reset is simpler and equally fast.
 
 ## Graphs, trees, flows, and strings
@@ -182,7 +182,7 @@ Core `std` is intentionally small enough to memorize. Specialized algorithms liv
 
 The repository includes a full sample library (`examples/local-lib/`) covering advanced contest topics:
 
-- **Data structures (`ds/`):** `MonoDeque`, `Steps`, `Rope` (implicit treap), `RangeKth` (persistent segtree), `LiChao` & `LiChaoArena`, `Tri<D>` (triangular interval index), `PotentialDsu`, `BipartiteDsu`, `Cover` (union-of-intervals), `TwoStackFold`, `mo_order`, `XorBasis`, `Interner`, and `RollbackArray`.
+- **Data structures (`ds/`):** `MonoDeque`, `Steps`, `Rope` (implicit treap), `RangeKth` (persistent segtree), `LiChao` & `LiChaoArena`, `Tri<D>` (triangular interval index), `PotentialDsu`, `Cover` (union-of-intervals), `TwoStackFold`, `mo_order`, `XorBasis`, `Interner`, and `RollbackArray`.
 - **Math & polynomials (`math/`):** `Frac`, `Fixed<D>`, `Congruence` (general CRT), `Hom` / `BothWays`, `Mat<P>` (Gaussian elimination / `det` / `rank`), `Poly` / NTT / 3-prime MTT / Lagrange interpolation, `Powers`, SOS DP (`sos_sub`/`sos_sup`), Miller-Rabin + Pollard's rho (`primes`), and `floor_sum`.
 - **Graphs & DP (`graph/`, `dp/`, `geom/`, `str/`, `seq/`):** `TwoSat`, `MinCostFlow`, `Functional` graphs, `Centroids` & `reroot`, `KruskalTree`, Hopcroft-Karp `max_matching`, `bounded_flow`, `mst`, `shortest`/`walk_back`, `convex_hull`, `Dir8`, divide-and-conquer DP (`dnc_opt`), Knuth DP (`knuth`), `palindromes` (Manacher), `Trie`, `SuffixAutomaton`, `AhoCorasick`, `Hash2D`, `lis`, and `fold_others`.
 

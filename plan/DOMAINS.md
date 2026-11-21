@@ -165,7 +165,9 @@ declarations including methods), 160 `@test`s passing in
 `cpl test stdlib` (164 after number theory). Number theory is complete
 for single numbers (Miller-Rabin and Pollard's rho exact for every
 `Int`, `phi`, `primitive_root`, `floor_sum`, O(1) `mul_mod`), used by
-two ports. Present but thin: RNG (seeded stream, no pick/perm/sample), bitsets (set algebra, shift,
+two ports. Rollback union-finds share a typed `Mark`; `DsuOf<V, T>`
+rolls a value per set back with the sets and `ParityDsu<V>` keeps sides
+(`cf2222f`, `cf2237h` pass 150 random cases each against the originals). Present but thin: RNG (seeded stream, no pick/perm/sample), bitsets (set algebra, shift,
 next; no prev/first/last), flows (Dinic, min cut, Hungarian; no
 Hopcroft-Karp, no min-cost flow), strings (Z, prefix function, suffix
 array, LCP, rolling hash; no Manacher, no Aho-Corasick), geometry
@@ -183,8 +185,8 @@ the [rename]s have codemods and the ports are moved.
 `bsearch_real` and `ternary_max`; RNG `pick`/`perm`/`sample`; bitset
 `first`/`last`/`prev`; `max_matching` and `CostFlow`; `manacher` and
 `AhoCorasick`; `convex_hull`; then the `_by` renames. From the
-wave-11 frictions (`research/frictions/cf2237h.md`, `cf2222f.md`): DSU
-payloads, typed rollback checkpoints and parity; an interval run map;
+wave-11 frictions (`research/frictions/cf2237h.md`, `cf2222f.md`): an
+interval run map;
 offline divide and conquer over time; predicate counting; link-cut tree.
 
 ## 5. Diagnostics and front end (`plan/30` 3.7)

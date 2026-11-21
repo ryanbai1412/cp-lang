@@ -24,7 +24,7 @@ examples/local-lib/
 $ python3 proto/cp.py test examples/local-lib
 $ printf '3 2\n1 2\n2 3\n' | python3 proto/cp.py lib-run examples/local-lib/solutions/road_reversal.cp
 YES
-[0, 1, 0]
+0 1 0
 ```
 
 ## What is in it, and why it is not in `std`
@@ -57,9 +57,6 @@ Data structures, in `ds/`:
   interval or symmetric table with no unused half.
 - `potential_dsu.cp`: `PotentialDsu<V>`, union-find that knows
   `pot(b) - pot(a)` inside a component and refuses a contradiction.
-- `bipartite_dsu.cp`: `BipartiteDsu<V>`, union-find with a side per
-  vertex: add edges, learn when the graph stops being two-colourable, and
-  take edges back with `mark` / `undo_to`.
 - `cover.cp`: `Cover<Y>`, the covered length under adding and removing
   intervals, for area-of-union sweeps.
 - `two_stack_fold.cp`: `TwoStackFold<T>`, a queue that knows its fold for
@@ -303,19 +300,16 @@ The name in `lib.toml` is the root of every import. A file anywhere below
 the folder finds it by walking up, so a solution needs no configuration:
 
 ```
-use lib.ds.bipartite_dsu.{BipartiteDsu}
+use lib.ds.potential_dsu.{PotentialDsu}
 
-let (m, k): (Int, Int) = read()
-domain Road = 1..=m
-var d = BipartiteDsu<Road>()
+let (n, k): (Int, Int) = read()
+domain Box = 1..=n
+var d = PotentialDsu<Box>()
+var ok = true
 for _ in 0..k:
-    let (a, b): (Int, Int) = read()
-    d.add_edge(Road(a), Road(b))
-if d.bipartite:
-    print("YES")
-    print([if d.find(r).1: 1 else: 0 for r in Road])
-else:
-    print("NO")
+    let (a, b, w): (Int, Int, Int) = read()
+    ok = d.unite(Box(a), Box(b), w) and ok
+print(if ok: "YES" else: "NO")
 ```
 
 A library module imports the standard library the same way a solution

@@ -126,9 +126,12 @@ remember: `Dsu<V>()` has one slot per vertex whether `V` is `0..n` or
 `1..=n`.
 
 `Dsu` also rolls back, for offline dynamic connectivity and divide and
-conquer over time: `let snap = d.mark()`, some `unite`s, then
-`d.undo_to(snap)`. `d.groups()` returns every connected component as
-`List<List<V>>`.
+conquer over time: `let snap = d.mark()` (a `Mark`), some `unite`s,
+then `d.undo_to(snap)`. `d.groups()` returns every connected component as
+`List<List<V>>`. `DsuOf<V, T>(init, join)` keeps a value per set, joined
+on merge and restored by `undo_to`; `ParityDsu<V>` knows whether two
+positions are on the same side (two-colouring, xor constraints) and
+whether every constraint so far agrees (`consistent`).
 
 `Marks<D>` in `marks.cp` (opt-in `use std.marks.{Marks}`) is a
 generation-stamped visited table over `D` backed by compact 32-bit stamps
@@ -389,7 +392,7 @@ is evidence, not a proof.
 - `algebra.cp`: `Monoid`, `Action` (`compose(new_f, old_f)`,
   `apply(f, val, span)`), `desc`, `Reversible`, and their laws.
 - `dsu.cp` (`Dsu` with `components`, rollback `mark`/`undo_to`, and
-  `groups`), `marks.cp` (opt-in `Marks<D>` with 32-bit stamps and O(1)
+  `groups`; `DsuOf` with a value per set; `ParityDsu`), `marks.cp` (opt-in `Marks<D>` with 32-bit stamps and O(1)
   `clear`), `fenwick.cp` (1D and 2D), `segtree.cp`, `lazy.cp` (with
   `update(i, f)` and `all`), `sparse.cp` (`fold -> T`, asserts non-empty),
   `heap.cp` (`MinHeap`, `MaxHeap`, with `take`), `deque.cp` (`Deque` with
@@ -442,7 +445,7 @@ structures a problem needs once a season live in
 library the way your own would be: `MonoDeque`, `Steps`, `TwoSat`, `Mat`,
 `palindromes`, `shortest` / `walk_back`, `mst`, `convex_hull`, `Dir8`,
 `MinCostFlow`, `Rope`, `RangeKth`, `LiChao`, `LiChaoArena`, `Tri`,
-`PotentialDsu`, `BipartiteDsu`, `Cover`, `TwoStackFold`, `mo_order`,
+`PotentialDsu`, `Cover`, `TwoStackFold`, `mo_order`,
 `XorBasis`, `Interner`, `RollbackArray`, `Frac`, `Fixed`, `Congruence`,
 `Hom`, `Powers`, NTT, `sos_sub` / `sos_sup`, `monotone_minima` /
 `dnc_layer`, `knuth`, `fold_others`, `order_stats`, `borders` /

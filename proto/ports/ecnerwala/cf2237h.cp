@@ -1,4 +1,5 @@
 @!multitest
+use std.dsu.{DsuOf}
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
@@ -21,10 +22,8 @@ for i in 1..n:
         run_l = i
 segs[run_l] = (r: n, t: init_time[run_l])
 
-var dsu = Dsu<Time>()
-var prv: [Time]?Time = none
-var cnt: [Time]Int = 0
-cnt[Time(2)] = m
+var bucket = DsuOf<Time, (prv: ?Time, cnt: Int)>(t => (prv: none, cnt: 0), (_, b) => b)
+bucket.set(Time(2), (prv: none, cnt: m))
 
 fn split(mut segs: Map<Int, (r: Int, t: Time)>, x: Int):
     if let (sl, val) = segs.last_le(x):
@@ -56,26 +55,21 @@ for t_now in Time(3)..:
     var cur_ans = 0
     for chunk in chunks:
         var w = chunk.w
-        var it: ?Time = dsu.find(chunk.t)
+        var it: ?Time = chunk.t
         while let u = it, w > 0:
-            let take = min(cnt[u], w)
+            let (prv, cnt) = bucket.get(u)
+            let take = min(cnt, w)
             cur_cnt += take
-            cnt[u] -= take
             w -= take
-            if cnt[u] == 0:
-                if let p = prv[u]:
-                    let b = dsu.find(p)
-                    let (np, nc) = (prv[b], cnt[b])
-                    let (kept, _) = dsu.merge(u, b)!
-                    prv[kept] = np
-                    cnt[kept] = nc
-                    it = kept
+            bucket.set(u, (prv: prv, cnt: cnt - take))
+            if take == cnt:
+                if let p = prv:
+                    bucket.unite(u, p)
                 else:
                     it = none
         cur_ans += w
 
-    cnt[t_now] = cur_cnt
-    prv[t_now] = t_now - 1
+    bucket.set(t_now, (prv: t_now - 1, cnt: cur_cnt))
     tot_ans += cur_ans
     ans.push(tot_ans)
 

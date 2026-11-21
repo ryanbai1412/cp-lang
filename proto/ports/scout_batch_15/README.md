@@ -38,7 +38,7 @@ edits to `stdlib/`:
   via `a.e` and returning a fresh domain `C` so `std.graph.condense` builds
   the bridge tree directly), `articulation_points`, `biconnected_components`
   (vertex-biconnected blocks), `virtual_tree` on `std.tree.Rooted<V>`,
-  `two_color`, and `BipartiteDsu` (rollback parity union-find).
+  and `two_color` (rollback parity union-find is now `std.dsu.ParityDsu`).
 - `flow_ext.cp`: `MinCostFlow` (SPFA + Johnson potentials + Dijkstra) and
   `max_weight_matching` (O(n^3) Hungarian), cross-tested against each other on
   random signed matrices.
@@ -89,7 +89,7 @@ structures (**44.5%** reduction).
   `scout.connectivity.articulation_points` on the radius-2 neighborhood.
 - `btoi20p3.cp` (40 vs 157 raw / 76 stripped; `4656866.cpp`): offline odd-cycle
   (bipartite connectivity) queries via monotone divide-and-conquer and
-  `scout.connectivity.BipartiteDsu` checkpoint/rewind.
+  `std.dsu.ParityDsu` mark/undo_to.
 
 Corpus coverage notes: (1) a full scan of `corpus/submissions/` shows that
 `cmt21r2ztr` is the only explicit 2-SAT submission in the corpus and was

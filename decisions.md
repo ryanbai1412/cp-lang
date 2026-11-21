@@ -1462,6 +1462,25 @@ in O(1) instead of doubling in O(log b); `factor` (trial division)
 stays because it is simpler and fast enough to 1e12. Reverse: move the
 functions back into the local library and import them from there.
 
+26.8. **Rollback marks are a `Mark`; values and parities roll back
+with the sets.** `Dsu.mark()` returned an `Int`, so `cf2222f` kept a
+second `Int` for its own payload history and the two could be swapped.
+`Mark` is one nominal type shared by `Dsu`, `DsuOf<V, T>` (a value per
+set, `join(value of a's set, value of b's set)` on merge, whichever root
+is kept) and `ParityDsu<V>` (promoted from the local library's
+`BipartiteDsu`, renamed after what it stores, with `unite`/`diff`
+spelled like the local `PotentialDsu` so a later group-valued potential
+DSU can absorb it). `DsuOf` is a separate type, not a payload parameter
+on `Dsu`, because a plain `Dsu` should not pay for a value array, and the
+core has no default type parameters. A closure `rollback(body)` helper
+is left out: its body must change the lent structure, which lexical
+borrowing rejects; scoped rollback waits for the core's `defer`/`undo`
+block. Reverse: make `mark()` return `Int` again and inline `DsuOf`'s
+log into callers. `Dsu.size` and `DsuOf.get` bind `find(v)` before indexing: the
+C++ backend copies the whole field when an index changes `self`
+(`sz[self.find(v)]`), which made `cf2237h` 10x slower (1608 ms against
+167 ms); the copy is the codegen lane's to remove.
+
 ## 27. Interpreter, debugger and traces
 
 27.1. **Runtime traps carry call stacks, multitest case numbers, and concrete values.**

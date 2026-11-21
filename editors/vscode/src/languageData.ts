@@ -39,10 +39,10 @@ export const PRELUDE_TYPES: readonly string[] = [
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
     'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'Deque', 'Desc', 'Dir4', 'Dir8', 'Dsu',
-    'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HashVal', 'Hashable', 'LazySegTree', 'Marks',
-    'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'Perm', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
-    'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SortedBag', 'SparseTable',
-    'Target', 'Tree', 'XorFenwick',
+    'DsuOf', 'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HashVal', 'Hashable', 'LazySegTree', 'Mark',
+    'Marks', 'MaxHeap', 'MinHeap', 'Mod', 'Monoid', 'Neighbours', 'ParityDsu', 'Perm', 'Prefix1',
+    'Prefix2', 'PrefixN', 'Pt', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve',
+    'SortedBag', 'SparseTable', 'Target', 'Tree', 'XorFenwick',
 ];
 
 /**
@@ -63,10 +63,10 @@ export const PRELUDE_VALUES: readonly string[] = [
 
 /** Public `stdlib/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
 export const STDLIB_VALUES: readonly string[] = [
-    'area2', 'argmins', 'articulation_points', 'berlekamp_massey', 'biconnected_components', 'bit_len',
-    'choose', 'components', 'concavity_break', 'convexity_break', 'cross', 'crt', 'cyclic_pairs',
-    'decrease', 'dedup', 'differences', 'directed_of_pairs', 'directed_of_triples', 'divisors',
-    'dnc_break', 'dot', 'ext_gcd', 'factor', 'factor_big', 'first_ge_by', 'floor_sum',
+    'area2', 'argmins', 'articulation_points', 'berlekamp_massey', 'biconnected_components',
+    'bit_len', 'choose', 'components', 'concavity_break', 'convexity_break', 'cross', 'crt',
+    'cyclic_pairs', 'decrease', 'dedup', 'differences', 'directed_of_pairs', 'directed_of_triples',
+    'divisors', 'dnc_break', 'dot', 'ext_gcd', 'factor', 'factor_big', 'first_ge_by', 'floor_sum',
     'get_or_insert_with', 'guess_at', 'idempotent', 'increase', 'is_prime', 'knuth_break', 'last_le_by',
     'lcp_array', 'locate', 'max_weight_matching', 'monge_break', 'mul_mod', 'newton',
     'next_permutation', 'on_segment', 'pairs', 'period', 'phi', 'poly_at', 'poly_degree', 'pow_mod',

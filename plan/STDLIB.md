@@ -448,8 +448,24 @@ fn count_below(self, i: D) -> Int   // O(n/64)
 `SortedBag<T>` is an ordered multiset with order statistics,
 `Deque<T>` a ring buffer, `MinHeap`/`MaxHeap` binary heaps (the heap is
 chosen by name, not by a comparator flag), `Dsu<V>` union-find by size
-with path compression, and `Marks<D>` an O(1)-clear visited set by
-epoch.
+with path compression, `DsuOf<V, T>` the same with a value per set
+joined on merge, `ParityDsu<V>` union-find that knows whether two
+positions are on the same side, and `Marks<D>` an O(1)-clear visited set
+by epoch.
+
+The three union-finds step back in time the same way: `mark()` returns a
+`Mark`, its own type, and `undo_to(mark)` undoes every change since,
+values and parities included, O(1) per change. One mark serves several
+returns to the same point (`cf2222f` undoes both halves of its divide and
+conquer to one `snap`). `DsuOf`'s join is `join(value of a's set, value
+of b's set)` for `unite(a, b)` whatever root union by size keeps, so
+`(_, b) => b` is a directional "b wins" (`cf2237h`, skip-to-previous
+bucket) and `(a, b) => a ?? b` keeps the first representative
+(`cf2222f`). Scoped rollback, so an early `return` cannot skip
+`undo_to`, belongs to the core's proposed `defer`/`undo` block (`plan/14`);
+a closure helper would need the body to mutate the structure while it is
+lent, which lexical borrowing rejects. Frictions:
+`research/frictions/cf2222f.md`, `research/frictions/cf2237h.md`.
 
 ```cp
 struct SortedBag<K> // O(log n), O(1), O(n)
@@ -507,17 +523,40 @@ struct MaxHeap<T>
     fn take(mut self) -> MaxHeap<T> // O(1)
     fn push(mut self, x: T)
     fn pop(mut self) -> ?T
+struct Mark(at: Int)
 struct Dsu<V> // O(alpha(n)), O(log n)
     fn new() -> Dsu<V> // O(n)
     fn find(mut self, v: V) -> V
-    fn mark(mut self) -> Int // O(1)
-    fn undo_to(mut self, snap: Int) // O(1)
+    fn mark(mut self) -> Mark // O(1)
+    fn undo_to(mut self, snap: Mark) // O(1) per undone unite
     fn unite(mut self, a: V, b: V) -> Bool
     fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V)
     fn same(mut self, a: V, b: V) -> Bool
     fn size(mut self, v: V) -> Int
     @get fn components(self) -> Int
     fn groups(mut self) -> List<List<V>> // O(n alpha(n))
+struct DsuOf<V, T> // as Dsu, plus one join per merge; three [V] arrays
+    fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T> // O(n)
+    fn find(mut self, v: V) -> V
+    fn get(mut self, v: V) -> T
+    fn set(mut self, v: V, x: T)
+    fn unite(mut self, a: V, b: V) -> Bool
+    fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V)
+    fn same(mut self, a: V, b: V) -> Bool
+    fn size(mut self, v: V) -> Int
+    @get fn components(self) -> Int
+    fn mark(mut self) -> Mark // O(1)
+    fn undo_to(mut self, snap: Mark) // O(1) per undone merge or set
+struct ParityDsu<V> // O(log n), no path shortening; three [V] arrays
+    fn new() -> ParityDsu<V> // O(n)
+    fn find(self, v: V) -> (root: V, flip: Bool)
+    fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool // false: contradiction
+    fn diff(self, a: V, b: V) -> ?Bool
+    fn same(self, a: V, b: V) -> Bool
+    fn size(self, v: V) -> Int
+    @get fn consistent(self) -> Bool
+    fn mark(self) -> Mark // O(1)
+    fn undo_to(mut self, snap: Mark) // O(1) per undone unite
 struct Marks<D> // O(1)
     fn new() -> Marks<D> // O(D.K), O(1)
     fn add(mut self, v: D) -> Bool // O(1)

@@ -1,7 +1,8 @@
 //! Undirected connectivity helpers: 2-edge-connected components (bridges),
 //! vertex-biconnected components (blocks), articulation points, bipartite
-//! 2-coloring, rollback bipartite DSU, and virtual trees on `Rooted<V>`.
-//! Proposed additions to `std.graph`, `std.tree`, and `std.dsu`.
+//! 2-coloring, and virtual trees on `Rooted<V>`; the rollback bipartite DSU is
+//! `std.dsu.ParityDsu`. Proposed additions to `std.graph` and `std.tree`.
+use std.dsu.{ParityDsu}
 
 /// Two-edge-connected components (bridge blocks) of an undirected graph.
 /// Each arc in `adj(u)` carries `(to: V, e: E)` so parallel edges are handled
@@ -192,58 +193,6 @@ pub fn two_color<V, A>(adj: V -> Iter<A>) -> ?[V]Bool:
                     return none
     [V] v => side[v]!
 
-/// Rollback union-find that tracks bipartiteness (whether any odd cycle exists).
-/// `unite` is O(log n), `undo` is O(1). Each `unite` pushes one log record so
-/// `rewind(mark)` restores the exact earlier state, including `is_bipartite`.
-pub struct BipartiteDsu<V>:
-    up: [V]V
-    sz: [V]Int
-    diff: [V]Bool
-    ok: Bool
-    log: List<(prev_ok: Bool, child: ?V, root: V)>
-
-    pub fn new() -> BipartiteDsu<V>:
-        BipartiteDsu([V] v => v, [V] v => 1, [V] v => false, true, [])
-
-    pub @get fn is_bipartite(self) -> Bool = ok
-
-    pub @get fn depth(self) -> Int = log.len
-
-    /// Returns `(root, parity_to_root)` without path compression.
-    pub fn find(self, v: V) -> (V, Bool):
-        var x = v
-        var p = false
-        while up[x] != x:
-            p = p != diff[x]
-            x = up[x]
-        (x, p)
-
-    /// Add an undirected edge `(a, b)` requiring `a` and `b` to have opposite colors.
-    pub fn unite(mut self, a: V, b: V):
-        let (rx, px) = self.find(a)
-        let (ry, py) = self.find(b)
-        if rx == ry:
-            log.push((prev_ok: ok, child: none, root: rx))
-            if px == py: ok = false
-            return
-        var (big, small) = (rx, ry)
-        if sz[big] < sz[small]: swap(mut big, mut small)
-        log.push((prev_ok: ok, child: small, root: big))
-        up[small] = big
-        sz[big] += sz[small]
-        diff[small] = px == py
-
-    pub fn undo(mut self):
-        let step = log.pop()
-        ok = step.prev_ok
-        if let c = step.child:
-            up[c] = c
-            sz[step.root] -= sz[c]
-            diff[c] = false
-
-    pub fn rewind(mut self, mark: Int):
-        while log.len > mark: self.undo()
-
 @test
 fn bridges_and_parallel_edges():
     domain V = 0..5
@@ -282,18 +231,18 @@ fn coloring_and_bipartite_dsu_rollback():
     let col = two_color::<V>(u => g.adj(u))!
     assert col[V(0)] != col[V(1)] and col[V(1)] != col[V(2)] and col[V(2)] != col[V(3)]
 
-    var d = BipartiteDsu<V>.new()
+    var d = ParityDsu<V>()
     d.unite(V(0), V(1))
     d.unite(V(1), V(2))
-    let mark = d.depth
-    assert d.is_bipartite
+    let mark = d.mark()
+    assert d.consistent
     d.unite(V(2), V(0))
-    assert not d.is_bipartite
-    d.rewind(mark)
-    assert d.is_bipartite
+    assert not d.consistent
+    d.undo_to(mark)
+    assert d.consistent
     d.unite(V(2), V(3))
     d.unite(V(3), V(0))
-    assert d.is_bipartite
+    assert d.consistent
 
 @test
 fn bcc_and_virtual_tree():
