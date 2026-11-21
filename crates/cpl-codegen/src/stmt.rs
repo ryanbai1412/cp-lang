@@ -51,7 +51,7 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for (k, stmt) in block.stmts.iter().enumerate() {
             self.tail = match stmt {
-                Stmt::Let(_, Some(init)) if walk::path_root(init).is_some() => {
+                Stmt::Let(_, Some(init)) if place_root(init).is_some() => {
                     Some(Tail::of(&block.stmts[k + 1..]))
                 }
                 _ => None,
@@ -903,17 +903,27 @@ impl<'p> Emitter<'p> {
         if init.ty.is_scalar() || matches!(init.ty, Ty::Fn(..)) || self.spent.contains(&slot) {
             return false;
         }
-        if !matches!(init.kind, ExprKind::Field(..) | ExprKind::Index(..)) {
-            return false;
+        let temp = |slot: usize| self.locals()[slot].name.is_empty();
+        match init.kind {
+            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(_, false) => {}
+            // The optional an `if let` or `while let` tests.
+            ExprKind::Local(_) | ExprKind::Global(_) if temp(slot) => {}
+            _ => return false,
         }
-        let Some((global, root)) = walk::path_root(init) else {
+        let Some((global, root)) = place_root(init) else {
             return false;
         };
-        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
-        if !global && root >= params {
+        if self.facts.stores((self.fn_id, false, slot)) > 1 {
             return false;
         }
-        if self.facts.stores((self.fn_id, false, slot)) > 1 {
+        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
+        if !global && root >= params {
+            // A temporary set once is read only by the pattern that takes
+            // it apart, and a reference it holds was checked for all the
+            // statements after it, which cover this name.
+            return temp(root) && !self.spent.contains(&root) && self.facts.stores((self.fn_id, false, root)) == 1;
+        }
+        if !global && self.fn_id.is_some_and(|id| self.sunk[id].contains(&root)) {
             return false;
         }
         let Some(tail) = tail else {
@@ -1294,6 +1304,16 @@ fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
         _ => {}
     });
     alias
+}
+
+/// The variable a place reads from, looking through the unchecked unwrap
+/// that follows an `if let` test.
+fn place_root(e: &Expr) -> Option<(bool, usize)> {
+    match &e.kind {
+        ExprKind::Unwrap(base, false) | ExprKind::Field(base, _) => place_root(base),
+        ExprKind::Index(base, indices) if indices.iter().all(walk::is_simple) => place_root(base),
+        _ => walk::path_root(e),
+    }
 }
 
 /// For `if k in m:` whose body reads `m[k]` and can't change `m` or

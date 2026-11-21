@@ -512,6 +512,31 @@ fn a_let_of_a_list_nothing_changes_is_a_reference_not_a_copy() {
 }
 
 #[test]
+fn an_if_let_payload_nothing_changes_is_a_reference_not_a_copy() {
+    let cpp = cpp(concat!(
+        "fn total(n: Int, end: ?List<Int>) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in 0..n:\n",
+        "        if let e = end: s += e[i % e.len]\n",
+        "    s\n",
+        "var best: ?List<Int> = some([1])\n",
+        "fn swap() -> Int:\n",
+        "    if let kept = best:\n",
+        "        best = some([2, 3])\n",
+        "        return kept.len\n",
+        "    0\n",
+        "print(total(5, some([1, 2, 3])), swap())\n",
+    ));
+    assert!(
+        cpp.contains("const std::optional<std::vector<ll>>& t0 = end;"),
+        "{cpp}"
+    );
+    assert!(cpp.contains("const std::vector<ll>& e = *t0;"), "{cpp}");
+    // `swap` changes `best`: the optional is copied before the test.
+    assert!(cpp.contains("std::optional<std::vector<ll>> t0 = best;"), "{cpp}");
+}
+
+#[test]
 fn a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list() {
     let cpp = cpp(concat!(
         "let n: Int = read()\n",
