@@ -12,3 +12,4 @@ proto/ports/*/before/*.cpp
 proto/ports/*/before/*_bin
 proto/ports/*/before/*_gen
 proto/ports/*/before/*_ref
+/corpus/statements/

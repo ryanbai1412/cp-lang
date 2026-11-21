@@ -71,7 +71,9 @@ because long-running context drifts.
 ports done, rework rate, and how agents failed. Read agent transcripts for
 wasted work. Fix the factory itself: briefs, friction template, scoreboard,
 check scripts, reusable skills. Every new agent should start better than the
-last.
+last. The meta loop may rewrite anything in this file,
+the loop and the meta loop included, when the evidence says it should; record
+each change and its reason in `research/retros/`.
 
 **Briefing agents.** Give each agent the smallest context that does the job:
 the goal, the relevant chapters, the tests to pass, the files it owns. Long
