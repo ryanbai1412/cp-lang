@@ -1617,6 +1617,14 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         print(f"  lints:     {tl['total']} taste findings in {tl['ports']} ports ({by})")
     fl = t["friction_lint"]
     print(f"  lint:      {fl['wa_trap']} wa_trap, {fl['real_gap']} real_gap, {fl['stale_port']} stale_port")
+    wfd = report.get("writable_from_docs")
+    if wfd and wfd.get("latest"):
+        cur = wfd["latest"]
+        print(
+            f"  docs-wfd:  {cur['compiled']}/{cur['total']} compile ({cur['compile_rate']:.1%}, "
+            f"floor {wfd['min_compile_rate']:.1%}), {cur['passed']}/{cur['total']} pass "
+            f"({cur['pass_rate']:.1%}, floor {wfd['min_pass_rate']:.1%}) [{cur['model']}]"
+        )
     print_frictions_report(report["frictions"], quiet=quiet)
 
     if diff["has_baseline"]:
@@ -1769,6 +1777,12 @@ def build_report(args):
         merge_baseline_perf(port_records, baseline)
 
     totals = compute_totals(port_records, fl_summary, fr_summary)
+    wfd_path = os.path.join(ROOT, "research", "writable-from-docs.json")
+    wfd_data = None
+    if os.path.isfile(wfd_path):
+        with open(wfd_path, "r", encoding="utf-8") as f:
+            wfd_data = json.load(f)
+
     report = {
         "schema_version": 1,
         "meta": {
@@ -1781,9 +1795,20 @@ def build_report(args):
         "totals": totals,
         "frictions": fr_summary,
         "friction_lint": fl_summary,
+        "writable_from_docs": wfd_data,
         "ports": port_records,
     }
     diff = diff_against_baseline(report, baseline, mode=mode, subset=bool(only))
+    if wfd_data and wfd_data.get("latest"):
+        cur = wfd_data["latest"]
+        if cur["compile_rate"] + 1e-9 < wfd_data.get("min_compile_rate", 0.0):
+            diff["regressions"].append(
+                f"writable-from-docs compile_rate {cur['compile_rate']:.1%} < floor {wfd_data['min_compile_rate']:.1%}"
+            )
+        if cur["pass_rate"] + 1e-9 < wfd_data.get("min_pass_rate", 0.0):
+            diff["regressions"].append(
+                f"writable-from-docs pass_rate {cur['pass_rate']:.1%} < floor {wfd_data['min_pass_rate']:.1%}"
+            )
     return report, diff
 
 

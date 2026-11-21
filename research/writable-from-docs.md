@@ -1,40 +1,32 @@
-# Writable-from-Docs Audit
+# Writable-from-docs benchmark & improvement curve
 
-Automated measurement of the `AGENTS.md` **"Writable from the docs"** rule via `scripts/writable-from-docs.py`.
+Pinned benchmark set: `research/writable-from-docs-set.json` (**55 unseen mixed-difficulty problems**: 35 Codeforces Div2 B–E, 12 AtCoder ABC D–E, 8 AtCoder ARC A–B; zero overlap with `proto/ports/`).
 
-Each run sends a fresh, zero-context model (`gpt-4o`, temperature `0`) ONLY the 8-file CP Lang docs bundle (`docs/one-page-cheat-sheet.md` + `site/content/{tour,types-and-control,io-and-formatting,indices,borrowing,strings,stdlib}.md`) and one unseen problem statement from `corpus/statements/` (no existing port in `proto/ports/`), then checks the generated `.cp` program with `cpl check`, `cpl build`, and `cpl run` on every sample case.
+Model: `gpt-5.4` given **only** the CP Lang documentation bundle (`docs/one-page-cheat-sheet.md`, `site/content/tour.md`, `types-and-control.md`, `io-and-formatting.md`, `indices.md`, `borrowing.md`, `strings.md`, `stdlib.md`, `cpp-guide.md`, `idioms.md`) and one problem statement at a time.
 
-## Problem set (10 unseen AtCoder statements)
+Ratchet file: `research/writable-from-docs.json` (enforced in `scripts/scoreboard.py --fast --check` and weekly in `.github/workflows/writable-from-docs.yml`).
 
-`abc380b`, `abc380c`, `abc381c`, `abc382c`, `abc383b`, `abc383c`, `abc384c`, `abc385c`, `abc386c`, `abc387c` (none have a port in `proto/ports/`).
+## Improvement curve (55-problem mixed-difficulty set, `gpt-5.4`)
 
-## Before vs After docs fixes
-
-| Run | Compile pass (`cpl check`) | Full sample + build pass | Distinct language/docs error codes |
-| --- | --- | --- | --- |
-| Baseline (before docs fixes) | **7/10** | **6/10** | `E0103` (multi-`for` comprehension), `E0203` (`Int.to_str`, `Int.abs`), `E0303` (`read(Int)`), `R0001` (`[1..=n]` indexed from `0`) |
-| After docs fixes | **8/10** | **4/10** (plus 1 TLE on `10^18` brute force, 2 algorithm/input bugs) | `E0103` (multi-`for` comprehension in `abc383c`), `E0203` (`List.reserve` in `abc380c`) |
-
-### Docs gaps found and fixed
-
-1. **`Int` to `Str` conversion (`abc387c`, `E0203`):** model called `n.to_str()`. Documented string interpolation `"{n}"` and `std.math.digits(n)` in `site/content/strings.md` and `docs/one-page-cheat-sheet.md`. Result: `abc387c` compiled and passed small samples on re-run.
-2. **Typed `read()` and free `abs(x)` (`abc386c`, `E0303` + `E0203`):** model called `read(Int)` and `(len_s - len_t).abs()`. Documented that `read()` always infers from the binding type (`let k: Int = read()`, never `read(Int)`) and that `abs(x)` is a free function in `site/content/io-and-formatting.md`, `site/content/types-and-control.md`, and `docs/one-page-cheat-sheet.md`. Result: `abc386c` went from 2 compile errors to **6/6 PASS**.
-3. **1-based array bounds (`abc382c`, `R0001`):** model declared `[1..=m]Int` and indexed with `0..m`. Documented matching loop bounds to declared array bounds in `site/content/indices.md`.
-4. **Single-`for` comprehensions & built-in `.adj4` (`abc383c`, `E0103`):** model wrote `sum(1 for r in Row, c in Col if ...)`. Documented single-`for` comprehension scope and built-in `(Row, Col).adj4` in `site/content/types-and-control.md` and `site/content/indices.md`.
-5. **`Deque` push method (`abc383c`, `E0203` in intermediate run):** model called `q.push_back(...)`. Clarified `.push`/`.pop` at back (no `.push_back`) in `docs/one-page-cheat-sheet.md`.
-6. **Negative-example priming lesson:** writing the literal forbidden token sequence `let mut` inside a code comment caused `gpt-4o` to emit `let mut` on 3/10 problems (`E0106`); phrasing it positively (`use var for mutable variables`) immediately eliminated all `let mut` errors (0/10).
-
-## Latest run per-problem results (`gpt-4o`)
-
-| Problem | Check | Build | Samples | Codes | Outcome / First error |
+| Round | Label | Docs changes applied before run | `cpl check` + `cpl build` | Full pass (all samples) | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `abc380b` | ok | ok | 3/3 | — | PASS |
-| `abc380c` | fail | — | 0/2 | E0203 | `List<Char>` has no method `reserve` |
-| `abc381c` | ok | ok | 2/3 | — | sample 3 WA (algorithm edge case) |
-| `abc382c` | ok | ok | 0/3 | — | sample 1 runtime error (input format mismatch in model's code) |
-| `abc383b` | ok | ok | 0/3 | — | sample 1 runtime error (input format mismatch in model's code) |
-| `abc383c` | fail | — | 0/3 | E0103 | multi-`for` generator comprehension (`for r in Row, c in Col`) |
-| `abc384c` | ok | ok | 3/3 | — | PASS |
-| `abc385c` | ok | ok | 3/3 | — | PASS |
-| `abc386c` | ok | ok | 6/6 | — | PASS |
-| `abc387c` | ok | ok | 2/3 | — | sample 3 TLE (`O(R-L)` brute force on `10^18`) |
+| **0** | `round-0-baseline` | Pre-existing 8-file docs bundle (no `idioms.md`) | **40/55 (72.7%)** | **14/55 (25.4%)** | Main gaps: domain-vs-`Int` (`E0301`/`E0302`/`E0309`, 5×), `read()` on `List<Int>` (`E0501`, 2×), `use` keyword (`E0106`), `Sieve.is_prime` method vs index (`E0305`), named tuples `.0` (`E0203`), 2D vs nested indexing (`E0305`) |
+| **1** | `round-1-after-idioms-and-r0-fixes` | Added gold-standard `idioms.md` + upgraded `cpp-guide.md` + 6 Round-0 docs fixes | **46/55 (83.6%)** | **19/55 (34.5%)** | +10.9 pp compile, +9.1 pp full pass. Remaining gaps: inline conditional syntax, multi-line `match =>`, `Dsu<V>` named domain, `v.next: ?V` in ranges |
+| **2** | `round-2-after-ternary-and-domain-fixes` | Fixed `Dsu<V>` & `v.next` docs; introduced prose typo `if c then a else b` | 40/55 (72.7%) | 18/55 (32.7%) | Harness immediately caught our own `if ... then` prose typo on 8 problems (`E0103`) |
+| **3** | `round-3-after-if-colon-and-swap-fixes` | Fixed `if cond: a else: b` and `arr.swap(i, j)` docs | 38/55 (69.1%) | 17/55 (30.9%) | Surfaced 2 more doc inaccuracies: `Sieve.spf[x]` is a list field (not method `spf(x)`), and `HashMap` `m[k]` auto-defaults to `V` (not `?V`) |
+| **4** | `round-4-after-sieve-and-hashmap-fixes` | Fixed `Sieve.spf[x]` field & `HashMap` `m[k]` vs `m.get(k)` docs | **46/55 (83.6%)** | **17/55 (30.9%)** | Plateau confirmed (~83.6% compile, ~31–35% full pass across stochastic GPT-5.4 runs); remaining failures are predominantly algorithmic WAs on Div2 C–E / ARC B |
+
+## Ratchet policy
+
+- Floors are set to `max(prev_floor, observed_rate - 0.05)` (5% noise margin because `gpt-5.4` does not accept `temperature=0`, yielding ~±2-problem variance on `n = 55`).
+- Current floors in `research/writable-from-docs.json`:
+  - `min_compile_rate`: **78.64%**
+  - `min_pass_rate`: **29.55%**
+- `scripts/scoreboard.py --fast --check` reads `research/writable-from-docs.json` offline and fails if `latest` ever regresses below either floor; `.github/workflows/writable-from-docs.yml` runs the live benchmark weekly on Monday 06:00 UTC (`workflow_dispatch` supported).
+
+## Remaining docs / compiler gaps observed at plateau
+
+1. `reverse(mut a)` vs `a.reverse()` (`cf2004c`, `cf2001c` in R4: model guessed free `reverse(...)`).
+2. Multi-line `match` arm syntax (`cf2007e` still occasionally writes `pat =>\n ...`).
+3. Float output formatting precision (`abc382e`: 16-digit sample vs default float formatting).
+4. Algorithmic WAs on Div2 C–E / ARC B account for the gap between ~84% compile and ~31–35% full pass.

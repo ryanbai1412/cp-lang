@@ -1485,6 +1485,29 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* restore the static `ERROR_CATALOG` list in `site/errors.py` and remove
   `crates/cpl-diag/src/registry.rs` and `explain_code` in `crates/cpl-cli/src/lib.rs`.
 
+- **24.9 55-problem mixed-difficulty writable-from-docs benchmark, ratchet, and weekly workflow.**
+  Pinned 55 unseen mixed-difficulty statements (`research/writable-from-docs-set.json`: 35 CF Div2
+  B–E, 12 ABC D–E, 8 ARC A–B, verified unported), upgraded `scripts/writable-from-docs.py` to
+  default to `gpt-5.4` with parallel workers and ratchet JSON (`research/writable-from-docs.json`),
+  wired offline ratchet enforcement into `scripts/scoreboard.py --fast --check`, and added weekly
+  CI workflow `.github/workflows/writable-from-docs.yml`. Set the ratchet noise margin to 5%
+  (`max(prev, observed - 0.05)`) because `gpt-5.4` does not accept `temperature=0` (~±2 problems
+  variance on `n = 55`).
+  *Reason:* turns writable-from-docs from a one-off small-set audit into an ongoing regression
+  gate over realistic contest difficulty.
+  *Reversible:* delete `.github/workflows/writable-from-docs.yml`, `research/writable-from-docs.json`,
+  `research/writable-from-docs-set.json`, and the `writable_from_docs` block in `scripts/scoreboard.py`.
+
+- **24.10 Gold-standard `From C++` guide and `Idioms` page (`site/content/cpp-guide.md`, `site/content/idioms.md`).**
+  Upgraded `site/content/cpp-guide.md` with an editorial-first side-by-side C++17 vs CP Lang
+  comparison (`cf2069c`), named-invariant structs, and zero-sentinel optionals, and added
+  `site/content/idioms.md` covering domains, reductions, optionals, grids, sorting/heaps/maps,
+  binary search, and stdlib structures — every `cp` fence verified by `site/check_docs.py`.
+  *Reason:* gives C++ contestants and cold readers exemplar-grade patterns matching
+  `design/EXEMPLARS-PORTS.md` while keeping every example mechanically checked against the compiler.
+  *Reversible:* remove the `idioms` entry in `site/build.py`, delete `site/content/idioms.md`, and
+  revert `site/content/cpp-guide.md`.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and

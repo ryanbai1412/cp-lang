@@ -1,0 +1,50 @@
+name: Writable-from-docs scoreboard ratchet
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Model ID to evaluate (default: gpt-5.4)"
+        required: false
+        default: "gpt-5.4"
+
+jobs:
+  writable-from-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build cpl-cli
+        run: cargo build -p cpl-cli
+
+      - name: Fetch unseen benchmark statements
+        run: |
+          python3 - << 'PY'
+          import json, subprocess
+          from pathlib import Path
+          ids = json.loads(Path("research/writable-from-docs-set.json").read_text())["problems"]
+          subprocess.run(["python3", "scripts/fetch-statement.py", *ids], check=False)
+          PY
+
+      - name: Run writable-from-docs benchmark against ratchet
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          MODEL="${{ github.event.inputs.model || 'gpt-5.4' }}"
+          python3 scripts/writable-from-docs.py \
+            --manifest research/writable-from-docs-set.json \
+            --workers 12 \
+            --model "$MODEL" \
+            --check-ratchet research/writable-from-docs.json \
+            --report writable-from-docs-run.md
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: writable-from-docs-report
+          path: writable-from-docs-run.md

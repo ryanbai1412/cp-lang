@@ -465,25 +465,36 @@ built from hundreds of real validated ports, interactive lessons that teach
 by solving, and a browser playground that runs the interpreter, C++17
 preview, trace viewer and a judge — every single code block and example
 executed in the gate so documentation never drifts.
-**Where we are.** Static site generator (`site/build.py`, 26 chapters + 63
-individual error/lint pages + playground + trace = 91 HTML pages: 10-lesson
-course with 51 checked exercises, 15 reference pages including canonical
-`docs/one-page-cheat-sheet.md`, `errors.html`, `cookbook.html`, and
-`ports.html`), WASM playground (23 presets with verified sample cases,
-URL-hash `#share=` links, multi-case sample runner, verbatim CLI `stderr`
-rendering, and `Playground::check` warning exit-code parity), canonical trace
-viewer, and offline bundle (`dist/cp-lang.html`, ~2.0 MB < 2.6 MB cap).
-105/105 doc `cp` fences, 22/22 `site/examples/*.cp`, 10/10 course write-code
-refs, 63/63 diagnostic/lint codes, 22/22 cookbook recipes, 71 gallery ports
-(19 with side-by-side CP / dream / C++ panes from `research/PORTS.md` and
-`proto/ports/<group>/dream/`), 24/24 non-prelude `stdlib/*.cp` modules, and
-playground WASM-vs-CLI parity (`crates/cpl-wasm/tests/parity.rs` +
-`site/test_playground_parity.py`) are verified in `scripts/check.sh --fast`
-via `site/check_docs.py`. Writable-from-docs harness
-(`scripts/writable-from-docs.py` + `scripts/test_writable_from_docs.py`,
-report in `research/writable-from-docs.md`) audited 10 unseen statements from
-`corpus/statements/` (`abc380b`–`abc387c`), raising `cpl check` pass from 7/10
-to 8/10 after closing 5 docs gaps.
+**Where we are.** Static site generator (`site/build.py`, 27 chapters + 71
+individual error/lint pages + playground + trace = 100 HTML pages: 10-lesson
+course with 51 checked exercises, 16 reference/guide pages including canonical
+`docs/one-page-cheat-sheet.md`, gold-standard `cpp-guide.md` and `idioms.md`
+modeled on `design/EXEMPLARS-PORTS.md`, registry-generated `errors.html`,
+`cookbook.html`, and `ports.html`), WASM playground (23 presets with verified
+sample cases, URL-hash `#share=` links, multi-case sample runner, verbatim CLI
+`stderr` rendering, and `Playground::check` warning exit-code parity), canonical
+trace viewer, and offline bundle (`dist/cp-lang.html`, ~2.1 MB < 2.6 MB cap).
+All 71 error/lint pages are generated directly from the Rust diagnostics
+registry (`crates/cpl-diag/src/registry.rs` + `crates/cpl-lint/src/lib.rs`) via
+`cpl explain --json`. 116/116 doc `cp` fences, 22/22 `site/examples/*.cp`, 10/10
+course write-code refs, 71/71 registry diagnostic/lint codes (every active code
+with verified trigger + fix), 22/22 cookbook recipes, 42 gallery ports (42 with
+side-by-side CP / dream / C++ panes from `research/PORTS.md`), 24/24 non-prelude
+`stdlib/*.cp` modules, and playground WASM-vs-CLI parity
+(`crates/cpl-wasm/tests/parity.rs` + `site/test_playground_parity.py`) are
+verified in `scripts/check.sh --fast` via `site/check_docs.py`.
+Writable-from-docs benchmark (`scripts/writable-from-docs.py`, pinned 55-problem
+unseen mixed-difficulty set `research/writable-from-docs-set.json`: 35 CF Div2
+B–E, 12 ABC D–E, 8 ARC A–B, evaluated with `gpt-5.4` given only the 10-file docs
+bundle) improved across 5 rounds (recorded in `research/writable-from-docs.md`
+and `research/writable-from-docs.json`): R0 baseline 40/55 compile (72.7%) /
+14/55 pass (25.4%) → R1 (+`idioms.md`, upgraded `cpp-guide.md`, 6 R0 docs fixes)
+46/55 compile (83.6%) / 19/55 pass (34.5%) → R2 40/55 (72.7%) / 18/55 (32.7%,
+caught our own `if ... then` prose typo) → R3 38/55 (69.1%) / 17/55 (30.9%,
+caught `Sieve.spf` field & `HashMap` `m[k]` auto-default) → R4 plateau 46/55
+compile (83.6%) / 17/55 pass (30.9%). Enforced as a ratchet in
+`scripts/scoreboard.py --fast --check` (floors 78.6% compile / 29.6% pass) and
+scheduled weekly via `.github/workflows/writable-from-docs.yml`.
 Gaps: `cpl doc stdlib` still has undocumented items and 0 doc-comment
 examples; playground does not yet have a generated C++17 diff view.
 **Bar.** A cold reader writes a correct solution from the docs alone; every

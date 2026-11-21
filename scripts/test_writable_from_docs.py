@@ -63,6 +63,30 @@ Output
         bundle = wfd.load_docs_bundle(ROOT)
         self.assertIn("One-Page Contest Cheat Sheet", bundle)
         self.assertIn("site/content/stdlib.md", bundle)
+        self.assertIn("site/content/cpp-guide.md", bundle)
+        self.assertIn("site/content/idioms.md", bundle)
+
+    def test_manifest_has_50_plus_unported_problems(self):
+        import json
+
+        manifest = json.loads((ROOT / "research/writable-from-docs-set.json").read_text())
+        probs = manifest["problems"]
+        self.assertGreaterEqual(len(probs), 50)
+        self.assertEqual(len(probs), len(set(probs)))
+        ported = wfd.ported_ids(ROOT)
+        overlap = set(probs) & ported
+        self.assertEqual(overlap, set(), f"manifest overlaps ported problems: {overlap}")
+
+    def test_ratchet_check_passes_and_catches_regression(self):
+        ratchet = {"min_compile_rate": 0.80, "min_pass_rate": 0.30}
+        ok_summary = {"compile_rate": 0.85, "pass_rate": 0.35}
+        self.assertEqual(wfd.check_ratchet_data(ratchet, ok_summary), [])
+
+        bad_summary = {"compile_rate": 0.72, "pass_rate": 0.25}
+        errs = wfd.check_ratchet_data(ratchet, bad_summary)
+        self.assertEqual(len(errs), 2)
+        self.assertIn("compile_rate", errs[0])
+        self.assertIn("pass_rate", errs[1])
 
     def test_ported_ids_excludes_dream(self):
         ids = wfd.ported_ids(ROOT)
@@ -84,8 +108,8 @@ Output
             ],
             "test-model",
         )
-        self.assertIn("Compile pass: **1/1**", md)
-        self.assertIn("| `abc999a` | ok | ok | 2/2 | — | PASS |", md)
+        self.assertIn("**`cpl check` pass rate:** 1/1 (100.0%)", md)
+        self.assertIn("| `abc999a` | PASS | PASS | 2/2 | PASS |", md)
 
 
 if __name__ == "__main__":

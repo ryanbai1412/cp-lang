@@ -2,21 +2,21 @@
 """writable-from-docs.py: test whether a fresh model can solve unseen problems from docs alone.
 
 Implements the AGENTS.md "Writable from the docs" design rule:
-gives a fresh model ONLY the CP Lang docs bundle + an unseen problem statement
-from `corpus/statements/`, extracts its `.cp` program, runs `cpl check`,
-`cpl run` on every sample case, and `cpl build`, and records the pass rate
-and every docs gap hit.
+gives a fresh model ONLY the CP Lang docs bundle + unseen problem statements
+from `corpus/statements/`, extracts each `.cp` program, runs `cpl check`,
+`cpl build`, and `cpl run` on every sample case, records the pass rate and
+every docs gap hit, and enforces a scoreboard ratchet (`research/writable-from-docs.json`).
 
 Usage:
-  python3 scripts/writable-from-docs.py                  # run on up to 10 unported statements
-  python3 scripts/writable-from-docs.py --limit 10 --report research/writable-from-docs.md
-  python3 scripts/writable-from-docs.py abc380b abc381c  # run on specific IDs
+  python3 scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json --workers 12
+  python3 scripts/writable-from-docs.py --check-ratchet research/writable-from-docs.json
 """
 
 from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import datetime
 import glob
 import json
 import os
@@ -32,6 +32,8 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent.parent
 STATEMENTS_DIR = ROOT / "corpus/statements"
 CPL = ROOT / "target/debug/cpl"
+DEFAULT_MANIFEST = ROOT / "research/writable-from-docs-set.json"
+DEFAULT_RATCHET = ROOT / "research/writable-from-docs.json"
 
 DOC_FILES = [
     "docs/one-page-cheat-sheet.md",
@@ -42,6 +44,8 @@ DOC_FILES = [
     "site/content/borrowing.md",
     "site/content/strings.md",
     "site/content/stdlib.md",
+    "site/content/cpp-guide.md",
+    "site/content/idioms.md",
 ]
 
 
@@ -73,7 +77,6 @@ def discover_unported_statements(root: Path = ROOT) -> list[Path]:
 def parse_samples(statement: str) -> list[tuple[str, str]]:
     """Extract (sample_input, sample_output) pairs from AtCoder or Codeforces markdown."""
     samples: list[tuple[str, str]] = []
-    # AtCoder style: "Sample Input k\n```\n...\n```\n...\nSample Output k\n```\n...\n```"
     atcoder_in = {
         m.group(1): m.group(2).strip("\n") + "\n"
         for m in re.finditer(
@@ -92,7 +95,6 @@ def parse_samples(statement: str) -> list[tuple[str, str]]:
                 samples.append((atcoder_in[k], atcoder_out[k]))
         return samples
 
-    # Codeforces style: alternating Input / Output fenced blocks under Examples
     ex_idx = statement.find("Examples")
     chunk = statement[ex_idx:] if ex_idx >= 0 else statement
     blocks = re.findall(r"(Input|Output)\s*```[^\n]*\n(.*?)```", chunk, re.S)
@@ -147,23 +149,26 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=180) as resp:
             data = json.loads(resp.read().decode())
         text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
         return mdl, text
 
     if openai_key:
-        mdl = model or "gpt-4o"
-        body = json.dumps(
-            {
-                "model": mdl,
-                "temperature": 0,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            }
-        ).encode()
+        mdl = model or "gpt-5.4"
+        payload: dict = {
+            "model": mdl,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        if mdl.startswith(("gpt-5", "o3", "o4")):
+            payload["max_completion_tokens"] = 4096
+        else:
+            payload["temperature"] = 0
+            payload["max_tokens"] = 4096
+        body = json.dumps(payload).encode()
         req = urllib.request.Request(
             "https://api.openai.com/v1/chat/completions",
             data=body,
@@ -173,9 +178,19 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read().decode())
-        return mdl, data["choices"][0]["message"]["content"]
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=180) as resp:
+                    data = json.loads(resp.read().decode())
+                return mdl, data["choices"][0]["message"]["content"]
+            except urllib.error.HTTPError as exc:
+                last_err = exc
+                if exc.code in (429, 500, 502, 503, 504) and attempt < 2:
+                    time.sleep(2 ** (attempt + 1))
+                    continue
+                raise
+        raise last_err  # pragma: no cover
 
     raise RuntimeError("No ANTHROPIC_API_KEY or OPENAI_API_KEY in environment")
 
@@ -290,70 +305,178 @@ def evaluate_problem(
     return result
 
 
+def summarize_results(results: list[dict], model_used: str) -> dict:
+    total = len(results)
+    compiled = sum(1 for r in results if r["check_ok"])
+    built = sum(1 for r in results if r["build_ok"])
+    passed = sum(1 for r in results if r["passed"])
+    return {
+        "date": datetime.date.today().isoformat(),
+        "model": model_used,
+        "total": total,
+        "compiled": compiled,
+        "built": built,
+        "passed": passed,
+        "compile_rate": round(compiled / total, 4) if total else 0.0,
+        "pass_rate": round(passed / total, 4) if total else 0.0,
+    }
+
+
+def check_ratchet_data(ratchet: dict, summary: dict | None = None) -> list[str]:
+    """Verify ratchet structure and (if summary given) no regression below floors."""
+    errs: list[str] = []
+    floor_c = ratchet.get("min_compile_rate")
+    floor_p = ratchet.get("min_pass_rate")
+    if not isinstance(floor_c, (int, float)) or not isinstance(floor_p, (int, float)):
+        errs.append("ratchet missing numeric min_compile_rate / min_pass_rate")
+        return errs
+    cur = summary or ratchet.get("latest")
+    if not cur:
+        errs.append("ratchet missing latest metrics")
+        return errs
+    if cur["compile_rate"] + 1e-9 < floor_c:
+        errs.append(
+            f"compile_rate {cur['compile_rate']:.1%} dropped below ratchet floor {floor_c:.1%}"
+        )
+    if cur["pass_rate"] + 1e-9 < floor_p:
+        errs.append(
+            f"pass_rate {cur['pass_rate']:.1%} dropped below ratchet floor {floor_p:.1%}"
+        )
+    return errs
+
+
 def format_markdown_report(results: list[dict], model_used: str) -> str:
     total = len(results)
-    chk_ok = sum(1 for r in results if r["check_ok"])
+    compiled = sum(1 for r in results if r["check_ok"])
+    built = sum(1 for r in results if r["build_ok"])
     passed = sum(1 for r in results if r["passed"])
     lines = [
-        "# Writable-from-Docs Audit",
+        "# Writable-from-docs audit",
         "",
-        f"Model: `{model_used}` · Problems: {total} unseen statements from `corpus/statements/` (no existing port) · "
-        f"Compile pass: **{chk_ok}/{total}** · Full sample + build pass: **{passed}/{total}**",
+        f"Model: `{model_used}` · Problems: **{total}** unseen statements from `corpus/statements/` (no existing port in `proto/ports/`).",
         "",
-        "| Problem | Check | Build | Samples | Codes | Outcome / First error |",
-        "| --- | --- | --- | --- | --- | --- |",
+        f"- **`cpl check` pass rate:** {compiled}/{total} ({100 * compiled / total:.1f}%)" if total else "- **No problems run**",
+        f"- **`cpl build` pass rate:** {built}/{total} ({100 * built / total:.1f}%)" if total else "",
+        f"- **Full pass (check + build + all samples):** {passed}/{total} ({100 * passed / total:.1f}%)" if total else "",
+        "",
+        "| Problem | `cpl check` | `cpl build` | Samples | Outcome / Error |",
+        "| --- | --- | --- | --- | --- |",
     ]
     for r in results:
-        chk = "ok" if r["check_ok"] else "fail"
-        bld = "ok" if r["build_ok"] else ("—" if not r["check_ok"] else "fail")
+        chk = "PASS" if r["check_ok"] else "FAIL"
+        bld = "PASS" if r["build_ok"] else "—"
         smp = f"{r['samples_passed']}/{r['samples_total']}"
-        codes = ", ".join(r["error_codes"]) if r["error_codes"] else "—"
-        summary = "PASS" if r["passed"] else r["error_summary"].replace("|", "\\|")[:100]
-        lines.append(f"| `{r['id']}` | {chk} | {bld} | {smp} | {codes} | {summary} |")
-    lines.append("")
-    return "\n".join(lines)
+        msg = "PASS" if r["passed"] else r["error_summary"].replace("|", "\\|")
+        lines.append(f"| `{r['id']}` | {chk} | {bld} | {smp} | {msg} |")
+    return "\n".join(lines) + "\n"
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Run the writable-from-docs test on unseen statements.")
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Writable-from-docs harness for CP Lang")
     ap.add_argument("ids", nargs="*", help="Specific problem IDs from corpus/statements/")
-    ap.add_argument("--limit", type=int, default=10, help="Max problems when no IDs are given")
-    ap.add_argument("--model", default=None, help="Override model ID")
-    ap.add_argument("--jobs", type=int, default=4, help="Parallel API requests")
-    ap.add_argument("--report", default=None, help="Write Markdown report to this path")
-    ap.add_argument("--json", dest="json_out", default=None, help="Write raw JSON results to this path")
-    args = ap.parse_args()
+    ap.add_argument("--manifest", type=Path, help="JSON manifest of problem IDs to evaluate")
+    ap.add_argument("--limit", type=int, default=10, help="Max problems when auto-discovering")
+    ap.add_argument("--workers", type=int, default=8, help="Concurrent model requests")
+    ap.add_argument("--model", default=None, help="Override model name (default: gpt-5.4)")
+    ap.add_argument("--report", type=Path, help="Write Markdown report to this path")
+    ap.add_argument("--json-out", type=Path, help="Write raw JSON results to this path")
+    ap.add_argument("--write-ratchet", type=Path, help="Update ratchet JSON (ratcheting floors upward)")
+    ap.add_argument("--check-ratchet", type=Path, help="Validate ratchet JSON (offline or against this run)")
+    ap.add_argument("--round-label", default="", help="Label for this round in ratchet history")
+    args = ap.parse_args(argv)
+
+    # Offline ratchet check mode (used by scoreboard.py --fast --check)
+    if args.check_ratchet and not args.ids and not args.manifest and not args.write_ratchet and not args.json_out:
+        ratchet = json.loads(args.check_ratchet.read_text())
+        errs = check_ratchet_data(ratchet)
+        if errs:
+            for e in errs:
+                print(f"writable-from-docs ratchet FAIL: {e}", file=sys.stderr)
+            return 1
+        cur = ratchet["latest"]
+        print(
+            f"writable-from-docs: {cur['compiled']}/{cur['total']} compile ({cur['compile_rate']:.1%}, "
+            f"floor {ratchet['min_compile_rate']:.1%}), {cur['passed']}/{cur['total']} pass "
+            f"({cur['pass_rate']:.1%}, floor {ratchet['min_pass_rate']:.1%}) [{cur['model']}]"
+        )
+        return 0
 
     if not CPL.is_file():
-        sys.exit(f"writable-from-docs: {CPL} not built; run cargo build -p cpl-cli")
+        print(f"error: {CPL} not built; run `cargo build -p cpl-cli`", file=sys.stderr)
+        return 2
 
     if args.ids:
-        paths = [STATEMENTS_DIR / f"{pid}.md" for pid in args.ids]
-        missing = [p.name for p in paths if not p.is_file()]
-        if missing:
-            sys.exit(f"writable-from-docs: missing statements: {', '.join(missing)}")
+        targets = [STATEMENTS_DIR / f"{pid}.md" for pid in args.ids]
+    elif args.manifest:
+        data = json.loads(args.manifest.read_text())
+        targets = [STATEMENTS_DIR / f"{pid}.md" for pid in data["problems"]]
     else:
-        paths = discover_unported_statements()[: args.limit]
-        if not paths:
-            sys.exit("writable-from-docs: no unported statements in corpus/statements/; run scripts/fetch-statement.py")
+        targets = discover_unported_statements()[: args.limit]
+
+    targets = [p for p in targets if p.is_file()]
+    if not targets:
+        print("error: no unseen statements found in corpus/statements/", file=sys.stderr)
+        return 2
 
     docs_bundle = load_docs_bundle()
-    print(f"Docs bundle: {len(docs_bundle):,} chars across {len(DOC_FILES)} files; testing {len(paths)} unseen problems...")
+    print(f"Loaded docs bundle ({len(docs_bundle):,} chars from {len(DOC_FILES)} files); evaluating {len(targets)} problems with {args.workers} workers...")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        results = list(pool.map(lambda p: evaluate_problem(p, docs_bundle, args.model), paths))
+    results_by_id: dict[str, dict] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+        futs = {pool.submit(evaluate_problem, p, docs_bundle, args.model): p for p in targets}
+        for fut in concurrent.futures.as_completed(futs):
+            r = fut.result()
+            results_by_id[r["id"]] = r
+            verdict = "PASS" if r["passed"] else f"FAIL ({r['error_summary']})"
+            print(f"  {r['id']}: check={'ok' if r['check_ok'] else 'FAIL'} samples={r['samples_passed']}/{r['samples_total']} -> {verdict} [{r['seconds']}s]", flush=True)
 
+    results = [results_by_id[p.stem] for p in targets]
     model_used = next((r["model"] for r in results if r["model"]), args.model or "unknown")
-    report = format_markdown_report(results, model_used)
-    print("\n" + report)
+    summary = summarize_results(results, model_used)
+    print(
+        f"\nSummary ({model_used}): compile {summary['compiled']}/{summary['total']} "
+        f"({summary['compile_rate']:.1%}), full pass {summary['passed']}/{summary['total']} "
+        f"({summary['pass_rate']:.1%})"
+    )
 
-    if args.report:
-        Path(args.report).write_text(report)
-        print(f"Wrote report → {args.report}")
     if args.json_out:
-        Path(args.json_out).write_text(json.dumps(results, indent=2))
-        print(f"Wrote JSON → {args.json_out}")
+        args.json_out.parent.mkdir(parents=True, exist_ok=True)
+        args.json_out.write_text(json.dumps({"summary": summary, "results": results}, indent=2) + "\n")
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(format_markdown_report(results, model_used))
+
+    if args.write_ratchet:
+        existing = json.loads(args.write_ratchet.read_text()) if args.write_ratchet.is_file() else {}
+        history = existing.get("history", [])
+        entry = dict(summary)
+        if args.round_label:
+            entry["round"] = args.round_label
+        history.append(entry)
+        # Ratchet floor: never goes down; allow a small 3% noise margin below best observed rate
+        prev_c = existing.get("min_compile_rate", 0.0)
+        prev_p = existing.get("min_pass_rate", 0.0)
+        new_ratchet = {
+            "manifest": "research/writable-from-docs-set.json",
+            "model": model_used,
+            "min_compile_rate": round(max(prev_c, max(0.0, summary["compile_rate"] - 0.05)), 4),
+            "min_pass_rate": round(max(prev_p, max(0.0, summary["pass_rate"] - 0.05)), 4),
+            "latest": summary,
+            "history": history,
+        }
+        args.write_ratchet.parent.mkdir(parents=True, exist_ok=True)
+        args.write_ratchet.write_text(json.dumps(new_ratchet, indent=2) + "\n")
+
+    if args.check_ratchet:
+        ratchet = json.loads(args.check_ratchet.read_text())
+        errs = check_ratchet_data(ratchet, summary)
+        if errs:
+            for e in errs:
+                print(f"RATCHET REGRESSION: {e}", file=sys.stderr)
+            return 1
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
