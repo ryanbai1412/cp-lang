@@ -3,6 +3,8 @@
 help: from here on `n` means the binding; give it another name if the top-level one is meant below
 15:1-18:1 L0504 a loop that only accumulates `best` is one `max`
 help: write `max(min(n, 50) * 2 for v in V)`
+25:1-31:1 L0520 a hand-rolled binary search: this is `bsearch_first`
+help: `let lo = bsearch_first(.., mid => ..)`: the predicate must be monotone along the range
 11:12-11:23 overflow `area * area` overflows Int when n = 55109
 11:12-11:30 overflow `area * area * area` overflows Int when n = 1448
 
@@ -99,4 +101,14 @@ n - 50: Int in 1..=199950
 == hover @ 22:13
 ```cp
 n - 10: Int in -9..=40
+```
+
+== hover @ 26:10
+```cp
+mid: Int in 0..=200000
+```
+
+== hover @ 31:8
+```cp
+lo: Int in 0..=200001
 ```

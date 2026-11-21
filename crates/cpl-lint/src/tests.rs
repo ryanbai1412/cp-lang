@@ -1746,3 +1746,25 @@ fn the_prover_names_the_inputs_an_overflow_needs() {
     let var = format!("{head}var t = n\nt = n * n\nprint(t * t)\n");
     assert!(overflows(&var).iter().all(Option::is_none), "a var is not followed");
 }
+
+#[test]
+fn vars_that_assign_each_other_are_solved_together() {
+    let search = "var lo = 0\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a < 5:\n        lo = mid + 1\n    else:\n        hi = mid\nprint(lo, hi)\n";
+    let small = format!("let n: 1..=100 = read()\nlet a: 0..=9 = read()\n{search}");
+    assert_eq!(range_of(&small, "var lo"), Some((0, 101)));
+    assert_eq!(range_of(&small, "var hi"), Some((0, 100)));
+    assert_eq!(range_of(&small, "let mid"), Some((0, 100)));
+    let wide = small.replace("1..=100", "1..=1e18");
+    assert_eq!(range_of(&wide, "var lo"), Some((0, 1_000_000_000_000_000_001)));
+    let cases = [
+        // `j` grows without bound, so `i`, which copies it, has no range.
+        ("var i = 0\nvar j = 0\nwhile i < n:\n    j += 1\n    i = j\nprint(i)\n", "var i", None),
+        // `k` is bound twice in the file, so its value may be either one.
+        ("let k = 500\nvar x = 0\nfor _ in 0..n:\n    let k = a\n    x = k\nprint(x)\n", "var x", None),
+        ("var x = 0\nvar y = a\nfor _ in 0..n:\n    x = y * 2\n    y = min(y, x)\nprint(x)\n", "var x", Some((0, 18))),
+    ];
+    for (body, decl, want) in cases {
+        let src = format!("let n: 1..=100 = read()\nlet a: 0..=9 = read()\n{body}");
+        assert_eq!(range_of(&src, decl), want, "{body}");
+    }
+}

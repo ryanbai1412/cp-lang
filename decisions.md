@@ -2258,6 +2258,15 @@ note is never a false alarm. It is a note in the editor, not a lint, until the c
 ranges; it fires on none of the 305 ports and examples. Reverse: drop `Bounds::overflow` and
 `overflows` in the server.
 
+29.26. **`var`s that read each other get one joint hull.** A binary search's `lo = mid + 1`
+reads `mid`, a `let` in the loop, and `mid` reads `hi`, a later `var`, so solving one `var` at a
+time gave none of them a range. Now each `var`'s hull is solved with every `var` and `let` in
+its scope that one place in the file binds (so each use reads that binding), iterating to the
+least fixed point (up to 72 rounds, enough to halve a gap of `10^18`). A `var` that never settles
+is dropped and the rest solved again. Top-level statements now keep the ranges of names bound
+above them; fn and impl bodies still see only declared ranges, since they may run anywhere.
+Reverse: restore `var_range`'s one-name solve and the per-statement `Bounds` clone.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

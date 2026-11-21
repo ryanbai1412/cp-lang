@@ -52,14 +52,17 @@ fn proven(file: &File) -> Proven {
     let mut out = Proven::default();
     // A fn declared above a top-level `var` can assign it too.
     let top: Vec<&cpl_syntax::ast::Stmt> = file.top_level().map(|(_, s)| s).collect();
+    // Top-level statements see the ranges of the names bound above them; a
+    // fn body may run after any of them, so it sees only the declared ones.
+    let mut above = bounds.clone();
     for (base, stmt) in file.top_level() {
-        ranges_in(
-            base,
-            std::slice::from_ref(stmt),
-            &top,
-            &mut bounds.clone(),
-            &mut out,
-        );
+        let scope = match stmt.kind {
+            cpl_syntax::ast::StmtKind::Fn(_)
+            | cpl_syntax::ast::StmtKind::Impl { .. }
+            | cpl_syntax::ast::StmtKind::Struct(_) => &mut bounds.clone(),
+            _ => &mut above,
+        };
+        ranges_in(base, std::slice::from_ref(stmt), &top, scope, &mut out);
     }
     out.names.sort();
     out.names.dedup();
@@ -286,12 +289,11 @@ fn ranges_in(
     }
 }
 
-/// The range a `var` named `name` that starts in `start` stays in, through
-/// every assignment in `scope`: the smallest hull each assignment maps into
-/// itself, found in a few rounds, or `None`. Anything else that could change
-/// it (a `mut` argument, a tuple assignment, a `lend`) or a second binding of
-/// the name gives `None`, and so does an assigned value that reads a name
-/// bound in `scope`, since that name is not the one `bounds` knows.
+/// The hull of every value the `var` `name` takes in `scope`, which starts
+/// at `start`: the least range every assignment in `scope` keeps it in.
+/// Other `var`s and immutable `let`s in `scope` bound nowhere else in the
+/// file are solved with it, so a binary search's `lo`, `hi` and `mid` get
+/// ranges from each other.
 fn var_range(
     name: &str,
     start: bounds::Interval,
@@ -300,12 +302,16 @@ fn var_range(
 ) -> Option<bounds::Interval> {
     use cpl_syntax::ast::{AssignOp, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind};
     use cpl_syntax::visit::{walk_stmt, Visitor};
+    use std::collections::{HashMap, HashSet};
 
-    struct Scan<'a> {
-        name: &'a str,
-        writes: Vec<(AssignOp, Expr)>,
+    #[derive(Default)]
+    struct Scan {
+        writes: HashMap<String, Vec<(AssignOp, Expr)>>,
+        opaque: HashSet<String>,
         bound: Vec<String>,
-        opaque: bool,
+        /// Each `let` or `var` with a plain name and an initializer, in
+        /// source order: (name, init, is a var).
+        defs: Vec<(String, Expr, bool)>,
     }
     fn names(pat: &Pattern, out: &mut Vec<String>) {
         match &pat.kind {
@@ -318,38 +324,49 @@ fn var_range(
             PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
         }
     }
-    impl Scan<'_> {
-        fn mentions(&self, e: &Expr) -> bool {
-            match &e.kind {
-                ExprKind::Name(n) => n == self.name,
-                ExprKind::Paren(inner) => self.mentions(inner),
-                ExprKind::Tuple(items) | ExprKind::List(items) => {
-                    items.iter().any(|i| self.mentions(i))
-                }
-                _ => false,
+    fn mentioned(e: &Expr, out: &mut HashSet<String>) {
+        match &e.kind {
+            ExprKind::Name(n) => {
+                out.insert(n.clone());
             }
+            ExprKind::Paren(inner) => mentioned(inner, out),
+            ExprKind::Tuple(items) | ExprKind::List(items) => items.iter().for_each(|i| mentioned(i, out)),
+            _ => {}
         }
     }
-    impl Visitor for Scan<'_> {
+    impl Visitor for Scan {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
                 StmtKind::Assign { target, op, value } => {
-                    if matches!(&target.kind, ExprKind::Name(n) if n == self.name) {
-                        self.writes.push((*op, value.clone()));
-                    } else if self.mentions(target) {
-                        self.opaque = true;
+                    if let ExprKind::Name(n) = &target.kind {
+                        self.writes.entry(n.clone()).or_default().push((*op, value.clone()));
+                    } else {
+                        mentioned(target, &mut self.opaque);
                     }
                 }
-                StmtKind::Lend { place, .. } => self.opaque |= self.mentions(place),
+                StmtKind::Lend { place, .. } => mentioned(place, &mut self.opaque),
                 StmtKind::Fn(decl) => {
                     self.bound.extend(decl.params.iter().map(|p| p.name.text.clone()))
+                }
+                StmtKind::Let {
+                    mutable,
+                    pat,
+                    ty: None,
+                    init: Some(init),
+                    ..
+                } => {
+                    if let PatternKind::Name(n) = &pat.kind {
+                        self.defs.push((n.clone(), init.clone(), *mutable));
+                    }
                 }
                 _ => {}
             }
         }
         fn expr(&mut self, expr: &Expr) {
             if let ExprKind::Call { args, .. } = &expr.kind {
-                self.opaque |= args.iter().any(|a| a.mutable && self.mentions(&a.value));
+                for a in args.iter().filter(|a| a.mutable) {
+                    mentioned(&a.value, &mut self.opaque);
+                }
             }
         }
         fn pattern(&mut self, pat: &Pattern) {
@@ -357,49 +374,87 @@ fn var_range(
         }
     }
 
-    let mut scan = Scan {
-        name,
-        writes: Vec::new(),
-        bound: Vec::new(),
-        opaque: false,
-    };
+    let mut scan = Scan::default();
     scope.iter().for_each(|s| walk_stmt(s, &mut scan));
-    if scan.opaque || scan.bound.iter().any(|b| b == name) {
+    if scan.opaque.contains(name) || scan.bound.iter().any(|b| b == name) {
         return None;
     }
-    let mut known = bounds.clone();
-    for b in &scan.bound {
-        known.bind(b, None);
-    }
-    let mut hull = start;
-    for _ in 0..4 {
-        known.bind(name, Some(hull));
-        let mut next = hull;
-        for (op, value) in &scan.writes {
-            let v = known.expr(value)?;
-            let after = match op {
-                AssignOp::Set => v,
-                AssignOp::Binary(op) => bounds::Bounds::combine(*op, hull, v)?,
-                AssignOp::Max => bounds::Interval {
-                    lo: hull.lo.max(v.lo),
-                    hi: hull.hi.max(v.hi),
-                },
-                AssignOp::Min => bounds::Interval {
-                    lo: hull.lo.min(v.lo),
-                    hi: hull.hi.min(v.hi),
-                },
-            };
-            next = bounds::Interval {
-                lo: next.lo.min(after.lo),
-                hi: next.hi.max(after.hi),
-            };
+    let solvable = |n: &str| bounds.bound_once(n) && !scan.opaque.contains(n);
+    let mut vars: HashSet<&str> = scan
+        .defs
+        .iter()
+        .filter(|(n, _, var)| *var && solvable(n))
+        .map(|(n, ..)| n.as_str())
+        .collect();
+    // A var whose hull doesn't settle is dropped and the rest solved again.
+    'solve: loop {
+        let mut hulls: HashMap<&str, bounds::Interval> = HashMap::from([(name, start)]);
+        for _ in 0..72 {
+            let mut known = bounds.clone();
+            for b in &scan.bound {
+                known.bind(b, None);
+            }
+            for (v, h) in &hulls {
+                known.bind(v, Some(*h));
+            }
+            let mut next = hulls.clone();
+            for (n, init, var) in &scan.defs {
+                let value = known.expr(init);
+                if !var {
+                    known.bind(n, value.filter(|_| solvable(n)));
+                } else if vars.contains(n.as_str()) {
+                    let Some(v) = value else {
+                        vars.remove(n.as_str());
+                        continue 'solve;
+                    };
+                    let h = next.entry(n.as_str()).or_insert(v);
+                    *h = h.hull(v);
+                    known.bind(n, Some(*h));
+                }
+            }
+            for (&v, hull) in next.iter_mut() {
+                for (op, value) in scan.writes.get(v).into_iter().flatten() {
+                    let Some(w) = known.expr(value) else {
+                        if v == name {
+                            return None;
+                        }
+                        vars.remove(v);
+                        continue 'solve;
+                    };
+                    let old = hulls.get(v).copied().unwrap_or(*hull);
+                    let after = match op {
+                        AssignOp::Set => Some(w),
+                        AssignOp::Binary(op) => bounds::Bounds::combine(*op, old, w),
+                        AssignOp::Max => Some(bounds::Interval {
+                            lo: old.lo.max(w.lo),
+                            hi: old.hi.max(w.hi),
+                        }),
+                        AssignOp::Min => Some(bounds::Interval {
+                            lo: old.lo.min(w.lo),
+                            hi: old.hi.min(w.hi),
+                        }),
+                    };
+                    let Some(after) = after else {
+                        if v == name {
+                            return None;
+                        }
+                        vars.remove(v);
+                        continue 'solve;
+                    };
+                    *hull = hull.hull(after);
+                }
+            }
+            if next == hulls {
+                return hulls.get(name).copied();
+            }
+            hulls = next;
         }
-        if next == hull {
-            return Some(hull);
+        // Some hull never settled: solve `name` alone.
+        if vars.is_empty() {
+            return None;
         }
-        hull = next;
+        vars.clear();
     }
-    None
 }
 
 /// Inside a block that runs only when `test` is `holds`, each bounded name

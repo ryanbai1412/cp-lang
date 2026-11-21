@@ -17,6 +17,13 @@ pub(crate) struct Interval {
 }
 
 impl Interval {
+    pub(crate) fn hull(self, other: Interval) -> Interval {
+        Interval {
+            lo: self.lo.min(other.lo),
+            hi: self.hi.max(other.hi),
+        }
+    }
+
     /// How many integers it holds; 0 when it is empty.
     pub(crate) fn count(self) -> u128 {
         if self.hi < self.lo {
@@ -38,6 +45,8 @@ pub(crate) struct Bounds {
     fns: HashSet<String>,
     /// How each name the prover can reason about got its value.
     defs: HashMap<String, Def>,
+    /// How many places in the file bind each value name.
+    bindings: HashMap<String, u32>,
 }
 
 /// A name the prover can be told about: an input of a declared range, or an
@@ -82,6 +91,7 @@ fn prover_text(expr: &Expr, names: &mut Vec<String>) -> Option<String> {
 impl Bounds {
     pub(crate) fn of(file: &File) -> Bounds {
         let mut bounds = Bounds::default();
+        bounds.count_bindings(file);
         // In source order: a bound can only use what is declared above it.
         for (_, stmt) in file.top_level() {
             match &stmt.kind {
@@ -154,6 +164,48 @@ impl Bounds {
 
     /// From here on `name` is in `value`, or unknown: a local that
     /// shadows a bounded name hides its bound.
+    fn count_bindings(&mut self, file: &File) {
+        use cpl_syntax::ast::{Pattern, Stmt};
+        use cpl_syntax::visit::{walk_stmt, Visitor};
+        struct Count<'a>(&'a mut HashMap<String, u32>);
+        impl Count<'_> {
+            fn add(&mut self, name: &str) {
+                *self.0.entry(name.to_string()).or_default() += 1;
+            }
+            fn names(&mut self, pat: &Pattern) {
+                match &pat.kind {
+                    PatternKind::Name(n) => self.add(n),
+                    PatternKind::Domain(n) => self.add(&n.text),
+                    PatternKind::Tuple(parts) | PatternKind::Or(parts) => {
+                        parts.iter().for_each(|p| self.names(p))
+                    }
+                    PatternKind::Variant { args, .. } => args.iter().for_each(|p| self.names(p)),
+                    PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
+                }
+            }
+        }
+        impl Visitor for Count<'_> {
+            fn stmt(&mut self, stmt: &Stmt) {
+                match &stmt.kind {
+                    StmtKind::Fn(decl) => decl.params.iter().for_each(|p| self.add(&p.name.text)),
+                    StmtKind::Const { name, .. } => self.add(&name.text),
+                    _ => {}
+                }
+            }
+            fn pattern(&mut self, pat: &Pattern) {
+                self.names(pat);
+            }
+        }
+        let mut count = Count(&mut self.bindings);
+        file.top_level().for_each(|(_, s)| walk_stmt(s, &mut count));
+    }
+
+    /// Whether one place in the file binds `name`, so every use of it
+    /// that resolves at all reads that binding.
+    pub(crate) fn bound_once(&self, name: &str) -> bool {
+        self.bindings.get(name) == Some(&1)
+    }
+
     pub(crate) fn bind(&mut self, name: &str, value: Option<Interval>) {
         self.defs.remove(name);
         match value {

@@ -20,3 +20,12 @@ if n > 50:
     print(n $0- 50)
 else:
     print(n $0- 10)
+var lo = 0
+var hi = n
+while lo < hi:
+    let m$0id = (lo + hi) / 2
+    if xs[V.first] < 0:
+        lo = mid + 1
+    else:
+        hi = mid
+print(l$0o)
