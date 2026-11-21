@@ -986,6 +986,20 @@ struct DualSegTree<D, T, F> // [new] range apply, point get; no monoid or pulls;
     fn get(mut self, i: D) -> T
     fn set(mut self, i: D, x: T)
     fn update(mut self, i: D, f: T -> T)
+struct LazyTreap<T, F> // [new] randomized treap with subtree-size-aware lazy tags; O(log n)
+    fn new(apply: (T, Int, F) -> T, compose: (F, F) -> F,
+           split: (F, Int) -> (F, F) = (f, _) => (f, f),
+           before: (T, T) -> Bool = (_, _) => false) -> LazyTreap<T, F> // O(1)
+    @get fn len(self) -> Int // O(1)
+    @get fn is_empty(self) -> Bool // O(1)
+    fn insert(mut self, x: T) // O(log n) expected, by `before`
+    fn push(mut self, x: T) // O(log n) expected
+    fn insert_at(mut self, pos: Int, x: T) // O(log n) expected
+    fn apply_all(mut self, f: F) // O(1)
+    fn apply_range(mut self, lo: Int, hi: Int, f: F) // O(log n) expected
+    fn get(mut self, pos: Int) -> T // O(log n) expected
+    fn take(mut self, k: Int) -> List<T> // O(k + log n)
+    fn to_list(mut self) -> List<T> // O(n)
 const AddSum = Action<Int, Int>(0, +, (f, x, len) => x + f * len, over: +)
 const AddMin = Action<Int, Int>(0, +, (f, x, len) => x + f, over: min)
 const AddMax = Action<Int, Int>(0, +, (f, x, len) => x + f, over: max)

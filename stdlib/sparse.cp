@@ -7,24 +7,41 @@ use std.seq.{ends}
 /// `&`, `|`, or any custom `(T, T) -> T` — no identity is required because `fold` asserts
 /// the range is non-empty and returns `T` directly. Sums are not idempotent; use `Fenwick` or `prefix` for those.
 pub struct SparseTable<D, T>(op: (T, T) -> T):
-    rows: List<List<T>>
+    n: Int
+    table: List<T>
 
     /// Build an idempotent range-query sparse table for `op` over `a`. O(|D| log |D|). Law: `op(x, x) == x`.
     pub fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>:
-        var rows = [[a[i] for i in D]]
+        let n = D.K
+        if n == 0: return SparseTable(op, 0, [])
+        let levels = bit_width(n)
+        var table = List.filled(levels * n, a[D.first])
+        var idx = 0
+        for p in D:
+            unchecked: table[idx] = a[p]
+            idx += 1
+        var k = 1
         var w = 1
-        while 2 * w <= D.K:
-            let prev = rows[rows.len - 1]
-            rows.push([op(prev[i], prev[i + w]) for i in 0..=D.K - 2 * w])
+        while k < levels:
+            let prev_off = (k - 1) * n
+            let off = k * n
+            let lim = n - 2 * w + 1
+            var i = 0
+            while i < lim:
+                unchecked: table[off + i] = op(table[prev_off + i], table[prev_off + i + w])
+                i += 1
             w *= 2
-        SparseTable(op, rows)
+            k += 1
+        SparseTable(op, n, table)
 
     /// The fold of a non-empty range. O(1). Asserts `not r.is_empty`.
     pub fn fold(self, r: Range<D>) -> T:
-        let (lo, hi) = r.ends
+        let lo = r.lo.ord
+        let hi = r.hi.ord
         assert lo < hi
         let k = bit_width(hi - lo) - 1
-        op(rows[k][lo], rows[k][hi - (1 << k)])
+        let off = k * n
+        unchecked: return op(table[off + lo], table[off + hi - (1 << k)])
 
 /// Is `op` idempotent on these samples? The law a sparse table needs alongside associativity.
 pub fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool:

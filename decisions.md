@@ -2841,6 +2841,7 @@ the core lane in `plan/OPERATING.md`.
    rather than `Int` offsets from `r.len`, preventing 64-bit overflow on
    `Range<I128>` wider than `2^63` while preserving domain-safe `Pos(D)`
    arithmetic. Reverse: restore `r.len - 1` offset arithmetic.
+<<<<<<< Updated upstream
 
 ## 61. O(1) slice and reverse views (2026-11-21)
 
@@ -2938,8 +2939,14 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   through `outer_cxs`. The escape rule (`E0313`) is unchanged.
   Reason: enables `fn force(c: C, val: Int)` after `let (domain C, comp) = two_edge_components(g)` (`cf2135c`).
   Reverse: remove `register_pat_domains` in `crates/cpl-ir/src/lower/mod.rs` and the top-level slot reuse in `crates/cpl-ir/src/lower/stmt.rs`.
-
 ## 67. `IntervalMap.assign` zero-alloc `on_old:` callback (2026-11-21)
 
 1. **`IntervalMap.assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` reports overwritten runs via an optional callback instead of returning a `List` or `-> yields`.**
    Reason: `cpl_ir::pushed::Feeds` intentionally does not push `-> yields` on `mut self` methods (an early `break` could leave the partition half-mutated), whereas a callback parameter both enforces partition completion and devirtualizes to an inlined template functor in C++ with zero heap allocation. Combined with a single-run fast path, `cf2237h` dropped from `1.66s` to `1.26s` on max binary-tree input and `IntervalMap` runs at `1.15x` matched C++ `std::map` ODT (`0.15s` vs `0.13s`). Reverse: change `assign` back to return `List<(range: Range<D>, val: T)>` in `stdlib/interval.cp` and restore `for (r, t) in paint.assign(...)` in `proto/ports/ecnerwala/cf2237h.cp`.
+
+## 68. `LazyTreap` in `std.lazy` and flat `SparseTable` storage (2026-11-21)
+
+1. **Add `LazyTreap<T, F>` to `std.lazy` (no new module, no compiler privilege).**
+   Arena-backed randomized treap over a contiguous node arena with subtree-size-aware lazy tag pushdown (`apply(v, left_sz, f)`, `compose(new_f, old_f)`, optional `split(f, left_sz)`, optional `before(x, y)`), supporting both value-ordered insertion (`insert`, for slope-trick / priority-with-lazy-updates) and 0-based implicit sequence operations (`push`, `insert_at`, `apply_range`, `get`), plus `apply_all`, `take(k)`, and `to_list`. Stores pending tags as `?F` so `F` needs neither `id` nor `Eq`, and lowers all operation closures statically (`0 std::function`). Adopted by `proto/ports/ecnerwala/cf2084g2.cp` (895 -> 359 tokens, 1.05x of dream; 0.90x time vs C++ original on `n = 500_000`). Reverse: remove `LazyTreap` from `stdlib/lazy.cp` and restore the hand-rolled treap in `cf2084g2.cp`.
+2. **Flatten `SparseTable` storage in `stdlib/sparse.cp`.**
+   Store all `bit_width(n)` levels in a single flat `List<T>` with `unchecked:` indexing in build and `fold`, matching `DisjointSparseTable` and eliminating nested `std::vector` heap allocations. Reverse: restore `rows: List<List<T>>` in `stdlib/sparse.cp`.

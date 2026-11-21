@@ -1,5 +1,6 @@
 //! Segment tree with range updates.
 use std.algebra.{Monoid, Action}
+use std.rand.Rng
 use std.seq.{ends}
 
 /// Range update, range fold: `LazySegTree<V, Int>(AddMax, a)` (the tag type `F` is inferred
@@ -580,3 +581,247 @@ fn dual_segtree_non_commutative_tags_match_brute():
         let q = V.nth(rand(0, 10))
         assert st.get(q) == a[q]
     for v in V: assert st.get(v) == a[v]
+
+struct TreapNode<T, F>(l: ?Int, r: ?Int, pri: U64, sz: Int, val: T, tag: ?F)
+
+/// Arena-backed randomized treap with subtree-size-aware lazy tag propagation.
+/// Supports value-ordered insertion (`insert`, using `before`) for slope-trick / priority
+/// structures with lazy updates, and 0-based implicit sequence operations (`push`, `insert_at`,
+/// `apply_range`, `get`).
+/// `apply(v, left_sz, f)` updates a node's value given its left subtree size;
+/// `split(f, left_sz)` splits a tag `f` for the left and right subtrees (default `(f, f)`);
+/// `compose(new_f, old_f)` applies `old_f` first then `new_f`.
+/// `insert`, `insert_at`, `push`, `apply_range`, `get` are O(log n) expected; `apply_all` is O(1);
+/// `take(k)` is O(k + log n); `to_list` is O(n). Memory is O(n) in a contiguous node arena.
+pub struct LazyTreap<T, F>(
+    apply_fn: (T, Int, F) -> T,
+    split_fn: (F, Int) -> (F, F),
+    compose_fn: (F, F) -> F,
+    before_fn: (T, T) -> Bool,
+):
+    nodes: List<TreapNode<T, F>>
+    root: ?Int
+    rng: Rng
+
+    /// Create an empty `LazyTreap` with node updater `apply`, tag composition `compose`,
+    /// optional subtree tag splitter `split`, and optional order predicate `before(x, y)`
+    /// (true when `x` belongs before `y`). O(1).
+    pub fn new(
+        apply: (T, Int, F) -> T,
+        compose: (F, F) -> F,
+        split: (F, Int) -> (F, F) = (f, _) => (f, f),
+        before: (T, T) -> Bool = (_, _) => false,
+    ) -> LazyTreap<T, F>:
+        LazyTreap(apply, split, compose, before, [], none, Rng(48))
+
+    fn sz_of(self, u: ?Int) -> Int:
+        if let i = u:
+            unchecked: return nodes[i].sz
+        0
+
+    /// Number of elements currently stored. O(1).
+    @get
+    pub fn len(self) -> Int = self.sz_of(root)
+
+    /// Whether the treap is empty. O(1).
+    @get
+    pub fn is_empty(self) -> Bool = root == none
+
+    fn put(mut self, u: ?Int, f: F):
+        if let i = u:
+            unchecked:
+                nodes[i].val = apply_fn(nodes[i].val, self.sz_of(nodes[i].l), f)
+                if let old = nodes[i].tag:
+                    nodes[i].tag = compose_fn(f, old)
+                else:
+                    nodes[i].tag = f
+
+    fn down(mut self, i: Int):
+        unchecked:
+            if let f = nodes[i].tag:
+                let (fl, fr) = split_fn(f, self.sz_of(nodes[i].l))
+                self.put(nodes[i].l, fl)
+                self.put(nodes[i].r, fr)
+                nodes[i].tag = none
+
+    fn pull(mut self, i: Int):
+        unchecked: nodes[i].sz = 1 + self.sz_of(nodes[i].l) + self.sz_of(nodes[i].r)
+
+    fn split_val(mut self, u: ?Int, x: T) -> (?Int, ?Int):
+        let i = u ?? return (none, none)
+        self.down(i)
+        unchecked:
+            if before_fn(x, nodes[i].val):
+                let (a, b) = self.split_val(nodes[i].l, x)
+                nodes[i].l = b
+                self.pull(i)
+                return (a, i)
+            else:
+                let (a, b) = self.split_val(nodes[i].r, x)
+                nodes[i].r = a
+                self.pull(i)
+                return (i, b)
+
+    fn ins(mut self, u: ?Int, idx: Int, x: T, p: U64) -> Int:
+        let i = u ?? return idx
+        unchecked:
+            if p < nodes[i].pri:
+                let (a, b) = self.split_val(i, x)
+                nodes[idx].l = a
+                nodes[idx].r = b
+                self.pull(idx)
+                return idx
+            self.down(i)
+            if before_fn(x, nodes[i].val):
+                nodes[i].l = self.ins(nodes[i].l, idx, x, p)
+            else:
+                nodes[i].r = self.ins(nodes[i].r, idx, x, p)
+            self.pull(i)
+            return i
+
+    fn split_pos(mut self, u: ?Int, k: Int) -> (?Int, ?Int):
+        let i = u ?? return (none, none)
+        self.down(i)
+        unchecked:
+            let ls = self.sz_of(nodes[i].l)
+            if k <= ls:
+                let (a, b) = self.split_pos(nodes[i].l, k)
+                nodes[i].l = b
+                self.pull(i)
+                return (a, i)
+            else:
+                let (a, b) = self.split_pos(nodes[i].r, k - ls - 1)
+                nodes[i].r = a
+                self.pull(i)
+                return (i, b)
+
+    fn merge(mut self, a: ?Int, b: ?Int) -> ?Int:
+        let ia = a ?? return b
+        let ib = b ?? return a
+        unchecked:
+            if nodes[ia].pri < nodes[ib].pri:
+                self.down(ia)
+                nodes[ia].r = self.merge(nodes[ia].r, ib)
+                self.pull(ia)
+                return ia
+            else:
+                self.down(ib)
+                nodes[ib].l = self.merge(ia, nodes[ib].l)
+                self.pull(ib)
+                return ib
+
+    /// Insert `x` at the first position where `before(x, elem)` holds. O(log n) expected.
+    pub fn insert(mut self, x: T):
+        let idx = nodes.len
+        let p = rng.next()
+        nodes.push(TreapNode(none, none, p, 1, x, none))
+        root = self.ins(root, idx, x, p)
+
+    /// Append `x` at the end of the sequence. O(log n) expected.
+    pub fn push(mut self, x: T):
+        let idx = nodes.len
+        nodes.push(TreapNode(none, none, rng.next(), 1, x, none))
+        root = self.merge(root, idx)
+
+    /// Insert `x` at 0-based position `pos` (`0 <= pos <= len`). O(log n) expected.
+    pub fn insert_at(mut self, pos: Int, x: T):
+        assert 0 <= pos and pos <= self.len
+        let idx = nodes.len
+        nodes.push(TreapNode(none, none, rng.next(), 1, x, none))
+        let (a, b) = self.split_pos(root, pos)
+        root = self.merge(self.merge(a, idx), b)
+
+    /// Apply lazy tag `f` to every element in the treap. O(1).
+    pub fn apply_all(mut self, f: F):
+        self.put(root, f)
+
+    /// Apply lazy tag `f` to elements at 0-based positions `lo..hi`. O(log n) expected.
+    pub fn apply_range(mut self, lo: Int, hi: Int, f: F):
+        assert 0 <= lo and lo <= hi and hi <= self.len
+        if lo == hi: return
+        let (a, bc) = self.split_pos(root, lo)
+        let (b, c) = self.split_pos(bc, hi - lo)
+        self.put(b, f)
+        root = self.merge(self.merge(a, b), c)
+
+    /// Read the element at 0-based position `pos`. O(log n) expected.
+    pub fn get(mut self, pos: Int) -> T:
+        assert 0 <= pos and pos < self.len
+        var cur = root
+        var rem = pos
+        unchecked:
+            while let i = cur:
+                self.down(i)
+                let ls = self.sz_of(nodes[i].l)
+                if rem < ls:
+                    cur = nodes[i].l
+                elif rem == ls:
+                    return nodes[i].val
+                else:
+                    rem -= ls + 1
+                    cur = nodes[i].r
+            assert false
+            return nodes[0].val
+
+    fn walk(mut self, u: ?Int, lim: Int, mut out: List<T>):
+        if out.len >= lim: return
+        if let i = u:
+            self.down(i)
+            unchecked:
+                self.walk(nodes[i].l, lim, mut out)
+                if out.len < lim:
+                    out.push(nodes[i].val)
+                    self.walk(nodes[i].r, lim, mut out)
+
+    /// Return the first `min(k, len)` elements in order after pushing lazy tags. O(k + log n).
+    pub fn take(mut self, k: Int) -> List<T>:
+        var out: List<T> = []
+        if k > 0: self.walk(root, k, mut out)
+        out
+
+    /// Return all elements in order after pushing lazy tags. O(n).
+    pub fn to_list(mut self) -> List<T> = self.take(self.len)
+
+@test
+fn lazy_treap_slope_trick_and_implicit_ops_match_brute():
+    // 1. Descending ordered treap with position-dependent affine tag (slope trick).
+    var tr = LazyTreap<Int, (Int, Int)>(
+        apply: (v, ls, f) => v + f.0 + ls * f.1,
+        compose: (nf, of) => (nf.0 + of.0, nf.1 + of.1),
+        split: (f, ls) => (f, (f.0 + (ls + 1) * f.1, f.1)),
+        before: (a, b) => a >= b,
+    )
+    var ref: List<Int> = []
+    for _ in 0..40:
+        let base = rand(-5, 10)
+        let step = rand(-4, 0)
+        tr.apply_all((base, step))
+        for j in 0..ref.len: ref[j] += base + j * step
+        let x = rand(-10, 10)
+        tr.insert(x)
+        var pos = ref.len
+        for j in 0..ref.len:
+            if x >= ref[j]:
+                pos = j
+                break
+        ref.insert(pos, x)
+        assert tr.len == ref.len
+        assert tr.take(5) == ref[0..min(5, ref.len)]
+    assert tr.to_list() == ref
+
+    // 2. Implicit sequence treap with position-independent range add + insert_at + get.
+    var seq = LazyTreap<Int, Int>(apply: (v, _, f) => v + f, compose: (nf, of) => nf + of)
+    var arr: List<Int> = []
+    for _ in 0..40:
+        let pos = rand(0, arr.len)
+        let x = rand(-10, 10)
+        seq.insert_at(pos, x)
+        arr.insert(pos, x)
+        let lo = rand(0, arr.len - 1)
+        let hi = rand(lo + 1, arr.len)
+        let d = rand(-5, 5)
+        seq.apply_range(lo, hi, d)
+        for j in lo..hi: arr[j] += d
+        let q = rand(0, arr.len - 1)
+        assert seq.get(q) == arr[q]
+    assert seq.to_list() == arr
