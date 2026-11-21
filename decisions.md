@@ -3897,8 +3897,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Why.** "Search, and handle not-found" is a common contest shape that
   otherwise needs a `found` flag, which is a stale-state bug site.
 - **Reverse.** Delete the form; a codemod rewrites it to a flag.
-- **Status.** Accepted; not implemented (today `else` after a loop is
-  E0107).
+- **Status.** Implemented (parser, checker, formatter, LSP, IR, interpreter, and C++17 codegen; parity test `crates/cpl-cli/tests/programs/loop_else.cp`, fmt test `formats_loop_else`, LSP test `folding_ranges_cover_loop_else`).
 
 ## 126. Library loops are generators; early exit stays in `for` (2026-11-21)
 

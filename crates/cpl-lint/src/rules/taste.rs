@@ -738,6 +738,7 @@ impl<'a> Taste<'a> {
             pat,
             iter,
             body,
+            else_body: None,
         } = &next.kind
         else {
             return;
@@ -848,6 +849,7 @@ impl<'a> Taste<'a> {
             pat,
             iter,
             body,
+            else_body: None,
         } = &next.kind
         else {
             return;
@@ -1696,6 +1698,7 @@ fn halving_loop(stmt: &Stmt) -> Option<Halving<'_>> {
     let StmtKind::While {
         cond: Cond::Expr(cond),
         body,
+        else_body: None,
     } = &stmt.kind
     else {
         return None;
@@ -2853,7 +2856,7 @@ fn is_kmp_prefix_loop(for_var: &str, body: &Block) -> bool {
     impl Visitor for Check<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
-                StmtKind::While { cond, body } => {
+                StmtKind::While { cond, body, .. } => {
                     let Some(cond_e) = cond_expr(cond) else {
                         return;
                     };
@@ -2972,7 +2975,7 @@ fn is_z_function_loop(for_var: &str, body: &Block) -> bool {
             if self.found {
                 return;
             }
-            if let StmtKind::While { cond, body } = &stmt.kind {
+            if let StmtKind::While { cond, body, .. } = &stmt.kind {
                 let Some(cond_e) = cond_expr(cond) else {
                     return;
                 };
@@ -3329,7 +3332,7 @@ fn hand_rolled_stdlib_algos(file: &File) -> Vec<Finding> {
     impl Visitor for Scan {
         fn stmt(&mut self, stmt: &Stmt) {
             match &stmt.kind {
-                StmtKind::While { cond, body } if is_dsu_path_halving_loop(cond, body) => {
+                StmtKind::While { cond, body, .. } if is_dsu_path_halving_loop(cond, body) => {
                     self.warn(
                         &HAND_ROLLED_DSU,
                         stmt.span,
@@ -3516,7 +3519,7 @@ fn is_dsu_recursive_or_two_pass_fn(decl: &FnDecl, body: &Block) -> bool {
     let mut chase_arrs: Vec<String> = Vec::new();
     let mut compress_arrs: Vec<String> = Vec::new();
     for stmt in &body.stmts {
-        if let StmtKind::While { cond, body: wb } = &stmt.kind {
+        if let StmtKind::While { cond, body: wb, .. } = &stmt.kind {
             let cond_arr = if let Some((arr, _)) = dsu_not_root_cond(cond) {
                 Some(arr.to_string())
             } else if let Cond::Let { value, .. } = cond {

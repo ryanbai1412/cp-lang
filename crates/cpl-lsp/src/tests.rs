@@ -2404,3 +2404,34 @@ print(f(moves:, cost:))
     let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
     assert!(text.contains("Int"), "expected Int hover on punned arg, got: {hover:?}");
 }
+
+#[test]
+fn folding_ranges_cover_loop_else() {
+    let src = "\
+for x in 0..3:
+    if x == 2:
+        break
+else:
+    print(-1)
+";
+    let (mut server, diagnostics) = open(src);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let reply = server.handle(&request(
+        33,
+        "textDocument/foldingRange",
+        obj([("textDocument", doc())]),
+    ));
+    let ranges: Vec<(u32, u32)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|r| {
+            (
+                r.get("startLine").as_u32().unwrap(),
+                r.get("endLine").as_u32().unwrap(),
+            )
+        })
+        .collect();
+    assert!(ranges.contains(&(0, 2)), "expected loop fold (0, 2), got {ranges:?}");
+    assert!(ranges.contains(&(3, 4)), "expected else fold (3, 4), got {ranges:?}");
+}

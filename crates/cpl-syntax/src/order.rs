@@ -227,7 +227,7 @@ impl Visitor for Finder<'_, '_> {
 
     fn stmt(&mut self, stmt: &Stmt) {
         match &stmt.kind {
-            StmtKind::While { cond, body } => {
+            StmtKind::While { cond, body, .. } => {
                 let mut facts = Vec::new();
                 of_cond(cond, true, &mut facts);
                 self.hold(facts, body.span, |writes| walk_block(body, writes));

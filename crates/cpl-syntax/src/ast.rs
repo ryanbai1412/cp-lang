@@ -139,12 +139,14 @@ pub enum StmtKind {
     While {
         cond: Cond,
         body: Block,
+        else_body: Option<Block>,
     },
     For {
         label: Option<Name>,
         pat: Pattern,
         iter: Expr,
         body: Block,
+        else_body: Option<Block>,
     },
     Return(Option<Expr>),
     Break(Option<Name>),

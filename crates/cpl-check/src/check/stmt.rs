@@ -891,7 +891,11 @@ impl<'a> Checker<'a> {
                     });
                 }
             }
-            StmtKind::While { cond, body } => {
+            StmtKind::While {
+                cond,
+                body,
+                else_body,
+            } => {
                 self.push_scope();
                 self.drop_facts_written(body, None);
                 // The test runs again each round, so a `?` in it is not
@@ -904,14 +908,36 @@ impl<'a> Checker<'a> {
                 self.block(body);
                 self.lend_reset(mark);
                 self.pop_scope();
+                if let Some(else_body) = else_body {
+                    self.branch += 1;
+                    self.push_scope();
+                    self.block(else_body);
+                    self.pop_scope();
+                    self.branch -= 1;
+                }
             }
             StmtKind::For {
-                pat, iter, body, ..
+                pat,
+                iter,
+                body,
+                else_body,
+                ..
             } if self.reflected_values(iter).is_some() => {
                 self.fields_loop(pat, iter, body);
+                if let Some(else_body) = else_body {
+                    self.branch += 1;
+                    self.push_scope();
+                    self.block(else_body);
+                    self.pop_scope();
+                    self.branch -= 1;
+                }
             }
             StmtKind::For {
-                pat, iter, body, ..
+                pat,
+                iter,
+                body,
+                else_body,
+                ..
             } => {
                 let iter_ty = self.infer(iter);
                 let elem = self.element_ty(&iter_ty);
@@ -923,6 +949,13 @@ impl<'a> Checker<'a> {
                 self.block(body);
                 self.lend_reset(mark);
                 self.pop_scope();
+                if let Some(else_body) = else_body {
+                    self.branch += 1;
+                    self.push_scope();
+                    self.block(else_body);
+                    self.pop_scope();
+                    self.branch -= 1;
+                }
             }
             StmtKind::Return(value) => {
                 let value_ty = value.as_ref().map(|v| self.infer(v));

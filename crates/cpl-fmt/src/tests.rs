@@ -501,3 +501,11 @@ fn formats_punned_named_args_and_records() {
     assert_eq!(fmt(src), want);
     assert_eq!(fmt(want), want);
 }
+
+#[test]
+fn formats_loop_else() {
+    let src = "for x in xs:\n  if x == 0:\n    break\nelse:\n  print(-1)\n";
+    let want = "for x in xs:\n    if x == 0:\n        break\nelse:\n    print(-1)\n";
+    assert_eq!(fmt(src), want);
+    assert_eq!(fmt(want), want);
+}

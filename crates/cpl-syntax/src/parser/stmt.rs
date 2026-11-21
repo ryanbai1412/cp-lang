@@ -334,7 +334,12 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let cond = self.cond();
                 let body = self.colon_block("the `while` condition");
-                StmtKind::While { cond, body }
+                let else_body = self.loop_else();
+                StmtKind::While {
+                    cond,
+                    body,
+                    else_body,
+                }
             }
             T::For => self.for_stmt(None),
             T::Label if self.peek_n(1) == T::Colon && self.peek_n(2) == T::For => {
@@ -383,13 +388,18 @@ impl<'a> Parser<'a> {
             T::Elif | T::Else => {
                 let word = self.text().to_string();
                 let span = self.span();
+                let target = if word == "else" {
+                    "`if` or loop"
+                } else {
+                    "`if`"
+                };
                 self.error(
                     Diagnostic::error(
                         codes::UNEXPECTED_TOKEN,
                         span,
-                        format!("this `{word}` has no `if` above it at the same indentation"),
+                        format!("this `{word}` has no {target} above it at the same indentation"),
                     )
-                    .with_help(format!("line `{word}` up with its `if`")),
+                    .with_help(format!("line `{word}` up with its {target}")),
                 );
                 self.skip_line();
                 StmtKind::Error
@@ -406,12 +416,14 @@ impl<'a> Parser<'a> {
                 let span = self.span();
                 self.bump();
                 let body = self.colon_block("`loop`");
+                let else_body = self.loop_else();
                 StmtKind::While {
                     cond: Cond::Expr(Expr {
                         kind: ExprKind::Bool(true),
                         span,
                     }),
                     body,
+                    else_body,
                 }
             }
             T::Ident
@@ -435,6 +447,7 @@ impl<'a> Parser<'a> {
                 let count = self.expr();
                 let span = self.span_from(word.start);
                 let body = self.colon_block("the `repeat` count");
+                let else_body = self.loop_else();
                 StmtKind::For {
                     label: None,
                     pat: Pattern {
@@ -454,6 +467,7 @@ impl<'a> Parser<'a> {
                         span,
                     },
                     body,
+                    else_body,
                 }
             }
             T::Ident
@@ -916,14 +930,29 @@ impl<'a> Parser<'a> {
                 };
             }
             let clause_label = if idx == 0 { label.clone() } else { None };
+            let clause_else = if idx == 0 { self.loop_else() } else { None };
             out_stmt = Some(StmtKind::For {
                 label: clause_label,
                 pat,
                 iter,
                 body: inner_body,
+                else_body: clause_else,
             });
         }
         out_stmt.unwrap()
+    }
+
+    /// Optional trailing `else:` on a `for` / `while` loop (decision 125),
+    /// at the loop's indentation.
+    fn loop_else(&mut self) -> Option<Block> {
+        if self.at(T::Newline) && self.peek_n(1) == T::Else {
+            self.bump();
+        }
+        if self.eat(T::Else) {
+            Some(self.colon_block("`else`"))
+        } else {
+            None
+        }
     }
 
     /// `?Col` where a `for` walks: every value of the type, `none` first.

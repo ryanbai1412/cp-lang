@@ -108,16 +108,30 @@ pub fn walk_stmt(stmt: &Stmt, v: &mut dyn Visitor) {
             walk_expr(target, v);
             walk_expr(value, v);
         }
-        StmtKind::While { cond, body } => {
+        StmtKind::While {
+            cond,
+            body,
+            else_body,
+        } => {
             walk_cond(cond, v);
             walk_block(body, v);
+            if let Some(else_body) = else_body {
+                walk_block(else_body, v);
+            }
         }
         StmtKind::For {
-            pat, iter, body, ..
+            pat,
+            iter,
+            body,
+            else_body,
+            ..
         } => {
             v.pattern(pat);
             walk_expr(iter, v);
             walk_block(body, v);
+            if let Some(else_body) = else_body {
+                walk_block(else_body, v);
+            }
         }
         StmtKind::Return(value) => {
             if let Some(value) = value {

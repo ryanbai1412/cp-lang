@@ -505,6 +505,10 @@ struct FnCx {
     /// The outermost loop a `break` out of a nested loop's innermost
     /// one leaves, for one source loop lowered as several.
     break_out: HashMap<LoopId, LoopId>,
+    /// For loops with a trailing `else:` (decision 125), maps the loop's
+    /// break target `LoopId` to the `Bool` flag that stays `true` unless
+    /// a `break` targets that loop.
+    loop_else: HashMap<LoopId, Slot>,
     dos: Vec<DoFrame>,
     /// The `x ?? return` that is the whole right side of the statement
     /// being lowered, and the test it puts ahead of that statement.
