@@ -16,13 +16,11 @@ var stack: List<(val: Int, starts: List<Int>)> = []
 var ans = 0
 for (i, x) in a.items:
     while let top = stack.last and top.val >= x: stack.pop()
-    var starts = [i + 1] + (if let top = stack.last: top.starts else: [0])
+    var starts = [i + 1] + (stack.last.map(t => t.starts) ?? [0])
     for l in 2..=3 if l < starts.len:
         let below = bsearch_first(0..stack.len, k => stack[k].val >= ceil_div(x, l)) ?? stack.len
         let prev = if below > 0: stack[below - 1].starts else: [0]
-        starts = starts[..l] + [
-            min(starts[l + k], p) for (k, p) in prev.items if l + k < starts.len
-        ]
+        starts = starts[..l] + [min(u, v) for (u, v) in zip(starts[l..], prev)]
     ans += starts.sum()
     stack.push((x, starts))
 print(ans)
