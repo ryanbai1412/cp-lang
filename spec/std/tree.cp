@@ -132,7 +132,12 @@ pub struct Rooted<V, Pre>:
     /// O(n) calls. The same DP as `up`, for every root at once: `out[v]` is what `up` would give at
     /// `v` if the tree were rooted at `v`. Each vertex folds its parent's side first, then its
     /// children; the sibling folds use prefixes and suffixes, so `m` needs no inverse.
-    pub fn reroot<T, U, M>(self, op: M, lift: (T, V, V) -> U, finish: (U, V) -> T) -> [V]T = todo
+    pub fn reroot<T, U, M>(
+        self,
+        op: M,
+        lift: (T, V, V) -> U = (x, c, p) => x,
+        finish: (U, V) -> T,
+    ) -> [V]T = todo
 
     /// O(n log n). The isomorphism class of every subtree: `of[a] == of[b]` exactly when the
     /// subtrees of `a` and `b` are the same rooted tree up to reordering children. Classes are
