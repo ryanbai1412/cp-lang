@@ -228,8 +228,14 @@ pub struct Rooted<V, Pre>:
         out
 
     /// A bottom-up tree DP: `out[v] = finish(fold with m of lift(out[c], c, v) over children c, v)`.
-    /// `lift` sees both ends of the edge, child first. Children fold in child order. O(n) calls.
-    pub fn up<T, U, M>(self, m: M, lift: (T, V, V) -> U, finish: (U, V) -> T) -> [V]T:
+    /// `lift` sees both ends of the edge, child first, and defaults to the child's value. Children
+    /// fold in child order. O(n) calls.
+    pub fn up<T, U, M>(
+        self,
+        m: M,
+        lift: (T, V, V) -> U = (x, c, p) => x,
+        finish: (U, V) -> T,
+    ) -> [V]T:
         let k = Monoid<U>.of(m)
         var out: [V]?T = none
         for p in Pre.rev:
@@ -966,6 +972,9 @@ fn reroot_matches_up_from_every_root():
         let shape = r.reroot(cat, (s, c, p) => s, (s, v) => "(" + s + ")")
         let label = r.reroot(cat, (s, c, p) => s, (s, v) => "{v.to_idx}" + s)
         assert shape[r.root] == r.up(cat, (s, c, p) => s, (s, v) => "(" + s + ")")[r.root]
+        assert r.up(cat, finish: (s, v) => "(" + s + ")")[r.root] == shape[r.root]
+        let size = r.up(+, finish: (s, v) => s + 1)
+        assert all(size[v] == r.sub(v).len for v in V)
         for v in V:
             let at = Rooted(root: v, adj: u => adj[u])
             assert far[v] == max(r.dist(v, u) for u in V)

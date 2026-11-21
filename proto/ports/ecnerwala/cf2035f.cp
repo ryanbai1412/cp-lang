@@ -12,12 +12,7 @@ let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), root)
 fn settle(need: Int) -> Int = if need < 0: -need % 2 else: need
 
 fn works(ops: Int) -> Bool:
-    let need = t.up(
-        +,
-        (c, _, _) => c,
-        (s, v) => settle(s + a[v] - ops / n - Int(v.label <= ops % n)),
-    )
-    need[root] == 0
+    t.up(+, finish: (s, v) => settle(s + a[v] - ops / n - Int(v.label <= ops % n)))[root] == 0
 
 let cycle = 2 * n
 let rounds = 0..=2 * (n + a.max())
