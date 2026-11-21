@@ -244,82 +244,26 @@ fn the_inside_of_a_small_optional_taken_as_a_place_keeps_it_unpacked() {
 }
 
 #[test]
-fn an_int_table_that_provably_never_holds_the_smallest_int_is_packed() {
+fn every_optional_int_is_one_int_with_int64_min_as_none() {
     const PACKED: &str = "std::vector<cpl::OptInt>";
-    // Literals, non-negative input, and sums that only grow.
-    assert_eq!(table("dp[V.first] = 0\nfor v in V:\n    if let u = v + 1:\n        if let d = dp[v]: dp[u] max= d + w[v]"), PACKED);
-    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = Int.MAX"), PACKED);
+    // Whatever is stored: unbounded input, sums, other tables.
+    assert_eq!(table("dp[V.first] = any"), PACKED);
     assert_eq!(table("dp[V.first] = Int.MIN"), PACKED);
-    assert_eq!(table("for v in V: dp[v] = v.idx - w[v]"), PACKED);
-    assert_eq!(table("for v in V: dp[v] = -(w[v] * 3) % 7"), PACKED);
-    assert_eq!(table("for i in 0..n: dp[V.first] min= i * i"), PACKED);
-    // A list filled by `push`, and a grid.
-    let cpp = cpp("let n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = none\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1)\n");
+    assert_eq!(table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) * 2"), PACKED);
+    assert_eq!(table("fn f() -> Int: any\ndp[V.first] = f()"), PACKED);
+    // Used as a whole value: passed, mutated through, looped over, copied.
+    assert_eq!(table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"), PACKED);
+    assert_eq!(table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"), PACKED);
+    assert_eq!(table("for x in dp: print(x ?? 0)"), PACKED);
+    assert_eq!(table("let copy = dp\nprint(copy[V.first] ?? 0)"), PACKED);
+    // A list filled by `push`, a grid, a local, a parameter and a result.
+    let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = none\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
     assert_eq!(decl(&cpp, "xs"), "std::vector<cpl::OptInt>", "{cpp}");
     assert_eq!(decl(&cpp, "g"), "cpl::Grid<cpl::OptInt, 2>", "{cpp}");
-    assert!(cpp.contains("xs.push_back(cpl::OptInt());"), "{cpp}");
-    assert!(cpp.contains("xs.push_back(cpl::OptInt(i));"), "{cpp}");
-    assert!(
-        cpp.contains("using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;"),
-        "{cpp}"
-    );
-}
-
-#[test]
-fn an_int_table_with_no_proof_stays_a_std_optional() {
-    const PLAIN: &str = "std::vector<std::optional<ll>>";
-    // Input with no declared low end, and anything computed from it.
-    assert_eq!(table("dp[V.first] = any"), PLAIN);
-    assert_eq!(
-        table("dp[V.first] = 0\ndp[V.last] = (dp[V.first] ?? 0) + any"),
-        PLAIN
-    );
-    assert_eq!(table("let x = any + 1\ndp[V.first] = x"), PLAIN);
-    // Two values above Int.MIN can still add up to it, and a difference
-    // or a product of them can reach it.
-    assert_eq!(
-        table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) + (dp[V.first] ?? 0)"),
-        PLAIN
-    );
-    assert_eq!(
-        table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) - w[V.first]"),
-        PLAIN
-    );
-    assert_eq!(
-        table("dp[V.first] = -1\ndp[V.last] = (dp[V.first] ?? 0) * 2"),
-        PLAIN
-    );
-    // What a fn returns or is handed is not followed.
-    assert_eq!(table("fn f() -> Int: any\ndp[V.first] = f()"), PLAIN);
-    assert_eq!(
-        table("fn f(x: Int) -> Int:\n    dp[V.first] = x\n    0\nprint(f(any))"),
-        PLAIN
-    );
-    // A variable stored twice counts for both stores.
-    assert_eq!(table("var x = 0\nx = any\ndp[V.first] = x"), PLAIN);
-    // Through another table.
-    assert_eq!(table("var other: [V]?Int = none\nother[V.first] = any\ndp[V.first] = other[V.first]\nprint(other[V.first] ?? 0)"), PLAIN);
-}
-
-#[test]
-fn an_int_table_used_as_a_whole_value_stays_a_std_optional() {
-    const PLAIN: &str = "std::vector<std::optional<ll>>";
-    assert_eq!(
-        table("fn f(xs: [V]?Int) -> Int: xs[V.first] ?? 0\nprint(f(dp))"),
-        PLAIN
-    );
-    assert_eq!(
-        table("fn f(mut xs: [V]?Int):\n    xs[V.first] = 1\nf(mut dp)"),
-        PLAIN
-    );
-    assert_eq!(table("for x in dp: print(x ?? 0)"), PLAIN);
-    assert_eq!(table("print(dp)"), PLAIN);
-    // An index that runs code is moved out of line with the table.
-    assert_eq!(table("fn at() -> V: V.first\nprint(dp[at()] ?? 0)"), PLAIN);
-    assert_eq!(table("let copy = dp\nprint(copy[V.first] ?? 0)"), PLAIN);
-    // A closure holds its own copy or a reference.
-    let cpp = cpp("fn f(n: Int) -> Int:\n    var xs: List<?Int> = []\n    xs.push(n % 2)\n    let get = i => xs[i] ?? 0\n    get(0)\nprint(f(3))\n");
-    assert_eq!(decl(&cpp, "xs"), PLAIN, "{cpp}");
+    assert_eq!(decl(&cpp, "best"), "cpl::OptInt", "{cpp}");
+    assert!(cpp.contains("cpl::OptInt half(const cpl::OptInt& x)"), "{cpp}");
+    assert!(cpp.contains("using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;"), "{cpp}");
+    assert!(!cpp.contains("std::optional<ll>"), "{cpp}");
 }
 
 #[test]

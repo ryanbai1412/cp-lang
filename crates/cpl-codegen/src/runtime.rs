@@ -464,27 +464,21 @@ template <class T, int K> Grid<T, K> grid(std::array<ll, K> n, const T& fill) {
         name: "niche",
         needs: &[],
         code: "\
-// `?V` held in one scalar: `none` is a value of S that no V is stored as, so
-// there is no flag beside the value. Everything else is std::optional's: `none`
-// sorts first, and nothing converts to or from it without being asked.
+// `?V` in one scalar S: `none` is a value no V is stored as. `none` sorts first.
 template <class T, class S, S NONE> struct Niche {
     S raw = NONE;
     Niche() = default;
     explicit Niche(T x) : raw((S)x) {}
-    explicit Niche(const std::optional<T>& o) : raw(o ? (S)*o : NONE) {}
-    // A `List<Bool>` keeps a `char` per flag, so what it hands back is a `std::optional<char>`.
+    // U: a `List<Bool>` hands back `std::optional<char>`.
     template <class U> explicit Niche(const std::optional<U>& o) : raw(o ? (S)(T)*o : NONE) {}
     bool has_value() const { return raw != NONE; }
     explicit operator bool() const { return raw != NONE; }
     T operator*() const { return (T)raw; }
     template <class U = S, class = std::enable_if_t<std::is_same<U, T>::value>> T& operator*() { return raw; }
-    explicit operator std::optional<T>() const { return raw != NONE ? std::optional<T>((T)raw) : std::nullopt; }
+    explicit operator std::optional<T>() const { return *this ? std::optional<T>(**this) : std::nullopt; }
     friend bool operator==(Niche a, Niche b) { return a.raw == b.raw; }
     friend bool operator!=(Niche a, Niche b) { return a.raw != b.raw; }
-    friend bool operator<(Niche a, Niche b) { return b.has_value() && (!a.has_value() || *a < *b); }
-    friend bool operator>(Niche a, Niche b) { return b < a; }
-    friend bool operator<=(Niche a, Niche b) { return !(b < a); }
-    friend bool operator>=(Niche a, Niche b) { return !(a < b); }
+    friend bool operator<(Niche a, Niche b) { return b && (!a || *a < *b); }
 };
 // A position is an ordinal from 0: -1 is free.
 using OptPos = Niche<int, int, -1>;
@@ -536,7 +530,7 @@ template <class T, size_t K> struct OptTuple {
         name: "niche_int",
         needs: &["niche"],
         code: "\
-// For tables whose values are proven never to be Int.MIN.
+// An Int is never INT64_MIN, so that is `none`.
 using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;
 ",
     },

@@ -359,14 +359,10 @@ impl<'p> Emitter<'p> {
     }
 
     /// The arguments of a 1-D vector's constructor: `n, value`.
-    /// `packed`: the vector is a `?Int` table held as `cpl::OptInt`.
-    pub fn fill_args(&mut self, dims: &[DimSpec], value: Option<&Expr>, packed: bool) -> String {
+    pub fn fill_args(&mut self, dims: &[DimSpec], value: Option<&Expr>) -> String {
         let n = self.dim(&dims[0]);
-        match value.map(|value| (value, self.expr(value).text)) {
-            // `none` is what a new cell is.
-            Some((value, _)) if packed && value.kind == ExprKind::None => n,
-            Some((value, text)) if packed => format!("{n}, {}", self.pack(value, &text)),
-            Some((_, text)) => format!("{n}, {text}"),
+        match value.map(|value| self.expr(value).text) {
+            Some(text) => format!("{n}, {text}"),
             None => n,
         }
     }
@@ -384,30 +380,7 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    /// True when `e` reads one cell of a packed `?Int` table.
-    fn packed_cell(&self, e: &Expr) -> bool {
-        match &e.kind {
-            ExprKind::Index(base, _) => match base.kind {
-                ExprKind::Local(slot) => self.is_packed(false, slot),
-                ExprKind::Global(id) => self.is_packed(true, id),
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-
-    /// The C++ of an optional that is about to be tested or opened: a
-    /// cell of a packed table is read in place when its indices run no
-    /// code, and as a `std::optional` like any other otherwise.
-    fn opened(&mut self, e: &Expr) -> Code {
-        self.raw_cell =
-            matches!(&e.kind, ExprKind::Index(_, indices) if indices.iter().all(walk::is_simple));
-        self.expr(e)
-    }
-
     pub fn expr(&mut self, e: &Expr) -> Code {
-        let pack_init = std::mem::take(&mut self.pack_init);
-        let raw_cell = std::mem::take(&mut self.raw_cell);
         let program = self.program;
         match &e.kind {
             // `debug(...)` is for local runs: the judge's C++ has none of it.
@@ -566,8 +539,7 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Index(base, indices)
-                if !self.packed_cell(e)
-                    && indices.len() == 1
+                if indices.len() == 1
                     && self
                         .found
                         .iter()
@@ -599,9 +571,6 @@ impl<'p> Emitter<'p> {
                 if checked && matches!(base_ty, Ty::Range(_)) {
                     self.need("range_at");
                 }
-                // A cell of a packed table is a `std::optional` to whatever
-                // reads it, unless it is only being tested or opened.
-                let unpack = self.packed_cell(e) && !raw_cell;
                 let in_place = self.is_row(base);
                 self.sequence(&operands, &e.ty, |_, mut codes| {
                     if in_place {
@@ -620,7 +589,7 @@ impl<'p> Emitter<'p> {
                             }
                         })
                         .collect();
-                    let cell = match base_ty {
+                    match base_ty {
                         Ty::Array { dims, elem } if dims.len() > 1 => {
                             let call = if checked { ".ck" } else { "" };
                             let cell = format!("{b}{call}({})", at.join(", "));
@@ -664,10 +633,6 @@ impl<'p> Emitter<'p> {
                             Code::primary(format!("{b}.at({})", at[0]))
                         }
                         _ => Code::primary(format!("{b}[{}]", at[0])),
-                    };
-                    match unpack {
-                        true => Code::primary(format!("std::optional<ll>({})", cell.text)),
-                        false => cell,
                     }
                 })
             }
@@ -694,9 +659,6 @@ impl<'p> Emitter<'p> {
                 match &e.ty {
                     Ty::Unit | Ty::Error => Code::primary("(void)0"),
                     Ty::Map(..) | Ty::HashMap(..) => Code::primary(format!("{ty}()")),
-                    _ if items.is_empty() && pack_init => {
-                        Code::primary(format!("{}()", self.packed_ty(&e.ty)))
-                    }
                     _ if items.is_empty() => Code::primary(format!("{ty}()")),
                     _ => {
                         // `{...}` runs its elements left to right.
@@ -760,18 +722,18 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("{}.{variant}_{index}", code.at(PRIMARY)))
             }
             ExprKind::IsSome(value) => {
-                let code = self.opened(value);
+                let code = self.expr(value);
                 Code::primary(format!("{}.has_value()", code.at(PRIMARY)))
             }
             // The user's `!` is an assertion: on `none` it stops the
             // program, as it does in `cpl run`. After a test it is a plain read.
             ExprKind::Unwrap(value, true) => {
                 self.need("have");
-                let code = self.opened(value);
+                let code = self.expr(value);
                 Code::primary(format!("cpl::have({})", code.text))
             }
             ExprKind::Unwrap(value, false) => {
-                let code = self.opened(value);
+                let code = self.expr(value);
                 Code::new(format!("*{}", code.at(UNARY)), UNARY)
             }
             ExprKind::If(cond, then, otherwise) => {
@@ -864,18 +826,7 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Mutate(op, place, args) => {
                 let p = self.place(place);
-                let (global, index) = walk::root(place);
-                let packed = self.is_packed(global, index);
-                let arg = args
-                    .first()
-                    .map(|arg| {
-                        let text = self.expr(arg).text;
-                        match packed {
-                            true => self.pack(arg, &text),
-                            false => text,
-                        }
-                    })
-                    .unwrap_or_default();
+                let arg = args.first().map(|arg| self.expr(arg).text).unwrap_or_default();
                 let arg2 = args
                     .get(1)
                     .map(|arg| self.expr(arg).text)
@@ -1044,24 +995,15 @@ impl<'p> Emitter<'p> {
                 let Ty::Array { elem, .. } = &e.ty else {
                     return Code::primary("(void)0");
                 };
-                let cell = match pack_init {
-                    true => "cpl::OptInt".to_string(),
-                    false => elem_ty(program, self.niches, elem),
-                };
+                let cell = elem_ty(program, self.niches, elem);
                 if dims.len() == 1 {
-                    let args = self.fill_args(dims, value.as_deref(), pack_init);
+                    let args = self.fill_args(dims, value.as_deref());
                     Code::primary(format!("std::vector<{cell}>({args})"))
                 } else {
                     self.need("grid");
                     let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
                     let value = match value {
-                        Some(value) => {
-                            let text = self.expr(value).text;
-                            match pack_init {
-                                true => self.pack(value, &text),
-                                false => text,
-                            }
-                        }
+                        Some(value) => self.expr(value).text,
                         None => format!("{cell}()"),
                     };
                     Code::primary(format!(

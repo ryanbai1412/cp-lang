@@ -202,6 +202,8 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         }
         Ty::Opt(inner) => match **inner {
             Ty::Pos(_) | Ty::Bound(_) => "cpl::OptPos".into(),
+            // `Int` stops above INT64_MIN, which is left for `none`.
+            Ty::Int => "cpl::OptInt".into(),
             Ty::Bool if niches.bools => "cpl::OptBool".into(),
             Ty::Char if niches.chars => "cpl::OptChar".into(),
             // A tuple with a position in it: `none` is that position at -1.

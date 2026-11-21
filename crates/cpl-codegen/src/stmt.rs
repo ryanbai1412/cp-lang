@@ -636,13 +636,7 @@ impl<'p> Emitter<'p> {
                 return;
             }
         }
-        let (global, index) = walk::root(place);
-        let packed = self.is_packed(global, index);
-        self.pack_init = packed && matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_));
         let mut v = self.expr(value);
-        if packed && matches!(place.kind, PlaceKind::Index(..)) {
-            v.text = self.pack(value, &v.text);
-        }
         // A list built by the value's own block (a comprehension) is not
         // read again: it moves into the place.
         if let (AssignOp::Set, ExprKind::Local(built), Some((stmts, _))) = (op, &value.kind, flat(whole)) {
@@ -872,11 +866,7 @@ impl<'p> Emitter<'p> {
                 let tail = self.tail.take();
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
-                let packed = self.is_packed(false, *slot);
-                let cpp = match packed {
-                    true => self.packed_ty(&ty),
-                    false => self.ty(&ty),
-                };
+                let cpp = self.ty(&ty);
                 let hoisted = self.hoisted.contains(slot);
                 let Some(init) = init else {
                     if ty != Ty::Unit {
@@ -894,7 +884,6 @@ impl<'p> Emitter<'p> {
                 }
                 let reused = self.reused.contains(slot)
                     && !hoisted
-                    && !packed
                     && self.closure_id.is_none()
                     && cpp.starts_with("std::vector<");
                 if reused && !matches!(init.kind, ExprKind::Fill(..)) {
@@ -911,7 +900,7 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     ExprKind::Fill(dims, value) if !hoisted && dims.len() == 1 => {
-                        let args = self.fill_args(dims, value.as_deref(), packed);
+                        let args = self.fill_args(dims, value.as_deref());
                         if reused {
                             // One buffer, filled again each time round.
                             self.line(out, &format!("static {cpp} {name};"));
@@ -936,17 +925,14 @@ impl<'p> Emitter<'p> {
                         }
                         _ => self.expr(init).text,
                     },
-                    _ => {
-                        self.pack_init = packed;
-                        self.expr(init).text
-                    }
+                    _ => self.expr(init).text,
                 };
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
                 } else if name.starts_with('_') {
                     // `_t` is a name for a value the program may not use.
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
-                } else if !packed && self.reads_in_place(*slot, init, tail.as_ref()) {
+                } else if self.reads_in_place(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list.
                     self.line(out, &format!("const {cpp}& {name} = {text};"));

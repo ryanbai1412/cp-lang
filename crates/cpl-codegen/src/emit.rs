@@ -1,7 +1,7 @@
 //! Printing a lowered program as one C++17 file.
 
 use crate::names::{cty, fn_name, ident, is_plain_enum, Niches};
-use crate::ranges::{Facts, Var};
+use crate::ranges::Facts;
 use crate::runtime::PIECES;
 use crate::walk;
 use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, Program, Stmt, Ty};
@@ -96,16 +96,8 @@ pub(crate) struct Emitter<'p> {
     pub devirt: crate::devirt::Devirt<'p>,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
-    /// The `?Int` tables held as `cpl::OptInt`.
-    pub packed: BTreeSet<Var>,
-    /// Set for the value a packed table is created from, which is then
-    /// written with the packed cell type.
-    pub pack_init: bool,
-    /// Set for a cell of a packed table that is only tested or opened,
-    /// so it is read as it is held.
-    pub raw_cell: bool,
-    /// Which of `cpl::OptPos`, `cpl::OptBool` and `cpl::OptChar` the file
-    /// names, as bits.
+    /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
+    /// the file names, as bits.
     pub niche_types: std::cell::Cell<u8>,
     /// Runtime pieces the program uses, by name.
     pub used: BTreeSet<&'static str>,
@@ -192,9 +184,6 @@ impl<'p> Emitter<'p> {
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
-            packed: crate::niche::packed_tables(program),
-            pack_init: false,
-            raw_cell: false,
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),
             top_names,
@@ -247,42 +236,13 @@ impl<'p> Emitter<'p> {
         let cpp = cty(self.program, self.niches, ty);
         // A packed optional can be the type of an expression alone, so
         // what the file needs is noted where the type is written.
-        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar", "cpl::OptTuple"].iter().enumerate() {
+        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar", "cpl::OptTuple", "cpl::OptInt"].iter().enumerate() {
             if cpp.contains(name) {
                 self.niche_types.set(self.niche_types.get() | 1 << at);
             }
         }
         cpp
     }
-
-    /// True when the variable is a `?Int` table held as `cpl::OptInt`. A
-    /// closure's locals are its own and never are.
-    pub fn is_packed(&self, global: bool, index: usize) -> bool {
-        let var: Var = match global {
-            true => (None, true, index),
-            false if self.closure_id.is_some() => return false,
-            false => (self.fn_id, false, index),
-        };
-        self.packed.contains(&var)
-    }
-
-    /// The C++ type of a packed table of type `ty`.
-    pub fn packed_ty(&mut self, ty: &Ty) -> String {
-        self.need("niche_int");
-        self.ty(ty).replace("std::optional<ll>", "cpl::OptInt")
-    }
-
-    /// `text`, the C++ of the `?Int` value `value`, as a packed cell.
-    pub fn pack(&mut self, value: &Expr, text: &str) -> String {
-        self.need("niche_int");
-        match (&value.kind, text.strip_prefix("std::optional<ll>(")) {
-            (ExprKind::None, _) => "cpl::OptInt()".into(),
-            (ExprKind::Some(_), Some(rest)) => format!("cpl::OptInt({rest}"),
-            _ => format!("cpl::OptInt({text})"),
-        }
-    }
-
-
 
     /// A name nothing else in this fn or at the top level has.
     pub fn temp(&mut self) -> String {
@@ -466,10 +426,7 @@ impl<'p> Emitter<'p> {
                 continue;
             }
             let ty = &locals[slot].ty;
-            let cpp = match self.is_packed(false, slot) {
-                true => self.packed_ty(ty),
-                false => self.ty(ty),
-            };
+            let cpp = self.ty(ty);
             out.push_str(&format!(
                 "{}{} {}{};\n",
                 pad(self.indent),
@@ -849,14 +806,11 @@ impl<'p> Emitter<'p> {
             let d = ident(d);
             vars.push_str(&format!("ll {d}_lo = 0, {d}_len = 0;\n"));
         }
-        for (id, global) in program.globals.iter().enumerate() {
+        for global in &program.globals {
             if global.ty == Ty::Unit {
                 continue;
             }
-            let cpp = match self.packed.contains(&(None, true, id)) {
-                true => self.packed_ty(&global.ty),
-                false => self.ty(&global.ty),
-            };
+            let cpp = self.ty(&global.ty);
             vars.push_str(&format!(
                 "{} {}{};\n",
                 cpp,
@@ -1035,7 +989,7 @@ impl<'p> Emitter<'p> {
         out.push_str(
             "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
         );
-        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple"].into_iter().enumerate() {
+        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple", "niche_int"].into_iter().enumerate() {
             if self.niche_types.get() & 1 << at != 0 {
                 self.need(piece);
             }

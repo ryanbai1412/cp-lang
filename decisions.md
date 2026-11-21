@@ -2591,6 +2591,20 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   `-2^63`, which is no `Int`, and the old helpers built it from `Int.MIN`.
   With `U64` (wrapping, logical shifts) the helpers for bit 63 disappear.
   Reverse: none while `Int` stays symmetric.
+- **49.4 Every `?Int` is `cpl::OptInt`, 8 bytes, with `-2^63` as `none`.**
+  With 49.1 the pattern is free everywhere, so locals, fields, arguments,
+  lists, maps and tables all use it; the proof that a table never stores
+  `Int.MIN` (`niche::packed_tables`) and the pack/unpack plumbing in
+  codegen are gone. Reason: values take the fewest bytes their types
+  allow, and a layout that depended on a whole-program proof changed with
+  unrelated edits. Reverse: map `Ty::Opt(Int)` back to `std::optional<ll>`
+  in `names.rs` (and restore the table proof to keep tables packed).
+  Cost: the `Niche` template (about 1 KB) now appears in every program
+  that touches a `?Int`, including a passing `xs.first`; 65 small ports grew
+  more than 5% and the baseline was rewritten. The template was trimmed
+  (unused `>`, `<=`, `>=`, a duplicate constructor); over the corpus the
+  median went 10,345 -> 10,899 B, p95 28,064 -> 27,734 B, max 58,744 ->
+  58,821 B, none over 64 KB.
 
 ## 50. MonoDeque single constructor and Bitset.subset_sums (2026-11-21)
 
