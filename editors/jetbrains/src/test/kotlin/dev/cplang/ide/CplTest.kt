@@ -2,6 +2,7 @@ package dev.cplang.ide
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.nio.file.Files
@@ -36,5 +37,24 @@ class CplTest {
         assertEquals("dfs", Cpl.enclosingFn(text, text.indexOf("go(")))
         assertEquals("main", Cpl.enclosingFn(text, text.indexOf("dfs(0)")))
         assertNull(Cpl.enclosingFn(text, text.indexOf("top")))
+    }
+
+    @Test
+    fun `the trace viewer's messages are a step or a clicked line`() {
+        assertEquals(TraceMessage(false, 3), TraceMessage.parse("""{"type":"step","line":3}"""))
+        assertEquals(TraceMessage(true, 1), TraceMessage.parse("""{"type":"reveal","line":1}"""))
+        for (bad in listOf("""{"type":"step","line":0}""", """{"type":"step","line":1.5}""", """{"type":"step","line":"2"}""",
+                """{"type":"run","line":2}""", """{"line":2}""", "[1]", "nope")) {
+            assertNull(bad, TraceMessage.parse(bad))
+        }
+    }
+
+    @Test
+    fun `the bridge comes before the viewer's own scripts`() {
+        val html = CplTrace.bridge("<!doctype html>\n<HTML><head lang=x><script>viewer()</script></head></HTML>", "send(json);")
+        val shim = html.indexOf("window.acquireVsCodeApi")
+        assertTrue(html, shim > html.indexOf("<head lang=x>") && shim < html.indexOf("viewer()"))
+        assertTrue(html.contains("const json = JSON.stringify(message); send(json);"))
+        assertTrue(CplTrace.bridge("<p>x</p>", "s(json)").startsWith("<script>window.acquireVsCodeApi"))
     }
 }
