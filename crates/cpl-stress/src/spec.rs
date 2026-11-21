@@ -711,6 +711,92 @@ impl Builder<'_> {
         }
     }
 
+    /// `for _ in 0..q:` whose body reads only through `let x: T = read()`
+    /// lines (or loops like this one) with types that use nothing bound
+    /// inside the loop: `q` rows of what one pass reads. `None` for any
+    /// other loop, whose reads a field cannot describe.
+    fn pass(&mut self, stmt: &Stmt, outer: &HashSet<String>) -> Result<Option<Shape>, SpecError> {
+        let StmtKind::For {
+            pat, iter, body, ..
+        } = &stmt.kind
+        else {
+            return Ok(None);
+        };
+        let Some((lo, hi)) = self.over(iter) else {
+            return Ok(None);
+        };
+        let mut used = HashSet::new();
+        names_in(&lo, &mut used);
+        names_in(&hi, &mut used);
+        if !used.is_disjoint(outer) {
+            return Ok(None);
+        }
+        let mut inside = outer.clone();
+        bind_names(pat, &mut inside);
+        let reads = |builder: &Self, stmt: &Stmt| {
+            reads_inside(&builder.src[span_range(stmt.span.shift(builder.base))])
+        };
+        let last = body.stmts.iter().rposition(|stmt| reads(self, stmt));
+        let mut parts = Vec::new();
+        for (at, stmt) in body.stmts.iter().enumerate() {
+            let mut jumps = Jumps::default();
+            cpl_syntax::visit::walk_stmt(stmt, &mut jumps);
+            if jumps.leaves || (jumps.skips && last.is_some_and(|last| at < last)) {
+                return Ok(None);
+            }
+            match &stmt.kind {
+                StmtKind::Let {
+                    pat,
+                    ty: Some(ty),
+                    init: Some(init),
+                    ..
+                } if is_read(init) => {
+                    let mut used = HashSet::new();
+                    Sizes(&mut used).of_type(ty);
+                    if !used.is_disjoint(&inside) {
+                        return Ok(None);
+                    }
+                    parts.push(self.shape(ty)?);
+                    bind_names(pat, &mut inside);
+                }
+                StmtKind::For { .. } if reads(self, stmt) => match self.pass(stmt, &inside)? {
+                    Some(shape) => parts.push(shape),
+                    None => return Ok(None),
+                },
+                _ if reads(self, stmt) => return Ok(None),
+                StmtKind::Let { pat, .. } => bind_names(pat, &mut inside),
+                _ => {}
+            }
+        }
+        let elem = match parts.len() {
+            0 => return Ok(None),
+            1 => parts.pop().expect("one part"),
+            _ => Shape::Tuple(parts),
+        };
+        names_in(&lo, &mut self.spec.sizes);
+        names_in(&hi, &mut self.spec.sizes);
+        Ok(Some(Shape::Array {
+            len: binary(BinOp::Add, binary(BinOp::Sub, hi, lo), int(1)),
+            elem: Box::new(elem),
+        }))
+    }
+
+    /// The first and last value a loop goes over: `lo..hi`, `lo..=hi`
+    /// or a domain declared above.
+    fn over(&self, iter: &Expr) -> Option<(Expr, Expr)> {
+        match &iter.kind {
+            ExprKind::Paren(inner) => self.over(inner),
+            ExprKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+                step: None,
+            } => Some(Builder::inclusive(lo, hi, *inclusive)),
+            ExprKind::Name(name) => self.domains.get(name).cloned(),
+            _ => None,
+        }
+    }
+
     /// The names a pattern gives to the parts of `shape`.
     fn names(pat: &Pattern, shape: &Shape) -> Vec<Option<String>> {
         match (&pat.kind, shape) {
@@ -733,19 +819,73 @@ impl Builder<'_> {
     }
 }
 
+fn bind_names(pat: &Pattern, out: &mut HashSet<String>) {
+    match &pat.kind {
+        PatternKind::Name(name) => {
+            out.insert(name.clone());
+        }
+        PatternKind::Domain(name) => {
+            out.insert(name.text.clone());
+        }
+        PatternKind::Tuple(pats)
+        | PatternKind::Or(pats)
+        | PatternKind::Variant { args: pats, .. } => {
+            pats.iter().for_each(|pat| bind_names(pat, out))
+        }
+        _ => {}
+    }
+}
+
+/// Whether a statement can end its loop early (`break`, `return`) or
+/// skip the rest of a pass (`continue`).
+#[derive(Default)]
+struct Jumps {
+    leaves: bool,
+    skips: bool,
+}
+
+impl cpl_syntax::visit::Visitor for Jumps {
+    fn stmt(&mut self, stmt: &Stmt) {
+        match &stmt.kind {
+            StmtKind::Break(_) | StmtKind::Return(_) => self.leaves = true,
+            StmtKind::Continue(_) => self.skips = true,
+            _ => {}
+        }
+    }
+}
+
 fn span_range(span: Span) -> std::ops::Range<usize> {
     span.start as usize..span.end as usize
 }
 
-/// True when `code` calls `read()`, outside `//` comments.
+/// True when `code` calls `read()`, or `read` with named options such
+/// as `read(gen: f)`, outside `//` comments.
 fn reads_inside(code: &str) -> bool {
-    code.lines().any(|line| {
+    read_calls(code).next().is_some()
+}
+
+/// True when `code` calls `read` with named options (`gen:`, `none:`).
+fn reads_with_options(code: &str) -> bool {
+    read_calls(code).any(|options| options)
+}
+
+/// Each call of the built-in `read` in `code`: whether it has options.
+fn read_calls(code: &str) -> impl Iterator<Item = bool> + '_ {
+    code.lines().flat_map(|line| {
         let line = line.split("//").next().unwrap_or("");
-        line.match_indices("read()").any(|(at, _)| {
-            !line[..at]
-                .chars()
-                .next_back()
-                .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
+        line.match_indices("read(").filter_map(move |(at, _)| {
+            let before = line[..at].chars().next_back();
+            if before.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.') {
+                return None;
+            }
+            let rest = line[at + "read(".len()..].trim_start();
+            if rest.starts_with(')') {
+                return Some(false);
+            }
+            let name = rest
+                .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .map_or(rest, |end| &rest[..end]);
+            (!name.is_empty() && rest[name.len()..].trim_start().starts_with(':')).then_some(true)
         })
     })
 }
@@ -944,10 +1084,54 @@ impl InputSpec {
                             (false, true) => {}
                         }
                     }
+                    StmtKind::For { .. }
+                        if (in_judge || judge.is_none())
+                            && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
+                    {
+                        let Some(shape) = builder.pass(stmt, &HashSet::new())? else {
+                            return Err(builder.error(
+                                stmt.span,
+                                "this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`".into(),
+                            ));
+                        };
+                        let field = Field {
+                            names: vec![None],
+                            shape,
+                            line: lines.line_of(stmt.span.shift(builder.base).start) + 1,
+                        };
+                        match in_judge {
+                            true => hidden.push(field),
+                            false => builder.spec.fields.push(field),
+                        }
+                    }
+                    // A fn the program calls reads input no field
+                    // describes; `@brute`, `@checker` and the like read for
+                    // themselves.
+                    StmtKind::Fn(_)
+                        if (in_judge || judge.is_none())
+                            && stmt
+                                .decorators
+                                .iter()
+                                .all(|d| matches!(d.name.text.as_str(), "memo" | "allow"))
+                            && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
+                    {
+                        return Err(builder.error(
+                            stmt.span,
+                            "this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in".into(),
+                        ));
+                    }
                     StmtKind::Fn(_) => {}
                     // A `read()` anywhere else (in an expression, a loop
                     // or a branch) reads input no field describes: a case
                     // made without it would be cut short.
+                    _ if (in_judge || judge.is_none())
+                        && reads_with_options(&src[span_range(stmt.span.shift(builder.base))]) =>
+                    {
+                        return Err(builder.error(
+                            stmt.span,
+                            "`cpl stress` can't make a `read(gen: ..)` or `read(none: ..)` yet, so a generated input would leave it out; write a `@gen fn` that prints a whole input, or pass `--gen <program>`".into(),
+                        ));
+                    }
                     _ if (in_judge || judge.is_none())
                         && reads_inside(&src[span_range(stmt.span.shift(builder.base))]) =>
                     {

@@ -326,11 +326,26 @@ names swapped and its undirected edges turned low end first toward the
 plainest form, so a star shrinks to `1 2, 1 3, 1 4` from any centre.
 `std.graph.Digraph` is the directed simple graph: arcs both ways and
 cycles are made, and arcs keep their direction while shrinking
-(`shrinking_a_digraph_keeps_each_arc_the_way_it_points`).
+(`shrinking_a_digraph_keeps_each_arc_the_way_it_points`). Reads inside
+a `for _ in lo..hi` (or a domain) are a field of their own, one row per
+pass, nested loops included, when each pass reads the same typed `let`s
+(`reads_in_a_loop_are_generated_as_one_row_per_pass`); over the
+1,332 ports, those stress can make inputs for rose from 847 to 960. The
+scan also found programs that were "supported" with reads left out of
+every case: reads inside a plain fn, and `read(gen: f)` / `read(none: x)`.
+Each is now an error naming the read
+(`reads_no_field_describes_are_refused_not_left_out`). Shrinking now also
+lowers a value while it drops an element, which a FIFO memory of `m`
+words needs (`a_value_and_an_element_go_together_when_neither_goes_alone`);
+the 10th seeded bug, `noip10p1-evict-early`, reads its words in a loop.
+Benchmark: 10 bugs, all minimal, median 0.66 s.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
-**Next.** Generators keyed to the
+**Next.** `read(gen: f)` made by running `f` (63 ports refused);
+loops whose count is read inside the pass (`k` then `k` values: 111
+ports refused, with loops that `break`); reads in fns the program calls
+(44); generators keyed to the
 stdlib declarations, not their names; worst-case values and anti-hash generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)

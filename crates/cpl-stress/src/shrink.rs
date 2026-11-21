@@ -302,7 +302,8 @@ fn number_at(case: &Case, path: &[usize]) -> Option<i128> {
 /// `accept` takes them; `accept` gives back the cases it keeps. Two
 /// values that fail only while equal stop each other when lowered one
 /// at a time. Sizes stay out: they have their own steps, and a size
-/// equal to a value by chance would hold the value up.
+/// equal to a value by chance would hold the value up, and so would a
+/// number already at its lower bound.
 fn lower_equal(
     spec: &InputSpec,
     cases: &mut Vec<Case>,
@@ -318,7 +319,7 @@ fn lower_equal(
                 .map(|(path, _)| path)
                 .collect();
             for (path, lo) in numbers(spec, case) {
-                if number_at(case, &path) == Some(x) && !sizes.contains(&path) {
+                if number_at(case, &path) == Some(x) && lo < x && !sizes.contains(&path) {
                     paths.push((index, path));
                     floor = floor.max(lo);
                 }
@@ -698,25 +699,9 @@ pub fn shrink(
                 if current <= lo {
                     break;
                 }
-                let mut smaller = best.clone();
-                *at(&mut smaller, &path) = Value::Int(current - 1);
-                // Which arrays the smaller size shortens, at any depth: a
-                // smaller `k` shortens every permutation in a list of them.
-                let Some(fitted) = fit(spec, &smaller) else {
+                let Some(smaller) = without_element(spec, &best, &path, position) else {
                     break;
                 };
-                let mut any = false;
-                for (field, new) in fitted.values.iter().enumerate() {
-                    any |= drop_where_shorter(
-                        &best.values[field],
-                        new,
-                        &mut smaller.values[field],
-                        position,
-                    );
-                }
-                if !any {
-                    break;
-                }
                 if attempt(&mut best, smaller) {
                     improved = true;
                 } else {
@@ -846,11 +831,58 @@ pub fn shrink(
                 attempt(&mut best, candidate).then(|| vec![best.clone()])
             });
         }
+        // 3c. A value lowered by one as an element goes: a failure that
+        //    needs `m` values past a bound of `m` stops both steps alone.
+        if !improved {
+            'pairs: for (size, lo) in sizes(spec, &best) {
+                for position in 0.. {
+                    if number_at(&best, &size).is_none_or(|current| current <= lo) {
+                        break;
+                    }
+                    let Some(smaller) = without_element(spec, &best, &size, position) else {
+                        break;
+                    };
+                    for (path, lo) in numbers(spec, &smaller) {
+                        let Some(value) = number_at(&smaller, &path).filter(|&v| v > lo) else {
+                            continue;
+                        };
+                        let mut candidate = smaller.clone();
+                        let slot = at(&mut candidate, &path);
+                        *slot = slot.with(value - 1);
+                        if attempt(&mut best, candidate) {
+                            improved = true;
+                            break 'pairs;
+                        }
+                    }
+                }
+            }
+        }
         if !improved {
             break;
         }
     }
     best
+}
+
+/// `case` with the size at `path` one smaller and element `position`
+/// dropped from each array that gets shorter, at any depth: a smaller
+/// `k` shortens every permutation in a list of them. `None` when no array
+/// is shorter or `position` is past the end of them.
+fn without_element(spec: &InputSpec, case: &Case, path: &Path, position: usize) -> Option<Case> {
+    let current = number_at(case, path)?;
+    let mut smaller = case.clone();
+    *at(&mut smaller, path) = Value::Int(current - 1);
+    let fitted = fit(spec, &smaller)?;
+    let mut any = false;
+    for (field, new) in fitted.values.iter().enumerate() {
+        any |= drop_where_shorter(
+            &case.values[field],
+            new,
+            &mut smaller.values[field],
+            position,
+        );
+    }
+    any.then_some(smaller)
 }
 
 /// Shrinks a multitest input: first to the one test case that fails on

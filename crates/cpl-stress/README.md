@@ -33,6 +33,16 @@ let queries: [0..q](V, V) = read()
 
 is two numbers, then `n` numbers, then `q` pairs of vertices. A bound can
 use any value read before it, so every generated case is a valid input.
+A loop that reads the same typed `let`s on every pass is a row per pass:
+
+```cp
+for _ in 0..q:
+    let (l, r): (V, V) = read()
+```
+
+reads what `let queries: [0..q](V, V) = read()` would. A read stress can't
+make (in a fn, `read(gen: f)`, a loop whose pass count is read inside it)
+is an error that names it, never left out of the case.
 
 Names that decide how much input there is (`n` and `q` above) are *sizes*.
 `--size 8` keeps them at 8 or less so a brute finishes; values stay close

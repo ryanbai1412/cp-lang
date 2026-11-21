@@ -1229,3 +1229,141 @@ fn shrinking_a_digraph_keeps_each_arc_the_way_it_points() {
     let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| pointing_down(case));
     assert_eq!(smallest.render(), "2 1\n2 1\n");
 }
+
+#[test]
+fn reads_in_a_loop_are_generated_as_one_row_per_pass() {
+    let src = "let (n, q): (1..=5, 0..=3) = read()
+domain I = 1..=n
+for i in I:
+    let (x, y): (1..=9, 1..=9) = read()
+    let w: -3..=3 = read()
+    print(x + y + w + i)
+for _ in 0..q:
+    let k: 1..=4 = read()
+    for _ in 0..n:
+        let c: Char = read()
+        print(c)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    assert_eq!(spec.fields.len(), 3);
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap_or(-100))
+            .collect();
+        let (n, q) = (tokens[0], tokens[1]);
+        let mut at = 2;
+        for _ in 0..n {
+            assert!((1..=9).contains(&tokens[at]) && (1..=9).contains(&tokens[at + 1]));
+            assert!((-3..=3).contains(&tokens[at + 2]));
+            at += 3;
+        }
+        // Letters of one pass are written together, as one word.
+        let words: String = case.render().split_whitespace().skip(at).collect();
+        let mut rest = words.chars();
+        for _ in 0..q {
+            let k = rest.next().and_then(|k| k.to_digit(10)).unwrap();
+            assert!((1..=4).contains(&k));
+            for _ in 0..n {
+                assert!(rest.next().is_some_and(|c| c.is_ascii_lowercase()));
+            }
+        }
+        assert_eq!(rest.next(), None, "{}", case.render());
+    }
+}
+
+#[test]
+fn loops_whose_reads_a_field_cannot_describe_are_refused() {
+    let refused = [
+        // The type uses the loop variable.
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let k: 1..=3 = read()\n    for _ in 0..k:\n        let a: Int = read()\n",
+        "let n: 1..=5 = read()\nfor i in 1..=n:\n    let a: [i]Int = read()\n    print(a)\n",
+        // The loop can stop early.
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: Int = read()\n    if a == 0: break\n",
+        // A pass can skip a read.
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: Int = read()\n    if a == 0: continue\n    let b: Int = read()\n",
+        // A read that is not a typed `let`.
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    print(read())\n",
+        // A loop over a list, whose length is not a read.
+        "for x in [1, 2]:\n    let a: Int = read()\n",
+    ];
+    for src in refused {
+        let err = InputSpec::from_source(src).unwrap_err();
+        assert!(
+            err.message.contains("this loop reads"),
+            "{src}: {}",
+            err.message
+        );
+    }
+    // `continue` after the last read leaves every read in place.
+    let src = "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: Int = read()\n    if a == 0: continue\n    print(a)\n";
+    assert!(InputSpec::from_source(src).is_ok());
+}
+
+#[test]
+fn a_value_and_an_element_go_together_when_neither_goes_alone() {
+    // A FIFO memory of `m` words that holds only `m - 1`: failing needs a
+    // word read again `m - 1` new words later, so neither `m` nor the
+    // words shrink alone.
+    let src = "let (m, n): (1..=100, 1..=1000) = read()
+for _ in 0..n:
+    let w: 0..=1000 = read()
+    print(w)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let misses = |m: usize, words: &[i128], room: usize| {
+        let mut memory: Vec<i128> = Vec::new();
+        let mut count = 0;
+        for &w in words {
+            if memory.contains(&w) {
+                continue;
+            }
+            count += 1;
+            memory.push(w);
+            if memory.len() > room.min(m) {
+                memory.remove(0);
+            }
+        }
+        count
+    };
+    let fails = |case: &Case| {
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let m = tokens[0] as usize;
+        let words = &tokens[2..];
+        misses(m, words, m) != misses(m, words, m - 1)
+    };
+    let start = Case {
+        values: vec![
+            Value::Tuple(vec![Value::Int(4), Value::Int(5)]),
+            Value::Seq([4, 0, 1, 2, 4].map(Value::Int).to_vec()),
+        ],
+        cases: Vec::new(),
+        until_eof: false,
+    };
+    assert!(fails(&start));
+    let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| fails(case));
+    assert_eq!(smallest.render(), "1 2\n0 0\n");
+}
+
+#[test]
+fn reads_no_field_describes_are_refused_not_left_out() {
+    let cases = [
+        ("let n: 1..=5 = read()\nfn row() -> Int:\n    let x: Int = read()\n    x\nprint(row())\n", "this fn reads input"),
+        ("let n: 1..=5 = read()\n@memo\nfn row(i: Int) -> Int:\n    let x: Int = read()\n    x\nprint(row(n))\n", "this fn reads input"),
+        ("let n: 2..=9 = read()\nlet x: 1..=n = read(gen: pick)\nfn pick() -> Int: n\n", "read(gen: ..)"),
+        ("let n: 1..=5 = read()\nfor _ in 0..n:\n    let x: ?Int = read(none: 0)\n", "this loop reads"),
+    ];
+    for (src, wanted) in cases {
+        let err = InputSpec::from_source(src).unwrap_err();
+        assert!(err.message.contains(wanted), "{src}: {}", err.message);
+    }
+    // `read2(n)` is a call of the program's own fn, not of `read`.
+    let src = "let n: 1..=5 = read()\nfn read2(x: Int) -> Int: x\nprint(read2(n))\n";
+    assert!(InputSpec::from_source(src).is_ok());
+}

@@ -1598,6 +1598,17 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   `n(n-1)`, arcs never flipped while shrinking (`shrinking_a_digraph_keeps_each_arc_the_way_it_points`).
   The port now reads a `Digraph`; its `.min` is the same graph with its arcs in order. Reverse:
   drop the alias and `GraphKind::Digraph` and point the port back at `SimpleGraph`.
+- **25.8 Reads in a loop are a field; reads stress can't make are errors.** 342 of 1,332 ports
+  read inside `for _ in 0..q:`, and stress refused all of them. A loop over a range or a domain
+  whose passes read only typed `let x: T = read()` lines (or loops like it), with types that use
+  nothing bound inside the loop, is now an array field of what one pass reads: the same input,
+  so no new concept, and every shrink step already works on it. A `break` or `return`, a
+  `continue` before a read, or a type that uses a value read in the pass is refused, since a
+  fixed row cannot describe it. Reads inside a plain (or `@memo`) fn and `read(gen:)` /
+  `read(none:)` were silently left out of every case (a too-short input, not a bug found); they
+  are errors now. Shrinking gains one step, run only once the others stall: lower a value by one
+  while dropping one element. Reverse: drop `Builder::pass` and the `For` arm (loops are refused
+  again), and the `Fn` and `reads_with_options` arms (those reads are left out again).
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 
