@@ -21,11 +21,11 @@ for u in t.at.rev:
     prv_val[u.to_idx] = max_ch
     if let mc = max_ch: sub_max[u] max= mc
 
-var dp: [0..n]Z = 0
-var dp_pref: [0..=n]Z = 0
-dp[max_leaf] = 1
-for i in max_leaf + 1..n:
-    dp_pref[i] = dp_pref[i - 1] + dp[i - 1]
-    if let pv = prv_val[i], pv < i:
-        dp[i] = dp_pref[i] - dp_pref[pv + 1]
-print(dp[n - 1])
+var dp = Prefix<Z>.filling(n)
+for i in 0..n:
+    let val = if i == max_leaf: Z(1)
+    elif i > max_leaf:
+        if let pv = prv_val[i], pv < i: dp.sum(pv + 1..i) else: Z(0)
+    else: Z(0)
+    dp.set(i, val)
+print(dp.sum(n - 1..n))

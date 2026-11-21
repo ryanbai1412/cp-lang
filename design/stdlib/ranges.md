@@ -179,24 +179,46 @@ Static O(1) queries after O(n) or O(r * c) preprocessing, indexed by
 `Bounds<D>` so off-by-one cut shifts cannot compile.
 
 ```cp
-// Unified shape-dispatched Prefix family (constructed via `prefix(a)`)
-struct Prefix<D, T>                                 // 1-D over [D]T
+enum FillOrder = Forward | Reverse
+
+// Unified shape-dispatched Prefix family (static via `prefix(a)`, append-only via `.filling(...)` -> `FillPrefix`)
+struct Prefix<D, T>                                 // 1-D over [D]T (zero-overhead static table)
     fn new(a: [D]T) -> Prefix<D, T>                 // O(|D|)
+    fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>  // O(|D|)
     fn prefix(self, b: Bounds<D>) -> T              // O(1)
     fn sum(self, r: Range<D>) -> T                  // O(1)
 
-struct Prefix<R, C, T>                              // 2-D over [R, C]T
+struct Prefix<R, C, T>                              // 2-D over [R, C]T (zero-overhead static table)
     fn new(a: [R, C]T) -> Prefix<R, C, T>           // O(|R| * |C|)
+    fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>  // O(|R| * |C|)
     fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T // O(1)
     fn sum(self, rows: Range<R>, cols: Range<C>) -> T // O(1)
 
-struct Prefix<T>                                    // List<T> / [0..n]T
+struct Prefix<T>                                    // List<T> / [0..n]T (zero-overhead static table)
     fn new(a: List<T>) -> Prefix<T>                 // O(n)
+    fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>  // O(n)
     fn prefix(self, k: Int) -> T                    // O(1)
     fn sum(self, r: Range<Int>) -> T                // O(1)
 
+struct FillPrefix<D, T>                             // also FillPrefix<R, C, T> and FillPrefix<T>
+    fn set(mut self, i: D, x: T)                    // O(1), must follow fill order (row-major in 2D)
+    fn prefix(self, b: Bounds<D>) -> T              // O(1), must lie in filled region
+    fn sum(self, r: Range<D>) -> T                  // O(1), must lie in filled region
+
 fn prefix(a)                                        // dispatches on [D]T, [R, C]T, or List<T>
 ```
+
+Append-only `Prefix.filling(...)` covers DPs that compute each cell while
+querying O(1) prefix or suffix sums of the already-filled part (1D or 2D,
+forward or reverse, migrated in `cf2183f` [2D reverse] and `cf2229e` [1D
+forward]). `.set` traps on out-of-order writes and `.sum`/`.prefix` trap
+on queries touching unfilled cells (empty ranges always return `T.zero`).
+Other 2D prefix-sum ports inspected during the audit (`ioi07p5`, `apio09p1`)
+are static rather than append-only DPs and are intentionally not migrated
+to `.filling`: `apio09p1.cp` already uses static `prefix(g)`, and
+`ioi07p5.cp` builds static per-layer 2D prefix sums over a 3D `[Z, U, V]Int`
+count table after reading all points (pending a 3D slice / per-layer static
+`prefix` view rather than incremental `.filling`).
 
 Additions to `std.prefix`:
 

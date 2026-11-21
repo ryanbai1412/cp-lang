@@ -971,8 +971,10 @@ struct Fenwick2D<R, C, T> // O(log R * log C)
     fn new() -> Fenwick2D<R, C, T>
     fn add(mut self, r: R, c: C, x: T)
     fn sum(self, rows: Range<R>, cols: Range<C>) -> T
+enum FillOrder = Forward | Reverse
 struct Prefix<D, T> // also Prefix<R, C, T> for 2D grids and Prefix<T> for List<T>
     fn new(a: [D]T) -> Prefix<D, T> // O(|D|); also [R, C]T in O(|R|*|C|) and List<T> in O(n)
+    fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> // O(|D|) / O(|R|*|C|) / O(n) (takes n: Int for List<T>); append-only prefix/suffix table (`FillPrefix<D, T>`, `FillPrefix<R, C, T>`, `FillPrefix<T>`) with O(1) `.set`, `.prefix`, `.sum`
     fn prefix(self, b: Bounds<D>) -> T // O(1); (r: Bounds<R>, c: Bounds<C>) for 2D, (k: Int) for List<T>
     fn sum(self, r: Range<D>) -> T // O(1); (rows: Range<R>, cols: Range<C>) for 2D, (r: Range<Int>) for List<T>
 fn prefix(a) // prelude shape dispatch over [D]T, [R, C]T, and List<T>; L0513 + checker error migrate removed prefix1/prefix2/prefix_n/Prefix1/Prefix2/PrefixN/Diff1/Diff2

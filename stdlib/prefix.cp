@@ -7,10 +7,45 @@
 use std.algebra.{Monoid}
 use std.seq.{ends}
 
-/// Static prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s,
+/// Fill direction for an append-only `Prefix.filling(...)` table.
+pub enum FillOrder = Forward | Reverse
+
+/// Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
+pub struct FillPrefix<D, T>:
+    p: [D.bounds]T
+    rev: Bool
+    next: Int
+
+    /// Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`). O(1).
+    pub fn set(mut self, i: D, x: T):
+        let in_order = i.ord == next
+        assert in_order
+        if rev:
+            p[i.l] = x + p[i.r]
+            next -= 1
+        else:
+            p[i.r] = p[i.l] + x
+            next += 1
+
+    /// The sum of everything left of boundary `b`. O(1).
+    pub fn prefix(self, b: Bounds<D>) -> T:
+        if b.ord == 0: return T.zero
+        let in_filled = if rev: next < 0 else: b.ord <= next
+        assert in_filled
+        return if rev: self.p[D.bounds.nth(0)] - self.p[b] else: self.p[b]
+
+    /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty. O(1).
+    pub fn sum(self, r: Range<D>) -> T:
+        if r.is_empty: return T.zero
+        let in_filled = if rev: r.start.ord > next else: r.end.ord <= next
+        assert in_filled
+        return if rev: self.p[r.start] - self.p[r.end] else: self.p[r.end] - self.p[r.start]
+
+/// Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s,
 /// `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
-/// Construct with `prefix(a)` in O(|D|) / O(|R| * |C|) / O(a.len); `.sum(...)` and `.prefix(...)`
-/// are O(1).
+/// Construct statically with `prefix(a)` in O(|D|) / O(|R| * |C|) / O(a.len), or incrementally
+/// with `Prefix<...>.filling(order: FillOrder.Forward | FillOrder.Reverse)` and O(1) `.set(...)`
+/// in fill order; `.sum(...)` and `.prefix(...)` are O(1) over the already-filled prefix or suffix.
 pub struct Prefix<D, T>:
     p: [D.bounds]T
 
@@ -21,13 +56,70 @@ pub struct Prefix<D, T>:
             p[i.r] = p[i.l] + a[i]
         Prefix(p)
 
+    /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`. O(|D|).
+    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>:
+        let rev = order == FillOrder.Reverse
+        FillPrefix([D.bounds] _ => T.zero, rev, if rev: D.K - 1 else: 0)
+
     /// The sum of everything left of boundary `b`. O(1).
     pub fn prefix(self, b: Bounds<D>) -> T = self.p[b]
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty. O(1).
     pub fn sum(self, r: Range<D>) -> T = if r.is_empty: T.zero else: self.p[r.end] - self.p[r.start]
 
-/// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` for `a: [R, C]T`.
+/// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
+pub struct _FillPrefix2 < R, C, T >:
+    p: [R.bounds, C.bounds]T
+    rev: Bool
+    next: Int
+
+    /// Write the next cell in row-major fill order (top-left to bottom-right for `Forward`, bottom-right to top-left for `Reverse`). O(1).
+    pub fn set(mut self, r: R, c: C, x: T):
+        let in_order = r.ord * C.K + c.ord == next
+        assert in_order
+        if rev:
+            p[r.l, c.l] = x + p[r.r, c.l] + p[r.l, c.r] - p[r.r, c.r]
+            next -= 1
+        else:
+            p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + x
+            next += 1
+
+    /// The sum of everything above row boundary `r` and left of column boundary `c`. O(1).
+    pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T:
+        if r.ord == 0 or c.ord == 0: return T.zero
+        let in_filled = if rev: next < 0 else: (r.ord - 1) * C.K + (c.ord - 1) < next
+        assert in_filled
+        let r0 = R.bounds.nth(0)
+        let c0 = C.bounds.nth(0)
+        return if rev:
+            self.p[r0, c0] - self.p[r, c0] - self.p[r0, c] + self.p[r, c]
+        else:
+            self.p[r, c]
+
+    /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty. O(1).
+    pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T:
+        if rows.is_empty or cols.is_empty: return T.zero
+        let in_filled = if rev: rows.start.ord * C.K + cols.start.ord > next
+        else: (rows.end.ord - 1) * C.K + (cols.end.ord - 1) < next
+        assert in_filled
+        return if rev:
+            self.p[
+                rows.start,
+                cols.start,
+            ] - self.p[rows.end, cols.start] - self.p[
+                rows.start,
+                cols.end,
+            ] + self.p[rows.end, cols.end]
+        else:
+            self.p[rows.end, cols.end] - self.p[rows.start, cols.end] - self.p[
+                rows.end,
+                cols.start,
+            ] + self.p[
+                rows.start,
+                cols.start,
+            ]
+
+/// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 pub struct _Prefix2 < R, C, T >:
     p: [R.bounds, C.bounds]T
 
@@ -39,22 +131,57 @@ pub struct _Prefix2 < R, C, T >:
                 p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + a[r, c]
         _Prefix2(p)
 
+    /// Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major `order`. O(|R| * |C|).
+    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>:
+        let rev = order == FillOrder.Reverse
+        _FillPrefix2([R.bounds, C.bounds] (_, _) => T.zero, rev, if rev: R.K * C.K - 1 else: 0)
+
     /// The sum of everything above row boundary `r` and left of column boundary `c`. O(1).
     pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T = self.p[r, c]
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty. O(1).
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T:
-        if rows.is_empty or cols.is_empty: T.zero
-        else:
-            self.p[rows.end, cols.end] - self.p[rows.start, cols.end] - self.p[
-                rows.end,
-                cols.start,
-            ] + self.p[
-                rows.start,
-                cols.start,
-            ]
+        if rows.is_empty or cols.is_empty: return T.zero
+        return self.p[rows.end, cols.end] - self.p[rows.start, cols.end] - self.p[
+            rows.end,
+            cols.start,
+        ] + self.p[
+            rows.start,
+            cols.start,
+        ]
 
-/// Internal list shape of `Prefix<T>`, constructed by `prefix(a)` for `a: List<T>` or `[0..n]T`.
+/// Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
+pub struct _FillPrefixList < T >:
+    p: List<T>
+    rev: Bool
+    next: Int
+
+    /// Write index `i` in fill order (`0..n` for `Forward`, `(0..n).rev` for `Reverse`). O(1).
+    pub fn set(mut self, i: Int, x: T):
+        let in_order = i == next
+        assert in_order
+        if rev:
+            p[i] = x + p[i + 1]
+            next -= 1
+        else:
+            p[i + 1] = p[i] + x
+            next += 1
+
+    /// The sum of the first `k` values. O(1).
+    pub fn prefix(self, k: Int) -> T:
+        if k == 0: return T.zero
+        let in_filled = if rev: next < 0 else: k <= next
+        assert in_filled
+        return if rev: self.p[0] - self.p[k] else: self.p[k]
+
+    /// The sum of `a[i]` for `i` in `r`, or zero when `r` is empty. O(1).
+    pub fn sum(self, r: Range<Int>) -> T:
+        if r.is_empty: return T.zero
+        let in_filled = if rev: r.start > next else: r.end <= next
+        assert in_filled
+        return if rev: self.p[r.start] - self.p[r.end] else: self.p[r.end] - self.p[r.start]
+
+/// Internal list shape of `Prefix<T>`, constructed by `prefix(a)` or `Prefix<T>.filling(n, ...)`.
 pub struct _PrefixList < T >:
     p: List<T>
 
@@ -64,6 +191,12 @@ pub struct _PrefixList < T >:
         for i in 0..a.len:
             p[i + 1] = p[i] + a[i]
         _PrefixList(p)
+
+    /// Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)` in `order`. O(n).
+    pub fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>:
+        assert n >= 0
+        let rev = order == FillOrder.Reverse
+        _FillPrefixList(List.filled(n + 1, T.zero), rev, if rev: n - 1 else: 0)
 
     /// The sum of the first `k` values. O(1).
     pub fn prefix(self, k: Int) -> T = self.p[k]
@@ -229,3 +362,68 @@ fn diff_1d_and_2d_match_brute():
     let got2 = d2.finish()
     for r in R:
         for c in C: assert got2[r, c] == g[r, c]
+
+@test
+fn filling_1d_forward_and_reverse_match_brute():
+    domain V = 1..=8
+    let a = [V] _ => rand(-10, 10)
+    var fwd = Prefix<V, Int>.filling()
+    for i in V:
+        fwd.set(i, a[i])
+        for l in V.first..=i:
+            for r in l..=i:
+                assert fwd.sum(l..=r) == sum(a[k] for k in l..=r)
+        assert fwd.prefix(i.r) == sum(a[k] for k in V.first..=i)
+    assert fwd.sum(V(3)..V(3)) == 0
+
+    var rev = Prefix<V, Int>.filling(order: FillOrder.Reverse)
+    for i in V.rev:
+        rev.set(i, a[i])
+        for l in i..=V.last:
+            for r in l..=V.last:
+                assert rev.sum(l..=r) == sum(a[k] for k in l..=r)
+    assert rev.prefix(V.first.l) == 0
+    assert rev.prefix(V.last.r) == sum(a[k] for k in V)
+
+@test
+fn filling_2d_forward_and_reverse_match_brute():
+    domain R = 0..4
+    domain C = 1..=5
+    let a = [R, C] (_, _) => rand(-10, 10)
+
+    var fwd = Prefix<R, C, Int>.filling()
+    for r in R:
+        for c in C:
+            fwd.set(r, c, a[r, c])
+            for r1 in R.first..=r:
+                for c1 in C.first..=c:
+                    let want = sum(a[x, y] for x in r1..=r for y in c1..=c)
+                    assert fwd.sum(r1..=r, c1..=c) == want
+            assert fwd.prefix(r.r, c.r) == sum(a[x, y] for x in R.first..=r for y in C.first..=c)
+
+    var rev = Prefix<R, C, Int>.filling(order: FillOrder.Reverse)
+    for r in R.rev:
+        for c in C.rev:
+            rev.set(r, c, a[r, c])
+            for r2 in r..=R.last:
+                for c2 in c..=C.last:
+                    let want = sum(a[x, y] for x in r..=r2 for y in c..=c2)
+                    assert rev.sum(r..=r2, c..=c2) == want
+    assert rev.prefix(R.last.r, C.last.r) == sum(a[x, y] for x in R for y in C)
+
+@test
+fn filling_list_forward_and_reverse_match_brute():
+    let xs = [3, -1, 4, 1, 5, -9]
+    var fwd = Prefix<Int>.filling(xs.len)
+    for i in 0..xs.len:
+        fwd.set(i, xs[i])
+        for l in 0..=i:
+            assert fwd.sum(l..=i) == sum(xs[k] for k in l..=i)
+        assert fwd.prefix(i + 1) == sum(xs[k] for k in 0..=i)
+
+    var rev = Prefix<Int>.filling(xs.len, order: FillOrder.Reverse)
+    for i in (0..xs.len).rev:
+        rev.set(i, xs[i])
+        for r in i..xs.len:
+            assert rev.sum(i..=r) == sum(xs[k] for k in i..=r)
+    assert rev.prefix(xs.len) == sum(xs[k] for k in 0..xs.len)

@@ -14,14 +14,10 @@ domain V = 1..=n
 let s: [V]Char = read()
 let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V(1))
 
-// suf[x, y]: the sum of f(u, v) over the positions of u right of cut x and of v right of y.
-var suf: [Bounds<t.Pre>, Bounds<t.Pre>]Z = 0
-// R is Range<t.Pre>, which a signature cannot name yet.
-fn rect<R>(a: R, b: R) -> Z:
-    suf[a.start, b.start] - suf[a.end, b.start] - suf[a.start, b.end] + suf[a.end, b.end]
+var f = Prefix<t.Pre, t.Pre, Z>.filling(order: FillOrder.Reverse)
 for u in t.at.rev:
+    let (x, su, bu) = (t.pos(u), s[u], t.below(u))
     for v in t.at.rev:
-        let (x, y) = (t.pos(u), t.pos(v))
-        let f = if s[u] == s[v]: 1 + rect(t.below(u), t.below(v)) else: 0
-        suf[x.l, y.l] = f + suf[x.r, y.l] + suf[x.l, y.r] - suf[x.r, y.r]
-print([rect(t.sub(v), t.sub(v)) for v in V])
+        let val = if su == s[v]: 1 + f.sum(bu, t.below(v)) else: 0
+        f.set(x, t.pos(v), val)
+print([f.sum(t.sub(v), t.sub(v)) for v in V])

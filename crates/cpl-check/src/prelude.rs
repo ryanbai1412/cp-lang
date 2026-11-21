@@ -107,8 +107,19 @@ pub const BUILT_ON: &[(&str, &str)] = &[
 pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
     ("prefix", "prefix", "_Prefix2"),
     ("prefix", "prefix", "_PrefixList"),
+    ("prefix", "prefix", "FillPrefix"),
+    ("prefix", "prefix", "_FillPrefix2"),
+    ("prefix", "prefix", "_FillPrefixList"),
+    ("prefix", "prefix", "FillOrder"),
     ("Prefix", "prefix", "_Prefix2"),
     ("Prefix", "prefix", "_PrefixList"),
+    ("Prefix", "prefix", "FillPrefix"),
+    ("Prefix", "prefix", "_FillPrefix2"),
+    ("Prefix", "prefix", "_FillPrefixList"),
+    ("Prefix", "prefix", "FillOrder"),
+    ("FillPrefix", "prefix", "_FillPrefix2"),
+    ("FillPrefix", "prefix", "_FillPrefixList"),
+    ("FillPrefix", "prefix", "FillOrder"),
     ("Diff", "prefix", "_Diff2"),
 ];
 

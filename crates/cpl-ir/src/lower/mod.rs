@@ -23,6 +23,8 @@ pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static s
     match (name, arity) {
         ("Prefix", 1) => Some("_PrefixList"),
         ("Prefix", 3) => Some("_Prefix2"),
+        ("FillPrefix", 1) => Some("_FillPrefixList"),
+        ("FillPrefix", 3) => Some("_FillPrefix2"),
         ("Diff", 3) => Some("_Diff2"),
         _ => None,
     }

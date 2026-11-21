@@ -573,3 +573,51 @@ fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
         assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
     }
 }
+
+#[test]
+fn prefix_filling_traps_in_interp_and_checked_cpp() {
+    let cases = [
+        (
+            "domain D = 0..4\nvar p = Prefix<D, Int>.filling()\np.set(D(1), 5)\n",
+            "in_order",
+        ),
+        (
+            "domain D = 0..4\nvar p = Prefix<D, Int>.filling(order: FillOrder.Reverse)\np.set(D(0), 5)\n",
+            "in_order",
+        ),
+        (
+            "domain D = 0..4\nvar p = Prefix<D, Int>.filling()\np.set(D(0), 5)\nprint(p.sum(D(0)..=D(1)))\n",
+            "in_filled",
+        ),
+        (
+            "domain D = 0..4\nvar p = Prefix<D, Int>.filling(order: FillOrder.Reverse)\np.set(D(3), 5)\nprint(p.sum(D(2)..=D(3)))\n",
+            "in_filled",
+        ),
+        (
+            "domain R = 0..2\ndomain C = 0..3\nvar p = Prefix<R, C, Int>.filling()\np.set(R(0), C(1), 1)\n",
+            "in_order",
+        ),
+        (
+            "domain R = 0..2\ndomain C = 0..3\nvar p = Prefix<R, C, Int>.filling(order: FillOrder.Reverse)\np.set(R(1), C(2), 1)\nprint(p.sum(R(1)..=R(1), C(1)..=C(2)))\n",
+            "in_filled",
+        ),
+        (
+            "var p = Prefix<Int>.filling(4)\np.set(2, 7)\n",
+            "in_order",
+        ),
+        (
+            "var p = Prefix<Int>.filling(4, order: FillOrder.Reverse)\np.set(3, 7)\nprint(p.sum(2..4))\n",
+            "in_filled",
+        ),
+    ];
+    for (idx, (src, msg)) in cases.iter().enumerate() {
+        let (code, err) = run_stderr(src, "");
+        assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
+        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
+        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+
+        let (cpp_code, cpp_err) = build_and_run_cpp(src);
+        assert_eq!(cpp_code, 3, "checked cpp case {idx} should trap:\n{cpp_err}");
+        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+    }
+}

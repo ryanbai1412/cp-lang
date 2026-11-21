@@ -4,15 +4,18 @@
 // and v: zero unless the letters match, else one (stop) plus every pair that
 // starts strictly below u and strictly below v. A subtree is a preorder
 // range, so that is a rectangle of f, and the answer for i is sub(i) x sub(i).
+use std.graph.{Tree}
 type Z = Mod<998244353>
 
 @!multitest
 let n = read(1..=5000)
 domain V = 1..=n
 let s: [V]Char = read()
-let t = Rooted(read<Tree<V>>(), root: V.first)
+let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)
 
-var f: RectSums<[t.Pre, t.Pre]Z> = 0          // filled from the bottom-right corner
-for u in t.at.rev, v in t.at.rev:
-    f[t.pos(u), t.pos(v)] = if s[u] == s[v]: 1 + f.sum(t.below(u), t.below(v)) else: 0
+var f = Prefix<t.Pre, t.Pre, Z>.filling(order: FillOrder.Reverse)
+for u in t.at.rev:
+    for v in t.at.rev:
+        let val = if s[u] == s[v]: 1 + f.sum(t.below(u), t.below(v)) else: 0
+        f.set(t.pos(u), t.pos(v), val)
 print([f.sum(t.sub(i), t.sub(i)) for i in V])

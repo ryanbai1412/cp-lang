@@ -3761,6 +3761,12 @@ method is not emitted. It has no `limit:`, since a preflow cannot stop at a
 bound. Why now: cf1404e's original uses it and runs 12x faster than Dinic on
 the all-`#` grid. Reverse: delete the method; ports go back to `max_flow`.
 
+## 114. Append-only `Prefix.filling(order: FillOrder)` across 1D, 2D, and List (2026-11-21)
+
+- **Decision.** Extend the unified `Prefix` family (`Prefix<D, T>`, `Prefix<R, C, T>`, `Prefix<T>`) with `FillOrder = Forward | Reverse` and `Prefix<...>.filling(order: FillOrder = FillOrder.Forward)`, returning dedicated append-only tables (`FillPrefix<D, T>`, `FillPrefix<R, C, T>`, `FillPrefix<T>`) with O(1) `.set(...)` in strict fill order (row-major in 2D) and O(1) `.sum(...)`/`.prefix(...)`. Static `prefix(a)` tables keep zero extra fields or branches (zero emitted-size or hot-loop overhead for static users like `cf2129e`). Each `FillPrefix` tracks `rev: Bool` and `next: Int`; `.set` traps on out-of-order writes and `.sum`/`.prefix` trap on any non-empty query reading unfilled cells, with identical trapping in interpreter and C++. `FillOrder`, `FillPrefix`, and `_FillPrefix*` are brought in alongside `Prefix`/`prefix` via `INTERNAL_BUILT_ON`.
+- **Reason.** Corpus audit found two real DPs that fill a prefix/suffix sum table while querying the already-filled part (`cf2183f` in 2D reverse and `cf2229e` in 1D forward), meeting the two-user bar (other 2D prefix-sum ports like `ioi07p5` and `apio09p1` are static rather than append-only). Extending `Prefix` directly rather than adding a one-off `RectSums` struct keeps one type and one O(1) `.sum` vocabulary across static and incremental 1D/2D/list prefix and suffix tables.
+- **Reverse.** Remove `FillOrder`, `filling`, `set`, and the `rev`/`next` fields from `stdlib/prefix.cp` and `FillOrder` from `INTERNAL_BUILT_ON` in `crates/cpl-check/src/prelude.rs`; revert `cf2183f` and `cf2229e` to hand-maintained prefix/suffix arrays.
+
 ## 120. `std.flow.Arc` ids are `0..2^31` (2026-11-21)
 
 `Arc(id: 0..2_147_483_648)`, not `Int`, so every arc handle in the generated

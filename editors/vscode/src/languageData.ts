@@ -40,7 +40,7 @@ export const PRELUDE_TYPES: readonly string[] = [
 export const STDLIB_TYPES: readonly string[] = [
     'Action', 'Adj', 'AhoCorasick', 'Arc', 'BagCursor', 'BeatsSegTree', 'Bitset', 'ByAngle', 'Centroids', 'Comb', 'Compressed', 'Concave', 'Convex',
     'ConnectedGraph', 'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff', 'Digraph', 'Dir4', 'Dir8',
-    'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'ErasableMaxHeap', 'ErasableMinHeap', 'Fenwick', 'Fenwick2D', 'FlatMap', 'Flip',
+    'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'ErasableMaxHeap', 'ErasableMinHeap', 'Fenwick', 'Fenwick2D', 'FillOrder', 'FillPrefix', 'FlatMap', 'Flip',
     'FlowGraph', 'Gen', 'Graph', 'HalfPlane', 'Hash', 'Hash2D', 'HashVal', 'Hashable', 'IndexedMaxHeap', 'IndexedMinHeap', 'Interner',
     'IntervalMap', 'JumpTree', 'LazyLinkCut', 'LazySegTree', 'LazyTreap', 'LiChao', 'LinkCut', 'Line', 'Lit', 'Location', 'Mark', 'MarkMap', 'Marks', 'Mat',
     'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'Palindromes',

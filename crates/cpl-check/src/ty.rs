@@ -603,6 +603,7 @@ impl fmt::Display for Ty {
             Ty::Named { name, args } => {
                 let shown = match name.as_str() {
                     "_Prefix2" | "_PrefixList" => "Prefix",
+                    "_FillPrefix2" | "_FillPrefixList" => "FillPrefix",
                     "_Diff2" => "Diff",
                     other => other,
                 };
