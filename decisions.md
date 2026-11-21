@@ -1962,7 +1962,22 @@ Reverse: none needed; this is general range-type lowering.
    fact), and fires for a value of at least 1e6 on two lines or at least
    1000 on three. Reason: bounds and moduli are big; small numbers repeat
    honestly. Reverse: change the thresholds in `repeated_literals`.
-4. **The friction detector `negative_slice` gets no lint:** `a[..-k]` is
+4. **Two friction detectors become lints:** `push_after_literal` as L0507
+   `push_loop` (with a fix to a comprehension, `head + [..]` after a
+   non-empty start) and `none_check_unwrap` as L0508 (no fix: the right
+   rewrite, `if let` or comparing the option, depends on the use). They
+   are taste lints too: the checklist's hand-rolled structures and
+   sentinels. Reverse: drop them from `LINTS`.
+5. **`repeated_literal` skips the types of `let x: T = read()`:** equal
+   statement bounds of different inputs are separate facts. The first
+   30-hit sample had 6 false positives, all such bounds; after the
+   change a second sample of 30 had 1 (a loop with side effects read as
+   a search). Reverse: drop `input_types` in `repeated_literals`.
+6. **`cpl lint --taste` reports only L05xx, a line per file and a total;
+   the scoreboard counts it per port apart from `lint_warnings`,** so a
+   taste finding is a review signal and never fails the gate. Reverse:
+   fold `taste` into `lint_warnings` in `scripts/scoreboard.py`.
+7. **The friction detector `negative_slice` gets no lint:** `a[..-k]` is
    already the check error E0309 with the same fix, so the friction script's
    one `wa_trap` is stale. Reverse: none needed.
 

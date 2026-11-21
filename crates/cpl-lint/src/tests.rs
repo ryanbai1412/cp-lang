@@ -515,6 +515,27 @@ mod cli {
     }
 
     #[test]
+    fn taste_reports_a_line_per_file_and_the_total() {
+        let dir = scratch("taste");
+        // proto/ports/scout_batch_37/noip18p4.cp's edge list, beside a clean file.
+        std::fs::write(
+            dir.join("a.cp"),
+            "var adj: [0..3]List<Int> = []\nlet (u, v) = (0, 2)\nadj[u].push(v)\nadj[v].push(u)\nvar total = 0\nprint(adj[0].len)\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("b.cp"), "print(sum([1, 2]))\n").unwrap();
+        let (code, out, err) = lint(&["--taste", dir.to_str().unwrap()]);
+        assert_eq!(code, 0, "{err}");
+        let a = dir.join("a.cp");
+        // `var total` is L0201, not a taste lint: it is left out.
+        assert_eq!(
+            out,
+            format!("   1  {}  L0503:1\n   1  total over 1 file of 2  L0503:1\n", a.display())
+        );
+        assert_eq!(err, "2 files checked, 1 warning, 0 errors\n");
+    }
+
+    #[test]
     fn fix_rewrites_the_file_and_reports_what_is_left() {
         let dir = scratch("fix");
         let file = dir.join("a.cp");
@@ -729,13 +750,42 @@ fn index_only_loop_from_noi05p2() {
 }
 
 #[test]
-fn repeated_literal_from_yac6p3() {
-    // proto/ports/yac6p3.cp: the same `1e9` bound twice.
-    let src = "let n: 1..=1e9 = read()\nlet m: 1..=1e9 = read()\nprint(n + m)\n";
+fn push_loop_becomes_a_comprehension_from_ioi16p6io_and_dmopc21c5p5() {
+    // proto/ports/scout_batch_14/ioi16p6io.cp: segments normalised one push at a time.
+    let src = "let raw = [(r: 2, c: 1)]\nvar norm: List<(Int, Int)> = []\nfor p in raw: norm.push((min(p.r, p.c), max(p.r, p.c)))\nnorm.push((0, 0))\nprint(norm)\n";
+    assert_eq!(taste_codes(src), ["L0507"]);
+    assert_eq!(
+        fixed(src),
+        "let raw = [(r: 2, c: 1)]\nvar norm: List<(Int, Int)> = [(min(p.r, p.c), max(p.r, p.c)) for p in raw]\nnorm.push((0, 0))\nprint(norm)\n"
+    );
+    // proto/ports/blind_critic_4/dmopc21c5p5.cp, with a filter and a head.
+    let head = "fn f(n: Int) -> List<Int>:\n    var perm: List<Int> = [0]\n    for i in 1..=n:\n        if i % 2 == 1: perm.push(i)\n    perm\nprint(f(3))\n";
+    assert!(fixed(head).contains("let perm: List<Int> = [0] + [i for i in 1..=n if i % 2 == 1]"));
+    // A push that reads the list is a recurrence, not a comprehension.
+    let rec = "var fib = [1, 1]\nfor i in 0..5: fib.push(fib[i] + fib[i + 1])\nprint(fib)\n";
+    assert_eq!(taste_codes(rec), Vec::<&str>::new());
+}
+
+#[test]
+fn none_check_unwrap_from_cco16p3() {
+    // proto/ports/scout_batch_15/cco16p3.cp: `if p != none and v == p!: continue`.
+    let src = "fn f(p: ?Int, v: Int) -> Bool = p != none and v == p!\nprint(f(none, 1))\n";
+    let found = only(src);
+    assert_eq!(found.code, NONE_CHECK_UNWRAP.code);
+    assert_eq!(found.message, "`p != none` and then `p!`: the check is said twice");
+    let other = "fn f(p: ?Int, q: ?Int) -> Bool = p != none and q! == 1\nprint(f(none, 1))\n";
+    assert_eq!(taste_codes(other), Vec::<&str>::new());
+}
+
+#[test]
+fn repeated_literal_from_noip19p4() {
+    // proto/ports/scout_batch_29/noip19p4.cp: the modulus in a type and again in a `%`.
+    let src = "type Z = Mod<998244353>\nlet a = [3, 4]\nlet total = sum(a) % 998244353\nprint(total, Z(total))\n";
     let found = only(src);
     assert_eq!(found.code, REPEATED_LITERAL.code);
-    assert_eq!(found.message, "`1e9` is written on 2 lines; it is first on line 1");
-    // `-1e9..=1e9` is one bound, and small numbers repeat freely.
-    let one = "let x: -1e9..=1e9 = read()\nprint(x + 1000, x - 1000)\n";
-    assert_eq!(taste_codes(one), Vec::<&str>::new());
+    assert_eq!(found.message, "`998244353` is written on 2 lines; it is first on line 1");
+    // proto/ports/scout_batch_39/today/aac4p5.cp: equal statement bounds of
+    // different inputs are separate facts; `-1e9..=1e9` is one; small numbers repeat.
+    let bounds = "let m: 0..=500_000 = read()\nlet q: 0..=500_000 = read()\nlet x: -1e9..=1e9 = read()\nprint(m + 1000, q - 1000, x + 1000)\n";
+    assert_eq!(taste_codes(bounds), Vec::<&str>::new());
 }

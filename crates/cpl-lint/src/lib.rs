@@ -220,9 +220,29 @@ pub const REPEATED_LITERAL: Lint = Lint {
     default: Level::Warn,
     title: "Repeated large literal",
     summary: "a big literal (a bound or modulus) written in several places",
-    explanation: "Writing the same large bound or modulus literal in multiple places risks drift when constraints change. Bind it once as a `const` (e.g. `const MAX_N = 1e9`).",
-    trigger: "let n: 1..=1e9 = read()\nlet m: 1..=1e9 = read()\nprint(n + m)\n",
-    fix: "const LIM = 1e9\nlet n: 1..=LIM = read()\nlet m: 1..=LIM = read()\nprint(n + m)\n",
+    explanation: "A big literal (a bound, a modulus, an infinity) is written on several lines: facts that must agree but are kept apart. Equal bounds in the types of different `read()` inputs are separate facts and do not count. Name it once (`const P = 998244353`, a domain, a type alias) and use the name.",
+    trigger: "let a = [3, 4]\nprint(sum(a) % 998244353)\nprint(a[0] * a[1] % 998244353)\n",
+    fix: "const P = 998244353\nlet a = [3, 4]\nprint(sum(a) % P)\nprint(a[0] * a[1] % P)\n",
+};
+pub const PUSH_LOOP: Lint = Lint {
+    code: Code("L0507"),
+    name: "push_loop",
+    default: Level::Warn,
+    title: "Loop that only pushes",
+    summary: "a list built by a loop that only pushes: a comprehension",
+    explanation: "A `var xs = [..]` followed by a loop whose only statement is `xs.push(e)`: a comprehension written as a loop. Write the list: `[e for x in xs]` (with `if c` for a filtered loop, `head + [..]` after a non-empty start). `cpl lint --fix` rewrites it.",
+    trigger: "let raw = [3, 1, 2]\nvar doubled: List<Int> = []\nfor x in raw: doubled.push(2 * x)\nprint(doubled)\n",
+    fix: "let raw = [3, 1, 2]\nlet doubled = [2 * x for x in raw]\nprint(doubled)\n",
+};
+pub const NONE_CHECK_UNWRAP: Lint = Lint {
+    code: Code("L0508"),
+    name: "none_check_unwrap",
+    default: Level::Warn,
+    title: "Check for `none`, then unwrap",
+    summary: "`x != none and .. x!`: the check and the unwrap say one thing twice",
+    explanation: "`x != none and .. x! ..` tests the option and then unwraps it: the same fact twice, and the `!` stays if the test is edited away. Bind the value once with `if let v = x:`, or compare the option itself (`x == some(e)`).",
+    trigger: "fn hit(p: ?Int, v: Int) -> Bool = p != none and v == p!\nprint(hit(none, 1))\n",
+    fix: "fn hit(p: ?Int, v: Int) -> Bool = p == some(v)\nprint(hit(none, 1))\n",
 };
 
 /// Every lint, in code order.
@@ -242,6 +262,8 @@ pub const LINTS: &[Lint] = &[
     LOOP_REDUCTION,
     INDEX_ONLY_LOOP,
     REPEATED_LITERAL,
+    PUSH_LOOP,
+    NONE_CHECK_UNWRAP,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like

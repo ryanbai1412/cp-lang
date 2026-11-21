@@ -5,7 +5,7 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, DISCARDED_RESULT, INDEX_ONLY_LOOP, LOOP_REDUCTION, REPEATED_LITERAL,
+    File, Finding, DISCARDED_RESULT, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, REPEATED_LITERAL,
     SEARCH_LOOP, SYMMETRIC_WRITE,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -69,6 +69,7 @@ impl Visitor for Blocks<'_, '_> {
         }
     }
     fn expr(&mut self, expr: &Expr) {
+        self.taste.none_check_unwrap(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -410,12 +411,7 @@ impl<'a> Taste<'a> {
         let [only] = &body.stmts[..] else {
             return;
         };
-        let (cond, op, value) = match &only.kind {
-            StmtKind::Assign { target, op, value }
-                if matches!(&target.kind, ExprKind::Name(n) if n == name) =>
-            {
-                (None, op, value)
-            }
+        let (cond, only) = match &only.kind {
             StmtKind::Expr(Expr {
                 kind:
                     ExprKind::If {
@@ -425,19 +421,111 @@ impl<'a> Taste<'a> {
                 ..
             }) => match &branches[..] {
                 [(Cond::Expr(cond), then)] => match &then.stmts[..] {
-                    [Stmt {
-                        kind: StmtKind::Assign { target, op, value },
-                        ..
-                    }] if matches!(&target.kind, ExprKind::Name(n) if n == name) => {
-                        (Some(cond), op, value)
-                    }
+                    [only] => (Some(cond), only),
                     _ => return,
                 },
                 _ => return,
             },
-            _ => return,
+            _ => (None, only),
         };
-        self.reduce(name, init, pat, iter, cond, op, value, decl, next);
+        match &only.kind {
+            StmtKind::Assign { target, op, value }
+                if matches!(&target.kind, ExprKind::Name(n) if n == name) =>
+            {
+                self.reduce(name, init, pat, iter, cond, op, value, decl, next)
+            }
+            StmtKind::Expr(e) => {
+                if let Some(value) = pushed_onto(e, name) {
+                    self.collect(name, init, pat, iter, cond, value, decl, next)
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// `var xs = [..]` then a loop that only pushes onto `xs`.
+    #[allow(clippy::too_many_arguments)]
+    fn collect(
+        &mut self,
+        name: &str,
+        init: &Expr,
+        pat: &Pattern,
+        iter: &Expr,
+        cond: Option<&Expr>,
+        value: &Expr,
+        decl: &Stmt,
+        next: &Stmt,
+    ) {
+        let ExprKind::List(items) = &init.kind else {
+            return;
+        };
+        let (p, it, v, i) = (
+            self.ntext(pat.span),
+            iter_text(iter, self.ntext(iter.span)),
+            self.ntext(value.span),
+            self.text(init.span),
+        );
+        let c = cond.map(|c| self.ntext(c.span));
+        if mentions(v, name) || c.is_some_and(|c| mentions(c, name)) || mentions(&it, name) {
+            return;
+        }
+        let filter = c.map(|c| format!(" if {c}")).unwrap_or_default();
+        let comp = format!("[{v} for {p} in {it}{filter}]");
+        let text = if items.is_empty() { comp.clone() } else { format!("{i} + {comp}") };
+        let mut diag = Diagnostic::warning(
+            PUSH_LOOP.code,
+            self.pair_span(decl.span, next.span),
+            format!("a loop that only pushes onto `{name}` is a comprehension"),
+        )
+        .with_help(format!("write `{text}`"));
+        if let Some(edits) = self.fold(init, next, "", text) {
+            diag.fixes.push(Fix {
+                title: "use a comprehension".into(),
+                edits,
+            });
+        }
+        self.push(&PUSH_LOOP, diag);
+    }
+
+    /// `x != none and .. x! ..`: the test and the unwrap say one thing twice.
+    fn none_check_unwrap(&mut self, expr: &Expr) {
+        let ExprKind::Binary {
+            op: BinOp::And,
+            lhs,
+            rhs,
+            ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        let ExprKind::Compare { first, rest } = &lhs.kind else {
+            return;
+        };
+        let (ExprKind::Name(x), [(CmpOp::Ne, Expr { kind: ExprKind::None, .. })]) = (&first.kind, &rest[..]) else {
+            return;
+        };
+        struct Unwraps<'n>(&'n str, bool);
+        impl Visitor for Unwraps<'_> {
+            fn expr(&mut self, expr: &Expr) {
+                if let ExprKind::Unwrap(inner) = &expr.kind {
+                    self.1 |= matches!(&inner.kind, ExprKind::Name(n) if n == self.0);
+                }
+            }
+        }
+        let mut unwraps = Unwraps(x, false);
+        walk::walk_expr(&mut unwraps, rhs);
+        if !unwraps.1 {
+            return;
+        }
+        let diag = Diagnostic::warning(
+            NONE_CHECK_UNWRAP.code,
+            expr.span,
+            format!("`{x} != none` and then `{x}!`: the check is said twice"),
+        )
+        .with_help(format!(
+            "bind it once: `if let v = {x} and ..:`, or compare the option itself (`{x} == some(..)`, `{x} ?? d`)"
+        ));
+        self.push(&NONE_CHECK_UNWRAP, diag);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -651,6 +739,20 @@ fn breaks_after_setting(stmts: &[Stmt], name: &str) -> bool {
         })
 }
 
+/// `xs.push(e)`: `e`.
+fn pushed_onto<'e>(e: &'e Expr, name: &str) -> Option<&'e Expr> {
+    let ExprKind::Call { callee, args } = &e.kind else {
+        return None;
+    };
+    let ExprKind::Field { base, name: method } = &callee.kind else {
+        return None;
+    };
+    match (&base.kind, &args[..]) {
+        (ExprKind::Name(n), [arg]) if n == name && method.text == "push" && arg.name.is_none() => Some(&arg.value),
+        _ => None,
+    }
+}
+
 /// `stmt` holds a `?`.
 fn has_try(stmt: &Stmt) -> bool {
     struct Tries(bool);
@@ -696,8 +798,25 @@ fn repeated_literals(file: &File) -> Vec<Finding> {
     struct Ints {
         base: u32,
         seen: HashMap<i128, Vec<Span>>,
+        /// The types of `let x: T = read()`: each is the statement's bound
+        /// for its own input, so equal bounds there are separate facts.
+        input_types: Vec<Span>,
     }
     impl Visitor for Ints {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Let {
+                ty: Some(ty),
+                init: Some(init),
+                ..
+            } = &stmt.kind
+            {
+                if let ExprKind::Call { callee, .. } = &init.kind {
+                    if matches!(&callee.kind, ExprKind::Name(n) if n == "read") {
+                        self.input_types.push(ty.span.shift(self.base));
+                    }
+                }
+            }
+        }
         fn expr(&mut self, expr: &Expr) {
             if let ExprKind::Int(v) = expr.kind {
                 if v >= 1000 {
@@ -709,8 +828,13 @@ fn repeated_literals(file: &File) -> Vec<Finding> {
     let mut ints = Ints {
         base: 0,
         seen: HashMap::new(),
+        input_types: Vec::new(),
     };
     file.walk(&mut ints, |i, base| i.base = base);
+    let input_types = ints.input_types;
+    for spans in ints.seen.values_mut() {
+        spans.retain(|s| !input_types.iter().any(|t| t.start <= s.start && s.end <= t.end));
+    }
     let lines = cpl_diag::LineIndex::new(file.src);
     let mut out = Vec::new();
     for (value, mut spans) in ints.seen {

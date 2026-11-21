@@ -343,6 +343,10 @@ Taste lints L0501–L0506 back the `plan/PORTING.md` checklist (search
 loops, `let _ =` discards, symmetric writes, loop reductions, index-only
 loops, repeated bounds and moduli), each with a doc entry and a test from
 a real port; their fixes change 136 corpus files and break none.
+L0507 `push_loop` and L0508 `none_check_unwrap` come from the friction
+detectors. `cpl lint --taste` counts L05xx per file; the scoreboard and
+`research/PORTS.md` show it per port (12 findings over the 275 gated
+ports, 342 over all of `proto/ports`). Precision by hand: 29 of 30.
 **Next.** A test that every `L0414` is an index
 the C++ checks (codegen to report its checked indexes); lints from the friction
 detectors (`wa_trap` first); profile against `@cost` and the time limit.

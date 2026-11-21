@@ -1,12 +1,13 @@
 //! `cpl lint`.
 
-use crate::{apply_fixes, lint, Config, LINTS};
+use crate::{apply_fixes, is_taste, lint, Config, LINTS};
+use std::collections::BTreeMap;
 use cpl_diag::Severity;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub const USAGE: &str = "\
-usage: cpl lint [--fix] [path]...
+usage: cpl lint [--fix] [--taste] [path]...
 
 Reports code that is legal but probably wrong, slow or unidiomatic. A
 directory stands for every .cp file under it; no path at all means the
@@ -15,6 +16,8 @@ from @allow(name) on an item.
 
 options:
   --fix     apply the fixes that are safe to apply, then report what is left
+  --taste   only the taste lints (L05xx, the plan/PORTING.md checklist):
+            a line per file with findings, then the total by lint
   --list    print every lint with its code and default level
 ";
 
@@ -23,10 +26,12 @@ options:
 /// be linted, 2 for a usage error.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     let mut fix = false;
+    let mut taste = false;
     let mut paths: Vec<PathBuf> = Vec::new();
     for arg in args {
         match arg.as_str() {
             "--fix" => fix = true,
+            "--taste" => taste = true,
             "--list" => {
                 for lint in LINTS {
                     let _ = writeln!(
@@ -65,6 +70,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     files.dedup();
 
     let (mut warnings, mut errors, mut fixed, mut failed) = (0usize, 0usize, 0usize, 0usize);
+    let keep = |d: &cpl_diag::Diagnostic| {
+        !taste || LINTS.iter().any(|l| l.code == d.code && is_taste(l))
+    };
+    let (mut tasteful, mut by_lint) = (0usize, BTreeMap::<&str, usize>::new());
     let mut bad_configs: Vec<PathBuf> = Vec::new();
     for file in &files {
         let name = file.display().to_string();
@@ -95,6 +104,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             continue;
         }
         let mut diagnostics = lint(&src, &config);
+        diagnostics.retain(keep);
         if fix {
             // A fix can uncover another, and two that overlap take two
             // rounds; a file has finitely many of either.
@@ -106,6 +116,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 fixed += applied;
                 src = text;
                 diagnostics = lint(&src, &config);
+                diagnostics.retain(keep);
             }
             if let Err(e) = std::fs::write(file, &src) {
                 let _ = writeln!(stderr, "error: can't write {name}: {e}");
@@ -120,7 +131,18 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             .iter()
             .filter(|d| d.severity == Severity::Warning)
             .count();
-        if !diagnostics.is_empty() {
+        if taste {
+            if !diagnostics.is_empty() {
+                let mut here = BTreeMap::<&str, usize>::new();
+                for d in &diagnostics {
+                    *here.entry(d.code.0).or_default() += 1;
+                    *by_lint.entry(d.code.0).or_default() += 1;
+                }
+                let parts: Vec<String> = here.iter().map(|(c, n)| format!("{c}:{n}")).collect();
+                let _ = writeln!(stdout, "{:>4}  {name}  {}", diagnostics.len(), parts.join(" "));
+                tasteful += 1;
+            }
+        } else if !diagnostics.is_empty() {
             let lines = cpl_diag::LineIndex::new(&src);
             for diagnostic in &diagnostics {
                 let _ = writeln!(
@@ -146,6 +168,17 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     }
     if failed > 0 {
         summary += &format!(", {failed} not linted");
+    }
+    if taste {
+        let parts: Vec<String> = by_lint.iter().map(|(c, n)| format!("{c}:{n}")).collect();
+        let _ = writeln!(
+            stdout,
+            "{:>4}  total over {} of {}  {}",
+            warnings + errors,
+            plural(tasteful, "file"),
+            files.len(),
+            parts.join(" ")
+        );
     }
     let _ = writeln!(stderr, "{summary}");
     (errors > 0 || failed > 0) as u8
