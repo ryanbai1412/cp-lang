@@ -2389,6 +2389,17 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    containers area's `std.window.MonoDeque`; `std.dp` points at it. An
    earlier draft renamed it `MonoQueue` (it never pushes at the front);
    that naming call belongs to its owner. Reverse: move it into `std.dp`.
+7. **`ternary_max_real` / `ternary_min_real` keep the `_real` suffix.**
+   `bsearch_real` keeps it, the real forms take `lo, hi` where the integer
+   ones take a range, and they always return an answer where the integer
+   ones return `?I`; one name over both would need `F64` ranges. Reverse:
+   one `ternary(r, f, by: max)` beside `bsearch_first` once `Range<F64>`
+   exists, with the four names as deprecated aliases for one release.
+8. **One SOS transform, in `std.ntt`.** `std.dp` drops its `sos_sub`,
+   `sos_sup` and `sos_sub_inv`; the math area's `sos_sub` / `sos_sup`
+   (`inverse: Bool = false`) are the one implementation, and the
+   coordinator's unified `sos(f, over: Sub | Sup = Sub, inverse:)` is
+   theirs to land. Reverse: restore the `std.dp` functions.
 5. **No `digit_dp`, interval-DP or rolling-table library types.** Their
    state is the problem; `@memo` and two rows say it. A rolling table is a
    core question (frictions `cf2183e`, `cf2084g1`). Reverse: add them.

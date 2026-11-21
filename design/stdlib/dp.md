@@ -93,58 +93,8 @@ ordinary CP Lang over closures, generics and lists.
 
 ### 2.1 `std.seq`: search on answers
 
-```cp
-fn bsearch_first<I>(r: Range<I>, ok: I -> Bool) -> ?I              // [have]
-    // O(log r.len) calls of ok. The first i in r with ok(i); ok is false
-    // then true along r. none when ok fails everywhere.
-fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I               // [have]
-    // O(log r.len) calls of ok. The last i in r with ok(i); ok is true then
-    // false. none when ok fails everywhere.
-fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
-    // [new] steps + 1 calls of ok. The least x in [lo, hi] with ok(x), to
-    // within (hi - lo) / 2^steps; ok is false then true. none when not ok(hi).
-fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I                 // [new]
-fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I                 // [new]
-    // O(log r.len) calls of f. A position of the maximum (minimum) of f on
-    // r; f strictly rises then strictly falls (falls then rises), with a
-    // plateau allowed only at the optimum. none for an empty r.
-fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
-fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
-    // [new] steps + 2 calls of f (golden section keeps one probe per
-    // round). An x in [lo, hi] within (hi - lo) * 0.618^steps of the
-    // optimum of a unimodal f.
-fn parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (),
-                       apply: I -> (), ok: Int -> Bool) -> List<?I>
-    // [new] ceil(log2(r.len + 1)) rounds; each round is one reset, r.len
-    // calls of apply in order, and one call of ok per query still open:
-    // O((r.len + queries) log r.len) calls in all, plus O(queries log)
-    // for the bucket sort. out[q] is the first t in r such that ok(q)
-    // holds once apply has run on every t' <= t (after reset); none when it
-    // never holds. ok(q) must be monotone in the applied prefix.
-```
-
-The integer searches return the boundary as a position of the range's own
-index space (`?I`: a `V` for a domain, an `Int` for `lo..=hi`), never a
-found flag and never a sentinel. `bsearch_real` returns `?F64` for the same
-reason: "nothing in `[lo, hi]` works" is a different answer from `hi`, and
-the plan's earlier "hi when none" hid it. `steps` is a named argument with a
-default because it is the one knob, and changing it is the cold path.
-
-`ternary_*` takes any ordered `K`, so a tie can be broken by a second key
-(`f(x) = (cost, -x)`). Integer ternary search is implemented as
-`bsearch_first(r without its last, i => f(i) >= f(i + 1))` (for a maximum),
-which is why plateaus are allowed only at the top: that is the law that
-makes the predicate monotone. The law is checkable with
-`std.spec.unimodality_break` **[have]**.
-
-`parallel_bsearch` takes the timeline as three operations rather than a
-structure: the state is whatever the user's `reset` builds (a `Dsu`, a
-`Fenwick`, a counter array) and lives in the user's file. The API never
-sees it, so any state works. `reset`/`apply` are named fns that write the
-user's own variables (a lambda cannot assign, and a fn value that mutates
-its captures is what `parallel_bsearch` needs); section 5.3 shows it.
-Queries are numbered `0..queries`; a domain of queries indexes the result
-with `.to_idx`.
+The searches (`bsearch_first`/`_last`, `bsearch_real`, `ternary_*`,
+`parallel_bsearch`) have their own design, `design/stdlib/search.md`.
 
 ### 2.2 `std.dp` [new]: the DP toolkit
 
@@ -197,11 +147,8 @@ fn aliens(k: Int, lambdas: Range<Int>, solve: Int -> (val: Int, count: Int))
     // Law: f is convex in k; λ in lambdas reaches count <= k.
 fn subset_sums(xs: List<Int>) -> List<Int>
     // O(2^n) time and memory. Every subset sum of xs, sorted, by merging.
-fn sos_sub<T>(f: List<T>) -> List<T>
-fn sos_sup<T>(f: List<T>) -> List<T>
-fn sos_sub_inv<T>(g: List<T>) -> List<T>
-    // O(n 2^n) for f.len = 2^n. out[mask] is the sum of f over the subsets
-    // (supersets) of mask; the inverse undoes sos_sub.
+    // Sums over subsets and supersets are the math area's in-place
+    // std.ntt.sos_sub / sos_sup (inverse: Bool = false), O(n 2^n).
 ```
 
 Each DP optimization takes the cost as an operation and returns the plain

@@ -1,10 +1,10 @@
 //! The DP toolkit: the structures and optimizations a DP calls by name.
 //!
-//! A minimum or maximum of lines (the convex hull trick) is a `LiChao`; a layer whose optimal split moves
-//! right is `dnc_layer` (over `monotone_minima`); an interval DP with
+//! A minimum or maximum of lines (the convex hull trick) is a `LiChao`; a
+//! layer whose optimal split moves right is `dnc_layer` (over `monotone_minima`); an interval DP with
 //! monotone splits is `knuth`; "exactly `k` pieces" over a convex cost is
-//! `aliens`. Meet in the middle starts from `subset_sums`, and sums over
-//! subsets and supersets of masks are `sos_sub` and `sos_sup`. The
+//! `aliens`. Meet in the middle starts from `subset_sums`; sums over subsets and
+//! supersets of masks are `std.ntt`'s `sos_sub` / `sos_sup`. The
 //! recurrence itself stays in your code, and a memoized recursion is
 //! `@memo`. Each optimization names the law it needs; `std.spec` checks it
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,
@@ -235,37 +235,6 @@ pub fn subset_sums(xs: List<Int>) -> List<Int>:
         out = next
     out
 
-fn bits_of(len: Int) -> Int:
-    assert len >= 1 and len & (len - 1) == 0
-    var b = 0
-    while 1 << b < len: b += 1
-    b
-
-/// `out[mask]` is the sum of `f[sub]` over every subset `sub` of `mask`;
-/// `f.len` is a power of two. O(n 2^n) for `f.len = 2^n`.
-pub fn sos_sub<T>(f: List<T>) -> List<T>:
-    var g = [x for x in f]
-    for b in 0..bits_of(f.len):
-        for mask in 0..g.len:
-            if (mask >> b) & 1 == 1: g[mask] += g[mask ^ (1 << b)]
-    g
-
-/// `out[mask]` is the sum of `f[sup]` over every superset `sup` of `mask`. O(n 2^n).
-pub fn sos_sup<T>(f: List<T>) -> List<T>:
-    var g = [x for x in f]
-    for b in 0..bits_of(f.len):
-        for mask in 0..g.len:
-            if (mask >> b) & 1 == 0: g[mask] += g[mask | (1 << b)]
-    g
-
-/// The inverse of `sos_sub`: `f` back from its subset sums. O(n 2^n).
-pub fn sos_sub_inv<T>(g: List<T>) -> List<T>:
-    var f = [x for x in g]
-    for b in 0..bits_of(g.len):
-        for mask in 0..f.len:
-            if (mask >> b) & 1 == 1: f[mask] -= f[mask ^ (1 << b)]
-    f
-
 struct Counted(k: Int, m: Int, used: Int):
     fn at(self, x: Int) -> (cost: Int, used: Int) = (cost: k * x + m, used: used)
 
@@ -350,13 +319,3 @@ fn subset_sums_are_every_sum_sorted():
         for mask in 0..1 << xs.len:
             want.push(sum(xs[i] for i in 0..xs.len if (mask >> i) & 1 == 1))
         assert subset_sums(xs) == sorted(want)
-
-@test
-fn sums_over_subsets_and_supersets():
-    let f = [rand(0, 9) for _ in 0..16]
-    let sub = sos_sub(f)
-    let sup = sos_sup(f)
-    for m in 0..16:
-        assert sub[m] == sum(f[s] for s in 0..16 if s & m == s)
-        assert sup[m] == sum(f[s] for s in 0..16 if s & m == m)
-    assert sos_sub_inv(sub) == f

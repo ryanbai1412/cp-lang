@@ -450,7 +450,7 @@ is evidence, not a proof.
   `bsearch_real`, `ternary_max` / `ternary_min` (and `_real`),
   `parallel_bsearch`.
 - `dp.cp`: `Line`, `LiChao`, `monotone_minima`, `dnc_layer`,
-  `knuth`, `aliens`, `subset_sums`, `sos_sub` / `sos_sup` / `sos_sub_inv`.
+  `knuth`, `aliens`, `subset_sums` (SOS is `ntt.cp`'s `sos_sub` / `sos_sup`).
 - `graph.cp`: `Graph`, `bfs`, `dijkstra`, `topo` (including vertexless
   `topo::<V>`), `scc`, `components`, `condense`, `two_edge_components`,
   `articulation_points`, `biconnected_components`, `two_color`.

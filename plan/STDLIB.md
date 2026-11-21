@@ -85,6 +85,13 @@ declaration form and the explicit spelling.
 `first_ge_by` and `last_le_by` are [rename]s to `runs(a, by:)`,
 `first_ge(xs, x, by:)` and `last_le(xs, x, by:)`.
 
+**`bsearch_first`/`bsearch_last` are the O(log n) monotone form of
+`first`/`last`.** `first(xs, p)` scans: O(n) calls of any `p`.
+`bsearch_first(r, ok)` asks O(log n) questions and needs `ok` false then
+true along `r` (`bsearch_last`: true then false); both answer `?` a
+position of the space searched. Reach for the scan unless the predicate
+is monotone and the range is large.
+
 **Fallible operations return `?T`; the trapping twin has the short
 name.** `m[k]` traps when `k` is absent and `m.get(k)` is `?V`;
 `x.inv` traps on a non-invertible residue and `x.try_inv()` is
@@ -1516,9 +1523,7 @@ fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>> // O(n^2)
 fn aliens(k: Int, lambdas: Range<Int>, solve: Int -> (val: Int, count: Int))
     -> Int                                    // O(log) calls of solve
 fn subset_sums(xs: List<Int>) -> List<Int>    // O(2^n), sorted
-fn sos_sub<T>(f: List<T>) -> List<T>          // O(n 2^n)
-fn sos_sup<T>(f: List<T>) -> List<T>          // O(n 2^n)
-fn sos_sub_inv<T>(g: List<T>) -> List<T>      // O(n 2^n)
+// sums over subsets / supersets: std.ntt.sos_sub / sos_sup (4.5)
 ```
 
 ## 5. Not here yet
