@@ -51,9 +51,6 @@ pub struct Pt(x: Int, y: Int):
     /// Explicit conversion to a floating-point `Vec`. O(1).
     pub @get fn to_vec(self) -> Vec = Vec(F64(x), F64(y))
 
-    /// Scale by an integer factor `k`. O(1).
-    pub fn scale(self, k: Int) -> Pt = Pt(x * k, y * k)
-
 impl Add for Pt:
     fn add(a, b) = Pt(a.x + b.x, a.y + b.y)
 
@@ -62,6 +59,9 @@ impl Sub for Pt:
 
 impl Neg for Pt:
     fn neg(a) = Pt(-a.x, -a.y)
+
+impl Mul<Int> for Pt:
+    fn mul(a, k) = Pt(a.x * k, a.y * k)
 
 impl Show for Pt:
     fn show(a) = "{a.x} {a.y}"
@@ -598,12 +598,6 @@ pub struct Vec(x: F64, y: F64):
         assert l > 0.0, "unit of zero Vec"
         Vec(x / l, y / l)
 
-    /// Scale by `k`. O(1).
-    pub fn scale(self, k: F64) -> Vec = Vec(x * k, y * k)
-
-    /// Divide by `k`. O(1).
-    pub fn div(self, k: F64) -> Vec = Vec(x / k, y / k)
-
     /// Rotate by unit direction vector `by` (complex multiply `self * by`). O(1).
     pub fn rot(self, by: Vec) -> Vec = Vec(x * by.x - y * by.y, x * by.y + y * by.x)
 
@@ -615,6 +609,12 @@ impl Sub for Vec:
 
 impl Neg for Vec:
     fn neg(a) = Vec(-a.x, -a.y)
+
+impl Mul<F64> for Vec:
+    fn mul(a, k) = Vec(a.x * k, a.y * k)
+
+impl Div<F64> for Vec:
+    fn div(a, k) = Vec(a.x / k, a.y / k)
 
 /// Floating-point dot product. O(1).
 pub fn vdot(a: Vec, b: Vec) -> F64 = a.x * b.x + a.y * b.y
@@ -636,7 +636,7 @@ pub fn vturn(
 /// Orthogonal projection of `p` onto the line through `a` and `b`. O(1).
 pub fn project(p: Vec, a: Vec, b: Vec) -> Vec:
     let ab = b - a
-    a + ab.scale(vdot(p - a, ab) / ab.norm2)
+    a + ab * (vdot(p - a, ab) / ab.norm2)
 
 /// Reflection of `p` across the line through `a` and `b`. O(1).
 pub fn reflect(p: Vec, a: Vec, b: Vec) -> Vec:
@@ -654,7 +654,7 @@ pub fn seg_dist(p: Vec, a: Vec, b: Vec) -> F64:
     let t = vdot(p - a, ab) / n2
     if t <= 0.0: return (p - a).len
     if t >= 1.0: return (p - b).len
-    (p - (a + ab.scale(t))).len
+    (p - (a + ab * t)).len
 
 /// Intersection of the infinite lines `a b` and `c d`, or `none` when parallel. O(1).
 pub fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec:
@@ -662,7 +662,7 @@ pub fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec:
     let cd = d - c
     let den = vcross(ab, cd)
     if abs(den) <= eps: return none
-    some(a + ab.scale(vcross(c - a, cd) / den))
+    some(a + ab * (vcross(c - a, cd) / den))
 
 /// Circumcenter of triangle `(a, b, c)`, or `none` when collinear. O(1).
 pub fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec:
@@ -672,7 +672,7 @@ pub fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec:
     if abs(den) <= eps: return none
     let u2 = u.norm2
     let v2 = v.norm2
-    some(a + Vec(v.y * u2 - u.y * v2, u.x * v2 - v.x * u2).div(den))
+    some(a + Vec(v.y * u2 - u.y * v2, u.x * v2 - v.x * u2) / den)
 
 /// Intersection points (0, 1, or 2) of the circle `(center, r)` with the
 /// infinite line through `a` and `b`. O(1).
@@ -683,7 +683,7 @@ pub fn circle_line_intersect(center: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-
     if d2 > r2 + eps: return []
     let rem = r2 - d2
     if rem <= eps: return [h]
-    let dir = (b - a).unit.scale(sqrt(rem))
+    let dir = (b - a).unit * sqrt(rem)
     [h - dir, h + dir]
 
 /// Intersection points (0, 1, or 2) of two circles `(c1, r1)` and `(c2, r2)`. O(1).
@@ -694,9 +694,9 @@ pub fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> 
     if d > r1 + r2 + eps or d + min(r1, r2) + eps < max(r1, r2): return []
     let x = (d * d + r1 * r1 - r2 * r2) / (2.0 * d)
     let h2 = r1 * r1 - x * x
-    let base = c1 + d_vec.scale(x / d)
+    let base = c1 + d_vec * (x / d)
     if h2 <= eps: return [base]
-    let off = d_vec.perp.scale(sqrt(h2) / d)
+    let off = d_vec.perp * (sqrt(h2) / d)
     [base - off, base + off]
 
 // ---- half-plane intersection
@@ -713,7 +713,7 @@ fn hp_out(
 
 fn hp_cross(a: (p: Vec, dir: Vec, ang: F64), b: (p: Vec, dir: Vec, ang: F64)) -> Vec:
     let den = vcross(a.dir, b.dir)
-    a.p + a.dir.scale(vcross(b.p - a.p, b.dir) / den)
+    a.p + a.dir * (vcross(b.p - a.p, b.dir) / den)
 
 /// Counter-clockwise polygon of the bounded intersection of `planes`, or `[]`
 /// when empty or unbounded. Add a bounding box for unbounded regions. O(n log n).
@@ -722,7 +722,7 @@ pub fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Ve
     for pl in planes:
         let l = pl.dir.len
         if l <= eps: continue
-        let d = pl.dir.div(l)
+        let d = pl.dir / l
         norm.push((p: pl.p, dir: d, ang: d.angle))
     if norm.len < 3: return []
     sort(mut norm, by: h => h.ang)
@@ -791,7 +791,7 @@ pub fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec
         if sc >= -eps: out.push(cur)
         if (sc > eps and sn < -eps) or (sc < -eps and sn > eps):
             let t = sc / (sc - sn)
-            out.push(cur + (nxt - cur).scale(t))
+            out.push(cur + (nxt - cur) * t)
     out
 
 /// Smallest enclosing circle of `pts` via deterministic Welzl's algorithm.
@@ -816,7 +816,7 @@ pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, ra
             r = 0.0
             for j in 0..i:
                 if vdist(c, ps[j]) > r + eps:
-                    c = (ps[i] + ps[j]).scale(0.5)
+                    c = (ps[i] + ps[j]) * 0.5
                     r = vdist(c, ps[i])
                     for k in 0..j:
                         if vdist(c, ps[k]) > r + eps:
@@ -835,15 +835,15 @@ fn tri_circle_area(a: Vec, b: Vec, r: F64, eps: F64) -> F64:
     if a.norm2 <= r2 + eps and b.norm2 <= r2 + eps:
         return 0.5 * s
     let t_mid = -vdot(a, d) / a2
-    let foot = a + d.scale(t_mid)
+    let foot = a + d * t_mid
     let h2 = foot.norm2
     if h2 >= r2 - eps:
         return 0.5 * r2 * atan2(s, vdot(a, b))
     let dt = sqrt(max(0.0, r2 - h2) / a2)
     let t1 = max(0.0, min(1.0, t_mid - dt))
     let t2 = max(0.0, min(1.0, t_mid + dt))
-    let p1 = a + d.scale(t1)
-    let p2 = a + d.scale(t2)
+    let p1 = a + d * t1
+    let p2 = a + d * t2
     var res = 0.0
     if t1 > eps: res += 0.5 * r2 * atan2(vcross(a, p1), vdot(a, p1))
     res += 0.5 * vcross(p1, p2)
@@ -1051,9 +1051,6 @@ pub struct Pt3(x: Int, y: Int, z: Int):
     /// The Euclidean length as `F64`. O(1).
     pub @get fn len(self) -> F64 = sqrt(F64(x) * F64(x) + F64(y) * F64(y) + F64(z) * F64(z))
 
-    /// Scale by an integer factor `k`. O(1).
-    pub fn scale(self, k: Int) -> Pt3 = Pt3(x * k, y * k, z * k)
-
 impl Add for Pt3:
     fn add(a, b) = Pt3(a.x + b.x, a.y + b.y, a.z + b.z)
 
@@ -1062,6 +1059,9 @@ impl Sub for Pt3:
 
 impl Neg for Pt3:
     fn neg(a) = Pt3(-a.x, -a.y, -a.z)
+
+impl Mul<Int> for Pt3:
+    fn mul(a, k) = Pt3(a.x * k, a.y * k, a.z * k)
 
 impl Show for Pt3:
     fn show(a) = "{a.x} {a.y} {a.z}"
@@ -1159,7 +1159,7 @@ fn random_points(n: Int, span: Int) -> List<Pt> = [
 fn vectors_traits_and_large_coords():
     let (a, b) = (Pt(3, 4), Pt(-1, 2))
     assert a + b == Pt(2, 6) and a - b == Pt(4, 2) and -a == Pt(-3, -4)
-    assert a.scale(3) == Pt(9, 12)
+    assert a * 3 == Pt(9, 12)
     assert dot(a, b) == 5 and cross(a, b) == 10 and a.norm2 == 25 and close(a.len, 5.0)
     assert a.perp == Pt(-4, 3) and a.perp_cw == Pt(4, -3) and dot(a, a.perp) == 0
     assert Pt(6, -9).unit_dir == Pt(2, -3) and Pt(0, 0).unit_dir == Pt(0, 0)
@@ -1507,7 +1507,7 @@ fn min_enclosing_circle_and_circle_polygon_area():
         var best_r = 1.0e18
         for i in 0..pts.len:
             for j in i + 1..pts.len:
-                let c2 = (pts[i] + pts[j]).scale(0.5)
+                let c2 = (pts[i] + pts[j]) * 0.5
                 let r2 = vdist(c2, pts[i])
                 if all(vdist(c2, q) <= r2 + 1e-7 for q in pts): best_r = min(best_r, r2)
                 for k in j + 1..pts.len:
@@ -1589,7 +1589,7 @@ fn shamos_hoey_matches_brute():
 fn pt3_and_convex_hull_3d():
     let (a, b) = (Pt3(1, 2, 3), Pt3(4, -5, 6))
     assert a + b == Pt3(5, -3, 9) and a - b == Pt3(-3, 7, -3) and -a == Pt3(-1, -2, -3)
-    assert a.scale(2) == Pt3(2, 4, 6) and a.norm2 == 14 and dot3(a, b) == 12
+    assert a * 2 == Pt3(2, 4, 6) and a.norm2 == 14 and dot3(a, b) == 12
     assert cross3(Pt3(1, 0, 0), Pt3(0, 1, 0)) == Pt3(0, 0, 1)
     assert dist2_3(Pt3(1, 2, 3), Pt3(4, 6, 3)) == 25
     assert "{a}" == "1 2 3"

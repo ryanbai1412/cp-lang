@@ -24,12 +24,12 @@ fn ladder(off: Int, on: Int, from: Int, off_at: Int -> Vec, on_at: Int -> Vec):
 
 let (p1, p2) = (Vec(0.0, 0.0), Vec(1.0, 0.0))
 if m % 2 == 0:
-    let d = t.div(F64(k))
+    let d = t / F64(k)
     let side = Vec(0.5, d.y - 0.5)
-    ladder(2, 1, 1, i => side + d.scale(F64(i - 1)), i => d.scale(F64(i)))
+    ladder(2, 1, 1, i => side + d * F64(i - 1), i => d * F64(i))
 else:
     let d = t.unit
-    let (t1, t0) = (t - d.scale(F64(k - 1)), t - d.scale(F64(k)))
+    let (t1, t0) = (t - d * F64(k - 1), t - d * F64(k))
     let start = if fits(t0, p2): t0 else: Vec(
         0.5 + 0.75 * sqrt(3.0 / 13.0),
         0.75 + sqrt(3.0 / 13.0) * 0.5,
@@ -45,4 +45,4 @@ else:
     let a = draw(1, 2, s)
     let b = draw(2, a, start)
     let c = draw(a, b, t1)
-    ladder(a, c, 2, i => s + d.scale(F64(i - 1)), i => t0 + d.scale(F64(i)))
+    ladder(a, c, 2, i => s + d * F64(i - 1), i => t0 + d * F64(i))

@@ -1382,7 +1382,7 @@ approximate arithmetic. Full design and contest examples live in
 signs in `I128`, staying exact for coordinates up to `1e18`.
 
 ```cp
-struct Pt(x: Int, y: Int) // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show
+struct Pt(x: Int, y: Int) // Add, Sub, Neg, Mul<Int>, Eq, Ord (x, y), Hash, Read, Show
     @get fn norm2(self) -> Int // O(1)
     @get fn len(self) -> F64 // O(1)
     @get fn perp(self) -> Pt // O(1), 90 deg CCW
@@ -1405,7 +1405,6 @@ fn locate(poly: List<Pt>, p: Pt) -> Location // O(n), I128
     @get fn angle(self) -> F64 // O(1), atan2(y, x)
     @get fn unit_dir(self) -> Pt // O(log min(|x|, |y|)), reduced by gcd
     @get fn to_vec(self) -> Vec // O(1)
-    fn scale(self, k: Int) -> Pt // O(1)
     fn dot(self, o: Pt) -> Int // O(1)
     fn cross(self, o: Pt) -> Int // O(1)
     fn dist2(self, o: Pt) -> Int // O(1)
@@ -1438,14 +1437,12 @@ fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) // O(n log n)
 // Careful floating-point geometry and half-plane intersection
 fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool // O(1)
 fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int // O(1)
-struct Vec(x: F64, y: F64) // Add, Sub, Neg; no Show (precision required)
+struct Vec(x: F64, y: F64) // Add, Sub, Neg, Mul<F64>, Div<F64>; no Show (precision required)
     @get fn norm2(self) -> F64 // O(1)
     @get fn len(self) -> F64 // O(1)
     @get fn unit(self) -> Vec // O(1)
     @get fn perp(self) -> Vec // O(1)
     @get fn angle(self) -> F64 // O(1)
-    fn scale(self, k: F64) -> Vec // O(1)
-    fn div(self, k: F64) -> Vec // O(1)
     fn rot(self, by: Vec) -> Vec // O(1), rotate by unit direction vector
 fn vdot(a: Vec, b: Vec) -> F64 // O(1)
 fn vcross(a: Vec, b: Vec) -> F64 // O(1)
@@ -1467,11 +1464,10 @@ fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, radius
 fn circle_polygon_area(c: Vec, r: F64, poly: List<Vec>, eps: F64 = 1e-9) -> F64 // O(n)
 fn arg(p: Pt) -> ByAngle // O(1), float-free exact angular sort key
 fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int) // O(n log n), I128
-struct Pt3(x: Int, y: Int, z: Int) // Add, Sub, Neg, Eq, Show
+struct Pt3(x: Int, y: Int, z: Int) // Add, Sub, Neg, Mul<Int>, Eq, Show
     @get fn norm2(self) -> Int // O(1)
     @get fn norm2_128(self) -> I128 // O(1)
     @get fn len(self) -> F64 // O(1)
-    fn scale(self, k: Int) -> Pt3 // O(1)
 fn dot3(a: Pt3, b: Pt3) -> Int // O(1)
 fn dot3_128(a: Pt3, b: Pt3) -> I128 // O(1)
 fn cross3(a: Pt3, b: Pt3) -> Pt3 // O(1)
