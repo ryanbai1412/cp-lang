@@ -24,7 +24,7 @@ mod prelude;
 mod ty;
 
 pub use builtins::{builtin_member, builtin_members, prelude_names, BuiltinMember, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS};
-pub use check::{GlobalRef, HoverEntry};
+pub use check::{closest, GlobalRef, HoverEntry};
 pub use db::{Analysis, AnalyzedItem, Database, Decl, Import, ItemCheck, ItemSyntax, Module, Stats};
 pub use def::{DeclKind, Def, DomainInfo};
 pub use hover::{Definition, Hover, Symbol};

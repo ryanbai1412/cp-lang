@@ -662,6 +662,7 @@ impl<'a> Checker<'a> {
         } else {
             format!("{subject} is {what}, so it can't be {action}")
         };
+        let var_at = decl.filter(|_| keyword == "let").and_then(|d| let_before(self.src, d));
         if let Some(diag) = self.error(codes::ASSIGN_TO_LET, span, message) {
             diag.help = Some(help);
             if let Some(decl) = decl {
@@ -669,9 +670,26 @@ impl<'a> Checker<'a> {
                     span: decl,
                     message: "declared here".into(),
                 });
+                if let Some(at) = var_at {
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("declare `{name}` with `var`"),
+                        edits: vec![(at, "var".into())],
+                    });
+                }
             }
         }
     }
+}
+
+/// The `let` keyword on the line of `name` in `src`, before it: where
+/// "declare it with `var`" edits.
+pub(crate) fn let_before(src: &str, name: Span) -> Option<Span> {
+    let head = src.get(..name.start as usize)?;
+    let line = head.rfind('\n').map_or(0, |i| i + 1);
+    let at = line + head[line..].rfind("let")?;
+    let word = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric() && c != '_');
+    (word(head[..at].chars().last()) && word(head[at + 3..].chars().next()))
+        .then(|| Span::new(at as u32, at as u32 + 3))
 }
 
 /// `fn peel(s: [D]Bool)`: a single capital letter is a type parameter
@@ -681,7 +699,7 @@ pub(crate) fn is_implicit_generic(name: &str) -> bool {
 }
 
 /// The candidate closest to `name`, if it is close enough to be a typo.
-pub(crate) fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
+pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
     let limit = match name.chars().count() {
         0 | 1 => return None,
         2..=4 => 1,
@@ -691,7 +709,8 @@ pub(crate) fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>)
         .filter(|c| *c != name)
         .map(|c| (edit_distance(name, c), c))
         .filter(|(d, _)| *d <= limit)
-        .min_by_key(|(d, c)| (*d, c.to_string()))
+        // A word stopped short (`sorte`) means the longer name.
+        .min_by_key(|(d, c)| (*d, !c.starts_with(name), c.to_string()))
         .map(|(_, c)| c.to_string())
 }
 

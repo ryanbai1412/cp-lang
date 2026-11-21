@@ -4494,6 +4494,7 @@ impl<'a> Lowerer<'a> {
                     name.text
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
+                self.member_typo(&ty, &name.text, name.span);
                 match (&ty, name.text.as_str()) {
                     // An arc of a graph built from a list of pairs is the
                     // neighbour, with no record around it.
@@ -7229,6 +7230,7 @@ impl<'a> Lowerer<'a> {
                     self.show(&ty)
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
+                self.member_typo(&ty, method, name.span);
                 for arg in args {
                     self.expr(&arg.value, None);
                 }
@@ -7581,7 +7583,25 @@ impl<'a> Lowerer<'a> {
                 )
             }
             other => {
-                self.unsupported(name.span, &format!("`.{other}` of a domain as a value"));
+                const MEMBERS: [&str; 13] = [
+                    "len", "size", "count", "empty", "full", "first", "pairs", "last", "start", "end", "all",
+                    "rev", "bounds",
+                ];
+                match cpl_check::closest(other, MEMBERS.into_iter()) {
+                    Some(s) => {
+                        let message = format!("a domain has no member `{other}`");
+                        self.error(codes::UNKNOWN_FIELD, name.span, message);
+                        let at = self.span(name.span);
+                        if let Some(last) = self.diags.last_mut() {
+                            last.help = Some(format!("did you mean `{s}`?"));
+                            last.fixes.push(cpl_diag::Fix {
+                                title: format!("change to `{s}`"),
+                                edits: vec![(at, s)],
+                            });
+                        }
+                    }
+                    None => self.unsupported(name.span, &format!("`.{other}` of a domain as a value")),
+                }
                 self.err_expr(span)
             }
         }

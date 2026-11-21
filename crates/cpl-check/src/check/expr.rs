@@ -2152,9 +2152,14 @@ impl<'a> Checker<'a> {
                         {
                             diag.help = Some(help);
                         }
-                    } else if let Some(diag) =
-                        self.error(codes::WRONG_DOMAIN, index_expr.span, message)
-                    {
+                    } else {
+                        let Some(diag) = self.error(codes::WRONG_DOMAIN, index_expr.span, message)
+                        else {
+                            continue;
+                        };
+                        if let (true, false, Ty::Pos(domain)) = (got.is_int(), boundary, want) {
+                            diag.fixes.push(convert_to(domain, index_expr.span));
+                        }
                         diag.help = Some(if boundary {
                             "a position and the boundaries around it are different indices; use `.l` / `.r` for the boundaries on either side of a position".to_string()
                         } else if got.is_int() {
@@ -2337,9 +2342,18 @@ impl<'a> Checker<'a> {
         if let Some(diag) = self.error(code, at.span, text) {
             if let (true, Ty::Pos(domain)) = (got.is_int(), want) {
                 diag.help = Some(format!("convert it with `{domain}({quoted})`"));
+                diag.fixes.push(convert_to(domain, at.span));
             }
         }
         false
+    }
+}
+
+/// Wraps the number at `span` in `domain(...)`, the checked conversion.
+fn convert_to(domain: &str, span: Span) -> cpl_diag::Fix {
+    cpl_diag::Fix {
+        title: format!("convert with `{domain}(...)`"),
+        edits: vec![(Span::point(span.start), format!("{domain}(")), (Span::point(span.end), ")".into())],
     }
 }
 

@@ -95,6 +95,12 @@ fn indexing_with_a_plain_number_says_how_to_convert() {
         d.help.as_deref(),
         Some("convert it with `V(i)`, or write `a.raw[i]` to index by number")
     );
+    let src = "let n: 1..=9 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nfor i in 1..=n:\n    print(a[i])\n";
+    let mut fixed = src.to_string();
+    for (span, text) in d.fixes[0].edits.iter().rev() {
+        fixed.replace_range(span.start as usize..span.end as usize, text);
+    }
+    assert!(fixed.ends_with("print(a[V(i)])\n"), "{fixed}");
 }
 
 #[test]

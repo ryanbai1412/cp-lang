@@ -33,6 +33,7 @@ usage: cpl <command> [args]
 
 commands:
   check <file>...       report every error in the files
+  fix <file>...         apply the fix each error suggests, then report what is left
   run <file> [input]    check, then run in the debug interpreter, reading
                         the input file or standard input; a file with an
                         `@interactor` runs against it, on the hidden test
@@ -137,9 +138,10 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "cpl {VERSION}");
             0
         }
-        Some(command @ ("check" | "build" | "judge" | "submit" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+        Some(command @ ("check" | "fix" | "build" | "judge" | "submit" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
             let help = match command {
                 "check" => CHECK_USAGE,
+                "fix" => FIX_USAGE,
                 "build" => BUILD_USAGE,
                 "judge" => JUDGE_USAGE,
                 "submit" => SUBMIT_USAGE,
@@ -156,6 +158,8 @@ pub fn exec<S: AsRef<str>>(
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }
         Some("check") => check(&rest, stdout, stderr),
+        Some("fix") if rest.is_empty() => usage_error("`fix` needs a file: `cpl fix a.cp`".into()),
+        Some("fix") => fix(&rest, stdout, stderr),
         Some("run") if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
             let _ = stdout.write_all(RUN_USAGE.as_bytes());
             0
@@ -251,6 +255,14 @@ usage: cpl check <file.cp>...
 Reports every error in the files: names, types, borrows, input ranges.
 Nothing is run and nothing is written. The exit status is 1 when a file
 has an error.
+";
+
+const FIX_USAGE: &str = "\
+usage: cpl fix <file.cp>...
+
+Applies the fix each error carries (the quick fixes an editor offers),
+then, once no error is left, the fixes `cpl lint --fix` makes. Rewrites the
+file and reports the errors left. The exit status is 1 when an error is left.
 ";
 
 const BUILD_USAGE: &str = "\
@@ -513,7 +525,6 @@ pub fn tool(command: &str) -> Option<Tool> {
     Some(match command {
         "fmt" => cpl_fmt::cli::run,
         "lint" => cpl_lint::cli::run,
-        "fix" => cpl_lint::cli::run_fix,
         "doc" => cpl_doc::cli::run,
         "stress" => cpl_stress::cli::run,
         "new" => cpl_contest::new::run,
@@ -1488,6 +1499,92 @@ fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -
     code
 }
 
+/// The errors `cpl check` reports for `text`, read as the file at `path`.
+fn errors_in(db: &mut cpl_check::Database, path: &str, text: &str) -> Vec<cpl_diag::Diagnostic> {
+    db.set_file(path, text);
+    let analysis = db.analyze(path).expect("the file was just set");
+    let mut out = cpl_ir::check(&analysis);
+    out.retain(|d| d.severity == cpl_diag::Severity::Error);
+    out
+}
+
+/// `text` with the first fix of each error applied, round after round
+/// until none applies, and how many were applied. A round can uncover
+/// another error, so the rounds are capped.
+pub fn apply_error_fixes(path: &str, text: &str) -> (String, usize) {
+    let mut db = cpl_check::Database::new();
+    let mut text = text.to_string();
+    let mut applied = 0;
+    for _ in 0..8 {
+        let errors = errors_in(&mut db, path, &text);
+        let (next, n) = cpl_lint::apply_fixes(&text, &errors);
+        if n == 0 || next == text {
+            break;
+        }
+        applied += n;
+        text = next;
+    }
+    (text, applied)
+}
+
+/// `text` with the lint fixes `cpl lint --fix` would make, and how many.
+fn apply_lint_fixes(path: &str, mut text: String) -> (String, usize) {
+    let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
+    let mut applied = 0;
+    for _ in 0..8 {
+        let (next, n) = cpl_lint::apply_fixes(&text, &cpl_lint::lint(&text, &config));
+        if n == 0 {
+            break;
+        }
+        applied += n;
+        text = next;
+    }
+    (text, applied)
+}
+
+fn fix(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let mut db = cpl_check::Database::new();
+    let mut code = 0;
+    for path in files {
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) => {
+                *stderr += &format!("cpl: can't read `{path}`: {error}\n");
+                code = EXIT_USAGE;
+                continue;
+            }
+        };
+        let (fixed, mut applied) = apply_error_fixes(path, &text);
+        let left = errors_in(&mut db, path, &fixed);
+        let fixed = if left.is_empty() {
+            let (linted, n) = apply_lint_fixes(path, fixed);
+            applied += n;
+            linted
+        } else {
+            fixed
+        };
+        if applied > 0 {
+            if let Err(error) = std::fs::write(path, &fixed) {
+                *stderr += &format!("cpl: can't write `{path}`: {error}\n");
+                code = EXIT_USAGE;
+                continue;
+            }
+        }
+        if !left.is_empty() {
+            *stderr += &cpl_diag::render_all(&left, path, &fixed);
+            if code == 0 {
+                code = EXIT_ERRORS;
+            }
+        }
+        let fixes = if applied == 1 { "fix" } else { "fixes" };
+        let _ = match left.len() {
+            0 => writeln!(stdout, "{path}: {applied} {fixes} applied, no errors"),
+            n => writeln!(stdout, "{path}: {applied} {fixes} applied, {n} left"),
+        };
+    }
+    code
+}
+
 /// Serves the Debug Adapter Protocol on stdin and stdout until the editor
 /// ends the session. Returns the exit status.
 pub fn dap() -> u8 {
@@ -1823,7 +1920,7 @@ mod tests {
     #[test]
     fn tooling_commands_reach_their_crates() {
         for command in [
-            "check", "run", "build", "judge", "submit", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
+            "check", "fix", "run", "build", "judge", "submit", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
             "watch",
         ] {
             let out = run(&[command, "--help"]);
@@ -1888,6 +1985,28 @@ mod tests {
                 "error[E0301]: `a` is indexed by V, but `n` is a 1..=9\n  --> {path}:4:9\n  |\n4 | print(a[n])\n  |         ^\n  = help: convert it with `V(n)`, or write `a.raw[n]` to index by number\n\n{path}: 1 error\n"
             )
         );
+    }
+
+    #[test]
+    fn fix_applies_the_fixes_and_reports_what_is_left() {
+        let path = temp_file("fixable.cp", "let n = 3\nif n > 1 && n < 5:\n    print(n)\nprint(m)\n");
+        let out = run(&["fix", &path]);
+        assert_eq!(out.code, EXIT_ERRORS);
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            "let n = 3\nif n > 1 and n < 5:\n    print(n)\nprint(m)\n"
+        );
+        assert_eq!(String::from_utf8_lossy(&out.stdout), format!("{path}: 1 fix applied, 1 left\n"));
+        assert!(out.stderr.contains("no `m` in scope"), "{}", out.stderr);
+
+        let path = temp_file("lintable.cp", "let x = read::<Int>()\nif x > 1 && x < 5:\n    print(x)\n");
+        let out = run(&["fix", &path]);
+        assert_eq!(out.code, 0);
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            "let x = read<Int>()\nif x > 1 and x < 5:\n    print(x)\n"
+        );
+        assert_eq!(String::from_utf8_lossy(&out.stdout), format!("{path}: 2 fixes applied, no errors\n"));
     }
 
     #[test]

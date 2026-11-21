@@ -459,6 +459,28 @@ fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
 }
 
 #[test]
+fn quick_fixes_cover_c_spellings_and_mutation() {
+    let src = SOURCE.replace("var total", "let total").replace("for v in V:", "for v in V:\n    if v > 1 && v < n:\n        total += 0");
+    let (mut server, diagnostics) = open(&src);
+    let reply = server.handle(&request(
+        6,
+        "textDocument/codeAction",
+        obj([
+            ("textDocument", doc()),
+            ("range", obj([("start", pos(0, 0)), ("end", pos(12, 0))])),
+            ("context", obj([("diagnostics", diagnostics.into())])),
+        ]),
+    ));
+    let titles: Vec<&str> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .filter_map(|a| a.get("title").as_str())
+        .collect();
+    assert_eq!(titles, vec!["replace with `and`", "declare `total` with `var`"]);
+}
+
+#[test]
 fn closing_a_document_clears_its_diagnostics() {
     let (mut server, diagnostics) = open("let x = y\n");
     assert_eq!(diagnostics.len(), 1);

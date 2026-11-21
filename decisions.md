@@ -2409,6 +2409,27 @@ real types. Reverse: drop `catalog_lambda_params` and the `lambda_params` field.
   Fields already resolve bare inside methods that take `self`. *Reversible:* the `while` after the
   first `const` in `parser/stmt.rs`; the `field_of_self` branch in `Checker::unresolved`.
 
+- **30.11 C spellings (`&&`, `||`, `!x`, `..<`) are errors with the cp spelling as the fix, and parse
+  as that spelling.** *Reason:* they are the commonest slips from C++ and Python, the fix is exact,
+  and recovering as `and`/`or`/`not`/`..` keeps the rest of the file checked. A single `&` or `|`
+  stays bitwise. *Reversible:* `Parser::c_logic` and `Parser::range_op` in `cpl-syntax`.
+- **30.12 `cpl fix` applies the fixes errors carry first, then lint fixes.** It is the editor's
+  quick fixes run in a loop (at most 8 rounds); once no error is left it also makes the fixes
+  `cpl lint --fix` makes, which the lint codemods (L0204, L0415, L0510, L0511) document as `cpl fix`.
+  Assigning to a `let` fixes the declaration (`let` becomes `var`), and only the first assignment to
+  one `let` is reported. A plain number where a domain is needed gets `V(...)` as its fix. *Reason:*
+  one command for every machine-applicable fix; lint fixes wait for a file without errors so a
+  codemod never rewrites a program that does not check. The fix-it benchmark measures error fixes
+  alone (`apply_error_fixes`). *Reversible:* `cpl_cli::apply_error_fixes` and `apply_lint_fixes`;
+  drop the `ASSIGN_TO_LET` de-duplication in `db.rs`.
+- **30.13 Fix-its are measured on a second benchmark of common mistakes.** The broken-ports edits
+  (cut a value, drop a closer) have no single right fix, so `fix_it_scoreboard` plants one mistake
+  per copy instead (C spellings, `let` for a `var`, a misspelled member) and counts errors with a
+  fix and copies a `cpl fix` restores byte for byte. Ratchet: fix-its on at least 88% of errors and
+  restoring at least 95% of the copies that report one. Only this benchmark applies every fix: the
+  broken-ports scoreboard counts fix-its but skips the rewrite, which kept the recovery test inside
+  the fast gate's time. *Reversible:* delete `fix_it_scoreboard`.
+
 ## 31. Generated C++: stack, layout and niches (0.3)
 
 Settled by Ryan for 0.3: the judge gives a big stack, the generated C++ runs

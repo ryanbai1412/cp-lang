@@ -884,6 +884,64 @@ impl<'a> Lowerer<'a> {
         (judge_fns, entry_fns)
     }
 
+    /// On the error just reported for `.name` of a `ty`: the member it is
+    /// a typo of, with the fix. Candidates are the built-in members (a
+    /// range has a list's too), the record's fields and every fn in reach that takes `self`.
+    fn member_typo(&mut self, ty: &Ty, name: &str, span: Span) {
+        use cpl_check::Receiver;
+        const POS_MEMBERS: [&str; 19] = [
+            "after", "ahead", "back", "before", "count", "cyc", "first", "idx", "is_empty", "label",
+            "len", "next", "offset", "ord", "prev", "rank", "to_idx", "with", "without",
+        ];
+        const RANGE_MEMBERS: [&str; 10] =
+            ["end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step"];
+        let receiver = match ty {
+            Ty::Str => Some(Receiver::Str),
+            Ty::List(_) => Some(Receiver::List),
+            Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
+            Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
+            Ty::Array { .. } => Some(Receiver::Array),
+            _ => None,
+        };
+        let mut names: Vec<&str> = receiver
+            .into_iter()
+            .flat_map(cpl_check::builtin_members)
+            .map(|m| m.name)
+            .collect();
+        if let Ty::Record(fields) = ty {
+            names.extend(fields.iter().map(|(f, _)| f.as_str()));
+        }
+        match ty {
+            Ty::Pos(_) | Ty::Bound(_) => names.extend(POS_MEMBERS),
+            Ty::Range(_) => {
+                names.extend(RANGE_MEMBERS);
+                names.extend(cpl_check::builtin_members(Receiver::List).map(|m| m.name));
+            }
+            _ => {}
+        }
+        for (sym_name, sym) in &self.mod_syms[self.cur_mod] {
+            let decl = match *sym {
+                Sym::Fn(fid) => self.sigs[fid].decl,
+                Sym::GenFn(gfid) => self.gen_fns[gfid].decl,
+                _ => continue,
+            };
+            if decl.params.first().is_some_and(|p| p.name.text == "self") {
+                names.push(sym_name.strip_suffix(" of std").unwrap_or(sym_name));
+            }
+        }
+        let Some(s) = cpl_check::closest(name, names.into_iter()) else {
+            return;
+        };
+        let span = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!("did you mean `{s}`?"));
+            last.fixes.push(cpl_diag::Fix {
+                title: format!("change to `{s}`"),
+                edits: vec![(span, s)],
+            });
+        }
+    }
+
     fn help(&mut self, help: impl Into<String>) {
         if let Some(last) = self.diags.last_mut() {
             last.help = Some(help.into());

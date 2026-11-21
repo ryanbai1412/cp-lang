@@ -647,10 +647,24 @@ impl Database {
         for &span in &lexed.poisoned {
             sink.poison(span);
         }
+        // A `let` assigned in many places is one mistake, at the `let`.
+        let mut assigned_lets = Vec::new();
         for ((range, item), check) in ranges.iter().zip(items.iter()).zip(&checks) {
             let offset = range.span.start;
             for diag in item.parsed.diagnostics.iter().chain(&check.diagnostics) {
-                sink.push(diag.clone().shift(offset));
+                let mut diag = diag.clone().shift(offset);
+                if diag.code == codes::ASSIGN_TO_LET {
+                    if diag.labels.is_empty() {
+                        declare_with_var(&mut diag, &text, &scope, &items, &ranges);
+                    }
+                    if let Some(decl) = diag.labels.first().map(|l| l.span) {
+                        if assigned_lets.contains(&decl) {
+                            continue;
+                        }
+                        assigned_lets.push(decl);
+                    }
+                }
+                sink.push(diag);
             }
         }
         let imports_ok = import_diags.is_empty();
@@ -1670,4 +1684,33 @@ fn is_prelude(path: &str) -> bool {
 /// explicitly, so `BUILT_ON` must not introduce stdlib-to-stdlib cycles).
 fn is_std_path(path: &str) -> bool {
     path.contains("/stdlib/") || path.starts_with("stdlib/") || path.starts_with("std/")
+}
+
+/// Assigning a top-level `let` from another item: point at its
+/// declaration and offer to make it a `var` there.
+fn declare_with_var(
+    diag: &mut Diagnostic,
+    text: &str,
+    scope: &Scope,
+    items: &[Arc<ItemSyntax>],
+    ranges: &[cpl_syntax::ItemRange],
+) {
+    let name = diag.span.text(text);
+    let Some(&index) = scope.names.get(name) else {
+        return;
+    };
+    let Some(decl) = items[index].decls.iter().find(|d| d.name == name) else {
+        return;
+    };
+    let decl = decl.span.shift(ranges[index].span.start);
+    diag.labels.push(cpl_diag::Label {
+        span: decl,
+        message: "declared here".into(),
+    });
+    if let Some(at) = crate::check::let_before(text, decl) {
+        diag.fixes.push(cpl_diag::Fix {
+            title: format!("declare `{name}` with `var`"),
+            edits: vec![(at, "var".into())],
+        });
+    }
 }
