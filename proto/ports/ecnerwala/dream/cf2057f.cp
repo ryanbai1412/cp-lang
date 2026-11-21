@@ -15,7 +15,8 @@
 use std.interval.IntervalMap
 
 let (n, q): (1..=50_000, 1..=50_000) = read()
-let a: [n]1..=1e9 = read()
+domain Pos = 0..n
+let a: [Pos]1..=1e9 = read()
 let ks: [q]1..=1e9 = read()
 let window = prefix(a)
 let cuts = compress(a + [2 * x for x in a])
@@ -26,18 +27,24 @@ fn raise(l: 1..=31, x: Int) -> Int:
     let y = x - 1
     l + 2 * y - (y >> (l - 1)) - popcount(y & ((1 << (l - 1)) - 1))
 
+// Convert a compressed cut run `r` into its `(a[s] * 2^(l - 1), a[s - 1] * 2^l]` X-range.
+fn x_range(first_cut: Int, next_idx: Int, l: 1..=31) -> (Int, Int):
+    let lo = (first_cut << (l - 1)) + 1
+    let hi = if next_idx < cuts.len: min(cap, cuts[cuts.D.nth(next_idx)] << (l - 1)) else: cap
+    (lo, hi)
+
 var ans: [q]Int = a.max()
 for l in 1..=31:
     var saved = IntervalMap<cuts.D, ?Int>.new(none)
-    for s in (0..=n - l).sorted(by: s => window.sum(s..s + l)):
-        let end = if s > 0: cuts.at(2 * a[s - 1]).l else: cuts.D.last.r
-        saved.assign(cuts.at(a[s]).l..end, window.sum(s..s + l))
+    let windows = [(s, e) for s in Pos if let e = s + (l - 1)].sorted(by: w => window.sum(w.0..=w.1))
+    for (s, e) in windows:
+        let end = if let p = s.prev: cuts.at(2 * a[p]).l else: cuts.D.last.r
+        saved.assign(cuts.at(a[s]).l..end, window.sum(s..=e))
     var waiting = by_k
-    for (r, opt) in saved.runs.rev:
+    for (r, opt) in saved.each().rev:
         if let best = opt:
             let (_, j) = r.ends
-            let lo = (cuts[r.first!] << (l - 1)) + 1
-            let hi = if j < cuts.len: min(cap, cuts[cuts.D.nth(j)] << (l - 1)) else: cap
+            let (lo, hi) = x_range(cuts[r.first!], j, l)
             if lo <= hi:
                 let floor = raise(l, lo)
                 while let x = waiting.last, ks[x] + best >= floor:
