@@ -13,25 +13,39 @@ in `plan/OPERATING.md`; the detailed design for each domain is in the
 `plan/` chapter named in its heading.
 
 ## 1. Core language and types (`plan/1x-*`)
-**North star.** A small, general core in which the entire stdlib, every derive, every
-contest helper and every library diagnostic is ordinary library code a user
-could have written, with no compiler privilege. One spelling per idea, no
-special cases, and every P0 bug class unwritable or trapped. Any algorithm in
-the corpus reads like its editorial: types carry the proofs, revisions stay
-local, and the obvious program is the correct and fast one. A contestant
-learns the whole core in an afternoon and never meets a corner case.
-**Where we are.** 0.2.2 plus the first 0.3 syntax batch (`repeat`, `loop`,
-one-line enums, multi-binding `var`, unary `+`, counted domains,
-`read(lo..=hi)`). Missing from the 0.3 design: comptime reflection over a
-type's fields and variants (for derives: Read, Print, Gen, Hash, Ord),
-variadic generics (`read<(Int, [n]Int)>()`, `print(a, b, c)`), lazy
-parameters (`??`, `assert`, `debug` as library), a niche trait for 8-byte
-user optionals, library-authored diagnostics, writable places through
-methods (`seg.at(i) += 1`), `for x in s where c`, 2-D index spaces.
+**North star.** A small, general core in which the entire stdlib, every
+derive, every contest helper and every library diagnostic is ordinary
+library code a user could have written, with no compiler privilege. One
+spelling per idea, no special cases, and every P0 bug class unwritable or
+trapped. Any algorithm in the corpus reads like its editorial: types carry
+the proofs, revisions stay local, and the obvious program is the correct and
+fast one. A contestant learns the whole core in an afternoon and never meets
+a corner case. Concretely, the compiler knows no trait by name: `print`,
+`read`, `assert`, `debug`, `??` and every derive are library functions built
+on four core mechanisms (compile-time reflection over fields and variants,
+variadic generics as tuple packs, lazy parameters, writable places returned
+from methods), user optionals reach 8 bytes through a library `Niche`, and a
+library can say in its own words why a call does not type-check.
+**Where we are** (audited 2026-11-21 at `68ab60c`, probes in the commit
+message). The first 0.3 syntax batch works: `repeat`, `loop`, one-line
+enums, multi-binding `var`, unary `+`, `read(lo..=hi)`. Structs get `Eq`,
+`Ord`, `Hash`, `Show` and `Read` from the compiler, structurally, with
+`impl Show/Eq/Ord` as hooks (`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is
+stdlib privilege, not library code. Enums, even fieldless ones, have no
+order (`E0309` on `d < Dir.S` and on sorting). Not built: `@derive`
+(`E0501`), variadic parameters (checked, then `E0501` in lowering),
+`read<(Int, Int)>()` (does not parse as a call), lazy parameters,
+`Niche`, library diagnostics, a method call as an assignment target
+(`b.at() += 1` is `E0401`), `for x in s where c` (`E0103`), 2-D index
+spaces. 0 of the 52 ```cp blocks of the 0.3 spec pass `cpl check`; most
+stop at a parse error, so the count is a floor.
 **Bar.** Every code block in the design spec passes `cpl check`; the stdlib
-needs no compiler knowledge beyond the documented intrinsics.
-**Next.** Reflection-based derives; variadics; lazy parameters; niche trait;
-writable places; remaining syntax.
+needs no compiler knowledge beyond the documented intrinsics; each
+mechanism above has programs that the interpreter and the C++ agree on.
+**Next.** Reflection (`for f in fields(x)`, variants) and derives as
+trait defaults; variadic packs, then `print`/`read` on them; lazy
+parameters, then `assert`/`debug`/`??`; `Niche`; writable places;
+library diagnostics; remaining syntax.
 
 ## 2. Index spaces and fresh domains (`plan/12`, `plan/19`)
 **North star.** Every index-space bug in the P0 list is unwritable: indices from one
