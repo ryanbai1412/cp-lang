@@ -1,22 +1,27 @@
+// Codeforces 2115 A: Gellyfish and Flaming Peony.
+// Divide all elements by their overall gcd `g` so the target value becomes 1.
+// If `cnt1 > 0` elements are already 1, each remaining element takes 1 op (`n - cnt1`).
+// Otherwise, we first form a 1 from the smallest `k`-tuple with gcd 1 (`k - 1` ops),
+// then turn the other `n - 1` elements into 1 (`k - 1 + n - 1` total).
+// By Mobius inversion, the weighted count of `k`-tuples with gcd 1 is
+//   sum_{d=1..vmax} mu[d] * (sum_{d | x} w[x])^k;
+// random non-zero weights mod 998244353 (Schwarz-Zippel) prevent accidental zeroing.
+use std.math.Sieve
 use std.rand.Rng
 
-const MAX_V = 5010
+const MAX_V = 5_000
 type Z = Mod<998_244_353>
 
-var mu: [0..=MAX_V]Z = 0
-mu[1] = 1
-for i in 1..=MAX_V:
-    if mu[i] == 0: continue
-    for j in (2 * i..=MAX_V).step(i): mu[j] -= mu[i]
-
+let mu = Sieve.new(MAX_V).mobius_table()
 var rng = Rng.new(48)
 
 @!multitest
-let n: Int = read()
-let raw: [0..n]Int = read()
-let g = fold(gcd, raw)
+let n: 1..=5_000 = read()
+let raw: [0..n]1..=5_000 = read()
+var g = raw[0]
+for x in raw: g = gcd(g, x)
 let a = [x / g for x in raw]
-let cnt1 = count(x == 1 for x in a)
+let cnt1 = a.count(1)
 if cnt1 > 0:
     print(n - cnt1)
     return
@@ -25,17 +30,18 @@ let vmax = a.max()!
 var freq: [0..=vmax]Z = 0
 for x in a: freq[x] += rng.int(1, Z.MOD - 1)
 
-var freq_mult: [0..=vmax]Z = 0
-for i in 1..=vmax:
-    for j in (i..=vmax).step(i): freq_mult[i] += freq[j]
+var mult_sum: [0..=vmax]Z = 0
+for d in 1..=vmax:
+    for m in (d..=vmax).step(d): mult_sum[d] += freq[m]
 
-var freq_prod = [0..=vmax] i => mu[i]
-var ans = 1
-while true:
-    var cnt: Z = 0
-    for i in 1..=vmax:
-        freq_prod[i] *= freq_mult[i]
-        cnt += freq_prod[i]
-    if cnt != 0: break
-    ans += 1
-print(ans - 1 + n - 1)
+var prod = [0..=vmax] d => Z(mu[d])
+var k = 0
+for step in 1..=vmax:
+    var total: Z = 0
+    for d in 1..=vmax:
+        prod[d] *= mult_sum[d]
+        total += prod[d]
+    if total != 0:
+        k = step
+        break
+print(k - 1 + n - 1)
