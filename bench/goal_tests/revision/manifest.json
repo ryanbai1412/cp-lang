@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "id": "grid_path_skip_one",
+      "description": "Unseen grid min-cost path -> requirement change: may pass through at most 1 blocked cell",
+      "v1": "grid_path_v1.cp",
+      "v1_in": "grid_path_v1.in",
+      "v1_out": "grid_path_v1.out",
+      "v2": "grid_path_v2.cp",
+      "v2_in": "grid_path_v2.in",
+      "v2_out": "grid_path_v2.out"
+    },
+    {
+      "id": "argmax_one_based",
+      "description": "Unseen range max value (0-based) -> requirement change: 1-based input and return argmax position",
+      "v1": "argmax_v1.cp",
+      "v1_in": "argmax_v1.in",
+      "v1_out": "argmax_v1.out",
+      "v2": "argmax_v2.cp",
+      "v2_in": "argmax_v2.in",
+      "v2_out": "argmax_v2.out"
+    }
+  ]
+}

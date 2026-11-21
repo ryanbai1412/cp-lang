@@ -1,0 +1,101 @@
+{
+  "bar_pct": 90.0,
+  "cases": [
+    {
+      "id": "off_by_one_inclusive",
+      "bug_class": "off-by-one",
+      "description": "Inclusive loop 0..=n indexing [0..n] array",
+      "file": "off_by_one_inclusive.cp",
+      "input": "3\n1 2 3\n",
+      "expected_output": "6\n"
+    },
+    {
+      "id": "wrong_index_space",
+      "bug_class": "wrong-index-space",
+      "description": "Indexing [Vertex]Int with an Edge domain value",
+      "file": "wrong_index_space.cp",
+      "input": "3 2\n",
+      "expected_output": "0\n"
+    },
+    {
+      "id": "int_overflow_mul",
+      "bug_class": "overflow",
+      "description": "Signed 64-bit multiplication overflow on contest constraints",
+      "file": "int_overflow_mul.cp",
+      "input": "1000000000000 1000000000000\n",
+      "expected_output": "0\n"
+    },
+    {
+      "id": "boundary_empty_pop",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Popping from an empty List on n = 0 edge case",
+      "file": "boundary_empty_pop.cp",
+      "input": "0\n",
+      "expected_output": "0\n"
+    },
+    {
+      "id": "multitest_shared_var",
+      "bug_class": "multitest-state-leakage",
+      "description": "Top-level mutable state leaking across multitest cases",
+      "file": "multitest_shared_var.cp",
+      "input": "2\n1\n2\n",
+      "expected_output": "1\n2\n"
+    },
+    {
+      "id": "io_short_input",
+      "bug_class": "io-and-interactive",
+      "description": "Reading past end of input",
+      "file": "io_short_input.cp",
+      "input": "3\n1 2\n",
+      "expected_output": "3\n"
+    },
+    {
+      "id": "sentinel_none_unwrap",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Using ?Int directly in arithmetic without handling none",
+      "file": "sentinel_none_unwrap.cp",
+      "input": "3\n",
+      "expected_output": "4\n"
+    },
+    {
+      "id": "uninitialized_read",
+      "bug_class": "sentinels-and-uninitialized",
+      "description": "Mutating an immutable let binding instead of var",
+      "file": "uninitialized_read.cp",
+      "input": "3\n",
+      "expected_output": "4\n"
+    },
+    {
+      "id": "mutation_aliasing",
+      "bug_class": "mutation-surprises",
+      "description": "Pushing to a List while iterating over it (iterator invalidation)",
+      "file": "mutation_aliasing.cp",
+      "input": "3\n1 2 3\n",
+      "expected_output": "6\n"
+    },
+    {
+      "id": "mod_inv_zero",
+      "bug_class": "wrong-or-missing-modulus",
+      "description": "Division by zero in Mod<998_244_353> (missing zero check before modular inverse)",
+      "file": "mod_inv_zero.cp",
+      "input": "0\n",
+      "expected_output": "0\n"
+    },
+    {
+      "id": "div_by_zero_edge",
+      "bug_class": "boundaries-and-edge-cases",
+      "description": "Division by zero on boundary input k = 0",
+      "file": "div_by_zero_edge.cp",
+      "input": "10 0\n",
+      "expected_output": "0\n"
+    },
+    {
+      "id": "float_precision_loss",
+      "bug_class": "floating-point",
+      "description": "Exact integer equality lost through f64 rounding above 2^53",
+      "file": "float_precision_loss.cp",
+      "input": "9007199254740992 9007199254740993\n",
+      "expected_output": "NO\n"
+    }
+  ]
+}

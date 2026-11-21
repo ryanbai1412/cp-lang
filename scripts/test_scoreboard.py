@@ -481,5 +481,114 @@ class TasteCountsTest(unittest.TestCase):
         )
 
 
+class GoalTestsAndLeaderboardTest(unittest.TestCase):
+    def test_bug_replay_suite_live_and_ratchet(self):
+        cpl = sb.find_cpl_binary()
+        if not os.path.isfile(cpl):
+            self.skipTest("cpl binary not built")
+        br = sb.run_bug_replay_suite(cpl)
+        self.assertIsNotNone(br)
+        self.assertGreaterEqual(br["total"], 10)
+        self.assertTrue(br["bar_ok"], br)
+        self.assertGreaterEqual(br["handled_pct"], 90.0)
+        self.assertEqual(br["unexpected_pass"], 0)
+
+        base = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "bug_replay": {
+                    "handled_pct": 91.7,
+                    "bar_pct": 90.0,
+                    "bar_ok": True,
+                    "unexpected_pass": 0,
+                    "cases": [{"id": "c1", "outcome": "prevented"}],
+                },
+            },
+        }
+        cur_regressed = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "bug_replay": {
+                    "handled_pct": 83.3,
+                    "bar_pct": 90.0,
+                    "bar_ok": False,
+                    "unexpected_pass": 0,
+                    "cases": [{"id": "c1", "outcome": "caught_on_run"}],
+                },
+            },
+        }
+        diff = sb.diff_against_baseline(cur_regressed, base, mode="fast")
+        self.assertTrue(any("bug-replay handled" in m for m in diff["regressions"]))
+        self.assertTrue(any("bug-replay case regressed" in m for m in diff["regressions"]))
+
+    def test_revision_suite_live_and_ratchet(self):
+        cpl = sb.find_cpl_binary()
+        if not os.path.isfile(cpl):
+            self.skipTest("cpl binary not built")
+        rv = sb.run_revision_suite(cpl)
+        self.assertIsNotNone(rv)
+        self.assertGreaterEqual(rv["total"], 2)
+        self.assertEqual(rv["passed"], rv["total"], rv)
+        self.assertGreater(rv["total_lines_touched"], 0)
+
+        base = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "revision": {"cases": [{"id": "r1", "ok": True, "lines_touched": 7}]},
+            },
+        }
+        cur_grew = {
+            "ports": [],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+                "revision": {"cases": [{"id": "r1", "ok": True, "lines_touched": 12}]},
+            },
+        }
+        diff = sb.diff_against_baseline(cur_grew, base, mode="fast")
+        self.assertTrue(any("revision lines_touched grew" in m for m in diff["regressions"]))
+
+    def test_worst_dream_leaderboard_sorting(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "ports_page", os.path.join(os.path.dirname(os.path.abspath(__file__)), "ports-page.py")
+        )
+        pp = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pp)
+
+        def mk(pid, ratio, gap, dream_tok=100):
+            return (
+                "2026-01-01",
+                {"id": pid, "name": pid, "path": f"p/{pid}.cp", "orig_path": f"p/{pid}.cpp"},
+                None,
+                None,
+                0,
+                [],
+                {"dream_ratio": ratio, "dream_gap_tokens": gap, "dream_tokens": dream_tok, "cp_tokens": (dream_tok or 0) + (gap or 0)},
+                None,
+            )
+
+        rows = [
+            mk("no_dream", None, None, None),
+            mk("small", 1.2, 20),
+            mk("tie_a", 2.5, 100),
+            mk("tie_b", 2.5, 150),
+            mk("worst", 4.1, 310),
+        ]
+        top = pp.worst_dream_leaderboard(rows, limit=3)
+        self.assertEqual([r[1]["id"] for r in top], ["worst", "tie_b", "tie_a"])
+
+
 if __name__ == "__main__":
     unittest.main()

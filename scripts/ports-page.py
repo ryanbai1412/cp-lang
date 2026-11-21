@@ -78,6 +78,21 @@ def cell(s, n=90):
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+def worst_dream_leaderboard(rows, limit=20):
+    """Return the worst `limit` ports by port/dream token ratio (deterministic tie-break)."""
+    with_dream = [
+        r for r in rows if r[6].get("dream_ratio") is not None and r[6].get("dream_tokens")
+    ]
+    with_dream.sort(
+        key=lambda r: (
+            -r[6]["dream_ratio"],
+            -(r[6].get("dream_gap_tokens") or 0),
+            r[1]["id"],
+        )
+    )
+    return with_dream[:limit]
+
+
 def main():
     dates = added_dates()
     perf_by_id, time_p50 = load_scoreboard_perf()
@@ -146,6 +161,36 @@ def main():
         fr = f"[{count}](frictions/{p['name']}.md)" if count else "–"
         lints = taste_lints.get(p["abs_path"], (0, {}))[0]
         out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {taste} | {lints} | {area_cell} | {fr} | {cell(top)} |")
+
+    leaderboard = worst_dream_leaderboard(rows, limit=20)
+    if leaderboard:
+        out.extend(
+            [
+                "",
+                f"## Dream-gap leaderboard (worst {len(leaderboard)})",
+                "",
+                "Sorted worst-first by `cp / dream` token ratio so the polish lane works down the biggest gaps first.",
+                "",
+                "| # | Problem | Files | CP tokens | Dream tokens | Ratio | Gap | Areas | First friction |",
+                "|---:|---|---|---:|---:|---:|---:|---|---|",
+            ]
+        )
+        for rank, (_day, p, title, top, count, areas, tok, _perf) in enumerate(leaderboard, 1):
+            url = statement_url(p["name"])
+            prob = f"[{p['name']}]({url})" if url else p["name"]
+            if title:
+                prob += f" {cell(title, 36)}"
+            dream_path = os.path.join(os.path.dirname(p["path"]), "dream", p["name"] + ".cp")
+            files = f"[.cp](../{p['path']}) · [dream](../{dream_path})"
+            gap = tok["cp_tokens"] - tok["dream_tokens"]
+            gap_s = f"+{gap}" if gap >= 0 else str(gap)
+            area_cell = ", ".join(areas[:3]) if areas else "–"
+            fr_cell = f"[{cell(top, 70)}](frictions/{p['name']}.md)" if count and top else "–"
+            out.append(
+                f"| {rank} | {prob} | {files} | {tok['cp_tokens']} | {tok['dream_tokens']} | "
+                f"{tok['dream_ratio']:.2f}x | {gap_s} | {area_cell} | {fr_cell} |"
+            )
+
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out) + "\n")
     print(f"wrote {os.path.relpath(OUT, sb.ROOT)}: {len(rows)} ports")

@@ -21,6 +21,7 @@ Usage:
 """
 import argparse
 import concurrent.futures
+import difflib
 import glob
 import hashlib
 import json
@@ -43,6 +44,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORTS_DIR = os.path.join(ROOT, "proto", "ports")
 FRICTIONS_DIR = os.path.join(ROOT, "research", "frictions")
 REVIEWS_DIR = os.path.join(ROOT, "research", "reviews")
+BUG_REPLAY_DIR = os.path.join(ROOT, "bench", "goal_tests", "bug_replay")
+REVISION_DIR = os.path.join(ROOT, "bench", "goal_tests", "revision")
 DEFAULT_BASELINE = os.path.join(ROOT, "research", "scoreboard.json")
 
 SIZE_WARN = 48 * 1024
@@ -59,6 +62,7 @@ TIME_MAX_GOAL = 1.5
 INTERP_RATIO_BAR = 10.0
 INTERP_RATIO_NORTH_STAR = 5.0
 INTERP_FLOOR_MS = 20.0
+BUG_REPLAY_BAR_PCT = 90.0
 
 # Adaptive max-size probe schedule for gen/NAME.py SEED SIZE
 MAX_SIZE_STEPS = (8, 40, 200, 1000, 5000, 25000)
@@ -1191,6 +1195,107 @@ def summarize_frictions(frictions_dir=FRICTIONS_DIR):
     }
 
 
+def run_bug_replay_suite(cpl, suite_dir=BUG_REPLAY_DIR):
+    """Run the P0 bug-replay suite (AGENTS.md goal 2) and classify each case."""
+    manifest_path = os.path.join(suite_dir, "manifest.json")
+    if not os.path.isfile(manifest_path):
+        return None
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    bar_pct = float(manifest.get("bar_pct", BUG_REPLAY_BAR_PCT))
+    cases_out = []
+    counts = {"prevented": 0, "caught_on_run": 0, "left_to_diagnose": 0}
+    for c in manifest.get("cases", []):
+        path = os.path.join(suite_dir, c["file"])
+        chk = sh([cpl, "check", path], timeout=10)
+        if chk.returncode != 0:
+            outcome = "prevented"
+        else:
+            run = sh([cpl, "run", path], input=c.get("input", ""), timeout=10)
+            if run.returncode != 0:
+                outcome = "caught_on_run"
+            else:
+                outcome = (
+                    "left_to_diagnose"
+                    if run.stdout != c.get("expected_output", "")
+                    else "unexpected_pass"
+                )
+        counts[outcome] = counts.get(outcome, 0) + 1
+        cases_out.append(
+            {
+                "id": c["id"],
+                "bug_class": c["bug_class"],
+                "outcome": outcome,
+            }
+        )
+    total = len(cases_out)
+    handled = counts["prevented"] + counts["caught_on_run"]
+    handled_pct = round(100.0 * handled / total, 1) if total else 0.0
+    return {
+        "total": total,
+        "prevented": counts["prevented"],
+        "caught_on_run": counts["caught_on_run"],
+        "left_to_diagnose": counts["left_to_diagnose"],
+        "unexpected_pass": counts.get("unexpected_pass", 0),
+        "handled": handled,
+        "handled_pct": handled_pct,
+        "bar_pct": bar_pct,
+        "bar_ok": handled_pct >= bar_pct and counts.get("unexpected_pass", 0) == 0,
+        "cases": cases_out,
+    }
+
+
+def run_revision_suite(cpl, suite_dir=REVISION_DIR):
+    """Run the unseen-problem revision suite (AGENTS.md goal 1) and measure lines touched."""
+    manifest_path = os.path.join(suite_dir, "manifest.json")
+    if not os.path.isfile(manifest_path):
+        return None
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    cases_out = []
+    for c in manifest.get("cases", []):
+        v1_path = os.path.join(suite_dir, c["v1"])
+        v2_path = os.path.join(suite_dir, c["v2"])
+        ok_all = True
+        detail = "ok"
+        for tag in ("v1", "v2"):
+            p = os.path.join(suite_dir, c[tag])
+            inp = _read_text(os.path.join(suite_dir, c[f"{tag}_in"]))
+            exp = _read_text(os.path.join(suite_dir, c[f"{tag}_out"]))
+            r = sh([cpl, "run", p], input=inp, timeout=10)
+            if r.returncode != 0 or r.stdout != exp:
+                ok_all = False
+                detail = f"{tag} failed (rc={r.returncode})"
+                break
+        a_lines = _read_text(v1_path).splitlines()
+        b_lines = _read_text(v2_path).splitlines()
+        diff = list(difflib.unified_diff(a_lines, b_lines, n=0))
+        touched = sum(
+            1
+            for l in diff
+            if (l.startswith("+") or l.startswith("-"))
+            and not l.startswith("+++")
+            and not l.startswith("---")
+        )
+        hunks = sum(1 for l in diff if l.startswith("@@"))
+        cases_out.append(
+            {
+                "id": c["id"],
+                "ok": ok_all,
+                "detail": detail,
+                "lines_touched": touched,
+                "hunks": hunks,
+            }
+        )
+    total_touched = sum(x["lines_touched"] for x in cases_out)
+    return {
+        "total": len(cases_out),
+        "passed": sum(1 for x in cases_out if x["ok"]),
+        "total_lines_touched": total_touched,
+        "cases": cases_out,
+    }
+
+
 def run_friction_lint(ports):
     """Run scripts/friction_lint.py in-process over the discovered port files."""
     scripts_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1235,7 +1340,7 @@ def percentile(xs, q):
     return s[idx]
 
 
-def compute_totals(port_records, fl_summary, fr_summary):
+def compute_totals(port_records, fl_summary, fr_summary, bug_replay=None, revision=None):
     total = len(port_records)
     passed = sum(1 for r in port_records if r["gate"] == "pass")
     failed = total - passed
@@ -1441,6 +1546,8 @@ def compute_totals(port_records, fl_summary, fr_summary):
             "open_highs": len(fr_summary["open_highs"]),
             "warnings": len(fr_summary.get("warnings", [])),
         },
+        "bug_replay": bug_replay,
+        "revision": revision,
     }
 
 
@@ -1540,6 +1647,43 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
 
     if ct["friction_lint"]["wa_trap"] > 0:
         regressions.append(f"friction_lint wa_trap > 0 ({ct['friction_lint']['wa_trap']})")
+
+    br = ct.get("bug_replay")
+    if br is not None:
+        if br.get("unexpected_pass", 0) > 0:
+            regressions.append(f"bug-replay suite has {br['unexpected_pass']} unexpected_pass case(s)")
+        if not br.get("bar_ok"):
+            regressions.append(
+                f"bug-replay handled {br.get('handled_pct')}% < {br.get('bar_pct')}% bar"
+            )
+        if baseline and not subset and bt.get("bug_replay"):
+            bbr = bt["bug_replay"]
+            if br["handled_pct"] < bbr.get("handled_pct", 0):
+                regressions.append(
+                    f"bug-replay handled regressed: {bbr['handled_pct']}% -> {br['handled_pct']}%"
+                )
+            rank = {"prevented": 2, "caught_on_run": 1, "left_to_diagnose": 0, "unexpected_pass": -1}
+            b_cases = {c["id"]: c["outcome"] for c in bbr.get("cases", [])}
+            for c in br.get("cases", []):
+                prev = b_cases.get(c["id"])
+                if prev is not None and rank.get(c["outcome"], -1) < rank.get(prev, -1):
+                    regressions.append(
+                        f"bug-replay case regressed: {c['id']} ({prev} -> {c['outcome']})"
+                    )
+
+    rv = ct.get("revision")
+    if rv is not None:
+        for c in rv.get("cases", []):
+            if not c.get("ok"):
+                regressions.append(f"revision test failed: {c['id']} ({c.get('detail')})")
+        if baseline and not subset and bt.get("revision"):
+            b_rev = {c["id"]: c["lines_touched"] for c in bt["revision"].get("cases", [])}
+            for c in rv.get("cases", []):
+                prev = b_rev.get(c["id"])
+                if prev is not None and c["lines_touched"] > prev:
+                    regressions.append(
+                        f"revision lines_touched grew: {c['id']} ({prev} -> {c['lines_touched']})"
+                    )
 
     if baseline and not subset:
         base_blockers = bt.get("frictions", {}).get("open_blockers", 0)
@@ -1716,6 +1860,21 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         print(f"  lints:     {tl['total']} taste findings in {tl['ports']} ports ({by})")
     fl = t["friction_lint"]
     print(f"  lint:      {fl['wa_trap']} wa_trap, {fl['real_gap']} real_gap, {fl['stale_port']} stale_port")
+    br = t.get("bug_replay")
+    if br:
+        tag = "PASS" if br.get("bar_ok") else "FAIL"
+        print(
+            f"  bug-replay:{br['handled']}/{br['total']} handled ({br['handled_pct']}%, "
+            f"bar >={br['bar_pct']:.0f}%: {tag}; {br['prevented']} prevented, "
+            f"{br['caught_on_run']} caught on run, {br['left_to_diagnose']} left to diagnose)"
+        )
+    rv = t.get("revision")
+    if rv:
+        parts = ", ".join(f"{c['id']}={c['lines_touched']}L/{c['hunks']}h" for c in rv["cases"])
+        print(
+            f"  revision:  {rv['passed']}/{rv['total']} ok, "
+            f"{rv['total_lines_touched']} lines touched ({parts})"
+        )
     wfd = report.get("writable_from_docs")
     if wfd and wfd.get("latest"):
         cur = wfd["latest"]
@@ -1866,6 +2025,8 @@ def build_report(args):
 
     fl_summary = run_friction_lint(ports)
     fr_summary = summarize_frictions(args.frictions_dir)
+    bug_replay = run_bug_replay_suite(cpl) if not only else None
+    revision = run_revision_suite(cpl) if not only else None
 
     baseline = None
     if args.baseline and os.path.isfile(args.baseline):
@@ -1875,7 +2036,13 @@ def build_report(args):
     if mode == "fast" and args.write and baseline:
         merge_baseline_perf(port_records, baseline)
 
-    totals = compute_totals(port_records, fl_summary, fr_summary)
+    totals = compute_totals(
+        port_records,
+        fl_summary,
+        fr_summary,
+        bug_replay=bug_replay,
+        revision=revision,
+    )
     wfd_path = os.path.join(ROOT, "research", "writable-from-docs.json")
     wfd_data = None
     if os.path.isfile(wfd_path):

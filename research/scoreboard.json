@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "meta": {
-    "commit": "2ed3cd3d",
+    "commit": "16fccf01",
     "mode": "fast",
     "platform": "Linux-6.8.0-1060-aws-x86_64-with-glibc2.35",
     "cores": 8,
-    "elapsed_s": 2.56
+    "elapsed_s": 4.36
   },
   "totals": {
     "ports_total": 285,
@@ -14,15 +14,15 @@
     "interactive_ports": 16,
     "checker_ports": 5,
     "tokens": {
-      "cp_total": 87961,
+      "cp_total": 87688,
       "orig_total": 549522,
       "orig_stripped_total": 248362,
-      "ratio_of_totals": 0.1601,
-      "stripped_ratio_of_totals": 0.3542,
-      "median_ratio": 0.4167,
+      "ratio_of_totals": 0.1596,
+      "stripped_ratio_of_totals": 0.3531,
+      "median_ratio": 0.4161,
       "p90_ratio": 0.6122,
       "max_ratio": 0.9164,
-      "median_stripped_ratio": 0.5029,
+      "median_stripped_ratio": 0.5028,
       "p90_stripped_ratio": 0.6851,
       "max_stripped_ratio": 1.054,
       "over_1_0x_raw": 0,
@@ -30,9 +30,9 @@
     },
     "dream": {
       "ports": 45,
-      "cp_total": 21378,
+      "cp_total": 21200,
       "dream_total": 14358,
-      "ratio_of_totals": 1.4889,
+      "ratio_of_totals": 1.4765,
       "median_ratio": 1.3193,
       "p90_ratio": 2.5322,
       "max_ratio": 4.6765,
@@ -40,16 +40,16 @@
     },
     "emitted_bytes": {
       "measured": 285,
-      "median": 10851,
-      "p95": 27595,
+      "median": 10875,
+      "p95": 28024,
       "max": 59337,
       "max_port": "ecnerwala/cf2255f",
       "over_48kb": 3,
       "over_64kb": 0
     },
     "perf": {
-      "measured": 239,
-      "above_floor": 108,
+      "measured": 236,
+      "above_floor": 107,
       "floor_ms": 10.0,
       "mismatches": 0,
       "time_p50": 0.993,
@@ -133,7 +133,7 @@
           "input_source": "gen size=40"
         }
       ],
-      "rss_p50": 0.938,
+      "rss_p50": 0.942,
       "rss_p95": 2.241,
       "rss_max": 6.195,
       "rss_max_port": "ecnerwala/cf2268c"
@@ -146,15 +146,15 @@
       "max": 4
     },
     "interp": {
-      "measured": 243,
-      "passed": 250,
+      "measured": 240,
+      "passed": 247,
       "failed": 3,
-      "median_ms": 21.45,
-      "p95_ms": 60.89,
+      "median_ms": 21.42,
+      "p95_ms": 60.85,
       "max_ms": 88.01,
       "max_port": "ecnerwala/cf2178f",
-      "ratio_measured": 215,
-      "ratio_above_floor": 147,
+      "ratio_measured": 212,
+      "ratio_above_floor": 145,
       "ratio_p50": 6.97,
       "ratio_p95": 59.05,
       "ratio_max": 117.8,
@@ -163,7 +163,7 @@
       "ratio_north_star": 5.0,
       "bar_ok": true,
       "north_star_ok": false,
-      "over_10x": 57,
+      "over_10x": 56,
       "worst_10": [
         {
           "id": "ecnerwala/cf2262e",
@@ -250,273 +250,597 @@
       "files": 285,
       "wa_trap": 0,
       "real_gap": 6,
-      "stale_port": 57
+      "stale_port": 58
     },
     "frictions": {
-      "files": 66,
-      "total": 199,
-      "open": 197,
-      "closed": 2,
+      "files": 67,
+      "total": 190,
+      "open": 182,
+      "closed": 8,
       "by_severity": {
         "blocker": 0,
-        "high": 41,
-        "medium": 70,
-        "low": 60,
-        "unknown": 26
+        "high": 42,
+        "medium": 75,
+        "low": 65,
+        "unknown": 0
       },
       "by_goal": {
-        "express": 122,
-        "hard-to-get-wrong": 55,
-        "performance": 45,
-        "coherence": 14,
+        "express": 129,
+        "hard-to-get-wrong": 54,
+        "performance": 46,
+        "coherence": 15,
         "doubt-to-evidence": 12,
         "accumulate": 7,
-        "dependable-submission": 5,
-        "guessable apis": 1
+        "dependable-submission": 5
+      },
+      "by_area": {
+        "graphs": 7,
+        "trees": 13,
+        "ranges": 12,
+        "strings": 33,
+        "math": 20,
+        "flows": 10,
+        "containers": 11,
+        "geometry": 14,
+        "dp": 10,
+        "seq": 17,
+        "core": 35
       },
       "open_blockers": 0,
-      "open_highs": 41
+      "open_highs": 42,
+      "warnings": 0
+    },
+    "bug_replay": {
+      "total": 12,
+      "prevented": 6,
+      "caught_on_run": 5,
+      "left_to_diagnose": 1,
+      "unexpected_pass": 0,
+      "handled": 11,
+      "handled_pct": 91.7,
+      "bar_pct": 90.0,
+      "bar_ok": true,
+      "cases": [
+        {
+          "id": "off_by_one_inclusive",
+          "bug_class": "off-by-one",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "wrong_index_space",
+          "bug_class": "wrong-index-space",
+          "outcome": "prevented"
+        },
+        {
+          "id": "int_overflow_mul",
+          "bug_class": "overflow",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "boundary_empty_pop",
+          "bug_class": "boundaries-and-edge-cases",
+          "outcome": "prevented"
+        },
+        {
+          "id": "multitest_shared_var",
+          "bug_class": "multitest-state-leakage",
+          "outcome": "prevented"
+        },
+        {
+          "id": "io_short_input",
+          "bug_class": "io-and-interactive",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "sentinel_none_unwrap",
+          "bug_class": "sentinels-and-uninitialized",
+          "outcome": "prevented"
+        },
+        {
+          "id": "uninitialized_read",
+          "bug_class": "sentinels-and-uninitialized",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mutation_aliasing",
+          "bug_class": "mutation-surprises",
+          "outcome": "prevented"
+        },
+        {
+          "id": "mod_inv_zero",
+          "bug_class": "wrong-or-missing-modulus",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "div_by_zero_edge",
+          "bug_class": "boundaries-and-edge-cases",
+          "outcome": "caught_on_run"
+        },
+        {
+          "id": "float_precision_loss",
+          "bug_class": "floating-point",
+          "outcome": "left_to_diagnose"
+        }
+      ]
+    },
+    "revision": {
+      "total": 2,
+      "passed": 2,
+      "total_lines_touched": 40,
+      "cases": [
+        {
+          "id": "grid_path_skip_one",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 33,
+          "hunks": 4
+        },
+        {
+          "id": "argmax_one_based",
+          "ok": true,
+          "detail": "ok",
+          "lines_touched": 7,
+          "hunks": 3
+        }
+      ]
     }
   },
   "frictions": {
-    "files": 66,
-    "total": 199,
-    "open": 197,
-    "closed": 2,
+    "files": 67,
+    "total": 190,
+    "open": 182,
+    "closed": 8,
     "by_severity": {
       "blocker": 0,
-      "high": 41,
-      "medium": 70,
-      "low": 60,
-      "unknown": 26
+      "high": 42,
+      "medium": 75,
+      "low": 65,
+      "unknown": 0
     },
     "by_goal": {
-      "express": 122,
-      "hard-to-get-wrong": 55,
-      "performance": 45,
-      "coherence": 14,
+      "express": 129,
+      "hard-to-get-wrong": 54,
+      "performance": 46,
+      "coherence": 15,
       "doubt-to-evidence": 12,
       "accumulate": 7,
-      "dependable-submission": 5,
-      "guessable apis": 1
+      "dependable-submission": 5
+    },
+    "by_area": {
+      "graphs": 7,
+      "trees": 13,
+      "ranges": 12,
+      "strings": 33,
+      "math": 20,
+      "flows": 10,
+      "containers": 11,
+      "geometry": 14,
+      "dp": 10,
+      "seq": 17,
+      "core": 35
+    },
+    "by_area_queues": {
+      "graphs": {
+        "open": 7,
+        "high": 2,
+        "files": [
+          "research/frictions/cf2147h.md",
+          "research/frictions/cf2178h.md",
+          "research/frictions/cf2178i.md",
+          "research/frictions/cf2245e.md",
+          "research/frictions/ucup4s25c.md"
+        ]
+      },
+      "trees": {
+        "open": 13,
+        "high": 6,
+        "files": [
+          "research/frictions/cf2062e1.md",
+          "research/frictions/cf2066e.md",
+          "research/frictions/cf2084g2.md",
+          "research/frictions/cf2183f.md",
+          "research/frictions/cf2187f1.md",
+          "research/frictions/cf2187f2.md",
+          "research/frictions/cf2245g.md",
+          "research/frictions/cf2255e2.md"
+        ]
+      },
+      "ranges": {
+        "open": 12,
+        "high": 6,
+        "files": [
+          "research/frictions/cf2084f.md",
+          "research/frictions/cf2138f.md",
+          "research/frictions/cf2147f.md",
+          "research/frictions/cf2152g.md",
+          "research/frictions/cf2165f.md",
+          "research/frictions/cf2207f.md",
+          "research/frictions/cf2237h.md",
+          "research/frictions/cf2268c.md"
+        ]
+      },
+      "strings": {
+        "open": 33,
+        "high": 8,
+        "files": [
+          "research/frictions/cf2062h.md",
+          "research/frictions/cf2066b.md",
+          "research/frictions/cf2066c.md",
+          "research/frictions/cf2084h.md",
+          "research/frictions/cf2096e.md",
+          "research/frictions/cf2124f2.md",
+          "research/frictions/cf2129f2.md",
+          "research/frictions/cf2147f.md",
+          "research/frictions/cf2150f.md",
+          "research/frictions/cf2150g.md",
+          "research/frictions/cf2165f.md",
+          "research/frictions/cf2178i.md",
+          "research/frictions/cf2180f1.md",
+          "research/frictions/cf2183e.md",
+          "research/frictions/cf2183f.md",
+          "research/frictions/cf2187d.md",
+          "research/frictions/cf2187f1.md",
+          "research/frictions/cf2187f2.md",
+          "research/frictions/cf2222h.md",
+          "research/frictions/cf2229h.md",
+          "research/frictions/cf2245a.md",
+          "research/frictions/cf2245d1.md",
+          "research/frictions/cf2261g.md",
+          "research/frictions/cf2262b.md",
+          "research/frictions/ucup4s25h.md"
+        ]
+      },
+      "math": {
+        "open": 20,
+        "high": 6,
+        "files": [
+          "research/frictions/cf2062h.md",
+          "research/frictions/cf2066d1.md",
+          "research/frictions/cf2066d2.md",
+          "research/frictions/cf2084e.md",
+          "research/frictions/cf2084h.md",
+          "research/frictions/cf2135e2.md",
+          "research/frictions/cf2159e.md",
+          "research/frictions/cf2180f1.md",
+          "research/frictions/cf2201e.md",
+          "research/frictions/cf2222h.md",
+          "research/frictions/cf2229h.md",
+          "research/frictions/cf2245d1.md",
+          "research/frictions/cf2245f.md",
+          "research/frictions/cf2262c.md",
+          "research/frictions/ucup5s01a.md"
+        ]
+      },
+      "flows": {
+        "open": 10,
+        "high": 3,
+        "files": [
+          "research/frictions/cf2069f.md",
+          "research/frictions/cf2150f.md",
+          "research/frictions/cf2180f1.md",
+          "research/frictions/cf2180f2.md",
+          "research/frictions/cf2183e.md",
+          "research/frictions/cf2183h.md",
+          "research/frictions/cf2187f2.md",
+          "research/frictions/cf2207f.md",
+          "research/frictions/cf2245g.md",
+          "research/frictions/writable-from-docs-gaps.md"
+        ]
+      },
+      "containers": {
+        "open": 11,
+        "high": 3,
+        "files": [
+          "research/frictions/cf2069c.md",
+          "research/frictions/cf2135f.md",
+          "research/frictions/cf2178h.md",
+          "research/frictions/cf2178i.md",
+          "research/frictions/cf2183h.md",
+          "research/frictions/cf2187d.md",
+          "research/frictions/cf2222h.md",
+          "research/frictions/cf2262b.md",
+          "research/frictions/writable-from-docs-gaps.md"
+        ]
+      },
+      "geometry": {
+        "open": 14,
+        "high": 4,
+        "files": [
+          "research/frictions/cf2062e2.md",
+          "research/frictions/cf2066b.md",
+          "research/frictions/cf2069f.md",
+          "research/frictions/cf2135f.md",
+          "research/frictions/cf2138f.md",
+          "research/frictions/cf2178i.md",
+          "research/frictions/cf2183h.md",
+          "research/frictions/cf2222f.md",
+          "research/frictions/cf2237h.md",
+          "research/frictions/cf2255e2.md",
+          "research/frictions/cf2262b.md"
+        ]
+      },
+      "dp": {
+        "open": 10,
+        "high": 2,
+        "files": [
+          "research/frictions/cf2062h.md",
+          "research/frictions/cf2066f.md",
+          "research/frictions/cf2084g1.md",
+          "research/frictions/cf2159e.md",
+          "research/frictions/cf2183e.md",
+          "research/frictions/cf2183h.md",
+          "research/frictions/cf2187f1.md",
+          "research/frictions/cf2207e2.md",
+          "research/frictions/cf2229h.md",
+          "research/frictions/cf2255e2.md"
+        ]
+      },
+      "seq": {
+        "open": 17,
+        "high": 1,
+        "files": [
+          "research/frictions/cf2066c.md",
+          "research/frictions/cf2069e.md",
+          "research/frictions/cf2135f.md",
+          "research/frictions/cf2157c.md",
+          "research/frictions/cf2178h.md",
+          "research/frictions/cf2180f1.md",
+          "research/frictions/cf2183f.md",
+          "research/frictions/cf2187f1.md",
+          "research/frictions/cf2187f2.md",
+          "research/frictions/cf2201e.md",
+          "research/frictions/cf2207h3.md",
+          "research/frictions/cf2245g.md",
+          "research/frictions/writable-from-docs-gaps.md"
+        ]
+      },
+      "core": {
+        "open": 35,
+        "high": 1,
+        "files": [
+          "research/frictions/cf2062e1.md",
+          "research/frictions/cf2062g.md",
+          "research/frictions/cf2066c.md",
+          "research/frictions/cf2066d1.md",
+          "research/frictions/cf2066d2.md",
+          "research/frictions/cf2069f.md",
+          "research/frictions/cf2084e.md",
+          "research/frictions/cf2084f.md",
+          "research/frictions/cf2084g1.md",
+          "research/frictions/cf2084g2.md",
+          "research/frictions/cf2084h.md",
+          "research/frictions/cf2129f1.md",
+          "research/frictions/cf2129f2.md",
+          "research/frictions/cf2135f.md",
+          "research/frictions/cf2138e1.md",
+          "research/frictions/cf2138e2.md",
+          "research/frictions/cf2152g.md",
+          "research/frictions/cf2159e.md",
+          "research/frictions/cf2165f.md",
+          "research/frictions/cf2178h.md",
+          "research/frictions/cf2180f1.md",
+          "research/frictions/cf2180f2.md",
+          "research/frictions/cf2222f.md",
+          "research/frictions/cf2245d1.md",
+          "research/frictions/cf2255e2.md",
+          "research/frictions/cf2262b.md"
+        ]
+      }
     },
     "open_blockers": [],
     "open_highs": [
       {
         "file": "research/frictions/cf2062h.md",
-        "title": "The interpreter is too slow to gate the official samples"
+        "title": "The interpreter is too slow to gate the official samples",
+        "area": "dp"
       },
       {
         "file": "research/frictions/cf2062h.md",
-        "title": "`Mod<P>` is stored as 64 bits and tables nest as vectors of vectors"
+        "title": "`Mod<P>` is stored as 64 bits and tables nest as vectors of vectors",
+        "area": "math"
       },
       {
         "file": "research/frictions/cf2066d2.md",
-        "title": "Inner DP loop is 1.41x slower than C++ (0.31 s vs 0.22 s on $n = 100, c = 100, m = 10^4$)"
+        "title": "Inner DP loop is 1.41x slower than C++ (0.31 s vs 0.22 s on $n = 100, c = 100, m = 10^4$)",
+        "area": "math"
       },
       {
         "file": "research/frictions/cf2069f.md",
-        "title": "Offline \"segment tree over time\" is written by hand every time"
+        "title": "Offline \"segment tree over time\" is written by hand every time",
+        "area": "flows"
       },
       {
         "file": "research/frictions/cf2069f.md",
-        "title": "Splitting a range at its midpoint is unguessable and failed at runtime"
+        "title": "Splitting a range at its midpoint is unguessable and failed at runtime",
+        "area": "geometry"
       },
       {
         "file": "research/frictions/cf2084f.md",
-        "title": "`MinHeap.pop()` heap-allocates a `std::vector` on every sift-down step, and `SegTree` uses `std::function` (2.36x slowdown)"
+        "title": "`MinHeap.pop()` heap-allocates a `std::vector` on every sift-down step, and `SegTree` uses `std::function` (2.36x slowdown)",
+        "area": "ranges"
       },
       {
         "file": "research/frictions/cf2084g2.md",
-        "title": "No stdlib lazy/implicit treap (`LazyTreap` / balanced BST with lazy tags)"
+        "title": "No stdlib lazy/implicit treap (`LazyTreap` / balanced BST with lazy tags)",
+        "area": "trees"
       },
       {
         "file": "research/frictions/cf2096e.md",
-        "title": "`for (i, c) in s.rev.items:` re-reverses `s` on every iteration (310x slowdown)"
+        "title": "`for (i, c) in s.rev.items:` re-reverses `s` on every iteration (310x slowdown)",
+        "area": "strings"
       },
       {
         "file": "research/frictions/cf2135e2.md",
-        "title": "`Mod<P>` and `Comb<P>` use 64-bit storage and `pfac` lacks `I32`, causing 2.1x RSS and 2.3x runtime (owned by math / codegen area lane)"
+        "title": "`Mod<P>` and `Comb<P>` use 64-bit storage and `pfac` lacks `I32`, causing 2.1x RSS and 2.3x runtime (owned by math / codegen area lane)",
+        "area": "math"
       },
       {
         "file": "research/frictions/cf2135f.md",
-        "title": "`sorted` ignores a user `impl Ord` in the interpreter"
+        "title": "`sorted` ignores a user `impl Ord` in the interpreter",
+        "area": "seq"
       },
       {
         "file": "research/frictions/cf2135f.md",
-        "title": "A persistent hashed multiset is 30 lines of arena code over `Int` handles"
-      },
-      {
-        "file": "research/frictions/cf2135f.md",
-        "title": "`runs_by` makes the program 50x slower, so runs are found by hand"
+        "title": "A persistent hashed multiset is 30 lines of arena code over `Int` handles",
+        "area": "geometry"
       },
       {
         "file": "research/frictions/cf2147f.md",
-        "title": "`Action` and `Monoid` lower to `std::function` closures, causing 2.97x slowdown in `LazySegTree` (and force boilerplate over `+` / `with`)"
+        "title": "`Action` and `Monoid` lower to `std::function` closures, causing 2.97x slowdown in `LazySegTree` (and force boilerplate over `+` / `with`)",
+        "area": "ranges"
       },
       {
         "file": "research/frictions/cf2147f.md",
-        "title": "`?Low` is not niche-packed inside `LazySegTree`, nearly doubling runtime (232.6 ms -> 416.9 ms)"
+        "title": "`?Low` is not niche-packed inside `LazySegTree`, nearly doubling runtime (232.6 ms -> 416.9 ms)",
+        "area": "ranges"
       },
       {
         "file": "research/frictions/cf2159e.md",
-        "title": "`Mod<P>` is stored in 64 bits, which forced a different block size"
+        "title": "`Mod<P>` is stored in 64 bits, which forced a different block size",
+        "area": "math"
       },
       {
         "file": "research/frictions/cf2165f.md",
-        "title": "`SegTree` with a monoid is 1.6x slower than the hand-rolled tree"
+        "title": "`SegTree` with a monoid is 1.6x slower than the hand-rolled tree",
+        "area": "ranges"
       },
       {
         "file": "research/frictions/cf2178h.md",
-        "title": "The stdlib has no shortest path for fixed-cost move classes, and its `dijkstra` is 10\u2013200x slower"
+        "title": "The stdlib has no shortest path for fixed-cost move classes, and its `dijkstra` is 10\u2013200x slower",
+        "area": "graphs"
       },
       {
         "file": "research/frictions/cf2178h.md",
-        "title": "A product state space is not a domain"
+        "title": "A product state space is not a domain",
+        "area": "graphs"
       },
       {
         "file": "research/frictions/cf2178h.md",
-        "title": "`?Int` is 16 bytes and a ranged element type does not narrow it: 3x memory"
+        "title": "`?Int` is 16 bytes and a ranged element type does not narrow it: 3x memory",
+        "area": "containers"
+      },
+      {
+        "file": "research/frictions/cf2178i.md",
+        "title": "A subset's own subsets cannot be a dense index space, and the sparse form is 1.9x slower",
+        "area": "containers"
       },
       {
         "file": "research/frictions/cf2180f1.md",
-        "title": "The natural \"two more dimensions\" layout is 3.2x slower, and 9.5x under the sanitizer"
+        "title": "The natural \"two more dimensions\" layout is 3.2x slower, and 9.5x under the sanitizer",
+        "area": "strings"
       },
       {
         "file": "research/frictions/cf2180f1.md",
-        "title": "`let q: Z = 1 / 4` is silently 0, and `4 ** e` disagrees between interpreter and C++"
+        "title": "`let q: Z = 1 / 4` is silently 0, and `4 ** e` disagrees between interpreter and C++",
+        "area": "flows"
       },
       {
         "file": "research/frictions/cf2183e.md",
-        "title": "`(lo..=hi).step(k)` materializes a `List` and costs 6.7x"
+        "title": "`(lo..=hi).step(k)` materializes a `List` and costs 6.7x",
+        "area": "strings"
       },
       {
         "file": "research/frictions/cf2183f.md",
-        "title": "Preorder positions cannot index a table of cuts, so the port drops to `Int`"
+        "title": "Preorder positions cannot index a table of cuts, so the port drops to `Int`",
+        "area": "trees"
       },
       {
         "file": "research/frictions/cf2183h.md",
-        "title": "No Monge DP or Aliens in the stdlib, and the hand-written one is 4x-16x slower"
+        "title": "No Monge DP or Aliens in the stdlib, and the hand-written one is 4x-16x slower",
+        "area": "containers"
       },
       {
         "file": "research/frictions/cf2187d.md",
-        "title": "The obvious bitset knapsack is ten times slower than the original"
+        "title": "The obvious bitset knapsack is ten times slower than the original",
+        "area": "strings"
       },
       {
         "file": "research/frictions/cf2187f1.md",
-        "title": "No permutation tree in the stdlib"
+        "title": "No permutation tree in the stdlib",
+        "area": "trees"
       },
       {
         "file": "research/frictions/cf2187f2.md",
-        "title": "The permutation tree is copied from F1 verbatim"
+        "title": "The permutation tree is copied from F1 verbatim",
+        "area": "trees"
+      },
+      {
+        "file": "research/frictions/cf2201e.md",
+        "title": "1. No exact-integer convolution or cyclic correlation in `std` / `lib.math.poly`",
+        "area": "math"
       },
       {
         "file": "research/frictions/cf2207f.md",
-        "title": "`LazySegTree<Bounds<D>, T>` cannot be instantiated or ranged over `Bounds<D>`"
+        "title": "`LazySegTree<Bounds<D>, T>` cannot be instantiated or ranged over `Bounds<D>`",
+        "area": "ranges"
       },
       {
         "file": "research/frictions/cf2207f.md",
-        "title": "Boundary-delimited `for j in hi.r..r.l:` yields `Rank.bounds` instead of `Rank`"
+        "title": "Boundary-delimited `for j in hi.r..r.l:` yields `Rank.bounds` instead of `Rank`",
+        "area": "flows"
       },
       {
         "file": "research/frictions/cf2222h.md",
-        "title": "`Map<List<Int>, Int>` / structural hashing for sequence/partition keys"
+        "title": "`Map<List<Int>, Int>` / structural hashing for sequence/partition keys",
+        "area": "strings"
       },
       {
         "file": "research/frictions/cf2229h.md",
-        "title": "Sentinel `n + 1` (\"unreachable\") in DP state tables vs `?Pos` optionals"
+        "title": "Sentinel `n + 1` (\"unreachable\") in DP state tables vs `?Pos` optionals",
+        "area": "dp"
       },
       {
         "file": "research/frictions/cf2237h.md",
-        "title": "No interval partition map (`IntervalMap<D, T>`) in stdlib (owned by containers area lane)"
+        "title": "No interval partition map (`IntervalMap<D, T>`) in stdlib (owned by containers area lane)",
+        "area": "geometry"
       },
       {
         "file": "research/frictions/cf2245a.md",
-        "title": "String slicing `s[0..k]` lowers to $O(k^2)$ character concatenation (4.4x slowdown)"
+        "title": "String slicing `s[0..k]` lowers to $O(k^2)$ character concatenation (4.4x slowdown)",
+        "area": "strings"
       },
       {
         "file": "research/frictions/cf2245d1.md",
-        "title": "No custom checker hook in `gate.sh` for constructive / multi-answer problems"
+        "title": "No custom checker hook in `gate.sh` for constructive / multi-answer problems",
+        "area": "core"
       },
       {
         "file": "research/frictions/cf2245f.md",
-        "title": "64-bit `Mod<P>` storage and checked 2D DP indexing cause 8.6x slowdown in $O(n^3)$ loop"
+        "title": "64-bit `Mod<P>` storage and checked 2D DP indexing cause 8.6x slowdown in $O(n^3)$ loop",
+        "area": "math"
       },
       {
         "file": "research/frictions/cf2245g.md",
-        "title": "Interactive I/O lacks a first-class flush/exit protocol and interactor harness"
+        "title": "Interactive I/O lacks a first-class flush/exit protocol and interactor harness",
+        "area": "trees"
       },
       {
         "file": "research/frictions/cf2255e2.md",
-        "title": "The idiomatic program is 4.4x slower than the original and blows the time limit"
+        "title": "The idiomatic program is 4.4x slower than the original and blows the time limit",
+        "area": "trees"
       },
       {
         "file": "research/frictions/cf2261g.md",
-        "title": "Un-niched `Row<std::optional<ll>, 2>` and per-node temporary `std::vector` in `Trie` (3.5x slowdown)"
+        "title": "Un-niched `Row<std::optional<ll>, 2>` and per-node temporary `std::vector` in `Trie` (3.5x slowdown)",
+        "area": "strings"
       },
       {
         "file": "research/frictions/cf2262b.md",
-        "title": "The same monotone set lives in three structures, kept in sync by hand"
+        "title": "The same monotone set lives in three structures, kept in sync by hand",
+        "area": "geometry"
       },
       {
         "file": "research/frictions/cf2268c.md",
-        "title": "`SparseTable` uses `std::function` + nested 64-bit vectors and `Ends` allocates per iteration (2.6x slowdown, 6.2x RSS)"
+        "title": "`SparseTable` uses `std::function` + nested 64-bit vectors and `Ends` allocates per iteration (2.6x slowdown, 6.2x RSS)",
+        "area": "ranges"
       },
       {
         "file": "research/frictions/ucup4s25h.md",
-        "title": "String slicing `s[lo..hi]` lowers to an $O(n^2)$ character-concatenation loop (26x slowdown)"
+        "title": "String slicing `s[lo..hi]` lowers to an $O(n^2)$ character-concatenation loop (26x slowdown)",
+        "area": "strings"
       }
     ],
-    "warnings": [
-      "research/frictions/cf2062h.md :: What worked: missing or unrecognized Severity ('')",
-      "research/frictions/cf2062h.md :: What worked: missing Goal it hurts",
-      "research/frictions/cf2066b.md :: What worked: missing or unrecognized Severity ('')",
-      "research/frictions/cf2066b.md :: What worked: missing Goal it hurts",
-      "research/frictions/cf2066e.md :: Algorithm: missing or unrecognized Severity ('')",
-      "research/frictions/cf2066e.md :: Algorithm: missing Goal it hurts",
-      "research/frictions/cf2066f.md :: Algorithm: missing or unrecognized Severity ('')",
-      "research/frictions/cf2066f.md :: Algorithm: missing Goal it hurts",
-      "research/frictions/cf2069e.md :: 1. `std.seq.runs` only splits on equality and only accepts `List<T>`, not `Str`: missing or unrecognized Severity ('')",
-      "research/frictions/cf2069e.md :: 1. `std.seq.runs` only splits on equality and only accepts `List<T>`, not `Str`: missing Goal it hurts",
-      "research/frictions/cf2069e.md :: 2. No 3+ argument `max` / `min` without allocating a list literal: missing or unrecognized Severity ('')",
-      "research/frictions/cf2069e.md :: 2. No 3+ argument `max` / `min` without allocating a list literal: missing Goal it hurts",
-      "research/frictions/cf2069e.md :: 3. `count(s, pred)` predicate overload missing (same gap as `all`/`any`): missing or unrecognized Severity ('')",
-      "research/frictions/cf2069e.md :: 3. `count(s, pred)` predicate overload missing (same gap as `all`/`any`): missing Goal it hurts",
-      "research/frictions/cf2150f.md :: Algorithm: missing or unrecognized Severity ('')",
-      "research/frictions/cf2150f.md :: Algorithm: missing Goal it hurts",
-      "research/frictions/cf2150g.md :: Algorithm: missing or unrecognized Severity ('')",
-      "research/frictions/cf2150g.md :: Algorithm: missing Goal it hurts",
-      "research/frictions/cf2178i.md :: A subset's own subsets cannot be a dense index space, and the sparse form is 1.9x slower: missing or unrecognized Severity ('')",
-      "research/frictions/cf2178i.md :: The two sides of a bipartition cannot be domains, so `A` is a position list: missing or unrecognized Severity ('')",
-      "research/frictions/cf2178i.md :: No set-builder for `Subset`, so a neighbour mask is a four-line function: missing or unrecognized Severity ('')",
-      "research/frictions/cf2178i.md :: One DP step needs a scratch array, three loops and an ordering argument: missing or unrecognized Severity ('')",
-      "research/frictions/cf2178i.md :: Geometry and the answer fold are spelled out: missing or unrecognized Severity ('')",
-      "research/frictions/cf2178i.md :: `two_color` needs an import other stdlib graph names do not: missing or unrecognized Severity ('')",
-      "research/frictions/cf2183h.md :: What worked: missing or unrecognized Severity ('')",
-      "research/frictions/cf2183h.md :: What worked: missing Goal it hurts",
-      "research/frictions/cf2187d.md :: What worked: missing or unrecognized Severity ('')",
-      "research/frictions/cf2187d.md :: What worked: missing Goal it hurts",
-      "research/frictions/cf2201e.md :: 1. No exact-integer convolution or cyclic correlation in `std` / `lib.math.poly`: missing or unrecognized Severity ('')",
-      "research/frictions/cf2201e.md :: 1. No exact-integer convolution or cyclic correlation in `std` / `lib.math.poly`: missing Goal it hurts",
-      "research/frictions/cf2201e.md :: 2. Reaching into `Mod<P>.v` leaks internal representation: missing or unrecognized Severity ('')",
-      "research/frictions/cf2201e.md :: 2. Reaching into `Mod<P>.v` leaks internal representation: missing Goal it hurts",
-      "research/frictions/cf2201e.md :: 3. No `prod(...)` reduction to match `sum(...)`: missing or unrecognized Severity ('')",
-      "research/frictions/cf2201e.md :: 3. No `prod(...)` reduction to match `sum(...)`: missing Goal it hurts",
-      "research/frictions/cf2207h3.md :: 1. `std.seq.reverse` and `std.seq.rotate_left` do not operate on mutable slices: missing or unrecognized Severity ('')",
-      "research/frictions/cf2207h3.md :: 1. `std.seq.reverse` and `std.seq.rotate_left` do not operate on mutable slices: missing Goal it hurts",
-      "research/frictions/cf2207h3.md :: 2. No `rotate_right` (or signed `rotate`) in `std.seq`: missing or unrecognized Severity ('')",
-      "research/frictions/cf2207h3.md :: 2. No `rotate_right` (or signed `rotate`) in `std.seq`: missing Goal it hurts",
-      "research/frictions/cf2207h3.md :: 3. Cannot `read()` directly into a subrange of an array (`vals[1..n]`): missing or unrecognized Severity ('')",
-      "research/frictions/cf2207h3.md :: 3. Cannot `read()` directly into a subrange of an array (`vals[1..n]`): missing Goal it hurts",
-      "research/frictions/cf2222h.md :: Blocker: no accepted upstream C++ oracle: missing or unrecognized Severity ('')",
-      "research/frictions/cf2222h.md :: Blocker: no accepted upstream C++ oracle: missing Goal it hurts",
-      "research/frictions/cf2229h.md :: Blocker: no accepted upstream C++ oracle: missing or unrecognized Severity ('')",
-      "research/frictions/cf2229h.md :: Blocker: no accepted upstream C++ oracle: missing Goal it hurts",
-      "research/frictions/cf2245d1.md :: Blocker: no accepted upstream C++ oracle and no constructive checker in `gate.sh`: missing or unrecognized Severity ('')",
-      "research/frictions/cf2245d1.md :: Blocker: no accepted upstream C++ oracle and no constructive checker in `gate.sh`: missing Goal it hurts",
-      "research/frictions/cf2245g.md :: Blocker: no accepted upstream C++ oracle and no interactive gate support: missing or unrecognized Severity ('')",
-      "research/frictions/cf2245g.md :: Blocker: no accepted upstream C++ oracle and no interactive gate support: missing Goal it hurts"
-    ],
+    "warnings": [],
     "items": [
       {
         "file": "research/frictions/cf2062e1.md",
@@ -525,7 +849,8 @@
         "goals": [
           "express"
         ],
-        "status": "open",
+        "area": "seq",
+        "status": "closed",
         "general_fix": "Add `group(by:)` on domains/sequences in `stdlib/seq.cp` (sequences area lane)."
       },
       {
@@ -535,6 +860,7 @@
         "goals": [
           "performance"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "Narrow internal index tables in `stdlib/tree.cp` to 32-bit when `V` fits in `i32` (trees area lane)."
       },
@@ -545,6 +871,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Support `print(opt, none: 0)` or formatting fallback for `?D` (io area lane)."
       },
@@ -556,7 +883,8 @@
           "express",
           "hard-to-get-wrong"
         ],
-        "status": "open",
+        "area": "trees",
+        "status": "closed",
         "general_fix": "Add `prefix_fold` / `suffix_fold` returning `[Bounds<D>]T` in `stdlib/prefix.cp` (sequences area lane) and `Rooted.top_down` in `stdlib/tree.cp` (trees area lane)."
       },
       {
@@ -567,6 +895,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "Add `range_add(r: Range<D>, delta: T)` to `Fenwick` in `stdlib/fenwick.cp` (containers area lane)."
       },
@@ -577,7 +906,8 @@
         "goals": [
           "express"
         ],
-        "status": "open",
+        "area": "seq",
+        "status": "closed",
         "general_fix": "Add `group(by:)` in `stdlib/seq.cp` (sequences area lane)."
       },
       {
@@ -588,7 +918,8 @@
           "express",
           "hard-to-get-wrong"
         ],
-        "status": "open",
+        "area": "flows",
+        "status": "closed",
         "general_fix": "Add `min_weight_matching` to `stdlib/flow.cp` (graphs/flow area lane) and allow `a - b -> Int` on elements of the same ordered domain `D` (domains area lane)."
       },
       {
@@ -598,6 +929,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Support by-value mutable parameters (`mut perm: [D]D` or owned copy) when the caller passes an rvalue (core)."
       },
@@ -609,6 +941,7 @@
           "doubt-to-evidence",
           "dependable-submission"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "a faster interpreter tier for tight integer/array loops"
       },
@@ -619,6 +952,7 @@
         "goals": [
           "performance"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "store `Mod<P>` in the narrowest unsigned word that holds"
       },
@@ -630,6 +964,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "elementwise compound assignment between arrays of the"
       },
@@ -640,6 +975,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "derive fieldwise arithmetic for named tuples whose fields"
       },
@@ -651,16 +987,9 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "a character-set read option for `Bool` grids; `D.mask(xs)`"
-      },
-      {
-        "file": "research/frictions/cf2062h.md",
-        "title": "What worked",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2066b.md",
@@ -670,6 +999,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "a MEX scan in the stdlib scan family"
       },
@@ -680,6 +1010,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "give comprehension results an index space (a fresh"
       },
@@ -690,16 +1021,9 @@
         "goals": [
           "doubt-to-evidence"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "recognise `[x; n]` and `read(n)` as common foreign"
-      },
-      {
-        "file": "research/frictions/cf2066b.md",
-        "title": "What worked",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2066c.md",
@@ -708,6 +1032,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "a map declared with a default (`design/spec/26-containers.md`"
       },
@@ -718,6 +1043,7 @@
         "goals": [
           "express"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "`.keys` and `.values` iterators on `Map`, `HashMap` and"
       },
@@ -728,6 +1054,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "document (and test) that bitwise operations on ranged"
       },
@@ -738,6 +1065,7 @@
         "goals": [
           "express"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Support the `--- multitest ---` divider (bindings above it run once; everything below runs per test case)."
       },
@@ -749,6 +1077,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Add `skip<T>()` (or allow `read::<[0..m]0..=0>()` as a statement without unused-value warning) to consume and range-validate ignored input."
       },
@@ -760,6 +1089,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Allow later component types in a destructuring `let (n, c, m): (...) = read()` to reference earlier bound names, as in `design/EXEMPLARS.md` rule 9."
       },
@@ -771,6 +1101,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Support `read(none: sentinel)` for `?T` (and arrays of `?T`) so sentinel-encoded optionals (`0` or `-1` in contest input) become typed `?Floor` at the I/O boundary."
       },
@@ -781,6 +1112,7 @@
         "goals": [
           "performance"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Pack `Mod<P>` into `int32_t` when $P < 2^{31}$, and keep `Comb.choose` branch-minimal (inline fast path `if n < f.len`) so tight $O(10^8)$ binomial loops match hand-written C++."
       },
@@ -791,42 +1123,29 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Add `.init` (all elements except `.last`, symmetric with `.rest`) on domains, and support `--- multitest ---` below shared precomputation."
       },
       {
         "file": "research/frictions/cf2066e.md",
-        "title": "Algorithm",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
-      },
-      {
-        "file": "research/frictions/cf2066e.md",
         "title": "Frictions (port vs dream)",
         "severity": "low",
         "goals": [
           "express"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "Support stateful structs with `mut self` methods and `O(1)` `.last` caching on `SortedBag`, plus tuple optional binding (`if let (p, x) = (prv, nxt)`)."
       },
       {
         "file": "research/frictions/cf2066f.md",
-        "title": "Algorithm",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
-      },
-      {
-        "file": "research/frictions/cf2066f.md",
         "title": "Frictions (port vs dream)",
         "severity": "low",
         "goals": [
           "express"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "Add slice `.list()` conversion on `[D]T`, a stdlib `max_subarray_sum()` fold, and top-level per-test `return` inside `@!multitest` files."
       },
@@ -837,30 +1156,41 @@
         "goals": [
           "express"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "Allow a single scalar initializer to broadcast across a multi-variable declaration `var a, b, c: T = x`."
       },
       {
         "file": "research/frictions/cf2069e.md",
         "title": "1. `std.seq.runs` only splits on equality and only accepts `List<T>`, not `Str`",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "medium",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
         "status": "open",
         "general_fix": ""
       },
       {
         "file": "research/frictions/cf2069e.md",
         "title": "2. No 3+ argument `max` / `min` without allocating a list literal",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "low",
+        "goals": [
+          "express",
+          "performance"
+        ],
+        "area": "seq",
         "status": "open",
         "general_fix": ""
       },
       {
         "file": "research/frictions/cf2069e.md",
         "title": "3. `count(s, pred)` predicate overload missing (same gap as `all`/`any`)",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
         "status": "closed",
         "general_fix": ""
       },
@@ -872,6 +1202,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "a stdlib `offline_over(domain, items, by: range,"
       },
@@ -883,6 +1214,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "`Range.halves()` / `Range.split_at(pos)` in the stdlib,"
       },
@@ -893,6 +1225,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "an unordered `Pair<T>` (or `Edge<V>`) value type in the"
       },
@@ -904,6 +1237,7 @@
           "express",
           "coherence"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Provide `Z.comb(n)` (or `Comb<Z>(n)`) so the modulus lives only in `type Z = Mod<...>`."
       },
@@ -915,6 +1249,7 @@
           "express",
           "coherence"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Add `prefix_sums` on arrays/views (per `design/EXEMPLARS.md` rule 10) and `domain D = read(lo..=hi)` binding form; suggest `.next` when `.next()` is called on a domain value."
       },
@@ -925,6 +1260,7 @@
         "goals": [
           "performance"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Narrow `Mod<P>` storage to the narrowest integer holding `0..P`, and mark `Comb.ensure` cold / hoistable in codegen."
       },
@@ -935,6 +1271,7 @@
         "goals": [
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "(1) Lower small literal list iterations (`for x in [a, b]:`) to stack `std::array` / unrolled checks in codegen (and avoid allocating in `stdlib/heap.cp`), and (2) monomorphize `Monoid` / `Action` ope"
       },
@@ -945,6 +1282,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Allow `return` (and `return expr`) at top level inside `@!multitest` / `--- with multitest() ---` to finish the current test case. Helps every multitest constructive/decision problem."
       },
@@ -956,6 +1294,7 @@
           "express",
           "coherence"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "Add `.invert()` on partial-permutation arrays, `D.group(by:)` returning `[K]List<D>`, `a.rev` on arrays, and `Max<T>`/`Min<T>` monoids over `?T` for any `Ord` type `T` (including domains)."
       },
@@ -967,6 +1306,7 @@
           "express",
           "coherence"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "one optional combinator in the prelude, `?T.allows(x)` /"
       },
@@ -977,6 +1317,7 @@
         "goals": [
           "express"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "a rolling layout annotation on a multi-dimensional array"
       },
@@ -987,6 +1328,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "a lint on `.ord % k` / `.ord & 1` for domains whose labels"
       },
@@ -999,6 +1341,7 @@
           "hard-to-get-wrong",
           "accumulate"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "Add a generic `LazyTreap` / `SeqTree` in `stdlib` supporting custom key order or implicit indexing, subtree-size-aware lazy tag pushdown, split/merge, insert, and lazy in-order views (`take(k)`). Help"
       },
@@ -1009,6 +1352,7 @@
         "goals": [
           "performance"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "Niche-pack `?Int` (and `?Range`) in codegen, and narrow range-typed struct fields to `int32_t` where static bounds allow. Also helps `cf2066f`, `cf2147f`, and all arena-based data structures."
       },
@@ -1019,6 +1363,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Provide `.invert()` on arrays of optional/unique domain indices (as in `dream/cf2084g1.cp` and `design/sketches/exemplars-16-25.md`) and `.map(...)` on `[D]?T` lifting over `none`."
       },
@@ -1030,6 +1375,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Add `Str.runs()` (or make `runs()` generic over any sequence/slice, zero-allocating on `Str`)."
       },
@@ -1040,6 +1386,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Add `pop_if(mut self, pred: T -> Bool) -> ?T` on `List<T>`."
       },
@@ -1050,6 +1397,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Support local mutable projection bindings (`let st = mut a[i]`) and `drop_last()` / `.enumerate()` on `List<T>`."
       },
@@ -1060,6 +1408,7 @@
         "goals": [
           "express"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Allow `Mod<P> * Int`, `Int * Mod<P>`, and `Mod<P> += Int` when one side is already `Mod<P>`."
       },
@@ -1070,6 +1419,7 @@
         "goals": [
           "performance"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": ""
       },
@@ -1080,6 +1430,7 @@
         "goals": [
           "performance"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": ""
       },
@@ -1091,6 +1442,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Support `--- multitest ---` / `@!once` shared setup (core) and `ask<T>(...)` interactive query helper (io area lane)."
       },
@@ -1101,6 +1453,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Support multi-generator comprehensions / lazy Cartesian iterators in `stdlib/seq.cp` (sequences area lane). (`any(bits, ...)` now works on `main` and is used in `try_add`.)"
       },
@@ -1111,6 +1464,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Add `group(by:)` (sequences area lane) and `Map.entry(k).or_default()` (containers area lane)."
       },
@@ -1122,6 +1476,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Support `--- multitest ---` / `@!once` shared setup (core) and `ask<T>(...)` interactive query helper (io area lane)."
       },
@@ -1133,6 +1488,7 @@
           "express",
           "dependable-submission"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Dead-code-eliminate unused methods on imported stdlib structs during C++ emission (codegen area lane)."
       },
@@ -1144,6 +1500,7 @@
           "performance",
           "dependable-submission"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Store `Mod<P>` in `uint32_t` when `P < 2^31` (math / codegen area lane), avoid power-of-2 over-allocation in `Comb`, and expose `I32` for large sieve tables."
       },
@@ -1155,6 +1512,7 @@
           "express",
           "accumulate"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Add a `Sieve.multiplicative` helper to `stdlib/math.cp` (math area lane)."
       },
@@ -1166,6 +1524,7 @@
           "hard-to-get-wrong",
           "dependable-submission"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "one sort implementation for `sort` and `sorted` in the interpreter that"
       },
@@ -1177,6 +1536,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "`PMultiset<K>` (persistent, hashed segment tree over a key domain) in"
       },
@@ -1187,6 +1547,7 @@
         "goals": [
           "express"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "a `cmp:` option on `sort`/`sorted`/`min`/`max` taking a three-way"
       },
@@ -1197,7 +1558,8 @@
         "goals": [
           "performance"
         ],
-        "status": "open",
+        "area": "seq",
+        "status": "closed",
         "general_fix": "`runs_by` as a lazy generator yielding slices of the input (no copies,"
       },
       {
@@ -1207,6 +1569,7 @@
         "goals": [
           "performance"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "store range-typed struct fields at their minimal width, as arrays do."
       },
@@ -1217,6 +1580,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "a sentinel option on `read` for optional values; `?T.list` for the"
       },
@@ -1228,6 +1592,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Add `clamp(val, lo, hi)` to the prelude and `find_map` (and optionally an outward-from-centre range adaptor `nearest_first(to:)`) on ranges/iterables so witness searches return `?T` directly without u"
       },
@@ -1239,6 +1604,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Add `clamp(val, lo, hi)` to the prelude and `find_map` (and optionally an outward-from-centre range adaptor `nearest_first(to:)`) on ranges/iterables so witness searches return `?T` directly without u"
       },
@@ -1250,6 +1616,7 @@
           "express",
           "coherence"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "a generic `Pt<T>` (or `Vec<F64>`) in `geometry` with `len`, `unit`,"
       },
@@ -1261,6 +1628,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "a lazy product of ranges (or a lazy comprehension) that `find` can"
       },
@@ -1271,6 +1639,7 @@
         "goals": [
           "coherence"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "`all`/`any` beside `find` on every sequence; the name clash with the"
       },
@@ -1281,6 +1650,7 @@
         "goals": [
           "express"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "`push` returning the new element's index in the list's domain."
       },
@@ -1292,6 +1662,7 @@
           "express",
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "Monomorphize `LazySegTree` operations statically (no `std::function`), allow `LazySegTree` to pick up `+` directly without a fake `?T` identity when `apply` only touches non-empty ranges, and add `wit"
       },
@@ -1303,6 +1674,7 @@
           "hard-to-get-wrong",
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "Propagate niche values from `Int` / domain fields up to enclosing structs so `?Struct` uses an existing field's niche with zero size overhead."
       },
@@ -1314,6 +1686,7 @@
           "express",
           "coherence"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Add `choose2(n)` and `minmax(a, b)` to `std.math` / prelude."
       },
@@ -1325,6 +1698,7 @@
           "express",
           "coherence"
         ],
+        "area": "graphs",
         "status": "open",
         "general_fix": "Implement `Seq` + `Print` on `Bitset<D>`, add `.find(pred)`, `.without(x)`, and `V.all` for a domain's full bitset. Helps every graph/DP problem using `Bitset<D>`."
       },
@@ -1335,7 +1709,8 @@
         "goals": [
           "express"
         ],
-        "status": "open",
+        "area": "flows",
+        "status": "closed",
         "general_fix": "Add `gomory_hu` to `std.flow` returning the cut-equivalent tree edges `(u: V, v: V, w: Int)`, and `gcd(seq)` reduction on sequences of `Int`."
       },
       {
@@ -1345,16 +1720,9 @@
         "goals": [
           "express"
         ],
+        "area": "graphs",
         "status": "open",
         "general_fix": "Support `adjacency(edges, into: Bitset)` (or symmetric `Bitset` graph builder) in `std.graph`."
-      },
-      {
-        "file": "research/frictions/cf2150f.md",
-        "title": "Algorithm",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2150f.md",
@@ -1364,6 +1732,7 @@
           "express",
           "performance"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "Support open-start domain subranges (`V.after(i)`) and `count(for ...)` generator reductions."
       },
@@ -1374,16 +1743,9 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Support open-ended list slices `xs[start..]` returning a sub-list/slice."
-      },
-      {
-        "file": "research/frictions/cf2150g.md",
-        "title": "Algorithm",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2150g.md",
@@ -1392,6 +1754,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Support inline methods on structs, multi-generator `for`/`sum` clauses, and variadic `min`/`max` for 2+ arguments without allocating a `List`."
       },
@@ -1402,6 +1765,7 @@
         "goals": [
           "express"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "product monoids derived componentwise (`Monoid.pair(m, m)`"
       },
@@ -1412,6 +1776,7 @@
         "goals": [
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "monomorphize monoids and actions whose operations are"
       },
@@ -1422,6 +1787,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "document `??` on optional right-hand sides (and test it),"
       },
@@ -1432,6 +1798,7 @@
         "goals": [
           "performance"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": ""
       },
@@ -1442,6 +1809,7 @@
         "goals": [
           "performance"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "store `Mod<P>` and ranged integers, in scalars and in"
       },
@@ -1453,6 +1821,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "a `lazy` (memoised) array builder whose elements are"
       },
@@ -1463,6 +1832,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "an explicit type argument on `read` so it is usable inside"
       },
@@ -1474,6 +1844,7 @@
           "express",
           "performance"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "a `Poly<Mod<P>>` (or `Series`) type in the stdlib with"
       },
@@ -1485,6 +1856,7 @@
           "express",
           "doubt-to-evidence"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "`map`/`filter` on every `Seq` as the method spelling of the"
       },
@@ -1496,6 +1868,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "let range structures accept a `Bounds<V>..Bounds<V>`"
       },
@@ -1506,6 +1879,7 @@
         "goals": [
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "monomorphize monoids known at compile time (bare"
       },
@@ -1517,6 +1891,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "a stdlib monotonic-stack iterator that yields each"
       },
@@ -1527,6 +1902,7 @@
         "goals": [
           "express"
         ],
+        "area": "graphs",
         "status": "open",
         "general_fix": "a stdlib shortest path over an implicit graph whose arcs"
       },
@@ -1537,6 +1913,7 @@
         "goals": [
           "express"
         ],
+        "area": "graphs",
         "status": "open",
         "general_fix": "product domains (`domain S = (A, B)` with `[S]T` laid out"
       },
@@ -1548,6 +1925,7 @@
           "hard-to-get-wrong",
           "performance"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "size array elements from their declared range, and store"
       },
@@ -1559,6 +1937,7 @@
           "express",
           "performance"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "a runtime-modulus ring domain whose `+`, `-` and small"
       },
@@ -1569,6 +1948,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "treat any place expression (`at[i]`, `self.head`) that"
       },
@@ -1579,6 +1959,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "accept optional parameter annotations in closures."
       },
@@ -1589,68 +1970,75 @@
         "goals": [
           "doubt-to-evidence"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "a faster interpreter loop for array-heavy code (shared"
       },
       {
         "file": "research/frictions/cf2178i.md",
         "title": "A subset's own subsets cannot be a dense index space, and the sparse form is 1.9x slower",
-        "severity": "unknown",
+        "severity": "high",
         "goals": [
           "express",
           "performance"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "let a subset value act as a domain (its members, ranked),"
       },
       {
         "file": "research/frictions/cf2178i.md",
         "title": "The two sides of a bipartition cannot be domains, so `A` is a position list",
-        "severity": "unknown",
+        "severity": "medium",
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "filtered sub-domains (`domain A = V where pred`), whose"
       },
       {
         "file": "research/frictions/cf2178i.md",
         "title": "No set-builder for `Subset`, so a neighbour mask is a four-line function",
-        "severity": "unknown",
+        "severity": "medium",
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "set comprehensions `{x in D if p}` producing a `Subset<D>`"
       },
       {
         "file": "research/frictions/cf2178i.md",
         "title": "One DP step needs a scratch array, three loops and an ordering argument",
-        "severity": "unknown",
+        "severity": "medium",
         "goals": [
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "whole-array comprehensions over any index space"
       },
       {
         "file": "research/frictions/cf2178i.md",
         "title": "Geometry and the answer fold are spelled out",
-        "severity": "unknown",
+        "severity": "low",
         "goals": [
           "express"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "a stdlib `Vec2<R>` with arithmetic and `norm2` that reads"
       },
       {
         "file": "research/frictions/cf2178i.md",
         "title": "`two_color` needs an import other stdlib graph names do not",
-        "severity": "unknown",
+        "severity": "low",
         "goals": [
           "express"
         ],
+        "area": "graphs",
         "status": "open",
         "general_fix": "one rule for the prelude (all of `std.graph` or none),"
       },
@@ -1662,6 +2050,7 @@
           "express",
           "performance"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "small fixed domains (`Bool`, enums, records of them) as"
       },
@@ -1672,6 +2061,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "bidirectional typing pushes the expected type into"
       },
@@ -1682,6 +2072,7 @@
         "goals": [
           "performance"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "store `Mod<P>` in the narrowest unsigned type holding"
       },
@@ -1693,6 +2084,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "a stdlib `prefix_sums` over multi-axis arrays returning a"
       },
@@ -1703,6 +2095,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "field projection on lists of records (`q.n`), and `max`"
       },
@@ -1713,6 +2106,7 @@
         "goals": [
           "express"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "a payload-free enum is a domain (`Dir.all`, `[Dir]T`), and"
       },
@@ -1724,6 +2118,7 @@
           "express",
           "accumulate"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "functions generic over domains (`fn stops<domain I,"
       },
@@ -1734,6 +2129,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "recurrence tools in the prelude or in `std.math` with the"
       },
@@ -1744,6 +2140,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "prefix-sum views indexed by ranges (`..n` is \"the first n"
       },
@@ -1755,6 +2152,7 @@
           "hard-to-get-wrong",
           "doubt-to-evidence"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "make `read(none: s)` compose with every readable element"
       },
@@ -1765,6 +2163,7 @@
         "goals": [
           "performance"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "lower `range.step(k)` (and every range adaptor used as a"
       },
@@ -1775,6 +2174,7 @@
         "goals": [
           "express"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "allow one declaration for several variables of the same"
       },
@@ -1785,6 +2185,7 @@
         "goals": [
           "doubt-to-evidence"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "a faster interpreter tier (compiled bytecode with unboxed"
       },
@@ -1795,6 +2196,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "every domain `D` has a cut domain `D.cuts` (positions plus"
       },
@@ -1806,6 +2208,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "a stdlib 2D (and nD) prefix-sum view over an array that is"
       },
@@ -1816,6 +2219,7 @@
         "goals": [
           "express"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "a documented `t.preorder` view (and `postorder`), and"
       },
@@ -1826,6 +2230,7 @@
         "goals": [
           "express"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "`Rooted` accepts a `Tree<V>` edge list directly."
       },
@@ -1837,6 +2242,7 @@
           "doubt-to-evidence",
           "dependable-submission"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "the interpreter stores typed arrays unboxed (a `[P, P]Z`"
       },
@@ -1849,6 +2255,7 @@
           "hard-to-get-wrong",
           "performance"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "a `monge_path(through:, cost:)` (min-cost path over an"
       },
@@ -1857,8 +2264,10 @@
         "title": "`bsearch_first` refuses an `I128` range, with an error that names one type twice",
         "severity": "medium",
         "goals": [
+          "express",
           "doubt-to-evidence"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "make `bsearch_first`/`bsearch_last` generic over every"
       },
@@ -1870,6 +2279,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "widen literals field-wise in tuple/struct context (the"
       },
@@ -1880,16 +2290,9 @@
         "goals": [
           "performance"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "lower non-recursive, non-escaping local functions to"
-      },
-      {
-        "file": "research/frictions/cf2183h.md",
-        "title": "What worked",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2187d.md",
@@ -1898,6 +2301,7 @@
         "goals": [
           "performance"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "a `subset_sums(weights, upto:)` in the stdlib"
       },
@@ -1908,6 +2312,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "let an anonymous integer range (any bounds) be an array"
       },
@@ -1916,8 +2321,9 @@
         "title": "A Bitset is not iterable",
         "severity": "low",
         "goals": [
-          "guessable apis"
+          "express"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "every container with an `each() -> yields T` is"
       },
@@ -1929,16 +2335,9 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "`split_first(sep) -> ?(Str, Str)` on sequences, and a"
-      },
-      {
-        "file": "research/frictions/cf2187d.md",
-        "title": "What worked",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2187f1.md",
@@ -1949,6 +2348,7 @@
           "hard-to-get-wrong",
           "accumulate"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "a stdlib `PermTree` over any permutation `[I]I`, exposing"
       },
@@ -1959,6 +2359,7 @@
         "goals": [
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "payload enums with exhaustive `match` (`design/spec/11-types.md`), and domains usable as struct/tuple field types so arena ids"
       },
@@ -1970,6 +2371,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "`inverse()` on a bijective `[I]V` returning `[V]I`"
       },
@@ -1980,6 +2382,7 @@
         "goals": [
           "express"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "a stdlib offline \"nearest earlier smaller/larger value\""
       },
@@ -1990,6 +2393,7 @@
         "goals": [
           "express"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "slice/stack patterns on `List`, or have the lint suggest"
       },
@@ -2001,6 +2405,7 @@
           "express",
           "accumulate"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "the stdlib `PermTree` proposed in `cf2187f1.md`."
       },
@@ -2012,6 +2417,7 @@
           "express",
           "performance"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "an in-place `scan` (and a neighbour-pair mutable"
       },
@@ -2022,6 +2428,7 @@
         "goals": [
           "coherence"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "let `List<T>(xs)` construct from an iterable, matching"
       },
@@ -2033,30 +2440,42 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "payload enums with `while let` patterns (`design/spec/11-types.md`), as in `cf2187f1.md`."
       },
       {
         "file": "research/frictions/cf2201e.md",
         "title": "1. No exact-integer convolution or cyclic correlation in `std` / `lib.math.poly`",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "high",
+        "goals": [
+          "express",
+          "performance"
+        ],
+        "area": "math",
         "status": "open",
         "general_fix": ""
       },
       {
         "file": "research/frictions/cf2201e.md",
         "title": "2. Reaching into `Mod<P>.v` leaks internal representation",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "medium",
+        "goals": [
+          "express",
+          "coherence"
+        ],
+        "area": "math",
         "status": "open",
         "general_fix": ""
       },
       {
         "file": "research/frictions/cf2201e.md",
         "title": "3. No `prod(...)` reduction to match `sum(...)`",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
         "status": "open",
         "general_fix": ""
       },
@@ -2068,6 +2487,7 @@
           "express",
           "performance"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "Support mutable slice views `a[l..=r]` / `a[l..r]` as assignment and `read()` targets (already noted as spec work), so sentinel-padded and 1-based inputs stay single-allocation and one-line. Helps eve"
       },
@@ -2079,6 +2499,7 @@
           "express",
           "performance"
         ],
+        "area": "core",
         "status": "closed",
         "general_fix": "Add a 2-argument predicate overload `all(xs, pred)` / `any(xs, pred)` (or non-allocating generator expressions for `all`/`any`/`sum`/`min`/`max`) in the stdlib/core. Helps every problem with validity "
       },
@@ -2091,6 +2512,7 @@
           "hard-to-get-wrong",
           "coherence"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "Treat `Bounds<D>` as a first-class `Index` domain in generic parameters (`LazySegTree<Bounds<D>, T>`, `SegTree<Bounds<D>, T>`, `Fenwick<Bounds<D>>`) and allow `Range<Bounds<D>>` when the expected type"
       },
@@ -2102,6 +2524,7 @@
           "express",
           "coherence"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "Make boundary-bounded ranges `b1..b2` / `b1..` / `..b2` consistently yield elements of `D` (positions between the two boundaries), matching the `V.bounds` design and `SegTree`/`LazySegTree` range sema"
       },
@@ -2113,30 +2536,40 @@
           "express",
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "Add an optional `fill: ?T = none` parameter (or `.filled(act, val)`) to `LazySegTree` and `SegTree` constructors so constant-initialized trees skip the extra O(n) allocation. Helps every `AddMax`/`Add"
       },
       {
         "file": "research/frictions/cf2207h3.md",
         "title": "1. `std.seq.reverse` and `std.seq.rotate_left` do not operate on mutable slices",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "medium",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
         "status": "open",
         "general_fix": ""
       },
       {
         "file": "research/frictions/cf2207h3.md",
         "title": "2. No `rotate_right` (or signed `rotate`) in `std.seq`",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
         "status": "open",
         "general_fix": ""
       },
       {
         "file": "research/frictions/cf2207h3.md",
         "title": "3. Cannot `read()` directly into a subrange of an array (`vals[1..n]`)",
-        "severity": "unknown",
-        "goals": [],
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
         "status": "open",
         "general_fix": ""
       },
@@ -2148,6 +2581,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "Add a core `defer` statement (`decisions.md` 26.8) rather than a block-taking fn or lazy param:"
       },
@@ -2158,16 +2592,9 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Add `group(by:)` to `stdlib/seq.cp`."
-      },
-      {
-        "file": "research/frictions/cf2222h.md",
-        "title": "Blocker: no accepted upstream C++ oracle",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2222h.md",
@@ -2177,6 +2604,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Derive lexicographic `Ord`/`Eq` (and `Hash`) for `List<T>` and tuples when `T` supports them, and provide `Set<T>.insert(x) -> Bool` returning whether `x` was newly inserted."
       },
@@ -2188,6 +2616,7 @@
           "express",
           "accumulate"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Include a lightweight `Comb<M>` (or `FactTable<M>`) in `stdlib/mod.cp` with `fact`, `inv_fact`, and `choose` (returning `0` out of range)."
       },
@@ -2199,16 +2628,9 @@
           "express",
           "performance"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "Provide `Set<T>` with `insert(x) -> Bool` in stdlib (alongside `Map<K, V>`)."
-      },
-      {
-        "file": "research/frictions/cf2229h.md",
-        "title": "Blocker: no accepted upstream C++ oracle",
-        "severity": "unknown",
-        "goals": [],
-        "status": "open",
-        "general_fix": ""
       },
       {
         "file": "research/frictions/cf2229h.md",
@@ -2218,6 +2640,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "Allow `?D` (optional of a finite domain `D`) as an array/grid index space (with `none` occupying the extra slot `D.len`), and define `min`/`max` or a `min_some` combinator on `?D`. Eliminates sentinel"
       },
@@ -2229,6 +2652,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Make `Boundary` / `Cut` positions of a domain work seamlessly with reverse iteration and `String`/`List` indexing so `tbl[i.before]` and `tbl[i.after]` are statically proven in-bounds."
       },
@@ -2239,6 +2663,7 @@
         "goals": [
           "express"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Allow integer literals (`0`, `1`, ...) to coerce to `Mod<P>` when the expected type is `Mod<P>` (in variable/array initializers, assignments, and `==`/`!=` comparisons)."
       },
@@ -2250,6 +2675,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "`IntervalMap<D, T>` in stdlib (owned by the containers area lane) over any domain `D`, supporting `assign(range: Range<D>, val: T) -> yields (range: Range<D>, old: T)` and automatic adjacent-merge."
       },
@@ -2261,6 +2687,7 @@
           "express",
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": "Add a generic `LinkCutTree` / `TopTree` to stdlib/local-lib for dynamic trees and $O(\\log n)$ amortized path-assign queries."
       },
@@ -2271,14 +2698,7 @@
         "goals": [
           "performance"
         ],
-        "status": "open",
-        "general_fix": ""
-      },
-      {
-        "file": "research/frictions/cf2245d1.md",
-        "title": "Blocker: no accepted upstream C++ oracle and no constructive checker in `gate.sh`",
-        "severity": "unknown",
-        "goals": [],
+        "area": "strings",
         "status": "open",
         "general_fix": ""
       },
@@ -2290,6 +2710,7 @@
           "express",
           "doubt-to-evidence"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "Support an optional `proto/ports/ecnerwala/check/NAME.py` verifier in `gate.sh` (mirroring `cpl stress --checker`). Helps every constructive and approximate problem."
       },
@@ -2301,6 +2722,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": "Either a `SymmetricGrid<V, T>` / `AdjMatrix<V>` helper in stdlib, or a canonicalized unordered-pair key, so symmetric pair data is written once and safely queried in either order."
       },
@@ -2311,6 +2733,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "Add `count(xs, pred)` (or `xs.count(pred)`) alongside `any`/`all` in the sequence utilities."
       },
@@ -2321,6 +2744,7 @@
         "goals": [
           "performance"
         ],
+        "area": "graphs",
         "status": "open",
         "general_fix": ""
       },
@@ -2331,14 +2755,7 @@
         "goals": [
           "performance"
         ],
-        "status": "open",
-        "general_fix": ""
-      },
-      {
-        "file": "research/frictions/cf2245g.md",
-        "title": "Blocker: no accepted upstream C++ oracle and no interactive gate support",
-        "severity": "unknown",
-        "goals": [],
+        "area": "math",
         "status": "open",
         "general_fix": ""
       },
@@ -2350,6 +2767,7 @@
           "hard-to-get-wrong",
           "doubt-to-evidence"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "Add an `ask(...)` helper (prints, flushes, reads response, exits cleanly on `-1`/EOF) and interactor support in `gate.sh` / `cpl stress` (`--interactor`). Helps every interactive problem."
       },
@@ -2361,6 +2779,7 @@
           "express",
           "performance"
         ],
+        "area": "seq",
         "status": "open",
         "general_fix": "Provide a `first_true(range, pred) -> ?Int` (or `bsearch` returning `?T`) and zero-copy slice concatenation / multi-arg `print` over slices without allocating intermediate lists."
       },
@@ -2372,6 +2791,7 @@
           "express",
           "accumulate"
         ],
+        "area": "flows",
         "status": "open",
         "general_fix": "Add a parity/2-coloring DSU (or `Forest<V>` with `color(v)`) to stdlib/local-lib, composing naturally with `Dsu<V>`."
       },
@@ -2382,6 +2802,7 @@
         "goals": [
           "performance"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "pass records by `const&` when the callee does not move them; lower"
       },
@@ -2393,6 +2814,7 @@
           "express",
           "coherence"
         ],
+        "area": "dp",
         "status": "open",
         "general_fix": "a payload-free enum is a domain (`[E]T`, `for e in E`, `E.len`),"
       },
@@ -2404,6 +2826,7 @@
           "express",
           "performance"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "a stdlib range-update point-query tree whose `Action` has no fold"
       },
@@ -2414,6 +2837,7 @@
         "goals": [
           "express"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "infer constructor-argument types from the generic's other arguments"
       },
@@ -2425,6 +2849,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "trees",
         "status": "open",
         "general_fix": "a stdlib `MaxSub` monoid next to `Sum`/`Min`, with `none` as its"
       },
@@ -2435,6 +2860,7 @@
         "goals": [
           "doubt-to-evidence"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "interpreter speed on closure-heavy `Action`s, or `cpl run --native`."
       },
@@ -2445,6 +2871,7 @@
         "goals": [
           "performance"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": ""
       },
@@ -2456,6 +2883,7 @@
           "express",
           "coherence"
         ],
+        "area": "core",
         "status": "open",
         "general_fix": "optional chaining (`?.`) over fields and methods, lifting like `+`"
       },
@@ -2467,6 +2895,7 @@
           "express",
           "hard-to-get-wrong"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "ordered `Map`/`Set` gain `rank`/`count(range)` (an order-statistic"
       },
@@ -2478,6 +2907,7 @@
           "doubt-to-evidence",
           "coherence"
         ],
+        "area": "containers",
         "status": "open",
         "general_fix": "L0412 fires only when the map is used for lookup and insert alone;"
       },
@@ -2488,6 +2918,7 @@
         "goals": [
           "express"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": "`Set<T>` index assignment with a `Bool` (`s[x] = cond`), as `Bitset`"
       },
@@ -2498,6 +2929,7 @@
         "goals": [
           "express"
         ],
+        "area": "geometry",
         "status": "open",
         "general_fix": "a stdlib `fixpoint(start, step)` documented as running `step` until"
       },
@@ -2508,6 +2940,7 @@
         "goals": [
           "performance"
         ],
+        "area": "math",
         "status": "open",
         "general_fix": ""
       },
@@ -2518,6 +2951,7 @@
         "goals": [
           "performance"
         ],
+        "area": "ranges",
         "status": "open",
         "general_fix": ""
       },
@@ -2528,6 +2962,7 @@
         "goals": [
           "performance"
         ],
+        "area": "graphs",
         "status": "open",
         "general_fix": ""
       },
@@ -2538,6 +2973,7 @@
         "goals": [
           "performance"
         ],
+        "area": "strings",
         "status": "open",
         "general_fix": ""
       },
@@ -2548,6 +2984,40 @@
         "goals": [
           "performance"
         ],
+        "area": "math",
+        "status": "open",
+        "general_fix": ""
+      },
+      {
+        "file": "research/frictions/writable-from-docs-gaps.md",
+        "title": "1. `bsearch_last(0..n, ...)` return type fails to unify with `?Int`",
+        "severity": "medium",
+        "goals": [
+          "express"
+        ],
+        "area": "seq",
+        "status": "open",
+        "general_fix": ""
+      },
+      {
+        "file": "research/frictions/writable-from-docs-gaps.md",
+        "title": "2. Multi-statement `match` arms require a helper or `if`/`elif`",
+        "severity": "low",
+        "goals": [
+          "express"
+        ],
+        "area": "flows",
+        "status": "open",
+        "general_fix": ""
+      },
+      {
+        "file": "research/frictions/writable-from-docs-gaps.md",
+        "title": "3. `HashMap<K, V>` indexing `m[k]` vs `m.get(k)` optionality surprise",
+        "severity": "low",
+        "goals": [
+          "hard-to-get-wrong"
+        ],
+        "area": "containers",
         "status": "open",
         "general_fix": ""
       }
@@ -2557,14 +3027,14 @@
     "files": 285,
     "wa_trap": 0,
     "real_gap": 6,
-    "stale_port": 57,
+    "stale_port": 58,
     "by_rule": {
       "mod_literal_wrapping": 22,
       "comprehension_copy": 9,
       "domain_bound_boilerplate": 9,
+      "prelude_import": 4,
       "bool_to_int": 3,
       "manual_cursor_loop": 3,
-      "prelude_import": 3,
       "domain_step_unwrap": 2,
       "none_then_assign": 2,
       "one_based_shift": 2,
@@ -2580,17 +3050,17 @@
   "writable_from_docs": {
     "manifest": "research/writable-from-docs-set.json",
     "model": "gpt-5.4",
-    "min_compile_rate": 0.7864,
-    "min_pass_rate": 0.2955,
+    "min_compile_rate": 0.8227,
+    "min_pass_rate": 0.4773,
     "latest": {
       "date": "2026-11-21",
       "model": "gpt-5.4",
       "total": 55,
-      "compiled": 46,
-      "built": 46,
-      "passed": 17,
-      "compile_rate": 0.8364,
-      "pass_rate": 0.3091
+      "compiled": 48,
+      "built": 48,
+      "passed": 29,
+      "compile_rate": 0.8727,
+      "pass_rate": 0.5273
     },
     "history": [
       {
@@ -2647,6 +3117,28 @@
         "compile_rate": 0.8364,
         "pass_rate": 0.3091,
         "round": "round-4-after-sieve-and-hashmap-fixes"
+      },
+      {
+        "date": "2026-11-21",
+        "model": "gpt-5.4",
+        "total": 55,
+        "compiled": 46,
+        "built": 46,
+        "passed": 25,
+        "compile_rate": 0.8364,
+        "pass_rate": 0.4545,
+        "round": "round-5-clean-deterministic-55"
+      },
+      {
+        "date": "2026-11-21",
+        "model": "gpt-5.4",
+        "total": 55,
+        "compiled": 48,
+        "built": 48,
+        "passed": 29,
+        "compile_rate": 0.8727,
+        "pass_rate": 0.5273,
+        "round": "round-6-after-r5-docs-fixes"
       }
     ]
   },
@@ -2906,23 +3398,23 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 19803,
+      "emitted_bytes": 20827,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 185,
       "orig_tokens": 2827,
       "orig_stripped_tokens": 2803,
-      "token_ratio": 0.0707,
-      "stripped_token_ratio": 0.0714,
+      "token_ratio": 0.0654,
+      "stripped_token_ratio": 0.066,
       "dream_tokens": 174,
       "dream_ratio": 1.0632,
-      "dream_gap_tokens": 26,
+      "dream_gap_tokens": 11,
       "taste_score": 4,
       "review_path": "research/reviews/cf2062e1.md",
       "cp_loc": 18,
       "orig_loc": 307,
       "orig_stripped_loc": 305,
-      "cp_sha": "4f820530982d71ab",
+      "cp_sha": "7bae63506aef3996",
       "orig_sha": "34d25900e0c3ccb4",
       "has_gen": true,
       "has_samples": true,
@@ -2944,23 +3436,23 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 27000,
+      "emitted_bytes": 28024,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 667,
       "orig_tokens": 1928,
       "orig_stripped_tokens": 1904,
-      "token_ratio": 0.3823,
-      "stripped_token_ratio": 0.3871,
+      "token_ratio": 0.346,
+      "stripped_token_ratio": 0.3503,
       "dream_tokens": 415,
       "dream_ratio": 1.6072,
-      "dream_gap_tokens": 322,
+      "dream_gap_tokens": 252,
       "taste_score": null,
       "review_path": "research/reviews/cf2062e2.md",
-      "cp_loc": 64,
+      "cp_loc": 63,
       "orig_loc": 235,
       "orig_stripped_loc": 233,
-      "cp_sha": "59a649936958d8ed",
+      "cp_sha": "c4852a2092280ba5",
       "orig_sha": "24d34afbfcf53671",
       "has_gen": true,
       "has_samples": true,
@@ -2982,23 +3474,23 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 16314,
+      "emitted_bytes": 16241,
       "over_48kb": false,
       "over_64kb": false,
-      "cp_tokens": 388,
+      "cp_tokens": 386,
       "orig_tokens": 2291,
       "orig_stripped_tokens": 1123,
-      "token_ratio": 0.1694,
-      "stripped_token_ratio": 0.3455,
+      "token_ratio": 0.1685,
+      "stripped_token_ratio": 0.3437,
       "dream_tokens": 366,
-      "dream_ratio": 1.0601,
-      "dream_gap_tokens": 22,
+      "dream_ratio": 1.0546,
+      "dream_gap_tokens": 20,
       "taste_score": null,
       "review_path": "research/reviews/cf2062g.md",
-      "cp_loc": 38,
+      "cp_loc": 36,
       "orig_loc": 232,
       "orig_stripped_loc": 111,
-      "cp_sha": "b909cc49f8671c0e",
+      "cp_sha": "f7b9fcdfaeb673ca",
       "orig_sha": "513883f3023cc02a",
       "has_gen": true,
       "has_samples": true,
@@ -3388,52 +3880,30 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 12947,
+      "emitted_bytes": 14743,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 316,
       "orig_tokens": 639,
       "orig_stripped_tokens": 615,
-      "token_ratio": 0.5102,
-      "stripped_token_ratio": 0.5301,
+      "token_ratio": 0.4945,
+      "stripped_token_ratio": 0.5138,
       "dream_tokens": null,
       "dream_ratio": null,
       "dream_gap_tokens": null,
       "taste_score": null,
       "review_path": null,
-      "cp_loc": 44,
+      "cp_loc": 41,
       "orig_loc": 71,
       "orig_stripped_loc": 69,
-      "cp_sha": "1b1b29bf7b37eb84",
+      "cp_sha": "40a1f6e3ac9213ff",
       "orig_sha": "cdeb284265aac525",
       "has_gen": true,
       "has_samples": true,
       "interactive": false,
       "has_checker": false,
-      "perf": {
-        "measured": true,
-        "interactive": false,
-        "input_source": "gen size=25000",
-        "input_bytes": 38488,
-        "cpp_ms": 8.39,
-        "orig_ms": 7.98,
-        "time_ratio": 1.051,
-        "cpp_rss_kb": 3200,
-        "orig_rss_kb": 3584,
-        "rss_ratio": 0.893,
-        "output_match": true
-      },
-      "interp": {
-        "ok": true,
-        "ms": 37.16,
-        "cases": 3,
-        "source": "sample cf2069e.1.in",
-        "error": null,
-        "ratio_interp_ms": 36.32,
-        "ratio_cpp_ms": 8.39,
-        "ratio": 4.33,
-        "ratio_source": "gen size=25000"
-      }
+      "perf": null,
+      "interp": null
     },
     {
       "id": "ecnerwala/cf2069f",
@@ -7343,52 +7813,30 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 25661,
+      "emitted_bytes": 26685,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 826,
       "orig_tokens": 6818,
       "orig_stripped_tokens": 3224,
-      "token_ratio": 0.1214,
-      "stripped_token_ratio": 0.2568,
+      "token_ratio": 0.1211,
+      "stripped_token_ratio": 0.2562,
       "dream_tokens": 328,
       "dream_ratio": 2.5183,
-      "dream_gap_tokens": 500,
+      "dream_gap_tokens": 498,
       "taste_score": null,
       "review_path": "research/reviews/cf2135f.md",
-      "cp_loc": 59,
+      "cp_loc": 58,
       "orig_loc": 636,
       "orig_stripped_loc": 279,
-      "cp_sha": "e89dbb456a19250d",
+      "cp_sha": "804e862ca88d9d77",
       "orig_sha": "d96430c7ebb31d5f",
       "has_gen": true,
       "has_samples": true,
       "interactive": false,
       "has_checker": false,
-      "perf": {
-        "measured": true,
-        "interactive": false,
-        "input_source": "gen size=200",
-        "input_bytes": 3488895,
-        "cpp_ms": 609.16,
-        "orig_ms": 546.4,
-        "time_ratio": 1.115,
-        "cpp_rss_kb": 224236,
-        "orig_rss_kb": 101152,
-        "rss_ratio": 2.217,
-        "output_match": true
-      },
-      "interp": {
-        "ok": true,
-        "ms": 73.36,
-        "cases": 3,
-        "source": "sample cf2135f.1.in",
-        "error": null,
-        "ratio_interp_ms": 63.88,
-        "ratio_cpp_ms": 5.85,
-        "ratio": 10.92,
-        "ratio_source": "sample cf2135f.1.in"
-      }
+      "perf": null,
+      "interp": null
     },
     {
       "id": "ecnerwala/cf2137a",
@@ -7883,52 +8331,30 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 10172,
+      "emitted_bytes": 11520,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 161,
       "orig_tokens": 471,
       "orig_stripped_tokens": 447,
-      "token_ratio": 0.5223,
-      "stripped_token_ratio": 0.5503,
+      "token_ratio": 0.3418,
+      "stripped_token_ratio": 0.3602,
       "dream_tokens": null,
       "dream_ratio": null,
       "dream_gap_tokens": null,
       "taste_score": null,
       "review_path": null,
-      "cp_loc": 20,
+      "cp_loc": 15,
       "orig_loc": 40,
       "orig_stripped_loc": 38,
-      "cp_sha": "8051398d29fd5b2e",
+      "cp_sha": "1b7e5fdfddf96645",
       "orig_sha": "318509509bd78d5d",
       "has_gen": true,
       "has_samples": true,
       "interactive": false,
       "has_checker": false,
-      "perf": {
-        "measured": true,
-        "interactive": false,
-        "input_source": "gen size=8",
-        "input_bytes": 396,
-        "cpp_ms": 5.08,
-        "orig_ms": 5.17,
-        "time_ratio": 0.983,
-        "cpp_rss_kb": 3072,
-        "orig_rss_kb": 3584,
-        "rss_ratio": 0.857,
-        "output_match": true
-      },
-      "interp": {
-        "ok": true,
-        "ms": 10.48,
-        "cases": 3,
-        "source": "sample cf2138b.sample1.in",
-        "error": null,
-        "ratio_interp_ms": 10.62,
-        "ratio_cpp_ms": 5.08,
-        "ratio": 2.09,
-        "ratio_source": "gen size=8"
-      }
+      "perf": null,
+      "interp": null
     },
     {
       "id": "ecnerwala/cf2138c1",
@@ -8597,23 +9023,23 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 23962,
+      "emitted_bytes": 24922,
       "over_48kb": false,
       "over_64kb": false,
-      "cp_tokens": 468,
+      "cp_tokens": 379,
       "orig_tokens": 3123,
       "orig_stripped_tokens": 1972,
-      "token_ratio": 0.1499,
-      "stripped_token_ratio": 0.2373,
+      "token_ratio": 0.1214,
+      "stripped_token_ratio": 0.1922,
       "dream_tokens": 287,
-      "dream_ratio": 1.6307,
-      "dream_gap_tokens": 181,
+      "dream_ratio": 1.3206,
+      "dream_gap_tokens": 92,
       "taste_score": null,
       "review_path": null,
-      "cp_loc": 45,
+      "cp_loc": 39,
       "orig_loc": 292,
       "orig_stripped_loc": 173,
-      "cp_sha": "3f1118b80f007a8c",
+      "cp_sha": "722dd5b4f9970cd6",
       "orig_sha": "5e8052a0827bbeb2",
       "has_gen": true,
       "has_samples": true,

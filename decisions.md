@@ -1390,6 +1390,18 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   column of `research/PORTS.md`.
   *How to reverse:* adjust `INTERP_RATIO_BAR`, `INTERP_RATIO_NORTH_STAR`, `INTERP_FLOOR_MS`, or the
   `dream_ratio` check in `scripts/scoreboard.py`.
+- **23.8 Friction metadata gate + 10-area stdlib routing, P0 bug-replay & revision goal tests, and worst-20 dream-gap leaderboard.**
+  Normalized all `research/frictions/*.md` reports to canonical `Severity` (`blocker|high|medium|low`) and
+  `Goal it hurts` values (0 schema warnings), gated warning growth in `scripts/scoreboard.py --check`,
+  and added `route_friction_area` mapping every friction to one of the 10 stdlib areas (`graphs`, `trees`,
+  `ranges`, `strings`, `math`, `flows`, `containers`, `geometry`, `dp`, `seq`) or `core` (printed as per-area
+  owner queues in `--frictions` and as an `Areas` column on `research/PORTS.md`). Added two live goal-test
+  suites under `bench/goal_tests/`: (a) `bug_replay/` (12 P0 contest bug classes classified empirically via
+  `cpl check` + `cpl run` as `prevented`, `caught_on_run`, or `left_to_diagnose`, ratcheted at `>= 90%` handled
+  and no per-case downgrade); (b) `revision/` (2 unseen problems + 1 changed requirement each, verified via
+  `cpl run`, ratcheting `lines_touched` against baseline). Added a worst-20 `cp/dream` token-ratio leaderboard
+  to `scripts/ports-page.py` -> `research/PORTS.md` so the polish lane works worst-first.
+  *How to reverse:* adjust `_AREA_KEYWORDS`, `BUG_REPLAY_BAR_PCT`, or the suites in `bench/goal_tests/`.
 
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 
