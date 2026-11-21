@@ -12,7 +12,7 @@ pub enum FillOrder = Forward | Reverse
 
 /// Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
 pub struct FillPrefix<D, T>:
-    p: [D.bounds]T
+    p: [D.cuts]T
     rev: Bool
     next: Int
 
@@ -20,7 +20,7 @@ pub struct FillPrefix<D, T>:
     pub fn set(mut self, i: D, x: T) = todo
 
     /// The sum of everything left of boundary `b`. O(1).
-    pub fn prefix(self, b: Bounds<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T = todo
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty. O(1).
     pub fn sum(self, r: Range<D>) -> T = todo
@@ -31,7 +31,7 @@ pub struct FillPrefix<D, T>:
 /// with `Prefix<...>.filling(order: FillOrder.Forward | FillOrder.Reverse)` and O(1) `.set(...)`
 /// in fill order; `.sum(...)` and `.prefix(...)` are O(1) over the already-filled prefix or suffix.
 pub struct Prefix<D, T>:
-    p: [D.bounds]T
+    p: [D.cuts]T
 
     /// Build 1-D prefix sums over `a: [D]T`. O(|D|).
     pub fn new(a: [D]T) -> Prefix<D, T> = todo
@@ -40,7 +40,7 @@ pub struct Prefix<D, T>:
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> = todo
 
     /// The sum of everything left of boundary `b`. O(1).
-    pub fn prefix(self, b: Bounds<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T = todo
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty. O(1).
     pub fn sum(self, r: Range<D>) -> T = todo
@@ -52,20 +52,20 @@ pub struct Prefix<D, T>:
     pub fn get(self, i: D) -> T = todo
 
     /// O(1). Sum of everything right of boundary `b`.
-    pub fn suffix(self, b: Bounds<D>) -> T = todo
+    pub fn suffix(self, b: Cut<D>) -> T = todo
 
     /// O(1). Total sum of the entire domain.
     pub @get fn all(self) -> T = todo
 
     /// O(log |D|). Smallest boundary `b` with `prefix(b) >= target`, for non-negative values, or `none`.
-    pub fn first_ge(self, target: T) -> ?Bounds<D> = todo
+    pub fn first_ge(self, target: T) -> ?Cut<D> = todo
 
     /// O(log |D|). Smallest boundary `b` with `prefix(b) > target`, for non-negative values, or `none`.
-    pub fn first_gt(self, target: T) -> ?Bounds<D> = todo
+    pub fn first_gt(self, target: T) -> ?Cut<D> = todo
 
 /// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
 pub struct _FillPrefix2 < R, C, T >:
-    p: [R.bounds, C.bounds]T
+    p: [R.cuts, C.cuts]T
     rev: Bool
     next: Int
 
@@ -73,14 +73,14 @@ pub struct _FillPrefix2 < R, C, T >:
     pub fn set(mut self, r: R, c: C, x: T) = todo
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`. O(1).
-    pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T = todo
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = todo
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty. O(1).
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T = todo
 
 /// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 pub struct _Prefix2 < R, C, T >:
-    p: [R.bounds, C.bounds]T
+    p: [R.cuts, C.cuts]T
 
     /// Build 2-D prefix sums over `a: [R, C]T`. O(|R| * |C|).
     pub fn new(a: [R, C]T) -> Prefix<R, C, T> = todo
@@ -89,7 +89,7 @@ pub struct _Prefix2 < R, C, T >:
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T> = todo
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`. O(1).
-    pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T = todo
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = todo
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty. O(1).
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T = todo
@@ -128,19 +128,19 @@ pub struct _PrefixList < T >:
         r: Range<Int>,
     ) -> T = todo
 
-/// Prefix monoid folds of `a`, indexed by `Bounds<D>`: `p[b]` is the fold of `..b`,
-/// with `p[D.bounds.nth(0)] == m.id`. O(n).
-pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T = todo
+/// Prefix monoid folds of `a`, indexed by `Cut<D>`: `p[b]` is the fold of `..b`,
+/// with `p[D.cuts.nth(0)] == m.id`. O(n).
+pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T = todo
 
-/// Suffix monoid folds of `a`, indexed by `Bounds<D>`: `s[b]` is the fold of `b..`,
-/// with `s[D.bounds.nth(D.K)] == m.id`. With `prefix_fold`, the fold outside `r` is
+/// Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`,
+/// with `s[D.cuts.nth(D.K)] == m.id`. With `prefix_fold`, the fold outside `r` is
 /// `m.op(pref[r.start], suff[r.end])`. O(n).
-pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T = todo
+pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T = todo
 
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 /// O(1) range/rectangle `add`, O(|D|) or O(|R| * |C|) `finish`.
 pub struct Diff<D, T>:
-    d: [D.bounds]T
+    d: [D.cuts]T
 
     /// Create an all-zero 1-D difference array over `D`. O(|D|).
     pub fn new() -> Diff<D, T> = todo
@@ -153,7 +153,7 @@ pub struct Diff<D, T>:
 
 /// Internal 2-D shape of `Diff<R, C, T>`: O(1) rectangle `add`, O(|R| * |C|) `finish`.
 pub struct _Diff2 < R, C, T >:
-    d: [R.bounds, C.bounds]T
+    d: [R.cuts, C.cuts]T
 
     /// Create an all-zero 2-D difference array over `(R, C)`. O(|R| * |C|).
     pub fn new() -> Diff<R, C, T> = todo
@@ -167,7 +167,7 @@ pub struct _Diff2 < R, C, T >:
 /// O(|D|) space. Online sweep-line difference accumulator: schedule future range adds in O(1)
 /// and advance a cursor through `D` in `order` in O(1) per position.
 pub struct SweepAdd<D, T>:
-    d: [D.bounds]T
+    d: [D.cuts]T
 
     /// O(|D|). Create an all-zero online sweep accumulator in `order` (`Forward` or `Reverse`).
     pub fn new(order: FillOrder = FillOrder.Forward) -> SweepAdd<D, T> = todo
@@ -184,7 +184,7 @@ pub struct SweepAdd<D, T>:
 /// O(|D|) space. Second-order offline difference array for arithmetic-progression range adds:
 /// O(1) `add_arith`, O(|D|) `finish`.
 pub struct ArithDiff<D, T>:
-    d: [D.bounds]T
+    d: [D.cuts]T
 
     /// O(|D|). Create an all-zero second-order difference array over `D`.
     pub fn new() -> ArithDiff<D, T> = todo

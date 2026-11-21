@@ -22,7 +22,7 @@ fn plan() -> ?List<(Elf, Elf)>:
         return [p for p in ord[..=k].pairs] + zip(ord[n - m..].rev, ord[k..n - m].rev)
     let top = ord.last!
     let pref = prefix(ord.map(e => attack[e]))
-    let s = bsearch_last(0..n - 1, k => pref.sum(k..n - 1) >= attack[top]) ?? return none
+    let s = (0..n - 1).last_true(k => pref.sum(k..n - 1) >= attack[top]) ?? return none
     [p for p in ord[..=s].pairs] + [(e, top) for e in ord[s..n - 1].rev]
 
 let moves = plan() ?? return print(-1)

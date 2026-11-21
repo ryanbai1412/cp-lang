@@ -1,7 +1,7 @@
 //! Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.
 //!
 //! - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`).
-//! - Binary & unimodal search: moved to `std.search` (`bsearch_first`, `bsearch_last`, `bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`).
+//! - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`).
 //! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
 //! - Runs, chunking & windows: `runs`, `run_ranges`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
 //! - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`).
@@ -11,18 +11,17 @@
 //! - Coordinate compression: `compress(all)` -> `Compressed<D, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.algebra.{Monoid}
-use std.search.{bsearch_first, bsearch_last}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
 /// O(n) calls of `f`. Every prefix folded with `f`: `[a0, f(a0, a1), ...]`, indexed as `self` is.
-/// Spec target also accepts `init: Acc`, returning `[D.bounds]Acc` (cut-indexed exclusive scan;
-/// see spec-syntax gap for optional `init:` refining return domain from `[D]T` to `[D.bounds]Acc`).
+/// Spec target also accepts `init: Acc`, returning `[D.cuts]Acc` (cut-indexed exclusive scan;
+/// see spec-syntax gap for optional `init:` refining return domain from `[D]T` to `[D.cuts]Acc`).
 pub fn scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T = todo
 
 /// O(n) calls of `f`. Every suffix folded right-to-left with `f`: `out[i] = f(self[i], out[i + 1])`.
-/// Spec target also accepts `init: Acc`, returning `[D.bounds]Acc` (cut-indexed exclusive suffix scan).
+/// Spec target also accepts `init: Acc`, returning `[D.cuts]Acc` (cut-indexed exclusive suffix scan).
 pub fn suffix_scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T = todo
 
 /// Fold every prefix of `self` in place with `f`: `self.at(i) = f(self.at(i - 1), self.at(i))`.
@@ -201,10 +200,10 @@ pub fn compress<S: Seq, T>(all: S) = todo
 // ---- Range boundary cuts, keyed sorted lookup, ordered Map 4-lookups, and List/Array helpers
 
 /// Left boundary cut of a range (valid even when empty).
-pub @get fn l<D>(self: Range<D>) -> Bounds<D> = todo
+pub @get fn l<D>(self: Range<D>) -> Cut<D> = todo
 
 /// Right boundary cut of a range (valid even when empty).
-pub @get fn r<D>(self: Range<D>) -> Bounds<D> = todo
+pub @get fn r<D>(self: Range<D>) -> Cut<D> = todo
 
 /// O(1). Two non-empty halves meeting at the middle cut, or `none` when `self.len <= 1`, so
 /// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
@@ -216,9 +215,19 @@ pub @get fn mid<D>(self: Range<D>) -> ?D = todo
 /// O(1). The positions in both ranges.
 pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo
 
-/// O(log n) calls to `ok`. The cut where monotone `ok` turns from false to true: `.r` is the
-/// first position where it holds, `.l` the last where it fails.
-pub fn bsearch<D>(self: Range<D>, ok: D -> Bool) -> Bounds<D> = todo
+/// O(log n) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
+/// `none` when it never does. Debug builds check `ok` on both sides of the answer.
+pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
+
+/// O(log n) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
+/// `none` when it never does. Debug builds check `ok` on both sides of the answer.
+pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
+
+/// O(log n) calls to `ok`. The cut where `ok` flips: false then true along `r` by default
+/// (`r.l` when it always holds, `r.r` when it never does), true then false with `last: true`
+/// (`r.r` when it always holds). `first_true(ok)` is `.r` of it; `last_true(ok)` is
+/// `bsearch(ok, last: true).l`.
+pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D> = todo
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
@@ -395,12 +404,12 @@ pub fn adjacent_diff<S: Seq, T>(self: S) -> List<T> = todo
 pub fn diffs<S: Seq, T>(self: S) -> List<T> = todo
 
 /// O(1). Explicit piece `Range<D>` between cuts `lo` and `hi` (explicit twin of `lo..hi` in decision 124; traps if `lo > hi`).
-pub fn span<D>(lo: Bounds<D>, hi: Bounds<D>) -> Range<D> = todo
+pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D> = todo
 
 // --- Sorted lookup, cut partition point, sorted set ops, and linear-time sorts ---
 
 /// O(log n). Cut between the false prefix and true suffix of monotone `ok` on `self` (total; never `none`).
-pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Bounds<D> = todo
+pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D> = todo
 
 /// O(log n). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
 pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D> = todo

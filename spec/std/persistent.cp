@@ -51,10 +51,10 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     pub fn reserve(mut self, nodes: Int) = todo
 
     /// O(log |D|). Furthest boundary `b` right of `from` in version `v` such that `ok(fold(v, from..b))`.
-    pub fn max_right(self, v: Version, from: Bounds<D>, ok: T -> Bool) -> Bounds<D> = todo
+    pub fn max_right(self, v: Version, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// O(log |D|). Furthest boundary `b` left of `to` in version `v` such that `ok(fold(v, b..to))`.
-    pub fn min_left(self, v: Version, to: Bounds<D>, ok: T -> Bool) -> Bounds<D> = todo
+    pub fn min_left(self, v: Version, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// O(log |D|). Walk the difference of two count-tree versions (`hi - lo`) to find the `k`-th
     /// position (1-based), or `none` when fewer than `k` items exist.

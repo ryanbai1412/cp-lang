@@ -48,7 +48,7 @@ solution, say so in the header rather than guessing silently.
 - `@!multitest` for multitest input; `read()` and `read<T>()` with
   constraint types; `print(...)`.
 - `0..n` half-open, `0..=n` inclusive; ranges have `.start`, `.end`
-  (exclusive), `.len`, `.rev`. A half-open range of cuts (`D.bounds`)
+  (exclusive), `.len`, `.rev`. A half-open range of cuts (`D.cuts`)
   converts to the piece of positions between them.
 - `and`/`or`/`not`, `elif`, `if c: a else: b` as the inline conditional,
   `x is Pat`, `if let`/`while let`, `let ... else`, postfix `?`, `??`.

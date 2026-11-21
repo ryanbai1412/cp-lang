@@ -6,13 +6,13 @@ Everything else in the stdlib indexes by these, so they come first.
 
 A **domain** is a finite, ordered index type. Its members are **positions**.
 Between and around positions sit **cuts**: a domain of n positions has n + 1
-cuts, `D.bounds`. A **range** is a contiguous run of positions, and its two
+cuts, `D.cuts`. A **range** is a contiguous run of positions, and its two
 ends are cuts. Arrays are `[D]T`, indexed only by `D`, so a vertex never
 indexes an edge array and a cut never indexes a position array.
 
 ```python
 domain V = 1..=n                       # positions 1..n
-domain Pos = 0..n                      # positions 0..n-1; Pos.bounds is cuts 0..=n
+domain Pos = 0..n                      # positions 0..n-1; Pos.cuts is cuts 0..=n
 let (domain C, comp) = compress(xs)    # fresh domain from a computation
 domain Cell = (Row, Col)               # product: [Row, Col]T is a 2-D array
 enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]Int
@@ -24,22 +24,24 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 |---|---|---|
 | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step |
 | `V.count` | number of positions | O(1) |
-| `V.first`, `V.last` | `V`; only on `V: NonEmpty` (below) | O(1) |
+| `V.first`, `V.last` | `?V`, `none` when `V` is empty; write `V.first!` when you know it isn't | O(1) |
 | `V.all` | the whole range, same as `..` | O(1) |
-| `V.bounds` | the domain of cuts: `V.bounds.first` is the start, `.last` the end | O(1) |
+| `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the end | O(1) |
 | `x in V` | is integer `x` a position | O(1) |
 | `V(x)` | integer to position, trapping outside `V` | O(1) |
 | `V.at(x)` | integer to position, `?V`: `none` outside `V` | O(1) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free |
-| `5` where a `V` or `V.bounds` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.bounds = 0`); outside a static bound it is a compile error | free |
+| `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the base (`1..=n`: `v.l` is v-1, `v.r` is v; `0..n`: v, v+1) | free |
+| `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1) |
+| `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free |
 
 ## Positions and cuts move the same way
 
 | | neighbour of the same kind | the other kind, either side |
 |---|---|---|
 | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts |
-| cut `c` | `c.prev`, `c.next`: `?V.bounds` | `c.l`, `c.r`: the positions beside it, `?V` |
+| cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V` |
 
 `v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too). `.next` is
 `.next(k = 1)`: only methods marked `@get` (which promises O(1)) read without
@@ -58,11 +60,11 @@ domain is explicit (`v.next`, `V(x)`). Arrays over an anonymous range
 
 ### Two kinds of range, one type
 
-`Range<D>` is a contiguous run of a domain `D`. `V.bounds` is a domain like
+`Range<D>` is a contiguous run of a domain `D`. `V.cuts` is a domain like
 any other, so there are two kinds you meet in practice, and every method
 below is generic over `D`: it means the same thing on both.
 
-| | `Range<V>`: over positions | `Range<V.bounds>`: over cuts |
+| | `Range<V>`: over positions | `Range<V.cuts>`: over cuts |
 |---|---|---|
 | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends |
 | elements (`for`, `in`, `len`) | positions | cuts |
@@ -106,30 +108,41 @@ ambiguous.
 All of these are on every `Range<D>`. The two right columns spell out what
 the generic meaning comes to for each kind.
 
-| Form | On `Range<V>` (positions) | On `Range<V.bounds>` (cuts) | Cost |
+| Form | On `Range<V>` (positions) | On `Range<V.cuts>` (cuts) | Cost |
 |---|---|---|---|
 | `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count of cuts; membership of a cut | O(1) |
 | `for x in r`, `r.rev`, `r.step(k)` | positions | cuts | O(1) per step |
-| `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.bounds` | O(1) |
-| `r.l`, `r.r` | the bounding cuts, `V.bounds` | the bounds one level up (see below); write `r.first`/`r.last` instead | O(1) |
+| `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1) |
+| `r.l`, `r.r` | the bounding cuts, `V.cuts` | the bounds one level up (`V.cuts.cuts`); you rarely want them: use `r.first`/`r.last` | O(1) |
 | `r.clip(s)` | intersection | intersection | O(1) |
 | `r.halve()` | `?(left, right)`, two non-empty halves meeting at the middle cut; `none` when `len <= 1` | same, over cuts | O(1) |
-| `r.mid` | middle position, `?V` | middle cut, `?V.bounds` | O(1) |
-| `r.bsearch(ok)` | where monotone `ok` on positions flips; `.l`/`.r` give the last false and first true position | where `ok` on cuts flips; `.l`/`.r` give the last false and first true cut | O(log n) calls |
+| `r.mid` | middle position, `?V` | middle cut, `?V.cuts` | O(1) |
+| `r.first_true(ok)`, `r.last_true(ok)` | first position where false→true `ok` holds; last where true→false `ok` holds; `?V` | same over cuts, `?V.cuts` | O(log n) calls |
+| `r.bsearch(ok)`, `r.bsearch(ok, last: true)` | the cut where `ok` flips (false→true; with `last:`, true→false), `V.cuts`; always exists | the gap between cuts, one level up; use `first_true` | O(log n) calls |
 | `a[r]`, `pre.sum(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal `j..i` is the piece | as the API says |
 
-**Ends one level up.** A range's ends are cuts of its domain. For a range
-over positions those are `V.bounds`, which is what you want. For a range over
-cuts they are `V.bounds.bounds`, the gaps between cuts, which you only meet as
-`bsearch`'s answer and immediately turn into a cut with `.l`/`.r`, the same
-one rule as everywhere else:
+**Binary search: which element, or where it flips.** `first_true` and
+`last_true` return the element, so the predicate reads like the statement
+and is never negated; `none` when no element qualifies (an empty range is
+the case with no elements). `bsearch` returns the cut where `ok` turns true,
+which always exists, for answers that are boundaries: insertion points,
+counts, prefix lengths. They agree: `r.first_true(ok)` is `r.bsearch(ok).r`
+and `r.last_true(ok)` is `r.bsearch(ok, last: true).l`.
 
 ```python
-let k = V.bounds.all.bsearch(c => pre[c] > s).l!   # longest prefix with sum <= s: a cut
+let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1      # largest k that fits
+let k = (0..=n).first_true(k => cost(k) >= x)!               # smallest k that reaches x
+let c = V.cuts.all.last_true(c => pre[c] <= s)!              # longest prefix with sum <= s: a cut
+let below = Int(a.all.bsearch(i => a[i] >= t))               # how many of sorted a are < t
 ```
 
-Answer spaces that aren't a domain are integer ranges, an anonymous domain
-whose positions and cuts are both `Int`: `(0..=1e18).bsearch(t => fits(t)).r`.
+`ok` must be monotone in the direction the name says: false→true for
+`first_true` and `bsearch`, true→false for `last_true` and
+`bsearch(ok, last: true)`. Debug builds check
+`ok` on both sides of the answer (O(1)), which catches most non-monotone
+predicates. Answer spaces that aren't a domain are integer ranges, an
+anonymous domain whose positions and cuts are both `Int`:
+`(0..=1e18).first_true(t => fits(t))`.
 
 ```python
 fn inversions(r: Range<Pos>) -> Int:          # merge-sort shape
@@ -144,9 +157,12 @@ fn solve(rows: Range<Pos>, opts: Range<Pos>): # D&C DP optimisation
     solve(m.r..rows.r, best.l..opts.r)
 ```
 
-Binary search returns a cut, so "first true" vs "last false" is a one-word
-change: `r.bsearch(ok).r` vs `r.bsearch(ok).l`. This replaces
-`bsearch_first` and `bsearch_last`.
+These replace `bsearch_first` and `bsearch_last`. Rejected: only the flip
+cut, with `.l`/`.r` picking the side (last-true needs a negated predicate, a
+`>` vs `>=` bug source); `bsearch(ok, last: true)` returning an element (a
+flag where a name says it better; the flag stays on `bsearch`, where it only
+says which way `ok` runs); detecting the direction (ambiguous when `ok` is constant); a
+sentinel end when nothing qualifies (looks like a real answer).
 
 ## Arrays over domains
 
@@ -163,32 +179,42 @@ grid[r]                                  # a row view of [Row, Col]T
 ## Empty domains
 
 Domains may be empty: iteration, arrays and folds over an empty domain just
-work. Only `first`/`last` need a position, so they exist only on
-`D: NonEmpty`, a bound the checker derives at each use from what it knows:
+work. `V.first`/`V.last` are `?V`, so the empty case is visible where you
+ask for an end:
 
 ```python
 let m = read<0..=2e5>()
 domain E = 0..m
-E.first                      # error: `E` may be empty: `m: 0..=2e5` allows 0
-if m == 0: return            # narrows m to 1..=2e5 for the rest of the block
-let e = E.first              # fine: E.count is m, and m >= 1 here
+let e = E.first!             # traps naming `E` when m == 0
+let e = E.first ?? return    # or handle it
 ```
 
-- `E.count` has a range type, like any Int; `NonEmpty` holds when its lower
-  bound is at least 1. Guards narrow it (`if m == 0: return`,
-  `if E.is_empty: return`), the same rule that makes `if x is none: return`
-  leave `x` non-optional.
-- Possibly empty and you want an optional: `E.all.first` is the sequence
-  `.first`, `?E`.
-- Generic code asks for it: `fn f<domain D: NonEmpty>()`.
-- The check compares one lower bound with 1, so it stays linear.
+No `NonEmpty` bound: the checker does not track emptiness. Tried and dropped
+for now (decision 137); `!` is one character and says the same thing.
+
+## Middle of a range
+
+`r.halve()` and `r.mid` share one middle cut: the one with ⌊n/2⌋ elements
+before it (C++'s `(l + r) / 2` on a half-open range).
+
+| n | `r.halve()` | `r.mid` |
+|---|---|---|
+| 0 | `none` | `none` |
+| 1 | `none` | the element |
+| ≥ 2 | `(left, right)` with ⌊n/2⌋ and ⌈n/2⌉ elements | `right.first` |
+
+`halve` is for the cut-shaped job (merge sort: stop at one element);
+`mid` is for the element-shaped job (handle the middle, recurse around it:
+stop at empty). `mid` is a position, not a cut: on an empty range the middle
+cut would be `r.l`, and its `.r` a position outside the range.
 
 ## Decided (decision 137)
 
 - `.l`/`.r` switch kind, `.prev`/`.next` keep it; `.next(k)`/`.prev(k)` step k.
 - Position arithmetic gives an `Int`; back into the domain is explicit.
-- `r.bsearch(ok)` returns a cut and replaces `bsearch_first`/`bsearch_last`.
-- Empty domains are valid; `first`/`last` need `NonEmpty`, derived and narrowed.
+- `r.first_true(ok)`/`r.last_true(ok)` return `?` the element; `r.bsearch(ok)`
+  returns the flip cut, always present; `last: true` for true→false. They replace `bsearch_first`/`bsearch_last`.
+- Empty domains are valid; `V.first`/`V.last` are `?V` (no `NonEmpty` bound).
 - One generic `Range<D>`; elements are the kind of the ends, so `a..=b` on cuts
   is cuts. The half-open literal `j..i` with cut ends builds the piece where a
   `Range<V>` is expected (124): literal typing, not a conversion; no implicit

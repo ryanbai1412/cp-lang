@@ -4169,28 +4169,33 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   - Rejected: `.n`/`.p` (`n` reads as a count, `p` as parent or prime).
   - Rejected: `r.split(at: c)`; with cuts as values, `r.l..c` and `c..r.r`
     are as short and also express "all but `v`" (`r.l..v.l`, `v.r..r.r`).
-  - Domains may be empty. `D.first`/`D.last` return a plain `D` and exist
-    only on `D: NonEmpty`, which the checker derives at each use: the lower
-    bound of `D.count`'s range is at least 1. Guards narrow it
-    (`if m == 0: return`, `if E.is_empty: return`), like `if x is none:
-    return`. Otherwise `E.first` is an error naming the constraint that
-    allows zero; `E.all.first` gives `?E`. Generic code writes
-    `<domain D: NonEmpty>`.
+  - `D.bounds` is renamed `D.cuts` (type `Bounds<D>` is now `Cut<D>`): one word
+    for the idea in spec, errors and docs. The old spelling still parses so
+    unmigrated ports keep checking; remove it once none use it.
+  - `Int(c)` is the number of positions before the cut, 0..=n for any base,
+    so both C++ prefix conventions fall out (`0..n`: `v.r` is v+1; `1..=n`:
+    `v.r` is v). Back: `V.cuts(k)` traps, `V.cuts.at(k)` is optional.
+  - Domains may be empty. `D.first`/`D.last` return `?D`; write `D.first!`
+    when you know. A derived `NonEmpty` bound (narrowed by guards, asserted
+    as `domain E: NonEmpty = …`) was accepted, then dropped as more machinery
+    than `!` saves.
+  - `r.mid` is the position right of `r.halve()`'s cut, `?V`, `none` only
+    when empty; `halve` is `none` at length <= 1. `mid` stays a position: an
+    empty range's middle cut is `r.l`, whose `.r` lies outside the range.
   - `v + 1` is an `Int`; re-enter the domain with `v.next` or `V(x)`.
   - Int to position: `V(x)` traps outside `V`, `V.at(x)` returns `?V`
     (the `a[i]` / `a.get(i)` split), and the pattern `V(j)` is `V.at` in
     pattern position (`if let V(j) = i - 10:`). `V.try` rejected.
-  - `r.bsearch(ok)` returns the cut where `ok` flips; `.r`/`.l`
-    give the first true / last false position. Replaces `bsearch_first` and
-    `bsearch_last`.
+  - `r.first_true(ok)` (false→true) and `r.last_true(ok)` (true→false)
+    return `?` the element; `r.bsearch(ok, last: false)` returns the flip
+    cut, always present: `first_true` is `bsearch(ok).r`, `last_true` is
+    `bsearch(ok, last: true).l`. Replace `bsearch_first`/`bsearch_last`.
 - **Rejected.** `start`/`end` plus `before`/`after` (four words where one
-  rule does; typed often in prefix DPs); `cut_before`/`pos_before` (long); always-`?V` `first` (noise for
-  the common `n: 1..` case); always-`V` with a trap (the n = 1 bug only
+  rule does; typed often in prefix DPs); `cut_before`/`pos_before` (long); always-`V` with a trap (the n = 1 bug only
   shows if a test hits it).
 - **Why.** `.l`/`.r` are short where they are typed most (prefix DPs),
-  already the range-end words in `spec/std/seq.cp`, and the empty-domain rule
-  costs nothing when the statement promises n >= 1 and points at the edge
-  case when it doesn't.
-- **Reverse.** Rename via `cpl fix`; drop `NonEmpty` and make `first`
-  optional everywhere.
+  already the range-end words in `spec/std/seq.cp`, and `?V` from `first` puts the
+  empty edge case where an end is asked for, at the cost of one `!`.
+- **Reverse.** Rename via `cpl fix`; bring back `NonEmpty` (checker-derived
+  from `D.count`'s lower bound) to make `first` plain where proven.
 - **Status.** Accepted in the spec; not implemented.

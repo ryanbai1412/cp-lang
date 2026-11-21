@@ -42,7 +42,7 @@ fn ask(inds: Seq<Pos>) -> Int:
     print("?", inds.len, inds)
     read()
 
-let open_i = bsearch_first(Pos(2)..=Pos.last, p => ask(Pos.first..=p) > 0)
+let open_i = (Pos(2)..=Pos.last!).first_true(p => ask(Pos.first!..=p) > 0)
     .map(r => r.prev!) ?? Pos.last
 
 var ans: [Pos]Char = '?'

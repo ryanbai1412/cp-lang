@@ -6,7 +6,7 @@ use std.window.{Window}
 let n: 2..=100_000 = read()
 let k: 2..=20 = read()
 domain Pos = 0..n
-domain Cut = Pos.bounds           // a range of cuts c..i is the piece a[c..i]
+domain Cut = Pos.cuts           // a range of cuts c..i is the piece a[c..i]
 domain Value = 1..=n
 let a: [Pos]Value = read()
 

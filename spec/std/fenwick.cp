@@ -16,14 +16,14 @@ pub struct Fenwick<D, T>:
     pub fn add(mut self, i: D, x: T) = todo
 
     /// The sum of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
-    pub fn prefix(self, b: Bounds<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T = todo
 
     /// The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero.
     pub fn sum(self, r: Range<D>) -> T = todo
 
     /// The first boundary where the prefix sum reaches `target`, for non-negative values:
     /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log n).
-    pub fn first_ge(self, target: Int) -> ?Bounds<D> = todo
+    pub fn first_ge(self, target: Int) -> ?Cut<D> = todo
 
     /// The `k`-th position, counting from 1, when each position stands for as many items as
     /// its value: the first `d` with `prefix` through `d` at least `k`, or `none` when there
@@ -40,10 +40,10 @@ pub struct Fenwick<D, T>:
     pub @get fn all(self) -> T = todo
 
     /// O(log |D|). Sum of everything right of boundary `b`.
-    pub fn suffix(self, b: Bounds<D>) -> T = todo
+    pub fn suffix(self, b: Cut<D>) -> T = todo
 
     /// O(log |D|). Smallest boundary `b` with `prefix(b) > target`, for non-negative values, or `none`.
-    pub fn first_gt(self, target: Int) -> ?Bounds<D> = todo
+    pub fn first_gt(self, target: Int) -> ?Cut<D> = todo
 
     /// O(|D|). Reset all entries to zero without reallocating.
     pub fn clear(mut self) = todo
@@ -61,7 +61,7 @@ pub struct XorFenwick<D, T>:
     pub fn flip(mut self, i: D, x: T) = todo
 
     /// The xor of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
-    pub fn prefix(self, b: Bounds<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T = todo
 
     /// The xor of a range: `f.xor(l..=r)`, `f.xor(..i)`, `f.xor(i..)`. An empty range is zero.
     pub fn xor(self, r: Range<D>) -> T = todo
@@ -83,7 +83,7 @@ pub struct Fenwick2D<R, C, T>:
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T = todo
 
     /// O(log |R| * log |C|). Prefix rectangle sum above `r` and left of `c`.
-    pub fn prefix(self, r: Bounds<R>, c: Bounds<C>) -> T = todo
+    pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = todo
 
     /// O(log |R| * log |C|). Single-cell value `a[r, c]`.
     pub fn get(self, r: R, c: C) -> T = todo
@@ -127,7 +127,7 @@ pub struct RangeFenwick<D>:
     pub fn add(mut self, r: Range<D>, x: Int) = todo
 
     /// The sum of everything left of boundary `b`. O(log n).
-    pub fn prefix(self, b: Bounds<D>) -> Int = todo
+    pub fn prefix(self, b: Cut<D>) -> Int = todo
 
     /// The sum of a range `r`. O(log n).
     pub fn sum(self, r: Range<D>) -> Int = todo
@@ -153,7 +153,7 @@ pub struct GroupFenwick<D, T>(g: Group<T>):
     pub fn update(mut self, i: D, x: T) = todo
 
     /// O(log |D|). Fold of everything left of boundary `b`.
-    pub fn prefix(self, b: Bounds<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T = todo
 
     /// O(log |D|). Fold of range `r`, using `g.inv` on the left prefix.
     pub fn fold(self, r: Range<D>) -> T = todo
@@ -173,7 +173,7 @@ pub struct PrefixFenwick<D, T>(op: (T, T) -> T, id: T):
     pub fn update(mut self, i: D, x: T) = todo
 
     /// O(log |D|). Fold of everything left of boundary `b`.
-    pub fn prefix(self, b: Bounds<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T = todo
 
     /// O(|D|). Reset all entries to `id`.
     pub fn clear(mut self) = todo

@@ -33,10 +33,10 @@ fn insert(i: I):
     recheck(i)
 
 // The cut before the first top whose value exceeds `s`.
-fn first_top_above(s: Int) -> Bounds<I> = tops.bsearch_first(q => a[q] > s).map(q => q.l) ?? I.end
+fn first_top_above(s: Int) -> Cut<I> = tops.first_true(q => a[q] > s).map(q => q.l) ?? I.end
 
 // Where eater c's run ends: grow past every top its sum through `stop` beats.
-fn reach(c: I, stop: Bounds<I>) -> Bounds<I>:
+fn reach(c: I, stop: Cut<I>) -> Cut<I>:
     let s = first_top_above(total.sum(c.l..stop))
     if s == stop: stop else: reach(c, s)
 

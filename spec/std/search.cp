@@ -1,20 +1,10 @@
 //! Search on answers: binary, exponential, ternary and parallel searches,
 //! and fractional programming. Each returns a position of the space searched
 //! or `none`, never a sentinel, and names the monotone or unimodal law it
-//! needs. Sorted lookup in a container is the four-name family
+//! needs. Binary search over a range is a method on it (`std.seq`):
+//! `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)`. Sorted lookup in a container is the four-name family
 //! `first_ge`/`first_gt`/`last_le`/`last_lt`; a search inside a range
 //! structure is its `max_right`/`min_left`.
-
-/// O(log n) calls of `ok`; O(log d) from a `warm` guess at distance d
-/// once implemented (today `warm` is accepted and ignored).
-/// The first position of `r` where `ok` holds, or `none`. `ok` must be false and then true
-/// along the range; the two ends are checked against that. O(log n) calls of `ok`.
-pub fn bsearch_first<I>(r: Range<I>, ok: I -> Bool, warm: ?I = none) -> ?I = todo
-
-/// O(log n) calls of `ok`.
-/// The last position of `r` where `ok` holds, or `none`. `ok` must be true and then false
-/// along the range. O(log n) calls of `ok`.
-pub fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I = todo
 
 /// `steps + 1` calls of `ok`.
 /// Fixed-iteration binary search on `[lo, hi]` for monotone `ok` (false then true).

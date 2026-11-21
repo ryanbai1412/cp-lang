@@ -60,7 +60,7 @@ List(g)   Set(g)   Map(g)          # collect any Seq
 
 ## Scans are prefix sums
 
-`a.scan(op)` over `[D]T` is a `[D.bounds]T` of n + 1 exclusive folds, so a
+`a.scan(op)` over `[D]T` is a `[D.cuts]T` of n + 1 exclusive folds, so a
 range is two cut reads and nothing is off by one:
 
 ```python

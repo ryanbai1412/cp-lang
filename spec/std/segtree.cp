@@ -54,10 +54,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 
     /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
     /// `ok` must hold for the identity and switch from true to false at most once.
-    pub fn max_right(self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D> = todo
+    pub fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
-    pub fn min_left(self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D> = todo
+    pub fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// O(log |D|). Fold of `r`, or `none` when `r` is empty (avoids sentinel identities for semigroups).
     pub fn try_fold(self, r: Range<D>) -> ?T = todo

@@ -61,7 +61,7 @@ A view is a struct whose `iter` reads its owner (`s.range(r)`, `t.Pre`,
 `xs.rev`); it costs O(1) to make and is lent, never owned.
 
 An index space is a domain: a declared or fresh finite type with `D.count`,
-`D.bounds` (its cuts) and `D.at(i)`. Generic code takes `D: Domain` and
+`D.cuts` (its cuts) and `D.at(i)`. Generic code takes `D: Domain` and
 stores `[D]T`; runtime-sized domains read their declaration-site slot
 (decision 124 and the summary in `decisions.md`).
 

@@ -48,6 +48,6 @@ for l in 1..=31:
             if lo <= hi:
                 let floor = raise(l, lo)
                 while let x = waiting.last, ks[x] + best >= floor:
-                    ans[x] max= bsearch_last(lo..=hi, h => raise(l, h) <= ks[x] + best)!
+                    ans[x] max= (lo..=hi).last_true(h => raise(l, h) <= ks[x] + best)!
                     waiting.pop()
 print(ans)

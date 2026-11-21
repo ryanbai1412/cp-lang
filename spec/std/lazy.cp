@@ -63,10 +63,10 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
 
     /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
     /// `ok` must hold for the identity and switch from true to false at most once.
-    pub fn max_right(mut self, from: Bounds<D>, ok: T -> Bool) -> Bounds<D> = todo
+    pub fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
-    pub fn min_left(mut self, to: Bounds<D>, ok: T -> Bool) -> Bounds<D> = todo
+    pub fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// O(1). Apply tag `f` to every position in the tree.
     pub fn apply_all(mut self, f: F) = todo

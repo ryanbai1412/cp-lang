@@ -18,7 +18,7 @@ struct BagNode<K>:
 /// with recycled node slots and parent pointers for O(1) amortized cursor stepping.
 /// Keeps one node per distinct key with its multiplicity and subtree element count.
 /// `add`, `add_many`, `remove`, `remove_all`, `contains`, `count`, `first`, `last`,
-/// `pop_first`, `pop_last`, `rank`, `nth`, `bsearch_first`, `bsearch_last`, and `cursor_*` are O(log n) expected;
+/// `pop_first`, `pop_last`, `rank`, `nth`, `first_true`, `last_true`, and `cursor_*` are O(log n) expected;
 /// `range(r)` returns an O(1) view whose `.first`, `.last`, `.len`, `.is_empty` are O(log n)
 /// expected and whose iteration (`for x in b.range(r)` / `.rev`) is O(log n + k);
 /// `key_of` and `count_of` are O(1); `next_cursor` and `prev_cursor` are O(1) amortized;
@@ -108,11 +108,11 @@ pub struct SortedBag<K>:
 
     /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `none`.
     /// Checks monotonicity at the boundary. O(log n) expected.
-    pub fn bsearch_first(self, ok: K -> Bool) -> ?K = todo
+    pub fn first_true(self, ok: K -> Bool) -> ?K = todo
 
     /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `none`.
     /// Checks monotonicity at the boundary. O(log n) expected.
-    pub fn bsearch_last(self, ok: K -> Bool) -> ?K = todo
+    pub fn last_true(self, ok: K -> Bool) -> ?K = todo
 
     /// Remove and return the maximal run of elements strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest element (ascending)
@@ -189,7 +189,7 @@ pub struct SortedBag<K>:
     fn merge(mut self, a: Int, b: Int) -> Int = todo
 
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
-/// O(1) key-range views (`range(r)`), and monotone search (`bsearch_first`/`bsearch_last`). Backed by `SortedBag<K>`.
+/// O(1) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`). Backed by `SortedBag<K>`.
 /// All single-key and range-summary operations are O(log n) expected;
 /// `range(r)` is O(1); range iteration is O(log n + k);
 /// `len`, `is_empty`, `clear`, `take` are O(1); `each`, `each_rev`, and `to_list` are O(n).
@@ -245,10 +245,10 @@ pub struct SortedSet<K>:
     pub fn nth(self, i: Int) -> ?K = todo
 
     /// Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `none`. O(log n) expected.
-    pub fn bsearch_first(self, ok: K -> Bool) -> ?K = todo
+    pub fn first_true(self, ok: K -> Bool) -> ?K = todo
 
     /// Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `none`. O(log n) expected.
-    pub fn bsearch_last(self, ok: K -> Bool) -> ?K = todo
+    pub fn last_true(self, ok: K -> Bool) -> ?K = todo
 
     /// Remove and return the maximal run of keys strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest key (ascending)
@@ -287,7 +287,7 @@ pub struct SortedSet<K>:
     pub fn absorb(mut self, mut other: SortedSet<K>) = todo
 
 /// Order-statistic ordered map from `K` to `V` backed by a randomized treap.
-/// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `bsearch_first`/`bsearch_last`, `split_at`, `join` are O(log n).
+/// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `first_true`/`last_true`, `split_at`, `join` are O(log n).
 pub struct SortedMap<K, V>:
     _len: Int
 
@@ -352,10 +352,10 @@ pub struct SortedMap<K, V>:
     pub fn nth(self, i: Int) -> ?(K, V) = todo
 
     /// Smallest entry where monotone `ok(k, v)` becomes true, or `none`. O(log n).
-    pub fn bsearch_first(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
+    pub fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
 
     /// Largest entry where monotone `ok(k, v)` still holds, or `none`. O(log n).
-    pub fn bsearch_last(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
+    pub fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
 
     /// Remove and return entries after `after` (ascending) or before `before` (descending) while `ok` holds. O(k log n).
     pub fn drain(mut self; after: ?K = none, before: ?K = none, while ok: (K, V) -> Bool) -> List<(K, V)> = todo

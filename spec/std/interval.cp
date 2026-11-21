@@ -52,7 +52,7 @@ pub struct IntervalMap<D, T>:
     pub fn each_rev(self) -> yields (range: Range<D>, val: T) = todo
 
     /// O(log runs + skipped). First position at or after `from` whose value satisfies `ok`, or `none`.
-    pub fn first_where(self, from: Bounds<D>, ok: T -> Bool) -> ?D = todo
+    pub fn first_where(self, from: Cut<D>, ok: T -> Bool) -> ?D = todo
 
 /// O(runs) space. Dynamic union of disjoint maximal half-open intervals over domain `D`
 /// (KACTL `IntervalContainer`). Maintains total `covered` length in O(1).
