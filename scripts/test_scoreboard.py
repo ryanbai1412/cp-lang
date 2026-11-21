@@ -1116,6 +1116,20 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         self.assertIn("ecnerwala/cf2124f2", d_same["regressions"][0])
         self.assertIn("cause: touched port", d_same["regressions"][0])
 
+        # Growth in a touched port whose review is touched too is a reviewed
+        # rewrite: a warning under the 48 KB warn line, still blocked above it.
+        grow_base = {"ports": [{"id": "ecnerwala/cf9999a", "gate": "pass", "emitted_bytes": 14000}], "totals": base["totals"]}
+        grow_cur = {"ports": [{"id": "ecnerwala/cf9999a", "gate": "pass", "emitted_bytes": 22000}], "totals": base["totals"]}
+        scope_rewrite = {**scope_other_port, "touched_ports": {"ecnerwala/cf9999a"}, "reviewed_ports": {"cf9999a"}, "touched_reviews": True}
+        d_rw = sb.diff_against_baseline(grow_cur, grow_base, mode="fast", scope=scope_rewrite)
+        self.assertEqual(d_rw["regressions"], [])
+        self.assertTrue(any("reviewed rewrite" in w for w in d_rw["warnings"]))
+        d_norev = sb.diff_against_baseline(grow_cur, grow_base, mode="fast", scope={**scope_rewrite, "reviewed_ports": set()})
+        self.assertEqual(len(d_norev["regressions"]), 1)
+        big_cur = {"ports": [{"id": "ecnerwala/cf9999a", "gate": "pass", "emitted_bytes": 50000}], "totals": base["totals"]}
+        d_big = sb.diff_against_baseline(big_cur, grow_base, mode="fast", scope=scope_rewrite)
+        self.assertEqual(len(d_big["regressions"]), 1)
+
         # Commit touching codegen/stdlib IS blocked and names the port + codegen cause.
         scope_codegen = {
             **scope_other_port,

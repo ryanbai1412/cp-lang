@@ -1959,6 +1959,7 @@ def detect_change_scope(repo_root=ROOT, base_ref="origin/main"):
         return None
 
     touched_ports = set()
+    reviewed_ports = set()
     codegen_causes = []
     touched_frictions = False
     touched_reviews = False
@@ -1972,6 +1973,8 @@ def detect_change_scope(repo_root=ROOT, base_ref="origin/main"):
             touched_frictions = True
         if norm.startswith("research/reviews/"):
             touched_reviews = True
+            if norm.endswith(".md"):
+                reviewed_ports.add(norm[len("research/reviews/"):-3])
         if norm.startswith("bench/goal_tests/"):
             touched_goal_tests = True
         if "/dream/" in norm and norm.startswith("proto/ports/"):
@@ -1982,6 +1985,7 @@ def detect_change_scope(repo_root=ROOT, base_ref="origin/main"):
     return {
         "changed_files": changed,
         "touched_ports": touched_ports,
+        "reviewed_ports": reviewed_ports,
         "touched_codegen_or_stdlib": bool(codegen_causes),
         "codegen_causes": codegen_causes,
         "touched_frictions": touched_frictions,
@@ -1989,6 +1993,12 @@ def detect_change_scope(repo_root=ROOT, base_ref="origin/main"):
         "touched_dreams": touched_dreams,
         "touched_goal_tests": touched_goal_tests,
     }
+
+
+def _is_reviewed_rewrite(scope, pid):
+    if not scope or pid not in scope.get("touched_ports", set()):
+        return False
+    return pid.rsplit("/", 1)[-1] in scope.get("reviewed_ports", set())
 
 
 def _attribution_cause(scope, pid=None, area=None):
@@ -2064,10 +2074,15 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=No
         if pid in base_ports and eb is not None:
             prev_eb = base_ports[pid].get("emitted_bytes")
             if prev_eb is not None and eb > prev_eb + EMITTED_GROWTH_BYTES and eb > prev_eb * EMITTED_GROWTH_RATIO:
-                record_regression(
-                    f"emitted C++ grew >5%: {pid} ({prev_eb} -> {eb} B, +{eb - prev_eb} B)",
-                    pid=pid,
-                )
+                msg = f"emitted C++ grew >5%: {pid} ({prev_eb} -> {eb} B, +{eb - prev_eb} B)"
+                if _is_reviewed_rewrite(scope, pid) and eb <= SIZE_WARN:
+                    # A dream-driven rewrite may grow emitted C++ while its
+                    # review is touched in the same change (pending cold
+                    # rescore with the size cause named); the 48 KB warn line
+                    # still blocks.
+                    warnings.append(msg + " [reviewed rewrite]")
+                else:
+                    record_regression(msg, pid=pid)
             elif prev_eb is not None and prev_eb > eb + EMITTED_GROWTH_BYTES and eb < prev_eb * 0.95:
                 improvements.append(f"emitted C++ shrank: {pid} ({prev_eb} -> {eb} B)")
 

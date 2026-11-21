@@ -18,6 +18,10 @@ Every dream must be at that level, and every port is scored against it.
 3. **Write the port** as close to the dream as today's language allows,
    gate it (`proto/ports/<group>/gate.sh NAME 150`), and measure tokens,
    runtime on a max input against the C++, and emitted bytes.
+   A rewrite toward the dream may grow emitted C++ only when its review
+   names the runtime part that grew and the codegen ticket that removes it;
+   the scoreboard then warns (`reviewed rewrite`) instead of blocking, and
+   the 48 KB warn line still blocks.
 4. **Report every gap** between port and dream in
    `research/frictions/NAME.md`: the snippet, the dream lines that remove it,
    the goal it hurts, a general fix (never a one-problem helper), severity.
