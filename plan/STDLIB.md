@@ -307,7 +307,9 @@ fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D // O(n)
 // Selection, merging, and O(1)-space rotation
 fn nth_element<T>(mut a: List<T>, k: Int) // expected O(n), O(1) space
 fn merge_sorted<T>(a: List<T>, b: List<T>) -> List<T> // O(n + m)
-fn rotate_right<T>(mut a: List<T>, k: Int) // O(n), O(1) space
+fn rotate_right<T>(mut self: List<T>, k: Int) // O(n), O(1) space
+fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T> // O(n)
+fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T> // O(n)
 
 // Zero-allocation runs/chunks and domain bucketing
 fn chunk_by<D, T>(self: [D]T, same: (T, T) -> Bool) -> yields Range<D> // O(n), O(1) space

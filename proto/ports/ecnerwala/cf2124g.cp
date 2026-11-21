@@ -13,16 +13,16 @@
 // as their value rises, the split in [i, j] where `lifted[t] <= cur_cap`
 // sweeps left monotonically.
 
-use std.seq.scan
+use std.seq.suffix_scan
 
 @!multitest
 let n: 1..=1_000_000 = read()
 domain Pos = 0..n
 let a: [Pos]Int = read()
 
-let pref_min = scan(a, (x, y) => min(x, y))
-let orig_pref = prefix(pref_min)
-let base_ans = orig_pref.sum(Pos.first..=Pos.last)
+let pref_min = a.scan(min)
+let orig_suff = pref_min.suffix_scan(+)
+let base_ans = orig_suff[Pos.first]
 
 var ans: [0..n]Int = base_ans
 var cands: List<(val: Int, pos: Pos)> = []
@@ -37,7 +37,7 @@ for i in Pos.rev:
             let cap = if i == Pos.first: ai + cands.last!.val else: pref_min[(i - 1)!]
             for t in i.ord..j:
                 lifted[Pos(t)] = if t == i.ord: cap else: min(lifted[Pos(t - 1)], a[Pos(t)])
-            block_loss[j] = if j < n: orig_pref.sum(Pos(j)..=Pos.last) else: 0
+            block_loss[j] = if j < n: orig_suff[Pos(j)] else: 0
             for t in (i.ord..j).rev:
                 block_loss[t] = block_loss[t + 1] + lifted[Pos(t)]
 
@@ -49,12 +49,11 @@ for i in Pos.rev:
                     split -= 1
                     tail_gain += lifted[Pos(split)] - ai
                 let capped_gain = (cur_cap - ai) * (split - i.ord)
-                let loss = if pos.ord < j: block_loss[pos.ord] else: orig_pref.sum(pos..=Pos.last)
+                let loss = if pos.ord < j: block_loss[pos.ord] else: orig_suff[pos]
                 ans[pos.ord - i.ord] max= base_ans + capped_gain + tail_gain - loss
                 if cur_cap >= cap: break
         j = i.ord
     if cands.is_empty or ai > cands.last!.val:
         cands.push((ai, i))
 
-for d in (1..n).rev: ans[d - 1] max= ans[d]
-print(ans)
+print(ans.suffix_scan(max))

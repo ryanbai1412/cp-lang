@@ -15,22 +15,22 @@ use std.algebra.{Monoid}
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
-/// Every prefix folded with `f`: `[a0, f(a0, a1), f(f(a0, a1), a2), ...]`, as long as `xs`
-/// and indexed as `xs` is: a `List<T>` gives a `List<T>`, a `[D]T` a `[D]T`.
-/// `scan(xs, +)` is the running sum and `scan(xs, max)` the running maximum; no identity
+/// Every prefix folded with `f`: `[a0, f(a0, a1), f(f(a0, a1), a2), ...]`, as long as `self`
+/// and indexed as `self` is: a `List<T>` gives a `List<T>`, a `[D]T` a `[D]T`.
+/// `xs.scan(+)` is the running sum and `xs.scan(max)` the running maximum; no identity
 /// is needed because the first value starts the fold. O(n) calls of `f`.
-pub fn scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T:
-    var out = xs
+pub fn scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T:
+    var out = self
     var before: ?D = none
     for i in D:
         if let b = before: out[i] = f(out[b], out[i])
         before = i
     out
 
-/// Every suffix folded right-to-left with `f`: `out[i] = f(xs[i], out[i + 1])`, as long as `xs`
-/// and indexed as `xs` is. No identity is needed. O(n) calls of `f`.
-pub fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T:
-    var out = xs
+/// Every suffix folded right-to-left with `f`: `out[i] = f(self[i], out[i + 1])`, as long as `self`
+/// and indexed as `self` is. No identity is needed. O(n) calls of `f`.
+pub fn suffix_scan<D, T>(self: [D]T, f: (T, T) -> T) -> [D]T:
+    var out = self
     var after: ?D = none
     for i in D.rev:
         if let a = after: out[i] = f(out[i], out[a])
@@ -53,10 +53,10 @@ pub fn suffix_scan_in_place<T>(mut self: List<T>, f: (T, T) -> T):
         if let n = next: self[i] = f(self[i], n)
         next = self[i]
 
-/// Product of all elements of `it` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
-pub fn prod<S: Seq, T>(it: S) -> T:
+/// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
+pub fn prod<S: Seq, T>(self: S) -> T:
     var out = T.one
-    for x in it: out *= x
+    for x in self: out *= x
     out
 
 /// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`. O(n).
@@ -380,12 +380,12 @@ pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V:
 pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
     self[k] = f(self.get(k) ?? init)
 
-/// Rotate `a` left by `k` in place (or only the subrange `range` when given):
+/// Rotate `self` left by `k` in place (or only the subrange `range` when given):
 /// what was at offset `k % len` comes first. Signed Euclidean `k`: negative `k`
 /// rotates right. O(n), O(1) extra space.
-pub fn rotate_left<T>(mut a: List<T>, k: Int, range: ?Range<Int> = none):
+pub fn rotate_left<T>(mut self: List<T>, k: Int, range: ?Range<Int> = none):
     var lo = 0
-    var hi = a.len
+    var hi = self.len
     if let r = range:
         if r.is_empty: return
         lo = r.first!
@@ -394,13 +394,24 @@ pub fn rotate_left<T>(mut a: List<T>, k: Int, range: ?Range<Int> = none):
     if len <= 1: return
     let s = k % len
     if s == 0: return
-    reverse(mut a, range: lo..lo + s)
-    reverse(mut a, range: lo + s..hi)
-    reverse(mut a, range: lo..hi)
+    reverse(mut self, range: lo..lo + s)
+    reverse(mut self, range: lo + s..hi)
+    reverse(mut self, range: lo..hi)
 
-/// Rotate `a` right by `k` in place (or only the subrange `range` when given). O(n).
-pub fn rotate_right<T>(mut a: List<T>, k: Int, range: ?Range<Int> = none):
-    rotate_left(mut a, -k, range: range)
+/// Rotate `self` right by `k` in place (or only the subrange `range` when given). O(n).
+pub fn rotate_right<T>(mut self: List<T>, k: Int, range: ?Range<Int> = none):
+    rotate_left(mut self, -k, range: range)
+
+/// A new list rotated left by `k`: what was at offset `k % len` comes first.
+/// Signed Euclidean `k`: negative `k` rotates right. Works on any `Seq`. O(n).
+pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
+    var out: List<T> = [x for x in self]
+    rotate_left(mut out, k)
+    out
+
+/// A new list rotated right by `k`. Works on any `Seq`. O(n).
+pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>:
+    rotated_left(self, -k)
 
 /// Step `a` to the next arrangement in sorted order, in place. Returns false, leaving `a`
 /// sorted ascending, when it was the last one. O(n), amortized O(1).
@@ -1475,3 +1486,34 @@ fn distinct_with_by_key_keeps_first_seen():
     let arr: [D]Int = [10, 21, 30, 41, 52]
     assert arr.distinct(by: x => x % 10) == [10, 21, 52]
     assert "aAbBcA".distinct(by: c => if c >= 'a': c - 'a' else: c - 'A') == ['a', 'b', 'c']
+
+@test
+fn scan_prod_and_rotate_method_syntax():
+    let xs = [3, 1, 4, 1, 5]
+    assert xs.scan(+) == [3, 4, 8, 9, 14]
+    assert xs.scan(min) == [3, 1, 1, 1, 1]
+    assert xs.suffix_scan(+) == [14, 11, 10, 6, 5]
+    assert xs.suffix_scan(max) == [5, 5, 5, 5, 5]
+    assert xs.rev.scan(max).rev == [5, 5, 5, 5, 5]
+    assert xs.prod() == 60
+
+    domain D = 0..4
+    let a: [D]Int = [4, 2, 5, 1]
+    let p = a.scan(min)
+    let s = a.suffix_scan(max)
+    assert [p[i] for i in D] == [4, 2, 2, 1]
+    assert [s[i] for i in D] == [5, 5, 5, 1]
+    assert a.prod() == 40
+
+    assert xs.rotated_left(2) == [4, 1, 5, 3, 1]
+    assert xs.rotated_left(-1) == [5, 3, 1, 4, 1]
+    assert xs.rotated_right(2) == [1, 5, 3, 1, 4]
+    assert a.rotated_left(1) == [2, 5, 1, 4]
+    assert "abcd".rotated_left(1) == ['b', 'c', 'd', 'a']
+    let empty: List<Int> = []
+    assert empty.rotated_left(3) == []
+    var m = [1, 2, 3, 4]
+    m.rotate_left(1)
+    assert m == [2, 3, 4, 1]
+    m.rotate_right(2)
+    assert m == [4, 1, 2, 3]

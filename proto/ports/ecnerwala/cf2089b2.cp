@@ -10,7 +10,7 @@
 // its match, so spending budget `k` on the longest distances leaves the largest
 // `d` whose suffix `d..=n` exceeds `k` (or 0 if all units are deleted).
 
-use std.seq.rotate_left
+use std.seq.rotated_left
 
 struct Deposit:
     amount: Int
@@ -25,8 +25,7 @@ let b: [I]Int = read()
 
 let pref = prefix([I] i => a[i] - b[i])
 let cut = [i for i in I].min(by: i => pref.prefix(i.r))!
-var order = [i for i in I]
-rotate_left(mut order, cut.ord + 1)
+let order = [i for i in I].rotated_left(cut.ord + 1)
 
 var stk: List<Deposit> = []
 var cnt_dist: [0..=n]Int = 0

@@ -14,7 +14,7 @@ let a: [Pos]Val = read()
 let c: [Pos]?Val = read(none: 0)
 let fixed: [Val]?Pos = c.inverse()
 
-fn sweep(order: Seq<Val>, edge: Pos, op: fn(Pos, Pos) -> Pos, below: Bool) -> [Val]Pos:
+fn sweep<S: Seq>(order: S, edge: Pos, op: fn(Pos, Pos) -> Pos, below: Bool) -> [Val]Pos:
     var out: [Val]Pos = edge
     var st = SegTree<Val, Pos>(Monoid(edge, op))
     for v in order:

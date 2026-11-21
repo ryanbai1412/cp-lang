@@ -8,7 +8,7 @@ let (n, q) = read<(1..=5e4, 1..=5e4)>()
 let a: [n]1..=1e9 = read()
 let ks: [q]1..=1e9 = read()
 let window = a.prefix()
-let cuts = compress(a ++ a.map(2 *))
+let cuts = compress(a + a.map(x => 2 * x))
 let cap = ks.max() + a.max()
 
 // Σ_{j<l} ⌈x / 2^j⌉ = l + 2y − ⌊y / 2^(l−1)⌋ − popcount(y mod 2^(l−1)) with y = x − 1

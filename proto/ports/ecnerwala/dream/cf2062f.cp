@@ -14,7 +14,7 @@ let roles = (a: Int, b: Int) => [
 ]
 var cost: [0..=n, Stage]?Int = none
 cost[0, start] = 0
-for (i, (a, b)) in read<[n](a: 0..=1e9, b: 0..=1e9)>().sorted(by: c => c.a - c.b).indexed:
+for (i, (a, b)) in read<[n](a: 0..=1e9, b: 0..=1e9)>().sorted(by: c => c.a - c.b).items:
     for k in (0..=i).rev, (from, to, w) in roles(a, b):
         cost[k + 1, to] min= cost[k, from] + w
 print(cost[2..=n, done]!)

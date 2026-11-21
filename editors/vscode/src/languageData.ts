@@ -85,7 +85,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'on_segment', 'overlap', 'pairs', 'period', 'perm_cycles', 'perm_pow', 'phi', 'poly_at', 'poly_degree', 'polygon_area',
     'polygon_cut', 'pow', 'pow_mod', 'prefix_fold', 'prefix_function', 'prefix_matches', 'prev_greater', 'prev_less', 'prev_permutation', 'primitive_root',
     'prod_linear', 'project', 'rank_real', 'ray', 'read_fields', 'recurrence_at', 'reflect', 'reverse', 'rfind', 'rotate_left',
-    'rotate_right', 'run_ranges', 'same_dir', 'scan_in_place', 'seg_dist', 'segments_meet', 'show_fields', 'sieve_multiplicative', 'sign_eps', 'sliding_max',
+    'rotate_right', 'rotated_left', 'rotated_right', 'run_ranges', 'same_dir', 'scan_in_place', 'seg_dist', 'segments_meet', 'show_fields', 'sieve_multiplicative', 'sign_eps', 'sliding_max',
     'sliding_min', 'solve_real', 'sos', 'splitmix64', 'suffix_array', 'suffix_fold', 'suffix_scan', 'suffix_scan_in_place', 'swap_at', 'take',
     'taylor_shift', 'ternary_max', 'ternary_max_real', 'ternary_min', 'ternary_min_real', 'turn', 'two_color', 'two_edge_components', 'unimodality_break', 'update',
     'upper_hull', 'vcross', 'vdist', 'vdot', 'vturn', 'with_prev', 'z_function',
