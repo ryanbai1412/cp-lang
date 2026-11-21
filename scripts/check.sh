@@ -226,13 +226,15 @@ trap cleanup EXIT
 #   of the suite together;
 # - budget and the 50 ms front-end latency test measure wall-clock time,
 #   which other tests running beside them skew;
-# - the recovery scoreboard checks 3,400 broken ports on every core, which
-#   skews the LSP latency test beside it, so it runs after the rest.
+# - the recovery and fix-it scoreboards check thousands of broken ports on
+#   every core, which skews the LSP latency test beside them, so they run
+#   after the rest.
 slow_tests=(
     shrinks_a_failing_program_to_a_few_lines
     products_and_variable_divisors_are_never_decided_wrongly
     front_end_check_is_under_50_ms
     recovery_scoreboard
+    fix_it_scoreboard
 )
 if cache_hit nextest_doc; then
     step "cargo nextest + doctests"
