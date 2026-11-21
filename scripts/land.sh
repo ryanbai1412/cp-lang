@@ -52,7 +52,11 @@ acquire() {
 for attempt in 1 2 3 4 5; do
     acquire
     git fetch -q "$remote" main
-    git rebase -q FETCH_HEAD
+    git rebase -q FETCH_HEAD || {
+        git rebase --abort
+        echo "land: HEAD conflicts with main; rebase and resolve by hand, then rerun" >&2
+        exit 1
+    }
     $gate
     if git push -q "$remote" HEAD:main; then
         echo "land: pushed $(git rev-parse --short HEAD) to main"
