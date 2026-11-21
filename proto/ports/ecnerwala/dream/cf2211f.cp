@@ -1,52 +1,64 @@
-// Codeforces 2211 F (dream).
-// Repeatedly halving a segment of length L into floor(L/2) and floor((L-1)/2)
-// produces at most two consecutive segment lengths at every depth `cost`:
-// `big` and `small = big - 1`, tracked in a `Layer` struct.
+// Codeforces 2211 F.
+// Repeatedly halving a segment of length L splits it into `upper_half = L / 2`
+// and `lower_half = (L - 1) / 2`. At every depth `cost`, all segments have at
+// most two consecutive lengths `big` and `small = big - 1`, stored as
+// `Layer(big: Part, small: Part)`.
 // `ways(a) = C(n - a + m, m - 1)` counts non-decreasing length-m arrays in
-// [1..=n] whose span covers at least `a` elements. At depth `cost >= 2`, each
-// segment of length `len` contributes from its inner/outer half-cuts:
-//   cnt * (ways(1) - ways(inner_cut + 2)) + (cnt - 1) * (ways(len + 2) - ways(outer_cut + 2)),
-// where `big` uses `(inner, outer) = ((len - 1) / 2, len / 2)` and `small` swaps them.
+// `1..=n` whose span covers at least `a` elements. Depth 1 contributes
+// `ways(1)` for the whole array. At each deeper depth `cost >= 2`:
+//   - When `small.cnt == 0`, all segments have equal length `big.len`; moving
+//     one segment into `small` at length `big.len` preserves the multiset while
+//     splitting the `cnt - 1` gap terms into the same two-part formula.
+//   - Each part contributes `cnt * (ways(1) - ways(inner + 2)) +
+//     (cnt - 1) * (ways(len + 2) - ways(outer + 2))`, where `big` uses
+//     `(inner, outer) = (lower_half, upper_half)` and `small` swaps them.
+
 type Z = Mod<676_767_677>
 
+struct Part:
+    len: Int
+    cnt: Int
+    fn upper_half(self) -> Int = len / 2
+    fn lower_half(self) -> Int = (len - 1) / 2
+
 struct Layer:
-    big_len: Int
-    small_len: Int
-    big_cnt: Int
-    small_cnt: Int
+    big: Part
+    small: Part
+
+    fn normalized(self) -> Layer =
+        if small.cnt == 0: Layer(Part(big.len, big.cnt - 1), Part(big.len, 1))
+        else: self
 
     fn halve(self) -> Layer:
-        let next_big = big_len / 2
+        let next_big = big.upper_half()
         var (nb, ns) = (0, 0)
-        for (len, cnt) in [(big_len, big_cnt), (small_len, small_cnt)]:
-            for d in 0..=1:
-                if (len - d) / 2 == next_big: nb += cnt else: ns += cnt
-        Layer(next_big, next_big - 1, nb, ns)
+        for p in [big, small]:
+            for h in [p.upper_half(), p.lower_half()]:
+                if h == next_big: nb += p.cnt else: ns += p.cnt
+        Layer(Part(next_big, nb), Part(next_big - 1, ns))
+
+fn deeper_layers(n: Int) -> List<Layer>:
+    var out: List<Layer> = []
+    var cur = Layer(Part(n, 1), Part(n - 1, 0))
+    while cur.small.len > 0:
+        cur = cur.halve()
+        if cur.big.len == 0: break
+        out.push(cur.normalized())
+    out
 
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()
 let comb = Comb<Z>(n + m + 1)
 fn ways(a: Int) -> Z = comb.choose(n - a + m, m - 1)
 
-fn contrib(len: Int, cnt: Int, inner_cut: Int, outer_cut: Int) -> Z =
-    Z(cnt) * (ways(1) - ways(inner_cut + 2)) + Z(cnt - 1) * (ways(len + 2) - ways(outer_cut + 2))
+fn contrib(p: Part, inner: Int, outer: Int) -> Z =
+    Z(p.cnt) * (ways(1) - ways(inner + 2)) + Z(p.cnt - 1) * (ways(p.len + 2) - ways(outer + 2))
 
-var ans: Z = 0
-var layer = Layer(n, n - 1, 1, 0)
-var cost = 1
-
-while layer.big_len > 0:
-    if cost == 1:
-        ans += Z(layer.big_cnt + layer.small_cnt) * ways(1)
-    else:
-        if layer.small_cnt == 0:
-            layer = Layer(layer.big_len, layer.big_len, layer.big_cnt - 1, 1)
-        let c = Z(cost)
-        ans += c * contrib(layer.big_len, layer.big_cnt, (layer.big_len - 1) / 2, layer.big_len / 2)
-        if layer.small_len > 0:
-            ans += c * contrib(layer.small_len, layer.small_cnt, layer.small_len / 2, (layer.small_len - 1) / 2)
-    if layer.small_len == 0: break
-    layer = layer.halve()
-    cost += 1
+var ans = ways(1)
+for (idx, layer) in deeper_layers(n).items:
+    let cost = Z(idx + 2)
+    ans += cost * contrib(layer.big, layer.big.lower_half(), layer.big.upper_half())
+    if layer.small.len > 0:
+        ans += cost * contrib(layer.small, layer.small.upper_half(), layer.small.lower_half())
 
 print(ans)
