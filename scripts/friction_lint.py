@@ -305,6 +305,14 @@ def find_param_copy(code, lines, raw):
     return hits
 
 
+def find_infinite_capacity(code, lines, raw):
+    graphs = set(re.findall(rf"({IDENT})\s*(?::\s*(?:mut\s+)?|=\s*)FlowGraph\b", code))
+    if not graphs:
+        return []
+    pat = re.compile(rf"\b(?:{'|'.join(map(re.escape, graphs))})\.add\(.*\b(?:INF|inf\w*|cap_inf)\s*\)\s*$")
+    return [(i, ".add(.., INF)") for i, line in enumerate(lines, 1) if pat.search(line)]
+
+
 def find_digit_loop(code, lines, raw):
     hits = []
     for i, line in enumerate(lines):
@@ -391,7 +399,7 @@ RULES = [
     ("bool_list_loop", "stale_port", "wave2#20", "in [false, true] is in Bool",
      line_hits(r"\bin\s+\[\s*false\s*,\s*true\s*\]", "in [false, true]")),
     ("infinite_capacity", "stale_port", "wave2#21", "INF capacity edge is .add(u, v, cap: none)",
-     line_hits(r"\.add\(.*\b(?:INF|inf\w*|cap_inf)\s*\)\s*$", ".add(.., INF)")),
+     find_infinite_capacity),
     ("digit_loop", "stale_port", "wave3#29", "x /= 10 digit loop is digits(x)", find_digit_loop),
     ("mod_list_print", "stale_port", "wave4#39", "print([x.v for ..]) is print(xs) for a list of Mod",
      line_hits(r"\bprint\(\s*\[.*\.v\s+for\b", "print([x.v for ..])")),

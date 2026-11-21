@@ -7,6 +7,75 @@ either a general language mechanism or a library abstraction that several
 problems share; one-problem helpers are listed at the end as rejected, so
 nobody builds them by accident.
 
+## Status on `main` at `a2fb3ab`
+
+Refreshed after Syntax Batch #10. Every claim here was probed on
+`a2fb3ab` with `cpl check`, `cpl run`, and the `g++ -O2` judge build;
+"not re-probed" says where a claim still rests on the original report.
+The sections below this one are the original queue, measured at
+`602aa80`. One trap: the batches that shipped as #3 to #5 are not the
+"Ready-to-run syntax batches" #3 to #5 planned further down, and most of
+the planned items still fail.
+
+### Shipped: Syntax Batches #3 to #10
+
+- **Batches #3 to #7** (`f0df7bb`, `bcd873b`, `71a41ff`, `1f32fec`, `30e427e`): tropical `min=`/`max=`, sequence ends as places, `var` parameters, `op=` for every type, `excl_fold`, `Fenwick.kth`, `Subset.set`, `get_or_insert`, `zip`, `windows`, `digits`, `Dir8`, `std.rand`.
+- **Batch #8** (`685655e`): `s.find_all(p)`, `st.fold(..)`, guarded `while let x = opt, cond:`, nested fills such as `[0..n][0..4]Int = 0`, and live stdin for interactive `cpl run`.
+- **Batch #9** (`5522279`): `.first`/`.last`/`.pop_first()` on `Set` and `Map`, `sorted(0..n, by: f)`, and clearer errors for what `cpl run` cannot do.
+- **Batch #10** (`5b74c53`, `354d70e`): `if let` filters in comprehensions, `read()` of a `Bool` (`0`/`1`), `read(none: 0)` for `?Int`/`?V`, `g[r, ..]`/`g[.., c]` rows and columns, and `print(x, end: " ")`. The judge build now stops on EOF or a bad token, like `cpl run` does, and the false L0203 on `SegTree<I, Int>(+, a)` is gone.
+
+```cp
+domain V = 1..=3
+let boss: [V]?V = read(none: 0)
+let roots = [v for v in V if let b = boss[v] and b != v]
+let g: [0..2, 0..3]Int = [0..2, 0..3] (i, j) => i * 3 + j
+for x in g[1, ..]: print(x, end: " ")
+print()
+```
+
+### Still open from the planned batches #3 to #5
+
+Each of these still fails on `a2fb3ab`:
+
+- `let xs: List<Int> = read()`: "`read()` has no input format for a `List<Int>`".
+- Reading an enum with `@tags("A") Add`: "no `Add` in scope".
+- `read_line()`: "no `read_line` in scope".
+- `let (x, y) = (a, b) else: ...` over two optionals: "`let ... else` takes the value out of an optional, but this is a `(?Int, ?Int)`".
+- A fieldless enum as an index domain, `[S] s => 1`: "`S` is a type, and a value is needed here".
+- `Set.of(xs)` and `a | b` on sets: "`cpl run` doesn't know the name `Set` here".
+- `max(xs, by: f)`: "`max` has no argument named `by`".
+- `xs.pairs()`, `clz`, `submasks(m)` and `product(xs)`: each is reported as not in scope or as an unknown method.
+- `g.find(c => c == 'S')` on a `[R, C]Char`: "expected `Str`, found `[R, C]Char`".
+
+### Remaining `real_gap` hits, ranked
+
+`python3 scripts/friction_lint.py --json` counts 92 `real_gap` hits:
+
+1. **`manual_cursor_loop`: 44 hits in 41 files.** A `while i < xs.len` worklist that grows while it is walked (W2). It needs a general way to iterate a list that grows during iteration.
+2. **`domain_step_unwrap`: 24 hits in 16 files.** `(i + 1)!`: `v + 1` returns `?V`, so code unwraps even right after a guard such as `if l == r: return` (N2). The fix is for the range checker to use the guard.
+3. **`second_from_end`: 9 hits in 9 files.** `xs[xs.len - 2]`. `xs.last(1)` fails: "a `List<Int>` has no method `last`".
+4. **`arrow_block`: 7 hits in 6 files.** An array builder or lambda with a block body (B1).
+5. **`child_end`: 6 hits in 6 files.** `if tree.parent(u) == v: u else: v` (W6).
+6. **`segtree_get_set`: 1 hit.** `st[i] += v` fails: "a `SegTree<I, Int>` can't be indexed".
+7. **`doubling_search`: 1 hit.** `hi *= 2` before a `bsearch_first` (X5).
+
+### ecnerwala waves #9 to #11
+
+- **Wave #9:** guarded `while let` and nested fills shipped in Batch #8. A 3-D fill such as `var d: [0..2, 0..2, 0..2]Int = 0` also works now.
+- **Wave #10:** Batch #9 accepts `s.first()` on `Set`/`Map`. Fixed-size value matrices as `Map` values (`cf2127h`, flattened by hand into `List.filled(9, 0)`) are still open; not re-probed.
+- **Wave #11, `a.reverse()` on a `[I]Int`:** still open. `cpl check` accepts it, but `cpl run` stops with "internal: this value can't be changed that way". This is the highest-priority item here, because check and run disagree.
+- **Wave #11, `mut` counted-array parameter of a nested `fn`:** a top-level repro now runs in both back ends. The nested shape from `cf2101c` was not re-probed.
+- **Wave #11, L0414 suggests the nonexistent `List.indices`, and L0203 fires on a `var` declared later:** not re-probed.
+
+### Cold-Writer Bench #4
+
+- **Interactive flush:** the judge build flushes its output before every input refill, and `ask()` prints, flushes, and reads. The cheat sheet documents `flush()`. Auto-flush in `cpl run` was not re-probed.
+- **EOF read as an empty value in the release binary:** fixed by `354d70e`. The binary now exits 3 with "the input ended where a value was expected".
+- **Stale `find_all` and missing Batch #8 features in the cheat sheet:** fixed by `1bb459d`.
+- **`while let x = s.pop_first(), x < 4:` drops the first failing element:** this is by design and is documented in the cheat sheet. Use the `peek` form.
+- **False L0203 on `SegTree<I, Int>(+, a)`:** fixed by `354d70e`.
+- **New: two spellings for one guard.** A statement guard is `if let x = opt, x > 0:`, but a comprehension filter needs `and`: `[y for x in xs if let y = x, y > 0]` fails with "expected `]` to close the comprehension, found `,`". Accepting `,` in comprehensions would leave one obvious spelling.
+
 ## Where the items come from
 
 There are 363 `// WISH` markers in 130 files under `proto/ports/`.
@@ -148,11 +217,11 @@ with no open item (search, output, trees, graphs) are not repeated here.
 `D`, but not the rest of the 7 auto-derived `Read` types. This is the
 largest cluster, and 5 `NOT_BUILT` files fail only on it.
 
-- `let b: Bool = read()` fails: "`read()` has no input format for a `Bool`" (`dpo`).
-- `let p: [V]?V = read()` fails: "`read()` has no input format for a `?V`" (`yac6p2`; TR3 parent lists with a `-1` or `0` root).
+- Shipped in Batch #10: `let b: Bool = read()` reads `0`/`1` (`dpo`).
+- Shipped in Batch #10: `let p: [V]?V = read(none: 0)` reads a parent list with a `0` root (`yac6p2`, TR3). A `-1` root still needs a manual read.
 - `let xs: List<Int> = read()` fails: "`read()` has no input format for a `List<Int>`" (`mccc4j5`; the count-then-items line).
 - Reading an enum written as letters fails: "reading a `Op` needs to know how its variants are written in the input" (`noi02p1`, A4, L2, L26). With `@tags("A") Add` on a variant, the checker reports "no `Add` in scope".
-- `read(none: "X")` fails: "`read` has no argument named `none`" (B19-6, L20: a cell read from `.` or `0`).
+- `read(none: 0)` shipped in Batch #10 for numbers; a text sentinel such as `read(none: ".")` (B19-6, L20) is not covered.
 - `read_line()` fails: "no `read_line` in scope" (B19-9, `noimps22p1`).
 - The old spelling `read(n)` is used by `cco18p1` and `ergo/columns`: "`read` takes 0 arguments, but 1 was given". That is port cleanup, not a gap.
 

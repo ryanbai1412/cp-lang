@@ -65,7 +65,7 @@ count.fill(0)
 - `v + k` / `v - k` return `?V`; `b - a` returns `Int`; `v.cyc(k)` wraps.
 - `V.bounds` contains `V.K + 1` gaps; `v.l`/`v.r`, `v.l(k)`/`v.r(k)` select boundaries.
 - `b.left`/`b.right` return `?V`; range structures accept `..v`, `..=v`, and `v..`.
-- `[Row, Col]T` indexes with `g[r, c]`; `p.step(d)` over `Dir4`/`Dir8` gives `?(Row, Col)`; `use std.grid.{adj4}` for `p.adj4`.
+- `[Row, Col]T` indexes with `g[r, c]`; `g[r, ..]`/`g[.., c]` give one row/column as a list; `p.step(d)` over `Dir4`/`Dir8` gives `?(Row, Col)`; `use std.grid.{adj4}` for `p.adj4`.
 - Read-only slice aggregates work; mutable slices and `a.raw[i]` remain specification work.
 - Compression: `xs = compress(all)`, fresh domain `xs.D`, `xs.at(x)`, inverse `xs[id]`.
 
@@ -161,7 +161,7 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 - `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value; `.first`, `.pop_first()` give `?(K, V)`.
 - `Bitset<D>`: `.add`, `.remove`, `.toggle`, set operations, `.len` (popcount), `.shifted(k)`.
 - `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `for sub in s.subsets`, `for v in s`.
-- Comprehensions `[f(x) for x in xs if ok(x)]`; `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`, `sorted(0..n, by: f)`.
+- Comprehensions `[f(x) for x in xs if ok(x)]`, `[b for v in V if let b = boss[v] and b != v]` (`and`, not `,`); `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`, `sorted(0..n, by: f)`.
 - `xs.windows(k)` yields each length-`k` window; `zip(xs, ys)` pairs up to the shorter list.
 - Folds take a monoid such as `+`: `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)` yields `(x, rest)`; `runs`, `runs_by(xs, key)` yields `(key, items)`, `prefix`, `compress`.
 
@@ -246,5 +246,5 @@ debug(n, a)                        // local stderr; stripped on judge
 ```
 
 Co-locate `@brute`, `@gen`, and `@checker` for `cpl stress`; `@interactor` and `@grader` cover judge protocols. Interactive: `ask("?", x)` prints, flushes, reads; else `flush()` before `read()`.
-Run `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl test`, and `cpl doc`; use `cpl lsp` in the editor.
-For full APIs, see the [language reference](types-and-control.html), [standard library](stdlib.html), and [course](course.html).
+`read()` of a `Bool` takes `0`/`1`; `read(none: 0)` reads a `?Int` or `?V` with `0` as `none`; `print(x, end: " ")` replaces the newline.
+Run `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl test`, and `cpl doc`; use `cpl lsp` in the editor. For full APIs, see the [language reference](types-and-control.html), [standard library](stdlib.html), and [course](course.html).
