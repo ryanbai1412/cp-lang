@@ -305,11 +305,11 @@ fn a_program_without_grader_fns_has_a_main_and_no_judge_types() {
 fn a_map_whose_order_never_shows_is_a_hash_table() {
     let blind = cpp("var m = Map<Int, Int>()\nvar s = Set<Int>()\nm[42] = 7\ns.insert(3)\nprint(m.get(42) ?? 0, 3 in s, m.len)\n");
     assert!(
-        blind.contains("std::unordered_map<ll, ll, cpl::CpHash>"),
+        blind.contains("cpl::HashMap<ll, ll, cpl::CpHash>"),
         "{blind}"
     );
     assert!(
-        blind.contains("std::unordered_set<ll, cpl::CpHash>"),
+        blind.contains("cpl::HashSet<ll, cpl::CpHash>"),
         "{blind}"
     );
     assert!(!blind.contains("std::map<ll, ll>"), "{blind}");
@@ -325,7 +325,7 @@ fn a_map_whose_order_never_shows_is_a_hash_table() {
         let seen = cpp(&format!("var m = Map<Int, Int>()\nm[42] = 7\n{ordered}\n"));
         assert!(seen.contains("std::map<ll, ll>"), "{ordered}: {seen}");
         assert!(
-            !seen.contains("std::unordered_map<ll, ll"),
+            !seen.contains("cpl::HashMap<ll, ll"),
             "{ordered}: {seen}"
         );
     }

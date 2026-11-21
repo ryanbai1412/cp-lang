@@ -3195,3 +3195,21 @@ alias such a global by reference bind `const auto&`. Test:
    - **Reason:** Calling `sqrt` on a tiny negative float (e.g. `r*r - d*d = -1e-15` from rounding) previously produced a silent `NaN` that poisoned downstream comparisons and sorts (`flt_sqrt_neg_nan`, the last unhandled case in the P0 `floating-point` bug-replay class). Checking `x < 0.0` in `cpl-interp` and inside `#ifdef LOCAL` in `cpl::fsqrt` catches the domain error identically in debug and checked builds with zero release overhead (`-0.0 < 0.0` is false, so `sqrt(-0.0)` still succeeds). Brings `floating-point` bug-replay to 6/6 (100%) and total P0 bug-replay to 60/63 (95.2%).
    - **Test:** `sqrt_negative_traps_in_interp_and_checked_cpp_not_release`, `golden_math_assert_and_input_errors`, and `bench/goal_tests/bug_replay/flt_sqrt_neg_nan.cp`.
    - **Reverse:** Remove the `x < 0.0` check in `crates/cpl-interp/src/lib.rs`, remove the `fsqrt` piece from `crates/cpl-codegen/src/runtime.rs`, and emit `std::sqrt(...)` directly in `crates/cpl-codegen/src/expr.rs`.
+
+## 85. Open-addressing `cpl::HashMap` and `cpl::HashSet` in codegen (2026-11-21)
+
+`HashMap<K, V>` (and unordered `Map<K, V>` / `Set<K>`) now lowers to an
+open-addressing linear-probing `cpl::HashMap` / `cpl::HashSet` with 7-bit
+fingerprints, backward-shift deletion (zero tombstones), and full salted
+`splitmix64` hashing instead of `std::unordered_map` / `std::unordered_set`.
+**Why.** Node-based `std::unordered_map` ran 1.32-1.76x slower than C++
+`__gnu_pbds::gp_hash_table` with salted `splitmix64` (`bench/containers/run.sh`).
+Full salted `splitmix64` (dropping the unmixed low-6-bit passthrough in `CpHash`)
+also eliminates power-of-two stride clustering on adversarial inputs (`i * 64`,
+`i * 126271`).
+**Evidence.** `bench/containers/run.sh` vs `gp_hash_table` (`splitmix64`):
+`hash_insert` 1.56x -> 0.66x, `hash_lookup` 1.76x -> 0.75x, `hash_antihash`
+1.32x -> 0.65x. Emitted size on `ucup5s05b` stays within 5% (+529 B).
+**Reversal.** Switch `names.rs` back to `std::unordered_map` / `std::unordered_set`,
+restore the `<unordered_map>` / `<unordered_set>` includes in `emit.rs`, and
+drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.

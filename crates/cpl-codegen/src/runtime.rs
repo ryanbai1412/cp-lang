@@ -684,8 +684,8 @@ struct CpHash {
         static const uint64_t s = (uint64_t)std::chrono::steady_clock::now().time_since_epoch().count();
         return s;
     }
-    // Neighbouring keys share a salted block of 64, so a walk over x, x + 1, ... stays in cache.
-    size_t operator()(ll x) const { return (size_t)((splitmix64(((uint64_t)x >> 6) + salt()) << 6) | ((uint64_t)x & 63)); }
+    // Full salted splitmix64 so both prime-mod and power-of-two open-addressing tables stay hack-resistant.
+    size_t operator()(ll x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
     size_t operator()(int x) const { return (*this)((ll)x); }
     size_t operator()(u8 x) const { return (*this)((ll)x); }
     size_t operator()(bool x) const { return (*this)((ll)x); }
@@ -725,6 +725,159 @@ struct CpHash {
     template <class T> auto operator()(const T& x) const -> decltype((*this)(x.cpl_tie())) {
         return (*this)(x.cpl_tie());
     }
+};
+",
+    },
+    Piece {
+        name: "cphashmap",
+        needs: &["cphash", "fail"],
+        code: "\
+// Open-addressing hash map with 7-bit fingerprints and backward-shift deletion.
+template <class K, class V, class H = CpHash> struct HashMap {
+    using key_type = K; using mapped_type = V; using value_type = std::pair<K, V>;
+    std::vector<uint8_t> st; std::vector<value_type> kv; size_t n = 0;
+    template <bool C> struct It {
+        using P = std::conditional_t<C, const value_type, value_type>;
+        const uint8_t* s; P* p; size_t i, cap;
+        void skip() { while (i < cap && !s[i]) ++i; }
+        P& operator*() const { return p[i]; }
+        P* operator->() const { return p + i; }
+        It& operator++() { ++i; skip(); return *this; }
+        bool operator==(const It& o) const { return i == o.i; }
+        bool operator!=(const It& o) const { return i != o.i; }
+    };
+    using Iter = It<false>; using CIter = It<true>;
+    size_t size() const { return n; }
+    bool empty() const { return n == 0; }
+    void clear() {
+        if (!n) return;
+        if (st.size() > 64 && n * 8 < st.size()) { st.clear(); kv.clear(); }
+        else std::fill(st.begin(), st.end(), 0);
+        n = 0;
+    }
+    void rehash(size_t cap) {
+        std::vector<uint8_t> ns(cap, 0); std::vector<value_type> nk(cap); size_t m = cap - 1;
+        for (size_t i = 0; i < st.size(); ++i) if (st[i]) {
+            size_t j = H{}(kv[i].first) & m;
+            while (ns[j]) j = (j + 1) & m;
+            ns[j] = st[i]; nk[j] = std::move(kv[i]);
+        }
+        st.swap(ns); kv.swap(nk);
+    }
+    size_t locate(const K& k) const {
+        if (st.empty()) return 0;
+        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
+        while (st[i]) { if (st[i] == fp && kv[i].first == k) return i; i = (i + 1) & m; }
+        return st.size();
+    }
+    std::pair<size_t, bool> slot(const K& k) {
+        if (2 * (n + 1) > st.size()) rehash(st.empty() ? 8 : st.size() * 2);
+        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
+        while (st[i]) { if (st[i] == fp && kv[i].first == k) return {i, false}; i = (i + 1) & m; }
+        st[i] = fp; kv[i].first = k; ++n; return {i, true};
+    }
+    Iter begin() { Iter it{st.data(), kv.data(), 0, st.size()}; it.skip(); return it; }
+    Iter end() { return {st.data(), kv.data(), st.size(), st.size()}; }
+    CIter begin() const { CIter it{st.data(), kv.data(), 0, st.size()}; it.skip(); return it; }
+    CIter end() const { return {st.data(), kv.data(), st.size(), st.size()}; }
+    Iter find(const K& k) { return {st.data(), kv.data(), locate(k), st.size()}; }
+    CIter find(const K& k) const { return {st.data(), kv.data(), locate(k), st.size()}; }
+    size_t count(const K& k) const { return locate(k) != st.size() ? 1 : 0; }
+    V& at(const K& k) { size_t i = locate(k); if (i == st.size()) fail(\"key not in map\"); return kv[i].second; }
+    const V& at(const K& k) const { size_t i = locate(k); if (i == st.size()) fail(\"key not in map\"); return kv[i].second; }
+    V& operator[](const K& k) { auto [i, nw] = slot(k); if (nw) kv[i].second = V{}; return kv[i].second; }
+    std::pair<Iter, bool> emplace(const K& k, const V& v) {
+        auto [i, nw] = slot(k); if (nw) kv[i].second = v;
+        return {{st.data(), kv.data(), i, st.size()}, nw};
+    }
+    size_t erase(const K& k) {
+        size_t i = locate(k); if (i == st.size()) return 0;
+        --n; size_t m = st.size() - 1, j = i;
+        for (;;) {
+            j = (j + 1) & m; if (!st[j]) break;
+            size_t home = H{}(kv[j].first) & m;
+            if (((j - home) & m) >= ((j - i) & m)) { st[i] = st[j]; kv[i] = std::move(kv[j]); i = j; }
+        }
+        st[i] = 0; kv[i] = {}; return 1;
+    }
+    bool operator==(const HashMap& o) const {
+        if (n != o.n) return false;
+        for (size_t i = 0; i < st.size(); ++i) if (st[i]) {
+            size_t j = o.locate(kv[i].first);
+            if (j == o.st.size() || !(o.kv[j].second == kv[i].second)) return false;
+        }
+        return true;
+    }
+    bool operator!=(const HashMap& o) const { return !(*this == o); }
+};
+",
+    },
+    Piece {
+        name: "cphashset",
+        needs: &["cphash"],
+        code: "\
+// Open-addressing hash set with 7-bit fingerprints and backward-shift deletion.
+template <class K, class H = CpHash> struct HashSet {
+    using key_type = K; using value_type = K;
+    std::vector<uint8_t> st; std::vector<std::array<K, 1>> ks; size_t n = 0;
+    struct CIter {
+        const uint8_t* s; const std::array<K, 1>* p; size_t i, cap;
+        void skip() { while (i < cap && !s[i]) ++i; }
+        const K& operator*() const { return p[i][0]; }
+        const K* operator->() const { return &p[i][0]; }
+        CIter& operator++() { ++i; skip(); return *this; }
+        bool operator==(const CIter& o) const { return i == o.i; }
+        bool operator!=(const CIter& o) const { return i != o.i; }
+    };
+    size_t size() const { return n; }
+    bool empty() const { return n == 0; }
+    void clear() {
+        if (!n) return;
+        if (st.size() > 64 && n * 8 < st.size()) { st.clear(); ks.clear(); }
+        else std::fill(st.begin(), st.end(), 0);
+        n = 0;
+    }
+    void rehash(size_t cap) {
+        std::vector<uint8_t> ns(cap, 0); std::vector<std::array<K, 1>> nk(cap); size_t m = cap - 1;
+        for (size_t i = 0; i < st.size(); ++i) if (st[i]) {
+            size_t j = H{}(ks[i][0]) & m;
+            while (ns[j]) j = (j + 1) & m;
+            ns[j] = st[i]; nk[j][0] = std::move(ks[i][0]);
+        }
+        st.swap(ns); ks.swap(nk);
+    }
+    size_t locate(const K& k) const {
+        if (st.empty()) return 0;
+        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
+        while (st[i]) { if (st[i] == fp && ks[i][0] == k) return i; i = (i + 1) & m; }
+        return st.size();
+    }
+    CIter begin() const { CIter it{st.data(), ks.data(), 0, st.size()}; it.skip(); return it; }
+    CIter end() const { return {st.data(), ks.data(), st.size(), st.size()}; }
+    CIter find(const K& k) const { return {st.data(), ks.data(), locate(k), st.size()}; }
+    size_t count(const K& k) const { return locate(k) != st.size() ? 1 : 0; }
+    std::pair<CIter, bool> insert(const K& k) {
+        if (2 * (n + 1) > st.size()) rehash(st.empty() ? 8 : st.size() * 2);
+        size_t h = H{}(k), m = st.size() - 1, i = h & m; uint8_t fp = (uint8_t)(128 | (h >> 57));
+        while (st[i]) { if (st[i] == fp && ks[i][0] == k) return {{st.data(), ks.data(), i, st.size()}, false}; i = (i + 1) & m; }
+        st[i] = fp; ks[i][0] = k; ++n; return {{st.data(), ks.data(), i, st.size()}, true};
+    }
+    size_t erase(const K& k) {
+        size_t i = locate(k); if (i == st.size()) return 0;
+        --n; size_t m = st.size() - 1, j = i;
+        for (;;) {
+            j = (j + 1) & m; if (!st[j]) break;
+            size_t home = H{}(ks[j][0]) & m;
+            if (((j - home) & m) >= ((j - i) & m)) { st[i] = st[j]; ks[i][0] = std::move(ks[j][0]); i = j; }
+        }
+        st[i] = 0; ks[i][0] = K{}; return 1;
+    }
+    bool operator==(const HashSet& o) const {
+        if (n != o.n) return false;
+        for (size_t i = 0; i < st.size(); ++i) if (st[i] && !o.count(ks[i][0])) return false;
+        return true;
+    }
+    bool operator!=(const HashSet& o) const { return !(*this == o); }
 };
 ",
     },

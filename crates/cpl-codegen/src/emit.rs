@@ -293,12 +293,12 @@ impl<'p> Emitter<'p> {
             }
             Ty::Set(e) if self.program.unordered_sets.contains(e) => self.need_ty(&Ty::HashSet(e.clone())),
             Ty::HashMap(k, v) => {
-                self.need("cphash");
+                self.need("cphashmap");
                 self.need_ty(k);
                 self.need_ty(v);
             }
             Ty::HashSet(e) => {
-                self.need("cphash");
+                self.need("cphashset");
                 self.need_ty(e);
             }
             Ty::Range(inner) => {
@@ -1175,7 +1175,7 @@ impl<'p> Emitter<'p> {
             out.push_str("#include <string_view>\n");
         }
         if self.used.contains("cphash") {
-            out.push_str("#include <chrono>\n#include <unordered_map>\n#include <unordered_set>\n");
+            out.push_str("#include <chrono>\n");
         }
         out.push_str("\nusing ll = long long;\n\n");
         self.chunks.push((crate::Part::Includes, "#include".into(), out[includes..].to_string()));

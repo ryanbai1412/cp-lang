@@ -238,12 +238,12 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::Set(elem) if program.unordered_sets.contains(elem) => cty(program, niches, &Ty::HashSet(elem.clone())),
         Ty::Map(key, value) => format!("std::map<{}, {}>", cty(program, niches, key), cty(program, niches, value)),
         Ty::HashMap(key, value) => format!(
-            "std::unordered_map<{}, {}, cpl::CpHash>",
+            "cpl::HashMap<{}, {}, cpl::CpHash>",
             cty(program, niches, key),
             cty(program, niches, value)
         ),
         Ty::Set(elem) => format!("std::set<{}>", cty(program, niches, elem)),
-        Ty::HashSet(elem) => format!("std::unordered_set<{}, cpl::CpHash>", cty(program, niches, elem)),
+        Ty::HashSet(elem) => format!("cpl::HashSet<{}, cpl::CpHash>", cty(program, niches, elem)),
         Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
             let ps: Vec<String> = args.iter().map(|t| cty(program, niches, t)).collect();

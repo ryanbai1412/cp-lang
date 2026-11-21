@@ -137,3 +137,35 @@ fn flat_map_matches_builtin_hash_map():
     assert fm.get_or_insert(999, 8) == 7
     fm.clear()
     assert fm.is_empty and fm.get(999) == none
+
+@test
+fn hash_map_and_set_erase_clear_and_equality():
+    var hm = HashMap<Int, Int>()
+    var ord = Map<Int, Int>()
+    var hs = Set<Int>()
+    var os = Set<Int>()
+    for _ in 0..400:
+        let k = rand(-30, 30) * 64
+        let op = rand(0, 3)
+        if op <= 1:
+            let v = rand(-100, 100)
+            hm[k] = v
+            ord[k] = v
+            assert hs.insert(k) == os.insert(k)
+        elif op == 2:
+            assert hm.remove(k) == ord.remove(k)
+            assert hs.remove(k) == os.remove(k)
+        else:
+            assert hm.get(k) == ord.get(k)
+            assert (k in hs) == (k in os)
+        assert hm.len == ord.len and hs.len == os.len
+    var hm2 = HashMap<Int, Int>()
+    for (k, v) in ord: hm2[k] = v
+    assert hm == hm2
+    for x in os: assert x in hs
+    var bs = Set<Bool>()
+    assert bs.insert(true) and not bs.insert(true) and (true in bs) and not (false in bs)
+    assert bs.remove(true) and bs.is_empty
+    hm.clear()
+    hs.clear()
+    assert hm.is_empty and hs.is_empty
