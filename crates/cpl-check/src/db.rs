@@ -546,7 +546,12 @@ impl Database {
                     None => {
                         scope.names.insert(decl.name.clone(), index);
                     }
-                    Some(_) if decl.kind == DeclKind::Variant => {}
+                    Some(&first_idx)
+                        if decl.kind == DeclKind::Variant
+                            && items[first_idx]
+                                .decls
+                                .iter()
+                                .any(|d| d.name == decl.name && d.kind == DeclKind::Variant) => {}
                     Some(_) => duplicates.push((index, decl.clone())),
                 }
             }

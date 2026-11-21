@@ -506,6 +506,33 @@ impl<'a> Lowerer<'a> {
                     other => GenArg::Ty(other),
                 }
             }
+            ast::TypeKind::Tuple(items) if !items.is_empty() => {
+                let resolved_items: Vec<Ty> = items.iter().map(|t| self.resolve_ty(t)).collect();
+                let factors: Option<Vec<(Option<String>, ProductFactor)>> = resolved_items
+                    .iter()
+                    .map(|t| self.ty_to_product_factor(t).map(|f| (None, f)))
+                    .collect();
+                if let Some(factors) = factors {
+                    let d = self.intern_anon_product_domain(factors);
+                    return GenArg::Domain(d);
+                }
+                GenArg::Ty(Ty::Tuple(resolved_items))
+            }
+            ast::TypeKind::Record(fields) if !fields.is_empty() => {
+                let resolved_fields: Vec<(String, Ty)> = fields
+                    .iter()
+                    .map(|(n, t)| (n.text.clone(), self.resolve_ty(t)))
+                    .collect();
+                let factors: Option<Vec<(Option<String>, ProductFactor)>> = resolved_fields
+                    .iter()
+                    .map(|(n, t)| self.ty_to_product_factor(t).map(|f| (Some(n.clone()), f)))
+                    .collect();
+                if let Some(factors) = factors {
+                    let d = self.intern_anon_product_domain(factors);
+                    return GenArg::Domain(d);
+                }
+                GenArg::Ty(Ty::Record(resolved_fields))
+            }
             _ => {
                 let resolved = self.resolve_ty(ty);
                 match resolved {

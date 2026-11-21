@@ -203,6 +203,12 @@ directly in `SegTree`/`LazySegTree`/`Fenwick` (`cf2207f`), algebraic product dom
 (`domain State = (V, K)` and named `(v: V, d: Dir, ok: Bool)` with flat `[State]T`,
 `for s in State`, `for (v, k) in State`, `dp[(v, k)]`/`dp[v, k]`, `State(v, k)`,
 and `s.0`/`s.v` projections across checker, IR, interpreter, C++, LSP, and docs),
+algebraic sum domains and anonymous tuple/record index types (`decisions.md` §2.16:
+finite-index payload enums like `enum Node: Src / Snk / Cell(Row, Col)` and tuples/records
+of index types `(Row, Col)` / `(r: Row, c: Col)` derive `Index` and work in `[Node]T`,
+`for v in Node`, `match v:`, `FlowGraph<Node>`, `FlowGraph<(Row, Col)>`, `Dsu<Node>`,
+with declaration-time `E0202` when a variant name collides with a domain/type;
+migrated `cf1404e` with emitted C++ shrinking `15,338 -> 15,230 B`),
 partial-injection and bijection `a.inverse()` (`[D]?E -> [E]?D` trapping on duplicate
 images, `[D]E -> [E]D` on bijections, adopted in `cf2084g1`),
 auto-loaded `Bitset` for `V.all.without(c)` with zero imports,

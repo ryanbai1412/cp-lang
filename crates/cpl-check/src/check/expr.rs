@@ -1489,22 +1489,45 @@ impl<'a> Checker<'a> {
             Ty::Named {
                 name: type_name,
                 args,
-            } => self.members_of(type_name).map(|members| {
-                let bindings = members.bindings(args);
-                (
-                    members
-                        .fields
-                        .iter()
-                        .find(|f| f.name == name.text)
-                        .map(|f| f.ty.subst(&bindings)),
-                    members.fields.iter().map(|f| f.name.clone()).collect(),
-                    members
-                        .members
-                        .into_iter()
-                        .map(|(m, ty)| (m, ty.subst(&bindings)))
-                        .collect::<Vec<_>>(),
-                )
-            }),
+            } => {
+                if args.is_empty() && self.finite_index_enum_size(type_name).is_some() {
+                    match name.text.as_str() {
+                        "ord" | "to_idx" | "idx" | "label" => return Ty::Int,
+                        "prev" | "next" => return Ty::Optional(Box::new(base_ty.clone())),
+                        "offset" | "ahead" | "back" => {
+                            return Ty::Fn {
+                                params: vec![crate::ty::Param {
+                                    name: "k".into(),
+                                    ty: Ty::Int,
+                                    mutable: false,
+                                    has_default: false,
+                                    named_only: false,
+                                    variadic: false,
+                                    lazy: false,
+                                }],
+                                ret: Box::new(Ty::Optional(Box::new(base_ty.clone()))),
+                            };
+                        }
+                        _ => {}
+                    }
+                }
+                self.members_of(type_name).map(|members| {
+                    let bindings = members.bindings(args);
+                    (
+                        members
+                            .fields
+                            .iter()
+                            .find(|f| f.name == name.text)
+                            .map(|f| f.ty.subst(&bindings)),
+                        members.fields.iter().map(|f| f.name.clone()).collect(),
+                        members
+                            .members
+                            .into_iter()
+                            .map(|(m, ty)| (m, ty.subst(&bindings)))
+                            .collect::<Vec<_>>(),
+                    )
+                })
+            }
             // The members of a domain that give positions or ranges back.
             Ty::Domain(domain) => {
                 return match name.text.as_str() {
@@ -1660,6 +1683,24 @@ impl<'a> Checker<'a> {
                         return def.value_ty(&name.text);
                     }
                 }
+                if self.finite_index_enum_size(type_name).is_some() {
+                    let elem = Ty::Named {
+                        name: type_name.clone(),
+                        args: Vec::new(),
+                    };
+                    match name.text.as_str() {
+                        "count" | "len" | "K" => return Ty::Int,
+                        "first" | "last" => return Ty::Optional(Box::new(elem)),
+                        "all" | "rev" => {
+                            return Ty::Named {
+                                name: "Range".into(),
+                                args: vec![elem],
+                            };
+                        }
+                        "bounds" => return Ty::Domain(format!("{type_name}.bounds")),
+                        _ => {}
+                    }
+                }
                 // `Graph.read()`, `Rooted.Pre`: what the type has without a value.
                 self.members_of(type_name)
                     .map(|members| (None, Vec::new(), members.members))
@@ -1731,10 +1772,9 @@ impl<'a> Checker<'a> {
         }
         let mut is_index_ty = |ty: &Ty| match ty {
             Ty::Pos(_) | Ty::Range { .. } | Ty::Param(_) => true,
-            Ty::Named { name, args } if args.is_empty() => matches!(
-                self.env.type_def(name).as_deref(),
-                Some(Def::Enum { variants, .. }) if variants.iter().all(|(_, fs)| fs.is_empty())
-            ),
+            Ty::Named { name, args } if args.is_empty() => {
+                self.finite_index_enum_size(name).is_some()
+            }
             _ => false,
         };
         let d = index[0].clone();

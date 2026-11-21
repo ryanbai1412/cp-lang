@@ -1001,6 +1001,54 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Whether `name` is a finite-index enum (§2.16): fieldless or carrying only
+    /// finite-index payloads (`Ty::Pos`, `Ty::Bool`, or another finite-index enum).
+    /// Returns `Some(max_size)` when so (`max_size` is `None` if any factor is unbounded).
+    pub(crate) fn finite_index_enum_size(&mut self, name: &str) -> Option<Option<i128>> {
+        fn go(
+            env: &mut dyn crate::check::Env,
+            name: &str,
+            seen: &mut std::collections::HashSet<String>,
+        ) -> Option<Option<i128>> {
+            if !seen.insert(name.to_string()) {
+                return None;
+            }
+            let Some(Def::Enum { variants, .. }) = env.type_def(name).as_deref().cloned() else {
+                seen.remove(name);
+                return None;
+            };
+            if variants.is_empty() {
+                seen.remove(name);
+                return None;
+            }
+            let mut total: Option<i128> = Some(0);
+            for (_, fs) in &variants {
+                let mut prod: Option<i128> = Some(1);
+                for f in fs {
+                    let fmax = match f {
+                        Ty::Bool => Some(2),
+                        Ty::Pos(d) => match env.global(d).as_deref() {
+                            Some(Def::Domain(info)) => info.max_size,
+                            _ => None,
+                        },
+                        Ty::Named { name: inner, args } if args.is_empty() => {
+                            go(env, inner.as_str(), seen)?
+                        }
+                        _ => {
+                            seen.remove(name);
+                            return None;
+                        }
+                    };
+                    prod = prod.zip(fmax).and_then(|(a, b)| a.checked_mul(b));
+                }
+                total = total.zip(prod).and_then(|(a, b)| a.checked_add(b));
+            }
+            seen.remove(name);
+            Some(total)
+        }
+        go(self.env, name, &mut std::collections::HashSet::new())
+    }
+
     fn product_factor_info(&mut self, e: &ast::Expr) -> Option<(Ty, Option<i128>)> {
         match &e.kind {
             ExprKind::Name(name) if name == "Bool" => Some((Ty::Bool, Some(2))),
@@ -1012,20 +1060,15 @@ impl<'a> Checker<'a> {
                 }
                 match self.env.global(name).as_deref() {
                     Some(Def::Domain(info)) => Some((Ty::Pos(name.clone()), info.max_size)),
-                    _ => match self.env.type_def(name).as_deref() {
-                        Some(Def::Enum { variants, .. })
-                            if variants.iter().all(|(_, fs)| fs.is_empty()) =>
-                        {
-                            Some((
-                                Ty::Named {
-                                    name: name.clone(),
-                                    args: Vec::new(),
-                                },
-                                Some(variants.len() as i128),
-                            ))
-                        }
-                        _ => None,
-                    },
+                    _ => self.finite_index_enum_size(name).map(|max| {
+                        (
+                            Ty::Named {
+                                name: name.clone(),
+                                args: Vec::new(),
+                            },
+                            max,
+                        )
+                    }),
                 }
             }
             _ => None,

@@ -864,6 +864,14 @@ impl<'a> Lowerer<'a> {
             }
             Some(Sym::ModConst(mcid)) => return self.ensure_mod_const(mcid, span),
             Some(Sym::Variant(id, tag)) => {
+                if let Some(&d) = self.enum_to_sum_domain.get(&id) {
+                    if self.sum_enums[&d].variants[tag].1.is_empty() {
+                        return self.encode_sum_variant(d, tag, Vec::new(), span);
+                    }
+                    let message = format!("the variant `{name}` holds values: write `{name}(...)`");
+                    self.error(codes::WRONG_ARG_COUNT, span, message);
+                    return self.err_expr(span);
+                }
                 if self.enums[id].variants[tag].1.is_empty() {
                     return self.mk(ExprKind::Variant(tag, Vec::new()), Ty::Enum(id), span);
                 }

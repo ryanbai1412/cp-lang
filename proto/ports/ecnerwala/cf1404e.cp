@@ -17,16 +17,16 @@ domain Col = 0..m
 let grid: [Row, Col]Char = read()
 fn black(r: Row, c: Col) -> Bool = grid[r, c] == '#'
 
-domain Node = 0..n * m + 2
-let src = Node(n * m)
-let snk = Node(n * m + 1)
-fn cell(r: Row, c: Col) -> Node = Node(r.ord * m + c.ord)
+enum Node:
+    Src
+    Snk
+    Cell(Row, Col)
 
 var g = FlowGraph<Node>()
 for r in Row:
     for c in Col if black(r, c):
-        let up = if let rp = r.prev and black(rp, c): cell(rp, c) else: src
-        let left = if let cp = c.prev and black(r, cp): cell(r, cp) else: snk
-        g.add(up, cell(r, c), 1)
-        g.add(cell(r, c), left, 1)
-print(g.max_flow(src, snk))
+        let up = if let rp = r.prev and black(rp, c): Node.Cell(rp, c) else: Node.Src
+        let left = if let cp = c.prev and black(r, cp): Node.Cell(r, cp) else: Node.Snk
+        g.add(up, Node.Cell(r, c), 1)
+        g.add(Node.Cell(r, c), left, 1)
+print(g.max_flow(Node.Src, Node.Snk))

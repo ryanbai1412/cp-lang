@@ -538,6 +538,7 @@ impl<'a> Lowerer<'a> {
             .take_while(|d| d.is_none())
             .count();
         if !explicit.is_empty() && explicit.len() >= min_explicit && explicit.len() <= gen_names.len() {
+            self.emit_anon_product_defs(&explicit, span);
             let sid = self.instantiate_struct(gid, explicit);
             return self.construct_or_new(sid, args, span);
         }
@@ -607,8 +608,21 @@ impl<'a> Lowerer<'a> {
                 None => final_args.push(GenArg::Ty(Ty::Int)),
             }
         }
+        self.emit_anon_product_defs(&final_args, span);
         let sid = self.instantiate_struct(gid, final_args);
         self.construct_or_new(sid, args, span)
+    }
+
+    fn emit_anon_product_defs(&mut self, gargs: &[GenArg], span: Span) {
+        let mut defs = Vec::new();
+        for ga in gargs {
+            if let GenArg::Domain(d) = ga {
+                if self.anon_product_domain_set.contains(d) {
+                    self.def_anon_product_domain(*d, span, &mut defs);
+                }
+            }
+        }
+        self.cx.pending.extend(defs);
     }
 
     /// Positional arguments only, and exactly `n` of them.
@@ -1086,11 +1100,14 @@ impl<'a> Lowerer<'a> {
         let Some(exprs) = self.positional_any(&name, args, fields.len(), span) else {
             return self.err_expr(span);
         };
-        let values = exprs
+        let values: Vec<Expr> = exprs
             .into_iter()
             .zip(&fields)
             .map(|(e, ty)| self.expect(e, ty))
             .collect();
+        if let Some(&d) = self.enum_to_sum_domain.get(&id) {
+            return self.encode_sum_variant(d, tag, values, span);
+        }
         self.mk(ExprKind::Variant(tag, values), Ty::Enum(id), span)
     }
 
@@ -5738,6 +5755,19 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            Some(Sym::Domain(id))
+                if self.sum_enums.get(&id).is_some_and(|info| {
+                    info.variants.iter().any(|(v, _)| *v == name.text)
+                }) =>
+            {
+                let info = self.sum_enums[&id].clone();
+                let tag = info
+                    .variants
+                    .iter()
+                    .position(|(v, _)| *v == name.text)
+                    .unwrap();
+                return self.variant(info.enum_id, tag, args, span);
+            }
             Some(Sym::Enum(id)) => {
                 return match self.enums[id]
                     .variants
@@ -7066,6 +7096,19 @@ impl<'a> Lowerer<'a> {
     }
 
     fn domain_field(&mut self, id: DomainId, name: &ast::Name, hint: Option<&Ty>, span: Span) -> Expr {
+        if let Some(info) = self.sum_enums.get(&id).cloned() {
+            if let Some(tag) = info.variants.iter().position(|(v, _)| *v == name.text) {
+                if info.variants[tag].1.is_empty() {
+                    return self.encode_sum_variant(id, tag, Vec::new(), span);
+                }
+                let message = format!(
+                    "the variant `{}` holds values: write `{}(...)`",
+                    name.text, name.text
+                );
+                self.error(codes::WRONG_ARG_COUNT, span, message);
+                return self.err_expr(span);
+            }
+        }
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
         // An empty domain has no first or last position: asking stops the
         // program in the built C++ as it does in `cpl run`.

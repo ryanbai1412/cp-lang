@@ -536,8 +536,14 @@ impl<'a> Lowerer<'a> {
                     self.memo_into_table(table, decl, out);
                 }
             }
+            ast::StmtKind::Enum(decl) => {
+                if let Some(Sym::Domain(d)) = self.get_sym(&decl.name.text) {
+                    if self.sum_enums.contains_key(&d) {
+                        self.def_sum_enum_domain(d, stmt.span, out);
+                    }
+                }
+            }
             ast::StmtKind::Struct(_)
-            | ast::StmtKind::Enum(_)
             | ast::StmtKind::TypeAlias { .. }
             | ast::StmtKind::Trait { .. }
             | ast::StmtKind::Impl { .. }
@@ -3945,6 +3951,34 @@ impl<'a> Lowerer<'a> {
             }
             ast::PatternKind::Variant { path, args } => {
                 let name = path.last().expect("a variant pattern has a name");
+                if let Ty::Pos(d) = value.ty {
+                    if let Some(info) = self.sum_enums.get(&d).cloned() {
+                        let Some(tag) = info.variants.iter().position(|(v, _)| *v == name.text) else {
+                            let message =
+                                format!("`{}` has no variant `{}`", self.domains[d], name.text);
+                            self.error(codes::UNKNOWN_FIELD, name.span, message);
+                            return None;
+                        };
+                        let factors = &info.variants[tag].1;
+                        if factors.len() != args.len() {
+                            let message = format!(
+                                "`{}` holds {} values, but this pattern names {}",
+                                name.text,
+                                factors.len(),
+                                args.len()
+                            );
+                            self.error(codes::WRONG_ARG_COUNT, pat.span, message);
+                            return None;
+                        }
+                        let mut test = Some(self.is_sum_variant(d, tag, value.clone(), pat.span));
+                        for (i, arg) in args.iter().enumerate() {
+                            let payload =
+                                self.decode_sum_variant_field(d, tag, i, value.clone(), pat.span);
+                            test = and(test, self.pattern(arg, &payload, binds));
+                        }
+                        return test;
+                    }
+                }
                 let Ty::Enum(id) = value.ty else {
                     if value.ty != Ty::Error {
                         let message = format!(

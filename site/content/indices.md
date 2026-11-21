@@ -228,6 +228,22 @@ print(at[1]!.label, at[2] == none, at[4]!.label)
 
 ## Algebraic `Index` and escape hatches
 
-The language's `Index` model covers `Bool`, finite enums, `?T`, integer ranges, tuples/records, and `Subset<D>` for bitmask DP. Support across generic library calls is still being completed: for example, flow over payload-enum vertices is not yet runnable. The [graph course](course-graphs-math.html#network-flow-with-typed-vertices) shows a working flow network over a numeric vertex domain.
+The language's `Index` model (§2.16) covers `Bool`, finite enums (both fieldless and payload enums whose fields are index types), `?T`, integer ranges, tuples/records of index types, and `Subset<D>` for bitmask DP. Payload enums such as `enum Node: Src / Snk / Cell(Row, Col)` and tuples/records such as `(Row, Col)` work directly as array dimensions (`[Node]T`, `[(Row, Col)]T`), loop domains (`for v in Node:`), and generic index arguments (`FlowGraph<Node>`, `FlowGraph<(Row, Col)>`, `Dsu<Node>`):
+
+```cp
+use std.flow.{FlowGraph}
+
+domain Row = 0..2
+domain Col = 0..3
+enum Node:
+    Src
+    Snk
+    Cell(Row, Col)
+
+var g = FlowGraph<Node>()
+g.add(Node.Src, Node.Cell(Row(0), Col(0)), 4)
+g.add(Node.Cell(Row(0), Col(0)), Node.Snk, 3)
+print(Node.count, g.max_flow(Node.Src, Node.Snk))
+```
 
 For numeric offsets, use a structural range array such as `[0..n]Int`. The specified `a.raw[i]` escape for nominal arrays is not yet supported by the execution backend. `unchecked:` is available for a loop you have already proved safe; see the [C++ guide](cpp-guide.html#performance-controls-and-escape-hatches).

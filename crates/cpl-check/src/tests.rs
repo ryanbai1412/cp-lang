@@ -2783,7 +2783,6 @@ let _ = (y ?? false, z ?? -1, w ?? -1)
 ";
     assert_eq!(check(ok), vec![]);
 }
-
 #[test]
 fn unary_plus_requires_numeric_operand() {
     let ok = "let a = +1\nlet b = +2.5\nprint(a, b)\n";
@@ -2795,5 +2794,58 @@ fn unary_plus_requires_numeric_operand() {
     assert!(
         errs.iter().all(|e| e.code == cpl_diag::codes::TYPE_MISMATCH),
         "expected E0302 for unary `+` on non-numeric types, got: {errs:?}"
+    );
+}
+
+#[test]
+fn sum_domain_enum_tuple_record_index_and_collision_diag() {
+    let ok = "\
+use std.flow.{FlowGraph}
+use std.dsu.{Dsu}
+
+domain Row = 0..2
+domain Col = 0..3
+
+enum Node:
+    Src
+    Snk
+    Cell(Row, Col)
+
+let _: Int = Node.count
+var vals: [Node]Int = 0
+for v in Node:
+    vals[v] = match v:
+        Src => 0
+        Snk => 1
+        Cell(r, c) => r.ord + c.ord
+var g = FlowGraph<Node>()
+g.add(Node.Src, Node.Cell(Row(0), Col(0)), 1)
+let _ = g.max_flow(Node.Src, Node.Snk)
+
+var dsu = Dsu<Node>()
+dsu.unite(Node.Src, Node.Snk)
+
+var fg_tup = FlowGraph<(Row, Col)>()
+fg_tup.add((Row(0), Col(0)), (Row(1), Col(2)), 2)
+let _ = fg_tup.max_flow((Row(0), Col(0)), (Row(1), Col(2)))
+
+var fg_rec = FlowGraph<(r: Row, c: Col)>()
+fg_rec.add((r: Row(0), c: Col(0)), (r: Row(1), c: Col(2)), 3)
+let _ = fg_rec.max_flow((r: Row(0), c: Col(0)), (r: Row(1), c: Col(2)))
+";
+    assert_eq!(check(ok), vec![]);
+
+    let collision = "\
+domain Row = 0..2
+domain Col = 0..2
+domain Cell = (Row, Col)
+enum Node:
+    Src
+    Cell(Row, Col)
+";
+    let errs = check(collision);
+    assert!(
+        errs.iter().any(|d| d.code == cpl_diag::codes::DUPLICATE_DEFINITION),
+        "expected E0202 at declaration when variant collides with domain, got: {errs:?}"
     );
 }
