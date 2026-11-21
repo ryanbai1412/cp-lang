@@ -17,7 +17,7 @@
 
 @!multitest
 let n: 1..=500 = read()
-let m: 1..=250_000 = read()
+let m: 1..=n * n = read()
 domain Val = 1..=n * n
 domain Time = 1..=2 * n - 1
 
