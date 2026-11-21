@@ -18,22 +18,23 @@ pub struct Line(k: Int, m: Int):
     pub fn at(self, x: Int) -> Int = k * x + m
 
 /// O(log n) per `at`, O(log n) per whole-line `add`, O(log^2 n) on a segment.
-/// The lower (`LiChao<Line, Int>(min, 0..=1e9)`) or upper (`max`) envelope
-/// of lines over the integer coordinates `xs`. A line is anything with
+/// The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope
+/// of lines over the integer coordinates `over`. A line is anything with
 /// `at(self, x: Int) -> K`, so a struct whose `at` returns `(cost, used)`
 /// breaks ties by its second field with the same tree. Law: two lines cross
 /// at most once on `xs`. `add` is O(log n) for a whole line and O(log^2 n)
 /// on a segment (`on: lo..=hi`), `at` and `line_at` O(log n), for n =
 /// `xs.len`; memory is O(lines) cells, allocated as lines arrive.
-pub struct LiChao<L, K>(pick: (K, K) -> K, lo: Int, hi: Int):
+pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     lines: List<?L>
     // a cell's children; 0 is none, since the root is no cell's child
     left: List<Int>
     right: List<Int>
 
 /// O(1).
-    /// Create a Li Chao tree over integer x-domain `xs` with comparator `pick`. O(1).
-    pub fn new(pick: (K, K) -> K, xs: Range<Int>) -> LiChao<L, K>:
+    /// Create a Li Chao tree over integer x-domain `over` with comparator `pick`. O(1).
+    pub fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>:
+        let xs = over
         assert not xs.is_empty
         LiChao(pick, xs.first!, xs.last!, [none], [0], [0])
 
@@ -477,8 +478,8 @@ pub struct Step<S>(state: S, depth: Int):
 fn li_chao_matches_a_scan_over_lines_and_segments():
     for _ in 0..100:
         let (lo, hi) = (rand(-20, 0), rand(1, 20))
-        var low = LiChao<Line, Int>(min, lo..=hi)
-        var high = LiChao<Line, Int>(max, lo..=hi)
+        var low = LiChao(min, over: lo..=hi)
+        var high = LiChao(max, over: lo..=hi)
         var lines: List<(l: Line, a: Int, b: Int)> = []
         for _ in 0..rand(1, 12):
             let l = Line(rand(-5, 5), rand(-20, 20))
@@ -495,7 +496,7 @@ fn li_chao_matches_a_scan_over_lines_and_segments():
                 let here = [e.l.at(x) for e in lines if e.a <= x and x <= e.b]
                 assert low.at(x) == min(here)
                 assert high.at(x) == max(here)
-    var ties = LiChao<Counted, (cost: Int, used: Int)>(min, 0..=10)
+    var ties = LiChao<Counted, (cost: Int, used: Int)>(min, over: 0..=10)
     ties.add(Counted(1, 0, 3))
     ties.add(Counted(1, 0, 2))
     assert ties.at(4) == (cost: 4, used: 2)
