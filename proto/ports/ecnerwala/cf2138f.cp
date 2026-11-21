@@ -3,7 +3,7 @@
 // then unit rungs along it.
 use std.geometry.{Vec}
 
-fn fits(a: Vec, b: Vec) -> Bool = 0.5 <= (a - b).len <= 1.0
+fn fits(a: Vec, b: Vec, eps: F64 = 1e-9) -> Bool = 0.5 + eps <= (a - b).len <= 1.0 - eps
 
 @!multitest
 let (p, q, m): (1..=10_000, 1..=10_000, 3..=28_285) = read()
@@ -38,8 +38,7 @@ else:
         for x in -64..=64:
             for y in -64..=64:
                 let c = Vec(F64(x) / 64.0, F64(y) / 64.0)
-                let near = fits(c, p1) and fits(c, p2) and fits(c, start)
-                if near and fits(c, t0) and fits(c, t1): return c
+                if [p1, p2, t0, t1, start].all(e => fits(c, e)): return c
         p1
     let s = side()
     let a = draw(1, 2, s)

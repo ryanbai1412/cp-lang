@@ -9,6 +9,7 @@ Metrics: 379 -> 302 CP tokens (`0.12x` raw, `0.37x` stripped); emitted C++ 13,69
 - **Area:** geometry
 - **Goal:** express
 - **Severity:** low
+- **Status:** resolved
 - **What happened:** The initial port sorted queries offline and walked the upper hull with a hand-written `hi_idx` two-pointer loop, plus a global-mutating `try_max` helper.
 - **Resolution:** Reversed the upper hull in place (`hull.reverse()`) so it forms a CCW convex polygon and answered every query directly in O(log n) with `hull_extreme(hull, Pt(v, 1))`, cutting 77 tokens.
 
