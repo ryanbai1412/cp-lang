@@ -1,100 +1,126 @@
-// AtCoder WTF 2026 D: find the lexicographically largest reachable permutation
-// <= Q by extending the prefix against a monotone stack of (max_p, max_v)
-// constraints, then greedily packing remaining values into suffix blocks.
-struct Cond(max_p: Int, max_v: Int)
-
+// AtCoder WTF 2026 D: largest permutation <= Q reachable from P.
+// While matching Q, placed elements whose P-position precedes a pending bound
+// push (max_p, max_v) onto a monotone stack (both decreasing), requiring an
+// unused value <= max_v before max_p in P; after stepping down, drain the stack
+// into suffix blocks, largest value first.
 @!multitest
-let n: Int = read()
-let p = [0..n] _ => read::<Int>() - 1
-var q = [0..n] _ => read::<Int>() - 1
+let n: 1..=200_000 = read()
+domain Pos = 1..=n
+domain Val = 1..=n
+let p: [Pos]Val = read()
+var q: [Pos]Val = read()
 
-var inv_p: [0..n]Int = 0
-for i in 0..n: inv_p[p[i]] = i
+var inv_p: [Val]Pos = Pos.first
+for i in Pos: inv_p[p[i]] = i
 
-var used: [0..n]Bool = false
+var used: [Val]Bool = false
 var st = 0
-while st < n and p[st] == q[st]:
-    used[q[st]] = true
+for i in Pos:
+    if p[i] != q[i]: break
+    used[q[i]] = true
     st += 1
 
-var pref_mins: [0..=n]Int = 0
-for v in 0..n:
-    pref_mins[v] = if used[v]: n else: inv_p[v]
-    if v > 0: pref_mins[v] min= pref_mins[v - 1]
-pref_mins[n] = -1
+var pref_min: [Val]?Pos = none
+var best: ?Pos = none
+for v in Val:
+    if not used[v]: best = if let b = best: min(b, inv_p[v]) else: inv_p[v]
+    pref_min[v] = best
 
-var conds: List<Cond> = [Cond(-1, n)]
-var found_move = false
+struct Cond(max_p: Pos, max_v: Val)
 
-fn try_place(i: Int) -> Bool:
+struct CondStack:
+    items: List<Cond>
+
+    fn pop_after(mut self, pos: Pos):
+        while let top = items.last, pos < top.max_p: items.pop()
+
+    fn active_cap(self, pos: Pos) -> ?Val:
+        if let top = items.last, pos < top.max_p: top.max_v else: none
+
+    fn push_if_tighter(mut self, pos: Pos, cap: Val):
+        if let top = items.last, cap >= top.max_v: return
+        items.push(Cond(pos, cap))
+
+var conds = CondStack([])
+var seen_inversion = false
+
+fn try_place(i: Pos, next_cap: ?Val) -> Bool:
     let v = q[i]
     let pos = inv_p[v]
-    if i == st and v == p[i]:
+    if i.ord == st and v == p[i]:
         used[v] = true
         return true
-    let n_found = found_move or (i - 1 >= st and v < q[i - 1] and pos < inv_p[q[i - 1]])
-    if not n_found:
-        var cap = min(q[i], q[i + 1])
-        if pos < conds.last!.max_p: cap min= conds.last!.max_v
-        if pos <= pref_mins[cap]: return false
-        while pos < conds.last!.max_p: conds.pop()
-        if cap < conds.last!.max_v: conds.push(Cond(pos, cap))
-    elif v > conds.last!.max_v and pos < conds.last!.max_p:
-        let cap = conds.last!.max_v
-        if pos <= pref_mins[cap]: return false
-        while pos < conds.last!.max_p: conds.pop()
-        conds.push(Cond(pos, cap))
-        found_move = n_found
+    let inv = seen_inversion or (i.ord > st and v < q[(i - 1)!] and pos < inv_p[q[(i - 1)!]])
+    var required_cap: ?Val = none
+    if not inv:
+        let base = if let nc = next_cap: min(v, nc) else: v
+        required_cap = if let ac = conds.active_cap(pos): min(base, ac) else: base
+    elif let ac = conds.active_cap(pos):
+        if v > ac: required_cap = ac
+    if let cap = required_cap:
+        if let w = pref_min[cap]:
+            if pos <= w: return false
+        else:
+            return false
+        conds.pop_after(pos)
+        conds.push_if_tighter(pos, cap)
     else:
-        while pos < conds.last!.max_p: conds.pop()
-        found_move = n_found
+        conds.pop_after(pos)
+    seen_inversion = inv
     used[v] = true
     true
 
-var i = st
-while i < n:
-    var broke = false
-    while not try_place(i):
-        broke = true
-        q[i + 1] = n
-        q[i] -= 1
-        while used[q[i]]: q[i] -= 1
-    i += 1
-    if broke: break
+var filled = st
+for idx in st..n:
+    let i = Pos(idx + 1)
+    let next_cap: ?Val = if idx + 1 < n: q[Pos(idx + 2)] else: none
+    if try_place(i, next_cap):
+        filled = idx + 1
+    else:
+        while true:
+            var cand = (q[i] - 1)!
+            while used[cand]: cand = (cand - 1)!
+            q[i] = cand
+            if try_place(i, none): break
+        filled = idx + 1
+        break
 
-var block_starts: List<Int> = [i]
-var p_to_block: [0..n]?Int = none
-var last_p_thresh = n
-while conds.last!.max_p != -1:
-    var cond = conds.pop()!
-    let p_thresh = pref_mins[cond.max_v]
-    while p_thresh == pref_mins[conds.last!.max_v]:
-        cond.max_p = conds.last!.max_p
-        conds.pop()
-    cond.max_p min= last_p_thresh
+var block_starts: List<Int> = [filled]
+var p_to_block: [Pos]?Int = none
+var last_thresh = n
+while let cond = conds.items.pop():
+    let p_thresh = pref_min[cond.max_v]!
+    var max_p = cond.max_p.ord
+    while let top = conds.items.last, pref_min[top.max_v] == some(p_thresh):
+        max_p = top.max_p.ord
+        conds.items.pop()
+    max_p min= last_thresh
 
     var min_p = p_thresh
     var min_p_val = p[min_p]
-    for pos in min_p + 1..cond.max_p if not used[p[pos]]:
-        let v = p[pos]
-        if v > cond.max_v: break
-        if v >= min_p_val:
-            min_p = pos
-            min_p_val = v
+    for idx in p_thresh.ord + 1..max_p:
+        let pos = Pos(idx + 1)
+        if not used[p[pos]]:
+            let v = p[pos]
+            if v > cond.max_v: break
+            if v >= min_p_val:
+                min_p = pos
+                min_p_val = v
 
-    while min_p < conds.last!.max_p: conds.pop()
+    conds.pop_after(min_p)
     let block_idx = block_starts.len - 1
     var en = block_starts.last!
-    for pos in (min_p..last_p_thresh).rev if not used[p[pos]]:
-        if p[pos] >= min_p_val:
+    for idx in (min_p.ord..last_thresh).rev:
+        let pos = Pos(idx + 1)
+        if not used[p[pos]] and p[pos] >= min_p_val:
             p_to_block[pos] = block_idx
             en += 1
     block_starts.push(en)
-    last_p_thresh = p_thresh
+    last_thresh = p_thresh.ord
 
-for v in (0..n).rev if not used[v]:
+for v in Val.rev if not used[v]:
     let b = p_to_block[inv_p[v]] ?? (block_starts.len - 1)
-    q[block_starts[b]] = v
+    q[Pos(block_starts[b] + 1)] = v
     block_starts[b] += 1
 
-print([x + 1 for x in q])
+print(q)
