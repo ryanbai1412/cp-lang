@@ -4201,3 +4201,26 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Reverse.** Rename via `cpl fix`; bring back `NonEmpty` (checker-derived
   from `D.count`'s lower bound) to make `first` plain where proven.
 - **Status.** Accepted in the spec; not implemented.
+
+## 138. Sequences, search/DP and graph/tree API rounds (proposed, 2026-11-21)
+
+- **Status.** Proposed in `spec/api/2-sequences.md`, `3-search-dp.md` and
+  `4-graphs-trees.md`; under review with Ryan. Stubs follow once accepted.
+- **Sequences.** One protocol, `Seq<T>` (`iter() -> yields T`); generators
+  are the only iterator, push-based, and a generator value is a recipe
+  rerun by each `for`. `Indexed<D, T>` adds O(1) `s[i]` and `s.keys`.
+  Views keep their source's indices (`a[l..=r][i]` is `a[i]`), replacing
+  0-based `View<T>` and `.at(i)`. `a.map(f)` stays indexed. Position
+  queries are folds over `a.keys` (no `argmin`/`order` twins). `a.scan(op)`
+  is cut-indexed; `a.rev.scan(op)` gives suffix folds on the same cuts.
+  `a.all` becomes `a.keys` and `V.all` becomes `V.range`, since `s.all(p)`
+  is the predicate and there is no overloading (§127).
+- **Search/DP.** `peak`/`valley` for unimodal search; `F64` ends make an
+  interval with `bsearch`/`peak`; tables are typed by state (`[V.ranges]`
+  for interval DP with `r.splits`, `[B.subsets]` for masks); `@memo fn`
+  caches in a table when all parameters are finite; speed-ups take the
+  plain DP's cost function.
+- **Graphs/trees.** `g[u]` is the O(1) arcs view; algorithms take `next`;
+  storage follows the vertex type; groupings return fresh domains;
+  `t.order` (parents first) gives recursion-free tree DP.
+- **Reverse.** Each doc's "Open" section lists the alternative per call.

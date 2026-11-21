@@ -25,7 +25,7 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step |
 | `V.count` | number of positions | O(1) |
 | `V.first`, `V.last` | `?V`, `none` when `V` is empty; write `V.first!` when you know it isn't | O(1) |
-| `V.all` | the whole range, same as `..` | O(1) |
+| `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1) |
 | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the end | O(1) |
 | `x in V` | is integer `x` a position | O(1) |
 | `V(x)` | integer to position, trapping outside `V` | O(1) |
@@ -83,7 +83,7 @@ expected, builds that `Range<V>` directly:
 ```python
 for j in lo..i:                      # lo..i: no Range<V> expected, so cuts
     dp[i] min= dp[j] + cost(j..i)    # cost takes Range<V>: j..i is the piece
-pre.sum(j..i)   a[j..i]   seg.fold(j..i)       # same: these take Range<V>
+pre.fold(j..i)   a[j..i]   seg.fold(j..i)       # same: these take Range<V>
 ```
 
 This is **not a conversion and there is no implicit `Into`.** It decides what
@@ -119,7 +119,7 @@ the generic meaning comes to for each kind.
 | `r.mid` | middle cut, `V.cuts`, always present (`r.l` when empty) | the middle gap, one level up | O(1) |
 | `r.first_true(ok)`, `r.last_true(ok)` | first position where false→true `ok` holds; last where true→false `ok` holds; `?V` | same over cuts, `?V.cuts` | O(log n) calls |
 | `r.bsearch(ok)`, `r.bsearch(ok, last: true)` | the cut where `ok` flips (false→true; with `last:`, true→false), `V.cuts`; always exists | the gap between cuts, one level up; use `first_true` | O(log n) calls |
-| `a[r]`, `pre.sum(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal `j..i` is the piece | as the API says |
+| `a[r]`, `pre.fold(r)`, `seg.fold(r)` | the piece `r` | n/a: takes `Range<V>`; a literal `j..i` is the piece | as the API says |
 
 **Binary search: which element, or where it flips.** `first_true` and
 `last_true` return the element, so the predicate reads like the statement
@@ -132,8 +132,8 @@ and `r.last_true(ok)` is `r.bsearch(ok, last: true).l`.
 ```python
 let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1      # largest k that fits
 let k = (0..=n).first_true(k => cost(k) >= x)!               # smallest k that reaches x
-let c = V.cuts.all.last_true(c => pre[c] <= s)!              # longest prefix with sum <= s: a cut
-let below = Int(a.all.bsearch(i => a[i] >= t))               # how many of sorted a are < t
+let c = V.cuts.range.last_true(c => pre[c] <= s)!              # longest prefix with sum <= s: a cut
+let below = Int(a.keys.bsearch(i => a[i] >= t))               # how many of sorted a are < t
 ```
 
 `ok` must be monotone in the direction the name says: false→true for
@@ -171,7 +171,7 @@ sentinel end when nothing qualifies (looks like a real answer).
 var dist: [V]?Int = none                 # fill
 let deg = [V] v => g.deg(v)              # build from a fn
 let a: [Pos]Int = read()                 # read n values
-pre[i] - pre[j]       pre.sum(j..i)      # prefix sums are indexed by cuts
+pre[i] - pre[j]       pre.fold(j..i)      # prefix sums are indexed by cuts
 a[l..=r]                                 # a slice view, O(1), lent
 a.keys  a.items  a.map(f)                # V, (V, T), [V]U
 grid[r]                                  # a row view of [Row, Col]T
@@ -238,5 +238,5 @@ Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
 
 - **"The positions after `v`."** Under the ends rule, `for j in v.r..` walks
   cuts, not positions. Today's spellings: `a[v.r..]` (a slice, so the piece
-  literal applies), `T.all.clip(v.r..)`, or `for j in T if j > v`. None is as
+  literal applies), `T.range.clip(v.r..)`, or `for j in T if j > v`. None is as
   direct as the C++ `for (j = i + 1; j < n; j++)`. Seen in ioi25_souvenirs.
