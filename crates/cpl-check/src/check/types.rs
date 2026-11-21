@@ -360,6 +360,18 @@ impl<'a> Checker<'a> {
                 Some(ty) => self.resolve_type(ty),
                 None => Ty::Unknown,
             };
+            if p.variadic && !matches!(ty, Ty::Param(_) | Ty::Error) {
+                let message = format!(
+                    "`..{}` collects its arguments into a tuple, so its type is a type parameter, not `{ty}`",
+                    p.name.text
+                );
+                if let Some(diag) = self.error(codes::TYPE_MISMATCH, p.span, message) {
+                    diag.help = Some(format!(
+                        "write `fn {}<Ts>(..{}: Ts)`, or take a `List<{ty}>` and pass `[a, b, c]`",
+                        f.name.text, p.name.text
+                    ));
+                }
+            }
             let seen = Local { ty: ty.clone(), mutable: p.mutable, span: p.name.span, keyword: "param" };
             self.scopes.last_mut().unwrap().insert(p.name.text.clone(), seen);
             params.push(Param {

@@ -427,6 +427,7 @@ impl<'a> Checker<'a> {
         let mut next = 0usize;
         let mut extra = 0usize;
         let mut misnamed = false;
+        let mut pack: Vec<Ty> = Vec::new();
         for arg in args {
             let arg_ty = self.infer(&arg.value);
             let param = match &arg.name {
@@ -469,6 +470,13 @@ impl<'a> Checker<'a> {
                 continue;
             };
             supplied.push(&param.name);
+            if param.variadic && arg.name.is_none() {
+                if arg.mutable {
+                    self.require_mutable(&arg.value, "passed as `mut`");
+                }
+                pack.push(self.settle(&arg_ty).widen());
+                continue;
+            }
             let arg_ty = self.narrowed(&arg_ty, &param.ty);
             param.ty.unify(&arg_ty, bindings);
             let want = param.ty.subst(bindings);
@@ -523,6 +531,9 @@ impl<'a> Checker<'a> {
             if arg.mutable {
                 self.require_mutable(&arg.value, "passed as `mut`");
             }
+        }
+        if let Some(last) = positional.last().filter(|p| p.variadic) {
+            last.ty.unify(&Ty::Tuple(pack), bindings);
         }
         // A misspelled name already explains a missing argument.
         if misnamed || (!labeled && args.iter().any(|a| a.name.is_some())) {

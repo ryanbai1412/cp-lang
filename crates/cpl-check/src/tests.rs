@@ -2029,3 +2029,17 @@ fn a_recovered_name_still_reports_errors_unrelated_to_it() {
     let src = "let ($l, b) = (4, 6)\nprint(l + b)\nprint(missing)\n";
     assert_eq!(codes(src), ["E0004", "E0201"], "{:#?}", check(src));
 }
+
+#[test]
+fn a_variadic_parameter_is_a_tuple_of_its_arguments() {
+    assert!(codes(
+        "fn count<Ts>(..xs: Ts) -> Int:\n    var n = 0\n    for _ in fields(xs):\n        n += 1\n    n\nprint(count(), count(1, \"a\", 2.5))\n"
+    )
+    .is_empty());
+    assert!(codes("fn tag<Ts>(t: Str, ..xs: Ts):\n    print(t)\ntag(\"a\", 1, 2)\ntag(\"b\")\n").is_empty());
+    let d = one("fn total(..xs: Int) -> Int = 0\nprint(total(1, 2))\n");
+    assert_eq!(
+        (d.code.0, d.message.as_str()),
+        ("E0302", "`..xs` collects its arguments into a tuple, so its type is a type parameter, not `Int`")
+    );
+}

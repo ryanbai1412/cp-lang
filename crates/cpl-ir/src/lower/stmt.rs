@@ -1648,6 +1648,7 @@ impl<'a> Lowerer<'a> {
             Ty::Struct(sid) => self.structs[*sid].def.fields.iter().map(|(_, t)| t.clone()).collect(),
             Ty::Tuple(items) => items.clone(),
             Ty::Record(fields) => fields.iter().map(|(_, t)| t.clone()).collect(),
+            Ty::Unit => Vec::new(),
             Ty::Error => return,
             ty => {
                 let message = format!("`fields` walks the fields of a struct or a tuple, not of a `{}`", self.show(ty));
@@ -1659,6 +1660,22 @@ impl<'a> Lowerer<'a> {
             let message = format!("`fields` walks values of one type together; this is a `{}`", self.show(ty));
             self.error(codes::TYPE_MISMATCH, *span, message);
             return;
+        }
+        if field_tys.is_empty() {
+            let at = out.len() - temps.len();
+            let lets: Vec<Stmt> = out.drain(at..).collect();
+            for stmt in lets {
+                if let Stmt::Let(_, Some(v)) = stmt {
+                    let pure = match &v.kind {
+                        ExprKind::Unit | ExprKind::Local(_) => true,
+                        ExprKind::Tuple(items) => items.is_empty(),
+                        _ => false,
+                    };
+                    if !pure {
+                        out.push(Stmt::Expr(v));
+                    }
+                }
+            }
         }
         for (i, fty) in field_tys.iter().enumerate() {
             let mut items: Vec<Expr> = temps

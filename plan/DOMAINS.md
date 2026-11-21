@@ -38,8 +38,11 @@ library can say in its own words why a call does not type-check.
 and associated types in traits. Structs get `Eq`, `Ord`, `Hash`, `Show` and
 `Read` from the compiler, structurally, with `impl Show/Eq/Ord` as hooks
 (`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is stdlib privilege, not library
-code. Enums, even fieldless ones, have no order (`E0309` on `d < Dir.S` and
-on sorting). Not built: postfix `x?` expression-extent lifting,
+code. Enums order by variant, then payload (decision 28.2).
+`for f in fields(x)` and `for (a, b) in fields(x, y)` walk struct, record
+and tuple fields, unrolled in lowering (28.1); a variadic `..xs: Ts` is the
+tuple of its arguments (28.3); enum variants are not reflected yet. Not
+built: postfix `x?` expression-extent lifting,
 opaque `struct List<T>` / struct type-param
 defaults / one-sided range types /
 `@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), variadic
@@ -52,8 +55,8 @@ needs no compiler knowledge beyond the documented intrinsics; each
 mechanism above has programs that the interpreter and the C++ agree on.
 **Next.** Postfix `?` extent; remaining 0.3 syntax (opaque `struct`,
 type-param defaults, one-sided ranges, `@droppable`,
-`labels`, `Str(len:)`); reflection (`for f in fields(x)`, variants) and
-derives as trait defaults; variadic packs, then `print`/`read` on them;
+`labels`, `Str(len:)`); variant reflection and derives as trait
+defaults on `fields`; `print`/`read` on variadic packs;
 lazy parameters, then `assert`/`debug`/`??`; `Niche`; writable places;
 library diagnostics.
 **Coordination.** Core-extensions lane (`49fcf312`) owns derives, variadic packs,

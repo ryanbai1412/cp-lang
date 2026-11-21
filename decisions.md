@@ -1451,6 +1451,18 @@ is tree-walking `eval`/`stmt` dispatch overhead (future bytecode VM). Reverse: r
   the same rule as struct fields and as the 0.3 spec's derived `Ord`. To reverse: drop the `Ty::Enum`
   arm of `ordered()` in `cpl-ir/src/lower/expr.rs`.
 
+- **28.3 A variadic parameter is a tuple pack.** `..xs: Ts` takes the remaining positional arguments as
+  one tuple; `Ts` must be a type parameter, bound per call to `(A, B, ..)` (the empty tuple for none),
+  and a bound on it (`Ts: Show`) is a bound on the tuple, which holds when every element meets it. The
+  body walks the pack with `for x in fields(xs)` (28.1), so variadics add no new loop, type form or IR:
+  lowering packs the arguments into a tuple and instantiates the generic as usual. Why not the spec's
+  `<Ts...>(xs: Ts...)`: the `..` on the parameter already marks it, and a second marker on the type
+  parameter says nothing the parameter does not. Why not homogeneous `..xs: Int` as a list: a
+  `List<Int>` parameter with `[a, b, c]` already says that, at one more pair of brackets, and two
+  meanings for `..` would be a rule to remember; it is refused with that fix. To reverse: restore the
+  `E0501` in `cpl-ir` `lower/mod.rs` signature lowering and drop `pack_args` and the pack branch of
+  `args` in `cpl-check`.
+
 ## 29. Editor and LSP (2026-11-21)
 
 29.1. **Hover shows the declaration's `///` doc, wherever it is declared.** `Hover` gains `doc`, read

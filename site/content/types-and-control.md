@@ -171,6 +171,20 @@ match ev:
     Event.Query(id, _) => ans[id] = 0
 ```
 
+### Variadic parameters
+
+A last positional parameter written `..xs: Ts` takes every remaining positional argument as one tuple; `Ts` is a type parameter, bound per call to the tuple's type, so the arguments can differ in type. Walk them with `fields`:
+
+```cp
+fn show_line<Ts>(..xs: Ts):
+    for x in fields(xs):
+        print(x)
+
+show_line(3, "abc", true)   // Ts = (Int, Str, Bool)
+```
+
+For many arguments of one type, take a `List<T>` and pass `[a, b, c]`.
+
 ### Loops, parallel assignment, and closures
 
 - **Counted and infinite loops:** `repeat n:` runs a body `n` times (sugar for `for _ in 0..n:`); `loop:` runs until `break` (sugar for `while true:`).

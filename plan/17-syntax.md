@@ -42,8 +42,10 @@ fn sq(x: Int) -> Int = x * x    // one-line form
 
 - `return` exists only for early exits.
 - Parameters can be passed by position or by name, can have defaults, and
-  can be marked named-only after `;`. Variadics are typed: `..xs: T`. There
-  are no `*args` or `**kwargs`.
+  can be marked named-only after `;`. A variadic `..xs: Ts` takes the
+  remaining positional arguments as one tuple, and `Ts` is a type parameter
+  bound to that tuple's type; `for x in fields(xs)` walks it. There are no
+  `*args` or `**kwargs`.
 - A mutating parameter is `mut` both where it's declared and where it's
   passed: `fn link(mut g: Dsu, ...)` and `link(mut g, r)`. Method receivers
   don't need the marker at the call site: `st.update(i, x)`.

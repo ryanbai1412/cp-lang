@@ -1266,9 +1266,6 @@ impl<'a> Lowerer<'a> {
                 self.sigs[id].receiver = Some(param.mutable || cached);
                 continue;
             }
-            if param.variadic {
-                self.unsupported(param.span, "variadic parameters");
-            }
             let ty = match &param.ty {
                 Some(ty) => self.resolve_ty(ty),
                 None => {

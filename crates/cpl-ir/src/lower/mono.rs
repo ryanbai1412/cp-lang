@@ -1020,6 +1020,15 @@ impl<'a> Lowerer<'a> {
             .map(|(_, p)| p)
             .collect();
 
+        let packed: Vec<ast::Arg>;
+        let args = match pack_args(&ast_params, args, span) {
+            Some(p) => {
+                packed = p;
+                packed.as_slice()
+            }
+            None => args,
+        };
+
         let mut inferred: GenEnv = owner_env.clone();
         for (name, val) in gen_names.iter().zip(&explicit) {
             inferred.insert(name.clone(), val.clone());
@@ -2653,3 +2662,37 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         ast::TypeKind::Range { .. } | ast::TypeKind::NewDomain | ast::TypeKind::Error => false,
     }
 }
+
+/// A variadic `..xs: Ts` takes the positional arguments from its place on
+/// as one tuple, passed by name; `Ts` is then that tuple's type.
+fn pack_args(params: &[&ast::Param], args: &[ast::Arg], span: Span) -> Option<Vec<ast::Arg>> {
+    let at = params.iter().filter(|p| !p.named_only).position(|p| p.variadic)?;
+    let param = params.iter().filter(|p| !p.named_only).nth(at)?;
+    let mut kept = Vec::new();
+    let mut items = Vec::new();
+    for arg in args {
+        match arg.name {
+            None if kept.iter().filter(|a: &&ast::Arg| a.name.is_none()).count() >= at => {
+                items.push(arg.value.clone());
+            }
+            _ => kept.push(arg.clone()),
+        }
+    }
+    let span = match (items.first(), items.last()) {
+        (Some(a), Some(b)) => Span::new(a.span.start, b.span.end),
+        _ => Span::point(span.end),
+    };
+    kept.push(ast::Arg {
+        name: Some(ast::Name {
+            text: param.name.text.clone(),
+            span,
+        }),
+        mutable: false,
+        value: ast::Expr {
+            kind: ast::ExprKind::Tuple(items),
+            span,
+        },
+    });
+    Some(kept)
+}
+
