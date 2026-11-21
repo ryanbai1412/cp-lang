@@ -2750,7 +2750,15 @@ impl<'p, 'o> Interp<'p, 'o> {
         let has_part = self.stack[self.base..self.base + f.params.len()]
             .iter()
             .any(|v| matches!(v, Value::Part(_)));
-        let mut flow = if !feeding && !has_part {
+        let has_alias = self.stack[self.base..self.base + f.params.len()]
+            .iter()
+            .any(|v| matches!(v, Value::Alias(..)));
+        let has_fn_param = f
+            .locals
+            .iter()
+            .take(f.params.len())
+            .any(|l| matches!(l.ty, Ty::Fn(..)));
+        let mut flow = if !feeding && !has_part && !(has_alias && has_fn_param) {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
                     self.run_fn_vm_from_stack(&compiled, id).map(Flow::Return)

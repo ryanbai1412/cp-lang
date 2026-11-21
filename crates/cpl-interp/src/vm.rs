@@ -545,7 +545,13 @@ impl<'p> Compiler<'p> {
         span: Span,
     ) -> Option<(u16, u16, u16)> {
         let f = &self.program.fns[fn_id];
-        if f.locals.len() > 512 || args.len() != f.params.len() {
+        let has_mut = f.params.iter().any(|p| p.mutable);
+        let has_fn_param = f
+            .locals
+            .iter()
+            .take(f.params.len())
+            .any(|l| matches!(l.ty, Ty::Fn(..)));
+        if f.locals.len() > 512 || args.len() != f.params.len() || (has_mut && has_fn_param) {
             return None;
         }
         // Check that all mut args are simple local or global places (so move-in/move-out is exact).
@@ -595,73 +601,99 @@ impl<'p> Compiler<'p> {
             GlobalOptI { gid: u16, kind: ScalarKind, arg_off: u16 },
             GlobalV { gid: u16, arg_off: u16 },
         }
-        let mut i_args: Vec<u16> = Vec::with_capacity(ni);
-        let mut v_args: Vec<(u16, bool)> = Vec::with_capacity(nv);
+        let mut i_args: Vec<u16> = vec![0; ni];
+        let mut v_args: Vec<(u16, bool)> = vec![(0, false); nv];
         let mut writebacks: Vec<WriteBack> = Vec::new();
+        // Precompute argument slot offsets so all Arg::Value expressions are evaluated
+        // before any Arg::Mut place is moved out (e.g. `a.union(a.shifted(w))`).
+        let mut param_offs: Vec<usize> = Vec::with_capacity(args.len());
+        let mut cur_i = 0usize;
+        let mut cur_v = 0usize;
+        for local in f.locals.iter().take(f.params.len()) {
+            let ty = &local.ty;
+            if ScalarKind::of_ty(ty, self.program).is_some() {
+                param_offs.push(cur_i);
+                cur_i += 1;
+            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                param_offs.push(cur_i);
+                cur_i += 2;
+            } else {
+                param_offs.push(cur_v);
+                cur_v += 1;
+            }
+        }
+        // Pass 1: evaluate all value arguments first.
         for (i, a) in args.iter().enumerate() {
-            let ty = &f.locals[i].ty;
-            match a {
-                Arg::Value(ae) => {
-                    if ScalarKind::of_ty(ty, self.program).is_some() {
-                        i_args.push(self.compile_expr_i(ae));
-                    } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
-                        let (v, s) = self.compile_expr_opt_i(ae);
-                        i_args.push(v);
-                        i_args.push(s);
-                    } else {
-                        v_args.push((self.compile_expr_v(ae), false));
-                    }
+            if let Arg::Value(ae) = a {
+                let ty = &f.locals[i].ty;
+                let off = param_offs[i];
+                if ScalarKind::of_ty(ty, self.program).is_some() {
+                    i_args[off] = self.compile_expr_i(ae);
+                } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                    let (v, s) = self.compile_expr_opt_i(ae);
+                    i_args[off] = v;
+                    i_args[off + 1] = s;
+                } else {
+                    v_args[off] = (self.compile_expr_v(ae), false);
                 }
-                Arg::Mut(place) => match &place.kind {
+            }
+        }
+        // Pass 2: move out all mut arguments after value arguments are evaluated.
+        for (i, a) in args.iter().enumerate() {
+            if let Arg::Mut(place) = a {
+                let ty = &f.locals[i].ty;
+                let off = param_offs[i];
+                match &place.kind {
                     PlaceKind::Local(slot) => match self.slot_loc(*slot) {
                         SlotLoc::I(r, _) => {
-                            let off = i_args.len() as u16;
-                            i_args.push(r);
-                            writebacks.push(WriteBack::LocalI { dst: r, arg_off: off });
+                            i_args[off] = r;
+                            writebacks.push(WriteBack::LocalI { dst: r, arg_off: off as u16 });
                         }
                         SlotLoc::OptI { val, some, .. } => {
-                            let off = i_args.len() as u16;
-                            i_args.push(val);
-                            i_args.push(some);
+                            i_args[off] = val;
+                            i_args[off + 1] = some;
                             writebacks.push(WriteBack::LocalOptI {
                                 dst_val: val,
                                 dst_some: some,
-                                arg_off: off,
+                                arg_off: off as u16,
                             });
                         }
                         SlotLoc::V(r) => {
-                            let off = v_args.len() as u16;
-                            v_args.push((r, true));
-                            writebacks.push(WriteBack::LocalV { dst: r, arg_off: off });
+                            v_args[off] = (r, true);
+                            writebacks.push(WriteBack::LocalV { dst: r, arg_off: off as u16 });
                         }
                         SlotLoc::SmallTuple { .. } => unreachable!(),
                     },
                     PlaceKind::Global(gid) => {
                         let gid = *gid as u16;
                         if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
-                            let off = i_args.len() as u16;
                             let r = self.alloc_i();
                             self.emit(Op::LoadGlobalI { dst: r, gid }, place.span);
-                            i_args.push(r);
-                            writebacks.push(WriteBack::GlobalI { gid, kind, arg_off: off });
+                            i_args[off] = r;
+                            writebacks.push(WriteBack::GlobalI { gid, kind, arg_off: off as u16 });
                         } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
-                            let off = i_args.len() as u16;
                             let rv = self.alloc_i();
                             let rs = self.alloc_i();
-                            self.emit(Op::LoadGlobalOptI { dst_val: rv, dst_some: rs, gid }, place.span);
-                            i_args.push(rv);
-                            i_args.push(rs);
-                            writebacks.push(WriteBack::GlobalOptI { gid, kind, arg_off: off });
+                            self.emit(
+                                Op::LoadGlobalOptI { dst_val: rv, dst_some: rs, gid },
+                                place.span,
+                            );
+                            i_args[off] = rv;
+                            i_args[off + 1] = rs;
+                            writebacks.push(WriteBack::GlobalOptI {
+                                gid,
+                                kind,
+                                arg_off: off as u16,
+                            });
                         } else {
-                            let off = v_args.len() as u16;
                             let r = self.alloc_v();
                             self.emit(Op::LoadGlobalVMove { dst: r, gid }, place.span);
-                            v_args.push((r, true));
-                            writebacks.push(WriteBack::GlobalV { gid, arg_off: off });
+                            v_args[off] = (r, true);
+                            writebacks.push(WriteBack::GlobalV { gid, arg_off: off as u16 });
                         }
                     }
                     _ => unreachable!(),
-                },
+                }
             }
         }
         let arg_base_i = self.next_i;
@@ -5284,9 +5316,28 @@ impl<'p, 'io> Interp<'p, 'io> {
                                 iv += 1;
                             }
                         }
-                        let v = self.call_value(Value::Closure(cid, caps), boxed, spans[cur_pc])?;
+                        let has_frame = self.base + chunk.slot_map.len() <= self.stack.len();
+                        if has_frame {
+                            sync_to_stack(
+                                &chunk.slot_map,
+                                regs_i,
+                                regs_v,
+                                &mut self.stack,
+                                self.base,
+                            );
+                        }
+                        let res = self.call_value(Value::Closure(cid, caps), boxed, spans[cur_pc]);
                         regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                        v
+                        if has_frame {
+                            sync_from_stack(
+                                &chunk.slot_map,
+                                regs_i,
+                                regs_v,
+                                &mut self.stack,
+                                self.base,
+                            );
+                        }
+                        res?
                     };
                     match ret_mode {
                         CallRet::Unit => {}

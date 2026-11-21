@@ -455,3 +455,25 @@ print(acc)
     assert_eq!(trap, None);
     assert_eq!(out, "165\n");
 }
+
+#[test]
+fn vm_closure_by_ref_and_mut_callback_parity() {
+    let source = "
+fn use_with_cb(mut xs: List<Int>, f: () -> Int):
+    xs.push(f())
+
+var acc = 0
+fn bump(d: Int):
+    acc += d
+
+for i in 1..=5:
+    bump(i)
+
+var ys: List<Int> = [10, 20]
+use_with_cb(mut ys, () => ys.len)
+print(acc, ys.len, ys[2])
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "15 3 2\n");
+}
