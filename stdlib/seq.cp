@@ -260,23 +260,23 @@ pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
         else: no.push(x)
     (yes, no)
 
-/// Partition `a` in place so `a.at(k)` holds the element that would sit at `k` in sorted order,
-/// with `a.at(i) <= a.at(k)` for `i < k` and `a.at(i) >= a.at(k)` for `i > k`. Works on any `IndexedMut`. O(n) expected, O(1) extra space.
-pub fn nth_element<S: IndexedMut>(mut a: S, k: Int):
-    assert 0 <= k and k < a.len, "nth_element index out of range"
-    var (lo, hi) = (0, a.len - 1)
+/// Partition `self` in place so `self.at(k)` holds the element that would sit at `k` in sorted order,
+/// with `self.at(i) <= self.at(k)` for `i < k` and `self.at(i) >= self.at(k)` for `i > k`. Works on any `IndexedMut`. O(n) expected, O(1) extra space.
+pub fn nth_element<S: IndexedMut>(mut self: S, k: Int):
+    assert 0 <= k and k < self.len, "nth_element index out of range"
+    var (lo, hi) = (0, self.len - 1)
     var state = 1_234_567
     while lo < hi:
         state = (state * 48271) % 2_147_483_647
-        let piv = a.at(lo + (state % (hi - lo + 1)))
+        let piv = self.at(lo + (state % (hi - lo + 1)))
         var (lt, i, gt) = (lo, lo, hi)
         while i <= gt:
-            if a.at(i) < piv:
-                a.swap_idx(lt, i)
+            if self.at(i) < piv:
+                self.swap_idx(lt, i)
                 lt += 1
                 i += 1
-            elif piv < a.at(i):
-                a.swap_idx(i, gt)
+            elif piv < self.at(i):
+                self.swap_idx(i, gt)
                 gt -= 1
             else:
                 i += 1
@@ -421,38 +421,38 @@ pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
 pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>:
     rotated_left(self, -k)
 
-/// Step `a` to the next arrangement in sorted order, in place. Returns false, leaving `a`
+/// Step `self` to the next arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted ascending, when it was the last one. Works on any `IndexedMut`. O(n), amortized O(1).
-pub fn next_permutation<S: IndexedMut>(mut a: S) -> Bool:
-    var i = a.len - 2
-    while i >= 0 and not (a.at(i) < a.at(i + 1)): i -= 1
+pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
+    var i = self.len - 2
+    while i >= 0 and not (self.at(i) < self.at(i + 1)): i -= 1
     if i < 0:
-        reverse(mut a)
+        reverse(mut self)
         return false
-    var j = a.len - 1
-    while not (a.at(i) < a.at(j)): j -= 1
-    a.swap_idx(i, j)
-    var (l, r) = (i + 1, a.len - 1)
+    var j = self.len - 1
+    while not (self.at(i) < self.at(j)): j -= 1
+    self.swap_idx(i, j)
+    var (l, r) = (i + 1, self.len - 1)
     while l < r:
-        a.swap_idx(l, r)
+        self.swap_idx(l, r)
         l += 1
         r -= 1
     true
 
-/// Step `a` to the previous arrangement in sorted order, in place. Returns false, leaving `a`
+/// Step `self` to the previous arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted descending, when it was the first (ascending) one. Works on any `IndexedMut`. O(n), amortized O(1).
-pub fn prev_permutation<S: IndexedMut>(mut a: S) -> Bool:
-    var i = a.len - 2
-    while i >= 0 and not (a.at(i + 1) < a.at(i)): i -= 1
+pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
+    var i = self.len - 2
+    while i >= 0 and not (self.at(i + 1) < self.at(i)): i -= 1
     if i < 0:
-        reverse(mut a)
+        reverse(mut self)
         return false
-    var j = a.len - 1
-    while not (a.at(j) < a.at(i)): j -= 1
-    a.swap_idx(i, j)
-    var (l, r) = (i + 1, a.len - 1)
+    var j = self.len - 1
+    while not (self.at(j) < self.at(i)): j -= 1
+    self.swap_idx(i, j)
+    var (l, r) = (i + 1, self.len - 1)
     while l < r:
-        a.swap_idx(l, r)
+        self.swap_idx(l, r)
         l += 1
         r -= 1
     true

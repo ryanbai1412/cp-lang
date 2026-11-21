@@ -37,10 +37,17 @@ let ok1 = next_permutation(mut ps[1..4])
 print(ok1, ps)
 let ok2 = prev_permutation(mut ps[1..4])
 print(ok2, ps)
+let ok1m = ps[1..4].next_permutation()
+print(ok1m, ps)
+let ok2m = ps[1..4].prev_permutation()
+print(ok2m, ps)
 
 var ns = [99, 5, 1, 4, 2, 3, 99]
 nth_element(mut ns[1..6], 2)
 print(ns[0], ns[3], ns[6])
+var ns2 = [99, 5, 1, 4, 2, 3, 99]
+ns2[1..6].nth_element(2)
+print(ns2[0], ns2[3], ns2[6])
 
 var fs = [1, 2, 3, 4, 5]
 fs[1..4].fill(7)
