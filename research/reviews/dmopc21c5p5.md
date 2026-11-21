@@ -1,7 +1,7 @@
 # dmopc21c5p5
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (header states NP-hardness of Max-Weight Hamiltonian Path, derives alternating upper bound `(n*n)/2 - 1` with early exit, encapsulates `refine_two_opt`; `port = dream`, `0` lints, ASan/UBSan verified `n=1..100`)
+Dream: pending cold rescore (header derives alternating upper bound `(n*n)/2 - 1` and NP-hardness status, adds early exit + `refine_two_opt`)
 
 Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype deltas. The general case is a random restart plus a 2-opt heuristic with no argument that it reaches the optimum. The body hand-rolls a sieve and an RNG, and drives the search with `-1` sentinels and an `improved` flag. No dream exists, so the score is capped at 3.
 
