@@ -1,37 +1,36 @@
-// cf2084g2: concave slope-trick optimization of cf2084g1.
-// Adding (2c - k)(2(half - c) - (n - k)) shifts slope[j] by (b - a) - 8j;
-// a free value takes max(dp[c], dp[c - 1]), inserting a 0 slope in descending order.
+// Codeforces 2084 G2: Wish Upon a Satellite (Hard Version).
+//
+// Same reduction as G1: place values in increasing order; with c of the k
+// smallest on even positions the beauty gains
+//     gain(k, c) = (2c - k) * (2(n/2 - c) - (n - k)),
+// and the answer is (max total gain + n(n + 1)^2 / 2) / 2.
+//
+// G1's best[c] is concave in c, and every step keeps it concave:
+// - adding gain(k, ·), a quadratic with leading term -4c², lowers the j-th
+//   slope by 8j plus a constant;
+// - placing value k + 1 is a max-plus convolution: a fixed value shifts the
+//   function by 0 (odd position) or 1 (even), a free one takes
+//   max(best[c], best[c - 1]), which merges one 0 slope into the sorted
+//   slopes.
+// So keep best as a sorted multiset of slopes. O(n log n).
+use std.slope.{Concave}
+
+enum Side: Odd, Even
+
 @!multitest
-
-domain Pos = read(1..=5e5)
-let n = Pos.count
+let n: 1..=500_000 = read()
+domain P = 1..=n
+let a: [P]?(1..=n) = read(none: 0)
 let half = n / 2
-let a: [Pos]?(1..=n) = read(none: 0)
-let fixed_even: [1..=n]?Bool = a.invert().map(i => i.ord % 2 == 1)
-
-struct Affine(base: Int, step: Int)
-
-// Concave DP represented as base value at c0 plus descending slopes.
-var c0 = 0
-var v0 = 0
-var slopes = LazyTreap<Int, Affine>(
-    order: desc,
-    apply: (v, left_sz, f) => v + f.base + left_sz * f.step,
-    split: (f, left_sz) => (f, Affine(f.base + (left_sz + 1) * f.step, f.step)),
-    compose: (f, g) => Affine(f.base + g.base, f.step + g.step),
-)
-
+let at = a.inverse()
+fn side(p: P) -> Side = if p.label % 2 == 0: Even else: Odd
 fn gain(k: Int, c: Int) -> Int = (2 * c - k) * (2 * (half - c) - (n - k))
 
+var best = Concave.point(0)
 for k in 0..n:
-    let a0 = gain(k, c0)
-    let a1 = gain(k, c0 + 1)
-    v0 += a0
-    slopes.apply_all(Affine(a1 - a0, -8))
-    if let is_even = fixed_even[k + 1]:
-        c0 += Int(is_even)
-    else:
-        slopes.insert(0)
-
-let best = v0 + slopes.take(half - c0).sum()
-print((best + n * (n + 1) * (n + 1) / 2) / 2)
+    best.add_quadratic(c => gain(k, c))
+    best.max_convolve(match at[k + 1].map(side):
+        some(Odd) => Concave.point(0)
+        some(Even) => Concave.point(1)
+        none => Concave.flat(0..=1))
+print((best.at(half) + n * (n + 1) ** 2 / 2) / 2)
