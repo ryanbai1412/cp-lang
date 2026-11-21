@@ -49,6 +49,10 @@ test('snippets/cp.json includes all required CP Lang 0.2.2 contest snippets', ()
         'checker',
         'interactor',
         'stress',
+        'while let',
+        'if let',
+        'if const',
+        'unchecked',
     ]) {
         assert.ok(allPrefixes.has(required), `missing required snippet prefix: ${required}`);
     }
@@ -73,6 +77,10 @@ test('snippets/cp.json includes all required CP Lang 0.2.2 contest snippets', ()
         'sol: Interactor',
         'gen:',
         'let comb = Comb<',
+        'while let x = xs.pop(), x > 0:',
+        'if let x = opt, x > 0:',
+        'if const FAST:',
+        'unchecked:',
     ]) {
         assert.ok(allExpanded.includes(requiredToken), `snippets do not cover \`${requiredToken}\``);
     }

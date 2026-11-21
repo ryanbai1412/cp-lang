@@ -346,11 +346,11 @@
       "patterns": [
         {
           "name": "support.function.builtin.cp",
-          "match": "(?<![.A-Za-z0-9_])(abs|all|any|ask|atan2|bit_ceil|bit_width|ceil|copy|count|counts|ctz|debug|first|floor|flush|isqrt|laws_hold|len|max|min|popcount|prefix|print|rand|read|read_output|round|shuffle|some|sort|sorted|span|sqrt|sum|swap|trunc|bfs|bit|bsearch_first|bsearch_last|ceil_div|compress|condense|deduped|desc|digits|dijkstra|ends_with|excl_fold|find|fixed|fold|gcd|get_or_insert|insert|lcm|lower|max_by|min_by|partition|peel|prefix1|prefix2|prefix_n|remove|repeat|resized|runs|runs_by|scan|scc|starts_with|topo|upper)(?=\\s*\\(|::<)"
+          "match": "(?<![.A-Za-z0-9_])(abs|all|any|ask|atan2|bit_ceil|bit_width|ceil|copy|count|counts|ctz|debug|first|floor|flush|isqrt|laws_hold|len|max|min|popcount|prefix|print|rand|read|read_output|round|shuffle|some|sort|sorted|span|sqrt|sum|swap|trunc|bfs|bit|bsearch_first|bsearch_last|ceil_div|compress|condense|deduped|desc|digits|dijkstra|ends_with|excl_fold|find|fixed|fold|gcd|get_or_insert|insert|lcm|lower|max_by|min_by|partition|peel|prefix1|prefix2|prefix_n|remove|repeat|resized|runs|runs_by|scan|scc|starts_with|topo|upper|digit|find_all|step|windows|zip)(?=\\s*\\(|::<)"
         },
         {
           "name": "support.function.stdlib.cp",
-          "match": "(?<![.A-Za-z0-9_])(area2|argmins|articulation_points|berlekamp_massey|biconnected_components|bit_len|choose|components|concavity_break|convexity_break|cross|crt|decrease|dedup|differences|directed_of_pairs|directed_of_triples|divisors|dnc_break|dot|ext_gcd|factor|find_all|first_ge_by|guess_at|idempotent|increase|knuth_break|last_le_by|lcp_array|locate|max_weight_matching|monge_break|mul_mod|newton|next_permutation|on_segment|period|poly_at|poly_degree|prefix_function|prev_permutation|ray|recurrence_at|reverse|rotate_left|segments_meet|step|suffix_array|swap_at|take|turn|two_color|two_edge_components|undirected_of_pairs|undirected_of_triples|unimodality_break|z_function)(?=\\s*\\(|::<)"
+          "match": "(?<![.A-Za-z0-9_])(area2|argmins|articulation_points|berlekamp_massey|biconnected_components|bit_len|choose|components|concavity_break|convexity_break|cross|crt|decrease|dedup|differences|directed_of_pairs|directed_of_triples|divisors|dnc_break|dot|ext_gcd|factor|first_ge_by|guess_at|idempotent|increase|knuth_break|last_le_by|lcp_array|locate|max_weight_matching|monge_break|mul_mod|newton|next_permutation|on_segment|period|poly_at|poly_degree|prefix_function|prev_permutation|ray|recurrence_at|reverse|rotate_left|segments_meet|suffix_array|swap_at|take|turn|two_color|two_edge_components|undirected_of_pairs|undirected_of_triples|unimodality_break|z_function)(?=\\s*\\(|::<)"
         },
         {
           "match": "(\\.)([a-z_][A-Za-z0-9_]*)(?=\\s*\\(|::<)",
@@ -373,7 +373,7 @@
         },
         {
           "name": "support.type.stdlib.cp",
-          "match": "\\b(Action|Arc|Bitset|ByAngle|Comb|Compressed|Deque|Desc|Dir4|Dsu|Fenwick|Fenwick2D|FlowGraph|Graph|HashVal|Hashable|LazySegTree|Marks|MaxHeap|MinHeap|Mod|Monoid|Neighbours|Prefix1|Prefix2|PrefixN|Pt|Reversible|RollingHash|Rooted|SegTree|Sieve|SortedBag|SparseTable|Target)\\b"
+          "match": "\\b(Action|Arc|Bitset|ByAngle|Comb|Compressed|Deque|Desc|Dir4|Dir8|Dsu|Fenwick|Fenwick2D|FlowGraph|Graph|HashVal|Hashable|LazySegTree|Marks|MaxHeap|MinHeap|Mod|Monoid|Neighbours|Prefix1|Prefix2|PrefixN|Pt|Reversible|Rng|RollingHash|Rooted|SegTree|Sieve|SortedBag|SparseTable|Target)\\b"
         },
         { "name": "support.constant.stdlib.cp", "match": "\\b(AddMax|AddMin|AddSum|AssignMax|AssignMin|AssignSum)\\b" },
         { "name": "constant.other.caps.cp", "match": "\\b[A-Z][A-Z0-9_]+\\b" },

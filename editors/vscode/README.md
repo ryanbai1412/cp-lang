@@ -1,6 +1,6 @@
 # CP Lang for VS Code
 
-VS Code support for **CP Lang 0.2.2** (`.cp` files): an ultra-lean 34-keyword TextMate grammar with zero stale tokens, high-signal contest snippets, `cpl lsp` integration (diagnostics, hover, go-to-definition, document symbols, quick fixes, and inlay hints), CodeLens actions, live inline sample values, counterexample overlays, and `cpl stress` / `cpl trace` commands.
+VS Code support for **CP Lang 0.2.2** (`.cp` files): an ultra-lean 34-keyword TextMate grammar with zero stale tokens, high-signal contest snippets, `cpl lsp` integration (diagnostics, hover, type-aware completion, signature help, inlay hints, go-to-definition, find-references, rename, document symbols and quick fixes), CodeLens actions, live inline sample values, counterexample overlays, and `cpl stress` / `cpl trace` commands.
 
 The language surface follows `docs/one-page-cheat-sheet.md`, `research/language-architecture-v2.2.md`, and `decisions.md` §16–§19; editor UX follows `plan/60-editor.md`.
 
@@ -93,7 +93,9 @@ Highlights worth noting:
 
 The extension launches `cpl lsp` over stdio (`cp.server.path`, default `cpl`, searched on `PATH` and then in workspace `target/release` and `target/debug`).
 
-- **From `cpl lsp`:** live diagnostics with error codes and related spans, hover types, go-to-definition, document outline symbols, and diagnostic quick fixes.
+- **From `cpl lsp`:** live diagnostics with error codes and related spans, hover types, go-to-definition, find-references (Shift+F12), rename (F2, refused for library names), document outline symbols and diagnostic quick fixes.
+- **Completion and signature help from `cpl lsp`:** `xs.` lists the receiver's fields, `@get` properties (shown as properties, so `q.len` never gets parentheses) and methods, even on a half-typed line; bare names list locals, this file's declarations, imports and prelude exports with signatures and `///` docs; `use std.` lists modules. Typing `(` or `,` shows the parameter names, types and the argument being typed.
+- **Inlay hints from `cpl lsp`:** the inferred type after each unannotated `let`/`var`/loop variable, and parameter names before literal arguments (`steps: 3`). `cp.inlayHints.enabled` turns them off.
 - **Fallback completion and inlay hints:** when `cpl lsp` does not advertise `completionProvider` or `inlayHintProvider` (or before `cpl` is built), the extension supplies 0.2.2 keyword/type/decorator completions and inferred type inlay hints (`cp.inlayHints.enabled`, default `true`) for unannotated container bindings (`SegTree<V, Int>`, `LazySegTree<V, Int>`, `Rooted<V>`, `Rng`, `compress(...)`) and declared `domain` loops (`for v in V:`). As soon as `cpl lsp` advertises its own provider, the fallback automatically steps aside so hints never duplicate.
 
 ## Running, live values, stress testing, and traces

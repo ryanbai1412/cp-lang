@@ -1,8 +1,8 @@
 // The language client: starts `cpl lsp` and hands the editor's requests to
-// it. Diagnostics, hover, go-to-definition, the outline and quick fixes come
-// from the server's capabilities, and completion and inlay hints will too
-// once the server advertises them; until then `completion.ts` and
-// `inlayHints.ts` fill in without duplicating server capabilities.
+// it. Diagnostics, hover, go-to-definition, references, rename, the outline,
+// quick fixes, completion, signature help and inlay hints all come from the
+// server's capabilities. `completion.ts` and `inlayHints.ts` fill in only
+// while no server is running or one advertises neither provider.
 
 import * as vscode from 'vscode';
 import {
@@ -61,6 +61,13 @@ export class CpClient implements vscode.Disposable {
             documentSelector: SELECTOR,
             outputChannel: this.output,
             revealOutputChannelOn: RevealOutputChannelOn.Never,
+            middleware: {
+                // `cp.inlayHints.enabled` turns off the server's hints too.
+                provideInlayHints: (document, range, token, next) =>
+                    vscode.workspace.getConfiguration('cp').get<boolean>('inlayHints.enabled', true)
+                        ? next(document, range, token)
+                        : [],
+            },
         };
         // The id is also the settings prefix of `cp.trace.server`.
         const client = new LanguageClient('cp', 'CP Lang', serverOptions, clientOptions);

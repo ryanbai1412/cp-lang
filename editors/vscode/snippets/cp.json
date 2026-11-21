@@ -232,5 +232,38 @@
       "    ${0}"
     ],
     "description": "Stateful IOI @grader entry point"
+  },
+  "Guarded while let (pop until a condition fails)": {
+    "prefix": ["whilelet", "while let"],
+    "body": [
+      "while let ${1:x} = ${2:xs}.pop(), ${3:x > 0}:",
+      "    ${0}"
+    ],
+    "description": "Loop while an optional has a value and a guard holds (a comma reads as `and`)"
+  },
+  "Guarded if let": {
+    "prefix": ["iflet", "if let"],
+    "body": [
+      "if let ${1:x} = ${2:opt}, ${3:x > 0}:",
+      "    ${0}"
+    ],
+    "description": "Bind an optional's value and test a guard in one condition"
+  },
+  "Compile-time branch (if const)": {
+    "prefix": ["ifconst", "if const"],
+    "body": [
+      "const ${1:FAST} = ${2:true}",
+      "if const ${1:FAST}:",
+      "    ${0}"
+    ],
+    "description": "Branch on a const at compile time; the other branch is not emitted"
+  },
+  "Unchecked block": {
+    "prefix": ["unchecked"],
+    "body": [
+      "unchecked:",
+      "    ${0:total += a.raw[i]}"
+    ],
+    "description": "Escape hatch: skip overflow and bounds checks inside the block (pairs with a.raw[i])"
   }
 }
