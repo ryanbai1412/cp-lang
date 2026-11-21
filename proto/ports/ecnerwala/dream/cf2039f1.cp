@@ -14,7 +14,7 @@ let numbers = Sieve(m)
 var at, above: [G]Z = 0
 for y in G.rev:
     let grown = [h => 2 * (sum(numbers.mobius(d) * above[h * d] for d in (y / h).divisors) - at[h]) for h in y.divisors]
-    for (h, w) in grown + {y: 1}:
+    for (h, w) in grown + [y: 1]:
         at[h] += w
         above[h.divisors] += w
-print(above[1])
+print(above[G.first])
