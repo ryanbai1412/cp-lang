@@ -71,14 +71,15 @@ impl<'a> Parser<'a> {
         let destructured = std::mem::take(&mut self.param_patterns);
         let ret = self.eat(T::Arrow).then(|| self.ty());
         // `fn at(self, i: V) lends mut Int`: a projection.
-        let lends = self.at(T::Lends).then(|| {
-            self.bump();
-            let mutable = self.eat(T::Mut);
-            Lends {
-                mutable,
-                ty: self.ty(),
-            }
-        });
+        let lends =
+            self.at(T::Lends).then(|| {
+                self.bump();
+                let mutable = self.eat(T::Mut);
+                Lends {
+                    mutable,
+                    ty: self.ty(),
+                }
+            });
         self.where_clause(&mut bounds);
         let sig_span = self.span_from(start);
         let body = if self.eat(T::Eq) {
@@ -86,9 +87,7 @@ impl<'a> Parser<'a> {
         } else if self.at(T::Colon) {
             self.bump();
             FnBody::Block(self.block(&format!("the signature of `{}`", name.text)))
-        } else if (self.in_trait || self.in_grader)
-            && self.at_line_end()
-            && self.peek() != T::Indent
+        } else if (self.in_trait || self.in_grader) && self.at_line_end() && self.peek() != T::Indent
         {
             FnBody::None
         } else {
@@ -115,10 +114,7 @@ impl<'a> Parser<'a> {
         // A `lends` body ends with the place it hands out.
         let mut body = body;
         if let (Some(_), FnBody::Block(block)) = (&lends, &mut body) {
-            let explicit = block
-                .stmts
-                .iter()
-                .any(|s| matches!(s.kind, StmtKind::Lend { .. }));
+            let explicit = block.stmts.iter().any(|s| matches!(s.kind, StmtKind::Lend { .. }));
             if let Some(last) = block.stmts.last_mut().filter(|_| !explicit) {
                 if let StmtKind::Expr(place) = &last.kind {
                     last.kind = StmtKind::Lend {

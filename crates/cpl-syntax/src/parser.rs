@@ -194,12 +194,7 @@ impl<'a> Parser<'a> {
             self.tokens.get(self.pos.wrapping_sub(1)).map(|t| t.kind),
             Some(T::Newline | T::Indent | T::Dedent)
         );
-        while !line_start
-            && self
-                .tokens
-                .get(self.pos)
-                .is_some_and(|t| t.kind == T::Error)
-        {
+        while !line_start && self.tokens.get(self.pos).is_some_and(|t| t.kind == T::Error) {
             self.pos += 1;
             if self.speculating == 0 {
                 self.recovering = true;
@@ -425,14 +420,10 @@ impl<'a> Parser<'a> {
         if self.speculating == 0 {
             let message = match planned.see {
                 Some(see) => format!("not implemented yet: {} (see {see})", planned.feature),
-                None => format!(
-                    "not implemented yet: {} (not in the design)",
-                    planned.feature
-                ),
+                None => format!("not implemented yet: {} (not in the design)", planned.feature),
             };
-            self.sink.push(
-                Diagnostic::error(codes::NOT_IMPLEMENTED, span, message).with_help(planned.now),
-            );
+            self.sink
+                .push(Diagnostic::error(codes::NOT_IMPLEMENTED, span, message).with_help(planned.now));
             self.sink.poison(span);
         }
     }

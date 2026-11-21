@@ -106,12 +106,7 @@ pub fn run_with_input<S: AsRef<str>>(args: &[S], input: &[u8]) -> Outcome {
     let mut stderr = String::new();
     // The whole input arrives at once, and then it has ended.
     let mut rest = Some(input.to_vec());
-    let code = exec(
-        args,
-        &mut || rest.take().unwrap_or_default(),
-        &mut stdout,
-        &mut stderr,
-    );
+    let code = exec(args, &mut || rest.take().unwrap_or_default(), &mut stdout, &mut stderr);
     Outcome {
         stdout,
         stderr,
@@ -142,9 +137,7 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "cpl {VERSION}");
             0
         }
-        Some(command @ ("check" | "build" | "judge" | "submit" | "lsp" | "dap"))
-            if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) =>
-        {
+        Some(command @ ("check" | "build" | "judge" | "submit" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
             let help = match command {
                 "check" => CHECK_USAGE,
                 "build" => BUILD_USAGE,
@@ -185,9 +178,7 @@ pub fn exec<S: AsRef<str>>(
         },
         Some("judge") => match rest.as_slice() {
             [file, input] => judge_file(file, input, stderr),
-            [file, input, output] | [file, input, output, _] => {
-                check_output(file, input, output, stderr)
-            }
+            [file, input, output] | [file, input, output, _] => check_output(file, input, output, stderr),
             _ => usage_error(
                 "`judge` takes a file and the hidden test: `cpl judge a.cp in.txt`".into(),
             ),
@@ -197,31 +188,22 @@ pub fn exec<S: AsRef<str>>(
         Some("stress") => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
             let mut errors = Vec::new();
-            let code =
-                cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::against_brute));
+            let code = cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::against_brute));
             *stderr += &String::from_utf8_lossy(&errors);
             code
         }
         Some("build") => {
             let checked = rest.contains(&"--checked");
             let size = rest.contains(&"--size");
-            let mut rest: Vec<&str> = rest
-                .iter()
-                .copied()
-                .filter(|arg| !matches!(*arg, "--checked" | "--size"))
-                .collect();
+            let mut rest: Vec<&str> =
+                rest.iter().copied().filter(|arg| !matches!(*arg, "--checked" | "--size")).collect();
             let judge = match rest.iter().position(|arg| *arg == "--judge") {
                 Some(at) if at + 1 < rest.len() => {
                     let name = rest[at + 1];
                     rest.drain(at..at + 2);
                     Some(name)
                 }
-                Some(_) => {
-                    return usage_error(
-                        "`--judge` takes a judge's name: `cpl build a.cp --judge codeforces`"
-                            .into(),
-                    )
-                }
+                Some(_) => return usage_error("`--judge` takes a judge's name: `cpl build a.cp --judge codeforces`".into()),
                 None => None,
             };
             match rest.as_slice() {
@@ -247,10 +229,8 @@ pub fn exec<S: AsRef<str>>(
         Some("judges") => match rest.as_slice() {
             [] => list_judges(None, stdout, stderr),
             [file] => list_judges(Some(file), stdout, stderr),
-            _ => usage_error(
-                "`judges` takes at most a file: `cpl judges` or `cpl judges a.cp`".into(),
-            ),
-        },
+            _ => usage_error("`judges` takes at most a file: `cpl judges` or `cpl judges a.cp`".into()),
+        }
         Some("test") if should_run_unit_tests(&rest) => run_unit_tests(&rest, stdout, stderr),
         Some(command) if tool(command).is_some() => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
@@ -378,20 +358,14 @@ fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
     let mut out = Vec::new();
     for part in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
         if let Some((a, b)) = part.split_once("..=") {
-            let lo: u64 = a
-                .parse()
-                .map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
-            let hi: u64 = b
-                .parse()
-                .map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
+            let lo: u64 = a.parse().map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
+            let hi: u64 = b.parse().map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
             if lo == 0 || hi < lo {
                 return Err(format!("`--test` range `{part}` is empty or starts at 0"));
             }
             out.push((lo, hi));
         } else {
-            let n: u64 = part
-                .parse()
-                .map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
+            let n: u64 = part.parse().map_err(|_| format!("`--test` expects a positive case number, not `{part}`"))?;
             if n == 0 {
                 return Err("`--test` case numbers are 1-based".into());
             }
@@ -447,8 +421,7 @@ impl<'a> RunArgs<'a> {
                     None => return Err("`--test` needs a case number or range".into()),
                 },
                 flag if flag.starts_with("--test=") => {
-                    args.test_cases
-                        .extend(parse_test_cases(&flag["--test=".len()..])?);
+                    args.test_cases.extend(parse_test_cases(&flag["--test=".len()..])?);
                 }
                 "--watch" => match iter.next() {
                     Some(spec) => {
@@ -459,19 +432,13 @@ impl<'a> RunArgs<'a> {
                     None => return Err("`--watch` needs a variable name".into()),
                 },
                 flag if flag.starts_with("--watch=") => {
-                    for name in flag["--watch=".len()..]
-                        .split(',')
-                        .map(str::trim)
-                        .filter(|s| !s.is_empty())
-                    {
+                    for name in flag["--watch=".len()..].split(',').map(str::trim).filter(|s| !s.is_empty()) {
                         args.watch.push(name.to_string());
                     }
                 }
                 "--last" => match iter.next() {
                     Some(n) => {
-                        let parsed: usize = n.parse().map_err(|_| {
-                            format!("`--last` expects a positive integer, not `{n}`")
-                        })?;
+                        let parsed: usize = n.parse().map_err(|_| format!("`--last` expects a positive integer, not `{n}`"))?;
                         if parsed == 0 {
                             return Err("`--last` must be at least 1".into());
                         }
@@ -481,9 +448,7 @@ impl<'a> RunArgs<'a> {
                 },
                 flag if flag.starts_with("--last=") => {
                     let n = &flag["--last=".len()..];
-                    let parsed: usize = n
-                        .parse()
-                        .map_err(|_| format!("`--last` expects a positive integer, not `{n}`"))?;
+                    let parsed: usize = n.parse().map_err(|_| format!("`--last` expects a positive integer, not `{n}`"))?;
                     if parsed == 0 {
                         return Err("`--last` must be at least 1".into());
                     }
@@ -491,27 +456,21 @@ impl<'a> RunArgs<'a> {
                 }
                 "--depth" => match iter.next() {
                     Some(n) => {
-                        let parsed: usize = n.parse().map_err(|_| {
-                            format!("`--depth` expects a non-negative integer, not `{n}`")
-                        })?;
+                        let parsed: usize = n.parse().map_err(|_| format!("`--depth` expects a non-negative integer, not `{n}`"))?;
                         args.max_depth = Some(parsed);
                     }
                     None => return Err("`--depth` needs a call depth".into()),
                 },
                 flag if flag.starts_with("--depth=") => {
                     let n = &flag["--depth=".len()..];
-                    let parsed: usize = n.parse().map_err(|_| {
-                        format!("`--depth` expects a non-negative integer, not `{n}`")
-                    })?;
+                    let parsed: usize = n.parse().map_err(|_| format!("`--depth` expects a non-negative integer, not `{n}`"))?;
                     args.max_depth = Some(parsed);
                 }
                 "--brute" => args.brute = true,
                 "--release" => args.release = true,
                 "--format" => match iter.next() {
                     Some(format @ ("json" | "html" | "text")) => args.format = Some(format),
-                    Some(other) => {
-                        return Err(format!("`--format` is text, json or html, not `{other}`"))
-                    }
+                    Some(other) => return Err(format!("`--format` is text, json or html, not `{other}`")),
                     None => return Err("`--format` needs a value: json or html".into()),
                 },
                 flag if flag.starts_with("--trace=") => {
@@ -519,9 +478,7 @@ impl<'a> RunArgs<'a> {
                     args.only_fn = Some(&flag["--trace=".len()..]);
                 }
                 flag if flag.starts_with('-') && flag.len() > 1 => {
-                    return Err(format!(
-                        "`run` has no option `{flag}`; `cpl run --help` lists them"
-                    ))
+                    return Err(format!("`run` has no option `{flag}`; `cpl run --help` lists them"))
                 }
                 path => paths.push(path),
             }
@@ -529,20 +486,14 @@ impl<'a> RunArgs<'a> {
         match paths.as_slice() {
             [file] => args.file = file,
             [file, input] => (args.file, args.input) = (file, Some(*input)),
-            _ => {
-                return Err(
-                    "`run` takes a file and at most one input: `cpl run a.cp in.txt`".into(),
-                )
-            }
+            _ => return Err("`run` takes a file and at most one input: `cpl run a.cp in.txt`".into()),
         }
         let has_trace_filter = !args.test_cases.is_empty()
             || !args.watch.is_empty()
             || args.last_steps.is_some()
             || args.max_depth.is_some();
         if has_trace_filter && !args.trace {
-            return Err(
-                "`--test`, `--watch`, `--last`, and `--depth` filter a trace: add `--trace`".into(),
-            );
+            return Err("`--test`, `--watch`, `--last`, and `--depth` filter a trace: add `--trace`".into());
         }
         if args.release && (args.trace || args.format.is_some()) {
             return Err("`--release` runs the built C++, which records no trace: drop `--trace` and `--format`".into());
@@ -644,9 +595,7 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
             None => return Err(missing("@brute(main)", stderr)),
         },
         Side::Checker => match cpl_ir::checker(&analysis) {
-            Some((name, _)) => {
-                cpl_ir::lower_checker(&analysis, &name).map(|program| (program, None))
-            }
+            Some((name, _)) => cpl_ir::lower_checker(&analysis, &name).map(|program| (program, None)),
             None => return Err(missing("@checker", stderr)),
         },
     };
@@ -734,18 +683,13 @@ fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
 
 /// The `@interactor` of the file at `path`, lowered, with the file's
 /// text; `None` if the file has none or is not CP source.
-fn release_judge(
-    path: &str,
-    stderr: &mut String,
-) -> Result<Option<(String, cpl_ir::Program, String)>, u8> {
+fn release_judge(path: &str, stderr: &mut String) -> Result<Option<(String, cpl_ir::Program, String)>, u8> {
     if !path.ends_with(".cp") {
         return Ok(None);
     }
     let compiled = compile_side(path, Side::Solution, &mut String::new())
         .inspect_err(|_| *stderr += &format!("cpl: `{path}` no longer checks\n"))?;
-    Ok(compiled
-        .judge
-        .map(|(name, judge)| (name, judge, compiled.text)))
+    Ok(compiled.judge.map(|(name, judge)| (name, judge, compiled.text)))
 }
 
 /// `cpl run --release` on an interactive file: the built solution, as a
@@ -801,12 +745,7 @@ fn run_release_judged(
 
 /// `cpl run`: the program's output goes straight to `stdout`.
 /// `cpl run --release`: the file's C++, built as a judge builds it.
-fn run_release(
-    args: &RunArgs,
-    input: &[u8],
-    stdout: &mut (dyn Write + Send),
-    stderr: &mut String,
-) -> u8 {
+fn run_release(args: &RunArgs, input: &[u8], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     let path = std::path::Path::new(args.file);
     let built = if args.brute {
         cpl_stress::Program::resolve_brute(path, "the brute")
@@ -825,9 +764,7 @@ fn run_release(
     if !args.brute {
         match release_judge(args.file, stderr) {
             Ok(Some((name, judge, text))) => {
-                return run_release_judged(
-                    args, &program, &name, &judge, &text, input, stdout, stderr,
-                )
+                return run_release_judged(args, &program, &name, &judge, &text, input, stdout, stderr)
             }
             Ok(None) => {}
             Err(code) => return code,
@@ -886,21 +823,12 @@ impl Input<'_> {
     }
 }
 
-fn run_file(
-    args: &RunArgs,
-    input: Input,
-    stdout: &mut (dyn Write + Send),
-    stderr: &mut String,
-) -> u8 {
+fn run_file(args: &RunArgs, input: Input, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     if args.release {
         return run_release(args, &input.whole(), stdout, stderr);
     }
     let path = args.file;
-    let side = if args.brute {
-        Side::Brute
-    } else {
-        Side::Solution
-    };
+    let side = if args.brute { Side::Brute } else { Side::Solution };
     let compiled = match compile_side(path, side, stderr) {
         Ok(compiled) => compiled,
         Err(code) => return code,
@@ -916,8 +844,7 @@ fn run_file(
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
         let starved = |trap: &cpl_interp::Trap| {
-            trap.message.starts_with("the input ended")
-                || trap.message.starts_with("the solution's output ended")
+            trap.message.starts_with("the input ended") || trap.message.starts_with("the solution's output ended")
         };
         let (judge_trap, solution_trap) = match (ruling.judge, ruling.solution) {
             (Some(judge), Some(solution)) if starved(&judge) && !starved(&solution) => {
@@ -992,15 +919,8 @@ fn observe_file(
     let mut printed = Vec::new();
     let quiet = args.format.is_some_and(|format| format != "text");
     let observed = match &compiled.judge {
-        Some((_, judge)) => {
-            interact::run_traced(&compiled.program, judge, input, &mut printed, config)
-        }
-        None => cpl_interp::run_observed(
-            &compiled.program,
-            cpl_interp::Io::fixed(input),
-            &mut printed,
-            Some(config),
-        ),
+        Some((_, judge)) => interact::run_traced(&compiled.program, judge, input, &mut printed, config),
+        None => cpl_interp::run_observed(&compiled.program, cpl_interp::Io::fixed(input), &mut printed, Some(config)),
     };
     let millis = started.elapsed().as_millis();
     let recording = observed.recording.unwrap_or_default();
@@ -1089,13 +1009,7 @@ fn build_file(
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
     };
-    let cpp = match cpl_codegen::emit_within_for(
-        &compiled.program,
-        name,
-        &compiled.text,
-        limit,
-        &target,
-    ) {
+    let cpp = match cpl_codegen::emit_within_for(&compiled.program, name, &compiled.text, limit, &target) {
         Ok(fitted) => {
             *stderr += &fitted.note(path, limit, &profile.name).unwrap_or_default();
             if size {
@@ -1117,8 +1031,7 @@ fn build_file(
                 "cpl: the C++ for `{path}` is {bytes} bytes, over the {limit}-byte limit of judge `{}`\n",
                 profile.name
             );
-            let sizes =
-                cpl_codegen::sizes(&compiled.program, name, None, &target, (false, true), bytes);
+            let sizes = cpl_codegen::sizes(&compiled.program, name, None, &target, (false, true), bytes);
             *stderr += &size_report(&sizes, limit, &profile.name);
             return EXIT_ERRORS;
         }
@@ -1192,17 +1105,10 @@ fn submit(path: &str, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u
     let _ = stdout.write_all(&out);
     *stderr += &String::from_utf8_lossy(&errors);
     if code != 0 {
-        *stderr += &format!(
-            "cpl: `{path}` is not ready to send: a case in {} fails\n",
-            tests.display()
-        );
+        *stderr += &format!("cpl: `{path}` is not ready to send: a case in {} fails\n", tests.display());
         return EXIT_ERRORS;
     }
-    let _ = writeln!(
-        stdout,
-        "ready to send: {}",
-        source.with_extension("cpp").display()
-    );
+    let _ = writeln!(stdout, "ready to send: {}", source.with_extension("cpp").display());
     0
 }
 
@@ -1210,8 +1116,7 @@ fn submit(path: &str, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u
 /// each part named.
 fn size_report(sizes: &[cpl_codegen::Size], limit: usize, judge: &str) -> String {
     let total: usize = sizes.iter().map(|size| size.bytes).sum();
-    let mut out =
-        format!("size of the C++ by part: {total} bytes, of the {limit} of judge `{judge}`\n");
+    let mut out = format!("size of the C++ by part: {total} bytes, of the {limit} of judge `{judge}`\n");
     let mut parts: Vec<cpl_codegen::Part> = sizes.iter().map(|size| size.part).collect();
     parts.sort();
     parts.dedup();
@@ -1228,19 +1133,11 @@ fn size_report(sizes: &[cpl_codegen::Size], limit: usize, judge: &str) -> String
             continue;
         }
         pieces.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
-        let mut named: Vec<String> = pieces
-            .iter()
-            .take(3)
-            .map(|(name, bytes)| format!("{name} {bytes}"))
-            .collect();
+        let mut named: Vec<String> = pieces.iter().take(3).map(|(name, bytes)| format!("{name} {bytes}")).collect();
         if pieces.len() > 3 {
             named.push(format!("{} more", pieces.len() - 3));
         }
-        let named = if pieces.len() > 1 {
-            named.join(", ")
-        } else {
-            String::new()
-        };
+        let named = if pieces.len() > 1 { named.join(", ") } else { String::new() };
         let share = (bytes * 100).div_ceil(total.max(1));
         out += format!("  {:<12}{bytes:>7} {share:>3}%  {named}", part.describe()).trim_end();
         out.push('\n');
@@ -1270,25 +1167,15 @@ fn list_judges(file: Option<&str>, stdout: &mut (dyn Write + Send), stderr: &mut
     };
     let config = cpl_judge::project_config(path).unwrap_or_default();
     for name in config.names() {
-        let Some(profile) = config.profile(&name) else {
-            continue;
-        };
-        let mark = if profile.name == chosen.name {
-            "*"
-        } else {
-            " "
-        };
+        let Some(profile) = config.profile(&name) else { continue };
+        let mark = if profile.name == chosen.name { "*" } else { " " };
         let _ = writeln!(
             stdout,
             "{mark} {:<11}{}\n    {}\n    {}, {}, {}, source up to {} KB\n    from: {}",
             profile.name,
             profile.title,
             profile.command(),
-            if profile.os == cpl_judge::Os::Windows {
-                "Windows"
-            } else {
-                "Linux"
-            },
+            if profile.os == cpl_judge::Os::Windows { "Windows" } else { "Linux" },
             profile.stack_text(),
             match profile.thread_stack {
                 Some(bytes) => format!("the program on a thread with {} MB", bytes >> 20),
@@ -1304,11 +1191,7 @@ fn list_judges(file: Option<&str>, stdout: &mut (dyn Write + Send), stderr: &mut
 /// `cpl build --checked`: the C++ file built to run here, with the
 /// sanitizers on, so overflow, a bad index or a bad shift stops the
 /// program with a report instead of going on with a wrong value.
-fn build_checked(
-    cpp: &std::path::Path,
-    stdout: &mut (dyn Write + Send),
-    stderr: &mut String,
-) -> u8 {
+fn build_checked(cpp: &std::path::Path, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     // `LOCAL` turns on the checks the sanitizers have no word for: a
     // negative power, an `I128` shifted past its top, a `U64` divided by 0.
     const FLAGS: [&str; 7] = [
@@ -1341,17 +1224,11 @@ fn build_checked(
         Ok(output) => {
             let errors = String::from_utf8_lossy(&output.stderr);
             let shown: Vec<&str> = errors.lines().take(20).collect();
-            *stderr += &format!(
-                "cpl: {compiler} could not build `{}`:\n{}\n",
-                cpp.display(),
-                shown.join("\n")
-            );
+            *stderr += &format!("cpl: {compiler} could not build `{}`:\n{}\n", cpp.display(), shown.join("\n"));
             EXIT_ERRORS
         }
         Err(error) => {
-            *stderr += &format!(
-                "cpl: `--checked` needs a C++ compiler, and `{compiler}` did not start: {error}\n"
-            );
+            *stderr += &format!("cpl: `--checked` needs a C++ compiler, and `{compiler}` did not start: {error}\n");
             EXIT_USAGE
         }
     }
@@ -1426,7 +1303,11 @@ fn collect_cp_files(path: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
 /// Runs inline `test "..."` blocks across the given `.cp` files and directories.
 /// Pass `--cpp` to also emit C++17, compile with `g++ -std=c++17 -O2 -fsanitize=address,undefined`,
 /// and run each test binary to verify parity and sanitizer cleanliness.
-fn run_unit_tests(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+fn run_unit_tests(
+    args: &[&str],
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
     let run_cpp = args.contains(&"--cpp");
     let mut files = Vec::new();
     for arg in args {
@@ -1526,8 +1407,7 @@ fn run_unit_tests(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
                                     Ok(ro) => {
                                         let err = String::from_utf8_lossy(&ro.stderr);
                                         let first = err.lines().next().unwrap_or("non-zero exit");
-                                        let _ =
-                                            writeln!(stdout, "  FAIL {label} (cpp run): {first}");
+                                        let _ = writeln!(stdout, "  FAIL {label} (cpp run): {first}");
                                         failed += 1;
                                         continue;
                                     }
@@ -1574,11 +1454,7 @@ fn run_unit_tests(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
         let _ = std::fs::remove_dir_all(&tmp_dir);
     }
     let _ = writeln!(stdout, "{passed} passed, {failed} failed");
-    if failed == 0 {
-        0
-    } else {
-        EXIT_FAILED
-    }
+    if failed == 0 { 0 } else { EXIT_FAILED }
 }
 
 /// Checks each file through the shared front end and renders what it
@@ -1602,21 +1478,14 @@ fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -
         // not whether `cpl run` and `cpl build` can handle the program yet.
         // Designed-but-unbuilt syntax (a planned form that cites its spec section) is in the spec.
         let diagnostics = if std::env::var_os("CPL_SPEC").is_some() {
-            analysis
-                .diagnostics
-                .iter()
-                .filter(|d| {
-                    !(d.code == cpl_diag::codes::NOT_IMPLEMENTED
-                        && d.message.contains("(see design/"))
-                })
-                .cloned()
-                .collect()
+            let cites_spec = |d: &cpl_diag::Diagnostic| {
+                d.code == cpl_diag::codes::NOT_IMPLEMENTED && d.message.contains("(see design/")
+            };
+            analysis.diagnostics.iter().filter(|d| !cites_spec(d)).cloned().collect()
         } else {
             cpl_ir::check(&analysis)
         };
-        let failed = diagnostics
-            .iter()
-            .any(|d| d.severity == cpl_diag::Severity::Error);
+        let failed = diagnostics.iter().any(|d| d.severity == cpl_diag::Severity::Error);
         if !diagnostics.is_empty() {
             *stderr += &cpl_diag::render_all(&diagnostics, path, &text);
         }
@@ -1870,8 +1739,7 @@ fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, St
         if let cpl_ir::ExprKind::Builtin(op, _) = &e.kind {
             let desc = match op {
                 cpl_ir::Builtin::StrSlice => Some(
-                    "slice view -> cpl::StrView (std::string_view + rev), O(1), read-only"
-                        .to_string(),
+                    "slice view -> cpl::StrView (std::string_view + rev), O(1), read-only".to_string(),
                 ),
                 cpl_ir::Builtin::ListSlice => Some(format!(
                     "slice view -> cpl::ListView<{}> (const T* + len + rev), O(1), read-only",
@@ -1881,18 +1749,15 @@ fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, St
                     }
                 )),
                 cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::StrView) => Some(
-                    "reverse view -> cpl::StrView (std::string_view + rev), O(1), read-only"
-                        .to_string(),
+                    "reverse view -> cpl::StrView (std::string_view + rev), O(1), read-only".to_string(),
                 ),
-                cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::ListView(_)) => {
-                    Some(format!(
-                        "reverse view -> cpl::ListView<{}> (const T* + len + rev), O(1), read-only",
-                        match &e.ty {
-                            cpl_ir::Ty::ListView(t) => program.show_ty(t),
-                            _ => "T".to_string(),
-                        }
-                    ))
-                }
+                cpl_ir::Builtin::Reversed if matches!(e.ty, cpl_ir::Ty::ListView(_)) => Some(format!(
+                    "reverse view -> cpl::ListView<{}> (const T* + len + rev), O(1), read-only",
+                    match &e.ty {
+                        cpl_ir::Ty::ListView(t) => program.show_ty(t),
+                        _ => "T".to_string(),
+                    }
+                )),
                 cpl_ir::Builtin::ToStr => {
                     Some("explicit copy -> std::string, O(n), owned".to_string())
                 }
@@ -1959,8 +1824,8 @@ mod tests {
     #[test]
     fn tooling_commands_reach_their_crates() {
         for command in [
-            "check", "run", "build", "judge", "submit", "lsp", "fmt", "lint", "doc", "stress",
-            "new", "test", "bench", "watch",
+            "check", "run", "build", "judge", "submit", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
+            "watch",
         ] {
             let out = run(&[command, "--help"]);
             assert_eq!(out.code, 0, "{command}");
@@ -2038,43 +1903,25 @@ mod tests {
 
     #[test]
     fn release_runs_the_built_cpp_and_checked_builds_a_sanitized_program() {
-        if std::process::Command::new("g++")
-            .arg("--version")
-            .output()
-            .is_err()
-        {
+        if std::process::Command::new("g++").arg("--version").output().is_err() {
             return;
         }
         let path = temp_file("release.cp", "let n: Int = read()\nprint(n * 2)\n");
         let out = run_with_input(&["run", &path, "--release"], b"21\n");
-        assert_eq!(
-            (out.code, out.stdout.as_slice()),
-            (0, b"42\n".as_slice()),
-            "{}",
-            out.stderr
-        );
+        assert_eq!((out.code, out.stdout.as_slice()), (0, b"42\n".as_slice()), "{}", out.stderr);
         let out = run(&["run", &path, "--release", "--trace"]);
         assert_eq!(out.code, EXIT_USAGE);
         let out = run(&["build", &path, "--checked"]);
         assert_eq!(out.code, 0, "{}", out.stderr);
-        assert!(std::path::Path::new(&path)
-            .with_extension("checked")
-            .is_file());
-        assert_eq!(
-            run(&["build", &path, "--checked", "-o", "-"]).code,
-            EXIT_USAGE
-        );
+        assert!(std::path::Path::new(&path).with_extension("checked").is_file());
+        assert_eq!(run(&["build", &path, "--checked", "-o", "-"]).code, EXIT_USAGE);
     }
 
     /// The input of an interactive file is the hidden test, for the
     /// judge: the built solution must never read it as the judge's replies.
     #[test]
     fn release_runs_the_built_cpp_against_the_interactor() {
-        if std::process::Command::new("g++")
-            .arg("--version")
-            .output()
-            .is_err()
-        {
+        if std::process::Command::new("g++").arg("--version").output().is_err() {
             return;
         }
         let guesser = |answer: &str| {
@@ -2088,27 +1935,13 @@ mod tests {
         let right = temp_file("release_judged.cp", &guesser("hidden + 1"));
         for flags in [&["run", &right][..], &["run", &right, "--release"][..]] {
             let out = run_with_input(flags, b"7 41\n");
-            assert_eq!(
-                (out.code, out.stdout.as_slice()),
-                (0, b"? 7\n! 42\n".as_slice()),
-                "{}",
-                out.stderr
-            );
-            assert!(
-                out.stderr.contains("accepted the run (2 lines"),
-                "{}",
-                out.stderr
-            );
+            assert_eq!((out.code, out.stdout.as_slice()), (0, b"? 7\n! 42\n".as_slice()), "{}", out.stderr);
+            assert!(out.stderr.contains("accepted the run (2 lines"), "{}", out.stderr);
         }
         let wrong = temp_file("release_misjudged.cp", &guesser("hidden"));
         let out = run_with_input(&["run", &wrong, "--release"], b"7 41\n");
         assert_eq!(out.code, EXIT_FAILED, "{}", out.stderr);
-        assert!(
-            out.stderr
-                .contains("the interactor `judge` rejected the run"),
-            "{}",
-            out.stderr
-        );
+        assert!(out.stderr.contains("the interactor `judge` rejected the run"), "{}", out.stderr);
     }
 
     #[test]
@@ -2138,10 +1971,7 @@ mod tests {
         let l = run(&["explain", "L0501"]);
         assert_eq!(l.code, 0, "{}", l.stderr);
         let ltext = String::from_utf8(l.stdout).unwrap();
-        assert!(
-            ltext.contains("L0501") && ltext.contains("search_loop"),
-            "{ltext}"
-        );
+        assert!(ltext.contains("L0501") && ltext.contains("search_loop"), "{ltext}");
 
         let j = run(&["explain", "--json"]);
         assert_eq!(j.code, 0, "{}", j.stderr);

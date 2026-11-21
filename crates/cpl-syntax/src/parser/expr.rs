@@ -19,18 +19,8 @@ impl<'a> Parser<'a> {
                 StmtKind::Expr(e) => e,
                 kind => {
                     let span = self.span_from(start);
-                    Expr {
-                        kind: ExprKind::Block(Block {
-                            stmts: vec![Stmt {
-                                kind,
-                                span,
-                                decorators: Vec::new(),
-                                public: false,
-                            }],
-                            span,
-                        }),
-                        span,
-                    }
+                    let stmt = Stmt { kind, span, decorators: Vec::new(), public: false };
+                    Expr { kind: ExprKind::Block(Block { stmts: vec![stmt], span }), span }
                 }
             }
         }
@@ -196,7 +186,9 @@ impl<'a> Parser<'a> {
     }
 
     fn at_is_pattern(&self) -> bool {
-        self.at_ident("is") && self.same_line() && matches!(self.peek_n(1), T::Ident | T::LParen)
+        self.at_ident("is")
+            && self.same_line()
+            && matches!(self.peek_n(1), T::Ident | T::LParen)
     }
 
     pub(super) fn and(&mut self) -> Expr {
@@ -405,13 +397,7 @@ impl<'a> Parser<'a> {
         let step = Box::new(self.bit_or());
         let span = self.span_from(start);
         if rev || domain(&walk) {
-            return Expr {
-                kind: ExprKind::By {
-                    walk: Box::new(walk),
-                    step,
-                },
-                span,
-            };
+            return Expr { kind: ExprKind::By { walk: Box::new(walk), step }, span };
         }
         let mut inner = walk;
         while let ExprKind::Paren(e) = inner.kind {
@@ -420,10 +406,7 @@ impl<'a> Parser<'a> {
         if let ExprKind::Range { step: none, .. } = &mut inner.kind {
             *none = Some(step);
         }
-        Expr {
-            kind: inner.kind,
-            span,
-        }
+        Expr { kind: inner.kind, span }
     }
 
     fn bit_or(&mut self) -> Expr {
@@ -774,7 +757,10 @@ impl<'a> Parser<'a> {
 
     /// Keywords that are also ordinary member names: `xs.min`, `V.none`.
     fn field_keyword(&self) -> bool {
-        matches!(self.peek(), T::None | T::In | T::Type | T::Domain | T::Use) && !self.at_line_end()
+        matches!(
+            self.peek(),
+            T::None | T::In | T::Type | T::Domain | T::Use
+        ) && !self.at_line_end()
     }
 
     fn primary(&mut self) -> Expr {
