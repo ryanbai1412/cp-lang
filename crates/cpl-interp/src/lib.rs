@@ -1603,6 +1603,22 @@ impl<'p, 'o> Interp<'p, 'o> {
         let mut lent: Vec<(usize, &'p Place, Vec<Value>)> = Vec::new();
         for (i, arg) in args.iter().enumerate() {
             if let Arg::Mut(place) = arg {
+                // A whole variable is named, not taken: a fn value the
+                // call runs may still read it (`() => ids.len`), as in
+                // the C++, where it is a reference.
+                let named = match place.kind {
+                    PlaceKind::Global(id) => Some(Value::Alias(true, id)),
+                    PlaceKind::Local(slot) => Some(match self.stack[self.base + slot] {
+                        Value::Alias(global, at) => Value::Alias(global, at),
+                        Value::Moved => return trap(place.span, LENT),
+                        _ => Value::Alias(false, self.base + slot),
+                    }),
+                    _ => None,
+                };
+                if let Some(named) = named {
+                    values[i] = named;
+                    continue;
+                }
                 let mut indices = Vec::new();
                 self.indices(place, &mut indices)?;
                 let cell = self.resolve(place, &mut indices.iter())?;

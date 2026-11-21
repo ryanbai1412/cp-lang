@@ -23,6 +23,13 @@ pub fn find(self: Str, p: Str) -> ?Int:
     for i in find_all([c for c in self], [c for c in p]): return i
     none
 
+/// How many times `c` stands in `s`: `"banana".count('a')` is `3`. O(s.len).
+pub fn count(self: Str, c: Char) -> Int:
+    var n = 0
+    for x in self:
+        if x == c: n += 1
+    n
+
 /// The small letter of a capital, and any other character as it is: `'A'.lower` is `'a'`.
 pub @get fn lower(self: Char) -> Char = if 'A' <= self and self <= 'Z': Char(self.ord + 32) else: self
 
@@ -459,3 +466,7 @@ fn lower_and_upper_change_only_letters():
 @test
 fn digit_is_the_value_of_a_decimal_character():
     assert '0'.digit == 0 and '7'.digit == 7 and sum(c.digit for c in "409") == 13
+
+@test
+fn count_counts_one_character():
+    assert "banana".count('a') == 3 and "banana".count('z') == 0 and "".count('a') == 0

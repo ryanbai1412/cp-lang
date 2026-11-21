@@ -476,7 +476,10 @@ impl Database {
                 if scope.imports.contains_key(&name.text) || !used {
                     continue;
                 }
-                let own = declared.contains(name.text.as_str());
+                // `count(..)` the language has itself is not the library's
+                // `s.count(c)` either.
+                let own = declared.contains(name.text.as_str())
+                    || (method && crate::prelude::VALUE_NAMES.contains(&name.text.as_str()));
                 if own && !method {
                     continue;
                 }

@@ -174,7 +174,6 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Str, "find", Method, "p: Str", "?Int", false, "Where `p` first starts in the text.", "s.find(\"ll\")", "?Int"),
     row!(Str, "find_all", Method, "p: Str", "List<Int>", false, "Every place `p` starts in the text.", "s.find_all(\"l\")", "List<Int>"),
     row!(Str, "contains", Method, "c: Char", "Bool", false, "True when the text has the character `c`.", "s.contains('e')", "Bool"),
-    row!(Str, "count", Method, "c: Char", "Int", false, "How many times the character `c` stands in the text.", "s.count('a')", "Int"),
     row!(Str, "starts_with", Method, "p: Str", "Bool", false, "True when the text begins with `p`.", "s.starts_with(\"he\")", "Bool"),
     row!(Str, "ends_with", Method, "p: Str", "Bool", false, "True when the text ends with `p`.", "s.ends_with(\"lo\")", "Bool"),
     row!(Str, "windows", Method, "k: Int", "List<List<Char>>", false, "Every run of `k` neighbouring characters.", "s.windows(2)", "List<List<Char>>"),

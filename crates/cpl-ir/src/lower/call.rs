@@ -3172,10 +3172,11 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Option<Expr> {
-        let mut sym = self.get_sym(name)?;
+        let theirs = self.get_sym(&cpl_check::std_method(name));
+        let mut sym = self.get_sym(name).or(theirs)?;
         // The program's own `find(self: List<Int>, ..)` is not what
         // `s.find(..)` on a `Str` means: that is the library's.
-        if let Some(theirs) = self.get_sym(&cpl_check::std_method(name)) {
+        if let Some(theirs) = theirs {
             let own = match sym {
                 Sym::Fn(fid) => Some(self.sigs[fid].decl),
                 Sym::GenFn(gfid) => Some(self.gen_fns[gfid].decl),
@@ -3938,10 +3939,16 @@ impl<'a> Lowerer<'a> {
                     let probed = self.expr(&only.value, None);
                     self.diags.truncate(dlen);
                     // So does an array over a plain range, `[0..m](u: V, v: V)`:
-                    // it names no edge domain either.
+                    // it names no edge domain either. And one of plain
+                    // tuples, `[E](V, V, W)`, whose cells have no `u` and `v`.
                     let arity = match &probed.ty {
                         Ty::List(elem) => elem.fields().map(|f| f.len()),
-                        Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Int]) => elem.fields().map(|f| f.len()),
+                        Ty::Array { dims, elem }
+                            if matches!(dims.as_slice(), [Dim::Int])
+                                || (dims.len() == 1 && matches!(**elem, Ty::Tuple(_))) =>
+                        {
+                            elem.fields().map(|f| f.len())
+                        }
                         _ => None,
                     };
                     let suffix = match arity {
@@ -4486,8 +4493,9 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
-            // How many cells equal `x`: `"banana".count('a')` is 3.
-            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "count") => match self.one_arg(method, args, &elem, span) {
+            // How many cells equal `x`: `[1, 2, 1].count(1)` is 2. On a
+            // `Str` it is `count` of `std.strings`.
+            (Ty::List(_) | Ty::Array { .. }, "count") => match self.one_arg(method, args, &elem, span) {
                 Some(arg) => self.do_expr(Some(&Ty::Int), span, |lw, out| {
                     let (seq, arg) = (lw.hold(value, out), lw.hold(arg, out));
                     let (acc, each) = (lw.temp(Ty::Int), lw.temp(elem.clone()));

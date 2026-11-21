@@ -122,12 +122,15 @@ impl<'a> Checker<'a> {
                 [Ty::Record(fields)] => fields.len(),
                 _ => return None,
             },
-            // An array over a plain range names no edge domain either.
-            Ty::Array { index, elem } if matches!(index.as_slice(), [Ty::Int]) => match *elem {
-                Ty::Tuple(fields) => fields.len(),
-                Ty::Record(fields) => fields.len(),
-                _ => return None,
-            },
+            // An array over a plain range names no edge domain either,
+            // and the cells of one of plain tuples have no `u` and `v`.
+            Ty::Array { index, elem } if matches!(index.as_slice(), [Ty::Int]) || (index.len() == 1 && matches!(*elem, Ty::Tuple(_))) => {
+                match *elem {
+                    Ty::Tuple(fields) => fields.len(),
+                    Ty::Record(fields) => fields.len(),
+                    _ => return None,
+                }
+            }
             _ => return None,
         };
         let suffix = match suffix {

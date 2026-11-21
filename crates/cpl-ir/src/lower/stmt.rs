@@ -479,7 +479,11 @@ impl<'a> Lowerer<'a> {
             | ast::StmtKind::Law { .. }
             | ast::StmtKind::Lend { .. } => {}
             ast::StmtKind::Domain { name, def } => self.domain(name, def, out),
-            ast::StmtKind::Expr(e) => self.tail(e, Tail::Discard, out),
+            ast::StmtKind::Expr(e) => {
+                if !self.drop_key(e, out) {
+                    self.tail(e, Tail::Discard, out)
+                }
+            }
             ast::StmtKind::Assign { target, op, value } => self.assign(target, *op, value, out),
             ast::StmtKind::While { cond, body } => self.while_stmt(cond, body, out),
             ast::StmtKind::For {
@@ -1734,7 +1738,12 @@ impl<'a> Lowerer<'a> {
             return;
         }
         if op == ast::AssignOp::Set && self.grid_row(target).is_some() {
-            let one = self.probe_ty_silent(value).is_some_and(|ty| !matches!(ty, Ty::List(_) | Ty::Array { .. }));
+            // A value that has no type until it is told one (`none`) is
+            // one cell's; a list written out is a row.
+            let one = match self.probe_ty_silent(value) {
+                Some(ty) => !matches!(ty, Ty::List(_) | Ty::Array { .. }),
+                None => !matches!(value.kind, ast::ExprKind::List(_) | ast::ExprKind::Comprehension { .. }),
+            };
             if one {
                 self.grid_fill(target, value, out);
                 return;
@@ -2089,6 +2098,36 @@ impl<'a> Lowerer<'a> {
         let lid = self.fresh_loop();
         out.push(Stmt::For(lid, at, iter, Block { stmts: body }));
         changed
+    }
+
+    /// `m.remove(k)` for its effect alone: the value that was there is
+    /// not asked for, so it is not looked up. False when `e` is not that.
+    fn drop_key(&mut self, e: &ast::Expr, out: &mut Vec<Stmt>) -> bool {
+        let ast::ExprKind::Call { callee, args } = &e.kind else {
+            return false;
+        };
+        let ast::ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        let [ast::Arg { name: None, value: key, .. }] = args.as_slice() else {
+            return false;
+        };
+        if name.text != "remove" {
+            return false;
+        }
+        let Some(Ty::Map(key_ty, _) | Ty::HashMap(key_ty, _)) = self.probe_ty_silent(base) else {
+            return false;
+        };
+        let place = self.place(base);
+        let place = self.settle_indexes(place, out);
+        if let PlaceKind::Local(s) = root_place(&place) {
+            self.cx.mut_slots.insert(s);
+        }
+        let key = self.expect(key, &key_ty);
+        let key = self.hold(key, out);
+        let remove = self.mk(ExprKind::Mutate(Mutation::Remove, Box::new(place), vec![key]), Ty::Bool, e.span);
+        out.push(Stmt::Expr(remove));
+        true
     }
 
     /// `g[r, lo..hi] = 0`, `a[l..r] = true`: every cell of one part of a
