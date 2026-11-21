@@ -619,3 +619,25 @@ let m = missing.prefix(Pos.last.r)
 let comb = Z.comb(n)
 // ... sweep Val, accumulating Z(freq[f]) * comb.arrange(f, need) * comb.fact(m - need)
 ```
+
+---
+
+## 6. Matched C++17 benchmarks (`bench/math/`)
+
+`bash bench/math/run.sh` benchmarks the six core math workloads against matched
+C++17 (same algorithm and layout, `g++ -std=c++17 -O2`, best of 5 runs, exact
+stdout check, emitted C++ bytes):
+
+| Workload | Size | CP Lang | C++17 | Ratio | Emitted |
+|---|---|---:|---:|---:|---:|
+| `modint` | 10M add/sub/mul + 200K div/pow (`Mod<998244353>`) | 0.075s | 0.070s | 1.07x | 8,915 B |
+| `ntt` | `convolve` (`262,144 x 262,144`, Montgomery NTT) | 0.030s | 0.036s | 0.82x | 15,958 B |
+| `sieve` | `Sieve(5_000_000)` + `phi_table` + `mobius_table` | 0.105s | 0.095s | 1.11x | 4,670 B |
+| `matpow` | `80 x 80` `Mat<Mod<998244353>> ** 10^18` | 0.042s | 0.043s | 0.98x | 7,753 B |
+| `crt` | `1,000,000` `std.math.crt` calls | 0.093s | 0.080s | 1.17x | 6,428 B |
+| `comb` | `Comb(2_000_000)` + `5,000,000` `choose` queries | 0.086s | 0.074s | 1.15x | 10,021 B |
+
+Aggregate: **p50 = 1.09x**, **max = 1.17x** (targets: `<= 1.1x` p50, `<= 1.5x` max).
+Every emitted file is 8–25% of the 64 KB judge ceiling. General codegen-only
+causes for the three rows slightly above 1.1x (`crt`, `comb`, `sieve`) are
+logged in `research/frictions/bench-math.md`.

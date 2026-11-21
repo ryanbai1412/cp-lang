@@ -66,13 +66,15 @@ pub struct Sieve:
     pub fn new(n: Int) -> Sieve:
         var spf: List<0..=2_000_000_000> = List.filled(n + 1, 0)
         var primes: List<0..=2_000_000_000> = []
-        for i in 2..=n:
-            if spf[i] == 0:
-                spf[i] = i
-                primes.push(i)
-            for p in primes:
-                if p > spf[i] or i * p > n: break
-                spf[i * p] = p
+        unchecked:
+            for i in 2..=n:
+                if spf[i] == 0:
+                    spf[i] = i
+                    primes.push(i)
+                let si = spf[i]
+                for p in primes:
+                    if p > si or i * p > n: break
+                    spf[i * p] = p
         Sieve(spf, primes)
 
     /// Whether `x` is prime (for `0 <= x <= n`). O(1).
@@ -107,22 +109,24 @@ pub struct Sieve:
     pub fn phi_table(self) -> List<Int>:
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
-        if n >= 1: out[1] = 1
-        for i in 2..=n:
-            let p = spf[i]
-            let q = i / p
-            out[i] = if spf[q] == p: out[q] * p else: out[q] * (p - 1)
+        unchecked:
+            if n >= 1: out[1] = 1
+            for i in 2..=n:
+                let p = spf[i]
+                let q = i / p
+                out[i] = if spf[q] == p: out[q] * p else: out[q] * (p - 1)
         out
 
     /// Table of the Mobius function `mu[0..=n]` (`mu[0] == 0`, `mu[1] == 1`). O(n).
     pub fn mobius_table(self) -> List<Int>:
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
-        if n >= 1: out[1] = 1
-        for i in 2..=n:
-            let p = spf[i]
-            let q = i / p
-            out[i] = if spf[q] == p: 0 else: -out[q]
+        unchecked:
+            if n >= 1: out[1] = 1
+            for i in 2..=n:
+                let p = spf[i]
+                let q = i / p
+                out[i] = if spf[q] == p: 0 else: -out[q]
         out
 
     /// Table of divisor counts `d[0..=n]`. O(n).
@@ -283,22 +287,30 @@ pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>:
     sort(mut out)
     out
 
+fn ext_gcd_x(a: Int, b: Int) -> (Int, Int):
+    var (r0, r1, x0, x1) = (a, b, 1, 0)
+    while r1 != 0:
+        let q = r0 / r1
+        (r0, r1) = (r1, r0 - q * r1)
+        (x0, x1) = (x1, x0 - q * x1)
+    if r0 < 0: (-r0, -x0) else: (r0, x0)
+
 /// The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `none` if `gcd(a, m) != 1`. O(log m).
 pub fn inv_mod(a: Int, m: Int) -> ?Int:
     assert m >= 1
-    let e = ext_gcd(a % m, m)
-    if e.g != 1: return none
-    e.x % m
+    let (g, x) = ext_gcd_x(a % m, m)
+    if g != 1: return none
+    x % m
 
 /// The solution of `x = r1 (mod m1)`, `x = r2 (mod m2)` as `(r, m)` with
 /// `m = lcm(m1, m2)` and `0 <= r < m`, or `none` if there is none.
 pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
-    let e = ext_gcd(m1, m2)
-    if (r2 - r1) % e.g != 0: return none
-    let m = m1 / e.g * m2
-    let step = m2 / e.g
+    let (g, x) = ext_gcd_x(m1, m2)
+    if (r2 - r1) % g != 0: return none
+    let m = m1 / g * m2
+    let step = m2 / g
     // x = r1 + m1 * k with k = (r2 - r1) / g * inv(m1 / g) mod (m2 / g)
-    let k = mul_mod((r2 - r1) / e.g % step, e.x % step, step)
+    let k = mul_mod((r2 - r1) / g % step, x % step, step)
     ((r1 + m1 * k) % m, m)
 
 /// The solution of a system of congruences `x = r (mod m)` as `(r, m)` with `0 <= r < m`,

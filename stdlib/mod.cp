@@ -79,9 +79,17 @@ pub struct Comb<M>:
 
     /// Precompute factorials and inverse factorials up to `limit`. O(limit).
     pub fn new(limit: Int = 0) -> Comb<M>:
-        let c = Comb([M(1)], [M(1)])
-        if limit > 0: c.grow(limit + 1)
-        c
+        let p = M.MOD
+        var cap = limit + 1
+        if cap < 1: cap = 1
+        if p > 1 and cap > p: cap = p
+        var f = List.filled(cap, M(1))
+        var g = List.filled(cap, M(1))
+        unchecked:
+            for i in 1..cap: f[i] = f[i - 1] * M(i)
+            g[cap - 1] = f[cap - 1].inv
+            for i in (1..cap).rev: g[i - 1] = g[i] * M(i)
+        Comb(f, g)
 
     fn grow(self, want: Int):
         let p = M.MOD
@@ -89,14 +97,17 @@ pub struct Comb<M>:
         if p > 1 and cap > p: cap = p
         let old = f.len
         if cap <= old: return
-        while f.len < cap:
-            let i = f.len
-            f.push(f[i - 1] * M(i))
-        let need = cap - old
-        var tail = List.filled(need, M(0))
-        tail[need - 1] = f[cap - 1].inv
-        for i in (0..need - 1).rev: tail[i] = tail[i + 1] * M(old + i + 1)
-        for x in tail: g.push(x)
+        f.reserve(cap)
+        g.reserve(cap)
+        unchecked:
+            while f.len < cap:
+                let i = f.len
+                f.push(f[i - 1] * M(i))
+            let need = cap - old
+            var tail = List.filled(need, M(0))
+            tail[need - 1] = f[cap - 1].inv
+            for i in (0..need - 1).rev: tail[i] = tail[i + 1] * M(old + i + 1)
+            for x in tail: g.push(x)
 
     fn ensure(self, n: Int):
         if n < f.len: return
@@ -109,34 +120,37 @@ pub struct Comb<M>:
         assert n >= 0
         if n >= M.MOD: return M(0)
         self.ensure(n)
-        f[n]
+        unchecked: return f[n]
 
     /// `1 / n!` (requires `0 <= n < M.MOD`).
     pub fn inv_fact(self, n: Int) -> M:
         assert 0 <= n and n < M.MOD
         self.ensure(n)
-        g[n]
+        unchecked: return g[n]
 
     /// `1 / i` (requires `1 <= i < M.MOD`), from the factorials: `(i - 1)! / i!`. O(1).
     pub fn inv(self, i: Int) -> M:
         assert 1 <= i and i < M.MOD, "`inv` needs 1 <= i < P"
         self.ensure(i)
-        f[i - 1] * g[i]
+        unchecked: return f[i - 1] * g[i]
+
+    fn choose_lucas(self, n: Int, k: Int) -> M:
+        let p = M.MOD
+        self.choose(n / p, k / p) * self.choose(n % p, k % p)
 
     /// The number of `k`-subsets of `n` things; 0 when `k` is outside `0..=n`.
     /// Uses Lucas's theorem automatically when `n >= M.MOD` (for prime `P`).
     pub fn choose(self, n: Int, k: Int) -> M:
         if k < 0 or k > n: return M(0)
-        let p = M.MOD
-        if n >= p: return self.choose(n / p, k / p) * self.choose(n % p, k % p)
+        if n >= M.MOD: return self.choose_lucas(n, k)
         self.ensure(n)
-        f[n] * g[k] * g[n - k]
+        unchecked: return f[n] * g[k] * g[n - k]
 
     /// The number of ordered selections of `k` out of `n` things.
     pub fn arrange(self, n: Int, k: Int) -> M:
         if k < 0 or k > n: return M(0)
         self.ensure(n)
-        f[n] * g[n - k]
+        unchecked: return f[n] * g[n - k]
 
     /// The number of ways to put `n` equal balls into `k` boxes (stars and bars).
     pub fn multichoose(self, n: Int, k: Int) -> M:

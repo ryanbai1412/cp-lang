@@ -1345,3 +1345,23 @@ print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
         "expected tuple array passed to [V](Int, Int) to widen:\n{widened}"
     );
 }
+
+#[test]
+fn u32_struct_field_proves_nonneg_for_mod_mul() {
+    let out = cpp(
+        "use std.mod.{Mod}
+type Z = Mod<998_244_353>
+let a: Int = read()
+let b: Int = read()
+print((Z(a) * Z(b)).v)
+",
+    );
+    let mul = out
+        .split("\ninline ")
+        .find(|s| s.contains("_mul("))
+        .expect("Mod::mul emitted");
+    assert!(
+        mul.contains("% 998244353") && !mul.contains("cpl::modp"),
+        "U32-narrowed Mod.v fields should prove non-negativity and avoid cpl::modp:\n{mul}"
+    );
+}

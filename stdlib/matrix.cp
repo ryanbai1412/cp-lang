@@ -213,13 +213,14 @@ impl Mul for Mat<T>:
         assert a.cols == b.rows, "matrix dimensions do not match for multiplication"
         let (r, m, c) = (a.rows, a.cols, b.cols)
         var out = List.filled(r * c, T.zero)
-        for i in 0..r:
-            let ai = i * m
-            let oi = i * c
-            for k in 0..m:
-                let f = a.data[ai + k]
-                let bk = k * c
-                for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
+        unchecked:
+            for i in 0..r:
+                let ai = i * m
+                let oi = i * c
+                for k in 0..m:
+                    let f = a.data[ai + k]
+                    let bk = k * c
+                    for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
         Mat(r, c, out)
 
 impl Pow for Mat<T>:

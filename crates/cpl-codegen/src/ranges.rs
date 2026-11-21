@@ -10,10 +10,10 @@
 //! undo the fact.
 
 use cpl_ir::{
-    Arg, BinOp, Block, Builtin, Cast, Expr, ExprKind, Iter, Place, PlaceKind, Program, Spec, Stmt,
-    Ty,
+    Arg, BinOp, Block, Builtin, Cast, Expr, ExprKind, IntWidth, Iter, Place, PlaceKind, Program,
+    Spec, Stmt, Ty,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A variable: a global, or a local of one fn (`None` is the top level).
 pub(crate) type Var = (Option<usize>, bool, usize);
@@ -37,6 +37,8 @@ pub(crate) struct Facts<'p> {
     loop_lo: BTreeMap<Var, &'p Expr>,
     /// Each domain's length expression, when defined once.
     domain_len: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
+    /// Struct fields whose declared range narrows to unsigned 32-bit (`>= 0`).
+    u32_fields: BTreeSet<(usize, usize)>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -60,6 +62,13 @@ impl<'p> Facts<'p> {
                 *facts.stores.entry((Some(id), false, slot)).or_default() += 2;
             }
             facts.block(Some(id), &f.body);
+        }
+        for (sid, s) in program.structs.iter().enumerate() {
+            for (&fi, &w) in &s.narrow_ints {
+                if w == IntWidth::U32 {
+                    facts.u32_fields.insert((sid, fi));
+                }
+            }
         }
         facts
     }
@@ -355,6 +364,13 @@ impl<'p> Facts<'p> {
                 if let Some(Spec::Int { lo: Some(lo), .. }) = self.spec(fn_id, e) {
                     if let ExprKind::Int(lo) = lo.kind {
                         return literal(lo);
+                    }
+                }
+                if let ExprKind::Field(base, idx) = &e.kind {
+                    if let Ty::Struct(sid) = base.ty {
+                        if self.u32_fields.contains(&(sid, *idx)) {
+                            return NonNeg;
+                        }
                     }
                 }
                 let v = match &e.kind {

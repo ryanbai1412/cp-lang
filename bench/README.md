@@ -136,3 +136,14 @@ hand-written C++; results and analysis in `bench/graph/README.md`.
 `suffix_scan`, `scan_in_place`, `suffix_scan_in_place`, `rotate_left`,
 `rotate_right`) against matched C++ `std::partial_sum` and `std::rotate`;
 results in `bench/seq/README.md`.
+
+## Math (`bench/math/`)
+
+`bash bench/math/run.sh` compares `std.mod`, `std.ntt`, `std.math`, and
+`std.matrix` against matched C++17 (same algorithm and layout, best of 5 runs,
+exact stdout match, and emitted C++ byte counts): `modint` arithmetic,
+`ntt` convolution (`n = 262,144`), linear `sieve` (`n = 5,000,000` with
+`phi_table` + `mobius_table`), `matpow` (`80 x 80` `Mod` matrix to `10^18`),
+`crt` (`1,000,000` calls), and `comb` (`limit = 2,000,000`, `5,000,000`
+`choose` queries). Results and codegen profiling notes live in
+`design/stdlib/math.md` and `research/frictions/bench-math.md`.
