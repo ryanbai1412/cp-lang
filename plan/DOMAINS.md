@@ -249,13 +249,23 @@ through its recorded `rand`/`shuffle` choices. Gaps found: `Perm<V>` and
 so only a local alias named `Perm` or `Tree` works); a weighted tree
 (`(u: V, v: V, w: W)`) is generated as random pairs, not a tree; there are
 no simple or connected graphs; an edge list shrinks by clamping, which can
-make self-loops; there is no benchmark of how fast stress finds bugs.
+make self-loops. `Perm<V>` (`std.seq`) and `Tree<V>` (`std.graph`) are now
+stdlib aliases every tool accepts. The seeded-bug benchmark
+(`bench/stress/`, `tests/seeded_bugs.rs`) runs in the gate: 7 bugs
+(sentinel, item reuse, memo bound, heap direction, off-by-one under a
+recursive `@brute`, multitest leak, DP order over permutations), all shrunk
+to their known minimal input, median 0.45 s. A recursive `@brute` works; a
+failure that needs several tests shrinks each of them; a smaller size drops
+elements from nested arrays (a list of permutations), not just top-level
+ones; letter bounds (`'A' + k`) evaluate. Values that only fail together
+(two tests that must repeat one number) still shrink one at a time, so they
+stop at the first such value, not at 1.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
-**Next.** Seeded-bug benchmark; `Perm`/`Tree`/graph types every tool
-accepts; weighted trees; simple and connected graphs; edge-deleting graph
-shrinking.
+**Next.** Weighted trees; simple, connected and DAG graphs with
+edge-deleting shrinking that never makes a self-loop or a repeated edge; a
+tree and a graph bug in the benchmark; lowering equal values together.
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)
 **North star.** Every tool a contestant reaches for exists, is instant, and

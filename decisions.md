@@ -1376,6 +1376,17 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   shrinks them as a permutation and a tree. They stay out of the prelude (21.5's budget), so a file
   names them with a `use`. Stress still recognises the alias by its name; keying it to the stdlib
   declaration instead is open. Reverse: delete the two aliases.
+- **25.2 The seeded-bug benchmark compares exact minimal inputs.** Each `bench/stress/<bug>.cp` is
+  a port with one classic bug planted and the correct fn as its `@brute`; `<bug>.min` is the
+  smallest input that shows it, and `tests/seeded_bugs.rs` fails unless `cpl stress` prints exactly
+  that input, with a median under 10 s (`GOALS` 4). Byte equality makes a shrinker regression
+  (a case that is still failing but larger) fail the gate, not just a missed bug; the cost is that
+  a legitimate improvement that finds a different minimum of equal size updates the `.min`.
+  Reverse: compare weights (`Case::weight`) instead of bytes.
+- **25.3 Letter domains are made as code points.** `domain L = 'A'..'A' + k` is read by `cpl run`
+  and the C++ as numbers (`66`, not `B`) today, though `plan/19` says its values are chars; stress
+  makes what the reader accepts. When the reader takes letters, make `Shape::Int` with a char bound
+  produce `Value::Char`. Reverse: that same change.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 
