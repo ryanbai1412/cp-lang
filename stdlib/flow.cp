@@ -498,80 +498,81 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
     let nb = [[w.to_idx for w in adj[V.nth(i)]] for i in 0..n]
     var mate = List.filled(n, -1)
     var size = 0
-    for x in 0..n:
-        if mate[x] != -1: continue
-        for y in nb[x]:
-            if y != x and mate[y] == -1:
-                mate[x] = y
-                mate[y] = x
-                size += 1
-                break
-    var parent = List.filled(n, -1)
-    var base = List.filled(n, 0)
-    var inq = List.filled(n, false)
-    var blossom = List.filled(n, false)
-    var seen = List.filled(n, false)
-    for root in 0..n:
-        if mate[root] != -1: continue
-        for i in 0..n:
-            parent[i] = -1
-            base[i] = i
-            inq[i] = false
-        inq[root] = true
-        var queue = [root]
-        var at = 0
-        var end = -1
-        while at < queue.len and end == -1:
-            let x = queue[at]
-            at += 1
+    unchecked:
+        for x in 0..n:
+            if mate[x] != -1: continue
             for y in nb[x]:
-                if base[x] == base[y] or mate[x] == y: continue
-                if y == root or (mate[y] != -1 and parent[mate[y]] != -1):
-                    // odd cycle: contract the blossom through the common ancestor
-                    for i in 0..n: seen[i] = false
-                    var a = x
-                    while true:
-                        a = base[a]
-                        seen[a] = true
-                        if mate[a] == -1: break
-                        a = parent[mate[a]]
-                    var b = y
-                    while true:
-                        b = base[b]
-                        if seen[b]: break
-                        b = parent[mate[b]]
-                    let top = b
-                    for i in 0..n: blossom[i] = false
-                    for (from, child) in [(x, y), (y, x)]:
-                        var w = from
-                        var c = child
-                        while base[w] != top:
-                            blossom[base[w]] = true
-                            blossom[base[mate[w]]] = true
-                            parent[w] = c
-                            c = mate[w]
-                            w = parent[mate[w]]
-                    for i in 0..n:
-                        if blossom[base[i]]:
-                            base[i] = top
-                            if not inq[i]:
-                                inq[i] = true
-                                queue.push(i)
-                elif parent[y] == -1:
-                    parent[y] = x
-                    if mate[y] == -1:
-                        end = y
-                        break
-                    inq[mate[y]] = true
-                    queue.push(mate[y])
-        var y = end
-        if y != -1: size += 1
-        while y != -1:
-            let x = parent[y]
-            let next = mate[x]
-            mate[y] = x
-            mate[x] = y
-            y = next
+                if y != x and mate[y] == -1:
+                    mate[x] = y
+                    mate[y] = x
+                    size += 1
+                    break
+        var parent = List.filled(n, -1)
+        var base = List.filled(n, 0)
+        var inq = List.filled(n, false)
+        var blossom = List.filled(n, false)
+        var seen = List.filled(n, false)
+        for root in 0..n:
+            if mate[root] != -1: continue
+            for i in 0..n:
+                parent[i] = -1
+                base[i] = i
+                inq[i] = false
+            inq[root] = true
+            var queue = [root]
+            var at = 0
+            var end = -1
+            while at < queue.len and end == -1:
+                let x = queue[at]
+                at += 1
+                for y in nb[x]:
+                    if base[x] == base[y] or mate[x] == y: continue
+                    if y == root or (mate[y] != -1 and parent[mate[y]] != -1):
+                        // odd cycle: contract the blossom through the common ancestor
+                        for i in 0..n: seen[i] = false
+                        var a = x
+                        while true:
+                            a = base[a]
+                            seen[a] = true
+                            if mate[a] == -1: break
+                            a = parent[mate[a]]
+                        var b = y
+                        while true:
+                            b = base[b]
+                            if seen[b]: break
+                            b = parent[mate[b]]
+                        let top = b
+                        for i in 0..n: blossom[i] = false
+                        for (from, child) in [(x, y), (y, x)]:
+                            var w = from
+                            var c = child
+                            while base[w] != top:
+                                blossom[base[w]] = true
+                                blossom[base[mate[w]]] = true
+                                parent[w] = c
+                                c = mate[w]
+                                w = parent[mate[w]]
+                        for i in 0..n:
+                            if blossom[base[i]]:
+                                base[i] = top
+                                if not inq[i]:
+                                    inq[i] = true
+                                    queue.push(i)
+                    elif parent[y] == -1:
+                        parent[y] = x
+                        if mate[y] == -1:
+                            end = y
+                            break
+                        inq[mate[y]] = true
+                        queue.push(mate[y])
+            var y = end
+            if y != -1: size += 1
+            while y != -1:
+                let x = parent[y]
+                let next = mate[x]
+                mate[y] = x
+                mate[x] = y
+                y = next
     (size: size, mate: [V] v => if mate[v.to_idx] == -1: none else: V.nth(mate[v.to_idx]))
 
 /// Weighted blossom state over vertices 1..=n and blossoms n+1..=2n; index 0 is "none".
