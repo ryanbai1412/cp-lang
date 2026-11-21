@@ -1734,6 +1734,18 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         if self.grid_row(target).is_some() {
+            // `a[l..r] -= b[l2..r2]`, `a[1..n] min= a[0..n - 1]`, `a[l..r] =
+            // b[l2..r2]`: part against part, cell for cell.
+            let cellwise = match op {
+                ast::AssignOp::Set | ast::AssignOp::Max | ast::AssignOp::Min => true,
+                ast::AssignOp::Binary(bin) => {
+                    matches!(bin, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor)
+                }
+            };
+            if cellwise && self.grid_row(value).is_some() {
+                self.part_map(target, op, value, None, out);
+                return;
+            }
             if matches!(op, ast::AssignOp::Max | ast::AssignOp::Min) {
                 self.grid_keep(target, Some(op == ast::AssignOp::Max), value, false, out);
                 return;
@@ -1742,11 +1754,11 @@ impl<'a> Lowerer<'a> {
             if let (ast::AssignOp::Set, ast::ExprKind::Binary { op: bin, lhs, rhs, .. }) = (op, &value.kind) {
                 if matches!(bin, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor) {
                     if self.grid_row(lhs).is_some() && self.one_cell(rhs) {
-                        self.part_map(target, *bin, lhs, rhs, false, out);
+                        self.part_map(target, op, lhs, Some((*bin, rhs, false)), out);
                         return;
                     }
                     if self.grid_row(rhs).is_some() && self.one_cell(lhs) {
-                        self.part_map(target, *bin, rhs, lhs, true, out);
+                        self.part_map(target, op, rhs, Some((*bin, lhs, true)), out);
                         return;
                     }
                 }
@@ -2185,13 +2197,16 @@ impl<'a> Lowerer<'a> {
     /// one array the loop runs from the end that reads every cell before
     /// it is stored to, so the result is that of working out the right
     /// side first.
+    ///
+    /// `a[l..r] op= b[l2..r2]` (`=`, `min=`, `max=`, `+=`, `-=`, `*=`, `&=`,
+    /// `|=`, `^=`) is the same loop with no value: each cell of the left
+    /// part is stored to, or worked, with the cell of the right part.
     fn part_map(
         &mut self,
         target: &ast::Expr,
-        bin: BinOp,
+        store: ast::AssignOp,
         source: &ast::Expr,
-        scalar: &ast::Expr,
-        scalar_first: bool,
+        with: Option<(BinOp, &ast::Expr, bool)>,
         out: &mut Vec<Stmt>,
     ) {
         let span = target.span;
@@ -2220,7 +2235,9 @@ impl<'a> Lowerer<'a> {
         else {
             return;
         };
-        if elem != from_elem || !matches!(elem, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float) {
+        let number = matches!(elem, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float);
+        let plain = with.is_none() && !matches!(store, ast::AssignOp::Binary(_));
+        if elem != from_elem || !(number || plain) {
             if elem != Ty::Error && from_elem != Ty::Error {
                 self.unsupported(span, "a part worked with one value, cell for cell, on cells that are not one kind of number");
             }
@@ -2250,13 +2267,19 @@ impl<'a> Lowerer<'a> {
         let count = self.hold(count, out);
         let theirs = sub(self, from_hi, from_lo.clone());
         let differ = self.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(theirs), Box::new(count.clone())), Ty::Bool, span);
-        let trap = Stmt::Trap(
-            format!("`a[l..r] = b[l2..r2] {} x` needs two parts of one length", bin.text()),
-            self.span(span),
-        );
+        let written = match (store, with) {
+            (_, Some((bin, ..))) => format!("a[l..r] = b[l2..r2] {} x", bin.text()),
+            (ast::AssignOp::Set, None) => "a[l..r] = b[l2..r2]".to_string(),
+            (ast::AssignOp::Max, None) => "a[l..r] max= b[l2..r2]".to_string(),
+            (ast::AssignOp::Min, None) => "a[l..r] min= b[l2..r2]".to_string(),
+            (ast::AssignOp::Binary(bin), None) => format!("a[l..r] {}= b[l2..r2]", bin.text()),
+        };
+        let trap = Stmt::Trap(format!("`{written}` needs two parts of one length"), self.span(span));
         out.push(Stmt::If(differ, Block { stmts: vec![trap] }, Block::default()));
-        let value = self.expect(scalar, &elem);
-        let value = self.hold(value, out);
+        let with = with.map(|(bin, scalar, first)| {
+            let value = self.expect(scalar, &elem);
+            (bin, self.hold(value, out), first)
+        });
         let k = self.temp(Ty::Int);
         let step = |lw: &Self, slot: Slot, first: &Expr, dim: Dim| {
             let sum = lw.mk(
@@ -2271,14 +2294,16 @@ impl<'a> Lowerer<'a> {
             Stmt::Let(slot, Some(sum))
         };
         let read = self.mk(ExprKind::Index(Box::new(rows), from_cell), elem.clone(), span);
-        let (left, right) = if scalar_first { (value, read) } else { (read, value) };
-        let worked = self.mk(ExprKind::Binary(bin, Box::new(left), Box::new(right)), elem.clone(), span);
-        let store = Place { kind: PlaceKind::Index(Box::new(place), cell), ty: elem, span: self.span(span) };
-        let body = vec![
-            step(self, at, &lo, dims[axis]),
-            step(self, from_at, &from_lo, from_dims[from_axis]),
-            Stmt::Assign(store, AssignOp::Set, worked),
-        ];
+        let worked = match with {
+            Some((bin, value, first)) => {
+                let (left, right) = if first { (value, read) } else { (read, value) };
+                self.mk(ExprKind::Binary(bin, Box::new(left), Box::new(right)), elem.clone(), span)
+            }
+            None => read,
+        };
+        let cell = Place { kind: PlaceKind::Index(Box::new(place), cell), ty: elem, span: self.span(span) };
+        let mut body = vec![step(self, at, &lo, dims[axis]), step(self, from_at, &from_lo, from_dims[from_axis])];
+        self.emit_assign_place(cell, store, worked, span, &mut body);
         let run = |lw: &mut Self, rev: bool| {
             let iter = Iter::Range { lo: lw.int_lit(0, span), hi: count.clone(), step: None, rev };
             let lid = lw.fresh_loop();

@@ -68,6 +68,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "mut_cell_receiver",
             "mut_field_after_closure",
             "mut_self_closure",
+            "part_overlap",
             "print_args_first",
             "sort_key_calls",
             "sort_key_one_traps",
