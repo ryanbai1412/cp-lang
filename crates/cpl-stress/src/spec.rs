@@ -70,6 +70,9 @@ pub enum Shape {
         name: String,
         arms: Vec<Arm>,
     },
+    /// `?T` read with `read(none: x)`: a value of `T`, or `none`, which
+    /// is written as `x`.
+    Maybe { inner: Box<Shape>, none: i128 },
 }
 
 /// One way a row goes after its tag: an `if` branch or a `match` arm.
@@ -515,6 +518,8 @@ struct Builder<'a> {
     /// Each record type `read()` reads field by field: a struct's fields,
     /// or an `@tags` enum's variants each with the letter it is written as.
     records: HashMap<String, (u32, Record)>,
+    /// How the `read()` being built writes `none`, from `read(none: x)`.
+    none: Option<i128>,
     spec: InputSpec,
 }
 
@@ -613,6 +618,16 @@ impl Builder<'_> {
             )
         };
         match &ty.kind {
+            TypeKind::Optional(inner) => {
+                let none = self.none.ok_or_else(|| unsupported(self))?;
+                match self.shape(inner)? {
+                    inner @ Shape::Int { .. } => Ok(Shape::Maybe {
+                        inner: Box::new(inner),
+                        none,
+                    }),
+                    _ => Err(unsupported(self)),
+                }
+            }
             TypeKind::Range {
                 lo: Some(lo),
                 hi: Some(hi),
@@ -867,13 +882,13 @@ impl Builder<'_> {
                     ty: Some(ty),
                     init: Some(init),
                     ..
-                } if is_read(init) => {
+                } if read_none(init).is_some() => {
                     let mut used = HashSet::new();
                     Sizes(&mut used).of_type(ty);
                     if !used.is_disjoint(inside) {
                         return Ok(false);
                     }
-                    let shape = self.shape(ty)?;
+                    let shape = self.shape_written(ty, read_none(init).flatten())?;
                     // A name read here is bound beside its value, so the
                     // reads after it may use it: `k`, then `[k]Int`.
                     let names = Self::names(pat, &shape);
@@ -1104,6 +1119,14 @@ impl Builder<'_> {
         Ok(true)
     }
 
+    /// The shape of `ty` read with `none` written as `none`.
+    fn shape_written(&mut self, ty: &Type, none: Option<i128>) -> Result<Shape, SpecError> {
+        let outer = std::mem::replace(&mut self.none, none);
+        let shape = self.shape(ty);
+        self.none = outer;
+        shape
+    }
+
     /// A struct is its fields in order; an `@tags` enum is a choice on
     /// the letter its variant is written as, then that variant's fields.
     fn record(&mut self, name: &str, record: &Record) -> Result<Shape, SpecError> {
@@ -1311,6 +1334,33 @@ fn counted(count: &str) -> (Expr, Expr) {
     (int(0), binary(BinOp::Sub, count, int(1)))
 }
 
+/// `read()` as `Some(None)`, and `read(none: x)` with a number `x`
+/// (or a string that is one) as `Some(Some(x))`.
+fn read_none(expr: &Expr) -> Option<Option<i128>> {
+    if is_read(expr) {
+        return Some(None);
+    }
+    let ExprKind::Call { callee, args } = &expr.kind else {
+        return None;
+    };
+    let [arg] = args.as_slice() else {
+        return None;
+    };
+    if !matches!(&callee.kind, ExprKind::Name(name) if name == "read")
+        || arg.name.as_ref().is_none_or(|name| name.text != "none")
+    {
+        return None;
+    }
+    let none = match &arg.value.kind {
+        ExprKind::Str(pieces) => match pieces.as_slice() {
+            [cpl_syntax::ast::StrPiece::Text(text)] => text.trim().parse().ok(),
+            _ => None,
+        },
+        _ => eval(&arg.value, &Env::new()),
+    };
+    Some(Some(none?))
+}
+
 fn is_read(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
@@ -1337,6 +1387,7 @@ impl InputSpec {
             domains: HashMap::new(),
             aliases: HashMap::new(),
             records: HashMap::new(),
+            none: None,
             spec: InputSpec::default(),
         };
         // What is read above `@!multitest`, once the divider is seen.
@@ -1468,14 +1519,14 @@ impl InputSpec {
                         ty,
                         init: Some(init),
                         ..
-                    } if is_read(init) => {
+                    } if read_none(init).is_some() => {
                         let Some(ty) = ty else {
                             return Err(builder.error(
                                 stmt.span,
                                 "this `read()` has no type, so there is nothing to generate from; write `let n: 1..=100 = read()`".into(),
                             ));
                         };
-                        let shape = builder.shape(ty)?;
+                        let shape = builder.shape_written(ty, read_none(init).flatten())?;
                         let field = Field {
                             names: Builder::names(pat, &shape),
                             shape,

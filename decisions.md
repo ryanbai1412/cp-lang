@@ -1661,6 +1661,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   types, and a tagged enum is a `Choice` on a letter whose arms are its variants. Generic records
   and tags longer than one letter are still refused with the old message. Reverse: drop
   `Builder::records` and `Record`.
+- **25.13 `read(none: x)` makes `?T` either `x` or a value of `T`, and the shrinker tries
+  a number's low end first.** `read(none: 0)` writes an absent value as `0`, so the generator
+  writes the sentinel about a quarter of the time and an integer of `T` otherwise; a present
+  value shrinks toward the lower of `T`'s low end and the sentinel. Only integer `T` with a
+  number (or numeric string) sentinel is accepted; anything else keeps the old refusal. Lowering
+  a number now tries its low end before the binary search, because a fit that clamps
+  `?(1..=n)` up to `1` hides `none: 0` below the gap. Reverse: drop `Shape::Maybe`,
+  `read_none` and the low-end attempt in `shrink`'s `lower`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

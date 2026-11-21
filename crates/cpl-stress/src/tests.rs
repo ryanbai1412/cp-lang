@@ -1417,7 +1417,7 @@ fn reads_no_field_describes_are_refused_not_left_out() {
         ("let n: 1..=5 = read()\nfn row() -> Int:\n    let x: Int = read()\n    x\nprint(row())\n", "this fn reads input"),
         ("let n: 1..=5 = read()\n@memo\nfn row(i: Int) -> Int:\n    let x: Int = read()\n    x\nprint(row(n))\n", "this fn reads input"),
         ("let n: 2..=9 = read()\nlet x: 1..=n = read(gen: pick)\nfn pick() -> Int: n\n", "read(gen: ..)"),
-        ("let n: 1..=5 = read()\nfor _ in 0..n:\n    let x: ?Int = read(none: 0)\n", "this loop reads"),
+        ("let n: 1..=5 = read()\nfor _ in 0..n:\n    let x: ?Int = read(none: \"-\")\n", "this loop reads"),
     ];
     for (src, wanted) in cases {
         let err = InputSpec::from_source(src).unwrap_err();
@@ -1583,5 +1583,59 @@ for x in s:
         .unwrap();
     let min = shrink(&spec, &start, 2000, &mut |case| fails(case));
     assert_eq!(min.render(), "1\n0 1\n1\nC 1 0\n");
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn an_optional_read_with_none_written_as_a_number_is_generated_both_ways() {
+    let src = "let n: 1..=6 = read()
+domain P = 1..=n
+let a: [P]?(1..=n) = read(none: 0)
+let b: ?(5..=9) = read(none: \"-1\")
+var placed = 0
+for i in P:
+    if let v = a[i]:
+        placed += v
+if let x = b:
+    placed += x
+print(placed)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("maybe-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    let (mut absent, mut present) = (0, 0);
+    for seed in 0..40 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let n = tokens[0];
+        for v in &tokens[1..=n as usize] {
+            assert!((0..=n).contains(v), "{text}");
+            if *v == 0 {
+                absent += 1
+            } else {
+                present += 1
+            }
+        }
+        assert!(tokens[1 + n as usize] == -1 || (5..=9).contains(&tokens[1 + n as usize]));
+    }
+    assert!(absent > 10 && present > 10, "{absent} {present}");
+    // A value that is there but no longer needed shrinks to `none`.
+    let fails = |case: &Case| {
+        case.render()
+            .lines()
+            .nth(1)
+            .is_some_and(|a| a.split(' ').any(|t| t == "3"))
+    };
+    let start = (0..)
+        .map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap())
+        .find(|case| fails(case))
+        .unwrap();
+    let min = shrink(&spec, &start, 2000, &mut |case| fails(case));
+    assert_eq!(min.render(), "3\n0 0 3\n-1\n");
     std::fs::remove_file(&path).ok();
 }

@@ -242,6 +242,10 @@ fn build(
             false,
         ))),
         Shape::Bool => Some(Value::Int(pick.pick(0, 1, false))),
+        Shape::Maybe { inner, none } => match pick.pick(0, 3, false) {
+            0 => Some(Value::Int(*none)),
+            _ => build(inner, env, sizes, false, pick),
+        },
         Shape::Str => {
             let len = pick.pick(1, MAX_WORD, true);
             Some(Value::Seq(

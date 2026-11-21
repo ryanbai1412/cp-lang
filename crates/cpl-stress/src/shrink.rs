@@ -55,6 +55,8 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             Some(Value::Char((*c).clamp(i128::from(*lo), i128::from(*hi))))
         }
         (Shape::Bool, Value::Int(v)) => Some(Value::Int((*v).clamp(0, 1))),
+        (Shape::Maybe { none, .. }, Value::Int(v)) if v == none => Some(Value::Int(*none)),
+        (Shape::Maybe { inner, .. }, value) => fit_value(inner, value, env),
         // A word keeps at least one letter.
         (Shape::Str, Value::Seq(items)) if !items.is_empty() => Some(Value::Seq(
             items
@@ -432,6 +434,14 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
             }
             (Shape::Char { lo, .. }, Value::Char(_)) => out.push((path.clone(), i128::from(*lo))),
             (Shape::Bool, Value::Int(_)) => out.push((path.clone(), 0)),
+            // Lowered past its type's low end, a value becomes `none`.
+            (Shape::Maybe { inner, none }, Value::Int(v)) if v != none => {
+                if let Shape::Int { lo, .. } = &**inner {
+                    if let Some(lo) = eval(lo, env) {
+                        out.push((path.clone(), lo.min(*none)));
+                    }
+                }
+            }
             (Shape::Str, Value::Seq(items)) => {
                 for index in 0..items.len() {
                     path.push(index);
@@ -899,6 +909,16 @@ pub fn shrink(
         let Some(start) = number_at(best, path) else {
             return false;
         };
+        // The low end first: it may be the only value below `start`
+        // that fits, as `none` is below a gap in `?(1..=n)`.
+        if lo < start {
+            let mut candidate = best.clone();
+            let slot = at(&mut candidate, path);
+            *slot = slot.with(lo);
+            if attempt(best, candidate) {
+                return true;
+            }
+        }
         let (mut floor, mut current) = (lo, start);
         while floor < current {
             let target = floor + (current - floor) / 2;
