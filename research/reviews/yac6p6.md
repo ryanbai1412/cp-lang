@@ -1,7 +1,7 @@
 # yac6p6
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (factored single `relax(cur, from, cost)` + shared `backward_dp(x1, y1, x2, y2)` eliminating `small_dp` duplication and raw `Row(...)` indexing, tightened complexity bound to `(n^2 m^2 / 12) * (MAXK + 1)` over populated buckets, `and` guards; `port = dream`, `20,541 B`, `0` lints, ASan/UBSan 600 random queries pass)
+Dream: pending cold rescore (single `relax` + shared `backward_dp`, tightened bucketed complexity bound, `and` guards)
 
 Baseline review, cold, on main 96359635. No editorial header; lines 1-2 give only provenance. The DP is written three times (the small case, the forward 3x3 and the backward prefix), with the transitions spelled out in each. The `(x2 + y2) % 3` diagonal bucketing (line 40), the step at which every query is split, is never explained. No dream exists, so the score is capped at 3.
 
