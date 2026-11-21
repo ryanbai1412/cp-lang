@@ -21,7 +21,12 @@ use crate::ty::{Param, Ty};
 pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        let text = crate::modules::bundled_std(&["prelude".to_string()])
+        // `CPL_STD` may hold a spec prelude (spec/README.md); it wins like any module.
+        let spec = std::env::var_os("CPL_STD")
+            .and_then(|dir| std::fs::read_to_string(std::path::Path::new(&dir).join("prelude.cp")).ok())
+            .map(|text| &*Box::leak(text.into_boxed_str()));
+        let text = spec
+            .or_else(|| crate::modules::bundled_std(&["prelude".to_string()]))
             .expect("stdlib/prelude.cp is built into the compiler");
         let mut found = Vec::new();
         for (_, item) in cpl_syntax::parse_file(text).items {
