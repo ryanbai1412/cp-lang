@@ -203,6 +203,19 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             Ty::Pos(_) | Ty::Bound(_) => "cpl::OptPos".into(),
             Ty::Bool if niches.bools => "cpl::OptBool".into(),
             Ty::Char if niches.chars => "cpl::OptChar".into(),
+            // A tuple with a position in it: `none` is that position at -1.
+            Ty::Tuple(_) | Ty::Record(_) => {
+                let held = cty(program, niches, inner);
+                let at = inner
+                    .fields()
+                    .unwrap_or_default()
+                    .iter()
+                    .position(|item| matches!(item, Ty::Pos(_) | Ty::Bound(_)));
+                match at {
+                    Some(at) => format!("cpl::OptTuple<{held}, {at}>"),
+                    None => format!("std::optional<{held}>"),
+                }
+            }
             _ => format!("std::optional<{}>", cty(program, niches, inner)),
         },
         Ty::Tuple(items) => {

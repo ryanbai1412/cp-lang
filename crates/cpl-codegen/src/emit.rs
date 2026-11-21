@@ -255,7 +255,7 @@ impl<'p> Emitter<'p> {
         let cpp = cty(self.program, self.niches, ty);
         // A packed optional can be the type of an expression alone, so
         // what the file needs is noted where the type is written.
-        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar"].iter().enumerate() {
+        for (at, name) in ["cpl::OptPos", "cpl::OptBool", "cpl::OptChar", "cpl::OptTuple"].iter().enumerate() {
             if cpp.contains(name) {
                 self.niche_types.set(self.niche_types.get() | 1 << at);
             }
@@ -819,7 +819,7 @@ impl<'p> Emitter<'p> {
         out.push_str(
             "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
         );
-        for (at, piece) in ["niche", "niche_bool", "niche_char"].into_iter().enumerate() {
+        for (at, piece) in ["niche", "niche_bool", "niche_char", "niche_tuple"].into_iter().enumerate() {
             if self.niche_types.get() & 1 << at != 0 {
                 self.need(piece);
             }

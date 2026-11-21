@@ -465,3 +465,20 @@ fn a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list
         assert!(!cpp.contains(&format!("& {copied} = ")), "{copied}: {cpp}");
     }
 }
+
+#[test]
+fn an_optional_tuple_with_a_position_has_no_flag() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "domain V = 0..n\n",
+        "var far: ?(depth: Int, child: V) = none\n",
+        "far = (3, V.first)\n",
+        "var plain: ?(Int, Int) = none\n",
+        "plain = (1, 2)\n",
+        "print(far, plain)\n",
+    ));
+    assert!(cpp.contains("cpl::OptTuple<std::tuple<ll, int>, 1> far"), "{cpp}");
+    assert!(cpp.contains("template <class T, size_t K> struct OptTuple {"), "{cpp}");
+    // No `Int` of a tuple is free to say `none`.
+    assert!(cpp.contains("std::optional<std::tuple<ll, ll>> plain"), "{cpp}");
+}
