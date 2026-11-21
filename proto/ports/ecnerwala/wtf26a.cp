@@ -4,13 +4,11 @@
 const MOD = 998244353
 type Z = Mod<MOD>
 
-@!multitest
+@! multitest
 let n: Int = read()
-var edges: List<(w: Int, u: Int, v: Int)> = []
-for _ in 0..n - 1:
-    let (u, v, w): (Int, Int, Int) = read()
-    edges.push((w, u - 1, v - 1))
-edges = sorted(edges, by: e => -e.w)
+domain U = 1..=n
+let raw: [0..n - 1](u: U, v: U, w: Int) = read()
+let edges = sorted(raw, by: e => e.w, desc: true)
 let max_w = edges[0].w * (n - 1)
 
 let m = 2 * (n - 1)
@@ -18,52 +16,42 @@ var cut_w: [0..m]Int = 0
 var cut_sz: [0..m]Int = 0
 var cut_ng: [0..m]Int = 0
 
-var par: [0..n]Int = -1
-var label = [0..n] i => i
-fn find_root(mut p: [0..n]Int, var x: Int) -> Int:
-    while p[x] >= 0:
-        if p[p[x]] >= 0: p[x] = p[p[x]]
-        x = p[x]
-    x
-
-for e in 0..n - 1:
-    var a = find_root(mut par, edges[e].u)
-    var b = find_root(mut par, edges[e].v)
-    if par[a] > par[b]: swap(mut a, mut b)
-    let la = label[a]
-    let lb = label[b]
-    cut_w[la] = edges[e].w * (-par[b])
-    cut_sz[la] = -par[a]
+var dsu1 = Dsu<U>()
+var sz: [U]Int = 1
+var label = [U] u => u.to_idx
+for (e, edge) in edges.items:
+    let (a, b) = dsu1.merge(edge.u, edge.v)!
+    let (la, lb) = (label[a], label[b])
+    cut_w[la] = edge.w * sz[b]
+    cut_sz[la] = sz[a]
     cut_ng[la] = n + e
-    cut_w[lb] = edges[e].w * (-par[a])
-    cut_sz[lb] = -par[b]
+    cut_w[lb] = edge.w * sz[a]
+    cut_sz[lb] = sz[b]
     cut_ng[lb] = n + e
-    par[a] += par[b]
-    par[b] = a
+    sz[a] += sz[b]
     label[a] = n + e
 
-for i in (0..m).rev:
-    let ng = cut_ng[i]
-    if ng < m: cut_w[i] += cut_w[ng]
+for i in (0..m).rev if cut_ng[i] < m:
+    cut_w[i] += cut_w[cut_ng[i]]
 
-var cuts: List<(w: Int, u: Int, v: Int)> = []
-for i in 0..m:
-    let w = if cut_w[i] > max_w / cut_sz[i]: max_w else: cut_w[i] * cut_sz[i]
-    cuts.push((w, i, cut_ng[i]))
-cuts = sorted(cuts, by: c => -c.w)
+let cuts = sorted(
+    [
+        (
+            w: if cut_w[i] > max_w / cut_sz[i]: max_w else: cut_w[i] * cut_sz[i],
+            u: i,
+            v: cut_ng[i],
+        ) for i in 0..m
+    ],
+    by: c => c.w,
+    desc: true,
+)
 
-let total_nodes = 2 * n - 1
-domain V = 0..total_nodes
+domain V = 0..(2 * n - 1)
 var dsu = Dsu<V>()
-var freq: [V]Int = 0
-for i in 0..n: freq[V(i)] = 1
+var freq = [V] v => Int(v.to_idx < n)
 var ans: Z = 0
 for c in cuts:
-    let ra = dsu.find(V(c.u))
-    let rb = dsu.find(V(c.v))
-    let fa = freq[ra]
-    let fb = freq[rb]
-    ans += Z(fa) * Z(fb) * Z(c.w)
-    dsu.unite(ra, rb)
-    freq[dsu.find(ra)] = fa + fb
+    if let (kept, merged) = dsu.merge(V(c.u), V(c.v)):
+        ans += Z(freq[kept]) * Z(freq[merged]) * Z(c.w)
+        freq[kept] += freq[merged]
 print(ans)

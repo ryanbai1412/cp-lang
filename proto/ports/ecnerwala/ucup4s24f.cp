@@ -1,7 +1,7 @@
 // UCup 4 Stage 24 (Wulin) F: scan prefix sums mod R right-to-left, maintaining
 // the farthest last-occurrence among all R residues via a lazy max-heap and
 // querying the minimum valid next DP state with a monotonic deque.
-@!multitest
+@! multitest
 let (n, r): (Int, Int) = read()
 let a: [0..n]Int = read()
 let c: [0..n]Int = read()
@@ -19,18 +19,19 @@ for i in (1..=n).rev:
     let rem = pref[i]
     last_occ[rem] = i
     occ_heap.push((i, rem))
+
     var first_full = n + 1
     if last_occ.len == r:
-        while not occ_heap.is_empty:
-            let (pos, val) = occ_heap.peek!
+        while let (pos, val) = occ_heap.peek:
             if last_occ[val] == pos:
                 first_full = pos
                 break
             occ_heap.pop()
-    while not dq.is_empty and dq.first!.1 > first_full:
+
+    while let (_, idx) = dq.first, idx > first_full:
         dq.pop_front()
     dp[i] = c[i - 1] + dq.first!.0
-    while not dq.is_empty and dp[i] <= dq.last!.0:
+    while let (val, _) = dq.last, dp[i] <= val:
         dq.pop()
     dq.push((dp[i], i))
 
