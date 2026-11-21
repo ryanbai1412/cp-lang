@@ -21,17 +21,18 @@ for v in tree.Pre.rev:
     if let (l, r) = kids[v]: gen[v] = max(gen[l], gen[r] + 1)
 let by_gen = V.group(by: v => gen[v])
 
-var set: [V]PMultiset<0..n> = PMultiset.empty
-var key: [V]0..n = 0
+domain Key = 0..n
+var set: [V]PMultiset<Key> = PMultiset.empty
+var key: [V]Key = Key.first
 var next_key = 0
 var order: List<V> = []
 for g in 0..n:
     for v in by_gen[g]:
         if let (l, r) = kids[v]: set[v] = set[l].with(key[r])
-    let ranked = by_gen[g].sort(cmp: (u, v) => set[u].cmp(set[v], desc: true) then u <=> v)
+    let ranked = by_gen[g].sorted(by: v => (desc(set[v]), v))
     let groups = ranked.runs_by(v => set[v])
     for (r, (_, run)) in groups.items:
-        for v in run: key[v] = next_key + r
+        for v in run: key[v] = Key(next_key + r)
     next_key += groups.len
     order.extend(ranked)
 print(order)
