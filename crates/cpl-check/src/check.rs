@@ -464,6 +464,10 @@ impl<'a> Checker<'a> {
         if let Some(ty) = prelude::value(name) {
             return ty;
         }
+        // A spec stub's body: `pub fn f(x: Int) -> Int = todo`.
+        if name == "todo" {
+            return Ty::Unknown;
+        }
         if let Some(replacement) = renamed_prefix_name(name) {
             let msg = format!("`{name}` was replaced by `{replacement}`");
             if let Some(diag) = self.error(codes::UNRESOLVED_NAME, span, msg) {
