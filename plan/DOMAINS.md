@@ -183,33 +183,34 @@ library) on matched benchmarks.
 The local library (`examples/local-lib/`) is the staging area: a module
 is promoted once it meets the stdlib bar.
 **Where we are.** 25 modules, 280 distinct public names (389 `pub`
-declarations including methods), 160 `@test`s passing in
-`cpl test stdlib` (164 after number theory). Number theory is complete
-for single numbers (Miller-Rabin and Pollard's rho exact for every
-`Int`, `phi`, `primitive_root`, `floor_sum`, O(1) `mul_mod`), used by
-two ports. Rollback union-finds share a typed `Mark`; `DsuOf<V, T>`
-rolls a value per set back with the sets and `ParityDsu<V>` keeps sides
-(`cf2222f`, `cf2237h` pass 150 random cases each against the originals). Present but thin: RNG (seeded stream, no pick/perm/sample), bitsets (set algebra, shift,
-next; no prev/first/last), flows (Dinic, min cut, Hungarian; no
-Hopcroft-Karp, no min-cost flow), strings (Z, prefix function, suffix
-array, LCP, rolling hash; no Manacher, no Aho-Corasick), geometry
-(integer points, turns, segments, area, point location; no hull).
-Absent: NTT and convolution, matrices, search over reals and
-unimodal functions. NTT, matrices, primes, matching and min-cost flow
-exist in `examples/local-lib/`; ports import only `lib.math.poly` (9
-files) and `lib.math.powers` (1). 37 public names appear in no port or
-example (only in stdlib's own tests). `plan/STDLIB.md` is the design of
-the whole surface; a test fails when a public name is missing from it.
+declarations including methods). Number theory is complete for single
+numbers (Miller-Rabin and Pollard's rho exact for every `Int`, `phi`,
+`primitive_root`, `floor_sum`, O(1) `mul_mod`). Rollback union-finds
+share a typed `Mark`; `DsuOf<V, T>` rolls a value per set back with the
+sets and `ParityDsu<V>` keeps sides (`cf2222f`, `cf2237h` pass 150
+random cases each). The test folds take a test after the sequence
+(`count(xs, p)`, `all`, `any`, `first(xs, p) -> ?T`, `xs.count(p)`) and
+`prod` joins `sum` (`tested_folds` differential fixture; `cf2207e2`
+passes 150 random cases). Present but thin: RNG, bitsets, flows,
+strings, geometry. Absent: NTT and convolution, matrices, search over
+reals. `plan/STDLIB.md` is the design of the whole surface; a test fails
+when a public name is missing from it.
+**Structure.** Ten area owners (graphs, trees, range structures,
+strings, number theory/combinatorics, flows/matching, containers,
+geometry, DP/search, sequences) each own their part of
+`plan/STDLIB.md` section 4, write `design/stdlib/<area>.md` and build
+it; the table "Who owns what" there lists each area's queue. The
+coordinator owns sections 1 to 3, cross-area coherence and the prelude
+budget, reviews each design against `design/stdlib/README.md`, and
+routes frictions.
 **Bar.** Every item of `plan/STDLIB.md` marked [new] or [rename] has
 landed with tests; every public name is used by a port or an example;
 the [rename]s have codemods and the ports are moved.
-**Next.** `std.ntt`; `std.matrix`;
-`bsearch_real` and `ternary_max`; RNG `pick`/`perm`/`sample`; bitset
-`first`/`last`/`prev`; `max_matching` and `CostFlow`; `manacher` and
-`AhoCorasick`; `convex_hull`; then the `_by` renames. From the
-wave-11 frictions (`research/frictions/cf2237h.md`, `cf2222f.md`): an
-interval run map;
-offline divide and conquer over time; predicate counting; link-cut tree.
+**Next (coordinator).** Review the ten area designs as they arrive;
+route new frictions; keep section 2 the single vocabulary (the `_by`
+renames, `find` vs `first`); bring section 3's core asks (variadic
+`min`/`max`, scoped rollback, writable places through methods) to the
+core lane.
 
 ## 5. Diagnostics and front end (`plan/30` 3.7)
 **North star.** Every error is the message an expert coach would give: what is wrong,

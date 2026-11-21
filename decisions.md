@@ -1648,6 +1648,19 @@ substring search on `Str`; the first element matching is `first`.
 Reverse: drop `tested_walk` from the `count`/`all`/`any`/`first` arms
 and the method hook; ports go back to the walk form.
 
+26.10. **Stdlib areas own section 4; a cross-area item goes to the area
+of the type it returns.** Ten owners each take a slice of
+`plan/STDLIB.md` section 4 (table "Who owns what"); the coordinator
+keeps sections 1 to 3, the prelude, `std.spec` and section 5. Items no
+area named are placed by what they are: RNG and hashing with number
+theory, bitsets and `List` methods with containers, `std.grid` with graphs, offline time divide and
+conquer with containers (its owner designed `offline_over` beside the
+rollback DSU), link-cut trees with
+trees, the searches on answers with DP/search, the walk folds'
+compiler side in section 3 and their library side with sequences.
+Reason: one owner per name keeps one vocabulary reviewable. Reverse:
+edit the table; the routing rule in `design/stdlib/README.md` follows it.
+
 ## 27. Interpreter, debugger and traces
 
 27.1. **Runtime traps carry call stacks, multitest case numbers, and concrete values.**

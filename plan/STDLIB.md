@@ -17,6 +17,30 @@ Every item is marked:
   deprecated alias until a codemod moves the ports;
 - **[local]** lives in `examples/local-lib/` today and is promoted here.
 
+## Who owns what
+
+Ten area owners each own their part of section 4, write its design in
+`design/stdlib/<area>.md` and build it; the coordinator owns sections 1
+to 3 (principles, naming, core features), the prelude budget (4.1), `std.spec`
+(4.15) and section 5, reviews every area design before it lands against the
+checklist in `design/stdlib/README.md`, and routes each stdlib friction
+in `research/frictions/` to the owner below. An item that spans two
+areas belongs to the area of the type it returns; a new intrinsic or
+core feature goes through section 3 and the core lane.
+
+| Area | Owns | Handed over with its queue |
+|---|---|---|
+| sequences | 4.2 except the searches; the walk folds' library side | `runs`/`chunk_by` over any `Seq` incl. `Str` (`cf2084h`, `cf2069e`); `enumerate`; the `_by` renames |
+| DP/search | 4.2 searches; DP helpers | `bsearch_real`, `ternary_max` |
+| number theory/combinatorics | 4.3 to 4.7 (`math`, `mod`, `ntt`, `matrix`, `rand`, hashing) | exact-`Int` convolution, cyclic correlation, `Mod<P>`→`Int` (`cf2201e`); `Z.comb(n)` in place of `Comb<P>` (14 friction reports); RNG `pick`/`perm`/`sample` |
+| containers | 4.8, 4.9 (`bitset`, `bag`, `deque`, `heap`, `dsu`, `marks`), `List` methods | `SortedBag` O(1) cursors (`cf2066e`, 6.1x slow); `IntervalMap` (`cf2237h`); `Bits<D>` unifying `Bitset`/`Subset` (`cf2147h`); `List.truncate`/`extend` (`cf2084h`, `cf2178h`); offline divide and conquer over time, `offline_over` (`cf2069f`, `cf2222f`, `cf2237h`) |
+| range structures | 4.10 | `LazySegTree` over `Bounds<D>` with constant init (`cf2207f`) |
+| graphs | 4.11 `std.graph`, 4.15 `std.grid` | (design not yet written) |
+| trees | 4.11 `std.tree`, `std.tour` | link-cut tree (`cf2222f`, `cf2237h`) |
+| flows/matching | 4.12 | `FlowGraph.reset()` (`cf2147h`); `max_matching`, `CostFlow` |
+| strings | 4.13 | `manacher`, `AhoCorasick` |
+| geometry | 4.14 | `convex_hull` |
+
 ## 1. Principles
 
 The stdlib is ordinary CP Lang. A module may use only what a user library
@@ -116,6 +140,13 @@ types the name from the editorial.
 division, O(sqrt x); `Sieve(n).factor(x)` is O(log x) after an O(n)
 sieve; `factor_big(x)` is Pollard's rho for x up to 4e18. Each doc says
 which to reach for.
+
+**Costs are written one way.** A trailing `// O(...)` on the signature
+here and the same in the `///` comment: time first, then memory when
+it is not O(1) extra (`// O(n log n), O(n) memory`). Amortized and
+expected bounds say so in words after the bound (`// O(alpha(n)) amortized`,
+`// O(n) expected`); `n` is the structure's size unless the comment
+names another variable.
 
 **Index spaces.** A function over positions takes and returns the
 domain (`?D`, `Bounds<D>`, `Range<D>`), never a raw `Int`, when its
