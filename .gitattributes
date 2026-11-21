@@ -1,0 +1,2 @@
+# GitHub has no CP Lang grammar; Rust is the closest that knows // comments and ..= ranges.
+*.cp linguist-language=Rust

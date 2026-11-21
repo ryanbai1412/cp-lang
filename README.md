@@ -9,6 +9,18 @@ The language is locked at **0.2.2**. The whole surface fits on
 contestants, 4 for library authors), 4 numeric types and 7 auto-derived
 core traits.
 
+## Where things stand
+
+- [Latest ports](research/PORTS.md): accepted solutions rethought in CP Lang,
+  newest first, each with its C++ original and friction report.
+- [Domains](plan/DOMAINS.md): each part of the project, its north star and
+  its next steps.
+- [Decisions](decisions.md) and [retros](research/retros/): design calls with
+  their reasons, and why the way we work changed.
+- [Target design](design/README.md): the spec and the goals it answers to.
+- Working on the code? Start with [AGENTS.md](AGENTS.md), then
+  [REPO.md](REPO.md) for the layout.
+
 ## Before and after
 
 Fewest coins that sum to `x`, or `-1` when no combination does. In C++17
