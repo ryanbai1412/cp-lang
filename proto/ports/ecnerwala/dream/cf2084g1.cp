@@ -1,15 +1,35 @@
-// cf2084g1 as it should read: layered DP over values in increasing order.
+// Codeforces 2084 G1: Wish Upon a Satellite (Easy Version).
+//
+// Beauty = sum over k in 0..n of the number of segments whose f exceeds k.
+// At threshold k call the k smallest values small and the rest large, and
+// let d(X) = (#X on even positions) - (#X on odd positions). Exactly
+// ((n + 1)(n - k) + d(small) * d(large)) / 2 segments have f > k (brute
+// force agrees for every permutation with n <= 6). Summed over k the first
+// term is n(n + 1)^2 / 2, so b only matters through the products, and they
+// only see which values sit on even positions.
+//
+// So place the values in increasing order. With c of the k smallest on the
+// n / 2 even positions, d(small) = 2c - k and d(large) = 2(n/2 - c) - (n - k).
+// best[c] is the largest sum of products so far; a value fixed by `a` keeps
+// the side of its position. O(n^2).
+enum Side: Odd, Even
+
 @!multitest
 let n: 1..=5000 = read()
 domain P = 1..=n
 let a: [P]?(1..=n) = read(none: 0)
 let half = n / 2
-let even: [1..=n]?Bool = a.invert().map(i => i.label.even)
+let at = a.inverse()
+fn side(p: P) -> Side = if p.label % 2 == 0: Even else: Odd
 
-var dp: [0..=n, 0..=half]?Int = none @rolling(0)
-dp[0, 0] = 0
-for k in 0..n, c in 0..=min(k, half), z in [false, true]:
-    if c + Int(z) <= half and even[k + 1].allows(z):
-        let gain = (2 * c - k) * (2 * (half - c) - (n - k))
-        dp[k + 1, c + Int(z)] max= dp[k, c] + gain
-print((dp[n, half]! + n * (n + 1) * (n + 1) / 2) / 2)
+var best: [0..=half]?Int = none
+best[0] = 0
+for k in 0..n:
+    let forced = at[k + 1].map(side)
+    var next: [0..=half]?Int = none
+    for c in 0..=min(k, half):
+        let product = (2 * c - k) * (2 * (half - c) - (n - k))
+        for (s, to) in [(Odd, c), (Even, c + 1)] if (forced ?? s) == s and to <= half:
+            next[to] max= best[c] + product
+    best = next
+print((best[half]! + n * (n + 1) ** 2 / 2) / 2)
