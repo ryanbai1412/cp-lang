@@ -3806,3 +3806,13 @@ costs no program. An arc id past 2^31 traps with "is outside
 - **Decision.** Replace `Program::narrow_elems`'s flat `IntWidth` with recursive `NarrowLayout` (`Int(IntWidth)`, `Tuple(Vec<IntWidth>)`, `Seq(Box<NarrowLayout>)`), narrowing multi-dimensional arrays (`[R, C]lo..=hi` -> `cpl::Grid<uint32_t|int32_t, 2>`), nested arrays/lists (`[D][E]lo..=hi`, `[D]List<lo..=hi>` -> `std::vector<std::vector<uint32_t|int32_t>>`), and sequences of all-ranged tuples (`[V](r1, r2)` -> `std::vector<std::tuple<uint32_t|int32_t, ...>>`). Flow analysis tracks `(ElemLoc, depth)` and widens the root container conservatively on any mismatch (plain `[R, C]Int` / `[E]Int` / `[V](Int, Int)` params, incompatible assignments/push/extend/for-binding, `mut` element escapes, or non-natural sort). Leaf `Int` and `Tuple` reads widen to `ll` / `std::tuple<ll, ...>` before arithmetic.
 - **Why.** Multi-dimensional DP tables, nested adjacency/bucket tables, and ranged pair lists are among the largest memory consumers in contest solutions; generalizing `NarrowLayout` handles all three with one recursive rule instead of separate passes, while preserving 64-bit arithmetic and interpreter/C++ parity.
 - **Reverse.** Restrict `RangeInfo::narrow_elem_layout` in `crates/cpl-ir/src/lower/range.rs` back to 1D `Ty::Int` sequences only.
+
+## 118. `Compressed` and `Reversible` leave the prelude for `Tree`, `IntervalMap`, `SortedSet` and `divmod` (2026-11-21)
+
+Four names with users who write them without a `use` were queued for a prelude that held 78 of its
+80 names: `Tree` (30 ports, 3 dreams), `IntervalMap` (2 ports, 2 dreams), `SortedSet` (3 dreams) and
+`divmod` (3 dreams). `IntervalMap` (113) and `SortedSet` (117) took the last two slots. Following
+21.5, two names that only library authors write move out to make room for the other two: `Compressed`
+is the return type of `compress` and no port or dream names it, and `Reversible` is a trait bound named
+only in `stdlib/` and `examples/local-lib`. Programs that call `compress` are unchanged. Reverse by
+restoring the two lines in `stdlib/prelude.cp` and dropping two of the four.

@@ -230,10 +230,11 @@ file), then the [new] and [rename] items it still owes.
 
 ### 4.1 `std.prelude`
 
-The names every program sees without a `use`: the 80-name budget is a
-test (`prelude_stays_under_budget`). A name earns a slot when ports
-reach for it in more than one file in ten. Everything else is one `use`
-away, and the compiler's missing-name hint names the module (it is read
+The names every program sees without a `use`: the 80-name budget is
+checked by `scripts/check.sh` (decision 21.5). A name earns a slot when
+ports and dreams write it without a `use`; a name only library authors
+write (`Compressed`, `Reversible`) gives its slot up, and a name joins
+only when another leaves. Everything else is one `use` away, and the compiler's missing-name hint names the module (it is read
 off the files by `build.rs`, so a new `pub fn` needs no second edit).
 
 ### 4.2 `std.seq`: sequences, sorted lookup, search on answers

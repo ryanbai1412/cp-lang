@@ -9,7 +9,7 @@
 //! compiler. A library module says what it uses: only the program being
 //! checked or run gets the prelude.
 
-use std.algebra.{Action, Desc, Monoid, Reversible, desc, fold}
+use std.algebra.{Action, Desc, Monoid, desc, fold}
 use std.bag.{SortedBag, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
@@ -28,7 +28,6 @@ use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix}
 use std.segtree.{SegTree}
 use std.seq.{
-    Compressed,
     bsearch_first,
     bsearch_last,
     compress,
