@@ -2,6 +2,7 @@
 """Unit tests for scripts/check_cache.py and .githooks/pre-push."""
 
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -11,30 +12,91 @@ import scripts.check_cache as cc
 
 
 class CheckCacheTest(unittest.TestCase):
-    def test_hash_changes_on_edit_and_ignores_pycache(self):
+    def git_tree(self, tmp, files):
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        subprocess.run(["git", "init", "-q"], cwd=tmp, check=True, env=env)
+        for rel, text in files.items():
+            os.makedirs(os.path.dirname(os.path.join(tmp, rel)) or tmp, exist_ok=True)
+            with open(os.path.join(tmp, rel), "w", encoding="utf-8") as f:
+                f.write(text)
+        return env
+
+    def test_a_stage_key_covers_the_whole_tree_but_its_excludes(self):
         with tempfile.TemporaryDirectory() as tmp:
-            os.makedirs(os.path.join(tmp, "src", "__pycache__"), exist_ok=True)
-            f1 = os.path.join(tmp, "src", "a.rs")
-            with open(f1, "w", encoding="utf-8") as f:
-                f.write("fn main() {}\n")
-            d1 = cc.hash_paths(tmp, ["src"])
-
-            # Writing inside __pycache__ must not invalidate the hash.
-            with open(os.path.join(tmp, "src", "__pycache__", "x.pyc"), "wb") as f:
-                f.write(b"1234")
-            self.assertEqual(cc.hash_paths(tmp, ["src"]), d1)
-
-            # Editing a tracked source file must invalidate the hash.
-            with open(f1, "w", encoding="utf-8") as f:
-                f.write("fn main() { let _ = 1; }\n")
-            d2 = cc.hash_paths(tmp, ["src"])
-            self.assertNotEqual(d1, d2)
+            self.git_tree(tmp, {
+                ".gitignore": "target/\n",
+                "crates/a.rs": "fn main() {}\n",
+                "plan/STDLIB.md": "design\n",
+                "plan/DOMAINS.md": "status\n",
+                "research/notes.md": "x\n",
+                "target/out": "build output\n",
+            })
+            pats = ["research/*", "plan/*", "!plan/STDLIB.md"]
+            key = lambda: cc.stage_key(cc.manifest(tmp), "clippy", pats)
+            before = key()
+            for rel in ["research/notes.md", "plan/DOMAINS.md", "target/out"]:
+                with open(os.path.join(tmp, rel), "a", encoding="utf-8") as f:
+                    f.write("edit\n")
+                self.assertEqual(key(), before, rel)
+            for rel in ["crates/a.rs", "plan/STDLIB.md", "new_untracked.txt"]:
+                with open(os.path.join(tmp, rel), "a", encoding="utf-8") as f:
+                    f.write("edit\n")
+                self.assertNotEqual(key(), before, rel)
+                before = key()
+            os.chmod(os.path.join(tmp, "crates/a.rs"), 0o755)
+            self.assertNotEqual(key(), before)
 
             cache_dir = os.path.join(tmp, "cache")
-            self.assertFalse(cc.is_hit(cache_dir, "clippy", d2))
-            cc.save_hit(cache_dir, "clippy", d2)
-            self.assertTrue(cc.is_hit(cache_dir, "clippy", d2))
-            self.assertFalse(cc.is_hit(cache_dir, "clippy", d1))
+            k = key()
+            self.assertFalse(cc.is_hit(cache_dir, "clippy", k))
+            cc.save_hit(cache_dir, "clippy", k)
+            self.assertTrue(cc.is_hit(cache_dir, "clippy", k))
+            self.assertFalse(cc.is_hit(cache_dir, "clippy", before))
+
+    def test_touching_any_unexcluded_file_invalidates_every_stage(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "scripts", "check.sh"), encoding="utf-8") as f:
+            script = f.read()
+        used = set(re.findall(r"cache_(?:hit|save) (\w+)", script))
+        self.assertEqual(used, set(cc.STAGES))
+        env, *lines = cc.manifest(root).splitlines()
+        # One file from every directory two levels down, so an exclude that
+        # swallows a whole subtree by mistake shows up.
+        firsts = {}
+        for line in lines:
+            firsts.setdefault(tuple(line.split(" ", 1)[1].split("/")[:2]), line)
+        sample = sorted(firsts.values()) + ["Fnew brand-new-top-level-file"]
+        for stage, pats in cc.STAGES.items():
+            before = cc.stage_key("\n".join([env] + sample), stage, pats)
+            kept = 0
+            for i, line in enumerate(sample):
+                path = line.split(" ", 1)[1]
+                touched = sample[:]
+                touched[i] = "Fchanged " + path
+                moved = cc.stage_key("\n".join([env] + touched), stage, pats) != before
+                self.assertEqual(moved, not cc.excluded(path, pats), f"{stage}: {path}")
+                kept += moved
+            self.assertGreater(kept, 10, stage)
+            other = cc.stage_key("\n".join(["other-toolchain"] + sample), stage, pats)
+            self.assertNotEqual(other, before, stage)
+
+    def test_no_stage_excludes_a_file_the_rust_build_reads(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        reads = ["stdlib/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
+        for d, _, names in os.walk(os.path.join(root, "crates")):
+            for n in names:
+                if not n.endswith(".rs"):
+                    continue
+                with open(os.path.join(d, n), encoding="utf-8") as f:
+                    src = f.read()
+                for target in re.findall(r'include_(?:str|bytes)!\(\s*"([^"]+)"', src):
+                    path = os.path.relpath(os.path.normpath(os.path.join(d, target)), root)
+                    self.assertTrue(os.path.exists(os.path.join(root, path)), path)
+                    reads.append(path)
+        self.assertIn("plan/STDLIB.md", reads)
+        for stage, pats in cc.STAGES.items():
+            for path in reads:
+                self.assertFalse(cc.excluded(path, pats), f"{stage} excludes {path}, which the build reads")
 
     def test_pre_push_hook_rejects_conflict_markers(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

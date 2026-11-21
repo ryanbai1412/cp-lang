@@ -86,15 +86,20 @@ step() {
     printf '\n==> %s\n' "$*"
 }
 fail() { echo "check: $*" >&2; exit 1; }
+# Each cached stage's key hashes the whole tree minus that stage's excludes
+# (scripts/check_cache.py), so a file nobody thought to list still reruns it.
+manifest="$cache_dir/manifest.$$"
+if [ "$use_cache" -eq 1 ]; then
+    mkdir -p "$cache_dir"
+    python3 scripts/check_cache.py manifest "$manifest" || use_cache=0
+fi
 cache_hit() {
     [ "$use_cache" -eq 1 ] || return 1
-    local name="$1"; shift
-    python3 scripts/check_cache.py check "$cache_dir" "$name" "$@"
+    python3 scripts/check_cache.py check "$cache_dir" "$1" "$manifest"
 }
 cache_save() {
     [ "$use_cache" -eq 1 ] || return 0
-    local name="$1"; shift
-    python3 scripts/check_cache.py save "$cache_dir" "$name" "$@"
+    python3 scripts/check_cache.py save "$cache_dir" "$1" "$manifest"
 }
 
 markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
@@ -161,36 +166,21 @@ fi
 
 need cargo "see https://rustup.rs"
 cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
-rust_inputs=(Cargo.toml Cargo.lock crates)
-lib_inputs=(Cargo.toml Cargo.lock crates stdlib examples/local-lib)
-recovery_inputs=(Cargo.toml Cargo.lock crates stdlib proto/ports)
-scoreboard_inputs=(
-    Cargo.toml Cargo.lock crates stdlib proto/ports
-    research/frictions research/reviews research/scoreboard.json research/scoreboard.ports.jsonl
-    bench/goal_tests
-    scripts/scoreboard.py scripts/friction_lint.py scripts/dream-gaps.py
-    scripts/writable-from-docs.py scripts/test_scoreboard.py scripts/test_dream_gaps.py
-    scripts/test_review_check.py scripts/check_cache.py scripts/test_check_cache.py
-    scripts/cxx-cache.py scripts/test_cxx_cache.py
-)
-site_inputs=(Cargo.toml Cargo.lock crates stdlib site docs proto/ports/ecnerwala design/sketches/ioi2025)
 
 step "cargo clippy --workspace --all-targets -- -D warnings"
-if cache_hit clippy "${rust_inputs[@]}"; then
-    echo "cached (rust inputs unchanged)"
+if cache_hit clippy; then
+    echo "cached (tree unchanged outside its excludes)"
 else
     cargo clippy --workspace --all-targets -- -D warnings
-    cache_save clippy "${rust_inputs[@]}"
+    cache_save clippy
 fi
 
 # The library tests only need the cpl binary, so they run beside the
 # workspace tests, one process per library directory, and their output is
 # printed after them. A .cp file directly in examples/local-lib/ would not be
 # in any subdirectory, so then the whole library runs as one process.
-if [ ! -x "$cpl" ] || ! cache_hit cpl_build "${rust_inputs[@]}"; then
-    cargo build -q -p cpl-cli
-    cache_save cpl_build "${rust_inputs[@]}"
-fi
+# Never cached: another tree may have rebuilt the shared binary since.
+cargo build -q -p cpl-cli
 lib_logs="$(mktemp -d)"
 lib_dirs=(stdlib)
 if compgen -G "examples/local-lib/*.cp" >/dev/null; then
@@ -203,7 +193,7 @@ recovery_pid=""
 scoreboard_pid=""
 site_test_pid=""
 stdlib_cached=0
-if cache_hit stdlib_test "${lib_inputs[@]}"; then
+if cache_hit stdlib_test; then
     stdlib_cached=1
 else
     for d in "${lib_dirs[@]}"; do
@@ -213,7 +203,7 @@ else
 fi
 cleanup() {
     kill "${lib_pids[@]}" ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${site_test_pid:+"$site_test_pid"} 2>/dev/null || true
-    rm -rf "$lib_logs" ${tmp:+"$tmp"}
+    rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
 
@@ -233,9 +223,9 @@ slow_tests=(
     front_end_check_is_under_50_ms
     recovery_scoreboard
 )
-if cache_hit nextest_doc "${lib_inputs[@]}"; then
+if cache_hit nextest_doc; then
     step "cargo nextest + doctests"
-    echo "cached (rust + stdlib inputs unchanged)"
+    echo "cached (tree unchanged outside its excludes)"
 else
     if cargo nextest --version >/dev/null 2>&1; then
         step "cargo nextest run --workspace (without the --full tests)"
@@ -253,13 +243,13 @@ else
         done
         cargo test --workspace -- "${skips[@]}"
     fi
-    cache_save nextest_doc "${lib_inputs[@]}"
+    cache_save nextest_doc
 fi
 
 # Run the recovery scoreboard in parallel with the remaining fast checks
 # (nextest, doctests, and LSP latency tests have finished, so no Cargo lock contention).
 recovery_cached=0
-if cache_hit recovery "${recovery_inputs[@]}"; then
+if cache_hit recovery; then
     recovery_cached=1
 else
     cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
@@ -268,7 +258,7 @@ fi
 
 step "cpl test stdlib examples/local-lib"
 if [ "$stdlib_cached" -eq 1 ]; then
-    echo "cached (rust + stdlib inputs unchanged)"
+    echo "cached (tree unchanged outside its excludes)"
 else
     lib_status=0
     for pid in "${lib_pids[@]}"; do
@@ -277,7 +267,7 @@ else
     cat "$lib_logs"/*.log | awk '/^[0-9]+ passed, [0-9]+ failed$/ { p += $1; f += $3 }
         END { printf "%d passed, %d failed\n", p, f }'
     [ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
-    cache_save stdlib_test "${lib_inputs[@]}"
+    cache_save stdlib_test
 fi
 
 step "stdlib/prelude.cp: at most 80 names"
@@ -290,7 +280,7 @@ step "cpl fmt --check stdlib"
 
 # Fast validation scoreboard runs in background in parallel with site bundle + docs/site tests.
 scoreboard_cached=0
-if cache_hit scoreboard_fast "${scoreboard_inputs[@]}"; then
+if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     (
@@ -311,7 +301,7 @@ check_bundle_parts() {
     python3 site/bundle.py --check-caps || fail "site bundle part over its cap (caps in site/bundle.py)"
 }
 step "site bundle: compiler under 2,100,000 bytes, docs under 620,000"
-if [ -f dist/cp-lang.html ] && cache_hit site_bundle "${site_inputs[@]}"; then
+if [ -f dist/cp-lang.html ] && cache_hit site_bundle; then
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
     check_bundle_parts
@@ -325,12 +315,12 @@ else
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes"
     check_bundle_parts
-    cache_save site_bundle "${site_inputs[@]}"
+    cache_save site_bundle
 fi
 
 step "docs gate + site tests (in parallel)"
-if cache_hit docs_site "${site_inputs[@]}"; then
-    echo "cached (site + docs + rust inputs unchanged)"
+if cache_hit docs_site; then
+    echo "cached (tree unchanged outside its excludes)"
 else
     CPL_SITE_PREBUILT=1 python3 site/test_site.py >"$lib_logs/site_tests.log" 2>&1 &
     site_test_pid=$!
@@ -339,24 +329,24 @@ else
     wait "$site_test_pid" || site_test_status=1
     site_test_pid=""
     [ "$site_test_status" -eq 0 ] || { cat "$lib_logs/site_tests.log"; fail "site tests failed; rerun: python3 site/test_site.py"; }
-    cache_save docs_site "${site_inputs[@]}"
+    cache_save docs_site
 fi
 
 step "validation scoreboard (--fast --check against research/scoreboard.json)"
 if [ "$scoreboard_cached" -eq 1 ]; then
-    echo "cached (ports + scoreboard + rust inputs unchanged)"
+    echo "cached (tree unchanged outside its excludes)"
 elif [ -n "${scoreboard_pid:-}" ]; then
     sb_status=0
     wait "$scoreboard_pid" || sb_status=1
     cat "$lib_logs/scoreboard.log"
     scoreboard_pid=""
     [ "$sb_status" -eq 0 ] || fail "scoreboard regression or unit test failure; rerun: python3 scripts/scoreboard.py --fast --check"
-    cache_save scoreboard_fast "${scoreboard_inputs[@]}"
+    cache_save scoreboard_fast
 fi
 
 if [ "$recovery_cached" -eq 1 ]; then
     step "cargo test: the recovery scoreboard"
-    echo "cached (rust + stdlib + ports inputs unchanged)"
+    echo "cached (tree unchanged outside its excludes)"
 elif [ -n "${recovery_pid:-}" ]; then
     step "cargo test: the recovery scoreboard (backgrounded)"
     recovery_status=0
@@ -364,7 +354,7 @@ elif [ -n "${recovery_pid:-}" ]; then
     cat "$lib_logs/recovery.log"
     [ "$recovery_status" -eq 0 ] || fail "recovery scoreboard failed; rerun: cargo test -p cpl-cli --test recovery"
     recovery_pid=""
-    cache_save recovery "${recovery_inputs[@]}"
+    cache_save recovery
 fi
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"
