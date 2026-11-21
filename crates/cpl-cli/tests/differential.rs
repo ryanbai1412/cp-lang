@@ -810,3 +810,58 @@ print(xs.len, ys.len, xs[ix], ys[iy])
     let checked = cpl_cli::run(&["check", &err_str]);
     assert_ne!(checked.code, 0, "expected domain mismatch between separate compress calls");
 }
+
+#[test]
+fn nth_element_introselect_handles_median_of_3_killer_in_budget() {
+    let dir = std::env::temp_dir().join(format!("cpl-nth-killer-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let cp_path = dir.join("killer.cp");
+    let src = "\
+use std.seq.{nth_element}
+
+let n = 200_000
+var a: List<Int> = [i for i in 0..n]
+var lo = n - 2
+while lo >= 0:
+    let mid = lo + ((n - 1 - lo) >> 1)
+    a.swap(lo + 1, mid)
+    lo -= 2
+
+var b = a.copy()
+a.nth_element(n - 1)
+assert a[n - 1] == n - 1
+for i in 0..n - 1: assert a[i] <= n - 1
+
+b[0..n].nth_element(n / 2)
+assert b[n / 2] == n / 2
+for i in 0..n / 2: assert b[i] <= n / 2
+for i in n / 2 + 1..n: assert b[i] >= n / 2
+
+print(a[n - 1], b[n / 2])
+";
+    std::fs::write(&cp_path, src).unwrap();
+    let cp_str = cp_path.to_string_lossy().into_owned();
+    let cpp_path = dir.join("killer.cpp");
+    let cpp_str = cpp_path.to_string_lossy().into_owned();
+    let built = cpl_cli::run(&["build", &cp_str, "-o", &cpp_str]);
+    assert_eq!(built.code, 0, "build stderr: {}", built.stderr);
+
+    let bin_path = dir.join("killer");
+    let gxx = Command::new("g++")
+        .args(["-std=c++17", "-O2", &cpp_str, "-o"])
+        .arg(&bin_path)
+        .output()
+        .expect("run g++");
+    assert!(gxx.status.success(), "g++ stderr: {}", String::from_utf8_lossy(&gxx.stderr));
+
+    let t0 = std::time::Instant::now();
+    let run = Command::new(&bin_path).output().expect("run killer binary");
+    let elapsed = t0.elapsed();
+    assert!(run.status.success(), "killer stderr: {}", String::from_utf8_lossy(&run.stderr));
+    assert_eq!(String::from_utf8_lossy(&run.stdout), "199999 100000\n");
+    assert!(
+        elapsed < std::time::Duration::from_millis(1000),
+        "introselect median-of-3 killer took {:?}, expected < 1s (O(n^2) regression?)",
+        elapsed
+    );
+}

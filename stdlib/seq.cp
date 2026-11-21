@@ -261,28 +261,64 @@ pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
     (yes, no)
 
 /// Partition `self` in place so `self.at(k)` holds the element that would sit at `k` in sorted order,
-/// with `self.at(i) <= self.at(k)` for `i < k` and `self.at(i) >= self.at(k)` for `i > k`. Works on any `IndexedMut`. O(n) expected, O(1) extra space.
+/// with `self.at(i) <= self.at(k)` for `i < k` and `self.at(i) >= self.at(k)` for `i > k`. Works on any `IndexedMut`. O(n) expected, O(n log n) worst case (introselect), O(1) extra space.
 pub fn nth_element<S: IndexedMut>(mut self: S, k: Int):
     assert 0 <= k and k < self.len, "nth_element index out of range"
     var (lo, hi) = (0, self.len - 1)
-    var state = 1_234_567
-    while lo < hi:
-        state = (state * 48271) % 2_147_483_647
-        let piv = self.at(lo + (state % (hi - lo + 1)))
-        var (lt, i, gt) = (lo, lo, hi)
-        while i <= gt:
-            if self.at(i) < piv:
-                self.swap_idx(lt, i)
-                lt += 1
+    var limit = 0
+    var rem = self.len
+    while rem > 1:
+        rem >>= 1
+        limit += 2
+    unchecked:
+        while lo < hi:
+            if limit == 0:
+                let m = hi - lo + 1
+                var start = m >> 1
+                while start > 0:
+                    start -= 1
+                    var root = start
+                    while (root << 1) + 1 < m:
+                        var child = (root << 1) + 1
+                        if child + 1 < m and self.at(lo + child) < self.at(lo + child + 1):
+                            child += 1
+                        if self.at(lo + root) < self.at(lo + child):
+                            self.swap_idx(lo + root, lo + child)
+                            root = child
+                        else:
+                            break
+                var end = m - 1
+                while end > 0:
+                    self.swap_idx(lo, lo + end)
+                    if lo + end == k: return
+                    var root = 0
+                    while (root << 1) + 1 < end:
+                        var child = (root << 1) + 1
+                        if child + 1 < end and self.at(lo + child) < self.at(lo + child + 1):
+                            child += 1
+                        if self.at(lo + root) < self.at(lo + child):
+                            self.swap_idx(lo + root, lo + child)
+                            root = child
+                        else:
+                            break
+                    end -= 1
+                return
+            limit -= 1
+            let mid = lo + ((hi - lo) >> 1)
+            if self.at(mid) < self.at(lo): self.swap_idx(lo, mid)
+            if self.at(hi) < self.at(lo): self.swap_idx(lo, hi)
+            if self.at(hi) < self.at(mid): self.swap_idx(mid, hi)
+            let piv = self.at(mid)
+            var (i, j) = (lo, hi)
+            while true:
+                while self.at(i) < piv: i += 1
+                while piv < self.at(j): j -= 1
+                if i >= j: break
+                self.swap_idx(i, j)
                 i += 1
-            elif piv < self.at(i):
-                self.swap_idx(i, gt)
-                gt -= 1
-            else:
-                i += 1
-        if k < lt: hi = lt - 1
-        elif k > gt: lo = gt + 1
-        else: return
+                j -= 1
+            if k <= j: hi = j
+            else: lo = j + 1
 
 /// Merge two sorted sequences into one sorted list, taking from `a` before `b` on ties.
 /// Works on any `Indexed` sequences (`List<T>`, `[D]T`, `Str`, `Range`, views). O(|a| + |b|).
@@ -1230,6 +1266,16 @@ fn nth_element_merge_sorted_and_rotate_right():
         assert all(a[i] <= a[k] for i in 0..k)
         assert all(a[i] >= a[k] for i in k + 1..n)
         assert sorted(a) == s
+    // Median-of-3 killer exercises the introselect heapsort fallback
+    let kn = 200
+    var killer: List<Int> = [i for i in 0..kn]
+    var klo = kn - 2
+    while klo >= 0:
+        let kmid = klo + ((kn - 1 - klo) >> 1)
+        killer.swap(klo + 1, kmid)
+        klo -= 2
+    killer.nth_element(kn - 1)
+    assert killer[kn - 1] == kn - 1 and all(killer[i] <= kn - 1 for i in 0..kn - 1)
     assert merge_sorted([1, 3, 5], [2, 3, 4, 6]) == [1, 2, 3, 3, 4, 5, 6]
     let empty: List<Int> = []
     assert merge_sorted(empty, [1, 2]) == [1, 2] and merge_sorted([1, 2], empty) == [1, 2]
