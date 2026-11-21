@@ -66,8 +66,7 @@ var order: List<V> = []
 for g in 0..n:
     for v in by_gen[g]:
         if let (l, r) = split(v): set[v] = insert(set[l], 0, n, key[r])
-    var ranked = [Ranked(set[v], v) for v in by_gen[g]]
-    ranked.sort()
+    let ranked = [Ranked(set[v], v) for v in by_gen[g]].sorted()
     for r in ranked.run_ranges(by: x => pool[x.t].h):
         for i in r:
             key[ranked[i].v] = keys

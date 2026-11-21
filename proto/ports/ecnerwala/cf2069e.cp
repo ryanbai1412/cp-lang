@@ -7,7 +7,7 @@ let (a, b, ab, ba): (Int, Int, Int, Int) = read()
 
 let cnt_a = s.count('A')
 let cnt_b = s.len - cnt_a
-var need = max([0, cnt_a - a, cnt_b - b])
+var need = max(0, cnt_a - a, cnt_b - b)
 if need > ab + ba:
     print("NO")
     return

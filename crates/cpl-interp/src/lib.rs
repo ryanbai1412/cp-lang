@@ -2944,8 +2944,24 @@ impl<'p, 'o> Interp<'p, 'o> {
         let first = values.next().unwrap_or_default();
         let optional = |value: Option<Value>| Value::Opt(OptVal::from_option(value));
         Ok(match op {
-            Builtin::Min => values.fold(first, |best, v| if v < best { v } else { best }),
-            Builtin::Max => values.fold(first, |best, v| if v > best { v } else { best }),
+            Builtin::Min => {
+                let mut best = first;
+                for v in values {
+                    if self.cmp_ty_val(&e.ty, &v, &best, span)?.is_lt() {
+                        best = v;
+                    }
+                }
+                best
+            }
+            Builtin::Max => {
+                let mut best = first;
+                for v in values {
+                    if self.cmp_ty_val(&e.ty, &v, &best, span)?.is_gt() {
+                        best = v;
+                    }
+                }
+                best
+            }
             Builtin::Abs => {
                 match first {
                     Value::Int(v) => match v.checked_abs() {
@@ -3433,24 +3449,37 @@ impl<'p, 'o> Interp<'p, 'o> {
                 ),
                 _ => Value::Opt(OptVal::None),
             },
-            Builtin::Sorted => match first {
-                Value::List(mut items) => {
-                    Rc::make_mut(&mut items).sort();
-                    Value::List(items)
+            Builtin::Sorted => {
+                let elem_ty = match &e.ty {
+                    Ty::List(elem) => (**elem).clone(),
+                    _ => Ty::Int,
+                };
+                match first {
+                    Value::List(items) => {
+                        let v = Rc::try_unwrap(items).unwrap_or_else(|r| (*r).clone());
+                        let sorted = self.merge_sort_ty(v, &elem_ty, false, span)?;
+                        Value::List(Rc::new(sorted))
+                    }
+                    Value::ListView(view) => {
+                        let sorted = self.merge_sort_ty(view.to_vec(), &elem_ty, false, span)?;
+                        Value::List(Rc::new(sorted))
+                    }
+                    Value::Array(arr) => {
+                        let sorted = self.merge_sort_ty(arr.to_values(), &elem_ty, false, span)?;
+                        Value::List(Rc::new(sorted))
+                    }
+                    Value::Set(items) => {
+                        let sorted = self.merge_sort_ty(
+                            items.iter().cloned().collect(),
+                            &elem_ty,
+                            false,
+                            span,
+                        )?;
+                        Value::List(Rc::new(sorted))
+                    }
+                    other => other,
                 }
-                Value::ListView(view) => {
-                    let mut items = view.to_vec();
-                    items.sort();
-                    Value::List(Rc::new(items))
-                }
-                Value::Array(arr) => {
-                    let mut items = arr.to_values();
-                    items.sort();
-                    Value::List(Rc::new(items))
-                }
-                Value::Set(items) => Value::List(Rc::new(items.iter().cloned().collect())),
-                other => other,
-            },
+            }
             Builtin::Reversed => match first {
                 Value::List(items) => {
                     Value::ListView(Rc::new(ListViewVal::whole(items, true)))
