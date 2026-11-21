@@ -568,8 +568,17 @@ impl<'a> Parser<'a> {
 
     fn let_stmt(&mut self) -> StmtKind {
         let stmt_start = self.start();
-        let mutable = self.at(T::Var);
+        let mut mutable = self.at(T::Var);
         self.bump();
+        if !mutable && self.at(T::Mut) {
+            let span = Span::new(stmt_start, self.span().end);
+            self.error(
+                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`let mut` is `var` in cp")
+                    .with_fix("replace with `var`", span, "var"),
+            );
+            self.bump();
+            mutable = true;
+        }
         // `let (a: Int, b: Str) = ...`: typed tuple pattern desugars to
         // `let (a, b): (Int, Str) = ...`.
         let mut tuple_elem_tys: Option<Type> = None;

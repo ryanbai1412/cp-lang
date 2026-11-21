@@ -1386,6 +1386,16 @@ fn c_style_logic_and_ranges_are_reported_with_the_cp_spelling_as_a_fix() {
 }
 
 #[test]
+fn rust_let_mut_is_reported_as_var_and_read_as_one() {
+    let d = one_diag("let mut x = 1\nx += 1\n");
+    assert_eq!(d.message, "`let mut` is `var` in cp");
+    assert_eq!(d.fixes[0].edits[0].1, "var");
+    let d = one_diag("var xs = [1]\nwhile let mut c = xs.pop():\n    print(c)\n");
+    assert_eq!(d.message, "a binding in a `let` condition can't be `mut`");
+    assert_eq!(d.fixes[0].edits[0].1, "");
+}
+
+#[test]
 fn single_bitwise_operators_are_not_c_style_logic() {
     assert_eq!(codes("let b = 6 & 3 | 1\nlet c = 6 & &3\n").len(), 1);
     assert!(codes("let b = 6 & 3 | 1\n").is_empty());

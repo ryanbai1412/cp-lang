@@ -94,6 +94,20 @@ impl<'a> Parser<'a> {
             | T::False
             | T::None
             | T::Minus => PatternKind::Literal(Box::new(self.unary())),
+            T::Mut if self.prev_kind() == Some(T::Let) => {
+                let span = self.span();
+                self.error(
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        span,
+                        "a binding in a `let` condition can't be `mut`",
+                    )
+                    .with_help("copy it where it changes: `var x = x` at the top of the block")
+                    .with_fix("remove `mut`", Span::new(span.start, self.span_n(1).start), ""),
+                );
+                self.bump();
+                return self.pattern_atom();
+            }
             _ => {
                 let after = self.prev_kind().map_or("here", |k| k.describe());
                 self.error_expected(
