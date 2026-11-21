@@ -117,6 +117,8 @@ pub(crate) struct Checker<'a> {
     /// True when the enclosing context expects a `Range<D.cuts>` so ranges
     /// over `D.cuts` keep `.cuts` and allow `..=`.
     expected_bounds_range: bool,
+    /// A `Range<V>` is expected here, so a half-open cut-ended literal is the piece.
+    expected_piece: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
     pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
     /// Structs and enums declared inside a fn body, visible to the whole block.
@@ -154,6 +156,7 @@ impl<'a> Checker<'a> {
             self_ty: None,
             lends: lends::Lends::default(),
             expected_bounds_range: false,
+            expected_piece: false,
             local_product_domains: HashMap::new(),
             local_defs: HashMap::new(),
             lambda_params: Vec::new(),
@@ -183,6 +186,16 @@ impl<'a> Checker<'a> {
                     self.local_defs.insert(name, Arc::new(def));
                 }
             }
+        }
+    }
+
+    pub(crate) fn expects_piece(ty: &Ty) -> bool {
+        match ty {
+            Ty::Named { name, args } if name == "Range" => {
+                matches!(args.as_slice(), [Ty::Pos(d) | Ty::Domain(d)] if !d.ends_with(".cuts"))
+            }
+            Ty::Optional(elem) => Self::expects_piece(elem),
+            _ => false,
         }
     }
 

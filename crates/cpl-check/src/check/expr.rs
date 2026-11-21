@@ -154,7 +154,10 @@ impl<'a> Checker<'a> {
                     // Two boundaries enclose positions (`l.l..r.r` is a range of `V`),
                     // except when the enclosing context explicitly expects `Range<V.cuts>`.
                     (Some((bd, base)), _, _, _) | (_, Some((bd, base)), _, _) => {
-                        if self.expected_bounds_range {
+                        let spec = std::env::var_os("CPL_SPEC").is_some();
+                        if self.expected_bounds_range
+                            || (spec && (*inclusive || !self.expected_piece))
+                        {
                             Ty::Pos(bd)
                         } else {
                             Ty::Pos(base)
@@ -970,7 +973,8 @@ impl<'a> Checker<'a> {
             Some(Ty::Named { name, .. }) if name == "Cut" => true,
             _ => false,
         };
-        if inclusive && hi_is_bounds && !self.expected_bounds_range {
+        let spec = std::env::var_os("CPL_SPEC").is_some();
+        if inclusive && hi_is_bounds && !self.expected_bounds_range && (!spec || self.expected_piece) {
             let message = format!(
                 "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
                 self.quote(hi.span)
@@ -2019,7 +2023,9 @@ impl<'a> Checker<'a> {
 
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {
         let base_ty = self.infer(base);
+        let prev_piece = std::mem::replace(&mut self.expected_piece, true);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
+        self.expected_piece = prev_piece;
         match &base_ty {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.

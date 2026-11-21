@@ -526,8 +526,13 @@ impl<'a> Checker<'a> {
                 if declared.as_ref().is_some_and(Self::expects_bounds_range) {
                     self.expected_bounds_range = true;
                 }
+                let prev_piece = std::mem::replace(
+                    &mut self.expected_piece,
+                    declared.as_ref().is_some_and(Self::expects_piece),
+                );
                 let mut init_ty = init.as_ref().map(|init| self.infer(init));
                 self.expected_bounds_range = prev_bounds_range;
+                self.expected_piece = prev_piece;
                 if let (Some(declared), Some(init)) = (&declared, init) {
                     self.readable(declared, init);
                 }

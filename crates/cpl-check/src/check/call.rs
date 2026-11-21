@@ -1137,14 +1137,18 @@ impl<'a> Checker<'a> {
                 }
             };
             let prev_bounds_range = self.expected_bounds_range;
+            let prev_piece = self.expected_piece;
+            self.expected_piece = false;
             if let Some(p) = param {
                 let expected = p.ty.subst(bindings);
                 if Self::expects_bounds_range(&expected) {
                     self.expected_bounds_range = true;
                 }
+                self.expected_piece = Self::expects_piece(&expected);
             }
             let arg_ty = self.infer(&arg.value);
             self.expected_bounds_range = prev_bounds_range;
+            self.expected_piece = prev_piece;
             let Some(param) = param else {
                 if arg.mutable {
                     self.require_mutable(&arg.value, "passed as `mut`");
