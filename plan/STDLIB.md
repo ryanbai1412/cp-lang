@@ -1023,8 +1023,9 @@ struct LazyTreap<T, F> // [new] randomized treap with subtree-size-aware lazy ta
     fn apply_all(mut self, f: F) // O(1)
     fn apply_range(mut self, lo: Int, hi: Int, f: F) // O(log n) expected
     fn get(mut self, pos: Int) -> T // O(log n) expected
-    fn take(mut self, k: Int) -> List<T> // O(k + log n)
-    fn to_list(mut self) -> List<T> // O(n)
+    fn reserve(mut self, n: Int) // O(n); room for n elements, no regrowth
+    fn take(self, k: Int) -> List<T> // O(k + log n); pending tags carried, not pushed
+    fn to_list(self) -> List<T> // O(n)
 const AddSum = Action<Int, Int>(0, +, (f, x, len) => x + f * len, over: +)
 const AddMin = Action<Int, Int>(0, +, (f, x, len) => x + f, over: min)
 const AddMax = Action<Int, Int>(0, +, (f, x, len) => x + f, over: max)
@@ -1666,6 +1667,7 @@ at `lo` plus its slopes in a lazy treap. Laws and the worked port:
 struct Concave
 fn Concave.point(d: Int) -> Concave          // O(1); 0 at d only
 fn Concave.flat(r: Range<Int>) -> Concave    // O(len log len) expected; 0 on r
+fn reserve(mut self, n: Int)                 // O(n); room for n slopes, no regrowth
 fn max_convolve(mut self, g: Concave)        // O(|g| log n) expected; merge slopes
 fn add_quadratic(mut self, q: Int -> Int)    // O(1); q quadratic, q'' <= 0
 fn at(mut self, c: Int) -> Int               // O(c - lo + log n) expected
