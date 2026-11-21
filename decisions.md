@@ -2642,3 +2642,16 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    types or domains (`sorted(V, by: k)` walks a domain) and `min([a, b, c])`,
    which waits on a variadic `min(a, b, c)` from the core lane. Dreams that
    do not parse yet were migrated with the same patterns by hand.
+
+## 54. The offline bundle cap moves to 2,800,000 bytes (2026-11-21)
+
+`dist/cp-lang.html` reached 2,601,595 bytes on main with ten stdlib area
+owners adding modules at once; 1,792,438 of it is the compiler (the WASM,
+gzip -9 and base64), so the cap tracks the compiler and the stdlib it
+embeds, not the pages. The cheap cuts are taken: the pages already ship as
+one gzip blob (4f74ff40), and `opt-level="s"` halves the call depth a
+program can reach in the browser (scripts/build-wasm.sh). The cap stays a
+ratchet against accidental growth: 2,800,000 is about 7% headroom. Reason:
+every lane's gate was red on bytes no single commit owned. Reverse: set the
+number back in scripts/check.sh and site/test_site.py once the bundle is
+under it, e.g. by running wasm-opt -Os in the bundle build.
