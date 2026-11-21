@@ -10,6 +10,8 @@
 // played by the source above and the sink to the left. So the fewest bricks
 // is the min cut, which max flow finds.
 
+use std.flow.FlowGraph
+
 let (n, m): (1..=200, 1..=200) = read()
 domain Row = 0..n
 domain Col = 0..m
