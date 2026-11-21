@@ -37,9 +37,12 @@ fn has(v: Val, lo: Pos.Cut, hi: Pos.Cut) -> Bool:
 let mid = Pos.Cut((2 * n - 1) / 2)
 var left_w: [Val]0..=2 = 0
 for v in Val:
-    left_w[v] = if not has(v, Pos.Cut.first, mid): 0
-        elif has(v, mid, Pos.Cut.last): 1
-        else: 2
+    left_w[v] = if not has(v, Pos.Cut.first, mid):
+        0
+    elif has(v, mid, Pos.Cut.last):
+        1
+    else:
+        2
 
 let (lo, hi, only_here) = if left_w.sum() > mid.ord:
     (Pos.Cut.first, mid, [Val] v => left_w[v] == 2)
