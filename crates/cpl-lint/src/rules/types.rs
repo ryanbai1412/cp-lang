@@ -2,7 +2,9 @@
 //! domain as if it were a number.
 
 use crate::walk::{unparen, Visitor};
-use crate::{File, Finding, DOMAIN_KEYED_MAP, POSITION_ARITHMETIC, TURBOFISH_TYPE_ARGS};
+use crate::{
+    File, Finding, DOMAIN_KEYED_MAP, POSITION_ARITHMETIC, POW_METHOD, TURBOFISH_TYPE_ARGS,
+};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
 use std::collections::HashSet;
@@ -165,34 +167,83 @@ impl Visitor for Types<'_> {
             ExprKind::Generic { base, args } => {
                 if let ExprKind::Name(name) = &base.kind {
                     self.keyed(name, args, expr.span);
+                    // Const-integer type arguments on lowercase calls (`f::<998244353>(x)`)
+                    // still need `::` so `<` is not parsed as less-than.
+                    let has_const_arg = args.iter().any(|t| matches!(t.kind, TypeKind::Value(_)));
                     let start = (self.base + base.span.end) as usize;
                     let end = (self.base + expr.span.end) as usize;
-                    if let Some(rest) = self.src.get(start..end) {
-                        if let Some(rel) = rest.find("::") {
-                            if rest[..rel].chars().all(|c| c.is_whitespace()) {
-                                let cc_start = (start + rel) as u32;
-                                let cc_span = Span::new(cc_start, cc_start + 2);
-                                let mut diag = Diagnostic::warning(
-                                    TURBOFISH_TYPE_ARGS.code,
-                                    cc_span,
-                                    "generic calls use `<...>` without `::`",
-                                )
-                                .with_help("remove `::` to use the canonical `f<T>(...)` spelling");
-                                diag.fixes.push(cpl_diag::Fix {
-                                    title: "remove `::`".into(),
-                                    edits: vec![(cc_span, String::new())],
-                                });
-                                self.findings.push(Finding {
-                                    lint: &TURBOFISH_TYPE_ARGS,
-                                    diag,
-                                });
+                    if !has_const_arg {
+                        if let Some(rest) = self.src.get(start..end) {
+                            if let Some(rel) = rest.find("::") {
+                                if rest[..rel].chars().all(|c| c.is_whitespace()) {
+                                    let cc_start = (start + rel) as u32;
+                                    let cc_span = Span::new(cc_start, cc_start + 2);
+                                    let mut diag = Diagnostic::warning(
+                                        TURBOFISH_TYPE_ARGS.code,
+                                        cc_span,
+                                        "generic calls use `<...>` without `::`",
+                                    )
+                                    .with_help(
+                                        "remove `::` to use the canonical `f<T>(...)` spelling",
+                                    );
+                                    diag.fixes.push(cpl_diag::Fix {
+                                        title: "remove `::`".into(),
+                                        edits: vec![(cc_span, String::new())],
+                                    });
+                                    self.findings.push(Finding {
+                                        lint: &TURBOFISH_TYPE_ARGS,
+                                        diag,
+                                    });
+                                }
                             }
                         }
                     }
                 }
             }
-            // `V(v.ord + 1)`.
+            // `a.pow(e)` -> `a ** e` and `V(v.ord + 1)`.
             ExprKind::Call { callee, args } => {
+                if let ExprKind::Field { base, name } = &callee.kind {
+                    if name.text == "pow" && args.len() == 1 && args[0].name.is_none() {
+                        let lhs_raw = base.span.shift(self.base).text(self.src);
+                        let rhs_raw = args[0].value.span.shift(self.base).text(self.src);
+                        let lhs = if needs_pow_parens(base) {
+                            format!("({lhs_raw})")
+                        } else {
+                            lhs_raw.to_string()
+                        };
+                        let rhs = if needs_pow_parens(&args[0].value) {
+                            format!("({rhs_raw})")
+                        } else {
+                            rhs_raw.to_string()
+                        };
+                        let span = expr.span.shift(self.base);
+                        let after = self.src.get(span.end as usize..).unwrap_or("");
+                        let wrap_whole = matches!(
+                            after.chars().next(),
+                            Some('.' | '[' | '!' | '*')
+                        );
+                        let replacement = if wrap_whole {
+                            format!("({lhs} ** {rhs})")
+                        } else {
+                            format!("{lhs} ** {rhs}")
+                        };
+                        let mut diag = Diagnostic::warning(
+                            POW_METHOD.code,
+                            span,
+                            "power uses `**`, not `.pow(...)`",
+                        )
+                        .with_help(format!("write `{replacement}`"));
+                        diag.fixes.push(cpl_diag::Fix {
+                            title: format!("replace with `{replacement}`"),
+                            edits: vec![(span, replacement)],
+                        });
+                        self.findings.push(Finding {
+                            lint: &POW_METHOD,
+                            diag,
+                        });
+                        return;
+                    }
+                }
                 let ExprKind::Name(domain) = &callee.kind else {
                     return;
                 };
@@ -246,4 +297,24 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     };
     file.walk(&mut types, |types, base| types.base = base);
     types.findings
+}
+
+fn needs_pow_parens(expr: &Expr) -> bool {
+    !matches!(
+        expr.kind,
+        ExprKind::Int(_)
+            | ExprKind::Float(_)
+            | ExprKind::Bool(_)
+            | ExprKind::Char(_)
+            | ExprKind::Str(_)
+            | ExprKind::Name(_)
+            | ExprKind::Field { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Call { .. }
+            | ExprKind::Generic { .. }
+            | ExprKind::Paren(_)
+            | ExprKind::Tuple(_)
+            | ExprKind::List(_)
+            | ExprKind::Unwrap(_)
+    )
 }

@@ -559,6 +559,24 @@ mod cli {
     }
 
     #[test]
+    fn fix_codemods_removed_where_filters_and_multitest_wrap_lines() {
+        let dir = scratch("fix-removed");
+        let file = dir.join("a.cp");
+        std::fs::write(
+            &file,
+            "--- with multitest() ---\nlet xs = [1, 2, 3]\nlet ys = [x for x in xs where x > 1]\nfor x in ys where x < 3:\n    print(x)\n",
+        )
+        .unwrap();
+        let (code, _out, err) = lint(&["--fix", file.to_str().unwrap()]);
+        assert_eq!(code, 0, "{err}");
+        assert_eq!(
+            std::fs::read_to_string(&file).unwrap(),
+            "@!multitest\nlet xs = [1, 2, 3]\nlet ys = [x for x in xs if x > 1]\nfor x in ys if x < 3:\n    print(x)\n"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn a_file_that_does_not_parse_is_an_error_not_a_pass() {
         let dir = scratch("broken");
         let file = dir.join("a.cp");
@@ -935,4 +953,14 @@ for i in 0..xs.len:
 print(once, xs, ints, comb.fact(2))
 ";
     assert!(!codes(negative).contains(&"L0415"), "{:?}", codes(negative));
+}
+
+#[test]
+fn pow_method_lint_warns_and_fixes_with_parentheses() {
+    let src = "let a = 2\nlet n = 5\nprint(a.pow(3), a.pow(n - 1), (a + 1).pow(2), a.pow(n).abs)\n";
+    assert_eq!(codes(src), vec!["L0205", "L0205", "L0205", "L0205"]);
+    assert_eq!(
+        fixed(src),
+        "let a = 2\nlet n = 5\nprint(a ** 3, a ** (n - 1), (a + 1) ** 2, (a ** n).abs)\n"
+    );
 }

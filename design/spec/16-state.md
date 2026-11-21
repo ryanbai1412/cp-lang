@@ -42,7 +42,7 @@ per-test body without indenting it.
 with io(base: 1)
 let fact = Z.factorials(2e5)                  // above the line: per program
 
---- with multitest() ---
+@!multitest
 domain V = read(1..=2e5)                      // below: per test, unindented
 let adj = adjacency(read<[V.count - 1](V, V)>())
 

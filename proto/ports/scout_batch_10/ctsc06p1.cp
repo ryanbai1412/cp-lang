@@ -21,7 +21,7 @@ for _ in 0..t:
     let border = prefix_function([name[i] for i in I])
     var (wait, b) = (Z.zero, n)
     while b > 0:
-        wait += Z(m).pow(b)
+        wait += Z(m) ** b
         b = border[b - 1]
     let w = wait.v
     print(digit(w / 1000) + digit(w / 100) + digit(w / 10) + digit(w))

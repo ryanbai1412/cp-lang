@@ -6,4 +6,4 @@ type Z = Mod<MOD>
 let n: Int = read()
 let comb = Comb<MOD>(n)
 let step = Z(n - 1).inv
-print(sum(comb.choose(n, i) * comb.fact(i - 1) * step.pow(i) for i in 2..=n))
+print(sum(comb.choose(n, i) * comb.fact(i - 1) * step ** i for i in 2..=n))

@@ -10,7 +10,7 @@ let inv_c = 1 / c
 
 // coefficients of p^n, from p * f' = n * p' * f: two terms per coefficient
 fn coeffs(n: Int) -> List<Z>:
-    var f = [c.pow(n)]
+    var f = [c ** n]
     for z in 1..=2 * n:
         var acc = f[z - 1] * b * (n - z + 1)
         if z >= 2: acc += f[z - 2] * a * (2 * n - z + 2)

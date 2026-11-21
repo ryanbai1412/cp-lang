@@ -51,7 +51,7 @@ for _ in 0..t:
     var sig: [Pos]Int = 0
 
     for q in 0..30:
-        let vals = [v for v in 1..=n where masks[v].bit(q)]
+        let vals = [v for v in 1..=n if masks[v].bit(q)]
         if vals.len == 0: continue
         let qtype = if q == 0: 4 else: 2
         print(qtype, vals.len, vals)

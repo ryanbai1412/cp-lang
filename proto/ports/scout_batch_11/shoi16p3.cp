@@ -22,8 +22,7 @@ let comb = Comb<Z>(m + 2)
 fn tables(u: Int, above: Int, below: Int) -> Z:
     var ys = [Z.zero]
     for limit in 1..=m + 1:
-        var total = Z.zero
-        for s in 1..=limit: total += Z(s).pow(below) * Z(limit - s).pow(above)
+        let total = Z.zero + sum(Z(s) ** below * Z(limit - s) ** above for s in 1..=limit)
         ys.push(total)
     lagrange_at(ys, Z(u))
 

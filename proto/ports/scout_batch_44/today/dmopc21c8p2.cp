@@ -38,6 +38,6 @@ for par in 0..2:
     for x in 0..=(2 * m):
         cover += diff[par][S(x)]
         if cover == need[par]:
-            total += Z(ways(x)).pow(blank[par])
+            total += Z(ways(x)) ** blank[par]
     ans *= total
 print(ans.v)

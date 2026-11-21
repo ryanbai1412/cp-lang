@@ -60,7 +60,7 @@ only. Contract checks on unproven assignments remain in submissions [you] unless
   (`7 % -3 == -2`). `ceil_div(a, b)` exists [2impl Q18].
 - Division or remainder by zero traps in both builds ("division by zero"); it is not a removable check.
 - `**` is power. `0 ** 0 == 1`; a negative exponent on an integer traps in both builds ("negative exponent";
-  use `Z(a).pow(-k)` or floats) [2impl Q10].
+  use `Z(a) ** (-k)` or floats) [2impl Q10].
 - **Interval arithmetic on range types** [r7 6]: `+ - * / %` compute result ranges, so `x % d` has type
   `0..d` when `d: 1..`, and indexing a `[0..d]T` with it needs no check. C++ gets a plain `%` when the
   ranges show `x ≥ 0`, and a floor-adjusted one otherwise.

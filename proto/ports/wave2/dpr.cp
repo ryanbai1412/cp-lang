@@ -5,5 +5,5 @@ use std.matrix.{Mat}
 type Z = Mod<1_000_000_007>
 let (n, k): (1..=50, 1..=1e18) = read()
 let edge: [0..n * n]Z = read()
-let walks = Mat.from_flat(n, n, edge).pow(k)
+let walks = Mat.from_flat(n, n, edge) ** k
 print(walks.data.sum())

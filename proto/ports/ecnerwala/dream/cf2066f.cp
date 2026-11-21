@@ -39,16 +39,16 @@ fn plan(x: Int) -> ?Plan:
         fit[s.r, j, spent] = true
         came[s, j, spent] = from
     for s in Seg:
-        for spent in Bool where sum[s] < x:
-            for j in PosB.Cut where fit[s.l, j, spent] and b[j..].starts_with(a[span[s]]):
+        for spent in Bool if sum[s] < x:
+            for j in PosB.Cut if fit[s.l, j, spent] and b[j..].starts_with(a[span[s]]):
                 link(s, j + span[s].len, spent, from: (j, spent))
-        for spent in Bool where sum[s] >= x:
+        for spent in Bool if sum[s] >= x:
             var latest: ?PosB.Cut = none
             for j in PosB.Cut:
-                if let i = latest where mss[i, j]! <= x: link(s, j, spent, from: (i, spent))
+                if let i = latest and mss[i, j]! <= x: link(s, j, spent, from: (i, spent))
                 if fit[s.l, j, spent]: latest = j
-        if let i = PosB.Cut.first(j => fit[s.l, j, false]) where sum[s] >= x:
-            for j in PosB.Cut where j > i: link(s, j, true, from: (i, false))
+        if let i = PosB.Cut.first(j => fit[s.l, j, false]) and sum[s] >= x:
+            for j in PosB.Cut if j > i: link(s, j, true, from: (i, false))
 
     var (j, spent) = (PosB.Cut.last, [true, false].first(u => fit[Seg.Cut.last, PosB.Cut.last, u])?)
     var piece: [Seg]Range<PosB.Cut> = PosB.Cut.first..PosB.Cut.first

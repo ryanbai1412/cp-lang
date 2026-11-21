@@ -41,6 +41,6 @@ for a in asks:
     var (answer, l) = (Z.one, 1)
     while l <= min(a.n, a.m):
         let r = min(a.n / (a.n / l), a.m / (a.m / l))  // last T with the same two quotients
-        answer *= (upto[r] * undo[l - 1]).pow((a.n / l) * (a.m / l))
+        answer *= (upto[r] * undo[l - 1]) ** ((a.n / l) * (a.m / l))
         l = r + 1
     print(answer)

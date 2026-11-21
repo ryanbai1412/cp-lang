@@ -1634,7 +1634,7 @@ impl<'a> Lowerer<'a> {
             .then(|| seq_concat_elem(&l.ty).cloned().map(Ty::list))
             .flatten();
         let r_hint = match op {
-            Shl | Shr => Some(&Ty::Int),
+            Shl | Shr | Pow => Some(&Ty::Int),
             _ if r_concat_hint.is_some() => r_concat_hint.as_ref(),
             _ => (!is_bare_read(rhs)).then_some(&l.ty),
         };

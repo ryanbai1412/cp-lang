@@ -15,7 +15,7 @@ export fn restore_permutation(n: 2..=128, w: Int, r: Int) -> List<Int>:
 
     fn mask(cur: List<Pos>, pick: Pos) -> [Pos]Char:
         var s: [Pos]Char = '1'
-        for p in cur where p != pick:
+        for p in cur if p != pick:
             s[p] = '0'
         s
 

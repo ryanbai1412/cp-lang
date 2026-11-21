@@ -107,14 +107,14 @@ or say NO. Topologically sort the directed part; orient every edge forward in th
 ```cp
 with io(base: 1)
 
---- with multitest() ---
+@!multitest
 
 domain V = read(2..=2e5)
 domain E = read(1..=2e5)
 let edges: [E](Bool, V, V) = read()               // directed?, x, y
 
 var indeg: [V]Int = 0, out: [V]List<V> = []
-for (directed, x, y) in edges where directed:
+for (directed, x, y) in edges if directed:
     out[x].push(y)
     indeg[y] += 1
 
@@ -143,7 +143,7 @@ for (_, x, y) in edges:
 ```cp
 with io(base: 1)
 
---- with multitest() ---
+@!multitest
 
 domain V = read(2..=2e5)
 domain E = read(1..=2e5)
@@ -176,7 +176,7 @@ component must be bipartite, with sides a and b; it contributes 2^a + 2^b.
 with io(base: 1)
 type Z = Mint(mod: 998244353)
 
---- with multitest() ---
+@!multitest
 
 domain V = read(1..=3e5)
 let m: 0..=3e5 = read()
@@ -184,7 +184,7 @@ let adj = adjacency(read<[m](V, V)>())
 
 var side: [V]?Bool = none
 var ways = Z(1)
-for root in V where side[root] == none:
+for root in V if side[root] == none:
     side[root] = false
     var count: [Bool]Int = 0
     var stack = [root]
@@ -208,7 +208,7 @@ print(ways)
 with io(base: 1)
 type Z = Mint(mod: 998244353)
 
---- with multitest() ---
+@!multitest
 
 domain V = read(1..=3e5)
 let m: 0..=3e5 = read()
@@ -240,7 +240,7 @@ BFS layers, then the smaller parity class.
 ```cp
 with io(base: 1)
 
---- with multitest() ---
+@!multitest
 
 domain V = read(2..=2e5)
 let m: (V.count - 1)..=2e5 = read()
@@ -250,7 +250,7 @@ var depth: [V]?Int = none
 depth[V.first] = 0
 var queue: Deque<(V, Int)> = [(V.first, 0)]
 while let (v, d) = queue.pop_front():
-    for w in adj[v] where depth[w] == none:
+    for w in adj[v] if depth[w] == none:
         depth[w] = d + 1
         queue.push_back((w, d + 1))
 let depth = depth!
@@ -266,7 +266,7 @@ print(pick)
 ```cp
 with io(base: 1)
 
---- with multitest() ---
+@!multitest
 
 domain V = read(2..=2e5)
 let m: (V.count - 1)..=2e5 = read()
@@ -356,11 +356,11 @@ var dp: [A.Cut]Int = 0, pre: [A.Cut]Int = 0
 var mins: Deque<A> = []                           // window positions, values increasing
 for x in A:
     pre[x.after] = pre[x.before] + a[x]
-    while let y = mins.back where a[y] >= a[x]: mins.pop_back()
+    while let y = mins.back and a[y] >= a[x]: mins.pop_back()
     mins.push_back(x)
     dp[x.after] = dp[x.before] + a[x]
     if let start = x.prev(c - 1):                 // the length-c piece ending at x
-        while let f = mins.front where f < start: mins.pop_front()
+        while let f = mins.front and f < start: mins.pop_front()
         dp[x.after] min= dp[start.before] + (pre[x.after] - pre[start.before]) - a[mins.front!]
 print(dp[A.Cut.last])
 ```
@@ -411,7 +411,7 @@ fn classy_upto(x: 0..=1e18) -> Int:
         budget -= 1                               // put d here and stay tight
     return total + 1                              // x itself
 
---- with multitest() ---
+@!multitest
 
 let (lo, hi): (1..=1e18, 1..=1e18) = read()
 print(classy_upto(hi) - classy_upto(lo - 1))
@@ -433,7 +433,7 @@ fn classy_upto(x: 0..=1e18) -> Int:
             .sum()
     return count(digits.Cut.first, 3, true)
 
---- with multitest() ---
+@!multitest
 
 let (lo, hi): (1..=1e18, 1..=1e18) = read()
 print(classy_upto(hi) - classy_upto(lo - 1))
@@ -509,7 +509,7 @@ let n = V.count
 var size: [V]Int = 1
 fn down(v: V, from: ?V) -> Int:                   // sum of subtree sizes under v
     var total = 0
-    for w in adj[v] where w != from:
+    for w in adj[v] if w != from:
         total += down(w, v)
         size[v] += size[w]
     return total + size[v]
@@ -517,7 +517,7 @@ fn down(v: V, from: ?V) -> Int:                   // sum of subtree sizes under 
 var best = 0
 fn reroot(v: V, from: ?V, score: Int):
     best max= score
-    for w in adj[v] where w != from:
+    for w in adj[v] if w != from:
         reroot(w, v, score + n - 2 * size[w])
 
 reroot(V.first, none, down(V.first, none))

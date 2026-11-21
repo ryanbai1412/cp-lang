@@ -107,6 +107,36 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 bad_configs.push(toml);
             }
         }
+        if fix {
+            // Apply machine-applicable removed-syntax codemods (e.g. `where`
+            // filters or `--- multitest ---`) without applying speculative
+            // parser-recovery guesses like inserting `:`.
+            let mut syntax_applied = 0usize;
+            loop {
+                let parsed = cpl_syntax::parse_file(&src);
+                let codemods: Vec<_> = parsed
+                    .diagnostics
+                    .into_iter()
+                    .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX && !d.fixes.is_empty())
+                    .collect();
+                if codemods.is_empty() {
+                    break;
+                }
+                let (text, applied) = apply_fixes(&src, &codemods);
+                if applied == 0 {
+                    break;
+                }
+                syntax_applied += applied;
+                fixed += applied;
+                src = text;
+            }
+            if syntax_applied > 0 {
+                if let Err(e) = std::fs::write(file, &src) {
+                    let _ = writeln!(stderr, "error: can't write {name}: {e}");
+                    failed += 1;
+                }
+            }
+        }
         if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
             let _ = writeln!(
                 stderr,

@@ -34,7 +34,7 @@ struct Barrels:
             from: unique.first,
             step: b => unique.first(above: max(self.safe_before(b), b)),
         )
-        for b in stuck_points where b != unique.last:
+        for b in stuck_points if b != unique.last:
             let have = self.safe_before(b)
             if b > have and gaps.min(b..)! > have: return false
         true

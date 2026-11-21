@@ -1269,3 +1269,38 @@ impl Read + Print for Str:
     assert!(matches!(&items[4].kind, StmtKind::Impl { trait_name: Some(_), .. }));
     assert!(matches!(&items[5].kind, StmtKind::Impl { trait_name: Some(_), .. }));
 }
+
+#[test]
+fn where_filters_are_rejected_and_suggest_if() {
+    let comp = one_diag("let ys = [x for x in xs where x > 0]\n");
+    assert_eq!(comp.code, cpl_diag::codes::REMOVED_SYNTAX);
+    assert!(comp.message.contains("`if`"), "{comp:?}");
+    assert_eq!(comp.fixes.len(), 1);
+    assert_eq!(comp.fixes[0].edits[0].1, "if");
+
+    let loop_d = one_diag("for x in xs where x > 0:\n    print(x)\n");
+    assert_eq!(loop_d.code, cpl_diag::codes::REMOVED_SYNTAX);
+    assert!(loop_d.message.contains("`if`"), "{loop_d:?}");
+    assert_eq!(loop_d.fixes.len(), 1);
+    assert_eq!(loop_d.fixes[0].edits[0].1, "if");
+
+    let if_let = one_diag("if let x = a where x > 0:\n    print(x)\n");
+    assert_eq!(if_let.code, cpl_diag::codes::REMOVED_SYNTAX);
+    assert!(if_let.message.contains("`and`"), "{if_let:?}");
+    assert_eq!(if_let.fixes.len(), 1);
+    assert_eq!(if_let.fixes[0].edits[0].1, "and");
+}
+
+#[test]
+fn multitest_wrap_lines_are_rejected_and_suggest_at_bang_multitest() {
+    for src in [
+        "--- multitest ---\nlet n: Int = read()\n",
+        "--- with multitest() ---\nlet n: Int = read()\n",
+    ] {
+        let d = one_diag(src);
+        assert_eq!(d.code, cpl_diag::codes::REMOVED_SYNTAX);
+        assert!(d.message.contains("@!multitest"), "{d:?}");
+        assert_eq!(d.fixes.len(), 1);
+        assert_eq!(d.fixes[0].edits[0].1, "@!multitest");
+    }
+}

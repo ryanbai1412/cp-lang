@@ -28,7 +28,7 @@ fn find_split(n: I32, a: I32, b: I32, c: I32, p: List<I32>, q: List<I32>) -> Lis
     seen[V.first] = true
     var i = 0
     while i < order.len:
-        for w in adj[order[i]] where not seen[w]:
+        for w in adj[order[i]] if not seen[w]:
             seen[w] = true
             parent[w] = order[i]
             order.push(w)
@@ -43,7 +43,7 @@ fn find_split(n: I32, a: I32, b: I32, c: I32, p: List<I32>, q: List<I32>) -> Lis
     // pieces of the tree without the centre, top-down
     var id: [V]?Int = none
     var count = 0
-    for v in order where v != centre:
+    for v in order if v != centre:
         if let u = parent[v], u != centre:
             id[v] = id[u]
         else:
@@ -62,11 +62,11 @@ fn find_split(n: I32, a: I32, b: I32, c: I32, p: List<I32>, q: List<I32>) -> Lis
                 padj[u].push(w)
                 padj[w].push(u)
         var seen: [Piece]Bool = false
-        for start in Piece where not seen[start]:
+        for start in Piece if not seen[start]:
             seen[start] = true
             var got = [start], total = psize[start], j = 0
             while j < got.len:
-                for y in padj[got[j]] where not seen[y]:
+                for y in padj[got[j]] if not seen[y]:
                     seen[y] = true
                     got.push(y)
                     total += psize[y]
@@ -80,7 +80,7 @@ fn find_split(n: I32, a: I32, b: I32, c: I32, p: List<I32>, q: List<I32>) -> Lis
         seen[start] = true
         var got = [start], j = 0
         while got.len < k:
-            for w in adj[got[j]] where inside[w] and not seen[w] and got.len < k:
+            for w in adj[got[j]] if inside[w] and not seen[w] and got.len < k:
                 seen[w] = true
                 got.push(w)
             j += 1

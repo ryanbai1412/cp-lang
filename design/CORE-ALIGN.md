@@ -203,7 +203,7 @@ solution.
 with io(base: 1)
 let fact = Z.factorials(2e5)                 // above the line: per program (P2.3)
 
---- with multitest() ---                     // the rest of the file is the per-test closure (P2.2)
+@!multitest                     // the rest of the file is the per-test closure (P2.2)
 domain V = read(5..=1e5)                     // per test, flat (P2.4)
 let adj = adjacency(read<[m](V, V)>())
 var depth: [V]?Int = none
@@ -646,7 +646,7 @@ with io(base: 1)
 type Z = Mint(mod: 998244353)
 let pow2 = Z(2).powers(3e5 + 1)                  // per program
 
---- with multitest() ---                         // area 2: the rest is the per-test closure
+@!multitest                         // area 2: the rest is the per-test closure
 
 domain V = read(1..=3e5)                         // slot per declaration (area 4)
 let m: 0..=3e5 = read()

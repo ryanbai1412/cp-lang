@@ -151,7 +151,7 @@ fn the_nth_term_reaches_far():
     type M = Mod<1000000007>
     // Fibonacci number 10^18 modulo 10^9 + 7
     assert nth_term::<1000000007>([1, 1], [0, 1], 1000000000000000000) == M(209783453)
-    assert nth_term::<1000000007>([2], [1], 100) == M(2).pow(100)
+    assert nth_term::<1000000007>([2], [1], 100) == M(2) ** 100
     assert nth_term::<1000000007>([], [], 5) == M(0)
     let c = [4, -1]
     let xs = extend(c, [1, 3], 30)

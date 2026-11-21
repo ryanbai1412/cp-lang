@@ -440,7 +440,7 @@ grow on demand (decision 52).
 ```cp
 struct Mod<P>(v: 0..P) // O(1), O(log P)
     fn new(x: Int) -> Mod<P>
-    fn pow(self, e: Int) -> Mod<P> // O(log e)
+    // Power is `a ** e` via `impl Pow for Mod<P>` (O(log e))
     fn try_inv(self) -> ?Mod<P> // O(log P)
     @get fn inv(self) -> Mod<P>
 struct Comb<M> // O(1)
@@ -531,7 +531,7 @@ struct Mat<T>(n: Int, m: Int, a: List<T>)
     fn of(rows: List<List<T>>) -> Mat<T>           // O(n m)
     fn get(self, i: Int, j: Int) -> T              // O(1)
     fn at(self, i: Int, j: Int) lends mut T        // O(1)
-    fn pow(self, e: Int) -> Mat<T>                 // O(n^3 log e)
+    // Power is `a ** e` via `impl Pow for Mat<T>` (O(n^3 log e))
     fn apply(self, v: List<T>) -> List<T>          // O(n m)
     fn transpose(self) -> Mat<T>                   // O(n m)
     fn rows(self) -> List<List<T>>                 // O(n m)

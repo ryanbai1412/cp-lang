@@ -41,7 +41,7 @@ for _ in 0..t:
     var sig: [Pos]Int = 0
 
     for q in 0..29:
-        let vals = [v for v in 1..=n where masks[v].bit(q)]
+        let vals = [v for v in 1..=n if masks[v].bit(q)]
         if vals.len == 0: continue
         print(2, vals.len, vals)
         let resp: [0..vals.len]Pos = read()

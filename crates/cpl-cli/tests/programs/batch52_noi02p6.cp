@@ -13,7 +13,7 @@ var total: Z = 1
 
 for _ in 0..n:
     let (p, e): (Int, Int) = read()
-    total *= Z(p).pow(e)
+    total *= Z(p) ** e
     if p > 2:
         let (even, odd) = (dp[false], dp[true])
         dp[false] = even + odd * (p - 1)

@@ -94,8 +94,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// `--- multitest ---` or `--- with multitest() ---`: 0.3 wrap-line form
-    /// of a file-level directive (`@!multitest`, `@!interactive`).
+    /// `--- multitest ---` or `--- with multitest() ---`: removed wrap-line
+    /// spelling of `@!multitest` / `@!interactive`.
     fn wrap_line(&mut self) -> Decorator {
         let start = self.start();
         while self.eat(T::Minus) {}
@@ -110,7 +110,23 @@ impl<'a> Parser<'a> {
         };
         while self.eat(T::Minus) {}
         let span = self.span_from(start);
-        if !name.text.is_empty() && !matches!(name.text.as_str(), "multitest" | "interactive") {
+        if matches!(name.text.as_str(), "multitest" | "interactive") {
+            let replacement = if args.is_empty() {
+                format!("@!{}", name.text)
+            } else {
+                let rendered: Vec<&str> = args.iter().map(|a| a.value.span.text(self.src)).collect();
+                format!("@!{}({})", name.text, rendered.join(", "))
+            };
+            self.error(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    span,
+                    format!("use `{replacement}` instead of `{}`", span.text(self.src)),
+                )
+                .with_help(format!("replace with `{replacement}`"))
+                .with_fix(format!("replace with `{replacement}`"), span, replacement),
+            );
+        } else if !name.text.is_empty() {
             self.planned(span, &crate::planned::WRAP_LINE);
         }
         Decorator {
@@ -828,10 +844,20 @@ impl<'a> Parser<'a> {
             } else {
                 self.expr()
             };
-            // `for x in xs where cond:` (0.3) or `for x in xs if cond:` (0.2.2)
-            // runs the body for the `x` that pass: the body is an `if`.
+            // `for x in xs if cond:` runs the body for the `x` that pass:
+            // the body is an `if`.
             let has_filter = self.eat(T::If)
                 || (self.at_ident("where") && {
+                    let span = self.span();
+                    self.error(
+                        Diagnostic::error(
+                            codes::REMOVED_SYNTAX,
+                            span,
+                            "loop filters use `if`, not `where`",
+                        )
+                        .with_help("use `if` to filter a `for` loop")
+                        .with_fix("replace `where` with `if`", span, "if"),
+                    );
                     self.bump();
                     true
                 });
@@ -1169,6 +1195,16 @@ impl<'a> Parser<'a> {
                 Cond::Expr(self.and())
             }))
         } else if self.at_ident("where") {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    span,
+                    "use `and`, not `where`, after `if let`",
+                )
+                .with_help("write `if let pat = value and cond`")
+                .with_fix("replace `where` with `and`", span, "and"),
+            );
             self.bump();
             Some(Box::new(self.more_clauses()))
         } else {

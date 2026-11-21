@@ -20,5 +20,5 @@ for par in 0..2:
                        (none, none) => 0..=(2 * m)
                    for i in cols]
     let blank = count(top[i] == none and bot[i] == none for i in cols)
-    ans *= sum(Z(ways(x)).pow(blank) for x in 0..=(2 * m) if all(x in r for r in allowed))
+    ans *= sum(Z(ways(x)) ** blank for x in 0..=(2 * m) if all(x in r for r in allowed))
 print(ans)

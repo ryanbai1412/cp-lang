@@ -620,34 +620,18 @@ fn conv_z(a: List<Z>, b: List<Z>, mode: Int) -> List<Z>:
 fn detect_sym_mode(a: List<Int>, b: List<Int>) -> Int:
     let n = a.len
     if n != b.len: return 0
-    var eq = true
-    for i in 0..n:
-        if a[i] != b[i]:
-            eq = false
-            break
+    let eq = all(not (a[i] != b[i]) for i in 0..n)
     if eq: return 1
-    var rev = true
-    for i in 0..n:
-        if a[i] != b[n - 1 - i]:
-            rev = false
-            break
+    let rev = all(not (a[i] != b[n - 1 - i]) for i in 0..n)
     if rev: return 2
     0
 
 fn detect_sym_mode_z(a: List<Z>, b: List<Z>) -> Int:
     let n = a.len
     if n != b.len: return 0
-    var eq = true
-    for i in 0..n:
-        if a[i].v != b[i].v:
-            eq = false
-            break
+    let eq = all(not (a[i].v != b[i].v) for i in 0..n)
     if eq: return 1
-    var rev = true
-    for i in 0..n:
-        if a[i].v != b[n - 1 - i].v:
-            rev = false
-            break
+    let rev = all(not (a[i].v != b[n - 1 - i].v) for i in 0..n)
     if rev: return 2
     0
 
@@ -798,8 +782,7 @@ pub fn exp_trunc(p: List<Z>, keep: Int) -> List<Z>:
         var g = List.filled(keep, Z.zero)
         g[0] = Z.one
         for k in 1..keep:
-            var s = Z.zero
-            for j in 1..min(k + 1, p.len): s += Z(j) * p[j] * g[k - j]
+            let s = Z.zero + sum(Z(j) * p[j] * g[k - j] for j in 1..min(k + 1, p.len))
             g[k] = s / Z(k)
         return g
     var g = [Z.one]
@@ -842,7 +825,7 @@ pub fn pow_trunc(p: List<Z>, e: Int, keep: Int) -> List<Z>:
     var scaled = List.filled(rem, Z.zero)
     for i in 0..rem: scaled[i] = lg[i] * ez
     let power = exp_trunc(scaled, rem)
-    let scale = c.pow(e)
+    let scale = c ** e
     var out = List.filled(keep, Z.zero)
     for i in 0..rem: out[shift + i] = power[i] * scale
     out
@@ -922,15 +905,15 @@ pub fn pow_rat_trunc(p: List<Z>, num: Int, den: Int, keep: Int) -> List<Z>:
     let c_scale = if c.v == 1:
         Z.one
     elif den == 1:
-        c.pow(num)
+        c ** num
     elif den == 2:
-        sqrt_mod_z(c).pow(num)
+        sqrt_mod_z(c) ** num
     else:
         let phi = 998244352
         let (g, inv_d, _) = ext_gcd(den % phi, phi)
         assert g == 1
         let e_root = ((inv_d % phi) + phi) % phi
-        c.pow(e_root).pow(num)
+        (c ** e_root) ** num
     let ic = c.inv
     let n = min(p.len, keep)
     var q = List.filled(n, Z.zero)
@@ -1337,7 +1320,7 @@ pub fn compose_trunc(f: List<Z>, g: List<Z>, keep: Int) -> List<Z>:
     for i in 0..g_lim:
         let v = g[i].v
         q_arr[half_b + i] = if v == 0: 0 else: mod_p - v
-    var tneg: List<List<Int>> = [biv_advance(mut q_arr, l_big, l_step) for l_step in 1..=l_big]
+    let tneg: List<List<Int>> = [biv_advance(mut q_arr, l_big, l_step) for l_step in 1..=l_big]
     // Base step: P = rev(f[0..m]) / Q_L(0, y) mod y^m
     var rev_f = List.filled(m, Z.zero)
     for i in 0..m: rev_f[i] = f[m - 1 - i]
@@ -1641,8 +1624,7 @@ fn slow_inv(p: List<Z>, keep: Int) -> List<Z>:
     let inv0 = p[0].inv
     g[0] = inv0
     for k in 1..keep:
-        var s = Z.zero
-        for j in 1..=k: s += coef(p, j) * g[k - j]
+        let s = Z.zero + sum(coef(p, j) * g[k - j] for j in 1..=k)
         g[k] = -s * inv0
     g
 
@@ -1658,8 +1640,7 @@ fn slow_exp(p: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return g
     g[0] = Z.one
     for k in 1..keep:
-        var s = Z.zero
-        for j in 1..=k: s += Z(j) * coef(p, j) * g[k - j]
+        let s = Z.zero + sum(Z(j) * coef(p, j) * g[k - j] for j in 1..=k)
         g[k] = s / Z(k)
     g
 
@@ -1696,8 +1677,7 @@ fn slow_power_projection(g: List<Z>, w: List<Z>, m: Int) -> List<Z>:
     g_pow[0] = Z.one
     let gt = head(g, n)
     for k in 0..m:
-        var acc = Z.zero
-        for i in 0..n: acc += w[i] * g_pow[i]
+        let acc = Z.zero + sum(w[i] * g_pow[i] for i in 0..n)
         out[k] = acc
         g_pow = slow_mul(g_pow, gt, n)
     out
@@ -1718,8 +1698,7 @@ fn slow_middle_product(a: List<Z>, b: List<Z>) -> List<Z>:
     let out_len = a.len - b.len + 1
     var out = List.filled(out_len, Z.zero)
     for i in 0..out_len:
-        var s = Z.zero
-        for j in 0..b.len: s += a[i + j] * b[j]
+        let s = Z.zero + sum(a[i + j] * b[j] for j in 0..b.len)
         out[i] = s
     out
 
@@ -1789,7 +1768,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
     let ways = pow_trunc(die, 20, 121)
     assert ways[19] == 0 and ways[20] == 1 and ways[120] == 1
     let six: Z = 6
-    assert eval_poly(ways, 1) == six.pow(20)
+    assert eval_poly(ways, 1) == six ** 20
 
 @test fn mtt_arbitrary_modulus_and_interpolation():
     var s = 99
@@ -1931,7 +1910,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
         b2 *= Z(e - k) / Z(k + 1)
     let three: Z = 3
     assert pow_trunc([0, three], e, 20) == List.filled(20, Z.zero)
-    assert pow_trunc([three], e, 2) == [three.pow(e), 0]
+    assert pow_trunc([three], e, 2) == [three ** e, 0]
 
 @test fn modular_and_rational_powers_and_sqrt():
     var s = 777
@@ -1985,7 +1964,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
         for _ in 0..deg_p:
             s = lcg_next(s)
             p.push(Z(s))
-        var xs: List<Z> = [Z(i * 17 + 3) for i in 0..n_pts]
+        let xs: List<Z> = [Z(i * 17 + 3) for i in 0..n_pts]
         let tree = SubproductTree.new(xs)
         // Check root polynomial matches naive product of (x - xs[i])
         var want_root = [Z.one]

@@ -24,7 +24,7 @@ fn count_triples(h: [I]1..I.count) -> Int:
             for (i, j) in group.pairs(): found.add(ok(i, j, i + h[j]))
         else:
             let g = h[group.first] - group.first
-            for k in I where (k - g - h[k]) % 2 == 0:
+            for k in I if (k - g - h[k]) % 2 == 0:
                 found.add(ok((k - g - h[k]) / 2, (k - g + h[k]) / 2, k))
     return found.distinct().len
 
@@ -42,7 +42,7 @@ fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
         let evens = (-m / 2 .. 3 * m / 2).filter(x => x % 2 == 0)
         let s = rng.sample(rng.int(2 * size / 3 ..= 4 * size / 3), from: evens).sorted()
         var h: [0..m]?Int = none
-        for (x, y) in s.pairs() where (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:
+        for (x, y) in s.pairs() if (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:
             h[(x + y) / 2] min= (y - x) / 2              // min= skips none
         h.map(v => v ?? rng.int(1..=2))
     (0..1e6 / m).map(attempt).max_by(count_triples)

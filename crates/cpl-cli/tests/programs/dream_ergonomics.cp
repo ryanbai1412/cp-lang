@@ -1,7 +1,7 @@
 type Z = Mod<1e9 + 7>
 
 var sum: Z = 0
-for a in 0..3, b in 0..=a where a + b > 0:
+for a in 0..3, b in 0..=a if a + b > 0:
     sum += a * 10 + b
 print(sum)
 

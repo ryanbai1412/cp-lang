@@ -134,6 +134,16 @@ pub const TURBOFISH_TYPE_ARGS: Lint = Lint {
     trigger: "let x = read::<Int>()\nprint(x)\n",
     fix: "let x = read<Int>()\nprint(x)\n",
 };
+pub const POW_METHOD: Lint = Lint {
+    code: Code("L0205"),
+    name: "pow_method",
+    default: Level::Warn,
+    title: "Power written with `.pow(e)`",
+    summary: "`a.pow(e)`: power is written `a ** e`",
+    explanation: "CP Lang spells exponentiation with `**` on numbers, `Mod<P>`, `Mat<T>`, and any type implementing `Pow`. `cpl fix` rewrites `a.pow(e)` to `a ** e`.",
+    trigger: "let x = 2\nprint(x.pow(10))\n",
+    fix: "let x = 2\nprint(x ** 10)\n",
+};
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
@@ -324,6 +334,7 @@ pub const LINTS: &[Lint] = &[
     UNREAD_FIELD,
     SHADOWS_TOP_LEVEL,
     TURBOFISH_TYPE_ARGS,
+    POW_METHOD,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,

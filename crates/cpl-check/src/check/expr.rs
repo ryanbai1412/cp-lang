@@ -728,6 +728,7 @@ impl<'a> Checker<'a> {
                     BinOp::Mul => "mul",
                     BinOp::Div => "div",
                     BinOp::Rem => "rem",
+                    BinOp::Pow => "pow",
                     _ => "",
                 };
                 let matching: Vec<(Option<Ty>, Option<Ty>, Option<Ty>)> = self
@@ -777,6 +778,7 @@ impl<'a> Checker<'a> {
                 }
                 let pick = matching.iter().find(|(rhs_ty, _, _)| match rhs_ty {
                     Some(want) => right.fits(want),
+                    None if op == BinOp::Pow => right.is_int() || right.is_vague(),
                     None => right.fits(&left) || right.is_int() || right.is_vague(),
                 });
                 match pick {
@@ -969,6 +971,7 @@ impl<'a> Checker<'a> {
             BinOp::Mul => "Mul",
             BinOp::Div => "Div",
             BinOp::Rem => "Rem",
+            BinOp::Pow => "Pow",
             _ => return None,
         };
         let Ty::Named { name, .. } = left else {
@@ -1269,6 +1272,15 @@ impl<'a> Checker<'a> {
                 }
                 _ => {}
             }
+        }
+        if name.text == "pow" {
+            let message = "power uses `**`, not `.pow(...)`".to_string();
+            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                diag.help = Some(
+                    "write `a ** e` (or run `cpl fix` to rewrite `.pow(e)` to `** e`)".to_string(),
+                );
+            }
+            return Ty::Error;
         }
         if name.text == "enumerate" && base_ty.is_seq() {
             let message =

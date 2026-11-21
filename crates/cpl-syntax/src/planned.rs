@@ -35,7 +35,7 @@ pub const FRESH_TYPE: Planned = Planned {
 pub const WRAP_LINE: Planned = Planned {
     feature: "a wrap line, `--- with f() ---`",
     see: Some("design/spec/16-state.md §16.3"),
-    now: "pass the rest as a closure, `f(() => …)`; `--- multitest ---` and `--- interactive ---` work today",
+    now: "pass the rest as a closure, `f(() => …)`; for multitest/interactive use `@!multitest` or `@!interactive`",
     example: "fn go(f: () -> Int) -> Int = f()
 --- with go() ---
 print(1)

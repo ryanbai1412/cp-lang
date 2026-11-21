@@ -21,16 +21,6 @@ pub struct Mod<P>(v: 0..P):
     /// Any `Int`, reduced: `Mod<7>(-1)` is 6.
     pub fn new(x: Int) -> Mod<P> = Mod(x % P)
 
-    /// `self` to the power `e`; a negative `e` uses the inverse. O(log e).
-    pub fn pow(self, e: Int) -> Mod<P>:
-        if e < 0: return self.inv.pow(-e)
-        var (base, acc, k) = (self, Mod(1 % P), e)
-        while k > 0:
-            if k % 2 == 1: acc = acc * base
-            base = base * base
-            k /= 2
-        acc
-
     /// The multiplicative inverse when `gcd(v, P) == 1`, or `none` otherwise. O(log P).
     pub fn try_inv(self) -> ?Mod<P>:
         var (a, b, x, y) = (v, P, 1, 0)
@@ -65,6 +55,16 @@ impl Mul for Mod<P>:
 
 impl Div for Mod<P>:
     fn div(a, b) = a * b.inv
+
+impl Pow for Mod<P>:
+    fn pow(a, e: Int) -> Mod<P>:
+        if e < 0: return a.inv ** (-e)
+        var (base, acc, k) = (a, Mod(1 % P), e)
+        while k > 0:
+            if k % 2 == 1: acc = acc * base
+            base = base * base
+            k /= 2
+        acc
 
 impl Show for Mod<P>:
     fn show(a) = "{a.v}"
@@ -181,11 +181,11 @@ fn pow_and_inverse():
     type M = Mod<998244353>
     for x in [1, 2, 3, 12345, 998244352]:
         assert M(x) * M(x).inv == M.one
-        assert M(x).pow(998244352) == M.one
-        assert M(x).pow(-1) == M(x).inv
+        assert M(x) ** 998244352 == M.one
+        assert M(x) ** (-1) == M(x).inv
         var p = M.one
         for e in 0..20:
-            assert M(x).pow(e) == p
+            assert M(x) ** e == p
             p = p * M(x)
     // a composite modulus still has inverses for coprime values
     assert Mod<10>(3).inv == Mod<10>(7)
@@ -198,7 +198,7 @@ fn mod_values_work_in_generic_structures():
     assert laws_hold(Monoid<M>.of(*), xs)
     domain V = 0..5
     var f = Fenwick<V, M>()
-    for v in V: f.add(v, M(10).pow(9 + v.to_idx))
+    for v in V: f.add(v, M(10) ** (9 + v.to_idx))
     assert f.sum(V(0)..=V(4)) == M(1000000000) * M(11111)
 
 @test
@@ -237,14 +237,14 @@ fn a_modulus_read_at_run_time():
         let P = p  // a modulus is frozen under a capitalized name
         type Z = Mod<P>
         assert Z(p) == Z(0) and Z(-1) + Z(1) == Z(0)
-        assert Z(5).pow(3) == Z(125 % p) and Z(7).pow(0) == Z(1)
+        assert Z(5) ** 3 == Z(125 % p) and Z(7) ** 0 == Z(1)
     let Q = 1_000_000_007
     type ZQ = Mod<Q>
     let cq = Comb<ZQ>(10)
     assert cq.choose(10, 3) == ZQ(120)
     type Z12 = Mod<12>
     assert Z12(7) * Z12(7).inv == Z12(1)
-    assert Z12(1).pow(0) == Z12(1)
+    assert Z12(1) ** 0 == Z12(1)
 
 @test
 fn inv_is_one_over_i():

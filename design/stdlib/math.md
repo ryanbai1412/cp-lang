@@ -516,7 +516,7 @@ type Z = Mod<998_244_353>
 
 let t: 1..=10_000 = read()
 let ns: [0..t](1..=20_000_000) = read()
-let lim = max(ns) + 1
+let lim = ns.max() + 1
 
 let comb = Z.comb(lim)
 let odd_div_sum = sieve_multiplicative(
@@ -538,9 +538,8 @@ for n in ns:
         else:
             if i <= n: cnt[(n + i) / 2] -= 4 * v
 
-    var ans: Z = 0
-    for i in 0..=n: ans += comb.inv_fact(i) * comb.inv_fact(n - i) * cnt[i]
-    print(ans * comb.fact(n) + Z(2).pow(n))
+    let ans: Z = sum(comb.inv_fact(i) * comb.inv_fact(n - i) * cnt[i] for i in 0..=n)
+    print(ans * comb.fact(n) + Z(2) ** n)
 ```
 
 Compare with `proto/ports/ecnerwala/cf2135e2.cp`: the 22-line hand-rolled
@@ -561,8 +560,8 @@ type Z = Mod<1_000_000_007>
 
 let n: 1..=50 = read()
 let k: 1..=1_000_000_000_000_000_000 = read()
-let adj = [[Z(read::<0..=1>()) for _ in 0..n] for _ in 0..n]
-let walks = Mat<Z>.of(adj).pow(k)
+let adj = [[Z(read<0..=1>()) for _ in 0..n] for _ in 0..n]
+let walks = Mat<Z>.of(adj) ** k
 print(sum(walks.get(i, j) for i in 0..n for j in 0..n))
 ```
 
@@ -613,7 +612,7 @@ domain Val = 0..n
 let a: [Pos]Int = read()
 
 var pos: [Val]?Pos = none
-for i in Pos where a[i] >= 0: pos[Val(a[i])] = i
+for i in Pos if a[i] >= 0: pos[Val(a[i])] = i
 
 let missing = prefix1([Pos] i => if a[i] == -1: 1 else: 0)
 let m = missing.prefix(Pos.last.r)

@@ -964,10 +964,20 @@ impl<'a> Parser<'a> {
             } else {
                 self.coalesce()
             };
-            // `for c in City where ...` (0.3) or `for c in City if ...` (0.2.2).
+            // Comprehension and generator filters use `if` only.
             let mut conds = Vec::new();
             while self.eat(T::If)
                 || (self.at_ident("where") && {
+                    let span = self.span();
+                    self.error(
+                        Diagnostic::error(
+                            codes::REMOVED_SYNTAX,
+                            span,
+                            "comprehension filters use `if`, not `where`",
+                        )
+                        .with_help("use `if` to filter a comprehension or generator")
+                        .with_fix("replace `where` with `if`", span, "if"),
+                    );
                     self.bump();
                     true
                 })
@@ -983,7 +993,7 @@ impl<'a> Parser<'a> {
         clauses
     }
 
-    /// `let pat = value`, then `and` or `where` with a test or another `let`,
+    /// `let pat = value`, then `and` with a test or another `let`,
     /// as in an `if let` statement. A `,` is not read as `and` here: it ends
     /// an argument or a list item.
     fn let_guard(&mut self) -> Cond {
@@ -998,6 +1008,16 @@ impl<'a> Parser<'a> {
                 Cond::Expr(self.and())
             }))
         } else if self.at_ident("where") {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    span,
+                    "use `and`, not `where`, after `if let`",
+                )
+                .with_help("write `if let pat = value and cond`")
+                .with_fix("replace `where` with `and`", span, "and"),
+            );
             self.bump();
             Some(Box::new(Cond::Expr(self.coalesce())))
         } else {

@@ -449,7 +449,7 @@ type Y = Mod<m>
 let q: Int = read()
 for _ in 0..q:
     let (a, b, e): (Int, Int, Int) = read()
-    print(Z(a) * Z(b), Z(a).pow(e), Y(a) * Y(b), Y(a).pow(e))
+    print(Z(a) * Z(b), Z(a) ** e, Y(a) * Y(b), Y(a) ** e)
 ";
 
 #[test]

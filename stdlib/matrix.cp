@@ -76,18 +76,6 @@ pub struct Mat<T>:
             out[i] = acc
         out
 
-    /// Square matrix exponentiation `self^e` (`e >= 0`). O(n^3 log e).
-    pub fn pow(self, e: Int) -> Mat<T>:
-        assert rows == cols and e >= 0
-        var base = self
-        var acc = Mat<T>.identity(rows)
-        var k = e
-        while k > 0:
-            if (k & 1) == 1: acc = acc * base
-            k >>= 1
-            if k > 0: base = base * base
-        acc
-
     /// Matrix multiplication monoid for `n x n` matrices (usable in `SegTree`).
     pub fn product(n: Int) -> Monoid<Mat<T>> = Monoid(Mat<T>.identity(n), (x, y) => x * y)
 
@@ -233,6 +221,18 @@ impl Mul for Mat<T>:
                 let bk = k * c
                 for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
         Mat(r, c, out)
+
+impl Pow for Mat<T>:
+    fn pow(a, e: Int) -> Mat<T>:
+        assert a.rows == a.cols and e >= 0
+        var base = a
+        var acc = Mat<T>.identity(a.rows)
+        var k = e
+        while k > 0:
+            if (k & 1) == 1: acc = acc * base
+            k >>= 1
+            if k > 0: base = base * base
+        acc
 
 /// Determinant of a floating-point square matrix via partial pivoting with tolerance `eps`. O(n^3).
 pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64:
@@ -434,11 +434,11 @@ fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis:
 fn matrix_arithmetic_and_pow():
     type Z = Mod<1_000_000_007>
     let fib = Mat<Z>.from_rows([[Z(1), Z(1)], [Z(1), Z(0)]])
-    let f10 = fib.pow(10)
+    let f10 = fib ** 10
     assert f10.get(0, 1) == Z(55) and f10.get(0, 0) == Z(89)
     let id = Mat<Z>.identity(2)
     assert fib * id == fib and id * fib == fib
-    assert fib.pow(0) == id
+    assert fib ** 0 == id
     assert (fib + id).get(0, 0) == Z(2) and (fib - fib) == Mat<Z>.zeros(2, 2)
     let rect = Mat<Int>.from_rows([[1, 2, 3], [4, 5, 6]])
     assert rect.transpose().rows == 3 and rect.transpose().cols == 2

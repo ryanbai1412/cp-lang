@@ -311,7 +311,7 @@ auto-grows factorials on demand with interior mutability, so an immutable
 
 ```
 type M = Mod<998244353>
-assert M(2).pow(10) == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
+assert M(2) ** 10 == M(1024) and M(3) / M(3) == M(1) and M(-1) + M(1) == M(0)
 let c = Comb<M>()
 assert c.choose(10, 3) == M(120)
 

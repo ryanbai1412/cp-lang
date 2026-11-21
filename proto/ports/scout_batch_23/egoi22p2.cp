@@ -26,7 +26,7 @@ for i in 2..=w:
 var total = List.filled(w + 1, Z.zero)
 total[0] = 1
 for i in 1..=w:
-    total[i] = row[i].pow(h)
+    total[i] = row[i] ** h
 
 // WISH MG6: Formal power series `Poly<Z>.inv(w + 1)` in std.poly (using NTT for
 // NTT-friendly primes or 3-prime/split-base MTT for 10^9 + 7) solves BOTH small-w

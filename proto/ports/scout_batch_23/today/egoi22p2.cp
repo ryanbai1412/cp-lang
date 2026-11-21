@@ -13,7 +13,7 @@ for i in 2..=w:
 var total = List.filled(w + 1, Z.zero)
 total[0] = 1
 for i in 1..=w:
-    total[i] = row[i].pow(h)
+    total[i] = row[i] ** h
 
 var solid = List.filled(w + 1, Z.zero)
 for i in 1..=w:

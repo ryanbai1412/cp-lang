@@ -14,7 +14,7 @@ domain Val = 0..n
 let a: [Pos]-1..n = read()
 
 var pos: [Val]?Pos = none
-for i in Pos where a[i] >= 0: pos[Val(a[i])] = i
+for i in Pos if a[i] >= 0: pos[Val(a[i])] = i
 
 let missing = prefix([Pos] i => Int(a[i] == -1))
 let m = missing.prefix(Pos.last.r)

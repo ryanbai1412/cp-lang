@@ -189,6 +189,7 @@ pub const TRAIT_NAMES: &[&str] = &[
     "Div",
     "Neg",
     "Rem",
+    "Pow",
     "Zero",
     "One",
     "Bounded",

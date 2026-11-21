@@ -23,7 +23,7 @@ fn buy_souvenirs(n: 2..=100, p0: 1..=1e15):
     fn learn(i: T, v: Int):
         price[i] = v
         eq[i] = none
-        for e in eq.values_mut() where i in e.types:
+        for e in eq.values_mut() if i in e.types:
             e.types.remove(i)
             e.sum -= v
 

@@ -3,6 +3,6 @@ error[E0504]: not implemented yet: a wrap line, `--- with f() ---` (see design/s
   |
 2 | --- with go() ---
   | ^^^^^^^^^^^^^^^^^
-  = help: pass the rest as a closure, `f(() => …)`; `--- multitest ---` and `--- interactive ---` work today
+  = help: pass the rest as a closure, `f(() => …)`; for multitest/interactive use `@!multitest` or `@!interactive`
 
 planned_a_wrap_line_with_f.cp: 1 error

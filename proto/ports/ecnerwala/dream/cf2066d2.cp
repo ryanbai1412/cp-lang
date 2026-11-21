@@ -24,7 +24,7 @@ for f in Floor.init:
         some(t) => max(0, (t + 1) - c)
         none => 0
     dp = [Time.cuts] next => 0
-    for used in Time.cuts where used >= min_used and used <= m - c and dp[used] != 0:
+    for used in Time.cuts if used >= min_used and used <= m - c and dp[used] != 0:
         let avail = open[used + c] + fixed_below - used
         for k in fixed..=min(c, m - c - used):
             next[used + k] += dp[used] * M.choose(avail, k - fixed)

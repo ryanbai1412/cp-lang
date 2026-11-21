@@ -14,8 +14,8 @@ fn construct(n: Int, m: Int, r: Int, c: Int) -> ?[Row, Col]Char:
     // Note: in ideal CP Lang, a transposed view avoids allocating or threading a `flip` bool!
     var g: [Row, Col]Char = 'a'
     if 0 < r < n and 0 < c < m:
-        for i in Row where i.label >= r:
-            for j in Col where j.label >= c:
+        for i in Row if i.label >= r:
+            for j in Col if j.label >= c:
                 g[i, j] = 'b'
         return g
     if r == 0:

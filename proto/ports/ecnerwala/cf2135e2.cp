@@ -34,4 +34,4 @@ for n in ns:
 
     let total = sum(comb.inv_fact(i) * comb.inv_fact(n - i) * cnt[i] for i in 0..=n)
     let two: M = 2
-    print(total * comb.fact(n) + two.pow(n))
+    print(total * comb.fact(n) + two ** n)

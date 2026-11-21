@@ -2658,3 +2658,17 @@ let _ = xs.inverse()
         "expected error for inverse on `[P]?Int` (unbounded Int is not an Index)"
     );
 }
+
+#[test]
+fn pow_method_is_rejected_and_suggests_star_star() {
+    let bad = "\
+let a = 2
+let b = a.pow(10)
+print(b)
+";
+    let errs = check(bad);
+    assert!(
+        errs.iter().any(|e| e.message.contains("power uses `**`, not `.pow(...)`")),
+        "expected `.pow` error suggesting `**`, got: {errs:?}"
+    );
+}

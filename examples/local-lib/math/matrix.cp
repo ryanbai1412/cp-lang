@@ -21,14 +21,6 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
     pub fn at(self, i: Int, j: Int) lends mut Mod<P>:
         lend mut a[i][j]
 
-    pub fn pow(self, e: Int) -> Mat<P>:
-        var (base, acc, k) = (self, Mat<P>.identity(n), e)
-        while k > 0:
-            if k % 2 == 1: acc *= base
-            base *= base
-            k /= 2
-        acc
-
     /// Matrix multiplication as a monoid, so a `SegTree` can hold matrices.
     pub fn product(n: Int) -> Monoid<Mat<P>> = Monoid(Mat<P>.identity(n), (x, y) => x * y)
 
@@ -123,15 +115,24 @@ impl Mul for Mat<P>:
 impl Add for Mat<P>:
     fn add(x, y) = Mat(x.n, [[x.a[i][j] + y.a[i][j] for j in 0..x.n] for i in 0..x.n])
 
+impl Pow for Mat<P>:
+    fn pow(x, e: Int) -> Mat<P>:
+        var (base, acc, k) = (x, Mat<P>.identity(x.n), e)
+        while k > 0:
+            if k % 2 == 1: acc *= base
+            base *= base
+            k /= 2
+        acc
+
 @test
 fn fibonacci_by_matrix_power():
     type M = Mod<1000000007>
     let step = Mat<1000000007>.of([[1, 1], [1, 0]])
     var (a, b) = (M(0), M(1))
     for n in 0..60:
-        assert step.pow(n).apply([M(1), M(0)])[1] == a
+        assert (step ** n).apply([M(1), M(0)])[1] == a
         (a, b) = (b, a + b)
-    assert step.pow(0) == Mat<1000000007>.identity(2)
+    assert step ** 0 == Mat<1000000007>.identity(2)
 
 @test
 fn counting_walks_matches_dp():
@@ -141,7 +142,7 @@ fn counting_walks_matches_dp():
     let g = Mat<998244353>.of(adj)
     var ways = [[M(Int(i == j)) for j in 0..n] for i in 0..n]
     for len in 0..12:
-        assert g.pow(len).a == ways
+        assert (g ** len).a == ways
         ways = [[sum_mod([ways[i][k] * M(adj[k][j]) for k in 0..n]) for j in 0..n] for i in 0..n]
 
 fn sum_mod<P>(xs: List<Mod<P>>) -> Mod<P>:

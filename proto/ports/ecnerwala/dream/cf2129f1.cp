@@ -28,7 +28,7 @@ domain Val = 1..=n
 domain Pos = 1..=n
 var mask: [Pos]Set<Query> = {}
 for q in Query:
-    let held = [v for v in Val where q in masks[v - 1]]
+    let held = [v for v in Val if q in masks[v - 1]]
     if held.is_empty: continue
     for p in ask<[held.len]Pos>(if q == 0: 4 else: 2, held.len, held): mask[p].add(q)
 print("!", [value_of[mask[p]]! + 1 for p in Pos])

@@ -16,11 +16,11 @@ fn bfs<D>(adj: [D]List<D>, roots: List<D>, allow: (D) -> Bool = _ => true) -> (L
     var parent: [D]?D = none, seen: [D]Bool = false
     var order: List<D> = []
     var i = 0
-    for r in roots where not seen[r]:
+    for r in roots if not seen[r]:
         seen[r] = true
         order.push(r)
         while i < order.len:
-            for w in adj[order[i]] where allow(w) and not seen[w]:
+            for w in adj[order[i]] if allow(w) and not seen[w]:
                 seen[w] = true
                 parent[w] = order[i]
                 order.push(w)
@@ -52,7 +52,7 @@ fn find_split(n: I32, a: I32, b: I32, c: I32, p: List<I32>, q: List<I32>) -> Lis
         let (domain Piece, roots) = order.filter(v => v != cut and parent[v] in [none, cut]).numbered()
         var of: [V]?Piece = none
         for x in Piece: of[roots[x]] = x
-        for v in order where v != cut and of[v] == none: of[v] = of[parent[v]!]
+        for v in order if v != cut and of[v] == none: of[v] = of[parent[v]!]
         return (Piece, of)
 
     let centre = centroid()

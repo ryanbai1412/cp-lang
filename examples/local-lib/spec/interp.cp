@@ -100,7 +100,7 @@ fn degrees_modulo_a_prime():
     let cubic = [M(x * x * x - 4 * x + 7) for x in 0..9]
     assert poly_degree_mod(cubic) == 3
     assert poly_degree_mod([M(5), M(5), M(5)]) == 0 and poly_degree_mod([M(0), M(0)]) == -1
-    assert poly_degree_mod([M(2).pow(i) for i in 0..12]) == none
+    assert poly_degree_mod([M(2) ** i for i in 0..12]) == none
     // three points always fit a parabola, so nothing confirms it
     assert poly_degree_mod([M(3), M(1), M(4)]) == none
     // halves are fine modulo a prime: n * (n + 1) / 2 has degree 2
@@ -125,10 +125,9 @@ fn sums_of_powers_far_out():
     type M = Mod<1000000007>
     for k in 0..=6:
         var ys = [M(0)]
-        for x in 1..=k + 2: ys.push(ys.last + M(x).pow(k))
+        for x in 1..=k + 2: ys.push(ys.last + M(x) ** k)
         assert poly_degree_mod(ys) == k + 1
-        var want: M = 0
-        for x in 1..=300: want += M(x).pow(k)
+        let want: M = sum(M(x) ** k for x in 1..=300)
         assert lagrange_at(ys, 300) == want
     // n = 10^18, k = 1: n * (n + 1) / 2
     let n = 10 ** 18

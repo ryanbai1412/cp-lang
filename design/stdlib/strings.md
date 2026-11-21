@@ -371,9 +371,9 @@ let (m, t): (Int, Int) = read()
 repeat t:
     let n: Int = read()
     let name: [0..n]Int = read()
-    var wait = Z(m).pow(n)
+    var wait = Z(m) ** n
     for b in borders([name[i] for i in 0..n]):
-        wait += Z(m).pow(b)
+        wait += Z(m) ** b
     print(f"{wait.v:04}")
 ```
 

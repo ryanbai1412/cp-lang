@@ -309,7 +309,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         summary: "Ordering operators (`<`, `<=`, `>`, `>=`) cannot compare `?T` directly.",
         explanation: "Because `none` has no universal ordering (infinity vs negative infinity depends on min vs max), unwrap with `??`, `if let`, or use `min=` / `max=`.",
         trigger: "let a: ?Int = 1\nlet b: ?Int = 2\nif a < b:\n    print(1)\n",
-        fix: "let a: ?Int = 1\nlet b: ?Int = 2\nif let x = a, y = b where x < y:\n    print(1)\n",
+        fix: "let a: ?Int = 1\nlet b: ?Int = 2\nif let x = a, y = b and x < y:\n    print(1)\n",
         mode: "check",
     },
     CodeInfo {

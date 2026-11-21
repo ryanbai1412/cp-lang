@@ -130,7 +130,7 @@ pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>:
     unchecked:
         for i in 0..m: lg[i] = lg[i] * km
     let ex = exp(lg, m)
-    let ck = c.pow(k)
+    let ck = c ** k
     var out = List.filled(n, Mod<P>(0))
     unchecked:
         for i in 0..m: out[shift + i] = ex[i] * ck
