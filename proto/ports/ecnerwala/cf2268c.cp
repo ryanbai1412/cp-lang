@@ -31,7 +31,7 @@ fn feasible(v: Int) -> Bool:
             peak.fold(I(b.pos)..=I(bounds[t + 1].pos - 1))
         else:
             INF
-        var cur = Ends([0..2] _ => INF, [0..2] _ => -INF)
+        var cur = Ends([INF, INF], [-INF, -INF])
         cur.lo[b.par] = b.pos
         cur.hi[b.par] = b.pos
         while let s = stk.last, top >= s.top:
