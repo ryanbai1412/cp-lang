@@ -2,7 +2,7 @@
 
 Score: 3/5
 
-Dream: pending cold rescore (rewritten: wraps multiline `+` sum in parentheses and sums over `Count` with `Count.first` instead of raw `Int`/`0`)
+Dream: 3/5
 
 The header (lines 1-4) states the state and the initial polynomial, and the transition comments (lines 31-39) read like the editorial. The polynomial product is hand-rolled, and the closing `/ i` and `/ (n + z)` divisions are not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -30,3 +30,12 @@ Dream 3/5 (new), port → 3/5, rescored on current main; sent back. The header d
 - Reported gaps: `Poly` (lines 13, 21) and out-of-range `dp.get` reads as zero (lines 31-35).
 
 Port 3/5: a hand polynomial multiply (lines 21-27) and a push DP into a scratch `next` table; the `deg` count is built by hand, also reported.
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored cold on current main; sent back. The multi-line sum is now parenthesized, and line 38 sums over `Count`.
+- Owed: line 25 indexes `dp: [Count, Count]` with `deg.count(0)` and `j`, both `Int`s (E0301); this error isn't from a reported gap. Write `dp[Count(deg.count(0)), Count(j)] = c`, or seed the row through a `Count`-indexed view of `unmarked`. With that fixed it is a 4.
+- Reported gaps: `Poly` (lines 13, 21) and zero reads out of range through `dp.get` (lines 31-35).
+- Minor: line 38 is a 120-character line; name the numerator.
+
+Port 3/5 unchanged: a hand polynomial multiply and a push DP into a scratch table (reported).

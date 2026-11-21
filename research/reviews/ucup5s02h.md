@@ -1,7 +1,7 @@
 # ucup5s02h
 
 Score: 3/5
-Dream: pending cold rescore (rewritten: fixes `^ 2` -> `** 2` per §70, defines `pull`, `never_weakest`, and `hull_pairs`, and uses canonical `enum Side: A | B`)
+Dream: 3/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
@@ -29,3 +29,13 @@ Dream 3/5 (new), port → 3/5, rescored on current main; sent back. The header d
 - Minor: `colour.unite(c, Pin, ...)` (line 52) passes a `C` for a `Node` (E0301), which the sum domain would fix.
 
 Port 3/5: the hull test is hand `I128` cross-multiplication (lines 21-30, 57-62; `Frac` is reported).
+
+## Cold review (HEAD)
+
+Dream 3/5, rescored cold on current main; sent back. `**` replaces `^`, and `pull`, `never_weakest` and `hull_pairs` are now defined.
+- Owed: `never_weakest` (lines 30-35) is the port's hand `I128` cross-multiplication, in a dream that already has `Frac`. The condition `d * d >= 4 * a1 * a3` isn't derived from line 29's claim. Write it with `Frac`/`pull`, or derive the inequality.
+- Owed: line 82's `max_by= (...), by: ...` doesn't parse (E0107), and line 84's `for e in best if let e:` isn't an accepted filter (E0103). Neither is in decisions.md or a friction item.
+- Owed: line 88 passes `C.filter(...)`, a `List<C>`, where `hull_pairs` takes `List<Charge>` (E0302); map through `ch`.
+- Reported gaps: `Frac`, the `C | Pin` sum domain (the `Pin`/`Node` errors), `ParityDsu` component ids and `side`, `GroupTree.others`, `min_by` and `pop_while`.
+
+Port 3/5 unchanged: the hull test is the same hand `I128` algebra (`Frac` is reported).
