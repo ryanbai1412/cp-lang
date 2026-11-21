@@ -18,7 +18,7 @@
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the offline site bundle (python3 site/bundle.py) stays under
-#            2,600,000 bytes
+#            caps (compiler 2,100,000 bytes, docs 620,000)
 #            and site/test_site.py passes (links, reader copy, documented
 #            programs compiled natively; about two minutes)
 # --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
@@ -277,11 +277,14 @@ python3 scripts/review-check.py --check \
 
 # The offline edition is one file people download; site/test_site.py holds
 # the same cap. The WASM build is a cargo no-op when nothing changed.
-step "site bundle: dist/cp-lang.html under 2,600,000 bytes"
+check_bundle_parts() {
+    python3 site/bundle.py --check-caps || fail "site bundle part over its cap (caps in site/bundle.py)"
+}
+step "site bundle: compiler under 2,100,000 bytes, docs under 620,000"
 if [ -f dist/cp-lang.html ] && cache_hit site_bundle "${site_inputs[@]}"; then
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
-    [ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
+    check_bundle_parts
 else
     rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null | xargs test -d \
         || fail "the site bundle needs the wasm target; run: rustup target add wasm32-unknown-unknown"
@@ -291,7 +294,7 @@ else
     python3 site/bundle.py >/dev/null 2>&1 || fail "site/bundle.py failed; rerun: python3 site/bundle.py"
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes"
-    [ "$bundle_bytes" -lt 2600000 ] || fail "dist/cp-lang.html is $bundle_bytes bytes, over the cap of 2,600,000"
+    check_bundle_parts
     cache_save site_bundle "${site_inputs[@]}"
 fi
 

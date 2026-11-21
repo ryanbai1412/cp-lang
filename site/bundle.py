@@ -95,5 +95,28 @@ def bundle():
     return output
 
 
+# Capped separately because they grow for different reasons: the compiler
+# (gzipped WASM) with the language, the docs blob only when text is duplicated.
+CAPS = {"compiler": 2_100_000, "docs": 620_000}
+
+
+def part_sizes(path):
+    source = path.read_text()
+    shipped = json.loads(re.search(
+        r'<script id="offline-data" type="application/json">(.*?)</script>',
+        source, re.S).group(1))
+    return {part: len(shipped[part]) for part in CAPS}
+
+
+def over_caps(path):
+    return {part: n for part, n in part_sizes(path).items() if n >= CAPS[part]}
+
+
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] == ["--check-caps"]:
+        output = ROOT.parent / "dist/cp-lang.html"
+        for part, n in part_sizes(output).items():
+            print(f"bundle {part}: {n} bytes (cap {CAPS[part]:,})")
+        sys.exit(1 if over_caps(output) else 0)
     bundle()

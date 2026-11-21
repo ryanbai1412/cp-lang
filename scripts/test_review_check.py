@@ -4,6 +4,7 @@
     python3 -m unittest scripts/test_review_check.py
 """
 import importlib.util, os, subprocess, tempfile, unittest
+from unittest import mock
 from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location(
@@ -78,7 +79,8 @@ class AddedPortNamesTest(unittest.TestCase):
             git("add", ".")
             root, rc.sb.ROOT = rc.sb.ROOT, Path(d)
             try:
-                self.assertEqual(rc.added_port_names({"old", "new"}), {"new"})
+                with mock.patch.dict(os.environ, env, clear=True):
+                    self.assertEqual(rc.added_port_names({"old", "new"}), {"new"})
             finally:
                 rc.sb.ROOT = root
 

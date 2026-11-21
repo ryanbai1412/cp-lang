@@ -40,15 +40,17 @@ class CheckCacheTest(unittest.TestCase):
         hook = os.path.join(root, ".githooks", "pre-push")
         self.assertTrue(os.path.isfile(hook))
         self.assertTrue(os.access(hook, os.X_OK))
+        # A commit hook exports GIT_DIR and GIT_INDEX_FILE; inherited, they aim these at the real repo.
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         with tempfile.TemporaryDirectory() as tmp:
-            subprocess.run(["git", "init", "-q"], cwd=tmp, check=True)
-            subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=tmp, check=True)
-            subprocess.run(["git", "config", "user.name", "t"], cwd=tmp, check=True)
+            subprocess.run(["git", "init", "-q"], cwd=tmp, check=True, env=env)
+            subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=tmp, check=True, env=env)
+            subprocess.run(["git", "config", "user.name", "t"], cwd=tmp, check=True, env=env)
             p = os.path.join(tmp, "bad.md")
             with open(p, "w", encoding="utf-8") as f:
                 f.write("hello\n<<<<<<< HEAD\nfoo\n=======\nbar\n>>>>>>> other\n")
-            subprocess.run(["git", "add", "bad.md"], cwd=tmp, check=True)
-            r = subprocess.run([hook], cwd=tmp, capture_output=True, text=True)
+            subprocess.run(["git", "add", "bad.md"], cwd=tmp, check=True, env=env)
+            r = subprocess.run([hook], cwd=tmp, capture_output=True, text=True, env=env)
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("merge conflict markers", r.stderr)
 
