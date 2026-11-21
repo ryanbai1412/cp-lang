@@ -233,8 +233,9 @@ fn lsp_latency(lines: usize) {
     for copy in 0..9 {
         let uri = format!("file:///bench/copy_{copy}.cp");
         let (replies, took) = round_trip(&mut server, &open(&uri));
+        // Lints included: only errors would mean the program is wrong.
         assert!(
-            replies[0].ends_with(r#""diagnostics":[]}}"#),
+            replies[0].contains(r#""diagnostics":["#) && !replies[0].contains(r#""severity":1"#),
             "{}",
             &replies[0][..200.min(replies[0].len())]
         );

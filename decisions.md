@@ -2090,6 +2090,15 @@ nothing; LSP4IJ would reach them but is a third-party plugin and a second client
 `--full` runs `buildPlugin` when `java` is installed; the platform tests join it once they have run.
 Reverse: delete `editors/jetbrains/` and its block in `editors/smoke.sh`.
 
+29.16. **The server publishes the lints, and `cpl fix` is its fix-all.** After the checker's
+diagnostics it publishes what `cpl lint` reports under the file's `cp.toml`, each lint's fix a
+quick fix, and a `source.fixAll.cpl` action applies `cpl fix` to the buffer (the same
+`apply_fixes` loop to a fixed point), so an editor's fix-on-save and the command line rewrite
+alike. Lints run on the whole file on every edit: 492 lines open in 10 ms and a keystroke
+reaches diagnostics in 5 ms (debug build). The playground's build leaves them out: the lint
+rules added 85,600 B to `dist/cp-lang.html` and took it over its 2,600,000 B cap. Reverse: drop `lints` from `diagnostics` and
+`codeAction` in `crates/cpl-lsp/src/server.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

@@ -7,10 +7,10 @@ const SOURCE: &str = "\
 let n: 1..=2e5 = read()
 domain V = 1..=n
 domain E = 0..n
-var dist: [V]?Int = none
+let dist: [V]?Int = none
 var total = 0
 for v in V:
-    total += dist[v] ?? 0
+    total ^= dist[v] ?? 0
 print(total)
 ";
 
@@ -370,29 +370,29 @@ fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
     assert_fixes_restore(
         "cf2062g",
         &[
-        // E0101: a call left open.
-        (
-            "let p: [I]I = read()",
-            "let p: [I]I = read(",
-            "E0101",
-            "insert `)`",
-        ),
-        // E0103: a block without its colon.
-        (
-            "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:",
-            "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>",
-            "E0103",
-            "insert `:`",
-        ),
-        // E0102: an operator typed twice.
-        (
-            "abs(i.ord - j.ord) + abs(",
-            "abs(i.ord - j.ord) + * abs(",
-            "E0102",
-            "remove the extra `*`",
-        ),
-        // E0004: a stray character.
-        ("fn sort_perm<D>", "fn $sort_perm<D>", "E0004", "remove `$`"),
+            // E0101: a call left open.
+            (
+                "let p: [I]I = read()",
+                "let p: [I]I = read(",
+                "E0101",
+                "insert `)`",
+            ),
+            // E0103: a block without its colon.
+            (
+                "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:",
+                "fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>",
+                "E0103",
+                "insert `:`",
+            ),
+            // E0102: an operator typed twice.
+            (
+                "abs(i.ord - j.ord) + abs(",
+                "abs(i.ord - j.ord) + * abs(",
+                "E0102",
+                "remove the extra `*`",
+            ),
+            // E0004: a stray character.
+            ("fn sort_perm<D>", "fn $sort_perm<D>", "E0004", "remove `$`"),
         ],
     );
 }
@@ -1169,7 +1169,12 @@ fn use_std_completes_module_names_and_then_their_exports() {
     assert!(labels(&items).contains(&"SegTree"), "{items:?}");
     let items = completions("use std.graph.{|}\n");
     assert!(labels(&items).contains(&"bfs01"), "{items:?}");
-    assert!(!labels(&items).iter().any(|name| name.ends_with("_of_pairs") || name.ends_with("_of_triples")), "{items:?}");
+    assert!(
+        !labels(&items)
+            .iter()
+            .any(|name| name.ends_with("_of_pairs") || name.ends_with("_of_triples")),
+        "{items:?}"
+    );
     assert!(completions("// see xs.|\n").is_empty());
 }
 
@@ -1849,4 +1854,67 @@ fn signature_help_shows_defaults_and_named_only_parameters() {
     // A stdlib method's default, as its declaration writes it.
     let (label, ..) = signature("use std.mod.{Comb}\nlet c = Comb<7>.new(|)\n");
     assert!(label.starts_with("new(limit: Int = 0) -> Comb<"), "{label}");
+}
+
+/// The lints `cpl lint` reports are published with the checker's errors,
+/// each with the fix `cpl fix` would apply as a quick fix, and the whole of
+/// `cpl fix` is one fix-all action.
+#[test]
+fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../proto/ports/ecnerwala/cf2062g.cp");
+    let original = std::fs::read_to_string(&path).unwrap();
+    let uri = format!("file://{}", path.display());
+    let (good, bad) = ("let p: [I]I = read()", "var p: [I]I = read()");
+    assert!(original.contains(good));
+    let broken = original.replacen(good, bad, 1);
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    let doc = obj([
+        ("uri", uri.as_str().into()),
+        ("languageId", "cp".into()),
+        ("version", 1.into()),
+        ("text", broken.as_str().into()),
+    ]);
+    let published = server.handle(&notification(
+        "textDocument/didOpen",
+        obj([("textDocument", doc)]),
+    ));
+    let diagnostics = published[0].at(&["params", "diagnostics"]).as_array();
+    let never_changed = diagnostics
+        .iter()
+        .find(|d| d.get("code").as_str() == Some("L0201"))
+        .unwrap_or_else(|| panic!("no L0201 in {diagnostics:?}"));
+    assert_eq!(never_changed.get("severity").as_u32(), Some(2));
+    let (title, fixed) = quick_fixed(&mut server, &uri, &broken, never_changed);
+    assert!(title.contains("let"), "{title}");
+    assert_eq!(fixed, original);
+
+    let whole = obj([("start", pos(0, 0)), ("end", pos(0, 0))]);
+    let reply = server.handle(&request(
+        10,
+        "textDocument/codeAction",
+        obj([
+            ("textDocument", obj([("uri", uri.as_str().into())])),
+            ("range", whole),
+            (
+                "context",
+                obj([
+                    ("diagnostics", Value::Array(Vec::new())),
+                    ("only", vec!["source.fixAll".into()].into()),
+                ]),
+            ),
+        ]),
+    ));
+    let actions = reply[0].get("result").as_array();
+    let fix_all = actions
+        .iter()
+        .find(|a| a.get("kind").as_str() == Some("source.fixAll.cpl"))
+        .expect("a fix-all action");
+    let edit = &fix_all.at(&["edit", "changes", uri.as_str()]).as_array()[0];
+    let all = edit.get("newText").as_str().unwrap();
+    assert!(all.contains(good) && !all.contains(bad));
+    let left = cpl_lint::lint(all, &cpl_lint::Config::default());
+    assert!(left.iter().all(|d| d.fixes.is_empty()), "{left:?}");
+    assert!(left.len() < diagnostics.len());
 }

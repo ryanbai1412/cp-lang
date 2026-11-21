@@ -608,7 +608,9 @@ from diagnostic fixes (the four most frequent first errors over the broken
 ports, an unclosed delimiter, a missing token, a doubled operator and a
 stray character, each have one; `recovery.rs` prints the table and how
 often the first fix restores the line; a closer dropped inside a call or index
-no longer shows first as a wrong argument or index count); a panic becomes an error reply plus an
+no longer shows first as a wrong argument or index count); the lints
+`cpl lint` reports, each with its `cpl fix` fix as a quick fix, and
+`cpl fix` on the buffer as a `source.fixAll.cpl` action; a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a

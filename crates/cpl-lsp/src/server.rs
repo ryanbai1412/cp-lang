@@ -531,7 +531,8 @@ impl Server {
                     analysis.lines.offset_utf16(end, &analysis.text),
                 );
                 let mut actions = Vec::new();
-                for diag in &analysis.diagnostics {
+                let lints = lints(uri, &analysis.text);
+                for diag in analysis.diagnostics.iter().chain(&lints) {
                     if diag.span.end < wanted.start || diag.span.start > wanted.end {
                         continue;
                     }
@@ -563,6 +564,46 @@ impl Server {
                             ),
                         ]));
                     }
+                }
+                // `cpl fix` on the document, for an editor's fix-all (on save).
+                let only = params.at(&["context", "only"]).as_array();
+                let fix_all = only.is_empty()
+                    || only.iter().filter_map(Value::as_str).any(|kind| {
+                        "source.fixAll".starts_with(kind) || kind.starts_with("source.fixAll")
+                    });
+                if fix_all && lints.iter().any(|d| !d.fixes.is_empty()) {
+                    let mut text = analysis.text.to_string();
+                    let mut diagnostics = lints;
+                    loop {
+                        let (fixed, applied) = cpl_lint::apply_fixes(&text, &diagnostics);
+                        if applied == 0 {
+                            break;
+                        }
+                        text = fixed;
+                        diagnostics = self::lints(uri, &text);
+                    }
+                    let whole = Span::new(0, analysis.text.len() as u32);
+                    actions.push(obj([
+                        ("title", "apply every `cpl fix` fix".into()),
+                        ("kind", "source.fixAll.cpl".into()),
+                        (
+                            "edit",
+                            obj([(
+                                "changes",
+                                Value::Object(vec![(
+                                    uri.to_string(),
+                                    vec![obj([
+                                        (
+                                            "range",
+                                            range_json(whole, &analysis.text, &analysis.lines),
+                                        ),
+                                        ("newText", text.into()),
+                                    ])]
+                                    .into(),
+                                )]),
+                            )]),
+                        ),
+                    ]));
                 }
                 Ok(Reply::result(Value::Array(actions)))
             }
@@ -668,9 +709,10 @@ impl Server {
             return publish(uri, Vec::new());
         };
         // The same answer as `cpl check`: the checker's diagnostics, then
-        // what lowering rejects.
+        // what lowering rejects; then, as `cpl lint` reports them, the lints.
         let items = cpl_ir::check(&analysis)
             .iter()
+            .chain(&lints(uri, &analysis.text))
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
         publish(uri, items)
@@ -798,7 +840,10 @@ fn capabilities() -> Value {
                 ("inlayHintProvider", true.into()),
                 (
                     "codeActionProvider",
-                    obj([("codeActionKinds", vec!["quickfix".into()].into())]),
+                    obj([(
+                        "codeActionKinds",
+                        vec!["quickfix".into(), "source.fixAll.cpl".into()].into(),
+                    )]),
                 ),
             ]),
         ),
@@ -1056,6 +1101,24 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
         members.push(("relatedInformation".to_string(), related.into()));
     }
     Value::Object(members)
+}
+
+/// What `cpl lint` reports for the document, under the `cp.toml` that
+/// governs its file; each lint's fix is the one `cpl fix` applies.
+///
+/// Not in the playground: the lint rules would put its page over the
+/// site bundle's size cap.
+#[cfg(target_arch = "wasm32")]
+fn lints(_uri: &str, _text: &str) -> Vec<Diagnostic> {
+    Vec::new()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn lints(uri: &str, text: &str) -> Vec<Diagnostic> {
+    let config = path_of_uri(uri)
+        .map(|path| cpl_lint::Config::discover(std::path::Path::new(&path)).0)
+        .unwrap_or_default();
+    cpl_lint::lint(text, &config)
 }
 
 /// The file a `file://` URI names, with `%XX` escapes decoded.
