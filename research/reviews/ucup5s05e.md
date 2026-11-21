@@ -1,7 +1,7 @@
 # ucup5s05e
 
 Score: 3/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: derives 5-vertex chain window + off-diagonal invariant in header, names `WINDOW = 5`, replaces hand-listed `quad_edges` with cyclic `hull_edges` comprehension, uses `repeat q`)
 
 Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 3/5; awaiting rescore).
 
