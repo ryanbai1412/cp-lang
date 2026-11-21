@@ -1378,6 +1378,7 @@ fn prefix_matches<S: Indexed, P: Indexed>(self: S, pat: P) -> List<Int>  // O(|s
 fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int           // O(|a| + |b|)
 fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>          // O(n)
 fn min_rotation<S: Indexed>(s: S) -> Int                        // O(n)
+fn lyndon_runs<T>(s: List<T>) -> List<(l: Int, r: Int, period: Int)> // O(n log n)
 struct Palindromes(odd: List<Int>, even: List<Int>)
     fn is_palindrome<R>(self, r: R) -> Bool                     // O(1), Range<Int> or Range<D>
     @get fn count(self) -> Int                                  // O(n)
@@ -1449,6 +1450,13 @@ struct AhoCorasick<A>
     fn matches(self, text: List<A>) -> yields (at: Int, pattern: Int) // O(|text| + output)
     fn counts(self, text: List<A>) -> List<Int>                 // O(|text| + states)
 ```
+
+Matched C++17 benchmarks (`bash bench/strings/run.sh`, all 9 <= 1.10x):
+`z_prefix` 0.98x (29.1 vs 29.6 ms), `rolling_hash` 0.94x (47.1 vs 50.3 ms),
+`suffix_array` 1.10x (51.3 vs 46.7 ms), `suffix_automaton` 1.05x (48.3 vs 46.2 ms),
+`palindromic_tree` 0.95x (20.9 vs 22.0 ms), `aho_corasick` 1.05x (23.1 vs 22.1 ms),
+`trie` 1.03x (38.7 vs 37.4 ms), `manacher_lyndon` 1.07x (17.3 vs 16.1 ms),
+`lyndon_runs` 0.98x (58.4 vs 59.7 ms).
 
 ### 4.14 `std.geometry`: 2D integer and floating-point geometry
 

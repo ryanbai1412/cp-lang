@@ -546,6 +546,44 @@ pub struct SuffixArray<T>:
         for x in lcp: total -= x
         total
 
+/// All maximal repetitions (runs) of `s` via Bannai's Lyndon-runs theorem.
+/// Each `(l, r, period)` is a half-open range `s[l..r]` with minimal period `period`,
+/// length `r - l >= 2 * period`, that cannot be extended left or right with period `period`.
+/// Returned sorted by `(l, r)`. O(n log n) time and memory.
+@allow(unproven_list_index)
+pub fn lyndon_runs<T>(s: List<T>) -> List<(l: Int, r: Int, period: Int)>:
+    let n = s.len
+    if n < 2: return []
+    let sa = SuffixArray.new(s)
+    var rev = List<T>()
+    for i in (0..n).rev: rev.push(s[i])
+    let rsa = SuffixArray.new(rev)
+    var raw = List<(l: Int, r: Int, period: Int)>()
+    unchecked:
+        for rev_ord in [false, true]:
+            var st = List<Int>()
+            for i in (0..n).rev:
+                while not st.is_empty:
+                    let top = st[st.len - 1]
+                    let common = sa.lcp_between(i, top)
+                    if top + common == n: break
+                    let less = (s[i + common] < s[top + common]) != rev_ord
+                    if less: st.pop() else: break
+                let j = if st.is_empty: n else: st[st.len - 1]
+                st.push(i)
+                let p = j - i
+                let left = if i == 0: 0 else: rsa.lcp_between(n - i, n - j)
+                let right = if j == n: 0 else: sa.lcp_between(i, j)
+                let l = i - left
+                let r = j + right
+                if r - l >= 2 * p: raw.push((l: l, r: r, period: p))
+    raw.sort()
+    var out = List<(l: Int, r: Int, period: Int)>()
+    for run in raw:
+        if out.is_empty or out[out.len - 1].l != run.l or out[out.len - 1].r != run.r:
+            out.push(run)
+    out
+
 // ---- generalized rolling hash
 
 const RH_M1 = 1_000_000_007
@@ -1698,3 +1736,34 @@ fn indexed_views_and_common_prefix_suffix():
     assert manacher(arr).is_palindrome(Pos(1)..=Pos(5))
     assert not manacher(arr).is_palindrome(Pos(1)..=Pos(4))
     assert period(arr) == 2
+
+@test
+fn lyndon_runs_matches_brute():
+    fn brute_runs(s: List<Int>) -> List<(l: Int, r: Int, period: Int)>:
+        let n = s.len
+        var out = List<(l: Int, r: Int, period: Int)>()
+        for l in 0..n:
+            for r in l + 2..=n:
+                var min_p = 0
+                for p in 1..=(r - l) / 2:
+                    if all(s[i] == s[i + p] for i in l..r - p):
+                        min_p = p
+                        break
+                if min_p == 0: continue
+                if l > 0 and s[l - 1] == s[l - 1 + min_p]: continue
+                if r < n and s[r] == s[r - min_p]: continue
+                out.push((l: l, r: r, period: min_p))
+        out
+
+    assert lyndon_runs("").is_empty
+    assert lyndon_runs("a").is_empty
+    assert lyndon_runs("aa") == [(l: 0, r: 2, period: 1)]
+    assert lyndon_runs("ababa") == [(l: 0, r: 5, period: 2)]
+    var seed = 424242
+    for n in 1..=14:
+        for _ in 0..6:
+            var s = List<Int>()
+            for _ in 0..n:
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff
+                s.push((seed >> 16) % 3)
+            assert lyndon_runs(s) == brute_runs(s)

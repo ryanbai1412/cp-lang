@@ -1006,6 +1006,77 @@ fn poly(node: Int, lo: Int, hi: Int):
 }
 
 #[test]
+fn hand_rolled_string_algo_flags_kmp_z_hash_and_trie_without_false_positives() {
+    let kmp = "\
+let s = \"ababa\"
+var pi = List.filled(s.len, 0)
+for i in 1..s.len:
+    var j = pi[i - 1]
+    while j > 0 and s[i] != s[j]:
+        j = pi[j - 1]
+    if s[i] == s[j]:
+        j += 1
+    pi[i] = j
+";
+    assert_eq!(taste_codes(kmp), ["L0516"]);
+
+    let z_fn = "\
+let s = \"ababa\"
+let n = s.len
+var z = List.filled(n, 0)
+var (l, r) = (0, 0)
+for i in 1..n:
+    if i < r: z[i] = min(r - i, z[i - l])
+    while i + z[i] < n and s[z[i]] == s[i + z[i]]:
+        z[i] += 1
+    if i + z[i] > r:
+        (l, r) = (i, i + z[i])
+";
+    assert_eq!(taste_codes(z_fn), ["L0516"]);
+
+    let poly_hash = "\
+let s = \"ababa\"
+let n = s.len
+const B = 131
+const M = 1_000_000_007
+var h = List.filled(n + 1, 0)
+var pw = List.filled(n + 1, 1)
+for i in 0..n:
+    h[i + 1] = (h[i] * B + Int(s[i])) % M
+    pw[i + 1] = (pw[i] * B) % M
+";
+    assert_eq!(taste_codes(poly_hash), ["L0516"]);
+
+    let trie_loop = "\
+struct Node:
+    kid: [0..2]?Int
+var nodes: List<Node> = [Node([0..2] _ => none)]
+var o = 0
+var rest = 12
+while rest > 1:
+    nodes[o].kid[rest % 2] ??= nodes.push_id(Node([0..2] _ => none))
+    o = nodes[o].kid[rest % 2]!
+    rest /= 2
+";
+    assert_eq!(taste_codes(trie_loop), ["L0516"]);
+
+    // Negative cases: decimal parsing, tree DP child walk, and using std.strings.prefix_function.
+    let clean = "\
+let s = \"12345\"
+var val = 0
+for ch in s:
+    val = val * 10 + Int(ch) - Int('0')
+let pi = prefix_function(s)
+var half = 0
+for i in 1..s.len:
+    while half > 0 and s[half] != s[i]: half = pi[half - 1]
+    if s[half] == s[i]: half += 1
+print(val, half)
+";
+    assert_eq!(taste_codes(clean), Vec::<&str>::new());
+}
+
+#[test]
 fn loop_invariant_mod_div_hoists_inverse() {
     let basic = "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2)]\nfor i in 0..xs.len:\n    xs[i] = xs[i] / d\nprint(xs)\n";
     assert_eq!(codes(basic), ["L0415"]);

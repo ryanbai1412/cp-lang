@@ -355,6 +355,16 @@ pub const SORTED_RANGE_METHOD: Lint = Lint {
     trigger: "var s = SortedBag<Int>()\nprint(s.first_ge(3), s.last_lt(5), s.count_range(1, 5))\n",
     fix: "var s = SortedBag<Int>()\nprint(s.range(3..).first, s.range(..5).last, s.range(1..5).len)\n",
 };
+pub const HAND_ROLLED_STRING_ALGO: Lint = Lint {
+    code: Code("L0516"),
+    name: "hand_rolled_string_algo",
+    default: Level::Warn,
+    title: "Hand-rolled string algorithm",
+    summary: "manual prefix-function, Z-function, polynomial hash, or trie loop: use `std.strings`",
+    explanation: "Hand-rolling a KMP prefix function, Z-function, polynomial rolling hash, or trie insertion loop duplicates tested, linear-time `std.strings` primitives (`prefix_function`, `z_function`, `RollingHash`, `Trie`, `AhoCorasick`).",
+    trigger: "let s = \"ababa\"\nvar pi = List.filled(s.len, 0)\nfor i in 1..s.len:\n    var j = pi[i - 1]\n    while j > 0 and s[i] != s[j]: j = pi[j - 1]\n    if s[i] == s[j]: j += 1\n    pi[i] = j\nprint(pi)\n",
+    fix: "use std.strings.{prefix_function}\nlet s = \"ababa\"\nprint(prefix_function(s))\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -386,6 +396,7 @@ pub const LINTS: &[Lint] = &[
     PREFIX_TWIN,
     HAND_ROLLED_RANGE_TREE,
     SORTED_RANGE_METHOD,
+    HAND_ROLLED_STRING_ALGO,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like
