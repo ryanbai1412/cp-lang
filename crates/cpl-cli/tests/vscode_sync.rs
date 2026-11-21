@@ -66,6 +66,7 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     let type_names = rust_strings(&prelude, "const TYPE_NAMES: &[&str] = &[", "];");
     let mut builtins: BTreeSet<String> = type_names.into_iter().collect();
     builtins.extend(rust_strings(&prelude, "pub fn value(", "\n}\n"));
+    builtins.extend(rust_strings(&prelude, "const VALUE_NAMES: &[&str] = &[", "];"));
     builtins.extend(rust_strings(&prelude, "pub fn ty(", "\n}\n"));
 
     let mut imported = BTreeSet::new();

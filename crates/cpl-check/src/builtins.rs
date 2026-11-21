@@ -160,6 +160,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "items", Get, "", "List<(Int, T)>", false, "Each element with its index: `for (i, x) in xs.items`.", "xs.items", "List<(Int, Int)>"),
     row!(List, "first_ge", Method, "x: T", "?Int", false, "In a sorted list, the index of the first element `>= x`.", "xs.first_ge(2)", "?Int"),
     row!(List, "last_le", Method, "x: T", "?Int", false, "In a sorted list, the index of the last element `<= x`.", "xs.last_le(2)", "?Int"),
+    row!(List, "windows", Method, "k: Int", "List<List<T>>", false, "Every run of `k` neighbouring elements.", "xs.windows(2)", "List<List<Int>>"),
 
     row!(Str, "len", Get, "", "Int", false, "How many characters.", "s.len", "Int"),
     row!(Str, "items", Get, "", "List<(Int, Char)>", false, "Each character with its index: `for (i, c) in s.items`.", "s.items", "List<(Int, Char)>"),
@@ -169,7 +170,9 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Str, "reversed", Method, "", "Str", false, "The text backwards.", "s.reversed()", "Str"),
     row!(Str, "rev", Method, "", "Str", false, "The characters in reverse order, to loop over or keep.", "s.rev()", "Str"),
     row!(Str, "join", Method, "parts: List<Str>", "Str", false, "The parts with this text between them.", "\", \".join([\"a\", \"b\"])", "Str"),
+    row!(Str, "find_all", Method, "p: Str", "List<Int>", false, "Every place `p` starts in the text.", "s.find_all(\"l\")", "List<Int>"),
     row!(Str, "contains", Method, "c: Char", "Bool", false, "True when the text has the character `c`.", "s.contains('e')", "Bool"),
+    row!(Str, "windows", Method, "k: Int", "List<List<Char>>", false, "Every run of `k` neighbouring characters.", "s.windows(2)", "List<List<Char>>"),
 
     row!(Map, "len", Get, "", "Int", false, "How many keys.", "m.len", "Int"),
     row!(Map, "items", Get, "", "List<(K, V)>", false, "Each key with its value, smallest key first: `for (k, v) in m.items`.", "m.items", "List<(Int, Int)>"),
@@ -222,4 +225,5 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Array, "items", Get, "", "List<(I, T)>", false, "Each cell with its index: `for (i, x) in a.items`.", "a.items", "List<(Int, Int)>"),
     row!(Array, "first_ge", Method, "x: T", "?Int", false, "In a sorted array, the index of the first cell `>= x`.", "a.first_ge(2)", "?Int"),
     row!(Array, "last_le", Method, "x: T", "?Int", false, "In a sorted array, the index of the last cell `<= x`.", "a.last_le(2)", "?Int"),
+    row!(Array, "windows", Method, "k: Int", "List<List<T>>", false, "Every run of `k` neighbouring cells.", "a.windows(2)", "List<List<Int>>"),
 ];

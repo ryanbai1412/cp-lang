@@ -121,38 +121,17 @@ fn int_fn(arity: usize) -> Ty {
 
 /// The type of a prelude value, or `None` if `name` is not one. Fns that
 /// are generic over what they are given are `Unknown`, which accepts any
-/// call.
+/// call. `VALUE_NAMES` is the one list of them.
 pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
-        "print" | "read" | "min" | "max" | "abs" => Ty::Unknown,
-        "sum" | "count" | "all" | "any" | "find" | "first" | "last" | "argmax" | "argmin" => {
-            Ty::Unknown
-        }
-        "sort" | "sorted" | "shuffle" | "swap" | "copy" | "rand" | "some" | "laws_hold" => {
-            Ty::Unknown
-        }
-        // These three count the bits of an `Int` or of a `U64`.
-        "popcount" | "ctz" | "bit_width" => Ty::Unknown,
         "bit_ceil" | "isqrt" => int_fn(1),
-        "flush" | "sqrt" | "atan2" | "floor" | "ceil" | "round" | "trunc" | "len" => Ty::Unknown,
-        // `counts(xs)` is a `Counter`, `prefix(a)` the prefix sums of an
-        // array, and `span(a, b)` the range between two positions in
-        // either order (decisions §11).
-        "counts" | "prefix" | "span" => Ty::Unknown,
-        // `take(x)` moves a value out and leaves its default behind, and
-        // `read(columns)` reads an array of records a field at a time
-        // (decisions §13).
-        "take" | "columns" => Ty::Unknown,
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `Subset<D>` is the subsets of a domain. Both are lowered
         // by `cpl-ir`.
         "ask" | "Subset" => Ty::Unknown,
-        // `debug(i, best)` shows values on a local run and is no part of
-        // the C++ a judge gets; `read_output()` is what the solution
-        // printed, to a `@checker`.
-        "debug" | "read_output" => Ty::Unknown,
         _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
+        _ if VALUE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })
 }
