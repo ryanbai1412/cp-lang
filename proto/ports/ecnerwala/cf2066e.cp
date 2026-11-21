@@ -10,58 +10,53 @@
 // more than doubles every two steps and there are O(log(total)) stuck points.
 // At each, some gap among the unique barrels >= b must be <= have.
 
-let MAX_V = 1_000_000
-let INF = MAX_V + 1
-domain Vol = 0..=MAX_V
+let max_v = 1_000_000
+domain Vol = 0..=max_v
 
+// Before checking unique barrel b, the safe water is everything except the
+// unique barrels >= b. gap[u] is the distance from unique u to the next one
+// (none when u is not unique or is the largest).
 var count: [Vol]Int = 0
 var total = 0
-var total_unique = 0
 var unique = SortedSet<Int>()
 var unique_sum = Fenwick<Vol, Int>()
-var gaps = SegTree<Vol, Int>(Monoid<Int>(INF, (a, b) => min(a, b)))
+var gap = SegTree<Vol, ?Int>(
+    Monoid<?Int>(none, (a, b) => if let x = a, let y = b: min(x, y) else: a ?? b)
+)
 
-fn put(v: Vol, delta: Int):
-    let was_alone = count[v] == 1
+fn refresh_gap(u: Int): gap.set(Vol(u), unique.range(u + 1..).first.map(w => w - u))
+
+fn put(v: Vol, delta: -1..=1):
+    let was_unique = count[v] == 1
     count[v] += delta
     total += delta * v.ord
-    let is_alone = count[v] == 1
-    if is_alone == was_alone: return
-    if is_alone:
+    let is_unique = count[v] == 1
+    if is_unique == was_unique: return
+    if is_unique:
         unique.add(v.ord)
         unique_sum.add(v, v.ord)
-        total_unique += v.ord
-        let nxt = unique.range(v.ord + 1..).first
-        gaps.set(v, if let w = nxt: w - v.ord else: INF)
-        if let u = unique.range(..v.ord).last: gaps.set(Vol(u), v.ord - u)
+        refresh_gap(v.ord)
     else:
         unique.remove(v.ord)
         unique_sum.add(v, -v.ord)
-        total_unique -= v.ord
-        gaps.set(v, INF)
-        if let u = unique.range(..v.ord).last:
-            let nxt = unique.range(u + 1..).first
-            gaps.set(Vol(u), if let w = nxt: w - u else: INF)
+        gap.set(v, none)
+    if let u = unique.range(..v.ord).last: refresh_gap(u)
 
-fn safe_before(b: Int) -> Int = (total - total_unique) + unique_sum.sum(..Vol(b))
+fn safe_before(b: Int) -> Int = total - unique_sum.sum(Vol(b)..)
 
 fn identifiable() -> Bool:
-    let last_u = unique.last ?? return true
-    var cur = unique.first
-    while let b = cur:
-        if b == last_u: break
+    let last = unique.last ?? return true
+    var at = unique.first
+    while let b = at, b != last:
         let have = safe_before(b)
-        if b > have and gaps.fold(Vol(b)..=Vol.last) > have: return false
-        cur = unique.range(max(have, b) + 1..).first
+        if b > have and gap.fold(Vol(b)..)! > have: return false
+        at = unique.range(max(have, b) + 1..).first
     true
 
 let (n, q): (1..=200_000, 1..=200_000) = read()
-repeat n:
-    let v: 1..=1_000_000 = read()
-    put(Vol(v), 1)
+for v in read<[n]1..=max_v>(): put(Vol(v), +1)
 print(if identifiable(): "Yes" else: "No")
 repeat q:
-    let op: Char = read()
-    let v: 1..=1_000_000 = read()
-    put(Vol(v), if op == '+': 1 else: -1)
+    let (op, v): (Char, 1..=max_v) = read()
+    put(Vol(v), if op == '+': +1 else: -1)
     print(if identifiable(): "Yes" else: "No")
