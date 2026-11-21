@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: uses `q[start..] = suffix`, `[...].somes.min()` instead of hand `min_pos`/filter, and removes global `seen_inversion` in favor of local `had_inv` returned by `commit_place`; logs `.somes` and slice assignment in friction)
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 

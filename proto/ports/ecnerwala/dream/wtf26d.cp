@@ -56,12 +56,10 @@ fn solve():
     for i in Pos.first..first_diff: used[q[i]] = true
 
     // Earliest P-position among unused values <= v.
-    fn min_pos(a: ?Pos, b: ?Pos) -> ?Pos = if let x = a, let y = b: some(min(x, y)) else: a ?? b
     let unused_pos: [Val]?Pos = [Val] v => if not used[v]: some(inv_p[v]) else: none
-    let pref_min = unused_pos.scan(min_pos)
+    let pref_min = unused_pos.scan((a, b) => [a, b].somes.min())
 
     var conds = CondStack()
-    var seen_inversion = false
 
     fn forms_inversion(i: Pos, v: Val, had_inv: Bool) -> Bool =
         had_inv or (i > first_diff and v < q[i.prev!] and inv_p[v] < inv_p[q[i.prev!]])
@@ -70,9 +68,7 @@ fn solve():
         if i == first_diff and v == p[i]: return none
         let pos = inv_p[v]
         if not forms_inversion(i, v, had_inv):
-            let opts = [some(v), next_cap, conds.active_cap(pos)]
-            let caps = [u for opt in opts if let u = opt]
-            caps.min()
+            [some(v), next_cap, conds.active_cap(pos)].somes.min()
         elif let ac = conds.active_cap(pos), v > ac:
             ac
         else:
@@ -84,15 +80,17 @@ fn solve():
         else:
             true
 
-    fn commit_place(i: Pos, v: Val, next_cap: ?Val):
+    fn commit_place(i: Pos, v: Val, next_cap: ?Val, had_inv: Bool) -> Bool:
         let pos = inv_p[v]
+        var next_inv = had_inv
         if not (i == first_diff and v == p[i]):
-            let cap = required_cap(i, v, next_cap, seen_inversion)
+            let cap = required_cap(i, v, next_cap, had_inv)
             conds.pop_after(pos)
             if let c = cap: conds.push_if_tighter(pos, c)
-            seen_inversion = forms_inversion(i, v, seen_inversion)
+            next_inv = forms_inversion(i, v, had_inv)
         q[i] = v
         used[v] = true
+        next_inv
 
     // Largest unused witness in `p_thresh..=hi_p` before any unused value > max_v.
     fn pick_witness(p_thresh: Pos, hi_p: Pos, max_v: Val) -> Pos:
@@ -104,13 +102,14 @@ fn solve():
 
     // Match Q as far as possible; on the first failure, step q[i] down and return the suffix start.
     fn match_prefix() -> ?Pos:
+        var had_inv = false
         for i in first_diff..=Pos.last:
             let next_cap = i.next.map(nxt => q[nxt])
-            if can_place(i, q[i], next_cap, seen_inversion):
-                commit_place(i, q[i], next_cap)
+            if can_place(i, q[i], next_cap, had_inv):
+                had_inv = commit_place(i, q[i], next_cap, had_inv)
             else:
-                let v = Val.rev.first(u => u < q[i] and not used[u] and can_place(i, u, none, seen_inversion))!
-                commit_place(i, v, none)
+                let v = Val.rev.first(u => u < q[i] and not used[u] and can_place(i, u, none, had_inv))!
+                had_inv = commit_place(i, v, none, had_inv)
                 return i.next
         none
 
@@ -132,10 +131,7 @@ fn solve():
             right_end = p_thresh.prev
         for v in Val.rev if not used[v]:
             suffix.push(v)
-        var dst: ?Pos = some(start)
-        for v in suffix:
-            q[dst!] = v
-            dst = dst!.next
+        q[start..] = suffix
 
     print(q)
 
