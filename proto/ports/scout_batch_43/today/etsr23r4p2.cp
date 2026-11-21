@@ -1,8 +1,5 @@
 // Runnable port (proto/cp.py lib-run) of etsr23r4p2.cp
 // original: corpus/submissions/5529698.cpp
-use std.algebra.{Monoid, Action}
-use std.lazy.{LazySegTree}
-use std.mod.{Mod}
 
 fn phi(x: Int) -> Int:
     var ans = x

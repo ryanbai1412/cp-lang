@@ -1,7 +1,7 @@
 // NOIP 2021 Sequence: count weighted length-n sequences over 0..=m whose sum of
 // 2^{a_i} has popcount at most k, modulo 998244353.
 // original: corpus/submissions/5445677.cpp
-use std.mod.{Comb}  // WISH P7
+// WISH P7
 const P = 998244353
 type Z = Mod<P>
 let n: 1..=30 = read()

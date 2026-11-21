@@ -3,8 +3,8 @@
 // the city's price per unit; a flight joins any two airports of different
 // cities at price `air` per unit. Print the cheapest trip from city `from`
 // to city `to`, to one decimal.
-use std.geometry.{Pt, dot, dist}                                    // WISH F1; dist is G15
-use std.graph.{all_pairs}                                           // WISH G16
+use std.geometry.{dot, dist}  // WISH F1; dist is G15
+use std.graph.{all_pairs}     // WISH G16
 
 @multitest
 fn solve():
@@ -19,15 +19,15 @@ fn solve():
     fn fourth(a: Pt, b: Pt, c: Pt) -> Pt:
         for (p, q, r) in [(a, b, c), (b, c, a), (c, a, b)]:
             if dot(q - p, r - p) == 0: return q + r - p
-        unreachable                                                 // WISH G17
+        unreachable  // WISH G17
 
     domain Corner = 1..=4
-    type Airport = (city: City, corner: Corner)                     // WISH G18: a record of domains as an index
+    type Airport = (city: City, corner: Corner)  // WISH G18: a record of domains as an index
     let at: [Airport]Pt = [City] c => do:
         let s = given[c]
         [s.a, s.b, s.c, fourth(s.a, s.b, s.c)]
 
-    fn price(u: Airport, v: Airport) -> F64:                        // WISH F15
+    fn price(u: Airport, v: Airport) -> F64:  // WISH F15
         (if u.city == v.city: given[u.city].rail else: air) * dist(at[u], at[v])
-    let cost = all_pairs([Airport, Airport] (u, v) => price(u, v))  // WISH G16
-    print(min(cost[(from, i), (to, j)] for i in Corner for j in Corner), digits: 1)   // WISH G4
+    let cost = all_pairs([Airport, Airport] (u, v) => price(u, v))                   // WISH G16
+    print(min(cost[(from, i), (to, j)] for i in Corner for j in Corner), digits: 1)  // WISH G4

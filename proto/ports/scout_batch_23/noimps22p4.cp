@@ -12,8 +12,6 @@
 // For a query Q = S (small mask) U L (large primes), by inclusion-exclusion on T <= S:
 //   ans = sum_{T <= S} (-1)^|T| * 2^(tot_sub[~T] - sum_{p in L} big_sub[p][~T])
 //                               * prod_{p in L} (2^(big_sub[p][~T]) - 1).
-use std.mod.{Mod}
-use std.math.{Sieve}
 
 type Z = Mod<998244353>
 const MAX_V = 2000

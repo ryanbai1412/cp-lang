@@ -2993,3 +2993,15 @@ print(a[X])
         "{errs:?}"
     );
 }
+
+/// A failed `use` keeps the prelude off only the names it lists: the
+/// missing name is one error, and what the prelude gives still checks.
+#[test]
+fn a_failed_import_drops_only_its_names_from_the_prelude() {
+    let src = "use std.graph.{no_such}\ndomain V = 1..=5\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n";
+    let found = check(src);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].message.contains("no_such"), "{found:?}");
+    let src = "use std.nope.{Rooted}\ndomain V = 1..=5\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n";
+    assert_eq!(check(src).len(), 1, "{:?}", check(src));
+}

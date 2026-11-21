@@ -3,7 +3,6 @@
 // it then equals the second, modulo 1e9+7.
 // Only the number of places that differ matters: a Markov chain on 0..=n.
 // original: corpus/submissions/3718293.cpp
-use std.mod.{Mod, Comb}
 
 const P = 1000000007
 type Z = Mod<P>

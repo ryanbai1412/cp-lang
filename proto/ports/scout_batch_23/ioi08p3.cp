@@ -15,8 +15,6 @@
 //       prod_{u < t} (count[u] + 1) * prod_{t < u <= r(t)} (count[u] + 1).
 // Because M can be composite, we cannot divide out factors: use a product SegTree.
 use std.mod.{ModR}
-use std.algebra.{Monoid}
-use std.segtree.{SegTree}
 
 let f_cnt: 1..=5e5 = read()
 let k: 1..=5e5 = read()

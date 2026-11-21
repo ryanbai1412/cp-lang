@@ -10,7 +10,6 @@
 // step offline uses `std.fenwick.Fenwick.lower_bound`, completely replacing
 // the original's `__gnu_pbds::tree` order-statistics tree (and dead `Bit`).
 // original: corpus/submissions/4552873.cpp
-use std.fenwick.{Fenwick}
 
 let (n, q): (Int, Int) = read()
 domain V = 0..n

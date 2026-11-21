@@ -15,7 +15,6 @@
 // The original is a grader function; this port reads
 // `n m k h`, the n kinds, then m lines `u v time`.
 // original: corpus/submissions/5593318.cpp
-use std.graph.{dijkstra}
 use real.float.{fixed}
 
 let (n, m, k, h): (Int, Int, Int, Int) = read()
@@ -27,7 +26,7 @@ for c in C:
 var roads: [C]List<(to: C, time: F64)> = []
 for _ in 0..m:
     let (u, v, time): (Int, Int, F64) = read()
-    if u != h: roads[C(u)].push((to: C(v), time: time))        // nobody leaves h
+    if u != h: roads[C(u)].push((to: C(v), time: time))  // nobody leaves h
     if v != h: roads[C(v)].push((to: C(u), time: time))
 
 fn times(starts: List<(C, F64)>) -> [C]?F64 = dijkstra(c => roads[c], starts, r => r.time)

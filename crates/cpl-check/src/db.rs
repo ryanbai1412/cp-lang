@@ -384,6 +384,8 @@ impl Database {
         // ones are reported below.
         let mut scope = Scope::default();
         let mut import_diags: Vec<(usize, Diagnostic)> = Vec::new();
+        let mut failed_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut prelude_off = false;
         self.analyzing.push(path.to_string());
         for (index, item) in items.iter().enumerate() {
             for stmt in item.parsed.stmts.iter().filter(|_| item.has_use) {
@@ -404,6 +406,21 @@ impl Database {
                         &mut scope,
                         &mut diags,
                     );
+                    if !diags.is_empty() {
+                        match (glob, alias, names.split_last(), module.last()) {
+                            (true, ..) => prelude_off = true,
+                            (_, Some(alias), ..) => {
+                                failed_names.insert(alias.text.clone());
+                            }
+                            (_, _, Some(_), _) => {
+                                failed_names.extend(names.iter().map(|n| n.text.clone()));
+                            }
+                            (_, _, None, Some(last)) => {
+                                failed_names.insert(last.text.clone());
+                            }
+                            _ => prelude_off = true,
+                        }
+                    }
                     import_diags.extend(diags.into_iter().map(|d| (index, d)));
                 }
             }
@@ -439,8 +456,9 @@ impl Database {
         // user libraries alike — sees the same prelude. A name the prelude
         // lists that the file uses and neither declares nor imports is
         // imported for it, so `Deque<Int>` and `Mod<P>` work everywhere.
-        // A `use` that failed may have been meant to bring the name.
-        if import_diags.is_empty() && !is_prelude(path) {
+        // A `use` that failed may have been meant to bring a name it lists,
+        // so the prelude leaves those names alone (all of them for a glob).
+        if !prelude_off && !is_prelude(path) {
             let declared: std::collections::HashSet<&str> = items
                 .iter()
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
@@ -492,7 +510,7 @@ impl Database {
                                 .iter()
                                 .any(|(word, on)| *on == name.text && uses(word)))
                 };
-                if scope.imports.contains_key(&name.text) || !used {
+                if scope.imports.contains_key(&name.text) || !used || failed_names.contains(&name.text) {
                     continue;
                 }
                 // `count(..)` the language has itself is not the library's

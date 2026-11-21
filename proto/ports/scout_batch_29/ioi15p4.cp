@@ -11,8 +11,6 @@
 // input: n, x[], y[], m, then m lines `kind year value` (0-based year;
 // kind 1 sets x, kind 2 sets y)
 // original: corpus/submissions/5723351.cpp (the three grader functions)
-use std.mod.{Mod}
-use std.segtree.{SegTree}
 type Z = Mod<1_000_000_007>
 
 let n: Int = read()
@@ -20,11 +18,11 @@ domain Year = 0..n
 var x: [Year]Int = read()
 let y: [Year]Int = read()
 var growth = SegTree<Year, Z>.of(*, i => Z(x[i]))
-var surge = SegTree<Year, Int>(max, x)       // to find the years with x > 1
+var surge = SegTree<Year, Int>(max, x)  // to find the years with x > 1
 var price = SegTree<Year, Int>(max, y)
 
 fn best() -> Z:
-    var (lead, ans) = (0, Z(0))     // best sale / herd at `end`, and the sale itself
+    var (lead, ans) = (0, Z(0))  // best sale / herd at `end`, and the sale itself
     var end = Year.bounds.last
     while lead < 1_000_000_000 and end != Year.bounds.first:
         let quiet = surge.min_left(end, s => s <= 1)

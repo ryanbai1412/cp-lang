@@ -13,10 +13,6 @@
 // ones it has to move (O(log n) amortised, the access bound of link-cut
 // trees).
 // original: corpus/submissions/5463990.cpp
-use std.graph.{Graph}
-use std.tree.{Rooted}
-use std.segtree.{SegTree}
-use std.lazy.{LazySegTree, AddMax}
 
 let (n, q): (1..=1e5, 1..=1e5) = read()
 domain V = 1..=n

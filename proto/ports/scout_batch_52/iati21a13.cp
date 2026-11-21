@@ -4,10 +4,6 @@
 // answers dynamic 2D subtree-depth range counts via Set.rank (replacing __gnu_pbds::tree).
 // original: corpus/submissions/5052303.cpp
 
-use std.algebra.{Monoid}
-use std.bag.{SortedBag}
-use std.fenwick.{Fenwick}
-
 let n: Int = read()
 domain V = 0..n
 var edges: List<(V, V)> = []
@@ -18,10 +14,7 @@ for _ in 0..n - 1:
 let init_on: [V]0..=1 = read()
 let q: Int = read()
 type Query = (ty: Int, u: V, k: Int)
-let queries: List<Query> = [
-    (ty: read<Int>(), u: V(read<Int>() - 1), k: read<Int>())
-    for _ in 0..q
-]
+let queries: List<Query> = [(ty: read<Int>(), u: V(read<Int>() - 1), k: read<Int>()) for _ in 0..q]
 
 let g = Graph.undirected(edges)
 let tree = Rooted(g, V.first)
@@ -102,4 +95,6 @@ else:
                     seg_add(1, 0, n - 1, p.to_idx, tree.depth(u))
         else:
             let r = tree.sub(qry.u)
-            print(seg_count(1, 0, n - 1, r.first!.to_idx, r.last!.to_idx, tree.depth(qry.u) + qry.k))
+            print(
+                seg_count(1, 0, n - 1, r.first!.to_idx, r.last!.to_idx, tree.depth(qry.u) + qry.k)
+            )

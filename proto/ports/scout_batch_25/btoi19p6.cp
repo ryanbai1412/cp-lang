@@ -10,7 +10,6 @@
 // the best allowed contestant for event j. Popping a team whose free slots are
 // f..K splits the rest into K - f disjoint subproblems: keep slots < i, ban
 // the member in slot i.
-use std.heap.{MaxHeap}
 
 let (N, K, C): (1..=500, 1..=6, 1..=2000) = read()
 domain P = 0..N
@@ -27,10 +26,10 @@ fn best(forced: List<P>, banned: Set<P>) -> ?Sub:
     let value = sum(max(score[p, j] for p in team) for j in Ev)
     Sub(value, team, forced.len, banned)
 
-var heap = MaxHeap<Sub>(by: .value)
+var heap = MaxHeap<Sub>(by:.value)
 heap.push(best([], Set())!)
 for _ in 1..C:
     let top = heap.pop()!
     for i in top.forced..K:
-        if let sub = best(top.team[..i], top.banned | {top.team[i]}): heap.push(sub)
+        if let sub = best(top.team[..i], top.banned | { top.team[i] }): heap.push(sub)
 print(heap.top!.value)
