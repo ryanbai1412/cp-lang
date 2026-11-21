@@ -626,6 +626,11 @@ impl<'p> Emitter<'p> {
                     self.expr_stmt(init, out);
                     return;
                 }
+                if self.reused.contains(slot) && !hoisted && !packed && self.closure_id.is_none() {
+                    self.line(out, &format!("static {cpp} {name};"));
+                    self.line(out, &format!("{name}.clear();"));
+                    return;
+                }
                 let init = self.flatten(init, out);
                 match &init.kind {
                     ExprKind::Read(spec) => {

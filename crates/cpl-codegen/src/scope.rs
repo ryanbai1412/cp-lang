@@ -6,7 +6,7 @@
 //! declaration stays there; otherwise it moves to the top of the fn.
 
 use crate::walk;
-use cpl_ir::{Arg, Block, Expr, ExprKind, Iter, Place, PlaceKind, Stmt};
+use cpl_ir::{Arg, Block, Builtin, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Default)]
@@ -199,4 +199,71 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
     });
     close(&mut run);
     found
+}
+
+/// The local lists of fn `id` that can live in one buffer for the whole
+/// run: each starts empty (`var xs: List<T> = []`), is only indexed,
+/// measured, walked and changed in place, and the fn can't be running
+/// twice at once (neither it nor anything it calls reaches it again or
+/// calls a fn value). The C++ then clears the buffer instead of
+/// allocating a new one on every call.
+pub(crate) fn reused(program: &Program, id: usize) -> BTreeSet<usize> {
+    let mut reach: BTreeSet<usize> = BTreeSet::new();
+    let mut todo = vec![id];
+    while let Some(f) = todo.pop() {
+        let body = &program.fns[f].body;
+        let mut opaque = false;
+        walk::deep_exprs(body, &mut |e| {
+            opaque |= matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_));
+        });
+        if opaque {
+            return BTreeSet::new();
+        }
+        for callee in walk::Effects::of_block(body).calls {
+            if callee == id {
+                return BTreeSet::new();
+            }
+            if reach.insert(callee) {
+                todo.push(callee);
+            }
+        }
+    }
+    let body = &program.fns[id].body;
+    let mut starts: Vec<usize> = Vec::new();
+    let mut twice: BTreeSet<usize> = BTreeSet::new();
+    walk::deep_stmts(body, &mut |stmt| {
+        if let Stmt::Let(slot, Some(init)) = stmt {
+            let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty()) && matches!(init.ty, Ty::List(_));
+            if !empty || starts.contains(slot) {
+                twice.insert(*slot);
+            }
+            starts.push(*slot);
+        }
+    });
+    // Every place the whole list is read as a value, against the ones
+    // that only index, measure or walk it.
+    let mut seen: BTreeMap<usize, isize> = BTreeMap::new();
+    let mut plain = |e: &Expr, by: isize| {
+        if let ExprKind::Local(slot) = e.kind {
+            *seen.entry(slot).or_default() += by;
+        }
+    };
+    walk::deep_exprs(body, &mut |e| {
+        plain(e, 1);
+        match &e.kind {
+            ExprKind::Index(base, _) => plain(base, -1),
+            ExprKind::Builtin(Builtin::Len, args) => args.iter().for_each(|a| plain(a, -1)),
+            _ => {}
+        }
+    });
+    walk::deep_stmts(body, &mut |stmt| {
+        if let Stmt::For(_, _, Iter::Seq(seq, _), _) = stmt {
+            plain(seq, -1);
+        }
+    });
+    starts
+        .into_iter()
+        .filter(|slot| !twice.contains(slot) && seen.get(slot).copied().unwrap_or(0) == 0)
+        .filter(|slot| *slot >= program.fns[id].params.len())
+        .collect()
 }

@@ -371,3 +371,12 @@ fn a_list_index_inside_unchecked_has_no_bounds_test() {
     assert!(raw.contains("xs[i] = xs[i] + 1"), "{raw}");
     assert!(!raw.contains("cpl::at(xs, i)"), "{raw}");
 }
+
+#[test]
+fn a_local_list_that_stays_in_its_fn_is_one_buffer() {
+    let fixture = include_str!("../../cpl-cli/tests/programs/reused_local_lists.cp");
+    let cpp = cpp(fixture);
+    assert!(cpp.contains("static std::vector<ll> xs;\n    xs.clear();"), "{cpp}");
+    assert!(!cpp.contains("static std::vector<ll> seen;"), "{cpp}");
+    assert!(!cpp.contains("static std::vector<ll> out;"), "{cpp}");
+}

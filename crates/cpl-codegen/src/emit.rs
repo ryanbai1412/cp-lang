@@ -120,6 +120,8 @@ pub(crate) struct Emitter<'p> {
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
     pub hoisted: BTreeSet<usize>,
+    /// Local lists kept in one buffer for the whole run: see [`crate::scope::reused`].
+    pub reused: BTreeSet<usize>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
     /// ends the program.
     pub in_setup: bool,
@@ -183,6 +185,7 @@ impl<'p> Emitter<'p> {
             fresh: 0,
             break_targets: BTreeSet::new(),
             continue_targets: BTreeSet::new(),
+            reused: BTreeSet::new(),
             found: Vec::new(),
             indent: 0,
         };
@@ -381,6 +384,7 @@ impl<'p> Emitter<'p> {
             self.names.push(name);
         }
         self.hoisted = crate::scope::hoisted(body, params);
+        self.reused = fn_id.map(|id| crate::scope::reused(self.program, id)).unwrap_or_default();
         self.spent = crate::scope::spent(self.program, body);
         self.break_targets.clear();
         self.continue_targets.clear();
