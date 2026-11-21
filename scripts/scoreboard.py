@@ -53,6 +53,8 @@ EMITTED_GROWTH_RATIO = 1.05
 EMITTED_GROWTH_BYTES = 1024
 TOKEN_RATIO_TOLERANCE = 0.02
 PERF_REGRESSION_RATIO = 1.10
+TIME_P50_GOAL = 1.1
+TIME_MAX_GOAL = 1.5
 
 # Adaptive max-size probe schedule for gen/NAME.py SEED SIZE
 MAX_SIZE_STEPS = (8, 40, 200, 1000, 5000, 25000)
@@ -243,6 +245,7 @@ def discover_ports(port_dirs=None, only=None):
             eps_path = os.path.join(d, "gen", f"{stem}.eps")
             interactor_path = os.path.join(d, "interactors", f"{stem}.py")
             checker_path = os.path.join(d, "checkers", f"{stem}.py")
+            dream_path = os.path.join(d, "dream", f"{stem}.cp")
             sample_ext = "case" if os.path.isfile(interactor_path) else "in"
             samples = sorted(glob.glob(os.path.join(d, "samples", f"{stem}.*.{sample_ext}")))
             ports.append(
@@ -258,6 +261,7 @@ def discover_ports(port_dirs=None, only=None):
                     "eps": float(_read_text(eps_path).strip()) if os.path.isfile(eps_path) else None,
                     "interactor": interactor_path if os.path.isfile(interactor_path) else None,
                     "checker": checker_path if os.path.isfile(checker_path) else None,
+                    "dream": dream_path if os.path.isfile(dream_path) else None,
                     "samples": samples,
                 }
             )
@@ -549,12 +553,23 @@ def measure_tokens(p):
     orig_loc = count_loc(orig_src, block_comments=True)
     stripped_loc = count_loc(stripped_src, block_comments=True)
 
+    dream_toks = None
+    dream_ratio = None
+    dream_gap = None
+    if p.get("dream") and os.path.isfile(p["dream"]):
+        dream_toks = len(tokenize_cp(_read_text(p["dream"])))
+        dream_ratio = round(cp_toks / dream_toks, 4) if dream_toks else None
+        dream_gap = cp_toks - dream_toks
+
     return {
         "cp_tokens": cp_toks,
         "orig_tokens": orig_toks,
         "orig_stripped_tokens": stripped_toks,
         "token_ratio": round(cp_toks / orig_toks, 4) if orig_toks else None,
         "stripped_token_ratio": round(cp_toks / stripped_toks, 4) if stripped_toks else None,
+        "dream_tokens": dream_toks,
+        "dream_ratio": dream_ratio,
+        "dream_gap_tokens": dream_gap,
         "cp_loc": cp_loc,
         "orig_loc": orig_loc,
         "orig_stripped_loc": stripped_loc,
@@ -566,8 +581,28 @@ def measure_tokens(p):
 def generate_max_input(p, orig_bin, work_dir, explicit_specs):
     """Produce a max-size deterministic input for benchmarking port vs orig.
 
+    Preference order:
+      1. gen/NAME.py --max (when the generator supports --max)
+      2. Explicit judge-limit spec in bench/corpus_generators.py / rust_max_n_audit.py
+      3. Adaptive probe of gen/NAME.py 1 <SIZE> over MAX_SIZE_STEPS
+      4. Largest sample in samples/
     Returns (input_path, input_source_label) or (None, reason).
     """
+    if p["gen"] and not p["interactor"] and "--max" in _read_text(p["gen"]):
+        inp = os.path.join(work_dir, "max_flag.in")
+        try:
+            with open(inp, "wb") as fo:
+                pr = subprocess.run(
+                    [sys.executable, p["gen"], "--max"],
+                    stdout=fo,
+                    stderr=subprocess.DEVNULL,
+                    timeout=10.0,
+                )
+            if pr.returncode == 0 and 0 < os.path.getsize(inp) <= MAX_PROBE_INPUT_BYTES:
+                return inp, "gen --max"
+        except subprocess.TimeoutExpired:
+            pass
+
     spec = explicit_specs.get(p["id"]) or explicit_specs.get(p["name"])
     if spec is not None:
         inp = os.path.join(work_dir, "max.in")
@@ -1065,6 +1100,27 @@ def compute_totals(port_records, fl_summary, fr_summary):
     t_use = time_ratios if time_ratios else all_time_ratios
     t_vals = [v for v, _ in t_use]
     t_max, t_max_port = max(t_use, default=(None, None))
+    t_p50 = round(statistics.median(t_vals), 3) if t_vals else None
+    t_max_r = round(t_max, 3) if t_max is not None else None
+
+    perf_by_id = {r["id"]: r["perf"] for r in perf_recs}
+    worst_10 = [
+        {
+            "id": pid,
+            "time_ratio": round(ratio, 3),
+            "cpp_ms": perf_by_id[pid].get("cpp_ms"),
+            "orig_ms": perf_by_id[pid].get("orig_ms"),
+            "input_source": perf_by_id[pid].get("input_source"),
+        }
+        for ratio, pid in sorted(t_use, key=lambda x: (-x[0], x[1]))[:10]
+    ]
+
+    dream_recs = [r for r in port_records if r.get("dream_tokens") is not None]
+    dream_cp_total = sum(r["cp_tokens"] for r in dream_recs)
+    dream_total = sum(r["dream_tokens"] for r in dream_recs)
+    dream_ratios = [(r["dream_ratio"], r["id"]) for r in dream_recs if r.get("dream_ratio") is not None]
+    dr_vals = [v for v, _ in dream_ratios]
+    dr_max, dr_max_port = max(dream_ratios, default=(None, None))
 
     rss_ratios = [
         (r["perf"]["rss_ratio"], r["id"])
@@ -1100,6 +1156,16 @@ def compute_totals(port_records, fl_summary, fr_summary):
             "over_1_0x_raw": sum(1 for x in raw_ratios if x > 1.0),
             "over_1_0x_stripped": sum(1 for x in stripped_ratios if x > 1.0),
         },
+        "dream": {
+            "ports": len(dream_recs),
+            "cp_total": dream_cp_total,
+            "dream_total": dream_total,
+            "ratio_of_totals": round(dream_cp_total / dream_total, 4) if dream_total else None,
+            "median_ratio": round(statistics.median(dr_vals), 4) if dr_vals else None,
+            "p90_ratio": round(percentile(dr_vals, 90), 4) if dr_vals else None,
+            "max_ratio": round(dr_max, 4) if dr_max is not None else None,
+            "max_port": dr_max_port,
+        },
         "emitted_bytes": {
             "measured": len(emitted_vals),
             "median": int(statistics.median(emitted_vals)) if emitted_vals else None,
@@ -1114,10 +1180,16 @@ def compute_totals(port_records, fl_summary, fr_summary):
             "above_floor": len(time_ratios),
             "floor_ms": PERF_FLOOR_MS,
             "mismatches": sum(1 for r in perf_recs if not r["perf"].get("output_match", True)),
-            "time_p50": round(statistics.median(t_vals), 3) if t_vals else None,
+            "time_p50": t_p50,
             "time_p95": round(percentile(t_vals, 95), 3) if t_vals else None,
-            "time_max": round(t_max, 3) if t_max is not None else None,
+            "time_max": t_max_r,
             "time_max_port": t_max_port,
+            "time_p50_goal": TIME_P50_GOAL,
+            "time_max_goal": TIME_MAX_GOAL,
+            "p50_ok": (t_p50 <= TIME_P50_GOAL) if t_p50 is not None else None,
+            "max_ok": (t_max_r <= TIME_MAX_GOAL) if t_max_r is not None else None,
+            "over_1_5x": sum(1 for v in t_vals if v > TIME_MAX_GOAL),
+            "worst_10": worst_10,
             "rss_p50": round(statistics.median(r_vals), 3) if r_vals else None,
             "rss_p95": round(percentile(r_vals, 95), 3) if r_vals else None,
             "rss_max": round(r_max, 3) if r_max is not None else None,
@@ -1191,6 +1263,23 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             cp = r.get("perf") or {}
             if bp.get("measured") and bp.get("output_match") and cp.get("measured") and not cp.get("output_match"):
                 regressions.append(f"max-size output mismatch: {pid}")
+            if (
+                bp.get("measured")
+                and cp.get("measured")
+                and bp.get("time_ratio") is not None
+                and cp.get("time_ratio") is not None
+                and max(cp.get("cpp_ms") or 0, cp.get("orig_ms") or 0) >= PERF_FLOOR_MS
+                and max(bp.get("cpp_ms") or 0, bp.get("orig_ms") or 0) >= PERF_FLOOR_MS
+            ):
+                br = bp["time_ratio"]
+                cr = cp["time_ratio"]
+                if cr > br * PERF_REGRESSION_RATIO:
+                    regressions.append(
+                        f"runtime regressed >10%: {pid} ({br:.3f}x -> {cr:.3f}x, "
+                        f"{cp.get('cpp_ms')}ms/{cp.get('orig_ms')}ms)"
+                    )
+                elif cr < br * 0.90:
+                    improvements.append(f"runtime improved: {pid} ({br:.3f}x -> {cr:.3f}x)")
 
     # Aggregate checks (skip subset runs where totals aren't comparable)
     ct = current["totals"]
@@ -1296,6 +1385,13 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         if tok["median_ratio"] is not None
         else "  tokens:    n/a"
     )
+    dm = t.get("dream") or {}
+    if dm.get("ports"):
+        print(
+            f"  dream:     {dm['ports']} ports, cp={dm['cp_total']:,} vs dream={dm['dream_total']:,} "
+            f"(median {dm['median_ratio']:.3f}x, p90 {dm['p90_ratio']:.3f}x, "
+            f"max {dm['max_ratio']:.3f}x {dm['max_port']})"
+        )
     eb = t["emitted_bytes"]
     if eb["max"] is not None:
         print(
@@ -1304,11 +1400,22 @@ def print_summary(report, diff, show_ports=False, quiet=False):
         )
     pf = t["perf"]
     if pf["measured"]:
+        p50_tag = "PASS" if pf.get("p50_ok") else "FAIL"
+        max_tag = "PASS" if pf.get("max_ok") else "FAIL"
         print(
             f"  perf:      {pf['measured']} measured ({pf['above_floor']} >= {pf['floor_ms']:.0f}ms), "
-            f"time p50={pf['time_p50']}x p95={pf['time_p95']}x max={pf['time_max']}x ({pf['time_max_port']}), "
+            f"time p50={pf['time_p50']}x (goal <={TIME_P50_GOAL}x: {p50_tag}) "
+            f"p95={pf['time_p95']}x "
+            f"max={pf['time_max']}x (goal <={TIME_MAX_GOAL}x: {max_tag}, {pf.get('over_1_5x', 0)} >{TIME_MAX_GOAL}x, {pf['time_max_port']}), "
             f"rss p50={pf['rss_p50']}x p95={pf['rss_p95']}x max={pf['rss_max']}x ({pf['rss_max_port']})"
         )
+        if not quiet and m["mode"] == "full" and pf.get("worst_10"):
+            print("  worst 10 runtime ratios:")
+            for w in pf["worst_10"]:
+                print(
+                    f"    {w['id']:22} {w['time_ratio']:7.3f}x  "
+                    f"cpp={w['cpp_ms']}ms orig={w['orig_ms']}ms  ({w['input_source']})"
+                )
     ip = t["interp"]
     if ip["measured"]:
         print(
@@ -1344,10 +1451,15 @@ def print_summary(report, diff, show_ports=False, quiet=False):
             interp_s = ""
             if (r.get("interp") or {}).get("ms") is not None:
                 interp_s = f" | interp={r['interp']['ms']}ms"
+            dream_s = ""
+            if r.get("dream_tokens") is not None:
+                dream_s = f" | dream={r['dream_tokens']} ({r['dream_ratio']:.2f}x)"
+            raw_s = f"{r['token_ratio']:.2f}x" if r.get("token_ratio") is not None else "n/a"
+            strip_s = f"{r['stripped_token_ratio']:.2f}x" if r.get("stripped_token_ratio") is not None else "n/a"
             print(
                 f"  [{r['gate']:4}] {r['id']:22} tok={r['cp_tokens']:4}/{r['orig_tokens']:5} "
-                f"({r['token_ratio']:.2f}x, strip {r['stripped_token_ratio']:.2f}x) "
-                f"cpp={r['emitted_bytes'] or 0:6}B{perf_s}{interp_s}"
+                f"({raw_s}, strip {strip_s}) "
+                f"cpp={r['emitted_bytes'] or 0:6}B{dream_s}{perf_s}{interp_s}"
             )
 
 

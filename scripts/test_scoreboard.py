@@ -264,6 +264,115 @@ class CheckerHookTest(unittest.TestCase):
             self.assertEqual(totals["interactive_ports"], 0)
 
 
+class DreamAndPerfRatchetTest(unittest.TestCase):
+    def test_dream_discovery_and_totals(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "dream"))
+            with open(os.path.join(d, "p1.cp"), "w", encoding="utf-8") as f:
+                f.write("let n: Int = read()\nprint(n + 1)\n")
+            with open(os.path.join(d, "p1_orig.cpp"), "w", encoding="utf-8") as f:
+                f.write("int main() { int n; std::cin >> n; std::cout << n + 1; }\n")
+            with open(os.path.join(d, "dream", "p1.cp"), "w", encoding="utf-8") as f:
+                f.write("print(read<Int>() + 1)\n")
+            ports = sb.discover_ports(port_dirs=[d])
+            self.assertEqual(len(ports), 1)
+            self.assertIsNotNone(ports[0]["dream"])
+            tok = sb.measure_tokens(ports[0])
+            self.assertIsNotNone(tok["dream_tokens"])
+            self.assertGreater(tok["cp_tokens"], tok["dream_tokens"])
+            self.assertGreater(tok["dream_ratio"], 1.0)
+            self.assertEqual(tok["dream_gap_tokens"], tok["cp_tokens"] - tok["dream_tokens"])
+            totals = sb.compute_totals(
+                [
+                    {
+                        "id": "t/p1",
+                        "gate": "pass",
+                        "emitted_bytes": 1000,
+                        **tok,
+                    }
+                ],
+                {"files": 1, "wa_trap": 0, "real_gap": 0, "stale_port": 0},
+                {
+                    "files": 0,
+                    "total": 0,
+                    "open": 0,
+                    "closed": 0,
+                    "by_severity": {},
+                    "by_goal": {},
+                    "open_blockers": [],
+                    "open_highs": [],
+                },
+            )
+            self.assertEqual(totals["dream"]["ports"], 1)
+            self.assertEqual(totals["dream"]["dream_total"], tok["dream_tokens"])
+            self.assertEqual(totals["dream"]["max_port"], "t/p1")
+
+    def test_gen_max_flag_preferred(self):
+        with tempfile.TemporaryDirectory() as d:
+            gen = os.path.join(d, "g.py")
+            with open(gen, "w", encoding="utf-8") as f:
+                f.write("import sys\nprint('MAX_CASE' if '--max' in sys.argv else 'SMALL')\n")
+            p = {"id": "t/g", "name": "g", "gen": gen, "interactor": None, "samples": []}
+            inp, src = sb.generate_max_input(p, "/bin/true", d, {})
+            self.assertEqual(src, "gen --max")
+            self.assertEqual(sb._read_text(inp).strip(), "MAX_CASE")
+
+    def test_per_port_runtime_ratchet_and_worst_10(self):
+        def make_rep(ratios):
+            ports = [
+                {
+                    "id": pid,
+                    "gate": "pass",
+                    "cp_tokens": 10,
+                    "orig_tokens": 20,
+                    "orig_stripped_tokens": 20,
+                    "token_ratio": 0.5,
+                    "stripped_token_ratio": 0.5,
+                    "emitted_bytes": 1000,
+                    "perf": {
+                        "measured": True,
+                        "output_match": True,
+                        "cpp_ms": round(orig_ms * r, 2),
+                        "orig_ms": orig_ms,
+                        "time_ratio": r,
+                        "rss_ratio": 1.0,
+                        "input_source": "gen --max",
+                    },
+                }
+                for pid, r, orig_ms in ratios
+            ]
+            totals = sb.compute_totals(
+                ports,
+                {"files": len(ports), "wa_trap": 0, "real_gap": 0, "stale_port": 0},
+                {
+                    "files": 0,
+                    "total": 0,
+                    "open": 0,
+                    "closed": 0,
+                    "by_severity": {},
+                    "by_goal": {},
+                    "open_blockers": [],
+                    "open_highs": [],
+                },
+            )
+            return {"ports": ports, "totals": totals}
+
+        base = make_rep([("t/fast", 1.0, 50.0), ("t/fast2", 1.0, 50.0), ("t/tiny", 1.0, 2.0), ("t/slow", 2.0, 100.0)])
+        self.assertTrue(base["totals"]["perf"]["p50_ok"])
+        self.assertFalse(base["totals"]["perf"]["max_ok"])
+        self.assertEqual(base["totals"]["perf"]["over_1_5x"], 1)
+        self.assertEqual(base["totals"]["perf"]["worst_10"][0]["id"], "t/slow")
+
+        # Sub-floor (<10ms) fluctuation should NOT trigger ratchet; >10% on >=10ms port MUST trigger
+        cur_ok = make_rep([("t/fast", 1.05, 50.0), ("t/fast2", 1.05, 50.0), ("t/tiny", 2.5, 2.0), ("t/slow", 2.05, 100.0)])
+        diff_ok = sb.diff_against_baseline(cur_ok, base, mode="full")
+        self.assertEqual(diff_ok["regressions"], [])
+
+        cur_reg = make_rep([("t/fast", 1.15, 50.0), ("t/fast2", 1.0, 50.0), ("t/tiny", 1.0, 2.0), ("t/slow", 2.0, 100.0)])
+        diff_reg = sb.diff_against_baseline(cur_reg, base, mode="full")
+        self.assertTrue(any("runtime regressed >10%: t/fast" in m for m in diff_reg["regressions"]))
+
+
 class CliSmokeTest(unittest.TestCase):
     def test_frictions_cli_and_fast_subset_cli(self):
         tool = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scoreboard.py")

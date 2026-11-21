@@ -462,23 +462,31 @@ P0 bug corpus (>= 90% prevented or trapped), static `sizeof` and `-O2` assembly
 zero-cost proofs, and real contest use by strong contestants showing faster
 accepted solutions and fewer wrong attempts than in C++.
 **Where we are.** Unified scoreboard (`scripts/scoreboard.py` + `scripts/test_scoreboard.py`,
-12 unit tests) and committed full-mode baseline (`research/scoreboard.json`) are live and
-wired into `scripts/check.sh --fast` (`--fast --check --quiet`, ~4.7 s with debug `cpl`).
-At `560251c9`, 251/251 active `proto/ports/ecnerwala/` ports pass `--fast` (13 interactive,
-1 custom checker `checkers/cf2187b.py`), automatically picking up concurrently pushed ports:
-contestant-written tokens median 0.434x raw / 0.512x library-stripped (0 > 1.0x raw, 1 > 1.0x
-stripped: `ucup5s05f` at 1.054x), emitted C++ median 9,275 B / p95 26,192 B / max 59,146 B
-(`cf2255f`; 3 > 48 KB, 0 > 64 KB), `friction_lint` 0 `wa_trap` / 5 `real_gap` / 36 `stale_port`,
-and `research/frictions/*.md` 20 files / 72 open items (0 blocker, 15 high, 22 medium, 15 low).
-Full-mode baseline across 246 ports (`research/scoreboard.json`): 233 perf-measured
-(104 >= 10 ms), runtime p50 0.992x / p95 3.47x (outliers: `cf2096e` 300.5x, `ucup4s25h` 27.2x,
-`cf2245f` 7.87x, `cf2255e2` 4.31x, `cf2147f` 3.47x), peak RSS p50 0.927x / p95 2.356x,
-interpreter 244/246 ok (median 18.16 ms, p95 56.47 ms; 2 timeouts on large samples: `cf2229f`,
-`ucup5s06a`). Constructive-problem checker hook (`checkers/NAME.py INPUT OUTPUT ANSWER`) is
-live in `proto/ports/ecnerwala/gate.sh`, `proto/ports/ecnerwala/README.md`, and
-`scripts/scoreboard.py`. Legacy: 30 `wave2` ports (7 unformatted) and DMOJ registry
-(`bench/corpus-500-registry.json`: 594 unique problems). Gaps: `known_traps.cp` has 5 open
-traps; runtime p95 (3.47x) and outliers exceed the <= 1.5x max target; static `sizeof` / `-O2`
+15 unit tests) and committed full-mode baseline (`research/scoreboard.json`) are live and
+wired into `scripts/check.sh --fast` (`--fast --check --quiet`, ~4.8 s with debug `cpl`).
+At `d181b15d`, 271/271 active `proto/ports/ecnerwala/` ports pass `--fast` (16 interactive,
+3 custom checkers), automatically picking up concurrently pushed ports:
+contestant-written tokens median 0.425x raw / 0.507x library-stripped (0 > 1.0x raw, 1 > 1.0x
+stripped: `ucup5s05f` at 1.054x), dream gap across 18 `dream/*.cp` ports `cp=8,382` vs
+`dream=4,869` (median 1.440x, p90 3.091x, max 4.676x on `cf2187f1`), emitted C++ median
+9,664 B / p95 24,943 B / max 59,202 B (`cf2255f`; 3 > 48 KB, 0 > 64 KB), `friction_lint`
+0 `wa_trap` / 6 `real_gap` / 53 `stale_port`, and `research/frictions/*.md` 40 files / 147
+open items (0 blocker, 25 high, 54 medium, 35 low, 2 closed).
+Full-mode perf in `research/scoreboard.json` (238 measured, 103 >= 10 ms):
+runtime p50 1.020x (goal <= 1.1x: PASS), p95 3.752x, max 356.869x (goal <= 1.5x: FAIL,
+18 > 1.5x; worst 10 include `cf2096e` 356.9x, `ucup4s25h` 24.1x, `cf2245f` 6.20x, `cf2245a`
+6.11x, `cf2255e2` 4.19x, `cf2147f` 3.75x on `gen --max`, `cf2066e` 3.23x on `gen --max`,
+`cf2261g` 2.97x, `cf2268c` 2.68x, `ucup4s25c` 2.18x; plus `cf2150g` 2.06x on `gen --max`),
+peak RSS p50 0.938x / p95 2.323x, interpreter 253/254 ok (median 21.34 ms, p95 55.82 ms).
+Full-mode `--check` ratchets any >= 10 ms port whose runtime ratio regresses > 10%.
+`gen/NAME.py --max` is preferred when present (added to `cf2066e`, `cf2147f`, `cf2150g`).
+Dream-gap tracking (`dream/NAME.cp` port-vs-dream token ratio per port and in aggregate) is
+live in `scripts/scoreboard.py`. `research/PORTS.md` (via `scripts/ports-page.py`) displays
+the cached `Runtime` ratio column from `research/scoreboard.json` without re-running. Constructive-problem checker hook
+(`checkers/NAME.py INPUT OUTPUT ANSWER`) is live in `proto/ports/ecnerwala/gate.sh`,
+`proto/ports/ecnerwala/README.md`, and `scripts/scoreboard.py`. Legacy: 30 `wave2` ports and
+DMOJ registry (`bench/corpus-500-registry.json`: 594 unique problems). Gaps: `known_traps.cp`
+has 5 open traps; 21 ports exceed the <= 1.5x runtime ceiling; static `sizeof` / `-O2`
 assembly zero-cost metrics and replayed P0 bug corpus are not yet wired into the scoreboard.
 **Bar.** 500+ Rust-gated ports; `scripts/scoreboard.py --fast --check` green in
 `scripts/check.sh --fast`; full-mode perf and interpreter baseline refreshed regularly with

@@ -5,13 +5,31 @@ Each row links the CP Lang program, the accepted C++ it was ported from, the
 statement and the friction report, with contestant-token counts against the
 C++ (library code stripped). Dates are when the port was first committed.
 """
-import os, re, subprocess, sys
+import json, os, re, subprocess, sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 import scoreboard as sb
 
 OUT = os.path.join(sb.ROOT, "research", "PORTS.md")
 SHOWN = 60
+
+
+def load_scoreboard_perf():
+    """Read cached runtime ratios from research/scoreboard.json without re-running."""
+    if not os.path.isfile(sb.DEFAULT_BASELINE):
+        return {}, None
+    try:
+        with open(sb.DEFAULT_BASELINE, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return {}, None
+    by_id = {}
+    for p in data.get("ports", []):
+        perf = p.get("perf") or {}
+        if perf.get("measured") and perf.get("time_ratio") is not None:
+            by_id[p["id"]] = perf
+    time_p50 = (data.get("totals") or {}).get("perf", {}).get("time_p50")
+    return by_id, time_p50
 
 
 def added_dates():
@@ -55,17 +73,22 @@ def cell(s, n=90):
 
 def main():
     dates = added_dates()
+    perf_by_id, time_p50 = load_scoreboard_perf()
     ports = sb.discover_ports()
     rows = []
     for p in ports:
         title, top, count = friction(p["name"])
         tok = sb.measure_tokens(p)
-        dream = os.path.join(os.path.dirname(p["abs_path"]), "dream", p["name"] + ".cp")
-        tok["dream_tokens"] = len(sb.tokenize_cp(sb._read_text(dream))) if os.path.isfile(dream) else None
-        rows.append((dates.get(p["path"], "uncommitted"), p, title, top, count, tok))
+        rows.append((dates.get(p["path"], "uncommitted"), p, title, top, count, tok, perf_by_id.get(p["id"])))
     rows.sort(key=lambda r: (r[0], r[1]["name"]), reverse=True)
     ratios = sorted(r[5]["stripped_token_ratio"] for r in rows if r[5]["stripped_token_ratio"])
     median = ratios[len(ratios) // 2] if ratios else None
+    rt_note = (
+        f" Runtime is C++ build vs original on max-size input from `research/scoreboard.json`"
+        f" (p50 {time_p50:.2f}x, goal at most {sb.TIME_P50_GOAL:.1f}x)."
+        if time_p50 is not None
+        else " Runtime is C++ build vs original from `research/scoreboard.json`."
+    )
     out = [
         "# Ports",
         "",
@@ -73,15 +96,16 @@ def main():
         f"{min(SHOWN, len(rows))} of {len(rows)} ports, each differential-tested against the accepted C++",
         "by `proto/ports/<group>/gate.sh`. Tokens are contestant-written: the port",
         "against the original with its library code stripped"
-        + (f" (median {median:.2f}x, goal at most 0.6x)." if median else "."),
+        + (f" (median {median:.2f}x, goal at most 0.6x)." if median else ".")
+        + rt_note,
         "Dream is the same solution as we would like to write it, unconstrained",
         "by today's compiler, with its token count; the gap is what the language",
         "still owes.",
         "",
-        "| Added | Problem | Port | Tokens | Frictions | First friction |",
-        "|---|---|---|---|---|---|",
+        "| Added | Problem | Port | Tokens | Runtime | Frictions | First friction |",
+        "|---|---|---|---|---|---|---|",
     ]
-    for day, p, title, top, count, tok in rows[:SHOWN]:
+    for day, p, title, top, count, tok, perf in rows[:SHOWN]:
         url = statement_url(p["name"])
         prob = f"[{p['name']}]({url})" if url else p["name"]
         if title:
@@ -94,9 +118,11 @@ def main():
         toks = f"{tok['cp_tokens']} ({ratio:.2f}x)" if ratio else str(tok["cp_tokens"])
         if tok["dream_tokens"] is not None:
             toks += f", dream {tok['dream_tokens']}"
+        rt = f"{perf['time_ratio']:.2f}x" if perf and perf.get("time_ratio") is not None else "–"
         fr = f"[{count}](frictions/{p['name']}.md)" if count else "–"
-        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {fr} | {cell(top)} |")
-    open(OUT, "w").write("\n".join(out) + "\n")
+        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {fr} | {cell(top)} |")
+    with open(OUT, "w", encoding="utf-8") as f:
+        f.write("\n".join(out) + "\n")
     print(f"wrote {os.path.relpath(OUT, sb.ROOT)}: {len(rows)} ports")
 
 

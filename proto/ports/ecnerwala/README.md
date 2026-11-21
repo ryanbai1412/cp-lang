@@ -15,6 +15,9 @@ upstream. `samples/` holds the sample files upstream kept next to it, and
 `gen/NAME.py SEED SIZE` prints one random input.
 
 Non-exact judging hooks sit beside `gen/`:
+- `gen/NAME.py --max`: optional flag that emits a deterministic judge-limit
+  max-size input for `scripts/scoreboard.py --full` (preferred over adaptive
+  probing when present).
 - `gen/NAME.eps`: floating-point relative/absolute tolerance.
 - `interactors/NAME.py CASE -- CMD [ARGS...]`: interactive judge for
   interactive problems (samples use `samples/NAME.*.case`).

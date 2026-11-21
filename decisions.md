@@ -1347,6 +1347,17 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   `checker_ports` in totals. *How to reverse:* remove the `CHECKER` branch in `gate.sh` and
   `run_checker`/`judge_output` in `scripts/scoreboard.py`.
 
+- **23.6 `gen/NAME.py --max`, per-port >10% runtime ratchet, dream-gap metrics, and `PORTS.md` runtime column.**
+  `generate_max_input` prefers `gen/NAME.py --max` (when `--max` appears in the generator) over explicit
+  specs and adaptive probing so judge-limit worst-case inputs live beside each port. Full-mode `--check`
+  ratchets any port with `max(cpp_ms, orig_ms) >= 10 ms` whose `time_ratio` regresses by > 10% against
+  `research/scoreboard.json`, reports `p50 <= 1.1x` / `max <= 1.5x` goal status, and prints the worst 10
+  runtime ratios. `measure_tokens` and `compute_totals` track `dream/NAME.cp` (`dream_tokens`, `dream_ratio`,
+  `dream_gap_tokens`, aggregate median/p90/max). `scripts/ports-page.py` reads cached `time_ratio` values
+  from `research/scoreboard.json` into the `Runtime` column of `research/PORTS.md` without re-running.
+  *How to reverse:* adjust `TIME_P50_GOAL`, `TIME_MAX_GOAL`, `PERF_FLOOR_MS`, or `PERF_REGRESSION_RATIO` in
+  `scripts/scoreboard.py` or remove the `Runtime` column in `scripts/ports-page.py`.
+
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 
 - **24.1 Fast docs verification runs on every commit.** `site/check_docs.py` runs inside
