@@ -37,7 +37,7 @@ Every word below means one thing in this doc, in the stubs and in errors.
 | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` offset (`List`, `Str`) | | `i: V`, `3` |
 | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` arrays, `List`, `Str`, `Set`, `Map` |
 | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behind it (round 1) | nothing to own | `l..=r`, `..i`, `V.range` |
-| **view** | a sequence made from a source without copying it: O(1) to make, borrows the source, does its work as you walk or read it | no | `a[l..=r]`, `a.rev`, `a.map(f)`, `a.filter(p)` |
+| **view** | a sequence made from a source without copying it: O(1) to make, borrows the source, does its work as you walk or read it. Formally, a `Seq` whose struct is declared `lends S` (POWERS W4); there is no `View` trait | no | `a[l..=r]`, `a.rev`, `a.map(f)`, `a.filter(p)` |
 | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l..=r]`, `s[i..]`, `grid[r]` (a row) |
 | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, `.take`, `zip` |
 | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filter(p).map(f)` |

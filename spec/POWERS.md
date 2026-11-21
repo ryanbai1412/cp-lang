@@ -57,8 +57,32 @@ works in `for`, comprehensions and every sequence method (`count`, `first`,
     pub trait Sized:       len: Int                    // property, no parens
     pub trait Indexed<K, T>: fn at(self, k: K) -> T
 
-A view is a struct whose `iter` reads its owner (`s.range(r)`, `t.Pre`,
-`xs.rev`); it costs O(1) to make and is lent, never owned.
+A view is a struct declared `lends S`: its field of type `S` borrows the
+source instead of owning it. There is no `View` trait; a view is a `Seq`
+(and `Indexed` when reads stay O(1)) whose struct lends. `lends` gives it
+the place rules of `mut a[i]` with no lifetime annotations:
+
+- it lives at most as long as the source's scope, and while it lives the
+  source can't change length; a `mut` view excludes overlapping access;
+- it can't go in a field, container or global, or be captured by a closure
+  that escapes; `.collect()` or `List(w)` copies it out;
+- a fn returns one only by saying which parameter it lends:
+  `fn window(xs: [V]Int, r: Range<V>) lends xs = xs[r]`.
+
+    pub struct Filter<S, P> lends S:
+        src: S
+        keep: P                      // the closure's own type: no boxing
+    impl Seq<T> for Filter<S: Seq<T>, P: T -> Bool>:
+        fn iter(self) -> yields T =
+            for x in self.src:
+                if self.keep(x): yield x
+
+A `for` over a generator pastes its body at the loop and each `yield x`
+becomes the loop body, so `for y in a.filter(p).map(f): b(y)` is
+`for x in a: if p(x): b(f(x))`, and `break`, `continue` and `return` act on
+that one loop. Recursive generators pass the body as a closure that
+returns continue or stop. `Slice`, `Rev`, `Map`, `Filter`, `TakeWhile` and
+`Chain` are each a few lines like this, with no stdlib privilege.
 
 An index space is a domain: a declared or fresh finite type with `D.count`,
 `D.cuts` (its cuts) and `D.at(i)`. Generic code takes `D: Domain` and
