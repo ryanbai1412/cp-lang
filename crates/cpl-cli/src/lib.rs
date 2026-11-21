@@ -1467,7 +1467,13 @@ fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -
         db.set_file(path, text.as_str());
         // What `cpl run` and `cpl build` would reject, `cpl check` rejects.
         let analysis = db.analyze(path).expect("the file was just set");
-        let diagnostics = cpl_ir::check(&analysis);
+        // `CPL_SPEC` checks against the spec (spec/README.md): the types only,
+        // not whether `cpl run` and `cpl build` can handle the program yet.
+        let diagnostics = if std::env::var_os("CPL_SPEC").is_some() {
+            analysis.diagnostics.clone()
+        } else {
+            cpl_ir::check(&analysis)
+        };
         let failed = diagnostics.iter().any(|d| d.severity == cpl_diag::Severity::Error);
         if !diagnostics.is_empty() {
             *stderr += &cpl_diag::render_all(&diagnostics, path, &text);

@@ -4,4 +4,4 @@
 # covers everything it uses. Extra arguments go to dream-gaps.py.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-CPL_STD="$root/spec/std" exec python3 "$root/scripts/dream-gaps.py" "$@"
+CPL_SPEC=1 CPL_STD="$root/spec/std" exec python3 "$root/scripts/dream-gaps.py" "$@"
