@@ -1446,14 +1446,17 @@ impl<'a> Lowerer<'a> {
                 if !values {
                     return Spec::Plain(Ty::Int);
                 }
-                let lo = self.expect(lo, &Ty::Int);
-                let mut hi = self.expect(hi, &Ty::Int);
-                if !inclusive {
-                    hi = self.int_add(hi, -1);
-                }
+                let lo = lo.as_deref().map(|lo| Box::new(self.expect(lo, &Ty::Int)));
+                let hi = hi.as_deref().map(|hi| {
+                    let mut hi = self.expect(hi, &Ty::Int);
+                    if !inclusive {
+                        hi = self.int_add(hi, -1);
+                    }
+                    Box::new(hi)
+                });
                 Spec::Int {
-                    lo: Some(Box::new(lo)),
-                    hi: Some(Box::new(hi)),
+                    lo,
+                    hi,
                     text: self.source(ty.span),
                 }
             }
@@ -1890,7 +1893,11 @@ impl<'a> Lowerer<'a> {
             }
         }
         match &ty.kind {
-            ast::TypeKind::Range { lo, hi, inclusive } => {
+            ast::TypeKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+            } => {
                 let first = match &lo.kind {
                     ast::ExprKind::Int(first) => i64::try_from(*first).ok(),
                     ast::ExprKind::Unary { op: ast::UnOp::Neg, expr } => match &expr.kind {

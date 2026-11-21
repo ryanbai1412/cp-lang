@@ -96,13 +96,16 @@ impl<'a> Checker<'a> {
                 Ty::Record(fields)
             }
             TypeKind::Range { lo, hi, inclusive } => {
-                self.infer(lo);
-                self.infer(hi);
-                let lo = self.bounds(lo).0;
-                let hi = self
-                    .bounds(hi)
-                    .1
-                    .map(|h| if *inclusive { h } else { h - 1 });
+                let lo = lo.as_deref().and_then(|lo| {
+                    self.infer(lo);
+                    self.bounds(lo).0
+                });
+                let hi = hi.as_deref().and_then(|hi| {
+                    self.infer(hi);
+                    self.bounds(hi)
+                        .1
+                        .map(|h| if *inclusive { h } else { h - 1 })
+                });
                 Ty::Range {
                     lo,
                     hi,

@@ -2073,6 +2073,13 @@ impl<T: Add> Add for ?T:
 impl<T: Eq> Eq for ?T
 ";
     assert!(codes(impl_src).is_empty(), "{:#?}", check(impl_src));
+
+    let assoc_src = "\
+trait Unwrap:
+    type Out
+    fn unwrap(self) -> Out
+";
+    assert!(codes(assoc_src).is_empty(), "{:#?}", check(assoc_src));
 }
 
 #[test]

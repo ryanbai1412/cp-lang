@@ -100,7 +100,7 @@ type-param defaults, one-sided range types, postfix `?` extent, and remaining
 | `40-signatures.md#1` | `E0204`: no type or domain named `Seq` (then `where` bounds on methods) | stdlib + §1 core syntax |
 | `40-signatures.md#2` | `E0103`: bodyless `fn push(...)` in `impl List<T>` (opaque `struct List<T>` now parses) | §1 core syntax |
 | `40-signatures.md#3` | `E0107`: `id: Self` associated const/field in `trait Monoid` | §1 core syntax |
-| `40-signatures.md#4` | `E0102`: one-sided range type `2..` in `fn Mint(mod: 2..)` | §1 core syntax |
+| `40-signatures.md#4` | `E0105`: `(type Z: Field)` scoped-type return (`2..` one-sided range now parses & checks) | §2 domains / §1 syntax |
 | `40-signatures.md#5` | `E0504`: type-param default `W = ()` planned stub (`design/spec/40-signatures.md` §40.6) | §1 core syntax |
 | `40-signatures.md#6` | `E0103`: bodyless `fn len(self) -> Int` in `impl Str` (opaque `struct Str` now parses) | §1 core syntax |
 | `40-signatures.md#7` | `E0103`: `fn read<T: Read>() -> T uses io` (bodyless fn + `uses` + variadics) | §1 core syntax + core-extensions |

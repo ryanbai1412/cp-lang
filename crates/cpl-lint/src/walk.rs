@@ -256,8 +256,12 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
             }
         }
         TypeKind::Range { lo, hi, .. } => {
-            walk_expr(v, lo);
-            walk_expr(v, hi);
+            if let Some(lo) = lo {
+                walk_expr(v, lo);
+            }
+            if let Some(hi) = hi {
+                walk_expr(v, hi);
+            }
         }
         TypeKind::Fn { params, ret } => {
             for ty in params {

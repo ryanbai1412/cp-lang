@@ -579,10 +579,10 @@ pub enum TypeKind {
     Optional(Box<Type>),
     Tuple(Vec<Type>),
     Record(Vec<(Name, Type)>),
-    /// `0..=1e9`, `1..=n`.
+    /// `0..=1e9`, `1..=n`, `0..`, `..=8`.
     Range {
-        lo: Box<Expr>,
-        hi: Box<Expr>,
+        lo: Option<Box<Expr>>,
+        hi: Option<Box<Expr>>,
         inclusive: bool,
     },
     Fn {

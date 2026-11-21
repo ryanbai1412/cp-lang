@@ -107,7 +107,11 @@ impl Bounds {
 
     fn range(&self, ty: &Type) -> Option<Interval> {
         match &ty.kind {
-            TypeKind::Range { lo, hi, inclusive } => self.span(lo, hi, *inclusive),
+            TypeKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+            } => self.span(lo, hi, *inclusive),
             _ => None,
         }
     }

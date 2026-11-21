@@ -180,7 +180,7 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
         return true;
     }
     if matches!(next.kind, K::DotDot | K::DotDotEq) {
-        return !after_value;
+        return !after_value && prev.kind != K::Lt;
     }
     if matches!(prev.kind, K::DotDot | K::DotDotEq) {
         return is_word_operator(next.kind);

@@ -484,7 +484,16 @@ impl<'a> Lowerer<'a> {
         let mut rows = std::collections::BTreeMap::new();
         for (at, field) in decl.fields.iter().enumerate() {
             let ast::TypeKind::Array { index, .. } = &field.ty.kind else { continue };
-            let [ast::Type { kind: ast::TypeKind::Range { lo, hi, inclusive }, .. }] = index.as_slice() else {
+            let [ast::Type {
+                kind:
+                    ast::TypeKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        inclusive,
+                    },
+                ..
+            }] = index.as_slice()
+            else {
                 continue;
             };
             let (Some(lo), Some(hi)) = (self.eval_const_int(lo), self.eval_const_int(hi)) else { continue };

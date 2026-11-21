@@ -226,8 +226,19 @@ impl<'a> Parser<'a> {
                     args: Vec::new(),
                 }
             }
+            T::DotDot | T::DotDotEq => {
+                // One-sided upper-bounded range type: `..n`, `..=8`.
+                let inclusive = self.at(T::DotDotEq);
+                self.bump();
+                let hi = self.additive();
+                TypeKind::Range {
+                    lo: None,
+                    hi: Some(Box::new(hi)),
+                    inclusive,
+                }
+            }
             T::Ident | T::Int | T::Minus | T::Float => {
-                // A range type: `0..=1e9`, `1..=n`.
+                // A range type: `0..=1e9`, `1..=n`, or one-sided `0..`, `2..`.
                 let lo = self.additive();
                 let inclusive = self.at(T::DotDotEq);
                 if !inclusive && !self.at(T::DotDot) {
@@ -240,10 +251,19 @@ impl<'a> Parser<'a> {
                     TypeKind::Error
                 } else {
                     self.bump();
-                    let hi = self.additive();
+                    let hi = if inclusive
+                        || matches!(
+                            self.peek(),
+                            T::Ident | T::Int | T::Minus | T::Float | T::LParen | T::SelfKw
+                        )
+                    {
+                        Some(Box::new(self.additive()))
+                    } else {
+                        None
+                    };
                     TypeKind::Range {
-                        lo: Box::new(lo),
-                        hi: Box::new(hi),
+                        lo: Some(Box::new(lo)),
+                        hi,
                         inclusive,
                     }
                 }
@@ -284,8 +304,8 @@ impl<'a> Parser<'a> {
         };
         Type {
             kind: TypeKind::Range {
-                lo: Box::new(lo),
-                hi: Box::new(hi),
+                lo: Some(Box::new(lo)),
+                hi: Some(Box::new(hi)),
                 inclusive: false,
             },
             span,

@@ -194,8 +194,12 @@ impl Sizes<'_> {
                 for dimension in index {
                     match &dimension.kind {
                         TypeKind::Range { lo, hi, .. } => {
-                            names_in(lo, self.0);
-                            names_in(hi, self.0);
+                            if let Some(lo) = lo {
+                                names_in(lo, self.0);
+                            }
+                            if let Some(hi) = hi {
+                                names_in(hi, self.0);
+                            }
                         }
                         _ => self.of_type(dimension),
                     }
@@ -444,7 +448,11 @@ impl Builder<'_> {
     /// The bounds of a type used as an array index: a domain or a range.
     fn index(&self, ty: &Type) -> Result<(Expr, Expr), SpecError> {
         match &ty.kind {
-            TypeKind::Range { lo, hi, inclusive } => Ok(Self::inclusive(lo, hi, *inclusive)),
+            TypeKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+            } => Ok(Self::inclusive(lo, hi, *inclusive)),
             TypeKind::Named { name, args } if args.is_empty() => {
                 self.domains.get(&name.text).cloned().ok_or_else(|| {
                     self.error(
@@ -475,7 +483,11 @@ impl Builder<'_> {
             )
         };
         match &ty.kind {
-            TypeKind::Range { lo, hi, inclusive } => {
+            TypeKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+            } => {
                 let (lo, hi) = Self::inclusive(lo, hi, *inclusive);
                 names_in(&lo, &mut self.spec.sizes);
                 names_in(&hi, &mut self.spec.sizes);

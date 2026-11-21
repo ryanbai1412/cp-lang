@@ -1299,6 +1299,15 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   (`struct List<T>`, `struct Str`); `impl_decl` desugars `impl A + B for T:` into one `StmtKind::Impl` per trait.
   *Reversal:* revert the four branches in `crates/cpl-syntax/src/parser/item.rs`.
 
+- **22.8 One-sided range types (`0..`, `2..`, `..=8`, `..n`) and associated types in `trait`/`impl` scope.**
+  `TypeKind::Range` stores `lo: Option<Box<Expr>>` and `hi: Option<Box<Expr>>`, matching the optional
+  bounds already used by `cpl-check::Ty::Range` and `cpl-ir::Spec::Int`. Both lower-bounded (`0..`, `2..`)
+  and upper-bounded (`..n`, `..=8`) ranges now parse, type-check, and emit runtime range checks on `read()`
+  and `read::<2..>()`. `StmtKind::Trait` and `StmtKind::Impl` also bring associated `type Name` declarations
+  into their body generic scope so `trait Unwrap: type Out; fn unwrap(self) -> Out` checks cleanly.
+  *Reversal:* make `lo`/`hi` non-optional again in `TypeKind::Range` and remove the `TypeAlias` loops in
+  `crates/cpl-check/src/check/stmt.rs`.
+
 ## 23. Validation scoreboard and friction summary (`scripts/scoreboard.py`, 2026-11-21)
 
 - **23.1 One unified scoreboard over auto-discovered ports.** `scripts/scoreboard.py` discovers every

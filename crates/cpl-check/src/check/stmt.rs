@@ -666,7 +666,12 @@ impl<'a> Checker<'a> {
                 supers,
                 body,
             } => {
-                let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+                let mut generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+                for stmt in &body.stmts {
+                    if let StmtKind::TypeAlias { name, .. } = &stmt.kind {
+                        generics.push(name.text.clone());
+                    }
+                }
                 let self_ty = Ty::Param("Self".into());
                 let scope = self.enter_body(&generics, self_ty.clone());
                 for sup in supers {
@@ -683,7 +688,12 @@ impl<'a> Checker<'a> {
                 bounds,
                 body,
             } => {
-                let generics = self.impl_generics(target, bounds);
+                let mut generics = self.impl_generics(target, bounds);
+                for stmt in &body.stmts {
+                    if let StmtKind::TypeAlias { name, .. } = &stmt.kind {
+                        generics.push(name.text.clone());
+                    }
+                }
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.resolve_type(target);
                 self.self_ty = Some(self_ty.clone());

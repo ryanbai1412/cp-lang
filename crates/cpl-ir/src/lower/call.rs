@@ -278,14 +278,17 @@ impl<'a> Lowerer<'a> {
                         inclusive,
                     } = &ty.kind
                     {
-                        let lo = self.expect(lo, &Ty::Int);
-                        let mut hi = self.expect(hi, &Ty::Int);
-                        if !inclusive {
-                            hi = self.int_add(hi, -1);
-                        }
+                        let lo = lo.as_deref().map(|lo| Box::new(self.expect(lo, &Ty::Int)));
+                        let hi = hi.as_deref().map(|hi| {
+                            let mut hi = self.expect(hi, &Ty::Int);
+                            if !inclusive {
+                                hi = self.int_add(hi, -1);
+                            }
+                            Box::new(hi)
+                        });
                         let spec = Spec::Int {
-                            lo: Some(Box::new(lo)),
-                            hi: Some(Box::new(hi)),
+                            lo,
+                            hi,
                             text: self.source(ty.span),
                         };
                         return self.read(spec, span);
