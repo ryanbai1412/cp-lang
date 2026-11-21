@@ -1203,10 +1203,19 @@ impl<'a> Checker<'a> {
                 let suggestion = closest(&name.text, known.iter().map(String::as_str));
                 let message = format!("`{trait_text}` has no fn `{}`", name.text);
                 if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-                    diag.help = Some(match suggestion {
-                        Some(s) => format!("did you mean `{s}`?"),
-                        None => format!("its fns are {}", super::expr::list_names(&known)),
-                    });
+                    match suggestion {
+                        Some(s) => {
+                            diag.help = Some(format!("did you mean `{s}`?"));
+                            diag.fixes.push(cpl_diag::Fix {
+                                title: format!("change to `{s}`"),
+                                edits: vec![(name.span, s.to_string())],
+                            });
+                        }
+                        None => {
+                            diag.help =
+                                Some(format!("its fns are {}", super::expr::list_names(&known)));
+                        }
+                    }
                 }
             }
         }

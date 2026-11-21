@@ -623,7 +623,7 @@ after `.`, names in scope, `use std.`; what fits the expected type first: the
 parameter an argument is for, a `let`'s written type, an assigned variable's), signature help
 (defaults and the `;` before named-only parameters, the active one found by name or position), inlay hints
 (unwritten types, with the index space of a loop variable (`v: V`,
-`i: 0..n`) and the range the input bounds prove for a top-level `let`
+`i: 0..n`) and the range the input bounds prove for a `let`, in a fn or loop too
 (`m: Int in 2..=10001`); parameter names of literal arguments) and quick fixes
 from diagnostic fixes (the four most frequent first errors over the broken
 ports, an unclosed delimiter, a missing token, a doubled operator and a

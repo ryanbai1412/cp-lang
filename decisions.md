@@ -2132,6 +2132,14 @@ lint already proves overflow with. `var`s get no range: a later assignment would
 Hover adds the range only to a binding typed `Int`; a loop variable already hovers `i: 0..k`.
 Reverse: restore the top-level loop in `rules::proven_ranges`.
 
+29.20. **A misspelled option is a quick fix; signature help points at the next option.** The
+checker's "did you mean" for an unknown argument name (E0310) and for a trait fn now carries
+the same `change to` fix an unknown field already had, so `xs.reach(cylic: true)` is one click
+from `cyclic:`. Past the positional parameters signature help marks the first named-only
+parameter not given yet, instead of none: for `reach(while:, cyclic:)`, where every parameter
+is named-only, nothing was ever marked after the first. Reverse: drop the two `fixes.push` in
+`check/call.rs` and `check/stmt.rs`, and the fallback in `complete.rs::active_param`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

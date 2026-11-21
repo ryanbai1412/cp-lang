@@ -177,7 +177,8 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
         let name = ident_before(text, callee_end);
         if !name.is_empty() && !before.contains(['(', '[', '{']) {
             let sig = signature_of(cursor, std, item, callee_end, name)?;
-            let index = active_param(&sig, text[arg_start..at].trim_start(), commas);
+            let given = named_args(&text[paren + 1..arg_start]);
+            let index = active_param(&sig, &given, text[arg_start..at].trim_start(), commas);
             let ty = &sig.params.get(index)?.ty;
             return Some(ty.clone()).filter(|t| !t.is_empty());
         }
@@ -905,7 +906,8 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
     }
     let sig = signature_of(cursor, std, item, callee_end, name)?;
     // `f(a, by: k`: the argument named, else the one by position.
-    let active = active_param(&sig, text[arg_start..offset].trim_start(), commas);
+    let given = named_args(&text[paren + 1..arg_start]);
+    let active = active_param(&sig, &given, text[arg_start..offset].trim_start(), commas);
 
     let mut label = format!("{}(", sig.name);
     let mut parameters = Vec::new();
@@ -957,7 +959,7 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
 
 /// The parameter an argument is for: `f(a, by: k`'s is `by`, else the
 /// positional one at its place, the last when that one is variadic.
-fn active_param(sig: &Signature, arg: &str, commas: usize) -> usize {
+fn active_param(sig: &Signature, given: &[&str], arg: &str, commas: usize) -> usize {
     let named = arg
         .split_once(':')
         .filter(|(n, _)| !n.trim().is_empty() && n.trim().chars().all(is_ident))
@@ -972,9 +974,38 @@ fn active_param(sig: &Signature, arg: &str, commas: usize) -> usize {
         Some(&index) => index,
         None => match positional.last() {
             Some(&last) if sig.params[last].variadic => last,
-            _ => sig.params.len().max(commas),
+            // Past the positional ones, the next option not given yet.
+            _ => (0..sig.params.len())
+                .find(|&i| {
+                    sig.params[i].named_only && !given.iter().any(|g| *g == sig.params[i].name)
+                })
+                .unwrap_or(sig.params.len().max(commas)),
         },
     }
+}
+
+/// The names of the named arguments in `args`, the text before the current one.
+fn named_args(args: &str) -> Vec<&str> {
+    let mut names = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0;
+    for (i, c) in args.char_indices() {
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => {
+                if let Some((name, _)) = args[start..i].split_once(':') {
+                    let name = name.trim();
+                    if !name.is_empty() && name.chars().all(is_ident) {
+                        names.push(name);
+                    }
+                }
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    names
 }
 
 fn utf16_len(s: &str) -> u32 {

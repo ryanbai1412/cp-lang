@@ -1881,8 +1881,10 @@ fn signature_help_shows_defaults_and_named_only_parameters() {
     // A named argument is its parameter, even one only passed by name.
     let (_, active, _) = signature(&format!("{decl}print(walk(1, back: |))\n"));
     assert_eq!(active, 2);
-    // Past the positional ones nothing is active: `back` needs its name.
+    // Past the positional ones, the first option not given yet.
     let (_, active, _) = signature(&format!("{decl}print(walk(1, 2, |))\n"));
+    assert_eq!(active, 2);
+    let (_, active, _) = signature(&format!("{decl}print(walk(1, 2, back: true, |))\n"));
     assert!(active > 2, "{active}");
     // A stdlib method's default, as its declaration writes it.
     let (label, ..) = signature("use std.mod.{Comb}\nlet c = Comb<7>.new(|)\n");
@@ -2216,4 +2218,44 @@ fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
             .contains(" in "),
         "a loop variable already shows its range as its type: {hover:?}"
     );
+}
+
+/// `reach(while:, cyclic:)`: a misspelled option is one click from the port
+/// that uses it, and hover, completion and signature help know it.
+#[test]
+fn reach_completes_hovers_helps_and_fixes_its_options() {
+    assert_fixes_restore(
+        "cf1284e",
+        &[(
+            "cyclic: true)",
+            "cylic: true)",
+            "E0310",
+            "change to `cyclic`",
+        )],
+    );
+    let reach = ask_at(
+        "textDocument/completion",
+        "let xs = [1, 2]\nprint(xs.rea|)\n",
+    )
+    .get("items")
+    .as_array()
+    .iter()
+    .find(|i| i.get("label").as_str() == Some("reach"))
+    .cloned()
+    .unwrap();
+    assert_eq!(reach.get("kind").as_u32(), Some(2));
+    assert_eq!(
+        reach.get("detail").as_str(),
+        Some("reach(while: (Int, Int) -> Bool, cyclic: Bool = false) -> List<Int>")
+    );
+    let (mut server, _) =
+        open("let xs = [1, 2, 4]\nprint(xs.reach(while: (a, b) => b - a <= 3))\n");
+    let hover = hover_at(&mut server, 1, 11);
+    let hover = hover.at(&["contents", "value"]).as_str().unwrap();
+    assert!(hover.contains("\ncost: O(n)\n"), "{hover}");
+    let help = ask_at(
+        "textDocument/signatureHelp",
+        "let xs = [1, 2]\nprint(xs.reach(while: (a, b) => a < b, |))\n",
+    );
+    assert_eq!(help.get("activeParameter").as_u32(), Some(1), "{help:?}");
 }

@@ -991,10 +991,19 @@ impl<'a> Checker<'a> {
                         let message = format!("`{callee}` has no {what} named `{}`", name.text);
                         if let Some(diag) = self.error(codes::UNKNOWN_ARG_NAME, name.span, message)
                         {
-                            diag.help = Some(match suggestion {
-                                Some(s) => format!("did you mean `{s}`?"),
-                                None => format!("its {what}s are {}", list_names(&names)),
-                            });
+                            match suggestion {
+                                Some(s) => {
+                                    diag.help = Some(format!("did you mean `{s}`?"));
+                                    diag.fixes.push(cpl_diag::Fix {
+                                        title: format!("change to `{s}`"),
+                                        edits: vec![(name.span, s.to_string())],
+                                    });
+                                }
+                                None => {
+                                    diag.help =
+                                        Some(format!("its {what}s are {}", list_names(&names)));
+                                }
+                            }
                         }
                         misnamed = true;
                         None
