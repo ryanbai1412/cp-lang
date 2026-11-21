@@ -13,6 +13,8 @@
 #         4. cpl test stdlib examples/local-lib, run beside 3
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
 #            and stdlib/prelude.cp holds at most 80 names
+#            and every port in proto/ports/ecnerwala passes cpl check,
+#            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #         6. scripts/friction_lint.py: its rule tests, then no wa_trap hit in
 #            proto/ports or examples, with a one-line severity summary
 #            last, the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
@@ -153,6 +155,19 @@ echo "prelude: $prelude names"
 
 step "cpl fmt --check stdlib"
 cargo run -q -p cpl-cli -- fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
+
+# Every ecnerwala port checks, is formatted and lints clean: a compiler,
+# formatter or lint change that breaks one of them stops here. Under a
+# second for the 225 of them.
+step "proto/ports/ecnerwala: cpl check, cpl fmt --check, cpl lint with 0 warnings"
+cpl="${CARGO_TARGET_DIR:-target}/debug/cpl"
+ecn=(proto/ports/ecnerwala/*.cp)
+ecn_start=$(date +%s%N)
+"$cpl" check "${ecn[@]}" >/dev/null 2>&1 || { "$cpl" check "${ecn[@]}" 2>&1 | grep -v ': no errors$'; fail "an ecnerwala port above no longer passes cpl check"; }
+"$cpl" fmt --check "${ecn[@]}" >/dev/null 2>&1 || { "$cpl" fmt --check "${ecn[@]}" 2>&1 | tail -n 5; fail "an ecnerwala port is not formatted; run: cpl fmt proto/ports/ecnerwala/*.cp"; }
+ecn_lint=$("$cpl" lint "${ecn[@]}" 2>&1)
+grep -q <<<"$ecn_lint" ', 0 warnings, 0 errors$' || { echo "$ecn_lint"; fail "an ecnerwala port has a lint warning"; }
+echo "${#ecn[@]} ports pass in $(( ($(date +%s%N) - ecn_start) / 1000000 )) ms"
 
 step "friction lint: rule tests, no wa_trap"
 need python3 "scripts/friction_lint.py runs on it"

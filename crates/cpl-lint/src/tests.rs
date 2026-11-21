@@ -248,6 +248,10 @@ fn unread_field_ignores_writes_and_libraries() {
     );
     let method = "struct Edge:\n    id: Int\n    fn key(self) -> Int = self.id\nlet e: Edge = read()\nprint(e.key())\n";
     assert_eq!(codes(method), Vec::<&str>::new());
+    // So does one reading it by its bare name; a bare `id = ..` is a write.
+    assert_eq!(codes(&method.replace("self.id", "id")), Vec::<&str>::new());
+    let set = "struct Edge:\n    id: Int\n    fn clear(mut self):\n        id = 0\nvar e: Edge = read()\ne.clear()\n";
+    assert_eq!(only(set).message, "field `id` of `Edge` is never read");
     // A file of declarations is a library: its users read the fields.
     assert_eq!(
         codes("struct Edge:\n    to: Int\n    id: Int\n"),

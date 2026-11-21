@@ -64,6 +64,41 @@ pub struct Fenwick<D, T>:
         let b = self.lower_bound(k)
         if b == none: none else: b!.left
 
+/// Point xor and range xor over anything with `^` (`Int`, `U64`): the Fenwick tree whose
+/// `+` is `^`, for Zobrist hashes and nim sums. `XorFenwick<D, U64>()` starts at zero and
+/// `XorFenwick<D, U64>(a)` from an array, in O(n). `flip`, `prefix` and `xor` are O(log n).
+pub struct XorFenwick<D, T>:
+    t: List<T>
+
+    pub fn new(a: ?[D]T = none) -> XorFenwick<D, T>:
+        var t = List.filled(D.K + 1, T.zero)
+        if let init = a:
+            for i in D:
+                let p = i.to_idx + 1
+                t[p] = t[p] ^ init[i]
+                let q = p + (p & -p)
+                if q <= D.K: t[q] = t[q] ^ t[p]
+        XorFenwick(t)
+
+    /// `a[i] ^= x`.
+    pub fn flip(mut self, i: D, x: T):
+        var p = i.to_idx + 1
+        while p < t.len:
+            t[p] = t[p] ^ x
+            p += p & -p
+
+    /// The xor of everything left of the boundary `b`: `prefix(v.r)` includes `v`, `prefix(v.l)` does not.
+    pub fn prefix(self, b: Bounds<D>) -> T:
+        var p = b.ord
+        var acc = T.zero
+        while p > 0:
+            acc = acc ^ t[p]
+            p -= p & -p
+        acc
+
+    /// The xor of a range: `f.xor(l..=r)`, `f.xor(..i)`, `f.xor(i..)`. An empty range is zero.
+    pub fn xor(self, r: Range<D>) -> T = self.prefix(r.hi) ^ self.prefix(r.lo)
+
 /// Point add and rectangle sum on a grid. `add` and `sum` are O(log R * log C);
 /// memory is (R + 1) * (C + 1) values.
 pub struct Fenwick2D<R, C, T>:
@@ -154,3 +189,25 @@ fn two_dimensions_match_a_plain_grid():
         let (r2, c2) = (R.nth(rand(r1.to_idx, 4)), C.nth(rand(c1.to_idx, 5)))
         assert f.sum(r1..=r2, c1..=c2) == sum(g[i, j] for i in r1..=r2 for j in c1..=c2)
     assert f.sum(R(2)..R(2), C(1)..=C(6)) == 0
+
+@test
+fn xor_matches_a_plain_array():
+    domain D = 0..9
+    var plain: [D]U64 = U64(0)
+    var f = XorFenwick<D, U64>()
+    var x = U64(88172645463325252)
+    for i in D:
+        x = x ^ (x << 13)
+        x = x ^ (x >> 7)
+        plain[i] = x
+        f.flip(i, x)
+    f.flip(D(3), U64(5))
+    plain[D(3)] = plain[D(3)] ^ U64(5)
+    for l in D:
+        for r in l..D.last:
+            var want = U64(0)
+            for i in l..=r: want = want ^ plain[i]
+            assert f.xor(l..=r) == want
+    assert f.xor(D(4)..D(4)) == U64(0)
+    let g = XorFenwick<D, Int>([D] i => i.to_idx + 1)
+    assert g.xor(..) == 1 and g.xor(D(0)..=D(2)) == 0 and g.xor(D(2)..) == (3 ^ 4 ^ 5 ^ 6 ^ 7 ^ 8 ^ 9)

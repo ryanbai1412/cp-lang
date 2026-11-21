@@ -1846,3 +1846,18 @@ fn a_list_written_out_beside_a_plus_holds_the_element_type_asked_for() {
         assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new(), "{ok}");
     }
 }
+
+/// `cpl run` no longer stops a call that touches a variable it was lent
+/// `mut`, so the check has to: one variable twice in a call is refused
+/// here, while a fn value reading it during the call is not.
+#[test]
+fn one_variable_lent_twice_to_a_call_is_refused() {
+    const FNS: &str = "fn two(mut x: List<Int>, mut y: List<Int>): x.push(y.len)\nfn one(mut x: List<Int>, y: List<Int>): x.push(y.len)\nvar xs = [1]\n";
+    for call in ["two(mut xs, mut xs)\n", "one(mut xs, xs)\n"] {
+        let diags = check(&format!("{FNS}{call}"));
+        assert_eq!(diags.iter().map(|d| d.code.0).collect::<Vec<_>>(), vec!["E0601"], "{call}");
+    }
+    assert_eq!(check(&format!("{FNS}var ys = [2]\ntwo(mut xs, mut ys)\none(mut xs, ys)\n")), vec![]);
+    let closure = "domain P = 0..3\nvar m = Map<Str, P>()\nprint(m.get_or_insert_with(\"a\", () => P(m.len)))\n";
+    assert_eq!(check(closure), vec![]);
+}

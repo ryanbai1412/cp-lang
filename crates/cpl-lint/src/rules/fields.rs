@@ -6,7 +6,7 @@
 //! no statements of its own is a library, whose fields are read by the
 //! programs that use it, and is skipped.
 
-use crate::walk::Visitor;
+use crate::walk::{walk_stmt, Visitor};
 use crate::{File, Finding, UNREAD_FIELD};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{AssignOp, Expr, ExprKind, Stmt, StmtKind};
@@ -32,6 +32,16 @@ impl Visitor for Fields {
     fn stmt(&mut self, stmt: &Stmt) {
         match &stmt.kind {
             StmtKind::Struct(decl) => {
+                // In the struct's own fns a field is read by its bare
+                // name, `jdist[p]` for `self.jdist[p]`.
+                let mut own = Own {
+                    fields: decl.fields.iter().map(|field| field.name.text.as_str()).collect(),
+                    ..Own::default()
+                };
+                for method in &decl.methods {
+                    walk_stmt(&mut own, method);
+                }
+                self.read.extend(own.read);
                 for field in &decl.fields {
                     self.declared.push(Field {
                         owner: decl.name.text.clone(),
@@ -57,6 +67,33 @@ impl Visitor for Fields {
         if let ExprKind::Field { name, .. } = &expr.kind {
             if !self.written.contains(&(self.base, expr.span)) {
                 self.read.insert(name.text.clone());
+            }
+        }
+    }
+}
+
+/// The fields a struct's own fns read by bare name.
+#[derive(Default)]
+struct Own<'a> {
+    fields: HashSet<&'a str>,
+    read: HashSet<String>,
+    /// Names that are the target of a plain `=`: writes, not reads.
+    written: HashSet<Span>,
+}
+
+impl Visitor for Own<'_> {
+    fn stmt(&mut self, stmt: &Stmt) {
+        if let StmtKind::Assign { target, op: AssignOp::Set, .. } = &stmt.kind {
+            if matches!(target.kind, ExprKind::Name(_)) {
+                self.written.insert(target.span);
+            }
+        }
+    }
+
+    fn expr(&mut self, expr: &Expr) {
+        if let ExprKind::Name(name) = &expr.kind {
+            if self.fields.contains(name.as_str()) && !self.written.contains(&expr.span) {
+                self.read.insert(name.clone());
             }
         }
     }

@@ -2575,6 +2575,16 @@ impl<'a> Lowerer<'a> {
                         _ => {}
                     }
                 }
+                // `T.zero` and `T.one` where `T` is one of the wide integers.
+                let wide = match (type_name.as_str(), self.gen_env.get(type_name)) {
+                    ("U64", _) | (_, Some(GenArg::Ty(Ty::U64))) => Some((Cast::IntToU64, Ty::U64)),
+                    ("I128", _) | (_, Some(GenArg::Ty(Ty::I128))) => Some((Cast::IntToI128, Ty::I128)),
+                    _ => None,
+                };
+                if let (Some((cast, ty)), Some(unit)) = (wide, ["zero", "one"].iter().position(|c| *c == name.text)) {
+                    let unit = self.mk(ExprKind::Int(unit as i64), Ty::Int, span);
+                    return self.mk(ExprKind::Cast(cast, Box::new(unit)), ty, span);
+                }
                 if let Some(GenArg::Ty(Ty::Struct(sid))) = self.gen_env.get(type_name).cloned() {
                     if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {
                         return self.eval_struct_const(sid, sc, span);
