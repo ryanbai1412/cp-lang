@@ -3715,3 +3715,17 @@ ordinal loop. Reverse by deleting `product_heads` in `lower/stmt.rs`.
   headers and dreams started mixing them. The rule keeps one spelling per
   position without losing the expression form.
 - **Reverse.** Drop the lint and its codemod.
+
+## 112. Push-relabel is a second named max-flow method, `FlowGraph.push_relabel` (2026-11-21)
+
+`FlowGraph.push_relabel(s, t) -> Int` computes the same maximum flow as
+`max_flow(s, t)` by highest-label push-relabel with the gap heuristic
+(KACTL's), O(V^2 sqrt E), and leaves a valid flow, so `flow(a)` and
+`min_cut(s)` work after it. It is a method named after its algorithm, like
+`dijkstra` and `bellman_ford` beside each other, not an `algo:` option on
+`max_flow`: with a runtime option every Dinic program carried the unused
+solver into its C++ (cf1404e grew 15,430 B to 19,640 B), and an unchosen
+method is not emitted. It has no `limit:`, since a preflow cannot stop at a
+bound. Why now: cf1404e's original uses it and runs 12x faster than Dinic on
+the all-`#` grid. Reverse: delete the method; ports go back to `max_flow`.
+

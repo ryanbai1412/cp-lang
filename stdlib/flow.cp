@@ -13,7 +13,7 @@ pub struct Arc(id: Int):
     /// The paired arc in the opposite direction. This is what `e ^ 1` means in C++.
     pub @get fn rev(self) -> Arc = Arc(id ^ 1)
 
-/// A flow network over the vertices `V`, solved with Dinic's algorithm.
+/// A flow network over the vertices `V`, solved with Dinic's algorithm (`max_flow`) or push-relabel (`push_relabel`).
 /// `add` is O(1). `max_flow` is O(V^2 E) in general, O(E sqrt(V)) on unit
 /// networks (bipartite matching). Memory is two arcs per `add`.
 pub struct FlowGraph<V>:
@@ -64,13 +64,13 @@ pub struct FlowGraph<V>:
     pub fn target(self, a: Arc) -> V = to[a.id]
 
     /// Push as much as possible from `s` to `t`, on top of the flow already there, but
-    /// no more than `limit`. Returns the amount added. O(V^2 E); O(E sqrt(V)) when every
-    /// capacity is 1.
+    /// no more than `limit`. Returns the amount added. Dinic: O(V^2 E); O(E sqrt(V)) when
+    /// every capacity is 1.
     pub fn max_flow(mut self, s: V, t: V, limit: ?Int = none) -> Int:
         assert s != t
+        cut_from = none
         let limit = limit ?? Int.MAX
         var total = 0
-        cut_from = none
         while total < limit:
             let level = self.levels(s)
             if level[t] == none:
@@ -95,6 +95,70 @@ pub struct FlowGraph<V>:
     pub fn reset(mut self):
         cut_from = none
         for k in 0..left.len: left[k] = cap0[k]
+
+    /// The same maximum flow as `max_flow(s, t)` by push-relabel (highest label, gap
+    /// heuristic): O(V^2 sqrt(E)), and often several times faster than Dinic on dense
+    /// or unit-capacity grids. Returns the amount added; `min_cut(s)` works after it.
+    pub fn push_relabel(mut self, s: V, t: V) -> Int:
+        assert s != t
+        cut_from = s
+        let n = V.K
+        var height: [V]Int = 0
+        var excess: [V]Int = 0
+        var next: [V]Int = 0
+        var active = [List<V>() for _ in 0..2 * n]
+        var count = [0 for _ in 0..2 * n]
+        height[s] = n
+        // t is never active: a vertex is queued only when its excess leaves 0
+        excess[t] = 1
+        count[0] = n - 1
+        for a in head[s]: self.push(a, left[a.id], mut excess, mut active, height)
+        var top = 0
+        unchecked:
+            while true:
+                while active[top].is_empty:
+                    if top == 0: return -excess[s]
+                    top -= 1
+                let u = active[top].pop()
+                while excess[u] > 0:
+                    if next[u] == head[u].len:
+                        height[u] = Int.MAX
+                        for k in 0..head[u].len:
+                            let a = head[u][k]
+                            if left[a.id] > 0 and height[to[a.id]] < height[u] - 1:
+                                height[u] = height[to[a.id]] + 1
+                                next[u] = k
+                        count[height[u]] += 1
+                        count[top] -= 1
+                        if count[top] == 0 and top < n:
+                            for v in V:
+                                if top < height[v] and height[v] < n:
+                                    count[height[v]] -= 1
+                                    height[v] = n + 1
+                        top = height[u]
+                    else:
+                        let a = head[u][next[u]]
+                        if left[a.id] > 0 and height[u] == height[to[a.id]] + 1:
+                            self.push(a, min(excess[u], left[a.id]), mut excess, mut active, height)
+                        else:
+                            next[u] += 1
+        0
+
+    fn push(
+        mut self,
+        a: Arc,
+        f: Int,
+        mut excess: [V]Int,
+        mut active: List<List<V>>,
+        height: [V]Int,
+    ):
+        let v = to[a.id]
+        unchecked:
+            if excess[v] == 0 and f > 0: active[height[v]].push(v)
+            left[a.id] -= f
+            left[a.rev.id] += f
+            excess[v] += f
+            excess[to[a.rev.id]] -= f
 
     fn close(mut self, a: Arc):
         left[a.id] = 0
@@ -987,6 +1051,29 @@ fn hungarian_matches_brute_force_on_random_matrices():
             if not next_permutation(mut p): break
         assert h.total == best
         assert sorted([h.mate[i].to_idx for i in L]) == [0, 1, 2, 3]
+
+@test
+fn push_relabel_agrees_with_dinic_and_leaves_a_valid_flow():
+    domain V = 0..7
+    for _ in 0..200:
+        let es = [(V.nth(rand(0, 6)), V.nth(rand(0, 6)), rand(0, 9)) for _ in 0..rand(0, 16)]
+        var d = FlowGraph<V>()
+        var p = FlowGraph<V>()
+        for (u, v, c) in es:
+            d.add(u, v, c)
+        let arcs = [p.add(u, v, c) for (u, v, c) in es]
+        let f = p.push_relabel(V.first, V.last)
+        assert f == d.max_flow(V.first, V.last)
+        var net: [V]Int = 0
+        for a in arcs:
+            assert 0 <= p.flow(a) and p.flow(a) <= p.cap(a)
+            net[p.target(a)] += p.flow(a)
+            net[p.source(a)] -= p.flow(a)
+        assert net[V.last] == f and net[V.first] == -f
+        assert [net[v] for v in V if v != V.first and v != V.last].all(x => x == 0)
+        let side = p.min_cut(V.first)
+        assert f == sum(c for (u, v, c) in es if side[u] and not side[v])
+        assert p.push_relabel(V.first, V.last) == 0
 
 @test
 fn flow_over_a_product_domain_matches_flat_numbering():

@@ -62,6 +62,8 @@ struct FlowGraph<V>                                   // Dinic
     fn target(self, a: Arc) -> V                      // O(1)
     fn max_flow(mut self, s: V, t: V, limit: ?Int = none) -> Int
         // O(V^2 E); O(E sqrt V) on unit networks
+    fn push_relabel(mut self, s: V, t: V) -> Int
+        // the same flow, O(V^2 sqrt E); highest label, gap
     fn min_cut(self, s: V) -> [V]Bool                 // O(V + E)
     fn reset(mut self)                                // O(E)
 
@@ -356,9 +358,9 @@ The whole area, in the order the corpus is likely to want it:
    cost scaling), and `min_cost_flow` over bounded arcs.
 5. **Dynamic networks:** `set_cap(a, c)` with re-flow from the current
    flow, as ACL's `change_edge`; incremental bipartite matching.
-6. **Push-relabel** as a named second max-flow solver: on cf1404e's
-   200 x 200 unit grid the original's push-relabel takes 17 ms where
-   matched Dinic takes 340 ms.
+6. ~~Push-relabel as a named second max-flow solver~~: landed as
+   `FlowGraph.push_relabel(s, t)` (decision 112). On cf1404e's 200 x 200
+   all-`#` grid it takes 36 ms where Dinic takes 442 ms.
 7. **Matroid intersection** and **bipartite edge colouring** (KACTL).
 8. **Tooling:** `cpl explain` for a network (vertex and arc counts, the
    bound the solver will meet), and a trace view of a min cut over the

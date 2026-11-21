@@ -1278,6 +1278,8 @@ struct FlowGraph<V>                    // Dinic
     fn target(self, a: Arc) -> V                              // O(1)
     fn max_flow(mut self, s: V, t: V, limit: ?Int = none) -> Int
         // O(V^2 E); O(E sqrt V) on unit networks
+    fn push_relabel(mut self, s: V, t: V) -> Int
+        // the same flow, O(V^2 sqrt E); highest label, gap
     fn min_cut(self, s: V) -> [V]Bool                         // O(V + E)
     fn reset(mut self)                                        // O(E)
 struct CostFlow<V>                     // successive shortest paths
