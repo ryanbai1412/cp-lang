@@ -1,6 +1,6 @@
 const INF = 2_000_000_000_000_000_000
 
-@! multitest
+@!multitest
 let n: Int = read()
 var row_bad: [0..n - 1][0..3]Bool = false
 var col_bad: [0..n - 1][0..3]Bool = false

@@ -10,7 +10,7 @@ for z in 0..3:
     for y in z + 1..3:
         var place: [P]Int = 0
         for i in 0..n: place[rank[y][i]] = i
-        var reach = 0   // furthest place in y of anyone in z's prefix
+        var reach = 0  // furthest place in y of anyone in z's prefix
         for i in 0..n - 1:
             reach max= place[rank[z][i]]
             if reach == i: good[i] = true

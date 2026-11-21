@@ -1,6 +1,6 @@
 struct HeapNode(v: Int, cnt: Int, l: ?Int, r: ?Int)
 
-@! multitest
+@!multitest
 let n: Int = read()
 domain V = 1..=n
 let raw_edges: [0..n - 1](u: V, v: V, w: Int) = read()

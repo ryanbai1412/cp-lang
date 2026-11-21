@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 var primes: List<Int> = []
 var pfac: [0..=n]Int = 0

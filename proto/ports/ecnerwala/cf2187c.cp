@@ -1,6 +1,6 @@
 // Codeforces 2187 C: greedily take the farthest forward edge at each vertex,
 // then merge depth-indexed (count, subtree-sum) tables bottom-up (small-to-large).
-@! multitest
+@!multitest
 let (n, m): (Int, Int) = read()
 var nxt: [0..n]Int = [0..n] i => i + 1
 let edges: [0..m](Int, Int) = read()

@@ -11,7 +11,7 @@ for i in 1..=MAX_V:
 
 var rng = Rng.new(48)
 
-@! multitest
+@!multitest
 let n: Int = read()
 let raw: [0..n]Int = read()
 let g = fold(gcd, raw)

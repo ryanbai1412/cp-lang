@@ -3,7 +3,7 @@ fn ask(d: Char, dist: Int) -> Int:
     flush()
     read()
 
-@! multitest
+@!multitest
 let n: Int = read()
 let anchors: [0..n](Int, Int) = read()
 let step = 1_000_000_000

@@ -7,7 +7,7 @@ use std.geometry.{turn}
 
 type Site = (p: Pt, id: Int)
 
-@! multitest
+@!multitest
 let (n, q): (3..=2e5, 1..=2e5) = read()
 let pts: [0..n]Pt = read()
 let sites = sorted([(p: pts[i], id: i + 1) for i in 0..n], by: s => s.p)

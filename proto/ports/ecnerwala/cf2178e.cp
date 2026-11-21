@@ -6,7 +6,7 @@ fn ask(lo: Int, hi: Int) -> Int:
     flush()
     read()
 
-@! multitest
+@!multitest
 let n: Int = read()
 var (l, r) = (0, n)
 var tot = ask(l, r)

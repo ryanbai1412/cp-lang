@@ -1,6 +1,6 @@
 // Codeforces 2211 C2: enforce exact equality on non-periodic residue classes
 // mod K, constant values on periodic residue classes, and multiset balance on 0..K.
-@! multitest
+@!multitest
 let (n, k): (Int, Int) = read()
 let a: [0..n]Int = read()
 var b: [0..n]Int = read()

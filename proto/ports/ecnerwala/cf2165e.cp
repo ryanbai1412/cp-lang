@@ -1,21 +1,17 @@
 @!multitest
 let n: Int = read()
-var adj: [0..n]List<Int> = []
-for _ in 0..(n - 1):
-    let (u, v): (Int, Int) = read()
-    adj[u - 1].push(v - 1)
-    adj[v - 1].push(u - 1)
+domain V = 1..=n
+let edges: [0..n - 1](u: V, v: V) = read()
+let g = Graph.undirected(edges)
 
-var cur_deg: [0..n]Int = 0
+var cur_deg = [V] v => g[v].len
 var deg_freq: [0..n]Int = 0
-for i in 0..n:
-    cur_deg[i] = adj[i].len
-    deg_freq[cur_deg[i]] += 1
+for v in V: deg_freq[cur_deg[v]] += 1
 
 var edge_cnt = 1
 var ans = [1]
-var leaves = [i for i in 0..n if cur_deg[i] == 1]
-var alive: [0..n]Bool = true
+var leaves = [v for v in V if cur_deg[v] == 1]
+var alive: [V]Bool = true
 var max_deg = n - 1
 var colors = 2
 while ans.len < n - 1:
@@ -23,21 +19,17 @@ while ans.len < n - 1:
         while deg_freq[max_deg] == 0: max_deg -= 1
         edge_cnt += max_deg - 1
     else:
-        edge_cnt -= max_deg - 1
-        edge_cnt += leaves.len
-        var nleaves: List<Int> = []
+        edge_cnt += leaves.len - (max_deg - 1)
+        var nleaves: List<V> = []
         for v in leaves:
             alive[v] = false
             deg_freq[cur_deg[v]] -= 1
-            var neighbor = 0
-            for nxt in adj[v]:
-                if alive[nxt]: neighbor = nxt
-            deg_freq[cur_deg[neighbor]] -= 1
-            cur_deg[neighbor] -= 1
-            deg_freq[cur_deg[neighbor]] += 1
-            if cur_deg[neighbor] == 1: nleaves.push(neighbor)
+            for nb in g[v] if alive[nb]:
+                deg_freq[cur_deg[nb]] -= 1
+                cur_deg[nb] -= 1
+                deg_freq[cur_deg[nb]] += 1
+                if cur_deg[nb] == 1: nleaves.push(nb)
         leaves = nleaves
-    while ans.len < edge_cnt:
-        ans.push(colors)
+    while ans.len < edge_cnt: ans.push(colors)
     colors += 1
 print(ans)

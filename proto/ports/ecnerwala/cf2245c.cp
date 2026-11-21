@@ -3,7 +3,7 @@
 // everything else goes in front in decreasing order.
 @!multitest
 let (n, k): (1..=2e5, Int) = read()
-let b = bit_width(n) - 1          // top bit of n
+let b = bit_width(n) - 1  // top bit of n
 var want = k ^ n
 var tail: List<Int> = []
 if want >= 2 << b or (want >= 1 << b and n == 1 << b):

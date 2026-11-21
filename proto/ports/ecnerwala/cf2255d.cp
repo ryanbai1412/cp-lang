@@ -6,7 +6,7 @@ const B = 30
 
 fn level(x: Int) -> Int = bit_width(x - 1)
 
-@! multitest
+@!multitest
 let n: 1..=2e5 = read()
 let a: [0..n]Int = read()
 var freq: [0..=B]Int = 0

@@ -3,7 +3,7 @@ fn ask(kind: Char, x: Int) -> Int:
     flush()
     read()
 
-@! multitest
+@!multitest
 let n: Int = read()
 print(0)
 flush()

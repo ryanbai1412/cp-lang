@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 var k: Int = read()
 let a: [0..n]Int = read()

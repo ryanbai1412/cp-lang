@@ -2,7 +2,7 @@ const VMAX = 10
 type Z = Mod<998_244_353>
 let comb = Comb<Z.MOD>()
 
-@! multitest
+@!multitest
 let n: Int = read()
 let raw: [0..n]Int = read()
 let s: [0..n]?Int = [0..n] i => if raw[i] < 0: none else: raw[i]

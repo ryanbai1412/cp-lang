@@ -19,7 +19,7 @@ fn to_mirror(s: Int, e: Int, m: Int) -> Int:
     let gap = d % m
     min(if gap == 0: m else: gap, abs(s - e))
 
-@! multitest
+@!multitest
 let (n, px, py, q): (2..=1e9, 1..=1e9, 1..=1e9, 1..=2e5) = read()
 
 fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:

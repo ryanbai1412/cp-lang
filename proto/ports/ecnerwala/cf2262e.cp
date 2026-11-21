@@ -19,5 +19,13 @@ for k in 0..=n:
     ans[k] = Z(cur[n + 1]) * comb.fact(2 * n) * comb.inv_fact(k + 1) * comb.inv_fact(2 * n - k)
 
 // ans(x - 1): out[j] = sum over k >= j of ans[k] * choose(k, j) * (-1)^(k - j)
-let out = [(sum((if (k - j) % 2 == 0: 1 else: -1) * ans[k] * comb.fact(k) * comb.inv_fact(k - j) for k in j..=n) * comb.inv_fact(j)).v for j in 0..=n]
+let out = [
+    (
+        sum(
+            (
+                if (k - j) % 2 == 0: 1 else: -1
+            ) * ans[k] * comb.fact(k) * comb.inv_fact(k - j) for k in j..=n
+        ) * comb.inv_fact(j)
+    ).v for j in 0..=n
+]
 print(out)

@@ -1,82 +1,72 @@
 // Codeforces 2222 G: root at a tree centroid, aggregate non-dominant subtree
 // sizes by frequency at each vertex, and merge centroid-excluded vs non-excluded
 // component sizes via prefix sums.
+use std.seq.{max_by}
+
 @!multitest
 let n: Int = read()
-var adj: List<List<Int>> = List.filled(n, [])
-for _ in 0..n - 1:
-    let (u, v): (Int, Int) = read()
-    adj[u - 1].push(v - 1)
-    adj[v - 1].push(u - 1)
+domain V = 1..=n
+let edges: [0..n - 1](u: V, v: V) = read()
+let g = Graph.undirected(edges)
 
-var sz: [0..n]Int = 1
+let t0 = Rooted(g, root: V(1))
+var sz: [V]Int = 1
+for u in t0.postorder:
+    for c in t0.children(u): sz[u] += sz[c]
 
-fn dfs_sz(cur: Int, prv: ?Int):
-    sz[cur] = 1
-    for nxt in adj[cur]:
-        if some(nxt) == prv: continue
-        dfs_sz(nxt, cur)
-        sz[cur] += sz[nxt]
-
-dfs_sz(0, none)
-var rt = 0
+var rt = V(1)
 while true:
-    var n_rt: ?Int = none
-    for nxt in adj[rt]:
-        if sz[nxt] > sz[rt]: continue
-        if sz[nxt] * 2 > n: n_rt = nxt
-    if let next_root = n_rt: rt = next_root
+    var next_rt: ?V = none
+    for c in t0.children(rt) if sz[c] * 2 > n:
+        next_rt = c
+    if let nr = next_rt: rt = nr
     else: break
 
-dfs_sz(rt, none)
+let t = Rooted(g, root: rt)
+sz = [V] _ => 1
+for u in t.postorder:
+    for c in t.children(u): sz[u] += sz[c]
 
 var ans: [0..=n]Int = 0
 ans[n] = n
+if n > 1:
+    let excl = max_by(t.children(rt), c => sz[c])!
 
-var excl_sz: [0..=n]Int = 0
-var easy_sz: [0..=n]Int = 0
+    for v in V:
+        var mp: Map<Int, Int> = Map()
+        for c in t.children(v):
+            if v == rt and c == excl: continue
+            mp[sz[c]] += 1
+        let freqs = [(k, c) for (k, c) in mp]
+        for i in 0..freqs.len:
+            let (s1, c1) = freqs[i]
+            ans[n - s1] += s1 * c1
+            if c1 >= 2: ans[n - 2 * s1] += (c1 * (c1 - 1) / 2) * s1 * s1
+            for j in i + 1..freqs.len:
+                let (s2, c2) = freqs[j]
+                ans[n - s1 - s2] += (s1 * c1) * (s2 * c2)
 
-fn collect_excl(cur: Int, prv: Int, val: Int):
-    excl_sz[max(val, sz[cur])] += 1
-    for nxt in adj[cur]:
-        if nxt == prv: continue
-        collect_excl(nxt, cur, max(val, sz[cur] - sz[nxt]))
+    ans[n - sz[excl]] += sz[excl]
+    var excl_sz: [0..=n]Int = 0
+    var easy_sz: [0..=n]Int = 0
+    var best: [V]Int = 0
+    var in_excl: [V]Bool = false
+    in_excl[excl] = true
+    for c in t.children(rt) if c != excl:
+        best[c] = n - sz[excl] - sz[c]
+    for u in t.preorder if u != rt:
+        let k = max(best[u], sz[u])
+        if in_excl[u]: excl_sz[k] += 1
+        else: easy_sz[k] += 1
+        for c in t.children(u):
+            in_excl[c] = in_excl[u]
+            best[c] = max(best[u], sz[u] - sz[c])
 
-fn collect_easy(cur: Int, prv: Int, val: Int):
-    easy_sz[max(val, sz[cur])] += 1
-    for nxt in adj[cur]:
-        if nxt == prv: continue
-        collect_easy(nxt, cur, max(val, sz[cur] - sz[nxt]))
-
-for v in 0..n:
-    if n == 1: continue
-    var excl = adj[v][0]
-    for nxt in adj[v]:
-        if sz[nxt] > sz[excl]: excl = nxt
-    var mp: Map<Int, Int> = Map()
-    for nxt in adj[v]:
-        if nxt == excl: continue
-        mp[sz[nxt]] = (mp.get(sz[nxt]) ?? 0) + 1
-    let freqs = [(k, c) for (k, c) in mp]
-    for i in 0..freqs.len:
-        let (s1, c1) = freqs[i]
-        ans[n - s1] += s1 * c1
-        if c1 >= 2:
-            ans[n - 2 * s1] += (c1 * (c1 - 1) / 2) * s1 * s1
-        for j in i + 1..freqs.len:
-            let (s2, c2) = freqs[j]
-            ans[n - s1 - s2] += (s1 * c1) * (s2 * c2)
-    if v == rt:
-        ans[n - sz[excl]] += sz[excl]
-        collect_excl(excl, rt, 0)
-        for ch in adj[v]:
-            if ch == excl: continue
-            collect_easy(ch, rt, n - sz[excl] - sz[ch])
-        var p_excl = 0
-        var p_easy = 0
-        for i in 0..=n:
-            ans[i] += p_excl * easy_sz[i] + p_easy * excl_sz[i] + easy_sz[i] * excl_sz[i]
-            p_excl += excl_sz[i]
-            p_easy += easy_sz[i]
+    var p_excl = 0
+    var p_easy = 0
+    for i in 0..=n:
+        ans[i] += p_excl * easy_sz[i] + p_easy * excl_sz[i] + easy_sz[i] * excl_sz[i]
+        p_excl += excl_sz[i]
+        p_easy += easy_sz[i]
 
 print(ans[1..=n])

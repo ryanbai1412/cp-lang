@@ -6,7 +6,7 @@ const L = 25
 
 struct Trie(cnt: Int, kid: [0..2]?Int)
 
-@! multitest
+@!multitest
 let n: 1..=2e5 = read()
 let a: [0..n]0..(1 << L) = read()
 var nodes = List<Trie>()

@@ -3,7 +3,7 @@
 // the positions in 0..n that no bucket covers are printed.
 @!multitest
 let n: 1..=2e5 = read()
-let a: [1..=n]Int = read()   // a[i] belongs to divisor i
+let a: [1..=n]Int = read()  // a[i] belongs to divisor i
 var cover: [0..=n]Int = 0
 for i in 1..=n:
     cover[min(n, a[i] * i)] += 1

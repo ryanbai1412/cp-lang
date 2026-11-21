@@ -1,6 +1,6 @@
 type Z = Mod<998_244_353>
 
-@! multitest
+@!multitest
 let (n, m): (Int, Int) = read()
 let bad_pos: [0..m](Int, Int) = read()
 var bads: [0..2 * n - 1]List<Int> = []

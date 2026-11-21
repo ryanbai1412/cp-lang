@@ -33,7 +33,11 @@ var ans = v[x] * k
 var proc_it: [0..2]Int = 1
 var ins_it: [0..2]Int = 0
 while proc_it[0] < side[0].len or proc_it[1] < side[1].len:
-    let z = Int(proc_it[1] < side[1].len and (proc_it[0] == side[0].len or side[1][proc_it[1]].v < side[0][proc_it[0]].v))
+    let z = Int(
+        proc_it[1] < side[1].len and (
+            proc_it[0] == side[0].len or side[1][proc_it[1]].v < side[0][proc_it[0]].v
+        )
+    )
     let i = proc_it[z]
     proc_it[z] += 1
     let o = side[z][i - 1]

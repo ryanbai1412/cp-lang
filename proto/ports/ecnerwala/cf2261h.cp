@@ -7,7 +7,7 @@ let t: 1..=1e4 = read()
 
 fn untwist(h: Int, s: Str) -> Str:
     let size = (1 << h) - 1
-    var from = List.filled(size + 1, 1)     // from[i]: the node of `s` that lands on node i
+    var from = List.filled(size + 1, 1)  // from[i]: the node of `s` that lands on node i
     var out = s
     for i in 1..=size:
         out[i - 1] = s[from[i] - 1]

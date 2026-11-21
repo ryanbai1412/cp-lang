@@ -11,10 +11,8 @@ for d in 2..=n:
     if cost >= best_cost: break
     var w = 0
     while rem > 0:
-        if w > 0:
-            cnt *= d + w - 1
-            cnt /= w
-        if cnt > rem: cnt = rem
+        if w > 0: cnt = cnt * (d + w - 1) / w
+        cnt min= rem
         cost += cnt * w
         if cnt == rem: break
         rem -= cnt
@@ -29,25 +27,21 @@ let d = best_d
 var layer_ops: [0..d]List<(Int, Int)> = []
 
 fn go(cur_layer: Int, cur_w: Int, start: Int) -> Int:
-    var cl = cur_layer
-    if cur_w == max_w: cl = d
+    let cl = if cur_w == max_w: d else: cur_layer
     if cl == d:
         if cur_w == max_w:
             max_w_cnt -= 1
             if max_w_cnt == 0: max_w -= 1
         return start - 1
-    let tgt = start
     var cur = start
     for i in (0..=(max_w - cur_w)).rev:
         if cur < 0: break
-        if cur != tgt: layer_ops[cl].push((cur, tgt - cur))
+        if cur != start: layer_ops[cl].push((cur, start - cur))
         cur = go(cl + 1, cur_w + i, cur)
     cur
 
-let _ = go(0, 0, n - 1)
-var ops: List<(Int, Int)> = []
-for layer in (0..d).rev:
-    for op in layer_ops[layer]: ops.push(op)
+go(0, 0, n - 1)
+let ops = [op for layer in (0..d).rev for op in layer_ops[layer]]
 
 print(ops.len)
 for (x, l) in ops: print(x + 1, l)

@@ -1,35 +1,38 @@
 @!multitest
 let n: Int = read()
 let s: Str = read()
-var adj: [0..n]List<Int> = []
-for _ in 0..(n - 1):
-    let (u, v): (Int, Int) = read()
-    adj[u - 1].push(v - 1)
-    adj[v - 1].push(u - 1)
+domain V = 1..=n
+let edges: [0..n - 1](u: V, v: V) = read()
+let g = Graph.undirected(edges)
 
-var rt = 0
-while s[rt] != '1': rt += 1
+var rt = V(1)
+for v in V if s[v.to_idx] == '1':
+    rt = v
+    break
+let t = Rooted(g, root: rt)
 
 let inf = 1e99
-fn dfs(cur: Int, prv: Int) -> (F64, F64):
+var dp0: [V]F64 = 0.0
+var dp1: [V]F64 = 0.0
+for u in t.postorder:
     var base = 0.0
     var ch: List<F64> = []
-    for nxt in adj[cur]:
-        if nxt == prv: continue
-        let v = dfs(nxt, cur)
-        ch.push(v.1 - v.0)
-        base += v.0
-    if s[cur] == '1': return (base, base)
+    for c in t.children(u):
+        ch.push(dp1[c] - dp0[c])
+        base += dp0[c]
+    if s[u.to_idx] == '1':
+        dp0[u] = base
+        dp1[u] = base
+        continue
     ch.sort()
-    var b0 = inf
+    let deg = F64(g[u].len)
+    var b0 = base + deg
     var b1 = inf
-    let deg = F64(adj[cur].len)
-    for cnt in 0..=ch.len:
-        if cnt > 0:
-            base += ch[cnt - 1]
-            b1 min= base + deg / F64(cnt)
-        b0 min= base + deg / F64(cnt + 1)
-    (b0, b1)
+    for (i, x) in ch.items:
+        base += x
+        b1 min= base + deg / F64(i + 1)
+        b0 min= base + deg / F64(i + 2)
+    dp0[u] = b0
+    dp1[u] = b1
 
-let ans = dfs(rt, -1)
-print(ans.0)
+print(dp0[rt])

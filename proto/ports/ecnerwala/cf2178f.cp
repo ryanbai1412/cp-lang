@@ -3,39 +3,24 @@ type Z = Mod<MOD>
 
 @!multitest
 let n: Int = read()
-var adj: [0..n]List<Int> = []
-for _ in 0..(n - 1):
-    let (u, v): (Int, Int) = read()
-    adj[u - 1].push(v - 1)
-    adj[v - 1].push(u - 1)
+domain V = 1..=n
+let edges: [0..n - 1](u: V, v: V) = read()
+let t = Rooted(Graph.undirected(edges), root: V(1))
 
+var sz: [V]Int = 1
 var comps = 0
 var ans: Z = 1
 var s_inv: Z = 0
-let one: Z = 1
-
-fn dfs(cur: Int, prv: Int) -> Int:
-    var sz = 1
-    for nxt in adj[cur]:
-        if nxt != prv:
-            sz += dfs(nxt, cur)
-    if prv < 0:
-        ans *= sz
-    elif sz % 2 == 0:
-        let zsz: Z = sz
-        ans *= zsz
+for u in t.postorder:
+    for c in t.children(u): sz[u] += sz[c]
+    if u == V(1):
+        ans *= sz[u]
+    elif sz[u] % 2 == 0:
         comps += 1
+        ans *= sz[u]
+        ans *= sz[u]
         ans *= comps
-        ans *= zsz
-        s_inv += one / zsz
-        sz = 0
-    sz
+        s_inv += Z(sz[u]).inv()
+        sz[u] = 0
 
-let _ = dfs(0, -1)
-if comps > 0:
-    let zc: Z = comps
-    ans *= s_inv
-    ans /= zc
-else:
-    ans = 1
-print(ans)
+print(if comps > 0: ans * s_inv / comps else: Z(1))

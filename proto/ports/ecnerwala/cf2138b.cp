@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let (n, q): (Int, Int) = read()
 let a: [1..=n]Int = read()
 

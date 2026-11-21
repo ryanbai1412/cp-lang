@@ -38,7 +38,7 @@ fn descend(seg: List<List<Z>>, node: Int, lo: Int, hi: Int, c: List<Z>, mut res:
     let full = convolve(c, seg[2 * node])
     descend(seg, 2 * node + 1, mid, hi, full[mid - lo..=hi - lo], mut res)
 
-@! multitest
+@!multitest
 let n: Int = read()
 let s: Str = read()
 let sa = suffix_array(s)

@@ -2,7 +2,7 @@
 // by depth and (has_active, has_next) cut flags.
 type Z = Mod<1_000_000_007>
 
-@! multitest
+@!multitest
 let n: Int = read()
 domain V = 1..=n
 let s_in: Str = read()

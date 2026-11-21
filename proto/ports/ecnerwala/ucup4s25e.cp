@@ -20,7 +20,7 @@ fn upper_hull(pts: List<Pt>) -> List<Pt>:
         res.push(p)
     res
 
-@! multitest
+@!multitest
 let (n, q): (Int, Int) = read()
 let a: [0..n]Int = read()
 

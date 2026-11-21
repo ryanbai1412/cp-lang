@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 let m: Int = read()
 var ev_t: [0..m]Int = 0

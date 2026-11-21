@@ -2,7 +2,7 @@ type Z = Mod<998_244_353>
 
 fn fold(x: Int, half: Int) -> Int = if x >= half: 2 * half - x else: x
 
-@! multitest
+@!multitest
 let (n, m): (Int, Int) = read()
 let segs: [0..n](Int, Int) = read()
 let full = 1 << m

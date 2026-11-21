@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let (n, m): (Int, Int) = read()
 domain V = 1..=n
 domain E = 0..m

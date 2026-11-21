@@ -1,6 +1,6 @@
 const MOD = 1_000_000_007
 
-@! multitest
+@!multitest
 let n: Int = read()
 let l: Int = read()
 let _k: Int = read()

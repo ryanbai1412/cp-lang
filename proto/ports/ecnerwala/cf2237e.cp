@@ -1,6 +1,6 @@
 // Codeforces 2237 E: find a permutation b commuting with a (b[a[i]] == a[b[i]])
 // by matching untouched cycles of equal length, then propagating forced values.
-@! multitest
+@!multitest
 let n: Int = read()
 domain I = 1..=n
 let a: [I]I = read()

@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 var pos = n + 1
 for i in 1..=n:

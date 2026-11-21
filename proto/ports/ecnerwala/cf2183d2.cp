@@ -1,6 +1,6 @@
 // Codeforces 2183 D2: compute the minimum number of operations by depth, then assign
 // vertices bottom-up into slots so no parent shares a slot with its child.
-@! multitest
+@!multitest
 let n: Int = read()
 domain V = 1..=n
 domain E = 0..n - 1

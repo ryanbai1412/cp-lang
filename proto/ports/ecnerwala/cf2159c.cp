@@ -2,7 +2,7 @@ const MOD = 1_000_000_007
 type Z = Mod<MOD>
 let comb = Comb<MOD>()
 
-@! multitest
+@!multitest
 let n: Int = read()
 var a: [0..=n]Int = read()
 

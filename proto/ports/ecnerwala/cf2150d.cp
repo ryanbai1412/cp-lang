@@ -33,7 +33,10 @@ for l in 2..=n:
         edge_w = mid_w + place_ways(l, k)
     else:
         let k = extras / 2
-        mid_w = place_ways(l, k) + place_ways(l, k - 1) + place_weight(l, k) * 2 + place_weight(l, k - 1) * 2
+        mid_w = place_ways(l, k) + place_ways(l, k - 1) + place_weight(l, k) * 2 + place_weight(
+            l,
+            k - 1,
+        ) * 2
         edge_w = mid_w + place_ways(l, k - 1)
     ans += edge_w * (pref[n - l + 1] - pref[0])
     ans += edge_w * (pref[n] - pref[l - 1])

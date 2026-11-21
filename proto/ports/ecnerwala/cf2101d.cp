@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 domain I = 0..n
 let a_in: [I]Int = read()

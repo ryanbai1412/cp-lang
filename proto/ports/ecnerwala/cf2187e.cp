@@ -1,6 +1,6 @@
 // Codeforces 2187 E: DP over the number of carried keys (bounded by O(sqrt(max A + N))),
 // updating waiting vs spending a key at each door and pruning unreachable key counts.
-@! multitest
+@!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
 let s: Str = read()

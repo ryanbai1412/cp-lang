@@ -2,7 +2,7 @@ use std.rand.Rng
 
 var rng = Rng.new(48)
 
-@! multitest
+@!multitest
 let n: Int = read()
 var p = [i + 1 for i in 0..(2 * n - 1)]
 rng.shuffle(mut p)

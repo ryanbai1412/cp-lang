@@ -78,7 +78,12 @@ else:
                 y = seg_flip(y)
             rec(x, pre, post, y)
 
-        rec(Seg(l + 1, r - 1, 1), Seg(l + 1, r - 1, 1), Seg(r - 1, l + 1, -1), Seg(r - 1, l + 1, -1))
+        rec(
+            Seg(l + 1, r - 1, 1),
+            Seg(l + 1, r - 1, 1),
+            Seg(r - 1, l + 1, -1),
+            Seg(r - 1, l + 1, -1),
+        )
         pre_ops.push((l, r))
         for op in post_ops.rev: pre_ops.push(op)
         print("Yes")

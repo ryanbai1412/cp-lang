@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 let m: Int = read()
 let k: Int = read()

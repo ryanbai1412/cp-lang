@@ -1,6 +1,6 @@
 type Z = Mod<998_244_353>
 
-@! multitest
+@!multitest
 let (n, m, lim): (Int, Int, Int) = read()
 domain V = 1..=n
 domain E = 0..m

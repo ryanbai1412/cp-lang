@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 let x: [0..n]Int = read()
 var stk: [0..=n]?Int = none

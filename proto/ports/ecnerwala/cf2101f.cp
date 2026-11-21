@@ -2,7 +2,7 @@ use lib.math.powers.{Powers}
 
 type Z = Mod<998_244_353>
 
-@! multitest
+@!multitest
 let n: Int = read()
 domain Node = 1..=2 * n - 1
 fn is_vertex(v: Node) -> Bool = v.to_idx < n

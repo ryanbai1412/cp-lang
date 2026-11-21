@@ -3,7 +3,7 @@
 type Z = Mod<998_244_353>
 let comb = Comb<Z.MOD>()
 
-@! multitest
+@!multitest
 let n: Int = read()
 let raw_a: [0..n]Int = read()
 let a: [0..=n]?Int = [0..=n] i => if i == n or raw_a[i] < 0: none else: raw_a[i]

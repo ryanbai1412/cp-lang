@@ -1,6 +1,6 @@
 const SHIFT = 10_000_000_000
 
-@! multitest
+@!multitest
 let n: Int = read()
 var sum_xor = 0
 var x_xor = 0

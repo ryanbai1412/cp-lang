@@ -16,7 +16,7 @@ struct SegNode(mx: Int, pref: Int, suff: Int, all: Bool, cnt: Int):
             l.cnt + r.cnt + l.suff * r.pref,
         )
 
-@! multitest
+@!multitest
 let (n, q): (Int, Int) = read()
 domain V = 1..=n
 var a: [V]V = read()

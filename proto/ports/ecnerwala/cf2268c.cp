@@ -9,7 +9,7 @@ const INF = 1e9
 
 struct Ends(lo: [0..2]Int, hi: [0..2]Int)  // leftmost / rightmost boundary per parity
 
-@! multitest
+@!multitest
 let n: 1..=2e5 = read()
 domain I = 0..n
 let a: [I]Int = read()

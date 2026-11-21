@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let half: Int = read()
 let n = 2 * half + 1
 let s: Str = read()

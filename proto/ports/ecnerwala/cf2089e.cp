@@ -11,7 +11,7 @@ fn remove(a: List<Z>, b: List<Z>) -> List<Z>:
 
 fn plus_integral(a: List<Z>) -> List<Z> = add(a, integral(a))
 
-@! multitest
+@!multitest
 let n: Int = read()
 var parent: [1..=n]?Int = none
 for _ in 1..n:

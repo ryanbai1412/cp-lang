@@ -35,7 +35,7 @@ fn merge_leaf(v: Vert, e: Edge, l: Vert) -> Vert:
     r[2] max= r[1]
     r
 
-@! multitest
+@!multitest
 let (n, m): (Int, Int) = read()
 var mp: Map<(Int, Int), Edge> = Map()
 var adj: [1..=n]Set<Int> = Set()

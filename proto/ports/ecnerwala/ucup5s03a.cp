@@ -8,11 +8,17 @@ let comb = Comb<MOD>()
 let h = n / 2
 
 // sequences with `a` strict and `b` weak comparisons
-fn ways(a: Int, b: Int) -> Z = if a > k: Z(0) else: comb.fact(k + b + 1) * comb.inv_fact(a + b + 1) * comb.inv_fact(k - a)
+fn ways(
+    a: Int,
+    b: Int,
+) -> Z = if a > k: Z(0) else: comb.fact(k + b + 1) * comb.inv_fact(a + b + 1) * comb.inv_fact(k - a)
 
 // i! * [x^i] of (sum ways(i + da, i + db) x^i / i!) * e^x
 fn egf(da: Int, db: Int) -> List<Z>:
-    let c = convolve([ways(i + da, i + db) * comb.inv_fact(i) for i in 0..=h], [comb.inv_fact(i) for i in 0..=h])
+    let c = convolve(
+        [ways(i + da, i + db) * comb.inv_fact(i) for i in 0..=h],
+        [comb.inv_fact(i) for i in 0..=h],
+    )
     [c[i] * comb.fact(i) for i in 0..=h]
 
 let (neg_st, neg_all, pos_st, pos_all) = (egf(0, 0), egf(1, 0), egf(0, 1), egf(1, 1))

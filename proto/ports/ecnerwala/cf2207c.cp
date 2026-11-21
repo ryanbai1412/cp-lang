@@ -2,7 +2,7 @@
 // 2-state tree DP tracking the best 1-bucket and 2-bucket drained water volumes.
 struct Node(l: Int, m: Int, r: Int, c0: ?Int, c1: ?Int)
 
-@! multitest
+@!multitest
 let (n, h): (Int, Int) = read()
 let a: [0..n]Int = read()
 

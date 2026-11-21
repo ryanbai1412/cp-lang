@@ -10,7 +10,7 @@ fn log_deriv_at(p: List<Z>, deg: Int) -> Z:
     let g = inv_trunc(p, deg + 1)
     sum(Z(i) * p[i] * g[deg - i] for i in 1..=deg)
 
-@! multitest
+@!multitest
 let (n, k): (Int, Int) = read()
 if k == 1:
     print(1)

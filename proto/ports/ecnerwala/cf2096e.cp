@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 let s: Str = read()
 var cnt_b = 0

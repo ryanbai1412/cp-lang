@@ -8,7 +8,7 @@ fn ways(k: Int, rem: Int, mx: Int) -> Z:
         if c % 2 == 1: res -= term else: res += term
     res
 
-@! multitest
+@!multitest
 let (n, m): (Int, Int) = read()
 let inv_n1 = Z(n - 1).inv
 let inv_n2: Z = if n >= 3: Z(n - 2).inv else: 0

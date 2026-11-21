@@ -3,8 +3,17 @@
 // leading 0s in the row above, and 1s everywhere else; n = 3 is a fixed table.
 let n: 3..=50 = read()
 if n == 3:
-    let grids = ["111\n111\n001", "011\n111\n100", "110\n110\n110", "010\n111\n111", "111\n111\n111",
-                 "010\n111\n101", "111\n111\n110", "111\n011\n111", "011\n010\n111"]
+    let grids = [
+        "111\n111\n001",
+        "011\n111\n100",
+        "110\n110\n110",
+        "010\n111\n111",
+        "111\n111\n111",
+        "010\n111\n101",
+        "111\n111\n110",
+        "111\n011\n111",
+        "011\n010\n111",
+    ]
     for g in grids: print(g + "\n")
     print("DURLDULRUU")
     return

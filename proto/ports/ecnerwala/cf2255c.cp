@@ -13,7 +13,10 @@ let w = min(black, n * n - black)
 let sr = sum(i for i in 0..n for j in 0..n if rows[i][j] == ink) % n
 let sc = sum(j for i in 0..n for j in 0..n if rows[i][j] == ink) % n
 if op == "second":
-    print(first(r for r in 0..n if r * w % n == sr)! + 1, first(c for c in 0..n if c * w % n == sc)! + 1)
+    print(
+        first(r for r in 0..n if r * w % n == sr)! + 1,
+        first(c for c in 0..n if c * w % n == sc)! + 1,
+    )
     return
 let (r, c): (1..=n, 1..=n) = read()
 let dr = ((r - 1) * w - sr) % n

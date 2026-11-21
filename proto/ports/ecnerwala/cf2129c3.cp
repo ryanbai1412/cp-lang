@@ -19,7 +19,7 @@ fn build_seq() -> List<Int>:
 let seq = build_seq()
 let blk = seq.len
 
-@! multitest
+@!multitest
 let n: Int = read()
 var (mi, ma) = (0, n)
 while ma - mi > 1:

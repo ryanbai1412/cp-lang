@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 let p: [0..n]Int = read()
 print(

@@ -3,7 +3,7 @@
 // keeping the unplaced values as a stack of linked runs and records, for each
 // value, which earlier value it must enter on the same or the opposite side
 // of. Pass 2 replays the deque with those choices and counts the reversals.
-type Run = (head: Int, tail: Int, neq: Bool)    // neq: must differ from the run below
+type Run = (head: Int, tail: Int, neq: Bool)  // neq: must differ from the run below
 @!multitest
 let n: 1..=2e5 = read()
 let perm: [0..n]1..=n = read()
@@ -12,7 +12,7 @@ let a = [x - 1 for x in perm]
 var pred = List.filled(n, -1)
 var succ = List.filled(n, -1)
 var runs = List<Run>()
-var rel = List.filled(n, (to: -1, flip: false))     // to == -1: free choice
+var rel = List.filled(n, (to: -1, flip: false))  // to == -1: free choice
 
 // Append the run under the top of the stack to `l`, taking it off the stack.
 fn swallow(l: Run) -> Run:
@@ -45,7 +45,7 @@ for i in (0..n).rev:
         if l.tail != a[i]:
             print(-1)
             return
-        l.tail = pred[l.tail]           // a[i] leaves from the bottom of the only run
+        l.tail = pred[l.tail]  // a[i] leaves from the bottom of the only run
         rel[i] = (to: l.tail, flip: false)
         runs.push(l)
         continue
@@ -65,7 +65,10 @@ for i in (0..n).rev:
 var side = List.filled(n, (base: 0, flip: false))
 for i in 0..n:
     let r = rel[i]
-    side[a[i]] = if r.to == -1: (base: a[i], flip: false) else: (base: side[r.to].base, flip: side[r.to].flip != r.flip)
+    side[a[i]] = if r.to == -1: (base: a[i], flip: false) else: (
+        base: side[r.to].base,
+        flip: side[r.to].flip != r.flip,
+    )
 
 var front: List<?Bool> = List.filled(n, none)
 var at_front = false

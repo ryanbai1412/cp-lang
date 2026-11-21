@@ -20,7 +20,7 @@ fn advance(st: State, v: Z, sub1: Bool) -> State:
             mid: none,
         )
 
-@! multitest
+@!multitest
 let q: Int = read()
 var stk: [0..=q]State = State(0, 1, 0, 0, none)
 var top = 0

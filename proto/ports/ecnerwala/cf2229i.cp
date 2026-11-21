@@ -23,7 +23,7 @@ fn shift_down(mut dp: List<Int>, weight: Int):
     for i in (1..dp.len).rev:
         dp[i] max= dp[i - 1] + weight * i
 
-@! multitest
+@!multitest
 let (n, k): (Int, Int) = read()
 domain V = 1..=n
 let w: [V]Int = read()

@@ -3,7 +3,7 @@
 @!multitest
 let n: 2..=2e5 = read()
 let edges: [0..n - 1](1..=n, 1..=n) = read()
-domain X = 0..2 * n - 1   // vertices 0..n, then one node per edge
+domain X = 0..2 * n - 1  // vertices 0..n, then one node per edge
 var odd: [0..n]Bool = false
 for (u, v) in edges:
     odd[u - 1] = not odd[u - 1]

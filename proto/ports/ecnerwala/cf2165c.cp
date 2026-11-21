@@ -1,31 +1,23 @@
+use std.seq.{max_by}
+
 @!multitest
 let (n0, q): (Int, Int) = read()
-var a: List<Int> = [read() for _ in 0..n0]
-sort(mut a)
-let b_bits = 30
-let top = if a.len > b_bits: a[(a.len - b_bits)..] else: a
+let a: [0..n0]Int = read()
+let top = sorted(a, desc: true)[..min(n0, 30)]
 let n = top.len
 
 for _ in 0..q:
     var buf = top
     let c: Int = read()
     var ans = 0
-    for b in (0..b_bits).rev:
+    for b in (0..30).rev:
         let want = Int(c.bit(b))
-        var cnt = 0
-        for i in 0..n:
-            if buf[i].bit(b): cnt += 1
+        let cnt = count(x.bit(b) for x in buf)
         if cnt > want: break
         if cnt < want:
-            var best_v = -1
-            var best_i = 0
             let mask = (1 << b) - 1
-            for i in 0..n:
-                let cnd = buf[i] & mask
-                if cnd > best_v:
-                    best_v = cnd
-                    best_i = i
-            let add = (1 << b) - best_v
+            let best_i = max_by(0..n, i => buf[i] & mask)!
+            let add = (1 << b) - (buf[best_i] & mask)
             ans += add
             buf[best_i] += add
     print(ans)

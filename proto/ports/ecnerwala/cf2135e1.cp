@@ -1,7 +1,7 @@
 type Z = Mod<998_244_353>
 let comb = Comb<Z.MOD>()
 
-@! multitest
+@!multitest
 let n: Int = read()
 var diff: [0..=n + 1]Z = 0
 

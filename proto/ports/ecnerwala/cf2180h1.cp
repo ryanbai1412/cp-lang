@@ -17,7 +17,7 @@ fn solve_one(g_hi0: Int, d0: Int) -> Int:
             res ^= if ((l ^ i) & 1) == 1: 0 else: 1
     res
 
-@! multitest
+@!multitest
 let n: Int = read()
 var ans = 0
 for _ in 0..n:

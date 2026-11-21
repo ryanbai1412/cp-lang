@@ -22,7 +22,9 @@ for dx in 0..2:
                                 if cy == 0 and vy != by and Int(vy > by) != dy: continue
                                 let nx = Int(cx == 1 or vx != bx)
                                 let ny = Int(cy == 1 or vy != by)
-                                let nw = w * 2 + (if dx == 1: vx - bx else: bx - vx) + (if dy == 1: vy - by else: by - vy)
+                                let nw = w * 2 + (if dx == 1: vx - bx else: bx - vx) + (
+                                    if dy == 1: vy - by else: by - vy
+                                )
                                 let cand = (nw, px * 2 + vx, py * 2 + vy)
                                 if let prev = ndp[nx, ny]:
                                     if nw < prev.0: ndp[nx, ny] = cand

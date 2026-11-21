@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 var q = 1
 var ways = 1

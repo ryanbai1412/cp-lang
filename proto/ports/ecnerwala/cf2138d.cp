@@ -1,7 +1,7 @@
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z.MOD>()
 
-@! multitest
+@!multitest
 let (n, l, q): (Int, Int, Int) = read()
 let raw_a: [0..n]Int = read()
 let a: [0..n]Int = [0..n] i => raw_a[i] - 1 - i

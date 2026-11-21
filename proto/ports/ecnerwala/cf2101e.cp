@@ -16,7 +16,7 @@ fn merge<V>(a: Best<V>, o: Best<V>) -> Best<V>:
     elif y.depth > x.depth: Best(y, deeper(x.depth, o.other))
     else: Best(x, deeper(a.other, y.depth))
 
-@! multitest
+@!multitest
 let n: Int = read()
 domain V = 1..=n
 let s: [V]Char = read()

@@ -3,7 +3,7 @@
 // check whether any intra-SCC edge violates DFS depth + 1 (mod 3).
 use std.seq.{get_or_insert_with}
 
-@! multitest
+@!multitest
 let m: Int = read()
 var verts: Map<(Int, Int), Int> = Map()
 var raw_edges: List<(Int, Int)> = []

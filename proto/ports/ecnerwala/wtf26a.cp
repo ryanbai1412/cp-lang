@@ -4,7 +4,7 @@
 const MOD = 998244353
 type Z = Mod<MOD>
 
-@! multitest
+@!multitest
 let n: Int = read()
 domain U = 1..=n
 let raw: [0..n - 1](u: U, v: U, w: Int) = read()

@@ -1,6 +1,6 @@
 // Codeforces 2207 B: simulate each second by incrementing the earliest minimum
 // element of the active window and dropping the front element on flashlight times.
-@! multitest
+@!multitest
 let (n, m_in, l): (Int, Int, Int) = read()
 let a: [0..n]Int = read()
 

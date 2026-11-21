@@ -14,5 +14,9 @@ for v in peel(g): peeled[v] = true
 
 // Walking an edge forwards is free and backwards costs one.
 let both = Graph.undirected(edges)
-let dist = dijkstra(both, [(v, 0) for v in V if not peeled[v]], a => if edges[a.e].v == a.to: 0 else: 1)
+let dist = dijkstra(
+    both,
+    [(v, 0) for v in V if not peeled[v]],
+    a => if edges[a.e].v == a.to: 0 else: 1,
+)
 print(if any(d == none for d in dist): -1 else: sum(d! for d in dist))

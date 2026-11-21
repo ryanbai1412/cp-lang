@@ -1,4 +1,4 @@
-@! multitest
+@!multitest
 let n: Int = read()
 let a: [0..n]Int = read()
 var mins: [0..n]Int = a

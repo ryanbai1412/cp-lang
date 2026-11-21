@@ -1,6 +1,6 @@
 // Codeforces 2183 D1: bucket tree vertices by depth; answer is max over depths of
 // layer size, plus 1 when every vertex in a non-root layer shares one parent.
-@! multitest
+@!multitest
 let n: Int = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
