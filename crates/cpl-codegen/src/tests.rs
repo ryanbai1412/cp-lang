@@ -455,6 +455,23 @@ print(s)
 }
 
 #[test]
+fn unchecked_drops_domain_positions_but_keeps_range_stores() {
+    let src = |block: &str| {
+        format!(
+            "domain D = 1..=10\nlet i: Int = read()\nvar a: [D]Int = 0\nvar x: 0..=100 = 0\n{block}print(x)\n"
+        )
+    };
+    let body = "a[D.nth(i)] = 1\na[D(i)] = 2\nx = i\n";
+    let checked = cpp(&src(body));
+    assert!(checked.contains("cpl::pos(i, D_len)"), "{checked}");
+    assert!(checked.contains("cpl::pos(i - D_lo, D_len)"), "{checked}");
+    let indented: String = body.lines().map(|l| format!("    {l}\n")).collect();
+    let raw = cpp(&src(&format!("unchecked:\n{indented}")));
+    assert!(!raw.contains("cpl::pos("), "{raw}");
+    assert!(raw.contains("cpl::check_range(i, 0, 100"), "{raw}");
+}
+
+#[test]
 fn an_inclusive_loop_to_a_bound_below_int_max_is_a_plain_loop() {
     let open = cpp("let n: Int = read()\nfor i in 0..=n:\n    print(i)\n");
     assert!(open.contains("i_go"), "{open}");

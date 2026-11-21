@@ -2845,6 +2845,12 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   slack scans index arc and label tables by ids the library itself created, so the checks
   never fire; dropping them takes min-cost flow from 1.41x to 1.14x matched C++. Reverse: remove the `unchecked:` lines if a
   check-elision pass proves these ids in range.
+  Amended: `unchecked:` drops every index-validity check in the C++, which includes the
+  `pos` check of a domain position made by `V.nth(i)` or `V(label)`, as well as list and
+  array bounds. It keeps the check on a store into a range type (`x: 0..=100 = i`), since
+  that guards a narrowed width and skipping it would truncate silently rather than crash.
+  `cpl run` keeps both checks. Hungarian's 2.25M-step scan pays a `pos` call per step
+  otherwise (39 ms of 373 ms). Reverse: drop the `Raw` wrapper in `vouch_pos`.
 - **43.9 `FlowGraph.min_cut(s)` traps unless a completed `max_flow(s, t)` came since the
   last `add` or `reset`.** One `?V` field records it; reading the cut after a `limit:` stop,
   an edit, or from another source was silently wrong before. No `min_cut(s, t)` returning

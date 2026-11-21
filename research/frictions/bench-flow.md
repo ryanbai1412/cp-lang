@@ -68,7 +68,9 @@ Each section below is one piece of that, measured by editing the generated C++.
   (any `Int` from `.len`, `.K` or a range type does), and the flag loop only otherwise.
   `..=` is in 28 places in `stdlib/flow.cp` and about 1,200 port files.
 - **Severity:** high
-- **Status:** open
+- **Status:** fixed: the codegen emits `j <= m; j++` when `m` is a length, a domain size, a
+  bounded value or less than one of those, set once; the `hungarian` row goes from 1.33x to
+  1.02x matched C++.
 - **Area:** codegen
 
 ## `unchecked:` keeps domain and range checks
@@ -84,7 +86,9 @@ Each section below is one piece of that, measured by editing the generated C++.
   bounds-style check (index, domain `nth`, range-typed store), record it, and have the
   codegen follow it.
 - **Severity:** medium
-- **Status:** open
+- **Status:** fixed per the amendment to decision 43.8: the C++ drops the `pos` check of
+  `V.nth(i)` and `V(label)` inside `unchecked:`, `cpl run` keeps it, and range-typed stores
+  stay checked everywhere. With both fixes `hungarian` is 0.93x matched C++.
 - **Area:** codegen
 
 ## `?(0..N)` is stored as an 8-byte optional

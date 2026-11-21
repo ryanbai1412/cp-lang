@@ -1522,7 +1522,7 @@ impl<'a> Lowerer<'a> {
     pub(super) fn cast(&self, cast: Cast, value: Expr, ty: Ty) -> Expr {
         let span = value.span;
         Expr {
-            kind: ExprKind::Cast(cast, Box::new(value)),
+            kind: self.vouch_pos(ExprKind::Cast(cast, Box::new(value)), &ty, span),
             ty,
             span,
         }

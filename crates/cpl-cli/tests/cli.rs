@@ -791,6 +791,18 @@ fn cpl_run_still_checks_an_index_inside_unchecked() {
     assert!(stderr.contains("index 5 is outside a list of length 3"), "{stderr}");
 }
 
+#[test]
+fn cpl_run_still_checks_a_domain_position_inside_unchecked() {
+    let dir = std::env::temp_dir().join(format!("cpl-cli-unchecked-pos-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("u.cp");
+    std::fs::write(&path, "domain D = 1..=10\nvar a: [D]Int = 0\nunchecked:\n    a[D.nth(50)] = 1\nprint(a)\n").unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl")).arg("run").arg(&path).output().expect("cpl runs");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert_eq!(out.status.code(), Some(3), "{stderr}");
+    assert!(stderr.contains("`D` has no position 50"), "{stderr}");
+}
+
 /// What `cpl check` prints for `source`.
 fn check_errors(test: &str, source: &str) -> String {
     let path = scratch(test, "a.cp", source.as_bytes());

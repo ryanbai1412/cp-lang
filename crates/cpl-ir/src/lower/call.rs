@@ -5790,10 +5790,7 @@ impl<'a> Lowerer<'a> {
                 "at" | "nth" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
-                            ExprKind::Cast(
-                                if self.unchecked > 0 { Cast::Trust } else { Cast::FromOrd(id) },
-                                Box::new(value),
-                            ),
+                            ExprKind::Cast(Cast::FromOrd(id), Box::new(value)),
                             Ty::Pos(id),
                             span,
                         ),

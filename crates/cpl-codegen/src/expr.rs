@@ -639,6 +639,19 @@ impl<'p> Emitter<'p> {
                 code.narrow = true;
                 code
             }
+            ExprKind::Cast(Cast::Raw, inner)
+                if matches!(inner.kind, ExprKind::Cast(Cast::FromOrd(_) | Cast::FromLabel(_), _)) =>
+            {
+                let ExprKind::Cast(cast, ord) = &inner.kind else { unreachable!() };
+                let code = self.expr(ord);
+                match cast {
+                    Cast::FromLabel(d) => Code::new(
+                        format!("(int)({} - {}_lo)", code.at(ADD), ident(&program.domains[*d])),
+                        UNARY,
+                    ),
+                    _ => Code::new(format!("(int){}", code.at(UNARY)), UNARY),
+                }
+            }
             ExprKind::Cast(cast, inner) => {
                 let code = self.expr(inner);
                 let c_cast = |ty: &str| Code::new(format!("({ty}){}", code.at(UNARY)), UNARY);

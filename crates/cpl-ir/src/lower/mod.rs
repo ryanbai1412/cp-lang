@@ -3630,9 +3630,21 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Inside `unchecked:`, a position made from an ordinal or a label is
+    /// vouched for like a list index (decision 43.8): the C++ drops its
+    /// `pos` check, `cpl run` keeps it.
+    pub(super) fn vouch_pos(&self, kind: ExprKind, ty: &Ty, span: Span) -> ExprKind {
+        match kind {
+            ExprKind::Cast(Cast::FromOrd(_) | Cast::FromLabel(_), _) if self.unchecked > 0 => {
+                ExprKind::Cast(Cast::Raw, Box::new(Expr { kind, ty: ty.clone(), span }))
+            }
+            kind => kind,
+        }
+    }
+
     fn mk(&self, kind: ExprKind, ty: Ty, span: Span) -> Expr {
         Expr {
-            kind,
+            kind: self.vouch_pos(kind, &ty, self.span(span)),
             ty,
             span: self.span(span),
         }
