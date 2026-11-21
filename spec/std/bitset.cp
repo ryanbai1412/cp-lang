@@ -28,27 +28,11 @@ pub struct Bitset<D>:
     /// Whether position `i` is set. O(1).
     pub fn contains(self, i: D) -> Bool = todo
 
-<<<<<<< HEAD
-    /// Set the bit at position `i`. O(1).
-    pub fn add(mut self, i: D) = todo
-||||||| d3da3849
-    /// Set the bit at position `i`. O(1).
-    pub fn add(mut self, i: D) = todo
-=======
     /// Set the bit at position `i`; returns `true` if `i` was not already set (matches `Set.add`). O(1).
     pub fn add(mut self, i: D) -> Bool = todo
->>>>>>> 5255d3bb477745213db3144c0ed575b08070586e
 
-<<<<<<< HEAD
-    /// Clear the bit at position `i`. O(1).
-    pub fn remove(mut self, i: D) = todo
-||||||| d3da3849
-    /// Clear the bit at position `i`. O(1).
-    pub fn remove(mut self, i: D) = todo
-=======
     /// Clear the bit at position `i`; returns `true` if `i` was set (matches `Set.remove`). O(1).
     pub fn remove(mut self, i: D) -> Bool = todo
->>>>>>> 5255d3bb477745213db3144c0ed575b08070586e
 
     /// Flip the bit at position `i`. O(1).
     pub fn toggle(mut self, i: D) = todo
