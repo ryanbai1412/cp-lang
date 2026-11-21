@@ -79,6 +79,49 @@ VALID_GOALS = {
     "accumulate",
     "coherence",
 }
+_GOAL_ALIASES = {
+    "express": "express",
+    "express and revise": "express",
+    "expressiveness": "express",
+    "guessable apis": "express",
+    "hard-to-get-wrong": "hard-to-get-wrong",
+    "hard to get wrong": "hard-to-get-wrong",
+    "safety": "hard-to-get-wrong",
+    "performance": "performance",
+    "performance and control": "performance",
+    "evidence": "evidence",
+    "doubt-to-evidence": "evidence",
+    "doubt to evidence": "evidence",
+    "submission": "submission",
+    "dependable-submission": "submission",
+    "dependable submission": "submission",
+    "accumulate": "accumulate",
+    "coherence": "coherence",
+}
+STDLIB_AREAS = (
+    "graphs",
+    "trees",
+    "ranges",
+    "strings",
+    "math",
+    "flows",
+    "containers",
+    "geometry",
+    "dp",
+    "seq",
+)
+_AREA_KEYWORDS = (
+    ("flows", ("flow", "max_flow", "min_cost", "dinic", "matching", "bipartite", "hopcroft", "hungarian", "gomory")),
+    ("geometry", ("geometry", "point", "convex hull", "polygon", "cross product", "polar", "half-plane", "segment intersect")),
+    ("ranges", ("segtree", "lazysegtree", "fenwick", "sparsetable", "sparse table", "intervalmap", "interval partition", "odt", "range query", "segment tree", "mo's")),
+    ("trees", ("hld", "lca", "centroid", "reroot", "euler tour", "permutation tree", "virtual tree", "treap", "link-cut", "tree")),
+    ("strings", ("kmp", "z-func", "suffix", "aho", "rolling hash", "string", "`str`", "str ", "s[", "palindrom", "trie")),
+    ("graphs", ("dijkstra", "bfs", "dfs", "scc", "2-sat", "twosat", "mst", "kruskal", "dsu", "toposort", "graph", "shortest path", "bridge", "articulation")),
+    ("math", ("mod<", "comb<", "ntt", "fft", "convolv", "poly", "matrix", "gauss", "prime", "factor", "gcd", "crt", "binomial", "mint", "xor basis", "linear basis")),
+    ("containers", ("sortedbag", "sortedset", "sortedmap", "minheap", "maxheap", "heap", "deque", "bitset", "map<", "set<", "counter", "unordered_map", "priority_queue", "hash map", "multiset")),
+    ("dp", ("dp", "knapsack", "aliens", "monge", "cht", "li chao", "sos", "bitmask dp", "memo")),
+    ("seq", ("std.seq", "runs", "chunk_by", "rotate", "reverse", "sorted(", "sort(", "dedup", "slice", "step(", "count(", "prod(", "sum(", "windows", "zip", "enumerate", "bsearch", "lower_bound")),
+)
 
 # Language-aware tokenizers (comments and whitespace stripped)
 _CP_TOKEN_RE = re.compile(
@@ -974,13 +1017,27 @@ _NON_FRICTION_SECTIONS = {
     "measurement",
     "metrics",
     "summary",
+    "algorithm",
     "algorithm summary",
+    "what worked",
     "what worked well",
     "verification",
     "notes",
     "context",
     "status",
 }
+
+
+def route_friction_area(title, body, fields):
+    """Route a friction item to one of the 10 stdlib areas (or 'core')."""
+    explicit = fields.get("area", "").strip().lower()
+    if explicit in STDLIB_AREAS or explicit == "core":
+        return explicit
+    hay = (title + "\n" + body).lower()
+    for area, kws in _AREA_KEYWORDS:
+        if any(kw in hay for kw in kws):
+            return area
+    return "core"
 
 
 def parse_friction_file(path):
@@ -996,7 +1053,7 @@ def parse_friction_file(path):
             continue
         title = lines[0].strip()
         low = title.lower()
-        if low in _NON_FRICTION_SECTIONS:
+        if low in _NON_FRICTION_SECTIONS or low.startswith("status:"):
             continue
         if low in ("frictions", "friction", "friction items"):
             for sub in re.split(r"(?m)^###\s+", "\n".join(lines[1:]))[1:]:
@@ -1035,11 +1092,11 @@ def parse_friction_file(path):
         else:
             status = "open"
 
-        # Goals: normalize to canonical AGENTS.md goal names
+        # Goals: normalize to canonical AGENTS.md goal names; warn on missing/unknown
         raw_goals = fields.get("goal it hurts", fields.get("goals", fields.get("goal", "")))
         raw_clean = re.sub(r"\([^)]*\)", "", raw_goals).lower()
         canonical_map = [
-            ("express", ("express", "revise", "revisable")),
+            ("express", ("express", "revise", "revisable", "guessable")),
             ("hard-to-get-wrong", ("hard-to-get-wrong", "hard to get wrong", "safety", "wrong")),
             ("performance", ("performance", "control", "fast", "speed")),
             ("doubt-to-evidence", ("doubt-to-evidence", "doubt to evidence", "evidence", "diagnos")),
@@ -1052,12 +1109,11 @@ def parse_friction_file(path):
             if any(n in raw_clean for n in needles):
                 goals.append(cname)
         if not goals and raw_clean.strip():
-            for g in re.split(r"[,;/]+", raw_clean.rstrip(".")):
-                g = g.strip().strip("`")
-                if g:
-                    goals.append(g)
-        if not goals:
+            warnings.append(f"{rel} :: {title}: unrecognized Goal it hurts ({raw_goals!r})")
+        elif not goals:
             warnings.append(f"{rel} :: {title}: missing Goal it hurts")
+
+        area = route_friction_area(title, "\n".join(body_lines), fields)
 
         items.append(
             {
@@ -1065,6 +1121,7 @@ def parse_friction_file(path):
                 "title": title.strip("~").strip(),
                 "severity": severity,
                 "goals": goals,
+                "area": area,
                 "status": status,
                 "general_fix": fields.get("general fix", "")[:200],
             }
@@ -1093,10 +1150,22 @@ def summarize_frictions(frictions_dir=FRICTIONS_DIR):
 
     by_severity = {s: 0 for s in (*VALID_SEVERITIES, "unknown")}
     by_goal = Counter()
+    by_area = Counter()
     for it in open_items:
         by_severity[it["severity"]] = by_severity.get(it["severity"], 0) + 1
         for g in it["goals"]:
             by_goal[g] += 1
+        by_area[it.get("area", "core")] += 1
+
+    by_area_queues = {}
+    for area in (*STDLIB_AREAS, "core"):
+        aitems = [it for it in open_items if it.get("area", "core") == area]
+        if aitems:
+            by_area_queues[area] = {
+                "open": len(aitems),
+                "high": sum(1 for it in aitems if it["severity"] in ("blocker", "high")),
+                "files": sorted({it["file"] for it in aitems}),
+            }
 
     return {
         "files": len(files),
@@ -1105,8 +1174,18 @@ def summarize_frictions(frictions_dir=FRICTIONS_DIR):
         "closed": len(closed_items),
         "by_severity": by_severity,
         "by_goal": dict(sorted(by_goal.items(), key=lambda kv: (-kv[1], kv[0]))),
-        "open_blockers": [{"file": it["file"], "title": it["title"]} for it in open_items if it["severity"] == "blocker"],
-        "open_highs": [{"file": it["file"], "title": it["title"]} for it in open_items if it["severity"] == "high"],
+        "by_area": {k: by_area.get(k, 0) for k in (*STDLIB_AREAS, "core")},
+        "by_area_queues": by_area_queues,
+        "open_blockers": [
+            {"file": it["file"], "title": it["title"], "area": it.get("area", "core")}
+            for it in open_items
+            if it["severity"] == "blocker"
+        ],
+        "open_highs": [
+            {"file": it["file"], "title": it["title"], "area": it.get("area", "core")}
+            for it in open_items
+            if it["severity"] == "high"
+        ],
         "warnings": all_warnings,
         "items": all_items,
     }
@@ -1357,8 +1436,10 @@ def compute_totals(port_records, fl_summary, fr_summary):
             "closed": fr_summary["closed"],
             "by_severity": fr_summary["by_severity"],
             "by_goal": fr_summary["by_goal"],
+            "by_area": fr_summary.get("by_area", {}),
             "open_blockers": len(fr_summary["open_blockers"]),
             "open_highs": len(fr_summary["open_highs"]),
+            "warnings": len(fr_summary.get("warnings", [])),
         },
     }
 
@@ -1466,6 +1547,11 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
         if cur_blockers > base_blockers:
             regressions.append(f"open blocker frictions increased: {base_blockers} -> {cur_blockers}")
 
+        base_warn = bt.get("frictions", {}).get("warnings", 0)
+        cur_warn = ct["frictions"].get("warnings", 0)
+        if cur_warn > base_warn:
+            regressions.append(f"friction metadata warnings grew: {base_warn} -> {cur_warn}")
+
         for key, label in (
             ("median_ratio", "median raw token ratio"),
             ("median_stripped_ratio", "median stripped token ratio"),
@@ -1531,6 +1617,15 @@ def print_frictions_report(fr, quiet=False):
     if fr["by_goal"]:
         goals_str = ", ".join(f"{g}={n}" for g, n in fr["by_goal"].items())
         print(f"  by goal: {goals_str}")
+    if fr.get("by_area"):
+        areas_str = ", ".join(f"{a}={n}" for a, n in fr["by_area"].items() if n)
+        print(f"  by area: {areas_str}")
+    if fr.get("by_area_queues"):
+        print("  per-area stdlib queue:")
+        for area in (*STDLIB_AREAS, "core"):
+            q = fr["by_area_queues"].get(area)
+            if q:
+                print(f"    {area:12s} open={q['open']:3d}  high={q['high']:2d}  ({len(q['files'])} files)")
     if fr["open_blockers"]:
         print("  open blockers:")
         for b in fr["open_blockers"]:

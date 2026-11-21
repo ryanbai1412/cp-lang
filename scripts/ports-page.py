@@ -59,12 +59,18 @@ def statement_url(name):
 def friction(name):
     path = os.path.join(sb.FRICTIONS_DIR, f"{name}.md")
     if not os.path.isfile(path):
-        return None, None, 0
+        return None, None, 0, []
     text = sb._read_text(path)
     title = re.search(r"(?m)^# \S+\s*[—-]\s*(.+)$", text)
     items, _ = sb.parse_friction_file(path)
-    heads = [re.sub(r"^\d+\.\s*", "", it["title"]) for it in items]
-    return (title[1].strip() if title else None), (heads[0] if heads else None), len(heads)
+    open_items = [it for it in items if it.get("status") == "open"]
+    heads = [re.sub(r"^\d+\.\s*", "", it["title"]) for it in open_items]
+    areas = []
+    for it in open_items:
+        a = it.get("area", "core")
+        if a not in areas:
+            areas.append(a)
+    return (title[1].strip() if title else None), (heads[0] if heads else None), len(heads), areas
 
 
 def cell(s, n=90):
@@ -79,13 +85,13 @@ def main():
     taste_lints = sb.taste_counts(sb.find_cpl_binary(), [p["abs_path"] for p in ports])
     rows = []
     for p in ports:
-        title, top, count = friction(p["name"])
+        title, top, count, areas = friction(p["name"])
         tok = sb.measure_tokens(p)
-        rows.append((dates.get(p["path"], "uncommitted"), p, title, top, count, tok, perf_by_id.get(p["id"])))
+        rows.append((dates.get(p["path"], "uncommitted"), p, title, top, count, areas, tok, perf_by_id.get(p["id"])))
     rows.sort(key=lambda r: (r[0], r[1]["name"]), reverse=True)
-    ratios = sorted(r[5]["stripped_token_ratio"] for r in rows if r[5]["stripped_token_ratio"])
+    ratios = sorted(r[6]["stripped_token_ratio"] for r in rows if r[6]["stripped_token_ratio"])
     median = ratios[len(ratios) // 2] if ratios else None
-    taste_scores = sorted(r[5]["taste_score"] for r in rows if r[5].get("taste_score") is not None)
+    taste_scores = sorted(r[6]["taste_score"] for r in rows if r[6].get("taste_score") is not None)
     taste_med = taste_scores[len(taste_scores) // 2] if taste_scores else None
     rt_note = (
         f" Runtime is C++ build vs original on max-size input from `research/scoreboard.json`"
@@ -115,10 +121,10 @@ def main():
         "Lints counts the `cpl lint --taste` findings (the `plan/PORTING.md`",
         f"checklist as lints L05xx; {sum(n for n, _ in taste_lints.values())} over all ports).",
         "",
-        "| Added | Problem | Port | Tokens | Runtime | Taste | Lints | Frictions | First friction |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| Added | Problem | Port | Tokens | Runtime | Taste | Lints | Areas | Frictions | First friction |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for day, p, title, top, count, tok, perf in rows[:SHOWN]:
+    for day, p, title, top, count, areas, tok, perf in rows[:SHOWN]:
         url = statement_url(p["name"])
         prob = f"[{p['name']}]({url})" if url else p["name"]
         if title:
@@ -136,9 +142,10 @@ def main():
             taste = f"[{tok['taste_score']}/5](reviews/{p['name']}.md)"
         else:
             taste = "–"
+        area_cell = ", ".join(areas[:3]) if areas else "–"
         fr = f"[{count}](frictions/{p['name']}.md)" if count else "–"
         lints = taste_lints.get(p["abs_path"], (0, {}))[0]
-        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {taste} | {lints} | {fr} | {cell(top)} |")
+        out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {rt} | {taste} | {lints} | {area_cell} | {fr} | {cell(top)} |")
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out) + "\n")
     print(f"wrote {os.path.relpath(OUT, sb.ROOT)}: {len(rows)} ports")

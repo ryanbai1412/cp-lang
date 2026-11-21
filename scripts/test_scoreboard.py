@@ -438,6 +438,19 @@ class DreamAndPerfRatchetTest(unittest.TestCase):
         self.assertTrue(any("interp ratio regressed >10%: t/p1" in m for m in diff_full["regressions"]))
         self.assertTrue(any("interp ratio p50 regressed >10%" in m for m in diff_full["regressions"]))
 
+    def test_friction_area_routing_and_metadata_warning_gate(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "bad.md")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("# bad\n\n## SegTree lacks lazy push\n- **Severity:** high\n- **Goal it hurts:** performance\n\n## Missing meta\nno fields here\n")
+            summary = sb.summarize_frictions(d)
+            self.assertEqual(summary["by_area"]["ranges"], 1)
+            self.assertEqual(len(summary["warnings"]), 2)
+            base = {"ports": [], "totals": {"frictions": {"open_blockers": 0, "warnings": 0}, "tokens": {}, "friction_lint": {"wa_trap": 0}}}
+            cur = {"ports": [], "totals": {"frictions": {"open_blockers": 0, "warnings": 2}, "tokens": {}, "friction_lint": {"wa_trap": 0}}}
+            diff = sb.diff_against_baseline(cur, base, mode="fast")
+            self.assertTrue(any("friction metadata warnings grew" in m for m in diff["regressions"]))
+
 
 class CliSmokeTest(unittest.TestCase):
     def test_frictions_cli_and_fast_subset_cli(self):
