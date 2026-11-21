@@ -1,3 +1,18 @@
+// Codeforces 2089 E.
+//
+// Vertices are labelled in preorder (each parent is the smaller endpoint) and
+// are retired from n down to 2; after each retirement the answer is the
+// constant term of the root's state. Every series is an EGF in the number of
+// pending steps:
+//   sub[v]     the subtree of v: f + integral(f) of its children's product;
+//   before[v]  the product of the subtrees of v's earlier siblings;
+//   dp[v]      the states parked at v, weighted by k! for k pending steps.
+// Retiring t moves the states parked at t + 1 onto the path from t up to (not
+// including) parent(t + 1), picking up the earlier siblings of each child on
+// the way, then lifts every state on the path from t to the root, taking the
+// siblings it climbs past back out of the carried sum. Because states carry
+// k!, taking the steps of b out of a is the transposed product
+// (a.transposed_mul(b))[i] = sum_j a[i + j] * b[j].
 use std.ntt.{convolve}
 use std.poly.{integral}
 
@@ -8,7 +23,7 @@ fn add(a: List<Z>, b: List<Z>) -> List<Z>:
     for (i, x) in b.items: sum[i] += x
     sum
 
-fn remove(a: List<Z>, b: List<Z>) -> List<Z>:
+fn transposed_mul(a: List<Z>, b: List<Z>) -> List<Z>:
     if a.is_empty: return []
     convolve(a, b.rev)[b.len - 1..].to_list()
 
@@ -16,47 +31,44 @@ fn plus_integral(a: List<Z>) -> List<Z> = add(a, integral(a))
 
 @!multitest
 let n: Int = read()
-var parent: [1..=n]?Int = none
-for _ in 1..n:
-    let (u, v): (Int, Int) = read()
+domain V = 1..=n
+var parent: [V]?V = none
+repeat n - 1:
+    let (u, v): (V, V) = read()
     parent[max(u, v)] = min(u, v)
+let tree = Rooted.from_parents(parent)
 
-var sub: [1..=n]List<Z> = [1]
-for v in (1..=n).rev:
+var sub: [V]List<Z> = [1]
+for v in V.rev:
     sub[v] = plus_integral(sub[v])
     if let p = parent[v]: sub[p] = convolve(sub[p], sub[v])
 
-var before: [1..=n]List<Z> = []
-var siblings: [1..=n]List<Z> = [1]
-for v in 2..=n:
-    let p = parent[v]!
+var before: [V]List<Z> = []
+var siblings: [V]List<Z> = [1]
+for v in V if let p = parent[v]:
     before[v] = siblings[p]
     siblings[p] = convolve(siblings[p], sub[v])
 
+var dp: [V]List<Z> = []
 var ans: List<Z> = [1]
-var dp: [1..=n + 1]List<Z> = List.filled(n + 1, Z.zero)
-dp[n + 1][1] = 1
-for t in (2..=n).rev:
-    dp[t] = add(dp[t], dp[t + 1])
-    let stop = if t < n: parent[t + 1]! else: 1
+for t in V.rev if t != V.first:
+    let next = t.next
+    let moving: List<Z> = if let s = next: dp[s] else: [0, 1]
+    let stop = if let s = next: parent[s]! else: V.first
+    dp[t] = add(dp[t], moving)
+    let chain = tree.path(t, stop)
     var ways: List<Z> = [1]
-    var (p, child) = (t, t + 1)
-    while p != stop:
-        if p != t: ways = convolve(ways, before[child])
-        dp[p] = add(dp[p], remove(dp[t + 1], integral(ways)))
+    for (i, p) in chain[..chain.len - 1].items:
+        if i > 0: ways = convolve(ways, before[chain[i - 1]])
+        dp[p] = add(dp[p], transposed_mul(moving, integral(ways)))
         ways = plus_integral(ways)
-        (p, child) = (parent[p]!, p)
-    dp[t + 1] = []
+    if let s = next: dp[s] = []
 
+    let up = tree.path(t, V.first)
     var carry: List<Z> = []
-    var node: ?Int = t
-    child = t + 1
-    while let v = node:
-        if v != t: carry = remove(carry, before[child])
-        let lifted: List<Z> = [0] + [x * (i + 1) for (i, x) in dp[v].items]
-        let next = add(lifted, carry)
-        carry = add(carry, dp[v])
-        dp[v] = next
-        (node, child) = (parent[v], v)
-    ans.push(dp[1][0])
+    for (i, p) in up.items:
+        if i > 0: carry = transposed_mul(carry, before[up[i - 1]])
+        let lifted: List<Z> = [0] + [x * (k + 1) for (k, x) in dp[p].items]
+        (dp[p], carry) = (add(lifted, carry), add(carry, dp[p]))
+    ans.push(dp[V.first].first ?? 0)
 print(ans)
