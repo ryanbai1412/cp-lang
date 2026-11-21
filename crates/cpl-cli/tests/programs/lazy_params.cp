@@ -25,3 +25,11 @@ print(either(x, costly()), either(none, d: costly()), calls)
 check(true, "never {costly()}")
 check(false, "n = {calls}")
 print(calls, or_else(none, () => 9))
+
+struct Cache(v: ?Int)
+impl Cache:
+    fn get_or(self, lazy d: () -> Int) -> Int:
+        if let x = self.v:
+            return x
+        d()
+print(Cache(4).get_or(costly()), calls, Cache(none).get_or(costly()), calls)

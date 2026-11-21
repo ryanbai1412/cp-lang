@@ -43,7 +43,7 @@ code. Enums order by variant, then payload (decision 28.2).
 and tuple fields, unrolled in lowering (28.1); a variadic `..xs: Ts` is the
 tuple of its arguments (28.3); `read<(Int, Int)>()` takes type arguments
 on a lowercase fn (28.4); `lazy d: () -> T` takes an expression and passes
-`() => e` (28.5, free and generic fns; methods not yet). A projection is
+`() => e` (28.5; free fns, generic fns and methods). A projection is
 already a writable place through a method: `fn at(mut self, i: Int) lends
 mut Int: mut self.xs[i]` then `b.at(1) += 10` works. Enum variants are not
 reflected yet. Not built: postfix `x?` expression-extent lifting,
@@ -60,8 +60,7 @@ mechanism above has programs that the interpreter and the C++ agree on.
 **Next.** Postfix `?` extent; remaining 0.3 syntax (opaque `struct`,
 type-param defaults, one-sided ranges, `@droppable`,
 `labels`, `Str(len:)`); variant reflection and derives as trait
-defaults on `fields`; `print`/`read` on variadic packs; `lazy` on methods,
-then `assert`/`debug`/`??` in the stdlib; `Niche`; library diagnostics.
+defaults on `fields`; `print`/`read` on variadic packs; `assert`/`debug`/`??` in the stdlib; `Niche`; library diagnostics.
 **Coordination.** Core-extensions lane (`49fcf312`) owns derives, variadic packs,
 and lazy parameters; this lane (§1 core syntax/semantics) owns `Self` in
 trait/impl scope, associated types, `trait`/`impl` headers, opaque structs,
