@@ -3862,3 +3862,41 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Evidence.** Interp/C++17 parity test `crates/cpl-cli/tests/programs/seq_mut_slice.cp` (covering `List<Int>`, `[D]Int`, `[D.bounds]Int`, `[0..6]Int`, nested and disjoint slices); checker compile-fail tests in `crates/cpl-check/src/tests.rs` (`mutable_slice_views_lend_and_reject_aliasing`); `cpl explain` test in `crates/cpl-cli/src/lib.rs`; matched benchmark `bench/seq/slice_sort.cp` (`xs[l..r].sort()` vs `std::sort(xs.data() + l, xs.data() + r)`): **1.05x** (213.9 ms vs 202.9 ms, 9,393 B emitted C++); port migrations: `cf2207h3.cp` (678 → 658 tokens, -20, `gate.sh` PASS) and `cf2207h1.cp` (1,007 → 813 tokens, -194, `gate.sh` PASS). Closes `research/frictions/cf2207h3.md` #1b.
 - **Reverse.** Restore `note_readonly_view` for list/array slices in `cpl-check/src/check/expr.rs`, remove `Ty::MutView` / `ExprKind::MutSlice` / `cpl::MutView`, and revert `cf2207h3.cp` / `cf2207h1.cp`.
 
+
+## 124. A half-open range of cuts is also the piece it bounds (2026-11-21)
+
+- **Decision.** With cuts `j, i: D.bounds`, `j..i` is a `Range<D.bounds>`
+  (iterating it yields cuts). Wherever a `Range<D>` is expected, it
+  converts implicitly to the positions between cut `j` and cut `i`:
+  `cost(j..i)`, `pre.sum(j..i)`, `a[j..i]`, `window.move(to: j..i)`. The
+  two readings are the same set under `c ↦ c.right`. Every cut in `j..i`
+  has a right neighbour because `i` is excluded, and both are stored as
+  the same two integers. `j..=i` over cuts stays a range of cuts only
+  (its last cut may be the end) and gets no conversion. Constant integer
+  literals are accepted for cut-domain values, checked against the
+  domain's range (`var mex: Potential.bounds = 0`).
+- **Why.** DP transitions iterate cuts (`for j in lo..i: dp[i] min= dp[j] +
+  cost(j..i)`) and pass the piece between them on the same line. A
+  single rule keeps both readings without a cast or a second spelling,
+  and the "ranges are over cuts" model stays exact: a range's ends are
+  cuts, its elements are positions.
+- **Rejected.** Context deciding what `j..i` means (one text, two
+  meanings); `..` versus `..=` choosing the element type; mandatory
+  `span(j, i)` (honest but noisy on the commonest DP line, and the
+  fallback if the conversion ever surprises reviewers).
+- **Reverse.** Drop the conversion; call sites use `span(j, i)`.
+- **Status.** Accepted; not implemented. Blocked first on `D.bounds` as a
+  value in `cpl run` / `cpl build` (E0501).
+
+## 125. Loops take an `else` that runs when no `break` left them (2026-11-21)
+
+- **Decision.** `for` and `while` accept a trailing `else:` block at the
+  loop's indentation, with Python's meaning: it runs when the loop ends
+  without `break` (labelled `break 'outer` from an inner loop also skips
+  the inner loop's `else`). Labelled `break` / `continue` stay as settled
+  in 4.6.
+- **Why.** "Search, and handle not-found" is a common contest shape that
+  otherwise needs a `found` flag, which is a stale-state bug site.
+- **Reverse.** Delete the form; a codemod rewrites it to a flag.
+- **Status.** Accepted; not implemented (today `else` after a loop is
+  E0107).
