@@ -18,16 +18,10 @@ fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
                 cyc.push(cur)
                 cur = perm[cur]
             cyc.sort()
-            var l = i
-            var r: ?D = none
-            for x in cyc:
-                if perm[x] < x:
-                    r = x
-                    break
-                l = x
-            let r_val = r!
-            ops.push((l, r_val))
-            perm.swap_at(l, r_val)
+            let r = first(cyc, x => perm[x] < x)!
+            let l = first(cyc.rev, x => x < r) ?? i
+            ops.push((l, r))
+            perm.swap_at(l, r)
     ops
 
 @!multitest
