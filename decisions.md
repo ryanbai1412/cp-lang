@@ -3220,6 +3220,11 @@ alias such a global by reference bind `const auto&`. Test:
 `Emitter::const_global` and the `const_globals` checks in `stmt.rs` and
 `expr.rs`.
 <<<<<<< HEAD
+<<<<<<< HEAD
+||||||| parent of 12932e01 (docs: document product domains and log decision 86)
+=======
+
+>>>>>>> 12932e01 (docs: document product domains and log decision 86)
 ## 83. Canonical-spelling docs gate and reasoning-enabled writable-from-docs harness (2026-11-21)
 
 1. **Enforce accepted CP Lang spellings in `site/check_docs.py` (`check_canonical_spellings`).**
@@ -3278,3 +3283,9 @@ drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
 - **Decision:** Add a `cmp: (a, b) => Bool` option to `sort` and `sorted` (mutually exclusive with `by:`, composing with `desc: true`), lowering through `SortBy::Fn { func, is_order: true }` to stable O(n log n) sorting (`cpl::sort_cmp` in C++, `checked_merge_sort_by` in the interpreter). In `cpl run` and `cpl build --checked` (`-DLOCAL`), non-strict-weak-order comparators trap on irreflexivity (`cmp(x, x)`), asymmetry (`cmp(a, b) && cmp(b, a)`), and post-sort order violations (intransitivity); release builds compile to zero-overhead `std::stable_sort`.
 - **Reason:** Exchange-argument sorts (`a.x * b.y < b.x * a.y`), angle sorts, and comparator-over-state sorts (like `cf2135f`) cannot be expressed as a single key and previously forced a wrapper struct + `impl Ord`. Named `cmp:` fits the options scheme, avoids UB in checked builds, and keeps release performance identical to C++.
 - **Reverse:** Remove the `cmp` arm from `sort_place` in `crates/cpl-ir/src/lower/call.rs` and `sort_cmp` in `crates/cpl-codegen/src/runtime.rs`.
+
+## 88. Product domains `domain State = (V, K)` (2026-11-21)
+
+1. **Lower product domains (`domain State = (V, K)` and named `domain State = (v: V, d: Dir, ok: Bool)`) to a flat row-major `DomainId` with `lo = 0` and `len = Π len(F_i)`.**
+   - **Reason:** Packing factors into a standard nominal `DomainId` (`idx = (...((ord_0 * len_1 + ord_1) * len_2)...)`) means `[State]T` is a single contiguous flat array with zero runtime representation overhead, and every existing domain-generic structure (`SegTree<State, T>`, `LazySegTree`, `Fenwick`, `Bitset<State>`, `for s in State`, `State.len`) works automatically in both `cpl-interp` and `cpl-codegen` with zero backend special cases. In `cpl-check` and `cpl-ir`, `(v, k)` tuples/records coerce to `State` (so `dp[(v, k)]`, `dp[v, k]`, `State(v, k)`, and `fn f() -> ?State: (v, k)` work while swapped order `(k, v)` is rejected with `E0301`), and `let (v, k) = s`, `for (v, k) in State`, `s.0`/`s.1`, and named `s.v` decode via div/rem. `DomainInfo` records factor types and combined `max_size` so LSP hover reports total state count and array byte size.
+   - **Reverse:** Remove `factors` from `DomainInfo`, `product_domains` and its encode/decode helpers from `crates/cpl-ir/src/lower/{mod,stmt,expr,call}.rs`, and the product-factor checks from `crates/cpl-check/src/check/{types,stmt,expr,call}.rs`.

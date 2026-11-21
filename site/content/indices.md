@@ -196,6 +196,23 @@ print(vals[Sign.neg], rest.len, evens.len, odds.len, first_big!)
 
 Range structures (`SegTree<V.bounds, T>`, `LazySegTree<V.bounds, T>`, `Fenwick<V.bounds, T>`) also accept `V.bounds` directly as their index domain, so boundary updates (`seg.set(v.r, x)`, `seg.apply(..=v.l, 1)`) need no shadow `0..=n` domain.
 
+### Product domains
+
+A Cartesian product of finite domains (including fieldless enums and `Bool`) can be named as one flat domain with `domain State = (V, K)` or named factors `domain State = (v: V, ok: Bool)`. Values pack in row-major order into a single `0..len(V) * len(K)` slot, so `[State]T` is a flat array, `for s in State:` and `for (v, k) in State:` iterate every state, and `dp[(v, k)]`, `dp[v, k]`, and `dp[State(v, k)]` all index it while rejecting swapped factor order with `E0301`:
+
+```cp
+domain V = 0..3
+domain K = 1..=2
+domain State = (V, K)
+
+var dp: [State]Int = 0
+for (v, k) in State:
+    dp[(v, k)] = v.ord * 10 + k.label
+
+let s = State(V(2), K(1))
+print(dp[s], dp[V(2), K(2)], s.0.ord, State.len)
+```
+
 ## Algebraic `Index` and escape hatches
 
 The language's `Index` model covers `Bool`, finite enums, `?T`, integer ranges, tuples/records, and `Subset<D>` for bitmask DP. Support across generic library calls is still being completed: for example, flow over payload-enum vertices is not yet runnable. The [graph course](course-graphs-math.html#network-flow-with-typed-vertices) shows a working flow network over a numeric vertex domain.

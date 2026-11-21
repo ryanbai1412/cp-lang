@@ -199,20 +199,22 @@ fieldless enum-indexed arrays (`enum Sign: neg = -1, zero = 0, pos = 1`,
 `[Sign]T`, `[Sign] x => ...`, `for x in Sign:`), domain-level sequence ops
 (`D.partition`, `D.sort(by:)` including array keys, `D.group(by:)`, `D.at`,
 `D.first(p)`, `D.filter` with domains satisfying `Seq`/`Indexed`), `D.bounds`
-directly in `SegTree`/`LazySegTree`/`Fenwick` (`cf2207f`), and typed `Item`/`Cut` ranges via `minmax`
-and `choose2` now also work end to end. Eight ports converted (`ucup4s25c`,
-`cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`, `cf2147h`, `cf2129b`, `cf2147f`),
-with `cf2147h` (`1.631x -> 1.063x`) and `cf2147f` (`1.467x -> 1.254x`)
-rewritten toward their dreams. Remaining: algebraic product domains (`domain State = (V, K)`,
-`research/frictions/cf2178h.md`), graph edge domains (`domain E = edges(V)`),
+directly in `SegTree`/`LazySegTree`/`Fenwick` (`cf2207f`), algebraic product domains
+(`domain State = (V, K)` and named `(v: V, d: Dir, ok: Bool)` with flat `[State]T`,
+`for s in State`, `for (v, k) in State`, `dp[(v, k)]`/`dp[v, k]`, `State(v, k)`,
+and `s.0`/`s.v` projections across checker, IR, interpreter, C++, LSP, and docs),
+and typed `Item`/`Cut` ranges via `minmax` and `choose2` now also work end to end.
+Eight ports converted (`ucup4s25c`, `cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`,
+`cf2147h`, `cf2129b`, `cf2147f`), with `cf2147h` (`1.631x -> 1.063x`) and
+`cf2147f` (`1.467x -> 1.254x`) rewritten toward their dreams. Remaining:
+graph edge domains (`domain E = edges(V)`),
 eliminating redundant runtime bounds checks when indexing `[0..=m]` by a `0..=m`
 record field in C++ codegen, and explicit `domain` field syntax on
 domain-carrying structs.
 **Bar.** Settled semantics in `plan/OPERATING.md` implemented across
-checker, interpreter and C++; three ports converted. (Met: 7 ports
+checker, interpreter and C++; three ports converted. (Met: 8 ports
 converted and passing `gate.sh`.)
-**Next.** Algebraic product domains (`domain State = (A, B)` with packing/unpacking,
-from `dream/cf2178h.cp`) and `edges(V)` derived domains; propagate runtime
+**Next.** `edges(V)` derived domains; propagate runtime
 range-field facts (`w: 0..=m`) into C++ bounds elimination (`cpl-codegen/src/facts.rs`);
 migrate remaining stdlib existential signatures to tuple syntax where appropriate;
 explicit `domain` field syntax for value-owned structs.
