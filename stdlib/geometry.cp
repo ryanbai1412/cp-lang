@@ -234,45 +234,53 @@ pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
             res.push(hi[k])
     res
 
-fn rotate_min_yx(poly: List<Pt>) -> List<Pt>:
+fn min_yx_idx(poly: List<Pt>) -> Int:
     var best = 0
     for i in 1..poly.len:
         if poly[i].y < poly[best].y or (poly[i].y == poly[best].y and poly[i].x < poly[best].x):
             best = i
-    [poly[(best + i) % poly.len] for i in 0..poly.len]
+    best
 
 /// Minkowski sum of two non-empty CCW convex polygons. O(|a| + |b|).
 pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt>:
     assert a.len > 0 and b.len > 0, "minkowski_sum requires non-empty polygons"
     if a.len == 1: return [a[0] + q for q in b]
     if b.len == 1: return [p + b[0] for p in a]
-    let pa = rotate_min_yx(a)
-    let pb = rotate_min_yx(b)
-    let na = pa.len
-    let nb = pb.len
+    let na = a.len
+    let nb = b.len
+    var ia = min_yx_idx(a)
+    var ib = min_yx_idx(b)
     var res: List<Pt> = []
     var i = 0
     var j = 0
     while i < na or j < nb:
-        let cur = pa[i % na] + pb[j % nb]
+        let cur = a[ia] + b[ib]
         if res.len == 0 or res[res.len - 1] != cur: res.push(cur)
         if i == na:
             j += 1
+            ib += 1
+            if ib == nb: ib = 0
+        elif j == nb:
+            i += 1
+            ia += 1
+            if ia == na: ia = 0
         else:
-            if j == nb:
+            let ia_nxt = if ia + 1 == na: 0 else: ia + 1
+            let ib_nxt = if ib + 1 == nb: 0 else: ib + 1
+            let ea = a[ia_nxt] - a[ia]
+            let eb = b[ib_nxt] - b[ib]
+            let c = cross128(ea, eb)
+            if c > I128(0):
                 i += 1
+                ia = ia_nxt
+            elif c < I128(0):
+                j += 1
+                ib = ib_nxt
             else:
-                let ea = pa[(i + 1) % na] - pa[i % na]
-                let eb = pb[(j + 1) % nb] - pb[j % nb]
-                let c = cross128(ea, eb)
-                if c > I128(0):
-                    i += 1
-                else:
-                    if c < I128(0):
-                        j += 1
-                    else:
-                        i += 1
-                        j += 1
+                i += 1
+                j += 1
+                ia = ia_nxt
+                ib = ib_nxt
     while res.len > 1 and res[res.len - 1] == res[0]:
         res.pop()
     res
@@ -406,9 +414,12 @@ pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int:
     var hi = n
     while hi - lo > 2:
         let mid = (lo + hi) / 2
-        let up_lo = better_dir(hull[(lo + 1) % n], hull[lo], dir)
-        let up_mid = better_dir(hull[(mid + 1) % n], hull[mid], dir)
-        if not up_mid and better_dir(hull[mid], hull[(mid + n - 1) % n], dir):
+        let lo_nxt = if lo + 1 == n: 0 else: lo + 1
+        let mid_nxt = if mid + 1 == n: 0 else: mid + 1
+        let mid_prv = if mid == 0: n - 1 else: mid - 1
+        let up_lo = better_dir(hull[lo_nxt], hull[lo], dir)
+        let up_mid = better_dir(hull[mid_nxt], hull[mid], dir)
+        if not up_mid and better_dir(hull[mid], hull[mid_prv], dir):
             return mid
         if up_lo:
             if up_mid and better_dir(hull[mid], hull[lo], dir): lo = mid
@@ -418,7 +429,7 @@ pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int:
             else: lo = mid
     var best = lo
     for k in lo..hi:
-        let idx = k % n
+        let idx = if k == n: 0 else: k
         if better_dir(hull[idx], hull[best], dir): best = idx
     best
 
@@ -663,10 +674,10 @@ pub fn reflect(p: Vec, a: Vec, b: Vec) -> Vec:
 pub fn line_dist(p: Vec, a: Vec, b: Vec) -> F64 = abs(vcross(b - a, p - a)) / (b - a).len
 
 /// Shortest distance from `p` to the closed segment `a b`. O(1).
-pub fn seg_dist(p: Vec, a: Vec, b: Vec) -> F64:
+pub fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64:
     let ab = b - a
     let n2 = ab.norm2
-    if n2 == 0.0: return (p - a).len
+    if n2 <= eps * eps: return (p - a).len
     let t = vdot(p - a, ab) / n2
     if t <= 0.0: return (p - a).len
     if t >= 1.0: return (p - b).len
@@ -694,12 +705,10 @@ pub fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec:
 /// infinite line through `a` and `b`. O(1).
 pub fn circle_line_intersect(center: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>:
     let h = project(center, a, b)
-    let d2 = (center - h).norm2
-    let r2 = r * r
-    if d2 > r2 + eps: return []
-    let rem = r2 - d2
-    if rem <= eps: return [h]
-    let dir = (b - a).unit * sqrt(rem)
+    let d = (center - h).len
+    if d > r + eps: return []
+    if r - d <= eps: return [h]
+    let dir = (b - a).unit * sqrt(max(0.0, r * r - d * d))
     [h - dir, h + dir]
 
 /// Intersection points (0, 1, or 2) of two circles `(c1, r1)` and `(c2, r2)`. O(1).
@@ -709,10 +718,10 @@ pub fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> 
     if d <= eps: return []
     if d > r1 + r2 + eps or d + min(r1, r2) + eps < max(r1, r2): return []
     let x = (d * d + r1 * r1 - r2 * r2) / (2.0 * d)
-    let h2 = r1 * r1 - x * x
+    let h = sqrt(max(0.0, r1 * r1 - x * x))
     let base = c1 + d_vec * (x / d)
-    if h2 <= eps: return [base]
-    let off = d_vec.perp * (sqrt(h2) / d)
+    if h <= eps: return [base]
+    let off = d_vec.perp * (h / d)
     [base - off, base + off]
 
 // ---- half-plane intersection
@@ -1723,3 +1732,18 @@ fn pt3_and_convex_hull_3d():
             edges[(w, u)] = (edges.get((w, u)) ?? 0) + 1
         for ((u, v), cnt) in edges:
             assert cnt == 1 and (edges.get((v, u)) ?? 0) == 1
+
+@test
+fn test_float_eps_guards():
+    // Degenerate and near-degenerate segments use eps rather than bare == 0.0.
+    assert close(seg_dist(Vec(3.0, 4.0), Vec(0.0, 0.0), Vec(1e-12, 0.0)), 5.0)
+    // Large-radius tangency: linear eps stays valid when r^2 ~ 1e12.
+    let cl = circle_line_intersect(
+        Vec(0.0, 0.0),
+        1e6,
+        Vec(-1.0, 1e6 + 1e-11),
+        Vec(1.0, 1e6 + 1e-11),
+    )
+    assert cl.len == 1 and close(cl[0].y, 1e6, eps: 1e-6)
+    let cc = circle_intersect(Vec(0.0, 0.0), 1e6, Vec(2e6 + 1e-11, 0.0), 1e6)
+    assert cc.len == 1 and close(cc[0].x, 1e6, eps: 1e-6)

@@ -63,12 +63,85 @@ def gen_points_3d(n, seed):
     return "\n".join(rows) + "\n"
 
 
+def _circle_poly(n, radius, offset_ang):
+    # Strictly convex integer CCW polygon on a circle of given radius.
+    pts = []
+    for i in range(n):
+        ang = offset_ang + 2.0 * math.pi * i / n
+        x = int(round(radius * math.cos(ang)))
+        y = int(round(radius * math.sin(ang)))
+        if not pts or pts[-1] != (x, y):
+            pts.append((x, y))
+    if len(pts) > 1 and pts[-1] == pts[0]:
+        pts.pop()
+    return pts
+
+
+def gen_minkowski(na, nb):
+    a = _circle_poly(na, 10**8, 0.0)
+    b = _circle_poly(nb, 10**8, 0.13)
+    rows = [f"{len(a)} {len(b)}"]
+    rows.extend(f"{x} {y}" for x, y in a)
+    rows.extend(f"{x} {y}" for x, y in b)
+    return "\n".join(rows) + "\n"
+
+
+def gen_convex_poly(n):
+    pts = _circle_poly(n, 10**8, 0.0)
+    rows = [str(len(pts))]
+    rows.extend(f"{x} {y}" for x, y in pts)
+    return "\n".join(rows) + "\n"
+
+
+def gen_locate_convex(n, q, seed):
+    rng = random.Random(seed)
+    pts = _circle_poly(n, 10**8, 0.0)
+    rows = [f"{len(pts)} {q}"]
+    rows.extend(f"{x} {y}" for x, y in pts)
+    for _ in range(q):
+        rows.append(f"{rng.randint(-12 * 10**7, 12 * 10**7)} {rng.randint(-12 * 10**7, 12 * 10**7)}")
+    return "\n".join(rows) + "\n"
+
+
+def gen_circles(n, seed):
+    rng = random.Random(seed)
+    rows = [str(n)]
+    for _ in range(n):
+        x1 = rng.uniform(-1000.0, 1000.0)
+        y1 = rng.uniform(-1000.0, 1000.0)
+        r1 = rng.uniform(10.0, 500.0)
+        x2 = x1 + rng.uniform(-600.0, 600.0)
+        y2 = y1 + rng.uniform(-600.0, 600.0)
+        r2 = rng.uniform(10.0, 500.0)
+        rows.append(f"{x1:.4f} {y1:.4f} {r1:.4f} {x2:.4f} {y2:.4f} {r2:.4f}")
+    return "\n".join(rows) + "\n"
+
+
+def gen_polygon_cuts(n, seed):
+    rng = random.Random(seed)
+    rows = [str(n)]
+    for i in range(n):
+        ang = 2.0 * math.pi * i / n + rng.uniform(-0.0005, 0.0005)
+        r = 1000.0 + rng.uniform(0.0, 50.0)
+        ax = r * math.cos(ang)
+        ay = r * math.sin(ang)
+        bx = ax - 100.0 * math.sin(ang)
+        by = ay + 100.0 * math.cos(ang)
+        rows.append(f"{ax:.6f} {ay:.6f} {bx:.6f} {by:.6f}")
+    return "\n".join(rows) + "\n"
+
+
 BENCHES = {
     "convex_hull": lambda: gen_points(200_000, 1),
     "half_plane_intersect": lambda: gen_half_planes(100_000, 2),
     "closest_pair": lambda: gen_points(100_000, 3),
     "any_segments_meet": lambda: gen_segments(100_000, 4),
     "convex_hull_3d": lambda: gen_points_3d(20_000, 5),
+    "minkowski_sum": lambda: gen_minkowski(50_000, 50_000),
+    "diameter2": lambda: gen_convex_poly(100_000),
+    "locate_convex": lambda: gen_locate_convex(50_000, 200_000, 6),
+    "circle_intersect": lambda: gen_circles(100_000, 7),
+    "polygon_cut": lambda: gen_polygon_cuts(4_000, 8),
 }
 
 

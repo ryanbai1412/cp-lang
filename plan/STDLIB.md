@@ -1505,10 +1505,10 @@ fn vturn(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> Int // O(1)
 fn project(p: Vec, a: Vec, b: Vec) -> Vec // O(1)
 fn reflect(p: Vec, a: Vec, b: Vec) -> Vec // O(1)
 fn line_dist(p: Vec, a: Vec, b: Vec) -> F64 // O(1)
-fn seg_dist(p: Vec, a: Vec, b: Vec) -> F64 // O(1)
+fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64 // O(1)
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
-fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
-fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec>
+fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec> // O(1)
+fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec> // O(1)
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec // O(1)
 struct HalfPlane(p: Vec, dir: Vec)
 fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec> // O(n log n)

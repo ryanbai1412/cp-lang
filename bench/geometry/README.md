@@ -12,9 +12,18 @@ and reports best-of-7 wall time (`g++ -std=c++17 -O2`).
 | closest_pair | 100k points | 0.030 | 0.028 | 1.07x |
 | any_segments_meet | 100k segments | 0.129 | 0.122 | 1.06x |
 | convex_hull_3d | 20k 3D points | 0.028 | 0.025 | 1.09x |
+| minkowski_sum | 2x50k poly (x20) | 0.025 | 0.030 | 0.83x |
+| diameter2 | 100k hull (x50) | 0.094 | 0.092 | 1.02x |
+| locate_convex | 50k hull, 200k q | 0.042 | 0.045 | 0.95x |
+| circle_intersect | 100k circle pairs | 0.042 | 0.079 | 0.53x |
+| polygon_cut | 4k cuts | 0.004 | 0.004 | 0.94x |
 
-All five benchmarks are under the 1.1x target. Profiling the initial runs found
-and fixed three stdlib hot-path costs:
+All ten benchmarks are under the 1.1x target. Profiling the initial runs found
+and fixed four stdlib hot-path costs:
+
+- `minkowski_sum` (2.50x -> 0.83x): replaced the two `rotate_min_yx` full-list
+  copies and four per-step `cpl::emod` calls with in-place index wrapping
+  (`min_yx_idx` + `ia_nxt`).
 
 - `closest_pair` (1.28x -> 1.07x): switched `ord` to flat `(x, y, id)` tuples
   for direct `std::sort` instead of `cpl::sort_by`, and inlined `dx*dx + dy*dy`.
