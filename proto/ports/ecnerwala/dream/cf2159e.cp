@@ -5,7 +5,6 @@
 //   answer(n, k) = Σ_z [x^z] p^j · prefix(p^(i·B))[k − z].
 // The coefficients f of p^m come from p · f' = m · p' · f, which reads
 //   c·z·f[z] = b·(m − z + 1)·f[z − 1] + a·(2m − z + 2)·f[z − 2].
-use std.math.{divmod}
 type Z = Mod<1e9 + 7>
 // B balances the O(N^2 / B) table of big powers against O(B) work per query.
 const N = 3e5, B = 1200

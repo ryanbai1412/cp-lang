@@ -1,5 +1,4 @@
-// Differential parity for `std.math.divmod` (both UFCS `a.divmod(b)` and `divmod(a, b)`).
-use std.math.{divmod}
+// Differential parity for prelude `divmod` (both UFCS `a.divmod(b)` and `divmod(a, b)`).
 let n: Int = read()
 for _ in 0..n:
     let (a, b): (Int, Int) = read()
