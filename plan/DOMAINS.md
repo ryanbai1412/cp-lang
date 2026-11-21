@@ -26,7 +26,7 @@ Concretely, the compiler knows no trait by name: `print`, `read`, `assert`,
 `debug`, `??` and every derive are library functions built on four core
 mechanisms (compile-time reflection over fields and variants, variadic
 generics as tuple packs, lazy parameters, writable places returned from
-methods), user optionals reach 8 bytes through a library `Niche`, and a
+methods), a user struct's optional borrows a field's niche (no flag), and a
 library can say in its own words why a call does not type-check.
 **Where we are** (audited 2026-11-21 at `815c21e4`+). Working: `repeat`,
 `loop`, one-line enums (including explicit integer discriminants `enum Sign: neg = -1, zero = 0, pos = 1` with `Int(s)`/`Sign(n)` conversion) and structs (paren and colon forms), multi-binding `let`/`var`
@@ -65,7 +65,7 @@ defaults / one-sided range types /
 `@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), `print`
 and `read` as library fns over packs, `assert`/`debug`/`??` as library fns
 (`assert` also feeds the range prover its condition, so moving it needs that
-as a general rule), `Niche`, library diagnostics. 0 of the 35 `design/spec/*.md`
+as a general rule), library diagnostics. `?S` borrows a field's niche (28.10). 0 of the 35 `design/spec/*.md`
 ```cp blocks pass `cpl check`; most stop at parse or stdlib gaps.
 **Bar.** Every code block in the design spec passes `cpl check`; the stdlib
 needs no compiler knowledge beyond the documented intrinsics; each
@@ -73,7 +73,7 @@ mechanism above has programs that the interpreter and the C++ agree on.
 **Next.** Postfix `?` extent; remaining 0.3 syntax (opaque `struct`,
 type-param defaults, one-sided ranges, `@droppable`,
 `labels`, `Str(len:)`); variant reflection and derives as trait
-defaults on `fields`; `print`/`read` on variadic packs; `assert`/`debug`/`??` in the stdlib; `Niche`; library diagnostics.
+defaults on `fields`; `print`/`read` on variadic packs; `assert`/`debug`/`??` in the stdlib; library diagnostics.
 **Coordination.** Core-extensions lane (`49fcf312`) owns derives, variadic packs,
 and lazy parameters; this lane (§1 core syntax/semantics) owns `Self` in
 trait/impl scope, associated types, `trait`/`impl` headers, opaque structs,

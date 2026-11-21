@@ -469,6 +469,25 @@ fn a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list
 }
 
 #[test]
+fn an_optional_struct_with_an_int_field_has_no_flag() {
+    let cpp = cpp(concat!(
+        "struct Edge(to: Int, w: Int)\n",
+        "struct Tag(c: Char)\n",
+        "var best: ?Edge = none\n",
+        "best = Edge(3, 4)\n",
+        "var t: ?Tag = none\n",
+        "t = Tag('a')\n",
+        "print(best == none, t == none)\n",
+    ));
+    assert!(
+        cpp.contains("cpl::OptField<&Edge::to> best"),
+        "{cpp}"
+    );
+    // A `Char` has no free value, so `?Tag` keeps its flag.
+    assert!(cpp.contains("std::optional<Tag> t"), "{cpp}");
+}
+
+#[test]
 fn an_optional_tuple_with_a_position_has_no_flag() {
     let cpp = cpp(concat!(
         "let n: Int = read()\n",

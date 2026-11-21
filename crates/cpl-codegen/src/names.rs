@@ -176,6 +176,19 @@ pub(crate) struct Niches {
     pub chars: bool,
 }
 
+/// `?S` for a struct with a field whose type has a niche no value of it
+/// holds (an `Int` at `INT64_MIN`, a position at -1) stores `none` there,
+/// so it is as wide as `S` (decision 28.10). A field narrowed below 64 bits
+/// has no free value, so it is passed over.
+pub(crate) fn struct_niche(program: &Program, id: usize) -> Option<&str> {
+    let def = &program.structs[id];
+    def.fields.iter().enumerate().find_map(|(at, (name, ty))| match ty {
+        Ty::Int if !def.narrow_ints.contains_key(&at) => Some(name.as_str()),
+        Ty::Pos(_) | Ty::Bound(_) => Some(name.as_str()),
+        _ => None,
+    })
+}
+
 /// The C++ type of a value of type `ty`.
 pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
@@ -220,6 +233,10 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
                     None => format!("std::optional<{held}>"),
                 }
             }
+            Ty::Struct(id) => match struct_niche(program, id) {
+                Some(field) => format!("cpl::OptField<&{}::{}>", ident(&program.structs[id].name), ident(field)),
+                None => format!("std::optional<{}>", cty(program, niches, inner)),
+            },
             _ => format!("std::optional<{}>", cty(program, niches, inner)),
         },
         Ty::Tuple(items) => {

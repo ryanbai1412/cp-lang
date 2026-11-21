@@ -549,6 +549,32 @@ template <class T, size_t K> struct OptTuple {
 ",
     },
     Piece {
+        name: "niche_field",
+        needs: &[],
+        code: "\
+// `?S` with no flag: S's field M (an Int or a position) never holds NONE.
+template <class P> struct Member;
+template <class S0, class F0> struct Member<F0 S0::*> { using S = S0; using F = F0; };
+template <auto M> struct OptField {
+    using S = typename Member<decltype(M)>::S;
+    using F = typename Member<decltype(M)>::F;
+    static constexpr F NONE = sizeof(F) == 8 ? F(-0x7fffffffffffffffLL - 1) : F(-1);
+    S raw = empty();
+    static S empty() { S s{}; s.*M = NONE; return s; }
+    OptField() = default;
+    explicit OptField(const S& x) : raw(x) {}
+    explicit OptField(const std::optional<S>& o) : raw(o ? *o : empty()) {}
+    bool has_value() const { return raw.*M != NONE; }
+    explicit operator bool() const { return has_value(); }
+    const S& operator*() const { return raw; }
+    S& operator*() { return raw; }
+    explicit operator std::optional<S>() const { return *this ? std::optional<S>(raw) : std::nullopt; }
+    friend bool operator==(const OptField& a, const OptField& b) { return a.raw.*M == b.raw.*M && (!a || a.raw == b.raw); }
+    friend bool operator!=(const OptField& a, const OptField& b) { return !(a == b); }
+};
+",
+    },
+    Piece {
         name: "niche_int",
         needs: &["niche"],
         code: "\

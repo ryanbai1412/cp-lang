@@ -2092,6 +2092,24 @@ right line 99.7% before and after, `E0303` 17 → 0 and `E0305` 13 → 0 as firs
   `BLESS=1` rewrites them. *Reason:* the rendered text is what the contestant reads, including help
   lines and spans, so that is what is pinned. *Reversible:* delete the directory and `diagnostics.rs`.
 
+- **28.10 A struct's `?` borrows a field's niche; no `Niche` trait.** `?S`
+  for a struct with an `Int` field (not narrowed below 64 bits) or a
+  position field stores `none` as that field at `INT64_MIN` or -1, the
+  value no `S` holds (decision 49.1), so `?Edge` is as wide as `Edge`: 16
+  bytes for `Edge(to: Int, w: Int)`, not 24. The first such field is used,
+  fixed per type (spec 22: niches are fixed per type, never per use). It
+  majorizes `std::optional<S>` (narrower, same operations), so it is
+  implicit. A user `Niche` trait naming a `none` value was rejected: every
+  struct that has a free value already has one in a field, and a trait would
+  let a library claim a value its own code can produce, turning a wrong
+  `none` into silent corruption. Interpreter unchanged. Measured (`scoreboard.py
+  --full`, 7 runs, same machine): `cf2147f` 604 -> 420 ms (2.84x -> 1.80x
+  matched C++), RSS 24.2 -> 19.9 MB; `cf2057d` RSS 9.9 -> 8.7 MB. Emitted C++
+  grows about 1.1 KB on the six ports that use it (the `OptField` runtime
+  piece), so the baseline was rewritten. Reverse: drop the
+  `Ty::Struct` arm of `Ty::Opt` in `cpl-codegen/src/names.rs` and the
+  `niche_field` runtime piece.
+
 - **30.7 Dreams are a diagnostics corpus.** `scripts/dream-gaps.py` checks every
   `proto/ports/*/dream/*.cp` and files each error under the gap it names: `syntax:` (an `E0504`
   feature), `library:` (a name, module or method "not in the stdlib (yet)"), `import:` (a stdlib name
