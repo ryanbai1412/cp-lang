@@ -1,4 +1,4 @@
-// Codeforces 2180 F1: Control Car (Hard Version) (dream).
+// Codeforces 2180 F2: Control Car (Hard Version) (dream).
 // Follow the car through an unbounded grid, choosing each corner only when the
 // car first needs it. Two inherited corners say whether the floor and the right
 // wall of the cell are shut; the fresh bottom-right corner decides the move.

@@ -9,16 +9,20 @@
 // the n x m grid iff it stops in a cell (i, j) with i < n, j < m. For a fixed
 // n the count is a linear recurrence in m: tabulate 600 columns and extend it.
 use std.spec.{guess_at}
+
 type Z = Mod<1_000_000_007>
+type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
+
+// Distribute counts across (floor shut?, wall shut?): open edge gets fo/wo, shut gets 1.
+fn state(o: Z, s: Z, fo: Int, wo: Int) -> Ways = (o * (fo * wo), o * fo, s * wo, s)
 
 domain I = 0..50
 domain J = 0..600
 
 // ways[j]: corner choices so far that bring the car into (i, j), split by
 // which of floor and wall are shut.
-type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
 var ways: [J]Ways = (0, 0, 0, 0)
-ways[J.first] = (9, 3, 3, 1)
+ways[J.first] = state(1, 1, 3, 3)
 // A stop in (i, j) has chosen 2(i + j) + 3 corners.
 let quarter = Z(1) / 4
 let weight = [quarter ** (2 * d + 3) for d in 0..I.len + J.len]
@@ -31,9 +35,9 @@ for i in I:
         let (open, walled, shut) = (w.open + side.open, w.walled + side.walled, w.shut + side.shut)
         run += (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.to_idx + j.to_idx]
         let falls = open + walled
-        ways[j] = (6 * falls, 3 * falls, 2 * falls, falls)
+        ways[j] = state(falls, falls, 3, 2)
         let slides = open + 2 * shut
-        side = (3 * slides, slides, 3 * shut, shut)
+        side = state(slides, shut, 1, 3)
         stopped[i, j] = run + (if i == I.first: 0 else: stopped[(i - 1)!, j])
 
 @!multitest
