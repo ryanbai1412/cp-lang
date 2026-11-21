@@ -2826,3 +2826,14 @@ visits children first, and `t.sub(v)` is a range of `t.Pre`. `preorder` and
 `postorder` go away, with a `cpl fix` codemod. A true postorder (siblings
 in order) is rarely needed in contest code; it stays `t.Pre.rev` until a port
 shows it matters. Reverse by restoring `postorder` as an alias.
+||||||| Stash base
+
+
+## 65. `aliens` is generic over the slope type (2026-11-21)
+
+`std.dp.aliens<L>` searches `Range<L>` and returns `L`, so `I128` slopes work
+(cf2183h's reach about 8e19). Exact ties are the caller's job: scale each
+edge by (max count + 1) and add 1, which keeps Monge and makes the least
+count win, instead of a half-integer penalty with interpolation in the
+library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
+

@@ -216,8 +216,9 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// `solve(λ)` is the least `f(c) + λ * c` over every count `c`, and the least
 /// `c` attaining it. Law: `f` is convex (`std.spec.convexity_break`), and the
 /// first `λ` of `lambdas` gives a count of at most `k` somewhere in the range
-/// (the counts fall as `λ` grows). O(log lambdas.len) calls of `solve`.
-pub fn aliens(k: Int, lambdas: Range<Int>, solve: Int -> (val: Int, count: Int)) -> Int:
+/// (the counts fall as `λ` grows). `L` is the value type (`Int`, `I128`).
+/// O(log lambdas.len) calls of `solve`.
+pub fn aliens<L>(k: Int, lambdas: Range<L>, solve: L -> (val: L, count: Int)) -> L:
     let lam = bsearch_first(lambdas, l => solve(l).count <= k)!
     solve(lam).val - lam * k
 
@@ -341,6 +342,18 @@ fn aliens_finds_the_exact_count_optimum():
             count: sum(1 for v in vals if v + lam < 0),
         )
         assert aliens(k, -21..=21, solve) == sum(vals[i] for i in 0..k)
+
+@test
+fn aliens_searches_a_wide_i128_slope_range():
+    let big = I128(1_000_000_000_000) * I128(1_000_000_000_000)
+    for _ in 0..20:
+        let vals = sorted([big * rand(-10, 10) for _ in 0..rand(1, 8)])
+        let k = rand(0, vals.len)
+        fn solve(lam: I128) -> (val: I128, count: Int) = (
+            val: sum(min(I128(0), v + lam) for v in vals),
+            count: sum(1 for v in vals if v + lam < 0),
+        )
+        assert aliens(k, -big * 21..=big * 21, solve) == sum(vals[i] for i in 0..k)
 
 @test
 fn subset_sums_are_every_sum_sorted():

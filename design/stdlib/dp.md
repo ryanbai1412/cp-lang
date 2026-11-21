@@ -144,8 +144,8 @@ fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>
     // dp[i][i + 1] = 0, dp[i][j] = cost(i, j) + min over i < k < j of
     // dp[i][k] + dp[k][j]. Law: cost is monotone and satisfies the
     // quadrangle inequality (std.spec.knuth_break).
-fn aliens(k: Int, lambdas: Range<Int>, solve: Int -> (val: Int, count: Int))
-    -> Int
+fn aliens<L>(k: Int, lambdas: Range<L>, solve: L -> (val: L, count: Int))
+    -> L
     // O(log lambdas.len) calls of solve. f(k) for a convex f, where
     // solve(λ) is min over c of f(c) + λ c and the least c attaining it.
     // Law: f is convex in k; λ in lambdas reaches count <= k.

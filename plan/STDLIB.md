@@ -1552,8 +1552,8 @@ fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>
 fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>)
     // O(n log n) calls; shortest 0 -> i over Monge edges j -> i, j < i
 fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>> // O(n^2)
-fn aliens(k: Int, lambdas: Range<Int>, solve: Int -> (val: Int, count: Int))
-    -> Int                                    // O(log) calls of solve
+fn aliens<L>(k: Int, lambdas: Range<L>, solve: L -> (val: L, count: Int))
+    -> L                                    // O(log) calls of solve
 fn subset_sums(xs: List<Int>) -> List<Int>    // O(2^n), sorted
 // sums over subsets / supersets: std.ntt.sos(mut f, over: Sub | Sup = Sub, inverse: Bool = false) (4.5)
 ```
