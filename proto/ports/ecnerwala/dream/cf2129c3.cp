@@ -42,8 +42,7 @@ fn ask(inds: Seq<Pos>) -> Int:
     print("?", inds.len, inds)
     read()
 
-let open_i = (Pos(2)..=Pos.last!).first_true(p => ask(Pos.first!..=p) > 0)
-    .map(r => r.prev!) ?? Pos.last
+let open_i = (Pos(2)..=Pos.last!).bsearch(p => ask(Pos.first!..=p) > 0).l!
 
 var ans: [Pos]Char = '?'
 for inds in Pos.chunks_padded(blk, pad: Pos.last):

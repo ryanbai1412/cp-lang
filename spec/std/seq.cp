@@ -123,10 +123,10 @@ pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 
 /// The stretches of equal neighbours (or equal `by:` keys), in order:
-/// `"aabccc".runs()` is `[('a', 2), ('b', 1), ('c', 3)]`, and
-/// `["ab", "ac", "b"].runs(by: s => s[0])` is `[('a', 2), ('b', 1)]`.
-/// Works on any `Seq` (`Str`, `List<T>`, `[D]T`, `Range<I>`, and O(1) views) without conversion. O(n).
-pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<(val: K, len: Int)> = todo
+/// each a slice of `self`: `"aabccc".runs()` walks `"aa"`, `"b"`, `"ccc"`, and
+/// `[r.len for r in s.runs()]` is `[2, 1, 3]`. Each run's `.keys` is its range and
+/// `r[r.keys.first!]` its key. O(1) to make, O(n) to walk.
+pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S> = todo
 
 /// Group indices of `D` by their key in `K`, preserving order within each bucket. O(|D| + |K|).
 pub fn buckets<D, K>(key: [D]K) -> [K]List<D> = todo

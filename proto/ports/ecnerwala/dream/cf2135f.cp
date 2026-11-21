@@ -29,10 +29,9 @@ var order: List<V> = []
 for g in 0..n:
     for v in by_gen[g]:
         if let (l, r) = kids[v]: set[v] = set[l].with(key[r])
-    let ranked = by_gen[g].sort(cmp: (u, v) => set[u].cmp(set[v], desc: true) then u <=> v)
-    let groups = ranked.runs_by(v => set[v])
-    for (r, (_, run)) in groups.items:
-        for v in run: key[v] = next_key + r
-    next_key += groups.len
+    let ranked = by_gen[g].sorted(by: u => (desc(set[u]), u))
+    for run in ranked.runs(by: v => set[v]):
+        for v in run: key[v] = Key(next_key)
+        next_key += 1
     order.extend(ranked)
 print(order)

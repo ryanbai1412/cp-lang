@@ -46,7 +46,7 @@ let best = (1..=n)
 // Enumerate the `n` cheapest d-tuples in reverse lex order.
 fn cheapest_tuples(plan: Plan) -> List<List<Int>>:
     var out: List<List<Int>> = []
-    var cur: List<Int> = [0; plan.d]
+    var cur: List<Int> = [0 for _ in 0..plan.d]
     var max_w_left = plan.max_w_cnt
     fn gen(layer: Int, used_w: Int):
         if layer == plan.d:
@@ -63,13 +63,13 @@ fn cheapest_tuples(plan: Plan) -> List<List<Int>>:
 
 let tuples = cheapest_tuples(best)
 domain Pos = 1..=n
-let pos_of = [Pos] i => Pos(n - i.ord)
+let pos_of = (idx: Int) => Pos(n - idx)
 
 var layer_ops: [0..best.d]List<(Pos, Int)> = []
 for cl in 0..best.d:
-    var group_start = pos_of[0]
+    var group_start = pos_of(0)
     for (idx, t) in tuples.items:
-        let pos = pos_of[idx]
+        let pos = pos_of(idx)
         if idx > 0 and tuples[idx - 1][..cl] != t[..cl]:
             group_start = pos
         if pos != group_start:
