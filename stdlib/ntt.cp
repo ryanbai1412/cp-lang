@@ -32,73 +32,79 @@ fn ntt_raw(mut a: List<Int>, p: Int, g: Int, inverse: Bool):
     if n <= 1: return
     assert (p - 1) % n == 0, "modulus p - 1 must be divisible by n"
     // Bit-reversal permutation
-    var j = 0
-    for i in 1..n:
-        var bit = n >> 1
-        while (j & bit) != 0:
+    unchecked:
+        var j = 0
+        for i in 1..n:
+            var bit = n >> 1
+            while (j & bit) != 0:
+                j ^= bit
+                bit >>= 1
             j ^= bit
-            bit >>= 1
-        j ^= bit
-        if i < j: swap(mut a[i], mut a[j])
+            if i < j:
+                let tmp = a[i]
+                a[i] = a[j]
+                a[j] = tmp
     // Fast Montgomery path for primes p < 2^30 (no hardware division in butterflies)
     if p < 1_073_741_824:
         let pinv = mont_inv(p)
         let r1 = (1 << 32) % p
         let r2 = r1 * r1 % p
-        for i in 0..n: a[i] = mred(a[i] * r2, p, pinv)
         var roots = List.filled(n >> 1, 0)
+        unchecked:
+            for i in 0..n: a[i] = mred(a[i] * r2, p, pinv)
+            var len = 2
+            while len <= n:
+                let half = len >> 1
+                var wlen = pow_mod(g, (p - 1) / len, p)
+                if inverse: wlen = pow_mod(wlen, p - 2, p)
+                let wlen_m = mred(wlen * r2, p, pinv)
+                roots[0] = r1
+                for k in 1..half: roots[k] = mred(roots[k - 1] * wlen_m, p, pinv)
+                var i = 0
+                while i < n:
+                    for k in 0..half:
+                        let u = a[i + k]
+                        let v = mred(a[i + k + half] * roots[k], p, pinv)
+                        var x = u + v
+                        if x >= p: x -= p
+                        var y = u - v
+                        if y < 0: y += p
+                        a[i + k] = x
+                        a[i + k + half] = y
+                    i += len
+                len <<= 1
+            if inverse:
+                let inv_n = pow_mod(n, p - 2, p)
+                for i in 0..n: a[i] = mred(a[i] * inv_n, p, pinv)
+            else:
+                for i in 0..n: a[i] = mred(a[i], p, pinv)
+        return
+    // General path for large primes p >= 2^30
+    let small = p <= 3_037_000_499
+    unchecked:
         var len = 2
         while len <= n:
             let half = len >> 1
             var wlen = pow_mod(g, (p - 1) / len, p)
             if inverse: wlen = pow_mod(wlen, p - 2, p)
-            let wlen_m = mred(wlen * r2, p, pinv)
-            roots[0] = r1
-            for k in 1..half: roots[k] = mred(roots[k - 1] * wlen_m, p, pinv)
             var i = 0
             while i < n:
+                var w = 1
                 for k in 0..half:
                     let u = a[i + k]
-                    let v = mred(a[i + k + half] * roots[k], p, pinv)
+                    let v = if small: a[i + k + half] * w % p else: mul_mod(a[i + k + half], w, p)
                     var x = u + v
                     if x >= p: x -= p
                     var y = u - v
                     if y < 0: y += p
                     a[i + k] = x
                     a[i + k + half] = y
+                    w = if small: w * wlen % p else: mul_mod(w, wlen, p)
                 i += len
             len <<= 1
         if inverse:
             let inv_n = pow_mod(n, p - 2, p)
-            for i in 0..n: a[i] = mred(a[i] * inv_n, p, pinv)
-        else:
-            for i in 0..n: a[i] = mred(a[i], p, pinv)
-        return
-    // General path for large primes p >= 2^30
-    let small = p <= 3_037_000_499
-    var len = 2
-    while len <= n:
-        let half = len >> 1
-        var wlen = pow_mod(g, (p - 1) / len, p)
-        if inverse: wlen = pow_mod(wlen, p - 2, p)
-        var i = 0
-        while i < n:
-            var w = 1
-            for k in 0..half:
-                let u = a[i + k]
-                let v = if small: a[i + k + half] * w % p else: mul_mod(a[i + k + half], w, p)
-                var x = u + v
-                if x >= p: x -= p
-                var y = u - v
-                if y < 0: y += p
-                a[i + k] = x
-                a[i + k + half] = y
-                w = if small: w * wlen % p else: mul_mod(w, wlen, p)
-            i += len
-        len <<= 1
-    if inverse:
-        let inv_n = pow_mod(n, p - 2, p)
-        for i in 0..n: a[i] = if small: a[i] * inv_n % p else: mul_mod(a[i], inv_n, p)
+            for i in 0..n: a[i] = if small: a[i] * inv_n % p else: mul_mod(a[i], inv_n, p)
 
 fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int>:
     if a.is_empty or b.is_empty: return []
@@ -151,16 +157,81 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false):
     let n = a.len
     assert n.is_pow2, "ntt requires a power-of-two length"
     if n <= 1: return
-    var raw = [x.v for x in a]
-    ntt_raw(mut raw, P, root_of(P), inverse)
-    for i in 0..n: a[i] = Mod<P>(raw[i])
+    assert (P - 1) % n == 0, "modulus p - 1 must be divisible by n"
+    let g = root_of(P)
+    var roots = List.filled(n >> 1, Mod<P>(1))
+    unchecked:
+        var j = 0
+        for i in 1..n:
+            var bit = n >> 1
+            while (j & bit) != 0:
+                j ^= bit
+                bit >>= 1
+            j ^= bit
+            if i < j:
+                let tmp = a[i]
+                a[i] = a[j]
+                a[j] = tmp
+        var len = 2
+        while len <= n:
+            let half = len >> 1
+            var wlen = Mod<P>(pow_mod(g, (P - 1) / len, P))
+            if inverse: wlen = wlen.inv
+            roots[0] = Mod<P>(1)
+            for k in 1..half: roots[k] = roots[k - 1] * wlen
+            var i = 0
+            while i < n:
+                for k in 0..half:
+                    let u = a[i + k]
+                    let v = a[i + k + half] * roots[k]
+                    a[i + k] = u + v
+                    a[i + k + half] = u - v
+                i += len
+            len <<= 1
+        if inverse:
+            let inv_n = Mod<P>(n).inv
+            for i in 0..n: a[i] = a[i] * inv_n
 
 /// Convolution of `a` and `b` over `Mod<P>`. O(n log n) via NTT (O(na * nb) when small).
 /// With `cyclic: true`, requires `a.len == b.len` and wraps indices modulo `a.len`.
 pub fn convolve<P>(a: List<Mod<P>>, b: List<Mod<P>>, cyclic: Bool = false) -> List<Mod<P>>:
     if a.is_empty or b.is_empty: return []
-    let raw = convolve_prime([x.v for x in a], [x.v for x in b], P, cyclic)
-    [Mod<P>(x) for x in raw]
+    let na = a.len
+    let nb = b.len
+    if cyclic:
+        assert na == nb, "cyclic convolution requires equal-length inputs"
+    let n_out = if cyclic: na else: na + nb - 1
+    if min(na, nb) <= 60:
+        var out = List.filled(n_out, Mod<P>(0))
+        unchecked:
+            for i in 0..na:
+                let ai = a[i]
+                if ai.v == 0: continue
+                for j in 0..nb:
+                    let idx = if cyclic: (i + j) % na else: i + j
+                    out[idx] = out[idx] + ai * b[j]
+        return out
+    let need = if cyclic and na.is_pow2 and (P - 1) % na == 0: na else: bit_ceil(na + nb - 1)
+    var fa = List.filled(need, Mod<P>(0))
+    var fb = List.filled(need, Mod<P>(0))
+    unchecked:
+        for i in 0..na: fa[i] = a[i]
+        for i in 0..nb: fb[i] = b[i]
+    ntt(mut fa)
+    ntt(mut fb)
+    unchecked:
+        for i in 0..need: fa[i] = fa[i] * fb[i]
+    ntt(mut fa, inverse: true)
+    if not cyclic:
+        if fa.len > n_out: fa.truncate(n_out)
+        return fa
+    if need == na: return fa
+    var out = List.filled(na, Mod<P>(0))
+    unchecked:
+        for i in 0..na + nb - 1:
+            let idx = i % na
+            out[idx] = out[idx] + fa[i]
+    out
 
 /// Convolution of integer lists modulo an arbitrary modulus `m >= 1` via 3-prime NTT + Garner CRT.
 /// Exact for `m <= 10^9 + 7` and `a.len + b.len <= 2^23`. O(n log n).
