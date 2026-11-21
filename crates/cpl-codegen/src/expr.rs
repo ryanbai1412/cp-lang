@@ -421,6 +421,7 @@ impl<'p> Emitter<'p> {
                 let inner = self.expr(inner).text;
                 Code::primary(format!("{}({inner})", self.ty(&e.ty)))
             }
+            ExprKind::Local(_) if e.ty == Ty::Unit => Code::primary("void()"),
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
             ExprKind::Global(id) => Code::primary(ident(&program.globals[*id].name)),
             ExprKind::Unary(op, inner) => {
