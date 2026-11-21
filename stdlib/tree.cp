@@ -435,21 +435,26 @@ pub struct Rooted<V, Pre>:
     /// `vt.at[x]` is the vertex, `vt.up[x]` its nearest kept ancestor, `vt.len[x]` the weighted
     /// distance to it (0 at the top) and `vt.key[x]` whether it is a key. O(k log k + k log n).
     pub fn virtual(self, keys: List<V>):
-        var ks = [tin[v] for v in keys]
+        var ks = List<Pre>()
+        ks.reserve(keys.len)
+        for v in keys: ks.push(tin[v])
         ks.sort()
         dedup(mut ks)
-        var ps = ks.copy()
+        var ps = List<Pre>()
+        ps.reserve(2 * ks.len)
+        for p in ks: ps.push(p)
         for i in 1..ks.len: ps.push(tin[self.lca(at[ks[i - 1]], at[ks[i]])])
         ps.sort()
         dedup(mut ps)
         domain K = 0..ps.len
-        let vs = [K] x => at[ps[x.ord]]
+        var vs: [K]V = self.root
         var up: [K]?K = none
         var len: [K]Int = 0
         var key: [K]Bool = false
         var st = List<K>()
         var j = 0
         for x in K:
+            vs[x] = at[ps[x.ord]]
             if j < ks.len and ks[j] == ps[x.ord]:
                 key[x] = true
                 j += 1

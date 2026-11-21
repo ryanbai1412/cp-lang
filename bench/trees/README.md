@@ -107,7 +107,58 @@ push match it.
 then per query build the virtual tree of k random keys (sort by preorder,
 dedupe, add adjacent LCAs, sort and dedupe, link with a stack) and sum all
 pairwise key distances in one bottom-up pass. Input:
-`python3 virtual_gen.py n q k seed`. Best of five, outputs identical:
+`python3 virtual_gen.py n q k seed`. Best of seven, outputs identical:
+
+| input | C++ | CP Lang | ratio | C++ RSS | CP Lang RSS |
+|---|---:|---:|---:|---:|---:|
+| n = 2·10^5, q = 10^5, k = 10, seed 1 | 0.223 s | 0.231 s | 1.04x | 14 MB | 18 MB |
+| the same, seed 2 (long chains) | 0.164 s | 0.180 s | 1.10x | 14 MB | 18 MB |
+| n = 10^6, q = 10^3, k = 10^3, seed 2 | 0.444 s | 0.401 s | 0.90x | 56 MB | 80 MB |
+
+`virtual` builds its key list and candidate list with `List.reserve`, so
+neither a comprehension copy nor a growth reallocation runs per query; that
+took the small-k cases from 1.12x and 1.18x to the numbers above.
+
+## `LinkCut`
+
+`lct_bench.cp` and `lct_bench.cpp` run the same splay-based link-cut tree
+(path sums, re-rooting by a reversal flag, an explicit push stack) on
+`python3 lct_gen.py 200000 1000000 1`: n = 2 * 10^5 vertices and 10^6
+operations, a third each of `set`, cut-and-relink and `fold_path`.
+
+Both check what `std.tree` checks: `link` traps when the vertices are already
+connected (one `root_of`, as KACTL's `assert(!connected(u, v))`) and `cut`
+traps when the edge is missing.
+
+| C++ | CP Lang | ratio | C++ RSS | CP Lang RSS |
+|---:|---:|---:|---:|---:|
+| 1.17 s | 1.18 s | 1.01x | 9 MB | 47 MB |
+
+Best of seven, outputs identical. The generated splay, rotate and pull match
+the C++ line for line (optional links are `-1`-niche ints, the monoid op is a
+direct call); without the `link` check the C++ runs in 0.94 s, and so does
+the generated C++ with that one call deleted. The RSS gap is CP Lang reading
+the 21 MB input in one buffer.
+
+`lazy_lct_bench.{cp,cpp}` replace `set` by `apply_path(u, v, x)` (add `x` along
+the path, both with a subtree count per splay node) on `python3 lct_gen.py
+200000 1000000 SEED lazy`. Best of three, outputs identical:
+
+| seed | C++ | CP Lang | C++ RSS | CP Lang RSS |
+|---:|---:|---:|---:|---:|
+| 1 | 2.11 s | 1.82 s | 11 MB | 21 MB |
+| 2 | 2.12 s | 2.05 s | 11 MB | 18 MB |
+
+The C++ reads with `scanf`, as in `lct_bench.cpp`; the generated splay and
+push match it.
+
+## `Rooted.virtual`
+
+`virtual_bench.cp` and `virtual_bench.cpp` build the tree as `root_bench` does,
+then per query build the virtual tree of k random keys (sort by preorder,
+dedupe, add adjacent LCAs, sort and dedupe, link with a stack) and sum all
+pairwise key distances in one bottom-up pass. Input:
+`python3 virtual_gen.py n q k seed`. Best of seven, outputs identical:
 
 | input | C++ | CP Lang | ratio | C++ RSS | CP Lang RSS |
 |---|---:|---:|---:|---:|---:|
