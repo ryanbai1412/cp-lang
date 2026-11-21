@@ -364,10 +364,10 @@ impl Server {
                     .db
                     .analyze(&def.path)
                     .expect("definition implies an analysis");
-                let target_uri = if def.path.starts_with("file://") || def.path == uri {
+                let target_uri = if def.path == uri {
                     def.path.clone()
                 } else {
-                    format!("file://{}", def.path)
+                    uri_of_path(&def.path)
                 };
                 Ok(Reply::result(obj([
                     ("uri", target_uri.into()),
@@ -376,6 +376,52 @@ impl Server {
                         range_json(def.span, &analysis.text, &analysis.lines),
                     ),
                 ])))
+            }
+            "workspace/symbol" => {
+                let query = params.get("query").as_str().unwrap_or("").to_lowercase();
+                let mut paths: Vec<String> = self.docs.keys().cloned().collect();
+                for uri in self.docs.keys() {
+                    if let Some(analysis) = self.db.analyze(uri) {
+                        paths.extend(analysis.modules().iter().map(|m| m.path.clone()));
+                    }
+                }
+                let mut seen = std::collections::HashSet::new();
+                paths.retain(|p| seen.insert(p.clone()));
+                let mut items = Vec::new();
+                for path in &paths {
+                    let Some(analysis) = self.db.analyze(path) else {
+                        continue;
+                    };
+                    let uri = if self.docs.contains_key(path) {
+                        path.clone()
+                    } else {
+                        uri_of_path(path)
+                    };
+                    for s in self.db.symbols(path) {
+                        let library = !self.docs.contains_key(path);
+                        if s.kind == DeclKind::Impl
+                            || (library && !s.public)
+                            || !fuzzy(&query, &s.name.to_lowercase())
+                        {
+                            continue;
+                        }
+                        items.push(obj([
+                            ("name", s.name.as_str().into()),
+                            ("kind", symbol_kind(s.kind).into()),
+                            (
+                                "location",
+                                obj([
+                                    ("uri", uri.as_str().into()),
+                                    (
+                                        "range",
+                                        range_json(s.name_span, &analysis.text, &analysis.lines),
+                                    ),
+                                ]),
+                            ),
+                        ]));
+                    }
+                }
+                Ok(Reply::result(Value::Array(items)))
             }
             "textDocument/documentSymbol" => {
                 let uri = uri_of(params)?;
@@ -603,6 +649,7 @@ fn capabilities() -> Value {
                 ("referencesProvider", true.into()),
                 ("renameProvider", obj([("prepareProvider", true.into())])),
                 ("documentSymbolProvider", true.into()),
+                ("workspaceSymbolProvider", true.into()),
                 ("documentHighlightProvider", true.into()),
                 ("foldingRangeProvider", true.into()),
                 (
@@ -894,6 +941,21 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
         members.push(("relatedInformation".to_string(), related.into()));
     }
     Value::Object(members)
+}
+
+fn uri_of_path(path: &str) -> String {
+    if path.contains("://") {
+        path.to_string()
+    } else {
+        format!("file://{path}")
+    }
+}
+
+/// Whether `query`'s characters appear in `name` in order, as editors'
+/// symbol pickers match: `fw` finds `Fenwick`.
+fn fuzzy(query: &str, name: &str) -> bool {
+    let mut rest = name.chars();
+    query.chars().all(|q| rest.any(|c| c == q))
 }
 
 fn symbol_kind(kind: DeclKind) -> u32 {

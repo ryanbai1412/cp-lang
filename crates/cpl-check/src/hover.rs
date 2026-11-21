@@ -40,6 +40,8 @@ pub struct Symbol {
     pub span: Span,
     /// Just the name.
     pub name_span: Span,
+    /// Whether other modules may import it.
+    pub public: bool,
 }
 
 impl Database {
@@ -140,6 +142,7 @@ fn symbols(analysis: &Analysis) -> Vec<Symbol> {
                     kind: decl.kind,
                     span: item.span,
                     name_span: decl.span.shift(item.offset),
+                    public: decl.public,
                 });
             }
         }

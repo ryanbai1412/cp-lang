@@ -1340,3 +1340,40 @@ fn semantic_tokens_classify_what_each_name_resolves_to() {
     has("v", 5, 3); // the parameter
     has("bump", 1, 0); // the call
 }
+
+#[test]
+fn workspace_symbols_find_names_in_open_files_and_the_stdlib_they_use() {
+    let src = "use std.fenwick.{Fenwick}\nlet total = 3\nfn twice(x: Int) -> Int = 2 * x\nprint(twice(total))\n";
+    let (mut server, _) = open(src);
+    let found = |server: &mut Server, query: &str| -> Vec<(String, String)> {
+        let reply = server.handle(&request(
+            33,
+            "workspace/symbol",
+            obj([("query", query.into())]),
+        ));
+        reply[0]
+            .get("result")
+            .as_array()
+            .iter()
+            .map(|s| {
+                (
+                    s.get("name").as_str().unwrap().to_string(),
+                    s.at(&["location", "uri"]).as_str().unwrap().to_string(),
+                )
+            })
+            .collect()
+    };
+    assert_eq!(
+        found(&mut server, "twc"),
+        [("twice".to_string(), URI.to_string())]
+    );
+    let fenwick = found(&mut server, "Fenw");
+    assert!(
+        fenwick.iter().any(|(name, uri)| name == "Fenwick"
+            && uri.starts_with("file://")
+            && uri.ends_with(".cp")
+            && uri != URI),
+        "{fenwick:?}"
+    );
+    assert!(found(&mut server, "").len() > fenwick.len());
+}

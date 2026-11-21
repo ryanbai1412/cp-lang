@@ -1665,6 +1665,13 @@ comments stay with each editor's grammar, which already has them, and a name the
 resolve gets no token, so the grammar's colour shows. Reverse: drop `semantic_tokens` and the
 `semanticTokensProvider` capability in `crates/cpl-lsp/src/server.rs`.
 
+29.5. **Workspace symbols search the open files and the modules they use, not the disk.** The
+server has no project root of its own (a contest folder is a pile of single files), and what a
+contestant looks for is in what they have open or import; a library module offers only its `pub`
+names, so its tests and helpers don't crowd the picker. Matching is an in-order subsequence, as
+editors' pickers expect. Reverse: walk the workspace folders from `initialize` instead of `docs`
+in the `workspace/symbol` arm of `crates/cpl-lsp/src/server.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six

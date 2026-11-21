@@ -390,7 +390,8 @@ diagnostics on open and on incremental change, hover, definition (into
 rename within a file, document symbols, document highlights, folding
 (blocks, comment runs, imports), semantic tokens (each resolved name as a
 type, fn, method, field, variable or parameter, marking declarations and
-immutable bindings), formatting, completion (members
+immutable bindings), workspace symbols (fuzzy, over open files and the
+public names of every module they use), formatting, completion (members
 after `.`, names in scope, `use std.`), signature help, inlay hints
 (unwritten types, parameter names of literal arguments) and quick fixes
 from diagnostic fixes; a panic becomes an error reply plus an
@@ -406,7 +407,7 @@ total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; no proven range of an
 expression; no inlay hints for index spaces or ranges;
-no workspace symbols; no cost or
+ no cost or
 overflow warnings; rename is one file; no refactorings or "fix all"; no
 expected-type ranking or auto-import; run/test/trace exist only in the VS
 Code client; no JetBrains plugin, no fixture tests, fuzzer, DAP or
