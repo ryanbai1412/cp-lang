@@ -1,12 +1,8 @@
 // Codeforces 2201 E: ABBA Counting.
-use lib.math.poly.{Z, convolve}
 use std.math.{divisors, factor}
+use std.ntt.{convolve_int}
 
-fn cyclic_convolve(a: List<Z>, b: List<Z>, len: Int) -> List<Z>:
-    let prod = convolve(a, b)
-    var res: [0..len]Z = 0
-    for i in 0..prod.len: res[i % len] += prod[i]
-    res
+type Z = Mod<998_244_353>
 
 @!multitest
 let n: Int = read()
@@ -29,10 +25,10 @@ var ans: Z = 0
                 if let prev = s[z][i], prev != c: continue 'divisor
                 s[z][i] = c
 
-    var sign0: [0..len]Z = 0
-    var sign1: [0..len]Z = 0
-    var fix0: [0..len]Z = 0
-    var fix1: [0..len]Z = 0
+    var sign0: [0..len]Int = 0
+    var sign1: [0..len]Int = 0
+    var fix0: [0..len]Int = 0
+    var fix1: [0..len]Int = 0
     var tot_fix = 0
     for i in 0..len:
         if let c = s[0][i]:
@@ -44,15 +40,13 @@ var ans: Z = 0
             fix1[i] = 1
             tot_fix += 1
 
-    let diff_conv = cyclic_convolve(sign0, sign1, len)
-    let both_conv = cyclic_convolve(fix0, fix1, len)
-    var ways: Z = 0
-    for i in 0..len:
-        if diff_conv[i] == both_conv[i]:
-            ways += pow2[len - tot_fix + both_conv[i].v]
+    let diff_conv = convolve_int(sign0, sign1, cyclic: true)
+    let both_conv = convolve_int(fix0, fix1, cyclic: true)
+    let ways = sum(
+        pow2[len - tot_fix + both_conv[i]] for i in 0..len if diff_conv[i] == both_conv[i]
+    )
 
-    var w: Z = 1
-    for (p, _) in factor(f): w *= 1 - p
+    let w = prod(Z(1 - p) for (p, _) in factor(f))
     ans += ways * w
 
 print(ans)

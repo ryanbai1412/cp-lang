@@ -158,41 +158,33 @@ pub struct Sieve:
         out
 
 /// Tabulate any multiplicative function `f` on `1..=n` in O(n) via a linear sieve.
-/// `f(1) = one`, `f(a * b) = mul(f(a), f(b))` for coprime `a, b`, and
-/// `f(p^e) = prime_pow(p, e, p^e)`. Index 0 holds `one`.
-pub fn sieve_multiplicative<T>(
-    n: Int,
-    one: T,
-    mul: (T, T) -> T,
-    prime_pow: (Int, Int, Int) -> T,
-) -> List<T>:
+/// `f(1) = T.one`, `f(a * b) = f(a) * f(b)` for coprime `a, b`, and
+/// `f(p^e) = prime_pow(p, e, p^e)`. Index 0 holds `T.one`.
+pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>:
     assert n >= 0
-    var res = List.filled(n + 1, one)
+    var res = List.filled(n + 1, T.one)
     var spf = List.filled(n + 1, 0)
-    var low_pp = List.filled(n + 1, 0)
-    var low_exp = List.filled(n + 1, 0)
     var primes = List<Int>()
     for i in 2..=n:
         if spf[i] == 0:
-            spf[i] = i
-            low_pp[i] = i
-            low_exp[i] = 1
             primes.push(i)
-            res[i] = prime_pow(i, 1, i)
+            var (e, pe) = (1, i)
+            while true:
+                spf[pe] = i
+                res[pe] = prime_pow(i, e, pe)
+                if pe > n / i: break
+                e += 1
+                pe *= i
         for p in primes:
-            let m = i * p
-            if p > spf[i] or m > n: break
-            spf[m] = p
-            if p == spf[i]:
-                low_pp[m] = low_pp[i] * p
-                low_exp[m] = low_exp[i] + 1
-                if low_pp[m] == m: res[m] = prime_pow(p, low_exp[m], m)
-                else: res[m] = mul(res[m / low_pp[m]], res[low_pp[m]])
-                break
-            else:
-                low_pp[m] = p
-                low_exp[m] = 1
-                res[m] = mul(res[i], res[p])
+            var m = i * p
+            if p == spf[i] or m > n: break
+            var pe = p
+            while true:
+                spf[m] = p
+                res[m] = res[i] * res[pe]
+                m *= p
+                if m > n: break
+                pe *= p
     res
 
 /// The number of bits needed to write `x >= 0` (`bit_len(0) == 0`, `bit_len(5) == 3`).
@@ -659,18 +651,8 @@ fn sieve_tables_and_multiplicative_agree():
     let mus = s.mobius_table()
     let dcnt = s.div_count_table()
     let dsum = s.div_sum_table()
-    let mult_phi = sieve_multiplicative(
-        300,
-        one: 1,
-        mul: (a, b) => a * b,
-        prime_pow: (p, e, pe) => pe - pe / p,
-    )
-    let mult_d = sieve_multiplicative(
-        300,
-        one: 1,
-        mul: (a, b) => a * b,
-        prime_pow: (p, e, pe) => e + 1,
-    )
+    let mult_phi = sieve_multiplicative(300, (p, e, pe) => pe - pe / p)
+    let mult_d = sieve_multiplicative(300, (p, e, pe) => e + 1)
     for x in 1..=300:
         assert phis[x] == s.phi(x) and mult_phi[x] == phis[x]
         assert mus[x] == s.mobius(x)

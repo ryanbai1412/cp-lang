@@ -1,8 +1,10 @@
 // AtCoder WTF 2026 C: 2D DP accelerated per step by 1D NTT convolution over
 // flattened (i, j) coordinates, followed by two inclusion-exclusion passes.
-use lib.math.poly.{Z, convolve}
+use std.ntt.{convolve}
 
-let comb = Comb<Z.MOD>()
+const MOD = 998_244_353
+type Z = Mod<MOD>
+let comb = Comb<MOD>()
 
 let n: Int = read()
 let a: [0..n]Int = read()

@@ -31,6 +31,11 @@ pub struct Mat<T>:
         for i in 0..n: d[i * n + i] = T.one
         Mat(n, n, d)
 
+    /// Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`. O(rows * cols).
+    pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
+        assert rows >= 0 and cols >= 0 and data.len == rows * cols
+        Mat(rows, cols, data)
+
     /// Build a matrix from a list of equal-length rows. O(rows * cols).
     pub fn from_rows(grid: List<List<T>>) -> Mat<T>:
         let r = grid.len

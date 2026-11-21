@@ -1,8 +1,9 @@
 // Codeforces 2268 E: per bit, the sign prefix products a[0..=n] contribute
 // sum over gaps d of weight[d] * sum_i a[i] * a[i + d], an autocorrelation.
-use lib.math.poly.{Z, convolve}
+use std.ntt.{convolve}
 
 const MOD = 998244353
+type Z = Mod<MOD>
 let comb = Comb<MOD>()
 
 @!multitest
