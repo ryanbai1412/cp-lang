@@ -27,7 +27,7 @@ The full prose-and-snippet findings live in
 - **SparseTable (argmax RMQ) + MaxHeap interval splitting**: `noi10p2.cp` (NOI '10 P2 — Super Piano, 25pt, `5670502.cpp`).
 - **Rollback parity-DSU + Divide & Conquer**: `btoi20p3.cp` (Baltic OI '20 P3 — Joker, 25pt, `4656866.cpp`).
 - **Directed graph reverse peeling**: `cco21p4.cp` (CCO '21 P4 — Travelling Merchant, 25pt, `6419583.cpp`).
-- **Topological cycle-pruning + Dinic Max-Flow**: `noi09p4.cp` (NOI '09 P4 — Plants vs. Zombies, 25pt, `5144326.cpp`).
+- **Cycle peeling + maximum closure**: `noi09p4.cp` (NOI '09 P4 — Plants vs. Zombies, 25pt, `5144326.cpp`).
 - **3-state bottom-up tree DP**: `ccc22s5.cp` (CCC '22 S5 — Good Influencers, 17pt, `4371349.cpp`).
 - **Multitest Dijkstra + Kruskal reconstruction tree + binary lifting**: `noi18p1.cp` (NOI '18 P1 — Return, 17pt, `6512702.cpp`).
 
