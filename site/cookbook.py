@@ -92,9 +92,9 @@ def render_cookbook_html(repo_root: Path, highlight_cp) -> str:
     recipes = all_recipes()
     parts = [
         f"<p>Every recipe below is a complete, real contest solution pulled directly from the "
-        f"validated corpus (<code>proto/ports/ecnerwala/</code>, currently {total_ports} ports). "
+        f"validated contest corpus (currently {total_ports} solutions). "
         f"All {len(recipes)} recipes are checked, formatted, linted, compiled to C++17 under 64 KB, "
-        f"and sample-tested in <code>scripts/check.sh --fast</code>.</p>",
+        f"and sample-tested in the continuous test gate.</p>",
     ]
     for cat_title, cat_slug, items in COOKBOOK_CATEGORIES:
         parts.append(f'<h2 id="{cat_slug}">{html.escape(cat_title)}</h2>')
@@ -106,7 +106,7 @@ def render_cookbook_html(repo_root: Path, highlight_cp) -> str:
             parts.append(f'<h3 id="{recipe_id}">{html.escape(title)}</h3>')
             parts.append(
                 f"<p>{html.escape(summary)} "
-                f'<small>(<code>proto/ports/ecnerwala/{html.escape(port_name)}.cp</code>, '
+                f'<small>(<code>{html.escape(port_name)}.cp</code>, '
                 f"{line_count} lines)</small></p>"
             )
             parts.append(

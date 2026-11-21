@@ -129,7 +129,7 @@ class SiteTests(unittest.TestCase):
     def test_all_local_links_and_fragments_resolve(self):
         target = ROOT / "_build"
         pages = {p.name: Page(p.read_text()) for p in target.glob("*.html")}
-        self.assertEqual(len(pages), len(build.PAGES) + 2)
+        self.assertEqual(len(pages), len(build.PAGES) + len(build.ERROR_CATALOG) + 2)
         for name, page in pages.items():
             self.assertEqual(page.duplicates, [], name)
             for link in page.links:
@@ -145,7 +145,7 @@ class SiteTests(unittest.TestCase):
 
     def test_search_covers_every_chapter(self):
         index = json.loads((ROOT / "_build/search.json").read_text())
-        self.assertEqual(len(index), len(build.PAGES))
+        self.assertEqual(len(index), len(build.PAGES) + len(build.ERROR_CATALOG))
         for page in index:
             self.assertTrue(page["text"].strip())
             self.assertTrue((ROOT / "_build" / page["url"]).is_file())
@@ -202,13 +202,14 @@ class SiteTests(unittest.TestCase):
         payload = dict(bundle.unpack(shipped["docs"]), compiler=shipped["compiler"])
         self.assertEqual(set(payload["pages"]),
                          {name + ".html" for name, *_ in build.PAGES}
+                         | {build.error_slug(e["code"]) + ".html" for e in build.ERROR_CATALOG}
                          | {"playground.html", "trace.html"})
         self.assertNotIn("@font-face", source)
         self.assertNotIn("data:font", source)
         self.assertLess(path.stat().st_size, 2_600_000)
         self.assertEqual(payload["compiler"].count("const packedWasm ="), 1)
         self.assertNotIn("const packedWasm =", "".join(payload["pages"].values()))
-        self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES))
+        self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES) + len(build.ERROR_CATALOG))
         self.assertIn("course", payload)
         self.assertIn("course_data", payload)
 
