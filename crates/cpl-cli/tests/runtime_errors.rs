@@ -263,3 +263,69 @@ print(spin(0))
         "got:\n{err}"
     );
 }
+
+fn build_and_run_cpp(source: &str) -> (i32, String) {
+    let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("runtime_errors_cpp_{}_{id}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("a.cp");
+    let cpp = dir.join("a.cpp");
+    let exe = dir.join("a.bin");
+    fs::write(&file, source).unwrap();
+    let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+        .output()
+        .expect("cpl build");
+    assert!(
+        build.status.success(),
+        "cpl build failed:\n{}",
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let compile = Command::new("g++")
+        .args(["-std=c++17", "-O2", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+        .output()
+        .expect("g++");
+    assert!(
+        compile.status.success(),
+        "g++ failed:\n{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let out = Command::new(&exe).output().expect("run binary");
+    let code = out.status.code().unwrap_or(-1);
+    let err = String::from_utf8_lossy(&out.stderr).into_owned();
+    let _ = fs::remove_dir_all(&dir);
+    (code, err)
+}
+
+#[test]
+fn wide_range_overflow_traps_in_interp_and_cpp() {
+    let cases = [
+        (
+            "use std.seq.{bsearch_first}\nlet lo = -6_000_000_000_000_000_000\nlet hi = 6_000_000_000_000_000_000\nprint(bsearch_first(lo..=hi, x => x >= 7)!)\n",
+            "integer overflow: range",
+            "range span overflow",
+        ),
+        (
+            "use std.seq.{bsearch_first}\nlet big = I128(1_000_000_000_000_000_000) * I128(1_000_000_000_000_000_000) * I128(100)\nprint(bsearch_first((-big)..=big, x => x >= I128(7))!)\n",
+            "integer overflow: range",
+            "range span overflow",
+        ),
+        (
+            "let lo = I128(-4_000_000_000) * I128(10_000_000_000)\nlet r = lo..=I128(0)\nprint(r.len)\n",
+            "integer overflow: range",
+            "range length overflow",
+        ),
+    ];
+    for (src, interp_msg, cpp_msg) in cases {
+        let (code, err) = run_stderr(src, "");
+        assert_eq!(code, 3, "interp should trap:\n{err}");
+        assert!(err.contains(interp_msg), "interp expected `{interp_msg}`, got:\n{err}");
+        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+
+        let (cpp_code, cpp_err) = build_and_run_cpp(src);
+        assert_eq!(cpp_code, 3, "cpp should trap:\n{cpp_err}");
+        assert!(cpp_err.contains(cpp_msg), "cpp expected `{cpp_msg}`, got:\n{cpp_err}");
+    }
+}

@@ -1791,10 +1791,22 @@ impl<'p, 'o> Interp<'p, 'o> {
                 if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
                     let lo = self.eval(lo)?.i128();
                     let hi = self.eval(hi)?.i128();
+                    if hi > lo && hi.checked_sub(lo).is_none() {
+                        return trap(
+                            e.span,
+                            format!("integer overflow: range `{lo}..{hi}` span does not fit in an `I128` (128 bits)"),
+                        );
+                    }
                     Value::Range128(lo, hi)
                 } else {
                     let lo = self.eval(lo)?.int();
                     let hi = self.eval(hi)?.int();
+                    if hi > lo && hi.checked_sub(lo).is_none() {
+                        return trap(
+                            e.span,
+                            format!("integer overflow: range `{lo}..{hi}` span does not fit in an `Int` (64 bits)"),
+                        );
+                    }
                     Value::Range(lo, hi)
                 }
             }
@@ -3198,8 +3210,36 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Value::StrView(view) => view.len as i64,
                 Value::Map(entries) => entries.len() as i64,
                 Value::Set(items) => items.len() as i64,
-                Value::Range(lo, hi) => (hi - lo).max(0),
-                Value::Range128(lo, hi) => (hi - lo).max(0) as i64,
+                Value::Range(lo, hi) => {
+                    if hi <= lo {
+                        0
+                    } else {
+                        match hi.checked_sub(*lo) {
+                            Some(d) => d,
+                            None => {
+                                return trap(
+                                    span,
+                                    format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
+                                );
+                            }
+                        }
+                    }
+                }
+                Value::Range128(lo, hi) => {
+                    if hi <= lo {
+                        0
+                    } else {
+                        match hi.checked_sub(*lo).and_then(|d| i64::try_from(d).ok()) {
+                            Some(d) => d,
+                            None => {
+                                return trap(
+                                    span,
+                                    format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
+                                );
+                            }
+                        }
+                    }
+                }
                 Value::DomainVal(_, len) => *len,
                 _ => 0,
             }),

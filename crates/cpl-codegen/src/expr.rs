@@ -863,7 +863,7 @@ impl<'p> Emitter<'p> {
                             codes[0].text, codes[1].text
                         ))
                     } else {
-                        Code::primary(format!("{rty}{{{}, {}}}", codes[0].text, codes[1].text))
+                        Code::primary(format!("{rty}::make({}, {})", codes[0].text, codes[1].text))
                     }
                 })
             }

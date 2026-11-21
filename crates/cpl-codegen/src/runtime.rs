@@ -708,11 +708,24 @@ struct CpHash {
     },
     Piece {
         name: "range",
-        needs: &[],
+        needs: &["fail"],
         code: "\
 template <class T> struct Range {
     T lo = 0, hi = 0;
-    ll len() const { return hi > lo ? (ll)hi - (ll)lo : 0; }
+    static Range make(T lo, T hi) {
+        using U = std::conditional_t<sizeof(T) == 16, unsigned __int128, unsigned long long>;
+        if (hi > lo && (U)hi - (U)lo > (~(U)0 >> 1)) fail(\"range span overflow\");
+        return {lo, hi};
+    }
+    ll len() const {
+        if (hi <= lo) return 0;
+        if constexpr (sizeof(T) == 16) {
+            auto d = (unsigned __int128)hi - (unsigned __int128)lo;
+            if (d > (~0ULL >> 1)) fail(\"range length overflow\");
+            return (ll)d;
+        }
+        return (ll)hi - (ll)lo;
+    }
     bool empty() const { return hi <= lo; }
     bool has(T x) const { return x >= lo && x < hi; }
     std::optional<T> first() const { return lo < hi ? std::optional<T>(lo) : std::nullopt; }

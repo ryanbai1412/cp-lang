@@ -3593,6 +3593,19 @@ impl<'a> Lowerer<'a> {
                 | Ty::Range(_),
                 "len",
             ) => self.len_of(value, span),
+            (Ty::Range(inner), "is_empty") => {
+                let bound_ty = if **inner == Ty::I128 { Ty::I128 } else { Ty::Int };
+                let r_ref = if matches!(value.kind, ExprKind::Local(_)) {
+                    value
+                } else {
+                    let slot = self.new_slot("r", value.ty.clone());
+                    self.cx.pending.push(Stmt::Let(slot, Some(value)));
+                    self.local(slot, span)
+                };
+                let lo = builtin(self, Builtin::RangeLo, vec![r_ref.clone()], bound_ty.clone());
+                let hi = builtin(self, Builtin::RangeHi, vec![r_ref], bound_ty);
+                self.mk(ExprKind::Cmp(CmpOp::Ge, Box::new(lo), Box::new(hi)), Ty::Bool, span)
+            }
             (
                 Ty::Array { .. }
                 | Ty::List(_)
@@ -3602,8 +3615,7 @@ impl<'a> Lowerer<'a> {
                 | Ty::Map(..)
                 | Ty::HashMap(..)
                 | Ty::Set(_)
-                | Ty::HashSet(_)
-                | Ty::Range(_),
+                | Ty::HashSet(_),
                 "is_empty",
             ) => {
                 let len = self.len_of(value, span);
