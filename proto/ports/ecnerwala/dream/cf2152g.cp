@@ -4,7 +4,8 @@
 // subtree, so a lazy segment tree over preorder maintains `(ends, first, last)`
 // for both the active monster set and its complement, swapping on subtree flip.
 
-use std.lazy.{Flip}
+use std.lazy.{Flip, flip_action}
+use std.algebra.Monoid
 
 @!multitest
 domain V = read(1..=250_000)
@@ -19,7 +20,7 @@ struct Side(ends: 0..=V.count, first: ?V, last: ?V):
         Side(ends, x.first ?? y.first, y.last ?? x.last)
 
 var st = LazySegTree<t.Pre, Flip<Side>>(
-    Flip(Side),
+    flip_action<Side>(Monoid(Side.empty, Side.join)),
     t.reorder([V] v => if monster[v]: Side(1, v, v) else: Side.empty),
 )
 print(st.all.now.ends)
