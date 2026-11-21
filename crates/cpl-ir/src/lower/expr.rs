@@ -2702,6 +2702,14 @@ impl<'a> Lowerer<'a> {
                 span,
             });
         }
+        // `for (k, v) in m.items` goes over the map itself.
+        if let ast::ExprKind::Field { base, name } = &e.kind {
+            if name.text == "items"
+                && matches!(self.probe_ty_silent(base), Some(Ty::Map(..) | Ty::HashMap(..)))
+            {
+                return self.iter(base);
+            }
+        }
         let error = |lw: &mut Self| {
             let zero = lw.int_lit(0, span);
             (

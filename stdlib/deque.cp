@@ -76,6 +76,9 @@ pub struct Deque<T>:
         if k < 0 or k >= n: return none
         buf[(head + n - 1 - k) % buf.len]
 
+    /// Each element with its place from the front: `for (i, x) in dq.items`. O(n).
+    pub @get fn items(self) -> List<(Int, T)> = [(i, buf[(head + i) % buf.len]!) for i in 0..n]
+
     /// The `i`-th element from the front.
     pub fn get(self, i: Int) -> T:
         assert 0 <= i and i < n

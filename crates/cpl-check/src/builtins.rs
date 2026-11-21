@@ -136,7 +136,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "len", Get, "", "Int", false, "How many elements.", "xs.len", "Int"),
     row!(List, "is_empty", Get, "", "Bool", false, "True when there is no element.", "xs.is_empty", "Bool"),
     row!(List, "first", Get, "", "?T", false, "The first element, or `none` when empty.", "xs.first", "?Int"),
-    row!(List, "last", Get, "", "?T", false, "The last element, or `none` when empty. `xs.last(k)` is the one `k` back from it.", "xs.last", "?Int"),
+    row!(List, "last", Get, "k: Int = 0", "?T", false, "The last element, or `none` when empty. `xs.last(k)` is the one `k` back from it.", "xs.last", "?Int"),
     row!(List, "push", Method, "x: T", "", true, "Adds `x` at the end.", "xs.push(4)", ""),
     row!(List, "pop", Method, "", "?T", true, "Takes the last element off, or gives `none` when empty.", "xs.pop()", "?Int"),
     row!(List, "get", Method, "i: Int", "?T", false, "The element at `i`, or `none` when `i` is outside the list.", "xs.get(1)", "?Int"),
@@ -162,6 +162,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "windows", Method, "k: Int", "List<List<T>>", false, "Every run of `k` neighbouring elements.", "xs.windows(2)", "List<List<Int>>"),
 
     row!(Str, "len", Get, "", "Int", false, "How many characters.", "s.len", "Int"),
+    row!(Str, "items", Get, "", "List<(Int, Char)>", false, "Each character with its index: `for (i, c) in s.items`.", "s.items", "List<(Int, Char)>"),
     row!(Str, "is_empty", Get, "", "Bool", false, "True for the empty text.", "s.is_empty", "Bool"),
     row!(Str, "push", Method, "c: Char", "", true, "Adds `c` at the end.", "s.push('!')", ""),
     row!(Str, "copy", Method, "", "Str", false, "A separate text with the same characters.", "s.copy()", "Str"),
@@ -177,6 +178,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Str, "windows", Method, "k: Int", "List<List<Char>>", false, "Every run of `k` neighbouring characters.", "s.windows(2)", "List<List<Char>>"),
 
     row!(Map, "len", Get, "", "Int", false, "How many keys.", "m.len", "Int"),
+    row!(Map, "items", Get, "", "List<(K, V)>", false, "Each key with its value, smallest key first: `for (k, v) in m.items`.", "m.items", "List<(Int, Int)>"),
     row!(Map, "is_empty", Get, "", "Bool", false, "True when there is no key.", "m.is_empty", "Bool"),
     row!(Map, "first", Get, "", "?(K, V)", false, "The smallest key with its value.", "m.first", "?(Int, Int)"),
     row!(Map, "last", Get, "", "?(K, V)", false, "The largest key with its value.", "m.last", "?(Int, Int)"),
@@ -214,7 +216,7 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
 
     row!(Array, "len", Get, "", "Int", false, "How many cells.", "a.len", "Int"),
     row!(Array, "first", Get, "", "?T", false, "The first cell, or `none` when the array is empty.", "a.first", "?Int"),
-    row!(Array, "last", Get, "", "?T", false, "The last cell, or `none` when the array is empty.", "a.last", "?Int"),
+    row!(Array, "last", Get, "k: Int = 0", "?T", false, "The last cell, or `none` when the array is empty. `a.last(k)` is the one `k` back from it.", "a.last", "?Int"),
     row!(Array, "swap", Method, "i: D, j: D", "", true, "Exchanges the cells at `i` and `j`.", "a.swap(0, 1)", ""),
     row!(Array, "fill", Method, "x: T", "", true, "Sets every cell to `x`.", "a.fill(2)", ""),
     row!(Array, "copy", Method, "", "[D]T", false, "A separate array with the same cells.", "a.copy()", "[0..3]Int"),

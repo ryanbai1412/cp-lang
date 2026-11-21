@@ -425,6 +425,29 @@ fn stress_judges_with_the_interactor_in_the_file() {
     assert!(wrong.contains("interactor: assertion failed: x == secret"), "{wrong}");
 }
 
+/// A plain `Int` that sizes a domain, an array, a loop or a list is
+/// generated as a count, from 1: a negative one stopped every such
+/// program on case 1.
+#[test]
+fn stress_makes_a_read_int_that_sizes_something_a_count() {
+    let brute = "@brute(main)\nfn slow():\n    print(n)\n";
+    let programs = [
+        ("size-domain", "let n: Int = read()\ndomain V = 0..n\nlet a: [V]Int = read()\nassert n >= 1\nprint(n)\n"),
+        ("size-array", "let n: Int = read()\nvar dp: [1..=n]Int = 0\nprint(n)\n"),
+        ("size-grid", "let (n, m): (Int, Int) = read()\ndomain V = 1..=n\nvar dp: [V, 0..m]Int = 0\nprint(n)\n"),
+        ("size-in-fn", "let n: Int = read()\nfn rows() -> Int:\n    var a: [0..n + 1]Int = 0\n    a.len\nassert rows() == n + 1\nprint(n)\n"),
+        ("size-loop", "let n: Int = read()\nvar t = 0\nfor _ in 0..n: t += 1\nassert t == n\nprint(n)\n"),
+        ("size-filled", "let n: Int = read()\nlet xs = List.filled(n, 0)\nprint(n)\n"),
+        ("size-multitest", "@!multitest\nlet n: Int = read()\nvar seen: [0..n]Bool = false\nprint(n)\n"),
+    ];
+    for (test, source) in programs {
+        let path = scratch(test, "sized.cp", format!("{source}{brute}").as_bytes());
+        let out = cpl(&["stress".as_ref(), path.as_os_str(), "--cases".as_ref(), "40".as_ref()], b"");
+        let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+        assert!(text.contains("40 cases agree"), "{test}: {text}");
+    }
+}
+
 /// Wrong on a tree with a vertex of degree 3 whose value is above 50.
 const TREE: &str = "\
 let n: 1..=100 = read()

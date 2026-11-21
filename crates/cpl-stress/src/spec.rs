@@ -166,6 +166,98 @@ fn names_in(expr: &Expr, out: &mut HashSet<String>) {
     }
 }
 
+/// The names a program sizes something by, wherever it does: the index
+/// of an array (`var dp: [0..n]Int = 0`), a domain (`domain V = 1..=n`),
+/// a counted loop (`for _ in 0..q`), `List.filled(n, 0)`.
+struct Sizes<'a>(&'a mut HashSet<String>);
+
+impl Sizes<'_> {
+    fn of_type(&mut self, ty: &Type) {
+        match &ty.kind {
+            TypeKind::Array { index, elem } => {
+                for dimension in index {
+                    match &dimension.kind {
+                        TypeKind::Range { lo, hi, .. } => {
+                            names_in(lo, self.0);
+                            names_in(hi, self.0);
+                        }
+                        _ => self.of_type(dimension),
+                    }
+                }
+                self.of_type(elem);
+            }
+            TypeKind::Named { args, .. } | TypeKind::Tuple(args) => args.iter().for_each(|arg| self.of_type(arg)),
+            TypeKind::Record(fields) => fields.iter().for_each(|(_, field)| self.of_type(field)),
+            _ => {}
+        }
+    }
+
+    fn of_range(&mut self, range: &Expr) {
+        match &range.kind {
+            ExprKind::Paren(inner) => self.of_range(inner),
+            ExprKind::Range { lo, hi, .. } => {
+                for end in [lo, hi].into_iter().flatten() {
+                    names_in(end, self.0);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl cpl_syntax::visit::Visitor for Sizes<'_> {
+    fn stmt(&mut self, stmt: &Stmt) {
+        match &stmt.kind {
+            StmtKind::Let { ty: Some(ty), .. } => self.of_type(ty),
+            StmtKind::Domain { def, .. } => self.of_range(def),
+            StmtKind::For { iter, .. } => self.of_range(iter),
+            _ => {}
+        }
+    }
+
+    fn expr(&mut self, expr: &Expr) {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return;
+        };
+        let filled = matches!(&callee.kind, ExprKind::Field { base, name }
+            if name.text == "filled" && matches!(&base.kind, ExprKind::Name(list) if list == "List"));
+        if let (true, Some(len)) = (filled, args.first()) {
+            names_in(&len.value, self.0);
+        }
+    }
+}
+
+/// A plain `Int` that is read and then used as a size is at least 1: a
+/// problem's `n` counts something, and a negative count stops every
+/// program on its first array.
+fn sizes_count(spec: &mut InputSpec) {
+    let plain = Shape::Int {
+        lo: int(DEFAULT_INT.0),
+        hi: int(DEFAULT_INT.1),
+    };
+    let counted = Shape::Int {
+        lo: int(1),
+        hi: int(DEFAULT_INT.1),
+    };
+    for field in &mut spec.fields {
+        let is_size = |name: &Option<String>| name.as_ref().is_some_and(|name| spec.sizes.contains(name));
+        match (&mut field.shape, field.names.as_slice()) {
+            (Shape::Tuple(parts), names) if names.len() == parts.len() => {
+                for (part, name) in parts.iter_mut().zip(names) {
+                    if *part == plain && is_size(name) {
+                        *part = counted.clone();
+                    }
+                }
+            }
+            (shape, [name]) if *shape == plain && is_size(name) => *shape = counted.clone(),
+            _ => {}
+        }
+    }
+    if let Some(cases) = &mut spec.cases {
+        sizes_count(cases);
+    }
+}
+
 struct Builder<'a> {
     src: &'a str,
     base: u32,
@@ -510,9 +602,14 @@ impl InputSpec {
         if judge.is_some() {
             builder.spec.fields = hidden;
         }
+        for (_, item) in &parsed.items {
+            for stmt in &item.stmts {
+                cpl_syntax::visit::walk_stmt(stmt, &mut Sizes(&mut builder.spec.sizes));
+            }
+        }
         let consts: HashSet<String> = builder.spec.consts.keys().cloned().collect();
         builder.spec.sizes.retain(|name| !consts.contains(name));
-        Ok(match above {
+        let mut spec = match above {
             Some(mut setup) => {
                 setup.sizes = builder.spec.sizes.clone();
                 setup.consts = builder.spec.consts.clone();
@@ -520,6 +617,8 @@ impl InputSpec {
                 setup
             }
             None => builder.spec,
-        })
+        };
+        sizes_count(&mut spec);
+        Ok(spec)
     }
 }

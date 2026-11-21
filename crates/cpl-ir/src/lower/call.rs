@@ -2819,7 +2819,13 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::If(Box::new(filled), Box::new(some), Box::new(none)), opt, span)
             }
             // `xs.items` kept as a value: the list of `(index, element)`.
-            (Ty::List(_) | Ty::Array { .. }, "items") if self.items_of(&value, span).is_some() => {
+            (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
+            (Ty::Array { dims, .. }, "items")
+                if dims.len() > 1 && dims.iter().all(|d| !matches!(d, Dim::Bound(_))) =>
+            {
+                self.cells_of_grid(value, span)
+            }
+            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "items") if self.items_of(&value, span).is_some() => {
                 let pair = |items: &Items| Ty::Tuple(vec![items.index.clone(), items.elem.clone()]);
                 let held_ty = value.ty.clone();
                 let Some(shape) = self.items_of(&value, span) else { unreachable!("checked above") };
@@ -3127,7 +3133,7 @@ impl<'a> Lowerer<'a> {
         if name.text != "items" || !is_place(base) {
             return None;
         }
-        if !matches!(self.probe_ty_silent(base), Some(Ty::List(_) | Ty::Array { .. })) {
+        if !matches!(self.probe_ty_silent(base), Some(Ty::List(_) | Ty::Array { .. } | Ty::Str)) {
             return None;
         }
         let seq = self.expr(base, None);
@@ -3139,6 +3145,7 @@ impl<'a> Lowerer<'a> {
     fn items_of(&mut self, seq: &Expr, span: Span) -> Option<Items> {
         let (dim, elem) = match &seq.ty {
             Ty::List(elem) => (Dim::Int, (**elem).clone()),
+            Ty::Str => (Dim::Int, Ty::Char),
             Ty::Array { dims, elem } if dims.len() == 1 => (dims[0], (**elem).clone()),
             _ => return None,
         };
@@ -3150,6 +3157,79 @@ impl<'a> Lowerer<'a> {
             _ => return None,
         };
         Some(Items { seq: seq.clone(), len, index, first, elem })
+    }
+
+    /// `m.items` kept as a value: the list of `(key, value)`, in the
+    /// order a `for` over the map goes.
+    fn pairs_of_map(&mut self, map: Expr, span: Span) -> Expr {
+        let (Ty::Map(key, held) | Ty::HashMap(key, held)) = &map.ty else {
+            unreachable!("the caller matched a map")
+        };
+        let pair = Ty::Tuple(vec![(**key).clone(), (**held).clone()]);
+        self.collected(pair.clone(), span, |lw, out, push| {
+            let map = lw.hold(map, out);
+            let each = lw.temp(pair);
+            let body = Block { stmts: vec![push(lw, lw.local(each, span))] };
+            let lid = lw.fresh_loop();
+            out.push(Stmt::For(lid, each, Iter::Seq(map, false), body));
+        })
+    }
+
+    /// `g.items` on an array of two or more dimensions: every cell with
+    /// the tuple of its indices, `((r, c), g[r, c])`, row by row.
+    fn cells_of_grid(&mut self, grid: Expr, span: Span) -> Expr {
+        let Ty::Array { dims, elem } = &grid.ty else {
+            unreachable!("the caller matched an array")
+        };
+        let (dims, elem) = (dims.clone(), (**elem).clone());
+        let index_tys: Vec<Ty> = dims
+            .iter()
+            .map(|dim| match dim {
+                Dim::Pos(d) => Ty::Pos(*d),
+                _ => Ty::Int,
+            })
+            .collect();
+        let at_ty = Ty::Tuple(index_tys);
+        let pair = Ty::Tuple(vec![at_ty.clone(), elem.clone()]);
+        self.collected(pair.clone(), span, |lw, out, push| {
+            let grid = lw.hold(grid, out);
+            let counters: Vec<Slot> = dims.iter().map(|_| lw.temp(Ty::Int)).collect();
+            let mut named = Vec::new();
+            let mut stored = Vec::new();
+            for (dim, &k) in dims.iter().zip(&counters) {
+                let k = lw.local(k, span);
+                match *dim {
+                    Dim::Pos(d) => {
+                        let at = lw.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(k)), Ty::Pos(d), span);
+                        named.push(at.clone());
+                        stored.push(at);
+                    }
+                    Dim::IntFrom(first) => {
+                        named.push(lw.int_add(k.clone(), first));
+                        stored.push(k);
+                    }
+                    _ => {
+                        named.push(k.clone());
+                        stored.push(k);
+                    }
+                }
+            }
+            let at = lw.mk(ExprKind::Tuple(named), at_ty, span);
+            let cell = lw.mk(ExprKind::Index(Box::new(grid.clone()), stored), elem, span);
+            let both = lw.mk(ExprKind::Tuple(vec![at, cell]), pair, span);
+            let mut body = vec![push(lw, both)];
+            for (axis, &k) in counters.iter().enumerate().rev() {
+                let len = lw.mk(
+                    ExprKind::Builtin(Builtin::AxisLen, vec![grid.clone(), lw.int_lit(axis as i64, span)]),
+                    Ty::Int,
+                    span,
+                );
+                let iter = Iter::Range { lo: lw.int_lit(0, span), hi: len, step: None, rev: false };
+                let lid = lw.fresh_loop();
+                body = vec![Stmt::For(lid, k, iter, Block { stmts: body })];
+            }
+            out.extend(body);
+        })
     }
 
     /// The index and the element `items` has at the counter `k`.

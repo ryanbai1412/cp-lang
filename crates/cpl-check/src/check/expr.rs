@@ -1044,11 +1044,22 @@ impl<'a> Checker<'a> {
                 Ty::Named { name: list, args } if list == "List" && args.len() == 1 => {
                     Some((Ty::Int, args[0].clone()))
                 }
-                Ty::Array { index, elem } if index.len() == 1 => {
-                    let at = match &index[0] {
-                        Ty::Pos(domain) => Ty::Pos(domain.clone()),
-                        _ => Ty::Int,
-                    };
+                Ty::Str => Some((Ty::Int, Ty::Char)),
+                Ty::Named { name: map, args }
+                    if matches!(map.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+                {
+                    Some((args[0].clone(), args[1].clone()))
+                }
+                Ty::Array { index, elem } => {
+                    let mut at: Vec<Ty> = index
+                        .iter()
+                        .map(|axis| match axis {
+                            Ty::Pos(domain) => Ty::Pos(domain.clone()),
+                            _ => Ty::Int,
+                        })
+                        .collect();
+                    // `((r, c), x)` for a grid; one index stands alone.
+                    let at = if at.len() == 1 { at.remove(0) } else { Ty::Tuple(at) };
                     Some((at, (**elem).clone()))
                 }
                 _ => None,

@@ -797,3 +797,28 @@ print(\"!\", r)
     let names: Vec<_> = inner.fields.iter().map(|field| field.names.clone()).collect();
     assert_eq!(names, [vec![Some("n".to_string())], vec![Some("x".to_string())]]);
 }
+
+#[test]
+fn an_int_that_sizes_something_is_a_count_and_any_other_int_is_not() {
+    let src = "\
+let (n, k): (Int, Int) = read()
+let q: Int = read()
+let shift: Int = read()
+var dp: [0..n]Int = 0
+fn solve():
+    for _ in 0..q: print(List.filled(k, 0))
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for name in ["n", "k", "q"] {
+        assert!(spec.sizes.contains(name), "{name}");
+    }
+    assert!(!spec.sizes.contains("shift"));
+    let mut negative_shift = false;
+    for seed in 0..200 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let numbers: Vec<i128> = case.render().split_whitespace().map(|word| word.parse().unwrap()).collect();
+        assert!(numbers[..3].iter().all(|&size| (1..=8).contains(&size)), "{numbers:?}");
+        negative_shift |= numbers[3] < 0;
+    }
+    assert!(negative_shift);
+}

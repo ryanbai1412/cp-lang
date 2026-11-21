@@ -1392,54 +1392,86 @@ impl<'a> Lowerer<'a> {
             // array has cells, when that count is written as a number.
             // `let c: [1..=3]Int = [7, 8, 9]` and `[2..n]Int = [5, 6]` too:
             // a count known only as the program runs is checked then.
-            if let (ast::ExprKind::List(items), [DimSpec::Int(len) | DimSpec::IntFrom(_, len)]) =
-                (&init.kind, dims.as_slice())
-            {
+            // `let g: [0..2, 0..3]Int = [[1, 2, 3], [4, 5, 6]]`: a list of
+            // rows, each as long as the next index says.
+            let lens: Option<Vec<&Expr>> = dims
+                .iter()
+                .map(|dim| match dim {
+                    DimSpec::Int(len) | DimSpec::IntFrom(_, len) => Some(&**len),
+                    _ => None,
+                })
+                .collect();
+            if let (ast::ExprKind::List(items), Some(lens)) = (&init.kind, lens) {
                 let holds_cells = !items.is_empty()
-                    && !(matches!(elem_ty, Ty::List(_))
-                        && items.first().and_then(|item| self.probe_ty_silent(item)).is_some_and(|ty| !matches!(ty, Ty::List(_))));
-                if let (Some(cells), true) = (written(len), holds_cells) {
-                    let cells = &cells;
-                    if *cells != items.len() as i64 {
-                        let message = format!(
-                            "this array has {}, but the list gives {}",
-                            plural(*cells, "cell"),
-                            plural(items.len() as i64, "value"),
-                        );
-                        self.error(codes::TYPE_MISMATCH, init.span, message);
-                        return Some(self.err_expr(init.span));
-                    }
+                    && (lens.len() > 1
+                        || !(matches!(elem_ty, Ty::List(_))
+                            && items.first().and_then(|item| self.probe_ty_silent(item)).is_some_and(|ty| !matches!(ty, Ty::List(_)))));
+                let shape = if holds_cells { literal_shape(init, lens.len()) } else { None };
+                if let (true, Some(Err(at))) = (lens.len() > 1, &shape) {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        *at,
+                        format!("a list for a `{}` is rows of one length, nested as deep as the array has indices", self.show(&want)),
+                    );
+                    return Some(self.err_expr(init.span));
                 }
-                if holds_cells {
-                    let known = written(len).is_some();
-                    let len = (**len).clone();
+                if let Some(Ok((counts, cells))) = shape {
+                    for (len, &count) in lens.iter().zip(&counts) {
+                        let Some(cells) = written(len) else { continue };
+                        if cells != count as i64 {
+                            let message = if lens.len() == 1 {
+                                format!(
+                                    "this array has {}, but the list gives {}",
+                                    plural(cells, "cell"),
+                                    plural(count as i64, "value"),
+                                )
+                            } else {
+                                format!("this index has {}, but the list gives {}", plural(cells, "cell"), plural(count as i64, "value"))
+                            };
+                            self.error(codes::TYPE_MISMATCH, init.span, message);
+                            return Some(self.err_expr(init.span));
+                        }
+                    }
+                    let unknown: Vec<(Expr, usize)> = lens
+                        .iter()
+                        .zip(&counts)
+                        .filter(|(len, _)| written(len).is_none())
+                        .map(|(len, &count)| ((*len).clone(), count))
+                        .collect();
                     let dims = dims.clone();
                     let at = init.span;
                     return Some(self.do_expr(Some(&want.clone()), at, |lw, out| {
-                        if !known {
-                            let count = lw.int_lit(items.len() as i64, at);
+                        for (len, count) in unknown {
+                            let count = lw.int_lit(count as i64, at);
                             let wrong = lw.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(count)), Ty::Bool, at);
                             let trap = Stmt::Trap("an array literal needs one value per position".to_string(), lw.span(at));
                             out.push(Stmt::If(wrong, Block { stmts: vec![trap] }, Block::default()));
                         }
                         let values: Vec<Expr> =
-                            items.iter().map(|item| lw.expect(item, &elem_ty)).collect();
+                            cells.iter().map(|item| lw.expect(item, &elem_ty)).collect();
                         let mut values = values.into_iter();
                         let first = values.next().map(Box::new);
-                        let cells = lw.temp(want.clone());
+                        let held = lw.temp(want.clone());
                         let filled = lw.mk(ExprKind::Fill(dims, first), want.clone(), at);
-                        out.push(Stmt::Let(cells, Some(filled)));
+                        out.push(Stmt::Let(held, Some(filled)));
                         for (i, value) in values.enumerate() {
-                            let index = lw.int_lit(i as i64 + 1, at);
-                            let whole = Place { kind: PlaceKind::Local(cells), ty: want.clone(), span: at };
+                            // The cell's place along each index, last index fastest.
+                            let mut rest = i + 1;
+                            let mut index = Vec::new();
+                            for &count in counts.iter().rev() {
+                                index.push(lw.int_lit((rest % count) as i64, at));
+                                rest /= count;
+                            }
+                            index.reverse();
+                            let whole = Place { kind: PlaceKind::Local(held), ty: want.clone(), span: at };
                             let cell = Place {
-                                kind: PlaceKind::Index(Box::new(whole), vec![index]),
+                                kind: PlaceKind::Index(Box::new(whole), index),
                                 ty: elem_ty.clone(),
                                 span: at,
                             };
                             out.push(Stmt::Assign(cell, AssignOp::Set, value));
                         }
-                        out.push(Stmt::Give(lw.local(cells, at)));
+                        out.push(Stmt::Give(lw.local(held, at)));
                     }));
                 }
             }
@@ -3020,6 +3052,39 @@ pub(super) fn names_a_place(e: &Expr) -> bool {
 }
 
 /// The number `e` is written as, when it is one.
+/// The count along each index, and the cells in order.
+type Rows<'a> = (Vec<usize>, Vec<&'a ast::Expr>);
+
+/// How many values a list written for an array of `depth` indices has
+/// along each, and its cells in order; `Err` is where a row is not a
+/// list or is not as long as the first.
+fn literal_shape(list: &ast::Expr, depth: usize) -> Option<Result<Rows<'_>, Span>> {
+    let ast::ExprKind::List(items) = &list.kind else {
+        return None;
+    };
+    if depth == 1 {
+        return Some(Ok((vec![items.len()], items.iter().collect())));
+    }
+    let mut counts = vec![items.len()];
+    let mut cells = Vec::new();
+    for (k, row) in items.iter().enumerate() {
+        match literal_shape(row, depth - 1) {
+            None => return Some(Err(row.span)),
+            Some(Err(at)) => return Some(Err(at)),
+            Some(Ok((inner, _))) if inner.contains(&0) => return Some(Err(row.span)),
+            Some(Ok((inner, row_cells))) => {
+                if k == 0 {
+                    counts.extend(inner);
+                } else if counts[1..] != inner[..] {
+                    return Some(Err(row.span));
+                }
+                cells.extend(row_cells);
+            }
+        }
+    }
+    Some(Ok((counts, cells)))
+}
+
 fn written(e: &Expr) -> Option<i64> {
     match e.kind {
         ExprKind::Int(v) => Some(v),

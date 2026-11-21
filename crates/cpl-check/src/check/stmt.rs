@@ -7,6 +7,22 @@ use cpl_syntax::ast::{
 };
 
 impl<'a> Checker<'a> {
+    /// `let g: [0..2, 0..3]Int = [[1, 2, 3], [4, 5, 6]]`: a list of rows
+    /// nested as deep as the array has indices gives its cells.
+    fn rows_fit(&mut self, declared: &Ty, row: &Ty) -> bool {
+        let Ty::Array { index, elem } = declared else {
+            return false;
+        };
+        let mut cell = row;
+        for _ in 1..index.len() {
+            match cell {
+                Ty::Named { name, args } if name == "List" && args.len() == 1 => cell = &args[0],
+                _ => return false,
+            }
+        }
+        index.len() > 1 && self.fits(cell, elem)
+    }
+
     /// Checks the statements of one top-level item.
     pub(crate) fn item(&mut self, stmts: &[Stmt]) {
         for replay in self.env.lent_before() {
@@ -318,7 +334,9 @@ impl<'a> Checker<'a> {
                     {
                         // `[1, 2, 3]` is the cells; `var ways: [0..n]List<Z> = [Z(1)]`
                         // fills each cell with the list.
-                        self.fits(&args[0], elem) || self.fits(init_ty.as_ref().expect("matched"), elem)
+                        self.fits(&args[0], elem)
+                            || self.fits(init_ty.as_ref().expect("matched"), elem)
+                            || self.rows_fit(declared.as_ref().expect("matched"), &args[0])
                     }
                     (Some(Ty::Array { elem, .. }), Some(init_ty)) => {
                         // A literal fills the cells of an array of arrays too.

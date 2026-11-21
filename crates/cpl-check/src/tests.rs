@@ -1770,3 +1770,22 @@ fn items_gives_each_element_with_its_index() {
     assert_eq!(codes(&format!("{src}let kept = xs.items\nlet k: Int = kept[0].0\n")), Vec::<&str>::new());
     assert_eq!(codes(&format!("{src}let kept = xs.items\nlet k: Int = kept[0].1\n")), ["E0302"]);
 }
+
+#[test]
+fn items_of_a_str_a_map_and_a_grid() {
+    let src = concat!(
+        "domain R = 0..2\n",
+        "var g: [R, 0..3]Int = 0\n",
+        "var m = Map<Str, Int>()\n",
+        "let s = \"abc\"\n",
+    );
+    let ok = concat!(
+        "for (i, c) in s.items:\n    let n: Int = i\n    let d: Char = c\n",
+        "for (k, v) in m.items:\n    let key: Str = k\n    let n: Int = v\n",
+        "for ((r, c), x) in g.items:\n    let row: R = r\n    let n: Int = c + x\n",
+    );
+    assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new());
+    assert_eq!(codes(&format!("{src}for (i, c) in s.items:\n    let n: Int = c\n")), ["E0302"]);
+    assert_eq!(codes(&format!("{src}for (k, v) in m.items:\n    let n: Int = k\n")), ["E0302"]);
+    assert_eq!(codes(&format!("{src}for ((r, c), x) in g.items:\n    let n: Int = r\n")), ["E0301"]);
+}
