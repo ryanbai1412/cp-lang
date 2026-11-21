@@ -19,7 +19,7 @@ let x: [V]1..=200_000 = read()
 
 fn build_perm() -> ?[V]Int:
     var last_at_depth: [0..=n]?V = none
-    last_at_depth[x[V.first]] = V.first
+    last_at_depth[x[V.first!]] = V.first!
     var par: [V]?V = none
     var is_ext: [V]Bool = false
 
@@ -39,7 +39,7 @@ fn build_perm() -> ?[V]Int:
         if is_ext[u]: order.push(u)
         for c in tree.children(u): visit(c)
         if not is_ext[u]: order.push(u)
-    visit(V.first)
+    visit(V.first!)
 
     let rank: [V]Int = [V] u => order.inverse()[u].ord + 1
     some(rank)

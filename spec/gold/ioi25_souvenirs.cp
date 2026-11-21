@@ -13,7 +13,7 @@ fn buy_souvenirs(n: 2..=100, p0: 1..=1e15):
     var price: [T]?Int = none
     var bought: [T]Int = 0
     var eq: [T]?Eq = none
-    price[T.first] = p0
+    price[T.first!] = p0
 
     fn pay(m: Int):
         let (types, change) = transaction(m)

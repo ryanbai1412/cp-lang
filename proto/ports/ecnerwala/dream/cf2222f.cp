@@ -44,5 +44,5 @@ fn solve(lo: W, hi: W):
         add_range(lo..=mid, right)
         solve(right, hi)
 
-solve(W.first, W.last)
+solve(W.first!, W.last!)
 print(if links == need: ans else: -1)

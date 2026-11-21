@@ -36,7 +36,7 @@ fn next_bad(d: Diag, from: Cut) -> Cut = bads[d].first_ge(from) ?? Cut.last
 fn wrap_limit(c: Cut) -> Cut = if c < Cut.last: next_bad(diag_of(c, 0), from: c) else: Cut.last
 
 var dp: [Cut]Z = 0
-dp[Cut.first] = 1
+dp[Cut.first!] = 1
 var overcount = SweepAdd<Cut, Z>()
 var wrap: [0..n]SweepAdd<Cut, Z> = SweepAdd<Cut, Z>()
 
@@ -54,4 +54,4 @@ for c in Cut:
             let j_lim = min(Cut.last - x0, next_bad(diag_of(c, x0), from: c))
             wrap[x0].add(c + 1..=j_lim, dp[c])
 
-print(dp[Cut.last])
+print(dp[Cut.last!])

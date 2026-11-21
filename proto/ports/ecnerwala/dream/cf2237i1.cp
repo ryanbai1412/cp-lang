@@ -86,4 +86,4 @@ for p in t.Pre.rev:
         cur = next
     dp[u] = cur
 
-print([row[st] for row in dp[V.first] for st in State].sum())
+print([row[st] for row in dp[V.first!] for st in State].sum())

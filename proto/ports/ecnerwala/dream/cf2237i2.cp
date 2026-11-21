@@ -112,4 +112,4 @@ for p in t.Pre.rev:
     dp[u] = cur
 
 // Exclude Active.Deferred at the root: no parent edge exists to close it.
-print([w for (s, w) in dp[V.first].items if s.active != Active.Deferred].sum())
+print([w for (s, w) in dp[V.first!].items if s.active != Active.Deferred].sum())

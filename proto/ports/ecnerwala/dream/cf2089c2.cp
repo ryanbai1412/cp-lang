@@ -46,7 +46,7 @@ for i in 1..=l + k_max:
             ((i - 1) * denom, (i - k - 1) * denom)
         if k < i:
             var rotated = [Pos] p => dp[k, p - 1]
-            rotated[Pos.first] += 1
+            rotated[Pos.first!] += 1
             let w_all = cyclic_window_sum(rotated, i)
             let w_real = cyclic_window_sum(rotated, i - k)
             let (c_lock, c_key) = (inv_i * p_lock, inv_i * p_key)

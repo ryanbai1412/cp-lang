@@ -56,7 +56,7 @@ let flat = diagonal(
     (fl, k) => fl[k],
 )
 
-@memo
+@memo(array)
 fn win(k: 0..=singles, s: 0..=shines) -> F64 =
     if k == 0: level[s]
     elif s == 0: flat[k]

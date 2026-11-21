@@ -10,8 +10,9 @@ code states, so the table type says what a state is: `[Pos.cuts]Int` for a
 prefix DP, `[V.ranges]Int` for an interval DP, `[B.subsets]Int` for a mask
 DP, `[V, K]?Int` for "best at v using k". Updates are `min=` / `max=`, which
 return whether they improved, so reconstruction is one more line. Top-down
-is `@memo fn`, whose cache is a table when every parameter is a domain or a
-ranged Int, and a hash map otherwise. The named speed-ups (D&C, Knuth, SMAWK,
+is `@memo(array) fn` (a dense table over the parameter types) or
+`@memo(map) fn` (a hash map over the states visited); you pick, since
+neither is better on every axis. The named speed-ups (D&C, Knuth, SMAWK,
 convex hull, aliens, slope trick) are library functions that take the same
 cost function the plain DP uses, so switching is a local edit.
 
@@ -47,7 +48,7 @@ domain Pos = 0..n
 var dp: [Pos.cuts]Int = inf          # prefix DP: dp[c] is the best for a[..c]
 dp[0] = 0
 for i in Pos.cuts:
-    for j in Pos.cuts.first!..i:     # every earlier cut; j..i is the piece a[j..i]
+    for j in ..i:                    # every earlier cut; j..i is the piece a[j..i]
         dp[i] min= dp[j] + cost(j..i)
 ```
 
@@ -75,13 +76,15 @@ if dp[i] min= dp[j] + cost(j..i): from[i] = j
 
 `V.ranges` is the domain of all non-empty ranges of `V`, stored as a
 triangle (n(n+1)/2 slots). Iterating it goes by length, then left end, so a
-piece comes after all its sub-pieces. `r.splits` is the cuts strictly inside
-`r`, the places it can be split into two non-empty pieces.
+piece comes after all its sub-pieces. `r.splits` yields every way to cut `r`
+into two non-empty pieces, as `(left, right)` with `left.r == right.l`: one
+pair per cut strictly inside `r`, so `len - 1` of them, none for one element.
+O(1) to make, nothing allocated; the cut itself is `left.r`.
 
 ```python
 var dp: [V.ranges]Int = 0                       # merging stones, matrix chain, ...
 for r in V.ranges if r.len >= 2:
-    dp[r] = r.splits.map(c => dp[r.l..c] + dp[c..r.r]).min()! + w(r)
+    dp[r] = r.splits.map((x, y) => dp[x] + dp[y]).min()! + w(r)
 print(dp[V.range])
 ```
 
@@ -105,15 +108,25 @@ sum-over-subsets transforms, O(2^n · n); with `op` inverse, `unfold_*`.
 ### Top-down: `@memo fn`
 
 ```python
-@memo fn ways(i: Pos.cuts, tight: Bool, sum: 0..=9 * 18) -> Mod:
+@memo(array) fn ways(i: Pos.cuts, tight: Bool, sum: 0..=9 * 18) -> Mod:
     if i == Pos.cuts.last!: return Mod(sum % k == 0)
     let hi = if tight: digit[i.r!] else: 9
     (0..=hi).map(d => ways(i.next!, tight and d == hi, sum + d)).sum()
 ```
 
-- The cache is a table when every parameter is a domain, `Bool`, enum or
-  ranged Int (here 19 × 2 × 163 slots), and a hash map otherwise.
-  `cpl explain` shows which.
+- **The storage is spelled, never picked for you.** `@memo(array)` is a
+  dense table: every parameter must be a domain, `Bool`, enum or ranged
+  Int, else it's a compile error naming the parameter. Memory is the
+  product of the sizes (here 19 × 2 × 163 slots), allocated when the
+  enclosing block starts; `cpl explain` prints it. `@memo(map)` is a hash
+  map over any hashable arguments: O(states visited) memory, a hash per call.
+- **Bare `@memo` is an error** whose fix offers `array` when every
+  parameter is bounded and `map` otherwise. An array spends memory on
+  states the recursion never reaches and a map pays a hash per call, so
+  neither majorizes and the choice is the contestant's.
+- `@memo(into: dp)` names an existing `var dp: [..]?T` as the table, so the
+  same cache can be read after the recursion (reconstruction, answers over
+  every state).
 - Recursion depth follows the judge profile's stack; `@memo` adds nothing
   per frame beyond the call.
 - `ways.clear()` empties the cache (multitest).

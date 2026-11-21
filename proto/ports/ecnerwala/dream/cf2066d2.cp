@@ -20,7 +20,7 @@ let a: [Time]?Floor = read(none: 0)
 
 let open = prefix([Time] t => Int(a[t] == none))
 var dp: [Used]M = 0
-dp[Used.first] = 1
+dp[Used.first!] = 1
 var fixed_below = 0
 
 for f in Floor.range.drop_last():
@@ -36,4 +36,4 @@ for f in Floor.range.drop_last():
     dp = next
     fixed_below += fixed
 
-print(dp[Used.last])
+print(dp[Used.last!])

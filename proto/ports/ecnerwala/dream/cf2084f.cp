@@ -22,8 +22,8 @@ fn sweep<S: Seq>(order: S, edge: Pos, op: fn(Pos, Pos) -> Pos, below: Bool) -> [
         out[v] = if below: st.fold(..=v) else: st.fold(v..)
     out
 
-let lo = sweep(a, Pos.first, max, below: true)
-let hi = sweep(a.rev, Pos.last, min, below: false)
+let lo = sweep(a, Pos.first!, max, below: true)
+let hi = sweep(a.rev, Pos.last!, min, below: false)
 
 let by_lo = Val.group(by: v => lo[v])
 var pq = MinHeap<(Pos, Val)>()

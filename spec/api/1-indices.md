@@ -69,10 +69,10 @@ below is generic over `D`: it means the same thing on both.
 | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends |
 | elements (`for`, `in`, `len`) | positions | cuts |
 | typical use | a piece of the array: slice, fold, cost | split points, prefix lengths, answers that may be 0 or n |
-| example | `a[l..=r]`, `seg.fold(l..r)` | `for j in lo..i`, `for k in a..=b` |
+| example | `a[l..=r]`, `seg.fold(l..r)` | `for j in ..i`, `for k in a..=b` |
 
 **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out:
-`for k in a..=b` walks cuts a through b, `for j in lo..i` walks cuts lo to i-1.
+`for k in a..=b` walks cuts a through b, `for j in ..i` walks the cuts before i.
 
 ### One exception, in how a literal is typed: the piece
 
@@ -81,7 +81,7 @@ a half-open range literal with cut ends, written where a `Range<V>` is
 expected, builds that `Range<V>` directly:
 
 ```python
-for j in lo..i:                      # lo..i: no Range<V> expected, so cuts
+for j in ..i:                        # ..i: no Range<V> expected, so cuts
     dp[i] min= dp[j] + cost(j..i)    # cost takes Range<V>: j..i is the piece
 pre.fold(j..i)   a[j..i]   seg.fold(j..i)       # same: these take Range<V>
 ```
@@ -96,6 +96,32 @@ expected. Consequences:
 - It's safe because the two readings are the same set: cut `c` in `j..i`
   stands for the position `c.r`, and the cuts j..i-1 are exactly the left
   edges of the positions between `j` and `i`.
+
+### Open-ended ranges
+
+Leaving out an end means the edge of the other end's domain, so the domain
+never has to be named and never has to be non-empty:
+
+| written | means | elements |
+|---|---|---|
+| `..i` | `D.first..i`, where `i: D` | everything before `i` |
+| `..=i` | `D.first..=i` | everything up to and including `i` |
+| `i..` | `i..=D.last` | `i` and everything after it |
+| `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]` |
+
+They follow the ends rule like any range: `for j in ..i` with a cut walks
+cuts, and `for j in v.r..` walks cuts too. A half-open open-ended literal
+with a cut end is a piece where a `Range<V>` is expected, so `a[..c]` and
+`a[c..]` slice. For the positions after `v`, write `for j in v.next..` only
+when `v.next` exists, or `for j in a[v.r..].keys`; see Open. `..i` needs no
+`!`: `i` existing proves its domain is non-empty. Cost: O(1) to build, like
+any range.
+
+```python
+for j in ..i:                        # every cut before i
+    dp[i] min= dp[j] + cost(j..i)
+let best = a[..c].max()              # the prefix left of cut c
+```
 
 The language's implicit conversions stay a closed list, none user-extensible:
 `T` to `?T`, a range type to a wider one (`1..=5` to `Int`), and literal
@@ -222,7 +248,8 @@ but the cut is what both shapes share, and `halve` reads as its definition).
   is cuts. The half-open literal `j..i` with cut ends builds the piece where a
   `Range<V>` is expected (124): literal typing, not a conversion; no implicit
   `Into`. A position-only reading was rejected: it broke
-  `for j in lo..i: dp[j] + cost(j..i)`.
+  `for j in ..i: dp[j] + cost(j..i)`.
+- `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only inside `[...]`.
 - `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `none` at length <= 1.
 - Integer literals convert to positions and cuts of integer domains.
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.

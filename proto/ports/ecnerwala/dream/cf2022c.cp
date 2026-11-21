@@ -22,7 +22,7 @@ fn close_ell(z: Row, c: Col) -> Int = won([(z, c), (z, (c + 1)!), (other(z), (c 
 
 enum Front: Flush, Behind(Row)
 
-@memo
+@memo(array)
 fn best(c: Col.cuts, f: Front) -> Int = match f:
     Flush if c == Col.cuts.last => 0
     Flush =>

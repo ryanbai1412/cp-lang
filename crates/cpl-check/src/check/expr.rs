@@ -1746,6 +1746,9 @@ impl<'a> Checker<'a> {
             // The members of a domain that give positions or ranges back.
             Ty::Domain(domain) => {
                 return match name.text.as_str() {
+                    "first" | "last" if std::env::var_os("CPL_SPEC").is_some() => {
+                        Ty::Optional(Box::new(Ty::Pos(domain.clone())))
+                    }
                     "first" | "last" => Ty::Pos(domain.clone()),
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),

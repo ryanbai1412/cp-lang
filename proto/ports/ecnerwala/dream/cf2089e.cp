@@ -54,5 +54,5 @@ for t in V.rev if t != V.first:
     for (c, p) in tree.path(t, V.first).with_prev:
         if let c = c: carry = carry.transposed_mul(before[c])
         (dp[p], carry) = (P.x * (P.x * dp[p]).deriv + carry, carry + dp[p])
-    ans.push(dp[V.first][0])
+    ans.push(dp[V.first!][0])
 print(ans)

@@ -32,7 +32,7 @@ fn take(need: Int, before t: Time) -> Int:
         if k == cnt: supply.remove(u) else: supply[u] -= k
     got
 
-var cur = init[Slime.last]
+var cur = init[Slime.last!]
 var missing = 0
 var ans: List<Int> = []
 
