@@ -1,7 +1,7 @@
 # agc079c
 
 Score: 3/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: defines `Run(vals, opp_below)` invariant in header and derives why every branch of `pop_value` preserves it and why `l.opp_below` / interior `x` forces impossibility; extracts `pop_value`)
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 

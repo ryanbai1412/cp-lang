@@ -2,16 +2,39 @@
 // queue, minimizing reversals (or -1). Reversing time pushes n..=1 and pops a
 // back-to-front; every value enters on one of two ends.
 //
-// Invariants:
-// - Unique parity relation per component: whenever two values stay in the deque
-//   simultaneously, the order they leave fixes their relative insertion side:
-//   popping the front of a multi-element run forces the next element to share
-//   its side (same parity), while popping a deeper run's head or a singleton
-//   marked `opp_below` forces opposite sides (opposite parity).
-// - Minimal reversals: in Pass 2, orienting each free component on first touch
-//   to match the active end avoids any avoidable flip; thereafter every push
-//   and forced pop fixes the required active end, so flipping only when needed
-//   (ignoring free 1-element flips) achieves the exact minimum reversal count.
+// Run-stack invariant (Pass 1):
+// The stack `runs` partitions the current deque into contiguous chains
+// `Run(vals, opp_below)` ordered newest-to-oldest:
+// - All elements in `vals` were inserted on the same side of the deque (with
+//   `vals.first` outermost and `vals.last` innermost).
+// - `opp_below == true` means this run is already committed to the opposite
+//   side of the run immediately below it; `opp_below == false` means its side
+//   relative to the run below is still free (it may later be merged onto the
+//   same side via `swallow`, or committed opposite).
+//
+// Why each branch preserves the invariant (and why `return none` is forced):
+// - Pushing `v` adds a free singleton `Run([v], opp_below: false)`.
+// - Popping `x == top.vals.first` pops from `top`'s side: the next element of
+//   `top` shares `x`'s side (`differ: false`), or if `top` was a singleton with
+//   `opp_below`, `x` is opposite to `under.vals.first` (`differ: true`).
+// - Popping any other `x` must take `x` from the opposite end of the deque, so
+//   every run above `x` must sit on the same side as `top` (merged into `l` via
+//   `swallow`). Encountering `l.opp_below` means `l` is already committed
+//   opposite to the run below it, so `x` is trapped strictly inside the deque
+//   (`return none`). Once `l` reaches `x`:
+//   * If `runs` is empty, `x` is exposed iff `x == l.vals.last` (else trapped);
+//     popping it links `x` to the new `l.vals.last` (`differ: false`).
+//   * Otherwise `x == under.vals.first` is opposite `l`: if `under` is a
+//     singleton, `x` is opposite `l.vals.first`, `under` vanishes, and if
+//     `under.opp_below` held then the run beneath `under` is on the same side
+//     as `l` (opposite of opposite), so `l` swallows it; if `under` has >= 2
+//     elements, `x` pops from `under` and `l` stays above it with
+//     `opp_below = true`.
+//
+// Minimal reversals (Pass 2): orienting each free parity component on first
+// touch to match `active` avoids any avoidable flip; thereafter every push and
+// forced pop fixes the required end, so flipping only when needed (ignoring
+// free 1-element flips) achieves the exact minimum reversal count.
 
 use std.dsu.ParityDsu
 
@@ -49,33 +72,38 @@ fn solve() -> ?Int:
             parity.unite(x, top.vals.first, differ: false)
             runs.push(top)
 
+    // Pop `x` from whichever end of the deque exposes it, or return false if trapped.
+    fn pop_value(x: Val) -> Bool:
+        if runs.last!.vals.first == x:
+            pop_top_front(x)
+            return true
+        var l = runs.pop()!
+        while let r = runs.last, r.vals.first != x:
+            if l.opp_below: return false
+            l = swallow(mut l)
+        if runs.is_empty:
+            if l.vals.last != x: return false
+            l.vals.pop_back()
+            parity.unite(x, l.vals.last, differ: false)
+            runs.push(l)
+            return true
+        let under = runs.last!
+        if under.vals.len == 1:
+            parity.unite(x, l.vals.first, differ: true)
+            runs.pop()
+            l = if under.opp_below: swallow(mut l) else: Run(l.vals, false)
+        else:
+            pop_top_front(x)
+            l.opp_below = true
+        runs.push(l)
+        true
+
     for i in Pos.rev:
         let x = a[i]
         while let v = unpushed, x <= v:
             runs.push(Run(LinkedList.of(v), false))
             unpushed = v.prev
-        if runs.last!.vals.first == x:
-            pop_top_front(x)
-        else:
-            var l = runs.pop()!
-            while let r = runs.last, r.vals.first != x:
-                if l.opp_below: return none
-                l = swallow(mut l)
-            if runs.is_empty:
-                if l.vals.last != x: return none
-                l.vals.pop_back()
-                parity.unite(x, l.vals.last, differ: false)
-                runs.push(l)
-            else:
-                let under = runs.last!
-                if under.vals.len == 1:
-                    parity.unite(x, l.vals.first, differ: true)
-                    runs.pop()
-                    l = if under.opp_below: swallow(mut l) else: Run(l.vals, false)
-                else:
-                    pop_top_front(x)
-                    l.opp_below = true
-                runs.push(l)
+        if not pop_value(x): return none
 
     var base_side: [Val]?Side = none
     var active = Side.Back
