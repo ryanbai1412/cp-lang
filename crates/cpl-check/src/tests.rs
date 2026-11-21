@@ -2030,6 +2030,20 @@ fn a_recovered_name_still_reports_errors_unrelated_to_it() {
     assert_eq!(codes(src), ["E0004", "E0201"], "{:#?}", check(src));
 }
 #[test]
+fn a_lazy_parameter_takes_the_expression_its_lambda_gives_back() {
+    let head = "fn or_else<T>(a: ?T, lazy d: () -> T) -> T:\n    if let v = a:\n        return v\n    d()\n";
+    assert!(codes(&format!("{head}let x: ?Int = 3\nprint(or_else(x, 4), or_else(x, d: 5), or_else(x, () => 6))\n")).is_empty());
+    let d = one(&format!("{head}let x: ?Int = 3\nprint(or_else(x, \"a\"))\n"));
+    assert_eq!(d.code.0, "E0302", "{d:#?}");
+    let d = one("fn f(lazy d: Int) -> Int = 0\n");
+    assert_eq!(
+        (d.code.0, d.help.as_deref()),
+        ("E0302", Some("write `lazy d: () -> Int`"))
+    );
+    assert!(codes("let lazy = 3\nfn g(lazy: Int) -> Int = lazy\nprint(g(lazy))\n").is_empty());
+}
+
+#[test]
 fn a_variadic_parameter_is_a_tuple_of_its_arguments() {
     assert!(codes(
         "fn count<Ts>(..xs: Ts) -> Int:\n    var n = 0\n    for _ in fields(xs):\n        n += 1\n    n\nprint(count(), count(1, \"a\", 2.5))\n"

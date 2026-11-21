@@ -1020,6 +1020,14 @@ impl<'a> Lowerer<'a> {
             .map(|(_, p)| p)
             .collect();
 
+        let thunked: Vec<ast::Arg>;
+        let args = match thunk_lazy_args(&ast_params, args) {
+            Some(t) => {
+                thunked = t;
+                thunked.as_slice()
+            }
+            None => args,
+        };
         let packed: Vec<ast::Arg>;
         let args = match pack_args(&ast_params, args, span) {
             Some(p) => {
@@ -2664,6 +2672,41 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         | ast::TypeKind::DomainBinder(_)
         | ast::TypeKind::Error => false,
     }
+}
+
+/// An argument for a `lazy f: () -> T` becomes `() => arg`, unless it is a
+/// lambda already.
+pub(super) fn thunk_lazy_args(params: &[&ast::Param], args: &[ast::Arg]) -> Option<Vec<ast::Arg>> {
+    if !params.iter().any(|p| p.lazy) {
+        return None;
+    }
+    let positional: Vec<&&ast::Param> = params.iter().filter(|p| !p.named_only).collect();
+    let mut next = 0;
+    let out = args
+        .iter()
+        .map(|arg| {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name.text == n.text),
+                None => {
+                    next += 1;
+                    positional.get(next - 1).copied()
+                }
+            };
+            let mut arg = arg.clone();
+            if param.is_some_and(|p| p.lazy) && !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                let span = arg.value.span;
+                arg.value = ast::Expr {
+                    kind: ast::ExprKind::Lambda {
+                        params: Vec::new(),
+                        body: Box::new(arg.value),
+                    },
+                    span,
+                };
+            }
+            arg
+        })
+        .collect();
+    Some(out)
 }
 
 /// A variadic `..xs: Ts` takes the positional arguments from its place on

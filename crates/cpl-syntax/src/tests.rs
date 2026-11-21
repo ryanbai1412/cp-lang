@@ -526,6 +526,11 @@ fn fn_forms() {
     assert!(f.params[0].mutable && !f.params[1].named_only);
     assert!(f.params[2].named_only && f.params[2].default.is_some());
     assert!(f.params[3].variadic);
+    let lz = stmts("fn f(lazy d: () -> Int, lazy: Int) -> Int = lazy\n");
+    let StmtKind::Fn(f) = &lz[0].kind else {
+        panic!()
+    };
+    assert!(f.params[0].lazy && !f.params[1].lazy && f.params[1].name.text == "lazy");
     let StmtKind::Fn(f) = &s[3].kind else {
         panic!()
     };

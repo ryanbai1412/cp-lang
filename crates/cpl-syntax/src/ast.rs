@@ -198,6 +198,9 @@ pub enum FnBody {
 pub struct Param {
     pub mutable: bool,
     pub variadic: bool,
+    /// `lazy f: () -> T`: a caller passes an expression of type `T`, and it
+    /// becomes `() => expr`.
+    pub lazy: bool,
     /// After `;` in the parameter list: can only be passed by name.
     pub named_only: bool,
     pub name: Name,

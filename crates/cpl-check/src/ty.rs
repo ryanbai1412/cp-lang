@@ -67,6 +67,7 @@ pub struct Param {
     pub has_default: bool,
     pub named_only: bool,
     pub variadic: bool,
+    pub lazy: bool,
 }
 
 impl Ty {

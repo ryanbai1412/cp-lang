@@ -119,6 +119,7 @@ impl<'a> Checker<'a> {
                         has_default: false,
                         named_only: false,
                         variadic: false,
+                        lazy: false,
                     })
                     .collect(),
                 ret: Box::new(self.resolve_type(ret)),
@@ -401,6 +402,15 @@ impl<'a> Checker<'a> {
                     ));
                 }
             }
+            if p.lazy && !matches!(&ty, Ty::Fn { params, .. } if params.is_empty()) && ty != Ty::Error {
+                let message = format!(
+                    "`lazy {}` is passed as an expression the fn runs when it calls `{}()`, so its type is `() -> T`, not `{ty}`",
+                    p.name.text, p.name.text
+                );
+                if let Some(diag) = self.error(codes::TYPE_MISMATCH, p.span, message) {
+                    diag.help = Some(format!("write `lazy {}: () -> {ty}`", p.name.text));
+                }
+            }
             let seen = Local { ty: ty.clone(), mutable: p.mutable, span: p.name.span, keyword: "param" };
             self.scopes.last_mut().unwrap().insert(p.name.text.clone(), seen);
             params.push(Param {
@@ -410,6 +420,7 @@ impl<'a> Checker<'a> {
                 has_default: p.default.is_some(),
                 named_only: p.named_only,
                 variadic: p.variadic,
+                lazy: p.lazy,
             });
         }
         let ret = match (&f.ret, &f.body) {
@@ -783,6 +794,7 @@ impl<'a> Checker<'a> {
                         has_default: f.default.is_some(),
                         named_only: false,
                         variadic: false,
+                        lazy: false,
                     })
                     .collect();
                 let (methods, getters, mutators) = self.method_sigs(&s.methods, &self_ty);

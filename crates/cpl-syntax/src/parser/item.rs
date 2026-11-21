@@ -207,6 +207,10 @@ impl<'a> Parser<'a> {
     fn param(&mut self, named_only: bool) -> Param {
         let start = self.start();
         let variadic = self.eat(T::DotDot);
+        let lazy = self.at(T::Ident) && self.text() == "lazy" && self.peek_n(1) == T::Ident;
+        if lazy {
+            self.bump();
+        }
         let mut mutable = self.eat(T::Mut);
         let copied = !mutable && self.eat(T::Var);
         let name = if self.at(T::SelfKw) {
@@ -229,6 +233,7 @@ impl<'a> Parser<'a> {
         Param {
             mutable,
             variadic,
+            lazy,
             named_only,
             name,
             ty,

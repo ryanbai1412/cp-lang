@@ -478,9 +478,18 @@ impl<'a> Checker<'a> {
                 pack.push(self.settle(&arg_ty).widen());
                 continue;
             }
-            let arg_ty = self.narrowed(&arg_ty, &param.ty);
-            param.ty.unify(&arg_ty, bindings);
-            let want = param.ty.subst(bindings);
+            // A `lazy d: () -> T` is given the `T` its lambda gives back.
+            let slot = match &param.ty {
+                Ty::Fn { params, ret }
+                    if param.lazy && params.is_empty() && !matches!(arg.value.kind, ExprKind::Lambda { .. }) =>
+                {
+                    ret.as_ref()
+                }
+                ty => ty,
+            };
+            let arg_ty = self.narrowed(&arg_ty, slot);
+            slot.unify(&arg_ty, bindings);
+            let want = slot.subst(bindings);
             // `Node([none, none], 0)`: a list written out where an array is
             // wanted is the cells of that array, as in `let a: [0..2]?Int = [..]`.
             if let (ExprKind::List(_), Ty::Array { index, elem }, Ty::Named { name, args }) =

@@ -1543,6 +1543,18 @@ remove `--test`/`--watch`/`--last`/`--depth` from `RunArgs` in `crates/cpl-cli/s
   `read<T>()` throughout and a pack type `read<(A, B)>()` needs a spelling. To reverse: restore the `type_like &&` gate in
   `cpl-syntax` `parser/expr.rs` and drop `names_a_type`.
 
+- **28.5 Lazy parameters.** `fn or_else<T>(a: ?T, lazy d: () -> T) -> T` takes, at the call site,
+  an expression `e` of type `T`, and passes `() => e`; the body calls `d()` when it wants the value.
+  So `??`-, `assert`- and `debug`-shaped fns can be library code that evaluates its argument zero or
+  one time, and the reader of the body sees each evaluation as a call. The declared type stays the
+  function type (one meaning per spelling); `lazy` only changes what the caller writes, and a lambda
+  is still accepted as is. `lazy` is a contextual word, so `lazy` stays a usable name. Rejected:
+  Scala's by-name `d: => T` (each read re-evaluates, invisibly) and an implicit conversion from `T`
+  to `() -> T` for every fn-typed parameter (the call site of a non-lazy fn would stop saying when
+  its argument runs). Free fns and generic fns only so far; methods next. To reverse: drop
+  `Param::lazy` in `cpl-syntax`, the `slot` match in `cpl-check` `check/call.rs`, and
+  `thunk_lazy_args` in `cpl-ir` `lower/mono.rs`.
+
 ## 29. Editor and LSP (2026-11-21)
 
 29.1. **Hover shows the declaration's `///` doc, wherever it is declared.** `Hover` gains `doc`, read

@@ -532,6 +532,16 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         self.queue_fn(id);
+        let thunked: Vec<ast::Arg>;
+        let decl_params: Vec<&ast::Param> =
+            self.sigs[id].decl.params.iter().filter(|p| p.name.text != "self").collect();
+        let args = match super::mono::thunk_lazy_args(&decl_params, args) {
+            Some(t) => {
+                thunked = t;
+                thunked.as_slice()
+            }
+            None => args,
+        };
         let params = self.sigs[id].params.clone();
         let name = self.sigs[id].decl.name.text.clone();
         let mut given: Vec<Option<&ast::Arg>> = vec![None; params.len()];

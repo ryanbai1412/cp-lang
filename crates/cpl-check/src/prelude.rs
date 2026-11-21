@@ -113,6 +113,7 @@ fn int_fn(arity: usize) -> Ty {
                 has_default: false,
                 named_only: false,
                 variadic: false,
+                lazy: false,
             })
             .collect(),
         ret: Box::new(Ty::Int),

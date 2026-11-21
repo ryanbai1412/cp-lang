@@ -173,6 +173,25 @@ match ev:
     Event.Query(id, _) => ans[id] = 0
 ```
 
+### Lazy parameters
+
+A parameter marked `lazy` has a nullary function type, and the caller writes the
+expression itself; the fn runs it by calling the parameter, zero or more times:
+
+```cp
+fn or_else<T>(a: ?T, lazy d: () -> T) -> T:
+    if let v = a:
+        return v
+    d()
+
+fn solve(k: Int) -> Int = k * k
+
+let cached: ?Int = none
+print(or_else(cached, solve(4)))   // `solve(4)` runs only because `cached` is none
+```
+
+A lambda `() => e` is accepted too.
+
 ### Variadic parameters
 
 A last positional parameter written `..xs: Ts` takes every remaining positional argument as one tuple; `Ts` is a type parameter, bound per call to the tuple's type, so the arguments can differ in type. Walk them with `fields`:

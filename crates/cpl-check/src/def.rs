@@ -146,6 +146,7 @@ impl Def {
                         has_default: false,
                         named_only: false,
                         variadic: false,
+                        lazy: false,
                     })
                     .collect(),
                 ret: Box::new(Ty::Named {
