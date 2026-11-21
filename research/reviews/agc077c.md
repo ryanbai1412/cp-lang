@@ -1,6 +1,6 @@
 # agc077c
 
-Score: 2/5
+Score: pending cold rescore (port updated to match 4/5 dream: full parity proof in header, paired edge loop eliminating L0503, local `complement_components()` + `count(odd_out[v] for v in comp)`, gated 150/150; emitted C++ 13,036 -> 13,811 B, 0 scoreboard regressions)
 Dream: 4/5
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
