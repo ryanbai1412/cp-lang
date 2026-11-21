@@ -2,6 +2,9 @@
 // positions: the common trees are the cuts of that sequence's permutation tree.
 // A decreasing node whose right child is one vertex hangs its left part one
 // level deeper; any other node is as deep as its deeper child.
+use std.seq.{Perm}
+use std.tree.{PermTree}
+
 @!multitest
 let n: 2..=1e6 = read()
 domain V = 1..=n

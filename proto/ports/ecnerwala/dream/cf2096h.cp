@@ -13,7 +13,8 @@
 // (`odd_prod`), where `hx = (l ^ r) >> q`. A multiplicative butterfly over the
 // `m - q` high bits evaluates the product for every `hi`, and an inverse WHT
 // recovers `ways`.
-use std.ntt.fwht_xor
+use std.mod.{Mod}
+use std.ntt.{fwht}
 
 type Z = Mod<998_244_353>
 
@@ -64,7 +65,7 @@ for q in 1..=m:
         let val = even_prod[hi]
         hat[Mask((hi.ord << q) + half)] = if popcount(high_xor & hi.ord) % 2 == 1: -val else: val
 
-fwht_xor(mut hat, inverse: true)
+fwht(mut hat, inverse: true)
 
 var checksum = 0
 var pow2: Z = 1

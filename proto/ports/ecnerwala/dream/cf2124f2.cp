@@ -10,6 +10,7 @@
 // by a shorter 1-starting run `[j..k)` of length <= L - 1 (so k <= 2j - c - 1),
 // which is already counted as a single cyclic shift.
 
+use std.mod.{Mod}
 use std.prefix.SweepAdd
 
 type Z = Mod<998_244_353>

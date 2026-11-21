@@ -12,6 +12,8 @@ fn walk(a: Int, b: Int, room: Int) -> ?List<0..=1> =
     elif a == b: if a == 1: [1] else: none
     else: [1] + walk(b, a - b, room - 1)?
 
+let phi = (1.0 + sqrt(5.0)) / 2.0
+
 @!multitest
 let x: 0..=1e7 = read()
 let diag = if x <= 1: [x] else:
