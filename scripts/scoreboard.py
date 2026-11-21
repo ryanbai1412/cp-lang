@@ -2076,11 +2076,12 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=No
             if prev_eb is not None and eb > prev_eb + EMITTED_GROWTH_BYTES and eb > prev_eb * EMITTED_GROWTH_RATIO:
                 msg = f"emitted C++ grew >5%: {pid} ({prev_eb} -> {eb} B, +{eb - prev_eb} B)"
                 if _is_reviewed_rewrite(scope, pid) and eb <= SIZE_WARN:
-                    # A dream-driven rewrite may grow emitted C++ while its
-                    # review is touched in the same change (pending cold
-                    # rescore with the size cause named); the 48 KB warn line
-                    # still blocks.
-                    warnings.append(msg + " [reviewed rewrite]")
+                    # Accepting the growth means rebaselining in the same
+                    # commit: a waiver that leaves the old baseline blames
+                    # every later compiler or stdlib change for it.
+                    regressions.append(
+                        msg + f" [reviewed rewrite: accept it with `python3 scripts/scoreboard.py --update {pid}`]"
+                    )
                 else:
                     record_regression(msg, pid=pid)
             elif prev_eb is not None and prev_eb > eb + EMITTED_GROWTH_BYTES and eb < prev_eb * 0.95:

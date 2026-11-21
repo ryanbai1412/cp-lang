@@ -20,8 +20,10 @@ Every dream must be at that level, and every port is scored against it.
    runtime on a max input against the C++, and emitted bytes.
    A rewrite toward the dream may grow emitted C++ only when its review
    names the runtime part that grew and the codegen ticket that removes it;
-   the scoreboard then warns (`reviewed rewrite`) instead of blocking, and
-   the 48 KB warn line still blocks.
+   accept the growth by rebaselining the port in the same commit
+   (`python3 scripts/scoreboard.py --update GROUP/NAME`), which the
+   scoreboard's `reviewed rewrite` failure names; the 48 KB warn line
+   still blocks.
 4. **Report every gap** between port and dream in
    `research/frictions/NAME.md`: the snippet, the dream lines that remove it,
    the goal it hurts, a general fix (never a one-problem helper), severity.

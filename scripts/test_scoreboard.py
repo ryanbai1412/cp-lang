@@ -1117,13 +1117,16 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         self.assertIn("cause: touched port", d_same["regressions"][0])
 
         # Growth in a touched port whose review is touched too is a reviewed
-        # rewrite: a warning under the 48 KB warn line, still blocked above it.
+        # rewrite: it still blocks until the port is rebaselined in the same
+        # commit, and the hint names the command that accepts it.
         grow_base = {"ports": [{"id": "ecnerwala/cf9999a", "gate": "pass", "emitted_bytes": 14000}], "totals": base["totals"]}
         grow_cur = {"ports": [{"id": "ecnerwala/cf9999a", "gate": "pass", "emitted_bytes": 22000}], "totals": base["totals"]}
         scope_rewrite = {**scope_other_port, "touched_ports": {"ecnerwala/cf9999a"}, "reviewed_ports": {"cf9999a"}, "touched_reviews": True}
         d_rw = sb.diff_against_baseline(grow_cur, grow_base, mode="fast", scope=scope_rewrite)
-        self.assertEqual(d_rw["regressions"], [])
-        self.assertTrue(any("reviewed rewrite" in w for w in d_rw["warnings"]))
+        self.assertEqual(len(d_rw["regressions"]), 1)
+        self.assertIn("--update ecnerwala/cf9999a", d_rw["regressions"][0])
+        d_rebased = sb.diff_against_baseline(grow_cur, grow_cur, mode="fast", scope=scope_rewrite)
+        self.assertEqual(d_rebased["regressions"], [])
         d_norev = sb.diff_against_baseline(grow_cur, grow_base, mode="fast", scope={**scope_rewrite, "reviewed_ports": set()})
         self.assertEqual(len(d_norev["regressions"]), 1)
         big_cur = {"ports": [{"id": "ecnerwala/cf9999a", "gate": "pass", "emitted_bytes": 50000}], "totals": base["totals"]}
