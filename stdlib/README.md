@@ -423,8 +423,12 @@ is evidence, not a proof.
 - `mod.cp`, `math.cp`: modular arithmetic (`try_inv`), interior-mutable
   auto-growing `Comb<P>()`, number theory (`gcd`, `ext_gcd`, `ceil_div`,
   `bit_len`, `Sieve`, `factor`, `divisors`, `crt`).
-- `strings.cp`: Z, prefix function, KMP `find_all`, `period`, suffix
-  array, LCP, generalized `RollingHash` & `HashVal`.
+- `strings.cp`: Z, prefix function, KMP (`find_all`, `prefix_matches`,
+  `borders`, `period`, `overlap`), Lyndon factorization & `min_rotation`,
+  `manacher` (`Palindromes`) & `PalindromicTree<A>`, `suffix_array` /
+  `lcp_array` / `SuffixArray<T>`, `SuffixAutomaton<A>`, `Trie<A>`,
+  `AhoCorasick<A>`, generalized `RollingHash` (`lcp`, `lcs`, `lcp_with`),
+  `HashVal`, and `Hash2D<R, C>`.
 - `geometry.cp`: exact integer points (`Pt` with `Ord`/`Show`, `dot`/`dot128`,
   `cross`/`cross128`, `dist2`/`dist`, `turn`, `same_dir`, `ByAngle`,
   `on_segment`, `segments_meet`, `lower_hull`, `upper_hull`,

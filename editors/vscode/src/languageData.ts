@@ -38,11 +38,15 @@ export const PRELUDE_TYPES: readonly string[] = [
 
 /** Every public type and trait declared in `stdlib/*.cp`, whether `stdlib/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
-    'Action', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'ConnectedGraph', 'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff1', 'Diff2', 'Digraph', 'Dir4', 'Dir8', 'DisjointSparseTable', 'Dsu',
-    'DsuOf', 'DualFenwick', 'DualSegTree', 'Fenwick', 'Fenwick2D', 'FlowGraph', 'Graph', 'HalfPlane', 'HashVal', 'Hashable', 'LazySegTree', 'Mark',
-    'Marks', 'MaxHeap', 'MaxSub', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours', 'ParityDsu', 'Perm', 'Prefix1',
-    'Prefix2', 'PrefixN', 'Pt', 'RangeFenwick', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
-    'SortedBag', 'SparseTable', 'Target', 'Tree', 'Vec', 'WindowFold', 'XorFenwick',
+    'Action', 'AhoCorasick', 'Arc', 'Bitset', 'ByAngle', 'Comb', 'Compressed', 'ConnectedGraph',
+    'CostFlow', 'Dag', 'Deque', 'Desc', 'Diff1', 'Diff2', 'Digraph', 'Dir4', 'Dir8',
+    'DisjointSparseTable', 'Dsu', 'DsuOf', 'DualFenwick', 'DualSegTree', 'Fenwick', 'Fenwick2D',
+    'FlowGraph', 'Graph', 'HalfPlane', 'Hash2D', 'HashVal', 'Hashable', 'LazySegTree', 'Mark',
+    'Marks', 'MaxHeap', 'MaxSub', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours',
+    'Palindromes', 'PalindromicTree', 'ParityDsu', 'Perm', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
+    'RangeFenwick', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
+    'SortedBag', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'Tree', 'Trie', 'Vec',
+    'WindowFold', 'XorFenwick',
 ];
 
 /**
@@ -63,23 +67,26 @@ export const PRELUDE_VALUES: readonly string[] = [
 
 /** Public `stdlib/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
 export const STDLIB_VALUES: readonly string[] = [
-    'affine_sum', 'angle_less', 'area2', 'area2_128', 'argmins', 'articulation_points', 'berlekamp_massey',
-    'biconnected_components', 'bit_len', 'choose', 'circle_intersect', 'circle_line_intersect',
-    'circulation', 'circumcenter', 'close', 'closest_pair', 'closest_pair2', 'components', 'concavity_break',
-    'convex_hull', 'convex_hull_idx', 'convexity_break', 'cross', 'cross128', 'crt', 'cyclic_pairs',
-    'decrease', 'dedup', 'diameter2', 'differences', 'directed_of_pairs', 'directed_of_triples',
-    'dist', 'dist2', 'dist2_128', 'divisors', 'dnc_break', 'dot', 'dot128', 'ext_gcd', 'factor',
-    'factor_big', 'first_ge_by', 'floor_sum', 'general_matching', 'get_or_insert_with', 'gomory_hu', 'guess_at',
-    'half_plane_intersect', 'hull_extreme', 'idempotent', 'increase', 'is_prime', 'knuth_break',
-    'last_le_by', 'lcp_array', 'line_dist', 'line_intersect', 'locate', 'locate_convex',
-    'lower_hull', 'max_bounded_flow', 'max_closure', 'max_matching', 'max_weight_matching', 'min_bounded_flow', 'min_vertex_cover', 'min_weight_matching', 'minkowski_sum', 'minkowski_upper', 'mo_order', 'mo_steps', 'monge_break',
-    'mul_mod', 'newton', 'next_permutation', 'on_segment', 'pairs', 'period', 'phi', 'poly_at',
-    'poly_degree', 'pow_mod', 'prefix_fold', 'prefix_function', 'prev_permutation', 'primitive_root', 'project',
-    'ray', 'recurrence_at', 'reflect', 'reverse', 'rfind', 'rotate_left', 'same_dir', 'seg_dist',
-    'segments_meet', 'sign_eps', 'splitmix64', 'suffix_array', 'suffix_fold', 'swap_at', 'take', 'turn',
-    'two_color', 'two_edge_components', 'undirected_of_pairs', 'undirected_of_triples',
-    'unimodality_break', 'update', 'upper_hull', 'vcross', 'vdist', 'vdot', 'vturn', 'with_prev',
-    'z_function',
+    'affine_sum', 'angle_less', 'area2', 'area2_128', 'argmins', 'articulation_points',
+    'berlekamp_massey', 'biconnected_components', 'bit_len', 'borders', 'choose',
+    'circle_intersect', 'circle_line_intersect', 'circulation', 'circumcenter', 'close',
+    'closest_pair', 'closest_pair2', 'components', 'concavity_break', 'convex_hull',
+    'convex_hull_idx', 'convexity_break', 'cross', 'cross128', 'crt', 'cyclic_pairs', 'decrease',
+    'dedup', 'diameter2', 'differences', 'directed_of_pairs', 'directed_of_triples', 'dist',
+    'dist2', 'dist2_128', 'divisors', 'dnc_break', 'dot', 'dot128', 'ext_gcd', 'factor',
+    'factor_big', 'first_ge_by', 'floor_sum', 'general_matching', 'get_or_insert_with', 'gomory_hu',
+    'guess_at', 'half_plane_intersect', 'hull_extreme', 'idempotent', 'increase', 'is_palindrome',
+    'is_prime', 'knuth_break', 'last_le_by', 'lcp_array', 'line_dist', 'line_intersect', 'locate',
+    'locate_convex', 'lower_hull', 'lyndon_factorization', 'manacher', 'max_bounded_flow',
+    'max_closure', 'max_matching', 'max_weight_matching', 'min_bounded_flow', 'min_rotation',
+    'min_vertex_cover', 'min_weight_matching', 'minkowski_sum', 'minkowski_upper', 'mo_order',
+    'mo_steps', 'monge_break', 'mul_mod', 'newton', 'next_permutation', 'on_segment', 'overlap',
+    'pairs', 'period', 'phi', 'poly_at', 'poly_degree', 'pow_mod', 'prefix_fold', 'prefix_function',
+    'prefix_matches', 'prev_permutation', 'primitive_root', 'project', 'ray', 'recurrence_at',
+    'reflect', 'reverse', 'rfind', 'rotate_left', 'same_dir', 'seg_dist', 'segments_meet',
+    'sign_eps', 'splitmix64', 'suffix_array', 'suffix_fold', 'swap_at', 'take', 'turn', 'two_color',
+    'two_edge_components', 'undirected_of_pairs', 'undirected_of_triples', 'unimodality_break',
+    'update', 'upper_hull', 'vcross', 'vdist', 'vdot', 'vturn', 'with_prev', 'z_function',
 ];
 
 /** Public `stdlib/*.cp` constants (no INF sentinel; use ?Int / none). */
