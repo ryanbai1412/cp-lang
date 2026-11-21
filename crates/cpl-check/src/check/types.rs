@@ -580,24 +580,54 @@ impl<'a> Checker<'a> {
     }
 
     /// The type an impl is for, with the type parameters its header names:
-    /// `impl Add for Mod<P>` is generic over `P`.
-    pub(crate) fn impl_generics(&mut self, target: &ast::Type) -> Vec<String> {
-        let TypeKind::Named { args, .. } = &target.kind else {
-            return Vec::new();
-        };
-        args.iter()
-            .filter_map(|arg| match &arg.kind {
-                TypeKind::Named { name, args }
-                    if args.is_empty()
-                        && self.local(&name.text).is_none()
-                        && self.env.global(&name.text).is_none()
-                        && prelude::ty(&name.text).is_none() =>
+    /// `impl Add for Mod<P>` is generic over `P`, and `impl<T: Add> Add for ?T`
+    /// is generic over `T`.
+    pub(crate) fn impl_generics(&mut self, target: &ast::Type, bounds: &[ast::Bound]) -> Vec<String> {
+        let mut out = Vec::new();
+        for b in bounds {
+            if !out.contains(&b.name.text) {
+                out.push(b.name.text.clone());
+            }
+        }
+        self.collect_impl_generics(target, &mut out);
+        out
+    }
+
+    fn collect_impl_generics(&mut self, ty: &ast::Type, out: &mut Vec<String>) {
+        match &ty.kind {
+            TypeKind::Named { name, args } => {
+                if args.is_empty()
+                    && self.local(&name.text).is_none()
+                    && self.env.global(&name.text).is_none()
+                    && prelude::ty(&name.text).is_none()
+                    && !out.contains(&name.text)
                 {
-                    Some(name.text.clone())
+                    out.push(name.text.clone());
                 }
-                _ => None,
-            })
-            .collect()
+                for arg in args {
+                    self.collect_impl_generics(arg, out);
+                }
+            }
+            TypeKind::Optional(inner) => self.collect_impl_generics(inner, out),
+            TypeKind::Tuple(items) => {
+                for item in items {
+                    self.collect_impl_generics(item, out);
+                }
+            }
+            TypeKind::Array { index, elem } => {
+                for i in index {
+                    self.collect_impl_generics(i, out);
+                }
+                self.collect_impl_generics(elem, out);
+            }
+            TypeKind::Fn { params, ret } => {
+                for p in params {
+                    self.collect_impl_generics(p, out);
+                }
+                self.collect_impl_generics(ret, out);
+            }
+            _ => {}
+        }
     }
 
     /// The definitions a top-level statement gives to the names it declares.
@@ -841,13 +871,13 @@ impl<'a> Checker<'a> {
             S::Impl {
                 trait_name,
                 target,
+                bounds,
                 body,
-                ..
             } => {
                 let Some(target_name) = type_head(target) else {
                     return Vec::new();
                 };
-                let generics = self.impl_generics(target);
+                let generics = self.impl_generics(target, bounds);
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.quietly(|c| c.resolve_type(target));
                 self.self_ty = Some(self_ty.clone());

@@ -2029,7 +2029,6 @@ fn a_recovered_name_still_reports_errors_unrelated_to_it() {
     let src = "let ($l, b) = (4, 6)\nprint(l + b)\nprint(missing)\n";
     assert_eq!(codes(src), ["E0004", "E0201"], "{:#?}", check(src));
 }
-
 #[test]
 fn a_variadic_parameter_is_a_tuple_of_its_arguments() {
     assert!(codes(
@@ -2042,4 +2041,22 @@ fn a_variadic_parameter_is_a_tuple_of_its_arguments() {
         (d.code.0, d.message.as_str()),
         ("E0302", "`..xs` collects its arguments into a tuple, so its type is a type parameter, not `Int`")
     );
+}
+
+#[test]
+fn self_in_trait_range_bounds_and_generic_optional_impls_check() {
+    let trait_src = "\
+trait Index:
+    fn count() -> Int
+    fn ord(self) -> 0..Self.count
+    fn from_ord(i: 0..Self.count) -> Self
+";
+    assert!(codes(trait_src).is_empty(), "{:#?}", check(trait_src));
+
+    let impl_src = "\
+impl<T: Add> Add for ?T:
+    fn add(a, b) -> ?T = if let x = a, y = b: x + y else: none
+impl<T: Eq> Eq for ?T
+";
+    assert!(codes(impl_src).is_empty(), "{:#?}", check(impl_src));
 }

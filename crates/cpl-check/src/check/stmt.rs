@@ -661,7 +661,7 @@ impl<'a> Checker<'a> {
                 bounds,
                 body,
             } => {
-                let generics = self.impl_generics(target);
+                let generics = self.impl_generics(target, bounds);
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.resolve_type(target);
                 self.self_ty = Some(self_ty.clone());

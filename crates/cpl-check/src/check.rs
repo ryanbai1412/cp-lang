@@ -287,6 +287,15 @@ impl<'a> Checker<'a> {
             });
             return ty;
         }
+        if name == "Self" {
+            if let Some(self_ty) = self.self_ty.clone() {
+                return match self_ty {
+                    Ty::Named { name, .. } => Ty::TypeName(name),
+                    Ty::Pos(domain) => Ty::Domain(domain),
+                    ty => ty,
+                };
+            }
+        }
         // A type parameter: `T.zero`, `V.K`, or the `P` of `Mod<P>` as a number.
         if self.generics.iter().any(|g| g == name) {
             return Ty::Param(name.to_string());
