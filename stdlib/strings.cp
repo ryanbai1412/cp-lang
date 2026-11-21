@@ -419,7 +419,8 @@ pub struct SuffixArray<T>:
     sa: List<Int>
     rank: List<Int>
     lcp: List<Int>
-    rmq: List<List<Int>>
+    rmq: List<Int>
+    rmq_n: Int
 
     @allow(unproven_list_index)
     /// Build suffix array and Kasai LCP array for `s`. O(n log n).
@@ -429,15 +430,20 @@ pub struct SuffixArray<T>:
         var rank = List.filled(n, 0)
         for j in 0..n: rank[sa[j]] = j
         let lcp = lcp_array(s, sa)
-        var rmq: List<List<Int>> = []
-        if lcp.len > 0:
-            rmq.push(lcp)
-            var w = 1
-            while 2 * w <= lcp.len:
-                let prev = rmq[rmq.len - 1]
-                rmq.push([min(prev[i], prev[i + w]) for i in 0..=lcp.len - 2 * w])
-                w *= 2
-        SuffixArray(s, sa, rank, lcp, rmq)
+        let m = lcp.len
+        var rmq: List<Int> = []
+        if m > 0:
+            var lg = 1
+            while (1 << lg) <= m: lg += 1
+            rmq = List.filled(lg * m, 0)
+            for i in 0..m: rmq[i] = lcp[i]
+            for b in 1..lg:
+                let step = 1 << (b - 1)
+                let lim = m - (1 << b) + 1
+                let cur = b * m
+                let prev = (b - 1) * m
+                for i in 0..lim: rmq[cur + i] = min(rmq[prev + i], rmq[prev + i + step])
+        SuffixArray(s, sa, rank, lcp, rmq, m)
 
     /// Length of the indexed sequence. O(1).
     pub @get fn len(self) -> Int = s.len
@@ -445,7 +451,8 @@ pub struct SuffixArray<T>:
     @allow(unproven_list_index)
     fn rmq_min(self, lo: Int, hi: Int) -> Int:
         let k = bit_width(hi - lo) - 1
-        min(rmq[k][lo], rmq[k][hi - (1 << k)])
+        let base = k * rmq_n
+        min(rmq[base + lo], rmq[base + hi - (1 << k)])
 
     /// Longest common prefix of suffixes `s[i..]` and `s[j..]`. O(1).
     @allow(unproven_list_index)
@@ -562,24 +569,33 @@ pub struct RollingHash:
     pow2: List<Int>
 
     /// Build a double-modulus polynomial rolling hash over `seq`. O(n).
-    pub fn new<S>(seq: S, bases: ?(Int, Int) = none) -> RollingHash:
+    @allow(unproven_list_index)
+    pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = none) -> RollingHash:
         let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
-        var p1 = [0]
-        var p2 = [0]
-        var pow1 = [1]
-        var pow2 = [1]
+        let n = seq.len
+        var p1 = List.filled(n + 1, 0)
+        var p2 = List.filled(n + 1, 0)
+        var pow1 = List.filled(n + 1, 1)
+        var pow2 = List.filled(n + 1, 1)
+        var (h1, h2, w1, w2) = (0, 0, 1, 1)
+        var idx = 0
         for x in seq:
+            idx += 1
             let t = x.hash_token
-            let x1 = t % (RH_M1 - 1) + 1
-            let x2 = t % (RH_M2 - 1) + 1
-            p1.push((p1[p1.len - 1] * b1 + x1) % RH_M1)
-            p2.push((p2[p2.len - 1] * b2 + x2) % RH_M2)
-            pow1.push(pow1[pow1.len - 1] * b1 % RH_M1)
-            pow2.push(pow2[pow2.len - 1] * b2 % RH_M2)
+            let x1 = if 0 <= t and t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
+            let x2 = if 0 <= t and t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
+            h1 = (h1 * b1 + x1) % 1_000_000_007
+            h2 = (h2 * b2 + x2) % 1_000_000_009
+            w1 = w1 * b1 % 1_000_000_007
+            w2 = w2 * b2 % 1_000_000_009
+            p1[idx] = h1
+            p2[idx] = h2
+            pow1[idx] = w1
+            pow2[idx] = w2
         RollingHash((b1, b2), p1, p2, pow1, pow2)
 
     /// Build a `RollingHash` reusing another instance's salted `bases` so their hashes compare directly.
-    pub fn with_bases<S>(
+    pub fn with_bases<S: Seq>(
         seq: S,
         bases: (Int, Int),
     ) -> RollingHash = RollingHash.new(seq, bases: bases)
@@ -590,13 +606,29 @@ pub struct RollingHash:
     /// Hash of the entire sequence. O(1).
     pub @get fn all(self) -> HashVal = self.slice(0, p1.len - 1)
 
+    @allow(unproven_list_index)
+    fn raw_slice(self, l: Int, r: Int) -> HashVal:
+        let d = r - l
+        HashVal(
+            (p1[r] - p1[l] * pow1[d]) % 1_000_000_007,
+            (p2[r] - p2[l] * pow2[d]) % 1_000_000_009,
+        )
+
+    @allow(unproven_list_index)
+    fn eq_sub(self, a: Int, b: Int, len: Int) -> Bool:
+        let a1 = (p1[a + len] - p1[a] * pow1[len]) % 1_000_000_007
+        let b1 = (p1[b + len] - p1[b] * pow1[len]) % 1_000_000_007
+        if a1 != b1: return false
+        let a2 = (p2[a + len] - p2[a] * pow2[len]) % 1_000_000_009
+        let b2 = (p2[b + len] - p2[b] * pow2[len]) % 1_000_000_009
+        a2 == b2
+
     /// Hash of the half-open 0-based slice `[l, r)`; `HashVal(0, 0)` when `l == r`. Stops on
     /// `l > r` or an end outside the sequence. O(1).
     pub fn slice(self, l: Int, r: Int) -> HashVal:
         assert 0 <= l and l <= r and r <= p1.len - 1, "`slice(l, r)` needs `0 <= l <= r <= len`"
         if l == r: return HashVal(0, 0)
-        let d = r - l
-        HashVal((p1[r] - p1[l] * pow1[d]) % RH_M1, (p2[r] - p2[l] * pow2[d]) % RH_M2)
+        self.raw_slice(l, r)
 
     /// Hash of a range (`Range<Int>` such as `l..r`, `l..=r`, `..k`, or `Range<D>` on `[D]T`). O(1).
     pub fn get<R>(self, r: R) -> HashVal:
@@ -605,7 +637,10 @@ pub struct RollingHash:
 
     /// Concatenate hashes `a` and `b` where `b` has length `b_len`, in O(1).
     pub fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal:
-        HashVal((a.h1 * pow1[b_len] + b.h1) % RH_M1, (a.h2 * pow2[b_len] + b.h2) % RH_M2)
+        HashVal(
+            (a.h1 * pow1[b_len] + b.h1) % 1_000_000_007,
+            (a.h2 * pow2[b_len] + b.h2) % 1_000_000_009,
+        )
 
     /// Longest common prefix of suffixes starting at `a` and `b`. O(log n).
     pub fn lcp(self, a: Int, b: Int) -> Int:
@@ -615,7 +650,7 @@ pub struct RollingHash:
         var (lo, hi) = (0, min(n - a, n - b))
         while lo < hi:
             let mid = (lo + hi + 1) >> 1
-            if self.slice(a, a + mid) == self.slice(b, b + mid): lo = mid else: hi = mid - 1
+            if self.eq_sub(a, b, mid): lo = mid else: hi = mid - 1
         lo
 
     /// Longest common suffix of prefixes `s[..a]` and `s[..b]`. O(log n).
@@ -626,7 +661,7 @@ pub struct RollingHash:
         var (lo, hi) = (0, min(a, b))
         while lo < hi:
             let mid = (lo + hi + 1) >> 1
-            if self.slice(a - mid, a) == self.slice(b - mid, b): lo = mid else: hi = mid - 1
+            if self.eq_sub(a - mid, b - mid, mid): lo = mid else: hi = mid - 1
         lo
 
     /// Longest common prefix of `self[a..]` and `other[b..]`. Requires `self.bases == other.bases`.
@@ -639,7 +674,10 @@ pub struct RollingHash:
         var (lo, hi) = (0, min(n1 - a, n2 - b))
         while lo < hi:
             let mid = (lo + hi + 1) >> 1
-            if self.slice(a, a + mid) == other.slice(b, b + mid): lo = mid else: hi = mid - 1
+            if self.raw_slice(a, a + mid) == other.raw_slice(
+                b,
+                b + mid,
+            ): lo = mid else: hi = mid - 1
         lo
 
 /// Double-mod 2D polynomial prefix hash over a grid with row domain `R` and column domain `C`.
@@ -1057,38 +1095,43 @@ pub struct AhoCorasick<A>:
     /// Build an Aho-Corasick automaton over `patterns`. O(total pattern length).
     pub fn new(patterns: List<List<A>>) -> AhoCorasick<A>:
         let k = A.K
-        var kid = List.filled(k, -1)
+        var goto = List.filled(k, -1)
         var ends: List<List<Int>> = [[]]
+        var lens = List.filled(patterns.len, 0)
         for i in 0..patterns.len:
+            lens[i] = patterns[i].len
             var at = 0
             for a in patterns[i]:
                 let idx = at * k + a.to_idx
-                if kid[idx] == -1:
+                if goto[idx] == -1:
                     let nw = ends.len
-                    for _ in 0..k: kid.push(-1)
+                    for _ in 0..k: goto.push(-1)
                     ends.push([])
-                    kid[idx] = nw
-                at = kid[idx]
+                    goto[idx] = nw
+                at = goto[idx]
             ends[at].push(i)
         let n = ends.len
-        var goto = [if x == -1: 0 else: x for x in kid]
         var fail = List.filled(n, 0)
         var exit = List.filled(n, -1)
-        var order = [0]
+        var order = List.filled(n, 0)
         var head = 0
-        while head < order.len:
+        var tail = 1
+        while head < tail:
             let s = order[head]
             head += 1
+            let base = s * k
+            let fbase = fail[s] * k
             for c in 0..k:
-                let past = if s == 0: 0 else: goto[fail[s] * k + c]
-                let t = kid[s * k + c]
+                let past = if s == 0: 0 else: goto[fbase + c]
+                let t = goto[base + c]
                 if t != -1:
                     fail[t] = past
                     exit[t] = if ends[past].is_empty: exit[past] else: past
-                    order.push(t)
+                    order[tail] = t
+                    tail += 1
                 else:
-                    goto[s * k + c] = past
-        AhoCorasick(k, goto, fail, ends, exit, order, [w.len for w in patterns])
+                    goto[base + c] = past
+        AhoCorasick(k, goto, fail, ends, exit, order, lens)
 
     /// Root state (before reading any letter): always `0`. O(1).
     pub @get fn root(self) -> Int = 0
