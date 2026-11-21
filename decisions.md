@@ -1621,6 +1621,13 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   are errors now. Shrinking gains one step, run only once the others stall: lower a value by one
   while dropping one element. Reverse: drop `Builder::pass` and the `For` arm (loops are refused
   again), and the `Fn` and `reads_with_options` arms (those reads are left out again).
+- **25.9 A tuple's parts can bind names for the parts after them.** A loop pass that reads `s`,
+  then `[0..s]City`, has a row whose later bounds use an earlier value, which no fixed shape
+  says. `Shape::Tuple` gains `binds` (the names each part binds, as a field's `names` do); make,
+  fit and the list of numbers bind them in a local scope, and a bound size inside a row is a size
+  for shrinking (lowered, or lowered with one element dropped). One mechanism serves rows at any
+  depth, so no `Row` shape beside `Tuple`. Names worked out in the pass (`let m = k + 1`) are
+  still refused. Reverse: drop `binds` and refuse a pass type that uses a name read in the pass.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

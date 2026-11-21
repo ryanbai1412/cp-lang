@@ -348,13 +348,20 @@ Each is now an error naming the read
 lowers a value while it drops an element, which a FIFO memory of `m`
 words needs (`a_value_and_an_element_go_together_when_neither_goes_alone`);
 the 10th seeded bug, `noip10p1-evict-early`, reads its words in a loop.
-Benchmark: 10 bugs, all minimal, median 0.66 s.
+A pass may read a count and then that many values (`let s = read()`,
+then `[0..s]City`, or a loop over `0..s`): each part of the row binds its
+names for the parts after it, and the count shrinks with one of its values
+dropped, like a top-level size
+(`a_pass_reads_a_count_then_that_many_values`); stress makes inputs for
+984 of the 1,332 ports (from 960), and the 11th seeded bug,
+`btoi17p3-open-tour`, reads its plans so.
+Benchmark: 11 bugs, all minimal, median 0.75 s.
 **Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
 correct solutions, each found and shrunk to a known minimal case, with the
 median time to a minimal counterexample at most 10 s (`GOALS` 4).
 **Next.** `read(gen: f)` made by running `f` (63 ports refused);
-loops whose count is read inside the pass (`k` then `k` values: 111
-ports refused, with loops that `break`); reads in fns the program calls
+loops that `break`, or whose types use values worked out in the pass
+(88 ports refused); reads in fns the program calls
 (44); generators keyed to the
 stdlib declarations, not their names; worst-case values and anti-hash generators; grid and string-family shapes (`[R, C]Char` mazes, palindromes).
 

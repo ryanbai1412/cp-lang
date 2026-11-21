@@ -7,6 +7,8 @@
 //! each change the case is fitted back to the spec, so `1..=n` values
 //! stay inside the new `n` and every candidate is a valid input.
 
+use std::borrow::Cow;
+
 use crate::gen::{bind, Case, Value};
 use crate::spec::{eval, names_in, Env, GraphKind, InputSpec, Shape};
 
@@ -189,12 +191,18 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
                 .collect::<Option<_>>()
                 .map(Value::Seq)
         }
-        (Shape::Tuple(shapes), Value::Tuple(items)) if shapes.len() == items.len() => shapes
-            .iter()
-            .zip(items)
-            .map(|(shape, item)| fit_value(shape, item, env))
-            .collect::<Option<_>>()
-            .map(Value::Tuple),
+        (Shape::Tuple { parts, binds }, Value::Tuple(items)) if parts.len() == items.len() => {
+            let mut env = Cow::Borrowed(env);
+            let mut fitted = Vec::new();
+            for (at, (shape, item)) in parts.iter().zip(items).enumerate() {
+                let part = fit_value(shape, item, &env)?;
+                if let Some(names) = binds.get(at).filter(|names| !names.is_empty()) {
+                    bind(names, &part, env.to_mut());
+                }
+                fitted.push(part);
+            }
+            Some(Value::Tuple(fitted))
+        }
         _ => None,
     }
 }
@@ -211,7 +219,7 @@ fn fit_in(spec: &InputSpec, outer: &Env, case: &Case) -> Option<Case> {
     for (field, value) in spec.fields.iter().zip(&case.values) {
         let fitted = match (&field.shape, value) {
             // Each part of `(n, q)` is bound before the next is fitted.
-            (Shape::Tuple(shapes), Value::Tuple(items))
+            (Shape::Tuple { parts: shapes, .. }, Value::Tuple(items))
                 if field.names.len() == shapes.len() && shapes.len() == items.len() =>
             {
                 let mut parts = Vec::new();
@@ -420,11 +428,15 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     path.pop();
                 }
             }
-            (Shape::Tuple(shapes), Value::Tuple(items)) => {
-                for (index, (shape, item)) in shapes.iter().zip(items).enumerate() {
+            (Shape::Tuple { parts, binds }, Value::Tuple(items)) => {
+                let mut env = Cow::Borrowed(env);
+                for (index, (shape, item)) in parts.iter().zip(items).enumerate() {
                     path.push(index);
-                    walk(shape, item, env, path, out);
+                    walk(shape, item, &env, path, out);
                     path.pop();
+                    if let Some(names) = binds.get(index).filter(|names| !names.is_empty()) {
+                        bind(names, item, env.to_mut());
+                    }
                 }
             }
             _ => {}
@@ -448,7 +460,7 @@ fn sizes(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
         let is_size = |name: &Option<String>| name.as_ref().is_some_and(|n| spec.sizes.contains(n));
         match (&field.shape, field.names.as_slice()) {
             (Shape::Int { .. }, [name]) if is_size(name) => out.push(vec![index]),
-            (Shape::Tuple(parts), names) if names.len() == parts.len() => {
+            (Shape::Tuple { parts, .. }, names) if names.len() == parts.len() => {
                 for (part, name) in names.iter().enumerate() {
                     if is_size(name) && matches!(parts[part], Shape::Int { .. }) {
                         out.push(vec![index, part]);
@@ -457,10 +469,52 @@ fn sizes(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
             }
             _ => {}
         }
+        inner_sizes(
+            spec,
+            &field.shape,
+            &case.values[index],
+            &mut vec![index],
+            &mut out,
+        );
     }
     out.into_iter()
         .filter_map(|path| all.iter().find(|(p, _)| *p == path).cloned())
         .collect()
+}
+
+/// The sizes read inside a value: the `k` of each pass of a loop that
+/// reads `k`, then `k` values.
+fn inner_sizes(
+    spec: &InputSpec,
+    shape: &Shape,
+    value: &Value,
+    path: &mut Path,
+    out: &mut Vec<Path>,
+) {
+    match (shape, value) {
+        (Shape::Array { elem, .. }, Value::Seq(items)) => {
+            for (index, item) in items.iter().enumerate() {
+                path.push(index);
+                inner_sizes(spec, elem, item, path, out);
+                path.pop();
+            }
+        }
+        (Shape::Tuple { parts, binds }, Value::Tuple(items)) => {
+            for (index, (part, item)) in parts.iter().zip(items).enumerate() {
+                path.push(index);
+                match binds.get(index).map(Vec::as_slice) {
+                    Some([Some(name)])
+                        if spec.sizes.contains(name) && matches!(part, Shape::Int { .. }) =>
+                    {
+                        out.push(path.clone())
+                    }
+                    _ => inner_sizes(spec, part, item, path, out),
+                }
+                path.pop();
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Where the size `name` is read: its field, and its part of a tuple.
@@ -472,7 +526,9 @@ fn size_path(spec: &InputSpec, name: &str) -> Option<Path> {
             .position(|n| n.as_deref() == Some(name))?;
         match &field.shape {
             Shape::Int { .. } => Some(vec![index]),
-            Shape::Tuple(parts) if parts.len() == field.names.len() => Some(vec![index, part]),
+            Shape::Tuple { parts, .. } if parts.len() == field.names.len() => {
+                Some(vec![index, part])
+            }
             _ => None,
         }
     })
@@ -502,7 +558,7 @@ fn rename_vertices(
             .map(|item| rename_vertices(elem, item, ends, rename))
             .collect::<Option<_>>()
             .map(Value::Seq),
-        (Shape::Tuple(shapes), Value::Tuple(items)) => shapes
+        (Shape::Tuple { parts: shapes, .. }, Value::Tuple(items)) => shapes
             .iter()
             .zip(items)
             .map(|(shape, item)| rename_vertices(shape, item, ends, rename))
@@ -667,7 +723,7 @@ pub fn shrink(
                  lo: i128,
                  attempt: &mut dyn FnMut(&mut Case, Case) -> bool|
      -> bool {
-        let Some(start) = at(best, path).number() else {
+        let Some(start) = number_at(best, path) else {
             return false;
         };
         let (mut floor, mut current) = (lo, start);
@@ -695,7 +751,7 @@ pub fn shrink(
         //    from each array that gets shorter, at every position.
         for (path, lo) in sizes(spec, &best) {
             let mut position = 0;
-            while let Value::Int(current) = *at(&mut best, &path) {
+            while let Some(current) = number_at(&best, &path) {
                 if current <= lo {
                     break;
                 }

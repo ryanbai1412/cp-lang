@@ -29,8 +29,14 @@ pub enum Shape {
     Int { lo: Expr, hi: Expr },
     /// `len` values of the same shape.
     Array { len: Expr, elem: Box<Shape> },
-    /// A tuple, or a record `(u: V, v: V)`: its fields in order.
-    Tuple(Vec<Shape>),
+    /// A tuple, or a record `(u: V, v: V)`: its fields in order. A part
+    /// binds the names in `binds` beside it (as a field does), for the
+    /// bounds of the parts after it: one pass of a loop that reads `k`,
+    /// then `k` values. `binds` is empty when no part binds a name.
+    Tuple {
+        parts: Vec<Shape>,
+        binds: Vec<Vec<Option<String>>>,
+    },
     /// One byte in `lo..=hi`: a lowercase letter unless told otherwise.
     Char { lo: u8, hi: u8 },
     /// `0` or `1`.
@@ -56,6 +62,16 @@ pub enum Shape {
         extra: Vec<Shape>,
         kind: GraphKind,
     },
+}
+
+impl Shape {
+    /// A tuple whose parts bind no names.
+    pub fn tuple(parts: Vec<Shape>) -> Shape {
+        Shape::Tuple {
+            parts,
+            binds: Vec::new(),
+        }
+    }
 }
 
 /// What a `Shape::Graph` promises beyond being simple.
@@ -287,7 +303,7 @@ fn sizes_count(spec: &mut InputSpec) {
     };
     for field in &spec.fields {
         match (&field.shape, field.names.as_slice()) {
-            (Shape::Tuple(parts), names) if names.len() == parts.len() => {
+            (Shape::Tuple { parts, .. }, names) if names.len() == parts.len() => {
                 for (part, name) in parts.iter().zip(names) {
                     if *part == plain {
                         spec.guessed.extend(name.clone());
@@ -322,7 +338,7 @@ impl InputSpec {
                 })
             };
             match (&mut field.shape, field.names.as_slice()) {
-                (Shape::Tuple(parts), names) if names.len() == parts.len() => {
+                (Shape::Tuple { parts, .. }, names) if names.len() == parts.len() => {
                     for (part, name) in parts.iter_mut().zip(names) {
                         if let Some(range) = range(name) {
                             *part = range;
@@ -399,7 +415,7 @@ impl InputSpec {
         fn redraw(shape: &mut Shape, inside: bool, from: &Shape, to: &Shape) -> bool {
             match shape {
                 Shape::Array { elem, .. } => redraw(elem, true, from, to),
-                Shape::Tuple(parts) => parts
+                Shape::Tuple { parts, .. } => parts
                     .iter_mut()
                     .fold(false, |any, part| redraw(part, inside, from, to) | any),
                 cell if inside && cell == from => {
@@ -622,7 +638,7 @@ impl Builder<'_> {
                 .iter()
                 .map(|(_, field)| self.shape(field))
                 .collect::<Result<_, _>>()
-                .map(Shape::Tuple),
+                .map(Shape::tuple),
             TypeKind::Array { index, elem } => {
                 let mut shape = self.shape(elem)?;
                 // `[Row, Col]T` is rows of columns.
@@ -641,7 +657,7 @@ impl Builder<'_> {
                 .iter()
                 .map(|part| self.shape(part))
                 .collect::<Result<_, _>>()
-                .map(Shape::Tuple),
+                .map(Shape::tuple),
             _ => Err(unsupported(self)),
         }
     }
@@ -738,6 +754,7 @@ impl Builder<'_> {
         };
         let last = body.stmts.iter().rposition(|stmt| reads(self, stmt));
         let mut parts = Vec::new();
+        let mut binds = Vec::new();
         for (at, stmt) in body.stmts.iter().enumerate() {
             let mut jumps = Jumps::default();
             cpl_syntax::visit::walk_stmt(stmt, &mut jumps);
@@ -756,11 +773,27 @@ impl Builder<'_> {
                     if !used.is_disjoint(&inside) {
                         return Ok(None);
                     }
-                    parts.push(self.shape(ty)?);
-                    bind_names(pat, &mut inside);
+                    let shape = self.shape(ty)?;
+                    // A name read here is bound beside its value, so the
+                    // reads after it may use it: `k`, then `[k]Int`.
+                    let names = Self::names(pat, &shape);
+                    for name in names.iter().flatten() {
+                        inside.remove(name);
+                    }
+                    let mut all = HashSet::new();
+                    bind_names(pat, &mut all);
+                    inside.extend(
+                        all.into_iter()
+                            .filter(|name| !names.contains(&Some(name.clone()))),
+                    );
+                    binds.push(names);
+                    parts.push(shape);
                 }
                 StmtKind::For { .. } if reads(self, stmt) => match self.pass(stmt, &inside)? {
-                    Some(shape) => parts.push(shape),
+                    Some(shape) => {
+                        binds.push(Vec::new());
+                        parts.push(shape);
+                    }
                     None => return Ok(None),
                 },
                 _ if reads(self, stmt) => return Ok(None),
@@ -771,7 +804,8 @@ impl Builder<'_> {
         let elem = match parts.len() {
             0 => return Ok(None),
             1 => parts.pop().expect("one part"),
-            _ => Shape::Tuple(parts),
+            _ if binds.iter().all(Vec::is_empty) => Shape::tuple(parts),
+            _ => Shape::Tuple { parts, binds },
         };
         names_in(&lo, &mut self.spec.sizes);
         names_in(&hi, &mut self.spec.sizes);
@@ -802,15 +836,18 @@ impl Builder<'_> {
         match (&pat.kind, shape) {
             // The name of anything but a number is only a label:
             // nothing is bound to it.
-            (PatternKind::Name(name), shape) if !matches!(shape, Shape::Tuple(_)) => {
+            (PatternKind::Name(name), shape) if !matches!(shape, Shape::Tuple { .. }) => {
                 vec![Some(name.clone())]
             }
-            (PatternKind::Tuple(pats), Shape::Tuple(shapes)) if pats.len() == shapes.len() => pats
-                .iter()
-                .zip(shapes)
-                .flat_map(|(pat, shape)| Self::names(pat, shape))
-                .collect(),
-            (_, Shape::Tuple(shapes)) => shapes
+            (PatternKind::Tuple(pats), Shape::Tuple { parts: shapes, .. })
+                if pats.len() == shapes.len() =>
+            {
+                pats.iter()
+                    .zip(shapes)
+                    .flat_map(|(pat, shape)| Self::names(pat, shape))
+                    .collect()
+            }
+            (_, Shape::Tuple { parts: shapes, .. }) => shapes
                 .iter()
                 .flat_map(|shape| Self::names(pat, shape).into_iter().map(|_| None))
                 .collect(),

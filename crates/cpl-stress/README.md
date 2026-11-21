@@ -40,9 +40,11 @@ for _ in 0..q:
     let (l, r): (V, V) = read()
 ```
 
-reads what `let queries: [0..q](V, V) = read()` would. A read stress can't
-make (in a fn, `read(gen: f)`, a loop whose pass count is read inside it)
-is an error that names it, never left out of the case.
+reads what `let queries: [0..q](V, V) = read()` would. A pass can read a
+count and then that many values (`let s: 1..=n = read()`, then
+`let plan: [0..s]V = read()`); the count shrinks with its values. A read
+stress can't make (in a fn, `read(gen: f)`, a loop that can `break`) is an
+error that names it, never left out of the case.
 
 Names that decide how much input there is (`n` and `q` above) are *sizes*.
 `--size 8` keeps them at 8 or less so a brute finishes; values stay close

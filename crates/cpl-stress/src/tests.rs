@@ -1,6 +1,7 @@
 use super::*;
 use crate::judge::{declared, first_difference};
 use crate::run::{save, stress, Options, Source};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -1277,9 +1278,9 @@ for _ in 0..q:
 #[test]
 fn loops_whose_reads_a_field_cannot_describe_are_refused() {
     let refused = [
-        // The type uses the loop variable.
-        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let k: 1..=3 = read()\n    for _ in 0..k:\n        let a: Int = read()\n",
+        // The type uses the loop variable, or a value worked out in the pass.
         "let n: 1..=5 = read()\nfor i in 1..=n:\n    let a: [i]Int = read()\n    print(a)\n",
+        "let n: 1..=5 = read()\nfor _ in 0..n:\n    let k: 1..=3 = read()\n    let m = k + 1\n    let a: [m]Int = read()\n",
         // The loop can stop early.
         "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: Int = read()\n    if a == 0: break\n",
         // A pass can skip a read.
@@ -1300,6 +1301,65 @@ fn loops_whose_reads_a_field_cannot_describe_are_refused() {
     // `continue` after the last read leaves every read in place.
     let src = "let n: 1..=5 = read()\nfor _ in 0..n:\n    let a: Int = read()\n    if a == 0: continue\n    print(a)\n";
     assert!(InputSpec::from_source(src).is_ok());
+}
+
+#[test]
+fn a_pass_reads_a_count_then_that_many_values() {
+    let src = "let n: 1..=5 = read()
+for _ in 0..n:
+    let k: 0..=4 = read()
+    let a: [k]1..=9 = read()
+    for _ in 0..k:
+        let (lo, c): (0..=k, 0..=k) = read()
+        print(lo + c)
+    print(a)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    assert_eq!(spec.fields.len(), 2);
+    let tokens = |case: &Case| -> Vec<i128> {
+        case.render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect()
+    };
+    let rows = |tokens: &[i128]| {
+        let mut at = 1;
+        let mut rows = Vec::new();
+        for _ in 0..tokens[0] {
+            let k = tokens[at];
+            let a = tokens[at + 1..][..k as usize].to_vec();
+            let pairs = tokens[at + 1 + k as usize..][..2 * k as usize].to_vec();
+            at += 1 + 3 * k as usize;
+            rows.push((k, a, pairs));
+        }
+        assert_eq!(at, tokens.len(), "{tokens:?}");
+        rows
+    };
+    let mut counts = HashSet::new();
+    for seed in 0..100 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        for (k, a, pairs) in rows(&tokens(&case)) {
+            assert!((0..=4).contains(&k));
+            assert!(a.iter().all(|v| (1..=9).contains(v)));
+            assert!(pairs.iter().all(|v| (0..=k).contains(v)));
+            counts.insert(k);
+        }
+    }
+    assert_eq!(counts.len(), 5, "every count is made: {counts:?}");
+    // A 7 anywhere fails: the pass with it shrinks to one value, its
+    // count with it, and the other passes go.
+    let fails = |case: &Case| rows(&tokens(case)).iter().any(|(_, a, _)| a.contains(&7));
+    let start = (0..)
+        .map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap())
+        .find(|case| fails(case) && tokens(case).len() > 8)
+        .unwrap();
+    let smallest = shrink(&spec, &start, 2000, &mut |case: &Case| fails(case));
+    assert_eq!(
+        tokens(&smallest),
+        [1, 1, 7, 0, 0],
+        "from {:?}",
+        tokens(&start)
+    );
 }
 
 #[test]

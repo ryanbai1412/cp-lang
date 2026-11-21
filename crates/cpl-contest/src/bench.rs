@@ -107,7 +107,7 @@ impl Pick for Worst {
 /// True for `[..](a, b)`: a list of pairs, which is how edges are read.
 fn is_edge_list(shape: &Shape) -> bool {
     matches!(shape, Shape::Array { elem, .. }
-        if matches!(&**elem, Shape::Tuple(parts)
+        if matches!(&**elem, Shape::Tuple { parts, .. }
             if parts.len() >= 2 && parts.iter().all(|p| matches!(p, Shape::Int { .. }))))
 }
 

@@ -1,5 +1,6 @@
 //! Cases: the values of one input, made from an [`InputSpec`].
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 use crate::rng::Rng;
@@ -135,7 +136,13 @@ impl Pick for Random<'_> {
     }
 }
 
-fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option<Value> {
+fn build(
+    shape: &Shape,
+    env: &Env,
+    sizes: &HashSet<String>,
+    is_size: bool,
+    pick: &mut dyn Pick,
+) -> Option<Value> {
     match shape {
         Shape::Int { lo, hi } => {
             let (lo, hi) = (eval(lo, env)?, eval(hi, env)?);
@@ -145,15 +152,23 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
             let len = eval(len, env)?.max(0);
             (len <= MAX_LEN).then_some(())?;
             (0..len)
-                .map(|_| build(elem, env, false, pick))
+                .map(|_| build(elem, env, sizes, false, pick))
                 .collect::<Option<_>>()
                 .map(Value::Seq)
         }
-        Shape::Tuple(parts) => parts
-            .iter()
-            .map(|part| build(part, env, false, pick))
-            .collect::<Option<_>>()
-            .map(Value::Tuple),
+        Shape::Tuple { parts, binds } => {
+            let mut env = Cow::Borrowed(env);
+            let mut built = Vec::new();
+            for (at, part) in parts.iter().enumerate() {
+                let is_size = matches!(binds.get(at).map(Vec::as_slice), Some([Some(name)]) if sizes.contains(name));
+                let value = build(part, &env, sizes, is_size, pick)?;
+                if let Some(names) = binds.get(at).filter(|names| !names.is_empty()) {
+                    bind(names, &value, env.to_mut());
+                }
+                built.push(value);
+            }
+            Some(Value::Tuple(built))
+        }
         Shape::Char { lo, hi } => Some(Value::Char(pick.pick(
             i128::from(*lo),
             i128::from(*hi),
@@ -200,7 +215,7 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
                 .map(|(a, b)| {
                     let mut edge = vec![Value::Int(a), Value::Int(b)];
                     for shape in extra {
-                        edge.push(build(shape, env, false, pick)?);
+                        edge.push(build(shape, env, sizes, false, pick)?);
                     }
                     Some(Value::Tuple(edge))
                 })
@@ -276,7 +291,7 @@ fn build(shape: &Shape, env: &Env, is_size: bool, pick: &mut dyn Pick) -> Option
                 .map(|(a, b)| {
                     let mut edge = vec![Value::Int(a), Value::Int(b)];
                     for shape in extra {
-                        edge.push(build(shape, env, false, pick)?);
+                        edge.push(build(shape, env, sizes, false, pick)?);
                     }
                     Some(Value::Tuple(edge))
                 })
@@ -332,11 +347,11 @@ fn make_in(spec: &InputSpec, outer: &Env, pick: &mut dyn Pick) -> Option<Case> {
     for field in &spec.fields {
         let value = match (&field.shape, field.names.as_slice()) {
             // `let (n, q): (.., ..) = read()`: each part can be a size.
-            (Shape::Tuple(parts), names) if names.len() == parts.len() => {
+            (Shape::Tuple { parts, .. }, names) if names.len() == parts.len() => {
                 let mut built = Vec::new();
                 for (part, name) in parts.iter().zip(names) {
                     let is_size = name.as_ref().is_some_and(|n| spec.sizes.contains(n));
-                    let value = build(part, &env, is_size, pick)?;
+                    let value = build(part, &env, &spec.sizes, is_size, pick)?;
                     bind(std::slice::from_ref(name), &value, &mut env);
                     built.push(value);
                 }
@@ -344,7 +359,7 @@ fn make_in(spec: &InputSpec, outer: &Env, pick: &mut dyn Pick) -> Option<Case> {
             }
             (shape, names) => {
                 let is_size = matches!(names, [Some(name)] if spec.sizes.contains(name));
-                build(shape, &env, is_size, pick)?
+                build(shape, &env, &spec.sizes, is_size, pick)?
             }
         };
         bind(&field.names, &value, &mut env);
