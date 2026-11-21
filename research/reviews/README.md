@@ -48,8 +48,14 @@ caps the dream at 3:
 - inconsistent spelling: `@!multitest` is the one multitest marker (not
   `--- multitest ---` or `--- with multitest() ---`); `Mod<p>`, `read<T>`,
   `struct`, `if c: a else: b`, `?? return`, `if` filters and `**` for power (decision §70); sequence
-  operations as methods (`xs.sum()`, `xs.any(p)`, `xs.sorted()`), not free
-  `sum(...)`/`any(xs, p)`/`sort(mut xs)` mixed with methods.
+  folds and sorts of one materialised sequence as methods (`xs.sum()`,
+  `xs.any(p)`, `xs.sorted()`), not `sum(xs)`/`any(xs, p)`/`sort(mut xs)`.
+  Decision §53.1 keeps the free form canonical over a generator
+  (`sum(f(x) for x in xs)`) and over two or more values (`min(a, b)`); never
+  cite §53 against those.
+- range ends: decision §101 makes `.start`/`.end` the accessors with `end`
+  exclusive, so a 1-based inclusive pair printed as `start + 1, end` is
+  correct, not off by one.
 
 A dream under 4 goes back to its port's lane (the polish lane if that lane
 has moved on) to rewrite before the port is judged: a new review of such a
