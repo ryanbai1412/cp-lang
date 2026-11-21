@@ -1,75 +1,82 @@
-struct HeapNode(v: Int, cnt: Int, l: ?Int, r: ?Int)
+// Codeforces 2152 H2: Victorious Coloring (Hard Version).
+// For a set C of vertices let F_C(l) be the least x(C) such that every
+// nonempty S within C pays x(S) + w(boundary of S) >= l. F_C is convex and
+// piecewise linear with integer breakpoints: F_C(l) = sum over its multiset
+// B_C of max(0, l - b).
+// Join the tree's edges heaviest first, keeping the components. A vertex v
+// alone needs x(v) >= l - deg(v), so B = {deg v}. Joining A and A' keeps the
+// two sides' constraints independent (B_A plus B_A'), and adds one: the
+// whole component, with boundary D, needs x >= l - D. That raises F to
+// max(F, l - D) at the integers, which only matters when D < min B: walk
+// the breakpoints while F(b) < b - D, then re-enter F where the line l - D
+// meets it, splitting the slope jump across the two integers around the
+// crossing. The answer for l is F_V(l).
+use std.dsu.{Dsu}
+
+// Multisets of breakpoints as skew heaps in one arena; a set is its ?root.
+struct Breaks:
+    at: List<Int>
+    cnt: List<Int>
+    kids: List<(l: ?Int, r: ?Int)>
+
+    fn single(mut self, b: Int, c: Int) -> ?Int:
+        at.push(b)
+        cnt.push(c)
+        kids.push((l: none, r: none))
+        at.len - 1
+
+    fn meld(mut self, oa: ?Int, ob: ?Int) -> ?Int:
+        var a = oa ?? return ob
+        var b = ob ?? return oa
+        if at[a] > at[b]: (a, b) = (b, a)
+        kids[a] = (l: self.meld(kids[a].r, b), r: kids[a].l)
+        a
+
+    fn rest(mut self, h: Int) -> ?Int = self.meld(kids[h].l, kids[h].r)
 
 @!multitest
-let n: Int = read()
+let n: 2..=250_000 = read()
 domain V = 1..=n
-let raw_edges: [0..n - 1](u: V, v: V, w: Int) = read()
-var deg: [V]Int = 0
-for (u, v, w) in raw_edges:
-    deg[u] += w
-    deg[v] += w
-let edges = raw_edges.sorted(by: e => -e.w)
+let edges: [0..n - 1](u: V, v: V, w: 1..=1e9) = read()
+var bound: [V]Int = 0
+for (u, v, w) in edges:
+    bound[u] += w
+    bound[v] += w
 
-var nodes: [0..4 * n]HeapNode = HeapNode(0, 0, none, none)
-var n_nodes = 0
-
-fn new_node(v: Int, cnt: Int) -> ?Int:
-    let id = n_nodes
-    nodes[id] = HeapNode(v, cnt, none, none)
-    n_nodes += 1
-    id
-
-fn meld(oa: ?Int, ob: ?Int) -> ?Int:
-    var a = oa ?? return ob
-    var b = ob ?? return oa
-    if nodes[a].v > nodes[b].v: swap(mut a, mut b)
-    nodes[a].r = meld(nodes[a].r, b)
-    swap(mut nodes[a].l, mut nodes[a].r)
-    a
-
-var heaps: [V]?Int = [V] u => new_node(deg[u], 1)
+var br = Breaks([], [], [])
+var set: [V]?Int = [V] v => br.single(bound[v], 1)
 var dsu = Dsu<V>()
 
-for (u0, v0, w) in edges:
-    var u = dsu.find(u0)
-    var v = dsu.find(v0)
-    dsu.unite(u, v)
-    if dsu.find(u) == v: swap(mut u, mut v)
-    heaps[u] = meld(heaps[u], heaps[v])
-    heaps[v] = none
-    deg[u] += deg[v] - 2 * w
+// Raise the breakpoints `h` (F) to max(F, l - d) at the integers.
+fn raise(h: ?Int, d: Int) -> ?Int:
+    var rest = h
+    var (pos, slope, val) = (br.at[h!], 0, 0)  // F(pos) = val, slope just right of pos
+    while let b = rest and val + slope * (br.at[b] - pos) < br.at[b] - d:
+        val += slope * (br.at[b] - pos)
+        pos = br.at[b]
+        slope += br.cnt[b]
+        rest = br.rest(b)
+    let (step, part) = ((pos - val - d) / (slope - 1), (pos - val - d) % (slope - 1))
+    let cross = pos + step
+    if part > 0: rest = br.meld(br.single(cross + 1, part), rest)
+    rest = br.meld(br.single(cross, slope - 1 - part), rest)
+    br.meld(br.single(d, 1), rest)
 
-    let top = heaps[u]!
-    if deg[u] < nodes[top].v:
-        var cur_pos = nodes[top].v
-        var cur_slope = 0
-        var cur_val = 0
-        while true:
-            if let h = heaps[u], cur_val + cur_slope * (nodes[h].v - cur_pos) - nodes[h].v < -deg[u]:
-                let nd = nodes[h]
-                cur_val += cur_slope * (nd.v - cur_pos)
-                cur_pos = nd.v
-                cur_slope += nd.cnt
-                heaps[u] = meld(nd.l, nd.r)
-            else:
-                let diff = cur_pos - cur_val - deg[u]
-                let nx = cur_pos + diff / (cur_slope - 1)
-                let gap = diff % (cur_slope - 1)
-                if gap > 0: heaps[u] = meld(new_node(nx + 1, gap), heaps[u])
-                heaps[u] = meld(new_node(nx, cur_slope - 1 - gap), heaps[u])
-                heaps[u] = meld(new_node(deg[u], 1), heaps[u])
-                break
+for (u, v, w) in edges.sorted(by: e => -e.w):
+    let (kept, merged) = dsu.merge(u, v)!
+    set[kept] = br.meld(set[kept], set[merged])
+    bound[kept] += bound[merged] - 2 * w
+    if bound[kept] < br.at[set[kept]!]: set[kept] = raise(set[kept], bound[kept])
 
-var deltas: List<Int> = []
-let rt = dsu.find(V(1))
-while let h = heaps[rt]:
-    let nd = nodes[h]
-    for _ in 0..nd.cnt: deltas.push(nd.v)
-    heaps[rt] = meld(nd.l, nd.r)
+var breaks: List<Int> = []
+var h = set[dsu.find(V.first)]
+while let b = h:
+    for _ in 0..br.cnt[b]: breaks.push(br.at[b])
+    h = br.rest(b)
 
-let pref = prefix(deltas)
-let q: Int = read()
-for _ in 0..q:
-    let t: Int = read()
-    let cnt = deltas.first_ge(t) ?? n
-    print(t * cnt - pref.prefix(cnt))
+let below = prefix(breaks)
+let q: 1..=250_000 = read()
+let asks: [0..q]1..=1e9 = read()
+for l in asks:
+    let k = breaks.first_ge(l) ?? breaks.len
+    print(l * k - below.prefix(k))
