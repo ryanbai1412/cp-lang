@@ -25,11 +25,16 @@ var run: [Color]?(Rank, Rank) = none
 var by_right: [Rank]List<Rank> = []
 var total_intervals = 0
 
+fn force_between(after: ?Rank, before: ?Rank):
+    let lo: ?Rank = if let a = after: a + 1 else: some(Rank.first)
+    if let s = lo:
+        if let b = before:
+            for j in s..b: must_rank[j] = true
+        else:
+            for j in s..=Rank.last: must_rank[j] = true
+
 fn close_run(lo: Rank, hi: Rank, before: ?Rank):
-    if let r = before:
-        for j in hi.r..r.l: must_rank[j] = true
-    else:
-        for j in hi.r..: must_rank[j] = true
+    force_between(hi, before)
     by_right[hi].push(lo)
     total_intervals += 1
 
@@ -42,7 +47,7 @@ for (r, c) in zip(ranks, colors):
             close_run(lo, hi, r)
             run[c] = (r, r)
     else:
-        for j in ..r: must_rank[j] = true
+        force_between(none, r)
         run[c] = (r, r)
 
 for c in Color:
