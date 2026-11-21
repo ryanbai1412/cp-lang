@@ -438,7 +438,12 @@ impl<'a> Lowerer<'a> {
                     BinOp::Mul => l.checked_mul(r),
                     BinOp::Div if r != 0 => l.checked_div_euclid(r),
                     BinOp::Rem if r != 0 => l.checked_rem_euclid(r),
-                    BinOp::Pow if r >= 0 => l.checked_pow(r as u32),
+                    BinOp::Pow if r >= 0 => l.checked_pow(u32::try_from(r).ok()?),
+                    BinOp::Shl if (0..63).contains(&r) => l.checked_mul(1 << r),
+                    BinOp::Shr if (0..64).contains(&r) => Some(l >> r),
+                    BinOp::BitAnd => Some(l & r),
+                    BinOp::BitOr => Some(l | r),
+                    BinOp::BitXor => Some(l ^ r),
                     _ => None,
                 }
             }

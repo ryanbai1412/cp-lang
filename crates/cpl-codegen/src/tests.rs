@@ -892,6 +892,13 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
 }
 
 #[test]
+fn a_field_ranged_by_a_shifted_const_narrows() {
+    let cpp = cpp("const N = 1 << 30\nconst M = N | 1\nstruct Node(l: 0..N, r: 0..M)\nlet a = Node(1, 2)\nprint(a.l + a.r)\n");
+    assert!(cpp.contains("uint32_t l = 0;"), "{cpp}");
+    assert!(cpp.contains("uint32_t r = 0;"), "{cpp}");
+}
+
+#[test]
 fn ranged_int_struct_fields_narrow_to_32_bits() {
     let cpp = cpp(concat!(
         "type Z = Mod<998244353>\n",
