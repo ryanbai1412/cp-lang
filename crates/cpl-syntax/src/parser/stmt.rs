@@ -604,9 +604,14 @@ impl<'a> Parser<'a> {
         } else {
             self.expr()
         };
-        // `for x in xs if cond:` runs the body for the `x` that pass: the
-        // body is an `if`.
-        let filter = self.eat(T::If).then(|| (self.start(), self.cond()));
+        // `for x in xs where cond:` (0.3) or `for x in xs if cond:` (0.2.2)
+        // runs the body for the `x` that pass: the body is an `if`.
+        let has_filter = self.eat(T::If)
+            || (self.at_ident("where") && {
+                self.bump();
+                true
+            });
+        let filter = has_filter.then(|| (self.start(), self.cond()));
         let mut body = self.colon_block("the `for` header");
         if let Some((start, cond)) = filter {
             let span = self.span_from(start);
@@ -844,23 +849,7 @@ impl<'a> Parser<'a> {
     pub(super) fn cond(&mut self) -> Cond {
         if self.at(T::Let) {
             self.bump();
-            let pat = self.pattern();
-            self.expect(T::Eq, "`=` after the pattern in `if let`");
-            // The value ends before `and` (or `,`), which adds a condition
-            // on what the pattern bound. After `,` the condition is whole,
-            // `or` and all; after `and` an `or` would read two ways.
-            let value = self.not();
-            let comma = self.at(T::Comma);
-            let and = (self.eat(T::And) || self.eat(T::Comma)).then(|| {
-                Box::new(if comma {
-                    self.more_clauses()
-                } else if self.at(T::Let) {
-                    self.cond()
-                } else {
-                    Cond::Expr(self.and())
-                })
-            });
-            return Cond::Let { pat, value, and };
+            return self.let_cond();
         }
         if self.at(T::Const) {
             self.bump();
@@ -873,11 +862,86 @@ impl<'a> Parser<'a> {
         Cond::Expr(test)
     }
 
-    /// What follows a `,` in a condition: `let`s and whole tests, any
-    /// number, each holding only if those before it did.
+    /// Parses `pat = value` after `let` (or after `,` in multi-binding
+    /// `if let a = x, b = y where cond:`).
+    fn let_cond(&mut self) -> Cond {
+        let pat = self.pattern();
+        self.expect(T::Eq, "`=` after the pattern in `if let`");
+        // The value ends before `and`, `,`, or `where`, which adds a
+        // binding or condition on what the pattern bound. After `,` or
+        // `where` the condition is whole, `or` and all; after `and` an
+        // `or` would read two ways.
+        let value = self.not();
+        let and = if self.eat(T::Comma) {
+            Some(Box::new(if self.at(T::Let) {
+                self.bump();
+                self.let_cond()
+            } else if self.at_let_binding() {
+                self.let_cond()
+            } else {
+                self.more_clauses()
+            }))
+        } else if self.eat(T::And) {
+            Some(Box::new(if self.at(T::Let) {
+                self.bump();
+                self.let_cond()
+            } else {
+                Cond::Expr(self.and())
+            }))
+        } else if self.at_ident("where") {
+            self.bump();
+            Some(Box::new(self.more_clauses()))
+        } else {
+            None
+        };
+        Cond::Let { pat, value, and }
+    }
+
+    /// True when the upcoming tokens form `pat = ...` (without a leading
+    /// `let`), as in `if let a = x, b = y:` or `if let (a, b) = p, (c, d) = q:`.
+    fn at_let_binding(&self) -> bool {
+        let mut i = self.pos;
+        match self.tokens.get(i).map(|t| t.kind) {
+            Some(T::Ident) => {
+                i += 1;
+                if self.tokens.get(i).map(|t| t.kind) == Some(T::LParen) {
+                    i = self.skip_parens_from(i);
+                }
+            }
+            Some(T::LParen) => {
+                i = self.skip_parens_from(i);
+            }
+            _ => return false,
+        }
+        self.tokens.get(i).map(|t| t.kind) == Some(T::Eq)
+    }
+
+    fn skip_parens_from(&self, start: usize) -> usize {
+        let mut depth = 0u32;
+        let mut i = start;
+        while let Some(t) = self.tokens.get(i) {
+            match t.kind {
+                T::LParen => depth += 1,
+                T::RParen => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        return i + 1;
+                    }
+                }
+                T::Newline | T::Eof => return i,
+                _ => {}
+            }
+            i += 1;
+        }
+        i
+    }
+
+    /// What follows a `,` or `where` in a condition: `let`s and whole
+    /// tests, any number, each holding only if those before it did.
     fn more_clauses(&mut self) -> Cond {
         if self.at(T::Let) {
-            return self.cond();
+            self.bump();
+            return self.let_cond();
         }
         let test = self.or();
         if self.eat(T::Comma) {

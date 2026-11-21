@@ -1247,3 +1247,14 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   `let (s, k): ([domain Pos]Char, Int) = read()`, used to read no values; it is now a compile error. A
   `match` on an enum without fields needs an arm for every variant.
 
+## 22. Core syntax to 0.3 (2026-11-21)
+
+- **22.1 `where` is the 0.3 guard keyword alongside `if` for loops and `let` conditions.**
+  `for x in s where c:`, `[e for x in s where c]`, `if let x = e where c:`, `while let x = e where c:`,
+  and multi-binding `if let a = x, b = y where c:` / `while let a = x, b = y where c:` all parse into
+  the existing `Cond::Let` / `Cond::Guard` / filtered-`For` AST nodes. `for x in s if c:` remains
+  accepted so the existing 235 corpus ports stay green without churn.
+  *Reversal:* remove the `at_ident("where")` branches in `crates/cpl-syntax/src/parser/{stmt,expr}.rs`
+  (or deprecate `for ... if` once ports migrate).
+
+

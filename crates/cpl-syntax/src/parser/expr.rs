@@ -835,9 +835,14 @@ impl<'a> Parser<'a> {
             } else {
                 self.coalesce()
             };
-            // `for c in City if let b = buy[c] if b > 0`.
+            // `for c in City where ...` (0.3) or `for c in City if ...` (0.2.2).
             let mut conds = Vec::new();
-            while self.eat(T::If) {
+            while self.eat(T::If)
+                || (self.at_ident("where") && {
+                    self.bump();
+                    true
+                })
+            {
                 conds.push(if self.at(T::Let) {
                     self.let_guard()
                 } else {
@@ -849,21 +854,26 @@ impl<'a> Parser<'a> {
         clauses
     }
 
-    /// `let pat = value`, then `and` with a test or another `let`, as in
-    /// an `if let` statement. A `,` is not read as `and` here: it ends an
-    /// argument or a list item.
+    /// `let pat = value`, then `and` or `where` with a test or another `let`,
+    /// as in an `if let` statement. A `,` is not read as `and` here: it ends
+    /// an argument or a list item.
     fn let_guard(&mut self) -> Cond {
         self.bump();
         let pat = self.pattern();
         self.expect(T::Eq, "`=` after the pattern in `if let`");
         let value = self.not();
-        let and = self.eat(T::And).then(|| {
-            Box::new(if self.at(T::Let) {
+        let and = if self.eat(T::And) {
+            Some(Box::new(if self.at(T::Let) {
                 self.let_guard()
             } else {
                 Cond::Expr(self.and())
-            })
-        });
+            }))
+        } else if self.at_ident("where") {
+            self.bump();
+            Some(Box::new(Cond::Expr(self.coalesce())))
+        } else {
+            None
+        };
         Cond::Let { pat, value, and }
     }
 

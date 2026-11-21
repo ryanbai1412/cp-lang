@@ -16,36 +16,47 @@ in `plan/OPERATING.md`; the detailed design for each domain is in the
 **North star.** A small, general core in which the entire stdlib, every
 derive, every contest helper and every library diagnostic is ordinary
 library code a user could have written, with no compiler privilege. One
-spelling per idea, no special cases, and every P0 bug class unwritable or
-trapped. Any algorithm in the corpus reads like its editorial: types carry
-the proofs, revisions stay local, and the obvious program is the correct and
-fast one. A contestant learns the whole core in an afternoon and never meets
-a corner case. Concretely, the compiler knows no trait by name: `print`,
-`read`, `assert`, `debug`, `??` and every derive are library functions built
-on four core mechanisms (compile-time reflection over fields and variants,
-variadic generics as tuple packs, lazy parameters, writable places returned
-from methods), user optionals reach 8 bytes through a library `Niche`, and a
+spelling per idea, no special cases, every P0 bug class unwritable or
+trapped, and every feature working identically across check, interpreter,
+C++ codegen, formatter, linter, LSP, trace, and docs. Any algorithm in the
+corpus reads like its editorial: types carry the proofs, revisions stay
+local, and the obvious program is the correct and fast one. A contestant
+learns the whole core in an afternoon and never meets a corner case.
+Concretely, the compiler knows no trait by name: `print`, `read`, `assert`,
+`debug`, `??` and every derive are library functions built on four core
+mechanisms (compile-time reflection over fields and variants, variadic
+generics as tuple packs, lazy parameters, writable places returned from
+methods), user optionals reach 8 bytes through a library `Niche`, and a
 library can say in its own words why a call does not type-check.
-**Where we are** (audited 2026-11-21 at `68ab60c`, probes in the commit
-message). The first 0.3 syntax batch works: `repeat`, `loop`, one-line
-enums, multi-binding `var`, unary `+`, `read(lo..=hi)`. Structs get `Eq`,
-`Ord`, `Hash`, `Show` and `Read` from the compiler, structurally, with
-`impl Show/Eq/Ord` as hooks (`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is
-stdlib privilege, not library code. Enums, even fieldless ones, have no
-order (`E0309` on `d < Dir.S` and on sorting). Not built: `@derive`
-(`E0501`), variadic parameters (checked, then `E0501` in lowering),
-`read<(Int, Int)>()` (does not parse as a call), lazy parameters,
-`Niche`, library diagnostics, a method call as an assignment target
-(`b.at() += 1` is `E0401`), `for x in s where c` (`E0103`), 2-D index
-spaces. 0 of the 52 ```cp blocks of the 0.3 spec pass `cpl check`; most
-stop at a parse error, so the count is a floor.
+**Where we are** (audited 2026-11-21 at `68ab60c`+). Working: `repeat`,
+`loop`, one-line enums and paren structs, multi-binding `let`/`var`, unary
+`+`, counted domains, `read(lo..=hi)`, `D.count`, `for ... if`/`where`,
+`if let`/`while let` with `where` and multi-binding `if let a = x, b = y`,
+`let ... else`, `if x max= y:`, `?T` arithmetic (`+ - * / %`, unary `-`),
+`max(?T, T)`, `max=`/`min=` on optionals, `[A, B]T` and `[A][B]T`, `Self`
+and associated types in traits. Structs get `Eq`, `Ord`, `Hash`, `Show` and
+`Read` from the compiler, structurally, with `impl Show/Eq/Ord` as hooks
+(`cpl-ir` `show_fn`/`eq_fn`/`lt_fn`); that is stdlib privilege, not library
+code. Enums, even fieldless ones, have no order (`E0309` on `d < Dir.S` and
+on sorting). Not built: `[(A, B)]T` product array syntax, `?T` bitwise
+lifting and postfix `x?` expression-extent lifting, `with_prev()`/`pairs()`,
+one-line colon structs / opaque `struct List<T>` / struct type-param
+defaults / `Self` in trait range bounds / one-sided range types /
+`@droppable` / `labels(...)` / `Str(len:)`, `@derive` (`E0501`), variadic
+parameters (checked, then `E0501` in lowering), `read<(Int, Int)>()`, lazy
+parameters, `Niche`, library diagnostics, a method call as an assignment
+target (`b.at() += 1` is `E0401`). 0 of the 35 `ideal-spec/spec/*.md`
+```cp blocks pass `cpl check`; most stop at parse or stdlib gaps.
 **Bar.** Every code block in the design spec passes `cpl check`; the stdlib
 needs no compiler knowledge beyond the documented intrinsics; each
 mechanism above has programs that the interpreter and the C++ agree on.
-**Next.** Reflection (`for f in fields(x)`, variants) and derives as
-trait defaults; variadic packs, then `print`/`read` on them; lazy
-parameters, then `assert`/`debug`/`??`; `Niche`; writable places;
-library diagnostics; remaining syntax.
+**Next.** `[(A, B)]T` 2-D index spaces; `?T` bitwise lifting & postfix `?`
+extent; `with_prev`/`pairs`; remaining 0.3 syntax (`struct` forms,
+type-param defaults, `Self` in ranges, one-sided ranges, `@droppable`,
+`labels`, `Str(len:)`); reflection (`for f in fields(x)`, variants) and
+derives as trait defaults; variadic packs, then `print`/`read` on them;
+lazy parameters, then `assert`/`debug`/`??`; `Niche`; writable places;
+library diagnostics.
 
 ## 2. Index spaces and fresh domains (`plan/12`, `plan/19`)
 **North star.** Every index-space bug in the P0 list is unwritable: indices from one
