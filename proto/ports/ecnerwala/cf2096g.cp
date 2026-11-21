@@ -17,11 +17,11 @@ for pair in 1..=n / 2:
         let r = (if k == q - 1: -total else: v) % 3
         let d = if r == 2: -1 else: r
         if d == 1:
-            left[k] += [a]
-            right[k] += [b]
+            left[k].push(a)
+            right[k].push(b)
         elif d == -1:
-            left[k] += [b]
-            right[k] += [a]
+            left[k].push(b)
+            right[k].push(a)
         else:
             off[k] += [a, b]
         total += d
@@ -37,10 +37,11 @@ flush()
 let s: Str = read()
 var hits: [1..=n]Int = 0
 for k in 0..q:
-    let side: List<Int> = if s[k] == 'L': left[k] elif s[k] == 'R': right[k] elif s[k] == 'N': off[k] else: 1..=n
+    let side: List<Int> = match s[k]:
+        'L' => left[k]
+        'R' => right[k]
+        'N' => off[k]
+        _ => 1..=n
     for c in side: hits[c] += 1
-for c in 1..=n:
-    if hits[c] == q:
-        print(c)
-        flush()
-        return
+print((1..=n).find(c => hits[c] == q)!)
+flush()

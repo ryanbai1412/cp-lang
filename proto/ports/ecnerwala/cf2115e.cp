@@ -2,10 +2,8 @@ let (n, m): (Int, Int) = read()
 domain V = 1..=n
 type Item = (cost: Int, worth: Int)
 let item: [V]Item = read()
-var next: [V]List<V> = []
-for _ in 0..m:
-    let (u, v): (V, V) = read()
-    next[u].push(v)
+let edges: [0..m](u: V, v: V) = read()
+let next = Graph.directed(edges)
 let q: Int = read()
 type Query = (at: V, budget: Int)
 let queries: [0..q]Query = read()
@@ -31,19 +29,16 @@ for pivot in V:
         if w * pc <= pw * c:
             let g = gcd(c, pc)
             for start in 0..g:
-                var j = start
-                for _ in 0..=2 * (pc / g):
-                    let nj = j + c
-                    best[v, nj % pc] max= best[v, j] + w - nj / pc * pw
-                    j = nj % pc
+                for step in 0..=2 * (pc / g):
+                    let j = (start + step * c) % pc
+                    best[v, (j + c) % pc] max= best[v, j] + w - (j + c) / pc * pw
         for k in next[v]:
             if v < pivot and pivot < k: continue
             reach[k] = true
             for j in 0..pc:
                 best[k, j] max= best[v, j]
-    for i in 0..q:
-        let x = queries[i]
+    for (i, x) in queries.items:
         if x.at >= pivot and reach[x.at] and x.budget >= cap:
             ans[i] max= best[x.at, x.budget % pc] + x.budget / pc * pw
 
-for x in ans: print(x)
+print(ans, sep: "\n")

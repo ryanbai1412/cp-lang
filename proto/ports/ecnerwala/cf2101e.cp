@@ -1,112 +1,78 @@
-struct Best:
-    d1: Int
-    ch1: Int
-    d2: Int
+// For one distance budget: the deepest vertex with that budget, the child
+// subtree it sits in, and the deepest one in any other subtree.
+type Far<V> = (depth: Int, child: V)
+struct Best<V>:
+    far: ?Far<V>
+    other: ?Int
 
-fn merge_best(a: Best, o: Best) -> Best:
-    if o.ch1 == a.ch1:
-        Best(max(a.d1, o.d1), a.ch1, max(a.d2, o.d2))
-    elif o.d1 > a.d1:
-        Best(o.d1, o.ch1, max(a.d1, o.d2))
-    elif o.d1 > a.d2:
-        Best(a.d1, a.ch1, o.d1)
-    else:
-        a
+fn deeper(a: ?Int, b: ?Int) -> ?Int:
+    if let x = a, let y = b: return max(x, y)
+    a ?? b
+
+fn merge<V>(a: Best<V>, o: Best<V>) -> Best<V>:
+    let x = a.far ?? return o
+    let y = o.far ?? return a
+    if x.child == y.child: Best((max(x.depth, y.depth), x.child), deeper(a.other, o.other))
+    elif y.depth > x.depth: Best(y, deeper(x.depth, o.other))
+    else: Best(x, deeper(a.other, y.depth))
 
 @! multitest
 let n: Int = read()
-let s: Str = read()
-var adj: [0..n]List<Int> = []
-for _ in 0..n - 1:
-    let (u, v): (Int, Int) = read()
-    adj[u - 1].push(v - 1)
-    adj[v - 1].push(u - 1)
-var ans: [0..n]Int = -1
-var min_dist: [0..n]Int = 0
-for i in 0..n:
-    if s[i] == '1':
-        ans[i] = 1
-        min_dist[i] = 2 * n
-var round = 0
-while true:
-    for i in 0..n:
-        min_dist[i] /= 2
-    var next_dist: [0..n]Int = 0
-    var alive: [0..n]Bool = true
-    var sz: [0..n]Int = 0
-    var bests: List<Best> = []
+domain V = 1..=n
+let s: [V]Char = read()
+let edges: [0..n - 1](u: V, v: V) = read()
+let adj = Graph.undirected(edges)
 
-    fn calc_sz(cur: Int, prv: Int) -> Int:
-        if not alive[cur]:
-            sz[cur] = 0
-            return 0
-        var v = 1
-        for nxt in adj[cur]:
-            if nxt != prv:
-                v += calc_sz(nxt, cur)
-        sz[cur] = v
-        v
+var ans: [V]Int = [V] v => if s[v] == '1': 1 else: -1
+var min_dist: [V]Int = [V] v => if s[v] == '1': n else: 0
+for round in 2..:
+    var next_dist: [V]Int = 0
+    var alive: [V]Bool = true
+    var sz: [V]Int = 0
+    var bests: List<Best<V>> = []
 
-    fn collect(cur: Int, prv: Int, depth: Int, ch: Int, tot_sz: Int):
+    fn calc_sz(cur: V, prv: ?V) -> Int:
+        sz[cur] = 1 + sum(calc_sz(nxt, cur) for nxt in adj[cur] if alive[nxt] and nxt != prv)
+        sz[cur]
+
+    fn offer(cur: V, ch: V, depth: Int):
         if min_dist[cur] > 0 and min_dist[cur] >= depth:
-            let idx = min(tot_sz, min_dist[cur] - depth)
-            bests[idx] = merge_best(bests[idx], Best(depth, ch, -1))
-        for nxt in adj[cur]:
-            if alive[nxt] and nxt != prv:
-                collect(nxt, cur, depth + 1, ch, tot_sz)
+            let idx = min(bests.len - 1, min_dist[cur] - depth)
+            bests[idx] = merge(bests[idx], Best((depth, ch), none))
 
-    fn query_node(cur: Int, ch: Int, depth: Int):
+    fn collect(cur: V, prv: V, depth: Int, ch: V):
+        offer(cur, ch, depth)
+        for nxt in adj[cur] if alive[nxt] and nxt != prv:
+            collect(nxt, cur, depth + 1, ch)
+
+    fn query(cur: V, ch: V, depth: Int):
         let b = bests[depth]
-        let d = if b.ch1 == ch: b.d2 else: b.d1
-        if d != -1 and s[cur] == '1':
-            next_dist[cur] max= depth + d
+        let top = b.far ?? return
+        let d = if top.child == ch: b.other else: top.depth
+        if let far = d, s[cur] == '1': next_dist[cur] max= depth + far
 
-    fn answer(cur: Int, prv: Int, depth: Int, ch: Int):
-        query_node(cur, ch, depth)
-        for nxt in adj[cur]:
-            if alive[nxt] and nxt != prv:
-                answer(nxt, cur, depth + 1, ch)
+    fn answer(cur: V, prv: V, depth: Int, ch: V):
+        query(cur, ch, depth)
+        for nxt in adj[cur] if alive[nxt] and nxt != prv:
+            answer(nxt, cur, depth + 1, ch)
 
-    fn rec_centroid(start: Int):
+    fn decompose(start: V):
         var rt = start
-        let tot_sz = calc_sz(rt, -1)
-        while true:
-            var found = false
-            for nxt in adj[rt]:
-                if alive[nxt] and sz[nxt] < sz[rt] and sz[nxt] * 2 >= tot_sz:
-                    rt = nxt
-                    found = true
-                    break
-            if not found:
-                break
-        bests = List.filled(tot_sz + 1, Best(-1, -1, -1))
-        if min_dist[rt] > 0:
-            let idx = min(tot_sz, min_dist[rt])
-            bests[idx] = merge_best(bests[idx], Best(0, rt, -1))
-        for ch in adj[rt]:
-            if alive[ch]:
-                collect(ch, rt, 1, ch, tot_sz)
-        var i = tot_sz
-        while i > 0:
-            bests[i - 1] = merge_best(bests[i - 1], bests[i])
-            i -= 1
-        query_node(rt, rt, 0)
-        for ch in adj[rt]:
-            if alive[ch]:
-                answer(ch, rt, 1, ch)
+        let total = calc_sz(rt, none)
+        while let nxt = adj[rt].find(w => alive[w] and sz[w] < sz[rt] and sz[w] * 2 >= total):
+            rt = nxt
+        bests = List.filled(total + 1, Best(none, none))
+        offer(rt, rt, 0)
+        for ch in adj[rt] if alive[ch]: collect(ch, rt, 1, ch)
+        for i in (0..total).rev: bests[i] = merge(bests[i], bests[i + 1])
+        query(rt, rt, 0)
+        for ch in adj[rt] if alive[ch]: answer(ch, rt, 1, ch)
         alive[rt] = false
-        for ch in adj[rt]:
-            if alive[ch]:
-                rec_centroid(ch)
+        for ch in adj[rt] if alive[ch]: decompose(ch)
 
-    rec_centroid(0)
-    var has = false
-    for i in 0..n:
-        if next_dist[i] > 0:
-            ans[i] = round + 2
-            has = true
-    min_dist = next_dist
-    if not has:
-        break
-    round += 1
+    decompose(V.first)
+    let reached = [v for v in V if next_dist[v] > 0]
+    if reached.is_empty: break
+    for v in reached: ans[v] = round
+    min_dist = [V] v => next_dist[v] / 2
 print(ans)

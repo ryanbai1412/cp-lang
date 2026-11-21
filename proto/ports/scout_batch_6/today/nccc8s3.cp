@@ -7,9 +7,8 @@ let k: 1..=n = read()
 domain I = 1..=n
 domain V = 1..=k
 let a: [I]V = read()
-assert all(any(a[i] == v for i in I) for v in V)
 
-var last: [V]I = I.first                // where each number occurs for the last time
+var last: [V]I = I.first  // where each number occurs for the last time
 for i in I: last[a[i]] = i
 
 // Keep a stack of the numbers chosen so far. A new number pushes out every
@@ -19,7 +18,7 @@ var chosen: [V]Bool = false
 for i in I:
     let x = a[i]
     if chosen[x]: continue
-    while let k = kept.last and k > x and last[k] > i:
+    while let top = kept.last and top > x and last[top] > i:
         chosen[kept.pop()!] = false
     kept.push(x)
     chosen[x] = true
