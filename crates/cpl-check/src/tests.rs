@@ -2016,6 +2016,23 @@ fn debug_of_something_that_changes_the_program_is_refused() {
 }
 
 #[test]
+fn a_dropped_closer_inside_a_call_or_index_is_the_only_error() {
+    // `f(a[i, j)` closes the call, so the call or index sees one argument
+    // too many or too few; that is the missing `]`, not a second error.
+    for (port, good, bad) in [
+        ("cf2165f", "latest.set(a[i], i)", "latest.set(a[i, i)"),
+        ("cf2096b", "max(l[i], r[i]) for", "max(l[i, r[i]) for"),
+        ("cf2096h", "(ans[j], ans[j + bit]) =", "(ans[j, ans[j + bit]) ="),
+    ] {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../proto/ports/ecnerwala/{port}.cp"));
+        let src = std::fs::read_to_string(path).unwrap();
+        assert!(src.contains(good), "{port}: {good}");
+        assert_eq!(codes(&src.replacen(good, bad, 1)), ["E0101"], "{port}: {bad}");
+    }
+}
+
+#[test]
 fn an_unreadable_character_is_reported_where_it_is() {
     // The lexer poisons the character's span so nothing else is reported
     // there; its own diagnostic must not fall to that poison.

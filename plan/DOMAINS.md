@@ -289,8 +289,8 @@ always.
 **Where we are.** Statement recovery keeps the names a broken declaration
 declares (a broken fn header is bound with an unknown type), and an
 unreadable character no longer drops its line. Broken-ports benchmark
-(`cpl-cli/tests/recovery.rs`, six single edits per port): 0.04 cascades per
-copy, first error on the right line 99.8%, ratchet at 0.05 per copy.
+(`cpl-cli/tests/recovery.rs`, six single edits per port): 0.03 cascades per
+copy (145 of 4319), first error on the right line 99.8%, ratchet at 0.05 per copy.
 Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
 "not implemented yet: ... (see design/...)", or "(not in the design)" for
 forms only dreams use); 16 entries, each with a golden. Dreams are a corpus
@@ -579,7 +579,8 @@ parameter an argument is for, a `let`'s written type, an assigned variable's), s
 from diagnostic fixes (the four most frequent first errors over the broken
 ports, an unclosed delimiter, a missing token, a doubled operator and a
 stray character, each have one; `recovery.rs` prints the table and how
-often the first fix restores the line); a panic becomes an error reply plus an
+often the first fix restores the line; a closer dropped inside a call or index
+no longer shows first as a wrong argument or index count); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a

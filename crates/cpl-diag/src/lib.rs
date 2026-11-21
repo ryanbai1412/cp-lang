@@ -298,6 +298,12 @@ impl Sink {
             .any(|p| p.contains(span) || (span.is_empty() && p.touches(span.start)))
     }
 
+    /// Whether `span` takes in code the parser could not read, so an error
+    /// about all of it, like a call's argument count, is that error's echo.
+    pub fn encloses_poison(&self, span: Span) -> bool {
+        self.poisoned.iter().any(|p| span.contains(*p))
+    }
+
     pub fn push(&mut self, diag: Diagnostic) {
         if self.is_poisoned(diag.span) {
             return;

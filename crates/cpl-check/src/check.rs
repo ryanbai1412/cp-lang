@@ -177,6 +177,9 @@ impl<'a> Checker<'a> {
     }
 
     fn error(&mut self, code: Code, span: Span, message: String) -> Option<&mut Diagnostic> {
+        if self.sink.encloses_poison(span) {
+            return None;
+        }
         let before = self.sink.len();
         self.sink.push(Diagnostic::error(code, span, message));
         (self.sink.len() > before)
