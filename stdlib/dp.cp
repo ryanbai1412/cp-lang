@@ -255,8 +255,8 @@ pub fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<In
     // Online LARSCH: row r is node r + 1, column c is node c. Level l keeps a
     // stack of surviving columns for rows 2^(l+1) - 1 apart, and `bat[l]` is
     // the stack slot the best column for level l's next odd row starts at.
-    var val: List<K> = [K.zero]
-    var prev = [0]
+    var val = List.filled(max(n, 1), K.zero)
+    var prev = List.filled(max(n, 1), 0)
     let rows = n - 1
     if rows <= 0: return (val: val, prev: prev)
     var top = 0
@@ -327,8 +327,7 @@ pub fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<In
                 if col == end: break
                 bat[l] += 1
             l -= 1
-        val.push(nv)
-        prev.push(nc)
+        (val[inp + 1], prev[inp + 1]) = (nv, nc)
     (val: val, prev: prev)
 
 @test
