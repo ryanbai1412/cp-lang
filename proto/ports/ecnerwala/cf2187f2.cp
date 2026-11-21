@@ -1,5 +1,5 @@
 // Codeforces 2187 F2: Al Fine (counting version).
-use std.seq.{inverse}
+use std.seq.{inverse, scan_in_place}
 
 enum Kind: Leaf, Decr, Other
 type Node = (kind: Kind, l: Int, r: Int)
@@ -62,6 +62,6 @@ fn count(v: Int) -> Z:
     for leaf in leafs.rev:
         ends.push(0)
         if leaf:
-            ends = scan(ends, (x, y) => x + y)
+            ends.scan_in_place((x, y) => x + y)
     ways * ends.sum()
 print(count(stk[0].node))

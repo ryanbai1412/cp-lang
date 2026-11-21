@@ -308,6 +308,8 @@ fn chunks<T>(self: List<T>, k: Int) -> yields List<T> // O(n)
 
 // Prefix and suffix scans over elements (cut-indexed prefix_fold/suffix_fold live in std.prefix)
 fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T // O(n)
+fn scan_in_place<T>(mut self: List<T>, f: (T, T) -> T) // O(n), O(1) extra space
+fn suffix_scan_in_place<T>(mut self: List<T>, f: (T, T) -> T) // O(n), O(1) extra space
 
 // Coordinate compression completeness
 fn Compressed.contains(self, val: T) -> Bool // O(log n)

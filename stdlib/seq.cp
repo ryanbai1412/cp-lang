@@ -37,6 +37,22 @@ pub fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T:
         after = i
     out
 
+/// Fold every prefix of `self` in place with `f`: `self[i] = f(self[i - 1], self[i])`.
+/// Zero allocations. O(n) calls of `f`.
+pub fn scan_in_place<T>(mut self: List<T>, f: (T, T) -> T):
+    var prev: ?T = none
+    for i in 0..self.len:
+        if let p = prev: self[i] = f(p, self[i])
+        prev = self[i]
+
+/// Fold every suffix of `self` right-to-left in place with `f`: `self[i] = f(self[i], self[i + 1])`.
+/// Zero allocations. O(n) calls of `f`.
+pub fn suffix_scan_in_place<T>(mut self: List<T>, f: (T, T) -> T):
+    var next: ?T = none
+    for i in (0..self.len).rev:
+        if let n = next: self[i] = f(self[i], n)
+        next = self[i]
+
 /// Product of all elements of `it` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
 pub fn prod<S: Seq, T>(it: S) -> T:
     var out = T.one
@@ -780,6 +796,16 @@ fn scan_folds_every_prefix():
         let xs = [rand(-9, 9) for _ in 0..rand(1, 12)]
         let sums = scan(xs, +)
         for i in 0..xs.len: assert sums[i] == sum(xs[j] for j in 0..=i)
+        var inp = xs.copy()
+        inp.scan_in_place((a, b) => a + b)
+        assert inp == sums
+        var suf = xs.copy()
+        suf.suffix_scan_in_place((a, b) => a + b)
+        assert suf == suffix_scan(xs, +)
+    var empty: List<Int> = []
+    empty.scan_in_place((a, b) => a + b)
+    empty.suffix_scan_in_place((a, b) => a + b)
+    assert empty.is_empty
 
 @test
 fn binary_search_matches_a_linear_scan():
