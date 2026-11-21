@@ -44,6 +44,12 @@ impl<'a> Parser<'a> {
                 };
                 PatternKind::Variant { path, args }
             }
+            T::Ident if self.text() == "some" && self.peek_n(1) == T::LParen => {
+                let path = vec![self.name()];
+                self.bump();
+                let args = self.comma_list(T::RParen, "the pattern", Self::pattern);
+                PatternKind::Variant { path, args }
+            }
             T::Ident if self.peek_n(1) == T::LParen => {
                 self.bump();
                 self.bump();

@@ -153,6 +153,16 @@ impl<'a> Checker<'a> {
                 }
             }
             PatternKind::Variant { path, args } => {
+                if path.len() == 1 && path[0].text == "some" {
+                    let inner = match ty {
+                        Ty::Optional(inner) => (**inner).clone(),
+                        _ => Ty::Unknown,
+                    };
+                    if let Some(arg) = args.first() {
+                        self.bind(arg, &inner, mutable, keyword);
+                    }
+                    return;
+                }
                 let fields = match path
                     .last()
                     .and_then(|name| self.env.global(&name.text))
@@ -1415,6 +1425,9 @@ impl<'a> Checker<'a> {
                     c.pop_scope();
                 }
                 FnBody::Expr(expr) => {
+                    if matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) {
+                        c.plain_if = Some(expr.span);
+                    }
                     let ty = c.infer(expr);
                     c.returns(expr, &ty);
                     c.no_escape(expr, "returning it");

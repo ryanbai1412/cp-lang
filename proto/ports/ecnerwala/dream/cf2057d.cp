@@ -10,7 +10,8 @@ let a: [Pos]1..=1_000_000_000 = read()
 struct Span(best: Int, lo_l: Int, hi_l: Int, lo_r: Int, hi_r: Int):
     fn at(p: Pos, x: Int) -> Span = Span(0, -x + p.ord, x + p.ord, -x - p.ord, x - p.ord)
 
-    fn +(a: Span, b: Span) -> Span = Span(
+impl Add for Span:
+    fn add(a: Span, b: Span) -> Span = Span(
         max(a.best, b.best, a.lo_l + b.hi_r, a.hi_l + b.lo_r),
         max(a.lo_l, b.lo_l),
         max(a.hi_l, b.hi_l),

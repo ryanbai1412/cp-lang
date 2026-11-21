@@ -92,11 +92,12 @@ print(s.len)
 pub const LOWER_VARIANT_PATTERN: Planned = Planned {
     feature: "a lowercase variant in a pattern, `incr(l, r) =>`",
     see: Some("design/spec/11-types.md §11.2"),
-    now: "name the variant with a capital, `Incr(l, r)`, or match an optional with `if let`",
-    example: "let a = [3, 0, 2]
-match a.find(0):
-    some(i) => print(i)
-    none => print(-1)
+    now: "name the variant with a capital, `Incr(l, r)`",
+    example: "enum Node: leaf, incr(a: Int, b: Int)
+let x = Node.leaf
+match x:
+    incr(a, b) => print(a + b)
+    _ => print(0)
 ",
 };
 

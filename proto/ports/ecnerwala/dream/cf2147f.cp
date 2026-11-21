@@ -12,10 +12,11 @@ var p, s: [Item]Cut = read()
 
 struct Low(cover: Int, first: Cut, last: Cut, gaps: Int)
 
-fn (a: Low) + (b: Low) -> Low = match cmp(a.cover, b.cover):
-    less => a
-    greater => b
-    equal => Low(a.cover, a.first, b.last, a.gaps + b.gaps + choose2(b.first - a.last))
+impl Add for Low:
+    fn add(a: Low, b: Low) -> Low = match cmp(a.cover, b.cover):
+        less => a
+        greater => b
+        equal => Low(a.cover, a.first, b.last, a.gaps + b.gaps + choose2(b.first - a.last))
 
 var low = LazySegTree<Cut>([Cut] c => Low(0, c, c, 0),
                            apply: (d: Int, l: Low) => l with cover: l.cover + d)

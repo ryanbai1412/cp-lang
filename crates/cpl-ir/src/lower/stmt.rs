@@ -3788,7 +3788,12 @@ impl<'a> Lowerer<'a> {
         before: &mut Vec<Stmt>,
         binds: &mut Vec<Stmt>,
     ) -> Option<Expr> {
-        if matches!(&pat.kind, ast::PatternKind::Variant { .. }) {
+        if let ast::PatternKind::Variant { path, args } = &pat.kind {
+            if path.len() == 1 && path[0].text == "some" && args.len() == 1 {
+                let (present, inner) = self.optional(value, what, before)?;
+                self.bind(&args[0], inner, binds);
+                return Some(present);
+            }
             let value_expr = self.expr(value, None);
             if matches!(value_expr.ty, Ty::Enum(_)) {
                 let tmp = self.temp(value_expr.ty.clone());
@@ -4090,6 +4095,37 @@ impl<'a> Lowerer<'a> {
             }
             ast::PatternKind::Variant { path, args } => {
                 let name = path.last().expect("a variant pattern has a name");
+                if path.len() == 1 && name.text == "some" {
+                    let Ty::Opt(inner_ty) = value.ty.clone() else {
+                        if value.ty != Ty::Error {
+                            let message = format!(
+                                "`some(...)` matches an optional, but the value is a `{}`",
+                                self.show(&value.ty)
+                            );
+                            self.error(codes::TYPE_MISMATCH, pat.span, message);
+                        }
+                        return None;
+                    };
+                    if args.len() != 1 {
+                        let message = format!(
+                            "`some` holds 1 value, but this pattern names {}",
+                            args.len()
+                        );
+                        self.error(codes::WRONG_ARG_COUNT, pat.span, message);
+                        return None;
+                    }
+                    let is_some = self.mk(
+                        ExprKind::IsSome(Box::new(value.clone())),
+                        Ty::Bool,
+                        pat.span,
+                    );
+                    let unwrapped = self.mk(
+                        ExprKind::Unwrap(Box::new(value.clone()), false),
+                        *inner_ty,
+                        pat.span,
+                    );
+                    return and(Some(is_some), self.pattern(&args[0], &unwrapped, binds));
+                }
                 if let Ty::Pos(d) = value.ty {
                     if let Some(info) = self.sum_enums.get(&d).cloned() {
                         let Some(tag) = info.variants.iter().position(|(v, _)| *v == name.text) else {

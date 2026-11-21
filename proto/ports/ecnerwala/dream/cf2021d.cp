@@ -9,12 +9,12 @@
 let (n, m): (1..=2e5, 3..=2e5) = read()
 domain Drink = 0..m
 
-fn right_ends(pref: [Drink.Cut]Int, end: ?[Drink.Cut]Int) -> [Drink.Cut]?Int:
+fn right_ends(pref: [Drink.bounds]Int, end: ?[Drink.bounds]Int) -> [Drink.bounds]?Int:
     let open = if let e = end: e - pref.prefix_min(at:.cuts)  // l < p
         else: -pref                                           // day one: l = p
     pref + open.prefix_max(at:.cuts)                          // p < r
 
-var end: ?[Drink.Cut]Int = none
+var end: ?[Drink.bounds]Int = none
 repeat n:
     let pref = read<[Drink]-1e9..=1e9>().prefix_sums()
     let right = right_ends(pref, end)
