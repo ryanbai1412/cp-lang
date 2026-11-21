@@ -210,6 +210,41 @@ pub struct Rooted<V, Pre>:
     /// tree built with `weighted`. O(log n).
     pub fn dist(self, a: V, b: V) -> Int = far[a] + far[b] - 2 * far[self.lca(a, b)]
 
+    /// The simple path of vertices from `a` to `b`, inclusive. O(|path|).
+    pub fn path(self, a: V, b: V) -> List<V>:
+        let c = self.lca(a, b)
+        var up: List<V> = []
+        var x = a
+        while x != c:
+            up.push(x)
+            x = par[x]!
+        up.push(c)
+        var down: List<V> = []
+        var y = b
+        while y != c:
+            down.push(y)
+            y = par[y]!
+        for v in down.rev: up.push(v)
+        up
+
+    /// A longest simple path in the tree: `(len, u, v)` with `self.dist(u, v) == len`. O(n).
+    pub fn diameter(self) -> (len: Int, u: V, v: V):
+        var best_len = 0
+        var (du, dv) = (root, root)
+        var down: [V]Int = 0
+        var leaf: [V]V = [V] v => v
+        for p in Pre.rev:
+            let v = at[p]
+            if let par_v = par[v]:
+                let cand = down[v] + (far[v] - far[par_v])
+                if down[par_v] + cand > best_len:
+                    best_len = down[par_v] + cand
+                    (du, dv) = (leaf[par_v], leaf[v])
+                if cand > down[par_v]:
+                    down[par_v] = cand
+                    leaf[par_v] = leaf[v]
+        (len: best_len, u: du, v: dv)
+
     /// The ancestor `k` edges above `v`, or `none` if that is above the root. O(log n).
     pub fn ancestor(self, v: V, k: Int) -> ?V:
         if k > dep[v]: return none
@@ -617,3 +652,18 @@ fn lower_is_the_child_end_of_an_edge():
     for v in V:
         if let p = r.parent(v):
             assert r.lower(v, p) == v and r.lower(p, v) == v
+
+@test
+fn path_and_diameter_match_pairwise_distances():
+    domain V = 0..12
+    let adj = random_tree(V.first)
+    let r = Rooted(adj, V.first)
+    let d = r.diameter()
+    assert r.dist(d.u, d.v) == d.len
+    for a in V:
+        for b in V:
+            assert r.dist(a, b) <= d.len
+            let p = r.path(a, b)
+            assert p.first == a and p.last == b and p.len == r.dist(a, b) + 1
+            for k in 0..p.len - 1:
+                assert r.parent(p[k]) == p[k + 1] or r.parent(p[k + 1]) == p[k]

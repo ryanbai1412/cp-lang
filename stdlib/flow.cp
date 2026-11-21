@@ -70,6 +70,10 @@ pub struct FlowGraph<V>:
         let level = self.levels(s)
         [V] v => level[v] != none
 
+    /// Clear all flow, restoring every arc to its initial capacity. O(E).
+    pub fn reset(mut self):
+        for k in 0..left.len: left[k] = cap0[k]
+
     fn levels(self, s: V) -> [V]?Int:
         var level: [V]?Int = none
         level[s] = 0
@@ -248,3 +252,16 @@ fn an_arc_without_a_capacity_is_never_cut():
     let side = g.min_cut(V(0))
     // the cut is the arc of capacity 3, not the one between
     assert side[V(1)] and side[V(2)] and not side[V(3)]
+
+@test
+fn reset_restores_initial_capacities():
+    domain V = 0..4
+    var g = FlowGraph<V>()
+    g.add_both(V(0), V(1), 5)
+    g.add_both(V(1), V(2), 3)
+    g.add_both(V(2), V(3), 4)
+    assert g.max_flow(V(0), V(3)) == 3
+    g.reset()
+    assert g.max_flow(V(0), V(1)) == 5
+    g.reset()
+    assert g.max_flow(V(0), V(3)) == 3

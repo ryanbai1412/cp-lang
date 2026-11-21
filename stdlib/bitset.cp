@@ -11,6 +11,12 @@ pub struct Bitset<D>:
     pub fn new() -> Bitset<D>:
         Bitset(List.filled((D.K + 63) / 64, 0))
 
+    /// The full set containing every position of `D`. O(K / 64).
+    pub fn full() -> Bitset<D>:
+        var b = Bitset(List.filled((D.K + 63) / 64, -1))
+        b.trim()
+        b
+
     /// The set of positions where `a` is true.
     pub fn from(a: [D]Bool) -> Bitset<D>:
         var b = Bitset<D>.new()
@@ -206,3 +212,12 @@ fn membership_and_a_signed_shift():
     s.toggle(D(5))
     assert [i.to_idx for i in s.shifted(-3).each()] == [2, 61, 126]
     assert [i.to_idx for i in s.shifted(2).each()] == [2, 7, 66]
+
+@test
+fn full_contains_every_position_and_nothing_past_end():
+    for sz in [1, 63, 64, 65, 130]:
+        domain D = 0..sz
+        let f = Bitset<D>.full()
+        assert f.len == sz
+        for x in D: assert x in f
+        assert (f & Bitset<D>.new()).is_empty

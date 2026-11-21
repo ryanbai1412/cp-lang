@@ -410,6 +410,7 @@ stays (decision 26.3).
 ```cp
 struct Bitset<D> // O(1), O(K / 64)
     fn new() -> Bitset<D>
+    fn full() -> Bitset<D>
     fn from(a: [D]Bool) -> Bitset<D>
     fn contains(self, i: D) -> Bool
     fn add(mut self, i: D)
@@ -671,6 +672,8 @@ struct Rooted<V, Pre> // O(n)
     fn lower(self, u: V, v: V) -> V // O(1)
     fn lca(self, a: V, b: V) -> V // O(log n)
     fn dist(self, a: V, b: V) -> Int // O(log n)
+    fn path(self, a: V, b: V) -> List<V> // O(|path|)
+    fn diameter(self) -> (len: Int, u: V, v: V) // O(n)
     fn ancestor(self, v: V, k: Int) -> ?V // O(log n)
     fn step(self, a: V, b: V, k: Int) -> ?V // O(log n)
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V // O(log^2 n)
@@ -707,6 +710,7 @@ struct FlowGraph<V> // O(1), O(V^2 E), O(E sqrt(V))
     fn target(self, a: Arc) -> V
     fn max_flow(mut self, s: V, t: V) -> Int
     fn min_cut(self, s: V) -> [V]Bool
+    fn reset(mut self) // O(E)
 // O(n^3)
 fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R)
 ```
