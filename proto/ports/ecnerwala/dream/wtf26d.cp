@@ -1,11 +1,17 @@
 // AtCoder WTF 2026 D: largest permutation <= Q reachable from P.
-// While matching a prefix of Q, every placed element whose P-position precedes
-// a pending upper bound adds a constraint `(max_p, max_v)` requiring some
-// remaining value <= `max_v` to sit strictly before `max_p` in P. These
-// constraints form a monotone stack (both `max_p` and `max_v` strictly
-// decreasing). Once a position steps down below Q, the remaining values pack
-// greedily into suffix blocks ordered by the active stack thresholds, largest
-// value first.
+// Lexicographic optimality: matching the longest feasible prefix of Q and
+// stepping down to the largest feasible value `< q[i]` at the first failure `i`
+// is uniquely optimal, because any reachable completion after `i` is smaller
+// than any completion that keeps a larger prefix.
+//
+// Feasibility invariant: placing value `v` at `inv_p[v]` while matching Q
+// requires some still-unused value `<= cap` to lie strictly before `inv_p[v]`
+// in P whenever `v` sits before a pending tighter upper bound. These active
+// constraints `(max_p, max_v)` form a monotone stack (both fields strictly
+// decreasing). Once a position steps below Q, the remaining stack constraints
+// partition the unused values into disjoint suffix blocks (`domain Block`), and
+// placing unused values into their assigned blocks in decreasing value order
+// produces the lexicographically largest valid suffix.
 
 use std.seq.inverse
 
@@ -39,11 +45,7 @@ var used: [Val]Bool = false
 for i in Pos.first..first_diff: used[q[i]] = true
 
 // Earliest P-position among unused values <= v.
-var pref_min: [Val]?Pos = none
-var best_pos: ?Pos = none
-for v in Val:
-    if not used[v]: best_pos = if let b = best_pos: min(b, inv_p[v]) else: inv_p[v]
-    pref_min[v] = best_pos
+let pref_min: [Val]?Pos = [Val] v => (if not used[v]: some(inv_p[v]) else: none).scan(min)
 
 var conds = CondStack()
 var seen_inversion = false
@@ -55,8 +57,7 @@ fn required_cap(i: Pos, v: Val, next_cap: ?Val) -> ?Val:
     if i == first_diff and v == p[i]: return none
     let pos = inv_p[v]
     if not forms_inversion(i, v):
-        let base = if let nc = next_cap: min(v, nc) else: v
-        if let ac = conds.active_cap(pos): min(base, ac) else: base
+        [some(v), next_cap, conds.active_cap(pos)].somes.min()
     elif let ac = conds.active_cap(pos), v > ac:
         ac
     else:
@@ -77,21 +78,19 @@ fn commit_place(i: Pos, v: Val, next_cap: ?Val):
     used[v] = true
 
 // Match Q as far as possible; on the first failure, step q[i] down and stop.
-var filled = first_diff.ord
+var suffix_start = first_diff
 for i in first_diff..=Pos.last:
     let next_cap = i.next.map(nxt => q[nxt])
     if can_place(i, q[i], next_cap):
         commit_place(i, q[i], next_cap)
-        filled = i.ord + 1
     else:
-        let v = Val.last(u => u < q[i] and not used[u] and can_place(i, u, none))!
+        let v = Val.rev.first(u => u < q[i] and not used[u] and can_place(i, u, none))!
         commit_place(i, v, none)
-        filled = i.ord + 1
+        suffix_start = i.next ?? Pos.last
         break
 
 // Partition remaining values into suffix blocks by draining the constraint stack.
-var block_starts: List<Int> = [filled]
-var p_to_block: [Pos]?Int = none
+var block_ranges: List<List<Pos>> = []
 var last_thresh = Pos.last
 while let mut cond = conds.items.pop():
     let p_thresh = pref_min[cond.max_v]!
@@ -106,17 +105,23 @@ while let mut cond = conds.items.pop():
         if p[pos] >= p[min_p]: min_p = pos
 
     conds.pop_after(min_p)
-    let block_idx = block_starts.len - 1
-    var en = block_starts.last!
-    for pos in (min_p..=last_thresh).rev if not used[p[pos]] and p[pos] >= p[min_p]:
-        p_to_block[pos] = block_idx
-        en += 1
-    block_starts.push(en)
+    block_ranges.push([pos for pos in (min_p..=last_thresh).rev if not used[p[pos]] and p[pos] >= p[min_p]])
     last_thresh = p_thresh.prev ?? Pos.first
 
+domain Block = 0..=block_ranges.len
+var p_to_block: [Pos]Block = Block.last
+var block_cursor: [Block]Pos = suffix_start
+var cur_pos = suffix_start
+for (idx, members) in block_ranges.items:
+    let b = Block(idx)
+    block_cursor[b] = cur_pos
+    for pos in members: p_to_block[pos] = b
+    cur_pos += members.len
+block_cursor[Block.last] = cur_pos
+
 for v in Val.rev if not used[v]:
-    let b = p_to_block[inv_p[v]] ?? (block_starts.len - 1)
-    q[Pos(block_starts[b] + 1)] = v
-    block_starts[b] += 1
+    let b = p_to_block[inv_p[v]]
+    q[block_cursor[b]] = v
+    block_cursor[b] = block_cursor[b].next ?? Pos.last
 
 print(q)
