@@ -3,6 +3,8 @@
 Score: 2/5
 Dream: 2/5
 
+Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
+
 Re-reviewed after ddf13f69. `Pos`/`Val` domains and a named `CondStack` replace the raw ints and the triple pop loop, but control flow is still the C++: counters, `while true`/`break`, a predicate that mutates globals and index shifts. The dream is under 4, so this score is provisional. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
 ## Checklist failures
