@@ -157,6 +157,14 @@ force on random small inputs.
 - **Max-flow min-cut.** After `max_flow(s, t)` without a limit,
   `let side = g.min_cut(s)` has `side[s]`, `not side[t]`, and the
   capacities of arcs from `side` to its complement sum to the flow.
+  `min_cut(s)` traps unless such a `max_flow` from `s` came since the last
+  `add` or `reset`, so a stale or partial cut cannot be read.
+- **No `min_cut(s, t)`.** A combined call returning `(value, side)` was
+  considered and rejected: no corpus port reads the side of an s-t cut
+  (cf1404e, dmopc20c7p5 and noi06p4 print the value; the closure ports use
+  `max_closure`), and the cut value under a second name would be two ways
+  to ask `max_flow` one question. `max_flow` then `min_cut(s)` stays the
+  one spelling; revisit when two ports read the side.
 - **Unbounded arcs.** `cap: none` is 2^60: no finite cut chooses it, and a
   sum of 2^3 of them cannot overflow 63 bits. Finite capacities and their
   total stay below 2^60; the library asserts each `cap >= 0`.
@@ -348,7 +356,10 @@ The whole area, in the order the corpus is likely to want it:
    cost scaling), and `min_cost_flow` over bounded arcs.
 5. **Dynamic networks:** `set_cap(a, c)` with re-flow from the current
    flow, as ACL's `change_edge`; incremental bipartite matching.
-6. **Matroid intersection** and **bipartite edge colouring** (KACTL).
-7. **Tooling:** `cpl explain` for a network (vertex and arc counts, the
+6. **Push-relabel** as a named second max-flow solver: on cf1404e's
+   200 x 200 unit grid the original's push-relabel takes 17 ms where
+   matched Dinic takes 340 ms.
+7. **Matroid intersection** and **bipartite edge colouring** (KACTL).
+8. **Tooling:** `cpl explain` for a network (vertex and arc counts, the
    bound the solver will meet), and a trace view of a min cut over the
    user's own domains.

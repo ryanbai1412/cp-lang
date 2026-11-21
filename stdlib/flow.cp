@@ -21,16 +21,18 @@ pub struct FlowGraph<V>:
     to: List<V>
     left: List<Int>
     cap0: List<Int>
+    cut_from: ?V
 
     /// An empty network. O(V).
     pub fn new() -> FlowGraph<V>:
-        FlowGraph([V] v => [], [], [], [])
+        FlowGraph([V] v => [], [], [], [], none)
 
     /// Add an arc `u -> v` with capacity `cap` (and its reverse with capacity 0). O(1).
     /// A `cap` of `none` is an arc no cut can afford: its capacity is 2^60.
     pub fn add(mut self, u: V, v: V, cap: ?Int) -> Arc:
         let cap = cap ?? 1 << 60
         assert cap >= 0
+        cut_from = none
         let a = Arc(to.len)
         head[u].push(a)
         head[v].push(a.rev)
@@ -68,9 +70,12 @@ pub struct FlowGraph<V>:
         assert s != t
         let limit = limit ?? Int.MAX
         var total = 0
+        cut_from = none
         while total < limit:
             let level = self.levels(s)
-            if level[t] == none: break
+            if level[t] == none:
+                cut_from = s
+                break
             var next: [V]Int = 0
             while total < limit:
                 let pushed = self.augment(s, t, level, mut next, limit - total)
@@ -78,14 +83,17 @@ pub struct FlowGraph<V>:
                 total += pushed
         total
 
-    /// The source side of a minimum cut, after `max_flow(s, t)` without a limit: the
-    /// vertices `s` still reaches in the residual network. O(V + E).
+    /// The source side of a minimum cut, after `max_flow(s, t)` ran to completion: the
+    /// vertices `s` still reaches in the residual network. Traps if no such `max_flow`
+    /// came since the last `add` or `reset`. O(V + E).
     pub fn min_cut(self, s: V) -> [V]Bool:
+        assert cut_from == s, "min_cut(s) needs a completed max_flow(s, t) first"
         let level = self.levels(s)
         [V] v => level[v] != none
 
     /// Clear all flow, restoring every arc to its initial capacity. O(E).
     pub fn reset(mut self):
+        cut_from = none
         for k in 0..left.len: left[k] = cap0[k]
 
     fn close(mut self, a: Arc):
@@ -979,6 +987,37 @@ fn hungarian_matches_brute_force_on_random_matrices():
             if not next_permutation(mut p): break
         assert h.total == best
         assert sorted([h.mate[i].to_idx for i in L]) == [0, 1, 2, 3]
+
+@test
+fn flow_over_a_product_domain_matches_flat_numbering():
+    domain R = 0..3
+    domain C = 0..4
+    domain Flat = 0..12
+    for _ in 0..20:
+        let cap = [R, C] (r, c) => rand(0, 9)
+        var g = FlowGraph<(R, C)>()
+        var h = FlowGraph<Flat>()
+        var k = CostFlow<(R, C)>()
+        var kf = CostFlow<Flat>()
+        for (r, c) in (R, C):
+            let at = Flat(r.to_idx * 4 + c.to_idx)
+            if let rn = r.next:
+                g.add((r, c), (rn, c), cap[r, c])
+                h.add(at, Flat(rn.to_idx * 4 + c.to_idx), cap[r, c])
+                k.add((r, c), (rn, c), cap[r, c], c.to_idx)
+                kf.add(at, Flat(rn.to_idx * 4 + c.to_idx), cap[r, c], c.to_idx)
+            if let cn = c.next:
+                g.add((r, c), (r, cn), cap[r, c])
+                h.add(at, Flat(r.to_idx * 4 + cn.to_idx), cap[r, c])
+                k.add((r, c), (r, cn), cap[r, c], 1)
+                kf.add(at, Flat(r.to_idx * 4 + cn.to_idx), cap[r, c], 1)
+        let s = (R.first, C.first)
+        let t = (R.last, C.last)
+        assert g.max_flow(s, t) == h.max_flow(Flat.first, Flat.last)
+        let side = g.min_cut(s)
+        let flat = h.min_cut(Flat.first)
+        assert [side[(r, c)] for (r, c) in (R, C)] == [flat[v] for v in Flat]
+        assert k.min_cost_flow(s, t) == kf.min_cost_flow(Flat.first, Flat.last)
 
 @test
 fn an_arc_without_a_capacity_is_never_cut():

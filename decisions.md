@@ -2812,6 +2812,12 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   ids the library itself created, so the checks never fire; dropping them takes min-cost
   flow from 1.41x to 1.14x matched C++. Reverse: remove the `unchecked:` lines if a
   check-elision pass proves these ids in range.
+- **43.9 `FlowGraph.min_cut(s)` traps unless a completed `max_flow(s, t)` came since the
+  last `add` or `reset`.** One `?V` field records it; reading the cut after a `limit:` stop,
+  an edit, or from another source was silently wrong before. No `min_cut(s, t)` returning
+  `(value, side)`: no corpus port reads an s-t side (cf1404e, dmopc20c7p5, noi06p4 print the
+  value), so it would only rename `max_flow`. Reverse: drop the field, or add the pair form
+  when two ports read the side.
 
 ## 44. Containers area design (§4.8–4.9, 2026-11-21)
 
