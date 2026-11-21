@@ -1851,7 +1851,14 @@ Reverse: none needed; this is general range-type lowering.
   and a half minutes on eight cores, too slow for `--fast`; `--fast` builds every port for every profile (size, stamp,
   stack rule) and compiles and runs the deep-recursion program under each. Reverse: move the ignored test
   into `--fast`.
-<<<<<<< HEAD
+- **34.9 Local runs build a `.cp` file for its judge and run it on the judge's stack.** `run --release`,
+  `test`, `stress` and `hunt` resolve the file's profile, emit for it, build with its flags as the host g++
+  accepts them (the host compiler for a Windows judge) and wrap the binary in `sh -c 'ulimit -s N'` when N
+  differs from the current limit; a stack the shell can't grant fails with exit 125 and names the judge.
+  Goal 5 says local runs mimic the profile, and the stack is where they differed most (a recursion that
+  fits 8 MB here could overflow a judge, and the reverse). The `g++ -std=c++17 -O2` build keeps its
+  precompiled header; other flag sets build without it. Reverse: `build_judged` back to
+  `compile_cpp(&emit_cpp(..))`.
 
 ## 35. Taste lints (§8 tooling, 2026-11-21)
 
@@ -1876,14 +1883,3 @@ Reverse: none needed; this is general range-type lowering.
 4. **The friction detector `negative_slice` gets no lint:** `a[..-k]` is
    already the check error E0309 with the same fix, so the friction script's
    one `wa_trap` is stale. Reverse: none needed.
-||||||| parent of 80fbc69e (judge: build and run local runs with the judge's flags and stack)
-=======
-- **34.9 Local runs build a `.cp` file for its judge and run it on the judge's stack.** `run --release`,
-  `test`, `stress` and `hunt` resolve the file's profile, emit for it, build with its flags as the host g++
-  accepts them (the host compiler for a Windows judge) and wrap the binary in `sh -c 'ulimit -s N'` when N
-  differs from the current limit; a stack the shell can't grant fails with exit 125 and names the judge.
-  Goal 5 says local runs mimic the profile, and the stack is where they differed most (a recursion that
-  fits 8 MB here could overflow a judge, and the reverse). The `g++ -std=c++17 -O2` build keeps its
-  precompiled header; other flag sets build without it. Reverse: `build_judged` back to
-  `compile_cpp(&emit_cpp(..))`.
->>>>>>> 80fbc69e (judge: build and run local runs with the judge's flags and stack)
