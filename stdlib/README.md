@@ -328,8 +328,8 @@ and generic `sieve_multiplicative`), `factor`, `factor_big`, `divisors`,
 `primitive_root`, and `floor_sum`.
 
 `ntt.cp` provides `ntt<P>`, `convolve<P>`, `convolve_mod`, and `convolve_int`
-(all with `cyclic: Bool = false`), plus in-place `sos(mut a, over: Sub | Sup = Sub, inverse: Bool = false)`
-and `convolve_or`/`convolve_and`/`convolve_xor`.
+(all with `cyclic: Bool = false`), plus in-place `sos(mut a, over: Sub | Sup = Sub, inverse: Bool = false)`,
+`fwht(mut a, inverse: Bool = false)`, and `convolve_or`/`convolve_and`/`convolve_xor`/`convolve_subset`.
 
 `matrix.cp` provides flat row-major `Mat<T>` (`+`, `-`, `*`, `pow`, `mul_vec`,
 `transpose`, `product` monoid, exact-field `det`, `rank`, `solve`, `solve_space`,
@@ -468,7 +468,7 @@ is evidence, not a proof.
   `factor`, `factor_big`, `divisors`, `divisors_from_factors`, `inv_mod`,
   `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`).
 - `ntt.cp`: `ntt<P>`, `convolve<P>`, `convolve_mod`, `convolve_int` (`cyclic:`),
-  `SosOver`, `sos` (`over:`, `inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`.
+  `SosOver`, `sos` (`over:`, `inverse:`), `fwht` (`inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`, `convolve_subset`.
 - `poly.cp`: formal power series and multipoint operations over NTT (`deriv`, `integral`,
   `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`,
   `eval_all`, `compose`).

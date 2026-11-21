@@ -468,7 +468,9 @@ local library until wider corpus demand justifies promotion.
 
 ```cp
 fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
-    // O(n log n) in place; a.len a power of two dividing P - 1
+    // O(n log n) in place; a.len a power of two dividing P - 1.
+    // With bit_reversed: true, output is in DIF/DIT bit-reversed frequency
+    // order and only an inverse transform taking the same flag may consume it.
 fn convolve<P>(a: List<Mod<P>>, b: List<Mod<P>>, cyclic: Bool = false) -> List<Mod<P>>
     // O((n + m) log(n + m)); P - 1 divisible by a power of two at least
     // n + m - 1 (998244353, 167772161, 469762049, 754974721 qualify);
@@ -480,9 +482,12 @@ fn convolve_int(a: List<Int>, b: List<Int>, cyclic: Bool = false) -> List<Int>
 enum SosOver = Sub | Sup
 fn sos<T>(mut a: List<T>, over: SosOver = Sub, inverse: Bool = false)
     // O(n log n); subset (Sub) or superset (Sup) zeta/Mobius transform in place
+fn fwht<T>(mut a: List<T>, inverse: Bool = false)
+    // O(n log n); in-place Walsh-Hadamard (XOR) transform on Int, Mod<P>, Float
 fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n)
 fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n)
-fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n); requires / 2
+fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n); Int, Mod<P>, Float
+fn convolve_subset<T>(a: List<T>, b: List<T>) -> List<T> // O(k^2 * 2^k) for n = 2^k
 ```
 
 Relies on: `Mod<P>` with a type-parameter modulus, `primitive_root`,

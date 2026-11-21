@@ -13,6 +13,8 @@
 // (`odd_prod`), where `hx = (l ^ r) >> q`. A multiplicative butterfly over the
 // `m - q` high bits evaluates the product for every `hi`, and an inverse WHT
 // recovers `ways`.
+use std.ntt.{fwht}
+
 type Z = Mod<998_244_353>
 
 // Prefix sum `sum_{a in 0..t} (-1)^{popcount(a & half)}` for `0 <= t < 2 * half`.
@@ -23,11 +25,10 @@ let n: 1..=200_000 = read()
 let m: 1..=18 = read()
 let segs: [0..n](0..=262_143, 0..=262_143) = read()
 let full = 1 << m
-domain Mask = 0..full
 
-var hat: [Mask]Z = 0
-hat[Mask(0)] = 1
-for (l, r) in segs: hat[Mask(0)] *= r - l + 1
+var hat = List.filled(full, Z(0))
+hat[0] = 1
+for (l, r) in segs: hat[0] *= r - l + 1
 
 for q in 1..=m:
     let half = 1 << (q - 1)
@@ -60,19 +61,12 @@ for q in 1..=m:
                 )
     for hi in High:
         let val = even_prod[hi]
-        hat[Mask((hi.ord << q) + half)] = if popcount(high_xor & hi.ord) % 2 == 1: -val else: val
+        hat[(hi.ord << q) + half] = if popcount(high_xor & hi.ord) % 2 == 1: -val else: val
 
-// Inverse Walsh-Hadamard transform (scaling by `1 / full` folded into `coeff`).
-for q in 0..m:
-    let bit = 1 << q
-    for base in (0..full).step(2 * bit):
-        for off in 0..bit:
-            let a = Mask(base + off)
-            let b = Mask(base + off + bit)
-            (hat[a], hat[b]) = (hat[a] + hat[b], hat[a] - hat[b])
+fwht(mut hat, inverse: true)
 
 var checksum = 0
-var coeff = Z(full).inv
+var coeff = Z(1)
 for ways in hat:
     checksum ^= (ways * coeff).v
     coeff *= 2

@@ -155,66 +155,6 @@ fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int>
             out[idx] = s
     out
 
-fn ntt_rate2<P>(inverse: Bool) -> List<Mod<P>>:
-    let rank2 = ctz(P - 1)
-    let r = Mod<P>(pow_mod(root_of(P), (P - 1) >> rank2, P))
-    let ir = r.inv
-    var root = List.filled(rank2 + 1, Mod<P>(1))
-    var iroot = List.filled(rank2 + 1, Mod<P>(1))
-    var rate = List.filled(max(1, rank2), Mod<P>(1))
-    unchecked:
-        root[rank2] = if inverse: ir else: r
-        iroot[rank2] = if inverse: r else: ir
-        for i in (0..rank2).rev:
-            root[i] = root[i + 1] * root[i + 1]
-            iroot[i] = iroot[i + 1] * iroot[i + 1]
-        var prod = Mod<P>(1)
-        for i in 0..rank2 - 1:
-            rate[i] = root[i + 2] * prod
-            prod = prod * iroot[i + 2]
-    rate
-
-fn ntt_dif<P>(mut a: List<Mod<P>>):
-    let n = a.len
-    if n <= 1: return
-    let h = ctz(n)
-    let rate = ntt_rate2<P>(false)
-    unchecked:
-        for len in 0..h:
-            let p = 1 << (h - len - 1)
-            var rot = Mod<P>(1)
-            let blocks = 1 << len
-            for s in 0..blocks:
-                let offset = s << (h - len)
-                for i in 0..p:
-                    let l = a[i + offset]
-                    let r = a[i + offset + p] * rot
-                    a[i + offset] = l + r
-                    a[i + offset + p] = l - r
-                if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
-
-fn ntt_dit<P>(mut a: List<Mod<P>>):
-    let n = a.len
-    if n <= 1: return
-    let h = ctz(n)
-    let irate = ntt_rate2<P>(true)
-    unchecked:
-        for step in 0..h:
-            let len = h - step
-            let p = 1 << step
-            var irot = Mod<P>(1)
-            let blocks = 1 << (len - 1)
-            for s in 0..blocks:
-                let offset = s << (step + 1)
-                for i in 0..p:
-                    let l = a[i + offset]
-                    let r = a[i + offset + p]
-                    a[i + offset] = l + r
-                    a[i + offset + p] = (l - r) * irot
-                if s + 1 != blocks: irot = irot * irate[ctz(s ^ -1)]
-        let inv_n = Mod<P>(n).inv
-        for i in 0..n: a[i] = a[i] * inv_n
-
 /// In-place number-theoretic transform of length `2^k` modulo an NTT-friendly prime `P`.
 /// Set `inverse: true` for the inverse transform (includes division by `n`).
 /// Set `bit_reversed: true` to stay in DIF/DIT bit-reversed frequency order (skips bit-reversal). O(n log n).
@@ -223,12 +163,60 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
     assert n.is_pow2, "ntt requires a power-of-two length"
     if n <= 1: return
     assert (P - 1) % n == 0, "modulus p - 1 must be divisible by n"
-    if inverse:
-        if not bit_reversed: bit_reverse(mut a)
-        ntt_dit(mut a)
+    let h = ctz(n)
+    let rank2 = ctz(P - 1)
+    var g = 0
+    if const P == 998_244_353 or P == 469_762_049 or P == 167_772_161:
+        g = 3
+    elif const P == 754_974_721:
+        g = 11
     else:
-        ntt_dif(mut a)
-        if not bit_reversed: bit_reverse(mut a)
+        g = primitive_root(P)
+    let r0 = Mod<P>(pow_mod(g, (P - 1) >> rank2, P))
+    let ir0 = r0.inv
+    var root = List.filled(rank2 + 1, Mod<P>(1))
+    var iroot = List.filled(rank2 + 1, Mod<P>(1))
+    var rate = List.filled(max(1, rank2), Mod<P>(1))
+    unchecked:
+        root[rank2] = if inverse: ir0 else: r0
+        iroot[rank2] = if inverse: r0 else: ir0
+        for i in (0..rank2).rev:
+            root[i] = root[i + 1] * root[i + 1]
+            iroot[i] = iroot[i + 1] * iroot[i + 1]
+        var prod = Mod<P>(1)
+        for i in 0..rank2 - 1:
+            rate[i] = root[i + 2] * prod
+            prod = prod * iroot[i + 2]
+        if inverse:
+            if not bit_reversed: bit_reverse(mut a)
+            for step in 0..h:
+                let p = 1 << step
+                var rot = Mod<P>(1)
+                let blocks = 1 << (h - step - 1)
+                for s in 0..blocks:
+                    let offset = s << (step + 1)
+                    for i in 0..p:
+                        let l = a[i + offset]
+                        let r = a[i + offset + p]
+                        a[i + offset] = l + r
+                        a[i + offset + p] = (l - r) * rot
+                    if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
+            let inv_n = Mod<P>(n).inv
+            for i in 0..n: a[i] = a[i] * inv_n
+        else:
+            for step in 0..h:
+                let p = 1 << (h - step - 1)
+                var rot = Mod<P>(1)
+                let blocks = 1 << step
+                for s in 0..blocks:
+                    let offset = s << (h - step)
+                    for i in 0..p:
+                        let l = a[i + offset]
+                        let r = a[i + offset + p] * rot
+                        a[i + offset] = l + r
+                        a[i + offset + p] = l - r
+                    if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
+            if not bit_reversed: bit_reverse(mut a)
 
 /// Convolution of `a` and `b` over `Mod<P>`. O(n log n) via NTT (O(na * nb) when small).
 /// With `cyclic: true`, requires `a.len == b.len` and wraps indices modulo `a.len`.
@@ -256,11 +244,11 @@ pub fn convolve<P>(a: List<Mod<P>>, b: List<Mod<P>>, cyclic: Bool = false) -> Li
     unchecked:
         for i in 0..na: fa[i] = a[i]
         for i in 0..nb: fb[i] = b[i]
-    ntt_dif(mut fa)
-    ntt_dif(mut fb)
+    ntt(mut fa, bit_reversed: true)
+    ntt(mut fb, bit_reversed: true)
     unchecked:
         for i in 0..need: fa[i] = fa[i] * fb[i]
-    ntt_dit(mut fa)
+    ntt(mut fa, inverse: true, bit_reversed: true)
     if not cyclic:
         if fa.len > n_out: fa.truncate(n_out)
         return fa
@@ -395,32 +383,79 @@ pub fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T>:
     sos(mut fa, over: Sup, inverse: true)
     fa
 
-fn fwht_xor(mut a: List<Int>):
+/// In-place Walsh-Hadamard (XOR) transform (`inverse: false` or `inverse: true`).
+/// Length must be a power of two `2^k`. Works on `Int`, `Mod<P>`, and `Float`. O(n log n).
+pub fn fwht<T>(mut a: List<T>, inverse: Bool = false):
     let n = a.len
+    assert n.is_pow2, "fwht requires a power-of-two length"
     var step = 1
-    while step < n:
-        var i = 0
-        while i < n:
-            for j in i..i + step:
-                let u = a[j]
-                let v = a[j + step]
-                a[j] = u + v
-                a[j + step] = u - v
-            i += step << 1
-        step <<= 1
+    unchecked:
+        while step < n:
+            var i = 0
+            while i < n:
+                for j in i..i + step:
+                    let u = a[j]
+                    let v = a[j + step]
+                    a[j] = u + v
+                    a[j + step] = u - v
+                i += step << 1
+            step <<= 1
+    if inverse and n > 1:
+        var n_t = T.one
+        var m = n
+        while m > 1:
+            n_t = n_t + n_t
+            m >>= 1
+        let inv_n = T.one / n_t
+        unchecked:
+            if inv_n != T.zero:
+                for i in 0..n: a[i] = a[i] * inv_n
+            else:
+                for i in 0..n: a[i] = a[i] / n_t
 
-/// Bitwise XOR convolution: `out[i ^ j] += a[i] * b[j]`. Lengths must be equal powers of two. O(n log n).
-pub fn convolve_xor(a: List<Int>, b: List<Int>) -> List<Int>:
+/// Bitwise XOR convolution: `out[i ^ j] += a[i] * b[j]`. Lengths must be equal powers of two.
+/// Works on `Int`, `Mod<P>`, and `Float`. O(n log n).
+pub fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T>:
     assert a.len == b.len and a.len.is_pow2, "convolve_xor requires equal power-of-two lengths"
     let n = a.len
     var fa = [x for x in a]
     var fb = [x for x in b]
-    fwht_xor(mut fa)
-    fwht_xor(mut fb)
-    for i in 0..n: fa[i] *= fb[i]
-    fwht_xor(mut fa)
-    for i in 0..n: fa[i] /= n
+    fwht(mut fa)
+    fwht(mut fb)
+    unchecked:
+        for i in 0..n: fa[i] = fa[i] * fb[i]
+    fwht(mut fa, inverse: true)
     fa
+
+/// Subset convolution: `out[i | j] += a[i] * b[j]` over disjoint pairs `i & j == 0`.
+/// Lengths must be equal powers of two `2^k`. O(k^2 * 2^k).
+pub fn convolve_subset<T>(a: List<T>, b: List<T>) -> List<T>:
+    assert a.len == b.len and a.len.is_pow2, "convolve_subset requires equal power-of-two lengths"
+    let n = a.len
+    let k = ctz(n)
+    var fa: List<List<T>> = [List.filled(n, T.zero) for _ in 0..=k]
+    var fb: List<List<T>> = [List.filled(n, T.zero) for _ in 0..=k]
+    unchecked:
+        for mask in 0..n:
+            let p = popcount(mask)
+            fa[p][mask] = a[mask]
+            fb[p][mask] = b[mask]
+    for p in 0..=k:
+        sos(mut fa[p], over: Sub)
+        sos(mut fb[p], over: Sub)
+    var out = List.filled(n, T.zero)
+    var row = List.filled(n, T.zero)
+    for p in 0..=k:
+        unchecked:
+            for mask in 0..n: row[mask] = T.zero
+            for q in 0..=p:
+                let r = p - q
+                for mask in 0..n: row[mask] = row[mask] + fa[q][mask] * fb[r][mask]
+        sos(mut row, over: Sub, inverse: true)
+        unchecked:
+            for mask in 0..n:
+                if popcount(mask) == p: out[mask] = row[mask]
+    out
 
 @test
 fn ntt_round_trip_and_convolve():
@@ -488,16 +523,34 @@ fn sos_and_bitwise_convolutions():
         var want_or = List.filled(n, 0)
         var want_and = List.filled(n, 0)
         var want_xor = List.filled(n, 0)
+        var want_sub = List.filled(n, 0)
         for i in 0..n:
             for j in 0..n:
                 want_or[i | j] += a[i] * b[j]
                 want_and[i & j] += a[i] * b[j]
                 want_xor[i ^ j] += a[i] * b[j]
+                if (i & j) == 0: want_sub[i | j] += a[i] * b[j]
         assert convolve_or(a, b) == want_or
         assert convolve_and(a, b) == want_and
         assert convolve_xor(a, b) == want_xor
-    // Mod<P> works with sos_sub and convolve_or too
+        assert convolve_subset(a, b) == want_sub
+        var w = [x for x in a]
+        fwht(mut w)
+        fwht(mut w, inverse: true)
+        assert w == a
+    // Mod<P> works with sos, fwht, convolve_or, convolve_xor, and convolve_subset
     type Z = Mod<998_244_353>
-    let ma = [Z(1), Z(2), Z(3), Z(4)]
-    let mb = [Z(5), Z(6), Z(7), Z(8)]
-    assert convolve_or(ma, mb) == [Z(5), Z(28), Z(43), Z(184)]
+    let ma = [Z(1), Z(2), Z(3), Z(4), Z(5), Z(6), Z(7), Z(8)]
+    let mb = [Z(9), Z(10), Z(11), Z(12), Z(13), Z(14), Z(15), Z(16)]
+    var mw = [x for x in ma]
+    fwht(mut mw)
+    fwht(mut mw, inverse: true)
+    assert mw == ma
+    var want_mxor = List.filled(8, Z(0))
+    var want_msub = List.filled(8, Z(0))
+    for i in 0..8:
+        for j in 0..8:
+            want_mxor[i ^ j] += ma[i] * mb[j]
+            if (i & j) == 0: want_msub[i | j] += ma[i] * mb[j]
+    assert convolve_xor(ma, mb) == want_mxor
+    assert convolve_subset(ma, mb) == want_msub
