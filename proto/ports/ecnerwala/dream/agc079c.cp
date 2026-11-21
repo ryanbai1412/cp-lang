@@ -14,6 +14,7 @@
 //   (ignoring free 1-element flips) achieves the exact minimum reversal count.
 
 use std.dsu.ParityDsu
+use std.deque.LinkedList
 
 enum Side: Back | Front
 
@@ -52,7 +53,7 @@ fn solve() -> ?Int:
     for i in Pos.rev:
         let x = a[i]
         while let v = unpushed, x <= v:
-            runs.push(Run(LinkedList.of(v), false))
+            runs.push(Run(LinkedList.of([v]), false))
             unpushed = v.prev
         if runs.last!.vals.first == x:
             pop_top_front(x)
