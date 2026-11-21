@@ -22,5 +22,5 @@ class CpLspServerDescriptor(project: Project) : ProjectWideLspServerDescriptor(p
     override fun isSupportedFile(file: VirtualFile) = file.extension == "cp"
 
     override fun createCommandLine(): GeneralCommandLine =
-        Cpl.commandLine(Cpl.lspArgs(), project.basePath?.let(::File))
+        Cpl.commandLine(Cpl.lspArgs(), project.basePath?.let(::File)?.takeIf { it.isDirectory })
 }

@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.junit.Assume
 import java.io.File
@@ -46,16 +47,15 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         val dir = Files.createTempDirectory("cpl").toFile()
         File(dir, "i1").writeText("3\n")
         val source = File(dir, "sum.cp").apply { writeText("fn main():\n    let n: Int = read()\n    print(n + 1)\n") }
-        val vfile = myFixture.copyFileToProject(source.path, "sum.cp")
-        File(File(vfile.path).parentFile, "i1").writeText("3\n")
+        val vfile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(source)!!
         myFixture.configureFromExistingVirtualFile(vfile)
         val context = ConfigurationContext(myFixture.file)
         val made = context.configurationsFromContext.orEmpty().map { it.configuration }.filterIsInstance<CplRunConfiguration>()
         val config = made.single()
-        assertEquals(vfile.path, config.options.file)
+        assertEquals(source.path, config.options.file)
         assertEquals("run", config.options.command)
         assertEquals("run sum.cp", config.name)
-        assertEquals(listOf(cpl.path, "run", vfile.path, File(File(vfile.path).parentFile, "i1").path), config.commandLine().getCommandLineList(null))
+        assertEquals(listOf(cpl.path, "run", source.path, File(dir, "i1").path), config.commandLine().getCommandLineList(null))
     }
 
     fun `test fn main has a run marker`() {

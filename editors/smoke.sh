@@ -113,8 +113,8 @@ fi
 
 if command -v java >/dev/null; then
     echo "editors: jetbrains"
-    (cd "$root/editors/jetbrains" && ./gradlew -q buildPlugin)
-    echo "jetbrains build: ok"
+    (cd "$root/editors/jetbrains" && ./gradlew -q buildPlugin test)
+    echo "jetbrains build and tests: ok"
 else
     echo "editors: SKIPPED jetbrains (no java)"
 fi
