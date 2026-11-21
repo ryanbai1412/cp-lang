@@ -1,22 +1,27 @@
+// Maintain `freq[f]` = count of subarrays [l..=r] containing every placed value <= v
+// and `f` missing (-1) cells. Each placed value extends the required span (removing
+// one rectangle of subarrays); each unplaced value increments `need`. Each v adds
+// Σ freq[f] · P(f, need) · (m - need)! across completions of the `m` missing cells.
 @!multitest
 use std.mod.{Comb, Mod}
 use std.prefix.prefix1
 
-type Z = Mod<1_000_000_007>
+const P = 1_000_000_007
+type Z = Mod<P>
 
 let n: 1..=5000 = read()
 domain Pos = 0..n
 domain Val = 0..n
-let a: [Pos]Int = read()
+let a: [Pos]-1..n = read()
 
 var pos: [Val]?Pos = none
-for i in Pos where a[i] >= 0:
-    pos[Val(a[i])] = i
+for i in Pos where a[i] >= 0: pos[Val(a[i])] = i
 
-let missing = prefix1([Pos] i => if a[i] == -1: 1 else: 0)
+let missing = prefix1([Pos] i => Int(a[i] == -1))
 let m = missing.prefix(Pos.last.r)
-let comb = Comb<1_000_000_007>(n)
+let comb = Comb<P>(n)
 
+// Initial triangle (l <= r) cannot be written as one Cartesian rectangle `add_rect`.
 var freq: [0..=m]Int = 0
 for l in Pos:
     let ml = missing.prefix(l.l)
@@ -37,7 +42,7 @@ for v in Val:
     if let p = pos[v]:
         if let (lo, hi) = span:
             if p < lo:
-                add_rect(Pos(p.to_idx + 1)..=lo, hi..=Pos.last, -1)
+                add_rect(p.next!..=lo, hi..=Pos.last, -1)
                 span = (p, hi)
             elif p > hi:
                 add_rect(Pos.first..=lo, hi..p, -1)
