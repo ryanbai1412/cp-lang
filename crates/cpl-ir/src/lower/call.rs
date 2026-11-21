@@ -4135,6 +4135,8 @@ impl<'a> Lowerer<'a> {
             }
             // `xs.items` kept as a value: the list of `(index, element)`.
             (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
+            (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
+            (Ty::Map(..) | Ty::HashMap(..), "values") => self.proj_of_map(value, 1, span),
             (Ty::Array { dims, .. }, "items")
                 if dims.len() > 1 && dims.iter().all(|d| !matches!(d, Dim::Bound(_))) =>
             {
@@ -4602,6 +4604,65 @@ impl<'a> Lowerer<'a> {
             let lid = lw.fresh_loop();
             out.push(Stmt::For(lid, each, Iter::Seq(map, false), body));
         })
+    }
+
+    /// `m.keys` / `m.values` kept as a value: the list of keys (`idx == 0`) or
+    /// values (`idx == 1`), in the order a `for` over the map goes.
+    fn proj_of_map(&mut self, map: Expr, idx: usize, span: Span) -> Expr {
+        let (Ty::Map(key, held) | Ty::HashMap(key, held)) = &map.ty else {
+            unreachable!("the caller matched a map")
+        };
+        let pair = Ty::Tuple(vec![(**key).clone(), (**held).clone()]);
+        let elem = if idx == 0 { (**key).clone() } else { (**held).clone() };
+        self.collected(elem.clone(), span, |lw, out, push| {
+            let map = lw.hold(map, out);
+            let each = lw.temp(pair);
+            let proj = lw.mk(ExprKind::Field(Box::new(lw.local(each, span)), idx), elem.clone(), span);
+            let body = Block { stmts: vec![push(lw, proj)] };
+            let lid = lw.fresh_loop();
+            out.push(Stmt::For(lid, each, Iter::Seq(map, false), body));
+        })
+    }
+
+    /// `m.keys` / `m.values` (and `.rev` on an ordered `Map`) in a `for` or a
+    /// comprehension: walks the map in place with no copied list.
+    pub(super) fn map_proj_head(&mut self, e: &ast::Expr) -> Option<MapProj> {
+        let (field_expr, rev) = match &e.kind {
+            ast::ExprKind::Field { base, name } if name.text == "rev" => (base.as_ref(), true),
+            _ => (e, false),
+        };
+        let ast::ExprKind::Field { base, name } = &field_expr.kind else {
+            return None;
+        };
+        let idx = match name.text.as_str() {
+            "keys" => 0,
+            "values" => 1,
+            _ => return None,
+        };
+        let base_ty = self.probe_ty_silent(base)?;
+        match &base_ty {
+            Ty::Map(..) => {}
+            Ty::HashMap(..) if !rev => {}
+            _ => return None,
+        }
+        let map = self.expr(base, None);
+        let (Ty::Map(key, held) | Ty::HashMap(key, held)) = &map.ty else {
+            return None;
+        };
+        let pair_ty = Ty::Tuple(vec![(**key).clone(), (**held).clone()]);
+        let elem_ty = if idx == 0 { (**key).clone() } else { (**held).clone() };
+        Some(MapProj { map, pair_ty, elem_ty, idx, rev })
+    }
+
+    pub(super) fn map_proj_bind(&mut self, pat: &ast::Pattern, proj: &MapProj, body: &mut Vec<Stmt>) -> Slot {
+        let each = self.temp(proj.pair_ty.clone());
+        let val = self.mk(
+            ExprKind::Field(Box::new(self.local(each, pat.span)), proj.idx),
+            proj.elem_ty.clone(),
+            pat.span,
+        );
+        self.bind(pat, val, body);
+        each
     }
 
     /// `g.items` on an array of two or more dimensions: every cell with
@@ -5770,7 +5831,7 @@ impl<'a> Lowerer<'a> {
         }
         // Members that read like fields can be called too: `xs.len()`.
         if args.is_empty()
-            && matches!(method, "len" | "is_empty" | "first" | "last" | "items")
+            && matches!(method, "len" | "is_empty" | "first" | "last" | "items" | "keys" | "values")
             && !matches!(ty, Ty::Struct(_))
         {
             return self.field(whole, base, name, hint);
@@ -8372,6 +8433,20 @@ impl GridItems {
             rev: false,
             closed: false,
         }
+    }
+}
+
+pub(super) struct MapProj {
+    map: Expr,
+    pair_ty: Ty,
+    elem_ty: Ty,
+    idx: usize,
+    rev: bool,
+}
+
+impl MapProj {
+    pub(super) fn iter(&self) -> Iter {
+        Iter::Seq(self.map.clone(), self.rev)
     }
 }
 

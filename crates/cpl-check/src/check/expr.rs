@@ -1369,6 +1369,18 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if matches!(name.text.as_str(), "keys" | "values") {
+            if let Ty::Named { name: map, args } = &base_ty {
+                if matches!(map.as_str(), "Map" | "HashMap") && args.len() == 2 {
+                    let elem = if name.text == "keys" {
+                        args[0].clone()
+                    } else {
+                        args[1].clone()
+                    };
+                    return Ty::Named { name: "List".into(), args: vec![elem] };
+                }
+            }
+        }
         let found = match &base_ty {
             Ty::Record(fields) => {
                 let names: Vec<String> = fields.iter().map(|(n, _)| n.clone()).collect();

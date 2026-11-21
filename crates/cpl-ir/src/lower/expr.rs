@@ -3142,7 +3142,7 @@ impl<'a> Lowerer<'a> {
     /// `for` walks without being one: a range, a domain, `Bool`. It is
     /// the values the walk gives, `x for x in e`, so `sorted(0..n)`,
     /// `sum(lo..hi)` and `max(D)` need no rule of their own.
-    pub(super) fn walked(&self, e: &ast::Expr) -> Option<ast::Expr> {
+    pub(super) fn walked(&mut self, e: &ast::Expr) -> Option<ast::Expr> {
         let mut inner = e;
         while let ast::ExprKind::Paren(next) = &inner.kind {
             inner = next;
@@ -3153,6 +3153,25 @@ impl<'a> Lowerer<'a> {
                 name == "Bool"
                     || matches!(self.gen_env.get(name), Some(GenArg::Domain(_)))
                     || matches!(self.get_sym(name), Some(Sym::Domain(_)))
+            }
+            ast::ExprKind::Field { base, name } => {
+                let (field_base, field_name, rev) = if name.text == "rev" {
+                    match &base.kind {
+                        ast::ExprKind::Field { base: b, name: n } => (b.as_ref(), n.text.as_str(), true),
+                        _ => (base.as_ref(), "", false),
+                    }
+                } else {
+                    (base.as_ref(), name.text.as_str(), false)
+                };
+                if matches!(field_name, "keys" | "values") {
+                    match self.probe_ty_silent(field_base) {
+                        Some(Ty::Map(..)) => true,
+                        Some(Ty::HashMap(..)) if !rev => true,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
             }
             _ => false,
         };
@@ -3820,17 +3839,20 @@ impl<'a> Lowerer<'a> {
         let mut frames = Vec::new();
         for clause in clauses {
             let items = self.items_head(&clause.iter);
-            let (iter, elem) = match &items {
-                Some(items) => (items.range(), Ty::Unit),
-                None => self.iter(&clause.iter),
+            let map_proj = if items.is_some() { None } else { self.map_proj_head(&clause.iter) };
+            let (iter, elem) = match (&items, &map_proj) {
+                (Some(items), _) => (items.range(), Ty::Unit),
+                (None, Some(proj)) => (proj.iter(), Ty::Unit),
+                (None, None) => self.iter(&clause.iter),
             };
             let id = self.next_loop;
             self.next_loop += 1;
             self.cx.scopes.push(HashMap::new());
             let mut pre = Vec::new();
-            let slot = match &items {
-                Some(items) => self.items_bind(&clause.pat, items, &mut pre),
-                None => self.loop_var(&clause.pat, elem, &mut pre),
+            let slot = match (&items, &map_proj) {
+                (Some(items), _) => self.items_bind(&clause.pat, items, &mut pre),
+                (None, Some(proj)) => self.map_proj_bind(&clause.pat, proj, &mut pre),
+                (None, None) => self.loop_var(&clause.pat, elem, &mut pre),
             };
             let mut guards = Vec::new();
             for cond in &clause.conds {

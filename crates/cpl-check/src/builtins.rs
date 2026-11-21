@@ -189,6 +189,8 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
 
     row!(Map, "len", Get, "", "Int", false, "How many keys.", "m.len", "Int"),
     row!(Map, "items", Get, "", "List<(K, V)>", false, "Each key with its value, smallest key first: `for (k, v) in m.items`.", "m.items", "List<(Int, Int)>"),
+    row!(Map, "keys", Get, "", "List<K>", false, "Each key, smallest first (O(1) view in loops and folds): `for k in m.keys`.", "m.keys", "List<Int>"),
+    row!(Map, "values", Get, "", "List<V>", false, "Each value, smallest key first (O(1) view in loops and folds): `for v in m.values`.", "m.values", "List<Int>"),
     row!(Map, "is_empty", Get, "", "Bool", false, "True when there is no key.", "m.is_empty", "Bool"),
     row!(Map, "first", Get, "", "?(K, V)", false, "The smallest key with its value.", "m.first", "?(Int, Int)"),
     row!(Map, "last", Get, "", "?(K, V)", false, "The largest key with its value.", "m.last", "?(Int, Int)"),

@@ -640,20 +640,27 @@ impl<'a> Lowerer<'a> {
                 }
                 let cells = self.grid_items_head(iter, out);
                 let items = if cells.is_some() { None } else { self.items_head(iter) };
-                let (iter, elem) = match (&cells, &items) {
-                    (Some(cells), _) => (cells.range(), Ty::Unit),
-                    (None, Some(items)) => (items.range(), Ty::Unit),
-                    (None, None) => self.iter(iter),
+                let map_proj = if cells.is_some() || items.is_some() {
+                    None
+                } else {
+                    self.map_proj_head(iter)
+                };
+                let (iter, elem) = match (&cells, &items, &map_proj) {
+                    (Some(cells), _, _) => (cells.range(), Ty::Unit),
+                    (None, Some(items), _) => (items.range(), Ty::Unit),
+                    (None, None, Some(proj)) => (proj.iter(), Ty::Unit),
+                    (None, None, None) => self.iter(iter),
                 };
                 let id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
                 self.cx.scopes.push(HashMap::new());
                 self.cx.local_syms.push(HashMap::new());
                 let mut stmts = Vec::new();
                 let elem_is_int = elem == Ty::Int;
-                let slot = match (&cells, &items) {
-                    (Some(cells), _) => self.grid_items_bind(pat, cells, &mut stmts),
-                    (None, Some(items)) => self.items_bind(pat, items, &mut stmts),
-                    (None, None) => self.loop_var(pat, elem, &mut stmts),
+                let slot = match (&cells, &items, &map_proj) {
+                    (Some(cells), _, _) => self.grid_items_bind(pat, cells, &mut stmts),
+                    (None, Some(items), _) => self.items_bind(pat, items, &mut stmts),
+                    (None, None, Some(proj)) => self.map_proj_bind(pat, proj, &mut stmts),
+                    (None, None, None) => self.loop_var(pat, elem, &mut stmts),
                 };
                 // If an `Int` loop variable is used as a runtime generic value arg (`for d in 0..=6: type F = Fixed<d>`),
                 // mirror it into a global so monomorphized methods can read it at run time.

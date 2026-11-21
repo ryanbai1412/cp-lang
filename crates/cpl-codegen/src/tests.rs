@@ -927,3 +927,17 @@ print(d.sum())
     assert!(cpp.contains("d = std::move(t"), "{cpp}");
 }
 
+
+#[test]
+fn map_keys_and_values_iterate_without_copying() {
+    let out = body(concat!(
+        "var m: HashMap<Int, Int> = [1: 10, 2: 20]\n",
+        "var s = 0\n",
+        "for k in m.keys: s += k\n",
+        "print(s + m.values.sum())\n",
+    ));
+    assert!(
+        !out.contains("std::vector"),
+        "Map.keys and Map.values loops/folds must not allocate a vector: {out}"
+    );
+}
