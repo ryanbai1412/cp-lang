@@ -170,16 +170,17 @@ pub fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>:
     let n = s.len
     var starts: List<Int> = []
     var i = 0
-    while i < n:
-        var j = i + 1
-        var k = i
-        while j < n and s.at(k) <= s.at(j):
-            if s.at(k) < s.at(j): k = i else: k += 1
-            j += 1
-        let step = j - k
-        while i <= k:
-            starts.push(i)
-            i += step
+    unchecked:
+        while i < n:
+            var j = i + 1
+            var k = i
+            while j < n and s.at(k) <= s.at(j):
+                if s.at(k) < s.at(j): k = i else: k += 1
+                j += 1
+            let step = j - k
+            while i <= k:
+                starts.push(i)
+                i += step
     starts
 
 /// Start index of the lexicographically least cyclic rotation of `s` (Duval/Booth).
@@ -190,15 +191,18 @@ pub fn min_rotation<S: Indexed>(s: S) -> Int:
     if n <= 1: return 0
     var (a, b) = (0, 1)
     var k = 0
-    while a < n and b < n and k < n:
-        let x = s.at((a + k) % n)
-        let y = s.at((b + k) % n)
-        if x == y:
-            k += 1
-        else:
-            if x > y: a += k + 1 else: b += k + 1
-            if a == b: b += 1
-            k = 0
+    unchecked:
+        while a < n and b < n and k < n:
+            let ai = a + k
+            let bi = b + k
+            let x = s.at(if ai < n: ai else: ai - n)
+            let y = s.at(if bi < n: bi else: bi - n)
+            if x == y:
+                k += 1
+            else:
+                if x > y: a += k + 1 else: b += k + 1
+                if a == b: b += 1
+                k = 0
     min(a, b)
 
 /// Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
@@ -221,15 +225,16 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// Longest palindromic substring range `(l, r)` (half-open); ties go to the leftmost. O(n).
     pub @get fn longest(self) -> (l: Int, r: Int):
         var (best_l, best_r) = (0, 0)
-        for i in 0..odd.len:
-            let olen = odd[i] * 2 - 1
-            if olen > best_r - best_l:
-                best_l = i - odd[i] + 1
-                best_r = i + odd[i]
-            let elen = even[i] * 2
-            if elen > best_r - best_l:
-                best_l = i - even[i]
-                best_r = i + even[i]
+        unchecked:
+            for i in 0..odd.len:
+                let olen = odd[i] * 2 - 1
+                if olen > best_r - best_l:
+                    best_l = i - odd[i] + 1
+                    best_r = i + odd[i]
+                let elen = even[i] * 2
+                if elen > best_r - best_l:
+                    best_l = i - even[i]
+                    best_r = i + even[i]
         (l: best_l, r: best_r)
 
 /// Linear-time palindrome radii (Manacher's algorithm). Works on any `Indexed` sequence. O(n).
@@ -239,17 +244,18 @@ pub fn manacher<S: Indexed>(s: S) -> Palindromes:
     var odd = List.filled(n, 0)
     var even = List.filled(n, 0)
     var (l, r) = (0, -1)
-    for i in 0..n:
-        var k = if i > r: 1 else: min(odd[l + r - i], r - i + 1)
-        while i - k >= 0 and i + k < n and s.at(i - k) == s.at(i + k): k += 1
-        odd[i] = k
-        if i + k - 1 > r: (l, r) = (i - k + 1, i + k - 1)
-    (l, r) = (0, -1)
-    for i in 0..n:
-        var k = if i > r: 0 else: min(even[l + r - i + 1], r - i + 1)
-        while i - k - 1 >= 0 and i + k < n and s.at(i - k - 1) == s.at(i + k): k += 1
-        even[i] = k
-        if i + k - 1 > r: (l, r) = (i - k, i + k - 1)
+    unchecked:
+        for i in 0..n:
+            var k = if i > r: 1 else: min(odd[l + r - i], r - i + 1)
+            while i - k >= 0 and i + k < n and s.at(i - k) == s.at(i + k): k += 1
+            odd[i] = k
+            if i + k - 1 > r: (l, r) = (i - k + 1, i + k - 1)
+        (l, r) = (0, -1)
+        for i in 0..n:
+            var k = if i > r: 0 else: min(even[l + r - i + 1], r - i + 1)
+            while i - k - 1 >= 0 and i + k < n and s.at(i - k - 1) == s.at(i + k): k += 1
+            even[i] = k
+            if i + k - 1 > r: (l, r) = (i - k, i + k - 1)
     Palindromes(odd, even)
 
 fn induced_sort(
@@ -756,13 +762,14 @@ pub struct SuffixAutomaton<A>:
     next: List<Int>
     links: List<Int>
     max_len: List<Int>
+    first_end: List<Int>
     prefix: List<Bool>
     last: Int
 
     /// Create an empty suffix automaton over alphabet `A`. O(1).
     pub fn new() -> SuffixAutomaton<A>:
         let k = A.K
-        SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [false], 0)
+        SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0)
 
     /// Build the suffix automaton of `s`. O(|s| * |A|) memory, O(|s|) amortized time.
     pub fn of(s: List<A>) -> SuffixAutomaton<A>:
@@ -776,6 +783,7 @@ pub struct SuffixAutomaton<A>:
         for _ in 0..alpha: next.push(-1)
         links.push(-1)
         max_len.push(length)
+        first_end.push(length - 1)
         prefix.push(is_prefix)
         id
 
@@ -786,6 +794,7 @@ pub struct SuffixAutomaton<A>:
         for j in 0..alpha: next.push(next[base + j])
         links.push(links[src])
         max_len.push(length)
+        first_end.push(first_end[src])
         prefix.push(false)
         id
 
@@ -794,24 +803,25 @@ pub struct SuffixAutomaton<A>:
     pub fn push(mut self, a: A):
         let c = a.to_idx
         let cur = self.add_empty_state(max_len[last] + 1, true)
-        var p = last
-        while p != -1 and next[p * alpha + c] == -1:
-            next[p * alpha + c] = cur
-            p = links[p]
-        if p == -1:
-            links[cur] = 0
-        else:
-            let q = next[p * alpha + c]
-            if max_len[q] == max_len[p] + 1:
-                links[cur] = q
+        unchecked:
+            var p = last
+            while p != -1 and next[p * alpha + c] == -1:
+                next[p * alpha + c] = cur
+                p = links[p]
+            if p == -1:
+                links[cur] = 0
             else:
-                let clone = self.clone_state(q, max_len[p] + 1)
-                links[q] = clone
-                links[cur] = clone
-                while p != -1 and next[p * alpha + c] == q:
-                    next[p * alpha + c] = clone
-                    p = links[p]
-        last = cur
+                let q = next[p * alpha + c]
+                if max_len[q] == max_len[p] + 1:
+                    links[cur] = q
+                else:
+                    let clone = self.clone_state(q, max_len[p] + 1)
+                    links[q] = clone
+                    links[cur] = clone
+                    while p != -1 and next[p * alpha + c] == q:
+                        next[p * alpha + c] = clone
+                        p = links[p]
+            last = cur
 
     /// Root state (empty string): always `0`. O(1).
     pub @get fn root(self) -> Int = 0
@@ -841,6 +851,10 @@ pub struct SuffixAutomaton<A>:
         self,
         state: Int,
     ) -> Int = if links[state] == -1: 0 else: max_len[links[state]] + 1
+
+    /// 0-based right endpoint of the first occurrence of `state` (`-1` at the root). O(1).
+    @allow(unproven_list_index)
+    pub fn first_pos(self, state: Int) -> Int = first_end[state]
 
     /// State of `word`, or `none` if `word` is not a substring. O(|word|).
     @allow(unproven_list_index)
@@ -935,34 +949,35 @@ pub struct PalindromicTree<A>:
         let c = a.to_idx
         let pos = chars.len
         chars.push(a)
-        var cur = last
-        while true:
-            let prev = pos - plen[cur] - 1
-            if prev >= 0 and chars[prev] == a: break
-            cur = slink[cur]
-        if next[cur * alpha + c] == -1:
-            let nw = slink.len
-            let nw_len = plen[cur] + 2
-            let link_to = if cur == 0:
-                1
-            else:
-                var f = slink[cur]
-                while true:
-                    let prev = pos - plen[f] - 1
-                    if prev >= 0 and chars[prev] == a: break
-                    f = slink[f]
-                next[f * alpha + c]
-            let d = nw_len - plen[link_to]
-            let sl = if d == diff_val[link_to]: ser_link[link_to] else: link_to
-            for _ in 0..alpha: next.push(-1)
-            slink.push(link_to)
-            plen.push(nw_len)
-            diff_val.push(d)
-            ser_link.push(sl)
-            cnt.push(0)
-            next[cur * alpha + c] = nw
-        last = next[cur * alpha + c]
-        cnt[last] += 1
+        unchecked:
+            var cur = last
+            while true:
+                let prev = pos - plen[cur] - 1
+                if prev >= 0 and chars[prev] == a: break
+                cur = slink[cur]
+            if next[cur * alpha + c] == -1:
+                let nw = slink.len
+                let nw_len = plen[cur] + 2
+                let link_to = if cur == 0:
+                    1
+                else:
+                    var f = slink[cur]
+                    while true:
+                        let prev = pos - plen[f] - 1
+                        if prev >= 0 and chars[prev] == a: break
+                        f = slink[f]
+                    next[f * alpha + c]
+                let d = nw_len - plen[link_to]
+                let sl = if d == diff_val[link_to]: ser_link[link_to] else: link_to
+                for _ in 0..alpha: next.push(-1)
+                slink.push(link_to)
+                plen.push(nw_len)
+                diff_val.push(d)
+                ser_link.push(sl)
+                cnt.push(0)
+                next[cur * alpha + c] = nw
+            last = next[cur * alpha + c]
+            cnt[last] += 1
         last
 
     /// Total number of states, including the odd (`0`) and even (`1`) roots. O(1).
@@ -997,7 +1012,8 @@ pub struct PalindromicTree<A>:
     @allow(unproven_list_index)
     pub fn occurrences(self) -> List<Int>:
         var occ = [x for x in cnt]
-        for v in (2..occ.len).rev: occ[slink[v]] += occ[v]
+        unchecked:
+            for v in (2..occ.len).rev: occ[slink[v]] += occ[v]
         occ
 
 /// Dynamic trie over alphabet domain `A`. O(|word|) per operation; flat `|A|`-stride table.
@@ -1536,7 +1552,15 @@ fn suffix_automaton_matches_brute_and_linear_occurrences():
                 let w = [A((code >> i) % 2) for i in 0..len]
                 let times = sum(Int(all(s[i + j] == w[j] for j in 0..len)) for i in 0..=n - len)
                 assert sam.contains(w) == (times > 0)
-                if let v = sam.find(w): assert occ[v] == times
+                if let v = sam.find(w):
+                    assert occ[v] == times
+                    if len == sam.longest(v):
+                        var first = -1
+                        for i in 0..=n - len:
+                            if all(s[i + j] == w[j] for j in 0..len):
+                                first = i + len - 1
+                                break
+                        assert sam.first_pos(v) == first
         var seen = Set<List<A>>()
         for l in 0..n:
             for r in l + 1..=n: seen.add([s[j] for j in l..r])

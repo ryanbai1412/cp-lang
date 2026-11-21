@@ -1419,6 +1419,7 @@ struct SuffixAutomaton<A>
     fn link(self, state: Int) -> ?Int                           // O(1)
     fn longest(self, state: Int) -> Int                         // O(1)
     fn shortest(self, state: Int) -> Int                        // O(1)
+    fn first_pos(self, state: Int) -> Int                       // O(1)
     fn find(self, word: List<A>) -> ?Int                        // O(|word|)
     fn contains(self, word: List<A>) -> Bool                    // O(|word|)
     @get fn distinct(self) -> Int                               // O(states)

@@ -12,56 +12,13 @@
 // of one place of t with lengths in a range, and the ones longer than what
 // occurred at that place are new.
 // original: corpus/submissions/6513115.cpp
+use std.strings.{SuffixAutomaton}
+
 domain Letter = 'a'..='z'
-
-struct State:
-    len: Int   // its longest block
-    link: Int  // the state of the longest tail that is elsewhere; the root links to itself
-    next: [Letter]?Int
-    first: Int  // where its blocks first end
-
-/// The suffix automaton of the letters added so far. State 0 is the empty block.
-struct Automaton:
-    states: List<State>
-    last: Int
-
-    fn new() -> Automaton = Automaton([State(0, 0, [Letter] c => none, -1)], 0)
-
-    /// Add the letter at place `at`; returns the state of the whole string so far.
-    fn add(mut self, c: Letter, at: Int) -> Int:
-        let cur = states.len
-        states.push(State(states[last].len + 1, 0, [Letter] c => none, at))
-        var p = last
-        last = cur
-        while true:
-            if let q = states[p].next[c]:
-                if states[q].len == states[p].len + 1: states[cur].link = q
-                else:
-                    // q also stands for longer blocks that do not end here: split it.
-                    let clone = states.len
-                    states.push(
-                        State(
-                            states[p].len + 1,
-                            states[q].link,
-                            states[q].next.copy(),
-                            states[q].first,
-                        )
-                    )
-                    states[q].link = clone
-                    states[cur].link = clone
-                    while states[p].next[c] == some(q):
-                        states[p].next[c] = some(clone)
-                        if p == 0: break
-                        p = states[p].link
-                break
-            states[p].next[c] = some(cur)
-            if p == 0: break
-            p = states[p].link
-        cur
 
 let s: Str = read()
 let n = s.len
-var of_s = Automaton.new()
+var of_s = SuffixAutomaton<Letter>.new()
 
 // Sets of places 0..n as segment trees that share nodes. Node 0 is the empty set.
 var left = [0]
@@ -92,37 +49,37 @@ fn any_in(node: Int, lo: Int, hi: Int, from: Int, to: Int) -> Bool:
 
 var ends: List<Int> = [0]  // per state of s: the places its blocks end
 for i in 0..n:
-    let state = of_s.add(Letter(s[i]), i)
-    while ends.len < of_s.states.len: ends.push(0)
-    ends[state] = single(i, 0, n)
-var longest_first = [v for v in 1..of_s.states.len]
-longest_first.sort(by: v => -of_s.states[v].len)
-for v in longest_first:
-    let up = of_s.states[v].link
-    ends[up] = union(ends[up], ends[v])
+    of_s.push(Letter(s[i]))
+    while ends.len < of_s.len: ends.push(0)
+    ends[of_s.last] = single(i, 0, n)
+let order = of_s.topo_order()
+for i in (1..order.len).rev:
+    let v = order[i]
+    if let up = of_s.link(v):
+        ends[up] = union(ends[up], ends[v])
 
 let q: Int = read()
 for _ in 0..q:
     let (t, l, r): (Str, Int, Int) = read()
     let (from, to) = (l - 1, r)  // the block of s as places from..to
-    var of_t = Automaton.new()
+    var of_t = SuffixAutomaton<Letter>.new()
     var seen: List<Int> = []  // per place of t: the longest tail ending there that occurs
-    var (at, len) = (0, 0)
-    for i in 0..t.len:
-        let c = Letter(t[i])
-        of_t.add(c, i)
+    var (at, len) = (of_s.root, 0)
+    for ch in t:
+        let c = Letter(ch)
+        of_t.push(c)
         while true:
-            if let next = of_s.states[at].next[c]:
+            if let next = of_s.step(at, c):
                 // A block of len + 1 letters ending at place e starts at e - len.
                 if any_in(ends[next], 0, n, from + len, to):
                     (at, len) = (next, len + 1)
                     break
             if len == 0: break
             len -= 1
-            if len == of_s.states[of_s.states[at].link].len: at = of_s.states[at].link
+            if let up = of_s.link(at) and len == of_s.longest(up): at = up
         seen.push(len)
     var fresh = 0
-    for v in 1..of_t.states.len:
-        let state = of_t.states[v]
-        fresh += max(0, state.len - max(of_t.states[state.link].len, seen[state.first]))
+    for v in 1..of_t.len:
+        let par_len = if let up = of_t.link(v): of_t.longest(up) else: 0
+        fresh += max(0, of_t.longest(v) - max(par_len, seen[of_t.first_pos(v)]))
     print(fresh)

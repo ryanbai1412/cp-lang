@@ -375,6 +375,11 @@ fn a_list_index_inside_unchecked_has_no_bounds_test() {
     );
     assert!(raw.contains("xs[i] = xs[i] + 1"), "{raw}");
     assert!(!raw.contains("cpl::at(xs, i)"), "{raw}");
+    let raw_at = cpp(
+        "let xs = [1, 2, 3]\nlet i: Int = read()\nvar v = 0\nunchecked:\n    v = xs.at(i)\nprint(v)\n",
+    );
+    assert!(raw_at.contains("v = xs[i];"), "{raw_at}");
+    assert!(!raw_at.contains("cpl::at(xs, i)"), "{raw_at}");
 }
 
 #[test]
