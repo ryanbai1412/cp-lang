@@ -1982,7 +1982,7 @@ mod tests {
         assert_eq!(
             out.stderr,
             format!(
-                "error[E0301]: `a` is indexed by V, but `n` is a 1..=9\n  --> {path}:4:9\n  |\n4 | print(a[n])\n  |         ^\n  = help: convert it with `V(n)`, or write `a.raw[n]` to index by number\n\n{path}: 1 error\n"
+                "error[E0301]: `a` is indexed by V, but `n` is a 1..=9\n  --> {path}:4:9\n  |\n1 | let n: 1..=9 = read()\n  |     - `n` is declared as a 1..=9 here\n3 | let a: [V]Int = read()\n  |     - `a` is declared over V here\n4 | print(a[n])\n  |         ^\n  = help: convert it with `V(n)`, or write `a.raw[n]` to index by number\n\n{path}: 1 error\n"
             )
         );
     }

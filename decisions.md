@@ -2429,6 +2429,12 @@ real types. Reverse: drop `catalog_lambda_params` and the `lambda_params` field.
   restoring at least 95% of the copies that report one. Only this benchmark applies every fix: the
   broken-ports scoreboard counts fix-its but skips the rewrite, which kept the recovery test inside
   the fast gate's time. *Reversible:* delete `fix_it_scoreboard`.
+- **30.14 A domain or range mismatch labels where each side's index space comes from.** The
+  message already names both spaces (`a` is indexed by V, but `n` is a 1..=9); a label on each plain
+  name's declaration says where each got it (`a` is declared over V here, `n` is declared as a
+  1..=9 here). A top-level name declared in another item is labelled as a point at its use, and the
+  database moves the label onto the declaration. *Reason:* the fix is usually at the declaration,
+  not the use. *Reversible:* `Checker::origin` and the `WRONG_DOMAIN` branch in `db.rs`.
 
 ## 31. Generated C++: stack, layout and niches (0.3)
 

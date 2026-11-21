@@ -653,6 +653,15 @@ impl Database {
             let offset = range.span.start;
             for diag in item.parsed.diagnostics.iter().chain(&check.diagnostics) {
                 let mut diag = diag.clone().shift(offset);
+                if diag.code == codes::WRONG_DOMAIN {
+                    for label in &mut diag.labels {
+                        if label.span.is_empty() {
+                            label.span = global_decl(label.span, &text, &scope, &items, &ranges)
+                                .unwrap_or(label.span);
+                        }
+                    }
+                    diag.labels.retain(|l| !l.span.is_empty());
+                }
                 if diag.code == codes::ASSIGN_TO_LET {
                     if diag.labels.is_empty() {
                         declare_with_var(&mut diag, &text, &scope, &items, &ranges);
@@ -1684,6 +1693,22 @@ fn is_prelude(path: &str) -> bool {
 /// explicitly, so `BUILT_ON` must not introduce stdlib-to-stdlib cycles).
 fn is_std_path(path: &str) -> bool {
     path.contains("/stdlib/") || path.starts_with("stdlib/") || path.starts_with("std/")
+}
+
+/// The declaration of the top-level name that starts at `at`.
+fn global_decl(
+    at: Span,
+    text: &str,
+    scope: &Scope,
+    items: &[Arc<ItemSyntax>],
+    ranges: &[cpl_syntax::ItemRange],
+) -> Option<Span> {
+    let rest = text.get(at.start as usize..)?;
+    let len = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
+    let name = &rest[..len];
+    let &index = scope.names.get(name)?;
+    let decl = items[index].decls.iter().find(|d| d.name == name)?;
+    Some(decl.span.shift(ranges[index].span.start))
 }
 
 /// Assigning a top-level `let` from another item: point at its

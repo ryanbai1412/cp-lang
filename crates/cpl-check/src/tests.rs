@@ -88,6 +88,17 @@ fn indexing_with_the_wrong_domain_names_both_domains() {
 }
 
 #[test]
+fn a_domain_mismatch_labels_where_each_index_space_comes_from() {
+    let src = "domain V = 1..=9\nfn f(m: 1..=9, b: [V]Int) -> Int:\n    return b[m]\n";
+    let d = one(src);
+    let labels: Vec<_> = d.labels.iter().map(|l| (l.span.text(src), l.message.as_str())).collect();
+    assert_eq!(
+        labels,
+        [("b", "`b` is declared over V here"), ("m", "`m` is declared as a 1..=9 here")]
+    );
+}
+
+#[test]
 fn indexing_with_a_plain_number_says_how_to_convert() {
     let d = one("let n: 1..=9 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nfor i in 1..=n:\n    print(a[i])\n");
     assert_eq!(d.message, "`a` is indexed by V, but `i` is a 1..=n");

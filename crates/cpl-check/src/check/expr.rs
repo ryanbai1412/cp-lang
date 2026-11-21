@@ -2153,10 +2153,15 @@ impl<'a> Checker<'a> {
                             diag.help = Some(help);
                         }
                     } else {
+                        let origins = [
+                            self.origin(base, &format!("declared over {want}")),
+                            self.origin(index_expr, &format!("declared as {}", got.with_article())),
+                        ];
                         let Some(diag) = self.error(codes::WRONG_DOMAIN, index_expr.span, message)
                         else {
                             continue;
                         };
+                        diag.labels.extend(origins.into_iter().flatten());
                         if let (true, false, Ty::Pos(domain)) = (got.is_int(), boundary, want) {
                             diag.fixes.push(convert_to(domain, index_expr.span));
                         }
@@ -2339,13 +2344,36 @@ impl<'a> Checker<'a> {
             codes::TYPE_MISMATCH
         };
         let quoted = self.quote(at.span);
+        let origin = self.origin(at, &format!("declared as {}", got.with_article()));
         if let Some(diag) = self.error(code, at.span, text) {
+            diag.labels.extend(origin);
             if let (true, Ty::Pos(domain)) = (got.is_int(), want) {
                 diag.help = Some(format!("convert it with `{domain}({quoted})`"));
                 diag.fixes.push(convert_to(domain, at.span));
             }
         }
         false
+    }
+}
+
+impl Checker<'_> {
+    /// Where the index space of a plain name comes from: its declaration,
+    /// as "`name` is <what> here". A top-level name is declared in another
+    /// item, so its label is left as a point at the use for the database
+    /// to move onto the declaration.
+    fn origin(&mut self, expr: &Expr, what: &str) -> Option<cpl_diag::Label> {
+        let ExprKind::Name(name) = &expr.kind else {
+            return None;
+        };
+        let span = match self.local(name).map(|local| local.span) {
+            Some(span) => span,
+            None if self.env.global(name).is_some() => Span::point(expr.span.start),
+            None => return None,
+        };
+        Some(cpl_diag::Label {
+            span,
+            message: format!("`{name}` is {what} here"),
+        })
     }
 }
 
