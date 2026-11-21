@@ -1158,6 +1158,7 @@ struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     fn pos(self, v: V) -> Pre // O(1)
     at: [Pre]V // inverse of pos
     fn sub(self, v: V) -> Range<Pre> // O(1)
+    fn below(self, v: V) -> Range<Pre> // O(1), sub(v) without v
     fn subtree(self, v: V) -> yields V // [new] O(size v)
     fn reorder<T>(self, a: [V]T) -> [Pre]T // O(n)
     @get fn tour(self) -> yields (v: V, entering: Bool) // O(n)

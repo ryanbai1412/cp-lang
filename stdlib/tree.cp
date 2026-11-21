@@ -264,6 +264,9 @@ pub struct Rooted<V, Pre>:
     /// The positions of `v`'s subtree, `v` first.
     pub fn sub(self, v: V) -> Range<Pre> = tin[v].l..tin[v].r(sz[v])
 
+    /// The positions of `v`'s subtree without `v`: its descendants. O(1).
+    pub fn below(self, v: V) -> Range<Pre> = tin[v].r..tin[v].r(sz[v])
+
     /// Is `a` an ancestor of `b`? A vertex is its own ancestor. O(1).
     pub fn is_anc(self, a: V, b: V) -> Bool = tin[b] in self.sub(a)
 
@@ -849,6 +852,7 @@ fn heavy_light_and_subtree_cover_the_children():
             assert cs.sorted() == r.children(v).sorted()
             let sub = [u for u in r.subtree(v)]
             assert sub[0] == v and sub.sorted() == [u for u in V if r.is_anc(v, u)]
+            assert [r.at[p] for p in r.below(v)].sorted() == sub[1..].sorted()
             assert r.root_of(v) == r.root
 
 @test

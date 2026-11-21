@@ -12709,7 +12709,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 22150,
+      "emitted_bytes": 23759,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 370,

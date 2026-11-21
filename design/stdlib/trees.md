@@ -123,10 +123,9 @@ vertex the DFS never reaches traps; a forest says so with `forest`.
     fn pos(self, v: V) -> Pre                    // O(1)
     at: [Pre]V                                   // O(1), inverse of pos
     fn sub(self, v: V) -> Range<Pre>             // O(1), t.sub(v).len == t.size(v)
+    fn below(self, v: V) -> Range<Pre>           // O(1), sub(v) without v
     fn subtree(self, v: V) -> yields V [new]     // O(size(v)), preorder
     fn reorder<T>(self, a: [V]T) -> [Pre]T       // O(n)
-    @get fn preorder(self) -> List<V>            // O(n), in Pre order
-    @get fn postorder(self) -> List<V>           // O(n), children before parent
     @get fn tour(self) -> yields (v: V, entering: Bool)   // O(n), 2n events
 ```
 
