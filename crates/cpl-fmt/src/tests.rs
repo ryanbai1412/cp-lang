@@ -346,7 +346,7 @@ fn formats_the_whole_corpus() {
         if p_src.diagnostics.is_empty() {
             let ast = |p: &cpl_syntax::ParsedFile| {
                 let items: Vec<_> = p.items.iter().map(|(_, item)| item).collect();
-                strip_spans(&format!("{items:#?}"))
+                strip_spans(&format!("{items:?}"))
             };
             assert_eq!(
                 ast(&p_src),
