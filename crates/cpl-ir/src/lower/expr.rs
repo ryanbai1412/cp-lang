@@ -2816,6 +2816,34 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn iter(&mut self, e: &ast::Expr) -> (Iter, Ty) {
         let span = e.span;
+        // Direct zero-overhead range iteration for `V.after(pos)` and `V.before(pos)`.
+        if let ast::ExprKind::Call { callee, args } = &e.kind {
+            if let ast::ExprKind::Field { base, name } = &callee.kind {
+                if let Some(Sym::Domain(id)) = self.sym(base) {
+                    if matches!(name.text.as_str(), "after" | "before") && args.len() == 1 {
+                        let pos = self.expect(&args[0].value, &Ty::Pos(id));
+                        let (lo, hi) = if name.text == "after" {
+                            (
+                                self.int_add(self.cast(Cast::Ord, pos, Ty::Int), 1),
+                                self.mk(ExprKind::DomainLen(id), Ty::Int, span),
+                            )
+                        } else {
+                            (self.int_lit(0, span), self.cast(Cast::Ord, pos, Ty::Int))
+                        };
+                        return (
+                            Iter::Range {
+                                lo,
+                                hi,
+                                step: None,
+                                rev: false,
+                                closed: false,
+                            },
+                            Ty::Pos(id),
+                        );
+                    }
+                }
+            }
+        }
         // `for b in Bool` walks `false`, then `true`.
         if matches!(&e.kind, ast::ExprKind::Name(name) if name == "Bool" && self.lookup(name).is_none()) {
             let both = [false, true].map(|b| ast::Expr {
