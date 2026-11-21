@@ -25,7 +25,7 @@ let comb = Comb<Z>()
 let n: 1..=100 = read()
 let l: 1..=5_000 = read()
 let k_max: 0..=100 = read()
-domain Pos = 0..n (cyclic)
+domain Pos = ring(n)
 
 // For each p in Pos, sums `ways[p - t]` (wrapping mod n) over t in 0..len.
 fn cyclic_window_sum(ways: [Pos]Z, len: Int) -> [Pos]Z:
@@ -54,6 +54,6 @@ for i in 1..=l + k_max:
         if k > 0:
             let c_fake = k * inv_i * p_key
             for p in Pos: next_row[p] += c_fake * dp[k - 1, p - (i - k)]
-        dp[k] = next_row
+        dp.row(k) = next_row
 
 print([dp[k_max, p] for p in Pos])
