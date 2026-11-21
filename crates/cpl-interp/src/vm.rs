@@ -356,6 +356,13 @@ pub(crate) enum Op {
     MakeList { dst: u16, base_v: u16, len: u8 },
     ListFilled { dst: u16, r_n: u16, val_v: u16 },
     ToList { dst: u16, src_v: u16 },
+    MakeFill { dst: u16, dims_base: u16, ndims: u8, fill_v: u16, fill_ty: u16 },
+    ListSlice { dst: u16, src_v: u16, r_lo: u16, r_hi: u16 },
+    StrSlice { dst: u16, src_v: u16, r_lo: u16, r_hi: u16 },
+    TakeLArr1V { dst: u16, arr_v: u16, r_i: u16 },
+    TakeGArr1V { dst: u16, gid: u16, r_i: u16 },
+    TakeLList1V { dst: u16, list_v: u16, r_i: u16 },
+    TakeGList1V { dst: u16, gid: u16, r_i: u16 },
     LoadGIdxFieldI { dst: u16, gid: u16, r_i: u16, field: u16 },
     StoreGIdxFieldI { gid: u16, r_i: u16, field: u16, r_val: u16, kind: ScalarKind },
     LoadLIdxFieldI { dst: u16, seq_v: u16, r_i: u16, field: u16 },
@@ -375,6 +382,7 @@ pub(crate) struct Chunk<'p> {
     pub consts_i: Vec<i64>,
     pub fallback_stmts: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
+    pub fill_tys: Vec<&'p Ty>,
     pub num_i: usize,
     pub num_v: usize,
     pub num_local_v: usize,
@@ -490,6 +498,7 @@ struct Compiler<'p> {
     consts_i: Vec<i64>,
     fallback_stmts: Vec<&'p Stmt>,
     fallback_exprs: Vec<&'p Expr>,
+    fill_tys: Vec<&'p Ty>,
     slot_map: Vec<SlotLoc>,
     next_i: u16,
     next_v: u16,
@@ -542,6 +551,7 @@ impl<'p> Compiler<'p> {
             consts_i: Vec::new(),
             fallback_stmts: Vec::new(),
             fallback_exprs: Vec::new(),
+            fill_tys: Vec::new(),
             slot_map,
             next_i,
             next_v,
@@ -565,6 +575,7 @@ impl<'p> Compiler<'p> {
             consts_i: self.consts_i,
             fallback_stmts: self.fallback_stmts,
             fallback_exprs: self.fallback_exprs,
+            fill_tys: self.fill_tys,
             num_i: self.next_i as usize,
             num_v: self.next_v as usize,
             num_local_v: self.num_local_v as usize,
@@ -619,7 +630,8 @@ impl<'p> Compiler<'p> {
         if f.locals.len() > 512 || args.len() != f.params.len() || (has_mut && has_fn_param) {
             return None;
         }
-        // Check that all mut args are simple local or global places (so move-in/move-out is exact).
+        // Check that all mut args are simple local/global places or a single 1D indexed V place.
+        let mut idx_mut_count = 0usize;
         for (i, a) in args.iter().enumerate() {
             match a {
                 Arg::Value(_) => {
@@ -638,10 +650,43 @@ impl<'p> Compiler<'p> {
                             }
                         }
                         PlaceKind::Global(_) => {}
+                        PlaceKind::Index(base, indices)
+                            if indices.len() == 1
+                                && idx_mut_count == 0
+                                && ScalarKind::of_ty(&indices[0].ty, self.program).is_some()
+                                && ScalarKind::of_ty(&f.locals[i].ty, self.program).is_none()
+                                && ScalarKind::of_opt_ty(&f.locals[i].ty, self.program).is_none() =>
+                        {
+                            let base_ok = match &base.kind {
+                                PlaceKind::Local(slot) => {
+                                    matches!(self.slot_loc(*slot), SlotLoc::V(_))
+                                }
+                                PlaceKind::Global(_) => true,
+                                _ => false,
+                            };
+                            let container_ok = match &base.ty {
+                                Ty::Array { dims, .. } => {
+                                    dims.len() == 1
+                                        && !matches!(
+                                            dims[0],
+                                            cpl_ir::Dim::IntFrom(_) | cpl_ir::Dim::Sym(_)
+                                        )
+                                }
+                                Ty::List(_) => true,
+                                _ => false,
+                            };
+                            if !base_ok || !container_ok {
+                                return None;
+                            }
+                            idx_mut_count += 1;
+                        }
                         _ => return None,
                     }
                 }
             }
+        }
+        if idx_mut_count > 0 && args.iter().filter(|a| matches!(a, Arg::Mut(_))).count() > 1 {
+            return None;
         }
         let mut ni = 0usize;
         let mut nv = 0usize;
@@ -665,6 +710,10 @@ impl<'p> Compiler<'p> {
             GlobalI { gid: u16, kind: ScalarKind, arg_off: u16 },
             GlobalOptI { gid: u16, kind: ScalarKind, arg_off: u16 },
             GlobalV { gid: u16, arg_off: u16 },
+            LocalArr1V { arr_v: u16, r_i: u16, arg_off: u16 },
+            GlobalArr1V { gid: u16, r_i: u16, arg_off: u16 },
+            LocalList1V { list_v: u16, r_i: u16, arg_off: u16 },
+            GlobalList1V { gid: u16, r_i: u16, arg_off: u16 },
         }
         let mut i_args: Vec<u16> = vec![0; ni];
         let mut v_args: Vec<(u16, bool)> = vec![(0, false); nv];
@@ -757,6 +806,55 @@ impl<'p> Compiler<'p> {
                             writebacks.push(WriteBack::GlobalV { gid, arg_off: off as u16 });
                         }
                     }
+                    PlaceKind::Index(base, indices) => {
+                        let is_arr = matches!(&base.ty, Ty::Array { .. });
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r = self.alloc_v();
+                        match (&base.kind, is_arr) {
+                            (PlaceKind::Local(slot), true) => {
+                                let SlotLoc::V(arr_v) = self.slot_loc(*slot) else {
+                                    unreachable!();
+                                };
+                                self.emit(Op::TakeLArr1V { dst: r, arr_v, r_i }, place.span);
+                                writebacks.push(WriteBack::LocalArr1V {
+                                    arr_v,
+                                    r_i,
+                                    arg_off: off as u16,
+                                });
+                            }
+                            (PlaceKind::Global(gid), true) => {
+                                let gid = *gid as u16;
+                                self.emit(Op::TakeGArr1V { dst: r, gid, r_i }, place.span);
+                                writebacks.push(WriteBack::GlobalArr1V {
+                                    gid,
+                                    r_i,
+                                    arg_off: off as u16,
+                                });
+                            }
+                            (PlaceKind::Local(slot), false) => {
+                                let SlotLoc::V(list_v) = self.slot_loc(*slot) else {
+                                    unreachable!();
+                                };
+                                self.emit(Op::TakeLList1V { dst: r, list_v, r_i }, place.span);
+                                writebacks.push(WriteBack::LocalList1V {
+                                    list_v,
+                                    r_i,
+                                    arg_off: off as u16,
+                                });
+                            }
+                            (PlaceKind::Global(gid), false) => {
+                                let gid = *gid as u16;
+                                self.emit(Op::TakeGList1V { dst: r, gid, r_i }, place.span);
+                                writebacks.push(WriteBack::GlobalList1V {
+                                    gid,
+                                    r_i,
+                                    arg_off: off as u16,
+                                });
+                            }
+                            _ => unreachable!(),
+                        }
+                        v_args[off] = (r, true);
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -837,6 +935,30 @@ impl<'p> Compiler<'p> {
                 }
                 WriteBack::GlobalV { gid, arg_off } => {
                     self.emit(Op::StoreGlobalVMove { gid, src: arg_base_v + arg_off }, span);
+                }
+                WriteBack::LocalArr1V { arr_v, r_i, arg_off } => {
+                    self.emit(
+                        Op::StoreLArr1V { arr_v, r_i, r_val: arg_base_v + arg_off },
+                        span,
+                    );
+                }
+                WriteBack::GlobalArr1V { gid, r_i, arg_off } => {
+                    self.emit(
+                        Op::StoreGArr1V { gid, r_i, r_val: arg_base_v + arg_off },
+                        span,
+                    );
+                }
+                WriteBack::LocalList1V { list_v, r_i, arg_off } => {
+                    self.emit(
+                        Op::StoreLList1V { list_v, r_i, r_val: arg_base_v + arg_off },
+                        span,
+                    );
+                }
+                WriteBack::GlobalList1V { gid, r_i, arg_off } => {
+                    self.emit(
+                        Op::StoreGList1V { gid, r_i, r_val: arg_base_v + arg_off },
+                        span,
+                    );
                 }
             }
         }
@@ -3993,6 +4115,101 @@ impl<'p> Compiler<'p> {
                 }
                 dst
             }
+            ExprKind::Builtin(Builtin::ListSlice, args) if args.len() == 3 => {
+                let src_v = self.compile_expr_v(&args[0]);
+                let r_lo = self.compile_expr_i(&args[1]);
+                let r_hi = self.compile_expr_i(&args[2]);
+                let dst = self.alloc_v();
+                self.emit(Op::ListSlice { dst, src_v, r_lo, r_hi }, span);
+                if src_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                dst
+            }
+            ExprKind::Builtin(Builtin::StrSlice, args) if args.len() == 3 => {
+                let src_v = self.compile_expr_v(&args[0]);
+                let r_lo = self.compile_expr_i(&args[1]);
+                let r_hi = self.compile_expr_i(&args[2]);
+                let dst = self.alloc_v();
+                self.emit(Op::StrSlice { dst, src_v, r_lo, r_hi }, span);
+                if src_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                }
+                dst
+            }
+            ExprKind::Fill(dims, value) if dims.len() <= 4 => {
+                let mut dim_regs: Vec<u16> = Vec::with_capacity(dims.len());
+                for dim in dims {
+                    let r = match dim {
+                        cpl_ir::DimSpec::Pos(d) => {
+                            let r = self.alloc_i();
+                            self.emit(Op::DomainLen { dst: r, dom: *d as u16 }, span);
+                            r
+                        }
+                        cpl_ir::DimSpec::Bound(d) => {
+                            let r = self.alloc_i();
+                            self.emit(Op::DomainLen { dst: r, dom: *d as u16 }, span);
+                            let one = self.alloc_i();
+                            self.emit_const_i(one, 1, span);
+                            let out = self.alloc_i();
+                            self.emit(Op::AddI { dst: out, a: r, b: one }, span);
+                            out
+                        }
+                        cpl_ir::DimSpec::Sym(d) => {
+                            let n = self.alloc_i();
+                            self.emit(Op::DomainLen { dst: n, dom: *d as u16 }, span);
+                            let one = self.alloc_i();
+                            self.emit_const_i(one, 1, span);
+                            let np1 = self.alloc_i();
+                            self.emit(Op::AddI { dst: np1, a: n, b: one }, span);
+                            let prod = self.alloc_i();
+                            self.emit(Op::MulI { dst: prod, a: n, b: np1 }, span);
+                            let two = self.alloc_i();
+                            self.emit_const_i(two, 2, span);
+                            let out = self.alloc_i();
+                            self.emit(Op::DivI { dst: out, a: prod, b: two }, span);
+                            out
+                        }
+                        cpl_ir::DimSpec::Int(len) | cpl_ir::DimSpec::IntFrom(_, len) => {
+                            self.compile_expr_i(len)
+                        }
+                    };
+                    dim_regs.push(r);
+                }
+                let dims_base = self.next_i;
+                for r in dim_regs {
+                    let slot = self.alloc_i();
+                    if slot != r {
+                        self.emit(Op::MoveI { dst: slot, src: r }, span);
+                    }
+                }
+                let (fill_v, fill_ty) = match value {
+                    Some(v) => (self.compile_expr_v(v), u16::MAX),
+                    None => match &expr.ty {
+                        Ty::Array { elem, .. } => {
+                            let idx = self.fill_tys.len() as u16;
+                            self.fill_tys.push(elem.as_ref());
+                            (u16::MAX, idx)
+                        }
+                        _ => (u16::MAX, u16::MAX),
+                    },
+                };
+                let dst = self.alloc_v();
+                self.emit(
+                    Op::MakeFill {
+                        dst,
+                        dims_base,
+                        ndims: dims.len() as u8,
+                        fill_v,
+                        fill_ty,
+                    },
+                    span,
+                );
+                if fill_v != u16::MAX && fill_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: fill_v }, span);
+                }
+                dst
+            }
             ExprKind::Builtin(Builtin::Copy, args) if args.len() == 1 => {
                 self.compile_expr_v(&args[0])
             }
@@ -5940,6 +6157,160 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Value::ListView(view) => Value::List(Rc::new(view.to_vec())),
                         other => other.clone(),
                     };
+                }
+                Op::MakeFill { dst, dims_base, ndims, fill_v, fill_ty } => {
+                    let mut dims_vec = Vec::with_capacity(ndims as usize);
+                    let mut cells: i64 = 1;
+                    for k in 0..ndims as usize {
+                        let len = regs_i[dims_base as usize + k];
+                        if len < 0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("an array can't have length {len}"),
+                            );
+                        }
+                        cells = match cells.checked_mul(len).filter(|c| *c <= 1 << 32) {
+                            Some(c) => c,
+                            None => {
+                                return trap(spans[cur_pc], "this array is too large to allocate");
+                            }
+                        };
+                        dims_vec.push(len);
+                    }
+                    let cell = if fill_v == u16::MAX {
+                        if fill_ty == u16::MAX {
+                            Value::Unit
+                        } else {
+                            crate::zero(chunk.fill_tys[fill_ty as usize], self.program)
+                        }
+                    } else if fill_v as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[fill_v as usize], Value::Unit)
+                    } else {
+                        regs_v[fill_v as usize].clone()
+                    };
+                    regs_v[dst as usize] = Value::Array(Rc::new(Array::filled(dims_vec, cell)));
+                }
+                Op::ListSlice { dst, src_v, r_lo, r_hi } => {
+                    let lo = regs_i[r_lo as usize];
+                    let hi = regs_i[r_hi as usize];
+                    let (view, len) = match &regs_v[src_v as usize] {
+                        Value::List(items) => {
+                            let n = items.len();
+                            (crate::ListViewVal::whole(items.clone(), false), n)
+                        }
+                        Value::ListView(v) => {
+                            let n = v.len;
+                            ((**v).clone(), n)
+                        }
+                        _ => return trap(spans[cur_pc], "slice expects a list"),
+                    };
+                    if lo < 0 || hi < lo || hi as usize > len {
+                        return trap(
+                            spans[cur_pc],
+                            format!("slice {lo}..{hi} is outside a list of length {len}"),
+                        );
+                    }
+                    regs_v[dst as usize] =
+                        Value::ListView(Rc::new(view.slice(lo as usize, hi as usize)));
+                }
+                Op::StrSlice { dst, src_v, r_lo, r_hi } => {
+                    let lo = regs_i[r_lo as usize];
+                    let hi = regs_i[r_hi as usize];
+                    let (view, len) = match &regs_v[src_v as usize] {
+                        Value::Str(bytes) => {
+                            let n = bytes.len();
+                            (crate::StrViewVal::whole(bytes.clone(), false), n)
+                        }
+                        Value::StrView(v) => {
+                            let n = v.len;
+                            ((**v).clone(), n)
+                        }
+                        _ => return trap(spans[cur_pc], "slice expects a string"),
+                    };
+                    if lo < 0 || hi < lo || hi as usize > len {
+                        return trap(
+                            spans[cur_pc],
+                            format!("slice {lo}..{hi} is outside a string of length {len}"),
+                        );
+                    }
+                    regs_v[dst as usize] =
+                        Value::StrView(Rc::new(view.slice(lo as usize, hi as usize)));
+                }
+                Op::TakeLArr1V { dst, arr_v, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let len = arr.dims[0];
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {len}"),
+                            );
+                        }
+                        let a = Rc::make_mut(arr);
+                        match &mut a.data {
+                            ArrayData::Values(vs) => {
+                                std::mem::replace(&mut vs[idx as usize], Value::Unit)
+                            }
+                            _ => a.get(idx as usize).unwrap_or(Value::Unit),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    };
+                    regs_v[dst as usize] = val;
+                }
+                Op::TakeGArr1V { dst, gid, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let len = arr.dims[0];
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside an array dimension of length {len}"),
+                            );
+                        }
+                        let a = Rc::make_mut(arr);
+                        match &mut a.data {
+                            ArrayData::Values(vs) => {
+                                std::mem::replace(&mut vs[idx as usize], Value::Unit)
+                            }
+                            _ => a.get(idx as usize).unwrap_or(Value::Unit),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    };
+                    regs_v[dst as usize] = val;
+                }
+                Op::TakeLList1V { dst, list_v, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if let Value::List(items) = &mut regs_v[list_v as usize] {
+                        let len = items.len() as i64;
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside a list of length {len}"),
+                            );
+                        }
+                        std::mem::replace(&mut Rc::make_mut(items)[idx as usize], Value::Unit)
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected list");
+                    };
+                    regs_v[dst as usize] = val;
+                }
+                Op::TakeGList1V { dst, gid, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if let Value::List(items) = &mut self.globals[gid as usize] {
+                        let len = items.len() as i64;
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside a list of length {len}"),
+                            );
+                        }
+                        std::mem::replace(&mut Rc::make_mut(items)[idx as usize], Value::Unit)
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected list");
+                    };
+                    regs_v[dst as usize] = val;
                 }
                 Op::CmpV { dst, a_v, b_v, op } => {
                     let a = &regs_v[a_v as usize];

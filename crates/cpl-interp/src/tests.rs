@@ -651,6 +651,40 @@ print(r1 == y, r2 == x, z != x, r3)
 }
 
 #[test]
+fn vm_fill_slice_and_indexed_mut_call() {
+    let src = "\
+struct Acc:
+    xs: List<Int>
+    total: Int
+
+    fn push(mut self, v: Int):
+        xs.push(v)
+        total += v
+
+var accs = [0..2] _ => Acc([], 0)
+for i in 0..6:
+    accs[i % 2].push(i + 1)
+
+var grid: [0..2, 0..3]Int = 7
+var sum = 0
+for r in 0..2:
+    for c in 0..3:
+        sum += grid[r, c]
+
+let s = \"abcdef\"
+let sub = s[1..4]
+let ys = [10, 20, 30, 40, 50]
+let lv = ys[1..4]
+var lsum = 0
+for x in lv: lsum += x
+print(accs[0].total, accs[1].total, sum, sub, lsum)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "9 12 42 bcd 90\n");
+}
+
+#[test]
 fn vm_list_literals_filled_to_list_and_structural_cmp_v() {
     let source = "
 var xs: List<Int> = []
