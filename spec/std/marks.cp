@@ -296,12 +296,11 @@ fn interval_map_cross_module_assign():
     var im = IntervalMap<P, Int>.new(0)
     // Default no-op callback + explicit callback from another module.
     im.assign(P(2)..=P(5), 3)
-    assert im.runs == 3 and im.at(P(2)) == 3 and im.at(P(6)) == 0
+    assert im.runs == 3 and im.get(P(2)) == 3 and im.get(P(6)) == 0
     var total_len = 0
     var sum_old = 0
-    fn record(r: Range<P>, old: Int):
+    for (r, old) in im.replace(P(4)..=P(7), 3):
         total_len += r.len
         sum_old += r.len * old
-    im.assign(P(4)..=P(7), 3, on_old: record)
     assert total_len == 4 and sum_old == 6
     assert im.runs == 3 and im.run_at(P(5)).range.len == 6

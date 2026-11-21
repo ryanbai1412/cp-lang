@@ -36,8 +36,8 @@ pub struct IntervalMap<D, T>:
     /// Number of maximal runs currently in the partition. O(1).
     pub @get fn runs(self) -> Int = segs.len
 
-    /// The value at position `i`. O(log runs).
-    pub fn at(self, i: D) -> T:
+    /// [rename] The value at position `i` (replaces `at`). O(log runs).
+    pub fn get(self, i: D) -> T:
         let (_, seg) = segs.last_le(i.to_idx)!
         seg.val
 
@@ -47,9 +47,8 @@ pub struct IntervalMap<D, T>:
         (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
     /// Paint range `r` with `val`, coalescing adjacent equal runs.
-    /// Calls `on_old(range, old_val)` for every overwritten run in ascending order
-    /// with zero heap allocation. Amortized O((1 + overwritten) log runs).
-    pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()):
+    /// Amortized O((1 + overwritten) log runs).
+    pub fn assign(mut self, r: Range<D>, val: T):
         let (lo, hi) = r.ends
         if lo >= hi: return
         var new_lo = lo
@@ -58,7 +57,6 @@ pub struct IntervalMap<D, T>:
         var check_right = true
         if let (sl, seg) = segs.last_le(lo):
             if seg.hi >= hi:
-                on_old(r, seg.val)
                 if seg.val == val: return
                 if sl < lo:
                     segs[sl] = (hi: lo, val: seg.val)
@@ -72,7 +70,6 @@ pub struct IntervalMap<D, T>:
                     segs[lo] = (hi: hi, val: val)
                     return
             else:
-                on_old(D.nth(lo).l..D.nth(seg.hi - 1).r, seg.val)
                 if sl < lo:
                     if seg.val == val:
                         new_lo = sl
@@ -85,10 +82,8 @@ pub struct IntervalMap<D, T>:
                 while pos < hi:
                     let old = segs.remove(pos)!
                     if old.hi <= hi:
-                        on_old(D.nth(pos).l..D.nth(old.hi - 1).r, old.val)
                         pos = old.hi
                     else:
-                        on_old(D.nth(pos).l..D.nth(hi - 1).r, old.val)
                         if old.val == val:
                             new_hi = old.hi
                         else:
@@ -106,27 +101,24 @@ pub struct IntervalMap<D, T>:
                     new_hi = nseg.hi
         segs[new_lo] = (hi: new_hi, val: val)
 
+    /// [rename] Paint range `r` with `val`, coalescing adjacent equal runs, and yield every
+    /// overwritten `(range, val)` piece in ascending order (replaces `assign(..., on_old:)`).
+    /// Amortized O((1 + overwritten) log runs).
+    pub fn replace(mut self, r: Range<D>, val: T) -> yields (range: Range<D>, val: T) = todo
+
     /// Paint the single position `i` with `val` and return its previous value. O(log runs).
     pub fn assign_point(mut self, i: D, val: T) -> T:
-        var old: ?T = none
-        fn record(_: Range<D>, v: T): old = v
-        self.assign(i.l..i.r, val, on_old: record)
-        old!
+        let old = self.get(i)
+        self.assign(i.l..i.r, val)
+        old
 
     /// Visit every maximal run `(range, val)` in ascending order. O(runs).
     pub fn each(self) -> yields (range: Range<D>, val: T):
         for (lo, seg) in segs.items:
             yield (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
-    /// O(log runs). Read the value at position `i` (canonical getter alongside `at`).
-    pub fn get(self, i: D) -> T = todo
-
     /// O(log runs). Paint position `i` with `val` (`IndexSet` write-through place).
     pub fn set(mut self, i: D, val: T) = todo
-
-    /// Amortized O((1 + overwritten) log runs). Paint `r` with `val` and yield every overwritten
-    /// sub-run `(range, val)` in ascending order (generator form of `assign`).
-    pub fn replace(mut self, r: Range<D>, val: T) -> yields (range: Range<D>, val: T) = todo
 
     /// O(log runs + k). Yield every run overlapping `r`, clipped to `r`, in ascending order.
     pub fn range(self, r: Range<D>) -> yields (range: Range<D>, val: T) = todo
@@ -208,18 +200,18 @@ fn interval_map_basic_and_coalescing():
     domain P = 1..=10
     var m = IntervalMap<P, Int>.new(0)
     assert m.runs == 1
-    assert m.at(P(1)) == 0
-    assert m.at(P(10)) == 0
+    assert m.get(P(1)) == 0
+    assert m.get(P(10)) == 0
 
     var over1 = List<(range: Range<P>, val: Int)>()
-    m.assign(P(3)..=P(7), 5, on_old: (r, v) => over1.push((range: r, val: v)))
+    for (r, v) in m.replace(P(3)..=P(7), 5): over1.push((range: r, val: v))
     assert over1.len == 1
     assert over1[0].range.len == 5 and over1[0].val == 0
     assert m.runs == 3
 
     // Painting with the same value coalesces with neighbours.
     var over2 = List<(range: Range<P>, val: Int)>()
-    m.assign(P(1)..=P(2), 5, on_old: (r, v) => over2.push((range: r, val: v)))
+    for (r, v) in m.replace(P(1)..=P(2), 5): over2.push((range: r, val: v))
     assert over2.len == 1 and over2[0].val == 0
     assert m.runs == 2
     assert m.run_at(P(4)).range.len == 7
@@ -244,7 +236,7 @@ fn interval_map_from_and_empty_domain():
     let a: [P]Int = [1, 1, 2, 2, 2, 1]
     let m = IntervalMap<P, Int>.from(a)
     assert m.runs == 3
-    for i in P: assert m.at(i) == a[i]
+    for i in P: assert m.get(i) == a[i]
 
 @test
 fn interval_map_matches_dense_array():
@@ -258,7 +250,7 @@ fn interval_map_matches_dense_array():
         let v = rng.int(0, 4)
         var pos = l
         var over = List<(range: Range<P>, val: Int)>()
-        m.assign(P(l)..=P(r), v, on_old: (rg, old_v) => over.push((range: rg, val: old_v)))
+        for (rg, old_v) in m.replace(P(l)..=P(r), v): over.push((range: rg, val: old_v))
         for (rg, old_v) in over:
             for i in rg:
                 assert i.to_idx + 1 == pos
