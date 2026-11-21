@@ -2,12 +2,15 @@
 //!
 //! It speaks the Language Server Protocol over stdio and answers from the
 //! same incremental [`cpl_check::Database`] as `cpl check`, `cpl run` and
-//! `cpl build`. Today it publishes diagnostics as you type and serves
-//! hover, go-to-definition, the document outline, and quick fixes.
-//! Completion, semantic tokens and formatting come with later phases
+//! `cpl build`. It publishes diagnostics as you type and serves hover,
+//! go-to-definition, the document outline, quick fixes, formatting,
+//! type-aware completion (`xs.`, names in scope, `use std.`), signature
+//! help and inlay hints. Semantic tokens come with a later phase
 //! (`plan/60-editor.md`).
 
+mod complete;
 pub mod json;
+mod outline;
 mod server;
 mod transport;
 

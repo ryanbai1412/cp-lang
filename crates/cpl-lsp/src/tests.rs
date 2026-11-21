@@ -673,3 +673,292 @@ fn inlay_hints_show_the_types_that_are_not_written() {
     // `m` has its type written, so it gets none.
     assert_eq!(shown, [(0, 5, ": Int"), (2, 6, ": List<Int>"), (3, 5, ": Int")]);
 }
+
+/// Opens `src` with the cursor at `|` (removed) and sends `method` there.
+fn ask_at(method: &str, src: &str) -> Value {
+    let at = src.find('|').expect("a cursor");
+    let text = src.replacen('|', "", 1);
+    let line = src[..at].matches('\n').count() as u32;
+    let character = (at - src[..at].rfind('\n').map_or(0, |i| i + 1)) as u32;
+    let (mut server, _) = open(&text);
+    let reply = server.handle(&request(
+        20,
+        method,
+        obj([("textDocument", doc()), ("position", pos(line, character))]),
+    ));
+    reply[0].get("result").clone()
+}
+
+fn completions(src: &str) -> Vec<(String, u32, String)> {
+    ask_at("textDocument/completion", src)
+        .get("items")
+        .as_array()
+        .iter()
+        .map(|item| {
+            (
+                item.get("label").as_str().unwrap().to_string(),
+                item.get("kind").as_u32().unwrap(),
+                item.get("detail").as_str().unwrap_or("").to_string(),
+            )
+        })
+        .collect()
+}
+
+fn labels(items: &[(String, u32, String)]) -> Vec<&str> {
+    items.iter().map(|(label, ..)| label.as_str()).collect()
+}
+
+fn detail_of<'a>(items: &'a [(String, u32, String)], label: &str) -> &'a str {
+    &items
+        .iter()
+        .find(|(l, ..)| l == label)
+        .unwrap_or_else(|| panic!("no `{label}` in {items:?}"))
+        .2
+}
+
+const ROAD: &str = "\
+struct Road:
+    to: Int
+    w: Int
+
+    /// Both ends' weight.
+    fn twice(self) -> Int = 2 * w
+
+    @get
+    fn heavy(self) -> Bool = w > 10
+
+    fn make(to: Int) -> Road = Road(to, 0)
+";
+
+#[test]
+fn completion_after_a_trailing_dot_lists_fields_getters_and_methods() {
+    let items = completions(&format!("{ROAD}let r = Road(1, 2)\nprint(r.|)\n"));
+    assert_eq!(labels(&items), ["to", "w", "twice", "heavy"]);
+    assert_eq!(detail_of(&items, "w"), "w: Int");
+    assert_eq!(detail_of(&items, "twice"), "fn twice(self) -> Int");
+    assert_eq!(items.iter().find(|i| i.0 == "heavy").unwrap().1, 10);
+    // A fn without `self` belongs to the type, not to a value.
+    assert!(!labels(&items).contains(&"make"), "{items:?}");
+}
+
+#[test]
+fn dot_completion_works_on_a_line_that_does_not_parse_yet() {
+    // The item ends mid-expression: the checker still types `r`.
+    let items = completions(&format!("{ROAD}let r = Road(1, 2)\nlet x = r.|\n"));
+    assert!(labels(&items).contains(&"twice"), "{items:?}");
+    // And partway through a member's name, after a call.
+    let items = completions(&format!(
+        "{ROAD}fn f() -> Road = Road(1, 2)\nprint(f().tw|)\n"
+    ));
+    assert!(labels(&items).contains(&"twice"), "{items:?}");
+}
+
+#[test]
+fn dot_completion_on_a_type_lists_what_it_has_without_a_value() {
+    let items = completions(&format!(
+        "{ROAD}enum Dir:\n    L\n    R\nprint(Dir.|)\nprint(Road.make(1))\n"
+    ));
+    assert_eq!(labels(&items), ["L", "R"]);
+    let items = completions(&format!("{ROAD}let r = Road.|\n"));
+    assert_eq!(labels(&items), ["make"]);
+}
+
+#[test]
+fn dot_completion_on_a_library_type_substitutes_its_type_arguments() {
+    let src = "domain V = 0..5\nvar t = SegTree<V, Int>.of(max, fn(v) -> 0)\nt.|\n";
+    let items = completions(src);
+    for method in ["get", "set", "fold", "update"] {
+        assert!(
+            labels(&items).contains(&method),
+            "{method} missing: {items:?}"
+        );
+    }
+    assert_eq!(detail_of(&items, "set"), "fn set(mut self, i: V, x: Int)");
+}
+
+#[test]
+fn dot_completion_on_records_domains_and_positions() {
+    let items = completions("let p = (x: 1, y: 2)\nprint(p.|)\n");
+    assert_eq!(labels(&items), ["x", "y"]);
+    let items = completions("domain V = 0..5\nprint(V.|)\n");
+    assert!(labels(&items).contains(&"first") && labels(&items).contains(&"rev"));
+    let items = completions("domain V = 0..5\nfor v in V:\n    print(v.|)\n");
+    assert!(labels(&items).contains(&"ord") && labels(&items).contains(&"r"));
+}
+
+/// The members offered on every domain and position are ones the checker types.
+#[test]
+fn builtin_domain_and_position_members_are_the_checkers() {
+    use crate::complete::{DOMAIN_MEMBERS, POS_MEMBERS};
+    for (members, receiver) in [(DOMAIN_MEMBERS, "V"), (POS_MEMBERS, "v")] {
+        for (name, _) in members {
+            let src = format!("domain V = 0..5\nfor v in V:\n    let x = {receiver}.{name}\n");
+            let (mut server, replies) = open(&src);
+            // The back ends may not lower every one yet (E0501); the checker types them.
+            let errors: Vec<&Value> = replies
+                .iter()
+                .filter(|d| d.get("code").as_str() != Some("E0501"))
+                .collect();
+            assert!(errors.is_empty(), "{receiver}.{name}: {errors:?}");
+            let hover = hover_at(&mut server, 2, 8);
+            let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+            assert!(
+                text.contains("x: ") && !text.contains('?') && !text.contains('_'),
+                "{receiver}.{name} is untyped: {text}"
+            );
+        }
+    }
+}
+
+#[test]
+fn completion_offers_locals_declarations_and_the_prelude_with_signatures() {
+    let src = format!("{ROAD}/// Adds one.\nfn inc(x: Int) -> Int = x + 1\nfn main(n: Int):\n    let total = n * 2\n    pr|\n");
+    let items = completions(&src);
+    let names = labels(&items);
+    // Locals first, then this file, then the prelude, then keywords.
+    for name in [
+        "total", "n", "inc", "Road", "SegTree", "Dsu", "zip", "while",
+    ] {
+        assert!(names.contains(&name), "{name} missing: {names:?}");
+    }
+    assert!(names.iter().position(|n| *n == "total") < names.iter().position(|n| *n == "inc"));
+    assert_eq!(detail_of(&items, "total"), "total: Int");
+    assert_eq!(detail_of(&items, "inc"), "fn inc(x: Int) -> Int");
+    let reply = ask_at("textDocument/completion", &src);
+    let inc = reply
+        .get("items")
+        .as_array()
+        .iter()
+        .find(|i| i.get("label").as_str() == Some("inc"))
+        .unwrap();
+    assert_eq!(
+        inc.at(&["documentation", "value"]).as_str(),
+        Some("Adds one.")
+    );
+    let zip = detail_of(&items, "zip");
+    assert!(zip.starts_with("fn zip"), "{zip}");
+    // A local of another fn is not in scope.
+    let items = completions("fn a():\n    let hidden = 1\nfn b():\n    h|\n");
+    assert!(!labels(&items).contains(&"hidden"), "{items:?}");
+}
+
+#[test]
+fn use_std_completes_module_names_and_then_their_exports() {
+    let items = completions("use std.|\n");
+    for module in ["segtree", "seq", "graph", "math"] {
+        assert!(labels(&items).contains(&module), "{module}: {items:?}");
+    }
+    assert!(!labels(&items).contains(&"prelude"));
+    assert!(items.iter().all(|(_, kind, _)| *kind == 9));
+    let items = completions("use std.segtree.{Seg|}\n");
+    assert!(labels(&items).contains(&"SegTree"), "{items:?}");
+    assert!(completions("// see xs.|\n").is_empty());
+}
+
+fn signature(src: &str) -> (String, u32, Vec<String>) {
+    let help = ask_at("textDocument/signatureHelp", src);
+    let sig = &help.get("signatures").as_array()[0];
+    let label = sig.get("label").as_str().unwrap().to_string();
+    let params = sig
+        .get("parameters")
+        .as_array()
+        .iter()
+        .map(|p| {
+            let range = p.get("label").as_array();
+            let (s, e) = (
+                range[0].as_u32().unwrap() as usize,
+                range[1].as_u32().unwrap() as usize,
+            );
+            label[s..e].to_string()
+        })
+        .collect();
+    (label, help.get("activeParameter").as_u32().unwrap(), params)
+}
+
+#[test]
+fn signature_help_tracks_the_argument_being_typed() {
+    let decl = "/// Moves along.\nfn walk(from: Int, steps: Int, back: Bool) -> Int = from\n";
+    let (label, active, params) = signature(&format!("{decl}print(walk(|))\n"));
+    assert_eq!(label, "walk(from: Int, steps: Int, back: Bool) -> Int");
+    assert_eq!(params, ["from: Int", "steps: Int", "back: Bool"]);
+    assert_eq!(active, 0);
+    let (_, active, _) = signature(&format!("{decl}print(walk(1, [2, 3].len, |))\n"));
+    assert_eq!(active, 2);
+    // Inside a nested call it is that call's signature.
+    let (label, ..) = signature(&format!("{decl}print(walk(1, walk(|"));
+    assert!(label.starts_with("walk("));
+    let help = ask_at(
+        "textDocument/signatureHelp",
+        &format!("{decl}print(walk(1, |"),
+    );
+    assert_eq!(
+        help.at(&["signatures"]).as_array()[0]
+            .at(&["documentation", "value"])
+            .as_str(),
+        Some("Moves along.")
+    );
+    assert!(ask_at("textDocument/signatureHelp", "let x = 1|\n").is_null());
+}
+
+#[test]
+fn signature_help_for_methods_and_library_fns() {
+    let (label, active, _) = signature(&format!("{ROAD}let r = Road(1, 2)\nprint(Road.make(|))\n"));
+    assert_eq!((label.as_str(), active), ("make(to: Int) -> Road", 0));
+    let src = "domain V = 0..5\nvar t = SegTree<V, Int>.of(max, fn(v) -> 0)\nt.set(V.first, |)\n";
+    let (label, active, params) = signature(src);
+    assert!(label.starts_with("set("), "{label}");
+    assert_eq!(params.len(), 2, "{label}");
+    assert_eq!(active, 1);
+    let (label, ..) = signature("print(gcd(4, |))\n");
+    assert!(label.starts_with("gcd("), "{label}");
+}
+
+#[test]
+fn inlay_hints_name_the_parameters_of_literal_arguments() {
+    let src =
+        "fn walk(from: Int, steps: Int) -> Int = from + steps\nlet a = 1\nprint(walk(a, 3))\n";
+    let (mut server, _) = open(src);
+    let reply = server.handle(&request(
+        9,
+        "textDocument/inlayHint",
+        obj([("textDocument", doc())]),
+    ));
+    let hints: Vec<(u32, u32, String, u32)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|h| {
+            (
+                h.at(&["position", "line"]).as_u32().unwrap(),
+                h.at(&["position", "character"]).as_u32().unwrap(),
+                h.get("label").as_str().unwrap().to_string(),
+                h.get("kind").as_u32().unwrap(),
+            )
+        })
+        .collect();
+    // `a` names itself; the literal `3` gets its parameter's name.
+    assert_eq!(
+        hints,
+        [
+            (1, 5, ": Int".to_string(), 1),
+            (2, 14, "steps:".to_string(), 2)
+        ]
+    );
+}
+
+#[test]
+fn the_server_advertises_completion_and_signature_help() {
+    let mut server = Server::default();
+    let reply = server.handle(&request(1, "initialize", obj([])));
+    let caps = reply[0].at(&["result", "capabilities"]);
+    assert_eq!(
+        caps.at(&["completionProvider", "triggerCharacters"])
+            .as_array(),
+        [Value::from(".")]
+    );
+    assert_eq!(
+        caps.at(&["signatureHelpProvider", "triggerCharacters"])
+            .as_array(),
+        [Value::from("("), Value::from(",")]
+    );
+}

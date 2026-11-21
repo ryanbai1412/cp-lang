@@ -228,6 +228,9 @@ fn lsp_latency(lines: usize) {
     let insert = "other.len * 2 + deg[other.v] + ";
     let mut change = Samples(Vec::new());
     let mut hover = Samples(Vec::new());
+    let mut complete = Samples(Vec::new());
+    let mut signature = Samples(Vec::new());
+    let mut hints = Samples(Vec::new());
     let mut text = src.clone();
     for (i, ch) in insert.char_indices() {
         let cursor = position(&text, at + i);
@@ -270,6 +273,40 @@ fn lsp_latency(lines: usize) {
             replies[0]
         );
         hover.0.push(took);
+
+        // Complete and show the signature at the cursor, as the editor
+        // asks after each character; `other.` must list `Road`'s fields.
+        let after = at + i + ch.len_utf8();
+        let at_cursor = |id: u32, method: &str| {
+            message(
+                Some(id),
+                method,
+                obj([
+                    ("textDocument", doc()),
+                    ("position", position(&text, after)),
+                ]),
+            )
+        };
+        let (replies, took) = round_trip(
+            &mut server,
+            &at_cursor(1000 + i as u32, "textDocument/completion"),
+        );
+        if text[..after].ends_with("other.") {
+            assert!(replies[0].contains(r#""label":"len""#), "{}", replies[0]);
+        }
+        complete.0.push(took);
+        let (_, took) = round_trip(
+            &mut server,
+            &at_cursor(2000 + i as u32, "textDocument/signatureHelp"),
+        );
+        signature.0.push(took);
+        let request = message(
+            Some(3000 + i as u32),
+            "textDocument/inlayHint",
+            obj([("textDocument", doc())]),
+        );
+        let (_, took) = round_trip(&mut server, &request);
+        hints.0.push(took);
     }
     report(
         "lsp: keystroke to diagnostics",
@@ -283,6 +320,24 @@ fn lsp_latency(lines: usize) {
         &mut hover,
         LSP_BUDGET,
     );
+    report(
+        "lsp: completion at the cursor",
+        actual,
+        &mut complete,
+        LSP_BUDGET,
+    );
+    report(
+        "lsp: signature help at the cursor",
+        actual,
+        &mut signature,
+        LSP_BUDGET,
+    );
+    report(
+        "lsp: inlay hints for the file",
+        actual,
+        &mut hints,
+        LSP_BUDGET,
+    );
 }
 
 #[test]
@@ -292,7 +347,7 @@ fn front_end_check_is_under_50_ms() {
 }
 
 #[test]
-fn lsp_diagnostics_and_hover_are_under_100_ms() {
+fn lsp_requests_are_under_100_ms() {
     lsp_latency(500);
     lsp_latency(5000);
 }

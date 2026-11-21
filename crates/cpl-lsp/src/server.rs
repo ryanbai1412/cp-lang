@@ -5,6 +5,7 @@
 //! Each message is handled in isolation: a panic becomes an error response
 //! (or an internal-error diagnostic) and the server keeps running.
 
+use crate::complete::{self, Cursor, StdLib};
 use crate::json::{obj, Value};
 use cpl_check::{Database, DeclKind};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
@@ -21,6 +22,8 @@ pub struct Server {
     db: Database,
     /// Open documents by URI, with their current text.
     docs: BTreeMap<String, String>,
+    /// The standard library's declarations, for completion.
+    std: StdLib,
     initialized: bool,
     shutdown: bool,
     exit: Option<i32>,
@@ -37,6 +40,7 @@ impl Server {
         Server {
             db: Database::new(),
             docs: BTreeMap::new(),
+            std: StdLib::default(),
             initialized: false,
             shutdown: false,
             exit: None,
@@ -189,6 +193,39 @@ impl Server {
                     ),
                 ])))
             }
+            "textDocument/completion" => {
+                let (uri, offset) = self.position(params)?;
+                let analysis = self
+                    .db
+                    .analyze(&uri)
+                    .expect("a position implies an analysis");
+                let cursor = Cursor {
+                    uri: &uri,
+                    analysis: &analysis,
+                    offset,
+                };
+                let items = complete::completion(&cursor, &mut self.std);
+                Ok(Reply::result(obj([
+                    ("isIncomplete", false.into()),
+                    ("items", Value::Array(items)),
+                ])))
+            }
+            "textDocument/signatureHelp" => {
+                let (uri, offset) = self.position(params)?;
+                let analysis = self
+                    .db
+                    .analyze(&uri)
+                    .expect("a position implies an analysis");
+                let cursor = Cursor {
+                    uri: &uri,
+                    analysis: &analysis,
+                    offset,
+                };
+                Ok(match complete::signature_help(&cursor, &mut self.std) {
+                    Some(help) => Reply::result(help),
+                    None => Reply::default(),
+                })
+            }
             "textDocument/definition" => {
                 let (uri, offset) = self.position(params)?;
                 let Some(def) = self.db.definition_location(&uri, offset) else {
@@ -284,7 +321,8 @@ impl Server {
                 Ok(Reply::result(Value::Array(actions)))
             }
             // The type of each `let`, `var` and loop variable that is written
-            // without one, shown after its name.
+            // without one, shown after its name, and the parameter each
+            // literal argument fills.
             "textDocument/inlayHint" => {
                 let uri = uri_of(params)?;
                 let Some(analysis) = self.db.analyze(uri) else {
@@ -300,14 +338,37 @@ impl Server {
                         if !declares || typed || entry.ty.has_vague() {
                             continue;
                         }
-                        hints.push(obj([
-                            ("position", position_json(analysis.lines.utf16(at, &analysis.text))),
-                            ("label", format!(": {}", entry.ty).into()),
-                            ("kind", 1.into()),
-                        ]));
+                        hints.push((
+                            at,
+                            obj([
+                                (
+                                    "position",
+                                    position_json(analysis.lines.utf16(at, &analysis.text)),
+                                ),
+                                ("label", format!(": {}", entry.ty).into()),
+                                ("kind", 1.into()),
+                            ]),
+                        ));
                     }
                 }
-                Ok(Reply::result(Value::Array(hints)))
+                for (at, label) in complete::parameter_hints(&analysis) {
+                    hints.push((
+                        at,
+                        obj([
+                            (
+                                "position",
+                                position_json(analysis.lines.utf16(at, &analysis.text)),
+                            ),
+                            ("label", label.into()),
+                            ("kind", 2.into()),
+                            ("paddingRight", true.into()),
+                        ]),
+                    ));
+                }
+                hints.sort_by_key(|(at, _)| *at);
+                Ok(Reply::result(Value::Array(
+                    hints.into_iter().map(|(_, h)| h).collect(),
+                )))
             }
             // `cpl fmt` on the open text: one edit that replaces the file,
             // or none when it is already formatted or can't be.
@@ -397,6 +458,17 @@ fn capabilities() -> Value {
                     obj([("openClose", true.into()), ("change", 2.into())]),
                 ),
                 ("hoverProvider", true.into()),
+                (
+                    "completionProvider",
+                    obj([("triggerCharacters", vec![".".into()].into())]),
+                ),
+                (
+                    "signatureHelpProvider",
+                    obj([
+                        ("triggerCharacters", vec!["(".into(), ",".into()].into()),
+                        ("retriggerCharacters", vec![",".into()].into()),
+                    ]),
+                ),
                 ("definitionProvider", true.into()),
                 ("documentSymbolProvider", true.into()),
                 ("documentFormattingProvider", true.into()),

@@ -101,6 +101,7 @@ dependencies = [
  "cpl-diag",
  "cpl-fmt",
  "cpl-ir",
+ "cpl-syntax",
 ]
 
 [[package]]
