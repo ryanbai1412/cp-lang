@@ -1268,6 +1268,98 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             self.assertEqual(tf["counts"]["f::<T>(...)"], 2)
             self.assertEqual(tf["active_non_canonical"], 2)
 
+    def test_taste_review_formats_stale_and_unreviewed(self):
+        # 1. Parser handles every review format and never confuses pending or Dream: lines.
+        cases = [
+            ("# a\n\nScore: 4/5\n", (4, False)),
+            ("# b\n\n- **Score:** 3 / 5\n", (3, False)),
+            ("# c\n\n**Port score:** 5 out of 5\n", (5, False)),
+            ("# d\n\nTaste score — 2\n", (2, False)),
+            ("# e\n\n## Score\n\n**4/5**\n", (4, False)),
+            ("# f\n\nScore: 3/5 (was 2/5)\n", (3, False)),
+            ("# g\n\nScore: pending (was 2/5: rewritten)\nDream: 4/5\n", (None, True)),
+            ("# h\n\nDream: 5/5\nNo port score yet.\n", (None, False)),
+        ]
+        for text, expected in cases:
+            self.assertEqual(sb.parse_review_score_text(text), expected, msg=text)
+
+        # 2. summarize_taste_reviews includes non-active/rewrite-lane review files,
+        # computes taste_stale via git commit order, and counts taste_unreviewed.
+        with tempfile.TemporaryDirectory() as tmp:
+            def git(*args):
+                subprocess.run(["git", *args], cwd=tmp, check=True, capture_output=True, text=True)
+
+            git("init", "-q")
+            git("config", "user.email", "test@example.com")
+            git("config", "user.name", "Test")
+
+            ec = os.path.join(tmp, "proto", "ports", "ecnerwala")
+            scout = os.path.join(tmp, "proto", "ports", "scout_batch_10")
+            rev = os.path.join(tmp, "research", "reviews")
+            os.makedirs(ec, exist_ok=True)
+            os.makedirs(scout, exist_ok=True)
+            os.makedirs(rev, exist_ok=True)
+
+            # Commit 1: initial ports + stale port's old review + same-commit port/review + unreviewed port
+            for name in ("fresh", "stale", "same", "unrev"):
+                with open(os.path.join(ec, f"{name}.cp"), "w", encoding="utf-8") as f:
+                    f.write("print(1)\n")
+            with open(os.path.join(scout, "extra.cp"), "w", encoding="utf-8") as f:
+                f.write("print(1)\n")
+            with open(os.path.join(rev, "README.md"), "w", encoding="utf-8") as f:
+                f.write("# Reviews\nScore: 1/5\n")
+            with open(os.path.join(rev, "stale.md"), "w", encoding="utf-8") as f:
+                f.write("# stale\n\nScore: 2/5\n")
+            with open(os.path.join(rev, "same.md"), "w", encoding="utf-8") as f:
+                f.write("# same\n\n**Port score:** 3/5\n")
+            with open(os.path.join(rev, "extra.md"), "w", encoding="utf-8") as f:
+                f.write("# extra\n\n## Score\n\n5/5\n")
+            git("add", ".")
+            git("commit", "-q", "-m", "initial")
+
+            # Commit 2: add review for fresh (newer than .cp -> NOT stale) and edit stale.cp (newer than review -> STALE)
+            with open(os.path.join(rev, "fresh.md"), "w", encoding="utf-8") as f:
+                f.write("# fresh\n\n- **Score:** 4/5\n")
+            with open(os.path.join(ec, "stale.cp"), "w", encoding="utf-8") as f:
+                f.write("print(2)\n")
+            with open(os.path.join(rev, "pend.md"), "w", encoding="utf-8") as f:
+                f.write("# pend\n\nScore: pending (was 2/5)\n")
+            git("add", ".")
+            git("commit", "-q", "-m", "update")
+
+            port_records = [
+                {
+                    "id": f"ecnerwala/{n}",
+                    "name": n,
+                    "path": f"proto/ports/ecnerwala/{n}.cp",
+                    "gate": "pass",
+                    "cp_tokens": 10,
+                    "orig_tokens": 20,
+                    "orig_stripped_tokens": 20,
+                    "token_ratio": 0.5,
+                    "stripped_token_ratio": 0.5,
+                    "emitted_bytes": 1000,
+                }
+                for n in ("fresh", "stale", "same", "unrev")
+            ]
+            summary = sb.summarize_taste_reviews(port_records, reviews_dir=rev, repo_root=tmp)
+            self.assertEqual(summary["reviewed"], 4)  # fresh(4), stale(2), same(3), extra(5); README & pend excluded
+            self.assertEqual(summary["pending"], 1)
+            self.assertEqual(summary["median"], 3.5)
+            self.assertEqual(summary["histogram"], {"1": 0, "2": 1, "3": 1, "4": 1, "5": 1})
+            self.assertEqual(summary["stale"], 1)  # only stale.cp changed after its review
+            self.assertEqual(summary["unreviewed"], 1)  # only unrev has no review file
+
+            totals = sb.compute_totals(
+                port_records,
+                {"wa_trap": 0, "real_gap": 0, "stale_port": 0, "total_findings": 0},
+                {"files": 0, "total": 0, "open": 0, "closed": 0, "by_severity": {}, "by_goal": {}, "open_blockers": [], "open_highs": []},
+                taste_summary=summary,
+            )
+            self.assertEqual(totals["taste_stale"], 1)
+            self.assertEqual(totals["taste_unreviewed"], 1)
+            self.assertEqual(totals["taste"]["reviewed"], 4)
+
 
 if __name__ == "__main__":
     unittest.main()

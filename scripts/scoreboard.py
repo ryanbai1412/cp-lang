@@ -669,9 +669,43 @@ def measure_tokens(p):
     }
 
 
-_REVIEW_SCORE_RE = re.compile(
-    r"(?im)^(?:[-*]\s*)?(?:\*\*)?score(?::)?(?:\*\*)?\s*(?:[:\-]\s*)?(?:\*\*)?([1-5](?:\.\d+)?)(?:\s*/\s*5)?\b"
+_REVIEW_PENDING_RE = re.compile(
+    r"(?im)^(?:[-*]\s*)?(?:#+\s*)?(?:\*\*)?(?:(?:port|taste)\s+)?score(?::)?(?:\*\*)?\s*(?:[:\-=—–]\s*)?(?:\*\*)?pending\b"
 )
+_REVIEW_SCORE_RE = re.compile(
+    r"(?im)^(?:[-*]\s*)?(?:#+\s*)?(?:\*\*)?(?:(?:port|taste)\s+)?score(?::)?(?:\*\*)?\s*(?:[:\-=—–]\s*)?(?:\*\*)?([1-5](?:\.\d+)?)(?:\s*(?:/|out\s+of)\s*5)?(?:\*\*)?(?:\b|$)"
+)
+_REVIEW_SCORE_HEADING_RE = re.compile(
+    r"(?im)^#+\s*(?:(?:port|taste)\s+)?score\s*\n+\s*(?:[-*]\s*)?(?:\*\*)?(pending|[1-5](?:\.\d+)?)(?:\s*(?:/|out\s+of)\s*5)?(?:\*\*)?(?:\b|$)"
+)
+
+
+def parse_review_score_text(text):
+    """Parse a port taste score from review markdown: returns (score_or_None, is_pending)."""
+    candidates = []
+    m_pend = _REVIEW_PENDING_RE.search(text)
+    if m_pend:
+        candidates.append((m_pend.start(), "pending", None))
+    m_num = _REVIEW_SCORE_RE.search(text)
+    if m_num:
+        candidates.append((m_num.start(), "score", m_num.group(1)))
+    m_hdr = _REVIEW_SCORE_HEADING_RE.search(text)
+    if m_hdr:
+        raw = m_hdr.group(1)
+        if raw.lower() == "pending":
+            candidates.append((m_hdr.start(), "pending", None))
+        else:
+            candidates.append((m_hdr.start(), "score", raw))
+    if not candidates:
+        return None, False
+    candidates.sort(key=lambda c: c[0])
+    _, kind, raw = candidates[0]
+    if kind == "pending":
+        return None, True
+    val = float(raw)
+    if val.is_integer():
+        val = int(val)
+    return val, False
 
 
 _DREAM_SCORE_RE = re.compile(r"(?m)^Dream:\s*(\d)\s*/\s*5\b")
@@ -735,12 +769,110 @@ def parse_review_score(port_name, reviews_dir=REVIEWS_DIR):
     path = os.path.join(reviews_dir, f"{port_name}.md")
     if not os.path.isfile(path):
         return None, None
-    text = _read_text(path)
-    m = _REVIEW_SCORE_RE.search(text)
-    score = float(m.group(1)) if m else None
-    if score is not None and score.is_integer():
-        score = int(score)
+    score, _ = parse_review_score_text(_read_text(path))
     return score, os.path.relpath(path, ROOT)
+
+
+def _git_last_touch_order(repo_root, paths):
+    """Return {rel_path: commit_index} where 0 is the most recent commit touching rel_path."""
+    if not os.path.isdir(os.path.join(repo_root, ".git")):
+        return {}
+    try:
+        r = subprocess.run(
+            ["git", "log", "--format=format:COMMIT", "--name-only", "--", *paths],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    first_seen = {}
+    idx = -1
+    for line in r.stdout.splitlines():
+        if line == "COMMIT":
+            idx += 1
+        elif line and line not in first_seen:
+            first_seen[line] = idx
+    return first_seen
+
+
+def summarize_taste_reviews(port_records, reviews_dir=REVIEWS_DIR, repo_root=ROOT):
+    """Aggregate taste scores across all research/reviews/*.md plus stale/unreviewed counts."""
+    scores = []
+    pending = 0
+    review_rel_by_name = {}
+    if reviews_dir and os.path.isdir(reviews_dir):
+        for fn in sorted(os.listdir(reviews_dir)):
+            if not fn.endswith(".md") or fn == "README.md":
+                continue
+            name = os.path.splitext(fn)[0]
+            full = os.path.join(reviews_dir, fn)
+            rel = os.path.relpath(full, repo_root)
+            review_rel_by_name[name] = rel
+            sc, is_pend = parse_review_score_text(_read_text(full))
+            if sc is not None:
+                scores.append(sc)
+            elif is_pend:
+                pending += 1
+
+    # Active ports without any review file
+    active_cp_by_name = {}
+    unreviewed = 0
+    for rec in port_records:
+        name = rec.get("name") or rec["id"].split("/")[-1]
+        if rec.get("path"):
+            active_cp_by_name[name] = rec["path"]
+        if name not in review_rel_by_name:
+            unreviewed += 1
+
+    # Stale: ports whose .cp file changed in a commit newer than the last commit touching its review.
+    stale = 0
+    if review_rel_by_name:
+        first_seen = _git_last_touch_order(repo_root, ["proto/ports", os.path.relpath(reviews_dir, repo_root)])
+        if first_seen:
+            extra_cp_by_name = {}
+            ports_root = os.path.join(repo_root, "proto", "ports")
+            if os.path.isdir(ports_root):
+                for dirpath, dirnames, filenames in os.walk(ports_root):
+                    dirnames[:] = [d for d in dirnames if d not in ("dream", "today")]
+                    for fn in filenames:
+                        if not fn.endswith(".cp"):
+                            continue
+                        pname = os.path.splitext(fn)[0]
+                        if pname in active_cp_by_name or pname not in review_rel_by_name:
+                            continue
+                        rel = os.path.relpath(os.path.join(dirpath, fn), repo_root)
+                        extra_cp_by_name.setdefault(pname, []).append(rel)
+
+            for name, rrel in review_rel_by_name.items():
+                rv_idx = first_seen.get(rrel)
+                if rv_idx is None:
+                    continue
+                if name in active_cp_by_name:
+                    cp_paths = [active_cp_by_name[name]]
+                else:
+                    cp_paths = extra_cp_by_name.get(name, [])
+                if any(
+                    (cp_idx := first_seen.get(cp)) is not None and cp_idx < rv_idx
+                    for cp in cp_paths
+                ):
+                    stale += 1
+
+    med = statistics.median(scores) if scores else None
+    if isinstance(med, float) and med.is_integer():
+        med = int(med)
+    return {
+        "reviewed": len(scores),
+        "pending": pending,
+        "median": round(med, 2) if isinstance(med, float) else med,
+        "under_4": sum(1 for s in scores if s < 4),
+        "min": min(scores) if scores else None,
+        "max": max(scores) if scores else None,
+        "histogram": {str(k): sum(1 for s in scores if int(round(s)) == k) for k in range(1, 6)},
+        "stale": stale,
+        "unreviewed": unreviewed,
+    }
 
 
 def generate_max_input(p, orig_bin, work_dir, explicit_specs):
@@ -1707,6 +1839,7 @@ def compute_totals(
     dream_scores=None,
     dream_compile=None,
     gate_fast=None,
+    taste_summary=None,
 ):
     total = len(port_records)
     passed = sum(1 for r in port_records if r["gate"] == "pass")
@@ -1800,7 +1933,22 @@ def compute_totals(
         for ratio, pid in sorted(ir_use, key=lambda x: (-x[0], x[1]))[:10]
     ]
 
-    taste_scores = [r["taste_score"] for r in port_records if r.get("taste_score") is not None]
+    if taste_summary is None:
+        taste_scores = [r["taste_score"] for r in port_records if r.get("taste_score") is not None]
+        med_t = statistics.median(taste_scores) if taste_scores else None
+        if isinstance(med_t, float) and med_t.is_integer():
+            med_t = int(med_t)
+        taste_summary = {
+            "reviewed": len(taste_scores),
+            "pending": 0,
+            "median": round(med_t, 2) if isinstance(med_t, float) else med_t,
+            "under_4": sum(1 for s in taste_scores if s < 4),
+            "min": min(taste_scores) if taste_scores else None,
+            "max": max(taste_scores) if taste_scores else None,
+            "histogram": {str(k): sum(1 for s in taste_scores if int(round(s)) == k) for k in range(1, 6)},
+            "stale": 0,
+            "unreviewed": sum(1 for r in port_records if r.get("taste_score") is None),
+        }
 
     return {
         "ports_total": total,
@@ -1862,13 +2010,9 @@ def compute_totals(
             "rss_max": round(r_max, 3) if r_max is not None else None,
             "rss_max_port": r_max_port,
         },
-        "taste": {
-            "reviewed": len(taste_scores),
-            "median": round(statistics.median(taste_scores), 2) if taste_scores else None,
-            "under_4": sum(1 for s in taste_scores if s < 4),
-            "min": min(taste_scores) if taste_scores else None,
-            "max": max(taste_scores) if taste_scores else None,
-        },
+        "taste": taste_summary,
+        "taste_stale": taste_summary.get("stale", 0),
+        "taste_unreviewed": taste_summary.get("unreviewed", 0),
         "interp": {
             "measured": len(interp_recs),
             "passed": sum(1 for r in port_records if (r.get("interp") or {}).get("ok") is True),
@@ -2498,6 +2642,7 @@ def merge_baseline_ports(existing_baseline, new_report, touched_ids=None):
         dream_scores=nt.get("dream_scores") if nt.get("dream_scores") is not None else et.get("dream_scores"),
         dream_compile=nt.get("dream_compile") if nt.get("dream_compile") is not None else et.get("dream_compile"),
         gate_fast=nt.get("gate_fast") if nt.get("gate_fast") is not None else et.get("gate_fast"),
+        taste_summary=nt.get("taste") if nt.get("taste") is not None else et.get("taste"),
     )
 
     out = dict(existing_baseline)
@@ -2689,9 +2834,16 @@ def print_summary(report, diff, show_ports=False, quiet=False):
                 )
     ts = t.get("taste") or {}
     if ts.get("reviewed"):
+        stale_n = t.get("taste_stale", ts.get("stale", 0))
+        unrev_n = t.get("taste_unreviewed", ts.get("unreviewed", 0))
+        pend_n = ts.get("pending", 0)
+        hist = ts.get("histogram") or {}
+        hist_str = " ".join(f"{k}:{hist.get(str(k), 0)}" for k in range(1, 6)) if hist else ""
+        extra = f" [{hist_str}]" if hist_str else ""
         print(
-            f"  taste:     {ts['reviewed']} reviewed, median {ts['median']:.1f}/5 "
-            f"(min {ts['min']}, max {ts['max']}, <4: {ts['under_4']})"
+            f"  taste:     {ts['reviewed']} reviewed, median {ts['median']}/5 "
+            f"(min {ts['min']}, max {ts['max']}, <4: {ts['under_4']}, "
+            f"pending: {pend_n}, stale: {stale_n}, unreviewed: {unrev_n}){extra}"
         )
     ip = t["interp"]
     if ip["measured"]:
@@ -2931,6 +3083,8 @@ def build_report(args):
     if mode == "fast" and args.write and baseline:
         merge_baseline_perf(port_records, baseline)
 
+    taste_summary = summarize_taste_reviews(port_records) if not only else None
+
     totals = compute_totals(
         port_records,
         fl_summary,
@@ -2941,6 +3095,7 @@ def build_report(args):
         dream_scores=dream_scores,
         dream_compile=dream_compile,
         gate_fast=gate_fast,
+        taste_summary=taste_summary,
     )
     if mode == "fast" and not only and baseline and totals["interp"].get("ratio_p50") is None:
         base_ip = (baseline.get("totals") or {}).get("interp") or {}

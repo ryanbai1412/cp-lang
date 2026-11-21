@@ -30,10 +30,10 @@ DREAM_RE = re.compile(r"(?m)^Dream:\s*(\d)\s*/\s*5\b")
 
 def parse_score(text):
     """1 to 5, "pending", or None when the review has no score line."""
-    m = SCORE_RE.search(text)
-    if not m:
-        return None
-    return "pending" if m[2] else int(m[1])
+    score, is_pending = sb.parse_review_score_text(text)
+    if is_pending:
+        return "pending"
+    return int(round(score)) if score is not None else None
 
 
 def parse_dream_score(text):
