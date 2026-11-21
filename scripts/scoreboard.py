@@ -914,29 +914,27 @@ def parse_friction_file(path):
         else:
             status = "open"
 
-        # Goals
+        # Goals: normalize to canonical AGENTS.md goal names
         raw_goals = fields.get("goal it hurts", fields.get("goals", fields.get("goal", "")))
+        raw_clean = re.sub(r"\([^)]*\)", "", raw_goals).lower()
+        canonical_map = [
+            ("express", ("express", "revise", "revisable")),
+            ("hard-to-get-wrong", ("hard-to-get-wrong", "hard to get wrong", "safety", "wrong")),
+            ("performance", ("performance", "control", "fast", "speed")),
+            ("doubt-to-evidence", ("doubt-to-evidence", "doubt to evidence", "evidence", "diagnos")),
+            ("dependable-submission", ("dependable-submission", "dependable submission", "submission", "judge")),
+            ("accumulate", ("accumulate", "library", "reuse")),
+            ("coherence", ("coherence", "coherent")),
+        ]
         goals = []
-        for g in re.split(r"[,;/]+", raw_goals.lower().rstrip(".")):
-            g = g.strip().strip("`")
-            if not g:
-                continue
-            # Normalize common shorthand
-            if g.startswith("express"):
-                g = "express"
-            elif g.startswith("hard"):
-                g = "hard-to-get-wrong"
-            elif g.startswith("perf"):
-                g = "performance"
-            elif g.startswith("evid"):
-                g = "evidence"
-            elif g.startswith("subm"):
-                g = "submission"
-            elif g.startswith("accum"):
-                g = "accumulate"
-            elif g.startswith("coher"):
-                g = "coherence"
-            goals.append(g)
+        for cname, needles in canonical_map:
+            if any(n in raw_clean for n in needles):
+                goals.append(cname)
+        if not goals and raw_clean.strip():
+            for g in re.split(r"[,;/]+", raw_clean.rstrip(".")):
+                g = g.strip().strip("`")
+                if g:
+                    goals.append(g)
         if not goals:
             warnings.append(f"{rel} :: {title}: missing Goal it hurts")
 
