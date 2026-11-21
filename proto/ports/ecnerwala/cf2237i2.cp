@@ -1,26 +1,65 @@
-// Codeforces 2237 I2.
-// Tree DP over a rooted tree whose edges carry '0', '1', or '?'.
-// At each vertex, `dp[u][depth][active, resolved]` counts ways where:
-//   - `depth` is the max depth of a resolved/active chain in processed children,
-//   - `active` in {OFF=0, ON=1, DEF=2} tracks whether an open active path reaches u
-//     (`DEF` carries the inclusion-exclusion adjustment on '0'/'1'/'?' edges),
-//   - `resolved` in {0, 1} tracks whether a resolved chain already sits strictly deepest.
+// Codeforces 2237 I2: Tree DP over a rooted tree with edge labels '0', '1', '?'.
+// At each vertex u, `dp[u]` counts valid labellings by `State(depth, active, resolved)`:
+//   - `depth`: max 1-edge depth among processed children,
+//   - `active` in {Off, On, Deferred}: whether an open 0-chain reaches u;
+//     `Deferred` carries the inclusion-exclusion state for an open chain whose
+//     closing edge is decided at an ancestor:
+//       - across a fixed `Zero` edge, only a `Deferred` child stays `Deferred`,
+//       - across a fixed `One` edge, a `Deferred` parent closes to `On`,
+//       - across an `Any` ('?') edge, a `Deferred` parent stays `Deferred` on `Edge.One`.
+//   - `resolved`: whether a closed chain already sits strictly deepest.
+//
+// Lifting a child across `edge` closes an active chain into a depth-1 resolved
+// chain on `Edge.One`, otherwise adds `edge` to `depth`. Merging `parent` with
+// `lifted` obeys four rules:
+//   1. at most one active chain and at most one resolved chain,
+//   2. an active parent cannot merge across `Edge.Zero`,
+//   3. a resolved chain must sit strictly deeper than the other side,
+//   4. an active lifted child requires `parent.depth == 0`, and two `Deferred`
+//      states cannot meet.
+// When `parent` is `(depth: 0, active: Off)` and `edge == Edge.One`, merging
+// also subtracts `ways` from `Active.On` (inclusion-exclusion: starting a fresh
+// `On` chain at u was already counted by the `Off` baseline). At the root,
+// `Deferred` states are excluded because no parent edge can close them.
+
 use std.tree.Rooted
 
 type Z = Mod<1_000_000_007>
 enum Label: Zero | One | Any
+enum Edge: Zero | One
+enum Active: Off | On | Deferred
 
-const OFF = 0
-const ON = 1
-const DEF = 2
+struct State(depth: Int, active: Active, resolved: Bool)
 
-fn can_merge(d0: Int, ca: Int, cn: Int, nd1: Int, n_na: Int, n_nn: Int, na: Int, e: Int) -> Bool:
-    if ca != OFF and n_na != OFF: return false
-    if cn != 0 and n_nn != 0: return false
-    if ca != OFF and e == 0: return false
-    if (n_nn != 0 and d0 > nd1) or (cn != 0 and d0 <= nd1): return false
-    if (n_na != OFF and d0 > 0) or (ca == DEF and na == DEF): return false
-    true
+fn active_idx(a: Active) -> Int = match a:
+    Active.Off => 0
+    Active.On => 1
+    Active.Deferred => 2
+
+fn bool_idx(b: Bool) -> Int = if b: 1 else: 0
+
+fn allowed_edges(lbl: Label) -> List<Edge> = match lbl:
+    Label.Zero => [Edge.Zero]
+    Label.One => [Edge.One]
+    Label.Any => [Edge.Zero, Edge.One]
+
+fn lift(child: State, edge: Edge) -> State:
+    if edge == Edge.One and child.active != Active.Off:
+        State(1, Active.Off, true)
+    else:
+        State(child.depth + if edge == Edge.One: 1 else: 0, child.active, child.resolved)
+
+fn can_merge(parent: State, lifted: State, child_active: Active, edge: Edge) -> Bool:
+    let one_active = parent.active == Active.Off or lifted.active == Active.Off
+    let one_resolved = not (parent.resolved and lifted.resolved)
+    let edge_ok = parent.active == Active.Off or edge == Edge.One
+    let resolved_deepest = (
+        not lifted.resolved or parent.depth <= lifted.depth
+    ) and (not parent.resolved or parent.depth > lifted.depth)
+    let active_clean = (lifted.active == Active.Off or parent.depth == 0) and not (
+        parent.active == Active.Deferred and child_active == Active.Deferred
+    )
+    one_active and one_resolved and edge_ok and resolved_deepest and active_clean
 
 @!multitest
 let n: 1..=500 = read()
@@ -39,57 +78,73 @@ for u in V:
     repeat deg: par[read<V>()] = u
 let t = Rooted.from_parents(par)
 
+let actives = [Active.Off, Active.On, Active.Deferred]
+let bools = [false, true]
+
 var dp: [V]List<[0..3, 0..2]Z> = []
 for p in t.Pre.rev:
     let u = t.at[p]
     var init_row: [0..3, 0..2]Z = 0
-    init_row[OFF, 0] = 1
-    init_row[DEF, 0] = 1
+    init_row[active_idx(Active.Off), 0] = 1
+    init_row[active_idx(Active.Deferred), 0] = 1
     var cur: List<[0..3, 0..2]Z> = [init_row]
     for c in t.children(u):
-        let child = dp[c]
-        let nh = max(cur.len, child.len + 1)
+        let child_dp = dp[c]
+        let edges = allowed_edges(label[c])
+        let nh = max(cur.len, child_dp.len + 1)
         var zero_row: [0..3, 0..2]Z = 0
         var next: List<[0..3, 0..2]Z> = [zero_row for _ in 0..nh]
         for (d0, row0) in cur.items:
-            for ca in 0..3:
-                for cn in 0..2 if row0[ca, cn] != 0:
-                    let vc = row0[ca, cn]
-                    for (d1, row1) in child.items:
-                        for na in 0..3:
-                            for nn in 0..2 if row1[na, nn] != 0:
-                                let ways = vc * row1[na, nn]
-                                for e in 0..2:
-                                    if (
-                                        label[c] == Label.Zero and e == 1
-                                    ) or (label[c] == Label.One and e == 0): continue
-                                    let (
-                                        n_na,
-                                        n_nn,
-                                        nd1,
-                                    ) = if e == 1 and na != OFF: (OFF, 1, 1) else: (na, nn, d1 + e)
-                                    if not can_merge(d0, ca, cn, nd1, n_na, n_nn, na, e): continue
-                                    let nd = max(d0, nd1)
-                                    let hn = if cn != 0 or n_nn != 0: 1 else: 0
-                                    if ca == DEF or na == DEF:
+            for ca in actives:
+                for cr in bools if row0[active_idx(ca), bool_idx(cr)] != 0:
+                    let parent = State(d0, ca, cr)
+                    let vc = row0[active_idx(ca), bool_idx(cr)]
+                    for (d1, row1) in child_dp.items:
+                        for na in actives:
+                            for nr in bools if row1[active_idx(na), bool_idx(nr)] != 0:
+                                let child = State(d1, na, nr)
+                                let ways = vc * row1[active_idx(na), bool_idx(nr)]
+                                for edge in edges:
+                                    let lifted = lift(child, edge)
+                                    if not can_merge(parent, lifted, na, edge): continue
+                                    let nd = max(parent.depth, lifted.depth)
+                                    let nr_out = bool_idx(parent.resolved or lifted.resolved)
+                                    if ca == Active.Deferred or na == Active.Deferred:
                                         match label[c]:
                                             Label.Zero =>
-                                                if na == DEF: next[nd][DEF, hn] += ways
+                                                if na == Active.Deferred: next[nd][
+                                                    active_idx(Active.Deferred),
+                                                    nr_out,
+                                                ] += ways
                                             Label.One =>
-                                                if ca == DEF and na != DEF: next[nd][ON, hn] += ways
+                                                if ca == Active.Deferred and na != Active.Deferred: next[nd][
+                                                    active_idx(Active.On),
+                                                    nr_out,
+                                                ] += ways
                                             Label.Any =>
-                                                if ca == DEF and na != DEF and e == 1: next[nd][
-                                                    DEF,
-                                                    hn,
+                                                if ca == Active.Deferred and na != Active.Deferred and edge == Edge.One: next[nd][
+                                                    active_idx(Active.Deferred),
+                                                    nr_out,
                                                 ] += ways
                                     else:
-                                        let ha = if ca != OFF or n_na != OFF: ON else: OFF
-                                        next[nd][ha, hn] += ways
-                                        if ca == OFF and e == 1 and d0 == 0: next[nd][
-                                            ON,
-                                            hn,
+                                        let na_out = if ca != Active.Off or lifted.active != Active.Off:
+                                            Active.On
+                                        else:
+                                            Active.Off
+                                        next[nd][active_idx(na_out), nr_out] += ways
+                                        if ca == Active.Off and edge == Edge.One and parent.depth == 0: next[nd][
+                                            active_idx(Active.On),
+                                            nr_out,
                                         ] -= ways
         cur = next
     dp[u] = cur
 
-print([row[a, r] for row in dp[V.first] for a in 0..2 for r in 0..2].sum())
+// Exclude Active.Deferred at the root: no parent edge exists to close it.
+print(
+    [
+        row[
+            active_idx(a),
+            bool_idx(r),
+        ] for row in dp[V.first] for a in [Active.Off, Active.On] for r in bools
+    ].sum()
+)
