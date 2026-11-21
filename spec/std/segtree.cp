@@ -541,6 +541,20 @@ pub struct DynamicOrderTree<D, T>:
     /// O(log^2 |D|). `k`-th smallest value (0-based) in `r`, or `none` when `k >= r.len`.
     pub fn kth(self, r: Range<D>, k: Int) -> ?T = todo
 
+/// O(q log |D|) space. Mergeable sparse binary segment tree over domain `D` for lazily pruned
+/// minimum-alive queries (`MergeSeg.singleton`, `merge`, `first_alive`).
+pub struct MergeSeg<D>:
+    root: Int
+
+    /// O(log |D|). Create a singleton tree containing only position `x`.
+    pub fn singleton(x: D) -> MergeSeg<D> = todo
+
+    /// O(log |D|) amortized per absorbed node. Merge `other` into `self` and return the combined tree.
+    pub fn merge(self, other: MergeSeg<D>) -> MergeSeg<D> = todo
+
+    /// O(log |D|) amortized. Return the smallest position `x` with `alive(x)` true, lazily pruning dead leaves.
+    pub fn first_alive(mut self, alive: D -> Bool) -> ?D = todo
+
 @test
 fn merge_sort_and_sparse_segtree_match_brute():
     domain I = 1..=14

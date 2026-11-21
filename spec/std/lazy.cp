@@ -949,15 +949,21 @@ pub struct LazyTreap<T, F>(
     pub fn to_list(self) -> List<T> = self.take(self.len)
 
 /// O(n) space. Implicit-key rope over a domain `D` supporting O(log n) expected cut, paste,
-/// reverse, range tag `apply`, and point `get`.
+/// reverse, range tag `apply`, path queries, and point `get`.
 pub struct Rope<D, T>:
     n: Int
 
-    /// O(n). Build a rope over `D` initialized from `a` or `fill`.
-    pub fn new(a: ?[D]T = none, fill: ?T = none) -> Rope<D, T> = todo
+    /// O(n). Build a rope over `D` initialized from `a`, `fill`, or a tag `merge` operation.
+    pub fn new(a: ?[D]T = none, fill: ?T = none, merge: ?((T, T) -> T) = none) -> Rope<D, T> = todo
+
+    /// O(log n) expected. Apply tag `tag` to subrange `r`.
+    pub fn apply(mut self, r: Range<D>, tag: T) = todo
 
     /// O(log n) expected. Reverse subrange `r` in place.
     pub fn reverse(mut self, r: Range<D>) = todo
+
+    /// O(log n) expected. Walk root-to-leaf to position `i` and return the first `some` result of `f` on path tags.
+    pub fn query_path<R>(mut self, i: D, f: T -> ?R) -> ?R = todo
 
     /// O(log n) expected. Read the element currently at position `i`.
     pub fn get(mut self, i: D) -> T = todo
