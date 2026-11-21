@@ -7,10 +7,10 @@ the script checks the outputs agree and reports best-of-N wall time.
 
 | bench | cpl (s) | hand C++ (s) | ratio |
 |---|---:|---:|---:|
-| bfs | 0.255 | 0.154 | 1.66x |
-| bfs01 | 0.559 | 0.221 | 2.53x |
-| dijkstra | 0.959 | 0.408 | 2.35x |
-| fixed_cost | 0.443 | 0.239 | 1.85x |
+| bfs | 0.156 | 0.157 | 0.99x |
+| bfs01 | 0.320 | 0.202 | 1.58x |
+| dijkstra | 0.412 | 0.350 | 1.18x |
+| fixed_cost | 0.290 | 0.217 | 1.34x |
 
 The gap is not in the search loops. Two codegen limits cost most of it:
 
@@ -21,6 +21,7 @@ The gap is not in the search loops. Two codegen limits cost most of it:
 - Reading and building the graph (`[E](u, v, w)` input, CSR build) is
   about 1.6x the hand version on its own, which is the whole `bfs` gap.
 
-Returning `Paths` (parent and arc witnesses, settle order) instead of a
-bare distance array costs about 15% on `dijkstra` (0.97 s to 1.13 s on the
-same input, same peak memory).
+Returning `Paths` (one `back` witness array, settle order) instead of a
+bare distance array is one extra write per improving relaxation. Storing
+`parent` and `via` as two arrays cost `dijkstra` 0.478 s (1.30x); one
+`back` array is 0.412 s (decision 78).

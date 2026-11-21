@@ -1106,7 +1106,7 @@ fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> // O(n + m)
 fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V> // O(n + m)
 fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)> // O(n + m)
 fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> [V]List<(V, W)> // O(n + m)
-struct Paths<V, W, A> // dist, parent, via: [V]?_; order: List<V>
+struct Paths<V, W, A> // dist: [V]?W, back: [V]?(from: V, via: A), order: List<V>
     fn get(self, v: V) -> ?W // O(1)
     fn reached(self, v: V) -> Bool // O(1)
     fn path(self, t: V) -> ?List<V> // O(len)

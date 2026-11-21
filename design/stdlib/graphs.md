@@ -148,8 +148,8 @@ as `g`.
 ```cp
 struct Paths<V, W, A>       // the result of every single-pair-family search
     dist: [V]?W             // none: unreachable
-    parent: [V]?V           // the vertex before v on one shortest path
-    via: [V]?A              // the arc (or move) that reached v
+    back: [V]?(from: V, via: A)  // the vertex before v on one shortest path
+                                 // and the arc (or move) that reached v
     order: List<V>          // reached vertices in settling order
     fn get(self, v: V) -> ?W                  // p[v], O(1)
     fn reached(self, v: V) -> Bool            // O(1)
@@ -189,17 +189,17 @@ Laws, for every search and every reached `v`:
 - `p[s] == 0` (or the given start) for a source `s` that no cheaper path
   reaches; `p[v] == none` exactly when `v` is unreachable.
 - Optimality: for every arc `a` from reached `u`, `p[a.to]! <= p[u]! + w(a)`.
-- Witness: for non-source `v`, `p[v]! == p[parent[v]!]! + w(via[v]!)`, so
+- Witness: for non-source `v` with `b = p.back[v]!`, `p[v]! == p[b.from]! + w(b.via)`, so
   `path(t)` starts at a source, ends at `t`, and its weights sum to `p[t]!`.
-- `order` is non-decreasing in `p`; every vertex appears after its parent,
+- `order` is non-decreasing in `p`; every vertex appears after its `from`,
   so a DP over the shortest-path DAG is a loop over `order`.
 - `bfs(next, from)` equals `dijkstra(next, [(s, 0) for s in from], a => 1)`
   and `bfs01` equals `dijkstra` with the same `w` (as distances; ties in
-  `parent` may differ).
+  `back` may differ).
 
-`Paths` costs three arrays of n plus the order list. That is what the C++
+`Paths` costs two arrays of n plus the order list. That is what the C++
 original keeps whenever it prints a path; when the distance is all a
-problem needs, the extra stores are one write per settled vertex, and the
+problem needs, the witness is one extra write per improving relaxation, and the
 benchmarks in `bench/graph/` measure them against a distance-only C++ BFS and
 Dijkstra.
 

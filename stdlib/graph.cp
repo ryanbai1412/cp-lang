@@ -613,15 +613,16 @@ fn a_plain_edge_list_needs_no_edge_domain():
     assert d[V(2)].is_empty
 
 /// What a search found: `p[v]` is the distance to `v` (`none` if unreachable),
-/// `parent[v]` the vertex before `v` on one shortest path, `via[v]` the arc or
-/// move that reached it, and `order` the reached vertices in settling order, so
-/// every vertex comes after its parent and distances never decrease. A search
-/// given `until: t` stops once `t` is settled: distances in `order` are exact,
-/// and any other vertex holds `none` or an upper bound.
+/// `back[v]` is `(from, via)`, the vertex before `v` on one shortest path and the
+/// arc or move that reached it (`none` at a source), and `order` the reached
+/// vertices in settling order, so every vertex comes after its `from` and
+/// distances never decrease. A search given `until: t` stops once `t` is settled:
+/// distances in `order` are exact, and any other vertex holds `none` or an upper
+/// bound. Cost: the witnesses take one slot per vertex and one write per improving
+/// relaxation, paid even when only `p[v]` is read.
 pub struct Paths<V, W, A>:
     dist: [V]?W
-    parent: [V]?V
-    via: [V]?A
+    back: [V]?(from: V, via: A)
     order: List<V>
 
     /// `p[v]`: the distance to `v`, or `none` if no source reaches it. O(1).
@@ -636,9 +637,9 @@ pub struct Paths<V, W, A>:
         if dist[t] == none: return none
         var out = [t]
         var at = t
-        while let u = parent[at]:
-            out.push(u)
-            at = u
+        while let b = back[at]:
+            out.push(b.from)
+            at = b.from
         reverse(mut out)
         out
 
@@ -647,9 +648,9 @@ pub struct Paths<V, W, A>:
         if dist[t] == none: return none
         var out = List<A>()
         var at = t
-        while let a = via[at]:
-            out.push(a)
-            at = parent[at]!
+        while let b = back[at]:
+            out.push(b.via)
+            at = b.from
         reverse(mut out)
         out
 
@@ -657,8 +658,7 @@ pub struct Paths<V, W, A>:
 /// reached. O(n + m).
 pub fn bfs<V, N, A>(next: N, from: List<V>, until: ?V = none) -> Paths<V, Int, A>:
     var dist: [V]?Int = none
-    var parent: [V]?V = none
-    var via: [V]?A = none
+    var back: [V]?(from: V, via: A) = none
     var queue = List<V>()
     for s in from:
         if dist[s] == none:
@@ -673,18 +673,16 @@ pub fn bfs<V, N, A>(next: N, from: List<V>, until: ?V = none) -> Paths<V, Int, A
         for a in next.out(u):
             if dist[a.to] == none:
                 dist[a.to] = d
-                parent[a.to] = u
-                via[a.to] = a
+                back[a.to] = (from: u, via: a)
                 queue.push(a.to)
-    Paths(dist, parent, via, queue)
+    Paths(dist, back, queue)
 
 /// Shortest distances when every weight `w(a)` is 0 or 1, from every vertex of `from`
 /// at distance 0: a deque, with 0-arcs pushed to the front; `until: t` stops once
 /// `t` is settled. O(n + m); traps on any other weight.
 pub fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none) -> Paths<V, Int, A>:
     var dist: [V]?Int = none
-    var parent: [V]?V = none
-    var via: [V]?A = none
+    var back: [V]?(from: V, via: A) = none
     var done: [V]Bool = false
     var order = List<V>()
     var queue = Deque<V>()
@@ -704,10 +702,9 @@ pub fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none) -> 
             let v = a.to
             if dist[v] == none or d + c < dist[v]!:
                 dist[v] = d + c
-                parent[v] = u
-                via[v] = a
+                back[v] = (from: u, via: a)
                 if c == 0: queue.push_front(v) else: queue.push(v)
-    Paths(dist, parent, via, order)
+    Paths(dist, back, order)
 
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)`
 /// pairs; `until: t` stops once `t` is settled. O((n + m) log m) with a binary heap
@@ -719,8 +716,7 @@ pub fn dijkstra<V, N, A, W>(
     until: ?V = none,
 ) -> Paths<V, W, A>:
     var dist: [V]?W = none
-    var parent: [V]?V = none
-    var via: [V]?A = none
+    var back: [V]?(from: V, via: A) = none
     var order = List<V>()
     var heap = MinHeap<(W, V)>()
     for (s, d) in from:
@@ -738,10 +734,9 @@ pub fn dijkstra<V, N, A, W>(
             let v = a.to
             if dist[v] == none or nd < dist[v]!:
                 dist[v] = nd
-                parent[v] = u
-                via[v] = a
+                back[v] = (from: u, via: a)
                 heap.push((nd, v))
-    Paths(dist, parent, via, order)
+    Paths(dist, back, order)
 
 /// Shortest distances over a state space `S` whose moves have fixed non-negative
 /// costs: from every state of `from` at distance 0, `step(mv, s)` is where move `mv`
@@ -758,8 +753,7 @@ pub fn fixed_cost_paths<S, M, W>(
 ) -> Paths<S, W, M>:
     let price = [cost(mv) for mv in moves]
     var dist: [S]?W = none
-    var parent: [S]?S = none
-    var via: [S]?M = none
+    var back: [S]?(from: S, via: M) = none
     var done: [S]Bool = false
     var order = List<S>()
     var queues: List<List<(W, S)>> = [[] for _ in 0..=moves.len]
@@ -791,18 +785,16 @@ pub fn fixed_cost_paths<S, M, W>(
                 assert nd >= d
                 if dist[t] == none or nd < dist[t]!:
                     dist[t] = nd
-                    parent[t] = s
-                    via[t] = moves[j]
+                    back[t] = (from: s, via: moves[j])
                     queues[j + 1].push((nd, t))
-    Paths(dist, parent, via, order)
+    Paths(dist, back, order)
 
 /// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or
 /// `none` when a source reaches a negative cycle. `order` lists each reached vertex
 /// after its parent. O(n * m).
 pub fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> ?Paths<V, W, A>:
     var dist: [V]?W = none
-    var parent: [V]?V = none
-    var via: [V]?A = none
+    var back: [V]?(from: V, via: A) = none
     for (s, d) in from:
         if dist[s] == none or d < dist[s]!: dist[s] = d
     var rounds = 0
@@ -817,20 +809,19 @@ pub fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> ?Path
                     let nd = d + w(a)
                     if dist[a.to] == none or nd < dist[a.to]!:
                         dist[a.to] = nd
-                        parent[a.to] = u
-                        via[a.to] = a
+                        back[a.to] = (from: u, via: a)
                         changed = true
     var kids: [V]List<V> = []
     var order = List<V>()
     for v in V:
-        if let p = parent[v]: kids[p].push(v)
+        if let b = back[v]: kids[b.from].push(v)
         elif dist[v] != none: order.push(v)
     var head = 0
     while head < order.len:
         let u = order[head]
         head += 1
         for v in kids[u]: order.push(v)
-    Paths(dist, parent, via, order)
+    Paths(dist, back, order)
 
 /// All-pairs shortest distances from the direct weights `w[u, v]` (`none`: no edge),
 /// or `none` if there is a negative cycle. A vertex is at distance 0 from itself

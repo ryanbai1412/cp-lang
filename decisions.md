@@ -3122,3 +3122,8 @@ time in `totals.gate_fast` and lists it under `warnings`, not
 `regressions`. Test: `test_dream_scores_and_gate_fast_ratchets`. Reverse by
 restoring the `fail` in `check.sh` and appending to `regressions` in
 `diff_against_baseline`.
+
+## 78. `Paths` keeps one witness array, `back` (2026-11-21)
+
+1. **`Paths<V, W, A>` stores `back: [V]?(from: V, via: A)` in place of separate `parent: [V]?V` and `via: [V]?A`.**
+   Reason: every search wrote both arrays on every improving relaxation, and g++ keeps those stores because the arrays escape through the returned struct, so a port that reads only `p[v]` paid two extra writes and two extra arrays of n. On `bench/graph/dijkstra` (n = 500k, m = 2M) the merge takes 0.478 s to 0.412 s against 0.350-0.368 s hand C++ (1.30x to 1.18x). One array of pairs makes that one write and one slot per vertex, with `path`/`arcs` unchanged; nothing read `.parent` or `.via` directly, so no accessor is kept. A program that never reads the witnesses at all is the codegen lane's general dead-field elimination over monomorphized structs, not a `_nopaths` twin. Reverse: restore the two fields in `stdlib/graph.cp` and the `parent[v] = u; via[v] = a` writes in each search.
