@@ -1,7 +1,7 @@
 # agc077a
 
-Score: 2/5
-Dream: 2/5
+Score: pending (port keeps the old shape until a reversed list view stops pulling 4.9 KB of `list_view` runtime; the rewrite grows emitted C++ 18.9 -> 23.2 KB while user code shrinks 5.1 -> 3.9 KB)
+Dream: pending (rewritten: one `Block` moves its four views together via `each`, ops are `Run`s, the before/after side rule is stated; awaits cold rescore)
 
 Re-reviewed after fbceb1d1, port and dream together (the port is the dream reformatted). `Pos`, `prefix1` and one `count_b` replace the duplicated getters. But four `Seg`s are moved in lockstep through tuple assignments, positions are raw `Int` with `+ 1` into `Pos`, and the recursion pushes into global op lists. The dream is under 4, so it goes back and the port score is provisional. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
