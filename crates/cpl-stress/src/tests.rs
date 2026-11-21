@@ -1938,6 +1938,55 @@ for _ in 0..q:
 }
 
 #[test]
+fn a_read_in_one_comparison_is_read() {
+    let src = "let n: 1..=4 = read()
+domain V = 0..n
+let lit: [V]Bool = [V] _ => read::<0..=1>() == 1
+print(lit.count(true))
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..10 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(4))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text.split_whitespace().map(|t| t.parse().unwrap()).collect();
+        assert_eq!(tokens.len() as i128, 1 + tokens[0], "{text}");
+        assert!(tokens[1..].iter().all(|v| (0..=1).contains(v)), "{text}");
+    }
+    // A chain may stop early, so how many of its reads run is unknown.
+    assert!(InputSpec::from_source("let a = 0 < read::<Int>() < read::<Int>()\nprint(a)\n").is_err());
+}
+
+#[test]
+fn bare_reads_take_the_type_the_call_they_are_passed_to_wants() {
+    let src = "struct Seg:
+    l: 1..=9
+    r: 1..=9
+let (n, m): (1..=5, 0..=6) = read()
+domain V = 1..=n
+domain E = 0..m
+let g = Graph<V, E>.undirected(read())
+let s = Seg(read(), read())
+print(g.deg(V.first) + s.l + s.r)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("bare-reads-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let tokens: Vec<i128> = text.split_whitespace().map(|t| t.parse().unwrap()).collect();
+        let (n, m) = (tokens[0], tokens[1]);
+        assert_eq!(tokens.len() as i128, 2 + 2 * m + 2, "{text}");
+        let edges = &tokens[2..2 + 2 * m as usize];
+        assert!(edges.iter().all(|v| (1..=n).contains(v)), "{text}");
+        assert!(tokens[tokens.len() - 2..].iter().all(|v| (1..=9).contains(v)), "{text}");
+    }
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
 fn stdlib_structs_residues_and_unsigned_values_are_generated() {
     let src = "const P = 7
 let p: Pt = read()

@@ -919,6 +919,65 @@ impl Builder<'_> {
         }))
     }
 
+    /// The type a call whose arguments are all bare `read()`s gives
+    /// them: `Graph<V, E>.undirected(read())` reads `[E](V, V)`, and a
+    /// struct `Event(read(), read())` reads an `Event`.
+    fn read_as(&self, expr: &Expr) -> Option<Type> {
+        let ExprKind::Call { callee, args } = &expr.kind else {
+            return None;
+        };
+        let bare = |arg: &cpl_syntax::ast::Arg| {
+            arg.name.is_none()
+                && matches!(&arg.value.kind, ExprKind::Call { callee, args }
+                    if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
+        };
+        if args.is_empty() || !args.iter().all(bare) {
+            return None;
+        }
+        let named = |name: &cpl_syntax::ast::Name, args: Vec<Type>| Type {
+            kind: TypeKind::Named {
+                name: name.clone(),
+                args,
+            },
+            span: expr.span,
+        };
+        match &callee.kind {
+            ExprKind::Field { base, name } if args.len() == 1 => {
+                let ExprKind::Generic { base, args: tys } = &base.kind else {
+                    return None;
+                };
+                let (ExprKind::Name(graph), [v, e]) = (&base.kind, tys.as_slice()) else {
+                    return None;
+                };
+                (graph == "Graph" && matches!(name.text.as_str(), "undirected" | "directed")).then(
+                    || Type {
+                        kind: TypeKind::Array {
+                            index: vec![e.clone()],
+                            elem: Box::new(Type {
+                                kind: TypeKind::Tuple(vec![v.clone(), v.clone()]),
+                                span: expr.span,
+                            }),
+                        },
+                        span: expr.span,
+                    },
+                )
+            }
+            ExprKind::Name(record) => match self.records.get(record) {
+                Some((_, Record::Struct(fields))) if fields.len() == args.len() => {
+                    Some(named(
+                        &cpl_syntax::ast::Name {
+                            text: record.clone(),
+                            span: callee.span,
+                        },
+                        Vec::new(),
+                    ))
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// The typed reads `expr` makes on every evaluation, in order, as
     /// `read<[n - 1](V, V)>()` inside `Graph.undirected(..)` or
     /// `[0..n] _ => read::<Int>() - 1`. False when a read is untyped or
@@ -932,6 +991,10 @@ impl Builder<'_> {
         if matches!(&expr.kind, ExprKind::Call { callee, .. } if matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
         {
             return Ok(false);
+        }
+        if let Some(ty) = self.read_as(expr) {
+            out.push(self.shape(&ty)?);
+            return Ok(true);
         }
         if let ExprKind::Call { callee, args } = &expr.kind {
             if let (ExprKind::Name(name), []) = (&callee.kind, args.as_slice()) {
@@ -982,6 +1045,10 @@ impl Builder<'_> {
             | ExprKind::Mut(expr) => self.inline(expr, out),
             ExprKind::Binary { op, lhs, rhs, .. } if !matches!(op, BinOp::And | BinOp::Or) => {
                 all(self, &mut [&**lhs, &**rhs].into_iter())
+            }
+            // A chain `a < b < c` may stop before its later operands.
+            ExprKind::Compare { first, rest } if rest.len() == 1 => {
+                all(self, &mut [&**first, &rest[0].1].into_iter())
             }
             ExprKind::Call { callee, args } => all(
                 self,
@@ -1110,8 +1177,6 @@ impl Builder<'_> {
         self.reads_code(&self.src[span_range(stmt.span.shift(self.base))])
     }
 
-    /// The reads of `stmts`, one pass of a loop or one arm of a choice,
-    /// added to `parts`. False when a field cannot describe them.
     /// The element type `a[i] = read()` reads: `a`'s, when its array
     /// type is declared.
     fn elem_read(&self, target: &Expr, value: &Expr) -> Option<(u32, Type)> {
@@ -1130,6 +1195,8 @@ impl Builder<'_> {
         (read == "read").then(|| self.elems.get(name).cloned())?
     }
 
+    /// The reads of `stmts`, one pass of a loop or one arm of a choice,
+    /// added to `parts`. False when a field cannot describe them.
     fn rows(
         &mut self,
         stmts: &[Stmt],

@@ -524,8 +524,13 @@ with words (`a_word_tag_chooses_by_the_words_the_program_compares_it_with`,
 A write `a[i] = read()` into an array declared once with its type,
 such as `var a: [0..=n]Int`, reads `a`'s element type, so a loop of such
 writes is a row per pass (`a_write_of_read_into_a_typed_array_reads_its_element_type`,
-25.26): 1,171 to 1,176 of 1,351 files. Still refused: 35 loops a row
-can't describe, 22 reads in a branch or `while true`, 15 fns that read
+25.26): 1,171 to 1,176 of 1,351 files. Bare `read()`s passed to a call
+that fixes their type read that type: `Graph<V, E>.undirected(read())`
+reads `[E](V, V)` and a struct `Seg(read(), read())` reads a `Seg`
+(`bare_reads_take_the_type_the_call_they_are_passed_to_wants`, 25.27),
+and a read in one comparison, `read::<Int>() == 1`, is read
+(`a_read_in_one_comparison_is_read`): 1,180 files. Still refused: 35
+loops a row can't describe, 18 reads in a branch or `while true`, 15 fns that read
 and take parameters or are called in a branch.
 Stress under a judge is a gate regression: all 16 interactive and 5
 checker ecnerwala ports pass 20 generated cases each under the

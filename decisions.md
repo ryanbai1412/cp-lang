@@ -1803,6 +1803,11 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   declared twice is refused, since which declaration a write means depends on scope. This
   is the read the program makes, so the generated row matches it without asking the port
   to read into a typed `let` first. Reverse: drop `elems` and the `Assign` arm in `rows`.
+- **25.27 A bare `read()` takes the type of the call it is passed to.** When every
+  argument is a bare `read()`, `Graph<V, E>.undirected`/`.directed` reads `[E](V, V)` and a
+  struct constructor reads the struct field by field, as the interpreter does. The edges
+  are any `[E](V, V)`: a port that needs a DAG or a connected map should say `Dag` or
+  `ConnectedGraph`, as a typed `let` would have to. Reverse: drop `Builder::read_as`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 
