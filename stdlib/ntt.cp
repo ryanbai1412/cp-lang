@@ -238,41 +238,40 @@ pub fn convolve_int(a: List<Int>, b: List<Int>, cyclic: Bool = false) -> List<In
         out[i] = Int(val)
     out
 
-/// In-place subset-sum zeta transform (`inverse: false`) or Mobius inverse (`inverse: true`).
-/// Length must be a power of two `2^k`. O(k * 2^k).
-pub fn sos_sub<T>(mut a: List<T>, inverse: Bool = false):
-    let n = a.len
-    assert n.is_pow2, "sos_sub requires a power-of-two length"
-    var bit = 1
-    while bit < n:
-        for mask in 0..n:
-            if (mask & bit) != 0:
-                if inverse: a[mask] -= a[mask ^ bit]
-                else: a[mask] += a[mask ^ bit]
-        bit <<= 1
+/// Direction of a sum-over-subsets (SOS) zeta/Mobius transform.
+pub enum SosOver = Sub | Sup
 
-/// In-place superset-sum zeta transform (`inverse: false`) or Mobius inverse (`inverse: true`).
-/// Length must be a power of two `2^k`. O(k * 2^k).
-pub fn sos_sup<T>(mut a: List<T>, inverse: Bool = false):
+/// In-place subset-sum (`over: Sub`, default) or superset-sum (`over: Sup`) zeta transform
+/// (`inverse: false`) or Mobius inverse (`inverse: true`). Length must be a power of two `2^k`. O(k * 2^k).
+pub fn sos<T>(mut a: List<T>, over: SosOver = Sub, inverse: Bool = false):
     let n = a.len
-    assert n.is_pow2, "sos_sup requires a power-of-two length"
+    assert n.is_pow2, "sos requires a power-of-two length"
     var bit = 1
-    while bit < n:
-        for mask in 0..n:
-            if (mask & bit) == 0:
-                if inverse: a[mask] -= a[mask | bit]
-                else: a[mask] += a[mask | bit]
-        bit <<= 1
+    match over:
+        Sub:
+            while bit < n:
+                for mask in 0..n:
+                    if (mask & bit) != 0:
+                        if inverse: a[mask] -= a[mask ^ bit]
+                        else: a[mask] += a[mask ^ bit]
+                bit <<= 1
+        Sup:
+            while bit < n:
+                for mask in 0..n:
+                    if (mask & bit) == 0:
+                        if inverse: a[mask] -= a[mask | bit]
+                        else: a[mask] += a[mask | bit]
+                bit <<= 1
 
 /// Bitwise OR convolution: `out[i | j] += a[i] * b[j]`. Lengths must be equal powers of two. O(n log n).
 pub fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T>:
     assert a.len == b.len and a.len.is_pow2, "convolve_or requires equal power-of-two lengths"
     var fa = [x for x in a]
     var fb = [x for x in b]
-    sos_sub(mut fa)
-    sos_sub(mut fb)
+    sos(mut fa, over: Sub)
+    sos(mut fb, over: Sub)
     for i in 0..fa.len: fa[i] = fa[i] * fb[i]
-    sos_sub(mut fa, inverse: true)
+    sos(mut fa, over: Sub, inverse: true)
     fa
 
 /// Bitwise AND convolution: `out[i & j] += a[i] * b[j]`. Lengths must be equal powers of two. O(n log n).
@@ -280,10 +279,10 @@ pub fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T>:
     assert a.len == b.len and a.len.is_pow2, "convolve_and requires equal power-of-two lengths"
     var fa = [x for x in a]
     var fb = [x for x in b]
-    sos_sup(mut fa)
-    sos_sup(mut fb)
+    sos(mut fa, over: Sup)
+    sos(mut fb, over: Sup)
     for i in 0..fa.len: fa[i] = fa[i] * fb[i]
-    sos_sup(mut fa, inverse: true)
+    sos(mut fa, over: Sup, inverse: true)
     fa
 
 fn fwht_xor(mut a: List<Int>):
@@ -364,14 +363,14 @@ fn sos_and_bitwise_convolutions():
         let a = [rand(-20, 20) for _ in 0..n]
         let b = [rand(-20, 20) for _ in 0..n]
         var s = [x for x in a]
-        sos_sub(mut s)
+        sos(mut s)
         for mask in 0..n: assert s[mask] == sum(a[sub] for sub in 0..n if (sub & mask) == sub)
-        sos_sub(mut s, inverse: true)
+        sos(mut s, inverse: true)
         assert s == a
         var u = [x for x in a]
-        sos_sup(mut u)
+        sos(mut u, over: Sup)
         for mask in 0..n: assert u[mask] == sum(a[sup] for sup in 0..n if (sup & mask) == mask)
-        sos_sup(mut u, inverse: true)
+        sos(mut u, over: Sup, inverse: true)
         assert u == a
         var want_or = List.filled(n, 0)
         var want_and = List.filled(n, 0)

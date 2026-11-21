@@ -27,7 +27,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.matrix` | `Mat<T>`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `XorBasis` | Dense matrices, exact and floating-point Gaussian elimination, GF(2) XOR bases |
 | `std.mo` | `mo_order`, `mo_steps` | Mo's offline range-query ordering and window transitions |
 | `std.mod` | `Mod<P>`, `Comb<P>` | Compile-time and runtime modular arithmetic and combinatorics |
-| `std.ntt` | `ntt`, `convolve`, `convolve_mod`, `convolve_int`, `sos_sub`, `sos_sup`, `convolve_or`, `convolve_and`, `convolve_xor` | NTT, linear/cyclic/3-prime/exact convolution, SOS, bitwise convolutions |
+| `std.ntt` | `ntt`, `convolve`, `convolve_mod`, `convolve_int`, `SosOver`, `sos`, `convolve_or`, `convolve_and`, `convolve_xor` | NTT, linear/cyclic/3-prime/exact convolution, SOS, bitwise convolutions |
 | `std.persistent` | `PersistentSegTree`, `Version`, `RangeKth` | Path-copying persistent segment tree and O(log n) range k-th smallest |
 | `std.prefix` | `Prefix1`, `Prefix2`, `PrefixN`, `prefix1`, `prefix2`, `prefix_n`, `prefix_fold`, `suffix_fold`, `Diff1`, `Diff2` | 1D/2D/N-D prefix sums, prefix/suffix monoid folds, difference arrays |
 | `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |
@@ -183,7 +183,7 @@ type DynamicZ = Mod<p>
 - **`Mod<P>` (`std.mod`):** 4-byte storage when `P <= 2^31 - 1`, `+`, `-`, `*`, `/`, `**`, `.pow(e)`, `.inv` (also written `.inv()`), `.try_inv() -> ?Z` (for composite moduli), `.val -> Int`. Intentionally omits `Ord`.
 - **`Comb<P>()` (`std.mod`):** `.fact(n)`, `.inv_fact(n)`, `.choose(n, k)`, `.arrange(n, k)`, `.multinomial(ks)`, `.catalan(n)` (an immutable `let comb = Comb<MOD>()` extends its tables lazily).
 - **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd`, `isqrt`, `ceil_div`, `choose2`, `pow_mod`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`, `Sieve(n)` (`sv.is_prime(x)`, `sv.factor(x)`, `sv.phi_table()`, `sv.mobius_table()`, `sv.div_count_table()`, `sv.div_sum_table()`, `sv.spf`, `sv.primes`), `sieve_multiplicative`, `factor(n)`, `factor_big(n)`, `divisors(n)`, `divisors_from_factors(fs)`.
-- **NTT & convolutions (`std.ntt`):** `ntt<P>(mut a, invert:)`, `convolve<P>(a, b, cyclic:)`, `convolve_mod(a, b, m, cyclic:)`, `convolve_int(a, b, cyclic:)`, in-place `sos_sub`/`sos_sup(mut f, inverse:)`, and `convolve_or`/`convolve_and`/`convolve_xor`.
+- **NTT & convolutions (`std.ntt`):** `ntt<P>(mut a, inverse:)`, `convolve<P>(a, b, cyclic:)`, `convolve_mod(a, b, m, cyclic:)`, `convolve_int(a, b, cyclic:)`, in-place `sos(mut f, over: Sub | Sup = Sub, inverse:)`, and `convolve_or`/`convolve_and`/`convolve_xor`.
 - **Matrices & XOR basis (`std.matrix`):** `Mat<T>` (`+`, `-`, `*`, `.pow(e)`, `.mul_vec(v)`, `.transpose()`, `.product(n)`, exact-field `.det()`, `.rank()`, `.solve(b)`, `.solve_space(b)`, `.inverse()`), floating-point `det_real`/`rank_real`/`solve_real`/`inverse_real` with explicit `eps:`, and `XorBasis` (`.add`, `.reduce`, `.contains`, `.max_xor`, `.min_xor`, `.kth`, `.merge`, `.monoid`).
 - **Exact geometry (`std.geometry`):** `Pt<T = Int>` with `.dot`, `.cross`, `.norm2`, `orient(a, b, c)` (`-1 | 0 | 1`), `turn`, `turn_eps`, and `ByAngle` for exact integer angular sorting.
 

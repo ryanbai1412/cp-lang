@@ -468,10 +468,9 @@ fn convolve_mod(a: List<Int>, b: List<Int>, m: Int, cyclic: Bool = false) -> Lis
     // three NTT primes and Garner CRT; any 1 <= m < 2^31
 fn convolve_int(a: List<Int>, b: List<Int>, cyclic: Bool = false) -> List<Int>
     // exact signed integer convolution when every output fits in about +-2^62
-fn sos_sub<T>(a: List<T>) -> List<T> // O(n log n); subset zeta transform
-fn sos_sub_inv<T>(a: List<T>) -> List<T> // O(n log n); subset Mobius transform
-fn sos_sup<T>(a: List<T>) -> List<T> // O(n log n); superset zeta transform
-fn sos_sup_inv<T>(a: List<T>) -> List<T> // O(n log n); superset Mobius transform
+enum SosOver = Sub | Sup
+fn sos<T>(mut a: List<T>, over: SosOver = Sub, inverse: Bool = false)
+    // O(n log n); subset (Sub) or superset (Sup) zeta/Mobius transform in place
 fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n)
 fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n)
 fn convolve_xor<T>(a: List<T>, b: List<T>) -> List<T> // O(n log n); requires / 2
@@ -1528,7 +1527,7 @@ fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>> // O(n^2)
 fn aliens(k: Int, lambdas: Range<Int>, solve: Int -> (val: Int, count: Int))
     -> Int                                    // O(log) calls of solve
 fn subset_sums(xs: List<Int>) -> List<Int>    // O(2^n), sorted
-// sums over subsets / supersets: std.ntt.sos_sub / sos_sup (4.5)
+// sums over subsets / supersets: std.ntt.sos(mut f, over: Sub | Sup = Sub, inverse: Bool = false) (4.5)
 ```
 
 ## 5. Not here yet

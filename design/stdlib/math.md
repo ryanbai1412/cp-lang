@@ -246,10 +246,9 @@ fn convolve_int(
     // min(n, m) * max(|a|) * max(|b|) < P1 / 2, else 3-prime CRT.
 
 // Bitwise convolutions and subset/superset zeta-Mobius transforms (n = 2^k)
-fn sos_sub<T>(a: List<T>) -> List<T>                // O(n log n); out[m] = sum_{s sub m} a[s]
-fn sos_sub_inv<T>(a: List<T>) -> List<T>            // O(n log n); inverse of sos_sub
-fn sos_sup<T>(a: List<T>) -> List<T>                // O(n log n); out[m] = sum_{m sub s} a[s]
-fn sos_sup_inv<T>(a: List<T>) -> List<T>            // O(n log n); inverse of sos_sup
+enum SosOver = Sub | Sup
+fn sos<T>(mut a: List<T>, over: SosOver = Sub, inverse: Bool = false)
+    // O(n log n); subset (Sub) or superset (Sup) zeta/Mobius transform in place
 fn convolve_or<T>(a: List<T>, b: List<T>) -> List<T>
     // O(n log n); c[k] = sum_{i | j == k} a[i] * b[j]
 fn convolve_and<T>(a: List<T>, b: List<T>) -> List<T>

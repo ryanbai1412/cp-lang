@@ -4,7 +4,7 @@
 //! layer whose optimal split moves right is `dnc_layer` (over `monotone_minima`); an interval DP with
 //! monotone splits is `knuth`; "exactly `k` pieces" over a convex cost is
 //! `aliens`. Meet in the middle starts from `subset_sums`; sums over subsets and
-//! supersets of masks are `std.ntt`'s `sos_sub` / `sos_sup`. The
+//! supersets of masks are `std.ntt`'s `sos(mut f, over: Sub | Sup = Sub, inverse:)`. The
 //! recurrence itself stays in your code, and a memoized recursion is
 //! `@memo`. Each optimization names the law it needs; `std.spec` checks it
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,

@@ -328,8 +328,8 @@ and generic `sieve_multiplicative`), `factor`, `factor_big`, `divisors`,
 `primitive_root`, and `floor_sum`.
 
 `ntt.cp` provides `ntt<P>`, `convolve<P>`, `convolve_mod`, and `convolve_int`
-(all with `cyclic: Bool = false`), plus in-place `sos_sub`/`sos_sup` (with
-`inverse: Bool = false`) and `convolve_or`/`convolve_and`/`convolve_xor`.
+(all with `cyclic: Bool = false`), plus in-place `sos(mut a, over: Sub | Sup = Sub, inverse: Bool = false)`
+and `convolve_or`/`convolve_and`/`convolve_xor`.
 
 `matrix.cp` provides flat row-major `Mat<T>` (`+`, `-`, `*`, `pow`, `mul_vec`,
 `transpose`, `product` monoid, exact-field `det`, `rank`, `solve`, `solve_space`,
@@ -450,7 +450,7 @@ is evidence, not a proof.
   `bsearch_real`, `ternary_max` / `ternary_min` (and `_real`),
   `parallel_bsearch`.
 - `dp.cp`: `Line`, `LiChao`, `monotone_minima`, `dnc_layer`,
-  `knuth`, `aliens`, `subset_sums` (SOS is `ntt.cp`'s `sos_sub` / `sos_sup`).
+  `knuth`, `aliens`, `subset_sums` (SOS is `ntt.cp`'s `sos`).
 - `graph.cp`: `Graph`, `bfs`, `dijkstra`, `topo` (including vertexless
   `topo::<V>`), `scc`, `components`, `condense`, `two_edge_components`,
   `articulation_points`, `biconnected_components`, `two_color`.
@@ -466,7 +466,7 @@ is evidence, not a proof.
   `factor`, `factor_big`, `divisors`, `divisors_from_factors`, `inv_mod`,
   `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`).
 - `ntt.cp`: `ntt<P>`, `convolve<P>`, `convolve_mod`, `convolve_int` (`cyclic:`),
-  `sos_sub`, `sos_sup` (`inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`.
+  `SosOver`, `sos` (`over:`, `inverse:`), `convolve_or`, `convolve_and`, `convolve_xor`.
 - `matrix.cp`: `Mat<T>` (arithmetic, `pow`, `product`, exact `det`/`rank`/`solve`/`solve_space`/`inverse`),
   `det_real`/`rank_real`/`solve_real`/`inverse_real` (`eps:`), and `XorBasis`.
 - `strings.cp`: Z, prefix function, KMP (`find_all`, `prefix_matches`,

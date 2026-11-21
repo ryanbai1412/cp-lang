@@ -45,7 +45,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'Marks', 'Mat', 'MaxHeap', 'MaxSub', 'MergeSortTree', 'MinHeap', 'Mod', 'MonoDeque', 'Monoid', 'Neighbours',
     'Palindromes', 'PalindromicTree', 'ParityDsu', 'Perm', 'PersistentSegTree', 'Prefix1', 'Prefix2', 'PrefixN', 'Pt',
     'RangeFenwick', 'RangeKth', 'Reversible', 'Rng', 'RollingHash', 'Rooted', 'SegTree', 'Sieve', 'SimpleGraph',
-    'SortedBag', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree', 'Tree', 'Trie', 'Vec',
+    'SortedBag', 'SosOver', 'SparseSegTree', 'SparseTable', 'SuffixArray', 'SuffixAutomaton', 'Target', 'TimeStep', 'TimeTree', 'Tree', 'Trie', 'Vec',
     'Version', 'WindowFold', 'XorBasis', 'XorFenwick',
 ];
 
@@ -91,7 +91,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'primitive_root', 'project', 'rank_real', 'ray', 'recurrence_at', 'reflect', 'reverse', 'rfind',
     'rotate_left', 'rotate_right', 'run_ranges', 'run_ranges_by', 'same_dir', 'seg_dist',
     'segments_meet', 'sieve_multiplicative', 'sign_eps', 'sliding_max', 'sliding_min', 'solve_real',
-    'sos_sub', 'sos_sup', 'splitmix64', 'suffix_array', 'suffix_fold', 'suffix_scan', 'swap_at',
+    'sos', 'splitmix64', 'suffix_array', 'suffix_fold', 'suffix_scan', 'swap_at',
     'take', 'ternary_max', 'ternary_max_real', 'ternary_min', 'ternary_min_real', 'turn',
     'two_color', 'two_edge_components', 'undirected_of_pairs', 'undirected_of_triples',
     'unimodality_break', 'update', 'upper_hull', 'vcross', 'vdist', 'vdot', 'vturn', 'with_prev',
