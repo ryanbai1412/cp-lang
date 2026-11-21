@@ -24,7 +24,9 @@ fn fits(a: Vec, b: Vec) -> Bool = 0.5 <= (a - b).len <= 1.0
 
 struct Step(u: Vec, v: Vec, at: Vec)
 
-fn ladder(mut off_tip: Vec, mut on_tip: Vec, rungs: List<(off: Vec, on: Vec)>) -> List<Step>:
+fn ladder(off_init: Vec, on_init: Vec, rungs: List<(off: Vec, on: Vec)>) -> List<Step>:
+    var off_tip = off_init
+    var on_tip = on_init
     var steps: List<Step> = []
     for r in rungs:
         steps.push(Step(off_tip, on_tip, r.off))
@@ -48,7 +50,7 @@ let steps =
         let opening = [Step(p1, p2, s), Step(p2, s, start), Step(s, start, t1)]
         opening + ladder(s, t1, [(s + d * (i - 1), t0 + d * i) for i in 2..=k])
 
-var id: Map<Vec, Int> = { p1: 1, p2: 2 }
+var id: Map<Vec, Int> = [p1: 1, p2: 2]
 print(m)
 for st in steps:
     print("{id[st.u]!} {id[st.v]!} {st.at.x:.20f} {st.at.y:.20f}")
