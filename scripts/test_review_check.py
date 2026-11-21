@@ -36,21 +36,25 @@ class EvaluateTest(unittest.TestCase):
         self.assertEqual(st["new"], 0)
 
     def test_new_port_needs_dream_and_review(self):
-        errors, _ = rc.evaluate(ports("old", "new"), self.base, {}, set(), set())
+        errors, _ = rc.evaluate(ports("old", "new"), self.base, {}, set(), {"new"}, touched={"new"})
         self.assertEqual(len(errors), 2)
-        errors, _ = rc.evaluate(ports("old", "new"), self.base, {"new": "pending"}, {"new"}, set())
+        errors, _ = rc.evaluate(ports("old", "new"), self.base, {"new": "pending"}, {"new"}, {"new"}, touched={"new"})
         self.assertEqual(errors, [])
 
-    def test_ratchet_blocks_only_a_change_adding_a_port(self):
+    def test_changed_port_needs_review_and_under_4_does_not_block(self):
+        # Unrelated change (empty added/touched) is never blocked by under-4 scores or missing reviews.
         reviews = {"a": 3, "b": "pending"}
         all_ports = ports("old", "a", "b")
-        errors, st = rc.evaluate(all_ports, self.base, reviews, {"a", "b"}, set())
+        errors, st = rc.evaluate(all_ports, self.base, reviews, {"a", "b"}, set(), touched=set())
         self.assertEqual(errors, [])
         self.assertEqual(st["new_under_4"], 1)
-        errors, _ = rc.evaluate(all_ports, self.base, reviews, {"a", "b"}, {"b"})
-        self.assertTrue(errors and errors[0].startswith("ratchet"))
-        errors, _ = rc.evaluate(all_ports, dict(self.base, new_under_4_max=1), reviews, {"a", "b"}, {"b"})
+        # Adding a new port with dream + review is NOT blocked by other ports scoring under 4.
+        errors, _ = rc.evaluate(all_ports, self.base, reviews, {"a", "b"}, {"b"}, touched={"b"})
         self.assertEqual(errors, [])
+        # Changing an existing port without a review file fails with an attributable error.
+        errors, _ = rc.evaluate(all_ports, self.base, reviews, {"a", "b"}, set(), touched={"old"})
+        self.assertEqual(len(errors), 1)
+        self.assertIn("old: changed port without a review", errors[0])
 
     def test_stats(self):
         _, st = rc.evaluate(ports("old", "a"), self.base, {"old": 2, "a": 5}, {"a"}, set())

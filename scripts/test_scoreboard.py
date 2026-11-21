@@ -1053,6 +1053,62 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             self.assertEqual(d_good["regressions"], [])
             self.assertTrue(any("dot_pow" in m for m in d_good["improvements"]))
 
+    def test_attributable_gate_ratchets(self):
+        base = {
+            "ports": [
+                {"id": "ecnerwala/cf2124f2", "gate": "pass", "emitted_bytes": 15000},
+                {"id": "ecnerwala/cf2084h", "gate": "pass", "emitted_bytes": 9000},
+            ],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 0},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+            },
+        }
+        cur = {
+            "ports": [
+                {"id": "ecnerwala/cf2124f2", "gate": "pass", "emitted_bytes": 17000},
+                {"id": "ecnerwala/cf2084h", "gate": "pass", "emitted_bytes": 9000},
+            ],
+            "totals": {
+                "frictions": {"open_blockers": 0, "warnings": 2},
+                "tokens": {},
+                "friction_lint": {"wa_trap": 0},
+            },
+        }
+        # Commit touching only cf2084h is NOT blocked by untouched cf2124f2 or unrelated friction warnings.
+        scope_other_port = {
+            "touched_ports": {"ecnerwala/cf2084h"},
+            "touched_codegen_or_stdlib": False,
+            "codegen_causes": [],
+            "touched_frictions": False,
+            "touched_reviews": False,
+            "touched_dreams": False,
+            "touched_goal_tests": False,
+        }
+        d_other = sb.diff_against_baseline(cur, base, mode="fast", scope=scope_other_port)
+        self.assertEqual(d_other["regressions"], [])
+        self.assertTrue(any("cf2124f2" in w and "unrelated" in w for w in d_other["warnings"]))
+
+        # Commit touching cf2124f2 IS blocked and names `touched port`.
+        scope_same_port = {**scope_other_port, "touched_ports": {"ecnerwala/cf2124f2"}}
+        d_same = sb.diff_against_baseline(cur, base, mode="fast", scope=scope_same_port)
+        self.assertEqual(len(d_same["regressions"]), 1)
+        self.assertIn("ecnerwala/cf2124f2", d_same["regressions"][0])
+        self.assertIn("cause: touched port", d_same["regressions"][0])
+
+        # Commit touching codegen/stdlib IS blocked and names the port + codegen cause.
+        scope_codegen = {
+            **scope_other_port,
+            "touched_ports": set(),
+            "touched_codegen_or_stdlib": True,
+            "codegen_causes": ["crates/cpl-codegen/src/emit.rs"],
+        }
+        d_cg = sb.diff_against_baseline(cur, base, mode="fast", scope=scope_codegen)
+        self.assertEqual(len(d_cg["regressions"]), 1)
+        self.assertIn("ecnerwala/cf2124f2", d_cg["regressions"][0])
+        self.assertIn("stdlib/codegen diff (crates/cpl-codegen/src/emit.rs)", d_cg["regressions"][0])
+
 
 if __name__ == "__main__":
     unittest.main()

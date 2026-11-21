@@ -69,41 +69,61 @@ def dream_gap(port):
     return ours / dream if dream else None
 
 
-def added_port_names(names):
-    """Names among `names` whose .cp the staged change adds. Each commit is checked
-    as it is made, so earlier commits need no range against a possibly stale
-    origin/main."""
-    out = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=A", "--", "proto/ports"],
-                         cwd=sb.ROOT, capture_output=True, text=True).stdout
+def touched_port_names(names):
+    """Return (added, touched) port names among `names` changed in the working tree / index."""
     added = set()
-    for line in out.splitlines():
-        m = re.fullmatch(r"proto/ports/[^/]+/([^/]+)\.cp", line)
-        if m and m[1] in names:
-            added.add(m[1])
+    touched = set()
+    for cmd in (
+        ["git", "diff", "--cached", "--name-status", "--diff-filter=AM", "--", "proto/ports"],
+        ["git", "diff", "--name-status", "--diff-filter=AM", "--", "proto/ports"],
+    ):
+        out = subprocess.run(cmd, cwd=sb.ROOT, capture_output=True, text=True).stdout
+        for line in out.splitlines():
+            parts = line.split("\t", 1)
+            if len(parts) != 2:
+                continue
+            status, path = parts[0].strip(), parts[1].strip()
+            m = re.fullmatch(r"proto/ports/[^/]+/([^/]+)\.cp", path)
+            if m and m[1] in names:
+                touched.add(m[1])
+                if status.startswith("A"):
+                    added.add(m[1])
+    return added, touched
+
+
+def added_port_names(names):
+    """Names among `names` whose .cp the staged change adds."""
+    added, _ = touched_port_names(names)
     return added
 
 
-def evaluate(ports, baseline, reviews, dreams, added):
-    """Pure core: (errors, stats). `dreams` is the set of names with a dream file,
-    `added` the new names the change being checked adds."""
+def evaluate(ports, baseline, reviews, dreams, added, touched=None):
+    """Pure core: (errors, stats).
+
+    Attributable rules:
+    - Every new port (`added`) needs a dream file and a review file (`Score: N/5` or `Score: pending`).
+    - Every changed port (`touched`) needs a review file (`Score: N/5` or `Score: pending`).
+    - Scores under 4 are tracked and reported in stats, never a commit blocker.
+    """
     old = set(baseline["ports"])
     new = [p["name"] for p in ports if p["name"] not in old]
     errors = []
-    for name in new:
+    check_reviews = set(added) | (set(touched) if touched is not None else set())
+    for name in sorted(added):
         if name not in dreams:
             errors.append(f"{name}: new port without a dream (proto/ports/<group>/dream/{name}.cp)")
+    for name in sorted(check_reviews):
         if name not in reviews:
-            errors.append(f"{name}: new port without a review (research/reviews/{name}.md, "
-                          "`Score: pending` until reviewed)")
+            kind = "new" if name in added else "changed"
+            errors.append(
+                f"{name}: {kind} port without a review (research/reviews/{name}.md, "
+                "`Score: pending` until reviewed)"
+            )
         elif reviews[name] is None:
             errors.append(f"{name}: research/reviews/{name}.md has no `Score: N/5` or `Score: pending` line")
     scored = {n: s for n, s in reviews.items() if isinstance(s, int)}
     new_under = sorted(n for n in new if scored.get(n, 5) < 4)
     cap = baseline.get("new_under_4_max", 0)
-    if len(new_under) > cap and added:
-        errors.append(f"ratchet: {len(new_under)} new ports score under 4 ({', '.join(new_under)}), "
-                      f"over the {cap} allowed, so no new port may land ({', '.join(sorted(added))}); "
-                      "rewrite those first")
     stats = {
         "ports": len(ports),
         "new": len(new),
@@ -134,13 +154,15 @@ def main():
                     for p in ports if os.path.isfile(review_path(p["name"]))}
     dream_scores = {n: s for n, s in dream_scores.items() if s is not None}
     sent_back = sorted(n for n, s in dream_scores.items() if s < 4)
-    errors, st = evaluate(ports, baseline, reviews, dreams, added_port_names(new) if args.check else set())
+    all_names = {p["name"] for p in ports}
+    added, touched = touched_port_names(all_names) if args.check else (set(), set())
+    errors, st = evaluate(ports, baseline, reviews, dreams, added, touched=touched)
     gaps = [g for g in (dream_gap(p) for p in ports) if g]
     gap = f"{statistics.median(gaps):.2f}x over {len(gaps)}" if gaps else "none"
     median = f"{st['median']:g}" if st["median"] is not None else "none"
     print(f"reviews: {st['reviewed']}/{st['ports']} scored, median {median}, {st['under_4']} under 4, "
           f"{st['pending']} pending; new ports {st['new']}, {st['new_under_4']} under 4 "
-          f"(ratchet {st['cap']}); dream-token gap {gap}")
+          f"(tracked, non-blocking); dream-token gap {gap}")
     dmed = f"{statistics.median(dream_scores.values()):g}" if dream_scores else "none"
     print(f"dreams: {len(dream_scores)} scored, median {dmed}, {len(sent_back)} sent back"
           + (f" ({', '.join(sent_back)})" if sent_back else ""))

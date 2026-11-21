@@ -1841,11 +1841,123 @@ def compute_totals(
     }
 
 
-def diff_against_baseline(current, baseline, mode="fast", subset=False):
+def detect_change_scope(repo_root=ROOT, base_ref="origin/main"):
+    """Classify the current change (staged + unstaged + ahead of base_ref) for gate attribution."""
+    changed = set()
+    try:
+        ref_ok = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", base_ref],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        ).returncode == 0
+        diff_ref = base_ref if ref_ok else "HEAD"
+        r = subprocess.run(
+            ["git", "diff", "--name-only", diff_ref],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        if r.returncode == 0:
+            changed.update(line.strip() for line in r.stdout.splitlines() if line.strip())
+        st = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        if st.returncode == 0:
+            for line in st.stdout.splitlines():
+                if len(line) > 3:
+                    p = line[3:].strip()
+                    if " -> " in p:
+                        p = p.split(" -> ", 1)[1]
+                    if p:
+                        changed.add(p)
+    except OSError:
+        return None
+
+    touched_ports = set()
+    codegen_causes = []
+    touched_frictions = False
+    touched_reviews = False
+    touched_dreams = False
+    touched_goal_tests = False
+    for p in sorted(changed):
+        norm = p.replace("\\", "/")
+        if norm.startswith("crates/") or norm.startswith("stdlib/"):
+            codegen_causes.append(norm)
+        if norm.startswith("research/frictions/"):
+            touched_frictions = True
+        if norm.startswith("research/reviews/"):
+            touched_reviews = True
+        if norm.startswith("bench/goal_tests/"):
+            touched_goal_tests = True
+        if "/dream/" in norm and norm.startswith("proto/ports/"):
+            touched_dreams = True
+        pid = _port_id_from_relpath(norm)
+        if pid:
+            touched_ports.add(pid)
+    return {
+        "changed_files": changed,
+        "touched_ports": touched_ports,
+        "touched_codegen_or_stdlib": bool(codegen_causes),
+        "codegen_causes": codegen_causes,
+        "touched_frictions": touched_frictions,
+        "touched_reviews": touched_reviews,
+        "touched_dreams": touched_dreams,
+        "touched_goal_tests": touched_goal_tests,
+    }
+
+
+def _attribution_cause(scope, pid=None, area=None):
+    """Return (attributable: bool, cause_tag: str) for a regression under `scope`."""
+    if scope is None:
+        return True, ""
+    if pid is not None:
+        if pid in scope.get("touched_ports", set()):
+            return True, " [cause: touched port]"
+        if scope.get("touched_codegen_or_stdlib"):
+            causes = scope.get("codegen_causes") or []
+            sample = ", ".join(causes[:3]) + (f" (+{len(causes) - 3} more)" if len(causes) > 3 else "")
+            return True, f" [cause: stdlib/codegen diff ({sample})]"
+        return False, " [unrelated to this change]"
+    if area == "frictions":
+        return (True, "") if scope.get("touched_frictions") else (False, " [unrelated to this change]")
+    if area == "reviews":
+        return (True, "") if scope.get("touched_reviews") else (False, " [unrelated to this change]")
+    if area == "dream_compile":
+        if scope.get("touched_codegen_or_stdlib") or scope.get("touched_dreams"):
+            return True, ""
+        return False, " [unrelated to this change]"
+    if area == "spelling_drift":
+        if scope.get("touched_ports") or scope.get("touched_dreams"):
+            return True, ""
+        return False, " [unrelated to this change]"
+    if area == "goal_tests":
+        if scope.get("touched_codegen_or_stdlib") or scope.get("touched_goal_tests"):
+            return True, ""
+        return False, " [unrelated to this change]"
+    if area == "ports_or_codegen":
+        if scope.get("touched_ports") or scope.get("touched_codegen_or_stdlib"):
+            return True, ""
+        return False, " [unrelated to this change]"
+    return True, ""
+
+
+def diff_against_baseline(current, baseline, mode="fast", subset=False, scope=None):
     """Compare current scoreboard against baseline and return structured diff + regressions."""
     regressions = []
     improvements = []
     warnings = []
+
+    def record_regression(msg, pid=None, area=None):
+        attr, tag = _attribution_cause(scope, pid=pid, area=area)
+        if attr:
+            regressions.append(msg + tag)
+        else:
+            warnings.append(msg + tag)
+
     cur_ports = {r["id"]: r for r in current["ports"]}
     base_ports = {r["id"]: r for r in baseline.get("ports", [])} if baseline else {}
 
@@ -1857,22 +1969,23 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
         if r["gate"] != "pass":
             was = base_ports.get(pid, {}).get("gate")
             if was == "pass":
-                regressions.append(f"gate regression: {pid} (pass -> fail: {r.get('gate_detail')})")
+                record_regression(f"gate regression: {pid} (pass -> fail: {r.get('gate_detail')})", pid=pid)
             elif pid not in base_ports:
-                regressions.append(f"new port fails gate: {pid} ({r.get('gate_detail')})")
+                record_regression(f"new port fails gate: {pid} ({r.get('gate_detail')})", pid=pid)
             else:
-                regressions.append(f"port fails gate: {pid} ({r.get('gate_detail')})")
+                record_regression(f"port fails gate: {pid} ({r.get('gate_detail')})", pid=pid)
         elif base_ports.get(pid, {}).get("gate") == "fail":
             improvements.append(f"gate fixed: {pid}")
 
         eb = r.get("emitted_bytes")
         if eb is not None and eb > SIZE_LIMIT:
-            regressions.append(f"emitted C++ over 64 KB: {pid} ({eb} B)")
+            record_regression(f"emitted C++ over 64 KB: {pid} ({eb} B)", pid=pid)
         if pid in base_ports and eb is not None:
             prev_eb = base_ports[pid].get("emitted_bytes")
             if prev_eb is not None and eb > prev_eb + EMITTED_GROWTH_BYTES and eb > prev_eb * EMITTED_GROWTH_RATIO:
-                regressions.append(
-                    f"emitted C++ grew >5%: {pid} ({prev_eb} -> {eb} B, +{eb - prev_eb} B)"
+                record_regression(
+                    f"emitted C++ grew >5%: {pid} ({prev_eb} -> {eb} B, +{eb - prev_eb} B)",
+                    pid=pid,
                 )
             elif prev_eb is not None and prev_eb > eb + EMITTED_GROWTH_BYTES and eb < prev_eb * 0.95:
                 improvements.append(f"emitted C++ shrank: {pid} ({prev_eb} -> {eb} B)")
@@ -1886,9 +1999,10 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                 improvements.append(f"dream rewritten: {pid} ({b_dr:.4f}x -> {c_dr:.4f}x)")
             elif b_dr is not None and c_dr is not None:
                 if c_dr > b_dr + 1e-6:
-                    regressions.append(
+                    record_regression(
                         f"dream gap regressed: {pid} ({b_dr:.4f}x -> {c_dr:.4f}x, "
-                        f"cp={r.get('cp_tokens')}/dream={r.get('dream_tokens')})"
+                        f"cp={r.get('cp_tokens')}/dream={r.get('dream_tokens')})",
+                        pid=pid,
                     )
                 elif c_dr < b_dr - 0.01:
                     improvements.append(f"dream gap shrank: {pid} ({b_dr:.4f}x -> {c_dr:.4f}x)")
@@ -1897,7 +2011,7 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             bp = base_ports[pid].get("perf") or {}
             cp = r.get("perf") or {}
             if bp.get("measured") and bp.get("output_match") and cp.get("measured") and not cp.get("output_match"):
-                regressions.append(f"max-size output mismatch: {pid}")
+                record_regression(f"max-size output mismatch: {pid}", pid=pid)
             if (
                 bp.get("measured")
                 and cp.get("measured")
@@ -1909,9 +2023,10 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                 br = bp["time_ratio"]
                 cr = cp["time_ratio"]
                 if cr > br * PERF_REGRESSION_RATIO:
-                    regressions.append(
+                    record_regression(
                         f"runtime regressed >10%: {pid} ({br:.3f}x -> {cr:.3f}x, "
-                        f"{cp.get('cpp_ms')}ms/{cp.get('orig_ms')}ms)"
+                        f"{cp.get('cpp_ms')}ms/{cp.get('orig_ms')}ms)",
+                        pid=pid,
                     )
                 elif cr < br * 0.90:
                     improvements.append(f"runtime improved: {pid} ({br:.3f}x -> {cr:.3f}x)")
@@ -1925,9 +2040,10 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             ):
                 bir, cir = bi["ratio"], ci["ratio"]
                 if cir > bir * PERF_REGRESSION_RATIO:
-                    regressions.append(
+                    record_regression(
                         f"interp ratio regressed >10%: {pid} ({bir:.2f}x -> {cir:.2f}x, "
-                        f"{ci.get('ratio_interp_ms')}ms/{ci.get('ratio_cpp_ms')}ms)"
+                        f"{ci.get('ratio_interp_ms')}ms/{ci.get('ratio_cpp_ms')}ms)",
+                        pid=pid,
                     )
                 elif cir < bir * 0.90:
                     improvements.append(f"interp ratio improved: {pid} ({bir:.2f}x -> {cir:.2f}x)")
@@ -1937,55 +2053,59 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
     bt = baseline.get("totals", {}) if baseline else {}
 
     if ct["friction_lint"]["wa_trap"] > 0:
-        regressions.append(f"friction_lint wa_trap > 0 ({ct['friction_lint']['wa_trap']})")
+        record_regression(f"friction_lint wa_trap > 0 ({ct['friction_lint']['wa_trap']})", area="ports_or_codegen")
 
     br = ct.get("bug_replay")
     if br is not None:
         if br.get("unexpected_pass", 0) > 0:
-            regressions.append(f"bug-replay suite has {br['unexpected_pass']} unexpected_pass case(s)")
+            record_regression(f"bug-replay suite has {br['unexpected_pass']} unexpected_pass case(s)", area="goal_tests")
         if not br.get("bar_ok"):
-            regressions.append(
-                f"bug-replay handled {br.get('handled_pct')}% < {br.get('bar_pct')}% bar"
+            record_regression(
+                f"bug-replay handled {br.get('handled_pct')}% < {br.get('bar_pct')}% bar",
+                area="goal_tests",
             )
         if baseline and not subset and bt.get("bug_replay"):
             bbr = bt["bug_replay"]
             if br["handled_pct"] < bbr.get("handled_pct", 0):
-                regressions.append(
-                    f"bug-replay handled regressed: {bbr['handled_pct']}% -> {br['handled_pct']}%"
+                record_regression(
+                    f"bug-replay handled regressed: {bbr['handled_pct']}% -> {br['handled_pct']}%",
+                    area="goal_tests",
                 )
             rank = {"prevented": 2, "caught_on_run": 1, "left_to_diagnose": 0, "unexpected_pass": -1}
             b_cases = {c["id"]: c["outcome"] for c in bbr.get("cases", [])}
             for c in br.get("cases", []):
                 prev = b_cases.get(c["id"])
                 if prev is not None and rank.get(c["outcome"], -1) < rank.get(prev, -1):
-                    regressions.append(
-                        f"bug-replay case regressed: {c['id']} ({prev} -> {c['outcome']})"
+                    record_regression(
+                        f"bug-replay case regressed: {c['id']} ({prev} -> {c['outcome']})",
+                        area="goal_tests",
                     )
 
     rv = ct.get("revision")
     if rv is not None:
         for c in rv.get("cases", []):
             if not c.get("ok"):
-                regressions.append(f"revision test failed: {c['id']} ({c.get('detail')})")
+                record_regression(f"revision test failed: {c['id']} ({c.get('detail')})", area="goal_tests")
         if baseline and not subset and bt.get("revision"):
             b_rev = {c["id"]: c["lines_touched"] for c in bt["revision"].get("cases", [])}
             for c in rv.get("cases", []):
                 prev = b_rev.get(c["id"])
                 if prev is not None and c["lines_touched"] > prev:
-                    regressions.append(
-                        f"revision lines_touched grew: {c['id']} ({prev} -> {c['lines_touched']})"
+                    record_regression(
+                        f"revision lines_touched grew: {c['id']} ({prev} -> {c['lines_touched']})",
+                        area="goal_tests",
                     )
 
     if baseline and not subset:
         base_blockers = bt.get("frictions", {}).get("open_blockers", 0)
         cur_blockers = ct["frictions"]["open_blockers"]
         if cur_blockers > base_blockers:
-            regressions.append(f"open blocker frictions increased: {base_blockers} -> {cur_blockers}")
+            record_regression(f"open blocker frictions increased: {base_blockers} -> {cur_blockers}", area="frictions")
 
         base_warn = bt.get("frictions", {}).get("warnings", 0)
         cur_warn = ct["frictions"].get("warnings", 0)
         if cur_warn > base_warn:
-            regressions.append(f"friction metadata warnings grew: {base_warn} -> {cur_warn}")
+            record_regression(f"friction metadata warnings grew: {base_warn} -> {cur_warn}", area="frictions")
 
         bsd = bt.get("spelling_drift")
         csd = ct.get("spelling_drift")
@@ -1998,15 +2118,17 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                 c_ca = cent.get("active_non_canonical", 0)
                 if cname in zero_locked or (bent is not None and bent.get("active_non_canonical", 0) == 0):
                     if c_ca > 0:
-                        regressions.append(
+                        record_regression(
                             f"active/dream spelling drift ({cname}) must be 0, found {c_ca} "
-                            "(run `cpl lint --fix` and `python3 scripts/fix-spelling-drift.py --write`)"
+                            "(run `cpl lint --fix` and `python3 scripts/fix-spelling-drift.py --write`)",
+                            area="spelling_drift",
                         )
                 elif bent is not None:
                     b_ca = bent.get("active_non_canonical", 0)
                     if c_ca > b_ca:
-                        regressions.append(
-                            f"active/dream spelling drift ({cname}) grew: {b_ca} -> {c_ca}"
+                        record_regression(
+                            f"active/dream spelling drift ({cname}) grew: {b_ca} -> {c_ca}",
+                            area="spelling_drift",
                         )
                     elif c_ca < b_ca:
                         improvements.append(
@@ -2019,15 +2141,16 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             b_tot = sum(b_cs[n]["non_canonical"] for n in shared)
             c_tot = sum(c_cs[n]["non_canonical"] for n in shared)
             if c_tot > b_tot:
-                regressions.append(f"spelling drift non-canonical total grew: {b_tot} -> {c_tot}")
+                record_regression(f"spelling drift non-canonical total grew: {b_tot} -> {c_tot}", area="spelling_drift")
             elif c_tot < b_tot:
                 improvements.append(f"spelling drift reduced: {b_tot} -> {c_tot}")
             for cname in shared:
                 bent = b_cs[cname]
                 cent = c_cs[cname]
                 if cent["non_canonical"] > bent["non_canonical"]:
-                    regressions.append(
-                        f"spelling drift ({cname}) grew: {bent['non_canonical']} -> {cent['non_canonical']}"
+                    record_regression(
+                        f"spelling drift ({cname}) grew: {bent['non_canonical']} -> {cent['non_canonical']}",
+                        area="spelling_drift",
                     )
                 elif cent["non_canonical"] < bent["non_canonical"]:
                     improvements.append(
@@ -2041,13 +2164,13 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             c_med = cds.get("median")
             if b_med is not None and c_med is not None:
                 if c_med < b_med:
-                    regressions.append(f"dream-score median regressed: {b_med} -> {c_med}")
+                    record_regression(f"dream-score median regressed: {b_med} -> {c_med}", area="reviews")
                 elif c_med > b_med:
                     improvements.append(f"dream-score median improved: {b_med} -> {c_med}")
             b_u4 = bds.get("under_4", 0)
             c_u4 = cds.get("under_4", 0)
             if c_u4 > b_u4:
-                regressions.append(f"dream-score under-4 count grew: {b_u4} -> {c_u4}")
+                record_regression(f"dream-score under-4 count grew: {b_u4} -> {c_u4}", area="reviews")
             elif c_u4 < b_u4:
                 improvements.append(f"dream-score under-4 count shrank: {b_u4} -> {c_u4}")
 
@@ -2059,13 +2182,15 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             b_rate = bdc.get("rate_pct", 0.0)
             c_rate = cdc.get("rate_pct", 0.0)
             if c_comp < b_comp:
-                regressions.append(
+                record_regression(
                     f"dream-compile count regressed: {b_comp}/{bdc['total']} ({b_rate}%) -> "
-                    f"{c_comp}/{cdc['total']} ({c_rate}%)"
+                    f"{c_comp}/{cdc['total']} ({c_rate}%)",
+                    area="dream_compile",
                 )
             elif cdc["total"] <= bdc["total"] and c_rate + 1e-6 < b_rate:
-                regressions.append(
-                    f"dream-compile share regressed: {b_rate}% -> {c_rate}%"
+                record_regression(
+                    f"dream-compile share regressed: {b_rate}% -> {c_rate}%",
+                    area="dream_compile",
                 )
             elif c_comp > b_comp or c_rate > b_rate + 1e-6:
                 improvements.append(
@@ -2086,7 +2211,7 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
             bv = bt.get("tokens", {}).get(key)
             cv = ct["tokens"].get(key)
             if bv is not None and cv is not None and cv > bv + TOKEN_RATIO_TOLERANCE:
-                regressions.append(f"{label} regressed: {bv:.4f} -> {cv:.4f}")
+                record_regression(f"{label} regressed: {bv:.4f} -> {cv:.4f}", area="ports_or_codegen")
 
         if mode == "full":
             for key, label in (
@@ -2098,19 +2223,19 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                 bv = bt.get("perf", {}).get(key)
                 cv = ct["perf"].get(key)
                 if bv is not None and cv is not None and cv > bv * PERF_REGRESSION_RATIO:
-                    regressions.append(f"{label} regressed >10%: {bv:.3f}x -> {cv:.3f}x")
+                    record_regression(f"{label} regressed >10%: {bv:.3f}x -> {cv:.3f}x", area="ports_or_codegen")
             bi_p50 = bt.get("interp", {}).get("ratio_p50")
             ci_p50 = ct.get("interp", {}).get("ratio_p50")
             if bi_p50 is not None and ci_p50 is not None:
                 if ci_p50 > bi_p50 * PERF_REGRESSION_RATIO:
-                    regressions.append(f"interp ratio p50 regressed >10%: {bi_p50:.2f}x -> {ci_p50:.2f}x")
+                    record_regression(f"interp ratio p50 regressed >10%: {bi_p50:.2f}x -> {ci_p50:.2f}x", area="ports_or_codegen")
                 elif ci_p50 < bi_p50 / PERF_REGRESSION_RATIO:
                     improvements.append(f"interp ratio p50 improved: {bi_p50:.2f}x -> {ci_p50:.2f}x")
             bi_max = bt.get("interp", {}).get("ratio_max")
             ci_max = ct.get("interp", {}).get("ratio_max")
             if bi_max is not None and ci_max is not None:
                 if ci_max > bi_max * PERF_REGRESSION_RATIO:
-                    regressions.append(f"interp ratio max regressed >10%: {bi_max:.2f}x -> {ci_max:.2f}x")
+                    record_regression(f"interp ratio max regressed >10%: {bi_max:.2f}x -> {ci_max:.2f}x", area="ports_or_codegen")
                 elif ci_max < bi_max / PERF_REGRESSION_RATIO:
                     improvements.append(f"interp ratio max improved: {bi_max:.2f}x -> {ci_max:.2f}x")
 
@@ -2679,7 +2804,8 @@ def build_report(args):
         "dreams": dreams_rep,
         "ports": port_records,
     }
-    diff = diff_against_baseline(report, baseline, mode=mode, subset=bool(only))
+    scope = detect_change_scope() if not only else None
+    diff = diff_against_baseline(report, baseline, mode=mode, subset=bool(only), scope=scope)
     if wfd_data and wfd_data.get("latest"):
         cur = wfd_data["latest"]
         if cur["compile_rate"] + 1e-9 < wfd_data.get("min_compile_rate", 0.0):
