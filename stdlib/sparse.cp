@@ -39,6 +39,7 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     base: List<T>
     levels: List<List<T>>
 
+    /// Build an associative O(1)-query disjoint sparse table for `op` over `a`. O(|D| log |D|).
     pub fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>:
         let n = D.K
         let base = [a[i] for i in D]

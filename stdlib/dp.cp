@@ -14,6 +14,7 @@ use std.seq.{bsearch_first}
 
 /// The line `k * x + m`, the usual entry of a `LiChao`.
 pub struct Line(k: Int, m: Int):
+    /// Evaluate the line `k * x + m` at `x`. O(1).
     pub fn at(self, x: Int) -> Int = k * x + m
 
 /// The lower (`LiChao<Line, Int>(min, 0..=1e9)`) or upper (`max`) envelope
@@ -29,6 +30,7 @@ pub struct LiChao<L, K>(pick: (K, K) -> K, lo: Int, hi: Int):
     left: List<Int>
     right: List<Int>
 
+    /// Create a Li Chao tree over integer x-domain `xs` with comparator `pick`. O(1).
     pub fn new(pick: (K, K) -> K, xs: Range<Int>) -> LiChao<L, K>:
         assert not xs.is_empty
         LiChao(pick, xs.first!, xs.last!, [none], [0], [0])

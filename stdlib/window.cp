@@ -19,13 +19,16 @@ pub struct MonoDeque<T>(better: (T, T) -> Bool):
     /// A window with a custom strict preference `better(a, b)`. O(1).
     pub fn by(better: (T, T) -> Bool) -> MonoDeque<T> = MonoDeque(better, Deque())
 
+    /// Number of elements currently in the monotonic deque. O(1).
     pub @get fn len(self) -> Int = q.len
 
+    /// Whether the monotonic deque is empty. O(1).
     pub @get fn is_empty(self) -> Bool = q.is_empty
 
     /// Best value currently in the window, or `none` when empty. O(1).
     pub @get fn best(self) -> ?T = if let f = q.first: f.1 else: none
 
+    /// Remove all elements from the monotonic deque. O(1).
     pub fn clear(mut self):
         q.clear()
 
@@ -52,8 +55,10 @@ pub struct WindowFold<T>(m: Monoid<T>):
         let m = Monoid<T>.of(op)
         WindowFold(m, [], m.id, [])
 
+    /// Number of elements currently in the sliding-window fold. O(1).
     pub @get fn len(self) -> Int = back.len + front.len
 
+    /// Whether the sliding-window fold is empty. O(1).
     pub @get fn is_empty(self) -> Bool = back.is_empty and front.is_empty
 
     /// Push `x` onto the back of the queue. O(1).

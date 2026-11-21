@@ -142,6 +142,7 @@ pub struct Fenwick2D<R, C, T>:
 pub struct DualFenwick<D, T>:
     t: List<T>
 
+    /// Create a range-add / point-query Fenwick tree over `D`. O(|D|).
     pub fn new(a: ?[D]T = none) -> DualFenwick<D, T>:
         var f = DualFenwick(List.filled(D.K + 1, T.zero))
         if let init = a:
@@ -184,6 +185,7 @@ pub struct RangeFenwick<D>:
     b1: List<Int>
     b2: List<Int>
 
+    /// Create a range-add / range-sum Fenwick tree over `D`. O(|D|).
     pub fn new(a: ?[D]Int = none) -> RangeFenwick<D>:
         var f = RangeFenwick(List.filled(D.K + 1, 0), List.filled(D.K + 1, 0))
         if let init = a:

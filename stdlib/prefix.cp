@@ -93,6 +93,7 @@ pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.bounds]T:
 pub struct Diff1<D, T>:
     d: [D.bounds]T
 
+    /// Create an all-zero 1D difference array over `D`. O(|D|).
     pub fn new() -> Diff1<D, T> = Diff1([D.bounds] _ => T.zero)
 
     /// Add `x` to every position in `r`. O(1).
@@ -114,6 +115,7 @@ pub struct Diff1<D, T>:
 pub struct Diff2<R, C, T>:
     d: [R.bounds, C.bounds]T
 
+    /// Create an all-zero 2D difference array over `(R, C)`. O(|R| * |C|).
     pub fn new() -> Diff2<R, C, T> = Diff2([R.bounds, C.bounds] (_, _) => T.zero)
 
     /// Add `x` to every cell in `rows` by `cols`. O(1).

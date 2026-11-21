@@ -401,6 +401,7 @@ pub struct SuffixArray<T>:
     rmq: List<List<Int>>
 
     @allow(unproven_list_index)
+    /// Build suffix array and Kasai LCP array for `s`. O(n log n).
     pub fn new(s: List<T>) -> SuffixArray<T>:
         let n = s.len
         let sa = suffix_array(s)
@@ -631,6 +632,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     pow_c2: List<Int>
 
     @allow(unproven_list_index)
+    /// Build a 2D polynomial rolling hash over grid `(R, C)`. O(|R| * |C|).
     pub fn new(code: (R, C) -> Int, bases: ?(Int, Int) = none) -> Hash2D<R, C>:
         let (br1, bc1) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         let br2 = (br1 ^ 324508639) % (RH_M2 - 2) + 2
@@ -693,6 +695,7 @@ pub struct SuffixAutomaton<A>:
     prefix: List<Bool>
     last: Int
 
+    /// Create an empty suffix automaton over alphabet `A`. O(1).
     pub fn new() -> SuffixAutomaton<A>:
         let k = A.K
         SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [false], 0)
@@ -850,6 +853,7 @@ pub struct PalindromicTree<A>:
     chars: List<A>
     last: Int
 
+    /// Create an empty palindromic tree (eertree) over alphabet `A`. O(1).
     pub fn new() -> PalindromicTree<A>:
         let k = A.K
         PalindromicTree(k, List.filled(2 * k, -1), [0, 0], [-1, 0], [0, 0], [0, 0], [0, 0], [], 1)
@@ -939,6 +943,7 @@ pub struct Trie<A>:
     ends: List<Int>
     pass: List<Int>
 
+    /// Create an empty prefix trie over alphabet `A`. O(1).
     pub fn new() -> Trie<A>:
         let k = A.K
         Trie(k, List.filled(k, -1), [0], [0])
@@ -1028,6 +1033,7 @@ pub struct AhoCorasick<A>:
     lens: List<Int>
 
     @allow(unproven_list_index)
+    /// Build an Aho-Corasick automaton over `patterns`. O(total pattern length).
     pub fn new(patterns: List<List<A>>) -> AhoCorasick<A>:
         let k = A.K
         var kid = List.filled(k, -1)
