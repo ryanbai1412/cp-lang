@@ -18,13 +18,13 @@
 // `i < n` and `j < m`.
 
 type Z = Mod<1_000_000_007>
-struct Shut(floor: Bool, wall: Bool)
+domain Shut = (floor: Bool, wall: Bool)
 fn odds(shut: Bool, open: Int) -> Int = if shut: 1 else: open
 
 // stops[i, j]: the share of corner choices whose car stops in cell (i, j).
-pub fn stops<domain I, domain J>() -> [I, J]Z:
+pub fn stops<I, J>() -> [I, J]Z:
     var ways: [J][Shut]Z = 0
-    ways[J.first] = [s => odds(s.floor, 3) * odds(s.wall, 3)]
+    ways[J.first] = [Shut] s => odds(s.floor, 3) * odds(s.wall, 3)
     let weight: [0..I.len + J.len]Z = [d => (Z(1) / 4) ** (2 * d + 3)]
     var out: [I, J]Z = 0
     for i in I:
@@ -49,8 +49,8 @@ pub fn stops<domain I, domain J>() -> [I, J]Z:
                         stop_mass += w
                     Shut(true, true) =>
                         stop_mass += 4 * w
-            ways[j] = [s => fall_mass * odds(s.wall, 2) * odds(s.floor, 3)]
-            side = [s => (if s.floor: slide_shut else: slide_open) * odds(s.wall, 3)]
+            ways[j] = [Shut] s => fall_mass * odds(s.wall, 2) * odds(s.floor, 3)
+            side = [Shut] s => (if s.floor: slide_shut else: slide_open) * odds(s.wall, 3)
             out[i, j] = stop_mass * weight[i + j]
     out
 
