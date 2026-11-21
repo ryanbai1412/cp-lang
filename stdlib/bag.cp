@@ -16,6 +16,7 @@ pub struct SortedBag<K>:
     right: List<?Int>
     root: ?Int
 
+    /// Create an empty `SortedBag<K>`. O(1).
     pub fn new() -> SortedBag<K> = SortedBag([], [], [], [], [], [], none)
 
     /// Build a `SortedBag` containing every element of `xs`. O(n log n) expected.
@@ -27,8 +28,10 @@ pub struct SortedBag<K>:
     /// Total number of elements in the bag (counting duplicates). O(1).
     pub @get fn len(self) -> Int = self.sub_of(root)
 
+    /// Whether the bag has no elements. O(1).
     pub @get fn is_empty(self) -> Bool = self.len == 0
 
+    /// Remove all elements from the bag. O(1).
     pub fn clear(mut self):
         key = []
         pri = []

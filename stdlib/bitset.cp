@@ -24,14 +24,18 @@ pub struct Bitset<D>:
             if a[i]: b.add(i)
         b
 
+    /// Whether position `i` is set. O(1).
     pub fn contains(self, i: D) -> Bool = ((w[i.to_idx / 64] >> (i.to_idx % 64)) & 1) == 1
 
+    /// Set the bit at position `i`. O(1).
     pub fn add(mut self, i: D):
         w[i.to_idx / 64] |= bit(i.to_idx % 64)
 
+    /// Clear the bit at position `i`. O(1).
     pub fn remove(mut self, i: D):
         w[i.to_idx / 64] &= bit(i.to_idx % 64) ^ -1
 
+    /// Flip the bit at position `i`. O(1).
     pub fn toggle(mut self, i: D):
         w[i.to_idx / 64] ^= bit(i.to_idx % 64)
 
@@ -41,17 +45,22 @@ pub struct Bitset<D>:
     /// The same number as `len`, under the name C++ gives it.
     pub @get fn count(self) -> Int = self.len
 
+    /// Whether no bits are set. O(|D| / 64).
     pub @get fn is_empty(self) -> Bool = self.len == 0
 
+    /// Replace `self` with `self | o` in place. O(|D| / 64).
     pub fn union(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] |= o.w[k]
 
+    /// Replace `self` with `self & o` in place. O(|D| / 64).
     pub fn intersect(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] &= o.w[k]
 
+    /// Clear every bit set in `o` from `self` in place. O(|D| / 64).
     pub fn subtract(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] &= o.w[k] ^ -1
 
+    /// Replace `self` with `self ^ o` in place. O(|D| / 64).
     pub fn symmetric(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] ^= o.w[k]
 

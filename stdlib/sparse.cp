@@ -9,6 +9,7 @@ use std.seq.{ends}
 pub struct SparseTable<D, T>(op: (T, T) -> T):
     rows: List<List<T>>
 
+    /// Build an idempotent range-query sparse table for `op` over `a`. O(|D| log |D|). Law: `op(x, x) == x`.
     pub fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>:
         var rows = [[a[i] for i in D]]
         var w = 1

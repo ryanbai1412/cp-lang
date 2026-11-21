@@ -7,14 +7,18 @@ use std.algebra.{Desc, desc}
 pub struct MinHeap<T>:
     xs: List<T>
 
+    /// Create an empty `MinHeap<T>`. O(1).
     pub fn new() -> MinHeap<T> = MinHeap([])
 
+    /// Number of elements currently in the heap. O(1).
     pub @get fn len(self) -> Int = xs.len
+    /// Whether the heap is empty. O(1).
     pub @get fn is_empty(self) -> Bool = xs.is_empty
 
     /// The smallest element, or `none` if the heap is empty.
     pub @get fn peek(self) -> ?T = if xs.is_empty: none else: xs[0]
 
+    /// Remove all elements from the heap. O(1).
     pub fn clear(mut self):
         xs = []
 
@@ -24,6 +28,7 @@ pub struct MinHeap<T>:
         xs = []
         out
 
+    /// Push `x` into the heap. O(log n).
     pub fn push(mut self, x: T):
         xs.push(x)
         var i = xs.len - 1
@@ -52,20 +57,25 @@ pub struct MinHeap<T>:
 pub struct MaxHeap<T>:
     h: MinHeap<Desc<T>>
 
+    /// Create an empty `MaxHeap<T>`. O(1).
     pub fn new() -> MaxHeap<T> = MaxHeap(MinHeap<Desc<T>>())
 
+    /// Number of elements currently in the heap. O(1).
     pub @get fn len(self) -> Int = h.len
+    /// Whether the heap is empty. O(1).
     pub @get fn is_empty(self) -> Bool = h.is_empty
 
     /// The largest element, or `none` if the heap is empty.
     pub @get fn peek(self) -> ?T = if h.is_empty: none else: h.peek!.x
 
+    /// Remove all elements from the heap. O(1).
     pub fn clear(mut self):
         h.clear()
 
     /// Move the heap's contents out in O(1), leaving `self` empty.
     pub fn take(mut self) -> MaxHeap<T> = MaxHeap(h.take())
 
+    /// Push `x` into the heap. O(log n).
     pub fn push(mut self, x: T):
         h.push(desc(x))
 

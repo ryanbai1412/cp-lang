@@ -539,6 +539,7 @@ pub struct RollingHash:
     pow1: List<Int>
     pow2: List<Int>
 
+    /// Build a double-modulus polynomial rolling hash over `seq`. O(n).
     pub fn new<S>(seq: S, bases: ?(Int, Int) = none) -> RollingHash:
         let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         var p1 = [0]

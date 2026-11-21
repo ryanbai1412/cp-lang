@@ -10,9 +10,13 @@ const DC = [0, 1, 1, 1, 0, -1, -1, -1]
 
 /// One of the four directions up, right, down, left (clockwise, rows growing downwards).
 pub struct Dir4(k: Int):
+    /// North direction `(-1, 0)`. O(1).
     pub fn up() -> Dir4 = Dir4(0)
+    /// East direction `(0, 1)`. O(1).
     pub fn right() -> Dir4 = Dir4(1)
+    /// South direction `(1, 0)`. O(1).
     pub fn down() -> Dir4 = Dir4(2)
+    /// West direction `(0, -1)`. O(1).
     pub fn left() -> Dir4 = Dir4(3)
 
     /// All four, clockwise from up.

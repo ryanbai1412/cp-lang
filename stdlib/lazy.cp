@@ -55,6 +55,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
             if ((l >> i) << i) != l: self.push(l >> i)
             if ((h >> i) << i) != h: self.push((h - 1) >> i)
 
+    /// Assign position `i` to `x`, pushing pending tags on its path. O(log |D|).
     pub fn set(mut self, i: D, x: T):
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)
@@ -68,6 +69,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         t[p] = f(t[p])
         for k in 1..=log: self.pull(p >> k)
 
+    /// Read the current value at position `i`, pushing pending tags on its path. O(log |D|).
     pub fn get(mut self, i: D) -> T:
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)

@@ -9,6 +9,7 @@ use std.seq.{ends}
 pub struct Prefix1<D, T>:
     p: [D.bounds]T
 
+    /// Build 1D prefix sums over `a: [D]T`. O(|D|).
     pub fn new(a: [D]T) -> Prefix1<D, T>:
         var p: [D.bounds]T = T.zero
         for i in D:
@@ -25,6 +26,7 @@ pub struct Prefix1<D, T>:
 pub struct Prefix2<R, C, T>:
     p: [R.bounds, C.bounds]T
 
+    /// Build 2D prefix sums over `a: [R, C]T`. O(|R| * |C|).
     pub fn new(a: [R, C]T) -> Prefix2<R, C, T>:
         var p: [R.bounds, C.bounds]T = T.zero
         for r in R:
@@ -46,6 +48,7 @@ pub struct Prefix2<R, C, T>:
 pub struct PrefixN<T>:
     p: List<T>
 
+    /// Build 1D prefix sums over `a: List<T>`. O(a.len).
     pub fn new(a: List<T>) -> PrefixN<T>:
         var p = List.filled(a.len + 1, T.zero)
         for i in 0..a.len:

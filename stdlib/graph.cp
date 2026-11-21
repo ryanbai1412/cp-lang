@@ -359,6 +359,7 @@ pub fn articulation_points<V, N>(next: N) -> [V]Bool:
 /// subgraph (or the two endpoints of a bridge). Articulation points appear in
 /// every block that shares them. O(n + m), iterative Tarjan.
 
+/// Vertex-biconnected components (blocks) of an undirected graph via Tarjan DFS. O(|V| + |E|).
 pub fn biconnected_components<V, N>(next: N) -> List<List<V>>:
     let out = [V] v => [a.to for a in next.out(v)]
     var tin: [V]?Int = none

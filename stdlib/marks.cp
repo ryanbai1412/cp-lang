@@ -46,6 +46,7 @@ pub struct Marks<D>:
     /// How many positions are marked in the current round. O(1).
     pub @get fn len(self) -> Int = cnt
 
+    /// Whether no positions are currently marked. O(1).
     pub @get fn is_empty(self) -> Bool = cnt == 0
 
 @test

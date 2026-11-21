@@ -42,8 +42,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         let f = source!
         self.set(i, f(i))
 
+    /// Read the leaf value at position `i`. O(1).
     pub fn get(self, i: D) -> T = t[size + i.to_idx]
 
+    /// Assign leaf `i` to `x` and pull ancestors. O(log |D|).
     pub fn set(mut self, i: D, x: T):
         var p = i.to_idx + size
         t[p] = x

@@ -67,6 +67,7 @@ pub struct Dsu<V>:
         self.unite(x, y)
         some((kept: x, merged: y))
 
+    /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
     pub fn same(mut self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
 
     /// The number of positions in `v`'s set.
@@ -144,6 +145,7 @@ pub struct DsuOf<V, T>:
         parts -= 1
         some((kept: x, merged: y))
 
+    /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
     pub fn same(mut self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
 
     /// The number of positions in `v`'s set.
@@ -219,6 +221,7 @@ pub struct ParityDsu<V>:
         let (rb, sb) = self.find(b)
         if ra != rb: none else: sa != sb
 
+    /// Whether `a` and `b` are in the same component. O(log n).
     pub fn same(self, a: V, b: V) -> Bool = self.find(a).root == self.find(b).root
 
     /// The number of positions in `v`'s set.

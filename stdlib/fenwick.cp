@@ -8,6 +8,7 @@ use std.seq.{ends}
 pub struct Fenwick<D, T>:
     t: List<T>
 
+    /// Create a Fenwick tree over `D`, optionally initialized from `a`. O(|D|).
     pub fn new(a: ?[D]T = none) -> Fenwick<D, T>:
         var t = List.filled(D.K + 1, T.zero)
         if let init = a:
@@ -70,6 +71,7 @@ pub struct Fenwick<D, T>:
 pub struct XorFenwick<D, T>:
     t: List<T>
 
+    /// Create a bitwise-XOR Fenwick tree over `D`, optionally initialized from `a`. O(|D|).
     pub fn new(a: ?[D]T = none) -> XorFenwick<D, T>:
         var t = List.filled(D.K + 1, T.zero)
         if let init = a:
@@ -104,6 +106,7 @@ pub struct XorFenwick<D, T>:
 pub struct Fenwick2D<R, C, T>:
     t: List<T>
 
+    /// Create an all-zero 2D Fenwick tree over `(R, C)`. O(|R| * |C|).
     pub fn new() -> Fenwick2D<R, C, T> = Fenwick2D(List.filled((R.K + 1) * (C.K + 1), T.zero))
 
     /// `a[r, c] += x`.

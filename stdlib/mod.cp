@@ -77,6 +77,7 @@ pub struct Comb<P>:
     f: List<Mod<P>>
     g: List<Mod<P>>
 
+    /// Precompute factorials and inverse factorials modulo `P` up to `limit`. O(limit).
     pub fn new(limit: Int = 0) -> Comb<P>:
         let c = Comb([Mod<P>(1)], [Mod<P>(1)])
         if limit > 0: c.ensure(limit)

@@ -58,6 +58,7 @@ pub struct Sieve:
     spf: List<Int>
     primes: List<Int>
 
+    /// Linear sieve up to `n`, populating `spf` and `primes`. O(n) time and space.
     pub fn new(n: Int) -> Sieve:
         var spf = List.filled(n + 1, 0)
         var primes = List<Int>()
@@ -70,6 +71,7 @@ pub struct Sieve:
                 spf[i * p] = p
         Sieve(spf, primes)
 
+    /// Whether `x` is prime (for `0 <= x <= n`). O(1).
     pub fn is_prime(self, x: Int) -> Bool = x >= 2 and spf[x] == x
 
     /// The prime factorization of `x >= 1` as `(prime, exponent)` pairs, smallest prime first. O(log x).

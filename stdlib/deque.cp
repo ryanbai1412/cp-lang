@@ -10,6 +10,7 @@ pub struct Deque<T>:
     head: Int
     n: Int
 
+    /// Create an empty `Deque<T>`. O(1).
     pub fn new() -> Deque<T> = Deque([none], 0, 0)
 
     /// A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`,
@@ -19,9 +20,12 @@ pub struct Deque<T>:
         for x in xs: q.push(x)
         q
 
+    /// Number of elements currently in the deque. O(1).
     pub @get fn len(self) -> Int = n
+    /// Whether the deque is empty. O(1).
     pub @get fn is_empty(self) -> Bool = n == 0
 
+    /// Remove all elements from the deque. O(1).
     pub fn clear(mut self):
         buf = [none]
         head = 0
@@ -42,11 +46,13 @@ pub struct Deque<T>:
         for i in 0..n: buf[i] = old[i]
         head = 0
 
+    /// Append `x` to the back of the deque. O(1) amortized.
     pub fn push(mut self, x: T):
         self.grow()
         buf[(head + n) % buf.len] = x
         n += 1
 
+    /// Prepend `x` to the front of the deque. O(1) amortized.
     pub fn push_front(mut self, x: T):
         self.grow()
         head = (head - 1) % buf.len

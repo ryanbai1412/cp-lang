@@ -591,8 +591,12 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         .as_str()
         .unwrap()
         .ends_with("/stdlib/mod.cp"));
-    assert_eq!(def[0].at(&["result", "range", "start"]), &pos(120, 11));
-    assert_eq!(def[0].at(&["result", "range", "end"]), &pos(120, 17));
+    let choose_line = include_str!("../../../stdlib/mod.cp")
+        .lines()
+        .position(|l| l.trim_start().starts_with("pub fn choose("))
+        .unwrap() as u32;
+    assert_eq!(def[0].at(&["result", "range", "start"]), &pos(choose_line, 11));
+    assert_eq!(def[0].at(&["result", "range", "end"]), &pos(choose_line, 17));
 }
 
 const V22: &str = "\
