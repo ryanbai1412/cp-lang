@@ -1979,6 +1979,10 @@ Reverse: none needed; this is general range-type lowering.
   the judge's flags this compiler accepts and runs on the judge's stack, the same `Profile::on_stack` command
   the stress runner uses; a profile timed on another build can rank the lines differently. `CXX` still
   overrides the compiler. Reverse: `emit_profiled` without a target and `g++ -std=c++17 -O2`.
+- **34.12 `cpl test` gives MLE past the problem's memory limit.** A case whose sampled peak memory
+  (`VmHWM`, as `bench` reads it) is over the limit is `MLE` whatever it printed, as a judge stops it there;
+  a time limit outranks it. Sampling can miss a peak in the last 0.3 ms of a run, so an MLE is certain and an
+  `ok` is not proof. Reverse: drop `Verdict::MemoryLimit` and the check in `run_cases`.
 
 ## 35. Taste lints (§8 tooling, 2026-11-21)
 

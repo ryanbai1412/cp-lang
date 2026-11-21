@@ -34,6 +34,8 @@ pub enum Verdict {
     /// The solution exited with an error or crashed.
     RuntimeError(String),
     TimeLimit,
+    /// The solution's peak memory went past the problem's limit.
+    MemoryLimit,
 }
 
 impl Verdict {
@@ -48,6 +50,7 @@ impl Verdict {
             Verdict::Wrong(_) => "WA",
             Verdict::RuntimeError(_) => "RE",
             Verdict::TimeLimit => "TLE",
+            Verdict::MemoryLimit => "MLE",
         }
     }
 }

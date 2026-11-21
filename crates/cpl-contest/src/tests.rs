@@ -310,7 +310,10 @@ fn test_reports_each_case_and_expands_failures() {
         &sh(MAX),
         &Judge::Tokens,
         &cases(&source),
-        Duration::from_secs(10),
+        Limits {
+            time: Duration::from_secs(10),
+            ..Limits::default()
+        },
     )
     .unwrap();
     let verdicts: Vec<Option<&str>> = results
@@ -706,4 +709,27 @@ fn listen_takes_a_problem_posted_by_the_extension() {
     let notes = String::from_utf8(notes).unwrap();
     assert!(notes.contains("waiting for Competitive Companion"), "{notes}");
     assert!(notes.contains("ignored a request"), "{notes}");
+}
+
+#[test]
+fn test_judges_memory_against_the_problems_limit() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    let dir = scratch("test-memory");
+    let source = problem(&dir);
+    let tight = Limits {
+        time: Duration::from_secs(10),
+        memory_kb: 1,
+    };
+    let hungry = format!("sleep 0.05; {MAX}");
+    let results = run_cases(&sh(&hungry), &Judge::Tokens, &cases(&source), tight).unwrap();
+    let verdicts: Vec<Option<&str>> = results
+        .iter()
+        .map(|r| r.verdict.as_ref().map(Verdict::code))
+        .collect();
+    assert_eq!(verdicts, [Some("MLE"); 3], "{results:?}");
+    assert!(render(&results).contains("     peak memory "), "{}", render(&results));
+    let roomy = run_cases(&sh(&hungry), &Judge::Tokens, &cases(&source), Limits { memory_kb: 1 << 30, ..tight }).unwrap();
+    assert_eq!(roomy[0].verdict, Some(Verdict::Accepted));
 }

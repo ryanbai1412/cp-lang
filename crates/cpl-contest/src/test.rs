@@ -30,6 +30,8 @@ options:
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
   --time-limit MS    per case (default: the problem's limit)
+  --memory-limit MB  peak memory per case, past which a case is MLE (default:
+                     the problem's limit)
 ";
 
 /// What happened on one case.
@@ -59,7 +61,7 @@ pub fn run_cases(
     solution: &Program,
     judge: &Judge,
     cases: &[TestCase],
-    limit: Duration,
+    limits: Limits,
 ) -> std::io::Result<Vec<CaseResult>> {
     cases
         .iter()
@@ -70,7 +72,14 @@ pub fn run_cases(
                 .as_ref()
                 .map(std::fs::read_to_string)
                 .transpose()?;
-            let judged = judge.run(solution, &input, expected.as_deref(), limit)?;
+            let mut judged = judge.run(solution, &input, expected.as_deref(), limits.time)?;
+            // A judge stops a program at its memory limit, whatever it
+            // would have printed.
+            if judged.verdict != Verdict::TimeLimit
+                && judged.outcome.peak_kb.is_some_and(|kb| kb > limits.memory_kb)
+            {
+                judged.verdict = Verdict::MemoryLimit;
+            }
             // Without an expected output a token judge has nothing to say
             // beyond "it ran".
             let unjudged =
@@ -142,6 +151,11 @@ pub fn render(results: &[CaseResult]) -> String {
                 Some(explained) => out.push_str(&block("     ", explained, 12)),
                 None => out.push_str(&format!("     {why}\n")),
             },
+            Some(Verdict::MemoryLimit) => {
+                if let Some(kb) = result.peak_kb {
+                    out.push_str(&format!("     peak memory {} MB\n", kb.div_ceil(1024)));
+                }
+            }
             Some(Verdict::Accepted | Verdict::TimeLimit) => {}
         }
     }
@@ -213,7 +227,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 ));
             }
             let ready = ready(&source, &src, &args)?;
-            let mut results = run_cases(&ready.solution, &ready.judge, &cases, ready.limits.time)
+            let mut results = run_cases(&ready.solution, &ready.judge, &cases, ready.limits)
                 .map_err(|e| format!("can't run {}: {e}", ready.solution.name))?;
             if args.value("--fast").is_none() {
                 explain_runtime_errors(&mut results, &cases, &source);

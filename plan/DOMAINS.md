@@ -394,8 +394,8 @@ judge's (`// limits:` or `[limits]` in `cp.toml`). The compilers here are g++
 **Bar.** Every profile: every port builds within its limit, compiles with
 its flags (as accepted here), and the deep-recursion run passes on its
 stack; each fact in a profile cites a source or says it is unconfirmed.
-**Next.** `cpl test` judging memory against the problem's limit (as `bench`
-does); a readable minimisation rung
+`cpl test` and `bench` give MLE past the problem's memory limit.
+**Next.** A readable minimisation rung
 before dropping the source header; clang `-Wunused-value` in 6
 ports; USACO and grader profiles; judge-version containers.
 
