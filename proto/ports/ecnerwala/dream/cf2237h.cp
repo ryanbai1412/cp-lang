@@ -13,38 +13,39 @@ let init: [0..m]V = read()
 var paint = IntervalMap<tree.Pre, Time>(Time(1))
 for v in init: paint.assign(tree.pos(v)..=tree.pos(v), Time(2))
 
-// Supply buckets ordered by timestamp; empty buckets redirect to their predecessor.
-var supply = DsuOf<Time, (prv: ?Time, cnt: Int)>(_ => (none, 0), (_, b) => b)
-supply.set(Time(2), (none, m))
+// Slime waiting to move, keyed by the time it was last moved; only non-empty buckets.
+var supply = Map<Time, Int>()
+supply[Time(2)] = m
+
+// Moves up to `need` units out of the newest buckets at or before `t`; returns how many.
+// Each emptied bucket leaves the map, so all the takes cost O((q + m) log q) together.
+fn take(need: Int, before t: Time) -> Int:
+    var got = 0
+    while got < need, let (u, cnt) = supply.last_le(t):
+        let k = min(cnt, need - got)
+        got += k
+        if k == cnt: supply.remove(u) else: supply[u] -= k
+    got
 
 var cur = init.last
-var tot_ans = 0
+var missing = 0
 var ans: List<Int> = []
 
 for t_now in Time(3)..:
-    let c = read<V>().cyc(tot_ans)
-    var chunks = [
-        (t, w: r.len)
+    let c = read<V>().cyc(missing)
+    let chunks = [
+        (t, need: r.len)
         for (range, _) in tree.chains(cur, c)
         for (r, t) in paint.assign(range, t_now)
-    ]
+    ].sort(by: x => desc(x.t))
     cur = c
 
-    chunks.sort(by: x => desc(x.t))
-    var matched = 0
-    for (t, mut need) in chunks:
-        var it: ?Time = t
-        while let u = it, need > 0:
-            let (prv, cnt) = supply.get(u)
-            let take = min(cnt, need)
-            matched += take
-            need -= take
-            supply.set(u, (prv, cnt - take))
-            if take == cnt:
-                if let p = prv: supply.unite(u, p) else: it = none
-        tot_ans += need
-
-    supply.set(t_now, (t_now - 1, matched))
-    ans.push(tot_ans)
+    var moved = 0
+    for (t, need) in chunks:
+        let got = take(need, before: t)
+        moved += got
+        missing += need - got
+    if moved > 0: supply[t_now] = moved
+    ans.push(missing)
 
 print(ans)
