@@ -766,6 +766,14 @@ impl<'a> Lowerer<'a> {
             if *candidate == Ty::Float && ty == Ty::Int {
                 ty = Ty::Float;
             }
+            if let (Ty::Range(c_inner), Ty::Range(t_inner)) = (candidate, &ty) {
+                if matches!(
+                    (c_inner.as_ref(), t_inner.as_ref()),
+                    (Ty::Pos(d1), Ty::Bound(d2)) if d1 == d2
+                ) {
+                    ty = candidate.clone();
+                }
+            }
             if let Ty::Opt(inner) = candidate {
                 if **inner == ty {
                     ty = candidate.clone();
@@ -1117,18 +1125,19 @@ impl<'a> Lowerer<'a> {
                 }
                 (Ty::Bound(d), Ty::Bound(d2)) if d == d2 => {
                     let d = *d;
-                    let want_bound = matches!(
-                        expected,
-                        Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Bound(ed) if *ed == d)
-                    );
+                    let convert_to_pos = !inclusive
+                        && matches!(
+                            expected,
+                            Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Pos(ed) if *ed == d)
+                        );
                     let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
                     let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
-                    let hi_ord = if want_bound && inclusive {
+                    let hi_ord = if !convert_to_pos && inclusive {
                         self.int_add(hi_ord, 1)
                     } else {
                         hi_ord
                     };
-                    let elem = if want_bound { Ty::Bound(d) } else { Ty::Pos(d) };
+                    let elem = if convert_to_pos { Ty::Pos(d) } else { Ty::Bound(d) };
                     self.mk(
                         ExprKind::Range {
                             lo: Box::new(lo_ord),
@@ -2600,15 +2609,15 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     if value.ty != want && value.ty != Ty::Error {
-                        if let Ty::Pos(d) = want {
-                            if self.product_domains.contains_key(&d) {
-                                match self.try_coerce(value, &want) {
-                                    Ok(coerced) => {
-                                        out.push(coerced);
-                                        continue;
-                                    }
-                                    Err(orig) => value = orig,
+                        if matches!(want, Ty::Bound(_))
+                            || matches!(want, Ty::Pos(d) if self.product_domains.contains_key(&d))
+                        {
+                            match self.try_coerce(value, &want) {
+                                Ok(coerced) => {
+                                    out.push(coerced);
+                                    continue;
                                 }
+                                Err(orig) => value = orig,
                             }
                         }
                         let message = format!(
@@ -3672,10 +3681,6 @@ impl<'a> Lowerer<'a> {
                     hi = self.int_add(hi, 1);
                 }
                 let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
-                let elem_ty = match ty {
-                    Ty::Bound(d) if !*inclusive => Ty::Pos(d),
-                    other => other,
-                };
                 (
                     Iter::Range {
                         lo,
@@ -3684,7 +3689,7 @@ impl<'a> Lowerer<'a> {
                         rev: false,
                         closed,
                     },
-                    elem_ty,
+                    ty,
                 )
             }
             ast::ExprKind::Range {

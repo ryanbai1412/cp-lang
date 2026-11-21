@@ -139,8 +139,10 @@ impl<'a> Checker<'a> {
                     self.infer(step);
                 }
                 let elem = match (&lo_ty, &hi_ty) {
-                    // Two boundaries enclose positions (`l.l..r.r` is a range of `V`),
-                    // except when the enclosing context explicitly expects `Range<V.bounds>`.
+                    // §124: `j..i` over two cuts has type `Range<D.bounds>` and
+                    // converts implicitly to `Range<D>` where `Range<D>` is expected.
+                    // Half-open one-sided `p.r..` / `..p.l` stay `Range<D>`.
+                    (Some(Ty::Pos(d)), Some(Ty::Pos(_))) => Ty::Pos(d.clone()),
                     (Some(Ty::Pos(d)), _) | (_, Some(Ty::Pos(d))) => {
                         if self.expected_bounds_range && d.ends_with(".bounds") {
                             Ty::Pos(d.clone())
@@ -965,7 +967,10 @@ impl<'a> Checker<'a> {
         let (Some(hi), Some(Ty::Pos(d))) = (hi, hi_ty) else {
             return;
         };
-        if inclusive && d.ends_with(".bounds") && !self.expected_bounds_range {
+        // One-sided `..=i.r` or mixed `i..=j.r` is invalid; `j..=i` over two
+        // boundaries is a valid `Range<D.bounds>` (§124), rejected only on conversion to `Range<D>`.
+        let lo_not_bound = !matches!(lo_ty, Some(Ty::Pos(ld)) if ld.ends_with(".bounds"));
+        if inclusive && d.ends_with(".bounds") && lo_not_bound && !self.expected_bounds_range {
             let message = format!(
                 "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
                 self.quote(hi.span)
@@ -2124,6 +2129,34 @@ impl<'a> Checker<'a> {
                 // the columns alone.
                 let mut kept = Vec::new();
                 for ((want, got), index_expr) in index.iter().zip(&index_tys).zip(indices) {
+                    if let (
+                        ExprKind::Range { hi: Some(hi), inclusive: true, .. },
+                        Ty::Named { name, args },
+                        Ty::Pos(dom),
+                    ) = (&index_expr.kind, got, want)
+                    {
+                        if name == "Range" && args.len() == 1 {
+                            if let Ty::Pos(cut) = &args[0] {
+                                if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
+                                    let msg = format!(
+                                        "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
+                                        self.quote(hi.span)
+                                    );
+                                    if let Some(diag) =
+                                        self.error(codes::WRONG_DOMAIN, index_expr.span, msg)
+                                    {
+                                        diag.help = Some(
+                                            "use half-open `..` for the positions between two cuts"
+                                                .to_string(),
+                                        );
+                                    }
+                                    slice = true;
+                                    kept.push(want.clone());
+                                    continue;
+                                }
+                            }
+                        }
+                    }
                     if matches!(got, Ty::Named { name, .. } if name == "Range") {
                         slice = true;
                         kept.push(want.clone());
@@ -2239,13 +2272,46 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `got.fits(want)`, with an `Int` fitting a number struct and
-    /// product tuples/records fitting their product domain.
+    /// If `dom` is a cut domain (`D.bounds` or `domain Cut = D.bounds`),
+    /// returns the underlying position domain name `D`.
+    pub(crate) fn bounds_base_domain(&mut self, dom: &str) -> Option<String> {
+        if let Some(base) = dom.strip_suffix(".bounds") {
+            return Some(base.to_string());
+        }
+        if let Some(Def::Domain(info)) = self.env.global(dom).as_deref() {
+            if let Some(base) = info.text.strip_suffix(".bounds") {
+                return Some(base.to_string());
+            }
+        }
+        None
+    }
+
+    /// `got.fits(want)`, with an `Int` fitting a number struct, cut-domain
+    /// values/ranges (§124), and product tuples/records fitting their product domain.
     pub(crate) fn fits(&mut self, got: &Ty, want: &Ty) -> bool {
         if got.fits_in(want, &mut |name| self.is_number(name)) {
             return true;
         }
         match (got, want) {
+            // §124: integer literals and checked arithmetic fit `D.bounds`.
+            (a, Ty::Pos(dom)) if a.is_int() && self.bounds_base_domain(dom).is_some() => {
+                return true;
+            }
+            // §124: half-open cut range `Range<D.bounds>` fits `Range<D>`.
+            (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba })
+                if an == "Range" && bn == "Range" && aa.len() == 1 && ba.len() == 1 =>
+            {
+                if let (Ty::Pos(cut), Ty::Pos(dom)) = (&aa[0], &ba[0]) {
+                    if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
+                        return true;
+                    }
+                }
+            }
+            (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba })
+                if an == "List" && bn == "List" && aa.len() == 1 && ba.len() == 1 =>
+            {
+                return self.fits(&aa[0], &ba[0]);
+            }
             (Ty::Tuple(items), Ty::Pos(dom)) => {
                 if let Some(factors) = self.product_factors(dom) {
                     return items.len() == factors.len()
@@ -2263,7 +2329,10 @@ impl<'a> Checker<'a> {
                         });
                 }
             }
-            (Ty::Tuple(_) | Ty::Record(_), Ty::Optional(inner)) => {
+            (Ty::Tuple(a), Ty::Tuple(b)) if a.len() == b.len() => {
+                return a.iter().zip(b).all(|(g, w)| self.fits(g, w));
+            }
+            (_, Ty::Optional(inner)) => {
                 return self.fits(got, inner);
             }
             _ => {}
@@ -2282,6 +2351,36 @@ impl<'a> Checker<'a> {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
         let got = &self.narrowed(got, want);
+        // §124: `j..=i` over cuts never converts to `Range<D>`.
+        if let ExprKind::Range { hi: Some(hi), inclusive: true, .. } = &at.kind {
+            let inner_want = match want {
+                Ty::Optional(inner) => inner.as_ref(),
+                other => other,
+            };
+            if let (
+                Ty::Named { name: an, args: aa },
+                Ty::Named { name: bn, args: ba },
+            ) = (got, inner_want)
+            {
+                if an == "Range" && bn == "Range" && aa.len() == 1 && ba.len() == 1 {
+                    if let (Ty::Pos(cut), Ty::Pos(dom)) = (&aa[0], &ba[0]) {
+                        if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
+                            let msg = format!(
+                                "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
+                                self.quote(hi.span)
+                            );
+                            if let Some(diag) = self.error(codes::WRONG_DOMAIN, at.span, msg) {
+                                diag.help = Some(
+                                    "use half-open `..` for the positions between two cuts"
+                                        .to_string(),
+                                );
+                            }
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
         if self.fits(got, want)
             || matches!(at.kind, ExprKind::None)
             || got.has_error()

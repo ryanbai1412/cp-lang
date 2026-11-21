@@ -18,7 +18,8 @@ let last_v = V.last(v => Int(v) <= 2)!
 var mark: [V]Bool = false
 let lo = V.first
 let hi = V.last
-for j in lo.r..hi.l: mark[j] = true
+let mid: Range<V> = lo.r..hi.l
+for j in mid: mark[j] = true
 
 let cnt = V.count(v => mark[v])
 let has_marked = V.any(v => mark[v])

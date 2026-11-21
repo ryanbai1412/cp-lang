@@ -2298,7 +2298,11 @@ impl<'a> Lowerer<'a> {
                     self.unify_ast_ty(&args[1], v, tpl_mod, gen_names, env);
                 }
                 ("Range", Ty::Range(inner)) if args.len() == 1 => {
-                    self.unify_ast_ty(&args[0], inner, tpl_mod, gen_names, env);
+                    let inner = match inner.as_ref() {
+                        Ty::Bound(d) => Ty::Pos(*d),
+                        other => other.clone(),
+                    };
+                    self.unify_ast_ty(&args[0], &inner, tpl_mod, gen_names, env);
                 }
                 ("Bounds", Ty::Bound(d)) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);

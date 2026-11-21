@@ -4110,6 +4110,86 @@ impl<'a> Lowerer<'a> {
             });
         }
         match (want, &e.ty) {
+            // §124: integer literal / arithmetic to `D.bounds`.
+            (Ty::Bound(d), Ty::Int) => {
+                let d = *d;
+                Ok(self.cast(Cast::Trust, e, Ty::Bound(d)))
+            }
+            // §124: half-open cut range `Range<D.bounds>` -> `Range<D>` (same two ints, free).
+            (Ty::Range(want_elem), Ty::Range(got_elem))
+                if matches!(
+                    (want_elem.as_ref(), got_elem.as_ref()),
+                    (Ty::Pos(d1), Ty::Bound(d2)) if d1 == d2
+                ) =>
+            {
+                Ok(Expr {
+                    ty: want.clone(),
+                    ..e
+                })
+            }
+            (Ty::List(want_elem), Ty::List(got_elem))
+                if matches!(
+                    (want_elem.as_ref(), got_elem.as_ref()),
+                    (Ty::Range(w), Ty::Range(g))
+                        if matches!((w.as_ref(), g.as_ref()), (Ty::Pos(d1), Ty::Bound(d2)) if d1 == d2)
+                ) =>
+            {
+                Ok(Expr {
+                    ty: want.clone(),
+                    ..e
+                })
+            }
+            // §124: tuple element-wise coercion (e.g. `(Int, Range<D.bounds>)` -> `(Int, Range<D>)`).
+            (Ty::Tuple(want_items), Ty::Tuple(got_items))
+                if want_items.len() == got_items.len()
+                    && want_items.iter().zip(got_items).any(|(w, g)| w != g) =>
+            {
+                let want_items = want_items.clone();
+                if let ExprKind::Tuple(elems) = e.kind {
+                    let mut out_elems = Vec::with_capacity(elems.len());
+                    for (el, w) in elems.into_iter().zip(&want_items) {
+                        match self.try_coerce(el, w) {
+                            Ok(c) => out_elems.push(c),
+                            Err(orig) => {
+                                return Err(Expr {
+                                    kind: ExprKind::Tuple(vec![orig]),
+                                    ty: e.ty,
+                                    span,
+                                });
+                            }
+                        }
+                    }
+                    return Ok(self.mk(ExprKind::Tuple(out_elems), Ty::Tuple(want_items), span));
+                }
+                let got_ty = e.ty.clone();
+                let mut ok = true;
+                let coerced = self.do_expr(Some(&Ty::Tuple(want_items.clone())), span, |lw, out| {
+                    let held = lw.hold(e.clone(), out);
+                    let mut elems = Vec::with_capacity(want_items.len());
+                    for (i, w) in want_items.iter().enumerate() {
+                        let field_ty = match &got_ty {
+                            Ty::Tuple(gs) => gs[i].clone(),
+                            _ => Ty::Error,
+                        };
+                        let f = lw.mk(ExprKind::Field(Box::new(held.clone()), i), field_ty, span);
+                        match lw.try_coerce(f, w) {
+                            Ok(c) => elems.push(c),
+                            Err(_) => {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+                    if ok {
+                        let tup = lw.mk(ExprKind::Tuple(elems), Ty::Tuple(want_items.clone()), span);
+                        out.push(Stmt::Give(tup));
+                    }
+                });
+                if ok {
+                    return Ok(coerced);
+                }
+                Err(e)
+            }
             (Ty::List(want_elem), Ty::DomainVal) => {
                 if let ExprKind::DomainVal(d) = e.kind {
                     if **want_elem == Ty::Pos(d) {

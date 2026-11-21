@@ -3118,3 +3118,39 @@ fn recursive_let_lambda_checks_and_var_self_ref_is_error() {
         ["E0201"]
     );
 }
+
+#[test]
+fn bounds_literals_and_cut_range_conversion() {
+    let ok = "\
+domain V = 0..5
+fn cost(piece: Range<V>) -> Int = piece.len
+var c: V.bounds = 0
+c = 1
+var dp: [V.bounds]Int = 0
+for i in V.bounds:
+    for j in V.bounds.first..i:
+        dp[i] += cost(j..i)
+let a: [V]Int = 1
+let s = a[V.bounds.first..V.bounds.last]
+print(c, dp[V.bounds.last], s.len)
+";
+    assert_eq!(codes(ok), Vec::<&str>::new());
+
+    // Inclusive cut range `j..=i` must not convert to `Range<V>`.
+    let bad_incl = "\
+domain V = 0..5
+fn cost(piece: Range<V>) -> Int = piece.len
+for i in V.bounds:
+    for j in V.bounds.first..i:
+        print(cost(j..=i))
+";
+    assert_eq!(codes(bad_incl), ["E0301"]);
+
+    // Plain position domain `V` still rejects raw integer literals.
+    let bad_pos = "\
+domain V = 0..5
+var x: V = 0
+print(x)
+";
+    assert!(!codes(bad_pos).is_empty());
+}
