@@ -733,9 +733,9 @@ The JetBrains plugin (`editors/jetbrains/`, IntelliJ Platform LSP API, 2024.3
 or later, commercial IDEs only) has a highlighting lexer, color settings,
 comments and braces, `cpl lsp` as its server, run configurations for
 `cpl run`, `test` and `stress` on the first sample with a marker on `fn main`,
-and the trace viewer in a JCEF editor tab; `buildPlugin` runs in `--full`, but its
-platform tests (lexer, and a headless IDE smoke test of each piece) have not
-run yet: the test framework's download host was not reachable here.
+and the trace viewer in a JCEF editor tab; `--full` builds it and runs its 14
+platform tests (lexer, settings, and a headless IDE smoke test of the file type,
+highlighting, comments, server, run configuration, run marker and trace).
 `editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax or
 tree-sitter, `cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
 (`languages.toml`, the grammar and its queries) and Zed (an extension in
@@ -755,8 +755,8 @@ editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
 **Next.** Fixture tests; proven ranges of expressions and `var`s
-(needs the checker's own range analysis); a test lens; run the JetBrains tests and add them to `--full`, then
-the trace's step sync in its tool window; publish the Zed extension; fuzzer.
+(needs the checker's own range analysis); the JetBrains trace's step sync in its
+tool window; publish the Zed extension; the VS Code extension-host suite in a gate.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a
