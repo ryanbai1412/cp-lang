@@ -2047,6 +2047,150 @@ def merge_baseline_perf(port_records, baseline):
                 r["interp"] = b["interp"]
 
 
+def _port_id_from_relpath(relpath):
+    """Extract active port id `group/name` from a repo-relative path under proto/ports/."""
+    norm = relpath.replace("\\", "/").lstrip("./")
+    if not norm.startswith("proto/ports/"):
+        return None
+    parts = norm.split("/")
+    if len(parts) < 4:
+        return None
+    group = parts[2]
+    if any(group.startswith(pfx) for pfx in RETIRED_DIR_PREFIXES):
+        return None
+    fname = parts[-1]
+    if len(parts) == 4:
+        if fname.endswith(".cp"):
+            return f"{group}/{fname[:-3]}"
+        if fname.endswith("_orig.cpp"):
+            return f"{group}/{fname[:-9]}"
+        if fname.endswith("_orig.cpp.strip"):
+            return f"{group}/{fname[:-15]}"
+        return None
+    sub = parts[3]
+    if sub in ("dream", "gen", "checkers", "interactors", "samples") and len(parts) == 5:
+        stem = os.path.splitext(fname)[0]
+        if sub == "samples":
+            # samples/NAME.in, samples/NAME.1.in, etc.
+            stem = stem.split(".")[0]
+        return f"{group}/{stem}" if stem else None
+    return None
+
+
+def detect_touched_ports(repo_root=ROOT, base_ref="origin/main"):
+    """Return the set of port IDs touched vs base_ref, or None if compiler/stdlib changed.
+
+    When only ports/docs/reviews/frictions changed, returning the touched port IDs
+    lets `--write` merge per port so a commit from an older checkout cannot clobber
+    another commit's baseline entries (e.g. stale emitted_bytes on another port).
+    """
+    changed = set()
+    try:
+        ref_ok = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", base_ref],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        ).returncode == 0
+        diff_ref = base_ref if ref_ok else "HEAD"
+        r = subprocess.run(
+            ["git", "diff", "--name-only", diff_ref],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        if r.returncode == 0:
+            changed.update(line.strip() for line in r.stdout.splitlines() if line.strip())
+        st = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        if st.returncode == 0:
+            for line in st.stdout.splitlines():
+                if len(line) > 3:
+                    p = line[3:].strip()
+                    if " -> " in p:
+                        p = p.split(" -> ", 1)[1]
+                    if p:
+                        changed.add(p)
+    except OSError:
+        return None
+
+    for p in changed:
+        norm = p.replace("\\", "/")
+        if norm.startswith("crates/") or norm.startswith("stdlib/"):
+            return None
+
+    touched = set()
+    for p in changed:
+        pid = _port_id_from_relpath(p)
+        if pid:
+            touched.add(pid)
+    return touched
+
+
+def merge_baseline_ports(existing_baseline, new_report, touched_ids=None):
+    """Merge new_report into existing_baseline per port.
+
+    If touched_ids is a set/iterable of port IDs, ONLY those port entries are
+    updated/inserted from new_report; every untouched port entry in
+    existing_baseline is preserved verbatim so concurrent commits cannot race
+    and overwrite each other's port metrics. Totals are recomputed over the
+    merged port list.
+    """
+    if not existing_baseline:
+        return new_report
+    if touched_ids is None:
+        return new_report
+
+    touched = set(touched_ids)
+    merged_by_id = {r["id"]: dict(r) for r in existing_baseline.get("ports", [])}
+    new_by_id = {r["id"]: r for r in new_report.get("ports", [])}
+
+    for pid in touched:
+        if pid in new_by_id:
+            rec = dict(new_by_id[pid])
+            old = merged_by_id.get(pid)
+            if old and rec.get("gate_mode") == "fast":
+                if old.get("cp_sha") == rec.get("cp_sha") and old.get("orig_sha") == rec.get("orig_sha"):
+                    if rec.get("perf") is None and old.get("perf") is not None:
+                        rec["perf"] = old["perf"]
+                    if rec.get("interp") is None and old.get("interp") is not None:
+                        rec["interp"] = old["interp"]
+            merged_by_id[pid] = rec
+        else:
+            merged_by_id.pop(pid, None)
+
+    merged_ports = [merged_by_id[pid] for pid in sorted(merged_by_id)]
+    nt = new_report.get("totals", {})
+    et = existing_baseline.get("totals", {})
+    merged_totals = compute_totals(
+        merged_ports,
+        new_report.get("friction_lint") or existing_baseline.get("friction_lint") or {"wa_trap": 0, "real_gap": 0, "stale_port": 0, "total_findings": 0},
+        new_report.get("frictions") or existing_baseline.get("frictions") or {"files": 0, "total": 0, "open": 0, "closed": 0, "by_severity": {}, "by_goal": {}, "by_area": {}, "open_blockers": [], "open_highs": [], "warnings": []},
+        bug_replay=nt.get("bug_replay") if nt.get("bug_replay") is not None else et.get("bug_replay"),
+        revision=nt.get("revision") if nt.get("revision") is not None else et.get("revision"),
+        spelling_drift=nt.get("spelling_drift") if nt.get("spelling_drift") is not None else et.get("spelling_drift"),
+        dream_scores=nt.get("dream_scores") if nt.get("dream_scores") is not None else et.get("dream_scores"),
+        gate_fast=nt.get("gate_fast") if nt.get("gate_fast") is not None else et.get("gate_fast"),
+    )
+
+    out = dict(existing_baseline)
+    out["schema_version"] = new_report.get("schema_version", existing_baseline.get("schema_version", 1))
+    out["meta"] = new_report.get("meta", existing_baseline.get("meta"))
+    out["totals"] = merged_totals
+    out["frictions"] = new_report.get("frictions") or existing_baseline.get("frictions")
+    out["friction_lint"] = new_report.get("friction_lint") or existing_baseline.get("friction_lint")
+    if new_report.get("writable_from_docs") is not None:
+        out["writable_from_docs"] = new_report["writable_from_docs"]
+    if new_report.get("dreams") is not None:
+        out["dreams"] = new_report["dreams"]
+    out["ports"] = merged_ports
+    return out
+
+
 def git_head_short():
     r = sh(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT)
     return r.stdout.strip() if r.returncode == 0 else "unknown"
@@ -2455,7 +2599,8 @@ def main(argv=None):
     ap.add_argument("--baseline", default=DEFAULT_BASELINE, help="baseline scoreboard JSON for diffing")
     ap.add_argument("--no-baseline", action="store_true", help="skip baseline comparison")
     ap.add_argument("--check", action="store_true", help="exit 1 on any regression or hard gate failure")
-    ap.add_argument("--write", action="store_true", help="write scoreboard JSON to --out")
+    ap.add_argument("--write", action="store_true", help="write scoreboard JSON to --out (merges per port into existing baseline)")
+    ap.add_argument("--all-ports", action="store_true", help="with --write, rewrite all port entries instead of merging only touched ports")
     ap.add_argument("--out", default=DEFAULT_BASELINE, help="output JSON path for --write")
     ap.add_argument("--json", action="store_true", help="print JSON report to stdout")
     ap.add_argument("--show-ports", action="store_true", help="print per-port table")
@@ -2481,9 +2626,19 @@ def main(argv=None):
     report, diff = build_report(args)
     report["dreams"] = dreams_report(find_cpl_binary(args.cpl))
     if args.write:
+        to_write = report
+        if not args.all_ports and os.path.isfile(args.out):
+            with open(args.out, encoding="utf-8") as f:
+                existing_out = json.load(f)
+            if args.ports:
+                touched_ids = {r["id"] for r in report.get("ports", [])}
+            else:
+                touched_ids = detect_touched_ports()
+            if touched_ids is not None:
+                to_write = merge_baseline_ports(existing_out, report, touched_ids=touched_ids)
         os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
         with open(args.out, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, sort_keys=False)
+            json.dump(to_write, f, indent=2, sort_keys=False)
             f.write("\n")
 
     if args.json:

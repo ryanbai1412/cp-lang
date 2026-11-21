@@ -760,6 +760,79 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             self.assertTrue(any("dream-score median improved" in m for m in diff_good["improvements"]))
             self.assertTrue(any("dream-score under-4 count shrank" in m for m in diff_good["improvements"]))
 
+    def test_per_port_baseline_merge(self):
+        # Simulates the cf2124f2 race: main already updated cf2124f2 to 16334 B,
+        # while another branch from an older checkout (where cf2124f2 was 15302 B)
+        # only touched cf2084h. Per-port merge must keep cf2124f2 at 16334 B and
+        # update only cf2084h.
+        def mk_port(pid, eb, sha):
+            return {
+                "id": pid,
+                "path": f"proto/ports/{pid}.cp",
+                "orig_path": f"proto/ports/{pid}_orig.cpp",
+                "gate": "pass",
+                "gate_mode": "fast",
+                "gate_detail": "ok",
+                "check_ok": True,
+                "fmt_ok": True,
+                "lint_warnings": 0,
+                "taste_lints": 0,
+                "taste_lints_by_lint": {},
+                "build_ok": True,
+                "emitted_bytes": eb,
+                "over_48kb": False,
+                "over_64kb": False,
+                "cp_tokens": 100,
+                "orig_tokens": 250,
+                "orig_stripped_tokens": 200,
+                "token_ratio": 0.4,
+                "stripped_token_ratio": 0.5,
+                "cp_sha": sha,
+                "orig_sha": "orig-sha",
+                "has_gen": True,
+                "has_samples": True,
+                "interactive": False,
+                "has_checker": False,
+                "perf": {"time_ratio": 1.0, "cpp_ms": 20.0, "orig_ms": 20.0},
+                "interp": None,
+            }
+
+        existing = {
+            "schema_version": 1,
+            "meta": {"commit": "main-new", "mode": "fast"},
+            "totals": {"gate_fast": {"elapsed_s": 120.0, "budget_s": 180.0, "ok": True}},
+            "ports": [
+                mk_port("ecnerwala/cf2084h", 9000, "sha-h-old"),
+                mk_port("ecnerwala/cf2124f2", 16334, "sha-f2-new"),
+            ],
+        }
+        stale_branch_report = {
+            "schema_version": 1,
+            "meta": {"commit": "branch-tip", "mode": "fast"},
+            "totals": {},
+            "ports": [
+                mk_port("ecnerwala/cf2084h", 8500, "sha-h-new"),
+                mk_port("ecnerwala/cf2124f2", 15302, "sha-f2-old"),
+            ],
+        }
+        stale_branch_report["ports"][0]["perf"] = None
+        stale_branch_report["ports"][1]["perf"] = None
+
+        merged = sb.merge_baseline_ports(existing, stale_branch_report, touched_ids={"ecnerwala/cf2084h"})
+        by_id = {p["id"]: p for p in merged["ports"]}
+        self.assertEqual(by_id["ecnerwala/cf2124f2"]["emitted_bytes"], 16334)
+        self.assertEqual(by_id["ecnerwala/cf2124f2"]["cp_sha"], "sha-f2-new")
+        self.assertEqual(by_id["ecnerwala/cf2084h"]["emitted_bytes"], 8500)
+        self.assertEqual(by_id["ecnerwala/cf2084h"]["cp_sha"], "sha-h-new")
+        self.assertEqual(merged["totals"]["emitted_bytes"]["max"], 16334)
+        self.assertEqual(merged["totals"]["gate_fast"]["elapsed_s"], 120.0)
+
+        # Path -> port ID mapping handles ports, dreams, gens, checkers, samples, and skips retired batches.
+        self.assertEqual(sb._port_id_from_relpath("proto/ports/ecnerwala/cf2124f2.cp"), "ecnerwala/cf2124f2")
+        self.assertEqual(sb._port_id_from_relpath("proto/ports/ecnerwala/dream/cf2124f2.cp"), "ecnerwala/cf2124f2")
+        self.assertEqual(sb._port_id_from_relpath("proto/ports/ecnerwala/samples/cf2124f2.1.in"), "ecnerwala/cf2124f2")
+        self.assertIsNone(sb._port_id_from_relpath("proto/ports/scout_batch_1/foo.cp"))
+
 
 if __name__ == "__main__":
     unittest.main()
