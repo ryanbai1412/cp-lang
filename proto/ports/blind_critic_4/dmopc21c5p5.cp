@@ -36,7 +36,7 @@ fn solve_exact(m: 1..=12) -> List<Int>:
                 for nxt in V if nxt not in mask:
                     let nmask = mask.with(nxt)
                     let cand = cur + edge_w(last.ord + 1, nxt.ord + 1)
-                    if if let old = dp[nmask, nxt]: cand > old else: true:
+                    if dp[nmask, nxt].map(old => cand > old) ?? true:
                         dp[nmask, nxt] = some(cand)
                         prv[nmask, nxt] = some(last)
     let full = Subset<V>.full
@@ -57,31 +57,19 @@ fn two_opt_step(mut perm: [Pos]Int) -> Bool:
             let j1 = j.next!
             let (a, b, c, d) = (perm[i], perm[i1], perm[j], perm[j1])
             if edge_w(a, c) + edge_w(b, d) > edge_w(a, b) + edge_w(c, d):
-                var (l, r) = (i1, j)
-                while l < r:
-                    perm.swap(l, r)
-                    l = l.next!
-                    r = r.prev!
+                perm[i1..=j].reverse()
                 return true
     false
 
 fn greedy_start(mut rng: Rng, trial: Int) -> [Pos]Int:
-    var used = List.filled(n + 1, false)
     var cur = if trial == 0: 1 else: rng.int(1, n)
+    var rem = [v for v in 1..=n if v != cur]
     var perm: [Pos]Int = 0
     perm[Pos.first] = cur
-    used[cur] = true
     for p in Pos if p != Pos.first:
-        var nxt = 0
-        var best_d = -1
-        for cand in 1..=n if not used[cand]:
-            let w = edge_w(cur, cand)
-            if w > best_d or (w == best_d and rng.int(0, 2) == 0):
-                best_d = w
-                nxt = cand
-        perm[p] = nxt
-        used[nxt] = true
-        cur = nxt
+        let pick = argmax([0..rem.len] i => (edge_w(cur, rem[i]), rng.int(0, 1_000_000_000)))!
+        cur = rem.remove(pick)
+        perm[p] = cur
     perm
 
 if n <= 12:
@@ -92,8 +80,8 @@ else:
     var best_sc = score(best_perm)
     for trial in 0..64:
         var perm = greedy_start(mut rng, trial)
-        while two_opt_step(mut perm):
-            continue
+        loop:
+            if not two_opt_step(mut perm): break
         let sc = score(perm)
         if sc > best_sc:
             best_sc = sc

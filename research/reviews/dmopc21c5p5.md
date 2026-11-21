@@ -1,7 +1,7 @@
 # dmopc21c5p5
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (port = dream: replaced nested `if if let` with `dp[nmask, nxt].map(old => cand > old) ?? true`, replaced hand swap loop with `perm[i1..=j].reverse()`, replaced `nxt = 0`/`best_d = -1`/`used` sentinels in `greedy_start` with `argmax` + random tie-break on `rem`, replaced `while two_opt_step: continue` with `loop: if not two_opt_step: break`; 0 lints, `27,514 B`, verified exact n=1..8 and valid n<=100 under ASan+UBSan)
+Dream: pending cold rescore (port = dream 1.000x, 0 errors)
 
 Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype deltas. The general case is a random restart plus a 2-opt heuristic with no argument that it reaches the optimum. The body hand-rolls a sieve and an RNG, and drives the search with `-1` sentinels and an `improved` flag. No dream exists, so the score is capped at 3.
 
