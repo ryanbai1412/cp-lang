@@ -9,19 +9,18 @@
 //     after `r - 1` peels, adding 1 color beyond `2r - 1` allows one vertex `v`
 //     to absorb a star of `deg(v) - 1` extra incident edges (each using the new
 //     color without creating a monochromatic path), so picking `v` with maximum
-//     remaining degree `degs.max!` maximizes the edge count at `colors = 2r`.
+//     remaining degree `degs.last!` maximizes the edge count at `colors = 2r`.
 //   - On the odd step (`colors = 2r + 1`), peeling the entire current leaf
-//     layer covers all remaining `leaves.len - (max_deg - 1)` edges of the round.
-
-use std.containers.SortedBag
+//     layer adds `leaves.len` edges across the full round, so it covers the
+//     remaining `leaves.len - (max_deg - 1)` edges beyond the even step.
 
 @!multitest
 let n: 2..=300_000 = read()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](V, V)>())
 
-var deg = [V] v => g[v].len
-var degs = SortedBag.from(deg)
+var deg = [V] v => g.deg(v)
+var degs = SortedBag<Int>.of([deg[v] for v in V])
 var leaves = [v for v in V if deg[v] == 1]
 var alive: [V]Bool = true
 
@@ -33,7 +32,7 @@ fn peel_layer():
         for nb in g[v] if alive[nb]:
             degs.remove(deg[nb])
             deg[nb] -= 1
-            degs.insert(deg[nb])
+            degs.add(deg[nb])
             if deg[nb] == 1: next_leaves.push(nb)
     leaves = next_leaves
 
@@ -42,7 +41,7 @@ var colors = 2
 var ans = [1]
 
 while ans.len < n - 1:
-    let max_deg = degs.max!
+    let max_deg = degs.last!
     if colors % 2 == 0:
         edge_cnt += max_deg - 1
     else:
