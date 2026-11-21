@@ -275,7 +275,8 @@ fn remove<T>(mut self: List<T>, i: Int) -> T // O(n)
 ```cp
 // Reductions and predicates
 fn prod<S, T>(it: S) -> T // O(n)
-fn is_sorted<D, T, K = T>(self: [D]T, by: T -> K = x => x) -> Bool // O(n)
+fn is_sorted<D, T>(self: [D]T) -> Bool // O(n)
+fn is_sorted_by<D, T, K>(self: [D]T, by: T -> K) -> Bool // O(n)
 fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D // O(n)
 fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D // O(n)
 
@@ -286,14 +287,13 @@ fn rotate_right<T>(mut a: List<T>, k: Int) // O(n), O(1) space
 
 // Zero-allocation runs/chunks and domain bucketing
 fn chunk_by<D, T>(self: [D]T, same: (T, T) -> Bool) -> yields Range<D> // O(n), O(1) space
-fn run_ranges<D, T, K = T>(self: [D]T, by: T -> K = x => x) -> yields Range<D> // O(n), O(1) space
+fn run_ranges<D, T>(self: [D]T) -> yields Range<D> // O(n), O(1) space
+fn run_ranges_by<D, T, K>(self: [D]T, by: T -> K) -> yields Range<D> // O(n), O(1) space
 fn buckets<D, K>(key: [D]K) -> [K]List<D> // O(D.count + K.count)
 fn chunks<T>(self: List<T>, k: Int) -> yields List<T> // O(n)
 
-// Prefix and suffix scans over elements and boundary cuts
+// Prefix and suffix scans over elements (cut-indexed prefix_fold/suffix_fold live in std.prefix)
 fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T // O(n)
-fn prefix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T // O(n)
-fn suffix_fold<D, T, M>(xs: [D]T, m: M) -> [D.bounds]T // O(n)
 
 // Coordinate compression completeness
 fn Compressed.contains(self, val: T) -> Bool // O(log n)
@@ -325,8 +325,10 @@ fn parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (),
                        apply: I -> (), ok: Int -> Bool) -> List<?I>
     // O((r.len + queries) log r.len) calls; out[q] is the first t with
     // ok(q) after apply on every t' <= t, ok monotone in the prefix
-fn first_gt<D, T, K = T>(self: [D]T, target: K, by: T -> K = x => x) -> ?D // O(log n)
-fn last_lt<D, T, K = T>(self: [D]T, target: K, by: T -> K = x => x) -> ?D // O(log n)
+fn first_gt<D, T>(self: [D]T, target: T) -> ?D // O(log n)
+fn first_gt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D // O(log n)
+fn last_lt<D, T>(self: [D]T, target: T) -> ?D // O(log n)
+fn last_lt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D // O(log n)
 
 // Monotone stack and fixed-window sliding extrema
 fn prev_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D // O(n)

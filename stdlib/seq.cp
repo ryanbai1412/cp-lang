@@ -1,10 +1,14 @@
-//! Sequences: searching, reordering, coordinate compression, and collection helpers.
+//! Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.
 //!
-//! Binary search on a range is `bsearch_first` and `bsearch_last`; a sorted list or array
-//! answers `xs.first_ge(x)` (`?Int` / `?D`), `xs.last_le(x)` (`?Int` / `?D`), and
-//! `first_ge_by` / `last_le_by` (`?Int`); an ordered `Map` answers `first_ge`, `first_gt`,
-//! `last_le`, `last_lt` (`?(K, V)`); a linear search is `first(it)`, `a.find(x)`, `min_by`,
-//! and `max_by`.
+//! - Reductions & extrema: `prod`, `is_sorted`/`is_sorted_by`, `min_by`/`max_by`, `argmax`/`argmin`/`argmax_by`/`argmin_by`.
+//! - Binary & unimodal search: `bsearch_first`, `bsearch_last`, `bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`.
+//! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (and `*_by`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
+//! - Runs, chunking & windows: `runs`, `run_ranges`/`run_ranges_by`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
+//! - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`).
+//! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `nth_element`, `merge_sorted`.
+//! - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`.
+//! - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`.
+//! - Coordinate compression: `compress(all)` -> `Compressed<D, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.algebra.{Monoid}
 
@@ -22,6 +26,40 @@ pub fn scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T:
         if let b = before: out[i] = f(out[b], out[i])
         before = i
     out
+
+/// Every suffix folded right-to-left with `f`: `out[i] = f(xs[i], out[i + 1])`, as long as `xs`
+/// and indexed as `xs` is. No identity is needed. O(n) calls of `f`.
+pub fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T:
+    var out = xs
+    var after: ?D = none
+    for i in D.rev:
+        if let a = after: out[i] = f(out[i], out[a])
+        after = i
+    out
+
+/// Product of all elements of `it` (`T.one` when empty). Works on `Int`, `Mod<P>`, `F64`. O(n).
+pub fn prod<S, T>(it: S) -> T:
+    var out = T.one
+    for x in it: out *= x
+    out
+
+/// Whether `self` is non-decreasing. Works on `List<T>`, `[D]T`, and `Str`. O(n).
+pub fn is_sorted<D, T>(self: [D]T) -> Bool:
+    var prev: ?T = none
+    for i in D:
+        let x = self[i]
+        if let p = prev, x < p: return false
+        prev = x
+    true
+
+/// Whether `self` is non-decreasing under `by`. O(n).
+pub fn is_sorted_by<D, T, K>(self: [D]T, by: T -> K) -> Bool:
+    var prev: ?K = none
+    for i in D:
+        let k = by(self[i])
+        if let p = prev, k < p: return false
+        prev = k
+    true
 
 /// The first position of `r` where `ok` holds, or `none`. `ok` must be false and then true
 /// along the range; the two ends are checked against that. O(log n) calls of `ok`.
@@ -47,6 +85,87 @@ pub fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I:
         let mid = (lo + hi + 1) / 2
         if ok((base + mid)!): lo = mid else: hi = mid - 1
     (base + lo)!
+
+/// Fixed-iteration binary search on `[lo, hi]` for monotone `ok` (false then true).
+/// Returns the least `x` in `[lo, hi]` with `ok(x)` to within `(hi - lo) / 2^steps`, or `none`
+/// when `not ok(hi)`. `steps + 1` calls of `ok`.
+pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64:
+    if not ok(hi): return none
+    var (l, r) = (lo, hi)
+    for _ in 0..steps:
+        let m = (l + r) * 0.5
+        if ok(m): r = m else: l = m
+    r
+
+/// Position maximizing a discrete unimodal function `f` over `r`, or `none` if `r` is empty.
+/// `f` must be strictly rising then falling (plateaus only at the optimum). O(log |r|) calls of `f`.
+pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
+    if r.is_empty: return none
+    let base = r.first!
+    var (lo, hi) = (0, r.len - 1)
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if f((base + mid)!) < f((base + (mid + 1))!): lo = mid + 1 else: hi = mid
+    (base + lo)!
+
+/// Position minimizing a discrete unimodal function `f` over `r`, or `none` if `r` is empty.
+/// `f` must be strictly falling then rising (plateaus only at the optimum). O(log |r|) calls of `f`.
+pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
+    if r.is_empty: return none
+    let base = r.first!
+    var (lo, hi) = (0, r.len - 1)
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if f((base + mid)!) > f((base + (mid + 1))!): lo = mid + 1 else: hi = mid
+    (base + lo)!
+
+/// Point in `[lo, hi]` maximizing continuous unimodal `f` via golden-section search.
+/// Within `(hi - lo) * 0.618^steps` of the optimum. `steps + 2` calls of `f`.
+pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
+    let inv_phi = 0.6180339887498949
+    var (l, r) = (lo, hi)
+    var m1 = r - (r - l) * inv_phi
+    var m2 = l + (r - l) * inv_phi
+    var f1 = f(m1)
+    var f2 = f(m2)
+    for _ in 0..steps:
+        if f1 < f2:
+            l = m1
+            m1 = m2
+            f1 = f2
+            m2 = l + (r - l) * inv_phi
+            f2 = f(m2)
+        else:
+            r = m2
+            m2 = m1
+            f2 = f1
+            m1 = r - (r - l) * inv_phi
+            f1 = f(m1)
+    (l + r) * 0.5
+
+/// Point in `[lo, hi]` minimizing continuous unimodal `f` via golden-section search.
+/// Within `(hi - lo) * 0.618^steps` of the optimum. `steps + 2` calls of `f`.
+pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
+    let inv_phi = 0.6180339887498949
+    var (l, r) = (lo, hi)
+    var m1 = r - (r - l) * inv_phi
+    var m2 = l + (r - l) * inv_phi
+    var f1 = f(m1)
+    var f2 = f(m2)
+    for _ in 0..steps:
+        if f1 > f2:
+            l = m1
+            m1 = m2
+            f1 = f2
+            m2 = l + (r - l) * inv_phi
+            f2 = f(m2)
+        else:
+            r = m2
+            m2 = m1
+            f2 = f1
+            m1 = r - (r - l) * inv_phi
+            f1 = f(m1)
+    (l + r) * 0.5
 
 /// The element with the smallest `key`, the first of them on a tie; `none` for nothing.
 pub fn min_by<S, T, K>(it: S, key: T -> K) -> ?T:
@@ -101,32 +220,97 @@ pub fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>):
         else: no.push(x)
     (yes, no)
 
+/// Partition `a` in place so `a[k]` holds the element that would sit at `k` in sorted order,
+/// with `a[i] <= a[k]` for `i < k` and `a[i] >= a[k]` for `i > k`. O(n) expected, O(1) extra space.
+pub fn nth_element<T>(mut a: List<T>, k: Int):
+    assert 0 <= k and k < a.len, "nth_element index out of range"
+    var (lo, hi) = (0, a.len - 1)
+    var state = 1_234_567
+    while lo < hi:
+        state = (state * 48271) % 2_147_483_647
+        let piv = a[lo + (state % (hi - lo + 1))]
+        var (lt, i, gt) = (lo, lo, hi)
+        while i <= gt:
+            if a[i] < piv:
+                a.swap(lt, i)
+                lt += 1
+                i += 1
+            elif piv < a[i]:
+                a.swap(i, gt)
+                gt -= 1
+            else:
+                i += 1
+        if k < lt: hi = lt - 1
+        elif k > gt: lo = gt + 1
+        else: return
+
+/// Merge two sorted lists into one sorted list, taking from `a` before `b` on ties. O(|a| + |b|).
+pub fn merge_sorted<T>(a: List<T>, b: List<T>) -> List<T>:
+    var out: List<T> = []
+    var (i, j) = (0, 0)
+    while i < a.len and j < b.len:
+        if b[j] < a[i]:
+            out.push(b[j])
+            j += 1
+        else:
+            out.push(a[i])
+            i += 1
+    while i < a.len:
+        out.push(a[i])
+        i += 1
+    while j < b.len:
+        out.push(b[j])
+        j += 1
+    out
+
 /// Every run of `k` neighbours, left to right: `[1, 2, 3].windows(2)` gives `[1, 2]` then `[2, 3]`.
 /// Nothing when `k > self.len`. O(k) per window.
 pub fn windows<T>(self: List<T>, k: Int) -> yields List<T>:
     assert k >= 1, "a window holds at least one element"
     for i in 0..self.len - k + 1: yield self[i..i + k]
 
+/// Non-overlapping slices of length `k` (the last may be shorter). O(n) total.
+pub fn chunks<T>(self: List<T>, k: Int) -> yields List<T>:
+    assert k >= 1, "a chunk holds at least one element"
+    var i = 0
+    while i < self.len:
+        let end = min(i + k, self.len)
+        yield self[i..end]
+        i = end
+
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].pairs()` gives
-/// `(10, 20)` then `(20, 30)`. Nothing when `self.len < 2`. O(1) per step.
-pub fn pairs<T>(self: List<T>) -> yields (T, T):
-    for i in 1..self.len: yield (self[i - 1], self[i])
+/// `(10, 20)` then `(20, 30)`. Works on `List<T>`, `[D]T`, and `Str`. O(1) per step.
+pub fn pairs<D, T>(self: [D]T) -> yields (T, T):
+    var prev: ?T = none
+    for i in D:
+        let x = self[i]
+        if let p = prev: yield (p, x)
+        prev = x
 
 /// Every element paired with the previous one, starting with `(none, first)`:
 /// `[10, 20, 30].with_prev()` gives `(none, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
-pub fn with_prev<T>(self: List<T>) -> yields (?T, T):
+pub fn with_prev<D, T>(self: [D]T) -> yields (?T, T):
     var prev: ?T = none
-    for x in self:
+    for i in D:
+        let x = self[i]
         yield (prev, x)
         prev = x
 
 /// Every element with the one after it, the last with the first: the
 /// sides of a polygon, the links of a ring. One pair `(x, x)` for a
-/// single element, none for an empty list.
+/// single element, none for an empty sequence.
 ///
 ///     for (u, v) in poly.cyclic_pairs(): area += cross(u, v)
-pub fn cyclic_pairs<T>(self: List<T>) -> yields (T, T):
-    for i in 0..self.len: yield (self[i], self[(i + 1) % self.len])
+pub fn cyclic_pairs<D, T>(self: [D]T) -> yields (T, T):
+    var first_val: ?T = none
+    var prev: ?T = none
+    for i in D:
+        let x = self[i]
+        if let p = prev: yield (p, x)
+        else: first_val = x
+        prev = x
+    if let p = prev, let f = first_val:
+        yield (p, f)
 
 /// The pairs `(a[i], b[i])`, as many as the shorter list has.
 pub fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)> = [
@@ -151,12 +335,27 @@ pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
     self[k] = f(self.get(k) ?? init)
 
 /// Rotate `a` left by `k` in place: what was at index `k % a.len` comes first.
-/// Signed Euclidean `k`: negative `k` rotates right (`rotate_left(mut a, -r)`).
+/// Signed Euclidean `k`: negative `k` rotates right (`rotate_left(mut a, -r)`). O(n), O(1) extra space.
 pub fn rotate_left<T>(mut a: List<T>, k: Int):
     if a.is_empty: return
     let s = k % a.len
-    let old = a.copy()
-    for i in 0..a.len: a[i] = old[(i + s) % a.len]
+    if s == 0: return
+    var (i, j) = (0, s - 1)
+    while i < j:
+        a.swap(i, j)
+        i += 1
+        j -= 1
+    i = s
+    j = a.len - 1
+    while i < j:
+        a.swap(i, j)
+        i += 1
+        j -= 1
+    reverse(mut a)
+
+/// Rotate `a` right by `k` in place: the last `k % a.len` elements move to the front. O(n).
+pub fn rotate_right<T>(mut a: List<T>, k: Int):
+    rotate_left(mut a, -k)
 
 /// Step `a` to the next arrangement in sorted order, in place. Returns false, leaving `a`
 /// sorted ascending, when it was the last one. O(n), amortized O(1).
@@ -195,13 +394,71 @@ pub fn prev_permutation<T>(mut a: List<T>) -> Bool:
     true
 
 /// The stretches of equal neighbours, in order: `runs("aabccc")` is `[('a', 2), ('b', 1), ('c', 3)]`.
-pub fn runs<T>(a: List<T>) -> List<(val: T, len: Int)>:
+/// Works on `List<T>`, `[D]T`, and `Str`. O(n).
+pub fn runs<D, T>(self: [D]T) -> List<(val: T, len: Int)>:
     var out: List<(val: T, len: Int)> = []
-    for x in a:
+    for i in D:
+        let x = self[i]
         if out.len > 0 and out[out.len - 1].val == x:
             out[out.len - 1] = (val: x, len: out[out.len - 1].len + 1)
         else:
             out.push((val: x, len: 1))
+    out
+
+/// Partition `self` into maximal contiguous `Range<D>` segments where `same(a, b)` holds on
+/// every adjacent pair. Zero allocations, O(n) calls of `same`.
+pub fn chunk_by<D, T>(self: [D]T, same: (T, T) -> Bool) -> yields Range<D>:
+    var start: ?D = none
+    var prev: ?D = none
+    for i in D:
+        if let p = prev:
+            if not same(self[p], self[i]):
+                yield start!..=p
+                start = i
+        else:
+            start = i
+        prev = i
+    if let s = start, let p = prev:
+        yield s..=p
+
+/// Maximal contiguous `Range<D>` runs of equal elements. Zero allocations, O(n).
+pub fn run_ranges<D, T>(self: [D]T) -> yields Range<D>:
+    var start: ?D = none
+    var prev: ?D = none
+    for i in D:
+        if let p = prev:
+            if self[i] != self[p]:
+                yield start!..=p
+                start = i
+        else:
+            start = i
+        prev = i
+    if let s = start, let p = prev:
+        yield s..=p
+
+/// Maximal contiguous `Range<D>` runs sharing the same `by` key. Zero allocations, O(n) calls of `by`.
+pub fn run_ranges_by<D, T, K>(self: [D]T, by: T -> K) -> yields Range<D>:
+    var start: ?D = none
+    var prev: ?D = none
+    var prev_key: ?K = none
+    for i in D:
+        let k = by(self[i])
+        if let p = prev:
+            if k != prev_key!:
+                yield start!..=p
+                start = i
+                prev_key = k
+        else:
+            start = i
+            prev_key = k
+        prev = i
+    if let s = start, let p = prev:
+        yield s..=p
+
+/// Group indices of `D` by their key in `K`, preserving order within each bucket. O(|D| + |K|).
+pub fn buckets<D, K>(key: [D]K) -> [K]List<D>:
+    var out: [K]List<D> = []
+    for i in D: out[key[i]].push(i)
     out
 
 /// The stretches of neighbours with the same `by`, in order, each with its values:
@@ -247,11 +504,24 @@ pub struct Compressed<D, T>(vals: [D]T):
         assert i != none and vals[i!] == val  // `at` is for a value that was compressed
         i!
 
+    /// The index of `val` if it was compressed, or `none`. O(log n).
+    pub fn try_at(self, val: T) -> ?D:
+        if let i = vals.first_ge(val), vals[i] == val: i else: none
+
+    /// Whether `val` is one of the compressed values. O(log n).
+    pub fn contains(self, val: T) -> Bool = self.try_at(val) != none
+
     /// The first index whose value is `>= val`, or `none`. O(log n).
     pub fn first_ge(self, val: T) -> ?D = vals.first_ge(val)
 
+    /// The first index whose value is `> val`, or `none`. O(log n).
+    pub fn first_gt(self, val: T) -> ?D = vals.first_gt(val)
+
     /// The last index whose value is `<= val`, or `none`. O(log n).
     pub fn last_le(self, val: T) -> ?D = vals.last_le(val)
+
+    /// The last index whose value is `< val`, or `none`. O(log n).
+    pub fn last_lt(self, val: T) -> ?D = vals.last_lt(val)
 
 /// Coordinate compression: `let xs = compress(all)` sorts the values, drops the duplicates
 /// and gives them a fresh domain `xs.D`, so an array over them is `[xs.D]Int` and an index of
@@ -294,6 +564,230 @@ pub fn last_le_by<T, K>(xs: List<T>, target: K, by: T -> K) -> ?Int:
         let mid = (lo + hi + 1) / 2
         if by(xs[mid]) <= target: lo = mid else: hi = mid - 1
     lo
+
+/// First index in sorted `self` with `self[i] > target`, or `none`. O(log n).
+pub fn first_gt<D, T>(self: [D]T, target: T) -> ?D:
+    if D.count == 0: return none
+    if self[D.last] <= target: return none
+    var (lo, hi) = (0, D.count - 1)
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if self[D.nth(mid)] > target: hi = mid else: lo = mid + 1
+    D.nth(lo)
+
+/// First index in sorted `self` with `by(self[i]) > target`, or `none`. O(log n).
+pub fn first_gt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D:
+    if D.count == 0: return none
+    if by(self[D.last]) <= target: return none
+    var (lo, hi) = (0, D.count - 1)
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if by(self[D.nth(mid)]) > target: hi = mid else: lo = mid + 1
+    D.nth(lo)
+
+/// Last index in sorted `self` with `self[i] < target`, or `none`. O(log n).
+pub fn last_lt<D, T>(self: [D]T, target: T) -> ?D:
+    if D.count == 0: return none
+    if self[D.first] >= target: return none
+    var (lo, hi) = (0, D.count - 1)
+    while lo < hi:
+        let mid = (lo + hi + 1) / 2
+        if self[D.nth(mid)] < target: lo = mid else: hi = mid - 1
+    D.nth(lo)
+
+/// Last index in sorted `self` with `by(self[i]) < target`, or `none`. O(log n).
+pub fn last_lt_by<D, T, K>(self: [D]T, target: K, by: T -> K) -> ?D:
+    if D.count == 0: return none
+    if by(self[D.first]) >= target: return none
+    var (lo, hi) = (0, D.count - 1)
+    while lo < hi:
+        let mid = (lo + hi + 1) / 2
+        if by(self[D.nth(mid)]) < target: lo = mid else: hi = mid - 1
+    D.nth(lo)
+
+// ---- Permutations, monotone stack, and sliding-window extrema
+
+/// Inverse of bijection `p: [I]V`: `inv[p[i]] == i` for all `i in I`.
+/// Traps in debug if `p` is not a bijection. O(|I|).
+pub fn inverse<I, V>(p: [I]V) -> [V]I:
+    assert I.count == V.count, "inverse requires domains of equal size"
+    var seen: [V]Bool = false
+    var inv: [V]?I = none
+    for i in I:
+        let v = p[i]
+        assert not seen[v], "inverse requires a bijection (duplicate image)"
+        seen[v] = true
+        inv[v] = i
+    [V] v => inv[v]!
+
+/// Function composition: `compose(f, g)[a] == g[f[a]]`. O(|A|).
+pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = [A] a => g[f[a]]
+
+/// Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element. O(|V|).
+pub fn perm_cycles<V>(p: [V]V) -> List<List<V>>:
+    var vis: [V]Bool = false
+    var out: List<List<V>> = []
+    for start in V:
+        if vis[start]: continue
+        var cyc: List<V> = []
+        var u = start
+        while not vis[u]:
+            vis[u] = true
+            cyc.push(u)
+            u = p[u]
+        out.push(cyc)
+    out
+
+/// `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition. O(|V|).
+pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
+    assert k >= 0, "perm_pow requires k >= 0"
+    var out = [V] v => v
+    for cyc in perm_cycles(p):
+        let m = cyc.len
+        let shift = k % m
+        for j in 0..m:
+            out[cyc[j]] = cyc[(j + shift) % m]
+    out
+
+/// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. O(n log n).
+pub fn inversions<T>(a: List<T>) -> Int:
+    let n = a.len
+    if n <= 1: return 0
+    var cur = a.copy()
+    var buf = a.copy()
+    var ans = 0
+    var width = 1
+    var to_buf = true
+    while width < n:
+        var lo = 0
+        while lo < n:
+            let mid = min(lo + width, n)
+            let hi = min(lo + 2 * width, n)
+            var (i, j, k) = (lo, mid, lo)
+            if to_buf:
+                while i < mid and j < hi:
+                    if cur[j] < cur[i]:
+                        buf[k] = cur[j]
+                        ans += mid - i
+                        j += 1
+                    else:
+                        buf[k] = cur[i]
+                        i += 1
+                    k += 1
+                while i < mid:
+                    buf[k] = cur[i]
+                    i += 1
+                    k += 1
+                while j < hi:
+                    buf[k] = cur[j]
+                    j += 1
+                    k += 1
+            else:
+                while i < mid and j < hi:
+                    if buf[j] < buf[i]:
+                        cur[k] = buf[j]
+                        ans += mid - i
+                        j += 1
+                    else:
+                        cur[k] = buf[i]
+                        i += 1
+                    k += 1
+                while i < mid:
+                    cur[k] = buf[i]
+                    i += 1
+                    k += 1
+                while j < hi:
+                    cur[k] = buf[j]
+                    j += 1
+                    k += 1
+            lo = hi
+        to_buf = not to_buf
+        width *= 2
+    ans
+
+/// Nearest earlier index `j < i` with `self[j] < self[i]` (or `<=` when `strict: false`), or `none`. O(n).
+pub fn prev_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D:
+    var out: [D]?D = none
+    var stk: List<D> = []
+    for i in D:
+        while not stk.is_empty and (
+            if strict: self[stk.last!] >= self[i] else: self[stk.last!] > self[i]
+        ):
+            stk.pop()
+        if not stk.is_empty: out[i] = stk.last!
+        stk.push(i)
+    out
+
+/// Nearest later index `j > i` with `self[j] < self[i]` (or `<=` when `strict: false`), or `none`. O(n).
+pub fn next_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D:
+    var out: [D]?D = none
+    var stk: List<D> = []
+    for i in D.rev:
+        while not stk.is_empty and (
+            if strict: self[stk.last!] >= self[i] else: self[stk.last!] > self[i]
+        ):
+            stk.pop()
+        if not stk.is_empty: out[i] = stk.last!
+        stk.push(i)
+    out
+
+/// Nearest earlier index `j < i` with `self[j] > self[i]` (or `>=` when `strict: false`), or `none`. O(n).
+pub fn prev_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D:
+    var out: [D]?D = none
+    var stk: List<D> = []
+    for i in D:
+        while not stk.is_empty and (
+            if strict: self[stk.last!] <= self[i] else: self[stk.last!] < self[i]
+        ):
+            stk.pop()
+        if not stk.is_empty: out[i] = stk.last!
+        stk.push(i)
+    out
+
+/// Nearest later index `j > i` with `self[j] > self[i]` (or `>=` when `strict: false`), or `none`. O(n).
+pub fn next_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D:
+    var out: [D]?D = none
+    var stk: List<D> = []
+    for i in D.rev:
+        while not stk.is_empty and (
+            if strict: self[stk.last!] <= self[i] else: self[stk.last!] < self[i]
+        ):
+            stk.pop()
+        if not stk.is_empty: out[i] = stk.last!
+        stk.push(i)
+    out
+
+/// Minimum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). O(n).
+pub fn sliding_min<D, T>(self: [D]T, k: Int) -> List<T>:
+    assert k >= 1, "sliding window size must be at least 1"
+    var out: List<T> = []
+    var dq: List<(pos: Int, val: T)> = []
+    var head = 0
+    var idx = 0
+    for i in D:
+        let x = self[i]
+        while head < dq.len and dq.last!.val >= x: dq.pop()
+        dq.push((pos: idx, val: x))
+        if dq[head].pos <= idx - k: head += 1
+        if idx >= k - 1: out.push(dq[head].val)
+        idx += 1
+    out
+
+/// Maximum of every length-`k` contiguous window of `self` (`n - k + 1` values, empty if `k > n`). O(n).
+pub fn sliding_max<D, T>(self: [D]T, k: Int) -> List<T>:
+    assert k >= 1, "sliding window size must be at least 1"
+    var out: List<T> = []
+    var dq: List<(pos: Int, val: T)> = []
+    var head = 0
+    var idx = 0
+    for i in D:
+        let x = self[i]
+        while head < dq.len and dq.last!.val <= x: dq.pop()
+        dq.push((pos: idx, val: x))
+        if dq[head].pos <= idx - k: head += 1
+        if idx >= k - 1: out.push(dq[head].val)
+        idx += 1
+    out
 
 /// Swap two positions of a domain array in place; safely a no-op when `i == j`.
 pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
@@ -667,6 +1161,28 @@ pub @get fn argmin<D, T>(self: [D]T) -> ?D:
         best = i
     best
 
+/// The index of the first element with the largest `by` key, or `none` when empty. O(n).
+pub fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D:
+    var best: ?D = none
+    var high: ?K = none
+    for i in D:
+        let k = by(self[i])
+        if high == none or high! < k:
+            best = i
+            high = k
+    best
+
+/// The index of the first element with the smallest `by` key, or `none` when empty. O(n).
+pub fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D:
+    var best: ?D = none
+    var low: ?K = none
+    for i in D:
+        let k = by(self[i])
+        if low == none or k < low!:
+            best = i
+            low = k
+    best
+
 @test
 fn argmax_and_argmin_give_the_first_best_index():
     assert [3, 9, 2, 9].argmax == some(1)
@@ -679,3 +1195,210 @@ fn argmax_and_argmin_give_the_first_best_index():
         assert all(a[i] < a[hi] for i in 0..hi) and all(a[i] <= a[hi] for i in 0..a.len)
         let lo = a.argmin ?? -1
         assert all(a[i] > a[lo] for i in 0..lo) and all(a[i] >= a[lo] for i in 0..a.len)
+    let words = ["pear", "fig", "banana", "kiwi", "orange"]
+    assert words.argmax_by(w => w.len) == some(2)
+    assert words.argmin_by(w => w.len) == some(1)
+    let no_words: List<Str> = []
+    assert no_words.argmax_by(w => w.len) == none and no_words.argmin_by(w => w.len) == none
+    domain W = 1..=3
+    let ws = [W] i => words[i.to_idx]
+    assert ws.argmax_by(w => w.len) == W(3) and ws.argmin_by(w => w.len) == W(2)
+
+@test
+fn prod_and_is_sorted_cover_sequences():
+    assert prod([2, 3, 5]) == 30
+    let empty_int: List<Int> = []
+    assert prod(empty_int) == 1
+    type Z = Mod<998_244_353>
+    assert prod([Z(2), Z(3), Z(7)]) == Z(42)
+    let empty_z: List<Z> = []
+    assert prod(empty_z) == Z(1)
+    assert prod(x + 1 for x in 1..=4) == 120
+    assert [1, 2, 2, 5].is_sorted() and not [1, 3, 2].is_sorted()
+    assert empty_int.is_sorted() and [42].is_sorted()
+    assert ["a", "bb", "ccc"].is_sorted_by(by: s => s.len)
+    assert not ["bb", "a", "ccc"].is_sorted_by(by: s => s.len)
+    assert "aabbz".is_sorted() and not "abaz".is_sorted()
+    domain V = 1..=4
+    let sorted_v = [V] i => i.to_idx * 2
+    assert sorted_v.is_sorted()
+
+@test
+fn nth_element_merge_sorted_and_rotate_right():
+    for _ in 0..100:
+        let n = rand(1, 20)
+        let orig = [rand(-5, 5) for _ in 0..n]
+        let k = rand(0, n - 1)
+        var a = orig.copy()
+        nth_element(mut a, k)
+        let s = sorted(orig)
+        assert a[k] == s[k]
+        assert all(a[i] <= a[k] for i in 0..k)
+        assert all(a[i] >= a[k] for i in k + 1..n)
+        assert sorted(a) == s
+    assert merge_sorted([1, 3, 5], [2, 3, 4, 6]) == [1, 2, 3, 3, 4, 5, 6]
+    let empty: List<Int> = []
+    assert merge_sorted(empty, [1, 2]) == [1, 2] and merge_sorted([1, 2], empty) == [1, 2]
+    var r = [1, 2, 3, 4, 5]
+    rotate_right(mut r, 2)
+    assert r == [4, 5, 1, 2, 3]
+    rotate_right(mut r, 7)
+    assert r == [2, 3, 4, 5, 1]
+
+@test
+fn chunk_by_run_ranges_buckets_and_chunks():
+    // Alternating runs on Str (CF 2069E pattern)
+    let s = "ABABBAAB"
+    let alt = [r.len for r in s.chunk_by((x, y) => x != y)]
+    assert alt == [4, 2, 2]
+    // Equal runs on Str and [D]T
+    assert "aabccc".runs() == [('a', 2), ('b', 1), ('c', 3)]
+    assert [r.len for r in "aabccc".run_ranges()] == [2, 1, 3]
+    assert [p for p in "abc".pairs()] == [('a', 'b'), ('b', 'c')]
+    assert [p for p in "ab".cyclic_pairs()] == [('a', 'b'), ('b', 'a')]
+    let empty_str = ""
+    assert [r for r in empty_str.chunk_by((x, y) => x == y)].is_empty
+    assert [r for r in empty_str.run_ranges()].is_empty
+    // Keyed run_ranges over a domain array
+    domain V = 1..=5
+    let vals = [V] i => [10, 12, 21, 23, 30][i.to_idx]
+    let tens = [r for r in vals.run_ranges_by(by: x => x / 10)]
+    assert tens == [V(1)..=V(2), V(3)..=V(4), V(5)..=V(5)]
+    // Typed buckets
+    domain K = 0..3
+    let keys = [V] i => K([2, 0, 2, 1, 0][i.to_idx])
+    let b = buckets(keys)
+    assert b[K(0)] == [V(2), V(5)] and b[K(1)] == [V(4)] and b[K(2)] == [V(1), V(3)]
+    // Chunks
+    assert [c for c in [1, 2, 3, 4, 5].chunks(2)] == [[1, 2], [3, 4], [5]]
+    let empty_l: List<Int> = []
+    assert [c for c in empty_l.chunks(3)].is_empty
+
+@test
+fn suffix_scan_matches_right_to_left_fold():
+    assert suffix_scan([3, 1, 4, 1, 5], +) == [14, 11, 10, 6, 5]
+    assert suffix_scan([3, 1, 4, 1, 5], max) == [5, 5, 5, 5, 5]
+    domain V = 1..=4
+    let a = [V] i => [2, 3, 5, 7][i.to_idx]
+    let sf = suffix_scan(a, *)
+    assert sf[V(1)] == 210 and sf[V(2)] == 105 and sf[V(3)] == 35 and sf[V(4)] == 7
+    let empty: List<Int> = []
+    assert suffix_scan(empty, +).is_empty
+
+@test
+fn first_gt_and_last_lt_match_linear_scan():
+    let xs = [1, 3, 3, 7, 10]
+    assert xs.first_gt(3) == some(3) and xs.first_gt(10) == none and xs.first_gt(0) == some(0)
+    assert xs.last_lt(3) == some(0) and xs.last_lt(1) == none and xs.last_lt(99) == some(4)
+    let c = compress([10, 3, 7, 3, 1])
+    assert c.contains(7) and not c.contains(5)
+    assert c.try_at(7) == c.at(7) and c.try_at(5) == none
+    assert c.first_gt(3) == c.at(7) and c.first_gt(10) == none
+    assert c.last_lt(3) == c.at(1) and c.last_lt(1) == none
+    // Keyed lookup and domain array lookup
+    let pairs = [(1, "a"), (3, "b"), (3, "c"), (7, "d")]
+    assert pairs.first_gt_by(3, by: p => p.0) == some(3)
+    assert pairs.last_lt_by(3, by: p => p.0) == some(0)
+    domain V = 1..=5
+    let va = [V] i => xs[i.to_idx]
+    assert va.first_gt(3) == V(4) and va.last_lt(3) == V(1)
+    for _ in 0..50:
+        let a = sorted([rand(-5, 5) for _ in 0..rand(0, 12)])
+        for q in -6..=6:
+            assert a.first_gt(q) == first(i for i in 0..a.len if a[i] > q)
+            assert a.last_lt(q) == max(i for i in 0..a.len if a[i] < q)
+
+@test
+fn permutations_and_inversions():
+    domain I = 1..=5
+    let p = [I] i => I([3, 5, 4, 1, 2][i.to_idx])
+    let inv = inverse(p)
+    for i in I:
+        assert inv[p[i]] == i and p[inv[i]] == i
+    let id = compose(p, inv)
+    for i in I: assert id[i] == i
+    let cycs = perm_cycles(p)
+    assert cycs == [[I(1), I(3), I(4)], [I(2), I(5)]]
+    // perm_pow matches repeated compose and handles large k
+    let p0 = perm_pow(p, 0)
+    for i in I: assert p0[i] == i
+    let p2 = compose(p, p)
+    let p2_fast = perm_pow(p, 2)
+    for i in I: assert p2[i] == p2_fast[i]
+    let p6 = perm_pow(p, 6)
+    for i in I: assert p6[i] == i
+    let p_big = perm_pow(p, 1_000_000_000_004)
+    for i in I: assert p_big[i] == p2[i]
+    // Inversions against O(n^2) brute force
+    assert inversions([1, 2, 3]) == 0 and inversions([3, 2, 1]) == 3
+    let empty: List<Int> = []
+    assert inversions(empty) == 0 and inversions([5]) == 0
+    for _ in 0..60:
+        let a = [rand(0, 6) for _ in 0..rand(0, 15)]
+        var brute = 0
+        for i in 0..a.len:
+            for j in i + 1..a.len:
+                if a[i] > a[j]: brute += 1
+        assert inversions(a) == brute
+
+@test
+fn bsearch_real_and_ternary_search():
+    let root2 = bsearch_real(0.0, 2.0, x => x * x >= 2.0)!
+    assert abs(root2 * root2 - 2.0) < 1e-12
+    assert bsearch_real(0.0, 1.0, x => x * x >= 2.0) == none
+    let peak_r = ternary_max_real(-5.0, 5.0, x => -(x - 1.25) * (x - 1.25))
+    assert abs(peak_r - 1.25) < 1e-9
+    let trough_r = ternary_min_real(-5.0, 5.0, x => (x + 2.5) * (x + 2.5))
+    assert abs(trough_r + 2.5) < 1e-9
+    assert ternary_max(-10..=10, x => -(x - 3) * (x - 3) + 100) == 3
+    assert ternary_min(-10..=10, x => (x + 4) * (x + 4)) == -4
+    assert ternary_max(5..=5, x => x) == 5
+    assert ternary_max(5..5, x => x) == none
+    assert ternary_min(5..5, x => x) == none
+    domain P = 1..=7
+    assert ternary_max(P.first..=P.last, i => -abs(i.to_idx - 4)) == P(5)
+    for _ in 0..50:
+        let peak = rand(-20, 20)
+        assert ternary_max(-25..=25, x => -abs(x - peak)) == peak
+        assert ternary_min(-25..=25, x => abs(x - peak)) == peak
+
+@test
+fn monotone_stack_and_sliding_extrema():
+    domain V = 1..=5
+    let a = [V] i => [3, 1, 4, 1, 5][i.to_idx]
+    let pl = a.prev_less()
+    let nl = a.next_less()
+    assert pl[V(1)] == none and pl[V(3)] == V(2) and pl[V(4)] == none
+    assert nl[V(1)] == V(2) and nl[V(3)] == V(4) and nl[V(5)] == none
+    // Differential test against O(n^2) brute force on random arrays (strict & non-strict)
+    for _ in 0..60:
+        let n = rand(0, 12)
+        let xs = [rand(0, 4) for _ in 0..n]
+        let pl_s = xs.prev_less()
+        let pl_ns = xs.prev_less(strict: false)
+        let nl_s = xs.next_less()
+        let nl_ns = xs.next_less(strict: false)
+        let pg_s = xs.prev_greater()
+        let pg_ns = xs.prev_greater(strict: false)
+        let ng_s = xs.next_greater()
+        let ng_ns = xs.next_greater(strict: false)
+        for i in 0..n:
+            assert pl_s[i] == max(j for j in 0..i if xs[j] < xs[i])
+            assert pl_ns[i] == max(j for j in 0..i if xs[j] <= xs[i])
+            assert nl_s[i] == first(j for j in i + 1..n if xs[j] < xs[i])
+            assert nl_ns[i] == first(j for j in i + 1..n if xs[j] <= xs[i])
+            assert pg_s[i] == max(j for j in 0..i if xs[j] > xs[i])
+            assert pg_ns[i] == max(j for j in 0..i if xs[j] >= xs[i])
+            assert ng_s[i] == first(j for j in i + 1..n if xs[j] > xs[i])
+            assert ng_ns[i] == first(j for j in i + 1..n if xs[j] >= xs[i])
+    // Sliding min/max on [V]T and randomized differential test
+    assert a.sliding_min(3) == [1, 1, 1] and a.sliding_max(3) == [4, 4, 5]
+    assert a.sliding_min(6).is_empty and a.sliding_max(6).is_empty
+    for _ in 0..60:
+        let n = rand(0, 15)
+        let xs = [rand(-10, 10) for _ in 0..n]
+        let k = rand(1, n + 2)
+        let want_min = [min(xs[i..i + k])! for i in 0..max(0, n - k + 1)]
+        let want_max = [max(xs[i..i + k])! for i in 0..max(0, n - k + 1)]
+        assert xs.sliding_min(k) == want_min
+        assert xs.sliding_max(k) == want_max
