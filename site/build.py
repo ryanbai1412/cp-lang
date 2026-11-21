@@ -523,9 +523,10 @@ def build():
     build_playground(target, template)
     # Embed the search index so file:// and the offline bundle need no fetch.
     for path in target.glob("*.html"):
-        page = path.read_text().replace('</head>',
+        page = re.sub(r'<script id="search-index" type="application/json">.*?</script>\n?', "",
+                      path.read_text(), flags=re.S).replace('</head>',
             '<script id="search-index" type="application/json">'
-            + safe_json(search) + '</script>\n</head>')
+            + safe_json(search) + '</script>\n</head>', 1)
         path.write_text(page)
     (target / "trace.html").write_text(trace_html())
     print(f"Built {len(PAGES)} chapters + playground + trace → {target}")
