@@ -12,7 +12,7 @@ type Z = Mod<998_244_353>
 let n: 2..=5000 = read()
 domain V = 1..=n
 let (a, b) = read<(Perm<V>, Perm<V>)>()
-let t = PermTree.of(b.rev.map(a.inverse))
+let t = PermTree(b.rev.map(a.inverse))
 
 fn ends(v: t.Node) -> List<Z> = match t[v]:
     leaf => [1]

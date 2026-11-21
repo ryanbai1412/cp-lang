@@ -58,61 +58,6 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
     pub fn new<M>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: M) -> Action<T, F>:
         Action(id, compose, apply, Monoid<T>.of(over))
 
-    /// O(1). Range-add action over `+` (`apply(d, val, span) = val + d * span`).
-    pub fn add() -> Action<T, T> = todo
-
-    /// O(1). Range-add action over `min` or `max` (`apply(d, val, _) = val + d`).
-    pub fn add_over<M>(over: M) -> Action<T, T> = todo
-
-    /// O(1). Range-assign action (`?T` tag) over `+`, `min`, or `max`.
-    pub fn assign<M>(over: M) -> Action<T, ?T> = todo
-
-    /// O(1). Range-affine action `x -> a * x + b` over `+`.
-    pub fn affine() -> Action<T, Affine<T>> = todo
-
-/// O(1). An associative operation with an identity and inverse (used by `Fenwick` and `PotentialDsu`).
-pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T):
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
-    law ident(a: T) = op(id, a) == a and op(a, id) == a
-    law invert(a: T) = op(a, inv(a)) == id
-
-    /// O(1). Lift a bare operator (`+`, `^`) or existing `Group<T>` into a `Group<T>`.
-    pub fn of<G>(g: G) -> Group<T> = todo
-
-    /// O(1). Forget the inverse and view this group as a `Monoid<T>`.
-    pub fn as_monoid(self) -> Monoid<T> = Monoid(id, op)
-
-/// O(1). Semiring `(zero, one, add, mul)` for generic matrix products and path algebras.
-pub struct Semiring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T):
-    /// O(1). Tropical `(min, +)` semiring on `Int`.
-    pub fn min_plus() -> Semiring<Int> = todo
-
-    /// O(1). Tropical `(max, +)` semiring on `Int`.
-    pub fn max_plus() -> Semiring<Int> = todo
-
-    /// O(1). Boolean `(or, and)` semiring.
-    pub fn bool_ring() -> Semiring<Bool> = todo
-
-/// O(1). Affine map `x -> a * x + b` with composition monoid and range-sum action.
-pub struct Affine<T>(a: T, b: T):
-    /// O(1). Identity map `x -> x`.
-    pub fn identity() -> Affine<T> = todo
-
-    /// O(1). Construct `x -> a * x + b`.
-    pub fn of(a: T, b: T) -> Affine<T> = Affine(a, b)
-
-    /// O(1). Evaluate `a * x + b`.
-    pub fn eval(self, x: T) -> T = a * x + b
-
-    /// O(1). Composition `self(other(x))`.
-    pub fn compose(self, other: Affine<T>) -> Affine<T> = Affine(a * other.a, a * other.b + b)
-
-    /// O(1). Composition monoid for `SegTree` (`point_set_range_composite`).
-    pub fn monoid() -> Monoid<Affine<T>> = todo
-
-    /// O(1). Lazy range-affine action over `+` (`apply(f, val, span) = f.a * val + f.b * span`).
-    pub fn sum_action() -> Action<T, Affine<T>> = todo
-
 /// `x` with its order reversed. Build it with `desc(x)`.
 pub struct Desc<T>(x: T)
 
@@ -180,6 +125,76 @@ impl Add for MaxSub:
 
 impl Reversible for MaxSub:
     fn rev(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
+
+/// O(1) construction. Associative operation without an identity, for non-empty folds
+/// (`SparseTable`, `DisjointSparseTable`, `SegTree.try_fold`).
+pub struct Semigroup<T>(op: (T, T) -> T):
+    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
+
+/// O(1) construction. Associative operation with identity and inverse (`inv`),
+/// for generalized Fenwick trees and difference structures.
+pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T):
+    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
+    law ident(a: T) = op(id, a) == a and op(a, id) == a
+    law inverse(a: T) = op(a, inv(a)) == id and op(inv(a), a) == id
+
+    /// O(1). Lift a `Group` or bare operator (`+`, `^`) to a `Group<T>`.
+    pub fn of<G>(g: G) -> Group<T> = todo
+
+/// O(1). Build an `Action<T, F>` whose `apply(f, val)` does not depend on node span.
+pub fn point_action<T, F, M>(
+    id: F,
+    compose: (F, F) -> F,
+    apply: (F, T) -> T,
+    over: M,
+) -> Action<T, F> = todo
+
+/// O(1) per merge. Minimum value together with its multiplicity, for counting zeros or
+/// minimum-covered cells under range add (`AddMinCount`).
+pub struct MinCount<T>(val: T, count: Int):
+    /// O(1). Single-element summary for `v`.
+    pub fn of(v: T) -> MinCount<T> = todo
+
+    /// O(1). Combine two summaries, summing counts when minima tie.
+    pub fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T> = todo
+
+    /// O(1). The `Monoid<MinCount<T>>` value for `SegTree` and `LazySegTree`.
+    pub fn monoid() -> Monoid<MinCount<T>> = todo
+
+/// O(1) per merge. Maximum value together with its multiplicity (`AddMaxCount`).
+pub struct MaxCount<T>(val: T, count: Int):
+    /// O(1). Single-element summary for `v`.
+    pub fn of(v: T) -> MaxCount<T> = todo
+
+    /// O(1). Combine two summaries, summing counts when maxima tie.
+    pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T> = todo
+
+    /// O(1). The `Monoid<MaxCount<T>>` value for `SegTree` and `LazySegTree`.
+    pub fn monoid() -> Monoid<MaxCount<T>> = todo
+
+/// O(1) per merge. Value paired with its witness position `at: D` for leftmost-tie argmin folds.
+pub struct MinIdx<D, T>(val: T, at: D):
+    /// O(1). Combine two `(val, at)` entries, keeping the smaller value (leftmost on tie).
+    pub fn join(a: MinIdx<D, T>, b: MinIdx<D, T>) -> MinIdx<D, T> = todo
+
+/// O(1) per merge. Value paired with its witness position `at: D` for leftmost-tie argmax folds.
+pub struct MaxIdx<D, T>(val: T, at: D):
+    /// O(1). Combine two `(val, at)` entries, keeping the larger value (leftmost on tie).
+    pub fn join(a: MaxIdx<D, T>, b: MaxIdx<D, T>) -> MaxIdx<D, T> = todo
+
+/// O(1) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
+pub struct Affine<T>(a: T, b: T):
+    /// O(1). Identity map `x -> x`.
+    pub fn id() -> Affine<T> = todo
+
+    /// O(1). Evaluate `a * x + b`.
+    pub fn eval(self, x: T) -> T = todo
+
+    /// O(1). Compose `g` after `f`: `x -> g.eval(f.eval(x))`.
+    pub fn then(f: Affine<T>, g: Affine<T>) -> Affine<T> = todo
+
+    /// O(1). The left-to-right composition `Monoid<Affine<T>>` (`SegTree` point-set + range-composite).
+    pub fn monoid() -> Monoid<Affine<T>> = todo
 
 @test
 fn bare_operators_bring_their_identity():
@@ -297,3 +312,15 @@ fn max_sub_monoid_laws_and_kadane():
     let a = MaxSub.of(2) + MaxSub.of(-1) + MaxSub.of(5)
     let b = MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2)
     assert a.rev() == b
+
+/// O(1). Semiring `(zero, one, add, mul)` for generic matrix products and path algebras.
+pub struct Semiring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T):
+    /// O(1). Tropical `(min, +)` semiring on `Int`.
+    pub fn min_plus() -> Semiring<Int> = todo
+
+    /// O(1). Tropical `(max, +)` semiring on `Int`.
+    pub fn max_plus() -> Semiring<Int> = todo
+
+    /// O(1). Boolean `(or, and)` semiring.
+    pub fn bool_ring() -> Semiring<Bool> = todo
+

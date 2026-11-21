@@ -9,7 +9,7 @@ use std.tree.{PermTree}
 let n: 2..=1e6 = read()
 domain V = 1..=n
 let (a, b) = read<(Perm<V>, Perm<V>)>()
-let t = PermTree.of(b.rev.map(a.inverse))
+let t = PermTree(b.rev.map(a.inverse))
 
 fn depth(v: t.Node) -> Int = match t[v]:
     leaf => 1
