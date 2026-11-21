@@ -1,41 +1,31 @@
+use std.graph.{two_edge_components}
+
 type Z = Mod<998_244_353>
 
 @!multitest
 let (n, m, lim): (Int, Int, Int) = read()
 domain V = 1..=n
 domain E = 0..m
-let raw_a: [V]Int = read()
+let a: [V]?Int = read(none: -1)
 let edges: [E](u: V, v: V) = read()
 let g = Graph.undirected(edges)
 
-var depth: [V]?Int = none
-var low: [V]Int = 0
-var must: [V]?Int = [V] u => if raw_a[u] < 0: none else: raw_a[u]
+// Values agree across every 2-edge-connected component, and an odd cycle forces 0.
+// A component is entered through one bridge, so BFS depth parity inside it is its own.
+let (domain C, comp) = two_edge_components(g)
+let depth = bfs(g, [V(1)])
+
+var forced = [
+    (comp[u], 0) for (u, v) in edges if comp[u] == comp[v] and depth[u]! % 2 == depth[v]! % 2
+]
+for u in V:
+    if let x = a[u]: forced.push((comp[u], x))
+
+var want: [C]?Int = none
 var ans: Z = 1
-
-fn force(u: V, val: Int):
-    if let prev = must[u]:
-        if prev != val: ans = 0
-    else:
-        must[u] = val
-
-fn dfs(u: V, p: ?V, d: Int):
-    depth[u] = d
-    low[u] = d
-    for a in g.out(u):
-        let v = a.to
-        if p == v: continue
-        if let nd = depth[v]:
-            if nd < d:
-                low[u] min= nd
-                if (d - nd) % 2 == 0: force(u, 0)
-        else:
-            dfs(v, u, d + 1)
-            if low[v] <= d:
-                low[u] min= low[v]
-                if let mv = must[v]: force(u, mv)
-    if low[u] == d and must[u] == none:
-        ans *= Z(lim)
-
-dfs(V(1), none, 0)
+for (c, x) in forced:
+    if (want[c] ?? x) != x: ans = 0
+    want[c] = x
+for c in C:
+    if want[c] == none: ans *= Z(lim)
 print(ans)
