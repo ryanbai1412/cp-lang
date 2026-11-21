@@ -1673,6 +1673,32 @@ fn reading_an_enum_needs_its_tags() {
     assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
 }
 
+/// A missing stdlib `use` goes into the file's line for that module, else
+/// below its other `use`s, else above its first line of code.
+#[test]
+fn an_import_joins_its_module_line_or_the_file_header() {
+    let cases = [
+        ("use std.math.{gcd}\nprint(1)\n", "use std.math.{gcd, lcm}\nprint(1)\n"),
+        ("use std.math.{}\nprint(1)\n", "use std.math.{lcm}\nprint(1)\n"),
+        (
+            "use std.seq.{zip}\nuse std.dsu.{Dsu}\nprint(1)\n",
+            "use std.seq.{zip}\nuse std.dsu.{Dsu}\nuse std.math.{lcm}\nprint(1)\n",
+        ),
+        ("// a header\n\nprint(1)\n", "// a header\n\nuse std.math.{lcm}\nprint(1)\n"),
+        ("use std.seq.{zip}", "use std.seq.{zip}\nuse std.math.{lcm}\n"),
+    ];
+    for (text, want) in cases {
+        let (span, edit) = crate::import_edit(text, "math", "lcm");
+        let mut got = text.to_string();
+        got.replace_range(span.start as usize..span.end as usize, &edit);
+        assert_eq!(got, want);
+    }
+    // The checker's quick fix uses it, wherever in the file the name is.
+    let src = "use std.math.{gcd}\nlet a = gcd(4, 6)\nprint(floor_sum(a, 3, 1, 0))\n";
+    let fix = &one(src).fixes[0];
+    assert_eq!(fix.edits, vec![(Span::point(17), ", floor_sum".to_string())]);
+}
+
 /// `STD_NAMES` is what the hint for a missing `use` is read from. It is
 /// built from `stdlib/` itself, sorted for the binary search, without
 /// the names that more than one module declares.

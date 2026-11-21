@@ -2280,6 +2280,14 @@ round of assignments stays inside them, jumping to the edge of `Int` after 64 ro
 while each round stays inside: a guarded counter's first hull is wider than it needs. Reverse:
 drop `guarded` and its lookup in `var_range`'s round.
 
+29.29. **Completion offers stdlib names that need a `use`, and adds it.** Before, a name outside
+the prelude completed only after its `use` was written, so the contestant had to know the module.
+Now names of two or more letters complete from every stdlib module, ranked after what is in
+scope, with the module shown and the `use` as an extra edit. The unresolved-name quick fix had put
+its `use` at the start of the item holding the name, possibly mid-file; both now share
+`cpl_check::import_edit`, which joins the module's existing `use` line or goes below the last one.
+Reverse: drop the `STD_NAMES` loop in `scope_completion` and the fix rewrite in `Database`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

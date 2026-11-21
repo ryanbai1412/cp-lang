@@ -30,7 +30,7 @@ pub use def::{DeclKind, Def, DomainInfo};
 pub use hover::{Definition, Hover, Symbol};
 pub use modules::{FsLoader, Loader};
 pub use ty::{Param, Ty};
-pub use prelude::{std_method, std_module};
+pub use prelude::{import_edit, std_method, std_module, STD_NAMES};
 
 /// A `<fn>_of_pairs`/`<fn>_of_triples` fn: what `T.fn(list)` resolves to, never a name
 /// anyone types, so completion and the editor tables leave it out.

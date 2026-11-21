@@ -397,6 +397,59 @@ fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
     );
 }
 
+/// A stdlib name the port forgot to import is one quick fix away, and the
+/// `use` lands where the port had it.
+#[test]
+fn quick_fixes_import_a_stdlib_name_where_the_file_imports_its_module() {
+    assert_fixes_restore(
+        "cf2062e2",
+        &[(
+            "use std.seq.{buckets}\n",
+            "",
+            "E0201",
+            "add `use std.seq.{buckets}`",
+        )],
+    );
+    assert_fixes_restore(
+        "ucup5s05f",
+        &[(
+            "{suffix_array, lcp_array}",
+            "{suffix_array}",
+            "E0201",
+            "add `use std.strings.{lcp_array}`",
+        )],
+    );
+}
+
+#[test]
+fn completion_offers_unimported_stdlib_names_with_their_use() {
+    let src = "use std.math.{gcd}\nprint(floor_s|)\n";
+    let reply = ask_at("textDocument/completion", src);
+    let items = reply.get("items").as_array();
+    let item = items
+        .iter()
+        .find(|i| i.get("label").as_str() == Some("floor_sum"))
+        .unwrap_or_else(|| panic!("no floor_sum in {items:?}"));
+    assert_eq!(item.at(&["labelDetails", "description"]).as_str(), Some("std.math"));
+    assert!(item.get("detail").as_str().unwrap().starts_with("fn floor_sum"));
+    let edits = item.get("additionalTextEdits").as_array();
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0].get("newText").as_str(), Some(", floor_sum"));
+    assert_eq!(edits[0].at(&["range", "start", "line"]).as_u32(), Some(0));
+    assert_eq!(edits[0].at(&["range", "start", "character"]).as_u32(), Some(17));
+    // An imported name, or one the prelude brings, needs no `use`.
+    let src = "use std.math.{gcd}\nprint(gc|)\n";
+    let reply = ask_at("textDocument/completion", src);
+    let gcd: Vec<&Value> = reply
+        .get("items")
+        .as_array()
+        .iter()
+        .filter(|i| i.get("label").as_str() == Some("gcd"))
+        .collect();
+    assert_eq!(gcd.len(), 1);
+    assert!(gcd[0].get("additionalTextEdits").as_array().is_empty());
+}
+
 /// A closer dropped mid-line is put back where it was, before the `:` or
 /// `=` it can't enclose, not at the end of the file.
 #[test]
@@ -1554,8 +1607,20 @@ fn bare_names_include_the_compiler_prelude() {
         labels(&items).contains(&"Int") && labels(&items).contains(&"I128"),
         "{items:?}"
     );
-    // A stdlib fn that needs a `use` is not in scope.
-    assert!(!labels(&completions("z_|\n")).contains(&"z_function"));
+    // A stdlib fn that needs a `use` comes with it, after what is in scope.
+    let reply = ask_at("textDocument/completion", "z_|\n");
+    let z = reply
+        .get("items")
+        .as_array()
+        .iter()
+        .find(|i| i.get("label").as_str() == Some("z_function"))
+        .cloned()
+        .expect("z_function is offered");
+    assert!(z.get("sortText").as_str().unwrap().starts_with('5'), "{z:?}");
+    assert_eq!(
+        z.at(&["additionalTextEdits"]).as_array()[0].get("newText").as_str(),
+        Some("use std.strings.{z_function}\n")
+    );
 }
 
 #[test]

@@ -793,6 +793,38 @@ fn scope_completion(
             &mut items,
         );
     }
+    // A stdlib name the file doesn't import yet comes with its `use`.
+    if word.len() >= 2 {
+        let text = &cursor.analysis.text;
+        for (name, module) in cpl_check::STD_NAMES {
+            if !name.starts_with(word) || seen.contains(*name) || cpl_check::is_list_form_hook(name) {
+                continue;
+            }
+            let Some(entry) = std.module(cursor.uri, module).and_then(|o| o.find(name).cloned()) else {
+                continue;
+            };
+            if !seen.insert(entry.name.clone()) {
+                continue;
+            }
+            let (span, new_text) = cpl_check::import_edit(text, module, name);
+            let mut item = item_json(&entry, rank(&entry, 4));
+            if let Value::Object(members) = &mut item {
+                members.push((
+                    "labelDetails".to_string(),
+                    obj([("description", format!("std.{module}").into())]),
+                ));
+                members.push((
+                    "additionalTextEdits".to_string(),
+                    vec![obj([
+                        ("range", crate::server::range_json(span, text, &cursor.analysis.lines)),
+                        ("newText", new_text.into()),
+                    ])]
+                    .into(),
+                ));
+            }
+            items.push(item);
+        }
+    }
     items
 }
 

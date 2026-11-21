@@ -653,6 +653,16 @@ impl Database {
             let offset = range.span.start;
             for diag in item.parsed.diagnostics.iter().chain(&check.diagnostics) {
                 let mut diag = diag.clone().shift(offset);
+                // The checker sees one item; where a `use` goes is the file's.
+                for fix in diag.fixes.iter_mut().filter(|_| diag.code == codes::UNRESOLVED_NAME) {
+                    if let [(_, line)] = &fix.edits[..] {
+                        let import = line.trim_end().strip_prefix("use std.");
+                        if let Some((module, name)) = import.and_then(|i| i.split_once(".{")) {
+                            let name = name.trim_end_matches('}');
+                            fix.edits = vec![crate::prelude::import_edit(&text, module, name)];
+                        }
+                    }
+                }
                 if diag.code == codes::WRONG_DOMAIN {
                     for label in &mut diag.labels {
                         if label.span.is_empty() {

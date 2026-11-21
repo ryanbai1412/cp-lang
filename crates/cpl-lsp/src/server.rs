@@ -1108,7 +1108,7 @@ fn position_json(pos: LineCol) -> Value {
     obj([("line", pos.line.into()), ("character", pos.col.into())])
 }
 
-fn range_json(span: Span, text: &str, lines: &LineIndex) -> Value {
+pub(crate) fn range_json(span: Span, text: &str, lines: &LineIndex) -> Value {
     obj([
         ("start", position_json(lines.utf16(span.start, text))),
         ("end", position_json(lines.utf16(span.end, text))),

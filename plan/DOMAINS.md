@@ -754,6 +754,7 @@ sample values, counterexample overlays and a trace view (one panel per
 file over `cpl run --trace --format html`; the editor highlights the line
 of the step shown, and a click on a line in the viewer jumps there); its unit
 tests and its extension-host suite (8 tests, under a virtual display) run in `--full`.
+Auto-import: completion offers a stdlib name the file does not import yet, after what is in scope, with its module (`std.math`) and the `use` as an extra edit, and the quick fix for an unresolved stdlib name adds the same `use`: into the file's `use std.<module>.{..}` when it has one, else below its last `use`, else above its first line of code.
 Hover shows the index space and its bound for arrays and positions
 (`xs: [V]Int`, `domain V = 0..n, n <= 100`, storage per element and in
 total), appends the declaration's `///` doc, which in the stdlib states the
@@ -761,8 +762,7 @@ cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; overflow notes only on names the prover can follow (range-typed inputs and
 params and `let`s of arithmetic over them, not narrowed names, loop
 variables or `var`s); no cost warnings; rename sees open files, not the folder on disk, and misses
-local shadowing; no refactorings; no
-auto-import; Emacs (eglot draws no lenses) and Helix
+local shadowing; no refactorings; Emacs (eglot draws no lenses) and Helix
 run from a shell command; no DAP. Fixture tests (`crates/cpl-lsp/tests/fixtures/`: a `.cp` with `$0` cursor markers and the requests to send, checked against a readable `.expected` snapshot, `BLESS=1` to rewrite) cover hover, completion, signature help, definition, references, highlights, rename, code actions, inlay hints, folding and the outline. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter
 grammar (`editors/tree-sitter-cp/`) is token-level: it highlights, but gives
 no tree for folding, indents or text objects (the server folds).
