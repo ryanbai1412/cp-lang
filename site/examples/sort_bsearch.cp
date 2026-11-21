@@ -1,6 +1,6 @@
 let (n, target): (1..=100, Int) = read()
 var a: [0..n]Int = read()
-sort(mut a)
+a.sort()
 
 var lo = 0
 var hi = n

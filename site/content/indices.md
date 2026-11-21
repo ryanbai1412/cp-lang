@@ -79,7 +79,7 @@ Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.
 
 ```cp CP Lang
 let one: [1..=4]Int = [10, 20, 30, 40]
-print(sum(one[2..=4]))          // 90 (1-based slice)
+print(one[2..=4].sum())          // 90 (1-based slice)
 let g: [1..=2, 1..=3]Int = [[1, 5, 2], [4, 3, 6]]
 print(argmax(g[.., 3])!)        // 2 (row index along the 1..=2 axis)
 ```
@@ -152,7 +152,7 @@ fn make_seq(k: Int) -> (domain P, [P]Int):
     (Local, [Local] i => i.to_idx * 2)
 
 let (domain Q, vals) = make_seq(4)
-print(Q.count, sum(vals))
+print(Q.count, vals.sum())
 ```
 
 Standard-library functions that introduce a new index space (`components`, `scc`, `two_edge_components`) use the same pattern: `let (domain C, comp) = scc(adj)`. Record types read by `read()` may also bound fields by earlier runtime values, e.g. `let edges: [0..m](u: V, v: V, w: 0..=m) = read()`.

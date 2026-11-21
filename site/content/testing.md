@@ -43,7 +43,7 @@ Write your slow reference, constructive validator, or interactive judge in the s
 ```cp CP Lang 0.2.2
 let n: 1..=1000 = read()
 let a: [0..n]Int = read()
-print(sum(a))
+print(a.sum())
 
 @gen
 fn make_case(size: Int):
@@ -60,7 +60,7 @@ fn slow():
 @checker
 fn check():
     let ans: Int = read_output()
-    assert ans == sum(a)
+    assert ans == a.sum()
 ```
 
 This complete sum program uses `print()` inside `@gen` to produce test input. For an interactive program, use the separate `@interactor` example in [the verification course](course-verification.html#co-located-interactor-and-query-budgets); do not combine its protocol with the sum program. Any program that calls `ask(...)` flushes every `print(...)` automatically. Every generator draws from a replayable choice stream, enabling automatic structure-aware shrinking of failing tests without writing a custom shrinker.

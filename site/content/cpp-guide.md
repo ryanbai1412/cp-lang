@@ -54,7 +54,7 @@ Notice what disappeared: `ios_base::sync_with_stdio`, manual `while (T--)` (repl
 | `const long long INF = 1e18; dist[v] = min(dist[v], d);` | `var dist: [V]?Int = none` / `dist[v] min= d` | Niche-packed `?Int` uses `INT64_MIN` (0 extra bytes) and prevents `INF + w` overflow. |
 | `((a % m) + m) % m` | `a % m` | `%` is Euclidean (`0 <= a % m < m`) for all integers. |
 | `dx[4] / dy[4]` + bounds check | `type Cell = (Row, Col)` + `for q in p.adj4:` | Grid neighbors are guaranteed in-bounds without manual `0 <= nx && nx < h`. |
-| `sort(a.begin(), a.end(), cmp)` | `sort(mut a, by: x => (x.r, desc(x.l)))` | Key functions compose tuples and `desc(...)` without writing strict-weak-order structs. |
+| `sort(a.begin(), a.end(), cmp)` | `a.sort(by: x => (x.r, desc(x.l)))` | Key functions compose tuples and `desc(...)` without writing strict-weak-order structs. |
 | `priority_queue<T, vector<T>, greater<T>>` | `MinHeap<T>` / `MaxHeap<T>` | Direction is explicit in the type name. |
 | `multiset::erase(s.find(x))` | `bag.remove_one(x)` | Never accidentally deletes all duplicates of `x`. |
 | `vector<pair<int,int>> adj[n]` | `Graph<V>.undirected(...)` or `var adj: [V]List<V> = []` | `Graph<V>` lowers to a flat CSR array; `[V]List<V>` is indexed strictly by `V`. |

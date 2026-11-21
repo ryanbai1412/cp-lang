@@ -50,7 +50,7 @@ for i in 0..a.len:
 
 ## Sorting, coordinate compression, and sequence helpers
 
-In-place mutation takes `mut` explicitly (`sort(mut a)`, `reverse(mut a)`), while non-mutating `.sorted()` and `.reversed()` return a new sequence. Pass a key projection with `by:` instead of writing a verbose comparator lambda:
+In-place sequence methods mutate their receiver (`a.sort()`, `a.reverse()`), while non-mutating `.sorted()` and `.reversed()` return a new `List`. Pass a key projection with `by:` instead of writing a verbose comparator lambda:
 
 ```cp CP Lang 0.2.2
 use std.algebra.{desc}
@@ -58,7 +58,7 @@ use std.algebra.{desc}
 type Interval = (l: Int, r: Int)
 var intervals: List<Interval> = [(3, 5), (1, 5), (2, 4)]
 let all_coords = [10, 5, 10]
-sort(mut intervals, by: iv => (iv.r, desc(iv.l)))
+intervals.sort(by: iv => (iv.r, desc(iv.l)))
 let xs = compress(all_coords)      // sorted unique values; xs.at(v) returns its typed index
 ```
 
@@ -66,9 +66,9 @@ Three prelude sequence helpers replace repetitive contest loops:
 
 - `prefix(a)` builds a `[0..=a.len]Int` prefix sum array (`pre[r] - pre[l]` is the sum on `l..r`).
 - `runs(s)` yields `(value, count)` run-length groups in a single pass.
-- `runs_by(xs, key)` groups neighbours with the same `key` into `(key, items)`, and `xs += ys` appends a whole list.
+- `xs.runs(by: key)` groups neighbours with the same `key` into `(key, items)`, and `xs += ys` appends a whole list.
 - `for b in Bool` visits `false` then `true`, so a two-way choice needs no `[false, true]` list.
-- `distinct(a)` returns the sorted unique elements of `a`.
+- `a.distinct()` returns the sorted unique elements of `a`.
 
 ## Binary search: answer space vs sorted containers
 

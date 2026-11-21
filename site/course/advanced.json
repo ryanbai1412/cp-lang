@@ -315,7 +315,7 @@
       {
         "id": "algebra-sum-identity",
         "title": "Predict the fold",
-        "prompt": "sum(a) is a fold of + starting from the identity 0. Predict the output of this runnable program for each input.",
+        "prompt": "a.sum() is a fold of + starting from the identity 0. Predict the output of this runnable program for each input.",
         "hint": "Write the fold out as ((0 + x1) + x2) + ..., and remember that adding 0 changes nothing.",
         "solution": "The fold starts at the identity 0 and adds each element: 0 + 5 - 2 + 4 = 7; -3 + 3 = 0; and a single element is just itself, -9, because 0 + x == x.",
         "kind": "output",
@@ -334,7 +334,7 @@
             "expected": "-9"
           }
         ],
-        "code": "let n: 1..=2e5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nprint(sum(a))"
+        "code": "let n: 1..=2e5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nprint(a.sum())"
       },
       {
         "id": "algebra-assoc",

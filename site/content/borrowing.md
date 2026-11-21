@@ -9,7 +9,7 @@ domain V = 1..=3
 var a: [V]Int = 2
 
 fn total(a: [V]Int) -> Int:
-    sum(a)
+    a.sum()
 
 fn bump(mut a: [V]Int, v: V):
     a[v] += 1
@@ -68,7 +68,7 @@ fn find_span(a: [V]Int) -> Range<V>:
 
 let span: Range<V> = find_span(a)      // plain data: two boundaries
 let part = a[span]                     // a lexical lend, used here
-print(sum(part))
+print(part.sum())
 let saved = part.copy()                // owned data may escape
 ```
 
@@ -117,8 +117,8 @@ for i in 0..mid: left.push(a[i])
 for i in mid..a.len: right.push(a[i])
 
 fn solve(mut left: List<Int>, mut right: List<Int>):
-    sort(mut left)
-    sort(mut right)
+    left.sort()
+    right.sort()
 
 solve(mut left, mut right)
 print(left, right)

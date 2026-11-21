@@ -30,7 +30,7 @@ var total = 0
 for r in Row:
     for c in Col:
         total += g[r, c]
-print(total, sum(g), total == sum(g))
+print(total, g.sum(), total == g.sum())
 ```
 
 Import `adj4` from `std.grid` to visit in-bounds neighbors without writing `dr`/`dc` arrays:
@@ -66,8 +66,8 @@ var a: [V]Int = read()
 
 var mid: List<Int> = []
 for v in V(2)..=V(4): mid.push(a[v])
-print(mid.len, mid[1], sum(mid))
-sort(mut mid)
+print(mid.len, mid[1], mid.sum())
+mid.sort()
 for i in 0..mid.len:
     a[V(i + 2)] = mid[i]
 print(a)
@@ -81,7 +81,7 @@ domain V = 1..=n
 var a: [V]Int = read()
 
 let mid = a[V(2)..=V(4)]
-print(mid.len, sum(mid))
+print(mid.len, mid.sum())
 ```
 
 When input values reach `1e9` and only relative order matters, `compress(all)` creates a fresh nominal domain `xs.D` with `xs.at(val) -> xs.D`, `xs.first_ge(val) -> ?xs.D`, and inverse lookup `xs[id]`:

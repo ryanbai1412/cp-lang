@@ -133,7 +133,7 @@ if n == 0:
     return
 domain V = 1..=n
 let a: [V]Int = read()
-print(sum(a))
+print(a.sum())
 ```
 
 A top-level `return` ends the program. It takes no value and works from inside any loop.
@@ -150,7 +150,7 @@ if n == 0:
     return                      // ends this test case; the next one starts
 domain V = 1..=n
 let a: [V]Int = read()
-print(sum(a))
+print(a.sum())
 ```
 
 The code below the divider is the single-test program, unchanged and unindented. Three things follow from the divider:

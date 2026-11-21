@@ -489,11 +489,83 @@ def check_try_it_buttons() -> int:
     return checked
 
 
+def check_canonical_spellings() -> None:
+    """Enforce accepted CP Lang spellings across docs and site examples."""
+    forbidden = [
+        (
+            "use `if` instead of `where` for loop/comprehension filters",
+            re.compile(r"\bfor\s+(?:[A-Za-z_]\w*|\([^)]+\))\s+in\s+[^\n`:]+\bwhere\b"),
+        ),
+        (
+            "write getters without parens (`.len`, `.is_empty`, `.inv`, `.rev`, `.first`, `.last`, `.bounds`)",
+            re.compile(r"\.(?:len|is_empty|inv|rev|first|last|bounds)\s*\(\s*\)"),
+        ),
+        (
+            "use `@!multitest` instead of legacy multitest dividers",
+            re.compile(r"(?:---\s*(?:with\s+)?multitest(?:\(\))?\s*---|(?<![!@])@multitest\b)"),
+        ),
+        (
+            "use `t.Pre` / `t.at` / `t.at.rev` instead of `.preorder` / `.postorder`",
+            re.compile(r"\.(?:preorder|postorder|pre_order|post_order)\b"),
+        ),
+        (
+            "use `**` for power on numbers/Mod<P> instead of `.pow(...)`",
+            re.compile(r"(?:Mod<[^\n]*\.pow\s*\(|\b[a-z]\.pow\s*\()"),
+        ),
+    ]
+    doc_paths = (
+        [REPO / "docs/one-page-cheat-sheet.md"]
+        + sorted((ROOT / "content").glob("*.md"))
+        + sorted((ROOT / "examples").glob("*.cp"))
+    )
+    errors: list[str] = []
+    for path in doc_paths:
+        rel = path.relative_to(REPO)
+        for lineno, line in enumerate(path.read_text().splitlines(), 1):
+            for msg, rx in forbidden:
+                if rx.search(line):
+                    errors.append(f"{rel}:{lineno}: {msg}: {line.strip()[:100]}")
+
+    # Check every checked cp fence and example with `cpl lint` for spelling lints L0509-L0512.
+    spelling_codes = ("L0509", "L0510", "L0511", "L0512")
+    fence_re = re.compile(r"```cp([^\n]*)\n(.*?)```", re.S)
+    snippets: list[tuple[str, str]] = []
+    for ex in sorted((ROOT / "examples").glob("*.cp")):
+        snippets.append((str(ex.relative_to(REPO)), ex.read_text()))
+    for md in [REPO / "docs/one-page-cheat-sheet.md"] + sorted((ROOT / "content").glob("*.md")):
+        text = md.read_text()
+        for idx, m in enumerate(fence_re.finditer(text), 1):
+            meta = m.group(1).strip()
+            if any(k in meta for k in ("no-check", "fail", "error", "snippet")):
+                continue
+            snippets.append((f"{md.relative_to(REPO)}#fence{idx}", m.group(2)))
+
+    with tempfile.TemporaryDirectory(prefix="cpl-doc-lint-") as tmp:
+        for label, code in snippets:
+            fp = Path(tmp) / "s.cp"
+            fp.write_text(code)
+            res = subprocess.run(
+                [str(CPL), "lint", str(fp)],
+                cwd=REPO,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            out = res.stdout + "\n" + res.stderr
+            for line in out.splitlines():
+                if any(c in line for c in spelling_codes):
+                    errors.append(f"{label}: {line.strip()}")
+
+    if errors:
+        sys.exit("check_docs: non-canonical spellings found:\n  " + "\n  ".join(errors[:25]))
+
+
 def main():
     t0 = time.monotonic()
     if not CPL.is_file():
         sys.exit(f"check_docs: {CPL} not built; run cargo build -p cpl-cli")
     cheat_lines = check_cheat_sheet_budget()
+    check_canonical_spellings()
     fence_count = check_doc_fences()
     ex_count, ex_cases = run_examples()
     ref_count, ref_cases = run_course_references()

@@ -43,23 +43,23 @@ let total = sum(x for x in xs)
 print(has_big, all_pos, evens, total)
 ```
 
-Use `for x in xs where cond:` to filter cleanly without extra nesting, and `xs.pairs` / `zip` / `enumerate` instead of `for i in 0..xs.len:`:
+Use `for x in xs if cond:` to filter cleanly without extra nesting, and `xs.pairs` / `zip` / `enumerate` instead of `for i in 0..xs.len:`:
 
 ```cp CP Lang
 let xs: List<Int> = [2, 5, 4, 9]
 let asc = count(a < b for (a, b) in xs.pairs)
-let pos_sum = sum(x for x in xs where x >= 4)
+let pos_sum = sum(x for x in xs if x >= 4)
 print(asc, pos_sum)
 ```
 
 ## 3. Zero-sentinel optionals (`?T`) and `min=` / `max=`
 
-Never invent `-1` or `1e18` sentinels. Use `?Int` with `min=` / `max=`, `if let`, `??`, and early-return `let x = opt ?? return`:
+Never invent `-1` or `1e18` sentinels, and never initialize `var best = 0` before `best min= x` (since `0` would stay smaller than any positive value). Use `?Int` with `min=` / `max=`, `if let`, `??`, and early-return `let x = opt ?? return`:
 
 ```cp CP Lang
 fn best_even(xs: List<Int>) -> ?Int:
     var best: ?Int = none
-    for x in xs where x % 2 == 0:
+    for x in xs if x % 2 == 0:
         best max= x
     best
 
@@ -89,7 +89,7 @@ Use key functions with `desc(...)` for multi-key sorting, `MinHeap` / `MaxHeap` 
 
 ```cp CP Lang
 var pts: List<(Int, Int)> = [(2, 5), (1, 3), (2, 1)]
-sort(mut pts, by: p => (p.0, desc(p.1)))
+pts.sort(by: p => (p.0, desc(p.1)))
 
 var freq: HashMap<Int, Int> = HashMap()
 for (x, _) in pts:
@@ -141,7 +141,10 @@ print(dsu.same(V(1), V(3)), dsu.same(V(1), V(4)), bit.prefix(V(3).after))
 
 | Pattern | Idiomatic CP Lang |
 | --- | --- |
-| Read `n` and 1-based array | `let n: 1..=2e5 = read()`, `domain V = 1..=n`, `let a: [V]Int = read()` |
+| Read `n` and 1-based array | `let n: 1..=2e5 = read()`, `domain V = 1..=n`, `let a: [V]Int = read()` (use structural `[0..n]Int` or `[0..=n]Int` when indexing by raw integer arithmetic `n - k + t`) |
+| Array bounds `[0..n]` vs `[0..=n]` | `[0..n]T` has length `n` (indices `0..n-1`); `[0..=n]T` has length `n + 1` (indices `0..n`, use whenever `n` is a valid DP state); `a.sorted()` always returns 0-indexed `List<T>` (`0..n`) |
+| Multi-line closures & lambdas | `x => expr` is single-line expression only; for multi-statement predicates or builders, define a local `fn ok(x: Int) -> Bool:` and pass `ok` |
+| Modular integer raw value | `z.raw` returns `Int` (not `z.val`); power is `z ** e` (not `.pow`); inverse is `z.inv` (no parens) |
 | Read unknown-length line or string | `let s: Str = read()` (ASCII bytes: `s[i]` is `Char`, `s[i] - 'a'` is `Int`) |
 | Convert integer `n` to string | `"{n}"` (or `std.math.digits(n)` for base-10 digits) |
 | Print space-separated values | `print(a, b)` or `print(x, end: " ")` |

@@ -99,7 +99,7 @@ fn bump(mut x: Int): x += 1
 var n = 3
 bump(mut n)                         // mut on parameter and call site
 let xs = [3, 1, 2]
-print(sorted(xs, by: x => -x))       // one closure spelling
+print(xs.sorted(by: x => -x))        // one closure spelling (single-line expr; use local `fn` for multi-line)
 print(twice(n))
 ```
 
@@ -162,9 +162,9 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 - `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value; `.first`, `.pop_first()` give `?(K, V)`.
 - `Bitset<D>`: `.add`, `.remove`, `.toggle`, set operations, `.len` (popcount), `.shifted(k)`.
 - `Subset<D>`: small bitmask indices; `.empty`, `.full`, `.with(v)`, `.without(v)`, `s = s.set(v, on)` (returns a new subset), `for sub in s.subsets`, `for v in s`.
-- Comprehensions `[f(x) for x in xs if ok(x)]`, `[b for v in V if let b = boss[v] and b != v]` (`and`, not `,`); `xs += ys`; `for b in Bool`; `sort(mut xs)`, `sorted(xs, by: desc)`, `sorted(0..n, by: f)`.
+- Comprehensions `[f(x) for x in xs if ok(x)]`, `[b for v in V if let b = boss[v] and b != v]` (`and`, not `,`); `xs += ys`; `for b in Bool`; `xs.sort()`, `xs.sorted(by: desc)`, `xs.reverse()`, `D.sort(by: f)` (returns `List`).
 - `xs.windows(k)` yields each length-`k` window; `zip(xs, ys)` pairs up to the shorter list.
-- Folds take a monoid such as `+`: `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)` yields `(x, rest)`; `runs`, `runs_by(xs, key)` yields `(key, items)`, `prefix`, `compress`.
+- Folds: `xs.sum()`, `xs.min()`, `xs.max()`, `xs.count(p)`, `xs.all(p)`, `xs.any(p)`, `xs.first(p)`, `xs.runs(by: key)`, `fold(+, xs)`, `scan(xs, +)`, `xs.excl_fold(+)`; generators use free form (`sum(f(x) for x in xs)`).
 
 ## 9. Search and modular arithmetic
 
@@ -182,7 +182,7 @@ print(z, one, Z.P)                  // 4 1 7; numeric type parameter access
 
 - Binary search returns `?I`; no hit is `none`. Floating ranges take `steps: 80`.
 - Sorted sequence `.first_ge`/`.last_le` return indices; sets return keys; maps return pairs.
-- `Mod<P>` supports `+ - * / **`, `.pow`, `.inv` (or `.inv()`), `.try_inv`; `P` can be constant, runtime-frozen or above 2^31.
+- `Mod<P>` supports `+ - * / **`, `.inv`, `.try_inv`, `.raw` (returns `Int`, not `.val`); `P` can be constant, runtime-frozen or above 2^31.
 - `Comb<Z>()`: `.fact`, `.inv_fact`, `.choose`, `.arrange`; number theory: `gcd`, `lcm`, `ceil_div`, `Sieve`.
 - Randomness: `rand(lo, hi)`, `shuffle(mut xs)`, seeded `Rng.new(seed).int(lo, hi)` (`use std.rand.{Rng}`); geometry: `Pt`.
 

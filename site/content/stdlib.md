@@ -62,7 +62,7 @@ type Item = (cost: Int, value: Int)
 var items: List<Item> = [(2, 10), (1, 5)]
 var pq = MinHeap<(Int, Desc<V>)>()
 pq.push((dist, desc(u)))
-sort(mut items, by: x => (x.cost, desc(x.value)))
+items.sort(by: x => (x.cost, desc(x.value)))
 ```
 
 - **`Set<T>()` / `SortedBag<T>()`:** `.add(x)`, `.remove(x)`, `x in s`, `.first`, `.last`, `.first_ge(k)`, `.first_gt(k)`, `.last_le(k)`, `.last_lt(k)`. A `Set` stores unique keys; a `SortedBag` keeps duplicates and provides `.count(x)` and `.remove_one(x)` to delete one copy. Neighbor lookups return `?K`, so an absent key is `none` rather than a sentinel.
@@ -104,9 +104,9 @@ Other prelude sequence helpers:
 - `compress(all)` — coordinate compression producing a nominal domain `xs.D`, inverse `xs[id]`, `xs.at(val) -> xs.D`, and `xs.first_ge(val) -> ?xs.D`.
 - `prefix(a)` — 1D or 2D prefix sums (`pre.sum(l..=r)`).
 - `scan(a, +)` / `scan(a, max)` — inclusive running folds; `fold(+, a)` — the whole fold; `a.excl_fold(+)` — yields `(x, rest)`, the fold of every other element, without division.
-- `runs(a)` — run-length `(value, count)` pairs; `runs_by(a, key)` — groups of equal `key`, each `(key, items)`; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
-- `sort(mut a, by:)`, `sorted(a, by:)` (descending via `by: desc`), `reverse(mut a)`, `dedup(mut a)`, `distinct(a)`, `rotate_left(mut a, k)` (negative rotates right), `next_permutation(mut a)`, `prev_permutation(mut a)`.
-- `sum`, `prod`, `any`, `all`, `count`, `first(it) -> ?T`; `count`, `all`, `any` and `first` also take a test after the sequence, `count(xs, x => x > 2)` or `xs.count(x => x > 2)`, and stop as early as the walk would; `a.find(x) -> ?I`, `min_by(it, key)`, `max_by(it, key)`.
+- `runs(a)` — run-length `(value, count)` pairs; `a.runs(by: key)` — groups of equal `key`, each `(key, items)`; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
+- Sequence methods (prefer method form over free calls on one sequence): `a.sort(by:)`, `a.sorted(by:)` (returns a 0-indexed `List<T>`; descending via `by: desc`), `D.sort(by: key)` (for domains), `a.reverse()`, `a.dedup()`, `a.distinct()`, `a.rotate(k)`, `next_permutation(mut a)`, `prev_permutation(mut a)`.
+- Method-form folds & searches: `xs.sum()`, `xs.product()`, `xs.min(by:)`, `xs.max(by:)`, `xs.argmax(by:)`, `xs.count(p)`, `xs.all(p)`, `xs.any(p)`, `xs.first(p) -> ?T`, `xs.find(x) -> ?I`, `xs.group(by: k)`. Use free `sum(f(x) for x in xs)` for generator expressions and `min(a, b)` / `max(a, b)` for two or more values.
 - `xs.windows(k)` yields every length-`k` window as a list; `zip(xs, ys)` pairs elements up to the shorter list.
 - `std.seq` also provides zero-allocation sequence views `pairs(xs)` (consecutive `(a, b)` pairs), `with_prev(xs)` (`(?T, T)` with `none` on the first element), `cyclic_pairs(xs)`, and the standard permutation alias `Perm<V> = [V]V` (paired with `std.graph.Tree<V>` for `cpl stress` generation and shrinking):
 
@@ -185,9 +185,9 @@ let p: 1..=1e9 = read()
 type DynamicZ = Mod<p>
 ```
 
-- **`Mod<P>` (`std.mod`):** 4-byte storage when `P <= 2^31 - 1`, `+`, `-`, `*`, `/`, `**`, `.pow(e)`, `.inv` (also written `.inv()`), `.try_inv() -> ?Z` (for composite moduli), `.val -> Int`. Intentionally omits `Ord`.
+- **`Mod<P>` (`std.mod`):** 4-byte storage when `P <= 2^31 - 1`, `+`, `-`, `*`, `/`, `**` (power), `.inv` (getter, no parens), `.try_inv() -> ?Z` (for composite moduli), `.raw -> Int` (underlying residue in `0..P`, not `.val`). Intentionally omits `Ord`.
 - **`Comb<M>()` (`std.mod`):** `.fact(n)`, `.inv_fact(n)`, `.choose(n, k)`, `.arrange(n, k)`, `.multinomial(ks)`, `.catalan(n)` (keyed on a `Mod` type `type Z = Mod<P>`; an immutable `let comb = Comb<Z>()` extends its tables lazily).
-- **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd`, `isqrt`, `ceil_div`, `choose2`, `pow_mod`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`, `Sieve(n)` (`sv.is_prime(x)`, `sv.factor(x)`, `sv.phi_table()`, `sv.mobius_table()`, `sv.div_count_table()`, `sv.div_sum_table()`, `sv.spf`, `sv.primes`), `sieve_multiplicative`, `factor(n)`, `factor_big(n)`, `divisors(n)`, `divisors_from_factors(fs)`.
+- **Number theory (`std.math`):** `gcd`, `lcm`, `ext_gcd`, `isqrt`, `ceil_div`, `choose2`, `pow_mod`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `primitive_root`, `floor_sum`, `Sieve(n)` (`sv.is_prime(x)`, `sv.factor(x)`, `sv.phi_table()`, `sv.mobius_table()`, `sv.div_count_table()`, `sv.div_sum_table()`, `sv.spf` array of smallest prime factors, `sv.primes: List<Int>` — note `Int` has no `.to_idx`; use `sv.primes` or build a prime-index table), `sieve_multiplicative`, `factor(n)`, `factor_big(n)`, `divisors(n)`, `divisors_from_factors(fs)`.
 - **NTT & convolutions (`std.ntt`):** `ntt<P>(mut a, inverse:)`, `convolve<P>(a, b, cyclic:)`, `convolve_mod(a, b, m, cyclic:)`, `convolve_int(a, b, cyclic:)`, in-place `sos(mut f, over: Sub | Sup = Sub, inverse:)`, and `convolve_or`/`convolve_and`/`convolve_xor`.
 - **Formal power series (`std.poly`):** `deriv`, `integral`, `inv(a, n)`, `log(a, n)`, `exp(a, n)`, `pow(a, k, n)`, and `sqrt(a, n) -> ?List<Mod<P>>` over NTT.
 - **Matrices & XOR basis (`std.matrix`):** `Mat<T>` (`+`, `-`, `*`, `.pow(e)`, `.mul_vec(v)`, `.transpose()`, `.product(n)`, exact-field `.det()`, `.rank()`, `.solve(b)`, `.solve_space(b)`, `.inverse()`), floating-point `det_real`/`rank_real`/`solve_real`/`inverse_real` with explicit `eps:`, and `XorBasis` (`.add`, `.reduce`, `.contains`, `.max_xor`, `.min_xor`, `.kth`, `.merge`, `.monoid`).

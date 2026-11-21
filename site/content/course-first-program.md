@@ -16,7 +16,7 @@ Read the four lines as four decisions:
 1. `let n: 1..=2e5 = read()` reads one integer and states its legal range.
 2. `domain V = 1..=n` names the positions `1` through `n` as a nominal type `V`.
 3. `let a: [V]Int = read()` reads one `Int` per position of `V`.
-4. `print(sum(a))` adds the elements and prints the total with a newline.
+4. `print(a.sum())` adds the elements and prints the total with a newline.
 
 ```exercise first-program-predict-sum
 ```
@@ -109,7 +109,7 @@ Use `@!multitest(until_eof)` when the judge gives test cases until EOF instead o
 
 ```cp CP Lang 0.2.2
 let a = [-3, 8, -4, 7, 8]
-let best = max(a)!
+let best = a.max()!
 let evens = count(x % 2 == 0 for x in a)
 print(best, evens)      // 8 3
 print(a)                // -3 8 -4 7 8

@@ -6,7 +6,5 @@ for _ in 0..n:
     let x: Int = read()
     pq.push(x)
 
-var picked: List<Int> = []
-for _ in 0..min(n, k):
-    picked.push(pq.pop()!)
-print(sum(picked))
+let picked = [pq.pop()! for _ in 0..min(n, k)]
+print(picked.sum())

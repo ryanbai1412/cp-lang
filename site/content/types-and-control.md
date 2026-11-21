@@ -212,9 +212,9 @@ For many arguments of one type, take a `List<T>` and pass `[a, b, c]`.
 ### Loops, parallel assignment, and closures
 
 - **Counted and infinite loops:** `repeat n:` runs a body `n` times (sugar for `for _ in 0..n:`); `loop:` runs until `break` (sugar for `while true:`).
-- **Filtered loops & comprehensions:** `for v in V where ok(v):` and `[f(v) for v in V where ok(v)]` (the earlier `for v in V if ok(v):` spelling is also accepted). Comprehensions and generator expressions (`sum(...)`, `[...]`) take a **single** `for` clause — for 2D loops, use nested `for r in Row:` / `for c in Col:` statements.
-- **Free math functions:** `abs(x)`, `min(a, b)`, `max(a, b)`, `gcd(a, b)`, `lcm(a, b)` are free functions, not methods on `Int` (write `abs(a - b)`, not `(a - b).abs()`).
-- **Conditional expressions & `match` arms:** inline conditionals use `if cond: a else: b` (with colons — never `then` or Python's `a if cond else b`). In `match`, each arm is `pat => expr` on one line (for multi-statement arms, use `if`/`elif`/`else` or call a helper `fn` — never leave `=>` at the end of a line).
+- **Filtered loops & comprehensions:** `for v in V if ok(v):` and `[f(v) for v in V if ok(v)]` (always use `if` for filters). Comprehensions and generator expressions (`sum(...)`, `[...]`) take a **single** `for` clause — for 2D loops, use nested `for r in Row:` / `for c in Col:` statements.
+- **Free math functions:** `abs(x)`, `min(a, b)`, `max(a, b)`, `gcd(a, b)`, `lcm(a, b)` are free functions, not methods on `Int` (write `abs(a - b)`, not `(a - b).abs()`). Power is `**` (`a ** b`, never `.pow`).
+- **Conditional expressions, `match` arms, & lambdas:** inline conditionals use `if cond: a else: b` (with colons — never `then` or Python's `a if cond else b`). Both `match` arms (`pat => expr`) and arrow lambdas (`x => expr`, `[V] v => expr`) take a **single expression on the same line** — never leave `=>` at the end of a line. For multi-statement bodies, define a local `fn f(x: T) -> U:` and pass `f`, or use `if`/`elif`/`else`.
 - **Tuples & reserved keywords:** positional tuples `(Int, Int)` use `.0`, `.1`; named tuples `(a: Int, b: Int)` use `.a`, `.b` (not `.0`). Avoid reserved keywords as variable names — especially `use`, `type`, `in`, `match`, `domain`, `fn`, `let`, `var`.
 - **Index-value pairs:** For a list or string, iterate `i in 0..a.len` and access `a[i]` when you need both.
 - **Domains and containers:** `for v in V:` iterates a domain; `for v in V by k:` and `for v in V.rev by k:` step along a domain; `for x in a:` visits container elements. For a two-dimensional grid, use nested row/column loops.
@@ -231,7 +231,7 @@ repeat 4:
 loop:
     if total >= 15: break
     total += 1
-let evens = [x for x in 0..8 where x % 2 == 0]
+let evens = [x for x in 0..8 if x % 2 == 0]
 print(total, evens)
 ```
 

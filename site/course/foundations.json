@@ -10,7 +10,7 @@
         "kind": "output",
         "fixture": "sum",
         "title": "Predict the total",
-        "prompt": "The sum program reads n, then n integers, and prints sum(a). Predict the exact output for each input before you run it.",
+        "prompt": "The sum program reads n, then n integers, and prints a.sum(). Predict the exact output for each input before you run it.",
         "hint": "read() for [V]Int consumes exactly n numbers, one per position of V. Add them, keeping the signs.",
         "solution": "The first input holds 10, 20, 30, and 40, so the total is 100. The second holds -5, 2, and -1, so the total is -4. The reader never needs a loop: the array type [V]Int already says how many numbers to read.",
         "tests": [
@@ -435,15 +435,15 @@
         "title": "Sort by two keys in opposite directions",
         "prompt": "You want to sort tasks in place by smallest deadline `t.due` first, breaking ties by largest reward `t.val` first. Which line writes this directly?",
         "options": [
-          "sort(mut tasks, by: t => (t.due, desc(t.val)))",
+          "tasks.sort(by: t => (t.due, desc(t.val)))",
           "sort(tasks, by: t => (t.due, -t.val))",
           "tasks.sort((a, b) => a.due < b.due)",
-          "sort(mut tasks, by: t => (desc(t.due), t.val))"
+          "tasks.sort(by: t => (desc(t.due), t.val))"
         ],
         "answer": 0,
-        "hint": "In-place sort requires explicit `mut`, and `desc(...)` flips the ordering of a single tuple component.",
-        "solution": "`sort(mut tasks, by: t => (t.due, desc(t.val)))` mutates `tasks` in place, ordering `t.due` ascending and `t.val` descending.",
-        "explanation": "In-place mutation always marks the container `mut`. Wrapping `t.val` in `desc(...)` flips only that component and works on any `Ord` type (including strings and tuples, not just integers). Flipping `t.due` instead puts the largest deadline first."
+        "hint": "Use method-form `.sort(by:)` and wrap the descending key component in `desc(...)`.",
+        "solution": "`tasks.sort(by: t => (t.due, desc(t.val)))` mutates `tasks` in place, ordering `t.due` ascending and `t.val` descending.",
+        "explanation": "In-place sequence sort uses method form `tasks.sort(by:)`. Wrapping `t.val` in `desc(...)` flips only that component and works on any `Ord` type (including strings and tuples, not just integers). Flipping `t.due` instead puts the largest deadline first."
       },
       {
         "id": "coll-map-lazy",
