@@ -2489,3 +2489,28 @@ print(getter_calls([1, 2], \"ab\", 0..4))
 ";
     assert_eq!(check(ok), vec![]);
 }
+
+#[test]
+fn generic_struct_ctor_unifies_caller_type_params_in_nested_fields() {
+    let ok = "\
+domain V = 0..3
+struct P<V, A>:
+    back: [V]?(from: V, via: A)
+struct Q<V, A>:
+    back: [V]?(V, A)
+fn mk_rec<S, M>(s: S, m: M) -> P<S, M>:
+    var b: [S]?(from: S, via: M) = none
+    b[s] = (from: s, via: m)
+    P(b)
+fn mk_tup<S, M>(s: S, m: M) -> Q<S, M>:
+    var b: [S]?(S, M) = none
+    b[s] = (s, m)
+    Q(b)
+fn mk_one_renamed<V, M>(s: V, m: M) -> P<V, M>:
+    var b: [V]?(from: V, via: M) = none
+    b[s] = (from: s, via: m)
+    P(b)
+print(mk_rec(V(1), 2).back[V(1)]!.via, mk_tup(V(1), 3).back[V(1)]!.1, mk_one_renamed(V(1), 4).back[V(1)]!.via)
+";
+    assert_eq!(check(ok), vec![]);
+}

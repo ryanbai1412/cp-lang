@@ -450,7 +450,7 @@ impl Ty {
     /// for a parameter stays.
     pub fn unify(&self, got: &Ty, bindings: &mut Bindings) {
         match (self, got) {
-            (_, Ty::Unknown | Ty::Error | Ty::Param(_)) => {}
+            (_, Ty::Unknown | Ty::Error) => {}
             (Ty::Param(name), got) => {
                 bindings.entry(name.clone()).or_insert_with(|| got.widen());
             }
@@ -474,8 +474,23 @@ impl Ty {
                 }
             }
             (Ty::Record(want), Ty::Record(got)) => {
-                for ((_, want), (_, got)) in want.iter().zip(got) {
-                    want.unify(got, bindings);
+                for (wname, wty) in want {
+                    if let Some((_, gty)) = got.iter().find(|(gname, _)| gname == wname) {
+                        wty.unify(gty, bindings);
+                    }
+                }
+                for ((_, wty), (_, gty)) in want.iter().zip(got) {
+                    wty.unify(gty, bindings);
+                }
+            }
+            (Ty::Record(want), Ty::Tuple(got)) => {
+                for ((_, wty), gty) in want.iter().zip(got) {
+                    wty.unify(gty, bindings);
+                }
+            }
+            (Ty::Tuple(want), Ty::Record(got)) => {
+                for (wty, (_, gty)) in want.iter().zip(got) {
+                    wty.unify(gty, bindings);
                 }
             }
             (
@@ -850,5 +865,54 @@ mod tests {
         assert_eq!(human_bytes(1_600_000), "1.6 MB");
         assert_eq!(human_bytes(800_000), "800 KB");
         assert_eq!(human_bytes(12), "12 bytes");
+    }
+
+    #[test]
+    fn unify_binds_caller_params_across_nested_type_constructors() {
+        let p = |s: &str| Ty::Param(s.into());
+        let arr = |i: Ty, e: Ty| Ty::Array {
+            index: vec![i],
+            elem: Box::new(e),
+        };
+        let opt = |t: Ty| Ty::Optional(Box::new(t));
+        let tup = |xs: Vec<Ty>| Ty::Tuple(xs);
+        let rec = |xs: Vec<(&str, Ty)>| {
+            Ty::Record(xs.into_iter().map(|(k, v)| (k.into(), v)).collect())
+        };
+        let named = |n: &str, args: Vec<Ty>| Ty::Named {
+            name: n.into(),
+            args,
+        };
+
+        let templates = vec![
+            arr(p("V"), opt(rec(vec![("from", p("V")), ("via", p("A"))]))),
+            arr(p("V"), opt(tup(vec![p("V"), p("A")]))),
+            opt(arr(p("V"), tup(vec![opt(p("A")), p("V")]))),
+            named("Pair", vec![opt(p("V")), arr(p("V"), p("A"))]),
+            rec(vec![("a", opt(p("A"))), ("b", arr(p("V"), opt(p("A"))))]),
+            tup(vec![named("List", vec![opt(p("V"))]), rec(vec![("x", p("A"))])]),
+        ];
+        let renamings = [
+            vec![("V", p("S")), ("A", p("M"))],
+            vec![("V", p("V")), ("A", p("M"))],
+            vec![("V", p("A")), ("A", p("V"))],
+            vec![("V", Ty::Pos("Node".into())), ("A", p("W"))],
+        ];
+        for template in &templates {
+            for pairs in &renamings {
+                let want_map: Bindings = pairs
+                    .iter()
+                    .map(|(k, v)| ((*k).to_string(), v.clone()))
+                    .collect();
+                let got = template.subst(&want_map);
+                let mut inferred = Bindings::new();
+                template.unify(&got, &mut inferred);
+                assert_eq!(
+                    template.subst(&inferred),
+                    got,
+                    "template={template}, got={got}, inferred={inferred:?}"
+                );
+            }
+        }
     }
 }
