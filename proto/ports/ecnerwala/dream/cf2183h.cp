@@ -13,4 +13,9 @@ let st = a.cuts.find(c => c == n or pref[c] + a[c] * c > 0)!
 fn cost(j: a.Cut, i: a.Cut) -> I128 = (pref[i] - pref[j]) * (i - j)
 let rest = n - k + 1
 if rest <= st: return print(cost(0, rest) + pref[n] - pref[rest])
-print(aliens(k, solve: pen => monge_path([0] + (st..=n), cost: (j, i) => cost(j, i) + pen)))
+let nodes = [a.Cut(0)] + (st..=n)
+let fewest = cost(0, st) + pref[n] - pref[st] - cost(0, n)
+fn penalized(pen: I128) -> (val: I128, count: Int):
+    let path = monge_path(nodes.len, w: (p, q) => cost(nodes[p], nodes[q]) + pen)
+    (val: path.val.last!, count: path.edges.last!)
+print(aliens(k, lambdas: I128(0)..=1 - fewest, solve: penalized))
