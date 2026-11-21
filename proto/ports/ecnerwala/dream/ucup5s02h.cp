@@ -18,17 +18,28 @@ use std.dsu.{ParityDsu}
 use std.math.{Frac}
 
 struct Charge(x: Int, q: Int, pin: ?Side)
-enum Side = A | B
+enum Side: A | B
 
 // d^2 / (q * q'): larger is weaker.
-fn gap(a: Charge, b: Charge) -> Frac = Frac((a.x - b.x) ^ 2, a.q * b.q)
+fn gap(a: Charge, b: Charge) -> Frac = Frac((a.x - b.x) ** 2, a.q * b.q)
+
+// Pull of `c` on a unit charge at `x`: q / (x - c.x)^2.
+fn pull(c: Charge, x: Int) -> Frac = Frac(c.q, (x - c.x) ** 2)
+
+// True iff `b` is never weaker than both `a` and `c` for any query point `x > c.x`.
+fn never_weakest(a: Charge, b: Charge, c: Charge) -> Bool:
+    let (v1, v2, v3) = (c.x - b.x, c.x - a.x, b.x - a.x)
+    let (a1, a2, a3) = (v1 * v1 * a.q, v2 * v2 * b.q, v3 * v3 * c.q)
+    if a2 < a1 + a3: return false
+    let d = I128(a2) - I128(a1) - I128(a3)
+    d * d >= I128(4) * I128(a1) * I128(a3)
 
 struct Hull:
     pts: List<Charge>
     idx: Int
 
     fn advance(mut self, x: Int):
-        while let next = pts.get(idx + 1) and next.pull(at: x) <= pts[idx].pull(at: x): idx += 1
+        while let next = pts.get(idx + 1) and pull(next, x) <= pull(pts[idx], x): idx += 1
 
     fn add(mut self, p: Charge):
         if pts.last.all(l => p.q < l.q):
@@ -39,6 +50,15 @@ struct Hull:
     fn query(mut self, x: Int) -> ?Charge:
         self.advance(x)
         pts.get(idx)
+
+// Weakest same-group pairs found by sweeping one side's charges through a `Hull`.
+fn hull_pairs(cs: List<Charge>) -> List<(Charge, Charge)>:
+    var h = Hull([], 0)
+    var pairs: List<(Charge, Charge)> = []
+    for c in cs:
+        if let prev = h.query(c.x): pairs.push((prev, c))
+        h.add(c)
+    pairs
 
 @!multitest
 let n: 1..=2e5 = read()

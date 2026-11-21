@@ -1,7 +1,7 @@
 # ucup5s02h
 
 Score: 3/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: fixes `^ 2` -> `** 2` per §70, defines `pull`, `never_weakest`, and `hull_pairs`, and uses canonical `enum Side: A | B`)
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
