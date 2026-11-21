@@ -5,7 +5,7 @@ S = int(sys.argv[2])
 t = r.randint(1, 3)
 print(t)
 for _ in range(t):
-    n = r.randint(1, 3 * S)
+    n = r.randint(2, 3 * S)
     shape = r.randint(0, 2)
     par = [0, 0] + [(i - 1 if shape == 0 else r.randint(max(1, i - 2), i - 1) if shape == 1 else r.randint(1, i - 1)) for i in range(2, n + 1)]
     label = list(range(1, n + 1))

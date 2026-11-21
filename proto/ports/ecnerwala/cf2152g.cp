@@ -4,11 +4,10 @@
 // the current monster set and for its complement; flipping a subtree swaps the two.
 @!multitest
 use std.lazy.{Flip, flip_action}
-let n: Int = read()
+let n: 2..=250_000 = read()
 domain V = 1..=n
 let monster: [V]Bool = read()
-let edges: [0..n - 1](V, V) = read()
-let t = Rooted(Graph.undirected(edges), V.first)
+let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first)
 
 type Side = (ends: Int, first: ?V, last: ?V)
 
