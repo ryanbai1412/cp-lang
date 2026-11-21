@@ -18,7 +18,7 @@ struct Node:
         return self.r_int == none
 
     fn single(l: Int, r: Int, kind: Bool) -> Node:
-        return Node(ans: 100, l: l, r: r, l_int: r, r_int: none, l_type: kind, r_type: false)
+        return Node(ans: 100, l:, r:, l_int: r, r_int: none, l_type: kind, r_type: false)
 
     fn merge(self, o: Node) -> Node:
         var res = self
@@ -75,7 +75,7 @@ struct CoverTree<D>:
 
     fn new(leaves: [D]Node) -> CoverTree<D>:
         let sz = 4 * D.K + 5
-        var st = CoverTree<D>(leaves: leaves, tree: List.filled(sz, Node()), cover: List.filled(sz, 0), full: D.first..=D.last)
+        var st = CoverTree<D>(leaves:, tree: List.filled(sz, Node()), cover: List.filled(sz, 0), full: D.first..=D.last)
         st.build(1, st.full)
         return st
 

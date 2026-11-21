@@ -584,7 +584,7 @@ pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
                 let right = if j == n: 0 else: sa.lcp_between(i, j)
                 let l = i - left
                 let r = j + right
-                if r - l >= 2 * p: raw.push((l: l, r: r, period: p))
+                if r - l >= 2 * p: raw.push((l:, r:, period: p))
     raw.sort()
     var out = List<(l: Int, r: Int, period: Int)>()
     for run in raw:
@@ -654,7 +654,7 @@ pub struct RollingHash:
     pub fn with_bases<S: Seq>(
         seq: S,
         bases: (Int, Int),
-    ) -> RollingHash = RollingHash.new(seq, bases: bases)
+    ) -> RollingHash = RollingHash.new(seq, bases:)
 
     /// Number of hashed elements.
     pub @get fn len(self) -> Int = p1.len - 1
@@ -1494,7 +1494,7 @@ fn manacher_and_is_palindrome_match_brute():
                 assert p.is_palindrome(l..r) == ok
                 if r > l and ok:
                     total += 1
-                    if r - l > best.r - best.l: best = (l: l, r: r)
+                    if r - l > best.r - best.l: best = (l:, r:)
         assert p.count == total
         assert p.longest == best
 
@@ -1767,7 +1767,7 @@ fn lyndon_runs_matches_brute():
                 if min_p == 0: continue
                 if l > 0 and s[l - 1] == s[l - 1 + min_p]: continue
                 if r < n and s[r] == s[r - min_p]: continue
-                out.push((l: l, r: r, period: min_p))
+                out.push((l:, r:, period: min_p))
         out
 
     assert lyndon_runs("").is_empty

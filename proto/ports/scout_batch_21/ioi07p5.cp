@@ -58,7 +58,7 @@ fn cube() -> Int:
         let x: Int = read()
         let y: Int = read()
         let z: Int = read()
-        at.push((z: z, u: x + y, v: x - y + m))
+        at.push((z:, u: x + y, v: x - y + m))
         seen[Z(z), U(x + y), V(x - y + m)] += 1
     for z in Z:
         for u in U:

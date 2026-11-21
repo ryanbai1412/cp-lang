@@ -68,4 +68,4 @@ fn step(p: Arc, by: Int):
         relabel(v, by: u)
 
 let answer = qi => values.kth(asks[qi].k + n - (asks[qi].r - asks[qi].l + 1))
-print(mo(windows, add: p => step(p, 1), remove: p => step(p, -1), answer: answer), sep: "\n")
+print(mo(windows, add: p => step(p, 1), remove: p => step(p, -1), answer:), sep: "\n")

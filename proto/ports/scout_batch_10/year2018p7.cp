@@ -18,7 +18,7 @@ for v in 2..=n:
     kids[parent].push(V(v))
 let word: [V]Str = read()
 let bases = (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
-let hash = [V] v => RollingHash.new(word[v], bases: bases)
+let hash = [V] v => RollingHash.new(word[v], bases:)
 
 /// Do two branches of some vertex share a block of `len` letters?
 fn shared(len: Int) -> Bool:

@@ -22,7 +22,7 @@ struct Node:
     r_type: Bool
 
     fn single(l: Int, r: Int, kind: Bool) -> Node:
-        Node(ans: 100, l: l, r: r, l_int: r, r_int: none, l_type: kind, r_type: false)
+        Node(ans: 100, l:, r:, l_int: r, r_int: none, l_type: kind, r_type: false)
 
     fn is_one(self) -> Bool:
         self.r_int == none
@@ -69,7 +69,7 @@ struct Node:
                     ans min= ctz_safe(o.l_int)
                 r_int = o.r_int
                 r_type = o.r_type
-        Node(ans: ans, l: l, r: r, l_int: l_int, r_int: r_int, l_type: l_type, r_type: r_type)
+        Node(ans:, l:, r:, l_int:, r_int:, l_type:, r_type:)
 
     fn compute(self) -> Int:
         if self.is_one():
@@ -110,7 +110,7 @@ struct CoverTree:
         for _ in 0..sz:
             tree.push(dummy)
             cover.push(0)
-        var st = CoverTree(n: n, leaves: leaves, tree: tree, cover: cover)
+        var st = CoverTree(n:, leaves:, tree:, cover:)
         if n > 0:
             st.build(1, 0, n - 1)
         st
@@ -207,7 +207,7 @@ for _ in 0..k:
     let y1: Int = read()
     let x2: Int = read()
     let y2: Int = read()
-    rects.push(Rect(x1: x1 - 1, y1: y1 - 1, x2: x2, y2: y2))
+    rects.push(Rect(x1: x1 - 1, y1: y1 - 1, x2:, y2:))
     swapped.push(Rect(x1: y1 - 1, y1: x1 - 1, x2: y2, y2: x2))
 
 var ans = min(ctz_safe(n), ctz_safe(m))

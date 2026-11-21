@@ -31,10 +31,10 @@ for qid in Q:
         passes += 1
     elif kind == 2:
         let p: 1..=n = read()
-        q_at_pos.push((passes: passes, pos: Pos.from_idx(p - 1)!, qid: qid))
+        q_at_pos.push((passes:, pos: Pos.from_idx(p - 1)!, qid:))
     else:
         let v: Val = read()
-        q_pos_of.push((passes: passes, val: v, qid: qid))
+        q_pos_of.push((passes:, val: v, qid:))
 
 var ans: [Q]?Int = none
 

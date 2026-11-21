@@ -3862,7 +3862,6 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Evidence.** Interp/C++17 parity test `crates/cpl-cli/tests/programs/seq_mut_slice.cp` (covering `List<Int>`, `[D]Int`, `[D.bounds]Int`, `[0..6]Int`, nested and disjoint slices); checker compile-fail tests in `crates/cpl-check/src/tests.rs` (`mutable_slice_views_lend_and_reject_aliasing`); `cpl explain` test in `crates/cpl-cli/src/lib.rs`; matched benchmark `bench/seq/slice_sort.cp` (`xs[l..r].sort()` vs `std::sort(xs.data() + l, xs.data() + r)`): **1.05x** (213.9 ms vs 202.9 ms, 9,393 B emitted C++); port migrations: `cf2207h3.cp` (678 → 658 tokens, -20, `gate.sh` PASS) and `cf2207h1.cp` (1,007 → 813 tokens, -194, `gate.sh` PASS). Closes `research/frictions/cf2207h3.md` #1b.
 - **Reverse.** Restore `note_readonly_view` for list/array slices in `cpl-check/src/check/expr.rs`, remove `Ty::MutView` / `ExprKind::MutSlice` / `cpl::MutView`, and revert `cf2207h3.cp` / `cf2207h1.cp`.
 
-
 ## 124. A half-open range of cuts is also the piece it bounds (2026-11-21)
 
 - **Decision.** With cuts `j, i: D.bounds`, `j..i` is a `Range<D.bounds>`
@@ -4048,3 +4047,10 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   enum workaround and it hurts readability, add declared view enums that
   lower to that method call, keeping exhaustiveness and `cpl explain`.
 - **Status.** Accepted (closed by design).
+
+## 133. Named-argument and record-field punning `f(x:)` (2026-11-21)
+
+- **Decision.** A named call argument or parenthesized record field whose value is a variable of the same name may be written in punned shorthand: `f(moves:, cost:, step:)` means `f(moves: moves, cost: cost, step: step)`, and `(moves:, cost:)` means `(moves: moves, cost: cost)`.
+- **Mechanism.** Parser-only desugaring in `Parser::arg` and `ExprKind::Record` (`crates/cpl-syntax/src/parser/expr.rs`): when a `name:` label is immediately followed by `,` or `)`, the parser builds `ExprKind::Name(name)` at `name.span`. No checker, IR, interpreter, or C++ codegen special case is needed; LSP hover resolves the local's type through the synthesized expression span. `cpl-fmt` preserves tokens strictly and formats punned calls/records without spaces before `:` or `,`. Lint `L0209` (`redundant_arg_name`) warns on `name: name` with a machine-applicable `cpl fix` to `name:`.
+- **Evidence.** Corpus audit found 155 exact `name: name` sites across 54 port files and 75 across 10 stdlib files (52 reviewed port files and all 10 stdlib files migrated via `L0209`; 2 unreviewed ports left untouched for review-check). Interp/C++17 parity test `crates/cpl-cli/tests/programs/named_arg_punning.cp` (`345 12 7`), formatter test `formats_punned_named_args_and_records`, LSP test `hover_on_punned_named_arg_shows_local_type`, lint test `redundant_arg_name_shortens_to_punning`, and docs in `site/content/types-and-control.md`.
+- **Reverse.** Remove the punning branch in `Parser::arg` and `ExprKind::Record`, remove `L0209`, and expand `name:` back to `name: name`.

@@ -3669,6 +3669,10 @@ impl<'a> Lowerer<'a> {
                     hi = self.int_add(hi, 1);
                 }
                 let step = step.as_ref().map(|s| self.expect(s, &Ty::Int));
+                let elem_ty = match ty {
+                    Ty::Bound(d) if !*inclusive => Ty::Pos(d),
+                    other => other,
+                };
                 (
                     Iter::Range {
                         lo,
@@ -3677,7 +3681,7 @@ impl<'a> Lowerer<'a> {
                         rev: false,
                         closed,
                     },
-                    ty,
+                    elem_ty,
                 )
             }
             ast::ExprKind::Range {

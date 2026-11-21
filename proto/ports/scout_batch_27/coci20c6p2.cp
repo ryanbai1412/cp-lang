@@ -15,7 +15,7 @@ fn id(name: Str) -> V:
 var out: [V]List<(to: V, time: Int)> = []
 for _ in 0..m:
     let (a, b, time): (Str, Str, Int) = read()
-    out[id(a)].push((to: id(b), time: time))
+    out[id(a)].push((to: id(b), time:))
 
 let q: Int = read()
 for _ in 0..q:

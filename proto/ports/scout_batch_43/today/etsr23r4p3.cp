@@ -15,7 +15,7 @@ for _ in 0..m:
 var tree_edges: List<(u: V, v: V)> = []
 for _ in 0..(n - 1):
     let (u, v): (V, V) = read()
-    tree_edges.push((u: u, v: v))
+    tree_edges.push((u:, v:))
 
 let g = Graph<V, TE>.undirected([TE] e => tree_edges[e.idx])
 let tree = Rooted<V>(g, root: V.first)

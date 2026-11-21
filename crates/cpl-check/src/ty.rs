@@ -212,6 +212,14 @@ impl Ty {
             (Ty::Tuple(a), Ty::Record(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits_in(b, number))
             }
+            // A domain is the range, list or bitset of its positions:
+            // `tally(Pos, Pos, 1)` or `zip(I, I.rev)`.
+            (Ty::Domain(d), Ty::Named { name: bn, args: ba })
+                if matches!(bn.as_str(), "Range" | "List" | "Bitset") =>
+            {
+                ba.first()
+                    .is_none_or(|elem| Ty::Pos(d.clone()).fits_in(elem, number))
+            }
             // A range written out is the list or bitset of what it goes over:
             // `place(D.all)` where a `List<D>` or `Bitset<D>` is wanted.
             (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba })

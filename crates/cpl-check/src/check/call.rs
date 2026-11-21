@@ -671,6 +671,16 @@ impl<'a> Checker<'a> {
                 "first" => {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
+                "last"
+                    if matches!(
+                        args,
+                        [arg] if arg.name.is_none()
+                            && (matches!(arg.value.kind, ExprKind::Lambda { .. })
+                                || matches!(self.quietly(|c| c.infer(&arg.value)), Ty::Fn { .. }))
+                    ) =>
+                {
+                    return Some(Ty::Optional(Box::new(elem)));
+                }
                 "filter" | "sorted" => {
                     return Some(Ty::list(elem));
                 }

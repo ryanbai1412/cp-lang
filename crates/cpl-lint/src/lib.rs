@@ -174,6 +174,16 @@ pub const REDUNDANT_PRELUDE_IMPORT: Lint = Lint {
     trigger: "use std.tree.{Rooted}\ndomain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
     fix: "domain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
 };
+pub const REDUNDANT_ARG_NAME: Lint = Lint {
+    code: Code("L0209"),
+    name: "redundant_arg_name",
+    default: Level::Warn,
+    title: "Named argument or record field repeating its own name",
+    summary: "`f(moves: moves)` or `(val: val)` can be punned as `f(moves:)` / `(val:)`",
+    explanation: "When a named call argument or record field passes a variable of the same name, write `name:` instead of `name: name`. `cpl fix` shortens `name: name` to `name:`.",
+    trigger: "fn f(moves: Int, cost: Int) -> Int = moves + cost\nlet moves = 3\nlet cost = 4\nprint(f(moves: moves, cost: cost))\n",
+    fix: "fn f(moves: Int, cost: Int) -> Int = moves + cost\nlet moves = 3\nlet cost = 4\nprint(f(moves:, cost:))\n",
+};
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
@@ -449,6 +459,7 @@ pub const LINTS: &[Lint] = &[
     GETTER_PARENS,
     IS_IN_COND_HEADER,
     REDUNDANT_PRELUDE_IMPORT,
+    REDUNDANT_ARG_NAME,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,

@@ -23,5 +23,5 @@ var eatable: [Cell]Bool = false
 for u in peel(v => protects[v]): eatable[u] = true
 
 let profit = [Cell] u => if eatable[u]: score[u] else: 0
-let needs = [(u: u, v: v) for u in Cell if eatable[u] for v in protects[u] if eatable[v]]
+let needs = [(u:, v:) for u in Cell if eatable[u] for v in protects[u] if eatable[v]]
 print(max_closure(profit, needs).value)

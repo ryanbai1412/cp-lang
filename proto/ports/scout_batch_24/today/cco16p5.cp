@@ -41,8 +41,8 @@ fn union_area(rad: Int) -> Int:
         let y2 = min(m, zombies[z].c + rad) + 1
         raw_y.push(y1)
         raw_y.push(y2)
-        evs.push((x: x1, y1: y1, y2: y2, d: 1))
-        evs.push((x: x2, y1: y1, y2: y2, d: -1))
+        evs.push((x: x1, y1:, y2:, d: 1))
+        evs.push((x: x2, y1:, y2:, d: -1))
     let sy = raw_y.sorted()
     ys = []
     for y in sy:

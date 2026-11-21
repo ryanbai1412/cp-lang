@@ -432,7 +432,7 @@ pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = none
 
 /// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`. O(n).
 pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = none):
-    rotate_left(mut self, -k, range: range)
+    rotate_left(mut self, -k, range:)
 
 /// A new list rotated left by `k`: what was at offset `k % len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right. Works on any `Seq`. O(n).

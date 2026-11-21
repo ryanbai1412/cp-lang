@@ -4042,6 +4042,31 @@ impl<'a> Lowerer<'a> {
             });
         }
         match (want, &e.ty) {
+            (Ty::List(want_elem), Ty::DomainVal) => {
+                if let ExprKind::DomainVal(d) = e.kind {
+                    if **want_elem == Ty::Pos(d) {
+                        return Ok(self.positions(d, span));
+                    }
+                }
+                Err(e)
+            }
+            (Ty::Range(want_elem), Ty::DomainVal) => {
+                if let ExprKind::DomainVal(d) = e.kind {
+                    if **want_elem == Ty::Pos(d) {
+                        let lo = self.int_lit(0, span);
+                        let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                        return Ok(self.mk(
+                            ExprKind::Range {
+                                lo: Box::new(lo),
+                                hi: Box::new(hi),
+                            },
+                            Ty::Range(Box::new(Ty::Pos(d))),
+                            span,
+                        ));
+                    }
+                }
+                Err(e)
+            }
             (Ty::Str, Ty::StrView) => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ToStr, vec![e]),
                 ty: Ty::Str,

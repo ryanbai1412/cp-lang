@@ -13,7 +13,7 @@ fn find(x: Line) -> (root: Line, label: Int):
     while up[y] != y:
         label ^= gap[y]
         y = up[y]
-    (root: y, label: label)
+    (root: y, label:)
 
 fn unite(a: Line, b: Line, v: Int) -> Bool:
     let (ra, la) = find(a)

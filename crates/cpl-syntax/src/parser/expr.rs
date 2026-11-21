@@ -1002,45 +1002,79 @@ impl<'a> Parser<'a> {
         ExprKind::List(items)
     }
 
-    /// Parses one or more `for pat in iter [if cond]`.
+    /// Parses one or more `for pat in iter [if cond]` (or comma-separated
+    /// `for a in A, b in B if cond`, mirroring `for` statements).
     fn clauses(&mut self) -> Vec<Clause> {
         let mut clauses = Vec::new();
         while self.eat(T::For) {
-            let pat = self.pattern();
-            self.expect(T::In, "`in` after the comprehension variable");
-            // Stop before `if`, which here is the filter.
-            let iter = if self.at(T::Question) {
-                self.optional_type_iter()
-            } else {
-                self.coalesce()
-            };
-            // Comprehension and generator filters use `if` only.
-            let mut conds = Vec::new();
-            while self.eat(T::If)
-                || (self.at_ident("where") && {
-                    let span = self.span();
-                    self.error(
-                        Diagnostic::error(
-                            codes::REMOVED_SYNTAX,
-                            span,
-                            "comprehension filters use `if`, not `where`",
-                        )
-                        .with_help("use `if` to filter a comprehension or generator")
-                        .with_fix("replace `where` with `if`", span, "if"),
-                    );
-                    self.bump();
-                    true
-                })
-            {
-                conds.push(if self.at(T::Let) {
-                    self.let_guard()
+            loop {
+                let pat = self.pattern();
+                self.expect(T::In, "`in` after the comprehension variable");
+                // Stop before `if`, which here is the filter.
+                let iter = if self.at(T::Question) {
+                    self.optional_type_iter()
                 } else {
-                    Cond::Expr(self.coalesce())
-                });
+                    self.coalesce()
+                };
+                // Comprehension and generator filters use `if` only.
+                let mut conds = Vec::new();
+                while self.eat(T::If)
+                    || (self.at_ident("where") && {
+                        let span = self.span();
+                        self.error(
+                            Diagnostic::error(
+                                codes::REMOVED_SYNTAX,
+                                span,
+                                "comprehension filters use `if`, not `where`",
+                            )
+                            .with_help("use `if` to filter a comprehension or generator")
+                            .with_fix("replace `where` with `if`", span, "if"),
+                        );
+                        self.bump();
+                        true
+                    })
+                {
+                    conds.push(if self.at(T::Let) {
+                        self.let_guard()
+                    } else {
+                        Cond::Expr(self.coalesce())
+                    });
+                }
+                clauses.push(Clause { pat, iter, conds });
+                if self.at(T::Comma) && self.comma_starts_clause() {
+                    self.bump();
+                } else {
+                    break;
+                }
             }
-            clauses.push(Clause { pat, iter, conds });
         }
         clauses
+    }
+
+    /// True if a `,` inside a comprehension is followed by `pat in ...`.
+    fn comma_starts_clause(&self) -> bool {
+        let mut i = 1;
+        let mut depth = 0u32;
+        loop {
+            match self.peek_n(i) {
+                T::LParen | T::LBracket => depth += 1,
+                T::RParen | T::RBracket => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                }
+                T::In if depth == 0 => return true,
+                T::Comma | T::Colon | T::Eq | T::For | T::If | T::Newline | T::Eof
+                    if depth == 0 =>
+                {
+                    return false;
+                }
+                T::Eof => return false,
+                _ => {}
+            }
+            i += 1;
+        }
     }
 
     /// `let pat = value`, then `and` with a test or another `let`,

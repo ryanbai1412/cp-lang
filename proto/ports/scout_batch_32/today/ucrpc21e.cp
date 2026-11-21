@@ -8,8 +8,8 @@ fn read_team(cnt: Int, who: Int):
     for _ in 0..cnt:
         let (l, r, kind): (Int, Int, Int) = read()
         let pts = if kind != 0: 3 else: 1
-        evs.push((t: l, d: pts, who: who))
-        evs.push((t: r + 1, d: -pts, who: who))
+        evs.push((t: l, d: pts, who:))
+        evs.push((t: r + 1, d: -pts, who:))
 read_team(n, 0)
 read_team(m, 1)
 evs.sort()

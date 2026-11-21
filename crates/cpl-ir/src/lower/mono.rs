@@ -1434,13 +1434,42 @@ impl<'a> Lowerer<'a> {
                 self.probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
             {
                 if concrete == Ty::DomainVal {
-                    if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
-                        if targs.is_empty() && gen_names.contains(&name.text) {
-                            let saved_err = self.diags.len();
-                            let ev = self.expr(&arg.value, None);
-                            self.diags.truncate(saved_err);
-                            if let ExprKind::DomainVal(d) = ev.kind {
+                    let dom_id = if let Some(Sym::Domain(d)) = self.sym(&arg.value) {
+                        Some(d)
+                    } else {
+                        let saved_err = self.diags.len();
+                        let ev = self.expr(&arg.value, None);
+                        self.diags.truncate(saved_err);
+                        if let ExprKind::DomainVal(d) = ev.kind {
+                            Some(d)
+                        } else {
+                            None
+                        }
+                    };
+                    if let Some(d) = dom_id {
+                        if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+                            if targs.is_empty() && gen_names.contains(&name.text) {
                                 inferred.entry(name.text.clone()).or_insert(GenArg::Domain(d));
+                                continue;
+                            }
+                            if name.text == "List" {
+                                self.unify_ast_ty(
+                                    pty,
+                                    &Ty::list(Ty::Pos(d)),
+                                    tpl_mod,
+                                    &gen_names,
+                                    &mut inferred,
+                                );
+                                continue;
+                            }
+                            if name.text == "Range" {
+                                self.unify_ast_ty(
+                                    pty,
+                                    &Ty::Range(Box::new(Ty::Pos(d))),
+                                    tpl_mod,
+                                    &gen_names,
+                                    &mut inferred,
+                                );
                                 continue;
                             }
                         }

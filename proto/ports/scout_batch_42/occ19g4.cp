@@ -20,8 +20,8 @@ for k in 0..n:
     let (ua, va) = (raw[a].x - raw[a].y, raw[a].x + raw[a].y)
     let (ub, vb) = (raw[b].x - raw[b].y, raw[b].x + raw[b].y)
     let d = max(abs(ua - ub), abs(va - vb)) - 1
-    pts.push((u: ua, v: va, d: d, id: a))
-    pts.push((u: ub, v: vb, d: d, id: b))
+    pts.push((u: ua, v: va, d:, id: a))
+    pts.push((u: ub, v: vb, d:, id: b))
     for v in [va, vb]:
         all_v.push(v)
         if d >= 0:
@@ -51,8 +51,8 @@ fn cdq_query(l: Int, r: Int):
         let p = pts[i]
         if p.d < 0: continue
         let (lo, hi) = (ys.at(p.v - p.d), ys.at(p.v + p.d))
-        right.push((u: p.u + p.d, sgn: 1, lo: lo, hi: hi, id: p.id))
-        right.push((u: p.u - p.d - 1, sgn: -1, lo: lo, hi: hi, id: p.id))
+        right.push((u: p.u + p.d, sgn: 1, lo:, hi:, id: p.id))
+        right.push((u: p.u - p.d - 1, sgn: -1, lo:, hi:, id: p.id))
     left.sort(by: e => e.u)
     right.sort(by: e => e.u)
     var li = 0
@@ -79,8 +79,8 @@ fn cdq_cover(l: Int, r: Int):
         let p = pts[i]
         if p.d < 0: continue
         let (lo, hi1) = (ys.at(p.v - p.d), ys.at(p.v + p.d + 1))
-        left.push((u: p.u - p.d, sgn: 1, lo: lo, hi1: hi1))
-        left.push((u: p.u + p.d + 1, sgn: -1, lo: lo, hi1: hi1))
+        left.push((u: p.u - p.d, sgn: 1, lo:, hi1:))
+        left.push((u: p.u + p.d + 1, sgn: -1, lo:, hi1:))
     var right = [(u: pts[i].u, y: ys.at(pts[i].v), id: pts[i].id) for i in m..r]
     left.sort(by: e => e.u)
     right.sort(by: e => e.u)

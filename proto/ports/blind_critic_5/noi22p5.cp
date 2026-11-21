@@ -27,7 +27,7 @@ struct Fenwick:
         var bit: List<Int> = []
         for _ in 0..(n + 2):
             bit.push(0)
-        Fenwick(n: n, bit: bit)
+        Fenwick(n:, bit:)
 
     fn add(mut self, i_in: Int, delta: Int):
         var i = i_in + 1
@@ -55,7 +55,7 @@ struct LazyMinTree:
         for _ in 0..sz:
             v.push(0)
             lz.push(0)
-        LazyMinTree(n: n, v: v, lz: lz)
+        LazyMinTree(n:, v:, lz:)
 
     fn upd(mut self, o: Int, l: Int, r: Int, ql: Int, qr: Int, x: Int):
         if ql <= l and r <= qr:
@@ -131,7 +131,7 @@ fn solve_case():
         let l: Int = read()
         let r: Int = read()
         let x: Int = read()
-        conds.push(Cond(l: l - 1, r: r - 1, x: x))
+        conds.push(Cond(l: l - 1, r: r - 1, x:))
         raw_vals.push(x)
 
     let uniq = unique_sorted(raw_vals)

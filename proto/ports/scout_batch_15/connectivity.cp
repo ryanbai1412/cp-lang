@@ -51,7 +51,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
                         if v == u: break
                     k += 1
     domain C = 0..k
-    (C: C, comp: [V] v => C(cid[v]!))
+    (C:, comp: [V] v => C(cid[v]!))
 
 /// Articulation points (cut vertices) of an undirected simple graph.
 /// Handles disconnected graphs and root child count. O(n + m), iterative.

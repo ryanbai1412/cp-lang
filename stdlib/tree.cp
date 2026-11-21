@@ -191,7 +191,7 @@ pub struct Rooted<V, Pre>:
         let cs = self.children(v)
         var i = 0
         for (_, rest) in [f(c) for c in cs].excl_fold(m):
-            yield (c: cs[i], rest: rest)
+            yield (c: cs[i], rest:)
             i += 1
 
     /// The number of edges between `v` and the root.
@@ -278,7 +278,7 @@ pub struct Rooted<V, Pre>:
             key.sort()
             of[v] = known.get_or_insert(key, known.len)
         domain Shape = 0..known.len
-        (Shape: Shape, of: [V] v => Shape(of[v]))
+        (Shape:, of: [V] v => Shape(of[v]))
 
     /// The size of every subtree, by vertex: `t.subtree_sizes[v]` is `t.size(v)`.
     pub @get fn subtree_sizes(self) -> [V]Int = sz
@@ -545,7 +545,7 @@ pub struct Centroids<V>:
             while qh < q.len:
                 let (u, du, b) = q[qh]
                 qh += 1
-                anc[u].push((c: c, dist: du, branch: b))
+                anc[u].push((c:, dist: du, branch: b))
                 held[c].push(u)
                 for a in adj.out(u):
                     let w = a.to
@@ -575,7 +575,7 @@ pub struct Centroids<V>:
     pub fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V):
         for v in held[c]:
             let x = anc[v][cdep[v] - cdep[c]]
-            yield (v: v, dist: x.dist, branch: x.branch)
+            yield (v:, dist: x.dist, branch: x.branch)
 
 // ---- tests
 
@@ -652,8 +652,8 @@ fn weighted_dist_adds_the_lengths_on_the_path():
     let roads = [(V(0), V(1), 3), (V(1), V(2), 4), (V(1), V(3), 10), (V(0), V(4), 7)]
     var adj: [V]List<(to: V, len: Int)> = []
     for (u, v, len) in roads:
-        adj[u].push((to: v, len: len))
-        adj[v].push((to: u, len: len))
+        adj[u].push((to: v, len:))
+        adj[v].push((to: u, len:))
     let r = Rooted.weighted(v => adj[v], V(0), a => a.len)
     assert [r.far[v] for v in V] == [0, 3, 7, 13, 7] and r.depth(V(3)) == 2
     assert r.dist(V(2), V(3)) == 14 and r.dist(V(4), V(2)) == 14 and r.dist(V(3), V(3)) == 0
@@ -875,8 +875,8 @@ fn weighted_rooted_bfs_tree_on_cyclic_graph():
     ]
     var g: [V]List<(to: V, w: Int)> = []
     for (u, v, w) in raw:
-        g[V(u)].push((to: V(v), w: w))
-        if u != v: g[V(v)].push((to: V(u), w: w))
+        g[V(u)].push((to: V(v), w:))
+        if u != v: g[V(v)].push((to: V(u), w:))
     let r = Rooted.weighted(u => g[u], root: V(0), len: a => a.w)
     assert r.parent(V(0)) == none
     for (u, v, _) in raw:

@@ -30,7 +30,7 @@ for t_now in Time(3)..:
 
     var chunks = List<(t: Time, w: Int)>()
     for (range, _) in tree.chains(cur, c):
-        paint.assign(range, t_now, on_old: (r, t) => chunks.push((t: t, w: r.len)))
+        paint.assign(range, t_now, on_old: (r, t) => chunks.push((t:, w: r.len)))
     cur = c
 
     chunks.sort(by: x => -x.t.to_idx)
@@ -43,7 +43,7 @@ for t_now in Time(3)..:
             let take = min(cnt, need)
             matched += take
             need -= take
-            supply.set(u, (prv: prv, cnt: cnt - take))
+            supply.set(u, (prv:, cnt: cnt - take))
             if take == cnt:
                 if let p = prv:
                     supply.unite(u, p)

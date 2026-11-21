@@ -49,14 +49,17 @@ impl<'a> Checker<'a> {
             }
             (Ty::Array { elem, .. }, _) => {
                 let mut cell = &**elem;
-                let literal = matches!(
-                    init.kind,
-                    ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Float(_)
-                );
-                while let (true, Ty::Array { elem, .. }) = (literal, cell) {
-                    cell = elem;
+                let scalar = !matches!(init_ty, Ty::Array { .. })
+                    && !matches!(init_ty, Ty::Named { name, .. } if name == "List");
+                loop {
+                    if self.fits(init_ty, cell) {
+                        return true;
+                    }
+                    match (scalar, cell) {
+                        (true, Ty::Array { elem, .. }) => cell = elem,
+                        _ => return false,
+                    }
                 }
-                self.fits(init_ty, cell)
             }
             _ => false,
         }

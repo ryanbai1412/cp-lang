@@ -17,7 +17,7 @@ struct Staircase:
             steps.pop()
             if let b = steps.last: hidden -= M(b.top - cur.top) * b.v
         if let b = steps.last: hidden += M(b.top - top) * b.v
-        steps.push((top: top, v: v))
+        steps.push((top:, v:))
 
     fn visible(self) -> M:
         if let cur = steps.last: hidden + M(cur.top + lift) * cur.v else: hidden

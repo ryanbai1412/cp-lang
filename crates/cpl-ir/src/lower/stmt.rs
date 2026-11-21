@@ -512,6 +512,62 @@ impl<'a> Lowerer<'a> {
                 init,
                 ..
             } => {
+                // `let (n, c, m): (1..=100, 1..=100, c..=n * c) = read()`:
+                // read and bind each element in order so later element types
+                // (e.g. dependent ranges `c..=n * c`) can see earlier bindings.
+                if let (
+                    ast::PatternKind::Tuple(pats),
+                    Some(ast::Type {
+                        kind: ast::TypeKind::Tuple(tys),
+                        ..
+                    }),
+                    Some(init_expr),
+                ) = (&pat.kind, ty.as_ref(), init.as_ref())
+                {
+                    if pats.len() == tys.len()
+                        && tys.iter().all(|t| {
+                            matches!(
+                                t.kind,
+                                ast::TypeKind::Range { .. } | ast::TypeKind::Named { .. }
+                            )
+                        })
+                        && is_read_call(init_expr)
+                        && matches!(&init_expr.kind, ast::ExprKind::Call { args, .. } if args.is_empty())
+                    {
+                        for (p_i, t_i) in pats.iter().zip(tys) {
+                            let spec = self.resolve(t_i, true);
+                            let val = self.read(spec, init_expr.span);
+                            self.bind_mut(p_i, val, *mutable, out);
+                            if let (
+                                false,
+                                ast::PatternKind::Name(name),
+                                ast::TypeKind::Range { lo, hi: Some(hi), inclusive },
+                            ) = (*mutable, &p_i.kind, &t_i.kind)
+                            {
+                                if self.cx.is_main && self.cx.scopes.len() == 1 {
+                                    if let Some(Sym::Global(gid)) =
+                                        self.mod_syms[self.cur_mod].get(name).copied()
+                                    {
+                                        let least = match lo {
+                                            Some(lo) => self.ast_bounds(lo).map(|b| b.0),
+                                            None => Some(0),
+                                        };
+                                        let most = self
+                                            .ast_bounds(hi)
+                                            .map(|b| b.1 - i64::from(!*inclusive));
+                                        if let (Some(least), Some(most)) = (least, most) {
+                                            self.global_bounds.insert(gid, (least, most));
+                                        }
+                                    }
+                                }
+                            }
+                            if let Some(rinfo) = self.range_info_from_ast(t_i) {
+                                self.bind_range_info(p_i, &rinfo);
+                            }
+                        }
+                        return;
+                    }
+                }
                 // `let st = mut a[i]`: bind `st` as a mutable alias to the place `a[i]`,
                 // evaluating any index subexpressions once into temporary locals.
                 if let (
@@ -2197,6 +2253,11 @@ impl<'a> Lowerer<'a> {
                     self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span)
                 }
                 Err(value) => {
+                    if matches!(elem.as_ref(), Spec::Array { .. })
+                        && !matches!(value.ty, Ty::Array { .. } | Ty::List(_))
+                    {
+                        return Some(self.fill_literal(&spec, init));
+                    }
                     self.mismatch(init.span, &want, &value.ty);
                     self.err_expr(init.span)
                 }

@@ -1414,7 +1414,6 @@ fn dropping_leading_prelude_imports_leaves_no_leading_blank_line() {
     let src = "use std.segtree.{SegTree}\nuse std.algebra.{Monoid}\n\nlet x = 1\n";
     assert_eq!(fixed(src), "let x = 1\n");
 }
-
 #[test]
 fn hand_rolled_prefix_sum_becomes_prefix() {
     // 1D List.filled + 0..a.len -> prefix(a) and p.prefix(...)
@@ -1506,4 +1505,28 @@ for i in 1..=n: dp[i] = fib[i - 1] + 1
 print(fib[n], pow2[n], ways[n], dp[n])
 ";
     assert_eq!(taste_codes(clean), Vec::<&str>::new());
+}
+
+#[test]
+fn redundant_arg_name_shortens_to_punning() {
+    let src = "\
+fn f(moves: Int, cost: Int, other: Int) -> Int = moves + cost + other
+let moves = 3
+let cost = 4
+let x = 5
+let r = (moves: moves, val: x)
+print(f(moves: moves, cost:, other: x) + r.moves)
+";
+    assert_eq!(codes(src), vec!["L0209", "L0209"]);
+    assert_eq!(
+        fixed(src),
+        "\
+fn f(moves: Int, cost: Int, other: Int) -> Int = moves + cost + other
+let moves = 3
+let cost = 4
+let x = 5
+let r = (moves:, val: x)
+print(f(moves:, cost:, other: x) + r.moves)
+"
+    );
 }

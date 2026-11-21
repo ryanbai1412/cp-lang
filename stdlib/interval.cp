@@ -69,7 +69,7 @@ pub struct IntervalMap<D, T>:
                     segs[hi] = (hi: seg.hi, val: seg.val)
                     check_right = false
                 if not check_left and not check_right:
-                    segs[lo] = (hi: hi, val: val)
+                    segs[lo] = (hi:, val:)
                     return
             else:
                 on_old(D.nth(lo).l..D.nth(seg.hi - 1).r, seg.val)
@@ -104,7 +104,7 @@ pub struct IntervalMap<D, T>:
                 if nseg.val == val:
                     let _ = segs.remove(new_hi)
                     new_hi = nseg.hi
-        segs[new_lo] = (hi: new_hi, val: val)
+        segs[new_lo] = (hi: new_hi, val:)
 
     /// Paint the single position `i` with `val` and return its previous value. O(log runs).
     pub fn assign_point(mut self, i: D, val: T) -> T:
