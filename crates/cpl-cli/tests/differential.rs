@@ -100,6 +100,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "try_inside_expr",
             "try_inside_stmt",
             "unit_generic_local",
+            "unread_fn_field",
         ]
     );
     let failures: Vec<String> = programs

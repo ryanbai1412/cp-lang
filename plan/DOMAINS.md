@@ -252,17 +252,19 @@ running.)
 **Next.** Heap for runtime-sized
 arrays; niches; a matched-algorithm benchmark harness.
 **`std::function` debt.** Every fn value lowers to a monomorphized,
-inlinable C++ form except these, which keep `std::function` (37 corpus
-programs; `cpl explain` names each):
-- an optional fn field, `source: ?(D -> T)` in `SegTree` and
-  `LazySegTree` (22 programs), even when every construction leaves it
-  `none`;
+inlinable C++ form except these, which keep `std::function` (22 corpus
+programs, one of them the intentional parity case of §138; a fn or `?fn`
+field nothing reads is dropped, §140):
 - a struct field holding more than one closure, or a capturing one
   (8 programs);
-- the recursive body of a `@memo` fn (3 programs);
+- an optional fn field that is read, `SegTree.source` with `refresh`
+  (2 programs);
 - a fn value whose closure is chosen at run time (3 programs);
-- a fn-typed parameter of a closure or the judge entry, and one of a
-  recursive fn whose recursion passes it a different closure (§138);
+- the recursive body of a `@memo` fn, a fn-typed parameter of a closure,
+  a closure returning a closure and a recursive closure another closure
+  captures (9 programs, which `cpl explain` does not yet name);
+- a fn-typed parameter of the judge entry, and one of a recursive fn whose
+  recursion passes it a different closure (§138);
 - a reassigned or hoisted fn slot, and a top-level closure var.
 
 ## 4. Standard library (`plan/STDLIB.md`, `plan/20`)

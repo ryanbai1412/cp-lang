@@ -786,6 +786,13 @@ impl<'p> Emitter<'p> {
     }
 
     fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
+        if let PlaceKind::Field(base, idx) = &place.kind {
+            if let Ty::Struct(s) = &base.ty {
+                if self.devirt.unread_field(*s, *idx) && self.devirt.skippable_field_store(place, op, value) {
+                    return;
+                }
+            }
+        }
         if let (AssignOp::Set, PlaceKind::Global(id)) = (op, &place.kind) {
             if self.const_globals.contains(id) {
                 return;

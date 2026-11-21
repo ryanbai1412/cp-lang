@@ -861,6 +861,36 @@ print(b.find_first(4) ?? -1)
 }
 
 #[test]
+fn unread_fn_fields_are_dropped_instead_of_std_function() {
+    let src = concat!(
+        "struct Acc:\n",
+        "    total: Int\n",
+        "    hook: ?(Int -> Int)\n",
+        "struct Tagged:\n",
+        "    pick: ?(Int -> Int)\n",
+        "let k = read::<Int>()\n",
+        "let a = Acc(1, x => x * k)\n",
+        "var b = Acc(2, none)\n",
+        "b.hook = x => x + k\n",
+        "let t = Tagged(x => x - k)\n",
+        "print(a.total + b.total, t.pick == none)\n",
+    );
+    let out = cpp(src);
+    assert!(out.contains("bool hook = false;"), "{out}");
+    assert!(out.contains("std::optional<std::function<ll(ll)>> pick;"), "{out}");
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    let mode = |site: &str| &explained.iter().find(|e| e.site == site).expect(site).mode;
+    assert_eq!(mode("struct Acc.hook"), &crate::ClosureMode::Unread, "{explained:?}");
+    assert!(
+        matches!(mode("struct Tagged.pick"), crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("read")),
+        "{explained:?}"
+    );
+}
+
+#[test]
 fn recursive_fn_threads_its_closure_param_as_a_template() {
     let src = concat!(
         "fn walk(n: Int, f: Int -> Int) -> Int:\n",

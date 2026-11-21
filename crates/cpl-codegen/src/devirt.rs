@@ -13,7 +13,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
+use cpl_ir::{Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
 
 use crate::walk;
 
@@ -30,6 +30,8 @@ pub enum ClosureMode {
     /// Local `auto` closure binding: no `std::function` wrapper or heap
     /// allocation.
     StaticLocalAuto,
+    /// A fn field nothing reads: dropped, whatever was stored in it.
+    Unread,
     /// Genuinely dynamic fn value: falls back to `std::function`.
     DynamicStdFunction { reason: String },
 }
@@ -62,6 +64,7 @@ pub(crate) struct Devirt<'p> {
     template_params: BTreeMap<FnId, Vec<usize>>,
     reassigned_params: BTreeSet<(FnId, usize)>,
     recursive_fns: BTreeSet<FnId>,
+    unread_fields: BTreeSet<(usize, usize)>,
     changed: bool,
 }
 
@@ -74,6 +77,7 @@ impl<'p> Devirt<'p> {
             template_params: BTreeMap::new(),
             reassigned_params: BTreeSet::new(),
             recursive_fns: recursive_fns(program),
+            unread_fields: BTreeSet::new(),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -255,6 +259,67 @@ impl<'p> Devirt<'p> {
             }
             if self.elidable.len() == before {
                 break;
+            }
+        }
+        self.drop_unread_fn_fields();
+    }
+
+    /// A fn or `?fn` field nothing reads holds no behaviour, so it is
+    /// elided like a known closure, whatever was stored in it.
+    fn drop_unread_fn_fields(&mut self) {
+        let mut read: BTreeSet<(usize, usize)> = BTreeSet::new();
+        let mut unskippable: BTreeSet<(usize, usize)> = BTreeSet::new();
+        let mut scan = |block: &Block| {
+            walk::deep_stmts(block, &mut |stmt| {
+                if let Stmt::Assign(place, op, value) = stmt {
+                    if let (Some(key), false) = (field_key(place), self.skippable_field_store(place, *op, value)) {
+                        unskippable.insert(key);
+                    }
+                }
+            });
+            walk::deep_exprs(block, &mut |e| match &e.kind {
+                ExprKind::Field(base, idx) => {
+                    if let Ty::Struct(s) = base.ty {
+                        read.insert((s, *idx));
+                    }
+                }
+                ExprKind::Call(_, args) => {
+                    for arg in args {
+                        if let Some(key) = match arg {
+                            Arg::Mut(place) => field_key(place),
+                            _ => None,
+                        } {
+                            unskippable.insert(key);
+                        }
+                    }
+                }
+                ExprKind::Tuple(items) => {
+                    if let Ty::Struct(s) = e.ty {
+                        for (idx, item) in items.iter().enumerate() {
+                            if !self.skippable_value(item) {
+                                unskippable.insert((s, idx));
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            });
+        };
+        scan(&self.program.setup);
+        scan(&self.program.main);
+        for f in &self.program.fns {
+            scan(&f.body);
+        }
+        for closure in &self.program.closures {
+            scan(&closure.body);
+        }
+        for (sid, def) in self.program.structs.iter().enumerate() {
+            for (idx, (_, ty)) in def.fields.iter().enumerate() {
+                let key = (sid, idx);
+                if is_fn_or_opt_fn(ty) && !read.contains(&key) && !unskippable.contains(&key) {
+                    self.elidable.insert(Home::Field(sid, idx));
+                    self.unread_fields.insert(key);
+                }
             }
         }
     }
@@ -524,7 +589,20 @@ impl<'p> Devirt<'p> {
     /// when the destination field or parameter is elided.
     pub(crate) fn skippable_value(&self, e: &Expr) -> bool {
         pure_path(e)
+            || matches!(e.kind, ExprKind::None)
+            || matches!(&e.kind, ExprKind::Some(inner) if self.skippable_value(inner))
             || matches!(e.kind, ExprKind::Closure(cid) if self.closure_effectively_captureless(cid))
+    }
+
+    pub fn unread_field(&self, struct_id: usize, index: usize) -> bool {
+        self.unread_fields.contains(&(struct_id, index))
+    }
+
+    /// `place = value` into an unread field may be left out: it runs
+    /// nothing and cannot trap.
+    pub(crate) fn skippable_field_store(&self, place: &cpl_ir::Place, op: AssignOp, value: &Expr) -> bool {
+        let PlaceKind::Field(base, _) = &place.kind else { return false };
+        op == AssignOp::Set && place_is_path(base) && self.skippable_value(value)
     }
 
     fn block_captures_unused(&self, block: &Block, cap_slots: &BTreeSet<usize>) -> bool {
@@ -725,6 +803,29 @@ fn place_base_ty(place: &cpl_ir::Place) -> &Ty {
 }
 
 /// A variable or a field of one: reading it runs nothing.
+fn field_key(place: &cpl_ir::Place) -> Option<(usize, usize)> {
+    match (&place.kind, place_base_ty(place)) {
+        (PlaceKind::Field(_, idx), Ty::Struct(s)) => Some((*s, *idx)),
+        _ => None,
+    }
+}
+
+fn place_is_path(place: &cpl_ir::Place) -> bool {
+    match &place.kind {
+        PlaceKind::Local(_) | PlaceKind::Global(_) => true,
+        PlaceKind::Field(base, _) => place_is_path(base),
+        _ => false,
+    }
+}
+
+fn is_fn_or_opt_fn(ty: &Ty) -> bool {
+    match ty {
+        Ty::Fn(..) => true,
+        Ty::Opt(inner) => matches!(**inner, Ty::Fn(..)),
+        _ => false,
+    }
+}
+
 fn pure_path(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Local(_) | ExprKind::Global(_) => true,
@@ -785,11 +886,15 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
 
     for (sid, s) in program.structs.iter().enumerate() {
         for (idx, (fname, fty)) in s.fields.iter().enumerate() {
-            if !matches!(fty, Ty::Fn(..)) {
+            if !is_fn_or_opt_fn(fty) {
                 continue;
             }
             let site = format!("struct {}.{}", s.name, fname);
-            let mode = if devirt.field_elidable(sid, idx) {
+            let mode = if devirt.unread_fields.contains(&(sid, idx)) {
+                ClosureMode::Unread
+            } else if matches!(fty, Ty::Opt(_)) {
+                ClosureMode::DynamicStdFunction { reason: "optional fn field that is read".to_string() }
+            } else if devirt.field_elidable(sid, idx) {
                 let Some(Held::One(cid)) = devirt.held.get(&Home::Field(sid, idx)).copied() else {
                     continue;
                 };

@@ -4164,3 +4164,23 @@ back in `compute_template_params` and drop
 - **Reverse.** Merge `gallery_pages` and `gallery_shares` back into `docs` in
   `site/bundle.py`, remove `ensureGallery()` in `site/offline.html`, and restore
   per-row `_share_href` in `site/exemplars.py`.
+
+## 140. A fn field nothing reads is dropped (2026-11-21)
+
+Step one of §127 for struct fields. A field of fn or optional-fn type that
+no expression reads (no `s.f`, no `mut s.f` argument) holds no behaviour, so
+it is elided like a field holding one known closure: a `bool` placeholder,
+constructors pass `false`, and a store `s.f = g` is left out. A value or
+store is left out only when evaluating it runs nothing and cannot trap (a
+variable, a captureless closure, `none`, `some` of one), so the interpreter
+and the C++ still agree. `cpl explain` reports `[static: dropped]`. The
+common case is `SegTree.source`/`LazySegTree.source` in a program that never
+calls `refresh`: it was a `std::optional<std::function<...>>` even when every
+construction left it `none`. A `?fn` field that is read keeps
+`std::function` with "optional fn field that is read". Why: the
+`std::function` costs size and pulls `<functional>` for nothing. Corpus:
+programs emitting `std::function` 37 -> 22; the 15 that changed shrink
+81-157 B each (1,480 B total); no g++ syntax failure is new. Parity test
+`unread_fn_field`. Reverse: drop `drop_unread_fn_fields` in
+`crates/cpl-codegen/src/devirt.rs` and the unread-store skip in
+`StmtEmitter::assign`.

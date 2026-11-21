@@ -1628,6 +1628,7 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
                 cpl_codegen::ClosureMode::StaticLocalAuto => {
                     ("static_local_auto", "local auto lambda".to_string())
                 }
+                cpl_codegen::ClosureMode::Unread => ("unread", "never read, dropped".to_string()),
                 cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
                     ("dynamic_std_function", reason.clone())
                 }
@@ -1675,6 +1676,14 @@ fn explain_file(path: &str, json: bool, stdout: &mut dyn Write, stderr: &mut Str
                     let _ = writeln!(
                         stdout,
                         "  [static: auto]     {} -> local auto lambda (no std::function)",
+                        entry.site
+                    );
+                }
+                cpl_codegen::ClosureMode::Unread => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: dropped]  {} -> never read, dropped (no std::function)",
                         entry.site
                     );
                 }
