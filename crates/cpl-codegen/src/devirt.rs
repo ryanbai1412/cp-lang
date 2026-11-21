@@ -408,7 +408,6 @@ impl<'p> Devirt<'p> {
             if self.program.entry_fns.contains(&id)
                 || self.program.judge_fns.contains(&id)
                 || is_hook_fn(self.program, id)
-                || self.recursive_fns.contains(&id)
             {
                 continue;
             }
@@ -422,6 +421,68 @@ impl<'p> Devirt<'p> {
                 .collect();
             if !slots.is_empty() {
                 self.template_params.insert(id, slots);
+            }
+        }
+        self.keep_recursive_templates_finite();
+    }
+
+    /// A recursive fn's fn parameter stays a template only when every call
+    /// to it from inside its cycle passes a template fn parameter of the
+    /// caller straight on, so the recursion instantiates one closure type
+    /// and never wraps it in a new one.
+    fn keep_recursive_templates_finite(&mut self) {
+        let fns = &self.program.fns;
+        let n = fns.len();
+        let mut calls: Vec<Vec<(FnId, &Vec<Arg>)>> = vec![Vec::new(); n];
+        for (g, f) in fns.iter().enumerate() {
+            walk::deep_exprs(&f.body, &mut |e| {
+                if let ExprKind::Call(callee, args) = &e.kind {
+                    calls[g].push((*callee, args));
+                }
+            });
+        }
+        let reach: Vec<BTreeSet<FnId>> = (0..n)
+            .map(|start| {
+                let mut seen = BTreeSet::new();
+                let mut stack: Vec<FnId> = calls[start].iter().map(|c| c.0).collect();
+                while let Some(u) = stack.pop() {
+                    if seen.insert(u) {
+                        stack.extend(calls[u].iter().map(|c| c.0));
+                    }
+                }
+                seen
+            })
+            .collect();
+        loop {
+            let mut dropped = Vec::new();
+            for (&id, slots) in &self.template_params {
+                if !self.recursive_fns.contains(&id) {
+                    continue;
+                }
+                for &slot in slots {
+                    let forwarded = (0..n)
+                        .filter(|&g| reach[id].contains(&g) && reach[g].contains(&id))
+                        .all(|g| {
+                            calls[g].iter().filter(|c| c.0 == id).all(|(_, args)| {
+                                matches!(args.get(slot), Some(Arg::Value(Expr { kind: ExprKind::Local(p), .. }))
+                                    if *p < fns[g].params.len()
+                                        && self.template_params.get(&g).is_some_and(|s| s.contains(p)))
+                            })
+                        });
+                    if !forwarded {
+                        dropped.push((id, slot));
+                    }
+                }
+            }
+            if dropped.is_empty() {
+                break;
+            }
+            for (id, slot) in dropped {
+                let slots = self.template_params.get_mut(&id).expect("a template fn");
+                slots.retain(|&s| s != slot);
+                if slots.is_empty() {
+                    self.template_params.remove(&id);
+                }
             }
         }
     }
@@ -762,7 +823,7 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
                 let reason = if program.entry_fns.contains(&fid) || program.judge_fns.contains(&fid) {
                     "judge/entry function boundary".to_string()
                 } else if devirt.recursive_fns.contains(&fid) {
-                    "recursive function parameter".to_string()
+                    "a call in its recursion passes a different closure".to_string()
                 } else if f.params[slot].mutable {
                     "mut fn parameter".to_string()
                 } else if devirt.reassigned_params.contains(&(fid, slot)) {

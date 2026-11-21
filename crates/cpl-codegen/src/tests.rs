@@ -861,6 +861,45 @@ print(b.find_first(4) ?? -1)
 }
 
 #[test]
+fn recursive_fn_threads_its_closure_param_as_a_template() {
+    let src = concat!(
+        "fn walk(n: Int, f: Int -> Int) -> Int:\n",
+        "    if n == 0: return 0\n",
+        "    f(n) + walk(n - 1, f)\n",
+        "fn even(n: Int, f: Int -> Int) -> Int:\n",
+        "    if n == 0: return f(0)\n",
+        "    odd(n - 1, f)\n",
+        "fn odd(n: Int, f: Int -> Int) -> Int:\n",
+        "    if n == 0: return f(1)\n",
+        "    even(n - 1, f)\n",
+        "fn wrap(n: Int, f: Int -> Int) -> Int:\n",
+        "    if n == 0: return f(0)\n",
+        "    wrap(n - 1, x => f(x) + 1)\n",
+        "let k: Int = read()\n",
+        "print(walk(10, x => x * k), walk(5, x => x + k))\n",
+        "print(even(7, x => x + k), odd(4, x => x * k))\n",
+        "print(wrap(3, x => x + k))\n",
+    );
+    let out = cpp(src);
+    assert!(out.contains("ll walk(ll n, F0&& f)"), "{out}");
+    assert!(out.contains("ll even(ll n, F0&& f)") && out.contains("ll odd(ll n, F0&& f)"), "{out}");
+    assert!(out.contains("ll wrap(ll n, const std::function<ll(ll)>& f)"), "{out}");
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let explained = crate::explain_closures(&program);
+    let dynamic: Vec<_> = explained
+        .iter()
+        .filter(|e| matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. }))
+        .collect();
+    assert_eq!(dynamic.len(), 1, "{explained:?}");
+    assert!(
+        matches!(&dynamic[0].mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("different closure")),
+        "{explained:?}"
+    );
+}
+
+#[test]
 fn recursive_local_closure_takes_itself_instead_of_std_function() {
     let src = concat!(
         "fn count(n: Int) -> Int:\n",
