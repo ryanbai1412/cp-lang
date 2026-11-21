@@ -1655,6 +1655,12 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   arms test (and one more for an `else`), since a far-off tag is noise, not a query. Branches
   with guards, non-literal tests or a test of anything but the tag are still refused. Reverse:
   remove `Shape::Choice` and `Builder::choice`; such loops are refused with their old message.
+- **25.12 A struct or an `@tags` enum read from the input is generated field by field.**
+  `read()` reads a struct's fields in order and an `@tags("R", "C")` enum as its variant's tag,
+  then that variant's fields, so the generator does the same: a struct is a `Tuple` of its field
+  types, and a tagged enum is a `Choice` on a letter whose arms are its variants. Generic records
+  and tags longer than one letter are still refused with the old message. Reverse: drop
+  `Builder::records` and `Record`.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

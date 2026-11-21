@@ -143,22 +143,35 @@ pub fn select_judge(
         (_, Some(path), _) => resolve(path).map(Judge::Interactor),
         // The interactor in the file is run by `cpl judge`.
         (None, None, Some(judge)) if judge.kind == "interactor" => {
-            let cpl = std::env::current_exe()
-                .map_err(|e| format!("can't find `cpl` to run the interactor `{}`: {e}", judge.name))?;
+            let cpl = std::env::current_exe().map_err(|e| {
+                format!(
+                    "can't find `cpl` to run the interactor `{}`: {e}",
+                    judge.name
+                )
+            })?;
             Ok(Judge::Interactor(Program {
                 name: format!("{name} (`{}`)", judge.name),
-                argv: vec![cpl.display().to_string(), "judge".to_string(), name.to_string()],
+                argv: vec![
+                    cpl.display().to_string(),
+                    "judge".to_string(),
+                    name.to_string(),
+                ],
                 env: Vec::new(),
             }))
         }
         // The checker in the file is run by `cpl judge` too: it is
         // given the input, the output and the answer.
         (None, None, Some(judge)) => {
-            let cpl = std::env::current_exe()
-                .map_err(|e| format!("can't find `cpl` to run the checker `{}`: {e}", judge.name))?;
+            let cpl = std::env::current_exe().map_err(|e| {
+                format!("can't find `cpl` to run the checker `{}`: {e}", judge.name)
+            })?;
             Ok(Judge::Checker(Program {
                 name: format!("{name} (`{}`)", judge.name),
-                argv: vec![cpl.display().to_string(), "judge".to_string(), name.to_string()],
+                argv: vec![
+                    cpl.display().to_string(),
+                    "judge".to_string(),
+                    name.to_string(),
+                ],
                 env: Vec::new(),
             }))
         }
@@ -186,11 +199,19 @@ fn swap_in_part_brutes(src: &str) -> Option<String> {
                 continue;
             };
             fns.insert(decl.name.text.as_str(), decl.name.span.shift(*base));
-            for decorator in stmt.decorators.iter().filter(|d| !d.directive && d.name.text == "brute") {
+            for decorator in stmt
+                .decorators
+                .iter()
+                .filter(|d| !d.directive && d.name.text == "brute")
+            {
                 if let [arg] = decorator.args.as_slice() {
                     if let cpl_syntax::ast::ExprKind::Name(part) = &arg.value.kind {
                         if part != "main" {
-                            pairs.push((decorator.span.shift(*base), decl.name.span.shift(*base), part.as_str()));
+                            pairs.push((
+                                decorator.span.shift(*base),
+                                decl.name.span.shift(*base),
+                                part.as_str(),
+                            ));
                         }
                     }
                 }
@@ -210,7 +231,10 @@ fn swap_in_part_brutes(src: &str) -> Option<String> {
         // The brute's own name is gone once it is renamed, so a brute that
         // recurses, or a caller of it, must use the name it takes.
         let name = &src[brute.start as usize..brute.end as usize];
-        for token in tokens.iter().filter(|t| t.kind == cpl_syntax::TokenKind::Ident) {
+        for token in tokens
+            .iter()
+            .filter(|t| t.kind == cpl_syntax::TokenKind::Ident)
+        {
             if &src[token.span.start as usize..token.span.end as usize] == name {
                 edits.push((token.span, part.to_string()));
             }
@@ -273,7 +297,11 @@ fn json(report: &Report, saved: Option<&Path>, stages: &[Stage], trace: Option<&
             )
         })
         .collect();
-    let path = |path: Option<&Path>| path.map_or("null".to_string(), |path| json_string(&path.display().to_string()));
+    let path = |path: Option<&Path>| {
+        path.map_or("null".to_string(), |path| {
+            json_string(&path.display().to_string())
+        })
+    };
     format!(
         "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{},\"stages\":[{}],\"saved\":{},\"trace\":{}}}}}\n",
         report.cases,
@@ -310,7 +338,12 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
 }
 
 /// [`run`], with the debug interpreter to trace a failure in.
-pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write, tracer: Option<Tracer>) -> u8 {
+pub fn run_with(
+    args: &[String],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+    tracer: Option<Tracer>,
+) -> u8 {
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
         let _ = write!(stdout, "{USAGE}");
         return 0;
@@ -347,12 +380,16 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         (None, Some("cp")) => {
             let mut db = cpl_check::Database::new();
             db.set_file(&name, src.as_str());
-            db.analyze(&name).and_then(|analysis| cpl_ir::brute(&analysis))
+            db.analyze(&name)
+                .and_then(|analysis| cpl_ir::brute(&analysis))
         }
         _ => None,
     };
     // The file's own judge has to build before it can rule on a case.
-    if args.checker.is_none() && args.interactor.is_none() && args.file.extension().is_some_and(|e| e == "cp") {
+    if args.checker.is_none()
+        && args.interactor.is_none()
+        && args.file.extension().is_some_and(|e| e == "cp")
+    {
         let mut db = cpl_check::Database::new();
         db.set_file(&name, src.as_str());
         let broken = db.analyze(&name).and_then(|analysis| {
@@ -375,11 +412,16 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         }
     }
     // `@brute(f) fn g`: the brute is the whole file with `g` in `f`'s place.
-    let part_brute = match (&args.brute, &own_brute, args.file.extension().and_then(|e| e.to_str())) {
+    let part_brute = match (
+        &args.brute,
+        &own_brute,
+        args.file.extension().and_then(|e| e.to_str()),
+    ) {
         (None, None, Some("cp")) => swap_in_part_brutes(&src),
         _ => None,
     };
-    if args.brute.is_none() && own_brute.is_none() && part_brute.is_none() && judge == Judge::Tokens {
+    if args.brute.is_none() && own_brute.is_none() && part_brute.is_none() && judge == Judge::Tokens
+    {
         return fail(format!(
             "there is nothing to compare {name} with: write a `@brute(main) fn` in it, pass `--brute <program>`, or give it a `@checker` or an `@interactor` that can judge an output on its own"
         ));
@@ -389,7 +431,8 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         (None, Some("cp")) => {
             let mut db = cpl_check::Database::new();
             db.set_file(&name, src.as_str());
-            db.analyze(&name).and_then(|analysis| cpl_ir::generator(&analysis))
+            db.analyze(&name)
+                .and_then(|analysis| cpl_ir::generator(&analysis))
         }
         _ => None,
     };
@@ -455,7 +498,9 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
     // `debug(...)`s they share, and with `--trace` the two traces.
     let in_file = own_brute.is_some() || (args.brute.is_none() && judge != Judge::Tokens);
     let traced = match (&report.failure, tracer) {
-        (Some(failure), Some(tracer)) if args.fast.is_none() && in_file => Some(tracer(&args.file, &failure.input)),
+        (Some(failure), Some(tracer)) if args.fast.is_none() && in_file => {
+            Some(tracer(&args.file, &failure.input))
+        }
         _ => None,
     };
     let (stages, html) = match &traced {
@@ -465,7 +510,10 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
     let mut trace_note = None;
     let trace_path = match (args.trace, &report.failure, html) {
         (true, Some(failure), Some(html)) => {
-            let path = args.file.with_extension("tests").join(format!("stress-{}.trace.html", failure.seed));
+            let path = args
+                .file
+                .with_extension("tests")
+                .join(format!("stress-{}.trace.html", failure.seed));
             let written = std::fs::create_dir_all(path.parent().unwrap_or(Path::new(".")))
                 .and_then(|()| std::fs::write(&path, html));
             match written {
@@ -486,7 +534,11 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         _ => None,
     };
     if args.json {
-        let _ = write!(stdout, "{}", json(&report, saved.as_deref(), stages, trace_path.as_deref()));
+        let _ = write!(
+            stdout,
+            "{}",
+            json(&report, saved.as_deref(), stages, trace_path.as_deref())
+        );
         return report.failure.is_some() as u8;
     }
     let judged_by = match &judge {
@@ -509,13 +561,20 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
             report.cases - report.skipped
         );
         if report.discarded > 0 {
-            let inputs = if report.discarded == 1 { "1 input" } else { &format!("{} inputs", report.discarded) };
+            let inputs = if report.discarded == 1 {
+                "1 input"
+            } else {
+                &format!("{} inputs", report.discarded)
+            };
             let _ = writeln!(
                 stdout,
                 "  {inputs} that stopped the program thrown away; the rest were made with {}",
                 report.narrowed.join("; ")
             );
-            let _ = writeln!(stdout, "  write the range in the program to test with it, like `let n: 1..=100 = read()`");
+            let _ = writeln!(
+                stdout,
+                "  write the range in the program to test with it, like `let n: 1..=100 = read()`"
+            );
         }
         return 0;
     };
@@ -547,9 +606,18 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
             );
         }
         crate::Verdict::RuntimeError(why) => {
-            match args.fast.is_none().then(|| crate::explain::runtime_error(&args.file, &failure.input)).flatten() {
+            match args
+                .fast
+                .is_none()
+                .then(|| crate::explain::runtime_error(&args.file, &failure.input))
+                .flatten()
+            {
                 Some(explained) => {
-                    let _ = writeln!(stdout, "  the solution failed:\n{}", indent(explained.trim_end()));
+                    let _ = writeln!(
+                        stdout,
+                        "  the solution failed:\n{}",
+                        indent(explained.trim_end())
+                    );
                 }
                 None => {
                     let _ = writeln!(stdout, "  the solution failed: {why}");
@@ -563,7 +631,11 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
     if !stages.is_empty() {
         let _ = writeln!(stdout, "  debug(...) both ran, solution | brute:");
         let first = stages.iter().position(|stage| stage.fast != stage.brute);
-        for (index, stage) in stages.iter().enumerate().take(first.map_or(12, |first| first + 1)) {
+        for (index, stage) in stages
+            .iter()
+            .enumerate()
+            .take(first.map_or(12, |first| first + 1))
+        {
             let mark = if stage.fast == stage.brute { " " } else { "!" };
             let _ = writeln!(
                 stdout,

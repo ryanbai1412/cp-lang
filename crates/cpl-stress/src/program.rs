@@ -187,7 +187,12 @@ fn compile_cpp(source: &Path, ours: bool) -> Result<String, BuildError> {
     compile_with(source, ours, "g++", &flags)
 }
 
-fn compile_with(source: &Path, ours: bool, compiler: &str, flags: &[String]) -> Result<String, BuildError> {
+fn compile_with(
+    source: &Path,
+    ours: bool,
+    compiler: &str,
+    flags: &[String],
+) -> Result<String, BuildError> {
     let mut text = std::fs::read(source)
         .map_err(|e| BuildError(format!("can't read {}: {e}", source.display())))?;
     let usual = compiler == "g++" && flags.iter().eq(CXX_FLAGS.iter());
@@ -220,7 +225,12 @@ fn compile_with(source: &Path, ours: bool, compiler: &str, flags: &[String]) -> 
             .arg(&partial)
             .arg(source)
             .output()
-            .map_err(|e| BuildError(format!("can't run {compiler} to build {}: {e}", source.display())))?;
+            .map_err(|e| {
+                BuildError(format!(
+                    "can't run {compiler} to build {}: {e}",
+                    source.display()
+                ))
+            })?;
         if !output.status.success() {
             let errors = String::from_utf8_lossy(&output.stderr);
             let shown: Vec<&str> = errors.lines().take(20).collect();
@@ -358,7 +368,11 @@ impl Program {
                 .display()
                 .to_string()],
         };
-        Ok(Program { name, argv, env: Vec::new() })
+        Ok(Program {
+            name,
+            argv,
+            env: Vec::new(),
+        })
     }
 
     /// The `@brute(main)` fn of the `.cp` file `path`, built like the
@@ -478,7 +492,9 @@ fn split_command(line: &str) -> Result<Vec<String>, BuildError> {
         }
     }
     if quote.is_some() {
-        return Err(BuildError(format!("`{line}` has a quote that is never closed")));
+        return Err(BuildError(format!(
+            "`{line}` has a quote that is never closed"
+        )));
     }
     words.extend(word);
     if words.is_empty() {

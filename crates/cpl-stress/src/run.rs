@@ -126,13 +126,17 @@ impl Runner<'_> {
     /// problem allows does, and a solution that answers where the brute
     /// stops leaves the brute's failure to report.
     fn stops(&self, input: &str) -> bool {
-        self.fast.run(input, self.limit).is_ok_and(|outcome| !outcome.ok())
+        self.fast
+            .run(input, self.limit)
+            .is_ok_and(|outcome| !outcome.ok())
     }
 
     /// Like `run`, for an input made from guessed ranges.
     fn attempt(&self, input: &str) -> Result<Tried, StressError> {
         match self.run(input) {
-            Ok(Some((Verdict::RuntimeError(_) | Verdict::TimeLimit, _, _))) if self.brute.is_none() => {
+            Ok(Some((Verdict::RuntimeError(_) | Verdict::TimeLimit, _, _)))
+                if self.brute.is_none() =>
+            {
                 Ok(Tried::Stopped)
             }
             Ok(wrong) => Ok(Tried::Judged(wrong)),
@@ -202,169 +206,178 @@ pub fn stress(
     let mut skipped = 0;
     let mut done = 0;
     'narrow: loop {
-    let source = match &typed {
-        Some(spec) => &Source::Typed(spec.clone()),
-        None => source,
-    };
-    let make = |seed: u64| -> Result<Option<(Made, String)>, StressError> {
-        match source {
-            Source::Typed(spec) => {
-                Ok(
-                    generate(spec, &mut Rng::new(seed), Size::Small(options.size)).map(|case| {
-                        let input = case.render();
-                        (Made::Typed(case), input)
-                    }),
+        let source = match &typed {
+            Some(spec) => &Source::Typed(spec.clone()),
+            None => source,
+        };
+        let make = |seed: u64| -> Result<Option<(Made, String)>, StressError> {
+            match source {
+                Source::Typed(spec) => Ok(generate(
+                    spec,
+                    &mut Rng::new(seed),
+                    Size::Small(options.size),
                 )
-            }
-            Source::Generator(generator) => {
-                let outcome = generator
-                    .with_args(&[&seed.to_string(), &size_arg])
-                    .run("", Duration::from_secs(10))
-                    .map_err(|e| StressError(format!("can't run {}: {e}", generator.name)))?;
-                if !outcome.ok() {
-                    return Err(StressError(format!(
-                        "the generator {} failed on seed {seed} ({:?})",
-                        generator.name, outcome.exit
-                    )));
+                .map(|case| {
+                    let input = case.render();
+                    (Made::Typed(case), input)
+                })),
+                Source::Generator(generator) => {
+                    let outcome = generator
+                        .with_args(&[&seed.to_string(), &size_arg])
+                        .run("", Duration::from_secs(10))
+                        .map_err(|e| StressError(format!("can't run {}: {e}", generator.name)))?;
+                    if !outcome.ok() {
+                        return Err(StressError(format!(
+                            "the generator {} failed on seed {seed} ({:?})",
+                            generator.name, outcome.exit
+                        )));
+                    }
+                    Ok(Some((Made::Opaque, outcome.stdout)))
                 }
-                Ok(Some((Made::Opaque, outcome.stdout)))
+                Source::InFile(generator) => {
+                    let drawn = choices::draw(generator, seed)?;
+                    let input = drawn.input.clone();
+                    Ok(Some((Made::Drawn(drawn), input)))
+                }
             }
-            Source::InFile(generator) => {
-                let drawn = choices::draw(generator, seed)?;
-                let input = drawn.input.clone();
-                Ok(Some((Made::Drawn(drawn), input)))
-            }
-        }
-    };
+        };
 
-    let jobs = options.jobs.max(1);
-    let round = done;
-    while done < options.cases {
-        // The first case of a round runs alone: when it stops the
-        // program the ranges are narrowed, and its neighbours, made from
-        // the ranges it refutes, would only have been waited for.
-        let jobs = if done == round { 1 } else { jobs };
-        let batch: Vec<usize> = (done..options.cases.min(done + jobs)).collect();
-        // A batch runs at once; results are read in case order, so the
-        // failure reported is the same whatever `jobs` is.
-        let results: Vec<_> = std::thread::scope(|scope| {
-            let handles: Vec<_> = batch
-                .iter()
-                .map(|index| {
-                    let seed = options.seed.wrapping_add(*index as u64);
-                    let (make, runner) = (&make, &runner);
-                    scope.spawn(move || -> Result<_, StressError> {
-                        let Some((case, input)) = make(seed)? else {
-                            return Ok(None);
-                        };
-                        Ok(Some((case, runner.attempt(&input)?, input)))
+        let jobs = options.jobs.max(1);
+        let round = done;
+        while done < options.cases {
+            // The first case of a round runs alone: when it stops the
+            // program the ranges are narrowed, and its neighbours, made from
+            // the ranges it refutes, would only have been waited for.
+            let jobs = if done == round { 1 } else { jobs };
+            let batch: Vec<usize> = (done..options.cases.min(done + jobs)).collect();
+            // A batch runs at once; results are read in case order, so the
+            // failure reported is the same whatever `jobs` is.
+            let results: Vec<_> = std::thread::scope(|scope| {
+                let handles: Vec<_> = batch
+                    .iter()
+                    .map(|index| {
+                        let seed = options.seed.wrapping_add(*index as u64);
+                        let (make, runner) = (&make, &runner);
+                        scope.spawn(move || -> Result<_, StressError> {
+                            let Some((case, input)) = make(seed)? else {
+                                return Ok(None);
+                            };
+                            Ok(Some((case, runner.attempt(&input)?, input)))
+                        })
                     })
-                })
-                .collect();
-            handles.into_iter().map(|h| h.join().unwrap()).collect()
-        });
-        for (index, result) in batch.iter().zip(results) {
-            let Some((case, tried, input)) = result? else {
-                skipped += 1;
-                continue;
-            };
-            let seed = options.seed.wrapping_add(*index as u64);
-            let wrong = match tried {
-                Tried::Judged(wrong) => wrong,
-                Tried::Stopped => {
-                    // A narrower range that this seed runs under is taken,
-                    // and the cases from here on are made again from it.
-                    let found = match (&typed, &case) {
-                        (Some(spec), Made::Typed(case)) => narrow(spec, case, seed, options.size, &runner),
-                        _ => None,
-                    };
-                    if let Some((spec, learned)) = found {
-                        typed = Some(spec);
-                        narrowed.retain(|line| line.split(' ').next() != learned.split(' ').next());
-                        narrowed.push(learned);
-                        discarded += 1;
-                        done = *index;
-                        continue 'narrow;
-                    }
-                    // Nothing explains it away: it is reported as it is.
-                    runner.run(&input)?
-                }
-            };
-            let Some((verdict, expected, got)) = wrong else {
-                continue;
-            };
-            let mut failure = Failure {
-                case: index + 1,
-                seed,
-                input,
-                described: None,
-                expected,
-                got,
-                verdict,
-                shrunk: None,
-            };
-            // Same bug only: a candidate must fail the same way.
-            let kind = std::mem::discriminant(&failure.verdict);
-            if let (Source::Typed(spec), Made::Typed(case)) = (source, &case) {
-                let case = case.clone();
-                let mut error = None;
-                let smallest =
-                    shrink(
-                        spec,
-                        &case,
-                        options.shrink_budget,
-                        &mut |candidate| match runner.run(&candidate.render()) {
-                            Ok(Some((verdict, _, _))) => std::mem::discriminant(&verdict) == kind,
-                            Ok(None) => false,
-                            Err(e) => {
-                                error.get_or_insert(e);
-                                false
-                            }
-                        },
-                    );
-                if smallest != case {
-                    if let Some((verdict, expected, got)) = runner.run(&smallest.render())? {
-                        failure.verdict = verdict;
-                        failure.expected = expected;
-                        failure.got = got;
-                        failure.input = smallest.render();
-                    }
-                }
-                failure.shrunk = Some((case.weight().0, smallest.weight().0));
-                failure.described = Some(smallest.describe(spec));
-            }
-            if let (Source::InFile(generator), Made::Drawn(drawn)) = (source, &case) {
-                let smallest = choices::shrink(generator, drawn, options.shrink_budget, &mut |input| {
-                    matches!(runner.run(input), Ok(Some((verdict, _, _))) if std::mem::discriminant(&verdict) == kind)
-                });
-                if smallest != *drawn {
-                    if let Some((verdict, expected, got)) = runner.run(&smallest.input)? {
-                        failure.verdict = verdict;
-                        failure.expected = expected;
-                        failure.got = got;
-                        failure.input = smallest.input.clone();
-                    }
-                }
-                let numbers = |input: &str| input.split_whitespace().count();
-                failure.shrunk = Some((numbers(&drawn.input), numbers(&smallest.input)));
-            }
-            return Ok(Report {
-                cases: index + 1,
-                skipped,
-                failure: Some(failure),
-                discarded,
-                narrowed,
+                    .collect();
+                handles.into_iter().map(|h| h.join().unwrap()).collect()
             });
+            for (index, result) in batch.iter().zip(results) {
+                let Some((case, tried, input)) = result? else {
+                    skipped += 1;
+                    continue;
+                };
+                let seed = options.seed.wrapping_add(*index as u64);
+                let wrong = match tried {
+                    Tried::Judged(wrong) => wrong,
+                    Tried::Stopped => {
+                        // A narrower range that this seed runs under is taken,
+                        // and the cases from here on are made again from it.
+                        let found = match (&typed, &case) {
+                            (Some(spec), Made::Typed(case)) => {
+                                narrow(spec, case, seed, options.size, &runner)
+                            }
+                            _ => None,
+                        };
+                        if let Some((spec, learned)) = found {
+                            typed = Some(spec);
+                            narrowed
+                                .retain(|line| line.split(' ').next() != learned.split(' ').next());
+                            narrowed.push(learned);
+                            discarded += 1;
+                            done = *index;
+                            continue 'narrow;
+                        }
+                        // Nothing explains it away: it is reported as it is.
+                        runner.run(&input)?
+                    }
+                };
+                let Some((verdict, expected, got)) = wrong else {
+                    continue;
+                };
+                let mut failure = Failure {
+                    case: index + 1,
+                    seed,
+                    input,
+                    described: None,
+                    expected,
+                    got,
+                    verdict,
+                    shrunk: None,
+                };
+                // Same bug only: a candidate must fail the same way.
+                let kind = std::mem::discriminant(&failure.verdict);
+                if let (Source::Typed(spec), Made::Typed(case)) = (source, &case) {
+                    let case = case.clone();
+                    let mut error = None;
+                    let smallest =
+                        shrink(
+                            spec,
+                            &case,
+                            options.shrink_budget,
+                            &mut |candidate| match runner.run(&candidate.render()) {
+                                Ok(Some((verdict, _, _))) => {
+                                    std::mem::discriminant(&verdict) == kind
+                                }
+                                Ok(None) => false,
+                                Err(e) => {
+                                    error.get_or_insert(e);
+                                    false
+                                }
+                            },
+                        );
+                    if smallest != case {
+                        if let Some((verdict, expected, got)) = runner.run(&smallest.render())? {
+                            failure.verdict = verdict;
+                            failure.expected = expected;
+                            failure.got = got;
+                            failure.input = smallest.render();
+                        }
+                    }
+                    failure.shrunk = Some((case.weight().0, smallest.weight().0));
+                    failure.described = Some(smallest.describe(spec));
+                }
+                if let (Source::InFile(generator), Made::Drawn(drawn)) = (source, &case) {
+                    let smallest = choices::shrink(
+                        generator,
+                        drawn,
+                        options.shrink_budget,
+                        &mut |input| matches!(runner.run(input), Ok(Some((verdict, _, _))) if std::mem::discriminant(&verdict) == kind),
+                    );
+                    if smallest != *drawn {
+                        if let Some((verdict, expected, got)) = runner.run(&smallest.input)? {
+                            failure.verdict = verdict;
+                            failure.expected = expected;
+                            failure.got = got;
+                            failure.input = smallest.input.clone();
+                        }
+                    }
+                    let numbers = |input: &str| input.split_whitespace().count();
+                    failure.shrunk = Some((numbers(&drawn.input), numbers(&smallest.input)));
+                }
+                return Ok(Report {
+                    cases: index + 1,
+                    skipped,
+                    failure: Some(failure),
+                    discarded,
+                    narrowed,
+                });
+            }
+            done += batch.len();
         }
-        done += batch.len();
-    }
-    return Ok(Report {
-        cases: options.cases,
-        skipped,
-        failure: None,
-        discarded,
-        narrowed,
-    });
+        return Ok(Report {
+            cases: options.cases,
+            skipped,
+            failure: None,
+            discarded,
+            narrowed,
+        });
     }
 }
 
@@ -385,7 +398,9 @@ fn narrow(
             .is_some_and(|case| matches!(runner.attempt(&case.render()), Ok(Tried::Judged(_))))
     };
     let outside = |name: &str, lo: i128, hi: i128| {
-        case.values_of(spec, name).iter().any(|value| *value < lo || *value > hi)
+        case.values_of(spec, name)
+            .iter()
+            .any(|value| *value < lo || *value > hi)
     };
     for name in spec.loose() {
         let counted = spec.counting(&name);
@@ -397,7 +412,12 @@ fn narrow(
     while let Some(raised) = next.raising() {
         next = raised;
         let lowest = 1 + next.raised;
-        if next.counted().iter().any(|name| outside(name, lowest, i128::MAX)) && runs(&next) {
+        if next
+            .counted()
+            .iter()
+            .any(|name| outside(name, lowest, i128::MAX))
+            && runs(&next)
+        {
             let names = next.counted().join(", ");
             return Some((next, format!("{names}: {lowest} or more")));
         }
@@ -411,7 +431,11 @@ fn narrow(
         (0, size.max(1), format!("0 to {}", size.max(1))),
         (1, size.max(1), format!("1 to {}", size.max(1))),
     ] {
-        if spec.cells.as_deref().is_some_and(|&(was_lo, was_hi)| lo <= was_lo && hi >= was_hi) {
+        if spec
+            .cells
+            .as_deref()
+            .is_some_and(|&(was_lo, was_hi)| lo <= was_lo && hi >= was_hi)
+        {
             continue;
         }
         if let Some(celled) = spec.celled(lo, hi).filter(|celled| runs(celled)) {
@@ -425,7 +449,11 @@ fn narrow(
     for name in spec.loose() {
         all = all.counting(&name);
     }
-    let largest = all.counted().iter().flat_map(|name| case.values_of(spec, name)).max()?;
+    let largest = all
+        .counted()
+        .iter()
+        .flat_map(|name| case.values_of(spec, name))
+        .max()?;
     let names = all.counted().join(", ");
     (1..largest)
         .rev()

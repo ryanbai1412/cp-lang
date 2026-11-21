@@ -512,7 +512,47 @@ struct Builder<'a> {
     /// Each alias with the base of the item that declares it, which its
     /// spans are relative to.
     aliases: HashMap<String, (u32, Type)>,
+    /// Each record type `read()` reads field by field: a struct's fields,
+    /// or an `@tags` enum's variants each with the letter it is written as.
+    records: HashMap<String, (u32, Record)>,
     spec: InputSpec,
+}
+
+#[derive(Clone)]
+enum Record {
+    Struct(Vec<Type>),
+    Enum(Vec<(u8, Vec<Type>)>),
+}
+
+impl Record {
+    /// `@tags("R", "C")` above an enum: one letter per variant, in order.
+    /// Tags longer than a letter are not generated yet.
+    fn tagged(stmt: &Stmt, decl: &cpl_syntax::ast::EnumDecl) -> Option<Record> {
+        let tags = stmt.decorators.iter().find(|d| d.name.text == "tags")?;
+        if tags.args.len() != decl.variants.len() {
+            return None;
+        }
+        let letters = tags.args.iter().map(|arg| match &arg.value.kind {
+            ExprKind::Str(pieces) => match pieces.as_slice() {
+                [cpl_syntax::ast::StrPiece::Text(text)] if text.len() == 1 && text.is_ascii() => {
+                    Some(text.as_bytes()[0])
+                }
+                _ => None,
+            },
+            ExprKind::Char(c) if c.is_ascii() => Some(*c as u8),
+            _ => None,
+        });
+        let variants = letters
+            .zip(&decl.variants)
+            .map(|(letter, variant)| {
+                Some((
+                    letter?,
+                    variant.fields.iter().map(|(_, ty)| ty.clone()).collect(),
+                ))
+            })
+            .collect::<Option<_>>()?;
+        Some(Record::Enum(variants))
+    }
 }
 
 impl Builder<'_> {
@@ -598,6 +638,12 @@ impl Builder<'_> {
                 }
                 if let Some((lo, hi)) = self.domains.get(&name.text).cloned() {
                     return Ok(Shape::Int { lo, hi });
+                }
+                if let Some((base, record)) = self.records.get(&name.text).cloned() {
+                    let outer = std::mem::replace(&mut self.base, base);
+                    let shape = self.record(&name.text, &record);
+                    self.base = outer;
+                    return shape;
                 }
                 let Some((base, alias)) = self.aliases.get(&name.text).cloned() else {
                     return Err(unsupported(self));
@@ -1058,6 +1104,45 @@ impl Builder<'_> {
         Ok(true)
     }
 
+    /// A struct is its fields in order; an `@tags` enum is a choice on
+    /// the letter its variant is written as, then that variant's fields.
+    fn record(&mut self, name: &str, record: &Record) -> Result<Shape, SpecError> {
+        let parts = |this: &mut Self, types: &[Type]| -> Result<Vec<Shape>, SpecError> {
+            types.iter().map(|ty| this.shape(ty)).collect()
+        };
+        match record {
+            Record::Struct(fields) => {
+                let parts = parts(self, fields)?;
+                let binds = vec![Vec::new(); parts.len()];
+                Ok(Shape::Tuple { parts, binds })
+            }
+            Record::Enum(variants) => {
+                let mut arms = Vec::new();
+                for (tag, fields) in variants {
+                    let parts = parts(self, fields)?;
+                    let binds = vec![Vec::new(); parts.len()];
+                    arms.push(Arm {
+                        tags: Some(vec![i128::from(*tag)]),
+                        parts,
+                        binds,
+                    });
+                }
+                let letters = variants.iter().map(|(tag, _)| *tag);
+                let (lo, hi) = (letters.clone().min(), letters.max());
+                let (Some(lo), Some(hi)) = (lo, hi) else {
+                    return Err(
+                        self.error(Span::new(0, 0), format!("`{name}` has no variants to read"))
+                    );
+                };
+                Ok(Shape::Choice {
+                    tag: Box::new(Shape::Char { lo, hi }),
+                    name: format!("{name}.tag"),
+                    arms,
+                })
+            }
+        }
+    }
+
     /// The first and last value a loop goes over: `lo..hi`, `lo..=hi`
     /// or a domain declared above.
     fn over(&self, iter: &Expr) -> Option<(Expr, Expr)> {
@@ -1251,6 +1336,7 @@ impl InputSpec {
             base: 0,
             domains: HashMap::new(),
             aliases: HashMap::new(),
+            records: HashMap::new(),
             spec: InputSpec::default(),
         };
         // What is read above `@!multitest`, once the divider is seen.
@@ -1362,6 +1448,20 @@ impl InputSpec {
                         builder
                             .aliases
                             .insert(name.text.clone(), (builder.base, ty.clone()));
+                    }
+                    StmtKind::Struct(decl) if decl.generics.is_empty() => {
+                        let fields = decl.fields.iter().map(|f| f.ty.clone()).collect();
+                        builder.records.insert(
+                            decl.name.text.clone(),
+                            (builder.base, Record::Struct(fields)),
+                        );
+                    }
+                    StmtKind::Enum(decl) if decl.generics.is_empty() => {
+                        if let Some(record) = Record::tagged(stmt, decl) {
+                            builder
+                                .records
+                                .insert(decl.name.text.clone(), (builder.base, record));
+                        }
                     }
                     StmtKind::Let {
                         pat,

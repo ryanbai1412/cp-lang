@@ -18,7 +18,11 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
     let mut db = cpl_check::Database::new();
     db.set_file(&name, text.as_str());
     let analysis = db.analyze(&name)?;
-    if analysis.diagnostics.iter().any(|d| d.severity == cpl_diag::Severity::Error) {
+    if analysis
+        .diagnostics
+        .iter()
+        .any(|d| d.severity == cpl_diag::Severity::Error)
+    {
         return None;
     }
     let program = cpl_ir::lower(&analysis).ok()?;

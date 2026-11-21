@@ -41,8 +41,13 @@ fn scratch() -> PathBuf {
 fn run(generator: &Program, env: &[(&str, String)]) -> std::io::Result<Option<Drawn>> {
     let log = scratch();
     let mut program = generator.clone();
-    program.env.extend(env.iter().map(|(key, value)| (key.to_string(), value.clone())));
-    program.env.push(("CPL_CHOICES_OUT".to_string(), log.display().to_string()));
+    program.env.extend(
+        env.iter()
+            .map(|(key, value)| (key.to_string(), value.clone())),
+    );
+    program
+        .env
+        .push(("CPL_CHOICES_OUT".to_string(), log.display().to_string()));
     let outcome = program.run("", LIMIT);
     let choices = std::fs::read_to_string(&log).unwrap_or_default();
     let _ = std::fs::remove_file(&log);
@@ -56,7 +61,11 @@ fn run(generator: &Program, env: &[(&str, String)]) -> std::io::Result<Option<Dr
         })
         .unzip();
     let input = outcome.stdout;
-    Ok(ok.then_some(Drawn { choices, sites, input }))
+    Ok(ok.then_some(Drawn {
+        choices,
+        sites,
+        input,
+    }))
 }
 
 /// The case `seed` gives.
@@ -128,7 +137,9 @@ pub fn shrink(
         let mut back = 1;
         loop {
             let mut seen: HashMap<u32, usize> = HashMap::new();
-            best.sites.iter().for_each(|site| *seen.entry(*site).or_default() += 1);
+            best.sites
+                .iter()
+                .for_each(|site| *seen.entry(*site).or_default() += 1);
             let mut from_last: HashMap<u32, usize> = HashMap::new();
             let (mut gone, mut counts) = (Vec::new(), Vec::new());
             for at in (0..best.choices.len()).rev() {

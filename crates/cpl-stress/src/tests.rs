@@ -1541,3 +1541,47 @@ for _ in 0..q:
         start.render()
     );
 }
+
+#[test]
+fn structs_and_tagged_enums_are_read_field_by_field() {
+    let src = "domain Row = 1..=3
+struct Pt(x: 0..=9, y: Row)
+@tags(\"R\", \"C\")
+enum Stroke:
+    Across(r: Row)
+    Down(c: 1..=4, d: 0..=1)
+let n: 1..=5 = read()
+let ps: [n]Pt = read()
+let k: 1..=5 = read()
+let s: [k]Stroke = read()
+for p in ps:
+    print(p.x + p.y)
+for x in s:
+    match x:
+        Across(r) => print(r)
+        Down(c, d) => print(c * 10 + d)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    let path = std::env::temp_dir().join(format!("records-{}.cp", std::process::id()));
+    std::fs::write(&path, src).unwrap();
+    let mut tags = HashSet::new();
+    for seed in 0..40 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        tags.extend(
+            text.split_whitespace()
+                .filter(|t| *t == "R" || *t == "C")
+                .map(String::from),
+        );
+    }
+    assert_eq!(tags.len(), 2);
+    let fails = |case: &Case| case.render().split_whitespace().any(|t| t == "C");
+    let start = (0..)
+        .map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap())
+        .find(|case| fails(case))
+        .unwrap();
+    let min = shrink(&spec, &start, 2000, &mut |case| fails(case));
+    assert_eq!(min.render(), "1\n0 1\n1\nC 1 0\n");
+    std::fs::remove_file(&path).ok();
+}
