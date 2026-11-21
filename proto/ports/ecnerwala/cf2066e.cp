@@ -20,9 +20,7 @@ var count: [Vol]Int = 0
 var total = 0
 var unique = SortedSet<Int>()
 var unique_sum = Fenwick<Vol, Int>()
-var gap = SegTree<Vol, ?Int>(
-    Monoid<?Int>(none, (a, b) => if let x = a, let y = b: min(x, y) else: a ?? b)
-)
+var gap = SegTree<Vol, ?Int>(min, fill: none)
 
 fn refresh_gap(u: Int): gap.set(Vol(u), unique.range(u + 1..).first.map(w => w - u))
 
@@ -47,7 +45,7 @@ fn safe_before(b: Int) -> Int = total - unique_sum.sum(Vol(b)..)
 fn identifiable() -> Bool:
     let last = unique.last ?? return true
     var at = unique.first
-    while let b = at, b != last:
+    while let b = at and b != last:
         let have = safe_before(b)
         if b > have and gap.fold(Vol(b)..)! > have: return false
         at = unique.range(max(have, b) + 1..).first
