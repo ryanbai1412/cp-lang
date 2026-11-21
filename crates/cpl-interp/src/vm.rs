@@ -4427,6 +4427,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             self.emit(Op::DivI { dst: out, a: prod, b: two }, span);
                             out
                         }
+                        cpl_ir::DimSpec::Enum(e) => {
+                            let r = self.alloc_i();
+                            self.emit_const_i(
+                                r,
+                                self.program.enums[*e].variants.len() as i64,
+                                span,
+                            );
+                            r
+                        }
                         cpl_ir::DimSpec::Int(len) | cpl_ir::DimSpec::IntFrom(_, len) => {
                             self.compile_expr_i(len)
                         }
