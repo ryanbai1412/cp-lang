@@ -901,6 +901,11 @@ impl<'p> Compiler<'p> {
             ExprKind::Range { lo, hi } => {
                 Self::expr_mentions_slot(lo, target) || Self::expr_mentions_slot(hi, target)
             }
+            ExprKind::RangeCheck { value, lo, hi, .. } => {
+                Self::expr_mentions_slot(value, target)
+                    || lo.as_ref().is_some_and(|e| Self::expr_mentions_slot(e, target))
+                    || hi.as_ref().is_some_and(|e| Self::expr_mentions_slot(e, target))
+            }
             ExprKind::If(c, t, f) => {
                 Self::expr_mentions_slot(c, target)
                     || Self::expr_mentions_slot(t, target)

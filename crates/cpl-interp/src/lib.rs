@@ -1890,6 +1890,21 @@ impl<'p, 'o> Interp<'p, 'o> {
                 },
                 _ => return trap(span, "`!` on `none`: there is no value here"),
             },
+            ExprKind::RangeCheck { value, lo, hi, text } => {
+                let v = self.eval(value)?.int();
+                let lo = match lo {
+                    Some(lo) => self.eval(lo)?.int(),
+                    None => cpl_ir::INT_MIN,
+                };
+                let hi = match hi {
+                    Some(hi) => self.eval(hi)?.int(),
+                    None => i64::MAX,
+                };
+                if v < lo || v > hi {
+                    return trap(span, format!("{v} is outside `{text}`"));
+                }
+                Value::Int(v)
+            }
             ExprKind::If(cond, then, otherwise) => {
                 if self.eval(cond)?.bool() {
                     self.eval(then)?

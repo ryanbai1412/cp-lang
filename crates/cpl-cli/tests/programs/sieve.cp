@@ -14,7 +14,8 @@ print(primes.len)
 print(primes)
 let q: Int = read()
 for k in 0..q:
-    var x: 2..=1000000 = read()
+    let x0: 2..=1000000 = read()
+    var x: Int = x0
     var parts: List<Int> = []
     while x > 1:
         parts.push(spf[x])

@@ -3447,7 +3447,6 @@ the `last_use_call` flag; parameters go back to `const&` plus a copy.
 - **Why.** `factor_big` beside `factor` was a width twin violating one-spelling-per-job. A single threshold branch at `1_000_000` keeps small inputs as fast as plain trial division while preventing `O(sqrt x)` TLE on 64-bit inputs (including `phi(x)`). Zero corpus ports called `factor_big`.
 - **Evidence.** `cf2201e` emitted C++ grew by only +82 B (`35,974 -> 36,056 B`); `cf2147g` is `20,364 B` (32% of 64 KB cap); all 19 tests in `stdlib/math.cp` and `examples/local-lib/math/primes.cp` pass across `1..2000`, random `1..1e12`, and 64-bit semiprimes/primes.
 - **Reverse.** Restore `pub fn factor_big(x: Int)` in `stdlib/math.cp` and revert `factor(x)` to trial division only.
-
 ## 93. One-spelling syntax rulings & position/range/enum ergonomics (2026-11-21)
 
 1. **Built-in `MemberKind::Get` properties (`len`, `is_empty`, `first`, `last`, `rev`, `items`) are read without parentheses (`xs.len`, not `xs.len()`).**
@@ -3517,3 +3516,9 @@ is byte-identical to the online site's
 (`test_offline_bundle_rebuilds_every_try_it_link_exactly`). The online
 pages are unchanged. Reverse: drop `SHARE_HREF` from `site/bundle.py` and
 the `share-ref` replace from `site/offline.html`.
+
+## 100. Validate stores into range-typed places via `ExprKind::RangeCheck` (2026-11-21)
+
+- **Decision.** Every store into a range-typed place (scalar `var`/`let`, struct field and constructor arg, array element including compound assignment / `max=` / `min=` / fill / comprehension, and `List` `.push`/`.resize`/`.fill`) lowers through `Lowerer::check_range`, which wraps unproved values in `ExprKind::RangeCheck { value, lo, hi, text }`. Both `cpl-interp` and `cpl-codegen` (`cpl::check_range` under `#ifdef LOCAL`) trap with exit code 3 and `{v} is outside \`{text}\``. Release builds (`-DLOCAL` unset) compile `cpl::check_range` to a zero-cost passthrough, including for narrowed 32-bit struct fields (and future narrowed arrays).
+- **Why.** Narrowed `0..=1_000_000` struct fields previously truncated silently in C++ while `cpl run` printed the raw 64-bit value, breaking interpreter/C++ parity, and scalar/array ranges were unenforced on assignment. Checking in `cpl run` and `--checked` (`-DLOCAL`) catches every contract violation locally with identical diagnostics, while eliding proven-in-range stores (literals, narrower range-typed sources, `x % P` into `0..P`, `Mod<P>` branch-refined `+`/`-`/neg) keeps hot loops and `Mod<P>` codegen completely free of checks. Keeping release zero-cost matches `fsqrt`, `shl128`, and `sort` comparator validation (`#ifdef LOCAL`) so valid programs pay zero runtime overhead on judges.
+- **Reverse.** Remove `ExprKind::RangeCheck` and `crates/cpl-ir/src/lower/range.rs` to revert validation; or remove the `#ifdef LOCAL` guard in `cpl::check_range` in `crates/cpl-codegen/src/runtime.rs` if release builds should also trap before narrowing truncation.

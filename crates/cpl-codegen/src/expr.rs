@@ -812,6 +812,23 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(value);
                 Code::new(format!("*{}", code.at(UNARY)), UNARY)
             }
+            ExprKind::RangeCheck { value, lo, hi, text } => {
+                self.need("check_range");
+                let v = self.expr(value);
+                let lo_code = match lo {
+                    Some(lo) => self.expr(lo).text,
+                    None => "-9223372036854775807LL".to_string(),
+                };
+                let hi_code = match hi {
+                    Some(hi) => self.expr(hi).text,
+                    None => "9223372036854775807LL".to_string(),
+                };
+                let text_lit = string_literal(text.as_bytes());
+                Code::primary(format!(
+                    "cpl::check_range({}, {}, {}, {})",
+                    v.text, lo_code, hi_code, text_lit
+                ))
+            }
             ExprKind::If(cond, then, otherwise) => {
                 let c = self.expr(cond);
                 let a = self.expr(then);

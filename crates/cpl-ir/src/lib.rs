@@ -370,6 +370,16 @@ pub enum ExprKind {
     /// The value inside an optional. `checked` is the user's `!`, which
     /// fails on `none`; unchecked follows a test.
     Unwrap(Box<Expr>, bool),
+    /// Validates that `value` (an `Int`) lies inside the declared inclusive
+    /// bounds `[lo, hi]` before storing into a range-typed place. Traps in
+    /// the interpreter and under `--checked` (`-DLOCAL`) with `{v} is outside
+    /// \`{text}\``; zero-cost in release.
+    RangeCheck {
+        value: Box<Expr>,
+        lo: Option<Box<Expr>>,
+        hi: Option<Box<Expr>>,
+        text: String,
+    },
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     /// A block with a value: runs until a [`Stmt::Give`].
     Do(Block),
@@ -1201,6 +1211,15 @@ impl Program {
             }
             ExprKind::Fill(_, Some(v)) => {
                 self.collect_defined_domains_expr(v, escaping, seen, out);
+            }
+            ExprKind::RangeCheck { value, lo, hi, .. } => {
+                self.collect_defined_domains_expr(value, escaping, seen, out);
+                if let Some(lo) = lo {
+                    self.collect_defined_domains_expr(lo, escaping, seen, out);
+                }
+                if let Some(hi) = hi {
+                    self.collect_defined_domains_expr(hi, escaping, seen, out);
+                }
             }
             ExprKind::Tuple(xs)
             | ExprKind::Variant(_, xs)

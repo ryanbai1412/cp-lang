@@ -957,6 +957,10 @@ impl<'a> Lowerer<'a> {
                 self.bind(&clause.pat, value, &mut stmts);
             }
             let v = self.expect(body, fty);
+            let v = match self.struct_field_range(id, i).and_then(|r| r.scalar().cloned()) {
+                Some(b) => self.check_range(v, &b, body.span),
+                None => v,
+            };
             let slot = self.temp(fty.clone());
             stmts.push(Stmt::Let(slot, Some(v)));
             items.push(self.local(slot, body.span));
@@ -1007,16 +1011,27 @@ impl<'a> Lowerer<'a> {
         let mut values = Vec::new();
         for (i, ((field, ty), arg)) in fields.iter().zip(given).enumerate() {
             match (arg, &decl.fields[i].default) {
-                (Some(arg), _) => values.push(self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))),
+                (Some(arg), _) => {
+                    let v = self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty));
+                    let v = match self.struct_field_range(id, i).and_then(|r| r.scalar().cloned()) {
+                        Some(b) => self.check_range(v, &b, arg.value.span),
+                        None => v,
+                    };
+                    values.push(v);
+                }
                 (None, Some(default)) => {
                     let saved = std::mem::replace(&mut self.offset, self.structs[id].offset);
-                    let val = if matches!(ty, Ty::Array { .. }) {
+                    let v = if matches!(ty, Ty::Array { .. }) {
                         self.let_value(Some(&decl.fields[i].ty), Some(default), default.span)
                             .unwrap_or_else(|| self.err_expr(default.span))
                     } else {
                         self.expect(default, ty)
                     };
-                    values.push(val);
+                    let v = match self.struct_field_range(id, i).and_then(|r| r.scalar().cloned()) {
+                        Some(b) => self.check_range(v, &b, default.span),
+                        None => v,
+                    };
+                    values.push(v);
                     self.offset = saved;
                 }
                 (None, None) => {
@@ -6043,7 +6058,14 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (Ty::List(_) | Ty::Str, "push") => match self.one_arg(method, args, &elem, span) {
-                Some(arg) => mutate(self, Mutation::Push, vec![arg], Ty::Unit),
+                Some(arg) => {
+                    let place = self.place(base);
+                    let arg = match self.place_range(&place).and_then(|r| r.elem().and_then(|e| e.scalar()).cloned()) {
+                        Some(b) => self.check_range(arg, &b, span),
+                        None => arg,
+                    };
+                    self.mk(ExprKind::Mutate(Mutation::Push, Box::new(place), vec![arg]), Ty::Unit, span)
+                }
                 None => self.err_expr(span),
             },
             (Ty::List(_), "push_id") => match self.one_arg(method, args, &elem, span) {
@@ -6051,6 +6073,10 @@ impl<'a> Lowerer<'a> {
                 Some(arg) => self.do_expr(Some(&Ty::Int), span, |lw, out| {
                     let place = lw.place(base);
                     let place = lw.settle_indexes(place, out);
+                    let arg = match lw.place_range(&place).and_then(|r| r.elem().and_then(|e| e.scalar()).cloned()) {
+                        Some(b) => lw.check_range(arg, &b, span),
+                        None => arg,
+                    };
                     let held = lw.temp(arg.ty.clone());
                     out.push(Stmt::Let(held, Some(arg)));
                     let id = lw.temp(Ty::Int);
@@ -6122,7 +6148,12 @@ impl<'a> Lowerer<'a> {
                 Some(exprs) => {
                     let n = self.expect(exprs[0], &Ty::Int);
                     let v = self.expect(exprs[1], &elem);
-                    mutate(self, Mutation::Resize, vec![n, v], Ty::Unit)
+                    let place = self.place(base);
+                    let v = match self.place_range(&place).and_then(|r| r.elem().and_then(|e| e.scalar()).cloned()) {
+                        Some(b) => self.check_range(v, &b, exprs[1].span),
+                        None => v,
+                    };
+                    self.mk(ExprKind::Mutate(Mutation::Resize, Box::new(place), vec![n, v]), Ty::Unit, span)
                 }
                 None => self.err_expr(span),
             },
@@ -6138,7 +6169,14 @@ impl<'a> Lowerer<'a> {
                 None => self.err_expr(span),
             },
             (Ty::List(_) | Ty::Array { .. } | Ty::Str, "fill") => match self.one_arg(method, args, &elem, span) {
-                Some(v) => mutate(self, Mutation::Fill, vec![v], Ty::Unit),
+                Some(v) => {
+                    let place = self.place(base);
+                    let v = match self.place_range(&place).and_then(|r| r.elem().and_then(|e| e.scalar()).cloned()) {
+                        Some(b) => self.check_range(v, &b, span),
+                        None => v,
+                    };
+                    self.mk(ExprKind::Mutate(Mutation::Fill, Box::new(place), vec![v]), Ty::Unit, span)
+                }
                 None => self.err_expr(span),
             },
             (Ty::Str | Ty::StrView, "to_str") => match self.positional_any(method, args, 0, span) {

@@ -923,7 +923,6 @@ print(p.xs.len + p.ys.len, q.xs.len)
     assert!(cpp.contains("Pack twice(const std::vector<ll>& xs) {"), "named twice: copied, not sunk: {cpp}");
     assert!(cpp.contains("::prog::twice(p.xs)"), "a global is not moved from: {cpp}");
 }
-
 #[test]
 fn closure_mutating_a_captured_local_is_not_hoisted_static() {
     let cpp = cpp(concat!(
@@ -981,5 +980,37 @@ fn discarded_map_remove_emits_single_erase_without_map_get() {
     assert!(
         !out.contains("map_get"),
         "Map.remove must not emit map_get + erase: {out}"
+    );
+}
+
+#[test]
+fn range_typed_stores_emit_check_only_when_unproven() {
+    let unchecked_store = cpp(
+        "struct S(a: 0..=1_000_000, b: Int)
+let k: Int = read()
+var s = S(0, 1)
+s.a = k
+print(s.a)
+",
+    );
+    assert!(
+        unchecked_store.contains("cpl::check_range(k, 0, 1000000, \"0..=1_000_000\")"),
+        "{unchecked_store}"
+    );
+
+    let proven_store = cpp(
+        "const P = 998244353
+struct M(v: 0..P)
+let k: Int = read()
+let r: 0..=100 = read()
+var x: 0..=1_000_000 = 0
+x = r
+let m = M(k % P)
+print(x, m.v)
+",
+    );
+    assert!(
+        !proven_store.contains("cpl::check_range"),
+        "proven stores (literal, narrower range var, k % P into 0..P) must elide check_range:\n{proven_store}"
     );
 }

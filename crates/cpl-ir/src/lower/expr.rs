@@ -4019,6 +4019,7 @@ impl<'a> Lowerer<'a> {
         init: &ast::Expr,
         dims: &[DimSpec],
         elem: &Ty,
+        elem_range: Option<&RangeBounds>,
     ) -> Option<Expr> {
         let ast::ExprKind::Comprehension { body, clauses } = &init.kind else {
             return None;
@@ -4040,7 +4041,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let pats = std::slice::from_ref(&clause.pat);
-        Some(self.build_table(dims.to_vec(), pats, body, Some(elem), init.span))
+        Some(self.build_table(dims.to_vec(), pats, body, Some(elem), elem_range, init.span))
     }
 
     fn table(
@@ -4059,15 +4060,16 @@ impl<'a> Lowerer<'a> {
             Some(Ty::Array { elem, .. }) => Some((**elem).clone()),
             _ => None,
         };
-        self.build_table(dims, params, body, elem.as_ref(), span)
+        self.build_table(dims, params, body, elem.as_ref(), None, span)
     }
 
-    fn build_table(
+    pub(super) fn build_table(
         &mut self,
         dims: Vec<DimSpec>,
         params: &[ast::Pattern],
         body: &ast::Expr,
         elem: Option<&Ty>,
+        elem_range: Option<&RangeBounds>,
         span: Span,
     ) -> Expr {
         if params.len() != dims.len() {
@@ -4170,6 +4172,10 @@ impl<'a> Lowerer<'a> {
         let value = match elem {
             Some(elem) => self.expect(body, elem),
             None => self.expr(body, None),
+        };
+        let value = match elem_range {
+            Some(bounds) => self.check_range(value, bounds, body.span),
+            None => value,
         };
         self.cx.scopes.pop();
         let ty = Ty::Array {
@@ -4411,6 +4417,23 @@ impl Lowerer<'_> {
             ExprKind::Unwrap(x, checked) => {
                 parts.push(*x);
                 Box::new(move |mut p| ExprKind::Unwrap(Box::new(p.remove(0)), checked))
+            }
+            ExprKind::RangeCheck { value, lo, hi, text } => {
+                let has_lo = lo.is_some();
+                let has_hi = hi.is_some();
+                parts.push(*value);
+                if let Some(l) = lo {
+                    parts.push(*l);
+                }
+                if let Some(h) = hi {
+                    parts.push(*h);
+                }
+                Box::new(move |mut p| {
+                    let value = Box::new(p.remove(0));
+                    let lo = has_lo.then(|| Box::new(p.remove(0)));
+                    let hi = has_hi.then(|| Box::new(p.remove(0)));
+                    ExprKind::RangeCheck { value, lo, hi, text }
+                })
             }
             ExprKind::Field(x, at) => {
                 parts.push(*x);

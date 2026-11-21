@@ -368,6 +368,20 @@ inline double fsqrt(double x) {
 ",
     },
     Piece {
+        name: "check_range",
+        needs: &["out"],
+        code: "\
+inline ll check_range(ll v, ll lo, ll hi, const char* text) {
+#ifdef LOCAL
+    if (__builtin_expect(v < lo || v > hi, 0)) { cpl::flush(); fprintf(stderr, \"%lld is outside `%s`\\n\", v, text); exit(3); }
+#else
+    (void)lo; (void)hi; (void)text;
+#endif
+    return v;
+}
+",
+    },
+    Piece {
         name: "shl128",
         needs: &[],
         code: "\

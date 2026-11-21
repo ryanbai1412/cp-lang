@@ -12,6 +12,7 @@ mod call;
 mod expr;
 mod memo;
 mod mono;
+mod range;
 mod stmt;
 
 use crate::*;
@@ -20,6 +21,7 @@ use cpl_diag::{codes, Diagnostic, Span};
 use cpl_syntax::ast;
 use cpl_syntax::narrow;
 use mono::*;
+use range::*;
 use std::collections::{HashMap, HashSet};
 
 /// Lists the names of all `@test` functions declared at the top level of `analysis`.
@@ -461,6 +463,8 @@ struct FnCx {
     /// Annotated array `Spec`s for local variables/parameters, used by `a.inverse()`
     /// when the element type is a bounded `Int` range (e.g. `[Pos]?(0..Pos.count)`).
     local_specs: HashMap<Slot, ast::Type>,
+    /// Declared integer range bounds for local variables, parameters, and range-typed arrays/lists.
+    local_ranges: HashMap<Slot, RangeInfo>,
     ret: Option<Ty>,
     new_domain_slots: Vec<DomainId>,
     /// `self`'s slot and struct inside a method.
@@ -546,6 +550,9 @@ struct Lowerer<'a> {
     /// with constant ends, and of each domain's length.
     global_bounds: HashMap<GlobalId, (i64, i64)>,
     domain_lens: HashMap<DomainId, (i64, i64)>,
+    /// Declared integer range bounds for globals and struct fields.
+    global_ranges: HashMap<GlobalId, RangeInfo>,
+    struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
     const_bools: HashMap<String, bool>,
@@ -659,6 +666,8 @@ impl<'a> Lowerer<'a> {
             global_specs: HashMap::new(),
             global_bounds: HashMap::new(),
             domain_lens: HashMap::new(),
+            global_ranges: HashMap::new(),
+            struct_field_ranges: HashMap::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
             mutators: Default::default(),
@@ -1554,6 +1563,7 @@ impl<'a> Lowerer<'a> {
             self.structs[id].def.fields = fields;
             self.structs[id].def.fixed = self.fixed_rows(decl);
             self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
+            self.collect_struct_field_ranges(id, decl);
             self.self_struct = None;
         }
         // Attach `impl` blocks for non-generic structs.
@@ -2865,6 +2875,15 @@ impl<'a> Lowerer<'a> {
             }
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
+        for ast_p in &decl.params {
+            if let Some(ty_ast) = &ast_p.ty {
+                if let Some(&slot) = self.cx.scopes[0].get(&ast_p.name.text) {
+                    if let Some(rinfo) = self.range_info_from_ast(ty_ast) {
+                        self.cx.local_ranges.insert(slot, rinfo);
+                    }
+                }
+            }
+        }
         let mut out = Vec::new();
 
         // If this is a constructor/static method of a struct with owned domains (e.g. `Rooted<V>.Pre`),
@@ -4071,6 +4090,15 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
         | ExprKind::Range { lo: a, hi: b } => {
             collect_expr_calls(a, out);
             collect_expr_calls(b, out);
+        }
+        ExprKind::RangeCheck { value, lo, hi, .. } => {
+            collect_expr_calls(value, out);
+            if let Some(lo) = lo {
+                collect_expr_calls(lo, out);
+            }
+            if let Some(hi) = hi {
+                collect_expr_calls(hi, out);
+            }
         }
         ExprKind::If(a, b, c) => {
             collect_expr_calls(a, out);

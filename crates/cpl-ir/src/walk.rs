@@ -80,6 +80,15 @@ pub fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
             f(lo);
             f(hi);
         }
+        ExprKind::RangeCheck { value, lo, hi, .. } => {
+            f(value);
+            if let Some(lo) = lo {
+                f(lo);
+            }
+            if let Some(hi) = hi {
+                f(hi);
+            }
+        }
         ExprKind::Mutate(_, place, args) => {
             place_exprs(place, f);
             args.iter().for_each(f);

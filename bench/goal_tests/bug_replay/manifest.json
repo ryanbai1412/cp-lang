@@ -155,6 +155,15 @@
       "kind": "correctness"
     },
     {
+      "id": "ovf_range_store",
+      "bug_class": "overflow",
+      "description": "Storing 5000000000 into a 0..=1_000_000 struct field (silent uint32_t truncation without range validation)",
+      "file": "ovf_range_store.cp",
+      "input": "5000000000\n",
+      "expected_output": "5000000000\n",
+      "kind": "correctness"
+    },
+    {
       "id": "ovf_neg_int_min",
       "bug_class": "overflow",
       "description": "Negating INT64_MIN (-9223372036854775808) overflows signed 64-bit Int",

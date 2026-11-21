@@ -382,7 +382,6 @@ fn sort_cmp_strict_weak_order_traps_in_interp_and_checked_cpp() {
         assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
     }
 }
-
 #[test]
 fn fold_empty_traps_in_interp_and_checked_cpp() {
     let src = "let xs: List<Int> = []\nprint(xs.fold((a, b) => a * 10 + b))\n";
@@ -431,6 +430,99 @@ fn reach_non_monotone_traps_in_interp_and_checked_cpp() {
             .expect("g++");
         assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
         let out = Command::new(&exe).output().expect("run binary");
+        let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");
+        assert!(cpp_err.contains(msg), "checked cpp case {idx} expected `{msg}`, got:\n{cpp_err}");
+    }
+}
+
+#[test]
+fn range_typed_stores_trap_in_interp_and_checked_cpp() {
+    let cases = [
+        (
+            "struct S(a: 0..=1_000_000, b: Int)\nlet k: Int = read()\nvar s = S(0, 1)\ns.a = k\nprint(s.a)\n",
+            "5000000000\n",
+            "5000000000 is outside `0..=1_000_000`",
+        ),
+        (
+            "struct S(a: 0..=1_000_000, b: Int)\nlet k: Int = read()\nlet s = S(k, 1)\nprint(s.a)\n",
+            "5000000000\n",
+            "5000000000 is outside `0..=1_000_000`",
+        ),
+        (
+            "let k: Int = read()\nvar x: 0..=5 = 0\nx = k\nprint(x)\n",
+            "10\n",
+            "10 is outside `0..=5`",
+        ),
+        (
+            "let n: 1..=10 = read()\ndomain V = 0..n\nlet k: Int = read()\nvar d: [V]0..=1_000_000 = 0\nd[V(0)] = k\nprint(d[V(0)])\n",
+            "3\n5000000000\n",
+            "5000000000 is outside `0..=1_000_000`",
+        ),
+        (
+            "let n: 1..=10 = read()\ndomain V = 0..n\nlet k: Int = read()\nvar d: [V]0..=10 = 5\nd[V(0)] += k\nprint(d[V(0)])\n",
+            "3\n8\n",
+            "13 is outside `0..=10`",
+        ),
+        (
+            "let n: 1..=10 = read()\ndomain V = 0..n\nlet k: Int = read()\nlet d: [V]0..=10 = [k for _ in V]\nprint(d[V(0)])\n",
+            "3\n99\n",
+            "99 is outside `0..=10`",
+        ),
+        (
+            "let n: 1..=10 = read()\ndomain V = 0..n\nlet k: Int = read()\nvar d: [V]0..=10 = k\nprint(d[V(0)])\n",
+            "3\n99\n",
+            "99 is outside `0..=10`",
+        ),
+        (
+            "let n: 1..=10 = read()\ndomain V = 0..n\nlet k: Int = read()\nvar d: [V]0..=10 = 0\nd.fill(k)\nprint(d[V(0)])\n",
+            "3\n99\n",
+            "99 is outside `0..=10`",
+        ),
+        (
+            "let k: Int = read()\nvar x: 0..=10 = 5\nx max= k\nprint(x)\n",
+            "11\n",
+            "11 is outside `0..=10`",
+        ),
+        (
+            "let k: Int = read()\nvar xs: List<0..=10> = []\nxs.push(k)\nprint(xs[0])\n",
+            "99\n",
+            "99 is outside `0..=10`",
+        ),
+    ];
+    for (idx, (src, input, msg)) in cases.iter().enumerate() {
+        let (code, err) = run_stderr(src, input);
+        assert_eq!(code, 3, "interp case {idx} should trap:\n{err}");
+        assert!(err.contains(msg), "interp case {idx} expected `{msg}`, got:\n{err}");
+        assert!(!err.contains("the interpreter itself failed"), "got panic:\n{err}");
+
+        let dir = std::env::temp_dir()
+            .join(format!("runtime_errors_range_store_{}_{idx}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.cp");
+        let cpp = dir.join("a.cpp");
+        let exe = dir.join("a.bin");
+        fs::write(&file, src).unwrap();
+        let build = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["build", file.to_str().unwrap(), "-o", cpp.to_str().unwrap()])
+            .output()
+            .expect("cpl build");
+        assert!(build.status.success(), "cpl build failed:\n{}", String::from_utf8_lossy(&build.stderr));
+        let compile = Command::new("g++")
+            .args(["-std=c++17", "-O1", "-DLOCAL", cpp.to_str().unwrap(), "-o", exe.to_str().unwrap()])
+            .output()
+            .expect("g++");
+        assert!(compile.status.success(), "g++ failed:\n{}", String::from_utf8_lossy(&compile.stderr));
+        let mut child = Command::new(&exe)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("run binary");
+        child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
+        let out = child.wait_with_output().expect("wait binary");
         let cpp_err = String::from_utf8_lossy(&out.stderr).into_owned();
         let _ = fs::remove_dir_all(&dir);
         assert_eq!(out.status.code(), Some(3), "checked cpp case {idx} should trap:\n{cpp_err}");

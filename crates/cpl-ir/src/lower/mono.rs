@@ -700,6 +700,7 @@ impl<'a> Lowerer<'a> {
         self.structs[id].def.fields = fields;
         self.structs[id].def.fixed = self.fixed_rows(decl);
         self.structs[id].def.narrow_ints = self.narrow_int_fields(decl);
+        self.collect_struct_field_ranges(id, decl);
 
         // 3. Collect methods, getters, projections, laws, constants.
         let struct_env = self.gen_env.clone();
@@ -1830,6 +1831,11 @@ impl<'a> Lowerer<'a> {
                 self.cx.mut_slots.insert(slot);
             }
             self.cx.scopes[0].insert(p.name.text.clone(), slot);
+            if let Some(ty_ast) = &p.ty {
+                if let Some(rinfo) = self.range_info_from_ast(ty_ast) {
+                    self.cx.local_ranges.insert(slot, rinfo);
+                }
+            }
             param_slots.push(slot);
         }
 
@@ -2382,6 +2388,13 @@ impl<'a> Lowerer<'a> {
         self.cx.captured_names.insert(name.to_string(), inner);
         if by_ref {
             self.cx.mut_slots.insert(inner);
+        }
+        if let Some(rinfo) = self
+            .outer_cxs
+            .last()
+            .and_then(|ocx| ocx.local_ranges.get(&cur_outer_slot).cloned())
+        {
+            self.cx.local_ranges.insert(inner, rinfo);
         }
         Some(inner)
     }

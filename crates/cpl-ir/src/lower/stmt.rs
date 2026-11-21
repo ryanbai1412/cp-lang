@@ -354,6 +354,11 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     }
+                    if let Some(ty_ast) = ty.as_ref() {
+                        if let Some(rinfo) = self.range_info_from_ast(ty_ast) {
+                            self.bind_range_info(pat, &rinfo);
+                        }
+                    }
                     if let (Some(ty_ast), Some(vname)) = (array_ty_ast, single_name) {
                         if self.cx.is_main && self.cx.scopes.len() == 1 {
                             if let Some(Sym::Global(gid)) = self.mod_syms[self.cur_mod].get(&vname).copied() {
@@ -1633,7 +1638,11 @@ impl<'a> Lowerer<'a> {
         let spec = self.resolve(ty, true);
         let want = spec.ty();
         let Some(init) = init else {
-            return Some(self.zero(&spec, span));
+            let z = self.zero(&spec, span);
+            if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(&spec) {
+                return Some(self.check_range(z, &bounds, span));
+            }
+            return Some(z);
         };
         if is_read_call(init) {
             let mut spec = spec;
@@ -1673,11 +1682,22 @@ impl<'a> Lowerer<'a> {
         }
         if let Spec::Array { dims, elem } = &spec {
             let elem_ty = elem.ty();
+            let elem_range = RangeInfo::from_spec(elem).and_then(|r| match r {
+                RangeInfo::Scalar(b) => Some(b),
+                _ => None,
+            });
             if is_literal(init) {
                 return Some(self.fill_literal(&spec, init));
             }
-            if let Some(table) = self.comprehension_table(init, dims, &elem_ty) {
+            if let Some(table) = self.comprehension_table(init, dims, &elem_ty, elem_range.as_ref()) {
                 return Some(table);
+            }
+            if let ast::ExprKind::Table { domains, params, body } = &init.kind {
+                if let Some(bounds) = elem_range.as_ref() {
+                    if let Some(tdims) = domains.iter().map(|d| self.dim(d, true)).collect::<Option<Vec<_>>>() {
+                        return Some(self.build_table(tdims, params, body, Some(&elem_ty), Some(bounds), init.span));
+                    }
+                }
             }
             // `var ways: [0..n]List<Z> = [Z(1)]`: where a cell is a list, a
             // list of what it holds fills every cell with a copy.
@@ -1747,8 +1767,16 @@ impl<'a> Lowerer<'a> {
                             let trap = Stmt::Trap("an array literal needs one value per position".to_string(), lw.span(at));
                             out.push(Stmt::If(wrong, Block { stmts: vec![trap] }, Block::default()));
                         }
-                        let values: Vec<Expr> =
-                            cells.iter().map(|item| lw.expect(item, &elem_ty)).collect();
+                        let values: Vec<Expr> = cells
+                            .iter()
+                            .map(|item| {
+                                let v = lw.expect(item, &elem_ty);
+                                match elem_range.as_ref() {
+                                    Some(b) => lw.check_range(v, b, item.span),
+                                    None => v,
+                                }
+                            })
+                            .collect();
                         let mut values = values.into_iter();
                         let first = values.next().map(Box::new);
                         let held = lw.temp(want.clone());
@@ -1790,7 +1818,13 @@ impl<'a> Lowerer<'a> {
                 return Some(value);
             }
             return Some(match self.try_coerce(value, &elem_ty) {
-                Ok(value) => self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span),
+                Ok(value) => {
+                    let value = match elem_range.as_ref() {
+                        Some(b) => self.check_range(value, b, init.span),
+                        None => value,
+                    };
+                    self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span)
+                }
                 Err(value) => {
                     self.mismatch(init.span, &want, &value.ty);
                     self.err_expr(init.span)
@@ -1806,14 +1840,22 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        Some(self.expect(init, &want))
+        let val = self.expect(init, &want);
+        if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(&spec) {
+            return Some(self.check_range(val, &bounds, init.span));
+        }
+        Some(val)
     }
 
     /// `var g: [0..n][0..4]Int = 0`: a literal fills every cell, and a
     /// cell that is itself an array is filled the same way.
     pub(super) fn fill_literal(&mut self, spec: &Spec, init: &ast::Expr) -> Expr {
         let Spec::Array { dims, elem } = spec else {
-            return self.expect(init, &spec.ty());
+            let v = self.expect(init, &spec.ty());
+            if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(spec) {
+                return self.check_range(v, &bounds, init.span);
+            }
+            return v;
         };
         let value = self.fill_literal(elem, init);
         self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), spec.ty(), init.span)
@@ -2308,7 +2350,7 @@ impl<'a> Lowerer<'a> {
                     span: base.span,
                 };
                 let field = self.coerce(field, &place.ty, t.span);
-                out.push(Stmt::Assign(place, AssignOp::Set, field));
+                self.emit_assign(place, AssignOp::Set, field, t.span, out);
             }
             return;
         }
@@ -3046,11 +3088,11 @@ impl<'a> Lowerer<'a> {
                     let held = self.local(slot, span);
                     let some = self.mk(ExprKind::IsSome(Box::new(held.clone())), Ty::Bool, span);
                     let inside = self.mk(ExprKind::Unwrap(Box::new(held), false), place.ty.clone(), span);
+                    let mut branch = Vec::new();
+                    self.emit_assign(place, op, inside, span, &mut branch);
                     out.push(Stmt::If(
                         some,
-                        Block {
-                            stmts: vec![Stmt::Assign(place, op, inside)],
-                        },
+                        Block { stmts: branch },
                         Block::default(),
                     ));
                     return;
@@ -3236,7 +3278,7 @@ impl<'a> Lowerer<'a> {
                 (AssignOp::Binary(bin), value)
             }
         };
-        out.push(Stmt::Assign(place, op, value));
+        self.emit_assign(place, op, value, span, out);
     }
 
     /// True for the `o` of `(o ??= init)`, which holds a value from there on.
