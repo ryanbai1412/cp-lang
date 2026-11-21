@@ -174,6 +174,16 @@ pub const UNPROVEN_LIST_INDEX: Lint = Lint {
     trigger: "let a: List<Int> = [1, 2, 3]\nvar s = 0\nfor i in 0..3:\n    for j in 0..3:\n        s += a[j]\nprint(s)\n",
     fix: "domain D = 0..3\nlet a: [D]Int = [1, 2, 3]\nvar s = 0\nfor _ in D:\n    for j in D:\n        s += a[j]\nprint(s)\n",
 };
+pub const LOOP_INVARIANT_MOD_DIV: Lint = Lint {
+    code: Code("L0415"),
+    name: "loop_invariant_mod_div",
+    default: Level::Warn,
+    title: "Loop-invariant `Mod` divisor inside loop",
+    summary: "a `Mod<P>` division by a loop-invariant value computes an O(log P) inverse every iteration",
+    explanation: "Dividing a `Mod<P>` value computes an O(log P) modular inverse on every iteration. When the divisor does not change inside the loop, hoist `let inv_d = d.inv` before the loop and multiply by `inv_d` instead.",
+    trigger: "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2), Z(3)]\nfor i in 0..xs.len:\n    xs[i] = xs[i] / d\nprint(xs)\n",
+    fix: "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2), Z(3)]\nlet inv_d = d.inv\nfor i in 0..xs.len:\n    xs[i] = xs[i] * inv_d\nprint(xs)\n",
+};
 pub const SEARCH_LOOP: Lint = Lint {
     code: Code("L0501"),
     name: "search_loop",
@@ -308,6 +318,7 @@ pub const LINTS: &[Lint] = &[
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,
     UNPROVEN_LIST_INDEX,
+    LOOP_INVARIANT_MOD_DIV,
     SEARCH_LOOP,
     DISCARDED_RESULT,
     SYMMETRIC_WRITE,

@@ -3028,7 +3028,6 @@ Reverse by restoring `where` as a parser alias.
 
 1. **Add `TimeTree<E>.run<M, R>(self, mark:, apply:, answer:, undo:) -> List<R>` and `offline_over<E, M, R>(q, items, by:, mark:, apply:, answer:, undo:) -> List<R>` in `stdlib/timetree.cp`, keeping `steps()` for compatibility.**
    Reason: `TimeTree.steps()` materialized an `O(q + m log q)` `List<TimeStep>` and required callers to maintain a per-event `marks: List<Mark>` stack. Callback-driven `run` / `offline_over` takes one `mark()` per non-empty segment-tree node, devirtualizes all four callbacks in C++ codegen with zero `std::function`, and returns `[answer(0), ..., answer(q - 1)]` directly. On `cf2069f` (`n = 400k, q = 400k`), median user time dropped from `1.31s` to `1.05s` (-20%) and peak RSS dropped from `356 MB` to `146 MB` (2.44x less memory). Reverse: remove `run`, `run_node`, and `offline_over` from `stdlib/timetree.cp` and restore `tt.steps()` in `proto/ports/ecnerwala/cf2069f.cp`.
-
 ## 72. The compiler bundles `stdlib/` without its `@test` fns (2026-11-21)
 
 `crates/cpl-check/build.rs` embeds every module so `use std.x` resolves in
@@ -3049,7 +3048,6 @@ embedding the files with `include_str!` again.
    In `crates/cpl-codegen/src/devirt.rs`, a closure that captures a `Monoid` or `Action` solely to invoke its `StaticDirect` `op`/`apply`/`compose` field has zero live captures in emitted C++, so it lowers to a top-level `static auto cpl_fnN` (emitted in dependency order in `emit.rs`) with zero `std::function`. Gives 0 `std::function` on `flip_action` (`cf2152g`: 8 static direct, 0 dynamic) and any user-written `Monoid`/`Action` combinator. Reverse: restore `captures.is_empty()` in `devirt.rs`.
 3. **Avoid sibling cache misses and tagless pushdown calls in `LazyTreap.ins` / `split_val`.**
    Increment `nodes[i].sz` directly on descent in `ins` and guard `push_tag` with `if let f = nodes[i].tag:` in `ins`/`split_val`, bringing `bench/ranges/lazy_treap` from `111.9 ms` (`1.34x`) down to `85.8 ms` vs `81.1 ms` matched C++17 (`1.06x`). Reverse: restore `down`/`pull` calls in `stdlib/lazy.cp`.
-
 ## 74. `monge_path` is online LARSCH; `aliens` stops at count `k` (2026-11-21)
 
 `std.dp.monge_path` now runs the online LARSCH algorithm (O(n) calls of
@@ -3060,3 +3058,9 @@ exactly `k`, which the law already makes exact. Reverse: the deque is ten
 lines and needs no level stacks, if LARSCH's bookkeeping ever costs more
 than its calls save.
 
+## 75. `L0415` (`loop_invariant_mod_div`) lint with `cpl fix` (2026-11-21)
+
+1. **Flag loop-invariant `Mod<P>` divisors inside `for`/`while` loops (`L0415`, `loop_invariant_mod_div`) and offer a `cpl fix` hoist.**
+   - **Reason:** `Mod<P>` division runs an `O(log P)` modular inverse on every iteration; hoisting `let inv_d = d.inv` (or `Z(k).inv` for an integer divisor) before the outermost invariant loop replaces it with `O(1)` multiplication with zero false positives (0 false positives across 1,429 corpus + stdlib files, 2 real hits in `cf2180g` and `noip22p3`). Auto-fix attaches only when the division is unconditional in the loop or the divisor is a nonzero literal so hoisting cannot introduce a division-by-zero trap.
+   - **Deferred:** A second rule for loop-varying small-integer divisors when `Comb<M>` is in scope (the `cf2245f` pattern) is deferred because it has a single corpus hit and requires range/sign/depth guards; reopen if a second instance appears.
+   - **Reverse:** Remove `crates/cpl-lint/src/rules/mod_div.rs`, `LOOP_INVARIANT_MOD_DIV` from `crates/cpl-lint/src/lib.rs`, and its call in `crates/cpl-lint/src/rules/mod.rs`.
