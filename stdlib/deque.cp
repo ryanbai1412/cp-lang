@@ -70,8 +70,11 @@ pub struct Deque<T>:
     /// The front, or `none` when empty.
     pub @get fn first(self) -> ?T = if n == 0: none else: buf[head]
 
-    /// The back, or `none` when empty.
-    pub @get fn last(self) -> ?T = if n == 0: none else: buf[(head + n - 1) % buf.len]
+    /// The back, or `none` when empty. `dq.last(k)` is the element `k`
+    /// back from it, so `dq.last(1)` is the one before the back.
+    pub @get fn last(self, k: Int = 0) -> ?T:
+        if k < 0 or k >= n: return none
+        buf[(head + n - 1 - k) % buf.len]
 
     /// The `i`-th element from the front.
     pub fn get(self, i: Int) -> T:

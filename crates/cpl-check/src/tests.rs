@@ -1758,3 +1758,15 @@ fn a_mut_self_method_needs_a_receiver_that_can_change() {
         ["`c` is a parameter without `mut`, so it can't be changed by `bump`"]
     );
 }
+
+#[test]
+fn items_gives_each_element_with_its_index() {
+    let src = "domain I = 0..3\nlet a: [I]Int = [4, 5, 6]\nlet xs = [true, false]\n";
+    // A position of `I` for `[I]T`, an `Int` for a list.
+    assert_eq!(codes(&format!("{src}for (i, x) in a.items: print(a[i] + x)\n")), Vec::<&str>::new());
+    assert_eq!(codes(&format!("{src}for (i, x) in a.items:\n    let j: Int = i\n")), ["E0301"]);
+    assert_eq!(codes(&format!("{src}for (i, x) in a.items:\n    let s: Str = x\n")), ["E0302"]);
+    assert_eq!(codes(&format!("{src}for (i, x) in xs.items:\n    let n: Int = x\n")), ["E0302"]);
+    assert_eq!(codes(&format!("{src}let kept = xs.items\nlet k: Int = kept[0].0\n")), Vec::<&str>::new());
+    assert_eq!(codes(&format!("{src}let kept = xs.items\nlet k: Int = kept[0].1\n")), ["E0302"]);
+}

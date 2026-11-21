@@ -1037,6 +1037,29 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        // `xs.items`: each element with its index, a position of `I` for
+        // `[I]T` and an `Int` otherwise.
+        if name.text == "items" {
+            let pair = match &base_ty {
+                Ty::Named { name: list, args } if list == "List" && args.len() == 1 => {
+                    Some((Ty::Int, args[0].clone()))
+                }
+                Ty::Array { index, elem } if index.len() == 1 => {
+                    let at = match &index[0] {
+                        Ty::Pos(domain) => Ty::Pos(domain.clone()),
+                        _ => Ty::Int,
+                    };
+                    Some((at, (**elem).clone()))
+                }
+                _ => None,
+            };
+            if let Some((at, elem)) = pair {
+                return Ty::Named {
+                    name: "List".into(),
+                    args: vec![Ty::Tuple(vec![at, elem])],
+                };
+            }
+        }
         let found = match &base_ty {
             Ty::Record(fields) => {
                 let names: Vec<String> = fields.iter().map(|(n, _)| n.clone()).collect();

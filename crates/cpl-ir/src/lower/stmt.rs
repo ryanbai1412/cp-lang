@@ -1390,8 +1390,16 @@ impl<'a> Lowerer<'a> {
             }
             // `var dp: [Bool]Z = [1, 0]`: a list of as many values as the
             // array has cells, when that count is written as a number.
-            if let (ast::ExprKind::List(items), [DimSpec::Int(len)]) = (&init.kind, dims.as_slice()) {
-                if let (ExprKind::Int(cells), false) = (&len.kind, items.is_empty()) {
+            // `let c: [1..=3]Int = [7, 8, 9]` and `[2..n]Int = [5, 6]` too:
+            // a count known only as the program runs is checked then.
+            if let (ast::ExprKind::List(items), [DimSpec::Int(len) | DimSpec::IntFrom(_, len)]) =
+                (&init.kind, dims.as_slice())
+            {
+                let holds_cells = !items.is_empty()
+                    && !(matches!(elem_ty, Ty::List(_))
+                        && items.first().and_then(|item| self.probe_ty_silent(item)).is_some_and(|ty| !matches!(ty, Ty::List(_))));
+                if let (Some(cells), true) = (written(len), holds_cells) {
+                    let cells = &cells;
                     if *cells != items.len() as i64 {
                         let message = format!(
                             "this array has {}, but the list gives {}",
@@ -1401,9 +1409,19 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::TYPE_MISMATCH, init.span, message);
                         return Some(self.err_expr(init.span));
                     }
+                }
+                if holds_cells {
+                    let known = written(len).is_some();
+                    let len = (**len).clone();
                     let dims = dims.clone();
                     let at = init.span;
                     return Some(self.do_expr(Some(&want.clone()), at, |lw, out| {
+                        if !known {
+                            let count = lw.int_lit(items.len() as i64, at);
+                            let wrong = lw.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(count)), Ty::Bool, at);
+                            let trap = Stmt::Trap("an array literal needs one value per position".to_string(), lw.span(at));
+                            out.push(Stmt::If(wrong, Block { stmts: vec![trap] }, Block::default()));
+                        }
                         let values: Vec<Expr> =
                             items.iter().map(|item| lw.expect(item, &elem_ty)).collect();
                         let mut values = values.into_iter();
@@ -2998,5 +3016,13 @@ pub(super) fn names_a_place(e: &Expr) -> bool {
         ExprKind::Local(_) | ExprKind::Global(_) => true,
         ExprKind::Field(base, _) => names_a_place(base),
         _ => false,
+    }
+}
+
+/// The number `e` is written as, when it is one.
+fn written(e: &Expr) -> Option<i64> {
+    match e.kind {
+        ExprKind::Int(v) => Some(v),
+        _ => None,
     }
 }

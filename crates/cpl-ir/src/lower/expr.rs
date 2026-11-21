@@ -17,7 +17,7 @@ pub(super) struct LoopFrame {
 
 /// True for a bare `..`, which as an index is all of one axis.
 fn is_whole(index: &ast::Expr) -> bool {
-    matches!(index.kind, ast::ExprKind::Range { lo: None, hi: None, step: None, .. })
+    matches!(index.kind, ast::ExprKind::Range { step: None, .. })
 }
 
 /// True for `read()` and `ask(...)` written with no `::<T>`.
@@ -250,6 +250,7 @@ impl<'a> Lowerer<'a> {
                     let whole: Vec<usize> = (0..indices.len()).filter(|&k| is_whole(&indices[k])).collect();
                     if let ([axis], true) = (whole.as_slice(), dims.len() == indices.len()) {
                         let (axis, elem) = (*axis, (**elem).clone());
+                        let dims_at_axis = dims[axis];
                         let at_ty = match dims[axis] {
                             Dim::Pos(d) => Ty::Pos(d),
                             Dim::Bound(d) => Ty::Bound(d),
@@ -273,7 +274,9 @@ impl<'a> Lowerer<'a> {
                             );
                             let value = lw.mk(ExprKind::Index(Box::new(base), cell), ty, span);
                             let lid = lw.fresh_loop();
-                            let iter = Iter::Range { lo: lw.int_lit(0, span), hi: len, step: None, rev: false };
+                            // `g[r, 1..3]`: the part of the row the range names.
+                            let (lo, hi) = lw.axis_part(&indices[axis], dims_at_axis, len, out);
+                            let iter = Iter::Range { lo, hi, step: None, rev: false };
                             let body = Block { stmts: vec![push(lw, value)] };
                             out.push(Stmt::For(lid, at, iter, body));
                         });
@@ -2309,6 +2312,68 @@ impl<'a> Lowerer<'a> {
 
     /// Lowers a slice expression `base[lo..hi]` / `base[lo..=hi]` / `base[..hi]` / `base[lo..]`
     /// on a `List<T>`, `Str`, or `[D]T` into a `List<T>` (or `Str` for `Str`).
+    /// Where `g[r, lo..hi]` starts and stops along its axis of `len`
+    /// cells, counted from 0. `..` is all of it. A part is
+    /// `0 <= lo <= hi <= len`, as for a slice; anything else stops the
+    /// program.
+    fn axis_part(&mut self, range: &ast::Expr, dim: Dim, len: Expr, out: &mut Vec<Stmt>) -> (Expr, Expr) {
+        let span = range.span;
+        let ast::ExprKind::Range { lo, hi, inclusive, .. } = &range.kind else {
+            unreachable!("an axis is taken whole or in part by a range")
+        };
+        if lo.is_none() && hi.is_none() {
+            return (self.int_lit(0, span), len);
+        }
+        let first = match dim {
+            Dim::IntFrom(first) => first,
+            _ => 0,
+        };
+        let cell = |lw: &mut Self, e: &ast::Expr, end: bool| {
+            let hint = match dim {
+                Dim::Pos(d) => Some(Ty::Pos(d)),
+                Dim::Bound(d) => Some(Ty::Bound(d)),
+                Dim::Int | Dim::IntFrom(_) => None,
+            };
+            let v = lw.expr(e, hint.as_ref());
+            let at = match v.ty {
+                Ty::Pos(_) | Ty::Bound(_) => lw.cast(Cast::Ord, v, Ty::Int),
+                _ => {
+                    let v = lw.coerce(v, &Ty::Int, e.span);
+                    lw.int_add(v, -first)
+                }
+            };
+            if end && *inclusive {
+                lw.int_add(at, 1)
+            } else {
+                at
+            }
+        };
+        let lo_e = match lo {
+            Some(lo) => cell(self, lo, false),
+            None => self.int_lit(0, span),
+        };
+        let hi_e = match hi {
+            Some(hi) => cell(self, hi, true),
+            None => len.clone(),
+        };
+        let (lo_slot, hi_slot) = (self.temp(Ty::Int), self.temp(Ty::Int));
+        out.push(Stmt::Let(lo_slot, Some(lo_e)));
+        out.push(Stmt::Let(hi_slot, Some(hi_e)));
+        let (lo_e, hi_e) = (self.local(lo_slot, span), self.local(hi_slot, span));
+        let cmp = |lw: &mut Self, op: CmpOp, l: &Expr, r: &Expr| {
+            lw.mk(ExprKind::Cmp(op, Box::new(l.clone()), Box::new(r.clone())), Ty::Bool, span)
+        };
+        let zero = self.int_lit(0, span);
+        let below = cmp(self, CmpOp::Lt, &lo_e, &zero);
+        let reversed = cmp(self, CmpOp::Lt, &hi_e, &lo_e);
+        let beyond = cmp(self, CmpOp::Gt, &hi_e, &len);
+        let bad = self.mk(ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(reversed)), Ty::Bool, span);
+        let bad = self.mk(ExprKind::Binary(BinOp::Or, Box::new(bad), Box::new(beyond)), Ty::Bool, span);
+        let trap = Stmt::Trap("a slice `a[lo..hi]` needs 0 <= lo <= hi <= a.len".to_string(), self.span(span));
+        out.push(Stmt::If(bad, Block { stmts: vec![trap] }, Block::default()));
+        (lo_e, hi_e)
+    }
+
     fn slice_expr(&mut self, base: Expr, range: &ast::Expr, span: Span) -> Expr {
         let ast::ExprKind::Range {
             lo,
@@ -2526,7 +2591,7 @@ impl<'a> Lowerer<'a> {
                 self.do_expr(Some(&ty), span, |lw, out| {
                     let count = lw.mk(ExprKind::Int(values.len() as i64), Ty::Int, span);
                     let wrong = lw.mk(ExprKind::Cmp(CmpOp::Ne, Box::new(len), Box::new(count)), Ty::Bool, span);
-                    let trap = Stmt::Trap("an array literal needs one value per position".to_string(), span);
+                    let trap = Stmt::Trap("an array literal needs one value per position".to_string(), lw.span(span));
                     out.push(Stmt::If(wrong, Block { stmts: vec![trap] }, Block::default()));
                     let slot = lw.temp(ty.clone());
                     let blank = lw.mk(ExprKind::Fill(vec![dim], None), ty.clone(), span);

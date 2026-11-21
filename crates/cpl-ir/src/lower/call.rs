@@ -4487,8 +4487,18 @@ impl<'a> Lowerer<'a> {
             // `xs.last(k)`: the element `k` back from the last one, so
             // `xs.last(1)` is the one before the last; `none` when there
             // are not that many.
-            (Ty::List(elem), "last") if args.len() == 1 => {
+            (Ty::List(elem), "last") | (Ty::Array { elem, .. }, "last")
+                if args.len() == 1 && !matches!(&ty, Ty::Array { dims, .. } if dims.len() != 1) =>
+            {
                 let elem = (**elem).clone();
+                // An array of positions is read at the position that far in.
+                let of = match &ty {
+                    Ty::Array { dims, .. } => match dims[0] {
+                        Dim::Pos(d) => Some(d),
+                        _ => None,
+                    },
+                    _ => None,
+                };
                 let back = self.expect(&args[0].value, &Ty::Int);
                 self.do_expr(Some(&Ty::opt(elem.clone())), span, |lw, out| {
                     // A list that is named is read where it is; one that is
@@ -4517,7 +4527,11 @@ impl<'a> Lowerer<'a> {
                     };
                     let (ahead, inside) = (cmp(lw, k), cmp(lw, at));
                     let there = lw.mk(ExprKind::Binary(BinOp::And, Box::new(ahead), Box::new(inside)), Ty::Bool, span);
-                    let item = lw.mk(ExprKind::Index(Box::new(list), vec![lw.local(at, span)]), elem.clone(), span);
+                    let cell = match of {
+                        Some(d) => lw.mk(ExprKind::Cast(Cast::FromOrd(d), Box::new(lw.local(at, span))), Ty::Pos(d), span),
+                        None => lw.local(at, span),
+                    };
+                    let item = lw.mk(ExprKind::Index(Box::new(list), vec![cell]), elem.clone(), span);
                     let opt = Ty::opt(elem);
                     let some = lw.mk(ExprKind::Some(Box::new(item)), opt.clone(), span);
                     let none = lw.mk(ExprKind::None, opt.clone(), span);
