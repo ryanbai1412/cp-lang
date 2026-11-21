@@ -11,6 +11,7 @@ import build
 
 ROOT = Path(__file__).resolve().parent
 SHARE_HREF = re.compile(r"#share=([A-Za-z0-9_-]+)")
+GALLERY_PAGES = frozenset({"ports.html", "exemplars.html"})
 
 
 def pack(value):
@@ -30,16 +31,18 @@ def bundle():
             old.unlink()
     build.build()
     pages = {}
+    gallery_pages = {}
     # A Try it link carries its program as base64, which gzip cannot shrink;
-    # the shell re-encodes each from this table of plain payloads.
+    # the shell re-encodes each from a per-part table of plain payloads.
     shares, share_ids = [], {}
+    gallery_shares, gallery_share_ids = [], {}
 
-    def share_ref(encoded):
+    def intern_share(encoded, table, index):
         text = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode()
-        if text not in share_ids:
-            share_ids[text] = len(shares)
-            shares.append(text)
-        return share_ids[text]
+        if text not in index:
+            index[text] = len(table)
+            table.append(text)
+        return index[text]
 
     sidebar = ""
     search_dialog = ""
@@ -61,12 +64,22 @@ def bundle():
         m_course = re.search(r'<script id="course-data" type="application/json">.*?</script>', page, flags=re.S)
         if m_course:
             page = page[:m_course.start()] + "<!--course-data-->" + page[m_course.end():]
-        page = SHARE_HREF.sub(lambda m: f"#share-ref={share_ref(m.group(1))}", page)
-        pages[path.name] = page
+        if path.name in GALLERY_PAGES:
+            page = SHARE_HREF.sub(
+                lambda m: f"#gallery-share-ref={intern_share(m.group(1), gallery_shares, gallery_share_ids)}",
+                page,
+            )
+            gallery_pages[path.name] = page
+        else:
+            page = SHARE_HREF.sub(
+                lambda m: f"#share-ref={intern_share(m.group(1), shares, share_ids)}",
+                page,
+            )
+            pages[path.name] = page
     full_course_data = build.safe_json(build.course_data("*"))
     # Everything but the compiler is text that gzip shrinks about sixfold, so
-    # it ships as one gzip+base64 blob that offline.html unpacks with
-    # DecompressionStream, as compiler.js already does for the WASM.
+    # core docs and port galleries ship as separate gzip+base64 blobs that
+    # offline.html unpacks with DecompressionStream.
     docs = dict(
         pages=pages,
         shares=shares,
@@ -82,9 +95,14 @@ def bundle():
         search=json.dumps([{k: v for k, v in e.items() if k != "text"}
                            for e in json.loads((target / "search.json").read_text())]),
     )
+    gallery = dict(
+        pages=gallery_pages,
+        shares=gallery_shares,
+    )
     payload = dict(
         compiler=(target / "assets/compiler.js").read_text(),
         docs=pack(docs),
+        gallery=pack(gallery),
     )
     shell = (ROOT / "offline.html").read_text()
     shell = shell.replace("{{payload}}", build.safe_json(payload))
@@ -96,9 +114,9 @@ def bundle():
 
 
 # Capped separately because they grow for different reasons: the compiler
-# (gzipped WASM) with the language, the docs blob with duplicated text and by
-# one Ports-gallery page per dream.
-CAPS = {"compiler": 2_100_000, "docs": 700_000}
+# (gzipped WASM) with the language, docs with core documentation, and gallery
+# with port/exemplar showcase pages (loaded lazily in offline.html).
+CAPS = {"compiler": 2_100_000, "docs": 500_000, "gallery": 150_000}
 
 
 def part_sizes(path):

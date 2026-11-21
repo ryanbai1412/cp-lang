@@ -102,6 +102,7 @@ def render_exemplars_html(highlight_fn, root: Path = ROOT) -> tuple[str, list[tu
 
     median_ratio = sorted(p["ratio"] for p in pairs)[len(pairs) // 2] if pairs else 1.0
     featured = pairs[:12]
+    featured_ids = {p["id"] for p in featured}
     parts = [
         '<p class="lead">Generated from the dream corpus, each dream paired with its validated port, '
         'and from the IOI 2025 sketches. '
@@ -144,14 +145,19 @@ def render_exemplars_html(highlight_fn, root: Path = ROOT) -> tuple[str, list[tu
         '</tr></thead><tbody>'
     )
     for p in pairs:
-        try_href = html.escape(_share_href(p["port_src"]))
+        if p["id"] in featured_ids:
+            label = f'<a href="#ex-{html.escape(p["id"])}"><code>{html.escape(p["id"])}</code></a>'
+            action = f'<a href="{html.escape(_share_href(p["port_src"]))}">Try it</a>'
+        else:
+            label = f'<code>{html.escape(p["id"])}</code>'
+            action = '&mdash;'
         parts.append(
-            f'<tr><td><code>{html.escape(p["id"])}</code></td>'
+            f'<tr><td>{label}</td>'
             f'<td><code>{html.escape(p["group"])}</code></td>'
             f'<td>{p["dream_tokens"]}</td>'
             f'<td>{p["port_tokens"]}</td>'
             f'<td>{p["ratio"]:.2f}x</td>'
-            f'<td><a href="{try_href}">Try it</a></td></tr>'
+            f'<td>{action}</td></tr>'
         )
     parts.append('</tbody></table>')
 

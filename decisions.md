@@ -4146,3 +4146,21 @@ no program had the shape, so programs emitting `std::function` stay at 37;
 parity test `rec_fn_param`. Reverse: put `|| self.recursive_fns.contains(&id)`
 back in `compute_template_params` and drop
 `keep_recursive_templates_finite` in `crates/cpl-codegen/src/devirt.rs`.
+
+## 139. Offline bundle splits port galleries into a lazy `gallery` part (2026-11-21)
+
+- **Decision.** `site/bundle.py` ships `ports.html` (keeping its side-by-side
+  `Accepted C++` pane) and `exemplars.html` plus their `#gallery-share-ref=`
+  payloads in a separate gzipped `gallery` part (`CAPS = {"compiler": 2_100_000,
+  "docs": 500_000, "gallery": 150_000}`), unpacked lazily by `site/offline.html`
+  on first visit to a gallery page. `site/exemplars.py` emits `#share=` Try-it
+  links only for the 12 featured side-by-side pairs (linking featured index rows
+  to `#ex-<id>` instead of embedding full port source for every dream in the
+  index table).
+- **Why.** Every new dream in `proto/ports/` previously added ~1.2 KiB gzipped
+  directly into `docs` (pushing `docs` to 611 KiB against the 620 KiB cap).
+  Splitting `gallery` makes `docs` invariant to port count (436 KiB vs 500 KiB
+  cap) and cuts `gallery` to 90 KiB (vs 150 KiB cap) with O(1) featured cards.
+- **Reverse.** Merge `gallery_pages` and `gallery_shares` back into `docs` in
+  `site/bundle.py`, remove `ensureGallery()` in `site/offline.html`, and restore
+  per-row `_share_href` in `site/exemplars.py`.

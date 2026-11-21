@@ -213,20 +213,28 @@ class SiteTests(unittest.TestCase):
         shipped = json.loads(re.search(
             r'<script id="offline-data" type="application/json">(.*?)</script>',
             source, re.S).group(1))
-        self.assertEqual(set(shipped), {"compiler", "docs"})
-        payload = dict(bundle.unpack(shipped["docs"]), compiler=shipped["compiler"])
-        self.assertEqual(set(payload["pages"]),
+        self.assertEqual(set(shipped), {"compiler", "docs", "gallery"})
+        docs_payload = bundle.unpack(shipped["docs"])
+        gallery_payload = bundle.unpack(shipped["gallery"])
+        self.assertTrue(bundle.GALLERY_PAGES.isdisjoint(docs_payload["pages"]))
+        self.assertEqual(set(gallery_payload["pages"]), set(bundle.GALLERY_PAGES))
+        # The ports gallery must keep the side-by-side C++ pane.
+        ports_html = gallery_payload["pages"]["ports.html"]
+        self.assertIn("Accepted C++", ports_html)
+        self.assertIn('class="language-cpp"', ports_html)
+        all_pages = dict(docs_payload["pages"], **gallery_payload["pages"])
+        self.assertEqual(set(all_pages),
                          {name + ".html" for name, *_ in build.PAGES}
                          | {build.error_slug(e["code"]) + ".html" for e in build.ERROR_CATALOG}
                          | {"playground.html", "trace.html"})
         self.assertNotIn("@font-face", source)
         self.assertNotIn("data:font", source)
         self.assertIsInstance(bundle.over_caps(path), dict)
-        self.assertEqual(payload["compiler"].count("const packedWasm ="), 1)
-        self.assertNotIn("const packedWasm =", "".join(payload["pages"].values()))
-        self.assertEqual(len(json.loads(payload["search"])), len(build.PAGES) + len(build.ERROR_CATALOG))
-        self.assertIn("course", payload)
-        self.assertIn("course_data", payload)
+        self.assertEqual(shipped["compiler"].count("const packedWasm ="), 1)
+        self.assertNotIn("const packedWasm =", "".join(all_pages.values()))
+        self.assertEqual(len(json.loads(docs_payload["search"])), len(build.PAGES) + len(build.ERROR_CATALOG))
+        self.assertIn("course", docs_payload)
+        self.assertIn("course_data", docs_payload)
 
     def test_offline_bundle_rebuilds_every_try_it_link_exactly(self):
         import bundle
@@ -237,18 +245,64 @@ class SiteTests(unittest.TestCase):
         shipped = json.loads(re.search(
             r'<script id="offline-data" type="application/json">(.*?)</script>',
             path.read_text(), re.S).group(1))
-        payload = bundle.unpack(shipped["docs"])
+        docs_payload = bundle.unpack(shipped["docs"])
+        gallery_payload = bundle.unpack(shipped["gallery"])
         shell = (ROOT / "offline.html").read_text()
         helper = re.search(r"  const encoder = .*?\n  }\n", shell, re.S).group(0)
         script = helper + "process.stdout.write(JSON.stringify(JSON.parse(require('fs').readFileSync(0, 'utf8')).map(shareHash)));"
-        hashes = json.loads(subprocess.run([node, "-e", script], input=json.dumps(payload["shares"]),
-                                           capture_output=True, text=True, check=True).stdout)
-        for name, page in payload["pages"].items():
+        doc_hashes = json.loads(subprocess.run([node, "-e", script], input=json.dumps(docs_payload["shares"]),
+                                               capture_output=True, text=True, check=True).stdout)
+        gal_hashes = json.loads(subprocess.run([node, "-e", script], input=json.dumps(gallery_payload["shares"]),
+                                               capture_output=True, text=True, check=True).stdout)
+        for name, page in docs_payload["pages"].items():
             self.assertNotIn("#share=", page, name)
-            rebuilt = re.sub(r"#share-ref=(\d+)", lambda m: hashes[int(m.group(1))], page)
+            rebuilt = re.sub(r"#share-ref=(\d+)", lambda m: doc_hashes[int(m.group(1))], page)
             built = (ROOT / "_build" / name).read_text()
             self.assertEqual(re.findall(r"#share=[A-Za-z0-9_-]+", rebuilt),
                              re.findall(r"#share=[A-Za-z0-9_-]+", built), name)
+        for name, page in gallery_payload["pages"].items():
+            self.assertNotIn("#share=", page, name)
+            rebuilt = re.sub(r"#gallery-share-ref=(\d+)", lambda m: gal_hashes[int(m.group(1))], page)
+            built = (ROOT / "_build" / name).read_text()
+            self.assertEqual(re.findall(r"#share=[A-Za-z0-9_-]+", rebuilt),
+                             re.findall(r"#share=[A-Za-z0-9_-]+", built), name)
+
+    def test_offline_bundle_gallery_stops_linear_port_growth(self):
+        import bundle
+        import exemplars
+        base_pairs = exemplars.load_dream_pairs()
+        self.assertGreaterEqual(len(base_pairs), 12)
+        extra_pairs = list(base_pairs)
+        for i in range(50):
+            # Unique ~1.5 KB port source per synthetic dream; previously each added a full #share= payload.
+            src = "\n".join(f"let v_{i}_{k} = {i * 1000 + k}" for k in range(80))
+            extra_pairs.append(dict(
+                id=f"synth{i:03d}",
+                group="ecnerwala",
+                dream_path=f"proto/ports/ecnerwala/dream/synth{i:03d}.cp",
+                port_path=f"proto/ports/ecnerwala/synth{i:03d}.cp",
+                dream_src=src,
+                port_src=src,
+                dream_tokens=160,
+                port_tokens=160,
+                ratio=9.99,
+                summary=f"Synthetic port {i}",
+            ))
+        orig_loader = exemplars.load_dream_pairs
+        try:
+            exemplars.load_dream_pairs = lambda root=exemplars.ROOT: base_pairs
+            base_html, _ = exemplars.render_exemplars_html(build.highlight)
+            exemplars.load_dream_pairs = lambda root=exemplars.ROOT: extra_pairs
+            grown_html, _ = exemplars.render_exemplars_html(build.highlight)
+        finally:
+            exemplars.load_dream_pairs = orig_loader
+        # Non-featured index rows must not embed full-source #share= payloads.
+        self.assertEqual(
+            len(bundle.SHARE_HREF.findall(grown_html)),
+            len(bundle.SHARE_HREF.findall(base_html)),
+        )
+        delta = len(bundle.pack(grown_html)) - len(bundle.pack(base_html))
+        self.assertLess(delta, 4_000, f"50 extra ports grew packed exemplars.html by {delta} bytes")
 
     def test_course_has_ten_sequenced_lessons_and_real_controls(self):
         self.assertEqual(len(build.LESSONS), 10)

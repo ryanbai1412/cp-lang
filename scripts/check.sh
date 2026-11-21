@@ -21,7 +21,8 @@
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the offline site bundle (python3 site/bundle.py) builds; parts
-#            over their caps (compiler 2,100,000 bytes, docs 700,000) warn
+#            over their caps (compiler 2,100,000 bytes, docs 500,000,
+#            gallery 150,000) warn
 #            and site/test_site.py passes (links, reader copy, documented
 #            programs compiled natively; about two minutes)
 # --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
@@ -312,7 +313,7 @@ check_bundle_parts() {
     python3 site/bundle.py --check-caps ||
         printf 'check: WARNING: a site bundle part is over its cap (caps in site/bundle.py)\n' >&2
 }
-step "site bundle: compiler under 2,100,000 bytes, docs under 700,000"
+step "site bundle: compiler under 2,100,000 bytes, docs under 500,000, gallery under 150,000"
 if [ -f dist/cp-lang.html ] && cache_hit site_bundle; then
     bundle_bytes=$(wc -c <dist/cp-lang.html)
     echo "dist/cp-lang.html: $bundle_bytes bytes (cached)"
