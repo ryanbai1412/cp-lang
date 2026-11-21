@@ -26,13 +26,14 @@ fn gap(a: Charge, b: Charge) -> Frac = Frac((a.x - b.x) ** 2, a.q * b.q)
 // Pull of `c` on a unit charge at `x`: q / (x - c.x)^2.
 fn pull(c: Charge, x: Int) -> Frac = Frac(c.q, (x - c.x) ** 2)
 
-// True iff `b` is never weaker than both `a` and `c` for any query point `x > c.x`.
+// True iff `b` is never weaker than both `a` and `c` for any `x > c.x`.
+// Equating `pull(a, x) = pull(b, x)` and `pull(b, x) = pull(c, x)` gives
+// crossover points `x_bc <= x_ab` iff `sqrt(a2) >= sqrt(a1) + sqrt(a3)` where
+// `a1 = (c.x - b.x)^2 * a.q`, `a2 = (c.x - a.x)^2 * b.q`, `a3 = (b.x - a.x)^2 * c.q`.
+// Squaring twice removes the square roots: `a2 >= a1 + a3` and `(a2 - a1 - a3)^2 >= 4 * a1 * a3`.
 fn never_weakest(a: Charge, b: Charge, c: Charge) -> Bool:
-    let (v1, v2, v3) = (c.x - b.x, c.x - a.x, b.x - a.x)
-    let (a1, a2, a3) = (v1 * v1 * a.q, v2 * v2 * b.q, v3 * v3 * c.q)
-    if a2 < a1 + a3: return false
-    let d = I128(a2) - I128(a1) - I128(a3)
-    d * d >= I128(4) * I128(a1) * I128(a3)
+    let (a1, a2, a3) = ((c.x - b.x) ** 2 * a.q, (c.x - a.x) ** 2 * b.q, (b.x - a.x) ** 2 * c.q)
+    a2 >= a1 + a3 and (a2 - a1 - a3) ** 2 >= 4 * a1 * a3
 
 struct Hull:
     pts: List<Charge>
@@ -79,12 +80,14 @@ while colour.components > 1:
         var hulls = GroupTree<Hull>(comp.groups)
         for c in sweep:
             let near = min_by(hulls.others(of: comp[c]).query(ch[c].x), by: h => gap(h, ch[c]))
-            if let h = near: best[comp[c]] max_by= (gap(h, ch[c]), c, h.id), by: e => e.gap
+            if let h = near:
+                let cand = (gap: gap(h, ch[c]), i: c, j: h.id)
+                if best[comp[c]].all(b => cand.gap > b.gap): best[comp[c]] = some(cand)
             hulls.path(of: comp[c]).add(ch[c])
-    for e in best if let e: colour.unite_new(e.i, e.j)
+    for opt in best if let e = opt: colour.unite_new(e.i, e.j)
 
 let weakest = min(
     gap(prev, c)
-    for side in Side for (prev, c) in hull_pairs(C.filter(c => colour.side(c, of: Pin) == side))
+    for side in Side for (prev, c) in hull_pairs([ch[c] for c in C if colour.side(c, of: Pin) == side])
 ) ?? Frac(1, 226_000_000)
 print(weakest.inv)
