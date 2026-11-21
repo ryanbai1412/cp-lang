@@ -3144,3 +3144,20 @@ restoring the `fail` in `check.sh` and appending to `regressions` in
 - **Decision:** Standardize on `prefix(a)` as the single public spelling for static prefix sums across `List<T>`, `[D]T`, and `[R, C]T`. Keep `prefix_n`, `prefix1`, and `prefix2` in `stdlib/prefix.cp` as the underlying monomorphic constructors dispatched by `BUILT_ON`, and add taste lint `L0513` (`prefix_twin`) with `cpl lint --fix` rewriting `prefix_n(a)` / `prefix1(a)` / `prefix2(a)` to `prefix(a)`.
 - **Reason:** The prelude already dispatches `prefix(a)` cleanly by argument type to `PrefixN<T>`, `Prefix1<D, T>`, and `Prefix2<R, C, T>`, so users never need to remember or import the dimension-suffixed helpers. Rewriting existing ports removes `use std.prefix.{prefix_n}` boilerplate and unifies the family under one guessable name without adding core privilege.
 - **Reverse:** Remove `L0513` (`PREFIX_TWIN`) from `crates/cpl-lint`.
+
+## 81. `std.slope.{Concave, Convex}`: the slope trick as a library type (2026-11-21)
+
+**Decision.** A concave function on integer points is `f(lo)` plus its
+falling slopes in a `LazyTreap`; `max_convolve` merges slopes,
+`add_quadratic(q)` adds a rank-indexed progression read from three values of
+`q` (a fourth and the sign of `q''` are checked), and `at`/`max` read it
+back. `Convex` wraps a negated `Concave`, one design for both. `cf2084g2`
+drops its hand-written treap lambdas for it.
+**Why.** The `apply`/`compose`/`split` lambdas were the slope trick itself,
+which every slope-trick port would rewrite; the operations name the
+recurrence (`dp(c) = max(dp(c), dp(c - 1))` is `max_convolve(flat(0..=1))`).
+**Cost.** +3.3 KB emitted in `cf2084g2` (the struct and `to_list`), runtime
+within 1.1x of the bare treap and 0.8x the original.
+**Reversal.** Delete `stdlib/slope.cp` and restore the `LazyTreap` port from
+history; nothing else depends on it.
+

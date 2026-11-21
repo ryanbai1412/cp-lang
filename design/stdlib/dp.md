@@ -378,6 +378,46 @@ The integer searches existed; ports kept writing loops because the answer
 space was huge (`0..=2e18`) or real. `bsearch_first` handles any `Int`
 range in `O(log)` without overflow, and `bsearch_real` covers the rest.
 
+### 6.7 Concave functions as sorted slopes (`cf2084g2`)
+
+`cf2084g2`'s DP over the number of evens `c` is concave, and the port drove
+a `LazyTreap` with `apply`/`compose`/`split` lambdas to keep its slopes. The
+lambdas are the slope trick, not the problem, so `std.slope` owns them:
+`Concave` is an integer function on `lo..=hi` kept as `f(lo)` plus its
+slopes `f(c + 1) - f(c)` in falling order, and `Convex` is its negation.
+
+| op | meaning | cost |
+|---|---|---|
+| `Concave.point(d)` | 0 at `d` only | O(1) |
+| `Concave.flat(lo..=hi)` | 0 on `lo..=hi` | O(len log len) expected |
+| `f.max_convolve(g)` | `f(c) = max over a + b = c of f(a) + g(b)` | O(\|g\| log n) expected |
+| `f.add_quadratic(q)` | `f(c) += q(c)` | O(1) |
+| `f.at(c)`, `f.max()` | a value, the maximum | O(c - lo + log n), O(n) |
+
+Laws: the max-plus convolution of concave functions merges their slope
+multisets, so the domains add and nothing is recomputed. Adding a quadratic
+adds an arithmetic progression by rank: slope `j` gains `q(lo + j + 1) -
+q(lo + j)`. `add_quadratic` reads `q` at `lo`, `lo + 1` and `lo + 2`, traps
+unless `q(lo + 3)` agrees (so `q` is quadratic) and unless `q'' <= 0`, which
+keeps the slopes sorted. `Convex` mirrors every operation (`min_convolve`,
+`min`, `q'' >= 0`); this is the `add_left`/`add_right` slope trick of §7 on
+integer points, with the breakpoints read as unit-step slopes.
+
+```cp
+var dp = Concave.point(0)
+for k in 0..n:
+    dp.add_quadratic(c => gain(k, c))
+    if let is_even = fixed_even[k + 1]:
+        dp.max_convolve(Concave.point(Int(is_even)))
+    else:
+        dp.max_convolve(Concave.flat(0..=1))
+print((dp.at(half) + n * (n + 1) * (n + 1) / 2) / 2)
+```
+
+Not yet: hinge adds `max(0, c - a)` (a rank-range add on the treap) and
+prefix minima, which finish the breakpoint form; they land with the first
+port that needs them.
+
 ## 7. The maximal version
 
 The most ambitious version of this area makes every DP technique a single
@@ -386,7 +426,7 @@ predicate, unimodality, Monge, quadrangle, convexity) is a `law` the
 debugger and `cpl stress` check on small inputs automatically when the
 function is called in debug builds, so a wrong application fails on the
 first sample rather than at WA on test 37. It adds the rest of the hard
-end (slope trick as a structure with `add_left`/`add_right`/`min`, kinetic
+end (the rest of the slope trick beyond §6.7's `std.slope`: hinge adds and prefix minima, kinetic
 segment trees, SMAWK, the monotone CHT deque for O(1) amortized, `Bits<D>`
 subset loops, a typed `@rolling` table) and gives `@memo` a bottom-up
 `into` table so a top-down DP can be flipped to an iterative one with one

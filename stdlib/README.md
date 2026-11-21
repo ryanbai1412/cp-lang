@@ -451,6 +451,8 @@ is evidence, not a proof.
   `parallel_bsearch`.
 - `dp.cp`: `Line`, `LiChao`, `monotone_minima`, `dnc_layer`,
   `monge_path`, `knuth`, `aliens`, `subset_sums` (SOS is `ntt.cp`'s `sos`).
+- `slope.cp`: `Concave` and `Convex`, integer functions kept as sorted slopes
+  (slope trick).
 - `graph.cp`: `Graph`, `bfs`, `dijkstra`, `topo` (including vertexless
   `topo::<V>`), `scc`, `components`, `condense`, `two_edge_components`,
   `articulation_points`, `biconnected_components`, `two_color`.

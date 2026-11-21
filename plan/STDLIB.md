@@ -1621,6 +1621,23 @@ fn subset_sums(xs: List<Int>) -> List<Int>    // O(2^n), sorted
 // sums over subsets / supersets: std.ntt.sos(mut f, over: Sub | Sup = Sub, inverse: Bool = false) (4.5)
 ```
 
+#### `std.slope` [new]: the slope trick
+
+A concave (or convex) function on the integers `lo..=hi`, kept as its value
+at `lo` plus its slopes in a lazy treap. Laws and the worked port:
+`design/stdlib/dp.md` §6.7.
+
+```cp
+struct Concave
+fn Concave.point(d: Int) -> Concave          // O(1); 0 at d only
+fn Concave.flat(r: Range<Int>) -> Concave    // O(len log len) expected; 0 on r
+fn max_convolve(mut self, g: Concave)        // O(|g| log n) expected; merge slopes
+fn add_quadratic(mut self, q: Int -> Int)    // O(1); q quadratic, q'' <= 0
+fn at(mut self, c: Int) -> Int               // O(c - lo + log n) expected
+fn max(mut self) -> Int                      // O(n)
+struct Convex // same, with min_convolve, min and q'' >= 0
+```
+
 ### 4.17 `std.derive`: field-wise traits
 
 The `Eq`, `Ord` and `Show` a struct gets field by field, written on
