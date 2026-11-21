@@ -3,6 +3,8 @@
 // doesn't shrink A; past that point every multiplier shrinks A, so fewer than 70
 // more can ever be afforded: a DP over (prefix, count bought) keeps the most tokens.
 // Plain coupons (t = 1) go last, cheapest first.
+use std.math.{Ratio}
+
 @grader
 fn max_coupons(a0: 0..=1e9, p: [C]1..=1e9, t: [C]1..=4) -> List<C>:
     let cap = 3e14                                   // more than every price combined

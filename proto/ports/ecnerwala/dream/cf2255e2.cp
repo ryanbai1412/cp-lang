@@ -5,6 +5,7 @@
 // |value|; after one, the value is constant and the recorded history fixed. Tags
 // compose in O(1): one dual segment tree (range apply, point get) does everything.
 use std.algebra.{MaxSub}
+use std.math.{sign}
 
 enum Sign: neg = -1, zero = 0, pos = 1
 

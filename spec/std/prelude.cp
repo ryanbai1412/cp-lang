@@ -23,7 +23,7 @@ use std.heap.{MaxHeap, MinHeap}
 use std.interval.{IntervalMap}
 use std.lazy.{AddMax, AddMin, AddSum, AssignMax, AssignMin, AssignSum, LazySegTree}
 use std.marks.{Marks}
-use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm, sign}
+use std.math.{Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix}
 use std.search.{bsearch_first, bsearch_last}
