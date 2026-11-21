@@ -1,10 +1,15 @@
-// A tridiagonal {0, 1} matrix with 1 above and -1 below has determinant equal to
-// its continuant: the subtractive Euclid walk on (z, x - z) recovers a diagonal
-// for x iff gcd(x, z) = 1. Starting z near x / phi keeps the walk under 80 steps.
-fn continuant_diag(x: Int, z: Int, lim: Int) -> ?List<0..=1>:
+// Codeforces 2138 E1: Determinant Construction (Easy Version).
+// The tridiagonal matrix with diagonal d, 1 above and -1 below has determinant
+// K(d), the continuant: K(d ++ [c]) = c * K(d) + K(d without its last entry).
+// With entries in {0, 1} that recurrence is the subtractive Euclid walk run
+// backwards, so x is reached from the pair (z, x - z) exactly when gcd(x, z) = 1,
+// and z near x / phi keeps the walk short. The side length is at most 80.
+
+// The diagonal built by the walk from (z, x - z) down to (1, 1), if it fits in `room`.
+fn walk(x: Int, z: Int, room: Int) -> ?List<0..=1>:
     var (a, b) = (z, x - z)
     var diag: List<0..=1> = [1]
-    while diag.len < lim:
+    while diag.len < room:
         if a < b:
             diag.push(0)
             (a, b) = (b, a)
@@ -14,30 +19,22 @@ fn continuant_diag(x: Int, z: Int, lim: Int) -> ?List<0..=1>:
             (a, b) = (b, a - b)
     none
 
-fn find_diag(x: Int, lim: Int) -> List<0..=1>:
+// Candidates z in 1..x, nearest to x / phi first.
+fn nearest_walk(x: Int, room: Int) -> List<0..=1>:
     let z0 = max(1, min(x - 1, x * 618_033_989 / 1_000_000_000))
     for d in 0..x:
-        if z0 + d < x:
-            if let diag = continuant_diag(x, z0 + d, lim): return diag
-        if d > 0 and z0 - d >= 1:
-            if let diag = continuant_diag(x, z0 - d, lim): return diag
+        for z in [z0 + d, z0 - d] if 1 <= z and z < x and (d > 0 or z == z0):
+            if let diag = walk(x, z, room): return diag
     []
 
 @!multitest
 let x: 0..=10_000_000 = read()
-if x <= 1:
-    print(1)
-    print(x)
-    return
-
-let diag = find_diag(x, 80)
-let n = diag.len
-var m: [0..n][0..n] - 1..=1 = 0
-for i in 0..n:
-    m[i][i] = diag[i]
-    if i + 1 < n:
-        m[i][i + 1] = 1
-        m[i + 1][i] = -1
-
-print(n)
-for row in m: print(row)
+let diag = if x <= 1: [x] else: nearest_walk(x, room: 80)
+domain N = 0..diag.len
+print(N.count)
+print(
+    [N, N] (
+        i,
+        j,
+    ) => if i == j: diag[i.to_idx] elif j.to_idx == i.to_idx + 1: 1 elif i.to_idx == j.to_idx + 1: -1 else: 0
+)
