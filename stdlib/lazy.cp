@@ -18,14 +18,17 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
     size: Int
     log: Int
 
-    /// A tree over `a`, or with the identity everywhere when no array is given. O(n).
-    pub fn new(act: Action<T, F>, a: ?[D]T = none) -> LazySegTree<D, T, F>:
+    /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(n).
+    pub fn new(act: Action<T, F>, a: ?[D]T = none, fill: ?T = none) -> LazySegTree<D, T, F>:
         let size = bit_ceil(D.K)
         var t = List.filled(2 * size, act.over.id)
         var span = List.filled(2 * size, 0)
         for i in 0..D.K: span[size + i] = 1
         if let init = a:
+            assert fill == none, "pass either `a` or `fill`, not both"
             for i in D: t[size + i.to_idx] = init[i]
+        elif let v = fill:
+            for i in 0..D.K: t[size + i] = v
         for p in (1..size).rev:
             t[p] = act.over.op(t[2 * p], t[2 * p + 1])
             span[p] = span[2 * p] + span[2 * p + 1]
@@ -179,6 +182,103 @@ pub const AssignSum = Action<Int, ?Int>(
 pub const AssignMin = Action<Int, ?Int>(none, (f, g) => f ?? g, (f, x, len) => f ?? x, over: min)
 /// Overwrite every position, fold with `max`.
 pub const AssignMax = Action<Int, ?Int>(none, (f, g) => f ?? g, (f, x, len) => f ?? x, over: max)
+/// Affine update `(mul, add)` over `+` for `Int`: `x -> mul * x + add`.
+pub const AffineSum = Action<Int, (Int, Int)>(
+    (1, 0),
+    (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+    (f, val, span) => f.0 * val + f.1 * span,
+    over: +,
+)
+
+/// Generic affine update `(mul, add)` over `+` for any ring `T` (`Int`, `Mod<P>`). O(1).
+pub fn affine_sum<T>() -> Action<T, (T, T)>:
+    Action<T, (T, T)>(
+        (T.one, T.zero),
+        (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+        (f, val, span) => f.0 * val + f.1 * T(span),
+        over: +,
+    )
+
+/// Range update, point query: no fold monoid, no pulls, no span array.
+/// `compose(new_f, old_f)` applies `old_f` first then `new_f`; `apply(f, x)` updates a single leaf.
+/// `apply`, `get`, `set`, and `update` are O(log n); memory is n leaves plus bit_ceil(n) tags.
+pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) -> T):
+    val: List<T>
+    lz: List<F>
+    size: Int
+    log: Int
+
+    /// A dual tree over `a` or filled with `fill`. O(n).
+    pub fn new(
+        id: F,
+        compose: (F, F) -> F,
+        apply: (F, T) -> T,
+        a: ?[D]T = none,
+        fill: ?T = none,
+    ) -> DualSegTree<D, T, F>:
+        let size = bit_ceil(D.K)
+        var val: List<T> = []
+        if let init = a:
+            assert fill == none, "pass either `a` or `fill`, not both"
+            val = [init[i] for i in D]
+        elif let v = fill:
+            val = List.filled(D.K, v)
+        else:
+            assert D.K == 0, "DualSegTree.new needs `a:` or `fill:` for a non-empty domain"
+        DualSegTree(id, compose, apply, val, List.filled(size, id), size, ctz(size))
+
+    fn put(mut self, p: Int, f: F):
+        unchecked:
+            if p < size: lz[p] = compose(f, lz[p])
+            else:
+                let idx = p - size
+                if idx < val.len: val[idx] = apply_fn(f, val[idx])
+
+    fn push(mut self, p: Int):
+        unchecked:
+            self.put(2 * p, lz[p])
+            self.put(2 * p + 1, lz[p])
+            lz[p] = id
+
+    fn open(mut self, l: Int, h: Int):
+        for i in (1..=log).rev:
+            if ((l >> i) << i) != l: self.push(l >> i)
+            if ((h >> i) << i) != h: self.push((h - 1) >> i)
+
+    /// Apply tag `f` to every position in `r`. O(log n).
+    pub fn apply(mut self, r: Range<D>, f: F):
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        let (l0, h0) = (lo + size, hi + size)
+        self.open(l0, h0)
+        var (l, h) = (l0, h0)
+        while l < h:
+            if l % 2 == 1:
+                self.put(l, f)
+                l += 1
+            if h % 2 == 1:
+                h -= 1
+                self.put(h, f)
+            l /= 2
+            h /= 2
+
+    /// Current value at position `i`. O(log n).
+    pub fn get(mut self, i: D) -> T:
+        let p = i.to_idx + size
+        for k in (1..=log).rev: self.push(p >> k)
+        val[i.to_idx]
+
+    /// Overwrite position `i` with `x`. O(log n).
+    pub fn set(mut self, i: D, x: T):
+        let p = i.to_idx + size
+        for k in (1..=log).rev: self.push(p >> k)
+        val[i.to_idx] = x
+
+    /// Replace position `i` with `f(cur)` in one O(log n) pass.
+    pub fn update(mut self, i: D, f: T -> T):
+        let p = i.to_idx + size
+        for k in (1..=log).rev: self.push(p >> k)
+        val[i.to_idx] = f(val[i.to_idx])
 
 fn brute<D>(a: [D]Int, r: Range<D>, pick: Int) -> Int:
     if pick == 0: return sum(a[v] for v in r)
@@ -426,4 +526,55 @@ fn custom_clamp_action_with_update():
         st.update(i, x => x + 1)
         assert st.fold(l..=r) == max(a[v] for v in l..=r)!
         assert st.all == max(a[v] for v in V)!
+    for v in V: assert st.get(v) == a[v]
+
+@test
+fn fill_and_affine_sum_match_brute():
+    domain V = 0..7
+    var dp = LazySegTree<V, Int>(AddMax, fill: 0)
+    assert dp.all == 0
+    dp.apply(V(1)..=V(4), 5)
+    assert dp.all == 5 and dp.get(V(0)) == 0 and dp.get(V(3)) == 5
+
+    var a = [V] _ => rand(-5, 5)
+    var st = LazySegTree<V, Int>(AffineSum, a)
+    for _ in 0..50:
+        let l = V.nth(rand(0, 6))
+        let r = V.nth(rand(l.to_idx, 6))
+        let mul = rand(-2, 3)
+        let add = rand(-4, 4)
+        for v in l..=r: a[v] = a[v] * mul + add
+        st.apply(l..=r, (mul, add))
+        assert st.fold(l..=r) == sum(a[v] for v in l..=r)
+
+@test
+fn dual_segtree_non_commutative_tags_match_brute():
+    // Non-commutative affine tag (mul, add) applied to ranges, point queries and updates.
+    domain V = 1..=11
+    var a = [V] _ => rand(-5, 5)
+    var st = DualSegTree<V, Int, (Int, Int)>(
+        id: (1, 0),
+        compose: (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
+        apply: (f, x) => f.0 * x + f.1,
+        a: a,
+    )
+    for _ in 0..100:
+        let kind = rand(0, 3)
+        if kind <= 1:
+            let l = V.nth(rand(0, 10))
+            let r = V.nth(rand(l.to_idx, 10))
+            let (m, b) = (rand(-2, 2), rand(-6, 6))
+            for v in l..=r: a[v] = m * a[v] + b
+            st.apply(l..=r, (m, b))
+        elif kind == 2:
+            let i = V.nth(rand(0, 10))
+            let x = rand(-10, 10)
+            a[i] = x
+            st.set(i, x)
+        else:
+            let i = V.nth(rand(0, 10))
+            a[i] = a[i] * 3 - 1
+            st.update(i, x => x * 3 - 1)
+        let q = V.nth(rand(0, 10))
+        assert st.get(q) == a[q]
     for v in V: assert st.get(v) == a[v]

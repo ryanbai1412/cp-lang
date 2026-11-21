@@ -8,30 +8,32 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 
 | Module | Key exports | Purpose |
 | --- | --- | --- |
-| `std.algebra` | `Monoid`, `Action`, `Desc`, `desc`, `Reversible`, `fold` | Algebraic traits and descending key wrapper |
+| `std.algebra` | `Monoid`, `Action`, `Desc`, `desc`, `Reversible`, `MaxSub`, `fold` | Algebraic traits, Kadane monoid, descending key wrapper |
 | `std.bag` | `SortedBag` | Ordered multiset with `.count(x)` and `.remove_one(x)` |
 | `std.bitset` | `Bitset` | Fixed-domain bitset with bitwise ops and `.first_set` |
 | `std.deque` | `Deque` | Double-ended queue (`.push_front`, `.pop_front`, `Deque.of`) |
 | `std.dsu` | `Dsu` | Disjoint set union with `.mark()` / `.undo_to(snap)` rollback |
-| `std.fenwick` | `Fenwick`, `XorFenwick`, `Fenwick2D` | 1D/2D Fenwick trees and XOR Fenwick |
+| `std.fenwick` | `Fenwick`, `XorFenwick`, `Fenwick2D`, `DualFenwick`, `RangeFenwick` | 1D/2D Fenwick, XOR, range-add/point-get, and range-add/range-sum |
 | `std.flow` | `Arc`, `FlowGraph`, `max_weight_matching` | Dinic max flow and Hungarian matching |
 | `std.geometry` | `Pt`, `dot`, `cross`, `turn`, `ByAngle`, `area2`, `locate` | Exact 2D geometry and angular sorting |
 | `std.graph` | `Graph`, `Tree<V>`, `bfs`, `dijkstra`, `peel`, `topo`, `scc`, `two_color` | CSR graphs, implicit-neighbor algorithms, `Tree<V>` alias |
 | `std.grid` | `Dir4`, `Dir8`, `step`, `ray` | 4- and 8-direction grid movement helpers |
 | `std.heap` | `MinHeap`, `MaxHeap` | Binary priority queues |
-| `std.lazy` | `LazySegTree`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax` | Lazy-propagation segment tree and stock actions |
+| `std.lazy` | `LazySegTree`, `DualSegTree`, `AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`, `AffineSum`, `affine_sum` | Lazy and dual segment trees and stock actions |
 | `std.marks` | `Marks` | Generation-stamped O(1)-reset visited table |
 | `std.math` | `gcd`, `lcm`, `ext_gcd`, `ceil_div`, `Sieve`, `factor`, `divisors`, `crt`, `bit_len` | Number theory, primes, CRT, bit helpers |
+| `std.mo` | `mo_order`, `mo_steps` | Mo's offline range-query ordering and window transitions |
 | `std.mod` | `Mod<P>`, `Comb<P>` | Compile-time and runtime modular arithmetic and combinatorics |
-| `std.prefix` | `Prefix1`, `Prefix2`, `PrefixN`, `prefix1`, `prefix2`, `prefix_n` | 1D, 2D, and N-D prefix sums |
+| `std.prefix` | `Prefix1`, `Prefix2`, `PrefixN`, `prefix1`, `prefix2`, `prefix_n`, `prefix_fold`, `suffix_fold`, `Diff1`, `Diff2` | 1D/2D/N-D prefix sums, prefix/suffix monoid folds, difference arrays |
 | `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |
 | `std.segtree` | `SegTree` | Point-update, range-fold segment tree with `.max_right`/`.min_left` |
 | `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `bsearch_first`, `bsearch_last` | Sequence views, searches, folds, `Perm<V>` alias |
-| `std.sparse` | `SparseTable`, `idempotent` | O(1) idempotent range queries |
+| `std.sparse` | `SparseTable`, `DisjointSparseTable`, `idempotent` | O(1) idempotent and non-idempotent associative range folds |
 | `std.spec` | `convexity_break`, `monge_break`, `dnc_break`, `knuth_break`, `berlekamp_massey`, `differences`, `newton` | Conjecture checking and sequence/recurrence discovery |
 | `std.strings` | `z_function`, `prefix_function`, `suffix_array`, `lcp_array`, `rfind`, `period`, `HashVal` | Linear-time string algorithms and rolling hashes |
 | `std.tour` | Tour re-exports | Euler tour utilities |
 | `std.tree` | `Rooted<V>` | Rooted tree, Euler tour, LCA, HLD path queries, virtual trees |
+| `std.window` | `MonoDeque`, `WindowFold` | Sliding-window extrema and inverse-free monoid window folds |
 
 ## Prelude collections
 

@@ -31,6 +31,48 @@ pub fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool:
         if op(x, x) != x: return false
     true
 
+/// Disjoint sparse table: O(n log n) build and memory, O(1) range fold for ANY associative
+/// operation — no idempotence and no inverse required (matrix products, `Mod<P>` products,
+/// `MaxSub`, string concatenation). Asserts `not r.is_empty`.
+pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
+    base: List<T>
+    levels: List<List<T>>
+
+    pub fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>:
+        let n = D.K
+        let base = [a[i] for i in D]
+        var levels: List<List<T>> = []
+        if n <= 1: return DisjointSparseTable(op, base, levels)
+        var k = 0
+        var half = 1
+        while half < n:
+            var row = base
+            var mid = half
+            while mid < n:
+                var i = mid - 2
+                while i >= mid - half:
+                    row[i] = op(base[i], row[i + 1])
+                    i -= 1
+                var j = mid + 1
+                let hi = min(mid + half, n)
+                while j < hi:
+                    row[j] = op(row[j - 1], base[j])
+                    j += 1
+                mid += 2 * half
+            levels.push(row)
+            half *= 2
+            k += 1
+        DisjointSparseTable(op, base, levels)
+
+    /// Fold of a non-empty range `r`, left to right. O(1). Asserts `not r.is_empty`.
+    pub fn fold(self, r: Range<D>) -> T:
+        let (lo, hi) = r.ends
+        assert lo < hi
+        let r1 = hi - 1
+        if lo == r1: return base[lo]
+        let k = bit_width(lo ^ r1) - 1
+        op(levels[k][lo], levels[k][r1])
+
 @test
 fn range_min_matches_brute_force():
     domain V = 1..=13
@@ -61,3 +103,18 @@ fn idempotence_separates_min_from_sum():
     assert idempotent::<Int>(min, [-2, 0, 7])
     assert idempotent::<Int>(&, [-2, 0, 7])
     assert not idempotent::<Int>(+, [-2, 0, 7])
+
+@test
+fn disjoint_sparse_table_handles_non_idempotent_non_commutative_folds():
+    domain V = 1..=13
+    let a = [V] _ => rand(-20, 20)
+    let st_sum = DisjointSparseTable<V, Int>(+, a)
+    for l in V:
+        for r in l..=V.last:
+            assert st_sum.fold(l..=r) == sum(a[v] for v in l..=r)
+    domain P = 0..7
+    let words = [P] p => ["a", "b", "c", "d", "e", "f", "g"][p.to_idx]
+    let st_cat = DisjointSparseTable<P, Str>((x, y) => x + y, words)
+    assert st_cat.fold(P(0)..=P(6)) == "abcdefg"
+    assert st_cat.fold(P(2)..=P(4)) == "cde"
+    assert st_cat.fold(P(5)..=P(5)) == "f"

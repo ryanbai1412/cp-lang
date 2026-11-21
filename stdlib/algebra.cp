@@ -84,6 +84,47 @@ pub fn fold<T, M>(m: M, xs: List<T>) -> T:
         acc = k.op(acc, x)
     acc
 
+/// Maximum non-empty subarray summary (Kadane monoid).
+/// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.empty` in O(1);
+/// `s.scale(k)` scales every element by non-negative `k` in O(1).
+/// Implements `Reversible` (swapping `pre` and `suf`) for tree-path folds.
+pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
+    /// Identity element representing an empty subarray. O(1).
+    pub fn empty() -> MaxSub = MaxSub(false, 0, 0, 0, 0)
+
+    /// Single-element summary for `v`. O(1).
+    pub fn of(v: Int) -> MaxSub = MaxSub(true, v, v, v, v)
+
+    /// Concatenate two adjacent summaries left to right. O(1).
+    pub fn join(a: MaxSub, b: MaxSub) -> MaxSub:
+        if not a.has: return b
+        if not b.has: return a
+        MaxSub(
+            true,
+            max(a.best, b.best, a.suf + b.pre),
+            a.total + b.total,
+            max(a.pre, a.total + b.pre),
+            max(b.suf, a.suf + b.total),
+        )
+
+    /// Scale every underlying value by `k >= 0`. O(1).
+    pub fn scale(self, k: Int) -> MaxSub:
+        assert k >= 0
+        if not has: self
+        else: MaxSub(true, best * k, total * k, pre * k, suf * k)
+
+    /// Best non-empty subarray sum, or `none` when empty. O(1).
+    pub @get fn try_best(self) -> ?Int = if has: best else: none
+
+    /// The `Monoid<MaxSub>` value for `SegTree` and `fold`. O(1).
+    pub fn monoid() -> Monoid<MaxSub> = Monoid(MaxSub.empty(), (a, b) => MaxSub.join(a, b))
+
+impl Add for MaxSub:
+    fn add(a, b) = MaxSub.join(a, b)
+
+impl Reversible for MaxSub:
+    fn rev(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
+
 @test
 fn bare_operators_bring_their_identity():
     assert Monoid<Int>.of(+).id == 0 and Monoid<Int>.of(*).id == 1
@@ -168,3 +209,29 @@ impl Reversible for Word:
 fn plain_values_are_their_own_reverse():
     assert 5.rev() == 5 and (3, 4).rev() == (3, 4)
     assert Word("abc").rev() == Word("cba")
+
+@test
+fn max_sub_monoid_laws_and_kadane():
+    let samples = [
+        MaxSub.empty(),
+        MaxSub.of(-5),
+        MaxSub.of(3),
+        MaxSub.of(-2) + MaxSub.of(4),
+        MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2),
+    ]
+    assert laws_hold(MaxSub.monoid(), samples)
+    assert MaxSub.empty().try_best == none
+    let xs = [-3, 4, -1, 2, -5, 3, 2, -1]
+    var got = MaxSub.empty()
+    for x in xs: got = got + MaxSub.of(x)
+    var want = Int.MIN
+    for l in 0..xs.len:
+        var s = 0
+        for r in l..xs.len:
+            s += xs[r]
+            want max= s
+    assert got.best == want and got.try_best == want
+    assert got.scale(3).best == want * 3
+    let a = MaxSub.of(2) + MaxSub.of(-1) + MaxSub.of(5)
+    let b = MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2)
+    assert a.rev() == b

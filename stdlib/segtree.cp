@@ -15,13 +15,17 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// What each position holds, for a tree built with `of`.
     source: ?(D -> T)
 
-    /// A tree over `a`, or with the identity everywhere when no array is given. O(n).
-    pub fn new<M>(op: M, a: ?[D]T = none) -> SegTree<D, T>:
+    /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(n).
+    pub fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> SegTree<D, T>:
         let m = Monoid<T>.of(op)
         let size = bit_ceil(D.K)
         var t = List.filled(2 * size, m.id)
         if let init = a:
+            assert fill == none, "pass either `a` or `fill`, not both"
             for i in D: t[size + i.to_idx] = init[i]
+            for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
+        elif let v = fill:
+            for i in 0..D.K: t[size + i] = v
             for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
         SegTree(m, t, size, none)
 
@@ -201,3 +205,13 @@ fn update_changes_one_value_in_place():
     st.update(V(2), x => x + 10)
     st.update(V(5), x => x * 2)
     assert st.get(V(2)) == 12 and st.get(V(5)) == 10 and st.all == 15 + 10 + 5
+
+@test
+fn fill_option_initializes_leaves_without_array():
+    domain V = 1..=5
+    var st = SegTree<V, Int>(max, fill: 0)
+    assert st.all == 0 and st.get(V(3)) == 0
+    st.set(V(2), -4)
+    assert st.fold(V(2)..=V(2)) == -4 and st.all == 0
+    let summed = SegTree<V, Int>(+, fill: 7)
+    assert summed.all == 35 and summed.fold(V(2)..=V(4)) == 21

@@ -133,6 +133,101 @@ pub struct Fenwick2D<R, C, T>:
         if r1 == r2 or c1 == c2: return T.zero
         self.corner(r2, c2) - self.corner(r1, c2) - self.corner(r2, c1) + self.corner(r1, c1)
 
+/// Range add and point get via a difference Fenwick tree.
+/// `DualFenwick<D, Int>()` starts at zero and `DualFenwick<D, Int>(a)` from an array, in O(n).
+/// `add` and `get` are O(log n); memory is n + 1 values.
+pub struct DualFenwick<D, T>:
+    t: List<T>
+
+    pub fn new(a: ?[D]T = none) -> DualFenwick<D, T>:
+        var f = DualFenwick(List.filled(D.K + 1, T.zero))
+        if let init = a:
+            var prev = T.zero
+            for i in D:
+                let diff = init[i] - prev
+                prev = init[i]
+                let p = i.to_idx + 1
+                f.t[p] = f.t[p] + diff
+                let q = p + (p & -p)
+                if q <= D.K: f.t[q] = f.t[q] + f.t[p]
+        f
+
+    fn add_at(mut self, p0: Int, x: T):
+        var p = p0
+        while p < t.len:
+            t[p] = t[p] + x
+            p += p & -p
+
+    /// Add `x` to every position in `r`. O(log n).
+    pub fn add(mut self, r: Range<D>, x: T):
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.add_at(lo + 1, x)
+        if hi < D.K: self.add_at(hi + 1, T.zero - x)
+
+    /// Current value at position `i`. O(log n).
+    pub fn get(self, i: D) -> T:
+        var p = i.to_idx + 1
+        var acc = T.zero
+        while p > 0:
+            acc = acc + t[p]
+            p -= p & -p
+        acc
+
+/// Range add and range sum over `Int` using two Fenwick arrays.
+/// `RangeFenwick<D>()` starts at zero and `RangeFenwick<D>(a)` from an array, in O(n).
+/// `add`, `prefix` and `sum` are O(log n); memory is 2 * (n + 1) ints.
+pub struct RangeFenwick<D>:
+    b1: List<Int>
+    b2: List<Int>
+
+    pub fn new(a: ?[D]Int = none) -> RangeFenwick<D>:
+        var f = RangeFenwick(List.filled(D.K + 1, 0), List.filled(D.K + 1, 0))
+        if let init = a:
+            var prev = 0
+            for i in D:
+                let diff = init[i] - prev
+                prev = init[i]
+                let p = i.to_idx + 1
+                f.b1[p] += diff
+                f.b2[p] += diff * i.to_idx
+                let q = p + (p & -p)
+                if q <= D.K:
+                    f.b1[q] += f.b1[p]
+                    f.b2[q] += f.b2[p]
+        f
+
+    fn add_at(mut self, p0: Int, v1: Int, v2: Int):
+        var p = p0
+        while p < b1.len:
+            b1[p] += v1
+            b2[p] += v2
+            p += p & -p
+
+    /// Add `x` to every position in `r`. O(log n).
+    pub fn add(mut self, r: Range<D>, x: Int):
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.add_at(lo + 1, x, x * lo)
+        if hi < D.K: self.add_at(hi + 1, -x, -x * hi)
+
+    /// The sum of everything left of boundary `b`. O(log n).
+    pub fn prefix(self, b: Bounds<D>) -> Int:
+        let k = b.ord
+        var p = k
+        var s1 = 0
+        var s2 = 0
+        while p > 0:
+            s1 += b1[p]
+            s2 += b2[p]
+            p -= p & -p
+        s1 * k - s2
+
+    /// The sum of a range `r`. O(log n).
+    pub fn sum(self, r: Range<D>) -> Int:
+        let (lo, hi) = r.ends
+        if lo == hi: 0 else: self.prefix(r.hi) - self.prefix(r.lo)
+
 @test
 fn sums_match_a_plain_array():
     domain V = 1..=9
@@ -211,3 +306,24 @@ fn xor_matches_a_plain_array():
     assert f.xor(D(4)..D(4)) == U64(0)
     let g = XorFenwick<D, Int>([D] i => i.to_idx + 1)
     assert g.xor(..) == 1 and g.xor(D(0)..=D(2)) == 0 and g.xor(D(2)..) == (3 ^ 4 ^ 5 ^ 6 ^ 7 ^ 8 ^ 9)
+
+@test
+fn dual_and_range_fenwick_match_brute():
+    domain V = 1..=10
+    var a = [V] _ => rand(-8, 8)
+    var dual = DualFenwick<V, Int>(a)
+    var rf = RangeFenwick<V>(a)
+    for _ in 0..80:
+        let l = V.nth(rand(0, 9))
+        let r = V.nth(rand(l.to_idx, 9))
+        let x = rand(-6, 6)
+        for v in l..=r: a[v] += x
+        dual.add(l..=r, x)
+        rf.add(l..=r, x)
+        for v in V: assert dual.get(v) == a[v]
+        assert rf.sum(l..=r) == sum(a[v] for v in l..=r)
+        assert rf.sum(..l) == sum(a[v] for v in V if v < l)
+        assert rf.sum(l..) == sum(a[v] for v in V if v >= l)
+    dual.add(V(4)..V(4), 100)
+    rf.add(V(4)..V(4), 100)
+    assert dual.get(V(4)) == a[V(4)] and rf.sum(V(4)..V(4)) == 0
