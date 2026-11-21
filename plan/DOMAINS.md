@@ -726,7 +726,7 @@ no longer shows first as a wrong argument or index count); the lints
 `cpl lint` reports, each with its `cpl fix` fix as a quick fix, and
 `cpl fix` on the buffer as a `source.fixAll.cpl` action, removed syntax first (the replaced
 spellings, `where`, `--- multitest ---`, `.pow` and getter `()`, each a quick fix tested on a
-real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
+real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too, at its declaration and at each use, and on a `+`, `-`, `*`, `/`, `%` or `**` the range of its value (`n * n: Int in 1..=40000000000`) with `can overflow Int` when it leaves `Int`; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms), and gates the 95th percentile of
@@ -777,7 +777,7 @@ the parser, parses every port and library without an error, and checks each
 editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Proven ranges of expressions and `var`s
+**Next.** Proven ranges of `var`s and of calls
 (needs the checker's own range analysis); publish the Zed extension.
 
 ## 11. Docs, site and playground (`plan/90`)

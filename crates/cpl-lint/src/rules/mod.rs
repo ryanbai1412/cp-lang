@@ -35,7 +35,7 @@ pub(crate) fn proven_ranges(file: &File) -> Vec<(u32, i128, i128)> {
     proven(file).names
 }
 
-/// Each `+`, `-` and `*` whose operands the declared bounds prove, with the
+/// Each `+`, `-`, `*`, `/`, `%` and `**` whose operands the declared bounds prove, with the
 /// range of its value, under the same scoping as [`proven_ranges`].
 pub(crate) fn proven_expr_ranges(file: &File) -> Vec<crate::ProvenExpr> {
     proven(file).exprs
@@ -71,7 +71,10 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
     use cpl_syntax::ast::{BinOp, ExprKind};
     match &expr.kind {
         ExprKind::Binary { op, op_span, lhs, rhs } => {
-            if matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul) {
+            if matches!(
+                op,
+                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Pow
+            ) {
                 if let Some(v) = bounds.expr(expr).filter(|v| v.lo != v.hi) {
                     out.push(crate::ProvenExpr {
                         op: (base + op_span.start, base + op_span.end),

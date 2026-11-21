@@ -2168,7 +2168,7 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
 /// shadows a bounded name hides its bound.
 #[test]
 fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
-    let src = "let n: 1..=100 = read()\nfn f(k: 1..=n) -> Int:\n    let t = k * 2\n    let n = k / 2\n    let u = n + 1\n    for i in 0..k:\n        let j = i + t\n        print(j)\n    t + u\nfor i in 1..=n:\n    let sq = i * i\n    print(sq, f(i))\n";
+    let src = "let n: 1..=100 = read()\nfn f(k: 1..=n) -> Int:\n    let t = k * 2\n    let n = k ^ 3\n    let u = n + 1\n    for i in 0..k:\n        let j = i + t\n        print(j)\n    t + u\nfor i in 1..=n:\n    let sq = i * i\n    print(sq, f(i))\n";
     let (mut server, diagnostics) = open(src);
     assert!(
         !format!("{diagnostics:?}").contains("\"E0"),

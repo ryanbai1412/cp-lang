@@ -555,7 +555,7 @@ pub struct ProvenExpr {
     pub hi: i128,
 }
 
-/// What the declared bounds prove about each `+`, `-` and `*` outside
+/// What the declared bounds prove about each `+`, `-`, `*`, `/`, `%` and `**` outside
 /// lambdas, comprehensions and match arms; a file with a syntax error has
 /// none.
 pub fn proven_expr_ranges(src: &str) -> Vec<ProvenExpr> {

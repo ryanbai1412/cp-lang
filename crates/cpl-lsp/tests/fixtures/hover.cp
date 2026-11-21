@@ -10,4 +10,6 @@ for v$0 in V:
 let area = n $0* n + n
 let wide = area $0* area * area
 let ys = xs.map(n => n $0* 2)
-print(area, wide, ys)
+let back = (n - 1) $0** 2 - area $0/ 3
+let slot = (area $0% 1000) - n $0% 2
+print(area, wide, ys, back, slot)

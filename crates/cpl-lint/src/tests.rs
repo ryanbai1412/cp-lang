@@ -1657,3 +1657,21 @@ print(a)
 ";
     assert_eq!(taste_codes(strided), Vec::<&str>::new());
 }
+
+#[test]
+fn division_remainder_and_power_follow_the_interpreter() {
+    let src = "let a: -7..=9 = read()\nlet b: 2..=4 = read()\nlet q = a / b\nlet r = a % b\nlet s = a ** 2\nlet c = a ** 3\nlet z = a / (b - 2)\n";
+    let range = |name: &str| {
+        let at = src.find(&format!("let {name} ")).unwrap() as u32 + 4;
+        crate::proven_ranges(src)
+            .into_iter()
+            .find(|r| r.0 == at)
+            .map(|r| (r.1, r.2))
+    };
+    // Euclidean, as `cpl run` computes it: -7 / 2 is -4 and -7 % 4 is 1.
+    assert_eq!(range("q"), Some((-4, 4)));
+    assert_eq!(range("r"), Some((0, 3)));
+    assert_eq!(range("s"), Some((0, 81)));
+    assert_eq!(range("c"), Some((-343, 729)));
+    assert_eq!(range("z"), None, "the divisor can be 0");
+}

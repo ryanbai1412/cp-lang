@@ -201,10 +201,14 @@ impl Server {
                 let Some(mut hover) = self.db.hover(&uri, offset) else {
                     return Ok(Reply::default());
                 };
+                let declared = self
+                    .db
+                    .definition(&uri, offset)
+                    .map_or(hover.span.start, |d| d.start);
                 let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                 let proven = cpl_lint::proven_ranges(&analysis.text)
                     .into_iter()
-                    .find(|&(at, lo, hi)| at == hover.span.start && lo != hi)
+                    .find(|&(at, lo, hi)| at == declared && lo != hi)
                     .filter(|_| {
                         hover
                             .text
@@ -768,7 +772,7 @@ impl Server {
         false
     }
 
-    /// On a `+`, `-` or `*` whose operands the declared bounds prove: the
+    /// On a `+`, `-`, `*`, `/`, `%` or `**` whose operands the declared bounds prove: the
     /// range of its value, and whether it can leave `Int`.
     fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
         let analysis = self.db.analyze(uri)?;

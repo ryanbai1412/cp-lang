@@ -23,12 +23,12 @@ v: V
 
 == hover @ 8:11
 ```cp
-half: Int
+half: Int in 0..=100000
 ```
 
 == hover @ 9:25
 ```cp
-k: Int
+k: Int in 1..=7
 ```
 
 == hover @ 9:31
@@ -51,3 +51,23 @@ area * area: Int in 4..=1600016000040000000000
 
 == hover @ 12:24
 (none)
+
+== hover @ 13:20
+```cp
+(n - 1) ** 2: Int in 0..=39999600001
+```
+
+== hover @ 13:32
+```cp
+area / 3: Int in 0..=13333400000
+```
+
+== hover @ 14:18
+```cp
+area % 1000: Int in 0..=999
+```
+
+== hover @ 14:30
+```cp
+n % 2: Int in 0..=1
+```
