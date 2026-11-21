@@ -39,8 +39,8 @@
    "canonical": {
     "ports": 594,
     "cp_loc": {
-     "total": 24512,
-     "mean": 41.3,
+     "total": 24467,
+     "mean": 41.2,
      "median": 32.0
     },
     "cpp_raw_loc": {
@@ -55,21 +55,21 @@
     },
     "raw_reduction_pct": {
      "of_totals": 65.8,
-     "mean": 66.0,
+     "mean": 66.1,
      "median": 68.8
     },
     "stripped_reduction_pct": {
-     "of_totals": 47.6,
-     "mean": 44.7,
-     "median": 48.0
+     "of_totals": 47.7,
+     "mean": 44.8,
+     "median": 48.2
     },
     "no_stripped_win": 32
    },
    "canonical_verified": {
     "ports": 566,
     "cp_loc": {
-     "total": 22727,
-     "mean": 40.2,
+     "total": 22682,
+     "mean": 40.1,
      "median": 32.0
     },
     "cpp_raw_loc": {
@@ -83,14 +83,14 @@
      "median": 65.5
     },
     "raw_reduction_pct": {
-     "of_totals": 66.4,
-     "mean": 66.5,
+     "of_totals": 66.5,
+     "mean": 66.6,
      "median": 69.0
     },
     "stripped_reduction_pct": {
-     "of_totals": 48.4,
-     "mean": 45.3,
-     "median": 48.3
+     "of_totals": 48.5,
+     "mean": 45.4,
+     "median": 48.4
     },
     "no_stripped_win": 28
    },
@@ -126,8 +126,8 @@
    "spec_form_same_problems_runnable": {
     "ports": 305,
     "cp_loc": {
-     "total": 14559,
-     "mean": 47.7,
+     "total": 14514,
+     "mean": 47.6,
      "median": 38
     },
     "cpp_raw_loc": {
@@ -141,13 +141,13 @@
      "median": 72
     },
     "raw_reduction_pct": {
-     "of_totals": 61.6,
-     "mean": 62.2,
+     "of_totals": 61.7,
+     "mean": 62.3,
      "median": 64.2
     },
     "stripped_reduction_pct": {
-     "of_totals": 42.5,
-     "mean": 39.1,
+     "of_totals": 42.7,
+     "mean": 39.3,
      "median": 41.6
     },
     "no_stripped_win": 19
@@ -533,9 +533,9 @@
     "IOI": {
      "ports": 94,
      "cp_loc": {
-      "total": 4659,
-      "mean": 49.6,
-      "median": 42.0
+      "total": 4629,
+      "mean": 49.2,
+      "median": 41.5
      },
      "cpp_raw_loc": {
       "total": 11130,
@@ -548,14 +548,14 @@
       "median": 69.0
      },
      "raw_reduction_pct": {
-      "of_totals": 58.1,
-      "mean": 57.9,
-      "median": 61.2
+      "of_totals": 58.4,
+      "mean": 58.2,
+      "median": 61.6
      },
      "stripped_reduction_pct": {
-      "of_totals": 40.1,
-      "mean": 38.7,
-      "median": 42.1
+      "of_totals": 40.5,
+      "mean": 39.1,
+      "median": 42.2
      },
      "no_stripped_win": 9
     },
@@ -591,8 +591,8 @@
     "NOI (China)": {
      "ports": 77,
      "cp_loc": {
-      "total": 4338,
-      "mean": 56.3,
+      "total": 4323,
+      "mean": 56.1,
       "median": 42
      },
      "cpp_raw_loc": {
@@ -606,14 +606,14 @@
       "median": 88
      },
      "raw_reduction_pct": {
-      "of_totals": 64.5,
-      "mean": 62.8,
+      "of_totals": 64.6,
+      "mean": 62.9,
       "median": 67.3
      },
      "stripped_reduction_pct": {
-      "of_totals": 45.3,
-      "mean": 41.7,
-      "median": 47.9
+      "of_totals": 45.5,
+      "mean": 42.0,
+      "median": 48.3
      },
      "no_stripped_win": 9
     },
@@ -680,8 +680,8 @@
     "v1": {
      "ports": 358,
      "cp_loc": {
-      "total": 11732,
-      "mean": 32.8,
+      "total": 11717,
+      "mean": 32.7,
       "median": 27.5
      },
      "cpp_raw_loc": {
@@ -695,22 +695,22 @@
       "median": 60.0
      },
      "raw_reduction_pct": {
-      "of_totals": 72.0,
+      "of_totals": 72.1,
       "mean": 70.9,
       "median": 73.2
      },
      "stripped_reduction_pct": {
       "of_totals": 55.1,
-      "mean": 50.4,
-      "median": 53.8
+      "mean": 50.5,
+      "median": 54.0
      },
      "no_stripped_win": 13
     },
     "v2": {
      "ports": 208,
      "cp_loc": {
-      "total": 10700,
-      "mean": 51.4,
+      "total": 10670,
+      "mean": 51.3,
       "median": 38.0
      },
      "cpp_raw_loc": {
@@ -724,14 +724,14 @@
       "median": 72.0
      },
      "raw_reduction_pct": {
-      "of_totals": 57.8,
-      "mean": 59.9,
+      "of_totals": 58.0,
+      "mean": 60.0,
       "median": 62.2
      },
      "stripped_reduction_pct": {
-      "of_totals": 38.4,
-      "mean": 37.8,
-      "median": 40.8
+      "of_totals": 38.6,
+      "mean": 38.0,
+      "median": 41.0
      },
      "no_stripped_win": 13
     },
@@ -798,8 +798,8 @@
     "runnable": {
      "ports": 495,
      "cp_loc": {
-      "total": 22701,
-      "mean": 45.9,
+      "total": 22656,
+      "mean": 45.8,
       "median": 36
      },
      "cpp_raw_loc": {
@@ -813,13 +813,13 @@
       "median": 74
      },
      "raw_reduction_pct": {
-      "of_totals": 64.2,
-      "mean": 63.8,
+      "of_totals": 64.3,
+      "mean": 63.9,
       "median": 67.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 46.7,
-      "mean": 43.1,
+      "of_totals": 46.8,
+      "mean": 43.2,
       "median": 46.3
      },
      "no_stripped_win": 29
@@ -947,8 +947,8 @@
     "auto": {
      "ports": 503,
      "cp_loc": {
-      "total": 22915,
-      "mean": 45.6,
+      "total": 22870,
+      "mean": 45.5,
       "median": 36
      },
      "cpp_raw_loc": {
@@ -963,13 +963,13 @@
      },
      "raw_reduction_pct": {
       "of_totals": 64.4,
-      "mean": 64.0,
+      "mean": 64.1,
       "median": 67.1
      },
      "stripped_reduction_pct": {
-      "of_totals": 47.0,
-      "mean": 43.3,
-      "median": 46.3
+      "of_totals": 47.1,
+      "mean": 43.5,
+      "median": 46.6
      },
      "no_stripped_win": 29
     },
@@ -11406,7 +11406,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 70,
+   "cp_loc": 29,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -11420,7 +11420,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 112,
+   "cp_loc": 61,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -11518,7 +11518,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 62,
+   "cp_loc": 43,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -11616,7 +11616,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 61,
+   "cp_loc": 57,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -11686,7 +11686,7 @@
    "submission": null,
    "original": null,
    "generation": "v1",
-   "cp_loc": 62,
+   "cp_loc": 46,
    "wish_markers": 0,
    "harness": null,
    "verified": "no harness"
@@ -16948,7 +16948,7 @@
    "submission": "5144326",
    "original": "corpus/submissions/5144326.cpp",
    "generation": "v1",
-   "cp_loc": 45,
+   "cp_loc": 30,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_15/check.py",
    "cpp_raw_loc": 156,
@@ -22036,7 +22036,7 @@
    "submission": "4182973",
    "original": "corpus/submissions/4182973.cpp",
    "generation": "v2",
-   "cp_loc": 62,
+   "cp_loc": 44,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_32/check.py",
    "cpp_raw_loc": 107,
@@ -28168,7 +28168,7 @@
    "submission": "4684567",
    "original": "corpus/submissions/4684567.cpp",
    "generation": "v2",
-   "cp_loc": 53,
+   "cp_loc": 41,
    "wish_markers": 0,
    "harness": "proto/ports/scout_batch_49/check.py",
    "cpp_raw_loc": 110,

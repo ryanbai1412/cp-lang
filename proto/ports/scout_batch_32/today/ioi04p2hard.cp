@@ -1,75 +1,57 @@
-// Runnable port (proto/cp.py lib-run) of statement-first ioi04p2hard.cp
+// IOI 2004 Farmer (hard): walk from (0, 0) through every stop in order,
+// switching between an x-walker and a y-walker.
 // original: corpus/submissions/4182973.cpp
 let n: Int = read()
-let BIG = 1000000000000000000
-// Point i is (a[i], b[i]); point 0 is the start (0, 0).
-var a = [0]
-var b = [0]
-for _ in 0..n:
-    let (x, y): (Int, Int) = read()
-    a.push(x)
-    b.push(y)
-var walk_a = [0]
-var walk_b = [0]
-for i in 0..n:
-    walk_a.push(walk_a[i] + abs(a[i] - a[i + 1]))
-    walk_b.push(walk_b[i] + abs(b[i] - b[i + 1]))
+type Stop = (x: Int, y: Int)
+var stop: [0..=n]Stop = (0, 0)
+for i in 1..=n: stop[i] = read()
 
-// Four "minimum value over keys <= x" tables, each a list sorted by key with
-// strictly useful entries only (a later key is kept only if its value is smaller).
-var keys: List<List<Int>> = [[], [], [], []]
-var vals: List<List<Int>> = [[], [], [], []]
+var walk_x: [0..=n]Int = 0
+var walk_y: [0..=n]Int = 0
+for i in 1..=n:
+    walk_x[i] = walk_x[i - 1] + abs(stop[i].x - stop[i - 1].x)
+    walk_y[i] = walk_y[i - 1] + abs(stop[i].y - stop[i - 1].y)
 
-fn insert(t: Int, k: Int, v: Int):
-    var at = 0
-    while at < keys[t].len and keys[t][at] <= k: at += 1
-    if at > 0 and vals[t][at - 1] <= v: return
-    var nk: List<Int> = []
-    var nv: List<Int> = []
-    for i in 0..at:
-        if keys[t][i] != k:
-            nk.push(keys[t][i])
-            nv.push(vals[t][i])
-    nk.push(k)
-    nv.push(v)
-    var rest = at
-    while rest < keys[t].len and vals[t][rest] > v: rest += 1
-    for i in rest..keys[t].len:
-        nk.push(keys[t][i])
-        nv.push(vals[t][i])
-    keys[t] = nk
-    vals[t] = nv
+// A staircase keeps only keys whose value beats every smaller key, so the
+// minimum over keys <= x is the value at the last key <= x.
+fn insert(mut stairs: Map<Int, Int>, k: Int, v: Int):
+    if let (_, w) = stairs.last_le(k), w <= v: return
+    while let (key, w) = stairs.first_gt(k), w > v: stairs.remove(key)
+    stairs[k] = v
 
-fn upto(t: Int, x: Int) -> Int:
-    var best = BIG
-    for i in 0..keys[t].len:
-        if keys[t][i] <= x: best = vals[t][i]
-    return best
+fn upto(stairs: Map<Int, Int>, x: Int) -> ?Int:
+    let (_, v) = stairs.last_le(x) ?? return none
+    v
 
-// Tables 0/1 hold offers keyed by a y coordinate, tables 2/3 by an x coordinate.
-// Even = keyed by the coordinate (for queries from above), odd = by its negation.
-fn offer_a(i: Int, cost: Int):
+var x_below = Map<Int, Int>()
+var x_above = Map<Int, Int>()
+var y_below = Map<Int, Int>()
+var y_above = Map<Int, Int>()
+
+fn offer_x(i: Int, cost: Int):
     if i == 0: return
-    let base = walk_a[i - 1] + cost
-    insert(0, b[i], base - b[i])
-    insert(1, -b[i], base + b[i])
+    let base = walk_x[i - 1] + cost
+    insert(mut x_below, stop[i].y, base - stop[i].y)
+    insert(mut x_above, -stop[i].y, base + stop[i].y)
 
-fn offer_b(i: Int, cost: Int):
+fn offer_y(i: Int, cost: Int):
     if i == 0: return
-    let base = walk_b[i - 1] + cost
-    insert(2, a[i], base - a[i])
-    insert(3, -a[i], base + a[i])
+    let base = walk_y[i - 1] + cost
+    insert(mut y_below, stop[i].x, base - stop[i].x)
+    insert(mut y_above, -stop[i].x, base + stop[i].x)
 
-var (da, db) = (0, 0)
-offer_a(n, 0)
-offer_b(n, 0)
+var (dx, dy) = (0, 0)
+offer_x(n, 0)
+offer_y(n, 0)
 for i in (0..n).rev:
-    let pa = if i > 0: a[i - 1] else: 0
-    da = min(upto(2, pa) + pa, upto(3, -pa) - pa)
-    da = min(da - walk_b[i], walk_b[n] - walk_b[i])
-    let pb = if i > 0: b[i - 1] else: 0
-    db = min(upto(0, pb) + pb, upto(1, -pb) - pb)
-    db = min(db - walk_a[i], walk_a[n] - walk_a[i])
-    offer_a(i, da)
-    offer_b(i, db)
-print(min(da, db))
+    let prev = stop[if i > 0: i - 1 else: 0]
+    dx = walk_y[n] - walk_y[i]
+    dx min= upto(y_below, prev.x) + prev.x - walk_y[i]
+    dx min= upto(y_above, -prev.x) - prev.x - walk_y[i]
+    dy = walk_x[n] - walk_x[i]
+    dy min= upto(x_below, prev.y) + prev.y - walk_x[i]
+    dy min= upto(x_above, -prev.y) - prev.y - walk_x[i]
+    offer_x(i, dx)
+    offer_y(i, dy)
+
+print(min(dx, dy))

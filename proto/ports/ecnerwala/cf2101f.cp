@@ -1,64 +1,64 @@
-const MOD = 998244353
+type Z = Mod<998_244_353>
 
 @! multitest
-let orig_n: Int = read()
-let tot = 2 * orig_n - 1
-var adj: [0..tot]List<Int> = []
-for e in 0..orig_n - 1:
-    let (u, v): (Int, Int) = read()
-    let mid = orig_n + e
-    adj[u - 1].push(mid)
-    adj[v - 1].push(mid)
-    adj[mid].push(u - 1)
-    adj[mid].push(v - 1)
-var p2: [0..=orig_n]Mod<MOD> = 1
-var p3: [0..=orig_n]Mod<MOD> = 1
-for i in 1..=orig_n:
-    p2[i] = p2[i - 1] * 2
-    p3[i] = p3[i - 1] * 3
-var ans: Mod<MOD> = 0
-for rt in 0..tot:
-    var ways_red: [0..tot]Mod<MOD> = 0
-    var ways_rb: [0..tot]Mod<MOD> = 0
-    var dist_tot: [0..tot]Int = 0
-    var dist_cur: [0..tot]Int = 0
-    if rt < orig_n:
-        dist_tot[0] += 1
+let n: Int = read()
+domain Node = 1..=2 * n - 1
+fn is_vertex(v: Node) -> Bool = v.to_idx < n
 
-    fn dfs(cur: Int, prv: Int, depth: Int):
-        if cur < orig_n:
-            dist_tot[depth] += 1
-            dist_cur[depth] += 1
-        for nxt in adj[cur]:
-            if nxt != prv:
-                dfs(nxt, cur, depth + 1)
+var adj: [Node]List<Node> = []
+for e in 1..n:
+    let (u, v): (Node, Node) = read()
+    let mid = Node(n + e)
+    adj[u] += [mid]
+    adj[v] += [mid]
+    adj[mid] += [u, v]
 
-    let start_d = if rt < orig_n: 0 else: 1
-    for ch in adj[rt]:
-        dfs(ch, rt, 1)
-        var d = start_d
-        while d < tot:
-            let c = dist_cur[d]
-            ways_red[d] -= p2[c] - 1
-            ways_rb[d] -= p3[c] - p2[c] * 2 + 1
-            dist_cur[d] = 0
-            d += 2
-    var pref_rb: Mod<MOD> = 1
-    var red_only: Mod<MOD> = 0
-    var ans_red: Mod<MOD> = 0
-    var d = start_d
-    while d < tot:
-        let c = dist_tot[d]
-        ways_red[d] += p2[c] - 1
-        ways_rb[d] += p3[c] - p2[c] * 2 + 1
-        let md: Mod<MOD> = d
-        ans += md * 2 * pref_rb * ways_rb[d]
-        ans += (ans_red + md * red_only) * ways_red[d] * 2
-        red_only *= p2[c]
-        ans_red *= p2[c]
-        let diff = p3[c] - p2[c]
-        red_only += pref_rb * diff
-        ans_red += md * pref_rb * diff
-        pref_rb *= p3[c]
-        d += 2
+var pow2: [0..=n]Z = 1
+var pow3: [0..=n]Z = 1
+for i in 1..=n:
+    pow2[i] = pow2[i - 1] * 2
+    pow3[i] = pow3[i - 1] * 3
+fn some_red(c: Int) -> Z = pow2[c] - 1
+fn red_and_blue(c: Int) -> Z = pow3[c] - pow2[c] * 2 + 1
+
+let len = 2 * n - 1
+var ans: Z = 0
+for root in Node:
+    var red: [0..len]Z = 0
+    var both: [0..len]Z = 0
+    var total: [0..len]Int = 0
+    var branch: [0..len]Int = 0
+    if is_vertex(root): total[0] += 1
+
+    fn dfs(v: Node, from: Node, depth: Int):
+        if is_vertex(v):
+            total[depth] += 1
+            branch[depth] += 1
+        for w in adj[v] if w != from:
+            dfs(w, v, depth + 1)
+
+    let first = if is_vertex(root): 0 else: 1
+    for child in adj[root]:
+        dfs(child, root, 1)
+        for d in (first..len).step(2):
+            red[d] -= some_red(branch[d])
+            both[d] -= red_and_blue(branch[d])
+            branch[d] = 0
+
+    var below_both: Z = 1
+    var only_red: Z = 0
+    var red_dist: Z = 0
+    for d in (first..len).step(2):
+        let c = total[d]
+        red[d] += some_red(c)
+        both[d] += red_and_blue(c)
+        let dz: Z = d
+        ans += dz * 2 * below_both * both[d]
+        ans += (red_dist + dz * only_red) * red[d] * 2
+        only_red *= pow2[c]
+        red_dist *= pow2[c]
+        let extra = pow3[c] - pow2[c]
+        only_red += below_both * extra
+        red_dist += dz * below_both * extra
+        below_both *= pow3[c]
 print(ans / 2)

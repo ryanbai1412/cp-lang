@@ -2,71 +2,32 @@
 let half: Int = read()
 let n = 2 * half + 1
 let s: Str = read()
-var out: List<Char> = []
 
-fn emit_expr(lo: Int, hi: Int):
-    out.push(s[lo])
-    var i = lo + 1
-    while i < hi:
-        out.push('?')
-        out.push(s[i])
-        out.push(':')
-        out.push(s[i + 1])
-        i += 2
+fn chain(lo: Int, hi: Int) -> Str:
+    var e = "{s[lo]}"
+    for i in (lo + 1..hi).step(2):
+        e += "?{s[i]}:{s[i + 1]}"
+    e
 
-var ok = true
-if n >= 5 and s[n - 1] == '1' and s[0] == '1' and s[1] == '0':
-    out.push('(')
-    out.push(s[0])
-    out.push('?')
-    out.push(s[1])
-    out.push(':')
-    out.push(s[2])
-    out.push(')')
-    out.push('?')
-    emit_expr(3, n - 1)
-    out.push(':')
-    out.push(s[n - 1])
-elif s[n - 1] == '1' and s[0] == '0':
-    out.push(s[0])
-    out.push('?')
-    emit_expr(1, n - 1)
-    out.push(':')
-    out.push(s[n - 1])
-else:
-    var i = 0
-    while i < n and s[i] != '1':
-        i += 2
-    if i >= n:
-        ok = false
-    else:
-        var j = i + 1
-        while j < n and s[j] != '1':
-            j += 2
-        if j >= n:
-            ok = false
-        else:
-            if i > 0:
-                out.push(s[0])
-                out.push('?')
-                emit_expr(1, i)
-                out.push(':')
-            out.push(s[i])
-            out.push('?')
-            if j > i + 1:
-                out.push('(')
-                out.push(s[i + 1])
-                out.push('?')
-                emit_expr(i + 2, j)
-                out.push(':')
-                out.push(s[j])
-                out.push(')')
-            else:
-                out.push(s[j])
-            out.push(':')
-            emit_expr(j + 1, n)
-if ok:
+fn first_one(from: Int) -> ?Int:
+    for k in (from..n).step(2) if s[k] == '1':
+        return k
+    none
+
+fn build() -> ?Str:
+    if n >= 5 and s[0] == '1' and s[1] == '0' and s[n - 1] == '1':
+        return "({s[0]}?{s[1]}:{s[2]})?{chain(3, n - 1)}:{s[n - 1]}"
+    if s[0] == '0' and s[n - 1] == '1':
+        return "{s[0]}?{chain(1, n - 1)}:{s[n - 1]}"
+    let i = first_one(0) ?? return none
+    let j = first_one(i + 1) ?? return none
+    var e = if i > 0: "{s[0]}?{chain(1, i)}:" else: ""
+    e += "{s[i]}?"
+    e += if j > i + 1: "({s[i + 1]}?{chain(i + 2, j)}:{s[j]})" else: "{s[j]}"
+    e + ":{chain(j + 1, n)}"
+
+if let e = build():
     print("Yes")
-    print(Str(out))
+    print(e)
 else:
     print("No")

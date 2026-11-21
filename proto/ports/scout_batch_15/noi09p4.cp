@@ -1,56 +1,38 @@
-// NOI 2009 Plants vs Zombies (CP Lang 0.2.2): reverse Kahn cycle peel via
-// `Deque<Cell>` + `Marks<Cell>` followed by max-weight closure via `FlowGraph`.
+// NOI 2009 Plants vs Zombies: peel the protection graph, then take a
+// max-weight closure of what is left with a min cut.
 // original: corpus/submissions/5144326.cpp
 
 let (n, m): (Int, Int) = read()
-let total_cells = n * m
-domain Cell = 0..total_cells
-
-var score: [Cell]Int = 0
-var deps: [Cell]List<Cell> = []
-var rev: [Cell]List<Cell> = []
-var need: [Cell]Int = 0
-
+domain Cell = 0..n * m
 fn cell(r: Int, c: Int) -> Cell = Cell(r * m + c)
 
-fn require(u: Cell, before: Cell):
-    deps[u].push(before)
-    rev[before].push(u)
-    need[u] += 1
-
+var score: [Cell]Int = 0
+var protects: [Cell]List<Cell> = []
 for r in 0..n:
     for c in 0..m:
         let u = cell(r, c)
-        if c + 1 < m: require(u, cell(r, c + 1))
-        let (val, k): (Int, Int) = read()
-        score[u] = val
+        if c + 1 < m: protects[cell(r, c + 1)].push(u)
+        let (value, k): (Int, Int) = read()
+        score[u] = value
         for _ in 0..k:
             let (x, y): (Int, Int) = read()
-            require(cell(x, y), u)
+            protects[u].push(cell(x, y))
 
-var eatable = Marks<Cell>()
-var q = Deque<Cell>.new()
-for u in Cell:
-    if need[u] == 0: q.push(u)
-while let u = q.pop_front():
-    eatable.add(u)
-    for v in rev[u]:
-        need[v] -= 1
-        if need[v] == 0: q.push(v)
+var eatable: [Cell]Bool = false
+for u in peel(v => protects[v]): eatable[u] = true
 
-domain Node = 0..total_cells + 2
-let (src, snk) = (Node(total_cells), Node(total_cells + 1))
+domain Node = 0..n * m + 2
+fn node(u: Cell) -> Node = Node(u.to_idx)
+let (source, sink) = (Node(n * m), Node(n * m + 1))
 var net = FlowGraph<Node>()
-var positive = 0
-for u in Cell:
-    if u not in eatable: continue
-    let nu = Node(u.idx)
+var gain = 0
+for u in Cell if eatable[u]:
     if score[u] > 0:
-        positive += score[u]
-        net.add(src, nu, score[u])
+        gain += score[u]
+        net.add(source, node(u), score[u])
     elif score[u] < 0:
-        net.add(nu, snk, -score[u])
-    for v in deps[u]:
-        if v in eatable: net.add(nu, Node(v.idx), cap: none)
+        net.add(node(u), sink, -score[u])
+    for v in protects[u] if eatable[v]:
+        net.add(node(v), node(u), cap: none)
 
-print(positive - net.max_flow(src, snk))
+print(gain - net.max_flow(source, sink))
