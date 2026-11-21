@@ -685,6 +685,24 @@ print(accs[0].total, accs[1].total, sum, sub, lsum)
 }
 
 #[test]
+fn vm_arr2_v_float_ops_and_if_v() {
+    let src = "\
+var dp: [0..2, 0..3]F64 = 0.0
+dp[0, 0] = 1.0
+for i in 0..2:
+    for j in 0..3:
+        if i == 0 and j == 0: continue
+        let up = if i > 0: dp[i - 1, j] else: 0.0
+        let left = if j > 0: dp[i, j - 1] else: 0.0
+        dp[i, j] = (up + left) * 0.5 + max(up, left) / 2.0
+print(round(dp[1, 2] * 100.0))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "200\n");
+}
+
+#[test]
 fn vm_list_literals_filled_to_list_and_structural_cmp_v() {
     let source = "
 var xs: List<Int> = []

@@ -363,6 +363,13 @@ pub(crate) enum Op {
     TakeGArr1V { dst: u16, gid: u16, r_i: u16 },
     TakeLList1V { dst: u16, list_v: u16, r_i: u16 },
     TakeGList1V { dst: u16, gid: u16, r_i: u16 },
+    LoadLArr2V { dst: u16, arr_v: u16, r_i: u16, r_j: u16 },
+    LoadGArr2V { dst: u16, gid: u16, r_i: u16, r_j: u16 },
+    StoreLArr2V { arr_v: u16, r_i: u16, r_j: u16, r_val: u16 },
+    StoreGArr2V { gid: u16, r_i: u16, r_j: u16, r_val: u16 },
+    ConstF64 { dst: u16, idx: u16 },
+    FloatBin { dst: u16, a: u16, b: u16, op: BinOp },
+    FloatMinMax { dst: u16, a: u16, b: u16, is_max: bool },
     LoadGIdxFieldI { dst: u16, gid: u16, r_i: u16, field: u16 },
     StoreGIdxFieldI { gid: u16, r_i: u16, field: u16, r_val: u16, kind: ScalarKind },
     LoadLIdxFieldI { dst: u16, seq_v: u16, r_i: u16, field: u16 },
@@ -2827,13 +2834,25 @@ impl<'p> Compiler<'p> {
                 }
             }
             (PlaceKind::Index(base, indices), AssignOp::Set, None, None)
-                if matches!(base.ty, Ty::Array { .. }) && indices.len() == 1 =>
+                if matches!(base.ty, Ty::Array { .. })
+                    && (indices.len() == 1 || indices.len() == 2) =>
             {
                 match &base.kind {
                     PlaceKind::Global(gid) => {
                         let r_i = self.compile_expr_i(&indices[0]);
+                        let r_j = (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
                         let r_val = self.compile_expr_v(value);
-                        self.emit(Op::StoreGArr1V { gid: *gid as u16, r_i, r_val }, place.span);
+                        if let Some(r_j) = r_j {
+                            self.emit(
+                                Op::StoreGArr2V { gid: *gid as u16, r_i, r_j, r_val },
+                                place.span,
+                            );
+                        } else {
+                            self.emit(
+                                Op::StoreGArr1V { gid: *gid as u16, r_i, r_val },
+                                place.span,
+                            );
+                        }
                         true
                     }
                     PlaceKind::Local(slot) => {
@@ -2841,8 +2860,16 @@ impl<'p> Compiler<'p> {
                             return false;
                         };
                         let r_i = self.compile_expr_i(&indices[0]);
+                        let r_j = (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
                         let r_val = self.compile_expr_v(value);
-                        self.emit(Op::StoreLArr1V { arr_v, r_i, r_val }, place.span);
+                        if let Some(r_j) = r_j {
+                            self.emit(
+                                Op::StoreLArr2V { arr_v, r_i, r_j, r_val },
+                                place.span,
+                            );
+                        } else {
+                            self.emit(Op::StoreLArr1V { arr_v, r_i, r_val }, place.span);
+                        }
                         true
                     }
                     PlaceKind::Field(obj_place, field) => {
@@ -4130,20 +4157,35 @@ impl<'p> Compiler<'p> {
                 dst
             }
             ExprKind::Index(base, indices)
-                if matches!(base.ty, Ty::Array { .. }) && indices.len() == 1 =>
+                if matches!(base.ty, Ty::Array { .. })
+                    && (indices.len() == 1 || indices.len() == 2) =>
             {
                 match &base.kind {
                     ExprKind::Global(gid) => {
                         let r_i = self.compile_expr_i(&indices[0]);
+                        let r_j = (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
                         let dst = self.alloc_v();
-                        self.emit(Op::LoadGArr1V { dst, gid: *gid as u16, r_i }, span);
+                        if let Some(r_j) = r_j {
+                            self.emit(
+                                Op::LoadGArr2V { dst, gid: *gid as u16, r_i, r_j },
+                                span,
+                            );
+                        } else {
+                            self.emit(Op::LoadGArr1V { dst, gid: *gid as u16, r_i }, span);
+                        }
                         dst
                     }
                     ExprKind::Local(slot) => {
                         if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
                             let r_i = self.compile_expr_i(&indices[0]);
+                            let r_j =
+                                (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
                             let dst = self.alloc_v();
-                            self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
+                            if let Some(r_j) = r_j {
+                                self.emit(Op::LoadLArr2V { dst, arr_v, r_i, r_j }, span);
+                            } else {
+                                self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
+                            }
                             dst
                         } else {
                             self.emit_fallback_expr_v(expr)
@@ -4152,14 +4194,79 @@ impl<'p> Compiler<'p> {
                     _ => {
                         let arr_v = self.compile_expr_v(base);
                         let r_i = self.compile_expr_i(&indices[0]);
+                        let r_j = (indices.len() == 2).then(|| self.compile_expr_i(&indices[1]));
                         let dst = self.alloc_v();
-                        self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
+                        if let Some(r_j) = r_j {
+                            self.emit(Op::LoadLArr2V { dst, arr_v, r_i, r_j }, span);
+                        } else {
+                            self.emit(Op::LoadLArr1V { dst, arr_v, r_i }, span);
+                        }
                         if arr_v >= self.num_local_v {
                             self.emit(Op::ClearV { reg: arr_v }, span);
                         }
                         dst
                     }
                 }
+            }
+            ExprKind::Float(f) => {
+                let idx = self.consts_i.len() as u16;
+                self.consts_i.push(f.to_bits() as i64);
+                let dst = self.alloc_v();
+                self.emit(Op::ConstF64 { dst, idx }, span);
+                dst
+            }
+            ExprKind::Binary(op, a, b)
+                if matches!(a.ty, Ty::Float)
+                    && matches!(b.ty, Ty::Float)
+                    && matches!(
+                        op,
+                        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow
+                    ) =>
+            {
+                let ra = self.compile_expr_v(a);
+                let rb = self.compile_expr_v(b);
+                let dst = self.alloc_v();
+                self.emit(Op::FloatBin { dst, a: ra, b: rb, op: *op }, span);
+                dst
+            }
+            ExprKind::Builtin(b @ (Builtin::Min | Builtin::Max), args)
+                if args.len() == 2 && matches!(expr.ty, Ty::Float) =>
+            {
+                let ra = self.compile_expr_v(&args[0]);
+                let rb = self.compile_expr_v(&args[1]);
+                let dst = self.alloc_v();
+                self.emit(
+                    Op::FloatMinMax { dst, a: ra, b: rb, is_max: matches!(b, Builtin::Max) },
+                    span,
+                );
+                dst
+            }
+            ExprKind::If(cond, then_e, else_e) => {
+                let dst = self.alloc_v();
+                let rc = self.compile_expr_i(cond);
+                let j_else = self.emit(Op::JmpIfZero { reg: rc, target: 0 }, span);
+                let rt = self.compile_expr_v(then_e);
+                if rt != dst {
+                    if rt >= self.num_local_v {
+                        self.emit(Op::MoveVConsume { dst, src: rt }, span);
+                    } else {
+                        self.emit(Op::MoveV { dst, src: rt }, span);
+                    }
+                }
+                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let else_pc = self.ops.len() as u32;
+                self.patch(j_else, else_pc);
+                let re = self.compile_expr_v(else_e);
+                if re != dst {
+                    if re >= self.num_local_v {
+                        self.emit(Op::MoveVConsume { dst, src: re }, span);
+                    } else {
+                        self.emit(Op::MoveV { dst, src: re }, span);
+                    }
+                }
+                let end_pc = self.ops.len() as u32;
+                self.patch(j_end, end_pc);
+                dst
             }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::List(_) | Ty::ListView(_)) && indices.len() == 1 =>
@@ -6442,6 +6549,144 @@ impl<'p, 'io> Interp<'p, 'io> {
                         return trap(spans[cur_pc], "internal: expected list");
                     };
                     regs_v[dst as usize] = val;
+                }
+                Op::LoadLArr2V { dst, arr_v, r_i, r_j } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let val = if let Value::Array(arr) = &regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {j} is outside an array dimension of length {d1}"),
+                            );
+                        }
+                        arr.get((i * d1 + j) as usize).unwrap_or(Value::Unit)
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    };
+                    regs_v[dst as usize] = val;
+                }
+                Op::LoadGArr2V { dst, gid, r_i, r_j } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let val = if let Value::Array(arr) = &self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {j} is outside an array dimension of length {d1}"),
+                            );
+                        }
+                        arr.get((i * d1 + j) as usize).unwrap_or(Value::Unit)
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    };
+                    regs_v[dst as usize] = val;
+                }
+                Op::StoreLArr2V { arr_v, r_i, r_j, r_val } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let val = if r_val as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[r_val as usize], Value::Unit)
+                    } else {
+                        regs_v[r_val as usize].clone()
+                    };
+                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {j} is outside an array dimension of length {d1}"),
+                            );
+                        }
+                        Rc::make_mut(arr).set((i * d1 + j) as usize, val);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::StoreGArr2V { gid, r_i, r_j, r_val } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let val = if r_val as usize >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[r_val as usize], Value::Unit)
+                    } else {
+                        regs_v[r_val as usize].clone()
+                    };
+                    if let Value::Array(arr) = &mut self.globals[gid as usize] {
+                        let d0 = arr.dims[0];
+                        let d1 = arr.dims[1];
+                        if i < 0 || i >= d0 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {i} is outside an array dimension of length {d0}"),
+                            );
+                        }
+                        if j < 0 || j >= d1 {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {j} is outside an array dimension of length {d1}"),
+                            );
+                        }
+                        Rc::make_mut(arr).set((i * d1 + j) as usize, val);
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::ConstF64 { dst, idx } => {
+                    regs_v[dst as usize] = Value::Float(f64::from_bits(chunk.consts_i[idx as usize] as u64));
+                }
+                Op::FloatBin { dst, a, b, op } => {
+                    let (Value::Float(fa), Value::Float(fb)) =
+                        (&regs_v[a as usize], &regs_v[b as usize])
+                    else {
+                        return trap(spans[cur_pc], "internal: expected float");
+                    };
+                    let res = match op {
+                        BinOp::Add => *fa + *fb,
+                        BinOp::Sub => *fa - *fb,
+                        BinOp::Mul => *fa * *fb,
+                        BinOp::Div => *fa / *fb,
+                        BinOp::Pow => fa.powf(*fb),
+                        _ => return trap(spans[cur_pc], "internal: unsupported float op"),
+                    };
+                    regs_v[dst as usize] = Value::Float(res);
+                }
+                Op::FloatMinMax { dst, a, b, is_max } => {
+                    let (Value::Float(fa), Value::Float(fb)) =
+                        (&regs_v[a as usize], &regs_v[b as usize])
+                    else {
+                        return trap(spans[cur_pc], "internal: expected float");
+                    };
+                    let res = if is_max {
+                        if *fa >= *fb { *fa } else { *fb }
+                    } else if *fa <= *fb {
+                        *fa
+                    } else {
+                        *fb
+                    };
+                    regs_v[dst as usize] = Value::Float(res);
                 }
                 Op::CmpV { dst, a_v, b_v, op } => {
                     let a = &regs_v[a_v as usize];
