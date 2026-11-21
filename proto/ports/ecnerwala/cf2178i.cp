@@ -9,8 +9,8 @@ type Z = Mod<998_244_353>
 @!multitest
 let (n, k): (2..=31, 1..=20_000) = read()
 domain V = 0..n
-let p: [V](x: 1..=100, y: 1..=100) = read()
-fn near(u: V, v: V) -> Bool = (p[u].x - p[v].x) ** 2 + (p[u].y - p[v].y) ** 2 == k
+let p: [V]Pt = read()
+fn near(u: V, v: V) -> Bool = (p[u] - p[v]).norm2 == k
 let side = two_color::<V>(u => [v for v in V if near(u, v)])!
 let left = count(side[v] for v in V) * 2 <= n
 let a = [v for v in V if side[v] == left]
