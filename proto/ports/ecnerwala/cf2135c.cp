@@ -15,17 +15,15 @@ let g = Graph.undirected(edges)
 let (domain C, comp) = two_edge_components(g)
 let depth = bfs(g, [V(1)])
 
-var forced = [
-    (comp[u], 0) for (u, v) in edges if comp[u] == comp[v] and depth[u]! % 2 == depth[v]! % 2
-]
-for u in V:
-    if let x = a[u]: forced.push((comp[u], x))
-
 var want: [C]?Int = none
 var ans: Z = 1
-for (c, x) in forced:
+fn force(c: C, x: Int):
     if (want[c] ?? x) != x: ans = 0
     want[c] = x
+for (u, v) in edges:
+    if comp[u] == comp[v] and depth[u]! % 2 == depth[v]! % 2: force(comp[u], 0)
+for u in V:
+    if let x = a[u]: force(comp[u], x)
 for c in C:
     if want[c] == none: ans *= Z(lim)
 print(ans)
