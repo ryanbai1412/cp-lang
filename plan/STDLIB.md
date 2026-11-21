@@ -38,7 +38,7 @@ core feature goes through section 3 and the core lane.
 | graphs | 4.11 `std.graph`, 4.15 `std.grid` | done: `until:` early exit (46.11), hole-based heap sift, one `Paths.back` witness array (decision 78; matched `dijkstra` 1.44x to 1.18x), `cf2135c` on a named component domain. Next: `fixed_cost_paths(until:)` and CSR (held for a green rebase), then `cf2178h`; the rest of `dijkstra` (dead-field elimination in codegen); `divmod` and named edge tuples (cf2035f dream) |
 | trees | 4.11 `std.tree`, `std.tour` | done: `LinkCut` (1.01x matched), `cf2237h` on `IntervalMap`. vertex loops as `for v in t.at` / `t.at.rev` with L0511 (decision 63). `Rooted.below` (`cf2183f` 0.44x tokens). `JumpTree` for trees grown online (`cf2152f`). `PermTree` (`cf2187f1`/`f2`, one construction instead of two copies). Label-ordered parent arrays stay loops (`cf2138c1`, `cf2187c`, `cf2089e`; design §5). `Rooted` builds breadth-first with flat child ranges (1.1x matched, decision 86). `LazyLinkCut` with `apply_path` (at most 1.0x matched). `Rooted.virtual` with its own domain (decision 108, 0.78x–1.06x matched), 7 hand-rolled ports moved onto `Rooted.from_parents`/`centroid`/`virtual`. `t.up(+, finish:)` (cf2035f), `Tree` in the prelude (decision 119), L0208 for a `use` the prelude covers. Tree dreams cf2035f, cf2124i, cf2183d2, cf2183f, cf2237i1 check clean. Next: cf2135f waits on `PMultiset`; PathPaint waits for a second problem |
 | flows/matching | 4.12 | done: weighted blossom `max_weight_general_matching` (1.27x matched), unchecked hot loops in `std.flow` (min-cost flow 1.14x). Next: matched C++ benches for closure, bounded flow, Gomory–Hu and global cut |
-| strings | 4.13; O(1) slice and reverse views | done: slice/reverse views (decision 61), `.rev` views, full `Indexed`/`Seq` generality (`List<T>`, `[D]T`, `ListView`, `Str`, `StrView`), `lyndon_runs`, `SuffixAutomaton.first_pos`, `L0516`–`L0519` hand-rolled algorithm lints, all 10 matched C++17 benches (`bash bench/strings/run.sh`, p50 1.02x, max 1.12x; `Hash2D` flattened to 1.11x), 0 open strings dream gaps, 0 high strings frictions |
+| strings | 4.13; O(1) slice and reverse views | done: slice/reverse views (decision 61), `.rev` views, full `Indexed`/`Seq` generality (`List<T>`, `[D]T`, `ListView`, `Str`, `StrView`), `lyndon_runs`, `SuffixAutomaton.first_pos`, `L0516`–`L0519` hand-rolled algorithm lints, all 10 matched C++17 benches (`bash bench/strings/run.sh`, p50 0.87x, max 1.11x; `Hash2D` 32-bit tables 0.88x, `RollingHash` 0.58x), 0 open strings dream gaps, 0 high strings frictions |
 | geometry | 4.14 | done: `Location`, `Vec.rot(by:)`, Shamos–Hoey, 3D hull, heterogeneous `Mul`/`Div` (`cf2138f`), `min_bounding_box`, `circle_tangents`, `circle_circle_tangents`, `circles_union_area`, `sqrt` negative trap, 16 matched C++17 benches all <=1.09x (`locate` 2.43x to 0.97x), 0 geometry dream gaps; lines continue after a trailing binary operator (docs-written compile 94.5%). Next: open geometry frictions; `cf2183f`'s fill-order sums are `Prefix.filling` (ranges) |
 
 ## 1. Principles
@@ -1461,12 +1461,12 @@ struct AhoCorasick<A>
 ```
 
 Matched C++17 benchmarks (`bash bench/strings/run.sh`, 10/10 structures covered,
-**p50 = 1.02x**, **max = 1.12x**):
-`z_prefix` 1.12x (33.8 vs 30.2 ms), `rolling_hash` 0.95x (53.6 vs 56.3 ms),
-`hash2d` 1.11x (23.9 vs 21.6 ms), `suffix_array` 0.97x (49.8 vs 51.2 ms),
-`suffix_automaton` 1.02x (50.8 vs 49.7 ms), `palindromic_tree` 0.93x (22.4 vs 24.1 ms),
-`aho_corasick` 1.01x (25.9 vs 25.5 ms), `trie` 1.10x (45.5 vs 41.5 ms),
-`manacher_lyndon` 1.05x (18.9 vs 18.0 ms), `lyndon_runs` 1.02x (64.1 vs 62.8 ms).
+**p50 = 0.87x**, **max = 1.11x**):
+`z_prefix` 1.11x (26.6 vs 23.9 ms), `rolling_hash` 0.58x (25.0 vs 42.7 ms),
+`hash2d` 0.88x (16.5 vs 18.7 ms), `suffix_array` 0.83x (35.7 vs 42.9 ms),
+`suffix_automaton` 0.72x (28.1 vs 39.0 ms), `palindromic_tree` 0.96x (19.8 vs 20.7 ms),
+`aho_corasick` 0.81x (16.9 vs 20.7 ms), `trie` 1.08x (35.1 vs 32.4 ms),
+`manacher_lyndon` 1.11x (16.0 vs 14.4 ms), `lyndon_runs` 0.86x (44.0 vs 51.2 ms).
 
 ### 4.14 `std.geometry`: 2D and 3D integer and floating-point geometry
 
