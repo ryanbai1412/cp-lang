@@ -3527,6 +3527,36 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Lowers `if let pat = value` / `value is pat` / `while let pat = value`.
+    /// Variant patterns (`Seeking`, `Phase.Seeking`, `Split(base)`) match an
+    /// enum value directly via `self.pattern`; all other patterns unwrap an
+    /// optional via `self.optional`.
+    pub(super) fn cond_let(
+        &mut self,
+        pat: &ast::Pattern,
+        value: &ast::Expr,
+        what: &str,
+        before: &mut Vec<Stmt>,
+        binds: &mut Vec<Stmt>,
+    ) -> Option<Expr> {
+        if matches!(&pat.kind, ast::PatternKind::Variant { .. }) {
+            let value_expr = self.expr(value, None);
+            if matches!(value_expr.ty, Ty::Enum(_)) {
+                let tmp = self.temp(value_expr.ty.clone());
+                before.push(Stmt::Let(tmp, Some(value_expr)));
+                let local = self.local(tmp, value.span);
+                let test = self.pattern(pat, &local, binds);
+                return Some(test.unwrap_or_else(|| self.mk(ExprKind::Bool(true), Ty::Bool, value.span)));
+            }
+            if value_expr.ty == Ty::Error {
+                return None;
+            }
+        }
+        let (present, inner) = self.optional(value, what, before)?;
+        self.bind(pat, inner, binds);
+        Some(present)
+    }
+
     /// Evaluates the optional `value` into a temporary; gives the test
     /// that it is present and the value inside.
     pub(super) fn optional(
@@ -3592,12 +3622,12 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::If(test, Block { stmts: then }, els()));
             }
             ast::Cond::Let { pat, value, and } => {
-                let Some((present, inner)) = self.optional(value, "if let", out) else {
-                    return;
-                };
                 self.cx.scopes.push(HashMap::new());
                 let mut then = Vec::new();
-                self.bind(pat, inner, &mut then);
+                let Some(present) = self.cond_let(pat, value, "if let", out, &mut then) else {
+                    self.cx.scopes.pop();
+                    return;
+                };
                 match and {
                     Some(and) => self.clause_chain(and, body, tail, els().stmts.as_slice(), &mut then),
                     None => then.extend(self.block(body, tail).stmts),
@@ -3630,11 +3660,12 @@ impl<'a> Lowerer<'a> {
                 self.while_clauses(and, stmts)
             }
             ast::Cond::Let { pat, value, and } => {
-                let Some((present, inner)) = self.optional(value, "while let", stmts) else {
+                let mut binds = Vec::new();
+                let Some(present) = self.cond_let(pat, value, "while let", stmts, &mut binds) else {
                     return false;
                 };
                 leave_unless(self, present, stmts);
-                self.bind(pat, inner, stmts);
+                stmts.extend(binds);
                 and.as_ref().is_none_or(|and| self.while_clauses(and, stmts))
             }
             ast::Cond::Const(c) => {

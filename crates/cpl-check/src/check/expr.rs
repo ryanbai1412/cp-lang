@@ -1290,6 +1290,23 @@ impl<'a> Checker<'a> {
             }
             return Ty::Error;
         }
+        // `r.drop(k)` / `r.take(k)` on `Range<T>` returns `Range<T>`.
+        if matches!(name.text.as_str(), "drop" | "take")
+            && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")
+        {
+            return Ty::Fn {
+                params: vec![crate::ty::Param {
+                    name: "k".into(),
+                    ty: Ty::Int,
+                    mutable: false,
+                    has_default: false,
+                    named_only: false,
+                    variadic: false,
+                    lazy: false,
+                }],
+                ret: Box::new(base_ty),
+            };
+        }
         // `s.rev`, `xs.rev`, `a.rev`: O(1) read-only reverse view over a string, list, or 1D domain array.
         if name.text == "rev" {
             if base_ty == Ty::Str
@@ -1490,6 +1507,21 @@ impl<'a> Checker<'a> {
             Ty::Pos(domain) => {
                 match name.text.as_str() {
                     "ord" | "to_idx" | "idx" | "label" => return Ty::Int,
+                    "prev" | "next" => return Ty::Optional(Box::new(Ty::Pos(domain.clone()))),
+                    "offset" | "ahead" | "back" => {
+                        return Ty::Fn {
+                            params: vec![crate::ty::Param {
+                                name: "k".into(),
+                                ty: Ty::Int,
+                                mutable: false,
+                                has_default: false,
+                                named_only: false,
+                                variadic: false,
+                                lazy: false,
+                            }],
+                            ret: Box::new(Ty::Optional(Box::new(Ty::Pos(domain.clone())))),
+                        };
+                    }
                     // The boundaries on either side of a position.
                     "l" | "r" | "before" | "after" if !domain.ends_with(".bounds") => {
                         return Ty::Pos(format!("{domain}.bounds"));

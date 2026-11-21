@@ -3855,11 +3855,10 @@ impl<'a> Lowerer<'a> {
             ast::Cond::Expr(c) => guards.push((Vec::new(), self.expect(c, &Ty::Bool), Vec::new())),
             ast::Cond::Let { pat, value, and } => {
                 let mut before = Vec::new();
-                let Some((present, inner)) = self.optional(value, "if let", &mut before) else {
+                let mut bound = Vec::new();
+                let Some(present) = self.cond_let(pat, value, "if let", &mut before, &mut bound) else {
                     return;
                 };
-                let mut bound = Vec::new();
-                self.bind(pat, inner, &mut bound);
                 guards.push((before, present, bound));
                 if let Some(and) = and {
                     self.guard(and, guards);

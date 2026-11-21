@@ -3345,7 +3345,6 @@ drop the `cphashmap` / `cphashset` pieces from `runtime.rs`.
 - **Decision:** Type and lower `a.inverse()` uniformly on 1D arrays in `cpl-check` and `cpl-ir`: a partial injection `a: [D]?E` (where `E` is an index domain, fieldless enum, or bounded integer range) returns `[E]?D` and traps on duplicate images (`Stmt::Trap` in both interpreter and C++); a total bijection `a: [D]E` keeps returning `[E]D` and traps on duplicate or missing images. Arrays with non-index elements (e.g. `[D]?Int`) are rejected at check time with `E0302`.
 - **Reason:** Partial permutations with holes (`a: [P]?(1..=n) = read(none: 0)` in `cf2084g1` and `a: [Pos]?(0..Pos.count) = read(none: -1)` in `cf2084e`) previously forced hand-written inversion loops because `std.seq.inverse` only accepted total bijections `[I]V`. Typing `.inverse()` by the input preserves one spelling across total and partial maps and works without extra imports.
 - **Reverse:** Remove `array_inverse_ret` in `crates/cpl-check/src/check/expr.rs`, the `inverse` arm in `crates/cpl-check/src/check/call.rs`, and `lower_array_inverse` + `local_specs`/`global_specs` in `crates/cpl-ir/src/lower/{mod,stmt,call}.rs`.
-||||||| parent of eb2d35c7 (codegen: move array params stored into a returned struct)
 
 ## 91. Array parameters stored into a returned struct are taken by value and moved (2026-11-21)
 
@@ -3367,3 +3366,15 @@ the `last_use_call` flag; parameters go back to `const&` plus a copy.
 - **Why.** `factor_big` beside `factor` was a width twin violating one-spelling-per-job. A single threshold branch at `1_000_000` keeps small inputs as fast as plain trial division while preventing `O(sqrt x)` TLE on 64-bit inputs (including `phi(x)`). Zero corpus ports called `factor_big`.
 - **Evidence.** `cf2201e` emitted C++ grew by only +82 B (`35,974 -> 36,056 B`); `cf2147g` is `20,364 B` (32% of 64 KB cap); all 19 tests in `stdlib/math.cp` and `examples/local-lib/math/primes.cp` pass across `1..2000`, random `1..1e12`, and 64-bit semiprimes/primes.
 - **Reverse.** Restore `pub fn factor_big(x: Int)` in `stdlib/math.cp` and revert `factor(x)` to trial division only.
+
+## 93. One-spelling syntax rulings & position/range/enum ergonomics (2026-11-21)
+
+1. **Built-in `MemberKind::Get` properties (`len`, `is_empty`, `first`, `last`, `rev`, `items`) are read without parentheses (`xs.len`, not `xs.len()`).**
+   - **Reason:** One spelling per idea. Calling a built-in getter with empty `()` now fails `cpl check` (`E0306` with fix-it) and triggers `L0206` (`getter_parens`) in `cpl fix`. Removed the temporary zero-arg compatibility arm and the special `rev()` arm in `cpl-check`.
+   - **Reverse:** Restore the zero-arg `Get` compatibility in `crates/cpl-check/src/check/call.rs` and remove `L0206` from `crates/cpl-lint`.
+2. **Comprehension/generator/loop filters use `if` only; power uses `**` only; multitest uses `@!multitest` only.**
+   - **Reason:** One spelling per idea. Removed `where` filter guards and `--- multitest ---` / `--- with multitest() ---` wrap lines from `cpl-syntax` (`E0503` with machine-applicable fixes applied by `cpl fix`), moved `Mod<P>.pow` / `Mat<T>.pow` onto `impl Pow` with `.pow(...)` rejected in `cpl-check` and codemodded by `L0205` (`pow_method`), and kept `^` strictly as bitwise xor.
+   - **Reverse:** Re-enable the removed parser branches in `crates/cpl-syntax`, restore `.pow` on `Mod<P>`/`Mat<T>`, and drop `L0205`.
+3. **Position `p.back(k)` / `p.ahead(k) -> ?D`, `Range<T>.drop(k)` / `.take(k) -> Range<T>`, and enum `is` / `if let` variant patterns (`phase is Seeking`, `Split(base)`).**
+   - **Reason:** Accepted from dream rewrites (`cf2150g` et al.). `ahead(k)`/`back(k)` lower via `Builtin::PosOffset` beside `prev`/`next`; `Range<T>.drop(k)`/`.take(k)` clamp `k` to `[0, max(0, hi - lo)]` without overflow; `Cond::Let` in `cpl-ir` dispatches `PatternKind::Variant` on `Ty::Enum` through `self.pattern` (`IsVariant` + `Payload`) so `phase is Seeking` and payload `match` agree in interpreter and C++17.
+   - **Reverse:** Remove the `ahead`/`back`/`drop`/`take` arms in `crates/cpl-check/src/check/expr.rs` and `crates/cpl-ir/src/lower/call.rs`, and revert `cond_let` in `crates/cpl-ir/src/lower/stmt.rs`.

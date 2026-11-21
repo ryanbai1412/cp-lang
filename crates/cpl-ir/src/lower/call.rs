@@ -5599,14 +5599,28 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::Pos(d), "offset") => {
+            (Ty::Pos(d), "offset" | "ahead") => {
                 let d = *d;
-                match self.one_arg("offset", args, &Ty::Int, span) {
+                match self.one_arg(method, args, &Ty::Int, span) {
                     Some(k) => self.mk(
                         ExprKind::Builtin(Builtin::PosOffset(d), vec![value, k]),
                         Ty::opt(Ty::Pos(d)),
                         span,
                     ),
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Pos(d), "back") => {
+                let d = *d;
+                match self.one_arg("back", args, &Ty::Int, span) {
+                    Some(k) => {
+                        let neg_k = self.mk(ExprKind::Unary(UnOp::Neg, Box::new(k)), Ty::Int, span);
+                        self.mk(
+                            ExprKind::Builtin(Builtin::PosOffset(d), vec![value, neg_k]),
+                            Ty::opt(Ty::Pos(d)),
+                            span,
+                        )
+                    }
                     None => self.err_expr(span),
                 }
             }
@@ -6131,6 +6145,91 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     out.push(Stmt::Give(cut));
+                })
+            }
+            // `r.drop(k)` / `r.take(k)` on `Range<Int>` or `Range<D>`: sub-range.
+            (Ty::Range(inner), "drop" | "take") if **inner != Ty::I128 => {
+                let is_drop = method == "drop";
+                let range_ty = value.ty.clone();
+                let Some(k) = self.one_arg(method, args, &Ty::Int, span) else {
+                    return self.err_expr(span);
+                };
+                self.do_expr(Some(&range_ty), span, |lw, out| {
+                    let range = lw.new_slot("range", range_ty.clone());
+                    out.push(Stmt::Let(range, Some(value)));
+                    let lo_s = lw.new_slot("lo", Ty::Int);
+                    let hi_s = lw.new_slot("hi", Ty::Int);
+                    let r1 = lw.local(range, span);
+                    let r2 = lw.local(range, span);
+                    out.push(Stmt::Let(
+                        lo_s,
+                        Some(lw.mk(ExprKind::Builtin(Builtin::RangeLo, vec![r1]), Ty::Int, span)),
+                    ));
+                    out.push(Stmt::Let(
+                        hi_s,
+                        Some(lw.mk(ExprKind::Builtin(Builtin::RangeHi, vec![r2]), Ty::Int, span)),
+                    ));
+                    let k_s = lw.new_slot("k", Ty::Int);
+                    let zero = lw.mk(ExprKind::Int(0), Ty::Int, span);
+                    let k_clamped =
+                        lw.mk(ExprKind::Builtin(Builtin::Max, vec![k, zero]), Ty::Int, span);
+                    out.push(Stmt::Let(k_s, Some(k_clamped)));
+                    let diff = lw.mk(
+                        ExprKind::Binary(
+                            BinOp::Sub,
+                            Box::new(lw.local(hi_s, span)),
+                            Box::new(lw.local(lo_s, span)),
+                        ),
+                        Ty::Int,
+                        span,
+                    );
+                    let zero2 = lw.mk(ExprKind::Int(0), Ty::Int, span);
+                    let avail = lw.mk(
+                        ExprKind::Builtin(Builtin::Max, vec![diff, zero2]),
+                        Ty::Int,
+                        span,
+                    );
+                    let shift = lw.mk(
+                        ExprKind::Builtin(Builtin::Min, vec![avail, lw.local(k_s, span)]),
+                        Ty::Int,
+                        span,
+                    );
+                    let (new_lo, new_hi) = if is_drop {
+                        (
+                            lw.mk(
+                                ExprKind::Binary(
+                                    BinOp::Add,
+                                    Box::new(lw.local(lo_s, span)),
+                                    Box::new(shift),
+                                ),
+                                Ty::Int,
+                                span,
+                            ),
+                            lw.local(hi_s, span),
+                        )
+                    } else {
+                        (
+                            lw.local(lo_s, span),
+                            lw.mk(
+                                ExprKind::Binary(
+                                    BinOp::Add,
+                                    Box::new(lw.local(lo_s, span)),
+                                    Box::new(shift),
+                                ),
+                                Ty::Int,
+                                span,
+                            ),
+                        )
+                    };
+                    let res = lw.mk(
+                        ExprKind::Range {
+                            lo: Box::new(new_lo),
+                            hi: Box::new(new_hi),
+                        },
+                        range_ty.clone(),
+                        span,
+                    );
+                    out.push(Stmt::Give(res));
                 })
             }
             // `(lo..hi).step(k)`: lo, lo + k, ... below hi, as a list.

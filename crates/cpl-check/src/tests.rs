@@ -2696,3 +2696,18 @@ print(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.first(x => x 
 ";
     assert!(check(ok).is_empty(), "expected clean check, got: {:?}", check(ok));
 }
+
+#[test]
+fn pos_back_ahead_and_range_drop_take_typecheck() {
+    let src = "\
+domain D = 1..=5
+let p: D = D(3)
+let a: ?D = p.ahead(2)
+let b: ?D = p.back(1)
+let r: Range<D> = D(1)..=D(5)
+let r2: Range<D> = r.drop(1).take(2)
+let r3: Range<Int> = (0..10).drop(2).take(3)
+print(a == none, b == none, r2.len, r3.len)
+";
+    assert!(check(src).is_empty(), "expected clean check, got: {:?}", check(src));
+}
