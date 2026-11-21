@@ -1449,3 +1449,31 @@ fn code_lenses_run_trace_and_stress_with_the_first_sample_when_asked() {
     );
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn inlay_hints_show_the_range_the_bounds_prove() {
+    let src =
+        "let n: 1..=100 = read()\nlet m = n * n + 1\nlet k = 7\nlet w = read()\nprint(m + k + w)\n";
+    let (mut server, _) = open(src);
+    let reply = server.handle(&request(
+        34,
+        "textDocument/inlayHint",
+        obj([
+            ("textDocument", doc()),
+            ("range", obj([("start", pos(0, 0)), ("end", pos(5, 0))])),
+        ]),
+    ));
+    let labels: Vec<(u32, &str)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .filter(|h| h.get("kind").as_u32() == Some(1))
+        .map(|h| {
+            (
+                h.at(&["position", "line"]).as_u32().unwrap(),
+                h.get("label").as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(labels, [(1, ": Int in 2..=10001"), (2, ": Int")]);
+}

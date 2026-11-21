@@ -408,7 +408,9 @@ public names of every module they use), Run/Trace/Stress code lenses on
 the first sample (asked for with `initializationOptions.codeLens`, each a
 `cpl` argument list under the client command `cpl.exec`), formatting, completion (members
 after `.`, names in scope, `use std.`), signature help, inlay hints
-(unwritten types, parameter names of literal arguments) and quick fixes
+(unwritten types, with the index space of a loop variable (`v: V`,
+`i: 0..n`) and the range the input bounds prove for a top-level `let`
+(`m: Int in 2..=10001`); parameter names of literal arguments) and quick fixes
 from diagnostic fixes; a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
@@ -421,7 +423,7 @@ Hover shows the index space and its bound for arrays and positions
 total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
 Gaps against `plan/60`: no computed cost on hover; no proven range of an
-expression; no inlay hints for index spaces or ranges; no cost or overflow
+expression; proven ranges in inlay hints are top-level only; no cost or overflow
 warnings; rename is one file; no refactorings or "fix all"; no
 expected-type ranking or auto-import; no `cpl test` lens; Emacs (eglot draws no lenses) and Helix
 run from a shell command; no JetBrains plugin, no fixture tests, fuzzer, DAP or
@@ -433,8 +435,8 @@ compiler and drives each against the real server (Neovim: diagnostic, hover
 and the run lens through `cpl.exec`; Emacs: mode, faces, eglot entry; Helix: `--health`), in `--full`.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Fixture tests; hover index spaces and ranges; inlay hints for
-index spaces and ranges; a test lens; JetBrains plugin; tree-sitter grammar (Helix
+**Next.** Fixture tests; proven ranges inside fns, on hover and on
+expressions (needs the checker's own range analysis); a test lens; JetBrains plugin; tree-sitter grammar (Helix
 highlighting, a Zed extension, Neovim tree-sitter); fuzzer.
 
 ## 11. Docs, site and playground (`plan/90`)

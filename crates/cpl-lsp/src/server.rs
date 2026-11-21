@@ -544,6 +544,11 @@ impl Server {
                     return Ok(Reply::result(Value::Array(Vec::new())));
                 };
                 let mut hints = Vec::new();
+                let proven: std::collections::HashMap<u32, (i128, i128)> =
+                    cpl_lint::proven_ranges(&analysis.text)
+                        .into_iter()
+                        .map(|(at, lo, hi)| (at, (lo, hi)))
+                        .collect();
                 for item in &analysis.items {
                     for entry in &item.check.hovers {
                         let declares = entry.decl == Some(entry.span)
@@ -561,7 +566,21 @@ impl Server {
                                     "position",
                                     position_json(analysis.lines.utf16(at, &analysis.text)),
                                 ),
-                                ("label", format!(": {}", entry.ty).into()),
+                                (
+                                    "label",
+                                    {
+                                        let start = item.offset + entry.span.start;
+                                        match proven.get(&start) {
+                                            Some((lo, hi))
+                                                if entry.keyword == "let" && lo != hi =>
+                                            {
+                                                format!(": {} in {lo}..={hi}", entry.ty)
+                                            }
+                                            _ => format!(": {}", entry.ty),
+                                        }
+                                    }
+                                    .into(),
+                                ),
                                 ("kind", 1.into()),
                             ]),
                         ));

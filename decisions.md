@@ -1746,6 +1746,14 @@ the one place that finds samples and decides which lenses a file gets. It answer
 inline, the trace panel) and would show both. Reverse: drop `code_lenses`, the `codeLens` arm and the
 capability in `crates/cpl-lsp/src/server.rs`, and the handler in `editors/neovim/plugin/cplang.lua`.
 
+29.7. **Range inlay hints reuse the lint's bounds, top level only, for now.** `cpl_lint::proven_ranges`
+exposes what `rules/bounds.rs` already proves from declared input bounds (`let n: 1..=100` makes
+`let m = n * n + 1` lie in `2..=10001`), so the hint and the lint that warns about overflow can't
+disagree; a single-value range (a literal) gets no hint. The general version is a range analysis in
+the checker that hover, hints, widths and overflow proofs all read, which this should move onto.
+Reverse: drop the `proven` lookup in the `inlayHint` arm of `crates/cpl-lsp/src/server.rs` and
+`proven_ranges` in `crates/cpl-lint`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six

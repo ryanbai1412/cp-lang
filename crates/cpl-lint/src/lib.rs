@@ -287,6 +287,21 @@ impl File<'_> {
     }
 }
 
+/// What the declared input bounds prove about each top-level `let` written
+/// without a type: `let m = n * n` after `let n: 1..=100 = read()` is in
+/// `1..=10000`. Each is the name's byte offset and the inclusive range; a file
+/// with a syntax error has none.
+pub fn proven_ranges(src: &str) -> Vec<(u32, i128, i128)> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_ranges(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
 /// Lints one file. Returns warnings (errors for `deny`), in source order.
 ///
 /// A file with a syntax error gets no lints: what the parser could not read

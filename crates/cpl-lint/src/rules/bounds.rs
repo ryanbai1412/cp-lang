@@ -92,6 +92,11 @@ impl Bounds {
         bounds
     }
 
+    /// What the declarations prove about the value of the top-level `name`.
+    pub(crate) fn value(&self, name: &str) -> Option<Interval> {
+        self.values.get(name).copied()
+    }
+
     /// The values `lo..hi` or `lo..=hi` can cover.
     fn span(&self, lo: &Expr, hi: &Expr, inclusive: bool) -> Option<Interval> {
         let (lo, hi) = (self.expr(lo)?, self.expr(hi)?);
