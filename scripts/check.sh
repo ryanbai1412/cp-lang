@@ -19,6 +19,8 @@
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the offline site bundle (python3 site/bundle.py) stays under
 #            2,600,000 bytes
+#            and site/test_site.py passes (links, reader copy, documented
+#            programs compiled natively; about two minutes)
 # --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
 #            fuzzer and the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
@@ -222,6 +224,9 @@ echo "dist/cp-lang.html: $bundle_bytes bytes"
 
 step "docs examples, course references, cheat-sheet budget and links"
 python3 site/check_docs.py || fail "docs gate failed; rerun: python3 site/check_docs.py"
+
+step "site tests: built pages, links, reader copy, documented programs"
+python3 site/test_site.py >/dev/null 2>&1 || fail "site tests failed; rerun: python3 site/test_site.py"
 
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"

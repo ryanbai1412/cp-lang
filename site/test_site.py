@@ -138,7 +138,8 @@ class SiteTests(unittest.TestCase):
                     continue
                 path = unquote(url.path) or name
                 self.assertTrue((target / path).is_file(), f"{name}: {link}")
-                if url.fragment:
+                if url.fragment and not (path == "playground.html"
+                                         and url.fragment.startswith("share=")):
                     self.assertIn(
                         unquote(url.fragment), pages[path].ids, f"{name}: {link}"
                     )

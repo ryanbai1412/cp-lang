@@ -103,8 +103,8 @@ def render_exemplars_html(highlight_fn, root: Path = ROOT) -> tuple[str, list[tu
     median_ratio = sorted(p["ratio"] for p in pairs)[len(pairs) // 2] if pairs else 1.0
     featured = pairs[:12]
     parts = [
-        '<p class="lead">Generated directly from <code>proto/ports/**/dream/*.cp</code> '
-        'paired with their validated ports and <code>design/sketches/ioi2025/*.cp</code>. '
+        '<p class="lead">Generated from the dream corpus, each dream paired with its validated port, '
+        'and from the IOI 2025 sketches. '
         'Each dream shows how the solution should read at the bar of '
         '<code>design/EXEMPLARS-PORTS.md</code>; the port beside it is what runs and passes '
         'today (sorted closest-to-dream first).</p>',
@@ -130,9 +130,9 @@ def render_exemplars_html(highlight_fn, root: Path = ROOT) -> tuple[str, list[tu
             f'</header>'
             f'{summary_html}'
             f'<div class="exemplar-grid">'
-            f'<div class="exemplar-pane"><div class="pane-label">Dream (<code>{html.escape(p["dream_path"])}</code>)</div>'
+            f'<div class="exemplar-pane"><div class="pane-label">Dream</div>'
             f'<pre><code>{highlight_fn(p["dream_src"], "cp")}</code></pre></div>'
-            f'<div class="exemplar-pane"><div class="pane-label">Validated port (<code>{html.escape(p["port_path"])}</code>)</div>'
+            f'<div class="exemplar-pane"><div class="pane-label">Validated port</div>'
             f'<pre><code>{highlight_fn(p["port_src"], "cp")}</code></pre></div>'
             f'</div></article>'
         )

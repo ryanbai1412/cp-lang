@@ -2826,6 +2826,21 @@ visits children first, and `t.sub(v)` is a range of `t.Pre`. `preorder` and
 in order) is rarely needed in contest code; it stays `t.Pre.rev` until a port
 shows it matters. Reverse by restoring `postorder` as an alias.
 
+## 64. `site/test_site.py` joins the fast gate (2026-11-21)
+
+**Decision.** `scripts/check.sh --fast` runs `site/test_site.py` after the
+docs gate. Its two failures are fixed: a playground `#share=` fragment is
+state, not a page id, so the link test skips it as `site/check_docs.py`
+already does, and the exemplars and ports pages name dreams and ports without
+their repository paths.
+
+**Why.** Nothing ran the site tests, so broken links and internal paths in
+reader copy landed unnoticed. They cost about two minutes, most of it
+compiling documented programs natively.
+
+**Reverse.** Delete the `site tests` step from `scripts/check.sh` and run
+`python3 site/test_site.py` from `--full` instead.
+
 ## 65. `aliens` is generic over the slope type (2026-11-21)
 
 `std.dp.aliens<L>` searches `Range<L>` and returns `L`, so `I128` slopes work

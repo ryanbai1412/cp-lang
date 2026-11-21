@@ -29,6 +29,7 @@ def parse_ports_md(repo_root: Path) -> tuple[str, list[dict]]:
     text = md_path.read_text()
     summary_m = re.search(r"The newest\s+\d+\s+of\s+\d+\s+ports.*?median\s+[0-9.]+x[^)]*\)", text, re.S)
     summary = re.sub(r"\s+", " ", summary_m.group(0)).strip() if summary_m else ""
+    summary = re.sub(r"\s*\b(?:by|from)\s+`[^`]*/[^`]*`", "", summary)
 
     rows: list[dict] = []
     seen: set[str] = set()
