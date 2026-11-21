@@ -281,10 +281,9 @@ arrays store 32-bit elements (decision 106); segment trees lend a leaf as
 a writable place (`st.at(i) += x`). 63 matched C++ benches across nine
 areas (geometry 14, flow 10, containers 9, strings 9, ranges 7, trees 5,
 dp 4, graph 4, io 1): strings all at most 1.07x, sorted range views
-1.00x, cf2237h at the original's speed (0.51 s vs 0.53 s). Open gaps:
-`Rooted` build at 1.5x time and 1.8x memory on a 10^6 tree (0.35 s /
-124 MB vs 0.23 s / 70 MB; the CSR fix measures 0.76x / 1.14x and is
-landing), `dijkstra` 1.18x, weighted blossom 1.30x, the interpreter on
+1.00x, cf2237h at the original's speed (0.51 s vs 0.53 s). The `Rooted` build on a 10^6 tree is
+0.76x time and 1.14x memory of hand-written C++ (CSR `Adj`, decision
+110). Open gaps: `dijkstra` 1.18x, weighted blossom 1.30x, the interpreter on
 `mut self` structures, `if let` copying its payload every loop
 iteration (cf2021d, 9.5 s vs 0.01 s), and constant-length `[3]T`
 literals on the heap (cf2022c, 2.28x until rewritten; in progress).
