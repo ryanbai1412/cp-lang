@@ -1892,15 +1892,14 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let seq = self.expr(exprs[0], None);
-        let elem = match &seq.ty {
-            Ty::List(e) | Ty::Array { elem: e, .. } => (**e).clone(),
-            Ty::Str => Ty::Char,
-            Ty::Error => return self.err_expr(span),
-            other => {
+        let elem = match seq.ty.seq_elem() {
+            Some(e) => e,
+            None if seq.ty == Ty::Error => return self.err_expr(span),
+            None => {
                 self.error(
                     codes::TYPE_MISMATCH,
                     exprs[0].span,
-                    format!("`runs` takes a list, array, or string, not `{}`", self.show(other)),
+                    format!("`runs` takes a sequence, not `{}`", self.show(&seq.ty)),
                 );
                 return self.err_expr(span);
             }
@@ -1983,10 +1982,15 @@ impl<'a> Lowerer<'a> {
                 span,
             ));
             lw.cx.loops.pop();
+            let seq_iter = if matches!(seq.ty, Ty::Range(_)) {
+                Iter::RangeVal(seq, false)
+            } else {
+                Iter::Seq(seq, false)
+            };
             out.push(Stmt::For(
                 lid,
                 item_slot,
-                Iter::Seq(seq, false),
+                seq_iter,
                 Block {
                     stmts: vec![Stmt::If(
                         cond,
@@ -2344,13 +2348,16 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let seq = self.expr(arg, None);
-                let elem = match &seq.ty {
-                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::Set(elem) | Ty::Range(elem) => (**elem).clone(),
-                    Ty::Error => return self.err_expr(span),
-                    other => {
+                let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
+                    Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => Some((**elem).clone()),
+                    _ => None,
+                }) {
+                    Some(e) => e,
+                    None if seq.ty == Ty::Error => return self.err_expr(span),
+                    None => {
                         let message = format!(
                             "this needs a sequence of values, not a `{}`",
-                            self.show(other)
+                            self.show(&seq.ty)
                         );
                         self.error(codes::TYPE_MISMATCH, arg.span, message);
                         return self.err_expr(span);
@@ -2556,13 +2563,16 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let seq = self.expr(arg, None);
-                let elem = match &seq.ty {
-                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::Set(elem) => (**elem).clone(),
-                    Ty::Error => return self.err_expr(span),
-                    other => {
+                let elem = match seq.ty.seq_elem().or_else(|| match &seq.ty {
+                    Ty::Array { elem, .. } | Ty::Set(elem) | Ty::HashSet(elem) => Some((**elem).clone()),
+                    _ => None,
+                }) {
+                    Some(e) => e,
+                    None if seq.ty == Ty::Error => return self.err_expr(span),
+                    None => {
                         let message = format!(
                             "this needs a sequence of values, not a `{}`",
-                            self.show(other)
+                            self.show(&seq.ty)
                         );
                         self.error(codes::TYPE_MISMATCH, arg.span, message);
                         return self.err_expr(span);
@@ -3285,6 +3295,8 @@ impl<'a> Lowerer<'a> {
                 let opt = Ty::opt((**elem).clone());
                 builtin(self, Builtin::Last, vec![value], opt)
             }
+            (Ty::Str, "first") => builtin(self, Builtin::First, vec![value], Ty::opt(Ty::Char)),
+            (Ty::Str, "last") => builtin(self, Builtin::Last, vec![value], Ty::opt(Ty::Char)),
             (Ty::List(_) | Ty::Str, "rev") => {
                 builtin(self, Builtin::Reversed, vec![value], ty.clone())
             }
@@ -4818,10 +4830,18 @@ impl<'a> Lowerer<'a> {
                 let items = self.expr(exprs[0], None);
                 self.join(value, items, None, exprs[0].span)
             }
-            (Ty::List(elem), "get") => {
-                let opt = Ty::opt((**elem).clone());
+            (ty, "get") if ty.is_indexed() => {
+                let elem = ty.seq_elem().unwrap();
+                let opt = Ty::opt(elem);
                 match self.one_arg("get", args, &Ty::Int, span) {
                     Some(at) => self.mk(ExprKind::Builtin(Builtin::SeqGet, vec![value, at]), opt, span),
+                    None => self.err_expr(span),
+                }
+            }
+            (ty, "at") if ty.is_indexed() => {
+                let elem = ty.seq_elem().unwrap();
+                match self.one_arg("at", args, &Ty::Int, span) {
+                    Some(at) => self.mk(ExprKind::Index(Box::new(value), vec![at]), elem, span),
                     None => self.err_expr(span),
                 }
             }
@@ -5326,10 +5346,8 @@ impl<'a> Lowerer<'a> {
             // `xs.last(k)`: the element `k` back from the last one, so
             // `xs.last(1)` is the one before the last; `none` when there
             // are not that many.
-            (Ty::List(elem), "last") | (Ty::Array { elem, .. }, "last")
-                if args.len() == 1 && !matches!(&ty, Ty::Array { dims, .. } if dims.len() != 1) =>
-            {
-                let elem = (**elem).clone();
+            (ty, "last") if ty.is_indexed() && args.len() == 1 => {
+                let elem = ty.seq_elem().unwrap();
                 // An array of positions is read at the position that far in.
                 let of = match &ty {
                     Ty::Array { dims, .. } => match dims[0] {

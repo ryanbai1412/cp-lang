@@ -37,26 +37,25 @@ pub fn suffix_scan<D, T>(xs: [D]T, f: (T, T) -> T) -> [D]T:
         after = i
     out
 
-/// Product of all elements of `it` (`T.one` when empty). Works on `Int`, `Mod<P>`, `F64`. O(n).
-pub fn prod<S, T>(it: S) -> T:
+/// Product of all elements of `it` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
+pub fn prod<S: Seq, T>(it: S) -> T:
     var out = T.one
     for x in it: out *= x
     out
 
-/// Whether `self` is non-decreasing. Works on `List<T>`, `[D]T`, and `Str`. O(n).
-pub fn is_sorted<D, T>(self: [D]T) -> Bool:
+/// Whether `self` is non-decreasing. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). O(n).
+pub fn is_sorted<S: Seq, T>(self: S) -> Bool:
     var prev: ?T = none
-    for i in D:
-        let x = self[i]
+    for x in self:
         if let p = prev, x < p: return false
         prev = x
     true
 
-/// Whether `self` is non-decreasing under `by`. O(n).
-pub fn is_sorted_by<D, T, K>(self: [D]T, by: T -> K) -> Bool:
+/// Whether `self` is non-decreasing under `by`. Works on any `Seq`. O(n).
+pub fn is_sorted_by<S: Seq, T, K>(self: S, by: T -> K) -> Bool:
     var prev: ?K = none
-    for i in D:
-        let k = by(self[i])
+    for x in self:
+        let k = by(x)
         if let p = prev, k < p: return false
         prev = k
     true
@@ -316,33 +315,30 @@ pub fn chunks<T>(self: List<T>, k: Int) -> yields List<T>:
         i = end
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].pairs()` gives
-/// `(10, 20)` then `(20, 30)`. Works on `List<T>`, `[D]T`, and `Str`. O(1) per step.
-pub fn pairs<D, T>(self: [D]T) -> yields (T, T):
+/// `(10, 20)` then `(20, 30)`. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). O(1) per step.
+pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
     var prev: ?T = none
-    for i in D:
-        let x = self[i]
+    for x in self:
         if let p = prev: yield (p, x)
         prev = x
 
 /// Every element paired with the previous one, starting with `(none, first)`:
-/// `[10, 20, 30].with_prev()` gives `(none, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
-pub fn with_prev<D, T>(self: [D]T) -> yields (?T, T):
+/// `[10, 20, 30].with_prev()` gives `(none, 10)`, `(10, 20)`, `(20, 30)`. Works on any `Seq`. O(1) per step.
+pub fn with_prev<S: Seq, T>(self: S) -> yields (?T, T):
     var prev: ?T = none
-    for i in D:
-        let x = self[i]
+    for x in self:
         yield (prev, x)
         prev = x
 
 /// Every element with the one after it, the last with the first: the
 /// sides of a polygon, the links of a ring. One pair `(x, x)` for a
-/// single element, none for an empty sequence.
+/// single element, none for an empty sequence. Works on any `Seq`.
 ///
 ///     for (u, v) in poly.cyclic_pairs(): area += cross(u, v)
-pub fn cyclic_pairs<D, T>(self: [D]T) -> yields (T, T):
+pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
     var first_val: ?T = none
     var prev: ?T = none
-    for i in D:
-        let x = self[i]
+    for x in self:
         if let p = prev: yield (p, x)
         else: first_val = x
         prev = x
@@ -431,11 +427,10 @@ pub fn prev_permutation<T>(mut a: List<T>) -> Bool:
     true
 
 /// The stretches of equal neighbours, in order: `runs("aabccc")` is `[('a', 2), ('b', 1), ('c', 3)]`.
-/// Works on `List<T>`, `[D]T`, and `Str`. O(n).
-pub fn runs<D, T>(self: [D]T) -> List<(val: T, len: Int)>:
+/// Works on any `Seq` (`Str`, `List<T>`, `[D]T`, `Range<I>`, and O(1) views) without conversion. O(n).
+pub fn runs<S: Seq, T>(self: S) -> List<(val: T, len: Int)>:
     var out: List<(val: T, len: Int)> = []
-    for i in D:
-        let x = self[i]
+    for x in self:
         if out.len > 0 and out[out.len - 1].val == x:
             out[out.len - 1] = (val: x, len: out[out.len - 1].len + 1)
         else:
@@ -500,7 +495,8 @@ pub fn buckets<D, K>(key: [D]K) -> [K]List<D>:
 
 /// The stretches of neighbours with the same `by`, in order, each with its values:
 /// `runs_by(["ab", "ac", "b"], s => s[0])` is `[('a', ["ab", "ac"]), ('b', ["b"])]`.
-pub fn runs_by<T, K>(a: List<T>, by: T -> K) -> List<(key: K, items: List<T>)>:
+/// Works on any `Seq`. O(n).
+pub fn runs_by<S: Seq, T, K>(a: S, by: T -> K) -> List<(key: K, items: List<T>)>:
     var out: List<(key: K, items: List<T>)> = []
     for x in a:
         let k = by(x)
@@ -510,17 +506,17 @@ pub fn runs_by<T, K>(a: List<T>, by: T -> K) -> List<(key: K, items: List<T>)>:
 
 /// For each value of `xs`, in order, the fold with `m` of all the others: what is left when
 /// one is taken out, with no division or inverse needed. The fold keeps the order (the ones
-/// before, then the ones after), so `m` need not commute. O(n) calls of `m`.
+/// before, then the ones after), so `m` need not commute. Works on any `Indexed`. O(n) calls of `m`.
 ///
 ///     for (x, rest) in [2, 3, 5].excl_fold(*): print(x, rest)    // 2 15, 3 10, 5 6
-pub fn excl_fold<T, M>(self: List<T>, m: M) -> yields (x: T, rest: T):
+pub fn excl_fold<S: Indexed, T, M>(self: S, m: M) -> yields (x: T, rest: T):
     let k = Monoid<T>.of(m)
     var after = List.filled(self.len + 1, k.id)
-    for i in (0..self.len).rev: after[i] = k.op(self[i], after[i + 1])
+    for i in (0..self.len).rev: after[i] = k.op(self.at(i), after[i + 1])
     var before = k.id
     for i in 0..self.len:
-        yield (x: self[i], rest: k.op(before, after[i + 1]))
-        before = k.op(before, self[i])
+        yield (x: self.at(i), rest: k.op(before, after[i + 1]))
+        before = k.op(before, self.at(i))
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
 /// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
@@ -1481,3 +1477,33 @@ fn parallel_search_matches_one_search_per_query():
                 s += adds[t]
                 if want == none and s >= need[i]: want = t
             assert got[i] == want
+
+@test
+fn seq_and_indexed_traits_unify_sequences_and_views():
+    // cf2084h regression: Str.runs() directly without conversion
+    let s: Str = "0011100"
+    let blocks = [r.len for r in s.runs()]
+    assert blocks == [2, 3, 2]
+    assert s.first == '0' and s.last == '0' and s.last(2) == '1'
+    assert s.get(2) == '1' and s.get(9) == none and s.at(2) == '1'
+    assert "".first == none and "".last == none and "".get(0) == none
+    assert s[1..5].runs().len == 2
+    assert [r.len for r in s.rev.runs()] == [2, 3, 2]
+
+    // List, domain-indexed [V]Int, Range, slice, and rev all implement Seq + Indexed
+    let xs = [1, 1, 2, 2, 2]
+    assert [r.len for r in xs.runs()] == [2, 3]
+    assert xs.is_sorted() and not xs.rev.is_sorted()
+
+    domain V = 1..=5
+    let arr: [V]Int = [10, 10, 20, 30, 30]
+    assert [r.len for r in arr.runs()] == [2, 1, 2]
+    assert arr.is_sorted() and arr.at(2) == 20 and arr.get(2) == 20 and arr.get(5) == none
+
+    let r = 1..=5
+    assert r.runs().len == 5 and r.is_sorted()
+    assert r.first == 1 and r.last == 5 and r.last(1) == 4
+    assert r[0] == 1 and r[4] == 5 and r.at(2) == 3 and r.get(2) == 3 and r.get(5) == none
+    assert sum(r) == 15 and min(r) == 1 and max(r) == 5 and prod(r) == 120
+    assert [p for p in r.pairs()] == [(1, 2), (2, 3), (3, 4), (4, 5)]
+    assert [e.rest for e in r.excl_fold(+)] == [14, 13, 12, 11, 10]

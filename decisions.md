@@ -2353,7 +2353,6 @@ Reverse: delete the step from `scripts/check.sh`.
   overhead is a general closure-monomorphization pass in `cpl-codegen`,
   not a stdlib-specific hack. Reverse: switch to traits once associated
   constants land.
-<<<<<<< HEAD
 
 ## 43. Flows and matching (`std.flow`, 2026-11-21)
 
@@ -2583,3 +2582,10 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    Reason: options are named arguments rather than separate constructors; storing `by` as-is lets C++ codegen inline `min`/`max` directly (~2x faster than wrapping `pick` in a lambda); `best_at` supplies DP argmin in O(1); `drop_after(max_at)` mirrors `drop_before(min_at)` for right-to-left sweeps without negating positions or adding state to `MonoDeque` (`research/frictions/ucup4s24f.md`). Reverse: restore `MonoDeque.by(better: (T, T) -> Bool)` beside `new(pick)` and drop `best_at`/`drop_after`.
 2. **Bitset knapsack is `Bitset<D>.subset_sums(weights)` rather than a free `std.bitset.subset_sums`.**
    Reason: avoids colliding with `std.dp.subset_sums(xs) -> List<Int>` (meet-in-the-middle) and eliminates the turbofish at call sites (`Bitset<Sum>.subset_sums(ws)`). Reverse: expose a free `subset_sums<D>` in `std.bitset`.
+
+## 51. `Seq` and `Indexed` trait unification (2026-11-21)
+
+1. **Built-in `Seq` and `Indexed` traits are backed by one central `Ty::seq_elem()` / `is_seq()` / `is_indexed()` predicate in `cpl-check` and `cpl-ir`.**
+   `Str`, `List<T>`, 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views all satisfy `Seq` and `Indexed` without conversion, and generic functions written `<S: Seq, T>` or `<S: Indexed>` check bounds at instantiation and deduce element type `T` from `S`. Reason: eliminates per-container overloads (`runs`, `prefix_function`, `z_function`, `is_palindrome`, `is_sorted`, `prod`, `pairs`, `excl_fold`, `sum`/`min`/`max`) and gives O(1) views a single plug-in point (`Ty::StrView`, `Ty::ListView`). Reverse: revert `seq_elem`/`is_seq`/`is_indexed` and restore concrete parameter types in `stdlib/seq.cp` and `stdlib/strings.cp`.
+2. **Zero-based `s.at(i)` and `s.get(i)` are the uniform `Indexed` accessors, while `a[i]` preserves domain safety on `[D]T`.**
+   `Str` gains `.first`, `.last`, `.last(k)`, `.get(i)`, `.at(i)`; `Range<I>` gains `r[i]`, `.get(i)`, `.at(i)`, `.last(k)` and `sum`/`min`/`max`/`runs`; 1D `[D]T` gains `.get(i)` and `.at(i)`. Generic `<S: Indexed>` algorithms (such as `prefix_function` and `z_function`) index via `s.at(i)` so nominal-domain arrays `[V]T` work without weakening `WRONG_DOMAIN` checks on `a[i]`. Reverse: remove `at`/`get` arms in `cpl-ir/src/lower/call.rs`.

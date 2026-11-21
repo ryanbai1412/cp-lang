@@ -1129,6 +1129,42 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if let Some(elem) = base_ty.seq_elem() {
+            match name.text.as_str() {
+                "first" | "last" if base_ty == Ty::Str => {
+                    return Ty::Optional(Box::new(elem));
+                }
+                "get" => {
+                    return Ty::Fn {
+                        params: vec![crate::Param {
+                            name: "i".into(),
+                            ty: Ty::Int,
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(Ty::Optional(Box::new(elem))),
+                    };
+                }
+                "at" => {
+                    return Ty::Fn {
+                        params: vec![crate::Param {
+                            name: "i".into(),
+                            ty: Ty::Int,
+                            mutable: false,
+                            has_default: false,
+                            named_only: false,
+                            variadic: false,
+                            lazy: false,
+                        }],
+                        ret: Box::new(elem),
+                    };
+                }
+                _ => {}
+            }
+        }
         // `xs.items`: each element with its index, a position of `I` for
         // `[I]T` and an `Int` otherwise.
         if name.text == "items" {
@@ -1483,6 +1519,7 @@ impl<'a> Checker<'a> {
                 ty.clone()
             }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
+            Ty::Named { name, args } if name == "Range" && args.len() == 1 => args[0].clone(),
             Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
             Ty::Str => Ty::Char,
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Char | Ty::Fn { .. }) => {

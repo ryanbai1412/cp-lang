@@ -78,6 +78,31 @@ impl Ty {
         }
     }
 
+    /// Element type of a built-in `Seq` / `Indexed` sequence (`Str`, `List<T>`,
+    /// 1D `[D]T`, `Range<I>`, and lent slice/reverse views which keep their base type).
+    pub fn seq_elem(&self) -> Option<Ty> {
+        match self {
+            Ty::Str => Some(Ty::Char),
+            Ty::Array { index, elem } if index.len() == 1 => Some((**elem).clone()),
+            Ty::Named { name, args }
+                if matches!(name.as_str(), "List" | "Range") && args.len() == 1 =>
+            {
+                Some(args[0].clone())
+            }
+            _ => None,
+        }
+    }
+
+    /// True when this type implements the built-in `Seq` trait.
+    pub fn is_seq(&self) -> bool {
+        self.seq_elem().is_some()
+    }
+
+    /// True when this type implements the built-in `Indexed` trait.
+    pub fn is_indexed(&self) -> bool {
+        self.seq_elem().is_some()
+    }
+
     /// True when nothing can be said about this type.
     pub fn is_vague(&self) -> bool {
         matches!(self, Ty::Unknown | Ty::Error)

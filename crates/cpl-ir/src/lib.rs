@@ -228,6 +228,28 @@ impl Ty {
             _ => None,
         }
     }
+
+    /// Element type of a built-in `Seq` / `Indexed` sequence (`Str`, `List<T>`,
+    /// 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views).
+    pub fn seq_elem(&self) -> Option<Ty> {
+        match self {
+            Ty::List(elem) => Some((**elem).clone()),
+            Ty::Str => Some(Ty::Char),
+            Ty::Array { dims, elem } if dims.len() == 1 => Some((**elem).clone()),
+            Ty::Range(inner) => Some((**inner).clone()),
+            _ => None,
+        }
+    }
+
+    /// True when this type implements the built-in `Seq` trait.
+    pub fn is_seq(&self) -> bool {
+        self.seq_elem().is_some()
+    }
+
+    /// True when this type implements the built-in `Indexed` trait (O(1) random access).
+    pub fn is_indexed(&self) -> bool {
+        self.seq_elem().is_some()
+    }
 }
 
 /// A type as it was written, keeping what the type alone forgets: the

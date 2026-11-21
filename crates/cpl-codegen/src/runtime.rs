@@ -552,6 +552,7 @@ template <class T> std::optional<T> pop(std::vector<T>& v) { if (v.empty()) retu
         needs: &[],
         code: "\
 template <class T> std::optional<T> first(const std::vector<T>& v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.front()); }
+inline std::optional<u8> first(const std::string& s) { return s.empty() ? std::optional<u8>() : std::optional<u8>((u8)s.front()); }
 ",
     },
     Piece {
@@ -559,6 +560,7 @@ template <class T> std::optional<T> first(const std::vector<T>& v) { return v.em
         needs: &[],
         code: "\
 template <class T> std::optional<T> last(const std::vector<T>& v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
+inline std::optional<u8> last(const std::string& s) { return s.empty() ? std::optional<u8>() : std::optional<u8>((u8)s.back()); }
 ",
     },
     Piece {
@@ -710,6 +712,8 @@ template <class T> struct Range {
     bool has(T x) const { return x >= lo && x < hi; }
     std::optional<T> first() const { return lo < hi ? std::optional<T>(lo) : std::nullopt; }
     std::optional<T> last() const { return lo < hi ? std::optional<T>((T)(hi - 1)) : std::nullopt; }
+    T operator[](ll i) const { return (T)((ll)lo + i); }
+    std::optional<T> get(ll i) const { return i < 0 || i >= len() ? std::optional<T>() : std::optional<T>((T)((ll)lo + i)); }
     std::vector<T> rev() const {
         std::vector<T> out;
         if (lo < hi) { out.reserve((size_t)((ll)hi - (ll)lo)); for (T x = hi; x-- > lo;) out.push_back(x); }
@@ -914,10 +918,18 @@ template <class T> T pop_val(std::vector<T>& v) { if (v.empty()) fail(\"pop from
 ",
     },
     Piece {
+        name: "range_at",
+        needs: &["fail", "range"],
+        code: "\
+template <class T> T range_at(const Range<T>& r, ll i) { if (i < 0 || i >= r.len()) fail(\"index out of range\"); return r[i]; }
+",
+    },
+    Piece {
         name: "first_val",
         needs: &["fail"],
         code: "\
 template <class T> T first_val(const std::vector<T>& v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
+inline u8 first_val(const std::string& s) { if (s.empty()) fail(\"the string is empty\"); return (u8)s.front(); }
 ",
     },
     Piece {
@@ -925,6 +937,7 @@ template <class T> T first_val(const std::vector<T>& v) { if (v.empty()) fail(\"
         needs: &["fail"],
         code: "\
 template <class T> T last_val(const std::vector<T>& v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
+inline u8 last_val(const std::string& s) { if (s.empty()) fail(\"the string is empty\"); return (u8)s.back(); }
 ",
     },
     Piece {

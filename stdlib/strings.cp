@@ -51,9 +51,10 @@ pub @get fn digit(self: Char) -> Int:
     assert '0' <= self and self <= '9', "`digit` needs one of '0' to '9'"
     self.ord - '0'.ord
 
-/// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`. O(n).
+/// `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`.
+/// Works on any `Indexed` sequence (`Str`, `List<T>`, `[D]T`, `Range<I>`, views) without conversion. O(n).
 @allow(unproven_list_index)
-pub fn z_function<T>(s: List<T>) -> List<Int>:
+pub fn z_function<S: Indexed>(s: S) -> List<Int>:
     let n = s.len
     var z = List.filled(n, 0)
     if n == 0: return z
@@ -61,19 +62,20 @@ pub fn z_function<T>(s: List<T>) -> List<Int>:
     var (l, r) = (0, 0)
     for i in 1..n:
         var k = if i < r: min(r - i, z[i - l]) else: 0
-        while i + k < n and s[k] == s[i + k]: k += 1
+        while i + k < n and s.at(k) == s.at(i + k): k += 1
         z[i] = k
         if i + k > r: (l, r) = (i, i + k)
     z
 
-/// `p[i]` is the length of the longest proper prefix of `s[..=i]` that is also its suffix. O(n).
+/// `p[i]` is the length of the longest proper prefix of `s[..=i]` that is also its suffix.
+/// Works on any `Indexed` sequence (`Str`, `List<T>`, `[D]T`, `Range<I>`, views) without conversion. O(n).
 @allow(unproven_list_index)
-pub fn prefix_function<T>(s: List<T>) -> List<Int>:
+pub fn prefix_function<S: Indexed>(s: S) -> List<Int>:
     var p = List.filled(s.len, 0)
     for i in 1..s.len:
         var k = p[i - 1]
-        while k > 0 and s[i] != s[k]: k = p[k - 1]
-        if s[i] == s[k]: k += 1
+        while k > 0 and s.at(i) != s.at(k): k = p[k - 1]
+        if s.at(i) == s.at(k): k += 1
         p[i] = k
     p
 
@@ -94,19 +96,19 @@ pub fn find_all<T>(self: List<T>, pat: List<T>) -> yields Int:
             k = p[k - 1]
 
 /// The length of the shortest period of `s`: the smallest `d >= 1` with `s[i] == s[i + d]` for all `i`. O(n).
-pub fn period<T>(s: List<T>) -> Int = if s.is_empty: 0 else: s.len - prefix_function(s).last
+pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - prefix_function(s).last
 
-/// True when `s` reads the same forwards and backwards. O(n).
+/// True when `s` reads the same forwards and backwards. Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
-pub fn is_palindrome<T>(s: List<T>) -> Bool:
+pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
     let n = s.len
     for i in 0..n / 2:
-        if s[i] != s[n - 1 - i]: return false
+        if s.at(i) != s.at(n - 1 - i): return false
     true
 
-/// All non-empty proper border lengths of `s`, longest first. O(n).
+/// All non-empty proper border lengths of `s`, longest first. Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
-pub fn borders<T>(s: List<T>) -> yields Int:
+pub fn borders<S: Indexed>(s: S) -> yields Int:
     if s.is_empty: return
     let pi = prefix_function(s)
     var k = pi[s.len - 1]

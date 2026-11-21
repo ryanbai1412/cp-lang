@@ -1,4 +1,6 @@
 @!multitest
+use std.seq.{runs}
+
 type M = Mod<1_000_000_007>
 
 struct Staircase:
@@ -20,10 +22,7 @@ struct Staircase:
 let n: 3..=2_000_000 = read()
 let s: Str = read()
 
-var blocks = [1]
-for i in 1..n:
-    if s[i] == s[i - 1]: blocks[blocks.len - 1] += 1
-    else: blocks.push(1)
+let blocks = [r.len for r in s.runs()]
 
 if blocks.len == 1:
     print(M(n - 1))

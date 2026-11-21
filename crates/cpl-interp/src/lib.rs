@@ -2120,6 +2120,18 @@ impl<'p, 'o> Interp<'p, 'o> {
                     ),
                 }
             }
+            Value::Range(lo, hi) => {
+                let index = values[0].int();
+                let len = (hi - lo).max(0);
+                if index < 0 || index >= len {
+                    trap(
+                        span,
+                        format!("index {index} is outside a range of length {len}"),
+                    )
+                } else {
+                    Ok(Value::Int(lo + index))
+                }
+            }
             Value::Map(entries) => match entries.get(&values[0]) {
                 Some(value) => Ok(value.clone()),
                 None => {
@@ -3019,6 +3031,16 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Value::List(items) => {
                         usize::try_from(at).ok().and_then(|i| items.get(i)).cloned()
                     }
+                    Value::Str(bytes) => {
+                        usize::try_from(at).ok().and_then(|i| bytes.get(i)).map(|b| Value::Char(*b))
+                    }
+                    Value::Array(array) if array.dims.len() == 1 => {
+                        (at >= 0 && at < array.dims[0]).then(|| array.get_unchecked_val(at as usize))
+                    }
+                    Value::Range(lo, hi) => {
+                        let len = (hi - lo).max(0);
+                        (at >= 0 && at < len).then_some(Value::Int(lo + at))
+                    }
                     _ => None,
                 };
                 optional(item)
@@ -3081,6 +3103,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             }),
             Builtin::First => match &first {
                 Value::List(items) => optional(items.first().cloned()),
+                Value::Str(bytes) => optional(bytes.first().copied().map(Value::Char)),
                 Value::Array(array) => optional(array.first()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
                 Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*lo))),
@@ -3088,6 +3111,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             },
             Builtin::Last => match &first {
                 Value::List(items) => optional(items.last().cloned()),
+                Value::Str(bytes) => optional(bytes.last().copied().map(Value::Char)),
                 Value::Array(array) => optional(array.last()),
                 Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
                 Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*hi - 1))),
@@ -3098,6 +3122,21 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Some(v) => v.clone(),
                     None => return trap(span, "the list is empty"),
                 },
+                Value::Str(bytes) => match bytes.first() {
+                    Some(b) => Value::Char(*b),
+                    None => return trap(span, "the string is empty"),
+                },
+                Value::Array(array) => match array.first() {
+                    Some(v) => v,
+                    None => return trap(span, "the array is empty"),
+                },
+                Value::Range(lo, hi) => {
+                    if lo < hi {
+                        Value::Int(*lo)
+                    } else {
+                        return trap(span, "the range is empty");
+                    }
+                }
                 _ => return trap(span, "the list is empty"),
             },
             Builtin::LastVal => match &first {
@@ -3105,6 +3144,21 @@ impl<'p, 'o> Interp<'p, 'o> {
                     Some(v) => v.clone(),
                     None => return trap(span, "the list is empty"),
                 },
+                Value::Str(bytes) => match bytes.last() {
+                    Some(b) => Value::Char(*b),
+                    None => return trap(span, "the string is empty"),
+                },
+                Value::Array(array) => match array.last() {
+                    Some(v) => v,
+                    None => return trap(span, "the array is empty"),
+                },
+                Value::Range(lo, hi) => {
+                    if lo < hi {
+                        Value::Int(*hi - 1)
+                    } else {
+                        return trap(span, "the range is empty");
+                    }
+                }
                 _ => return trap(span, "the list is empty"),
             },
             Builtin::Contains => {

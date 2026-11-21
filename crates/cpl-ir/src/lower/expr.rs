@@ -2407,6 +2407,7 @@ impl<'a> Lowerer<'a> {
             }
             Ty::List(elem) => (one(self, &Ty::Int), (**elem).clone()),
             Ty::Str => (one(self, &Ty::Int), Ty::Char),
+            Ty::Range(inner) => (one(self, &Ty::Int), (**inner).clone()),
             Ty::Map(key, value) | Ty::HashMap(key, value) => (one(self, key), (**value).clone()),
             Ty::Error => {
                 for index in indices {
@@ -3592,10 +3593,15 @@ impl<'a> Lowerer<'a> {
             ty: elem,
             span,
         };
+        let iter = if matches!(seq.ty, Ty::Range(_)) {
+            Iter::RangeVal(seq, false)
+        } else {
+            Iter::Seq(seq, false)
+        };
         let frame = LoopFrame {
             id,
             slot,
-            iter: Iter::Seq(seq, false),
+            iter,
             pre: Vec::new(),
             guards: Vec::new(),
         };

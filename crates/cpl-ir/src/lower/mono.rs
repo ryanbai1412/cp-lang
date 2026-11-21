@@ -1218,12 +1218,10 @@ impl<'a> Lowerer<'a> {
             for g in &gen_names {
                 if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
                     let elem_ty = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(Ty::List(e))
-                        | GenArg::Ty(Ty::Array { elem: e, .. })
-                        | GenArg::Ty(Ty::Range(e))
-                        | GenArg::Ty(Ty::Set(e))
-                        | GenArg::Ty(Ty::HashSet(e)) => Some((**e).clone()),
-                        GenArg::Ty(Ty::Str) => Some(Ty::Char),
+                        GenArg::Ty(t) => t.seq_elem().or_else(|| match t {
+                            Ty::Set(e) | Ty::HashSet(e) => Some((**e).clone()),
+                            _ => None,
+                        }),
                         _ => None,
                     });
                     if let Some(ety) = elem_ty {
@@ -1363,15 +1361,40 @@ impl<'a> Lowerer<'a> {
             if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
                 if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text) {
                     let elem_from_container = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(Ty::List(e)) => Some((**e).clone()),
-                        GenArg::Ty(Ty::Array { elem, .. }) => Some((**elem).clone()),
-                        GenArg::Ty(Ty::Range(e)) => Some((**e).clone()),
-                        GenArg::Ty(Ty::Str) => Some(Ty::Char),
+                        GenArg::Ty(t) => t.seq_elem(),
                         _ => None,
                     });
                     if let Some(elem_ty) = elem_from_container {
                         inferred.insert(rn.text.clone(), GenArg::Ty(elem_ty));
                     }
+                }
+            }
+        }
+
+        // Enforce `Seq` and `Indexed` trait bounds on generic parameters.
+        for bound in &decl.bounds {
+            let Some(GenArg::Ty(ty)) = inferred.get(&bound.name.text) else {
+                continue;
+            };
+            if *ty == Ty::Error {
+                continue;
+            }
+            for tr in &bound.traits {
+                let ast::TypeKind::Named { name: tr_name, .. } = &tr.kind else {
+                    continue;
+                };
+                let ok = match tr_name.text.as_str() {
+                    "Seq" => ty.is_seq(),
+                    "Indexed" => ty.is_indexed(),
+                    _ => true,
+                };
+                if !ok {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        span,
+                        format!("`{}` does not implement `{}`", self.show(ty), tr_name.text),
+                    );
+                    return self.err_expr(span);
                 }
             }
         }

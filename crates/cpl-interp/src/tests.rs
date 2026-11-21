@@ -261,3 +261,57 @@ print(st.a, st.b ?? 0, idx)
         ("3 294 2\n".to_string(), None)
     );
 }
+
+#[test]
+fn seq_and_indexed_traits_unify_sequences_and_reject_non_sequences() {
+    let ok_src = "\
+use std.seq.{runs, prod, is_sorted}
+use std.strings.{prefix_function, z_function}
+
+fn seq_len<S: Seq>(s: S) -> Int: s.len
+fn second_elem<S: Indexed>(s: S) -> Int: s.at(1)
+
+let s: Str = \"aabba\"
+let xs = [1, 1, 2, 1, 1]
+domain V = 1..=5
+let arr: [V]Int = [1, 1, 2, 1, 1]
+let r = 1..=5
+
+print(seq_len(s), seq_len(xs), seq_len(arr), seq_len(r))
+print(second_elem(xs), second_elem(arr), second_elem(r))
+print([x.len for x in s.runs()])
+print(prefix_function(s))
+print(prefix_function(arr))
+print(prefix_function(r))
+print(z_function(arr))
+print(s.first!, s.last!, r[2], sum(r), prod(r), is_sorted(r))
+";
+    assert_eq!(
+        outcome(ok_src, ""),
+        (
+            "5 5 5 5\n1 1 2\n2 2 1\n0 1 0 0 1\n0 1 0 1 2\n0 0 0 0 0\n5 1 0 2 1\na a 3 15 120 YES\n"
+                .to_string(),
+            None
+        )
+    );
+
+    for (src, want) in [
+        (
+            "fn seq_len<S: Seq>(s: S) -> Int: s.len\nprint(seq_len(42))\n",
+            "`Int` does not implement `Seq`",
+        ),
+        (
+            "fn at0<S: Indexed>(s: S) -> Int: s.at(0)\nprint(at0(42))\n",
+            "`Int` does not implement `Indexed`",
+        ),
+    ] {
+        let mut db = cpl_check::Database::new();
+        db.set_file("t.cp", src);
+        let analysis = db.analyze("t.cp").expect("the file was just set");
+        let diags = cpl_ir::lower(&analysis).expect_err("bound violation must fail lowering");
+        assert!(
+            diags.iter().any(|d| d.message.contains(want)),
+            "expected {want}, got: {diags:?}"
+        );
+    }
+}

@@ -596,6 +596,9 @@ impl<'p> Emitter<'p> {
                 {
                     self.need("at");
                 }
+                if checked && matches!(base_ty, Ty::Range(_)) {
+                    self.need("range_at");
+                }
                 // A cell of a packed table is a `std::optional` to whatever
                 // reads it, unless it is only being tested or opened.
                 let unpack = self.packed_cell(e) && !raw_cell;
@@ -653,6 +656,10 @@ impl<'p> Emitter<'p> {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
                         Ty::Str => Code::new(format!("(cpl::u8){b}[{}]", at[0]), UNARY),
+                        Ty::Range(_) if checked => {
+                            Code::primary(format!("cpl::range_at({}, {})", codes[0].text, at[0]))
+                        }
+                        Ty::Range(_) => Code::primary(format!("{b}[{}]", at[0])),
                         Ty::Map(..) | Ty::HashMap(..) => {
                             Code::primary(format!("{b}.at({})", at[0]))
                         }
@@ -1464,11 +1471,19 @@ impl<'p> Emitter<'p> {
                     out.push_str(&format!("{lead}return {cap}.take();\n"));
                 })
             }
+            Builtin::SeqGet if matches!(first_ty, Some(Ty::Range(_))) => {
+                Code::primary(format!("{}.get({})", codes[0].at(PRIMARY), text(1)))
+            }
             Builtin::SeqGet => {
                 let opt = self.ty(&e.ty);
                 let (seq, at) = (text(0), text(1));
+                let elem = if matches!(first_ty, Some(Ty::Str)) {
+                    "(cpl::u8)_seq[_idx]"
+                } else {
+                    "_seq[_idx]"
+                };
                 Code::primary(format!(
-                    "([&]() -> {opt} {{ const auto& s = {seq}; ll i = {at}; return i < 0 || i >= (ll)s.size() ? {opt}() : {opt}(s[i]); }}())"
+                    "([&]() -> {opt} {{ const auto& _seq = {seq}; ll _idx = {at}; return _idx < 0 || _idx >= (ll)_seq.size() ? {opt}() : {opt}({elem}); }}())"
                 ))
             }
             Builtin::ShowStr => {
@@ -1528,6 +1543,20 @@ impl<'p> Emitter<'p> {
             }
             Builtin::First => helper(self, "first"),
             Builtin::Last => helper(self, "last"),
+            Builtin::FirstVal if matches!(first_ty, Some(Ty::Range(_))) => {
+                self.need("fail");
+                let r = text(0);
+                Code::primary(format!(
+                    "([&]() {{ auto r = {r}; if (r.empty()) cpl::fail(\"the range is empty\"); return r.lo; }}())"
+                ))
+            }
+            Builtin::LastVal if matches!(first_ty, Some(Ty::Range(_))) => {
+                self.need("fail");
+                let r = text(0);
+                Code::primary(format!(
+                    "([&]() {{ auto r = {r}; if (r.empty()) cpl::fail(\"the range is empty\"); return (decltype(r.lo))(r.hi - 1); }}())"
+                ))
+            }
             Builtin::FirstVal => helper(self, "first_val"),
             Builtin::LastVal => helper(self, "last_val"),
             Builtin::Contains => {
