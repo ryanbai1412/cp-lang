@@ -4083,6 +4083,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::Int(value)
             }
+            Spec::Call(call) => self.eval(call)?,
             Spec::Fields(_, fields) => {
                 let mut values = Vec::with_capacity(fields.len());
                 for field in fields {

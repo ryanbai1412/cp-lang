@@ -2191,6 +2191,18 @@ Reverse: delete `editors/jetbrains/` and its block in `editors/smoke.sh`.
   not generator-specific. *Reverse:* drop `call_hint` in
   `cpl-ir/src/lower/mono.rs` and the built-in arm before `match
   self.sym(base)` in `Lowerer::method`.
+- **28.13 `read()` of a struct calls its `impl Read`.** A struct whose
+  `impl Read` declares `fn read() -> S` is read through it wherever `read()`
+  meets it: alone, as an array element, as a field of another struct. The
+  read plan (`Spec`) gains one node, `Spec::Call`, holding the lowered call,
+  so the interpreter evaluates it and the C++ emits it like any expression.
+  Before, the impl was accepted and silently ignored, and the input was read
+  field by field (silent wrongness). Test: `programs/read_impl` (1-based
+  input read as 0-based cells). *Reason:* spec 00 makes `Read` a library
+  trait with return-type dispatch; this is the user half of that. `cpl
+  stress` still generates such a struct's input field by field. *Reverse:*
+  drop the `read` lookup at the top of `struct_spec` in
+  `cpl-ir/src/lower/mod.rs`.
 
 - **30.7 Dreams are a diagnostics corpus.** `scripts/dream-gaps.py` checks every
   `proto/ports/*/dream/*.cp` and files each error under the gap it names: `syntax:` (an `E0504`

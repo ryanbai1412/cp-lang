@@ -283,6 +283,8 @@ pub enum Spec {
     /// `?T`, and the number that stands for `none` in the input, from
     /// `read(none: 0)`.
     Opt(Box<Spec>, Option<Box<Expr>>),
+    /// A type its own `impl Read` reads: the call to its `read()`.
+    Call(Box<Expr>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -320,6 +322,7 @@ impl Spec {
                 elem: Box::new(elem.ty()),
             },
             Spec::Opt(inner, _) => Ty::opt(inner.ty()),
+            Spec::Call(call) => call.ty.clone(),
         }
     }
 }

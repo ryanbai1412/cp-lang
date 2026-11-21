@@ -2286,7 +2286,7 @@ impl<'a> Lowerer<'a> {
                     Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Char | Ty::Str | Ty::Bool | Ty::Pos(_) | Ty::Error => None,
                     other => Some(other.clone()),
                 },
-                Spec::Int { .. } => None,
+                Spec::Int { .. } | Spec::Call(_) => None,
                 Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
                 Spec::Array { elem, .. } => unreadable(elem),
                 Spec::Opt(inner, absent) => match (&**inner, absent) {
@@ -8331,7 +8331,7 @@ pub(super) fn is_place(e: &ast::Expr) -> bool {
 /// `?T`.
 fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
     match spec {
-        Spec::Plain(_) | Spec::Int { .. } => false,
+        Spec::Plain(_) | Spec::Int { .. } | Spec::Call(_) => false,
         Spec::Fields(_, fields) => {
             let mut any = false;
             for field in fields {

@@ -398,6 +398,7 @@ impl<'p> Emitter<'p> {
                 })
             }
             Spec::Opt(..) => Code::primary(format!("{}()", self.ty(&spec.ty()))),
+            Spec::Call(call) => self.expr(call),
             Spec::Fields(ty, fields) => {
                 // `{...}` runs its elements in order: so are the fields read.
                 let struct_id = match ty {

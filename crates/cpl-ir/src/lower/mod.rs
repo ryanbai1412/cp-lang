@@ -2151,6 +2151,12 @@ impl<'a> Lowerer<'a> {
 
     /// A struct's fields as they are read from input: with their ranges.
     fn struct_spec(&mut self, id: StructId) -> Spec {
+        if let Some(&fn_id) = self.structs[id].methods.get("read") {
+            if self.sigs[fn_id].params.is_empty() {
+                let call = self.method_call(fn_id, None, &[], Span::default());
+                return Spec::Call(Box::new(call));
+            }
+        }
         let Some(decl) = self.structs[id].decl else {
             return Spec::Fields(Ty::Struct(id), Vec::new());
         };
@@ -3989,6 +3995,7 @@ fn collect_place_calls(place: &Place, out: &mut Vec<FnId>) {
 fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
     match spec {
         Spec::Plain(_) => {}
+        Spec::Call(call) => collect_expr_calls(call, out),
         Spec::Int { lo, hi, .. } => {
             if let Some(e) = lo {
                 collect_expr_calls(e, out);
