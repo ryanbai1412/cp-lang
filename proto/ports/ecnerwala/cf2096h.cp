@@ -1,52 +1,79 @@
+// Codeforces 2096 H: Wonderful XOR Sum.
+// Given `n` intervals `[l_j, r_j]` in `0..2^m`, we need `ways[x]` = number of
+// tuples with XOR `x`, then output `XOR_x ((ways[x] * 2^x) mod P)`.
+// Under the Walsh-Hadamard transform (WHT), XOR convolution becomes pointwise
+// multiplication: `hat[mask] = prod_j sum_{a in [l_j, r_j]} (-1)^{pop(a & mask)}`.
+// Group masks by their lowest set bit `q - 1` (`q in 1..=m`), writing
+// `mask = (hi << q) + half` with `half = 1 << (q - 1)`.
+// On the low `q` bits, `sum_{a < t} (-1)^{pop(a & half)}` is the triangle wave
+// `triangle(t, half) = min(t, 2 * half - t)`.
+// For each interval `[l, r)` (`r = (last + 1) mod 2^m`), the contribution at
+// `hi` has base sign `(-1)^{pop((r >> q) & hi)}` (folded into `high_xor`) and
+// factor `vr - vl` if `pop(hx & hi)` is even (`even_prod`) or `vr + vl` if odd
+// (`odd_prod`), where `hx = (l ^ r) >> q`. A multiplicative butterfly over the
+// `m - q` high bits evaluates the product for every `hi`, and an inverse WHT
+// recovers `ways`.
 type Z = Mod<998_244_353>
 
-fn fold(x: Int, half: Int) -> Int = if x >= half: 2 * half - x else: x
+// Prefix sum `sum_{a in 0..t} (-1)^{popcount(a & half)}` for `0 <= t < 2 * half`.
+fn triangle(t: Int, half: Int) -> Int = if t >= half: 2 * half - t else: t
 
 @!multitest
-let (n, m): (Int, Int) = read()
-let segs: [0..n](Int, Int) = read()
+let n: 1..=200_000 = read()
+let m: 1..=18 = read()
+let segs: [0..n](0..=262_143, 0..=262_143) = read()
 let full = 1 << m
-var ans: [0..full]Z = 0
-ans[0] = 1
-for (l, r) in segs: ans[0] *= r - l + 1
+domain Mask = 0..full
+
+var hat: [Mask]Z = 0
+hat[Mask(0)] = 1
+for (l, r) in segs: hat[Mask(0)] *= r - l + 1
 
 for q in 1..=m:
-    let sz = 1 << (m - q)
     let half = 1 << (q - 1)
-    let low = 2 * half - 1
-    var va: [0..sz]Z = 1
-    var vb: [0..sz]Z = 1
+    let low_mask = 2 * half - 1
+    let hi_count = 1 << (m - q)
+    domain High = 0..hi_count
+    var even_prod: [High]Z = 1
+    var odd_prod: [High]Z = 1
     var high_xor = 0
     for (l, last) in segs:
         let r = (last + 1) & (full - 1)
-        let (vl, vr) = (fold(l & low, half), fold(r & low, half))
+        let vl = triangle(l & low_mask, half)
+        let vr = triangle(r & low_mask, half)
         high_xor ^= r >> q
-        let hx = (l ^ r) >> q
-        va[hx] *= vr - vl
-        vb[hx] *= vr + vl
-    for z in 0..m - q:
-        let bit = 1 << z
-        for i in (0..sz).step(2 * bit):
-            for j in i..i + bit:
-                let k = j + bit
-                (va[j], vb[j], va[k], vb[k]) = (
-                    va[j] * va[k],
-                    vb[j] * vb[k],
-                    va[j] * vb[k],
-                    vb[j] * va[k],
+        let hx = High((l ^ r) >> q)
+        even_prod[hx] *= vr - vl
+        odd_prod[hx] *= vr + vl
+    // Multiplicative butterfly: combine `even_prod` / `odd_prod` across high bits.
+    for bit_idx in 0..m - q:
+        let bit = 1 << bit_idx
+        for base in (0..hi_count).step(2 * bit):
+            for off in 0..bit:
+                let a = High(base + off)
+                let b = High(base + off + bit)
+                (even_prod[a], odd_prod[a], even_prod[b], odd_prod[b]) = (
+                    even_prod[a] * even_prod[b],
+                    odd_prod[a] * odd_prod[b],
+                    even_prod[a] * odd_prod[b],
+                    odd_prod[a] * even_prod[b],
                 )
-    for i in 0..sz:
-        ans[(i << q) + half] = if popcount(high_xor & i) % 2 == 1: -va[i] else: va[i]
+    for hi in High:
+        let val = even_prod[hi]
+        hat[Mask((hi.ord << q) + half)] = if popcount(high_xor & hi.ord) % 2 == 1: -val else: val
 
+// Inverse Walsh-Hadamard transform (scaling by `1 / full` folded into `coeff`).
 for q in 0..m:
     let bit = 1 << q
-    for i in (0..full).step(2 * bit):
-        for j in i..i + bit:
-            (ans[j], ans[j + bit]) = (ans[j] + ans[j + bit], ans[j] - ans[j + bit])
+    for base in (0..full).step(2 * bit):
+        for off in 0..bit:
+            let a = Mask(base + off)
+            let b = Mask(base + off + bit)
+            (hat[a], hat[b]) = (hat[a] + hat[b], hat[a] - hat[b])
 
-var xor = 0
+var checksum = 0
 var coeff = Z(full).inv
-for x in ans:
-    xor ^= (x * coeff).v
+for ways in hat:
+    checksum ^= (ways * coeff).v
     coeff *= 2
-print(xor)
+print(checksum)

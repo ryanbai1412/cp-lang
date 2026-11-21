@@ -2022,7 +2022,7 @@ fn a_dropped_closer_inside_a_call_or_index_is_the_only_error() {
     for (port, good, bad) in [
         ("cf2165f", "latest.set(a[i], i)", "latest.set(a[i, i)"),
         ("cf2096b", "max(l[i], r[i]) for", "max(l[i, r[i]) for"),
-        ("cf2096h", "(ans[j], ans[j + bit]) =", "(ans[j, ans[j + bit]) ="),
+        ("cf2096h", "(hat[a], hat[b]) =", "(hat[a, hat[b]) ="),
     ] {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join(format!("../../proto/ports/ecnerwala/{port}.cp"));
