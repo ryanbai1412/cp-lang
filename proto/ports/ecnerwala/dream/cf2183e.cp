@@ -3,7 +3,7 @@
 // a good sequence starts at 1 and steps x -> x + d with d dividing x.
 type Z = Mod<998_244_353>
 
---- multitest ---
+@!multitest
 let (n, m): (2..=3000, 2..=3000) = read()
 let a: [0..n]?(1..=m) = read(none: 0)
 var ways, next: [1..=m]Z = 0

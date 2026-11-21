@@ -63,6 +63,11 @@ INTERP_RATIO_BAR = 10.0
 INTERP_RATIO_NORTH_STAR = 5.0
 INTERP_FLOOR_MS = 20.0
 BUG_REPLAY_BAR_PCT = 90.0
+GATE_FAST_BUDGET_S = 180.0
+GATE_FAST_TIME_PATH = os.path.join(
+    os.environ.get("CARGO_TARGET_DIR") or os.path.join(ROOT, "target"),
+    "gate-fast-time.json",
+)
 
 # Adaptive max-size probe schedule for gen/NAME.py SEED SIZE
 MAX_SIZE_STEPS = (8, 40, 200, 1000, 5000, 25000)
@@ -669,6 +674,62 @@ _REVIEW_SCORE_RE = re.compile(
 )
 
 
+_DREAM_SCORE_RE = re.compile(r"(?m)^Dream:\s*(\d)\s*/\s*5\b")
+
+
+def summarize_dream_scores(reviews_dir=REVIEWS_DIR):
+    """Aggregate `Dream: N/5` scores across research/reviews/*.md."""
+    if not os.path.isdir(reviews_dir):
+        return {"scored": 0, "median": None, "under_4": 0, "min": None, "max": None}
+    scores = []
+    for fn in sorted(os.listdir(reviews_dir)):
+        if not fn.endswith(".md"):
+            continue
+        m = _DREAM_SCORE_RE.search(_read_text(os.path.join(reviews_dir, fn)))
+        if m:
+            scores.append(int(m.group(1)))
+    if not scores:
+        return {"scored": 0, "median": None, "under_4": 0, "min": None, "max": None}
+    med = statistics.median(scores)
+    if isinstance(med, float) and med.is_integer():
+        med = int(med)
+    return {
+        "scored": len(scores),
+        "median": round(med, 2) if isinstance(med, float) else med,
+        "under_4": sum(1 for s in scores if s < 4),
+        "min": min(scores),
+        "max": max(scores),
+    }
+
+
+def load_gate_fast_time(baseline=None, path=GATE_FAST_TIME_PATH):
+    """Load the latest scripts/check.sh --fast wall time, falling back to baseline."""
+    if path and os.path.isfile(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            elapsed = data.get("elapsed_s")
+            if elapsed is not None:
+                elapsed_f = round(float(elapsed), 2)
+                return {
+                    "elapsed_s": elapsed_f,
+                    "budget_s": GATE_FAST_BUDGET_S,
+                    "ok": elapsed_f <= GATE_FAST_BUDGET_S,
+                }
+        except (OSError, ValueError, TypeError):
+            pass
+    if baseline:
+        prev = (baseline.get("totals") or {}).get("gate_fast")
+        if prev and prev.get("elapsed_s") is not None:
+            elapsed_f = round(float(prev["elapsed_s"]), 2)
+            return {
+                "elapsed_s": elapsed_f,
+                "budget_s": GATE_FAST_BUDGET_S,
+                "ok": elapsed_f <= GATE_FAST_BUDGET_S,
+            }
+    return None
+
+
 def parse_review_score(port_name, reviews_dir=REVIEWS_DIR):
     """Read taste score (1..5) from research/reviews/<port_name>.md if present."""
     path = os.path.join(reviews_dir, f"{port_name}.md")
@@ -1273,8 +1334,9 @@ def run_bug_replay_suite(cpl, suite_dir=BUG_REPLAY_DIR):
 
 
 SPELLING_DRIFT_SPECS = {
-    # Canonical forms: decisions.md §20 for multitest, §49 for methods.
-    # Flipping a canonical spelling is a one-line edit here.
+    # Canonical forms: decisions.md §20 for multitest, §53 for methods.
+    # Free-form generators (`sum(f(x) for x in xs)`, `first(i for i in ... if ...)`)
+    # stay canonical per §53.1 and are excluded from non-canonical counts.
     "multitest": {
         "canonical": "@!multitest",
         "patterns": {
@@ -1285,6 +1347,7 @@ SPELLING_DRIFT_SPECS = {
     },
     "sum": {
         "canonical": "xs.sum()",
+        "skip_generators": {"sum(xs)"},
         "patterns": {
             "xs.sum()": re.compile(r"\.sum\s*\("),
             "sum(xs)": re.compile(r"(?<![.\w])(?<!fn )sum\s*\("),
@@ -1292,6 +1355,7 @@ SPELLING_DRIFT_SPECS = {
     },
     "first": {
         "canonical": "xs.first(...)",
+        "skip_generators": {"first(...)"},
         "patterns": {
             "xs.first(...)": re.compile(r"\.first\s*\("),
             "first(...)": re.compile(r"(?<![.\w])(?<!fn )first\s*\("),
@@ -1305,6 +1369,32 @@ SPELLING_DRIFT_SPECS = {
         },
     },
 }
+
+
+def _call_args_slice(src, open_paren_end):
+    depth = 1
+    i = open_paren_end
+    n = len(src)
+    while i < n and depth > 0:
+        ch = src[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        i += 1
+    return src[open_paren_end : max(open_paren_end, i - 1)]
+
+
+def _count_spelling_matches(clean, pat, skip_generator=False):
+    if not skip_generator:
+        return len(pat.findall(clean))
+    count = 0
+    for m in pat.finditer(clean):
+        args = _call_args_slice(clean, m.end())
+        if re.search(r"\bfor\b", args):
+            continue
+        count += 1
+    return count
 
 _RETIRED_PORT_DIR_PREFIXES = (
     "scout_batch_",
@@ -1364,8 +1454,9 @@ def measure_spelling_drift(ports_root=os.path.join(ROOT, "proto", "ports")):
             clean = _strip_comments_and_strings(_read_text(full))
             for name, spec in SPELLING_DRIFT_SPECS.items():
                 entry = constructs[name]
+                skip_gens = spec.get("skip_generators") or set()
                 for spelling, pat in spec["patterns"].items():
-                    n = len(pat.findall(clean))
+                    n = _count_spelling_matches(clean, pat, skip_generator=(spelling in skip_gens))
                     if n:
                         entry["counts"][spelling] += n
                         if active:
@@ -1486,7 +1577,16 @@ def percentile(xs, q):
     return s[idx]
 
 
-def compute_totals(port_records, fl_summary, fr_summary, bug_replay=None, revision=None, spelling_drift=None):
+def compute_totals(
+    port_records,
+    fl_summary,
+    fr_summary,
+    bug_replay=None,
+    revision=None,
+    spelling_drift=None,
+    dream_scores=None,
+    gate_fast=None,
+):
     total = len(port_records)
     passed = sum(1 for r in port_records if r["gate"] == "pass")
     failed = total - passed
@@ -1695,6 +1795,8 @@ def compute_totals(port_records, fl_summary, fr_summary, bug_replay=None, revisi
         "bug_replay": bug_replay,
         "revision": revision,
         "spelling_drift": spelling_drift,
+        "dream_scores": dream_scores,
+        "gate_fast": gate_fast,
     }
 
 
@@ -1845,6 +1947,11 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
 
         bsd = bt.get("spelling_drift")
         csd = ct.get("spelling_drift")
+        if csd and csd.get("active_non_canonical", 0) > 0:
+            regressions.append(
+                f"active/dream spelling drift must be 0, found {csd['active_non_canonical']} "
+                "(run `cpl lint --fix` and `python3 scripts/fix-spelling-drift.py --write`)"
+            )
         if bsd and csd:
             b_tot = bsd.get("total_non_canonical", 0)
             c_tot = csd.get("total_non_canonical", 0)
@@ -1864,6 +1971,29 @@ def diff_against_baseline(current, baseline, mode="fast", subset=False):
                     improvements.append(
                         f"spelling drift ({cname}) reduced: {bent['non_canonical']} -> {cent['non_canonical']}"
                     )
+
+        bds = bt.get("dream_scores")
+        cds = ct.get("dream_scores")
+        if bds and cds and bds.get("scored", 0) > 0 and cds.get("scored", 0) > 0:
+            b_med = bds.get("median")
+            c_med = cds.get("median")
+            if b_med is not None and c_med is not None:
+                if c_med < b_med:
+                    regressions.append(f"dream-score median regressed: {b_med} -> {c_med}")
+                elif c_med > b_med:
+                    improvements.append(f"dream-score median improved: {b_med} -> {c_med}")
+            b_u4 = bds.get("under_4", 0)
+            c_u4 = cds.get("under_4", 0)
+            if c_u4 > b_u4:
+                regressions.append(f"dream-score under-4 count grew: {b_u4} -> {c_u4}")
+            elif c_u4 < b_u4:
+                improvements.append(f"dream-score under-4 count shrank: {b_u4} -> {c_u4}")
+
+        cgf = ct.get("gate_fast")
+        if cgf and cgf.get("elapsed_s") is not None and cgf["elapsed_s"] > GATE_FAST_BUDGET_S:
+            regressions.append(
+                f"check.sh --fast wall time {cgf['elapsed_s']}s exceeded budget {GATE_FAST_BUDGET_S:.0f}s"
+            )
 
         for key, label in (
             ("median_ratio", "median raw token ratio"),
@@ -2084,6 +2214,16 @@ def print_summary(report, diff, show_ports=False, quiet=False):
             f"  drift:     {sd['total_non_canonical']} non-canonical "
             f"({sd['active_non_canonical']} in active/dream files): " + "; ".join(cparts)
         )
+    ds = t.get("dream_scores")
+    if ds and ds.get("scored"):
+        print(
+            f"  dreams:    {ds['scored']} scored, median {ds['median']}/5, "
+            f"{ds['under_4']} under 4 (range {ds['min']}..{ds['max']})"
+        )
+    gf = t.get("gate_fast")
+    if gf and gf.get("elapsed_s") is not None:
+        tag = "PASS" if gf.get("ok") else "FAIL"
+        print(f"  gate-fast: {gf['elapsed_s']}s (budget <={gf['budget_s']:.0f}s: {tag})")
     wfd = report.get("writable_from_docs")
     if wfd and wfd.get("latest"):
         cur = wfd["latest"]
@@ -2240,11 +2380,14 @@ def build_report(args):
     bug_replay = run_bug_replay_suite(cpl) if not only else None
     revision = run_revision_suite(cpl) if not only else None
     spelling_drift = measure_spelling_drift() if not only else None
+    dream_scores = summarize_dream_scores() if not only else None
 
     baseline = None
     if args.baseline and os.path.isfile(args.baseline):
         with open(args.baseline, encoding="utf-8") as f:
             baseline = json.load(f)
+
+    gate_fast = load_gate_fast_time(baseline=baseline) if not only else None
 
     if mode == "fast" and args.write and baseline:
         merge_baseline_perf(port_records, baseline)
@@ -2256,6 +2399,8 @@ def build_report(args):
         bug_replay=bug_replay,
         revision=revision,
         spelling_drift=spelling_drift,
+        dream_scores=dream_scores,
+        gate_fast=gate_fast,
     )
     wfd_path = os.path.join(ROOT, "research", "writable-from-docs.json")
     wfd_data = None

@@ -7,7 +7,7 @@
 // out once, when the span first leaves it. O(n²) per test.
 type Z = Mod<1e9 + 7>
 
---- multitest ---
+@!multitest
 domain Pos = read(1..=5000)
 let a: [Pos]?(0..Pos.count) = read(none: -1)
 let at = a.inverse()                                   // position of each placed value

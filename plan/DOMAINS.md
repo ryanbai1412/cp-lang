@@ -688,10 +688,18 @@ Goal tests (AGENTS.md goals 1 & 2) and spelling-drift tracking are live and ratc
   `knapsack_max_to_ways=5L/3h`, `bfs_dist_to_path=10L/3h`, `prefix_sum_query_to_max_window=9L/2h`,
   `interval_merge_count_to_len=11L/3h`, `lis_strict_to_nondec=2L/1h`, `tree_subtree_sum_to_max=2L/1h`,
   `coin_min_to_ways_mod=8L/3h`, `dsu_components_to_largest=8L/2h`), ratcheting `lines_touched` per case.
-- **Spelling-drift metric (`totals.spelling_drift`):** **411 non-canonical** across `proto/ports/**/*.cp`
-  (**135** in active/dream files): `multitest=52` (active 16; canon `@!multitest`), `sum=236` (active 92;
-  canon `xs.sum()`), `first=38` (active 19; canon `xs.first(...)`), `sort=85` (active 8; canon `xs.sort(...)`),
-  ratcheted strictly downward so codemods visibly drive drift to 0.
+- **Spelling-drift metric (`totals.spelling_drift`):** **0 non-canonical in active/dream files**
+  (38 remaining in retired batches only: `multitest=36`, `sum=1`, `first=0`, `sort=1`), aligned
+  with decisions §20 (`@!multitest`) and §53 (method folds/sorts; free-form generators `sum(f(x) for x in xs)`
+  stay canonical). `scripts/fix-spelling-drift.py` migrates non-canonical multitest dividers, and
+  `scripts/scoreboard.py --fast --check` fails if active/dream spelling drift is non-zero.
+- **Dream-score ratchet (`totals.dream_scores`):** **51 dreams scored, median 3/5, 39 under 4**
+  (parsed from `Dream: N/5` in `research/reviews/*.md`), ratcheted in `--fast --check` against
+  median regression or under-4 growth.
+- **Fast gate wall time (`totals.gate_fast`):** `scripts/check.sh --fast` now finishes in **84 s**
+  (down from 249 s via `[profile.dev.package]` `opt-level = 1` for `cpl-syntax`/`cpl-check`/`cpl-ir`/`cpl-codegen`
+  and overlapping `recovery_scoreboard` after `nextest`), recorded to `target/gate-fast-time.json`,
+  reported on the scoreboard, and gated at `<= 180 s` (3 min).
 Full-mode perf (`research/scoreboard.json`, 241 measured, 109 >= 10 ms):
 runtime **p50 0.993x** (goal <= 1.1x: **PASS**), p95 4.40x, **max 310.196x** (goal <= 1.5x:
 **FAIL**, 16 > 1.5x), peak RSS p50 0.938x / p95 2.330x / max 6.195x (`cf2268c`).

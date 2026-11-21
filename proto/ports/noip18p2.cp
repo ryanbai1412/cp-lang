@@ -3,7 +3,7 @@
 const TOP = 25000
 domain Amount = 0..=TOP
 
-@multitest
+@!multitest
 fn solve():
     let n: 1..=100 = read()
     let coins: [n]1..=TOP = read()

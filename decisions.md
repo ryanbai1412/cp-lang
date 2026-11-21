@@ -1414,6 +1414,19 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   `xs.first(...)`, `xs.sort(...)` per §49).
   *How to reverse:* flip any construct's `"canonical"` value in `SPELLING_DRIFT_SPECS` (1-line edit) or
   adjust cases under `bench/goal_tests/`.
+- **23.10 Active spelling-drift zero gate, dream-score ratchet, and `check.sh --fast` <= 180s wall-time budget.**
+  Aligned `measure_spelling_drift` with §53.1 by exempting canonical free-form generator calls
+  (`sum(f(x) for x in xs)`, `first(i for i in ... if ...)`), added `scripts/fix-spelling-drift.py` to
+  rewrite non-canonical multitest dividers (`@multitest`, `--- multitest ---`, `--- with multitest() ---`
+  -> `@!multitest`) across active and dream files (driving active/dream drift to 0), and gated
+  `active_non_canonical == 0` in `--fast --check`. Added `totals.dream_scores` (parsing `Dream: N/5`
+  from `research/reviews/*.md`) with a baseline ratchet failing on median drop or under-4 growth.
+  Added `opt-level = 1` in `Cargo.toml` `[profile.dev.package]` for `cpl-syntax`, `cpl-check`, `cpl-ir`,
+  and `cpl-codegen` (matching `cpl-interp`) and overlapped `recovery_scoreboard` with the post-nextest
+  checks in `scripts/check.sh`, cutting `scripts/check.sh --fast` wall time from 249s to 84s, recorded
+  in `target/gate-fast-time.json` / `totals.gate_fast` and gated at `<= 180s`.
+  *How to reverse:* remove the `[profile.dev.package]` `opt-level = 1` entries in `Cargo.toml`, adjust
+  `GATE_FAST_BUDGET_S`, or relax the active-drift / dream-score checks in `diff_against_baseline`.
 
 ## 24. Documentation gate in `scripts/check.sh --fast` (2026-11-21)
 

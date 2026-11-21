@@ -28,6 +28,6 @@ for i in I:
         stops[i, j] = (here[(false, true)] + here[(true, false)] + 4 * here[(true, true)]) * weight[i + j]
 
 let inside = stops.prefix_sums()
---- multitest ---
+@!multitest
 let (n, m): (1..=50, 1..=1e15) = read()
 print(guess_at([j => 4 ** ((n + 1) * (j + 2)) * inside[..n, ..=j]], at: m - 1)!)

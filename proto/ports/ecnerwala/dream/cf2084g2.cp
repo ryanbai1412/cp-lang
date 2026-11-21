@@ -1,7 +1,7 @@
 // cf2084g2: concave slope-trick optimization of cf2084g1.
 // Adding (2c - k)(2(half - c) - (n - k)) shifts slope[j] by (b - a) - 8j;
 // a free value takes max(dp[c], dp[c - 1]), inserting a 0 slope in descending order.
---- with multitest() ---
+@!multitest
 
 domain Pos = read(1..=5e5)
 let n = Pos.count

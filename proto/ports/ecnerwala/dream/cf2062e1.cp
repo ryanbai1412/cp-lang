@@ -5,7 +5,7 @@
 // heavier node contains all nodes heavier than itself — so picking v wins.
 with io(base: 1)
 
---- multitest ---
+@!multitest
 domain V = read(1..=4e5)
 let w: [V]1..=V.count = read()
 let t = Rooted(Graph.undirected(read<[V.count - 1](V, V)>()), root: V.first)

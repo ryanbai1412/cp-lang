@@ -601,6 +601,8 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
                     "@!multitest\n"
                     "// sum(xs) in comment must be ignored\n"
                     'let msg = "sort(mut xs) in string"\n'
+                    "let g1 = sum(x * x for x in xs)\n"
+                    "let g2 = first(i for i in 0..n if a[i] > 0)\n"
                     "let s = sum(xs) + xs.sum()\n"
                     "let p = first(xs, x => x > 0)\n"
                     "sort(mut xs)\n"
@@ -649,6 +651,7 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             }
             diff_bad = sb.diff_against_baseline(cur_grew, base, mode="fast")
             self.assertTrue(any("spelling drift" in m for m in diff_bad["regressions"]))
+            self.assertTrue(any("active/dream spelling drift must be 0" in m for m in diff_bad["regressions"]))
 
             cur_better = {
                 "ports": [],
@@ -659,6 +662,7 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
                     "spelling_drift": {
                         **sd,
                         "total_non_canonical": 5,
+                        "active_non_canonical": 0,
                         "constructs": {
                             **sd["constructs"],
                             "sum": {**sd["constructs"]["sum"], "non_canonical": 1},
@@ -669,6 +673,91 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
             diff_good = sb.diff_against_baseline(cur_better, base, mode="fast")
             self.assertEqual(diff_good["regressions"], [])
             self.assertTrue(any("spelling drift" in m for m in diff_good["improvements"]))
+
+    def test_fix_spelling_drift_codemod(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "fix_spelling_drift", os.path.join(sb.ROOT, "scripts", "fix-spelling-drift.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "ecnerwala", "dream"))
+            os.makedirs(os.path.join(tmp, "scout_batch_1"))
+            p1 = os.path.join(tmp, "ecnerwala", "a.cp")
+            p2 = os.path.join(tmp, "ecnerwala", "dream", "b.cp")
+            p3 = os.path.join(tmp, "ecnerwala", "dream", "c.cp")
+            p_old = os.path.join(tmp, "scout_batch_1", "old.cp")
+            for path, text in (
+                (p1, "@multitest\nlet n = read()\n"),
+                (p2, "--- multitest ---\nlet n = read()\n"),
+                (p3, "--- with multitest() ---\nlet n = read()\n"),
+                (p_old, "@multitest\nlet n = read()\n"),
+            ):
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+            changed = mod.run_codemod(tmp, write=True)
+            self.assertEqual(len(changed), 3)
+            self.assertEqual(sb._read_text(p1), "@!multitest\nlet n = read()\n")
+            self.assertEqual(sb._read_text(p2), "@!multitest\nlet n = read()\n")
+            self.assertEqual(sb._read_text(p3), "@!multitest\nlet n = read()\n")
+            self.assertEqual(sb._read_text(p_old), "@multitest\nlet n = read()\n")
+            self.assertEqual(sb.measure_spelling_drift(tmp)["active_non_canonical"], 0)
+
+    def test_dream_scores_and_gate_fast_ratchets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, score in (("a.md", 3), ("b.md", 4), ("c.md", 2)):
+                with open(os.path.join(tmp, name), "w", encoding="utf-8") as f:
+                    f.write(f"Score: 4/5\nDream: {score}/5\n")
+            ds = sb.summarize_dream_scores(tmp)
+            self.assertEqual(ds, {"scored": 3, "median": 3, "under_4": 2, "min": 2, "max": 4})
+
+            gt_path = os.path.join(tmp, "gate-fast-time.json")
+            with open(gt_path, "w", encoding="utf-8") as f:
+                f.write('{"mode":"fast","elapsed_s":142,"budget_s":180}\n')
+            gf = sb.load_gate_fast_time(path=gt_path)
+            self.assertEqual(gf, {"elapsed_s": 142.0, "budget_s": 180.0, "ok": True})
+
+            base = {
+                "ports": [],
+                "totals": {
+                    "frictions": {"open_blockers": 0, "warnings": 0},
+                    "tokens": {},
+                    "friction_lint": {"wa_trap": 0},
+                    "dream_scores": {"scored": 3, "median": 3, "under_4": 2, "min": 2, "max": 4},
+                    "gate_fast": {"elapsed_s": 142.0, "budget_s": 180.0, "ok": True},
+                },
+            }
+            cur_bad = {
+                "ports": [],
+                "totals": {
+                    "frictions": {"open_blockers": 0, "warnings": 0},
+                    "tokens": {},
+                    "friction_lint": {"wa_trap": 0},
+                    "dream_scores": {"scored": 4, "median": 2.5, "under_4": 3, "min": 2, "max": 4},
+                    "gate_fast": {"elapsed_s": 195.0, "budget_s": 180.0, "ok": False},
+                },
+            }
+            diff_bad = sb.diff_against_baseline(cur_bad, base, mode="fast")
+            self.assertTrue(any("dream-score median regressed" in m for m in diff_bad["regressions"]))
+            self.assertTrue(any("dream-score under-4 count grew" in m for m in diff_bad["regressions"]))
+            self.assertTrue(any("check.sh --fast wall time" in m for m in diff_bad["regressions"]))
+
+            cur_good = {
+                "ports": [],
+                "totals": {
+                    "frictions": {"open_blockers": 0, "warnings": 0},
+                    "tokens": {},
+                    "friction_lint": {"wa_trap": 0},
+                    "dream_scores": {"scored": 4, "median": 4, "under_4": 1, "min": 3, "max": 5},
+                    "gate_fast": {"elapsed_s": 120.0, "budget_s": 180.0, "ok": True},
+                },
+            }
+            diff_good = sb.diff_against_baseline(cur_good, base, mode="fast")
+            self.assertEqual(diff_good["regressions"], [])
+            self.assertTrue(any("dream-score median improved" in m for m in diff_good["improvements"]))
+            self.assertTrue(any("dream-score under-4 count shrank" in m for m in diff_good["improvements"]))
 
 
 if __name__ == "__main__":

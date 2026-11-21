@@ -21,7 +21,7 @@ fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
             perm.swap(l, r)
     ops
 
---- multitest ---
+@!multitest
 domain I = read(2..=100)
 let p: [I]I = read()
 let q: [I]I = read()

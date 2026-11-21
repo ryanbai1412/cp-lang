@@ -6,7 +6,7 @@
 // range, so that is a rectangle of f, and the answer for i is sub(i) x sub(i).
 type Z = Mod<998244353>
 
---- multitest ---
+@!multitest
 let n = read(1..=5000)
 domain V = 1..=n
 let s: [V]Char = read()

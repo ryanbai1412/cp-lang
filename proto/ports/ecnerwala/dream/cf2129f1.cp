@@ -22,7 +22,7 @@ let masks: List<Set<Query>> = do:
     chosen.to_list()
 let value_of = masks.inverse()
 
---- multitest ---
+@!multitest
 let n: 2..=845 = read()
 domain Val = 1..=n
 domain Pos = 1..=n
