@@ -1,46 +1,65 @@
-// Codeforces 2150 E1 (interactive): randomly permute indices and binary-search
-// the half whose remaining element multiplicities exceed its length.
+// Codeforces 2150 E1 (interactive): find the unique value in 1..=n that appears
+// once in a hidden array of length 2n - 1 (all other values appear twice).
+//
+// Shuffle the 2n - 1 positions with a fixed seed and binary-search [lo, hi):
+// every value in 1..=n has a known count in [lo, hi) — None (0), One (1), or
+// Both (2, assuming it is not the singleton). Splitting at mid:
+// - Both: absent on left => (None, Both); else present on right => (One, One),
+//   absent on right => (Both, None).
+// - One: present on right => (None, One); absent on right => (One, None).
+// Because every non-singleton contributes 2 units and the singleton contributes
+// 1, the half whose assigned weight exceeds its length contains the singleton.
+
 @!interactive
 use std.rand.Rng
 
-var rng = Rng.new(48)
+enum Copies: None | One | Both
+
+fn weight(c: Copies) -> Int = match c:
+    Copies.None => 0
+    Copies.One => 1
+    Copies.Both => 2
+
+const SHUFFLE_SEED = 48
+var rng = Rng.new(SHUFFLE_SEED)
 
 @!multitest
-let n: Int = read()
-var p = [i for i in 1..2 * n]
-rng.shuffle(mut p)
+let n: 1..=300 = read()
+domain Val = 1..=n
 
-fn ask(v: Int, lo: Int, hi: Int) -> Int:
-    print("?", v + 1, hi - lo, p[lo..hi])
-    read()
+var perm = List(1..2 * n)
+rng.shuffle(mut perm)
 
-var cnt: [0..n]Int = 2
-var (l, r) = (0, 2 * n - 1)
-while true:
-    let alive = [i for i in 0..n if cnt[i] == 2]
-    if alive.len == 1:
-        print("!", alive[0] + 1)
-        return
+fn has(v: Val, lo: Int, hi: Int) -> Bool:
+    print("?", v, hi - lo, perm[lo..hi])
+    read<Int>() == 1
 
-    let m = (l + r) / 2
-    var cnt_l: [0..n]Int = 0
-    var cnt_r: [0..n]Int = 0
-    for i in alive:
-        cnt_l[i] = ask(i, l, m)
-        if cnt_l[i] == 0:
-            cnt_r[i] = 2
+var copies: [Val]Copies = Copies.Both
+var (lo, hi) = (0, 2 * n - 1)
+var alive = [v for v in Val]
+
+while alive.len > 1:
+    let mid = (lo + hi) / 2
+    var left: [Val]Copies = Copies.None
+    var right: [Val]Copies = Copies.None
+    for v in alive:
+        if not has(v, lo, mid):
+            right[v] = Copies.Both
+        elif has(v, mid, hi):
+            left[v] = Copies.One
+            right[v] = Copies.One
         else:
-            cnt_r[i] = ask(i, m, r)
-            let s = 2 / (cnt_l[i] + cnt_r[i])
-            cnt_l[i] *= s
-            cnt_r[i] *= s
-    for i in 0..n if cnt[i] == 1:
-        cnt_r[i] = ask(i, m, r)
-        cnt_l[i] = 1 - cnt_r[i]
+            left[v] = Copies.Both
+    for v in Val if copies[v] == Copies.One:
+        if has(v, mid, hi): right[v] = Copies.One else: left[v] = Copies.One
 
-    if cnt_l.sum() > m - l:
-        r = m
-        cnt = cnt_l
+    let left_weight = [weight(left[v]) for v in Val].sum()
+    if left_weight > mid - lo:
+        hi = mid
+        copies = left
     else:
-        l = m
-        cnt = cnt_r
+        lo = mid
+        copies = right
+    alive = [v for v in Val if copies[v] == Copies.Both]
+
+print("!", alive[0])
