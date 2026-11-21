@@ -371,30 +371,30 @@ typed arrays (`ArrayData` in `crates/cpl-interp/src/value.rs`), structural
 modular-arithmetic superinstructions (`ModAddI`/`ModSubI`/`ModMulI`/`ModNegI`/
 `Mod::new`), inlined pure leaf helpers, direct VM calls with pooled `Value`
 register frames (`vm_pool_v`), fast uncaptured scalar closures (`FastClosure`),
-VM lowering for `Fill`/slices/1D+2D arrays/lists/`Do`/`Give`/float ops/bit
-builtins/indexed-mut calls, block-local last-use move semantics (`ways = next`),
-and `CPL_VM_STATS=1|json` hot-loop fallback instrumentation with a zero-fallback
-ratchet test in `crates/cpl-cli/tests/interp_ratio.rs`. Across 249 sampled
-ports, ports with hot-loop fallbacks dropped from **109 -> 91** (158/249 at 0).
-On the full 291-port scoreboard (`--full --interp-timeout 10 --jobs 4`,
-`a0aa7216`), across 197 ports with `interp >= 20 ms`: **p50 = 11.67x**,
-**p95 = 39.37x** (down from 56.83x), **max = 85.32x** (`cf2255e2`, down from
-281.6x; 120 ports > 10x, 45 > 20x, 19 > 30x; bar <= 10x / max <= 30x -> 20x
-not yet met); Ryan's worst 10 ports dropped dramatically (`cf2150d` 115.5x ->
-16.5x, `cf2124f2` 95.9x -> 11.2x, `cf2089c1` 84.3x -> 13.4x, `cf2180g` 52.4x ->
-11.9x, `cf2237b` 59.8x -> 21.3x, `cf2096f` 89.0x -> 36.8x, `ucup5s06g` 59.1x ->
-34.2x, `cf2207f` 281.6x -> 71.6x);
+VM lowering for `Fill`/slices/1D+2D+nested arrays/lists/`Map`/`Set`/`Do`/`Give`/
+float ops/bit builtins/`U64`/natural sort/indexed-mut calls/fused `?Int`
+`min=`/`max=`/list small-tuple loads/indexed `.first`/`.last`, block-local
+last-use move semantics (`ways = next`), and `CPL_VM_STATS=1|json|verbose`
+hot-loop fallback instrumentation with a zero-fallback ratchet test in
+`crates/cpl-cli/tests/interp_ratio.rs`. Across 249 sampled ports, ports with
+hot-loop fallbacks dropped from **109 -> 91** (158/249 at 0), and all worst-10
+targets now run with `0` hot-loop fallbacks on their samples. On the full
+305-port scoreboard (`--full --interp-timeout 10 --jobs 4`, `99290110`),
+302/304 passed with 216 ports >= 20 ms: **p50 = 13.07x**, **p95 = 44.28x**,
+**max = 93.7x** (`cf2062f`, 154 ports > 10x; `cf2062f` subsequently cut from
+93.7x -> 43.5x via fused `?Int` `min=`/`max=`, nested array loads, and list
+small-tuple opcodes; bar <= 10x / max <= 30x -> 20x not yet met);
 (5) no stage snapshots (`--stage`) or interactive exchange trace.
 **Bar.** Every runtime error class has a golden message with values and call
 path; trace filtering and index-space views tested end to end; DAP step
 debugger wired into VS Code and tested over stdio; interpreter within 10x of
 C++ `-O2` on ports (north star 5x).
-**Next.** (1) Eliminate remaining hot-loop fallbacks (`stmt:Expr(Mutate)`,
-`expr:Closure`, `stmt:Expr(Sort)`, `Map`/`Set` ops, `stmt:For(Range)`), speed
-up `convolve_mod` / `LazySegTree` / `SegTree` VM hot loops, and reduce `cpl run`
-compile/startup overhead (~25–40 ms on short ports) to hit ratchets max <= 30x
--> 20x and p50 <= 5x; (2) stage snapshots (`--stage`) and interactive exchange
-traces; (3) headless-browser test for `tools/trace/index.html`.
+**Next.** (1) Eliminate remaining hot-loop fallbacks and overhead (`stmt:Expr(Mutate)`
+in `convolve_mod`, scalar `expr:Read`/`Print` in tight I/O loops, remaining
+`expr:Closure`/HOF calls, and `cpl run` startup/compile time on short ports) to
+hit ratchets max <= 30x -> 20x and p50 <= 5x; (2) stage snapshots (`--stage`)
+and interactive exchange traces; (3) headless-browser test for
+`tools/trace/index.html`.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)
 **North star.** One command, `cpl stress d.cp`, turns "WA on test 37" into

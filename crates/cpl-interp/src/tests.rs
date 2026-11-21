@@ -937,3 +937,28 @@ print(ge, gt, le, lt, pf, pl, s.len, mk, mv, pk, pv, m.len)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "20 30 20 10 10 30 1 2 200 3 300 2\n");
 }
+
+#[test]
+fn vm_opt_minmax_nested_arr_list_tuple_and_idx_field_idx() {
+    let src = "\
+struct Node(kid: [0..2]?Int)
+var dp: [4][3]?Int = none
+dp[0][0] = 5
+let transitions = [(0, 1, 7), (0, 1, 3), (1, 2, 4)]
+for step in 0..3:
+    for (u, v, w) in transitions:
+        dp[step + 1][v] min= dp[step][u] + w
+var best: [3, 3]?Int = none
+best[0, 0] = 1
+best[0, 1] max= best[0, 0] + 9
+best[0, 1] max= best[0, 0] + 2
+var nodes = List<Node>()
+nodes.push(Node([0..2] b => if b == 1: 42 else: none))
+let k0 = nodes[0].kid[0] ?? -1
+let k1 = nodes[0].kid[1] ?? -1
+print(dp[1][1]!, dp[2][2]!, best[0, 1]!, k0, k1)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "8 12 10 -1 42\n");
+}

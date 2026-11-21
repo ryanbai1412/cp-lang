@@ -445,6 +445,42 @@ pub(crate) enum Op {
     MapPlaceAssign { path: u16, key_v: u16, val_v: u16, op: AssignOp, val_ty: u16 },
     SetMapBoundV { dst: u16, src_v: u16, key_v: u16, mode: u8 },
     SetMapPopEndPlace { dst: u16, path: u16, is_last: bool },
+    LoadList1SmallTuple { dst_base: u16, len: u8, root: u16, is_global: bool, r_i: u16 },
+    MinMaxArrOptI {
+        root: u16,
+        is_global: bool,
+        is_2d: bool,
+        is_max: bool,
+        r_i: u16,
+        r_j: u16,
+        r_val: u16,
+    },
+    LoadIdxFieldIdxOptI {
+        dst_val: u16,
+        dst_some: u16,
+        root: u16,
+        is_global: bool,
+        r_i: u16,
+        field: u16,
+        r_j: u16,
+    },
+    LoadNestedArrOptI {
+        dst_val: u16,
+        dst_some: u16,
+        root: u16,
+        is_global: bool,
+        r_i: u16,
+        r_j: u16,
+    },
+    LoadNestedArrI { dst: u16, root: u16, is_global: bool, r_i: u16, r_j: u16 },
+    SeqIdxEndOptI {
+        dst_val: u16,
+        dst_some: u16,
+        root: u16,
+        is_global: bool,
+        r_i: u16,
+        is_last: bool,
+    },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
@@ -1741,10 +1777,197 @@ impl<'p, 'f> Compiler<'p, 'f> {
         stmts.iter().any(|s| Self::stmt_mentions_slot(s, usize::MAX))
     }
 
+    fn expr_pure_eq(a: &Expr, b: &Expr) -> bool {
+        match (&a.kind, &b.kind) {
+            (ExprKind::Int(x), ExprKind::Int(y)) => x == y,
+            (ExprKind::Bool(x), ExprKind::Bool(y)) => x == y,
+            (ExprKind::Local(x), ExprKind::Local(y)) => x == y,
+            (ExprKind::Global(x), ExprKind::Global(y)) => x == y,
+            (ExprKind::Binary(op1, l1, r1), ExprKind::Binary(op2, l2, r2)) => {
+                op1 == op2 && Self::expr_pure_eq(l1, l2) && Self::expr_pure_eq(r1, r2)
+            }
+            (ExprKind::Unary(op1, x1), ExprKind::Unary(op2, x2)) => {
+                op1 == op2 && Self::expr_pure_eq(x1, x2)
+            }
+            (ExprKind::Field(e1, f1), ExprKind::Field(e2, f2)) => {
+                f1 == f2 && Self::expr_pure_eq(e1, e2)
+            }
+            (ExprKind::Cast(c1, e1), ExprKind::Cast(c2, e2)) => {
+                c1 == c2 && Self::expr_pure_eq(e1, e2)
+            }
+            _ => false,
+        }
+    }
+
+    fn extract_arr_place_parts(place: &Place) -> Option<(&Place, &Expr, Option<&Expr>)> {
+        let PlaceKind::Index(base, indices) = &place.kind else {
+            return None;
+        };
+        if matches!(base.ty, Ty::Array { .. }) {
+            if indices.len() == 2 {
+                return Some((base, &indices[0], Some(&indices[1])));
+            }
+            if indices.len() == 1 {
+                if let PlaceKind::Index(outer, outer_idxs) = &base.kind {
+                    if matches!(outer.ty, Ty::Array { .. }) && outer_idxs.len() == 1 {
+                        return Some((outer, &outer_idxs[0], Some(&indices[0])));
+                    }
+                }
+                return Some((base, &indices[0], None));
+            }
+        }
+        None
+    }
+
+    fn extract_arr_expr_parts(expr: &Expr) -> Option<(&Expr, &Expr, Option<&Expr>)> {
+        let ExprKind::Index(base, indices) = &expr.kind else {
+            return None;
+        };
+        if matches!(base.ty, Ty::Array { .. }) {
+            if indices.len() == 2 {
+                return Some((base, &indices[0], Some(&indices[1])));
+            }
+            if indices.len() == 1 {
+                if let ExprKind::Index(outer, outer_idxs) = &base.kind {
+                    if matches!(outer.ty, Ty::Array { .. }) && outer_idxs.len() == 1 {
+                        return Some((outer, &outer_idxs[0], Some(&indices[0])));
+                    }
+                }
+                return Some((base, &indices[0], None));
+            }
+        }
+        None
+    }
+
+    fn expr_matches_arr_place(expr: &Expr, place: &Place) -> bool {
+        let (Some((eb, ei0, ei1)), Some((pb, pi0, pi1))) =
+            (Self::extract_arr_expr_parts(expr), Self::extract_arr_place_parts(place))
+        else {
+            return false;
+        };
+        let base_ok = match (&eb.kind, &pb.kind) {
+            (ExprKind::Global(g1), PlaceKind::Global(g2)) => g1 == g2,
+            (ExprKind::Local(l1), PlaceKind::Local(l2)) => l1 == l2,
+            _ => false,
+        };
+        if !base_ok || !Self::expr_pure_eq(ei0, pi0) {
+            return false;
+        }
+        match (ei1, pi1) {
+            (Some(a), Some(b)) => Self::expr_pure_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+
+    fn try_compile_opt_minmax_pair(
+        &mut self,
+        s0: &'p Stmt,
+        s1: &'p Stmt,
+        rest: &'p [Stmt],
+    ) -> bool {
+        let Stmt::Let(r_slot, Some(rhs)) = s0 else {
+            return false;
+        };
+        let Stmt::If(outer_cond, outer_then, outer_else) = s1 else {
+            return false;
+        };
+        if !outer_else.stmts.is_empty() || outer_then.stmts.len() != 1 {
+            return false;
+        }
+        let ExprKind::IsSome(c_inner) = &outer_cond.kind else {
+            return false;
+        };
+        if !matches!(c_inner.kind, ExprKind::Local(s) if s == *r_slot) {
+            return false;
+        }
+        let Stmt::If(inner_cond, inner_then, inner_else) = &outer_then.stmts[0] else {
+            return false;
+        };
+        if !inner_else.stmts.is_empty() || inner_then.stmts.len() != 1 {
+            return false;
+        }
+        let Stmt::Assign(place, AssignOp::Set, set_val) = &inner_then.stmts[0] else {
+            return false;
+        };
+        let ExprKind::Some(set_inner) = &set_val.kind else {
+            return false;
+        };
+        if !matches!(&set_inner.kind, ExprKind::Unwrap(u, false) if matches!(u.kind, ExprKind::Local(s) if s == *r_slot))
+        {
+            return false;
+        }
+        let ExprKind::Binary(BinOp::Or, p_none, better) = &inner_cond.kind else {
+            return false;
+        };
+        let ExprKind::Unary(UnOp::Not, p_some) = &p_none.kind else {
+            return false;
+        };
+        let ExprKind::IsSome(p_expr1) = &p_some.kind else {
+            return false;
+        };
+        let ExprKind::Cmp(cmp_op @ (CmpOp::Lt | CmpOp::Gt), cmp_lhs, cmp_rhs) = &better.kind else {
+            return false;
+        };
+        if !matches!(&cmp_lhs.kind, ExprKind::Unwrap(u, false) if matches!(u.kind, ExprKind::Local(s) if s == *r_slot))
+        {
+            return false;
+        }
+        let ExprKind::Unwrap(p_expr2, false) = &cmp_rhs.kind else {
+            return false;
+        };
+        if !Self::expr_matches_arr_place(p_expr1, place)
+            || !Self::expr_matches_arr_place(p_expr2, place)
+        {
+            return false;
+        }
+        if ScalarKind::of_opt_ty(&place.ty, self.program) != Some(ScalarKind::Int) {
+            return false;
+        }
+        let Some((base, idx0, idx1)) = Self::extract_arr_place_parts(place) else {
+            return false;
+        };
+        if rest.iter().any(|s| Self::stmt_mentions_slot(s, *r_slot)) {
+            return false;
+        }
+        let (root, is_global) = match &base.kind {
+            PlaceKind::Global(gid) => (*gid as u16, true),
+            PlaceKind::Local(slot) => match self.slot_loc(*slot) {
+                SlotLoc::V(v) => (v, false),
+                _ => return false,
+            },
+            _ => return false,
+        };
+        let is_2d = idx1.is_some();
+        let is_max = *cmp_op == CmpOp::Gt;
+        let (r_val, r_some) = self.compile_expr_opt_i(rhs);
+        let j_skip = self.emit(Op::JmpIfZero { reg: r_some, target: 0 }, place.span);
+        let r_i = self.compile_expr_i(idx0);
+        let r_j = match idx1 {
+            Some(e) => self.compile_expr_i(e),
+            None => 0,
+        };
+        self.emit(
+            Op::MinMaxArrOptI { root, is_global, is_2d, is_max, r_i, r_j, r_val },
+            place.span,
+        );
+        let end_pc = self.ops.len() as u32;
+        self.patch(j_skip, end_pc);
+        true
+    }
+
     fn compile_stmts(&mut self, stmts: &'p [Stmt]) {
         let has_closure = Self::stmts_have_closure(stmts);
         let mut declared = Vec::new();
-        for (i, stmt) in stmts.iter().enumerate() {
+        let mut i = 0;
+        while i < stmts.len() {
+            if i + 1 < stmts.len()
+                && self.try_compile_opt_minmax_pair(&stmts[i], &stmts[i + 1], &stmts[i + 2..])
+            {
+                i += 2;
+                continue;
+            }
+            let stmt = &stmts[i];
             if let Stmt::Let(slot, _) = stmt {
                 declared.push(*slot);
             }
@@ -1764,6 +1987,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                             },
                                             rhs.span,
                                         );
+                                        i += 1;
                                         continue;
                                     }
                                     PlaceKind::Local(dst_slot) => {
@@ -1777,6 +2001,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                                     rhs.span,
                                                 );
                                             }
+                                            i += 1;
                                             continue;
                                         }
                                     }
@@ -1788,6 +2013,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             self.compile_stmt(stmt);
+            i += 1;
         }
     }
 
@@ -2473,19 +2699,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     );
                 }
                 (SeqKind::List, Some(gid)) => {
-                    let tmp = self.alloc_v();
-                    self.emit(Op::LoadGList1V { dst: tmp, gid, r_i: r_idx }, seq_expr.span);
-                    self.emit(Op::UnboxSmallTuple { dst_base: base, len, src_v: tmp }, seq_expr.span);
-                    self.emit(Op::ClearV { reg: tmp }, seq_expr.span);
-                }
-                (SeqKind::List, None) => {
-                    let tmp = self.alloc_v();
                     self.emit(
-                        Op::LoadLList1V { dst: tmp, list_v: local_v.unwrap(), r_i: r_idx },
+                        Op::LoadList1SmallTuple {
+                            dst_base: base,
+                            len,
+                            root: gid,
+                            is_global: true,
+                            r_i: r_idx,
+                        },
                         seq_expr.span,
                     );
-                    self.emit(Op::UnboxSmallTuple { dst_base: base, len, src_v: tmp }, seq_expr.span);
-                    self.emit(Op::ClearV { reg: tmp }, seq_expr.span);
+                }
+                (SeqKind::List, None) => {
+                    self.emit(
+                        Op::LoadList1SmallTuple {
+                            dst_base: base,
+                            len,
+                            root: local_v.unwrap(),
+                            is_global: false,
+                            r_i: r_idx,
+                        },
+                        seq_expr.span,
+                    );
                 }
                 (SeqKind::Str, _) => unreachable!(),
             },
@@ -3739,18 +3974,48 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 (dst_val, dst_some)
             }
-            ExprKind::Builtin(Builtin::Last, args) if args.len() == 1 => {
+            ExprKind::Builtin(b @ (Builtin::Last | Builtin::First), args) if args.len() == 1 => {
+                let is_last = matches!(b, Builtin::Last);
+                if let ExprKind::Index(base, indices) = &args[0].kind {
+                    if indices.len() == 1 && matches!(base.ty, Ty::Array { .. } | Ty::List(_)) {
+                        let root_info = match &base.kind {
+                            ExprKind::Global(gid) => Some((*gid as u16, true)),
+                            ExprKind::Local(slot) => match self.slot_loc(*slot) {
+                                SlotLoc::V(v) => Some((v, false)),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+                        if let Some((root, is_global)) = root_info {
+                            let r_i = self.compile_expr_i(&indices[0]);
+                            let dst_val = self.alloc_i();
+                            let dst_some = self.alloc_i();
+                            self.emit(
+                                Op::SeqIdxEndOptI {
+                                    dst_val,
+                                    dst_some,
+                                    root,
+                                    is_global,
+                                    r_i,
+                                    is_last,
+                                },
+                                span,
+                            );
+                            return (dst_val, dst_some);
+                        }
+                    }
+                }
                 let seq_v = self.compile_expr_v(&args[0]);
                 let dst_val = self.alloc_i();
                 let dst_some = self.alloc_i();
-                self.emit(Op::SeqLastOptI { dst_val, dst_some, seq_v }, span);
-                (dst_val, dst_some)
-            }
-            ExprKind::Builtin(Builtin::First, args) if args.len() == 1 => {
-                let seq_v = self.compile_expr_v(&args[0]);
-                let dst_val = self.alloc_i();
-                let dst_some = self.alloc_i();
-                self.emit(Op::SeqFirstOptI { dst_val, dst_some, seq_v }, span);
+                if is_last {
+                    self.emit(Op::SeqLastOptI { dst_val, dst_some, seq_v }, span);
+                } else {
+                    self.emit(Op::SeqFirstOptI { dst_val, dst_some, seq_v }, span);
+                }
+                if seq_v >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: seq_v }, span);
+                }
                 (dst_val, dst_some)
             }
             ExprKind::Builtin(Builtin::MapGet, args)
@@ -3945,6 +4210,91 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             (dst_val, dst_some)
                         }
                     }
+                    ExprKind::Index(outer, outer_indices)
+                        if indices.len() == 1
+                            && outer_indices.len() == 1
+                            && matches!(outer.ty, Ty::Array { .. } | Ty::List(_)) =>
+                    {
+                        let root_info = match &outer.kind {
+                            ExprKind::Global(gid) => Some((*gid as u16, true)),
+                            ExprKind::Local(slot) => match self.slot_loc(*slot) {
+                                SlotLoc::V(v) => Some((v, false)),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+                        if let Some((root, is_global)) = root_info {
+                            let r_i = self.compile_expr_i(&outer_indices[0]);
+                            let r_j = self.compile_expr_i(&indices[0]);
+                            let dst_val = self.alloc_i();
+                            let dst_some = self.alloc_i();
+                            self.emit(
+                                Op::LoadNestedArrOptI {
+                                    dst_val,
+                                    dst_some,
+                                    root,
+                                    is_global,
+                                    r_i,
+                                    r_j,
+                                },
+                                span,
+                            );
+                            return (dst_val, dst_some);
+                        }
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst_val = self.alloc_i();
+                        let dst_some = self.alloc_i();
+                        self.emit(Op::LoadLArr1OptI { dst_val, dst_some, arr_v, r_i }, span);
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
+                        (dst_val, dst_some)
+                    }
+                    ExprKind::Field(inner_base, field) if indices.len() == 1 => {
+                        if let ExprKind::Index(seq, inner_indices) = &inner_base.kind {
+                            if inner_indices.len() == 1
+                                && matches!(seq.ty, Ty::List(_) | Ty::Array { .. })
+                            {
+                                let root_info = match &seq.kind {
+                                    ExprKind::Global(gid) => Some((*gid as u16, true)),
+                                    ExprKind::Local(slot) => match self.slot_loc(*slot) {
+                                        SlotLoc::V(v) => Some((v, false)),
+                                        _ => None,
+                                    },
+                                    _ => None,
+                                };
+                                if let Some((root, is_global)) = root_info {
+                                    let r_i = self.compile_expr_i(&inner_indices[0]);
+                                    let r_j = self.compile_expr_i(&indices[0]);
+                                    let dst_val = self.alloc_i();
+                                    let dst_some = self.alloc_i();
+                                    self.emit(
+                                        Op::LoadIdxFieldIdxOptI {
+                                            dst_val,
+                                            dst_some,
+                                            root,
+                                            is_global,
+                                            r_i,
+                                            field: *field as u16,
+                                            r_j,
+                                        },
+                                        span,
+                                    );
+                                    return (dst_val, dst_some);
+                                }
+                            }
+                        }
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst_val = self.alloc_i();
+                        let dst_some = self.alloc_i();
+                        self.emit(Op::LoadLArr1OptI { dst_val, dst_some, arr_v, r_i }, span);
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
+                        (dst_val, dst_some)
+                    }
                     _ => {
                         let arr_v = self.compile_expr_v(base);
                         let r_i = self.compile_expr_i(&indices[0]);
@@ -4044,6 +4394,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     } else {
                         self.compile_expr_opt_i(else_e)
                     };
+                }
+                if let (ExprKind::Some(inner), ExprKind::None) = (&then_e.kind, &else_e.kind) {
+                    let dst_val = self.alloc_i();
+                    let dst_some = self.alloc_i();
+                    self.emit(Op::ConstImmI { dst: dst_some, val: 0 }, span);
+                    let j_else = self.emit_branch_if_false(cond);
+                    let tv = self.compile_expr_i(inner);
+                    if dst_val != tv {
+                        self.emit(Op::MoveI { dst: dst_val, src: tv }, inner.span);
+                    }
+                    self.emit(Op::ConstImmI { dst: dst_some, val: 1 }, then_e.span);
+                    let end_pc = self.ops.len() as u32;
+                    self.patch(j_else, end_pc);
+                    return (dst_val, dst_some);
                 }
                 let dst_val = self.alloc_i();
                 let dst_some = self.alloc_i();
@@ -4691,6 +5055,38 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             self.emit_fallback_expr_i(expr)
                         }
                     }
+                    ExprKind::Index(outer, outer_indices)
+                        if indices.len() == 1
+                            && outer_indices.len() == 1
+                            && matches!(outer.ty, Ty::Array { .. } | Ty::List(_)) =>
+                    {
+                        let root_info = match &outer.kind {
+                            ExprKind::Global(gid) => Some((*gid as u16, true)),
+                            ExprKind::Local(slot) => match self.slot_loc(*slot) {
+                                SlotLoc::V(v) => Some((v, false)),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+                        if let Some((root, is_global)) = root_info {
+                            let r_i = self.compile_expr_i(&outer_indices[0]);
+                            let r_j = self.compile_expr_i(&indices[0]);
+                            let dst = self.alloc_i();
+                            self.emit(
+                                Op::LoadNestedArrI { dst, root, is_global, r_i, r_j },
+                                span,
+                            );
+                            return dst;
+                        }
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let dst = self.alloc_i();
+                        self.emit(Op::LoadLArr1I { dst, arr_v, r_i }, span);
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
+                        dst
+                    }
                     ExprKind::Field(obj, fidx) if indices.len() == 1 => {
                         let obj_v = self.compile_expr_v(obj);
                         let r_i = self.compile_expr_i(&indices[0]);
@@ -4699,6 +5095,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             Op::LoadFieldArr1I { dst, obj_v, field: *fidx as u16, r_i },
                             span,
                         );
+                        if obj_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: obj_v }, span);
+                        }
                         dst
                     }
                     _ => {
@@ -9628,6 +10027,391 @@ impl<'p, 'io> Interp<'p, 'io> {
                             );
                         }
                     };
+                }
+                Op::LoadList1SmallTuple { dst_base, len, root, is_global, r_i } => {
+                    let idx = regs_i[r_i as usize];
+                    let list_val = if is_global {
+                        &self.globals[root as usize]
+                    } else {
+                        &regs_v[root as usize]
+                    };
+                    let elem = match list_val {
+                        Value::List(list) => {
+                            let n_len = list.len() as i64;
+                            if idx < 0 || idx >= n_len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {n_len}"),
+                                );
+                            }
+                            &list[idx as usize]
+                        }
+                        Value::ListView(view) => {
+                            let n_len = view.len as i64;
+                            if idx < 0 || idx >= n_len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {n_len}"),
+                                );
+                            }
+                            view.get(idx as usize).unwrap()
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                    };
+                    let b = dst_base as usize;
+                    let n = len as usize;
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = elem {
+                        for (k, f) in fs.iter().take(n).enumerate() {
+                            regs_i[b + k] = ScalarKind::unbox_val(f);
+                        }
+                    }
+                }
+                Op::MinMaxArrOptI { root, is_global, is_2d, is_max, r_i, r_j, r_val } => {
+                    let i0 = regs_i[r_i as usize];
+                    let val = regs_i[r_val as usize];
+                    let target = if is_global {
+                        &mut self.globals[root as usize]
+                    } else {
+                        &mut regs_v[root as usize]
+                    };
+                    if let Value::Array(arr) = target {
+                        if is_2d && arr.dims.len() == 1 {
+                            let l0 = arr.dims[0];
+                            if i0 < 0 || i0 >= l0 {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i0} is outside an array of length {l0}"),
+                                );
+                            }
+                            let i1 = regs_i[r_j as usize];
+                            let arr_mut = Rc::make_mut(arr);
+                            let ArrayData::Values(rows) = &mut arr_mut.data else {
+                                return trap(spans[cur_pc], "internal: expected nested array");
+                            };
+                            let Value::Array(row_arr) = &mut rows[i0 as usize] else {
+                                return trap(spans[cur_pc], "internal: expected inner array");
+                            };
+                            let l1 = row_arr.dims[0];
+                            if i1 < 0 || i1 >= l1 {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i1} is outside an array of length {l1}"),
+                                );
+                            }
+                            let row_mut = Rc::make_mut(row_arr);
+                            match &mut row_mut.data {
+                                ArrayData::OptInt(v) => {
+                                    let slot = unsafe { v.get_unchecked_mut(i1 as usize) };
+                                    let replace = match *slot {
+                                        None => true,
+                                        Some(cur) => {
+                                            if is_max { val > cur } else { val < cur }
+                                        }
+                                    };
+                                    if replace {
+                                        *slot = Some(val);
+                                    }
+                                }
+                                _ => {
+                                    let (cur, some) = read_array_opt_i(row_mut, i1 as usize);
+                                    if some == 0 || (if is_max { val > cur } else { val < cur }) {
+                                        write_array_opt_i(
+                                            row_mut,
+                                            i1 as usize,
+                                            val,
+                                            1,
+                                            ScalarKind::Int,
+                                        );
+                                    }
+                                }
+                            }
+                            continue;
+                        }
+                        let flat = if is_2d {
+                            let l0 = arr.dims[0];
+                            if i0 < 0 || i0 >= l0 {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {i0} is outside an array dimension of length {l0}"
+                                    ),
+                                );
+                            }
+                            let i1 = regs_i[r_j as usize];
+                            let l1 = arr.dims[1];
+                            if i1 < 0 || i1 >= l1 {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {i1} is outside an array dimension of length {l1}"
+                                    ),
+                                );
+                            }
+                            (i0 * l1 + i1) as usize
+                        } else {
+                            let l0 = arr.dims[0];
+                            if i0 < 0 || i0 >= l0 {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i0} is outside an array of length {l0}"),
+                                );
+                            }
+                            i0 as usize
+                        };
+                        let arr_mut = Rc::make_mut(arr);
+                        match &mut arr_mut.data {
+                            ArrayData::OptInt(v) => {
+                                let slot = unsafe { v.get_unchecked_mut(flat) };
+                                let replace = match *slot {
+                                    None => true,
+                                    Some(cur) => {
+                                        if is_max { val > cur } else { val < cur }
+                                    }
+                                };
+                                if replace {
+                                    *slot = Some(val);
+                                }
+                            }
+                            _ => {
+                                let (cur, some) = read_array_opt_i(arr_mut, flat);
+                                if some == 0 || (if is_max { val > cur } else { val < cur }) {
+                                    write_array_opt_i(arr_mut, flat, val, 1, ScalarKind::Int);
+                                }
+                            }
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected array");
+                    }
+                }
+                Op::LoadIdxFieldIdxOptI {
+                    dst_val,
+                    dst_some,
+                    root,
+                    is_global,
+                    r_i,
+                    field,
+                    r_j,
+                } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let seq_val = if is_global {
+                        &self.globals[root as usize]
+                    } else {
+                        &regs_v[root as usize]
+                    };
+                    let elem = match seq_val {
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside a list of length {len}"),
+                                );
+                            }
+                            &list[i as usize]
+                        }
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside an array of length {len}"),
+                                );
+                            }
+                            match &arr.data {
+                                ArrayData::Values(v) => &v[i as usize],
+                                _ => return trap(spans[cur_pc], "internal: expected struct element"),
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected list or array"),
+                    };
+                    let field_val = match elem {
+                        Value::Tuple(TupleVal::Boxed(fs)) => &fs[field as usize],
+                        _ => return trap(spans[cur_pc], "internal: expected struct/tuple"),
+                    };
+                    let (v, s) = match field_val {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if j < 0 || j >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {j} is outside an array of length {len}"),
+                                );
+                            }
+                            read_array_opt_i(arr, j as usize)
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if j < 0 || j >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {j} is outside a list of length {len}"),
+                                );
+                            }
+                            match &list[j as usize] {
+                                Value::Opt(OptVal::Int(n)) => (*n, 1),
+                                Value::Opt(OptVal::None) => (0, 0),
+                                Value::Opt(OptVal::Boxed(b)) => (ScalarKind::unbox_val(b), 1),
+                                _ => (0, 0),
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list field"),
+                    };
+                    regs_i[dst_val as usize] = v;
+                    regs_i[dst_some as usize] = s;
+                }
+                Op::LoadNestedArrOptI { dst_val, dst_some, root, is_global, r_i, r_j } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let outer_val = if is_global {
+                        &self.globals[root as usize]
+                    } else {
+                        &regs_v[root as usize]
+                    };
+                    let inner_val = match outer_val {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside an array of length {len}"),
+                                );
+                            }
+                            match &arr.data {
+                                ArrayData::Values(v) => &v[i as usize],
+                                _ => return trap(spans[cur_pc], "internal: expected nested array"),
+                            }
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside a list of length {len}"),
+                                );
+                            }
+                            &list[i as usize]
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    };
+                    let (v, s) = match inner_val {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if j < 0 || j >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {j} is outside an array of length {len}"),
+                                );
+                            }
+                            read_array_opt_i(arr, j as usize)
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected inner array"),
+                    };
+                    regs_i[dst_val as usize] = v;
+                    regs_i[dst_some as usize] = s;
+                }
+                Op::LoadNestedArrI { dst, root, is_global, r_i, r_j } => {
+                    let i = regs_i[r_i as usize];
+                    let j = regs_i[r_j as usize];
+                    let outer_val = if is_global {
+                        &self.globals[root as usize]
+                    } else {
+                        &regs_v[root as usize]
+                    };
+                    let inner_val = match outer_val {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside an array of length {len}"),
+                                );
+                            }
+                            match &arr.data {
+                                ArrayData::Values(v) => &v[i as usize],
+                                _ => return trap(spans[cur_pc], "internal: expected nested array"),
+                            }
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside a list of length {len}"),
+                                );
+                            }
+                            &list[i as usize]
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    };
+                    regs_i[dst as usize] = match inner_val {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if j < 0 || j >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {j} is outside an array of length {len}"),
+                                );
+                            }
+                            read_array_i(arr, j as usize)
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected inner array"),
+                    };
+                }
+                Op::SeqIdxEndOptI { dst_val, dst_some, root, is_global, r_i, is_last } => {
+                    let i = regs_i[r_i as usize];
+                    let outer_val = if is_global {
+                        &self.globals[root as usize]
+                    } else {
+                        &regs_v[root as usize]
+                    };
+                    let inner_val = match outer_val {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside an array of length {len}"),
+                                );
+                            }
+                            match &arr.data {
+                                ArrayData::Values(v) => &v[i as usize],
+                                _ => return trap(spans[cur_pc], "internal: expected sequence element"),
+                            }
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if i < 0 || i >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {i} is outside a list of length {len}"),
+                                );
+                            }
+                            &list[i as usize]
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    };
+                    let (v, s) = match inner_val {
+                        Value::List(list) => {
+                            let opt = if is_last { list.last() } else { list.first() };
+                            match opt {
+                                Some(el) => (ScalarKind::unbox_val(el), 1),
+                                None => (0, 0),
+                            }
+                        }
+                        Value::Array(arr) => {
+                            let len = arr.dims[0] as usize;
+                            if len == 0 {
+                                (0, 0)
+                            } else {
+                                let at = if is_last { len - 1 } else { 0 };
+                                (read_array_i(arr, at), 1)
+                            }
+                        }
+                        _ => (0, 0),
+                    };
+                    regs_i[dst_val as usize] = v;
+                    regs_i[dst_some as usize] = s;
                 }
                 Op::MakeClosure { dst, spec } => {
                     let cs = &chunk.closure_specs[spec as usize];
