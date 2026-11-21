@@ -73,7 +73,7 @@ export interface RuntimeErrorOverlay {
 
 /** Compact inline verdict badge shown after running a sample or all samples. */
 export interface SampleStatusOverlay {
-    /** 0-based line to decorate (line 0 for file samples, `@sample` line for inline samples). */
+    /** 0-based line to decorate. */
     line: number;
     ok: boolean;
     label: string;

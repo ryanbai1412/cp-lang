@@ -100,7 +100,7 @@ The extension launches `cpl lsp` over stdio (`cp.server.path`, default `cpl`, se
 
 ## Running, live values, stress testing, and traces
 
-CodeLenses (`cp.codeLens.enabled`, default `true`) appear at the top of `.cp` files, above inline `@sample(...)` declarations, and above `@brute`, `@checker`, and `@interactor` functions:
+CodeLenses (`cp.codeLens.enabled`, default `true`) appear at the top of `.cp` files and above `@brute`, `@checker`, and `@interactor` functions:
 
 ```cp
 ▷ Run on i1 | Run on all 3 samples | Stress | Trace
@@ -114,7 +114,7 @@ fn slow():
     ...
 ```
 
-Sample discovery checks scratch files `i1`/`o1`, `<stem>.tests/*.in`, `<stem>.samples/*.in`, and inline `@sample("in", "out")`.
+Sample discovery checks scratch files `i1`/`o1`, `<stem>.tests/*.in` (with `*.out`, the cases `cpl test` runs) and `<stem>.samples/*.in`.
 
 - **Run on a Sample / Run on All Samples (`cp.runSample`, `cp.runAllSamples`):** runs `cpl run <file> --format json` (automatically falling back to plain `cpl run <file>` if the installed `cpl` binary does not accept `--format json` yet), diffs stdout with judge whitespace normalization, shows inline pass/fail verdict badges, and highlights runtime traps inline and in the Problems panel (`cpl (runtime)` diagnostics) with cancellable progress.
 - **Live Sample Values (`cp.toggleLiveValues` / `cp.liveValues.enabled`):** re-runs on save against `cp.liveValues.input` (or the first sample) and renders top-level values as end-of-line virtual decorations with full values on hover.

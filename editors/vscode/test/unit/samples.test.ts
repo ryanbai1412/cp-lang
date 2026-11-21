@@ -1,22 +1,6 @@
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fileSamples, inlineSamples, parts, planLenses, readString } from '../../src/samples';
-
-test('readString decodes escapes and doubled braces', () => {
-    assert.deepEqual(readString('"3\\n1 2 3\\n"', 0), { value: '3\n1 2 3\n', end: 12 });
-    assert.equal(readString('"a{{b}}\\"c"', 0)?.value, 'a{b}"c');
-    assert.equal(readString('r"a\\n{{"', 0)?.value, 'a\\n{{');
-    assert.equal(readString('"never closed', 0), undefined);
-    assert.equal(readString('x', 0), undefined);
-});
-
-test('inlineSamples finds each @sample with its line', () => {
-    const text = ['// header', '@sample("3\\n1 2 3\\n", "6\\n")', 'let n = read()', '  @sample("1\\n")', '@sample(input)'].join('\n');
-    assert.deepEqual(inlineSamples(text), [
-        { label: 'sample 1', input: { text: '3\n1 2 3\n' }, expected: { text: '6\n' }, line: 1 },
-        { label: 'sample 2', input: { text: '1\n' }, line: 3 },
-    ]);
-});
+import { fileSamples, parts, planLenses } from '../../src/samples';
 
 test('fileSamples orders scratch inputs and test folders by number', () => {
     const found = fileSamples('d', ['d.cp', 'i10', 'i2', 'o2', 'notes'], ['2.in', '1.in', '1.out', 'hand-1.in'], ['1.in']);
@@ -34,7 +18,7 @@ test('fileSamples orders scratch inputs and test folders by number', () => {
 });
 
 const PROGRAM = [
-    '@sample("2\\n7 7\\n", "1\\n")',
+    '// Count something.',
     'let n = read()',
     '',
     '@memo',
@@ -60,17 +44,16 @@ test('parts lists top-level fns with their decorators', () => {
 });
 
 test('planLenses puts Run above the file and Stress above each bruted part', () => {
-    const samples = inlineSamples(PROGRAM);
+    const samples = fileSamples('d', ['i1'], [], []);
     const lenses = planLenses(PROGRAM, samples).map(l => [l.line, l.title, l.command]);
     assert.deepEqual(lenses, [
-        [0, '$(play) Run on sample 1', 'cp.runSample'],
+        [0, '$(play) Run on i1', 'cp.runSample'],
         [0, 'Stress', 'cp.stress'],
         [0, 'Trace', 'cp.trace'],
-        [0, '$(play) Run this sample', 'cp.runSample'],
         [3, 'Stress against count_brute', 'cp.stress'],
         [3, 'Trace', 'cp.trace'],
     ]);
-    assert.deepEqual(planLenses(PROGRAM, samples)[4].args, ['count']);
+    assert.deepEqual(planLenses(PROGRAM, samples)[3].args, ['count']);
 });
 
 test('planLenses supports v2.1 @brute(main), @checker and @interactor lenses', () => {

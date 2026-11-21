@@ -8,8 +8,6 @@ export interface Sample {
     /** Inline input text, or the path of the input file relative to the source's folder. */
     input: { text: string } | { file: string };
     expected?: { text: string } | { file: string };
-    /** Line of the `@sample` decorator (0-based), for inline samples. */
-    line?: number;
 }
 
 export interface Decorator {
@@ -25,71 +23,6 @@ export interface Part {
     line: number;
     fnLine: number;
     decorators: Decorator[];
-}
-
-/** Reads a string literal starting at `text[start]` (`"` or `r"`). */
-export function readString(text: string, start: number): { value: string; end: number } | undefined {
-    const raw = text[start] === 'r';
-    let i = start + (raw ? 1 : 0);
-    if (text[i] !== '"') {
-        return undefined;
-    }
-    i += 1;
-    let value = '';
-    while (i < text.length && text[i] !== '\n') {
-        const c = text[i];
-        if (c === '"') {
-            return { value, end: i + 1 };
-        }
-        if (raw) {
-            value += c;
-            i += 1;
-        } else if (c === '\\') {
-            const next = text[i + 1];
-            const escapes: Record<string, string> = { n: '\n', t: '\t', r: '\r', '0': '\0' };
-            value += escapes[next] ?? next ?? '';
-            i += 2;
-        } else if ((c === '{' || c === '}') && text[i + 1] === c) {
-            value += c;
-            i += 2;
-        } else {
-            value += c;
-            i += 1;
-        }
-    }
-    return undefined;
-}
-
-const SAMPLE = /^\s*@sample\s*\(\s*/;
-
-/** Every `@sample("in", "out")` in the file. The output is optional. */
-export function inlineSamples(text: string): Sample[] {
-    const out: Sample[] = [];
-    const lines = text.split('\n');
-    lines.forEach((line, index) => {
-        const open = SAMPLE.exec(line);
-        if (!open) {
-            return;
-        }
-        const input = readString(line, open[0].length);
-        if (!input) {
-            return;
-        }
-        const sample: Sample = {
-            label: `sample ${out.length + 1}`,
-            input: { text: input.value },
-            line: index,
-        };
-        const comma = /^\s*,\s*/.exec(line.slice(input.end));
-        if (comma) {
-            const expected = readString(line, input.end + comma[0].length);
-            if (expected) {
-                sample.expected = { text: expected.value };
-            }
-        }
-        out.push(sample);
-    });
-    return out;
 }
 
 function byNumber(a: string, b: string): number {
@@ -202,11 +135,6 @@ export function planLenses(text: string, samples: readonly Sample[]): LensSpec[]
         out.push({ line: 0, title: 'Stress', command: 'cp.stress', args: [] });
     }
     out.push({ line: 0, title: 'Trace', command: 'cp.trace', args: first ? [first] : [] });
-    for (const sample of samples) {
-        if (sample.line !== undefined) {
-            out.push({ line: sample.line, title: '$(play) Run this sample', command: 'cp.runSample', args: [sample] });
-        }
-    }
     for (const part of bruted) {
         const target = part.decorators.find(d => d.name === 'brute')?.args?.trim();
         if (target === 'main') {

@@ -3,7 +3,7 @@
 
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { fileSamples, inlineSamples, planLenses, Sample } from './samples';
+import { fileSamples, planLenses, Sample } from './samples';
 
 async function names(folder: vscode.Uri): Promise<string[]> {
     try {
@@ -14,11 +14,10 @@ async function names(folder: vscode.Uri): Promise<string[]> {
     }
 }
 
-/** Every sample of a document: inline `@sample`s first, then the files beside it. */
+/** Every sample of a document: the files beside it (`i1`, `<stem>.tests/`, `<stem>.samples/`). */
 export async function samplesOf(document: vscode.TextDocument): Promise<Sample[]> {
-    const inline = inlineSamples(document.getText());
     if (document.uri.scheme !== 'file') {
-        return inline;
+        return [];
     }
     const folder = vscode.Uri.file(path.dirname(document.uri.fsPath));
     const stem = path.basename(document.uri.fsPath, '.cp');
@@ -27,7 +26,7 @@ export async function samplesOf(document: vscode.TextDocument): Promise<Sample[]
         names(vscode.Uri.joinPath(folder, `${stem}.tests`)),
         names(vscode.Uri.joinPath(folder, `${stem}.samples`)),
     ]);
-    return [...inline, ...fileSamples(stem, here, tests, samples)];
+    return fileSamples(stem, here, tests, samples);
 }
 
 export class LensProvider implements vscode.CodeLensProvider, vscode.Disposable {

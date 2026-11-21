@@ -52,7 +52,7 @@ export class Runner {
         const samples = await samplesOf(document);
         if (samples.length === 0) {
             void vscode.window.showInformationMessage(
-                'No samples yet. Save an input as `i1` beside the file, place files in `<file>.tests/`, or add `@sample("in", "out")`.',
+                'No samples yet. Save an input as `i1` beside the file (and its output as `o1`), or place `N.in`/`N.out` files in `<file>.tests/`.',
             );
             return;
         }
@@ -262,7 +262,6 @@ export class Runner {
         const showValues = options.showValues ?? true;
         const showStatus = options.showStatus ?? false;
         const label = sample?.label ?? 'no input';
-        const statusLine = sample?.line ?? 0;
         const stdin = sample ? await this.read(document, sample.input) : '';
         let result = await this.cpl(
             document,
@@ -296,7 +295,7 @@ export class Runner {
             options.onSummary?.(`${summary}: ${parsed.message}`);
             if (showStatus) {
                 this.overlays.setSampleStatus(document.uri, {
-                    line: statusLine,
+                    line: 0,
                     ok: false,
                     label: `${label}: runtime error (${time})`,
                     detail: report?.error?.message ?? result.stderr.trimEnd(),
@@ -314,7 +313,7 @@ export class Runner {
             options.onSummary?.(summary);
             if (showStatus) {
                 this.overlays.setSampleStatus(document.uri, {
-                    line: statusLine,
+                    line: 0,
                     ok: true,
                     label: summary,
                     detail: stdout.trimEnd() || '(empty output)',
@@ -329,7 +328,7 @@ export class Runner {
             options.onSummary?.(summary);
             if (showStatus) {
                 this.overlays.setSampleStatus(document.uri, {
-                    line: statusLine,
+                    line: 0,
                     ok: true,
                     label: summary,
                     detail: stdout.trimEnd() || '(empty output)',
@@ -346,7 +345,7 @@ export class Runner {
         options.onSummary?.(`${failSummary} (${expectedLine}, ${actualLine})`);
         if (showStatus) {
             this.overlays.setSampleStatus(document.uri, {
-                line: statusLine,
+                line: 0,
                 ok: false,
                 label: failSummary,
                 detail: `${expectedLine}\n${actualLine}`,

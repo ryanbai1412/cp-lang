@@ -1,6 +1,4 @@
 // Count the subarrays of `a` whose sum is at most `k`.
-@sample("3 4\n1 2 3\n", "4\n")
-@sample("2 0\n7 7\n", "0\n")
 let (n, k): (1..=2e5, 0..=1e14) = read()
 domain I = 1..=n
 let a: [I]Int = read()

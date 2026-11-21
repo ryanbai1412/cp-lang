@@ -46,7 +46,7 @@ const tests: [string, () => Promise<void>][] = [
                 const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
                     'vscode.executeHoverProvider',
                     document.uri,
-                    new vscode.Position(7, 5),
+                    new vscode.Position(5, 5),
                 );
                 return hovers.length > 0 ? hoverText(hovers) : undefined;
             });
@@ -94,7 +94,7 @@ const tests: [string, () => Promise<void>][] = [
                 document.uri,
                 use,
             );
-            assert.equal(locations[0].range.start.line, 7);
+            assert.equal(locations[0].range.start.line, 5);
             const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
                 'vscode.executeDocumentSymbolProvider',
                 document.uri,
@@ -132,7 +132,8 @@ const tests: [string, () => Promise<void>][] = [
             );
             assert.ok(!decorators.includes('domain'));
             const words = await labels(document.lineCount - 1, 1);
-            for (const word of ['domain', 'unchecked', 'lends', 'assert', 'print', 'prev_permutation', 'Int', 'F64', 'Interactor', 'Mod', 'SegTree', 'Rooted']) {
+            // Only names in scope: `prev_permutation` needs a `use`, so the server leaves it out.
+            for (const word of ['domain', 'unchecked', 'lends', 'assert', 'print', 'bsearch_first', 'Int', 'F64', 'Interactor', 'Mod', 'SegTree', 'Rooted']) {
                 assert.ok(words.includes(word), `no \`${word}\` among the completions`);
             }
             for (const stale of ['INF', 'Float', 'I32', 'U8', 'ModR', 'defer', 'assume', 'where', 'inline', 'lend']) {
@@ -168,14 +169,12 @@ const tests: [string, () => Promise<void>][] = [
             assert.deepEqual(
                 lenses.map(lens => [lens.range.start.line, lens.command?.title, lens.command?.command]),
                 [
-                    [0, '$(play) Run on sample 1', 'cp.runSample'],
-                    [0, 'Run on all 4 samples', 'cp.runAllSamples'],
+                    [0, '$(play) Run on i1', 'cp.runSample'],
+                    [0, 'Run on all 2 samples', 'cp.runAllSamples'],
                     [0, 'Stress', 'cp.stress'],
                     [0, 'Trace', 'cp.trace'],
-                    [1, '$(play) Run this sample', 'cp.runSample'],
-                    [2, '$(play) Run this sample', 'cp.runSample'],
-                    [10, 'Stress against count_brute', 'cp.stress'],
-                    [10, 'Trace', 'cp.trace'],
+                    [8, 'Stress against count_brute', 'cp.stress'],
+                    [8, 'Trace', 'cp.trace'],
                 ],
             );
         },
