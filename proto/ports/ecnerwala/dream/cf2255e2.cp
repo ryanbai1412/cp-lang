@@ -4,28 +4,38 @@
 // assignment a tag is, per sign, a new sign plus the history it records per unit of
 // |value|; after one, the value is constant and the recorded history fixed. Tags
 // compose in O(1): one dual segment tree (range apply, point get) does everything.
+use std.algebra.MaxSub
+use std.lazy.DualSegTree
+
 enum Sign: neg = -1, zero = 0, pos = 1
 
-struct Cell(val: Int, hist: MaxSub)          // MaxSub: stdlib Kadane monoid, scales by k ≥ 0
-struct Path(to: Sign, seen: MaxSub)          // `seen` is per unit of |val|
-struct Tag(path: [Sign]Path, set: ?Cell)     // set: value assigned, history since
+fn sign(v: Int) -> Sign =
+    if v < 0: Sign.neg elif v > 0: Sign.pos else: Sign.zero
+
+struct Cell(val: Int, hist: MaxSub)       // MaxSub: stdlib Kadane monoid, scales by k >= 0
+struct Path(to: Sign, seen: MaxSub)       // `seen` is per unit of |val|
+struct Tag(path: [Sign]Path, set: ?Cell)  // set: value assigned, history since
 
 fn run(f: Tag, c: Cell) -> Cell:
     let p = f.path[sign(c.val)]
     let hist = c.hist + p.seen * abs(c.val)
     if let s = f.set: Cell(s.val, hist + s.hist) else: Cell(abs(c.val) * Int(p.to), hist)
 
-fn then(g: Tag, f: Tag) -> Tag:              // f first, then g
+fn then(g: Tag, f: Tag) -> Tag:  // f first, then g
     if let s = f.set: return Tag(f.path, run(g, s))
-    Tag([Sign] x => (let a = f.path[x], b = g.path[a.to]; Path(b.to, a.seen + b.seen)), g.set)
+    fn compose_sign(x: Sign) -> Path:
+        let a = f.path[x]
+        let b = g.path[a.to]
+        Path(b.to, a.seen + b.seen)
+    Tag([Sign] x => compose_sign(x), g.set)
 
-fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => .empty, set: ?Cell = none) -> Tag =
+fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = none) -> Tag =
     Tag([Sign] x => Path(to(x), seen(x)), set)
 
 let record = tag(seen: x => MaxSub.of(Int(x)))
 let negate = tag(to: x => Sign(-Int(x)))
-let clamp = tag(to: x => max(x, .zero))
-fn assign(v: Int) -> Tag = tag(set: Cell(v, .empty))
+let clamp = tag(to: x => max(x, Sign.zero))
+fn assign(v: Int) -> Tag = tag(set: Cell(v, MaxSub.empty()))
 
 @!multitest
 let (n, q): (1..=5e5, 1..=5e5) = read()
