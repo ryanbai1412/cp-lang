@@ -12,7 +12,7 @@ import {
     ServerOptions,
     State,
 } from 'vscode-languageclient/node';
-import { registerFallbackCompletion } from './completion';
+import { inAttribute, registerDecoratorCompletion, registerFallbackCompletion } from './completion';
 import { resolveServer } from './cpl';
 import { registerFallbackInlayHints } from './inlayHints';
 
@@ -32,6 +32,7 @@ export function serverBinary(): string | undefined {
 
 export class CpClient implements vscode.Disposable {
     private client: LanguageClient | undefined;
+    private readonly decorators = registerDecoratorCompletion(SELECTOR);
     private fallbackCompletion: vscode.Disposable | undefined;
     private fallbackInlayHints: vscode.Disposable | undefined;
     private readonly status: vscode.LanguageStatusItem;
@@ -62,6 +63,11 @@ export class CpClient implements vscode.Disposable {
             outputChannel: this.output,
             revealOutputChannelOn: RevealOutputChannelOn.Never,
             middleware: {
+                // After `@` the decorators provider answers alone.
+                provideCompletionItem: (document, position, context, token, next) =>
+                    inAttribute(document.lineAt(position.line).text.slice(0, position.character))
+                        ? undefined
+                        : next(document, position, context, token),
                 // `cp.inlayHints.enabled` turns off the server's hints too.
                 provideInlayHints: (document, range, token, next) =>
                     vscode.workspace.getConfiguration('cp').get<boolean>('inlayHints.enabled', true)
@@ -136,6 +142,7 @@ export class CpClient implements vscode.Disposable {
 
     dispose(): void {
         void this.stop();
+        this.decorators.dispose();
         this.status.dispose();
     }
 

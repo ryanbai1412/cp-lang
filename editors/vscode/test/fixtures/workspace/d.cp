@@ -13,7 +13,7 @@ fn count() -> Int:
     var total = 0
     var lo = I.first
     for hi in I:
-        while pre[hi.after] - pre[lo.before] > k: lo = lo.next
+        while pre[hi.after] - pre[lo.before] > k: lo = lo.next!
         total += hi - lo + 1
     total
 
