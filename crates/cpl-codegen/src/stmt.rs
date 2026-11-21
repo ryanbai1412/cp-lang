@@ -447,7 +447,10 @@ impl<'p> Emitter<'p> {
                             ),
                             // Up to a last value that is not the largest
                             // of its type: `<=` ends the loop.
-                            None if cpp == "int" || hi_code.narrow => {
+                            None if cpp == "int"
+                                || hi_code.narrow
+                                || self.facts.below_max(self.fn_id, hi) =>
+                            {
                                 format!("for ({cpp} {var} = {start}{extra}; {var} <= {bound}; {var}++) {{")
                             }
                             // The last value may be `Int.MAX`, which has

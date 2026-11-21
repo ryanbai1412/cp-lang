@@ -292,6 +292,60 @@ impl<'p> Facts<'p> {
         }
     }
 
+    /// True when `e` can't be `Int.MAX`, so `i <= e` ends a loop that
+    /// steps `i` by one: a length, a domain size, a bounded value, or
+    /// less than one of those.
+    pub fn below_max(&self, fn_id: Option<usize>, e: &Expr) -> bool {
+        self.below_max_at(fn_id, e, 0)
+    }
+
+    fn below_max_at(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> bool {
+        if depth > 8 || e.ty != Ty::Int {
+            return false;
+        }
+        if self.upper_bound(fn_id, e, depth).is_some_and(|hi| hi < i64::MAX) {
+            return true;
+        }
+        let set_once = |v: Var| {
+            let home = if v.1 { None } else { fn_id };
+            self.stores(v) == 1
+                && self
+                    .init
+                    .get(&v)
+                    .is_some_and(|init| self.below_max_at(home, init, depth + 1))
+        };
+        match &e.kind {
+            ExprKind::DomainLen(_)
+            | ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _)
+            | ExprKind::Cast(Cast::Ord, _) => true,
+            ExprKind::Local(slot) => set_once((fn_id, false, *slot)),
+            ExprKind::Global(id) => set_once((None, true, *id)),
+            ExprKind::Field(base, index) => {
+                let v = match &base.kind {
+                    ExprKind::Local(slot) => (fn_id, false, *slot),
+                    ExprKind::Global(id) => (None, true, *id),
+                    _ => return false,
+                };
+                let home = if v.1 { None } else { fn_id };
+                self.stores(v) == 1
+                    && matches!(self.init.get(&v).map(|init| &init.kind),
+                        Some(ExprKind::Tuple(items)) if items
+                            .get(*index)
+                            .is_some_and(|item| self.below_max_at(home, item, depth + 1)))
+            }
+            ExprKind::Binary(BinOp::Sub, l, r) => {
+                self.below_max_at(fn_id, l, depth + 1) && self.sign(fn_id, r) != Sign::Unknown
+            }
+            ExprKind::Builtin(Builtin::Min, args) => {
+                args.iter().any(|a| self.below_max_at(fn_id, a, depth + 1))
+            }
+            ExprKind::If(_, a, b) => {
+                self.below_max_at(fn_id, a, depth + 1) && self.below_max_at(fn_id, b, depth + 1)
+            }
+            _ => false,
+        }
+    }
+
     /// The value of the variable's first store.
     pub fn init(&self, v: Var) -> Option<&'p Expr> {
         self.init.get(&v).copied()

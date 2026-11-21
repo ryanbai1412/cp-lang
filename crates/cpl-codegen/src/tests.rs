@@ -455,6 +455,19 @@ print(s)
 }
 
 #[test]
+fn an_inclusive_loop_to_a_bound_below_int_max_is_a_plain_loop() {
+    let open = cpp("let n: Int = read()\nfor i in 0..=n:\n    print(i)\n");
+    assert!(open.contains("i_go"), "{open}");
+    let len = cpp("let xs = [1, 2, 3]\nfor i in 0..=xs.len:\n    print(i)\n");
+    assert!(len.contains("i <= "), "{len}");
+    assert!(!len.contains("i_go"), "{len}");
+    let tuple = cpp(
+        "domain D = 0..5\nlet n: Int = read()\nlet (k, m) = (n, D.K)\nfor i in 1..=m - 1:\n    print(i, k)\n",
+    );
+    assert!(!tuple.contains("i_go"), "{tuple}");
+}
+
+#[test]
 fn a_local_list_that_stays_in_its_fn_is_one_buffer() {
     let fixture = include_str!("../../cpl-cli/tests/programs/reused_local_lists.cp");
     let cpp = cpp(fixture);
