@@ -235,10 +235,13 @@ pub fn dedup<T>(mut a: List<T>):
             kept += 1
     a.truncate(kept)
 
-/// `a` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
-pub fn deduped<T>(self: List<T>) -> List<T>:
-    var out = self.copy()
-    dedup(mut out)
+/// `self` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
+/// Works on any `Seq`. O(n) time without hashing.
+pub fn deduped<S: Seq, T>(self: S) -> List<T>:
+    var out: List<T> = []
+    for x in self:
+        if out.is_empty or out.last! != x:
+            out.push(x)
     out
 
 /// Distinct values of `self` in first-seen order. Works on any `Seq`.
@@ -253,8 +256,8 @@ pub fn distinct<S: Seq, T>(self: S) -> List<T>:
             out.push(x)
     out
 
-/// The values of `a` that `keep` holds for, then the ones it does not, each in the order they came.
-pub fn partition<T>(self: List<T>, keep: T -> Bool) -> (List<T>, List<T>):
+/// The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
+pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
     var (yes, no): (List<T>, List<T>) = ([], [])
     for x in self:
         if keep(x): yes.push(x)
@@ -305,18 +308,23 @@ pub fn merge_sorted<T>(a: List<T>, b: List<T>) -> List<T>:
     out
 
 /// Every run of `k` neighbours, left to right: `[1, 2, 3].windows(2)` gives `[1, 2]` then `[2, 3]`.
-/// Nothing when `k > self.len`. O(k) per window.
-pub fn windows<T>(self: List<T>, k: Int) -> yields List<T>:
+/// Works on any `Indexed` sequence (`List<T>`, `[D]T`, `Str`, `Range`, views). Nothing when `k > self.len`. O(k) per window.
+pub fn windows<S: Indexed, T>(self: S, k: Int) -> yields List<T>:
     assert k >= 1, "a window holds at least one element"
-    for i in 0..self.len - k + 1: yield self[i..i + k]
+    for i in 0..self.len - k + 1:
+        var w: List<T> = []
+        for j in i..i + k: w.push(self.at(j))
+        yield w
 
-/// Non-overlapping slices of length `k` (the last may be shorter). O(n) total.
-pub fn chunks<T>(self: List<T>, k: Int) -> yields List<T>:
+/// Non-overlapping slices of length `k` (the last may be shorter). Works on any `Indexed` sequence. O(n) total.
+pub fn chunks<S: Indexed, T>(self: S, k: Int) -> yields List<T>:
     assert k >= 1, "a chunk holds at least one element"
     var i = 0
     while i < self.len:
         let end = min(i + k, self.len)
-        yield self[i..end]
+        var c: List<T> = []
+        for j in i..end: c.push(self.at(j))
+        yield c
         i = end
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].pairs()` gives

@@ -1969,6 +1969,16 @@ impl<'a> Lowerer<'a> {
                 let ty = Ty::List(elem.clone());
                 self.mk(ExprKind::Builtin(Builtin::Sorted, vec![value]), ty, span)
             }
+            ty if ty.is_seq() => {
+                let elem = ty.seq_elem().unwrap();
+                if !self.ordered(&elem) {
+                    let message = format!("a `{}` has no order to sort by", self.show(&elem));
+                    self.error(codes::BAD_OPERANDS, span, message);
+                    return self.err_expr(span);
+                }
+                let list = self.walked_list(Iter::Seq(value, false), elem.clone(), span);
+                self.mk(ExprKind::Builtin(Builtin::Sorted, vec![list]), Ty::list(elem), span)
+            }
             Ty::Error => value,
             other => {
                 let message = format!("`sorted` takes a list, not a `{}`", self.show(other));
@@ -2072,6 +2082,7 @@ impl<'a> Lowerer<'a> {
             Ty::List(e) | Ty::ListView(e) => Ty::List(e),
             Ty::Array { elem, .. } => Ty::List(elem),
             Ty::Set(e) | Ty::HashSet(e) => Ty::List(e),
+            ty if ty.is_seq() => Ty::list(ty.seq_elem().unwrap()),
             Ty::Error => return value,
             other => {
                 self.error(
@@ -2095,11 +2106,12 @@ impl<'a> Lowerer<'a> {
                     list_ty.clone(),
                     span,
                 ),
-                _ => lw.mk(
+                Ty::Set(_) | Ty::HashSet(_) => lw.mk(
                     ExprKind::Builtin(Builtin::Sorted, vec![value]),
                     list_ty.clone(),
                     span,
                 ),
+                _ => lw.walked_list(Iter::Seq(value, false), elem.clone(), span),
             };
             let slot = lw.temp(list_ty.clone());
             out.push(Stmt::Let(slot, Some(init)));
@@ -2914,6 +2926,15 @@ impl<'a> Lowerer<'a> {
         name_span: Span,
         span: Span,
     ) -> Expr {
+        if let ast::ExprKind::Name(op_name) = &op.value.kind {
+            if matches!(op_name.as_str(), "min" | "max") {
+                let elem = self.probe_ty_silent(base).and_then(|t| t.seq_elem());
+                if elem.as_ref().is_some_and(|e| !matches!(e, Ty::Int | Ty::I128 | Ty::Float)) {
+                    let kind = if op_name == "min" { Reduce::Min } else { Reduce::Max };
+                    return self.reduce_opt(kind, base, optional, span);
+                }
+            }
+        }
         let use_monoid = !optional && self.detect_bare_op(&op.value).is_some();
         if !use_monoid {
             let is_binary_fn = match &op.value.kind {
@@ -5260,45 +5281,36 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        let is_seq_like = |ty: &Ty| ty.is_seq() || matches!(ty, Ty::Set(_) | Ty::HashSet(_));
+        let base_is_seq = self.probe_ty_silent(base).as_ref().is_some_and(&is_seq_like)
+            || matches!(self.sym(base), Some(Sym::Domain(_)));
+        // `xs.map(x => f(x))` returns a `List<U>` across every sequence.
+        if let ([func], "map") = (args, name.text.as_str()) {
+            if func.name.is_none() && !func.mutable && base_is_seq {
+                return self.lower_map(base, &func.value, span);
+            }
+        }
         // `xs.filter(x => cond)` returns a `List<T>` of elements satisfying `cond`.
         if let ([test], "filter") = (args, name.text.as_str()) {
-            if matches!(
-                self.probe_ty_silent(base),
-                Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
-            ) || matches!(self.sym(base), Some(Sym::Domain(_)))
-            {
+            if base_is_seq {
                 return self.lower_filter(base, &test.value, span);
             }
         }
         // `xs.partition(x => cond)` returns `(List<T>, List<T>)`.
         if let ([test], "partition") = (args, name.text.as_str()) {
-            if matches!(
-                self.probe_ty_silent(base),
-                Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
-            ) || matches!(self.sym(base), Some(Sym::Domain(_)))
-            {
+            if base_is_seq {
                 return self.lower_partition(base, &test.value, span);
             }
         }
         // `xs.group(by: x => key)` returns `List<List<T>>` in first-seen key order.
         if let ([key], "group") = (args, name.text.as_str()) {
-            if key.name.as_ref().is_none_or(|n| n.text == "by")
-                && (matches!(
-                    self.probe_ty_silent(base),
-                    Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
-                ) || matches!(self.sym(base), Some(Sym::Domain(_))))
-            {
+            if key.name.as_ref().is_none_or(|n| n.text == "by") && base_is_seq {
                 return self.lower_group_by(base, &key.value, span);
             }
         }
         // `xs.first(x => cond)` returns `?T`.
         if let ([test], "first") = (args, name.text.as_str()) {
-            if test.name.is_none()
-                && (matches!(
-                    self.probe_ty_silent(base),
-                    Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
-                ) || matches!(self.sym(base), Some(Sym::Domain(_))))
-            {
+            if test.name.is_none() && base_is_seq {
                 return self.lower_first_where(base, &test.value, span);
             }
         }
@@ -6056,7 +6068,7 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::List(_), "pop") => match self.positional_any(method, args, 0, span) {
+            (Ty::List(_) | Ty::Str, "pop") => match self.positional_any(method, args, 0, span) {
                 Some(_) => {
                     if matches!(elem, Ty::Opt(_)) {
                         mutate(self, Mutation::PopVal, Vec::new(), elem)
@@ -6066,7 +6078,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::Array { .. }, "swap") => {
+            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "swap") => {
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {
                         let idx_ty = match &ty {
@@ -6087,7 +6099,7 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::List(_), "resize") => match self.positional_any(method, args, 2, span) {
+            (Ty::List(_) | Ty::Str, "resize") => match self.positional_any(method, args, 2, span) {
                 Some(exprs) => {
                     let n = self.expect(exprs[0], &Ty::Int);
                     let v = self.expect(exprs[1], &elem);
@@ -6095,7 +6107,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::List(_), "truncate") => match self.one_arg(method, args, &Ty::Int, span) {
+            (Ty::List(_) | Ty::Str, "truncate") => match self.one_arg(method, args, &Ty::Int, span) {
                 Some(n) => mutate(self, Mutation::Truncate, vec![n], Ty::Unit),
                 None => self.err_expr(span),
             },
@@ -6106,7 +6118,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::Array { .. }, "fill") => match self.one_arg(method, args, &elem, span) {
+            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "fill") => match self.one_arg(method, args, &elem, span) {
                 Some(v) => mutate(self, Mutation::Fill, vec![v], Ty::Unit),
                 None => self.err_expr(span),
             },
@@ -6185,12 +6197,12 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::List(_) | Ty::Array { .. }, "reverse") => match self.positional_any(method, args, 0, span) {
+            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "reverse") => match self.positional_any(method, args, 0, span) {
                 Some(_) => mutate(self, Mutation::Reverse, Vec::new(), Ty::Unit),
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::Array { .. }, "sort") => self.sort(base, &elem, args, span),
-            (Ty::List(_) | Ty::ListView(_) | Ty::Array { .. } | Ty::Set(_) | Ty::HashSet(_), "sorted") => {
+            (Ty::List(_) | Ty::Array { .. } | Ty::Str, "sort") => self.sort(base, &elem, args, span),
+            (ty, "sorted") if ty.is_seq() || matches!(ty, Ty::Set(_) | Ty::HashSet(_)) => {
                 if args.is_empty() {
                     self.sorted(value, span)
                 } else {
@@ -6205,6 +6217,17 @@ impl<'a> Lowerer<'a> {
                 None => self.err_expr(span),
             },
             (Ty::List(e) | Ty::ListView(e), "reversed") => {
+                let out_ty = Ty::list((**e).clone());
+                let view_ty = Ty::ListView(e.clone());
+                match self.positional_any(method, args, 0, span) {
+                    Some(_) => {
+                        let rev = self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), view_ty, span);
+                        self.mk(ExprKind::Builtin(Builtin::ToList, vec![rev]), out_ty, span)
+                    }
+                    None => self.err_expr(span),
+                }
+            }
+            (Ty::Array { dims, elem: e }, "reversed") if dims.len() == 1 => {
                 let out_ty = Ty::list((**e).clone());
                 let view_ty = Ty::ListView(e.clone());
                 match self.positional_any(method, args, 0, span) {
@@ -6407,28 +6430,28 @@ impl<'a> Lowerer<'a> {
                 })
             }
             // `xs.find(x => x > 3)` is the first element the test holds
-            // for; `xs.find(3)` is where the value 3 is.
-            (Ty::List(e), "find") if args.len() == 1 && self.is_test(&args[0].value) => {
-                let elem = (**e).clone();
+            // for; `xs.find(3)` is where the value 3 is. Handled uniformly across
+            // every `Indexed` sequence (`List`, `ListView`, 1D `[D]T`, `Str`, `StrView`, `Range`).
+            (ty, "find") if ty.is_indexed() && args.len() == 1 && self.is_test(&args[0].value) => {
+                let elem = ty.seq_elem().unwrap();
                 self.find_first(value, elem, &args[0].value, span)
             }
-            (Ty::Array { dims, elem: e }, "find")
-                if dims.len() == 1 && args.len() == 1 && self.is_test(&args[0].value) =>
+            (ty, "first_ge" | "last_le" | "find")
+                if ty.is_indexed()
+                    && !(method == "find"
+                        && matches!(ty, Ty::Str | Ty::StrView)
+                        && args.len() == 1
+                        && matches!(self.probe_ty_silent(&args[0].value), Some(Ty::Str | Ty::StrView))) =>
             {
-                let elem = (**e).clone();
-                self.find_first(value, elem, &args[0].value, span)
-            }
-            (Ty::List(e), "first_ge" | "last_le" | "find") => {
-                let e = (**e).clone();
-                self.seq_search_method(method, value, e, None, args, span)
-            }
-            (Ty::Array { dims, elem: e }, "first_ge" | "last_le" | "find") if dims.len() == 1 => {
-                let dom = match dims[0] {
-                    Dim::Pos(d) => Some(d),
+                let dom = match &ty {
+                    Ty::Array { dims, .. } if dims.len() == 1 => match dims[0] {
+                        Dim::Pos(d) => Some(d),
+                        _ => None,
+                    },
                     _ => None,
                 };
-                let e = (**e).clone();
-                self.seq_search_method(method, value, e, dom, args, span)
+                let elem = ty.seq_elem().unwrap();
+                self.seq_search_method(method, value, elem, dom, args, span)
             }
             (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
             // `Neighbours` for a table of neighbour lists: `adj.out(u)` is
@@ -7502,6 +7525,77 @@ impl<'a> Lowerer<'a> {
                 ));
                 out.push(Stmt::Give(lw.local(out_slot, span)));
             }
+        })
+    }
+
+    fn lower_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {
+        let (iter, elem_ty) = self.iter(base);
+        if matches!(elem_ty, Ty::Error) {
+            return self.err_expr(span);
+        }
+        if let ast::ExprKind::Lambda { params, body, .. } = &func_ast.kind {
+            if params.len() == 1 {
+                self.cx.scopes.push(HashMap::new());
+                let mut bind_stmts = Vec::new();
+                let item = self.loop_var(&params[0], elem_ty.clone(), &mut bind_stmts);
+                let mapped = self.expr(body, None);
+                self.cx.scopes.pop();
+                if matches!(mapped.ty, Ty::Error) {
+                    return self.err_expr(span);
+                }
+                let out_elem = mapped.ty.clone();
+                let list_ty = Ty::list(out_elem);
+                return self.do_expr(Some(&list_ty), span, |lw, out| {
+                    let acc = lw.temp(list_ty.clone());
+                    let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
+                    out.push(Stmt::Let(acc, Some(empty)));
+                    let push = Stmt::Expr(lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Push,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc),
+                                ty: list_ty.clone(),
+                                span: lw.span(span),
+                            }),
+                            vec![mapped],
+                        ),
+                        Ty::Unit,
+                        span,
+                    ));
+                    let mut stmts = bind_stmts;
+                    stmts.push(push);
+                    let lid = lw.fresh_loop();
+                    out.push(Stmt::For(lid, item, iter, Block { stmts }));
+                    out.push(Stmt::Give(lw.local(acc, span)));
+                });
+            }
+        }
+        let fn_hint = Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Error));
+        let func = self.expr(func_ast, Some(&fn_hint));
+        let out_elem = match &func.ty {
+            Ty::Fn(_, ret) if !matches!(ret.as_ref(), Ty::Error) => (**ret).clone(),
+            Ty::Error => return self.err_expr(span),
+            other => {
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    func_ast.span,
+                    format!("`map` expects a function, not `{}`", self.show(other)),
+                );
+                return self.err_expr(span);
+            }
+        };
+        self.collected(out_elem.clone(), span, |lw, out, push| {
+            let func_val = lw.hold(func, out);
+            let item = lw.temp(elem_ty.clone());
+            let lid = lw.fresh_loop();
+            let item_expr = lw.local(item, span);
+            let mapped = lw.mk(
+                ExprKind::CallExpr(Box::new(func_val), vec![Arg::Value(item_expr)]),
+                out_elem.clone(),
+                span,
+            );
+            let push_stmt = push(lw, mapped);
+            out.push(Stmt::For(lid, item, iter, Block { stmts: vec![push_stmt] }));
         })
     }
 

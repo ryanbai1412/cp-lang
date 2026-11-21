@@ -592,6 +592,7 @@ using OptInt = Niche<ll, ll, (-0x7fffffffffffffffLL - 1)>;
         needs: &[],
         code: "\
 template <class T> std::optional<T> pop(std::vector<T>& v) { if (v.empty()) return std::nullopt; T x = std::move(v.back()); v.pop_back(); return x; }
+inline std::optional<u8> pop(std::string& s) { if (s.empty()) return std::nullopt; u8 x = (u8)s.back(); s.pop_back(); return x; }
 ",
     },
     Piece {

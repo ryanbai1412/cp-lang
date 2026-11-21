@@ -20,7 +20,7 @@ impl<'a> Checker<'a> {
             Some(ty) => ty,
             None => self.infer(callee),
         };
-        let receiver = self.receiver(call, callee);
+        let receiver = self.receiver(call, callee, args);
         let mut ty = if receiver.is_some()
             && !matches!(callee_ty, Ty::Fn { .. } | Ty::Unknown | Ty::Error | Ty::TypeName(_))
         {
@@ -339,24 +339,50 @@ impl<'a> Checker<'a> {
     /// What a method call means beyond its signature: `g.row(r)` lends a
     /// row, `v.l(k)` is a boundary, `b.at(i)` is a projection of `b`.
     /// Returns the call's type when the receiver decides it.
-    fn receiver(&mut self, call: &Expr, callee: &Expr) -> Option<Ty> {
+    fn receiver(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        // Domain / sequence higher-order operations: `partition`, `sorted`,
-        // `group_by`, `first(where:)`, `at`, `filter`.
-        let seq_elem: Option<Ty> = match &base_ty {
-            Ty::Domain(d) => Some(Ty::Pos(d.clone())),
-            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => Some(args[0].clone()),
-            Ty::Array { elem, .. } => Some((**elem).clone()),
-            Ty::Named { name: n, args } if n == "Bitset" && args.len() == 1 => {
+        // Sequence higher-order operations: `map`, `filter`, `partition`,
+        // `group`, `first(pred)`, `sorted`, through one unified `seq_elem()` path.
+        let seq_elem: Option<Ty> = base_ty.seq_elem().or_else(|| match &base_ty {
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Bitset" | "Set" | "HashSet") && args.len() == 1 =>
+            {
                 Some(args[0].clone())
             }
             _ => None,
-        };
+        });
         if let Some(elem) = seq_elem {
             match name.text.as_str() {
+                "map" => {
+                    let out = if let [arg] = args {
+                        match &arg.value.kind {
+                            ExprKind::Lambda { params, param_tys, body } if params.len() == 1 => {
+                                self.quietly(|c| {
+                                    c.push_scope();
+                                    let pty = param_tys
+                                        .first()
+                                        .and_then(|t| t.as_ref())
+                                        .map(|t| c.resolve_type(t))
+                                        .unwrap_or_else(|| elem.clone());
+                                    c.bind(&params[0], &pty, false, "param");
+                                    let ret = c.infer(body).widen();
+                                    c.pop_scope();
+                                    ret
+                                })
+                            }
+                            _ => match self.quietly(|c| c.infer(&arg.value)) {
+                                Ty::Fn { ret, .. } => (*ret).clone(),
+                                _ => Ty::Unknown,
+                            },
+                        }
+                    } else {
+                        Ty::Unknown
+                    };
+                    return Some(Ty::list(out));
+                }
                 "partition" => {
                     return Some(Ty::Tuple(vec![Ty::list(elem.clone()), Ty::list(elem)]));
                 }
@@ -366,7 +392,7 @@ impl<'a> Checker<'a> {
                 "first" => {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
-                "filter" => {
+                "filter" | "sorted" => {
                     return Some(Ty::list(elem));
                 }
                 "sort" if matches!(base_ty, Ty::Domain(_)) => {

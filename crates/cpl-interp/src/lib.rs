@@ -2091,20 +2091,30 @@ impl<'p, 'o> Interp<'p, 'o> {
                 self.indices(place, &mut indices)?;
                 let cell = self.resolve(place, &mut indices.iter())?;
                 let taken = std::mem::replace(cell, Value::Moved);
-                let (mut items_vec, is_array, dims) = match taken {
+                enum SortKind {
+                    List,
+                    Array(Vec<i64>),
+                    Str,
+                }
+                let (mut items_vec, kind) = match taken {
                     Value::List(items) => {
                         let v = Rc::try_unwrap(items).unwrap_or_else(|r| (*r).clone());
-                        (v, false, Vec::new())
+                        (v, SortKind::List)
                     }
                     Value::Array(arr) => {
                         let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
                         let dims = a.dims.clone();
-                        (a.into_values(), true, dims)
+                        (a.into_values(), SortKind::Array(dims))
+                    }
+                    Value::Str(bytes) => {
+                        let v = bytes.iter().copied().map(Value::Char).collect();
+                        (v, SortKind::Str)
                     }
                     _ => return trap(span, LENT),
                 };
                 let elem_ty = match &place.ty {
                     Ty::List(e) | Ty::Array { elem: e, .. } => (**e).clone(),
+                    Ty::Str => Ty::Char,
                     _ => Ty::Int,
                 };
                 match sort_by {
@@ -2142,10 +2152,21 @@ impl<'p, 'o> Interp<'p, 'o> {
                         }
                     }
                 }
-                let restored = if is_array {
-                    Value::Array(Rc::new(Array::from_values(dims, items_vec)))
-                } else {
-                    Value::List(Rc::new(items_vec))
+                let restored = match kind {
+                    SortKind::Array(dims) => {
+                        Value::Array(Rc::new(Array::from_values(dims, items_vec)))
+                    }
+                    SortKind::List => Value::List(Rc::new(items_vec)),
+                    SortKind::Str => {
+                        let bytes: Vec<u8> = items_vec
+                            .into_iter()
+                            .map(|v| match v {
+                                Value::Char(c) => c,
+                                _ => 0,
+                            })
+                            .collect();
+                        Value::Str(Rc::new(bytes))
+                    }
                 };
                 *self.resolve(place, &mut indices.iter())? = restored;
                 Value::Unit
@@ -4139,6 +4160,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             (Mutation::Pop, Value::List(items)) => {
                 Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()))
             }
+            (Mutation::Pop, Value::Str(bytes)) => {
+                Value::Opt(OptVal::from_option(Rc::make_mut(bytes).pop().map(Value::Char)))
+            }
             (Mutation::PopFirst, Value::Set(items)) => {
                 Value::Opt(OptVal::from_option(Rc::make_mut(items).pop_first()))
             }
@@ -4189,6 +4213,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Rc::make_mut(arr).reverse();
                 Value::Unit
             }
+            (Mutation::Reverse, Value::Str(bytes)) => {
+                Rc::make_mut(bytes).reverse();
+                Value::Unit
+            }
             (Mutation::Swap, Value::List(items)) => {
                 let (i, j) = (arg.int(), arg2.int());
                 let v = Rc::make_mut(items);
@@ -4219,6 +4247,21 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::Unit
             }
+            (Mutation::Swap, Value::Str(bytes)) => {
+                let (i, j) = (arg.int(), arg2.int());
+                let s = Rc::make_mut(bytes);
+                let len = s.len();
+                match (usize::try_from(i).ok(), usize::try_from(j).ok()) {
+                    (Some(i), Some(j)) if i < len && j < len => s.swap(i, j),
+                    _ => {
+                        return trap(
+                            span,
+                            format!("swap({i}, {j}) is outside a list of length {len}"),
+                        )
+                    }
+                }
+                Value::Unit
+            }
             (Mutation::Resize, Value::List(items)) => {
                 let n = arg.int();
                 if n < 0 {
@@ -4227,12 +4270,32 @@ impl<'p, 'o> Interp<'p, 'o> {
                 Rc::make_mut(items).resize(n as usize, arg2);
                 Value::Unit
             }
+            (Mutation::Resize, Value::Str(bytes)) => {
+                let n = arg.int();
+                if n < 0 {
+                    return trap(span, format!("resize to negative length {n}"));
+                }
+                let fill = match arg2 {
+                    Value::Char(c) => c,
+                    _ => 0,
+                };
+                Rc::make_mut(bytes).resize(n as usize, fill);
+                Value::Unit
+            }
             (Mutation::Truncate, Value::List(items)) => {
                 let n = arg.int();
                 if n < 0 {
                     return trap(span, format!("truncate to negative length {n}"));
                 }
                 Rc::make_mut(items).truncate(n as usize);
+                Value::Unit
+            }
+            (Mutation::Truncate, Value::Str(bytes)) => {
+                let n = arg.int();
+                if n < 0 {
+                    return trap(span, format!("truncate to negative length {n}"));
+                }
+                Rc::make_mut(bytes).truncate(n as usize);
                 Value::Unit
             }
             (Mutation::Extend, Value::List(items)) => {
@@ -4253,6 +4316,14 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             (Mutation::Fill, Value::List(items)) => {
                 Rc::make_mut(items).fill(arg);
+                Value::Unit
+            }
+            (Mutation::Fill, Value::Str(bytes)) => {
+                let fill = match arg {
+                    Value::Char(c) => c,
+                    _ => 0,
+                };
+                Rc::make_mut(bytes).fill(fill);
                 Value::Unit
             }
             _ => return trap(span, "internal: this value can't be changed that way"),

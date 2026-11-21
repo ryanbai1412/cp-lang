@@ -983,6 +983,9 @@ impl<'p> Emitter<'p> {
                             let seq = if is_grid { format!("{p}.d") } else { p };
                             Code::primary(format!("cpl::swap_at({seq}, {arg}, {arg2})"))
                         }
+                        Mutation::Resize if place.ty == Ty::Str => {
+                            Code::primary(format!("{p}.resize((size_t)({arg}), (char){arg2})"))
+                        }
                         Mutation::Resize => {
                             Code::primary(format!("{p}.resize((size_t)({arg}), {arg2})"))
                         }
@@ -1003,6 +1006,9 @@ impl<'p> Emitter<'p> {
                         Mutation::Shuffle => {
                             this.need("rng");
                             Code::primary(format!("cpl::shuffle({p})"))
+                        }
+                        Mutation::Fill if place.ty == Ty::Str => {
+                            Code::primary(format!("std::fill({p}.begin(), {p}.end(), (char){arg})"))
                         }
                         Mutation::Fill => {
                             let is_grid =
