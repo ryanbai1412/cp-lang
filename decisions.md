@@ -2105,6 +2105,12 @@ with `if` and `xs.len` in one action. The replaced spellings (`.pow` as L0205, g
 L0206, the removed syntax as E0503) reach the editor as quick fixes with no editor code of
 their own. Reverse: inline `fix_removed_syntax` back into `crates/cpl-lint/src/cli.rs`.
 
+29.17. **Every member read hovers.** Hover entries were recorded only on the struct path of
+`Checker::field`; a built-in member (`xs.len`, a position's `next`) returned earlier and had no
+hover. `field` now wraps the lookup and records the entry when the lookup did not, so a getter
+read without parentheses hovers its type whatever owns it. Reverse: inline `field_ty` back
+into `field` in `crates/cpl-check/src/check/expr.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

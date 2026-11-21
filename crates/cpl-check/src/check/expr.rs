@@ -1204,6 +1204,24 @@ impl<'a> Checker<'a> {
     }
 
     fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
+        let ty = self.field_ty(expr, base, name);
+        // A built-in member (`xs.len`, `v.next`) answers before the hover
+        // the struct path records, so it gets its hover here.
+        let hovered = self.hovers.last().is_some_and(|h| h.span == name.span);
+        if !hovered && !name.text.is_empty() && !matches!(ty, Ty::Error | Ty::Unknown) {
+            self.hovers.push(HoverEntry {
+                span: name.span,
+                name: name.text.clone(),
+                ty: ty.clone(),
+                keyword: "field",
+                decl: None,
+                owner: None,
+            });
+        }
+        ty
+    }
+
+    fn field_ty(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
         // `treap.merge` after `use lib.treap`: a public name of a module.
         if let ExprKind::Name(alias) = &base.kind {
             if self.local(alias).is_none() && self.env.is_module(alias) {

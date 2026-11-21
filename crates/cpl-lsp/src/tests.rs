@@ -2031,3 +2031,61 @@ fn fix_all_rewrites_removed_syntax_then_the_lints_it_uncovers() {
     let edits = fix_all.at(&["edit", "changes", uri.as_str()]).as_array();
     assert_eq!(edits[0].get("newText").as_str(), Some(original.as_str()));
 }
+
+/// A getter is read without parentheses, so the editor offers it as a
+/// property and hovers its value's type, for the built-ins and for a
+/// user's `@get` alike.
+#[test]
+fn getters_complete_and_hover_as_properties() {
+    let src = "\
+struct Box:
+    w: Int
+    h: Int
+    @get fn area(self) -> Int = self.w * self.h
+    fn grow(self, by: Int) -> Box = Box(w: self.w + by, h: self.h + by)
+let b = Box(w: 2, h: 3)
+let xs = [1, 2, 3]
+print(b.area, xs.len)
+print(b.|)
+";
+    let items = completions(src);
+    let kind = |name: &str| {
+        items
+            .iter()
+            .find(|(label, ..)| label == name)
+            .unwrap_or_else(|| panic!("no `{name}` in {items:?}"))
+            .1
+    };
+    assert_eq!(kind("area"), 10, "a getter is a property");
+    assert_eq!(kind("grow"), 2, "a method is a method");
+    let items = completions("let xs = [1, 2, 3]\nprint(xs.|)\n");
+    let len = items.iter().find(|(label, ..)| label == "len").unwrap();
+    assert_eq!(len.1, 10, "{len:?}");
+    let reply = ask_at("textDocument/completion", src);
+    let area = reply
+        .get("items")
+        .as_array()
+        .iter()
+        .find(|item| item.get("label").as_str() == Some("area"))
+        .unwrap()
+        .clone();
+    assert!(area.get("insertText").as_str().is_none_or(|t| t == "area"), "{area:?}");
+
+    let text = src.replacen("print(b.|)\n", "", 1);
+    let (mut server, diagnostics) = open(&text);
+    assert!(
+        diagnostics.iter().all(|d| d.get("severity").as_u32() != Some(1)),
+        "{diagnostics:?}"
+    );
+    let shown = |server: &mut Server, character| {
+        hover_at(server, 7, character)
+            .at(&["contents", "value"])
+            .as_str()
+            .unwrap_or("")
+            .to_string()
+    };
+    let area = shown(&mut server, 9);
+    assert!(area.contains("area") && area.contains("Int"), "{area}");
+    let len = shown(&mut server, 18);
+    assert!(len.contains("len") && len.contains("Int"), "{len}");
+}

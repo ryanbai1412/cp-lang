@@ -614,7 +614,7 @@ no longer shows first as a wrong argument or index count); the lints
 `cpl lint` reports, each with its `cpl fix` fix as a quick fix, and
 `cpl fix` on the buffer as a `source.fixAll.cpl` action, removed syntax first (the replaced
 spellings, `where`, `--- multitest ---`, `.pow` and getter `()`, each a quick fix tested on a
-real port); a panic becomes an error reply plus an
+real port; a getter, built-in or `@get`, completes as a property and hovers its type); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a
