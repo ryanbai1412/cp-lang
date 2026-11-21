@@ -2318,6 +2318,19 @@ counts as a whole, so a nested loop that writes the name drops it before it is e
 (x + y) / 2` relates `m` to both ends: `m - x` is half of `y - x` rounded down, `y - m` half rounded
 up. Reverse: pass the block back to `relate` and drop `relate_midpoint`.
 
+29.34. **Relations follow assignments, `if`s and `while` loops.** After `x = y + c` (also `x += c`),
+`x - z` is `y - z` shifted by `c` for each relation of `y`. The branches of an `if` start from what
+held before it, and after it each relation every branch (and the fall-through) proves holds, as their
+hull; names a branch declares are left out. A `while` that compares two names its body assigns
+starts from their difference on entry (a `var` holds its initial value until assigned), runs its
+body again until that stops widening, at most three times, and keeps the result as an invariant
+inside the loop and, with no `break`, after it, where the failed condition then narrows it: a
+binary search ends with `lo - hi = 0`. A body with `continue` gets no invariant, since `continue`
+returns to the condition without the rest of the body. A test that narrows a name now keeps its
+relations. A difference that is a constant only because of a relation hovers as `= 0`. The extra
+body passes cost at most four times a loop's analysis, more for nested searches; the latency gate
+still passes. Reverse: drop `carried`, `join` and `loop_invariant`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

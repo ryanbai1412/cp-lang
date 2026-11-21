@@ -822,9 +822,13 @@ impl Server {
             None if proven.lo < -int - 1 || proven.hi > int => "\n  may overflow Int".to_string(),
             None => String::new(),
         };
+        let value = match (proven.lo, proven.hi) {
+            (lo, hi) if lo == hi => format!("= {lo}"),
+            (lo, hi) => format!("in {lo}..={hi}"),
+        };
         Some(cpl_check::Hover {
             span: Span { start, end },
-            text: format!("{source}: Int in {}..={}{fits}", proven.lo, proven.hi),
+            text: format!("{source}: Int {value}{fits}"),
             doc: None,
         })
     }

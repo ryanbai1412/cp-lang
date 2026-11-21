@@ -52,6 +52,9 @@ pub(crate) struct Bounds {
     /// What a condition proves about `a - b` for two bounded names, which
     /// their own intervals cannot say (`lo < hi` makes `hi - lo` positive).
     diffs: HashMap<(String, String), Interval>,
+    /// The value a `var` holds where nothing has assigned it since it was
+    /// declared or last set, which its hull over the whole scope cannot say.
+    now: HashMap<String, Interval>,
 }
 
 /// A name the prover can be told about: an input of a declared range, or an
@@ -252,11 +255,17 @@ impl Bounds {
 
     pub(crate) fn bind(&mut self, name: &str, value: Option<Interval>) {
         self.defs.remove(name);
-        self.diffs.retain(|(a, b), _| a != name && b != name);
+        self.unrelate(name);
         match value {
             Some(value) => self.values.insert(name.to_string(), value),
             None => self.values.remove(name),
         };
+    }
+
+    /// A test proved `name` is in `value`: what was known about it stays.
+    pub(crate) fn restrict(&mut self, name: &str, value: Interval) {
+        self.defs.remove(name);
+        self.values.insert(name.to_string(), value);
     }
 
     /// From here on `name` is an input anywhere in `range`.
@@ -331,9 +340,17 @@ impl Bounds {
         self.diffs.insert(key, diff);
     }
 
-    /// Every name some relation is about.
+    /// The `var` `name` holds a value in `value` until it is next assigned.
+    pub(crate) fn set_now(&mut self, name: &str, value: Interval) {
+        if !self.written_by_fn(name) {
+            self.now.insert(name.to_string(), value);
+        }
+    }
+
+    /// Every name an assignment can make a relation or `now` value stale for.
     pub(crate) fn related(&self) -> Vec<String> {
-        let mut names: Vec<String> = self.diffs.keys().flat_map(|(a, b)| [a.clone(), b.clone()]).collect();
+        let pairs = self.diffs.keys().flat_map(|(a, b)| [a.clone(), b.clone()]);
+        let mut names: Vec<String> = pairs.chain(self.now.keys().cloned()).collect();
         names.sort();
         names.dedup();
         names
@@ -342,6 +359,21 @@ impl Bounds {
     /// `name` was assigned: what a condition proved about it may not hold.
     pub(crate) fn unrelate(&mut self, name: &str) {
         self.diffs.retain(|(a, b), _| a != name && b != name);
+        self.now.remove(name);
+    }
+
+    /// Every relation, as `(a, b, what a - b is in)`.
+    pub(crate) fn relations(&self) -> Vec<(String, String, Interval)> {
+        self.diffs.iter().map(|((a, b), d)| (a.clone(), b.clone(), *d)).collect()
+    }
+
+    /// Every `var` with a `now` value.
+    pub(crate) fn nows(&self) -> Vec<(String, Interval)> {
+        self.now.iter().map(|(n, v)| (n.clone(), *v)).collect()
+    }
+
+    pub(crate) fn now_of(&self, name: &str) -> Option<Interval> {
+        self.now.get(name).copied()
     }
 
     /// What the relations between two names prove about `a - b`.
@@ -353,15 +385,30 @@ impl Bounds {
                 _ => None,
             }
         }
-        let (a, b) = (name(a)?.to_string(), name(b)?.to_string());
-        if let Some(d) = self.diffs.get(&(a.clone(), b.clone())) {
+        self.name_diff(name(a)?, name(b)?)
+    }
+
+    pub(crate) fn name_diff(&self, a: &str, b: &str) -> Option<Interval> {
+        if let Some(d) = self.diffs.get(&(a.to_string(), b.to_string())) {
             return Some(*d);
         }
-        let d = self.diffs.get(&(b, a))?;
+        let d = self.diffs.get(&(b.to_string(), a.to_string()))?;
         Some(Interval {
             lo: d.hi.checked_neg()?,
             hi: d.lo.checked_neg()?,
         })
+    }
+
+    /// Everything known here about `a - b`: their relation, and the values
+    /// they hold now or else anywhere in scope.
+    pub(crate) fn current_diff(&self, a: &str, b: &str) -> Option<Interval> {
+        let value = |n: &str| self.now.get(n).or_else(|| self.values.get(n)).copied();
+        let d = Self::combine(BinOp::Sub, value(a)?, value(b)?)?;
+        let d = match self.name_diff(a, b) {
+            Some(r) => Interval { lo: d.lo.max(r.lo), hi: d.hi.min(r.hi) },
+            None => d,
+        };
+        (d.lo <= d.hi).then_some(d)
     }
 
     /// The interval a bounded name is in.

@@ -100,7 +100,10 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
                 op,
                 BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Pow
             ) {
-                if let Some(v) = bounds.expr(expr).filter(|v| v.lo != v.hi) {
+                // A constant says nothing, unless a relation made it one (`lo - hi` after a search).
+                let constant = |e| bounds.expr(e).is_some_and(|v: bounds::Interval| v.lo == v.hi);
+                let shown = |v: &bounds::Interval| v.lo != v.hi || !(constant(lhs) && constant(rhs));
+                if let Some(v) = bounds.expr(expr).filter(shown) {
                     let int = i64::MAX as i128;
                     let leaves = v.lo < -int - 1 || v.hi > int;
                     out.push(crate::ProvenExpr {
@@ -153,15 +156,92 @@ fn ranges_in(
     bounds: &mut bounds::Bounds,
     proven: &mut Proven,
 ) {
+    use cpl_syntax::ast::{ExprKind, StmtKind};
     for (i, stmt) in stmts.iter().enumerate() {
+        let compound = match &stmt.kind {
+            StmtKind::While { .. } => true,
+            StmtKind::Expr(e) => matches!(e.kind, ExprKind::If { .. }),
+            _ => false,
+        };
+        let entry = compound.then(|| bounds.clone());
+        let carry = carried(stmt, bounds);
         // Before the statement, so what a loop's exit proves survives it.
         for name in bounds.related() {
             if assigned_in(&name, std::slice::from_ref(stmt)) {
                 bounds.unrelate(&name);
             }
         }
-        ranges_of_stmt(base, stmts, i, top, bounds, proven);
+        ranges_of_stmt(base, stmts, i, top, bounds, entry.as_ref(), proven);
+        if let Some((name, relations, now)) = carry {
+            for (other, d) in relations {
+                bounds.relate(&name, &other, d);
+            }
+            if let Some(v) = now {
+                bounds.set_now(&name, v);
+            }
+        }
     }
+}
+
+/// What assigning a plain name keeps true: after `x = y + c`, `x - z` is
+/// `y - z` shifted by `c` for each relation of `y` (`y` may be `x`), and
+/// `x - y` is `c`. After `x = e`, `x` holds a value of `e` until it is next
+/// assigned.
+type Carried = (String, Vec<(String, bounds::Interval)>, Option<bounds::Interval>);
+
+fn carried(stmt: &cpl_syntax::ast::Stmt, bounds: &bounds::Bounds) -> Option<Carried> {
+    use cpl_syntax::ast::{AssignOp, BinOp, ExprKind, StmtKind};
+    let StmtKind::Assign { target, op, value } = &stmt.kind else {
+        return None;
+    };
+    let ExprKind::Name(x) = &target.kind else {
+        return None;
+    };
+    if bounds.written_by_fn(x) {
+        return None;
+    }
+    let int = |e: &cpl_syntax::ast::Expr| match e.kind {
+        ExprKind::Int(c) => Some(c),
+        _ => None,
+    };
+    let shift = match (op, &value.kind) {
+        (AssignOp::Set, ExprKind::Name(y)) => Some((y.as_str(), 0)),
+        (AssignOp::Set, ExprKind::Binary { op: BinOp::Add, lhs, rhs, .. }) => match (&lhs.kind, &rhs.kind) {
+            (ExprKind::Name(y), _) => int(rhs).map(|c| (y.as_str(), c)),
+            (_, ExprKind::Name(y)) => int(lhs).map(|c| (y.as_str(), c)),
+            _ => None,
+        },
+        (AssignOp::Set, ExprKind::Binary { op: BinOp::Sub, lhs, rhs, .. }) => match &lhs.kind {
+            ExprKind::Name(y) => int(rhs).and_then(|c| Some((y.as_str(), c.checked_neg()?))),
+            _ => None,
+        },
+        (AssignOp::Binary(BinOp::Add), _) => int(value).map(|c| (x.as_str(), c)),
+        (AssignOp::Binary(BinOp::Sub), _) => int(value).and_then(|c| Some((x.as_str(), c.checked_neg()?))),
+        _ => None,
+    };
+    let mut relations = Vec::new();
+    if let Some((y, c)) = shift {
+        let moved = |d: bounds::Interval| {
+            Some(bounds::Interval { lo: d.lo.checked_add(c)?, hi: d.hi.checked_add(c)? })
+        };
+        if y != x && !bounds.written_by_fn(y) {
+            relations.push((y.to_string(), bounds::Interval { lo: c, hi: c }));
+        }
+        for (a, b, _) in bounds.relations() {
+            let z = if a == y { b } else if b == y { a } else { continue };
+            if z == *x && y != x {
+                continue;
+            }
+            if let Some(d) = bounds.name_diff(y, &z).and_then(moved) {
+                relations.push((z, d));
+            }
+        }
+    }
+    let now = match op {
+        AssignOp::Set => bounds.expr(value),
+        _ => None,
+    };
+    Some((x.clone(), relations, now))
 }
 
 fn ranges_of_stmt(
@@ -170,6 +250,7 @@ fn ranges_of_stmt(
     i: usize,
     top: &[&cpl_syntax::ast::Stmt],
     bounds: &mut bounds::Bounds,
+    entry: Option<&bounds::Bounds>,
     proven: &mut Proven,
 ) {
     use cpl_syntax::ast::{Cond, ExprKind, FnBody, PatternKind, StmtKind};
@@ -240,7 +321,12 @@ fn ranges_of_stmt(
                             bounds.define(name, init);
                             relate_midpoint(name, init, bounds);
                         }
-                        _ => bounds.bind(name, value),
+                        _ => {
+                            bounds.bind(name, value);
+                            if let Some(v) = init.as_ref().filter(|_| *mutable).and_then(|e| bounds.expr(e)) {
+                                bounds.set_now(name, v);
+                            }
+                        }
                     }
                 }
             }
@@ -297,7 +383,14 @@ fn ranges_of_stmt(
                 body,
                 else_body,
             } => {
+                let invariant = match (cond, entry) {
+                    (Cond::Expr(test), Some(entry)) => loop_invariant(base, test, &body.stmts, entry, bounds),
+                    _ => Vec::new(),
+                };
                 let mut inner = bounds.clone();
+                for (a, b, d) in &invariant {
+                    inner.relate(a, b, *d);
+                }
                 if let Cond::Expr(test) = cond {
                     narrow(test, true, &|n| assigned_in(n, &body.stmts), &mut inner);
                 }
@@ -307,6 +400,9 @@ fn ranges_of_stmt(
                 // A loop that only ends by its condition failing leaves it false.
                 if let (Cond::Expr(test), None) = (cond, else_body) {
                     if !breaks(&body.stmts) {
+                        for (a, b, d) in &invariant {
+                            bounds.relate(a, b, *d);
+                        }
                         let rest: Vec<&cpl_syntax::ast::Stmt> = if top.is_empty() {
                             stmts[i + 1..].iter().collect()
                         } else {
@@ -327,26 +423,42 @@ fn ranges_of_stmt(
                     otherwise,
                 } = &expr.kind
                 {
+                    // Each branch starts from what held before the `if`; where
+                    // they meet, what every way through it proves holds.
+                    let start = entry.unwrap_or(bounds);
+                    let mut exits = Vec::new();
+                    let mut declared = std::collections::HashSet::new();
+                    let mut joins = true;
                     // An `if let` binds names the branch would see through.
                     let mut failed = Vec::new();
                     for (cond, block) in branches {
                         let Cond::Expr(test) = cond else {
+                            joins = false;
                             continue;
                         };
-                        let mut inner = bounds.clone();
+                        let mut inner = start.clone();
                         for &earlier in &failed {
                             narrow(earlier, false, &|n| assigned_in(n, &block.stmts), &mut inner);
                         }
                         narrow(test, true, &|n| assigned_in(n, &block.stmts), &mut inner);
                         ranges_in(base, &block.stmts, &[], &mut inner, proven);
+                        declared.extend(declared_in(&block.stmts));
+                        exits.push(inner);
                         failed.push(test);
                     }
+                    let mut inner = start.clone();
+                    let none: &[cpl_syntax::ast::Stmt] = &[];
+                    let rest = otherwise.as_ref().map_or(none, |b| &b.stmts[..]);
+                    for &earlier in &failed {
+                        narrow(earlier, false, &|n| assigned_in(n, rest), &mut inner);
+                    }
                     if let Some(block) = otherwise {
-                        let mut inner = bounds.clone();
-                        for &earlier in &failed {
-                            narrow(earlier, false, &|n| assigned_in(n, &block.stmts), &mut inner);
-                        }
                         ranges_in(base, &block.stmts, &[], &mut inner, proven);
+                        declared.extend(declared_in(&block.stmts));
+                    }
+                    exits.push(inner);
+                    if joins {
+                        join(&exits, &declared, bounds);
                     }
                 }
             }
@@ -406,7 +518,7 @@ fn var_range(
             PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
         }
     }
-    fn mentioned(e: &Expr, out: &mut HashSet<String>) {
+    fn mentioned(e: &Expr, out: &mut std::collections::HashSet<String>) {
         match &e.kind {
             ExprKind::Name(n) => {
                 out.insert(n.clone());
@@ -634,6 +746,127 @@ fn guarded<'a>(
 /// Inside a block that runs only when `test` is `holds`, each bounded name
 /// a comparison in `test` limits is in the tighter range, unless the block
 /// assigns it.
+/// Gives `bounds` what every one of `exits` proves, about names declared
+/// outside the blocks they come from.
+fn join(exits: &[bounds::Bounds], declared: &std::collections::HashSet<String>, bounds: &mut bounds::Bounds) {
+    let Some((first, others)) = exits.split_first() else {
+        return;
+    };
+    let outer = |n: &str| !declared.contains(n);
+    for (a, b, d) in first.relations() {
+        if !outer(&a) || !outer(&b) {
+            continue;
+        }
+        let all = others.iter().try_fold(d, |d, e| e.name_diff(&a, &b).map(|o| d.hull(o)));
+        if let Some(d) = all {
+            bounds.relate(&a, &b, d);
+        }
+    }
+    for (n, v) in first.nows() {
+        if !outer(&n) || bounds.now_of(&n).is_some() {
+            continue;
+        }
+        if let Some(v) = others.iter().try_fold(v, |v, e| e.now_of(&n).map(|o| v.hull(o))) {
+            bounds.set_now(&n, v);
+        }
+    }
+}
+
+/// The names `stmts` binds at their own level.
+fn declared_in(stmts: &[cpl_syntax::ast::Stmt]) -> std::collections::HashSet<String> {
+    use cpl_syntax::ast::{Pattern, PatternKind, StmtKind};
+    fn names(pat: &Pattern, out: &mut std::collections::HashSet<String>) {
+        match &pat.kind {
+            PatternKind::Name(n) => {
+                out.insert(n.clone());
+            }
+            PatternKind::Tuple(parts) | PatternKind::Or(parts) => parts.iter().for_each(|p| names(p, out)),
+            PatternKind::Variant { args, .. } => args.iter().for_each(|p| names(p, out)),
+            _ => {}
+        }
+    }
+    let mut out = std::collections::HashSet::new();
+    for stmt in stmts {
+        match &stmt.kind {
+            StmtKind::Let { pat, .. } => names(pat, &mut out),
+            StmtKind::Const { name, .. } => {
+                out.insert(name.text.clone());
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// What a `while` keeps true about two names its condition compares: start
+/// from their difference on entry, run the body until that stops widening
+/// (at most three times), and keep each pair that settles. The body must not
+/// `continue`, which would come back to the condition from elsewhere.
+fn loop_invariant(
+    base: u32,
+    test: &cpl_syntax::ast::Expr,
+    body: &[cpl_syntax::ast::Stmt],
+    entry: &bounds::Bounds,
+    bounds: &bounds::Bounds,
+) -> Vec<(String, String, bounds::Interval)> {
+    let declared = declared_in(body);
+    let mut pairs = Vec::new();
+    compared_names(test, &mut pairs);
+    let mut cands: Vec<(String, String, bounds::Interval)> = pairs
+        .into_iter()
+        .filter(|(a, b)| a != b && !declared.contains(a) && !declared.contains(b))
+        .filter(|(a, b)| assigned_in(a, body) || assigned_in(b, body))
+        .filter_map(|(a, b)| entry.current_diff(&a, &b).map(|d| (a, b, d)))
+        .collect();
+    if cands.is_empty() || continues(body) {
+        return Vec::new();
+    }
+    for _ in 0..3 {
+        let mut inner = bounds.clone();
+        for (a, b, d) in &cands {
+            inner.relate(a, b, *d);
+        }
+        narrow(test, true, &|n| assigned_in(n, body), &mut inner);
+        ranges_in(base, body, &[], &mut inner, &mut Proven::default());
+        let mut settled = true;
+        cands.retain_mut(|(a, b, d)| match inner.name_diff(a, b) {
+            Some(out) => {
+                let wider = d.hull(out);
+                settled &= wider == *d;
+                *d = wider;
+                true
+            }
+            None => false,
+        });
+        if settled {
+            return cands;
+        }
+    }
+    Vec::new()
+}
+
+/// The pairs of plain names `test` compares where it holds.
+fn compared_names(test: &cpl_syntax::ast::Expr, out: &mut Vec<(String, String)>) {
+    use cpl_syntax::ast::{BinOp, ExprKind};
+    match &test.kind {
+        ExprKind::Paren(inner) => compared_names(inner, out),
+        ExprKind::Binary { op: BinOp::And, lhs, rhs, .. } => {
+            compared_names(lhs, out);
+            compared_names(rhs, out);
+        }
+        ExprKind::Compare { first, rest } => {
+            let mut left = first.as_ref();
+            for (_, right) in rest {
+                if let (ExprKind::Name(a), ExprKind::Name(b)) = (&left.kind, &right.kind) {
+                    out.push((a.clone(), b.clone()));
+                }
+                left = right;
+            }
+        }
+        _ => {}
+    }
+}
+
 fn narrow(
     test: &cpl_syntax::ast::Expr,
     holds: bool,
@@ -692,7 +925,10 @@ fn narrow(
                             _ => (have.lo.max(other.lo), have.hi.min(other.hi)),
                         };
                         // A branch the bounds prove dead claims nothing.
-                        bounds.bind(name, (lo <= hi).then_some(bounds::Interval { lo, hi }));
+                        match (lo <= hi).then_some(bounds::Interval { lo, hi }) {
+                            Some(v) => bounds.restrict(name, v),
+                            None => bounds.bind(name, None),
+                        }
                     }
                     relate(left, *op, right, bounds);
                 }
@@ -770,6 +1006,21 @@ fn relate(
     if lo <= hi {
         bounds.relate(x, y, bounds::Interval { lo, hi });
     }
+}
+
+/// Whether a `continue` in `stmts` can go back to a loop's condition.
+fn continues(stmts: &[cpl_syntax::ast::Stmt]) -> bool {
+    use cpl_syntax::ast::{Stmt, StmtKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+    struct Continues(bool);
+    impl Visitor for Continues {
+        fn stmt(&mut self, stmt: &Stmt) {
+            self.0 |= matches!(stmt.kind, StmtKind::Continue(_));
+        }
+    }
+    let mut v = Continues(false);
+    stmts.iter().for_each(|s| walk_stmt(s, &mut v));
+    v.0
 }
 
 /// Whether a `break` in `stmts` can leave a loop early.

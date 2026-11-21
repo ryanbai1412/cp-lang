@@ -120,7 +120,7 @@ lo: Int in 0..=200001
 
 == hover @ 31:14
 ```cp
-lo - hi: Int in 0..=200001
+lo - hi: Int = 0
 ```
 
 == hover @ 35:7

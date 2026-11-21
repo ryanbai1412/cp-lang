@@ -1743,11 +1743,14 @@ fn a_comparison_of_two_names_bounds_their_difference() {
         ("if n <= a:\n    print(n)\nelse:\n    let x = a - n\n    print(x)\n", Some((-100, -1))),
         ("if a == n:\n    let x = (n) - (a)\n    print(x)\n", Some((0, 0))),
         ("if a < n:\n    a = 5\n    let x = n - a\n    print(x)\n", Some((-8, 100))),
-        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a < 5:\n        lo = mid + 1\n    else:\n        hi = mid\nlet x = lo - hi\nprint(x)\n", Some((0, 101))),
+        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a < 5:\n        lo = mid + 1\n    else:\n        hi = mid\nlet x = lo - hi\nprint(x)\n", Some((0, 0))),
+        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    lo = hi + 5\nlet x = lo - hi\nprint(x)\n", Some((0, 5))),
+        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    if a < 5:\n        lo = hi + 1\n        continue\n    lo = hi\nlet x = lo - hi\nprint(x)\n", Some((0, 100))),
+        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    lo += 1\n    if lo == 3:\n        break\nlet x = lo - hi\nprint(x)\n", Some((-100, 99))),
         ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    let x = hi - lo\n    print(x)\n    lo += 1\n", Some((1, 100))),
-        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    lo += 1\n    let x = hi - lo\n    print(x)\n", Some((-99, 100))),
+        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    lo += 1\n    let x = hi - lo\n    print(x)\n", Some((0, 99))),
         ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    let x = hi - mid\n    print(x)\n    if a < 5:\n        lo = mid + 1\n    else:\n        hi = mid\n", Some((1, 50))),
-        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a < 5:\n        lo = mid + 1\n    let x = mid - lo\n    print(x)\n", Some((-101, 100))),
+        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a < 5:\n        lo = mid + 1\n    let x = mid - lo\n    print(x)\n", Some((-1, 50))),
     ];
     for (body, want) in cases {
         let src = format!("{head}{body}").replace("let a:", if body.contains("a = 5") { "var a:" } else { "let a:" });
