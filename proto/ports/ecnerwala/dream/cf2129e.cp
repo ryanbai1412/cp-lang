@@ -9,20 +9,23 @@
 // (k + n - (r - l + 1))-th of all, the others sitting at f = 0 below them.
 @!multitest
 use std.mo.{mo}
+use std.fenwick.Fenwick
 let (n, m): (2..=150_000, 1..=150_000) = read()
 domain V = 1..=n
 domain E = 0..m
 let raw: [E](u: V, v: V) = read()
 let g = Graph.undirected(raw)
 let (domain Arc, arcs) = [(u, a.to, a.e) for u in V for a in g.out(u)].indexed()
-let first_arc = [V.bounds] b => Arc.bounds.nth(g.deg[..b].sum())
+let deg = [V] v => g.deg(v)
+let first_arc = [V.bounds] b => Arc.bounds.nth(deg[..b].sum())
 
 let q: 1..=150_000 = read()
 let asks: [0..q](l: V, r: V, k: Int) = read()
 
 var f: [V]Int = 0
-var values = BucketCount(0..bit_ceil(n + 1))
-values.add(0, n)
+domain Value = 0..bit_ceil(n + 1)
+var values = Fenwick<Value, Int>()
+values.add(Value(0), n)
 var arcs_in: [E]Int = 0
 
 fn step(p: Arc, by: Int):
@@ -31,9 +34,9 @@ fn step(p: Arc, by: Int):
     arcs_in[e] += by
     if was_inside != (arcs_in[e] == 2):
         for (x, y) in [(u, v), (v, u)]:
-            values.add(f[x], -1)
+            values.add(Value(f[x]), -1)
             f[x] ^= y.label
-            values.add(f[x], 1)
+            values.add(Value(f[x]), 1)
 
 let windows = [first_arc[x.l.l]..first_arc[x.r.r] for x in asks]
 print(mo(windows, add: p => step(p, 1), remove: p => step(p, -1),
