@@ -1178,3 +1178,112 @@ print(s.lo, s.hi, r.start, r.end)
 "
     );
 }
+
+#[test]
+fn hand_rolled_stdlib_algo_family_flags_dsu_sieve_binlift_and_segtree_pull() {
+    let seg_build_pull = "\
+var t: [0..16]Int = 0
+for i in (1..8).rev:
+    t[i] = t[2 * i] + t[2 * i + 1]
+";
+    assert_eq!(taste_codes(seg_build_pull), ["L0514"]);
+
+    let dsu_halving = "\
+domain V = 0..4
+var up: [V]V = [V] v => v
+fn find(v: V) -> V:
+    var x = v
+    while up[x] != x:
+        up[x] = up[up[x]]
+        x = up[x]
+    x
+";
+    assert_eq!(taste_codes(dsu_halving), ["L0517"]);
+
+    let dsu_recursive = "\
+domain V = 0..4
+var up: [V]V = [V] v => v
+fn find(v: V) -> V:
+    if up[v] == v: return v
+    up[v] = find(up[v])
+    up[v]
+";
+    assert_eq!(taste_codes(dsu_recursive), ["L0517"]);
+
+    let dsu_two_pass = "\
+domain V = 0..4
+var up: [V]?V = none
+fn find(v: V) -> V:
+    var r = v
+    while let p = up[r]: r = p
+    var x = v
+    while let p = up[x]:
+        up[x] = r
+        x = p
+    r
+";
+    assert_eq!(taste_codes(dsu_two_pass), ["L0517"]);
+
+    let eratosthenes = "\
+let n = 30
+var is_prime = List.filled(n + 1, true)
+for i in 2..=n:
+    if is_prime[i]:
+        var j = i * i
+        while j <= n:
+            is_prime[j] = false
+            j += i
+";
+    assert_eq!(taste_codes(eratosthenes), ["L0518"]);
+
+    let linear_sieve = "\
+let n = 30
+var spf = List.filled(n + 1, 0)
+var primes: List<Int> = []
+for i in 2..=n:
+    if spf[i] == 0:
+        spf[i] = i
+        primes.push(i)
+    for p in primes:
+        if p > spf[i] or i * p > n: break
+        spf[i * p] = p
+";
+    assert_eq!(taste_codes(linear_sieve), ["L0518"]);
+
+    let binlift_2d = "\
+var up: [0..4, 0..8]Int = 0
+for k in 1..4:
+    for v in 0..8:
+        up[k, v] = up[k - 1, up[k - 1, v]]
+";
+    assert_eq!(taste_codes(binlift_2d), ["L0519"]);
+
+    let binlift_nested = "\
+var up = [[0, 0, 1], [0, 0, 0]]
+for k in 1..2:
+    for v in 0..3:
+        up[k][v] = up[k - 1][up[k - 1][v]]
+";
+    assert_eq!(taste_codes(binlift_nested), ["L0519"]);
+
+    // Negative cases: ordinary tree parent chase without compression,
+    // divisor-count multiple loop, ordinary 2D DP recurrence.
+    let clean = "\
+domain V = 0..4
+let par: [V]V = [V] v => v
+var x = V(3)
+while par[x] != x: x = par[x]
+let n = 20
+var cnt = List.filled(n + 1, 0)
+for i in 1..=n:
+    var j = i
+    while j <= n:
+        cnt[j] += 1
+        j += i
+var dp: [0..4, 0..8]Int = 0
+for k in 1..4:
+    for v in 1..8:
+        dp[k, v] = dp[k - 1, v] + dp[k - 1, v - 1]
+";
+    assert_eq!(taste_codes(clean), Vec::<&str>::new());
+}

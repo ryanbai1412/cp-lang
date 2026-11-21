@@ -5,7 +5,8 @@
 
 use crate::walk::{self, Bind, Visitor};
 use crate::{
-    File, Finding, BY_TWIN, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD, HAND_ROLLED_RANGE_TREE,
+    File, Finding, BY_TWIN, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
+    HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE,
     HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN,
     PUSH_LOOP, REPEATED_LITERAL, SEARCH_LOOP, SORTED_RANGE_METHOD, SYMMETRIC_WRITE, TREE_ORDER,
 };
@@ -54,6 +55,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     rule.findings.extend(repeated_literals(file));
     rule.findings.extend(hand_rolled_range_trees(file));
     rule.findings.extend(hand_rolled_string_algos(file));
+    rule.findings.extend(hand_rolled_stdlib_algos(file));
     rule.findings
 }
 
@@ -1434,6 +1436,17 @@ fn hand_rolled_range_trees(file: &File) -> Vec<Finding> {
                         );
                     }
                 }
+                StmtKind::For { pat, body, .. } => {
+                    if let PatternKind::Name(var) = &pat.kind {
+                        if is_segtree_build_pull_loop(var, body) {
+                            self.warn(
+                                stmt.span,
+                                "hand-rolled segment tree pull loop",
+                                "use `SegTree` (`std.segtree`) or `LazySegTree` / `DualSegTree` (`std.lazy`)",
+                            );
+                        }
+                    }
+                }
                 StmtKind::Fn(decl) => {
                     if let FnBody::Block(body) = &decl.body {
                         if is_recursive_segtree_fn(decl, body) {
@@ -2498,4 +2511,511 @@ fn is_trie_insert_loop(body: &Block) -> bool {
     c.alloc_slots
         .iter()
         .any(|(_, cur)| c.advance_vars.contains(cur))
+}
+
+/// Flags hand-rolled union-find (L0517), prime/SPF sieve (L0518), and
+/// binary-lifting tables (L0519) that duplicate `std.dsu`, `std.math`, and
+/// `std.tree`.
+fn hand_rolled_stdlib_algos(file: &File) -> Vec<Finding> {
+    struct Scan {
+        base: u32,
+        findings: Vec<Finding>,
+    }
+
+    impl Scan {
+        fn warn(&mut self, lint: &'static crate::Lint, span: Span, msg: &str, help: &str) {
+            self.findings.push(Finding {
+                lint,
+                diag: Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help),
+            });
+        }
+    }
+
+    impl Visitor for Scan {
+        fn stmt(&mut self, stmt: &Stmt) {
+            match &stmt.kind {
+                StmtKind::While { cond, body } if is_dsu_path_halving_loop(cond, body) => {
+                    self.warn(
+                        &HAND_ROLLED_DSU,
+                        stmt.span,
+                        "hand-rolled union-find (DSU) path compression",
+                        "use `Dsu`, `DsuOf`, `ParityDsu`, or `PotentialDsu` from `std.dsu`",
+                    );
+                }
+                StmtKind::Fn(decl) => {
+                    if let FnBody::Block(body) = &decl.body {
+                        if is_dsu_recursive_or_two_pass_fn(decl, body) {
+                            self.warn(
+                                &HAND_ROLLED_DSU,
+                                stmt.span,
+                                "hand-rolled union-find (DSU) `find` function",
+                                "use `Dsu`, `DsuOf`, `ParityDsu`, or `PotentialDsu` from `std.dsu`",
+                            );
+                        }
+                    }
+                }
+                StmtKind::For { pat, body, .. } => {
+                    if let PatternKind::Name(var) = &pat.kind {
+                        if is_sieve_loop(var, body) {
+                            self.warn(
+                                &HAND_ROLLED_SIEVE,
+                                stmt.span,
+                                "hand-rolled prime/SPF sieve loop",
+                                "use `Sieve` or `sieve_multiplicative` from `std.math`",
+                            );
+                        }
+                        if is_binary_lifting_loop(var, body) {
+                            self.warn(
+                                &HAND_ROLLED_BINARY_LIFTING,
+                                stmt.span,
+                                "hand-rolled binary lifting table",
+                                "use `Rooted.lca` / `Rooted.kth_ancestor` or `JumpTree` from `std.tree`",
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    let mut scan = Scan {
+        base: 0,
+        findings: Vec::new(),
+    };
+    file.walk(&mut scan, |s, base| s.base = base);
+    scan.findings
+}
+
+/// Unwraps a 1-D index `arr[ix]` and returns `(arr_name, ix)`.
+fn plain_index(e: &Expr) -> Option<(&str, &Expr)> {
+    let ExprKind::Index { base, indices } = &walk::unparen(e).kind else {
+        return None;
+    };
+    let [ix] = indices.as_slice() else {
+        return None;
+    };
+    Some((expr_name(base)?, ix))
+}
+
+/// Matches `arr[x] != x` (or `x != arr[x]`), returning `(arr, x)`.
+fn dsu_not_root_cond(cond: &Cond) -> Option<(&str, &str)> {
+    let e = cond_expr(cond)?;
+    let (lhs, CmpOp::Ne, rhs) = single_cmp(e)? else {
+        return None;
+    };
+    if let (Some((arr, ix)), Some(v)) = (plain_index(lhs), expr_name(rhs)) {
+        if expr_name(ix) == Some(v) {
+            return Some((arr, v));
+        }
+    }
+    if let (Some(v), Some((arr, ix))) = (expr_name(lhs), plain_index(rhs)) {
+        if expr_name(ix) == Some(v) {
+            return Some((arr, v));
+        }
+    }
+    None
+}
+
+/// `while up[x] != x:` containing `up[x] = up[up[x]]` (path halving).
+fn is_dsu_path_halving_loop(cond: &Cond, body: &Block) -> bool {
+    let Some((arr, var)) = dsu_not_root_cond(cond) else {
+        return false;
+    };
+    struct Check<'a> {
+        arr: &'a str,
+        var: &'a str,
+        halved: bool,
+    }
+    impl Visitor for Check<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Assign {
+                target,
+                op: AssignOp::Set,
+                value,
+            } = &stmt.kind
+            {
+                if let Some((a1, ix1)) = plain_index(target) {
+                    if a1 == self.arr && expr_name(ix1) == Some(self.var) {
+                        if let Some((a2, ix2)) = plain_index(value) {
+                            if a2 == self.arr {
+                                if let Some((a3, ix3)) = plain_index(ix2) {
+                                    if a3 == self.arr && expr_name(ix3) == Some(self.var) {
+                                        self.halved = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut c = Check {
+        arr,
+        var,
+        halved: false,
+    };
+    walk_block(&mut c, body);
+    c.halved
+}
+
+/// Recursive path-compressing DSU `find(x)` (`if up[x] == x: ...; up[x] = find(up[x])`)
+/// or two-pass iterative DSU `find(v)` (chase `up[r]` to root, then compress `up[x] = r`).
+fn is_dsu_recursive_or_two_pass_fn(decl: &FnDecl, body: &Block) -> bool {
+    if decl.params.len() != 1 {
+        return false;
+    }
+    let fn_name = decl.name.text.as_str();
+    let param = decl.params[0].name.text.as_str();
+
+    // Case 1: recursive `fn find(x)`: calls `find(up[x])` and writes `up[x] = ...`.
+    struct Rec<'a> {
+        fn_name: &'a str,
+        param: &'a str,
+        rec_arr: Option<String>,
+        writes_arr: Vec<String>,
+    }
+    impl Visitor for Rec<'_> {
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Call { callee, args } = &expr.kind {
+                if expr_name(callee) == Some(self.fn_name) && args.len() == 1 {
+                    if let Some((arr, ix)) = plain_index(&args[0].value) {
+                        if expr_name(ix) == Some(self.param) {
+                            self.rec_arr = Some(arr.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Assign {
+                target,
+                op: AssignOp::Set,
+                ..
+            } = &stmt.kind
+            {
+                if let Some((arr, ix)) = plain_index(target) {
+                    if expr_name(ix) == Some(self.param) {
+                        self.writes_arr.push(arr.to_string());
+                    }
+                }
+            }
+        }
+    }
+    let mut r = Rec {
+        fn_name,
+        param,
+        rec_arr: None,
+        writes_arr: Vec::new(),
+    };
+    walk_block(&mut r, body);
+    if let Some(arr) = r.rec_arr {
+        if r.writes_arr.iter().any(|w| w == &arr) {
+            return true;
+        }
+    }
+
+    // Case 2: two-pass iterative `find(v)`: two `while` loops over the same parent array
+    // where the second writes `up[x] = r`.
+    let mut chase_arrs: Vec<String> = Vec::new();
+    let mut compress_arrs: Vec<String> = Vec::new();
+    for stmt in &body.stmts {
+        if let StmtKind::While { cond, body: wb } = &stmt.kind {
+            let cond_arr = if let Some((arr, _)) = dsu_not_root_cond(cond) {
+                Some(arr.to_string())
+            } else if let Cond::Let { value, .. } = cond {
+                plain_index(value).map(|(arr, _)| arr.to_string())
+            } else {
+                None
+            };
+            if let Some(arr) = cond_arr {
+                let writes_arr = wb.stmts.iter().any(|s| {
+                    matches!(
+                        &s.kind,
+                        StmtKind::Assign { target, op: AssignOp::Set, .. }
+                            if plain_index(target).map(|(a, _)| a) == Some(arr.as_str())
+                    )
+                });
+                if writes_arr {
+                    compress_arrs.push(arr);
+                } else {
+                    chase_arrs.push(arr);
+                }
+            }
+        }
+    }
+    compress_arrs.iter().any(|a| chase_arrs.contains(a))
+}
+
+/// Matches a prime/SPF sieve outer loop `for i in ...:`:
+/// - Eratosthenes: initializes `j = i * i` (or `2 * i`), increments `j += i`,
+///   and writes `arr[j] = false` / `arr[D(j)] = false` / `arr[j] = i` / `arr[j] = 0`.
+/// - Linear (Euler) sieve: inner `for p in primes:` writing `arr[i * p] = p` (or `false`).
+fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
+    struct Check<'a> {
+        outer: &'a str,
+        multiple_vars: Vec<String>,
+        stepped_vars: Vec<String>,
+        marked_vars: Vec<String>,
+        linear_sieve: bool,
+    }
+    fn is_mul_of_var(e: &Expr, var: &str) -> bool {
+        let ExprKind::Binary {
+            op: BinOp::Mul,
+            lhs,
+            rhs,
+            ..
+        } = &walk::unparen(e).kind
+        else {
+            return false;
+        };
+        (expr_name(lhs) == Some(var) && (expr_name(rhs) == Some(var) || is_int_lit(rhs, 2)))
+            || (expr_name(rhs) == Some(var) && is_int_lit(lhs, 2))
+    }
+    fn unwrap_domain_wrap(e: &Expr) -> &Expr {
+        let u = walk::unparen(e);
+        if let ExprKind::Call { args, .. } = &u.kind {
+            if args.len() == 1 {
+                return walk::unparen(&args[0].value);
+            }
+        }
+        u
+    }
+    impl Visitor for Check<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            match &stmt.kind {
+                StmtKind::Let {
+                    pat: Pattern {
+                        kind: PatternKind::Name(v),
+                        ..
+                    },
+                    init: Some(init),
+                    ..
+                } if is_mul_of_var(init, self.outer) => {
+                    self.multiple_vars.push(v.clone());
+                }
+                StmtKind::Assign {
+                    target,
+                    op: AssignOp::Binary(BinOp::Add),
+                    value,
+                } => {
+                    if let Some(v) = expr_name(target) {
+                        if expr_name(value) == Some(self.outer) {
+                            self.stepped_vars.push(v.to_string());
+                        }
+                    }
+                }
+                StmtKind::Assign {
+                    target,
+                    op: AssignOp::Set,
+                    value,
+                } => {
+                    if let Some((_, ix)) = plain_index(target) {
+                        let inner = unwrap_domain_wrap(ix);
+                        if let Some(v) = expr_name(inner) {
+                            let marks = matches!(
+                                &walk::unparen(value).kind,
+                                ExprKind::Bool(false) | ExprKind::Int(0)
+                            ) || expr_name(value) == Some(self.outer);
+                            if marks {
+                                self.marked_vars.push(v.to_string());
+                            }
+                        }
+                    }
+                }
+                StmtKind::For {
+                    pat: Pattern {
+                        kind: PatternKind::Name(p),
+                        ..
+                    },
+                    body: inner_body,
+                    ..
+                } => {
+                    for s in &inner_body.stmts {
+                        if let StmtKind::Assign {
+                            target,
+                            op: AssignOp::Set,
+                            value,
+                        } = &s.kind
+                        {
+                            if let Some((_, ix)) = plain_index(target) {
+                                let inner = unwrap_domain_wrap(ix);
+                                if let ExprKind::Binary {
+                                    op: BinOp::Mul,
+                                    lhs,
+                                    rhs,
+                                    ..
+                                } = &inner.kind
+                                {
+                                    let is_ip = (expr_name(lhs) == Some(self.outer)
+                                        && expr_name(rhs) == Some(p.as_str()))
+                                        || (expr_name(rhs) == Some(self.outer)
+                                            && expr_name(lhs) == Some(p.as_str()));
+                                    let writes_p = expr_name(value) == Some(p.as_str())
+                                        || matches!(
+                                            walk::unparen(value).kind,
+                                            ExprKind::Bool(false)
+                                        );
+                                    if is_ip && writes_p {
+                                        self.linear_sieve = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut c = Check {
+        outer: outer_var,
+        multiple_vars: Vec::new(),
+        stepped_vars: Vec::new(),
+        marked_vars: Vec::new(),
+        linear_sieve: false,
+    };
+    walk_block(&mut c, body);
+    c.linear_sieve
+        || c.multiple_vars
+            .iter()
+            .any(|v| c.stepped_vars.contains(v) && c.marked_vars.contains(v))
+}
+
+/// Unwraps a 2-D index written either `tbl[a, b]` or `tbl[a][b]` into `(tbl, a, b)`.
+fn index_2d(e: &Expr) -> Option<(&str, &Expr, &Expr)> {
+    let ExprKind::Index { base, indices } = &walk::unparen(e).kind else {
+        return None;
+    };
+    match indices.as_slice() {
+        [a, b] => Some((expr_name(base)?, a, b)),
+        [b] => {
+            let (tbl, a) = plain_index(base)?;
+            Some((tbl, a, b))
+        }
+        _ => None,
+    }
+}
+
+/// Matches a binary lifting recurrence inside `for k in 1..lg:`:
+/// `up[k, v] = up[k - 1, up[k - 1, v]]` or `up[k][v] = up[k - 1][up[k - 1][v]]`
+/// (in either `(k, v)` or `(v, k)` index order).
+fn is_binary_lifting_loop(level_var: &str, body: &Block) -> bool {
+    struct Check<'a> {
+        k: &'a str,
+        found: bool,
+    }
+    impl Visitor for Check<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if self.found {
+                return;
+            }
+            let StmtKind::Assign {
+                target,
+                op: AssignOp::Set,
+                value,
+            } = &stmt.kind
+            else {
+                return;
+            };
+            let Some((tbl, la, lb)) = index_2d(target) else {
+                return;
+            };
+            let Some((rtbl, ra, rb)) = index_2d(value) else {
+                return;
+            };
+            if tbl != rtbl {
+                return;
+            }
+            // Orientation 1: `up[k, v] = up[k - 1, up[k - 1, v]]`
+            if expr_name(la) == Some(self.k) && is_var_minus_one(ra, self.k) {
+                if let Some((itbl, ia, ib)) = index_2d(rb) {
+                    if itbl == tbl && is_var_minus_one(ia, self.k) && expr_name(ib) == expr_name(lb)
+                    {
+                        self.found = true;
+                        return;
+                    }
+                }
+            }
+            // Orientation 2: `up[v, k] = up[up[v, k - 1], k - 1]`
+            if expr_name(lb) == Some(self.k) && is_var_minus_one(rb, self.k) {
+                if let Some((itbl, ia, ib)) = index_2d(ra) {
+                    if itbl == tbl && is_var_minus_one(ib, self.k) && expr_name(ia) == expr_name(la)
+                    {
+                        self.found = true;
+                    }
+                }
+            }
+        }
+    }
+    let mut c = Check {
+        k: level_var,
+        found: false,
+    };
+    walk_block(&mut c, body);
+    c.found
+}
+
+/// Bottom-up segment-tree build/pull loop: `for i in (1..n).rev:` writing
+/// `t[i] = ... t[2 * i] ... t[2 * i + 1]` on the same array `t`.
+fn is_segtree_build_pull_loop(var: &str, body: &Block) -> bool {
+    struct Check<'a> {
+        var: &'a str,
+        found: bool,
+    }
+    fn rhs_reads_both_children(e: &Expr, arr: &str, var: &str) -> bool {
+        struct Reads<'a> {
+            arr: &'a str,
+            var: &'a str,
+            left: bool,
+            right: bool,
+        }
+        impl Visitor for Reads<'_> {
+            fn expr(&mut self, expr: &Expr) {
+                if let Some((a, ix)) = plain_index(expr) {
+                    if a == self.arr {
+                        if is_double(ix, self.var) {
+                            self.left = true;
+                        }
+                        if is_double_plus_one(ix, self.var) {
+                            self.right = true;
+                        }
+                    }
+                }
+            }
+        }
+        let mut r = Reads {
+            arr,
+            var,
+            left: false,
+            right: false,
+        };
+        walk::walk_expr(&mut r, e);
+        r.left && r.right
+    }
+    impl Visitor for Check<'_> {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if self.found {
+                return;
+            }
+            if let StmtKind::Assign {
+                target,
+                op: AssignOp::Set,
+                value,
+            } = &stmt.kind
+            {
+                if let Some((arr, ix)) = plain_index(target) {
+                    if expr_name(ix) == Some(self.var)
+                        && rhs_reads_both_children(value, arr, self.var)
+                    {
+                        self.found = true;
+                    }
+                }
+            }
+        }
+    }
+    let mut c = Check { var, found: false };
+    walk_block(&mut c, body);
+    c.found
 }

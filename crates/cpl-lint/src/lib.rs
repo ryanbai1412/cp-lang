@@ -365,6 +365,36 @@ pub const HAND_ROLLED_STRING_ALGO: Lint = Lint {
     trigger: "let s = \"ababa\"\nvar pi = List.filled(s.len, 0)\nfor i in 1..s.len:\n    var j = pi[i - 1]\n    while j > 0 and s[i] != s[j]: j = pi[j - 1]\n    if s[i] == s[j]: j += 1\n    pi[i] = j\nprint(pi)\n",
     fix: "use std.strings.{prefix_function}\nlet s = \"ababa\"\nprint(prefix_function(s))\n",
 };
+pub const HAND_ROLLED_DSU: Lint = Lint {
+    code: Code("L0517"),
+    name: "hand_rolled_dsu",
+    default: Level::Warn,
+    title: "Hand-rolled union-find (DSU)",
+    summary: "manual parent-pointer path compression: use `std.dsu`",
+    explanation: "Hand-rolling union-find path compression (`while par[x] != x: par[x] = par[par[x]]` or recursive `par[x] = find(par[x])`) duplicates domain-safe, path-halving `Dsu`, `DsuOf`, `ParityDsu`, and `PotentialDsu` in `std.dsu`.",
+    trigger: "domain V = 0..4\nvar par: [V]V = [V] v => v\nfn find(v: V) -> V:\n    var x = v\n    while par[x] != x:\n        par[x] = par[par[x]]\n        x = par[x]\n    x\nprint(find(V(0)))\n",
+    fix: "use std.dsu.{Dsu}\ndomain V = 0..4\nvar d = Dsu<V>.new()\nprint(d.find(V(0)))\n",
+};
+pub const HAND_ROLLED_SIEVE: Lint = Lint {
+    code: Code("L0518"),
+    name: "hand_rolled_sieve",
+    default: Level::Warn,
+    title: "Hand-rolled prime or SPF sieve",
+    summary: "manual Eratosthenes or linear sieve loop: use `std.math.Sieve`",
+    explanation: "Hand-rolling a prime or smallest-prime-factor sieve (`j = i * i; while j <= n: is_prime[j] = false; j += i` or linear `spf[i * p] = p`) duplicates `Sieve` and `sieve_multiplicative` in `std.math`.",
+    trigger: "let n = 20\nvar is_prime = List.filled(n + 1, true)\nfor i in 2..=n:\n    if is_prime[i]:\n        var j = i * i\n        while j <= n:\n            is_prime[j] = false\n            j += i\nprint(is_prime[7])\n",
+    fix: "use std.math.{Sieve}\nlet sv = Sieve.new(20)\nprint(sv.is_prime(7))\n",
+};
+pub const HAND_ROLLED_BINARY_LIFTING: Lint = Lint {
+    code: Code("L0519"),
+    name: "hand_rolled_binary_lifting",
+    default: Level::Warn,
+    title: "Hand-rolled binary lifting table",
+    summary: "manual `up[k][v] = up[k - 1][up[k - 1][v]]` table: use `std.tree`",
+    explanation: "Hand-rolling a binary lifting ancestor table (`up[k, v] = up[k - 1, up[k - 1, v]]`) duplicates `Rooted.lca` / `Rooted.kth_ancestor` and `JumpTree` in `std.tree`.",
+    trigger: "var up = [[0, 0, 1], [0, 0, 0]]\nfor k in 1..2:\n    for v in 0..3:\n        up[k][v] = up[k - 1][up[k - 1][v]]\nprint(up[1][2])\n",
+    fix: "use std.tree.{JumpTree}\ndomain V = 0..3\nvar jt = JumpTree<V>.new()\njt.add(V(1), V(0))\njt.add(V(2), V(1))\nprint(jt.ancestor(V(2), 2))\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -397,6 +427,9 @@ pub const LINTS: &[Lint] = &[
     HAND_ROLLED_RANGE_TREE,
     SORTED_RANGE_METHOD,
     HAND_ROLLED_STRING_ALGO,
+    HAND_ROLLED_DSU,
+    HAND_ROLLED_SIEVE,
+    HAND_ROLLED_BINARY_LIFTING,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like
