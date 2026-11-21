@@ -479,6 +479,65 @@ print(acc, ys.len, ys[2])
 }
 
 #[test]
+fn vm_alias_free_mut_closure_runs_without_fallback() {
+    let source = "
+fn count_and_bump(mut xs: List<Int>, pred: Int -> Bool) -> Int:
+    var hits = 0
+    for i in 0..xs.len:
+        if pred(xs[i]): hits += 1
+        xs[i] += 1
+    hits
+
+fn local_driver(k: Int) -> Int:
+    var loc: List<Int> = [1, 2, 3, 4]
+    var tot = 0
+    for _ in 0..3:
+        tot += count_and_bump(mut loc, v => v > k)
+    tot
+
+var glob: List<Int> = [0, 2, 4]
+let k = 2
+var gtot = 0
+for _ in 0..3:
+    gtot += count_and_bump(mut glob, v => v > k)
+print(gtot, local_driver(2), glob[0])
+";
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(analysis.diagnostics.is_empty(), "{:?}", analysis.diagnostics);
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds);
+    let has_loop_fallback = |chunk: &crate::vm::Chunk<'_>| {
+        chunk.ops.iter().any(|op| {
+            matches!(
+                op,
+                crate::vm::Op::FallbackStmt { in_loop: true, .. }
+                    | crate::vm::Op::FallbackExprI { in_loop: true, .. }
+                    | crate::vm::Op::FallbackExprV { in_loop: true, .. }
+            )
+        })
+    };
+    assert!(
+        !has_loop_fallback(&compiled.main),
+        "alias-free global mut+closure call in main loop fell back"
+    );
+    for (idx, chunk) in compiled.fns.iter().enumerate() {
+        if let Some(ch) = chunk {
+            assert!(
+                !has_loop_fallback(ch),
+                "fn {} fell back inside loop",
+                program.fns[idx].name
+            );
+        }
+    }
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "5 9 3\n");
+}
+
+#[test]
 fn vm_temp_v_register_drop_avoids_cow_cloning_on_global_list() {
     let source = "
 var stk: List<(Int, Int)> = []
