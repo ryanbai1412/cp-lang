@@ -1,6 +1,6 @@
 # agc077a
 
-Score: pending (port keeps the old shape until a reversed list view stops pulling 4.9 KB of `list_view` runtime; the rewrite grows emitted C++ 18.9 -> 23.2 KB while user code shrinks 5.1 -> 3.9 KB)
+Score: 2/5
 Dream: 4/5
 
 Dream scored cold on main cc838460 (rewrite cd4575de). Old 3/5, new 4/5. The header (lines 3-17) states the invariant (the B-count gap returns to 0 on a prefix that is A…B on one side and B…A on the other) and why at most n / 2 reversals suffice. `enum Side` with `[Side]` views (lines 33-54) removes the old mirrored branches and the duplicated prefix. My earlier off-by-one note on the output is withdrawn: under decisions §101, `span.end` (line 78) is exclusive, so `start + 1, end` is the 1-based inclusive pair. Biggest remaining gap: `Run` (lines 40-45) hand-writes a directed stepped range (`len`, `span`, `rev`, `take`, `drop`) that a range with a step should provide; no friction report asks for it, and one is owed. Minor: `! + 1` after `bsearch_last` (line 62) and the `lead` sign trick encode "first crossing" indirectly. Earlier notes below are superseded where they conflict.
@@ -25,3 +25,12 @@ Re-reviewed after fbceb1d1, port and dream together (the port is the dream refor
 ## Language gaps
 
 No friction report exists. Possibly owed: a reversible `Pos` range view (`lo..=hi` with `.rev`) usable as a prefix-sum query.
+
+## Cold review (HEAD)
+
+Port 2/5 cold. It is a different program from the dream, and translated:
+- `Seg(l: Int, r: Int, d: Int)` (line 11) is a hand-rolled directed stepped range. `count_b` (line 41) cases on `d` to sum it, and every op is pushed as `Pos(x + 1)`, a manual 1-based shift.
+- `solve_seg` takes four parallel `Seg`s, `x`, `pre`, `post` and `y` (line 68), and advances them in lockstep, where the dream has one `Side` enum and one run.
+- The header doesn't state the "big reversal" invariant that the dream's header derives.
+
+The friction report covers only the lost index domain; add the directed stepped range. Port the dream.
