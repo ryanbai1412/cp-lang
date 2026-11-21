@@ -4048,3 +4048,19 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   enum workaround and it hurts readability, add declared view enums that
   lower to that method call, keeping exhaustiveness and `cpl explain`.
 - **Status.** Accepted (closed by design).
+
+## 134. Field defaults and constrained string types (2026-11-21)
+
+- **Decision.** Struct fields may have defaults (`steps: List<Int> = []`),
+  and a field written `total = 0` takes its type from the default. A
+  constructor call may omit defaulted fields. `Str of "01?"` is a string
+  whose characters come from the literal's alphabet, which is a domain
+  (`[Alpha]T` tables, validation on read); `Str(len: lo..=hi)` bounds the
+  length, checked on read like an integer range. `var` on a field, named
+  `record`, trailing lambdas, `[read(...)]T`, `Mint(mod:)` and lowercase
+  variant patterns are rejected (`spec/SYNTAX.md` lists the replacements).
+- **Why.** Dreams kept reaching for these. Defaults remove constructor
+  noise for accumulator records; alphabet and length constraints are
+  statement facts that should be written once, like integer ranges.
+- **Reverse.** Delete the forms; constructors pass every field.
+- **Status.** Accepted in the spec; not parsed yet.
