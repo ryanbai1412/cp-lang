@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Cheap pre-push gate: rebases skip pre-commit, so verify before pushing that
+# no merge-conflict markers slipped in, changed JSON/JSONL files parse, and
+# the Rust workspace still compiles.
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+fail() { echo "pre-push: $*" >&2; exit 1; }
+
+# 1. Merge conflict markers anywhere in tracked files.
+markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
+[ -z "$markers" ] || fail "merge conflict markers found in repository:
+$markers"
+
+# 2. Validate any JSON/JSONL files touched since origin/main.
+if git rev-parse -q --verify origin/main >/dev/null 2>&1; then
+    changed_json=$(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.json' '*.jsonl' || true)
+    if [ -n "$changed_json" ]; then
+        python3 -c '
+import json, sys
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as f:
+        if path.endswith(".jsonl"):
+            for i, line in enumerate(f, 1):
+                if line.strip():
+                    try:
+                        json.loads(line)
+                    except Exception as e:
+                        sys.exit(f"{path}:{i}: invalid JSONL: {e}")
+        else:
+            try:
+                json.load(f)
+            except Exception as e:
+                sys.exit(f"{path}: invalid JSON: {e}")
+' $changed_json || fail "invalid JSON/JSONL in unpushed commits"
+    fi
+fi
+
+# 3. Cheap workspace build check (warm ~1-3s) so broken rebases never hit main.
+if command -v cargo >/dev/null 2>&1; then
+    cargo check -q --workspace --all-targets || fail "cargo check --workspace --all-targets failed"
+fi
