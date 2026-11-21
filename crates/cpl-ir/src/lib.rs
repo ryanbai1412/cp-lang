@@ -931,13 +931,31 @@ impl IntWidth {
     }
 }
 
+/// A field of a narrowed tuple element: a ranged `Int` stored in 32 bits, or
+/// a position, which is an `int` already.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum CellWidth {
+    Int(IntWidth),
+    Pos,
+}
+
+impl CellWidth {
+    pub fn cpp(self) -> &'static str {
+        match self {
+            CellWidth::Int(w) => w.cpp(),
+            CellWidth::Pos => "int",
+        }
+    }
+}
+
 /// Narrowed element layout for a range-typed array, grid, or list.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum NarrowLayout {
     /// Leaf element is a narrowed 32-bit `Int` (`uint32_t` or `int32_t`).
     Int(IntWidth),
-    /// Leaf element is a tuple or record whose fields are all narrowed 32-bit `Int`s.
-    Tuple(Vec<IntWidth>),
+    /// Leaf element is a tuple or record of narrowed 32-bit `Int`s and positions,
+    /// with at least one `Int`.
+    Tuple(Vec<CellWidth>),
     /// Element is itself a nested array/grid/list whose elements have the inner layout.
     Seq(Box<NarrowLayout>),
     /// Leaf element is a `?lo..hi` inside `int32_t` above `INT32_MIN`, which is `none`.
@@ -1051,7 +1069,7 @@ pub struct Program {
     pub library_fns: Vec<bool>,
     pub closures: Vec<ClosureDef>,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays, grids,
-    /// nested arrays, lists, and all-ranged tuple elements.
+    /// nested arrays, lists, and tuple elements of ranged `Int`s and positions.
     pub narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
     /// The file's top-level code and its locals.
     pub main: Block,

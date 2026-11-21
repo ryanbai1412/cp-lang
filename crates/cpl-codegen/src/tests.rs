@@ -1367,6 +1367,21 @@ print(ans)
         "expected [V](0..=1_000_000, -100..=100) to emit std::vector<std::tuple<uint32_t, int32_t>>:\n{tuples}"
     );
 
+    let mixed = cpp(
+        "let n: 1..=10 = read()
+domain V = 1..=n
+domain E = 0..n
+let edges: [E](u: V, v: V, w: 0..=1) = read()
+var s = 0
+for e in E: s += edges[e].w
+print(s)
+",
+    );
+    assert!(
+        mixed.contains("std::vector<std::tuple<int, int, uint32_t>> edges"),
+        "expected [E](u: V, v: V, w: 0..=1) to keep positions and narrow w:\n{mixed}"
+    );
+
     let widened = cpp(
         "fn sum_grid<R, C>(g: [R, C]Int) -> Int:
     var s = 0

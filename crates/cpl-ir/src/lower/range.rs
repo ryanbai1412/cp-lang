@@ -104,26 +104,10 @@ impl RangeInfo {
             (RangeInfo::Scalar(b), Ty::Int) => b.narrow_width().map(NarrowLayout::Int),
             (RangeInfo::Opt(inner), Ty::Opt(t)) if **t == Ty::Int => inner.scalar()?.narrow_opt_layout(),
             (RangeInfo::Tuple(items), Ty::Tuple(ts)) if !ts.is_empty() && items.len() == ts.len() => {
-                let mut widths = Vec::with_capacity(ts.len());
-                for (item, t) in items.iter().zip(ts) {
-                    if *t != Ty::Int {
-                        return None;
-                    }
-                    let w = item.as_ref()?.scalar()?.narrow_width()?;
-                    widths.push(w);
-                }
-                Some(NarrowLayout::Tuple(widths))
+                narrow_cells(items, ts.iter())
             }
             (RangeInfo::Tuple(items), Ty::Record(fs)) if !fs.is_empty() && items.len() == fs.len() => {
-                let mut widths = Vec::with_capacity(fs.len());
-                for (item, (_, t)) in items.iter().zip(fs) {
-                    if *t != Ty::Int {
-                        return None;
-                    }
-                    let w = item.as_ref()?.scalar()?.narrow_width()?;
-                    widths.push(w);
-                }
-                Some(NarrowLayout::Tuple(widths))
+                narrow_cells(items, fs.iter().map(|(_, t)| t))
             }
             (RangeInfo::Elem(_), Ty::Array { .. } | Ty::List(_) | Ty::ListView(_)) => {
                 self.narrow_elem_layout(ty).map(|l| NarrowLayout::Seq(Box::new(l)))
@@ -163,6 +147,20 @@ impl RangeInfo {
             _ => None,
         }
     }
+}
+
+/// The narrowed layout of a tuple or record whose fields are ranged `Int`s
+/// that fit 32 bits or positions, with at least one `Int` to narrow.
+fn narrow_cells<'a>(items: &[Option<RangeInfo>], tys: impl Iterator<Item = &'a Ty>) -> Option<NarrowLayout> {
+    let mut cells = Vec::with_capacity(items.len());
+    for (item, t) in items.iter().zip(tys) {
+        cells.push(match t {
+            Ty::Int => CellWidth::Int(item.as_ref()?.scalar()?.narrow_width()?),
+            Ty::Pos(_) => CellWidth::Pos,
+            _ => return None,
+        });
+    }
+    cells.iter().any(|c| matches!(c, CellWidth::Int(_))).then_some(NarrowLayout::Tuple(cells))
 }
 
 pub(super) fn const_int_expr(e: &Expr) -> Option<i64> {
