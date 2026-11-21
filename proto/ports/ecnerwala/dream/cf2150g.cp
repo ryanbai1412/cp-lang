@@ -43,8 +43,7 @@ fn long_lnds(z: Int, o: Int, m: Int) -> Z = comb.choose(z + o, max(z, o, m))
 fn completions(s: Walk, z: Int, o: Int) -> Z =
     if o >= k - s.lnds: comb.choose(z + o, z) else: long_lnds(z, o, k - s.zeros)
 
-domain Cnt = 0..=k
-var rays: [Cnt, Cnt]Z = 0
+var rays: [0..=k, 0..=k]Z = 0
 // w first hits at (z, o) and at every (z + t, o - t) after it.
 fn ray(z: Int, o: Int, w: Z): rays[z, o] += w
 fn first_hits_from(s: Walk):
@@ -77,4 +76,4 @@ for c in a:
 for z in 0..k, o in 1..=k:
     rays[z + 1, o - 1] += rays[z, o]
 // rays[z, o] is now the number of first hits at (z, o).
-print(ans + sum(rays[z, o] * long_lnds(x - z, y - o, k) for z in Cnt, o in Cnt))
+print(ans + sum(rays[z, o] * long_lnds(x - z, y - o, k) for z in 0..=k for o in 0..=k))
