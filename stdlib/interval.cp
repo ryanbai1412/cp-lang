@@ -1,6 +1,7 @@
 //! Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`.
 
 use std.rand.{Rng}
+use std.seq.{ends}
 
 /// A total partition of domain `D` into maximal contiguous half-open runs,
 /// each carrying a value of type `T`.
