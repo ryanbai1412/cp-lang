@@ -1,6 +1,7 @@
 # wtf26c
 
-Score: 2/5
+Score: pending (rewrite-c: header gives the DP, the claim table and both binomial inversions; named convolve_2d, inline powers, 2D comprehensions)
+Dream: pending (rewrite-c: new dream; stdlib convolve_2d and binomial_inverse)
 
 The header names the method (2D DP, NTT per step over flattened coordinates, two inclusion-exclusion passes) but not the recurrence; the flattening `i + stride * j` is hand bookkeeping, and the closing passes are unexplained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 
