@@ -1,7 +1,7 @@
 # ioi11p5
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (port = dream: replaced hand `Bucket.first_ge`/`first_gt` with `xs.first_ge`/`xs.first_gt`, removed `span` threading by reading top-level `l`, dropped `let _ =` on `xs.remove`; 0 lints, `22,027 B`, verified on 50 ASan+UBSan cases vs brute force)
+Dream: pending cold rescore (port = dream 1.000x, 0 errors)
 
 Baseline review, cold, on main 96359635. No editorial header; lines 1-3 describe prototype deltas, not the algorithm. The body is the C++ sqrt decomposition: three parallel `List<List<Int>>` bucket arrays (lines 18-20), a hand insertion sort and shift-delete (lines 62-82), and a `has_cover` flag fold (lines 126-137). No dream exists, so the score is capped at 3.
 
