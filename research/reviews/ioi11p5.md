@@ -1,6 +1,7 @@
 # ioi11p5
 
-Score: 1/5
+Score: pending cold rescore (port = dream verbatim: editorial header deriving sqrt-bucket jumps and `B = max(2, isqrt(n))`, `struct Jump` + `struct Bucket` with `List.insert`/`List.remove`/`bsearch_first`, single `bucket_for` lookup, `cover: ?Int` fold, 0 lints, `22,897 B`, verified on 153 ASan+UBSan cases vs brute force + interpreter agreement)
+Dream: pending cold rescore (written: `proto/ports/blind_critic_4/dream/ioi11p5.cp`, port = dream 1.000x)
 
 Baseline review, cold, on main 96359635. No editorial header; lines 1-3 describe prototype deltas, not the algorithm. The body is the C++ sqrt decomposition: three parallel `List<List<Int>>` bucket arrays (lines 18-20), a hand insertion sort and shift-delete (lines 62-82), and a `has_cover` flag fold (lines 126-137). No dream exists, so the score is capped at 3.
 
