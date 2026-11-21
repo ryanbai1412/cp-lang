@@ -33,7 +33,7 @@ for t_now in Time(3)..:
         paint.assign(range, t_now, on_old: (r, t) => chunks.push((t:, w: r.len)))
     cur = c
 
-    chunks.sort(by: x => -x.t.to_idx)
+    chunks.sort(by: x => desc(x.t))
     var matched = 0
     for chunk in chunks:
         var need = chunk.w
