@@ -1572,6 +1572,22 @@ C++ backend copies the whole field when an index changes `self`
 (`sz[self.find(v)]`), which made `cf2237h` 10x slower (1608 ms against
 167 ms); the copy is the codegen lane's to remove.
 
+26.9. **A test after the sequence is the walk's body.** `count(xs, p)`,
+`all(xs, p)`, `any(xs, p)`, `first(xs, p)` and the methods `xs.count(p)`,
+`xs.all(p)`, `xs.any(p)` lower to `count(p(x) for x in xs)` and
+`first(x for x in xs if p(x))`, with an inline lambda's body substituted,
+so they cost what the walk costs, stop where it stops, and run on
+every sequence a `for` takes (`Str`, ranges, sets, `alive.each()`).
+Four ports asked for it (`cf2207e2`, `cf2069e`, `cf2147h`, `cf2066e`).
+Only the folds of a test take one: `sum(xs, f)` would be a second
+spelling of `sum(f(x) for x in xs)`, which spec 22.2 forbids; `prod`
+joins `sum` as the product fold (a struct's `one` and `*`, else 1).
+`xs.count(v)` with a value still counts equal elements; a function
+argument is a test. `find` stays the position search on lists and the
+substring search on `Str`; the first element matching is `first`.
+Reverse: drop `tested_walk` from the `count`/`all`/`any`/`first` arms
+and the method hook; ports go back to the walk form.
+
 ## 27. Interpreter, debugger and traces
 
 27.1. **Runtime traps carry call stacks, multitest case numbers, and concrete values.**

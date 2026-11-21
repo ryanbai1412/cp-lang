@@ -6,10 +6,9 @@ let n: Int = read()
 var a: [0..=n]Int = n
 for i in 1..=n: a[i] = read()
 
-for i in 1..=n:
-    if a[i] not in (n - i)..=a[i - 1]:
-        print(0)
-        return
+if not all(1..=n, i => a[i] in (n - i)..=a[i - 1]):
+    print(0)
+    return
 
 var ans: Z = 1
 var prv = a[n]

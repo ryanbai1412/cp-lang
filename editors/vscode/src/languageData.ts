@@ -53,7 +53,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'abs', 'all', 'any', 'ask', 'atan2', 'bit_ceil', 'bit_width', 'ceil', 'copy', 'count', 'counts',
     'ctz', 'debug', 'first', 'floor', 'flush', 'isqrt', 'laws_hold', 'len', 'max', 'min',
     'popcount', 'prefix', 'print', 'rand', 'read', 'read_output', 'round', 'shuffle', 'some',
-    'sort', 'sorted', 'span', 'sqrt', 'sum', 'swap', 'trunc', 'bfs', 'bit', 'bsearch_first',
+    'sort', 'sorted', 'span', 'sqrt', 'sum', 'prod', 'swap', 'trunc', 'bfs', 'bit', 'bsearch_first',
     'bsearch_last', 'ceil_div', 'compress', 'condense', 'deduped', 'desc', 'digits', 'dijkstra',
     'ends_with', 'excl_fold', 'find', 'fixed', 'fold', 'gcd', 'get_or_insert', 'insert', 'lcm',
     'lower', 'max_by', 'min_by', 'partition', 'peel', 'prefix1', 'prefix2', 'prefix_n', 'remove',

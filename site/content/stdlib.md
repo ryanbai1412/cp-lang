@@ -94,7 +94,7 @@ Other prelude sequence helpers:
 - `scan(a, +)` / `scan(a, max)` — inclusive running folds; `fold(+, a)` — the whole fold; `a.excl_fold(+)` — yields `(x, rest)`, the fold of every other element, without division.
 - `runs(a)` — run-length `(value, count)` pairs; `runs_by(a, key)` — groups of equal `key`, each `(key, items)`; `xs.adjacent` — consecutive pairs; `D.windows(k)` — sliding windows.
 - `sort(mut a, by:)`, `sorted(a, by:)` (descending via `by: desc`), `reverse(mut a)`, `dedup(mut a)`, `distinct(a)`, `rotate_left(mut a, k)` (negative rotates right), `next_permutation(mut a)`, `prev_permutation(mut a)`.
-- `sum`, `any`, `all`, `count`, `first(it) -> ?T`, `a.find(x) -> ?I`, `min_by(it, key)`, `max_by(it, key)`.
+- `sum`, `prod`, `any`, `all`, `count`, `first(it) -> ?T`; `count`, `all`, `any` and `first` also take a test after the sequence, `count(xs, x => x > 2)` or `xs.count(x => x > 2)`, and stop as early as the walk would; `a.find(x) -> ?I`, `min_by(it, key)`, `max_by(it, key)`.
 - `xs.windows(k)` yields every length-`k` window as a list; `zip(xs, ys)` pairs elements up to the shorter list.
 - `std.seq` also provides zero-allocation sequence views `pairs(xs)` (consecutive `(a, b)` pairs), `with_prev(xs)` (`(?T, T)` with `none` on the first element), `cyclic_pairs(xs)`, and the standard permutation alias `Perm<V> = [V]V` (paired with `std.graph.Tree<V>` for `cpl stress` generation and shrinking):
 

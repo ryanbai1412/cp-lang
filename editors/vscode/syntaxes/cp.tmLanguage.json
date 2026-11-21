@@ -346,7 +346,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.cp",
-          "match": "(?<![.A-Za-z0-9_])(abs|all|any|ask|atan2|bit_ceil|bit_width|ceil|copy|count|counts|ctz|debug|first|floor|flush|isqrt|laws_hold|len|max|min|popcount|prefix|print|rand|read|read_output|round|shuffle|some|sort|sorted|span|sqrt|sum|swap|trunc|bfs|bit|bsearch_first|bsearch_last|ceil_div|compress|condense|deduped|desc|digits|dijkstra|ends_with|excl_fold|find|fixed|fold|gcd|get_or_insert|insert|lcm|lower|max_by|min_by|partition|peel|prefix1|prefix2|prefix_n|remove|repeat|resized|runs|runs_by|scan|scc|starts_with|topo|upper|digit|find_all|step|windows|zip)(?=\\s*\\(|::<)"
+          "match": "(?<![.A-Za-z0-9_])(abs|all|any|ask|atan2|bit_ceil|bit_width|ceil|copy|count|counts|ctz|debug|first|floor|flush|isqrt|laws_hold|len|max|min|popcount|prefix|print|rand|read|read_output|round|shuffle|some|sort|sorted|span|sqrt|sum|prod|swap|trunc|bfs|bit|bsearch_first|bsearch_last|ceil_div|compress|condense|deduped|desc|digits|dijkstra|ends_with|excl_fold|find|fixed|fold|gcd|get_or_insert|insert|lcm|lower|max_by|min_by|partition|peel|prefix1|prefix2|prefix_n|remove|repeat|resized|runs|runs_by|scan|scc|starts_with|topo|upper|digit|find_all|step|windows|zip)(?=\\s*\\(|::<)"
         },
         {
           "name": "support.function.stdlib.cp",

@@ -208,6 +208,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "max",
     "abs",
     "sum",
+    "prod",
     "count",
     "all",
     "any",

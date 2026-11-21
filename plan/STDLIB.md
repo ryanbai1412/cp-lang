@@ -130,7 +130,14 @@ public feature user libraries get too.
 Intrinsics (functions not written in the language): `popcount`, `ctz`,
 `bit_width`, `bit_ceil`, `isqrt`, `sqrt`, `atan2`, `floor`, `trunc`,
 `ceil`, `round`, `rand`, `flush`, `read`, `print`, `debug`, `sort`,
-`sorted`, `swap`, `min`, `max`, `abs`, `sum`. The 0.3 spec adds
+`sorted`, `swap`, `min`, `max`, `abs`, `sum`, `prod`, `count`, `all`,
+`any`, `first`. The folds take a walk, `count(x > 2 for x in xs)`; the
+four that fold a test (`count`, `all`, `any`, `first`) also take one
+after the sequence, `count(xs, p)` and the method `xs.count(p)`, which
+is the same walk with `p`'s body as its body (an inline lambda costs
+nothing, a named function is one call per element). `sum`, `prod`,
+`min` and `max` of a function stay `sum(f(x) for x in xs)`: one
+spelling per idea (spec 22.2). The 0.3 spec adds
 `mulhi`, `checked_*`, `wrapping_*`, `overflowing_*` and `clock`
 [new, core lane].
 

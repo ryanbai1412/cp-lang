@@ -6,6 +6,7 @@ use super::*;
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Reduce {
     Sum,
+    Prod,
     Count,
     All,
     Any,
@@ -1147,18 +1148,25 @@ impl<'a> Lowerer<'a> {
             }
             "min" | "max" => self.min_max(name == "max", args, span),
             "first" => {
+                if let Some(walk) = self.tested_walk(name, args, true) {
+                    return self.lower_first(&walk, span);
+                }
                 let Some(exprs) = self.positional_any(name, args, 1, span) else {
                     return self.err_expr(span);
                 };
                 self.lower_first(exprs[0], span)
             }
-            "sum" | "count" | "all" | "any" => {
+            "sum" | "prod" | "count" | "all" | "any" => {
                 let kind = match name {
                     "sum" => Reduce::Sum,
+                    "prod" => Reduce::Prod,
                     "count" => Reduce::Count,
                     "all" => Reduce::All,
                     _ => Reduce::Any,
                 };
+                if let Some(walk) = self.tested_walk(name, args, false) {
+                    return self.reduce(kind, &walk, span);
+                }
                 let Some(exprs) = self.positional_any(name, args, 1, span) else {
                     return self.err_expr(span);
                 };
@@ -2345,6 +2353,45 @@ impl<'a> Lowerer<'a> {
         self.expr(e, None)
     }
 
+    /// `count(xs, x => x > 2)` is `count(x > 2 for x in xs)`, and
+    /// `first(xs, p)` is `first(x for x in xs if p(x))`: a test after the
+    /// sequence is the body of the walk, so every fold that takes a walk
+    /// takes a test the same way. Only `count`, `all`, `any` and `first`
+    /// take one: they fold what the test says, where a `sum` of a
+    /// function is `sum(f(x) for x in xs)`.
+    fn tested_walk(&mut self, name: &str, args: &[ast::Arg], filter: bool) -> Option<ast::Expr> {
+        if !matches!(name, "count" | "all" | "any" | "first") {
+            return None;
+        }
+        let [seq, test] = args else { return None };
+        if seq.name.is_some() || test.name.is_some() || !self.is_test(&test.value) {
+            return None;
+        }
+        let at = test.value.span;
+        let mk = |kind: ast::ExprKind| ast::Expr { kind, span: at };
+        let (pat, body) = match &test.value.kind {
+            ast::ExprKind::Lambda { params, body } if params.len() == 1 => (params[0].clone(), (**body).clone()),
+            _ => {
+                let var = "it\u{b7}".to_string();
+                let call = mk(ast::ExprKind::Call {
+                    callee: Box::new(test.value.clone()),
+                    args: vec![ast::Arg { name: None, mutable: false, value: mk(ast::ExprKind::Name(var.clone())) }],
+                });
+                (ast::Pattern { kind: ast::PatternKind::Name(var), span: at }, call)
+            }
+        };
+        let (body, conds) = if filter {
+            let ast::PatternKind::Name(var) = &pat.kind else { return None };
+            (mk(ast::ExprKind::Name(var.clone())), vec![ast::Cond::Expr(body)])
+        } else {
+            (body, Vec::new())
+        };
+        Some(mk(ast::ExprKind::Comprehension {
+            body: Box::new(body),
+            clauses: vec![ast::Clause { pat, iter: seq.value.clone(), conds }],
+        }))
+    }
+
     /// `sum(a[v] for v in V)`, `max(xs)`, `any(...)`: a loop that folds
     /// the values into one.
     fn reduce(&mut self, kind: Reduce, arg: &ast::Expr, span: Span) -> Expr {
@@ -2502,6 +2549,47 @@ impl<'a> Lowerer<'a> {
                 let acc = self.temp(ty.clone());
                 stmts.push(Stmt::Let(acc, Some(lit(zero, ty.clone()))));
                 let add = Stmt::Assign(place(acc, &ty), AssignOp::Binary(BinOp::Add), value);
+                (acc, ty, vec![add], Vec::new())
+            }
+            Reduce::Prod => 'prod: {
+                let ty = value.ty.clone();
+                // A struct with a `zero` and a `+` adds with its own `+`,
+                // from its own zero: a `Mod<P>`, a matrix, a polynomial.
+                if let Ty::Struct(sid) = ty {
+                    let one = self.structs[sid].consts.get("one").cloned();
+                    if let (Some(one), Some(add)) = (one, self.struct_op_fn(sid, "mul")) {
+                        let one = self.eval_struct_const(sid, one, span);
+                        let one = self.coerce(one, &ty, span);
+                        let acc = self.temp(ty.clone());
+                        stmts.push(Stmt::Let(acc, Some(one)));
+                        let total = lit(ExprKind::Local(acc), ty.clone());
+                        let next = lit(ExprKind::Call(add, vec![Arg::Value(total), Arg::Value(value)]), ty.clone());
+                        let add = Stmt::Assign(place(acc, &ty), AssignOp::Set, next);
+                        break 'prod (acc, ty, vec![add], Vec::new());
+                    }
+                }
+                let one = match ty {
+                    Ty::Int => ExprKind::Int(1),
+                    Ty::I128 => ExprKind::Cast(Cast::IntToI128, Box::new(lit(ExprKind::Int(1), Ty::Int))),
+                    Ty::U64 => ExprKind::Cast(Cast::IntToU64, Box::new(lit(ExprKind::Int(1), Ty::Int))),
+                    Ty::Float => ExprKind::Float(1.0),
+                    Ty::Error => {
+                        self.close_loops(frames, Vec::new());
+                        return self.err_expr(span);
+                    }
+                    _ => {
+                        let message = format!("`prod` multiplies numbers, not `{}`", self.show(&ty));
+                        self.error(codes::BAD_OPERANDS, arg.span, message);
+                        if matches!(ty, Ty::Opt(_)) {
+                            self.help("`prod` does not skip or absorb `none`: add `x ?? 1`, or filter with `if let`");
+                        }
+                        self.close_loops(frames, Vec::new());
+                        return self.err_expr(span);
+                    }
+                };
+                let acc = self.temp(ty.clone());
+                stmts.push(Stmt::Let(acc, Some(lit(one, ty.clone()))));
+                let add = Stmt::Assign(place(acc, &ty), AssignOp::Binary(BinOp::Mul), value);
                 (acc, ty, vec![add], Vec::new())
             }
             Reduce::Count => {
@@ -4072,6 +4160,23 @@ impl<'a> Lowerer<'a> {
             if let Some(Ty::Struct(id)) = self.probe_ty_silent(base) {
                 if self.structs[id].getters.contains(&name.text) {
                     return self.field(whole, base, name);
+                }
+            }
+        }
+        // `xs.count(x => x > 2)` is `count(xs, x => x > 2)`.
+        if let ([test], "count" | "all" | "any") = (args, name.text.as_str()) {
+            if matches!(
+                self.probe_ty_silent(base),
+                Some(Ty::List(_) | Ty::Array { .. } | Ty::Range(_) | Ty::Set(_) | Ty::Str)
+            ) {
+                let seq = ast::Arg { name: None, mutable: false, value: base.clone() };
+                if let Some(walk) = self.tested_walk(&name.text, &[seq, test.clone()], false) {
+                    let kind = match name.text.as_str() {
+                        "count" => Reduce::Count,
+                        "all" => Reduce::All,
+                        _ => Reduce::Any,
+                    };
+                    return self.reduce(kind, &walk, span);
                 }
             }
         }

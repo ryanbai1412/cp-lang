@@ -89,6 +89,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "step_at_int_max",
             "step_not_positive",
             "str_rfind_in",
+            "tested_folds",
             "try_in_index",
             "try_inside_expr",
             "try_inside_stmt",
