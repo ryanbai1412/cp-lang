@@ -48,11 +48,11 @@ for len in 1..=n:
     var t0 = Time.first!
     while t0 < Time.last!:
         heap.push(Seg(v0, len, t0, t0, 1))
-        let t1 = t0.saturating_add(len)
+        let t1 = t0.next(len) ?? Time.last!
         let v1 = query(len, t1)
         var (lo, hi) = (t0, t1)
         while hi - lo > 1:
-            let mid = lo.midpoint(hi)
+            let mid = (lo..=hi).mid.r!
             let v_mid = query(len, mid)
             if diag[v_mid] < t0.ord + n:
                 heap.push(Seg(v_mid, len, mid, lo.next!, -1))
