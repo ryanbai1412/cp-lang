@@ -10,6 +10,8 @@
 // more than doubles every two steps and there are O(log(total)) stuck points.
 // At each, some gap among the unique barrels >= b must be <= have.
 
+use std.seq.iterate
+
 domain Vol = 1..=1_000_000
 
 // Maintains the multiset of barrel volumes alongside the set of unique volumes,
