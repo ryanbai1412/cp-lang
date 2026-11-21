@@ -22,20 +22,20 @@ fn ask() -> Int:
     x.position(of: read::<Int>() - 1)!
 
 fn join(a: Int, b: Int, is_max: Bool) -> Int = nodes.push_id(
-    Node(nodes[a].span.lo..nodes[b].span.hi, some((is_max, a, b)))
+    Node(nodes[a].span.start..nodes[b].span.end, some((is_max, a, b)))
 )
 
 fn solve(span: Range<Int>, is_max: Bool, known: ?Int = none) -> List<Int>:
     if span.len <= 1: return span.to_list()
     let m = known ?? ask()
-    var left = with x[span.lo..=m].rotated_left(1): solve(span.lo..m, is_max)
-    var right = with x[m..span.hi].reversed: solve(m + 1..span.hi, not is_max)
+    var left = with x[span.start..=m].rotated_left(1): solve(span.start..m, is_max)
+    var right = with x[m..span.end].reversed: solve(m + 1..span.end, not is_max)
     right.reverse()
     var mid = m
     while let a = left.last and let b = right.last:
         let moved_left = with x[
-            nodes[a].span.lo..nodes[b].span.hi
-        ].reversed: ask() < nodes[mid].span.lo
+            nodes[a].span.start..nodes[b].span.end
+        ].reversed: ask() < nodes[mid].span.start
         if moved_left: mid = join(mid, right.pop()!, not is_max)
         else: mid = join(left.pop()!, mid, is_max)
     left + [right.rev.fold(mid, (m, b) => join(m, b, not is_max))]
