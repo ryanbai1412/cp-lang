@@ -11,30 +11,39 @@
 // the breakpoints while F(b) < b - D, then re-enter F where the line l - D
 // meets it, splitting the slope jump across the two integers around the
 // crossing. The answer for l is F_V(l).
+use std.dsu.{Dsu}
 use std.heap.{MeldHeap}
 
 @!multitest
 let n: 2..=250_000 = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V, w: 1..=1e9) = read()
-var bound: [V]Int = [V] v => edges.sum(e => if v in [e.u, e.v]: e.w else: 0)
-var set: [V]MeldHeap<(at: Int, cnt: Int)> = [V] v => MeldHeap.of([(bound[v], 1)])
+var bound: [V]Int = 0
+for (u, v, w) in edges:
+    bound[u] += w
+    bound[v] += w
+var set: [V]MeldHeap<(at: Int, cnt: Int)> = [V] v => MeldHeap.of([(at: bound[v], cnt: 1)])
 var dsu = Dsu<V>()
 
-// Raise F (the breakpoints in f) to max(F, l - d) at the integers.
-fn raise(mut f: MeldHeap<(at: Int, cnt: Int)>, d: Int):
-    var (pos, slope, val) = (f.top!.at, 0, 0)   // F(pos) = val, slope just right of pos
-    while let b = f.top and val + slope * (b.at - pos) < b.at - d:
+// Raise F (the breakpoints of component `u`) to max(F, l - d) at the integers.
+fn raise(u: V, d: Int):
+    var (pos, slope, val) = (set[u].top!.at, 0, 0)   // F(pos) = val, slope just right of pos
+    while let b = set[u].top, val + slope * (b.at - pos) < b.at - d:
         (val, pos, slope) = (val + slope * (b.at - pos), b.at, slope + b.cnt)
-        f.pop()
+        set[u].pop()
     let (step, part) = (pos - val - d).divmod(slope - 1)
-    f.push_all([(d, 1), (pos + step, slope - 1 - part), (pos + step + 1, part)] if cnt > 0)
+    let added = [
+        (at: d, cnt: 1),
+        (at: pos + step, cnt: slope - 1 - part),
+        (at: pos + step + 1, cnt: part),
+    ].filter(b => b.cnt > 0)
+    set[u].push_all(added)
 
 for (u, v, w) in edges.sorted(by: e => -e.w):
     let (kept, merged) = dsu.merge(u, v)!
     set[kept].meld(set[merged].take())
     bound[kept] += bound[merged] - 2 * w
-    if bound[kept] < set[kept].top!.at: raise(set[kept], bound[kept])
+    if bound[kept] < set[kept].top!.at: raise(kept, bound[kept])
 
 let breaks = set[dsu.find(V.first)].drain().flat_map(b => [b.at] * b.cnt)
 let below = prefix(breaks)
