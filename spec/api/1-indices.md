@@ -28,7 +28,7 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 | `V.all` | the whole range, same as `..` | O(1) |
 | `V.bounds` | the domain of cuts: `V.bounds.first` is the start, `.last` the end | O(1) |
 | `x in V` | is integer `x` a position | O(1) |
-| `V.at(x)` | integer to position, trapping outside `V` | O(1) |
+| `V(x)` | integer to position, trapping outside `V`; as a pattern, `if let V(j) = i - 10:` matches only inside `V` | O(1) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free |
 | `5` where a `V` or `V.bounds` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.bounds = 0`); outside a static bound it is a compile error | free |
 
@@ -49,7 +49,7 @@ The receiver's kind is static, so a mix-up is a type error. `v.l..v.r` is
 exactly `v`; a prefix DP reads `dp[v.r] = f(dp[v.l], a[v])`.
 
 Arithmetic on a position gives an `Int` (`v + 1`); getting back into the
-domain is explicit (`v.next`, `V.at(x)`). Arrays over an anonymous range
+domain is explicit (`v.next`, `V(x)`). Arrays over an anonymous range
 (`[0..=n]Int`) take any `Int`, checked, so ordinary DP tables stay plain.
 
 ## Ranges
@@ -118,11 +118,12 @@ let e = E.first              # fine: E.count is m, and m >= 1 here
 - `r.bsearch(ok)` returns a cut and replaces `bsearch_first`/`bsearch_last`.
 - Empty domains are valid; `first`/`last` need `NonEmpty`, derived and narrowed.
 - Integer literals convert to positions and cuts of integer domains.
+- `V(x)` is the one conversion: traps as an expression, refutes as a pattern.
 
 Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
 `.n`/`.p` (`n` reads as a count, `p` as parent); `V.first` always trapping
 (hides the n = 1 case until a hidden test hits it); `@get`-free bare calls
-(silent cost).
+(silent cost); `V.at(x)` (a second spelling of `V(x)`).
 
 ## Open
 
