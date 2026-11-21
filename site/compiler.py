@@ -30,7 +30,9 @@ def editor_html(key, source="", stdin=""):
     e = html.escape
     return f'''<div class="compiler-editor" data-cpl-editor>
       <div class="playground-toolbar"><span class="runner-label">CP Lang 0.2.2 · WebAssembly</span>
-        <div class="compiler-actions"><button class="secondary-button" data-build type="button">C++17</button>
+        <div class="compiler-actions"><button class="secondary-button" data-share type="button" title="Copy a shareable link containing source, input, and samples">Share</button>
+        <button class="secondary-button" data-run-samples type="button" title="Run program against all sample test cases">Run samples</button>
+        <button class="secondary-button" data-build type="button">C++17</button>
         <button class="secondary-button" data-trace type="button" title="Run and open every step in the trace debugger">Trace</button>
         <button class="secondary-button" data-stop type="button" disabled>Stop</button>
         <button class="primary-button" data-run type="button">Run program</button></div></div>
@@ -45,5 +47,11 @@ def editor_html(key, source="", stdin=""):
       </div>
       <p class="runner-status" data-status role="status">Ready · Ctrl / ⌘ + Enter to run</p>
       <div class="compiler-diagnostics" data-diagnostics aria-live="polite"></div>
+      <pre class="compiler-cli-stderr" data-cli-stderr hidden></pre>
+      <details class="compiler-samples" data-samples-panel><summary>Samples <span class="samples-badge" data-samples-badge></span></summary>
+        <div class="samples-toolbar"><button class="secondary-button" data-add-sample type="button">+ Add sample</button>
+        <button class="secondary-button" data-run-samples-inner type="button">Run all samples</button></div>
+        <div class="samples-list" data-samples-list></div>
+      </details>
       <details class="compiler-cpp" data-cpp-panel><summary>Generated C++17</summary><pre tabindex="0"><code data-cpp></code></pre></details>
     </div>'''

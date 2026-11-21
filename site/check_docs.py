@@ -425,6 +425,15 @@ def main():
     cb_count, cb_runs = check_cookbook()
     stdlib_mods = check_stdlib_module_coverage()
     ports_total, ports_dreams = check_ports_gallery()
+    pg_res = subprocess.run(
+        [sys.executable, str(ROOT / "test_playground_parity.py")],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if pg_res.returncode != 0:
+        sys.exit(f"check_docs: playground parity tests failed:\n{pg_res.stderr}\n{pg_res.stdout}")
     page_count = check_links()
     ms = int((time.monotonic() - t0) * 1000)
     print(

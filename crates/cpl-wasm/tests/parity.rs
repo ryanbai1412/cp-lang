@@ -207,3 +207,60 @@ fn lsp_messages_reach_the_language_server() {
     let error = replies.as_array()[0].get("error");
     assert_eq!(error.get("code"), &Value::Number(-32700.0));
 }
+
+#[test]
+fn error_and_trap_stderr_matches_cli_verbatim() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("parity-errors");
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    let mut playground = Playground::new();
+
+    // Compile-time errors and warnings: `check` and `run` must match CLI stderr byte for byte.
+    let check_cases = [
+        ("e0103_syntax", "print(1 + )\n"),
+        ("e0201_unknown", "print(missing_name)\n"),
+        ("e0203_method", "let x = 5\nprint(x.to_str())\n"),
+        ("e0302_untyped_read", "let k = read()\nprint(k)\n"),
+        ("e0303_arity", "let k = read(Int)\nprint(k)\n"),
+        ("w0401_unused_expr", "1 + 2\nprint(3)\n"),
+    ];
+    for (case, source) in check_cases {
+        let path = dir.join(format!("{case}.cp"));
+        std::fs::write(&path, source).expect("a writable scratch file");
+        let name = path.to_str().expect("a UTF-8 path");
+
+        let cli = cpl_cli::run(&["check", name]);
+        let check = playground.check(name, source);
+        assert_eq!(text(&check, "stderr"), cli.stderr, "{case}: check stderr");
+        assert_eq!(exit_code(&check), cli.code, "{case}: check exit status");
+    }
+
+    // Runtime traps: `run` must match CLI stderr, stdout, and exit code 3 byte for byte.
+    let trap_cases: [(&str, &str, &[u8]); 3] = [
+        (
+            "r0001_bounds",
+            "let a: List<Int> = [10, 20]\nlet i: Int = read()\nprint(a[i])\n",
+            b"5\n",
+        ),
+        (
+            "r0001_divzero",
+            "let (a, b): (Int, Int) = read()\nprint(a / b)\n",
+            b"10 0\n",
+        ),
+        (
+            "r0001_range_read",
+            "let n: 1..=10 = read()\nprint(n)\n",
+            b"99\n",
+        ),
+    ];
+    for (case, source, input) in trap_cases {
+        let path = dir.join(format!("{case}.cp"));
+        std::fs::write(&path, source).expect("a writable scratch file");
+        let name = path.to_str().expect("a UTF-8 path");
+
+        let cli = cpl_cli::run_with_input(&["run", name], input);
+        let run = playground.run(name, source, input);
+        assert_eq!(run.stdout, cli.stdout, "{case}: trap stdout");
+        assert_eq!(text(&run.result, "stderr"), cli.stderr, "{case}: trap stderr");
+        assert_eq!(exit_code(&run.result), cli.code, "{case}: trap exit status");
+    }
+}

@@ -439,27 +439,32 @@ executed in the gate so documentation never drifts.
 individual error/lint pages + playground + trace = 91 HTML pages: 10-lesson
 course with 51 checked exercises, 15 reference pages including canonical
 `docs/one-page-cheat-sheet.md`, `errors.html`, `cookbook.html`, and
-`ports.html`), WASM playground (23 presets), canonical trace viewer, and
-offline bundle (`dist/cp-lang.html`, 1.99 MB < 2.6 MB cap). 104/104 doc `cp`
-fences, 22/22 `site/examples/*.cp`, 10/10 course write-code refs, 63/63
-diagnostic/lint codes, 22/22 cookbook recipes, 67 gallery ports (11 with
-side-by-side CP / dream / C++ panes from `research/PORTS.md` and
-`proto/ports/<group>/dream/`), and 24/24 non-prelude `stdlib/*.cp` modules are
-verified in `scripts/check.sh --fast` via `site/check_docs.py`.
-Writable-from-docs harness (`scripts/writable-from-docs.py` +
-`scripts/test_writable_from_docs.py`, report in
-`research/writable-from-docs.md`) audited 10 unseen statements from
+`ports.html`), WASM playground (23 presets with verified sample cases,
+URL-hash `#share=` links, multi-case sample runner, verbatim CLI `stderr`
+rendering, and `Playground::check` warning exit-code parity), canonical trace
+viewer, and offline bundle (`dist/cp-lang.html`, ~2.0 MB < 2.6 MB cap).
+105/105 doc `cp` fences, 22/22 `site/examples/*.cp`, 10/10 course write-code
+refs, 63/63 diagnostic/lint codes, 22/22 cookbook recipes, 71 gallery ports
+(19 with side-by-side CP / dream / C++ panes from `research/PORTS.md` and
+`proto/ports/<group>/dream/`), 24/24 non-prelude `stdlib/*.cp` modules, and
+playground WASM-vs-CLI parity (`crates/cpl-wasm/tests/parity.rs` +
+`site/test_playground_parity.py`) are verified in `scripts/check.sh --fast`
+via `site/check_docs.py`. Writable-from-docs harness
+(`scripts/writable-from-docs.py` + `scripts/test_writable_from_docs.py`,
+report in `research/writable-from-docs.md`) audited 10 unseen statements from
 `corpus/statements/` (`abc380b`–`abc387c`), raising `cpl check` pass from 7/10
 to 8/10 after closing 5 docs gaps.
-Gaps: `cpl doc stdlib` still has undocumented items; playground shareable
-links, sample runner, and CLI-parity errors are next.
+Gaps: `cpl doc stdlib` still has undocumented items and 0 doc-comment
+examples; playground does not yet have a generated C++17 diff view.
 **Bar.** A cold reader writes a correct solution from the docs alone; every
-doc `cp` block, example fixture, cookbook recipe, stdlib module, and
-error-index trigger/fix passes in `scripts/check.sh --fast`; 100% of
-diagnostic/lint codes have an error-index page; offline bundle stays under 2.6 MB.
-**Next.** Upgrade playground with shareable links, sample runner, and
-CLI-parity error text + parity tests; add docstrings and tested `cpl doc --test`
-examples across `stdlib/*.cp`.
+doc `cp` block, example fixture, cookbook recipe, ports gallery entry, stdlib
+module, error-index trigger/fix, and playground CLI parity test passes in
+`scripts/check.sh --fast`; 100% of diagnostic/lint codes have an error-index
+page; offline bundle stays under 2.6 MB.
+**Next.** Add docstrings and tested `cpl doc --test` examples across
+`stdlib/*.cp` and wire into the docs gate; expand the writable-from-docs
+benchmark to harder Codeforces/AtCoder D-F problems and fix remaining gaps;
+add generated C++17 diff view to the playground.
 
 ## 12. Validation: ports, scoreboard, differential testing (`plan/80`)
 **North star.** Thousands of hard accepted solutions across CF, AtCoder,

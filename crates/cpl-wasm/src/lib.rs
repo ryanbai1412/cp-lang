@@ -93,10 +93,10 @@ impl Playground {
         self.db.set_file(name, source);
         let analysis = self.db.analyze(name).expect("the file was just set");
         let diagnostics = cpl_ir::check(&analysis);
-        let code = if diagnostics.is_empty() {
-            0
-        } else {
+        let code = if diagnostics.iter().any(|d| d.severity == Severity::Error) {
             EXIT_ERRORS
+        } else {
+            0
         };
         let stderr = rendered(&diagnostics, name, source);
         outcome(code, &diagnostics, source, stderr, [])

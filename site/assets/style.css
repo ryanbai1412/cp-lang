@@ -723,6 +723,77 @@ th,td {
 .compiler-hover { min-height:2.8em; white-space:pre-wrap; font:11px/1.5 var(--mono); color:var(--muted); }
 .compiler-diagnostics button { display:block; text-align:left; padding:6px 0; color:#dc2626; font:12px/1.6 var(--mono); }
 .compiler-diagnostics p { margin:0 0 8px; font-size:12px; }
+.compiler-cli-stderr {
+  margin: 8px 0 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #dc2626 35%, var(--line));
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 12px/1.6 var(--mono);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+.compiler-samples { margin: 12px 0; }
+.compiler-samples summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.samples-badge { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 4px; }
+.samples-toolbar { display: flex; gap: 8px; margin: 10px 0; }
+.samples-list { display: flex; flex-direction: column; gap: 10px; }
+.sample-row {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+}
+.sample-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sample-remove {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.sample-verdict {
+  font: 11px/1.2 var(--mono);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sample-verdict[data-state=pass] { background: #dcfce7; color: #166534; }
+.sample-verdict[data-state=fail] { background: #fee2e2; color: #991b1b; }
+.sample-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.sample-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.sample-fields textarea {
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 12px/1.5 var(--mono);
+  resize: vertical;
+}
+.sample-detail {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font: 11.5px/1.5 var(--mono);
+  white-space: pre-wrap;
+}
+@media(max-width:600px) { .sample-fields { grid-template-columns: 1fr; } }
 .compiler-cpp pre { max-height:480px; overflow:auto; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:6px; font:12px/1.8 var(--mono); }
 .compiler-cpp summary { cursor:pointer; font-size:13px; font-weight:600; }
 .runner-status { white-space:pre-wrap; overflow-wrap:anywhere; }

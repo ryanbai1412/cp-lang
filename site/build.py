@@ -620,13 +620,52 @@ def build_playground(target, template):
         "optional",
         "memo",
     )
+    sample_map = {}
+    for lesson in LESSONS:
+        for exercise in lesson["exercises"]:
+            if exercise["kind"] == "output":
+                sample_map.setdefault(exercise["fixture"], []).extend(
+                    {"input": case["input"], "expected": case["expected"]}
+                    for case in exercise["tests"]
+                )
+    fallback_samples = {
+        "sum": [{"input": "5\n3 1 4 1 5", "expected": "14"}],
+        "early_return": [{"input": "4\n3 9 -2 5", "expected": "9"}],
+        "bounds": [{"input": "5\n3 1 4 1 5", "expected": "0 3 4 8 9 14"}],
+        "knapsack": [{"input": "3 7\n3 4\n4 5\n2 3", "expected": "9"}],
+        "range_array": [{"input": "6 4\n0 2 4 2 1 2", "expected": "1 1 3 0 1"}],
+        "tropical_dp": [{"input": "3 11\n1 5 7", "expected": "3"}],
+        "memo_dp": [{"input": "10", "expected": "89"}],
+        "segtree_monoid": [{"input": "4 3\n2 5 1 4\n2 1 3\n1 2 10\n2 1 4", "expected": "8\n17"}],
+        "lazy_action": [{"input": "4 3\n1 2 3 4\n1 2 4 3\n2 1 4\n2 2 3", "expected": "19\n11"}],
+        "fenwick_sum": [{"input": "4 3\n3 1 4 2\n2 1 4\n1 2 5\n2 1 3", "expected": "10\n13"}],
+        "dsu_mod": [{"input": "5 3\n1 2\n2 3\n4 5", "expected": "2 6"}],
+        "colocated_brute": [{"input": "5\n-2 4 -1 3 -5", "expected": "6"}],
+        "accumulation": [{"input": "4\n0 1 2 3", "expected": "6"}],
+        "ascii": [{"input": "5\nabaca", "expected": "3"}],
+        "optional": [{"input": "5\n3 7 4 1 8", "expected": "8"}],
+        "memo": [{"input": "4", "expected": "5"}],
+    }
     examples = [
-        dict(id=name, source=(ROOT / "examples" / f"{name}.cp").read_text(), stdin=defaults[name])
+        dict(
+            id=name,
+            source=(ROOT / "examples" / f"{name}.cp").read_text(),
+            stdin=defaults[name],
+            samples=sample_map.get(name) or fallback_samples.get(name, []),
+        )
         for name in order
     ]
     examples.insert(
         6,
-        dict(id="str-scan", source=STR_SCAN_SOURCE, stdin="abracadabra"),
+        dict(
+            id="str-scan",
+            source=STR_SCAN_SOURCE,
+            stdin="abracadabra",
+            samples=[
+                {"input": "abracadabra", "expected": "5 11"},
+                {"input": "xyz", "expected": "0 3"},
+            ],
+        ),
     )
     values = dict(title="Playground", heading="Playground", section="Tools",
         description="Write, run, inspect C++17 output, and trace CP Lang 0.2.2 programs directly in your browser.",

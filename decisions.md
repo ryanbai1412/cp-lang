@@ -1434,6 +1434,20 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* delete `site/ports_gallery.py` and its hooks in `site/build.py`, `site/check_docs.py`,
   and `site/assets/style.css`.
 
+- **24.7 Playground shareable links, sample runner, and verbatim CLI error parity.**
+  Added URL-hash shareable links (`#share=<base64url>` encoding `{source, stdin, samples}` with
+  no server dependency, working online and offline), a multi-case sample runner pre-populated with
+  verified sample cases for all 23 playground presets, and verbatim CLI `result.stderr` rendering
+  in `[data-cli-stderr]` alongside clickable jump-to-line diagnostics. Fixed `Playground::check` in
+  `crates/cpl-wasm/src/lib.rs` to return `exitCode = 0` on warning-only diagnostics (matching
+  `cpl check` on the CLI). Added Rust parity test `error_and_trap_stderr_matches_cli_verbatim` in
+  `crates/cpl-wasm/tests/parity.rs` and end-to-end Node/WASM + share-link + preset-sample parity
+  tests in `site/test_playground_parity.py`, wired into `site/check_docs.py`.
+  *Reason:* keeps browser playground errors byte-for-byte identical to the CLI and lets readers
+  share and sample-test solutions directly in the browser without any backend.
+  *Reversible:* revert the UI controls in `site/compiler.py` / `site/assets/playground.js` and
+  remove `site/test_playground_parity.py`.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and
