@@ -1,4 +1,6 @@
 // Codeforces 2069 E: A, B, AB and BA.
+use std.seq.{chunk_by}
+
 @!multitest
 let s: Str = read()
 let (a, b, ab, ba): (Int, Int, Int, Int) = read()
@@ -13,17 +15,13 @@ if need > ab + ba:
 var wild = 0
 var ab_runs = List<Int>()
 var ba_runs = List<Int>()
-var start = 0
-for i in 0..s.len:
-    if i + 1 == s.len or s[i + 1] == s[i]:
-        let len = i - start + 1
-        if len % 2 == 1:
-            wild += len / 2
-        elif s[start] == 'A':
-            ab_runs.push(len / 2)
-        else:
-            ba_runs.push(len / 2)
-        start = i + 1
+for r in s.chunk_by((x, y) => x != y):
+    if r.len % 2 == 1:
+        wild += r.len / 2
+    elif s[r.first!] == 'A':
+        ab_runs.push(r.len / 2)
+    else:
+        ba_runs.push(r.len / 2)
 
 need -= wild
 let sum_ab = sum(ab_runs)

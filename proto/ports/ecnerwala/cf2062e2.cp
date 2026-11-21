@@ -1,3 +1,7 @@
+use std.algebra.{Monoid}
+use std.prefix.{prefix_fold, suffix_fold}
+use std.seq.{buckets}
+
 // Codeforces 2062 E2: The Game (Hard Version).
 // Root at 1 and flatten by preorder so each subtree is a range. A node v wins
 // iff the max weight mx outside sub(v) exceeds w[v], and every node u with
@@ -37,17 +41,11 @@ for p in t.Pre:
     else:
         top_max[v] = pv
 
-let empty_max = MaxInfo<t.Pre>(0, none, none, 0)
-var pref: [0..=n]MaxInfo<t.Pre> = empty_max
-for p in t.Pre:
-    pref[p.ord + 1] = combine(pref[p.ord], MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1))
-
-var suff: [0..=n]MaxInfo<t.Pre> = empty_max
-for p in t.Pre.rev:
-    suff[p.ord] = combine(MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1), suff[p.ord + 1])
-
-var by_w: [W]List<V> = []
-for v in V: by_w[w[v]].push(v)
+let m_max = Monoid(MaxInfo<t.Pre>(0, none, none, 0), (a, b) => combine(a, b))
+let pre_info = [t.Pre] p => MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1)
+let pref = prefix_fold(m_max, pre_info)
+let suff = suffix_fold(m_max, pre_info)
+let by_w = buckets(w)
 
 var sub_bit = Fenwick<t.Pre, Int>.new()
 var anc_bit = Fenwick<t.Pre, Int>.new()
@@ -58,7 +56,7 @@ for weight in W.rev:
     let w_val = weight.ord + 1
     for v in by_w[weight]:
         let r = t.sub(v)
-        let mx = combine(pref[r.lo.ord], suff[r.hi.ord])
+        let mx = combine(pref[r.lo], suff[r.hi])
         if mx.w > w_val:
             var covered = sub_bit.sum(r) + mx.cnt
             if let lp = prev_max[t.at[mx.lo!]], mx.hi! in t.sub(lp):

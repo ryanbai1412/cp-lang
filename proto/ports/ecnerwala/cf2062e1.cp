@@ -3,15 +3,15 @@
 // strictly heavier than the current weight. The first node v that is not an
 // ancestor of that LCA has a heavier node outside its subtree, while every
 // heavier node contains all nodes heavier than itself — so picking v wins.
+use std.seq.{buckets}
+
 @!multitest
 let n: 1..=400_000 = read()
 domain V = 1..=n
 domain W = 1..=n
 let w: [V]W = read()
 let t = Rooted(Graph.undirected(read::<[0..n - 1](V, V)>()), V.first)
-
-var by_w: [W]List<V> = []
-for v in V: by_w[w[v]].push(v)
+let by_w = buckets(w)
 
 fn win() -> ?V:
     var heavier_lca: ?V = none
