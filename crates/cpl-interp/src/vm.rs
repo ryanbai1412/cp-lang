@@ -394,10 +394,93 @@ pub(crate) struct Chunk<'p> {
     pub has_by_ref_closure: bool,
 }
 
+#[derive(Clone, Copy)]
+pub(crate) enum FastClosure {
+    Param(u8),
+    Add(u8, u8),
+    Sub(u8, u8),
+    Mul(u8, u8),
+    Min(u8, u8),
+    Max(u8, u8),
+    BitAnd(u8, u8),
+    BitOr(u8, u8),
+    BitXor(u8, u8),
+    MulAdd(u8, u8, u8),
+}
+
+fn recognize_fast_closure(def: &cpl_ir::ClosureDef, program: &Program) -> Option<FastClosure> {
+    if !def.captures.is_empty()
+        || !def.muts.is_empty()
+        || def.params.len() > 4
+        || !def.params.iter().enumerate().all(|(i, &s)| s == i)
+        || ScalarKind::of_ty(&def.ret, program) != Some(ScalarKind::Int)
+        || !def
+            .params
+            .iter()
+            .all(|&s| ScalarKind::of_ty(&def.locals[s].ty, program) == Some(ScalarKind::Int))
+    {
+        return None;
+    }
+    if def.body.stmts.len() != 1 {
+        return None;
+    }
+    let expr = match &def.body.stmts[0] {
+        Stmt::Return(Some(e)) | Stmt::Expr(e) => e,
+        _ => return None,
+    };
+    let param_of = |e: &Expr| -> Option<u8> {
+        if let ExprKind::Local(s) = e.kind {
+            if s < def.params.len() {
+                return Some(s as u8);
+            }
+        }
+        None
+    };
+    if let Some(p) = param_of(expr) {
+        return Some(FastClosure::Param(p));
+    }
+    match &expr.kind {
+        ExprKind::Binary(op, a, b) => {
+            if let (Some(pa), Some(pb)) = (param_of(a), param_of(b)) {
+                return match op {
+                    BinOp::Add => Some(FastClosure::Add(pa, pb)),
+                    BinOp::Sub => Some(FastClosure::Sub(pa, pb)),
+                    BinOp::Mul => Some(FastClosure::Mul(pa, pb)),
+                    BinOp::BitAnd => Some(FastClosure::BitAnd(pa, pb)),
+                    BinOp::BitOr => Some(FastClosure::BitOr(pa, pb)),
+                    BinOp::BitXor => Some(FastClosure::BitXor(pa, pb)),
+                    _ => None,
+                };
+            }
+            if matches!(op, BinOp::Add) {
+                if let (Some(pc), ExprKind::Binary(BinOp::Mul, ma, mb)) = (param_of(a), &b.kind) {
+                    if let (Some(pa), Some(pb)) = (param_of(ma), param_of(mb)) {
+                        return Some(FastClosure::MulAdd(pa, pb, pc));
+                    }
+                }
+                if let (ExprKind::Binary(BinOp::Mul, ma, mb), Some(pc)) = (&a.kind, param_of(b)) {
+                    if let (Some(pa), Some(pb)) = (param_of(ma), param_of(mb)) {
+                        return Some(FastClosure::MulAdd(pa, pb, pc));
+                    }
+                }
+            }
+            None
+        }
+        ExprKind::Builtin(Builtin::Min, args) if args.len() == 2 => {
+            Some(FastClosure::Min(param_of(&args[0])?, param_of(&args[1])?))
+        }
+        ExprKind::Builtin(Builtin::Max, args) if args.len() == 2 => {
+            Some(FastClosure::Max(param_of(&args[0])?, param_of(&args[1])?))
+        }
+        _ => None,
+    }
+}
+
 pub(crate) struct CompiledProgram<'p> {
     pub main: Chunk<'p>,
     pub fns: Vec<Option<Chunk<'p>>>,
     pub closures: Vec<Option<Chunk<'p>>>,
+    pub fast_closures: Vec<Option<FastClosure>>,
 }
 
 impl<'p> CompiledProgram<'p> {
@@ -423,7 +506,9 @@ impl<'p> CompiledProgram<'p> {
             }
         }
         let mut closures = Vec::with_capacity(program.closures.len());
+        let mut fast_closures = Vec::with_capacity(program.closures.len());
         for def in &program.closures {
+            fast_closures.push(recognize_fast_closure(def, program));
             let can_compile = def.locals.len() <= 512
                 && def.muts.is_empty()
                 && def.captures.iter().all(|cap| !cap.by_ref)
@@ -454,7 +539,7 @@ impl<'p> CompiledProgram<'p> {
         if main.has_by_ref_closure {
             main.needs_stack = true;
         }
-        CompiledProgram { main, fns, closures }
+        CompiledProgram { main, fns, closures, fast_closures }
     }
 }
 
@@ -566,9 +651,7 @@ impl<'p> Compiler<'p> {
     }
 
     fn finish(self) -> Chunk<'p> {
-        let needs_stack = !self.fallback_stmts.is_empty()
-            || !self.fallback_exprs.is_empty()
-            || self.ops.iter().any(|o| matches!(o, Op::CallClosure { .. }));
+        let needs_stack = !self.fallback_stmts.is_empty() || !self.fallback_exprs.is_empty();
         Chunk {
             ops: self.ops,
             spans: self.spans,
@@ -6495,6 +6578,104 @@ impl<'p, 'io> Interp<'p, 'io> {
                     dst_some,
                     ret_mode,
                 } => {
+                    if let Value::Closure(cid, _) = &regs_v[callee_v as usize] {
+                        if let Some(fast) = compiled.fast_closures[*cid] {
+                            let abi = arg_base_i as usize;
+                            let res_i = match fast {
+                                FastClosure::Param(p) => regs_i[abi + p as usize],
+                                FastClosure::Add(a, b) => {
+                                    let x = regs_i[abi + a as usize];
+                                    let y = regs_i[abi + b as usize];
+                                    match x.checked_add(y) {
+                                        Some(v) if v != i64::MIN => v,
+                                        _ => {
+                                            return trap(
+                                                spans[cur_pc],
+                                                format!("`{x} + {y}` overflows `Int`"),
+                                            );
+                                        }
+                                    }
+                                }
+                                FastClosure::Sub(a, b) => {
+                                    let x = regs_i[abi + a as usize];
+                                    let y = regs_i[abi + b as usize];
+                                    match x.checked_sub(y) {
+                                        Some(v) if v != i64::MIN => v,
+                                        _ => {
+                                            return trap(
+                                                spans[cur_pc],
+                                                format!("`{x} - {y}` overflows `Int`"),
+                                            );
+                                        }
+                                    }
+                                }
+                                FastClosure::Mul(a, b) => {
+                                    let x = regs_i[abi + a as usize];
+                                    let y = regs_i[abi + b as usize];
+                                    match x.checked_mul(y) {
+                                        Some(v) if v != i64::MIN => v,
+                                        _ => {
+                                            return trap(
+                                                spans[cur_pc],
+                                                format!("`{x} * {y}` overflows `Int`"),
+                                            );
+                                        }
+                                    }
+                                }
+                                FastClosure::Min(a, b) => {
+                                    regs_i[abi + a as usize].min(regs_i[abi + b as usize])
+                                }
+                                FastClosure::Max(a, b) => {
+                                    regs_i[abi + a as usize].max(regs_i[abi + b as usize])
+                                }
+                                FastClosure::BitAnd(a, b) => {
+                                    regs_i[abi + a as usize] & regs_i[abi + b as usize]
+                                }
+                                FastClosure::BitOr(a, b) => {
+                                    regs_i[abi + a as usize] | regs_i[abi + b as usize]
+                                }
+                                FastClosure::BitXor(a, b) => {
+                                    regs_i[abi + a as usize] ^ regs_i[abi + b as usize]
+                                }
+                                FastClosure::MulAdd(a, b, c) => {
+                                    let x = regs_i[abi + a as usize];
+                                    let y = regs_i[abi + b as usize];
+                                    let z = regs_i[abi + c as usize];
+                                    let prod = match x.checked_mul(y) {
+                                        Some(v) if v != i64::MIN => v,
+                                        _ => {
+                                            return trap(
+                                                spans[cur_pc],
+                                                format!("`{x} * {y}` overflows `Int`"),
+                                            );
+                                        }
+                                    };
+                                    match prod.checked_add(z) {
+                                        Some(v) if v != i64::MIN => v,
+                                        _ => {
+                                            return trap(
+                                                spans[cur_pc],
+                                                format!("`{prod} + {z}` overflows `Int`"),
+                                            );
+                                        }
+                                    }
+                                }
+                            };
+                            if callee_v as usize >= chunk.num_local_v {
+                                regs_v[callee_v as usize] = Value::Unit;
+                            }
+                            match ret_mode {
+                                CallRet::Unit => {}
+                                CallRet::I => regs_i[dst_i as usize] = res_i,
+                                CallRet::OptI => {
+                                    regs_i[dst_i as usize] = res_i;
+                                    regs_i[dst_some as usize] = 1;
+                                }
+                                CallRet::V => regs_v[dst_v as usize] = Value::Int(res_i),
+                            }
+                            continue;
+                        }
+                    }
                     let (cid, caps) = match &regs_v[callee_v as usize] {
                         Value::Closure(cid, caps) => (*cid, Rc::clone(caps)),
                         _ => return trap(spans[cur_pc], "internal: expected closure"),
