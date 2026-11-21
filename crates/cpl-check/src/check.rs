@@ -117,6 +117,8 @@ pub(crate) struct Checker<'a> {
     /// True when the enclosing context expects a `Range<D.bounds>` so ranges
     /// over `D.bounds` keep `.bounds` and allow `..=`.
     expected_bounds_range: bool,
+    /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
+    pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
 }
 
 pub(crate) struct Checked {
@@ -147,6 +149,17 @@ impl<'a> Checker<'a> {
             self_ty: None,
             lends: lends::Lends::default(),
             expected_bounds_range: false,
+            local_product_domains: HashMap::new(),
+        }
+    }
+
+    pub(crate) fn product_factors(&mut self, domain: &str) -> Option<Vec<(Option<String>, Ty)>> {
+        if let Some(factors) = self.local_product_domains.get(domain) {
+            return Some(factors.clone());
+        }
+        match self.env.global(domain).as_deref() {
+            Some(Def::Domain(info)) if !info.factors.is_empty() => Some(info.factors.clone()),
+            _ => None,
         }
     }
 

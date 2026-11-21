@@ -124,6 +124,8 @@ pub struct DomainInfo {
     pub max_size: Option<i128>,
     /// Where the size comes from: `n <= 2e5`.
     pub bound: Option<String>,
+    /// Factor types for product domains (`domain State = (V, K)` or `(r: R, s: K)`).
+    pub factors: Vec<(Option<String>, Ty)>,
 }
 
 impl Def {

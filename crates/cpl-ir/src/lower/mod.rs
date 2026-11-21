@@ -481,6 +481,13 @@ struct FnCx {
     captured_names: HashMap<String, Slot>,
 }
 
+#[derive(Clone, Debug)]
+pub(super) enum ProductFactor {
+    Domain(DomainId),
+    Enum { enum_id: EnumId, len: i64 },
+    Bool,
+}
+
 struct Lowerer<'a> {
     mods: Vec<&'a Analysis>,
     path_to_mod: HashMap<String, ModId>,
@@ -524,6 +531,8 @@ struct Lowerer<'a> {
     domains: Vec<String>,
     /// `Subset<D>` domains: `(subset, base)`.
     subsets: Vec<(DomainId, DomainId)>,
+    /// Factor definitions for product domains (`domain State = (V, K)`).
+    pub(super) product_domains: HashMap<DomainId, Vec<(Option<String>, ProductFactor)>>,
     aliases: Vec<(ModId, &'a ast::Type, u32)>,
     gen_aliases: Vec<GenAliasTemplate<'a>>,
 
@@ -631,6 +640,7 @@ impl<'a> Lowerer<'a> {
             enum_insts: HashMap::new(),
             domains: Vec::new(),
             subsets: Vec::new(),
+            product_domains: HashMap::new(),
             aliases: Vec::new(),
             gen_aliases: Vec::new(),
             globals: Vec::new(),
@@ -1231,7 +1241,208 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // Pass 3: register top-level product domain factors so fns using `State` know them.
+        for m in 0..num_mods {
+            self.cur_mod = m;
+            let items: Vec<(u32, &'a ast::Stmt)> = self.mod_items(m).collect();
+            for (offset, item) in items {
+                if let ast::StmtKind::Domain { name, def } = &item.kind {
+                    if let Some(Sym::Domain(id)) = self.mod_syms[m].get(&name.text).copied() {
+                        self.offset = offset;
+                        if let Some(factors) = self.resolve_product_factors(def) {
+                            self.product_domains.insert(id, factors);
+                        }
+                    }
+                }
+            }
+        }
         self.cur_mod = 0;
+    }
+
+    pub(super) fn resolve_product_factor(&mut self, e: &ast::Expr) -> Option<ProductFactor> {
+        let ast::ExprKind::Name(name) = &e.kind else {
+            return None;
+        };
+        if name == "Bool" {
+            return Some(ProductFactor::Bool);
+        }
+        if let Some(d) = self.resolve_domain_name(name) {
+            return Some(ProductFactor::Domain(d));
+        }
+        if let Some(Sym::Enum(eid)) = self.get_sym(name) {
+            if self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty()) {
+                return Some(ProductFactor::Enum {
+                    enum_id: eid,
+                    len: self.enums[eid].variants.len() as i64,
+                });
+            }
+        }
+        None
+    }
+
+    pub(super) fn resolve_product_factors(
+        &mut self,
+        def: &ast::Expr,
+    ) -> Option<Vec<(Option<String>, ProductFactor)>> {
+        match &def.kind {
+            ast::ExprKind::Tuple(items) if items.len() >= 2 => {
+                let mut out = Vec::with_capacity(items.len());
+                for item in items {
+                    out.push((None, self.resolve_product_factor(item)?));
+                }
+                Some(out)
+            }
+            ast::ExprKind::Record(fields) if fields.len() >= 2 => {
+                let mut out = Vec::with_capacity(fields.len());
+                for (fname, fval) in fields {
+                    out.push((
+                        Some(fname.text.clone()),
+                        self.resolve_product_factor(fval)?,
+                    ));
+                }
+                Some(out)
+            }
+            _ => None,
+        }
+    }
+
+    pub(super) fn product_factor_ty(&self, f: &ProductFactor) -> Ty {
+        match f {
+            ProductFactor::Domain(d) => Ty::Pos(*d),
+            ProductFactor::Enum { enum_id, .. } => Ty::Enum(*enum_id),
+            ProductFactor::Bool => Ty::Bool,
+        }
+    }
+
+    pub(super) fn product_factor_len(&self, f: &ProductFactor, span: Span) -> Expr {
+        match f {
+            ProductFactor::Domain(d) => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+            ProductFactor::Enum { len, .. } => self.int_lit(*len, span),
+            ProductFactor::Bool => self.int_lit(2, span),
+        }
+    }
+
+    pub(super) fn product_factor_ord(&mut self, f: &ProductFactor, val: Expr, span: Span) -> Expr {
+        match f {
+            ProductFactor::Domain(d) => {
+                let v = self.coerce(val, &Ty::Pos(*d), span);
+                self.cast(Cast::Ord, v, Ty::Int)
+            }
+            ProductFactor::Enum { enum_id, .. } => {
+                let v = self.coerce(val, &Ty::Enum(*enum_id), span);
+                self.cast(Cast::EnumOrd(*enum_id), v, Ty::Int)
+            }
+            ProductFactor::Bool => {
+                let v = self.coerce(val, &Ty::Bool, span);
+                let one = self.int_lit(1, span);
+                let zero = self.int_lit(0, span);
+                self.mk(
+                    ExprKind::If(Box::new(v), Box::new(one), Box::new(zero)),
+                    Ty::Int,
+                    span,
+                )
+            }
+        }
+    }
+
+    pub(super) fn product_factor_from_ord(
+        &self,
+        f: &ProductFactor,
+        ord: Expr,
+        span: Span,
+    ) -> Expr {
+        match f {
+            ProductFactor::Domain(d) => self.cast(Cast::Trust, ord, Ty::Pos(*d)),
+            ProductFactor::Enum { enum_id, .. } => {
+                self.cast(Cast::OrdToEnum(*enum_id), ord, Ty::Enum(*enum_id))
+            }
+            ProductFactor::Bool => {
+                let zero = self.int_lit(0, span);
+                self.mk(
+                    ExprKind::Cmp(CmpOp::Ne, Box::new(ord), Box::new(zero)),
+                    Ty::Bool,
+                    span,
+                )
+            }
+        }
+    }
+
+    pub(super) fn encode_product(&mut self, id: DomainId, parts: Vec<Expr>, span: Span) -> Expr {
+        let factors = self.product_domains[&id].clone();
+        let mut acc = self.product_factor_ord(&factors[0].1, parts[0].clone(), span);
+        for ((_, f), part) in factors[1..].iter().zip(parts.into_iter().skip(1)) {
+            let len = self.product_factor_len(f, span);
+            let ord = self.product_factor_ord(f, part, span);
+            let scaled = self.mk(
+                ExprKind::Binary(BinOp::Mul, Box::new(acc), Box::new(len)),
+                Ty::Int,
+                span,
+            );
+            acc = self.mk(
+                ExprKind::Binary(BinOp::Add, Box::new(scaled), Box::new(ord)),
+                Ty::Int,
+                span,
+            );
+        }
+        self.cast(Cast::Trust, acc, Ty::Pos(id))
+    }
+
+    pub(super) fn decode_product(
+        &mut self,
+        id: DomainId,
+        val: Expr,
+        span: Span,
+        out: &mut Vec<Stmt>,
+    ) -> Vec<Expr> {
+        let factors = self.product_domains[&id].clone();
+        let held = self.hold(val, out);
+        let mut ord = self.cast(Cast::Ord, held, Ty::Int);
+        let mut parts = vec![self.int_lit(0, span); factors.len()];
+        for i in (1..factors.len()).rev() {
+            let ord_held = self.hold(ord, out);
+            let len = self.product_factor_len(&factors[i].1, span);
+            let rem = self.mk(
+                ExprKind::Binary(BinOp::Rem, Box::new(ord_held.clone()), Box::new(len.clone())),
+                Ty::Int,
+                span,
+            );
+            parts[i] = self.product_factor_from_ord(&factors[i].1, rem, span);
+            ord = self.mk(
+                ExprKind::Binary(BinOp::Div, Box::new(ord_held), Box::new(len)),
+                Ty::Int,
+                span,
+            );
+        }
+        parts[0] = self.product_factor_from_ord(&factors[0].1, ord, span);
+        parts
+    }
+
+    pub(super) fn decode_product_field(
+        &mut self,
+        id: DomainId,
+        val: Expr,
+        idx: usize,
+        span: Span,
+    ) -> Expr {
+        let factors = self.product_domains[&id].clone();
+        let mut ord = self.cast(Cast::Ord, val, Ty::Int);
+        for (_, f) in &factors[idx + 1..] {
+            let len = self.product_factor_len(f, span);
+            ord = self.mk(
+                ExprKind::Binary(BinOp::Div, Box::new(ord), Box::new(len)),
+                Ty::Int,
+                span,
+            );
+        }
+        if idx > 0 {
+            let len = self.product_factor_len(&factors[idx].1, span);
+            ord = self.mk(
+                ExprKind::Binary(BinOp::Rem, Box::new(ord), Box::new(len)),
+                Ty::Int,
+                span,
+            );
+        }
+        self.product_factor_from_ord(&factors[idx].1, ord, span)
     }
 
     /// `impl T for Int`: a built-in type has no struct to hang methods
@@ -3286,6 +3497,42 @@ impl<'a> Lowerer<'a> {
                 ty: want.clone(),
                 span,
             }),
+            (Ty::Pos(d), Ty::Tuple(ts)) if self.product_domains.get(d).is_some_and(|fs| fs.len() == ts.len()) => {
+                let d = *d;
+                let ts = ts.clone();
+                let mut stmts = Vec::new();
+                let held = self.hold(e, &mut stmts);
+                let parts: Vec<Expr> = ts
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, fty)| self.mk(ExprKind::Field(Box::new(held.clone()), i), fty, span))
+                    .collect();
+                let encoded = self.encode_product(d, parts, span);
+                if stmts.is_empty() {
+                    Ok(encoded)
+                } else {
+                    stmts.push(Stmt::Give(encoded));
+                    Ok(self.mk(ExprKind::Do(Block { stmts }), Ty::Pos(d), span))
+                }
+            }
+            (Ty::Pos(d), Ty::Record(rfs)) if self.product_domains.get(d).is_some_and(|fs| fs.len() == rfs.len()) => {
+                let d = *d;
+                let rfs = rfs.clone();
+                let mut stmts = Vec::new();
+                let held = self.hold(e, &mut stmts);
+                let parts: Vec<Expr> = rfs
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, (_, fty))| self.mk(ExprKind::Field(Box::new(held.clone()), i), fty, span))
+                    .collect();
+                let encoded = self.encode_product(d, parts, span);
+                if stmts.is_empty() {
+                    Ok(encoded)
+                } else {
+                    stmts.push(Stmt::Give(encoded));
+                    Ok(self.mk(ExprKind::Do(Block { stmts }), Ty::Pos(d), span))
+                }
+            }
             (Ty::Pos(d), Ty::DomainVal) => Ok(Expr {
                 kind: ExprKind::Cast(
                     Cast::Trust,

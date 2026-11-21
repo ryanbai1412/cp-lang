@@ -2327,6 +2327,24 @@ impl<'a> Lowerer<'a> {
         };
         match base {
             Ty::Array { dims, elem } => {
+                if let [Dim::Pos(d)] = dims.as_slice() {
+                    if indices.len() > 1 {
+                        if let Some(factors) = self.product_domains.get(d).cloned() {
+                            if factors.len() == indices.len() {
+                                let parts: Vec<Expr> = factors
+                                    .iter()
+                                    .zip(indices)
+                                    .map(|((_, f), idx)| {
+                                        let want = self.product_factor_ty(f);
+                                        self.expect(idx, &want)
+                                    })
+                                    .collect();
+                                let pos = self.encode_product(*d, parts, span);
+                                return (vec![pos], (**elem).clone());
+                            }
+                        }
+                    }
+                }
                 if let [Dim::Sym(d)] = dims.as_slice() {
                     let (u, v) = if indices.len() == 2 {
                         (
@@ -2504,6 +2522,17 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     if value.ty != want && value.ty != Ty::Error {
+                        if let Ty::Pos(d) = want {
+                            if self.product_domains.contains_key(&d) {
+                                match self.try_coerce(value, &want) {
+                                    Ok(coerced) => {
+                                        out.push(coerced);
+                                        continue;
+                                    }
+                                    Err(orig) => value = orig,
+                                }
+                            }
+                        }
                         let message = format!(
                             "this is indexed by `{}`, but the index is a `{}`",
                             self.show(&want),

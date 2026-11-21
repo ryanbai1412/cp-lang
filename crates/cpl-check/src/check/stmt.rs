@@ -99,8 +99,24 @@ impl<'a> Checker<'a> {
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
             PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Tuple(_) => {
+                let effective_ty;
+                let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
+                    if let Ty::Pos(dom) = ty {
+                        if let Some(factors) = self.product_factors(dom) {
+                            effective_ty =
+                                Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
+                            &effective_ty
+                        } else {
+                            ty
+                        }
+                    } else {
+                        ty
+                    }
+                } else {
+                    ty
+                };
                 let mut names = Vec::new();
-                pattern_types(pat, ty, &mut |name, ty| names.push((name.to_string(), ty)));
+                pattern_types(pat, bind_ty, &mut |name, ty| names.push((name.to_string(), ty)));
                 let mut spans = Vec::new();
                 name_spans(pat, &mut spans);
                 for ((name, ty), span) in names.into_iter().zip(spans) {
@@ -640,6 +656,11 @@ impl<'a> Checker<'a> {
                 self.domain_size(def);
                 self.type_hover(name);
                 if !top_level {
+                    let info = self.domain_info(def);
+                    if !info.factors.is_empty() {
+                        self.local_product_domains
+                            .insert(name.text.clone(), info.factors);
+                    }
                     self.declare(
                         &name.text,
                         name.span,

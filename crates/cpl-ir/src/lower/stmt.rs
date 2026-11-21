@@ -860,6 +860,21 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn init_domain_id(&mut self, id: DomainId, def: &ast::Expr, out: &mut Vec<Stmt>) {
+        if let Some(factors) = self.resolve_product_factors(def) {
+            self.product_domains.insert(id, factors.clone());
+            let mut len = self.product_factor_len(&factors[0].1, def.span);
+            for (_, f) in &factors[1..] {
+                let flen = self.product_factor_len(f, def.span);
+                len = self.mk(
+                    ExprKind::Binary(BinOp::Mul, Box::new(len), Box::new(flen)),
+                    Ty::Int,
+                    def.span,
+                );
+            }
+            let lo = self.int_lit(0, def.span);
+            out.push(Stmt::DefDomain { id, lo, len });
+            return;
+        }
         if let Some(base_id) = self.domain_pairs_iter(def) {
             let n = self.mk(ExprKind::DomainLen(base_id), Ty::Int, def.span);
             let n_minus_1 = self.int_add(n.clone(), -1);
@@ -1990,6 +2005,25 @@ impl<'a> Lowerer<'a> {
             }
             ast::PatternKind::Wildcard => out.push(Stmt::Expr(value)),
             ast::PatternKind::Tuple(pats) => {
+                if let Ty::Pos(dom_id) = value.ty {
+                    if let Some(factors) = self.product_domains.get(&dom_id).cloned() {
+                        if factors.len() != pats.len() {
+                            let message = format!(
+                                "this pattern has {} names, but `{}` has {} factors",
+                                pats.len(),
+                                self.show(&value.ty),
+                                factors.len()
+                            );
+                            self.error(codes::TYPE_MISMATCH, pat.span, message);
+                            return;
+                        }
+                        let parts = self.decode_product(dom_id, value, pat.span, out);
+                        for (p, part) in pats.iter().zip(parts) {
+                            self.bind_mut(p, part, mutable, out);
+                        }
+                        return;
+                    }
+                }
                 let Some(fields) = value.ty.fields() else {
                     if value.ty != Ty::Error {
                         let message = format!(

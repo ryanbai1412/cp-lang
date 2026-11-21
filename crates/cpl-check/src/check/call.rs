@@ -395,8 +395,47 @@ impl<'a> Checker<'a> {
                 args: type_args,
             } => self.construct(&name, type_args, &callee_text, args, call),
             Ty::TypeName(name) => self.construct(&name, Vec::new(), &callee_text, args, call),
-            // `V(i)`: a number checked into the domain.
+            // `V(i)`: a number checked into the domain, or `State(v, k)` for a product domain.
             Ty::Domain(name) => {
+                if let Some(factors) = self.product_factors(&name) {
+                    if args.len() == factors.len() {
+                        for (i, arg) in args.iter().enumerate() {
+                            let arg_ty = self.infer(&arg.value);
+                            let want = arg
+                                .name
+                                .as_ref()
+                                .and_then(|n| {
+                                    factors
+                                        .iter()
+                                        .find(|(fnm, _)| fnm.as_deref() == Some(n.text.as_str()))
+                                        .map(|(_, t)| t)
+                                })
+                                .unwrap_or(&factors[i].1);
+                            self.expect_fits(&arg_ty, want, &arg.value, |c, got, want| {
+                                format!(
+                                    "`{name}` expects {want}, but `{}` is {}",
+                                    c.quote(arg.value.span),
+                                    got.with_article()
+                                )
+                            });
+                        }
+                        return Ty::Pos(name);
+                    }
+                    if args.len() == 1 && args[0].name.is_none() {
+                        let arg_ty = self.infer(&args[0].value);
+                        if matches!(arg_ty, Ty::Tuple(_) | Ty::Record(_)) {
+                            let want = Ty::Pos(name.clone());
+                            self.expect_fits(&arg_ty, &want, &args[0].value, |c, got, want| {
+                                format!(
+                                    "`{name}` expects {want}, but `{}` is {}",
+                                    c.quote(args[0].value.span),
+                                    got.with_article()
+                                )
+                            });
+                        }
+                        return Ty::Pos(name);
+                    }
+                }
                 self.plain_args(args);
                 Ty::Pos(name)
             }

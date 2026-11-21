@@ -751,6 +751,7 @@ impl<'a> Checker<'a> {
                                 text: format!("the positions of `{}`", self.text(pat.span)),
                                 max_size: None,
                                 bound: None,
+                                factors: Vec::new(),
                             }),
                         ))
                     });
@@ -1000,9 +1001,41 @@ impl<'a> Checker<'a> {
         }
     }
 
+    fn product_factor_info(&mut self, e: &ast::Expr) -> Option<(Ty, Option<i128>)> {
+        match &e.kind {
+            ExprKind::Name(name) if name == "Bool" => Some((Ty::Bool, Some(2))),
+            ExprKind::Name(name) => {
+                if let Some(local) = self.local(name) {
+                    if let Ty::Domain(d) = &local.ty {
+                        return Some((Ty::Pos(d.clone()), None));
+                    }
+                }
+                match self.env.global(name).as_deref() {
+                    Some(Def::Domain(info)) => Some((Ty::Pos(name.clone()), info.max_size)),
+                    _ => match self.env.type_def(name).as_deref() {
+                        Some(Def::Enum { variants, .. })
+                            if variants.iter().all(|(_, fs)| fs.is_empty()) =>
+                        {
+                            Some((
+                                Ty::Named {
+                                    name: name.clone(),
+                                    args: Vec::new(),
+                                },
+                                Some(variants.len() as i128),
+                            ))
+                        }
+                        _ => None,
+                    },
+                }
+            }
+            _ => None,
+        }
+    }
+
     /// Size and provenance of `domain V = <def>`.
     pub(crate) fn domain_info(&mut self, def: &ast::Expr) -> DomainInfo {
         let text = self.text(def.span).to_string();
+        let mut factors = Vec::new();
         let (max_size, bound) = match &def.kind {
             ExprKind::Range {
                 lo: Some(lo),
@@ -1041,12 +1074,55 @@ impl<'a> Checker<'a> {
                 let (a, b) = (size(self, lhs), size(self, rhs));
                 (a.zip(b).map(|(a, b)| a + b), None)
             }
+            // `domain State = (V, K)`: a Cartesian product of finite domains/enums/Bool.
+            ExprKind::Tuple(items) if items.len() >= 2 => {
+                let mut resolved = Vec::with_capacity(items.len());
+                let mut prod: Option<i128> = Some(1);
+                let mut all_ok = true;
+                for item in items {
+                    if let Some((ty, sz)) = self.product_factor_info(item) {
+                        resolved.push((None, ty));
+                        prod = prod.zip(sz).and_then(|(a, b)| a.checked_mul(b));
+                    } else {
+                        all_ok = false;
+                        break;
+                    }
+                }
+                if all_ok {
+                    factors = resolved;
+                    (prod, None)
+                } else {
+                    (None, None)
+                }
+            }
+            // `domain State = (v: V, k: K)`: a named Cartesian product domain.
+            ExprKind::Record(fields) if fields.len() >= 2 => {
+                let mut resolved = Vec::with_capacity(fields.len());
+                let mut prod: Option<i128> = Some(1);
+                let mut all_ok = true;
+                for (fname, fval) in fields {
+                    if let Some((ty, sz)) = self.product_factor_info(fval) {
+                        resolved.push((Some(fname.text.clone()), ty));
+                        prod = prod.zip(sz).and_then(|(a, b)| a.checked_mul(b));
+                    } else {
+                        all_ok = false;
+                        break;
+                    }
+                }
+                if all_ok {
+                    factors = resolved;
+                    (prod, None)
+                } else {
+                    (None, None)
+                }
+            }
             _ => (None, None),
         };
         DomainInfo {
             text,
             max_size,
             bound,
+            factors,
         }
     }
 }

@@ -204,6 +204,60 @@ impl<'a> Lowerer<'a> {
                         )
                     }
                     Some(Sym::Domain(id)) => {
+                        if let Some(factors) = self.product_domains.get(&id).cloned() {
+                            if args.len() == factors.len() {
+                                let mut parts = Vec::with_capacity(factors.len());
+                                let named = args.iter().any(|a| a.name.is_some());
+                                if named {
+                                    let mut slots: Vec<Option<Expr>> = vec![None; factors.len()];
+                                    for (i, arg) in args.iter().enumerate() {
+                                        let idx = arg
+                                            .name
+                                            .as_ref()
+                                            .and_then(|n| {
+                                                factors.iter().position(|(fnm, _)| {
+                                                    fnm.as_deref() == Some(n.text.as_str())
+                                                })
+                                            })
+                                            .unwrap_or(i);
+                                        let want = self.product_factor_ty(&factors[idx].1);
+                                        slots[idx] = Some(self.expect(&arg.value, &want));
+                                    }
+                                    if slots.iter().all(|s| s.is_some()) {
+                                        for s in slots {
+                                            parts.push(s.unwrap());
+                                        }
+                                        return self.encode_product(id, parts, span);
+                                    }
+                                } else {
+                                    for ((_, f), arg) in factors.iter().zip(args) {
+                                        let want = self.product_factor_ty(f);
+                                        parts.push(self.expect(&arg.value, &want));
+                                    }
+                                    return self.encode_product(id, parts, span);
+                                }
+                            }
+                            if args.len() == 1 && args[0].name.is_none() {
+                                let v = self.expr(&args[0].value, None);
+                                if matches!(v.ty, Ty::Tuple(_) | Ty::Record(_)) {
+                                    return self.coerce(v, &Ty::Pos(id), span);
+                                }
+                                let value = if v.ty == Ty::Char {
+                                    self.mk(
+                                        ExprKind::Cast(Cast::CharToInt, Box::new(v)),
+                                        Ty::Int,
+                                        args[0].value.span,
+                                    )
+                                } else {
+                                    self.coerce(v, &Ty::Int, args[0].value.span)
+                                };
+                                return self.mk(
+                                    ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
+                                    Ty::Pos(id),
+                                    span,
+                                );
+                            }
+                        }
                         let Some(exprs) = self.positional_any(name, args, 1, span) else {
                             return self.err_expr(span);
                         };
@@ -3489,6 +3543,24 @@ impl<'a> Lowerer<'a> {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 let next = self.int_add(ord, 1);
                 self.cast(Cast::Trust, next, Ty::Bound(*d))
+            }
+            (Ty::Pos(d), field) if self.product_domains.contains_key(d) => {
+                let d = *d;
+                let factors = self.product_domains[&d].clone();
+                if let Some(idx) = factors
+                    .iter()
+                    .position(|(fnm, _)| fnm.as_deref() == Some(field))
+                    .or_else(|| field.parse::<usize>().ok().filter(|&i| i < factors.len()))
+                {
+                    self.decode_product_field(d, value, idx, span)
+                } else {
+                    self.error(
+                        codes::UNKNOWN_FIELD,
+                        name.span,
+                        format!("`{}` has no field `{}`", self.show(&ty), field),
+                    );
+                    self.err_expr(span)
+                }
             }
             (Ty::Bound(d), "left") => {
                 builtin(self, Builtin::PosPrev, vec![value], Ty::opt(Ty::Pos(*d)))

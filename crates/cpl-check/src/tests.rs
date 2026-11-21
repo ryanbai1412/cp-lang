@@ -2561,3 +2561,57 @@ print(mk_rec(V(1), 2).back[V(1)]!.via, mk_tup(V(1), 3).back[V(1)]!.1, mk_one_ren
 ";
     assert_eq!(check(ok), vec![]);
 }
+
+#[test]
+fn product_domains_typecheck_hover_and_reject_swapped_factors() {
+    let ok = "\
+domain V = 0..3
+domain K = 1..=2
+domain State = (V, K)
+var dp: [State]Int = 0
+for s in State:
+    let (v, k) = s
+    dp[s] = v.ord * 10 + k.label
+for (v, k) in State:
+    dp[(v, k)] += dp[v, k]
+let s0 = State(V(1), K(2))
+let _ = (s0.0, s0.1)
+
+enum Dir: L, R
+domain Named = (v: V, d: Dir, ok: Bool)
+var seen: [Named]Int = 0
+seen[(V(1), Dir.R, true)] = 42
+let ns = Named(v: V(1), d: Dir.R, ok: true)
+let _ = (seen[ns], ns.v, ns.d, ns.ok)
+
+fn local_prod(n: Int, m: Int) -> Int:
+    domain A = 0..n
+    domain B = 0..m
+    domain P = (A, B)
+    var t: [P]Int = 0
+    t[(A(0), B(0))]
+";
+    assert_eq!(check(ok), vec![]);
+    // LSP hover reports product domain definition and combined max size (3 * 2 = 6).
+    let state_hover = hover(ok, "State =");
+    assert!(
+        state_hover.contains("domain State = (V, K)")
+            && state_hover.contains("at most 6 positions"),
+        "unexpected hover: {state_hover}"
+    );
+
+    let bad = "\
+domain V = 0..3
+domain K = 0..2
+domain State = (V, K)
+var dp: [State]Int = 0
+print(dp[(K(0), V(0))])
+print(dp[K(0), V(0)])
+print(State(K(0), V(0)))
+";
+    let errs = check(bad);
+    assert!(
+        errs.len() >= 3 && errs.iter().all(|d| d.code == cpl_diag::codes::WRONG_DOMAIN),
+        "expected E0301 on swapped product factors, got: {errs:?}"
+    );
+}

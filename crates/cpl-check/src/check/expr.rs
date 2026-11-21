@@ -1455,14 +1455,28 @@ impl<'a> Checker<'a> {
                 }
             }
             Ty::Pos(domain) => {
-                return match name.text.as_str() {
-                    "ord" | "to_idx" | "idx" | "label" => Ty::Int,
+                match name.text.as_str() {
+                    "ord" | "to_idx" | "idx" | "label" => return Ty::Int,
                     // The boundaries on either side of a position.
                     "l" | "r" | "before" | "after" if !domain.ends_with(".bounds") => {
-                        Ty::Pos(format!("{domain}.bounds"))
+                        return Ty::Pos(format!("{domain}.bounds"));
                     }
-                    _ => Ty::Unknown,
-                };
+                    _ => {}
+                }
+                if let Some(factors) = self.product_factors(domain) {
+                    if let Some((_, ty)) = factors
+                        .iter()
+                        .find(|(fname, _)| fname.as_deref() == Some(name.text.as_str()))
+                    {
+                        return ty.clone();
+                    }
+                    if let Ok(idx) = name.text.parse::<usize>() {
+                        if let Some((_, ty)) = factors.get(idx) {
+                            return ty.clone();
+                        }
+                    }
+                }
+                return Ty::Unknown;
             }
             // `Dir.L`: a variant named through its enum.
             Ty::TypeName(type_name) => {
@@ -1597,6 +1611,32 @@ impl<'a> Checker<'a> {
                         );
                         self.error(codes::TYPE_MISMATCH, index_expr.span, message);
                     }
+                }
+                (**elem).clone()
+            }
+            // `[State]T` where `domain State = (V, K)`: allow multi-index `dp[v, k]`
+            // in addition to `dp[s]` and `dp[(v, k)]`.
+            Ty::Array { index, elem }
+                if index.len() == 1
+                    && indices.len() > 1
+                    && matches!(&index[0], Ty::Pos(dom) if self.product_factors(dom).is_some_and(|f| f.len() == indices.len())) =>
+            {
+                let Ty::Pos(dom) = &index[0] else {
+                    unreachable!()
+                };
+                let factors = self.product_factors(dom).unwrap();
+                for ((got, (_, want)), index_expr) in
+                    index_tys.iter().zip(&factors).zip(indices)
+                {
+                    self.expect_fits(got, want, index_expr, |c, got, want| {
+                        format!(
+                            "`{}` is indexed by {}, but `{}` is {}",
+                            c.quote(base.span),
+                            want,
+                            c.quote(index_expr.span),
+                            got.with_article()
+                        )
+                    });
                 }
                 (**elem).clone()
             }
@@ -1744,9 +1784,36 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `got.fits(want)`, with an `Int` fitting a number struct.
+    /// `got.fits(want)`, with an `Int` fitting a number struct and
+    /// product tuples/records fitting their product domain.
     pub(crate) fn fits(&mut self, got: &Ty, want: &Ty) -> bool {
-        got.fits_in(want, &mut |name| self.is_number(name))
+        if got.fits_in(want, &mut |name| self.is_number(name)) {
+            return true;
+        }
+        match (got, want) {
+            (Ty::Tuple(items), Ty::Pos(dom)) => {
+                if let Some(factors) = self.product_factors(dom) {
+                    return items.len() == factors.len()
+                        && items
+                            .iter()
+                            .zip(&factors)
+                            .all(|(g, (_, w))| self.fits(g, w));
+                }
+            }
+            (Ty::Record(fields), Ty::Pos(dom)) => {
+                if let Some(factors) = self.product_factors(dom) {
+                    return fields.len() == factors.len()
+                        && fields.iter().zip(&factors).all(|((gn, g), (wn, w))| {
+                            wn.as_ref().is_none_or(|wn| wn == gn) && self.fits(g, w)
+                        });
+                }
+            }
+            (Ty::Tuple(_) | Ty::Record(_), Ty::Optional(inner)) => {
+                return self.fits(got, inner);
+            }
+            _ => {}
+        }
+        false
     }
 
     /// Reports with `message(self, got, want)` unless `got` fits `want`.
