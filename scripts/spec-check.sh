@@ -7,6 +7,8 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 export CPL_SPEC=1 CPL_STD="$root/spec/std"
 if [ $# -eq 0 ]; then
+    python3 "$root/scripts/spec-stub.py" --check >/dev/null ||
+        echo "spec-check: WARNING: spec/std has fn bodies; run scripts/spec-stub.py" >&2
     mapfile -t gold < <(grep -v '^#' "$root/spec/GOLD.txt" | sed '/^$/d; s|^|'"$root"'/|')
     python3 "$root/scripts/dream-gaps.py" "${gold[@]}" | sed '1s/^dreams:/gold:/'
     echo

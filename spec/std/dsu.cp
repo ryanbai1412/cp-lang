@@ -19,105 +19,41 @@ pub struct Dsu<V>:
     marked: Bool
 
     /// Every position starts in its own set; pass `rollback: true` to enable rollback up front (or call `mark()` lazily). O(n).
-    pub fn new(rollback: Bool = false) -> Dsu<V>:
-        Dsu(List.filled(V.K, -1), V.K, [], rollback)
+    pub fn new(rollback: Bool = false) -> Dsu<V> = todo
 
-    fn find_ord(mut self, start: Int) -> Int:
-        var x = start
-        unchecked:
-            while p[x] >= 0:
-                let par = p[x]
-                if not marked and p[par] >= 0:
-                    p[x] = p[par]
-                x = par
-        x
+    fn find_ord(mut self, start: Int) -> Int = todo
 
     /// The representative of `v`'s set.
-    pub fn find(mut self, v: V) -> V = V.at(self.find_ord(v.ord))
+    pub fn find(mut self, v: V) -> V = todo
 
     /// The present, to return to with `undo_to`. O(1).
-    pub fn mark(mut self) -> Mark:
-        marked = true
-        Mark(joined.len)
+    pub fn mark(mut self) -> Mark = todo
 
     /// Undo every `unite` made since `snap = mark()`. O(1) per undone `unite`.
-    pub fn undo_to(mut self, snap: Mark):
-        var i = joined.len
-        unchecked:
-            while i > snap.at:
-                i -= 2
-                let y = joined[i]
-                let neg_sy = joined[i + 1]
-                let r = p[y]
-                p[r] -= neg_sy
-                p[y] = neg_sy
-                parts += 1
-        joined.truncate(snap.at)
+    pub fn undo_to(mut self, snap: Mark) = todo
 
     /// Merge the sets of `a` and `b`. Returns false if they were already one set.
-    pub fn unite(mut self, a: V, b: V) -> Bool:
-        var x = self.find_ord(a.ord)
-        var y = self.find_ord(b.ord)
-        if x == y: return false
-        unchecked:
-            if p[x] > p[y]: swap(mut x, mut y)
-            let neg_sy = p[y]
-            p[x] += neg_sy
-            p[y] = x
-            parts -= 1
-            if marked:
-                joined.push(y)
-                joined.push(neg_sy)
-        true
+    pub fn unite(mut self, a: V, b: V) -> Bool = todo
 
     /// As `unite`, but says which root stayed and which went under it, so data kept per
     /// set can follow: `if let (kept, merged) = d.merge(a, b): sum[kept] += sum[merged]`.
     /// `none` if `a` and `b` were already one set.
-    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
-        var x = self.find_ord(a.ord)
-        var y = self.find_ord(b.ord)
-        if x == y: return none
-        unchecked:
-            if p[x] > p[y]: swap(mut x, mut y)
-            let neg_sy = p[y]
-            p[x] += neg_sy
-            p[y] = x
-            parts -= 1
-            if marked:
-                joined.push(y)
-                joined.push(neg_sy)
-        some((kept: V.at(x), merged: V.at(y)))
+    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V) = todo
 
     /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
-    pub fn same(mut self, a: V, b: V) -> Bool = self.find_ord(a.ord) == self.find_ord(b.ord)
+    pub fn same(mut self, a: V, b: V) -> Bool = todo
 
     /// The number of positions in `v`'s set.
-    pub fn size(mut self, v: V) -> Int:
-        let r = self.find_ord(v.ord)
-        unchecked:
-            return -p[r]
+    pub fn size(mut self, v: V) -> Int = todo
 
     /// The number of sets.
-    pub @get fn components(self) -> Int = parts
+    pub @get fn components(self) -> Int = todo
 
     /// Yield the representative root of each connected component. O(n), zero allocations.
-    pub fn roots(self) -> yields V:
-        for v in V:
-            unchecked:
-                if p[v.ord] < 0: yield v
+    pub fn roots(self) -> yields V = todo
 
     /// Every connected component as a list of its vertices, each vertex appearing once. O(n alpha(n)).
-    pub fn groups(mut self) -> List<List<V>>:
-        var gid: [V]Int = -1
-        var out: List<List<V>> = []
-        for v in V:
-            unchecked:
-                if p[v.ord] < 0:
-                    gid[v] = out.len
-                    out.push([])
-        for v in V:
-            out[gid[self.find(v)]].push(v)
-        out
+    pub fn groups(mut self) -> List<List<V>> = todo
 
 /// Union-find where every set carries a value of type `T`. When two sets merge, the
 /// merged set gets `join(value of a's set, value of b's set)` for `unite(a, b)`, whichever
@@ -138,88 +74,45 @@ pub struct DsuOf<V, T>:
     marked: Bool
 
     /// Every position starts in its own set, with value `init(v)`. O(n).
-    pub fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>:
-        DsuOf([V] v => v, [V] v => 1, [V] v => init(v), join, V.K, [], false)
+    pub fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T> = todo
 
     /// The representative of `v`'s set.
-    pub fn find(mut self, v: V) -> V:
-        var x = v
-        while up[x] != x:
-            if not marked: up[x] = up[up[x]]
-            x = up[x]
-        x
+    pub fn find(mut self, v: V) -> V = todo
 
     /// The value of `v`'s set.
-    pub fn get(mut self, v: V) -> T:
-        let r = self.find(v)
-        val[r]
+    pub fn get(mut self, v: V) -> T = todo
 
     /// Replace the value of `v`'s set.
-    pub fn set(mut self, v: V, x: T):
-        let r = self.find(v)
-        if marked: log.push((r, r, val[r]))
-        val[r] = x
+    pub fn set(mut self, v: V, x: T) = todo
 
     /// Merge the sets of `a` and `b`, joining their values. Returns false if they were
     /// already one set (the value is left alone then).
-    pub fn unite(mut self, a: V, b: V) -> Bool:
-        let ra = self.find(a)
-        let rb = self.find(b)
-        if ra == rb: return false
-        let joined = join(val[ra], val[rb])
-        let (x, y) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
-        if marked: log.push((y, x, val[x]))
-        up[y] = x
-        sz[x] += sz[y]
-        val[x] = joined
-        parts -= 1
-        true
+    pub fn unite(mut self, a: V, b: V) -> Bool = todo
 
     /// As `unite`, but says which root stayed and which went under it. `none` if `a` and
     /// `b` were already one set.
-    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
-        let ra = self.find(a)
-        let rb = self.find(b)
-        if ra == rb: return none
-        let (x, y) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
-        self.unite(ra, rb)
-        some((kept: x, merged: y))
+    pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V) = todo
 
     /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
-    pub fn same(mut self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
+    pub fn same(mut self, a: V, b: V) -> Bool = todo
 
     /// The number of positions in `v`'s set.
-    pub fn size(mut self, v: V) -> Int:
-        let r = self.find(v)
-        sz[r]
+    pub fn size(mut self, v: V) -> Int = todo
 
     /// The number of sets.
-    pub @get fn components(self) -> Int = parts
+    pub @get fn components(self) -> Int = todo
 
     /// Yield the representative root of each connected component. O(n), zero allocations.
-    pub fn roots(self) -> yields V:
-        for v in V:
-            if up[v] == v: yield v
+    pub fn roots(self) -> yields V = todo
 
     /// Yield each connected component's payload once (one per root). O(n), zero allocations.
-    pub fn values(self) -> yields T:
-        for v in V:
-            if up[v] == v: yield val[v]
+    pub fn values(self) -> yields T = todo
 
     /// The present, to return to with `undo_to`. O(1).
-    pub fn mark(mut self) -> Mark:
-        marked = true
-        Mark(log.len)
+    pub fn mark(mut self) -> Mark = todo
 
     /// Undo every merge and `set` made since `snap = mark()`. O(1) each.
-    pub fn undo_to(mut self, snap: Mark):
-        while log.len > snap.at:
-            let (y, x, old) = log.pop()!
-            if y != x:
-                sz[x] -= sz[y]
-                up[y] = y
-                parts += 1
-            val[x] = old
+    pub fn undo_to(mut self, snap: Mark) = todo
 
 /// Union-find that knows, for two positions of one set, whether they are on the same side
 /// or on opposite sides: two-colouring, parity constraints, `x[a] xor x[b] == d`.
@@ -236,64 +129,34 @@ pub struct ParityDsu<V>:
     conflicts: 0..=2_000_000_000
 
     /// Every position starts alone. O(n).
-    pub fn new() -> ParityDsu<V>:
-        ParityDsu([V] v => v, [V] v => 1, [V] v => false, [], 0)
+    pub fn new() -> ParityDsu<V> = todo
 
     /// The representative of `v`'s set and whether `v` is on the other side from it.
-    pub fn find(self, v: V) -> (root: V, flip: Bool):
-        var (x, side) = (v, false)
-        while up[x] != x:
-            side = side != flip[x]
-            x = up[x]
-        (root: x, flip: side)
+    pub fn find(self, v: V) -> (root: V, flip: Bool) = todo
 
     /// Record that `a` and `b` are on opposite sides (`differ: false`: the same side).
     /// `false` if that contradicts what is already known; the contradiction is counted, so
     /// `consistent` turns false until it is undone. An edge of a graph is `unite(u, v)`.
-    pub fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool:
-        let (ra, sa) = self.find(a)
-        let (rb, sb) = self.find(b)
-        if ra == rb:
-            if (sa != sb) == differ: return true
-            conflicts += 1
-            log.push((ra, false))
-            return false
-        let (big, small) = if sz[ra] >= sz[rb]: (ra, rb) else: (rb, ra)
-        up[small] = big
-        flip[small] = (sa != sb) != differ
-        sz[big] += sz[small]
-        log.push((small, true))
-        true
+    pub fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool = todo
 
     /// Are `a` and `b` on opposite sides? `none` when nothing relates them yet.
-    pub fn diff(self, a: V, b: V) -> ?Bool:
-        let (ra, sa) = self.find(a)
-        let (rb, sb) = self.find(b)
-        if ra != rb: none else: sa != sb
+    pub fn diff(self, a: V, b: V) -> ?Bool = todo
 
     /// Whether `a` and `b` are in the same component. O(log n).
-    pub fn same(self, a: V, b: V) -> Bool = self.find(a).root == self.find(b).root
+    pub fn same(self, a: V, b: V) -> Bool = todo
 
     /// The number of positions in `v`'s set.
-    pub fn size(self, v: V) -> Int = sz[self.find(v).root]
+    pub fn size(self, v: V) -> Int = todo
 
     /// Has every `unite` so far agreed with the ones before it? For a graph: is it
     /// two-colourable?
-    pub @get fn consistent(self) -> Bool = conflicts == 0
+    pub @get fn consistent(self) -> Bool = todo
 
     /// The present, to return to with `undo_to`. O(1).
-    pub fn mark(self) -> Mark = Mark(log.len)
+    pub fn mark(self) -> Mark = todo
 
     /// Take back every `unite` since `snap = mark()`, contradictions included.
-    pub fn undo_to(mut self, snap: Mark):
-        while log.len > snap.at:
-            let (y, joined) = log.pop()!
-            if not joined:
-                conflicts -= 1
-            else:
-                sz[up[y]] -= sz[y]
-                up[y] = y
-                flip[y] = false
+    pub fn undo_to(mut self, snap: Mark) = todo
 
 /// Weighted (potential / difference-constraint) union-find over domain `V` with `Mark` rollback.
 /// Maintains constraints of the form `val[b] - val[a] == w`. All operations are O(log n);
@@ -307,73 +170,34 @@ pub struct PotentialDsu<V>:
     log: List<(V, Bool)>
 
     /// Every position starts in its own set with potential 0, optionally combined by `op:` (default `+`). O(n).
-    pub fn new(op: ?((Int, Int) -> Int) = none) -> PotentialDsu<V>:
-        PotentialDsu([V] v => v, [V] _ => 1, [V] _ => 0, V.K, 0, [])
+    pub fn new(op: ?((Int, Int) -> Int) = none) -> PotentialDsu<V> = todo
 
     /// Root of `v`'s set and `val[v] - val[root]`. O(log n).
-    pub fn find(self, v: V) -> (root: V, offset: Int):
-        var x = v
-        var d = 0
-        while up[x] != x:
-            d += pot[x]
-            x = up[x]
-        (root: x, offset: d)
+    pub fn find(self, v: V) -> (root: V, offset: Int) = todo
 
     /// Enforce `val[b] - val[a] == w`. Returns `false` and increments conflicts on contradiction. O(log n).
-    pub fn unite(mut self, a: V, b: V, w: Int) -> Bool:
-        let (ra, da) = self.find(a)
-        let (rb, db) = self.find(b)
-        if ra == rb:
-            if db - da == w: return true
-            conflicts += 1
-            log.push((ra, false))
-            return false
-        if sz[ra] >= sz[rb]:
-            up[rb] = ra
-            pot[rb] = da + w - db
-            sz[ra] += sz[rb]
-            parts -= 1
-            log.push((rb, true))
-        else:
-            up[ra] = rb
-            pot[ra] = db - w - da
-            sz[rb] += sz[ra]
-            parts -= 1
-            log.push((ra, true))
-        true
+    pub fn unite(mut self, a: V, b: V, w: Int) -> Bool = todo
 
     /// `val[b] - val[a]` if `a` and `b` are in the same component, else `none`. O(log n).
-    pub fn diff(self, a: V, b: V) -> ?Int:
-        let (ra, da) = self.find(a)
-        let (rb, db) = self.find(b)
-        if ra != rb: none else: db - da
+    pub fn diff(self, a: V, b: V) -> ?Int = todo
 
     /// Whether `a` and `b` are in the same component. O(log n).
-    pub fn same(self, a: V, b: V) -> Bool = self.find(a).root == self.find(b).root
+    pub fn same(self, a: V, b: V) -> Bool = todo
 
     /// Number of vertices in `v`'s component. O(log n).
-    pub fn size(self, v: V) -> Int = sz[self.find(v).root]
+    pub fn size(self, v: V) -> Int = todo
 
     /// Number of connected components. O(1).
-    pub @get fn components(self) -> Int = parts
+    pub @get fn components(self) -> Int = todo
 
     /// Whether no contradicting constraints are currently active. O(1).
-    pub @get fn consistent(self) -> Bool = conflicts == 0
+    pub @get fn consistent(self) -> Bool = todo
 
     /// Snapshot the current state for `undo_to`. O(1).
-    pub fn mark(self) -> Mark = Mark(log.len)
+    pub fn mark(self) -> Mark = todo
 
     /// Revert every `unite` since `snap = mark()`. O(1) per undone step.
-    pub fn undo_to(mut self, snap: Mark):
-        while log.len > snap.at:
-            let (y, joined) = log.pop()!
-            if not joined:
-                conflicts -= 1
-            else:
-                sz[up[y]] -= sz[y]
-                up[y] = y
-                pot[y] = 0
-                parts += 1
+    pub fn undo_to(mut self, snap: Mark) = todo
 
 /// Domain-indexed array `[D]T` with `Mark` rollback.
 /// `get`, `set`, and `mark` are O(1); `undo_to` is O(1) per undone write.
@@ -382,24 +206,19 @@ pub struct RollbackArray<D, T>:
     log: List<(D, T)>
 
     /// Build a rollback array initialized by `init(i)` for each `i` in `D`. O(D.K).
-    pub fn new(init: D -> T) -> RollbackArray<D, T> = RollbackArray([D] i => init(i), [])
+    pub fn new(init: D -> T) -> RollbackArray<D, T> = todo
 
     /// Read the current value at `i`. O(1).
-    pub fn get(self, i: D) -> T = data[i]
+    pub fn get(self, i: D) -> T = todo
 
     /// Set `i` to `val`, recording the previous value for rollback. O(1).
-    pub fn set(mut self, i: D, val: T):
-        log.push((i, data[i]))
-        data[i] = val
+    pub fn set(mut self, i: D, val: T) = todo
 
     /// Snapshot the current state for `undo_to`. O(1).
-    pub fn mark(self) -> Mark = Mark(log.len)
+    pub fn mark(self) -> Mark = todo
 
     /// Revert every `set` since `snap = mark()`. O(1) per undone write.
-    pub fn undo_to(mut self, snap: Mark):
-        while log.len > snap.at:
-            let (i, old) = log.pop()!
-            data[i] = old
+    pub fn undo_to(mut self, snap: Mark) = todo
 
 /// Group-valued potential / weighted DSU over domain `V` using operation values `(op, inv, id)` (W10).
 /// Maintains `pot(b) = op(pot(a), w)` with O(alpha(n)) amortized ops (O(log n) after `mark()`).
@@ -463,217 +282,31 @@ pub struct PersistentDsu<V>:
     pub fn reserve(mut self, nodes: Int) = todo
 
 @test
-fn potential_dsu_and_rollback_array():
-    domain V = 0..6
-    var d = PotentialDsu<V>()
-    assert d.components == 6 and d.consistent
-    assert d.unite(V(0), V(1), 5)
-    assert d.unite(V(1), V(2), -2)
-    assert d.diff(V(0), V(2)) == 3 and d.diff(V(2), V(0)) == -3
-    assert d.diff(V(0), V(3)) == none
-    let snap = d.mark()
-    assert not d.unite(V(0), V(2), 4)
-    assert not d.consistent
-    assert d.unite(V(2), V(3), 10)
-    assert d.diff(V(0), V(3)) == 13 and d.components == 3
-    d.undo_to(snap)
-    assert d.consistent and d.components == 4 and d.diff(V(0), V(3)) == none
-    assert d.diff(V(0), V(2)) == 3
-
-    var ra = RollbackArray<V, Int>(v => v.to_idx)
-    let m0 = ra.mark()
-    ra.set(V(1), 99)
-    ra.set(V(1), 42)
-    assert ra.get(V(1)) == 42 and ra.get(V(2)) == 2
-    ra.undo_to(m0)
-    assert ra.get(V(1)) == 1
+fn potential_dsu_and_rollback_array() = todo
 
 @test
-fn unite_and_find():
-    domain V = 1..=6
-    var d = Dsu<V>()
-    assert d.components == 6
-    assert d.unite(V(1), V(2))
-    assert d.unite(V(3), V(4))
-    assert not d.unite(V(2), V(1))
-    assert d.same(V(1), V(2)) and not d.same(V(1), V(3))
-    assert d.unite(V(2), V(4))
-    assert d.size(V(3)) == 4 and d.size(V(5)) == 1
-    assert d.components == 3
+fn unite_and_find() = todo
 
 @test
-fn agrees_with_labels_on_random_unions():
-    domain V = 0..12
-    var d = Dsu<V>()
-    var label = [V] v => v.to_idx
-    for _ in 0..40:
-        let a = V.nth(rand(0, 11))
-        let b = V.nth(rand(0, 11))
-        let merged = label[a] != label[b]
-        assert d.unite(a, b) == merged
-        let (la, lb) = (label[a], label[b])
-        for v in V:
-            if label[v] == lb: label[v] = la
-        for v in V:
-            assert d.same(a, v) == (label[v] == la)
+fn agrees_with_labels_on_random_unions() = todo
 
 @test
-fn undo_to_returns_to_every_mark():
-    domain V = 0..12
-    var d = Dsu<V>()
-    d.unite(V(0), V(1))
-    var snaps: List<(Mark, List<V>, Int)> = []
-    for round in 0..40:
-        if rand(0, 2) > 0 or snaps.is_empty:
-            snaps.push((d.mark(), [d.find(v) for v in V], d.components))
-            d.unite(V.nth(rand(0, 11)), V.nth(rand(0, 11)))
-        else:
-            let (snap, roots, parts) = snaps.pop()!
-            d.undo_to(snap)
-            assert [d.find(v) for v in V] == roots and d.components == parts
-            for v in V: assert d.size(v) == count(roots[u.to_idx] == roots[v.to_idx] for u in V)
-    d.undo_to(Mark(0))
-    assert d.same(V(0), V(1)) and d.components == 11
+fn undo_to_returns_to_every_mark() = todo
 
 @test
-fn groups_partitions_all_vertices_by_component():
-    domain V = 1..=7
-    var d = Dsu<V>()
-    assert d.groups().len == 7
-    assert [g.len for g in d.groups()] == [1, 1, 1, 1, 1, 1, 1]
-    d.unite(V(1), V(3))
-    d.unite(V(3), V(6))
-    let snap = d.mark()
-    d.unite(V(2), V(5))
-    d.unite(V(5), V(7))
-    let gs = d.groups()
-    assert gs.len == d.components and gs.len == 3
-    var flat: List<V> = []
-    for g in gs:
-        assert not g.is_empty
-        for v in g:
-            assert d.same(v, g[0])
-            flat.push(v)
-        assert g.len == d.size(g[0])
-    assert sorted(flat) == [v for v in V]
-    d.undo_to(snap)
-    assert d.groups().len == 5 and d.components == 5
-    for v in V: d.unite(V(1), v)
-    assert d.groups() == [[v for v in V]]
+fn groups_partitions_all_vertices_by_component() = todo
 
 @test
-fn merge_says_which_root_stayed():
-    domain V = 0..6
-    var d = Dsu<V>()
-    var total = [V] v => v.idx
-    for (a, b) in [(0, 1), (2, 3), (1, 3), (0, 2), (4, 5)]:
-        if let (kept, merged) = d.merge(V(a), V(b)):
-            assert d.find(kept) == kept and d.find(merged) == kept
-            total[kept] += total[merged]
-        else:
-            assert (a, b) == (0, 2)
-    assert total[d.find(V(0))] == 6 and total[d.find(V(5))] == 9 and d.components == 2
+fn merge_says_which_root_stayed() = todo
 
 @test
-fn values_follow_merges_and_roll_back():
-    domain V = 0..10
-    for _ in 0..30:
-        var d = DsuOf<V, Int>(v => v.idx, (a, b) => a + b * 100 % 1000)
-        var label = [V] v => v.idx
-        var value = [V] v => v.idx
-        var snaps: List<(Mark, List<Int>, List<Int>)> = []
-        for _ in 0..30:
-            let roll = rand(0, 3)
-            if roll == 0:
-                snaps.push((d.mark(), [label[v] for v in V], [value[v] for v in V]))
-            elif roll == 1 and not snaps.is_empty:
-                let (m, ls, vs) = snaps.pop()!
-                d.undo_to(m)
-                for v in V:
-                    label[v] = ls[v.idx]
-                    value[v] = vs[v.idx]
-            elif roll == 2:
-                let (v, x) = (V.nth(rand(0, 9)), rand(0, 50))
-                d.set(v, x)
-                for u in V:
-                    if label[u] == label[v]: value[u] = x
-            else:
-                let (a, b) = (V.nth(rand(0, 9)), V.nth(rand(0, 9)))
-                let (la, lb) = (label[a], label[b])
-                let fresh = la != lb
-                let joined = value[a] + value[b] * 100 % 1000
-                assert d.unite(a, b) == fresh
-                if fresh:
-                    for v in V:
-                        if label[v] == lb or label[v] == la:
-                            label[v] = la
-                            value[v] = joined
-            for v in V:
-                assert d.get(v) == value[v]
-                assert d.size(v) == count(label[u] == label[v] for u in V)
-            assert d.components == count(label[v] == v.idx for v in V)
+fn values_follow_merges_and_roll_back() = todo
 
 @test
-fn a_directional_join_keeps_the_second_value():
-    domain V = 1..=4
-    var d = DsuOf<V, ?V>(v => none, (_, b) => b)
-    d.set(V(2), some(V(1)))
-    assert d.unite(V(3), V(2)) and d.get(V(3)) == some(V(1))
-    let snap = d.mark()
-    d.set(V(4), some(V(4)))
-    if let (kept, merged) = d.merge(V(4), V(3)):
-        assert d.find(merged) == kept
-    assert d.get(V(2)) == some(V(1)) and d.components == 2
-    d.undo_to(snap)
-    assert d.get(V(4)) == none and d.get(V(2)) == some(V(1)) and d.components == 3
+fn a_directional_join_keeps_the_second_value() = todo
 
 @test
-fn parity_matches_a_brute_colouring_and_rolls_back():
-    domain V = 0..7
-    for _ in 0..40:
-        var d = ParityDsu<V>()
-        var cons: List<(V, V, Bool)> = []
-        var snaps: List<(Mark, Int)> = []
-        for _ in 0..12:
-            if rand(0, 3) == 0 and not snaps.is_empty:
-                let (m, k) = snaps.pop()!
-                d.undo_to(m)
-                cons.truncate(k)
-            else:
-                if rand(0, 2) == 0: snaps.push((d.mark(), cons.len))
-                let c = (V.nth(rand(0, 6)), V.nth(rand(0, 6)), rand(0, 1) == 1)
-                let before = d.consistent
-                let agreed = d.unite(c.0, c.1, differ: c.2)
-                cons.push(c)
-                assert not agreed or d.consistent == before
-            let fits = [
-                mask for mask in 0..128 if all(
-                    ((mask >> a.idx) % 2 != (mask >> b.idx) % 2) == x for (a, b, x) in cons
-                )
-            ]
-            assert d.consistent != fits.is_empty
-            if d.consistent:
-                for a in V:
-                    for b in V:
-                        let sides = [(f >> a.idx) % 2 != (f >> b.idx) % 2 for f in fits]
-                        let want = if all(x == sides[0] for x in sides): some(sides[0]) else: none
-                        assert d.diff(a, b) == want
+fn parity_matches_a_brute_colouring_and_rolls_back() = todo
 
 @test
-fn roots_and_values_yield_one_entry_per_component():
-    domain V = 0..6
-    var d = Dsu<V>()
-    let _ = d.unite(V(0), V(2))
-    let _ = d.unite(V(2), V(4))
-    let _ = d.unite(V(1), V(3))
-    let rs = [r for r in d.roots()]
-    assert rs.len == 3
-    for r in rs: assert d.find(r) == r
-    var w = DsuOf<V, Int>(v => v.ord + 1, +)
-    let _ = w.unite(V(0), V(2))
-    let _ = w.unite(V(2), V(4))
-    let _ = w.unite(V(1), V(3))
-    assert [r for r in w.roots()].len == 3
-    var vs = [x for x in w.values()]
-    vs.sort()
-    assert vs == [6, 6, 9]
+fn roots_and_values_yield_one_entry_per_component() = todo
