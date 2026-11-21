@@ -22,12 +22,10 @@ struct Shut(floor: Bool, wall: Bool)
 fn odds(shut: Bool, open: Int) -> Int = if shut: 1 else: open
 
 // stops[i, j]: the share of corner choices whose car stops in cell (i, j).
-pub fn stops(rows: Int, cols: Int) -> [0..rows, 0..cols]Z:
-    domain I = 0..rows
-    domain J = 0..cols
+pub fn stops<domain I, domain J>() -> [I, J]Z:
     var ways: [J][Shut]Z = 0
     ways[J.first] = [s => odds(s.floor, 3) * odds(s.wall, 3)]
-    let weight: [0..rows + cols]Z = [d => (Z(1) / 4) ** (2 * d + 3)]
+    let weight: [0..I.len + J.len]Z = [d => (Z(1) / 4) ** (2 * d + 3)]
     var out: [I, J]Z = 0
     for i in I:
         var side: [Shut]Z = 0
@@ -57,5 +55,7 @@ pub fn stops(rows: Int, cols: Int) -> [0..rows, 0..cols]Z:
     out
 
 let q: [0..read(1..=10_000)](n: 1..=5000, m: 1..=5000) = read()
-let inside = stops(max(q.n), max(q.m)).prefix_sums()
+domain I = 0..max(q.n)
+domain J = 0..max(q.m)
+let inside = stops<I, J>().prefix_sums()
 for (n, m) in q: print(Z(4) ** ((n + 1) * (m + 1)) * inside[..n, ..m])
