@@ -198,7 +198,11 @@ impl Ty {
                     index: bi,
                     elem: be,
                 },
-            ) => ai.len() == bi.len() && ai.iter().zip(bi).all(|(a, b)| a.fits_in(b, number)) && ae.fits_in(be, number),
+            ) => {
+                ai.len() == bi.len()
+                    && ai.iter().zip(bi).all(|(a, b)| a.fits_in(b, number))
+                    && ae.fits_in(be, number)
+            }
             (Ty::Tuple(a), Ty::Tuple(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits_in(b, number))
             }
@@ -227,9 +231,19 @@ impl Ty {
                 (an == bn || (an == "Map" && bn == "HashMap"))
                     && (aa.is_empty()
                         || ba.is_empty()
-                        || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits_in(b, number))))
+                        || (aa.len() == ba.len()
+                            && aa.iter().zip(ba).all(|(a, b)| a.fits_in(b, number))))
             }
-            (Ty::Fn { params: ap, ret: ar }, Ty::Fn { params: bp, ret: br }) => {
+            (
+                Ty::Fn {
+                    params: ap,
+                    ret: ar,
+                },
+                Ty::Fn {
+                    params: bp,
+                    ret: br,
+                },
+            ) => {
                 if ap.iter().any(|p| p.has_default || p.variadic)
                     || bp.iter().any(|p| p.has_default || p.variadic)
                 {
@@ -253,18 +267,20 @@ impl Ty {
             // The boundaries of a plain `0..n` index are plain `Int`s:
             // `prefix(a).prefix(k)` on a `[0..n]T`.
             (a, Ty::Named { name, args }) | (Ty::Named { name, args }, a)
-                if name == "Cut" && a.is_int() && matches!(args.as_slice(), [arg] if arg.is_int()) =>
+                if name == "Cut"
+                    && a.is_int()
+                    && matches!(args.as_slice(), [arg] if arg.is_int()) =>
             {
                 true
             }
             // A string is a list of its characters (decision 9: `Str` is
             // `[domain S]Char`, one flat byte array).
-            (Ty::Str, Ty::Named { name, args }) if name == "List" => {
-                args.first().is_none_or(|elem| Ty::Char.fits_in(elem, number))
-            }
-            (Ty::Named { name, args }, Ty::Str) if name == "List" => {
-                args.first().is_none_or(|elem| elem.fits_in(&Ty::Char, number))
-            }
+            (Ty::Str, Ty::Named { name, args }) if name == "List" => args
+                .first()
+                .is_none_or(|elem| Ty::Char.fits_in(elem, number)),
+            (Ty::Named { name, args }, Ty::Str) if name == "List" => args
+                .first()
+                .is_none_or(|elem| elem.fits_in(&Ty::Char, number)),
             // An array is read where a list is asked for: `running_sum(a)`.
             (Ty::Array { elem, .. }, Ty::Named { name, args }) if name == "List" => {
                 args.first().is_none_or(|want| elem.fits_in(want, number))
@@ -520,8 +536,15 @@ impl Ty {
                 }
             }
             // A list is an array over its own positions.
-            (Ty::Array { index, elem }, Ty::Named { name, args: got_args })
-                if name == "List" && got_args.len() == 1 && matches!(index.as_slice(), [Ty::Param(_)]) =>
+            (
+                Ty::Array { index, elem },
+                Ty::Named {
+                    name,
+                    args: got_args,
+                },
+            ) if name == "List"
+                && got_args.len() == 1
+                && matches!(index.as_slice(), [Ty::Param(_)]) =>
             {
                 index[0].unify(&Ty::list_index(), bindings);
                 elem.unify(&got_args[0], bindings);
@@ -897,9 +920,8 @@ mod tests {
         };
         let opt = |t: Ty| Ty::Optional(Box::new(t));
         let tup = |xs: Vec<Ty>| Ty::Tuple(xs);
-        let rec = |xs: Vec<(&str, Ty)>| {
-            Ty::Record(xs.into_iter().map(|(k, v)| (k.into(), v)).collect())
-        };
+        let rec =
+            |xs: Vec<(&str, Ty)>| Ty::Record(xs.into_iter().map(|(k, v)| (k.into(), v)).collect());
         let named = |n: &str, args: Vec<Ty>| Ty::Named {
             name: n.into(),
             args,
@@ -911,7 +933,10 @@ mod tests {
             opt(arr(p("V"), tup(vec![opt(p("A")), p("V")]))),
             named("Pair", vec![opt(p("V")), arr(p("V"), p("A"))]),
             rec(vec![("a", opt(p("A"))), ("b", arr(p("V"), opt(p("A"))))]),
-            tup(vec![named("List", vec![opt(p("V"))]), rec(vec![("x", p("A"))])]),
+            tup(vec![
+                named("List", vec![opt(p("V"))]),
+                rec(vec![("x", p("A"))]),
+            ]),
         ];
         let renamings = [
             vec![("V", p("S")), ("A", p("M"))],

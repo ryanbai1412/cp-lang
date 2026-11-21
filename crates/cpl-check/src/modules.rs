@@ -77,6 +77,45 @@ pub fn bundled_std_modules() -> &'static [(&'static str, &'static str)] {
     BUNDLED_STD
 }
 
+/// The modules of the standard library programs are checked against: the
+/// folder `$CPL_STD` names when it is set (the spec's stubs), else the one
+/// built in. Read once.
+pub fn active_std_modules() -> &'static [(&'static str, &'static str)] {
+    static ACTIVE: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
+        std::sync::OnceLock::new();
+    ACTIVE.get_or_init(|| {
+        let Some(root) = std::env::var_os("CPL_STD").map(PathBuf::from) else {
+            return BUNDLED_STD.to_vec();
+        };
+        let mut found = Vec::new();
+        let mut stack = vec![root.clone()];
+        while let Some(dir) = stack.pop() {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else if path.extension().is_some_and(|e| e == "cp") {
+                    let (Ok(rel), Ok(text)) =
+                        (path.strip_prefix(&root), std::fs::read_to_string(&path))
+                    else {
+                        continue;
+                    };
+                    let name = rel.with_extension("").to_string_lossy().replace('\\', "/");
+                    found.push((
+                        &*Box::leak(name.into_boxed_str()),
+                        &*Box::leak(text.into_boxed_str()),
+                    ));
+                }
+            }
+        }
+        found.sort();
+        found
+    })
+}
+
 /// Folders that may hold the standard library, most specific first:
 /// `$CPL_STD`, a `stdlib/` above the importing file (a checkout of the
 /// compiler), and `stdlib/` next to or above the `cpl` binary.
@@ -200,6 +239,9 @@ mod tests {
         let module = ["lib", "math", "poly"].map(String::from);
         let loaded = FsLoader.load(&from.to_string_lossy(), &module);
         std::fs::remove_dir_all(&root).unwrap();
-        assert_eq!(loaded.map(|(_, text)| text).as_deref(), Some("fn two() -> Int: 2\n"));
+        assert_eq!(
+            loaded.map(|(_, text)| text).as_deref(),
+            Some("fn two() -> Int: 2\n")
+        );
     }
 }

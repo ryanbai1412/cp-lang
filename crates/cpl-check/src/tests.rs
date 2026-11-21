@@ -1692,7 +1692,10 @@ fn the_stdlib_design_names_every_public_name() {
         .map(|(name, _)| *name)
         .filter(|name| !words.contains(name))
         .collect();
-    assert!(missing.is_empty(), "plan/STDLIB.md does not mention {missing:?}");
+    assert!(
+        missing.is_empty(),
+        "plan/STDLIB.md does not mention {missing:?}"
+    );
 }
 
 /// `@memo` on a fn that neither back end keeps a table for is an error,
@@ -1703,7 +1706,11 @@ fn memo_on_a_fn_it_cannot_remember_is_reported() {
         let d = one(src);
         assert_eq!(d.code.0, "E0311", "{d:?}");
         // The decorator is what to change.
-        assert_eq!(&src[d.span.start as usize..d.span.end as usize], "@memo", "{d:?}");
+        assert_eq!(
+            &src[d.span.start as usize..d.span.end as usize],
+            "@memo",
+            "{d:?}"
+        );
         assert!(d.help.is_some(), "{d:?}");
         d.message
     };
@@ -1724,7 +1731,11 @@ fn memo_on_a_fn_it_cannot_remember_is_reported() {
         "`@memo` can't remember the generic fn `same`"
     );
     // No value: written `-> ()`, a body that only acts, a tail `print`.
-    for body in ["fn show(x: Int) -> ():\n    print(x)\n", "fn show(x: Int):\n    var t = x\n    t += 1\n", "fn show(x: Int):\n    print(x)\n"] {
+    for body in [
+        "fn show(x: Int) -> ():\n    print(x)\n",
+        "fn show(x: Int):\n    var t = x\n    t += 1\n",
+        "fn show(x: Int):\n    print(x)\n",
+    ] {
         assert_eq!(
             memo(&format!("@memo\n{body}")),
             "`@memo` has nothing to remember: `show` gives no value"
@@ -1756,7 +1767,9 @@ fn memo_on_a_fn_with_a_value_and_plain_arguments_is_fine() {
 #[test]
 fn out_on_a_table_that_holds_no_lists_is_reported() {
     let rest = "let n = 3\ndomain V = 0..n\n";
-    let d = one(&format!("{rest}let a: [V]Int = [V] v => 0\nprint(a.out(V(1)))\n"));
+    let d = one(&format!(
+        "{rest}let a: [V]Int = [V] v => 0\nprint(a.out(V(1)))\n"
+    ));
     assert_eq!(d.code.0, "E0203", "{d:?}");
     assert_eq!(d.help.as_deref(), Some("index it: `a[v]`"));
     let ok = format!("{rest}var adj: [V]List<V> = [V] v => []\nprint(adj.out(V(0)).len)\n");
@@ -1767,7 +1780,8 @@ fn out_on_a_table_that_holds_no_lists_is_reported() {
 /// checked; one whose test waits for a type argument still is.
 #[test]
 fn the_untaken_branch_of_an_if_const_is_not_checked() {
-    let skipped = "const FAST = false\nif const FAST:\n    print(no_such_name)\nelse:\n    print(1)\n";
+    let skipped =
+        "const FAST = false\nif const FAST:\n    print(no_such_name)\nelse:\n    print(1)\n";
     assert!(codes(skipped).is_empty(), "{:?}", check(skipped));
     let picked = "if const 1 < 2:\n    print(1)\nelse:\n    print(no_such_name)\n";
     assert!(codes(picked).is_empty(), "{:?}", check(picked));
@@ -1801,7 +1815,11 @@ fn a_match_on_plain_variants_needs_an_arm_for_each() {
     assert_eq!(d.message, "this `match` has no arm for `B`");
     let d = one(&with("        R if true: 1\n        G | B: 2\n"));
     assert_eq!(d.message, "this `match` has no arm for `R`");
-    for arms in ["        R: 1\n        G | B: 2\n", "        R: 1\n        _: 2\n", "        R: 1\n        other: 2\n"] {
+    for arms in [
+        "        R: 1\n        G | B: 2\n",
+        "        R: 1\n        _: 2\n",
+        "        R: 1\n        other: 2\n",
+    ] {
         assert!(check(&with(arms)).is_empty(), "{:?}", check(&with(arms)));
     }
 }
@@ -1839,20 +1857,28 @@ fn a_range_written_as_a_structs_type_argument_says_to_name_it() {
         messages(&diags).contains(&"`Dsu` takes a domain by name, and `0..n` is a range"),
         "{diags:?}"
     );
-    assert_eq!(check("let n = 4\ndomain V = 0..n\nvar d = Dsu<V>()\n"), vec![]);
+    assert_eq!(
+        check("let n = 4\ndomain V = 0..n\nvar d = Dsu<V>()\n"),
+        vec![]
+    );
 }
 
 #[test]
 fn a_mut_self_method_needs_a_receiver_that_can_change() {
     let decl = "struct C:\n    n: Int\n    fn bump(mut self):\n        n += 1\n";
     assert_eq!(check(&format!("{decl}var c = C(0)\nc.bump()\n")), vec![]);
-    assert_eq!(check(&format!("{decl}fn f(mut c: C):\n    c.bump()\n")), vec![]);
+    assert_eq!(
+        check(&format!("{decl}fn f(mut c: C):\n    c.bump()\n")),
+        vec![]
+    );
     assert_eq!(
         messages(&check(&format!("{decl}let c = C(0)\nc.bump()\n"))),
         ["`c` is a `let`, so it can't be changed by `bump`"]
     );
     assert_eq!(
-        messages(&check(&format!("{decl}fn f():\n    let c = C(0)\n    c.bump()\n"))),
+        messages(&check(&format!(
+            "{decl}fn f():\n    let c = C(0)\n    c.bump()\n"
+        ))),
         ["`c` is a `let`, so it can't be changed by `bump`"]
     );
     assert_eq!(
@@ -1865,12 +1891,40 @@ fn a_mut_self_method_needs_a_receiver_that_can_change() {
 fn items_gives_each_element_with_its_index() {
     let src = "domain I = 0..3\nlet a: [I]Int = [4, 5, 6]\nlet xs = [true, false]\n";
     // A position of `I` for `[I]T`, an `Int` for a list.
-    assert_eq!(codes(&format!("{src}for (i, x) in a.items: print(a[i] + x)\n")), Vec::<&str>::new());
-    assert_eq!(codes(&format!("{src}for (i, x) in a.items:\n    let j: Int = i\n")), ["E0301"]);
-    assert_eq!(codes(&format!("{src}for (i, x) in a.items:\n    let s: Str = x\n")), ["E0302"]);
-    assert_eq!(codes(&format!("{src}for (i, x) in xs.items:\n    let n: Int = x\n")), ["E0302"]);
-    assert_eq!(codes(&format!("{src}let kept = xs.items\nlet k: Int = kept[0].0\n")), Vec::<&str>::new());
-    assert_eq!(codes(&format!("{src}let kept = xs.items\nlet k: Int = kept[0].1\n")), ["E0302"]);
+    assert_eq!(
+        codes(&format!("{src}for (i, x) in a.items: print(a[i] + x)\n")),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes(&format!(
+            "{src}for (i, x) in a.items:\n    let j: Int = i\n"
+        )),
+        ["E0301"]
+    );
+    assert_eq!(
+        codes(&format!(
+            "{src}for (i, x) in a.items:\n    let s: Str = x\n"
+        )),
+        ["E0302"]
+    );
+    assert_eq!(
+        codes(&format!(
+            "{src}for (i, x) in xs.items:\n    let n: Int = x\n"
+        )),
+        ["E0302"]
+    );
+    assert_eq!(
+        codes(&format!(
+            "{src}let kept = xs.items\nlet k: Int = kept[0].0\n"
+        )),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes(&format!(
+            "{src}let kept = xs.items\nlet k: Int = kept[0].1\n"
+        )),
+        ["E0302"]
+    );
 }
 
 #[test]
@@ -1887,9 +1941,24 @@ fn items_of_a_str_a_map_and_a_grid() {
         "for ((r, c), x) in g.items:\n    let row: R = r\n    let n: Int = c + x\n",
     );
     assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new());
-    assert_eq!(codes(&format!("{src}for (i, c) in s.items:\n    let n: Int = c\n")), ["E0302"]);
-    assert_eq!(codes(&format!("{src}for (k, v) in m.items:\n    let n: Int = k\n")), ["E0302"]);
-    assert_eq!(codes(&format!("{src}for ((r, c), x) in g.items:\n    let n: Int = r\n")), ["E0301"]);
+    assert_eq!(
+        codes(&format!(
+            "{src}for (i, c) in s.items:\n    let n: Int = c\n"
+        )),
+        ["E0302"]
+    );
+    assert_eq!(
+        codes(&format!(
+            "{src}for (k, v) in m.items:\n    let n: Int = k\n"
+        )),
+        ["E0302"]
+    );
+    assert_eq!(
+        codes(&format!(
+            "{src}for ((r, c), x) in g.items:\n    let n: Int = r\n"
+        )),
+        ["E0301"]
+    );
 }
 
 #[test]
@@ -1899,19 +1968,39 @@ fn a_row_takes_the_larger_cells_of_a_row_of_its_own_type() {
         "var a: [V]Int = 0\nvar b: [V]Int = 1\nvar w: [W]Int = 0\nvar s: [V]Str = \"\"\n",
         "var xs = [1, 2]\nvar best = 0\n",
     );
-    for ok in ["a max= b\n", "if a min= b: print(a)\n", "xs max= [3, 0]\n", "best max= 4\n", "print(best min= 2)\n"] {
+    for ok in [
+        "a max= b\n",
+        "if a min= b: print(a)\n",
+        "xs max= [3, 0]\n",
+        "best max= 4\n",
+        "print(best min= 2)\n",
+    ] {
         assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new(), "{ok}");
     }
-    for bad in ["a max= w\n", "print(a min= s)\n", "a max= 3\n", "let hit = xs max= [\"a\"]\n"] {
+    for bad in [
+        "a max= w\n",
+        "print(a min= s)\n",
+        "a max= 3\n",
+        "let hit = xs max= [\"a\"]\n",
+    ] {
         assert_eq!(codes(&format!("{src}{bad}")), ["E0302"], "{bad}");
     }
 }
 
 #[test]
 fn a_filled_list_holds_the_element_type_asked_for() {
-    let src = "type Z = Mod<998244353>\nfn zeros(k: Int) -> List<Z>:\n    return List.filled(k, 0)\n";
-    assert_eq!(codes(&format!("{src}let a: List<Z> = List.filled(3, 0)\nlet z: Z = a[0]\n")), Vec::<&str>::new());
-    assert_eq!(codes(&format!("{src}let a: List<Z> = List.filled(3, \"x\")\n")), ["E0302"]);
+    let src =
+        "type Z = Mod<998244353>\nfn zeros(k: Int) -> List<Z>:\n    return List.filled(k, 0)\n";
+    assert_eq!(
+        codes(&format!(
+            "{src}let a: List<Z> = List.filled(3, 0)\nlet z: Z = a[0]\n"
+        )),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes(&format!("{src}let a: List<Z> = List.filled(3, \"x\")\n")),
+        ["E0302"]
+    );
 }
 
 #[test]
@@ -1937,7 +2026,12 @@ fn a_row_of_a_grid_takes_the_larger_cells_of_another_row() {
     ] {
         assert_eq!(codes(&format!("{src}{ok}")), Vec::<&str>::new(), "{ok}");
     }
-    for bad in ["g[k, ..] max= s[v, ..]\n", "print(g[k, ..] min= s[v, ..])\n", "g[k, ..] max= \"x\"\n", "row[..] min= 2.5\n"] {
+    for bad in [
+        "g[k, ..] max= s[v, ..]\n",
+        "print(g[k, ..] min= s[v, ..])\n",
+        "g[k, ..] max= \"x\"\n",
+        "row[..] min= 2.5\n",
+    ] {
         assert_eq!(codes(&format!("{src}{bad}")), ["E0302"], "{bad}");
     }
 }
@@ -1961,11 +2055,25 @@ fn a_list_written_out_beside_a_plus_holds_the_element_type_asked_for() {
 #[test]
 fn a_sort_key_that_reaches_its_own_list_is_refused() {
     const FNS: &str = "var xs = [3, 1, 2]\nvar n = 0\nfn grow(x: Int) -> Int:\n    xs.push(1)\n    x\nfn peek(x: Int) -> Int = x + xs.len\nfn count(x: Int) -> Int:\n    n += 1\n    x\n";
-    for call in ["xs.sort(by: grow)\n", "xs.sort(by: peek)\n", "xs.sort(by: x => xs[0] - x)\n", "xs.sort(by: x => grow(x))\n"] {
+    for call in [
+        "xs.sort(by: grow)\n",
+        "xs.sort(by: peek)\n",
+        "xs.sort(by: x => xs[0] - x)\n",
+        "xs.sort(by: x => grow(x))\n",
+    ] {
         let diags = check(&format!("{FNS}{call}"));
-        assert_eq!(diags.iter().map(|d| d.code.0).collect::<Vec<_>>(), vec!["E0602"], "{call}");
+        assert_eq!(
+            diags.iter().map(|d| d.code.0).collect::<Vec<_>>(),
+            vec!["E0602"],
+            "{call}"
+        );
     }
-    for call in ["xs.sort(by: count)\n", "xs.sort(by: x => -x)\n", "let ys = xs.sorted(by: grow)\n", "var ys = [1]\nys.sort(by: peek)\n"] {
+    for call in [
+        "xs.sort(by: count)\n",
+        "xs.sort(by: x => -x)\n",
+        "let ys = xs.sorted(by: grow)\n",
+        "var ys = [1]\nys.sort(by: peek)\n",
+    ] {
         assert_eq!(check(&format!("{FNS}{call}")), vec![], "{call}");
     }
 }
@@ -1978,9 +2086,18 @@ fn one_variable_lent_twice_to_a_call_is_refused() {
     const FNS: &str = "fn two(mut x: List<Int>, mut y: List<Int>): x.push(y.len)\nfn one(mut x: List<Int>, y: List<Int>): x.push(y.len)\nvar xs = [1]\n";
     for call in ["two(mut xs, mut xs)\n", "one(mut xs, xs)\n"] {
         let diags = check(&format!("{FNS}{call}"));
-        assert_eq!(diags.iter().map(|d| d.code.0).collect::<Vec<_>>(), vec!["E0601"], "{call}");
+        assert_eq!(
+            diags.iter().map(|d| d.code.0).collect::<Vec<_>>(),
+            vec!["E0601"],
+            "{call}"
+        );
     }
-    assert_eq!(check(&format!("{FNS}var ys = [2]\ntwo(mut xs, mut ys)\none(mut xs, ys)\n")), vec![]);
+    assert_eq!(
+        check(&format!(
+            "{FNS}var ys = [2]\ntwo(mut xs, mut ys)\none(mut xs, ys)\n"
+        )),
+        vec![]
+    );
     let closure = "domain P = 0..3\nvar m = Map<Str, P>()\nprint(m.get_or_insert_with(\"a\", () => P(m.len)))\n";
     assert_eq!(check(closure), vec![]);
 }
@@ -2052,7 +2169,11 @@ fn a_dropped_closer_inside_a_call_or_index_is_the_only_error() {
             .join(format!("../../proto/ports/ecnerwala/{port}.cp"));
         let src = std::fs::read_to_string(path).unwrap();
         assert!(src.contains(good), "{port}: {good}");
-        assert_eq!(codes(&src.replacen(good, bad, 1)), ["E0101"], "{port}: {bad}");
+        assert_eq!(
+            codes(&src.replacen(good, bad, 1)),
+            ["E0101"],
+            "{port}: {bad}"
+        );
     }
 }
 
@@ -2067,19 +2188,26 @@ fn an_unreadable_character_is_reported_where_it_is() {
 }
 #[test]
 fn fields_loops_check_each_field_and_refuse_what_has_none() {
-    let src = "struct P(x: Int, s: Str)\nlet p = P(1, \"a\")\nfor f in fields(p):\n    print(f + 1)\n";
+    let src =
+        "struct P(x: Int, s: Str)\nlet p = P(1, \"a\")\nfor f in fields(p):\n    print(f + 1)\n";
     let d = one(src);
     assert_eq!(d.code.0, "E0309", "{d:#?}");
     let d = one("for f in fields(3):\n    print(f)\n");
     assert_eq!(
         (d.code.0, d.message.as_str()),
-        ("E0302", "`fields` walks the fields of a struct or a tuple, not of a `Int`")
+        (
+            "E0302",
+            "`fields` walks the fields of a struct or a tuple, not of a `Int`"
+        )
     );
     let d = one("for f in fields((1, 2)):\n    if f > 1:\n        break\n");
     assert_eq!(d.code.0, "E0501");
     let d = one("for (a, b) in fields((1, 2), (1, 2, 3)):\n    print(a)\n");
     assert_eq!(d.code.0, "E0302");
-    assert!(codes("fn fields(x: Int) -> List<Int> = [x]\nfor f in fields(3):\n    print(f)\n").is_empty());
+    assert!(
+        codes("fn fields(x: Int) -> List<Int> = [x]\nfor f in fields(3):\n    print(f)\n")
+            .is_empty()
+    );
 }
 
 #[test]
@@ -2099,30 +2227,46 @@ fn a_recovered_name_still_reports_errors_unrelated_to_it() {
 fn a_fields_loop_over_an_enum_checks_each_variant_payload() {
     let head = "enum Op:\n    Add(Int, Int)\n    Name(Str)\n    Stop\n";
     assert!(codes(&format!("{head}for f in fields(Op.Stop):\n    print(f)\n")).is_empty());
-    let d = one(&format!("{head}for f in fields(Op.Stop):\n    print(f + 1)\n"));
+    let d = one(&format!(
+        "{head}for f in fields(Op.Stop):\n    print(f + 1)\n"
+    ));
     assert_eq!(d.code.0, "E0309", "{d:#?}");
 }
 
 #[test]
 fn a_fields_constructor_gives_each_field_a_value_of_its_type() {
     let head = "struct P(a: Int, b: Str)\nstruct Q(a: Int)\nlet p = P(1, \"x\")\n";
-    assert!(codes(&format!("{head}let a = P(read() for _ in fields(P))\nlet b = P(f for f in fields(p))\n")).is_empty());
+    assert!(codes(&format!(
+        "{head}let a = P(read() for _ in fields(P))\nlet b = P(f for f in fields(p))\n"
+    ))
+    .is_empty());
     let d = one(&format!("{head}let b = P(1 for _ in fields(P))\n"));
     assert_eq!(
         (d.code.0, d.message.as_str()),
         ("E0302", "the field `b` is a Str, but `1` is an Int")
     );
     let d = one(&format!("{head}let c = Q(f for f in fields(p))\n"));
-    assert_eq!(d.message, "`fields` here walks values of the type it builds, `Q`; this is a `P`");
+    assert_eq!(
+        d.message,
+        "`fields` here walks values of the type it builds, `Q`; this is a `P`"
+    );
     let d = one(&format!("{head}let c = P(f for f in fields(P))\n"));
-    assert_eq!(d.help.as_deref(), Some("write `_`, as in `P(read() for _ in fields(P))`"));
+    assert_eq!(
+        d.help.as_deref(),
+        Some("write `_`, as in `P(read() for _ in fields(P))`")
+    );
 }
 
 #[test]
 fn a_lazy_parameter_takes_the_expression_its_lambda_gives_back() {
     let head = "fn or_else<T>(a: ?T, lazy d: () -> T) -> T:\n    if let v = a:\n        return v\n    d()\n";
-    assert!(codes(&format!("{head}let x: ?Int = 3\nprint(or_else(x, 4), or_else(x, d: 5), or_else(x, () => 6))\n")).is_empty());
-    let d = one(&format!("{head}let x: ?Int = 3\nprint(or_else(x, \"a\"))\n"));
+    assert!(codes(&format!(
+        "{head}let x: ?Int = 3\nprint(or_else(x, 4), or_else(x, d: 5), or_else(x, () => 6))\n"
+    ))
+    .is_empty());
+    let d = one(&format!(
+        "{head}let x: ?Int = 3\nprint(or_else(x, \"a\"))\n"
+    ));
     assert_eq!(d.code.0, "E0302", "{d:#?}");
     let d = one("fn f(lazy d: Int) -> Int = 0\n");
     assert_eq!(
@@ -2138,7 +2282,10 @@ fn a_variadic_parameter_is_a_tuple_of_its_arguments() {
         "fn count<Ts>(..xs: Ts) -> Int:\n    var n = 0\n    for _ in fields(xs):\n        n += 1\n    n\nprint(count(), count(1, \"a\", 2.5))\n"
     )
     .is_empty());
-    assert!(codes("fn tag<Ts>(t: Str, ..xs: Ts):\n    print(t)\ntag(\"a\", 1, 2)\ntag(\"b\")\n").is_empty());
+    assert!(
+        codes("fn tag<Ts>(t: Str, ..xs: Ts):\n    print(t)\ntag(\"a\", 1, 2)\ntag(\"b\")\n")
+            .is_empty()
+    );
     let d = one("fn total(..xs: Int) -> Int = 0\nprint(total(1, 2))\n");
     assert_eq!(
         (d.code.0, d.message.as_str()),
@@ -2192,7 +2339,10 @@ fn fresh_domain_escapes_are_rejected_with_e0313() {
             // `outer` is declared inside the same `if` block as `Inner`; no escape.
             assert!(!codes.contains(&"E0313"), "case {idx}: {diags:#?}");
         } else {
-            assert!(codes.contains(&"E0313"), "case {idx} expected E0313, got {diags:#?}");
+            assert!(
+                codes.contains(&"E0313"),
+                "case {idx} expected E0313, got {diags:#?}"
+            );
         }
     }
 }
@@ -2360,9 +2510,8 @@ print(bad.x)
 ";
     let diags = check(bad);
     assert!(
-        diags
-            .iter()
-            .any(|d| d.code == cpl_diag::codes::MISSING_IMPL && d.message.contains("impl Mul<Str> for Vec")),
+        diags.iter().any(|d| d.code == cpl_diag::codes::MISSING_IMPL
+            && d.message.contains("impl Mul<Str> for Vec")),
         "expected MISSING_IMPL for Vec * Str, got: {diags:#?}"
     );
 }
@@ -2372,14 +2521,22 @@ fn enumerate_points_to_items() {
     let free = check("let xs = [1, 2]\nfor (i, x) in enumerate(xs): print(i, x)\n");
     assert!(!free.is_empty());
     assert!(
-        free[0].help.as_deref().unwrap_or_default().contains(".items"),
+        free[0]
+            .help
+            .as_deref()
+            .unwrap_or_default()
+            .contains(".items"),
         "expected `.items` hint on bare `enumerate`: {free:#?}"
     );
     let method = check("let xs = [1, 2]\nfor (i, x) in xs.enumerate(): print(i, x)\n");
     assert!(!method.is_empty());
     assert!(
         method[0].message.contains(".items")
-            || method[0].help.as_deref().unwrap_or_default().contains(".items"),
+            || method[0]
+                .help
+                .as_deref()
+                .unwrap_or_default()
+                .contains(".items"),
         "expected `.items` hint on `.enumerate()`: {method:#?}"
     );
 }
@@ -2409,24 +2566,12 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
         codes("var xs = [1, 2, 3, 4]\nlet v = xs[1..3]\nv.push(5)\n"),
         ["E0401"]
     );
-    assert_eq!(
-        codes("var xs = [1, 2, 3, 4]\nxs.rev.sort()\n"),
-        ["E0401"]
-    );
-    assert_eq!(
-        codes("let xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"),
-        ["E0401"]
-    );
-    assert_eq!(
-        codes("var s = \"abcdef\"\ns[1..4][0] = 'x'\n"),
-        ["E0401"]
-    );
+    assert_eq!(codes("var xs = [1, 2, 3, 4]\nxs.rev.sort()\n"), ["E0401"]);
+    assert_eq!(codes("let xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"), ["E0401"]);
+    assert_eq!(codes("var s = \"abcdef\"\ns[1..4][0] = 'x'\n"), ["E0401"]);
 
     // Returning a view escapes its lending block (E0603); copying explicitly succeeds.
-    assert_eq!(
-        codes("fn bad(s: Str) -> Str:\n    s[1..3]\n"),
-        ["E0603"]
-    );
+    assert_eq!(codes("fn bad(s: Str) -> Str:\n    s[1..3]\n"), ["E0603"]);
     assert_eq!(
         codes("fn bad(xs: List<Int>) -> List<Int>:\n    xs.rev\n"),
         ["E0603"]
@@ -2692,7 +2837,8 @@ print(b)
 ";
     let errs = check(bad);
     assert!(
-        errs.iter().any(|e| e.message.contains("power uses `**`, not `.pow(...)`")),
+        errs.iter()
+            .any(|e| e.message.contains("power uses `**`, not `.pow(...)`")),
         "expected `.pow` error suggesting `**`, got: {errs:?}"
     );
 }
@@ -2718,7 +2864,11 @@ print(xs.len(), xs.is_empty(), xs.first(), xs.last(), xs.rev(), xs.items(), s.le
 let xs = [1, 2, 3]
 print(xs.len, xs.is_empty, xs.first, xs.last, xs.rev, xs.items, xs.first(x => x > 1), xs.last(1))
 ";
-    assert!(check(ok).is_empty(), "expected clean check, got: {:?}", check(ok));
+    assert!(
+        check(ok).is_empty(),
+        "expected clean check, got: {:?}",
+        check(ok)
+    );
 }
 
 #[test]
@@ -2733,7 +2883,11 @@ let r2: Range<D> = r.drop(1).take(2)
 let r3: Range<Int> = (0..10).drop(2).take(3)
 print(a == none, b == none, r2.len, r3.len)
 ";
-    assert!(check(src).is_empty(), "expected clean check, got: {:?}", check(src));
+    assert!(
+        check(src).is_empty(),
+        "expected clean check, got: {:?}",
+        check(src)
+    );
 }
 #[test]
 fn existential_return_compress_hover_and_escape() {
@@ -2779,7 +2933,8 @@ fn bad_compress<D>(xs: [D]Int) -> [D]Int:
 ";
     let errs = check(bad);
     assert!(
-        errs.iter().any(|d| d.code == cpl_diag::codes::DOMAIN_ESCAPES),
+        errs.iter()
+            .any(|d| d.code == cpl_diag::codes::DOMAIN_ESCAPES),
         "expected E0313 on escaping local domain, got: {errs:?}"
     );
 }
@@ -2810,13 +2965,18 @@ let _ = (y ?? false, z ?? -1, w ?? -1)
 #[test]
 fn unary_plus_requires_numeric_operand() {
     let ok = "let a = +1\nlet b = +2.5\nprint(a, b)\n";
-    assert!(check(ok).is_empty(), "expected clean check, got: {:?}", check(ok));
+    assert!(
+        check(ok).is_empty(),
+        "expected clean check, got: {:?}",
+        check(ok)
+    );
 
     let bad = "let xs = +[1, 2]\nlet s = +\"hi\"\nprint(xs, s)\n";
     let errs = check(bad);
     assert_eq!(errs.len(), 2, "expected 2 E0302 errors, got: {errs:?}");
     assert!(
-        errs.iter().all(|e| e.code == cpl_diag::codes::TYPE_MISMATCH),
+        errs.iter()
+            .all(|e| e.code == cpl_diag::codes::TYPE_MISMATCH),
         "expected E0302 for unary `+` on non-numeric types, got: {errs:?}"
     );
 }
@@ -2877,7 +3037,8 @@ enum Node:
 ";
     let errs = check(collision);
     assert!(
-        errs.iter().any(|d| d.code == cpl_diag::codes::DUPLICATE_DEFINITION),
+        errs.iter()
+            .any(|d| d.code == cpl_diag::codes::DUPLICATE_DEFINITION),
         "expected E0202 at declaration when variant collides with domain, got: {errs:?}"
     );
 }
@@ -2889,13 +3050,18 @@ let s = Seg(1, 5)
 let r = 2..=4
 print(s.lo, s.hi, r.start, r.end, r.last, r.len)
 ";
-    assert!(check(ok).is_empty(), "expected clean check, got: {:?}", check(ok));
+    assert!(
+        check(ok).is_empty(),
+        "expected clean check, got: {:?}",
+        check(ok)
+    );
 
     let bad = "let r = 2..=4\nprint(r.lo, r.hi)\n";
     let errs = check(bad);
     assert_eq!(errs.len(), 2, "expected 2 E0503 errors, got: {errs:?}");
     assert!(
-        errs.iter().all(|e| e.code == cpl_diag::codes::REMOVED_SYNTAX && !e.fixes.is_empty()),
+        errs.iter()
+            .all(|e| e.code == cpl_diag::codes::REMOVED_SYNTAX && !e.fixes.is_empty()),
         "expected E0503 with fixes for Range.lo/.hi, got: {errs:?}"
     );
     assert_eq!(errs[0].fixes[0].edits[0].1, "start");
@@ -2937,7 +3103,8 @@ print(b)
 ";
     let errs = check(wrong_domain);
     assert!(
-        errs.iter().any(|d| d.code == cpl_diag::codes::TYPE_MISMATCH),
+        errs.iter()
+            .any(|d| d.code == cpl_diag::codes::TYPE_MISMATCH),
         "expected E0302 when assigning `[A]Int` map result to `[B]Int`, got: {errs:?}"
     );
 }
@@ -2971,14 +3138,24 @@ let _ = d2.finish()
         ("let _ = prefix2([0..2, 0..2] (r, c) => r + c)", "prefix"),
         ("let _ = prefix_n([1, 2, 3])", "prefix"),
         ("domain V = 0..3\nlet _ = Diff1<V, Int>()", "Diff"),
-        ("domain R = 0..2\ndomain C = 0..2\nlet _ = Diff2<R, C, Int>()", "Diff"),
-        ("domain V = 0..3\nfn f(p: Prefix1<V, Int>) -> Int = 0", "Prefix"),
-        ("domain R = 0..2\ndomain C = 0..2\nfn f(p: Prefix2<R, C, Int>) -> Int = 0", "Prefix"),
+        (
+            "domain R = 0..2\ndomain C = 0..2\nlet _ = Diff2<R, C, Int>()",
+            "Diff",
+        ),
+        (
+            "domain V = 0..3\nfn f(p: Prefix1<V, Int>) -> Int = 0",
+            "Prefix",
+        ),
+        (
+            "domain R = 0..2\ndomain C = 0..2\nfn f(p: Prefix2<R, C, Int>) -> Int = 0",
+            "Prefix",
+        ),
         ("fn f(p: PrefixN<Int>) -> Int = 0", "Prefix"),
     ] {
         let errs = check(old);
         assert!(
-            errs.iter().any(|d| d.message.contains(want) && !d.fixes.is_empty()),
+            errs.iter()
+                .any(|d| d.message.contains(want) && !d.fixes.is_empty()),
             "expected error + fix mentioning `{want}` for:\n{old}\ngot: {errs:?}"
         );
     }
@@ -3052,10 +3229,7 @@ fn mutable_slice_views_lend_and_reject_aliasing() {
     );
 
     // Mutating through a slice of a `let` list or fixed-length mutators are E0401.
-    assert_eq!(
-        codes("let xs = [4, 3, 2, 1]\nxs[1..3].sort()\n"),
-        ["E0401"]
-    );
+    assert_eq!(codes("let xs = [4, 3, 2, 1]\nxs[1..3].sort()\n"), ["E0401"]);
     assert_eq!(
         codes("var xs = [1, 2, 3, 4]\nxs[1..3].push(5)\n"),
         ["E0401"]
@@ -3074,8 +3248,10 @@ fn mutable_slice_views_lend_and_reject_aliasing() {
         codes("var xs = [4, 3, 2, 1]\nlet a = xs[0..3]\nlet b = xs[1..4]\na.sort()\nb.sort()\n")
             .iter()
             .all(|c| *c == "E0602")
-            && !codes("var xs = [4, 3, 2, 1]\nlet a = xs[0..3]\nlet b = xs[1..4]\na.sort()\nb.sort()\n")
-                .is_empty()
+            && !codes(
+                "var xs = [4, 3, 2, 1]\nlet a = xs[0..3]\nlet b = xs[1..4]\na.sort()\nb.sort()\n"
+            )
+            .is_empty()
     );
     assert_eq!(
         codes("domain D = 0..4\nvar a: [D]Int = [D] i => 4 - i.ord\nlet v = a[D(1)..D(3)]\na[D(2)] = 0\nv.sort()\n"),

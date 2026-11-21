@@ -67,6 +67,46 @@ every in-place verb works on it: `a[l..r].sort()`, `a[l..=r].reverse()`,
 `a[r].fill(0)`. Changing the source's length while a view is alive is a
 compile error (§128).
 
+## Under the hood
+
+A view is a library struct that lends its source: a reference plus the two
+end cuts as Ints. Direction and adapters are in the type, so nothing is
+decided at run time and nothing allocates.
+
+```python
+a[l..=r]                  # Slice{src: &a, lo: Int(l.l), hi: Int(r.r)}
+a[l..=r].rev.map(f)       # Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
+```
+
+| Written | Lowers to |
+|---|---|
+| `a[l..=r]`, `.rev`, `.map(f)` | build the struct, O(1) |
+| `w[i]` | debug: check `lo <= i < hi`; then `a[i]` (no offset: indices are kept) |
+| `w.rev[i]` | `a[i]`; only the walk order differs |
+| `a.map(f)[i]` | `f(a[i])`, inlined, per read |
+| `for x in w` | `for (i = lo; i < hi; ++i) body(a[i])` |
+| `for x in w.rev` | the same loop, `hi - 1` down to `lo` |
+| `w.keys`, `w.len` | `lo..hi`, `hi - lo` |
+| `List(w)` | the one allocation: a fresh 0-based copy |
+
+- **Lending: the rules of `mut a[i]`, over a range.** Any number of read
+  views coexist with reads. A `mut` view excludes every other access to what
+  it covers; two `mut` views not provably disjoint are a compile error
+  (E0602). Halves at one cut (`mut a[..c]` and `mut a[c..]`, or `halve`'s
+  two) are provably disjoint. A length change (`push`, `pop`, `clear`) while
+  any view or place is alive is a compile error.
+- **Lifetime: second-class, no annotations.** A view lives at most as long
+  as its source's scope. It passes into fns (arguments are always lent) and
+  comes back only from a fn that `lends` it from a parameter:
+  `fn window(xs: [V]Int, r: Range<V>) lends [V]Int = xs[r]`. It never goes
+  in a field, container, global or escaping closure. Keeping one is
+  `List(w)`.
+- **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed`
+  over `V`; it is a template parameter, so each call site gets its own fused
+  loop.
+- **Filtered sources.** `filter`, `take_while` and generators are `Seq`
+  only: the `if` or the generator body is inlined into the `for`.
+
 ## Generators
 
 ```python

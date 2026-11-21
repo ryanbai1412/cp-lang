@@ -23,7 +23,9 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     NAMES.get_or_init(|| {
         // `CPL_STD` may hold a spec prelude (spec/README.md); it wins like any module.
         let spec = std::env::var_os("CPL_STD")
-            .and_then(|dir| std::fs::read_to_string(std::path::Path::new(&dir).join("prelude.cp")).ok())
+            .and_then(|dir| {
+                std::fs::read_to_string(std::path::Path::new(&dir).join("prelude.cp")).ok()
+            })
             .map(|text| &*Box::leak(text.into_boxed_str()));
         let text = spec
             .or_else(|| crate::modules::bundled_std(&["prelude".to_string()]))
@@ -72,18 +74,24 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
             span: cpl_diag::Span::new(0, 0),
         };
         let mut found: Vec<(Vec<ast::Name>, ast::Name)> = Vec::new();
-        for (module, text) in crate::modules::bundled_std_modules() {
+        for (module, text) in crate::modules::active_std_modules() {
             // Only where the text may hold one: parsing every module costs.
             if *module == "prelude" || !text.contains("self:") {
                 continue;
             }
-            let path: Vec<ast::Name> = std::iter::once("std").chain(module.split('/')).map(bare).collect();
+            let path: Vec<ast::Name> = std::iter::once("std")
+                .chain(module.split('/'))
+                .map(bare)
+                .collect();
             for (_, item) in cpl_syntax::parse_file(text).items {
                 for stmt in item.stmts {
                     let ast::StmtKind::Fn(decl) = &stmt.kind else {
                         continue;
                     };
-                    let on_a_type = decl.params.first().is_some_and(|p| p.name.text == "self" && p.ty.is_some());
+                    let on_a_type = decl
+                        .params
+                        .first()
+                        .is_some_and(|p| p.name.text == "self" && p.ty.is_some());
                     if stmt.public && on_a_type {
                         found.push((path.clone(), bare(&decl.name.text)));
                     }
@@ -91,7 +99,11 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
             }
         }
         let twice = |name: &str| found.iter().filter(|(_, other)| other.text == name).count() > 1;
-        let unique: Vec<_> = found.iter().filter(|(_, name)| !twice(&name.text)).cloned().collect();
+        let unique: Vec<_> = found
+            .iter()
+            .filter(|(_, name)| !twice(&name.text))
+            .cloned()
+            .collect();
         unique
     })
 }
@@ -172,12 +184,11 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Str" => Ty::Str,
         "I128" => Ty::I128,
         "U64" => Ty::U64,
-        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Opt" | "Range" | "Cut" | "SortedRange" | "Sym" | "Counter" => {
-            Ty::Named {
-                name: name.into(),
-                args: Vec::new(),
-            }
-        }
+        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Opt" | "Range" | "Cut"
+        | "SortedRange" | "Sym" | "Counter" => Ty::Named {
+            name: name.into(),
+            args: Vec::new(),
+        },
         // The solution as an `@interactor` sees it: `sol.recv()` reads what
         // it printed, `sol.send(x)` answers it.
         "Interactor" => Ty::Unknown,
@@ -193,8 +204,26 @@ pub fn is_trait(name: &str) -> bool {
 }
 
 pub const TYPE_NAMES: &[&str] = &[
-    "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Cut",
-    "Counter", "HashMap", "HashSet", "Interactor", "Subset", "Sym",
+    "List",
+    "Map",
+    "Set",
+    "Int",
+    "I128",
+    "U64",
+    "Bool",
+    "Char",
+    "Str",
+    "F64",
+    "Iter",
+    "Opt",
+    "Range",
+    "Cut",
+    "Counter",
+    "HashMap",
+    "HashSet",
+    "Interactor",
+    "Subset",
+    "Sym",
 ];
 
 /// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.

@@ -178,7 +178,10 @@ impl<'a> Checker<'a> {
     /// for the whole block, like a top-level struct for the whole file.
     pub(crate) fn declare_local_types(&mut self, stmts: &[cpl_syntax::ast::Stmt]) {
         for stmt in stmts {
-            if matches!(stmt.kind, cpl_syntax::ast::StmtKind::Struct(_) | cpl_syntax::ast::StmtKind::Enum(_)) {
+            if matches!(
+                stmt.kind,
+                cpl_syntax::ast::StmtKind::Struct(_) | cpl_syntax::ast::StmtKind::Enum(_)
+            ) {
                 for (name, def) in self.defs_of(stmt) {
                     self.local_defs.insert(name, Arc::new(def));
                 }
@@ -278,12 +281,16 @@ impl<'a> Checker<'a> {
 
     /// Scope depth (0-based) and declaration span of a block-local `domain`, if any.
     pub(crate) fn domain_depth(&self, name: &str) -> Option<(usize, Span)> {
-        self.scopes.iter().enumerate().rev().find_map(|(depth, scope)| {
-            scope
-                .get(name)
-                .filter(|loc| loc.keyword == "domain")
-                .map(|loc| (depth, loc.span))
-        })
+        self.scopes
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(depth, scope)| {
+                scope
+                    .get(name)
+                    .filter(|loc| loc.keyword == "domain")
+                    .map(|loc| (depth, loc.span))
+            })
     }
 
     /// Scope depth where `name` was declared, or `0` if top-level/global.
@@ -654,10 +661,7 @@ impl<'a> Checker<'a> {
                 if place.root_mutable || place.via.is_some() {
                     return;
                 }
-                let message = format!(
-                    "`{}` is not a var, so it can't be {action}",
-                    place.root
-                );
+                let message = format!("`{}` is not a var, so it can't be {action}", place.root);
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, expr.span, message) {
                     diag.help = Some(format!("declare it with `var {}` to change it", place.root));
                 }

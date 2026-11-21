@@ -464,7 +464,8 @@ impl Database {
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
                 .collect();
             let imported_module = self.analyzing.len() > 1;
-            let mut ident_tokens: std::collections::HashSet<&str> = std::collections::HashSet::new();
+            let mut ident_tokens: std::collections::HashSet<&str> =
+                std::collections::HashSet::new();
             let mut dot_ident_tokens: std::collections::HashSet<&str> =
                 std::collections::HashSet::new();
             for item in &items {
@@ -502,7 +503,8 @@ impl Database {
             for ((module, name), method) in listed.chain(methods) {
                 let used = if method {
                     calls(&name.text)
-                        || (crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str()) && uses(&name.text))
+                        || (crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str())
+                            && uses(&name.text))
                 } else {
                     uses(&name.text)
                         || (!is_std_path(path)
@@ -510,7 +512,10 @@ impl Database {
                                 .iter()
                                 .any(|(word, on)| *on == name.text && uses(word)))
                 };
-                if scope.imports.contains_key(&name.text) || !used || failed_names.contains(&name.text) {
+                if scope.imports.contains_key(&name.text)
+                    || !used
+                    || failed_names.contains(&name.text)
+                {
                     continue;
                 }
                 // `count(..)` the language has itself is not the library's
@@ -549,7 +554,9 @@ impl Database {
                 // does not take, under a name no program can write.
                 if own {
                     if let Some(import) = scope.imports.remove(&name.text) {
-                        scope.imports.insert(crate::prelude::std_method(&name.text), import);
+                        scope
+                            .imports
+                            .insert(crate::prelude::std_method(&name.text), import);
                     }
                 }
             }
@@ -660,7 +667,10 @@ impl Database {
         // `@!multitest` divides the file once (decision 20.5), and
         // `@!interactive` is said once.
         for (name, help) in [
-            ("multitest", "the file has one divider: what is below it runs once per test case"),
+            (
+                "multitest",
+                "the file has one divider: what is below it runs once per test case",
+            ),
             ("interactive", "one is enough: it holds for the whole file"),
         ] {
             let found = items.iter().enumerate().flat_map(|(index, item)| {
@@ -1093,14 +1103,13 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
             }),
             // `let LIM = 100`: a capitalized name on its own is a value
             // (or a domain, when the value is one).
-            ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
-                out.push(Decl {
+            ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => out
+                .push(Decl {
                     name: path[0].text.clone(),
                     span: pat.span,
                     kind: DeclKind::Value,
                     public: false,
-                })
-            }
+                }),
             ast::PatternKind::Tuple(items) => {
                 for item in items {
                     match crate::check::domain_binding(item) {
