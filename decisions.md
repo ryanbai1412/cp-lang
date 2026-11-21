@@ -2311,3 +2311,27 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    `Functional` move unchanged in shape; `shortest`/`walk_back` are
    subsumed by `Paths`. Minimum spanning trees stay with `std.dsu`'s
    owner. Reverse: keep the local modules.
+
+## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
+
+1. **Searches stay in `std.seq`; the DP toolkit is a new `std.dp`.**
+   Reason: `bsearch_real`, `ternary_*` and `parallel_bsearch` are searches
+   on ranges like their neighbours; monotone queues, Li Chao and the
+   optimizations are called from DP loops. Reverse: move the names.
+2. **`bsearch_real` returns `?F64`** (none when `ok(hi)` fails), replacing
+   the plan's "`hi` when none". Reason: same shape as `bsearch_first`, and
+   "nothing works" is a different answer from `hi`. Reverse: return `hi`.
+3. **One generic `LiChao<L, K>(pick, xs)`** replaces the local `LiChao`,
+   `LiChaoTag` and `LiChaoF`; any `L` with `at(x) -> K` works, so Aliens'
+   `(cost, used)` tie-break and max envelopes are the same tree (backlog
+   14 P12). No monotone-slope CHT deque yet: Li Chao covers every
+   insertion order at O(log). Reverse: add `Hull` beside it.
+4. **`MonoDeque` becomes `MonoQueue`** (it never pushes at the front) with
+   `best_at`, keeping `new(pick)` / `by(better)`. Reverse: rename back.
+5. **No `digit_dp`, interval-DP or rolling-table library types.** Their
+   state is the problem; `@memo` and two rows say it. A rolling table is a
+   core question (frictions `cf2183e`, `cf2084g1`). Reverse: add them.
+6. **`parallel_bsearch` takes `reset` / `apply` / `ok` as operations**, the
+   state living in user variables written by named fns. Reason: any
+   structure works, and lambdas cannot assign. Reverse: take a state
+   value and `(S, I) -> S`.

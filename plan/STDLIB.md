@@ -278,11 +278,22 @@ fn perm_pow<V>(p: [V]V, k: Int) -> [V]V // O(n)
 fn inversions<T>(a: List<T>) -> Int // O(n log n)
 
 // Binary/ternary search and four-name sorted lookup
-fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> F64 // O(steps)
-fn ternary_max(r: Range<Int>, f: Int -> Int) -> Int // O(log n)
-fn ternary_min(r: Range<Int>, f: Int -> Int) -> Int // O(log n)
-fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64 // O(steps)
-fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64 // O(steps)
+// (search on answers: design/stdlib/dp.md; each returns a position of its
+// range's index space or none, never a sentinel)
+fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
+    // steps + 1 calls of ok; the least x in [lo, hi] with ok(x), to within
+    // (hi - lo) / 2^steps; none when not ok(hi)
+fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I // O(log n) calls of f
+fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I // O(log n) calls of f
+    // a position of the optimum of f on r, for f strictly rising then
+    // falling (plateaus only at the optimum); none for an empty r
+fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
+fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
+    // steps + 2 calls of f (golden section); within (hi - lo) * 0.618^steps
+fn parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (),
+                       apply: I -> (), ok: Int -> Bool) -> List<?I>
+    // O((r.len + queries) log r.len) calls; out[q] is the first t with
+    // ok(q) after apply on every t' <= t, ok monotone in the prefix
 fn first_gt<D, T, K = T>(self: [D]T, target: K, by: T -> K = x => x) -> ?D // O(log n)
 fn last_lt<D, T, K = T>(self: [D]T, target: K, by: T -> K = x => x) -> ?D // O(log n)
 
@@ -293,6 +304,7 @@ fn prev_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D // O(n)
 fn next_greater<D, T>(self: [D]T, strict: Bool = true) -> [D]?D // O(n)
 fn sliding_min<D, T>(self: [D]T, k: Int) -> List<T> // O(n)
 fn sliding_max<D, T>(self: [D]T, k: Int) -> List<T> // O(n)
+```
 ```
 
 [rename] `runs_by(a, key)` is superseded in hot paths by zero-allocation
@@ -1448,11 +1460,50 @@ fn recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: Int) -> Mod<P>
 fn guess_at<P>(xs: List<Mod<P>>, n: Int) -> ?Mod<P>
 ```
 
+### 4.16 `std.dp` [new]: the DP toolkit
+
+The structures and optimizations a DP calls by name; the recurrence stays
+in user code, and memoized recursion is `@memo` (core). Each optimization
+takes the cost as an operation and states its law, which `std.spec` checks
+(`monge_break`, `dnc_break`, `knuth_break`, `convexity_break`). Design,
+laws and worked problems: `design/stdlib/dp.md`.
+
+```cp
+struct MonoQueue<T>                           // sliding-window optimum
+    fn new(pick: (T, T) -> T) -> MonoQueue<T> // pick: min or max
+    fn by(better: (T, T) -> Bool) -> MonoQueue<T>
+    fn push(mut self, at: Int, val: T)        // amortized O(1), at increasing
+    fn drop_before(mut self, at: Int)         // amortized O(1)
+    @get fn best(self) -> ?T                  // O(1)
+    @get fn best_at(self) -> ?Int             // O(1)
+    @get fn len(self) -> Int
+    @get fn is_empty(self) -> Bool
+    fn clear(mut self)
+struct Line(k: Int, m: Int)
+    fn at(self, x: Int) -> Int                // k * x + m
+struct LiChao<L, K>                           // convex hull trick, any L.at -> K
+    fn new(pick: (K, K) -> K, xs: Range<Int>) -> LiChao<L, K>
+    fn add(mut self, l: L, on: ?Range<Int> = none) // O(log n), O(log^2 n) on a segment
+    fn at(self, x: Int) -> ?K                 // O(log n)
+    fn line_at(self, x: Int) -> ?L            // O(log n)
+    fn clear(mut self)
+fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int)
+    -> List<?(val: Int, at: Int)>             // O((rows + cols) log rows) calls
+fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>
+    // O(n log n) calls; next[i] = min over j < i of prev[j] + cost(j, i)
+fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>> // O(n^2)
+fn aliens(k: Int, lambdas: Range<Int>, solve: Int -> (val: Int, count: Int))
+    -> Int                                    // O(log) calls of solve
+fn subset_sums(xs: List<Int>) -> List<Int>    // O(2^n), sorted
+fn sos_sub<T>(f: List<T>) -> List<T>          // O(n 2^n)
+fn sos_sup<T>(f: List<T>) -> List<T>          // O(n 2^n)
+fn sos_sub_inv<T>(g: List<T>) -> List<T>      // O(n 2^n)
+```
+
 ## 5. Not here yet
 
 Power-series algebra beyond products, suffix automata, link-cut trees,
-persistent structures, wavelet trees, Li Chao
-trees, 2-SAT and the rest of `examples/local-lib/` are staged there, not
+persistent structures, wavelet trees, 2-SAT and the rest of `examples/local-lib/` are staged there, not
 excluded: they arrive in the order the ports need them, after the [new]
 items above. Until then they are the standing test that a user library
 gets the stdlib's powers.
