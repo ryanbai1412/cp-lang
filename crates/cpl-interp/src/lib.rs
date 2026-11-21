@@ -2747,10 +2747,10 @@ impl<'p, 'o> Interp<'p, 'o> {
         for &d in &self.fn_guarded[id] {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let has_alias = self.stack[self.base..self.base + f.params.len()]
+        let has_part = self.stack[self.base..self.base + f.params.len()]
             .iter()
-            .any(|v| matches!(v, Value::Alias(..) | Value::Part(_)));
-        let mut flow = if !feeding && !has_alias {
+            .any(|v| matches!(v, Value::Part(_)));
+        let mut flow = if !feeding && !has_part {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
                     self.run_fn_vm_from_stack(&compiled, id).map(Flow::Return)
@@ -2765,7 +2765,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
         } else {
             if let Some(stats) = &mut self.vm_stats {
-                let why = if feeding { "feeding" } else { "alias" };
+                let why = if feeding { "feeding" } else { "part" };
                 stats.record(format!("fn:{}({why})", f.name));
             }
             self.block(&f.body)

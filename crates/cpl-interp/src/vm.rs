@@ -315,6 +315,18 @@ pub(crate) enum Op {
     ListPopOptIG { dst_val: u16, dst_some: u16, gid: u16 },
     ListPopDiscardL { list_v: u16 },
     ListPopDiscardG { gid: u16 },
+    LoadGlobalVMove { dst: u16, gid: u16 },
+    StoreLFieldI { obj_v: u16, field: u16, src_i: u16, kind: ScalarKind },
+    StoreLFieldV { obj_v: u16, field: u16, src_v: u16 },
+    StoreLFieldOptI { obj_v: u16, field: u16, val: u16, some: u16, kind: ScalarKind },
+    StoreLFieldIdx1I { obj_v: u16, field: u16, r_i: u16, r_val: u16, kind: ScalarKind },
+    StoreLFieldIdx1V { obj_v: u16, field: u16, r_i: u16, r_val: u16 },
+    StoreLFieldIdx1OptI { obj_v: u16, field: u16, r_i: u16, val: u16, some: u16, kind: ScalarKind },
+    ListPushFieldLI { obj_v: u16, field: u16, val_i: u16, kind: ScalarKind },
+    ListPushFieldLV { obj_v: u16, field: u16, val_v: u16 },
+    ListPopDiscardFieldL { obj_v: u16, field: u16 },
+    StoreGList1V { gid: u16, r_i: u16, r_val: u16 },
+    StoreLList1V { list_v: u16, r_i: u16, r_val: u16 },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
     FallbackStmt { idx: u32, clear_from_v: u16 },
@@ -334,6 +346,7 @@ pub(crate) struct Chunk<'p> {
     pub slot_map: Vec<SlotLoc>,
     pub param_count: usize,
     pub ret_kind: Option<ScalarKind>,
+    pub guarded_domains: Vec<cpl_ir::DomainId>,
 }
 
 pub(crate) struct CompiledProgram<'p> {
@@ -345,9 +358,8 @@ impl<'p> CompiledProgram<'p> {
     pub fn compile(program: &'p Program) -> Self {
         let mut fns = Vec::with_capacity(program.fns.len());
         for (id, f) in program.fns.iter().enumerate() {
-            let has_mut = f.params.iter().any(|p| p.mutable);
-            let has_guarded = !program.fn_guarded_domains(&f.ret, &f.body).is_empty();
-            if has_mut || has_guarded || f.locals.len() > 512 {
+            let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
+            if f.locals.len() > 512 {
                 fns.push(None);
             } else {
                 let mut c = Compiler::new(program, &f.locals, Some(id), f.params.len());
@@ -356,6 +368,7 @@ impl<'p> CompiledProgram<'p> {
                 let mut chunk = c.finish();
                 chunk.param_count = f.params.len();
                 chunk.ret_kind = ret_kind;
+                chunk.guarded_domains = guarded_domains;
                 fns.push(Some(chunk));
             }
         }
@@ -465,6 +478,7 @@ impl<'p> Compiler<'p> {
             slot_map: self.slot_map,
             param_count: 0,
             ret_kind: None,
+            guarded_domains: Vec::new(),
         }
     }
 
@@ -501,21 +515,37 @@ impl<'p> Compiler<'p> {
         span: Span,
     ) -> Option<(u16, u16, u16)> {
         let f = &self.program.fns[fn_id];
-        if f.params.iter().any(|p| p.mutable)
-            || f.locals.len() > 512
-            || !self.program.fn_guarded_domains(&f.ret, &f.body).is_empty()
-            || args.len() != f.params.len()
-            || !args.iter().all(|a| matches!(a, Arg::Value(_)))
-        {
+        if f.locals.len() > 512 || args.len() != f.params.len() {
             return None;
+        }
+        // Check that all mut args are simple local or global places (so move-in/move-out is exact).
+        for (i, a) in args.iter().enumerate() {
+            match a {
+                Arg::Value(_) => {
+                    if f.params[i].mutable {
+                        return None;
+                    }
+                }
+                Arg::Mut(place) => {
+                    if !f.params[i].mutable {
+                        return None;
+                    }
+                    match &place.kind {
+                        PlaceKind::Local(slot) => {
+                            if matches!(self.slot_loc(*slot), SlotLoc::SmallTuple { .. }) {
+                                return None;
+                            }
+                        }
+                        PlaceKind::Global(_) => {}
+                        _ => return None,
+                    }
+                }
+            }
         }
         let mut ni = 0usize;
         let mut nv = 0usize;
         for local in f.locals.iter().take(f.params.len()) {
             let ty = &local.ty;
-            if matches!(ty, Ty::Fn { .. }) {
-                return None;
-            }
             if ScalarKind::of_ty(ty, self.program).is_some() {
                 ni += 1;
             } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
@@ -527,19 +557,81 @@ impl<'p> Compiler<'p> {
         if ni > 8 || nv > 8 {
             return None;
         }
-        let mut i_args = Vec::with_capacity(ni);
-        let mut v_args = Vec::with_capacity(nv);
+        enum WriteBack {
+            LocalI { dst: u16, arg_off: u16 },
+            LocalOptI { dst_val: u16, dst_some: u16, arg_off: u16 },
+            LocalV { dst: u16, arg_off: u16 },
+            GlobalI { gid: u16, kind: ScalarKind, arg_off: u16 },
+            GlobalOptI { gid: u16, kind: ScalarKind, arg_off: u16 },
+            GlobalV { gid: u16, arg_off: u16 },
+        }
+        let mut i_args: Vec<u16> = Vec::with_capacity(ni);
+        let mut v_args: Vec<(u16, bool)> = Vec::with_capacity(nv);
+        let mut writebacks: Vec<WriteBack> = Vec::new();
         for (i, a) in args.iter().enumerate() {
-            let Arg::Value(ae) = a else { unreachable!() };
             let ty = &f.locals[i].ty;
-            if ScalarKind::of_ty(ty, self.program).is_some() {
-                i_args.push(self.compile_expr_i(ae));
-            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
-                let (v, s) = self.compile_expr_opt_i(ae);
-                i_args.push(v);
-                i_args.push(s);
-            } else {
-                v_args.push(self.compile_expr_v(ae));
+            match a {
+                Arg::Value(ae) => {
+                    if ScalarKind::of_ty(ty, self.program).is_some() {
+                        i_args.push(self.compile_expr_i(ae));
+                    } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                        let (v, s) = self.compile_expr_opt_i(ae);
+                        i_args.push(v);
+                        i_args.push(s);
+                    } else {
+                        v_args.push((self.compile_expr_v(ae), false));
+                    }
+                }
+                Arg::Mut(place) => match &place.kind {
+                    PlaceKind::Local(slot) => match self.slot_loc(*slot) {
+                        SlotLoc::I(r, _) => {
+                            let off = i_args.len() as u16;
+                            i_args.push(r);
+                            writebacks.push(WriteBack::LocalI { dst: r, arg_off: off });
+                        }
+                        SlotLoc::OptI { val, some, .. } => {
+                            let off = i_args.len() as u16;
+                            i_args.push(val);
+                            i_args.push(some);
+                            writebacks.push(WriteBack::LocalOptI {
+                                dst_val: val,
+                                dst_some: some,
+                                arg_off: off,
+                            });
+                        }
+                        SlotLoc::V(r) => {
+                            let off = v_args.len() as u16;
+                            v_args.push((r, true));
+                            writebacks.push(WriteBack::LocalV { dst: r, arg_off: off });
+                        }
+                        SlotLoc::SmallTuple { .. } => unreachable!(),
+                    },
+                    PlaceKind::Global(gid) => {
+                        let gid = *gid as u16;
+                        if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
+                            let off = i_args.len() as u16;
+                            let r = self.alloc_i();
+                            self.emit(Op::LoadGlobalI { dst: r, gid }, place.span);
+                            i_args.push(r);
+                            writebacks.push(WriteBack::GlobalI { gid, kind, arg_off: off });
+                        } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
+                            let off = i_args.len() as u16;
+                            let rv = self.alloc_i();
+                            let rs = self.alloc_i();
+                            self.emit(Op::LoadGlobalOptI { dst_val: rv, dst_some: rs, gid }, place.span);
+                            i_args.push(rv);
+                            i_args.push(rs);
+                            writebacks.push(WriteBack::GlobalOptI { gid, kind, arg_off: off });
+                        } else {
+                            let off = v_args.len() as u16;
+                            let r = self.alloc_v();
+                            self.emit(Op::LoadGlobalVMove { dst: r, gid }, place.span);
+                            v_args.push((r, true));
+                            writebacks.push(WriteBack::GlobalV { gid, arg_off: off });
+                        }
+                    }
+                    _ => unreachable!(),
+                },
             }
         }
         let arg_base_i = self.next_i;
@@ -550,10 +642,14 @@ impl<'p> Compiler<'p> {
             }
         }
         let arg_base_v = self.next_v;
-        for r in v_args {
+        for (r, consume) in v_args {
             let slot = self.alloc_v();
             if slot != r {
-                self.emit(Op::MoveV { dst: slot, src: r }, span);
+                if consume {
+                    self.emit(Op::MoveVConsume { dst: slot, src: r }, span);
+                } else {
+                    self.emit(Op::MoveV { dst: slot, src: r }, span);
+                }
             }
         }
         let (dst_i, dst_v, dst_some) = match ret_mode {
@@ -574,6 +670,49 @@ impl<'p> Compiler<'p> {
             },
             span,
         );
+        for wb in writebacks {
+            match wb {
+                WriteBack::LocalI { dst, arg_off } => {
+                    let src = arg_base_i + arg_off;
+                    if dst != src {
+                        self.emit(Op::MoveI { dst, src }, span);
+                    }
+                }
+                WriteBack::LocalOptI { dst_val, dst_some, arg_off } => {
+                    let sv = arg_base_i + arg_off;
+                    let ss = arg_base_i + arg_off + 1;
+                    if dst_val != sv {
+                        self.emit(Op::MoveI { dst: dst_val, src: sv }, span);
+                    }
+                    if dst_some != ss {
+                        self.emit(Op::MoveI { dst: dst_some, src: ss }, span);
+                    }
+                }
+                WriteBack::LocalV { dst, arg_off } => {
+                    let src = arg_base_v + arg_off;
+                    if dst != src {
+                        self.emit(Op::MoveVConsume { dst, src }, span);
+                    }
+                }
+                WriteBack::GlobalI { gid, kind, arg_off } => {
+                    self.emit(Op::StoreGlobalI { gid, src: arg_base_i + arg_off, kind }, span);
+                }
+                WriteBack::GlobalOptI { gid, kind, arg_off } => {
+                    self.emit(
+                        Op::StoreGlobalOptI {
+                            gid,
+                            val: arg_base_i + arg_off,
+                            some: arg_base_i + arg_off + 1,
+                            kind,
+                        },
+                        span,
+                    );
+                }
+                WriteBack::GlobalV { gid, arg_off } => {
+                    self.emit(Op::StoreGlobalVMove { gid, src: arg_base_v + arg_off }, span);
+                }
+            }
+        }
         Some((dst_i, dst_v, dst_some))
     }
 
@@ -1549,7 +1688,7 @@ impl<'p> Compiler<'p> {
                 true
             }
             // Array[i] = val or Array[i, j] = val (scalar)
-            (PlaceKind::Index(base, indices), AssignOp::Set, Some(_), _)
+            (PlaceKind::Index(base, indices), AssignOp::Set, Some(kind), _)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>
             {
@@ -1586,6 +1725,21 @@ impl<'p> Compiler<'p> {
                         } else {
                             self.emit(Op::StoreLArr1I { arr_v, r_i, r_val }, place.span);
                         }
+                        true
+                    }
+                    PlaceKind::Field(obj_place, field) if indices.len() == 1 => {
+                        let PlaceKind::Local(slot) = obj_place.kind else {
+                            return false;
+                        };
+                        let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_i(value);
+                        self.emit(
+                            Op::StoreLFieldIdx1I { obj_v, field: *field as u16, r_i, r_val, kind },
+                            place.span,
+                        );
                         true
                     }
                     _ => false,
@@ -1647,6 +1801,28 @@ impl<'p> Compiler<'p> {
                         }
                         true
                     }
+                    PlaceKind::Field(obj_place, field) if indices.len() == 1 => {
+                        let PlaceKind::Local(slot) = obj_place.kind else {
+                            return false;
+                        };
+                        let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let (val, some) = self.compile_expr_opt_i(value);
+                        self.emit(
+                            Op::StoreLFieldIdx1OptI {
+                                obj_v,
+                                field: *field as u16,
+                                r_i,
+                                val,
+                                some,
+                                kind,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
                     _ => false,
                 }
             }
@@ -1672,6 +1848,21 @@ impl<'p> Compiler<'p> {
                         let r_val = self.compile_expr_i(value);
                         self.emit(
                             Op::StoreLList1I { list_v, r_i, r_val, kind },
+                            place.span,
+                        );
+                        true
+                    }
+                    PlaceKind::Field(obj_place, field) => {
+                        let PlaceKind::Local(slot) = obj_place.kind else {
+                            return false;
+                        };
+                        let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_i(value);
+                        self.emit(
+                            Op::StoreLFieldIdx1I { obj_v, field: *field as u16, r_i, r_val, kind },
                             place.span,
                         );
                         true
@@ -1831,8 +2022,129 @@ impl<'p> Compiler<'p> {
                         self.emit(Op::StoreLArr1V { arr_v, r_i, r_val }, place.span);
                         true
                     }
+                    PlaceKind::Field(obj_place, field) => {
+                        let PlaceKind::Local(slot) = obj_place.kind else {
+                            return false;
+                        };
+                        let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_v(value);
+                        self.emit(
+                            Op::StoreLFieldIdx1V { obj_v, field: *field as u16, r_i, r_val },
+                            place.span,
+                        );
+                        true
+                    }
                     _ => false,
                 }
+            }
+            (PlaceKind::Index(base, indices), AssignOp::Set, None, None)
+                if matches!(base.ty, Ty::List(_)) && indices.len() == 1 =>
+            {
+                match &base.kind {
+                    PlaceKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_v(value);
+                        self.emit(Op::StoreGList1V { gid: *gid as u16, r_i, r_val }, place.span);
+                        true
+                    }
+                    PlaceKind::Local(slot) => {
+                        let SlotLoc::V(list_v) = self.slot_loc(*slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_v(value);
+                        self.emit(Op::StoreLList1V { list_v, r_i, r_val }, place.span);
+                        true
+                    }
+                    PlaceKind::Field(obj_place, field) => {
+                        let PlaceKind::Local(slot) = obj_place.kind else {
+                            return false;
+                        };
+                        let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = self.compile_expr_v(value);
+                        self.emit(
+                            Op::StoreLFieldIdx1V { obj_v, field: *field as u16, r_i, r_val },
+                            place.span,
+                        );
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            (PlaceKind::Index(base, indices), AssignOp::Set, None, Some(kind))
+                if matches!(base.ty, Ty::List(_)) && indices.len() == 1 =>
+            {
+                let PlaceKind::Field(obj_place, field) = &base.kind else {
+                    return false;
+                };
+                let PlaceKind::Local(slot) = obj_place.kind else {
+                    return false;
+                };
+                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                    return false;
+                };
+                let r_i = self.compile_expr_i(&indices[0]);
+                let (val, some) = self.compile_expr_opt_i(value);
+                self.emit(
+                    Op::StoreLFieldIdx1OptI {
+                        obj_v,
+                        field: *field as u16,
+                        r_i,
+                        val,
+                        some,
+                        kind,
+                    },
+                    place.span,
+                );
+                true
+            }
+            (PlaceKind::Field(obj_place, field), AssignOp::Set, Some(kind), _) => {
+                let PlaceKind::Local(slot) = obj_place.kind else {
+                    return false;
+                };
+                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                    return false;
+                };
+                let src_i = self.compile_expr_i(value);
+                self.emit(
+                    Op::StoreLFieldI { obj_v, field: *field as u16, src_i, kind },
+                    place.span,
+                );
+                true
+            }
+            (PlaceKind::Field(obj_place, field), AssignOp::Set, None, Some(kind)) => {
+                let PlaceKind::Local(slot) = obj_place.kind else {
+                    return false;
+                };
+                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                    return false;
+                };
+                let (val, some) = self.compile_expr_opt_i(value);
+                self.emit(
+                    Op::StoreLFieldOptI { obj_v, field: *field as u16, val, some, kind },
+                    place.span,
+                );
+                true
+            }
+            (PlaceKind::Field(obj_place, field), AssignOp::Set, None, None) => {
+                let PlaceKind::Local(slot) = obj_place.kind else {
+                    return false;
+                };
+                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                    return false;
+                };
+                let src_v = self.compile_expr_v(value);
+                self.emit(
+                    Op::StoreLFieldV { obj_v, field: *field as u16, src_v },
+                    place.span,
+                );
+                true
             }
             _ => false,
         }
@@ -2940,6 +3252,38 @@ impl<'p> Compiler<'p> {
                 self.emit(Op::ListPopDiscardG { gid: *gid as u16 }, span);
                 true
             }
+            (Mutation::Push, PlaceKind::Field(obj_place, field)) if args.len() == 1 => {
+                let PlaceKind::Local(slot) = obj_place.kind else {
+                    return false;
+                };
+                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                    return false;
+                };
+                if let Some(kind) = ScalarKind::of_ty(&args[0].ty, self.program) {
+                    let val_i = self.compile_expr_i(&args[0]);
+                    self.emit(
+                        Op::ListPushFieldLI { obj_v, field: *field as u16, val_i, kind },
+                        span,
+                    );
+                } else {
+                    let val_v = self.compile_expr_v(&args[0]);
+                    self.emit(
+                        Op::ListPushFieldLV { obj_v, field: *field as u16, val_v },
+                        span,
+                    );
+                }
+                true
+            }
+            (Mutation::Pop, PlaceKind::Field(obj_place, field)) if args.is_empty() => {
+                let PlaceKind::Local(slot) = obj_place.kind else {
+                    return false;
+                };
+                let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                    return false;
+                };
+                self.emit(Op::ListPopDiscardFieldL { obj_v, field: *field as u16 }, span);
+                true
+            }
             _ => false,
         }
     }
@@ -3194,6 +3538,18 @@ impl<'p, 'io> Interp<'p, 'io> {
         fn_id: FnId,
     ) -> Res<Value> {
         let chunk = compiled.fns[fn_id].as_ref().unwrap();
+        let mut aliases: Vec<(usize, bool, usize)> = Vec::new();
+        for k in 0..chunk.param_count {
+            if let Value::Alias(is_global, at) = self.stack[self.base + k] {
+                let val = if is_global {
+                    std::mem::replace(&mut self.globals[at], Value::Moved)
+                } else {
+                    std::mem::replace(&mut self.stack[at], Value::Moved)
+                };
+                self.stack[self.base + k] = val;
+                aliases.push((k, is_global, at));
+            }
+        }
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);
@@ -3210,6 +3566,21 @@ impl<'p, 'io> Interp<'p, 'io> {
             self.base,
         );
         let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
+        for (k, is_global, at) in aliases {
+            let val = match chunk.slot_map[k] {
+                SlotLoc::I(r, kind) => kind.box_val(vm_regs_i[base_i + r as usize]),
+                SlotLoc::OptI { val, some, kind } => {
+                    kind.box_opt(vm_regs_i[base_i + val as usize], vm_regs_i[base_i + some as usize])
+                }
+                SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
+                SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
+            };
+            if is_global {
+                self.globals[at] = val;
+            } else {
+                self.stack[at] = val;
+            }
+        }
         vm_regs_i.truncate(base_i);
         self.vm_regs_i = vm_regs_i;
         res
@@ -3236,7 +3607,15 @@ impl<'p, 'io> Interp<'p, 'io> {
         } else {
             Vec::new()
         };
+        let dom_mark = self.saved_domains.len();
+        for &d in &chunk.guarded_domains {
+            self.saved_domains.push((d, self.domains[d]));
+        }
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
+        while self.saved_domains.len() > dom_mark {
+            let (id, prev) = self.saved_domains.pop().unwrap();
+            self.domains[id] = prev;
+        }
         vm_regs_i.truncate(base_i);
         res
     }
@@ -3245,8 +3624,9 @@ impl<'p, 'io> Interp<'p, 'io> {
         &mut self,
         compiled: &CompiledProgram<'p>,
         chunk: &Chunk<'p>,
-        args_i: &[i64],
+        args_i: &mut [i64],
         args_v: &mut [Value],
+        params: &[cpl_ir::ParamDef],
         vm_regs_i: &mut Vec<i64>,
     ) -> Res<Value> {
         let base_i = vm_regs_i.len();
@@ -3280,7 +3660,44 @@ impl<'p, 'io> Interp<'p, 'io> {
                 SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
             }
         }
+        let dom_mark = self.saved_domains.len();
+        for &d in &chunk.guarded_domains {
+            self.saved_domains.push((d, self.domains[d]));
+        }
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v);
+        while self.saved_domains.len() > dom_mark {
+            let (id, prev) = self.saved_domains.pop().unwrap();
+            self.domains[id] = prev;
+        }
+        if res.is_ok() && params.iter().any(|p| p.mutable) {
+            let mut ii = 0usize;
+            let mut iv = 0usize;
+            for (k, loc) in chunk.slot_map.iter().take(chunk.param_count).enumerate() {
+                let is_mut = params[k].mutable;
+                match *loc {
+                    SlotLoc::I(r, _) => {
+                        if is_mut {
+                            args_i[ii] = vm_regs_i[base_i + r as usize];
+                        }
+                        ii += 1;
+                    }
+                    SlotLoc::OptI { val, some, .. } => {
+                        if is_mut {
+                            args_i[ii] = vm_regs_i[base_i + val as usize];
+                            args_i[ii + 1] = vm_regs_i[base_i + some as usize];
+                        }
+                        ii += 2;
+                    }
+                    SlotLoc::V(r) => {
+                        if is_mut {
+                            args_v[iv] = std::mem::replace(&mut regs_v[r as usize], Value::Unit);
+                        }
+                        iv += 1;
+                    }
+                    SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
+                }
+            }
+        }
         vm_regs_i.truncate(base_i);
         res
     }
@@ -4549,8 +4966,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let res = self.exec_chunk_mix(
                         compiled,
                         callee,
-                        &arg_buf_i[..ni],
+                        &mut arg_buf_i[..ni],
                         &mut arg_buf_v[..nv],
+                        &f.params,
                         vm_regs_i,
                     );
                     if needs_stack {
@@ -4561,6 +4979,12 @@ impl<'p, 'io> Interp<'p, 'io> {
                     let val = res?;
                     self.call_frames.pop();
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    if f.params.iter().any(|p| p.mutable) {
+                        regs_i[abi..abi + ni].copy_from_slice(&arg_buf_i[..ni]);
+                        for k in 0..nv {
+                            regs_v[abv + k] = std::mem::replace(&mut arg_buf_v[k], Value::Unit);
+                        }
+                    }
                     match ret_mode {
                         CallRet::Unit => {}
                         CallRet::I => regs_i[dst_i as usize] = ScalarKind::unbox_val(&val),
@@ -4858,6 +5282,226 @@ impl<'p, 'io> Interp<'p, 'io> {
                     }
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 },
+                Op::LoadGlobalVMove { dst, gid } => {
+                    regs_v[dst as usize] =
+                        std::mem::replace(&mut self.globals[gid as usize], Value::Unit);
+                }
+                Op::StoreLFieldI { obj_v, field, src_i, kind } => {
+                    let val = kind.box_val(regs_i[src_i as usize]);
+                    match &mut regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => {
+                            Rc::make_mut(fs)[field as usize] = val;
+                        }
+                        Value::Tuple(TupleVal::OneInt(v)) if field == 0 => {
+                            *v = regs_i[src_i as usize];
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
+                    }
+                }
+                Op::StoreLFieldV { obj_v, field, src_v } => {
+                    let val = if (src_v as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[src_v as usize], Value::Unit)
+                    } else {
+                        regs_v[src_v as usize].clone()
+                    };
+                    match &mut regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => {
+                            Rc::make_mut(fs)[field as usize] = val;
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
+                    }
+                }
+                Op::StoreLFieldOptI { obj_v, field, val, some, kind } => {
+                    let boxed = kind.box_opt(regs_i[val as usize], regs_i[some as usize]);
+                    match &mut regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => {
+                            Rc::make_mut(fs)[field as usize] = boxed;
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
+                    }
+                }
+                Op::StoreLFieldIdx1I { obj_v, field, r_i, r_val, kind } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = regs_i[r_val as usize];
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        match &mut Rc::make_mut(fs)[field as usize] {
+                            Value::Array(arr) => {
+                                let len = arr.dims[0];
+                                if idx < 0 || idx >= len {
+                                    return trap(
+                                        spans[cur_pc],
+                                        format!("index {idx} is outside an array of length {len}"),
+                                    );
+                                }
+                                write_array_i(Rc::make_mut(arr), idx as usize, val);
+                            }
+                            Value::List(list) => {
+                                let len = list.len() as i64;
+                                if idx < 0 || idx >= len {
+                                    return trap(
+                                        spans[cur_pc],
+                                        format!("index {idx} is outside a list of length {len}"),
+                                    );
+                                }
+                                Rc::make_mut(list)[idx as usize] = kind.box_val(val);
+                            }
+                            _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::StoreLFieldIdx1V { obj_v, field, r_i, r_val } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if (r_val as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[r_val as usize], Value::Unit)
+                    } else {
+                        regs_v[r_val as usize].clone()
+                    };
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        match &mut Rc::make_mut(fs)[field as usize] {
+                            Value::Array(arr) => {
+                                let len = arr.dims[0];
+                                if idx < 0 || idx >= len {
+                                    return trap(
+                                        spans[cur_pc],
+                                        format!("index {idx} is outside an array of length {len}"),
+                                    );
+                                }
+                                Rc::make_mut(arr).set(idx as usize, val);
+                            }
+                            Value::List(list) => {
+                                let len = list.len() as i64;
+                                if idx < 0 || idx >= len {
+                                    return trap(
+                                        spans[cur_pc],
+                                        format!("index {idx} is outside a list of length {len}"),
+                                    );
+                                }
+                                Rc::make_mut(list)[idx as usize] = val;
+                            }
+                            _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::StoreLFieldIdx1OptI { obj_v, field, r_i, val, some, kind } => {
+                    let idx = regs_i[r_i as usize];
+                    let v = regs_i[val as usize];
+                    let s = regs_i[some as usize];
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        match &mut Rc::make_mut(fs)[field as usize] {
+                            Value::Array(arr) => {
+                                let len = arr.dims[0];
+                                if idx < 0 || idx >= len {
+                                    return trap(
+                                        spans[cur_pc],
+                                        format!("index {idx} is outside an array of length {len}"),
+                                    );
+                                }
+                                write_array_opt_i(Rc::make_mut(arr), idx as usize, v, s, kind);
+                            }
+                            Value::List(list) => {
+                                let len = list.len() as i64;
+                                if idx < 0 || idx >= len {
+                                    return trap(
+                                        spans[cur_pc],
+                                        format!("index {idx} is outside a list of length {len}"),
+                                    );
+                                }
+                                Rc::make_mut(list)[idx as usize] = kind.box_opt(v, s);
+                            }
+                            _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::ListPushFieldLI { obj_v, field, val_i, kind } => {
+                    let raw = regs_i[val_i as usize];
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        match &mut Rc::make_mut(fs)[field as usize] {
+                            Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
+                            Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
+                            _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::ListPushFieldLV { obj_v, field, val_v } => {
+                    let item = if (val_v as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[val_v as usize], Value::Unit)
+                    } else {
+                        regs_v[val_v as usize].clone()
+                    };
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        match &mut Rc::make_mut(fs)[field as usize] {
+                            Value::List(items) => Rc::make_mut(items).push(item),
+                            Value::Str(bytes) => {
+                                if let Value::Char(c) = item {
+                                    Rc::make_mut(bytes).push(c);
+                                }
+                            }
+                            _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::ListPopDiscardFieldL { obj_v, field } => {
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
+                        match &mut Rc::make_mut(fs)[field as usize] {
+                            Value::List(items) => {
+                                Rc::make_mut(items).pop();
+                            }
+                            _ => return trap(spans[cur_pc], "internal: expected list"),
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    }
+                }
+                Op::StoreGList1V { gid, r_i, r_val } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if (r_val as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[r_val as usize], Value::Unit)
+                    } else {
+                        regs_v[r_val as usize].clone()
+                    };
+                    if let Value::List(list) = &mut self.globals[gid as usize] {
+                        let len = list.len() as i64;
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside a list of length {len}"),
+                            );
+                        }
+                        Rc::make_mut(list)[idx as usize] = val;
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected list");
+                    }
+                }
+                Op::StoreLList1V { list_v, r_i, r_val } => {
+                    let idx = regs_i[r_i as usize];
+                    let val = if (r_val as usize) >= chunk.num_local_v {
+                        std::mem::replace(&mut regs_v[r_val as usize], Value::Unit)
+                    } else {
+                        regs_v[r_val as usize].clone()
+                    };
+                    if let Value::List(list) = &mut regs_v[list_v as usize] {
+                        let len = list.len() as i64;
+                        if idx < 0 || idx >= len {
+                            return trap(
+                                spans[cur_pc],
+                                format!("index {idx} is outside a list of length {len}"),
+                            );
+                        }
+                        Rc::make_mut(list)[idx as usize] = val;
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected list");
+                    }
+                }
                 Op::FallbackStmt { idx, clear_from_v } => {
                     if let Some(stats) = &mut self.vm_stats {
                         stats.record(stmt_tag(chunk.fallback_stmts[idx as usize]));

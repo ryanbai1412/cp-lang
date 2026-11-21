@@ -408,3 +408,31 @@ print(p.a, p.b, opt!.a, r.lo, r.hi, bit_ceil(9))
     assert_eq!(trap, None);
     assert_eq!(out, "18 14 18 2 10 16\n");
 }
+
+#[test]
+fn vm_mut_ref_calls_guarded_domains_and_field_writes() {
+    let source = "
+struct Counter(xs: List<Int>, total: Int):
+    fn add(mut self, x: Int) -> Int:
+        self.xs.push(x)
+        self.total = self.total + x
+        return self.total
+    fn bump_at(mut self, i: Int, d: Int):
+        self.xs[i] = self.xs[i] + d
+
+fn solve(n: Int) -> Int:
+    domain I = 0..n
+    var a: [I]Int = [0 for _ in I]
+    var c = Counter([], 0)
+    for i in I:
+        c.add(i.ord + 1)
+        a[i] = c.total
+    c.bump_at(0, 100)
+    return a[I.last] + c.xs[0]
+
+print(solve(4), solve(3))
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "111 107\n");
+}
