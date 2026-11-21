@@ -52,6 +52,56 @@ Each section below is one piece of that, measured by editing the generated C++.
 - **Status:** open
 - **Area:** codegen
 
+## `for j in 1..=m` lowers to a flag loop the optimizer can't vectorize
+
+- **Where:** the three `for j in 0..=m` / `1..=m` scans in `hungarian` (`std.flow`), the
+  `bench/flow/hungarian` row (1500 x 1500).
+- **What felt wrong:** an inclusive range emits
+  `for (ll j = 1, j_go = j <= m; j_go; j_go = j < m && (++j, true))`, safe when
+  `m == Int.MAX` but opaque to gcc's loop passes. Rewriting only those headers to
+  `for (ll j = 1; j <= m; ++j)` takes the program from 373 ms to 270 ms, under the
+  matched C++'s 278 ms. Spelling it `1..m + 1` in the library would hide the cost, so the
+  library keeps `..=`.
+- **Goal it hurts:** performance
+- **Ideal code:** `for j in 1..=m:`, as written.
+- **General fix:** emit the plain `<=` loop when the bound's type proves `m < Int.MAX`
+  (any `Int` from `.len`, `.K` or a range type does), and the flag loop only otherwise.
+  `..=` is in 28 places in `stdlib/flow.cp` and about 1,200 port files.
+- **Severity:** high
+- **Status:** open
+- **Area:** codegen
+
+## `unchecked:` keeps domain and range checks
+
+- **Where:** `R.nth(j - 1)` and `p[0] = i` inside `hungarian`'s `unchecked:` block.
+- **What felt wrong:** `unchecked:` drops `cpl::at`, but `R.nth(j - 1)` still emits
+  `cpl::pos(j - 1, R_len)` in the 2.25M-step inner loop, and a store into a
+  `List<0..2_147_483_648>` still emits `check_range`. Dropping the `pos` call alone saves
+  39 ms of 373 ms.
+- **Goal it hurts:** performance
+- **Ideal code:** the same `unchecked:` block covering every check it lexically contains.
+- **General fix:** decide whether `unchecked:` means index checks only or every
+  bounds-style check (index, domain `nth`, range-typed store), record it, and have the
+  codegen follow it.
+- **Severity:** medium
+- **Status:** open
+- **Area:** codegen
+
+## `?(0..N)` is stored as an 8-byte optional
+
+- **Where:** `alternating_layers`'s `var level: [L]?(0..2_147_483_648)` in `max_matching`
+  (Hopcroft-Karp, `bench/flow/matching`, 100000 + 100000 vertices).
+- **What felt wrong:** `[L]?V` over a domain gets the 4-byte `Niche<int, int, -1>`, but
+  an optional of a range that fits 31 bits is still `Niche<ll, ll, INT64_MIN>`. Using the
+  4-byte niche for `level` takes the program from 129 ms to 121 ms (matched C++ 107 ms).
+- **Goal it hurts:** performance
+- **Ideal code:** `var level: [L]?(0..2_147_483_648) = none`, as written now.
+- **General fix:** pick the optional's storage from the payload's range, as plain range
+  types already do.
+- **Severity:** medium
+- **Status:** open
+- **Area:** codegen
+
 ## Measurements
 
 | | CP Lang | C++ |
@@ -59,5 +109,9 @@ Each section below is one piece of that, measured by editing the generated C++.
 | `dinic`, whole program | 75.8 ms | 59.0 ms (64.8 ms keeping `cap0`) |
 | network build only | 47.4 ms | 20.3 ms |
 | empty program | 2.4 ms | 1.1 ms |
+| `hungarian`, as emitted | 373 ms | 278 ms |
+| `hungarian`, plain `<=` loops | 270 ms | |
+| `matching` (Hopcroft-Karp), as emitted | 129 ms | 107 ms |
+| `matching`, 4-byte `level` | 121 ms | |
 
 Emitted C++ for `bench/flow/dinic.cp`: 14,119 B.
