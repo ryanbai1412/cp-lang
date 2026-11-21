@@ -172,7 +172,6 @@ pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
     Program::resolve(fast.unwrap_or(file)).map_err(|e| e.to_string())
 }
 
-/// `text` as a JSON string, quotes included.
 /// The file with each `@brute(f) fn g` put in place of `fn f`: `g` takes
 /// `f`'s name, `f` steps aside and the decorator is blanked. Lines stay
 /// where they were, so `debug(...)` lines still pair up. `None` when the
@@ -198,6 +197,7 @@ fn swap_in_part_brutes(src: &str) -> Option<String> {
             }
         }
     }
+    let tokens = cpl_syntax::lex(src).tokens;
     let mut edits: Vec<(Span, String)> = Vec::new();
     for (decorator, brute, part) in pairs {
         let Some(&fast) = fns.get(part) else { continue };
@@ -206,8 +206,15 @@ fn swap_in_part_brutes(src: &str) -> Option<String> {
             .map(|c| if c == '\n' { c } else { ' ' })
             .collect();
         edits.push((decorator, blank));
-        edits.push((brute, part.to_string()));
         edits.push((fast, format!("{part}_cpl_fast")));
+        // The brute's own name is gone once it is renamed, so a brute that
+        // recurses, or a caller of it, must use the name it takes.
+        let name = &src[brute.start as usize..brute.end as usize];
+        for token in tokens.iter().filter(|t| t.kind == cpl_syntax::TokenKind::Ident) {
+            if &src[token.span.start as usize..token.span.end as usize] == name {
+                edits.push((token.span, part.to_string()));
+            }
+        }
     }
     if edits.is_empty() {
         return None;
@@ -586,4 +593,19 @@ pub fn run_with(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write,
         }
     }
     1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::swap_in_part_brutes;
+
+    #[test]
+    fn a_recursive_brute_calls_itself_by_the_name_it_takes() {
+        let src = "fn ways(n: Int) -> Int = n\n@brute(ways)\nfn slow(n: Int) -> Int = if n <= 1: 1 else: slow(n - 1) + slow(n - 2)\nprint(ways(read()))\n";
+        let swapped = swap_in_part_brutes(src).expect("a pair");
+        assert_eq!(
+            swapped,
+            "fn ways_cpl_fast(n: Int) -> Int = n\n            \nfn ways(n: Int) -> Int = if n <= 1: 1 else: ways(n - 1) + ways(n - 2)\nprint(ways(read()))\n"
+        );
+    }
 }
