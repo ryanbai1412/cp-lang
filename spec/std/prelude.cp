@@ -10,7 +10,7 @@
 //! checked or run gets the prelude.
 
 use std.algebra.{Action, Desc, Monoid, Ordering, cmp, desc, fold}
-use std.bag.{BucketCount, SortedBag, SortedSet}
+use std.bag.{BucketCount, SortedBag, SortedMap, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque, LinkedList}
 use std.dp.{LiChao, Line}

@@ -47,6 +47,10 @@ pub struct Deque<T>:
     /// Remove and return the front, or `none` when empty.
     pub fn pop_front(mut self) -> ?T = todo
 
+    /// O(k) for `k` removed. Remove and return the longest front run on which `ok` holds,
+    /// in order: a queue sorted by key releases everything below a rising threshold.
+    pub fn pop_front_while(mut self, ok: T -> Bool) -> List<T> = todo
+
     /// The front, or `none` when empty.
     pub @get fn first(self) -> ?T = todo
 

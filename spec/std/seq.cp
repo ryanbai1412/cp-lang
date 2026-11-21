@@ -32,6 +32,10 @@ pub fn dedup<T>(mut self: List<T>) = todo
 /// Works on any `Seq`. O(n) time without hashing.
 pub fn deduped<S: Seq, T>(self: S) -> List<T> = todo
 
+/// O(n). The positions holding a new strict maximum, left to right: the first position, then
+/// each one greater than everything before it. `record_highs(by: f)` compares `f(x)`.
+pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D = todo
+
 /// Distinct values of `self` in first-seen order (optionally keyed by `by:`).
 /// Works on any `Seq`. O(n) expected time, O(n) space via `HashSet`. Unlike
 /// `dedup` / `deduped` (adjacent duplicates only, O(n) time without hashing),

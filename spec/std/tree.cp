@@ -438,6 +438,37 @@ pub struct JumpTree<V>:
     /// `b` or across trees.
     pub fn jump(self, a: V, b: V, k: Int) -> ?V = todo
 
+/// Binary lifting over a fixed forest given by parent links, each carrying a value on the edge
+/// up: O(n log n) build and memory, O(log n) queries. A forest that grows leaf by leaf is a
+/// `JumpTree`; one that changes is a `LinkCut`.
+pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
+    up: [V]?V
+    dep: [V]0..=V.count
+
+    /// O(n log n). `par[v]` is `v`'s parent with the value on the edge to it, `none` at a root.
+    /// `op` must be associative; it need not commute, since folds run from the lower end up.
+    pub fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T> = todo
+
+    /// O(1). The parent of `v`, or `none` at a root.
+    pub fn parent(self, v: V) -> ?V = todo
+
+    /// O(1). The number of edges from `v` up to its root.
+    pub fn depth(self, v: V) -> Int = todo
+
+    /// O(log n). The ancestor `k` edges above `v`, or `none` if that is above the root.
+    pub fn ancestor(self, v: V, k: Int) -> ?V = todo
+
+    /// O(log n). The lowest common ancestor of `a` and `b`, or `none` in different trees.
+    pub fn lca(self, a: V, b: V) -> ?V = todo
+
+    /// O(log n). The fold of the edge values from `v` up to its ancestor `u`, lowest first;
+    /// `identity` when `u == v`. Traps if `u` is not an ancestor of `v`.
+    pub fn fold(self, v: V, up_to u: V) -> T = todo
+
+    /// O(log n) calls. The highest ancestor `u` of `v` with `ok(self.fold(v, up_to: u))`, or `v`
+    /// itself; `ok` must turn false at most once on the way up.
+    pub fn climb_while(self, v: V, ok: T -> Bool) -> V = todo
+
 /// A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set vertex
 /// values along paths, by a link-cut tree (splay trees over preferred paths). Values fold
 /// with `op`; a value that is not its own reverse implements `Reversible`, as for

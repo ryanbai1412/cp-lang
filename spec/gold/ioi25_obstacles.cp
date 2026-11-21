@@ -7,41 +7,50 @@
 // s ≤ d, (0, s) and (0, d) connect inside l..=r iff their row-0 layers have a
 // common ancestor, every drop on s's path has its last column ≥ l, and every
 // drop on d's path has its first column ≤ r.
+use std.tree.{Lift}
+
 @grader
 mod obstacles:
-    domain Row, Col                                    // sized by initialize
+    domain Row                                         // both sized by initialize
+    domain Col
     struct Layer(row: Row, cols: Range<Col>)
     struct Drop(first: Col, last: Col)
 
     // A path's binding drops: the rightmost `first` and the leftmost `last`.
     fn tightest(a: Drop, b: Drop) -> Drop = Drop(max(a.first, b.first), min(a.last, b.last))
 
-    var layers: Lifted<Layer, Drop>                    // forest + binary lifting: lca, path fold
-    var home: [Col]?Node                               // row-0 layer of each free column
+    var layers: Lift<Col, Drop>                        // a layer is named by the column that opened it
+    var home: [Col]?Col                                // row-0 layer of each free column
 
     fn initialize(t: [Row]0..=1e9, h: [Col]0..=1e9):
-        let coldest = RangeMin(t)
-        let driest = RangeMin(h)
-        let wettest = RangeMax(h)
-        var forest = Forest<Layer, Drop>()
-        var open = SortedMap<Col, Node>()              // layers not yet inside a later run
-        var waiting = Queue(Col.sorted(by: h))         // columns not yet free, driest first
+        let coldest = SparseTable(min, t)
+        let driest = SparseTable(min, h)
+        let wettest = SparseTable(max, h)
+        // The maximal run of columns around `c` drier than `limit`.
+        fn run_around(c: Col, limit: Int) -> Range<Col>:
+            let lo = (Col.first!..=c).bsearch(l => wettest.fold(l..=c) < limit)
+            let hi = (c..=Col.last!).bsearch(r => wettest.fold(c..=r) < limit, last: true)
+            lo..hi
+        var layer: [Col]?Layer = none
+        var up: [Col]?(Col, Drop) = none
+        var open = SortedMap<Col, Col>()               // layers not yet inside a later run
+        var waiting = Deque.of(Col.range.sorted(by: c => h[c]))   // columns not yet free, driest first
         home = none
         for r in t.record_highs():                     // rows with a new maximum temperature
-            let runs = waiting.pop_while(c => h[c] < t[r])
-                .map(c => wettest.span(around: c, while: x => x < t[r]))
-                .distinct()
-            for run in runs:
-                let layer = forest.add(Layer(r, run))
-                for (_, child) in open.drain(in: run):
-                    let warm = coldest[forest[child].row..=r]
-                    let cols = forest[child].cols
-                    if let first = driest.first(in: cols, where: x => x < warm):
-                        let last = driest.last(in: cols, where: x => x < warm)!
-                        forest.link(child, parent: layer, Drop(first, last))
-                open[run.first!] = layer
-                if r == Row.first: home[run] = layer
-        layers = forest.lift(tightest, identity: Drop(Col.first, Col.last))
+            let opened = waiting.pop_front_while(c => h[c] < t[r])
+            for (id, run) in [(c, run_around(c, t[r])) for c in opened].distinct(by: p => p.1):
+                layer[id] = Layer(r, run)
+                for (_, child) in open.drain(after: run.l.l, while: (c, _) => c in run):
+                    let below = layer[child]!
+                    let warm = coldest.fold(below.row..=r)
+                    let cols = below.cols
+                    if let first = cols.first_true(c => driest.fold(cols.l..c.r) < warm):
+                        let last = cols.last_true(c => driest.fold(c.l..cols.r) < warm)!
+                        up[child] = (id, Drop(first, last))
+                open[run.first!] = id
+                if r == Row.first!:
+                    for c in run: home[c] = id
+        layers = Lift(up, tightest, identity: Drop(Col.first!, Col.last!))
 
     fn can_reach(l: Col, r: Col, s: Col, d: Col) -> Bool:
         let (s, d) = minmax(s, d)
