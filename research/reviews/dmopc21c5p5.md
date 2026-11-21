@@ -1,6 +1,7 @@
 # dmopc21c5p5
 
-Score: 1/5
+Score: pending cold rescore (port = dream verbatim: editorial header explaining exact Held-Karp DP for `n <= 12` and 64-start greedy + 2-opt local search for `n > 12`, prelude `Sieve.new(n)`, `std.rand.Rng`, `Subset<V>` with `?Int`/`?V` and `argmax`, `[Pos]Int` zero-bounds-check `two_opt_step`, 0 lints, `23,309 B`, verified exact optimal `n = 1..8` + ASan/UBSan `n = 9..100` + interpreter agreement)
+Dream: pending cold rescore (written: `proto/ports/blind_critic_4/dream/dmopc21c5p5.cp`, port = dream 1.000x)
 
 Baseline review, cold, on main 96359635. No editorial: lines 1-3 list prototype deltas. The general case is a random restart plus a 2-opt heuristic with no argument that it reaches the optimum. The body hand-rolls a sieve and an RNG, and drives the search with `-1` sentinels and an `improved` flag. No dream exists, so the score is capped at 3.
 
