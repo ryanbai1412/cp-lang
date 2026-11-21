@@ -1,6 +1,6 @@
 //! `cpl lint`.
 
-use crate::{apply_fixes, is_taste, lint, Config, LINTS};
+use crate::{apply_fixes, fix_removed_syntax, is_taste, lint, Config, LINTS};
 use std::collections::BTreeMap;
 use cpl_diag::Severity;
 use std::io::Write;
@@ -108,29 +108,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             }
         }
         if fix {
-            // Apply machine-applicable removed-syntax codemods (e.g. `where`
-            // filters or `--- multitest ---`) without applying speculative
-            // parser-recovery guesses like inserting `:`.
-            let mut syntax_applied = 0usize;
-            loop {
-                let parsed = cpl_syntax::parse_file(&src);
-                let codemods: Vec<_> = parsed
-                    .diagnostics
-                    .into_iter()
-                    .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX && !d.fixes.is_empty())
-                    .collect();
-                if codemods.is_empty() {
-                    break;
-                }
-                let (text, applied) = apply_fixes(&src, &codemods);
-                if applied == 0 {
-                    break;
-                }
-                syntax_applied += applied;
+            let (text, applied) = fix_removed_syntax(&src);
+            if applied > 0 {
                 fixed += applied;
                 src = text;
-            }
-            if syntax_applied > 0 {
                 if let Err(e) = std::fs::write(file, &src) {
                     let _ = writeln!(stderr, "error: can't write {name}: {e}");
                     failed += 1;

@@ -571,17 +571,8 @@ impl Server {
                     || only.iter().filter_map(Value::as_str).any(|kind| {
                         "source.fixAll".starts_with(kind) || kind.starts_with("source.fixAll")
                     });
-                if fix_all && lints.iter().any(|d| !d.fixes.is_empty()) {
-                    let mut text = analysis.text.to_string();
-                    let mut diagnostics = lints;
-                    loop {
-                        let (fixed, applied) = cpl_lint::apply_fixes(&text, &diagnostics);
-                        if applied == 0 {
-                            break;
-                        }
-                        text = fixed;
-                        diagnostics = self::lints(uri, &text);
-                    }
+                let fixed = fix_all.then(|| fix_file(uri, &analysis.text)).flatten();
+                if let Some(text) = fixed {
                     let whole = Span::new(0, analysis.text.len() as u32);
                     actions.push(obj([
                         ("title", "apply every `cpl fix` fix".into()),
@@ -1108,6 +1099,18 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
 ///
 /// Not in the playground: the lint rules would put its page over the
 /// site bundle's size cap.
+/// The buffer after `cpl fix`, if that changes it.
+#[cfg(target_arch = "wasm32")]
+fn fix_file(_uri: &str, _text: &str) -> Option<String> {
+    None
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn fix_file(uri: &str, text: &str) -> Option<String> {
+    let (fixed, applied) = cpl_lint::fix(text, &lint_config(uri));
+    (applied > 0).then_some(fixed)
+}
+
 #[cfg(target_arch = "wasm32")]
 fn lints(_uri: &str, _text: &str) -> Vec<Diagnostic> {
     Vec::new()
@@ -1115,10 +1118,14 @@ fn lints(_uri: &str, _text: &str) -> Vec<Diagnostic> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn lints(uri: &str, text: &str) -> Vec<Diagnostic> {
-    let config = path_of_uri(uri)
+    cpl_lint::lint(text, &lint_config(uri))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn lint_config(uri: &str) -> cpl_lint::Config {
+    path_of_uri(uri)
         .map(|path| cpl_lint::Config::discover(std::path::Path::new(&path)).0)
-        .unwrap_or_default();
-    cpl_lint::lint(text, &config)
+        .unwrap_or_default()
 }
 
 /// The file a `file://` URI names, with `%XX` escapes decoded.

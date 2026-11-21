@@ -2098,6 +2098,12 @@ alike. Lints run on the whole file on every edit: 492 lines open in 10 ms and a 
 reaches diagnostics in 5 ms (debug build). The playground's build leaves them out: the lint
 rules added 85,600 B to `dist/cp-lang.html` and took it over its 2,600,000 B cap. Reverse: drop `lints` from `diagnostics` and
 `codeAction` in `crates/cpl-lsp/src/server.rs`.
+The fix-all is `cpl_lint::fix`, the same function `cpl fix` runs: first the removed-syntax
+rewrites the parser offers (`where` as a filter, `--- multitest ---`), since a file that
+does not parse gets no lints, then the lints; so a file with `where` and `xs.len()` comes out
+with `if` and `xs.len` in one action. The replaced spellings (`.pow` as L0205, getter `()` as
+L0206, the removed syntax as E0503) reach the editor as quick fixes with no editor code of
+their own. Reverse: inline `fix_removed_syntax` back into `crates/cpl-lint/src/cli.rs`.
 
 ## 30. Front-end recovery (2026-11-21)
 

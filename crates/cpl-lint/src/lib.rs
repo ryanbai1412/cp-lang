@@ -549,6 +549,44 @@ fn edit_distance(a: &str, b: &str) -> usize {
     row[b.len()]
 }
 
+/// The removed spellings the parser offers a rewrite for (`where` as a
+/// filter, `--- multitest ---`), applied to a fixed point. Parser recovery
+/// guesses, such as an inserted `:`, are not among them.
+pub fn fix_removed_syntax(src: &str) -> (String, usize) {
+    let mut src = src.to_string();
+    let mut total = 0;
+    loop {
+        let codemods: Vec<_> = cpl_syntax::parse_file(&src)
+            .diagnostics
+            .into_iter()
+            .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX && !d.fixes.is_empty())
+            .collect();
+        let (text, applied) = apply_fixes(&src, &codemods);
+        if applied == 0 {
+            return (src, total);
+        }
+        total += applied;
+        src = text;
+    }
+}
+
+/// What `cpl fix` makes of a source: the removed-syntax rewrites, then
+/// every lint fix, each to a fixed point.
+pub fn fix(src: &str, config: &Config) -> (String, usize) {
+    let (mut src, mut total) = fix_removed_syntax(src);
+    if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
+        return (src, total);
+    }
+    loop {
+        let (text, applied) = apply_fixes(&src, &lint(&src, config));
+        if applied == 0 {
+            return (src, total);
+        }
+        total += applied;
+        src = text;
+    }
+}
+
 /// Applies the first fix of every diagnostic that has one. Fixes that
 /// overlap an earlier one are left for the next run.
 pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {

@@ -1918,3 +1918,116 @@ fn lints_are_published_with_their_cpl_fix_codemods_as_quick_fixes() {
     assert!(left.iter().all(|d| d.fixes.is_empty()), "{left:?}");
     assert!(left.len() < diagnostics.len());
 }
+
+fn open_port(server: &mut Server, port: &str, edit: (&str, &str)) -> (String, String, Vec<Value>) {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(format!("../../proto/ports/ecnerwala/{port}.cp"));
+    let original = std::fs::read_to_string(&path).unwrap();
+    assert!(original.contains(edit.0), "{port}: {}", edit.0);
+    let text = original.replacen(edit.0, edit.1, 1);
+    let uri = format!("file://{}", path.display());
+    server.handle(&request(1, "initialize", obj([])));
+    let doc = obj([
+        ("uri", uri.as_str().into()),
+        ("languageId", "cp".into()),
+        ("version", 1.into()),
+        ("text", text.as_str().into()),
+    ]);
+    let published = server.handle(&notification(
+        "textDocument/didOpen",
+        obj([("textDocument", doc)]),
+    ));
+    let diagnostics = published[0]
+        .at(&["params", "diagnostics"])
+        .as_array()
+        .to_vec();
+    (uri, text, diagnostics)
+}
+
+/// Each spelling the language replaced, put back into a real port, is
+/// reported with the `cpl fix` codemod as its quick fix, and the fix
+/// restores the port.
+#[test]
+fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
+    for (port, good, bad, code) in [
+        (
+            "cf2066b",
+            "for i in I if a[i] == 0]",
+            "for i in I where a[i] == 0]",
+            "E0503",
+        ),
+        ("agc077a", "@!multitest\n", "--- multitest ---\n", "E0503"),
+        (
+            "cf2062h",
+            "Z(2) ** inside - ways",
+            "Z(2).pow(inside) - ways",
+            "L0205",
+        ),
+        ("cf2066b", "(0..b.len).rev:", "(0..b.len()).rev:", "L0206"),
+    ] {
+        let mut server = Server::new();
+        let (uri, text, diagnostics) = open_port(&mut server, port, (good, bad));
+        let old = diagnostics
+            .iter()
+            .find(|d| d.get("code").as_str() == Some(code))
+            .unwrap_or_else(|| panic!("{port}: no {code} for `{bad}` in {diagnostics:?}"));
+        let (_, fixed) = quick_fixed(&mut server, &uri, &text, old);
+        assert_eq!(
+            fixed,
+            text.replacen(bad, good, 1),
+            "{port}: the fix for `{bad}`"
+        );
+    }
+}
+
+/// Fix-all is `cpl fix`: the removed syntax first, which lets the file
+/// parse, then the lints it uncovers.
+#[test]
+fn fix_all_rewrites_removed_syntax_then_the_lints_it_uncovers() {
+    let mut server = Server::new();
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../proto/ports/ecnerwala/cf2066b.cp");
+    let original = std::fs::read_to_string(&path).unwrap();
+    let (uri, text, _) = open_port(
+        &mut server,
+        "cf2066b",
+        ("(0..b.len).rev:", "(0..b.len()).rev:"),
+    );
+    let text = text.replacen("for i in I if a[i] == 0]", "for i in I where a[i] == 0]", 1);
+    let change = obj([
+        (
+            "textDocument",
+            obj([("uri", uri.as_str().into()), ("version", 2.into())]),
+        ),
+        (
+            "contentChanges",
+            vec![obj([("text", text.as_str().into())])].into(),
+        ),
+    ]);
+    server.handle(&notification("textDocument/didChange", change));
+    let params = obj([
+        ("textDocument", obj([("uri", uri.as_str().into())])),
+        (
+            "range",
+            obj([
+                ("start", obj([("line", 0.into()), ("character", 0.into())])),
+                ("end", obj([("line", 0.into()), ("character", 0.into())])),
+            ]),
+        ),
+        (
+            "context",
+            obj([
+                ("diagnostics", Vec::<Value>::new().into()),
+                ("only", vec!["source.fixAll".into()].into()),
+            ]),
+        ),
+    ]);
+    let reply = server.handle(&request(2, "textDocument/codeAction", params));
+    let actions = reply[0].get("result").as_array();
+    let [fix_all] = actions else {
+        panic!("{actions:?}")
+    };
+    assert_eq!(fix_all.get("kind").as_str(), Some("source.fixAll.cpl"));
+    let edits = fix_all.at(&["edit", "changes", uri.as_str()]).as_array();
+    assert_eq!(edits[0].get("newText").as_str(), Some(original.as_str()));
+}
