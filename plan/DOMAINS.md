@@ -197,8 +197,9 @@ Domain-wide subsets (`V.all`, `Bitset<V>` with `for v in s`, `.without(v)`,
 `s - t`, `.find`, `.any`, `.len`, `impl Show`, and `adjacency(edges, into: Bitset)`),
 fieldless enum-indexed arrays (`enum Sign: neg = -1, zero = 0, pos = 1`,
 `[Sign]T`, `[Sign] x => ...`, `for x in Sign:`), domain-level sequence ops
-(`D.partition`, `D.sorted(by:)` including array keys, `D.group_by`, `D.at`,
-`D.first(where:)`, `D.filter`), and typed `Item`/`Cut` ranges via `minmax`
+(`D.partition`, `D.sort(by:)` including array keys, `D.group(by:)`, `D.at`,
+`D.first(p)`, `D.filter` with domains satisfying `Seq`/`Indexed`), `D.bounds`
+directly in `SegTree`/`LazySegTree`/`Fenwick` (`cf2207f`), and typed `Item`/`Cut` ranges via `minmax`
 and `choose2` now also work end to end. Eight ports converted (`ucup4s25c`,
 `cf2222f`, `cf2101b`, `cf2268c`, `cf2150f`, `cf2147h`, `cf2129b`, `cf2147f`),
 with `cf2147h` (`1.631x -> 1.063x`) and `cf2147f` (`1.467x -> 1.254x`)

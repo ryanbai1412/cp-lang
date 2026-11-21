@@ -179,7 +179,7 @@ print(adj[V.at(3), V.at(1)], missing, after_first)
 
 ## Domain subsets, enum-indexed tables, and sequence operations
 
-Domains compose directly with bitsets (`V.all`, `Bitset<V>`, `adjacency(edges, into: Bitset)`), fieldless enums (`[Sign]T` and `[Sign] x => ...`), domain-typed sequence operations (`partition`, `sorted(by:)`, `group_by`, `at`, `first(where:)`), and paired `Item`/`Cut` ranges via `minmax`:
+Domains compose directly with bitsets (`V.all`, `Bitset<V>`, `adjacency(edges, into: Bitset)`), fieldless enums (`[Sign]T` and `[Sign] x => ...`), domain-typed sequence operations (`partition`, `sort(by:)`, `group(by:)`, `at`, `first(p)`), and paired `Item`/`Cut` ranges via `minmax`:
 
 ```cp CP Lang 0.2.2
 enum Sign: neg = -1, zero = 0, pos = 1
@@ -190,9 +190,11 @@ let edges: List<(u: V, v: V)> = [(V(1), V(2)), (V(2), V(3))]
 let adj = adjacency(edges, into: Bitset)
 let rest = V.all - adj[V(2)]
 let (evens, odds) = V.partition(v => Int(v) % 2 == 0)
-let first_big = V.first(where: v => Int(v) > 2)
+let first_big = V.first(v => Int(v) > 2)
 print(vals[Sign.neg], rest.len, evens.len, odds.len, first_big!)
 ```
+
+Range structures (`SegTree<V.bounds, T>`, `LazySegTree<V.bounds, T>`, `Fenwick<V.bounds, T>`) also accept `V.bounds` directly as their index domain, so boundary updates (`seg.set(v.r, x)`, `seg.apply(..=v.l, 1)`) need no shadow `0..=n` domain.
 
 ## Algebraic `Index` and escape hatches
 

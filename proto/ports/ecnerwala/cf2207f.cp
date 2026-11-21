@@ -35,11 +35,10 @@ for c in Color:
     by_right[hi].push(lo)
     total_intervals += 1
 
-domain Pos = 0..=n
-var seg = LazySegTree<Pos, Int>(AddMax, fill: 0)
+var seg = LazySegTree<Rank.bounds, Int>(AddMax, fill: 0)
 for r in Rank:
     let v = seg.all + Int(not must_rank[r])
-    seg.set(Pos(r.to_idx + 1), v)
-    for lo in by_right[r]: seg.apply(..=Pos(lo.to_idx), 1)
+    seg.set(r.r, v)
+    for lo in by_right[r]: seg.apply(..=lo.l, 1)
 
 print(n + total_intervals - seg.all - 1)

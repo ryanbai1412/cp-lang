@@ -2946,6 +2946,12 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   a `Bitset<V>` is expected, in `V.all - side` / `&` / `|` / `^`, and in `V.all.without(v)`.
   `adjacency(edges, into: Bitset)` is a general graph builder returning `[V]Bitset<V>` (with `into: List` or default
   returning `[V]List<V>`), inferring `V` from the edge record/tuple endpoints.
+  Majorization check for `V.all` contextual lift: `V.all` stays `Range<V>` (two ints, O(1), zero allocation) in all
+  non-Bitset contexts (`for v in V.all`, `V.all.len`, etc.) and lifts to `Bitset<V>.full()` only where the static
+  context explicitly requires `Bitset<V>` (a `Bitset<V>` parameter/annotation, `V.all - side` / `&` / `|` / `^`, or
+  `V.all.without(v)`). In those positions `Bitset<V>` is the only valid representation and the generated code is
+  identical to writing `Bitset<V>.full()` explicitly (same O(n/64) time and space, never allocating a bitset outside
+  Bitset contexts), so the contextual lift majorizes explicit `Bitset<V>.full()` without hidden cost.
   Reason: eliminates manual `Bitset<V>.full()` / `.each()` / odd-adjacency boilerplate (`cf2147h`, IOI sketches).
   Reverse: remove the `each`-based `element_ty`/`iter` path, `Range -> Bitset` coercion, and `adjacency` lowering.
 - **66.2 Fieldless enums as first-class array dimensions (`[Sign]T`, `[Sign] x => ...`, explicit variant values).**
@@ -2956,14 +2962,16 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   Reason: enables `[Sign]Path` DP/segment-tree tags (`design/EXEMPLARS-PORTS.md`) without manual ordinal arrays or
   losing enum type safety.
   Reverse: remove `Dim::Enum`/`DimSpec::Enum` and `Cast::{EnumOrd, EnumVal, OrdToEnum}` across IR, interp, and codegen.
-- **66.3 Domain-level sequence operations (`partition`, `sorted(by:)`, `group_by`, `at`, `first(where:)`, `filter`).**
-  Every domain `D` (and any sequence `List<T>`, `[D]T`, `Range<T>`, `Set<T>`) supports `.partition(pred)` returning
-  `(List<D>, List<D>)`, `.group_by(key)` returning `List<List<D>>` in deterministic first-seen key order,
-  `.first(where: pred)` returning `?D`, `.filter(pred)` returning `List<D>`, and `D.sorted(by: ...)` returning `List<D>`
-  (where `by:` accepts a lambda, a function name, or a 1D array `[D]K` as `x => arr[x]`).
-  Reason: mined from `design/sketches/ioi2025/*.cp` (`C.partition`, `Col.sorted(by: h)`, `I.group_by`, `I.at(k)`,
-  `Row.first(where:)`) using one shared iterable-lowering mechanism.
-  Reverse: remove the sequence-op arms in `cpl-check/src/check/{call,expr}.rs` and `cpl-ir/src/lower/call.rs`.
+- **66.3 Domain-level sequence operations (`Seq`/`Indexed` parity: `partition`, `sort(by:)`, `group(by:)`, `at`, `first(p)`, `filter`).**
+  `Ty::Domain(D)` satisfies `Seq` and `Indexed` via `Ty::seq_elem() == Some(Ty::Pos(D))`, inheriting `.at(i)` and
+  `.get(i)` directly from `Indexed`. Every domain `D` (and any sequence `List<T>`, `[D]T`, `Range<T>`, `Set<T>`)
+  supports `.partition(keep)` returning `(List<D>, List<D>)` (matching `stdlib/seq.cp`), `.group(by: key)` returning
+  `List<List<D>>` in deterministic first-seen key order (§60 `by:` option), `.first(pred)` returning `?D` (matching
+  `xs.first(p)`), `.filter(pred)` returning `List<D>`, and `D.sort(by: ...)` returning `List<D>` (matching
+  `xs.sort(by:)`, where `by:` accepts a lambda, function name, or `[D]K` array). `cpl fix` (`L0510` `by_twin` +
+  `L0511` `domain_spelling`) rewrites `D.sorted(by:)`, `xs.first(where: p)`, and `xs.group_by(k)`.
+  Reason: aligns domain sequence ops with the one-spelling rules (§53, §60) and `Seq`/`Indexed` traits.
+  Reverse: remove `Ty::Domain` from `Ty::seq_elem()`, the sequence-op arms in `cpl-check`/`cpl-ir`, and `L0511`.
 - **66.4 Typed `Item`/`Cut` pairs with `minmax` and `choose2`.**
   `minmax(a, b)` preserves the operand's domain/position type (`(Cut, Cut)` for `Cut` inputs), so `let (lo, hi) = minmax(p[i], s[i]); low.apply(lo..hi, d)`
   passes a typed `Range<Cut>` directly to `LazySegTree<Cut, _>.apply` without converting through `Int` or conflating
@@ -2977,6 +2985,16 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   through `outer_cxs`. The escape rule (`E0313`) is unchanged.
   Reason: enables `fn force(c: C, val: Int)` after `let (domain C, comp) = two_edge_components(g)` (`cf2135c`).
   Reverse: remove `register_pat_domains` in `crates/cpl-ir/src/lower/mod.rs` and the top-level slot reuse in `crates/cpl-ir/src/lower/stmt.rs`.
+- **66.6 `D.bounds` as a first-class index domain in `SegTree`, `LazySegTree`, and `Fenwick`.**
+  Generic type parameters bound to `Ty::Bound(d)` (`D = V.bounds`) act as full index domains in `cpl-ir`: `D.K` /
+  `D.len` / `D.count` lower to `DomLen(d) + 1`, `for i in D:` iterates `0..DomLen(d) + 1` as `Ty::Bound(d)`, `[D]T`
+  lowers to `DimSpec::Bound(d)`, and `D.nth(k)` / `Range<D>.{lo,hi}` preserve `Ty::Bound(d)`. In `cpl-check` and
+  `cpl-ir`, when a call argument expects `Range<D.bounds>`, boundary ranges (`..=lo.l`, `a..=b`, `a..b`, `a..`)
+  keep `.bounds` and permit `..=` rather than stripping to `Range<D>` (while non-bounds contexts like `a[l.l..r.r]`
+  keep stripping to `Range<D>`). Partial generic constructor inference (`LazySegTree<V.bounds, Int>(AddMax, fill: 0)`)
+  binds the supplied prefix of type parameters and infers the remaining ones (`F`) from arguments.
+  Reason: eliminates shadow `0..=n` domains and `Pos(lo.to_idx)` casts (`cf2207f`).
+  Reverse: remove the `GenArg::Ty(Ty::Bound(_))` arms in `cpl-ir/src/lower/{mod,expr,call}.rs` and `expected_bounds_range` in `cpl-check`.
 
 ## 67. `IntervalMap.assign` zero-alloc `on_old:` callback (2026-11-21)
 
