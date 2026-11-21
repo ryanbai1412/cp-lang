@@ -6,7 +6,7 @@ cpl="$root/target/debug/cpl"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-for name in z_prefix rolling_hash suffix_array suffix_automaton aho_corasick; do
+for name in z_prefix rolling_hash suffix_array suffix_automaton aho_corasick trie; do
     "$cpl" build "$root/bench/strings/$name.cp" -o "$tmp/${name}_cp.cpp" >/dev/null
     bytes=$(wc -c < "$tmp/${name}_cp.cpp")
     g++ -std=c++17 -O2 "$tmp/${name}_cp.cpp" -o "$tmp/${name}_cp"

@@ -846,3 +846,23 @@ fn narrowing_a_record_array_reads_the_source_in_place() {
     assert!(!body.contains("= edges;"), "{body}");
     assert!(body.contains("& t"), "{body}");
 }
+
+#[test]
+fn trie_row_field_niches_opt_int_and_avoids_temp_vector() {
+    let out = cpp(concat!(
+        "struct Trie(cnt: Int, kid: [0..2]?Int)\n",
+        "var nodes = List<Trie>()\n",
+        "fn add(bit: Int):\n",
+        "    nodes.push(Trie(1, [0..2] _ => none))\n",
+        "    let below = nodes.len - 1\n",
+        "    nodes.push(Trie(1, [0..2] b => if b == bit: below else: none))\n",
+        "add(read<Int>() & 1)\n",
+        "print(nodes.len)\n",
+    ));
+    assert!(out.contains("cpl::Row<cpl::OptInt, 2> kid;"), "{out}");
+    assert!(!out.contains("std::optional<ll>"), "{out}");
+    assert!(
+        !out.contains("-> std::vector<cpl::OptInt>"),
+        "Row field comprehension must construct cpl::Row directly without a temporary std::vector: {out}"
+    );
+}
