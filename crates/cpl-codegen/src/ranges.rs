@@ -41,6 +41,9 @@ enum StoreOp {
 
 type Store<'p> = (Option<usize>, StoreOp, &'p Expr);
 
+/// The fn a domain is defined in, and its low end and length.
+type DomainDef<'p> = (Option<usize>, &'p Expr, &'p Expr);
+
 #[derive(Default)]
 pub(crate) struct Facts<'p> {
     /// How many times each variable is stored to, in any way.
@@ -55,12 +58,14 @@ pub(crate) struct Facts<'p> {
     nonneg_vars: BTreeSet<Var>,
     /// Loop variables: the low end of the range they run over.
     loop_lo: BTreeMap<Var, &'p Expr>,
-    /// Each domain's length expression, when defined once.
-    domain_len: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
     /// Struct fields whose declared range narrows to unsigned 32-bit (`>= 0`).
     u32_fields: BTreeSet<(usize, usize)>,
-    /// Each domain's lower-bound expression, when defined once at top level.
-    domain_lo: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
+    /// Each domain's low end and length, when defined once.
+    domain_len: BTreeMap<usize, Option<DomainDef<'p>>>,
+    /// How many times each local is read, and by which domains' bounds.
+    reads: BTreeMap<Var, u32>,
+    domain_reads: BTreeMap<Var, Vec<usize>>,
+    in_domain: Option<usize>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -226,21 +231,14 @@ impl<'p> Facts<'p> {
                     self.domain_len
                         .entry(*id)
                         .and_modify(|slot| *slot = None)
-                        .or_insert(Some((fn_id, len)));
-                    if fn_id.is_none() {
-                        self.domain_lo
-                            .entry(*id)
-                            .and_modify(|slot| *slot = None)
-                            .or_insert(Some((fn_id, lo)));
-                    } else {
-                        self.domain_lo.insert(*id, None);
-                    }
+                        .or_insert(Some((fn_id, lo, len)));
+                    self.in_domain = Some(*id);
                     self.expr(fn_id, lo);
                     self.expr(fn_id, len);
+                    self.in_domain = None;
                 }
                 Stmt::DefDomainFromVal { id, val } => {
                     self.domain_len.insert(*id, None);
-                    self.domain_lo.insert(*id, None);
                     self.expr(fn_id, val);
                 }
                 Stmt::Return(None) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
@@ -250,7 +248,8 @@ impl<'p> Facts<'p> {
 
     fn place(&mut self, fn_id: Option<usize>, place: &'p Place) {
         match &place.kind {
-            PlaceKind::Local(_) | PlaceKind::Global(_) => {}
+            PlaceKind::Local(slot) => *self.reads.entry((fn_id, false, *slot)).or_default() += 1,
+            PlaceKind::Global(_) => {}
             PlaceKind::Field(base, _) | PlaceKind::Some(base) => self.place(fn_id, base),
             PlaceKind::Index(base, indices) => {
                 self.place(fn_id, base);
@@ -264,6 +263,13 @@ impl<'p> Facts<'p> {
     /// Finds the stores and blocks inside an expression.
     fn expr(&mut self, fn_id: Option<usize>, e: &'p Expr) {
         match &e.kind {
+            ExprKind::Local(slot) => {
+                let v = (fn_id, false, *slot);
+                *self.reads.entry(v).or_default() += 1;
+                if let Some(d) = self.in_domain {
+                    self.domain_reads.entry(v).or_default().push(d);
+                }
+            }
             ExprKind::Do(block) => self.block(fn_id, block),
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
                 if let ExprKind::CallExpr(callee, _) = &e.kind {
@@ -330,35 +336,78 @@ impl<'p> Facts<'p> {
     /// A static upper bound on `domain`'s length when provable from literals
     /// and declared input ranges (`let n: 5..=300 = read()`).
     pub fn domain_max_len(&self, id: usize) -> Option<i64> {
-        let (fn_id, len) = self.domain_len.get(&id).copied().flatten()?;
+        let (fn_id, _, len) = self.domain_len.get(&id).copied().flatten()?;
         self.upper_bound(fn_id, len, 0)
     }
 
-    /// A constant lower bound for `domain` when every definition of it in the
-    /// program is a single `DefDomain` whose `lo` resolves to an integer literal.
+    /// `domain`'s low end and length when it is defined once from
+    /// literals and variables set once to them: C++ can take them as
+    /// `constexpr`, so `% D.K` multiplies and `u < D_len` needs no load.
+    pub fn domain_const(&self, id: usize) -> Option<(i64, i64)> {
+        let (fn_id, lo, len) = self.domain_len.get(&id).copied().flatten()?;
+        Some((self.const_int(fn_id, lo, 0)?, self.const_int(fn_id, len, 0)?.max(0)))
+    }
+
+    /// `domain`'s low end when C++ can take it as `constexpr`. A domain
+    /// defined in a fn is saved and restored per call by `DomGuard`, so its
+    /// bounds are constant only together.
     pub fn const_domain_lo(&self, id: usize) -> Option<i64> {
-        let (fn_id, lo) = self.domain_lo.get(&id).copied().flatten()?;
+        let (fn_id, lo, _) = self.domain_len.get(&id).copied().flatten()?;
+        if fn_id.is_some() {
+            return self.domain_const(id).map(|(lo, _)| lo);
+        }
         self.const_int(fn_id, lo, 0)
+    }
+
+    /// `domain`'s length when C++ can take it as `constexpr`; see
+    /// `const_domain_lo`.
+    pub fn const_domain_len(&self, id: usize) -> Option<i64> {
+        let (fn_id, _, len) = self.domain_len.get(&id).copied().flatten()?;
+        if fn_id.is_some() {
+            return self.domain_const(id).map(|(_, len)| len);
+        }
+        Some(self.const_int(fn_id, len, 0)?.max(0))
+    }
+
+    /// True when the local sizes a domain with `constexpr` bounds: the C++
+    /// may then never read it.
+    pub fn sizes_const_domain(&self, v: Var) -> bool {
+        self.domain_reads
+            .get(&v)
+            .is_some_and(|ds| ds.iter().any(|&d| self.domain_const(d).is_some()))
+    }
+
+    /// True when every read of the local is in the bounds of a domain with
+    /// `constexpr` bounds. Only complete for lowering temps: closures
+    /// capture named locals without a read here.
+    pub fn only_sizes_const_domains(&self, v: Var) -> bool {
+        self.domain_reads.get(&v).is_some_and(|ds| {
+            self.reads.get(&v) == Some(&(ds.len() as u32))
+                && ds.iter().all(|&d| self.domain_const(d).is_some())
+        })
     }
 
     fn const_int(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {
         if depth > 8 {
             return None;
         }
+        let once = |v: Var, fn_id| {
+            (self.stores(v) == 1)
+                .then(|| self.init.get(&v))
+                .flatten()
+                .and_then(|init| self.const_int(fn_id, init, depth + 1))
+        };
+        let pair = |l, r| Some((self.const_int(fn_id, l, depth + 1)?, self.const_int(fn_id, r, depth + 1)?));
         match &e.kind {
             ExprKind::Int(n) => Some(*n),
-            ExprKind::Local(slot) => {
-                let v = (fn_id, false, *slot);
-                let init = self.init(v)?;
-                self.const_int(fn_id, init, depth + 1)
-            }
-            ExprKind::Global(id) => {
-                let v = (None, true, *id);
-                let init = self.init(v)?;
-                self.const_int(None, init, depth + 1)
-            }
+            ExprKind::Local(slot) => once((fn_id, false, *slot), fn_id),
+            ExprKind::Global(id) => once((None, true, *id), None),
+            ExprKind::Binary(BinOp::Add, l, r) => pair(l, r).and_then(|(a, b)| a.checked_add(b)),
+            ExprKind::Binary(BinOp::Sub, l, r) => pair(l, r).and_then(|(a, b)| a.checked_sub(b)),
+            ExprKind::Binary(BinOp::Mul, l, r) => pair(l, r).and_then(|(a, b)| a.checked_mul(b)),
             _ => None,
         }
+        .filter(|&n| n != i64::MIN)
     }
 
     fn upper_bound(&self, fn_id: Option<usize>, e: &Expr, depth: u8) -> Option<i64> {

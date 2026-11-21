@@ -1045,6 +1045,27 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+        let sizes = match stmt {
+            Stmt::Let(slot, Some(_))
+                if self.closure_id.is_none() && self.locals()[*slot].ty == Ty::Int =>
+            {
+                let v = (self.fn_id, false, *slot);
+                let temp = self.locals()[*slot].name.is_empty();
+                if temp && self.facts.only_sizes_const_domains(v) {
+                    return;
+                }
+                self.facts.sizes_const_domain(v).then_some(*slot)
+            }
+            _ => None,
+        };
+        self.stmt_body(stmt, out);
+        if let Some(slot) = sizes {
+            let name = self.names[slot].clone();
+            self.line(out, &format!("(void){name};"));
+        }
+    }
+
+    fn stmt_body(&mut self, stmt: &Stmt, out: &mut String) {
         if let (Some(sites), Some(span)) = (&mut self.sites, stmt.span()) {
             if self.counted.contains(&(stmt as *const Stmt)) {
                 sites.push(span);
@@ -1375,13 +1396,14 @@ impl<'p> Emitter<'p> {
             }
             Stmt::DefDomain { id, lo, len } => {
                 let d = ident(&program.domains[*id]);
-                let lo_const = self.facts.const_domain_lo(*id).is_some();
-                let lo = if lo_const { String::new() } else { self.expr(lo).text };
-                let len = self.expr(len).text;
-                if !lo_const {
+                if self.facts.const_domain_lo(*id).is_none() {
+                    let lo = self.expr(lo).text;
                     self.line(out, &format!("{d}_lo = {lo};"));
                 }
-                self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
+                if self.facts.const_domain_len(*id).is_none() {
+                    let len = self.expr(len).text;
+                    self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
+                }
                 self.size_subsets(*id, out);
             }
             Stmt::DefDomainFromVal { id, val } => {

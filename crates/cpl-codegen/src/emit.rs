@@ -1398,6 +1398,9 @@ impl<'p> Emitter<'p> {
                 continue;
             }
             for d in program.fn_guarded_domains(&f.ret, &f.body) {
+                if self.facts.domain_const(d).is_some() {
+                    continue;
+                }
                 self.need("dom_guard");
                 let dn = ident(&program.domains[d]);
                 let g = self.temp();
@@ -1572,21 +1575,24 @@ impl<'p> Emitter<'p> {
             if !has_lo && !has_len {
                 continue;
             }
-            if let Some(lo) = self.facts.const_domain_lo(id) {
-                if has_lo {
-                    dom_vars.push_str(&format!("static constexpr ll {lo_name} = {lo}; "));
+            let lit = |n: i64| crate::expr::int_literal(n).text;
+            let mut fixed = String::new();
+            let mut mutable: Vec<String> = Vec::new();
+            for (name, used, val) in [
+                (&lo_name, has_lo, self.facts.const_domain_lo(id)),
+                (&len_name, has_len, self.facts.const_domain_len(id)),
+            ] {
+                match (used, val) {
+                    (false, _) => {}
+                    (true, Some(n)) => fixed.push_str(&format!("static constexpr ll {name} = {}; ", lit(n))),
+                    (true, None) => mutable.push(format!("{name} = 0")),
                 }
-                if has_len {
-                    dom_vars.push_str(&format!("static ll {len_name} = 0;"));
-                }
-                dom_vars.push('\n');
-            } else if has_lo && has_len {
-                dom_vars.push_str(&format!("static ll {lo_name} = 0, {len_name} = 0;\n"));
-            } else if has_lo {
-                dom_vars.push_str(&format!("static ll {lo_name} = 0;\n"));
-            } else {
-                dom_vars.push_str(&format!("static ll {len_name} = 0;\n"));
             }
+            if !mutable.is_empty() {
+                fixed.push_str(&format!("static ll {};", mutable.join(", ")));
+            }
+            dom_vars.push_str(fixed.trim_end());
+            dom_vars.push('\n');
         }
         if !dom_vars.is_empty() {
             dom_vars.push_str(&vars);

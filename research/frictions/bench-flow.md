@@ -134,7 +134,12 @@ Each section below is one piece of that, measured by editing the generated C++.
 - **Ideal code:** as written.
 - **General fix:** a domain whose bounds are constants emits `constexpr` bounds.
 - **Severity:** medium
-- **Status:** open
+- **Status:** fixed: a domain defined once from literals, and locals or globals set
+  once to them, gets `constexpr ll D_lo, D_len` and no per-call `DomGuard`. Whole
+  `bench/flow` table, best of two runs of best of 5, before then after: `matching`
+  1.26x to 1.15x, `hungarian` 0.94x to 0.80x, `dinic` 1.18x to 1.11x, median 1.10x to
+  1.07x, max 1.26x to 1.17x (noisy machine: rows moved up to 0.04x between runs).
+  Corpus: 78 of 1654 emitted files change, all shrink (largest cut 272 B).
 - **Area:** codegen
 
 ## Measurements

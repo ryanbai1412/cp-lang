@@ -455,6 +455,14 @@ print(s)
 }
 
 #[test]
+fn a_domain_with_constant_bounds_has_constexpr_bounds() {
+    let code = cpp("let m = 7\ndomain V = 1..=m * 1000\nlet n: Int = read()\ndomain W = 0..n\nvar a: [V]Int = 0\nvar b: [W]Int = 0\nprint(a[V(1)] + b[W(0)], 5 % V.K)\n");
+    assert!(code.contains("static constexpr ll V_lo = 1; static constexpr ll V_len = 7000;"), "{code}");
+    assert!(code.contains("static constexpr ll W_lo = 0; static ll W_len = 0;"), "{code}");
+    assert!(!code.contains("V_len = std::max"), "{code}");
+}
+
+#[test]
 fn a_bounded_optional_list_is_stored_in_four_bytes() {
     let code = cpp(
         "fn f(n: Int) -> List<?(0..2_147_483_648)>:\n    var a: List<?(0..2_147_483_648)> = List.filled(n, none)\n    a[0] = n\n    return a\nlet n: Int = read()\nlet b = f(n)\nvar c: List<?(0..100)> = [none]\nvar d: List<?Int> = [none]\nprint(b[0] ?? -1, c[0] ?? -1, d[0] ?? -1)\n",
