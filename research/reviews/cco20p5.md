@@ -1,6 +1,7 @@
 # cco20p5
 
-Score: 2/5
+Score: pending cold rescore (rewrote both dream and active port: `enum Kind: Add | Remove`, `Span(l: 1..=1_000_000, r: 1..=1_000_000)`, `State` struct with `?Int`/`?Span` eliminating `INF`/`PINF` sentinels and bit-packing, `HashMap<(Int, Int), List<Int>>` replacing hand-rolled linked list, `Undo` struct replacing 3 parallel arrays; verified on 50 ASan+UBSan traces vs `O(n^2)` brute force, `27,958 B`; `TimeSegTree` + `RollbackFenwick` filed in `research/frictions/cco20p5.md`)
+Dream: pending cold rescore (written: `proto/ports/scout_batch_36/dream/cco20p5.cp` with `TimeSegTree<Q, Span>` + `RollbackFenwick<Coord, Max>`)
 
 Baseline review, cold, on main 96359635. The header (lines 4-8) names the plan: an offline segment tree over time for disjoint pairs, and heaps for overlapping pairs. Both structures are hand-rolled with node arithmetic, a rollback Fenwick written as `i & -i` loops, and negated heap keys. No dream exists, so the score is capped at 3.
 
