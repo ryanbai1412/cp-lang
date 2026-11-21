@@ -67,7 +67,7 @@ Domains keep the index spaces apart:
 | Space | Type | Where it comes from |
 |---|---|---|
 | vertices | `V` | the user's `domain V` |
-| positions in the order | `t.Pre` | fresh per tree; `t.pos(v)`, `t.at(p)` |
+| positions in the order | `t.Pre` | fresh per tree; `t.pos(v)`, `t.at[p]` |
 | subtree, chain | `Range<Pre>` | `t.sub(v)`, `t.chains(a, b)` |
 | cuts between positions | `Pre.Cut` | `r.lo`, `r.hi` of those ranges |
 | edges | the lower endpoint `V` | `t.lower(u, v)`; `edges: true` on path ops |
@@ -107,10 +107,10 @@ vertex the DFS never reaches traps; a forest says so with `forest`.
     root: V
     fn parent(self, v: V) -> ?V
     fn children(self, v: V) -> List<V>            // in the order adj listed them
-    fn heavy(self, v: V) -> ?V [new]              // largest child, none at a leaf
-    fn light(self, v: V) -> yields V [new]        // children except heavy(v)
+    heavy: [V]?V                                  // largest child, none at a leaf
+    fn light(self, v: V) -> yields V [new]        // children except heavy[v]
     fn depth(self, v: V) -> Int                   // edges to the root
-    fn far(self, v: V) -> Int [new: was a field]  // length to the root (weighted)
+    far: [V]Int                                   // length to the root (weighted)
     fn size(self, v: V) -> Int                    // vertices in the subtree
     fn root_of(self, v: V) -> V [new]             // the root of v's tree (forests)
     @get fn subtree_sizes(self) -> [V]Int         // O(n), a copy
@@ -121,7 +121,7 @@ vertex the DFS never reaches traps; a forest says so with `forest`.
 ```cp
     domain Pre                                   // heavy-first preorder
     fn pos(self, v: V) -> Pre                    // O(1)
-    fn at(self, p: Pre) -> V [new: was a field]  // O(1), inverse of pos
+    at: [Pre]V                                   // O(1), inverse of pos
     fn sub(self, v: V) -> Range<Pre>             // O(1), t.sub(v).len == t.size(v)
     fn subtree(self, v: V) -> yields V [new]     // O(size(v)), preorder
     fn reorder<T>(self, a: [V]T) -> [Pre]T       // O(n)
@@ -244,8 +244,8 @@ same monoid convention as every range structure.
 Every law is a property test in `stdlib/tree.cp`.
 
 1. `t.pos(b) in t.sub(a)` iff `t.is_anc(a, b)`; `t.sub(v).len == t.size(v)`.
-2. `t.at(t.pos(v)) == v`; `t.reorder(a)[t.pos(v)] == a[v]`.
-3. If `h = t.heavy(v)` then `t.pos(h)` is `t.pos(v)` plus one, and
+2. `t.at[t.pos(v)] == v`; `t.reorder(a)[t.pos(v)] == a[v]`.
+3. If `h = t.heavy[v]` then `t.pos(h)` is `t.pos(v)` plus one, and
    `t.size(h) >= t.size(c)` for every child `c`.
 4. `t.dist(a, b) == t.depth(a) + t.depth(b) - 2 * t.depth(t.lca(a, b))`.
 5. `t.step(a, b, k)` is `t.path(a, b)[k]` for `0 <= k <= t.dist(a, b)`,
@@ -382,7 +382,7 @@ stays visible:
 ```cp
 fn solve(v: V, keep: Bool):
     for c in t.light(v): solve(c, keep: false)
-    if let h = t.heavy(v): solve(h, keep: true)
+    if let h = t.heavy[v]: solve(h, keep: true)
     for c in t.light(v):
         for u in t.subtree(c): add(u)
     add(v)

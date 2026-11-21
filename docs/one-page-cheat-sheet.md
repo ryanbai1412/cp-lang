@@ -204,8 +204,8 @@ for (c, rest) in t.excl_fold(V(1), *, c => down[c] + 1):
 - A neighbour lambda works anywhere a graph does; its domain is what it indexes: `peel(v => adj[v])`.
 - Grid cells are vertices: `bfs(p => [q for q in p.adj4 if not wall[q]], [(R(0), C(0))])` (`use std.grid.{adj4}`).
 - Unpeeled vertices can be on a cycle **or reachable from one**; not all are cycle vertices.
-- `t.excl_fold(v, m, f)` yields `(child, fold over other children)`, preserving child order.
-- This rerooting step is O(degree(v)) and needs no inverse, so noncommutative monoids work.
+- `t.excl_fold(v, m, f)` yields `(child, fold over other children)` in O(degree(v)), no inverse needed.
+- `t.reroot(max, (h, c, p) => h + 1, (h, v) => max(h, 0))` is `t.up`'s DP from every root; `Centroids<V>(g).ancestors(v)` yields `(c, dist)`.
 - `t.Pre`, `t.pos(v)`, `t.sub(v)` support subtrees; `.lca`, `.dist`, `.fold_path` support paths.
 - `a.e` (edge index) needs a graph built from `[E](u: V, v: V)` records: `dijkstra(g, from: [(s, 0)], w: a => wt[a.e])`.
 - Flow: `FlowGraph<V>()`, `.add(u, v, cap)`, `.max_flow(s, t)` over numeric vertex domains.

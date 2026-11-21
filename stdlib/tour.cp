@@ -7,7 +7,7 @@ use std.lazy.{LazySegTree, AddMax}
 use std.sparse.{SparseTable}
 use std.graph.{Graph, dijkstra, scc}
 use std.flow.{FlowGraph}
-use std.tree.{Rooted}
+use std.tree.{Rooted, Centroids}
 use std.mod.{Mod, Comb}
 use std.strings.{z_function, suffix_array, find_all}
 use std.geometry.{
@@ -123,6 +123,19 @@ fn paths_on_trees():
     assert st.fold(r.sub(V(2))) == 2 + 4 + 5 + 6
     st.set(r.pos(V(2)), 100)
     assert r.fold_path(V(4), V(3), st) == 4 + 100 + 1 + 3
+
+@test
+fn every_root_at_once():
+    domain V = 1..=5
+    let g = Graph.undirected([(V(1), V(2)), (V(2), V(3)), (V(2), V(4)), (V(4), V(5))])
+    let t = Rooted(g, V(1))
+    // the height DP from one root, then from every root with the same three arguments
+    let h1 = t.up(max, (h, c, p) => h + 1, (h, v) => max(h, 0))
+    let all = t.reroot(max, (h, c, p) => h + 1, (h, v) => max(h, 0))
+    assert [h1[v] for v in V] == [3, 2, 0, 1, 0] and [all[v] for v in V] == [3, 2, 3, 2, 3]
+    // centroid ancestors split every path: the nearest common one lies on it
+    let cd = Centroids<V>(g)
+    assert cd.parent(V(2)) == none and [x.c for x in cd.ancestors(V(5))] == [V(5), V(4), V(2)]
 
 @test
 fn numbers_modulo_a_prime():

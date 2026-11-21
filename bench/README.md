@@ -58,6 +58,21 @@ target is not met on either count. To raise the port count, add a generator
 to `SPECS` in `rust_max_n_audit.py` for a port the report lists under
 `needs a hand-written generator`; the sweep picks it up.
 
+## Trees (`bench/trees/`)
+
+`std.tree` against the same algorithms written directly in C++: rooting with
+heavy-first preorder, `reroot` heights, one million `lca` + `dist` queries and
+a centroid decomposition read through `ancestors`.
+
+```sh
+python3 bench/trees/gen.py 1000000 1000000 1 > big.in   # seed 2: long paths
+cpl build bench/trees/tree_bench.cp -o cp.cpp && g++ -std=c++17 -O2 -o cp cp.cpp
+g++ -std=c++17 -O2 -o cxx bench/trees/tree_bench.cpp
+/usr/bin/time -f '%es %MKB' ./cp < big.in; /usr/bin/time -f '%es %MKB' ./cxx < big.in
+```
+
+Results and the remaining gap: `bench/trees/README.md`.
+
 ## Prototype harness: Max-N Judge & Constant-Factor Audit
 
 This directory holds the Stage-6 worst-case max-N benchmark harness (`max_n_audit.py`) for auditing CP Lang's emitted C++17 against accepted contest C++ originals under judge flags (`g++ -std=c++17 -O2`, no `-DLOCAL`).

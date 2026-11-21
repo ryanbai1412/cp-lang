@@ -59,21 +59,29 @@ pub struct Rooted<V, Pre>:
 
     /// The same for edges with lengths: `len(arc)` is the length of the edge an arc runs along,
     /// and `dist` adds lengths up instead of counting edges.
-    pub fn weighted<N, A>(adj: N, root: V, len: A -> Int):
+    pub fn weighted<N, A>(adj: N, root: V, len: A -> Int) = Rooted.build(adj, [root], len)
+
+    /// One tree per root: `adj` must reach every vertex from exactly one of `roots`. The trees
+    /// sit one after another in `t.Pre`, in the order of `roots`; `t.root` is the first root.
+    /// Paths and lowest common ancestors exist only within one tree (`root_of` tells). O(n).
+    pub fn forest<N>(adj: N, roots: List<V>) = Rooted.build(adj, roots, a => 1)
+
+    fn build<N, A>(adj: N, roots: List<V>, len: A -> Int):
         domain P = 0..V.K
+        let root = roots[0]
         var par: [V]?V = none
         var dep: [V]Int = 0
         var far: [V]Int = 0
         var kid: [V]List<V> = []
         var seen: [V]Bool = false
         var order = List<V>()  // preorder of the depth-first search
-        var stack = [(root, root, 0)]
+        var stack = [(r, r, 0) for r in roots.rev]
         while not stack.is_empty:
             let (u, p, w) = stack[stack.len - 1]
             stack.pop()
             if seen[u]: continue
             seen[u] = true
-            if u != root:
+            if u != p:
                 par[u] = p
                 dep[u] = dep[p] + 1
                 far[u] = far[p] + w
@@ -98,6 +106,10 @@ pub struct Rooted<V, Pre>:
                 if heavy[u] == none or sz[c] > sz[heavy[u]!]: heavy[u] = c
         var top = [V] v => v
         var tin = [V] v => P.first
+        var start = 0
+        for r in roots:
+            tin[r] = P.nth(start)
+            start += sz[r]
         for u in order:
             var next = tin[u].ord + 1
             if let h = heavy[u]:
@@ -144,6 +156,80 @@ pub struct Rooted<V, Pre>:
     /// The number of vertices in the subtree of `v`.
     pub fn size(self, v: V) -> Int = sz[v]
 
+    /// The children of `v` other than `heavy[v]`, in child order. Every vertex has O(log n)
+    /// light edges above it, which is what small-to-large merging pays for. O(children).
+    pub fn light(self, v: V) -> yields V:
+        for c in kid[v]:
+            if some(c) != heavy[v]: yield c
+
+    /// The root of the tree that holds `v` (always `t.root` unless built with `forest`). O(log n).
+    pub fn root_of(self, v: V) -> V:
+        var x = top[v]
+        while let p = par[x]: x = top[p]
+        x
+
+    /// The vertices of `v`'s subtree in preorder, `v` first: `t.at[p] for p in t.sub(v)`.
+    /// O(size(v)).
+    pub fn subtree(self, v: V) -> yields V:
+        for p in self.sub(v): yield at[p]
+
+    /// A top-down pass: `out[v] = f(out[parent], v)`, and `f(init, root)` at a root. The
+    /// state on the path from the root, such as a prefix maximum or a distance. O(n) calls of `f`.
+    pub fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T:
+        var out = [V] v => init
+        for p in Pre:
+            let v = at[p]
+            if let q = par[v]: out[v] = f(out[q], v)
+            else: out[v] = f(init, v)
+        out
+
+    /// A bottom-up tree DP: `out[v] = finish(fold with m of lift(out[c], c, v) over children c, v)`.
+    /// `lift` sees both ends of the edge, child first. Children fold in child order. O(n) calls.
+    pub fn up<T, U, M>(self, m: M, lift: (T, V, V) -> U, finish: (U, V) -> T) -> [V]T:
+        let k = Monoid<U>.of(m)
+        var out: [V]?T = none
+        for p in Pre.rev:
+            let v = at[p]
+            var acc = k.id
+            for c in kid[v]: acc = k.op(acc, lift(out[c]!, c, v))
+            out[v] = some(finish(acc, v))
+        [V] v => out[v]!
+
+    /// The same DP as `up`, for every root at once: `out[v]` is what `up` would give at `v` if the
+    /// tree were rooted at `v`. Each vertex folds its parent's side first, then its children; the
+    /// sibling folds use prefixes and suffixes, so `m` needs no inverse. O(n) calls.
+    pub fn reroot<T, U, M>(self, m: M, lift: (T, V, V) -> U, finish: (U, V) -> T) -> [V]T:
+        let k = Monoid<U>.of(m)
+        let below = self.up(m, lift, finish)
+        var above = [V] v => k.id
+        var out: [V]?T = none
+        for p in Pre:
+            let v = at[p]
+            let cs = kid[v]
+            let parts = [lift(below[c], c, v) for c in cs]
+            var after = List.filled(cs.len + 1, k.id)
+            for i in (0..cs.len).rev: after[i] = k.op(parts[i], after[i + 1])
+            var before = above[v]
+            for i in 0..cs.len:
+                above[cs[i]] = lift(finish(k.op(before, after[i + 1]), v), v, cs[i])
+                before = k.op(before, parts[i])
+            out[v] = some(finish(before, v))
+        [V] v => out[v]!
+
+    /// The isomorphism class of every subtree: `of[a] == of[b]` exactly when the subtrees of `a`
+    /// and `b` are the same rooted tree up to reordering children. Classes are numbered by first
+    /// appearance from the leaves up. O(n log n).
+    pub fn shapes(self) -> (domain Shape, of: [V]Shape):
+        var known = Map<List<Int>, Int>()
+        var of: [V]Int = 0
+        for p in Pre.rev:
+            let v = at[p]
+            var key = [of[c] for c in kid[v]]
+            sort(mut key)
+            of[v] = known.get_or_insert(key, known.len)
+        domain Shape = 0..known.len
+        (Shape: Shape, of: [V] v => Shape(of[v]))
+
     /// The size of every subtree, by vertex: `t.subtree_sizes[v]` is `t.size(v)`.
     pub @get fn subtree_sizes(self) -> [V]Int = sz
 
@@ -176,7 +262,7 @@ pub struct Rooted<V, Pre>:
     /// Iterative enter/exit Euler tour: yields `(v, true)` when entering `v` and
     /// `(v, false)` when leaving `v`'s subtree, without recursion. O(n).
     pub @get fn tour(self) -> yields (v: V, entering: Bool):
-        var stack = [(root, 0)]
+        var stack = [(at[p], 0) for p in Pre.rev if par[at[p]] == none]
         while not stack.is_empty:
             let (u, i) = stack[stack.len - 1]
             if i == 0: yield (v: u, entering: true)
@@ -337,6 +423,101 @@ pub struct Rooted<V, Pre>:
             edges.push((u: st.last!, v: u))
             st.push(u)
         (nodes: nodes, edges: edges)
+
+/// A centroid decomposition: the centroid of the tree, then recursively of each piece left when
+/// it is removed. Every path passes through the centroid ancestor that first separates its
+/// ends, and each vertex has at most log2 n + 1 centroid ancestors, so a question about all
+/// paths through `v` is a loop over `ancestors(v)`.
+/// Built in O(n log n) time and memory without recursion.
+pub struct Centroids<V>:
+    root: V
+    cpar: [V]?V
+    cdep: [V]Int
+    /// For each vertex, every centroid whose piece holds it, nearest first, with the
+    /// distance and the neighbour of the centroid it hangs off.
+    anc: [V]List<(c: V, dist: Int, branch: V)>
+    /// For each centroid, the vertices of its piece in breadth-first order from it.
+    held: [V]List<V>
+
+    /// Decompose the tree given by `adj` (as for `Rooted`: a `Graph`, neighbour lists or a fn).
+    pub fn new<N>(adj: N) -> Centroids<V>:
+        var dead: [V]Bool = false
+        var sz: [V]Int = 0
+        var cpar: [V]?V = none
+        var cdep: [V]Int = 0
+        var anc: [V]List<(c: V, dist: Int, branch: V)> = []
+        var held: [V]List<V> = []
+        var bpar: [V]?V = none
+        var from: [V]?V = none
+        var root = V.first
+        var todo: List<(V, ?V, Int)> = [(V.first, none, 0)]
+        while let item = todo.pop():
+            let (entry, above, d) = item
+            var order = [entry]
+            bpar[entry] = none
+            var head = 0
+            while head < order.len:
+                let u = order[head]
+                head += 1
+                for a in adj.out(u):
+                    let w = a.to
+                    if not dead[w] and some(w) != bpar[u] and w != entry:
+                        bpar[w] = u
+                        order.push(w)
+            for u in order: sz[u] = 1
+            for i in (1..order.len).rev: sz[bpar[order[i]]!] += sz[order[i]]
+            let total = order.len
+            var c = entry
+            var moved = true
+            while moved:
+                moved = false
+                for a in adj.out(c):
+                    let w = a.to
+                    if not dead[w] and some(w) != bpar[c] and w != entry and 2 * sz[w] > total:
+                        c = w
+                        moved = true
+                        break
+            if above == none: root = c
+            cpar[c] = above
+            cdep[c] = d
+            dead[c] = true
+            var q: List<(V, Int, V)> = [(c, 0, c)]
+            from[c] = none
+            var qh = 0
+            while qh < q.len:
+                let (u, du, b) = q[qh]
+                qh += 1
+                anc[u].push((c: c, dist: du, branch: b))
+                held[c].push(u)
+                for a in adj.out(u):
+                    let w = a.to
+                    if not dead[w] and some(w) != from[u]:
+                        from[w] = u
+                        let nb = if u == c: w else: b
+                        q.push((w, du + 1, nb))
+            for a in adj.out(c):
+                if not dead[a.to]: todo.push((a.to, some(c), d + 1))
+        for v in V: anc[v].reverse()
+        Centroids(root, cpar, cdep, anc, held)
+
+    /// The parent of centroid `c` in the centroid tree; `none` at `cd.root`. O(1).
+    pub fn parent(self, c: V) -> ?V = cpar[c]
+
+    /// The depth of `c` in the centroid tree, at most log2 n. O(1).
+    pub fn depth(self, c: V) -> Int = cdep[c]
+
+    /// Every centroid whose piece holds `v`, nearest first (`v` itself, with distance 0), with
+    /// the tree distance from it. At most log2 n + 1 entries, O(1) each, no allocation.
+    pub fn ancestors(self, v: V) -> yields (c: V, dist: Int):
+        for x in anc[v]: yield (c: x.c, dist: x.dist)
+
+    /// The piece of centroid `c`: each vertex `v`, its distance from `c`, and `branch`, the
+    /// neighbour of `c` on the way to `v` (`c` itself for `v == c`). Pairs in different branches
+    /// are exactly the paths whose highest centroid is `c`. O(size of the piece).
+    pub fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V):
+        for v in held[c]:
+            let x = anc[v][cdep[v] - cdep[c]]
+            yield (v: v, dist: x.dist, branch: x.branch)
 
 // ---- tests
 
@@ -667,3 +848,114 @@ fn path_and_diameter_match_pairwise_distances():
             assert p.first == a and p.last == b and p.len == r.dist(a, b) + 1
             for k in 0..p.len - 1:
                 assert r.parent(p[k]) == p[k + 1] or r.parent(p[k + 1]) == p[k]
+
+@test
+fn heavy_light_and_subtree_cover_the_children():
+    domain V = 0..12
+    for _ in 0..10:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V.nth(rand(0, 11)), adj: v => adj[v])
+        for v in V:
+            var cs = [c for c in r.light(v)]
+            if let h = r.heavy[v]:
+                assert all(r.size(c) <= r.size(h) for c in r.children(v))
+                cs.push(h)
+            assert sorted(cs) == sorted(r.children(v))
+            let sub = [u for u in r.subtree(v)]
+            assert sub[0] == v and sorted(sub) == [u for u in V if r.is_anc(v, u)]
+            assert r.root_of(v) == r.root
+
+@test
+fn a_forest_keeps_each_tree_in_one_range():
+    domain V = 0..10
+    // 0-1-2, 3-4, 5-6-7-8, 9 alone
+    let pairs = [(0, 1), (1, 2), (3, 4), (5, 6), (6, 7), (6, 8)]
+    var adj: [V]List<V> = []
+    for (a, b) in pairs:
+        adj[V(a)].push(V(b))
+        adj[V(b)].push(V(a))
+    let roots = [V(0), V(3), V(5), V(9)]
+    let f = Rooted.forest(v => adj[v], roots)
+    assert f.root == V(0) and [f.root_of(v).to_idx for v in V] == [0, 0, 0, 3, 3, 5, 5, 5, 5, 9]
+    assert [f.pos(r).ord for r in roots] == [0, 3, 5, 9]
+    assert f.size(V(5)) == 4 and f.lca(V(7), V(8)) == V(6) and f.dist(V(2), V(0)) == 2
+    assert all(f.parent(r) == none for r in roots) and f.preorder.len == 10
+    let depth = f.down(0, (d, v) => if f.parent(v) == none: 0 else: d + 1)
+    assert all(depth[v] == f.depth(v) for v in V)
+
+@test
+fn down_and_up_match_depth_size_and_height():
+    domain V = 0..12
+    for _ in 0..10:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V.nth(rand(0, 11)), adj: v => adj[v])
+        let w = [V] v => rand(0, 9)
+        let best = r.down(0, (m, v) => max(m, w[v]))
+        let size = r.up(+, (s, c, p) => s, (s, v) => s + 1)
+        let height = r.up(max, (h, c, p) => h + 1, (h, v) => max(h, 0))
+        for v in V:
+            assert best[v] == max(w[u] for u in slow_path(r, r.root, v))
+            assert size[v] == r.size(v)
+            assert height[v] == max(r.depth(u) - r.depth(v) for u in r.subtree(v))
+
+@test
+fn reroot_matches_up_from_every_root():
+    domain V = 0..10
+    let cat = Monoid<Str>("", (a, b) => a + b)
+    for _ in 0..6:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V.nth(rand(0, 9)), adj: v => adj[v])
+        // far: the farthest vertex; shape: a child-order-sensitive fold, to check the order
+        let far = r.reroot(max, (h, c, p) => h + 1, (h, v) => max(h, 0))
+        let shape = r.reroot(cat, (s, c, p) => s, (s, v) => "(" + s + ")")
+        let label = r.reroot(cat, (s, c, p) => s, (s, v) => "{v.to_idx}" + s)
+        assert shape[r.root] == r.up(cat, (s, c, p) => s, (s, v) => "(" + s + ")")[r.root]
+        for v in V:
+            let at = Rooted(root: v, adj: u => adj[u])
+            assert far[v] == max(r.dist(v, u) for u in V)
+            assert at.up(max, (h, c, p) => h + 1, (h, u) => max(h, 0))[v] == far[v]
+            assert shape[v].len == 2 * V.K and label[v].len == at.up(
+                cat,
+                (s, c, p) => s,
+                (s, u) => "{u.to_idx}" + s,
+            )[v].len
+
+@test
+fn shapes_match_the_canonical_string():
+    domain V = 0..14
+    for _ in 0..10:
+        let adj = random_tree(V(0))
+        let r = Rooted(root: V.nth(rand(0, 13)), adj: v => adj[v])
+        var canon: [V]Str = ""
+        for v in r.postorder:
+            var parts = [canon[c] for c in r.children(v)]
+            sort(mut parts)
+            canon[v] = "(" + Str(ch for s in parts for ch in s) + ")"
+        let sh = r.shapes()
+        for a in V:
+            for b in V: assert (sh.of[a] == sh.of[b]) == (canon[a] == canon[b])
+
+@test
+fn centroid_ancestors_split_every_path():
+    domain V = 0..16
+    for _ in 0..10:
+        let adj = random_tree(V(0))
+        let r = Rooted(adj, V(0))
+        let cd = Centroids<V>(adj)
+        let same = Centroids<V>(v => adj[v])
+        assert all(same.parent(v) == cd.parent(v) for v in V)
+        assert cd.parent(cd.root) == none and cd.depth(cd.root) == 0
+        for v in V:
+            let anc = [x for x in cd.ancestors(v)]
+            assert anc[0] == (c: v, dist: 0) and anc.len == cd.depth(v) + 1
+            assert (1 << (anc.len - 1)) <= V.K
+            for i in 0..anc.len:
+                assert r.dist(v, anc[i].c) == anc[i].dist
+                if i + 1 < anc.len: assert cd.parent(anc[i].c) == some(anc[i + 1].c)
+        for c in V:
+            var count = 0
+            for (v, d, b) in cd.piece(c):
+                count += 1
+                assert r.dist(c, v) == d and (b == c) == (v == c)
+                assert v == c or (r.dist(c, b) == 1 and r.dist(b, v) == d - 1)
+            assert count == [v for v in V if any(x.c == c for x in cd.ancestors(v))].len

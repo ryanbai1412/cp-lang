@@ -1117,15 +1117,15 @@ struct Rooted<V, Pre> // O(n) time and memory; design/stdlib/trees.md
     fn forest<N>(adj: N, roots: List<V>) // [new] O(n)
     fn parent(self, v: V) -> ?V // O(1), like every shape query
     fn children(self, v: V) -> List<V> // in the order adj listed them
-    fn heavy(self, v: V) -> ?V // [new]
+    heavy: [V]?V // O(1) field, like at and far
     fn light(self, v: V) -> yields V // [new] O(deg v)
     fn depth(self, v: V) -> Int
-    fn far(self, v: V) -> Int // [new] weighted depth
+    far: [V]Int // weighted depth
     fn size(self, v: V) -> Int
     fn root_of(self, v: V) -> V // [new]
     @get fn subtree_sizes(self) -> [V]Int // O(n)
     fn pos(self, v: V) -> Pre // O(1)
-    fn at(self, p: Pre) -> V // [new] O(1)
+    at: [Pre]V // inverse of pos
     fn sub(self, v: V) -> Range<Pre> // O(1)
     fn subtree(self, v: V) -> yields V // [new] O(size v)
     fn reorder<T>(self, a: [V]T) -> [Pre]T // O(n)

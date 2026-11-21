@@ -38,7 +38,7 @@ Every module under `stdlib/` is plain CP Lang. Import individual names with `use
 | `std.strings` | `z_function`, `prefix_function`, `manacher`, `SuffixArray`, `SuffixAutomaton`, `PalindromicTree`, `Trie`, `AhoCorasick`, `RollingHash`, `Hash2D` | Pattern matching, palindromes, suffix structures, tries, and rolling hashes |
 | `std.timetree` | `TimeTree`, `TimeStep` | Offline segment tree over time for rollback-based dynamic structures |
 | `std.tour` | Tour re-exports | Euler tour utilities |
-| `std.tree` | `Rooted<V>` | Rooted tree, Euler tour, LCA, HLD path queries, virtual trees |
+| `std.tree` | `Rooted<V>`, `Centroids<V>` | Rooted tree, Euler tour, LCA, HLD path queries, rerooting DP, virtual trees, centroid decomposition |
 | `std.window` | `MonoDeque`, `WindowFold` | Sliding-window extrema and inverse-free monoid window folds |
 
 ## Prelude collections
@@ -163,7 +163,8 @@ print(bit.sum(V.first..=V.last), rmq.fold(V.first..=V.last), st.all, mx.all.valu
 ## Graphs, trees, flows, and strings
 
 - **`Graph<V>` / `Graph<V, W>` (`std.graph`):** flat CSR storage via `Graph.undirected(es)`, `Graph.directed(es)`, and neighbor iteration `g[u]`. Algorithms accept either a `Graph` or an implicit neighbor function `v => ...`: `bfs`, `dijkstra`, `topo`, `scc`, `condense`, `two_edge_components`, `biconnected_components`, `articulation_points`, and `two_color`. A lambda's vertex domain is the domain it indexes (`peel(v => adj[v])`), and grid cells `(R, C)` are vertices too: `bfs(p => [q for q in p.adj4 if not wall[q]], [(R(0), C(0))])`.
-- **`Rooted<V>(g, root)` / `Rooted.from_parents(par)` (`std.tree`):** value-owned Euler preorder domain `t.Pre`, `t.pos(v) -> t.Pre`, `t.preorder: [t.Pre]V`, `t.postorder`, `t.tour` (`(v, entering)`), `.parent(v)`, `.children(v)`, `.depth(v)`, `.size(v)`, `.lca(a, b)`, `.dist(a, b)`, `.is_anc(a, b)`, `.ancestor(v, k)`, `.lift_while(v, pred) -> ?V`, `.sub(v) -> Range<t.Pre>`, `.chains(a, b, edges?: Bool)`, `.fold_path(a, b, ds)`, `.apply_path(a, b, mut ds, tag)`, and `.virtual_tree(keys)`.
+- **`Rooted<V>(g, root)` / `Rooted.weighted(g, root, len)` / `Rooted.forest(g, roots)` / `Rooted.from_parents(par)` (`std.tree`):** a value-owned heavy-first preorder domain `t.Pre` in which every subtree and every heavy chain is one range. Shape: `.parent(v)`, `.children(v)`, `t.heavy[v]`, `.light(v)`, `.depth(v)`, `t.far[v]` (weighted depth), `.size(v)`, `.root_of(v)`. Orders: `t.pos(v) -> t.Pre`, `t.at[p] -> V`, `.sub(v) -> Range<t.Pre>`, `.subtree(v)`, `.reorder(a)`, `t.preorder`, `t.postorder`, `t.tour` (`(v, entering)`). Paths: `.lca(a, b)`, `.dist(a, b)`, `.is_anc(a, b)`, `.ancestor(v, k)`, `.step(a, b, k)`, `.lift_while(v, pred) -> ?V`, `.path(a, b)`, `.diameter()`, `.chains(a, b, edges?: Bool)`, `.fold_path(a, b, ds)`, `.apply_path(a, b, mut ds, tag)`, `.virtual_tree(keys)`. DP: `.down(init, f)`, `.up(m, lift, finish)`, `.reroot(m, lift, finish)` (every root at once, O(n), no inverse needed), `.excl_fold(v, m, f)`, `.shapes()` (isomorphism classes).
+- **`Centroids<V>(g)` (`std.tree`):** centroid decomposition in O(n log n): `.parent(c)`, `.depth(c)`, `.ancestors(v)` yields `(c, dist)` nearest first, `.piece(c)` yields `(v, dist, branch)`.
 - **Network flow (`std.flow`):** `FlowGraph<Node>()` (Dinic) and `max_weight_matching<L, R>` (Hungarian), designed to pair directly with payload enums (`enum Node: Src; Sink; Left(L); Right(R)`).
 - **String algorithms (`std.strings`):** `z_function(s)`, `prefix_function(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and `RollingHash(seq)` (works on `Str` or any `[D]T`, `.get(l..r) -> HashVal`).
 
@@ -194,7 +195,7 @@ The repository includes a full sample library (`examples/local-lib/`) covering a
 
 - **Data structures (`ds/`):** `MonoDeque`, `Steps`, `Rope` (implicit treap), `RangeKth` (persistent segtree), `LiChao` & `LiChaoArena`, `Tri<D>` (triangular interval index), `PotentialDsu`, `Cover` (union-of-intervals), `TwoStackFold`, `mo_order`, `XorBasis`, `Interner`, and `RollbackArray`.
 - **Math & polynomials (`math/`):** `Frac`, `Fixed<D>`, `Congruence` (general CRT), `Hom` / `BothWays`, `Mat<P>` (Gaussian elimination / `det` / `rank`), `Poly` / NTT / 3-prime MTT / Lagrange interpolation, `Powers`, SOS DP (`sos_sub`/`sos_sup`), Miller-Rabin + Pollard's rho (`primes`), and `floor_sum`.
-- **Graphs & DP (`graph/`, `dp/`, `geom/`, `str/`, `seq/`):** `TwoSat`, `MinCostFlow`, `Functional` graphs, `Centroids` & `reroot`, `KruskalTree`, Hopcroft-Karp `max_matching`, `bounded_flow`, `mst`, `shortest`/`walk_back`, `convex_hull`, `Dir8`, divide-and-conquer DP (`dnc_opt`), Knuth DP (`knuth`), `palindromes` (Manacher), `Trie`, `SuffixAutomaton`, `AhoCorasick`, `Hash2D`, `lis`, and `fold_others`.
+- **Graphs & DP (`graph/`, `dp/`, `geom/`, `str/`, `seq/`):** `TwoSat`, `MinCostFlow`, `Functional` graphs, `KruskalTree`, Hopcroft-Karp `max_matching`, `bounded_flow`, `mst`, `shortest`/`walk_back`, `convex_hull`, `Dir8`, divide-and-conquer DP (`dnc_opt`), Knuth DP (`knuth`), `palindromes` (Manacher), `Trie`, `SuffixAutomaton`, `AhoCorasick`, `Hash2D`, `lis`, and `fold_others`.
 
 ### Starting your own local library
 

@@ -2386,10 +2386,17 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    `a` on the way to `b`. Reverse: add the alias.
 6. **LCA stays chain jumping** (O(log n), O(n) memory) rather than an Euler
    RMQ (O(1), O(n log n) memory) until a matched benchmark shows it losing.
-   Reverse: add an RMQ behind `lca` if `bench/tree` says so.
+   Reverse: add an RMQ behind `lca` if `bench/trees` says so.
 7. **Dynamic trees are a separate `LinkCut` with `Rooted`'s verbs**
    (`fold_path`, `lca`), after the static API matches C++. Reverse: drop it
    from the plan.
+8. **`heavy`, `far` and `at` stay indexable fields**, not methods as the
+   first draft proposed. Ten corpus ports index them (`t.at[p]`,
+   `t.heavy[v]`), the read is O(1) either way, and a field and a method
+   cannot share a name. Reverse: rename the fields and add the methods.
+9. **`Centroids.ancestors` yields instead of returning a list**: it is read
+   once per query in the hot loop, and building the list cost 0.5 s of
+   4.6 s at n = 10^6 in `bench/trees`. Reverse: return `List`.
 
 ## 46. Graphs stdlib design (`design/stdlib/graphs.md`, 2026-11-21)
 

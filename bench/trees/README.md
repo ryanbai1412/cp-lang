@@ -1,0 +1,39 @@
+# `std.tree` against matched C++
+
+`tree_bench.cp` and `tree_bench.cpp` run the same algorithms: an iterative
+DFS rooting with heavy-first preorder, `reroot` heights with prefix and
+suffix sibling folds, chain-jumping `lca` + `dist` for every query, and an
+iterative centroid decomposition read back through `ancestors`. Both print
+the same three checksums. Commands: `bench/README.md`.
+
+## Results
+
+n = q = 10^6, `g++ -std=c++17 -O2`, best of three runs, outputs identical.
+Seed 1 attaches each vertex to a uniform earlier one (depth about log n);
+seed 2 to one of the previous ten (long chains).
+
+| input | C++ | CP Lang | ratio | C++ RSS | CP Lang RSS |
+|---|---:|---:|---:|---:|---:|
+| seed 1 | 2.67 s | 3.99 s | 1.49x | 520 MB | 1110 MB |
+| seed 2 | 3.54 s | 5.32 s | 1.50x | 706 MB | 1621 MB |
+
+This misses the 1.1x target. Rooting, rerooting and the queries are within
+about 1.5x; the centroid decomposition is most of the gap.
+
+## Where the gap is
+
+Measured by editing the emitted C++ of the centroid phase alone (seed 1):
+
+| change | time | RSS |
+|---|---:|---:|
+| emitted as is | 2.95 s | 998 MB |
+| move the built arrays into the returned struct | 2.72 s | 611 MB |
+| and store the centroid distance in 32 bits | 2.15 s | 427 MB |
+
+Both are core features, not library changes:
+- A struct literal built from local arrays copies each array instead of
+  moving it (every `Rooted` and `Centroids` constructor pays a full copy).
+- `Int` is 64-bit and fixed widths (`I32`) are not implemented yet, so the
+  per-ancestor distance cannot be narrowed from the library.
+
+`ancestors` already yields instead of building a list (decisions.md §45.9).
