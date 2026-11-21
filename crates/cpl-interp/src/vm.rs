@@ -338,13 +338,17 @@ pub(crate) enum Op {
     StoreLList1V { list_v: u16, r_i: u16, r_val: u16 },
     LoadGList1V { dst: u16, gid: u16, r_i: u16 },
     LoadLList1V { dst: u16, list_v: u16, r_i: u16 },
+    LoadGIdxFieldI { dst: u16, gid: u16, r_i: u16, field: u16 },
+    StoreGIdxFieldI { gid: u16, r_i: u16, field: u16, r_val: u16, kind: ScalarKind },
+    LoadLIdxFieldI { dst: u16, seq_v: u16, r_i: u16, field: u16 },
+    StoreLIdxFieldI { seq_v: u16, r_i: u16, field: u16, r_val: u16, kind: ScalarKind },
     LStrLen { dst: u16, str_v: u16 },
     ClearV { reg: u16 },
 
     // Seamless fallback to tree-walker for any non-lowered IR stmt/expr
-    FallbackStmt { idx: u32, clear_from_v: u16 },
-    FallbackExprI { idx: u32, dst: u16 },
-    FallbackExprV { idx: u32, dst: u16 },
+    FallbackStmt { idx: u32, clear_from_v: u16, in_loop: bool },
+    FallbackExprI { idx: u32, dst: u16, in_loop: bool },
+    FallbackExprV { idx: u32, dst: u16, in_loop: bool },
 }
 
 pub(crate) struct Chunk<'p> {
@@ -2180,6 +2184,199 @@ impl<'p> Compiler<'p> {
                         }
                         true
                     }
+                    PlaceKind::Field(obj_place, field) if indices.len() == 1 => {
+                        let PlaceKind::Local(slot) = obj_place.kind else {
+                            return false;
+                        };
+                        let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_rhs = self.compile_expr_i(value);
+                        let cur = self.alloc_i();
+                        self.emit(
+                            Op::LoadFieldArr1I { dst: cur, obj_v, field: *field as u16, r_i },
+                            place.span,
+                        );
+                        if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
+                            return false;
+                        }
+                        self.emit(
+                            Op::StoreLFieldIdx1I {
+                                obj_v,
+                                field: *field as u16,
+                                r_i,
+                                r_val: cur,
+                                kind: ScalarKind::Int,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            // List[i] op= val (Int)
+            (PlaceKind::Index(base, indices), op, Some(ScalarKind::Int), _)
+                if matches!(base.ty, Ty::List(_)) && indices.len() == 1 =>
+            {
+                match &base.kind {
+                    PlaceKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_rhs = self.compile_expr_i(value);
+                        let cur = self.alloc_i();
+                        self.emit(Op::LoadGList1I { dst: cur, gid: *gid as u16, r_i }, place.span);
+                        if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
+                            return false;
+                        }
+                        self.emit(
+                            Op::StoreGList1I {
+                                gid: *gid as u16,
+                                r_i,
+                                r_val: cur,
+                                kind: ScalarKind::Int,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
+                    PlaceKind::Local(slot) => {
+                        let SlotLoc::V(list_v) = self.slot_loc(*slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_rhs = self.compile_expr_i(value);
+                        let cur = self.alloc_i();
+                        self.emit(Op::LoadLList1I { dst: cur, list_v, r_i }, place.span);
+                        if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
+                            return false;
+                        }
+                        self.emit(
+                            Op::StoreLList1I {
+                                list_v,
+                                r_i,
+                                r_val: cur,
+                                kind: ScalarKind::Int,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
+                    PlaceKind::Field(obj_place, field) => {
+                        let PlaceKind::Local(slot) = obj_place.kind else {
+                            return false;
+                        };
+                        let SlotLoc::V(obj_v) = self.slot_loc(slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_rhs = self.compile_expr_i(value);
+                        let cur = self.alloc_i();
+                        self.emit(
+                            Op::LoadFieldList1I { dst: cur, obj_v, field: *field as u16, r_i },
+                            place.span,
+                        );
+                        if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
+                            return false;
+                        }
+                        self.emit(
+                            Op::StoreLFieldIdx1I {
+                                obj_v,
+                                field: *field as u16,
+                                r_i,
+                                r_val: cur,
+                                kind: ScalarKind::Int,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            // seq[i].field = val or seq[i].field op= val (scalar field on Array/List of Struct)
+            (PlaceKind::Field(obj_place, field), op, Some(kind), _)
+                if matches!(obj_place.kind, PlaceKind::Index(..)) =>
+            {
+                let PlaceKind::Index(base, indices) = &obj_place.kind else {
+                    return false;
+                };
+                if !matches!(base.ty, Ty::Array { .. } | Ty::List(_)) || indices.len() != 1 {
+                    return false;
+                }
+                if op != AssignOp::Set && kind != ScalarKind::Int {
+                    return false;
+                }
+                match &base.kind {
+                    PlaceKind::Global(gid) => {
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = if op == AssignOp::Set {
+                            self.compile_expr_i(value)
+                        } else {
+                            let r_rhs = self.compile_expr_i(value);
+                            let cur = self.alloc_i();
+                            self.emit(
+                                Op::LoadGIdxFieldI {
+                                    dst: cur,
+                                    gid: *gid as u16,
+                                    r_i,
+                                    field: *field as u16,
+                                },
+                                place.span,
+                            );
+                            if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
+                                return false;
+                            }
+                            cur
+                        };
+                        self.emit(
+                            Op::StoreGIdxFieldI {
+                                gid: *gid as u16,
+                                r_i,
+                                field: *field as u16,
+                                r_val,
+                                kind,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
+                    PlaceKind::Local(slot) => {
+                        let SlotLoc::V(seq_v) = self.slot_loc(*slot) else {
+                            return false;
+                        };
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        let r_val = if op == AssignOp::Set {
+                            self.compile_expr_i(value)
+                        } else {
+                            let r_rhs = self.compile_expr_i(value);
+                            let cur = self.alloc_i();
+                            self.emit(
+                                Op::LoadLIdxFieldI {
+                                    dst: cur,
+                                    seq_v,
+                                    r_i,
+                                    field: *field as u16,
+                                },
+                                place.span,
+                            );
+                            if !self.emit_assign_op_i(cur, cur, r_rhs, op, place.span) {
+                                return false;
+                            }
+                            cur
+                        };
+                        self.emit(
+                            Op::StoreLIdxFieldI {
+                                seq_v,
+                                r_i,
+                                field: *field as u16,
+                                r_val,
+                                kind,
+                            },
+                            place.span,
+                        );
+                        true
+                    }
                     _ => false,
                 }
             }
@@ -3656,8 +3853,9 @@ impl<'p> Compiler<'p> {
     fn emit_fallback_stmt(&mut self, stmt: &'p Stmt) {
         let idx = self.fallback_stmts.len() as u32;
         self.fallback_stmts.push(stmt);
+        let in_loop = !self.loops.is_empty();
         self.emit(
-            Op::FallbackStmt { idx, clear_from_v: self.pinned_v },
+            Op::FallbackStmt { idx, clear_from_v: self.pinned_v, in_loop },
             stmt.span().unwrap_or_default(),
         );
     }
@@ -3666,7 +3864,8 @@ impl<'p> Compiler<'p> {
         let idx = self.fallback_exprs.len() as u32;
         self.fallback_exprs.push(expr);
         let dst = self.alloc_i();
-        self.emit(Op::FallbackExprI { idx, dst }, expr.span);
+        let in_loop = !self.loops.is_empty();
+        self.emit(Op::FallbackExprI { idx, dst, in_loop }, expr.span);
         dst
     }
 
@@ -3769,7 +3968,8 @@ impl<'p> Compiler<'p> {
         let idx = self.fallback_exprs.len() as u32;
         self.fallback_exprs.push(expr);
         let dst = self.alloc_v();
-        self.emit(Op::FallbackExprV { idx, dst }, expr.span);
+        let in_loop = !self.loops.is_empty();
+        self.emit(Op::FallbackExprV { idx, dst, in_loop }, expr.span);
         dst
     }
 }
@@ -6116,6 +6316,188 @@ impl<'p, 'io> Interp<'p, 'io> {
                         _ => return trap(spans[cur_pc], "internal: expected list"),
                     }
                 }
+                Op::LoadGIdxFieldI { dst, gid, r_i, field } => {
+                    let idx = regs_i[r_i as usize];
+                    let v = match &self.globals[gid as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            match &arr.data {
+                                ArrayData::SmallIntTuple { stride, data, .. } => {
+                                    data[idx as usize * (*stride as usize) + field as usize]
+                                }
+                                ArrayData::Values(vs) => match &vs[idx as usize] {
+                                    Value::Tuple(TupleVal::Boxed(fs)) => {
+                                        ScalarKind::unbox_val(&fs[field as usize])
+                                    }
+                                    Value::Tuple(TupleVal::OneInt(x)) => *x,
+                                    _ => 0,
+                                },
+                                _ => 0,
+                            }
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            match &list[idx as usize] {
+                                Value::Tuple(TupleVal::Boxed(fs)) => {
+                                    ScalarKind::unbox_val(&fs[field as usize])
+                                }
+                                Value::Tuple(TupleVal::OneInt(x)) => *x,
+                                _ => 0,
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    };
+                    regs_i[dst as usize] = v;
+                }
+                Op::StoreGIdxFieldI { gid, r_i, field, r_val, kind } => {
+                    let idx = regs_i[r_i as usize];
+                    let raw = regs_i[r_val as usize];
+                    match &mut self.globals[gid as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            let a = Rc::make_mut(arr);
+                            match &mut a.data {
+                                ArrayData::SmallIntTuple { stride, data, .. } => {
+                                    data[idx as usize * (*stride as usize) + field as usize] = raw;
+                                }
+                                ArrayData::Values(vs) => match &mut vs[idx as usize] {
+                                    Value::Tuple(TupleVal::Boxed(fs)) => {
+                                        Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                    }
+                                    Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
+                                    _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                                },
+                                _ => return trap(spans[cur_pc], "internal: expected tuple array"),
+                            }
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            match &mut Rc::make_mut(list)[idx as usize] {
+                                Value::Tuple(TupleVal::Boxed(fs)) => {
+                                    Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                }
+                                Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
+                                _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    }
+                }
+                Op::LoadLIdxFieldI { dst, seq_v, r_i, field } => {
+                    let idx = regs_i[r_i as usize];
+                    let v = match &regs_v[seq_v as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            match &arr.data {
+                                ArrayData::SmallIntTuple { stride, data, .. } => {
+                                    data[idx as usize * (*stride as usize) + field as usize]
+                                }
+                                ArrayData::Values(vs) => match &vs[idx as usize] {
+                                    Value::Tuple(TupleVal::Boxed(fs)) => {
+                                        ScalarKind::unbox_val(&fs[field as usize])
+                                    }
+                                    Value::Tuple(TupleVal::OneInt(x)) => *x,
+                                    _ => 0,
+                                },
+                                _ => 0,
+                            }
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            match &list[idx as usize] {
+                                Value::Tuple(TupleVal::Boxed(fs)) => {
+                                    ScalarKind::unbox_val(&fs[field as usize])
+                                }
+                                Value::Tuple(TupleVal::OneInt(x)) => *x,
+                                _ => 0,
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    };
+                    regs_i[dst as usize] = v;
+                }
+                Op::StoreLIdxFieldI { seq_v, r_i, field, r_val, kind } => {
+                    let idx = regs_i[r_i as usize];
+                    let raw = regs_i[r_val as usize];
+                    match &mut regs_v[seq_v as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            let a = Rc::make_mut(arr);
+                            match &mut a.data {
+                                ArrayData::SmallIntTuple { stride, data, .. } => {
+                                    data[idx as usize * (*stride as usize) + field as usize] = raw;
+                                }
+                                ArrayData::Values(vs) => match &mut vs[idx as usize] {
+                                    Value::Tuple(TupleVal::Boxed(fs)) => {
+                                        Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                    }
+                                    Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
+                                    _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                                },
+                                _ => return trap(spans[cur_pc], "internal: expected tuple array"),
+                            }
+                        }
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            match &mut Rc::make_mut(list)[idx as usize] {
+                                Value::Tuple(TupleVal::Boxed(fs)) => {
+                                    Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                }
+                                Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
+                                _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                            }
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    }
+                }
                 Op::LStrLen { dst, str_v } => {
                     regs_i[dst as usize] = match &regs_v[str_v as usize] {
                         Value::Str(bytes) => bytes.len() as i64,
@@ -6126,9 +6508,12 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::ClearV { reg } => {
                     regs_v[reg as usize] = Value::Unit;
                 }
-                Op::FallbackStmt { idx, clear_from_v } => {
+                Op::FallbackStmt { idx, clear_from_v, in_loop } => {
                     if let Some(stats) = &mut self.vm_stats {
-                        stats.record(stmt_tag(chunk.fallback_stmts[idx as usize]));
+                        stats.record_with_loop(
+                            stmt_tag(chunk.fallback_stmts[idx as usize]),
+                            in_loop,
+                        );
                     }
                     for r in &mut regs_v[clear_from_v as usize..] {
                         *r = Value::Unit;
@@ -6143,9 +6528,12 @@ impl<'p, 'io> Interp<'p, 'io> {
                         Flow::Break(_) | Flow::Continue(_) => {}
                     }
                 }
-                Op::FallbackExprI { idx, dst } => {
+                Op::FallbackExprI { idx, dst, in_loop } => {
                     if let Some(stats) = &mut self.vm_stats {
-                        stats.record(expr_tag(chunk.fallback_exprs[idx as usize], self.program));
+                        stats.record_with_loop(
+                            expr_tag(chunk.fallback_exprs[idx as usize], self.program),
+                            in_loop,
+                        );
                     }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     let expr = chunk.fallback_exprs[idx as usize];
@@ -6153,9 +6541,12 @@ impl<'p, 'io> Interp<'p, 'io> {
                     sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
-                Op::FallbackExprV { idx, dst } => {
+                Op::FallbackExprV { idx, dst, in_loop } => {
                     if let Some(stats) = &mut self.vm_stats {
-                        stats.record(expr_tag(chunk.fallback_exprs[idx as usize], self.program));
+                        stats.record_with_loop(
+                            expr_tag(chunk.fallback_exprs[idx as usize], self.program),
+                            in_loop,
+                        );
                     }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base);
                     let expr = chunk.fallback_exprs[idx as usize];
@@ -6171,7 +6562,10 @@ impl<'p, 'io> Interp<'p, 'io> {
 #[derive(Default)]
 pub(crate) struct VmStats {
     pub(crate) total_fallbacks: u64,
+    pub(crate) loop_fallbacks: u64,
+    pub(crate) hot_loop_fallbacks: u64,
     pub(crate) counts: std::collections::BTreeMap<String, u64>,
+    pub(crate) loop_counts: std::collections::BTreeMap<String, u64>,
 }
 
 impl VmStats {
@@ -6184,7 +6578,19 @@ impl VmStats {
     }
 
     pub(crate) fn record(&mut self, tag: String) {
+        self.record_with_loop(tag, false);
+    }
+
+    pub(crate) fn record_with_loop(&mut self, tag: String, in_loop: bool) {
         self.total_fallbacks += 1;
+        if in_loop {
+            self.loop_fallbacks += 1;
+            let is_io = matches!(tag.as_str(), "expr:Read" | "stmt:Expr(Print)");
+            if !is_io {
+                self.hot_loop_fallbacks += 1;
+                *self.loop_counts.entry(tag.clone()).or_insert(0) += 1;
+            }
+        }
         *self.counts.entry(tag).or_insert(0) += 1;
     }
 
@@ -6192,9 +6598,23 @@ impl VmStats {
         let mut entries: Vec<(&str, u64)> =
             self.counts.iter().map(|(k, &v)| (k.as_str(), v)).collect();
         entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+        let mut loop_entries: Vec<(&str, u64)> =
+            self.loop_counts.iter().map(|(k, &v)| (k.as_str(), v)).collect();
+        loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
         if std::env::var("CPL_VM_STATS").ok().as_deref() == Some("json") {
-            let mut s = format!("{{\"total_fallbacks\":{},\"top\":[", self.total_fallbacks);
+            let mut s = format!(
+                "{{\"total_fallbacks\":{},\"loop_fallbacks\":{},\"hot_loop_fallbacks\":{},\"top\":[",
+                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks
+            );
             for (i, (k, v)) in entries.iter().take(20).enumerate() {
+                if i > 0 {
+                    s.push(',');
+                }
+                let escaped = k.replace('\\', "\\\\").replace('"', "\\\"");
+                s.push_str(&format!("[\"{escaped}\",{v}]"));
+            }
+            s.push_str("],\"loop_top\":[");
+            for (i, (k, v)) in loop_entries.iter().take(20).enumerate() {
                 if i > 0 {
                     s.push(',');
                 }
@@ -6204,7 +6624,10 @@ impl VmStats {
             s.push_str("]}");
             eprintln!("{s}");
         } else {
-            eprintln!("vm-stats: total_fallbacks={}", self.total_fallbacks);
+            eprintln!(
+                "vm-stats: total_fallbacks={} loop_fallbacks={} hot_loop_fallbacks={}",
+                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks
+            );
             for (k, v) in entries.iter().take(15) {
                 eprintln!("  {v:>10}  {k}");
             }

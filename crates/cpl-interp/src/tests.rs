@@ -524,3 +524,32 @@ print(sum, ch_sum, c1, c2)
     assert_eq!(trap, None);
     assert_eq!(out, "210 5 7 42\n");
 }
+
+#[test]
+fn vm_compound_list_field_and_indexed_struct_field_assign() {
+    let source = "
+struct Node:
+    a: Int
+    b: Int
+
+struct Acc:
+    xs: List<Int>
+
+fn bump(mut acc: Acc, i: Int, d: Int):
+    acc.xs[i] += d
+
+var xs: List<Int> = [1, 2, 3]
+var nodes: [0..3]Node = Node(a: 0, b: 1)
+for i in 0..3:
+    xs[i] += i * 10
+    nodes[i].a += i + 5
+    nodes[i].b = nodes[i].a * 2
+
+var acc = Acc(xs: [10, 20])
+bump(mut acc, 1, 7)
+print(xs[2], nodes[2].a, nodes[2].b, acc.xs[1])
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "23 7 14 27\n");
+}
