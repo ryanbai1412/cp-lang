@@ -17,3 +17,5 @@ The header is a real editorial (power sums by logarithmic derivative, transposed
 ## Language gaps
 
 No friction report exists. Missing: `poly` subproduct tree / multipoint evaluation, a suffix-tree (lcp-interval) walk in `std.strings`.
+
+Re-checked after 3d2276cc moved the imports to `std.ntt`/`std.poly`; the score stands, as the failures above are in the body.

@@ -47,7 +47,7 @@ caps the dream at 3:
 - an unexplained constant or closing formula the header does not derive;
 - inconsistent spelling: `@!multitest` is the one multitest marker (not
   `--- multitest ---` or `--- with multitest() ---`); `Mod<p>`, `read<T>`,
-  `struct`, `if c: a else: b`, `?? return`, `where` filters; sequence
+  `struct`, `if c: a else: b`, `?? return`, `if` filters and `**` for power (decision §70); sequence
   operations as methods (`xs.sum()`, `xs.any(p)`, `xs.sorted()`), not free
   `sum(...)`/`any(xs, p)`/`sort(mut xs)` mixed with methods.
 
