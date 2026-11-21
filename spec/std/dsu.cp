@@ -169,8 +169,8 @@ pub struct PotentialDsu<V>:
     conflicts: 0..=2_000_000_000
     log: List<(V, Bool)>
 
-    /// Every position starts in its own set with potential 0, optionally combined by `op:` (default `+`). O(n).
-    pub fn new(op: ?((Int, Int) -> Int) = none) -> PotentialDsu<V> = todo
+    /// [rename] Every position starts in its own set with identity potential, combined by W10 group operation `op` (default `+`; replaces `GroupPotentialDsu`). O(n).
+    pub fn new<G>(op: ?G = none) -> PotentialDsu<V> = todo
 
     /// Root of `v`'s set and `val[v] - val[root]`. O(log n).
     pub fn find(self, v: V) -> (root: V, offset: Int) = todo
@@ -218,41 +218,6 @@ pub struct RollbackArray<D, T>:
     pub fn mark(self) -> Mark = todo
 
     /// Revert every `set` since `snap = mark()`. O(1) per undone write.
-    pub fn undo_to(mut self, snap: Mark) = todo
-
-/// Group-valued potential / weighted DSU over domain `V` using operation values `(op, inv, id)` (W10).
-/// Maintains `pot(b) = op(pot(a), w)` with O(alpha(n)) amortized ops (O(log n) after `mark()`).
-pub struct GroupPotentialDsu<V, G>:
-    _parts: Int
-
-    /// Create an empty `GroupPotentialDsu<V, G>` for group `(op, inv, id)`. O(n).
-    pub fn new(op: (G, G) -> G, inv: G -> G, id: G) -> GroupPotentialDsu<V, G> = todo
-
-    /// Find `(root, pot)` where `pot` is the group offset from `root` to `v`. O(alpha(n)) amortized, O(log n) after `mark`.
-    pub fn find(mut self, v: V) -> (root: V, pot: G) = todo
-
-    /// Assert `pot(b) = op(pot(a), w)`. Returns false if inconsistent or already connected. O(alpha(n)) amortized.
-    pub fn unite(mut self, a: V, b: V, w: G) -> Bool = todo
-
-    /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
-    pub fn same(mut self, a: V, b: V) -> Bool = todo
-
-    /// Relative potential from `a` to `b`, or `none` if disconnected. O(alpha(n)) amortized.
-    pub fn diff(mut self, a: V, b: V) -> ?G = todo
-
-    /// Whether no contradictory `unite` has occurred. O(1).
-    pub @get fn consistent(self) -> Bool = todo
-
-    /// Current number of connected components. O(1).
-    pub @get fn components(self) -> Int = todo
-
-    /// Size of `v`'s component. O(alpha(n)) amortized.
-    pub fn size(mut self, v: V) -> Int = todo
-
-    /// Snapshot the current state for `undo_to`. O(1).
-    pub fn mark(mut self) -> Mark = todo
-
-    /// Revert every `unite` since `snap = mark()`. O(1) per undone unite.
     pub fn undo_to(mut self, snap: Mark) = todo
 
 /// Path-copying persistent disjoint-set union over domain `V`.

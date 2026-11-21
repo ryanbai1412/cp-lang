@@ -13,6 +13,7 @@
 //   and forced pop fixes the required active end, so flipping only when needed
 //   (ignoring free 1-element flips) achieves the exact minimum reversal count.
 
+use std.deque.{LinkedList}
 use std.dsu.ParityDsu
 
 enum Side: Back | Front

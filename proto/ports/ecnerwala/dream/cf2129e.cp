@@ -8,6 +8,7 @@
 // are among the n counted values, so the k-th of the window is the
 // (k + n - (r - l + 1))-th of all, the others sitting at f = 0 below them.
 @!multitest
+use std.bag.{BucketCount}
 use std.mo.{mo}
 let (n, m): (2..=150_000, 1..=150_000) = read()
 domain V = 1..=n

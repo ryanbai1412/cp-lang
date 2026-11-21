@@ -3,6 +3,7 @@
 // component has one free 30-bit label, less one for the global xor shift that leaves the grid unchanged.
 // A contradictory cycle gives 0; otherwise the count is 2^(30 * (components - 1)).
 @!multitest
+use std.dsu.{PotentialDsu}
 type Z = Mod<1e9 + 7>
 let (n, m, k, _) = read<(2..=1e5, 2..=1e5, 0..=1e5, 0..=0)>()
 domain Line = Row(1..=n) | Col(1..=m)
