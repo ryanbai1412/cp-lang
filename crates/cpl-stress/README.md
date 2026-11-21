@@ -42,11 +42,11 @@ ends of every range come up often, because that is where off-by-ones are.
 
 The same seed makes the same case on every machine.
 
-Supported today: ranges, `Int`, domains, type aliases, tuples, and arrays
-over one or more domains or ranges (`[R, C]T` is rows of columns). For
-anything else (`Str`, permutations, trees) the error names the type and
-its line, and `--gen PROG` takes over: `PROG <seed> <size>` prints one
-input.
+Supported today: ranges, `Int`, `Char`, `Bool`, `Str`, domains, type
+aliases, tuples, records, `Perm` and `Tree` aliases, `[read() for ...]`,
+`@!multitest`, and arrays over one or more domains or ranges (`[R, C]T` is
+rows of columns). For anything else the error names the type and its line,
+and `--gen PROG` takes over: `PROG <seed> <size>` prints one input.
 
 ## Shrinking
 

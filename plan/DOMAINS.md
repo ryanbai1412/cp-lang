@@ -112,16 +112,38 @@ is tested in a browser; interpreter within 30x of C++ on ports.
 **Next.** Audit against `plan/50`; DAP debugger; interpreter speed.
 
 ## 7. Stress testing and shrinking (`plan/50` 3, `plan/40` 7b)
-**North star.** One command turns "WA on test 37" into a minimal counterexample, side by
-side with the brute's answer: generators derived from the input types and
-constraints (graphs, trees, permutations, strings, interactive judges),
-structural shrinking that keeps every invariant, adversarial generators that
-hunt hash collisions, TLE inputs and worst cases, and a seeded-bug benchmark
-showing it finds classic bugs faster than any hand workflow.
-**Where we are.** `cpl stress` with shrinking exists; generators are
-hand-written per port.
-**Bar.** Seeded-bug benchmark: time to a minimal counterexample.
-**Next.** Type-derived generators; structural shrinking; benchmark.
+**North star.** One command, `cpl stress d.cp`, turns "WA on test 37" into
+a minimal counterexample in seconds, side by side with the brute's answer,
+with nothing written but the solution and a brute: generators derived from
+the input types and constraints (ranges, domains, words, permutations,
+trees, weighted and simple graphs, multitest, interactive judges),
+constraints types can't state written as ordinary generator code,
+structural shrinking that keeps every invariant (a tree stays a tree, a
+graph keeps its shape, a permutation stays a permutation), adversarial
+generators that hunt hash collisions, TLE inputs and worst cases, and a
+seeded-bug benchmark showing it finds classic bugs faster than any hand
+workflow. Every structured type works the same in every tool: the
+compiler accepts it, `cpl run` and the C++ read it, stress generates and
+shrinks it.
+**Where we are.** Audited 2026-11-21. `cpl stress` (`crates/cpl-stress`)
+generates from top-level `let x: T = read()` types: ranges, `Int` (a
+guessed range, narrowed when the program stops on it), `Char`, `Bool`,
+`Str`, domains, aliases, tuples, records, N-D arrays, `[read() for ...]`,
+`@!multitest`, and the hidden test an `@interactor` reads. Shrinking is
+structural (sizes bisected, single elements deleted, values lowered,
+multitest cut to the one failing test), and an in-file `@gen` fn shrinks
+through its recorded `rand`/`shuffle` choices. Gaps found: `Perm<V>` and
+`Tree<V>` are known only to stress (the compiler rejects them with E0204,
+so only a local alias named `Perm` or `Tree` works); a weighted tree
+(`(u: V, v: V, w: W)`) is generated as random pairs, not a tree; there are
+no simple or connected graphs; an edge list shrinks by clamping, which can
+make self-loops; there is no benchmark of how fast stress finds bugs.
+**Bar.** A seeded-bug benchmark in the gate: classic bugs injected into
+correct solutions, each found and shrunk to a known minimal case, with the
+median time to a minimal counterexample at most 10 s (`GOALS` 4).
+**Next.** Seeded-bug benchmark; `Perm`/`Tree`/graph types every tool
+accepts; weighted trees; simple and connected graphs; edge-deleting graph
+shrinking.
 
 ## 8. Formatter, linter, profiler, coverage, bench, doc (`plan/45`)
 **North star.** Every tool a contestant reaches for exists, is instant, and understands
