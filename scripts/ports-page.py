@@ -60,6 +60,8 @@ def main():
     for p in ports:
         title, top, count = friction(p["name"])
         tok = sb.measure_tokens(p)
+        dream = os.path.join(os.path.dirname(p["abs_path"]), "dream", p["name"] + ".cp")
+        tok["dream_tokens"] = len(sb.tokenize_cp(sb._read_text(dream))) if os.path.isfile(dream) else None
         rows.append((dates.get(p["path"], "uncommitted"), p, title, top, count, tok))
     rows.sort(key=lambda r: (r[0], r[1]["name"]), reverse=True)
     ratios = sorted(r[5]["stripped_token_ratio"] for r in rows if r[5]["stripped_token_ratio"])
@@ -72,6 +74,9 @@ def main():
         "by `proto/ports/<group>/gate.sh`. Tokens are contestant-written: the port",
         "against the original with its library code stripped"
         + (f" (median {median:.2f}x, goal at most 0.6x)." if median else "."),
+        "Dream is the same solution as we would like to write it, unconstrained",
+        "by today's compiler, with its token count; the gap is what the language",
+        "still owes.",
         "",
         "| Added | Problem | Port | Tokens | Frictions | First friction |",
         "|---|---|---|---|---|---|",
@@ -82,8 +87,13 @@ def main():
         if title:
             prob += f" {cell(title, 40)}"
         port = f"[.cp](../{p['path']}) · [C++](../{p['orig_path']})"
+        if tok["dream_tokens"] is not None:
+            dream_path = os.path.join(os.path.dirname(p["path"]), "dream", p["name"] + ".cp")
+            port += f" · [dream](../{dream_path})"
         ratio = tok["stripped_token_ratio"] or tok["token_ratio"]
         toks = f"{tok['cp_tokens']} ({ratio:.2f}x)" if ratio else str(tok["cp_tokens"])
+        if tok["dream_tokens"] is not None:
+            toks += f", dream {tok['dream_tokens']}"
         fr = f"[{count}](frictions/{p['name']}.md)" if count else "–"
         out.append(f"| {day[:10]} | {prob} | {port} | {toks} | {fr} | {cell(top)} |")
     open(OUT, "w").write("\n".join(out) + "\n")
