@@ -130,7 +130,10 @@ on the judge:
 
 - `cp build` copies the file to the clipboard by default and prints its
   size against the limit.
-- `cp submit` is optional and per judge, only where the judge allows
+- `cpl submit d.cp` (done) builds for the file's judge, runs the cases in
+  `d.tests/` on that C++ built with the judge's flags on its stack, and says
+  whether the file is ready to send; it sends nothing yet.
+- Sending is optional and per judge, only where the judge allows
   automated submission. It shows the verdict. Credentials stay in the OS
   keychain and are never written to project files.
 

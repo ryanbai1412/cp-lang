@@ -317,3 +317,43 @@ fn a_native_profile_builds_with_the_judges_flags_on_the_judges_stack() {
     let json = String::from_utf8_lossy(&out.stdout);
     assert!(json.contains("\"hits\":1000001"), "{json}");
 }
+
+#[test]
+fn submit_builds_for_the_judge_then_runs_the_cases_on_that_build() {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-submit");
+    let _ = std::fs::remove_dir_all(&scratch);
+    std::fs::create_dir_all(scratch.join("a.tests")).unwrap();
+    let file = scratch.join("a.cp");
+    std::fs::write(&file, "// judge: atcoder\nlet (a, b): (Int, Int) = read()\nprint(a + b)\n").unwrap();
+    let path = file.to_str().unwrap();
+    let out = cpl_cli::run(&["submit", path]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(out.stderr.contains("has no cases, so only the build was checked"), "{}", out.stderr);
+    let cpp = std::fs::read_to_string(scratch.join("a.cpp")).unwrap();
+    assert!(cpp.contains("For judge `atcoder`"), "{cpp}");
+
+    std::fs::write(scratch.join("a.tests/1.in"), "1 2\n").unwrap();
+    std::fs::write(scratch.join("a.tests/1.out"), "3\n").unwrap();
+    let out = cpl_cli::run(&["submit", path]);
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(out.code, 0, "{stdout}{}", out.stderr);
+    assert!(stdout.contains("1/1 passed"), "{stdout}");
+    assert!(stdout.ends_with(&format!("ready to send: {}\n", scratch.join("a.cpp").display())), "{stdout}");
+
+    std::fs::write(scratch.join("a.tests/2.in"), "2 2\n").unwrap();
+    std::fs::write(scratch.join("a.tests/2.out"), "5\n").unwrap();
+    let out = cpl_cli::run(&["submit", path]);
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(out.code, 1, "{stdout}");
+    assert!(stdout.contains("WA") && !stdout.contains("ready to send"), "{stdout}");
+    assert!(out.stderr.contains("is not ready to send: a case in"), "{}", out.stderr);
+
+    std::fs::write(scratch.join("cp.toml"), "[judge.atcoder]\nsource_kb = 1\n").unwrap();
+    let out = cpl_cli::run(&["submit", path]);
+    assert_eq!(out.code, 1);
+    assert!(out.stderr.contains("is not ready to send: it does not build"), "{}", out.stderr);
+    assert!(String::from_utf8(out.stdout).unwrap().is_empty());
+
+    let out = cpl_cli::run(&["submit", path, "--judge", "cses"]);
+    assert_eq!(out.code, cpl_cli::EXIT_USAGE, "{}", out.stderr);
+}

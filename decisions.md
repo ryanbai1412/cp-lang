@@ -2266,6 +2266,11 @@ Reverse: none needed; this is general range-type lowering.
   on the judge's page than the generator's notes on its runtime, and both cost the same to the judge.
   `Fitted::note` says what was left out, for the CLI and the playground alike. Reverse: drop the
   `uncommented` rung in `emit_within_for`.
+- **34.14 `cpl submit` is `cpl build` then `cpl test`, and sends nothing.** It takes no `--judge`: the file
+  or project names its judge, so the build and the cases cannot disagree on one. No cases is a warning,
+  not a failure, since many problems are tried before their samples are saved. It sends nothing because
+  no judge we target offers a submission API it allows scripts to use, and a scraped login is a credential
+  in a tool that must not hold one. Reverse: drop `submit` from `cpl-cli`.
 
 ## 35. Taste lints (§8 tooling, 2026-11-21)
 

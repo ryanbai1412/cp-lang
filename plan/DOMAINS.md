@@ -520,7 +520,8 @@ namespaces and `main`, the rest is named. `run --release`, `test`,
 `stress`, `hunt`, `bench` and `profile --native` build a `.cp` file with
 its judge's flags (those g++ here accepts) and run it under `ulimit -s` of
 the judge's stack. Time and memory limits are the problem's, not the
-judge's (`// limits:` or `[limits]` in `cp.toml`). The compilers here are g++
+judge's (`// limits:` or `[limits]` in `cp.toml`). `cpl submit` builds
+for the file's judge and runs its cases on that build; it sends nothing. The compilers here are g++
 11, clang 14 and MinGW 10, not the judges' versions.
 **Bar.** Every profile: every port builds within its limit, compiles with
 its flags (as accepted here), and the deep-recursion run passes on its

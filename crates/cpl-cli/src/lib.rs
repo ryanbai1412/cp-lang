@@ -47,6 +47,8 @@ commands:
                         `--checked` also builds it with sanitizers to run here;
                         `--judge <name>` writes it for that judge
   judges [file]         list the judge profiles, marking the one a build uses
+  submit <file>         build for the file's judge, run its cases on that
+                        build, and say whether it is ready to send
   fmt [path]...         format files in the one canonical style
   lint [path]...        warn about code that is legal but probably wrong or slow
   explain <CODE|file|--json> show a diagnostic/lint explanation or a file's representations & view costs
@@ -135,11 +137,12 @@ pub fn exec<S: AsRef<str>>(
             let _ = writeln!(stdout, "cpl {VERSION}");
             0
         }
-        Some(command @ ("check" | "build" | "judge" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
+        Some(command @ ("check" | "build" | "judge" | "submit" | "lsp" | "dap")) if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
             let help = match command {
                 "check" => CHECK_USAGE,
                 "build" => BUILD_USAGE,
                 "judge" => JUDGE_USAGE,
+                "submit" => SUBMIT_USAGE,
                 "dap" => DAP_USAGE,
                 _ => LSP_USAGE,
             };
@@ -215,6 +218,14 @@ pub fn exec<S: AsRef<str>>(
                 ),
             }
         }
+        Some("submit") => match rest.as_slice() {
+            [file] => submit(file, stdout, stderr),
+            _ => usage_error(
+                "`submit` takes one file, for the judge it names: `cpl submit a.cp` \
+                 (a `// judge:` line or cp.toml says which)"
+                    .into(),
+            ),
+        },
         Some("judges") => match rest.as_slice() {
             [] => list_judges(None, stdout, stderr),
             [file] => list_judges(Some(file), stdout, stderr),
@@ -256,6 +267,16 @@ options:
   --size            say where the bytes go: header, runtime, library fns,
                     your code, by part and by piece (said anyway when the
                     file is over the judge's limit)
+";
+
+const SUBMIT_USAGE: &str = "\
+usage: cpl submit <file.cp>
+
+Gets the file ready to send to its judge (the `// judge:` line, else the
+nearest cp.toml, else `generic`): writes the C++ as `cpl build` does, within
+the judge's source limit, then runs every case in <file>.tests/ on that C++
+built with the judge's flags on its stack, as `cpl test` does. Exits 0 when
+the file is ready: it built and no case failed.
 ";
 
 const JUDGE_USAGE: &str = "\
@@ -1053,6 +1074,37 @@ fn build_file(
     }
 }
 
+/// `cpl submit`: `cpl build`, then `cpl test` on what it built.
+fn submit(path: &str, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let code = build_file(path, None, None, false, false, stdout, stderr);
+    if code != 0 {
+        *stderr += &format!("cpl: `{path}` is not ready to send: it does not build\n");
+        return code;
+    }
+    let source = cpl_contest::problem::source_path(path);
+    let cases = cpl_contest::problem::cases(&source);
+    let tests = cpl_contest::problem::tests_dir(&source);
+    if cases.is_empty() {
+        *stderr += &format!(
+            "cpl: warning: {} has no cases, so only the build was checked; put the samples there as `1.in` and \
+             `1.out`\n",
+            tests.display()
+        );
+        return 0;
+    }
+    let mut out = Vec::new();
+    let mut errors = Vec::new();
+    let code = cpl_contest::test::run(&[path.to_string()], &mut out, &mut errors);
+    let _ = stdout.write_all(&out);
+    *stderr += &String::from_utf8_lossy(&errors);
+    if code != 0 {
+        *stderr += &format!("cpl: `{path}` is not ready to send: a case in {} fails\n", tests.display());
+        return EXIT_ERRORS;
+    }
+    let _ = writeln!(stdout, "ready to send: {}", source.with_extension("cpp").display());
+    0
+}
+
 /// Where the bytes of a built file go, by part, with the largest pieces of
 /// each part named.
 fn size_report(sizes: &[cpl_codegen::Size], limit: usize, judge: &str) -> String {
@@ -1741,7 +1793,7 @@ mod tests {
     #[test]
     fn tooling_commands_reach_their_crates() {
         for command in [
-            "check", "run", "build", "judge", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
+            "check", "run", "build", "judge", "submit", "lsp", "fmt", "lint", "doc", "stress", "new", "test", "bench",
             "watch",
         ] {
             let out = run(&[command, "--help"]);
