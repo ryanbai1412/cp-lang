@@ -79,6 +79,11 @@ elif x == 0: print("zero")           // elif, never else if
 else: print("positive")
 var (a, b) = (48, 18)
 while b != 0: (a, b) = (b, a % b)   // both RHS values before either write
+var best = 0, ways = 1              // two bindings on one line
+repeat 3: ways *= 2                 // for _ in 0..3
+loop:                               // while true
+    best += 1
+    if best == 2: break
 for i in (0..6).step(2).rev: print(i)
 for i in 3..:                       // open-ended Int range; stop explicitly
     if i == 6: break
@@ -116,6 +121,7 @@ struct Point(x: Int, y: Int)
 enum Op:
     Add(delta: Int)
     Query
+enum Dir: N, E, S, W                 // one line; `|` also separates
 let e: Edge = (2, 7)
 let op = Add(e.weight)
 match op:

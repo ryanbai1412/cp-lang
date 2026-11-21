@@ -316,6 +316,60 @@ impl<'a> Parser<'a> {
                 }
                 StmtKind::Error
             }
+            T::Ident if self.text() == "loop" && self.peek_n(1) == T::Colon => {
+                let span = self.span();
+                self.bump();
+                let body = self.colon_block("`loop`");
+                StmtKind::While {
+                    cond: Cond::Expr(Expr {
+                        kind: ExprKind::Bool(true),
+                        span,
+                    }),
+                    body,
+                }
+            }
+            T::Ident
+                if self.text() == "repeat"
+                    && !matches!(
+                        self.peek_n(1),
+                        T::LParen
+                            | T::Dot
+                            | T::LBracket
+                            | T::Colon
+                            | T::Eq
+                            | T::Newline
+                            | T::Eof
+                            | T::Comma
+                            | T::RParen
+                    ) =>
+            {
+                // `repeat n:` is `for _ in 0..n:`.
+                let word = self.span();
+                self.bump();
+                let count = self.expr();
+                let span = self.span_from(word.start);
+                let body = self.colon_block("the `repeat` count");
+                StmtKind::For {
+                    label: None,
+                    pat: Pattern {
+                        kind: PatternKind::Wildcard,
+                        span: word,
+                    },
+                    iter: Expr {
+                        kind: ExprKind::Range {
+                            lo: Some(Box::new(Expr {
+                                kind: ExprKind::Int(0),
+                                span: word,
+                            })),
+                            hi: Some(Box::new(count)),
+                            inclusive: false,
+                            step: None,
+                        },
+                        span,
+                    },
+                    body,
+                }
+            }
             T::Ident
                 if self.text() == "law"
                     && self.peek_n(1) == T::Ident
@@ -405,6 +459,32 @@ impl<'a> Parser<'a> {
             }
             None
         };
+        // `var best = 0, ways = 1` is two bindings.
+        while init.is_some()
+            && self.at(T::Comma)
+            && self.peek_n(1) == T::Ident
+            && matches!(self.peek_n(2), T::Eq | T::Colon)
+        {
+            self.bump();
+            let start = self.start();
+            let pat = self.pattern();
+            let ty = self.eat(T::Colon).then(|| self.ty());
+            self.expect(T::Eq, "`=` and a value after the name");
+            let value = self.expr();
+            self.extra_stmts.push(Stmt {
+                kind: StmtKind::Let {
+                    mutable,
+                    pat,
+                    ty,
+                    init: Some(value),
+                    otherwise: None,
+                    guard: None,
+                },
+                span: self.span_from(start),
+                decorators: Vec::new(),
+                public: false,
+            });
+        }
         // `let a = x and let b = y else: return` is one `let ... else`
         // after another, with the same `else`.
         let mut more = Vec::new();

@@ -341,11 +341,11 @@ impl<'a> Parser<'a> {
         let mut methods = Vec::new();
         let one_line = self.at(T::Colon) && self.peek_n(1) != T::Newline;
         if one_line || self.at(T::Eq) {
-            // `enum Dir = L | R | U | D`, or the same after a `:`.
+            // `enum Dir = L | R | U | D`; after a `:`, `,` also separates.
             self.bump();
             loop {
                 variants.push(self.variant());
-                if !self.eat(T::Pipe) {
+                if !(self.eat(T::Pipe) || (one_line && self.eat(T::Comma))) {
                     break;
                 }
             }

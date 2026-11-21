@@ -408,6 +408,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn unary(&mut self) -> Expr {
+        if self.at(T::Plus) {
+            self.bump();
+            return self.unary();
+        }
         let op = match self.peek() {
             T::Minus => UnOp::Neg,
             T::Tilde => UnOp::BitNot,
