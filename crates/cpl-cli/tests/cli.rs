@@ -638,6 +638,18 @@ fn the_users_own_error_hides_the_ones_it_causes_in_library_code() {
 }
 
 #[test]
+fn an_end_of_another_domain_or_a_changed_name_proves_no_step() {
+    // `i < E.last` says nothing of `D`; `i != r` alone orders nothing; and
+    // a name assigned under the test is no longer the one tested.
+    let other = "domain D = 0..3\ndomain E = 0..5\nlet a: [D]Int = 0\nfor i in D:\n    if E(i.ord) < E.last: print(a[i + 1])\n";
+    assert!(check_errors("step-other", other).contains("`i + 1` is a ?D"));
+    let differ = "domain D = 0..3\nlet a: [D]Int = 0\nfn f(l: D, r: D) -> Int:\n    if l == r: a[l]\n    else: a[l + 1]\nprint(f(D.first, D.last))\n";
+    assert!(check_errors("step-differ", differ).contains("`l + 1` is a ?D"));
+    let moved = "domain D = 0..3\nlet a: [D]Int = 0\nvar i = D.first\nif i < D.last:\n    i = D.last\n    print(a[i + 1])\n";
+    assert!(check_errors("step-moved", moved).contains("`i + 1` is a ?D"));
+}
+
+#[test]
 fn a_fn_inside_a_fn_takes_no_mut_parameter() {
     // A fn value's type carries no `mut`, so the call would change a copy.
     let source = "let n: Int = read()\nfor _ in 0..2:\n    var par: [0..=n]Int = -1\n    fn touch(mut par: [0..=n]Int, x: Int) -> Int:\n        par[x] = 0\n        x\n    print(touch(mut par, 0))\n";

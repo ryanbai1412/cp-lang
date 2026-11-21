@@ -637,6 +637,10 @@ impl<'a> Lowerer<'a> {
             return false;
         };
         steps.bounds(e, self.offset).into_iter().any(|name| {
+            // `i > D.first`: an end of the domain itself.
+            if let Some(of) = cpl_syntax::order::end_domain(name) {
+                return matches!(domain, Ty::Pos(d) if self.resolve_domain_name(of) == Some(*d));
+            }
             let (diags, written) = (self.diags.len(), self.cx.as_written);
             let ty = self.name_as_written(name, None, e.span).ty;
             self.diags.truncate(diags);

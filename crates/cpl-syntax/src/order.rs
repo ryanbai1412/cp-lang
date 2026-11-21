@@ -16,6 +16,11 @@
 //! - `l <= r` together with `l != r`, from two tests or from one test and
 //!   a loop;
 //! - `for m in l..r`, in a loop or a comprehension: `l <= m` and `m < r`.
+//!
+//! An end of a domain orders a name too: inside `if i > D.first:`,
+//! `i - 1` is in `D`, and inside `if i < D.last:` so is `i + 1`.
+
+use std::borrow::Cow;
 
 use crate::ast::*;
 use crate::narrow::{kept, unparen, Calls};
@@ -29,17 +34,19 @@ enum Rel {
     Ne,
 }
 
-/// `a rel b`, for two names.
+/// `a rel b`, for two names, or a name and an end of a domain
+/// (`D.first`, `D.last`).
 #[derive(Clone)]
 struct Fact<'a> {
-    a: &'a str,
+    a: Cow<'a, str>,
     rel: Rel,
-    b: &'a str,
+    b: Cow<'a, str>,
 }
 
 /// What `a op b` coming out as `when` says.
-fn compared<'a>(a: &'a str, op: CmpOp, b: &'a str, when: bool, out: &mut Vec<Fact<'a>>) {
-    let mut say = |a, rel, b| out.push(Fact { a, rel, b });
+fn compared<'a>(a: Cow<'a, str>, op: CmpOp, b: Cow<'a, str>, when: bool, out: &mut Vec<Fact<'a>>) {
+    let mut say = |a: &Cow<'a, str>, rel, b: &Cow<'a, str>| out.push(Fact { a: a.clone(), rel, b: b.clone() });
+    let (a, b) = (&a, &b);
     match (op, when) {
         (CmpOp::Lt, true) | (CmpOp::Ge, false) => say(a, Rel::Lt, b),
         (CmpOp::Gt, true) | (CmpOp::Le, false) => say(b, Rel::Lt, a),
@@ -57,6 +64,23 @@ fn compared<'a>(a: &'a str, op: CmpOp, b: &'a str, when: bool, out: &mut Vec<Fac
 fn name(e: &Expr) -> Option<&str> {
     match &unparen(e).kind {
         ExprKind::Name(name) => Some(name),
+        _ => None,
+    }
+}
+
+/// The domain `end` is an end of, when it is `D.first` or `D.last`.
+pub fn end_domain(end: &str) -> Option<&str> {
+    end.strip_suffix(".first").or_else(|| end.strip_suffix(".last"))
+}
+
+/// One side of a comparison that orders: a name, or `D.first` / `D.last`
+/// written out.
+fn side(e: &Expr) -> Option<Cow<'_, str>> {
+    match &unparen(e).kind {
+        ExprKind::Name(name) => Some(Cow::Borrowed(name)),
+        ExprKind::Field { base, name: end } if matches!(end.text.as_str(), "first" | "last") => {
+            name(base).map(|domain| Cow::Owned(format!("{domain}.{}", end.text)))
+        }
         _ => None,
     }
 }
@@ -82,7 +106,7 @@ fn ordered<'a>(cond: &'a Expr, when: bool, out: &mut Vec<Fact<'a>>) {
         ExprKind::Compare { first, rest } if when || rest.len() == 1 => {
             let mut prev = first.as_ref();
             for (op, next) in rest {
-                if let (Some(a), Some(b)) = (name(prev), name(next)) {
+                if let (Some(a), Some(b)) = (side(prev), side(next)) {
                     compared(a, *op, b, when, out);
                 }
                 prev = next;
@@ -106,11 +130,11 @@ fn walked<'a>(pat: &'a Pattern, iter: &'a Expr, out: &mut Vec<Fact<'a>>) {
         return;
     };
     if let Some(lo) = lo.as_deref().and_then(name) {
-        out.push(Fact { a: lo, rel: Rel::Le, b: m });
+        out.push(Fact { a: Cow::Borrowed(lo), rel: Rel::Le, b: Cow::Borrowed(m) });
     }
     if let Some(hi) = hi.as_deref().and_then(name) {
         let rel = if *inclusive { Rel::Le } else { Rel::Lt };
-        out.push(Fact { a: m, rel, b: hi });
+        out.push(Fact { a: Cow::Borrowed(m), rel, b: Cow::Borrowed(hi) });
     }
 }
 
@@ -153,7 +177,10 @@ impl Finder<'_, '_> {
     /// Keeps the facts whose names `covered` never assigns, for `at`.
     fn hold(&mut self, facts: Vec<Fact>, at: Span, covered: impl Fn(&mut dyn Visitor)) {
         for fact in facts {
-            let names = kept(vec![fact.a, fact.b], &mut *self.calls, |writes| covered(writes));
+            // An end of a domain is the domain's; nothing assigns it.
+            let root = |side: &str| side.split('.').next().unwrap_or(side).to_string();
+            let (a, b) = (root(&fact.a), root(&fact.b));
+            let names = kept(vec![a.as_str(), b.as_str()], &mut *self.calls, |writes| covered(writes));
             if names.len() == 2 {
                 let at = Span::new(at.start + self.by, at.end + self.by);
                 self.steps.held.push((at, fact.a.to_string(), fact.rel, fact.b.to_string()));
@@ -267,7 +294,10 @@ impl Steps {
 
     fn less(&self, at: Span, a: &str, b: &str) -> bool {
         let differ = self.holds(at, a, Rel::Ne, b) || self.holds(at, b, Rel::Ne, a);
-        self.holds(at, a, Rel::Lt, b) || (self.holds(at, a, Rel::Le, b) && differ)
+        // A position is never before its domain's first or after its last;
+        // whoever asks sees that the name is a position of that domain.
+        let within = a.ends_with(".first") || b.ends_with(".last");
+        self.holds(at, a, Rel::Lt, b) || ((within || self.holds(at, a, Rel::Le, b)) && differ)
     }
 
     /// The names that show the step `e` stays inside: for `l + 1`, each

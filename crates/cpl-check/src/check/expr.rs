@@ -775,7 +775,11 @@ impl<'a> Checker<'a> {
                 .steps
                 .bounds(e, 0)
                 .into_iter()
-                .any(|name| self.local(name).is_some_and(|local| local.ty == *domain))
+                .any(|name| match cpl_syntax::order::end_domain(name) {
+                    // `i > D.first`: an end of the domain itself.
+                    Some(of) => matches!(domain, Ty::Pos(d) if d == of),
+                    None => self.local(name).is_some_and(|local| local.ty == *domain),
+                })
     }
 
     /// `i + 1` used where its domain is wanted: the message for indexing
