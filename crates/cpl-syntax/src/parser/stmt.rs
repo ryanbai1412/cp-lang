@@ -618,6 +618,18 @@ impl<'a> Parser<'a> {
                     kind: ExprKind::Mut(Box::new(inner)),
                     span: self.span_from(mstart),
                 })
+            } else if self.at(T::Newline)
+                && self.peek_n(1) == T::Indent
+                && matches!(self.peek_n(2), T::If | T::Match)
+            {
+                self.bump();
+                self.bump();
+                let value = self.expr();
+                if self.at(T::Newline) && self.peek_n(1) == T::Dedent {
+                    self.bump();
+                }
+                self.eat(T::Dedent);
+                Some(value)
             } else {
                 Some(self.expr())
             }

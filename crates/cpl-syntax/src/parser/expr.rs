@@ -636,11 +636,24 @@ impl<'a> Parser<'a> {
 
     /// The calls, indexes and fields that follow `expr`.
     pub(super) fn postfix_from(&mut self, start: u32, mut expr: Expr) -> Expr {
+        let mut indented_chain = false;
         loop {
             // An expression that ended with a block ended there: a `(` or
             // `[` on the next line starts a new statement.
             if self.prev_kind() == Some(T::Dedent) {
-                return expr;
+                break;
+            }
+            // Indented `.method(...)` continuation lines belong to the chain.
+            if indented_chain && self.at(T::Newline) && self.peek_n(1) == T::Dot {
+                self.bump();
+            } else if !indented_chain
+                && self.at(T::Newline)
+                && self.peek_n(1) == T::Indent
+                && self.peek_n(2) == T::Dot
+            {
+                self.bump();
+                self.bump();
+                indented_chain = true;
             }
             let kind = match self.peek() {
                 T::LParen => {
@@ -705,13 +718,20 @@ impl<'a> Parser<'a> {
                         args,
                     }
                 }
-                _ => return expr,
+                _ => break,
             };
             expr = Expr {
                 kind,
                 span: self.span_from(start),
             };
         }
+        if indented_chain {
+            if self.at(T::Newline) && self.peek_n(1) == T::Dedent {
+                self.bump();
+            }
+            self.eat(T::Dedent);
+        }
+        expr
     }
 
     /// Keywords that are also ordinary member names: `xs.min`, `V.none`.
@@ -1039,15 +1059,25 @@ impl<'a> Parser<'a> {
     fn if_expr(&mut self) -> ExprKind {
         let mut branches = Vec::new();
         let mut otherwise = None;
+        let mut indented_tail = false;
         loop {
             // At `if` or `elif`.
             self.bump();
             let cond = self.cond();
             let body = self.colon_block("the condition");
             branches.push((cond, body));
-            // `else` may sit on the next line after a one-line branch.
+            // `elif`/`else` may sit on the next line after a one-line branch,
+            // either at the same indentation or indented under `x = if ...:`.
             if self.at(T::Newline) && matches!(self.peek_n(1), T::Elif | T::Else) {
                 self.bump();
+            } else if !indented_tail
+                && self.at(T::Newline)
+                && self.peek_n(1) == T::Indent
+                && matches!(self.peek_n(2), T::Elif | T::Else)
+            {
+                self.bump();
+                self.bump();
+                indented_tail = true;
             }
             match self.peek() {
                 T::Elif => continue,
@@ -1071,6 +1101,12 @@ impl<'a> Parser<'a> {
                 _ => {}
             }
             break;
+        }
+        if indented_tail {
+            if self.at(T::Newline) && self.peek_n(1) == T::Dedent {
+                self.bump();
+            }
+            self.eat(T::Dedent);
         }
         ExprKind::If {
             branches,

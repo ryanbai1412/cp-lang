@@ -4,7 +4,8 @@
 // only an edge joining two zero-cost components changes dist, by one O(n^2) relaxation through it.
 @!multitest
 let (n, m, q) = read<(2..=400, Int, 1..=3e5)>()
-domain V = 1..=n, Q = 0..q
+domain V = 1..=n
+domain Q = 0..q
 let edges = read<[m](u: V, v: V, w: 1..=1e9)>().sorted(by: .w)
 let queries: [Q](a: V, b: V, k: Int) = read()
 

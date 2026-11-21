@@ -4,14 +4,16 @@
 // value changes, and only values present in a neighbouring row ever rise, so `best` is a running max.
 @!multitest
 let (n, m, k) = read<(2..=2e5, 2..=2e5, Int)>()
-domain R = 0..n, V = 1..=k
+domain R = 0..n
+domain V = 1..=k
 let a: [R][m]?V = read(none: -1)
 let blank = [R] i => a[i].count(none)
 let cnt = [R] i => a[i].present.tally()
 
 var credit = sum(blank[i] * blank[j] + cnt[i].dot(cnt[j]) for (i, j) in R.adjacent)
 var stay: [V]Int = 0
-var fresh, best = 0
+var fresh = 0
+var best = 0
 for i in R:
     for j in R.neighbours(i), (v, c) in cnt[j]:
         stay[v] = max(stay[v], fresh) + c * blank[i]

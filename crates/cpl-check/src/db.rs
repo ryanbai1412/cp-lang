@@ -1056,10 +1056,11 @@ fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
 /// declaration says what it declares: the names stay bound, but what the
 /// rest of the file can know about them is unknown.
 fn head_is_poisoned(text: &str, stmt: &ast::Stmt, poisoned: &[Span]) -> bool {
-    let (start, end) = (stmt.span.start as usize, stmt.span.end as usize);
+    let start = (stmt.span.start as usize).min(text.len());
+    let end = (stmt.span.end as usize).min(text.len()).max(start);
     let mut depth = 0u32;
     let mut head_end = end;
-    for (i, b) in text.as_bytes()[start..end.min(text.len())].iter().enumerate() {
+    for (i, b) in text.as_bytes()[start..end].iter().enumerate() {
         match b {
             b'(' | b'[' | b'{' => depth += 1,
             b')' | b']' | b'}' => depth = depth.saturating_sub(1),
