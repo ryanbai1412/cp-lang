@@ -257,6 +257,17 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D) = todo
 /// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. Works on any `Indexed` sequence. O(n).
 pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = todo
 
+/// O(1). Pop the last element if `ok` holds for it, else leave `self` alone and give `none`.
+/// A monotonic stack is `while let top = st.pop_if(t => t.h >= h): ...`.
+pub fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T = todo
+
+/// O(popped). Pop from the back while `ok` holds for the last element; the popped
+/// elements, last first. The back twin of `Deque.pop_front_while`.
+pub fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T> = todo
+
+/// O(n), allocates. A separate copy: `let b = a` moves, `let b = a.clone()` copies.
+pub fn clone<T>(self: T) -> T = todo
+
 /// Move all elements out of `self` in O(1), leaving it empty.
 pub fn take_all<T>(mut self: List<T>) -> List<T> = todo
 

@@ -30,7 +30,7 @@ fn max_coupons(a0: 0..=1e9, p: [C]1..=1e9, t: [C]1..=4) -> List<C>:
 
     let cost = plain.map(c => p[c]).prefix_sums()
     fn total(k: K) -> Int = k + cost.count(s => s <= best[rest.len][k]!)
-    let k = K.filter(k => best[rest.len][k] != none).max_by(total)!
+    let k = K.filter(k => best[rest.len][k] != none).max(by: total)!
 
     var took: List<C> = []                            // walk back: a skip that keeps best was optimal
     var j = k

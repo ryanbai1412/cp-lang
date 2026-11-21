@@ -89,20 +89,20 @@ mod migrations:
             let phase = plan.pop_front()
             var (_, u, v) = Rooted(tree, root: 0).diameter()  // O(n), at 8 sites only
             if u not in p or v not in q: (u, v) = (v, u)
-            var (x, y) = (p.index_of(u)! / phase.block, q.index_of(v)! / phase.block)
+            var (x, y) = (p.find(u)! / phase.block, q.find(v)! / phase.block)
             if phase.first: (x, y) = minmax(x, y)
-            (p, q) = (p.chunk(x, size: phase.block), q.chunk(y, size: phase.block))
-            pending = signal(phase.pairs.index_of((x, y))!, from: i)
+            (p, q) = (p.drop(x * phase.block).take(phase.block).collect(), q.drop(y * phase.block).take(phase.block).collect())
+            pending = signal(phase.pairs.find((x, y))!, from: i)
         if let (at, symbol) = pending and at == i: return symbol
         if n - i > 3: return 0
         let (_, x, y) = Rooted(tree, root: 0).diameter()
         fn say(options: List<(Site, Site)>, per: Int) -> 0..=4:
-            said = options.position(where: c => same(c, (x, y)))! / per
+            said = options.keys.first(k => same(options[k], (x, y)))! / per
             said
         match n - i:
-            3 => say(last3(p.padded(4, with: 0), q.padded(4, with: 0), i), per: 5)
+            3 => say(last3(p.resized(4, fill: 0), q.resized(4, fill: 0), i), per: 5)
             2 =>
-                (p2, q3) = after3(said, p.padded(4, with: 0), q.padded(4, with: 0), prev: i - 1)
+                (p2, q3) = after3(said, p.resized(4, fill: 0), q.resized(4, fill: 0), prev: i - 1)
                 say(last2(p2, q3, i), per: 2)
             1 => say(last1(after2(said, p2, q3, prev: i - 1), i), per: 1)
 
@@ -113,8 +113,8 @@ mod migrations:
         for phase in phase_plan(n):
             p.extend(next..=phase.start); q.extend(next..=phase.start)
             let (x, y) = phase.pairs[heard(s, phase.start..phase.start + phase.k)]
-            (p, q) = (p.chunk(x, size: phase.block), q.chunk(y, size: phase.block))
+            (p, q) = (p.drop(x * phase.block).take(phase.block).collect(), q.drop(y * phase.block).take(phase.block).collect())
             next = phase.start + 1
         p.extend(next..n - 3); q.extend(next..n - 3)
-        let (p2, q3) = after3(s[n - 3], p.padded(4, with: 0), q.padded(4, with: 0), prev: n - 3)
+        let (p2, q3) = after3(s[n - 3], p.resized(4, fill: 0), q.resized(4, fill: 0), prev: n - 3)
         last1(after2(s[n - 2], p2, q3, prev: n - 2), n - 1)[s[n - 1]]

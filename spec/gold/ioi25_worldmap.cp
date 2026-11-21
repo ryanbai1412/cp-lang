@@ -9,7 +9,7 @@ fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n, 2 * n]1..=
     domain V = 1..=n
     let g = Graph<V>.undirected(zip(a, b))
     let tree = g.dfs_tree(root: V.first!)
-    let deep = tree.path(V.first!, V.max_by(v => tree.depth(v)))
+    let deep = tree.path(V.first!, V.range.max(by: v => tree.depth(v))!)
     let up = adjacency(g.edges.filter(e => not tree.has(e)).map(e => tree.orient_down(e).rev))
 
     var diags: List<List<V>> = []
@@ -17,7 +17,7 @@ fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n, 2 * n]1..=
     for v in tree.euler_tour(by: c => c in deep):  // the deep child last
         diags.push([v])
         if up[v].len > 0 and expanded.add(v): diags.extend([up[v], [v]])
-    diags.pad_to(4 * n - 1, with: diags.last!)
+    diags.resize(4 * n - 1, diags.last!)
 
     return [2 * n, 2 * n] (x, y) =>
         let d = diags[x + y]

@@ -47,4 +47,4 @@ fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
         for (x, y) in s.pairs() if (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:
             h[(x + y) / 2] min= (y - x) / 2              // min= skips none
         h.map(v => v ?? rng.int(1..=2))
-    (0..1e6 / m).map(attempt).max_by(count_triples)
+    (0..1e6 / m).map(attempt).max(by: count_triples)!
