@@ -61,9 +61,10 @@ const EDITS: &[(&str, Edit)] = &[
         Some(l[..at + 2].to_string())
     }),
     ("double an operator", |l| {
+        let code = &l[..l.find("//").unwrap_or(l.len())];
         let at = [" + ", " - ", " * ", " < ", " == "]
             .iter()
-            .filter_map(|op| l.find(op))
+            .filter_map(|op| code.find(op))
             .min()?;
         Some(format!("{} *{}", &l[..at + 2], &l[at + 2..]))
     }),
