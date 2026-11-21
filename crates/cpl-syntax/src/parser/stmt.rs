@@ -292,6 +292,28 @@ impl<'a> Parser<'a> {
     pub(super) fn stmt_kind(&mut self) -> StmtKind {
         match self.peek() {
             T::Let | T::Var => self.let_stmt(),
+            // `extern fn transaction(m: Int) -> Int`: the judge supplies the body.
+            T::Ident if self.text() == "extern" && self.peek_n(1) == T::Fn => {
+                self.bump();
+                let was_in_grader = std::mem::replace(&mut self.in_grader, true);
+                let kind = self.stmt_kind();
+                self.in_grader = was_in_grader;
+                kind
+            }
+            // `mod name:` with an indented body: its items join the enclosing scope.
+            T::Ident
+                if self.text() == "mod" && self.peek_n(1) == T::Ident && self.peek_n(2) == T::Colon =>
+            {
+                let start = self.start();
+                self.bump();
+                self.bump();
+                let block = self.colon_block("the module name");
+                self.extra_stmts.extend(block.stmts);
+                StmtKind::Expr(Expr {
+                    kind: ExprKind::Tuple(Vec::new()),
+                    span: self.span_from(start),
+                })
+            }
             T::Ident if self.text() == "guard" && self.peek_n(1) == T::Let => {
                 self.bump();
                 self.let_stmt()

@@ -68,6 +68,7 @@ impl<'a> Parser<'a> {
             (name, generics, bounds, params)
         };
         let copies = std::mem::take(&mut self.var_params);
+        let destructured = std::mem::take(&mut self.param_patterns);
         let ret = self.eat(T::Arrow).then(|| self.ty());
         // `fn at(self, i: V) lends mut Int`: a projection.
         let lends =
@@ -125,7 +126,7 @@ impl<'a> Parser<'a> {
         }
         // `fn grow(var b: Int)`: `b` is the fn's own copy, which it may
         // assign. It is the body opening with `var b = b`.
-        if !copies.is_empty() {
+        if !copies.is_empty() || !destructured.is_empty() {
             let mut block = match body {
                 FnBody::Block(block) => block,
                 FnBody::Expr(value) => Block {
@@ -161,7 +162,29 @@ impl<'a> Parser<'a> {
                     guard: None,
                 },
             };
-            block.stmts.splice(0..0, copies.into_iter().map(copy));
+            // `fn f((a, b): (Int, Int))`: the body opens with `let (a, b) = <param>`.
+            let destructure = |(name, pat): (Name, Pattern)| Stmt {
+                span: pat.span,
+                decorators: Vec::new(),
+                public: false,
+                kind: StmtKind::Let {
+                    mutable: false,
+                    pat,
+                    ty: None,
+                    init: Some(Expr {
+                        kind: ExprKind::Name(name.text),
+                        span: name.span,
+                    }),
+                    otherwise: None,
+                    guard: None,
+                },
+            };
+            let lead: Vec<Stmt> = copies
+                .into_iter()
+                .map(copy)
+                .chain(destructured.into_iter().map(destructure))
+                .collect();
+            block.stmts.splice(0..0, lead);
             body = FnBody::Block(block);
         }
         FnDecl {
@@ -268,6 +291,14 @@ impl<'a> Parser<'a> {
             .then(|| self.name());
         let name = if self.at(T::SelfKw) {
             self.name()
+        } else if self.at(T::LParen) && !variadic && !lazy && !mutable && !copied {
+            let pat = self.pattern();
+            let name = Name {
+                text: format!("_arg{}", pat.span.start),
+                span: pat.span,
+            };
+            self.param_patterns.push((name.clone(), pat));
+            name
         } else {
             self.expect_name("a parameter name")
         };

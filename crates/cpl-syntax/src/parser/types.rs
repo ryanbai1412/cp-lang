@@ -307,7 +307,7 @@ impl<'a> Parser<'a> {
 
     /// One entry of `[...]T`: a domain, or a count as in `[n]Int`, which
     /// is the range `0..n`.
-    fn index_ty(&mut self) -> Type {
+    pub(super) fn index_ty(&mut self) -> Type {
         // A count is an `Int` expression, `n` or `n - 1`; a range has
         // its `..`, and a domain starts with a capital.
         let entry: Vec<T> = self.tokens[self.pos..]

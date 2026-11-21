@@ -93,6 +93,9 @@ pub(crate) struct Parser<'a> {
     /// Statements that run before the one being read: the `m[k] ??= init`
     /// of `(m[k] ??= init).push(x)`.
     lead_stmts: Vec<crate::ast::Stmt>,
+    /// `fn f((a, b): (Int, Int))`: the hidden parameter name and the
+    /// pattern it is destructured into at the top of the body.
+    param_patterns: Vec<(crate::ast::Name, crate::ast::Pattern)>,
 }
 
 impl<'a> Parser<'a> {
@@ -115,6 +118,7 @@ impl<'a> Parser<'a> {
             half_shr: false,
             extra_stmts: Vec::new(),
             lead_stmts: Vec::new(),
+            param_patterns: Vec::new(),
         }
     }
 

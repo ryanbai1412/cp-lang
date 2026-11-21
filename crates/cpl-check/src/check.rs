@@ -477,7 +477,7 @@ impl<'a> Checker<'a> {
             return ty;
         }
         // A spec stub's body: `pub fn f(x: Int) -> Int = todo`.
-        if name == "todo" {
+        if name == "todo" || name == "unreachable" {
             return Ty::Unknown;
         }
         if let Some(replacement) = renamed_prefix_name(name) {

@@ -942,7 +942,7 @@ impl<'a> Parser<'a> {
         };
         self.bump();
         if table {
-            let mut domains = self.comma_list(T::RBracket, "the table's domains", Self::ty);
+            let mut domains = self.comma_list(T::RBracket, "the table's domains", Self::index_ty);
             if domains.len() == 1 {
                 if let TypeKind::Tuple(items) = &domains[0].kind {
                     if !items.is_empty() {
