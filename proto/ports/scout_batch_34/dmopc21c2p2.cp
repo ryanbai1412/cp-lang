@@ -8,7 +8,7 @@ domain Pos = 1..=n
 domain Val = 1..=n
 
 var perm: [Pos]Val = [Pos] p => Val(p.to_idx + 1)
-var inv:  [Val]Pos = [Val] v => Pos(v.to_idx + 1)
+var inv: [Val]Pos = [Val] v => Pos(v.to_idx + 1)
 
 // FRICTION UD8: Swapping two elements of the same domain-indexed array
 // (`swap(perm[i], perm[j])`) is a same-container mutable alias; when `i == j`
@@ -38,4 +38,4 @@ for _ in 0..q:
             var ans: [Val]Int = [Val] _ => 0
             for v in Val:
                 ans[v] = target[inv[v]]
-            print(join([ans[v] for v in Val], " "))
+            print([ans[v] for v in Val])

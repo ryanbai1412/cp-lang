@@ -25,7 +25,7 @@ Over the 594 canonical ports that have a measured original, the median original 
 
 Restricted to the 566 canonical ports with a passing harness run, the numbers are 66.4% raw and 48.4% stripped (22727 lines against 67692 and 44048). This is the number to quote: every line in it compiled and agreed with the original.
 
-The 313 spec-form files are shorter still: 72.7% raw and 59.2% stripped (10602 lines). The runnable ports of 305 of those problems take 14554 lines (42.5% stripped), so the gap between the spec and what builds today is the difference between those two figures. Spec-form numbers are a design target, not a measurement of working code.
+The 313 spec-form files are shorter still: 72.7% raw and 59.2% stripped (10598 lines). The runnable ports of 305 of those problems take 14554 lines (42.5% stripped), so the gap between the spec and what builds today is the difference between those two figures. Spec-form numbers are a design target, not a measurement of working code.
 
 How the stripping was done: 91 canonical ports have hand-written `.strip` ranges, and those are used as they are. For the rest, `auto_strip` removes the template, the driver, generic (`template`) types and top-level code whose name is a library name (`DSU`, `binpow`, `SparseTable` and so on). On the 91 regression ports that have hand-written ranges, the heuristic leaves 4113 lines where the hand ranges leave 3542 (+16.1%), matching exactly on 45 and within five lines on 62. It misses library code with a problem-specific name, so auto-stripped reductions lean high.
 

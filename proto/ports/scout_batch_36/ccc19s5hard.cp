@@ -11,23 +11,19 @@ let k: 1..=n = read()
 fn tri(i: Int, j: Int) -> Int: i * (i + 1) / 2 + j
 
 let total = n * (n + 1) / 2
-var cur: List<Int> = [0; total]
+var cur: List<Int> = List.filled(total, 0)
 for i in 0..n:
     for j in 0..=i:
         cur[tri(i, j)] = read()
 
-var nxt: List<Int> = [0; total]
+var nxt: List<Int> = List.filled(total, 0)
 var side = 1
 while side < k:
     let next_side = min(k, (side * 3 + 1) / 2)
     let d = next_side - side
     for i in 0..=n - next_side:
         for j in 0..=i:
-            nxt[tri(i, j)] = max(
-                cur[tri(i, j)],
-                cur[tri(i + d, j)],
-                cur[tri(i + d, j + d)],
-            )
+            nxt[tri(i, j)] = max(cur[tri(i, j)], cur[tri(i + d, j)], cur[tri(i + d, j + d)])
     (cur, nxt) = (nxt, cur)
     side = next_side
 

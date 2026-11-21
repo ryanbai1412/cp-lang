@@ -14,7 +14,7 @@ for _ in 0..q:
         let x: Int = read()
         inflation += x
     else:
-        (u, v): (Int, Int) = read()
+        let (u, v): (Int, Int) = read()
         if u != v:
             if let moved = cnt.get(u - inflation):
                 cnt.remove(u - inflation)
