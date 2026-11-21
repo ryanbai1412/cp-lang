@@ -1,50 +1,38 @@
-// Codeforces 2138 E1: Determinant Construction (Easy Version).
-fn chain_len(x: Int, z: Int, lim: Int) -> ?Int:
-    var a = z
-    var b = x - z
-    var ops = 2
-    while a != b:
+// A tridiagonal {0, 1} matrix with 1 above and -1 below has determinant equal to
+// its continuant: the subtractive Euclid walk on (z, x - z) recovers a diagonal
+// for x iff gcd(x, z) = 1. Starting z near x / phi keeps the walk under 80 steps.
+fn continuant_diag(x: Int, z: Int, lim: Int) -> ?List<0..=1>:
+    var (a, b) = (z, x - z)
+    var diag: List<0..=1> = [1]
+    while diag.len < lim:
         if a < b:
-            swap(mut a, mut b)
-            ops += 1
-        a -= b
-        swap(mut a, mut b)
-        ops += 1
-        if ops > lim: return none
-    if a == 1: ops else: none
+            diag.push(0)
+            (a, b) = (b, a)
+        else:
+            diag.push(1)
+            if a == b: return if a == 1: diag else: none
+            (a, b) = (b, a - b)
+    none
 
-fn find_start(x: Int, lim: Int) -> Int:
+fn find_diag(x: Int, lim: Int) -> List<0..=1>:
     let z0 = max(1, min(x - 1, x * 618_033_989 / 1_000_000_000))
     for d in 0..x:
-        if z0 + d < x and chain_len(x, z0 + d, lim) != none:
-            return z0 + d
-        if d > 0 and z0 - d >= 1 and chain_len(x, z0 - d, lim) != none:
-            return z0 - d
-    1
+        if z0 + d < x:
+            if let diag = continuant_diag(x, z0 + d, lim): return diag
+        if d > 0 and z0 - d >= 1:
+            if let diag = continuant_diag(x, z0 - d, lim): return diag
+    []
 
 @!multitest
-let x: Int = read()
+let x: 0..=10_000_000 = read()
 if x <= 1:
     print(1)
     print(x)
     return
 
-let z = find_start(x, 80)
-var a = z
-var b = x - z
-var diag = [1]
-while true:
-    if a < b:
-        diag.push(0)
-        swap(mut a, mut b)
-        continue
-    diag.push(1)
-    if a == b: break
-    a -= b
-    swap(mut a, mut b)
-
+let diag = find_diag(x, 80)
 let n = diag.len
-var m: [0..n][0..n]Int = 0
+var m: [0..n][0..n] - 1..=1 = 0
 for i in 0..n:
     m[i][i] = diag[i]
     if i + 1 < n:
@@ -52,5 +40,4 @@ for i in 0..n:
         m[i + 1][i] = -1
 
 print(n)
-for i in 0..n:
-    print(m[i])
+for row in m: print(row)
