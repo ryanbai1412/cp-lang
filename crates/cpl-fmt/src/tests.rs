@@ -279,6 +279,23 @@ fn is_formatted_agrees_with_format() {
     assert!(!is_formatted("let x=1\n"));
 }
 
+/// Strip byte-offset `Span { start: ..., end: ... }` fields from `Debug` output
+/// so two parsed ASTs can be compared for structural equivalence.
+fn strip_spans(debug: &str) -> String {
+    let mut out = String::with_capacity(debug.len());
+    let mut rest = debug;
+    while let Some(pos) = rest.find("Span {") {
+        out.push_str(&rest[..pos]);
+        out.push_str("Span");
+        rest = &rest[pos + "Span {".len()..];
+        if let Some(end) = rest.find('}') {
+            rest = &rest[end + 1..];
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 /// Every `.cp` file in the repository, at any depth under `proto`,
 /// `examples` and `stdlib`: formatting keeps the tokens (checked inside
 /// `format`), is stable, and leaves the parser's verdict unchanged.
@@ -318,13 +335,26 @@ fn formats_the_whole_corpus() {
             "{} is not stable",
             file.display()
         );
-        let errors = |text: &str| cpl_syntax::parse_file(text).diagnostics.len();
+        let p_src = cpl_syntax::parse_file(&src);
+        let p_out = cpl_syntax::parse_file(&out);
         assert_eq!(
-            errors(&src),
-            errors(&out),
+            p_src.diagnostics.len(),
+            p_out.diagnostics.len(),
             "{}: the parser reads it differently",
             file.display()
         );
+        if p_src.diagnostics.is_empty() {
+            let ast = |p: &cpl_syntax::ParsedFile| {
+                let items: Vec<_> = p.items.iter().map(|(_, item)| item).collect();
+                strip_spans(&format!("{items:#?}"))
+            };
+            assert_eq!(
+                ast(&p_src),
+                ast(&p_out),
+                "{}: formatting changed the parsed AST",
+                file.display()
+            );
+        }
         for line in out.lines() {
             assert_eq!(line, line.trim_end(), "{}", file.display());
         }
@@ -445,4 +475,12 @@ fn keeps_an_inner_attribute_tight() {
     assert_eq!(fmt("@! interactive\n@!multitest\nprint(1)\n"), "@!interactive\n@!multitest\nprint(1)\n");
     assert_eq!(fmt("@ memo\nfn f(n: Int) -> Int = n\n"), "@memo\nfn f(n: Int) -> Int = n\n");
     assert_eq!(fmt("let y = o ! + 1\n"), "let y = o! + 1\n");
+}
+
+#[test]
+fn formats_indented_lambda_blocks() {
+    let src = "let lv = [0..=s, 0..n] (i, j) =>\n  let miss = if j > 0: a else: b\n  p * lv[i, j] + miss\nxs.sort(by: x =>\n  let d = x % 10\n  d\n)\n";
+    let want = "let lv = [0..=s, 0..n] (i, j) =>\n    let miss = if j > 0: a else: b\n    p * lv[i, j] + miss\nxs.sort(by: x =>\n    let d = x % 10\n    d\n)\n";
+    assert_eq!(fmt(src), want);
+    assert_eq!(fmt(want), want);
 }

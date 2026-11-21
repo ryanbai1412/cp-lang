@@ -368,6 +368,7 @@ impl<'a> Lowerer<'a> {
         match &e.kind {
             ast::ExprKind::Int(v) => i64::try_from(*v).ok(),
             ast::ExprKind::Paren(inner) => self.eval_const_int(inner),
+            ast::ExprKind::Unary { op: UnOp::Pos, expr } => self.eval_const_int(expr),
             ast::ExprKind::Unary { op: UnOp::Neg, expr } => self.eval_const_int(expr)?.checked_neg(),
             ast::ExprKind::Binary { op, lhs, rhs, .. } => {
                 let l = self.eval_const_int(lhs)?;

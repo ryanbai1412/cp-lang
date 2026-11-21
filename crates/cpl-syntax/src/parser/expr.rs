@@ -4,6 +4,19 @@ use super::*;
 use crate::literal::{self, StrPart};
 
 impl<'a> Parser<'a> {
+    fn lambda_body(&mut self) -> Expr {
+        if self.at(T::Newline) && self.peek_n(1) == T::Indent {
+            let start = self.start();
+            let block = self.block("the `=>`");
+            Expr {
+                kind: ExprKind::Block(block),
+                span: self.span_from(start),
+            }
+        } else {
+            self.expr()
+        }
+    }
+
     pub(super) fn expr(&mut self) -> Expr {
         let start = self.start();
         // Lambdas: `x => x + 1`, `(a, b) => a + b`.
@@ -31,7 +44,7 @@ impl<'a> Parser<'a> {
                 (vec![self.pattern()], Vec::new())
             };
             self.bump();
-            let body = Box::new(self.expr());
+            let body = Box::new(self.lambda_body());
             return Expr {
                 kind: ExprKind::Lambda {
                     params,
@@ -456,11 +469,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn unary(&mut self) -> Expr {
-        if self.at(T::Plus) {
-            self.bump();
-            return self.unary();
-        }
         let op = match self.peek() {
+            T::Plus => UnOp::Pos,
             T::Minus => UnOp::Neg,
             T::Tilde => UnOp::BitNot,
             _ => return self.power(),
@@ -906,7 +916,7 @@ impl<'a> Parser<'a> {
                 vec![self.pattern()]
             };
             self.bump();
-            let body = Box::new(self.expr());
+            let body = Box::new(self.lambda_body());
             return ExprKind::Table {
                 domains,
                 params,

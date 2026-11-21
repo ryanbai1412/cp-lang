@@ -11,5 +11,5 @@ if k >= most:
     let rest = n - k + 1
     return print(cost(0, rest) + (pref[n] - pref[rest]))
 print(aliens(groups: k, slope: I128) { pen =>                 // exact, unique-count ties
-    monge_path(through: [0] ++ (st..=n), cost: (j, i) => cost(j, i) + pen)   // LARSCH, O(n)
+    monge_path(through: [0] + (st..=n), cost: (j, i) => cost(j, i) + pen)   // LARSCH, O(n)
 })

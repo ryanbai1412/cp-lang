@@ -225,6 +225,7 @@ pub(crate) fn show(e: &Expr) -> String {
         }
         ExprKind::Unary { op, expr } => {
             let op = match op {
+                ast::UnOp::Pos => "+",
                 ast::UnOp::Neg => "-",
                 ast::UnOp::Not => "not ",
                 ast::UnOp::BitNot => "~",

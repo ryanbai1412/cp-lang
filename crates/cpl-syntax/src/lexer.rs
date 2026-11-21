@@ -31,6 +31,13 @@ struct Opener {
     line_indent: u32,
 }
 
+#[derive(Clone, Copy)]
+struct LayoutBlock {
+    opener_depth: usize,
+    base_indent: u32,
+    indent_depth: usize,
+}
+
 struct Lexer<'a> {
     src: &'a str,
     bytes: &'a [u8],
@@ -38,6 +45,8 @@ struct Lexer<'a> {
     out: Lexed,
     indents: Vec<u32>,
     openers: Vec<Opener>,
+    /// Indented blocks (e.g. `=>\n    ...`) active inside open brackets.
+    layout_blocks: Vec<LayoutBlock>,
     /// Indentation of the current logical line.
     line_indent: u32,
     /// Lines indented with tabs, reported once per file.
@@ -52,6 +61,7 @@ pub fn lex(src: &str) -> Lexed {
         out: Lexed::default(),
         indents: vec![0],
         openers: Vec::new(),
+        layout_blocks: Vec::new(),
         line_indent: 0,
         tab_lines: Vec::new(),
     };
@@ -100,6 +110,33 @@ impl<'a> Lexer<'a> {
                     if self.openers.is_empty() {
                         self.end_line(at);
                         self.line_start();
+                    } else if self
+                        .layout_blocks
+                        .last()
+                        .is_some_and(|b| b.opener_depth == self.openers.len())
+                    {
+                        self.layout_block_line(at);
+                    } else if self.last_kind() == Some(TokenKind::FatArrow)
+                        || (self.last_kind() == Some(TokenKind::Colon)
+                            && self.line_opens_bracket_block())
+                    {
+                        let saved = self.pos;
+                        if let Some(width) = self.measure_indent() {
+                            if width > self.line_indent {
+                                self.layout_blocks.push(LayoutBlock {
+                                    opener_depth: self.openers.len(),
+                                    base_indent: self.line_indent,
+                                    indent_depth: self.indents.len(),
+                                });
+                                self.end_line(at);
+                                self.indents.push(width);
+                                self.line_indent = width;
+                                self.push_empty(TokenKind::Indent, self.pos);
+                            } else {
+                                self.pos = saved;
+                                self.continuation_line();
+                            }
+                        }
                     } else {
                         self.continuation_line();
                     }
@@ -214,6 +251,96 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// True when the current line (since the last line break or bracket/comma)
+    /// contains a block-header keyword (`match`, `if`, `else`, `for`, `while`)
+    /// so a trailing `:` inside brackets opens an indented layout block rather
+    /// than a named argument (`by:`) or map entry (`k:`).
+    fn line_opens_bracket_block(&self) -> bool {
+        use TokenKind::*;
+        let mut depth = 0usize;
+        for tok in self.out.tokens.iter().rev().skip(1) {
+            match tok.kind {
+                RParen | RBracket | RBrace => depth += 1,
+                LParen | LBracket | LBrace if depth > 0 => depth -= 1,
+                LParen | LBracket | LBrace | Comma | Newline | Indent | Dedent => break,
+                Match | If | Else | Elif | For | While if depth == 0 => return true,
+                _ => {}
+            }
+        }
+        false
+    }
+
+    /// Handles a newline inside an indented block that lives within brackets
+    /// (such as `xs.sort(by: x =>\n    ...\n)`).
+    fn layout_block_line(&mut self, at: usize) {
+        self.end_line(at);
+        let line_start = self.pos;
+        let Some(width) = self.measure_indent() else {
+            return;
+        };
+        let blk = *self.layout_blocks.last().unwrap();
+        if width <= blk.base_indent {
+            while self.indents.len() > blk.indent_depth {
+                self.indents.pop();
+                self.push_empty(TokenKind::Dedent, self.pos);
+            }
+            self.layout_blocks.pop();
+            self.line_indent = width;
+            if let Some(depth) = self.unclosed_depth(width) {
+                let close_at = self
+                    .out
+                    .tokens
+                    .last()
+                    .map_or(line_start, |t| t.span.end as usize);
+                self.close_unclosed(depth, close_at, line_start);
+                self.end_line(close_at);
+                self.pos = line_start;
+                self.line_start();
+            }
+            return;
+        }
+        self.line_indent = width;
+        let top = *self.indents.last().unwrap();
+        if width > top {
+            self.indents.push(width);
+            self.push_empty(TokenKind::Indent, self.pos);
+        } else if width < top {
+            while self.indents.len() > blk.indent_depth + 1
+                && *self.indents.last().unwrap() > width
+            {
+                self.indents.pop();
+                self.push_empty(TokenKind::Dedent, self.pos);
+            }
+        }
+    }
+
+    fn rest_of_line_blank(&self, mut i: usize) -> bool {
+        while i < self.bytes.len() {
+            match self.bytes[i] {
+                b' ' | b'\t' | b'\r' => i += 1,
+                b'\n' => return true,
+                b'/' if self.bytes.get(i + 1) == Some(&b'/') => return true,
+                _ => return false,
+            }
+        }
+        true
+    }
+
+    fn close_layout_blocks(&mut self, min_opener_depth: usize, at: usize) {
+        while self
+            .layout_blocks
+            .last()
+            .is_some_and(|b| b.opener_depth >= min_opener_depth)
+        {
+            let blk = self.layout_blocks.pop().unwrap();
+            self.end_line(at);
+            while self.indents.len() > blk.indent_depth {
+                self.indents.pop();
+                self.push_empty(TokenKind::Dedent, at);
+            }
+        }
+    }
+
     /// Handles the start of a line inside brackets. Newlines there don't end
     /// statements, unless the line shows the bracket was never closed.
     fn continuation_line(&mut self) {
@@ -222,6 +349,7 @@ impl<'a> Lexer<'a> {
             return;
         };
         let Some(depth) = self.unclosed_depth(width) else {
+            self.line_indent = width;
             return;
         };
         // Close at the end of the last line that had tokens.
@@ -287,6 +415,7 @@ impl<'a> Lexer<'a> {
             false => Option::None,
         }
         .unwrap_or(close_at);
+        self.close_layout_blocks(keep + 1, close_at);
         while self.openers.len() > keep {
             let opener = self.openers.pop().unwrap();
             let (open, close, closer_kind) = delimiter_text(opener.kind);
@@ -403,7 +532,17 @@ impl<'a> Lexer<'a> {
             (b'.', b'.', b'=') => (DotDotEq, 3),
             (b'.', b'.', _) => (DotDot, 2),
             (b'.', _, _) => (Dot, 1),
-            (b',', _, _) => (Comma, 1),
+            (b',', _, _) => {
+                if self
+                    .layout_blocks
+                    .last()
+                    .is_some_and(|b| b.opener_depth == self.openers.len())
+                    && self.rest_of_line_blank(self.pos + 1)
+                {
+                    self.close_layout_blocks(self.openers.len(), start);
+                }
+                (Comma, 1)
+            }
             (b':', b':', _) => (ColonColon, 2),
             (b':', _, _) => (Colon, 1),
             (b';', _, _) => (Semi, 1),
@@ -428,6 +567,23 @@ impl<'a> Lexer<'a> {
             (b'>', b'>', _) => (Shr, 2),
             (b'<', _, _) => (Lt, 1),
             (b'>', _, _) => (Gt, 1),
+            (b'+', b'+', _) => {
+                self.pos += 2;
+                let span = Span::new(start as u32, self.pos as u32);
+                let mut diag = Diagnostic::error(
+                    codes::UNKNOWN_CHAR,
+                    span,
+                    "CP Lang concatenates with `+`",
+                );
+                diag.help = Some("replace `++` with `+`".into());
+                diag.fixes.push(cpl_diag::Fix {
+                    title: "replace `++` with `+`".into(),
+                    edits: vec![(span, "+".into())],
+                });
+                self.out.diagnostics.push(diag);
+                self.push(Plus, start);
+                return;
+            }
             (b'+', _, _) => (Plus, 1),
             (b'-', _, _) => (Minus, 1),
             (b'*', b'*', _) => (StarStar, 2),
@@ -491,6 +647,7 @@ impl<'a> Lexer<'a> {
         // `(a]`: if an enclosing opener matches, the inner ones are unclosed.
         // If none does, the closer is stray and the parser reports it.
         if let Some(at) = self.openers.iter().rposition(|o| o.kind == opener_kind) {
+            self.close_layout_blocks(at + 1, start);
             if at + 1 < self.openers.len() {
                 self.close_unclosed(at + 1, start, start);
             }

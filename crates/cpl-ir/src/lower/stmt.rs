@@ -1636,6 +1636,22 @@ impl<'a> Lowerer<'a> {
             return Some(self.zero(&spec, span));
         };
         if is_read_call(init) {
+            let mut spec = spec;
+            if let ast::ExprKind::Call { args, .. } = &init.kind {
+                if let Some(absent) = args
+                    .iter()
+                    .find(|a| a.name.as_ref().is_some_and(|n| n.text == "none"))
+                    .map(|a| self.expect(&a.value, &Ty::Int))
+                {
+                    if !super::call::reads_none_as(&mut spec, &absent) {
+                        let message = format!(
+                            "`none:` is for reading a `?T`, and a `{}` has none",
+                            self.show(&want)
+                        );
+                        self.error(codes::UNKNOWN_ARG_NAME, init.span, message);
+                    }
+                }
+            }
             return Some(self.read(spec, init.span));
         }
         if let Some(none_arg) = read_none_arg(init) {
@@ -1795,7 +1811,7 @@ impl<'a> Lowerer<'a> {
 
     /// `var g: [0..n][0..4]Int = 0`: a literal fills every cell, and a
     /// cell that is itself an array is filled the same way.
-    fn fill_literal(&mut self, spec: &Spec, init: &ast::Expr) -> Expr {
+    pub(super) fn fill_literal(&mut self, spec: &Spec, init: &ast::Expr) -> Expr {
         let Spec::Array { dims, elem } = spec else {
             return self.expect(init, &spec.ty());
         };
@@ -4010,14 +4026,14 @@ fn read_none_arg(e: &ast::Expr) -> Option<&ast::Expr> {
     none_val
 }
 
-/// `read()` or `read(gen: ...)`.
+/// `read()`, `read(gen: ...)`, or `read(none: ...)`.
 pub(super) fn is_read_call(e: &ast::Expr) -> bool {
     match &e.kind {
         ast::ExprKind::Call { callee, args } => {
             matches!(&callee.kind, ast::ExprKind::Name(n) if n == "read")
                 && args
                     .iter()
-                    .all(|a| a.name.as_ref().is_some_and(|n| n.text == "gen"))
+                    .all(|a| a.name.as_ref().is_some_and(|n| n.text == "gen" || n.text == "none"))
         }
         _ => false,
     }
@@ -4177,7 +4193,7 @@ fn uses_as_optional(name: &str, stmts: &[ast::Stmt]) -> bool {
 }
 
 /// A literal: in `var a: [V]Int = 0` it is the value of every cell.
-fn is_literal(e: &ast::Expr) -> bool {
+pub(super) fn is_literal(e: &ast::Expr) -> bool {
     match &e.kind {
         ast::ExprKind::Int(_)
         | ast::ExprKind::Float(_)

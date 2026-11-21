@@ -48,6 +48,19 @@ impl<'a> Checker<'a> {
                         self.require_bool(&ty, inner, "`not`");
                         Ty::Bool
                     }
+                    UnOp::Pos if ty.is_numeric() => ty.widen(),
+                    UnOp::Pos => {
+                        if ty.is_vague() {
+                            return ty;
+                        }
+                        let message = format!(
+                            "unary `+` needs a number, but `{}` is {}",
+                            self.quote(inner.span),
+                            ty.with_article()
+                        );
+                        self.error(codes::TYPE_MISMATCH, inner.span, message);
+                        Ty::Error
+                    }
                     UnOp::Neg | UnOp::BitNot if ty.is_numeric() => ty.widen(),
                     UnOp::Neg if matches!(&ty, Ty::Optional(inner) if inner.is_numeric()) => ty,
                     UnOp::BitNot if matches!(&ty, Ty::Optional(inner) if inner.is_int()) => ty,

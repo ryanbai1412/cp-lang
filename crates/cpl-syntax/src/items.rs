@@ -28,14 +28,17 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
         }
         let first = i;
         let mut depth = 0i32;
+        let mut brackets = 0i32;
         // A line of decorators (or a `--- multitest ---` wrap-line) belongs to the statement after it.
         let mut decorator_line = is_directive_line(tokens, i);
         loop {
             match tokens[i].kind {
                 T::Eof => break,
+                T::LParen | T::LBracket | T::LBrace => brackets += 1,
+                T::RParen | T::RBracket | T::RBrace => brackets = (brackets - 1).max(0),
                 T::Indent => depth += 1,
                 T::Dedent => depth -= 1,
-                T::Newline if depth == 0 => {
+                T::Newline if depth == 0 && brackets == 0 => {
                     let next = tokens.get(i + 1).map_or(T::Eof, |t| t.kind);
                     let continues = decorator_line || matches!(next, T::Indent | T::Elif | T::Else);
                     if !continues {
@@ -51,6 +54,7 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
             i += 1;
             // After a block closes, only `elif`/`else` continue the item.
             if depth == 0
+                && brackets == 0
                 && tokens[i - 1].kind == T::Dedent
                 && !matches!(tokens[i].kind, T::Elif | T::Else | T::Dedent)
             {

@@ -2711,7 +2711,6 @@ print(a == none, b == none, r2.len, r3.len)
 ";
     assert!(check(src).is_empty(), "expected clean check, got: {:?}", check(src));
 }
-
 #[test]
 fn existential_return_compress_hover_and_escape() {
     let ok = "\
@@ -2783,4 +2782,18 @@ let w: ?Int = n_opt.map(p => p.ord)
 let _ = (y ?? false, z ?? -1, w ?? -1)
 ";
     assert_eq!(check(ok), vec![]);
+}
+
+#[test]
+fn unary_plus_requires_numeric_operand() {
+    let ok = "let a = +1\nlet b = +2.5\nprint(a, b)\n";
+    assert!(check(ok).is_empty(), "expected clean check, got: {:?}", check(ok));
+
+    let bad = "let xs = +[1, 2]\nlet s = +\"hi\"\nprint(xs, s)\n";
+    let errs = check(bad);
+    assert_eq!(errs.len(), 2, "expected 2 E0302 errors, got: {errs:?}");
+    assert!(
+        errs.iter().all(|e| e.code == cpl_diag::codes::TYPE_MISMATCH),
+        "expected E0302 for unary `+` on non-numeric types, got: {errs:?}"
+    );
 }

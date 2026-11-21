@@ -1425,6 +1425,18 @@ impl<'a> Lowerer<'a> {
 
     fn unary(&mut self, op: UnOp, operand: &ast::Expr, hint: Option<&Ty>, span: Span) -> Expr {
         match op {
+            UnOp::Pos => {
+                let value = self.expr(operand, hint);
+                match &value.ty {
+                    Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Error => value,
+                    _ => {
+                        let message =
+                            format!("`+` can't be applied to a `{}`", self.show(&value.ty));
+                        self.error(codes::BAD_OPERANDS, span, message);
+                        self.err_expr(span)
+                    }
+                }
+            }
             UnOp::Neg => {
                 let value = self.expr(operand, hint);
                 match (&value.kind, &value.ty) {

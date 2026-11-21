@@ -570,7 +570,12 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
         let codemods: Vec<_> = cpl_syntax::parse_file(&src)
             .diagnostics
             .into_iter()
-            .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX && !d.fixes.is_empty())
+            .filter(|d| {
+                (d.code == cpl_diag::codes::REMOVED_SYNTAX
+                    || (d.code == cpl_diag::codes::UNKNOWN_CHAR
+                        && d.message == "CP Lang concatenates with `+`"))
+                    && !d.fixes.is_empty()
+            })
             .collect();
         let (text, applied) = apply_fixes(&src, &codemods);
         if applied == 0 {

@@ -414,6 +414,7 @@ impl<'p> Emitter<'p> {
                 let sym = match op {
                     UnOp::Neg => "-",
                     UnOp::Not => "!",
+                    UnOp::Pos => "+",
                     UnOp::BitNot => "~",
                 };
                 let operand = if code.text.starts_with('-') {

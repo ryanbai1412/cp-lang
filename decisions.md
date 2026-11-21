@@ -3450,7 +3450,6 @@ the `last_use_call` flag; parameters go back to `const&` plus a copy.
 3. **Position `p.back(k)` / `p.ahead(k) -> ?D`, `Range<T>.drop(k)` / `.take(k) -> Range<T>`, and enum `is` / `if let` variant patterns (`phase is Seeking`, `Split(base)`).**
    - **Reason:** Accepted from dream rewrites (`cf2150g` et al.). `ahead(k)`/`back(k)` lower via `Builtin::PosOffset` beside `prev`/`next`; `Range<T>.drop(k)`/`.take(k)` clamp `k` to `[0, max(0, hi - lo)]` without overflow; `Cond::Let` in `cpl-ir` dispatches `PatternKind::Variant` on `Ty::Enum` through `self.pattern` (`IsVariant` + `Payload`) so `phase is Seeking` and payload `match` agree in interpreter and C++17.
    - **Reverse:** Remove the `ahead`/`back`/`drop`/`take` arms in `crates/cpl-check/src/check/expr.rs` and `crates/cpl-ir/src/lower/call.rs`, and revert `cond_let` in `crates/cpl-ir/src/lower/stmt.rs`.
-
 ## 94. `xs.distinct()` and consistent empty-sequence rule for `fold(f)` / `min()` / `max()` (2026-11-21)
 
 - **Decision.**
@@ -3488,3 +3487,12 @@ the run-time choice stays. Reverse by making `proven` false in
 - **Why.** Mining the 39 under-4 dreams (`Dream: [1-3]/5`) showed struct-field array defaults (`cf2066e`, `cf2124f2`), range-indexed sentinel reads (`cf2129d`), and `?T.map`/`.filter` (`cf2124f2`, `wtf26d`, `cf2084g1`, `cf2084g2`, `cf2084h`) were the top domain/type-system gaps, while `V.all.without(c)` required an explicit `Bitset` import even though the user never named `Bitset`.
 - **Evidence.** `proto/ports/ecnerwala/dream/cf2129d.cp` and `cf2084g1.cp` now pass `cpl check` with 0 errors; `cf2084g1` port adopts `at[k + 1].map(...)` and passes `gate.sh cf2084g1 5`; `existential_compress.cp` and `dream_gaps.cp` pass differential interp + sanitized C++17 parity.
 - **Reverse.** Remove the two `BUILT_ON` entries in `crates/cpl-check/src/prelude.rs`, revert `array_fills` on defaults / `Sym::Alias` in `Lowerer::dim` / `read_none_arg` in `crates/cpl-ir/src/lower/stmt.rs`, and remove the `Ty::Optional` `"map" | "filter"` arms in `crates/cpl-check/src/check/call.rs` and `crates/cpl-ir/src/lower/call.rs`.
+
+## 98. Reject `++`, numeric-only unary `+`, `fmt` AST equivalence, and indented lambda block bodies (2026-11-21)
+
+1. **`++` is a lexer error ("CP Lang concatenates with `+`") with a `+` fix-it; unary `+` is numeric-only (`E0302` otherwise); `cpl fmt` corpus test checks parsed AST equivalence.**
+   - **Reason:** Previously `xs ++ [v] ++ ys` lexed as `+` followed by unary `+`, the parser silently dropped unary `+`, and `cpl fmt` rewrote it to `xs + +[v] + +ys` which ran on `List`. Now `UnOp::Pos` is preserved in the AST, checked as numeric-only (`E0302` on non-numeric operands), `++` is rejected in `cpl-syntax::lexer` with a machine-applicable `+` fix-it (applied by `cpl fix`), and `cpl-fmt::tests::formats_the_whole_corpus` compares span-stripped parsed ASTs before and after formatting across all 1000+ corpus `.cp` files.
+   - **Reverse:** Remove the `(b'+', b'+', _)` arm in `crates/cpl-syntax/src/lexer.rs` and `UnOp::Pos` across `cpl-syntax`/`cpl-check`/`cpl-ir`/`cpl-interp`/`cpl-codegen`.
+2. **Indented block bodies after `=>` on lambdas and table comprehensions, plus bracketed `match`/`if`/`else` blocks.**
+   - **Reason:** Accepted syntax so multi-statement lambdas work cleanly in table comprehensions (`[0..=s, 0..n] (i, j) =>\n    ...`), named arguments (`by: x =>\n    ...`), and call arguments without wrapping in braces. The lexer tracks `layout_blocks` inside brackets so `Newline`/`Indent`/`Dedent` tokens are emitted for `=>` blocks (and `match`/`if`/`else` blocks ending in `:`) inside `(...)`/`[...]`, `split_items` keeps bracketed items intact, and `Parser::lambda_body` parses `Newline + Indent` into `ExprKind::Block(Block)` whose value is its last expression (matching `fn ... :`, formatter, LSP folding, and `--trace`).
+   - **Reverse:** Remove `layout_blocks` in `crates/cpl-syntax/src/lexer.rs`, `brackets` in `crates/cpl-syntax/src/items.rs`, and `lambda_body` in `crates/cpl-syntax/src/parser/expr.rs`.

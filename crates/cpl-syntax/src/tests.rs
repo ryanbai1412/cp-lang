@@ -1304,3 +1304,17 @@ fn multitest_wrap_lines_are_rejected_and_suggest_at_bang_multitest() {
         assert_eq!(d.fixes[0].edits[0].1, "@!multitest");
     }
 }
+
+#[test]
+fn plus_plus_is_a_lexer_error_with_plus_fix_it() {
+    let parsed = parse_file("let zs = xs ++ [1] ++ ys\n");
+    assert_eq!(parsed.diagnostics.len(), 2, "{:?}", parsed.diagnostics);
+    for d in &parsed.diagnostics {
+        assert!(
+            d.message.contains("CP Lang concatenates with `+`"),
+            "{d:?}"
+        );
+        assert_eq!(d.fixes.len(), 1);
+        assert_eq!(d.fixes[0].edits[0].1, "+");
+    }
+}

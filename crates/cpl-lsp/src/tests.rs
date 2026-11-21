@@ -1604,6 +1604,39 @@ print(f(1))
 }
 
 #[test]
+fn folding_ranges_cover_indented_lambda_blocks() {
+    let src = "\
+let lv = [0..=2, 0..3] (i, j) =>
+    let miss = if j > 0: i + j else: i * 10
+    miss + 1
+var xs = [3, 1, 2]
+xs.sort(by: x =>
+    let k = -x
+    k
+)
+";
+    let (mut server, _) = open(src);
+    let reply = server.handle(&request(
+        32,
+        "textDocument/foldingRange",
+        obj([("textDocument", doc())]),
+    ));
+    let ranges: Vec<(u32, u32, Option<&str>)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|r| {
+            (
+                r.get("startLine").as_u32().unwrap(),
+                r.get("endLine").as_u32().unwrap(),
+                r.get("kind").as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(ranges, [(0, 2, None), (4, 6, None)]);
+}
+
+#[test]
 fn semantic_tokens_classify_what_each_name_resolves_to() {
     let src = "let n: 1..=10 = read()\ndomain V = 0..n\nvar xs: [V]Int = 0\nfn bump(v: V):\n    xs[v] += 1\nbump(V.first)\n";
     let (mut server, _) = open(src);

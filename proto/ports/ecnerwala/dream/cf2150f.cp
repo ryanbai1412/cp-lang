@@ -24,12 +24,12 @@ fn joined(i: V, j: V) -> Bool = g.has(i, j) or t.dist(i, j) == 2
 fn route(i: V, j: V) -> List<V>:
     let p = t.path(i, j)
     let s = p.len - 1 - L
-    if s >= 0: return p[..2 * s].even ++ p[2 * s..]
+    if s >= 0: return p[..2 * s].even + p[2 * s..]
     let far = max(d.u, d.v, by: f => t.dist(i, f))
     let m = t.median(i, j, far)
     let stem = t.path(m, far)[..=-s]
-    let detour = if m == j: stem.odd ++ stem.even.rev else: stem.even ++ stem.odd.rev
-    t.path(i, m).drop_last ++ detour ++ t.path(m, j).drop_first
+    let detour = if m == j: stem.odd + stem.even.rev else: stem.even + stem.odd.rev
+    t.path(i, m).drop_last + detour + t.path(m, j).drop_first
 
 print(2)
 print(3)

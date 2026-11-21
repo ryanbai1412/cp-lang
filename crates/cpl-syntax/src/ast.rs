@@ -477,6 +477,7 @@ pub struct Arm {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum UnOp {
+    Pos,
     Neg,
     Not,
     BitNot,

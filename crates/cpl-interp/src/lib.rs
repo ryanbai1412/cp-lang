@@ -1713,6 +1713,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
                     (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
                     (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
+                    (UnOp::Pos, v) => v,
                     (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
                     (UnOp::BitNot, Value::I128(v)) => Value::I128(!v),
                     (UnOp::BitNot, Value::U64(v)) => Value::U64(!v),

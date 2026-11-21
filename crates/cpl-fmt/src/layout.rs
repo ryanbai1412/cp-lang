@@ -160,6 +160,7 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
     let mut lines: Vec<Line<'a>> = Vec::new();
     let mut current: Option<Line<'a>> = None;
     let mut depth = 0usize;
+    let mut open_brackets = 0usize;
     let mut comments = lexed.comments.iter().peekable();
     // End of the last token or comment seen, and whether a token came last
     // on its line (so a comment after it trails it).
@@ -234,9 +235,23 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
                 line.toks.push(entry);
                 line.toks.last_mut().unwrap().leading = leading;
             }
+            None if entry.kind == K::Comma && open_brackets > 0 && !lines.is_empty() => {
+                // A trailing comma that closed a bracketed layout block (`=>\n    ...,\n`)
+                // stays attached to the preceding line so re-lexing emits the same Dedent before `,`.
+                if let Some(prev) = lines.last_mut() {
+                    prev.toks.push(entry);
+                    prev.toks.last_mut().unwrap().leading = leading;
+                }
+            }
             None => {
+                let starts_closer = matches!(entry.kind, K::RParen | K::RBracket | K::RBrace);
+                let line_depth = if open_brackets > 0 && !starts_closer {
+                    depth.max(open_brackets)
+                } else {
+                    depth
+                };
                 current = Some(Line {
-                    depth,
+                    depth: line_depth,
                     col: entry.col,
                     blank_before,
                     leading,
@@ -244,6 +259,13 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
                     trailing: None,
                 });
             }
+        }
+        match tok.kind {
+            K::LParen | K::LBracket | K::LBrace => open_brackets += 1,
+            K::RParen | K::RBracket | K::RBrace => {
+                open_brackets = open_brackets.saturating_sub(1);
+            }
+            _ => {}
         }
         last_end = tok.span.end as usize;
         last_tok_end = Some(last_end);
