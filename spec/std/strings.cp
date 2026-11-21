@@ -450,211 +450,38 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
     induced_sort(vec, counts, is_l, sorted_lms, mut sa)
     sa
 
-/// O(n) for `Str` or small domains, O(n log n) for general `Ord`. The starts of the suffixes of `s` in sorted order (SA-IS).
-/// O(n) for bounded alphabets (<= 256 distinct values) and O(n log n) for general elements.
-@allow(unproven_list_index)
-pub fn suffix_array<S: Indexed>(s: S) -> List<Int>:
-    let n = s.len
-    if n <= 1: return [i for i in 0..n]
-    var vec = List.filled(n + 1, 0)
-    var alpha = 0
-    // Fast path for bounded alphabets (e.g. ASCII/Str): avoid O(n log n) sort.
-    var uniq = [s.at(0)]
-    var ids = [0]
-    var small = true
-    unchecked:
-        for i in 1..n:
-            let x = s.at(i)
-            var (lo, hi) = (0, uniq.len)
-            while lo < hi:
-                let mid = (lo + hi) >> 1
-                if uniq[mid] < x: lo = mid + 1 else: hi = mid
-            if lo < uniq.len and uniq[lo] == x:
-                vec[i] = ids[lo]
-            elif uniq.len == 256:
-                small = false
-                break
-            else:
-                let id = uniq.len
-                uniq.push(x)
-                ids.push(id)
-                for j in (lo + 1..uniq.len).rev:
-                    uniq[j] = uniq[j - 1]
-                    ids[j] = ids[j - 1]
-                uniq[lo] = x
-                ids[lo] = id
-                vec[i] = id
-    if small:
-        alpha = uniq.len
-        if alpha == 1: return [n - 1 - i for i in 0..n]
-        var remap = List.filled(alpha, 0)
-        unchecked:
-            for r in 0..alpha: remap[ids[r]] = r + 1
-            for i in 0..n: vec[i] = remap[vec[i]]
-    else:
-        var order = [i for i in 0..n]
-        order.sort(by: i => s.at(i))
-        alpha = 1
-        unchecked:
-            vec[order[0]] = 1
-            for j in 1..n:
-                if s.at(order[j - 1]) < s.at(order[j]): alpha += 1
-                vec[order[j]] = alpha
-        if alpha == n: return order
-    var sa = sa_is(vec, alpha + 1)
-    unchecked:
-        for i in 0..n: sa[i] = sa[i + 1]
-    sa.pop()
-    sa
-
-/// O(n). `lcp[j]` is the length of the longest common prefix of the suffixes at `sa[j]` and `sa[j + 1]`
-/// (Kasai). O(n); the result has `n - 1` entries.
-@allow(unproven_list_index)
-pub fn lcp_array<S: Indexed>(s: S, sa: List<Int>) -> List<Int>:
-    let n = s.len
-    var lcp = List.filled(max(n - 1, 0), 0)
-    var rank = List.filled(n, 0)
-    unchecked:
-        for j in 0..n: rank[sa[j]] = j
-        var k = 0
-        for i in 0..n:
-            if rank[i] == n - 1:
-                k = 0
-                continue
-            let j = sa[rank[i] + 1]
-            while i + k < n and j + k < n and s.at(i + k) == s.at(j + k): k += 1
-            lcp[rank[i]] = k
-            if k > 0: k -= 1
-    lcp
-
-/// Suffix array + rank + LCP + sparse-table RMQ for O(1) LCP and substring comparison.
-/// Built in O(n log n) time and memory (SA-IS + Kasai + sparse table).
-pub struct SuffixArray<T>:
-    s: List<T>
+/// O(n) SA-IS + Kasai LCP (O(n log n) with RMQ). Suffix array, inverse rank, adjacent LCP, and O(1) LCP/comparison queries.
+pub struct SuffixArray:
     sa: List<Int>
-    rank: List<0..=2_000_000_000>
+    rank: List<Int>
     lcp: List<Int>
-    rmq: List<0..=2_000_000_000>
-    rmq_n: 0..=2_000_000_000
 
-    @allow(unproven_list_index)
-    /// Build suffix array and Kasai LCP array for `s`. O(n log n).
-    pub fn new(s: List<T>) -> SuffixArray<T>:
-        let n = s.len
-        let sa = suffix_array(s)
-        var rank: List<0..=2_000_000_000> = List.filled(n, 0)
-        unchecked:
-            for j in 0..n: rank[sa[j]] = j
-        let lcp = lcp_array(s, sa)
-        let m = lcp.len
-        var rmq: List<0..=2_000_000_000> = []
-        if m > 0:
-            var lg = 1
-            while (1 << lg) <= m: lg += 1
-            rmq = List.filled(lg * m, 0)
-            unchecked:
-                for i in 0..m: rmq[i] = lcp[i]
-                for b in 1..lg:
-                    let step = 1 << (b - 1)
-                    let lim = m - (1 << b) + 1
-                    let cur = b * m
-                    let prev = (b - 1) * m
-                    for i in 0..lim: rmq[cur + i] = min(rmq[prev + i], rmq[prev + i + step])
-        SuffixArray(s, sa, rank, lcp, rmq, m)
-
-    /// Length of the indexed sequence. O(1).
-    pub @get fn len(self) -> Int = s.len
+    /// O(1). Length of the indexed sequence.
+    pub @get fn len(self) -> Int = todo
 
     /// O(1). True when the indexed sequence is empty.
-    pub @get fn is_empty(self) -> Bool = s.is_empty
+    pub @get fn is_empty(self) -> Bool = todo
 
-    @allow(unproven_list_index)
-    fn rmq_min(self, lo: Int, hi: Int) -> Int:
-        let k = bit_width(hi - lo) - 1
-        let base = k * rmq_n
-        unchecked:
-            return min(rmq[base + lo], rmq[base + hi - (1 << k)])
-        0
+    /// O(1). Longest common prefix of suffixes `s[i..]` and `s[j..]`.
+    pub fn lcp_between(self, i: Int, j: Int) -> Int = todo
 
-    /// Longest common prefix of suffixes `s[i..]` and `s[j..]`. O(1).
-    @allow(unproven_list_index)
-    pub fn lcp_between(self, i: Int, j: Int) -> Int:
-        let n = s.len
-        assert 0 <= i and i < n and 0 <= j and j < n, "`lcp_between(i, j)` needs `0 <= i, j < len`"
-        if i == j: return n - i
-        unchecked:
-            let a = min(rank[i], rank[j])
-            let b = max(rank[i], rank[j])
-            return self.rmq_min(a, b)
-        0
-
-    /// Rank range `lo..hi` in `sa` of all suffixes starting with `pat`. O(|pat| log n).
-    @allow(unproven_list_index)
-    pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>:
-        let n = s.len
-        let m = pat.len
-        if m == 0: return 0..n
-        var (lo, hi) = (0, n)
-        while lo < hi:
-            let mid = (lo + hi) >> 1
-            let st = sa[mid]
-            var k = 0
-            while k < m and st + k < n and s[st + k] == pat.at(k): k += 1
-            let less = if k == m: false elif st + k == n: true else: s[st + k] < pat.at(k)
-            if less: lo = mid + 1 else: hi = mid
-        let left = lo
-        lo = left
-        hi = n
-        while lo < hi:
-            let mid = (lo + hi) >> 1
-            let st = sa[mid]
-            var k = 0
-            while k < m and st + k < n and s[st + k] == pat.at(k): k += 1
-            let le = if k == m: true elif st + k == n: true else: s[st + k] < pat.at(k)
-            if le: lo = mid + 1 else: hi = mid
-        left..lo
+    /// O(|pat| log n). Rank range `lo..hi` in `sa` of all suffixes starting with `pat`.
+    pub fn rank_range<P: Indexed>(self, pat: P) -> Range<Int> = todo
 
     /// O(|pat| log n + matches). Yield every start index where `pat` occurs in `s` (in suffix-array order).
     pub fn find_all<P: Indexed>(self, pat: P) -> yields Int = todo
 
-    /// Number of occurrences of `pat` in `s`. O(|pat| log n).
-    pub fn count<P: Indexed>(self, pat: P) -> Int:
-        let r = self.rank_range(pat)
-        r.end - r.start
+    /// O(|pat| log n). Number of occurrences of `pat` in `s`.
+    pub fn count<P: Indexed>(self, pat: P) -> Int = todo
 
     /// O(log n). Rank range `lo..hi` in `sa` of all suffixes whose LCP with `s[i..]` is at least `len`.
-    /// O(log n).
-    @allow(unproven_list_index)
-    pub fn lcp_range(self, i: Int, len: Int) -> Range<Int>:
-        let n = s.len
-        assert 0 <= i and i < n and len >= 0, "`lcp_range(i, len)` needs `0 <= i < len` and `len >= 0`"
-        if len == 0: return 0..n
-        let p = rank[i]
-        if i + len > n: return p..p
-        let left = bsearch_first(0..p, mid => self.rmq_min(mid, p) >= len) ?? p
-        let right = bsearch_last(p + 1..n, mid => self.rmq_min(p, mid) >= len) ?? p
-        left..right + 1
+    pub fn lcp_range(self, i: Int, len: Int) -> Range<Int> = todo
 
-    /// Lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: returns `-1`, `0`, or `1`. O(1).
-    @allow(unproven_list_index)
-    pub fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int:
-        let n = s.len
-        assert 0 <= l1 and l1 <= r1 and r1 <= n, "`compare` needs `0 <= l1 <= r1 <= len`"
-        assert 0 <= l2 and l2 <= r2 and r2 <= n, "`compare` needs `0 <= l2 <= r2 <= len`"
-        let n1 = r1 - l1
-        let n2 = r2 - l2
-        let m = min(n1, n2)
-        if m == 0: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
-        let c = self.lcp_between(l1, l2)
-        if c >= m: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
-        if s[l1 + c] < s[l2 + c]: -1 else: 1
+    /// O(1). Lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: returns `-1`, `0`, or `1`.
+    pub fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int = todo
 
-    /// Number of distinct non-empty substrings of `s`. O(n).
-    pub @get fn distinct(self) -> Int:
-        let n = s.len
-        var total = n * (n + 1) / 2
-        for x in lcp: total -= x
-        total
+    /// O(n). Number of distinct non-empty substrings of `s`.
+    pub @get fn distinct(self) -> Int = todo
 
     /// O(1). Minimum adjacent LCP across the rank range `r` (`r.start..r.end`).
     pub fn lcp_of_ranks(self, r: Range<Int>) -> Int = todo
@@ -664,6 +491,9 @@ pub struct SuffixArray<T>:
 
     /// O(log n). The `k`-th lexicographically smallest distinct non-empty substring (0-based), or `none`.
     pub fn kth_distinct(self, k: Int) -> ?Range<Int> = todo
+
+/// O(n) for `Str` or small alphabets, O(n log n) for general `Ord`. Build the suffix array (`sa`, `rank`, `lcp`, and RMQ) for `s`.
+pub fn suffix_array<S: Indexed>(s: S) -> SuffixArray = todo
 
 /// O(1) value. One edge of the compressed suffix tree of a sequence, built in O(n) from SA + LCP.
 pub struct SuffixTreeEdge(
@@ -686,9 +516,9 @@ pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
     let n = s.len
     if n < 2: return []
     let fwd = [s.at(i) for i in 0..n]
-    let sa = SuffixArray.new(fwd)
+    let sa = suffix_array(fwd)
     let rev = [s.at(i) for i in (0..n).rev]
-    let rsa = SuffixArray.new(rev)
+    let rsa = suffix_array(rev)
     var raw = List<(l: Int, r: Int, period: Int)>()
     unchecked:
         for rev_ord in [false, true]:
@@ -1138,9 +968,9 @@ pub struct SuffixAutomaton<A>:
             order[cnt[l]] = v
         order
 
-    /// Number of end positions of each state's substrings in the indexed string. O(states).
+    /// O(states). Number of end positions (occurrence count) of each state's substrings in the indexed string.
     @allow(unproven_list_index)
-    pub fn occurrences(self) -> List<Int>:
+    pub fn occ_counts(self) -> List<Int>:
         var occ = [Int(p) for p in prefix]
         let order = self.topo_order()
         for i in (1..order.len).rev:
@@ -1279,9 +1109,9 @@ pub struct PalindromicTree<A>:
     @allow(unproven_list_index)
     pub fn series_link(self, state: Int) -> Int = ser_link[state]
 
-    /// Total occurrences of each palindrome state in the pushed string. O(states).
+    /// O(states). Occurrence count of each palindrome state in the pushed string.
     @allow(unproven_list_index)
-    pub fn occurrences(self) -> List<Int>:
+    pub fn occ_counts(self) -> List<Int>:
         var occ = [x for x in cnt]
         unchecked:
             for v in (2..occ.len).rev: occ[slink[v]] += occ[v]
@@ -1592,27 +1422,28 @@ fn find_all_matches_a_scan():
 
 @test
 fn suffix_array_and_lcp_match_sorting_the_suffixes():
-    assert suffix_array("banana") == [5, 3, 1, 0, 4, 2]
-    assert lcp_array("banana", suffix_array("banana")) == [1, 3, 0, 0, 2]
-    assert suffix_array("") == [] and suffix_array("x") == [0] and lcp_array("x", [0]) == []
-    assert suffix_array("aaaaa") == [4, 3, 2, 1, 0]
-    assert suffix_array("abcdef") == [0, 1, 2, 3, 4, 5]
-    assert suffix_array("fedcba") == [5, 4, 3, 2, 1, 0]
+    assert suffix_array("banana").sa == [5, 3, 1, 0, 4, 2]
+    assert suffix_array("banana").lcp == [1, 3, 0, 0, 2]
+    assert suffix_array("").sa == [] and suffix_array("x").sa == [0] and suffix_array("x").lcp == []
+    assert suffix_array("aaaaa").sa == [4, 3, 2, 1, 0]
+    assert suffix_array("abcdef").sa == [0, 1, 2, 3, 4, 5]
+    assert suffix_array("fedcba").sa == [5, 4, 3, 2, 1, 0]
     for _ in 0..40:
         let s = random_word(rand(1, 18), rand(1, 3))
-        let sa = suffix_array(s)
+        let sa_obj = suffix_array(s)
+        let sa = sa_obj.sa
         var want = [i for i in 0..s.len]
         want.sort(by: i => [s[j] for j in i..s.len])
         assert sa == want
-        let lcp = lcp_array(s, sa)
+        let lcp = sa_obj.lcp
         for j in 0..s.len - 1: assert lcp[j] == common_prefix(s, sa[j], sa[j + 1])
     // Large alphabet (>256 distinct values) and negative ints exercise the fallback path
     let big_uniq = [300 - i for i in 0..270]
-    assert suffix_array(big_uniq) == [269 - i for i in 0..270]
+    assert suffix_array(big_uniq).sa == [269 - i for i in 0..270]
     var big_dup = [i % 260 - 130 for i in 0..280]
     big_dup.push(-130)
     big_dup.push(-129)
-    let sa_big = suffix_array(big_dup)
+    let sa_big = suffix_array(big_dup).sa
     assert sa_big.len == big_dup.len
     for j in 0..sa_big.len - 1: assert suffix_less(big_dup, sa_big[j], sa_big[j + 1])
 
@@ -1784,12 +1615,12 @@ fn manacher_and_is_palindrome_match_brute():
 
 @test
 fn suffix_array_struct_queries_match_brute():
-    let empty = SuffixArray<Char>("")
+    let empty = suffix_array("")
     assert empty.len == 0 and empty.distinct == 0 and empty.count("a") == 0
     for _ in 0..30:
         let s = random_word(rand(1, 16), 3)
         let n = s.len
-        let sa = SuffixArray(s)
+        let sa = suffix_array(s)
         assert sa.len == n
         for i in 0..n:
             for j in 0..n:
@@ -1875,7 +1706,7 @@ fn suffix_automaton_matches_brute_and_linear_occurrences():
         let n = rand(0, 10)
         let s = [A(rand(0, 1)) for _ in 0..n]
         let sam = SuffixAutomaton<A>.of(s)
-        let occ = sam.occurrences()
+        let occ = sam.occ_counts()
         let order = sam.topo_order()
         assert order.len == sam.len
         for i in 1..order.len: assert sam.longest(order[i - 1]) <= sam.longest(order[i])
@@ -1940,7 +1771,7 @@ fn palindromic_tree_distinct_occurrences_and_series_dp():
                     pals.add(sub)
                     total_pals += 1
         assert pt.distinct == pals.len
-        let occ = pt.occurrences()
+        let occ = pt.occ_counts()
         assert sum(occ[v] for v in 2..pt.len) == total_pals
         // Brute minimum palindromic partition DP
         var brute = List.filled(n + 1, inf)
@@ -2106,16 +1937,15 @@ fn sequence_generality_parity_across_list_array_and_views():
     let hs = RollingHash.new("xabacabay"[1..8], bases: bases)
     assert hs.all == RollingHash.new("abacaba", bases: bases).all
 
-    // Suffix array / LCP / SuffixArray.matches over List<Int>, [D]Int, ListView<Int>, Str, StrView
-    let sa_l = suffix_array(xs)
-    assert suffix_array(arr) == sa_l
-    assert suffix_array(view) == sa_l
-    assert lcp_array(arr, sa_l) == lcp_array(xs, sa_l)
-    assert lcp_array(view, sa_l) == lcp_array(xs, sa_l)
+    // Suffix array / LCP / SuffixArray.rank_range over List<Int>, [D]Int, ListView<Int>, Str, StrView
+    let sa_obj = suffix_array(xs)
+    assert suffix_array(arr).sa == sa_obj.sa
+    assert suffix_array(view).sa == sa_obj.sa
+    assert suffix_array(arr).lcp == sa_obj.lcp
+    assert suffix_array(view).lcp == sa_obj.lcp
     let sa_s = suffix_array("abacaba")
-    assert suffix_array("xabacabay"[1..8]) == sa_s
-    assert lcp_array("xabacabay"[1..8], sa_s) == lcp_array("abacaba", sa_s)
-    let sa_obj = SuffixArray.new(xs)
+    assert suffix_array("xabacabay"[1..8]).sa == sa_s.sa
+    assert suffix_array("xabacabay"[1..8]).lcp == sa_s.lcp
     assert sa_obj.rank_range(parr) == sa_obj.rank_range(pat)
     assert sa_obj.count(pview) == 2
 
