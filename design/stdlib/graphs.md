@@ -34,7 +34,7 @@ The patterns, roughly by frequency in that corpus:
    shortest-path DAG. Weights are often a function of the edge (`w[e]`), the
    direction walked (`ucup5s06g`: 0 forwards, 1 backwards) or the state.
 3. **0-1 and fixed-cost moves.** Costs in {0, 1} (deque BFS), or a small set of
-   moves with fixed costs over a huge implicit state space (`cf2178h`: one FIFO
+   moves with fixed costs over a huge implicit state space (`cf2178h`: one cursor
    per move, no heap). KACTL and ACL omit these; contestants rewrite them each
    time, and that is where the time goes.
 4. **Negative weights.** Bellman-Ford with negative-cycle detection (KACTL
@@ -167,7 +167,7 @@ fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W, until: ?V = none
 fn fixed_cost_paths<S, M, W>(
     from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S, until: ?S = none,
 ) -> Paths<S, W, M>
-    // O(|S| * |moves|): one FIFO per move, no heap (Dial's idea for k costs)
+    // O(|S| * |moves|) time, O(|S|) memory: one cursor per move, no heap
 
 `until: t` stops a search once `t` is settled: `p[t]` and every distance in
 `p.order` are exact, and `p.order` ends at `t`; a vertex outside `p.order`
@@ -205,9 +205,10 @@ Dijkstra.
 
 `fixed_cost_paths` is the `cf2178h` shape: a state domain `S`, a finite list
 of moves each with a fixed non-negative cost, and a partial transition. With
-one FIFO per move, each queue's push times are non-decreasing in distance,
-so popping the cheapest head of k queues settles states in order without a
-heap. It is the right tool whenever the move set is small and the state
+states settled in non-decreasing distance, each move keeps a cursor into
+the settle order: its first state whose step is still unsettled is its
+cheapest candidate, so settling the cheapest of k candidates keeps the order
+without a heap or a queue of pending states. It is the right tool whenever the move set is small and the state
 space is large; for arbitrary per-arc weights use `dijkstra` on a closure.
 
 ### 3.3 Order and cycles

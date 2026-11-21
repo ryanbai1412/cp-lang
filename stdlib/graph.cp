@@ -797,10 +797,11 @@ pub fn dijkstra<V, N, A, W>(
 
 /// Shortest distances over a state space `S` whose moves have fixed non-negative
 /// costs: from every state of `from` at distance 0, `step(mv, s)` is where move `mv`
-/// leads from `s` (`none`: not allowed there), at cost `cost(mv)`. One FIFO per move
-/// replaces the heap: a move's queue receives states in non-decreasing distance, so
-/// the cheapest head is always next; `until: t` stops once `t` is settled.
-/// O(|S| * |moves|).
+/// leads from `s` (`none`: not allowed there), at cost `cost(mv)`. A cursor per move
+/// into `order` replaces the heap: settled states come in non-decreasing distance, so
+/// each move's first state whose step is still unsettled is its cheapest candidate;
+/// `until: t` stops once `t` is settled, and only settled states get a distance.
+/// O(|S| * |moves|) time, O(|S|) memory.
 pub fn fixed_cost_paths<S, M, W>(
     from: List<S>,
     moves: List<M>,
@@ -809,41 +810,36 @@ pub fn fixed_cost_paths<S, M, W>(
     until: ?S = none,
 ) -> Paths<S, W, M>:
     let price = [cost(mv) for mv in moves]
+    for p in price: assert p >= W.zero
     var dist: [S]?W = none
     var back: [S]?(from: S, via: M) = none
-    var done: [S]Bool = false
     var order = List<S>()
-    var queues: List<List<(W, S)>> = [[] for _ in 0..=moves.len]
-    var heads = List.filled(moves.len + 1, 0)
     for s in from:
         if dist[s] == none:
-            let zero = W.zero
-            dist[s] = zero
-            queues[0].push((zero, s))
+            dist[s] = W.zero
+            order.push(s)
+            if until == s: return Paths(dist, back, order)
+    var at = List.filled(moves.len, 0)
     while true:
-        var best: ?Int = none
-        for i in 0..=moves.len:
-            if heads[i] < queues[i].len:
-                if let b = best:
-                    if queues[i][heads[i]].0 < queues[b][heads[b]].0: best = i
-                else:
-                    best = i
-        if best == none: break
-        let i = best!
-        let (d, s) = queues[i][heads[i]]
-        heads[i] += 1
-        if done[s]: continue
-        done[s] = true
-        order.push(s)
-        if until == s: break
+        var best: ?(d: W, j: Int, t: S) = none
         for j in 0..moves.len:
-            if let t = step(moves[j], s):
-                let nd = d + price[j]
-                assert nd >= d
-                if dist[t] == none or nd < dist[t]!:
-                    dist[t] = nd
-                    back[t] = (from: s, via: moves[j])
-                    queues[j + 1].push((nd, t))
+            while at[j] < order.len:
+                let s = order[at[j]]
+                if let t = step(moves[j], s) and dist[t] == none:
+                    let d = dist[s]! + price[j]
+                    if let b = best:
+                        if d < b.d: best = (d: d, j: j, t: t)
+                    else:
+                        best = (d: d, j: j, t: t)
+                    break
+                at[j] += 1
+        if best == none: break
+        let (d, j, t) = best!
+        dist[t] = d
+        back[t] = (from: order[at[j]], via: moves[j])
+        order.push(t)
+        at[j] += 1
+        if until == t: break
     Paths(dist, back, order)
 
 /// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or

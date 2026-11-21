@@ -10,7 +10,7 @@ the script checks the outputs agree and reports best-of-N wall time.
 | bfs | 0.156 | 0.157 | 0.99x |
 | bfs01 | 0.320 | 0.202 | 1.58x |
 | dijkstra | 0.412 | 0.350 | 1.18x |
-| fixed_cost | 0.290 | 0.217 | 1.34x |
+| fixed_cost | 0.178 | 0.165 | 1.08x |
 
 The gap is not in the search loops. Two codegen limits cost most of it:
 

@@ -1112,7 +1112,7 @@ fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none)
 // O((n + m) log m)
 fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W, until: ?V = none)
     -> Paths<V, W, A>
-// O(|S| |moves|): one FIFO per move, no heap
+// O(|S| |moves|) time, O(|S|) memory: one cursor per move, no heap
 fn fixed_cost_paths<S, M, W>(from: List<S>, moves: List<M>, cost: M -> W,
     step: (M, S) -> ?S, until: ?S = none) -> Paths<S, W, M>
 // O(n m); none on a reachable negative cycle
