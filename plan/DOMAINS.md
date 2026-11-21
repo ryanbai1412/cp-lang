@@ -217,19 +217,46 @@ with the target compiler flags.
 **Next.** Judge profiles (stack, compiler, I/O); profile tests.
 
 ## 10. Editor and LSP (`plan/60`)
-**North star.** An editor that knows everything the compiler knows, in every major
-editor from one language server (a VS Code extension, a JetBrains plugin,
-documented Neovim, Zed, Emacs and Helix setups): diagnostics as you type,
-hover with types, ranges and costs, inlay hints for index spaces and inferred
-bounds, completion that knows the stdlib, signature help, rename and
-refactorings, code actions for every fixable diagnostic, and run, test,
-stress, trace and debug from the editor with the trace view inside it.
-**Where we are.** `cpl lsp` and a VS Code extension with highlighting and
-snippets; no JetBrains plugin.
-**Bar.** LSP feature tests per `plan/60` 6.7; each editor integration
-built and smoke-tested in the gate.
-**Next.** Audit against `plan/60`; hover, inlay hints, completion quality;
-JetBrains plugin.
+**North star.** An editor that knows everything the compiler knows, in every
+major editor from one language server: a VS Code extension, a JetBrains
+plugin (IntelliJ Platform LSP API, highlighting, run configurations, the
+trace view), and documented, smoke-tested Neovim, Zed, Emacs and Helix
+setups. Every client gets the same server features, because they live in
+the server, not the client: diagnostics as you type, hover with types,
+proven ranges, docs and costs, inlay hints for index spaces and inferred
+bounds, completion ranked by the expected type that knows the stdlib and
+adds the `use`, signature help, rename and refactorings across files, go to
+definition into the stdlib, a code action for every fixable diagnostic, and
+run, test, stress and trace as server code lenses and commands. VS Code and
+JetBrains add the test explorer, the trace panel beside the source and a
+DAP debugger. Fixture tests with cursor markers cover every request, a
+fuzzer proves the server never dies, and a latency benchmark guards 6.1.
+**Where we are** (audited 2026-11-21). `cpl lsp` (crates/cpl-lsp) answers
+diagnostics on open and on incremental change, hover, definition (into
+`stdlib/` files too: `Fenwick` jumps to `stdlib/fenwick.cp`), references,
+rename within a file, document symbols, formatting, completion (members
+after `.`, names in scope, `use std.`), signature help, inlay hints
+(unwritten types, parameter names of literal arguments) and quick fixes
+from diagnostic fixes; a panic becomes an error reply plus an
+internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
+measures 6.1 (492 lines, debug build: keystroke to diagnostics median
+6 ms, hover 0.06 ms, completion 1.8 ms). The VS Code extension has a
+TextMate grammar, snippets, the client, Run/Stress/Trace lenses, live
+sample values, counterexample overlays and a trace webview; its unit
+tests run in `--full`, its extension-host suite in no gate.
+Gaps against `plan/60`: hover on a fn or method shows neither its `///`
+doc nor its cost; no hover for the index space of a subscript or for a
+proven range; no inlay hints for index spaces or ranges; no semantic
+tokens, workspace symbols, document highlights or folding; no cost or
+overflow warnings; rename is one file; no refactorings or "fix all"; no
+expected-type ranking or auto-import; run/test/trace exist only in the VS
+Code client; no fixture tests, fuzzer, DAP, tree-sitter grammar, JetBrains
+plugin, or setups for other editors.
+**Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
+integration built and smoke-tested in `scripts/check.sh --full`.
+**Next.** Fixture tests; hover docs, costs and index spaces; inlay hints for
+index spaces and ranges; semantic tokens; server code lenses and commands
+for run, test and trace; JetBrains plugin; other-editor setups; fuzzer.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a

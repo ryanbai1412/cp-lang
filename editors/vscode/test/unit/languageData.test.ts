@@ -71,7 +71,11 @@ function rustStrings(source: string, from: RegExp, end: string): string[] {
 function shipped() {
     const prelude = fs.readFileSync(path.join(REPO_ROOT, 'crates', 'cpl-check', 'src', 'prelude.rs'), 'utf8');
     const typeNames = rustStrings(prelude, /const TYPE_NAMES: &\[&str\] = &\[/, '];');
-    const builtinValues = new Set([...rustStrings(prelude, /pub fn value\(/, '\n}\n'), ...typeNames]);
+    const builtinValues = new Set([
+        ...rustStrings(prelude, /pub fn value\(/, '\n}\n'),
+        ...rustStrings(prelude, /pub const VALUE_NAMES: &\[&str\] = &\[/, '];'),
+        ...typeNames,
+    ]);
     const builtinTypes = new Set([...rustStrings(prelude, /pub fn ty\(/, '\n}\n'), ...typeNames]);
     const stdlib = path.join(REPO_ROOT, 'stdlib');
     const imported = new Set<string>();
