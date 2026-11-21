@@ -56,6 +56,51 @@ type-param defaults, one-sided ranges, `@droppable`,
 derives as trait defaults; variadic packs, then `print`/`read` on them;
 lazy parameters, then `assert`/`debug`/`??`; `Niche`; writable places;
 library diagnostics.
+**Coordination.** Core-extensions lane (`49fcf312`) owns derives, variadic packs,
+and lazy parameters; this lane (§1 core syntax/semantics) owns `Self` in
+trait/impl scope, associated types, `trait`/`impl` headers, opaque structs,
+type-param defaults, one-sided range types, postfix `?` extent, and remaining
+0.3 syntax.
+
+**Spec-block scoreboard** (`scripts/spec-blocks.py`, baseline **0/35** on `design/spec/*.md`):
+
+| Block | First blocker (`cpl check`) | Owner |
+|---|---|---|
+| `00-layers.md#0` | `E0201`: no `Self` in scope (then `fn Domain.of(n: 1..) -> (domain D: Index)`) | §1 core syntax + §2 domains |
+| `00-layers.md#1` | `E0103`: `impl<D: Counted> Read for D uses io:` (`uses` clause on `impl`) | §1 core syntax (contexts) |
+| `12-scoped-types.md#0` | `E0106`: `let (domain Piece, pieces) = ...` (`domain` binder in pattern) | §2 domains + §1 syntax |
+| `13-arrays.md#0` | `E0201`: no `Self` in scope (`0..Self.count` in `trait Index`) | §1 core syntax |
+| `14-functions-traits.md#0` | `E0107`: ellipsis `...` body placeholder in `@memo fn count(...)` | spec snippet (placeholder `...`) |
+| `14-functions-traits.md#1` | `E0107`: ellipsis `...` body placeholder in `@memo fn count(...)` | spec snippet (placeholder `...`) |
+| `16-state.md#0` | `E0107`: `with io(base: 1)` bare context statement | §1 core syntax (contexts) |
+| `16-state.md#1` | `E0102`: `.read` enum-variant shorthand default (`count: Count = .read`) | §1 core syntax |
+| `17-contexts.md#0` | `E0107`: `context io:` declaration | §1 core syntax (contexts) |
+| `17-contexts.md#1` | `E0107`: `with io(base: 1)` bare context statement | §1 core syntax (contexts) |
+| `17-contexts.md#2` | `E0103`: `fn read<T>() -> T uses io` (bodyless signature + `uses`) | §1 core syntax (contexts) |
+| `21-index-spaces.md#0` | `E0103`: `impl Index for (A, B):` / `impl Index for Counted` header | §1 core syntax + §2 domains |
+| `21-index-spaces.md#1` | `E0201`: `e` unbound (fragment assuming prior declarations) | spec snippet (fragment) |
+| `21-index-spaces.md#2` | `E0204`: no type or domain named `Bits` | §2 domains / stdlib |
+| `23-optionals.md#0` | `E0205`: `let depth = depth!` (fragment without prior `depth`) | spec snippet (fragment) |
+| `23-optionals.md#1` | `E0201`: `dp` unbound (fragment without prior `dp`/`a`) | spec snippet (fragment) |
+| `23-optionals.md#2` | `E0204`: `impl<T: Add> Add for ?T:` (`T` not in scope on `impl<T>`) | §1 core syntax |
+| `25-io.md#0` | `E0105`: `&mut Out` parameter type in `trait Print` | §1 core syntax |
+| `25-io.md#1` | `E0201`: `parse_int` not in scope (`impl Read for Int`) | stdlib (I/O) |
+| `27-algebra-segtrees.md#0` | `E0204`: `D` unbound (fragment without prior `D`/`M`/`A`) | spec snippet (fragment) |
+| `27-algebra-segtrees.md#1` | `E0204`: `Monoid` is a struct, not a trait | stdlib (algebra) |
+| `30-stress.md#0` | `E0107`: `@alt(..., n: ..=8)` + `...` body placeholder | stress lane + spec snippet |
+| `31-interaction.md#0` | `E0201`: no `Wire` in scope | stdlib / interaction lane |
+| `31-interaction.md#1` | `E0103`: `impl Read + Print for Query<V>:` (multi-trait `impl`) | §1 core syntax |
+| `31-interaction.md#2` | `E0204`: no trait named `Limited` (then `labels(asks)`) | interaction lane + §1 syntax |
+| `31-interaction.md#3` | `E0107`: `...` body placeholder in `@gen fn hidden(...)` | stress lane + spec snippet |
+| `32-graders-bundling.md#0` | `E0107`: `...` body placeholder in `@cpp(...) fn pdep(...)` | codegen lane + spec snippet |
+| `40-signatures.md#0` | `E0201`: no `Self` in scope (then one-line traits, `Ord(Eq)`, `&mut`) | §1 core syntax |
+| `40-signatures.md#1` | `E0204`: no type or domain named `Seq` (then `where` bounds on methods) | stdlib + §1 core syntax |
+| `40-signatures.md#2` | `E0103`: opaque `struct List<T>` (no body) | §1 core syntax |
+| `40-signatures.md#3` | `E0107`: `id: Self` associated const/field in `trait Monoid` | §1 core syntax |
+| `40-signatures.md#4` | `E0102`: one-sided range type `2..` in `fn Mint(mod: 2..)` | §1 core syntax |
+| `40-signatures.md#5` | `E0103`: type-param default `W = ()` in `struct Graph<V: Index, W = ()>` | §1 core syntax |
+| `40-signatures.md#6` | `E0103`: opaque `struct Str` (no body) | §1 core syntax |
+| `40-signatures.md#7` | `E0103`: `fn read<T: Read>() -> T uses io` (bodyless fn + `uses` + variadics) | §1 core syntax + core-extensions |
 
 ## 2. Index spaces and fresh domains (`plan/12`, `plan/19`)
 **North star.** Every index-space bug in the P0 list is unwritable: indices from one
