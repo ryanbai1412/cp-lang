@@ -479,7 +479,7 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
 }
 
 fn is_narrowable_seq(ty: &Ty) -> bool {
-    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_))
+    matches!(ty, Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_))
 }
 
 fn peel_layout(layout: Option<&cpl_ir::NarrowLayout>, depth: usize) -> Option<&cpl_ir::NarrowLayout> {
@@ -615,6 +615,7 @@ pub(crate) fn narrow_elems(
             ExprKind::Builtin(Builtin::ListSlice | Builtin::ToList | Builtin::Copy, args) => {
                 args.first().and_then(|a| expr_root(scope, a))
             }
+            ExprKind::MutSlice(place, _, _) => place_root(scope, place),
             ExprKind::Do(blk) => match blk.stmts.last() {
                 Some(Stmt::Give(inner)) => expr_root(scope, inner),
                 _ => None,
@@ -767,6 +768,15 @@ pub(crate) fn narrow_elems(
                 for a in args {
                     check_val(program, scope, a, narrow, changed);
                 }
+            }
+            ExprKind::MutSlice(place, lo, hi) => {
+                if let Some((loc, _)) = place_root(scope, place) {
+                    if narrow.remove(&loc).is_some() {
+                        *changed = true;
+                    }
+                }
+                check_val(program, scope, lo, narrow, changed);
+                check_val(program, scope, hi, narrow, changed);
             }
             ExprKind::Mutate(m, place, args) => {
                 let safe_mut = matches!(
@@ -1023,6 +1033,15 @@ pub(crate) fn narrow_elems(
                         check_val(program, scope, a, narrow, changed);
                     }
                 }
+            }
+            ExprKind::MutSlice(place, lo, hi) => {
+                if let Some((loc, _)) = place_root(scope, place) {
+                    if narrow.remove(&loc).is_some() {
+                        *changed = true;
+                    }
+                }
+                check_val(program, scope, lo, narrow, changed);
+                check_val(program, scope, hi, narrow, changed);
             }
             ExprKind::Do(blk) => {
                 check_block(program, scope, blk, narrow, changed, true);

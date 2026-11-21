@@ -145,7 +145,9 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
+            ExprKind::MutSlice(place, _, _)
+            | ExprKind::Mutate(_, place, _)
+            | ExprKind::Sort(place, _, _) => {
                 touch.writes.insert(walk::root(place));
             }
             ExprKind::Do(block) => walk::deep_stmts(block, &mut |stmt| match stmt {
@@ -300,14 +302,14 @@ impl<'p> Emitter<'p> {
                     {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => {
+                    Ty::List(_) | Ty::MutView(_) if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) => {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) if matches!((&base.kind, &indices[0].kind), (PlaceKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i))) =>
+                    Ty::List(_) | Ty::MutView(_) if matches!((&base.kind, &indices[0].kind), (PlaceKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i))) =>
                     {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) => {
+                    Ty::List(_) | Ty::MutView(_) => {
                         self.need("at");
                         format!("cpl::at({b}, {})", at.join(", "))
                     }
@@ -750,7 +752,7 @@ impl<'p> Emitter<'p> {
                 };
                 self.need("list_concat_at");
                 let operands = [&args[0], &args[1], &indices[0]];
-                let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem) if **elem == Ty::Bool);
+                let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) if **elem == Ty::Bool);
                 self.sequence(&operands, &e.ty, |_, codes| {
                     let call = format!(
                         "cpl::list_concat_at({}, {}, {})",
@@ -771,7 +773,7 @@ impl<'p> Emitter<'p> {
                     || matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _))
                     || matches!((&base.kind, &indices[0].kind), (ExprKind::Local(list), ExprKind::Local(i)) if self.inside.contains(&(*list, *i)));
                 let checked = !proven(indices) && !raw_list;
-                if (matches!(base_ty, Ty::List(_) | Ty::ListView(_)) && !raw_list)
+                if (matches!(base_ty, Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) && !raw_list)
                     || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str | Ty::StrView))
                 {
                     if self.expr_fixed_len(base).is_some() {
@@ -814,17 +816,17 @@ impl<'p> Emitter<'p> {
                                 Code::primary(cell)
                             }
                         }
-                        Ty::List(elem) | Ty::ListView(elem) if raw_list && **elem == Ty::Bool => {
+                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) if raw_list && **elem == Ty::Bool => {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
-                        Ty::List(_) | Ty::ListView(_) if raw_list => {
+                        Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) if raw_list => {
                             Code::primary(format!("{b}[{}]", at[0]))
                         }
-                        Ty::List(elem) | Ty::ListView(elem) if **elem == Ty::Bool => Code::new(
+                        Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) if **elem == Ty::Bool => Code::new(
                             format!("(bool)cpl::at({}, {})", codes[0].text, at[0]),
                             UNARY,
                         ),
-                        Ty::List(_) | Ty::ListView(_) => {
+                        Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) => {
                             Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
                         Ty::Array { elem, .. } if checked && **elem == Ty::Bool => Code::new(
@@ -1286,6 +1288,13 @@ impl<'p> Emitter<'p> {
                     emit_mutate(self, p, arg, arg2)
                 }
             }
+            ExprKind::MutSlice(place, lo, hi) => {
+                self.need("mut_view");
+                let p = self.place(place);
+                let lo = self.expr(lo).text;
+                let hi = self.expr(hi).text;
+                Code::primary(format!("cpl::mut_slice({p}, {lo}, {hi})"))
+            }
             ExprKind::Sort(place, sort_by, desc) => self.lambda("void", |this, out| {
                 this.sort_stmts(place, sort_by, desc.as_deref(), out)
             }),
@@ -1475,7 +1484,9 @@ impl<'p> Emitter<'p> {
                         stmts: vec![stmt.clone()],
                     },
                     &mut |e| match &e.kind {
-                        ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, _, _)
+                        ExprKind::MutSlice(p, _, _)
+                        | ExprKind::Mutate(_, p, _)
+                        | ExprKind::Sort(p, _, _)
                             if matches!(p.kind, PlaceKind::Local(id) if id == acc) =>
                         {
                             safe = false;
@@ -1991,7 +2002,7 @@ impl<'p> Emitter<'p> {
             }
             Builtin::Join => {
                 let elem = match &args[1].ty {
-                    Ty::List(elem) | Ty::ListView(elem) | Ty::Array { elem, .. } => (**elem).clone(),
+                    Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) | Ty::Array { elem, .. } => (**elem).clone(),
                     other => other.clone(),
                 };
                 let (sep, seq) = (codes[0].text.clone(), codes[1].text.clone());
@@ -2184,7 +2195,7 @@ impl<'p> Emitter<'p> {
                     self.need("str_view");
                     Code::primary(format!("cpl::str_rev({})", text(0)))
                 }
-                Some(Ty::List(_) | Ty::ListView(_)) => {
+                Some(Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) => {
                     self.need("list_view");
                     Code::primary(format!("cpl::list_rev({})", text(0)))
                 }

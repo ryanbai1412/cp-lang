@@ -121,6 +121,8 @@ pub enum Ty {
     List(Box<Ty>),
     /// O(1) read-only view into a `List<T>` (slice or reverse).
     ListView(Box<Ty>),
+    /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
+    MutView(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
     HashMap(Box<Ty>, Box<Ty>),
     Set(Box<Ty>),
@@ -161,6 +163,7 @@ impl Ty {
             self,
             Ty::List(_)
                 | Ty::ListView(_)
+                | Ty::MutView(_)
                 | Ty::Array { .. }
                 | Ty::Map(..)
                 | Ty::HashMap(..)
@@ -210,7 +213,7 @@ impl Ty {
     pub fn is_comparable(&self, program: &Program) -> bool {
         match self {
             Ty::Fn(..) | Ty::DomainVal | Ty::HashMap(..) | Ty::HashSet(_) => false,
-            Ty::Opt(t) | Ty::List(t) | Ty::ListView(t) | Ty::Set(t) | Ty::Range(t) => {
+            Ty::Opt(t) | Ty::List(t) | Ty::ListView(t) | Ty::MutView(t) | Ty::Set(t) | Ty::Range(t) => {
                 t.is_comparable(program)
             }
             Ty::Array { elem, .. } => elem.is_comparable(program),
@@ -242,7 +245,7 @@ impl Ty {
     /// 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views).
     pub fn seq_elem(&self) -> Option<Ty> {
         match self {
-            Ty::List(elem) | Ty::ListView(elem) => Some((**elem).clone()),
+            Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => Some((**elem).clone()),
             Ty::Str | Ty::StrView => Some(Ty::Char),
             Ty::Array { dims, elem } if dims.len() == 1 => Some((**elem).clone()),
             Ty::Range(inner) => Some((**inner).clone()),
@@ -263,7 +266,7 @@ impl Ty {
     /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).
     pub fn is_indexed_mut(&self) -> bool {
         match self {
-            Ty::List(_) | Ty::Str => true,
+            Ty::List(_) | Ty::MutView(_) | Ty::Str => true,
             Ty::Array { dims, .. } if dims.len() == 1 => true,
             _ => false,
         }
@@ -405,6 +408,8 @@ pub enum ExprKind {
     /// A runtime domain handle `(lo, len)` for `-> (domain C, ...)`.
     DomainVal(DomainId),
     Builtin(Builtin, Vec<Expr>),
+    /// O(1) mutable slice view `(place, lo, hi)` into a `List<T>`, 1D `[D]T`, or `MutView<T>`.
+    MutSlice(Box<Place>, Box<Expr>, Box<Expr>),
     /// A builtin that changes its receiver: `xs.push(x)`.
     Mutate(Mutation, Box<Place>, Vec<Expr>),
     /// Sort in place, naturally, by key expression, or by fn/Order value.
@@ -1108,6 +1113,7 @@ impl Program {
             | Ty::Opt(inner)
             | Ty::List(inner)
             | Ty::ListView(inner)
+            | Ty::MutView(inner)
             | Ty::Set(inner)
             | Ty::HashSet(inner)
             | Ty::Mut(inner) => {

@@ -190,6 +190,253 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    fn is_mut_method_name(name: &str) -> bool {
+        matches!(
+            name,
+            "sort"
+                | "reverse"
+                | "rotate_left"
+                | "rotate_right"
+                | "scan_in_place"
+                | "suffix_scan_in_place"
+                | "next_permutation"
+                | "prev_permutation"
+                | "nth_element"
+                | "swap"
+                | "swap_at"
+                | "swap_idx"
+                | "set"
+                | "set_at"
+                | "fill"
+                | "shuffle"
+        )
+    }
+
+    fn collect_mut_slices_expr(&mut self, e: &ast::Expr) {
+        match &e.kind {
+            ast::ExprKind::Call { callee, args, .. } => {
+                for a in args {
+                    if a.mutable && matches!(a.value.kind, ast::ExprKind::Index { .. }) {
+                        let sp = self.span(a.value.span);
+                        self.mut_slice_inits.insert(sp);
+                    }
+                    self.collect_mut_slices_expr(&a.value);
+                }
+                if let ast::ExprKind::Field { base, name } = &callee.kind {
+                    if matches!(base.kind, ast::ExprKind::Index { .. })
+                        && Self::is_mut_method_name(&name.text)
+                    {
+                        let sp = self.span(base.span);
+                        self.mut_slice_inits.insert(sp);
+                    }
+                }
+                self.collect_mut_slices_expr(callee);
+            }
+            ast::ExprKind::Paren(inner) | ast::ExprKind::Unary { expr: inner, .. } => {
+                self.collect_mut_slices_expr(inner);
+            }
+            ast::ExprKind::Binary { lhs, rhs, .. } => {
+                self.collect_mut_slices_expr(lhs);
+                self.collect_mut_slices_expr(rhs);
+            }
+            ast::ExprKind::Index { base, indices } => {
+                self.collect_mut_slices_expr(base);
+                for i in indices {
+                    self.collect_mut_slices_expr(i);
+                }
+            }
+            ast::ExprKind::Field { base, .. } => self.collect_mut_slices_expr(base),
+            ast::ExprKind::Lambda { body, .. } => self.collect_mut_slices_expr(body),
+            _ => {}
+        }
+    }
+
+    fn collect_mut_slices_stmt(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt]) {
+        match &stmt.kind {
+            ast::StmtKind::Let {
+                pat,
+                init: Some(init),
+                ..
+            } => {
+                if let ast::PatternKind::Name(name) = &pat.kind {
+                    if matches!(init.kind, ast::ExprKind::Index { .. })
+                        && Self::stmts_mutate_name(rest, name)
+                    {
+                        let sp = self.span(init.span);
+                        self.mut_slice_inits.insert(sp);
+                    }
+                }
+                self.collect_mut_slices_expr(init);
+            }
+            ast::StmtKind::Assign { target, value, .. } => {
+                if let ast::ExprKind::Index { base, .. } = &target.kind {
+                    if matches!(base.kind, ast::ExprKind::Index { .. }) {
+                        let sp = self.span(base.span);
+                        self.mut_slice_inits.insert(sp);
+                    }
+                }
+                self.collect_mut_slices_expr(target);
+                self.collect_mut_slices_expr(value);
+            }
+            ast::StmtKind::Expr(e) | ast::StmtKind::Return(Some(e)) => {
+                self.collect_mut_slices_expr(e);
+            }
+            _ => {}
+        }
+    }
+
+    fn expr_root_name(e: &ast::Expr) -> Option<&str> {
+        match &e.kind {
+            ast::ExprKind::Name(n) => Some(n.as_str()),
+            ast::ExprKind::Paren(inner) => Self::expr_root_name(inner),
+            ast::ExprKind::Index { base, .. } | ast::ExprKind::Field { base, .. } => {
+                Self::expr_root_name(base)
+            }
+            _ => None,
+        }
+    }
+
+    fn cond_mutates_name(c: &ast::Cond, name: &str) -> bool {
+        match c {
+            ast::Cond::Expr(e) | ast::Cond::Const(e) => Self::expr_mutates_name(e, name),
+            ast::Cond::Let { value, .. } => Self::expr_mutates_name(value, name),
+            ast::Cond::Guard { test, and } => {
+                Self::expr_mutates_name(test, name) || Self::cond_mutates_name(and, name)
+            }
+        }
+    }
+
+    fn expr_mutates_name(e: &ast::Expr, name: &str) -> bool {
+        match &e.kind {
+            ast::ExprKind::Call { callee, args, .. } => {
+                if args
+                    .iter()
+                    .any(|a| a.mutable && Self::expr_root_name(&a.value) == Some(name))
+                {
+                    return true;
+                }
+                if let ast::ExprKind::Field { base, name: method } = &callee.kind {
+                    if Self::expr_root_name(base) == Some(name)
+                        && matches!(
+                            method.text.as_str(),
+                            "sort"
+                                | "reverse"
+                                | "rotate_left"
+                                | "rotate_right"
+                                | "scan_in_place"
+                                | "suffix_scan_in_place"
+                                | "next_permutation"
+                                | "prev_permutation"
+                                | "nth_element"
+                                | "swap"
+                                | "swap_at"
+                                | "swap_idx"
+                                | "set"
+                                | "set_at"
+                                | "fill"
+                                | "shuffle"
+                        )
+                    {
+                        return true;
+                    }
+                }
+                Self::expr_mutates_name(callee, name)
+                    || args.iter().any(|a| Self::expr_mutates_name(&a.value, name))
+            }
+            ast::ExprKind::Block(b) => Self::stmts_mutate_name(&b.stmts, name),
+            ast::ExprKind::If {
+                branches,
+                otherwise,
+            } => {
+                branches.iter().any(|(c, b)| {
+                    Self::cond_mutates_name(c, name) || Self::stmts_mutate_name(&b.stmts, name)
+                }) || otherwise
+                    .as_ref()
+                    .is_some_and(|b| Self::stmts_mutate_name(&b.stmts, name))
+            }
+            ast::ExprKind::Match { scrutinee, arms } => {
+                Self::expr_mutates_name(scrutinee, name)
+                    || arms.iter().any(|a| {
+                        a.guard
+                            .as_ref()
+                            .is_some_and(|g| Self::expr_mutates_name(g, name))
+                            || Self::stmts_mutate_name(&a.body.stmts, name)
+                    })
+            }
+            ast::ExprKind::Paren(inner) | ast::ExprKind::Unary { expr: inner, .. } => {
+                Self::expr_mutates_name(inner, name)
+            }
+            ast::ExprKind::Binary { lhs, rhs, .. } => {
+                Self::expr_mutates_name(lhs, name) || Self::expr_mutates_name(rhs, name)
+            }
+            ast::ExprKind::Index { base, indices } => {
+                Self::expr_mutates_name(base, name)
+                    || indices.iter().any(|i| Self::expr_mutates_name(i, name))
+            }
+            ast::ExprKind::Field { base, .. } => Self::expr_mutates_name(base, name),
+            ast::ExprKind::Lambda { body, .. } => Self::expr_mutates_name(body, name),
+            _ => false,
+        }
+    }
+
+    fn stmts_mutate_name(stmts: &[ast::Stmt], name: &str) -> bool {
+        for (i, s) in stmts.iter().enumerate() {
+            match &s.kind {
+                ast::StmtKind::Assign { target, value, .. } => {
+                    if Self::expr_root_name(target) == Some(name)
+                        || Self::expr_mutates_name(target, name)
+                        || Self::expr_mutates_name(value, name)
+                    {
+                        return true;
+                    }
+                }
+                ast::StmtKind::Expr(e) => {
+                    if Self::expr_mutates_name(e, name) {
+                        return true;
+                    }
+                }
+                ast::StmtKind::Let {
+                    pat,
+                    init: Some(init),
+                    ..
+                } => {
+                    if Self::expr_mutates_name(init, name) {
+                        return true;
+                    }
+                    if let ast::PatternKind::Name(sub) = &pat.kind {
+                        if Self::expr_root_name(init) == Some(name)
+                            && Self::stmts_mutate_name(&stmts[i + 1..], sub)
+                        {
+                            return true;
+                        }
+                        if sub == name {
+                            return false;
+                        }
+                    }
+                }
+                ast::StmtKind::For { iter, body, .. } => {
+                    if Self::expr_mutates_name(iter, name)
+                        || Self::stmts_mutate_name(&body.stmts, name)
+                    {
+                        return true;
+                    }
+                }
+                ast::StmtKind::While { cond, body, .. } => {
+                    if Self::cond_mutates_name(cond, name)
+                        || Self::stmts_mutate_name(&body.stmts, name)
+                    {
+                        return true;
+                    }
+                }
+                ast::StmtKind::Return(Some(e)) if Self::expr_mutates_name(e, name) => {
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
     fn at_top_level(&self) -> bool {
         self.cx.is_main && self.cx.scopes.len() == 1
     }
@@ -204,6 +451,7 @@ impl<'a> Lowerer<'a> {
         rest: &[ast::Stmt],
         out: &mut Vec<Stmt>,
     ) {
+        self.collect_mut_slices_stmt(stmt, rest);
         // `let u = o ?? return -1`: the test and the way out go ahead of
         // the statement, which then reads the value that is there.
         let root = match &stmt.kind {
@@ -3650,11 +3898,59 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::ExprKind::Index { base, indices } => {
-                let base = self.place(base);
-                let (indices, ty) = self.index_args(&base.ty, indices, e.span);
-                let indices = self.vouched(&base.ty, indices);
+                let base_place = self.place(base);
+                if indices.len() == 1 && Self::sliceable_mut_elem(&base_place.ty).is_some() {
+                    if matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
+                        if let Some((lo, hi, elem_ty)) =
+                            self.mut_slice_bounds(&base_place, &indices[0], e.span)
+                        {
+                            let view_ty = Ty::MutView(Box::new(elem_ty));
+                            let view_expr = self.mk(
+                                ExprKind::MutSlice(
+                                    Box::new(base_place),
+                                    Box::new(lo),
+                                    Box::new(hi),
+                                ),
+                                view_ty.clone(),
+                                e.span,
+                            );
+                            let tmp = self.temp(view_ty.clone());
+                            self.cx.pending.push(Stmt::Let(tmp, Some(view_expr)));
+                            return Place {
+                                kind: PlaceKind::Local(tmp),
+                                ty: view_ty,
+                                span,
+                            };
+                        }
+                    } else if matches!(self.probe_ty_silent(&indices[0]), Some(Ty::Range(_))) {
+                        let range_val = self.expr(&indices[0], None);
+                        if let Some((lo, hi, elem_ty)) =
+                            self.mut_slice_range_val_bounds(&base_place, range_val, e.span)
+                        {
+                            let view_ty = Ty::MutView(Box::new(elem_ty));
+                            let view_expr = self.mk(
+                                ExprKind::MutSlice(
+                                    Box::new(base_place),
+                                    Box::new(lo),
+                                    Box::new(hi),
+                                ),
+                                view_ty.clone(),
+                                e.span,
+                            );
+                            let tmp = self.temp(view_ty.clone());
+                            self.cx.pending.push(Stmt::Let(tmp, Some(view_expr)));
+                            return Place {
+                                kind: PlaceKind::Local(tmp),
+                                ty: view_ty,
+                                span,
+                            };
+                        }
+                    }
+                }
+                let (indices, ty) = self.index_args(&base_place.ty, indices, e.span);
+                let indices = self.vouched(&base_place.ty, indices);
                 Place {
-                    kind: PlaceKind::Index(Box::new(base), indices),
+                    kind: PlaceKind::Index(Box::new(base_place), indices),
                     ty,
                     span,
                 }

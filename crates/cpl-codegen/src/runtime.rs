@@ -1536,6 +1536,47 @@ inline std::string list_to_str(ListView<u8> v) { std::string s; s.reserve(v.size
 ",
     },
     Piece {
+        name: "mut_view",
+        needs: &["fail"],
+        code: "\
+// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T` (pointer + length).
+template <class T> struct MutView {
+    using value_type = T;
+    T* ptr = nullptr;
+    size_t n = 0;
+    MutView() = default;
+    MutView(T* p, size_t sz) noexcept : ptr(p), n(sz) {}
+    void cpl_list_view_tag() const {}
+    size_t size() const noexcept { return n; }
+    bool empty() const noexcept { return n == 0; }
+    T* data() noexcept { return ptr; }
+    const T* data() const noexcept { return ptr; }
+    T* begin() noexcept { return ptr; }
+    T* end() noexcept { return ptr + n; }
+    const T* begin() const noexcept { return ptr; }
+    const T* end() const noexcept { return ptr + n; }
+    T& operator[](size_t i) noexcept { return ptr[i]; }
+    const T& operator[](size_t i) const noexcept { return ptr[i]; }
+    T& front() noexcept { return ptr[0]; }
+    const T& front() const noexcept { return ptr[0]; }
+    T& back() noexcept { return ptr[n - 1]; }
+    const T& back() const noexcept { return ptr[n - 1]; }
+};
+template <class T> MutView<T> mut_slice(std::vector<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.size()) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo)); }
+template <class T, size_t N> MutView<T> mut_slice(std::array<T, N>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > N) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo)); }
+template <class T> MutView<T> mut_slice(MutView<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); return MutView<T>(v.ptr + (size_t)lo, (size_t)(hi - lo)); }
+template <class T> T& at(MutView<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
+template <class T> const T& at(const MutView<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
+template <class T> std::vector<T> to_list(MutView<T> v) { return std::vector<T>(v.ptr, v.ptr + v.n); }
+template <class T> std::optional<T> first(MutView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.front()); }
+template <class T> std::optional<T> last(MutView<T> v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
+template <class T> T first_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.front(); }
+template <class T> T last_val(MutView<T> v) { if (v.empty()) fail(\"the list is empty\"); return v.back(); }
+template <class T> std::vector<T> sorted(MutView<T> v) { auto o = to_list(v); std::sort(o.begin(), o.end()); return o; }
+template <class T, class U> bool has(MutView<T> v, const U& x) { for (size_t i = 0; i < v.n; i++) if (v.ptr[i] == x) return true; return false; }
+",
+    },
+    Piece {
         name: "list_concat_at",
         needs: &["at"],
         code: "\

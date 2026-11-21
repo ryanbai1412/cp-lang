@@ -242,7 +242,7 @@ impl<'p> Emitter<'p> {
                 });
                 b.push_str(&format!("        {shown}\n    }}\n"));
             }
-            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) => {
+            Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => {
                 let cell = self.cell("v[i]", elem);
                 let shown = self.show_stmt(&cell, elem, "digits");
                 b.push_str("    for (size_t i = 0; i < v.size(); i++) {\n");

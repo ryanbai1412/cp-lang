@@ -333,6 +333,10 @@ impl<'p> Emitter<'p> {
                 self.need("list_view");
                 self.need_ty(t);
             }
+            Ty::MutView(t) => {
+                self.need("mut_view");
+                self.need_ty(t);
+            }
             Ty::Opt(t) | Ty::List(t) | Ty::Set(t) => self.need_ty(t),
             Ty::Map(k, v) => {
                 self.need_ty(k);
@@ -633,6 +637,11 @@ impl<'p> Emitter<'p> {
                 Ty::ListView(elem) => {
                     if let Some(cell) = l.cpp_elem(elem) {
                         return format!("cpl::ListView<{cell}>");
+                    }
+                }
+                Ty::MutView(elem) => {
+                    if let Some(cell) = l.cpp_elem(elem) {
+                        return format!("cpl::MutView<{cell}>");
                     }
                 }
                 _ => {}
@@ -993,6 +1002,7 @@ impl<'p> Emitter<'p> {
                 | Ty::Opt(t)
                 | Ty::List(t)
                 | Ty::ListView(t)
+                | Ty::MutView(t)
                 | Ty::Set(t)
                 | Ty::HashSet(t)
                 | Ty::Mut(t) => has_adt(t),
@@ -1693,6 +1703,7 @@ fn judge_ty(ty: &Ty) -> String {
         Ty::StrView => "cpl::StrView".into(),
         Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
         Ty::ListView(elem) => format!("cpl::ListView<{}>", judge_ty(elem)),
+        Ty::MutView(elem) => format!("cpl::MutView<{}>", judge_ty(elem)),
         Ty::Tuple(items) => {
             let items: Vec<String> = items.iter().map(judge_ty).collect();
             format!("std::tuple<{}>", items.join(", "))

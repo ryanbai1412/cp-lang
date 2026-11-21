@@ -607,6 +607,8 @@ struct Lowerer<'a> {
     gen_aliases: Vec<GenAliasTemplate<'a>>,
 
     globals: Vec<Global>,
+    mut_globals: HashSet<GlobalId>,
+    mut_slice_inits: HashSet<Span>,
     /// Annotated array `Spec`s for top-level globals (for `a.inverse()` on bounded-range elements).
     global_specs: HashMap<GlobalId, ast::Type>,
     /// The least and greatest value of each top-level `let` of a range
@@ -732,6 +734,8 @@ impl<'a> Lowerer<'a> {
             aliases: Vec::new(),
             gen_aliases: Vec::new(),
             globals: Vec::new(),
+            mut_globals: HashSet::new(),
+            mut_slice_inits: HashSet::new(),
             global_specs: HashMap::new(),
             global_bounds: HashMap::new(),
             domain_lens: HashMap::new(),
@@ -2861,6 +2865,9 @@ impl<'a> Lowerer<'a> {
                 span: init.span,
             });
             self.mod_syms[self.cur_mod].insert(name.to_string(), Sym::Global(id));
+            if mutable {
+                self.mut_globals.insert(id);
+            }
             let place = Place {
                 kind: PlaceKind::Global(id),
                 ty: init.ty.clone(),
@@ -3503,6 +3510,7 @@ impl<'a> Lowerer<'a> {
             | Ty::Opt(t)
             | Ty::List(t)
             | Ty::ListView(t)
+            | Ty::MutView(t)
             | Ty::Set(t)
             | Ty::HashSet(t)
             | Ty::Mut(t) => self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums),
@@ -3837,7 +3845,7 @@ impl<'a> Lowerer<'a> {
         };
         // A list is an array over `0..len`, and that array a list.
         let e = match (want, &e.ty) {
-            (Ty::Array { dims, elem: want_elem }, Ty::List(elem) | Ty::ListView(elem)) if want_elem == elem => match dims.as_slice() {
+            (Ty::Array { dims, elem: want_elem }, Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem)) if want_elem == elem => match dims.as_slice() {
                 [Dim::Pos(d)] if self.list_domains.contains(d) => {
                     let d = *d;
                     // Passing the list sets the size of its domain.
@@ -4037,7 +4045,7 @@ impl<'a> Lowerer<'a> {
                 ty: Ty::Str,
                 span,
             }),
-            (Ty::List(want_elem), Ty::ListView(got_elem)) if want_elem == got_elem => Ok(Expr {
+            (Ty::List(want_elem), Ty::ListView(got_elem) | Ty::MutView(got_elem)) if want_elem == got_elem => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ToList, vec![e]),
                 ty: want.clone(),
                 span,
@@ -4690,6 +4698,11 @@ fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
                     Arg::Mut(p) => collect_place_calls(p, out),
                 }
             }
+        }
+        ExprKind::MutSlice(place, lo, hi) => {
+            collect_place_calls(place, out);
+            collect_expr_calls(lo, out);
+            collect_expr_calls(hi, out);
         }
         ExprKind::Mutate(_, place, args) => {
             collect_place_calls(place, out);

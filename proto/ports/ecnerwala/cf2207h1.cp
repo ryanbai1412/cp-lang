@@ -12,25 +12,6 @@ fn ask(x: List<Int>) -> Int:
     let resp = read::<Int>() - 1
     first(i for i in 0..x.len if x[i] == resp)!
 
-fn rev_sub(mut x: List<Int>, l: Int, r: Int):
-    var (i, j) = (l, r - 1)
-    while i < j:
-        (x[i], x[j]) = (x[j], x[i])
-        i += 1
-        j -= 1
-
-fn rot_left1(mut x: List<Int>, l: Int, r: Int):
-    if r - l <= 1: return
-    let first_v = x[l]
-    for i in l..r - 1: x[i] = x[i + 1]
-    x[r - 1] = first_v
-
-fn rot_right1(mut x: List<Int>, l: Int, r: Int):
-    if r - l <= 1: return
-    let last_v = x[r - 1]
-    for i in (l + 1..r).rev: x[i] = x[i - 1]
-    x[l] = last_v
-
 fn merge_op(mut ops: List<Op>, a: Int, b: Int, is_max: Bool) -> Int:
     let id = ops.len
     ops.push(Op(ops[a].l, ops[b].r, is_max, a, b))
@@ -49,19 +30,19 @@ fn solve(
         ops[l] = Op(l, r, false, -1, -1)
         return [l]
     let m = known_m ?? ask(x)
-    rot_left1(mut x, l, m + 1)
+    x[l..=m].rotate_left(1)
     var l_ch = solve(mut x, mut ops, l, m, is_max, none)
-    rot_right1(mut x, l, m + 1)
+    x[l..=m].rotate_right(1)
     var mid_ch = solve(mut x, mut ops, m, m + 1, is_max, none)[0]
-    rev_sub(mut x, m, r)
+    x[m..r].reverse()
     var r_ch = solve(mut x, mut ops, m + 1, r, not is_max, none)
-    rev_sub(mut x, m, r)
+    x[m..r].reverse()
     r_ch.reverse()
     while not l_ch.is_empty and not r_ch.is_empty:
         let (lb, rb) = (ops[l_ch.last!].l, ops[r_ch.last!].r)
-        rev_sub(mut x, lb, rb)
+        x[lb..rb].reverse()
         let loc = ask(x)
-        rev_sub(mut x, lb, rb)
+        x[lb..rb].reverse()
         if loc < ops[mid_ch].l:
             mid_ch = merge_op(mut ops, mid_ch, r_ch.pop()!, not is_max)
         else:

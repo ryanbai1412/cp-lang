@@ -2161,11 +2161,18 @@ impl<'a> Checker<'a> {
                     (**elem).clone()
                 }
             }
-            // `xs[0..5]`, `s[0..5]`: O(1) read-only slice view into a list or string.
-            ty if (*ty == Ty::Str || matches!(ty, Ty::Named { name, .. } if name == "List"))
-                && matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
+            // `s[0..5]`: O(1) read-only slice view into a string.
+            Ty::Str
+                if matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
             {
                 self.note_readonly_view(expr, "slice");
+                Ty::Str
+            }
+            // `xs[0..5]`: O(1) slice view into a list (mutable when the root is a `var`).
+            ty if matches!(ty, Ty::Named { name, .. } if name == "List")
+                && matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
+            {
+                self.note_view(expr, "slice");
                 ty.clone()
             }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),

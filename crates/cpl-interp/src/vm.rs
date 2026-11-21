@@ -973,7 +973,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 | ExprKind::Print(..)
                 | ExprKind::Debug(..)
                 | ExprKind::Format(..)
-                | ExprKind::Fill(..) => true,
+                | ExprKind::Fill(..)
+                | ExprKind::MutSlice(..) => true,
             }
         }
         fn block_may_touch_globals(b: &Block, globals: &[cpl_ir::GlobalId]) -> bool {
@@ -1872,6 +1873,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         Arg::Value(x) => Self::expr_mentions_slot(x, target),
                         Arg::Mut(p) => Self::place_mentions_slot(p, target),
                     })
+            }
+            ExprKind::MutSlice(p, lo, hi) => {
+                Self::place_mentions_slot(p, target)
+                    || Self::expr_mentions_slot(lo, target)
+                    || Self::expr_mentions_slot(hi, target)
             }
             ExprKind::Mutate(_, p, args) => {
                 Self::place_mentions_slot(p, target)

@@ -2402,7 +2402,11 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
         ["E0401"]
     );
     assert_eq!(
-        codes("var xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"),
+        codes("let xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"),
+        ["E0401"]
+    );
+    assert_eq!(
+        codes("var s = \"abcdef\"\ns[1..4][0] = 'x'\n"),
         ["E0401"]
     );
 
@@ -3004,4 +3008,56 @@ fn a_failed_import_drops_only_its_names_from_the_prelude() {
     assert!(found[0].message.contains("no_such"), "{found:?}");
     let src = "use std.nope.{Rooted}\ndomain V = 1..=5\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n";
     assert_eq!(check(src).len(), 1, "{:?}", check(src));
+}
+
+#[test]
+fn mutable_slice_views_lend_and_reject_aliasing() {
+    // In-place mutation through a mutable slice of a `var` list or `[D]T` succeeds.
+    assert_eq!(
+        codes("var xs = [4, 3, 2, 1]\nxs[1..3].sort()\nxs[1..3][0] = 9\nprint(xs)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("var xs = [4, 3, 2, 1]\nlet v = xs[1..3]\nv.sort()\nprint(xs)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("var xs = [4, 3, 2, 1]\nlet a = xs[0..2]\nlet b = xs[2..4]\na.sort()\nb.sort()\nprint(xs)\n"),
+        Vec::<&str>::new()
+    );
+    assert_eq!(
+        codes("domain D = 0..4\nvar a: [D]Int = [D] i => 4 - i.ord\nlet v = a[D(1)..D(3)]\nv.sort()\nprint(a)\n"),
+        Vec::<&str>::new()
+    );
+
+    // Mutating through a slice of a `let` list or fixed-length mutators are E0401.
+    assert_eq!(
+        codes("let xs = [4, 3, 2, 1]\nxs[1..3].sort()\n"),
+        ["E0401"]
+    );
+    assert_eq!(
+        codes("var xs = [1, 2, 3, 4]\nxs[1..3].push(5)\n"),
+        ["E0401"]
+    );
+
+    // Aliasing the parent (write or read) while a mutable slice is live is E0602.
+    assert_eq!(
+        codes("var xs = [4, 3, 2, 1]\nlet v = xs[1..3]\nxs[2] = 9\nv.sort()\n"),
+        ["E0602"]
+    );
+    assert_eq!(
+        codes("var xs = [4, 3, 2, 1]\nlet v = xs[1..3]\nprint(xs[2])\nv.sort()\n"),
+        ["E0602"]
+    );
+    assert!(
+        codes("var xs = [4, 3, 2, 1]\nlet a = xs[0..3]\nlet b = xs[1..4]\na.sort()\nb.sort()\n")
+            .iter()
+            .all(|c| *c == "E0602")
+            && !codes("var xs = [4, 3, 2, 1]\nlet a = xs[0..3]\nlet b = xs[1..4]\na.sort()\nb.sort()\n")
+                .is_empty()
+    );
+    assert_eq!(
+        codes("domain D = 0..4\nvar a: [D]Int = [D] i => 4 - i.ord\nlet v = a[D(1)..D(3)]\na[D(2)] = 0\nv.sort()\n"),
+        ["E0602"]
+    );
 }

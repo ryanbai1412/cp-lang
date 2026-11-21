@@ -601,6 +601,24 @@ impl<'a> Checker<'a> {
     /// "`x` is a `let`, so it can't be ...".
     fn require_mutable(&mut self, expr: &cpl_syntax::ast::Expr, action: &str) {
         self.writable(expr);
+        if self.view_kind(expr).is_some() {
+            if self.is_readonly_view(expr) {
+                return;
+            }
+            if let Some(place) = self.place(expr) {
+                if place.root_mutable || place.via.is_some() {
+                    return;
+                }
+                let message = format!(
+                    "`{}` is not a var, so it can't be {action}",
+                    place.root
+                );
+                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, expr.span, message) {
+                    diag.help = Some(format!("declare it with `var {}` to change it", place.root));
+                }
+                return;
+            }
+        }
         let Some((name, span)) = Self::root_name(expr) else {
             return;
         };

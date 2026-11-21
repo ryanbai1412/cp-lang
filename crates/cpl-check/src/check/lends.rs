@@ -24,8 +24,35 @@ use std::collections::HashSet;
 
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
-    "push", "pop", "sort", "reverse", "clear", "insert", "remove", "swap", "swap_idx", "set",
-    "set_at", "add", "resize", "truncate", "reserve", "fill",
+    "push",
+    "pop",
+    "sort",
+    "reverse",
+    "rotate_left",
+    "rotate_right",
+    "scan_in_place",
+    "suffix_scan_in_place",
+    "nth_element",
+    "next_permutation",
+    "prev_permutation",
+    "shuffle",
+    "clear",
+    "insert",
+    "remove",
+    "take",
+    "swap",
+    "swap_idx",
+    "set",
+    "set_at",
+    "add",
+    "resize",
+    "truncate",
+    "reserve",
+    "fill",
+];
+/// `List` methods that change length and therefore cannot run on a fixed-length slice view.
+const LENGTH_CHANGING_MUTATORS: &[&str] = &[
+    "push", "pop", "clear", "insert", "remove", "take", "resize", "truncate", "reserve", "extend",
 ];
 /// Methods that store their arguments in the receiver.
 const STORES: &[&str] = &["push", "insert", "set", "set_at", "add"];
@@ -81,11 +108,11 @@ pub(crate) struct ProjCall {
 
 /// A place: where a value lives, from a `let` or `var` down.
 pub(crate) struct Place {
-    root: String,
-    root_mutable: bool,
+    pub(crate) root: String,
+    pub(crate) root_mutable: bool,
     steps: Vec<Step>,
     /// The `let`-bound lend the place goes through, if any.
-    via: Option<String>,
+    pub(crate) via: Option<String>,
 }
 
 /// What a `let`-bound slice or row stands for.
@@ -1944,6 +1971,19 @@ impl<'a> Checker<'a> {
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
                     diag.help = Some(
                         "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
+                    );
+                }
+                return;
+            }
+            if kind == "slice" && LENGTH_CHANGING_MUTATORS.contains(&name.text.as_str()) {
+                let message = format!(
+                    "`{}` is a fixed-length slice view, so `{}` can't change its length",
+                    show(base),
+                    show(call)
+                );
+                if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
+                    diag.help = Some(
+                        "copy it into an owned list first with `.to_list()`".into(),
                     );
                 }
                 return;

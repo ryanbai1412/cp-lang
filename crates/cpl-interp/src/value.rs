@@ -213,6 +213,8 @@ pub(crate) enum Value {
     List(Rc<Vec<Value>>),
     /// O(1) read-only view (slice or reverse) into a `List<T>`.
     ListView(Rc<ListViewVal>),
+    /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
+    MutView(Rc<MutViewVal>),
     Map(Rc<BTreeMap<Value, Value>>),
     Set(Rc<BTreeSet<Value>>),
     /// Lent to a call as a `mut` argument until the call returns.
@@ -314,6 +316,14 @@ impl StrViewVal {
     pub fn contains_byte(&self, b: u8) -> bool {
         self.base[self.lo..self.lo + self.len].contains(&b)
     }
+}
+
+/// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
+#[derive(Clone, Debug)]
+pub(crate) struct MutViewVal {
+    pub target: Part,
+    pub lo: usize,
+    pub len: usize,
 }
 
 /// O(1) read-only slice/reverse view into a `List<T>`'s backing `Vec`.
@@ -950,7 +960,7 @@ impl Value {
             Value::Tuple(_) => 10,
             Value::Enum(..) => 11,
             Value::Array(_) => 12,
-            Value::List(_) | Value::ListView(_) => 13,
+            Value::List(_) | Value::ListView(_) | Value::MutView(_) => 13,
             Value::Map(_) => 14,
             Value::Set(_) => 15,
             Value::Moved => 16,
@@ -1049,6 +1059,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
         Ty::List(_) => Value::List(Rc::new(Vec::new())),
         Ty::ListView(_) => Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false))),
+        Ty::MutView(_) => Value::Unit,
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
     }
@@ -1157,7 +1168,7 @@ pub(crate) fn show(
                 rec(out, &cell, elem);
             }
         }
-        (Value::List(items), Ty::List(elem)) => {
+        (Value::List(items), Ty::List(elem) | Ty::MutView(elem)) => {
             let sep = sep_of(elem, &program.structs);
             for (i, item) in items.iter().enumerate() {
                 if i > 0 {

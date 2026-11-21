@@ -1,6 +1,5 @@
 // Codeforces 2207 H3: Bowser's Castle (Hard Version).
 @!interactive
-use std.seq.{reverse, rotate_left, rotate_right}
 
 struct Node:
     l: Int
@@ -28,22 +27,22 @@ fn solve(l: Int, r: Int, is_max: Bool, known_m: ?Int) -> List<Int>:
     if r - l == 1: return [l]
     let m = known_m ?? query()
 
-    rotate_left(mut x, 1, range: l..=m)
+    x[l..=m].rotate_left(1)
     var l_ch = solve(l, m, is_max, none)
-    rotate_right(mut x, 1, range: l..=m)
+    x[l..=m].rotate_right(1)
 
     var mid = m
 
-    reverse(mut x, range: m..r)
+    x[m..r].reverse()
     var r_ch = solve(m + 1, r, not is_max, none)
-    reverse(mut x, range: m..r)
+    x[m..r].reverse()
 
-    reverse(mut r_ch)
+    r_ch.reverse()
     while let li = l_ch.last, let ri = r_ch.last:
         let (ll, rr) = (ops[li].l, ops[ri].r)
-        reverse(mut x, range: ll..rr)
+        x[ll..rr].reverse()
         let loc = query()
-        reverse(mut x, range: ll..rr)
+        x[ll..rr].reverse()
         if loc < ops[mid].l:
             mid = merge(mid, r_ch.pop()!, not is_max)
         else:
@@ -53,12 +52,12 @@ fn solve(l: Int, r: Int, is_max: Bool, known_m: ?Int) -> List<Int>:
     l_ch
 
 let loc_inc = query()
-reverse(mut x)
+x.reverse()
 let loc_dec = query()
-reverse(mut x)
+x.reverse()
 
 let is_max = loc_inc >= loc_dec
-if not is_max: reverse(mut x)
+if not is_max: x.reverse()
 var top = solve(0, n, is_max, if is_max: loc_inc else: loc_dec)
 while top.len >= 2:
     let b = top.pop()!

@@ -1705,6 +1705,20 @@ fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, St
     };
     let mut ops: Vec<(usize, usize, String)> = Vec::new();
     let mut visit_expr = |e: &cpl_ir::Expr| {
+        if let cpl_ir::ExprKind::MutSlice(..) = &e.kind {
+            let elem = match &e.ty {
+                cpl_ir::Ty::MutView(t) => program.show_ty(t),
+                _ => "T".to_string(),
+            };
+            let (line, col) = line_col(e.span);
+            ops.push((
+                line,
+                col,
+                format!(
+                    "mutable slice view -> cpl::MutView<{elem}> (T* + len), O(1), fixed-length mut lend"
+                ),
+            ));
+        }
         if let cpl_ir::ExprKind::Builtin(op, _) = &e.kind {
             let desc = match op {
                 cpl_ir::Builtin::StrSlice => Some(
@@ -1958,7 +1972,7 @@ mod tests {
         let file = dir.join("views.cp");
         std::fs::write(
             &file,
-            "let s = \"abcdef\"\nlet xs = [1, 2, 3]\nprint(s[1..4], s.rev, xs.rev, s[1..4].to_str(), xs[0..2].to_list())\n",
+            "let s = \"abcdef\"\nlet xs = [1, 2, 3]\nvar ys = [3, 1, 2]\nys[0..2].sort()\nprint(s[1..4], s.rev, xs.rev, s[1..4].to_str(), xs[0..2].to_list(), ys)\n",
         )
         .unwrap();
         let path = file.to_string_lossy().into_owned();
@@ -1968,6 +1982,10 @@ mod tests {
         assert!(text.contains("slice view -> cpl::StrView"), "{text}");
         assert!(text.contains("reverse view -> cpl::StrView"), "{text}");
         assert!(text.contains("reverse view -> cpl::ListView"), "{text}");
+        assert!(
+            text.contains("mutable slice view -> cpl::MutView<Int> (T* + len), O(1)"),
+            "{text}"
+        );
         assert!(text.contains("O(1), read-only"), "{text}");
         assert!(text.contains("explicit copy -> std::string"), "{text}");
         assert!(text.contains("explicit copy -> std::vector"), "{text}");

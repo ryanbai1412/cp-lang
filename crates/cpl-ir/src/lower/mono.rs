@@ -309,6 +309,7 @@ impl<'a> Lowerer<'a> {
             Ty::Opt(t) => format!("Opt_{}", self.mangle_ty(t)),
             Ty::List(t) => format!("Lst_{}", self.mangle_ty(t)),
             Ty::ListView(t) => format!("LstView_{}", self.mangle_ty(t)),
+            Ty::MutView(t) => format!("MutView_{}", self.mangle_ty(t)),
             Ty::Map(k, v) => format!("Map_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
             Ty::HashMap(k, v) => format!("HMap_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
             Ty::Set(t) => format!("Set_{}", self.mangle_ty(t)),
@@ -1838,7 +1839,7 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
         let (lo, list) = match self.probe_ty_silent(arg) {
-            Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(_)) if part_from.is_some() => (part_from.unwrap_or(0), true),
+            Some(Ty::Array { .. } | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) if part_from.is_some() => (part_from.unwrap_or(0), true),
             Some(Ty::Array { .. }) if written => (0, true),
             Some(Ty::Array { dims, .. }) => match dims.as_slice() {
                 [Dim::Int] => (0, false),
@@ -1846,7 +1847,7 @@ impl<'a> Lowerer<'a> {
                 _ => return,
             },
             // A list is indexed by its own positions, `0..len`.
-            Some(Ty::List(_) | Ty::ListView(_) | Ty::Str | Ty::StrView) => (0, true),
+            Some(Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) | Ty::Str | Ty::StrView) => (0, true),
             _ => return,
         };
         // `fn f<D>(mut d: [D]Int, ..)` that never says `D` again takes an
@@ -2225,7 +2226,7 @@ impl<'a> Lowerer<'a> {
                 });
             }
             ast::TypeKind::Named { name, args } => match (name.text.as_str(), concrete) {
-                ("List" | "Iter", Ty::List(elem) | Ty::ListView(elem)) if args.len() == 1 => {
+                ("List" | "Iter", Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem)) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                 }
                 ("List" | "Iter", Ty::Str | Ty::StrView) if args.len() == 1 => {
@@ -2302,7 +2303,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
-                } else if let (Ty::List(ce) | Ty::ListView(ce), [_]) = (concrete, index.as_slice()) {
+                } else if let (Ty::List(ce) | Ty::ListView(ce) | Ty::MutView(ce), [_]) = (concrete, index.as_slice()) {
                     // A list given where a `[D]T` is asked for.
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
                 } else if let (Ty::Str | Ty::StrView, [_]) = (concrete, index.as_slice()) {

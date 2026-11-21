@@ -89,6 +89,11 @@ pub fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
                 f(hi);
             }
         }
+        ExprKind::MutSlice(place, lo, hi) => {
+            place_exprs(place, f);
+            f(lo);
+            f(hi);
+        }
         ExprKind::Mutate(_, place, args) => {
             place_exprs(place, f);
             args.iter().for_each(f);
@@ -327,7 +332,9 @@ impl Effects {
                     }
                 }
             }
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => self.store(place),
+            ExprKind::MutSlice(place, _, _)
+            | ExprKind::Mutate(_, place, _)
+            | ExprKind::Sort(place, _, _) => self.store(place),
             _ => {}
         }
     }
@@ -413,7 +420,9 @@ pub fn inside_list(
     });
     deep_exprs(body, &mut |e| match &e.kind {
         ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => kept = false,
-        ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => kept &= !whole(place),
+        ExprKind::MutSlice(place, _, _)
+        | ExprKind::Mutate(_, place, _)
+        | ExprKind::Sort(place, ..) => kept &= !whole(place),
         _ => {}
     });
     kept.then_some((list, slot))

@@ -256,6 +256,14 @@ impl<'a> Lowerer<'a> {
                         );
                     }
                 }
+                if indices.len() == 1
+                    && matches!(indices[0].kind, ast::ExprKind::Range { .. })
+                    && self.mut_slice_inits.contains(&self.span(span))
+                    && self.is_mutable_place(base)
+                    && Self::sliceable_mut_elem(&base_expr.ty).is_some()
+                {
+                    return self.mut_slice_expr(base, &indices[0], span);
+                }
                 if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
                     return self.slice_expr(base_expr, &indices[0], span);
                 }
@@ -309,11 +317,22 @@ impl<'a> Lowerer<'a> {
                 if indices.len() == 1
                     && matches!(
                         base_expr.ty,
-                        Ty::Array { .. } | Ty::List(_) | Ty::Str
+                        Ty::Array { .. }
+                            | Ty::List(_)
+                            | Ty::ListView(_)
+                            | Ty::MutView(_)
+                            | Ty::Str
+                            | Ty::StrView
                     )
                 {
                     if let Some(Ty::Range(_)) = self.probe_ty_silent(&indices[0]) {
                         let range_val = self.expr(&indices[0], None);
+                        if self.mut_slice_inits.contains(&self.span(span))
+                            && self.is_mutable_place(base)
+                            && Self::sliceable_mut_elem(&base_expr.ty).is_some()
+                        {
+                            return self.mut_slice_by_range_val(base, range_val, span);
+                        }
                         return self.slice_by_range_val(base_expr, range_val, span);
                     }
                 }
@@ -1967,7 +1986,7 @@ impl<'a> Lowerer<'a> {
             Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Str | Ty::StrView | Ty::Pos(_) | Ty::Bound(_) => true,
             Ty::Tuple(items) => items.iter().all(|t| self.ordered(t)),
             Ty::Record(fields) => fields.iter().all(|(_, t)| self.ordered(t)),
-            Ty::List(elem) | Ty::ListView(elem) => self.ordered(elem),
+            Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => self.ordered(elem),
             Ty::Struct(id) => {
                 let fields: Vec<Ty> = self.structs[*id]
                     .def
@@ -2139,7 +2158,11 @@ impl<'a> Lowerer<'a> {
             )
             || matches!(
                 (&l.ty, &r.ty),
-                (Ty::List(a), Ty::ListView(b)) | (Ty::ListView(a), Ty::List(b)) if a == b
+                (Ty::List(a), Ty::ListView(b) | Ty::MutView(b))
+                    | (Ty::ListView(a) | Ty::MutView(a), Ty::List(b))
+                    | (Ty::ListView(a), Ty::MutView(b))
+                    | (Ty::MutView(a), Ty::ListView(b))
+                    if a == b
             )
         {
             (l, r)
@@ -2315,7 +2338,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 let elem = match &holder.ty {
-                    Ty::List(elem) | Ty::ListView(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => {
+                    Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) | Ty::Set(elem) | Ty::HashSet(elem) | Ty::Range(elem) => {
                         (**elem).clone()
                     }
                     Ty::Array { elem, .. } => (**elem).clone(),
@@ -2344,7 +2367,7 @@ impl<'a> Lowerer<'a> {
     /// Inside `unchecked:`, the `Int` that indexes a list is marked as
     /// vouched for.
     pub(super) fn vouched(&mut self, base: &Ty, indices: Vec<Expr>) -> Vec<Expr> {
-        if self.unchecked == 0 || !matches!(base, Ty::List(_) | Ty::ListView(_) | Ty::Array { .. } | Ty::Str | Ty::StrView) {
+        if self.unchecked == 0 || !matches!(base, Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) | Ty::Array { .. } | Ty::Str | Ty::StrView) {
             return indices;
         }
         indices
@@ -2596,7 +2619,7 @@ impl<'a> Lowerer<'a> {
                 }
                 (out, (**elem).clone())
             }
-            Ty::List(elem) | Ty::ListView(elem) => (one(self, &Ty::Int), (**elem).clone()),
+            Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => (one(self, &Ty::Int), (**elem).clone()),
             Ty::Str | Ty::StrView => (one(self, &Ty::Int), Ty::Char),
             Ty::Range(inner) => (one(self, &Ty::Int), (**inner).clone()),
             Ty::Map(key, value) | Ty::HashMap(key, value) => (one(self, key), (**value).clone()),
@@ -2614,11 +2637,225 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// True when `e` refers to a mutable place whose backing storage can be
+    /// mutably sliced in O(1) without copying.
+    pub(super) fn is_mutable_place(&self, e: &ast::Expr) -> bool {
+        match &e.kind {
+            ast::ExprKind::Paren(inner) | ast::ExprKind::Unwrap(inner) => {
+                self.is_mutable_place(inner)
+            }
+            ast::ExprKind::Field { base, .. } | ast::ExprKind::Index { base, .. } => {
+                self.is_mutable_place(base)
+            }
+            ast::ExprKind::SelfValue => {
+                self.cx
+                    .receiver
+                    .is_some_and(|(slot, _)| self.cx.mut_slots.contains(&slot))
+                    || self.cx.inline_self.is_some()
+            }
+            ast::ExprKind::Name(n) => {
+                if self.cx.mut_aliases.contains_key(n) {
+                    return true;
+                }
+                if let Some(slot) = self.lookup(n) {
+                    return self.cx.mut_slots.contains(&slot)
+                        || matches!(self.cx.locals[slot].ty, Ty::MutView(_));
+                }
+                if let Some(Sym::Global(gid)) = self.get_sym(n) {
+                    return self.mut_globals.contains(&gid)
+                        || matches!(self.globals[gid].ty, Ty::MutView(_));
+                }
+                if let Some((_, sid)) = self.cx.receiver {
+                    if self.field_of(&Ty::Struct(sid), n).is_some() {
+                        return self
+                            .cx
+                            .receiver
+                            .is_some_and(|(slot, _)| self.cx.mut_slots.contains(&slot));
+                    }
+                }
+                false
+            }
+            _ => false,
+        }
+    }
+
+    pub(super) fn sliceable_mut_elem(ty: &Ty) -> Option<Ty> {
+        match ty {
+            Ty::List(e) | Ty::MutView(e) => Some((**e).clone()),
+            Ty::Array { dims, elem }
+                if dims.len() == 1 && !matches!(dims[0], Dim::Sym(_)) =>
+            {
+                Some((**elem).clone())
+            }
+            _ => None,
+        }
+    }
+
+    /// Computes `(lo, hi, elem_ty)` (0-based half-open offsets) for slicing `base_place`
+    /// by a syntactic range `lo..hi` / `lo..=hi` / `..hi` / `lo..`.
+    pub(super) fn mut_slice_bounds(
+        &mut self,
+        base_place: &Place,
+        range: &ast::Expr,
+        span: Span,
+    ) -> Option<(Expr, Expr, Ty)> {
+        let elem_ty = Self::sliceable_mut_elem(&base_place.ty)?;
+        let ast::ExprKind::Range {
+            lo,
+            hi,
+            inclusive,
+            step,
+        } = &range.kind
+        else {
+            return None;
+        };
+        if step.is_some() {
+            self.unsupported(span, "stepped slice");
+            return None;
+        }
+        for bound in [lo, hi].into_iter().flatten() {
+            let negative = matches!(
+                &bound.kind,
+                ast::ExprKind::Unary { op: UnOp::Neg, expr } if matches!(expr.kind, ast::ExprKind::Int(n) if n > 0)
+            );
+            if negative {
+                self.error(
+                    codes::BAD_OPERANDS,
+                    bound.span,
+                    "a slice bound counts from the start, so it can't be negative",
+                );
+                self.help("count from the end with the length: `a[..a.len - 1]`");
+                return None;
+            }
+        }
+        let first = match &base_place.ty {
+            Ty::Array { dims, .. } => match dims[..] {
+                [Dim::IntFrom(first)] => first,
+                _ => 0,
+            },
+            _ => 0,
+        };
+        let len_expr = match &base_place.ty {
+            Ty::Array { dims, .. } => match dims[0] {
+                Dim::Pos(d) => self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                Dim::Bound(d) => {
+                    let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                    self.int_add(n, 1)
+                }
+                _ => self.mk(
+                    ExprKind::Builtin(Builtin::Len, vec![place_to_expr(base_place)]),
+                    Ty::Int,
+                    span,
+                ),
+            },
+            _ => self.mk(
+                ExprKind::Builtin(Builtin::Len, vec![place_to_expr(base_place)]),
+                Ty::Int,
+                span,
+            ),
+        };
+        let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
+            let v = lw.expr(e, None);
+            match v.ty {
+                Ty::Int => lw.int_add(v, i64::from(is_end && *inclusive) - first),
+                Ty::Pos(_) | Ty::Bound(_) => {
+                    let ord = lw.cast(Cast::Ord, v, Ty::Int);
+                    if is_end && *inclusive {
+                        lw.int_add(ord, 1)
+                    } else {
+                        ord
+                    }
+                }
+                _ => lw.coerce(v, &Ty::Int, e.span),
+            }
+        };
+        let lo_e = match lo {
+            Some(l) => to_idx(self, l, false),
+            None => self.int_lit(0, span),
+        };
+        let hi_e = match hi {
+            Some(h) => to_idx(self, h, true),
+            None => len_expr,
+        };
+        Some((lo_e, hi_e, elem_ty))
+    }
+
+    /// Computes `(lo, hi, elem_ty)` for slicing `base_place` by a runtime `Range<T>` value.
+    pub(super) fn mut_slice_range_val_bounds(
+        &mut self,
+        base_place: &Place,
+        range_val: Expr,
+        span: Span,
+    ) -> Option<(Expr, Expr, Ty)> {
+        let elem_ty = Self::sliceable_mut_elem(&base_place.ty)?;
+        let first = match &base_place.ty {
+            Ty::Array { dims, .. } => match dims[..] {
+                [Dim::IntFrom(first)] => first,
+                _ => 0,
+            },
+            _ => 0,
+        };
+        let range_ty = range_val.ty.clone();
+        let range_inner = match &range_ty {
+            Ty::Range(inner) => (**inner).clone(),
+            _ => Ty::Int,
+        };
+        let r_slot = self.temp(range_ty);
+        self.cx.pending.push(Stmt::Let(r_slot, Some(range_val)));
+        let r_ref = self.local(r_slot, span);
+        let lo_bound = self.mk(
+            ExprKind::Builtin(Builtin::RangeLo, vec![r_ref.clone()]),
+            range_inner.clone(),
+            span,
+        );
+        let hi_bound = self.mk(
+            ExprKind::Builtin(Builtin::RangeHi, vec![r_ref]),
+            range_inner.clone(),
+            span,
+        );
+        let lo = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
+            self.cast(Cast::Ord, lo_bound, Ty::Int)
+        } else {
+            self.int_add(lo_bound, -first)
+        };
+        let hi = if matches!(range_inner, Ty::Pos(_) | Ty::Bound(_)) {
+            self.cast(Cast::Ord, hi_bound, Ty::Int)
+        } else {
+            self.int_add(hi_bound, -first)
+        };
+        Some((lo, hi, elem_ty))
+    }
+
+    fn mut_slice_expr(&mut self, base: &ast::Expr, range: &ast::Expr, span: Span) -> Expr {
+        let base_place = self.place(base);
+        let Some((lo, hi, elem_ty)) = self.mut_slice_bounds(&base_place, range, span) else {
+            return self.err_expr(span);
+        };
+        self.mk(
+            ExprKind::MutSlice(Box::new(base_place), Box::new(lo), Box::new(hi)),
+            Ty::MutView(Box::new(elem_ty)),
+            span,
+        )
+    }
+
+    fn mut_slice_by_range_val(&mut self, base: &ast::Expr, range_val: Expr, span: Span) -> Expr {
+        let base_place = self.place(base);
+        let Some((lo, hi, elem_ty)) = self.mut_slice_range_val_bounds(&base_place, range_val, span)
+        else {
+            return self.err_expr(span);
+        };
+        self.mk(
+            ExprKind::MutSlice(Box::new(base_place), Box::new(lo), Box::new(hi)),
+            Ty::MutView(Box::new(elem_ty)),
+            span,
+        )
+    }
+
     /// Ensures the base of a borrowed view outlives the view expression in C++.
     /// Places (locals, globals, fields) and existing views are passed directly
     /// with zero copies; temporary owned values are hoisted into `self.cx.pending`.
     pub(super) fn hoist_view_base(&mut self, base: Expr, span: Span) -> Expr {
-        if matches!(base.ty, Ty::StrView | Ty::ListView(_))
+        if matches!(base.ty, Ty::StrView | Ty::ListView(_) | Ty::MutView(_))
             || matches!(
                 base.kind,
                 ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Field(..)
@@ -2633,7 +2870,7 @@ impl<'a> Lowerer<'a> {
 
     /// Lowers a slice by a runtime `Range<T>` value (`base[r]`) into a view or `List<T>`.
     fn slice_by_range_val(&mut self, base: Expr, range_val: Expr, span: Span) -> Expr {
-        if matches!(base.ty, Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_)) {
+        if matches!(base.ty, Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) {
             let base = self.hoist_view_base(base, span);
             let range_ty = range_val.ty.clone();
             let range_inner = match &range_ty {
@@ -2669,7 +2906,7 @@ impl<'a> Lowerer<'a> {
                     Ty::StrView,
                     span,
                 ),
-                Ty::List(e) | Ty::ListView(e) => {
+                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => {
                     let elem = (**e).clone();
                     self.mk(
                         ExprKind::Builtin(Builtin::ListSlice, vec![base, lo, hi]),
@@ -2885,7 +3122,7 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         }
-        if matches!(base.ty, Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_)) {
+        if matches!(base.ty, Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)) {
             let base = self.hoist_view_base(base, span);
             let to_idx = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
                 let v = lw.expr(e, None);
@@ -2921,7 +3158,7 @@ impl<'a> Lowerer<'a> {
                     Ty::StrView,
                     span,
                 ),
-                Ty::List(e) | Ty::ListView(e) => {
+                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => {
                     let elem = (**e).clone();
                     self.mk(
                         ExprKind::Builtin(Builtin::ListSlice, vec![base, lo_e, hi_e]),
@@ -3908,7 +4145,7 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 let elem = match &value.ty {
-                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) | Ty::Set(elem) | Ty::HashSet(elem) => {
+                    Ty::Array { elem, .. } | Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) | Ty::Set(elem) | Ty::HashSet(elem) => {
                         (**elem).clone()
                     }
                     Ty::Str | Ty::StrView => Ty::Char,
@@ -4741,7 +4978,7 @@ fn run_gives(stmts: &mut [Stmt]) {
 
 fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
     match ty {
-        Ty::List(e) | Ty::ListView(e) => Some(e),
+        Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => Some(e),
         Ty::Array { dims, elem } if dims.len() == 1 => Some(elem),
         _ => None,
     }
