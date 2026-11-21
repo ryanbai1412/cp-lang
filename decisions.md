@@ -1536,6 +1536,13 @@ server, so a feature lands once, in the server. Their keyword lists are checked 
 saying so) an editor that is not installed. Zed waits on a tree-sitter grammar, which it requires for
 any language. Reverse: delete `editors/{neovim,emacs,helix,smoke.sh}` and the `--full` step.
 
+29.3. **The LSP latency budgets hold at the median, with the 90th percentile within twice the
+budget.** They were asserted on the slowest sample, and one descheduled request under the fast gate's
+fully parallel load turned `main` red with no slow path in the server. The median of many warm samples
+is what a user feels on each keystroke; the 90th-percentile bound still fails a slow path hit on more
+than one keystroke in ten. Opening a file is now nine samples, not one. Reverse: assert `max < budget`
+in `report` in `crates/cpl-lsp/tests/latency.rs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **30.1 A broken-ports benchmark scores recovery.** `crates/cpl-cli/tests/recovery.rs` applies six
