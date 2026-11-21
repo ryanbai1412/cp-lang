@@ -3090,6 +3090,12 @@ impl<'a> Lowerer<'a> {
                         return;
                     }
                 }
+                // `s += c` appends in place; `s + c` would build a new string.
+                if let (Ty::Str, Add, Ty::Char) = (&place.ty, bin, &value.ty) {
+                    let push = ExprKind::Mutate(Mutation::Push, Box::new(place), vec![value]);
+                    out.push(Stmt::Expr(self.mk(push, Ty::Unit, span)));
+                    return;
+                }
                 let value = match (&place.ty, bin) {
                     (
                         Ty::Int,

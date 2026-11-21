@@ -2671,38 +2671,20 @@ impl<'a> Lowerer<'a> {
                 elem_ty.clone(),
                 span,
             );
-            let push_stmt = if is_str {
-                let item_str = lw.as_str(elem, span);
-                let cur = lw.local(acc_slot, span);
-                let joined = lw.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(cur), Box::new(item_str)),
-                    Ty::Str,
-                    span,
-                );
-                Stmt::Assign(
-                    Place {
+            // A `Str` grows by `push` like a list: `acc = acc + c` would copy it each step.
+            let push_stmt = Stmt::Expr(lw.mk(
+                ExprKind::Mutate(
+                    Mutation::Push,
+                    Box::new(Place {
                         kind: PlaceKind::Local(acc_slot),
-                        ty: Ty::Str,
+                        ty: result_ty.clone(),
                         span: lw.span(span),
-                    },
-                    AssignOp::Set,
-                    joined,
-                )
-            } else {
-                Stmt::Expr(lw.mk(
-                    ExprKind::Mutate(
-                        Mutation::Push,
-                        Box::new(Place {
-                            kind: PlaceKind::Local(acc_slot),
-                            ty: result_ty.clone(),
-                            span: lw.span(span),
-                        }),
-                        vec![elem],
-                    ),
-                    Ty::Unit,
-                    span,
-                ))
-            };
+                    }),
+                    vec![elem],
+                ),
+                Ty::Unit,
+                span,
+            ));
             let lid = lw.next_loop;
             lw.next_loop += 1;
             out.push(Stmt::For(
@@ -2979,38 +2961,20 @@ impl<'a> Lowerer<'a> {
                 elem_ty.clone(),
                 span,
             );
-            let push_stmt = if is_str {
-                let item_str = lw.as_str(item, span);
-                let cur = lw.local(acc_slot, span);
-                let joined = lw.mk(
-                    ExprKind::Binary(BinOp::Add, Box::new(cur), Box::new(item_str)),
-                    Ty::Str,
-                    span,
-                );
-                Stmt::Assign(
-                    Place {
+            // A `Str` grows by `push` like a list: `acc = acc + c` would copy it each step.
+            let push_stmt = Stmt::Expr(lw.mk(
+                ExprKind::Mutate(
+                    Mutation::Push,
+                    Box::new(Place {
                         kind: PlaceKind::Local(acc_slot),
-                        ty: Ty::Str,
+                        ty: out_ty.clone(),
                         span: lw.span(span),
-                    },
-                    AssignOp::Set,
-                    joined,
-                )
-            } else {
-                Stmt::Expr(lw.mk(
-                    ExprKind::Mutate(
-                        Mutation::Push,
-                        Box::new(Place {
-                            kind: PlaceKind::Local(acc_slot),
-                            ty: out_ty.clone(),
-                            span: lw.span(span),
-                        }),
-                        vec![item],
-                    ),
-                    Ty::Unit,
-                    span,
-                ))
-            };
+                    }),
+                    vec![item],
+                ),
+                Ty::Unit,
+                span,
+            ));
             let lid = lw.next_loop;
             lw.next_loop += 1;
             out.push(Stmt::For(

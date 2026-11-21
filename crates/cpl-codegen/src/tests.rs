@@ -791,3 +791,10 @@ fn global_stored_once_with_a_literal_is_constexpr() {
     let stored_twice = cpp(concat!("var m = 5\n", "m += read<Int>()\n", "print(m)\n"));
     assert!(!stored_twice.contains("constexpr ll m"), "{stored_twice}");
 }
+
+#[test]
+fn a_str_grows_in_place_when_appended_to() {
+    let body = body("let s: Str = read()\nvar t = \"\"\nfor c in s: t += c\nprint(t, s[1..], s[..=1])\n");
+    assert!(body.contains("t.push_back((char)c)"), "{body}");
+    assert!(!body.contains("Capture"), "{body}");
+}
