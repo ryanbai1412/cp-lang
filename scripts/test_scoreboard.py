@@ -1128,6 +1128,16 @@ class GoalTestsAndLeaderboardTest(unittest.TestCase):
         self.assertIn("ecnerwala/cf2124f2", d_cg["regressions"][0])
         self.assertIn("stdlib/codegen diff (crates/cpl-codegen/src/emit.rs)", d_cg["regressions"][0])
 
+    def test_rewriting_the_checked_in_baseline_is_byte_identical(self):
+        loaded = sb.load_baseline(sb.DEFAULT_BASELINE)
+        with tempfile.TemporaryDirectory() as tmp:
+            out_path = os.path.join(tmp, "scoreboard.json")
+            sb.write_baseline(loaded, out_path=out_path, ports_only=True)
+            with open(sb.ports_jsonl_path(out_path), encoding="utf-8") as f:
+                written = f.read()
+        with open(sb.ports_jsonl_path(sb.DEFAULT_BASELINE), encoding="utf-8") as f:
+            self.assertEqual(written, f.read())
+
     def test_merge_safe_jsonl_and_update_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
             out_path = os.path.join(tmp, "scoreboard.json")

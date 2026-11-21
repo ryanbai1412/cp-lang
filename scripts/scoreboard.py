@@ -2533,7 +2533,7 @@ def write_baseline(report, out_path=DEFAULT_BASELINE, ports_only=False):
     ports_sorted = sorted(report.get("ports", []), key=lambda r: r.get("id", ""))
     with open(jpath, "w", encoding="utf-8") as pf:
         for rec in ports_sorted:
-            pf.write(json.dumps(rec, separators=(",", ":"), sort_keys=True))
+            pf.write(json.dumps(rec, sort_keys=True))
             pf.write("\n")
     if not ports_only:
         summary = {k: v for k, v in report.items() if k != "ports"}
