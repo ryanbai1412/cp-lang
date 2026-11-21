@@ -1,7 +1,7 @@
 # wtf26d
 
 Score: 2/5
-Dream: 3/5
+Dream: pending cold rescore (rewritten: drops invalid `?? (print; return)`, passes `had_inv` explicitly so `can_place` is pure, proves disjoint suffix blocks + decreasing-order optimality in header, replaces `p_to_block`/`block_cursor` with `sorted(by: (block_of, -v.ord))` + `zip`)
 
 Rescored cold on main 1a5cc751 (old 2/5, new 2/5) for accepted syntax (decisions.md §53, §58, §63, §70) and stdlib reuse. Scored on its first landing (ddf13f69); no dream commit since. Syntax: nothing outside decisions.md (`.inverse()` is a method, not a getter). The nested `if let ... else` optional clamps (lines 52-53) are hand-folding a `min` over optionals. Sent back: under 4, the lane owes a rewrite before the port is judged.
 
