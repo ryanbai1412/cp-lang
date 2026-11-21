@@ -3865,6 +3865,8 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 
 ## 124. A half-open range of cuts is also the piece it bounds (2026-11-21)
 
+*Superseded by 137: there is no range of cuts; a range's ends are cuts.*
+
 - **Decision.** With cuts `j, i: D.bounds`, `j..i` is a `Range<D.bounds>`
   (iterating it yields cuts). Wherever a `Range<D>` is expected, it
   converts implicitly to the positions between cut `j` and cut `i`:
@@ -4156,6 +4158,13 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   - `r.halve()` returns `?(left, right)`, both non-empty, `none` when
     `r.len <= 1` so `let … else` is the base case; `r.mid: ?V` is the middle
     position for D&C that recurses around one element.
+  - A range is one value with two faces: ends are cuts, elements are
+    positions. One type `Range<V>`; `r.cuts` walks its `len + 1` cuts. `j..i`
+    from cuts, `l..r`/`l..=r` from positions, and in `..` a position end
+    reads as its left cut (`p..i`). `Range<V.bounds>` and `..=` on cuts are
+    gone, superseding 124's conversion. Cost: a partition DP iterates the
+    last piece's start (`for p in ..i: dp[p.l] + cost(p..i)`) or the cuts
+    (`for j in (..i).cuts`, which includes the empty piece).
   - Rejected: `.n`/`.p` (`n` reads as a count, `p` as parent or prime).
   - Rejected: `r.split(at: c)`; with cuts as values, `r.l..c` and `c..r.r`
     are as short and also express "all but `v`" (`r.l..v.l`, `v.r..r.r`).
