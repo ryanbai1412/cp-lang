@@ -627,3 +627,25 @@ print(b.total, a!)
     assert_eq!(trap, None);
     assert_eq!(out, "14 99\n");
 }
+
+#[test]
+fn vm_do_blocks_give_and_opt_i_comparisons() {
+    let source = "
+fn best_opt(a: ?Int, b: ?Int) -> ?Int:
+    if a == none: b
+    elif b == none: a
+    elif a! < b!: b
+    else: a
+
+let x: ?Int = 3
+let y: ?Int = 7
+let z: ?Int = none
+let r1 = best_opt(x, y)
+let r2 = best_opt(z, x)
+let r3 = if let v = r1: v * 10 else: -1
+print(r1 == y, r2 == x, z != x, r3)
+";
+    let (out, trap) = outcome(source, "");
+    assert_eq!(trap, None);
+    assert_eq!(out, "YES YES YES 70\n");
+}

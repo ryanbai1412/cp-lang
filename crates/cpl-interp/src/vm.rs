@@ -351,6 +351,7 @@ pub(crate) enum Op {
     ListPopFieldOptIL { dst_val: u16, dst_some: u16, obj_v: u16, field: u16 },
     ListPopFieldLV { dst_v: u16, obj_v: u16, field: u16 },
     MakeRange { dst: u16, r_lo: u16, r_hi: u16 },
+    CmpOptI { dst: u16, a_val: u16, a_some: u16, b_val: u16, b_some: u16, op: CmpOp },
     LoadGIdxFieldI { dst: u16, gid: u16, r_i: u16, field: u16 },
     StoreGIdxFieldI { gid: u16, r_i: u16, field: u16, r_val: u16, kind: ScalarKind },
     LoadLIdxFieldI { dst: u16, seq_v: u16, r_i: u16, field: u16 },
@@ -451,6 +452,24 @@ struct LoopTargets {
     continues: Vec<usize>,
 }
 
+enum GiveTarget {
+    I { dst: u16, exits: Vec<usize> },
+    OptI { dst_val: u16, dst_some: u16, exits: Vec<usize> },
+    V { dst: u16, exits: Vec<usize> },
+    Discard { exits: Vec<usize> },
+}
+
+impl GiveTarget {
+    fn exits_mut(&mut self) -> &mut Vec<usize> {
+        match self {
+            GiveTarget::I { exits, .. }
+            | GiveTarget::OptI { exits, .. }
+            | GiveTarget::V { exits, .. }
+            | GiveTarget::Discard { exits } => exits,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 enum ModSuperOp {
     Add(u32),
@@ -473,6 +492,7 @@ struct Compiler<'p> {
     num_local_v: u16,
     pinned_v: u16,
     loops: Vec<LoopTargets>,
+    give_targets: Vec<GiveTarget>,
     cur_fn: Option<FnId>,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<usize>)>,
@@ -524,6 +544,7 @@ impl<'p> Compiler<'p> {
             num_local_v: next_v,
             pinned_v: next_v,
             loops: Vec::new(),
+            give_targets: Vec::new(),
             cur_fn,
             inline_slots: None,
             inline_ret: None,
@@ -1447,6 +1468,14 @@ impl<'p> Compiler<'p> {
                     {
                         self.emit_fallback_stmt(stmt);
                     }
+                } else if let ExprKind::Do(block) = &expr.kind {
+                    self.give_targets.push(GiveTarget::Discard { exits: Vec::new() });
+                    self.compile_stmts(&block.stmts);
+                    let mut target = self.give_targets.pop().unwrap();
+                    let end_pc = self.ops.len() as u32;
+                    for j in target.exits_mut().drain(..) {
+                        self.patch(j, end_pc);
+                    }
                 } else {
                     self.emit_fallback_stmt(stmt);
                 }
@@ -1539,7 +1568,49 @@ impl<'p> Compiler<'p> {
                 }
             }
             Stmt::Give(e) => {
-                if let Some((ret_dst, _)) = self.inline_ret {
+                if let Some(target) = self.give_targets.last() {
+                    match *target {
+                        GiveTarget::I { dst, .. } => {
+                            let r = self.compile_expr_i(e);
+                            if r != dst {
+                                self.emit(Op::MoveI { dst, src: r }, e.span);
+                            }
+                        }
+                        GiveTarget::OptI { dst_val, dst_some, .. } => {
+                            let (rv, rs) = self.compile_expr_opt_i(e);
+                            if rv != dst_val {
+                                self.emit(Op::MoveI { dst: dst_val, src: rv }, e.span);
+                            }
+                            if rs != dst_some {
+                                self.emit(Op::MoveI { dst: dst_some, src: rs }, e.span);
+                            }
+                        }
+                        GiveTarget::V { dst, .. } => {
+                            let r = self.compile_expr_v(e);
+                            if r != dst {
+                                self.emit(Op::MoveV { dst, src: r }, e.span);
+                            }
+                        }
+                        GiveTarget::Discard { .. } => {
+                            if !matches!(
+                                e.kind,
+                                ExprKind::Unit
+                                    | ExprKind::Int(_)
+                                    | ExprKind::Bool(_)
+                                    | ExprKind::Char(_)
+                                    | ExprKind::None
+                                    | ExprKind::Local(_)
+                                    | ExprKind::Global(_)
+                            ) {
+                                let _ = self.compile_expr_v(e);
+                            }
+                        }
+                    }
+                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
+                    if let Some(t) = self.give_targets.last_mut() {
+                        t.exits_mut().push(pc);
+                    }
+                } else if let Some((ret_dst, _)) = self.inline_ret {
                     let r = self.compile_expr_i(e);
                     if r != ret_dst {
                         self.emit(Op::MoveI { dst: ret_dst, src: r }, e.span);
@@ -3051,6 +3122,18 @@ impl<'p> Compiler<'p> {
                 self.patch(j_end, end_pc);
                 (dst_val, dst_some)
             }
+            ExprKind::Do(block) => {
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.give_targets.push(GiveTarget::OptI { dst_val, dst_some, exits: Vec::new() });
+                self.compile_stmts(&block.stmts);
+                let mut target = self.give_targets.pop().unwrap();
+                let end_pc = self.ops.len() as u32;
+                for j in target.exits_mut().drain(..) {
+                    self.patch(j, end_pc);
+                }
+                (dst_val, dst_some)
+            }
             _ => {
                 let src_v = self.emit_fallback_expr_v(expr);
                 let dst_val = self.alloc_i();
@@ -3265,6 +3348,31 @@ impl<'p> Compiler<'p> {
                 let b = self.compile_expr_i(rhs);
                 let dst = self.alloc_i();
                 self.emit(Op::CmpI { dst, a, b, op: *op }, span);
+                dst
+            }
+            ExprKind::Cmp(op, lhs, rhs)
+                if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some()
+                    && ScalarKind::of_opt_ty(&rhs.ty, self.program).is_some()
+                    && matches!(
+                        op,
+                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
+                    ) =>
+            {
+                let (a_val, a_some) = self.compile_expr_opt_i(lhs);
+                let (b_val, b_some) = self.compile_expr_opt_i(rhs);
+                let dst = self.alloc_i();
+                self.emit(Op::CmpOptI { dst, a_val, a_some, b_val, b_some, op: *op }, span);
+                dst
+            }
+            ExprKind::Do(block) => {
+                let dst = self.alloc_i();
+                self.give_targets.push(GiveTarget::I { dst, exits: Vec::new() });
+                self.compile_stmts(&block.stmts);
+                let mut target = self.give_targets.pop().unwrap();
+                let end_pc = self.ops.len() as u32;
+                for j in target.exits_mut().drain(..) {
+                    self.patch(j, end_pc);
+                }
                 dst
             }
             ExprKind::Cast(Cast::Ord | Cast::Trust | Cast::Raw | Cast::CharToInt, inner) => {
@@ -3566,20 +3674,6 @@ impl<'p> Compiler<'p> {
                 }
                 let end_pc = self.ops.len() as u32;
                 self.patch(j_end, end_pc);
-                dst
-            }
-            ExprKind::Do(block) => {
-                let dst = self.alloc_i();
-                let prev_ret = self.inline_ret.replace((dst, Vec::new()));
-                for s in &block.stmts {
-                    self.compile_stmt(s);
-                }
-                let end_pc = self.ops.len() as u32;
-                let (_, jumps) = self.inline_ret.take().unwrap();
-                self.inline_ret = prev_ret;
-                for j in jumps {
-                    self.patch(j, end_pc);
-                }
                 dst
             }
             ExprKind::Call(fn_id, args) => {
@@ -3925,6 +4019,17 @@ impl<'p> Compiler<'p> {
                 let r_hi = self.compile_expr_i(hi);
                 let dst = self.alloc_v();
                 self.emit(Op::MakeRange { dst, r_lo, r_hi }, span);
+                dst
+            }
+            ExprKind::Do(block) => {
+                let dst = self.alloc_v();
+                self.give_targets.push(GiveTarget::V { dst, exits: Vec::new() });
+                self.compile_stmts(&block.stmts);
+                let mut target = self.give_targets.pop().unwrap();
+                let end_pc = self.ops.len() as u32;
+                for j in target.exits_mut().drain(..) {
+                    self.patch(j, end_pc);
+                }
                 dst
             }
             ExprKind::Call(fn_id, args) => {
@@ -6828,6 +6933,28 @@ impl<'p, 'io> Interp<'p, 'io> {
                 Op::MakeRange { dst, r_lo, r_hi } => {
                     regs_v[dst as usize] =
                         Value::Range(regs_i[r_lo as usize], regs_i[r_hi as usize]);
+                }
+                Op::CmpOptI { dst, a_val, a_some, b_val, b_some, op } => {
+                    let a = if regs_i[a_some as usize] != 0 {
+                        Some(regs_i[a_val as usize])
+                    } else {
+                        None
+                    };
+                    let b = if regs_i[b_some as usize] != 0 {
+                        Some(regs_i[b_val as usize])
+                    } else {
+                        None
+                    };
+                    let res = match op {
+                        CmpOp::Eq => a == b,
+                        CmpOp::Ne => a != b,
+                        CmpOp::Lt => a < b,
+                        CmpOp::Le => a <= b,
+                        CmpOp::Gt => a > b,
+                        CmpOp::Ge => a >= b,
+                        _ => false,
+                    };
+                    regs_i[dst as usize] = i64::from(res);
                 }
                 Op::LoadGIdxFieldI { dst, gid, r_i, field } => {
                     let idx = regs_i[r_i as usize];
