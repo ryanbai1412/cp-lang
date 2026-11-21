@@ -716,7 +716,7 @@ TextMate grammar, snippets, the client, Run/Stress/Trace lenses, live
 sample values, counterexample overlays and a trace view (one panel per
 file over `cpl run --trace --format html`; the editor highlights the line
 of the step shown, and a click on a line in the viewer jumps there); its unit
-tests run in `--full`, its extension-host suite in no gate.
+tests and its extension-host suite (8 tests, under a virtual display) run in `--full`.
 Hover shows the index space and its bound for arrays and positions
 (`xs: [V]Int`, `domain V = 0..n, n <= 100`, storage per element and in
 total), appends the declaration's `///` doc, which in the stdlib states the
@@ -756,7 +756,7 @@ editor's queries are the same patterns.
 integration built and smoke-tested in `scripts/check.sh --full`.
 **Next.** Fixture tests; proven ranges of expressions and `var`s
 (needs the checker's own range analysis); the JetBrains trace's step sync in its
-tool window; publish the Zed extension; the VS Code extension-host suite in a gate.
+tool window; publish the Zed extension.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a

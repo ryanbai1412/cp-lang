@@ -28,7 +28,8 @@
 #            fuzzer and the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
-#        11. the VS Code extension tests (editors/vscode: npm test), then
+#        11. the VS Code extension tests (editors/vscode: npm test, and its
+#            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #        12. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
@@ -395,6 +396,13 @@ if [ "$mode" = full ]; then
         cd editors/vscode
         [ -d node_modules ] || npm ci --no-audit --no-fund
         npm test
+        if [ -n "${DISPLAY:-}" ]; then
+            npm run test:integration
+        elif command -v xvfb-run >/dev/null; then
+            xvfb-run -a npm run test:integration
+        else
+            echo "editors/vscode: SKIPPED extension-host tests (no display and no xvfb-run)"
+        fi
     )
 
     step "editors/smoke.sh: the other editor setups against cpl lsp"
