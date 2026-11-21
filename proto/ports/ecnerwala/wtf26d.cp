@@ -1,9 +1,13 @@
 // AtCoder WTF 2026 D: largest permutation <= Q reachable from P.
-// While matching Q, placed elements whose P-position precedes a pending bound
-// push (max_p, max_v) onto a monotone stack (both decreasing), requiring an
-// unused value <= max_v before max_p in P; after stepping down, drain the stack
-// into suffix blocks, largest value first.
-use std.seq.{inverse}
+// While matching a prefix of Q, every placed element whose P-position precedes
+// a pending upper bound adds a constraint `(max_p, max_v)` requiring some
+// remaining value <= `max_v` to sit strictly before `max_p` in P. These
+// constraints form a monotone stack (both `max_p` and `max_v` strictly
+// decreasing). Once a position steps down below Q, the remaining values pack
+// greedily into suffix blocks ordered by the active stack thresholds, largest
+// value first.
+
+use std.seq.inverse
 
 @!multitest
 let n: 1..=200_000 = read()
@@ -11,7 +15,6 @@ domain Pos = 1..=n
 domain Val = 1..=n
 let p: [Pos]Val = read()
 var q: [Pos]Val = read()
-
 let inv_p = p.inverse()
 
 var used: [Val]Bool = false
@@ -20,15 +23,20 @@ for i in Pos:
     if p[i] != q[i]: break
     used[q[i]] = true
     st += 1
+if st == n:
+    print(q)
+    return
 
+// Earliest P-position among unused values <= v.
 var pref_min: [Val]?Pos = none
-var best: ?Pos = none
+var best_pos: ?Pos = none
 for v in Val:
-    if not used[v]: best = if let b = best: min(b, inv_p[v]) else: inv_p[v]
-    pref_min[v] = best
+    if not used[v]: best_pos = if let b = best_pos: min(b, inv_p[v]) else: inv_p[v]
+    pref_min[v] = best_pos
 
 struct Cond(max_p: Pos, max_v: Val)
 
+// Monotone stack of active (max_p, max_v) constraints: both fields decrease.
 struct CondStack:
     items: List<Cond>
 
@@ -45,47 +53,50 @@ struct CondStack:
 var conds = CondStack([])
 var seen_inversion = false
 
-fn try_place(i: Pos, next_cap: ?Val) -> Bool:
-    let v = q[i]
-    let pos = inv_p[v]
-    if i.ord == st and v == p[i]:
-        used[v] = true
-        return true
-    let inv = seen_inversion or (i.ord > st and v < q[(i - 1)!] and pos < inv_p[q[(i - 1)!]])
-    var required_cap: ?Val = none
-    if not inv:
-        let base = if let nc = next_cap: min(v, nc) else: v
-        required_cap = if let ac = conds.active_cap(pos): min(base, ac) else: base
-    elif let ac = conds.active_cap(pos):
-        if v > ac: required_cap = ac
-    if let cap = required_cap:
-        if let w = pref_min[cap]:
-            if pos <= w: return false
-        else:
-            return false
-        conds.pop_after(pos)
-        conds.push_if_tighter(pos, cap)
-    else:
-        conds.pop_after(pos)
-    seen_inversion = inv
-    used[v] = true
-    true
+fn forms_inversion(i: Pos, v: Val) -> Bool =
+    seen_inversion or (i.ord > st and v < q[(i - 1)!] and inv_p[v] < inv_p[q[(i - 1)!]])
 
+fn required_cap(i: Pos, v: Val, next_cap: ?Val) -> ?Val:
+    if i.ord == st and v == p[i]: return none
+    let pos = inv_p[v]
+    if not forms_inversion(i, v):
+        let base = if let nc = next_cap: min(v, nc) else: v
+        if let ac = conds.active_cap(pos): min(base, ac) else: base
+    elif let ac = conds.active_cap(pos):
+        if v > ac: ac else: none
+    else:
+        none
+
+fn can_place(i: Pos, v: Val, next_cap: ?Val) -> Bool:
+    let cap = required_cap(i, v, next_cap) ?? return true
+    if let w = pref_min[cap]: inv_p[v] > w else: false
+
+fn commit_place(i: Pos, v: Val, next_cap: ?Val):
+    let pos = inv_p[v]
+    if not (i.ord == st and v == p[i]):
+        let cap = required_cap(i, v, next_cap)
+        conds.pop_after(pos)
+        if let c = cap: conds.push_if_tighter(pos, c)
+        seen_inversion = forms_inversion(i, v)
+    q[i] = v
+    used[v] = true
+
+// Match Q as far as possible; on the first failure, step q[i] down and stop.
 var filled = st
 for idx in st..n:
     let i = Pos(idx + 1)
     let next_cap: ?Val = if idx + 1 < n: q[Pos(idx + 2)] else: none
-    if try_place(i, next_cap):
+    if can_place(i, q[i], next_cap):
+        commit_place(i, q[i], next_cap)
         filled = idx + 1
     else:
-        while true:
-            var cand = (q[i] - 1)!
-            while used[cand]: cand = (cand - 1)!
-            q[i] = cand
-            if try_place(i, none): break
+        var cand = (q[i] - 1)!
+        while used[cand] or not can_place(i, cand, none): cand = (cand - 1)!
+        commit_place(i, cand, none)
         filled = idx + 1
         break
 
+// Partition remaining values into suffix blocks by draining the constraint stack.
 var block_starts: List<Int> = [filled]
 var p_to_block: [Pos]?Int = none
 var last_thresh = n

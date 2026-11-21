@@ -36,3 +36,7 @@ Scored cold (new dream in ddf13f69) against `design/EXEMPLARS-PORTS.md` and `des
 - `?? n` sentinel on a `Pos` search (dream line 18).
 
 Sent back: the dream goes to its port's lane (the polish lane if that lane has moved on) to rewrite before the port is judged.
+
+## Rewrite note (pending rescore)
+
+Rewritten dream and port: O(n) `pref_min` scan (fixed O(n²) dream bug), split side-effecting `try_place` into pure `forms_inversion`/`required_cap`/`can_place` + mutating `commit_place`, removed `while true` retry loop and `?? n` sentinel on `Pos`, and iterated `Pos` directly in the dream's block-draining loop. Emitted C++ grew `20,980 -> 22,240 B` (+1,260 B, 34% of 64 KB) from the four small local helper functions replacing `try_place` (codegen: inline small single-call helpers).
