@@ -50,6 +50,7 @@ impl<'a> Checker<'a> {
                     }
                     UnOp::Neg | UnOp::BitNot if ty.is_numeric() => ty.widen(),
                     UnOp::Neg if matches!(&ty, Ty::Optional(inner) if inner.is_numeric()) => ty,
+                    UnOp::BitNot if matches!(&ty, Ty::Optional(inner) if inner.is_int()) => ty,
                     UnOp::Neg | UnOp::BitNot => {
                         self.bad_operand(&ty, inner, if *op == UnOp::Neg { "-" } else { "~" })
                     }
@@ -696,14 +697,27 @@ impl<'a> Checker<'a> {
             }
             _ if left == Ty::Error || right == Ty::Error => Ty::Error,
             _ if left.is_vague() || right.is_vague() => Ty::Unknown,
-            // `none` absorbs `+` and `-` on `?Int` and `?F64`.
-            BinOp::Add | BinOp::Sub
+            // `none` absorbs arithmetic (`+ - * /`) on `?Int`/`?F64` and integer/bitwise ops (`% ** & | ^ << >>`) on `?Int`.
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div
                 if tropical_side(&left).is_some()
                     && tropical_side(&right).is_some()
                     && (matches!(left, Ty::Optional(_)) || matches!(right, Ty::Optional(_))) =>
             {
                 let int = tropical_side(&left) == Some(true) && tropical_side(&right) == Some(true);
                 Ty::Optional(Box::new(if int { Ty::Int } else { Ty::Float }))
+            }
+            BinOp::Rem
+            | BinOp::Pow
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::BitXor
+            | BinOp::Shl
+            | BinOp::Shr
+                if tropical_side(&left) == Some(true)
+                    && tropical_side(&right) == Some(true)
+                    && (matches!(left, Ty::Optional(_)) || matches!(right, Ty::Optional(_))) =>
+            {
+                Ty::Optional(Box::new(Ty::Int))
             }
             // A shift keeps the type of what is shifted; otherwise an `Int`
             // beside an `I128` or a `U64` becomes one.

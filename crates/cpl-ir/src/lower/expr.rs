@@ -1332,6 +1332,12 @@ impl<'a> Lowerer<'a> {
             }
             UnOp::BitNot => {
                 let value = self.expr(operand, hint.filter(|ty| matches!(ty, Ty::I128 | Ty::U64)));
+                if let Ty::Opt(inner) = &value.ty {
+                    if **inner == Ty::Int {
+                        let neg_one = self.mk(ExprKind::Int(-1), Ty::Int, span);
+                        return self.tropical(BinOp::BitXor, value, neg_one, span);
+                    }
+                }
                 let ty = match value.ty {
                     Ty::I128 | Ty::U64 | Ty::Error => value.ty.clone(),
                     _ => Ty::Int,
@@ -1519,10 +1525,13 @@ impl<'a> Lowerer<'a> {
         let (l, r, ty) = match (&l.ty, &r.ty) {
             (Ty::Error, _) | (_, Ty::Error) => return self.err_expr(span),
             (a, b)
-                if matches!(op, Add | Sub)
-                    && (matches!(a, Ty::Opt(_)) || matches!(b, Ty::Opt(_)))
+                if (matches!(op, Add | Sub | Mul | Div)
                     && tropical_side(a).is_some()
-                    && tropical_side(b).is_some() =>
+                    && tropical_side(b).is_some()
+                    || matches!(op, Rem | Pow | BitAnd | BitOr | BitXor | Shl | Shr)
+                        && tropical_side(a) == Some(Ty::Int)
+                        && tropical_side(b) == Some(Ty::Int))
+                    && (matches!(a, Ty::Opt(_)) || matches!(b, Ty::Opt(_))) =>
             {
                 return self.tropical(op, l, r, span);
             }

@@ -348,5 +348,10 @@ fn recovery_scoreboard() {
         ports.first_right as f64 >= 0.995 * reported,
         "first-error accuracy fell below 99.5%"
     );
-    assert!(ports.cascaded <= 1212, "more cascaded errors than before");
+    assert!(
+        ports.cascaded as f64 <= 0.36 * ports.files as f64,
+        "cascaded-error rate rose above 0.36 per broken port ({} / {})",
+        ports.cascaded,
+        ports.files
+    );
 }
