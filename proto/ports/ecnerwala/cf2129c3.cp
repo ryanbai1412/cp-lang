@@ -1,3 +1,5 @@
+// Codeforces 2129 C3 (interactive): binary-search an open bracket, then decode
+// blocks of brackets in one query each using superincreasing triangular weights.
 fn ask(inds: List<Int>) -> Int:
     print("?", inds.len, inds)
     flush()
@@ -10,8 +12,8 @@ fn build_seq() -> List<Int>:
         let tri = k * (k + 1) / 2
         if tri > s:
             tot += 2 * k + 1
-            s += tri
             if tot > 1000: break
+            s += tri
             res.push(k)
         k += 1
     res
@@ -32,20 +34,18 @@ var ans: [0..n]Char = '?'
 for start in 0..n by blk:
     let inds = [min(start + z, n - 1) for z in 0..blk]
     var cnd: List<Int> = []
-    for z in 0..blk:
-        for _ in 0..seq[z]:
-            cnd.push(open_i)
-            cnd.push(inds[z] + 1)
+    for (z, k) in seq.items:
+        for _ in 0..k: cnd.extend([open_i, inds[z] + 1])
         cnd.push(open_i)
 
     var rem = ask(cnd)
-    for z in (0..blk).rev:
-        let cnt = seq[z] * (seq[z] + 1) / 2
+    for (z, k) in seq.items.rev:
+        let cnt = k * (k + 1) / 2
         if rem >= cnt:
             ans[inds[z]] = ')'
             rem -= cnt
         else:
             ans[inds[z]] = '('
 
-print("!", Str(ans))
+print("!", ans)
 flush()

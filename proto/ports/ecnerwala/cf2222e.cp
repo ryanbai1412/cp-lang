@@ -1,3 +1,5 @@
+// Codeforces 2222 E (interactive): binary-search the hidden mask v bit by bit,
+// then distinguish operation k in {1, 2, 3} with at most two extra queries.
 fn ask(kind: Char, x: Int) -> Int:
     print(kind, x)
     flush()
@@ -15,14 +17,14 @@ var v = 0
 for b in (0..n).rev:
     if ask('Q', v + (1 << b)) > 0: v += 1 << b
 
-var k = if n_sz == 1: 1 else: 2
-if n_sz != 1:
-    if v & (v - 1) != 0:
-        if ask('I', v & (v - 1)) == 3: k = 3
-    else:
-        let nv = if v == 1: 3 else: v + 1
-        ask('I', nv)
-        if ask('Q', nv) != 1: k = 3
+let k = if n_sz == 1:
+    1
+elif not v.is_pow2:
+    if ask('I', v & (v - 1)) == 3: 3 else: 2
+else:
+    let nv = if v == 1: 3 else: v + 1
+    ask('I', nv)
+    if ask('Q', nv) != 1: 3 else: 2
 
 print("A", k, v)
 flush()

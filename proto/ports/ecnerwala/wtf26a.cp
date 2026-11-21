@@ -18,7 +18,7 @@ var cut_ng: [0..m]Int = 0
 
 var dsu1 = Dsu<U>()
 var sz: [U]Int = 1
-var label = [U] u => u.to_idx
+var label = [U] u => u.ord
 for (e, edge) in edges.items:
     let (a, b) = dsu1.merge(edge.u, edge.v)!
     let (la, lb) = (label[a], label[b])
@@ -48,10 +48,9 @@ let cuts = sorted(
 
 domain V = 0..(2 * n - 1)
 var dsu = Dsu<V>()
-var freq = [V] v => Int(v.to_idx < n)
+var freq = [V] v => Int(v.ord < n)
 var ans: Z = 0
-for c in cuts:
-    if let (kept, merged) = dsu.merge(V(c.u), V(c.v)):
-        ans += Z(freq[kept]) * Z(freq[merged]) * Z(c.w)
-        freq[kept] += freq[merged]
+for c in cuts if let (kept, merged) = dsu.merge(V(c.u), V(c.v)):
+    ans += Z(freq[kept]) * freq[merged] * c.w
+    freq[kept] += freq[merged]
 print(ans)
