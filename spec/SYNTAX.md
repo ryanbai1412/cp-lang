@@ -19,6 +19,12 @@ front end (parse and type check) first.
 | Overlapping `mut` places | `f(mut a[i], mut a[j])` | 128 | accepted |
 | Block contexts | `with io(base: 1): ...` (block form of chapter 17) | 17.1 | E0504 |
 | Field defaults | `struct S: steps: List<Int> = [], total = 0` | 134 | E0504 |
+| `var` fields | `struct Tally: var top = 0` | 136 | not parsed |
+| Inline modules | `mod migrations:` | 136 | not parsed |
+| Grader entry points | `@grader(interactive) fn buy(n: Int)` | 136 | not parsed |
+| Extern fns | `extern fn transaction(m: Int) -> (List<T>, Int)` | 136 | not parsed |
+| Local types | `fn f(): struct Eq(types: Bitset<T>, sum: Int)` | 136 | not parsed |
+| Block lambdas | `[Sign] x =>⏎    let a = ...⏎    e` | 136 | not parsed |
 | Alphabet strings | `read<Str of "01?">()`; its chars form a domain | 134 | E0504 |
 | Bounded strings | `Str(len: 1..=n)` | 134 | E0504 |
 | Multi-clause loop headers | `for i in V, j in V.after(i) if c:` | 135 | E0107 |

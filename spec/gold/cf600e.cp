@@ -7,7 +7,7 @@ let colour: [V]1..=n = read()
 let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first)
 
 struct Tally:
-    var count: Map<Int, Int> = {}
+    var count: Map<Int, Int> = [:]
     var top = 0   // the highest count
     var sum = 0   // the sum of colours with that count
 

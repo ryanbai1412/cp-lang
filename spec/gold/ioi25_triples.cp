@@ -6,9 +6,9 @@
 // (solve for i, j from each k) bounds it. One predicate checks, `distinct` dedupes.
 @grader
 fn count_triples(h: [I]1..I.count) -> Int:
-    fn ok(x: Int, y: Int, z: Int) -> ?(I, I, I) =
+    fn ok(x: Int, y: Int, z: Int) -> ?(I, I, I):
         let (i, j, k) = sort3(x, y, z)
-        if i < j < k and (i, j, k) all in I and sorted([h[i], h[j], h[k]]) == sorted([j - i, k - j, k - i]): (i, j, k)
+        if i < j < k and [i, j, k].all(x => x in I) and sorted([h[i], h[j], h[k]]) == sorted([j - i, k - j, k - i]): (i, j, k)
 
     let found = Bag<(I, I, I)>()
     for x in I:
@@ -36,7 +36,7 @@ fn count_triples(h: [I]1..I.count) -> Int:
 // about √(6M) points, C(|S|, 3) ≈ M^1.5 triples, and keep the best range.
 @grader
 fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
-    fn attempt(seed: Int) -> List<Int> =
+    fn attempt(seed: Int) -> List<Int>:
         var rng = Rng(seed)
         let size = isqrt(6 * m)
         let evens = (-m / 2 .. 3 * m / 2).filter(x => x % 2 == 0)

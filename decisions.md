@@ -4104,3 +4104,32 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Reverse.** Drop a form; `cpl fix` expands it (nested loops, explicit
   lambdas, copies of the row).
 - **Status.** Accepted in the spec (`spec/SYNTAX.md`); not parsed yet.
+
+## 136. Gold-tier syntax: `var` fields, graders, local types (2026-11-21)
+
+- **Context.** The gold dreams (`spec/GOLD.txt`) are now the headline check;
+  these forms stop them, and each says something the core can't yet.
+- **Decision.**
+  - Fields are fixed after construction unless declared `var`, mirroring
+    `let`/`var`: `struct Tally: var top = 0, var sum = 0`. Assigning a
+    non-`var` field is an error naming the field. A field may be typed by
+    its default (134). `cpl fix` adds `var` to every field a program assigns.
+  - Inline modules: `mod name:` with an indented body (W13).
+  - Judge entry points: `@grader`, `@grader(interactive)` and
+    `@grader(two_phase)` on a `fn` or `mod` mark the functions the judge
+    calls instead of `main`, as in IOI. Functions the judge provides are
+    declared, not defined: `extern fn transaction(m: Int) -> (List<T>, Int)`.
+    The judge profile supplies the harness; local runs use a generated stub.
+  - Types (`struct`, `enum`, `domain`, `type`) declared inside a fn body are
+    scoped to that block and may use its runtime domains.
+  - A lambda body may be an indented block after a line-ending `=>`; its
+    value is the last expression (the block lambda of 98).
+- **Rejected.** `fn f() -> T =` followed by an indented block (use `:`);
+  `xs all in D` (use `.all(x => x in D)`); `for e in xs.values_mut()`
+  (`for mut` was deleted in 19.4; bind `let e = mut xs[k]`).
+- **Why.** `var` fields document which state moves, the way `var` locals do;
+  graders and extern fns are the only way to state an IOI task; local types
+  keep helper records next to their one use.
+- **Reverse.** `var` fields: drop the rule and the codemod. Graders: replace
+  with a program-shape decision when that is designed (deferred).
+- **Status.** Accepted in the spec (`spec/SYNTAX.md`); not parsed yet.
