@@ -4133,3 +4133,36 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 - **Reverse.** `var` fields: drop the rule and the codemod. Graders: replace
   with a program-shape decision when that is designed (deferred).
 - **Status.** Accepted in the spec (`spec/SYNTAX.md`); not parsed yet.
+
+## 137. Indices: position and cut words, empty domains (2026-11-21)
+
+- **Context.** Round 1 of the API design (`spec/api/1-indices.md`): domains
+  have positions and cuts (`D.bounds`), and each needs neighbour and
+  conversion words; empty domains needed a rule for `first`/`last`.
+- **Decision.**
+  - Position `v`: `v.prev`, `v.next` (`?V`); its cuts `v.start`, `v.end`.
+    Cut `c`: `c.prev`, `c.next` (`?V.bounds`); its positions `c.before`,
+    `c.after` (`?V`). A position is a one-element range, so `v.start..v.end`
+    is `v`.
+  - Domains may be empty. `D.first`/`D.last` return a plain `D` and exist
+    only on `D: NonEmpty`, which the checker derives at each use: the lower
+    bound of `D.count`'s range is at least 1. Guards narrow it
+    (`if m == 0: return`, `if E.is_empty: return`), like `if x is none:
+    return`. Otherwise `E.first` is an error naming the constraint that
+    allows zero; `E.all.first` gives `?E`. Generic code writes
+    `<domain D: NonEmpty>`.
+  - `v + 1` is an `Int`; re-enter the domain with `v.next` or `V.at(x)`.
+  - `r.bsearch(ok)` returns the cut where `ok` flips; `.after`/`.before`
+    give the first true / last false position. Replaces `bsearch_first` and
+    `bsearch_last`.
+- **Rejected.** `left`/`right` for both kinds (same word, different result
+  kind); `cut_before`/`pos_before` (long, no tie to ranges); `v.before` for
+  a cut (reads as the previous position); always-`?V` `first` (noise for
+  the common `n: 1..` case); always-`V` with a trap (the n = 1 bug only
+  shows if a test hits it).
+- **Why.** The words reuse the range vocabulary, and the empty-domain rule
+  costs nothing when the statement promises n >= 1 and points at the edge
+  case when it doesn't.
+- **Reverse.** Rename via `cpl fix`; drop `NonEmpty` and make `first`
+  optional everywhere.
+- **Status.** Accepted in the spec; not implemented.

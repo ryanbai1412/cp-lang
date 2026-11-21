@@ -24,7 +24,7 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 |---|---|---|
 | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step |
 | `V.count` | number of positions | O(1) |
-| `V.first`, `V.last` | `V` if the declaration proves non-empty, else `?V` | O(1) |
+| `V.first`, `V.last` | `V`; only on `V: NonEmpty` (below) | O(1) |
 | `V.all` | the whole range, same as `..` | O(1) |
 | `V.bounds` | the domain of cuts: `V.bounds.first` is the start, `.last` the end | O(1) |
 | `x in V` | is integer `x` a position | O(1) |
@@ -36,8 +36,12 @@ enum Dir: N, E, S, W                   # a fieldless enum is a domain too: [Dir]
 
 | | neighbour of the same kind | the other kind, either side |
 |---|---|---|
-| position `v` | `v.prev`, `v.next`: `?V` | `v.before`, `v.after`: cuts |
-| cut `c` | `c.prev`, `c.next`: `?V.bounds` | `c.left`, `c.right`: `?V` |
+| position `v` | `v.prev`, `v.next`: `?V` | `v.start`, `v.end`: cuts |
+| cut `c` | `c.prev`, `c.next`: `?V.bounds` | `c.before`, `c.after`: `?V` |
+
+A position is a one-element range, so it borrows the range words:
+`v.start..v.end` is exactly `v`, and `pre[v.end] - pre[v.start]` is its
+prefix-sum term. A cut's neighbouring positions are literally before and after it.
 
 Arithmetic on a position gives an `Int` (`v + 1`); getting back into the
 domain is explicit (`v.next`, `V.at(x)`). Arrays over an anonymous range
@@ -79,8 +83,30 @@ a.keys  a.items  a.map(f)                # V, (V, T), [V]U
 grid[r]                                  # a row view of [Row, Col]T
 ```
 
+## Empty domains
+
+Domains may be empty: iteration, arrays and folds over an empty domain just
+work. Only `first`/`last` need a position, so they exist only on
+`D: NonEmpty`, a bound the checker derives at each use from what it knows:
+
+```python
+let m = read<0..=2e5>()
+domain E = 0..m
+E.first                      # error: `E` may be empty: `m: 0..=2e5` allows 0
+if m == 0: return            # narrows m to 1..=2e5 for the rest of the block
+let e = E.first              # fine: E.count is m, and m >= 1 here
+```
+
+- `E.count` has a range type, like any Int; `NonEmpty` holds when its lower
+  bound is at least 1. Guards narrow it (`if m == 0: return`,
+  `if E.is_empty: return`), the same rule that makes `if x is none: return`
+  leave `x` non-optional.
+- Possibly empty and you want an optional: `E.all.first` is the sequence
+  `.first`, `?E`.
+- Generic code asks for it: `fn f<domain D: NonEmpty>()`.
+- The check compares one lower bound with 1, so it stays linear.
+
 ## Open questions (my recommendation first)
 
-1. **`V.first` type.** `V` when the declaration proves non-empty (`n: 1..=N`), else `?V`. Alternative: always `V`, trapping on empty.
-2. **Position arithmetic.** `v + 1` is an `Int`, never a `V`. Alternative: `v + k` is `?V`.
-3. **Binary search spelling.** `r.bsearch(ok)` returning a cut. Alternative: keep `bsearch_first` / `bsearch_last`.
+1. **Position arithmetic.** `v + 1` is an `Int`, never a `V`. Alternative: `v + k` is `?V`.
+2. **Binary search spelling.** `r.bsearch(ok)` returning a cut. Alternative: keep `bsearch_first` / `bsearch_last`.
