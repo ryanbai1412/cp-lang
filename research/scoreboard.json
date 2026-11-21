@@ -3962,7 +3962,7 @@
       "taste_lints": 0,
       "taste_lints_by_lint": {},
       "build_ok": true,
-      "emitted_bytes": 17242,
+      "emitted_bytes": 19211,
       "over_48kb": false,
       "over_64kb": false,
       "cp_tokens": 881,
