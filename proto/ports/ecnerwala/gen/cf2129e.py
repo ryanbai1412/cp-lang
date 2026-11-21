@@ -8,7 +8,7 @@ for _ in range(T):
     n = r.randint(2, 8 if size == 0 else 25)
     all_e = [(u, v) for u in range(1, n + 1) for v in range(u + 1, n + 1)]
     r.shuffle(all_e)
-    m = r.randint(0, min(len(all_e), 2 * n))
+    m = r.randint(1, min(len(all_e), 2 * n))
     print(n, m)
     for u, v in all_e[:m]:
         print(u, v)
