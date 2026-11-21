@@ -1,6 +1,7 @@
 # agc079c
 
-Score: 2/5
+Score: pending (was 2/5: added dream, stated time-reversed parity-component invariant in header, domain Val/Pos, enum Side, Rel/Run structs, solve() -> ?Int, single face() helper; emitted C++ grew 18,275 -> 22,223 B (<48 KB) from Side enum, Rel/Run structs, and Val/Pos domains)
+Dream: pending (added dream using LinkedList<Val> with O(1) splice_back, Side enum, Val/Pos domains, and face() helper)
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
 

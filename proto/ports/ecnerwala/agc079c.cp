@@ -1,92 +1,111 @@
-// AtCoder AGC 079 C: sort a permutation through a deque that may be reversed,
-// counting the fewest reversals (or -1). Pass 1 walks the input backwards
-// keeping the unplaced values as a stack of linked runs and records, for each
-// value, which earlier value it must enter on the same or the opposite side
-// of. Pass 2 replays the deque with those choices and counts the reversals.
-type Run = (head: Int, tail: Int, neq: Bool)  // neq: must differ from the run below
+// AtCoder AGC 079 C: transform 1..=n into permutation a with a reversible
+// queue, minimizing reversals (or -1). Reversing time pushes n..=1 and pops a
+// back-to-front; every value enters on one of two ends, and the relative order
+// of pushes and pops forces a unique parity relation within each connected
+// component. Pass 1 walks a backwards keeping unplaced values as a stack of
+// same-side runs (splicing runs when a deeper value pops, or popping the bottom
+// of the sole run). Pass 2 replays the deque greedily: orient each free
+// component to match the active end, pop whenever either end matches, and
+// reverse only when forced (a 1-element reversal is free).
+
+enum Side: Back | Front
+
+fn flip(s: Side) -> Side = match s:
+    Side.Back => Side.Front
+    Side.Front => Side.Back
 
 @!multitest
 let n: 1..=2e5 = read()
-let perm: [0..n]1..=n = read()
-let a = [0..n] i => perm[i] - 1
+domain Val = 1..=n
+domain Pos = 0..n
+let a: [Pos]Val = read()
 
-var pred: [0..n]?Int = none
-var succ: [0..n]?Int = none
-var runs: List<Run> = []
-var rel: [0..n]?(to: Int, flip: Bool) = none
+struct Rel(to: Val, opp: Bool)
+struct Run(head: Val, tail: Val, opp_below: Bool)
 
-// Append the run under the top of the stack to `l`, taking it off the stack.
-fn swallow(l: Run) -> Run:
-    let under = runs.pop()!
-    succ[l.tail] = under.head
-    pred[under.head] = l.tail
-    (head: l.head, tail: under.tail, neq: under.neq)
+fn solve() -> ?Int:
+    var pred: [Val]?Val = none
+    var succ: [Val]?Val = none
+    var runs: List<Run> = []
+    var rel: [Pos]?Rel = none
 
-var rem = n
-for i in (0..n).rev:
-    while a[i] < rem:
-        rem -= 1
-        runs.push((head: rem, tail: rem, neq: false))
-    let top = runs.last!
-    if top.head == a[i]:
-        if top.tail == top.head:
-            runs.pop()
-            if top.neq: rel[i] = (to: runs.last!.head, flip: true)
+    fn swallow(l: Run) -> Run:
+        let under = runs.pop()!
+        succ[l.tail] = under.head
+        pred[under.head] = l.tail
+        Run(l.head, under.tail, under.opp_below)
+
+    var unpushed: ?Val = Val.last
+    for i in Pos.rev:
+        let x = a[i]
+        while let v = unpushed, x <= v:
+            runs.push(Run(v, v, false))
+            unpushed = v.prev
+        let top = runs.last!
+        if top.head == x:
+            if top.tail == top.head:
+                runs.pop()
+                if top.opp_below: rel[i] = Rel(runs.last!.head, true)
+            else:
+                let nxt = succ[top.head]!
+                runs.last!.head = nxt
+                rel[i] = Rel(nxt, false)
         else:
-            let nxt = succ[top.head]!
-            runs.last!.head = nxt
-            rel[i] = (to: nxt, flip: false)
-        continue
-    var l = runs.pop()!
-    while let r = runs.last, r.head != a[i]:
-        if l.neq:
-            print(-1)
-            return
-        l = swallow(l)
-    if runs.is_empty:
-        if l.tail != a[i]:
-            print(-1)
-            return
-        l.tail = pred[l.tail]!  // a[i] leaves from the bottom of the only run
-        rel[i] = (to: l.tail, flip: false)
-        runs.push(l)
-        continue
-    let under = runs.last!
-    l.neq = true
-    if under.head == under.tail:
-        rel[i] = (to: l.head, flip: true)
-        runs.pop()
-        if under.neq: l = swallow(l)
-        else: l.neq = false
-    else:
-        let nxt = succ[under.head]!
-        runs.last!.head = nxt
-        rel[i] = (to: nxt, flip: false)
-    runs.push(l)
+            var l = runs.pop()!
+            while let r = runs.last, r.head != x:
+                if l.opp_below: return none
+                l = swallow(l)
+            if runs.is_empty:
+                if l.tail != x: return none
+                l.tail = pred[l.tail]!
+                rel[i] = Rel(l.tail, false)
+                runs.push(l)
+            else:
+                let under = runs.last!
+                if under.head == under.tail:
+                    rel[i] = Rel(l.head, true)
+                    runs.pop()
+                    l = if under.opp_below: swallow(l) else: Run(l.head, l.tail, false)
+                else:
+                    let nxt = succ[under.head]!
+                    runs.last!.head = nxt
+                    rel[i] = Rel(nxt, false)
+                    l.opp_below = true
+                runs.push(l)
 
-// side[v]: the value whose side decides v's, and whether v is opposite to it
-var side: [0..n](base: Int, flip: Bool) = (base: 0, flip: false)
-for i in 0..n:
-    side[a[i]] = if let r = rel[i]: (
-        base: side[r.to].base,
-        flip: side[r.to].flip != r.flip,
-    ) else: (base: a[i], flip: false)
+    var comp: [Val]Rel = Rel(Val.first, false)
+    for i in Pos:
+        comp[a[i]] = if let r = rel[i]:
+            let c = comp[r.to]
+            Rel(c.to, c.opp != r.opp)
+        else:
+            Rel(a[i], false)
 
-var front: [0..n]?Bool = none
-var at_front = false
-var q = Deque<Int>()
-var (next, turns) = (n - 1, 0)
-for i in (0..n).rev:
-    let s = side[i]
-    front[s.base] ??= at_front != s.flip
-    if at_front != (front[s.base]! != s.flip):
-        at_front = not at_front
-        if q.len != 1: turns += 1
-    if at_front: q.push_front(i) else: q.push(i)
-    while let lo = q.first, a[next] == lo or a[next] == q.last!:
-        if (if at_front: q.last! else: lo) != a[next]:
-            at_front = not at_front
+    var base_side: [Val]?Side = none
+    var active = Side.Back
+    var q = Deque<Val>()
+    var next: ?Pos = Pos.last
+    var turns = 0
+
+    fn face(want: Side):
+        if active != want:
+            active = want
             if q.len != 1: turns += 1
-        if at_front: q.pop() else: q.pop_front()
-        next -= 1
-print(turns)
+
+    for v in Val.rev:
+        let c = comp[v]
+        base_side[c.to] ??= if c.opp: flip(active) else: active
+        let bs = base_side[c.to]!
+        face(if c.opp: flip(bs) else: bs)
+        match active:
+            Side.Front => q.push_front(v)
+            Side.Back => q.push(v)
+        while let p = next, let lo = q.first, a[p] == lo or a[p] == q.last!:
+            face(if a[p] == lo: Side.Back else: Side.Front)
+            match active:
+                Side.Front => q.pop()
+                Side.Back => q.pop_front()
+            next = p.prev
+    turns
+
+print(solve() ?? -1)
