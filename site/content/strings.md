@@ -28,6 +28,7 @@ Because `Str` has value semantics, `var t = s` moves or copies cleanly without h
 The current toolchain supports these operations directly:
 
 - Indexing and slices: `s[i]`, `s[l..r]`, `s[..k]`, `s[k..]`, `s.len`, `s.is_empty`.
+- Numbers to strings: use string interpolation `let s = "{n}"` (there is no `.to_str()` method); use `std.math.digits(n)` for base-10 digits.
 - Building: `var out = ""`, `out.push(c)`, and `out += t`. String repetition with `*` is not yet implemented; append in a loop.
 - Prefix matching: guard the length, then compare `s[..prefix.len] == prefix`. For input, `read()` parses whitespace-delimited typed tokens.
 - Character arithmetic: `c - '0'`, `c - 'a'`, `'A' + (c - 'a')`, and character ranges `'a'..='z'`.

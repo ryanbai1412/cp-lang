@@ -190,7 +190,8 @@ For many arguments of one type, take a `List<T>` and pass `[a, b, c]`.
 ### Loops, parallel assignment, and closures
 
 - **Counted and infinite loops:** `repeat n:` runs a body `n` times (sugar for `for _ in 0..n:`); `loop:` runs until `break` (sugar for `while true:`).
-- **Filtered loops & comprehensions:** `for v in V where ok(v):` and `[f(v) for v in V where ok(v)]` (the earlier `for v in V if ok(v):` spelling is also accepted).
+- **Filtered loops & comprehensions:** `for v in V where ok(v):` and `[f(v) for v in V where ok(v)]` (the earlier `for v in V if ok(v):` spelling is also accepted). Comprehensions and generator expressions (`sum(...)`, `[...]`) take a **single** `for` clause — for 2D loops, use nested `for r in Row:` / `for c in Col:` statements.
+- **Free math functions:** `abs(x)`, `min(a, b)`, `max(a, b)`, `gcd(a, b)`, `lcm(a, b)` are free functions, not methods on `Int` (write `abs(a - b)`, not `(a - b).abs()`).
 - **Index-value pairs:** For a list or string, iterate `i in 0..a.len` and access `a[i]` when you need both.
 - **Domains and containers:** `for v in V:` iterates a domain; `for v in V by k:` and `for v in V.rev by k:` step along a domain; `for x in a:` visits container elements. For a two-dimensional grid, use nested row/column loops.
 - **Modifiers:** `.rev` and `.step(k)` work on any range (`for i in (0..n).step(2).rev:`).

@@ -6,7 +6,7 @@ The contest essentials. Every CP block is verified with `cpl check`, `cpl build`
 
 ```cp
 let n = 10                         // immutable binding
-var answer = 0                     // mutable binding
+var answer = 0                     // mutable binding (use `var` for mutable variables)
 const MOD = 998_244_353             // compile-time constant
 answer += n
 print(answer)
@@ -18,7 +18,7 @@ print(answer)
 - `/` and `%` are Euclidean: the remainder is nonnegative, even with negative operands.
 - Power `**`; bitwise `& | ^ ~ << >>`; logic `and or not`; membership `in`, `not in`.
 - Updates `+= -= *= /= %=`; `x min= y`, `x max= y`; any binary function supports `x f= y`.
-- Cast with `F64(x)`, `Int(ch)`, `Char(i)`. For floats choose `floor`, `ceil`, `round`, or `trunc`.
+- Cast: `F64(x)`, `Int(ch)`, `Char(i)`; Int to Str: `"{x}"` (no `.to_str()`); `abs(x)` is a free function (no `.abs()`). For floats choose `floor`, `ceil`, `round`, or `trunc`.
 - Print floats with precision: `print("{x:.6f}")`. NaN/Inf trap locally; compare floats with `abs(a - b) < eps`.
 - Indentation defines blocks; `//` comments; `;` separates inline statements, never trails a line.
 
@@ -156,7 +156,7 @@ print(resized(xs, 1, 0))            // 1; same helper, truncating instead of pad
 
 - Containers share `.len`, `.is_empty`, `.clear()`, `.take()`; `List`/`Deque` can start as `[]`.
 - `List<T>`: `.push`, `.pop -> ?T`, `.insert`, `.remove`, `.swap`, `.first`/`.last -> ?T`, `xs[l..r]`.
-- `Deque<T>`: `.push`/`.pop -> ?T` at back, `.push_front`/`.pop_front -> ?T` at front, `q[i]`; all O(1).
+- `Deque<T>`: `.push`/`.pop -> ?T` at back (no `.push_back`), `.push_front`/`.pop_front -> ?T` at front, `q[i]`; all O(1).
 - `MinHeap<T>`/`MaxHeap<T>`: `.push`, `.pop -> ?T`, `.peek -> ?T`; `desc(x)` flips one key field: `MinHeap<(Desc<Int>, V)>`.
 - `Set<K>`/`SortedBag<K>`: `.add`, `.remove`, membership, `.first_ge`, `.last_le`, `.first`, `.last`, `.pop_first()`, `.pop_last()`; bag keeps duplicates.
 - `Map<K,V>`/`HashMap<K,V>`: direct `m[k]` traps if absent; `.get`, `.remove` return optionals; `.get_or_insert(k, v)` returns the stored value; `.first`, `.pop_first()` give `?(K, V)`.
@@ -245,6 +245,6 @@ print(pref(V.last))
 debug(n, a)                        // local stderr; stripped on judge
 ```
 
-- `let n = read(1..=20)` reads a checked range. `read()` of `Bool` takes `0`/`1`; `read(none: 0)` maps `0` to `none`; `print(x, end: " ")` sets the suffix.
+- `read()` takes the type from the binding (`let k: Int = read()`, never `read(Int)` or untyped `let k = read()`) or a range (`let n = read(1..=20)`). `read(none: 0)` maps `0` to `none`; `print(x, end: " ")` sets the suffix.
 - Co-locate `@brute`, `@gen`, `@checker` for `cpl stress`; `@interactor`/`@grader` for judge protocols; `ask("?", x)` prints, flushes, reads.
 - `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl test`, `cpl doc`, `cpl lsp`. See [reference](types-and-control.html), [stdlib](stdlib.html), [course](course.html).

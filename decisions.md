@@ -1382,6 +1382,19 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   *Reversible:* remove `check_stdlib_module_coverage()` from `site/check_docs.py` or replace with
   generated `cpl doc stdlib` HTML once docstrings cover every stdlib item.
 
+- **24.5 Writable-from-docs audit harness (`scripts/writable-from-docs.py`).**
+  Added `scripts/writable-from-docs.py` (with offline unit tests in `scripts/test_writable_from_docs.py`)
+  to evaluate the `AGENTS.md` "Writable from the docs" rule: sends a fresh model ONLY the 8-file
+  docs bundle plus an unseen statement from `corpus/statements/` (filtering out already-ported IDs),
+  then checks `cpl check`, `cpl build`, and `cpl run` on every sample case. Initial 10-problem audit
+  (`abc380b`–`abc387c`, recorded in `research/writable-from-docs.md`) improved compile pass from 7/10
+  to 8/10 after fixing 5 docs gaps (`"{n}"` vs `.to_str()`, `let k: Int = read()` vs `read(Int)`,
+  free `abs(x)`, 1-based array bounds, single-`for` comprehensions, `Deque.push`).
+  *Reason:* turns the writable-from-docs principle into a repeatable, quantitative measurement that
+  surfaces concrete docs gaps on unseen contest problems.
+  *Reversible:* delete `scripts/writable-from-docs.py`, `scripts/test_writable_from_docs.py`, and
+  `research/writable-from-docs.md`.
+
 ## 25. Stress testing and shrinking (0.2.2, 2026-11-21)
 
 - **25.1 `Perm<V>` and `Tree<V>` are stdlib types.** `std.seq.Perm<V> = [V]V` and

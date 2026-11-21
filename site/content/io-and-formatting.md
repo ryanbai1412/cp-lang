@@ -2,7 +2,7 @@ Contest programs spend a surprising share of their code reading structured input
 
 ## Typed `read()`
 
-The target type drives `read()`. Reading scalars, tuples, records, fixed-size arrays, grids, and strings uses one uniform call:
+The target type drives `read()`. Always put the type on the binding (`let k: Int = read()`) — never pass a type name like `read(Int)` (only a range literal `read(1..=2e5)` or `read(none: -1)` is accepted as an argument). Reading scalars, tuples, records, fixed-size arrays, grids, and strings uses one uniform call:
 
 ```cp CP Lang
 let n = read(1..=2e5)           // ranged read shorthand (checked in run & C++)

@@ -14,7 +14,7 @@ for i in 0..n:
 cnt.fill(0)                     // reset the whole array in place
 ```
 
-Structural range arrays unify across functions whenever their written bounds match (`[0..n]Int` matches `[0..n]Int`). `for i in 0..n` binds `i: Int`, so `i + 1` is `Int`. Use `a.fill(x)` (or `seen.fill(none)` on `[D]?T`) to clear an array between test cases.
+Structural range arrays unify across functions whenever their written bounds match (`[0..n]Int` matches `[0..n]Int`). Index an array using the **same bounds** it was declared with (`for i in 1..=n:` for `[1..=n]T`, `for i in 0..n:` for `[0..n]T`; indexing `[1..=n]T` at `0` traps at runtime). `for i in 0..n` binds `i: Int`, so `i + 1` is `Int`. Grid cell pairs `(r, c): (Row, Col)` have built-in `.adj4` and `.adj8` neighbor properties without importing anything. Use `a.fill(x)` (or `seen.fill(none)` on `[D]?T`) to clear an array between test cases.
 
 ## Nominal domains and `Index`
 

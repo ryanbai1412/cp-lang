@@ -10,3 +10,4 @@ marketplace\.visualstudio\.com|code\.visualstudio\.com|plugins\.jetbrains\.com|(
 xorshift\.di\.unimi\.it|(www\.)?daemonology\.net|(www\.)?cs\.berkeley\.edu|mathexp\.eu|martin\.ankerl\.com|xxccd\.glitch\.me
 (www\.)?patreon\.com|feross\.org|bevry\.me|opencollective\.com|tidelift\.com|paypal\.me
 vitepress\.dev|ui\.shadcn\.com|dejavu-fonts\.github\.io|cp-lang\.dev|(www\.)?example\.(com|org)|localhost|127\.0\.0\.1
+api\.anthropic\.com|api\.openai\.com
