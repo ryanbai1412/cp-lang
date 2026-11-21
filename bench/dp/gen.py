@@ -12,3 +12,7 @@ n = 3000
 open(f"{out}/knuth.in", "w").write(f"{n}\n" + " ".join(str(r.randint(1, 10**9)) for _ in range(n)) + "\n")
 n = 5000000
 open(f"{out}/mono.in", "w").write(f"{n} 1000\n" + " ".join(str(r.randint(0, 10**9)) for _ in range(n)) + "\n")
+n = 1000000
+open(f"{out}/monge.in", "w").write(f"{n} {10**6}\n" + " ".join(str(r.randint(0, 1000)) for _ in range(n)) + "\n")
+n = 1000000
+open(f"{out}/aliens.in", "w").write(f"{n} 5000\n" + " ".join(str(r.randint(-10**6, 10**6)) for _ in range(n)) + "\n")
