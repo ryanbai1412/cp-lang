@@ -21,10 +21,13 @@ fn solve() -> ?[V]Int:
         cnt[raw[e].u, raw[e].kind] += 1
         cnt[raw[e].v, raw[e].kind] += 1
 
+    fn drop_edge(v: V, a: (to: V, e: E)):
+        cnt[a.to, raw[a.e].kind] -= 1
+
     var ans: [V]Int = 0
     let order = g.peel(
         ready: v => cnt[v, Kind(1)] == 0 or cnt[v, Kind(2)] == 0,
-        on_remove: (v, a) => cnt[a.to, raw[a.e].kind] -= 1,
+        on_remove: drop_edge,
     )
     if order.len < n: return none
     for (z, v) in order.items:
