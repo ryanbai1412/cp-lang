@@ -184,23 +184,27 @@ pub struct SortedBag<K>:
     pub fn rank(self, k: K) -> Int:
         var ans = 0
         var u = root
-        while u >= 0:
-            if key[u] < k:
-                ans += self.sub_of(left[u]) + cnt[u]
-                u = right[u]
-            else:
-                u = left[u]
+        unchecked:
+            while u >= 0:
+                if key[u] < k:
+                    let l = left[u]
+                    ans += (if l < 0: 0 else: sub[l]) + cnt[u]
+                    u = right[u]
+                else:
+                    u = left[u]
         ans
 
     fn rank_le(self, k: K) -> Int:
         var ans = 0
         var u = root
-        while u >= 0:
-            if not (k < key[u]):
-                ans += self.sub_of(left[u]) + cnt[u]
-                u = right[u]
-            else:
-                u = left[u]
+        unchecked:
+            while u >= 0:
+                if not (k < key[u]):
+                    let l = left[u]
+                    ans += (if l < 0: 0 else: sub[l]) + cnt[u]
+                    u = right[u]
+                else:
+                    u = left[u]
         ans
 
     fn lo_ok(self, x: K, lo: ?K, lo_inc: Bool) -> Bool:
@@ -217,57 +221,59 @@ pub struct SortedBag<K>:
 
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
         var ans = -1
-        if let a = lo:
-            var u = root
-            if lo_inc:
-                while u >= 0:
-                    if not (key[u] < a):
-                        ans = u
-                        u = left[u]
-                    else:
-                        u = right[u]
+        unchecked:
+            if let a = lo:
+                var u = root
+                if lo_inc:
+                    while u >= 0:
+                        if not (key[u] < a):
+                            ans = u
+                            u = left[u]
+                        else:
+                            u = right[u]
+                else:
+                    while u >= 0:
+                        if a < key[u]:
+                            ans = u
+                            u = left[u]
+                        else:
+                            u = right[u]
             else:
+                var u = root
                 while u >= 0:
-                    if a < key[u]:
-                        ans = u
-                        u = left[u]
-                    else:
-                        u = right[u]
-        else:
-            var u = root
-            while u >= 0:
-                ans = u
-                u = left[u]
-        if ans < 0: return none
-        let k = key[ans]
-        if self.hi_ok(k, hi, hi_inc): k else: none
+                    ans = u
+                    u = left[u]
+            if ans < 0: return none
+            let k = key[ans]
+            return if self.hi_ok(k, hi, hi_inc): k else: none
 
     fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
         var ans = -1
-        if let b = hi:
-            var u = root
-            if hi_inc:
-                while u >= 0:
-                    if not (b < key[u]):
-                        ans = u
-                        u = right[u]
-                    else:
-                        u = left[u]
+        unchecked:
+            if let b = hi:
+                var u = root
+                if hi_inc:
+                    while u >= 0:
+                        if not (b < key[u]):
+                            ans = u
+                            u = right[u]
+                        else:
+                            u = left[u]
+                else:
+                    while u >= 0:
+                        if key[u] < b:
+                            ans = u
+                            u = right[u]
+                        else:
+                            u = left[u]
             else:
+                var u = root
                 while u >= 0:
-                    if key[u] < b:
-                        ans = u
-                        u = right[u]
-                    else:
-                        u = left[u]
-        else:
-            var u = root
-            while u >= 0:
-                ans = u
-                u = right[u]
-        if ans < 0: return none
-        let k = key[ans]
-        if self.lo_ok(k, lo, lo_inc): k else: none
+                    ans = u
+                    u = right[u]
+            if ans < 0: return none
+            let k = key[ans]
+            return if self.lo_ok(k, lo, lo_inc): k else: none
 
     fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int:
         let cnt_hi = if let b = hi:
@@ -285,22 +291,24 @@ pub struct SortedBag<K>:
             if lo_inc: self.cursor_ge(a) else: self.cursor_gt(a)
         else:
             self.cursor_first()
-        while let c = cur:
-            let k = key[c.id]
-            if not self.hi_ok(k, hi, hi_inc): break
-            for _ in 0..cnt[c.id]: yield k
-            cur = self.next_cursor(c)
+        unchecked:
+            while let c = cur:
+                let k = key[c.id]
+                if not self.hi_ok(k, hi, hi_inc): break
+                for _ in 0..cnt[c.id]: yield k
+                cur = self.next_cursor(c)
 
     fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
         var cur = if let b = hi:
             if hi_inc: self.cursor_le(b) else: self.cursor_lt(b)
         else:
             self.cursor_last()
-        while let c = cur:
-            let k = key[c.id]
-            if not self.lo_ok(k, lo, lo_inc): break
-            for _ in 0..cnt[c.id]: yield k
-            cur = self.prev_cursor(c)
+        unchecked:
+            while let c = cur:
+                let k = key[c.id]
+                if not self.lo_ok(k, lo, lo_inc): break
+                for _ in 0..cnt[c.id]: yield k
+                cur = self.prev_cursor(c)
 
     /// 0-indexed `i`-th smallest element (counting duplicates), or `none` if out of bounds. O(log n) expected.
     pub fn nth(self, i: Int) -> ?K:
@@ -357,48 +365,52 @@ pub struct SortedBag<K>:
     pub fn cursor_ge(self, k: K) -> ?BagCursor:
         var ans = -1
         var u = root
-        while u >= 0:
-            if not (key[u] < k):
-                ans = u
-                u = left[u]
-            else:
-                u = right[u]
+        unchecked:
+            while u >= 0:
+                if not (key[u] < k):
+                    ans = u
+                    u = left[u]
+                else:
+                    u = right[u]
         if ans >= 0: BagCursor(ans) else: none
 
     /// Cursor to smallest key `> k`, or `none`. O(log n) expected.
     pub fn cursor_gt(self, k: K) -> ?BagCursor:
         var ans = -1
         var u = root
-        while u >= 0:
-            if k < key[u]:
-                ans = u
-                u = left[u]
-            else:
-                u = right[u]
+        unchecked:
+            while u >= 0:
+                if k < key[u]:
+                    ans = u
+                    u = left[u]
+                else:
+                    u = right[u]
         if ans >= 0: BagCursor(ans) else: none
 
     /// Cursor to largest key `<= k`, or `none`. O(log n) expected.
     pub fn cursor_le(self, k: K) -> ?BagCursor:
         var ans = -1
         var u = root
-        while u >= 0:
-            if not (k < key[u]):
-                ans = u
-                u = right[u]
-            else:
-                u = left[u]
+        unchecked:
+            while u >= 0:
+                if not (k < key[u]):
+                    ans = u
+                    u = right[u]
+                else:
+                    u = left[u]
         if ans >= 0: BagCursor(ans) else: none
 
     /// Cursor to largest key `< k`, or `none`. O(log n) expected.
     pub fn cursor_lt(self, k: K) -> ?BagCursor:
         var ans = -1
         var u = root
-        while u >= 0:
-            if key[u] < k:
-                ans = u
-                u = right[u]
-            else:
-                u = left[u]
+        unchecked:
+            while u >= 0:
+                if key[u] < k:
+                    ans = u
+                    u = right[u]
+                else:
+                    u = left[u]
         if ans >= 0: BagCursor(ans) else: none
 
     /// Key stored at cursor `c`. O(1).
@@ -410,27 +422,29 @@ pub struct SortedBag<K>:
     /// Cursor to the next larger distinct key, or `none`. O(1) amortized.
     pub fn next_cursor(self, c: BagCursor) -> ?BagCursor:
         var u = c.id
-        if right[u] >= 0:
-            u = right[u]
-            while left[u] >= 0: u = left[u]
-            return BagCursor(u)
-        while par[u] >= 0:
-            let p = par[u]
-            if left[p] == u: return BagCursor(p)
-            u = p
+        unchecked:
+            if right[u] >= 0:
+                u = right[u]
+                while left[u] >= 0: u = left[u]
+                return BagCursor(u)
+            while par[u] >= 0:
+                let p = par[u]
+                if left[p] == u: return BagCursor(p)
+                u = p
         none
 
     /// Cursor to the next smaller distinct key, or `none`. O(1) amortized.
     pub fn prev_cursor(self, c: BagCursor) -> ?BagCursor:
         var u = c.id
-        if left[u] >= 0:
-            u = left[u]
-            while right[u] >= 0: u = right[u]
-            return BagCursor(u)
-        while par[u] >= 0:
-            let p = par[u]
-            if right[p] == u: return BagCursor(p)
-            u = p
+        unchecked:
+            if left[u] >= 0:
+                u = left[u]
+                while right[u] >= 0: u = right[u]
+                return BagCursor(u)
+            while par[u] >= 0:
+                let p = par[u]
+                if right[p] == u: return BagCursor(p)
+                u = p
         none
 
     /// Visit every distinct `(key, count)` in ascending order. O(1) amortized per step.
@@ -454,12 +468,17 @@ pub struct SortedBag<K>:
             for _ in 0..c: out.push(k)
         out
 
-    fn sub_of(self, t: Int) -> Int = if t < 0: 0 else: sub[t]
+    fn sub_of(self, t: Int) -> Int:
+        if t < 0: return 0
+        unchecked: return sub[t]
 
     fn pull(mut self, u: Int):
-        sub[u] = cnt[u] + self.sub_of(left[u]) + self.sub_of(right[u])
-        if left[u] >= 0: par[left[u]] = u
-        if right[u] >= 0: par[right[u]] = u
+        unchecked:
+            let l = left[u]
+            let r = right[u]
+            sub[u] = cnt[u] + (if l < 0: 0 else: sub[l]) + (if r < 0: 0 else: sub[r])
+            if l >= 0: par[l] = u
+            if r >= 0: par[r] = u
 
     fn make_node(mut self, x: K, c: Int) -> Int:
         live += 1
@@ -485,42 +504,45 @@ pub struct SortedBag<K>:
     /// Split `t` into `(keys < x, keys >= x)`.
     fn split_lt(mut self, t: Int, x: K) -> (Int, Int):
         if t < 0: return (-1, -1)
-        if key[t] < x:
-            let (a, b) = self.split_lt(right[t], x)
-            right[t] = a
-            self.pull(t)
-            (t, b)
-        else:
-            let (a, b) = self.split_lt(left[t], x)
-            left[t] = b
-            self.pull(t)
-            (a, t)
+        unchecked:
+            if key[t] < x:
+                let (a, b) = self.split_lt(right[t], x)
+                right[t] = a
+                self.pull(t)
+                return (t, b)
+            else:
+                let (a, b) = self.split_lt(left[t], x)
+                left[t] = b
+                self.pull(t)
+                return (a, t)
 
     /// Split `t` into `(keys <= x, keys > x)`.
     fn split_le(mut self, t: Int, x: K) -> (Int, Int):
         if t < 0: return (-1, -1)
-        if not (x < key[t]):
-            let (a, b) = self.split_le(right[t], x)
-            right[t] = a
-            self.pull(t)
-            (t, b)
-        else:
-            let (a, b) = self.split_le(left[t], x)
-            left[t] = b
-            self.pull(t)
-            (a, t)
+        unchecked:
+            if not (x < key[t]):
+                let (a, b) = self.split_le(right[t], x)
+                right[t] = a
+                self.pull(t)
+                return (t, b)
+            else:
+                let (a, b) = self.split_le(left[t], x)
+                left[t] = b
+                self.pull(t)
+                return (a, t)
 
     fn merge(mut self, a: Int, b: Int) -> Int:
         if a < 0: return b
         if b < 0: return a
-        if pri[a] >= pri[b]:
-            right[a] = self.merge(right[a], b)
-            self.pull(a)
-            a
-        else:
-            left[b] = self.merge(a, left[b])
-            self.pull(b)
-            b
+        unchecked:
+            if pri[a] >= pri[b]:
+                right[a] = self.merge(right[a], b)
+                self.pull(a)
+                return a
+            else:
+                left[b] = self.merge(a, left[b])
+                self.pull(b)
+                return b
 
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
 /// O(1) key-range views (`range(r)`), and monotone search (`first_where`). Backed by `SortedBag<K>`.

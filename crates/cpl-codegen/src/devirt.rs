@@ -113,6 +113,13 @@ impl<'p> Devirt<'p> {
         matches!(self.held.get(&Home::Param(id, slot)), Some(Held::One(_)))
     }
 
+    pub fn param_target(&self, id: FnId, slot: usize) -> Option<ClosureId> {
+        match self.held.get(&Home::Param(id, slot)) {
+            Some(Held::One(cid)) => Some(*cid),
+            _ => None,
+        }
+    }
+
     /// Struct field `(struct_id, index)` is a single statically known closure
     /// that never escapes to a dynamic `std::function`, so its `std::function`
     /// storage is replaced by a 1-byte `bool` placeholder.

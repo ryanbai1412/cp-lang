@@ -108,34 +108,15 @@ pub struct IntervalMap<D, T>:
 
     /// Paint the single position `i` with `val` and return its previous value. O(log runs).
     pub fn assign_point(mut self, i: D, val: T) -> T:
-        let idx = i.to_idx
-        self.split(idx)
-        self.split(idx + 1)
-        let old = segs.remove(idx)!.val
-        var new_lo = idx
-        var new_hi = idx + 1
-        if let (pl, pseg) = segs.last_lt(new_lo):
-            if pseg.val == val:
-                let _ = segs.remove(pl)
-                new_lo = pl
-        if let nseg = segs.get(new_hi):
-            if nseg.val == val:
-                let _ = segs.remove(new_hi)
-                new_hi = nseg.hi
-        segs[new_lo] = (hi: new_hi, val: val)
-        old
+        var old: ?T = none
+        fn record(_: Range<D>, v: T): old = v
+        self.assign(i.l..i.r, val, on_old: record)
+        old!
 
     /// Visit every maximal run `(range, val)` in ascending order. O(runs).
     pub fn each(self) -> yields (range: Range<D>, val: T):
         for (lo, seg) in segs.items:
             yield (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
-
-    fn split(mut self, x: Int):
-        if x <= 0 or x >= D.K: return
-        if let (sl, seg) = segs.last_le(x):
-            if sl < x and seg.hi > x:
-                segs[sl] = (hi: x, val: seg.val)
-                segs[x] = (hi: seg.hi, val: seg.val)
 
 @test
 fn interval_map_basic_and_coalescing():

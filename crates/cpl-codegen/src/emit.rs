@@ -375,6 +375,34 @@ impl<'p> Emitter<'p> {
         });
     }
 
+    /// Whether `f` is `std.interval.IntervalMap<D, T>.assign`, which lowers to
+    /// the single-iterator `cpl::interval_assign` helper in C++ while keeping
+    /// the ordinary CP Lang body as the interpreter reference.
+    fn is_interval_map_assign(&self, _id: usize, f: &Function) -> bool {
+        let name = fn_name(&f.name);
+        if !name.starts_with("IntervalMap_")
+            || !name.ends_with("_assign")
+            || f.params.len() != 4
+            || f.ret != Ty::Unit
+        {
+            return false;
+        }
+        let Ty::Struct(sid) = f.locals[0].ty else { return false };
+        let Ty::Range(ref dom) = f.locals[1].ty else { return false };
+        let val_ty = &f.locals[2].ty;
+        let Ty::Fn(ref fp, ref fr) = f.locals[3].ty else { return false };
+        if fp.as_slice() != [Ty::Range(dom.clone()), val_ty.clone()] || **fr != Ty::Unit {
+            return false;
+        }
+        let s = &self.program.structs[sid];
+        s.fields.len() == 1
+            && s.fields[0].0 == "segs"
+            && matches!(
+                &s.fields[0].1,
+                Ty::Map(k, v) if **k == Ty::Int && matches!(&**v, Ty::Record(fs) if fs.len() == 2 && fs[0].0 == "hi" && fs[0].1 == Ty::Int && fs[1].0 == "val" && fs[1].1 == *val_ty)
+            )
+    }
+
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
     fn signature(&self, f: &Function) -> String {
         let id = self.fn_id.expect("a fn");
@@ -1080,6 +1108,25 @@ impl<'p> Emitter<'p> {
             }
             fns.push_str(&format!("\n{signature} {{\n"));
             self.indent = 1;
+            if self.is_interval_map_assign(id, f) {
+                self.need("interval_assign");
+                let cb = if self.devirt.param_elidable(id, 3) {
+                    if let Some(cid) = self.devirt.param_target(id, 3) {
+                        format!("cpl_fn{cid}")
+                    } else {
+                        "[](const auto&, const auto&) {}".to_string()
+                    }
+                } else {
+                    self.names[3].clone()
+                };
+                fns.push_str(&format!(
+                    "    cpl::interval_assign({}.segs, {}, {}, {cb});\n",
+                    self.names[0], self.names[1], self.names[2]
+                ));
+                fns.push_str("}\n");
+                self.chunks.push((part, f.name.clone(), fns[start..].to_string()));
+                continue;
+            }
             for d in program.fn_guarded_domains(&f.ret, &f.body) {
                 self.need("dom_guard");
                 let dn = ident(&program.domains[d]);

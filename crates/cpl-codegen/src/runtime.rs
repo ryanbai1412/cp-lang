@@ -1269,6 +1269,82 @@ template <class M, class Q> auto map_take(M& m, const Q& k) -> std::optional<typ
 ",
     },
     Piece {
+        name: "interval_assign",
+        needs: &["fail", "range"],
+        code: "\
+template <class M, class Pos, class V, class F>
+void interval_assign(M& segs, const Range<Pos>& r, const V& val, F&& on_old) {
+    if (r.lo > r.hi) fail(\"the range runs backwards: its end is before its start\");
+    if (r.lo == r.hi) return;
+    ll lo = (ll)r.lo, hi = (ll)r.hi;
+    auto it = segs.upper_bound(lo);
+    if (it == segs.begin()) return;
+    auto lit = std::prev(it);
+    ll sl = lit->first;
+    ll seg_hi = std::get<0>(lit->second);
+    V cur_val = std::get<1>(lit->second);
+    if (seg_hi >= hi) {
+        on_old(r, cur_val);
+        if (cur_val == val) return;
+        ll new_hi = hi;
+        if (seg_hi > hi) {
+            it = segs.emplace_hint(it, hi, std::tuple<ll, V>{seg_hi, cur_val});
+        } else if (it != segs.end() && it->first == hi && std::get<1>(it->second) == val) {
+            new_hi = std::get<0>(it->second);
+            it = segs.erase(it);
+        }
+        if (sl < lo) {
+            std::get<0>(lit->second) = lo;
+            segs.emplace_hint(it, lo, std::tuple<ll, V>{new_hi, val});
+        } else if (lit != segs.begin() && std::get<1>(std::prev(lit)->second) == val) {
+            std::get<0>(std::prev(lit)->second) = new_hi;
+            segs.erase(lit);
+        } else {
+            lit->second = std::tuple<ll, V>{new_hi, val};
+        }
+        return;
+    }
+    on_old(Range<Pos>{(Pos)lo, (Pos)seg_hi}, cur_val);
+    auto left_target = segs.end();
+    if (sl < lo) {
+        if (cur_val == val) left_target = lit;
+        else std::get<0>(lit->second) = lo;
+    } else if (lit != segs.begin() && std::get<1>(std::prev(lit)->second) == val) {
+        left_target = std::prev(lit);
+        segs.erase(lit);
+    } else {
+        left_target = lit;
+    }
+    ll new_hi = hi;
+    while (it != segs.end() && it->first < hi) {
+        ll pos = it->first;
+        ll ohi = std::get<0>(it->second);
+        V ov = std::move(std::get<1>(it->second));
+        if (ohi <= hi) {
+            on_old(Range<Pos>{(Pos)pos, (Pos)ohi}, ov);
+            it = segs.erase(it);
+        } else {
+            on_old(Range<Pos>{(Pos)pos, (Pos)hi}, ov);
+            if (ov == val) {
+                new_hi = ohi;
+                it = segs.erase(it);
+            } else {
+                it = segs.erase(it);
+                it = segs.emplace_hint(it, hi, std::tuple<ll, V>{ohi, std::move(ov)});
+            }
+            break;
+        }
+    }
+    if (it != segs.end() && it->first == new_hi && std::get<1>(it->second) == val) {
+        new_hi = std::get<0>(it->second);
+        it = segs.erase(it);
+    }
+    if (left_target != segs.end()) left_target->second = std::tuple<ll, V>{new_hi, val};
+    else segs.emplace_hint(it, lo, std::tuple<ll, V>{new_hi, val});
+}
+",
+    },
+    Piece {
         name: "map_fold",
         needs: &[],
         code: "\
