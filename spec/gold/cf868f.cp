@@ -35,6 +35,6 @@ fn layer(prev: [Cut]Int) -> [Cut]Int:
     fill(Cut.all, Cut.all)
     next
 
-var best = [cost(..i) for i in Cut]   // empty pieces cost 0, so "at most k" equals "exactly k"
+var best: [Cut]Int = [Cut] i => cost(..i)   // empty pieces cost 0, so "at most k" equals "exactly k"
 repeat k - 1: best = layer(best)
 print(best[Cut.last])

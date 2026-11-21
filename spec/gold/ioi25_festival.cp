@@ -26,16 +26,16 @@ fn max_coupons(a0: 0..=1e9, p: [C]1..=1e9, t: [C]1..=4) -> List<C>:
     for (i, c) in rest.enumerate():
         for k in K:
             best[i + 1][k] max= best[i][k]
-            if k > 0 and best[i][k - 1]? >= p[c]: best[i + 1][k] max= buy(best[i][k - 1]!, c)
+            if let j = k.prev and let t = best[i][j] and t >= p[c]: best[i + 1][k] max= buy(t, c)
 
     let cost = plain.map(c => p[c]).prefix_sums()
-    fn total(k: K) -> Int = k + cost.count(where: s => s <= best[rest.len][k]!)
+    fn total(k: K) -> Int = k + cost.count(s => s <= best[rest.len][k]!)
     let k = K.filter(k => best[rest.len][k] != none).max_by(total)!
 
     var took: List<C> = []                            // walk back: a skip that keeps best was optimal
     var j = k
-    for i in (0..rest.len).rev():
+    for i in (0..rest.len).rev:
         if best[i + 1][j] != best[i][j]:
             took.push(rest[i])
             j -= 1
-    return free ++ took.reversed() ++ plain.take(total(k) - k)
+    return free + took.reversed() + plain.take(total(k) - k)
