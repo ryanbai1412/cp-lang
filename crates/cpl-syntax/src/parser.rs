@@ -486,7 +486,9 @@ impl<'a> Parser<'a> {
     /// `let x =` with the value on the indented lines below: read past it
     /// as planned syntax, leaving an error value.
     fn continued_value(&mut self) -> Option<Expr> {
-        if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
+        if !(self.at(T::Newline) && self.peek_n(1) == T::Indent)
+            || matches!(self.peek_n(2), T::If | T::Match)
+        {
             return None;
         }
         let start = self.start();

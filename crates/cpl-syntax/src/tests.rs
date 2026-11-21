@@ -1390,3 +1390,10 @@ fn single_bitwise_operators_are_not_c_style_logic() {
     assert_eq!(codes("let b = 6 & 3 | 1\nlet c = 6 & &3\n").len(), 1);
     assert!(codes("let b = 6 & 3 | 1\n").is_empty());
 }
+
+#[test]
+fn an_indented_if_after_eq_is_the_value_and_any_other_indented_value_is_planned() {
+    assert!(codes("let a =\n    if true:\n        1\n    else:\n        2\nprint(a)\n").is_empty());
+    let d = one_diag("let a =\n    1\nprint(a)\n");
+    assert!(d.message.contains("a value on the indented lines after `=`"), "{}", d.message);
+}
