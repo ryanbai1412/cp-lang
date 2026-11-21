@@ -3,7 +3,7 @@
 
 == hover @ 5:8
 ```cp
-total: _
+total: Int
 ```
 
 == hover @ 5:17
