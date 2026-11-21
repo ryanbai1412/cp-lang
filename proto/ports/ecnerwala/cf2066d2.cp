@@ -5,42 +5,39 @@
 // the prefix of length `used + c`. That requires `used + c > last[f]`, leaves
 // `open[used + c] + fixed_below - used` free slots in that prefix, and choosing
 // k launches for floor f multiplies by C(avail, k - fixed[f]).
+use std.prefix.prefix1
+
 const P = 1_000_000_007
 type M = Mod<P>
 let comb = Comb<P>(100)
 
 let t: 1..=10_000 = read()
-for _ in 0..t:
-    let (n, c, m): (1..=100, 1..=100, 1..=10_000) = read()
+repeat t:
+    let n: 1..=100 = read()
+    let c: 1..=100 = read()
+    let m: c..=n * c = read()
     domain Floor = 1..=n
     domain Time = 1..=m
-    let raw: [Time](0..=100) = read()
+    let a: [Time]?Floor = read(none: 0)
 
-    var fixed: [Floor]Int = 0
+    let open = prefix1([Time] tm => Int(a[tm] == none))
     var last_pos: [Floor]?Time = none
-    var open: [0..=m]Int = 0
     for tm in Time:
-        open[tm.ord + 1] = open[tm.ord] + Int(raw[tm] == 0)
-        if raw[tm] > 0:
-            let f = Floor(raw[tm])
-            fixed[f] += 1
-            last_pos[f] = tm
+        if let f = a[tm]: last_pos[f] = tm
 
     var dp: [0..=m - c]M = 0
     dp[0] = 1
     var fixed_below = 0
 
-    for f in Floor:
-        if f == Floor.last: break
-        var min_used = 0
-        if let lp = last_pos[f]: min_used max= lp.ord + 1 - c
+    for f in Floor if f != Floor.last:
+        let fixed = count(a[tm] == f for tm in Time)
+        let min_used = if let lp = last_pos[f]: max(0, lp.ord + 1 - c) else: 0
         var ndp: [0..=m - c]M = 0
-        for used in min_used..=m - c:
-            if dp[used] == 0: continue
-            let avail = open[used + c] + fixed_below - used
-            for k in fixed[f]..=min(c, m - c - used):
-                ndp[used + k] += dp[used] * comb.choose(avail, k - fixed[f])
+        for used in min_used..=m - c if dp[used] != 0:
+            let avail = open.sum(..=Time(used + c)) + fixed_below - used
+            for k in fixed..=min(c, m - c - used):
+                ndp[used + k] += dp[used] * comb.choose(avail, k - fixed)
         dp = ndp
-        fixed_below += fixed[f]
+        fixed_below += fixed
 
     print(dp[m - c])
