@@ -2128,7 +2128,7 @@ impl<'a> Checker<'a> {
                         kept.push(want.clone());
                         continue;
                     }
-                    if self.fits(got, want) {
+                    if self.fits(got, want) || self.literal_position(index_expr, want) {
                         continue;
                     }
                     let message = format!(
@@ -2319,6 +2319,9 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if self.literal_position(at, want) {
+            return true;
+        }
         if self.unhandled_step(got, want, at).is_some() {
             let text = format!(
                 "expected {want}, got {got}: `{}` may step outside {want}",
@@ -2343,6 +2346,29 @@ impl<'a> Checker<'a> {
             }
         }
         false
+    }
+}
+
+impl Checker<'_> {
+    /// An integer literal written where a position or cut of an integer
+    /// domain is expected (or fills an array of them) is that position.
+    fn literal_position(&mut self, at: &Expr, want: &Ty) -> bool {
+        let ExprKind::Int(_) = at.kind else {
+            return false;
+        };
+        let domain = match want {
+            Ty::Pos(d) => d,
+            Ty::Array { elem, .. } => match elem.as_ref() {
+                Ty::Pos(d) => d,
+                _ => return false,
+            },
+            _ => return false,
+        };
+        let base = domain.strip_suffix(".bounds").unwrap_or(domain).to_string();
+        if self.local(&base).is_some_and(|l| matches!(l.ty, Ty::Domain(_))) {
+            return !self.local_product_domains.contains_key(&base);
+        }
+        matches!(self.env.type_def(&base).as_deref(), Some(Def::Domain(info)) if info.factors.is_empty())
     }
 }
 

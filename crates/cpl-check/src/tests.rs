@@ -240,12 +240,12 @@ fn declared_types_are_checked_against_values_and_returns() {
         (d.code.0, d.message.as_str()),
         ("E0302", "`x` is declared a Bool, but `5` is an Int")
     );
-    let d = one("let n: 1..=9 = read()\ndomain V = 1..=n\nlet v: V = 3\n");
+    let d = one("let n: 1..=9 = read()\ndomain V = 1..=n\nlet i: Int = 3\nlet v: V = i\n");
     assert_eq!(
         (d.code.0, d.message.as_str()),
-        ("E0301", "`v` is declared a V, but `3` is an Int")
+        ("E0301", "`v` is declared a V, but `i` is an Int")
     );
-    assert_eq!(d.help.as_deref(), Some("convert it with `V(3)`"));
+    assert_eq!(d.help.as_deref(), Some("convert it with `V(i)`"));
     let d = one("fn f(x: Int) -> Bool:\n    if x > 0:\n        return 1\n    x == 0\n");
     assert_eq!(d.message, "`f` returns a Bool, but `1` is an Int");
     let d = one("fn sq(x: Int) -> Str = x * x\n");
@@ -3110,4 +3110,10 @@ fn bounds_ranges_and_domain_ranges_check_per_decision_124() {
         ),
         Vec::<&str>::new()
     );
+}
+
+#[test]
+fn an_int_literal_is_a_position_of_an_integer_domain() {
+    let src = "let n: 1..=9 = read()\ndomain V = 0..n\nvar best: [V.bounds]V.bounds = 0\nlet v: V = 0\nbest[0] = 1\nfn f(k: Int):\n    domain K = 0..=k\n    var t: [K]Int = 0\n    t[0] = 1\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
 }
