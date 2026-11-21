@@ -2998,6 +2998,15 @@ print(a[X])
     );
 }
 
+/// The cf2183f dream checks clean: its tree lines (`read<Tree<V>>()`,
+/// `t.at.rev`, `t.pos`, `t.below`, `t.sub`) and its 2D prefix sums.
+#[test]
+fn dream_cf2183f_checks() {
+    let src = include_str!("../../../proto/ports/ecnerwala/dream/cf2183f.cp");
+    let found = check(src);
+    assert!(found.is_empty(), "{found:?}");
+}
+
 /// A failed `use` keeps the prelude off only the names it lists: the
 /// missing name is one error, and what the prelude gives still checks.
 #[test]

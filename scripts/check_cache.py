@@ -44,7 +44,8 @@ STAGES = {
     "clippy": _TESTS + [
         "README.md", "design/*", "bench/*", "docs/*", "editors/*", "examples/*", "site/*",
         "proto/*", "tools/*",
-        "!proto/ports/ecnerwala/dream/cf2115c.cp", "!tools/trace/*",
+        "!proto/ports/ecnerwala/dream/cf2115c.cp", "!proto/ports/ecnerwala/dream/cf2183f.cp",
+        "!tools/trace/*",
     ],
     "stdlib_test": _TESTS,
     "nextest_doc": _TESTS,
