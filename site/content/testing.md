@@ -34,7 +34,7 @@ For input `4`, `f(3)` evaluates to `45`.
 There is one assertion keyword, so a sanity check is never silently stripped in release mode:
 
 - `assert cond` — checked in both local runs and compiled C++17, and also informs range and disjointness checks. Input constraints belong in typed `read()` bounds, `read(gen: f)`, `@gen`, and `@checker` rather than assertions.
-- `debug(x, dp)` — prints checkpoints during local runs, records structured snapshots in `cpl run --trace` and the playground's **Trace** button, and replays side by side when stress testing catches a failing case. `cpl build` omits `debug(...)` from the final judge C++17.
+- `debug(x, dp)` — prints checkpoints during local runs, records structured snapshots in `cpl run --trace` and the playground's **Trace** button, and replays side by side when stress testing catches a failing case. `cpl build` omits `debug(...)` from the final judge C++17, so the compiler rejects any `debug(...)` expression that mutates program state (`E0312`).
 
 ## Co-located `@brute`, `@checker`, `@interactor`, and `@gen`
 

@@ -18,13 +18,15 @@ Structural range arrays unify across functions whenever their written bounds mat
 
 ## Nominal domains and `Index`
 
-Declare a nominal domain with `domain Name = lo..=hi` whenever you want zero-check indexing and compile-time protection against mixing different index spaces:
+Declare a nominal domain with `domain Name = lo..=hi` (or counted shorthand `domain Name = n`, which means `0..n`) whenever you want zero-check indexing and compile-time protection against mixing different index spaces:
 
-```cp CP Lang 0.2.2
-let n: 1..=2e5 = read()
-let m: 1..=2e5 = read()
+```cp CP Lang
+let n = read(1..=2e5)
+let m = read(1..=2e5)
 domain Row = 1..=n
 domain Col = 1..=m
+domain Bucket = 10              // counted domain: same as 0..10
+print(Row.count, Bucket.count)
 ```
 
 `Row` and `Col` are distinct types even when `n == m`. An array `[Row, Col]Int` accepts `(r, c)` in that order only; swapping `r` and `c` is a type error before the program runs.
@@ -34,9 +36,10 @@ domain Col = 1..=m
 
 A domain implements the `Index` and `Seq` traits:
 
-- `V.K` is the number of elements; `V.first` and `V.last` are the endpoints (`V.K > 0`).
-- `v.to_idx` converts to `0..V.K` and `V.from_idx(i) -> ?V` converts back safely.
+- `V.count` (and `V.K`) is the number of elements; `V.first` and `V.last` are the endpoints (`V.count > 0`).
+- `v.to_idx` converts to `0..V.count` and `V.from_idx(i) -> ?V` converts back safely.
 - `v + k -> ?V` and `v - k -> ?V` step by an integer offset and return `none` past the ends; `b - a -> Int` is the signed distance; `v.cyc(k) -> V` wraps cyclically.
+- Step along a named domain in either direction with `for v in V by k:` and `for v in V.rev by k:`.
 
 Array endpoints are **values**, not domain indices: `a.first` and `a.last` return `?T`, while `V.first` and `V.last` are indices. Like lists, empty arrays return `none`; unwrap with `a.first!` or `a.last!` only when nonempty. An unwrapped endpoint is also a mutable place, so `a.last! += 1` works on a mutable array or list:
 
@@ -72,7 +75,14 @@ The same `.l`/`.r` notation works directly in multi-dimensional DP tables such a
 
 One `Range<I>` type covers half-open `l..r`, inclusive `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l` (strictly between `l` and `r`). Every range provides `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, and `(lo..=hi).clamp(D)`.
 
-Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.sum(..i)`. Read-only slice aggregates work today. In-place slice mutation and parent-indexed slice access remain specification work; use the explicit [copy-and-writeback example](course-index-slices.html#ranges-slices-and-compress-all) when sorting a window.
+Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.sum(..i)`. Array slices use the array's own index base (`a[2..=4]` on a `[1..=4]Int` is its last three cells), and grid slices `g[r, ..]` / `g[.., c]` act as 1-D `[D]T` arrays that can be passed directly to generic functions such as `sum` and `argmax`. In-place slice mutation remains specification work; use the explicit [copy-and-writeback example](course-index-slices.html#ranges-slices-and-compress-all) when sorting a window.
+
+```cp CP Lang
+let one: [1..=4]Int = [10, 20, 30, 40]
+print(sum(one[2..=4]))          // 90 (1-based slice)
+let g: [1..=2, 1..=3]Int = [[1, 5, 2], [4, 3, 6]]
+print(argmax(g[.., 3])!)        // 2 (row index along the 1..=2 axis)
+```
 
 An open-ended `Int` range `l..` also works in a loop. Unlike an open-ended slice, it has no container to supply its endpoint: stop explicitly rather than trying to collect an unbounded iteration.
 

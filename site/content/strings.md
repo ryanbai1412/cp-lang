@@ -60,10 +60,11 @@ The standard library provides `z_function(s)`, `prefix_function(s)`, `palindrome
 
 ## Prefix, suffix, and search helpers
 
-`Str` has `.starts_with(p)`, `.ends_with(p)` and `.find(p) -> ?Int` (the first index where `p` starts), and `Char` has `.lower` and `.upper` for ASCII letters and `.digit` for `'0'..='9'`. `s.find_all(p)` lists the start of every match, overlaps included. All of them are in the prelude.
+`Str` has `.starts_with(p)`, `.ends_with(p)`, `.find(p) -> ?Int` (first match of a `Char` or `Str`), `.rfind(p) -> ?Int` (last match of a `Char` or `Str`), substring membership `sub in s`, and `s.find_all(p)` (every match start, overlaps included). `Char` has `.lower`, `.upper`, and `.digit` for `'0'..='9'`. All of them are in the prelude.
 
 ```cp
-let s: Str = "hello"
-print(s.starts_with("he"), s.ends_with("lo"), s.find("ll"))   // YES YES 2
+let s: Str = "banana"
+print(s.starts_with("ba"), s.ends_with("na"), "an" in s)     // YES YES YES
+print(s.find("an"), s.rfind("an"), s.rfind('a'))             // 1 3 5
 print('a'.upper, 'Q'.lower)                                  // A q
 ```

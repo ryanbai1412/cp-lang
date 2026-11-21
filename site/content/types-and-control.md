@@ -4,9 +4,9 @@ This reference covers every primitive type, numeric rule, operator, optional lif
 
 Every value is declared with one of three bindings:
 
-```cp CP Lang 0.2.2
+```cp CP Lang
 let n = 10                      // immutable value (cannot be reassigned)
-var ans = 0                     // mutable value
+var ans = 0, ways = 1           // multi-binding on one line
 const MOD = 1_000_000_007       // compile-time constant, inlined everywhere
 ```
 
@@ -40,7 +40,7 @@ Range types such as `0..=1_000_000_000` or `-100..=100` check bounds on entry (i
 
 ## Operators and compound updates
 
-- **Arithmetic:** `+`, `-`, `*`, `/` (Euclidean floor division), `%` (Euclidean modulo, always in `0..|b|`), `**` (exponentiation). When the range checker proves `a >= 0` and `b > 0`, `/` and `%` emit native C++ `/` and `%` with zero overhead.
+- **Arithmetic:** `+`, `-`, unary `+`/`-`, `*`, `/` (Euclidean floor division), `%` (Euclidean modulo, always in `0..|b|`), `**` (exponentiation). When the range checker proves `a >= 0` and `b > 0`, `/` and `%` emit native C++ `/` and `%` with zero overhead.
 - **Bitwise:** `&`, `|`, `^` (XOR), `~` (bitwise NOT), `<<`, `>>`, plus `&=`, `|=`, `^=`, `<<=`, `>>=`, and helpers `popcount(x)`, `ctz(x)`, `clz(x)`, `bit_len(x)`.
 - **Ranges:** `..` (half-open) and `..=` (inclusive) bind looser than arithmetic and tighter than comparisons and `in`, so `i in 0..n - 1` parses as `i in (0..(n - 1))`.
 - **Logic and comparison:** `and`, `or`, `not`, `in`, `not in`, `==`, `!=`, `<`, `<=`, `>`, `>=`.
@@ -110,6 +110,8 @@ enum Event:
     Open(x: Int)
     Close(x: Int)
     Query(id: Int, x: Int)
+
+enum Dir: N, E, S, W            // one-line plain enum (commas or `|`)
 ```
 
 - **Records (`type`)** are structural and support both field names (`p.x`) and positional indexing (`p.0`).
@@ -139,10 +141,10 @@ let sign = if x >= 0: 1 else: -1
 
 `match` is exhaustive and works as both a statement and an expression. Chain multiple optional bindings and boolean guards in `if let` and `while let`:
 
-```cp CP Lang 0.2.2
+```cp CP Lang
 fn first() -> ?Int: 2
 fn second(a: Int) -> ?Int: a + 1
-if let a = first() and let b = second(a) and a + b > 0:
+if let a = first(), b = second(a) where a + b > 0:
     print(a + b)
 
 enum Event:
@@ -161,18 +163,25 @@ match ev:
 
 ### Loops, parallel assignment, and closures
 
-- **Filtered loops:** `for v in V if ok(v):`
+- **Counted and infinite loops:** `repeat n:` runs a body `n` times (sugar for `for _ in 0..n:`); `loop:` runs until `break` (sugar for `while true:`).
+- **Filtered loops & comprehensions:** `for v in V where ok(v):` and `[f(v) for v in V where ok(v)]` (the earlier `for v in V if ok(v):` spelling is also accepted).
 - **Index-value pairs:** For a list or string, iterate `i in 0..a.len` and access `a[i]` when you need both.
-- **Domains and containers:** `for v in V:` iterates a domain; `for x in a:` visits container elements. For a two-dimensional grid, use nested row/column loops rather than `for p in (Row, Col):`.
+- **Domains and containers:** `for v in V:` iterates a domain; `for v in V by k:` and `for v in V.rev by k:` step along a domain; `for x in a:` visits container elements. For a two-dimensional grid, use nested row/column loops.
 - **Modifiers:** `.rev` and `.step(k)` work on any range (`for i in (0..n).step(2).rev:`).
 - **Labeled exits:** `'outer: for r in Row: ... break 'outer` (or `continue 'outer`).
 - **Parallel assignment:** `(a, b) = (b, a % b)` evaluates the full right-hand side before assigning to the left.
 - **Closures & nested functions:** Short expressions use arrow lambdas (`x => x * 2`, `(a, b) => a + b`). Multi-line local helpers that mutate enclosing variables use plain nested `fn` declarations:
 
-```cp CP Lang 0.2.2
-var best = 0
-fn relax(x: Int):
-    best max= x
+```cp CP Lang
+var total = 0, step = 1
+repeat 4:
+    total += step
+    step *= 2
+loop:
+    if total >= 15: break
+    total += 1
+let evens = [x for x in 0..8 where x % 2 == 0]
+print(total, evens)
 ```
 
 ## Reserved keywords and decorators

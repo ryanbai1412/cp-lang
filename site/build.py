@@ -127,7 +127,7 @@ TOKEN_CP = re.compile(
     r'|(?P<string>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])\')'
     r'|(?P<decorator>@!?\w+|\'[a-zA-Z_]\w*)'
     r'|(?P<number>\b(?:0x[0-9a-fA-F_]+|0b[01_]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?)\b)'
-    r'|(?P<keyword>\b(?:let|var|const|fn|struct|enum|domain|type|use|pub|if|elif|else|for|while|repeat|loop|in|by|match|return|break|continue|and|or|not|assert|mut|self|unchecked|true|false|none|trait|impl|lends|yield)\b)'
+    r'|(?P<keyword>\b(?:let|var|const|fn|struct|enum|domain|type|use|pub|if|elif|else|for|while|repeat|loop|in|by|where|match|return|break|continue|and|or|not|assert|mut|self|unchecked|true|false|none|trait|impl|lends|yield)\b)'
     r'|(?P<type>\b[A-Z][A-Za-z0-9_]*\b)'
     r'|(?P<function>\b[a-z_][a-zA-Z0-9_]*(?=\s*(?:::<|\()))'
 )

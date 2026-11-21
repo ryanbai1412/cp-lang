@@ -4,8 +4,8 @@ Contest programs spend a surprising share of their code reading structured input
 
 The target type drives `read()`. Reading scalars, tuples, records, fixed-size arrays, grids, and strings uses one uniform call:
 
-```cp CP Lang 0.2.2
-let n: 1..=2e5 = read()
+```cp CP Lang
+let n = read(1..=2e5)           // ranged read shorthand (checked in run & C++)
 let m: 0..=2e5 = read()
 let (l, r): (Int, Int) = read()
 domain V = 1..=n
@@ -22,21 +22,19 @@ Range bounds can reference earlier `let` bindings (`let k: 1..=n = read()`), and
 
 ### Sentinels and EOF loops
 
-When a problem uses a sentinel integer like `-1` to mean "no parent" or "missing", decode it into `?T` at the boundary. The specified `read(none: ...)` shorthand is not yet implemented:
+When a problem uses a sentinel integer like `-1` or `0` to mean "no parent" or "missing", decode it into `?T` directly at the boundary with `read(none: sentinel)`:
 
-```cp CP Lang 0.2.2
-let n: 1..=2e5 = read()
+```cp CP Lang
+let n = read(1..=2e5)
 domain V = 1..=n
-var parent: [V]?V = none
-for v in V:
-    let p: Int = read()
-    if p != -1: parent[v] = V(p)
+let parent: [V]?V = [V] _ => read(none: -1)
+print(parent, none: "-1")
 ```
 
-For problems that terminate on a sentinel value, write an ordinary loop:
+For problems that terminate on a sentinel value, write an ordinary `loop:`:
 
-```cp CP Lang 0.2.2
-while true:
+```cp CP Lang
+loop:
     let (n, m): (Int, Int) = read()
     if (n, m) == (0, 0): break          // stops when (0, 0) is read
     print(n + m)
@@ -135,9 +133,9 @@ Three rules make `@!multitest` effortless:
 - Bare top-level `return` exits the program in a single-test file or ends the current test case below `@!multitest`.
 - Use `@!multitest(until_eof)` for judges that repeat test cases until end-of-file without a leading count `t`.
 
-## Interactive problems (`ask`)
+## Interactive problems (`@!interactive` and `ask`)
 
-In interactive problems, forgetting `flush` causes Idleness Limit Exceeded. Use `ask(...)` — it prints the query, flushes stdout automatically, and parses the judge's reply into the expected type:
+In interactive problems, forgetting `flush` causes Idleness Limit Exceeded. Put `@!interactive` at the top of the file to flush every `print(...)` automatically, or use `ask(...)` — it prints the query, flushes stdout automatically, and parses the judge's reply into the expected type:
 
 ```cp CP Lang 0.2.2
 fn at_least(x: Int) -> Bool:
