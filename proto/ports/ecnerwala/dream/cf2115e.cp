@@ -21,8 +21,8 @@ let queries: [0..q](at: V, budget: 1..=1e9) = read()
 let cap = item.max(by: i => i.cost)!.cost ** 2
 var small: [V, 0..=cap]Int = 0
 for v in V:
-    small[v].add_unbounded(item[v])
-    for k in next[v]: small[k] max= small[v]
+    small.row(v).add_unbounded(item[v])
+    for k in next[v]: small.row(k) max= small.row(v)
 var ans = [small[x.at, min(x.budget, cap)] for x in queries]
 
 for p in V:
@@ -31,8 +31,8 @@ for p in V:
     var best: [V, 0..pc]Int = 0
     for v in V if through[v]:
         if item[v].worth * pc <= pw * item[v].cost:
-            best[v].add_unbounded(item[v], wrap: (pc, pw))
-        for k in next[v] if not (v < p and p < k): best[k] max= best[v]
+            best.row(v).add_unbounded(item[v], wrap: (pc, pw))
+        for k in next[v] if not (v < p and p < k): best.row(k) max= best.row(v)
     for (i, x) in queries.items if x.at >= p and through[x.at] and x.budget >= cap:
         ans[i] max= best[x.at, x.budget % pc] + x.budget / pc * pw
 
