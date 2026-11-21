@@ -346,6 +346,21 @@ fn a_memo_over_ranges_inferred_from_reads_is_a_flat_table_alone() {
 }
 
 #[test]
+fn a_product_domain_loop_is_nested_int_loops() {
+    let head = "let h: 1..=50 = read()\nlet w: 1..=50 = read()\n\
+                domain Row = 0..h\ndomain Col = 0..w\ndomain Square = (Row, Col)\n\
+                let g: [Row, Col]Char = read()\nvar n = 0\n";
+    let product = cpp(&format!(
+        "{head}for (r, c) in Square if g[r, c] == '#':\n    n += 1\nprint(n)\n"
+    ));
+    let nested = cpp(&format!(
+        "{head}for r in Row:\n    for c in Col if g[r, c] == '#':\n        n += 1\nprint(n)\n"
+    ));
+    assert!(!product.contains("ediv") && !product.contains("emod"), "{product}");
+    assert!(product.len() <= nested.len() + 200, "{} vs {}\n{product}", product.len(), nested.len());
+}
+
+#[test]
 fn a_reversed_list_pays_only_for_the_view_parts_it_uses() {
     let read = "let n: Int = read()\nlet xs: List<Int> = [read() for _ in 0..n]\n";
     let size = |body: &str| cpp(&format!("{read}{body}")).len();

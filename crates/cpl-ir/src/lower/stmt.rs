@@ -627,78 +627,31 @@ impl<'a> Lowerer<'a> {
                     self.fields_loop(pat, values, body, out);
                     return;
                 }
-                // Zero-allocation nested loop for `for (i, j) in V.pairs:` / `V.pairs()`.
-                // If the body has a `break`, fall back to `domain_pairs_list` so `break` exits both loops.
+                // `for (i, j) in V.pairs` and `for (r, c) in Square` over a
+                // product domain walk nested integer loops: no list, no div/mod.
                 if let Some(dom_id) = self.domain_pairs_iter(iter) {
-                    fn expr_has_break(e: &ast::Expr) -> bool {
-                        match &e.kind {
-                            ast::ExprKind::If { branches, otherwise } => {
-                                branches.iter().any(|(_, b)| block_has_break(b))
-                                    || otherwise.as_ref().is_some_and(block_has_break)
-                            }
-                            ast::ExprKind::Match { arms, .. } => {
-                                arms.iter().any(|a| block_has_break(&a.body))
-                            }
-                            ast::ExprKind::Block(b) => block_has_break(b),
-                            _ => false,
-                        }
-                    }
-                    fn block_has_break(b: &ast::Block) -> bool {
-                        b.stmts.iter().any(|s| match &s.kind {
-                            ast::StmtKind::Break(_) => true,
-                            ast::StmtKind::Expr(e) => expr_has_break(e),
-                            _ => false,
-                        })
-                    }
-                    if !block_has_break(body) {
-                        let span = iter.span;
-                        let len = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
-                        let i_slot = self.temp(Ty::Pos(dom_id));
-                        let j_slot = self.temp(Ty::Pos(dom_id));
-                        let i_var = self.mk(ExprKind::Local(i_slot), Ty::Pos(dom_id), span);
-                        let j_var = self.mk(ExprKind::Local(j_slot), Ty::Pos(dom_id), span);
-                        let j_lo = self.int_add(self.cast(Cast::Ord, i_var.clone(), Ty::Int), 1);
-                        let outer_id = self.fresh_loop();
-                        let inner_id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
-                        self.cx.scopes.push(HashMap::new());
-                        self.cx.local_syms.push(HashMap::new());
-                        let pair = self.mk(
-                            ExprKind::Tuple(vec![i_var, j_var]),
-                            Ty::Tuple(vec![Ty::Pos(dom_id), Ty::Pos(dom_id)]),
-                            span,
-                        );
-                        let mut inner_stmts = Vec::new();
-                        self.bind(pat, pair, &mut inner_stmts);
-                        inner_stmts.extend(self.block(body, Tail::Discard).stmts);
-                        self.cx.local_syms.pop();
-                        self.cx.scopes.pop();
-                        self.cx.loops.pop();
-                        let inner = Stmt::For(
-                            inner_id,
-                            j_slot,
-                            Iter::Range {
-                                lo: j_lo,
-                                hi: len.clone(),
-                                step: None,
-                                rev: false,
-                                closed: false,
-                            },
-                            Block { stmts: inner_stmts },
-                        );
-                        out.push(Stmt::For(
-                            outer_id,
-                            i_slot,
-                            Iter::Range {
-                                lo: self.int_lit(0, span),
-                                hi: len,
-                                step: None,
-                                rev: false,
-                                closed: false,
-                            },
-                            Block { stmts: vec![inner] },
-                        ));
-                        return;
-                    }
+                    let span = iter.span;
+                    let len = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
+                    let i_slot = self.temp(Ty::Pos(dom_id));
+                    let j_slot = self.temp(Ty::Pos(dom_id));
+                    let i_var = self.mk(ExprKind::Local(i_slot), Ty::Pos(dom_id), span);
+                    let j_var = self.mk(ExprKind::Local(j_slot), Ty::Pos(dom_id), span);
+                    let j_lo = self.int_add(self.cast(Cast::Ord, i_var.clone(), Ty::Int), 1);
+                    let heads = vec![
+                        (i_slot, self.int_lit(0, span), len.clone()),
+                        (j_slot, j_lo, len),
+                    ];
+                    let pair = self.mk(
+                        ExprKind::Tuple(vec![i_var, j_var]),
+                        Ty::Tuple(vec![Ty::Pos(dom_id), Ty::Pos(dom_id)]),
+                        span,
+                    );
+                    self.nested_for(label.as_ref(), heads, pat, pair, body, out);
+                    return;
+                }
+                if let Some((heads, cell)) = self.product_heads(pat, iter) {
+                    self.nested_for(label.as_ref(), heads, pat, cell, body, out);
+                    return;
                 }
                 // Support compile-time unrolling of heterogeneous literal lists like
                 // `for (k, act) in [(0, AddSum), ..., (0, AssignSum)]:` where items have different struct types.
@@ -857,7 +810,11 @@ impl<'a> Lowerer<'a> {
                     );
                     return;
                 }
-                let target = (index + 1 != self.cx.loops.len()).then(|| self.cx.loops[index].1);
+                let to = self.cx.loops[index].1;
+                let target = match self.cx.break_out.get(&to) {
+                    Some(&outer) if is_break => Some(outer),
+                    _ => (index + 1 != self.cx.loops.len()).then_some(to),
+                };
                 out.push(if is_break {
                     Stmt::Break(target)
                 } else {
@@ -913,6 +870,104 @@ impl<'a> Lowerer<'a> {
             }
             ast::StmtKind::Error => {}
         }
+    }
+
+    /// The loop heads and cell value of `for (r, c) in Square` over a
+    /// product domain whose factors the pattern names one by one.
+    fn product_heads(
+        &mut self,
+        pat: &ast::Pattern,
+        iter: &ast::Expr,
+    ) -> Option<(Vec<LoopHead>, Expr)> {
+        let ast::PatternKind::Tuple(pats) = &pat.kind else { return None };
+        let factors: Vec<ProductFactor> = match (&iter.kind, self.sym(iter)) {
+            (_, Some(Sym::Domain(id))) => {
+                self.product_domains.get(&id)?.iter().map(|(_, f)| f.clone()).collect()
+            }
+            (ast::ExprKind::Tuple(items), _) => items
+                .iter()
+                .map(|it| self.expr_to_product_factor(it))
+                .collect::<Option<_>>()?,
+            _ => return None,
+        };
+        if factors.len() != pats.len() {
+            return None;
+        }
+        let span = iter.span;
+        let (mut heads, mut parts) = (Vec::new(), Vec::new());
+        for f in &factors {
+            let ty = match f {
+                ProductFactor::Domain(d) => Ty::Pos(*d),
+                _ => Ty::Int,
+            };
+            let slot = self.temp(ty.clone());
+            let var = self.mk(ExprKind::Local(slot), ty, span);
+            parts.push(match f {
+                ProductFactor::Domain(_) => var,
+                _ => self.product_factor_from_ord(f, var, span),
+            });
+            heads.push((slot, self.int_lit(0, span), self.product_factor_len(f, span)));
+        }
+        let ty = Ty::Tuple(parts.iter().map(|p| p.ty.clone()).collect());
+        Some((heads, self.mk(ExprKind::Tuple(parts), ty, span)))
+    }
+
+    /// Runs `body` with `pat` bound to `value` inside one loop per head,
+    /// outermost first. `break` leaves them all; `continue` steps the
+    /// innermost, so together they act as the one loop the user wrote.
+    fn nested_for(
+        &mut self,
+        label: Option<&ast::Name>,
+        heads: Vec<LoopHead>,
+        pat: &ast::Pattern,
+        value: Expr,
+        body: &ast::Block,
+        out: &mut Vec<Stmt>,
+    ) {
+        let mut ids: Vec<LoopId> = heads[1..].iter().map(|_| self.fresh_loop()).collect();
+        let inner = self.open_loop(label.map(|l| l.text.clone()));
+        if let Some(&outer) = ids.first() {
+            self.cx.break_out.insert(inner, outer);
+        }
+        self.cx.scopes.push(HashMap::new());
+        self.cx.local_syms.push(HashMap::new());
+        let mut stmts = Vec::new();
+        match (&pat.kind, value.kind) {
+            (ast::PatternKind::Tuple(pats), ExprKind::Tuple(parts)) if pats.len() == parts.len() => {
+                for (p, part) in pats.iter().zip(parts) {
+                    match (&p.kind, &part.kind) {
+                        (ast::PatternKind::Name(name), ExprKind::Local(slot))
+                            if heads.iter().any(|h| h.0 == *slot) =>
+                        {
+                            self.cx.locals[*slot].name = name.clone();
+                            self.cx.scopes.last_mut().expect("a scope").insert(name.clone(), *slot);
+                        }
+                        _ => self.bind(p, part, &mut stmts),
+                    }
+                }
+            }
+            (_, kind) => {
+                let value = Expr { kind, ..value };
+                self.bind(pat, value, &mut stmts)
+            }
+        }
+        stmts.extend(self.block(body, Tail::Discard).stmts);
+        self.cx.local_syms.pop();
+        self.cx.scopes.pop();
+        self.cx.loops.pop();
+        self.cx.break_out.remove(&inner);
+        ids.push(inner);
+        for ((slot, lo, hi), id) in heads.into_iter().zip(ids).rev() {
+            let iter = Iter::Range {
+                lo,
+                hi,
+                step: None,
+                rev: false,
+                closed: false,
+            };
+            stmts = vec![Stmt::For(id, slot, iter, Block { stmts })];
+        }
+        out.extend(stmts);
     }
 
     pub(super) fn open_loop(&mut self, label: Option<String>) -> LoopId {
@@ -4449,6 +4504,9 @@ pub(super) fn names_a_place(e: &Expr) -> bool {
 /// The number `e` is written as, when it is one.
 /// The count along each index, and the cells in order.
 type Rows<'a> = (Vec<usize>, Vec<&'a ast::Expr>);
+
+/// One integer loop: its variable, first value and end.
+type LoopHead = (Slot, Expr, Expr);
 
 /// How many values a list written for an array of `depth` indices has
 /// along each, and its cells in order; `Err` is where a row is not a

@@ -3681,3 +3681,17 @@ count is `r.len`. `.lo`/`.hi` on ranges become errors with a type-directed
 
 - **Decision.** `t.virtual(keys)` replaces `t.virtual_tree(keys)`. It returns `VirtualTree<V, K>` whose own domain `vt.K` lists the kept vertices (keys and pairwise LCAs) in preorder, with `at: [K]V`, `up: [K]?K`, `len: [K]Int` (weighted distance to `up`) and `key: [K]Bool`. A per-query DP is then `var dp: [vt.K]Int = 0` and `for x in vt.K.rev`, children first, with no `[V]` scratch to reset and no edge list to turn back into parents. Matched C++ (`bench/trees/virtual_bench`): 1.12x and 1.18x at n = 2·10^5, q = 10^5, k = 10; 0.9x at n = 10^6, k = 1000.
 - **Reverse.** Restore `virtual_tree` returning `(nodes, edges)` from history; callers rebuild parents from the edges.
+
+## 109. A product-domain loop is nested integer loops (2026-11-21)
+
+`for (r, c) in Square` over `domain Square = (Row, Col)`, or over an anonymous
+`(Row, Col)`, walked the cell ordinals and decoded each with `ediv`/`emod`.
+It now lowers to one integer loop per factor, outermost first, the way
+`V.pairs` already did, binding each name to its loop variable: same order,
+same values, no division, and the Euclidean helpers are no longer emitted
+for it (cf1404e's dream: 15,837 -> 15,277 B). It majorizes, so `cpl explain`
+has nothing to show. `break` leaves the whole nest and `continue` steps the
+innermost loop, so the nest acts as the one loop written; `V.pairs` with a
+`break` used to materialize the pair list and now takes the nested loops
+too. A pattern that does not name each factor (`for s in Square`) keeps the
+ordinal loop. Reverse by deleting `product_heads` in `lower/stmt.rs`.

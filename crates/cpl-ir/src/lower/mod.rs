@@ -493,6 +493,9 @@ struct FnCx {
     /// Hidden list accumulator when lowering a `-> yields T` generator.
     yield_slot: Option<(Slot, Ty)>,
     loops: Vec<(Option<String>, LoopId)>,
+    /// The outermost loop a `break` out of a nested loop's innermost
+    /// one leaves, for one source loop lowered as several.
+    break_out: HashMap<LoopId, LoopId>,
     dos: Vec<DoFrame>,
     /// The `x ?? return` that is the whole right side of the statement
     /// being lowered, and the test it puts ahead of that statement.
