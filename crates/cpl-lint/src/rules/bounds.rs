@@ -49,6 +49,9 @@ pub(crate) struct Bounds {
     bindings: HashMap<String, u32>,
     /// Names a fn or lambda body assigns, which a call anywhere can change.
     fn_writes: HashSet<String>,
+    /// What a condition proves about `a - b` for two bounded names, which
+    /// their own intervals cannot say (`lo < hi` makes `hi - lo` positive).
+    diffs: HashMap<(String, String), Interval>,
 }
 
 /// A name the prover can be told about: an input of a declared range, or an
@@ -249,6 +252,7 @@ impl Bounds {
 
     pub(crate) fn bind(&mut self, name: &str, value: Option<Interval>) {
         self.defs.remove(name);
+        self.diffs.retain(|(a, b), _| a != name && b != name);
         match value {
             Some(value) => self.values.insert(name.to_string(), value),
             None => self.values.remove(name),
@@ -313,6 +317,40 @@ impl Bounds {
         None
     }
 
+    /// From here on `a - b` is in `diff`, as well as in what the intervals
+    /// of `a` and `b` give.
+    pub(crate) fn relate(&mut self, a: &str, b: &str, diff: Interval) {
+        let key = (a.to_string(), b.to_string());
+        let diff = match self.diffs.get(&key) {
+            Some(had) => Interval {
+                lo: had.lo.max(diff.lo),
+                hi: had.hi.min(diff.hi),
+            },
+            None => diff,
+        };
+        self.diffs.insert(key, diff);
+    }
+
+    /// What the relations between two names prove about `a - b`.
+    fn diff(&self, a: &Expr, b: &Expr) -> Option<Interval> {
+        fn name(e: &Expr) -> Option<&str> {
+            match &e.kind {
+                ExprKind::Name(n) => Some(n),
+                ExprKind::Paren(inner) => name(inner),
+                _ => None,
+            }
+        }
+        let (a, b) = (name(a)?.to_string(), name(b)?.to_string());
+        if let Some(d) = self.diffs.get(&(a.clone(), b.clone())) {
+            return Some(*d);
+        }
+        let d = self.diffs.get(&(b, a))?;
+        Some(Interval {
+            lo: d.hi.checked_neg()?,
+            hi: d.lo.checked_neg()?,
+        })
+    }
+
     /// The interval a bounded name is in.
     pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
         self.values.get(name).copied()
@@ -362,7 +400,15 @@ impl Bounds {
                 })
             }
             ExprKind::Binary { op, lhs, rhs, .. } => {
-                Self::combine(*op, self.expr(lhs)?, self.expr(rhs)?)
+                let value = Self::combine(*op, self.expr(lhs)?, self.expr(rhs)?)?;
+                match self.diff(lhs, rhs).filter(|_| *op == BinOp::Sub) {
+                    Some(d) => Some(Interval {
+                        lo: value.lo.max(d.lo),
+                        hi: value.hi.min(d.hi),
+                    })
+                    .filter(|v| v.lo <= v.hi),
+                    None => Some(value),
+                }
             }
             ExprKind::Call { callee, args } => {
                 let ExprKind::Name(name) = &callee.kind else {

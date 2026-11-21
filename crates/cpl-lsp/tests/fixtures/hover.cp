@@ -28,7 +28,7 @@ while lo < hi:
         lo = mid + 1
     else:
         hi = mid
-print(l$0o)
+print(l$0o, lo $0- hi)
 var w = n
 while w > 9:
     w = w / 2

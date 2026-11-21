@@ -629,6 +629,7 @@ fn narrow(
                         // A branch the bounds prove dead claims nothing.
                         bounds.bind(name, (lo <= hi).then_some(bounds::Interval { lo, hi }));
                     }
+                    relate(left, *op, right, block, bounds);
                 }
                 left = right;
             }
@@ -637,7 +638,41 @@ fn narrow(
     }
 }
 
-/// Whether `stmts` can change the value of `name`.
+/// Records what `a op b` proves about `a - b` when both are bounded names
+/// the block leaves alone.
+fn relate(
+    a: &cpl_syntax::ast::Expr,
+    op: cpl_syntax::ast::CmpOp,
+    b: &cpl_syntax::ast::Expr,
+    block: &dyn Fn(&str) -> bool,
+    bounds: &mut bounds::Bounds,
+) {
+    use cpl_syntax::ast::{BinOp, CmpOp, ExprKind};
+    let (ExprKind::Name(x), ExprKind::Name(y)) = (&a.kind, &b.kind) else {
+        return;
+    };
+    if x == y || [x, y].iter().any(|n| block(n) || bounds.written_by_fn(n)) {
+        return;
+    }
+    let (Some(vx), Some(vy)) = (bounds.expr_name(x), bounds.expr_name(y)) else {
+        return;
+    };
+    let Some(d) = bounds::Bounds::combine(BinOp::Sub, vx, vy) else {
+        return;
+    };
+    let (lo, hi) = match op {
+        CmpOp::Lt => (d.lo, d.hi.min(-1)),
+        CmpOp::Le => (d.lo, d.hi.min(0)),
+        CmpOp::Gt => (d.lo.max(1), d.hi),
+        CmpOp::Ge => (d.lo.max(0), d.hi),
+        CmpOp::Eq => (d.lo.max(0), d.hi.min(0)),
+        _ => return,
+    };
+    if lo <= hi {
+        bounds.relate(x, y, bounds::Interval { lo, hi });
+    }
+}
+
 /// Whether a `break` in `stmts` can leave a loop early.
 fn breaks(stmts: &[cpl_syntax::ast::Stmt]) -> bool {
     use cpl_syntax::ast::{Stmt, StmtKind};

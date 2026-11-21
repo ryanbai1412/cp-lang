@@ -113,6 +113,11 @@ mid: Int in 0..=200000
 lo: Int in 0..=200001
 ```
 
+== hover @ 31:14
+```cp
+lo - hi: Int in 0..=200001
+```
+
 == hover @ 35:7
 ```cp
 small: Int in 3..=27

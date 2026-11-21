@@ -1735,6 +1735,23 @@ fn an_if_condition_narrows_the_names_it_compares() {
 }
 
 #[test]
+fn a_comparison_of_two_names_bounds_their_difference() {
+    let head = "let n: 1..=100 = read()\nlet a: 0..=9 = read()\n";
+    let cases = [
+        ("if a < n:\n    let x = n - a\n    print(x)\n", Some((1, 100))),
+        ("if a >= n:\n    let x = a - n\n    print(x)\n", Some((0, 8))),
+        ("if n <= a:\n    print(n)\nelse:\n    let x = a - n\n    print(x)\n", Some((-100, -1))),
+        ("if a == n:\n    let x = (n) - (a)\n    print(x)\n", Some((0, 0))),
+        ("if a < n:\n    a = 5\n    let x = n - a\n    print(x)\n", Some((-8, 100))),
+        ("var lo = 0\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a < 5:\n        lo = mid + 1\n    else:\n        hi = mid\nlet x = lo - hi\nprint(x)\n", Some((0, 101))),
+    ];
+    for (body, want) in cases {
+        let src = format!("{head}{body}").replace("let a:", if body.contains("a = 5") { "var a:" } else { "let a:" });
+        assert_eq!(range_of(&src, "let x"), want, "{body}");
+    }
+}
+
+#[test]
 fn the_prover_names_the_inputs_an_overflow_needs() {
     let overflows = |src: &str| -> Vec<Option<String>> {
         crate::proven_expr_ranges(src).into_iter().map(|e| e.overflow).collect()

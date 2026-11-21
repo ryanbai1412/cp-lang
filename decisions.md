@@ -2295,6 +2295,13 @@ the nearest `cp.toml`, else the file's own) with a `use` line naming the old nam
 same go-to-definition test as open files. The scan reads at most 5000 entries and skips hidden
 folders, `target`, `dist` and `node_modules`. Reverse: drop `rename::project_files`.
 
+29.31. **A comparison of two names bounds their difference.** Intervals alone give `n - a` in
+`-8..=100` inside `if a < n:`, though it is at least 1. The bounds now keep, per pair of names, an
+interval for `a - b` that a condition proved, and `a - b` is cut to it. A pair is forgotten when
+either name is bound again, and never recorded for a name the branch or any fn assigns, so the
+relation holds wherever it is read. Only a difference of two plain names reads it, which keeps the
+analysis linear (no closure over chains like `a < b < c`). Reverse: drop `Bounds::diffs`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
