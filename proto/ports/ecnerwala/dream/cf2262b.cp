@@ -45,7 +45,7 @@ fn forfeits() -> Int:
     var from = I.first
     while let c = eaters.first_ge(from):
         let stop = reach(c, tops.first_gt(c).map(q => q.l) ?? I.end)
-        lost -= tops.range(c.l..stop).len - 1
+        lost -= tops.count_range(c.l, stop) - 1
         from = stop.right ?? break
     lost
 
