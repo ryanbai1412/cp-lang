@@ -1728,6 +1728,10 @@ impl<'a> Lowerer<'a> {
                     .collect();
                 fields.iter().all(|t| self.ordered(t))
             }
+            Ty::Enum(id) => {
+                let payloads: Vec<Ty> = self.enums[*id].variants.iter().flat_map(|(_, fs)| fs.clone()).collect();
+                payloads.iter().all(|t| self.ordered(t))
+            }
             Ty::Error => true,
             _ => false,
         }

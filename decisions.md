@@ -1393,3 +1393,12 @@ normal execution. Reverse: remove `call_stack`/`case` from `Trap`, `call_frames`
   because an unrolled body has nowhere to jump to; `fields` is not reserved, so a user `fn fields`
   wins. To reverse: delete the `fields_loop` paths in `cpl-check` and `cpl-ir` lowering; nothing else
   depends on them yet.
+
+- **28.2 Enums order by variant, then payload.** `<`, `sort`, `max` and the rest work on an enum whose
+  payloads are all ordered: variants compare in declaration order, then field by field, the order the
+  interpreter's values and the C++ `cpl_tie()` already had. Lowering refused it (`E0309`) only because
+  `ordered()` had no enum case, which made the sweep-line idiom (`enum Event: Open, Query, Close`,
+  then sort) need a hand-written key. Declaration order is the order a contestant writes events in,
+  the same rule as struct fields and as the 0.3 spec's derived `Ord`. To reverse: drop the `Ty::Enum`
+  arm of `ordered()` in `cpl-ir/src/lower/expr.rs`.
+

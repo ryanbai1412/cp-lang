@@ -115,7 +115,7 @@ enum Dir: N, E, S, W            // one-line plain enum (commas or `|`)
 ```
 
 - **Records (`type`)** are structural and support both field names (`p.x`) and positional indexing (`p.0`).
-- **Structs and enums** are nominal. Seven core traits derive automatically whenever all fields support them: `Index`, `Seq`, `Eq`, `Ord`, `Hash`, `Show`, and `Read`.
+- **Structs and enums** are nominal. Seven core traits derive automatically whenever all fields support them: `Index`, `Seq`, `Eq`, `Ord`, `Hash`, `Show`, and `Read`. An enum orders by variant, in declaration order, then by the variant's fields, so `events.sort()` puts every `Open` before every `Close`.
 - Automatic tagged-enum input with `@tags("...")` is specified but not yet implemented. Use explicit character matching as shown in [I/O & formatting](io-and-formatting.html).
 - **`for f in fields(x)`** runs its body once per field of a struct, record or tuple, in declaration order, with `f` that field; `for (a, b) in fields(x, y)` walks two values of one type in step. The loop is unrolled when the program is compiled, so each `f` has its own type, the body has no `break` or `continue`, and a generic fn can use it on whatever it is given:
 
