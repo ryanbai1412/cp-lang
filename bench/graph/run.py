@@ -33,12 +33,80 @@ def fixed_cost(n, seed):
         rows.append(f"{rng.randint(2, n - 1)} {rng.randint(0, n - 1)} {rng.randint(1, 10**6)}")
     return "\n".join(rows) + "\n"
 
+def dag(n, m, seed):
+    rng = random.Random(seed)
+    rows = [f"{n} {m}"]
+    for _ in range(m):
+        u = rng.randint(1, n - 1)
+        rows.append(f"{u} {rng.randint(u + 1, min(n, u + 1000))}")
+    return "\n".join(rows) + "\n"
+
+
+def simple(n, extra, seed):
+    """A random tree plus `extra` edges, with no loops or repeated pairs."""
+    rng = random.Random(seed)
+    seen = set()
+    for v in range(2, n + 1):
+        seen.add((rng.randint(max(1, v - 50), v - 1), v))
+    while len(seen) < n - 1 + extra:
+        u = rng.randint(1, n - 1)
+        v = rng.randint(u + 1, min(n, u + 50))
+        seen.add((u, v))
+    edges = list(seen)
+    rng.shuffle(edges)
+    return "\n".join([f"{n} {len(edges)}"] + [f"{u} {v}" for u, v in edges]) + "\n"
+
+
+def tree_queries(n, q, seed):
+    rng = random.Random(seed)
+    rows = [f"{n} {q}"]
+    rows += [f"{rng.randint(max(1, v - 100), v - 1)} {v}" for v in range(2, n + 1)]
+    rows += [f"{rng.randint(1, n)} {rng.randint(1, n)}" for _ in range(q)]
+    return "\n".join(rows) + "\n"
+
+
+def closed_walk(n, m, seed):
+    rng = random.Random(seed)
+    walk = [1]
+    for _ in range(m - 2):
+        v = rng.randint(1, n)
+        while v == walk[-1]:
+            v = rng.randint(1, n)
+        walk.append(v)
+    v = rng.randint(2, n)
+    while v == walk[-1]:
+        v = rng.randint(2, n)
+    walk += [v, 1]
+    return "\n".join([f"{n} {m}"] + [f"{a} {b}" for a, b in zip(walk, walk[1:])]) + "\n"
+
+
+def two_sat(n, m, seed):
+    """Clauses that a hidden random assignment satisfies."""
+    rng = random.Random(seed)
+    truth = [rng.randint(0, 1) for _ in range(n)]
+    rows = [f"{n} {m}"]
+    for _ in range(m):
+        a, b = rng.randrange(n), rng.randrange(n)
+        x, y = rng.randint(0, 1), rng.randint(0, 1)
+        if x != truth[a] and y != truth[b]:
+            x = truth[a]
+        rows.append(f"{a} {x} {b} {y}")
+    return "\n".join(rows) + "\n"
+
 
 BENCHES = {
     "bfs": lambda: graph(10**6, 2 * 10**6, None, 1),
     "bfs01": lambda: graph(10**6, 2 * 10**6, lambda r: r.randint(0, 1), 2),
     "dijkstra": lambda: graph(5 * 10**5, 2 * 10**6, lambda r: r.randint(1, 10**9), 3),
     "fixed_cost": lambda: fixed_cost(2 * 10**6, 4),
+    "scc": lambda: graph(10**6, 2 * 10**6, None, 5),
+    "topo": lambda: dag(10**6, 2 * 10**6, 6),
+    "bridges": lambda: simple(10**6, 3 * 10**5, 7),
+    "articulation": lambda: simple(10**6, 3 * 10**5, 8),
+    "lca": lambda: tree_queries(10**6, 10**6, 9),
+    "euler": lambda: closed_walk(2 * 10**5, 10**6, 10),
+    "two_sat": lambda: two_sat(5 * 10**5, 10**6, 11),
+    "mst": lambda: graph(5 * 10**5, 2 * 10**6, lambda r: r.randint(1, 10**9), 12),
 }
 
 
