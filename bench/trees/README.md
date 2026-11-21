@@ -63,8 +63,10 @@ n = 10^6, best of three, outputs identical (seed 2 within 0.03 s):
 
 The edge list as `Tree<V>` (`[0..n - 1]`) makes `Graph.undirected` build one
 `List` per vertex; over a declared domain `E` it builds the CSR `Graph`, and the
-build is 1.1x. The remaining RSS is 64-bit `dep`, `far` and `sz` (no `I32` yet)
-and the 64-bit child bounds.
+build is 1.1x. The remaining RSS is two core gaps: `[V]Int` tables stored as
+64-bit, and the arrays `Rooted.finish` takes being copied into the struct.
+Fixing both by hand in the emitted C++ gives 0.24 s / 75 MB against 0.24 s /
+70 MB (`research/frictions/rooted-build.md`).
 
 ## `LinkCut`
 
