@@ -380,7 +380,7 @@ pub struct LazyTreap<T, F>(
     /// cost: O(log n) expected
     /// empty: an empty `other` changes nothing
     /// traps: when the total reaches `2^31` elements
-    /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.append(u); t.to_list() == [1, 5] and u.is_empty`
+    /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.append(mut u); t.to_list() == [1, 5] and u.is_empty`
     pub fn append(mut self, mut other: LazyTreap<T, F>) = todo
 
     /// The element at 0-based position `pos` with every pending tag on its path applied. Tags are

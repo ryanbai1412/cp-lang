@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1125 (296 passing). Rules: 521.
+Cases: 1131 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 1125 (296 passing). Rules: 521.
 - R04 (04-indices.md): 59 rules, 68 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
-- R05 (05-ownership.md): 41 rules, 77 cases; 0 uncovered, 3 happy-path only, 4 negative only
+- R05 (05-ownership.md): 41 rules, 78 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 48 cases; 0 uncovered, 5 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 79 cases; 0 uncovered, 9 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
@@ -325,7 +325,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.9.2 [1+ 1-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
 - R05.9.3 [1+ 0-] *happy-path only*: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
 - R05.9.4 [1+ 1-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
-- R05.10.1 [2+ 0-] *happy-path only*: **What is captured.** Plain `let`s are copied in. Local `var`s, local heap values and para...
+- R05.10.1 [2+ 1-]: **What is captured.** Plain `let`s are copied in. Local `var`s, local heap values and para...
 - R05.10.2 [1+ 3-]: **Mode.** A fn value that captures by reference is lent (R6), with the captured variables ...
 - R05.10.3 [2+ 3-]: **Calls.** Captures are borrowed per call (R10), and `mut` captures are exclusive for that...
 - R05.10.4 [2+ 1-]: **Arguments.** A closure passed to a fn is a parameter there (R4): the callee can call it ...
@@ -658,7 +658,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
 - E0606 Missing trait implementation for operator: 18 case(s)
-- E0607 Moved while captured by a closure: 1 case(s)
+- E0607 Moved while captured by a closure: 2 case(s)
 - E0608 Use of moved value: 7 case(s)
 - E0701 Ambiguous trait method: 1 case(s)
 - E0702 overload_by_type *(0.3)*: 2 case(s)
@@ -776,8 +776,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **interval** (43/44 named by a case)
   - uncovered: `IntervalMap.assign_point`
 - **io** (5/5 named by a case)
-- **lazy** (23/30 named by a case)
-  - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_range`, `LazyTreap.append`
+- **lazy** (29/30 named by a case)
+  - uncovered: `flip_action`
 - **marks** (46/46 named by a case)
 - **math** (55/83 named by a case)
   - uncovered: `fixed`, `choose2`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `to_str`, `is_pow2`, `splitmix64`, `divisors_from_factors`, `crt_all`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
@@ -821,7 +821,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1614 of 2222 std items are named by a case.
+1620 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
