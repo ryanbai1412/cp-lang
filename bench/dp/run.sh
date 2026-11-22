@@ -8,11 +8,8 @@ cpl="$root/target/release/cpl"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 python3 "$root/bench/dp/gen.py" "$tmp"
-# std.slope is cf2084g2's port at n = 5e5 against the original's slope treap.
-python3 "$root/corpus/problems/cf2084g2/gen.py" 1 500000 > "$tmp/slope.in"
-for name in frog3 dnc knuth mono monge aliens slope; do
+for name in frog3 dnc knuth mono monge aliens; do
     src="$root/bench/dp/$name.cp"; ref="$root/bench/dp/${name}_matched.cpp"
-    if [ "$name" = slope ]; then src="$root/corpus/problems/cf2084g2/port.cp"; fi
     "$cpl" build "$src" -o "$tmp/${name}_cp.cpp" >/dev/null
     g++ -std=c++17 -O2 "$tmp/${name}_cp.cpp" -o "$tmp/${name}_cp"
     g++ -std=c++17 -O2 "$ref" -o "$tmp/${name}_ref" 2>/dev/null
