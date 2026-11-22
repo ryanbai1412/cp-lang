@@ -16,56 +16,144 @@ fn igcd(a0: Int, b0: Int) -> Int = todo
 
 /// O(1) value type. A 2D point or vector with exact integer coordinates.
 pub struct Pt(x: Int, y: Int):
-    /// O(1). The squared length (`x*x + y*y`).
+    /// The squared length `x*x + y*y`, in `Int`.
+    ///
+    /// Fits for `|x|, |y| <= 2e9`; use `norm2_128` beyond.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt(3, 4).norm2 == 25`
+    /// example: `Pt(0, 0).norm2 == 0`
     pub @get fn norm2(self) -> Int = todo
 
-    /// O(1). The exact squared length in 128-bit arithmetic.
+    /// The exact squared length `x*x + y*y`, computed in `I128`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `I128` (only for coordinates near `Int.MIN`)
+    /// example: `Pt(3, 4).norm2_128 == 25`
+    /// example: `Pt(3_000_000_000, 4_000_000_000).norm2_128 == 25_000_000_000_000_000_000`
     pub @get fn norm2_128(self) -> I128 = todo
 
-    /// O(1). The Euclidean length as `F64`.
+    /// The Euclidean length `sqrt(x*x + y*y)` as `F64` (`hypot`, so no intermediate overflow).
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pt(3, 4).len == 5.0`
+    /// example: `Pt(0, 0).len == 0.0`
     pub @get fn len(self) -> F64 = todo
 
-    /// O(1). Rotated 90 degrees counter-clockwise.
+    /// `self` rotated 90 degrees counter-clockwise: `Pt(-y, x)`.
+    ///
+    /// cost: O(1)
+    /// traps: when `y` is `Int.MIN`
+    /// example: `Pt(1, 2).perp == Pt(-2, 1)`
     pub @get fn perp(self) -> Pt = todo
 
-    /// O(1). Rotated 90 degrees clockwise.
+    /// `self` rotated 90 degrees clockwise: `Pt(y, -x)`.
+    ///
+    /// cost: O(1)
+    /// traps: when `x` is `Int.MIN`
+    /// example: `Pt(1, 2).perp_cw == Pt(2, -1)`
     pub @get fn perp_cw(self) -> Pt = todo
 
-    /// O(1). Polar angle in `(-pi, pi]`.
+    /// The polar angle `atan2(y, x)` in `(-pi, pi]`; 0 for the zero vector.
+    ///
+    /// For exact angular comparisons use `arg` or `angle_less` instead.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pt(1, 0).angle == 0.0`
+    /// example: `Pt(0, -1).angle < 0.0`
+    /// example: `Pt(-1, 0).angle > 3.14`
+    /// example: `Pt(0, 0).angle == 0.0`
     pub @get fn angle(self) -> F64 = todo
 
-    /// O(log max(|x|, |y|)). Reduced integer direction `(x / g, y / g)` with `g = gcd(|x|, |y|)`;
-    /// returns `Pt(0, 0)` for the zero vector.
+    /// The reduced integer direction `(x / g, y / g)` with `g = gcd(|x|, |y|)`; `Pt(0, 0)` for the
+    /// zero vector.
+    ///
+    /// Two nonzero vectors point the same way exactly when their `unit_dir`s are equal, so it is a
+    /// hashable direction key.
+    ///
+    /// cost: O(log max(|x|, |y|))
+    /// traps: never
+    /// example: `Pt(4, -6).unit_dir() == Pt(2, -3)`
+    /// example: `Pt(0, 5).unit_dir() == Pt(0, 1)`
+    /// example: `Pt(0, 0).unit_dir() == Pt(0, 0)`
     pub fn unit_dir(self) -> Pt = todo
 
-    /// O(1). Explicit conversion to a floating-point `Vec`.
+    /// `self` as a floating-point `Vec(F64(x), F64(y))`: the explicit way across.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pt(1, 2).to_vec == Vec(1.0, 2.0)`
     pub @get fn to_vec(self) -> Vec = todo
 
-    /// O(1). Dot product of `self` and `o`.
+    /// The dot product `x * o.x + y * o.y`, in `Int`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result or a product overflows `Int`
+    /// example: `Pt(1, 2).dot(Pt(3, 4)) == 11`
+    /// example: `Pt(1, 0).dot(Pt(0, 1)) == 0`
     pub fn dot(self, o: Pt) -> Int = todo
 
-    /// O(1). Exact 128-bit dot product of `self` and `o`.
+    /// The exact dot product `x * o.x + y * o.y`, computed in `I128`.
+    ///
+    /// cost: O(1)
+    /// traps: when the sum overflows `I128` (only when every coordinate is near `Int.MIN`)
+    /// example: `Pt(1, 2).dot128(Pt(3, 4)) == 11`
     pub fn dot128(self, o: Pt) -> I128 = todo
 
-    /// O(1). 2D cross product of `self` and `o`: positive when `o` is counter-clockwise from `self`.
+    /// The 2D cross product `x * o.y - y * o.x`, in `Int`: positive when `o` is counter-clockwise
+    /// from `self`, negative when clockwise, 0 when parallel.
+    ///
+    /// cost: O(1)
+    /// traps: when the result or a product overflows `Int`
+    /// example: `Pt(1, 0).cross(Pt(0, 1)) == 1`
+    /// example: `Pt(1, 2).cross(Pt(3, 4)) == -2`
+    /// example: `Pt(1, 2).cross(Pt(2, 4)) == 0`
     pub fn cross(self, o: Pt) -> Int = todo
 
-    /// O(1). Exact 128-bit 2D cross product of `self` and `o`.
+    /// The exact 2D cross product `x * o.y - y * o.x`, computed in `I128`.
+    ///
+    /// cost: O(1)
+    /// traps: when the difference overflows `I128` (only for coordinates near `Int.MIN`)
+    /// example: `Pt(1, 2).cross128(Pt(3, 4)) == -2`
     pub fn cross128(self, o: Pt) -> I128 = todo
 
-    /// O(1). Squared Euclidean distance from `self` to `o`.
+    /// The squared Euclidean distance from `self` to `o`, in `Int`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt(0, 0).dist2(Pt(3, 4)) == 25`
+    /// example: `Pt(1, 1).dist2(Pt(1, 1)) == 0`
     pub fn dist2(self, o: Pt) -> Int = todo
 
-    /// O(1). Exact 128-bit squared Euclidean distance from `self` to `o`.
+    /// The exact squared Euclidean distance from `self` to `o`, computed in `I128`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `I128` (coordinates beyond about `4e18` apart)
+    /// example: `Pt(0, 0).dist2_128(Pt(3, 4)) == 25`
     pub fn dist2_128(self, o: Pt) -> I128 = todo
 
-    /// O(1). Euclidean distance from `self` to `o` as `F64`.
+    /// The Euclidean distance from `self` to `o`, as `F64`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pt(0, 0).dist(Pt(3, 4)) == 5.0`
     pub fn dist(self, o: Pt) -> F64 = todo
 
-    /// O(1). Manhattan (L1) distance `|x - o.x| + |y - o.y|`.
+    /// The Manhattan (L1) distance `|x - o.x| + |y - o.y|`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt(1, 1).manhattan(Pt(4, -3)) == 7`
     pub fn manhattan(self, o: Pt) -> Int = todo
 
-    /// O(1). Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|)`.
+    /// The Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|)`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt(1, 1).chebyshev(Pt(4, -3)) == 4`
     pub fn chebyshev(self, o: Pt) -> Int = todo
 
 impl Add for Pt:
@@ -87,11 +175,26 @@ fn cross128_3(a: Pt, b: Pt, c: Pt) -> I128 = todo
 
 fn dot128_3(a: Pt, b: Pt, c: Pt) -> I128 = todo
 
-/// O(1). Which way the path `a -> b -> c` turns: 1 left, -1 right, 0 straight.
-/// Exact in `I128` up to `1e18` coordinates.
+/// Which way the path `a -> b -> c` turns: 1 left (counter-clockwise), -1 right, 0 straight.
+///
+/// The sign of `(b - a).cross(c - b)`, computed exactly in `I128`, so it is exact for
+/// coordinates up to `1e18`.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `turn(Pt(0, 0), Pt(1, 0), Pt(1, 1)) == 1`
+/// example: `turn(Pt(0, 0), Pt(1, 0), Pt(1, -1)) == -1`
+/// example: `turn(Pt(0, 0), Pt(1, 0), Pt(2, 0)) == 0`
 pub fn turn(a: Pt, b: Pt, c: Pt) -> Int = todo
 
-/// O(1). True when `a` and `b` are nonzero and point in the same direction.
+/// Whether `a` and `b` are both nonzero and point the same way: parallel with a positive dot
+/// product, exact in `I128`.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `same_dir(Pt(1, 2), Pt(2, 4)) == true`
+/// example: `same_dir(Pt(1, 2), Pt(-1, -2)) == false`
+/// example: `same_dir(Pt(0, 0), Pt(0, 0)) == false`
 pub fn same_dir(a: Pt, b: Pt) -> Bool = todo
 
 // ---- angular sort
@@ -99,8 +202,19 @@ pub fn same_dir(a: Pt, b: Pt) -> Bool = todo
 /// 0 for the zero vector, 1 for directions in `[0, pi)`, 2 for `[pi, 2*pi)`.
 fn half(a: Pt) -> Int = todo
 
-/// O(1). Exact counter-clockwise angle comparator starting from ray `from` (default `+x`).
-/// Vectors in the same direction compare equal; the zero vector comes first.
+/// Whether `a` comes before `b` counter-clockwise, starting from the ray `from` (default `+x`).
+///
+/// The order is exact in `I128`: the zero vector comes first, then directions by angle in
+/// `[0, 2*pi)` measured from `from`. Vectors in the same direction compare equal, so neither is
+/// less than the other.
+///
+/// cost: O(1)
+/// traps: when `from` is the zero vector
+/// example: `angle_less(Pt(1, 0), Pt(0, 1)) == true`
+/// example: `angle_less(Pt(0, -1), Pt(-1, 0)) == false`
+/// example: `angle_less(Pt(0, 0), Pt(1, 0)) == true`
+/// example: `angle_less(Pt(2, 0), Pt(1, 0)) == false`
+/// example: `angle_less(Pt(-1, 0), Pt(1, 0), from: Pt(0, 1)) == true`
 pub fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool = todo
 
 /// O(1) comparison key. Counter-clockwise by direction, starting from the positive x axis.
@@ -117,91 +231,271 @@ pub struct ByAngleFrom(base: Pt, p: Pt)
 impl Ord for ByAngleFrom:
     fn lt(a, b) = todo
 
-/// O(1). Exact float-free angular sort key for `p`: use `sort(mut pts, by: arg)` or
-/// `sort(mut pts, by: p => arg(p - base))`.
+/// An exact, float-free angular sort key for `p`: `ByAngle(p)`, ordered as `angle_less` from `+x`.
+///
+/// Use `sort(mut pts, by: arg)`, or `sort(mut pts, by: p => arg(p - base))` around another
+/// centre. Points in the same direction tie, so a stable sort keeps their input order.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `var pts = [Pt(0, 1), Pt(-1, 0), Pt(1, 0)]; sort(mut pts, by: arg); pts == [Pt(1, 0), Pt(0, 1), Pt(-1, 0)]`
+/// example: `arg(Pt(1, 1)) == arg(Pt(2, 2))`
 pub fn arg(p: Pt) -> ByAngle = todo
 
 // ---- segments
 
-/// O(1). Is `p` on the segment from `a` to `b`? With `strict: true`, endpoints do
-/// not count. Exact in `I128`.
+/// Whether `p` lies on the closed segment from `a` to `b`, exact in `I128`.
+///
+/// With `strict: true` the endpoints do not count. A degenerate segment `a == b` contains only
+/// `a`, and nothing when strict.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `on_segment(Pt(1, 1), Pt(0, 0), Pt(2, 2)) == true`
+/// example: `on_segment(Pt(0, 0), Pt(0, 0), Pt(2, 2), strict: true) == false`
+/// example: `on_segment(Pt(3, 3), Pt(0, 0), Pt(2, 2)) == false`
 pub fn on_segment(p: Pt, a: Pt, b: Pt, strict: Bool = false) -> Bool = todo
 
-/// O(1). Do the segments `a b` and `c d` share a point? With `strict: true`,
-/// requires a proper interior crossing (touching/collinear do not count). Exact in `I128`.
+/// Whether the closed segments `a b` and `c d` share a point, exact in `I128`.
+///
+/// With `strict: true` they must cross properly, at one point interior to both: touching at an
+/// endpoint and collinear overlap do not count.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `segments_meet(Pt(0, 0), Pt(2, 2), Pt(0, 2), Pt(2, 0)) == true`
+/// example: `segments_meet(Pt(0, 0), Pt(1, 1), Pt(1, 1), Pt(2, 0)) == true`
+/// example: `segments_meet(Pt(0, 0), Pt(1, 1), Pt(1, 1), Pt(2, 0), strict: true) == false`
+/// example: `segments_meet(Pt(0, 0), Pt(1, 0), Pt(0, 1), Pt(1, 1)) == false`
 pub fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool = todo
 
 // ---- convex hull and Minkowski sum
 
-/// O(n), O(n) memory. Lower convex hull chain (left to right) of `(x, y)`-sorted points.
-/// Set `collinear: true` to keep boundary collinear points.
+/// The lower convex hull chain, left to right, of points sorted by `(x, y)` (Andrew's monotone
+/// chain).
+///
+/// Equal points count once. With `collinear: true` points on the chain's straight stretches are
+/// kept; otherwise only the corners. One point gives itself.
+///
+/// cost: O(n) time and memory
+/// empty: `[]`
+/// order: left to right, by `(x, y)`; a new `List`, keyed from 0
+/// traps: when `sorted_pts` is not sorted by `(x, y)`
+/// example: `lower_hull([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, 0)]`
+/// example: `lower_hull([Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == [Pt(0, 0), Pt(2, 0)]`
+/// example: `lower_hull([Pt(0, 0), Pt(1, 0), Pt(2, 0)], collinear: true) == [Pt(0, 0), Pt(1, 0), Pt(2, 0)]`
 pub fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt> = todo
 
-/// O(n), O(n) memory. Upper convex hull chain (left to right) of `(x, y)`-sorted points.
-/// Set `collinear: true` to keep boundary collinear points.
+/// The upper convex hull chain, left to right, of points sorted by `(x, y)`; the mirror of
+/// `lower_hull`, with the same rules for duplicates and `collinear`.
+///
+/// cost: O(n) time and memory
+/// empty: `[]`
+/// order: left to right, by `(x, y)`; a new `List`, keyed from 0
+/// traps: when `sorted_pts` is not sorted by `(x, y)`
+/// example: `upper_hull([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [Pt(0, 0), Pt(1, 1), Pt(2, 0)]`
 pub fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt> = todo
 
-/// O(n log n), O(n) memory. Counter-clockwise convex hull starting at the lexicographically
-/// smallest `(x, y)` point. Set `collinear: true` to keep collinear boundary points.
+/// The convex hull of `pts`, counter-clockwise from the least `(x, y)` point.
+///
+/// Equal points count once. With `collinear: true` boundary points on edges are kept, each once;
+/// otherwise only the corners. When all points are collinear the hull is the two ends (or, with
+/// `collinear: true`, every point in order from the least); one distinct point gives `[p]`.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `[]`
+/// order: counter-clockwise, starting at the least `(x, y)`; a new `List`, keyed from 0
+/// traps: never
+/// example: `convex_hull([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2), Pt(1, 1)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]`
+/// example: `convex_hull([Pt(0, 0), Pt(1, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], collinear: true) == [Pt(0, 0), Pt(1, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]`
+/// example: `convex_hull([Pt(2, 2), Pt(1, 1), Pt(0, 0)]) == [Pt(0, 0), Pt(2, 2)]`
+/// example: `convex_hull([Pt(5, 5), Pt(5, 5)]) == [Pt(5, 5)]`
 pub fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt> = todo
 
-/// O(n log n), O(n) memory. Counter-clockwise convex hull returning domain positions `D`
-/// instead of copying points. Duplicate coordinates keep the smallest position.
+/// The convex hull of `pts` as domain positions `D` instead of copied points; otherwise as
+/// `convex_hull`.
+///
+/// Of several positions with equal coordinates, the smallest in key order stands for them.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `[]`
+/// order: counter-clockwise, starting at the least `(x, y)`; a new `List` of keys of `pts`
+/// traps: never
+/// example: `convex_hull_idx([Pt(1, 1), Pt(0, 0), Pt(2, 0), Pt(0, 0)]) == [1, 2, 0]`
 pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
 
-/// O(n), O(n) memory. Domain-indexed lower hull chain left-to-right on `(x, y)`-sorted `pts`.
+/// The lower hull chain of `(x, y)`-sorted `pts` as domain positions, left to right; otherwise
+/// as `lower_hull`, and equal points keep the smallest position.
+///
+/// cost: O(n) time and memory
+/// empty: `[]`
+/// order: left to right; a new `List` of keys of `pts`
+/// traps: when `pts` is not sorted by `(x, y)` in key order
+/// example: `lower_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 1, 3]`
 pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
 
-/// O(n), O(n) memory. Domain-indexed upper hull chain left-to-right on `(x, y)`-sorted `pts`.
+/// The upper hull chain of `(x, y)`-sorted `pts` as domain positions, left to right; otherwise
+/// as `upper_hull`, and equal points keep the smallest position.
+///
+/// cost: O(n) time and memory
+/// empty: `[]`
+/// order: left to right; a new `List` of keys of `pts`
+/// traps: when `pts` is not sorted by `(x, y)` in key order
+/// example: `upper_hull_idx([Pt(0, 0), Pt(1, -1), Pt(1, 1), Pt(2, 0)]) == [0, 2, 3]`
 pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D> = todo
 
 /// O(n) memory. Incremental 2D convex hull of integer points backed by upper and lower chains.
 pub struct OnlineHull:
-    /// O(1). Empty online convex hull.
+    /// An empty online convex hull.
+    ///
+    /// The hull keeps strict corners only: points on an edge or inside are absorbed.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `OnlineHull.new().is_empty == true`
     pub fn new() -> OnlineHull = todo
 
-    /// O(log n) amortized. Insert point `p` into the hull; returns whether the hull changed.
+    /// Insert `p` and report whether the hull changed (whether `p` is now a corner).
+    ///
+    /// A point inside, on the boundary, or equal to a corner returns false and changes nothing.
+    ///
+    /// cost: O(log n) amortized
+    /// traps: never
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)) == true`
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)) == false`
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(0, 0)) == false`
     pub fn add(mut self, p: Pt) -> Bool = todo
 
-    /// O(log n). Point location against the current hull.
+    /// Where `p` is relative to the current hull: `Inside`, `Boundary` or `Outside`.
+    ///
+    /// An empty hull has everything `Outside`; a one-point or segment hull has only its points on
+    /// the `Boundary`.
+    ///
+    /// cost: O(log n)
+    /// traps: never
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(1, 1)) == Location.Inside`
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(2, 0)) == Location.Boundary`
+    /// example: `OnlineHull.new().locate(Pt(0, 0)) == Location.Outside`
     pub fn locate(self, p: Pt) -> Location = todo
 
-    /// O(log n). Hull vertex maximizing `v.dot128(dir)`, or `None` if empty.
+    /// The hull corner maximizing `v.dot128(dir)`, or `None` when the hull is empty.
+    ///
+    /// Ties go to the corner that comes first in `vertices()` order.
+    ///
+    /// cost: O(log n)
+    /// ties: the first in `vertices()` order
+    /// traps: never
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(1, 1)) == Some(Pt(4, 0))`
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(0, 1)) == Some(Pt(0, 4))`
+    /// example: `OnlineHull.new().extreme(Pt(1, 0)) == None`
     pub fn extreme(self, dir: Pt) -> ?Pt = todo
 
-    /// O(1). Twice the unsigned area of the current hull (0 if fewer than 3 non-collinear points).
+    /// Twice the area of the current hull; 0 with fewer than 3 non-collinear points.
+    ///
+    /// cost: O(1)
+    /// traps: when the value overflows `Int`
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.area2 == 16`
+    /// example: `OnlineHull.new().area2 == 0`
     pub @get fn area2(self) -> Int = todo
 
-    /// O(1). Number of hull vertices.
+    /// The number of hull corners.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)); h.len == 3`
     pub @get fn len(self) -> Int = todo
 
-    /// O(1). True when no points have been added.
+    /// Whether no point has been added since creation or the last `clear`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `OnlineHull.new().is_empty == true`
+    /// example: `var h = OnlineHull.new(); h.add(Pt(1, 1)); h.is_empty == false`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// O(n), O(n) memory. Current hull vertices in CCW order.
+    /// The current hull corners, counter-clockwise from the least `(x, y)`.
+    ///
+    /// cost: O(n) time and memory
+    /// order: counter-clockwise, starting at the least `(x, y)`; a new `List`, keyed from 0
+    /// traps: never
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.vertices() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
     pub fn vertices(self) -> List<Pt> = todo
 
-    /// O(n). Yield current hull vertices in CCW order.
+    /// The current hull corners, yielded in `vertices()` order without building a list.
+    ///
+    /// cost: O(n)
+    /// order: counter-clockwise, starting at the least `(x, y)`
+    /// traps: never
+    /// example: `var h = OnlineHull.new(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.iter().collect() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
     pub fn iter(self) -> yields Pt = todo
 
-    /// O(n). Remove all points from the hull.
+    /// Remove every point; the hull is then empty.
+    ///
+    /// cost: O(n)
+    /// traps: never
+    /// example: `var h = OnlineHull.new(); h.add(Pt(1, 1)); h.clear(); h.is_empty`
     pub fn clear(mut self) = todo
 
 fn min_yx_idx(poly: List<Pt>) -> Int = todo
 
-/// O(|a| + |b|), O(|a| + |b|) memory. Minkowski sum of two non-empty CCW convex polygons.
+/// The Minkowski sum `{p + q}` of two non-empty counter-clockwise convex polygons, by merging
+/// edges.
+///
+/// The result is convex, counter-clockwise from its least `(y, x)` corner, with collinear
+/// points dropped. Inputs may start at any corner.
+///
+/// cost: O(|a| + |b|) time and memory
+/// empty: traps
+/// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
+/// traps: when `a` or `b` is empty
+/// example: `minkowski_sum([Pt(0, 0), Pt(1, 0), Pt(1, 1), Pt(0, 1)], [Pt(0, 0), Pt(1, 0), Pt(0, 1)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 1), Pt(1, 2), Pt(0, 2)]`
+/// example: `minkowski_sum([Pt(1, 1)], [Pt(0, 0), Pt(1, 0), Pt(0, 1)]) == [Pt(1, 1), Pt(2, 1), Pt(1, 2)]`
 pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
 
-/// O(|a| + |b|), O(|a| + |b|) memory. Minkowski sum of two non-empty left-to-right upper hulls.
+/// The upper hull of the Minkowski sum of two non-empty left-to-right upper hulls.
+///
+/// The result is again a left-to-right upper hull with collinear points dropped.
+///
+/// cost: O(|a| + |b|) time and memory
+/// empty: traps
+/// order: left to right; a new `List`, keyed from 0
+/// traps: when `a` or `b` is empty
+/// example: `minkowski_upper([Pt(0, 0), Pt(1, 1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, 1), Pt(2, 1), Pt(3, 0)]`
 pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
 
-/// O(|a| + |b|), O(|a| + |b|) memory. Minkowski sum of two non-empty left-to-right lower hulls.
+/// The lower hull of the Minkowski sum of two non-empty left-to-right lower hulls; the mirror of
+/// `minkowski_upper`.
+///
+/// cost: O(|a| + |b|) time and memory
+/// empty: traps
+/// order: left to right; a new `List`, keyed from 0
+/// traps: when `a` or `b` is empty
+/// example: `minkowski_lower([Pt(0, 0), Pt(1, -1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, -1), Pt(3, 0)]`
 pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt> = todo
 
-/// O(|a| + |b|). True iff two non-empty CCW convex polygons share at least one point.
+/// Whether two non-empty counter-clockwise convex polygons share at least one point, boundary
+/// included. Exact in `I128`.
+///
+/// cost: O(|a| + |b|)
+/// empty: traps
+/// traps: when `a` or `b` is empty
+/// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(1, 1), Pt(3, 1), Pt(3, 3), Pt(1, 3)]) == true`
+/// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(2, 2), Pt(3, 2), Pt(3, 3)]) == true`
+/// example: `convex_polygons_overlap([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], [Pt(5, 5), Pt(6, 5), Pt(6, 6)]) == false`
 pub fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool = todo
 
-/// O(|a| + |b|), O(|a| + |b|) memory. Intersection of two CCW convex polygons (empty if disjoint).
+/// The intersection of two counter-clockwise convex polygons, as a counter-clockwise polygon.
+///
+/// Vertices within `eps` of each other merge. An intersection with area at most `eps` (disjoint,
+/// or touching at a point or along an edge) is `[]`. The result starts at its least `(y, x)`
+/// corner.
+///
+/// cost: O(|a| + |b|) time and memory
+/// empty: `[]` when either input is empty
+/// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
+/// traps: never
+/// example: `convex_polygon_intersect([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], [Vec(1.0, 1.0), Vec(3.0, 1.0), Vec(3.0, 3.0), Vec(1.0, 3.0)]) == [Vec(1.0, 1.0), Vec(2.0, 1.0), Vec(2.0, 2.0), Vec(1.0, 2.0)]`
+/// example: `convex_polygon_intersect([Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0)], [Vec(5.0, 5.0), Vec(6.0, 5.0), Vec(5.0, 6.0)]) == []`
 pub fn convex_polygon_intersect(
     a: List<Vec>,
     b: List<Vec>,
@@ -210,21 +504,54 @@ pub fn convex_polygon_intersect(
 
 // ---- polygons and rotating calipers
 
-/// O(n). Twice the signed area of a polygon: positive when vertices run CCW.
+/// Twice the signed area of the polygon `poly` (shoelace): positive when the vertices run
+/// counter-clockwise, negative when clockwise; 0 for fewer than 3 vertices.
+///
+/// cost: O(n)
+/// empty: 0
+/// traps: when the sum overflows `Int`
+/// example: `area2([Pt(0, 0), Pt(2, 0), Pt(0, 2)]) == 4`
+/// example: `area2([Pt(0, 0), Pt(0, 2), Pt(2, 0)]) == -4`
+/// example: `area2([Pt(0, 0), Pt(1, 1)]) == 0`
 pub fn area2(poly: List<Pt>) -> Int = todo
 
-/// O(n). Exact 128-bit twice signed area of a polygon.
+/// Twice the signed area of `poly`, as `area2`, accumulated exactly in `I128`.
+///
+/// cost: O(n)
+/// empty: 0
+/// traps: when the sum overflows `I128`
+/// example: `area2_128([Pt(0, 0), Pt(2, 0), Pt(0, 2)]) == 4`
 pub fn area2_128(poly: List<Pt>) -> I128 = todo
 
 /// O(1) enum. Position of a point relative to a polygon or disk.
 pub enum Location = Inside | Boundary | Outside
 
-/// O(n). Where `p` is relative to a simple polygon (either orientation):
-/// `Location.Inside`, `Location.Boundary`, or `Location.Outside`. Exact in `I128`.
+/// Where `p` is relative to the simple polygon `poly`, in either orientation: `Inside`,
+/// `Boundary` or `Outside`. Exact in `I128`.
+///
+/// Boundary is tested first (on any edge, including vertices); otherwise ray crossing decides.
+/// An empty polygon has everything `Outside`.
+///
+/// cost: O(n)
+/// empty: `Location.Outside`
+/// traps: never
+/// example: `locate([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(1, 1)) == Location.Inside`
+/// example: `locate([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(4, 2)) == Location.Boundary`
+/// example: `locate([Pt(0, 0), Pt(0, 4), Pt(4, 4), Pt(4, 0)], Pt(5, 1)) == Location.Outside`
 pub fn locate(poly: List<Pt>, p: Pt) -> Location = todo
 
-/// O(log n). Where `p` is relative to a CCW convex polygon:
-/// `Location.Inside`, `Location.Boundary`, or `Location.Outside`. Exact in `I128`.
+/// Where `p` is relative to the counter-clockwise convex polygon `hull`: `Inside`, `Boundary`
+/// or `Outside`, by binary search on the fan from `hull[0]`. Exact in `I128`.
+///
+/// A hull of one or two points has only its points (or segment) on the `Boundary`; an empty hull
+/// has everything `Outside`.
+///
+/// cost: O(log n)
+/// empty: `Location.Outside`
+/// traps: never
+/// example: `locate_convex([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(2, 2)) == Location.Inside`
+/// example: `locate_convex([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(0, 0)) == Location.Boundary`
+/// example: `locate_convex([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(-1, 2)) == Location.Outside`
 pub fn locate_convex(hull: List<Pt>, p: Pt) -> Location = todo
 
 /// O(n). Squared diameter of a CCW convex polygon by rotating calipers.
