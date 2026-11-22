@@ -585,6 +585,9 @@ pub struct ProvenFn {
     /// count; `None` when a `while`, an unbounded `for`, recursion or a call
     /// in a lambda makes the count unknown.
     pub steps: Option<u128>,
+    /// `steps` in the source's terms, a sum of loop counts as for
+    /// `ProvenLoop::total_count` (`n * q + n`); `None` past six terms.
+    pub count: Option<String>,
 }
 
 /// Each fn with a loop in its body; a file with a syntax error has none.

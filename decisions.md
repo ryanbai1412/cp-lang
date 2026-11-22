@@ -2407,7 +2407,9 @@ which the text says; this is an iteration count, not the `O(..)` estimate `plan/
 29.42. **A loop's count is named in the source's terms.** The `for` hover reads `runs at most
 k = 7 times` and `n * k = 1400000 (1.4e6) times in all`: a range `0..q` or `1..=q` counts as `q`,
 a domain declared `1..=n` (or `0..n`) as `n`, and any other range as its number, so `2..q + 1`
-shows `999`, not `q - 1`. A count that is only numbers is not repeated. Reverse by dropping
+shows `999`, not `q - 1`. A count that is only numbers is not repeated. A fn's hover writes its
+count the same way, as a sum with equal terms gathered (`3 + 3 * n + 3 * n * k = 4800003`), and
+only the number past six terms. Reverse by dropping
 `ProvenLoop::count` and `total_count`.
 
 ## 30. Front-end recovery (2026-11-21)

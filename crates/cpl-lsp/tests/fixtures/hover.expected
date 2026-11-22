@@ -175,17 +175,17 @@ domain Col = 0..4
 == hover @ 71:6
 ```cp
 fn scan()
-  loops: at most 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
+  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
 ```
 
 == hover @ 75:4
 ```cp
 fn scan()
-  loops: at most 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
+  loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted
 ```
 
 == hover @ 76:6
 ```cp
 fn rescan()
-  loops: at most 4800003 (4.8e6) iterations per call, with the fns it calls; methods and the stdlib not counted
+  loops: at most 3 + 3 * n + 3 * n * k = 4800003 (4.8e6) iterations per call, with the fns it calls; methods and the stdlib not counted
 ```

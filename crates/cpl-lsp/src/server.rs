@@ -230,13 +230,15 @@ impl Server {
                 if let Some(index) = self.index_hover(&uri, offset, true) {
                     hover.text = format!("{}\n  {}", hover.text, index.text);
                 }
-                let steps = cpl_lint::proven_fns(&analysis.text)
+                let proven = cpl_lint::proven_fns(&analysis.text)
                     .into_iter()
-                    .find(|f| f.name.0 == declared && hover.text.starts_with("fn "))
-                    .and_then(|f| f.steps);
-                if let Some(steps) = steps {
+                    .find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
+                if let Some((steps, count)) = proven.and_then(|f| Some((f.steps?, f.count))) {
+                    let named = count
+                        .filter(|c| !c.chars().all(|c| c.is_ascii_digit()))
+                        .map_or(String::new(), |c| format!("{c} = "));
                     hover.text += &format!(
-                        "\n  loops: at most {} iterations per call, with the fns it calls; methods and the stdlib not counted",
+                        "\n  loops: at most {named}{} iterations per call, with the fns it calls; methods and the stdlib not counted",
                         count_text(steps)
                     );
                 }

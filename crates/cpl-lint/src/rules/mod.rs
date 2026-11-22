@@ -49,42 +49,87 @@ pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
 /// fn declared in the file, how often the call runs times that fn's own
 /// count. Recursion, or a call inside a lambda, makes the count unknown.
 pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
-    #[derive(Clone, Copy)]
+    /// Iterations per call, and the same as a sum of products of loop
+    /// counts (`None` when it would be long).
+    type Cost = (Option<u128>, Option<Vec<Vec<Factor>>>);
     enum State {
         Todo,
         Busy,
-        Done(Option<u128>),
+        Done(Cost),
     }
-    fn steps(i: usize, fns: &[FnCost], by_name: &std::collections::HashMap<&str, usize>, state: &mut [State]) -> Option<u128> {
-        match state[i] {
-            State::Done(n) => return n,
-            State::Busy => return None,
+    const MOST_TERMS: usize = 6;
+    fn cost(i: usize, fns: &[FnCost], by_name: &std::collections::HashMap<&str, usize>, state: &mut [State]) -> Cost {
+        match &state[i] {
+            State::Done(c) => return c.clone(),
+            State::Busy => return (None, None),
             State::Todo => state[i] = State::Busy,
         }
         let mut total = fns[i].own;
-        for (callee, times) in &fns[i].calls {
-            if let Some(&j) = by_name.get(callee.as_str()) {
-                let each = steps(j, fns, by_name, state);
-                total = match each {
-                    Some(0) => total,
-                    _ => total.zip(times.zip(each)).and_then(|(t, (n, e))| t.checked_add(n.checked_mul(e)?)),
-                };
+        let mut terms = Some(fns[i].own_terms.clone());
+        for call in &fns[i].calls {
+            if let Some(&j) = by_name.get(call.callee.as_str()) {
+                let (each, each_terms) = cost(j, fns, by_name, state);
+                if each == Some(0) {
+                    continue;
+                }
+                total = total
+                    .zip(call.times.zip(each))
+                    .and_then(|(t, (n, e))| t.checked_add(n.checked_mul(e)?));
+                terms = terms.zip(call.chain.as_ref().zip(each_terms)).map(|(mut terms, (chain, each))| {
+                    terms.extend(each.into_iter().map(|t| chain.iter().cloned().chain(t).collect()));
+                    terms
+                });
             }
         }
-        state[i] = State::Done(total);
-        total
+        let terms = terms.filter(|t| t.len() <= MOST_TERMS && total.is_some());
+        state[i] = State::Done((total, terms.clone()));
+        (total, terms)
     }
     let fns = proven(file).fns;
     let mut by_name = std::collections::HashMap::new();
     for (i, f) in fns.iter().enumerate() {
         by_name.entry(f.name.as_str()).or_insert(i);
     }
-    let mut state = vec![State::Todo; fns.len()];
+    let mut state: Vec<State> = fns.iter().map(|_| State::Todo).collect();
     (0..fns.len())
-        .map(|i| (fns[i].at, steps(i, &fns, &by_name, &mut state)))
-        .filter(|&(_, steps)| steps != Some(0))
-        .map(|(name, steps)| crate::ProvenFn { name, steps })
+        .map(|i| (fns[i].at, cost(i, &fns, &by_name, &mut state)))
+        .filter(|&(_, (steps, _))| steps != Some(0))
+        .map(|(name, (steps, terms))| crate::ProvenFn {
+            name,
+            steps,
+            count: terms.map(|t| render_sum(file, &t)),
+        })
         .collect()
+}
+
+/// `n * q + 2 * n`: each product rendered by `render_count`, equal ones
+/// gathered with their multiplicity.
+fn render_sum(file: &File, terms: &[Vec<Factor>]) -> String {
+    let mut seen: Vec<(String, usize)> = Vec::new();
+    for t in terms {
+        let text = render_count(file, t);
+        match seen.iter_mut().find(|(s, _)| *s == text) {
+            Some((_, k)) => *k += 1,
+            None => seen.push((text, 1)),
+        }
+    }
+    let parts: Vec<String> = seen
+        .into_iter()
+        .map(|(t, k)| match k {
+            1 => t,
+            _ if t.contains(' ') => format!("{k} * ({t})"),
+            _ => format!("{k} * {t}"),
+        })
+        .collect();
+    parts.join(" + ")
+}
+
+/// A call by name in a fn, how often it runs, and the counts of the loops
+/// around it (`None` in a lambda, table or comprehension).
+struct Call {
+    callee: String,
+    times: Option<u128>,
+    chain: Option<Vec<Factor>>,
 }
 
 /// A fn's own loop iterations per call (`None` when a loop has no count)
@@ -93,7 +138,9 @@ struct FnCost {
     name: String,
     at: (u32, u32),
     own: Option<u128>,
-    calls: Vec<(String, Option<u128>)>,
+    /// The loop-count chain of each of its own loops.
+    own_terms: Vec<Vec<Factor>>,
+    calls: Vec<Call>,
 }
 
 /// The calls by name in `block`, each with its offset, and the spans of
@@ -813,19 +860,24 @@ fn ranges_of_stmt(
                         .map(|(name, at)| {
                             let at = base + at;
                             if hidden.iter().any(|&(s, e)| inside(at, (base + s, base + e))) {
-                                return (name, None);
+                                return Call { callee: name, times: None, chain: None };
                             }
                             let stmts = &proven.loop_stmts[first..];
                             let innermost = (0..loops.len())
                                 .filter(|&i| inside(at, stmts[i]))
                                 .min_by_key(|&i| stmts[i].1 - stmts[i].0);
-                            (name, innermost.map_or(Some(1), |i| loops[i].total))
+                            Call {
+                                callee: name,
+                                times: innermost.map_or(Some(1), |i| loops[i].total),
+                                chain: Some(innermost.map_or(Vec::new(), |i| proven.loop_factors[first + i].clone())),
+                            }
                         })
                         .collect();
                     proven.fns.push(FnCost {
                         name: decl.name.text.clone(),
                         at: (base + decl.name.span.start, base + decl.name.span.end),
                         own,
+                        own_terms: proven.loop_factors[first..].to_vec(),
                         calls,
                     });
                     proven.around = around;

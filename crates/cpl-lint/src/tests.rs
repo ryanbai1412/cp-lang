@@ -1807,6 +1807,9 @@ fn a_fn_knows_how_many_loop_iterations_a_call_makes() {
     );
     let found = fns(&calls);
     assert_eq!(found[3..], [some("twice", Some(2 + 2 * 200201000)), some("again", None), some("mapped", None)]);
+    let counts: Vec<Option<String>> = crate::proven_fns(&calls).into_iter().map(|f| f.count).collect();
+    let s = |t: &str| Some(t.to_string());
+    assert_eq!(counts, [s("n + n * q + q"), None, None, s("2 + 2 * n + 2 * n * q + 2 * q"), None, None]);
 }
 
 #[test]
