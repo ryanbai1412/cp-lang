@@ -1,8 +1,10 @@
 # 9. Documentation site, learning resources, playground
 
-Status: proposed. The user asked for "a beautifully designed docs site" and
-"some sort of online playground where you can just solve lots of cp
-problems". This doc says what it is and what it should feel like.
+Status: proposed; superseded for the website rebuild by
+`91-website.md` and `92-website-journey.md` where they disagree. The user
+asked for "a beautifully designed docs site" and "some sort of online
+playground where you can just solve lots of cp problems". This doc says
+what it is and what it should feel like.
 
 The audience is a strong C++ competitor. They already know the algorithms,
 so every page answers one question: "what do I write here instead of what I
