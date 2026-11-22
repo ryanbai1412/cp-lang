@@ -120,7 +120,7 @@ Fields: `base: U64`, `pre: List<U64>`, `pow: List<U64>`.
 
 O(n) build, O(log n) point update and range hash.
 
-Fields: `bases: (Int, Int)`.
+Fields: `bases: (Int, Int)`, `tok1: List<Int>`, `tok2: List<Int>`, `fwd1: List<Int>`, `fwd2: List<Int>`, `bwd1: List<Int>`, `bwd2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`, `inv1: List<Int>`, `inv2: List<Int>`.
 
 - `fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>` — O(n); A double-modulus rolling hash of `seq` that supports point updates, kept forwards and backwards in a segment tree; call it as `DynamicHash(seq)`.; traps: when a given base is outside `2..M`
 - `@get fn len(self) -> Int` — O(1); The number of hashed positions, `D.K`.
@@ -223,6 +223,8 @@ O(total * \|A\|) build, O(1) step.
 ## `struct DynamicAhoCorasick<A>`
 
 O(\|pat\| * \|A\| * log n) amortized insert/delete, O(\|text\| * log n) query.
+
+Fields: `n: Int`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
 
 - `fn new() -> DynamicAhoCorasick<A>` — O(1); An empty online pattern set over the alphabet domain `A`; call it as `DynamicAhoCorasick<A>()`.
 - `@get fn len(self) -> Int` — O(1); The number of patterns stored, copies counted.

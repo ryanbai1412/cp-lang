@@ -134,6 +134,11 @@ O(log n) amortized per edge: 2-edge-connectivity under edge insertions.
 
 Fields: `bridges: Int`.
 
+- `fn new() -> IncrementalBridges<V>` — O(n); No edges yet: every vertex alone.
+- `fn add(mut self, u: V, v: V)` — O(log n) amortized; Adds the undirected edge `u - v`.
+- `fn two_edge_same(mut self, u: V, v: V) -> Bool` — O(alpha); Are `u` and `v` joined by two edge-disjoint paths?
+- `fn same(mut self, u: V, v: V) -> Bool` — O(alpha); Are `u` and `v` connected?
+
 ## `struct Edge<V, E>(e: E, u: V, v: V)`
 
 O(1): one edge of a `Graph`: its id and its ends as given.
@@ -193,7 +198,7 @@ O(1): one edge of a `Graph`: its id and its ends as given.
 - `fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R -> K = e => e.w) -> (total: W, take: [E]Bool)` — O(m log m); A minimum spanning forest by Kruskal, as its total weight and the chosen edges.
 - `fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V)` — O(n^2); A minimum spanning tree of the dense graph `w` (Prim without a heap), rooted at `V.first`; `None` if it is disconnected.
 - `fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>)` — O(log n) rounds, each O(n) plus the call of `cheapest`; A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST, Manhattan MST).; traps: when `cheapest` returns a list whose length is not the number of components
-- `fn arborescence<V, E, W>(edges: [E](u: V, v: V, w: W, ..), root: V) -> ?(total: W, parent: [V]?E)` — O(m log n); A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with a skew heap): `parent[v]` is the edge entering `v`, `None` at `root`.
+- `fn arborescence<V, E, W, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(total: W, parent: [V]?E)` — O(m log n); A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with a skew heap): `parent[v]` is the edge entering `v`, `None` at `root`.
 - `fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool` — O(n + m); A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited vertex in vertex order takes the arc that discovers each vertex.
 - `fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>` — O(n + m); `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
 - `fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G>` — O(1) to make; `keep` and `from` run per arc walked; The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex are skipped as `out` walks.

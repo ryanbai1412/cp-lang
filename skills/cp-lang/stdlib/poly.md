@@ -36,7 +36,7 @@ O(n) storage.
 
 O(m log^2 m) build.
 
-Fields: `n: Int`.
+Fields: `n: Int`, `keep: Int`, `nodes: List<List<Mod<P>>>`.
 
 - `fn new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P>` — O(m log^2 m) time, O(m log m) space; Build the subproduct tree for the points `xs`: leaf `i` is `x - xs[i]` and each node the product of its children.; traps: when a transform length exceeds what `P` supports
 - `fn eval(self, f: List<Mod<P>>) -> List<Mod<P>>` — O((deg f + m) log^2 m); Evaluate `f` at every point in the tree: `[f(x) for x in xs]`.; traps: when the tree was built with `keep >= 0`
@@ -56,7 +56,7 @@ Fields: `n: Int`.
 - `fn div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List<Mod<P>>)` — O(a.len log a.len); Euclidean polynomial division `(q, r)` with `a = q * b + r` and `r.len < b.len`.; traps: when `b` is zero (empty or all zeros)
 - `fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>>` — O(n log^2 n); The monic polynomial `prod_{r in roots} (x - r)`, of length `roots.len + 1`.
 - `fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>` — O(n log n); The Taylor shift `a(x + c)`, of length `a.len`.; traps: when `a.len > P` (it needs inverse factorials below `a.len`)
-- `fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>` — O((a.len + xs.len) log^2 xs.len); Multipoint evaluation `[a(x) for x in xs]` via transposed subproduct tree.; traps: when a transform length exceeds what `P` supports
+- `fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>`
 - `fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>` — O(n log^2 n); The formal power series composition `f(g(x)) mod x^n` via Kinoshita-Li, of length `n`.; traps: when `n < 0`; when a transform length exceeds what `P` supports
 - `fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>` — O(ys.len); The value at `x` of the unique polynomial of degree `< ys.len` passing through `(i, ys[i])` for `i in 0..ys.len`.; traps: when `ys.len > P` (the sample points `0..ys.len` collide mod `P`)
 - `fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>` — O(n^2) for `n <= 64`, O(n log^2 n) above; The unique polynomial `f` of degree `< xs.len` with `f(xs[i]) = ys[i]` for distinct `xs`, as exactly `xs.len` coefficients (trailing zeros kept).; traps: when `xs.len != ys.len`, or two `xs` are equal

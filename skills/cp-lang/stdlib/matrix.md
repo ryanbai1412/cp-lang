@@ -99,7 +99,7 @@ Fields: `len: Int`, `vecs: List<Int>`, `from: List<Int>`.
 - `fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>` — O(rows * cols * min(rows, cols)) time, O(rows * cols) space; Solve `a * x = b` over `F64` via partial pivoting with tolerance `eps`.; traps: when `b.len != a.rows`
 - `fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>` — O(n^3) time, O(n^2) space; The inverse of a floating-point square matrix via partial pivoting with tolerance `eps`, or `None` if singular (some pivot is at most `eps` in absolute value).; traps: when `a` is not square
 - `fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>` — O(n * (entries.len + n)) expected time, O(n + entries.len) space; The determinant of a sparse `n x n` matrix via Wiedemann's algorithm.; traps: when `n < 0` or a row or column is not in `0..n`
-- `fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>` — O(n * (entries.len + n)) expected time, O(n + entries.len) space; Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in `sparse_det`.; traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
+- `fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>`
 - `fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>)` — O(poly(n, m)) typical (exponential in the worst case); O(rows * cols) space; Maximize `c .; traps: when `b.len != a.rows` or `c.len != a.cols`
 
 ## Example
