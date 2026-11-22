@@ -12,6 +12,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/aac4p6/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_39/aac4p6.cp",
    "proto/ports/scout_batch_39/today/aac4p6.cp"
@@ -26,7 +29,7 @@
   "simulation"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Deque gained pop_while (List had it); dropping up to p from the front stays a plain loop."
 }

@@ -324,3 +324,6 @@ Open questions raised by dreams:
     sac22cc4jp2), loop `else` (ucrpc21c), product-domain tuple `at` (ucrpc21h).
   - Naming: several dreams and ports capitalise enum variants (`Big`, `Win`, `Reset`), which
     chapter 01 says are `snake_case`. Pending Ryan's call before a sweep.
+- aac4p6 (last dream, 100 of 100): the corpus has no statement, so the dream follows the C++'s
+  idea instead of rethinking it, and the port matches it. Dream slip: `.enumerate()` where
+  `a.rev().take(m)` keys already serve. No spec change.
