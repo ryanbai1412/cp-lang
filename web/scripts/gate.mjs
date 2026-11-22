@@ -76,6 +76,22 @@ const sh = (args, input = '') => spawnSync(cpl, args, { input, encoding: 'utf8',
 
 const results = {};
 let failed = 0;
+// A practice problem is a folder (starter.cp, ref.cp, tests.json with a sample),
+// a Learn page that judges it and an entry in the practice meta.json.
+const learn = join(web, 'content/learn/practice');
+const listed = JSON.parse(readFileSync(join(learn, 'meta.json'), 'utf8')).pages;
+for (const id of readdirSync(join(web, 'content/practice'))) {
+  const file = (name) => join(web, 'content/practice', id, name);
+  const page = join(learn, `${id}.mdx`);
+  const lacks = ['starter.cp', 'ref.cp', 'tests.json'].filter((f) => !existsSync(file(f)));
+  if (existsSync(file('tests.json')) && !JSON.parse(readFileSync(file('tests.json'), 'utf8')).some((t) => t.sample)) lacks.push('a test with "sample": true');
+  if (!existsSync(page) || !readFileSync(page, 'utf8').includes(`<Judge id="${id}"`)) lacks.push(`content/learn/practice/${id}.mdx with <Judge id="${id}">`);
+  if (!listed.includes(id)) lacks.push('an entry in content/learn/practice/meta.json');
+  if (lacks.length) {
+    failed++;
+    console.error(`gate: practice problem ${id} lacks ${lacks.join(', ')}`);
+  }
+}
 for (const s of snippets) {
   const file = join(tmp, 'main.cp');
   writeFileSync(file, s.source);

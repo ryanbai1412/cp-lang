@@ -45,6 +45,13 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 
 `web/scripts/gate.mjs` finds every `.cp` file and every fenced `cp` block in `web/content`, then runs `cpl check`, `cpl build`, and `cpl run` against the expected output when there is one. Each snippet declares a status: `runs` (runs and matches), `checks` (type-checks, not runnable yet), `spec` (0.3 syntax the compiler does not accept yet). Measured status below declared fails. It writes `web/.gate/status.json` (read by `web/lib/landing.ts`), `report.md`, and `corpus.json`. It runs in `prebuild` and in `scripts/check.sh`.
 
+## Adding a practice problem
+
+1. `web/content/practice/<id>/`: `starter.cp` (what the visitor edits; it must not pass), `ref.cp` (a solution), `tests.json` (`[{ "input", "expected", "sample"? }]`, at least one `"sample": true`, shown on the page).
+2. `web/content/learn/practice/<id>.mdx`: frontmatter `title` and `description: "Level A. Teaches ..."`, the statement with its sample table, then `<Judge id="<id>">` wrapping the notes shown after an accepted submission.
+3. Add `<id>` to `pages` in `web/content/learn/practice/meta.json`, in level order.
+4. `node web/scripts/gate.mjs` runs `ref.cp` on every test and fails when any of the three pieces is missing; `pnpm --dir web build` renders the page.
+
 ## Interfaces other domains use
 
 | Interface | Consumers |
