@@ -96,7 +96,7 @@ already demonstrate the alphabet-domain pattern.
 All sequence-level algorithms (`z_function`, `prefix_function`, `find_all`,
 `common_prefix_len`, `common_suffix_len`, `period`, `borders`,
 `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`,
-`lyndon_runs`, `is_palindrome`, `manacher`, `suffix_array`, `lcp_array`,
+`lyndon_runs`, `is_palindrome`, `manacher`, `suffix_array`,
 `SuffixArray`) are generic over `Indexed` (`Str`, `StrView`, `List<T>`,
 `ListView<T>`, and `[D]T` domain arrays) and return 0-based `Int` positions
 and lengths; all alphabet-domain automata (`SuffixAutomaton`, `PalindromicTree`,
@@ -118,15 +118,15 @@ is parameterized by the grid's row and column domains `R` and `C`, taking
 errors.
 
 **Layered cost for suffix arrays.** Computing only `sa` and `lcp` is O(n) via
-the free functions `suffix_array(s)` and `lcp_array(s, sa)`. When a solution
-also wants `rank`, O(1) `lcp_between(i, j)`, O(|pat| log n) `matches(pat)`,
+`suffix_array(s).sa` and `.lcp`. When a solution
+also wants `rank`, O(1) `lcp_between(i, j)`, O(|pat| log n) `rank_range(pat)`,
 O(log n) `lcp_range(i, len)`, or O(1) `compare`, it constructs `SuffixArray(s)`
 at documented O(n log n) build cost. Nothing is built secretly behind
 `suffix_array(s)`.
 
 **Zero-cost safety and guessable names.** Every algorithm uses its textbook
 name (`z_function`, `prefix_function`, `manacher`, `suffix_array`,
-`lcp_array`, `lyndon_factorization`, `min_rotation`, `AhoCorasick`,
+`lyndon_factorization`, `min_rotation`, `AhoCorasick`,
 `SuffixAutomaton`, `PalindromicTree`, `Trie`, `RollingHash`, `Hash2D`). Options
 are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md`
 §2 (`len`, `root`, `step`, `find`, `contains`, `add`, `remove`, `count`).
@@ -137,7 +137,7 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 
 ```cp
 fn repeat(self: Str, n: Int) -> Str                 // O(n * self.len)
-fn starts_with(self: Str, p: Str) -> Bool           // O(p.len)
+fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool  // O(p.len)
 fn ends_with(self: Str, p: Str) -> Bool             // O(p.len)
 fn find<P>(self: Str, p: P) -> ?Int                 // O(self.len + p.len)
 fn rfind<P>(self: Str, p: P) -> ?Int                // O(self.len + p.len)
@@ -169,7 +169,7 @@ fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
     // O(|a| + |b|); longest suffix of a that is a prefix of b
 fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>
     // O(n) Duval; start indices of the unique non-increasing Lyndon factors
-fn min_rotation<S: Indexed>(s: S) -> Int
+fn min_rotation<S: Indexed, K>(s: S) -> ?K   // start key; None on empty
     // O(n) Duval/Booth; start index of the lexicographically least cyclic shift
 fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>
     // O(n log n) Bannai runs theorem; all maximal periodic repetitions
@@ -197,8 +197,8 @@ Laws:
 ```cp
 struct Palindromes(odd: List<Int>, even: List<Int>):
     fn is_palindrome<R>(self, r: R) -> Bool          // O(1); Range<Int> or Range<D>
-    @get fn count(self) -> Int                       // O(n); total palindromic substrings
-    @get fn longest(self) -> (l: Int, r: Int)        // O(n); longest palindromic range
+    fn count(self) -> Int                            // O(n); total palindromic substrings
+    fn longest(self) -> (l: Int, r: Int)             // O(n); longest palindromic range
 
 fn manacher<S: Indexed>(s: S) -> Palindromes         // O(n)
 
@@ -213,7 +213,7 @@ struct PalindromicTree<A>:
     fn step(self, state: Int, a: A) -> ?Int          // O(1); a + P + a
     fn diff(self, state: Int) -> Int                 // O(1); pal_len - pal_len(link)
     fn series_link(self, state: Int) -> Int          // O(1); nearest ancestor with other diff
-    fn occurrences(self) -> List<Int>                // O(n); total occurrences per state
+    fn occ_counts(self) -> List<Int>                 // O(n); total occurrences per state
 ```
 
 Laws:
@@ -221,7 +221,7 @@ Laws:
   palindromic; `p.even[i]` is the maximum `k` with `s[i - k..i + k]` palindromic.
 - `p.is_palindrome(l..r) == is_palindrome(s[l..r])` for all `0 <= l <= r <= n`.
 - `p.count == sum(p.odd) + sum(p.even)`, and equals
-  `sum(pt.occurrences()[2..])` on `pt = PalindromicTree<A>.of(s)`.
+  `sum(pt.occ_counts()[2..])` on `pt = PalindromicTree<A>.of(s)`.
 - `pt.distinct` equals the number of distinct non-empty palindromic substrings
   of `s`, and `pt.distinct <= n`.
 - Walking `state = pt.series_link(state)` from any state to root 0 takes at
@@ -266,8 +266,7 @@ Laws:
 ### 3.5 Suffix structures
 
 ```cp
-fn suffix_array<S: Indexed>(s: S) -> List<Int>          // O(n) if <=256 distinct, else O(n log n)
-fn lcp_array<S: Indexed>(s: S, sa: List<Int>) -> List<Int>  // O(n) Kasai
+fn suffix_array<S: Indexed>(s: S) -> SuffixArray       // the `SuffixArray` below; `.sa`, `.lcp` (Kasai)
 
 struct SuffixArray<T>:
     s: List<T>
@@ -278,7 +277,7 @@ struct SuffixArray<T>:
     fn new<S: Indexed>(s: S) -> SuffixArray<T>       // O(n log n) build (SA-IS + Kasai + RMQ)
     @get fn len(self) -> Int                         // O(1)
     fn lcp_between(self, i: Int, j: Int) -> Int      // O(1)
-    fn matches<P: Indexed>(self, pat: P) -> Range<Int> // O(|pat| log n); rank range lo..hi
+    fn rank_range<P: Indexed>(self, pat: P) -> Range<Int> // O(|pat| log n); rank range lo..hi
     fn count<P: Indexed>(self, pat: P) -> Int        // O(|pat| log n)
     fn lcp_range(self, i: Int, len: Int) -> Range<Int>
         // O(log n); rank range whose LCP with suffix i is >= len
@@ -300,8 +299,8 @@ struct SuffixAutomaton<A>:
     fn find<S: Seq>(self, word: S) -> ?Int           // O(|word|)
     fn contains<S: Seq>(self, word: S) -> Bool       // O(|word|)
     @get fn distinct(self) -> Int                    // O(states)
-    fn topo_order(self) -> List<Int>                 // O(states); decreasing longest
-    fn occurrences(self) -> List<Int>                // O(states); endpos count per state
+    fn topo_order(self) -> List<Int>                 // O(states); non-decreasing longest
+    fn occ_counts(self) -> List<Int>                 // O(states); endpos count per state
 ```
 
 Laws:
@@ -309,10 +308,10 @@ Laws:
   `rank[sa[j]] == j`.
 - `lcp[j] == lcp_between(sa[j], sa[j + 1])` for all `0 <= j < n - 1`.
 - `lcp_between(i, i) == n - i` and `lcp_between(i, j) == lcp_between(j, i)`.
-- `sa[j]` starts with `pat` iff `j in sa_obj.matches(pat)`.
+- `sa[j]` starts with `pat` iff `j in sa_obj.rank_range(pat)`.
 - `sa_obj.distinct == sam.distinct` for any string `s`.
 - `sam.contains(w)` iff `sa_obj.count(w) > 0`; when `sam.find(w) == Some(v)`,
-  `sam.occurrences()[v] == sa_obj.count(w)`.
+  `sam.occ_counts()[v] == sa_obj.count(w)`.
 
 ### 3.6 Tries and Aho-Corasick
 
@@ -338,7 +337,7 @@ struct AhoCorasick<A>:
     fn link(self, state: Int) -> Int                   // O(1); failure link
     fn hit(self, state: Int) -> Bool                   // O(1); any pattern ends here
     fn words_at(self, state: Int) -> List<Int>         // O(output); longest first
-    fn matches<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int)
+    fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int)
         // O(|text| + output); ordered by end position
     fn counts<S: Seq>(self, text: S) -> List<Int>      // O(|text| + states)
 ```
@@ -347,7 +346,7 @@ Laws:
 - On `Trie<A>`, `add` increments `count(w)` and `count_prefix(p)` for every
   prefix `p` of `w` by 1; `remove` reverses `add` when `count(w) > 0` and is a
   no-op returning `false` otherwise.
-- On `AhoCorasick<A>`, `matches(text)` yields `(at, p)` iff
+- On `AhoCorasick<A>`, `find_all(text)` yields `(at, p)` iff
   `text[at..at + patterns[p].len] == patterns[p]`, and `counts(text)[p]` equals
   the number of yielded pairs with `pattern == p`.
 
@@ -358,7 +357,7 @@ Laws:
   and merge semantics; a 15-line `struct Node` + `List<Node>` arena is clearer
   and faster than a bloated generic hook.
 - **Explicit suffix trees** (such as `ucup5s05f`'s suffix-tree edge power
-  sums): `suffix_array` + `lcp_array` with a 15-line monotonic stack, or the
+  sums): `suffix_array(s).lcp` with a 15-line monotonic stack, or the
   suffix-link tree of `SuffixAutomaton<A>`, already gives the suffix tree
   without locking in an edge-label representation.
 - **Automaton DP** (avoiding-words DP over `AhoCorasick`, palindrome
@@ -545,7 +544,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | --- | --- | --- | --- |
 | Basic `Str` ops (`repeat`, `starts_with`, `ends_with`, `find`, `rfind`, `count`) | stdlib | have | `repeat`, `starts_with<S, P>`, `ends_with<S, P>`, `find`, `rfind`, `count` (`starts_with`/`ends_with` generalized to `Indexed`) |
 | ASCII `Char` helpers (`lower`, `upper`, `digit`, predicates) | Contest basics | have / new | `Char.{lower,upper,digit}` (have); `Char.{is_digit,is_lower,is_upper,is_alpha,is_alnum,is_space}` (new) |
-| `Str` utilities (`to_lower`, `to_upper`, `trim`, `split`, `split_first`, `split_whitespace`, `join`, `replace`, `parse_int`) | Contest I/O & parsing | new | `Str.{to_lower,to_upper,trim,split,split_first,split_whitespace,join,replace,parse_int}` |
+| `Str` utilities (`to_lower`, `to_upper`, `trim`, `trim_start`, `trim_end`, `split`, `split_once`, `split_whitespace`, `join`, `replace`, `parse_int`) | Contest I/O & parsing | new | `Str.{to_lower,to_upper,trim,split,split_once,split_whitespace,join,replace,parse_int}` |
 | Z-algorithm | ACL `z_algorithm`, KACTL `Zfunc`, cp-alg | have | `z_function<S: Indexed>` |
 | Prefix function / KMP | KACTL `KMP`, cp-alg | have | `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `period` |
 | KMP prefix automaton (O(1) DP transitions) | cp-alg, Benq | new | `KmpAutomaton<A>.{new,len,step,link,find_all}` |
@@ -563,11 +562,11 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | Mersenne `2^61 - 1` rolling hash (1D) | KACTL `Hashing` (mod `2^64-1`/Mersenne), Benq | new | `RollingHash61.{new(s, base:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
 | Dynamic rolling hash (point update + range hash, forward & reverse) | Contest templates (SegTree/Fenwick hash) | new | `DynamicHash<D>.{new(seq, bases:),len,is_empty,all,get,set,rev_get,is_palindrome}` |
 | 2D rolling hash (grid sub-rectangles) | cp-alg, contest templates | have | `Hash2D<R, C>.{new,rect}` |
-| Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occ_counts,lcs}` (have); `{reset_last,push_seq,kth_substring}` (new) |
-| Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,odd_root,even_root,len,pal_len,link,step,diff,series_link,occ_counts}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
+| Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occ_counts,lcs}` (have); `{reset,add_word,kth_substring}` (new) |
+| Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,len,pal_len,link,step,diff,series_link,occ_counts}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
 | Prefix trie + order statistics | cp-alg, contest templates | have / new | `Trie<A>.{new,root,len,step,find,add,remove,count,count_prefix,ends_at,pass_at}` (have); `{contains,clear,kth,count_less}` (new) |
 | Binary XOR trie (max/min XOR, count `< limit`, k-th XOR) | Benq, jiangly, cp-alg | out | Owned by `std.bitset` (`std.bitset.XorTrie`). |
-| Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,patterns_len,step,link,hit,words_at,find_all,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
+| Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,step,link,hit,words_at,find_all,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
 | Dynamic / online Aho-Corasick (log-decomposed buckets) | cp-alg, contest templates | new | `DynamicAhoCorasick<A>.{new,add,remove,count_matches}` |
 | `HashInterval` single-mod `2^64` hash | KACTL `Hashing` | out | Omitted because `RollingHash` (double 31-bit salted) and `RollingHash61` (Mersenne `2^61 - 1` salted) cover both fast-32-bit and single-64-bit hashing without hackable power-of-2 mod (Thue-Morse collision). |
 | Ukkonen online suffix tree | cp-alg | out | Omitted because `SuffixAutomaton<A>` covers online suffix-structure queries in O(1) amortized per char, and `suffix_tree_edges` builds the compressed suffix tree offline in O(n) from SA+LCP. |
@@ -593,7 +592,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 Every power from `spec/core/12-powers.md` (and any gap beyond it) needed by `spec/std/strings.cp`:
 
 1. **W4 (Sequences, views, and index spaces — `Indexed`, `Seq`, `Range<D>`, cut ranges):**
-   - Signatures: `starts_with`, `ends_with`, `z_function`, `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`, `max_rotation`, `lyndon_runs`, `manacher`, `suffix_array`, `SuffixArray.{rank_range,find_all,count}`, `suffix_tree_edges`, `RollingHash.{new,get}`, `RollingHash61.{new,get}`, `DynamicHash.new`, `SuffixAutomaton.{of,find,contains,lcs,push_seq}`, `PalindromicTree.{of,contains}`, `Trie.{find,add,remove,count,count_prefix,contains,count_less}`, `AhoCorasick.{new,find_all,counts}`, `DynamicAhoCorasick.{add,remove,count_matches}`.
+   - Signatures: `starts_with`, `ends_with`, `z_function`, `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`, `max_rotation`, `lyndon_runs`, `manacher`, `suffix_array`, `SuffixArray.{rank_range,find_all,count}`, `suffix_tree_edges`, `RollingHash.{new,get}`, `RollingHash61.{new,get}`, `DynamicHash.new`, `SuffixAutomaton.{of,find,contains,lcs,add_word}`, `PalindromicTree.{of,contains}`, `Trie.{find,add,remove,count,count_prefix,contains,count_less}`, `AhoCorasick.{new,find_all,counts}`, `DynamicAhoCorasick.{add,remove,count_matches}`.
    - Smallest example: `let sa = suffix_array(a)` where `a: [N]Int`, and `h.get(l..r)` where `l, r: N`.
 2. **W6 (Generators / `yields`):**
    - Signatures: `find_all`, `borders`, `KmpAutomaton.find_all`, `shift_and`, `find_all_wildcard`, `SuffixArray.find_all`, `AhoCorasick.find_all`.
@@ -619,4 +618,4 @@ All dreams in `proto/ports/*/dream/` touching strings:
 - `proto/ports/ecnerwala/dream/cf2124d.cp`: uses `std.strings.is_palindrome` — in spec (`have`), passes.
 - `proto/ports/ecnerwala/dream/cf1909g.cp`: uses `std.strings.{common_prefix_len, common_suffix_len}` — in spec (`have`), passes.
 - `proto/ports/ecnerwala/dream/ucup5s05f.cp`: imports `std.strings.suffix_tree_edges` — **now in spec (`new`)**; both `std.strings.suffix_tree_edges` and `suffix_tree_edges` errors are resolved (remaining error in `ucup5s05f.cp` is `std.poly.SubproductTree`).
-- `proto/ports/ecnerwala/dream/cf2187d.cp`: uses `Str of "01?"` (language syntax, Decision 134 in `spec/delta/parser-gaps.md`) and `s.split_first('?')` (**now in spec (`new`)**).
+- `proto/ports/ecnerwala/dream/cf2187d.cp`: uses `Str of "01?"` (language syntax, Decision 134 in `spec/delta/parser-gaps.md`) and `s.split_once('?')` (**now in spec (`new`)**).

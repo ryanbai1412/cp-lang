@@ -54,14 +54,6 @@ pub fn ceil_sqrt(x: Int) -> Int = todo
 /// example: `iroot(0, 5) == 0`
 pub fn iroot(x: Int, k: Int) -> Int = todo
 
-/// The exact `floor(x^(1/k))` of `x >= 0`, `k >= 1`: the same function as `iroot`.
-///
-/// cost: O(log k + log x)
-/// traps: when `x < 0` or `k < 1`
-/// example: `nth_root(1_000_000, 6) == 10`
-/// example: `nth_root(63, 2) == 7`
-pub fn nth_root(x: Int, k: Int) -> Int = todo
-
 /// `num / den` with exactly `k` digits after the point, as text, from integers alone.
 ///
 /// No float is involved. Halves round away from zero, and a result that rounds to zero has no
@@ -240,15 +232,6 @@ pub struct Sieve:
     /// example: `Sieve(12).divisors(12).collect() == [1, 2, 4, 3, 6, 12]`
     /// example: `Sieve(12).divisors(1).collect() == [1]`
     pub fn divisors(self, x: Int) -> yields Int = todo
-
-    /// The positive divisors of `x` in `1..=n`: the same generator, and the same order, as
-    /// `divisors`.
-    ///
-    /// cost: O(d(x) + log x)
-    /// order: mixed-radix over the exponents, smallest prime fastest
-    /// traps: when `x` is outside `1..=n`
-    /// example: `Sieve(20).each_divisor(18).collect() == [1, 2, 3, 6, 9, 18]`
-    pub fn each_divisor(self, x: Int) -> yields Int = todo
 
 /// Tabulate a multiplicative function `f` on `0..=n` in O(n) with a linear sieve.
 ///

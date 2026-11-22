@@ -315,16 +315,17 @@ pub struct Rooted<V, Pre>:
     /// example: `domain P = 0..4; let adj: [P]List<P> = [[1], [0, 2], [1, 3], [2]]; Rooted(adj, root: 0).centroids() == [1, 2]`
     pub fn centroids(self) -> List<V> = todo
 
-    /// The enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: `Enter(v)` when entering
-    /// `v` and `Exit(v)` when leaving its subtree, children in `t.Pre` order, each tree of a forest
+    /// The enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: `Enter(v, via:)` when
+    /// entering `v` and `Exit(v, via:)` when leaving its subtree, `via` the parent (`None` at a
+    /// root, and a tree has no `Again`), children in `t.Pre` order, each tree of a forest
     /// in turn. Iterative, so deep trees are safe.
     ///
     /// cost: O(1) to make, O(n) to walk
     /// empty: never empty
-    /// order: `Enter` events in `t.Pre` order; `Exit(v)` right after the last event of `v`'s subtree
+    /// order: `Enter` events in `t.Pre` order; `Exit(v, _)` right after the last event of `v`'s subtree
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.tour.collect() == [Enter(0), Enter(1), Enter(3), Exit(3), Enter(4), Exit(4), Exit(1), Enter(2), Exit(2), Exit(0)]`
-    pub @get fn tour(self) -> yields Visit<V> = todo
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.tour.collect() == [Enter(0, None), Enter(1, Some(0)), Enter(3, Some(1)), Exit(3, Some(1)), Enter(4, Some(1)), Exit(4, Some(1)), Exit(1, Some(0)), Enter(2, Some(0)), Exit(2, Some(0)), Exit(0, None)]`
+    pub @get fn tour(self) -> yields Visit<V, V> = todo
 
     /// The positions of `v`'s subtree, `v` first: one contiguous range of `t.Pre`.
     ///
@@ -1042,7 +1043,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.jump(0, 2, 1) == Some(1) and lc.jump(0, 2, 0) == Some(0) and lc.jump(0, 2, 3) == None`
     pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
 
-/// `LinkCut` with updates along a path: `LazyLinkCut.new(+, add, a)` adds to every value on
+/// `LinkCut` with updates along a path: `LazyLinkCut(act, a)` with an add `Action` adds to every value on
 /// a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`. Reversing a path must not
 /// change how a tag acts, `apply(f, x.rev(), k) == apply(f, x, k).rev()`, which holds for every
 /// commutative `over`. Every operation is amortized O(log n). Memory is about twice `LinkCut`'s.
@@ -1324,20 +1325,20 @@ pub struct Layers<V, B>:
 /// The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` of 2n
 /// members, for Mo's algorithm on trees.
 pub struct Events<V, P>:
-    at: [P]Visit<V>
+    at: [P]Visit<V, V>
 
     /// The event that enters `v`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.enter(1)] == Enter(1) and ev.enter(1) < ev.enter(3)`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.enter(1)] == Enter(1, Some(0)) and ev.enter(1) < ev.enter(3)`
     pub fn enter(self, v: V) -> P = todo
 
     /// The event that leaves `v`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.exit(3)] == Exit(3) and ev.exit(3) < ev.exit(1)`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.exit(3)] == Exit(3, Some(1)) and ev.exit(3) < ev.exit(1)`
     pub fn exit(self, v: V) -> P = todo
 
     /// The events inside `v`'s subtree, `enter(v)` through `exit(v)`.
@@ -1346,7 +1347,7 @@ pub struct Events<V, P>:
     /// empty: never empty; 2 * size(v) events
     /// order: `tour` order
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(1).map(p => ev.at[p]).collect() == [Enter(1), Enter(3), Exit(3), Enter(4), Exit(4), Exit(1)]`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(1).map(p => ev.at[p]).collect() == [Enter(1, Some(0)), Enter(3, Some(1)), Exit(3, Some(1)), Enter(4, Some(1)), Exit(4, Some(1)), Exit(1, Some(0))]`
     pub fn sub(self, v: V) -> Range<P> = todo
 
     /// A range of events whose vertices met an odd number of times, plus `extra` when present, are

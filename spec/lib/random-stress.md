@@ -6,13 +6,13 @@ archived `design/spec/30-stress.md`, `plan/50-debugging.md`; decision
 
 ## Randomness
 
-- `Rng(seed)` is a splittable deterministic generator (xoshiro256**).
-  `rng.int(lo..=hi)`, `rng.f64()`, `rng.pick(xs)`, `rng.shuffle(mut xs)`,
-  `rng.perm(D)`. Programs that need randomness on the judge seed it from
-  `Rng.time()`, which the checked build replaces with a fixed seed so
-  runs reproduce.
-- Hashing salts (`HashMap`, string hashing) come from `Rng.time()` in
-  release and a fixed seed in checked builds.
+- `Rng(seed)` is a deterministic splitmix64 stream.
+  `rng.int(lo, hi)` (both ends inclusive), `rng.float()`, `rng.pick(xs)`,
+  `rng.shuffle(mut xs)`, `rng.perm(D)`. There is no time-seeded `Rng`:
+  programs that need randomness on the judge pass a seed they choose, so
+  every run replays.
+- Hashing salts (`HashMap`, string hashing) are fixed per build profile,
+  not drawn from an `Rng`.
 
 ## Typed generators
 

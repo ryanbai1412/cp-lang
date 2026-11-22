@@ -13,16 +13,18 @@ use std.seq.{reverse}
 pub fn repeat(self: Str, n: Int) -> Str = todo
 
 @allow(unproven_list_index)
-/// True when `self` opens with `pat`: the first `pat.len` elements of `self` equal those of
-/// `pat` in order. Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); only the
-/// values are compared, never the keys.
+/// True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test):
+/// the `pat.len` elements of `self` from `at` equal those of `pat` in order, `false` when they
+/// run past the end. Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); `at`
+/// counts positions from 0, and only the values are compared, never the keys.
 ///
-/// cost: O(min(|self|, |pat|))
-/// empty: an empty `pat` is a prefix of everything; an empty `self` starts only with an empty `pat`
-/// traps: never
+/// cost: O(min(|self| - at, |pat|))
+/// empty: an empty `pat` matches at every `at` in `0..=self.len`; an empty `self` starts only with an empty `pat`
+/// traps: when `at` is outside `0..=self.len`
 /// example: `"banana".starts_with("ban") == true`
+/// example: `"banana".starts_with("nan", at: 2) == true`
 /// example: `[1, 2, 3].starts_with([2]) == false`
-pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
+pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool = todo
 
 @allow(unproven_list_index)
 /// True when `self` closes with `pat`: the last `pat.len` elements of `self` equal those of
@@ -175,6 +177,22 @@ pub fn to_upper(self: Str) -> Str = todo
 /// example: `" \t ".trim() == ""`
 pub fn trim(self: Str) -> Str = todo
 
+/// A copy of `self` with leading whitespace (`Char.is_space`) removed.
+///
+/// cost: O(|self|)
+/// empty: `""`; so is a string of only whitespace
+/// traps: never
+/// example: `"  a b \n".trim_start() == "a b \n"`
+pub fn trim_start(self: Str) -> Str = todo
+
+/// A copy of `self` with trailing whitespace (`Char.is_space`) removed.
+///
+/// cost: O(|self|)
+/// empty: `""`; so is a string of only whitespace
+/// traps: never
+/// example: `"  a b \n".trim_end() == "  a b"`
+pub fn trim_end(self: Str) -> Str = todo
+
 /// The pieces of `self` between occurrences of `sep`, as new strings.
 ///
 /// Every `sep` is a cut, so `k` separators give `k + 1` pieces; adjacent, leading and
@@ -195,9 +213,9 @@ pub fn split(self: Str, sep: Char) -> List<Str> = todo
 /// cost: O(|self|)
 /// empty: `None`
 /// traps: never
-/// example: `"key=val=x".split_first('=') == Some(("key", "val=x"))`
-/// example: `"abc".split_first('=') == None`
-pub fn split_first(self: Str, sep: Char) -> ?(Str, Str) = todo
+/// example: `"key=val=x".split_once('=') == Some(("key", "val=x"))`
+/// example: `"abc".split_once('=') == None`
+pub fn split_once(self: Str, sep: Char) -> ?(Str, Str) = todo
 
 /// The maximal runs of non-whitespace characters of `self` (`Char.is_space` separates), as
 /// new strings. No piece is empty.

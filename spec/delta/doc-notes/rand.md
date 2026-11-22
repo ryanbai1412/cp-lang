@@ -15,5 +15,5 @@ which only holds if every implementation draws identically.
 - `Rng.shuffle`: chose the downward Fisher-Yates (`i` from `len-1` to `1`, swap with `int(0..=i)`); empty and one-element inputs draw nothing.
 - `Rng.perm`: chose "identity `[D]D` then `shuffle`", so a seed fixes the permutation.
 - `Rng.sample`: chose partial upward Fisher-Yates over positions (`i` in `0..k`, swap with `int(i..n)`), result in draw order; distinct means distinct positions, so repeated values may repeat; traps when `k` is outside `0..=len`.
-- Contradiction: spec/lib/random-stress.md says the generator is xoshiro256** and lists `Rng.time()` and `rng.f64()`; the stub (and its module header) says splitmix64 and has `float()` and no `time()`. Docs follow the stub; one of the two needs to change.
-- Contradiction: decisions.md 21.4 spells `.int(lo, hi)` (two arguments); the stub and random-stress.md take a range `int(lo..=hi)`. Docs follow the stub.
+- Contradiction: spec/lib/random-stress.md says the generator is xoshiro256** and lists `Rng.time()` and `rng.f64()`; the stub (and its module header) says splitmix64 and has `float()` and no `time()`. Docs follow the stub; one of the two needs to change. (resolved: stub kept (splitmix64, `float()`, no `time()`, as its doc says); chapter fixed)
+- Contradiction: decisions.md 21.4 spells `.int(lo, hi)` (two arguments); the stub and random-stress.md take a range `int(lo..=hi)`. Docs follow the stub. (resolved: decision 21.4 wins: `int(lo, hi)`, both inclusive; gold updated; decision 167)

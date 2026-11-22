@@ -140,7 +140,7 @@ pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) 
 /// traps: when `best` returns a position outside the range it was given
 /// example: `let a = [3, 1, 2]; split_best([0..3], range: g => g, best: (_, r) => r.map(i => (a[i], i)).max()!).collect() == [3, 2, 1]`
 /// example: `split_best([0..0], range: g => g, best: (_, r) => (0, r.start)).collect() == []`
-pub fn split_best<G, D, T>(
+pub fn split_best<G, D, T: Ord>(
     groups: Seq<G>,
     range: G -> Range<D>,
     best: (G, Range<D>) -> (T, D),

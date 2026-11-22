@@ -4764,3 +4764,37 @@ that change behaviour or a public name. Prose-only fixes are marked in the notes
   and `@get` is only for O(1). Reverse: trim trailing zeros on every write and make them `@get`.
 - **Added `DsuOf.groups()`, `Subset.set`/`shifted` and `Dir8.from`**, cited by containers.md §2.4
   and decisions 62, 16.8 and 16.5. Reverse: delete them.
+||||||| a5bb3d87
+
+
+## 167. Library contradictions resolved (graphs, strings, math)
+
+Contradictions logged in `spec/delta/doc-notes/` for graph, tree, flow,
+search, mo, pair, strings, math, mod, ntt, geometry, rand, io and seq,
+resolved by: a numbered decision wins, then library-wide conventions, then
+the stub. Prose-only fixes are marked in the notes; the API changes:
+
+- **`dfs` follows decisions 146-147.** `Visit<V, A>` is `Enter(v, via: ?A)`,
+  `Exit(v, via: ?A)`, `Again(from, via: A)`; `dfs(g, from, seen: ?mut [V]Bool
+  = None)`; `step.prune()` after `Enter` skips the arcs. `Rooted.tour` and
+  `Events.at` use `Visit<V, V>` with the parent as `via`. Reason: agreed
+  design, the stub lagged. Reverse: restore the two one-field variants.
+- **`Adj`, `directed_of_triples`, `undirected_of_triples` removed;
+  `*_of_pairs` and `adjacency` return `[V]List<V>`.** Reason: graphs-trees.md
+  names `Graph` and `[V]List` as the two representations, and positional
+  `(V, W)` arcs are not `Weighted`. Reverse: restore `Adj` from history.
+- **`articulation_points` → `cut_vertices` (now on `EdgedNext`, so parallel
+  edges are right), `edge_blocks` → `blocks`, `biconnected_components`
+  removed.** Reason: one name per idea; the chapter's names; `blocks` already
+  partitions edges. Reverse: rename back.
+- **`kruskal`'s `by:` reads the edge record (`R -> K`), not its key.**
+  Reason: the default `e => e.w` already did. Reverse: type it `E -> K`.
+- **Strings follow decisions 1.6 and 16.2:** `starts_with(pat, at: 0)`,
+  `split_first` → `split_once`, `trim_start` / `trim_end` added. Reason:
+  numbered decisions beat the stub. Reverse: drop `at:`, rename back.
+- **`nth_root` and `Sieve.each_divisor` removed** (duplicates of `iroot` and
+  `Sieve.divisors`). Free `each_divisor` stays: unsorted and allocation-free
+  beside the sorted `divisors` list. Reverse: restore from history.
+- **`Rng.int(lo, hi)`, both ends inclusive, replaces `int(r: Range<Int>)`.**
+  Reason: decision 21.4 and the prelude's `rand(lo, hi)`. Reverse: take a
+  range again (gold `ioi25_triples` updated both ways).

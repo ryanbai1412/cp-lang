@@ -166,8 +166,8 @@ ends. A `for` over it supports `break`, labelled `break`, `return` and loop
 type may carry methods that talk back to the generator; it checks a flag on
 its own item after each `yield`:
 
-    pub enum Visit<V>: Enter(v: V), Exit(v: V)
-    pub fn dfs<V>(g: Graph<V, _>, s: V) -> yields Step<V>   // Step has .v, .prune()
+    pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)
+    pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc>   // step.prune() after Enter
 
 Closures passed to a library are guaranteed to inline when they do not
 escape (fn parameters of non-recursive generics). Non-local `return` from a

@@ -6,19 +6,19 @@ entry, what the docs now say, why.
 
 ## Contradictions
 
-- `starts_with`, `split_first`, `trim`: `decisions.md` (1.6, 16.2) spells `s.starts_with(x, at: i)`, `s.split_once`, `s.trim_start`; the stub and `spec/lib/strings.md` have `starts_with` without `at:`, `split_first`, and only `trim`. Documented the stub as written; the decisions entries need updating or the stub needs the extra forms.
-- `digit`: the stub said the method "stops" on a non-digit, `spec/lib/strings.md` says it traps. Documented a trap, the only reading that gives a defined result.
-- `period`: the stub defined it as the smallest `d >= 1`, undefined on empty input; `spec/lib/strings.md` says `0` for an empty sequence. Documented `0` on empty.
-- `min_rotation`: `spec/lib/strings.md` returns `Int` with `0` for empty input; the stub returns `?K`. Kept the stub signature and documented `None` on empty.
-- `SuffixArray.rank_range`, `SuffixArray.occ_counts`: `spec/lib/strings.md` names them `matches` and `occurrences`. Documented the stub names.
-- `suffix_array`: `spec/lib/strings.md` gives `suffix_array(s) -> List<Int>` in O(n) and a separate `lcp_array`; the stub's `suffix_array` returns a `SuffixArray` and there is no free `lcp_array`. Documented the stub.
-- `Palindromes.count`, `Palindromes.longest`: `@get` in `spec/lib/strings.md`, plain methods in the stub. Kept the stub.
-- `SuffixAutomaton.topo_order`: `spec/lib/strings.md` describes decreasing `longest`; the stub says non-decreasing. Documented non-decreasing (iterate backwards for bottom-up DP).
-- `SuffixAutomaton.reset`, `SuffixAutomaton.add_word`: the lib coverage table lists `reset_last` and `push_seq`. Documented the stub names.
-- `PalindromicTree`: the lib coverage table lists `odd_root` and `even_root` accessors that the stub lacks; docs refer to the roots as states `0` and `1`.
-- `AhoCorasick.find_all`: `spec/lib/strings.md` calls it `matches`, and its coverage table lists a `patterns_len` the stub lacks. Documented `find_all` with the lib's law (`at` is the start).
-- `SuffixAutomaton.new`, `PalindromicTree.new`, `Trie.new`: the stub said O(1), `spec/lib/strings.md` says O(|A|) (a root with a domain-indexed child table). Documented O(|A|).
-- `SuffixArray.count("")` is `n` (every suffix has the empty prefix) while the free `find_all("")` yields `n + 1` keys (the end key too). Both follow their own definitions; flagged so one convention can be picked.
+- `starts_with`, `split_first`, `trim`: `decisions.md` (1.6, 16.2) spells `s.starts_with(x, at: i)`, `s.split_once`, `s.trim_start`; the stub and `spec/lib/strings.md` have `starts_with` without `at:`, `split_first`, and only `trim`. Documented the stub as written; the decisions entries need updating or the stub needs the extra forms. (resolved: decisions 1.6/16.2 win: `starts_with(pat, at: 0)`, `split_first` renamed `split_once`, `trim_start`/`trim_end` added; decision 167)
+- `digit`: the stub said the method "stops" on a non-digit, `spec/lib/strings.md` says it traps. Documented a trap, the only reading that gives a defined result. (resolved: trap kept)
+- `period`: the stub defined it as the smallest `d >= 1`, undefined on empty input; `spec/lib/strings.md` says `0` for an empty sequence. Documented `0` on empty. (resolved: `0` on empty kept)
+- `min_rotation`: `spec/lib/strings.md` returns `Int` with `0` for empty input; the stub returns `?K`. Kept the stub signature and documented `None` on empty. (resolved: stub `?K` kept (`None` for absence); chapter fixed)
+- `SuffixArray.rank_range`, `SuffixArray.occ_counts`: `spec/lib/strings.md` names them `matches` and `occurrences`. Documented the stub names. (resolved: stub names kept; chapter fixed)
+- `suffix_array`: `spec/lib/strings.md` gives `suffix_array(s) -> List<Int>` in O(n) and a separate `lcp_array`; the stub's `suffix_array` returns a `SuffixArray` and there is no free `lcp_array`. Documented the stub. (resolved: stub kept (`SuffixArray` with `.lcp`); chapter fixed)
+- `Palindromes.count`, `Palindromes.longest`: `@get` in `spec/lib/strings.md`, plain methods in the stub. Kept the stub. (resolved: stub kept (O(n), so not `@get`); chapter fixed)
+- `SuffixAutomaton.topo_order`: `spec/lib/strings.md` describes decreasing `longest`; the stub says non-decreasing. Documented non-decreasing (iterate backwards for bottom-up DP). (resolved: non-decreasing kept; chapter fixed)
+- `SuffixAutomaton.reset`, `SuffixAutomaton.add_word`: the lib coverage table lists `reset_last` and `push_seq`. Documented the stub names. (resolved: stub names kept; chapter table fixed)
+- `PalindromicTree`: the lib coverage table lists `odd_root` and `even_root` accessors that the stub lacks; docs refer to the roots as states `0` and `1`. (resolved: stub kept (states `0` and `1`); dropped from the chapter table)
+- `AhoCorasick.find_all`: `spec/lib/strings.md` calls it `matches`, and its coverage table lists a `patterns_len` the stub lacks. Documented `find_all` with the lib's law (`at` is the start). (resolved: `find_all` kept (one name with the free fn); chapter fixed, `patterns_len` dropped from the table)
+- `SuffixAutomaton.new`, `PalindromicTree.new`, `Trie.new`: the stub said O(1), `spec/lib/strings.md` says O(|A|) (a root with a domain-indexed child table). Documented O(|A|). (resolved: O(|A|) kept)
+- `SuffixArray.count("")` is `n` (every suffix has the empty prefix) while the free `find_all("")` yields `n + 1` keys (the end key too). Both follow their own definitions; flagged so one convention can be picked. (resolved: both kept: `count` counts suffixes, `find_all` start positions, each by its definition)
 
 ## Choices
 

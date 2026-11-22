@@ -24,18 +24,17 @@ pub struct Rng(s: U64):
     /// example: `var r = Rng(0); r.next(); r.next() == 0x6E789E6AA1B965F4`
     /// example: `var r = Rng(1); r.next() == 10451216379200822465`
     pub fn next(mut self) -> U64 = todo
-    /// A uniformly random integer in `r`, from one `next()`.
+    /// A uniformly random integer in `lo..=hi`, both ends inclusive, from one `next()`.
     ///
-    /// With `n = r.len`, the result is `r.start + ((U128(next()) * n) >> 64)`: Lemire's
-    /// multiply-high map, which uses exactly one draw (bias at most `n / 2^64`). Both `a..b` and
-    /// `a..=b` work.
+    /// With `n = hi - lo + 1`, the result is `lo + ((U128(next()) * n) >> 64)`: Lemire's
+    /// multiply-high map, which uses exactly one draw (bias at most `n / 2^64`).
     ///
     /// cost: O(1)
     /// empty: traps
-    /// traps: when `r` is empty
-    /// example: `var r = Rng(1); let x = r.int(1..=6); 1 <= x and x <= 6`
-    /// example: `var r = Rng(5); r.int(4..5) == 4`
-    pub fn int(mut self, r: Range<Int>) -> Int = todo
+    /// traps: when `lo > hi`
+    /// example: `var r = Rng(1); let x = r.int(1, 6); 1 <= x and x <= 6`
+    /// example: `var r = Rng(5); r.int(4, 4) == 4`
+    pub fn int(mut self, lo: Int, hi: Int) -> Int = todo
     /// A uniformly random `F64` in `[0, 1)`: the top 53 bits of `next()` times `2^-53`.
     ///
     /// cost: O(1)

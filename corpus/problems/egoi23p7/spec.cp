@@ -31,7 +31,7 @@ fn solve() -> ?List<(child: V, parent: V)>:
     let hang = complement(blocked)
     // The last vertex a DFS finishes is the only block that can reach all the others.
     var root = B.first!
-    for step in dfs(hang, from: B) if step is Exit(b):
+    for step in dfs(hang, from: B) if step is Exit(b, _):
         root = b
     let tree = bfs(hang, from: [root])
     if B.any(b => not tree.reached(b)):

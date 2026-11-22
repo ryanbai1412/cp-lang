@@ -15,5 +15,5 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `SemiRelaxedConvolve.new`: `b` is zero-padded, so pushes past `b.len` are allowed and an empty `b` gives all-zero `c`.
 - `convolve_all`: an empty factor makes the product `[]`, matching linear `convolve` with an empty input; the empty product is `[1]` (already stated).
 - `subset_exp`: defined `b[m]` as the sum over set partitions of `m` of products of `a`; traps when `a[0] != 0`. `subset_log` traps when `a[0] != 1`.
-- Contradiction: spec/lib/math.md §2.3 gives `ntt<P>(mut a, inverse: Bool = false)` without `bit_reversed`, and `sos<T>(mut a: List<T>, ...)` where the stub takes any `S: IndexedMut`. Left as in the stub.
-- Contradiction: spec/lib/math.md §1 names `sos_sub`, `sos_sup`, `sos_sub_inv`, `sos_sup_inv`; the stub and §2.3 have one `sos(over:, inverse:)`. Left as in the stub.
+- Contradiction: spec/lib/math.md §2.3 gives `ntt<P>(mut a, inverse: Bool = false)` without `bit_reversed`, and `sos<T>(mut a: List<T>, ...)` where the stub takes any `S: IndexedMut`. Left as in the stub. (resolved: stub kept; chapter fixed)
+- Contradiction: spec/lib/math.md §1 names `sos_sub`, `sos_sup`, `sos_sub_inv`, `sos_sup_inv`; the stub and §2.3 have one `sos(over:, inverse:)`. Left as in the stub. (resolved: one `sos(over:, inverse:)` kept; chapter fixed)
