@@ -174,7 +174,7 @@ test("a failed run keeps what it printed and says where it failed", () => {
   const run = cpl.run("print(1)\nlet n: Int = read()\nassert n > 0, \"{n} is not positive\"\n", "-5");
   assert.deepEqual([run.ok, run.exitCode, run.stdout], [false, 3, "1\n"]);
   assert.equal(run.diagnostics.length, 1);
-  assert.equal(run.diagnostics[0].code, "R0001");
+  assert.equal(run.diagnostics[0].code, "R0401");
   assert.equal(run.diagnostics[0].range.start.line, 2);
   assert.match(run.stderr, /-5 is not positive/);
 });
