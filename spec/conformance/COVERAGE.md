@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1310 (995 passing). Rules: 521.
+Cases: 1314 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -766,8 +766,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `CostFlow.cancel_cycles`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (138/158 named by a case)
   - uncovered: `ByAngle`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `min_bounding_box`, `hull_tangents`, `polygon_triangulate`, `PI`, `Vec.from_angle`, `Vec.rot`, `circles_union_area`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
-- **graph** (75/123 named by a case)
-  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `peel`, `condense`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`
+- **graph** (78/123 named by a case)
+  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `peel`, `condense`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
 - **heap** (74/74 named by a case)
@@ -816,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1858 of 2222 std items are named by a case.
+1861 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
