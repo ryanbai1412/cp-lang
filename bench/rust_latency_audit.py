@@ -6,19 +6,18 @@
 
 Every command is a fresh process, timed end to end (spawn to exit), repeated
 `--reps` times; the median is reported per file and the worst file per command
-is named. Sources come from the port set of rust_max_n_audit.py (real
-solutions) plus the CLI's own test programs (the only files with small inputs
-for `cpl run`).
+is named. Sources are the v0.3 dry-run solutions (research/dryrun/v03/*.cp,
+real contest programs with their sample inputs and, where one exists, the
+matched C++ reference as the stress brute) plus the CLI's own test programs.
 
     cargo build --release -p cpl-cli
     python3 bench/rust_latency_audit.py [--reps 9] [--json out.json]
 """
 import argparse, glob, json, os, shutil, statistics, subprocess, sys, tempfile, time
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import rust_max_n_audit as maxn
-
-ROOT, CPL = maxn.ROOT, maxn.CPL
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CPL = os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
+DRYRUN = os.path.join(ROOT, "research", "dryrun")
 BUDGET_MS = {"check": 50, "run": 200, "build": 1000, "lsp diagnostics": 100, "lsp hover": 100, "stress first case": 1000}
 
 
@@ -121,14 +120,17 @@ def main():
     a = ap.parse_args()
     if not os.path.exists(CPL): sys.exit(f"{CPL} not found: cargo build --release -p cpl-cli")
     tmp = tempfile.mkdtemp(prefix="cpl-lat-")
-    ports = []
-    for spec in maxn.SPECS:                       # copies: `cpl build` writes next to its input by default
-        dst = os.path.join(tmp, spec[0].replace("/", "__") + ".cp"); shutil.copy(maxn.P(spec[0] + ".cp"), dst); ports.append((spec, dst))
+    ports = []   # (name, copy of the source, brute C++ or None, sample input or None)
+    for path in sorted(glob.glob(os.path.join(DRYRUN, "v03", "p*.cp"))):   # copies: `cpl build` writes next to its input
+        name = os.path.basename(path)[:-3]
+        dst = os.path.join(tmp, name + ".cp"); shutil.copy(path, dst)
+        brute = os.path.join(DRYRUN, name + "_ref.cpp")
+        ins = sorted(glob.glob(path[:-3] + ".tests/*.in"))
+        ports.append((name, dst, brute if os.path.exists(brute) else None, ins[0] if ins else None))
     out = {"sizes": {}}
 
     rows = {k: [] for k in BUDGET_MS}; sizes = []
-    for spec, src in ports:
-        name = spec[0]
+    for name, src, _, _ in ports:
         t, rc = ms([CPL, "check", src], reps=a.reps)
         if rc: print(f"  note: cpl check exits {rc} on {name}")
         rows["check"].append((name, t))
@@ -138,37 +140,36 @@ def main():
         _, d, dmax, h, hmax = lsp_times(src, a.reps)
         rows["lsp diagnostics"].append((name, dmax)); rows["lsp hover"].append((name, hmax))
 
-    # `cpl run`: the CLI's golden programs with their inputs, and each port on its medium input
+    # `cpl run`: the CLI's golden programs and each dry-run solution on its sample input
     for inp in sorted(glob.glob(os.path.join(ROOT, "crates/cpl-cli/tests/programs/*.in"))):
         src = inp[:-3] + ".cp"
         if os.path.exists(src):
             t, rc = ms([CPL, "run", src], stdin=inp, reps=a.reps); rows["run"].append(("tests/" + os.path.basename(src), t))
-    ctx = {"run_orig": None}
     run_medium = []
-    for spec, src in ports:
-        if spec[0].endswith("noiwc22p3"): continue   # its input needs the compiled original
-        inp = src[:-3] + ".in"; spec[4](inp, False, ctx)
+    for name, src, _, inp in ports:
+        if inp is None: continue
         t0 = time.perf_counter()
         try:
             p = subprocess.run([CPL, "run", src], stdin=open(inp), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
-            run_medium.append((spec[0], (time.perf_counter() - t0) * 1e3, os.path.getsize(inp), p.returncode))
+            run_medium.append((name, (time.perf_counter() - t0) * 1e3, os.path.getsize(inp), p.returncode))
+            rows["run"].append((name, run_medium[-1][1]))
         except subprocess.TimeoutExpired:
-            run_medium.append((spec[0], 30000.0, os.path.getsize(inp), "timeout"))
+            run_medium.append((name, 30000.0, os.path.getsize(inp), "timeout"))
 
-    # `cpl stress --cases 1` against the original C++ as the brute: cold (empty binary cache, so both
-    # g++ builds are paid) and again warm. Only runs that really compared a case count.
+    # `cpl stress --cases 1` against the matched C++ reference as the brute: cold (empty binary cache,
+    # so both g++ builds are paid) and again warm. Only runs that really compared a case count.
     stress = []
-    for spec, src in ports:
-        if spec[0].split("/")[-1] in ("noiwc22p3", "ioi19p5", "noi04p3", "noi08p4"): continue   # graders / inexact answers
+    for name, src, brute, _ in ports:
+        if brute is None: continue
         env = {**os.environ, "CPL_CACHE": os.path.join(tmp, "cache-" + os.path.basename(src))}
-        cmd = [CPL, "stress", src, "--brute", spec[1], "--cases", "1"]
+        cmd = [CPL, "stress", src, "--brute", brute, "--cases", "1"]
         t = []
         for _ in range(2):
             t0 = time.perf_counter(); p = subprocess.run(cmd, capture_output=True, text=True, env=env); t.append((time.perf_counter() - t0) * 1e3)
         msg = (p.stdout + p.stderr)
         kind = ("agree" if "agree" in msg and p.returncode == 0 else "no generator for a read() type" if "can't generate" in msg
                 else "brute crashed on the generated input" if "failed on this input" in msg else "other: " + msg.strip().splitlines()[0][:80])
-        stress.append((spec[0], t[0], t[1], kind))
+        stress.append((name, t[0], t[1], kind))
         shutil.rmtree(src[:-3] + ".tests", ignore_errors=True)
     ran = [s for s in stress if "no generator" not in s[3]]
     rows["stress first case"] = [(n, t1) for n, t1, _, _ in ran]
@@ -179,7 +180,7 @@ def main():
     print(f"emitted size       budget 65536 B  | {len(sizes):3d} files | median {out['sizes']['median_bytes']:.0f}  max {big[1]} ({big[0]})")
     slow = sorted(run_medium, key=lambda r: -r[1])
     out["run_medium"] = [{"port": n, "ms": round(t, 1), "input_bytes": b, "exit": rc} for n, t, b, rc in slow]
-    print(f"\ncpl run on medium inputs (interpreter throughput, no budget): median {statistics.median(t for _, t, _, _ in slow):.0f} ms; slowest:")
+    print(f"\ncpl run on sample inputs: median {statistics.median(t for _, t, _, _ in slow):.0f} ms; slowest:")
     for n, t, b, rc in slow[:6]: print(f"  {t:9.0f} ms  {n}  ({b} B input, exit {rc})")
     out["stress"] = [{"port": n, "cold_ms": round(a1, 1), "warm_ms": round(a2, 1), "result": k} for n, a1, a2, k in stress]
     kinds = {}
