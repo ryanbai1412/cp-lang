@@ -975,8 +975,124 @@ fn heap_of_and_erasable_and_indexed_heaps() = todo
 /// `Heap<T>()`: pops the smallest first.
 pub type MinHeap<T> = Heap<T>
 
-/// `Heap<T>(by: desc)`: pops the largest first.
-pub type MaxHeap<T> = Heap<T>
+/// `Heap<T>(by: desc)` under its own name: pops the largest first, with the same operations and
+/// costs as `Heap`; it holds each element as `desc(x)`. For a mixed order use `Heap` with `desc(x)` in the entry.
+pub struct MaxHeap<T>:
+    h: Heap<Desc<T>>
+
+    /// An empty `MaxHeap<T>`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var h = MaxHeap<Int>(); h.push(1); h.push(3); h.pop() == Some(3)`
+    pub fn new() -> MaxHeap<T> = MaxHeap(h: Heap<Desc<T>>())
+
+    /// Build a `MaxHeap<T>` from `xs` via Floyd heapify.
+    ///
+    /// cost: O(n)
+    /// empty: an empty heap
+    /// traps: never
+    /// example: `var h = MaxHeap.of([3, 1, 2]); h.pop() == Some(3) and h.len == 2`
+    pub fn of(xs: List<T>) -> MaxHeap<T> = MaxHeap(h: Heap<Desc<T>>.of([desc(x) for x in xs]))
+
+    /// Number of elements currently in the heap.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MaxHeap.of([3, 1]).len == 2`
+    @get pub fn len(self) -> Int = self.h.len
+
+    /// Whether the heap is empty.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MaxHeap.of([3]).is_empty == false`
+    @get pub fn is_empty(self) -> Bool = self.h.is_empty
+
+    /// The largest element, or `None` when empty.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `MaxHeap.of([3, 9, 2]).peek == Some(9)`
+    @get pub fn peek(self) -> ?T:
+        if let d = self.h.peek: return Some(d.x)
+        None
+
+    /// Remove every element.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2]); h.clear(); h.is_empty`
+    pub fn clear(mut self):
+        self.h.clear()
+
+    /// Move the contents out, leaving this heap empty.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2, 7]); let t = h.take(); h.is_empty and t.peek == Some(7)`
+    pub fn take(mut self) -> MaxHeap<T> = MaxHeap(h: self.h.take())
+
+    /// Add `x`.
+    ///
+    /// cost: O(log n)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2]); h.push(5); h.peek == Some(5)`
+    pub fn push(mut self, x: T):
+        self.h.push(desc(x))
+
+    /// Remove and return the largest element, or `None` when empty.
+    ///
+    /// cost: O(log n)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([4, 9]); h.pop() == Some(9) and h.pop() == Some(4) and h.pop() == None`
+    pub fn pop(mut self) -> ?T:
+        if let d = self.h.pop(): return Some(d.x)
+        None
+
+    /// Make room for `cap` elements in total.
+    ///
+    /// cost: O(cap) when the storage grows, O(1) otherwise
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2]); h.reserve(100); h.peek == Some(2)`
+    pub fn reserve(mut self, cap: Int):
+        self.h.reserve(cap)
+
+    /// Push `x`, then pop and return the largest element.
+    ///
+    /// cost: O(log n); O(1) when `x` is returned
+    /// traps: never
+    /// example: `var h = MaxHeap.of([4]); h.push_pop(7) == 7 and h.peek == Some(4)`
+    pub fn push_pop(mut self, x: T) -> T = self.h.push_pop(desc(x)).x
+
+    /// Pop the largest element, then push `x`; returns the popped one, or `None`
+    /// (and only pushes) when empty.
+    ///
+    /// cost: O(log n)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([4]); h.replace_top(1) == Some(4) and h.peek == Some(1)`
+    /// example: `var h = MaxHeap<Int>(); h.replace_top(4) == None and h.peek == Some(4)`
+    pub fn replace_top(mut self, x: T) -> ?T:
+        if let d = self.h.replace_top(desc(x)): return Some(d.x)
+        None
+
+    /// Push every element of `items`.
+    ///
+    /// cost: O(n + k log(n + k))
+    /// empty: changes nothing
+    /// traps: never
+    /// example: `var h = MaxHeap<Int>(); h.push_all([3, 8]); h.peek == Some(8)`
+    pub fn push_all(mut self, items: List<T>):
+        self.h.push_all([desc(x) for x in items])
+
+    /// Pop every element, largest first.
+    ///
+    /// cost: O(n log n)
+    /// empty: yields nothing
+    /// traps: never
+    /// example: `var h = MaxHeap.of([1, 3, 2]); h.drain().collect() == [3, 2, 1]`
+    pub fn drain(mut self) -> yields T:
+        for d in self.h.drain(): yield d.x
 
 /// A keyed frontier where each key pops exactly once. `offer(k, p)` keeps the best priority seen
 /// for a key that has not popped yet and is ignored after it has; `pop` returns the best key
