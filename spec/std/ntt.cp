@@ -26,9 +26,23 @@ fn ntt_raw(mut a: List<Int>, p: Int, g: Int, inverse: Bool) = todo
 
 fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int> = todo
 
-/// In-place number-theoretic transform of length `2^k` modulo an NTT-friendly prime `P`.
-/// Set `inverse: true` for the inverse transform (includes division by `n`).
-/// Set `bit_reversed: true` to stay in DIF/DIT bit-reversed frequency order (skips bit-reversal). O(n log n).
+/// In-place number-theoretic transform of `a` modulo the NTT-friendly prime `P`.
+///
+/// The forward transform maps `a` to `â[k] = sum_j a[j] * w^(j k)` with `w =
+/// primitive_root(P)^((P - 1) / n)`, in natural order. `inverse: true` uses `w^-1` and divides
+/// by `n`, so it exactly undoes the forward transform. `bit_reversed: true` skips the
+/// bit-reversal permutation: the forward transform then leaves `â` in bit-reversed order and the
+/// inverse expects its input in that order, so a pointwise product between the two needs no
+/// reordering. The standard primes use radix-4 Montgomery butterflies; `cpl explain` names the
+/// engine.
+///
+/// cost: O(n log n)
+/// empty: traps (0 is not a power of two)
+/// order: in place; natural frequency order unless `bit_reversed: true`
+/// traps: when `a.len` is not a power of two dividing `P - 1`, or `P` is not prime
+/// example: `type Z = Mod<17>; var a = [Z(1), Z(0), Z(0), Z(0)]; ntt(mut a); a == [Z(1), Z(1), Z(1), Z(1)]`
+/// example: `type Z = Mod<17>; var a = [Z(1), Z(2), Z(3), Z(4)]; ntt(mut a); ntt(mut a, inverse: true); a == [Z(1), Z(2), Z(3), Z(4)]`
+/// example: `type Z = Mod<17>; var a = [Z(5), Z(6)]; ntt(mut a, bit_reversed: true); ntt(mut a, inverse: true, bit_reversed: true); a == [Z(5), Z(6)]`
 pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false) = todo
 
 /// Which arguments of a convolution over a semiring other than `(+, *)` have the shape that makes
@@ -42,13 +56,34 @@ pub struct Disjoint
 /// `on: subset` in `convolve`.
 pub const subset = Disjoint()
 
-/// `c[on(i, j)] = over.add` of `over.mul(a[i], b[j])`. The default is the polynomial product,
-/// O((n + m) log(n + m)). `on: ^`, `|`, `&` use the bitwise transforms (lengths equal powers of
-/// two, O(n log n)); `on: subset` is O(k^2 2^k); `on: gcd` and `on: lcm` index from 1 and cost
-/// O(n log log n). Any `over:` but `Semiring(+, *)` needs `shape:` (`Both` merges slopes in
-/// O(n + m), `Right` runs `monotone_minima` in O((n + m) log n), `Neither` is the O(n m) loop);
-/// leaving it out is an error, not a hidden O(n m). With `cyclic: true`, `a.len == b.len` and
-/// indices wrap modulo it.
+/// The convolution of `a` and `b`: `c[on(i, j)]` is the `over.add` of every `over.mul(a[i], b[j])`.
+///
+/// The default is the polynomial product. The value type picks the algorithm and `cpl explain`
+/// names it: NTT for an NTT-prime `Mod<P>`, three primes and CRT for any other `Mod` (runtime
+/// moduli too) or `Int`, FFT for `F64`. Output lengths:
+/// - linear (default): `a.len + b.len - 1`, or `[]` when either input is empty;
+/// - `cyclic: true`: `a.len == b.len == n`, length `n`, index `(i + j) % n`;
+/// - `on: ^`, `|`, `&` and `subset`: `a.len == b.len == 2^k`, length `2^k`; `subset` sums only
+///   pairs with `i & j == 0`;
+/// - `on: gcd` and `on: lcm`: index from 1 (position 0 contributes nothing and `c[0]` is zero),
+///   length `max(a.len, b.len)`; `lcm` values at or past that length are dropped.
+///
+/// Any `over:` but `Semiring(+, *)` needs `shape:` (`Both`: both inputs convex for `min`, concave
+/// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the O(n m) loop by
+/// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
+///
+/// cost: O((n + m) log(n + m)) for the product; O(n log n) bitwise; O(k^2 2^k) `subset`; O(n log log n) `gcd`/`lcm`; O(n + m) `Both`; O((n + m) log n) `Right`; O(n m) `Neither`
+/// empty: `[]` for the linear product when either input is empty
+/// order: by output index `0..len`; a new `List`, keyed from 0
+/// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
+/// example: `convolve([1, 2], [3, 4]) == [3, 10, 8]`
+/// example: `convolve([1, 2, 3], [4, 5, 6], cyclic: true) == [31, 31, 28]`
+/// example: `convolve([1, 2], [3, 4], on: ^) == [11, 10]`
+/// example: `convolve([1, 2, 3, 4], [1, 1, 1, 1], on: subset) == [1, 3, 4, 10]`
+/// example: `convolve([0, 1, 1, 1], [0, 1, 1, 1], on: gcd) == [0, 7, 1, 1]`
+/// example: `convolve([0, 1, 1, 1], [0, 1, 1, 1], on: lcm) == [0, 1, 3, 3]`
+/// example: `convolve([0, 1, 3], [0, 2, 5], over: Semiring(min, +), shape: Both) == [0, 1, 3, 5, 8]`
+/// example: `let e: List<Int> = []; convolve([1, 2], e) == []`
 pub fn convolve<T, O, R>(
     a: List<T>,
     b: List<T>,
@@ -61,12 +96,36 @@ pub fn convolve<T, O, R>(
 /// Direction of a sum-over-subsets (SOS) zeta/Mobius transform.
 pub enum SosOver = Sub | Sup
 
-/// O(k * 2^k). In-place subset-sum (`over: Sub`, default) or superset-sum (`over: Sup`) zeta transform
-/// (`inverse: false`) or Mobius inverse (`inverse: true`) on any `IndexedMut` of power-of-two length `2^k`.
+/// In-place sum-over-subsets (zeta) transform of `a`, length `2^k`, or its Mobius inverse.
+///
+/// With `over: Sub` each `a[m]` becomes the sum of the old `a[s]` over the submasks `s` of `m`;
+/// with `over: Sup`, over the supermasks. `inverse: true` is the Mobius transform, which undoes
+/// the zeta transform of the same direction. Positions are zero-based masks, so any
+/// `IndexedMut` of power-of-two length works.
+///
+/// cost: O(k 2^k)
+/// empty: traps (0 is not a power of two)
+/// order: in place, indexed by mask
+/// traps: when `a.len` is not a power of two
+/// example: `var a = [1, 2, 3, 4]; sos(mut a); a == [1, 3, 4, 10]`
+/// example: `var a = [1, 2, 3, 4]; sos(mut a, over: Sup); a == [10, 6, 7, 4]`
+/// example: `var a = [1, 3, 4, 10]; sos(mut a, inverse: true); a == [1, 2, 3, 4]`
 pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false) = todo
 
-/// O(n log n). In-place Walsh-Hadamard (XOR) transform (`inverse: false` or `inverse: true`)
-/// on any `IndexedMut` of power-of-two length `2^k` (`List<T>`, `[D]T`, mutable slices).
+/// In-place Walsh-Hadamard (XOR) transform of `a`, length `2^k`.
+///
+/// The forward transform maps `a[m]` to `sum_s (-1)^popcount(m & s) * a[s]`. `inverse: true`
+/// applies the same butterflies and divides by `n`, so it undoes the forward transform; for
+/// `Int` the division is exact on any forward-transformed input. Works on any `IndexedMut`
+/// (`List<T>`, `[D]T`, mutable slices).
+///
+/// cost: O(n log n)
+/// empty: traps (0 is not a power of two)
+/// order: in place, indexed by mask
+/// traps: when `a.len` is not a power of two; with `inverse: true` on `Int`, when an entry is not divisible by `n`
+/// example: `var a = [1, 2]; fwht(mut a); a == [3, -1]`
+/// example: `var a = [1, 2, 3, 4]; fwht(mut a); a == [10, -2, -4, 0]`
+/// example: `var a = [10, -2, -4, 0]; fwht(mut a, inverse: true); a == [1, 2, 3, 4]`
 pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false) = todo
 
 /// O(log^2 n) amortized per step, O(n log^2 n) total. Online (relaxed) NTT convolution:
@@ -76,10 +135,23 @@ pub struct RelaxedConvolve<P>:
     b: List<Mod<P>>
     c: List<Mod<P>>
 
-    /// O(1). Start an empty online convolution.
+    /// An empty online convolution: no values pushed yet.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>.new(); rc.push(Z(0), Z(0)) == Z(0)`
     pub fn new() -> RelaxedConvolve<P> = todo
 
-    /// O(log^2 k) amortized. Append `ai, bi` at index `k` and return `c[k]`.
+    /// Append `a[k] = ai` and `b[k] = bi` at the next index `k` and return `c[k] = sum_{i=0..=k}
+    /// a[i] * b[k - i]`.
+    ///
+    /// `c[k]` depends only on values already pushed, so `a[k+1]` and `b[k+1]` may be computed from
+    /// it: the shape of online DP like `f[k] = sum f[i] g[k - i]`.
+    ///
+    /// cost: O(log^2 k) amortized
+    /// traps: when `k` reaches the largest NTT length `P` supports
+    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>.new(); rc.push(Z(1), Z(3)) == Z(3)`
+    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>.new(); rc.push(Z(1), Z(3)); rc.push(Z(2), Z(4)) == Z(10)`
     pub fn push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P> = todo
 
 /// O(log^2 n) amortized per step. Semi-relaxed NTT convolution against a fixed `b`
@@ -89,19 +161,62 @@ pub struct SemiRelaxedConvolve<P>:
     a: List<Mod<P>>
     c: List<Mod<P>>
 
-    /// O(b.len). Start an online convolution against fixed polynomial `b`.
+    /// An online convolution against the fixed polynomial `b`, nothing pushed yet.
+    ///
+    /// `b` is zero-padded as far as the pushes go, so pushing past `b.len` is allowed; an empty `b`
+    /// makes every `c[k]` zero.
+    ///
+    /// cost: O(b.len)
+    /// empty: every pushed `c[k]` is zero
+    /// traps: never
+    /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>.new([Z(1), Z(2)]); sc.push(Z(1)) == Z(1)`
+    /// example: `type Z = Mod<17>; let e: List<Z> = []; var sc = SemiRelaxedConvolve<17>.new(e); sc.push(Z(5)) == Z(0)`
     pub fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P> = todo
 
-    /// O(log^2 k) amortized. Append `ai` at index `k` and return `c[k]`.
+    /// Append `a[k] = ai` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
+    ///
+    /// cost: O(log^2 k) amortized
+    /// traps: when `k` reaches the largest NTT length `P` supports
+    /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>.new([Z(1), Z(2)]); sc.push(Z(1)); sc.push(Z(2)); sc.push(Z(5)) == Z(9)`
     pub fn push(mut self, ai: Mod<P>) -> Mod<P> = todo
 
-/// O(S log^2 S) for total degree `S`. Product of all polynomials in `polys` (returns `[1]` if empty).
+/// The product of every polynomial in `polys`, multiplied as a balanced tree.
+///
+/// The empty product is `[1]`. An empty polynomial among the factors is zero (as in `convolve`),
+/// so the result is `[]`.
+///
+/// cost: O(S log^2 S) for total length `S`
+/// empty: `[1]`
+/// order: lowest degree first; a new `List`, keyed from 0
+/// traps: when the product outgrows the largest NTT length `P` supports
+/// example: `type Z = Mod<17>; convolve_all([[Z(1), Z(1)], [Z(1), Z(1)]]) == [Z(1), Z(2), Z(1)]`
+/// example: `type Z = Mod<17>; let e: List<List<Z>> = []; convolve_all(e) == [Z(1)]`
+/// example: `type Z = Mod<17>; let e: List<Z> = []; convolve_all([[Z(1), Z(1)], e]) == []`
 pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>> = todo
 
-/// O(k^2 * 2^k) for `n = 2^k`. Set power series exponential (`a[0] == 0`).
+/// The set power series exponential of `a`, length `2^k`, with `a[0] == 0`.
+///
+/// `b[m]` is the sum, over every partition of the mask `m` into nonempty disjoint blocks, of the
+/// product of `a` over the blocks; `b[0] == 1`. With subset convolution as the product, it is
+/// `sum_n a^n / n!` and the inverse of `subset_log`.
+///
+/// cost: O(k^2 2^k)
+/// empty: traps (0 is not a power of two)
+/// order: indexed by mask; a new `List`, keyed from 0
+/// traps: when `a.len` is not a power of two, or `a[0] != 0`
+/// example: `type Z = Mod<17>; subset_exp([Z(0), Z(1), Z(1), Z(0)]) == [Z(1), Z(1), Z(1), Z(1)]`
+/// example: `type Z = Mod<17>; subset_exp([Z(0), Z(1), Z(1), Z(1)]) == [Z(1), Z(1), Z(1), Z(2)]`
 pub fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 
-/// O(k^2 * 2^k) for `n = 2^k`. Set power series logarithm (`a[0] == 1`).
+/// The set power series logarithm of `a`, length `2^k`, with `a[0] == 1`: the inverse of
+/// `subset_exp`, so `subset_exp(subset_log(a)) == a`.
+///
+/// cost: O(k^2 2^k)
+/// empty: traps (0 is not a power of two)
+/// order: indexed by mask; a new `List`, keyed from 0
+/// traps: when `a.len` is not a power of two, or `a[0] != 1`
+/// example: `type Z = Mod<17>; subset_log([Z(1), Z(1), Z(1), Z(2)]) == [Z(0), Z(1), Z(1), Z(1)]`
+/// example: `type Z = Mod<17>; subset_log([Z(1), Z(0)]) == [Z(0), Z(0)]`
 pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>> = todo
 
 @test
