@@ -793,7 +793,7 @@ the parser, parses every port and library without an error, and checks each
 editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Publish the Zed extension; more fns with an estimated cost, which needs a cost on the calls that state none (100 of the 152 built-in methods: §6), a cost for `print`, `read` and `ask` of lists and strings by their size, and sizes for lists filled by `read`, comprehensions or `while` loops. Waiting on §1: `Rooted` and graph helpers give their vertices the domain type, after which `white[tree.parent(v)!]` is proven by type with no editor change.
+**Next.** Publish the Zed extension; more fns with an estimated cost, which needs a cost on the calls that state none (43 of the 152 built-in methods, most of them getters, which already count one step: §6), a cost for `print`, `read` and `ask` of lists and strings by their size, and sizes for lists filled by `read`, comprehensions or `while` loops. Waiting on §1: `Rooted` and graph helpers give their vertices the domain type, after which `white[tree.parent(v)!]` is proven by type with no editor change.
 
 ## 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a
