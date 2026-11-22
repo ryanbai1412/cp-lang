@@ -6763,6 +6763,16 @@ fn sync_to_stack(
     }
 }
 
+/// Hands the moved values back to their registers after a trace point,
+/// which reads the stack but writes none of the scalars kept in registers.
+fn take_back_values(slot_map: &[SlotLoc], regs_v: &mut [Value], stack: &mut [Value], base: usize) {
+    for (slot, loc) in slot_map.iter().enumerate() {
+        if let SlotLoc::V(r) = *loc {
+            regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
+        }
+    }
+}
+
 fn sync_from_stack(
     slot_map: &[SlotLoc],
     regs_i: &mut [i64],
@@ -11178,7 +11188,7 @@ impl<'p, 'io> Interp<'p, 'io> {
                         if !quiet {
                             sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                             self.trace_point(point);
-                            sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                            take_back_values(&chunk.slot_map, regs_v, &mut self.stack, self.base);
                         }
                     }
                 },
