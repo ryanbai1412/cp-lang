@@ -1016,7 +1016,7 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
         );
         Ok(trace::single(args.file, &compiled.text, &observed.recording.unwrap_or_default()))
     };
-    live::serve(args.file, &note, &record)
+    live::serve(args.file, &input, &note, &record)
 }
 
 fn trace_config(args: &RunArgs, text: &str) -> cpl_interp::trace::TraceConfig {

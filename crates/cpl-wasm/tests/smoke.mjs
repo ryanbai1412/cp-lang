@@ -52,6 +52,21 @@ test("the module says which toolchain it is", () => {
   assert.equal(cpl.version, /^version = "(.+)"$/m.exec(manifest)[1]);
 });
 
+test("replay runs one recorded call again with its fn edited", () => {
+  const source = "var total = 0\nfn add(i: Int) -> Int:\n    total += i\n    return total\nfor i in 1..=3:\n    print(add(i))\n";
+  const { trace } = cpl.trace(source, "");
+  const entry = trace.runs.fast.steps.findIndex((step) => step.frames?.[0]?.fn === "add" && step.values.total === 3);
+  assert.ok(entry > 0, "the second call has a step of its own");
+  const edited = source.replace("return total", "return total * 10");
+  const report = cpl.replay(source, edited, "", entry);
+  assert.equal(report.call.name, "add");
+  assert.equal(report.call.ordinal, 2);
+  assert.deepEqual(report.returned, { before: 3, after: 30 });
+  assert.equal(report.fallback, null);
+  assert.ok(report.change, "the call returns something else");
+  assert.match(cpl.replay(source, "fn (", "", entry).error, /edited file does not build/);
+});
+
 test("trace records a live program for the trace viewer", () => {
   const source = [
     "let n: 1..=10 = read()",

@@ -190,6 +190,45 @@ impl Playground {
         (stdout, json)
     }
 
+    /// `cpl replay`: the call open at `step` (0-based) of the run of
+    /// `original` on `input`, `frame` callers out of the innermost, run again
+    /// with the fns of `edited`. The answer is
+    /// [`cpl_interp::replay::Replay::json`], or `{"error": ...}`: the same
+    /// engine and report as `cpl run --trace --live` serves.
+    #[allow(clippy::too_many_arguments)]
+    pub fn replay(
+        &mut self,
+        name: &str,
+        original: &str,
+        edited: &str,
+        input: &[u8],
+        step: u32,
+        frame: u32,
+        stack: u32,
+    ) -> String {
+        use cpl_interp::trace::TraceConfig;
+        let error = |message: &str| obj([("error", Value::from(message.trim_end().to_string()))]).to_string();
+        let config = |source: &str| TraceConfig { source: source.to_string(), record_frames: true, ..TraceConfig::default() };
+        let before = match self.compile(name, original) {
+            Ok(compiled) => compiled.program,
+            Err(_) => return error("the recorded source does not build"),
+        };
+        let after = match self.compile(name, edited) {
+            Ok(compiled) => compiled.program,
+            Err(errors) => {
+                let stderr = errors.get("stderr").and_then(Value::as_str).unwrap_or_default().to_string();
+                return error(&format!("the edited file does not build:\n{stderr}"));
+            }
+        };
+        let recorded = observe(&before, input, &mut Vec::new(), stack, config(original)).recording.unwrap_or_default();
+        let call = match cpl_interp::replay::call_at(&recorded, step as usize, frame as usize) {
+            Ok(call) => call,
+            Err(message) => return error(&message),
+        };
+        let limits = cpl_interp::Limits { stack_bytes: stack as usize };
+        cpl_interp::replay::replay_on_this_thread(&recorded, &before, &after, input, &call, config(edited), limits).json()
+    }
+
     /// `cpl stress --explain --format json`, running in-process on `cpl-interp`
     /// with the same generator, shrinker and JSON report as the CLI.
     pub fn stress(

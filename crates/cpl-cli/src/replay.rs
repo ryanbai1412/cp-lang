@@ -25,19 +25,14 @@ or the call reads past the input, the whole file runs again and the report
 says so.
 ";
 
-/// The call at `step` (0-based) of a run: open there, `frame` callers out
-/// of the innermost, or else the one that returned into `step`.
-pub(crate) fn call_at(recorded: &Recording, step: usize, frame: usize) -> Result<Call, String> {
-    // A call that changed no top-level variable has no steps of its own.
-    let returned_into = || recorded.calls.iter().filter(|c| c.exit == step).min_by_key(|c| c.depth);
-    recorded.call_at(step, frame).or_else(returned_into).cloned().ok_or(format!("no fn call is running at step {}", step + 1))
-}
+pub(crate) use cpl_interp::replay::call_at;
 
 /// The call `pick` chooses of the run of `original` on `input`, replayed
-/// with the fns of the file at `path`.
+/// with the fns of `edited`, or else of the file at `path`.
 pub(crate) fn replay_call(
     path: &str,
     original: &str,
+    edited: Option<&str>,
     input: &[u8],
     pick: &dyn Fn(&Recording) -> Result<Call, String>,
 ) -> Result<Replay, String> {
@@ -50,8 +45,11 @@ pub(crate) fn replay_call(
     let recorded = observed.recording.unwrap_or_default();
     let call = pick(&recorded)?;
     let mut errors = String::new();
-    let after = compile_side(path, Side::Solution, &mut errors)
-        .map_err(|_| format!("the edited file does not build:\n{errors}"))?;
+    let after = match edited {
+        Some(text) => compile_text(path, text.to_string(), Side::Solution, &mut errors),
+        None => compile_side(path, Side::Solution, &mut errors),
+    }
+    .map_err(|_| format!("the edited file does not build:\n{errors}"))?;
     let replay = cpl_interp::replay::replay(
         &recorded,
         &before.program,
@@ -194,7 +192,7 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
             }
         },
     };
-    match replay_call(file, &original, &input, &|recorded| call_at(recorded, step, frame)) {
+    match replay_call(file, &original, None, &input, &|recorded| call_at(recorded, step, frame)) {
         Ok(replay) => {
             let _ = stdout.write_all(report(&replay).as_bytes());
             0

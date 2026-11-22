@@ -5,8 +5,8 @@
 //! input cursor exactly, whatever their types. The run stops when the call
 //! returns, and what the call did is compared with the recording.
 
-use crate::trace::{first_change_in, Call, Change, Recording, TraceConfig};
-use crate::{run_observed, Io, Trap};
+use crate::trace::{first_change_in, string, Call, Change, Recording, TraceConfig};
+use crate::{observe_on_this_thread, run_observed, Io, Limits, Observed, Trap};
 use cpl_ir::{Program, Ty};
 
 /// What a call did: its result and each top-level variable it changed.
@@ -39,6 +39,14 @@ pub struct Replay {
     pub trap: Option<Trap>,
 }
 
+/// The call at `step` (0-based) of a run: open there, `frame` callers out
+/// of the innermost, or else the one that returned into `step`.
+pub fn call_at(recorded: &Recording, step: usize, frame: usize) -> Result<Call, String> {
+    // A call that changed no top-level variable has no steps of its own.
+    let returned_into = || recorded.calls.iter().filter(|c| c.exit == step).min_by_key(|c| c.depth);
+    recorded.call_at(step, frame).or_else(returned_into).cloned().ok_or(format!("no fn call is running at step {}", step + 1))
+}
+
 /// Runs `call` of `recorded`, a run of `original` on `input`, again with the
 /// fns of `edited`.
 pub fn replay(
@@ -49,13 +57,49 @@ pub fn replay(
     call: &Call,
     config: TraceConfig,
 ) -> Replay {
+    replay_by(recorded, original, edited, input, call, config, &|program, input, config| {
+        run_observed(program, Io::fixed(input), &mut Vec::new(), Some(config))
+    })
+}
+
+/// [`replay`] where no thread can be started (WebAssembly), its calls held
+/// to `limits`.
+pub fn replay_on_this_thread(
+    recorded: &Recording,
+    original: &Program,
+    edited: &Program,
+    input: &[u8],
+    call: &Call,
+    config: TraceConfig,
+    limits: Limits,
+) -> Replay {
+    replay_by(recorded, original, edited, input, call, config, &|program, input, config| {
+        observe_on_this_thread(program, input, &mut Vec::new(), limits, Some(config))
+    })
+}
+
+type Runner<'a> = dyn Fn(&Program, &[u8], TraceConfig) -> Observed + 'a;
+
+fn replay_by(
+    recorded: &Recording,
+    original: &Program,
+    edited: &Program,
+    input: &[u8],
+    call: &Call,
+    config: TraceConfig,
+    observe: &Runner,
+) -> Replay {
+    let record = |program: &Program, input: &[u8], config: TraceConfig| {
+        let observed = observe(program, input, config);
+        (observed.recording.unwrap_or_default(), observed.trap)
+    };
     let changed = signature(original, &call.name) != signature(edited, &call.name);
     let fallback = changed.then(|| match signature(edited, &call.name) {
         None => format!("the edit removes `{}`, so the whole file ran again", call.name),
         Some(_) => format!("the edit changes what `{}` takes or returns, so the whole file ran again", call.name),
     });
     let stop = fallback.is_none().then_some((call.name.clone(), call.ordinal));
-    let mut run = run(edited, input, TraceConfig { stop_after_call: stop.clone(), ..config.clone() });
+    let mut run = record(edited, input, TraceConfig { stop_after_call: stop.clone(), ..config.clone() });
     let mut fallback = fallback;
     let mut replayed = find(&run.0, call);
     let past_input = run.1.as_ref().is_some_and(|trap| trap.message.contains("the input ended"));
@@ -64,7 +108,7 @@ pub fn replay(
             true => format!("the edited `{}` reads past the recorded input, so the whole file ran again", call.name),
             false => format!("the edited file never makes call {} of `{}`, so the whole file ran again", call.ordinal, call.name),
         });
-        run = self::run(edited, input, TraceConfig { stop_after_call: None, ..config });
+        run = record(edited, input, TraceConfig { stop_after_call: None, ..config });
         replayed = find(&run.0, call);
     }
     let (recording, trap) = run;
@@ -99,6 +143,68 @@ pub fn replay(
     }
 }
 
+impl Replay {
+    /// The report as JSON, for the trace viewer: values are the trace's
+    /// JSON, `null` when there is none.
+    pub fn json(&self) -> String {
+        let raw = |out: &mut String, json: &Option<String>| *out += json.as_deref().unwrap_or("null");
+        let text = |out: &mut String, text: Option<&str>| match text {
+            Some(text) => string(out, text),
+            None => *out += "null",
+        };
+        let call = &self.recorded;
+        let mut out = String::from("{\"call\":{\"name\":");
+        string(&mut out, &call.name);
+        out += &format!(",\"ordinal\":{},\"entry\":{},\"exit\":{},\"args\":{}}}", call.ordinal, call.entry, call.exit, call.args);
+        out += ",\"fallback\":";
+        text(&mut out, self.fallback.as_deref());
+        out += &format!(",\"replayed\":{},\"returned\":{{\"before\":", self.replayed.is_some());
+        raw(&mut out, &self.before.returned);
+        out += ",\"after\":";
+        raw(&mut out, &self.after.returned);
+        out += "},\"writes\":[";
+        let mut ids: Vec<&str> = self.before.writes.iter().chain(&self.after.writes).map(|(id, _)| id.as_str()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        for (i, id) in ids.into_iter().enumerate() {
+            let get = |writes: &[(String, String)]| writes.iter().find(|(w, _)| w == id).map(|(_, v)| v.clone());
+            out += if i == 0 { "{\"id\":" } else { ",{\"id\":" };
+            string(&mut out, id);
+            out += ",\"before\":";
+            raw(&mut out, &get(&self.before.writes));
+            out += ",\"after\":";
+            raw(&mut out, &get(&self.after.writes));
+            out += "}";
+        }
+        out += "],\"change\":";
+        match &self.change {
+            None => out += "null",
+            Some(change) => {
+                out += &format!("{{\"step\":{},\"line\":{},\"variable\":", change.step, change.line);
+                text(&mut out, change.variable.as_deref());
+                // With no variable, `before` and `after` are step labels, not values.
+                for (key, value) in [("before", &change.before), ("after", &change.after)] {
+                    out += &format!(",\"{key}\":");
+                    match change.variable {
+                        Some(_) => raw(&mut out, value),
+                        None => text(&mut out, value.as_deref()),
+                    }
+                }
+                out += "}";
+            }
+        }
+        out += ",\"earlier\":";
+        match &self.earlier {
+            None => out += "null",
+            Some(change) => out += &format!("{{\"step\":{},\"line\":{}}}", change.step, change.line),
+        }
+        out += ",\"trap\":";
+        text(&mut out, self.trap.as_ref().map(|trap| trap.message.as_str()));
+        out + "}"
+    }
+}
+
+#[cfg(test)]
 fn run(program: &Program, input: &[u8], config: TraceConfig) -> (Recording, Option<Trap>) {
     let observed = run_observed(program, Io::fixed(input), &mut Vec::new(), Some(config));
     (observed.recording.unwrap_or_default(), observed.trap)
@@ -225,5 +331,30 @@ for i in 1..=3:
         let (after, _) = run(&program(&edit), b"", config(&edit));
         let change = crate::trace::first_change(&recorded, &after).unwrap();
         assert_eq!((change.step, change.line, change.variable.as_deref()), (2, 4, Some("s")));
+    }
+
+    #[test]
+    fn the_report_as_json_has_the_call_its_results_and_the_first_change() {
+        let edit = RUN.replace("    total += i\n", "    total += i\n    if i == 2: total += 10\n");
+        let json = replayed(&edit, "", 2).json();
+        assert!(json.starts_with("{\"call\":{\"name\":\"add\",\"ordinal\":2,"), "{json}");
+        assert!(json.contains("\"args\":{\"i\":2}},\"fallback\":null,\"replayed\":true"), "{json}");
+        assert!(json.contains("\"returned\":{\"before\":3,\"after\":13}"), "{json}");
+        assert!(json.contains("{\"id\":\"total\",\"before\":3,\"after\":13}"), "{json}");
+        assert!(json.contains("\"change\":{\"step\":") && json.contains("\"line\":4,"), "{json}");
+        assert!(json.ends_with("\"earlier\":null,\"trap\":null}"), "{json}");
+    }
+
+    #[test]
+    fn a_replay_on_this_thread_matches_one_on_its_own_thread() {
+        let edit = RUN.replace("return total", "return total * 2");
+        let original = program(RUN);
+        let (recorded, _) = run(&original, b"", config(RUN));
+        let call = call_at(&recorded, recorded.calls[1].entry, 0).unwrap();
+        let limits = Limits { stack_bytes: 1 << 20 };
+        let here = replay_on_this_thread(&recorded, &original, &program(&edit), b"", &call, config(&edit), limits);
+        let there = replay(&recorded, &original, &program(&edit), b"", &call, config(&edit));
+        assert_eq!(here.json(), there.json());
+        assert!(here.json().contains("\"after\":6}"), "{}", here.json());
     }
 }

@@ -12,7 +12,7 @@
 // interface; cpl.d.ts has its types.
 
 // Slots of the module's interface (crates/cpl-wasm/src/abi.rs).
-const NAME = 0, TEXT = 1, STDIN = 2;
+const NAME = 0, TEXT = 1, STDIN = 2, EDITED = 3;
 const JSON_OUT = 0, STDOUT = 1, PANIC = 2;
 
 // Below this many bytes for the program's calls, a run that overflows the
@@ -93,6 +93,17 @@ export class Cpl {
   }
 
   /**
+   * `cpl replay`: the call open at `step` (0-based) of the run of `original`
+   * on `stdin`, `frame` callers out of the innermost, run again with the fns
+   * of `edited`. The report `cpl run --trace --live` serves at `/replay`:
+   * the call, what it returns and writes before and after the edit, the
+   * first change, or `{ error }`.
+   */
+  replay(original, edited, stdin = "", step = 0, frame = 0, options = {}) {
+    return this.#call("cpl_replay", { ...options, source: original, stdin, edited }, step, frame, this.#maxStack);
+  }
+
+  /**
    * `cpl stress --explain --format json`: generates typed inputs, runs the
    * solution against its `@brute(main)` / `@alt(program)` / `@checker` /
    * `@check` in-process, and shrinks the first failing case.
@@ -168,10 +179,11 @@ export class Cpl {
     return this.#call("cpl_lsp", { source: JSON.stringify(message) });
   }
 
-  #call(command, { name = "main.cp", source = "", stdin = "" }, ...args) {
+  #call(command, { name = "main.cp", source = "", stdin = "", edited = "" }, ...args) {
     const exports = this.#exports;
     try {
       this.#write(NAME, encoder.encode(name));
+      this.#write(EDITED, encoder.encode(edited));
       this.#write(TEXT, encoder.encode(source));
       this.#write(STDIN, typeof stdin === "string" ? encoder.encode(stdin) : stdin);
       exports[command](...args);
@@ -224,7 +236,7 @@ export class Cpl {
   }
 }
 
-const METHODS = ["check", "run", "trace", "stress", "build", "hover", "definition", "symbols", "lsp"];
+const METHODS = ["check", "run", "trace", "replay", "stress", "build", "hover", "definition", "symbols", "lsp"];
 
 /**
  * The compiler in a Web Worker: the same methods as `Cpl`, each returning a

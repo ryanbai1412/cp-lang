@@ -544,7 +544,7 @@ impl Session {
                 };
                 let replayed = match self.brute {
                     true => Err("replay runs the solution: this session debugs the @brute".to_string()),
-                    false => crate::replay::replay_call(&self.program_path, &self.source, &self.input, &pick),
+                    false => crate::replay::replay_call(&self.program_path, &self.source, None, &self.input, &pick),
                 };
                 match replayed {
                     Ok(replay) => {

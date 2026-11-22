@@ -7,7 +7,7 @@
 //! 1. For each argument, `cpl_input(slot, len)` returns where to write
 //!    `len` bytes: the file name, the source text, the standard input.
 //! 2. One command runs on what was written: `cpl_check()`, `cpl_run(stack)`,
-//!    `cpl_trace(stack)`,
+//!    `cpl_trace(stack)`, `cpl_replay(step, frame, stack)`,
 //!    `cpl_hover(offset)`, ...
 //! 3. `cpl_output_ptr(slot)` and `cpl_output_len(slot)` say where the
 //!    answer is: JSON text, and for a run the bytes the program printed.
@@ -29,6 +29,8 @@ pub const NAME: u32 = 0;
 pub const TEXT: u32 = 1;
 /// Input: the program's standard input.
 pub const STDIN: u32 = 2;
+/// Input: the edited source text, for `cpl_replay`.
+pub const EDITED: u32 = 3;
 
 /// Output: the command's result, as JSON.
 pub const JSON: u32 = 0;
@@ -40,7 +42,7 @@ pub const PANIC: u32 = 2;
 #[derive(Default)]
 struct State {
     playground: Playground,
-    inputs: [Vec<u8>; 3],
+    inputs: [Vec<u8>; 4],
     json: String,
     stdout: Vec<u8>,
 }
@@ -139,6 +141,14 @@ pub extern "C" fn cpl_run(stack: u32) {
         *stdout = run.stdout;
         run.result.to_string()
     });
+}
+
+/// Replays the call open at `step` (0-based) of the run of `TEXT` on
+/// `STDIN`, `frame` callers out, with the fns of `EDITED`.
+#[no_mangle]
+pub extern "C" fn cpl_replay(step: u32, frame: u32, stack: u32) {
+    let edited = STATE.with(|state| String::from_utf8_lossy(&state.borrow().inputs[EDITED as usize]).into_owned());
+    command(|playground, name, text, stdin, _| playground.replay(name, text, &edited, stdin, step, frame, stack));
 }
 
 /// Runs `TEXT` on `STDIN` like `cpl_run` and records it: the result has

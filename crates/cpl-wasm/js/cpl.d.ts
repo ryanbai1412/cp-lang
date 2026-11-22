@@ -111,6 +111,24 @@ export type StressOutcome =
   | { status: "fail"; cases: number; counterexample: StressCounterexample }
   | { status: "error"; error: string };
 
+/** One call replayed with its fn edited; values are trace JSON. */
+export interface ReplayOutcome {
+  call: { name: string; ordinal: number; entry: number; exit: number; args: Record<string, unknown> };
+  /** Why the whole file ran instead of the one call, or null. */
+  fallback: string | null;
+  /** False when the edited run never made the call. */
+  replayed: boolean;
+  returned: { before: unknown; after: unknown };
+  /** Each top-level variable the call changed, by id. */
+  writes: { id: string; before: unknown; after: unknown }[];
+  /** The first step of the replayed call that differs; `variable` is null when one run ended first. */
+  change: { step: number; line: number; variable: string | null; before: unknown; after: unknown } | null;
+  /** A step before the call that already differs: the edit changes an earlier call. */
+  earlier: { step: number; line: number } | null;
+  /** The message of the trap that stopped the replay, or null. */
+  trap: string | null;
+}
+
 export interface Options {
   /** The file's name in diagnostics and in the C++ header. Default `main.cp`. */
   name?: string;
@@ -137,6 +155,18 @@ export class Cpl {
    */
   trace(source: string, stdin?: string | Uint8Array, options?: Options): TraceOutcome;
   /**
+   * `cpl replay`: the call open at `step` (0-based) of the run of `original`
+   * on `stdin`, `frame` callers out, run again with the fns of `edited`.
+   */
+  replay(
+    original: string,
+    edited: string,
+    stdin?: string | Uint8Array,
+    step?: number,
+    frame?: number,
+    options?: Options,
+  ): ReplayOutcome | { error: string };
+  /**
    * `cpl stress --explain --format json`: generates inputs, compares against
    * `@brute(main)` / `@alt(program)` / `@checker` / `@check`, and shrinks the
    * first counterexample with the same Rust shrinker as the CLI.
@@ -150,7 +180,7 @@ export class Cpl {
 }
 
 export type Worker = {
-  [Method in "check" | "run" | "trace" | "stress" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
+  [Method in "check" | "run" | "trace" | "replay" | "stress" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
     ...args: Parameters<Cpl[Method]>
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };
