@@ -5497,6 +5497,32 @@ impl<'a> Lowerer<'a> {
                     test.unwrap_or_else(|| self.mk(ExprKind::Bool(true), Ty::Bool, value.span)),
                 );
             }
+            // R04.2.14: `if let V(j) = x` is the pattern form of `V.at(x)`.
+            if let ([name], [arg]) = (&path[..], &args[..]) {
+                if let Some(id) = self.resolve_domain_name(&name.text) {
+                    let label = self.expr(value, Some(&Ty::Int));
+                    if label.ty == Ty::Error {
+                        return None;
+                    }
+                    let label = self.coerce(label, &Ty::Int, value.span);
+                    let at = self.domain_try_label(id, label, value.span);
+                    let slot = self.temp(at.ty.clone());
+                    before.push(Stmt::Let(slot, Some(at)));
+                    let held = self.local(slot, value.span);
+                    let present = self.mk(
+                        ExprKind::IsSome(Box::new(held.clone())),
+                        Ty::Bool,
+                        value.span,
+                    );
+                    let inner = self.mk(
+                        ExprKind::Unwrap(Box::new(held), false),
+                        Ty::Pos(id),
+                        value.span,
+                    );
+                    self.bind(arg, inner, binds);
+                    return Some(present);
+                }
+            }
             if path.len() == 1 && path[0].text == "some" && args.len() == 1 {
                 let (present, inner) = self.optional(value, what, before)?;
                 self.bind(&args[0], inner, binds);
