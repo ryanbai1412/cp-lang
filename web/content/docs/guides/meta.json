@@ -1,0 +1,16 @@
+{
+  "title": "Guides",
+  "pages": [
+    "getting-started",
+    "tour",
+    "types-and-control",
+    "io-and-formatting",
+    "indices",
+    "borrowing",
+    "strings",
+    "testing",
+    "stdlib",
+    "cpp-guide",
+    "idioms"
+  ]
+}

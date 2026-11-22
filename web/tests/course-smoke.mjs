@@ -1,0 +1,24 @@
+import { chromium } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+const base = process.env.BASE ?? 'http://127.0.0.1:3000';
+const browser = await chromium.connectOverCDP(process.env.CDP ?? 'http://localhost:29229');
+const page = await browser.contexts()[0].newPage();
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+const tracks = JSON.parse(readFileSync('../site/course/foundations.json', 'utf8'));
+const t = tracks.find((x) => x.exercises.some((e) => e.kind === 'code'));
+const e = t.exercises.find((x) => x.kind === 'code');
+await page.goto(`${base}/learn/${t.slug.replace(/^course-/, '')}/${e.id}/`);
+await page.locator('.cm-content').click();
+await page.keyboard.press('Control+A');
+await page.keyboard.press('Delete');
+await page.keyboard.insertText(e.reference);
+await page.getByRole('button', { name: 'Submit' }).click();
+const status = page.getByRole('status');
+await status.waitFor({ timeout: 30000 });
+console.log(e.id, '->', (await status.innerText()).split('\n')[0]);
+await page.screenshot({ path: '/tmp/course.png' });
+await page.close();
+console.log('page errors:', errors);
+process.exit(0);

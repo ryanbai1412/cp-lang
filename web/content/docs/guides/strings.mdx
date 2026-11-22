@@ -1,0 +1,81 @@
+---
+title: "Strings & ASCII text"
+description: "0..len byte strings, slicing, parsing, nominal character domains, and string algorithms."
+---
+
+`Char` is one ASCII byte. `Str` is a flat, value-semantic sequence of those bytes indexed by `0..s.len`. There is no UTF-8 decoding, variable-width character indexing, Unicode normalization, or hidden code-point iterator behind a subscript.
+
+> **Deliberate scope.** Non-ASCII text is outside the `Char`/`Str` contract. Character and string literals must be ASCII. Arbitrary binary bytes belong in an explicit byte container rather than a string that silently changes encoding.
+
+## Value-semantic, `0..len`-indexed `Str`
+
+In CP Lang, `Str` is a flat `0..s.len`-indexed ASCII byte sequence with O(1) indexing and O(1) lent slices (`s[l..r]` borrows from `s` for the current block; call `s[l..r].to_str()` when returning a slice from a function or appending it with `t += s[..k].to_str()`):
+
+```cp
+let s: Str = read()
+if not s.is_empty:
+    let ch = s[0]               // Char; digit: ch - '0', letter: ch - 'a'
+    let sub = s[..min(3, s.len)]
+    print(ch, sub)
+
+var out = ""
+out.push('a')
+for _ in 0..3: out += "bc"      // mutable byte buffer when `var`
+
+if s.len >= 2 and s[..2] == "ab":
+    print(out)
+```
+
+Because `Str` has value semantics, `var t = s` moves or copies cleanly without hidden aliasing; call `s.copy()` when you want an independent mutable copy while keeping `s`. You can run `Str` indexing, slicing, concatenation, and ASCII arithmetic directly in the offline [playground](/docs/guides/playground) (pick **ASCII string scan**).
+
+## Common string helpers
+
+The current toolchain supports these operations directly:
+
+- Indexing and slices: `s[i]`, `s[l..r]`, `s[..k]`, `s[k..]`, `s.len`, `s.is_empty`. Slices are lent views: call `s[l..r].to_str()` to materialize an owned `Str` for returning from a function or appending (`out += s[..k].to_str()`).
+- Numbers to strings: use string interpolation `let s = "{n}"` (integers have no `.to_str()` method); use `std.math.digits(n)` for base-10 digits.
+- Building: `var out = ""`, `out.push(c)`, and `out += t`. String repetition with `*` is not yet implemented; append in a loop.
+- Prefix matching: guard the length, then compare `s[..prefix.len] == prefix`. For input, `read()` parses whitespace-delimited typed tokens.
+- Character arithmetic & tests: `c - '0'`, `c - 'a'`, `'A' + (c - 'a')`; test ranges with `'a' <= c and c <= 'z'` (`..=` ranges are `Int`-only, not `Char`).
+- Nominal character domains: `let s: [domain S]Char = read()` introduces `S` (`let`, not `var`); for a mutable character array, read `let raw: Str = read()`, declare `domain S = 0..raw.len`, and copy into `var s: [S]Char = [S] i => raw[i.to_idx]`.
+
+## Opt-in nominal character domains
+
+When you are writing a two-string DP (such as LCS or edit distance) and want the compiler to forbid mixing an index into string `a` with an index into string `b`, opt into a nominal character domain `[domain A]Char`:
+
+```cp
+let a: [domain A]Char = read()
+let b: [domain B]Char = read()
+
+var dp: [A.cuts, B.cuts]Int = 0
+for i in A:
+    for j in B:
+        dp[i.r, j.r] = if a[i] == b[j]: dp[i.l, j.l] + 1 else: max(dp[i.l, j.r], dp[i.r, j.l])
+print(dp[A.last.r, B.last.r])
+```
+
+Swapping an `A` boundary with a `B` boundary is a compile error, and `.l`/`.r` carry the empty-prefix boundary cleanly. When the length is already read into a domain, the same `[S]Char` form runs directly in both `cpl` and the browser WebAssembly playground:
+
+```cp
+let n: 1..=100 = read()
+domain S = 1..=n
+let word: [S]Char = read()
+print(count(word[i] == 'a' for i in S))
+```
+
+For input `5` and `abaca`, the result is `3`. Each subscript touches one contiguous byte in O(1).
+
+## String algorithms in `std`
+
+The standard library provides `z_function(s)`, `prefix_function(s)`, `palindromes(s)`, `SuffixArray(s)` (`.sa`, `.lcp`), and double-salted `RollingHash(s)` (`.get(l..r)`), all operating directly on flat ASCII bytes. For a real multi-DP string port using `0..n`-indexed `Str`, see the [Cheerio '1 S5 showcase](/docs/guides/index#showcase-cheerio1s5).
+
+## Prefix, suffix, and search helpers
+
+`Str` has `.starts_with(p)`, `.ends_with(p)`, `.find(p) -> ?Int` (first match of a `Char` or `Str`), `.rfind(p) -> ?Int` (last match of a `Char` or `Str`), substring membership `sub in s`, and `s.find_all(p)` (every match start, overlaps included). `Char` has `.lower`, `.upper`, and `.digit` for `'0'..='9'`. All of them are in the prelude.
+
+```cp
+let s: Str = "banana"
+print(s.starts_with("ba"), s.ends_with("na"), "an" in s)     // YES YES YES
+print(s.find("an"), s.rfind("an"), s.rfind('a'))             // 1 3 5
+print('a'.upper, 'Q'.lower)                                  // A q
+```
