@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1182 (296 passing). Rules: 521.
+Cases: 1190 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 4 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 7 case(s)
+- R0401 Assertion failed: 8 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -785,8 +785,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Mat.new`, `Mat.transpose`, `Mat.mul_vec`, `Mat.product`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (4/6 named by a case)
   - uncovered: `mo_order`, `mo_steps`
-- **mod** (19/29 named by a case)
-  - uncovered: `Mod.try_inv`, `Comb`, `Comb.new`, `Comb.fact`, `Comb.inv_fact`, `Comb.arrange`, `Comb.multichoose`, `Comb.catalan`, `Comb.derange`, `Comb.multinomial`
+- **mod** (27/29 named by a case)
+  - uncovered: `Comb.fact`, `Comb.inv_fact`
 - **ntt** (10/17 named by a case)
   - uncovered: `Curved`, `Disjoint`, `subset`, `convolve`, `SosOver`, `sos`, `fwht`
 - **opt** (0/2 named by a case)
@@ -821,7 +821,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1649 of 2222 std items are named by a case.
+1657 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
