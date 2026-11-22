@@ -189,8 +189,6 @@ const NOT_YET: &[&str] = &[
     "s3_const_struct_non_pod",
     "s3_get_bare_int",
     "s3_get_wrong_domain",
-    // v0.3 bug (spec/conformance/std-seq/slice-max-optional.cp): SliceView.max() checks as Int instead of ?Int.
-    "rt_min_empty_slice",
 ];
 
 /// Failing tests this checker rejects for the stated reason, in words

@@ -1895,7 +1895,12 @@ impl Checker<'_> {
             return None;
         };
         let (member, elem) = self.catalog_row(base, &name.text)?;
-        catalog_ty(member.ret, &elem)
+        let ret = catalog_ty(member.ret, &elem)?;
+        // `a[l..r].max()` is `?T`: a slice can be empty (R07.9.3).
+        if matches!(name.text.as_str(), "max" | "min") && self.view_kind(base) == Some("slice") {
+            return Some(Ty::Optional(Box::new(ret)));
+        }
+        Some(ret)
     }
 
     /// `(i, j) => ...` passed where `(I, I) -> Int` is wanted: its unwritten

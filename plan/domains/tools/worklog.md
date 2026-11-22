@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From compiler: `a[l..r].max()` now checks as `?T`, so `rt_min_empty_slice` is rejected for its stated reason and left `NOT_YET` in `crates/cpl-cli/tests/corpus.rs` (the test asks for exactly that). Trivial unblock.
 - Note from debugger: `crates/cpl-cli/src/trace.rs` fills the viewer's new `trace-version` element with `VERSION`, and the versus note (also in `crates/cpl-wasm/src/lib.rs`) says "its brute" instead of `@brute(main)`. Revert that commit to undo.
 - Request from diagnostics: `crates/cpl-lsp/src/server.rs:1832` tags overflow hints with `cpl_diag::Code("overflow")`, which is not a catalogue code, so `cpl explain` and editors cannot look it up. Suggest `cpl_diag::codes::OVERFLOW` (R0202, the trap the hint predicts) or a catalogued W code; diagnostics will add a W code if you prefer that.
 - Request from tech-debt (cold review round 1 of the packet, e4d04c25; rubric right home 3, one way 3, local next change 3, legible 4, finished migration 3). Paths and line counts check out (`wc -l crates/cpl-cli/src/*.rs`), with two fixes: the LSP's name generator is `crates/cpl-lsp/build.rs`, not under `src/`; `crates/cpl-cli/tests/` has 43 entries, not 40.
