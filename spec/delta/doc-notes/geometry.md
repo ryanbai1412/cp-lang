@@ -15,3 +15,13 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `minkowski_sum`: result starts at the least `(y, x)` corner (the stub's private `min_yx_idx` suggests this) with collinear points dropped; `minkowski_upper`/`lower` drop collinear points too.
 - `convex_polygon_intersect`: chose that an intersection of area at most `eps` (touching at a point or edge) is `[]`, vertices within `eps` merge, and the result starts at the least `(y, x)` corner.
 - `locate`: an empty polygon gives `Outside`; boundary is tested before the crossing rule. `locate_convex`: one- or two-point hulls have only their points/segment on the `Boundary`.
+- `diameter2`, `hull_width`, `min_bounding_box`: fewer than 3 vertices give the degenerate answer (0, 0.0, or a zero-area box) rather than trapping.
+- `min_bounding_box`: area and perimeter minimized independently (both over the `n` edge orientations).
+- `hull_extreme`: ties go to the smallest index; empty traps.
+- `hull_tangents`: when `p` lies on an edge's line, the nearer of the two qualifying vertices.
+- `closest_pair`, `farthest_pair`: `a` before `b` in key order; ties go to the first pair in key order. `closest_pair2` returns 0 for equal points at distinct positions.
+- `hull_line_intersect`: edges as `(i, j)` with `i < j`; a line that only touches gives `None`; traps when `a == b`.
+- `manhattan_mst`: chose the octant-nearest candidate set, each pair once with `u` before `v`, sorted by `(w, u, v)`. Open: ties for "nearest in an octant" are still not pinned, so two implementations can differ in the candidate set (not in the MST weight).
+- `polygon_centroid`: either orientation; traps on zero area.
+- `polygon_kernel`: area at most `eps` is `[]`; starts at the least `(y, x)` corner.
+- `polygon_triangulate`: open — the stated O(n log n) cost rules out the simple "lowest-index ear" rule that would pin the triangles, so the docs promise only `n - 2` counter-clockwise triples in a deterministic order. Needs a decision on the algorithm.

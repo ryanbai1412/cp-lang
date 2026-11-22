@@ -561,27 +561,58 @@ pub fn locate(poly: List<Pt>, p: Pt) -> Location = todo
 /// example: `locate_convex([Pt(0, 0), Pt(4, 0), Pt(4, 4), Pt(0, 4)], Pt(-1, 2)) == Location.Outside`
 pub fn locate_convex(hull: List<Pt>, p: Pt) -> Location = todo
 
-/// O(n). Squared diameter of a CCW convex polygon by rotating calipers.
+/// The squared diameter of the counter-clockwise convex polygon `hull`: the largest
+/// `dist2` between two vertices, by rotating calipers.
+///
+/// cost: O(n)
+/// empty: 0 (also for one point)
+/// traps: when the result overflows `Int`
+/// example: `diameter2([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 8`
+/// example: `diameter2([Pt(0, 0), Pt(3, 4)]) == 25`
 pub fn diameter2(hull: List<Pt>) -> Int = todo
 
-/// O(n). Minimum-area and minimum-perimeter enclosing rectangle of a CCW convex
-/// polygon `hull` via exact-`I128` rotating calipers.
+/// The least area and the least perimeter of a rectangle enclosing the counter-clockwise convex
+/// polygon `hull`, each minimized on its own (by rotating calipers, exact in `I128` until the
+/// final division).
+///
+/// One side of an optimal rectangle lies along a hull edge, so only those `n` orientations are
+/// tried. Fewer than 3 vertices give a degenerate rectangle (area 0, perimeter twice the length).
+///
+/// cost: O(n)
+/// empty: `(0.0, 0.0)`
+/// traps: never
+/// example: `min_bounding_box([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == (4.0, 8.0)`
+/// example: `min_bounding_box([Pt(0, 0), Pt(3, 0)]) == (0.0, 6.0)`
 pub fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64) = todo
 
 fn better_dir(a: Pt, b: Pt, dir: Pt) -> Bool = todo
 
-/// O(log n). Index of a vertex of a non-empty CCW convex polygon maximizing
-/// `hull[i].dot128(dir)`.
+/// The index of a vertex of the non-empty counter-clockwise convex polygon `hull` maximizing
+/// `hull[i].dot128(dir)`, by binary search.
+///
+/// cost: O(log n)
+/// empty: traps
+/// ties: the smallest index
+/// traps: when `hull` is empty
+/// example: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 1)) == 2`
+/// example: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 0)) == 1`
 pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int = todo
 
 fn tangent_cmp(p: Pt, a: Pt, b: Pt, sign: Int) -> Bool = todo
 
 fn find_tangent(hull: List<Pt>, p: Pt, sign: Int) -> Int = todo
 
-/// O(log n). Indices `(left, right)` of the two tangent vertices from a strictly
-/// exterior point `p` to a strictly convex CCW polygon `hull` (`hull.len >= 3`).
-/// Every vertex `q` satisfies `turn(p, hull[left], q) <= 0` and
-/// `turn(p, hull[right], q) >= 0`.
+/// The indices `(left, right)` of the tangent vertices from a strictly exterior point `p` to a
+/// strictly convex counter-clockwise polygon `hull` (`hull.len >= 3`).
+///
+/// Every vertex `q` satisfies `turn(p, hull[left], q) <= 0` and `turn(p, hull[right], q) >= 0`:
+/// seen from `p`, the whole polygon lies right of the ray to `left` and left of the ray to
+/// `right`.
+///
+/// cost: O(log n)
+/// ties: when two vertices qualify (`p` on an edge's line), the one nearer to `p`
+/// traps: when `hull.len < 3` or `p` is not strictly outside
+/// example: `hull_tangents([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(4, 1)) == (1, 2)`
 pub fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int) = todo
 
 // ---- closest pair
@@ -593,33 +624,105 @@ fn cp_solve(
     r: Int,
 ) -> (a: Int, b: Int, dist2: Int) = todo
 
-/// O(n log n), O(n) memory. Minimum squared Euclidean distance between any two distinct
-/// points in `pts`. Requires `pts.len >= 2`.
+/// The least squared distance between two points of `pts` at distinct positions (0 when two are
+/// equal), by divide and conquer.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: traps
+/// traps: when `pts.len < 2`, or a distance overflows `Int`
+/// example: `closest_pair2([Pt(0, 0), Pt(5, 5), Pt(1, 1), Pt(9, 9)]) == 2`
+/// example: `closest_pair2([Pt(3, 3), Pt(3, 3)]) == 0`
 pub fn closest_pair2(pts: List<Pt>) -> Int = todo
 
-/// O(n log n), O(n) memory. Closest pair of distinct positions in a domain-indexed point array.
-/// Requires at least 2 points.
+/// The closest pair of distinct positions `a` before `b` in key order, with their squared
+/// distance.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: traps
+/// ties: the pair `(a, b)` that comes first in key order, `a` then `b`
+/// traps: when `pts` has fewer than 2 points, or a distance overflows `Int`
+/// example: `closest_pair([Pt(0, 0), Pt(5, 5), Pt(1, 1)]) == (0, 2, 2)`
+/// example: `closest_pair([Pt(0, 0), Pt(1, 0), Pt(2, 0)]) == (0, 1, 1)`
 pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) = todo
 
-/// O(n). Minimum width (distance between parallel supporting lines) of a CCW convex hull.
+/// The least width of the counter-clockwise convex polygon `hull`: the smallest distance between
+/// two parallel supporting lines, by rotating calipers. Fewer than 3 vertices give 0.0.
+///
+/// cost: O(n)
+/// empty: 0.0
+/// traps: never
+/// example: `hull_width([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == 2.0`
+/// example: `hull_width([Pt(0, 0), Pt(4, 0), Pt(4, 1), Pt(0, 1)]) == 1.0`
 pub fn hull_width(hull: List<Pt>) -> F64 = todo
 
-/// O(log n). Indices of the two edges of a CCW convex hull crossed by line `a b`, or `None`.
+/// The two edges of the counter-clockwise convex polygon `hull` that the line through `a` and
+/// `b` crosses, as `(i, j)` with `i < j`, or `None` if the line misses the interior.
+///
+/// Edge `i` runs from `hull[i]` to `hull[(i + 1) % n]`. A line that only touches the polygon (at a
+/// vertex, or along an edge) returns `None`.
+///
+/// cost: O(log n)
+/// empty: `None`
+/// traps: when `a == b`
+/// example: `hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 1), Pt(3, 1)) == Some((1, 3))`
+/// example: `hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 5), Pt(3, 5)) == None`
 pub fn hull_line_intersect(hull: List<Pt>, a: Pt, b: Pt) -> ?(Int, Int) = todo
 
-/// O(n log n), O(n) memory. Farthest pair of distinct handles in `pts` and their squared distance.
+/// The farthest pair of distinct positions `a` before `b` in key order, with their squared
+/// distance (convex hull, then rotating calipers).
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: traps
+/// ties: the pair `(a, b)` that comes first in key order, `a` then `b`
+/// traps: when `pts` has fewer than 2 points, or a distance overflows `Int`
+/// example: `farthest_pair([Pt(0, 0), Pt(1, 1), Pt(3, 0)]) == (0, 2, 9)`
 pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) = todo
 
-/// O(n log n), O(n) memory. O(n) candidate edges guaranteed to contain the Manhattan (L1) MST of `pts`.
+/// At most `4n` candidate edges `(u, v, w)` that contain a minimum spanning tree of `pts` under
+/// the Manhattan distance `w = pts[u].manhattan(pts[v])`.
+///
+/// For each of the 8 octants of each point, the nearest point in that octant (sweep with a
+/// Fenwick tree), each unordered pair once with `u` before `v` in key order. Run Kruskal on the
+/// result for the MST itself.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `[]` (also for one point)
+/// order: by `(w, u, v)` ascending; a new `List`, keyed from 0
+/// traps: when a distance overflows `Int`
+/// example: `manhattan_mst([Pt(0, 0), Pt(1, 1), Pt(5, 5)]).any(e => e.u == 0 and e.v == 1 and e.w == 2)`
+/// example: `manhattan_mst([Pt(0, 0), Pt(2, 0)]) == [(0, 1, 2)]`
 pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)> = todo
 
-/// O(n). Centroid (center of mass) of a non-degenerate simple polygon.
+/// The centroid (centre of mass) of the region inside the simple polygon `poly`, either
+/// orientation.
+///
+/// cost: O(n)
+/// empty: traps
+/// traps: when the polygon has zero area
+/// example: `polygon_centroid([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == Vec(1.0, 1.0)`
 pub fn polygon_centroid(poly: List<Vec>) -> Vec = todo
 
-/// O(n log n), O(n) memory. Kernel of a CCW simple polygon (points seeing the entire interior).
+/// The kernel of the counter-clockwise simple polygon `poly`: the points that see the whole
+/// interior, as a counter-clockwise convex polygon (half-plane intersection of the edges).
+///
+/// A kernel with area at most `eps` is `[]`. The result starts at its least `(y, x)` corner.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `[]`
+/// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
+/// traps: never
+/// example: `polygon_kernel([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]) == [Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]`
 pub fn polygon_kernel(poly: List<Vec>, eps: F64 = 1e-9) -> List<Vec> = todo
 
-/// O(n log n), O(n) memory. Triangulate a CCW simple polygon into vertex index triples.
+/// A triangulation of the counter-clockwise simple polygon `poly` into `n - 2` triangles of
+/// vertex indices, each listed counter-clockwise.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `[]` (also for fewer than 3 vertices)
+/// order: deterministic for a given input; each triple counter-clockwise
+/// traps: when `poly` is not counter-clockwise
+/// example: `polygon_triangulate([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]).len == 2`
+/// example: `polygon_triangulate([Pt(0, 0), Pt(1, 0), Pt(0, 1)]).len == 1`
 pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)> = todo
 
 /// O(n log max_coord). Number of strictly interior lattice points of a simple lattice polygon (Pick's theorem).
