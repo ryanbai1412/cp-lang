@@ -140,9 +140,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// vertex. Traps on an unreachable pair; a disconnected graph wants `bfs`.
     pub fn hops(self) -> [V, V]Int = todo
 
-    /// O(n + m): which vertices some vertex of `from` reaches without crossing an
-    /// arc `u -> v` for which `skip(u, v)` holds.
-    pub fn reachable(self, from: List<V>, skip: (V, V) -> Bool = (u, v) => false) -> [V]Bool = todo
 
     /// O(1) to make, O(m) to walk: every edge once, with its id and its ends as
     /// given. Only for graphs whose arcs keep `e`: a source arc per edge.
@@ -497,6 +494,11 @@ fn at_most_one_forbids_every_pair_and_allows_each_single() = todo
 /// `from`, yielding `Enter` on discovery and `Exit` when a vertex is finished.
 /// `continue` after `Enter(v)` still descends; the loop steers with `break`.
 pub fn dfs<V>(g: Next<V>, from: Seq<V>) -> yields Visit<V> = todo
+
+/// O(n + m) total, O(1) per step: every vertex reachable from `from`, each once, in discovery
+/// order. `reachable(g, from: [s]).count()`, `List(...)` or `.contains(v)` ask the usual
+/// questions; to avoid some arcs, pass `g` filtered (`v => g.next(v).filter(a => ok(a))`).
+pub fn reachable<V>(g: Next<V>, from: Seq<V>) -> yields V = todo
 
 /// O(1): one event of `dfs`, the same shape as `Rooted.tour` yields.
 pub enum Visit<V>: Enter(v: V), Exit(v: V)

@@ -17,6 +17,9 @@ and its notes in that record's `notes`.
 - ccc18s4: `floor_quotients` joins the prelude.
 - cco18p4: `Wire` gets a stub; the ternary searches join the prelude and
   document golden-section probe reuse (interactive query budgets).
+- cco20p4: `reachable(g, from:)` becomes the free generator decided in round 4
+  (the `Graph.reachable` method goes); `Rooted.euler_tour()`; `dfs`, `Visit`
+  and `reachable` join the prelude.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

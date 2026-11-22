@@ -276,6 +276,11 @@ pub struct Rooted<V, Pre>:
     /// on paths and on subtrees.
     pub fn events(self) -> Events<V, _> = todo
 
+    /// O(1) per item. The closed Euler walk: 2n - 1 visits from the root back to it, each pair of
+    /// neighbours joined by a tree edge, children in child order. A walk that visits every vertex
+    /// of a connected graph is `Rooted(g, root: r).euler_tour()`.
+    pub fn euler_tour(self) -> yields V = todo
+
     /// O(n). The long-path decomposition, for DP indexed by depth merged in O(n) in total.
     pub fn long_paths(self) -> LongPaths<V, _> = todo
 
