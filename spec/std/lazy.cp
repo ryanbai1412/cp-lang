@@ -1,5 +1,6 @@
 //! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
-use std.algebra.{Action, MaxCount, MinCount, Monoid}
+use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
+use std.segtree.{SegTree}
 use std.rand.Rng
 use std.seq.{ends}
 
@@ -52,34 +53,153 @@ pub fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>:
 
 fn brute<D>(a: [D]Int, r: Range<D>, pick: Int) -> Int:
     if pick == 0: return sum(a[v] for v in r)
-    if pick == 1: return min(a[v] for v in r) ?? Int.MAX
-    max(a[v] for v in r) ?? Int.MIN
+    if pick == 1: return [a[v] for v in r].min() ?? Int.MAX
+    [a[v] for v in r].max() ?? Int.MIN
+
+fn act_laws<T, F>(act: Action<T, F>, ts: List<T>, fs: List<F>) -> Bool:
+    for x in ts:
+        if act.apply(act.id, x, 1) != x: return false
+        for y in ts:
+            for f in fs:
+                if act.apply(f, act.over.op(x, y), 2) != act.over.op(act.apply(f, x, 1), act.apply(f, y, 1)): return false
+        for f in fs:
+            for g in fs:
+                if act.apply(act.compose(f, g), x, 1) != act.apply(f, act.apply(g, x, 1), 1): return false
+    true
 
 @test
-fn the_stock_actions_match_brute_force() = todo
+fn the_stock_actions_match_brute_force():
+    domain V = 1..=10
+    for k in 0..3:
+        var a = [V] v => rand(-9, 9)
+        var st = if k == 0: SegTree(+, a.clone(), act: add) elif k == 1: SegTree(min, a.clone(), act: add) else: SegTree(max, a.clone(), act: add)
+        var sa = if k == 0: SegTree(+, a.clone(), act: assign) elif k == 1: SegTree(min, a.clone(), act: assign) else: SegTree(max, a.clone(), act: assign)
+        var b = a.clone()
+        for _ in 0..60:
+            let l = V.nth(rand(0, 9))
+            let r = V.nth(rand(l.to_idx, 9))
+            if rand(0, 1) == 0:
+                let x = rand(-5, 5)
+                for v in l..=r:
+                    a[v] += x
+                    b[v] = x
+                st.apply(l..=r, x)
+                sa.apply(l..=r, Some(x))
+            else:
+                assert st.fold(l..=r) == brute(a, l..=r, k) and sa.fold(l..=r) == brute(b, l..=r, k)
+                assert st.fold(..l) == brute(a, ..l, k) and sa.fold(..l) == brute(b, ..l, k)
+                assert st.fold(l..) == brute(a, l.., k) and sa.fold(l..) == brute(b, l.., k)
+        for v in V: assert st.get(v) == a[v] and sa.get(v) == b[v]
+        assert st.all == brute(a, V.nth(0)..=V.nth(9), k) and sa.all == brute(b, V.nth(0)..=V.nth(9), k)
 
 @test
-fn at_writes_through_pending_tags() = todo
+fn at_writes_through_pending_tags():
+    domain V = 1..=10
+    var a = [V] v => rand(-9, 9)
+    var st = SegTree(+, a.clone(), act: add)
+    for _ in 0..60:
+        let l = V.nth(rand(0, 9))
+        let r = V.nth(rand(l.to_idx, 9))
+        let x = rand(-5, 5)
+        if rand(0, 1) == 0:
+            for v in l..=r: a[v] += x
+            st.apply(l..=r, x)
+        else:
+            a[l] *= 2
+            st.at(l) *= 2
+        assert st.fold(l..=r) == sum(a[v] for v in l..=r)
+    for v in V: assert st.get(v) == a[v]
 
 @test
-fn stock_actions_obey_their_laws() = todo
+fn stock_actions_obey_their_laws():
+    for _ in 0..1:
+        let ts = [-3, 0, 8]
+        let fs = [-4, 0, 6]
+        let sum_add = Action<Int, Int>.of(add, +)
+        assert act_laws(sum_add, ts, fs)
+        assert act_laws(Action<Int, Int>.of(add, min), ts, fs)
+        assert act_laws(Action<Int, Int>.of(add, max), ts, fs)
+        let gs = [None, Some(-4), Some(0), Some(6)]
+        assert act_laws(Action<Int, ?Int>.of(assign, +), ts, gs)
+        assert act_laws(Action<Int, ?Int>.of(assign, min), ts, gs)
+        assert act_laws(Action<Int, ?Int>.of(assign, max), ts, gs)
 
 @test
-fn set_and_an_empty_tree() = todo
+fn set_and_an_empty_tree():
+    domain V = 0..6
+    var st = SegTree<V, Int>(+, act: add)
+    st.apply(V(1)..=V(4), 3)
+    st.apply(V(3)..=V(5), 10)
+    assert st.fold(V(0)..=V(5)) == 4 * 3 + 3 * 10
+    assert st.get(V(4)) == 13
+    st.set(V(4), 100)
+    assert st.fold(V(3)..=V(5)) == 13 + 100 + 10
+    assert st.fold(V(2)..V(2)) == 0
 
 @test
-fn padding_never_takes_an_update() = todo
+fn padding_never_takes_an_update():
+    domain V = 0..3
+    var st = SegTree(max, [V] v => 0, act: add)
+    st.apply(V(0)..=V(2), -1)
+    st.apply(V(0)..=V(1), 1)
+    assert st.fold(V(0)..=V(2)) == 0 and st.get(V(2)) == -1
+    assert st.fold(V(1)..V(1)) == Int.MIN
+    var mn = SegTree(min, [V] v => 0, act: add)
+    mn.apply(V(0)..=V(2), 1)
+    mn.apply(V(0)..=V(1), -1)
+    assert mn.fold(V(0)..=V(2)) == 0 and mn.get(V(2)) == 1
+    assert mn.fold(V(1)..V(1)) == Int.MAX and mn.fold(V(2).r..) == Int.MAX
+    assert mn.fold(V(1)..) == 0 and mn.all == 0
 
 @test
-fn an_action_of_your_own() = todo
+fn an_action_of_your_own():
+    let count_max = Monoid<(Int, Int)>(
+        (Int.MIN, 0),
+        (a, b) => if a.0 > b.0: a else: if b.0 > a.0: b else: (a.0, a.1 + b.1),
+    )
+    let shift = Action<(Int, Int), Int>(0, (f, g) => f + g, (f, x, len) => (x.0 + f, x.1), count_max)
+    domain V = 0..8
+    var a = [V] v => 0
+    var st = SegTree(count_max, [V] v => (0, 1), act: shift)
+    for _ in 0..60:
+        let l = V.nth(rand(0, 7))
+        let r = V.nth(rand(l.to_idx, 7))
+        let x = rand(-3, 3)
+        for v in l..=r: a[v] += x
+        st.apply(l..=r, x)
+        let top = [a[v] for v in V].max()!
+        assert st.all == (top, [a[v] for v in V].count(x => x == top))
 
 @test
-fn right_while_and_left_while_see_pending_updates() = todo
+fn right_while_and_left_while_see_pending_updates():
+    domain V = 0..9
+    var a = [V] v => rand(0, 5)
+    var st = SegTree(+, a.clone(), act: add)
+    for _ in 0..80:
+        let l = V.nth(rand(0, 8))
+        let r = V.nth(rand(l.to_idx, 8))
+        let x = rand(0, 3)
+        for v in l..=r: a[v] += x
+        st.apply(l..=r, x)
+        let lim = rand(0, 40)
+        let c = rand(0, 9)
+        var right = c
+        var acc = 0
+        while right < 9 and acc + a[V.nth(right)] <= lim:
+            acc += a[V.nth(right)]
+            right += 1
+        assert st.right_while(V.cuts.nth(c), s => s <= lim) == V.cuts.nth(right)
+        var left = c
+        acc = 0
+        while left > 0 and acc + a[V.nth(left - 1)] <= lim:
+            acc += a[V.nth(left - 1)]
+            left -= 1
+        assert st.left_while(V.cuts.nth(c), s => s <= lim) == V.cuts.nth(left)
 
 fn ccc_compose(f: (?Int, ?Int, Int), g: (?Int, ?Int, Int)) -> (?Int, ?Int, Int):
     let nb = f.0 ?? g.0
     if f.1 != None: return (nb, f.1, 0)
-    if g.1 != None: return (nb, g.1! + f.2, 0)
+    if g.1 != None: return (nb, Some(g.1! + f.2), 0)
     (nb, None, g.2 + f.2)
 
 fn ccc_apply(f: (?Int, ?Int, Int), x: (Int, Int, Int), len: Int) -> (Int, Int, Int):
@@ -90,19 +210,136 @@ fn ccc_apply(f: (?Int, ?Int, Int), x: (Int, Int, Int), len: Int) -> (Int, Int, I
     (x.0 + f.2, b_min, x.2 + f.2 * len)
 
 @test
-fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set() = todo
+fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
+    let over = Monoid<(Int, Int, Int)>(
+        (Int.MAX, Int.MAX, 0),
+        (x, y) => (min(x.0, y.0), min(x.1, y.1), x.2 + y.2),
+    )
+    let act = Action<(Int, Int, Int), (?Int, ?Int, Int)>((None, None, 0), ccc_compose, ccc_apply, over)
+    domain V = 0..11
+    var a = [V] v => rand(-10, 10)
+    var b = [V] v => rand(-10, 10)
+    var st = SegTree(over, [V] v => (a[v], b[v], a[v]), act: act)
+    for _ in 0..120:
+        let kind = rand(0, 3)
+        let l = V.nth(rand(0, 10))
+        let r = V.nth(rand(l.to_idx, 10))
+        if kind == 0:
+            let d = rand(-5, 5)
+            for v in l..=r: a[v] += d
+            st.apply(l..=r, (None, None, d))
+        elif kind == 1:
+            let vb = rand(-8, 8)
+            let d = rand(-4, 4)
+            for v in l..=r:
+                b[v] = vb
+                a[v] = vb + d
+            st.apply(l..=r, (Some(vb), Some(d), 0))
+        elif kind == 2:
+            let na = rand(-15, 15)
+            let nb = rand(-15, 15)
+            a[l] = na
+            b[l] = nb
+            st.set(l, (na, nb, na))
+        else:
+            let want = ([a[v] for v in l..=r].min()!, [b[v] for v in l..=r].min()!, sum(a[v] for v in l..=r))
+            assert st.fold(l..=r) == want
+    for v in V: assert st.get(v) == (a[v], b[v], a[v])
 
 @test
-fn update_pushes_modifies_and_pulls_in_one_pass() = todo
+fn update_pushes_modifies_and_pulls_in_one_pass():
+    domain V = 1..=9
+    var a = [V] v => rand(-10, 10)
+    var st = SegTree(+, a.clone(), act: add)
+    for _ in 0..80:
+        let kind = rand(0, 3)
+        let l = V.nth(rand(0, 8))
+        let r = V.nth(rand(l.to_idx, 8))
+        if kind == 0:
+            let d = rand(-7, 7)
+            for v in l..=r: a[v] += d
+            st.apply(l..=r, d)
+        elif kind == 1:
+            let k = rand(-5, 5)
+            a[l] = a[l] * 2 + k
+            st.update(l, cur => cur * 2 + k)
+        elif kind == 2:
+            let x = rand(-20, 20)
+            a[l] = x
+            st.set(l, x)
+        else:
+            assert st.fold(l..=r) == sum(a[v] for v in l..=r)
+            assert st.all == sum(a[v] for v in V)
+    for v in V: assert st.get(v) == a[v]
 
 @test
-fn custom_clamp_action_with_update() = todo
+fn custom_clamp_action_with_update():
+    let clamp = Action<Int, (Int, Int)>(
+        (Int.MIN, Int.MAX),
+        (nf, of) => (min(max(of.0, nf.0), nf.1), max(min(of.1, nf.1), nf.0)),
+        (f, val, span) => min(max(val, f.0), f.1),
+        Monoid<Int>.of(max),
+    )
+    domain V = 0..6
+    let init = [3, -4, 9, 0, 5, -2]
+    var a = [V] v => init[v.to_idx]
+    var st = SegTree(max, a.clone(), act: clamp)
+    for _ in 0..50:
+        let l = V.nth(rand(0, 5))
+        let r = V.nth(rand(l.to_idx, 5))
+        let lo = rand(-6, 4)
+        let hi = rand(lo, 8)
+        for v in l..=r: a[v] = min(max(a[v], lo), hi)
+        st.apply(l..=r, (lo, hi))
+        let i = V.nth(rand(0, 5))
+        a[i] = a[i] + 1
+        st.update(i, x => x + 1)
+        assert st.fold(l..=r) == [a[v] for v in l..=r].max()!
+        assert st.all == [a[v] for v in V].max()!
+    for v in V: assert st.get(v) == a[v]
 
 @test
-fn fill_and_affine_sum_match_brute() = todo
+fn fill_and_affine_sum_match_brute():
+    domain V = 0..7
+    var dp = SegTree<V, Int>(max, fill: 0, act: add)
+    assert dp.all == 0
+    dp.apply(V(1)..=V(4), 5)
+    assert dp.all == 5 and dp.get(V(0)) == 0 and dp.get(V(3)) == 5
+    var a = [V] _ => rand(-5, 5)
+    var st = SegTree<V, Int, (Int, Int)>(+, a.clone(), act: affine)
+    for _ in 0..50:
+        let l = V.nth(rand(0, 6))
+        let r = V.nth(rand(l.to_idx, 6))
+        let mul = rand(-2, 3)
+        let k = rand(-4, 4)
+        for v in l..=r: a[v] = a[v] * mul + k
+        st.apply(l..=r, (mul, k))
+        assert st.fold(l..=r) == sum(a[v] for v in l..=r)
 
 @test
-fn dual_segtree_non_commutative_tags_match_brute() = todo
+fn dual_segtree_non_commutative_tags_match_brute():
+    domain V = 1..=11
+    var a = [V] _ => rand(-5, 5)
+    let aff = Action<Int, (Int, Int)>((1, 0), (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1), (f, x, n) => f.0 * x + f.1 * n, Monoid<Int>.of(+))
+    var st = SegTree(+, a.clone(), act: aff)
+    for _ in 0..100:
+        let kind = rand(0, 3)
+        let l = V.nth(rand(0, 10))
+        let r = V.nth(rand(l.to_idx, 10))
+        if kind <= 1:
+            let (m, b) = (rand(-2, 2), rand(-6, 6))
+            for v in l..=r: a[v] = m * a[v] + b
+            st.apply(l..=r, (m, b))
+        elif kind == 2:
+            let x = rand(-10, 10)
+            a[l] = x
+            st.set(l, x)
+        else:
+            a[l] = a[l] * 3 - 1
+            st.update(l, x => x * 3 - 1)
+        let q = V.nth(rand(0, 10))
+        assert st.get(q) == a[q]
+    for v in V: assert st.get(v) == a[v]
 
 struct TreapNode<T, F>(
     l: ?Int,
@@ -721,4 +958,14 @@ fn lazy_treap_slope_trick_and_implicit_ops_match_brute():
     assert seq.to_list() == arr
 
 @test
-fn flip_action_toggles_ranges() = todo
+fn flip_action_toggles_ranges():
+    domain I = 0..6
+    let init = [I] i => Flip<Int>.of(i.ord % 2 == 0, 1, 0)
+    var st = SegTree(Flip<Int>.op(+), init, act: flip_action<Int>(+))
+    assert st.all.now == 3
+    assert st.all.flipped == 3
+    st.apply(I(1)..I(5), true)
+    assert st.all.now == 3
+    assert st.fold(I(1)..I(5)).now == 2
+    st.apply(I(0)..I(3), true)
+    assert st.all.now == 2

@@ -807,3 +807,26 @@ fn filling_list_forward_and_reverse_match_brute():
     for i in (0..8).rev:
         b.set(i, xs[i])
         assert b.fold(i..8) == full.fold(i..8)
+
+@test
+fn scan_folds_every_prefix():
+    let p = [3, 1, 4, 1, 5].scan(+)
+    assert [p.prefix(i) for i in 0..=5] == [0, 3, 4, 8, 9, 14]
+    let q = [3, 1, 4, 1, 5].scan(max, from: Int.MIN)
+    assert [q.prefix(i) for i in 1..=5] == [3, 3, 4, 4, 5]
+    for _ in 0..50:
+        let xs = [rand(-9, 9) for _ in 0..rand(1, 12)]
+        let sums = xs.scan(+)
+        for i in 0..=xs.len: assert sums.prefix(i) == sum(xs[j] for j in 0..i)
+        for l in 0..=xs.len:
+            for r in l..=xs.len: assert sums.fold(l..r) == sum(xs[j] for j in l..r)
+
+@test
+fn suffix_scan_matches_right_to_left_fold():
+    domain V = 1..=4
+    let a = [V] i => [2, 3, 5, 7][i.to_idx]
+    let sf = suffix_fold(*, a)
+    assert [sf[c] for c in V.cuts] == [210, 105, 35, 7, 1]
+    let p = a.scan(+)
+    let sp = suffix_fold(+, a)
+    for c in V.cuts: assert p.suffix(c) == sp[c]
