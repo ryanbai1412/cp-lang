@@ -5771,3 +5771,15 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   over the cells is never what `Prefix(grid)` means.
 - **Reverse.** Make `Prefix(a)` 1-D over the product domain and require
   `Prefix<R, C, T>(a)` for rectangles.
+
+## 221. Walking a `Map` yields `(k, v)` pairs in key order (2026-11-22)
+
+- **Decision.** `for (k, v) in m` walks a `Map<K, V>`'s entries in ascending
+  key order, the same pairs as `m.items`. Chapter 7 lists `Map` as `Keyed`
+  and a collection but never said what a bare walk yields; the compiler,
+  `bench/containers/hash_insert.cp` and the lowering to `std::map` all
+  walk pairs, and a walk of values alone would lose the key the contestant
+  almost always needs.
+- **Reverse.** Make a bare walk yield values (as `[K]V` does) and change
+  `spec/conformance/traits/Seq/Map--iter.cp` with it.
+

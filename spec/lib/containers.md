@@ -48,7 +48,7 @@ Contestants reach for ordered balanced trees for four distinct jobs:
 
 Builtin `Set<T>` and `Map<K, V>` cover basic ordered sets/maps (lowering to
 `std::set`/`std::map`, or salted `std::unordered_*` when order is never
-observed), but they do not carry subtree sizes, cannot answer `rank`/`nth`/
+observed; `for (k, v) in m` walks a map's entries in key order), but they do not carry subtree sizes, cannot answer `rank`/`nth`/
 `bsearch_first`/`bsearch_last`, and are not multisets. `std.bag` owns the augmented ordered
 containers: `SortedBag<K>` (multiset with rank, cursors, monotone search, and
 recycled nodes) and `SortedSet<K>` / `SortedMap<K, V>` when distinct keys
