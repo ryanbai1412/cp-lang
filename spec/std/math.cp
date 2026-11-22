@@ -34,7 +34,12 @@ pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, 
 /// example: `isqrt(16) == 4`
 /// example: `isqrt(0) == 0`
 /// example: `isqrt(9_223_372_036_854_775_807) == 3_037_000_499`
-pub fn isqrt(x: Int) -> Int = todo
+pub fn isqrt(x: Int) -> Int:
+    assert x >= 0
+    var r = floor(sqrt(F64(x)))
+    while r > 0 and r > x / r: r -= 1
+    while r + 1 <= x / (r + 1): r += 1
+    r
 
 /// The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.
 ///
@@ -43,7 +48,9 @@ pub fn isqrt(x: Int) -> Int = todo
 /// example: `ceil_sqrt(15) == 4`
 /// example: `ceil_sqrt(16) == 4`
 /// example: `ceil_sqrt(0) == 0`
-pub fn ceil_sqrt(x: Int) -> Int = todo
+pub fn ceil_sqrt(x: Int) -> Int:
+    let r = isqrt(x)
+    if r * r == x: r else: r + 1
 
 /// The exact floor `k`-th root of `x >= 0`, `k >= 1`: `iroot(x, 3)` is `floor(cbrt(x))`.
 ///
@@ -55,7 +62,20 @@ pub fn ceil_sqrt(x: Int) -> Int = todo
 /// example: `iroot(27, 3) == 3`
 /// example: `iroot(5, 1) == 5`
 /// example: `iroot(0, 5) == 0`
-pub fn iroot(x: Int, k: Int) -> Int = todo
+pub fn iroot(x: Int, k: Int) -> Int:
+    assert x >= 0 and k >= 1
+    if k == 1 or x <= 1: return x
+    var r = floor(F64(x) ** (F64(1) / F64(k)))
+    while r > 1 and not pow_at_most(r, k, x): r -= 1
+    while pow_at_most(r + 1, k, x): r += 1
+    r
+
+fn pow_at_most(r: Int, k: Int, x: Int) -> Bool:
+    var p = 1
+    for _ in 0..k:
+        if p > x / r: return false
+        p *= r
+    true
 
 /// `num / den` with exactly `k` digits after the point, as text, from integers alone.
 ///
@@ -332,7 +352,8 @@ pub struct Sieve:
     /// traps: when `x` is outside `1..=n`
     /// example: `Sieve(12).divisors(12).collect() == [1, 2, 4, 3, 6, 12]`
     /// example: `Sieve(12).divisors(1).collect() == [1]`
-    pub fn divisors(self, x: Int) -> yields Int = todo
+    pub fn divisors(self, x: Int) -> yields Int:
+        for d in divisors_in_radix_order(self.factor(x)): yield d
 
 /// Tabulate a multiplicative function `f` on `0..=n` in O(n) with a linear sieve.
 ///
@@ -404,7 +425,18 @@ pub fn digits(self: Int, base: Int = 10) -> List<Int>:
 /// example: `255.to_str(base: 16) == "ff"`
 /// example: `(-10).to_str(base: 2) == "-1010"`
 /// example: `0.to_str() == "0"`
-pub fn to_str(self: Int, base: Int = 10) -> Str = todo
+pub fn to_str(self: Int, base: Int = 10) -> Str:
+    assert base >= 2 and base <= 36
+    if self == 0: return "0"
+    var cs: List<Char> = []
+    var x = self
+    while x != 0:
+        let r = x % base
+        let d = if x < 0 and r != 0: base - r else: r
+        cs.push(if d < 10: Char(48 + d) else: Char(87 + d))
+        x = if x < 0 and r != 0: x / base + 1 else: x / base
+    if self < 0: cs.push('-')
+    Str([cs[cs.len - 1 - i] for i in 0..cs.len])
 
 /// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
 /// `-s` flips it and `max(s, Sign.Zero)` clamps it.
@@ -417,7 +449,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 /// example: `(-5).sign == Sign.Neg`
 /// example: `0.sign == Sign.Zero`
 /// example: `Int(7.sign) == 1`
-@get pub fn sign(self: Int) -> Sign = todo
+@get pub fn sign(self: Int) -> Sign = if self > 0: Sign.Pos elif self < 0: Sign.Neg else: Sign.Zero
 
 /// Whether bit `i` of `self` is set, bit 0 the lowest, in two's complement.
 ///
@@ -440,7 +472,7 @@ pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
 /// example: `1.is_pow2 == true`
 /// example: `6.is_pow2 == false`
 /// example: `0.is_pow2 == false`
-@get pub fn is_pow2(self: Int) -> Bool = todo
+@get pub fn is_pow2(self: Int) -> Bool = self > 0 and self & (self - 1) == 0
 
 /// SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
 ///
@@ -842,7 +874,23 @@ pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
 /// example: `primes_in(10, 30) == [11, 13, 17, 19, 23, 29]`
 /// example: `primes_in(0, 3) == [2]`
 /// example: `primes_in(20, 10) == []`
-pub fn primes_in(lo: Int, hi: Int) -> List<Int> = todo
+pub fn primes_in(lo: Int, hi: Int) -> List<Int>:
+    let a = max(lo, 2)
+    if hi <= a: return []
+    let r = isqrt(hi - 1)
+    var small = List.filled(r + 1, true)
+    var seg = List.filled(hi - a, true)
+    for p in 2..=r:
+        if not small[p]: continue
+        var m = p * p
+        while m <= r:
+            small[m] = false
+            m += p
+        m = max(p * p, (a + p - 1) / p * p)
+        while m < hi:
+            seg[m - a] = false
+            m += p
+    [a + i for i in 0..hi - a if seg[i]]
 
 /// The number of primes `<= n` (Lucy_Hedgehog); 0 for `n < 2`.
 ///
@@ -851,7 +899,23 @@ pub fn primes_in(lo: Int, hi: Int) -> List<Int> = todo
 /// example: `prime_count(10) == 4`
 /// example: `prime_count(100) == 25`
 /// example: `prime_count(1) == 0`
-pub fn prime_count(n: Int) -> Int = todo
+pub fn prime_count(n: Int) -> Int:
+    if n < 2: return 0
+    let r = isqrt(n)
+    var lo = [i - 1 for i in 0..=r]
+    var hi = [if i == 0: 0 else: n / i - 1 for i in 0..=r]
+    for p in 2..=r:
+        if lo[p] == lo[p - 1]: continue
+        let pc = lo[p - 1]
+        let p2 = p * p
+        for i in 1..=min(r, n / p2):
+            let d = i * p
+            hi[i] -= (if d <= r: hi[d] else: lo[n / d]) - pc
+        var i = r
+        while i >= p2:
+            lo[i] -= lo[i / p] - pc
+            i -= 1
+    hi[1]
 
 /// Each distinct floor quotient `q = n / i` for `i` in `from..=n`, with the half-open range
 /// `lo..hi` of the `i` that give it.
@@ -865,7 +929,13 @@ pub fn prime_count(n: Int) -> Int = todo
 /// example: `floor_quotients(10).collect() == [(10, 1, 2), (5, 2, 3), (3, 3, 4), (2, 4, 6), (1, 6, 11)]`
 /// example: `floor_quotients(10, from: 4).collect() == [(2, 4, 6), (1, 6, 11)]`
 /// example: `floor_quotients(0).collect() == []`
-pub fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: Int) = todo
+pub fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: Int):
+    var i = max(from, 1)
+    while i <= n:
+        let q = n / i
+        let j = n / q + 1
+        yield (q:, lo: i, hi: j)
+        i = j
 
 /// Each positive divisor of `x >= 1`, from `factor(x)`, without building a list.
 ///
@@ -874,7 +944,26 @@ pub fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: In
 /// traps: when `x < 1`
 /// example: `each_divisor(12).collect() == [1, 2, 4, 3, 6, 12]`
 /// example: `each_divisor(1).collect() == [1]`
-pub fn each_divisor(x: Int) -> yields Int = todo
+pub fn each_divisor(x: Int) -> yields Int:
+    for d in divisors_in_radix_order(factor(x)): yield d
+
+fn divisors_in_radix_order(fs: List<(Int, Int)>) -> yields Int:
+    var e = List.filled(fs.len, 0)
+    var pe = List.filled(fs.len, 1)
+    var cur = 1
+    yield cur
+    while true:
+        var i = 0
+        while i < fs.len and e[i] == fs[i].1:
+            cur /= pe[i]
+            e[i] = 0
+            pe[i] = 1
+            i += 1
+        if i == fs.len: break
+        e[i] += 1
+        pe[i] *= fs[i].0
+        cur *= fs[i].0
+        yield cur
 
 /// Every submask of `mask`, in descending order, ending with 0.
 ///
@@ -883,7 +972,12 @@ pub fn each_divisor(x: Int) -> yields Int = todo
 /// traps: when `mask < 0`
 /// example: `submasks(5).collect() == [5, 4, 1, 0]`
 /// example: `submasks(0).collect() == [0]`
-pub fn submasks(mask: Int) -> yields Int = todo
+pub fn submasks(mask: Int) -> yields Int:
+    var s = mask
+    while true:
+        yield s
+        if s == 0: break
+        s = (s - 1) & mask
 
 /// Every subset of `0..n` with exactly `k` elements, as a bitmask, in ascending order (Gosper's
 /// hack).
@@ -895,7 +989,15 @@ pub fn submasks(mask: Int) -> yields Int = todo
 /// example: `bit_subsets(4, 2).collect() == [3, 5, 6, 9, 10, 12]`
 /// example: `bit_subsets(3, 0).collect() == [0]`
 /// example: `bit_subsets(2, 3).collect() == []`
-pub fn bit_subsets(n: Int, k: Int) -> yields Int = todo
+pub fn bit_subsets(n: Int, k: Int) -> yields Int:
+    if k == 0: yield 0
+    if k >= 1 and k <= n:
+        var s = (1 << k) - 1
+        while s < 1 << n:
+            yield s
+            let c = s & -s
+            let r = s + c
+            s = (((r ^ s) >> 2) / c) | r
 
 /// The Dirichlet convolution `(a * b)[k] = sum_{d | k} a[d] * b[k / d]` for `k` in `1..=n`.
 ///
@@ -996,7 +1098,15 @@ pub fn sum_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum:
 /// example: `linear_diophantine(240, 46, 4) == Some((5, -26, 23, 120))`
 /// example: `linear_diophantine(3, 0, 6) == Some((2, 0, 0, 1))`
 /// example: `linear_diophantine(2, 4, 3) == None`
-pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x: Int, step_y: Int) = todo
+pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x: Int, step_y: Int):
+    assert a != 0 or b != 0
+    let (g, x, _) = ext_gcd(a, b)
+    if c % g != 0: return None
+    let (sx, sy) = (b / g, a / g)
+    if b == 0: return Some((x0: c / a, y0: 0, step_x: sx, step_y: sy))
+    let m = abs(sx)
+    let x0 = mul_mod(((x % m) + m) % m, ((c / g) % m + m) % m, m)
+    Some((x0:, y0: (c - a * x0) / b, step_x: sx, step_y: sy))
 
 /// The solutions of `a * x = b (mod m)` as `x = r (mod step)`: the least `r` in `0..step` and
 /// the period `step = m / gcd(a, m)`, or `None` if `gcd(a, m)` does not divide `b`.
@@ -1008,7 +1118,14 @@ pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x:
 /// example: `linear_congruence(6, 4, 10) == Some((4, 5))`
 /// example: `linear_congruence(2, 1, 4) == None`
 /// example: `linear_congruence(0, 0, 3) == Some((0, 1))`
-pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int) = todo
+pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int):
+    assert m >= 1
+    let (a2, b2) = (a % m, b % m)
+    let g = gcd(a2, m)
+    if b2 % g != 0: return None
+    let step = m / g
+    if step == 1: return Some((r: 0, step:))
+    Some((r: mul_mod(b2 / g, inv_mod(a2 / g, step)!, step), step:))
 
 /// The least `x` in `0..p` with `x^k = a (mod p)` for prime `p` and `k >= 1`, or `None`.
 ///
@@ -1032,7 +1149,15 @@ pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int = todo
 /// example: `mult_order(3, 7) == Some(6)`
 /// example: `mult_order(2, 4) == None`
 /// example: `mult_order(5, 1) == Some(1)`
-pub fn mult_order(a: Int, m: Int) -> ?Int = todo
+pub fn mult_order(a: Int, m: Int) -> ?Int:
+    assert m >= 1
+    if m == 1: return Some(1)
+    let a2 = (a % m + m) % m
+    if gcd(a2, m) != 1: return None
+    var t = carmichael(m)
+    for (p, _) in factor(t):
+        while t % p == 0 and pow_mod(a2, t / p, m) == 1: t /= p
+    Some(t)
 
 /// The Jacobi symbol `(a / n)` in `{-1, 0, 1}` for odd `n > 0`; 0 exactly when `gcd(a, n) != 1`.
 ///
@@ -1044,7 +1169,18 @@ pub fn mult_order(a: Int, m: Int) -> ?Int = todo
 /// example: `jacobi(3, 7) == -1`
 /// example: `jacobi(7, 7) == 0`
 /// example: `jacobi(2, 15) == 1`
-pub fn jacobi(a: Int, n: Int) -> Int = todo
+pub fn jacobi(a: Int, n: Int) -> Int:
+    assert n > 0 and n % 2 == 1
+    var (x, y) = (a % n, n)
+    var res = 1
+    while x != 0:
+        while x % 2 == 0:
+            x /= 2
+            if y % 8 == 3 or y % 8 == 5: res = -res
+        swap(mut x, mut y)
+        if x % 4 == 3 and y % 4 == 3: res = -res
+        x %= y
+    if y == 1: res else: 0
 
 /// Carmichael's function `lambda(n)` for `n >= 1`: the least `k >= 1` with `a^k = 1 (mod n)`
 /// for every `a` coprime to `n`.
@@ -1055,7 +1191,15 @@ pub fn jacobi(a: Int, n: Int) -> Int = todo
 /// example: `carmichael(8) == 2`
 /// example: `carmichael(15) == 4`
 /// example: `carmichael(7) == 6`
-pub fn carmichael(n: Int) -> Int = todo
+pub fn carmichael(n: Int) -> Int:
+    assert n >= 1
+    var res = 1
+    for (p, e) in factor(n):
+        var pe1 = 1
+        for _ in 1..e: pe1 *= p
+        let l = if p == 2 and e >= 3: pe1 / 2 else: pe1 * (p - 1)
+        res = lcm(res, l)
+    res
 
 /// The least `x >= 0` with `lo <= (a * x) % m <= hi`, or `None`; `a` is reduced first.
 ///
@@ -1065,7 +1209,17 @@ pub fn carmichael(n: Int) -> Int = todo
 /// example: `min_mod_in_range(3, 7, 5, 6) == Some(2)`
 /// example: `min_mod_in_range(2, 4, 1, 1) == None`
 /// example: `min_mod_in_range(5, 9, 0, 3) == Some(0)`
-pub fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int = todo
+pub fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:
+    assert m >= 1 and 0 <= lo and lo <= hi and hi < m
+    min_mod_in_range_reduced((a % m + m) % m, m, lo, hi)
+
+fn min_mod_in_range_reduced(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:
+    if lo == 0: return Some(0)
+    if a == 0: return None
+    let x = (lo + a - 1) / a
+    if a * x <= hi: return Some(x)
+    let y = min_mod_in_range_reduced(m % a, a, (a - hi % a) % a, (a - lo % a) % a)?
+    Some((lo + m * y + a - 1) / a)
 
 /// The continued fraction `[a0, a1, ...]` of `p / q`, `q > 0`, by the Euclidean algorithm with
 /// floor division.
@@ -1079,7 +1233,15 @@ pub fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int = todo
 /// example: `continued_fraction(415, 93) == [4, 2, 6, 7]`
 /// example: `continued_fraction(-7, 3) == [-3, 1, 2]`
 /// example: `continued_fraction(0, 5) == [0]`
-pub fn continued_fraction(p: Int, q: Int) -> List<Int> = todo
+pub fn continued_fraction(p: Int, q: Int) -> List<Int>:
+    assert q > 0
+    var out: List<Int> = []
+    var (x, y) = (p, q)
+    while y != 0:
+        let t = x / y
+        out.push(t)
+        (x, y) = (y, x - t * y)
+    out
 
 /// The reduced fraction `p / q` with `1 <= q <= max_den` closest to `num / den` (Stern-Brocot).
 ///
