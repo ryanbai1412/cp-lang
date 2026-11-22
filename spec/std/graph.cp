@@ -1186,7 +1186,9 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
             if start == None: start = v
     if opens > (if directed: 1 else: 2): return None
     if start == None: start = first(v for v in V if g.deg(v) > 0)
-    if start == None: return Walk(V.first, List<(to: V, e: E)>())
+    if start == None:
+        if let s = V.first: return Walk(s, List<(to: V, e: E)>())
+        else: return None
     let out = [V] v => [a for a in g.out(v)]
     var at: [V]Int = 0
     var used: [E]Bool = false
