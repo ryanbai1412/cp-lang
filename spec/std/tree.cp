@@ -344,7 +344,18 @@ pub struct Rooted<V, Pre>:
         op: M,
         lift: (T, V, V) -> U = (x, c, p) => x,
         finish: (U, V) -> T,
-    ) -> [V]T = todo
+    ) -> [V]T:
+        let mon = Monoid<U>.of(op)
+        let f = mon.op
+        var dn: [V]?T = None
+        for p in Pre.rev:
+            let v = at[p]
+            var acc = mon.id
+            for i in k0[v]..k1[v]:
+                let c = bfs[i]
+                acc = f(acc, lift(dn[c]!, c, v))
+            dn[v] = Some(finish(acc, v))
+        [V] v => dn[v]!
 
     /// The same DP as `up`, for every root at once: `out[v]` is what `up` would give at `v` if the
     /// tree were rooted at `v`.
@@ -363,7 +374,37 @@ pub struct Rooted<V, Pre>:
         op: M,
         lift: (T, V, V) -> U = (x, c, p) => x,
         finish: (U, V) -> T,
-    ) -> [V]T = todo
+    ) -> [V]T:
+        let mon = Monoid<U>.of(op)
+        let f = mon.op
+        var dn: [V]?T = None
+        for p in Pre.rev:
+            let v = at[p]
+            var acc = mon.id
+            for i in k0[v]..k1[v]:
+                let c = bfs[i]
+                acc = f(acc, lift(dn[c]!, c, v))
+            dn[v] = Some(finish(acc, v))
+        var ab: [V]?T = None
+        var ans: [V]?T = None
+        for p in Pre:
+            let v = at[p]
+            let m = k1[v] - k0[v]
+            var pre = List.filled(m + 1, mon.id)
+            if let pv = par[v]:
+                pre[0] = lift(ab[v]!, pv, v)
+            for j in 0..m:
+                let c = bfs[k0[v] + j]
+                pre[j + 1] = f(pre[j], lift(dn[c]!, c, v))
+            ans[v] = Some(finish(pre[m], v))
+            var suf = mon.id
+            var j = m - 1
+            while j >= 0:
+                let c = bfs[k0[v] + j]
+                ab[c] = Some(finish(f(pre[j], suf), v))
+                suf = f(lift(dn[c]!, c, v), suf)
+                j -= 1
+        [V] v => ans[v]!
 
     /// The isomorphism class of every subtree: `of[a] == of[b]` exactly when the subtrees of `a` and
     /// `b` are the same rooted tree up to reordering children.
@@ -750,7 +791,11 @@ pub struct Rooted<V, Pre>:
     /// order: top first, down the chain
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.chain(3).map(p => t.at[p]).collect() == [0, 1, 3] and t.chain(2).count() == 1`
-    pub fn chain(self, v: V) -> Range<Pre> = todo
+    pub fn chain(self, v: V) -> Range<Pre>:
+        let h = top[v]
+        var cur = v
+        while let c = heavy[cur]: cur = c
+        tin[h].l..tin[cur].r
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The subtree of `v` were the tree rooted at `root`, as at most two ranges of positions:
@@ -801,7 +846,36 @@ pub struct Rooted<V, Pre>:
         op: M,
         lift: (T, V, V) -> U = (x, c, p) => x,
         finish: (U, V) -> T,
-    ) -> [V]?T = todo
+    ) -> [V]?T:
+        let mon = Monoid<U>.of(op)
+        let f = mon.op
+        var dn: [V]?T = None
+        for p in Pre.rev:
+            let v = at[p]
+            var acc = mon.id
+            for i in k0[v]..k1[v]:
+                let c = bfs[i]
+                acc = f(acc, lift(dn[c]!, c, v))
+            dn[v] = Some(finish(acc, v))
+        var ab: [V]?T = None
+        for p in Pre:
+            let v = at[p]
+            let m = k1[v] - k0[v]
+            if m == 0: continue
+            var pre = List.filled(m + 1, mon.id)
+            if let pv = par[v]:
+                pre[0] = lift(ab[v]!, pv, v)
+            for j in 0..m:
+                let c = bfs[k0[v] + j]
+                pre[j + 1] = f(pre[j], lift(dn[c]!, c, v))
+            var suf = mon.id
+            var j = m - 1
+            while j >= 0:
+                let c = bfs[k0[v] + j]
+                ab[c] = Some(finish(f(pre[j], suf), v))
+                suf = f(lift(dn[c]!, c, v), suf)
+                j -= 1
+        ab
 
     /// The farthest pair among two vertex sets' farthest pairs, which is the farthest pair of
     /// their union; `None` is the identity. As an operation value,
@@ -903,7 +977,36 @@ pub struct Rooted<V, Pre>:
     /// ties: the first tallest child in child order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.height == [2, 1, 0, 0, 0] and lp.deep[1] == Some(3)`
-    pub fn long_paths(self) -> LongPaths<V, _> = todo
+    pub fn long_paths(self) -> LongPaths<V, _>:
+        var deep: [V]?V = None
+        var height: [V]Int = 0
+        for p in Pre.rev:
+            let v = at[p]
+            var best_h = -1
+            var best_c: ?V = None
+            for i in k0[v]..k1[v]:
+                let c = bfs[i]
+                if height[c] > best_h:
+                    best_h = height[c]
+                    best_c = Some(c)
+            if let c = best_c:
+                deep[v] = Some(c)
+                height[v] = best_h + 1
+        var slot_idx: [V]Int = 0
+        var cur = 0
+        for p in Pre:
+            let v = at[p]
+            let is_top = if let pv = par[v]: deep[pv] != Some(v) else: true
+            if is_top:
+                var x = v
+                var more = true
+                while more:
+                    slot_idx[x] = cur
+                    cur += 1
+                    if let c = deep[x]: x = c
+                    else: more = false
+        domain Slot = 0..V.count
+        LongPaths::<V, Slot>(deep, height, [V] v => Slot.nth(slot_idx[v]))
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The subtree of `v` in `t.Pre` order as `std.dp` steps: `step.state` is the vertex,
@@ -915,7 +1018,11 @@ pub struct Rooted<V, Pre>:
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.preorder(1).map(s => (s.state, s.depth)).collect() == [(1, 0), (3, 1), (4, 1)]`
-    pub fn preorder(self, v: V) -> yields Step<V> = todo
+    pub fn preorder(self, v: V) -> yields Step<V>:
+        let d0 = dep[v]
+        for p in self.sub(v):
+            let u = at[p]
+            yield Step(u, dep[u] - d0)
 
 /// A virtual tree from `Rooted.virtual`: a few vertices of a tree and their pairwise lowest
 /// common ancestors, over its own domain `K` in preorder.
@@ -2129,6 +2236,7 @@ pub struct LongPaths<V, L>:
     deep: [V]?V
     /// The number of edges on the longest path down from `v`.
     height: [V]Int
+    pos: [V]L
 
     /// The slots of `v`, one per depth offset `0..=height[v]`, offset 0 first; `slots(deep[v])`
     /// starts one later in the same buffer.
@@ -2138,14 +2246,16 @@ pub struct LongPaths<V, L>:
     /// order: offset 0 first
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.slots(0).count() == 3 and lp.slots(2).count() == 1`
-    pub fn slots(self, v: V) -> Range<L> = todo
+    pub fn slots(self, v: V) -> Range<L> = pos[v].l..pos[v].r(height[v] + 1)
 
     /// The slot of `v` at depth offset `d`.
     ///
     /// cost: O(1)
     /// traps: unless `0 <= d <= height[v]`
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.slot(1, 1) == lp.slot(3, 0) and lp.slot(0, 1) == lp.slot(1, 0)`
-    pub fn slot(self, v: V, d: Int) -> L = todo
+    pub fn slot(self, v: V, d: Int) -> L:
+        assert(0 <= d and d <= height[v])
+        L.nth(pos[v].to_idx + d)
 
 /// Lowest common ancestors in O(1) after O(n log n) preprocessing, by a sparse table over the
 /// Euler tour: for many queries on a fixed tree when `Rooted.lca` is the bottleneck.
