@@ -61,7 +61,9 @@ impl Trap {
         use cpl_diag::codes;
         let m = self.message.as_str();
         let m = m.strip_prefix("reading the number of tests: ").unwrap_or(m);
-        if m.contains("integer overflow") || m.contains("does not fit in") {
+        if m.contains("input line") && (m.contains(" is outside `") || m.contains("does not fit in")) {
+            codes::INPUT_OUT_OF_CONTRACT
+        } else if m.contains("integer overflow") || m.contains("does not fit in") {
             codes::OVERFLOW
         } else if m.starts_with("division by zero") {
             codes::DIVISION_BY_ZERO
@@ -71,8 +73,6 @@ impl Trap {
             codes::ASSERTION_FAILED
         } else if m.starts_with("the stack ran out") {
             codes::STACK_EXHAUSTED
-        } else if m.contains(" is outside `") && m.contains("input line") {
-            codes::INPUT_OUT_OF_CONTRACT
         } else if m.contains(" is outside `") {
             codes::RANGE_STORE
         } else if m.starts_with("expected a number, found") || m.starts_with("the input ended") {
