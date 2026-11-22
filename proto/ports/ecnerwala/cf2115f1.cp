@@ -137,7 +137,7 @@ for q in Query:
             alive[q] = true
             let (ta, tb) = split_treap(root, r)
             if let a = ta:
-                tr[a].lazy = concat_seg(tr[a].lazy, build_seg(q.to_idx, 0, q_cnt), 0, q_cnt)
+                tr[a].lazy = concat_seg(tr[a].lazy, build_seg(q.ord, 0, q_cnt), 0, q_cnt)
             root = merge_treap(ta, tb)
         2 =>
             let r = decode(b, n)
@@ -146,5 +146,5 @@ for q in Query:
             root = merge_treap(ta, tb)
         3 => alive[Query(decode(b, q_cnt))] = false
     let p = decode(c, n) - 1
-    last = if let v = query_treap(root, p): v.to_idx + 1 else: 0
+    last = if let v = query_treap(root, p): v.ord + 1 else: 0
     print(last)
