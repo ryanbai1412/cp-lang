@@ -1,7 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const cpl = process.env.CPL ?? 'cpl';
+const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
 const run = (...args) => execFileSync(cpl, args, { encoding: 'utf8' });
 
 const help = run('--help');
@@ -51,5 +54,6 @@ for (const line of run('judges').split('\n')) {
 }
 
 const version = run('--version').trim();
+mkdirSync('content/generated', { recursive: true });
 writeFileSync('content/generated/cli.json', `${JSON.stringify({ version, commands, judges }, null, 2)}\n`);
 console.log(`gen-tools: ${commands.length} commands, ${judges.length} judges (${version})`);

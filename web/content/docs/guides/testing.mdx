@@ -13,10 +13,10 @@ Annotate a pure recursive function with `@memo` to cache its results over any `I
 domain V = 0..20
 @memo
 fn dp(u: V, used: Bool) -> Int:
-    if u == V.first: return if used: 1 else: 0
+    if u == V(0): return if used: 1 else: 0
     let prev = (u - 1)!
     dp(prev, false) + dp(prev, true)
-print(dp(V.last, true))
+print(dp(V(19), true))
 ```
 
 Bare `@memo` chooses its storage layout automatically (`@memo(into: table)` exposes a dense table when you want explicit control):

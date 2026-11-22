@@ -163,7 +163,7 @@ for x in queries:
     let original = xs[id]       // original value at id
     bit.add(id, 1)
     if let ge = xs.first_ge(x): // lower bound -> ?xs.D
-        ans += bit.sum(..ge)
+        ans += bit.prefix(ge.l)
 print(ans)
 ```
 
@@ -193,15 +193,15 @@ For undirected adjacency matrices and other symmetric relations over a domain `V
 ```cp
 domain V = 1..=4
 var adj: [Sym<V>]Bool = false
-adj[V.at(1), V.at(3)] = true
+adj[V(1), V(3)] = true
 
 var missing = 0
 for (i, j) in V.pairs if not adj[i, j]:
     missing += 1
 var after_first = 0
-for j in V.after(V.first):
+for j in V.after(V(1)):
     after_first += 1
-print(adj[V.at(3), V.at(1)], missing, after_first)
+print(adj[V(3), V(1)], missing, after_first)
 ```
 
 `for (i, j) in V.pairs` and `for j in V.after(i)` / `V.before(i)` lower directly to nested integer loops with no intermediate allocation.

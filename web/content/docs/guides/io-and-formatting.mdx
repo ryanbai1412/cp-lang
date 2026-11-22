@@ -142,11 +142,11 @@ Three rules make `@!multitest` effortless:
 
 In interactive problems, forgetting `flush` causes Idleness Limit Exceeded. Put `@!interactive` at the top of the file to flush every `print(...)` automatically, or use `ask(...)` — it prints the query, flushes stdout automatically, and parses the judge's reply into the expected type:
 
-```cp
+```cp status=checks
 fn at_least(x: Int) -> Bool:
     let reply: Str = ask("?", x, limit: 30)
     reply == ">="
-let ans = bsearch_first(1..=1_000_000_000, at_least)!
+let ans = (1..=1_000_000_000).first_true(at_least)!
 print("!", ans)
 ```
 

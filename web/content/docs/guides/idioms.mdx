@@ -41,18 +41,18 @@ Prefer `any`, `all`, `sum`, `count`, `min`, and `max` over manual boolean flags 
 
 ```cp
 let xs: List<Int> = [3, 8, 2, 9, 5]
-let has_big = any(x > 7 for x in xs)
-let all_pos = all(x > 0 for x in xs)
-let evens = count(x % 2 == 0 for x in xs)
+let has_big = xs.any(x => x > 7)
+let all_pos = xs.all(x => x > 0)
+let evens = xs.count(x => x % 2 == 0)
 let total = sum(x for x in xs)
 print(has_big, all_pos, evens, total)
 ```
 
-Use `for x in xs if cond:` to filter cleanly without extra nesting, and `xs.pairs` / `zip` / `enumerate` instead of `for i in 0..xs.len:`:
+Use `for x in xs if cond:` to filter cleanly without extra nesting, and `xs.adjacent` / `zip` / `enumerate` instead of `for i in 0..xs.len:`:
 
 ```cp
 let xs: List<Int> = [2, 5, 4, 9]
-let asc = count(a < b for (a, b) in xs.pairs)
+let asc = xs.adjacent.count(p => p.0 < p.1)
 let pos_sum = sum(x for x in xs if x >= 4)
 print(asc, pos_sum)
 ```
@@ -162,7 +162,7 @@ print(dsu.same(V(1), V(3)), dsu.same(V(1), V(4)), bit.prefix(V(3).after))
 | Print `YES` / `NO` or `Yes` / `No` | `print(ok)` prints `YES`/`NO`; for AtCoder `Yes`/`No`, write `print(if ok: "Yes" else: "No")` (colons, never `then` or Python `a if c else b`) |
 | Clear array between test cases | `a.fill(0)` or `seen.fill(none)` (or `Marks<D>` for `O(1)` clear) |
 | Swap two variables or elements | `swap(mut a, mut b)` for variables; `arr.swap(i, j)` for two array elements (never `swap(mut arr[i], mut arr[j])`); every `mut` parameter also requires `mut` at the call site (`f(mut x)`) |
-| Adjacent pairs in a list | `for (a, b) in xs.pairs:` |
+| Adjacent pairs in a list | `for (a, b) in xs.adjacent:` |
 | Reverse a list or array in place | `a.reverse()` (method, not free `reverse(a)`); reverse iteration uses `(0..n).rev` or `V.rev` |
 | Free math functions | `abs(x)`, `min(a, b)`, `max(a, b)`, `gcd(a, b)`, `lcm(a, b)` |
 | Multi-test file | `@!multitest` above per-case code; `return` exits current test case |

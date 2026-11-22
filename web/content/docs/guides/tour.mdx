@@ -64,7 +64,7 @@ var a: [V]Int = 0
 fn add_to(mut a: [V]Int, v: V, delta: Int):
     a[v] += delta
 
-add_to(mut a, V.first, 3)
+add_to(mut a, V(1), 3)
 let snapshot = a.copy()
 ```
 
@@ -78,7 +78,7 @@ fn dfs(u: V):
     vis[u] = true
     for v in g[u] if not vis[v]:
         dfs(v)
-dfs(V.first)
+dfs(V(1))
 print(vis)
 ```
 
@@ -101,8 +101,8 @@ There is no `defer`. Undo is one explicit line after the work it covers, which a
 ```cp
 domain V = 1..=3
 var dsu = Dsu<V>()
-fn solve(v: V) -> Bool: dsu.unite(V.first, v)
-let left = V.last
+fn solve(v: V) -> Bool: dsu.unite(V(1), v)
+let left = V(3)
 let snap = dsu.mark()
 solve(left)
 dsu.undo_to(snap)
@@ -135,7 +135,7 @@ enum Move:
     Add(v: V, delta: Int)
     Ask(l: V, r: V)
 
-let move = Add(V.first, 5)
+let move = Add(V(1), 5)
 match move:
     Add(v, delta) => a[v] += delta
     Ask(l, r) => print(sum(a[v] for v in l..=r))

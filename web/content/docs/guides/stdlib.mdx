@@ -89,13 +89,13 @@ print(resized(xs, 1, 0), xs)        // 1, then the unchanged 1 2
 
 Answer-space binary search uses two free functions (`F64` ranges take `steps: 80`), both returning `?I`:
 
-```cp
+```cp status=checks
 let n = 10
 let budget = 25
 fn feasible(x: Int) -> Bool: x >= 42
 fn cost(k: Int) -> Int: k * k
-let ans = bsearch_first(1..=1e9, x => feasible(x))
-let hi = bsearch_last(0..=n, k => cost(k) <= budget)
+let ans = (1..=1e9).first_true(x => feasible(x))
+let hi = (0..=n).last_true(k => cost(k) <= budget)
 print(ans, hi)
 ```
 
@@ -136,10 +136,8 @@ print(diffs, jumps)
 
 Range structures accept bare associative operators (`+`, `*`, `^`, `&`, `|`, `min`, `max`, `gcd`) directly, or a custom `Monoid(id: identity, op: combine)`. Lazy segment trees accept stock tags (`AddSum`, `AddMin`, `AddMax`, `AssignSum`, `AssignMin`, `AssignMax`) or a custom `Action(id:, compose:, apply:, over:)`. Name the fields to make each callback's role clear:
 
-```cp
+```cp status=checks
 use std.algebra.{Monoid, Action}
-use std.segtree.{SegTree}
-use std.lazy.{LazySegTree}
 
 domain V = 1..=4
 let a: [V]Int = 3
@@ -148,11 +146,11 @@ struct Node:
 fn merge(a: Node, b: Node) -> Node: Node(a.value + b.value)
 let nodes: [V]Node = [V] v => Node(a[v])
 
-var bit = Fenwick<V, Int>(a)                        // sum-only: .add(i, d), .sum(l..=r)
+var bit = Fenwick<V, Int>(a)                        // sum-only: .add(i, d), .fold(l..=r)
 var rmq = SparseTable<V, Int>(min, a)               // O(1) .fold(l..=r) -> Int (non-empty range)
 var st = SegTree<V, Int>(+, a)                      // bare operator
 var mx = SegTree<V, Node>(Monoid<Node>(id: Node(0), op: merge), nodes)
-var lz = LazySegTree<V, Int>(AddSum, a)             // range add + range sum
+var lz = SegTree<V, Int>(+, a, act: add)            // range add + range sum
 
 let aff = Action<Int, (Int, Int)>(
     id: (1, 0),
@@ -160,9 +158,9 @@ let aff = Action<Int, (Int, Int)>(
     apply: (f, val, span) => f.0 * val + f.1 * span,
     over: Monoid<Int>(id: 0, op: (x, y) => x + y),
 )
-var affine = LazySegTree<V, Int, (Int, Int)>(aff, a)
-affine.apply(V.first..=V.last, (2, 1))
-print(bit.sum(V.first..=V.last), rmq.fold(V.first..=V.last), st.all, mx.all.value, lz.all, affine.all)
+var affine = SegTree<V, Int>(+, a, act: aff)
+affine.apply(V(1)..=V(4), (2, 1))
+print(bit.fold(V(1)..=V(4)), rmq.fold(V(1)..=V(4)), st.all, mx.all.value, lz.all, affine.all)
 ```
 
 - `SegTree` and `LazySegTree` both provide `.set(pos, val)`, `.at(pos)` (the leaf as a writable place: `st.at(i) += x`, `st.at(i) max= x`, each write `O(log n)`), `.fold(l..=r)`, `.all` (`O(1)` root fold), and `O(log n)` binary search on the tree via `.max_right(l, ok)` and `.min_left(r, ok)`. Empty and inverted ranges are valid no-ops (except `SparseTable.fold`, which asserts a non-empty range and returns `T`).

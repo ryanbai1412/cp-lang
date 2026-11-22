@@ -60,7 +60,7 @@ Swapping an `A` boundary with a `B` boundary is a compile error, and `.l`/`.r` c
 let n: 1..=100 = read()
 domain S = 1..=n
 let word: [S]Char = read()
-print(count(word[i] == 'a' for i in S))
+print(word.count(c => c == 'a'))
 ```
 
 For input `5` and `abaca`, the result is `3`. Each subscript touches one contiguous byte in O(1).

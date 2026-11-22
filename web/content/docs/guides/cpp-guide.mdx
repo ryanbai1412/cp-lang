@@ -64,7 +64,7 @@ Notice what disappeared: `ios_base::sync_with_stdio`, manual `while (T--)` (repl
 | `multiset::erase(s.find(x))` | `bag.remove_one(x)` | Never accidentally deletes all duplicates of `x`. |
 | `vector<pair<int,int>> adj[n]` | `Graph<V>.undirected(...)` or `var adj: [V]List<V> = []` | `Graph<V>` lowers to a flat CSR array; `[V]List<V>` is indexed strictly by `V`. |
 | `for (auto [u, v] : edges) { g[u].push_back(v); g[v].push_back(u); }` | `for (a, b) in [(u, v), (v, u)]:` or `Graph.undirected(...)` | One edge fact in one place (lint `L0503` catches duplicated symmetric writes). |
-| `bool ok = false; for (...) if (p) { ok = true; break; }` | `let ok = any(p(x) for x in xs)` | Express search intent directly (lint `L0501` catches flag-and-break loops). |
+| `bool ok = false; for (...) if (p) { ok = true; break; }` | `let ok = xs.any(p)` | Express search intent directly (lint `L0501` catches flag-and-break loops). |
 
 ## Sentinels and relaxation without `INF`
 
