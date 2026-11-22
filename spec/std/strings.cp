@@ -294,7 +294,7 @@ pub fn parse<T: Read>(self: Str) -> ?T = todo
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `z_function("aabxaab") == [7, 1, 0, 0, 3, 1, 0]`
-pub fn z_function<S: Indexed, K>(s: S) -> [K]Int = todo
+pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = todo
 
 @allow(unproven_list_index)
 /// The prefix function (failure function) of `s`: `p[i]` is the length of the longest
@@ -307,7 +307,7 @@ pub fn z_function<S: Indexed, K>(s: S) -> [K]Int = todo
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `prefix_function("aabaaab") == [0, 1, 0, 1, 2, 2, 3]`
-pub fn prefix_function<S: Indexed, K>(s: S) -> [K]Int = todo
+pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int = todo
 
 @allow(unproven_list_index)
 /// The start key of every occurrence of `pat` in `self`, overlapping ones included
@@ -390,7 +390,7 @@ pub fn borders<S: Indexed>(s: S) -> yields Int = todo
 /// order: keyed by the keys of `self`
 /// traps: never
 /// example: `"abab".prefix_matches("ab") == [1, 2, 1, 2]`
-pub fn prefix_matches<S: Indexed, P: Indexed, K>(self: S, pat: P) -> [K]Int = todo
+pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int = todo
 
 @allow(unproven_list_index)
 /// The length of the longest suffix of `a` that is also a prefix of `b`, at most
