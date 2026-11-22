@@ -79,7 +79,10 @@ triangle (n(n+1)/2 slots). Iterating it goes by length, then left end, so a
 piece comes after all its sub-pieces. `r.splits` yields every way to cut `r`
 into two non-empty pieces, as `(left, right)` with `left.r == right.l`: one
 pair per cut strictly inside `r`, so `len - 1` of them, none for one element.
-O(1) to make, nothing allocated; the cut itself is `left.r`.
+O(1) to make, nothing allocated; the cut itself is `left.r`. A `Range<V>` goes wherever a
+`V.ranges` is expected, the way an `Int` goes into a range-typed slot: non-emptiness is a
+contract, proved when it can be and checked in checked builds otherwise, so
+`best(r.first!.next!..=r.last!)` needs no conversion.
 
 ```python
 var dp: [V.ranges]Int = 0                       // merging stones, matrix chain, ...

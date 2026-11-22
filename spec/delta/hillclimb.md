@@ -35,6 +35,10 @@ and its notes in that record's `notes`.
 - coci20c6p3 (follow-up): map and `SortedMap` `keys`, `values` and `items` are O(1)-to-make
   getters like `a.keys`/`a.items` on any keyed sequence (map `each()` became `items`); `Dsu.values`
   too. Two stale ports lost their `.last()`/`.values()` drift.
+- ioi96p1: a `Range<V>` passes where `V.ranges` is expected, with non-emptiness as a checked
+  contract like a range-typed slot.
+- noip99p1: one `lis` (the `std.seq` method, now with `by:`); the duplicate free `lis` in
+  `std.dp` is gone and `lis_ends` is a method. `read_all<T>()` reads until end of input.
 - noip18p3: `Rooted.children(v)` yields from the stored child layout instead of returning a
   fresh `List` per call.
 - etsr23r1p4: `BeatsSegTree` joins the prelude.

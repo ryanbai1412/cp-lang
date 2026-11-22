@@ -192,13 +192,9 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// O(1).
     pub @get fn len(self) -> Int = todo
 
-/// O(n log n). The positions of one longest increasing subsequence of `xs`
-/// by `by`; `strict: false` allows equal neighbours.
-pub fn lis<D, T, K>(xs: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D> = todo
-
 /// O(n log n). The length of the longest increasing subsequence ending at
-/// each position (`lis_ends(xs).max()` is the LIS length).
-pub fn lis_ends<D, T, K>(xs: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int = todo
+/// each position (`xs.lis_ends().max()` is the LIS length; `xs.lis()` in `std.seq` gives one).
+pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int = todo
 
 /// O(2^popcount(m)). Every submask of `m`, from `m` down to 0.
 pub fn submasks(m: Int) -> yields Int = todo

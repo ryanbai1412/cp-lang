@@ -483,8 +483,10 @@ pub struct SubseqStep<T>(items: List<T>):
 /// O(k) per subsequence. All subsequences of `self` in lex order; supports `step.prune()` (decision 126, W6).
 pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T> = todo
 
-/// O(n log n), O(n) memory. Longest increasing (or non-decreasing when `strict: false`) subsequence indices in `D`.
-pub fn lis<D, T>(self: [D]T, strict: Bool = true) -> List<D> = todo
+/// O(n log n), O(n) memory. The positions of one longest increasing subsequence by `by`;
+/// `strict: false` allows equal neighbours. Longest non-increasing is `by: desc`-style `x => -x`
+/// with `strict: false`.
+pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D> = todo
 
 /// O(|a| * |b|), O(|a| * |b|) memory. Longest common subsequence of `a` and `b` as matched `(i, j)` index pairs.
 pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)> = todo

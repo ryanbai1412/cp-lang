@@ -10,3 +10,7 @@ pub fn yes(ok: Bool, answers: ?(Str, Str) = none) -> Str = todo
 /// exit flush stdout first; a program that never builds one never flushes early. O(1).
 pub struct Wire():
     pub fn new() -> Wire = todo
+
+/// O(tokens). Every remaining value of type `T` until the input ends, for statements whose input
+/// has no count (`read_all<Int>()`). Reading anything after it is an error.
+pub fn read_all<T>() -> List<T> = todo

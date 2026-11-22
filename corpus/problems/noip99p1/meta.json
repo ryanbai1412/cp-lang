@@ -5,10 +5,17 @@
   {"id": "5044522", "language": "CPP17", "result": "AC", "time": 0.014060706, "memory_kb": 3332.0, "file": "corpus/submissions/5044522.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "artifacts": {
+  "dream": [
+   "corpus/problems/noip99p1/dream.cp"
+  ]
+ },
+ "tags": [
+  "lis",
+  "dilworth"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "read_all for count-less input; one lis with by:."
 }
