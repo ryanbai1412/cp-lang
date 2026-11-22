@@ -20,21 +20,21 @@ pub struct Planned {
 
 pub const BOUNDED_STR: Planned = Planned {
     feature: "a string type with a bounded length, `Str(len: …)`",
-    see: Some("design/spec/29-strings.md §29.1"),
+    see: Some("spec/core/02-values-types.md §2.3"),
     now: "read a `Str` and check its `.len` where it is used",
     example: "let s: Str(len: 1..=10) = read()\nprint(s.len)\n",
 };
 
 pub const FRESH_TYPE: Planned = Planned {
     feature: "a fresh type made from values, `type Z = Mint(mod: p)`",
-    see: Some("design/spec/12-scoped-types.md §12.1"),
+    see: Some("spec/core/02-values-types.md §2.9"),
     now: "give the value as a type argument: `Mod<1000000007>`",
     example: "type Z = Mint(mod: 998244353)\nlet x: Z = 3\nprint(x)\n",
 };
 
 pub const WRAP_LINE: Planned = Planned {
     feature: "a wrap line, `--- with f() ---`",
-    see: Some("design/spec/16-state.md §16.3"),
+    see: Some("spec/core/09-contexts-checks.md §9.1"),
     now: "pass the rest as a closure, `f(() => …)`; for multitest/interactive use `@!multitest` or `@!interactive`",
     example: "fn go(f: () -> Int) -> Int = f()
 --- with go() ---
@@ -62,7 +62,7 @@ print(a.len)
 
 pub const CONTEXT_LINE: Planned = Planned {
     feature: "a context, `with io(base: 1)`",
-    see: Some("design/spec/17-contexts.md §17.1"),
+    see: Some("spec/core/09-contexts-checks.md §9.1"),
     now: "say it where it applies: `read<1..=n>()` for 1-based input, `print(x, precision: k)`",
     example: "with io(base: 1)
 let n: 1..=5 = read()
@@ -72,7 +72,7 @@ print(n)
 
 pub const CONTINUED_LINE: Planned = Planned {
     feature: "a line continued by an indented line that starts with an operator",
-    see: Some("design/spec/10-syntax.md §10.1"),
+    see: Some("spec/core/01-lexical-grammar.md §1.2"),
     now: "wrap the expression in parentheses, inside which it can span lines",
     example: "let a = 1\n    + 2\nprint(a)\n",
 };
@@ -123,7 +123,7 @@ print(s.len)
 
 pub const LOWER_VARIANT_PATTERN: Planned = Planned {
     feature: "a lowercase variant in a pattern, `incr(l, r) =>`",
-    see: Some("design/spec/11-types.md §11.2"),
+    see: Some("spec/core/02-values-types.md §2.7"),
     now: "name the variant with a capital, `Incr(l, r)`",
     example: "enum Node: leaf, incr(a: Int, b: Int)
 let x = Node.leaf
@@ -202,7 +202,7 @@ pub const FILTERED_DOMAIN: Planned = Planned {
 
 pub const PARAM_PATTERN: Planned = Planned {
     feature: "a pattern in place of a parameter name, `fn f((r, c): Pt)`",
-    see: Some("design/spec/14-functions-traits.md §14.1"),
+    see: Some("spec/core/06-control-functions.md §6.1"),
     now: "name the parameter and take it apart on the first line, `let (r, c) = p`",
     example: "fn f((a, b): (Int, Int)) -> Int = a + b\nprint(f((1, 2)))\n",
 };
@@ -262,14 +262,14 @@ impl Planned {
 
 pub const DOMAIN_VALUE: Planned = Planned {
     feature: "a domain used as a value, `f(D)`",
-    see: Some("design/spec/21-index-spaces.md §21.5"),
+    see: Some("spec/core/02-values-types.md §2.9"),
     now: "loop over it with `for v in D`, or pass its range, `D.first ..= D.last`",
     example: "domain D = 0..3\nfn f(n: Int) -> Int = n\nprint(f(D))\n",
 };
 
 pub const CUT_DOMAIN: Planned = Planned {
     feature: "the cuts of a domain spelled `D.Cut`",
-    see: Some("design/spec/21-index-spaces.md §21.4"),
+    see: Some("spec/core/04-indices.md §Domains"),
     now: "the cuts of `D` are `D.bounds` today",
     example: "domain P = 0..3\nvar a: [P.Cut]Int = 0\nprint(a[P.bounds.first])\n",
 };
