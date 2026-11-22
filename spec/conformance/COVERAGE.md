@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1058 (296 passing). Rules: 521.
+Cases: 1072 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -781,8 +781,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **lazy** (20/30 named by a case)
   - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_range`, `LazyTreap.append`, `Rope`, `Rope.new`, `Rope.to_array`
 - **marks** (46/46 named by a case)
-- **math** (36/83 named by a case)
-  - uncovered: `lcm`, `fixed`, `choose`, `choose2`, `ext_gcd`, `ceil_div`, `divmod`, `Sieve.is_prime`, `Sieve.factor`, `Sieve.phi`, `Sieve.mobius`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `bit_len`, `digits`, `to_str`, `is_pow2`, `splitmix64`, `factor`, `divisors`, `divisors_from_factors`, `inv_mod`, `crt`, `crt_all`, `mul_mod`, `pow_mod`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `floor_sum`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.divmod`, `BigInt.gcd`, `inf`
+- **math** (51/83 named by a case)
+  - uncovered: `fixed`, `choose2`, `Sieve.is_prime`, `Sieve.factor`, `Sieve.phi`, `Sieve.mobius`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `to_str`, `is_pow2`, `splitmix64`, `divisors_from_factors`, `crt_all`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
 - **matrix** (52/63 named by a case)
   - uncovered: `Mat.new`, `Mat.transpose`, `Mat.mul_vec`, `Mat.product`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (4/6 named by a case)
@@ -823,7 +823,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (15/22 named by a case)
   - uncovered: `Window.new`, `Track`, `track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1533 of 2222 std items are named by a case.
+1548 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
