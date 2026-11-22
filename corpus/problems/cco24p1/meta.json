@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/cco24p1/dream.cp"
+  ],
   "original": [
    "proto/ports/cco24p1.cpp",
    "proto/ports/cco24p1_orig.cpp"
@@ -23,7 +26,7 @@
   "multi-source"
  ],
  "difficulty": "easy",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Multi-source dijkstra with negated starting distances; a max-plus dijkstra (round 4 'monoid later') would remove the negation."
 }

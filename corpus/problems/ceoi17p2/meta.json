@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ceoi17p2/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_13/ceoi17p2.cp"
   ],
@@ -19,7 +22,7 @@
   "binary-search"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "sorted(by: desc).scan(+); first_true over Prefix cuts; F64 print precision."
 }

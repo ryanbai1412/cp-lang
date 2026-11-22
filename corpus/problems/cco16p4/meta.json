@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/cco16p4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_8/cco16p4.cp"
   ],
@@ -19,7 +22,7 @@
   "counting"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Canonical form by 2x2 toggles; chain + fold to a mask; tally().values() pair count."
 }
