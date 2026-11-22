@@ -33,10 +33,8 @@ if k % 2 == 0:
     print("Yes")
     return
 
-var forbidden: [V]List<V> = []
-for (u, v) in edges:
-    for (a, b) in [(u, v), (v, u)]: forbidden[a].push(b)
-for u in V: forbidden[u].sort()
+let g = Graph.undirected(edges)
+let forbidden = [V] u => g[u].sorted()
 
 fn complement_components() -> List<List<V>>:
     var unvisited = Set(V)

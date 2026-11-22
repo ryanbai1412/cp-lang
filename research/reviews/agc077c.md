@@ -1,6 +1,6 @@
 # agc077c
 
-Score: 3/5
+Score: pending cold rescore (replaced hand-built adjacency with Graph.undirected(edges); emitted C++ 13,036 -> 15,886 B from Graph.undirected helper, <48 KB)
 Dream: 4/5
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
