@@ -100,3 +100,16 @@ Spec versions rerun with `v03/loop.sh` (check, test, 100 stress cases, 100 emitt
 | p20 | still fails: row 19 |
 
 That makes 9 of 20 pass as the docs teach: p01, p02, p03, p04, p08, p13, p15, p16, p17.
+
+## Recheck on b4b4f1e9
+
+`repro-v03/run.sh`, same mode. Changes since f605b8a4:
+
+| Row | Construct | Now |
+|---|---|---|
+| 5 | `I.cuts` with `.next!` / `.r!` | runs and builds; p05 spec version passes the full loop |
+| 7, 24 | `dijkstra(Graph.directed(...))` then `p[v]` / `p.get(v)` | now fails at check, one step earlier: ``error[E0606]: `Graph<_, _>` does not implement `WeightedNext` required by `dijkstra` `` (the `w:` field graph of the `std.graph` docs) |
+| 15 | `wire.ask<Str>(...) == ">="` | check, run and build now say ``error[E0606]: `fn(query: Str) -> _` does not implement `Ord` `` |
+
+Every other row is as in the f605b8a4 recheck. 10 of 20 pass as the docs teach: p01, p02,
+p03, p04, p05, p08, p13, p15, p16, p17.
