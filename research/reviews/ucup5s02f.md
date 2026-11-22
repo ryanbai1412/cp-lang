@@ -1,7 +1,7 @@
 # ucup5s02f
 
-Score: pending cold rescore (wrote dream + rewrote port with header deriving `covers` and 6/3/2 growth from `6 / gcd(6, v)`, bounded inputs, typed `[0..n0]`/`[0..n1]`/`[0..q]` reads with zero turbofish, `?Int` return, and hoisted `k6`/`t6`/`shift` — 0 lints; emitted C++ 8,122 -> 10,650 B (+2,528 B, < 48 KB) from typed table reads + `?Int` optional + input range checks; shared read helpers will trim it)
-Dream: pending cold rescore (new dream matching active port)
+Score: 4/5
+Dream: 4/5
 
 Baseline review, cold, on main 8b49fa9d. A line-by-line translation with no header. The search over `k` (lines 12-18) is the whole idea, and nothing says why `k` grows by a factor of 6, 3 or 2. No dream exists, so the score is capped at 3.
 
@@ -21,3 +21,9 @@ Baseline review, cold, on main 8b49fa9d. A line-by-line translation with no head
 ## Gaps that need the language
 
 - None found; the port has no friction report.
+
+## Cold review (HEAD)
+
+Port 2/5 → 4/5, dream 4/5 (new), rescored cold on main c92915e3; both pass. The header (lines 3-19) derives the cleared-denominator test in `covers` and the 6/3/2 growth from `6 / gcd(6, v)`. Inputs are bounded, the reads are typed tables, and `solve` returns `?Int`. Both files check with zero errors.
+- Minor (port): the port still wraps literals in `I128(...)` (lines 31, 37-40). The dream writes bare `6`, `1`, `k *= 6` on the same lines and checks clean, so the casts can go today.
+- Minor: the segment endpoints are unbounded `Int` (lines 45-46), and line 14 ("must refine the 6-grid enough") states the gcd rule more than it proves it.
