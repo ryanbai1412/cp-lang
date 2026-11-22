@@ -1294,7 +1294,42 @@ fn full_contains_every_position_and_nothing_past_end():
         assert (f & Bitset<D>.new()).is_empty
 
 @test
-fn nav_helpers_and_in_place_shifts() = todo
+fn nav_helpers_and_in_place_shifts():
+    domain P = 0..195
+    var b = Bitset<P>.new()
+    assert b.first() == None and b.rfind(_ => true) == None
+    for idx in [0, 63, 64, 127, 128, 194]: b.add(P(idx))
+    assert b.first() == Some(P(0)) and b.rfind(_ => true) == Some(P(194))
+    assert b.prev(P(0)) == None
+    assert b.prev(P(64)) == Some(P(63))
+    assert b.prev(P(128)) == Some(P(127))
+    assert b.prev(P(194)) == Some(P(128))
+    assert b.count_below(P(0)) == 0
+    assert b.count_below(P(64)) == 2
+    assert b.count_below(P(128)) == 4
+    assert b.count_below(P(194)) == 5
+    assert b.with(P(5)).contains(P(5)) and not b.contains(P(5))
+    assert not b.without(P(64)).contains(P(64)) and b.contains(P(64))
+    assert b.find(x => x.to_idx > 100) == Some(P(127))
+    assert b.find(x => x.to_idx > 200) == None
+    for k in [1, 7, 63, 64, 65, 128, 194, 300]:
+        let s = b.shifted(-k)
+        for p in P:
+            let src = p.to_idx + k
+            assert s.contains(p) == (src < 195 and b.contains(P(src)))
+    var u = Bitset<P>.new()
+    for idx in [0, 1, 63, 64, 129]: u.add(P(idx))
+    let expected_up = u.shifted(65)
+    u.shift_up(65)
+    for p in P: assert u.contains(p) == expected_up.contains(p)
+    var o = Bitset<P>.new()
+    o.add(P(0))
+    for w in [3, 64, 65, 17]:
+        let want = o | o.shifted(w)
+        o.shift_or(w)
+        for p in P: assert o.contains(p) == want.contains(p)
+    o.clear()
+    assert o.is_empty and o.first() == None
 
 @test
 fn subset_sums_matches_naive_with_duplicates():
@@ -1308,4 +1343,16 @@ fn subset_sums_matches_naive_with_duplicates():
     for s in S: assert fast.contains(s) == naive.contains(s)
 
 @test
-fn subset_parity_constructors_and_complement() = todo
+fn subset_parity_constructors_and_complement():
+    domain P = 0..70
+    let e = Bitset<P>.empty()
+    let f = Bitset<P>.full()
+    assert e.is_empty and f.len == 70
+    let s = Bitset<P>.single(P(64))
+    assert s.len == 1 and P(64) in s and s.first() == Some(P(64)) and s.rfind(_ => true) == Some(P(64))
+    let c = s.complement()
+    assert c.len == 69 and P(64) not in c and P(0) in c and P(69) in c
+    let s2 = s.with(P(3)).without(P(64))
+    assert s2.len == 1 and P(3) in s2 and P(64) not in s2
+    let evens = Bitset<P>.of([p for p in P if p.to_idx % 2 == 0])
+    assert evens.len == 35 and P(0) in evens and P(1) not in evens and P(68) in evens

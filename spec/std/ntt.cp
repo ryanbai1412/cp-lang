@@ -607,7 +607,23 @@ fn ntt_round_trip_and_convolve():
         assert cyc == want_cyc
 
 @test
-fn convolve_matches_brute_force_for_every_value_type() = todo
+fn convolve_matches_brute_force_for_every_value_type():
+    for _ in 0..20:
+        let (n, m) = (rand(1, 9), rand(1, 9))
+        let a = [rand(-50, 50) for _ in 0..n]
+        let b = [rand(-50, 50) for _ in 0..m]
+        var want = List.filled(n + m - 1, 0)
+        for i in 0..n:
+            for j in 0..m: want[i + j] += a[i] * b[j]
+        assert convolve(a, b) == want
+        let az = [Mod<998_244_353>(x) for x in a]
+        let bz = [Mod<998_244_353>(x) for x in b]
+        assert convolve(az, bz) == [Mod<998_244_353>(x) for x in want]
+        let af = [F64(x) for x in a]
+        let bf = [F64(x) for x in b]
+        let got = convolve(af, bf)
+        assert got.len == want.len
+        for k in 0..want.len: assert abs(got[k] - F64(want[k])) < 1e-6
 
 @test
 fn sos_and_bitwise_convolutions():

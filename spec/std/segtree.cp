@@ -460,7 +460,27 @@ fn keeps_the_order_for_non_commutative_monoids():
     assert st.all == "abcde"
 
 @test
-fn right_while_and_left_while_binary_search() = todo
+fn right_while_and_left_while_binary_search():
+    for n in [1, 2, 3, 5, 8, 13]:
+        domain P = 0..n
+        for _ in 0..40:
+            var a: [P]Int = 0
+            for i in P: a[i] = rand(0, 5)
+            let s = SegTree<P, Int>.of(+, i => a[i])
+            let lim = rand(0, 12)
+            for f in 0..=n:
+                var d = f
+                var sum = 0
+                while d < n and sum + a[P.nth(d)] <= lim:
+                    sum += a[P.nth(d)]
+                    d += 1
+                assert s.right_while(P.cuts.nth(f), x => x <= lim).ord == d
+                var e = f
+                var sm = 0
+                while e > 0 and sm + a[P.nth(e - 1)] <= lim:
+                    sm += a[P.nth(e - 1)]
+                    e -= 1
+                assert s.left_while(P.cuts.nth(f), x => x <= lim).ord == e
 
 @test
 fn update_changes_one_value_in_place():
@@ -1129,4 +1149,19 @@ pub struct MergeSeg<D>:
         None
 
 @test
-fn merge_sort_and_sparse_segtree_match_brute() = todo
+fn merge_sort_and_sparse_segtree_match_brute():
+    domain I = 1..=14
+    let a = [I] _ => rand(-10, 10)
+    let mst = MergeSortTree<I, Int>(a)
+    fn cnt(r: Range<I>, ok: Int -> Bool) -> Int:
+        var c = 0
+        for i in r:
+            if ok(a[i]): c += 1
+        c
+    for l in 1..=14:
+        for r in l..=14:
+            let rng = I(l)..=I(r)
+            for v in [-11, -5, 0, 5, 11]:
+                assert mst.count_lt(rng, v) == cnt(rng, x => x < v)
+                assert mst.count_le(rng, v) == cnt(rng, x => x <= v)
+            assert mst.count_in(rng, -3, 4) == cnt(rng, x => -3 <= x and x <= 4)

@@ -225,7 +225,10 @@ pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T):
     /// traps: never (an operator without a known inverse is a compile-time error)
     /// example: `Group<Int>.of(+).inv(5) == -5`
     /// example: `Group<Int>.of(^).inv(5) == 5`
-    pub fn of<G>(g: G) -> Group<T> = todo
+    pub fn of<G>(g: G) -> Group<T>:
+        if same(g, +): return Group(T.zero, (a, b) => a + b, a => T.zero - a)
+        if same(g, ^): return Group(T.zero, (a, b) => a ^ b, a => a)
+        g
 
 /// An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`. Right
 /// for tags on idempotent folds such as `min`, `max`, `gcd`, where `n` changed leaves fold to
@@ -239,7 +242,8 @@ pub fn point_action<T, F, M>(
     compose: (F, F) -> F,
     apply: (F, T) -> T,
     over: M,
-) -> Action<T, F> = todo
+) -> Action<T, F>:
+    Action(id, compose, (f, v, span) => apply(f, v), Monoid<T>.of(over))
 
 /// O(1) per merge. Minimum value together with its multiplicity, for counting zeros or
 /// minimum-covered cells under range add (`AddMinCount`).

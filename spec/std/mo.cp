@@ -314,4 +314,46 @@ pub fn mo_with_updates<D, U, R>(
     [x! for x in res]
 
 @test
-fn mo_order_and_steps_answer_distinct_counts() = todo
+fn mo_order_and_steps_answer_distinct_counts():
+    domain I = 1..=20
+    let a = [I] _ => rand(0, 5)
+    var queries: List<Range<I>> = []
+    for _ in 0..40:
+        let l = rand(1, 20)
+        let r = rand(l, 20)
+        queries.push(I(l)..=I(r))
+    var freq = List.filled(6, 0)
+    var distinct = 0
+    var win: Range<I> = I(1)..I(1)
+    var ans = List.filled(queries.len, 0)
+    for qi in mo_order(queries):
+        let target = queries[qi]
+        for s in mo_steps(win, target):
+            let v = a[s.pos]
+            if s.entering:
+                if freq[v] == 0: distinct += 1
+                freq[v] += 1
+            else:
+                freq[v] -= 1
+                if freq[v] == 0: distinct -= 1
+        win = target
+        ans[qi] = distinct
+    for qi in 0..queries.len:
+        var seen = List.filled(6, false)
+        for i in queries[qi]: seen[a[i]] = true
+        var want = 0
+        for v in 0..6:
+            if seen[v]: want += 1
+        assert ans[qi] == want
+    var freq2 = List.filled(6, 0)
+    var distinct2 = 0
+    fn add_pos(p: I):
+        let v = a[p]
+        if freq2[v] == 0: distinct2 += 1
+        freq2[v] += 1
+    fn rem_pos(p: I):
+        let v = a[p]
+        freq2[v] -= 1
+        if freq2[v] == 0: distinct2 -= 1
+    let ans2 = mo(queries, add: add_pos, remove: rem_pos, answer: _ => distinct2)
+    assert ans2 == ans
