@@ -2,12 +2,13 @@
 //! publishes diagnostics, and answers hover and go-to-definition on the first
 //! use of every name and completion after every `name.`, without an internal
 //! error. Hover on a declared array, optional or struct says what it stores.
+//! Correctness only: latency is `tests/latency.rs`'s job, since a wall-clock
+//! limit here fails whenever the machine is loaded.
 
 use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 use std::collections::HashSet;
 use std::path::Path;
-use std::time::{Duration, Instant};
 
 fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     let mut members = vec![("jsonrpc".to_string(), Value::from("2.0"))];
@@ -125,21 +126,16 @@ fn walk(
     for (method, at) in asks {
         *id += 1;
         let params = obj([("textDocument", doc()), ("position", position(src, at))]);
-        let start = Instant::now();
         let reply: String = server
             .handle(&message(Some(*id), method, params))
             .iter()
             .map(Value::to_string)
             .collect();
-        let took = start.elapsed();
         if reply.is_empty()
             || reply.contains("internal error in cpl")
             || reply.contains("\"error\"")
         {
             failures.push(format!("{name}: {method} at byte {at}: {reply:.200}"));
-        }
-        if took > Duration::from_secs(1) {
-            failures.push(format!("{name}: {method} at byte {at} took {took:?}"));
         }
         stores |= method == "textDocument/hover" && reply.contains("storage:");
     }

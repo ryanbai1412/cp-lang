@@ -855,7 +855,9 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         "{doc}"
     );
     assert!(doc.contains("Lucas's theorem"), "{doc}");
+    let checked = server.db.stats().items_checked;
     let def = server.handle(&request(3, "textDocument/definition", at(2, 9)));
+    assert_eq!(server.db.stats().items_checked, checked, "rechecked std");
     assert!(def[0]
         .at(&["result", "uri"])
         .as_str()
@@ -865,14 +867,11 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         .lines()
         .position(|l| l.trim_start().starts_with("pub fn choose("))
         .unwrap() as u32;
-    assert_eq!(
-        def[0].at(&["result", "range", "start"]),
-        &pos(choose_line, 11)
-    );
-    assert_eq!(
-        def[0].at(&["result", "range", "end"]),
-        &pos(choose_line, 17)
-    );
+    let range = obj([
+        ("start", pos(choose_line, 11)),
+        ("end", pos(choose_line, 17)),
+    ]);
+    assert_eq!(def[0].at(&["result", "range"]), &range);
 }
 
 const V22: &str = "\

@@ -27,7 +27,7 @@ const INVALID_REQUEST: i32 = -32600;
 const SERVER_NOT_INITIALIZED: i32 = -32002;
 
 pub struct Server {
-    db: Database,
+    pub(crate) db: Database,
     /// Open documents by URI, with their current text.
     docs: BTreeMap<String, String>,
     /// The standard library's declarations, for completion.
@@ -560,10 +560,12 @@ impl Server {
                 let Some(def) = self.db.definition_location(&uri, offset) else {
                     return Ok(Reply::default());
                 };
-                let analysis = self
+                // Only the target's text: analyzing a module the file merely
+                // imports would check all of it again, as if it were open.
+                let text = self
                     .db
-                    .analyze(&def.path)
-                    .expect("definition implies an analysis");
+                    .file_text(&def.path)
+                    .expect("definition implies a loaded file");
                 let target_uri = if def.path == uri {
                     def.path.clone()
                 } else {
@@ -571,10 +573,7 @@ impl Server {
                 };
                 Ok(Reply::result(obj([
                     ("uri", target_uri.into()),
-                    (
-                        "range",
-                        range_json(def.span, &analysis.text, &analysis.lines),
-                    ),
+                    ("range", range_json(def.span, &text, &LineIndex::new(&text))),
                 ])))
             }
             "textDocument/codeLens" => {
