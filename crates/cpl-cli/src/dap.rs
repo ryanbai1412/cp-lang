@@ -958,8 +958,13 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
 }
 
 fn describe_change(change: &Change) -> String {
-    let was = change.before.as_deref().unwrap_or("the run had ended");
-    let now = change.after.as_deref().unwrap_or("the run has ended");
+    let source = |json: &Option<String>, ended: &str| match json.as_deref().map(Json::parse) {
+        Some(Ok(json)) => shown(&json),
+        Some(Err(_)) => json.clone().unwrap_or_default(),
+        None => ended.to_string(),
+    };
+    let was = source(&change.before, "the run had ended");
+    let now = source(&change.after, "the run has ended");
     match &change.variable {
         Some(var) => format!("first change at line {}: `{var}` = {now} (before the edit: {was})", change.line),
         None => format!("first change at line {}: {now} (before the edit: {was})", change.line),
@@ -1235,5 +1240,22 @@ impl<'a> Parser<'a> {
                 _ => return Err(()),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_rerun_change_is_shown_as_the_source_writes_it() {
+        let change = Change {
+            step: 5,
+            line: 11,
+            variable: Some("best".into()),
+            before: Some("[0,1,0]".into()),
+            after: Some("[0,0,1]".into()),
+        };
+        assert_eq!(describe_change(&change), "first change at line 11: `best` = [0, 0, 1] (before the edit: [0, 1, 0])");
     }
 }
