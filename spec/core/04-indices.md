@@ -166,7 +166,7 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    one inside the domain at its smallest count is proven; one between is
    checked like any unproven position. (R04.4.25)
 4. **Cut range to piece:** a literal `j..i` whose ends are cuts, where a
-   `Range<V>` is expected, is the piece between them (R04.4.21).
+   `Range<V>` is expected, is the piece between them (see R04.4.21).
    (R04.4.26)
 5. **Scalar to array fill:** a value `x: T` where `[D]T` is expected is
    the array over `D` with every element `x`, evaluated once:
