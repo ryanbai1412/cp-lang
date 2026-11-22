@@ -2089,6 +2089,9 @@ pub struct PalindromicTree<A>:
     cnt: List<0..=2_000_000_000>
     chars: List<A>
     last: 0..=2_000_000_000
+    front: List<A>
+    first: 0..=2_000_000_000
+    undo: List<(last: Int, first: Int, edge: Int, fronts: Int)>
 
     /// An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the
     /// even root `1`. Call it as `PalindromicTree<A>()`.
@@ -2098,7 +2101,7 @@ pub struct PalindromicTree<A>:
     /// example: `PalindromicTree<Char>().len == 2`
     pub fn new() -> PalindromicTree<A>:
         let k = A.K
-        PalindromicTree(k, List.filled(2 * k, -1), [0, 0], [-1, 0], [0, 0], [0, 0], [0, 0], [], 1)
+        PalindromicTree(k, List.filled(2 * k, -1), [0, 0], [-1, 0], [0, 0], [0, 0], [0, 0], [], 1, [], 1, [])
 
     /// The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.
     /// New states are numbered from `2` in creation order.
@@ -2121,38 +2124,52 @@ pub struct PalindromicTree<A>:
     /// example: `var t = PalindromicTree<Char>(); t.push('a'); t.push('a') == 3`
     pub fn push(mut self, a: A) -> Int:
         let c = a.to_idx
-        let pos = chars.len
+        let pos = self.size()
         chars.push(a)
         unchecked:
             var cur = last
             while true:
                 let prev = pos - plen[cur] - 1
-                if prev >= 0 and chars[prev] == a: break
+                if prev >= 0 and self.at(prev) == a: break
                 cur = slink[cur]
+            var edge = -1
             if next[cur * alpha + c] == -1:
-                let nw = slink.len
-                let nw_len = plen[cur] + 2
+                edge = cur * alpha + c
                 let link_to = if cur == 0:
                     1
                 else:
                     var f = slink[cur]
                     while true:
                         let prev = pos - plen[f] - 1
-                        if prev >= 0 and chars[prev] == a: break
+                        if prev >= 0 and self.at(prev) == a: break
                         f = slink[f]
                     next[f * alpha + c]
-                let d = nw_len - plen[link_to]
-                let sl = if d == diff_val[link_to]: ser_link[link_to] else: link_to
-                for _ in 0..alpha: next.push(-1)
-                slink.push(link_to)
-                plen.push(nw_len)
-                diff_val.push(d)
-                ser_link.push(sl)
-                cnt.push(0)
-                next[cur * alpha + c] = nw
+                self.grow(cur, c, link_to)
+            undo.push((last:, first:, edge:, fronts: front.len))
             last = next[cur * alpha + c]
             cnt[last] += 1
+            if plen[last] == pos + 1: first = last
         last
+
+    fn size(self) -> Int = front.len + chars.len
+
+    @allow(unproven_list_index)
+    fn at(self, i: Int) -> A = if i < front.len: front[front.len - 1 - i] else: chars[i - front.len]
+
+    @allow(unproven_list_index)
+    fn grow(mut self, cur: Int, c: Int, link_to: Int):
+        unchecked:
+            let nw = slink.len
+            let nw_len = plen[cur] + 2
+            let d = nw_len - plen[link_to]
+            let sl = if d == diff_val[link_to]: ser_link[link_to] else: link_to
+            for _ in 0..alpha: next.push(-1)
+            slink.push(link_to)
+            plen.push(nw_len)
+            diff_val.push(d)
+            ser_link.push(sl)
+            cnt.push(0)
+            next[cur * alpha + c] = nw
 
     /// The number of states, both roots included: `distinct + 2`.
     ///
@@ -2237,7 +2254,31 @@ pub struct PalindromicTree<A>:
     /// cost: O(1) amortized
     /// traps: never (`a` is an `A`)
     /// example: `var t = PalindromicTree<Char>.of("ba"); t.push_front('a') == 4`
-    pub fn push_front(mut self, a: A) -> Int = todo
+    pub fn push_front(mut self, a: A) -> Int:
+        let c = a.to_idx
+        front.push(a)
+        let n = self.size()
+        unchecked:
+            var cur = first
+            while true:
+                let after = plen[cur] + 1
+                if after < n and self.at(after) == a: break
+                cur = slink[cur]
+            if next[cur * alpha + c] == -1:
+                let link_to = if cur == 0:
+                    1
+                else:
+                    var f = slink[cur]
+                    while true:
+                        let after = plen[f] + 1
+                        if after < n and self.at(after) == a: break
+                        f = slink[f]
+                    next[f * alpha + c]
+                self.grow(cur, c, link_to)
+            first = next[cur * alpha + c]
+            cnt[first] += 1
+            if plen[first] == n: last = first
+        first
 
     /// Undoes the most recent `push` not yet undone, removing the state it created if any, so a
     /// DFS over a tree of strings can back out.
@@ -2245,7 +2286,23 @@ pub struct PalindromicTree<A>:
     /// cost: O(1) amortized
     /// traps: when there is no `push` to undo
     /// example: `var t = PalindromicTree<Char>.of("ab"); t.pop(); t.distinct == 1 and t.last_state == 2`
-    pub fn pop(mut self) = todo
+    pub fn pop(mut self):
+        assert not undo.is_empty, "`pop` needs a `push` to undo"
+        let u = undo.pop()!
+        assert u.fronts == front.len, "`pop` can't undo a `push` made before a `push_front`"
+        unchecked:
+            cnt[last] -= 1
+            if u.edge != -1:
+                next[u.edge] = -1
+                for _ in 0..alpha: next.pop()
+                slink.pop()
+                plen.pop()
+                diff_val.pop()
+                ser_link.pop()
+                cnt.pop()
+        chars.pop()
+        last = u.last
+        first = u.first
 
     /// The state of the longest palindromic suffix of the current string; the even root `1`
     /// when the string is empty.
@@ -2289,19 +2346,19 @@ pub struct PalindromicTree<A>:
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aab").min_palindrome_partition() == [0, 1, 1, 2]`
     pub fn min_palindrome_partition(self) -> List<Int>:
-        let n = chars.len
+        let n = self.size()
         var t = PalindromicTree<A>.new()
         var dp = List.filled(n + 1, 0)
         var series = List.filled(slink.len, 0)
         unchecked:
             for i in 1..=n:
-                var v = t.push(chars[i - 1])
+                var v = t.push(self.at(i - 1))
                 dp[i] = i
-                while plen[v] > 0:
-                    series[v] = dp[i - (plen[ser_link[v]] + diff_val[v])]
-                    if diff_val[v] == diff_val[slink[v]]: series[v] = min(series[v], series[slink[v]])
+                while t.plen[v] > 0:
+                    series[v] = dp[i - (t.plen[t.ser_link[v]] + t.diff_val[v])]
+                    if t.diff_val[v] == t.diff_val[t.slink[v]]: series[v] = min(series[v], series[t.slink[v]])
                     dp[i] = min(dp[i], series[v] + 1)
-                    v = ser_link[v]
+                    v = t.ser_link[v]
         dp
 
 /// Dynamic trie over alphabet domain `A`. O(|word|) per operation; flat `|A|`-stride table.
