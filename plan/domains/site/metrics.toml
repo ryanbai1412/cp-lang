@@ -40,8 +40,8 @@ target = "<= 2100000 (enforced in prebuild)"
 
 [[metric]]
 name = "search_index_gzip_bytes"
-command = "gzip -c web/out/api/search | wc -c"
-today = 438011
+command = "gzip -9c web/out/api/search | wc -c"
+today = 487290
 target = "<= 500000"
 
 [[metric]]

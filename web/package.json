@@ -40,7 +40,8 @@
     "react-dom": "19.3.1",
     "react-resizable-panels": "4.23.0",
     "shiki": "4.6.0",
-    "tailwind-merge": "3.7.0"
+    "tailwind-merge": "3.7.0",
+    "zbsearch": "4.0.4"
   },
   "devDependencies": {
     "@playwright/test": "1.65.0",

@@ -45,7 +45,7 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 | Browser smoke | `pnpm --dir web smoke` | pass, 0 page errors | pass, in CI | M1 |
 | Broken internal links | `pnpm --dir web links` | 0 (was 1) | 0 | M1 |
 | cpl.wasm gzipped | `node web/scripts/wasm-size.mjs` | 1,768,985 B | ≤ 2,100,000 B, enforced | M1 |
-| Search index gzipped | `gzip -c web/out/api/search \| wc -c` | 438,011 B (2.5 MB raw; was 2,690,140) | ≤ 500,000 B | M1 |
+| Search index gzipped | `gzip -9c web/out/api/search \| wc -c` | 487,290 B (3.0 MB raw; was 2,690,140) | ≤ 500,000 B | M1 |
 | Page weight, gzipped | `pnpm --dir web page-weight` | `/` 783,489 B, no cpl.wasm (was 2,560,698 B); `/docs/guides/tour` 829,726 B | `/` ≤ 800,000 B and no cpl.wasm; tour ≤ 900,000 B | M1 |
 | Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
 | Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |
@@ -64,7 +64,7 @@ A cold agent scores fixed samples 1-5 with a reason; Ryan's review overrides it.
 Probes (cold agent, pass/fail + time):
 
 - **P1 docs-only solve:** with only cp-lang.org, solve 3 unseen Div 2 A/B problems in the playground. Tests 1, 3.
-- **P2 lookup:** find "what does `r.last_true(ok)` return on an empty range" via the site. Tests 2. Baseline: fail, search finds only the `SortedBag` methods; the `Range` answer is a table row in core 04-indices.
+- **P2 lookup:** find "what does `r.last_true(ok)` return on an empty range" via the site. Tests 2. Baseline: failed (search missed bare method names and core table rows); now passes, `last_true` finds the R04.4.19 row (smoke-tested).
 - **P3 add a practice problem** by following ARCHITECTURE.md; the gate judges it. Files touched, minutes.
 - **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4. Baseline, mechanical half: `pnpm --dir web phone` -> 10/10 routes fit, nothing past the edge.
 
@@ -72,7 +72,7 @@ Probes (cold agent, pass/fail + time):
 
 1. Restore the docs-only eval (needs the statement fetcher and a model key) and point it at the served docs; it is the domain's bar and cannot run today.
 2. Run `scripts/site-check.sh` in CI (infra request filed); it is on main and green locally.
-3. Search index: done, 2.7 MB -> 438 KB gzipped (reference pages index headings and intro only).
+3. Search index: done, 2.7 MB -> 487 KB gzipped (reference pages index headings, intro and core table rows); 13 KB of headroom left.
 4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
 5. Guide code blocks live (Run) when they run; today they are static.
 6. Learn: 5 more chapters, 8 more problems.

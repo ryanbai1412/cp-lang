@@ -49,13 +49,13 @@ await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
 await page.getByRole('status').filter({ hasText: '115' }).waitFor({ timeout: 30000 });
 console.log('play run output ok');
-for (const [query, url] of [['Monoid', '/docs/ref/std/algebra'], ['borrow it', '/docs/guides/borrowing']]) {
+for (const [query, url] of [['Monoid', '/docs/ref/std/algebra'], ['borrow it', '/docs/guides/borrowing'], ['last_true', '/docs/ref/core/04-indices']]) {
   await page.goto(base + '/docs/guides/tour');
   await page.getByRole('button', { name: /^Search/ }).first().click();
   await page.getByRole('combobox', { name: 'Search' }).fill(query);
   await page.locator(`[role=option][id^="fd-search-option-${url}"]`).first().waitFor({ timeout: 30000 });
 }
-console.log('search finds a reference item and a guide heading');
+console.log('search finds a reference item, a guide heading and a core table row');
 await page.close();
 console.log('page errors:', errors);
 process.exit(errors.length ? 1 : 0);
