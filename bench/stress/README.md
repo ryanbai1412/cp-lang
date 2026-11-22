@@ -16,6 +16,13 @@ the median is measured against the 1 s bar (`GOALS` 4), not asserted.
 checker) to a counterexample: `print(1)` and one mutant per operator, with
 p50 and p95 over the caught runs. It is a measurement, not a gate test.
 
+`budget.py` checks the `plan/ARCHITECTURE.md` A5 stress budget (time to a
+shrunk counterexample for a false conjecture under 10 s) on 3 planted-bug
+problems of different shapes (`@alt(program)`, `@gen` + part `@alt`, and
+`@check`). Run it outside the fast gate:
+
+    python3 bench/stress/budget.py
+
     cargo test -p cpl-cli --test seeded_bugs -- --nocapture
 
 A new bug is a new pair of files. A stress change that finds a smaller
