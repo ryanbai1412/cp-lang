@@ -67,5 +67,4 @@ What codegen needs from the shared core (`cpl-ir`): the typed `Program`, `Narrow
 - `src/ranges.rs` and `src/niche.rs` duplicate fact/layout reasoning that `plan/ARCHITECTURE.md` B3 step 6 moves into `cpl-ir` (shared with the interpreter and `prover`).
 - IR-shape recognizers (`map_remove_do` in `src/expr.rs`) pattern-match lowered blocks; a lowering change silently loses the fast path. They need contract tests in `cpl-ir` or an explicit IR node.
 - Benchmarks are scattered across two Rust runners and four Python scripts in `bench/` with different suites and bars; none runs in `scripts/check.sh`, so perf and size can regress silently.
-- `bench/zero-cost/{modular,segtree_prefix}` no longer build on v0.3 (fixed on `devin/wip-codegen-perf`).
 - `bench/corpus-p95-report.md` is a 0.2 run at `6145b0b`; nothing current replaces it.

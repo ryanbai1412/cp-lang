@@ -45,8 +45,8 @@ Today = measured on main `4b8f504fc`, 8-core VM, g++ 11.4 `-O2`, release `cpl`; 
 | Perf set p50 | `bench/v03_perf_bench.py` (branch) | 0.987x (n=48); 1.028x on `bench/` alone | <= 1.1x | M3 |
 | Perf set max | same | 2.431x (`ranges/mo`) | <= 1.5x | M3 |
 | Perf set programs > 1.5x | same | 3: `ranges/mo` 2.43x, `cf2178h` 1.76x, `p10_matching` 1.53x | 0 | M3 |
-| Largest emitted C++ | `scripts/sizes.py` (branch) | 21.7 KB (v0.3 dry runs, 35/35 build) | < 32 KB | M1 |
-| Programs over 32 KB | same | 1 (`cf2255f` 0.2 port, 48.7 KB); 0 over 64 KB | 0 | M1 |
+| Largest emitted C++ | `bench/sizes.py --check` | 21.7 KB (v0.3 dry runs, 35/35 build) | < 32 KB | M1 |
+| Programs over 32 KB | same | 0 of 161 v0.3 programs that build; largest `cco21p4` 31.9 KB | 0 | M1 |
 | Front end, largest v0.3 program | `time cpl check` | 3 ms | < 500 ms | M3 |
 | Codegen shape tests | `cargo nextest run -p cpl-codegen` | 91 | grows | all |
 | Codegen files over 2000 lines | `scripts/debt-ratchet.json` | 2 | 0 | M2 |
