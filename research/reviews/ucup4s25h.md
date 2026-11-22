@@ -1,7 +1,7 @@
 # ucup4s25h
 
-Score: 3/5
-Dream: none (no dream file)
+Score: pending cold rescore (added dream, renamed state -> go_right with full derivation of right-to-left deletion ordering and s[i-1] > s[i] transition, stated |s| <= 500_000 bound in header)
+Dream: pending cold rescore (new dream: go_right ordering derivation and |s| bound)
 
 Baseline review, cold, on main 6566cb18. The port checks with zero errors. The header (lines 1-2) names the ordering, but `state` (lines 8-12) isn't explained. No dream exists, so the port is capped at 3.
 
