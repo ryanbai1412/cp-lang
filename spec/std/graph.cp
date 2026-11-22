@@ -338,8 +338,10 @@ pub struct Paths<V, W, A>:
 
 /// O(n + m).
 /// Fewest arcs from any of `from` to each vertex; `until: t` stops once `t` is
-/// reached. O(n + m).
-pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = none, hashed: Bool = false) -> Paths<V, Int, G.Arc> = todo
+/// reached, and a vertex is only entered at distance `d` when `enter(v, d)` holds, so
+/// "the cell must still be safe when you get there" is a filter, not a second search.
+/// O(n + m).
+pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = none, enter: (V, Int) -> Bool = (v, d) => true, hashed: Bool = false) -> Paths<V, Int, G.Arc> = todo
 
 /// O(n + m).
 /// Shortest distances when every weight `w(a)` is 0 or 1, from every vertex of `from`
