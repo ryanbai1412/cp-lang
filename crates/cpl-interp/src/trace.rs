@@ -410,6 +410,8 @@ pub(crate) struct Tracer {
     /// What the locals render to, kept between steps.
     locals: String,
     local_names: String,
+    /// Where the names in `local_names` are, so they are escaped once.
+    local_name_at: Vec<(usize, usize)>,
     local_ints: Vec<i64>,
     /// The globals written since the last step, each with the one item
     /// written when only one was, unless `all` may have changed.
@@ -511,6 +513,7 @@ impl Tracer {
             stage_of_case: None,
             locals: String::new(),
             local_names: String::new(),
+            local_name_at: Vec::new(),
             local_ints: Vec::new(),
             touched: Vec::new(),
             all_touched: true,
@@ -758,12 +761,17 @@ impl Tracer {
         });
         if raw {
             let (mut names, mut ints) = (std::mem::take(&mut self.local_names), std::mem::take(&mut self.local_ints));
-            names.clear();
             ints.clear();
-            for (name, _, value) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
-                names.push('\n');
-                string(&mut names, name);
-                ints.push(value.int());
+            ints.extend(view.locals.iter().filter(|(_, _, value)| shown(value)).map(|(_, _, value)| value.int()));
+            let at = view.locals.iter().filter(|(_, _, value)| shown(value)).map(|(name, _, _)| (name.as_ptr() as usize, name.len()));
+            if !at.clone().eq(self.local_name_at.iter().copied()) {
+                self.local_name_at.clear();
+                self.local_name_at.extend(at);
+                names.clear();
+                for (name, _, _) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
+                    names.push('\n');
+                    string(&mut names, name);
+                }
             }
             self.rec.log.locals_ints(&names, &ints);
             (self.local_names, self.local_ints) = (names, ints);

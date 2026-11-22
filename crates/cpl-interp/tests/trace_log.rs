@@ -109,6 +109,35 @@ fn raw_and_json_locals_read_back_from_any_step() {
     assert!(locals.iter().any(|l| l.contains("\"ys\":[0,1]")), "{locals:?}");
 }
 
+const ONE_LOCAL: &str = "\
+fn walk(n: Int) -> Int:
+    var a = 1
+    var b = 2
+    var c = 3
+    for j in 0..n:
+        c += j % 5
+    return a + b + c
+print(walk(5000))
+";
+
+/// A step that changes one of its `Int` locals logs that change alone,
+/// and any step, the last ones kept included, reads back the same.
+#[test]
+fn a_step_changing_one_int_local_logs_only_that_local() {
+    let rec = record(ONE_LOCAL, "", TraceConfig::default());
+    let per_step = rec.bytes() as f64 / rec.len() as f64;
+    assert!(per_step < 20.0, "{per_step:.1} bytes a step over {} steps", rec.len());
+    let walked: Vec<String> = rec.steps(0..rec.len()).map(|s| format!("{s:?}")).collect();
+    for k in (0..rec.len()).step_by(97).chain([rec.len() - 1]) {
+        assert_eq!(format!("{:?}", rec.step(k).unwrap()), walked[k], "step {k}");
+    }
+    assert!(walked.iter().any(|s| s.contains(r#"{\"n\":5000,\"a\":1,\"b\":2,\"c\":13,\"j\":4}"#)), "{:?}", &walked[..12]);
+    let last = record(ONE_LOCAL, "", TraceConfig { last_steps: Some(1000), ..TraceConfig::default() });
+    let kept: Vec<String> = last.steps(0..last.len()).map(|s| format!("{s:?}")).collect();
+    assert_eq!(kept.last(), walked.last());
+    assert_eq!(kept[kept.len() - 500..], walked[walked.len() - 500..]);
+}
+
 const CELLS: &str = "\
 var a: [0..8]Int = 0
 for i in 0..2000:
