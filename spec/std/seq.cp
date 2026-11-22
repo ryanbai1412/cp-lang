@@ -204,14 +204,33 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives
 /// `(10, 20)` then `(20, 30)`. Works on any `Seq` (`List<T>`, `[D]T`, `Str`, `Range`, views). O(1) per step.
+///
+/// cost: O(1) per step
+/// empty: yields nothing; so does a single element
+/// order: left to right
+/// traps: never
+/// example: `[10, 20, 30].adjacent.collect() == [(10, 20), (20, 30)]`
 pub @get fn adjacent<S: Seq, T>(self: S) -> yields (T, T) = todo
 
 /// Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`,
 /// `(20, 30)`. O(n²) to walk; for adjacent pairs use `adjacent`.
+///
+/// cost: O(n²) to walk, O(1) per pair
+/// empty: yields nothing
+/// order: by the first element's position, then the second's
+/// traps: never
+/// example: `[1, 2, 3].pairs().count() == 3`
+/// see: `adjacent` for neighbours, `Pair<V>` for a table keyed by unordered pairs
 pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 
 /// Every element paired with the one before it, starting with `(None, first)`:
 /// `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
+///
+/// cost: O(1) per step
+/// empty: yields nothing
+/// order: left to right, starting with `(None, first)`
+/// traps: never
+/// example: `[10, 20].with_prev.collect() == [(None, 10), (Some(10), 20)]`
 pub @get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
 
 /// Every element with the one after it, the last with the first: the
@@ -219,57 +238,127 @@ pub @get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
 /// single element, none for an empty sequence. Works on any `Seq`.
 ///
 ///     for (u, v) in poly.cyclic_pairs(): area += cross(u, v)
+///
+/// cost: O(1) per step
+/// empty: yields nothing; a single element yields `(x, x)`
+/// order: left to right, then `(last, first)`
+/// traps: never
+/// example: `[1, 2, 3].cyclic_pairs().collect() == [(1, 2), (2, 3), (3, 1)]`
 pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 
 /// The pairs `(a.at(i), b.at(i))`, as many as the shorter sequence has.
 /// Works on any `Indexed` sequences (`List`, `[D]T`, `Str`, `Range`, views). O(min(|a|, |b|)).
+///
+/// cost: O(min(|a|, |b|))
+/// empty: yields nothing when either input is empty
+/// order: position by position, stopping at the shorter
+/// traps: never
+/// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
 pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. O(log n).
+///
+/// cost: O(log n)
+/// traps: never
+/// example: `var m: Map<Str, Int> = Map(); m.get_or_insert("a", 7) == 7 and m.get_or_insert("a", 9) == 7`
 pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V = todo
 
 /// As `get_or_insert`, but the value is made by `f`, which runs only when `m` holds none
 /// for `k`: `ids.get_or_insert_with(name, () => next_id())`. O(log n).
+///
+/// cost: O(log n), plus `f` once when `k` is absent
+/// traps: never
+/// example: `var m: Map<Int, Int> = Map(); m.get_or_insert_with(1, () => 5) == 5`
 pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V = todo
 
 /// Replace the value under `k` by `f` of it, starting from `init` when `m` holds none:
 /// `cnt.update(x, 0, c => c + 1)`. O(log n).
+///
+/// cost: O(log n), plus one call of `f`
+/// traps: never
+/// example: `var c: Map<Char, Int> = Map(); c.update('x', 0, v => v + 1); c['x'] == 1`
 pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V) = todo
 
 /// Rotate `self` left by `k` in place (or only the subrange `range` when given):
 /// what was at offset `k % len` comes first. Signed Euclidean `k`: negative `k`
 /// rotates right. Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). O(n), O(1) extra space.
+///
+/// cost: O(n), O(1) extra space
+/// empty: does nothing
+/// traps: when `range` falls outside the keys
+/// example: `var a = [1, 2, 3, 4]; a.rotate_left(1); a == [2, 3, 4, 1]`
 pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None) = todo
 
 /// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`. O(n).
+///
+/// cost: O(n), O(1) extra space
+/// empty: does nothing
+/// traps: when `range` falls outside the keys
+/// example: `var a = [1, 2, 3, 4]; a.rotate_right(1); a == [4, 1, 2, 3]`
 pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None) = todo
 
 /// A new list rotated left by `k`: what was at offset `k % len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right. Works on any `Seq`. O(n).
+///
+/// cost: O(n)
+/// empty: `[]` for any `k`
+/// order: a new `List`, keyed from 0
+/// traps: never
+/// example: `[1, 2, 3].rotated_left(-1) == [3, 1, 2]`
 pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T> = todo
 
 /// A new list rotated right by `k`. Works on any `Seq`. O(n).
+///
+/// cost: O(n)
+/// empty: `[]` for any `k`
+/// order: a new `List`, keyed from 0
+/// traps: never
+/// example: `[1, 2, 3].rotated_right(1) == [3, 1, 2]`
 pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T> = todo
 
 /// Step `self` to the next arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted ascending, when it was the last one. Works on any `IndexedMut`. O(n), amortized O(1).
+///
+/// cost: O(n) worst case, amortized O(1) over all arrangements
+/// empty: returns `false` and does nothing
+/// ties: equal elements are one arrangement, so `[1, 1, 2]` has three
+/// traps: never
+/// example: `var a = [1, 2, 3]; a.next_permutation() and a == [1, 3, 2]`
 pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 
 /// Step `self` to the previous arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted descending, when it was the first (ascending) one. Works on any `IndexedMut`. O(n), amortized O(1).
+///
+/// cost: O(n) worst case, amortized O(1) over all arrangements
+/// empty: returns `false` and does nothing
+/// ties: equal elements are one arrangement
+/// traps: never
+/// example: `var a = [1, 3, 2]; a.prev_permutation() and a == [1, 2, 3]`
 pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 
 /// The stretches of equal neighbours (or equal `by:` keys), in order:
 /// each a slice of `self`: `"aabccc".runs()` walks `"aa"`, `"b"`, `"ccc"`, and
 /// `[r.len for r in s.runs()]` is `[2, 1, 3]`. Each run's `.keys` is its range and
 /// `r[r.keys.first!]` its key. O(1) to make, O(n) to walk.
+///
+/// cost: O(1) to make, O(n) to walk
+/// empty: yields nothing
+/// order: left to right; each run is a slice keeping the keys of `self`
+/// traps: never
+/// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
 pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S> = todo
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 /// The result is keyed by the value domain, so group by any domain-valued key with
 /// `a.map(key).buckets()`; an optional table gives a `None` bucket (`b[Some(k)]`).
 /// O(|D| + |K|) time and memory.
+///
+/// cost: O(|D| + |K|) time and memory
+/// empty: every bucket is empty
+/// order: each bucket lists keys of `self` in increasing order; the result is keyed by `K`
+/// traps: never
+/// example: `[1, 0, 1].buckets()` over values `0..2` is `[[1], [0, 2]]`
 pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D> = todo
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
@@ -309,6 +398,12 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the
 /// duplicates and binds a fresh domain `C` for them, so an array over them is `[C]Int` and an
 /// index of one compression cannot be used in another. Works on any `Seq`. O(n log n).
+///
+/// cost: O(n log n)
+/// empty: binds an empty domain `C`
+/// order: increasing values, indexed by the fresh domain `C`
+/// traps: never
+/// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.at(30) == C.last!`
 pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
 
 /// Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the
@@ -316,14 +411,31 @@ pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
 /// with `piece[p]` the `Range<D>` that piece covers, in order. It is coordinate compression for
 /// intervals: a segment tree over `P` stores `piece[p].len`, and no +1/-1 converts back.
 /// O(k log k) for k cuts.
+///
+/// cost: O(k log k) for k cuts
+/// empty: an empty range binds an empty `P`
+/// order: pieces left to right; `piece` is keyed by the fresh domain `P`
+/// traps: when a cut lies outside the range
+/// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); [piece[p].len for p in P] == [3, 4, 3]`
 pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>) = todo
 
 /// The range of pieces exactly covering `r`, whose ends must be among the cuts the pieces were
 /// made from (traps otherwise). `t.apply(piece.covering(a..=b), x)`. O(log k).
+///
+/// cost: O(log k)
+/// empty: an empty `r` gives an empty range of pieces
+/// traps: when an end of `r` is not one of the cuts
+/// example: with the pieces of `(0..10).pieces(cuts: [3, 7])`, `piece.covering(3..10).len == 2`
 pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P> = todo
 
 /// The first `f(x)` that is not `None`, stopping there; `None` if every one is.
 /// O(1) per element walked.
+///
+/// cost: O(1) per element walked, stopping at the first `Some`
+/// empty: `None`
+/// ties: the first in sequence order
+/// traps: never
+/// example: `[1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)`
 pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
 
 /// The first element satisfying `p`, `None` if none does; stops there. `(1..=m).find(ok)` is the
