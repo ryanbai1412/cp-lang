@@ -13,6 +13,9 @@
  ],
  "cpp_ac": 3,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ccc18s4/dream.cp"
+  ],
   "original": [
    "proto/ports/ccc18s4.cpp",
    "proto/ports/ccc18s4_orig.cpp"
@@ -24,9 +27,14 @@
    "proto/ports/wave2/ccc18s4.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "dp",
+  "math",
+  "floor-quotients",
+  "memo"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "floor_quotients joined the prelude; @memo(map) for n up to 1e9."
 }

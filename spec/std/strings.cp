@@ -218,6 +218,9 @@ pub struct SuffixArray:
     rank: List<Int>
     lcp: List<Int>
 
+    /// O(n). Build over any indexed sequence of `Char` or integers: `SuffixArray(s)`.
+    pub fn new<S: Indexed>(s: S) -> SuffixArray = todo
+
     /// O(1). Length of the indexed sequence.
     pub @get fn len(self) -> Int = todo
 

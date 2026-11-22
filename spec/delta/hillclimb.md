@@ -13,6 +13,8 @@ and its notes in that record's `notes`.
 - btoi17p2: `Mat` and `Semiring` join the prelude, next to `SegTree` and `each`.
 - btoi20p3: `ParityDsu` joins the prelude beside `PotentialDsu`; `yes(b)`
   gets a stub (`std.io`) and returns the answer `Str`.
+- ccc03s4: `SuffixArray.new(s)` stub, `SuffixArray` joins the prelude.
+- ccc18s4: `floor_quotients` joins the prelude.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 

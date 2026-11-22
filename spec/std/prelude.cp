@@ -26,7 +26,7 @@ use std.io.{yes}
 use std.lazy.{Flip}
 use std.marks.{Marks}
 use std.matrix.{Mat}
-use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm, sign}
+use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, floor_quotients, gcd, lcm, sign}
 use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix, scan}
 use std.segtree.{SegTree}

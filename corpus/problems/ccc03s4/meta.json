@@ -47,6 +47,9 @@
  ],
  "cpp_ac": 5,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ccc03s4/dream.cp"
+  ],
   "original": [
    "proto/ports/ccc03s4.cpp",
    "proto/ports/ccc03s4_orig.cpp"
@@ -57,9 +60,12 @@
    "proto/ports/scout_batch_3/today/ccc03s4.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "strings",
+  "suffix-array"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "SuffixArray(s).distinct(); SuffixArray had no constructor stub, and joined the prelude."
 }
