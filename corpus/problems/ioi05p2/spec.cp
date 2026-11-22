@@ -8,16 +8,11 @@ enum Cmd:
     @tag("I") Set(a: 1..=n, b: 1..=n, d: -1_000_000_000..=1_000_000_000)
     @tag("Q") Ask(h: 0..=1_000_000_000)
     @tag("E") End
-var cmds: List<Cmd> = []
+let cmds = read_all<Cmd>(until: c => c == Cmd.End)
 var cuts = [1, n + 1]
-while true:
-    let c = read<Cmd>()
-    if c == Cmd.End:
-        break
-    if c is Cmd.Set(a, b, _):
-        cuts.push(a)
-        cuts.push(b + 1)
-    cmds.push(c)
+for c in cmds if c is Cmd.Set(a, b, _):
+    cuts.push(a)
+    cuts.push(b + 1)
 let (domain S, starts) = compress(cuts)
 type Rail = (rise: Int, peak: Int, len: Int)
 let track = Monoid<Rail>(id: (rise: 0, peak: 0, len: 0),
@@ -28,14 +23,15 @@ let slope = Action<Rail, ?Int>(id: None, compose: (old, new) => new ?? old,
 let lens = [S] s => if s == S.last!: 0 else: starts.get(s.next!) - starts.get(s)
 var t = SegTree(track, [S] s => (rise: 0, peak: 0, len: lens[s]), act: slope)
 for c in cmds:
-    if c is Cmd.Set(a, b, d):
-        t.apply(starts.at(a)!..starts.at(b + 1)!, Some(d))
-    elif c is Cmd.Ask(h):
-        let stop = t.right_while(S.cuts.first!, x => x.peak <= h)
-        if stop == S.cuts.last!:
-            print(n)
-        else:
-            let s = stop.r!
-            let seg = t.get(s)
-            let base = t.fold(..stop).rise
-            print(starts.get(s) - 1 + (h - base) / (seg.rise / seg.len))
+    match c:
+        Set(a, b, d) => t.apply(starts.at(a)!..starts.at(b + 1)!, Some(d))
+        End => continue
+        Ask(h) =>
+            let stop = t.right_while(S.cuts.first!, x => x.peak <= h)
+            if stop == S.cuts.last!:
+                print(n)
+            else:
+                let s = stop.r!
+                let seg = t.get(s)
+                let base = t.fold(..stop).rise
+                print(starts.get(s) - 1 + (h - base) / (seg.rise / seg.len))

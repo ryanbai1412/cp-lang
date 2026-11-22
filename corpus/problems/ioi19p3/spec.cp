@@ -13,14 +13,14 @@ fn count_rectangles(a: List<List<Int>>) -> Int:
     var deep = Map<(R, Range<C>), Int>()
     var across = Map<(R, C), List<(wide: Int, deep: Int)>>()
     for r in R.rev:
-        for s in ([C] c => h[r, c]).valleys():
+        for s in h[r].valleys():
             let d = 1 + (r.next.and_then(below => deep.get((below, s))) ?? 0)
             deep[(r, s)] = d
             across.get_or_insert((r, s.l.r!)).push((wide: s.len, deep: d))
     var broad = Map<(C, Range<R>), Int>()
     var down = Map<(R, C), List<(tall: Int, broad: Int)>>()
     for c in C.rev:
-        for s in ([R] r => h[r, c]).valleys():
+        for s in h[.., c].valleys():
             let b = 1 + (c.next.and_then(right => broad.get((right, s))) ?? 0)
             broad[(c, s)] = b
             down.get_or_insert((s.l.r!, c)).push((tall: s.len, broad: b))

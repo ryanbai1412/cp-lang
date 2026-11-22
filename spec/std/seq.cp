@@ -431,8 +431,8 @@ pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(
 /// O(n) expected, O(distinct) memory. Frequency map of keys `by(x)` across `self`.
 pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int> = todo
 
-/// O(n) expected, O(n) memory. Group elements by an arbitrary hashable key. When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
-pub fn group<S: Seq, T, K>(self: S, by: T -> K) -> HashMap<K, List<T>> = todo
+/// O(n) expected, O(n) memory. Group elements by an arbitrary hashable key; `of:` keeps a projection of each element (`pairs.group(by: .0, of: .1)`). When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
+pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>> = todo
 
 /// O(n) expected, O(k) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).
 pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T> = todo

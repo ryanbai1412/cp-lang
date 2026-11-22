@@ -22,19 +22,19 @@ fn min_distance(x: List<Int>, h: List<Int>, l: List<Int>, r: List<Int>, y: List<
 
     var stops: List<(b: B, y: Int)> = [(b: start, y: 0), (b: goal, y: 0)]
     var on: List<List<B>> = [List() for _ in walks]
-    let starting = walks.keys.collect().group(by: i => walks[i].span.first!)
-    let ending = walks.keys.collect().group(by: i => walks[i].span.last!)
+    let starting = walks.map(w => w.span.first!).buckets()
+    let ending = walks.map(w => w.span.last!).buckets()
     var active = SortedBag<(y: Int, walk: Int)>()
     for b in B:
-        for i in starting.get(b) ?? List():
+        for i in starting[b]:
             active.add((y: walks[i].y, walk: i))
-        for i in (starting.get(b) ?? List()) + (ending.get(b) ?? List()):
+        for i in starting[b] + ending[b]:
             stops.push((b: b, y: walks[i].y))
             on[i].push(b)
             if let Some(under) = active.last_true(a => a.y < walks[i].y):
                 stops.push((b: b, y: under.y))
                 on[under.walk].push(b)
-        for i in ending.get(b) ?? List():
+        for i in ending[b]:
             active.remove((y: walks[i].y, walk: i))
 
     let (domain Stop, at) = compress(stops)

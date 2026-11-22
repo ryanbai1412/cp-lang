@@ -12,5 +12,7 @@ pub struct Wire():
     pub fn new() -> Wire = todo
 
 /// O(tokens). Every remaining value of type `T` until the input ends, for statements whose input
-/// has no count (`read_all<Int>()`). Reading anything after it is an error.
-pub fn read_all<T>() -> List<T> = todo
+/// has no count (`read_all<Int>()`); reading anything after it is an error. With `until:` it
+/// stops at the first value that satisfies it (a sentinel command, `0 0`), consumes that value
+/// without returning it, and later reads continue: `read_all<Cmd>(until: c => c == Cmd.End)`.
+pub fn read_all<T>(until: ?(T -> Bool) = None) -> List<T> = todo

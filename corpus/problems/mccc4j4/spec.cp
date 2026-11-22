@@ -9,13 +9,12 @@ enum Outcome:
 var groups = read<[n / m, m]Team>()
 var pts: [Team]Int = 0
 for g in read<[(m - 1) * n / 2](u: Team, v: Team, res: Outcome)>():
-    if g.res == Outcome.Win:
-        pts[g.u] += 3
-    elif g.res == Outcome.Loss:
-        pts[g.v] += 3
-    else:
-        pts[g.u] += 1
-        pts[g.v] += 1
+    match g.res:
+        Win => pts[g.u] += 3
+        Loss => pts[g.v] += 3
+        Tie =>
+            pts[g.u] += 1
+            pts[g.v] += 1
 let k = read<1..=m>()
 for g in groups.keys.0:
     groups[g].sort(by: t => (desc(pts[t]), t))

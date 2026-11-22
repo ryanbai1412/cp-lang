@@ -4645,3 +4645,15 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   helper. The value counterpart of an in-place algorithm is the existing `sort`/`sorted`
   convention, not a second algorithm.
 - **Reverse.** Delete `closure` from `spec/std/graph.cp` and restore the helper in the port.
+
+## 161. `read_all(until:)` reads sentinel-ended input; `group(by:, of:)` projects values (2026-11-21)
+
+- **Decision.** `read_all<T>(until: f)` reads values until the first one with `f` true,
+  consumes that sentinel without returning it, and lets reading continue. `a.group(by: k, of: g)`
+  stores `g(x)` instead of `x` in each group.
+- **Why.** In the full pass over the 100 hill-climb problems, two blind dreams (ioi01p1, ioi05p2)
+  wrote `read stream Cmd until End`, and their ports spelled it as a `while true` loop with a
+  `break`. Two dreams (dmpg16g2, ioi19p3) grouped `(key, value)` pairs. Both are options on
+  existing functions (decision 60: options are named arguments), not new names.
+- **Reverse.** Drop `until:` from `read_all` and `of:` from `group` in `spec/std`, and restore
+  the loop in `corpus/problems/ioi05p2/spec.cp`.

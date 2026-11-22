@@ -350,3 +350,19 @@ Open questions raised by dreams:
     `V.pairs()`.
   - Still open: ragged reads (`read<[i in V][..i]Int>()`) for the triangle inputs of
     egoi23p4 and cco20p4, and reading `?Letter` straight from a `.`/letter grid.
+- Full pass over the 100 (Ryan asked for one more look for spec changes). Ranked the ports by
+  spec/dream length (median 1.13x) and read the 20 worst, and counted dream calls the stubs lack.
+  - Spec change (decision 161): `read_all(until:)` for sentinel-ended command streams (ioi01p1,
+    ioi05p2), `group(by:, of:)` (dmpg16g2, ioi19p3).
+  - Decision 158 confirmed: ioi19p6's `group(...)` plus `.get(b) ?? List()` becomes
+    `walks.map(w => w.span.first!).buckets()` and `starting[b]`.
+  - Port idiom fixes: mccc4j4 and ioi05p2 `match` on tagged enums instead of `if`/`elif`;
+    ioi19p3 uses the row and column views `h[r]` and `h[.., c]` instead of building tables.
+  - Rejected again: `dominance_pairs` (ioi19p3 only; ioi19p6's sweep is a nearest-below query,
+    not dominance), `Exp` (etsr23r4p2), `Perm` with a maintained inverse (ioi15p5 only).
+  - Dream bugs: sdoi17r2p4 runs Dijkstra over all arc pairs at a vertex (O(deg²)); the port's
+    prefix/suffix chains over trie order are the real algorithm. ioi15p5 skips the binary
+    search on the round count.
+  - Open: egoi23p7 is 2.9x its dream. `Rooted.from_parents` has no failure result for
+    invalid parents, and finding the root of the complement graph's DFS forest needs a manual
+    Enter/Exit depth count. Both need a closer design look.
