@@ -4383,9 +4383,13 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   their own mutable struct.
 - **New powers this needs.** Associated types (`type Arc`, `G.Arc`) and
   trait aliases, both open to user libraries.
+- **Weights (agreed).** No algorithm takes `w:`. `g.weighted(f)` on any
+  `Next` is an adapter (like `Filter`) whose arcs read `.w` as `f(a)` and
+  forward `.to`/`.e`, so it is a `WeightedNext` and keeps `Edged`. On a
+  weighted graph it reweights. `f` runs per arc read; no graph is built.
+  `.weighted((u, a) => ...)` also passes the source vertex (Johnson).
 - **Still open.** Arcs carrying edge fields (`carry:`) for cache locality;
-  `.weighted(f)` adapter replacing the `w:` parameter; `Source<V, W>` and
-  `from:` taking any `Seq`; inline bounds (`g: WeightedNext<V, W>`); the
+  `Source<V, W>` and `from:` taking any `Seq`; inline bounds (`g: WeightedNext<V, W>`); the
   weight algebra (`op:` monoid vs `Ord + Add`); storage format.
 - **Why.** Ryan asked whether `WeightedNext` could bundle the arc bounds
   and called the long signature "a mouthful"; he accepted `Edged` once its
