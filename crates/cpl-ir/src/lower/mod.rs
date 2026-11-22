@@ -1399,7 +1399,8 @@ impl<'a> Lowerer<'a> {
                         });
                         self.mut_globals.insert(gid);
                         self.mod_syms[m].insert(name.text.clone(), Sym::Global(gid));
-                        self.context_defs.insert(name.text.clone(), (gid, field_tys));
+                        self.context_defs
+                            .insert(name.text.clone(), (gid, field_tys));
                     }
                     ast::StmtKind::Const {
                         name,
@@ -1482,10 +1483,11 @@ impl<'a> Lowerer<'a> {
                             .iter()
                             .filter_map(|s| match &s.kind {
                                 ast::StmtKind::Let {
-                                    pat: ast::Pattern {
-                                        kind: ast::PatternKind::Name(fname),
-                                        ..
-                                    },
+                                    pat:
+                                        ast::Pattern {
+                                            kind: ast::PatternKind::Name(fname),
+                                            ..
+                                        },
                                     ty: Some(_),
                                     init: None,
                                     ..
@@ -2011,6 +2013,39 @@ impl<'a> Lowerer<'a> {
         self.product_factor_from_ord(&factors[idx].1, ord, span)
     }
 
+    /// `B.Item` for `B` bound to `t`: the `type Item = ..` of an impl for `t`.
+    fn assoc_type(&mut self, t: &Ty, item: &str) -> Option<Ty> {
+        for idx in 0..self.impls.len() {
+            let (m, offset, target, body) = (
+                self.impls[idx].mod_id,
+                self.impls[idx].offset,
+                self.impls[idx].target,
+                self.impls[idx].body,
+            );
+            if !matches!(&target.kind, ast::TypeKind::Named { args, .. } if args.is_empty()) {
+                continue;
+            }
+            let alias = body.stmts.iter().find_map(|s| match &s.kind {
+                ast::StmtKind::TypeAlias { name, generics, ty }
+                    if name.text == item && generics.is_empty() =>
+                {
+                    Some(ty)
+                }
+                _ => None,
+            });
+            let Some(alias) = alias else { continue };
+            let saved_mod = std::mem::replace(&mut self.cur_mod, m);
+            let saved_offset = std::mem::replace(&mut self.offset, offset);
+            let found = (self.resolve_ty(target) == *t).then(|| self.resolve_ty(alias));
+            self.cur_mod = saved_mod;
+            self.offset = saved_offset;
+            if found.is_some() {
+                return found;
+            }
+        }
+        None
+    }
+
     /// `impl T for Int`: a built-in type has no struct to hang methods
     /// on, so each method is a fn whose `self` is the type, found by
     /// `x.method()` on a value of it.
@@ -2296,34 +2331,12 @@ impl<'a> Lowerer<'a> {
                 match &param.ty {
                     Some(ty) => self.resolve_ty(ty),
                     None => {
-                    if i == 1 {
-                        if let Some(rt) = rhs_ty {
-                            rt.clone()
-                        } else if let Some(ot) = owner_ty.clone() {
-                            ot
-                        } else {
-                            self.error(
-                                codes::UNKNOWN_TYPE,
-                                param.span,
-                                format!("parameter `{}` needs a type", param.name.text),
-                            );
-                            self.help(format!(
-                                "write `{}: Int`, or the type it has",
-                                param.name.text
-                            ));
-                            Ty::Error
-                        }
-                    } else {
-                        match (trait_name, owner_ty.clone()) {
-                            (
-                                Some(
-                                    "Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Show" | "Eq"
-                                    | "Ord",
-                                ),
-                                Some(ot),
-                            ) => ot,
-                            (_, Some(ot)) => ot,
-                            _ => {
+                        if i == 1 {
+                            if let Some(rt) = rhs_ty {
+                                rt.clone()
+                            } else if let Some(ot) = owner_ty.clone() {
+                                ot
+                            } else {
                                 self.error(
                                     codes::UNKNOWN_TYPE,
                                     param.span,
@@ -2335,9 +2348,31 @@ impl<'a> Lowerer<'a> {
                                 ));
                                 Ty::Error
                             }
+                        } else {
+                            match (trait_name, owner_ty.clone()) {
+                                (
+                                    Some(
+                                        "Add" | "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Show"
+                                        | "Eq" | "Ord",
+                                    ),
+                                    Some(ot),
+                                ) => ot,
+                                (_, Some(ot)) => ot,
+                                _ => {
+                                    self.error(
+                                        codes::UNKNOWN_TYPE,
+                                        param.span,
+                                        format!("parameter `{}` needs a type", param.name.text),
+                                    );
+                                    self.help(format!(
+                                        "write `{}: Int`, or the type it has",
+                                        param.name.text
+                                    ));
+                                    Ty::Error
+                                }
+                            }
                         }
                     }
-                }
                 }
             };
             params.push(SigParam {
@@ -2600,6 +2635,11 @@ impl<'a> Lowerer<'a> {
                 }
                 if let Some(Sym::Domain(d)) = self.get_sym(prefix) {
                     return Spec::Plain(Ty::Bound(d));
+                }
+            }
+            if let Some(GenArg::Ty(t)) = self.gen_env.get(prefix).cloned() {
+                if let Some(ty) = self.assoc_type(&t, rest) {
+                    return Spec::Plain(ty);
                 }
             }
             if let Some(Sym::Mod(target_mod)) = self.get_sym(prefix) {
