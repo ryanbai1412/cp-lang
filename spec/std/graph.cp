@@ -429,7 +429,39 @@ pub struct Graph<V: Domain, A: Target<V>>:
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], [1]]; peel(g) == [0]`
 pub fn peel<V, G: Next<V>>(
     g: G, ready: ?(V -> Bool) = None, on_remove: ?((V, G.Arc) -> ()) = None,
-) -> List<V> = todo
+) -> List<V>:
+    var order = List<V>()
+    if let is_ready = ready:
+        var queued: [V]Bool = false
+        for v in V:
+            if is_ready(v):
+                queued[v] = true
+                order.push(v)
+        var i = 0
+        while i < order.len:
+            let u = order[i]
+            i += 1
+            for a in g.out(u):
+                if let f = on_remove: f(u, a)
+                let v = a.to
+                if not queued[v] and is_ready(v):
+                    queued[v] = true
+                    order.push(v)
+    else:
+        var indeg: [V]Int = 0
+        for u in V:
+            for a in g.out(u): indeg[a.to] += 1
+        for v in V:
+            if indeg[v] == 0: order.push(v)
+        var i = 0
+        while i < order.len:
+            let u = order[i]
+            i += 1
+            for a in g.out(u):
+                if let f = on_remove: f(u, a)
+                indeg[a.to] -= 1
+                if indeg[a.to] == 0: order.push(a.to)
+    order
 
 /// A topological order (every arc goes forward in it), or `None` if there is a directed
 /// cycle: a `peel` that removed every vertex. For a vertexless closure graph, pass the
@@ -1101,7 +1133,41 @@ pub fn fixed_cost_paths<S, M, W>(
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)])![1] == Some(2)`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)]) == None`
-pub fn bellman_ford<V, W, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc> = todo
+pub fn bellman_ford<V, W, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc>:
+    var dist: [V]?W = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    for (s, d0) in from:
+        if dist[s] == None or d0 < dist[s]!:
+            dist[s] = Some(d0)
+            back[s] = None
+    for round in 0..V.K:
+        var changed = false
+        for u in V:
+            if let du = dist[u]:
+                for a in g.out(u):
+                    let nd = du + a.w
+                    if dist[a.to] == None or nd < dist[a.to]!:
+                        dist[a.to] = Some(nd)
+                        back[a.to] = Some((from: u, via: a))
+                        changed = true
+        if not changed: break
+        if round == V.K - 1: return None
+    var placed: [V]Bool = false
+    var order = List<V>()
+    for v in V:
+        if dist[v] == None or placed[v]: continue
+        var chain = List<V>()
+        var cur = v
+        while not placed[cur]:
+            chain.push(cur)
+            placed[cur] = true
+            if let b = back[cur]: cur = b.from
+            else: break
+        var k = chain.len
+        while k > 0:
+            k -= 1
+            order.push(chain[k])
+    Some(Paths(dist, back, order))
 
 // blocked: operation-value defaults typed as `Int` (GAPS.md ntt `convolve`)
 /// All-pairs shortest distances, in place: `d[u, v]` starts as the direct weight (`None`:
@@ -1117,7 +1183,25 @@ pub fn bellman_ford<V, W, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Pa
 /// traps: never
 /// example: `domain V = 0..3; var d: [V, V]?Int = None; d[0, 1] = Some(4); d[1, 2] = Some(1); d[0, 2] = Some(7); floyd_warshall(mut d) and d[0, 2] == Some(5) and d[2, 0] == None and d[1, 1] == Some(0)`
 /// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(1); d[1, 0] = Some(-3); not floyd_warshall(mut d)`
-pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> Bool = todo
+pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> Bool:
+    let add = Monoid<W>.of(over.add)
+    let mul = Monoid<W>.of(over.mul)
+    let one = mul.id
+    for v in V:
+        if let cur = d[v, v]: d[v, v] = Some(add.op(cur, one))
+        else: d[v, v] = Some(one)
+    for k in V:
+        for i in V:
+            if let a = d[i, k]:
+                for j in V:
+                    if let b = d[k, j]:
+                        let cand = mul.op(a, b)
+                        if let cur = d[i, j]: d[i, j] = Some(add.op(cur, cand))
+                        else: d[i, j] = Some(cand)
+    for v in V:
+        if let dv = d[v, v]:
+            if add.op(dv, one) != one: return false
+    true
 
 // blocked: operation-value defaults typed as `Int` (GAPS.md ntt `convolve`)
 /// The value form of `floyd_warshall`, as `sorted` is to `sort`: a new matrix closed under
@@ -1127,7 +1211,9 @@ pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> B
 /// cost: O(n^3) time, O(n^2) memory
 /// traps: never
 /// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(2); let c = d.closure()!; c[0, 1] == Some(2) and c[0, 0] == Some(0) and c[1, 0] == None`
-pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W = todo
+pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W:
+    var d = self.copy()
+    if floyd_warshall(mut d, over: over): Some(d) else: None
 
 /// One directed cycle, as its vertices in walking order (each is followed by the next, and
 /// the last by the first), or `None` if the graph is acyclic.
@@ -1245,7 +1331,9 @@ pub struct Walk<V, E>:
     /// order: walking order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2]`
-    @get pub fn vertices(self) -> yields V = todo
+    @get pub fn vertices(self) -> yields V:
+        yield self.start
+        for a in self.arcs: yield a.to
 
 /// A walk that uses every edge exactly once (Hierholzer's algorithm), or `None` if there is
 /// None. `directed` says whether `(u, v)` may only be walked from `u` to `v`.
@@ -1279,7 +1367,7 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
     if opens > (if directed: 1 else: 2): return None
     if start == None: start = first(v for v in V if g.deg(v) > 0)
     if start == None:
-        if let s = V.first: return Walk(s, List<(to: V, e: E)>())
+        if V.K > 0: return Walk(V.at(0), List<(to: V, e: E)>())
         else: return None
     let out = [V] v => [a for a in g.out(v)]
     var at: [V]Int = 0
@@ -1602,7 +1690,39 @@ pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, 
 /// ties: FIFO within a bucket; a vertex's back pointer is the first arc to give it its final distance
 /// traps: on a weight outside `0..=max_w`, when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; dial(Graph.directed(es), from: [V(0)], max_w: 5)[1] == Some(3)`
-pub fn dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: ?V = None) -> Paths<V, Int, G.Arc> = todo
+pub fn dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: ?V = None) -> Paths<V, Int, G.Arc>:
+    assert max_w >= 0, "dial: max_w must be non-negative"
+    let nb = max_w + 1
+    var dist: [V]?Int = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var done: [V]Bool = false
+    var order = List<V>()
+    var buckets = [Deque<V>() for _ in 0..nb]
+    var in_q = 0
+    for s in from:
+        if dist[s] == None:
+            dist[s] = Some(0)
+            buckets[0].push(s)
+            in_q += 1
+    var cur = 0
+    while in_q > 0:
+        while buckets[cur % nb].is_empty: cur += 1
+        let u = buckets[cur % nb].pop_front()!
+        in_q -= 1
+        if done[u]: continue
+        done[u] = true
+        order.push(u)
+        if until == Some(u): break
+        for a in g.out(u):
+            let w = a.w
+            assert w >= 0 and w <= max_w, "dial: edge weight outside 0..=max_w"
+            let nd = cur + w
+            if dist[a.to] == None or nd < dist[a.to]!:
+                dist[a.to] = Some(nd)
+                back[a.to] = Some((from: u, via: a))
+                buckets[nd % nb].push(a.to)
+                in_q += 1
+    Paths(dist, back, order)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// All-pairs shortest distances with negative arcs: one Bellman-Ford from a virtual source
@@ -1614,7 +1734,35 @@ pub fn dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: ?
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; let d = johnson(Graph.directed(es))!; d[0, 1] == Some(2) and d[1, 0] == None and d[1, 1] == Some(0)`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; johnson(Graph.directed(es)) == None`
-pub fn johnson<V, W>(g: WeightedNext<V, W>) -> ?[V, V]?W = todo
+pub fn johnson<V, W>(g: WeightedNext<V, W>) -> ?[V, V]?W:
+    var h: [V]W = W.zero
+    for round in 0..V.K:
+        var changed = false
+        for u in V:
+            for a in g.out(u):
+                let nd = h[u] + a.w
+                if nd < h[a.to]:
+                    h[a.to] = nd
+                    changed = true
+        if not changed: break
+        if round == V.K - 1: return None
+    var res: [V, V]?W = None
+    for s in V:
+        var dist: [V]?W = None
+        dist[s] = Some(W.zero)
+        var pq = Heap<(W, V)>()
+        pq.push((W.zero, s))
+        while let (d, u) = pq.pop():
+            if dist[u] != Some(d): continue
+            for a in g.out(u):
+                let nd = d + a.w + h[u] - h[a.to]
+                if dist[a.to] == None or nd < dist[a.to]!:
+                    dist[a.to] = Some(nd)
+                    pq.push((nd, a.to))
+        for v in V:
+            if let dv = dist[v]:
+                res[s, v] = Some(dv - h[s] + h[v])
+    Some(res)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The lengths of the `k` shortest walks from any vertex of `from` to `to` (Eppstein).
@@ -1627,7 +1775,43 @@ pub fn johnson<V, W>(g: WeightedNext<V, W>) -> ?[V, V]?W = todo
 /// traps: on a negative weight
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 1)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [1, 3, 5]`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 7)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [7]`
-pub fn k_shortest<V, W>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W> = todo
+pub fn k_shortest<V, W>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W>:
+    var ans = List<W>()
+    if k <= 0: return ans
+    var rev: [V]List<(V, W)> = []
+    for u in V:
+        for a in g.out(u):
+            assert a.w >= W.zero, "k_shortest: negative weight"
+            rev[a.to].push((u, a.w))
+    var h: [V]?W = None
+    h[to] = Some(W.zero)
+    var rpq = Heap<(W, V)>()
+    rpq.push((W.zero, to))
+    while let (d, u) = rpq.pop():
+        if h[u] != Some(d): continue
+        for (p, w) in rev[u]:
+            let nd = d + w
+            if h[p] == None or nd < h[p]!:
+                h[p] = Some(nd)
+                rpq.push((nd, p))
+    var pq = Heap<(W, W, V)>()
+    var seen_src: [V]Bool = false
+    for s in from:
+        if seen_src[s]: continue
+        seen_src[s] = true
+        if let hs = h[s]: pq.push((hs, W.zero, s))
+    var cnt: [V]Int = 0
+    while let (_, d, u) = pq.pop():
+        if cnt[u] >= k: continue
+        cnt[u] += 1
+        if u == to:
+            ans.push(d)
+            if ans.len == k: break
+        for a in g.out(u):
+            if let hv = h[a.to]:
+                let nd = d + a.w
+                pq.push((nd + hv, nd, a.to))
+    ans
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Some cycle of negative total weight, as its arcs in walking order, or `None`.
@@ -1642,7 +1826,33 @@ pub fn k_shortest<V, W>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> L
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 2, v: 0, w: 1), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; negative_cycle(Graph.directed(es))!.len == 2`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -1)]; negative_cycle(Graph.directed(es)) == None`
-pub fn negative_cycle<V, W, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc> = todo
+pub fn negative_cycle<V, W, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
+    var dist: [V]W = W.zero
+    var par: [V]?V = None
+    var par_arc: [V]?G.Arc = None
+    var last: ?V = None
+    for _ in 0..V.K:
+        last = None
+        for u in V:
+            for a in g.out(u):
+                let nd = dist[u] + a.w
+                if nd < dist[a.to]:
+                    dist[a.to] = nd
+                    par[a.to] = Some(u)
+                    par_arc[a.to] = Some(a)
+                    if last == None: last = Some(a.to)
+        if last == None: return None
+    var cur = last!
+    for _ in 0..V.K: cur = par[cur]!
+    let start = cur
+    var cyc = List<G.Arc>()
+    var v = start
+    while true:
+        cyc.push(par_arc[v]!)
+        v = par[v]!
+        if v == start: break
+    reverse(mut cyc)
+    Some(cyc)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The least mean weight over all directed cycles, as `(sum, len)` of a cycle achieving it
@@ -1654,7 +1864,64 @@ pub fn negative_cycle<V, W, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc> = todo
 /// traps: never
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3), (u: 1, v: 1, w: 5)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 4, len: 2))`
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 0, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 2, len: 1))`
-pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int) = todo
+pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
+    let n = V.K
+    if n == 0: return None
+    var dp: List<[V]?Int> = []
+    var init: [V]?Int = Some(0)
+    dp.push(init)
+    for step in 1..=n:
+        var nxt: [V]?Int = None
+        for u in V:
+            if let du = dp[step - 1][u]:
+                for a in g.out(u):
+                    let nd = du + a.w
+                    if nxt[a.to] == None or nd < nxt[a.to]!:
+                        nxt[a.to] = Some(nd)
+        dp.push(nxt)
+    var has_best = false
+    var best_num = 0
+    var best_den = 1
+    for v in V:
+        if let dn = dp[n][v]:
+            var has_v = false
+            var v_num = 0
+            var v_den = 1
+            for k in 0..n:
+                if let dk = dp[k][v]:
+                    let num = dn - dk
+                    let den = n - k
+                    if not has_v or I128(num) * I128(v_den) > I128(v_num) * I128(den):
+                        has_v = true
+                        v_num = num
+                        v_den = den
+            if has_v:
+                if not has_best or I128(v_num) * I128(best_den) < I128(best_num) * I128(v_den):
+                    has_best = true
+                    best_num = v_num
+                    best_den = v_den
+    if not has_best: return None
+    let g_val = gcd(abs(best_num), best_den)
+    let p = best_num / g_val
+    let q = best_den / g_val
+    var best_len = n + 1
+    for s in V:
+        var cur: [V]?Int = None
+        cur[s] = Some(0)
+        for step in 1..=n:
+            if step >= best_len: break
+            var nxt: [V]?Int = None
+            for u in V:
+                if let du = cur[u]:
+                    for a in g.out(u):
+                        let nd = du + q * a.w - p
+                        if nxt[a.to] == None or nd < nxt[a.to]!:
+                            nxt[a.to] = Some(nd)
+            cur = nxt
+            if cur[s] == Some(0):
+                best_len = step
+                break
+    Some((sum: p * (best_len / q), len: best_len))
 
 /// The length of a shortest cycle (the girth), or `None` if there is None. With `directed:
 /// false` the graph is read as undirected (every arc has its reverse) and a cycle counts
@@ -1722,7 +1989,14 @@ pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) == Some([0, 1, 1, 2])`
 /// example: `domain V = 0..2; let g: [V]List<V> = [[1], [0]]; dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) == None`
-pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, op: M) -> ?[V]T = todo
+pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, op: M) -> ?[V]T:
+    let ord = topo(g) ?? return None
+    let k = Monoid<T>.of(op)
+    var val = [V] v => init(v)
+    for u in ord:
+        for a in g.out(u):
+            val[a.to] = k.op(val[a.to], step(val[u], a))
+    Some(val)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The number of paths from a vertex of `from` to every `v` of a DAG, in `T` (a modular
@@ -1734,7 +2008,13 @@ pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, 
 /// order: keyed by `V`
 /// traps: on overflow of `T`, as its arithmetic does
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; count_paths::<Int>(g, from: [V(0)]) == Some([1, 1, 1, 2])`
-pub fn count_paths<T, V>(g: Next<V>, from: Seq<V>) -> ?[V]T = todo
+pub fn count_paths<T, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
+    let ord = topo(g) ?? return None
+    var dp: [V]T = T.zero
+    for s in from: dp[s] = T.one
+    for u in ord:
+        for a in g.out(u): dp[a.to] = dp[a.to] + dp[u]
+    Some(dp)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Reachability of every pair as bitset rows: `r[u].contains(v)` when some path of zero or
@@ -1745,7 +2025,20 @@ pub fn count_paths<T, V>(g: Next<V>, from: Seq<V>) -> ?[V]T = todo
 /// order: keyed by `V`
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; let r = reach_sets(g); r[0].contains(2) and not r[2].contains(0) and r[1].contains(1)`
-pub fn reach_sets<V>(g: Next<V>) -> [V]Bitset<V> = todo
+pub fn reach_sets<V>(g: Next<V>) -> [V]Bitset<V>:
+    let (domain C, comp) = scc(g)
+    var creach = [C] _ => Bitset<V>.new()
+    for v in V: creach[comp[v]].add(v)
+    var cadj = [C] _ => List<C>()
+    for u in V:
+        let cu = comp[u]
+        for a in g.out(u):
+            let cv = comp[a.to]
+            if cu != cv: cadj[cu].push(cv)
+    for c in C.rev:
+        for d in cadj[c]:
+            creach[c] = creach[c].bitor(creach[d])
+    [V] v => creach[comp[v]]
 
 /// Offline incremental SCC: the arcs of `arcs` are added in order, and `t[e]` is the first
 /// index `i >= e` such that after adding arcs `0..=i` the ends of `e` share a strongly
@@ -1777,7 +2070,72 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>) = 
 /// order: `block` keyed by `E`
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
-pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B) = todo
+pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
+    let out = [V] u => [(to: a.to, e: a.e) for a in g.out(u)]
+    var tin: [V]Int = -1
+    var low: [V]Int = 0
+    var timer = 0
+    var estk = List<E>()
+    var in_stk: [E]Bool = false
+    var raw: [E]Int = -1
+    var nblocks = 0
+    var stk_v = List<V>()
+    var stk_pe = List<?E>()
+    var stk_i = List<Int>()
+    for root in V:
+        if tin[root] != -1: continue
+        tin[root] = timer
+        low[root] = timer
+        timer += 1
+        stk_v.push(root)
+        stk_pe.push(None)
+        stk_i.push(0)
+        while stk_v.len > 0:
+            let top = stk_v.len - 1
+            let u = stk_v[top]
+            let i = stk_i[top]
+            if i < out[u].len:
+                stk_i[top] = i + 1
+                let a = out[u][i]
+                let v = a.to
+                let e = a.e
+                if v == u: continue
+                if stk_pe[top] == Some(e): continue
+                if tin[v] == -1:
+                    in_stk[e] = true
+                    estk.push(e)
+                    tin[v] = timer
+                    low[v] = timer
+                    timer += 1
+                    stk_v.push(v)
+                    stk_pe.push(Some(e))
+                    stk_i.push(0)
+                elif tin[v] < tin[u]:
+                    if not in_stk[e]:
+                        in_stk[e] = true
+                        estk.push(e)
+                    low[u] = min(low[u], tin[v])
+            else:
+                let pe = stk_pe[top]
+                stk_v.pop()
+                stk_pe.pop()
+                stk_i.pop()
+                if stk_v.len > 0:
+                    let p = stk_v[stk_v.len - 1]
+                    low[p] = min(low[p], low[u])
+                    if low[u] >= tin[p]:
+                        let pe_val = pe!
+                        while estk.len > 0:
+                            let x = estk.pop()!
+                            raw[x] = nblocks
+                            if x == pe_val: break
+                        nblocks += 1
+    for e in E:
+        if raw[e] == -1:
+            raw[e] = nblocks
+            nblocks += 1
+    domain B = 0..nblocks
+    (B, [E] e => B.at(raw[e]))
 
 /// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
 /// `missing.out(u)` does not reach. Its own `out(u)` is O(|V|), but `bfs`, `dfs`,
@@ -1861,7 +2219,87 @@ pub fn odd_cycle<V>(g: Next<V>) -> ?List<V>:
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; dominators(g, root: V(0)) == [None, Some(0), Some(0), Some(0)]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; dominators(g, root: V(1)) == [None, None, Some(1)]`
-pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V = todo
+pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
+    let out = [V] u => [a.to for a in g.out(u)]
+    var dfn: [V]Int = -1
+    var ord = List<V>()
+    var par = List<Int>()
+    var stk_v = [root]
+    var stk_i = [0]
+    dfn[root] = 0
+    ord.push(root)
+    par.push(-1)
+    while stk_v.len > 0:
+        let top = stk_v.len - 1
+        let u = stk_v[top]
+        let i = stk_i[top]
+        if i < out[u].len:
+            stk_i[top] = i + 1
+            let v = out[u][i]
+            if dfn[v] == -1:
+                dfn[v] = ord.len
+                ord.push(v)
+                par.push(dfn[u])
+                stk_v.push(v)
+                stk_i.push(0)
+        else:
+            stk_v.pop()
+            stk_i.pop()
+    let m = ord.len
+    var preds = [List<Int>() for _ in 0..m]
+    for i in 0..m:
+        let u = ord[i]
+        for v in out[u]:
+            let j = dfn[v]
+            if j != -1: preds[j].push(i)
+    var sdom = [i for i in 0..m]
+    var idom = [0 for _ in 0..m]
+    var dsu = [i for i in 0..m]
+    var best = [i for i in 0..m]
+    var bucket = [List<Int>() for _ in 0..m]
+    var u_idx = m - 1
+    while u_idx >= 1:
+        for p in preds[u_idx]:
+            var path = [p]
+            var cur = p
+            while dsu[cur] != cur:
+                cur = dsu[cur]
+                path.push(cur)
+            var k = path.len - 2
+            while k >= 0:
+                let x = path[k]
+                let y = path[k + 1]
+                if sdom[best[y]] < sdom[best[x]]: best[x] = best[y]
+                dsu[x] = cur
+                k -= 1
+            let cand = sdom[best[p]]
+            if cand < sdom[u_idx]: sdom[u_idx] = cand
+        bucket[sdom[u_idx]].push(u_idx)
+        let p = par[u_idx]
+        dsu[u_idx] = p
+        for w in bucket[p]:
+            var path = [w]
+            var cur = w
+            while dsu[cur] != cur:
+                cur = dsu[cur]
+                path.push(cur)
+            var k = path.len - 2
+            while k >= 0:
+                let x = path[k]
+                let y = path[k + 1]
+                if sdom[best[y]] < sdom[best[x]]: best[x] = best[y]
+                dsu[x] = cur
+                k -= 1
+            let b = best[w]
+            idom[w] = if sdom[b] == sdom[w]: p else: b
+        bucket[p].clear()
+        u_idx -= 1
+    for i in 1..m:
+        if idom[i] != sdom[i]: idom[i] = idom[idom[i]]
+    var res: [V]?V = None
+    for i in 1..m:
+        res[ord[i]] = Some(ord[idom[i]])
+    res
 
 /// Every triangle of an undirected simple graph once.
 ///
