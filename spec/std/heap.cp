@@ -220,7 +220,8 @@ pub struct ErasableHeap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(2); h.push(1); h.remove(1); h.pop() == Some(2)`
-    pub fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>:
+        ErasableHeap(Heap.new(by: by), Heap.new(by: by))
 
     /// Number of active elements in the heap.
     ///
@@ -229,21 +230,25 @@ pub struct ErasableHeap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.push(1); h.remove(1); h.len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        live.len - dead.len
 
     /// Whether no active elements remain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.remove(1); h.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        live.len == dead.len
 
     /// Remove all elements from the heap.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.clear(); h.pop() == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        live.clear()
+        dead.clear()
 
     /// Move the heap's contents out in O(1), leaving `self` empty.
     ///
@@ -252,16 +257,25 @@ pub struct ErasableHeap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); let t = h.take(); h.is_empty and t.len == 1`
-    pub fn take(mut self) -> ErasableHeap<T> = todo
+    pub fn take(mut self) -> ErasableHeap<T>:
+        let out = ErasableHeap(live.take(), dead.take())
+        out
 
-    fn prune(mut self) = todo
+    fn prune(mut self):
+        while dead.len > 0 and live.len > 0:
+            let a = live.peek!
+            let b = dead.peek!
+            if live.less(b, a) or live.less(a, b): break
+            live.pop()
+            dead.pop()
 
     /// Push `x` into the heap.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(4); h.peek() == Some(4)`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        live.push(x)
 
     /// Schedule one copy of `x` for lazy removal (`x` must be present).
     ///
@@ -273,7 +287,8 @@ pub struct ErasableHeap<T>:
     /// cost: O(log n)
     /// traps: never in release; debug traps when `x` is found not to be present
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.push(1); h.push(3); h.remove(1); h.pop() == Some(1) and h.pop() == Some(3)`
-    pub fn remove(mut self, x: T) = todo
+    pub fn remove(mut self, x: T):
+        dead.push(x)
 
     /// Return the smallest active element, or `None` if empty.
     ///
@@ -283,7 +298,9 @@ pub struct ErasableHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.push(2); h.remove(1); h.peek() == Some(2)`
-    pub fn peek(mut self) -> ?T = todo
+    pub fn peek(mut self) -> ?T:
+        self.prune()
+        live.peek
 
     /// Remove and return the smallest active element, or `None` if empty.
     ///
@@ -291,7 +308,9 @@ pub struct ErasableHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(5); h.push(2); h.pop() == Some(2) and h.len == 1`
-    pub fn pop(mut self) -> ?T = todo
+    pub fn pop(mut self) -> ?T:
+        self.prune()
+        live.pop()
 
 /// Domain-keyed min-heap over `D` supporting O(log n) `set`, `decrease`, `increase`, `remove`,
 /// and `pop`, plus O(1) `contains`, `get`, and `peek`.
@@ -308,35 +327,40 @@ pub struct IndexedHeap<D, K>:
     /// cost: O(|D|)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.len == 0`
-    pub fn new() -> IndexedHeap<D, K> = todo
+    pub fn new() -> IndexedHeap<D, K>:
+        IndexedHeap([], [D] _ => -1, [D] _ => None)
 
     /// Number of keys currently in the heap.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.set(V(1), 6); h.len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        heap.len
 
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.is_empty`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        heap.len == 0
 
     /// Whether `v` is currently in the heap.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.contains(V(2)) and not h.contains(V(3))`
-    pub fn contains(self, v: D) -> Bool = todo
+    pub fn contains(self, v: D) -> Bool:
+        pos[v] >= 0
 
     /// Current priority of `v`, or `None` if absent.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.get(V(2)) == Some(5) and h.get(V(0)) == None`
-    pub fn get(self, v: D) -> ?K = todo
+    pub fn get(self, v: D) -> ?K:
+        keys[v]
 
     /// Pair `(v, key)` with the smallest key, or `None` if empty.
     ///
@@ -344,20 +368,52 @@ pub struct IndexedHeap<D, K>:
     /// empty: `None`
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(3), 1); h.set(V(1), 1); h.peek == Some((V(1), 1))`
-    @get pub fn peek(self) -> ?(D, K) = todo
+    @get pub fn peek(self) -> ?(D, K):
+        if heap.len == 0: return None
+        let v = heap[0]
+        Some((v, keys[v]!))
 
     /// Remove all entries from the heap.
     ///
     /// cost: O(len)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.clear(); h.get(V(1)) == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        for v in heap:
+            pos[v] = -1
+            keys[v] = None
+        heap.clear()
 
-    fn swap_at(mut self, i: Int, j: Int) = todo
+    fn before(self, a: D, b: D) -> Bool:
+        let ka = keys[a]!
+        let kb = keys[b]!
+        ka < kb or (not (kb < ka) and a.to_idx < b.to_idx)
 
-    fn sift_up(mut self, start: Int) = todo
+    fn swap_at(mut self, i: Int, j: Int):
+        let a = heap[i]
+        let b = heap[j]
+        heap[i] = b
+        heap[j] = a
+        pos[b] = i
+        pos[a] = j
 
-    fn sift_down(mut self, start: Int) = todo
+    fn sift_up(mut self, start: Int):
+        var i = start
+        while i > 0:
+            let p = (i - 1) / 2
+            if not self.before(heap[i], heap[p]): break
+            self.swap_at(i, p)
+            i = p
+
+    fn sift_down(mut self, start: Int):
+        let n = heap.len
+        var i = start
+        while 2 * i + 1 < n:
+            var c = 2 * i + 1
+            if c + 1 < n and self.before(heap[c + 1], heap[c]): c += 1
+            if not self.before(heap[c], heap[i]): break
+            self.swap_at(i, c)
+            i = c
 
     /// Insert `v` with key `k`, or update `v`'s key to `k`.
     ///
@@ -366,7 +422,15 @@ pub struct IndexedHeap<D, K>:
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.set(V(1), 9); h.get(V(1)) == Some(9)`
-    pub fn set(mut self, v: D, k: K) = todo
+    pub fn set(mut self, v: D, k: K):
+        keys[v] = Some(k)
+        if pos[v] < 0:
+            pos[v] = heap.len
+            heap.push(v)
+            self.sift_up(heap.len - 1)
+        else:
+            self.sift_up(pos[v])
+            self.sift_down(pos[v])
 
     /// Insert `v` with `k`, or lower its key to `k` if `k` is smaller. Returns `true` if updated.
     ///
@@ -375,7 +439,11 @@ pub struct IndexedHeap<D, K>:
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.decrease(V(1), 5) and not h.decrease(V(1), 5) and h.decrease(V(1), 3) and h.get(V(1)) == Some(3)`
-    pub fn decrease(mut self, v: D, k: K) -> Bool = todo
+    pub fn decrease(mut self, v: D, k: K) -> Bool:
+        if let old = keys[v]:
+            if not (k < old): return false
+        self.set(v, k)
+        true
 
     /// Insert `v` with `k`, or raise its key to `k` if `k` is larger. Returns `true` if updated.
     ///
@@ -384,14 +452,30 @@ pub struct IndexedHeap<D, K>:
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.increase(V(1), 5) and not h.increase(V(1), 2) and h.get(V(1)) == Some(5)`
-    pub fn increase(mut self, v: D, k: K) -> Bool = todo
+    pub fn increase(mut self, v: D, k: K) -> Bool:
+        if let old = keys[v]:
+            if not (old < k): return false
+        self.set(v, k)
+        true
 
     /// Remove `v` from the heap if present; returns its old key or `None`.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.remove(V(1)) == Some(5) and h.remove(V(1)) == None`
-    pub fn remove(mut self, v: D) -> ?K = todo
+    pub fn remove(mut self, v: D) -> ?K:
+        let old = keys[v]
+        if old == None: return None
+        let i = pos[v]
+        let last = heap.len - 1
+        self.swap_at(i, last)
+        heap.pop()
+        pos[v] = -1
+        keys[v] = None
+        if i < heap.len:
+            self.sift_up(i)
+            self.sift_down(i)
+        old
 
     /// Remove and return `(v, key)` with the smallest key, or `None` if empty.
     ///
@@ -400,19 +484,30 @@ pub struct IndexedHeap<D, K>:
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.set(V(0), 7); h.pop() == Some((V(2), 5)) and h.len == 1`
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(3), 1); h.set(V(1), 1); h.pop() == Some((V(1), 1))`
-    pub fn pop(mut self) -> ?(D, K) = todo
+    pub fn pop(mut self) -> ?(D, K):
+        if heap.len == 0: return None
+        let v = heap[0]
+        let k = keys[v]!
+        self.remove(v)
+        Some((v, k))
 
 /// Double-ended priority queue (min-max heap).
 /// `first` and `last` are O(1); `push`, `pop_first`, and `pop_last` are O(log n).
+fn on_min_level(i: Int) -> Bool:
+    bit_width(i + 1) % 2 == 1
+
 pub struct MinMaxHeap<T>:
     _xs: List<T>
+    lt: ?((T, T) -> Bool)
 
     /// Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h: MinMaxHeap<Int> = MinMaxHeap(); h.push(2); h.push(7); h.first == Some(2) and h.last == Some(7)`
-    pub fn new<K>(by: ?(T -> K) = None) -> MinMaxHeap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> MinMaxHeap<T>:
+        if let f = by: return MinMaxHeap(_xs: [], lt: Some((a, b) => f(a) < f(b)))
+        MinMaxHeap(_xs: [], lt: None)
 
     /// Build a `MinMaxHeap<T>` from `xs` in linear time.
     ///
@@ -422,28 +517,37 @@ pub struct MinMaxHeap<T>:
     /// empty: an empty heap
     /// traps: never
     /// example: `var h = MinMaxHeap.of([3, 1, 4, 1, 5]); h.pop_last() == Some(5) and h.pop_first() == Some(1) and h.first == Some(1)`
-    pub fn of(xs: List<T>) -> MinMaxHeap<T> = todo
+    pub fn of(xs: List<T>) -> MinMaxHeap<T>:
+        var h = MinMaxHeap(_xs: xs, lt: None)
+        var i = xs.len / 2
+        while i > 0:
+            i -= 1
+            h.trickle_down(i)
+        h
 
     /// Reserve backing storage for at least `cap` elements.
     ///
     /// cost: O(cap) when the storage grows, O(1) otherwise
     /// traps: never
     /// example: `var h = MinMaxHeap.of([2]); h.reserve(100); h.first == Some(2)`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int):
+        _xs.reserve(cap)
 
     /// Number of elements currently in the heap.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MinMaxHeap.of([1, 1]).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        _xs.len
 
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MinMaxHeap.of([1]).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        _xs.len == 0
 
     /// The smallest element, or `None` if empty.
     ///
@@ -455,7 +559,9 @@ pub struct MinMaxHeap<T>:
     /// traps: never
     /// example: `MinMaxHeap.of([3, 1, 2]).first == Some(1)`
     /// example: `MinMaxHeap.of([7]).first == Some(7)`
-    @get pub fn first(self) -> ?T = todo
+    @get pub fn first(self) -> ?T:
+        if _xs.len == 0: return None
+        Some(_xs[0])
 
     /// The largest element, or `None` if empty.
     ///
@@ -465,14 +571,30 @@ pub struct MinMaxHeap<T>:
     /// traps: never
     /// example: `MinMaxHeap.of([3, 1, 2]).last == Some(3)`
     /// example: `MinMaxHeap.of([7]).last == Some(7)`
-    @get pub fn last(self) -> ?T = todo
+    @get pub fn last(self) -> ?T:
+        if _xs.len == 0: return None
+        Some(_xs[self.max_at()])
 
     /// Insert `x`.
     ///
     /// cost: O(log n), amortized over list growth
     /// traps: never
     /// example: `var h = MinMaxHeap.of([2, 5]); h.push(9); h.last == Some(9) and h.first == Some(2)`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        _xs.push(x)
+        let i = _xs.len - 1
+        if i == 0: return
+        let p = (i - 1) / 2
+        if on_min_level(i):
+            if self.less(_xs[p], _xs[i]):
+                self.swap(i, p)
+                self.bubble_up(p, false)
+            else: self.bubble_up(i, true)
+        else:
+            if self.less(_xs[i], _xs[p]):
+                self.swap(i, p)
+                self.bubble_up(p, true)
+            else: self.bubble_up(i, false)
 
     /// Remove and return the smallest element, or `None` if empty.
     ///
@@ -480,7 +602,11 @@ pub struct MinMaxHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h = MinMaxHeap.of([2, 5, 3]); h.pop_first() == Some(2) and h.first == Some(3)`
-    pub fn pop_first(mut self) -> ?T = todo
+    pub fn pop_first(mut self) -> ?T:
+        if _xs.len == 0: return None
+        let x = _xs[0]
+        self.remove_at(0)
+        Some(x)
 
     /// Remove and return the largest element, or `None` if empty.
     ///
@@ -488,21 +614,78 @@ pub struct MinMaxHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h = MinMaxHeap.of([2, 5, 3]); h.pop_last() == Some(5) and h.last == Some(3)`
-    pub fn pop_last(mut self) -> ?T = todo
+    pub fn pop_last(mut self) -> ?T:
+        if _xs.len == 0: return None
+        let i = self.max_at()
+        let x = _xs[i]
+        self.remove_at(i)
+        Some(x)
 
     /// Remove all elements.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = MinMaxHeap.of([2]); h.clear(); h.first == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        _xs.clear()
 
     /// Move contents out in O(1), leaving `self` empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = MinMaxHeap.of([2]); let t = h.take(); h.is_empty and t.first == Some(2)`
-    pub fn take(mut self) -> MinMaxHeap<T> = todo
+    pub fn take(mut self) -> MinMaxHeap<T>:
+        let out = MinMaxHeap(_xs: _xs, lt: lt)
+        _xs = []
+        out
+
+    fn less(self, a: T, b: T) -> Bool:
+        if let f = lt: return f(a, b)
+        a < b
+
+    fn swap(mut self, i: Int, j: Int):
+        let t = _xs[i]
+        _xs[i] = _xs[j]
+        _xs[j] = t
+
+    fn max_at(self) -> Int:
+        if _xs.len <= 2: return _xs.len - 1
+        if self.less(_xs[1], _xs[2]): 2 else: 1
+
+    fn bubble_up(mut self, start: Int, min_side: Bool):
+        var i = start
+        while i > 2:
+            let g = ((i - 1) / 2 - 1) / 2
+            let better = if min_side: self.less(_xs[i], _xs[g]) else: self.less(_xs[g], _xs[i])
+            if not better: break
+            self.swap(i, g)
+            i = g
+
+    fn remove_at(mut self, i: Int):
+        let n = _xs.len - 1
+        _xs[i] = _xs[n]
+        _xs.pop()
+        if i < n: self.trickle_down(i)
+
+    fn trickle_down(mut self, start: Int):
+        let min_side = on_min_level(start)
+        let n = _xs.len
+        var i = start
+        while 2 * i + 1 < n:
+            var m = 2 * i + 1
+            for c in [2 * i + 2, 4 * i + 3, 4 * i + 4, 4 * i + 5, 4 * i + 6]:
+                if c < n:
+                    let better = if min_side: self.less(_xs[c], _xs[m]) else: self.less(_xs[m], _xs[c])
+                    if better: m = c
+            let wins = if min_side: self.less(_xs[m], _xs[i]) else: self.less(_xs[i], _xs[m])
+            if not wins: break
+            self.swap(m, i)
+            if m <= 2 * i + 2: break
+            let p = (m - 1) / 2
+            let flip = if min_side: self.less(_xs[p], _xs[m]) else: self.less(_xs[m], _xs[p])
+            if flip: self.swap(m, p)
+            i = m
+
 
 /// Meldable min-heap (skew / leftist heap) with O(log n) `meld` and O(1) lazy offset `add_all`.
 /// `peek` / `top` is O(1); `push`, `pop`, and `meld` are O(log n).

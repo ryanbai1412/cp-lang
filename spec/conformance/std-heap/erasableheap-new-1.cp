@@ -1,0 +1,7 @@
+// expect: ok, output "YES"
+use std.heap.{ErasableHeap}
+var h: ErasableHeap<Int> = ErasableHeap()
+h.push(2)
+h.push(1)
+h.remove(1)
+print(h.pop() == Some(2))
