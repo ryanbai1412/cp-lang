@@ -228,7 +228,12 @@ impl<'a> Parser<'a> {
             self.tokens.get(self.pos.wrapping_sub(1)).map(|t| t.kind),
             Some(T::Newline | T::Indent | T::Dedent)
         );
-        while !line_start && self.tokens.get(self.pos).is_some_and(|t| t.kind == T::Error) {
+        while !line_start
+            && self
+                .tokens
+                .get(self.pos)
+                .is_some_and(|t| t.kind == T::Error)
+        {
             self.pos += 1;
             if self.speculating == 0 {
                 self.recovering = true;
@@ -467,6 +472,36 @@ impl<'a> Parser<'a> {
             );
             self.sink.poison(span);
         }
+    }
+
+    /// Reports `span` as a form the language leaves out on purpose. Like
+    /// planned syntax, it is read and poisoned rather than recovered from.
+    fn not_in_language(&mut self, span: Span, message: &str, help: &str) {
+        if self.speculating > 0 {
+            self.speculation_failed = true;
+        } else {
+            self.sink
+                .push(Diagnostic::error(codes::UNSUPPORTED, span, message).with_help(help));
+            self.sink.poison(span);
+        }
+    }
+
+    /// Where a missing block is reported: the next line, which was meant to
+    /// be indented under the header, else the end of the header itself.
+    fn block_expected_at(&self, header_end: u32) -> Span {
+        let abs = (header_end as i64 - self.delta) as usize;
+        let rest = self.src.get(abs..).unwrap_or("");
+        let Some(nl) = rest.find('\n') else {
+            return Span::point(header_end);
+        };
+        let after = &rest[nl + 1..];
+        let lead = after.len() - after.trim_start().len();
+        let line = after[lead..].split('\n').next().unwrap_or("").trim_end();
+        if line.is_empty() || line.starts_with("//") {
+            return Span::point(header_end);
+        }
+        let start = header_end + (nl + 1 + lead) as u32;
+        Span::new(start, start + line.len() as u32)
     }
 
     /// Skips the indented block that starts here, through its dedent.

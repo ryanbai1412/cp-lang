@@ -142,6 +142,10 @@ impl<'a> Checker<'a> {
                     } else {
                         self.comparable(*op, tests_none, &left, left_expr, &right, right_expr);
                     }
+                    if matches!(
+                        op,
+                        ast::CmpOp::Lt | ast::CmpOp::Le | ast::CmpOp::Gt | ast::CmpOp::Ge
+                    ) {}
                     left = right;
                     left_expr = right_expr;
                 }
@@ -182,9 +186,8 @@ impl<'a> Checker<'a> {
                             expr.span,
                             "chained comparisons must point in one direction".to_string(),
                         ) {
-                            diag.help = Some(
-                                "split mixed `<` and `>` comparisons with `and`".to_string(),
-                            );
+                            diag.help =
+                                Some("split mixed `<` and `>` comparisons with `and`".to_string());
                             diag.fixes.extend(split);
                         }
                     }
@@ -270,7 +273,11 @@ impl<'a> Checker<'a> {
             ExprKind::By { walk, step } => {
                 let step_ty = self.infer(step);
                 self.expect_fits(&step_ty, &Ty::Int, step, |c, got, _| {
-                    format!("a step is an Int, and `{}` is {}", c.quote(step.span), got.with_article())
+                    format!(
+                        "a step is an Int, and `{}` is {}",
+                        c.quote(step.span),
+                        got.with_article()
+                    )
                 });
                 self.infer(walk)
             }
@@ -299,18 +306,17 @@ impl<'a> Checker<'a> {
                 }
                 // `Sum<Int>`, `f::<Int>`: the declared type with its
                 // parameters filled in.
-                let declared =
-                    match &base.kind {
-                        ExprKind::Name(name) if self.local(name).is_none() => {
-                            match self.global(name).as_deref() {
-                                Some(
-                                    Def::Value { ty, generics, .. } | Def::Fn { ty, generics, .. },
-                                ) if !generics.is_empty() => Some((ty.clone(), generics.clone())),
-                                _ => None,
-                            }
+                let declared = match &base.kind {
+                    ExprKind::Name(name) if self.local(name).is_none() => {
+                        match self.global(name).as_deref() {
+                            Some(
+                                Def::Value { ty, generics, .. } | Def::Fn { ty, generics, .. },
+                            ) if !generics.is_empty() => Some((ty.clone(), generics.clone())),
+                            _ => None,
                         }
-                        _ => None,
-                    };
+                    }
+                    _ => None,
+                };
                 match (base_ty, declared) {
                     // `scc::<V>(..)`: parameters after the ones given are
                     // read off the arguments.
@@ -349,8 +355,7 @@ impl<'a> Checker<'a> {
                 let mut out = Vec::with_capacity(fields.len());
                 for (name, value) in fields {
                     if seen.contains(&name.text.as_str()) {
-                        let message =
-                            format!("duplicate field `{}` in record", name.text);
+                        let message = format!("duplicate field `{}` in record", name.text);
                         self.error(codes::DUPLICATE_DEFINITION, name.span, message);
                     } else {
                         seen.push(&name.text);
@@ -443,7 +448,11 @@ impl<'a> Checker<'a> {
                 ret_ty,
                 body,
             } => {
-                let given = match self.lambda_params.iter().position(|(at, _)| *at == expr.span) {
+                let given = match self
+                    .lambda_params
+                    .iter()
+                    .position(|(at, _)| *at == expr.span)
+                {
                     Some(i) => self.lambda_params.swap_remove(i).1,
                     None => Vec::new(),
                 };
@@ -560,7 +569,12 @@ impl<'a> Checker<'a> {
                         }
                     }
                     self.present.truncate(past);
-                    let failed = narrow::past(cond, &branches[at + 1..], otherwise.as_ref(), &mut |f, x| self.call_writes(f, x));
+                    let failed = narrow::past(
+                        cond,
+                        &branches[at + 1..],
+                        otherwise.as_ref(),
+                        &mut |f, x| self.call_writes(f, x),
+                    );
                     self.present.extend(failed.into_iter().map(String::from));
                     self.lend_reset(branch);
                     self.add_cond_facts(cond, true);
@@ -649,7 +663,12 @@ impl<'a> Checker<'a> {
                     // The value is the first arm's that has one: an arm
                     // that leaves (`Skip => continue`) has none.
                     let leaves = arm.body.stmts.last().is_some_and(|last| {
-                        matches!(last.kind, ast::StmtKind::Return(_) | ast::StmtKind::Break(_) | ast::StmtKind::Continue(_))
+                        matches!(
+                            last.kind,
+                            ast::StmtKind::Return(_)
+                                | ast::StmtKind::Break(_)
+                                | ast::StmtKind::Continue(_)
+                        )
                     });
                     if result.is_none() && !leaves {
                         result = Some(ty.widen());
@@ -680,8 +699,7 @@ impl<'a> Checker<'a> {
                 if let ExprKind::Name(base_name) = &base.kind {
                     let moves_heap = match &ty {
                         Ty::Record(fs) => fs.iter().any(|(fname, fty)| {
-                            !updates.iter().any(|(u, _)| u.text == *fname)
-                                && self.is_heap_type(fty)
+                            !updates.iter().any(|(u, _)| u.text == *fname) && self.is_heap_type(fty)
                         }),
                         _ => self.is_heap_type(&ty),
                     };
@@ -708,7 +726,10 @@ impl<'a> Checker<'a> {
                                     self.error(
                                         codes::UNKNOWN_FIELD,
                                         r.span,
-                                        format!("row `{p}` has no named field `{}` to remove", r.text),
+                                        format!(
+                                            "row `{p}` has no named field `{}` to remove",
+                                            r.text
+                                        ),
                                     );
                                 }
                             }
@@ -762,13 +783,20 @@ impl<'a> Checker<'a> {
         }
         fn irrefutable(pat: &Pattern) -> bool {
             match &pat.kind {
-                PatternKind::Wildcard | PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Error => true,
+                PatternKind::Wildcard
+                | PatternKind::Name(_)
+                | PatternKind::Domain(_)
+                | PatternKind::Error => true,
                 PatternKind::Tuple(items) => items.iter().all(irrefutable),
                 _ => false,
             }
         }
         // `None`: the pattern takes every value.
-        fn named(pat: &Pattern, variants: &[(String, Vec<Ty>)], out: &mut Vec<String>) -> Option<()> {
+        fn named(
+            pat: &Pattern,
+            variants: &[(String, Vec<Ty>)],
+            out: &mut Vec<String>,
+        ) -> Option<()> {
             match &pat.kind {
                 PatternKind::Variant { path, args } if args.iter().all(irrefutable) => {
                     out.push(path.last()?.text.clone());
@@ -780,7 +808,9 @@ impl<'a> Checker<'a> {
                 }
                 PatternKind::Or(pats) => pats.iter().try_for_each(|p| named(p, variants, out)),
                 PatternKind::Var(inner) => named(inner, variants, out),
-                PatternKind::Literal(_) | PatternKind::Tuple(_) | PatternKind::Variant { .. } => Some(()),
+                PatternKind::Literal(_) | PatternKind::Tuple(_) | PatternKind::Variant { .. } => {
+                    Some(())
+                }
                 PatternKind::Wildcard
                 | PatternKind::Name(_)
                 | PatternKind::Domain(_)
@@ -911,16 +941,68 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// A `?` in an `if` or `while` test: the test has no value to give
+    /// when it is `None` (R02.4.7).
+    fn question_in_condition(&mut self, expr: &Expr) -> bool {
+        struct Find {
+            lambdas: Vec<Span>,
+            found: Option<Span>,
+        }
+        impl cpl_syntax::visit::Visitor for Find {
+            fn expr(&mut self, e: &Expr) {
+                match &e.kind {
+                    ExprKind::Lambda { .. } => self.lambdas.push(e.span),
+                    ExprKind::Try(_) if self.found.is_none() => {
+                        let inside = self
+                            .lambdas
+                            .iter()
+                            .any(|l| l.start <= e.span.start && e.span.end <= l.end);
+                        if !inside {
+                            self.found = Some(e.span);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let mut find = Find {
+            lambdas: Vec::new(),
+            found: None,
+        };
+        cpl_syntax::visit::walk_expr(expr, &mut find);
+        let Some(at) = find.found else {
+            return false;
+        };
+        let message = format!(
+            "`{}` is a `?` in a condition: a `None` gives the test no value",
+            self.quote(at)
+        );
+        let help = format!(
+            "say what `None` means: `{} ?? false`",
+            self.quote(expr.span)
+        );
+        if let Some(diag) = self.error(codes::QUESTION_IN_CONDITION, at, message) {
+            diag.help = Some(help);
+        }
+        true
+    }
+
     pub(crate) fn cond(&mut self, cond: &Cond) {
         match cond {
+            Cond::Expr(expr) if crate::ty::spec_edition() && self.question_in_condition(expr) => {}
+            Cond::Guard { test, and }
+                if crate::ty::spec_edition() && self.question_in_condition(test) =>
+            {
+                self.cond(and);
+            }
             Cond::Expr(expr) => {
-                let in_opt_fn = matches!(
-                    self.fns.last().map(|(_, r, _, _)| r),
-                    Some(Ty::Optional(_))
-                );
+                let in_opt_fn =
+                    matches!(self.fns.last().map(|(_, r, _, _)| r), Some(Ty::Optional(_)));
                 if !in_opt_fn {
                     if let Some(try_span) = Self::find_bare_try(expr) {
-                        let message = "`?` cannot be used directly in a condition; write `(... ?? false)`".to_string();
+                        let message =
+                            "`?` cannot be used directly in a condition; write `(... ?? false)`"
+                                .to_string();
                         self.error(codes::QUESTION_IN_CONDITION, try_span, message);
                     }
                 }
@@ -931,13 +1013,13 @@ impl<'a> Checker<'a> {
                 self.infer(expr);
             }
             Cond::Guard { test, and } => {
-                let in_opt_fn = matches!(
-                    self.fns.last().map(|(_, r, _, _)| r),
-                    Some(Ty::Optional(_))
-                );
+                let in_opt_fn =
+                    matches!(self.fns.last().map(|(_, r, _, _)| r), Some(Ty::Optional(_)));
                 if !in_opt_fn {
                     if let Some(try_span) = Self::find_bare_try(test) {
-                        let message = "`?` cannot be used directly in a condition; write `(... ?? false)`".to_string();
+                        let message =
+                            "`?` cannot be used directly in a condition; write `(... ?? false)`"
+                                .to_string();
                         self.error(codes::QUESTION_IN_CONDITION, try_span, message);
                     }
                 }
@@ -962,23 +1044,24 @@ impl<'a> Checker<'a> {
     fn find_bare_try(expr: &Expr) -> Option<Span> {
         match &expr.kind {
             ExprKind::Try(_) => Some(expr.span),
-            ExprKind::Binary { op: BinOp::Coalesce, .. } => None,
+            ExprKind::Binary {
+                op: BinOp::Coalesce,
+                ..
+            } => None,
             ExprKind::Binary { lhs, rhs, .. } => {
                 Self::find_bare_try(lhs).or_else(|| Self::find_bare_try(rhs))
             }
-            ExprKind::Compare { first, rest } => {
-                Self::find_bare_try(first).or_else(|| {
-                    rest.iter().find_map(|(_, rhs)| Self::find_bare_try(rhs))
-                })
-            }
+            ExprKind::Compare { first, rest } => Self::find_bare_try(first)
+                .or_else(|| rest.iter().find_map(|(_, rhs)| Self::find_bare_try(rhs))),
             ExprKind::Unary { expr: operand, .. }
             | ExprKind::Paren(operand)
             | ExprKind::Unwrap(operand)
             | ExprKind::Field { base: operand, .. } => Self::find_bare_try(operand),
             ExprKind::Call { callee, args } => Self::find_bare_try(callee)
                 .or_else(|| args.iter().find_map(|a| Self::find_bare_try(&a.value))),
-            ExprKind::Index { base, indices } => Self::find_bare_try(base)
-                .or_else(|| indices.iter().find_map(Self::find_bare_try)),
+            ExprKind::Index { base, indices } => {
+                Self::find_bare_try(base).or_else(|| indices.iter().find_map(Self::find_bare_try))
+            }
             _ => None,
         }
     }
@@ -1071,7 +1154,12 @@ impl<'a> Checker<'a> {
                 // `a[i] + best ?? 0` reads two ways. A step along a domain
                 // (`i + 1 ?? I.last`) and a way out (`x + 1 ?? continue`)
                 // read one way.
-                if let ExprKind::Binary { op: inner, lhs: first, .. } = &lhs.kind {
+                if let ExprKind::Binary {
+                    op: inner,
+                    lhs: first,
+                    ..
+                } = &lhs.kind
+                {
                     let arithmetic = matches!(
                         inner,
                         BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem
@@ -1110,10 +1198,7 @@ impl<'a> Checker<'a> {
                     .impls(&owner)
                     .iter()
                     .filter(|(implemented, _)| {
-                        implemented
-                            .as_deref()
-                            .and_then(|t| t.split('<').next())
-                            == Some(trait_name)
+                        implemented.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name)
                     })
                     .map(|(_, def)| match &**def {
                         Def::Impl {
@@ -1156,12 +1241,10 @@ impl<'a> Checker<'a> {
                     None => right.fits(&left) || right.is_int() || right.is_vague(),
                 });
                 match pick {
-                    Some((_, out_ty, method_ret)) => {
-                        out_ty
-                            .clone()
-                            .or_else(|| method_ret.clone())
-                            .unwrap_or(left)
-                    }
+                    Some((_, out_ty, method_ret)) => out_ty
+                        .clone()
+                        .or_else(|| method_ret.clone())
+                        .unwrap_or(left),
                     None if right == Ty::Error || right.is_vague() => left,
                     None => {
                         let message = format!(
@@ -1222,9 +1305,15 @@ impl<'a> Checker<'a> {
                 let le = seq_concat_elem(&left).unwrap();
                 let re = seq_concat_elem(&right).unwrap();
                 if le == re || re.is_vague() {
-                    Ty::Named { name: "List".into(), args: vec![le.clone()] }
+                    Ty::Named {
+                        name: "List".into(),
+                        args: vec![le.clone()],
+                    }
                 } else if le.is_vague() {
-                    Ty::Named { name: "List".into(), args: vec![re.clone()] }
+                    Ty::Named {
+                        name: "List".into(),
+                        args: vec![re.clone()],
+                    }
                 } else {
                     Ty::Unknown
                 }
@@ -1308,7 +1397,13 @@ impl<'a> Checker<'a> {
                 "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
                 self.quote(hi.span)
             );
-            self.error(codes::WRONG_DOMAIN, range.span, message);
+            // R04.4.6: where a piece is wanted, `j..=i` on cuts is the wrong type.
+            let code = if spec {
+                codes::TYPE_MISMATCH
+            } else {
+                codes::WRONG_DOMAIN
+            };
+            self.error(code, range.span, message);
         }
     }
 
@@ -1317,15 +1412,13 @@ impl<'a> Checker<'a> {
     /// position of `I` ([`cpl_syntax::order`]).
     fn step_stays(&self, e: &Expr, domain: &Ty) -> bool {
         matches!(domain, Ty::Pos(_))
-            && self
-                .steps
-                .bounds(e, 0)
-                .into_iter()
-                .any(|name| match cpl_syntax::order::end_domain(name) {
+            && self.steps.bounds(e, 0).into_iter().any(|name| {
+                match cpl_syntax::order::end_domain(name) {
                     // `i > D.first`: an end of the domain itself.
                     Some(of) => matches!(domain, Ty::Pos(d) if d == of),
                     None => self.local(name).is_some_and(|local| local.ty == *domain),
-                })
+                }
+            })
     }
 
     /// `i + 1` used where its domain is wanted: the message for indexing
@@ -1393,9 +1486,7 @@ impl<'a> Checker<'a> {
                 ast::CmpOp::Ge => ">=",
                 _ => "?",
             };
-            let message = format!(
-                "optional values can't be ordered with `{op_str}`"
-            );
+            let message = format!("optional values can't be ordered with `{op_str}`");
             if let Some(diag) = self.error(codes::OPTIONAL_COMPARE, left_expr.span, message) {
                 diag.help = Some("unwrap with `??` or `!` before comparing".into());
             }
@@ -1414,9 +1505,7 @@ impl<'a> Checker<'a> {
             };
             if let Some(trait_name) = req {
                 if !self.implements_trait(left, trait_name) {
-                    let message = format!(
-                        "`{left}` does not implement `{trait_name}`"
-                    );
+                    let message = format!("`{left}` does not implement `{trait_name}`");
                     self.error(codes::MISSING_IMPL, left_expr.span, message);
                     return;
                 }
@@ -1475,7 +1564,10 @@ impl<'a> Checker<'a> {
             Ty::Array { elem, .. } => (**elem).clone(),
             Ty::Str => Ty::Char,
             Ty::Named { name, args }
-                if matches!(name.as_str(), "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Gen") && args.len() == 1 =>
+                if matches!(
+                    name.as_str(),
+                    "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Gen"
+                ) && args.len() == 1 =>
             {
                 args[0].clone()
             }
@@ -1484,7 +1576,11 @@ impl<'a> Checker<'a> {
                     let bindings = members.bindings(args);
                     if let Some((_, each_ty)) = members.members.iter().find(|(m, _)| m == "each") {
                         if let Ty::Fn { ret, .. } = each_ty.subst(&bindings) {
-                            if let Ty::Named { name: rname, args: rargs } = ret.as_ref() {
+                            if let Ty::Named {
+                                name: rname,
+                                args: rargs,
+                            } = ret.as_ref()
+                            {
                                 if matches!(rname.as_str(), "Gen" | "List") && rargs.len() == 1 {
                                     return self.settle(&rargs[0]);
                                 }
@@ -1655,7 +1751,8 @@ impl<'a> Checker<'a> {
             .filter(|d| matches!(&**d, Def::Fn { .. }))
             .or_else(|| self.global(&crate::prelude::std_method(name)))?;
         let Def::Fn {
-            ty: Ty::Fn { params, ret }, ..
+            ty: Ty::Fn { params, ret },
+            ..
         } = &*def
         else {
             return None;
@@ -1663,7 +1760,9 @@ impl<'a> Checker<'a> {
         let first = params.first().filter(|p| p.name == "self")?;
         let same_shape = match (&first.ty, base) {
             (Ty::Named { name: takes, .. }, Ty::Named { name: on, .. }) => takes == on,
-            (Ty::Record(takes), Ty::Record(on)) => takes.len() == on.len() && takes.iter().zip(on).all(|(a, b)| a.0 == b.0),
+            (Ty::Record(takes), Ty::Record(on)) => {
+                takes.len() == on.len() && takes.iter().zip(on).all(|(a, b)| a.0 == b.0)
+            }
             (Ty::Tuple(takes), Ty::Tuple(on)) => takes.len() == on.len(),
             (Ty::Tuple(takes), Ty::Record(on)) => takes.len() == on.len(),
             _ => false,
@@ -1675,6 +1774,24 @@ impl<'a> Checker<'a> {
     }
 
     fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
+        // R04b.1.7: `let t = w.rebase` names its fresh domain `t.Idx`.
+        if let ExprKind::Name(view) = &base.kind {
+            if name.text == "Idx" && crate::ty::spec_edition() {
+                let own = format!("{view}.Idx");
+                if let Some(Ty::Array { index, .. }) = self.local(view).map(|l| l.ty.clone()) {
+                    if matches!(index.as_slice(), [Ty::Pos(d)] if *d == own) {
+                        return Ty::Domain(own);
+                    }
+                }
+                if let Some(def) = self.global(view) {
+                    if let Ty::Array { index, .. } = def.value_ty(view) {
+                        if matches!(index.as_slice(), [Ty::Pos(d)] if *d == own) {
+                            return Ty::Domain(own);
+                        }
+                    }
+                }
+            }
+        }
         // `treap.merge` after `use lib.treap`: a public name of a module.
         if let ExprKind::Name(alias) = &base.kind {
             if self.local(alias).is_none() && self.env.is_module(alias) {
@@ -1691,8 +1808,14 @@ impl<'a> Checker<'a> {
             }
         }
         // `D.cuts` is never empty: its first and last cuts are always there.
-        if let ExprKind::Field { base: inner, name: bounds } = &base.kind {
-            if matches!(bounds.text.as_str(), "bounds" | "cuts") && matches!(name.text.as_str(), "first" | "last") {
+        if let ExprKind::Field {
+            base: inner,
+            name: bounds,
+        } = &base.kind
+        {
+            if matches!(bounds.text.as_str(), "bounds" | "cuts")
+                && matches!(name.text.as_str(), "first" | "last")
+            {
                 if let Ty::Domain(d) = self.infer(inner) {
                     return Ty::Pos(format!("{d}.cuts"));
                 }
@@ -1706,23 +1829,42 @@ impl<'a> Checker<'a> {
                 return Ty::Error;
             }
             if name.text == "bsearch_first" {
-                let message = "`.bsearch_first(...)` was removed; use `.first_true(...)` or `.bsearch(...)`".to_string();
+                let message =
+                    "`.bsearch_first(...)` was removed; use `.first_true(...)` or `.bsearch(...)`"
+                        .to_string();
                 self.error(codes::REMOVED_SYNTAX, name.span, message);
                 return Ty::Error;
             }
         }
         let ty = self.member_ty(expr, name, base_ty.clone());
-        let built_in = matches!(&base_ty, Ty::Str | Ty::Range { .. } | Ty::Pos(_) | Ty::Domain(_) | Ty::Array { .. })
-            || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+        let built_in = matches!(
+            &base_ty,
+            Ty::Str | Ty::Range { .. } | Ty::Pos(_) | Ty::Domain(_) | Ty::Array { .. }
+        ) || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+        // A generator only has what std declares on sequences: no `next` (R07.1.1).
+        let generator = matches!(&base_ty, Ty::Named { name, .. } if name == "Gen");
         if ty == Ty::Unknown
-            && built_in
+            && (built_in || generator)
             && std::env::var_os("CPL_SPEC").is_some()
-            && !crate::prelude::spec_member_names().contains(&name.text)
-            && !crate::builtins::BUILTIN_MEMBERS.iter().any(|m| m.name == name.text)
+            && !(if generator {
+                crate::prelude::spec_receiver_method_names().contains(&name.text)
+            } else {
+                crate::prelude::spec_member_names().contains(&name.text)
+                    || crate::builtins::BUILTIN_MEMBERS
+                        .iter()
+                        .any(|m| m.name == name.text)
+            })
             && self.global(&name.text).is_none()
         {
-            let message = format!("{base_ty} has no `{}` in the spec: no std module declares it", name.text);
-            self.error(codes::UNKNOWN_FIELD, name.span, message);
+            let message = format!(
+                "{base_ty} has no `{}` in the spec: no std module declares it",
+                name.text
+            );
+            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                if generator {
+                    diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
+                }
+            }
         }
         // A built-in member (`xs.len`, `v.next`) answers before the hover
         // the struct path records, so it gets its hover here.
@@ -1733,6 +1875,9 @@ impl<'a> Checker<'a> {
             Ty::Named { name, .. } => Some(name.clone()),
             _ => None,
         };
+        if let Some(owner) = owner.as_deref() {
+            self.missing_parens(expr, base, name, owner);
+        }
         // A catalog method the call types later (`xs.sorted()`) is still
         // known here, by its catalog signature.
         let known = match ty {
@@ -1782,7 +1927,11 @@ impl<'a> Checker<'a> {
         }
         // `tree.Pre`: the domain a value owns, named by the type
         // parameter it fills.
-        if let Ty::Named { name: type_name, args } = &base_ty {
+        if let Ty::Named {
+            name: type_name,
+            args,
+        } = &base_ty
+        {
             if let Some(members) = self.members_of(type_name) {
                 if members.generics.contains(&name.text) {
                     return match members.bindings(args).get(&name.text) {
@@ -1805,9 +1954,7 @@ impl<'a> Checker<'a> {
                     return Ty::Int;
                 }
                 "is_empty" => return Ty::Bool,
-                "last" | "rev"
-                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_bidir() =>
-                {
+                "last" | "rev" if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_bidir() => {
                     let message = format!(
                         "`.{}` requires `Bidir`, which `{base_ty}` does not implement",
                         name.text
@@ -1816,7 +1963,8 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
                 "items" | "keys"
-                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_keyed() => {
+                    if std::env::var_os("CPL_SPEC").is_some() && !base_ty.is_keyed() =>
+                {
                     let message = format!(
                         "`.{}` requires `Keyed`, which `{base_ty}` does not implement",
                         name.text
@@ -1986,21 +2134,46 @@ impl<'a> Checker<'a> {
         }
         if name.text == "enumerate" && base_ty.is_seq() {
             let message =
-                "no `enumerate` on sequences; CP Lang spells index-element pairs `.items`".to_string();
+                "no `enumerate` on sequences; CP Lang spells index-element pairs `.items`"
+                    .to_string();
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                 diag.help = Some("use `.items`: `for (i, x) in xs.items:`".to_string());
             }
             return Ty::Error;
+        }
+        if crate::ty::spec_edition() {
+            let renamed = match name.text.as_str() {
+                "bsearch_first" => Some((
+                    "first_true",
+                    "`r.first_true(ok)` gives the first element where `ok` holds, as `?`",
+                )),
+                "bsearch_last" => Some((
+                    "last_true",
+                    "`r.last_true(ok)` gives the last element where `ok` holds, as `?`",
+                )),
+                "bounds" if matches!(base_ty, Ty::Domain(_)) => {
+                    Some(("cuts", "`D.cuts` is the boundaries of `D`"))
+                }
+                _ => None,
+            };
+            if let Some((to, help)) = renamed {
+                let message = format!("`.{}` is gone in 0.3; it is `.{to}`", name.text);
+                if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+                    diag.help = Some(help.to_string());
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("use `.{to}`"),
+                        edits: vec![(name.span, to.to_string())],
+                    });
+                }
+                return Ty::Error;
+            }
         }
         // `r.lo` / `r.hi` on `Range<T>` were renamed to `.start` / `.end` (`end` exclusive).
         if matches!(name.text.as_str(), "lo" | "hi")
             && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")
         {
             let replacement = if name.text == "lo" { "start" } else { "end" };
-            let message = format!(
-                "`Range` uses `.{replacement}`, not `.{}`",
-                name.text
-            );
+            let message = format!("`Range` uses `.{replacement}`, not `.{}`", name.text);
             if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
                 diag.help = Some(format!(
                     "write `.{replacement}` (`.end` is exclusive for `a..b` and `a..=b` alike)"
@@ -2050,7 +2223,8 @@ impl<'a> Checker<'a> {
         }
         // `s.rev`, `xs.rev`, `a.rev`: O(1) read-only reverse view over a string, list, or 1D domain array.
         if name.text == "rev" {
-            if matches!(&base_ty, Ty::Named { name: range, args } if range == "Range" && args.len() == 1) {
+            if matches!(&base_ty, Ty::Named { name: range, args } if range == "Range" && args.len() == 1)
+            {
                 return base_ty;
             }
             if base_ty == Ty::Str
@@ -2094,7 +2268,11 @@ impl<'a> Checker<'a> {
                         })
                         .collect();
                     // `((r, c), x)` for a grid; one index stands alone.
-                    let at = if at.len() == 1 { at.remove(0) } else { Ty::Tuple(at) };
+                    let at = if at.len() == 1 {
+                        at.remove(0)
+                    } else {
+                        Ty::Tuple(at)
+                    };
                     Some((at, (**elem).clone()))
                 }
                 _ => None,
@@ -2152,16 +2330,25 @@ impl<'a> Checker<'a> {
                     } else {
                         args[1].clone()
                     };
-                    return Ty::Named { name: "List".into(), args: vec![elem] };
+                    return Ty::Named {
+                        name: "List".into(),
+                        args: vec![elem],
+                    };
                 }
                 if name.text == "keys" && matches!(map.as_str(), "List" | "Slice" | "Str") {
-                    return Ty::Named { name: "Range".into(), args: vec![Ty::Int] };
+                    return Ty::Named {
+                        name: "Range".into(),
+                        args: vec![Ty::Int],
+                    };
                 }
             }
             if name.text == "keys" {
                 if let Ty::Array { index, .. } = &base_ty {
                     if let Some(first) = index.first() {
-                        return Ty::Named { name: "Range".into(), args: vec![first.clone()] };
+                        return Ty::Named {
+                            name: "Range".into(),
+                            args: vec![first.clone()],
+                        };
                     }
                 }
             }
@@ -2178,7 +2365,10 @@ impl<'a> Checker<'a> {
                     } else {
                         (**elem).clone()
                     };
-                    return Ty::Named { name: "List".into(), args: vec![item] };
+                    return Ty::Named {
+                        name: "List".into(),
+                        args: vec![item],
+                    };
                 }
             }
         }
@@ -2204,7 +2394,8 @@ impl<'a> Checker<'a> {
                     && type_name == "Gen"
                     && name.text == "next"
                 {
-                    let message = format!("{base_ty} has no method `next`; walk a generator with `for`");
+                    let message =
+                        format!("{base_ty} has no method `next`; walk a generator with `for`");
                     self.error(codes::UNKNOWN_FIELD, name.span, message);
                     return Ty::Error;
                 }
@@ -2655,11 +2846,20 @@ impl<'a> Checker<'a> {
 
     /// Records `expr` as in bounds when each index has exactly the domain
     /// type it stands for: a position of it, or the same type parameter.
-    fn note_typed_index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr], got: &[Ty], want: &[Ty]) {
+    fn note_typed_index(
+        &mut self,
+        expr: &Expr,
+        base: &Expr,
+        indices: &[Expr],
+        got: &[Ty],
+        want: &[Ty],
+    ) {
         fn space(got: &Ty, want: &Ty) -> bool {
             match (got, want) {
                 (Ty::Pos(a), Ty::Pos(b)) | (Ty::Param(a), Ty::Param(b)) => a == b,
-                (Ty::Tuple(a), Ty::Tuple(b)) => a.len() == b.len() && a.iter().zip(b).all(|(a, b)| space(a, b)),
+                (Ty::Tuple(a), Ty::Tuple(b)) => {
+                    a.len() == b.len() && a.iter().zip(b).all(|(a, b)| space(a, b))
+                }
                 _ => false,
             }
         }
@@ -2669,19 +2869,36 @@ impl<'a> Checker<'a> {
         if !got.iter().zip(want).all(|(got, want)| space(got, want)) {
             return;
         }
-        let proofs: Vec<String> =
-            indices.iter().zip(got).map(|(e, ty)| format!("{}: {ty}", self.quote(e.span))).collect();
+        let proofs: Vec<String> = indices
+            .iter()
+            .zip(got)
+            .map(|(e, ty)| format!("{}: {ty}", self.quote(e.span)))
+            .collect();
         let spaces = if proofs.len() == 1 { "space" } else { "spaces" };
         self.typed_indexes.push(crate::check::TypedIndex {
             access: expr.span,
             seq: base.span,
             index: Span::new(indices[0].span.start, indices[indices.len() - 1].span.end),
-            proof: format!("{}, the index {spaces} of {}", proofs.join(", "), self.quote(base.span)),
+            proof: format!(
+                "{}, the index {spaces} of {}",
+                proofs.join(", "),
+                self.quote(base.span)
+            ),
         });
     }
 
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {
         let base_ty = self.infer(base);
+        if self.double_index(base, indices) {
+            return Ty::Error;
+        }
+        self.literal_slice_index(base, indices);
+        if self.walked_not_indexed(base) {
+            for index in indices {
+                self.infer(index);
+            }
+            return Ty::Error;
+        }
         let prev_piece = std::mem::replace(&mut self.expected_piece, true);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         self.expected_piece = prev_piece;
@@ -2689,19 +2906,21 @@ impl<'a> Checker<'a> {
             if let (ExprKind::Name(base_name), Some(idx_expr)) = (&base.kind, indices.first()) {
                 let idx_owner = match &idx_expr.kind {
                     ExprKind::Call { callee, .. } => match &callee.kind {
-                        ExprKind::Field { base: owner, name: f } if f.text == "Idx" => {
-                            match &owner.kind {
+                        ExprKind::Field {
+                            base: owner,
+                            name: f,
+                        } if f.text == "Idx" => match &owner.kind {
+                            ExprKind::Name(n) => Some(n.as_str()),
+                            _ => None,
+                        },
+                        ExprKind::Field { base: inner, .. } => match &inner.kind {
+                            ExprKind::Field {
+                                base: owner,
+                                name: f,
+                            } if f.text == "Idx" => match &owner.kind {
                                 ExprKind::Name(n) => Some(n.as_str()),
                                 _ => None,
-                            }
-                        }
-                        ExprKind::Field { base: inner, .. } => match &inner.kind {
-                            ExprKind::Field { base: owner, name: f } if f.text == "Idx" => {
-                                match &owner.kind {
-                                    ExprKind::Name(n) => Some(n.as_str()),
-                                    _ => None,
-                                }
-                            }
+                            },
                             _ => None,
                         },
                         _ => None,
@@ -2718,11 +2937,13 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if self.cut_range_not_piece(&base_ty, indices, &index_tys) {
+            return Ty::Error;
+        }
         match &base_ty {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
-            Ty::Array { index, elem }
-                if matches!(index.as_slice(), [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") && args.len() == 1) =>
+            Ty::Array { index, elem } if matches!(index.as_slice(), [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") && args.len() == 1) =>
             {
                 let Ty::Named { args, .. } = &index[0] else {
                     unreachable!()
@@ -2757,7 +2978,8 @@ impl<'a> Checker<'a> {
                         },
                     );
                     if let Some(diag) = self.error(codes::NOT_INDEXABLE, expr.span, message) {
-                        diag.help = Some("index a symmetric table with two positions: `adj[u, v]`".into());
+                        diag.help =
+                            Some("index a symmetric table with two positions: `adj[u, v]`".into());
                     }
                     return Ty::Error;
                 }
@@ -2796,9 +3018,7 @@ impl<'a> Checker<'a> {
                 let factors = self.product_factors(dom).unwrap();
                 let wants: Vec<Ty> = factors.iter().map(|(_, want)| want.clone()).collect();
                 self.note_typed_index(expr, base, indices, &index_tys, &wants);
-                for ((got, (_, want)), index_expr) in
-                    index_tys.iter().zip(&factors).zip(indices)
-                {
+                for ((got, (_, want)), index_expr) in index_tys.iter().zip(&factors).zip(indices) {
                     self.expect_fits(got, want, index_expr, |c, got, want| {
                         format!(
                             "`{}` is indexed by {}, but `{}` is {}",
@@ -2835,11 +3055,9 @@ impl<'a> Checker<'a> {
             // here row `r`, indexed by the columns.
             Ty::Array { index, elem }
                 if indices.len() < index.len()
-                    && index_tys
-                        .iter()
-                        .zip(index.iter())
-                        .zip(indices)
-                        .all(|((got, want), e)| self.fits(got, want) || self.literal_position(e, want)) =>
+                    && index_tys.iter().zip(index.iter()).zip(indices).all(
+                        |((got, want), e)| self.fits(got, want) || self.literal_position(e, want),
+                    ) =>
             {
                 Ty::Array {
                     index: index[indices.len()..].to_vec(),
@@ -2874,7 +3092,11 @@ impl<'a> Checker<'a> {
                 let mut kept = Vec::new();
                 for ((want, got), index_expr) in index.iter().zip(&index_tys).zip(indices) {
                     if let (
-                        ExprKind::Range { hi: Some(hi), inclusive: true, .. },
+                        ExprKind::Range {
+                            hi: Some(hi),
+                            inclusive: true,
+                            ..
+                        },
                         Ty::Named { name, args },
                         Ty::Pos(dom),
                     ) = (&index_expr.kind, got, want)
@@ -2941,9 +3163,7 @@ impl<'a> Checker<'a> {
                                     _ => false,
                                 };
                                 if out_of_bounds {
-                                    let message = format!(
-                                        "literal `{v}` is outside domain `{d}`"
-                                    );
+                                    let message = format!("literal `{v}` is outside domain `{d}`");
                                     self.error(cpl_diag::Code("E0902"), index_expr.span, message);
                                 }
                             }
@@ -3016,8 +3236,7 @@ impl<'a> Checker<'a> {
                 }
             }
             // `s[0..5]`: O(1) read-only slice view into a string.
-            Ty::Str
-                if matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
+            Ty::Str if matches!(index_tys.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
             {
                 self.note_readonly_view(expr, "slice");
                 Ty::Str
@@ -3071,9 +3290,15 @@ impl<'a> Checker<'a> {
     /// wanted. `Mod<P>` is one, and so is any struct written the same way.
     pub(crate) fn is_number(&mut self, name: &str) -> bool {
         match self.type_def(name).as_deref() {
-            Some(Def::Struct { ctor: Some(params), owned, .. }) => {
+            Some(Def::Struct {
+                ctor: Some(params),
+                owned,
+                ..
+            }) => {
                 matches!(params.as_slice(), [only] if only.ty.is_int())
-                    && ["zero", "one"].iter().all(|c| owned.iter().any(|(n, _)| n == c))
+                    && ["zero", "one"]
+                        .iter()
+                        .all(|c| owned.iter().any(|(n, _)| n == c))
             }
             _ => false,
         }
@@ -3200,16 +3425,25 @@ impl<'a> Checker<'a> {
             }
             (ExprKind::Match { arms, .. }, _, _) => {
                 let tails: Vec<_> = arms.iter().map(|arm| tail(&arm.body)).collect();
-                tails
-                    .iter()
-                    .all(|t| t.as_ref().is_some_and(|e| self.literal_shape_fits(e, got, want)))
+                tails.iter().all(|t| {
+                    t.as_ref()
+                        .is_some_and(|e| self.literal_shape_fits(e, got, want))
+                })
             }
-            (ExprKind::If { branches, otherwise }, _, _) => {
+            (
+                ExprKind::If {
+                    branches,
+                    otherwise,
+                },
+                _,
+                _,
+            ) => {
                 let mut tails: Vec<_> = branches.iter().map(|(_, b)| tail(b)).collect();
                 tails.push(otherwise.as_ref().and_then(tail));
-                tails
-                    .iter()
-                    .all(|t| t.as_ref().is_some_and(|e| self.literal_shape_fits(e, got, want)))
+                tails.iter().all(|t| {
+                    t.as_ref()
+                        .is_some_and(|e| self.literal_shape_fits(e, got, want))
+                })
             }
             _ => false,
         }
@@ -3226,15 +3460,18 @@ impl<'a> Checker<'a> {
         // error is not reported again.
         let got = &self.narrowed(got, want);
         // §124: `j..=i` over cuts never converts to `Range<D>`.
-        if let ExprKind::Range { hi: Some(hi), inclusive: true, .. } = &at.kind {
+        if let ExprKind::Range {
+            hi: Some(hi),
+            inclusive: true,
+            ..
+        } = &at.kind
+        {
             let inner_want = match want {
                 Ty::Optional(inner) => inner.as_ref(),
                 other => other,
             };
-            if let (
-                Ty::Named { name: an, args: aa },
-                Ty::Named { name: bn, args: ba },
-            ) = (got, inner_want)
+            if let (Ty::Named { name: an, args: aa }, Ty::Named { name: bn, args: ba }) =
+                (got, inner_want)
             {
                 if an == "Range" && bn == "Range" && aa.len() == 1 && ba.len() == 1 {
                     if let (Ty::Pos(cut), Ty::Pos(dom)) = (&aa[0], &ba[0]) {
@@ -3256,15 +3493,17 @@ impl<'a> Checker<'a> {
             }
         }
         if std::env::var_os("CPL_SPEC").is_some() {
-            if let Ty::Range { lo: want_lo, hi: want_hi, .. } = want {
+            if let Ty::Range {
+                lo: want_lo,
+                hi: want_hi,
+                ..
+            } = want
+            {
                 let (vlo, vhi) = self.bounds(at);
                 let out_low = matches!((vhi, want_lo), (Some(vh), Some(wl)) if vh < *wl);
                 let out_high = matches!((vlo, want_hi), (Some(vl), Some(wh)) if vl > *wh);
                 if out_low || out_high {
-                    let msg = format!(
-                        "`{}` is out of range for `{want}`",
-                        self.quote(at.span)
-                    );
+                    let msg = format!("`{}` is out of range for `{want}`", self.quote(at.span));
                     self.error(cpl_diag::Code("E0902"), at.span, msg);
                     return false;
                 }
@@ -3284,11 +3523,7 @@ impl<'a> Checker<'a> {
                 Ty::Optional(inner) => inner.as_ref(),
                 other => other,
             };
-            if let (
-                Ty::Named { name, args },
-                Ty::Array { index, elem },
-            ) = (got, inner_want)
-            {
+            if let (Ty::Named { name, args }, Ty::Array { index, elem }) = (got, inner_want) {
                 if name == "List" && index.len() == 1 {
                     let elem_ok = args.first().is_none_or(|g| self.fits(g, elem));
                     match &index[0] {
@@ -3327,7 +3562,8 @@ impl<'a> Checker<'a> {
                 self.quote(at.span)
             );
             let help = self.step_help(at);
-            let code = if std::env::var_os("CPL_SPEC").is_some() {
+            // R04.8.4: a `?V` where a `V` is wanted is the wrong type, not the wrong domain.
+            let code = if crate::ty::spec_edition() {
                 codes::TYPE_MISMATCH
             } else {
                 codes::WRONG_DOMAIN
@@ -3382,23 +3618,40 @@ fn rename_fields(got: &Ty, want: &Ty) -> Option<String> {
     match (got, want) {
         (Ty::Array { elem: got, .. }, Ty::Array { elem: want, .. })
         | (Ty::Optional(got), Ty::Optional(want)) => rename_fields(got, want),
-        (Ty::Named { name, args: got }, Ty::Named { name: wanted, args: want })
-            if name == wanted && got.len() == want.len() =>
-        {
-            got.iter().zip(want).find_map(|(got, want)| rename_fields(got, want))
-        }
+        (
+            Ty::Named { name, args: got },
+            Ty::Named {
+                name: wanted,
+                args: want,
+            },
+        ) if name == wanted && got.len() == want.len() => got
+            .iter()
+            .zip(want)
+            .find_map(|(got, want)| rename_fields(got, want)),
         (Ty::Record(got), Ty::Record(want)) if got.len() >= want.len() => {
             let has = |fields: &[(String, Ty)], name: &str| fields.iter().any(|(n, _)| n == name);
-            let missing: Vec<&str> =
-                want.iter().map(|(n, _)| n.as_str()).filter(|n| !has(got, n)).collect();
-            let spare: Vec<&str> =
-                got.iter().map(|(n, _)| n.as_str()).filter(|n| !has(want, n)).collect();
+            let missing: Vec<&str> = want
+                .iter()
+                .map(|(n, _)| n.as_str())
+                .filter(|n| !has(got, n))
+                .collect();
+            let spare: Vec<&str> = got
+                .iter()
+                .map(|(n, _)| n.as_str())
+                .filter(|n| !has(want, n))
+                .collect();
             if missing.is_empty() || spare.len() < missing.len() {
                 return None;
             }
-            let pairs: Vec<String> =
-                spare.iter().zip(&missing).map(|(from, to)| format!("`{from}` to `{to}`")).collect();
-            Some(format!("the fields are read by name: rename {}", pairs.join(", ")))
+            let pairs: Vec<String> = spare
+                .iter()
+                .zip(&missing)
+                .map(|(from, to)| format!("`{from}` to `{to}`"))
+                .collect();
+            Some(format!(
+                "the fields are read by name: rename {}",
+                pairs.join(", ")
+            ))
         }
         _ => None,
     }
@@ -3413,7 +3666,8 @@ impl Checker<'_> {
                 if let Some(Def::Domain(info)) = self.type_def(d).as_deref() {
                     let text = info.text.trim();
                     if let Some(base) = text.strip_suffix(".cuts") {
-                        if !base.is_empty() && base.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                        if !base.is_empty() && base.chars().all(|c| c.is_alphanumeric() || c == '_')
+                        {
                             return Ty::Pos(text.to_string());
                         }
                     }
@@ -3438,10 +3692,53 @@ impl Checker<'_> {
             _ => return false,
         };
         let base = domain.strip_suffix(".cuts").unwrap_or(domain).to_string();
-        if self.local(&base).is_some_and(|l| matches!(l.ty, Ty::Domain(_))) {
+        if self
+            .local(&base)
+            .is_some_and(|l| matches!(l.ty, Ty::Domain(_)))
+        {
             return !self.local_product_domains.contains_key(&base);
         }
-        matches!(self.type_def(&base).as_deref(), Some(Def::Domain(info)) if info.factors.is_empty())
+        let text = match self.type_def(&base).as_deref() {
+            Some(Def::Domain(info)) if info.factors.is_empty() => info.text.clone(),
+            _ => return false,
+        };
+        self.literal_in_domain(at, &base, &text, domain.ends_with(".cuts"));
+        true
+    }
+
+    /// R04.2.18: a literal outside a static domain bound is an error.
+    fn literal_in_domain(&mut self, at: &Expr, domain: &str, text: &str, cut: bool) {
+        let ExprKind::Int(v) = at.kind else {
+            return;
+        };
+        if !crate::ty::spec_edition() {
+            return;
+        }
+        let bounds = text.split_once("..").and_then(|(lo, hi)| {
+            let (hi, inclusive) = match hi.strip_prefix('=') {
+                Some(hi) => (hi, true),
+                None => (hi, false),
+            };
+            let lo: i128 = lo.trim().parse().ok()?;
+            let hi: i128 = hi.trim().parse().ok()?;
+            Some((lo, if inclusive { hi } else { hi - 1 }))
+        });
+        let Some((lo, hi)) = bounds else {
+            return;
+        };
+        let (lo, hi) = if cut { (0, hi - lo + 1) } else { (lo, hi) };
+        if (lo..=hi).contains(&v) {
+            return;
+        }
+        let what = if cut {
+            format!("{domain}.cuts")
+        } else {
+            domain.to_string()
+        };
+        let message = format!("`{v}` is outside `{what}`, which is {lo}..={hi}");
+        if let Some(diag) = self.error(codes::RANGE_STORE_CONST, at.span, message) {
+            diag.help = Some(format!("use a literal in {lo}..={hi}"));
+        }
     }
 }
 
@@ -3470,7 +3767,10 @@ impl Checker<'_> {
 fn convert_to(domain: &str, span: Span) -> cpl_diag::Fix {
     cpl_diag::Fix {
         title: format!("convert with `{domain}(...)`"),
-        edits: vec![(Span::point(span.start), format!("{domain}(")), (Span::point(span.end), ")".into())],
+        edits: vec![
+            (Span::point(span.start), format!("{domain}(")),
+            (Span::point(span.end), ")".into()),
+        ],
     }
 }
 
@@ -3524,7 +3824,12 @@ fn tropical_side(ty: &Ty) -> Option<bool> {
 impl Checker<'_> {
     /// `none` does not pass through `+=` and `-=` (v2.2): a `none` that
     /// stays `none` hides a table that was never filled in.
-    pub(crate) fn optional_fold(&mut self, target: &Expr, target_ty: &Ty, op: cpl_syntax::ast::AssignOp) {
+    pub(crate) fn optional_fold(
+        &mut self,
+        target: &Expr,
+        target_ty: &Ty,
+        op: cpl_syntax::ast::AssignOp,
+    ) {
         let cpl_syntax::ast::AssignOp::Binary(bin @ (BinOp::Add | BinOp::Sub)) = op else {
             return;
         };
@@ -3588,7 +3893,9 @@ impl Checker<'_> {
 
 fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
     match ty {
-        Ty::Named { name, args } if matches!(name.as_str(), "List" | "ListView") && args.len() == 1 => {
+        Ty::Named { name, args }
+            if matches!(name.as_str(), "List" | "ListView") && args.len() == 1 =>
+        {
             Some(&args[0])
         }
         Ty::Array { index, elem } if index.len() == 1 => Some(elem),
@@ -3605,4 +3912,247 @@ fn split_chain(src: &str, first: &Expr, rest: &[(ast::CmpOp, Expr)]) -> Option<S
         left = right;
     }
     Some(parts.join(" and "))
+}
+
+impl Checker<'_> {
+    pub(crate) fn note_walk_only(&mut self, call: &Expr) {
+        if crate::ty::spec_edition() {
+            self.walk_only_calls.insert(call.span);
+        }
+    }
+
+    pub(crate) fn walk_only_expr(&self, e: &Expr) -> bool {
+        let e = crate::check::lends::unparen(e);
+        match &e.kind {
+            ExprKind::Name(n) => self.walk_only.contains(n),
+            _ => self.walk_only_calls.contains(&e.span),
+        }
+    }
+
+    /// R07.1.2: `filter` gives a `Seq`, walked in order with no `s[i]`.
+    fn walked_not_indexed(&mut self, base: &Expr) -> bool {
+        if !self.walk_only_expr(base) {
+            return false;
+        }
+        let shown = self.quote(base.span);
+        let message =
+            format!("`{shown}` is a filtered sequence: it can be walked, but not indexed");
+        if let Some(diag) = self.error(codes::NOT_INDEXABLE, base.span, message) {
+            diag.help = Some(format!("collect it first: `{shown}.collect()[i]`"));
+        }
+        true
+    }
+}
+
+impl Checker<'_> {
+    /// R01.8.5: `g[r][c]` is spelled `g[r, c]`.
+    fn double_index(&mut self, base: &Expr, indices: &[Expr]) -> bool {
+        if !crate::ty::spec_edition() {
+            return false;
+        }
+        let ExprKind::Index {
+            base: inner,
+            indices: first,
+        } = &crate::check::lends::unparen(base).kind
+        else {
+            return false;
+        };
+        let point = |es: &[Expr]| {
+            es.iter()
+                .all(|e| !matches!(crate::check::lends::unparen(e).kind, ExprKind::Range { .. }))
+        };
+        let ExprKind::Name(table) = &inner.kind else {
+            return false;
+        };
+        // A row of a `List<List<T>>` is a list of its own; only a table takes `g[r, c]`.
+        let ty = match self.local(table) {
+            Some(local) => local.ty.clone(),
+            None => self
+                .global(table)
+                .map_or(Ty::Unknown, |def| def.value_ty(table)),
+        };
+        let is_table = matches!(ty, Ty::Array { index, .. } if index.len() > 1);
+        if !point(first) || !point(indices) || !is_table {
+            return false;
+        }
+        let parts: Vec<String> = first
+            .iter()
+            .chain(indices)
+            .map(|e| self.quote(e.span))
+            .collect();
+        let fixed = format!("{}[{}]", self.quote(inner.span), parts.join(", "));
+        let message = format!(
+            "`{}[{}]` indexes twice; 0.3 writes one index with commas",
+            self.quote(base.span),
+            indices
+                .iter()
+                .map(|e| self.quote(e.span))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        let span = base.span.to(indices.last().map_or(base.span, |e| e.span));
+        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, span, message) {
+            diag.help = Some(format!("write `{fixed}`"));
+        }
+        true
+    }
+}
+
+impl Checker<'_> {
+    /// R07.4.5: `w[0]` on a slice reads source key 0, not its first element.
+    fn literal_slice_index(&mut self, base: &Expr, indices: &[Expr]) {
+        if !crate::ty::spec_edition() {
+            return;
+        }
+        let [index] = indices else {
+            return;
+        };
+        let ExprKind::Int(v) = crate::check::lends::unparen(index).kind else {
+            return;
+        };
+        if self.view_kind(base) != Some("slice") {
+            return;
+        }
+        let w = self.quote(base.span);
+        if let Ty::Array { index, .. } = self.quietly(|c| c.infer(base)) {
+            if let [Ty::Domain(d) | Ty::Pos(d)] = index.as_slice() {
+                let message = format!(
+                    "`{w}` is a slice of a `{d}` table, so it is indexed by `{d}`, not by the raw `Int` {v}"
+                );
+                if let Some(diag) = self.error(codes::WRONG_DOMAIN, indices[0].span, message) {
+                    diag.help = Some(format!(
+                        "index it with a `{d}`: `{w}[{d}({v})]`, or use `{w}.nth({v})!`"
+                    ));
+                }
+                return;
+            }
+        }
+        let message = format!(
+            "`{w}[{v}]` reads source key {v}: a slice keeps its source's keys, so this is not its element {v}"
+        );
+        self.sink.push(
+            Diagnostic::warning(codes::LITERAL_SLICE_INDEX, index.span, message).with_help(format!(
+                "write `{w}.nth({v})!` (or `{w}.first!`) for the element by position, or `{w}.rebase` to count from 0"
+            )),
+        );
+    }
+
+    /// R07.4.5: `for k in 0..w.len: w[k]` counts from 0 over a slice's keys.
+    pub(crate) fn counter_over_slice(&mut self, iter: &Expr, span: cpl_diag::Span) {
+        if !crate::ty::spec_edition() {
+            return;
+        }
+        let ExprKind::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            ..
+        } = &crate::check::lends::unparen(iter).kind
+        else {
+            return;
+        };
+        if !matches!(lo.kind, ExprKind::Int(0)) {
+            return;
+        }
+        let ExprKind::Field { base, name } = &hi.kind else {
+            return;
+        };
+        if name.text != "len" || self.view_kind(base) != Some("slice") {
+            return;
+        }
+        let w = self.quote(base.span);
+        let message =
+            format!("`0..{w}.len` counts from 0, but the slice `{w}` keeps its source's keys");
+        self.sink.push(
+            Diagnostic::warning(codes::LITERAL_SLICE_INDEX, span, message).with_help(format!(
+                "walk it (`for x in {w}`, `for (k, x) in {w}.items`), or `{w}.rebase` to count from 0"
+            )),
+        );
+    }
+}
+
+impl Checker<'_> {
+    /// R07.1.7: parentheses mark work, so `xs.sorted` reads as O(1) but isn't.
+    fn missing_parens(&mut self, expr: &Expr, base: &Expr, name: &ast::Name, owner: &str) {
+        if !crate::ty::spec_edition() || name.text.is_empty() {
+            return;
+        }
+        let Some(member) = crate::builtins::builtin_member(owner, &name.text) else {
+            return;
+        };
+        if member.kind != crate::builtins::MemberKind::Method
+            || !member.params.is_empty()
+            || member.ret.is_empty()
+        {
+            return;
+        }
+        let after = self.src.get(expr.span.end as usize..).unwrap_or("");
+        if after.trim_start().starts_with('(') {
+            return;
+        }
+        let shown = format!("{}.{}", self.quote(base.span), name.text);
+        let message = format!("`{shown}` does work, but without `()` it reads like an O(1) field");
+        self.sink.push(
+            Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
+                .with_help(format!("write `{shown}()`")),
+        );
+    }
+}
+
+impl Checker<'_> {
+    /// R04.4.5, R04.4.6: only a literal half-open `j..i` of cuts is a piece.
+    fn cut_range_not_piece(&mut self, base_ty: &Ty, indices: &[Expr], index_tys: &[Ty]) -> bool {
+        if !crate::ty::spec_edition() || !matches!(base_ty, Ty::Array { .. }) {
+            return false;
+        }
+        for (index, ty) in indices.iter().zip(index_tys) {
+            let Ty::Named { name, args } = ty else {
+                continue;
+            };
+            let [Ty::Pos(d)] = args.as_slice() else {
+                continue;
+            };
+            if name != "Range" || !d.ends_with(".cuts") {
+                continue;
+            }
+            let shown = self.quote(index.span);
+            let (message, help) = match &crate::check::lends::unparen(index).kind {
+                ExprKind::Range { inclusive: true, lo, hi, .. } => (
+                    format!("`{shown}` is a closed range of cuts, which names no piece"),
+                    match (lo, hi) {
+                        (Some(lo), Some(hi)) => format!("write `{}..{}`", self.quote(lo.span), self.quote(hi.span)),
+                        _ => "write the half-open `j..i`".to_string(),
+                    },
+                ),
+                _ => (
+                    format!("`{shown}` is a stored `Range<{d}>`; only a literal `j..i` of cuts becomes a piece"),
+                    "write the range where it is used: `a[j..i]`".to_string(),
+                ),
+            };
+            if let Some(diag) = self.error(codes::TYPE_MISMATCH, index.span, message) {
+                diag.help = Some(help);
+            }
+            return true;
+        }
+        false
+    }
+}
+
+impl Checker<'_> {
+    /// R04b.1.7: `let t = w.rebase` is `[t.Idx]T`, keyed by a domain of its own.
+    pub(crate) fn rebased(&mut self, name: &str, init: &Expr) -> Option<Ty> {
+        if !crate::ty::spec_edition() {
+            return None;
+        }
+        let ExprKind::Field { base, name: field } = &crate::check::lends::unparen(init).kind else {
+            return None;
+        };
+        if field.text != "rebase" {
+            return None;
+        }
+        let elem = self.quietly(|c| c.infer(base)).seq_elem()?;
+        Some(Ty::Array {
+            index: vec![Ty::Pos(format!("{name}.Idx"))],
+            elem: Box::new(elem),
+        })
+    }
 }

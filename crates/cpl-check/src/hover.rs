@@ -106,8 +106,16 @@ impl Database {
             doc_above(&source, def.span.start)
         });
         let doc = doc.or_else(|| builtin.map(|m| m.doc.to_string()));
-        let receiver = item.check.hovers.iter().find(|e| e.span.end + 1 == entry.span.start);
-        let generics = match (entry.keyword, entry.owner.as_deref(), receiver.map(|r| &r.ty)) {
+        let receiver = item
+            .check
+            .hovers
+            .iter()
+            .find(|e| e.span.end + 1 == entry.span.start);
+        let generics = match (
+            entry.keyword,
+            entry.owner.as_deref(),
+            receiver.map(|r| &r.ty),
+        ) {
             ("field", Some(owner), Some(Ty::Named { name, args })) if name == owner => {
                 match self.lookup(path, &analysis, owner).as_deref() {
                     Some(Def::Struct { generics, .. }) => {
@@ -118,7 +126,10 @@ impl Database {
             }
             _ => Vec::new(),
         };
-        let cost = doc.as_deref().and_then(cost_of).map(|c| in_receiver_domains(&c, &generics));
+        let cost = doc
+            .as_deref()
+            .and_then(cost_of)
+            .map(|c| in_receiver_domains(&c, &generics));
         let text = match cost {
             Some(cost) if matches!(entry.ty, Ty::Fn { .. }) || entry.keyword == "field" => {
                 format!("{text}\ncost: {cost}")
@@ -146,21 +157,32 @@ impl Database {
             .filter(|e| e.keyword == "field" || matches!(e.ty, Ty::Fn { .. }))
             .filter(|e| e.decl != Some(e.span))
             .map(|e| {
-                let name = if e.keyword == "field" { format!(".{}", e.name) } else { e.name.clone() };
+                let name = if e.keyword == "field" {
+                    format!(".{}", e.name)
+                } else {
+                    e.name.clone()
+                };
                 (e.span.shift(item.offset), name)
             })
             .filter(|(span, _)| start <= span.start && span.end <= end)
             .collect();
         named.sort_by_key(|(span, _)| (span.start, span.end));
         named.dedup_by_key(|(span, _)| *span);
-        let io = item.check.io_costs.iter().map(|(s, n, c)| (s.shift(item.offset), n.clone(), c.clone()));
-        let io: Vec<_> = io.filter(|(s, ..)| start <= s.start && s.end <= end).collect();
+        let io = item
+            .check
+            .io_costs
+            .iter()
+            .map(|(s, n, c)| (s.shift(item.offset), n.clone(), c.clone()));
+        let io: Vec<_> = io
+            .filter(|(s, ..)| start <= s.start && s.end <= end)
+            .collect();
         named
             .into_iter()
             .filter_map(|(span, name)| {
                 let hover = self.hover(path, span.start)?;
                 let cost = hover.text.lines().find_map(|l| l.strip_prefix("cost: "))?;
-                (hover.span == span && cost.starts_with("O(") && !cost.starts_with("O(1)")).then(|| (span, name, cost.to_string()))
+                (hover.span == span && cost.starts_with("O(") && !cost.starts_with("O(1)"))
+                    .then(|| (span, name, cost.to_string()))
             })
             .chain(io)
             .collect()
@@ -168,7 +190,12 @@ impl Database {
 
     /// The innermost index at `offset` that its types prove in bounds, in
     /// file positions; with `on_index`, only when `offset` is on its indices.
-    pub fn typed_index(&mut self, path: &str, offset: u32, on_index: bool) -> Option<crate::TypedIndex> {
+    pub fn typed_index(
+        &mut self,
+        path: &str,
+        offset: u32,
+        on_index: bool,
+    ) -> Option<crate::TypedIndex> {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
         let inside = |s: Span| s.start <= at && at < s.end;
@@ -372,26 +399,45 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
     impl Visitor for Find {
         fn expr(&mut self, expr: &Expr) {
             match &expr.kind {
-                ExprKind::Name(n) if expr.span.touches(self.at) => self.name = Some((expr.span, n.clone())),
+                ExprKind::Name(n) if expr.span.touches(self.at) => {
+                    self.name = Some((expr.span, n.clone()))
+                }
                 ExprKind::Call { callee, args } => self.calls.push((callee.span, args.len())),
                 _ => {}
             }
         }
     }
-    let mut find = Find { at, name: None, calls: Vec::new() };
+    let mut find = Find {
+        at,
+        name: None,
+        calls: Vec::new(),
+    };
     for stmt in &item.syntax.parsed.stmts {
         walk_stmt(stmt, &mut find);
     }
     let (span, name) = find.name?;
-    let args = find.calls.iter().find(|(callee, _)| *callee == span).map(|&(_, n)| n);
+    let args = find
+        .calls
+        .iter()
+        .find(|(callee, _)| *callee == span)
+        .map(|&(_, n)| n);
     let fixed = item.check.fixed_io.contains(&span);
     let doc = crate::prelude::value_doc(&name, args, fixed)?;
-    let io = item.check.io_costs.iter().find(|(s, ..)| *s == span).map(|(.., c)| c.clone());
+    let io = item
+        .check
+        .io_costs
+        .iter()
+        .find(|(s, ..)| *s == span)
+        .map(|(.., c)| c.clone());
     let text = match io.or_else(|| cost_of(doc)) {
         Some(cost) => format!("{name}: built-in\ncost: {cost}"),
         None => format!("{name}: built-in"),
     };
-    Some(Hover { span: span.shift(item.offset), text, doc: Some(doc.to_string()) })
+    Some(Hover {
+        span: span.shift(item.offset),
+        text,
+        doc: Some(doc.to_string()),
+    })
 }
 
 fn innermost(hovers: &[HoverEntry], at: u32) -> Option<&HoverEntry> {
@@ -483,9 +529,13 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
                 };
                 if let Some(total) = size(&whole, lookup) {
                     let align = sizes.as_deref().map_or(1, |s| struct_layout(s).align);
-                    out += &format!("\n  storage: {}, aligned to {align}", human_bytes(total.into()));
+                    out += &format!(
+                        "\n  storage: {}, aligned to {align}",
+                        human_bytes(total.into())
+                    );
                 } else {
-                    let named: Vec<(String, &Ty)> = fields.iter().map(|f| (f.name.to_string(), &f.ty)).collect();
+                    let named: Vec<(String, &Ty)> =
+                        fields.iter().map(|f| (f.name.to_string(), &f.ty)).collect();
                     if let Some(note) = fields_note(&named, lookup) {
                         out += &format!("\n  storage: {note}");
                     }
@@ -777,9 +827,9 @@ fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
         Ty::Tuple(items) => items.iter().map(|t| size(t, lookup)).collect(),
         Ty::Record(fields) => fields.iter().map(|(_, t)| size(t, lookup)).collect(),
         Ty::Named { name, args } if args.is_empty() => match lookup(name).as_deref() {
-            Some(Def::Struct { fields, generics, .. }) if generics.is_empty() => {
-                fields.iter().map(|f| size(&f.ty, lookup)).collect()
-            }
+            Some(Def::Struct {
+                fields, generics, ..
+            }) if generics.is_empty() => fields.iter().map(|f| size(&f.ty, lookup)).collect(),
             _ => None,
         },
         _ => None,
@@ -789,7 +839,9 @@ fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
     };
     let layout = struct_layout(&sizes);
     let at: Vec<String> = layout.offsets.iter().map(u64::to_string).collect();
-    let padding: u64 = (0..=sizes.len()).map(|i| layout.padding_before(i, &sizes)).sum();
+    let padding: u64 = (0..=sizes.len())
+        .map(|i| layout.padding_before(i, &sizes))
+        .sum();
     let mut note = format!(" (fields at {}", at.join(", "));
     if padding > 0 {
         note += &format!("; {} padding", human_bytes(padding.into()));
@@ -819,11 +871,16 @@ fn unsized_note(ty: &Ty, lookup: &mut Lookup) -> Option<String> {
             None => element_note(elem, lookup),
         },
         Ty::Tuple(items) => {
-            let named: Vec<(String, &Ty)> = items.iter().enumerate().map(|(i, t)| (i.to_string(), t)).collect();
+            let named: Vec<(String, &Ty)> = items
+                .iter()
+                .enumerate()
+                .map(|(i, t)| (i.to_string(), t))
+                .collect();
             fields_note(&named, lookup)
         }
         Ty::Record(fields) => {
-            let named: Vec<(String, &Ty)> = fields.iter().map(|(n, t)| (n.to_string(), t)).collect();
+            let named: Vec<(String, &Ty)> =
+                fields.iter().map(|(n, t)| (n.to_string(), t)).collect();
             fields_note(&named, lookup)
         }
         _ => None,

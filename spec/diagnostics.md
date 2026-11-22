@@ -3,7 +3,8 @@
 Status: draft for 0.3.0. Every error, warning, lint and trap has a
 stable code that never changes meaning. A message names the place, the
 rule and the fix; one diagnostic per root cause. Codes marked *(0.3)*
-are specified here and not yet emitted (`delta/0.2.md`); the rest are
+are specified here and not yet emitted by default (`delta/0.2.md`; some
+are emitted under `CPL_SPEC=1`, the 0.3 edition); the rest are
 emitted by 0.2.x (`crates/cpl-diag`, `crates/cpl-lint`). A *(retired)* code is never emitted
 and never reused; a *(reserved)* one is kept for a check that reports
 under another code today. `crates/cpl-cli/tests/catalogue.rs` holds the

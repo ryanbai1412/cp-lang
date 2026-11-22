@@ -46,11 +46,22 @@ fn defined() -> BTreeSet<String> {
 
 /// The codes `cpl <mode>` reports for `src`: errors, then warnings.
 fn reported(mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec<String>) {
+    reported_in(false, mode, src, input, name)
+}
+
+/// [`reported`], in the 0.3 edition (`CPL_SPEC=1`) when `spec` is set.
+fn reported_in(spec: bool, mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec<String>) {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("catalogue_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join(format!("{name}.cp"));
     std::fs::write(&file, src).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    if spec {
+        cmd.env("CPL_SPEC", "1");
+    } else {
+        cmd.env_remove("CPL_SPEC");
+    }
+    let mut child = cmd
         .arg(mode)
         .arg(&file)
         .stdin(Stdio::piped())
@@ -97,9 +108,18 @@ fn every_defined_code_is_catalogued() {
 fn codes_marked_not_emitted_are_not_defined() {
     let defined = defined();
     let reserved = |c: &str| cpl_diag::registry::lookup(c).is_some_and(|i| i.mode == "reserved");
+    // A *(0.3)* code may already be emitted in the 0.3 edition, behind
+    // `CPL_SPEC=1`: its trigger then reports exactly it, and its fix nothing.
+    let edition_only = |c: &str| {
+        cpl_diag::registry::lookup(c).is_some_and(|i| {
+            i.mode == "check"
+                && reported_in(true, "check", i.trigger, i.input, &format!("{c}_spec_trigger")).0 == [c]
+                && reported_in(true, "check", i.fix, i.input, &format!("{c}_spec_fix")).0.is_empty()
+        })
+    };
     let stale: Vec<String> = catalogue()
         .into_iter()
-        .filter(|(c, emitted)| !emitted && defined.contains(c) && !reserved(c))
+        .filter(|(c, emitted)| !emitted && defined.contains(c) && !reserved(c) && !edition_only(c))
         .map(|(c, _)| c)
         .collect();
     assert!(stale.is_empty(), "marked (0.3) or (retired) but defined, so emitted: {stale:?}");

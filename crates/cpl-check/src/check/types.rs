@@ -193,7 +193,9 @@ impl<'a> Checker<'a> {
         else {
             return;
         };
-        let Some(Def::Struct { generics, fields, .. }) = self.type_def(name).as_deref().cloned()
+        let Some(Def::Struct {
+            generics, fields, ..
+        }) = self.type_def(name).as_deref().cloned()
         else {
             return;
         };
@@ -351,7 +353,9 @@ impl<'a> Checker<'a> {
         }
         if let Some(ty) = prelude::ty(name) {
             let expected_arity = match name {
-                "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Iter" | "Gen" | "Seq" => Some(1),
+                "List" | "Set" | "HashSet" | "Range" | "SortedRange" | "Iter" | "Gen" | "Seq" => {
+                    Some(1)
+                }
                 "Map" | "HashMap" | "Indexed" => Some(2),
                 _ => None,
             };
@@ -361,7 +365,9 @@ impl<'a> Checker<'a> {
                     self.error(
                         codes::TYPE_MISMATCH,
                         span,
-                        format!("`{name}` is a built-in type that takes {want} type argument{plural}"),
+                        format!(
+                            "`{name}` is a built-in type that takes {want} type argument{plural}"
+                        ),
                     );
                     return Ty::Error;
                 }
@@ -486,7 +492,11 @@ impl<'a> Checker<'a> {
         // `fn valid(n: Int, seq: [0..n]Int)`. So can the result's.
         self.push_scope();
         let mut params = Vec::new();
-        for p in f.params.iter().filter(|p| !(self_ty.is_some() && p.name.text == "self")) {
+        for p in f
+            .params
+            .iter()
+            .filter(|p| !(self_ty.is_some() && p.name.text == "self"))
+        {
             let ty = match &p.ty {
                 Some(ty) => self.resolve_type(ty),
                 None => Ty::Unknown,
@@ -503,7 +513,10 @@ impl<'a> Checker<'a> {
                     ));
                 }
             }
-            if p.lazy && !matches!(&ty, Ty::Fn { params, .. } if params.is_empty()) && ty != Ty::Error {
+            if p.lazy
+                && !matches!(&ty, Ty::Fn { params, .. } if params.is_empty())
+                && ty != Ty::Error
+            {
                 let message = format!(
                     "`lazy {}` is passed as an expression the fn runs when it calls `{}()`, so its type is `() -> T`, not `{ty}`",
                     p.name.text, p.name.text
@@ -512,8 +525,16 @@ impl<'a> Checker<'a> {
                     diag.help = Some(format!("write `lazy {}: () -> {ty}`", p.name.text));
                 }
             }
-            let seen = Local { ty: ty.clone(), mutable: p.mutable, span: p.name.span, keyword: "param" };
-            self.scopes.last_mut().unwrap().insert(p.name.text.clone(), seen);
+            let seen = Local {
+                ty: ty.clone(),
+                mutable: p.mutable,
+                span: p.name.span,
+                keyword: "param",
+            };
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .insert(p.name.text.clone(), seen);
             params.push(Param {
                 name: p.label_text().to_string(),
                 ty,
@@ -736,7 +757,10 @@ impl<'a> Checker<'a> {
                     if m.decorators.iter().any(|d| d.name.text == "get") {
                         getters.push(f.name.text.clone());
                     }
-                    if f.params.first().is_some_and(|p| p.mutable && p.name.text == "self") {
+                    if f.params
+                        .first()
+                        .is_some_and(|p| p.mutable && p.name.text == "self")
+                    {
                         mutators.push(f.name.text.clone());
                     }
                     Some((f.name.text.clone(), self.fn_sig(f, Some(self_ty))))
@@ -750,7 +774,11 @@ impl<'a> Checker<'a> {
     /// The type an impl is for, with the type parameters its header names:
     /// `impl Add for Mod<P>` is generic over `P`, and `impl<T: Add> Add for ?T`
     /// is generic over `T`.
-    pub(crate) fn impl_generics(&mut self, target: &ast::Type, bounds: &[ast::Bound]) -> Vec<String> {
+    pub(crate) fn impl_generics(
+        &mut self,
+        target: &ast::Type,
+        bounds: &[ast::Bound],
+    ) -> Vec<String> {
         let mut out = Vec::new();
         for b in bounds {
             if !out.contains(&b.name.text) {
@@ -814,7 +842,13 @@ impl<'a> Checker<'a> {
                     (Some(ty), _) => self.resolve_type(ty),
                     (None, Some(init)) => {
                         let inferred = self.infer(init);
-                        if *mutable
+                        let rebased = match &pat.kind {
+                            ast::PatternKind::Name(name) => self.rebased(name, init),
+                            _ => None,
+                        };
+                        if let Some(rebased) = rebased {
+                            rebased
+                        } else if *mutable
                             && matches!(inferred, Ty::Range { .. })
                             && std::env::var_os("CPL_SPEC").is_some()
                         {
@@ -958,6 +992,7 @@ impl<'a> Checker<'a> {
                         lends: f.lends.is_some(),
                         row_bounds,
                         trait_bounds,
+                        droppable: stmt.decorators.iter().any(|d| d.name.text == "droppable"),
                     },
                 ));
                 out
@@ -1090,6 +1125,7 @@ impl<'a> Checker<'a> {
                 generics,
                 supers,
                 body,
+                alias,
             } => {
                 let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
                 let scope = self.enter_body(&generics, Ty::Param("Self".into()));
@@ -1110,10 +1146,11 @@ impl<'a> Checker<'a> {
                     .iter()
                     .filter_map(|s| match &s.kind {
                         S::Let {
-                            pat: ast::Pattern {
-                                kind: ast::PatternKind::Name(fname),
-                                ..
-                            },
+                            pat:
+                                ast::Pattern {
+                                    kind: ast::PatternKind::Name(fname),
+                                    ..
+                                },
                             ty: Some(fty),
                             init: None,
                             ..
@@ -1128,6 +1165,7 @@ impl<'a> Checker<'a> {
                         supers: supers.iter().filter_map(type_head).collect(),
                         methods,
                         fields,
+                        alias: *alias,
                     },
                 )]
             }
@@ -1569,6 +1607,16 @@ impl<'a> Checker<'a> {
             }
             _ => {}
         }
+        if let Some(Def::Trait {
+            supers,
+            alias: true,
+            ..
+        }) = self.global(trait_name).as_deref().cloned()
+        {
+            return supers
+                .iter()
+                .all(|s| self.implements_trait_inner(ty, s, seen));
+        }
         let impl_key = match ty {
             Ty::Named { name, .. } => Some(name.as_str()),
             Ty::Int => Some("Int"),
@@ -1663,12 +1711,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn derives_structural(
-        &mut self,
-        ty: &Ty,
-        trait_name: &str,
-        seen: &mut Vec<String>,
-    ) -> bool {
+    fn derives_structural(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {
         match ty {
             Ty::Error | Ty::Unknown => true,
             Ty::Param(p) => self.param_has_bound(p, trait_name),
@@ -1761,7 +1804,9 @@ impl<'a> Checker<'a> {
                 }
                 allow_none && self.derives_print(inner, allow_none, seen)
             }
-            Ty::Fn { params, ret } => params.is_empty() && self.derives_print(ret, allow_none, seen),
+            Ty::Fn { params, ret } => {
+                params.is_empty() && self.derives_print(ret, allow_none, seen)
+            }
             Ty::Tuple(items) => items
                 .iter()
                 .all(|t| self.derives_print(t, allow_none, seen)),

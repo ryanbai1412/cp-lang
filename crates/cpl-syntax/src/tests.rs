@@ -378,7 +378,10 @@ fn capitalized_name_with_closed_type_arguments_is_generic() {
     assert_eq!(show(&expr("f::<Int>(x)\n")), "f<1>(x)");
     assert_eq!(show(&expr("read<(Int, Int)>()\n")), "read<1>()");
     assert_eq!(show(&expr("read<Int>()\n")), "read<1>()");
-    assert_eq!(show(&expr("i < n and m > (k)\n")), "((cmp i Lt n) and (cmp m Gt k))");
+    assert_eq!(
+        show(&expr("i < n and m > (k)\n")),
+        "((cmp i Lt n) and (cmp m Gt k))"
+    );
     assert!(!show(&expr("a < b > (c)\n")).contains("a<"));
 }
 
@@ -870,8 +873,7 @@ fn an_expression_body_may_sit_on_the_next_lines() {
 
 #[test]
 fn type_parameters_carry_their_bounds() {
-    let f =
-        fn_of("fn best<T: Ord + Bounded, const N: Int>(xs: List<T>) -> T: xs[0]\n");
+    let f = fn_of("fn best<T: Ord + Bounded, const N: Int>(xs: List<T>) -> T: xs[0]\n");
     let names: Vec<&str> = f.generics.iter().map(|g| g.text.as_str()).collect();
     assert_eq!(names, ["T", "N"]);
     let bounds: Vec<(&str, usize)> = f
@@ -1167,13 +1169,21 @@ fn map_literals_counts_and_chained_let_else() {
 fn there_are_thirty_four_keywords_and_no_others() {
     for word in crate::KEYWORDS {
         let lexed = crate::lex(&format!("{word}\n"));
-        assert_ne!(lexed.tokens[0].kind, TokenKind::Ident, "`{word}` is reserved");
+        assert_ne!(
+            lexed.tokens[0].kind,
+            TokenKind::Ident,
+            "`{word}` is reserved"
+        );
     }
-    for word in ["defer", "assume", "where", "inline", "lend", "law", "with", "by"] {
+    for word in [
+        "defer", "assume", "where", "inline", "lend", "law", "with", "by",
+    ] {
         let lexed = crate::lex(&format!("{word}\n"));
         assert_eq!(lexed.tokens[0].kind, TokenKind::Ident, "`{word}` is a name");
     }
-    stmts("let defer = 1\nlet inline = defer + 1\nlet assume = inline\nlet by = assume\nprint(by)\n");
+    stmts(
+        "let defer = 1\nlet inline = defer + 1\nlet assume = inline\nlet by = assume\nprint(by)\n",
+    );
 }
 
 #[test]
@@ -1186,12 +1196,19 @@ fn removed_spellings_say_what_replaces_them() {
         ("for mut x in xs: x += 1\n", "index"),
         ("if a: print(1)\nelse if b: print(2)\n", "elif"),
         ("@memo(hash)\nfn f(x: Int) -> Int = x\n", "bare `@memo`"),
-        ("@multitest(count: 3)\nfn solve(): print(1)\n", "for _ in 0..tests"),
+        (
+            "@multitest(count: 3)\nfn solve(): print(1)\n",
+            "for _ in 0..tests",
+        ),
     ] {
         let diags = parse_file(src).diagnostics;
         assert_eq!(diags.len(), 1, "{src:?}: {diags:#?}");
         assert_eq!(diags[0].code.0, "E0503", "{src:?}");
-        let text = format!("{} {}", diags[0].message, diags[0].help.clone().unwrap_or_default());
+        let text = format!(
+            "{} {}",
+            diags[0].message,
+            diags[0].help.clone().unwrap_or_default()
+        );
         assert!(text.contains(needle), "{src:?}: {text}");
     }
     // The v2.1 `law` and `lend` statements are still read: `stdlib/` has them.
@@ -1237,13 +1254,23 @@ fn v22_statement_forms_from_the_blind_drafts_parse() {
 fn a_range_in_parentheses_takes_a_step() {
     let step_of = |src: &str| {
         assert_eq!(codes(src), Vec::<&str>::new(), "{src}");
-        let StmtKind::For { iter, .. } = stmts(src).remove(0).kind else { panic!("{src}") };
+        let StmtKind::For { iter, .. } = stmts(src).remove(0).kind else {
+            panic!("{src}")
+        };
         iter.kind
     };
-    for src in ["for i in (0..n) by 2: f(i)\n", "for i in ((1..=n)) by k + 1: f(i)\n"] {
-        assert!(matches!(step_of(src), ExprKind::Range { step: Some(_), .. }), "{src}");
+    for src in [
+        "for i in (0..n) by 2: f(i)\n",
+        "for i in ((1..=n)) by k + 1: f(i)\n",
+    ] {
+        assert!(
+            matches!(step_of(src), ExprKind::Range { step: Some(_), .. }),
+            "{src}"
+        );
     }
-    let ExprKind::By { walk, .. } = step_of("for i in (0..n).rev by 2: f(i)\n") else { panic!() };
+    let ExprKind::By { walk, .. } = step_of("for i in (0..n).rev by 2: f(i)\n") else {
+        panic!()
+    };
     assert!(matches!(&walk.kind, ExprKind::Field { name, .. } if name.text == "rev"));
     // Anything else before `by` is not a range to step.
     assert!(!codes("for i in xs by 2: f(i)\n").is_empty());
@@ -1271,10 +1298,26 @@ impl Read + Print for Str:
                 StmtKind::Fn(f) if f.params.len() == 2 && f.params[1].mutable
             )
     ));
-    assert!(matches!(&items[2].kind, StmtKind::Struct(s) if s.name.text == "List" && s.fields.is_empty()));
-    assert!(matches!(&items[3].kind, StmtKind::Struct(s) if s.name.text == "Str" && s.fields.is_empty()));
-    assert!(matches!(&items[4].kind, StmtKind::Impl { trait_name: Some(_), .. }));
-    assert!(matches!(&items[5].kind, StmtKind::Impl { trait_name: Some(_), .. }));
+    assert!(
+        matches!(&items[2].kind, StmtKind::Struct(s) if s.name.text == "List" && s.fields.is_empty())
+    );
+    assert!(
+        matches!(&items[3].kind, StmtKind::Struct(s) if s.name.text == "Str" && s.fields.is_empty())
+    );
+    assert!(matches!(
+        &items[4].kind,
+        StmtKind::Impl {
+            trait_name: Some(_),
+            ..
+        }
+    ));
+    assert!(matches!(
+        &items[5].kind,
+        StmtKind::Impl {
+            trait_name: Some(_),
+            ..
+        }
+    ));
 }
 
 #[test]
@@ -1317,10 +1360,7 @@ fn plus_plus_is_a_lexer_error_with_plus_fix_it() {
     let parsed = parse_file("let zs = xs ++ [1] ++ ys\n");
     assert_eq!(parsed.diagnostics.len(), 2, "{:?}", parsed.diagnostics);
     for d in &parsed.diagnostics {
-        assert!(
-            d.message.contains("CP Lang concatenates with `+`"),
-            "{d:?}"
-        );
+        assert!(d.message.contains("CP Lang concatenates with `+`"), "{d:?}");
         assert_eq!(d.fixes.len(), 1);
         assert_eq!(d.fixes[0].edits[0].1, "+");
     }
@@ -1364,10 +1404,10 @@ let total = a +
     let lead = "if a == 1\n    and b == 2:\n    f()\n";
     let parsed = parse_file(lead);
     assert!(
-        parsed
-            .diagnostics
-            .iter()
-            .any(|d| d.help.as_deref().is_some_and(|h| h.contains("wrap it in `(...)`"))),
+        parsed.diagnostics.iter().any(|d| d
+            .help
+            .as_deref()
+            .is_some_and(|h| h.contains("wrap it in `(...)`"))),
         "{:?}",
         parsed.diagnostics
     );
@@ -1407,15 +1447,23 @@ fn record_field_may_be_an_operator_or_punned() {
         let StmtKind::Let { init: Some(v), .. } = &st.kind else {
             panic!("not a let: {:?}", st.kind)
         };
-        assert!(matches!(&v.kind, ExprKind::Record(f) if f.len() == 2), "{:?}", v.kind);
+        assert!(
+            matches!(&v.kind, ExprKind::Record(f) if f.len() == 2),
+            "{:?}",
+            v.kind
+        );
     }
 }
 
 #[test]
 fn comprehension_clauses_may_chain_with_commas() {
     let s = stmts("let x = [i + j for i in a, (j, k) in b if k]\nlet y = f(x for x in a, 3)\n");
-    let StmtKind::Let { init: Some(v), .. } = &s[0].kind else { panic!() };
-    let ExprKind::Comprehension { clauses, .. } = &v.kind else { panic!("{:?}", v.kind) };
+    let StmtKind::Let { init: Some(v), .. } = &s[0].kind else {
+        panic!()
+    };
+    let ExprKind::Comprehension { clauses, .. } = &v.kind else {
+        panic!("{:?}", v.kind)
+    };
     assert_eq!(clauses.len(), 2);
 }
 
@@ -1436,12 +1484,24 @@ fn tagged_variants_and_mut_lambda_parameters_parse() {
 #[test]
 fn c_style_logic_and_ranges_are_reported_with_the_cp_spelling_as_a_fix() {
     let cases = [
-        ("let a = true\nlet b = a && a\n", "`&&` is `and` in cp", "and"),
+        (
+            "let a = true\nlet b = a && a\n",
+            "`&&` is `and` in cp",
+            "and",
+        ),
         ("let a = true\nlet b = a || a\n", "`||` is `or` in cp", "or"),
         ("for i in 0..<3:\n    print(i)\n", "`..<` is `..` in cp", ""),
         ("let a: [0..<3]Int = read()\n", "`..<` is `..` in cp", ""),
-        ("if let x = f() && x > 0:\n    print(x)\n", "`&&` is `and` in cp", "and"),
-        ("while x > 0 || y > 0:\n    x -= 1\n", "`||` is `or` in cp", "or"),
+        (
+            "if let x = f() && x > 0:\n    print(x)\n",
+            "`&&` is `and` in cp",
+            "and",
+        ),
+        (
+            "while x > 0 || y > 0:\n    x -= 1\n",
+            "`||` is `or` in cp",
+            "or",
+        ),
     ];
     for (src, message, replacement) in cases {
         let d = one_diag(src);
@@ -1472,5 +1532,10 @@ fn single_bitwise_operators_are_not_c_style_logic() {
 fn an_indented_if_after_eq_is_the_value_and_any_other_indented_value_is_planned() {
     assert!(codes("let a =\n    if true:\n        1\n    else:\n        2\nprint(a)\n").is_empty());
     let d = one_diag("let a =\n    1\nprint(a)\n");
-    assert!(d.message.contains("a value on the indented lines after `=`"), "{}", d.message);
+    assert!(
+        d.message
+            .contains("a value on the indented lines after `=`"),
+        "{}",
+        d.message
+    );
 }

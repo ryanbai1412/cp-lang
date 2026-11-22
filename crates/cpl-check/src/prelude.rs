@@ -24,7 +24,9 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     NAMES.get_or_init(|| {
         // `CPL_STD` may hold a spec prelude (spec/README.md); it wins like any module.
         let spec = std::env::var_os("CPL_STD")
-            .and_then(|dir| std::fs::read_to_string(std::path::Path::new(&dir).join("prelude.cp")).ok())
+            .and_then(|dir| {
+                std::fs::read_to_string(std::path::Path::new(&dir).join("prelude.cp")).ok()
+            })
             .map(|text| &*Box::leak(text.into_boxed_str()));
         let text = spec
             .or_else(|| crate::modules::bundled_std(&["prelude".to_string()]))
@@ -59,13 +61,17 @@ pub fn std_method(name: &str) -> String {
     format!("{name} of std")
 }
 
-/// Every member name the active standard library declares anywhere: fns,
-/// methods, getters and fields. Under `CPL_SPEC`, a member of a built-in
+/// Every fn, method and getter name the active standard library declares.
+/// A struct's fields are not members of the built-in types (R02.6.4). Under `CPL_SPEC`, a member of a built-in
 /// type that the checker can't type and no module declares is a spec gap.
 pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
     static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        let ident = |s: &str| -> String { s.chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect() };
+        let ident = |s: &str| -> String {
+            s.chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect()
+        };
         let mut names = std::collections::HashSet::new();
         for (_, text) in crate::modules::active_std_modules() {
             for line in text.lines() {
@@ -75,15 +81,23 @@ pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
                 }
                 if let Some(at) = code.find("fn ") {
                     names.insert(ident(&code[at + 3..]));
-                } else if line.starts_with(char::is_whitespace) {
-                    let name = ident(code);
-                    if !name.is_empty() && code[name.len()..].trim_start().starts_with(':') {
-                        names.insert(name);
-                    }
                 }
             }
         }
         names
+    })
+}
+
+/// The names of the top-level `fn name(self: S, ..)` methods: all a value
+/// of no declared struct, such as a generator, can be given.
+pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String> {
+    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        crate::modules::active_std_modules()
+            .iter()
+            .flat_map(|(_, text)| scan_top_level_methods(text))
+            .map(str::to_string)
+            .collect()
     })
 }
 
@@ -105,13 +119,20 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
             if *module == "prelude" || !text.contains("self:") {
                 continue;
             }
-            let path: Vec<ast::Name> = std::iter::once("std").chain(module.split('/')).map(bare).collect();
+            let path: Vec<ast::Name> = std::iter::once("std")
+                .chain(module.split('/'))
+                .map(bare)
+                .collect();
             for name in scan_top_level_methods(text) {
                 found.push((path.clone(), bare(name)));
             }
         }
         let twice = |name: &str| found.iter().filter(|(_, other)| other.text == name).count() > 1;
-        let unique: Vec<_> = found.iter().filter(|(_, name)| !twice(&name.text)).cloned().collect();
+        let unique: Vec<_> = found
+            .iter()
+            .filter(|(_, name)| !twice(&name.text))
+            .cloned()
+            .collect();
         unique
     })
 }
@@ -312,12 +333,11 @@ pub fn ty(name: &str) -> Option<Ty> {
         "Str" => Ty::Str,
         "I128" => Ty::I128,
         "U64" => Ty::U64,
-        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Seq" | "Indexed" | "Opt" | "Range" | "Cut" | "SortedRange" | "Sym" | "Counter" => {
-            Ty::Named {
-                name: name.into(),
-                args: Vec::new(),
-            }
-        }
+        "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Seq" | "Indexed" | "Opt"
+        | "Range" | "Cut" | "SortedRange" | "Sym" | "Counter" => Ty::Named {
+            name: name.into(),
+            args: Vec::new(),
+        },
         // The solution as an `@interactor` sees it: `sol.recv()` reads what
         // it printed, `sol.send(x)` answers it.
         "Interactor" => Ty::Unknown,
@@ -333,8 +353,28 @@ pub fn is_trait(name: &str) -> bool {
 }
 
 pub const TYPE_NAMES: &[&str] = &[
-    "List", "Map", "Set", "Int", "I128", "U64", "Bool", "Char", "Str", "F64", "Iter", "Opt", "Range", "Cut",
-    "Counter", "HashMap", "HashSet", "Interactor", "Subset", "Sym", "Seq", "Indexed",
+    "List",
+    "Map",
+    "Set",
+    "Int",
+    "I128",
+    "U64",
+    "Bool",
+    "Char",
+    "Str",
+    "F64",
+    "Iter",
+    "Opt",
+    "Range",
+    "Cut",
+    "Counter",
+    "HashMap",
+    "HashSet",
+    "Interactor",
+    "Subset",
+    "Sym",
+    "Seq",
+    "Indexed",
 ];
 
 /// The traits of `plan/19-index-and-lends.md` and `stdlib/README.md`.
@@ -455,20 +495,29 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
         let body = line.trim_end();
         if let Some(close) = body.strip_prefix(&head).and_then(|_| body.rfind('}')) {
             let inside = body[head.len()..close].trim();
-            let edit = if inside.is_empty() { name.to_string() } else { format!(", {name}") };
+            let edit = if inside.is_empty() {
+                name.to_string()
+            } else {
+                format!(", {name}")
+            };
             let close = (at + close) as u32;
             return (Span::point(close), edit);
         }
         if body.starts_with("use ") {
             after_uses = Some(end);
-        } else if first_code.is_none() && !body.trim_start().is_empty() && !body.trim_start().starts_with("//") {
+        } else if first_code.is_none()
+            && !body.trim_start().is_empty()
+            && !body.trim_start().starts_with("//")
+        {
             first_code = Some(at);
         }
         at = end;
     }
     let line = format!("use std.{module}.{{{name}}}\n");
     match (after_uses, first_code) {
-        (Some(end), _) if !text[..end].ends_with('\n') => (Span::point(end as u32), format!("\n{line}")),
+        (Some(end), _) if !text[..end].ends_with('\n') => {
+            (Span::point(end as u32), format!("\n{line}"))
+        }
         (Some(end), _) => (Span::point(end as u32), line),
         (None, Some(start)) => (Span::point(start as u32), line),
         (None, None) => (Span::point(text.len() as u32), line),

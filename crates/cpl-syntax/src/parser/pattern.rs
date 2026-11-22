@@ -118,7 +118,11 @@ impl<'a> Parser<'a> {
                         "a binding in a `let` condition can't be `mut`",
                     )
                     .with_help("copy it where it changes: `var x = x` at the top of the block")
-                    .with_fix("remove `mut`", Span::new(span.start, self.span_n(1).start), ""),
+                    .with_fix(
+                        "remove `mut`",
+                        Span::new(span.start, self.span_n(1).start),
+                        "",
+                    ),
                 );
                 self.bump();
                 return self.pattern_atom();

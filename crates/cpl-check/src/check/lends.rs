@@ -155,6 +155,39 @@ pub enum Flow {
     Assert(Vec<String>),
     /// `let b = a` / `b = a` / `S(a)`: moved if its type is a heap value (§128).
     Move(Vec<String>),
+    /// `let k = 7 + 2`, `let f = a.filter(p)`: a fact about `k` that later
+    /// items need (its range, R02.10.2; that it is walk-only, R07.1.2).
+    Known(String),
+}
+
+/// Constant arithmetic, or a `filter` call: what `Flow::Known` records.
+fn known_init(e: &Expr) -> bool {
+    use ast::{BinOp, UnOp};
+    fn constant(e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Int(_) | ExprKind::Name(_) => true,
+            ExprKind::Paren(e)
+            | ExprKind::Unary {
+                op: UnOp::Neg,
+                expr: e,
+            } => constant(e),
+            ExprKind::Binary {
+                op: BinOp::Add | BinOp::Sub | BinOp::Mul,
+                lhs,
+                rhs,
+                ..
+            } => constant(lhs) && constant(rhs),
+            _ => false,
+        }
+    }
+    let e = unparen(e);
+    match &e.kind {
+        ExprKind::Call { callee, .. } => {
+            matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "filter")
+        }
+        ExprKind::Name(_) => false,
+        _ => constant(e),
+    }
 }
 
 fn ctor_move_args(e: &Expr) -> Vec<String> {
@@ -166,7 +199,9 @@ fn ctor_move_args(e: &Expr) -> Vec<String> {
     };
     let is_type_name = match &unparen(callee).kind {
         ExprKind::Name(n) => n.chars().next().is_some_and(|c| c.is_ascii_uppercase()),
-        ExprKind::Generic { base, .. } => matches!(&unparen(base).kind, ExprKind::Name(n) if n.chars().next().is_some_and(|c| c.is_ascii_uppercase())),
+        ExprKind::Generic { base, .. } => {
+            matches!(&unparen(base).kind, ExprKind::Name(n) if n.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
+        }
         _ => false,
     };
     if !is_type_name {
@@ -195,6 +230,7 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 },
             init: Some(init),
             otherwise,
+            ty,
             ..
         } => {
             if matches!(unparen(init).kind, ExprKind::Lambda { .. }) {
@@ -209,15 +245,15 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                         name.text.as_str(),
                         "row" | "rev" | "filter" | "take" | "drop"
                     ),
-                    ExprKind::Name(n) => {
-                        n.chars().next().is_some_and(|c| c.is_ascii_lowercase())
-                    }
+                    ExprKind::Name(n) => n.chars().next().is_some_and(|c| c.is_ascii_lowercase()),
                     _ => false,
                 },
                 _ => false,
             };
             if view {
                 Flow::View(name.clone())
+            } else if ty.is_none() && otherwise.is_none() && known_init(init) {
+                Flow::Known(name.clone())
             } else if otherwise.is_none() {
                 match &unparen(init).kind {
                     ExprKind::Name(src) => Flow::Move(vec![src.clone()]),
@@ -315,6 +351,9 @@ pub(crate) struct Lends {
     global_views: HashMap<String, Lent>,
     facts: Vec<Fact>,
     holds: Vec<Hold>,
+    /// Uses already reported as conflicting with a hold: `xs.push(x)` is
+    /// one conflict, not one for `xs` and another for `xs.push`.
+    conflicts: Vec<Span>,
     /// Receivers of an enclosing place expression: `a` in `a[i]` is not
     /// also a use of all of `a`.
     covered: HashSet<Span>,
@@ -442,7 +481,7 @@ fn implied_by(op: CmpOp) -> &'static [CmpOp] {
     }
 }
 
-fn unparen(mut e: &Expr) -> &Expr {
+pub(crate) fn unparen(mut e: &Expr) -> &Expr {
     while let ExprKind::Paren(inner) = &e.kind {
         e = inner;
     }
@@ -699,24 +738,30 @@ pub(crate) fn own_effects(f: &ast::FnDecl) -> Effects {
         ast::FnBody::Expr(expr) => walk_expr(expr, &mut touched),
         ast::FnBody::None => {}
     }
-    let Touched {
-        declared,
-        written,
-        read,
-        calls,
-    } = touched;
-    let outer = |names: Vec<String>| -> Vec<String> {
-        names
-            .into_iter()
-            .filter(|n| !declared.contains(n))
-            .collect()
-    };
-    let calls = outer(calls);
-    Effects {
-        writes: outer(written.0),
-        reads: outer(read),
-        io: calls.iter().find_map(|name| io_of(name)),
-        calls,
+    touched.effects()
+}
+
+impl Touched {
+    fn effects(self) -> Effects {
+        let Touched {
+            declared,
+            written,
+            read,
+            calls,
+        } = self;
+        let outer = |names: Vec<String>| -> Vec<String> {
+            names
+                .into_iter()
+                .filter(|n| !declared.contains(n))
+                .collect()
+        };
+        let calls = outer(calls);
+        Effects {
+            writes: outer(written.0),
+            reads: outer(read),
+            io: calls.iter().find_map(|name| io_of(name)),
+            calls,
+        }
     }
 }
 
@@ -1042,7 +1087,8 @@ impl<'a> Checker<'a> {
                             "slice",
                             "Array.at(Range)",
                             Law::Source {
-                                source: "law disjoint(s, t) = s.end <= t.start or t.end <= s.start".into(),
+                                source: "law disjoint(s, t) = s.end <= t.start or t.end <= s.start"
+                                    .into(),
                                 shown: "s.end <= t.start or t.end <= s.start".into(),
                             },
                             indices,
@@ -1341,6 +1387,28 @@ impl<'a> Checker<'a> {
         };
         match (&replay.item.flow, &stmt.kind) {
             (Flow::Assert(_), StmtKind::Assert { cond, .. }) => self.add_facts(cond, false),
+            (
+                Flow::Known(name),
+                StmtKind::Let {
+                    init: Some(init), ..
+                },
+            ) => {
+                let (range, walk_only) = self.quietly(|c| {
+                    c.infer(init);
+                    (c.const_range(init), c.walk_only_expr(init))
+                });
+                self.walk_only_calls.clear();
+                self.lends.view_exprs.clear();
+                self.lends.view_readonly.clear();
+                self.lends.proj_calls.clear();
+                self.lends.covered.clear();
+                if let Some(range) = range {
+                    self.let_ranges.insert(name.clone(), range);
+                }
+                if walk_only {
+                    self.walk_only.insert(name.clone());
+                }
+            }
             (Flow::Move(srcs), _) => {
                 // If the statement is a call (`Bag(a)`), only treat it as a move when
                 // the callee is a generated struct constructor (no custom `new`).
@@ -1513,13 +1581,12 @@ impl<'a> Checker<'a> {
                 if !self.is_owned_movable_var(src) {
                     continue;
                 }
-                let ty = self
-                    .local(src)
-                    .map(|l| l.ty.clone())
-                    .or_else(|| match self.global(src).as_deref() {
+                let ty = self.local(src).map(|l| l.ty.clone()).or_else(|| {
+                    match self.global(src).as_deref() {
                         Some(Def::Value { ty, .. }) => Some(ty.clone()),
                         _ => None,
-                    });
+                    }
+                });
                 if let Some(ty) = ty {
                     if self.is_heap_type(&ty) {
                         self.mark_moved(src, arg.value.span);
@@ -1645,10 +1712,7 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Call { callee, args } => {
                 if let ExprKind::Field { base, name } = &unparen(callee).kind {
-                    if matches!(
-                        name.text.as_str(),
-                        "filter" | "take" | "drop"
-                    ) {
+                    if matches!(name.text.as_str(), "filter" | "take" | "drop") {
                         let base_ty = self.quietly(|c| c.infer(base));
                         if base_ty.is_seq() {
                             if let Some(mut place) = self.place(base) {
@@ -1857,9 +1921,7 @@ impl<'a> Checker<'a> {
             iter = match &iter.kind {
                 ExprKind::Field { base, name } if name.text == "rev" => unparen(base),
                 ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
-                    ExprKind::Field { base, name } if name.text == "pairs" => {
-                        unparen(base)
-                    }
+                    ExprKind::Field { base, name } if name.text == "pairs" => unparen(base),
                     _ => break,
                 },
                 _ => break,
@@ -1892,7 +1954,10 @@ impl<'a> Checker<'a> {
         }
         let stored = match iter_ty {
             Ty::Array { .. } => true,
-            Ty::Named { name, .. } => matches!(name.as_str(), "List" | "Set" | "HashSet" | "Map" | "HashMap"),
+            Ty::Named { name, .. } => matches!(
+                name.as_str(),
+                "List" | "Set" | "HashSet" | "Map" | "HashMap"
+            ),
             _ => false,
         };
         if !stored && self.view_kind(iter).is_none() {
@@ -2052,8 +2117,11 @@ impl<'a> Checker<'a> {
         }
         let (Some(root), Some(key)) = (
             root_name(base).filter(|_| name.text == "sort"),
-            args.iter()
-                .find(|a| a.name.as_ref().is_some_and(|n| matches!(n.text.as_str(), "by" | "cmp"))),
+            args.iter().find(|a| {
+                a.name
+                    .as_ref()
+                    .is_some_and(|n| matches!(n.text.as_str(), "by" | "cmp"))
+            }),
         ) else {
             return;
         };
@@ -2075,7 +2143,9 @@ impl<'a> Checker<'a> {
             let global_fn = self.local(used).is_none()
                 && matches!(self.global(used).as_deref(), Some(Def::Fn { .. }));
             match (outer && global_fn).then(|| self.env.effects(used)) {
-                Some(effects) => effects.does(root).map(|what| format!("calls `{used}`, which {what} `{root}`")),
+                Some(effects) => effects
+                    .does(root)
+                    .map(|what| format!("calls `{used}`, which {what} `{root}`")),
                 None => None,
             }
         });
@@ -2084,7 +2154,8 @@ impl<'a> Checker<'a> {
         };
         let opt = key.name.as_ref().map(|n| n.text.as_str()).unwrap_or("by");
         let role = if opt == "cmp" { "comparator" } else { "key" };
-        let message = format!("the {role} of `{root}.sort({opt}:)` {what} while `{root}` is being sorted");
+        let message =
+            format!("the {role} of `{root}.sort({opt}:)` {what} while `{root}` is being sorted");
         if let Some(diag) = self.error(codes::USED_WHILE_LENT, key.value.span, message) {
             diag.help = Some(format!(
                 "sort a copy, whose key may use the list: `{root} = {root}.sorted(by: ..)`"
@@ -2321,6 +2392,15 @@ impl<'a> Checker<'a> {
             let Some(why) = self.overlap(&place.steps, &steps) else {
                 continue;
             };
+            if self
+                .lends
+                .conflicts
+                .iter()
+                .any(|s| s.contains(e.span) || e.span.contains(*s))
+            {
+                return;
+            }
+            self.lends.conflicts.push(e.span);
             if in_loop {
                 let root = place.root;
                 let message = format!(
@@ -2424,8 +2504,7 @@ impl<'a> Checker<'a> {
     /// Returning a lent parameter without `lends`, or returning a closure that
     /// captures a local variable, is E0603 (R05.7.5 / R05.7.8 / R05.10.2).
     pub(crate) fn no_escape_return(&mut self, e: &Expr, what: &str) {
-        if std::env::var_os("CPL_SPEC").is_none()
-            || self.fn_lends.last().copied().unwrap_or(false)
+        if std::env::var_os("CPL_SPEC").is_none() || self.fn_lends.last().copied().unwrap_or(false)
         {
             return;
         }
@@ -2484,9 +2563,7 @@ impl<'a> Checker<'a> {
         let src_depth = self.var_depth(src);
         if local.keyword == "param" && self.is_lent_param_ty(&local.ty) && target_depth < src_depth
         {
-            let message = format!(
-                "lent parameter `{src}` cannot be stored in an outer `var`"
-            );
+            let message = format!("lent parameter `{src}` cannot be stored in an outer `var`");
             self.error(codes::LENT_ESCAPES, e.span, message);
         } else if local.keyword == "for" && self.is_heap_type(&local.ty) && target_depth < src_depth
         {
@@ -2573,13 +2650,12 @@ impl<'a> Checker<'a> {
             ExprKind::Index { indices, .. }
                 if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. }))
         ) && Self::root_name(target).is_some_and(|(name, _)| {
-            let ty = self
-                .local(name)
-                .map(|l| l.ty.clone())
-                .or_else(|| match self.global(name).as_deref() {
+            let ty = self.local(name).map(|l| l.ty.clone()).or_else(|| {
+                match self.global(name).as_deref() {
                     Some(Def::Value { ty, .. }) => Some(ty.clone()),
                     _ => None,
-                });
+                }
+            });
             matches!(ty, Some(Ty::Named { name, .. }) if name == "List")
         });
         let mut e = target;
@@ -2587,10 +2663,7 @@ impl<'a> Checker<'a> {
         loop {
             if !(first && direct_list_range) && self.is_readonly_view(e) {
                 let kind = self.view_kind(e).unwrap_or("view");
-                let message = format!(
-                    "`{}` is a read-only {kind} and can't be modified",
-                    show(e)
-                );
+                let message = format!("`{}` is a read-only {kind} and can't be modified", show(e));
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, target.span, message) {
                     diag.help = Some(
                         "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
@@ -2638,6 +2711,12 @@ impl<'a> Checker<'a> {
         if !MUTATORS.contains(&name.text.as_str()) {
             return;
         }
+        // `xs.take()` empties `xs`; `xs.take(k)` is a view of its first `k`.
+        if name.text == "take"
+            && matches!(&call.kind, ExprKind::Call { args, .. } if !args.is_empty())
+        {
+            return;
+        }
         if name.text == "sort" {
             if let ExprKind::Name(n) = &base.kind {
                 if matches!(self.local(n).map(|b| &b.ty), Some(Ty::Domain(_)))
@@ -2649,6 +2728,7 @@ impl<'a> Checker<'a> {
         }
         // `xs.push(x)` changes `xs` as an assignment to it would.
         self.check_access(base, true);
+        let viewed = self.view_kind(base).is_some();
         if let Some(kind) = self.view_kind(base) {
             if self.is_readonly_view(base) {
                 let message = format!(
@@ -2670,13 +2750,11 @@ impl<'a> Checker<'a> {
                     show(call)
                 );
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
-                    diag.help = Some(
-                        "copy it into an owned list first with `.to_list()`".into(),
-                    );
+                    diag.help = Some("copy it into an owned list first with `.to_list()`".into());
                 }
                 return;
             }
-        } else {
+        } else if !crate::ty::spec_edition() {
             return;
         }
         let Some(place) = self.place(base) else {
@@ -2691,7 +2769,13 @@ impl<'a> Checker<'a> {
             place.root,
             show(call)
         );
-        if let Some(diag) = self.error(codes::ASSIGN_TO_LET, base.span, message) {
+        // R07.11.1: an in-place method needs a `var` source.
+        let code = if viewed {
+            codes::ASSIGN_TO_LET
+        } else {
+            codes::MUT_OF_IMMUTABLE
+        };
+        if let Some(diag) = self.error(code, base.span, message) {
             diag.help = Some(format!("declare it with `var {}`", place.root));
         }
     }

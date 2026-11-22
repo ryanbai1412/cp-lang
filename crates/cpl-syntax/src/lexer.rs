@@ -295,8 +295,12 @@ impl<'a> Lexer<'a> {
                 self.line_indent = enclosing;
                 // Which block the line belongs to is a guess, so what it
                 // says about names in scope is not reported.
-                let line_end = self.src[self.pos..].find('\n').map_or(self.src.len(), |n| self.pos + n);
-                self.out.poisoned.push(Span::new(self.pos as u32, line_end as u32));
+                let line_end = self.src[self.pos..]
+                    .find('\n')
+                    .map_or(self.src.len(), |n| self.pos + n);
+                self.out
+                    .poisoned
+                    .push(Span::new(self.pos as u32, line_end as u32));
             }
         }
     }
@@ -355,8 +359,7 @@ impl<'a> Lexer<'a> {
             self.indents.push(width);
             self.push_empty(TokenKind::Indent, self.pos);
         } else if width < top {
-            while self.indents.len() > blk.indent_depth + 1
-                && *self.indents.last().unwrap() > width
+            while self.indents.len() > blk.indent_depth + 1 && *self.indents.last().unwrap() > width
             {
                 self.indents.pop();
                 self.push_empty(TokenKind::Dedent, self.pos);
@@ -503,7 +506,9 @@ impl<'a> Lexer<'a> {
     fn end_of_unclosed(&self, opener: &Opener) -> Option<(usize, usize)> {
         use TokenKind::*;
         let tokens = &self.out.tokens;
-        let at = tokens.iter().rposition(|t| t.span == opener.span && t.kind == opener.kind)?;
+        let at = tokens
+            .iter()
+            .rposition(|t| t.span == opener.span && t.kind == opener.kind)?;
         let before = at.checked_sub(1).map(|i| tokens[i].kind);
         // `let a: [0..nInt = ...`: in a type the `]` goes before the
         // element type, which no token marks.
@@ -581,6 +586,36 @@ impl<'a> Lexer<'a> {
             }
             (b'.', b'.', b'=') => (DotDotEq, 3),
             (b'.', b'.', _) => (DotDot, 2),
+            // R01.4.2: `.5` is not a number; `x.0` after a value is a field.
+            (b'.', d, _)
+                if d.is_ascii_digit()
+                    && !start
+                        .checked_sub(1)
+                        .map(|i| self.bytes[i])
+                        .is_some_and(|b| {
+                            b.is_ascii_alphanumeric()
+                                || matches!(
+                                    b,
+                                    b'_' | b')' | b']' | b'}' | b'"' | b'\'' | b'!' | b'?'
+                                )
+                        }) =>
+            {
+                self.pos += 1;
+                while self.peek().is_ascii_digit() || self.peek() == b'_' {
+                    self.pos += 1;
+                }
+                let text = &self.src[start..self.pos];
+                self.out.diagnostics.push(
+                    Diagnostic::error(
+                        codes::BAD_NUMBER,
+                        Span::new(start as u32, self.pos as u32),
+                        format!("`{text}` isn't a number: a float needs a digit before the point"),
+                    )
+                    .with_help(format!("write `0{text}`")),
+                );
+                self.push(Float, start);
+                return;
+            }
             (b'.', _, _) => (Dot, 1),
             (b',', _, _) => {
                 if self
@@ -620,11 +655,8 @@ impl<'a> Lexer<'a> {
             (b'+', b'+', _) => {
                 self.pos += 2;
                 let span = Span::new(start as u32, self.pos as u32);
-                let mut diag = Diagnostic::error(
-                    codes::UNKNOWN_CHAR,
-                    span,
-                    "CP Lang concatenates with `+`",
-                );
+                let mut diag =
+                    Diagnostic::error(codes::UNKNOWN_CHAR, span, "CP Lang concatenates with `+`");
                 diag.help = Some("replace `++` with `+`".into());
                 diag.fixes.push(cpl_diag::Fix {
                     title: "replace `++` with `+`".into(),

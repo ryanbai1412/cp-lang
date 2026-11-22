@@ -80,7 +80,10 @@ impl<'a> Parser<'a> {
         if self.at(T::At)
             && self.peek_n(1) == T::Ident
             && self.peek_n(2) == T::Ident
-            && self.tokens.get(self.pos + 1).is_some_and(|t| t.span.text(self.src) == "law")
+            && self
+                .tokens
+                .get(self.pos + 1)
+                .is_some_and(|t| t.span.text(self.src) == "law")
         {
             self.bump();
             self.bump();
@@ -145,7 +148,8 @@ impl<'a> Parser<'a> {
             let replacement = if args.is_empty() {
                 format!("@!{}", name.text)
             } else {
-                let rendered: Vec<&str> = args.iter().map(|a| a.value.span.text(self.src)).collect();
+                let rendered: Vec<&str> =
+                    args.iter().map(|a| a.value.span.text(self.src)).collect();
                 format!("@!{}({})", name.text, rendered.join(", "))
             };
             self.error(
@@ -155,7 +159,11 @@ impl<'a> Parser<'a> {
                     format!("use `{replacement}` instead of `{}`", span.text(self.src)),
                 )
                 .with_help(format!("replace with `{replacement}`"))
-                .with_fix(format!("replace with `{replacement}`"), span, replacement),
+                .with_fix(
+                    format!("replace with `{replacement}`"),
+                    span,
+                    replacement,
+                ),
             );
         } else if !name.text.is_empty() {
             self.planned(span, &crate::planned::WRAP_LINE);
@@ -267,10 +275,12 @@ impl<'a> Parser<'a> {
             || (self.brace_depth > 0 && matches!(self.peek(), T::Semi | T::RBrace));
         // `a; b` on one line is two statements (v2.2 cheat sheet).
         let ended = ended
-            || (self.at(T::Semi) && !matches!(self.peek_n(1), T::Newline | T::Eof | T::Dedent) && {
-                self.bump();
-                true
-            });
+            || (self.at(T::Semi)
+                && !matches!(self.peek_n(1), T::Newline | T::Eof | T::Dedent)
+                && {
+                    self.bump();
+                    true
+                });
         if !ended && self.at(T::At) && self.peek_n(1) == T::Ident {
             let at = self.start();
             self.decorator();
@@ -333,7 +343,9 @@ impl<'a> Parser<'a> {
             }
             // `mod name:` with an indented body: its items join the enclosing scope.
             T::Ident
-                if self.text() == "mod" && self.peek_n(1) == T::Ident && self.peek_n(2) == T::Colon =>
+                if self.text() == "mod"
+                    && self.peek_n(1) == T::Ident
+                    && self.peek_n(2) == T::Colon =>
             {
                 let start = self.start();
                 self.bump();
@@ -349,13 +361,11 @@ impl<'a> Parser<'a> {
                 let start = self.start();
                 self.skip_line();
                 let span = self.span_from(start);
-                self.error(
-                    Diagnostic::error(
-                        codes::UNSUPPORTED,
-                        span,
-                        "CP Lang has no macros; use a generic fn or inline helper instead",
-                    ),
-                );
+                self.error(Diagnostic::error(
+                    codes::UNSUPPORTED,
+                    span,
+                    "CP Lang has no macros; use a generic fn or inline helper instead",
+                ));
                 StmtKind::Error
             }
             T::Ident if self.text() == "guard" && self.peek_n(1) == T::Let => {
@@ -408,6 +418,16 @@ impl<'a> Parser<'a> {
                 };
                 let body = self.at(T::Colon).then(|| self.colon_block("the context"));
                 StmtKind::With { ctx, args, body }
+            }
+            T::Ident if self.text() == "macro" && self.peek_n(1) == T::Ident => {
+                let span = self.span();
+                self.not_in_language(
+                    span,
+                    "there are no macros (R08.5.4)",
+                    "write a generic fn; a lambda argument covers code that takes code",
+                );
+                self.skip_line();
+                StmtKind::Error
             }
             T::Ident
                 if self.text() == "record"
@@ -615,6 +635,20 @@ impl<'a> Parser<'a> {
                 self.recovering = true;
                 self.skip_line();
                 StmtKind::Error
+            }
+            T::Mut if self.peek_n(1) == T::Fn => {
+                let span = self.span();
+                self.error(
+                    Diagnostic::error(
+                        codes::EXPECTED_EXPR,
+                        span,
+                        "a fn is not marked `mut`: mark the parameter it changes, `fn f(mut x: T)`",
+                    )
+                    .with_fix("remove `mut`", span, ""),
+                );
+                self.recovering = false;
+                self.bump();
+                StmtKind::Fn(self.fn_decl())
             }
             T::Ident if self.text() == "pure" && self.peek_n(1) == T::Fn => {
                 let span = self.span();
@@ -1295,7 +1329,10 @@ impl<'a> Parser<'a> {
         }
         let test = self.expr();
         if self.eat(T::Comma) {
-            return Cond::Guard { test, and: Box::new(self.more_clauses()) };
+            return Cond::Guard {
+                test,
+                and: Box::new(self.more_clauses()),
+            };
         }
         fn unwrap_is_cond(expr: Expr) -> Cond {
             let is_match = matches!(
@@ -1425,7 +1462,10 @@ impl<'a> Parser<'a> {
         }
         let test = self.or();
         if self.eat(T::Comma) {
-            return Cond::Guard { test, and: Box::new(self.more_clauses()) };
+            return Cond::Guard {
+                test,
+                and: Box::new(self.more_clauses()),
+            };
         }
         Cond::Expr(test)
     }
@@ -1510,10 +1550,11 @@ impl<'a> Parser<'a> {
             return Block { stmts, span };
         }
         if self.at_stmt_end() {
+            let at = self.block_expected_at(header_end);
             self.error(
                 Diagnostic::error(
                     codes::EXPECTED_BLOCK,
-                    Span::point(header_end),
+                    at,
                     format!("expected an indented block after {after}"),
                 )
                 .with_help("indent the next line by 4 spaces"),
@@ -1576,4 +1617,3 @@ impl<'a> Parser<'a> {
         }
     }
 }
-

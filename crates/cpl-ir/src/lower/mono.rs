@@ -92,6 +92,8 @@ pub(super) struct TraitInfo<'a> {
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a
     /// type with no `impl` of it.
     pub unimplemented: Option<String>,
+    /// `trait Both = Sh + Nm`: implemented exactly when each of these is.
+    pub alias_of: Option<Vec<String>>,
 }
 
 pub(super) struct ImplInfo<'a> {
@@ -142,8 +144,11 @@ impl<'a> Lowerer<'a> {
     /// is not a trait declared in a module (a structural one), or an
     /// `impl` over a generic type, is taken as met.
     pub(super) fn implements(&mut self, ty: &Ty, name: &str) -> bool {
-        if !matches!(self.get_sym(name), Some(Sym::Trait(_))) {
+        let Some(Sym::Trait(tid)) = self.get_sym(name) else {
             return true;
+        };
+        if let Some(supers) = self.traits[tid].alias_of.clone() {
+            return supers.iter().all(|s| self.implements(ty, s));
         }
         for idx in 0..self.impls.len() {
             if self.impls[idx].trait_name.as_deref() != Some(name) {

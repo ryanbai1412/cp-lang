@@ -124,6 +124,7 @@ pub mod codes {
     pub const USED_BEFORE_SET: Code = Code("E0205");
     pub const UNRESOLVED_MODULE: Code = Code("E0206");
     pub const PRIVATE_NAME: Code = Code("E0207");
+    pub const VALUE_NAME_CASE: Code = Code("E0208");
 
     pub const WRONG_DOMAIN: Code = Code("E0301");
     pub const TYPE_MISMATCH: Code = Code("E0302");
@@ -148,6 +149,7 @@ pub mod codes {
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");
     pub const MUT_OF_IMMUTABLE: Code = Code("E0403");
+    pub const ASSIGN_FIXED_FIELD: Code = Code("E0405");
     /// A `var`-bound lambda that calls itself.
     pub const VAR_LAMBDA_RECURSION: Code = Code("E0406");
     pub const DUPLICATE_VARIANT_TAG: Code = Code("E0407");
@@ -161,6 +163,9 @@ pub mod codes {
     /// Syntax the 0.3 design has and this version does not implement yet.
     pub const NOT_IMPLEMENTED: Code = Code("E0504");
 
+    pub const AMBIGUOUS_METHOD: Code = Code("E0701");
+    pub const EMPTY_FOLD_NO_IDENTITY: Code = Code("E0706");
+
     pub const LENT_TWICE: Code = Code("E0601");
     pub const USED_WHILE_LENT: Code = Code("E0602");
     pub const LENT_ESCAPES: Code = Code("E0603");
@@ -169,21 +174,29 @@ pub mod codes {
     pub const MISSING_IMPL: Code = Code("E0606");
     /// A warning: an assignment whose right side changes the place it writes.
     pub const SAME_PLACE_READ_WRITE: Code = Code("L0601");
+    pub const CHAIN_WALKED_TWICE: Code = Code("L0602");
+    pub const MUT_GENERATOR_REWALKED: Code = Code("L0604");
+    pub const LITERAL_SLICE_INDEX: Code = Code("L0605");
+    pub const WIDE_ARRAY: Code = Code("L0606");
+    pub const PARENS_MEAN_WORK: Code = Code("L0608");
 
     /// A fixed-width integer type name; widths come from ranges.
     pub const NO_NARROW_INT: Code = Code("E0901");
+    pub const RANGE_STORE_CONST: Code = Code("E0902");
 
     /// A captured variable moved while a closure or nested fn capturing it is still live.
     pub const MOVED_WHILE_CAPTURED: Code = Code("E0607");
     /// A heap value read after `let b = a` moved it.
     pub const USE_AFTER_MOVE: Code = Code("E0608");
+    pub const OVERLOAD_BY_TYPE: Code = Code("E0702");
 
-    pub const AMBIGUOUS_METHOD: Code = Code("E0701");
     /// A context value that is not a compile-time constant. (R09.1.2)
     pub const CONTEXT_NOT_CONSTANT: Code = Code("E0801");
     /// A bare `with` line after another statement of its block. (R09.1.1)
     pub const WITH_NOT_FIRST: Code = Code("E0802");
+    /// `x?` in an `if` or `while` condition.
     pub const QUESTION_IN_CONDITION: Code = Code("E0803");
+    /// `var x = None` or `let x = read()`: nothing local says the type.
     pub const INFERENCE_NEEDS_ANNOTATION: Code = Code("E0806");
     pub const RUNTIME: Code = Code("R0001");
     pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");
@@ -197,6 +210,7 @@ pub mod codes {
     pub const BAD_INPUT_TOKEN: Code = Code("R0501");
     pub const INPUT_OUT_OF_CONTRACT: Code = Code("R0502");
     pub const STACK_EXHAUSTED: Code = Code("R0601");
+
 
     pub const INTERNAL: Code = Code("E9999");
 }

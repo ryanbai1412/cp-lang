@@ -146,6 +146,11 @@ pub(crate) struct Checker<'a> {
     iterating_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
     pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
+    /// The computed range of each `let` with a constant initializer (R02.10.2).
+    pub(crate) let_ranges: HashMap<String, (i128, i128)>,
+    /// `let`s bound to a walk-only sequence such as `filter` (R07.1.2).
+    pub(crate) walk_only: std::collections::HashSet<String>,
+    pub(crate) walk_only_calls: std::collections::HashSet<Span>,
     /// Structs and enums declared inside a fn body, visible to the whole block.
     local_defs: HashMap<String, Arc<Def>>,
     /// The types a lambda passed to a built-in method gives its unwritten
@@ -214,6 +219,9 @@ impl<'a> Checker<'a> {
             in_call_callee: false,
             iterating_range: false,
             local_product_domains: HashMap::new(),
+            let_ranges: HashMap::new(),
+            walk_only: Default::default(),
+            walk_only_calls: Default::default(),
             local_defs: HashMap::new(),
             lambda_params: Vec::new(),
             moved: HashMap::new(),
@@ -259,7 +267,9 @@ impl<'a> Checker<'a> {
                     .any(|ft| self.is_heap_type_depth(ft, depth + 1))
             }
             Ty::Tuple(ts) => ts.iter().any(|t| self.is_heap_type_depth(t, depth + 1)),
-            Ty::Record(fs) => fs.iter().any(|(_, t)| self.is_heap_type_depth(t, depth + 1)),
+            Ty::Record(fs) => fs
+                .iter()
+                .any(|(_, t)| self.is_heap_type_depth(t, depth + 1)),
             Ty::Optional(inner) => self.is_heap_type_depth(inner, depth + 1),
             _ => false,
         }
@@ -283,7 +293,10 @@ impl<'a> Checker<'a> {
     /// for the whole block, like a top-level struct for the whole file.
     pub(crate) fn declare_local_types(&mut self, stmts: &[cpl_syntax::ast::Stmt]) {
         for stmt in stmts {
-            if matches!(stmt.kind, cpl_syntax::ast::StmtKind::Struct(_) | cpl_syntax::ast::StmtKind::Enum(_)) {
+            if matches!(
+                stmt.kind,
+                cpl_syntax::ast::StmtKind::Struct(_) | cpl_syntax::ast::StmtKind::Enum(_)
+            ) {
                 for (name, def) in self.defs_of(stmt) {
                     self.local_defs.insert(name, Arc::new(def));
                 }
@@ -410,12 +423,16 @@ impl<'a> Checker<'a> {
 
     /// Scope depth (0-based) and declaration span of a block-local `domain`, if any.
     pub(crate) fn domain_depth(&self, name: &str) -> Option<(usize, Span)> {
-        self.scopes.iter().enumerate().rev().find_map(|(depth, scope)| {
-            scope
-                .get(name)
-                .filter(|loc| loc.keyword == "domain")
-                .map(|loc| (depth, loc.span))
-        })
+        self.scopes
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(depth, scope)| {
+                scope
+                    .get(name)
+                    .filter(|loc| loc.keyword == "domain")
+                    .map(|loc| (depth, loc.span))
+            })
     }
 
     /// Scope depth where `name` was declared, or `0` if top-level/global.
@@ -630,10 +647,7 @@ impl<'a> Checker<'a> {
                 ("sep".into(), Ty::Str),
                 ("base".into(), Ty::Int),
                 ("precision".into(), Ty::Int),
-                (
-                    "answers".into(),
-                    Ty::Tuple(vec![Ty::Str, Ty::Str]),
-                ),
+                ("answers".into(), Ty::Tuple(vec![Ty::Str, Ty::Str])),
             ]);
         }
         if let Some(def) = self.global(name) {
@@ -746,7 +760,9 @@ impl<'a> Checker<'a> {
         let (code, message) = if narrow {
             (
                 codes::NO_NARROW_INT,
-                format!("`{name}` is not a type; storage width comes from a range such as `0..=255`"),
+                format!(
+                    "`{name}` is not a type; storage width comes from a range such as `0..=255`"
+                ),
             )
         } else {
             (code, message)
@@ -829,10 +845,7 @@ impl<'a> Checker<'a> {
                 if place.root_mutable || place.via.is_some() {
                     return;
                 }
-                let message = format!(
-                    "`{}` is not a var, so it can't be {action}",
-                    place.root
-                );
+                let message = format!("`{}` is not a var, so it can't be {action}", place.root);
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, expr.span, message) {
                     diag.help = Some(format!("declare it with `var {}` to change it", place.root));
                 }
@@ -887,7 +900,9 @@ impl<'a> Checker<'a> {
         } else {
             format!("{subject} is {what}, so it can't be {action}")
         };
-        let var_at = decl.filter(|_| keyword == "let").and_then(|d| let_before(self.src, d));
+        let var_at = decl
+            .filter(|_| keyword == "let")
+            .and_then(|d| let_before(self.src, d));
         let code = if action.contains("`mut`") {
             codes::MUT_OF_IMMUTABLE
         } else {

@@ -9,4 +9,4 @@ struct Dsu:
         self.parent[x] = r
         r
 
-    pub fn parents(self) lends List<Int> = self.parent
+    pub fn parents(self) -> lends List<Int> = self.parent

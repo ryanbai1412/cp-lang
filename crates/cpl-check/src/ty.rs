@@ -57,6 +57,11 @@ pub enum Ty {
     Error,
 }
 
+/// True when checking against the 0.3 spec (`CPL_SPEC`).
+pub fn spec_edition() -> bool {
+    std::env::var_os("CPL_SPEC").is_some()
+}
+
 /// What each type parameter stands for at one use.
 pub type Bindings = std::collections::HashMap<String, Ty>;
 
@@ -76,7 +81,9 @@ impl Ty {
     /// in O(1). A position is not, since its label may be any value.
     pub fn is_fixed_size(&self) -> bool {
         match self {
-            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Range { .. } => true,
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Range { .. } => {
+                true
+            }
             Ty::Tuple(items) => items.iter().all(Ty::is_fixed_size),
             _ => false,
         }
@@ -107,7 +114,9 @@ impl Ty {
             {
                 Some(args[0].clone())
             }
-            Ty::Named { name, args } if name == "Indexed" && args.len() == 2 => Some(args[1].clone()),
+            Ty::Named { name, args } if name == "Indexed" && args.len() == 2 => {
+                Some(args[1].clone())
+            }
             _ => None,
         }
     }
@@ -246,7 +255,11 @@ impl Ty {
                     index: bi,
                     elem: be,
                 },
-            ) => ai.len() == bi.len() && ai.iter().zip(bi).all(|(a, b)| a.fits_in(b, number)) && ae.fits_in(be, number),
+            ) => {
+                ai.len() == bi.len()
+                    && ai.iter().zip(bi).all(|(a, b)| a.fits_in(b, number))
+                    && ae.fits_in(be, number)
+            }
             (Ty::Tuple(a), Ty::Tuple(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits_in(b, number))
             }
@@ -266,9 +279,7 @@ impl Ty {
                     })
                 }
             }
-            (Ty::RowWithout(a, ra), Ty::RowWithout(b, rb)) => {
-                ra == rb && a.fits_in(b, number)
-            }
+            (Ty::RowWithout(a, ra), Ty::RowWithout(b, rb)) => ra == rb && a.fits_in(b, number),
             (Ty::Tuple(a), Ty::Record(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, (_, b))| a.fits_in(b, number))
             }
@@ -303,9 +314,19 @@ impl Ty {
                 (an == bn || (an == "Map" && bn == "HashMap"))
                     && (aa.is_empty()
                         || ba.is_empty()
-                        || (aa.len() == ba.len() && aa.iter().zip(ba).all(|(a, b)| a.fits_in(b, number))))
+                        || (aa.len() == ba.len()
+                            && aa.iter().zip(ba).all(|(a, b)| a.fits_in(b, number))))
             }
-            (Ty::Fn { params: ap, ret: ar }, Ty::Fn { params: bp, ret: br }) => {
+            (
+                Ty::Fn {
+                    params: ap,
+                    ret: ar,
+                },
+                Ty::Fn {
+                    params: bp,
+                    ret: br,
+                },
+            ) => {
                 if ap.iter().any(|p| p.has_default || p.variadic)
                     || bp.iter().any(|p| p.has_default || p.variadic)
                 {
@@ -329,18 +350,20 @@ impl Ty {
             // The boundaries of a plain `0..n` index are plain `Int`s:
             // `prefix(a).prefix(k)` on a `[0..n]T`.
             (a, Ty::Named { name, args }) | (Ty::Named { name, args }, a)
-                if name == "Cut" && a.is_int() && matches!(args.as_slice(), [arg] if arg.is_int()) =>
+                if name == "Cut"
+                    && a.is_int()
+                    && matches!(args.as_slice(), [arg] if arg.is_int()) =>
             {
                 true
             }
             // A string is a list of its characters (decision 9: `Str` is
             // `[domain S]Char`, one flat byte array).
-            (Ty::Str, Ty::Named { name, args }) if name == "List" => {
-                args.first().is_none_or(|elem| Ty::Char.fits_in(elem, number))
-            }
-            (Ty::Named { name, args }, Ty::Str) if name == "List" => {
-                args.first().is_none_or(|elem| elem.fits_in(&Ty::Char, number))
-            }
+            (Ty::Str, Ty::Named { name, args }) if name == "List" => args
+                .first()
+                .is_none_or(|elem| Ty::Char.fits_in(elem, number)),
+            (Ty::Named { name, args }, Ty::Str) if name == "List" => args
+                .first()
+                .is_none_or(|elem| elem.fits_in(&Ty::Char, number)),
             // An array is read where a list is asked for: `running_sum(a)`.
             (Ty::Array { elem, .. }, Ty::Named { name, args }) if name == "List" => {
                 args.first().is_none_or(|want| elem.fits_in(want, number))
@@ -605,8 +628,15 @@ impl Ty {
                 }
             }
             // A list is an array over its own positions.
-            (Ty::Array { index, elem }, Ty::Named { name, args: got_args })
-                if name == "List" && got_args.len() == 1 && matches!(index.as_slice(), [Ty::Param(_)]) =>
+            (
+                Ty::Array { index, elem },
+                Ty::Named {
+                    name,
+                    args: got_args,
+                },
+            ) if name == "List"
+                && got_args.len() == 1
+                && matches!(index.as_slice(), [Ty::Param(_)]) =>
             {
                 index[0].unify(&Ty::list_index(), bindings);
                 elem.unify(&got_args[0], bindings);
@@ -801,7 +831,13 @@ impl Layout {
     /// Unused bytes before field `i`, or after the last field when `i` is
     /// the field count.
     pub fn padding_before(&self, i: usize, sizes: &[u64]) -> u64 {
-        let end = |j: usize| if j == 0 { 0 } else { self.offsets[j - 1] + sizes[j - 1] };
+        let end = |j: usize| {
+            if j == 0 {
+                0
+            } else {
+                self.offsets[j - 1] + sizes[j - 1]
+            }
+        };
         match self.offsets.get(i) {
             Some(&at) => at - end(i),
             None => self.size - end(i),
@@ -1021,9 +1057,8 @@ mod tests {
         };
         let opt = |t: Ty| Ty::Optional(Box::new(t));
         let tup = |xs: Vec<Ty>| Ty::Tuple(xs);
-        let rec = |xs: Vec<(&str, Ty)>| {
-            Ty::Record(xs.into_iter().map(|(k, v)| (k.into(), v)).collect())
-        };
+        let rec =
+            |xs: Vec<(&str, Ty)>| Ty::Record(xs.into_iter().map(|(k, v)| (k.into(), v)).collect());
         let named = |n: &str, args: Vec<Ty>| Ty::Named {
             name: n.into(),
             args,
@@ -1035,7 +1070,10 @@ mod tests {
             opt(arr(p("V"), tup(vec![opt(p("A")), p("V")]))),
             named("Pair", vec![opt(p("V")), arr(p("V"), p("A"))]),
             rec(vec![("a", opt(p("A"))), ("b", arr(p("V"), opt(p("A"))))]),
-            tup(vec![named("List", vec![opt(p("V"))]), rec(vec![("x", p("A"))])]),
+            tup(vec![
+                named("List", vec![opt(p("V"))]),
+                rec(vec![("x", p("A"))]),
+            ]),
         ];
         let renamings = [
             vec![("V", p("S")), ("A", p("M"))],

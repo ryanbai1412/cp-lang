@@ -1439,8 +1439,23 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     }
-                    ast::StmtKind::Trait { name, body, .. } => {
+                    ast::StmtKind::Trait {
+                        name,
+                        body,
+                        supers,
+                        alias,
+                        ..
+                    } => {
                         let tid = self.traits.len();
+                        let alias_of = alias.then(|| {
+                            supers
+                                .iter()
+                                .filter_map(|t| match &t.kind {
+                                    ast::TypeKind::Named { name, .. } => Some(name.text.clone()),
+                                    _ => None,
+                                })
+                                .collect()
+                        });
                         let mut methods = Vec::new();
                         for s in &body.stmts {
                             if let ast::StmtKind::Fn(f) = &s.kind {
@@ -1485,6 +1500,7 @@ impl<'a> Lowerer<'a> {
                             methods,
                             fields,
                             unimplemented,
+                            alias_of,
                         });
                         self.mod_syms[m].insert(name.text.clone(), Sym::Trait(tid));
                     }

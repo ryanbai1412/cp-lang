@@ -62,6 +62,8 @@ pub struct Lends {
     pub sources: Vec<Name>,
     pub mutable: bool,
     pub ty: Type,
+    /// The `lends` keyword, when written without the `->` before it.
+    pub bare: Option<Span>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -104,6 +106,8 @@ pub enum StmtKind {
         /// `trait Seq: Index`.
         supers: Vec<Type>,
         body: Block,
+        /// `trait Both = Sh + Nm`: a name for its bounds, never implemented.
+        alias: bool,
     },
     Impl {
         trait_name: Option<Type>,
@@ -515,7 +519,11 @@ impl FmtSpec {
                 FmtKind::Fixed(places.parse().ok().filter(|d| *d <= 300)?)
             }
         };
-        let width = if width.is_empty() { 0 } else { width.parse().ok().filter(|w| *w <= 4096)? };
+        let width = if width.is_empty() {
+            0
+        } else {
+            width.parse().ok().filter(|w| *w <= 4096)?
+        };
         Some(FmtSpec { zero, width, kind })
     }
 }

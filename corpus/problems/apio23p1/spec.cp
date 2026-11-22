@@ -10,7 +10,7 @@ fn solve(n: Int, m: Int, k: Int, h: Int, x: List<Int>, y: List<Int>, c: List<Int
     let trip = roads.only(from: u => u != goal)
     let seen = reachable(trip, from: [V(0)])
     if not seen[goal]:
-        return -1
+        return -1.0
     let starts = chain([V(0)], V.filter(v => seen[v] and arr[Int(v)] == 0))
     var dist = dijkstra(trip, from: starts.map(v => (v, 0.0))).dist
     for _ in 0..min(k, 70):

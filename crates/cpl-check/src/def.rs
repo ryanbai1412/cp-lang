@@ -29,6 +29,8 @@ pub enum Def {
         lends: bool,
         row_bounds: Vec<(String, Vec<(String, Ty)>)>,
         trait_bounds: Vec<(String, String)>,
+        /// `@droppable`: its result may be dropped without W0101.
+        droppable: bool,
     },
     Struct {
         generics: Vec<String>,
@@ -71,6 +73,8 @@ pub enum Def {
         supers: Vec<String>,
         methods: Vec<TraitMethod>,
         fields: Vec<(String, Ty)>,
+        /// `trait Both = Sh + Nm` (R08.2.6).
+        alias: bool,
     },
     /// `impl Add for Pt` or `impl Pt`, under the name [`impl_name`] gives it.
     Impl {
@@ -218,6 +222,7 @@ impl Def {
                 lends,
                 row_bounds,
                 trait_bounds,
+                droppable,
                 ..
             } => Def::Fn {
                 ty: Ty::Error,
@@ -226,8 +231,15 @@ impl Def {
                 lends,
                 row_bounds,
                 trait_bounds,
+                droppable,
             },
-            Def::Value { mutable, keyword, generics, settled, .. } if annotation_broken => Def::Value {
+            Def::Value {
+                mutable,
+                keyword,
+                generics,
+                settled,
+                ..
+            } if annotation_broken => Def::Value {
                 ty: Ty::Error,
                 mutable,
                 keyword,

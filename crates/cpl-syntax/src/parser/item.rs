@@ -7,10 +7,19 @@ impl<'a> Parser<'a> {
         let start = self.start();
         let after_fn = self.pos + 1;
         // Unary operator fn: `fn -(a: P) -> P = ...`
-        let is_unary_op = self.tokens.get(after_fn).is_some_and(|t| t.kind == T::Minus)
-            && self.tokens.get(after_fn + 1).is_some_and(|t| t.kind == T::LParen);
+        let is_unary_op = self
+            .tokens
+            .get(after_fn)
+            .is_some_and(|t| t.kind == T::Minus)
+            && self
+                .tokens
+                .get(after_fn + 1)
+                .is_some_and(|t| t.kind == T::LParen);
         // Binary operator fn: `fn (a: P) + (b: P) -> P = ...`
-        let is_binary_op = self.tokens.get(after_fn).is_some_and(|t| t.kind == T::LParen)
+        let is_binary_op = self
+            .tokens
+            .get(after_fn)
+            .is_some_and(|t| t.kind == T::LParen)
             && self
                 .tokens
                 .get(super::after_group(self.tokens, after_fn))
@@ -123,13 +132,11 @@ impl<'a> Parser<'a> {
             return StmtKind::Fn(decl);
         }
         let Some(target) = decl.params.first().and_then(|p| p.ty.clone()) else {
-            self.error(
-                Diagnostic::error(
-                    codes::EXPECTED_TOKEN,
-                    sig_span,
-                    "an operator fn needs a type on its first parameter".to_string(),
-                ),
-            );
+            self.error(Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                sig_span,
+                "an operator fn needs a type on its first parameter".to_string(),
+            ));
             return StmtKind::Fn(decl);
         };
         let trait_args = if !is_unary_op
@@ -185,10 +192,13 @@ impl<'a> Parser<'a> {
         };
         let copies = std::mem::take(&mut self.var_params);
         let unpacked = std::mem::take(&mut self.param_patterns);
-        let ret = self.eat(T::Arrow).then(|| self.ty());
-        // `fn at(self, i: V) lends mut Int` or `fn pick(a, b) lends(a) List<Int>`.
+        let arrow = self.eat(T::Arrow);
+        let ret = (arrow && !self.at(T::Lends)).then(|| self.ty());
+        // `fn at(self, i: V) -> lends mut Int` or `fn pick(a, b) -> lends(a) List<Int>`.
         let lends = self.at(T::Lends).then(|| {
+            let keyword = self.start();
             self.bump();
+            let bare = (!arrow).then(|| self.span_from(keyword));
             let sources = if self.eat(T::LParen) {
                 self.comma_list(T::RParen, "the lent source names", |p| {
                     p.expect_name("a parameter name")
@@ -201,6 +211,7 @@ impl<'a> Parser<'a> {
                 sources,
                 mutable,
                 ty: self.ty(),
+                bare,
             }
         });
         let mut uses = Vec::new();
@@ -218,7 +229,9 @@ impl<'a> Parser<'a> {
         } else if self.at(T::Colon) {
             self.bump();
             FnBody::Block(self.block(&format!("the signature of `{}`", name.text)))
-        } else if (self.in_trait || self.in_grader) && self.at_line_end() && self.peek() != T::Indent
+        } else if (self.in_trait || self.in_grader)
+            && self.at_line_end()
+            && self.peek() != T::Indent
         {
             FnBody::None
         } else {
@@ -245,7 +258,10 @@ impl<'a> Parser<'a> {
         // A `lends` body ends with the place it hands out.
         let mut body = body;
         if let (Some(_), FnBody::Block(block)) = (&lends, &mut body) {
-            let explicit = block.stmts.iter().any(|s| matches!(s.kind, StmtKind::Lend { .. }));
+            let explicit = block
+                .stmts
+                .iter()
+                .any(|s| matches!(s.kind, StmtKind::Lend { .. }));
             if let Some(last) = block.stmts.last_mut().filter(|_| !explicit) {
                 if let StmtKind::Expr(place) = &last.kind {
                     last.kind = StmtKind::Lend {
@@ -311,7 +327,9 @@ impl<'a> Parser<'a> {
                 },
             };
             let lets: Vec<Stmt> = unpacked.into_iter().map(unpack).collect();
-            block.stmts.splice(0..0, copies.into_iter().map(copy).chain(lets));
+            block
+                .stmts
+                .splice(0..0, copies.into_iter().map(copy).chain(lets));
             body = FnBody::Block(block);
         }
         FnDecl {
@@ -480,11 +498,11 @@ impl<'a> Parser<'a> {
             return methods;
         }
         if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
-            let at = self.prev_end();
+            let at = self.block_expected_at(self.prev_end());
             self.error(
                 Diagnostic::error(
                     codes::EXPECTED_BLOCK,
-                    Span::point(at),
+                    at,
                     format!("expected an indented block after {after}"),
                 )
                 .with_help("indent the next line by 4 spaces"),
@@ -533,6 +551,21 @@ impl<'a> Parser<'a> {
         let name = self.expect_name("a struct name after `struct`");
         let (generics, generic_defaults, mut bounds) = self.generic_params_with_defaults();
         let mut fields = Vec::new();
+        if self.at(T::LParen) && self.peek_n(1) == T::Ident && self.peek_n(2) == T::RParen {
+            let start = self.start();
+            self.bump();
+            self.bump();
+            self.bump();
+            let span = self.span_from(start);
+            self.not_in_language(
+                span,
+                &format!(
+                    "`{}` can't inherit from another struct: there is no inheritance (R08.5.1)",
+                    name.text
+                ),
+                "hold the other struct as a field, and share behaviour through a trait",
+            );
+        }
         // `struct Monoid<T>(id: T, op: (T, T) -> T)`: fields in the header.
         let header = self.eat(T::LParen);
         if header {
@@ -797,6 +830,23 @@ impl<'a> Parser<'a> {
         let (generics, _) = self.generic_params();
         // `trait Ord(Eq)` or `trait Seq: Index + Ord`.
         let mut supers = Vec::new();
+        if self.eat(T::Eq) {
+            supers.push(self.ty());
+            while self.eat(T::Plus) {
+                supers.push(self.ty());
+            }
+            let body = Block {
+                stmts: Vec::new(),
+                span: Span::point(self.prev_end()),
+            };
+            return StmtKind::Trait {
+                name,
+                generics,
+                supers,
+                body,
+                alias: true,
+            };
+        }
         if self.eat(T::LParen) {
             supers = self.comma_list(T::RParen, "the supertraits", Self::ty);
         } else if self.at(T::Colon) && self.peek_n(1) == T::Ident && self.peek_n(2) != T::Colon {
@@ -807,9 +857,7 @@ impl<'a> Parser<'a> {
             }
         }
         let was_in_trait = std::mem::replace(&mut self.in_trait, true);
-        let body = if self.at(T::Colon)
-            && self.peek_n(1) == T::Ident
-            && self.peek_n(2) == T::Colon
+        let body = if self.at(T::Colon) && self.peek_n(1) == T::Ident && self.peek_n(2) == T::Colon
         {
             let bstart = self.start();
             self.bump();
@@ -853,6 +901,7 @@ impl<'a> Parser<'a> {
             generics,
             supers,
             body,
+            alias: false,
         }
     }
 

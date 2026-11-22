@@ -430,6 +430,7 @@ impl Database {
         let mut import_diags: Vec<(usize, Diagnostic)> = Vec::new();
         let mut failed_names: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut prelude_off = false;
+        let mut used: Vec<(usize, ast::Name)> = Vec::new();
         self.analyzing.push(path.to_string());
         for (index, item) in items.iter().enumerate() {
             for stmt in item.parsed.stmts.iter().filter(|_| item.has_use) {
@@ -440,6 +441,12 @@ impl Database {
                     alias,
                 } = &stmt.kind
                 {
+                    used.extend(
+                        names
+                            .iter()
+                            .chain(alias.as_ref())
+                            .map(|n| (index, n.clone())),
+                    );
                     let mut diags = Vec::new();
                     self.import(
                         path,
@@ -507,7 +514,8 @@ impl Database {
                 .iter()
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
                 .collect();
-            let mut ident_tokens: std::collections::HashSet<&str> = std::collections::HashSet::new();
+            let mut ident_tokens: std::collections::HashSet<&str> =
+                std::collections::HashSet::new();
             let mut dot_ident_tokens: std::collections::HashSet<&str> =
                 std::collections::HashSet::new();
             for (range, item) in ranges.iter().zip(&items) {
@@ -544,7 +552,8 @@ impl Database {
             for ((module, name), method) in listed.chain(methods) {
                 let used = if method {
                     calls(&name.text)
-                        || (crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str()) && uses(&name.text))
+                        || (crate::prelude::SEQUENCE_FORMS.contains(&name.text.as_str())
+                            && uses(&name.text))
                 } else {
                     uses(&name.text)
                         || (!is_std_path(path)
@@ -552,7 +561,10 @@ impl Database {
                                 .iter()
                                 .any(|(word, on)| *on == name.text && uses(word)))
                 };
-                if scope.imports.contains_key(&name.text) || !used || failed_names.contains(&name.text) {
+                if scope.imports.contains_key(&name.text)
+                    || !used
+                    || failed_names.contains(&name.text)
+                {
                     continue;
                 }
                 // `count(..)` the language has itself is not the library's
@@ -591,7 +603,9 @@ impl Database {
                 // does not take, under a name no program can write.
                 if own {
                     if let Some(import) = scope.imports.remove(&name.text) {
-                        scope.imports.insert(crate::prelude::std_method(&name.text), import);
+                        scope
+                            .imports
+                            .insert(crate::prelude::std_method(&name.text), import);
                     }
                 }
             }
@@ -701,7 +715,11 @@ impl Database {
             for diag in item.parsed.diagnostics.iter().chain(&check.diagnostics) {
                 let mut diag = diag.clone().shift(offset);
                 // The checker sees one item; where a `use` goes is the file's.
-                for fix in diag.fixes.iter_mut().filter(|_| diag.code == codes::UNRESOLVED_NAME) {
+                for fix in diag
+                    .fixes
+                    .iter_mut()
+                    .filter(|_| diag.code == codes::UNRESOLVED_NAME)
+                {
                     if let [(_, line)] = &fix.edits[..] {
                         let import = line.trim_end().strip_prefix("use std.");
                         if let Some((module, name)) = import.and_then(|i| i.split_once(".{")) {
@@ -740,7 +758,10 @@ impl Database {
         // `@!multitest` divides the file once (decision 20.5), and
         // `@!interactive` is said once.
         for (name, help) in [
-            ("multitest", "the file has one divider: what is below it runs once per test case"),
+            (
+                "multitest",
+                "the file has one divider: what is below it runs once per test case",
+            ),
             ("interactive", "one is enough: it holds for the whole file"),
         ] {
             let found = items.iter().enumerate().flat_map(|(index, item)| {
@@ -781,20 +802,28 @@ impl Database {
                 .decls
                 .iter()
                 .find(|d| d.name == decl.name);
-            let is_fn_overload = std::env::var_os("CPL_SPEC").is_some()
+            // R02.11.3, R06.1.6: a second `fn f` is an overload, which 0.3 has not.
+            let overload = crate::ty::spec_edition()
                 && decl.kind == DeclKind::Fn
                 && first.is_some_and(|f| f.kind == DeclKind::Fn);
-            let code = if is_fn_overload {
-                cpl_diag::Code("E0702")
+            let mut diag = if overload {
+                Diagnostic::error(
+                    codes::OVERLOAD_BY_TYPE,
+                    decl.span.shift(offset),
+                    format!(
+                        "a second `fn {}`: fns are not overloaded by their parameter types",
+                        decl.name
+                    ),
+                )
+                .with_help("give it its own name, or make one fn with a named argument")
             } else {
-                codes::DUPLICATE_DEFINITION
+                Diagnostic::error(
+                    codes::DUPLICATE_DEFINITION,
+                    decl.span.shift(offset),
+                    format!("`{}` is already defined in this file", decl.name),
+                )
+                .with_help("rename one of them; a top-level name has one definition")
             };
-            let mut diag = Diagnostic::error(
-                code,
-                decl.span.shift(offset),
-                format!("`{}` is already defined in this file", decl.name),
-            )
-            .with_help("rename one of them; a top-level name has one definition");
             if let Some(first) = first {
                 diag = diag.with_label(
                     first.span.shift(ranges[first_index].span.start),
@@ -817,8 +846,7 @@ impl Database {
                                 if let Some(decl) =
                                     items[def_index].decls.iter().find(|d| d.name == iname)
                                 {
-                                    let dspan =
-                                        decl.span.shift(ranges[def_index].span.start);
+                                    let dspan = decl.span.shift(ranges[def_index].span.start);
                                     let diag = Diagnostic::error(
                                         codes::DUPLICATE_DEFINITION,
                                         dspan,
@@ -838,8 +866,101 @@ impl Database {
                 }
             }
         }
+        if crate::ty::spec_edition() {
+            for (index, item) in items.iter().enumerate() {
+                let Some((name, span, lo, hi)) = wide_array(&items, &checks, index) else {
+                    continue;
+                };
+                let offset = ranges[index].span.start;
+                sink.push(
+                    Diagnostic::warning(
+                        codes::WIDE_ARRAY,
+                        span.shift(offset),
+                        format!(
+                            "`{name}` stores 8-byte `Int`s, but every value written into it is in {lo}..={hi}"
+                        ),
+                    )
+                    .with_help(format!(
+                        "declare the element range: `{}`",
+                        item.text[span.start as usize..span.end as usize]
+                            .rsplit_once("Int")
+                            .map_or(String::new(), |(head, tail)| format!("{head}{lo}..={hi}{tail}"))
+                    )),
+                );
+            }
+        }
         for (index, check) in checks.iter().enumerate() {
             let offset = ranges[index].span.start;
+            // R05.10.6: a lambda's `let` name is not hoisted.
+            for r in check
+                .refs
+                .iter()
+                .filter(|r| r.in_lambda && crate::ty::spec_edition())
+            {
+                let Some(&def_index) = scope.names.get(&r.name) else {
+                    continue;
+                };
+                let Some(decl) = items[def_index].decls.iter().find(|d| d.name == r.name) else {
+                    continue;
+                };
+                if def_index <= index || decl.kind != DeclKind::Value {
+                    continue;
+                }
+                let decl_span = decl.span.shift(ranges[def_index].span.start);
+                let line = lines.line_col(decl_span.start).line + 1;
+                sink.push(
+                    Diagnostic::error(
+                        codes::UNRESOLVED_NAME,
+                        r.span.shift(offset),
+                        format!("`{}` is not visible here: a `let` is visible only from line {line} on, and lambdas are not hoisted", r.name),
+                    )
+                    .with_label(decl_span, "defined here")
+                    .with_help(format!("move `{}` above this, or make it a `fn` (fns are visible in their whole block)", r.name)),
+                );
+            }
+            // R07.1.3, R05.9.4: a lazy chain or a `mut`-holding generator walks once.
+            let mut warned: Vec<&str> = Vec::new();
+            for r in check
+                .refs
+                .iter()
+                .filter(|r| r.top_level && crate::ty::spec_edition())
+            {
+                let Some(&def_index) = scope.names.get(&r.name) else {
+                    continue;
+                };
+                if def_index >= index || warned.contains(&r.name.as_str()) {
+                    continue;
+                }
+                let Some((code, what)) = rewalk_kind(&items, def_index) else {
+                    continue;
+                };
+                let Some(first) = (def_index + 1..index).find(|&k| {
+                    checks[k]
+                        .refs
+                        .iter()
+                        .any(|o| o.top_level && o.name == r.name)
+                }) else {
+                    continue;
+                };
+                warned.push(&r.name);
+                let earlier = checks[first]
+                    .refs
+                    .iter()
+                    .find(|o| o.top_level && o.name == r.name);
+                let mut diag = Diagnostic::warning(
+                    code,
+                    r.span.shift(offset),
+                    format!("`{}` is {what}, and this walks it a second time", r.name),
+                );
+                if let Some(o) = earlier {
+                    diag = diag
+                        .with_label(o.span.shift(ranges[first].span.start), "first walked here");
+                }
+                sink.push(diag.with_help(format!(
+                    "collect it once (`let {0} = ... .collect()`), or rebuild it for each walk",
+                    r.name
+                )));
+            }
             for r in check.refs.iter().filter(|r| r.top_level) {
                 let Some(&def_index) = scope.names.get(&r.name) else {
                     continue;
@@ -870,8 +991,7 @@ impl Database {
                 } else {
                     codes::USED_BEFORE_SET
                 };
-                let mut diag =
-                    Diagnostic::error(code, r.span.shift(offset), message);
+                let mut diag = Diagnostic::error(code, r.span.shift(offset), message);
                 if def_index != index {
                     diag = diag
                         .with_label(decl_span, "set here")
@@ -1288,14 +1408,13 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
             }),
             // `let LIM = 100`: a capitalized name on its own is a value
             // (or a domain, when the value is one).
-            ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
-                out.push(Decl {
+            ast::PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => out
+                .push(Decl {
                     name: path[0].text.clone(),
                     span: pat.span,
                     kind: DeclKind::Value,
                     public: false,
-                })
-            }
+                }),
             ast::PatternKind::Tuple(items) => {
                 for item in items {
                     match crate::check::domain_binding(item) {
@@ -1622,6 +1741,17 @@ impl FileCtx<'_> {
                         written: (current..items.len()).any(|k| names[k].1.contains(name)),
                     });
                 }
+                Flow::Known(name) => {
+                    let redeclared = (index + 1..current)
+                        .any(|k| items[k].decls.iter().any(|d| d.name == *name));
+                    if names[current].0.contains(name) && !redeclared {
+                        out.push(Replay {
+                            item: item.clone(),
+                            live_after: false,
+                            written: false,
+                        });
+                    }
+                }
                 Flow::Assert(about) => {
                     let assigned = (index + 1..current)
                         .any(|k| names[k].1.iter().any(|written| about.contains(written)));
@@ -1692,14 +1822,16 @@ impl FileCtx<'_> {
                 .find_map(|stmt| match &stmt.kind {
                     StmtKind::Fn(f) if f.name.text == name => Some(own_effects(f)),
                     StmtKind::Let {
-                        pat: cpl_syntax::ast::Pattern {
-                            kind: cpl_syntax::ast::PatternKind::Name(n),
-                            ..
-                        },
-                        init: Some(cpl_syntax::ast::Expr {
-                            kind: cpl_syntax::ast::ExprKind::Lambda { params, body, .. },
-                            ..
-                        }),
+                        pat:
+                            cpl_syntax::ast::Pattern {
+                                kind: cpl_syntax::ast::PatternKind::Name(n),
+                                ..
+                            },
+                        init:
+                            Some(cpl_syntax::ast::Expr {
+                                kind: cpl_syntax::ast::ExprKind::Lambda { params, body, .. },
+                                ..
+                            }),
                         ..
                     } if n == name => Some(crate::check::lends::lambda_effects(params, body)),
                     _ => None,
@@ -1932,7 +2064,9 @@ fn global_decl(
     ranges: &[cpl_syntax::ItemRange],
 ) -> Option<Span> {
     let rest = text.get(at.start as usize..)?;
-    let len = rest.find(|c: char| !c.is_alphanumeric() && c != '_').unwrap_or(rest.len());
+    let len = rest
+        .find(|c: char| !c.is_alphanumeric() && c != '_')
+        .unwrap_or(rest.len());
     let name = &rest[..len];
     let &index = scope.names.get(name)?;
     let decl = items[index].decls.iter().find(|d| d.name == name)?;
@@ -1997,4 +2131,164 @@ mod tests {
         let direct = db.analyze("lib/bad.cp").unwrap();
         assert!(!direct.diagnostics.is_empty());
     }
+}
+
+/// What makes the top-level `let` at `index` walkable once: a lazy chain
+/// (L0602) or a call of one of the file's generators with a `mut` argument
+/// (L0604).
+fn rewalk_kind(items: &[Arc<ItemSyntax>], index: usize) -> Option<(cpl_diag::Code, &'static str)> {
+    use ast::ExprKind;
+    let stmt = items[index].parsed.stmts.first()?;
+    let StmtKind::Let {
+        init: Some(init),
+        ty: None,
+        ..
+    } = &stmt.kind
+    else {
+        return None;
+    };
+    fn lazy(e: &ast::Expr) -> bool {
+        let ExprKind::Call { callee, .. } = &crate::check::lends::unparen(e).kind else {
+            return false;
+        };
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        match name.text.as_str() {
+            "filter" | "take_while" | "drop_while" | "flat_map" => true,
+            "map" | "take" | "drop" | "enumerate" => lazy(base),
+            _ => false,
+        }
+    }
+    if lazy(init) {
+        return Some((codes::CHAIN_WALKED_TWICE, "a lazy chain"));
+    }
+    let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
+        return None;
+    };
+    let ExprKind::Name(f) = &callee.kind else {
+        return None;
+    };
+    if !args
+        .iter()
+        .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
+    {
+        return None;
+    }
+    let generator = items.iter().any(|item| {
+        item.parsed.stmts.iter().any(|s| match &s.kind {
+            StmtKind::Fn(decl) => {
+                decl.name.text == *f
+                    && matches!(&decl.ret, Some(t) if matches!(t.kind, ast::TypeKind::Yields(_)))
+            }
+            _ => false,
+        })
+    });
+    generator.then_some((
+        codes::MUT_GENERATOR_REWALKED,
+        "a generator holding a `mut` lend",
+    ))
+}
+
+/// R03.1.8: a top-level `var a: [n]Int` with `n >= 1e6` whose every write,
+/// all in the top-level code, is an integer constant. Gives the name, the
+/// type's span and the range of the written values.
+fn wide_array(
+    items: &[Arc<ItemSyntax>],
+    checks: &[Arc<ItemCheck>],
+    index: usize,
+) -> Option<(String, Span, i128, i128)> {
+    use ast::{ExprKind, PatternKind, TypeKind, UnOp};
+    fn constant(e: &ast::Expr) -> Option<i128> {
+        match &crate::check::lends::unparen(e).kind {
+            ExprKind::Int(v) => Some(*v),
+            ExprKind::Unary {
+                op: UnOp::Neg,
+                expr,
+            } => constant(expr).map(|v| -v),
+            _ => None,
+        }
+    }
+    let item = &items[index];
+    let StmtKind::Let {
+        mutable: true,
+        pat,
+        ty: Some(ty),
+        init: Some(init),
+        ..
+    } = &item.parsed.stmts.first()?.kind
+    else {
+        return None;
+    };
+    let PatternKind::Name(name) = &pat.kind else {
+        return None;
+    };
+    let TypeKind::Array { index: dims, elem } = &ty.kind else {
+        return None;
+    };
+    if !matches!(&elem.kind, TypeKind::Named { name, args } if name.text == "Int" && args.is_empty())
+    {
+        return None;
+    }
+    let size = dims.iter().try_fold(1f64, |acc, d| {
+        let text = item.text.get(d.span.start as usize..d.span.end as usize)?;
+        Some(acc * text.replace('_', "").parse::<f64>().ok()?)
+    })?;
+    if size < 1e6 {
+        return None;
+    }
+    let mut values = Vec::new();
+    match &crate::check::lends::unparen(init).kind {
+        ExprKind::Call { callee, args } => {
+            let ExprKind::Field { name, .. } = &callee.kind else {
+                return None;
+            };
+            let [arg] = args.as_slice() else {
+                return None;
+            };
+            if name.text != "filled" {
+                return None;
+            }
+            values.push(constant(&arg.value)?);
+        }
+        e => values.push(constant(&ast::Expr {
+            kind: e.clone(),
+            span: init.span,
+        })?),
+    }
+    for (k, other) in items.iter().enumerate().skip(index + 1) {
+        let uses = checks[k]
+            .refs
+            .iter()
+            .filter(|r| r.name == *name)
+            .collect::<Vec<_>>();
+        if uses.is_empty() {
+            continue;
+        }
+        if uses.iter().any(|r| !r.top_level) || other.decls.iter().any(|d| d.name == *name) {
+            return None;
+        }
+        let stmt = other.parsed.stmts.first()?;
+        match &stmt.kind {
+            StmtKind::Assign {
+                target,
+                op: ast::AssignOp::Set,
+                value,
+            } => {
+                let ExprKind::Index { base, .. } = &target.kind else {
+                    return None;
+                };
+                if !matches!(&base.kind, ExprKind::Name(n) if n == name) {
+                    return None;
+                }
+                values.push(constant(value)?);
+            }
+            StmtKind::Expr(e) if !matches!(&e.kind, ExprKind::Call { callee, .. } if matches!(&callee.kind, ExprKind::Field { base, .. } if matches!(&base.kind, ExprKind::Name(n) if n == name))) =>
+                {}
+            _ => return None,
+        }
+    }
+    let lo = *values.iter().min()?;
+    let hi = *values.iter().max()?;
+    (i64::try_from(lo).is_ok() && (hi - lo) < (1 << 31)).then(|| (name.clone(), ty.span, lo, hi))
 }

@@ -23,6 +23,255 @@ impl<'a> Checker<'a> {
         index.len() > 1 && self.fits(cell, elem)
     }
 
+    /// Each variant reads and prints as its `@tag`, or else its name, so
+    /// two variants may not share one (R02.7.2).
+    /// The range a constant expression is known to lie in: literals,
+    /// constant `let`s and `+ - *` on them (R02.10.2).
+    pub(crate) fn const_range(&self, expr: &Expr) -> Option<(i128, i128)> {
+        use cpl_syntax::ast::{BinOp, UnOp};
+        match &expr.kind {
+            ExprKind::Int(v) => Some((*v, *v)),
+            ExprKind::Paren(e) => self.const_range(e),
+            ExprKind::Unary {
+                op: UnOp::Neg,
+                expr,
+            } => self.const_range(expr).map(|(lo, hi)| (-hi, -lo)),
+            ExprKind::Name(n) => match self.local(n) {
+                Some(local) if local.keyword == "let" => self.let_ranges.get(n).copied(),
+                Some(_) => None,
+                None => self.let_ranges.get(n).copied(),
+            },
+            ExprKind::Binary { op, lhs, rhs, .. } => {
+                let (a, b) = (self.const_range(lhs)?, self.const_range(rhs)?);
+                match op {
+                    BinOp::Add => Some((a.0.checked_add(b.0)?, a.1.checked_add(b.1)?)),
+                    BinOp::Sub => Some((a.0.checked_sub(b.1)?, a.1.checked_sub(b.0)?)),
+                    BinOp::Mul => {
+                        let c = [
+                            a.0.checked_mul(b.0)?,
+                            a.0.checked_mul(b.1)?,
+                            a.1.checked_mul(b.0)?,
+                            a.1.checked_mul(b.1)?,
+                        ];
+                        Some((*c.iter().min()?, *c.iter().max()?))
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// R06.4.8: dropping what one of the file's fns returns is W0101
+    /// unless the fn is `@droppable`.
+    fn dropped_result(&mut self, expr: &Expr) {
+        if !crate::ty::spec_edition() {
+            return;
+        }
+        let ExprKind::Call { callee, .. } = &expr.kind else {
+            return;
+        };
+        let ExprKind::Name(name) = &callee.kind else {
+            return;
+        };
+        if self.local(name).is_some() || !self.env.names().contains(name) {
+            return;
+        }
+        let Some(def) = self.global(name) else {
+            return;
+        };
+        let Def::Fn {
+            ty: Ty::Fn { ret, .. },
+            droppable: false,
+            ..
+        } = &*def
+        else {
+            return;
+        };
+        if matches!(**ret, Ty::Unit | Ty::Error | Ty::Unknown) {
+            return;
+        }
+        let shown = self.quote(expr.span);
+        let message = format!(
+            "`{shown}` returns {}, and it is dropped",
+            ret.with_article()
+        );
+        self.sink.push(
+            Diagnostic::warning(codes::UNUSED_VALUE, expr.span, message).with_help(format!(
+                "use it (`let r = {shown}`), or mark `{name}` `@droppable` if its result is optional"
+            )),
+        );
+    }
+
+    /// R07.9.2: `s.fold(f)` with a plain fn has no identity, so it is `?T`.
+    fn fold_needs_identity(&mut self, init: &Expr, declared: &Ty) {
+        if !crate::ty::spec_edition() || matches!(declared, Ty::Optional(_) | Ty::Error) {
+            return;
+        }
+        let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
+            return;
+        };
+        let ExprKind::Field { name, .. } = &callee.kind else {
+            return;
+        };
+        let [arg] = args.as_slice() else {
+            return;
+        };
+        if name.text != "fold"
+            || arg.name.is_some()
+            || !matches!(arg.value.kind, ExprKind::Lambda { .. })
+        {
+            return;
+        }
+        let shown = self.quote(init.span);
+        let message = format!(
+            "`{shown}` is {}: a fold by a lambda has no identity, so an empty sequence gives `None`",
+            Ty::Optional(Box::new(declared.clone())).with_article()
+        );
+        if let Some(diag) = self.error(codes::EMPTY_FOLD_NO_IDENTITY, init.span, message) {
+            diag.help = Some(format!(
+                "unwrap it: `{shown}!`, or `{shown} ?? d` for a default"
+            ));
+        }
+    }
+
+    /// R08.5.2: inherent methods live with their type.
+    fn impl_home(
+        &mut self,
+        trait_name: Option<&cpl_syntax::ast::Type>,
+        target: &cpl_syntax::ast::Type,
+    ) {
+        if !crate::ty::spec_edition() {
+            return;
+        }
+        let shown = self.quote(target.span);
+        match trait_name {
+            None if shown.contains('.') => {
+                let message =
+                    format!("`impl {shown}:` adds inherent methods outside `{shown}`'s module");
+                if let Some(diag) = self.error(codes::UNSUPPORTED, target.span, message) {
+                    diag.help = Some(format!(
+                        "move the methods into `{shown}`'s module, or declare a trait and `impl` it"
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// R03.1.4: storing a value proven outside `lo..=hi` is an error.
+    fn range_store(&mut self, value: &Expr, target: &Ty) {
+        if !crate::ty::spec_edition() {
+            return;
+        }
+        let Ty::Range { lo, hi, text } = target else {
+            return;
+        };
+        let Some((vlo, vhi)) = self.const_range(value) else {
+            return;
+        };
+        let below = lo.is_some_and(|lo| vhi < lo);
+        let above = hi.is_some_and(|hi| vlo > hi);
+        if !(below || above) {
+            return;
+        }
+        let shown = self.quote(value.span);
+        let is = if vlo == vhi {
+            format!("{vlo}")
+        } else {
+            format!("in {vlo}..={vhi}")
+        };
+        let message = if shown == is {
+            format!("`{shown}` is outside the range type `{text}`")
+        } else {
+            format!("`{shown}` is {is}, outside the range type `{text}`")
+        };
+        let text = text.clone();
+        if let Some(diag) = self.error(codes::RANGE_STORE_CONST, value.span, message) {
+            diag.help = Some(format!(
+                "store a value in `{text}`, or widen the declared type"
+            ));
+        }
+    }
+
+    /// 0.3 writes `enum Dir = N | E`; `enum Dir: N, E` is gone.
+    fn no_comma_variants(&mut self, variants: &[cpl_syntax::ast::Variant]) {
+        if !crate::ty::spec_edition() {
+            return;
+        }
+        for pair in variants.windows(2) {
+            let (a, b) = (&pair[0].name, &pair[1].name);
+            if !pair[0].fields.is_empty() || pair[0].value.is_some() || pair[1].tag.is_some() {
+                continue;
+            }
+            let between = self.text(a.span.to(b.span));
+            let gap = &between
+                [a.text.len().min(between.len())..between.len().saturating_sub(b.text.len())];
+            if gap.trim() != "," {
+                continue;
+            }
+            let names: Vec<&str> = variants.iter().map(|v| v.name.text.as_str()).collect();
+            let message = "an enum's variants are separated by `|`, not `,`".to_string();
+            if let Some(diag) = self.error(codes::EXPECTED_TOKEN, a.span.to(b.span), message) {
+                diag.help = Some(format!("write `= {}`", names.join(" | ")));
+            }
+            return;
+        }
+    }
+
+    /// `var x = None` and `let n = read()` give no type, and inference
+    /// never looks at later statements (R02.10.1, R10.2.1).
+    fn needs_annotation(&mut self, keyword: &str, pat: &Pattern, init: Option<&Expr>) -> bool {
+        if !crate::ty::spec_edition() {
+            return false;
+        }
+        let (PatternKind::Name(name), Some(init)) = (&pat.kind, init) else {
+            return false;
+        };
+        let (message, help) = match &init.kind {
+            ExprKind::Call { callee, args }
+                if args.is_empty()
+                    && matches!(&callee.kind, ExprKind::Name(n) if n == "read")
+                    && self.local("read").is_none() =>
+            {
+                (
+                    format!("`{keyword} {name} = read()` doesn't say what to read"),
+                    format!("annotate it: `{keyword} {name}: Int = read()`"),
+                )
+            }
+            _ => return false,
+        };
+        if let Some(diag) = self.error(codes::INFERENCE_NEEDS_ANNOTATION, init.span, message) {
+            diag.help = Some(help);
+        }
+        true
+    }
+
+    /// R01.3.2: a `let`/`var` name is lowercase; `N` would read as a type.
+    fn value_case(&mut self, keyword: &str, pat: &Pattern, init_ty: Option<&Ty>) {
+        if !crate::ty::spec_edition() || matches!(init_ty, Some(Ty::Domain(_) | Ty::Error)) {
+            return;
+        }
+        let name = match &pat.kind {
+            PatternKind::Name(name) => name.as_str(),
+            PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+                path[0].text.as_str()
+            }
+            _ => return,
+        };
+        if !name.starts_with(|c: char| c.is_ascii_uppercase()) {
+            return;
+        }
+        let lower = name.to_lowercase();
+        let message =
+            format!("`{keyword} {name}`: values are lowercase; `{name}` would read as a type");
+        if let Some(diag) = self.error(codes::VALUE_NAME_CASE, pat.span, message) {
+            diag.help = Some(format!(
+                "rename it `{lower}`, or write `const {name}` for a constant"
+            ));
+        }
+    }
+
     fn array_fills(&mut self, declared: &Ty, init_ty: &Ty, init: &Expr) -> bool {
         match (declared, init_ty) {
             (Ty::Array { index, elem }, Ty::Named { name, args })
@@ -204,8 +453,7 @@ impl<'a> Checker<'a> {
                 let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
                     if let Ty::Pos(dom) = ty {
                         if let Some(factors) = self.product_factors(dom) {
-                            effective_ty =
-                                Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
+                            effective_ty = Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
                             &effective_ty
                         } else {
                             ty
@@ -217,7 +465,9 @@ impl<'a> Checker<'a> {
                     ty
                 };
                 let mut names = Vec::new();
-                pattern_types(pat, bind_ty, &mut |name, ty| names.push((name.to_string(), ty)));
+                pattern_types(pat, bind_ty, &mut |name, ty| {
+                    names.push((name.to_string(), ty))
+                });
                 let mut spans = Vec::new();
                 name_spans(pat, false, &mut spans);
                 for ((name, ty), (span, is_var)) in names.into_iter().zip(spans) {
@@ -364,7 +614,10 @@ impl<'a> Checker<'a> {
     fn part_of_grid(e: &ast::Expr) -> bool {
         match &e.kind {
             ExprKind::Index { indices, .. } => {
-                indices.len() > 1 && indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. }))
+                indices.len() > 1
+                    && indices
+                        .iter()
+                        .any(|i| matches!(i.kind, ExprKind::Range { .. }))
             }
             _ => false,
         }
@@ -378,12 +631,20 @@ impl<'a> Checker<'a> {
             matches!(&e.kind, ExprKind::Index { indices, .. }
                 if indices.iter().filter(|i| matches!(i.kind, ExprKind::Range { step: None, .. })).count() == 1)
         };
-        let ExprKind::Binary { op: bin, lhs, rhs, .. } = &value.kind else {
+        let ExprKind::Binary {
+            op: bin, lhs, rhs, ..
+        } = &value.kind
+        else {
             return None;
         };
         let worked = matches!(
             bin,
-            ast::BinOp::Add | ast::BinOp::Sub | ast::BinOp::Mul | ast::BinOp::BitAnd | ast::BinOp::BitOr | ast::BinOp::BitXor
+            ast::BinOp::Add
+                | ast::BinOp::Sub
+                | ast::BinOp::Mul
+                | ast::BinOp::BitAnd
+                | ast::BinOp::BitOr
+                | ast::BinOp::BitXor
         );
         if op != AssignOp::Set || !worked || !is_part(target) || is_part(lhs) == is_part(rhs) {
             return None;
@@ -391,12 +652,18 @@ impl<'a> Checker<'a> {
         let (part, one) = if is_part(lhs) { (lhs, rhs) } else { (rhs, lhs) };
         let (part_ty, one_ty) = (self.infer(part), self.infer(one));
         let cell = self.element_ty(&part_ty);
-        let row = |ty: &Ty| matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List");
+        let row = |ty: &Ty| {
+            matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
+        };
         if part_ty == Ty::Error || one_ty == Ty::Error {
             return Some(Ty::Error);
         }
         let number = cell.is_int() || cell == Ty::Float;
-        if !row(&part_ty) || row(&one_ty) || !number || !(one_ty.is_vague() || self.fits(&one_ty, &cell)) {
+        if !row(&part_ty)
+            || row(&one_ty)
+            || !number
+            || !(one_ty.is_vague() || self.fits(&one_ty, &cell))
+        {
             let message = format!(
                 "`{}` works each cell of `{}` with one number, but `{}` is {}",
                 self.quote(value.span),
@@ -405,7 +672,10 @@ impl<'a> Checker<'a> {
                 one_ty.with_article()
             );
             if let Some(diag) = self.error(codes::BAD_OPERANDS, value.span, message) {
-                diag.help = Some("the cells and the value are one kind of number: `a[l..r] = b[l2..r2] + x`".to_string());
+                diag.help = Some(
+                    "the cells and the value are one kind of number: `a[l..r] = b[l2..r2] + x`"
+                        .to_string(),
+                );
             }
             return Some(Ty::Error);
         }
@@ -414,7 +684,13 @@ impl<'a> Checker<'a> {
 
     /// `a max= b` on a row (an array of one dimension, or a list) goes
     /// cell by cell, so `b` is a row of the same type.
-    pub(crate) fn row_keep(&mut self, target: &ast::Expr, target_ty: &Ty, value: &ast::Expr, value_ty: &Ty) {
+    pub(crate) fn row_keep(
+        &mut self,
+        target: &ast::Expr,
+        target_ty: &Ty,
+        value: &ast::Expr,
+        value_ty: &Ty,
+    ) {
         // `a[l..r] max= x`, `g[r, ..] min= x`: one value against every cell
         // of the part.
         let part = matches!(&target.kind, ExprKind::Index { indices, .. } if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. })));
@@ -424,7 +700,8 @@ impl<'a> Checker<'a> {
             _ => None,
         };
         if let (true, Some(cell)) = (part, cell) {
-            let row = matches!(value_ty, Ty::Array { .. }) || matches!(value_ty, Ty::Named { name, .. } if name == "List");
+            let row = matches!(value_ty, Ty::Array { .. })
+                || matches!(value_ty, Ty::Named { name, .. } if name == "List");
             if !row && !value_ty.is_vague() && self.fits(value_ty, cell) {
                 return;
             }
@@ -580,6 +857,11 @@ impl<'a> Checker<'a> {
     }
 
     fn stmt(&mut self, stmt: &Stmt, top_level: bool) -> Ty {
+        if top_level {
+            if let StmtKind::Expr(expr) = &stmt.kind {
+                self.dropped_result(expr);
+            }
+        }
         // A statement is straight-line code again, whatever it is inside;
         // an `if` or `match` standing as a statement is one too.
         let branch = match &stmt.kind {
@@ -613,15 +895,12 @@ impl<'a> Checker<'a> {
                         if let ExprKind::Str(pieces) = &init_expr.kind {
                             for piece in pieces {
                                 if let cpl_syntax::ast::StrPiece::Text(text) = piece {
-                                    if let Some(bad) =
-                                        text.chars().find(|c| !alphabet.contains(*c))
+                                    if let Some(bad) = text.chars().find(|c| !alphabet.contains(*c))
                                     {
                                         self.error(
                                             cpl_diag::Code("E0902"),
                                             init_expr.span,
-                                            format!(
-                                                "`{bad}` is not in `Str of \"{alphabet}\"`"
-                                            ),
+                                            format!("`{bad}` is not in `Str of \"{alphabet}\"`"),
                                         );
                                         break;
                                     }
@@ -643,9 +922,18 @@ impl<'a> Checker<'a> {
                     &mut self.expected_piece,
                     declared.as_ref().is_some_and(Self::expects_piece),
                 );
-                if let (Some(declared), Some(Expr { kind: ExprKind::Call { callee, args }, .. })) = (&declared, init) {
+                if let (
+                    Some(declared),
+                    Some(Expr {
+                        kind: ExprKind::Call { callee, args },
+                        ..
+                    }),
+                ) = (&declared, init)
+                {
                     match &callee.kind {
-                        ExprKind::Name(n) if n == "read" && args.is_empty() && self.io_fixed(declared) => {
+                        ExprKind::Name(n)
+                            if n == "read" && args.is_empty() && self.io_fixed(declared) =>
+                        {
                             self.fixed_io.push(callee.span)
                         }
                         ExprKind::Name(n) if n == "ask" && self.io_fixed(declared) => {
@@ -697,7 +985,9 @@ impl<'a> Checker<'a> {
                             let keyword = self.src[..pat.span.start as usize]
                                 .trim_end()
                                 .strip_suffix("var")
-                                .map(|before| Span::new(before.len() as u32, before.len() as u32 + 3));
+                                .map(|before| {
+                                    Span::new(before.len() as u32, before.len() as u32 + 3)
+                                });
                             if let Some(diag) = self.error(
                                 codes::VAR_LAMBDA_RECURSION,
                                 at,
@@ -751,7 +1041,44 @@ impl<'a> Checker<'a> {
                         self.bind(pat, &rec_ty, false, "let");
                     }
                 }
+                let unannotated =
+                    declared.is_none() && self.needs_annotation(keyword, pat, init.as_ref());
                 let mut init_ty = init.as_ref().map(|init| self.infer(init));
+                if unannotated {
+                    init_ty = Some(Ty::Error);
+                }
+                if let (PatternKind::Name(name), Some(init)) = (&pat.kind, init.as_ref()) {
+                    if let Some(rebased) = self.rebased(name, init) {
+                        init_ty = Some(rebased);
+                    }
+                }
+                self.value_case(keyword, pat, init_ty.as_ref());
+                if let PatternKind::Name(name) = &pat.kind {
+                    let known = match (keyword, &declared, init.as_ref()) {
+                        ("let", None, Some(init)) => self.const_range(init),
+                        _ => None,
+                    };
+                    match known {
+                        Some(r) => self.let_ranges.insert(name.clone(), r),
+                        None => self.let_ranges.remove(name),
+                    };
+                }
+                if let (Some(declared), Some(init)) = (&declared, init.as_ref()) {
+                    self.range_store(init, declared);
+                }
+                if let (Some(declared), Some(init)) = (&declared, init.as_ref()) {
+                    self.fold_needs_identity(init, declared);
+                }
+                if let PatternKind::Name(name) = &pat.kind {
+                    match init.as_ref() {
+                        Some(init) if keyword == "let" && self.walk_only_expr(init) => {
+                            self.walk_only.insert(name.clone());
+                        }
+                        _ => {
+                            self.walk_only.remove(name);
+                        }
+                    }
+                }
                 self.expected_bounds_range = prev_bounds_range;
                 self.expected_piece = prev_piece;
                 if rec_scope {
@@ -771,7 +1098,9 @@ impl<'a> Checker<'a> {
                 // `var seen: [V]Bool = false` fills the array with the value.
                 // A comprehension builds the array when one is declared.
                 let fills = match (&declared, &init_ty, init) {
-                    (Some(decl), Some(ity), Some(init_expr)) => self.array_fills(decl, ity, init_expr),
+                    (Some(decl), Some(ity), Some(init_expr)) => {
+                        self.array_fills(decl, ity, init_expr)
+                    }
                     _ => false,
                 };
                 if let (Some(declared), Some(init_ty), Some(init), false) =
@@ -793,7 +1122,10 @@ impl<'a> Checker<'a> {
                 if declared.is_none() && !guessed {
                     let is_bare_none = matches!(
                         init,
-                        Some(Expr { kind: ExprKind::None, .. })
+                        Some(Expr {
+                            kind: ExprKind::None,
+                            ..
+                        })
                     );
                     let is_bare_read = matches!(
                         init,
@@ -808,21 +1140,18 @@ impl<'a> Checker<'a> {
                         let message = format!(
                             "`{name}` needs a type annotation because `None` has no element type"
                         );
-                        if let Some(diag) = self.error(
-                            codes::INFERENCE_NEEDS_ANNOTATION,
-                            pat.span,
-                            message,
-                        ) {
+                        if let Some(diag) =
+                            self.error(codes::INFERENCE_NEEDS_ANNOTATION, pat.span, message)
+                        {
                             diag.help = Some(format!("write `{keyword} {name}: ?Int = None`"));
                         }
                     } else if is_bare_read {
                         let name = self.quote(pat.span);
-                        let message = "`read()` needs a type annotation to know what to read".to_string();
-                        if let Some(diag) = self.error(
-                            codes::INFERENCE_NEEDS_ANNOTATION,
-                            pat.span,
-                            message,
-                        ) {
+                        let message =
+                            "`read()` needs a type annotation to know what to read".to_string();
+                        if let Some(diag) =
+                            self.error(codes::INFERENCE_NEEDS_ANNOTATION, pat.span, message)
+                        {
                             diag.help = Some(format!("write `{keyword} {name}: Int = read()`"));
                         }
                     }
@@ -865,9 +1194,7 @@ impl<'a> Checker<'a> {
                     }) = init
                     {
                         let is_owned = self.is_owned_movable_var(src);
-                        let src_is_heap = init_ty
-                            .as_ref()
-                            .is_some_and(|t| self.is_heap_type(t));
+                        let src_is_heap = init_ty.as_ref().is_some_and(|t| self.is_heap_type(t));
                         if is_owned && src_is_heap {
                             self.mark_moved(src, *src_span);
                         }
@@ -973,7 +1300,8 @@ impl<'a> Checker<'a> {
                 if let (false, Some((memo_span, _))) = (top_level, memo_info) {
                     let captured = self.memo_captured_vars(f);
                     for var_name in captured {
-                        self.memo_captured.push((var_name, f.name.text.clone(), memo_span));
+                        self.memo_captured
+                            .push((var_name, f.name.text.clone(), memo_span));
                     }
                 }
                 self.fn_decl(f, None, !top_level, memo_info)
@@ -1032,30 +1360,28 @@ impl<'a> Checker<'a> {
                     args: generics.iter().cloned().map(Ty::Param).collect(),
                 };
                 let body = self.enter_body(&generics, self_ty.clone());
+                self.no_comma_variants(&e.variants);
                 let mut seen_tags: Vec<(String, Span)> = Vec::new();
                 for variant in &e.variants {
                     if let Some(tag_expr) = &variant.tag {
-                            let tag_text = self.quote(tag_expr.span);
-                            if let Some((_, prev_span)) =
-                                seen_tags.iter().find(|(t, _)| t == &tag_text)
+                        let tag_text = self.quote(tag_expr.span);
+                        if let Some((_, prev_span)) = seen_tags.iter().find(|(t, _)| t == &tag_text)
+                        {
+                            let message = format!(
+                                "enum `{}` already has a variant with `@tag({tag_text})`",
+                                e.name.text
+                            );
+                            if let Some(diag) =
+                                self.error(codes::DUPLICATE_VARIANT_TAG, tag_expr.span, message)
                             {
-                                let message = format!(
-                                    "enum `{}` already has a variant with `@tag({tag_text})`",
-                                    e.name.text
-                                );
-                                if let Some(diag) = self.error(
-                                    codes::DUPLICATE_VARIANT_TAG,
-                                    tag_expr.span,
-                                    message,
-                                ) {
-                                    diag.labels.push(cpl_diag::Label {
-                                        span: *prev_span,
-                                        message: "first `@tag` here".to_string(),
-                                    });
-                                }
-                            } else {
-                                seen_tags.push((tag_text, tag_expr.span));
+                                diag.labels.push(cpl_diag::Label {
+                                    span: *prev_span,
+                                    message: "first `@tag` here".to_string(),
+                                });
                             }
+                        } else {
+                            seen_tags.push((tag_text, tag_expr.span));
+                        }
                     }
                     let fields: Vec<Ty> = variant
                         .fields
@@ -1125,6 +1451,7 @@ impl<'a> Checker<'a> {
                 generics,
                 supers,
                 body,
+                ..
             } => {
                 let mut generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
                 for stmt in &body.stmts {
@@ -1161,11 +1488,10 @@ impl<'a> Checker<'a> {
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.resolve_type(target);
                 self.self_ty = Some(self_ty.clone());
+                self.impl_home(trait_name.as_ref(), target);
                 self.bounds_exist(bounds);
                 if std::env::var_os("CPL_SPEC").is_some() {
-                    if trait_name.is_none()
-                        && self.quote(target.span).contains('.')
-                    {
+                    if trait_name.is_none() && self.quote(target.span).contains('.') {
                         self.error(
                             codes::UNSUPPORTED,
                             target.span,
@@ -1293,13 +1619,17 @@ impl<'a> Checker<'a> {
                 self.optional_fold(target, &target_ty, *op);
                 self.map_fold(target, *op, value);
                 self.assign_alias(target, *op, value);
+                let before_mutable = self.sink.len();
                 self.require_mutable(target, "assigned");
+                let not_assignable = self.sink.len() > before_mutable;
                 if std::env::var_os("CPL_SPEC").is_some() {
                     if let ExprKind::Field { base, name } = &target.kind {
                         let base_ty = self.quietly(|c| c.infer(base));
                         if let Ty::Named { name: sname, .. } = &base_ty {
                             let fixed_field = match self.type_def(sname).as_deref() {
-                                Some(Def::Struct { fields, var_fields, .. }) => {
+                                Some(Def::Struct {
+                                    fields, var_fields, ..
+                                }) => {
                                     fields.iter().any(|f| f.name == name.text)
                                         && !var_fields.iter().any(|f| f == &name.text)
                                 }
@@ -1311,11 +1641,9 @@ impl<'a> Checker<'a> {
                                     "field `{sname}.{}` is fixed (not `var`) and cannot be assigned",
                                     name.text
                                 );
-                                if let Some(diag) = self.error(
-                                    cpl_diag::Code("E0405"),
-                                    target.span,
-                                    message,
-                                ) {
+                                if let Some(diag) =
+                                    self.error(cpl_diag::Code("E0405"), target.span, message)
+                                {
                                     diag.help = Some(format!(
                                         "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
                                         name.text,
@@ -1327,6 +1655,9 @@ impl<'a> Checker<'a> {
                     }
                 }
                 self.check_access(target, true);
+                if *op == AssignOp::Set && !not_assignable {
+                    self.range_store(value, &target_ty);
+                }
                 if let Some((root, _)) = Self::root_name(target) {
                     self.check_memo_capture_write(root, target.span);
                     let target_depth = self.var_depth(root);
@@ -1349,13 +1680,15 @@ impl<'a> Checker<'a> {
                     self.row_keep(target, &target_ty, value, &value_ty);
                 }
                 let row = |ty: &Ty| {
-                    matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
+                    matches!(ty, Ty::Array { .. })
+                        || matches!(ty, Ty::Named { name, .. } if name == "List")
                 };
-                let target_ty = if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
-                    self.element_ty(&target_ty)
-                } else {
-                    target_ty
-                };
+                let target_ty =
+                    if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
+                        self.element_ty(&target_ty)
+                    } else {
+                        target_ty
+                    };
                 let target_ty =
                     if *op == AssignOp::Set && part && row(&target_ty) && !row(&value_ty) {
                         self.element_ty(&target_ty)
@@ -1392,7 +1725,7 @@ impl<'a> Checker<'a> {
                         );
                         self.error(codes::TYPE_MISMATCH, value.span, message);
                     }
-                } else if *op == AssignOp::Set {
+                } else if *op == AssignOp::Set && !not_assignable {
                     self.expect_fits(&value_ty, &target_ty, value, |c, got, want| {
                         format!(
                             "`{}` is {}, but `{}` is {}",
@@ -1461,6 +1794,27 @@ impl<'a> Checker<'a> {
                         && self.cached_fields.iter().any(|c| c == &field.text)
                     {
                         self.check_cache_lend_body(body, &field.text);
+                    }
+                }
+                self.counter_over_slice(iter, stmt.span);
+                if crate::ty::spec_edition()
+                    && matches!(
+                        iter.kind,
+                        ExprKind::Range {
+                            lo: None,
+                            hi: None,
+                            ..
+                        }
+                    )
+                {
+                    if let Some(diag) = self.error(
+                        codes::EXPECTED_EXPR,
+                        iter.span,
+                        "a bare `..` means all of a dimension, so it only goes inside `[...]`"
+                            .to_string(),
+                    ) {
+                        diag.help =
+                            Some("name what to walk: `for x in D` or `for i in 0..n`".into());
                     }
                 }
                 let prev_iterating = std::mem::replace(
@@ -1592,7 +1946,9 @@ impl<'a> Checker<'a> {
     fn fixed_read(&mut self, value: &Expr, ret: &Ty) {
         if let ExprKind::Call { callee, args } = &value.kind {
             match &callee.kind {
-                ExprKind::Name(n) if n == "read" && args.is_empty() && self.io_fixed(ret) => self.fixed_io.push(callee.span),
+                ExprKind::Name(n) if n == "read" && args.is_empty() && self.io_fixed(ret) => {
+                    self.fixed_io.push(callee.span)
+                }
                 ExprKind::Name(n) if n == "ask" && self.io_fixed(ret) => {
                     self.record_io(callee.span, n, args);
                 }
@@ -1856,6 +2212,25 @@ impl<'a> Checker<'a> {
             return;
         };
         let trait_text = self.quote(trait_ty.span);
+        if let Some(Def::Trait {
+            supers,
+            alias: true,
+            ..
+        }) = type_head(trait_ty).and_then(|n| self.global(&n)).as_deref()
+        {
+            let impls = supers
+                .iter()
+                .map(|s| format!("`impl {s} for {}`", self.quote(target.span)))
+                .collect::<Vec<_>>()
+                .join(" and ");
+            let message = format!(
+                "`{trait_text}` is a trait alias: it names bounds and has no impl of its own"
+            );
+            if let Some(diag) = self.error(codes::UNSUPPORTED, trait_ty.span, message) {
+                diag.help = Some(format!("write {impls} instead"));
+            }
+            return;
+        }
         // Check supertrait requirements (R08.1.3): `impl Sub for T` requires `impl Super for T`.
         if let ast::TypeKind::Named { name, .. } = &trait_ty.kind {
             if let Some(Def::Trait { supers, .. }) = self.global(&name.text).as_deref().cloned() {
@@ -1931,8 +2306,7 @@ impl<'a> Checker<'a> {
         match ty {
             Ty::Pos(_) | Ty::Bool | Ty::Range { .. } | Ty::Error | Ty::Unknown => true,
             Ty::Named { name, .. } => {
-                name == "Cut"
-                    || matches!(self.type_def(name).as_deref(), Some(Def::Enum { .. }))
+                name == "Cut" || matches!(self.type_def(name).as_deref(), Some(Def::Enum { .. }))
             }
             Ty::Tuple(ts) => ts.iter().all(|t| self.is_bounded_memo_type(t)),
             Ty::Optional(inner) => self.is_bounded_memo_type(inner),
@@ -1977,9 +2351,8 @@ impl<'a> Checker<'a> {
             .find(|(v, _, _)| v == root)
             .cloned()
         {
-            let message = format!(
-                "`{root}` can't be modified while `@memo` fn `{fn_name}` captures it"
-            );
+            let message =
+                format!("`{root}` can't be modified while `@memo` fn `{fn_name}` captures it");
             if let Some(diag) = self.error(codes::BAD_MEMO, span, message) {
                 diag.labels.push(cpl_diag::Label {
                     span: memo_span,
@@ -2203,6 +2576,19 @@ impl<'a> Checker<'a> {
         }
         if let Some(lends) = &f.lends {
             self.resolve_type(&lends.ty);
+            if let Some(at) = lends.bare.filter(|_| crate::ty::spec_edition()) {
+                if let Some(diag) = self.error(
+                    codes::EXPECTED_TOKEN,
+                    at,
+                    "expected `->` before `lends`: a lend is the fn's result".to_string(),
+                ) {
+                    diag.help = Some("write `-> lends T`".to_string());
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: "insert `->`".to_string(),
+                        edits: vec![(Span::new(at.start, at.start), "-> ".to_string())],
+                    });
+                }
+            }
         }
         let mut sig_params = params.iter();
         for param in &f.params {
@@ -2348,9 +2734,10 @@ impl<'a> Checker<'a> {
 /// Where a fn's `@memo` is written, and whether it specifies `@memo(array)`.
 fn memo_of(stmt: &Stmt) -> Option<(Span, bool)> {
     let memo = stmt.decorators.iter().find(|d| d.name.text == "memo")?;
-    let is_array = memo.args.iter().any(|a| {
-        a.name.is_none() && matches!(&a.value.kind, ExprKind::Name(n) if n == "array")
-    });
+    let is_array = memo
+        .args
+        .iter()
+        .any(|a| a.name.is_none() && matches!(&a.value.kind, ExprKind::Name(n) if n == "array"));
     Some((memo.span, is_array))
 }
 
@@ -2379,7 +2766,10 @@ fn name_spans(pat: &Pattern, is_var: bool, out: &mut Vec<(Span, bool)>) {
 impl Checker<'_> {
     /// The values of `fields(a, b, ..)` in a `for` head: the compile-time
     /// loop over a struct's or a tuple's fields (decision 28.1).
-    pub(crate) fn reflected_values<'e>(&mut self, iter: &'e Expr) -> Option<&'e [cpl_syntax::ast::Arg]> {
+    pub(crate) fn reflected_values<'e>(
+        &mut self,
+        iter: &'e Expr,
+    ) -> Option<&'e [cpl_syntax::ast::Arg]> {
         let ExprKind::Call { callee, args } = &iter.kind else {
             return None;
         };
@@ -2401,7 +2791,9 @@ impl Checker<'_> {
             return None;
         };
         match self.global(name).as_deref() {
-            Some(Def::Enum { variants, .. }) => Some(variants.iter().map(|(_, fs)| fs.clone()).collect()),
+            Some(Def::Enum { variants, .. }) => {
+                Some(variants.iter().map(|(_, fs)| fs.clone()).collect())
+            }
             _ => None,
         }
     }
@@ -2476,9 +2868,12 @@ impl Checker<'_> {
                     if let Some(d) = self.error(
                         codes::TYPE_MISMATCH,
                         v.value.span,
-                        format!("`fields` walks the fields of a struct or a tuple, not of a `{ty}`"),
+                        format!(
+                            "`fields` walks the fields of a struct or a tuple, not of a `{ty}`"
+                        ),
                     ) {
-                        d.help = Some("pass a struct or tuple value: `for f in fields(p):`".to_string());
+                        d.help =
+                            Some("pass a struct or tuple value: `for f in fields(p):`".to_string());
                     }
                     shapes.push(None);
                 }
@@ -2695,7 +3090,10 @@ fn loop_exit(stmts: &[Stmt]) -> Option<Span> {
     stmts.iter().find_map(|s| match &s.kind {
         StmtKind::Break(None) | StmtKind::Continue(None) => Some(s.span),
         StmtKind::Expr(Expr {
-            kind: ExprKind::If { branches, otherwise },
+            kind: ExprKind::If {
+                branches,
+                otherwise,
+            },
             ..
         }) => branches
             .iter()
@@ -2760,7 +3158,11 @@ impl<'a> Checker<'a> {
                 StmtKind::Return(Some(e)) => out.push(e),
                 StmtKind::Expr(e) if i + 1 == block.stmts.len() => out.push(e),
                 StmtKind::Expr(Expr {
-                    kind: ExprKind::If { branches, otherwise },
+                    kind:
+                        ExprKind::If {
+                            branches,
+                            otherwise,
+                        },
                     ..
                 }) => {
                     for (_, b) in branches {
@@ -2789,9 +3191,7 @@ impl<'a> Checker<'a> {
     fn expr_self_field(mut e: &Expr) -> Option<&str> {
         loop {
             match &e.kind {
-                ExprKind::Field { base, name }
-                    if matches!(&base.kind, ExprKind::SelfValue) =>
-                {
+                ExprKind::Field { base, name } if matches!(&base.kind, ExprKind::SelfValue) => {
                     return Some(name.text.as_str());
                 }
                 ExprKind::Field { base, .. } | ExprKind::Index { base, .. } => e = base,
@@ -2837,9 +3237,9 @@ impl<'a> Checker<'a> {
                         if matches!(&base.kind, ExprKind::SelfValue)
                 );
                 let bad_fn_param = match &callee.kind {
-                    ExprKind::Name(n) => self
-                        .local(n)
-                        .is_some_and(|l| matches!(l.ty, Ty::Fn { .. })),
+                    ExprKind::Name(n) => {
+                        self.local(n).is_some_and(|l| matches!(l.ty, Ty::Fn { .. }))
+                    }
                     _ => false,
                 };
                 if bad_self_method || bad_fn_param {
@@ -2871,7 +3271,10 @@ impl<'a> Checker<'a> {
             | ExprKind::Paren(inner)
             | ExprKind::Try(inner)
             | ExprKind::Unwrap(inner) => self.check_cache_lend_expr(inner, cache_field),
-            ExprKind::If { branches, otherwise } => {
+            ExprKind::If {
+                branches,
+                otherwise,
+            } => {
                 for (c, b) in branches {
                     if let ast::Cond::Expr(e) | ast::Cond::Const(e) = c {
                         self.check_cache_lend_expr(e, cache_field);

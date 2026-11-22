@@ -45,7 +45,13 @@ struct Fact<'a> {
 
 /// What `a op b` coming out as `when` says.
 fn compared<'a>(a: Cow<'a, str>, op: CmpOp, b: Cow<'a, str>, when: bool, out: &mut Vec<Fact<'a>>) {
-    let mut say = |a: &Cow<'a, str>, rel, b: &Cow<'a, str>| out.push(Fact { a: a.clone(), rel, b: b.clone() });
+    let mut say = |a: &Cow<'a, str>, rel, b: &Cow<'a, str>| {
+        out.push(Fact {
+            a: a.clone(),
+            rel,
+            b: b.clone(),
+        })
+    };
     let (a, b) = (&a, &b);
     match (op, when) {
         (CmpOp::Lt, true) | (CmpOp::Ge, false) => say(a, Rel::Lt, b),
@@ -70,7 +76,8 @@ fn name(e: &Expr) -> Option<&str> {
 
 /// The domain `end` is an end of, when it is `D.first` or `D.last`.
 pub fn end_domain(end: &str) -> Option<&str> {
-    end.strip_suffix(".first").or_else(|| end.strip_suffix(".last"))
+    end.strip_suffix(".first")
+        .or_else(|| end.strip_suffix(".last"))
 }
 
 /// One side of a comparison that orders: a name, or `D.first` / `D.last`
@@ -124,17 +131,32 @@ fn of_cond<'a>(cond: &'a Cond, when: bool, out: &mut Vec<Fact<'a>>) {
 
 /// `for m in l..r`: `l <= m`, and `m < r` (`m <= r` for `..=`).
 fn walked<'a>(pat: &'a Pattern, iter: &'a Expr, out: &mut Vec<Fact<'a>>) {
-    let (PatternKind::Name(m), ExprKind::Range { lo, hi, inclusive, step: None }) =
-        (&pat.kind, &unparen(iter).kind)
+    let (
+        PatternKind::Name(m),
+        ExprKind::Range {
+            lo,
+            hi,
+            inclusive,
+            step: None,
+        },
+    ) = (&pat.kind, &unparen(iter).kind)
     else {
         return;
     };
     if let Some(lo) = lo.as_deref().and_then(name) {
-        out.push(Fact { a: Cow::Borrowed(lo), rel: Rel::Le, b: Cow::Borrowed(m) });
+        out.push(Fact {
+            a: Cow::Borrowed(lo),
+            rel: Rel::Le,
+            b: Cow::Borrowed(m),
+        });
     }
     if let Some(hi) = hi.as_deref().and_then(name) {
         let rel = if *inclusive { Rel::Le } else { Rel::Lt };
-        out.push(Fact { a: Cow::Borrowed(m), rel, b: Cow::Borrowed(hi) });
+        out.push(Fact {
+            a: Cow::Borrowed(m),
+            rel,
+            b: Cow::Borrowed(hi),
+        });
     }
 }
 
@@ -180,10 +202,14 @@ impl Finder<'_, '_> {
             // An end of a domain is the domain's; nothing assigns it.
             let root = |side: &str| side.split('.').next().unwrap_or(side).to_string();
             let (a, b) = (root(&fact.a), root(&fact.b));
-            let names = kept(vec![a.as_str(), b.as_str()], &mut *self.calls, |writes| covered(writes));
+            let names = kept(vec![a.as_str(), b.as_str()], &mut *self.calls, |writes| {
+                covered(writes)
+            });
             if names.len() == 2 {
                 let at = Span::new(at.start + self.by, at.end + self.by);
-                self.steps.held.push((at, fact.a.to_string(), fact.rel, fact.b.to_string()));
+                self.steps
+                    .held
+                    .push((at, fact.a.to_string(), fact.rel, fact.b.to_string()));
             }
         }
     }
@@ -193,7 +219,11 @@ impl Finder<'_, '_> {
     fn sequence(&mut self, stmts: &[Stmt]) {
         for (k, stmt) in stmts.iter().enumerate() {
             let StmtKind::Expr(Expr {
-                kind: ExprKind::If { branches, otherwise: None },
+                kind:
+                    ExprKind::If {
+                        branches,
+                        otherwise: None,
+                    },
                 ..
             }) = &stmt.kind
             else {
@@ -215,7 +245,9 @@ impl Finder<'_, '_> {
                 of_cond(cond, false, &mut facts);
             }
             let at = Span::new(stmt.span.end, last.span.end);
-            self.hold(facts, at, |writes| rest.iter().for_each(|stmt| walk_stmt(stmt, writes)));
+            self.hold(facts, at, |writes| {
+                rest.iter().for_each(|stmt| walk_stmt(stmt, writes))
+            });
         }
     }
 }
@@ -232,7 +264,9 @@ impl Visitor for Finder<'_, '_> {
                 of_cond(cond, true, &mut facts);
                 self.hold(facts, body.span, |writes| walk_block(body, writes));
             }
-            StmtKind::For { pat, iter, body, .. } => {
+            StmtKind::For {
+                pat, iter, body, ..
+            } => {
                 let mut facts = Vec::new();
                 walked(pat, iter, &mut facts);
                 self.hold(facts, body.span, |writes| walk_block(body, writes));
@@ -243,7 +277,10 @@ impl Visitor for Finder<'_, '_> {
 
     fn expr(&mut self, e: &Expr) {
         match &e.kind {
-            ExprKind::If { branches, otherwise } => {
+            ExprKind::If {
+                branches,
+                otherwise,
+            } => {
                 for (at, (cond, body)) in branches.iter().enumerate() {
                     let mut facts = Vec::new();
                     of_cond(cond, true, &mut facts);
@@ -257,7 +294,12 @@ impl Visitor for Finder<'_, '_> {
                     }
                 }
             }
-            ExprKind::Binary { op: op @ (BinOp::And | BinOp::Or), lhs, rhs, .. } => {
+            ExprKind::Binary {
+                op: op @ (BinOp::And | BinOp::Or),
+                lhs,
+                rhs,
+                ..
+            } => {
                 let mut facts = Vec::new();
                 ordered(lhs, *op == BinOp::And, &mut facts);
                 self.hold(facts, rhs.span, |writes| walk_expr(rhs, writes));
@@ -279,7 +321,11 @@ impl Steps {
     /// `by` into its file. `calls` says whether calling a fn assigns a
     /// name, as for [`crate::narrow`].
     pub fn read(&mut self, stmts: &[Stmt], by: u32, calls: &mut Calls) {
-        let mut finder = Finder { steps: self, by, calls };
+        let mut finder = Finder {
+            steps: self,
+            by,
+            calls,
+        };
         finder.sequence(stmts);
         for stmt in stmts {
             walk_stmt(stmt, &mut finder);
@@ -316,7 +362,11 @@ impl Steps {
                 (false, true) => a,
                 _ => continue,
             };
-            let stays = if up { self.less(at, from, other) } else { self.less(at, other, from) };
+            let stays = if up {
+                self.less(at, from, other)
+            } else {
+                self.less(at, other, from)
+            };
             if stays && !found.contains(&other.as_str()) {
                 found.push(other);
             }

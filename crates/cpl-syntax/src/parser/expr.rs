@@ -19,8 +19,19 @@ impl<'a> Parser<'a> {
                 StmtKind::Expr(e) => e,
                 kind => {
                     let span = self.span_from(start);
-                    let stmt = Stmt { kind, span, decorators: Vec::new(), public: false };
-                    Expr { kind: ExprKind::Block(Block { stmts: vec![stmt], span }), span }
+                    let stmt = Stmt {
+                        kind,
+                        span,
+                        decorators: Vec::new(),
+                        public: false,
+                    };
+                    Expr {
+                        kind: ExprKind::Block(Block {
+                            stmts: vec![stmt],
+                            span,
+                        }),
+                        span,
+                    }
                 }
             }
         }
@@ -91,7 +102,9 @@ impl<'a> Parser<'a> {
             ("default", &crate::planned::MAP_DEFAULT),
             ("then", &crate::planned::THEN_CHAIN),
         ] {
-            if self.at_ident(word) && !matches!(self.peek_n(1), T::Colon | T::Eq | T::Comma | T::RParen) {
+            if self.at_ident(word)
+                && !matches!(self.peek_n(1), T::Colon | T::Eq | T::Comma | T::RParen)
+            {
                 let start = self.start();
                 while self.at_ident(word) {
                     self.bump();
@@ -224,9 +237,7 @@ impl<'a> Parser<'a> {
     }
 
     fn at_is_pattern(&self) -> bool {
-        self.at_ident("is")
-            && self.same_line()
-            && matches!(self.peek_n(1), T::Ident | T::LParen)
+        self.at_ident("is") && self.same_line() && matches!(self.peek_n(1), T::Ident | T::LParen)
     }
 
     pub(super) fn and(&mut self) -> Expr {
@@ -298,8 +309,12 @@ impl<'a> Parser<'a> {
         let span = Span::new(self.start(), self.span_n(1).end);
         let op = if half == T::Amp { "&&" } else { "||" };
         self.error(
-            Diagnostic::error(codes::UNEXPECTED_TOKEN, span, format!("`{op}` is `{word}` in cp"))
-                .with_fix(format!("replace with `{word}`"), span, word),
+            Diagnostic::error(
+                codes::UNEXPECTED_TOKEN,
+                span,
+                format!("`{op}` is `{word}` in cp"),
+            )
+            .with_fix(format!("replace with `{word}`"), span, word),
         );
         self.bump();
         true
@@ -481,7 +496,13 @@ impl<'a> Parser<'a> {
         let step = Box::new(self.bit_or());
         let span = self.span_from(start);
         if rev || domain(&walk) {
-            return Expr { kind: ExprKind::By { walk: Box::new(walk), step }, span };
+            return Expr {
+                kind: ExprKind::By {
+                    walk: Box::new(walk),
+                    step,
+                },
+                span,
+            };
         }
         let mut inner = walk;
         while let ExprKind::Paren(e) = inner.kind {
@@ -490,7 +511,10 @@ impl<'a> Parser<'a> {
         if let ExprKind::Range { step: none, .. } = &mut inner.kind {
             *none = Some(step);
         }
-        Expr { kind: inner.kind, span }
+        Expr {
+            kind: inner.kind,
+            span,
+        }
     }
 
     fn bit_or(&mut self) -> Expr {
@@ -872,10 +896,7 @@ impl<'a> Parser<'a> {
 
     /// Keywords that are also ordinary member names: `xs.min`, `V.none`.
     fn field_keyword(&self) -> bool {
-        matches!(
-            self.peek(),
-            T::None | T::In | T::Type | T::Domain | T::Use
-        ) && !self.at_line_end()
+        matches!(self.peek(), T::None | T::In | T::Type | T::Domain | T::Use) && !self.at_line_end()
     }
 
     fn primary(&mut self) -> Expr {
@@ -893,7 +914,10 @@ impl<'a> Parser<'a> {
                 self.expect(T::LParen, "`(` and the C++ snippet after `@cpp`");
                 let code = if self.at(T::Str) {
                     let raw = self.text();
-                    let inner = raw.strip_prefix('"').and_then(|s| s.strip_suffix('"')).unwrap_or(raw);
+                    let inner = raw
+                        .strip_prefix('"')
+                        .and_then(|s| s.strip_suffix('"'))
+                        .unwrap_or(raw);
                     let s = unescape(inner);
                     self.bump();
                     s
@@ -1132,7 +1156,11 @@ impl<'a> Parser<'a> {
                         if self.at(T::Ident) && self.peek_n(1) == T::Colon {
                             // `(t, need: r.len)`: a bare name among named fields is `t: t`.
                             let mut fields = vec![self.punned_field(first)];
-                            fields.extend(self.comma_list(T::RParen, "the record", Self::record_field));
+                            fields.extend(self.comma_list(
+                                T::RParen,
+                                "the record",
+                                Self::record_field,
+                            ));
                             ExprKind::Record(fields)
                         } else {
                             let mut items = vec![first];
@@ -1350,10 +1378,16 @@ impl<'a> Parser<'a> {
                 value.span,
                 "a record field needs a name: write `name: value`",
             ));
-            let name = Name { text: "_".into(), span: value.span };
+            let name = Name {
+                text: "_".into(),
+                span: value.span,
+            };
             return (name, value);
         };
-        let name = Name { text: text.clone(), span: value.span };
+        let name = Name {
+            text: text.clone(),
+            span: value.span,
+        };
         (name, value)
     }
 
@@ -1383,7 +1417,11 @@ impl<'a> Parser<'a> {
                                 "comprehension filters use `if`, not `where`",
                             )
                             .with_help("use `if` to filter a comprehension or generator")
-                            .with_fix("replace `where` with `if`", span, "if"),
+                            .with_fix(
+                                "replace `where` with `if`",
+                                span,
+                                "if",
+                            ),
                         );
                         self.bump();
                         true
