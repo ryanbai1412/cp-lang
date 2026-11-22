@@ -11,7 +11,7 @@
 //!   2/3 passed
 //! ```
 
-use crate::args::Args;
+use cpl_stress::args::Args;
 use crate::problem::{cases_in, find_tests_dir, source_path, Limits, TestCase};
 use cpl_stress::cli::{select_judge, solution};
 use cpl_stress::{Judge, Program, Verdict};

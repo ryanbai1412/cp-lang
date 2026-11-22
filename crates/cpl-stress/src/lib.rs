@@ -1,6 +1,7 @@
 //! `cpl stress`: random inputs against a brute, shrunk to the smallest
 //! case that still fails (`plan/40-tooling.md`, sections 7b and 8).
 
+pub mod args;
 pub mod choices;
 pub mod cli;
 pub mod engine;

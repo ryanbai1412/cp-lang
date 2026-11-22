@@ -1,6 +1,6 @@
 //! `cpl watch`: check, lint and test on every save.
 
-use crate::args::Args;
+use cpl_stress::args::Args;
 use crate::problem::{cases_in, find_tests_dir, source_path};
 use crate::test::{ready, render, run_cases};
 use std::io::Write;

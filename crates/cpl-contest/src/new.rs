@@ -13,7 +13,7 @@
 //! let queries: [0..q](1..=n, 1..=n) = read()
 //! ```
 
-use crate::args::Args;
+use cpl_stress::args::Args;
 use cpl_json::{self as json, Value as Json};
 use crate::problem::{tests_dir, Limits};
 use cpl_stress::InputSpec;

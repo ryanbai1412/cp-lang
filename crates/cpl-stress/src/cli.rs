@@ -85,58 +85,68 @@ struct Args {
 }
 
 fn parse(args: &[String]) -> Result<Args, String> {
-    let mut file = None;
-    let mut parsed = Args {
-        file: PathBuf::new(),
-        brute: None,
-        fast: None,
-        gen: None,
-        checker: None,
-        interactor: None,
-        options: Options::default(),
-        json: false,
-        trace: false,
-        explain: false,
+    let raw = crate::args::Args::parse(
+        args,
+        &[
+            "--brute",
+            "--fast",
+            "--gen",
+            "--checker",
+            "--interactor",
+            "--cases",
+            "--size",
+            "--max-size",
+            "--seed",
+            "--time-limit",
+            "--jobs",
+            "--threads",
+            "--format",
+        ],
+        &["--trace", "--explain"],
+    )?;
+    let file = match raw.positional.as_slice() {
+        [path] => PathBuf::from(path),
+        [] => return Err("`stress` needs a file: `cpl stress d.cp`".to_string()),
+        [_, extra, ..] => return Err(format!("`stress` takes one file; `{extra}` is a second")),
     };
-    let mut iter = args.iter();
-    while let Some(arg) = iter.next() {
-        let mut value = || {
-            iter.next()
-                .cloned()
-                .ok_or_else(|| format!("`{arg}` needs a value"))
-        };
-        let number = |text: String| {
-            text.parse::<u64>()
-                .map_err(|_| format!("`{arg}` takes a whole number, not `{text}`"))
-        };
-        match arg.as_str() {
-            "--brute" => parsed.brute = Some(PathBuf::from(value()?)),
-            "--fast" => parsed.fast = Some(PathBuf::from(value()?)),
-            "--gen" => parsed.gen = Some(PathBuf::from(value()?)),
-            "--checker" => parsed.checker = Some(PathBuf::from(value()?)),
-            "--interactor" => parsed.interactor = Some(PathBuf::from(value()?)),
-            "--cases" => parsed.options.cases = number(value()?)? as usize,
-            "--size" | "--max-size" => parsed.options.size = i128::from(number(value()?)?.max(1)),
-            "--seed" => parsed.options.seed = number(value()?)?,
-            "--time-limit" => parsed.options.limit = Duration::from_millis(number(value()?)?),
-            "--jobs" | "--threads" => parsed.options.jobs = number(value()?)?.max(1) as usize,
-            "--trace" => parsed.trace = true,
-            "--explain" => parsed.explain = true,
-            "--format" => match value()?.as_str() {
-                "json" => parsed.json = true,
-                "text" => parsed.json = false,
-                other => return Err(format!("`--format` is text or json, not `{other}`")),
-            },
-            flag if flag.starts_with('-') => return Err(format!("unknown option `{flag}`")),
-            path if file.is_none() => file = Some(PathBuf::from(path)),
-            extra => return Err(format!("`stress` takes one file; `{extra}` is a second")),
-        }
+    let mut options = Options::default();
+    if let Some(n) = raw.number("--cases")? {
+        options.cases = n as usize;
     }
-    parsed.file = file.ok_or("`stress` needs a file: `cpl stress d.cp`")?;
-    if parsed.checker.is_some() && parsed.interactor.is_some() {
+    if let Some(n) = raw.number("--size")?.or(raw.number("--max-size")?) {
+        options.size = i128::from(n.max(1));
+    }
+    if let Some(n) = raw.number("--seed")? {
+        options.seed = n;
+    }
+    if let Some(n) = raw.number("--time-limit")? {
+        options.limit = Duration::from_millis(n);
+    }
+    if let Some(n) = raw.number("--jobs")?.or(raw.number("--threads")?) {
+        options.jobs = n.max(1) as usize;
+    }
+    let json = match raw.value("--format") {
+        None | Some("text") => false,
+        Some("json") => true,
+        Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
+    };
+    let checker = raw.value("--checker").map(PathBuf::from);
+    let interactor = raw.value("--interactor").map(PathBuf::from);
+    if checker.is_some() && interactor.is_some() {
         return Err("a problem has a checker or an interactor, not both".to_string());
     }
-    Ok(parsed)
+    Ok(Args {
+        file,
+        brute: raw.value("--brute").map(PathBuf::from),
+        fast: raw.value("--fast").map(PathBuf::from),
+        gen: raw.value("--gen").map(PathBuf::from),
+        checker,
+        interactor,
+        options,
+        json,
+        trace: raw.has("--trace"),
+        explain: raw.has("--explain"),
+    })
 }
 
 /// The judge for a problem: the checker or interactor passed on the

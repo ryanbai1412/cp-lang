@@ -6,7 +6,7 @@
 //! all equal, sorted, reversed or alternating, and edge lists shaped as a
 //! path and a star.
 
-use crate::args::Args;
+use cpl_stress::args::Args;
 use crate::problem::{source_path, Limits};
 use crate::test::ready;
 use cpl_stress::cli::json_string;

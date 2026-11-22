@@ -1,17 +1,17 @@
-//! Command-line arguments shared by the contest commands.
+//! Lightweight zero-dependency CLI flag parser shared by `cpl-stress` and `cpl-contest`.
 
 use std::collections::HashMap;
 
-/// Parsed arguments: the words that are not options, and the options.
+/// Parsed arguments: positional words, valued options (`--seed 3`), and switches (`--once`).
 #[derive(Debug, Default)]
-pub(crate) struct Args {
+pub struct Args {
     pub positional: Vec<String>,
     values: HashMap<&'static str, String>,
     switches: Vec<&'static str>,
 }
 
 impl Args {
-    /// Splits `args` into positionals, `valued` options (`--seed 3`) and
+    /// Splits `args` into positionals, `valued` options (`--seed 3`), and
     /// `switches` (`--once`).
     pub fn parse(
         args: &[String],
@@ -28,7 +28,11 @@ impl Args {
                 parsed.values.insert(flag, value.clone());
             } else if let Some(flag) = switches.iter().find(|flag| *flag == arg) {
                 parsed.switches.push(flag);
-            } else if arg.starts_with("--") {
+            } else if arg.starts_with("--")
+                || (arg.starts_with('-')
+                    && arg.len() > 1
+                    && !arg.as_bytes()[1].is_ascii_digit())
+            {
                 return Err(format!("unknown option `{arg}`"));
             } else {
                 parsed.positional.push(arg.clone());
@@ -55,7 +59,7 @@ impl Args {
             .transpose()
     }
 
-    /// The one file a command takes.
+    /// The one positional file/problem a command takes.
     pub fn file(&self, command: &str) -> Result<&str, String> {
         match self.positional.as_slice() {
             [file] => Ok(file),
@@ -64,5 +68,37 @@ impl Args {
                 "`{command}` takes one problem; `{extra}` is a second"
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Args;
+
+    fn words(xs: &[&str]) -> Vec<String> {
+        xs.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn parses_positionals_values_and_switches() {
+        let args = Args::parse(
+            &words(&["d.cp", "--seed", "42", "--trace"]),
+            &["--seed"],
+            &["--trace", "--explain"],
+        )
+        .unwrap();
+        assert_eq!(args.file("stress").unwrap(), "d.cp");
+        assert_eq!(args.number("--seed").unwrap(), Some(42));
+        assert!(args.has("--trace"));
+        assert!(!args.has("--explain"));
+    }
+
+    #[test]
+    fn rejects_missing_value_bad_number_and_unknown_option() {
+        assert!(Args::parse(&words(&["--seed"]), &["--seed"], &[]).is_err());
+        assert!(Args::parse(&words(&["--bogus"]), &[], &[]).is_err());
+        assert!(Args::parse(&words(&["-x"]), &[], &[]).is_err());
+        let args = Args::parse(&words(&["--seed", "abc"]), &["--seed"], &[]).unwrap();
+        assert!(args.number("--seed").is_err());
     }
 }
