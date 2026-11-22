@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1551 (995 passing). Rules: 522.
+Cases: 1556 (995 passing). Rules: 522.
 
 ## Summary per chapter
 
@@ -18,12 +18,12 @@ Cases: 1551 (995 passing). Rules: 522.
 - R04b (04b-keys.md): 27 rules, 46 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 80 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 53 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 93 cases; 0 uncovered, 2 happy-path only, 2 negative only
+- R07 (07-sequences.md): 87 rules, 95 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 65 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 41 cases; 4 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 48 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
-- R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R12 (12-powers.md): 16 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 21 cases; 1 uncovered, 6 happy-path only, 0 negative only
 
 ## Rules
@@ -371,7 +371,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [1+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has O(1) `.len`; `Bid...
-- R07.1.3 [1+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
+- R07.1.3 [2+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
 - R07.1.4 [1+ 1-]: **Identity everywhere.** Every slice keeps its source's keys (`a[l..=r][i] == a[i]`, `s[2....
 - R07.1.5 [1+ 1-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
 - R07.1.6 [1+ 0-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
@@ -406,7 +406,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
 - R07.4.7 [1+ 0-]: | `a.rev` | `D` | backwards | O(1)
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | O(1)
-- R07.4.9 [2+ 0-]: | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | O(1); `f` per ...
+- R07.4.9 [3+ 0-]: | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | O(1); `f` per ...
 - R07.4.10 [1+ 1-]: | `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | ...
 - R07.4.11 [1+ 0-]: | `w.drop(k)`, `w.take(k)`, `w.drop_last(k)`, `w.take_last(k)` | same as `w`, clamped: `w....
 - R07.4.12 [1+ 0-]: | `grid[r]` | the column domain: row `r` of a `[R, C]T` | in order | O(1)
@@ -445,7 +445,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.5 [2+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n)
 - R07.11.1 [2+ 1-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [1+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
-- R07.11.3 [1+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>` | O(n) expected
+- R07.11.3 [2+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>` | O(n) expected
 - R07.11.4 [1+ 0-]: | `s.tally(by: k)` | `Counter<K>` | O(n) expected
 - R07.11.5 [1+ 0-]: | `compress(s)` | `(domain C, comp)`: values sorted and deduped, as a fresh domain | O(n l...
 - R07.12.1 [1+ 0-]: | `s.drop_while(p)` | skip the leading elements where `p` holds, yield the rest | O(1) per...
@@ -559,7 +559,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R12.4.2 [1+ 1-]: | `Keyed` | `.items`, `find`, `find_all`, `argmax`/`argmin`: walk and remember keys
 - R12.4.3 [1+ 1-]: | `Sized` | `.len`
 - R12.4.4 [1+ 1-]: | `Bidir` | `.rev`, `.last` as an O(1) property
-- R12.4.5 [1+ 1-]: | `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip`
+- R12.4.5 [2+ 1-]: | `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip`
 - R12.4.6 [1+ 1-]: | `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice as...
 - R12.4.7 [1+ 1-]: | `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)`
 - R12.4.8 [1+ 1-]: Parameters are lent: a fn never owns its arguments.
