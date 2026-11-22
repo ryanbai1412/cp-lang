@@ -75,6 +75,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
       setResult({ kind: 'output', stdout: r.stdout, stderr: r.stderr, ok: r.ok, diagnostics: r.diagnostics });
       if (r.trace && viewer) {
         viewer.sessionStorage.setItem('cp-live-trace', JSON.stringify(r.trace));
+        viewer.sessionStorage.setItem('cp-live-input', stdin);
         viewer.location.href = '/trace.html#live';
       } else viewer?.close();
     } catch (e) {

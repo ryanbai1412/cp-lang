@@ -1,7 +1,7 @@
 // The landing page's debugging evidence, from today's compiler: `cpl stress`
 // on a planted bug, and the side-by-side trace it saves for the shrunk case.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,5 +25,15 @@ writeFileSync(
   JSON.stringify({ command: `cpl ${args.filter((a) => a !== '--seed' && a !== '1').join(' ')}`, output }, null, 2),
 );
 cpSync(join(dir, 'buy.tests', trace), join(web, 'public/trace-demo.html'));
-copyFileSync(join(repo, 'tools/trace/index.html'), join(web, 'public/trace.html'));
+// The viewer opens in its own tab, so it loads the compiler itself to replay a call.
+const compiler = `<script>
+let cplWorker;
+globalThis.CpCompiler = {
+  call: async (method, ...args) =>
+    (await (cplWorker ??= import("/wasm/cpl.js").then((m) => m.spawn({ timeoutMs: 10000 }))))[method](...args),
+};
+</script>`;
+const viewer = readFileSync(join(repo, 'tools/trace/index.html'), 'utf8');
+if (!viewer.includes('</head>')) throw new Error('gen-debug: tools/trace/index.html has no </head>');
+writeFileSync(join(web, 'public/trace.html'), viewer.replace('</head>', `${compiler}\n</head>`));
 console.log(`debug: stress output and ${trace}`);

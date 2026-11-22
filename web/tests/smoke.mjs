@@ -16,6 +16,22 @@ const [viewer] = await Promise.all([
 ]);
 await viewer.getByText('main.cp').first().waitFor({ state: 'attached', timeout: 30000 });
 console.log('trace viewer ok');
+const replay = await viewer.evaluate(async () => {
+  const original = 'fn f(x: Int) -> Int:\n    x + 1\nprint(f(1))\n';
+  const edited = original.replace('x + 1', 'x + 2');
+  if (sessionStorage.getItem('cp-live-input') === null) return { error: 'no cp-live-input' };
+  let last;
+  for (let step = 0; step < 8; step++) {
+    last = await CpCompiler.call('replay', original, edited, '', step, 0);
+    if (last.returned) return last;
+  }
+  return last;
+});
+if (replay.returned?.before !== 2 || replay.returned?.after !== 3) {
+  console.error('replay:', JSON.stringify(replay));
+  process.exit(1);
+}
+console.log('trace viewer replays a call with an edited fn');
 await viewer.close();
 await page.getByRole('button', { name: 'Stress' }).first().click();
 await page.getByText('Shrunk to the smallest input that still fails').waitFor({ timeout: 60000 });
