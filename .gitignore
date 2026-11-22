@@ -8,3 +8,5 @@ corpus/problems/*/*_ref
 /corpus/statements/
 /editors/neovim/parser/
 /editors/zed/target/
+
+node_modules/

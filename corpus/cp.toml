@@ -1,0 +1,4 @@
+[libs]
+lib = "../examples/local-lib"
+scout = "lib/scout"
+real = "lib/real"

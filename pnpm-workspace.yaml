@@ -1,3 +1,8 @@
 packages:
   - "web"
   - "editors/vscode"
+
+allowBuilds:
+  esbuild: true
+  "@vscode/vsce-sign": false
+  keytar: false
