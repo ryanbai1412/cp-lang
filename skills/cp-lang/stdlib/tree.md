@@ -224,11 +224,11 @@ Fields: `first: [V]Int`, `far: [V]Int`.
 - `fn lca(self, a: V, b: V) -> V` — O(1); The lowest common ancestor of `a` and `b`.; traps: when `a` and `b` are in different trees
 - `fn dist(self, a: V, b: V) -> Int` — O(1); The distance between `a` and `b`, weighted as the tree was built.; traps: when `a` and `b` are in different trees
 
-## `struct EulerTourTree<V, T>`
+## `struct EulerTourTree<V, T>(m: Monoid<T>)`
 
 A forest that changes, with folds over whole trees and subtrees, by an Euler tour tree (a balanced sequence of each tree's tour).
 
-Fields: `val: [V]T`.
+Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg: List<T>`, `cnt: List<Int>`, `arc: Map<(Int, Int), Int>`, `free: List<Int>`, `stk: List<Int>`.
 
 - `fn new<M>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T>` — O(n); Lone vertices with values `a`, or the identity of `op` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected O(log n); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
@@ -240,11 +240,11 @@ Fields: `val: [V]T`.
 - `fn fold_tree(mut self, v: V) -> T` — expected O(log n); The fold of every value in `v`'s tree.
 - `fn fold_sub(mut self, v: V, away: V) -> T` — expected O(log n); The fold over `v`'s side of the edge `v`-`away`: what `v`'s tree would hold were the edge cut.; traps: when there is no edge `v`-`away`
 
-## `struct LazyEulerTourTree<V, T, F>`
+## `struct LazyEulerTourTree<V, T, F>(act: Action<T, F>)`
 
 `EulerTourTree` with updates to whole trees and subtrees under an action.
 
-Fields: `val: [V]T`.
+Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg: List<T>`, `cnt: List<Int>`, `lz: List<F>`, `arc: Map<(Int, Int), Int>`, `free: List<Int>`, `stk: List<Int>`.
 
 - `fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyEulerTourTree<V, T, F>` — O(n); Lone vertices with values `a`, or the identity of `act.over` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected O(log n); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
