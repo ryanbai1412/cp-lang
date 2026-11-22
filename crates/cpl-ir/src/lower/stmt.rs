@@ -1150,6 +1150,23 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            ast::StmtKind::Fn(decl) if !self.at_top_level() && !decl.generics.is_empty() => {
+                // A template outlives this borrow of the block, so it keeps its
+                // own copy of the decl; it is instantiated per call like a
+                // top-level generic fn, and sees no locals of the enclosing fn.
+                let decl: &'static ast::FnDecl = Box::leak(Box::new(decl.clone()));
+                let gfid = self.gen_fns.len();
+                self.gen_fns.push(super::mono::GenFnTemplate {
+                    mod_id: self.cur_mod,
+                    offset: self.offset,
+                    owner: None,
+                    owner_env: HashMap::new(),
+                    decl,
+                });
+                if let Some(scope) = self.cx.local_syms.last_mut() {
+                    scope.insert(decl.name.text.clone(), Sym::GenFn(gfid));
+                }
+            }
             ast::StmtKind::Fn(decl) if !self.at_top_level() => {
                 let memo = stmt.decorators.iter().any(|d| d.name.text == "memo");
                 let into = super::memo::into_table(stmt);
