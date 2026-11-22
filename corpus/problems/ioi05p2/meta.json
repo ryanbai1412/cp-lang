@@ -11,6 +11,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ioi05p2/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_18/ioi05p2.cp",
    "proto/ports/scout_batch_18/today/ioi05p2.cp"
@@ -25,7 +28,7 @@
   "compression"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Tagged enum command stream; custom Monoid/Action over (rise, peak, len); right_while walk. Variant @tag not parsed yet (parser-gaps)."
 }

@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ioi01p1/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_7/ioi01p1.cp"
   ],
@@ -20,7 +23,7 @@
   "data-structures"
  ],
  "difficulty": "easy",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Fenwick2D over one domain X; command loop with while/break."
 }

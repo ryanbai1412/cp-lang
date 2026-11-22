@@ -279,3 +279,24 @@ Open questions raised by dreams:
     - dmpg16g2 indexed a list by a subset.
   - Parser gaps, all already logged: `(mut t, s) =>` lambdas (coci21c2p5), and `Letter.subsets`
     / `Letter.at` on enum domains (dmpg16g2).
+- Seventh blind batch (ioi01p1, ioi05p2, ioi09p3, ioi18p1, ioi19p1, ioi96p1, egoi23p7, noi14p5,
+  noip09p4, noip10p1). Five ports (ioi09p3, ioi19p1, noip09p4, noip10p1, ioi18p1) already said
+  what their dreams said.
+  - Spec change, decision 156: product domains walk row-major and `P.nth(k)` decodes a flat
+    cell number. The noi14p5 port now swaps on `Grid.nth(..)` and destructures `at[v]`; it no
+    longer divides by `m`.
+  - Spec idiom bug: ioi96p1 rebuilt sub-ranges with `r.first!.next!..=r.last!` and failed
+    `cpl check`. It now uses `r.drop(1)` and `r.drop_last(1)`, and checks.
+  - Rejected:
+    - `Fenwick(+, [X, X]0)` over a product domain (ioi01p1). It needs a rectangle-range type that
+      product domains don't have yet, and `Fenwick2D.sum(rows, cols)` reads the same. Revisit
+      when product-domain slicing lands.
+    - `read stream Cmd until End`: `while true: match read<Cmd>()` with an end variant is one
+      line longer and general.
+    - `Rail.pieces(cuts:)` (ioi05p2): `compress(cuts)` already gives the pieces.
+    - `?Rooted` from invalid parent arcs (egoi23p7): validating the input is problem logic.
+  - Dream bugs:
+    - egoi23p7 required a DFS forest of the complement to have one root. Only the last root
+      started can reach everything; the port finds it and then BFSes from it.
+    - ioi05p2 guarded the slope with `max(1, ..)`; the car can't stop on a non-rising piece.
+  - Parser gaps, already logged: `@tag` variants (ioi01p1, ioi05p2).

@@ -13,6 +13,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noi14p5/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_37/noi14p5.cp",
    "proto/ports/scout_batch_37/today/noi14p5.cp"
@@ -26,7 +29,7 @@
   "simulation"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "board.swap_at for possibly-equal indices; inverse() of a permutation; open ranges ..r and r.next.."
 }

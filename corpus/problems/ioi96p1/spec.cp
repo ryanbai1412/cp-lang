@@ -7,6 +7,6 @@ let a = read<[I]0..=200>()
 fn best(r: I.ranges) -> Int:
     if r.first! == r.last!:
         return a[r.first!]
-    a[r].sum() - min(best(r.first!.next!..=r.last!), best(r.first!..=r.last!.prev!))
+    a[r].sum() - min(best(r.drop(1)), best(r.drop_last(1)))
 let first = best(I.range)
 print(first, a.sum() - first)

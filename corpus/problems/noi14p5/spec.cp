@@ -5,22 +5,23 @@ let (x0, a, b, c, d) = read<(0..=100_000_000, 0..=300, 0..=100_000_000, 0..=100_
 let (n, m, q) = read<(1..=5000, 1..=5000, 0..=50_000)>()
 domain Row = 1..=n
 domain Col = 1..=m
-domain Cell = 1..=n * m
-var board: [Cell]Cell = [Cell] i => i
+domain Grid = (Row, Col)
+domain Value = 1..=n * m
+var board: [Grid]Value = [Grid] p => Value.nth(0)
+for (k, p) in Grid.items:
+    board[p] = Value.nth(k)
 var x = x0
-for i in Cell:
+for (k, p) in Grid.items:
     x = (a * x * x + b * x + c) % d
-    board.swap_at(i, Cell(x % i + 1))
-for _ in 0..q:
-    let (u, v) = read<(Cell, Cell)>()
-    board.swap_at(u, v)
+    board.swap(p, Grid.nth(x % (k + 1)))
+for (u, v) in read<[q](Value, Value)>():
+    board.swap(Grid.nth(Int(u) - 1), Grid.nth(Int(v) - 1))
 let at = board.inverse()
 var lo: [Row]Col = Col.first!
 var hi: [Row]Col = Col.last!
-var path: List<Cell> = []
-for v in Cell:
-    let r = Row((at[v] - 1) / m + 1)
-    let col = Col((at[v] - 1) % m + 1)
+var path: List<Value> = []
+for v in Value:
+    let (r, col) = at[v]
     if lo[r] <= col and col <= hi[r]:
         path.push(v)
         for above in ..r:

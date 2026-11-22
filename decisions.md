@@ -4581,3 +4581,13 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   pass keeps one two-pointer vocabulary instead of a second function.
 - **Reverse.** Drop `anchor:` and `Anchor` from `spec/std/seq.cp`, the prelude and
   `spec/lib/sequence-patterns.md`.
+
+## 156. Product domains walk row-major; `P.nth(k)` decodes a flat cell number (2026-11-21)
+
+- **Decision.** A product domain `P = (A, B)` is ordered row-major (the last factor fastest),
+  so `P.nth(k)` turns a flat 0-based cell number into a position and `P.items` pairs each cell
+  with its flat number.
+- **Why.** NOI 2014 numbers grid cells 1..=n·m. The port divided by `m` by hand
+  (`Row((at[v] - 1) / m + 1)`), the C++ habit domains exist to remove. The blind dream wrote
+  `Cell.nth(i)`.
+- **Reverse.** Drop the `P.nth` row from `spec/core/04-indices.md`.
