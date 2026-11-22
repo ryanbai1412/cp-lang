@@ -131,6 +131,31 @@ def mentions(label, name, corpus):
     return re.search(rf"\.{re.escape(name)}(?![\w])", corpus) is not None
 
 
+def spec_blocks(all_cases):
+    def norm(line):
+        if line.lstrip().startswith("///"):
+            return ""
+        return " ".join(re.sub(r"\s*//.*$", "", line).split())
+
+    sets = [(c["id"], {norm(l) for l in c["text"].split("\n")}) for c in all_cases]
+    out = []
+    for path in sorted((SPEC / "core").glob("*.md")):
+        lines = path.read_text().split("\n")
+        i = 0
+        while i < len(lines):
+            if lines[i].startswith("```"):
+                j = i + 1
+                while j < len(lines) and not lines[j].startswith("```"):
+                    j += 1
+                body = [b for b in (norm(x) for x in lines[i + 1 : j]) if b]
+                m = re.match(r"<!-- spec-only: (.+) -->$", lines[i - 1].strip()) if i else None
+                hit = next((cid for cid, s in sets if body and all(b in s for b in body)), None)
+                out.append((path.name, i + 1, hit, m.group(1) if m else None, body[0] if body else ""))
+                i = j
+            i += 1
+    return out
+
+
 def main():
     rules = rule_texts()
     all_cases = cases()
@@ -218,6 +243,26 @@ def main():
         w(f"- {code} {codes[code]}: {mark}")
     w("")
     w(f"{len(missing_codes)} of {len(codes) - len(UNTESTABLE)} testable codes have no negative case.")
+    w("")
+    w("## Spec code blocks")
+    w("")
+    w("Every fenced block in `spec/core`. A block is covered when one case")
+    w("holds all its code lines (comments aside), and spec-only when the")
+    w("line above its fence is `<!-- spec-only: reason -->`.")
+    w("")
+    blocks = spec_blocks(all_cases)
+    gaps = 0
+    for name in sorted({b[0] for b in blocks}):
+        mine = [b for b in blocks if b[0] == name]
+        covered = sum(1 for b in mine if b[2])
+        only = sum(1 for b in mine if not b[2] and b[3])
+        missing = [b for b in mine if not b[2] and not b[3]]
+        gaps += len(missing)
+        w(f"- {name}: {len(mine)} blocks, {covered} with a case, {only} spec-only, {len(missing)} neither")
+        for b in missing:
+            w(f"  - line {b[1]}: `{b[4][:60]}`")
+    w("")
+    w(f"{gaps} of {len(blocks)} blocks have neither a case nor a spec-only reason.")
     w("")
     w("## Standard library")
     w("")

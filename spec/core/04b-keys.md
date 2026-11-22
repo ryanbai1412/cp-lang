@@ -63,6 +63,7 @@ Diagnostics:
 **Divide and conquer on the maximum (B1).** The position found inside the
 slice is a position of `a`, so it indexes `b` and splits the range directly.
 
+<!-- spec-only: fragment: `a` and `b` come from the text -->
 ```python
 fn solve(r: Range<V>) -> Int:
     if r.len == 0: return 0
@@ -84,6 +85,7 @@ while l < s.len:
 **A per-element result on a piece (E2).** The table is keyed like the
 piece, so `i` from `s[l..]` reads it directly.
 
+<!-- spec-only: fragment over `s`, `l` and `k` from the text -->
 ```python
 let z = z_function(s[l..])               // [l..s.len]Int
 let hits = s[l..].keys.count(i => z[i] >= k)   // suffixes starting with s[l..l + k]
@@ -91,6 +93,7 @@ let hits = s[l..].keys.count(i => z[i] >= k)   // suffixes starting with s[l..l 
 
 **Parallel arrays over a range (B3).**
 
+<!-- spec-only: fragment over `a`, `w` and `best` from the text -->
 ```python
 for (i, x) in a[l..=r].items:            // i runs over l..=r
     best[i] = x * w[i]
@@ -110,6 +113,7 @@ while let x = rest.first:
 **Comparing pieces (A2, rule 3).** Pairing is by walk order, so the offsets
 don't matter.
 
+<!-- spec-only: fragment with a `...` body -->
 ```python
 if s[i..i + k] == s[j..j + k]: ...
 let lcp = zip(s[i..], s[j..]).take_while((x, y) => x == y).count()
@@ -117,6 +121,7 @@ let lcp = zip(s[i..], s[j..]).take_while((x, y) => x == y).count()
 
 **Relative reads.**
 
+<!-- spec-only: expression tour, one form per line -->
 ```python
 s[l..].nth(k)        // the k-th character from l; same as s[l + k]
 w.first!, w.last!    // the ends of a non-empty piece
@@ -125,6 +130,7 @@ w.first!, w.last!    // the ends of a non-empty piece
 **Grids (F1).** A row keeps the column domain and a column keeps the row
 domain.
 
+<!-- spec-only: fragment with a `...` body -->
 ```python
 for (c, x) in grid[r].items: ...         // c: Col
 let col = grid[.., c]                    // [Row]T view
@@ -133,6 +139,7 @@ let col = grid[.., c]                    // [Row]T view
 **A 0-based algorithm on a piece (rule 7).** `rebase` gives a domain for
 the piece, and the domain's own tools (`wrap`) do the arithmetic.
 
+<!-- spec-only: fragment over `s`, `l`, `r` and `k` from the text -->
 ```python
 let t = s[l..r].rebase                   // t: [t.Idx]Char, keys 0..r - l
 let rotated = Str(t[t.Idx.wrap(Int(i) + k)] for i in t.keys)
@@ -151,7 +158,7 @@ slice, `a[k]` outside `a.keys` traps in checked builds. Only an owned
 fn first_drop<K>(a: [K]Int) -> ?K =
     a.keys.drop(1).find(i => a[i] < a[i.prev!])
 
-fn next_greater<K>(a: [K]Int) -> [K]?K =  // keyed like a
+fn next_greater<K>(a: [K]Int) -> [K]?K:  // keyed like a
     var res = [a.keys].filled(None)
     var stack = List<K>()
     for i in a.keys:
@@ -179,6 +186,7 @@ costs a library author nothing.
 
 **Position queries return keys.**
 
+<!-- spec-only: excerpt of spec/std; the docs suite runs its examples -->
 ```python
 /// O(n). A key of the largest element, the first on ties; `None` when empty.
 pub fn argmax<K, T: Ord>(self: [K]T) -> ?K = self.keys.max(by: k => self[k])
@@ -191,6 +199,7 @@ pub fn search<S: Indexed<K, Char>, K, P>(self: S, p: P) -> ?K = todo
 offsets through `nth`, and `rekey` hands the table back in the caller's
 keys.
 
+<!-- spec-only: excerpt of spec/std; the docs suite runs its examples -->
 ```python
 /// O(n). `z[i]` is the longest common prefix of `s[i..]` and `s`, keyed by `s.keys`.
 pub fn z_function<K, T: Eq>(s: [K]T) -> [K]Int =
@@ -207,6 +216,7 @@ pub fn z_function<K, T: Eq>(s: [K]T) -> [K]Int =
 **Prefix tables use the input's cuts,** so `a[l..r].scan(+)[c]` takes a cut
 `c` of `a`:
 
+<!-- spec-only: excerpt of spec/std; the docs suite runs its examples -->
 ```python
 pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> = todo
 ```

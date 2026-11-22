@@ -75,6 +75,7 @@ may never outlive the variable (R8). That is the whole checker.
   the captured variable's name: it can't move while they live, and they
   can't outlive it.
 
+<!-- spec-only: fragment: `g`, `x` and `walk2`'s `...` body come from the text -->
 ```python
 let walk = dfs(g, from: [s], seen: mut seen)   // seen lent `mut` from here...
 print(seen[x])                   // error: seen is lent to walk
@@ -211,6 +212,7 @@ holds nothing of `t`.
 
 A fn whose result borrows from its arguments declares it:
 
+<!-- spec-only: signatures only -->
 ```python
 fn window(xs: [V]Int, l: V) -> lends [V]Int = xs[l..]       // read lend
 pub fn at(mut self, i: D) -> lends mut T                    // a writable place
@@ -463,6 +465,7 @@ two comparable, so no struct needs its own checker.
 - Shared ownership (two owners of one mutable value) stays out: pass
   `mut x` to each call, or capture `x`.
 
+<!-- spec-only: fragment: `build_dsu` and `edges` come from the text -->
 ```python
 let d = build_dsu(edges)            // a let
 for v in V: print(d.find(v))        // fine: find takes read self

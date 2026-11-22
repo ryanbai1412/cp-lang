@@ -6,6 +6,7 @@ for laws; `12-powers.md` for what user libraries can define.
 
 ## 8.1 Traits and impls
 
+<!-- spec-only: the prelude's own trait declarations -->
 ```
 trait Ord(Eq):
     fn cmp(self, other: Self) -> Ordering
@@ -55,6 +56,7 @@ impl Ord for Frac:
 
 ## 8.2 Generics
 
+<!-- spec-only: signatures only -->
 ```
 fn argmax<S: Keyed + Seq, K: Ord>(s: S, by: S.Item -> K = id) -> ?S.Key
 fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>) -> Paths<V, W, g.Arc>
@@ -86,6 +88,7 @@ struct Pair<A, B = Int>: a: A, b: B
 
 ## 8.3 Laws
 
+<!-- spec-only: the prelude's own trait declarations -->
 ```
 trait Op<T>:
     fn op(self, a: T, b: T) -> T
@@ -105,6 +108,7 @@ trait Commutative<T>(Op<T>):
 
 ## 8.4 Record row types (trial)
 
+<!-- spec-only: a std signature and a record-update fragment -->
 ```
 fn undirected<V, R: (u: V, v: V, ..)>(n: V.count, edges: Seq<R>)
     -> Graph<V, (to: V, ..R without (u, v))>

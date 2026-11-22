@@ -85,6 +85,7 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
 
 The 33 keywords are:
 
+<!-- spec-only: keyword list, not a program -->
 ```
 let var const fn struct enum domain type use pub if elif else for while
 in match return break continue and or not assert mut self unchecked
@@ -208,6 +209,7 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 
 ## 1.7 Control flow
 
+<!-- spec-only: syntax tour with `...` placeholder bodies -->
 ```
 if c: a elif d: b else: e           // inline form is an expression
 if let v = m.get(k), v > 0: ...     // header binders, comma conditions
@@ -265,6 +267,7 @@ match d: L => -1, R => 1            // one-line match
 
 ## 1.9 Items
 
+<!-- spec-only: syntax tour over undeclared names and `todo` bodies -->
 ```
 use std.segtree.{SegTree}                 // imports; prelude is implicit
 pub fn f<T: Ord>(xs: [D]T, by: T -> K = id) -> ?D = todo
@@ -303,6 +306,7 @@ statements is an `if_stmt`: the `NL` before `else` is optional when the
 whole statement fits on one line. In a type position, `[D]` is followed by
 a type, so `[V]-1e9..=1e9` is a range type whose ends may be signed.
 
+<!-- spec-only: grammar, not CP code -->
 ```ebnf
 file        := (directive | item)*
 directive   := '@!' NAME call_args? NL
