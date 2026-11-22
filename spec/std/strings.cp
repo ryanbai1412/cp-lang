@@ -670,7 +670,8 @@ pub struct KmpAutomaton<A>:
 /// order: increasing start
 /// traps: never
 /// example: `"abab".shift_and("ab").collect() == [0, 2]`
-pub fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int = todo
+pub fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int:
+    for i in find_all(self, pat): yield i
 
 /// The start position of every place where `pat` matches `self` when each `wildcard` in
 /// `pat` matches any one element. A `wildcard` in `self` is an ordinary element.
@@ -688,7 +689,16 @@ pub fn find_all_wildcard<S: Indexed, P: Indexed>(
     self: S,
     pat: P,
     wildcard: Char = '?',
-) -> yields Int = todo
+) -> yields Int:
+    let (n, m) = (self.len, pat.len)
+    for i in 0..=n - m:
+        var ok = true
+        for j in 0..m:
+            let c = pat.at(j)
+            if c != wildcard and c != self.at(i + j):
+                ok = false
+                break
+        if ok: yield i
 
 /// O(n) space, O(1) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
