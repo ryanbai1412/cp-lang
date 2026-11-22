@@ -1,261 +1,391 @@
-# The v0.3 compiler: architecture and how we implement the spec
+# CP Lang toolchain architecture
 
-Owner: Devin (parent session). Status: proposal, 2026-11-21.
+Owner: Devin (parent session). Status: adopted, 2026-11-21.
 
-## 1. Where we are
+This file has two halves. Part A is the target: the architecture we would
+build if no code existed. Part B is how today's code gets there. The
+target decides every design question; today's code never does. When a
+piece of today's code doesn't fit the target, we rewrite that piece rather
+than bend the target around it.
 
-- About 170k lines of Rust in 17 crates. The pipeline is `cpl-syntax` ->
-  `cpl-check` (salsa-style database) -> `cpl-ir` (typed lowering) -> two
-  back ends: `cpl-interp` (a tree-walker plus a bytecode VM that falls
-  back to it) and `cpl-codegen` (C++17).
-- It runs all 100 corpus ports in their 0.2 form and meets 168 of 503
-  conformance cases.
-- The stdlib is already mostly CP Lang: `stdlib/` has 39 modules and
-  about 21k lines (`SegTree`, `Graph`, `dijkstra`, flows), with generics
-  and `Monoid` values.
-- The structural problems:
-  1. **Two library trees.** `spec/std/*.cp` holds the v0.3 signatures and
-     docs with `todo` bodies; `stdlib/*.cp` holds the 0.2 implementations
-     under older names. The checker only sees `spec/std` when
-     `CPL_SPEC=1 CPL_STD=spec/std` are set.
-  2. **Library names in the compiler.** The lowering special-cases 63
-     method names (`cpl-ir/src/lower/call.rs`). About half are real
-     primitives (`read`, `print`, `popcount`, `len`, `swap`); the rest
-     (`sum`, `sort`, `sorted`, `runs`, `prefix`, `first_ge`, `min`, `max`)
-     belong in CP Lang.
-  3. **Generics and traits are partial.** The checker's own docs list
-     borrows, value ranges, generics and traits as later phases, and
-     built-in member types sometimes disagree with the stubs (for example
-     `Cell.filter(..).min(by:)` is typed `Cell`, not `?Cell`).
-  4. **Two language modes** switched by the `CPL_SPEC` environment variable.
-  5. **Two interpreters** (a tree-walker and a bytecode VM that falls back
-     to it) and monolith files (`vm.rs` 11.6k lines, `call.rs` 10k).
-- Measured 2026-11-21: with the spec stubs, 97 of the 100 corpus `spec.cp`
-  ports type-check; with the default stdlib, 5 do. Nothing in v0.3 form runs
-  end to end yet, because the stubs have no bodies.
+# Part A: the target
 
-## Decision: evolve, don't rewrite
+## A1. What shapes the design
 
-A from-scratch compiler costs weeks before it matches what exists. The
-existing pipeline already has the right shape (one front end, one typed
-lowering, two back ends) and a CP Lang stdlib. So the new architecture
-below is reached by targeted replacement, one boundary at a time, each step
-keeping the corpus green:
+Contest programs are unusual inputs for a compiler, and the design exploits
+that:
 
-1. **One library tree.** `spec/std` and `stdlib` merge into `std/`: v0.3
-   signatures and docs, with bodies ported from `stdlib/`. Stubs without a
-   body stay `todo` and show up as a count.
-2. **One mode.** v0.3 is the only language; `CPL_SPEC` goes.
-3. **Primitives table.** The non-primitive names leave `call.rs` for CP
-   Lang; what remains becomes the intrinsics table.
-4. **Checker to the target design** (traits, generics, local inference),
-   replacing `cpl-check` piece by piece behind the same `Database` API.
-5. **One interpreter** over the IR; the tree-walker goes.
-6. **Split the monoliths** along the crate lines in section 3 as each is
-   touched.
+- **Small, whole programs.** One file of 50–500 lines plus the stdlib.
+  Whole-program analysis is cheap, so there is no separate compilation, ABI
+  or linker.
+- **Two targets with one meaning.** A checked interpreter for local runs and
+  one readable C++17 file for the judge. They agree on every valid program.
+- **The editor is the main interface.** Most of the time the program is
+  half-written and wrong, so every phase works on broken input.
+- **Speed is a correctness property.** Too slow on the judge is a wrong
+  answer, so performance and layout are part of what the contestant sees.
+- **The spec is the product.** A program's meaning is defined by numbered
+  rules, and the implementation is traceable to them.
 
-The crate table in section 3 is the end state, not a parallel codebase.
+**Correctness comes first.** A wrong answer from the compiler is worse than
+a slow one or a missing feature, because the contestant can't see it:
 
-## 2. Design principles
+- every valid program produces the same output in the reference
+  interpreter, the VM and the compiled C++, in checked and release builds;
+- every invalid program is rejected with a diagnostic naming its rule, or
+  traps in checked builds;
+- emitted C++ has no undefined behaviour for valid programs, and sanitizer
+  builds check this on every test;
+- every miscompile becomes a regression test, and the count of known
+  miscompiles is zero.
 
-1. **One meaning.** The source is lowered once into a typed,
-   monomorphized middle IR (MIR). The interpreter runs it and the C++ back
-   end prints it. Checked and release builds differ only in which check
-   ops are kept.
-2. **The stdlib is CP Lang.** `spec/std/*.cp` becomes the library source:
-   the same files gain bodies. Primitives (`List` storage, I/O, bit ops,
-   `I128`) are `@cpp` intrinsics with an interpreter twin, about 150 of
-   them in one table (`crates/cpl-rt`). Everything else (`SegTree`,
-   `Graph`, `dijkstra`, windows, strings) is ordinary CP Lang that user
-   libraries could also write.
-3. **Zero-cost abstraction by construction.** Monomorphization, inlining
-   of small fns and operation values, and generators lowered as internal
-   iteration: a `for` over a `yields` fn splices the loop body at each
-   `yield`, so no state machine exists in the hot path. Domains,
-   positions and optionals are plain integers in MIR.
-4. **Layout is a pass, not a convention.** One `layout` module computes
-   widths, niches, field order and padding from types and range facts. The
-   C++ back end, the interpreter's memory accounting and LSP hover all
-   read it.
-5. **Incremental and error-tolerant from day one.** A lossless syntax
-   tree and query-based analysis serve the CLI and the LSP. Every phase
-   keeps going after an error.
-6. **Spec-first, test-first.** Every rule ID has a conformance case. A
-   phase is done when its chapters' cases pass, not when the code looks
-   complete.
-
-### Keeping the stdlib out of the compiler
-
-Ryan: "stdlib needs to be cp lang i want as little of stdlib in the
-compiler as possible". Enforced mechanically, from the first commit of the
-new spine:
-
-1. **One intrinsics table** (`cpl-rt`), about 150 primitives, each with a
-   Rust twin and a C++ snippet. Growing it needs a decision entry; a test
-   pins the count.
-2. **Name-ban gate.** A script collects every public name in `std/` and
-   fails `just check` when one appears in compiler source outside `cpl-rt`.
-3. **No-privilege test.** A stdlib module copied into a user library under
-   another name type-checks, runs and emits the same C++ as the original.
-4. **Powers are general.** A speed need becomes a general feature any
-   library can use (inlining, law dispatch, `@cpp`), never a name check.
-5. **Tracked.** The scoreboard reports the intrinsic count and stdlib
-   names found in compiler code (target 0).
-
-## 3. Pipeline and crates
+## A2. The shape
 
 ```text
-source --cpl-syntax--> CST (lossless) + AST
-       --cpl-hir-----> names resolved, modules, prelude from std/prelude.cp
-       --cpl-ty------> types, traits, generics, inference (local, R02.10)
-       --cpl-mir-----> typed CFG per monomorphized fn; moves, lends, checks explicit
-       --cpl-own-----> ownership and lending on MIR (ch5 R1-R10, E06xx)
-       --cpl-facts---> intervals, positions, non-None, overflow proofs (ch3, ch4, ch9)
-       --cpl-opt-----> inline, generator splice, check elision from facts
-       --cpl-layout--> widths, niches, field order, SoA (ch3)
-       -> cpl-run (interpreter over MIR, one engine)
-       -> cpl-cpp (C++17 emitter, runtime tree-shaken, 32 KB budget)
+           +-------------------- query database (incremental) ------------------+
+ text ---> | syntax -> names -> types -> core IR -> facts -> MIR -> opt -> layout |
+           +--------------------------------------------------------------------+
+                 |          |        |         |          |               |
+               fmt/lint   LSP     reference   explain   VM             C++ emitter
+                                  interpreter           (traces)       (judge target)
 ```
 
-| Crate | Job | Reuse from today |
-|---|---|---|
-| `cpl-syntax` | lexer, error-tolerant parser, CST/AST, precedence generated from one table | lexer and much of the parser (it already parses most v0.3 syntax) |
-| `cpl-db` | query database: files, modules, cached phase results | `cpl-check/db.rs` design |
-| `cpl-hir` | name resolution, `use`, prelude, decorators, contexts | new |
-| `cpl-ty` | type checker and trait solver: coherence (one impl per type and trait), generics, range types, domains, `?T`, operation values, record rows | parts of `cpl-check/ty.rs` |
-| `cpl-mir` | MIR definition and lowering from typed HIR; monomorphization | new; ideas from `cpl-ir` |
-| `cpl-own` | lending and move checker on MIR | new |
-| `cpl-facts` | interval and relational facts, linear time | `prover` where it fits |
-| `cpl-layout` | sizes, niches, column layouts | `cpl-codegen/niche.rs`, `ranges.rs` |
-| `cpl-rt` | the intrinsic table: Rust for the interpreter, C++ snippets for the emitter | C++ helpers in `cpl-codegen/runtime.rs` |
-| `cpl-run` | MIR interpreter: checked semantics, traps with source values, traces, profile | trap and trace formats from `cpl-interp` |
-| `cpl-cpp` | C++ emission from MIR, deterministic, size-aware | emit helpers, naming, judge glue |
-| `cpl-diag` | diagnostic model and renderer; codes from `spec/diagnostics.md` | keep as is |
-| `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge` | keep the command surface |
-| `cpl-lsp` | LSP over `cpl-db`: hover with layout, completion from stub docs, go-to, rename | transport and snapshot tests |
-| `cpl-fmt`, `cpl-lint` | on the CST and on typed HIR | port rules, drop the dead ones |
-| `cpl-doc` | reference from the stdlib doc labels (JSON for the site) | keep, repoint to `std/` |
-| `cpl-stress`, `cpl-judge` | stress, shrinking, interactor harness, judge profiles | keep, rewire to the new driver |
-| `cpl-conform` | test harness: conformance, corpus, doc examples, differential | replaces scattered runners |
+Everything is a query over one database. The CLI, the LSP, the formatter,
+the stress tool and the docs generator are clients of the same queries;
+none has its own parser or checker.
 
-Today's `cpl-check`, `cpl-ir`, `cpl-interp` and `cpl-codegen` are
-reshaped into these crates step by step; `cpl-verify`, the `CPL_SPEC`
-switch and `proto/` are deleted.
+## A3. Layers
 
-## 4. Key designs
+### Syntax: one lossless tree
 
-- **Generics:** monomorphize everything. Trait bounds are checked at the
-  definition (no C++-template-style late errors). Inference is local and
-  bidirectional, with the expected type flowing into calls (`read<T>()`,
-  literals, closures). No overloading. Named and defaulted arguments are
-  resolved before type checking.
-- **Domains:** a nominal type per declaration; positions are `u32`/`u64`
-  ordinals in MIR. Product domains, `Pair<V>`, compressed domains and ring
-  ranges are library types over one core `Domain` trait (R12) with
-  `@cpp` fast paths only where measured.
-- **Operation values and laws:** an operation value is a zero-sized type
-  carrying its fn and its declared laws (`law` items). Structures dispatch
-  on laws at compile time, so `LazySegTree` with a commutative action
-  drops pushdown by specialization in library code, not in the compiler.
-- **Generators:** `yields T` fns become internal-iteration MIR. When the
-  consumer is a `for`, an adapter chain (`map`/`filter`/`zip`), or a fold,
-  the body is spliced in. A stored generator, which is rare, becomes an
-  explicit state machine.
-- **Checks:** every potentially trapping operation is a MIR op with a rule
-  ID. `cpl-facts` removes the proven ones. Release builds drop the
-  unproven ones by default (decision: no release traps), and a profile
-  option keeps them.
-- **Errors:** one per root cause. Every diagnostic names its rule and has
-  a fix. Codes and messages come from `spec/diagnostics.md`, and a test
-  fails on any undocumented code.
-- **Performance budget:** front end under 200 ms on the largest port;
-  emitted C++ under 32 KB; runtime p50 at or below 1.0x the C++ originals.
-  `cpl explain` shows layouts, elided checks and inlining.
+- A hand-written recursive-descent parser over a lossless concrete syntax
+  tree (green/red, as in rust-analyzer). Every byte, comment and error is
+  in the tree.
+- **The grammar and the operator table are data, in one file.** The spec's
+  grammar chapter, the precedence table, parser tests and editor
+  highlighting are generated from it, so they can't drift.
+- Error recovery is designed per construct (statement, block, call,
+  pattern), so one typo yields one error and the rest of the file still
+  types.
+- The formatter is a pure function of the tree. LSP rename and code
+  actions are tree edits.
 
-## 4b. First-class concerns
+### Names and modules
+
+- Modules are files. The stdlib is ordinary modules; the prelude is one
+  module whose public names are in scope everywhere.
+- Name resolution produces a HIR keyed by stable IDs (module path, item
+  path, local index), so an edit inside one fn doesn't invalidate the
+  others. This is what makes per-fn incrementality work.
+
+### Types
+
+- **Bidirectional local inference.** The expected type flows into
+  expressions (`read<T>()`, literals, closures, `[D] i => ..`). No
+  unification across fns; signatures are the boundary.
+- **Traits with coherence and no overlap.** One impl per (type, trait).
+  Bounds are checked at the definition, so a generic stdlib fn can't fail
+  inside its body when instantiated.
+- **No overloading.** Named and defaulted arguments are resolved before
+  type checking.
+- **Laws are compile-time facts.** `law commutative(+)` is an item, and
+  library code branches on laws with a compile-time `if`. That is how
+  `LazySegTree` drops pushdown for a commutative action, with no
+  specialization machinery in the type system.
+- **Domains are nominal index types.** A position of `V` is its own type;
+  product domains, `Pair<V>`, compressed domains and ring ranges are
+  library types implementing one `Domain` trait.
+- **Range types are refinements.** `1..=n` is `Int` plus an interval fact.
+  The checker types it as `Int` and hands the interval to facts. A
+  runtime-bounded range (`n` read from input) is the same mechanism with a
+  symbolic bound.
+- **Error types poison.** An expression that failed to type has type
+  `Error`, and nothing further is reported about it. That is the mechanism
+  behind "one error per root cause".
+
+### Core IR: the executable spec
+
+- After type checking, the surface language desugars into a small core:
+  `let`, assignment to places, calls, `if`, `loop`, `break`, `match` on
+  enums, closures, `yield` and explicit check ops. Every desugaring is a
+  numbered spec rule, so "what this means" in the spec is the lowering.
+- **Ownership is flow analysis on core IR, not types.** Owned and lent are
+  properties of places on the control-flow graph (ch5). Types stay simple,
+  and lending errors still point at source constructs.
+- **A reference interpreter runs core IR directly.** It is slow and
+  simple, written to match the spec's wording, and every function cites
+  its rule ID. Conformance runs against it first, and the fast engines are
+  tested against it. When the spec and the implementation disagree, this
+  is where it shows.
+
+### Facts
+
+- One abstract interpretation framework over core IR, linear time:
+  intervals with symbolic bounds, differences between variables (`i < n`),
+  non-`None`, domain membership, and "read from input with type T".
+- It serves five clients: check removal, storage widths, overflow
+  diagnostics, LSP hover ("`i` is in `0..n` here") and `cpl explain`.
+- Facts are never guesses. If the analysis can't prove something, the
+  check stays and `explain` says why.
+
+### MIR and optimization
+
+- MIR is a typed CFG per monomorphized fn, close to C: places, moves,
+  calls, branches and check ops. Every value carries a source span and
+  name, so traps, traces and the debugger speak in source terms.
+- **MIR keeps structured regions** (loops, ifs, blocks), not raw gotos, so
+  the emitted C++ reads like a contestant's code.
+- A small, deterministic pass pipeline:
+  1. inline small fns and all operation values;
+  2. splice generators into their consumers, so a `for` over
+     `filter().map()` is one loop with no state machine (a stored
+     generator, which is rare, becomes an explicit state machine);
+  3. scalar replacement of records and tuples;
+  4. remove the checks facts prove;
+  5. choose layouts;
+  6. remove dead code.
+- Each pass logs its decisions for `cpl explain`.
+
+### Layout
+
+- One module decides every value's representation from its type and
+  facts: width, niche for `?T` (`Int.MIN` for `Int`, inherited through
+  fields), field order, padding, and column layouts where the type asks.
+- The VM's memory accounting, the C++ emitter and LSP hover (sizes,
+  padding, peak bytes against the judge's limit) read the same answer, so
+  what the editor shows is what the judge runs.
+
+### Back ends
+
+- **VM.** A register VM over optimized MIR with checks kept: index bounds,
+  overflow, `!` on `None`, range stores, input validation. It records an
+  event log for time-travel traces and the HTML trace view, and per-line
+  counters for the profiler. Compiled to WASM, it is the playground.
+- **C++ emitter.** Prints optimized MIR as one C++17 file:
+  - deterministic names and order;
+  - runtime helper snippets included only when used;
+  - bytes tracked per item, so `cpl build` reports what costs space;
+  - judge profiles (standard, flags, pragmas, instruction set, stack) as
+    input to codegen, not post-processing.
+- Release builds drop unproven checks by default; a profile flag keeps
+  them.
+- Both back ends consume the same MIR, and the reference interpreter
+  checks both.
+
+### The stdlib, outside the compiler
+
+Ryan: "stdlib needs to be cp lang i want as little of stdlib in the
+compiler as possible".
+
+- `std/` is CP Lang, one module per area, with machine-readable doc labels
+  (`cost:`, `empty:`, `ties:`, `order:`, `traps:`, `example:`). Every
+  `example:` is a test; reference docs, the site and LSP hover are
+  generated from the same labels.
+- **One intrinsics table** (`cpl-rt`), about 150 primitives (list storage,
+  I/O, bit ops, `I128`, hashing, memory), each with a VM twin and a C++
+  snippet. Growing it needs a decision entry; a test pins the count.
+- **Name-ban gate.** A script collects every public name in `std/` and
+  fails `just check` when one appears in compiler source outside `cpl-rt`.
+- **No-privilege test.** A stdlib module copied into a user library under
+  another name type-checks, runs and emits the same C++ as the original.
+- **Powers are general.** A speed need becomes a feature any library can
+  use (inlining, law dispatch, `@cpp`), never a name check.
+- Decorators are the exception that is not library: the closed set in
+  spec §6.4 is core language, because each changes meaning (`@memo` table
+  sizing, `@get` call syntax, `@cache`/`@trusted` safety).
+
+### Diagnostics
+
+- A diagnostic is data: code, rule ID, primary and secondary spans,
+  message, notes and machine-applicable fix edits. Renderers turn it into
+  terminal output, LSP diagnostics and code actions, or JSON.
+- Codes and message templates live in `spec/diagnostics.md` and are
+  generated into the compiler, so an undocumented code can't exist.
+
+## A4. Crates
+
+| Crate | Job |
+|---|---|
+| `cpl-syntax` | grammar data, lexer, error-tolerant parser, lossless tree |
+| `cpl-db` | query database: files, modules, cached phase results |
+| `cpl-hir` | name resolution, `use`, prelude, decorators, contexts |
+| `cpl-ty` | inference, trait solver, generics, range types, domains, operation values |
+| `cpl-core` | core IR, desugaring, ownership checker, reference interpreter |
+| `cpl-facts` | interval and relational facts |
+| `cpl-mir` | MIR, lowering from core IR, monomorphization |
+| `cpl-opt` | the pass pipeline and its decision log |
+| `cpl-layout` | sizes, niches, field order, column layouts |
+| `cpl-rt` | the intrinsics table |
+| `cpl-vm` | register VM, traces, profiler; WASM build |
+| `cpl-cpp` | C++ emitter, runtime tree-shaking, judge profiles |
+| `cpl-diag` | diagnostic model and renderers |
+| `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge` |
+| `cpl-lsp`, `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-db` |
+| `cpl-conform` | one harness: conformance, corpus, doc examples, differential, fuzzing |
+
+## A5. First-class concerns
 
 Each concern says what every phase must preserve, its budget, and the test
 that enforces it. A phase that drops what a concern needs is a bug.
 
 | Concern | Every phase preserves | Budget | Enforced by |
 |---|---|---|---|
-| Correctness | the spec's meaning through every lowering; checks as explicit ops until proven | zero known miscompiles; every valid program gives the same output in every engine and build; emitted C++ has no undefined behaviour | rule-linked conformance; interpreter vs C++ differential; checked vs release agreement; sanitizer builds of emitted C++; program fuzzing; corpus acceptance; each bug lands with its regression test |
+| Correctness | the spec's meaning through every lowering; checks as explicit ops until proven | zero known miscompiles; same output in every engine and build; no undefined behaviour in emitted C++ | rule-linked conformance; three-way differential; checked vs release agreement; sanitizer builds; program fuzzing; corpus acceptance; each bug lands with its regression test |
 | Editor (LSP) | per-position queries on partial programs; recovery after errors | edit to diagnostics under 50 ms; front end under 200 ms on the largest port | LSP snapshots and latency bench |
-| Diagnostics | source spans and rule IDs through lowering; one error per root cause; a fix-it | every code documented and tested | conformance `expect: E…`; undocumented-code test |
-| Performance | layout facts, inlining and check elision visible in IR | runtime p50 at most 1.0x originals, max 1.5x, 1.1x by tuning | `just bench` against matched C++ |
-| Size | bytes per emitted item; runtime helpers only when used | under 32 KB per solution, 64 KB hard | corpus size report in the scoreboard |
-| Interpreter and C++ agreement | one IR meaning; checks as explicit ops | zero disagreements | differential runs on every test and fuzzing |
-| Source-level traces | variable names and spans on every IR value | traps show source values | trace snapshots |
+| Diagnostics | spans and rule IDs through lowering; one error per root cause; a fix-it | every code documented and tested | conformance `expect: E…`; undocumented-code test |
+| Performance | layout facts, inlining and check elision visible in IR | runtime p50 at most 1.0x originals, max 1.5x, 1.1x always reachable by tuning | `just bench` against matched C++ |
+| Size | bytes per emitted item; runtime helpers only when used | under 32 KB per solution, 64 KB hard | corpus size report |
+| Interpreter and C++ agreement | one MIR meaning; checks as explicit ops | zero disagreements | differential runs on every test and fuzzing |
+| Source-level traces | names and spans on every IR value | traps show source values | trace snapshots |
 | Explain | why each layout, check and inline was chosen | `cpl explain` covers all of them | explain snapshots |
 | Judge targets | profile (standard, flags, stack, ISA) flows to codegen | one profile per supported judge | judge profile tests |
 | Determinism | no hash-order or address dependence | identical bytes on rebuild | build twice and compare |
-| Input generation from types | declared input types reach the stress tools | generators for every input type | `cpl stress` cases |
-| Spec traceability | rule ID from spec to diagnostic, conformance case and docs | every rule has a case | `conformance.py --rules` |
-| Library power | no name checks in the compiler | intrinsics table only | name-ban gate and no-privilege test |
+| Input generation | declared input types reach the stress tools | a generator for every input type | `cpl stress` cases |
+| Spec traceability | rule ID from spec to diagnostic, test and docs | every rule has a case | `conformance.py --rules` |
+| Library power | no name checks in the compiler | intrinsics table only | name-ban gate; no-privilege test |
 
-## 5. How the spec is implemented
+## A6. Testing
 
-The order follows dependencies, and each step ends on a test count:
+- **Spec as tests.** Every rule ID has conformance cases with exact
+  expected output or diagnostics. Coverage is a gate.
+- **Three-way differential.** Reference interpreter, VM and compiled C++
+  agree on every conformance case, corpus test and generated program;
+  checked and release builds agree on valid programs.
+- **Program fuzzing.** A type-directed generator writes valid programs;
+  disagreements shrink to a minimal case.
+- **Metamorphic tests.** Renaming a variable, reordering independent
+  items, formatting the file or inlining a fn by hand leaves the output
+  unchanged.
+- **Corpus acceptance.** Real problems with tests from accepted C++, run
+  in every engine, with runtime and size compared against the original.
+- **Snapshots** for diagnostics, LSP, explain and traces, blessed with one
+  command.
+- **Budgets on a quiet machine.** Latency, runtime and size live in
+  `just bench`, never in the correctness gate.
 
-1. **Harness first** (`cpl-conform`): one runner for conformance cases,
-   corpus problems (expected outputs from the original C++ on stored
-   tests), stdlib `example:` lines as tests, and interpreter-vs-C++
-   differential runs. Output is a scoreboard JSON plus ratchets: no count
-   may drop.
-2. **Syntax** to all ch1 cases; every spec code block parses (`spec-blocks`
-   ratchet goes to 100% parse).
-3. **HIR and types** to ch2, ch4, ch8 and ch11; the whole of `spec/std`
-   type-checks as a library. That last check is the gate for the library:
-   the stubs must be internally consistent.
-4. **MIR and interpreter** for the core; then ch5–7, ch9 and ch10 cases.
-5. **Stdlib bodies,** module by module in dependency order: prelude, seq,
-   io, math/mod, containers, ranges (prefix, fenwick, segtree, lazy),
-   graph, tree, flow, strings, geometry, the rest. A module is done when
-   its doc examples run and its conformance cases pass.
-6. **C++ back end** from MIR, with `cpl-layout`; then differential tests
-   on every conformance case and corpus problem.
-7. **Corpus:** every `spec.cp` runs in both engines and matches stored
-   expected outputs; the size and time budget is measured against the
-   original C++.
-8. **Tools switch over:** LSP, fmt, lint, doc, stress and judge move to
-   `cpl-db`; the old crates are deleted.
+| Suite | Where it runs |
+|---|---|
+| unit tests per crate; conformance | `just check` (under a minute, changed crates only) |
+| doc examples; corpus; LSP and explain snapshots; bug replay; short fuzz | `just test` |
+| long fuzz | nightly |
+| runtime and size | `just bench` |
 
-## 6. Testing
+## A7. Repository
 
-| Suite | What it proves | Where it runs |
-|---|---|---|
-| unit tests per crate | phase internals | `just check` (changed crates only) |
-| conformance (rule-linked) | the spec's meaning, including exact diagnostics | `just check` |
-| stdlib doc examples | every documented `example:` holds | `just test` |
-| corpus (100 problems) | real solutions work in both engines | `just test` |
-| differential fuzz | interpreter and C++ agree, with shrinking | `just test` (short), nightly (long) |
-| C++ bench | p50 and max runtime vs originals, size under 32 KB | `just bench` |
-| LSP snapshots | hover, completion and diagnostics | `just test` |
-| bug replay | each P0 bug class is prevented or caught | `just test` |
+```text
+spec/        normative rules, grammar data, diagnostics catalog, conformance cases
+std/         the stdlib in CP Lang: signatures, docs and bodies in one place
+crates/      the crates in A4
+corpus/      problems with ports, tests and metadata; raw submissions
+bench/       runtime and size harness against matched C++
+editors/     VS Code and others, generated grammars
+site/        docs and playground, built from spec/ and std/
+research/    notes and experiments, non-normative
+plan/        plans, non-normative
+```
 
-`just check` stays under a minute. No timing tests in correctness suites.
+One `mise.toml` pins tools, one `justfile` holds commands, and generated
+files are either checked by a test or never committed.
 
-## 7. Workflow
+# Part B: getting there from today
 
-- I own the architecture and write the spine myself: syntax through MIR,
-  the interpreter and the C++ back end. Interfaces between crates are
-  settled before anyone else writes code against them.
-- Parallel work starts only where an interface is fixed and a test suite
-  defines done: stdlib modules (against the type-checked stubs and their
-  doc examples), tools, the bench harness. Each delegated piece is small,
-  time-capped and reviewed by me before it lands.
-- Commits are small and go straight to `main`. Each passes `just check`;
-  ratchets stop regressions.
-- Spec ambiguities found while implementing are fixed in the spec first,
-  with a decision entry and a conformance case, then in code.
+## B1. Where we are
 
-## 8. Risks
+- About 170k lines of Rust in 17 crates: `cpl-syntax` -> `cpl-check`
+  (salsa-style database) -> `cpl-ir` (typed lowering) -> `cpl-interp` (a
+  tree-walker plus a bytecode VM that falls back to it) and `cpl-codegen`
+  (C++17).
+- It runs the 100 corpus ports in their 0.2 form and meets about 170 of
+  500 conformance cases.
+- `stdlib/` is 39 CP Lang modules (about 21k lines) under 0.2 names;
+  `spec/std/` has the v0.3 signatures and docs, with bodies ported from
+  `stdlib/` where they matched (954) and `todo` elsewhere (1,586).
+- v0.3 ports run with `CPL_SPEC=1 CPL_STD=spec/std`; 2 of the 54 with
+  generated tests pass.
 
-- **Scope:** a 1,982-function stdlib is large. Mitigation: evolve the
-  working compiler instead of replacing it, so there is always a usable
-  compiler; stdlib bodies are ported in order of corpus usage.
-- **Trait solver complexity:** kept simple on purpose (no overlapping
-  impls, no specialization in user-visible traits; law dispatch is
-  compile-time `if`).
-- **Compile time of monomorphization:** measured on the largest ports;
-  budget enforced by a test.
+| Target | Today |
+|---|---|
+| one `std/` tree | `spec/std` signatures plus `stdlib` bodies |
+| one language | v0.3 behind `CPL_SPEC` |
+| no library names in the compiler | 63 names special-cased in `cpl-ir/src/lower/call.rs` |
+| grammar as data | grammar in parser code and prose |
+| coherent traits checked at definition; `Error` poisons | generics and traits partial; cascading errors |
+| core IR and a reference interpreter | none; conformance runs on the fast path |
+| ownership on core IR | partial checks in `cpl-check` |
+| one facts framework | range reasoning spread across checker and codegen (`prover`, `ranges.rs`) |
+| structured MIR, one VM | `cpl-ir` plus a tree-walker and a fallback VM |
+| layout as one pass | `niche.rs` and `ranges.rs` inside codegen |
+| one test harness | scattered scripts |
+
+## B2. Rules that stop path dependence
+
+1. **New code lands in its target crate and target shape.** Nothing new
+   goes into a crate on the delete list except a deletion or a bridge.
+2. **A replacement deletes what it replaces.** Two implementations of one
+   job live only until the new one passes the old one's tests, and the
+   deletion is part of the same step.
+3. **Bridges are listed.** Any adapter between old and new code is named
+   in B3 with the step that removes it.
+4. **Reuse is allowed only when the code already has the target shape.**
+   Lexer, diagnostics and the C++ helper snippets qualify; anything that
+   needs bending to fit is rewritten.
+5. **Each step closes a row of the B1 table** and updates it. Part B is
+   done when the table is empty, and then it gets deleted.
+6. **No step leaves the corpus worse.** Ratchets on conformance, corpus
+   and spec-block counts stop regressions.
+
+## B3. Steps
+
+Each step ends on a test count and is usable on its own.
+
+1. **Harness** (`cpl-conform`): conformance, corpus (expected outputs from
+   the original C++), doc examples and differential runs, writing one
+   scoreboard JSON with ratchets. Replaces the scattered runners.
+2. **One library tree and one mode.** `spec/std` and `stdlib` merge into
+   `std/`; `CPL_SPEC` and `stdlib/` are deleted. Bridge: the old lowering
+   keeps its special-cased names until step 6.
+3. **Grammar as data.** The operator table and grammar file drive the
+   parser, the spec chapter and editor grammars; every spec code block
+   parses.
+4. **`cpl-db` and `cpl-hir`**, then **`cpl-ty`** with coherence, local
+   inference and `Error` poisoning, replacing `cpl-check` behind the same
+   queries. The whole of `std/` type-checks as a library.
+5. **`cpl-core`:** desugaring, the ownership checker and the reference
+   interpreter. Conformance moves onto it for ch2, ch4–7, ch9 and ch10.
+6. **`cpl-rt` and the name-ban gate.** The non-primitive special names
+   move into `std/`; the gate and the no-privilege test turn on.
+7. **`cpl-facts`**, absorbing `prover` and the codegen range logic.
+8. **`cpl-mir`, `cpl-opt` and `cpl-vm`.** The VM replaces the
+   tree-walker and the fallback VM; `cpl-ir` and `cpl-interp` are deleted.
+9. **`cpl-layout` and `cpl-cpp`.** The emitter prints MIR; `cpl-codegen`
+   is deleted. Three-way differential on every case.
+10. **Tools onto `cpl-db`:** LSP, fmt, lint, doc, stress and judge;
+    `cpl-verify` and the old front end are deleted.
+11. **Stdlib bodies** fill in throughout, in order of corpus usage: a
+    module is done when its doc examples and conformance cases pass.
+
+Steps 3 and 11 run in parallel with the rest. Spec ambiguities found on
+the way are fixed in the spec first, with a decision entry and a
+conformance case, then in code.
+
+## B4. Workflow
+
+- I own the architecture and write the spine: syntax through MIR, the
+  reference interpreter, the VM and the emitter. Interfaces between crates
+  are settled before anyone else writes against them.
+- Delegated work starts only where an interface is fixed and a test suite
+  defines done: stdlib modules, tools, the bench harness. Each piece is
+  small, time-capped and reviewed by me before it lands.
+- Commits are small and go to `main`, each passing `just check`.
+
+## B5. Risks
+
+- **Scope.** 1,982 stdlib functions. Bodies are filled in order of corpus
+  usage, and there is a working compiler after every step.
+- **Trait solver complexity.** Kept simple on purpose: no overlapping
+  impls, no user-visible specialization, law dispatch by compile-time `if`.
+- **Monomorphization compile time.** Measured on the largest ports, with a
+  budget test.
+- **Rewrite drag.** Steps 4, 5 and 8 replace large crates. Each runs both
+  old and new on the corpus until the new one matches, then deletes the
+  old one in the same step (B2.2).
