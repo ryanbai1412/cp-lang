@@ -8,7 +8,7 @@ for _ in 0..n:
     x = (x * 1103515245 + 12345) & 0x7fffffff
     s.push(Alpha((x >> 16) % 4))
 let sam = SuffixAutomaton<Alpha>.of(s)
-let occ = sam.occurrences()
+let occ = sam.occ_counts()
 var ans = sam.distinct
 for i in 0..occ.len:
     ans += occ[i]

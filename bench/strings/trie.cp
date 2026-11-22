@@ -1,6 +1,8 @@
 const L = 25
 
-struct Trie(cnt: Int, kid: [0..2]?Int)
+struct Trie:
+    var cnt: Int
+    var kid: [0..2]?Int
 
 var nodes = List<Trie>()
 

@@ -1,7 +1,7 @@
 use std.hashmap.{FlatMap}
 
 // Matched FlatMap bench: 300k inserts/updates + 1M lookups.
-var fm = FlatMap<Int>.with_capacity(300000, 0)
+var fm = FlatMap<Int>.new(0, cap: 300000)
 var s: U64 = U64(314159265)
 for i in 0..300000:
     s = s * U64(6364136223846793005) + U64(1442695040888963407)

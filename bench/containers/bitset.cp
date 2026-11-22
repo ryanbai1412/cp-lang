@@ -9,7 +9,7 @@ for i in 0..4000:
     weights.push(Int((s >> 33) % U64(100)) + 1)
 
 let reach = Bitset<B>.subset_sums(weights)
-var a = reach
+var a = reach.shifted(0)
 var b = reach.shifted(37)
 var c = reach.shifted(-19)
 var ans = reach.len

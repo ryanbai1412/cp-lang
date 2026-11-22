@@ -8,7 +8,7 @@ for i in 0..n:
     x = (x * 1103515245 + 12345) & 0x7fffffff
     s[i] = Alpha((x >> 16) & 3)
 let pt = PalindromicTree<Alpha>.of(s)
-let occ = pt.occurrences()
+let occ = pt.occ_counts()
 var ans = pt.distinct
 for i in 2..occ.len:
     ans += occ[i] * pt.pal_len(i)
