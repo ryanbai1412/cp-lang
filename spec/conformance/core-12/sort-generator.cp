@@ -1,4 +1,4 @@
-// expect: E0606 at 4
+// expect: E0606 at 5
 // rule: 12.4.6
 fn evens(n: Int) -> yields Int:
     for i in 0..n:

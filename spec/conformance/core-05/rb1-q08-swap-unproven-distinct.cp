@@ -1,4 +1,4 @@
-// expect: E0601 at 4
+// expect: E0601 at 5
 // rule: 05.8.2
 domain V = 1..=4
 var a: [V]Int = 0
