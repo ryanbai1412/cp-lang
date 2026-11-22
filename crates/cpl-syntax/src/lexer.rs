@@ -514,7 +514,9 @@ impl<'a> Lexer<'a> {
     /// Where the unclosed `opener` most likely ended, outside a type:
     /// before an `=`, before `->` on a fn header, before `=>` on an empty
     /// `()`, before a `:` that ends the line or sits in brackets, or before
-    /// a `for` in an index or comprehension call. Returns `(token_index,
+    /// a `for` in an index or comprehension call, right after a `(` that no
+    /// argument can follow, or at the end of its line when the next line is
+    /// no deeper than the opener's. Returns `(token_index,
     /// byte_offset, insert_synthetic_closer_there)`.
     fn end_of_unclosed(&self, opener: &Opener, keep: usize) -> Option<(usize, usize, bool)> {
         use TokenKind::*;
@@ -532,7 +534,19 @@ impl<'a> Lexer<'a> {
         let in_bracket = keep > 0 && self.openers[keep - 1].kind == LBracket;
         let mut depth = 0usize;
         for (i, t) in tokens.iter().enumerate().skip(at + 1) {
+            // A line no deeper than the opener's starts a new statement: the
+            // closer belongs at the end of the line before it.
+            let gap = &self.src[tokens[i - 1].span.end as usize..t.span.start as usize];
+            if let Some(nl) = gap.rfind('\n') {
+                if gap.len() - nl - 1 <= opener.line_indent as usize {
+                    return Some((i, tokens[i - 1].span.end as usize, false));
+                }
+            }
             match t.kind {
+                // `f(!`, `f(:`, `f( > x`: no argument starts with these.
+                Bang | Question | Colon | Gt | GtEq if i == at + 1 && opener.kind == LParen => {
+                    return Some((i, opener.span.end as usize, true));
+                }
                 LParen | LBracket | LBrace => depth += 1,
                 RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
                 _ if depth > 0 => {}

@@ -353,6 +353,26 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
         first.restored = (line(&fixed) == line(&b.original)) as u32;
         if !restore {
             first.clean = errors(&b.path, &fixed).is_empty() as u32;
+            if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unclean") && first.clean == 0 {
+                let after = errors(&b.path, &fixed);
+                let at = |s: &str| s.lines().nth(b.line as usize).unwrap_or("").to_string();
+                println!(
+                    "--- {} {} {}: {}\n    orig {}\n    next {:?}\n    got  {}\n    then {} {}",
+                    b.path,
+                    b.edit,
+                    errs[0].code.0,
+                    errs[0].message,
+                    at(&b.original),
+                    b.original
+                        .lines()
+                        .skip(b.line as usize + 1)
+                        .take(2)
+                        .collect::<Vec<_>>(),
+                    at(&fixed),
+                    after.first().map_or("", |d| d.code.0),
+                    after.first().map_or(String::new(), |d| d.message.clone())
+                );
+            }
         }
     }
     t.fixable = errs.iter().filter(|d| !d.fixes.is_empty()).count() as u32;

@@ -652,6 +652,33 @@ fn traits_may_leave_bodies_out() {
     assert_eq!(body.stmts.len(), 3);
 }
 
+#[test]
+fn an_unclosed_paren_fix_lands_where_the_closer_belongs() {
+    // The next line is no deeper: close at the end of the opener's line, not
+    // before a later `=`.
+    let src = "var a = [1]\nif true:\n    a[0] = max(a[0], 0\n    if a[0] > 0:\n        a[0] = 1\nprint(a)\n";
+    let d = one_diag(src);
+    assert_eq!(d.code.0, "E0101");
+    let at = src.find(", 0").unwrap() + 3;
+    assert_eq!(
+        d.fixes[0].edits[0],
+        (cpl_diag::Span::point(at as u32), ")".to_string())
+    );
+    // No argument starts with `:`, `!` or `>`: the call was empty.
+    for src in [
+        "for x in read<List<Int>>(:\n    print(x)\n",
+        "let x = xs.pop(!\nprint(x)\n",
+    ] {
+        let d = one_diag(src);
+        let at = src.find('(').unwrap() + 1;
+        assert_eq!(
+            d.fixes[0].edits[0].0,
+            cpl_diag::Span::point(at as u32),
+            "{src}"
+        );
+    }
+}
+
 // --- Parser: one root cause, one diagnostic --------------------------------
 
 #[test]
