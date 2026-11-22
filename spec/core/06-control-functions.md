@@ -124,7 +124,8 @@ library or by this spec:
 - `@grader(...)`: judge entry points (chapter 10).
 - `@laws(sample: n)`: stress sampling of a type's laws.
 - `@droppable`: the result may be dropped without the unused-result
-  lint. (R06.4.8)
+  lint. Dropping a non-unit result is that lint (a warning); dropping a
+  `?T` is an error (R02.4.7). (R06.4.8)
 
 User libraries declare their own decorators as ordinary generic
 functions over function types, and their own tool roles with `marker`

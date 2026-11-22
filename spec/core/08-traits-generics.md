@@ -39,7 +39,10 @@ impl Ord for Frac:
 - **Derived impls are structural**: tuples, records, structs and enums
   get `Eq`, `Ord` (lexicographic in declaration order, variants in
   declaration order), `Hash`, `Print` and `Read` when every field has
-  them, unless the type writes its own impl. (R08.1.6)
+  them, unless the type writes its own impl. Tuples and records (not
+  structs, whose fields may be private) also get `+`, `-` and `Zero`
+  fieldwise when every field has them, so a rerooting DP over
+  `(cnt: Int, sum: Int)` passes `+` as its operation. (R08.1.6)
 - **Field traits**: a trait may require fields (`trait Target<V>: to:
   V`). Records satisfy field-only traits structurally; named structs opt
   in with a bodiless `impl Target<V> for Edge`. (R08.1.7)
