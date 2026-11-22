@@ -35,6 +35,8 @@ and its notes in that record's `notes`.
 - coci20c6p3 (follow-up): map and `SortedMap` `keys`, `values` and `items` are O(1)-to-make
   getters like `a.keys`/`a.items` on any keyed sequence (map `each()` became `items`); `Dsu.values`
   too. Two stale ports lost their `.last()`/`.values()` drift.
+- noip18p3: `Rooted.children(v)` yields from the stored child layout instead of returning a
+  fresh `List` per call.
 - etsr23r1p4: `BeatsSegTree` joins the prelude.
 - ioi16p6: `MonotoneHull<P>` lines carry a tag and `best_next` returns the winner's tag, ties to
   the smaller one, so an `aliens` DP knows its count; `MonotoneHull`, `LineContainer` and

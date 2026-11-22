@@ -7,14 +7,20 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noip10p1/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_32/noip10p1.cp",
    "proto/ports/scout_batch_32/today/noip10p1.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "simulation",
+  "deque"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Deque cache with membership test."
 }

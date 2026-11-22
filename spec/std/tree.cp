@@ -84,8 +84,9 @@ pub struct Rooted<V, Pre>:
     /// a[v]`).
     pub fn reorder<T>(self, a: [V]T) -> [Pre]T = todo
 
-    /// O(children). The children of `v`, in the order `next` listed them.
-    pub fn children(self, v: V) -> List<V> = todo
+    /// O(1) to start, O(1) per child, no allocation (children are stored contiguously): the
+    /// children of `v`, in the order `next` listed them.
+    pub fn children(self, v: V) -> yields V = todo
 
     /// O(children) calls of `f`. For each child `c` of `v`, in child order, the fold with `m` of
     /// `f` over `v`'s other children: the step of a rerooting DP, with no division or inverse

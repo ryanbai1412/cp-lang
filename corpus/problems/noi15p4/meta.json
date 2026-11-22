@@ -13,13 +13,20 @@
   "draft": [
    "proto/ports/blind_critic_2/noi15p4_draft.cp"
   ],
+  "dream": [
+   "corpus/problems/noi15p4/dream.cp"
+  ],
   "port": [
    "proto/ports/blind_critic_2/noi15p4.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "greedy",
+  "huffman",
+  "heap"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "k-ary Huffman with MinHeap by (w, depth)."
 }

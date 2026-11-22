@@ -6,13 +6,19 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ioi18p1/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_16/ioi18p1.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "interactive",
+  "constructive"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "extern fn press with @grader entry; one press per letter."
 }
