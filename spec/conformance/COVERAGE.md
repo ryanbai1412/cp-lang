@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1360 (995 passing). Rules: 521.
+Cases: 1367 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 35 case(s)
+- R0401 Assertion failed: 36 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -771,8 +771,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
 - **heap** (74/74 named by a case)
-- **interval** (43/44 named by a case)
-  - uncovered: `IntervalMap.assign_point`
+- **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
 - **lazy** (29/30 named by a case)
   - uncovered: `flip_action`
@@ -794,8 +793,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `exp`, `pow`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
 - **prefix** (46/56 named by a case)
   - uncovered: `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
-- **rand** (6/10 named by a case)
-  - uncovered: `Rng.float`, `Rng.shuffle`, `Rng.perm`, `Rng.sample`
+- **rand** (10/10 named by a case)
 - **search** (8/9 named by a case)
   - uncovered: `split_best`
 - **segtree** (51/54 named by a case)
@@ -814,7 +812,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1889 of 2222 std items are named by a case.
+1894 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
