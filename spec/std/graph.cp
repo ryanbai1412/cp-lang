@@ -616,7 +616,7 @@ pub struct Paths<V, W, A>:
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).path(3) == Some([0, 1, 3])`
     /// example: `domain V = 0..2; let g: [V]List<V> = [[], []]; let p = bfs(g, from: [V(0)]); p.path(0) == Some([0]) and p.path(1) == None`
     pub fn path(self, t: V) -> ?List<V>:
-        if dist[t] == none: return None
+        if dist[t] == None: return None
         var out = [t]
         var at = t
         while let b = back[at]:
@@ -634,7 +634,7 @@ pub struct Paths<V, W, A>:
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).arcs(3) == Some([1, 3])`
     pub fn arcs(self, t: V) -> ?List<A>:
-        if dist[t] == none: return None
+        if dist[t] == None: return None
         var out = List<A>()
         var at = t
         while let b = back[at]:
@@ -719,7 +719,7 @@ pub fn fixed_cost_paths<S, M, W>(
     var back: [S]?(from: S, via: M) = None
     var order = List<S>()
     for s in from:
-        if dist[s] == none:
+        if dist[s] == None:
             dist[s] = W.zero
             order.push(s)
             if until == s: return Paths(dist, back, order)
@@ -729,7 +729,7 @@ pub fn fixed_cost_paths<S, M, W>(
         for j in 0..moves.len:
             while at[j] < order.len:
                 let s = order[at[j]]
-                if let t = step(moves[j], s) and dist[t] == none:
+                if let t = step(moves[j], s) and dist[t] == None:
                     let d = dist[s]! + price[j]
                     if let b = best:
                         if d < b.d: best = (d:, j:, t:)
@@ -737,7 +737,7 @@ pub fn fixed_cost_paths<S, M, W>(
                         best = (d:, j:, t:)
                     break
                 at[j] += 1
-        if best == none: break
+        if best == None: break
         let (d, j, t) = best!
         dist[t] = d
         back[t] = (from: order[at[j]], via: moves[j])
@@ -858,10 +858,10 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
         if extra > 1 or extra < -1: return None
         if extra == 1:
             opens += 1
-            if start == none: start = v
+            if start == None: start = v
     if opens > (if directed: 1 else: 2): return None
-    if start == none: start = first(v for v in V if g.deg(v) > 0)
-    if start == none: return Walk(V.first, List<(to: V, e: E)>())
+    if start == None: start = first(v for v in V if g.deg(v) > 0)
+    if start == None: return Walk(V.first, List<(to: V, e: E)>())
     let out = [V] v => [a for a in g.out(v)]
     var at: [V]Int = 0
     var used: [E]Bool = false
@@ -1463,9 +1463,9 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
                     parent[v] = Some(at)
         var next: ?V = None
         for v in V:
-            if done[v] or best[v] == none: continue
+            if done[v] or best[v] == None: continue
             if next == None or best[v]! < best[next!]!: next = Some(v)
-        if next == none: break
+        if next == None: break
         at = next!
         total = total + best[at]!
     for v in V:

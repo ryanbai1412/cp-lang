@@ -122,7 +122,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// traps: when `on` reaches outside `over`
     /// example: `var t = LiChao(max, over: 0..=10); t.add(Line(0, 5), on: 2..=4); t.at(3) == Some(5) and t.at(5) == None`
     pub fn add(mut self, line: L, on: ?Range<Int> = None):
-        if on == none:
+        if on == None:
             self.settle(0, lo, hi, line)
             return
         let s = on!
@@ -157,7 +157,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
         var (i, l, r, fresh) = (at, lo, hi, line)
         unchecked:
             while true:
-                if lines[i] == none:
+                if lines[i] == None:
                     lines[i] = fresh
                     return
                 let old = lines[i]!
@@ -201,7 +201,7 @@ pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(va
                 if best == None or v < best!.val: best = (val: v, at: j)
         out[mid] = best
         let cut = if let b = best: b.at else: from
-        todo.push((lo, mid, from, if best == none: to else: cut + 1))
+        todo.push((lo, mid, from, if best == None: to else: cut + 1))
         todo.push((mid + 1, hi, cut, to))
     out
 
@@ -236,7 +236,7 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
                         best = v
                         at = j
             next[mid] = best
-            todo.push((lo, mid, from, if best == none: to else: at + 1))
+            todo.push((lo, mid, from, if best == None: to else: at + 1))
             todo.push((mid + 1, hi, at, to))
     next
 

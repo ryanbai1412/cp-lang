@@ -151,7 +151,7 @@ pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
     let (dr, dc) = d.delta
     let r = self.0 + dr
     let c = self.1 + dc
-    if r == None or c == none: None else: (r!, c!)
+    if r == None or c == None: None else: (r!, c!)
 
 /// The cells from `self` (not included) to the edge of the grid in direction `d`, nearest
 /// first: `p.step(d)`, then a step from that, until a step leaves the grid.
@@ -166,7 +166,7 @@ pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
 pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
     var out: List<(R, C)> = []
     var p = step(self, d)
-    while p != none:
+    while p != None:
         out.push(p!)
         p = step(p!, d)
     out

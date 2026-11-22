@@ -265,7 +265,7 @@ pub struct Mat<T>:
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve([1, 0]) == None`
     pub fn solve(self, b: List<T>) -> ?List<T>:
         let res = self.solve_space(b)
-        if res == none: return None
+        if res == None: return None
         res!.0
 
     /// The multiplicative inverse of a square matrix over an exact field, or `None` if singular, by

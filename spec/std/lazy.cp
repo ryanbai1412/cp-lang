@@ -76,13 +76,13 @@ fn right_while_and_left_while_see_pending_updates() = todo
 
 fn ccc_compose(f: (?Int, ?Int, Int), g: (?Int, ?Int, Int)) -> (?Int, ?Int, Int):
     let nb = f.0 ?? g.0
-    if f.1 != none: return (nb, f.1, 0)
-    if g.1 != none: return (nb, g.1! + f.2, 0)
+    if f.1 != None: return (nb, f.1, 0)
+    if g.1 != None: return (nb, g.1! + f.2, 0)
     (nb, None, g.2 + f.2)
 
 fn ccc_apply(f: (?Int, ?Int, Int), x: (Int, Int, Int), len: Int) -> (Int, Int, Int):
     let b_min = f.0 ?? x.1
-    if f.1 != none:
+    if f.1 != None:
         let a_val = b_min + f.1!
         return (a_val, b_min, a_val * len)
     (x.0 + f.2, b_min, x.2 + f.2 * len)

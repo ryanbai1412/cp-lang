@@ -228,7 +228,7 @@ pub struct SortedBag<K>:
     /// example: `var b = SortedBag.of([3, 1, 1]); b.pop_first() == Some(1) and b.count(1) == 1`
     pub fn pop_first(mut self) -> ?K:
         let x = self.first
-        if x == none: return None
+        if x == None: return None
         let _ = self.remove(x!)
         x
 
@@ -270,7 +270,7 @@ pub struct SortedBag<K>:
     /// example: `var b = SortedBag.of([3, 3, 1]); b.pop_last() == Some(3) and b.to_list() == [1, 3]`
     pub fn pop_last(mut self) -> ?K:
         let x = self.last
-        if x == none: return None
+        if x == None: return None
         let _ = self.remove(x!)
         x
 

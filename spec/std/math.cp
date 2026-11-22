@@ -634,7 +634,7 @@ pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int):
     var (r, m) = (0, 1)
     for (ri, mi) in eqs:
         let next = crt(r, m, ri, mi)
-        if next == none: return None
+        if next == None: return None
         (r, m) = next!
     (r, m)
 

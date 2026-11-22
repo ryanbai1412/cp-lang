@@ -104,7 +104,7 @@ pub struct Fenwick<D, T>:
     pub fn kth(self, k: Int) -> ?D:
         assert k >= 1, "`kth` counts from 1"
         let b = self.first_ge(k)
-        if b == none: None else: b!.left
+        if b == None: None else: b!.left
 
     /// The current value at position `i`: `sum(i..=i)`.
     ///

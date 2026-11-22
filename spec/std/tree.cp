@@ -1038,7 +1038,7 @@ pub struct JumpTree<V>:
         var x = if dep[a] > dep[b]: self.ancestor(a, dep[a] - dep[b])! else: a
         var y = if dep[b] > dep[a]: self.ancestor(b, dep[b] - dep[a])! else: b
         while x != y:
-            if par[x] == none: return None
+            if par[x] == None: return None
             if jump[x] != jump[y]:
                 x = jump[x]
                 y = jump[y]
@@ -1756,7 +1756,7 @@ fn link_cut_matches_a_brute_forest_with_ordered_folds():
                 acc = MaxSub.of(w[p]) + acc
                 x = p
             assert lct.fold_path(u, v) == acc
-            if rng.int(0, 2) == 0 and from[v] != none:
+            if rng.int(0, 2) == 0 and from[v] != None:
                 let p = from[v]!
                 lct.cut(v, p)
                 adj[v] = [y for y in adj[v] if y != p]
