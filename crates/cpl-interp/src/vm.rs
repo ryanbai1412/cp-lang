@@ -138,7 +138,7 @@ fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, [SmallFieldKind;
 }
 
 /// Where a local `Slot` lives inside a VM frame.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum SlotLoc {
     I(u16, ScalarKind),
     OptI { val: u16, some: u16, kind: ScalarKind },
@@ -251,6 +251,9 @@ pub(crate) enum Op {
     // Comparisons & branches
     CmpI { dst: u16, a: u16, b: u16, op: CmpOp },
     Jmp { target: u32 },
+    /// Jumps when the last fallback statement broke out of or continued
+    /// the loop `id`, or any loop when `innermost` and it named none.
+    JmpEscape { brk: bool, id: LoopId, innermost: bool, target: u32 },
     JmpIfZero { reg: u16, target: u32 },
     JmpIfNonZero { reg: u16, target: u32 },
     JmpLtI { a: u16, b: u16, target: u32 },
@@ -700,7 +703,10 @@ impl<'p> CompiledProgram<'p> {
         let mut fns = Vec::with_capacity(program.fns.len());
         for (id, f) in program.fns.iter().enumerate() {
             let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
-            if f.locals.len() > 512 || program.judge_fns.contains(&id) {
+            // A traced `mut` parameter is the caller's variable, written in
+            // place, which the VM only writes back on return.
+            let traced_mut = traced && f.params.iter().any(|p| p.mutable);
+            if f.locals.len() > 512 || program.judge_fns.contains(&id) || traced_mut {
                 fns.push(None);
             } else {
                 let mut c =
@@ -1557,6 +1563,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     fn patch(&mut self, pc: usize, target: u32) {
         match &mut self.ops[pc] {
             Op::Jmp { target: t }
+            | Op::JmpEscape { target: t, .. }
             | Op::JmpIfZero { target: t, .. }
             | Op::JmpIfNonZero { target: t, .. }
             | Op::JmpLtI { target: t, .. }
@@ -2291,11 +2298,30 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.traced_loop_var = None;
                     self.emit_trace(TracePoint::LoopEnd(*slot), span);
                 }
-                None => self.emit_fallback_stmt(stmt),
+                None => {
+                    self.emit_fallback_stmt(stmt);
+                    self.emit_escapes();
+                }
             },
-            _ => self.emit_fallback_stmt(stmt),
+            _ => {
+                self.emit_fallback_stmt(stmt);
+                self.emit_escapes();
+            }
         }
         true
+    }
+
+    /// After a fallback statement inside loops: where its `break` or
+    /// `continue`, run by the tree-walker, goes.
+    fn emit_escapes(&mut self) {
+        let last = self.loops.len().wrapping_sub(1);
+        for pos in (0..self.loops.len()).rev() {
+            let (id, innermost) = (self.loops[pos].id, pos == last);
+            let pc = self.emit(Op::JmpEscape { brk: true, id, innermost, target: 0 }, Span::default());
+            self.loops[pos].breaks.push(pc);
+            let pc = self.emit(Op::JmpEscape { brk: false, id, innermost, target: 0 }, Span::default());
+            self.loops[pos].continues.push(pc);
+        }
     }
 
     fn compile_untraced_stmt(&mut self, stmt: &'p Stmt) {
@@ -6714,6 +6740,11 @@ fn sync_to_stack(
         if undeclared(traced, loc, &stack[base + slot]) {
             continue;
         }
+        // The tree-walker, which a fallback hands the value to, may have
+        // stopped with a trap before handing it back.
+        if traced && matches!(*loc, SlotLoc::V(r) if matches!(regs_v[r as usize], Value::Unit)) {
+            continue;
+        }
         stack[base + slot] = match *loc {
             SlotLoc::I(r, kind) => kind.box_val(regs_i[r as usize]),
             SlotLoc::OptI { val, some, kind } => {
@@ -7040,7 +7071,13 @@ impl<'p, 'io> Interp<'p, 'io> {
         vm_regs_i: &mut Vec<i64>,
         regs_v: &mut [Value],
     ) -> Res<Value> {
-        match self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, 0, None)? {
+        let exit = self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, 0, None);
+        if chunk.traced {
+            // The end of the run and a trap show the locals as they were left.
+            let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+            sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, true);
+        }
+        match exit? {
             ExecExit::Return(v) => Ok(v),
             ExecExit::FeedNext | ExecExit::FeedBreak => Ok(Value::Unit),
         }
@@ -7061,6 +7098,7 @@ impl<'p, 'io> Interp<'p, 'io> {
         let spans = chunk.spans.as_slice();
         let mut pc: usize = start_pc;
         let mut regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+        let mut escaped: Option<(bool, Option<LoopId>)> = None;
 
         loop {
             let op = unsafe { *ops.get_unchecked(pc) };
@@ -7558,6 +7596,14 @@ impl<'p, 'io> Interp<'p, 'io> {
                     regs_i[dst as usize] = i64::from(res);
                 }
                 Op::Jmp { target } => pc = target as usize,
+                Op::JmpEscape { brk, id, innermost, target } => {
+                    if let Some((was_brk, was)) = escaped {
+                        if was_brk == brk && (was == Some(id) || (was.is_none() && innermost)) {
+                            escaped = None;
+                            pc = target as usize;
+                        }
+                    }
+                }
                 Op::JmpIfZero { reg, target } => {
                     if regs_i[reg as usize] == 0 {
                         pc = target as usize;
@@ -11075,17 +11121,22 @@ impl<'p, 'io> Interp<'p, 'io> {
                             in_loop,
                         );
                     }
-                    for r in &mut regs_v[clear_from_v as usize..] {
-                        *r = Value::Unit;
+                    for (r, held) in regs_v.iter_mut().enumerate().skip(clear_from_v as usize) {
+                        // A traced local outlives its last use: the tracer shows it.
+                        if !(chunk.traced && chunk.slot_map.contains(&SlotLoc::V(r as u16))) {
+                            *held = Value::Unit;
+                        }
                     }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     let stmt = chunk.fallback_stmts[idx as usize];
-                    let flow = self.stmt(stmt)?;
+                    let flow = self.stmt(stmt);
                     sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                    let flow = flow?;
                     match flow {
                         Flow::Next => {}
                         Flow::Return(v) | Flow::Give(v) => return Ok(ExecExit::Return(v)),
-                        Flow::Break(_) | Flow::Continue(_) => {}
+                        Flow::Break(id) => escaped = Some((true, id)),
+                        Flow::Continue(id) => escaped = Some((false, id)),
                     }
                 }
                 Op::FallbackExprI { idx, dst, in_loop } => {
@@ -11097,8 +11148,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                     }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     let expr = chunk.fallback_exprs[idx as usize];
-                    let val = self.eval(expr)?;
+                    let val = self.eval(expr);
                     sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                    let val = val?;
                     regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 }
                 Op::Trace { idx } => match chunk.trace_points[idx as usize] {
@@ -11128,8 +11180,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                     }
                     sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
                     let expr = chunk.fallback_exprs[idx as usize];
-                    let val = self.eval(expr)?;
+                    let val = self.eval(expr);
                     sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, chunk.traced);
+                    let val = val?;
                     regs_v[dst as usize] = val;
                 }
             }

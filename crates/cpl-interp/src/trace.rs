@@ -1291,6 +1291,8 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
         out.push(close);
     };
     match (value, ty) {
+        // A `U64` the VM keeps as an `Int` shows as one the tree-walker kept.
+        (Value::Int(v), Ty::U64) => string(out, &(*v as u64).to_string()),
         (Value::Int(v), _) => {
             let v = label(*v, ty, view);
             // Past 2^53 a JSON number is no longer exact.
