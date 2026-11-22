@@ -79,12 +79,28 @@ struct Worst {
     rng: Rng,
     /// How many values have been drawn.
     drawn: i128,
+    /// Remaining element budget across nested size picks so problems with
+    /// `sum(s) <= 2e5` (e.g. `m = 5e4` queries each declaring `s: 2..=1e5`)
+    /// cannot multiply into billions of elements and OOM.
+    size_budget: i128,
 }
+
+const WORST_SIZE_BUDGET: i128 = 250_000;
 
 impl Pick for Worst {
     fn pick(&mut self, lo: i128, hi: i128, is_size: bool) -> i128 {
         if is_size {
-            return hi;
+            if self.drawn == 0 && self.size_budget == WORST_SIZE_BUDGET {
+                let chosen = hi.min(WORST_SIZE_BUDGET).max(lo);
+                self.size_budget = (self.size_budget - chosen.max(0)).max(0);
+                return chosen;
+            }
+            if self.size_budget <= 0 {
+                return lo;
+            }
+            let chosen = hi.min(self.size_budget).max(lo);
+            self.size_budget = (self.size_budget - chosen.max(0)).max(0);
+            return chosen;
         }
         let index = self.drawn;
         self.drawn += 1;
@@ -115,13 +131,40 @@ fn is_edge_list(shape: &Shape) -> bool {
             if parts.len() >= 2 && parts.iter().all(|p| matches!(p, Shape::Int { .. }))))
 }
 
+/// Maximum nested array/sequence depth in an `InputSpec`, used to scale
+/// `Worst::size_budget` so 2D/3D tables (`[N][N]Int` with unbounded `n: Int`)
+/// stay within ~250k total elements instead of allocating `N^2` and OOMing.
+fn shape_array_depth(shape: &Shape) -> u32 {
+    match shape {
+        Shape::Array { elem, .. } => 1 + shape_array_depth(elem),
+        Shape::Tuple { parts, .. } => parts.iter().map(shape_array_depth).max().unwrap_or(0),
+        _ => 0,
+    }
+}
+
+fn spec_size_budget(spec: &InputSpec) -> i128 {
+    let depth = spec
+        .fields
+        .iter()
+        .map(|f| shape_array_depth(&f.shape))
+        .max()
+        .unwrap_or(1);
+    match depth {
+        0 | 1 => WORST_SIZE_BUDGET,
+        2 => 500,
+        _ => 64,
+    }
+}
+
 /// The worst case of one shape. `None` when the spec has nothing that
 /// shape applies to, or the case cannot be made.
 pub fn worst_case(spec: &InputSpec, shape: WorstShape, seed: u64) -> Option<Case> {
+    let budget = spec_size_budget(spec);
     let mut pick = Worst {
         shape,
         rng: Rng::new(seed),
         drawn: 0,
+        size_budget: budget,
     };
     let mut case = make(spec, &mut pick)?;
     if !matches!(shape, WorstShape::Path | WorstShape::Star) {

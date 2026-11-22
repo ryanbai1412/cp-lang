@@ -152,21 +152,6 @@ fn find_input(prob_dir: &Path, port_path: &Path, scratch: &Path) -> Option<(Path
             return Some((out_path, "gen.py".to_string()));
         }
     }
-    if let Ok(source) = std::fs::read_to_string(port_path) {
-        if let Ok(spec) = cpl_stress::InputSpec::from_source(&source) {
-            if !spec.is_empty() {
-                if let Some(case) = crate::bench::worst_case(&spec, crate::bench::WorstShape::Random, 1) {
-                    let rendered = case.render();
-                    if !rendered.is_empty() {
-                        let out_path = scratch.join("worst.in");
-                        if std::fs::write(&out_path, rendered.as_bytes()).is_ok() {
-                            return Some((out_path, "derived/random".to_string()));
-                        }
-                    }
-                }
-            }
-        }
-    }
     let tests_dir = prob_dir.join("tests");
     if tests_dir.is_dir() {
         let mut best: Option<(u64, PathBuf)> = None;
@@ -189,6 +174,21 @@ fn find_input(prob_dir: &Path, port_path: &Path, scratch: &Path) -> Option<(Path
                 .unwrap_or("test.in")
                 .to_string();
             return Some((p, format!("tests/{label}")));
+        }
+    }
+    if let Ok(source) = std::fs::read_to_string(port_path) {
+        if let Ok(spec) = cpl_stress::InputSpec::from_source(&source) {
+            if !spec.is_empty() {
+                if let Some(case) = crate::bench::worst_case(&spec, crate::bench::WorstShape::Random, 1) {
+                    let rendered = case.render();
+                    if !rendered.is_empty() {
+                        let out_path = scratch.join("worst.in");
+                        if std::fs::write(&out_path, rendered.as_bytes()).is_ok() {
+                            return Some((out_path, "derived/random".to_string()));
+                        }
+                    }
+                }
+            }
         }
     }
     None
@@ -235,7 +235,7 @@ fn run_bin(bin: &Path, input: &Path) -> Result<(f64, Vec<u8>), String> {
                 let _ = reader_handle.join();
                 return Err("timeout".to_string());
             }
-            None => std::thread::sleep(Duration::from_millis(5)),
+            None => std::thread::sleep(Duration::from_micros(200)),
         }
     };
     let secs = start.elapsed().as_secs_f64();
