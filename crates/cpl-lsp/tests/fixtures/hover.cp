@@ -124,6 +124,12 @@ fn pre$0fixes(bit: Fenwick<V, Int>):
 fn sh$0ow(cells: [V]Int):
     for _ in 0..k:
         p$0rint(cells)
+fn ga$0ther():
+    var got: List<Int> = []
+    for i in 0..k:
+        got.push(i * i)
+        print(i)
+    p$0rint("!", got)
 struct Ed$0ge:
     to: V
     w: Int

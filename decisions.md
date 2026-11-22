@@ -5503,3 +5503,17 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   fns the scan reads.
 - **Reverse.** Drop `io_terms` and `record_io` in `cpl-check`'s
   `check/call.rs`, restoring the fixed-size checks for `print` and `ask`.
+
+## 203. Printing a bounded list costs its length (2026-11-22)
+
+- **Decision.** `print` and `ask` of a named list of fixed-size values
+  cost `O(xs.len)`, and a fn's estimate counts it when `xs` has a proven
+  size: a list only pushed to in counted loops (decision 29.45), shown in
+  the source's terms, so `print("!", got)` after `k` pushes is `O(k)`.
+  Lists of strings, and lists not passed by name, still block an estimate.
+- **Why.** Printing a list built in the fn is the most common output after
+  numbers. Fns with an estimated cost went from 38 to 39 of the 1,066 the
+  scan reads.
+- **Reverse.** Drop the `.len` term in `io_terms` in `cpl-check`'s
+  `check/call.rs`, the `print`/`ask` arm of `arith` in `cpl-lint`'s
+  `rules/mod.rs` and `lens_in` in `cpl-lsp`'s `server.rs`.

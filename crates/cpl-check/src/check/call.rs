@@ -52,14 +52,22 @@ impl<'a> Checker<'a> {
 
     /// What writing `args` costs: `Some([])` when each has a fixed size,
     /// a term such as `|V| * |W|` for each array over domains of
-    /// fixed-size values, `None` when some size is unbounded.
+    /// fixed-size values and `xs.len` for each named list of them, `None`
+    /// when some size is unbounded.
     pub(crate) fn io_terms(&mut self, args: &[Arg]) -> Option<Vec<String>> {
         let mut terms = Vec::new();
         for arg in args {
             if self.fixed_size(&arg.value) {
                 continue;
             }
-            let Ty::Array { index, elem } = self.quietly(|c| c.infer(&arg.value)) else {
+            let ty = self.quietly(|c| c.infer(&arg.value));
+            if let (ExprKind::Name(name), Ty::Named { name: list, args }) = (&arg.value.kind, &ty) {
+                if list == "List" && args.len() == 1 && self.io_fixed(&args[0]) {
+                    terms.push(format!("{name}.len"));
+                    continue;
+                }
+            }
+            let Ty::Array { index, elem } = ty else {
                 return None;
             };
             let domains: Option<Vec<String>> = index

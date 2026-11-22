@@ -518,6 +518,19 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
             }
         }
         ExprKind::Call { callee, args } => {
+            if matches!(&callee.kind, ExprKind::Name(n) if n == "print" || n == "ask") {
+                for arg in args {
+                    if let ExprKind::Name(name) = &arg.value.kind {
+                        let at = (base + arg.value.span.start, base + arg.value.span.end);
+                        if let Some((max, factors)) = bounds.size(name) {
+                            out.sizes.push((at, *max, vec![factors.clone()]));
+                        }
+                        if bounds.pushes(name).is_some() {
+                            out.pushed_calls.push((at, name.clone()));
+                        }
+                    }
+                }
+            }
             if let ExprKind::Field { base: recv, name: method } = &callee.kind {
                 if let ExprKind::Name(name) = &recv.kind {
                     let at = (base + recv.span.start, base + recv.span.end);

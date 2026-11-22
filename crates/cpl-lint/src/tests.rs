@@ -2078,3 +2078,19 @@ fn a_list_only_pushed_in_counted_loops_has_a_bounded_size() {
     assert_eq!(got.iter().rfind(|(r, ..)| r == "xs"), Some(&(s("xs"), 200200001, s("n + n * q + 1"))));
     assert!(got.iter().all(|(r, ..)| r == "xs"), "{got:?}");
 }
+
+#[test]
+fn a_bounded_list_passed_to_print_has_its_size() {
+    let sizes = |src: &str| -> Vec<(String, u128, String)> {
+        crate::proven_sizes(src)
+            .into_iter()
+            .map(|s| (src[s.receiver.0 as usize..s.receiver.1 as usize].to_string(), s.max, s.count))
+            .collect()
+    };
+    let src = "let n: 1..=200000 = read()\nfn f():\n    var xs: List<Int> = []\n    for i in 0..n:\n        xs.push(i)\n    print(\"!\", xs)\n    let r: Int = ask(xs)\n    print(r)\n";
+    let s = |t: &str| t.to_string();
+    let at = |r: &str| sizes(src).into_iter().filter(|(x, ..)| x == r).collect::<Vec<_>>();
+    assert_eq!(at("xs"), vec![(s("xs"), 200000, s("n")); 3]);
+    let src = "let k: 1..=7 = read()\nfn g():\n    var got: List<Int> = []\n    for i in 0..k:\n        got.push(i * i)\n        print(i)\n    print(\"!\", got)\n";
+    assert_eq!(sizes(src), vec![(s("got"), 7, s("k")); 2]);
+}

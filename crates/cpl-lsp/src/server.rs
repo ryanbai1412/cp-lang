@@ -1452,6 +1452,30 @@ fn domain_steps(cost: &str, domains: &[(String, u128)]) -> Option<f64> {
     (!cost.contains('|') && !names_n).then(|| steps_of(&cost, 0.0)).flatten()
 }
 
+/// `cost` with each `xs.len` written as the bound on the list `xs` passed
+/// at the nearest argument after `after`, in the source's terms and as a
+/// number; a `.len` with no bound is left as it is.
+fn lens_in(cost: &str, after: u32, text: &str, sizes: &[cpl_lint::ProvenSize]) -> (String, String) {
+    let (mut shown, mut numeric) = (cost.to_string(), cost.to_string());
+    let words = cost.split(|c: char| !c.is_alphanumeric() && c != '_' && c != '.');
+    for list in words.filter_map(|w| w.strip_suffix(".len")) {
+        let argument = |s: &&cpl_lint::ProvenSize| {
+            let (start, end) = (s.receiver.0 as usize, s.receiver.1 as usize);
+            s.receiver.0 >= after && text.get(start..end) == Some(list) && !text[end..].starts_with('.')
+        };
+        let Some(size) = sizes.iter().filter(argument).min_by_key(|s| s.receiver.0) else {
+            continue;
+        };
+        let count = match size.count.contains(' ') {
+            true => format!("({})", size.count),
+            false => size.count.clone(),
+        };
+        shown = shown.replace(&format!("{list}.len"), &count);
+        numeric = numeric.replace(&format!("{list}.len"), &format!("({})", size.max));
+    }
+    (shown, numeric)
+}
+
 /// A documented cost with its size `n` written as `size`: `O(n log n)` for
 /// `ys.len` is `O(ys.len log ys.len)`.
 fn size_in(cost: &str, size: &str) -> String {
@@ -1496,9 +1520,14 @@ fn fn_call_costs(
             .then(|| receiver_before(text, span.start as usize))
             .flatten();
         let size = sizes.iter().find(|s| s.receiver.1 + 1 == span.start);
+        let (cost, numeric) = match name.starts_with('.') {
+            true => (cost.clone(), cost.clone()),
+            false => lens_in(cost, span.end, text, sizes),
+        };
+        let cost = &cost;
         let steps = match size {
             Some(s) => steps_of(cost, s.max as f64),
-            None => domain_steps(cost, domains),
+            None => domain_steps(&numeric, domains),
         };
         let (name, cost) = match (receiver, size) {
             (Some(r), Some(s)) if s.count.chars().all(|c| c.is_alphanumeric() || c == '_') => {

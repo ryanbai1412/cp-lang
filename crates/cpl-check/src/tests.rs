@@ -3457,7 +3457,7 @@ fn print_and_read_cost_o1_only_for_values_of_a_fixed_size() {
     };
     assert_eq!(hover(&mut db, 0, "read"), "read: built-in\ncost: O(1)");
     assert_eq!(hover(&mut db, 0, "print"), "print: built-in\ncost: O(1)");
-    assert_eq!(hover(&mut db, 1, "print"), "print: built-in");
+    assert_eq!(hover(&mut db, 1, "print"), "print: built-in\ncost: O(xs.len)");
     assert_eq!(hover(&mut db, 2, "print"), "print: built-in");
     assert_eq!(hover(&mut db, 1, "read"), "read: built-in");
 }
@@ -3618,16 +3618,17 @@ fn abs_of_an_integer_is_an_integer_so_a_position_made_of_it_costs_o1() {
 }
 
 #[test]
-fn printing_an_array_over_a_domain_costs_its_size() {
-    let src = "let n: 1..=100 = read()\ndomain V = 1..=n\nvar d: [V]Int = 1\nvar g: [V, V]Char = '.'\nlet xs: List<Int> = read()\n\
-               print(d)\nprint(\"?\", d, g)\nlet r: Int = ask(\"?\", g)\nprint(xs)\nprint(r)\n";
+fn printing_an_array_or_list_of_fixed_size_values_costs_its_size() {
+    let src = "let n: 1..=100 = read()\ndomain V = 1..=n\nvar d: [V]Int = 1\nvar g: [V, V]Char = '.'\nlet xs: List<Int> = read()\nlet ws: List<Str> = read()\n\
+               print(d)\nprint(\"?\", d, g)\nlet r: Int = ask(\"?\", g)\nprint(xs)\nprint(ws)\nprint(r)\n";
     let mut db = Database::new();
     db.set_file("a.cp", src);
     let mut hover = |name: &str| db.hover("a.cp", src.find(name).unwrap() as u32).map(|h| h.text).unwrap_or_default();
     assert!(hover("print(d)").ends_with("\ncost: O(|V|)"), "{}", hover("print(d)"));
     assert!(hover("print(\"?\", d").ends_with("\ncost: O(|V| + |V| * |V|)"));
     assert!(hover("ask(").ends_with("\ncost: O(|V| * |V|)"), "{}", hover("ask("));
-    assert!(!hover("print(xs)").contains("cost: O("), "{}", hover("print(xs)"));
+    assert!(hover("print(xs)").ends_with("\ncost: O(xs.len)"), "{}", hover("print(xs)"));
+    assert!(!hover("print(ws)").contains("cost: O("), "{}", hover("print(ws)"));
     assert!(hover("print(r)").ends_with("\ncost: O(1)"));
     let src = "let n: 1..=100 = read()\ndomain V = 1..=n\nfn show(d: [V]Int, g: [V, V]Char):\n    print(d)\n    let r: Int = ask(\"?\", g)\n    print(r)\n";
     db.set_file("b.cp", src);

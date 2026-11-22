@@ -647,8 +647,8 @@ pub struct ProvenSize {
     pub count: String,
 }
 
-/// Each method call on an array of bounded size; a file with a syntax error
-/// has none.
+/// Each method call on an array of bounded size, and each such array
+/// passed to `print` or `ask`; a file with a syntax error has none.
 pub fn proven_sizes(src: &str) -> Vec<ProvenSize> {
     let parsed = cpl_syntax::parse_file(src);
     if !parsed.diagnostics.is_empty() {
