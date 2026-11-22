@@ -5,7 +5,35 @@
 //! length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
 use std.math.{mod_sqrt}
 use std.mod.{Mod}
-use std.ntt.{convolve, ntt}
+use std.ntt.{ntt}
+
+fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
+    if a.is_empty or b.is_empty: return []
+    let na = a.len
+    let nb = b.len
+    let n_out = na + nb - 1
+    if min(na, nb) <= 60:
+        var out = List.filled(n_out, Mod<P>(0))
+        unchecked:
+            for i in 0..na:
+                let ai = a[i]
+                if ai.v == 0: continue
+                for j in 0..nb: out[i + j] = out[i + j] + ai * b[j]
+        return out
+    let need = bit_ceil(n_out)
+    assert (P - 1) % need == 0, "modulus p - 1 must be divisible by n"
+    var fa = List.filled(need, Mod<P>(0))
+    var fb = List.filled(need, Mod<P>(0))
+    unchecked:
+        for i in 0..na: fa[i] = a[i]
+        for i in 0..nb: fb[i] = b[i]
+    ntt(mut fa, bit_reversed: true)
+    ntt(mut fb, bit_reversed: true)
+    unchecked:
+        for i in 0..need: fa[i] = fa[i] * fb[i]
+    ntt(mut fa, inverse: true, bit_reversed: true)
+    if fa.len > n_out: fa.truncate(n_out)
+    fa
 
 /// The formal derivative `a'(x)`: coefficient `k` is `(k + 1) * a[k + 1]`. Length
 /// `max(0, a.len - 1)`, trailing zeros kept.
@@ -55,7 +83,35 @@ pub fn integral<P>(a: List<Mod<P>>) -> List<Mod<P>>:
 /// exceeds what `P` supports
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, -1]; inv(a, 4) == [Z(1), Z(1), Z(1), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [2]; inv(a, 2) == [Z(1) / Z(2), Z(0)]`
-pub fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>> = todo
+pub fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
+    assert n >= 0, "poly.inv() requires n >= 0"
+    if n == 0: return []
+    assert a.len > 0 and a[0].v != 0, "poly.inv() requires a[0] != 0"
+    var g: List<Mod<P>> = [a[0].inv()]
+    while g.len < n:
+        let m = g.len
+        let lim = m * 2
+        let take = min(a.len, lim)
+        var f = List.filled(lim, Mod<P>(0))
+        var gn = List.filled(lim, Mod<P>(0))
+        unchecked:
+            for i in 0..take: f[i] = a[i]
+            for i in 0..m: gn[i] = g[i]
+        ntt(mut f, bit_reversed: true)
+        ntt(mut gn, bit_reversed: true)
+        unchecked:
+            for i in 0..lim: f[i] = f[i] * gn[i]
+        ntt(mut f, inverse: true, bit_reversed: true)
+        unchecked:
+            for i in 0..m: f[i] = Mod<P>(0)
+        ntt(mut f, bit_reversed: true)
+        unchecked:
+            for i in 0..lim: f[i] = f[i] * gn[i]
+        ntt(mut f, inverse: true, bit_reversed: true)
+        unchecked:
+            for i in m..lim: g.push(-f[i])
+    if g.len > n: g.truncate(n)
+    g
 
 /// The formal logarithm `ln(a(x)) mod x^n = integral(a'(x) / a(x)) mod x^n`, with constant term 0.
 /// Requires `n >= 0`, and when `n > 0`, `a.len > 0` and `a[0] == 1`.
@@ -76,7 +132,7 @@ pub fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
     unchecked:
         for i in 1..take: da[i - 1] = a[i] * Mod<P>(i)
     let ia = inv(a, n - 1)
-    var q = convolve(da, ia)
+    var q = times(da, ia)
     if q.len > n - 1: q.truncate(n - 1)
     while q.len < n - 1: q.push(Mod<P>(0))
     integral(q)
@@ -104,7 +160,7 @@ pub fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
             for i in 0..m:
                 let ai = if m + i < a.len: a[m + i] else: Mod<P>(0)
                 hi[i] = ai - lg[m + i]
-        let delta = convolve(g, hi)
+        let delta = times(g, hi)
         unchecked:
             for i in 0..m: g.push(if i < delta.len: delta[i] else: Mod<P>(0))
         m = lim
@@ -124,7 +180,38 @@ pub fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; pow(a, 2, 4) == [Z(1), Z(2), Z(1), Z(0)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 1]; pow(a, -1, 3) == [Z(1), Z(-1), Z(1)]`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; pow(a, 2, 3) == [Z(0), Z(0), Z(1)]`
-pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>> = todo
+pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>:
+    assert n >= 0, "poly.pow requires n >= 0"
+    if n == 0: return []
+    if k == 0:
+        var out = List.filled(n, Mod<P>(0))
+        out[0] = Mod<P>(1)
+        return out
+    var d = 0
+    let cap = min(a.len, n)
+    while d < cap and a[d].v == 0: d += 1
+    if k < 0:
+        assert a.len > 0 and d == 0, "poly.pow with k < 0 requires a[0] != 0"
+    elif d == cap or (d > 0 and k > (n - 1) / d):
+        return List.filled(n, Mod<P>(0))
+    let shift = k * d
+    let m = n - shift
+    let c = a[d]
+    let inv_c = c.inv()
+    let take = min(a.len - d, m)
+    var norm = List.filled(take, Mod<P>(0))
+    unchecked:
+        for i in 0..take: norm[i] = a[d + i] * inv_c
+    var lg = log(norm, m)
+    let km = Mod<P>(k)
+    unchecked:
+        for i in 0..m: lg[i] = lg[i] * km
+    let ex = exp(lg, m)
+    let ck = c ** k
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..m: out[shift + i] = ex[i] * ck
+    out
 
 /// The formal square root `g(x)` with `g(x)^2 == a(x) (mod x^n)`, or `None` if None exists mod `P`.
 /// Requires `n >= 0`. O(n log n + log^2 P).
@@ -142,7 +229,47 @@ pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>> = todo
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 0, 4]; sqrt(a, 3) == Some([Z(0), Z(2), Z(0)])`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 1]; sqrt(a, 2) == None`
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [3]; sqrt(a, 1) == None`
-pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>> = todo
+pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>:
+    assert n >= 0, "poly.sqrt requires n >= 0"
+    if n == 0: return Some([])
+    var d = 0
+    let cap = min(a.len, n)
+    while d < cap and a[d].v == 0: d += 1
+    if d == cap: return Some(List.filled(n, Mod<P>(0)))
+    if d % 2 != 0: return None
+    let r0 = if let r = mod_sqrt(a[d].v, P): r else: return None
+    let shift = d / 2
+    let m = n - shift
+    let h_len = min(a.len - d, m)
+    var h = List.filled(h_len, Mod<P>(0))
+    unchecked:
+        for i in 0..h_len: h[i] = a[d + i]
+    let inv2 = Mod<P>(2).inv()
+    var g: List<Mod<P>> = [Mod<P>(r0)]
+    var cur = 1
+    while cur < m:
+        let lim = cur * 2
+        var g2 = List.filled(lim, Mod<P>(0))
+        unchecked:
+            for i in 0..cur: g2[i] = g[i]
+        ntt(mut g2, bit_reversed: true)
+        unchecked:
+            for i in 0..lim: g2[i] = g2[i] * g2[i]
+        ntt(mut g2, inverse: true, bit_reversed: true)
+        var diff = List.filled(cur, Mod<P>(0))
+        unchecked:
+            for i in 0..cur:
+                let hi = if cur + i < h_len: h[cur + i] else: Mod<P>(0)
+                diff[i] = (hi - g2[cur + i]) * inv2
+        let ig = inv(g, cur)
+        let delta = times(diff, ig)
+        unchecked:
+            for i in 0..cur: g.push(if i < delta.len: delta[i] else: Mod<P>(0))
+        cur = lim
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..m: out[shift + i] = g[i]
+    Some(out)
 
 /// `self(x)` by Horner's rule, over any ring (`Mod<P>`, `Int`, `F64`, `Mat`): `coef.eval(x)`
 /// with `coef[k]` the coefficient of `x^k`.
@@ -152,7 +279,10 @@ pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>> = todo
 /// traps: never (beyond the ring's own arithmetic)
 /// example: `[1, 2, 3].eval(2) == 17`
 /// example: `[5].eval(100) == 5`
-pub fn eval<S: Indexed, T>(self: S, x: T) -> T = todo
+pub fn eval<S: Indexed, T>(self: S, x: T) -> T:
+    var acc = T.zero
+    for i in (0..self.len).rev: acc = acc * x + self[i]
+    acc
 
 fn trim_poly<P>(a: List<Mod<P>>) -> List<Mod<P>>:
     var n = a.len
@@ -221,11 +351,11 @@ pub fn div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List
     unchecked:
         for i in 0..q_len: ra[i] = ta[ta.len - 1 - i]
     let rb = rev_poly(tb)
-    var q_rev = convolve(ra, inv(rb, q_len))
+    var q_rev = times(ra, inv(rb, q_len))
     if q_rev.len > q_len: q_rev.truncate(q_len)
     while q_rev.len < q_len: q_rev.push(Mod<P>(0))
     let q = rev_poly(q_rev)
-    let qb = convolve(q, tb)
+    let qb = times(q, tb)
     let r_len = tb.len - 1
     var r = List.filled(r_len, Mod<P>(0))
     unchecked:
@@ -241,7 +371,7 @@ fn subproduct_tree<P>(xs: List<Mod<P>>) -> List<List<Mod<P>>>:
     var nodes: List<List<Mod<P>>> = List.filled(2 * n, [])
     unchecked:
         for i in 0..n: nodes[n + i] = [-xs[i], Mod<P>(1)]
-        for i in (1..n).rev: nodes[i] = convolve(nodes[2 * i], nodes[2 * i + 1])
+        for i in (1..n).rev: nodes[i] = times(nodes[2 * i], nodes[2 * i + 1])
     nodes
 
 /// The monic polynomial `prod_{r in roots} (x - r)`, of length `roots.len + 1`.
@@ -262,7 +392,29 @@ pub fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>>:
 /// order: lowest degree first
 /// traps: when `a.len > P` (it needs inverse factorials below `a.len`)
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 0, 1]; taylor_shift(a, Z(1)) == [Z(1), Z(2), Z(1)]`
-pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>> = todo
+pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
+    let n = a.len
+    if n <= 1 or c.v == 0: return a
+    assert n < P, "poly.taylor_shift requires a.len < P"
+    var fact = List.filled(n, Mod<P>(1))
+    var ifact = List.filled(n, Mod<P>(1))
+    unchecked:
+        for i in 1..n: fact[i] = fact[i - 1] * Mod<P>(i)
+        ifact[n - 1] = fact[n - 1].inv()
+        for i in (1..n).rev: ifact[i - 1] = ifact[i] * Mod<P>(i)
+    var u = List.filled(n, Mod<P>(0))
+    var v = List.filled(n, Mod<P>(0))
+    var cp = Mod<P>(1)
+    unchecked:
+        for i in 0..n:
+            u[n - 1 - i] = a[i] * fact[i]
+            v[i] = cp * ifact[i]
+            cp = cp * c
+    let prod = times(u, v)
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for k in 0..n: out[k] = prod[n - 1 - k] * ifact[k]
+    out
 
 /// Multipoint evaluation `[a(x) for x in xs]` via transposed subproduct tree.
 ///
@@ -288,7 +440,7 @@ pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
         for i in 0..reduced.len: r_pad[i] = reduced[i]
     let rev_r = rev_poly(r_pad)
     let inv_rev_m = inv(rev_poly(root), n)
-    var top = convolve(rev_r, inv_rev_m)
+    var top = times(rev_r, inv_rev_m)
     if top.len > n: top.truncate(n)
     while top.len < n: top.push(Mod<P>(0))
     var down: List<List<Mod<P>>> = List.filled(2 * n, [])
@@ -372,7 +524,7 @@ pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>:
     let ql_lim = min(k + 1, m)
     unchecked:
         for i in 0..ql_lim: ql[i] = q_arr[2 * i]
-    let p_base = convolve(rev_f, inv(ql, m))
+    let p_base = times(rev_f, inv(ql, m))
     var p_arr = List.filled(b_sz, Mod<P>(0))
     unchecked:
         for i in 0..m: p_arr[k - m + i] = p_base[i]
@@ -414,7 +566,27 @@ pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>:
 /// traps: when `ys.len > P` (the sample points `0..ys.len` collide mod `P`)
 /// example: `type Z = Mod<998244353>; let ys: List<Z> = [1, 4, 9]; lagrange_at(ys, Z(3)) == Z(16)`
 /// example: `type Z = Mod<998244353>; let ys: List<Z> = [1, 4, 9]; lagrange_at(ys, Z(1)) == Z(4)`
-pub fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P> = todo
+pub fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
+    let n = ys.len
+    if n == 0: return Mod<P>(0)
+    if x.v < n: return ys[x.v]
+    assert n < P, "poly.lagrange_at requires ys.len < P"
+    let d = n - 1
+    var pref = List.filled(n, Mod<P>(1))
+    var ifact = List.filled(n, Mod<P>(1))
+    var fact = Mod<P>(1)
+    unchecked:
+        for i in 0..d: pref[i + 1] = pref[i] * (x - Mod<P>(i))
+        for i in 1..n: fact = fact * Mod<P>(i)
+        ifact[d] = fact.inv()
+        for i in (1..n).rev: ifact[i - 1] = ifact[i] * Mod<P>(i)
+        var suff = Mod<P>(1)
+        var total = Mod<P>(0)
+        for i in (0..n).rev:
+            let term = ys[i] * pref[i] * suff * ifact[i] * ifact[d - i]
+            total = if ((d - i) & 1) == 0: total + term else: total - term
+            suff = suff * (x - Mod<P>(i))
+        return total
 
 /// The unique polynomial `f` of degree `< xs.len` with `f(xs[i]) = ys[i]` for distinct `xs`, as
 /// exactly `xs.len` coefficients (trailing zeros kept).
@@ -426,7 +598,53 @@ pub fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P> = todo
 /// traps: when `xs.len != ys.len`, or two `xs` are equal
 /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1, 2]; let ys: List<Z> = [1, 4, 9]; interpolate(xs, ys) == [Z(1), Z(2), Z(1)]`
 /// example: `type Z = Mod<998244353>; let xs: List<Z> = [0, 1]; let ys: List<Z> = [5, 5]; interpolate(xs, ys) == [Z(5), Z(0)]`
-pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>> = todo
+pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
+    let n = xs.len
+    assert n == ys.len, "poly.interpolate requires equal-length xs and ys"
+    if n == 0: return []
+    if n == 1: return [ys[0]]
+    if n <= 64:
+        var prod = List.filled(n + 1, Mod<P>(0))
+        prod[0] = Mod<P>(1)
+        unchecked:
+            for i in 0..n:
+                let xi = xs[i]
+                for k in (1..=i + 1).rev: prod[k] = prod[k - 1] - prod[k] * xi
+                prod[0] = -prod[0] * xi
+            var out = List.filled(n, Mod<P>(0))
+            for i in 0..n:
+                let xi = xs[i]
+                var denom = Mod<P>(1)
+                for j in 0..n:
+                    if j != i: denom = denom * (xi - xs[j])
+                assert denom.v != 0, "poly.interpolate requires distinct xs"
+                let scale = ys[i] * denom.inv()
+                var rem = Mod<P>(0)
+                for k in (0..n).rev:
+                    rem = prod[k + 1] + rem * xi
+                    out[k] = out[k] + rem * scale
+            return out
+    let nodes = subproduct_tree(xs)
+    let w = eval_all(deriv(nodes[1]), xs)
+    var num: List<List<Mod<P>>> = List.filled(2 * n, [])
+    unchecked:
+        for i in 0..n:
+            assert w[i].v != 0, "poly.interpolate requires distinct xs"
+            num[n + i] = [ys[i] * w[i].inv()]
+        for i in (1..n).rev:
+            let l = times(num[2 * i], nodes[2 * i + 1])
+            let r = times(num[2 * i + 1], nodes[2 * i])
+            let m = max(l.len, r.len)
+            var res = List.filled(m, Mod<P>(0))
+            for k in 0..l.len: res[k] = res[k] + l[k]
+            for k in 0..r.len: res[k] = res[k] + r[k]
+            num[i] = res
+    var out = List.filled(n, Mod<P>(0))
+    let root = num[1]
+    let lim = min(n, root.len)
+    unchecked:
+        for i in 0..lim: out[i] = root[i]
+    out
 
 /// O(n) storage. Algebraic polynomial / formal power series wrapper over `T` (lowest degree first).
 pub struct Poly<T>(c: List<T>):
@@ -797,7 +1015,7 @@ fn eval_div_shift_mpe_laws():
     let b = [Z((i * 7 + 5) % 23) for i in 0..19]
     let (q, r) = div_mod(a, b)
     assert r.len < b.len
-    let qb = convolve(q, b)
+    let qb = times(q, b)
     for i in 0..a.len:
         let qi = if i < qb.len: qb[i] else: Z(0)
         let ri = if i < r.len: r[i] else: Z(0)
@@ -825,7 +1043,7 @@ fn eval_div_shift_mpe_laws():
     // Negative power law: a^k * a^{-k} == 1 (mod x^n)
     let p_pos = pow(b, 5, 16)
     let p_neg = pow(b, -5, 16)
-    let p_id = convolve(p_pos, p_neg)
+    let p_id = times(p_pos, p_neg)
     assert p_id[0] == Z(1)
     for i in 1..16: assert p_id[i] == Z(0)
 
@@ -838,7 +1056,7 @@ fn eval_div_shift_mpe_laws():
         var gp: List<Z> = [Z(1)]
         for i in 0..f_c.len:
             for j in 0..min(gp.len, 12): brute[j] = brute[j] + f_c[i] * gp[j]
-            gp = convolve(gp, g_c)
+            gp = times(gp, g_c)
             if gp.len > 12: gp.truncate(12)
         assert comp == brute
 
@@ -858,7 +1076,7 @@ fn inv_log_exp_laws():
     type Z = Mod<998_244_353>
     let a = [Z(1 + (i * 7 + 3) % 19) for i in 0..17]
     let ia = inv(a, 17)
-    let prod = convolve(a, ia)
+    let prod = times(a, ia)
     assert prod[0] == Z(1)
     for i in 1..17: assert prod[i] == Z(0)
     assert inv(a, 0).is_empty
@@ -877,7 +1095,7 @@ fn pow_and_sqrt_laws():
     let p3 = pow(a, 3, 10)
     var naive: List<Z> = [Z(1)]
     for _ in 0..3:
-        naive = convolve(naive, a)
+        naive = times(naive, a)
         if naive.len > 10: naive.truncate(10)
     while naive.len < 10: naive.push(Z(0))
     assert p3 == naive
@@ -886,7 +1104,7 @@ fn pow_and_sqrt_laws():
 
     let s_in: List<Z> = [Z(0), Z(0), Z(4), Z(12), Z(9), Z(5), Z(7)]
     let g = sqrt(s_in, 7)!
-    let gg = convolve(g, g)
+    let gg = times(g, g)
     for i in 0..7: assert gg[i] == s_in[i]
     let odd_zero: List<Z> = [Z(0), Z(4), Z(1)]
     assert sqrt(odd_zero, 3) == None
