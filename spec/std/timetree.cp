@@ -23,21 +23,47 @@ pub struct TimeTree<E>:
     next: List<-1..=2_000_000_000>
     ev_val: List<E>
 
-    /// Create a timeline for `q` time slots `0..q`. O(q).
+    /// An empty timeline of `q` time slots `0..q`, with no events scheduled yet.
+    ///
+    /// cost: O(q) time and memory
+    /// traps: when `q < 0`
+    /// example: `TimeTree<Int>(2).steps().len == 2`
     pub fn new(q: Int) -> TimeTree<E> = todo
 
     fn link(mut self, u: Int, ev: E) = todo
 
-    /// Schedule event `ev` to be active across the half-open time interval `[lo, hi)`. O(log q).
+    /// Schedule `ev` to be active at every time slot in `lo..hi` (half-open). The interval is
+    /// stored on the O(log q) segment-tree nodes that cover it, one copy of `ev` on each.
+    /// An empty interval (`lo >= hi`) schedules nothing.
+    ///
+    /// cost: O(log q)
+    /// traps: when `lo < 0` or `hi > q` on a non-empty interval
+    /// example: `var tt = TimeTree<Str>(2); tt.add_interval(0, 2, "e"); tt.steps().len == 4`
     pub fn add_interval(mut self, lo: Int, hi: Int, ev: E) = todo
 
-    /// Retrieve the event referenced by `Apply(id)`. O(1).
+    /// The event carried by `TimeStep.Apply(id)`. Ids are `0, 1, 2, ...` in the order the
+    /// node copies were stored by `add_interval` / `add_range`; read them from the steps, never
+    /// compute them.
+    ///
+    /// cost: O(1)
+    /// traps: when `id` is not an id that some `Apply` step carries
+    /// example: `var tt = TimeTree<Str>(2); tt.add_interval(0, 2, "e"); tt.event(0) == "e"`
     pub fn event(self, id: Int) -> E = todo
 
     fn emit_dfs(self, u: Int, nl: Int, nr: Int, mut out: List<TimeStep>) = todo
 
-    /// Return the full DFS traversal of `Apply`, `Query`, and `Undo` steps over `0..q`.
-    /// Total length is O(q + m log q) for `m` added intervals.
+    /// The whole depth-first walk over `0..q` as a list. Entering a node emits one `Apply(id)`
+    /// per event stored there, in scheduling order; a leaf `t` then emits `Query(t)`; leaving
+    /// the node emits one `Undo` per `Apply` it emitted, so undos match applies in LIFO order.
+    /// Children are visited left (earlier times) before right.
+    ///
+    /// cost: O(q + m log q) time and memory for `m` scheduled intervals
+    /// empty: `[]` when `q == 0`
+    /// order: DFS order; `Query(t)` appears once per `t`, in increasing `t`
+    /// traps: never
+    /// example: `TimeTree<Int>(2).steps() == [TimeStep.Query(0), TimeStep.Query(1)]`
+    /// example: `var tt = TimeTree<Str>(2); tt.add_interval(0, 2, "e"); tt.steps() == [TimeStep.Apply(0), TimeStep.Query(0), TimeStep.Query(1), TimeStep.Undo]`
+    /// see: `run`, which walks the same order without building the list
     pub fn steps(self) -> List<TimeStep> = todo
 
     fn run_node<M, R>(
@@ -52,10 +78,16 @@ pub struct TimeTree<E>:
         mut out: List<R>,
     ) = todo
 
-    /// Walk the segment tree over `0..q` with zero step-list allocation, returning
-    /// `[answer(0), ..., answer(q - 1)]`. Calls `mark()` once on entering each non-empty
-    /// node, `apply(ev)` for each event active on that node, `answer(t)` at every leaf
-    /// `t in 0..q` in ascending order, and `undo(snap)` on exit. O(q + m log q).
+    /// Walk the same order as `steps` with callbacks instead of a list. On entering a node that
+    /// holds at least one event it calls `mark()` once, then `apply(ev)` for each event there in
+    /// scheduling order; at each leaf `t` it calls `answer(t)`; on leaving such a node it calls
+    /// `undo(m)` once with the value its `mark()` returned. Nodes with no events call neither.
+    ///
+    /// cost: O(q + m log q) callback calls for `m` scheduled intervals, O(log q) extra stack
+    /// empty: `[]` when `q == 0`
+    /// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
+    /// traps: never (callbacks may trap)
+    /// example: `TimeTree<Int>(2).run(mark: () => 0, apply: e => (), answer: t => t * 10, undo: m => ()) == [0, 10]`
     pub fn run<M, R>(
         self,
         mark: () -> M,
@@ -64,22 +96,44 @@ pub struct TimeTree<E>:
         undo: M -> (),
     ) -> List<R> = todo
 
-    /// O(log q). Schedule event `ev` to be active across the half-open time range `r`.
+    /// Schedule `ev` to be active at every time slot in `r`; `add_interval` with the range
+    /// form. An empty `r` schedules nothing.
+    ///
+    /// cost: O(log q)
+    /// empty: schedules nothing
+    /// traps: when a non-empty `r` reaches outside `0..q`
+    /// example: `var tt = TimeTree<Str>(3); tt.add_range(1..3, "e"); tt.steps().len == 5`
     pub fn add_range(mut self, r: Range<Int>, ev: E) = todo
 
-    /// O(q + m log q). Zero-allocation generator yielding `Apply`, `Query`, and `Undo` steps
-    /// in DFS order across `0..q` (generator counterpart to `steps`).
+    /// The steps of `steps`, yielded one at a time without building the list.
+    ///
+    /// cost: O(1) amortized per step, O(log q) extra stack
+    /// order: the same DFS order as `steps`
+    /// traps: never
+    /// example: `TimeTree<Int>(2).walk().collect() == [TimeStep.Query(0), TimeStep.Query(1)]`
     pub fn walk(self) -> yields TimeStep = todo
 
-/// O(n log n) calls to `on_cross`. General CDQ divide-and-conquer driver over an ordered
-/// sequence of events: recursively solves left and right halves, then invokes `on_cross(left, right)`
-/// for contributions from the left half onto the right half.
+/// CDQ divide and conquer over `events` in their given order. A list of length `n >= 2`
+/// splits into `left`, the first `n / 2` events, and `right`, the rest; it solves `left`,
+/// then `right`, then calls `on_cross(left, right)` once, so `on_cross` sees each pair of
+/// events `i < j` in exactly one call, with `i` in `left` and `j` in `right`.
+///
+/// cost: O(n log n) plus the callbacks; each level copies the halves, O(n) extra memory
+/// empty: makes no calls; neither does a single event
+/// order: halves keep input order; calls go bottom-up, left subproblem before right
+/// traps: never (the callback may trap)
+/// example: `var pairs = 0; cdq([1, 2, 3], on_cross: (l, r) => pairs += l.len * r.len); pairs == 3`
 pub fn cdq<E>(events: List<E>, on_cross: (List<E>, List<E>) -> ()) = todo
 
-/// Offline divide-and-conquer over time `0..q` for `items` active on half-open
-/// intervals `by(ev) = (lo, hi)`. Builds a `TimeTree<E>`, walks it with
-/// `mark`/`apply`/`answer`/`undo` callbacks (zero step-list allocation), and returns
-/// `[answer(0), ..., answer(q - 1)]`. O(q + m log q).
+/// Offline divide and conquer over time `0..q`: each item is active on the half-open slots
+/// `by(item) = (lo, hi)`. Builds a `TimeTree`, schedules every item in list order and walks
+/// it with `run`; `TimeTree(q)` with `add_interval` and `run` gives the same calls.
+///
+/// cost: O(q + m log q) callback calls for `m` items
+/// empty: no items: `[answer(0), ..., answer(q - 1)]` with no `mark`, `apply` or `undo` calls
+/// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
+/// traps: when an item's non-empty interval reaches outside `0..q`
+/// example: `offline_over(2, [], by: e => (0, 1), mark: () => 0, apply: e => (), answer: t => t + 1, undo: m => ()) == [1, 2]`
 pub fn offline_over<E, M, R>(
     q: Int,
     items: List<E>,
