@@ -6,11 +6,11 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1247 (296 passing). Rules: 521.
+Cases: 1257 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 81 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 82 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 84 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 33 cases; 0 uncovered, 8 happy-path only, 4 negative only
 - R04 (04-indices.md): 59 rules, 70 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -46,7 +46,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.3.3 [2+ 0-] *happy-path only*: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
 - R01.3.4 [1+ 0-] *happy-path only*: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
 - R01.3.5 [1+ 0-]: `_` is the discard name in patterns and parameters.
-- R01.3.6 [1+ 0-] *happy-path only*: `Some` and `None` are not reserved: they are the variants of `?T`, in the prelude like any...
+- R01.3.6 [2+ 0-] *happy-path only*: `Some` and `None` are not reserved: they are the variants of `?T`, in the prelude like any...
 - R01.3.7 [1+ 1-]: `unchecked:` opens a block whose arithmetic and indexing checks are off in every build (ch...
 - R01.4.1 [1+ 0-]: **Integers**: decimal with `_` separators, `0x...`, `0b...`. Scientific literals that deno...
 - R01.4.2 [1+ 1-]: **Floats** need a fraction or a non-integer value: `0.5`, `1.5e-9`. `.5` and `5.` are erro...
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 17 case(s)
+- R0401 Assertion failed: 18 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -801,8 +801,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `split_best`
 - **segtree** (51/54 named by a case)
   - uncovered: `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
-- **seq** (176/215 named by a case)
-  - uncovered: `Perm`, `mean`, `partition`, `get_or_insert_with`, `rotated_left`, `prev_permutation`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `product`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
+- **seq** (184/215 named by a case)
+  - uncovered: `Perm`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `ends`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `product`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
 - **slope** (32/39 named by a case)
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (23/23 named by a case)
@@ -816,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1810 of 2222 std items are named by a case.
+1818 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
