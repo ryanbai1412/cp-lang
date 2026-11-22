@@ -1,6 +1,6 @@
 # agc079c
 
-Score: pending cold rescore (adopted `std.dsu.ParityDsu<Val>`, full run-stack invariant header, `pop_top_front`/`pop_value`, and §111 `and` guards — 1.047x vs 4/5 dream, gated 150/150, 0 lints; emitted C++ grew 22,223 -> 26,331 B (+4,108 B, < 48 KB) from `std.dsu.ParityDsu<Val>` emitting unused rollback/query methods; dead-method stripping on stdlib structs will trim it)
+Score: 4/5
 Dream: 4/5
 
 The header states the two passes, but pass 1 is a hand linked-run stack with `pred`/`succ` arrays and pass 2 a flag-driven deque replay. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -46,3 +46,8 @@ The port score (3/5) holds; the port was not touched.
 Dream 3/5 → 4/5, rescored cold on current main. The header now states the `Run(vals, opp_below)` invariant and shows that every branch of `pop_value`, and each forced `return none`, preserves it. The run stack is the algorithm, not a translation.
 - The only error is `LinkedList` (lines 47, 104), which is reported.
 - Minor: the minimality argument for Pass 2 (lines 34-37) is asserted. The two `match active` blocks (lines 124-132) choose an end by hand; a side-taking `push`/`pop` on `Deque` would say it once.
+
+## Cold review (HEAD)
+
+Port 3/5 → 4/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. It adopts the dream's `Run` invariant header (lines 5-31), `ParityDsu<Val>` (line 58), `pop_top_front`/`pop_value` and §4.9 `and` guards (lines 81, 104, 128). The hand `pred`/`succ` chain (lines 55-64, 72, 86) is the reported `LinkedList` gap.
+- Minor: as in the dream, the Pass 2 minimality argument (lines 33-36) is asserted, and the two `match active` blocks (lines 125-132) pick a deque end by hand.
