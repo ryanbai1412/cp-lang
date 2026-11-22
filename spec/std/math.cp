@@ -570,6 +570,7 @@ pub fn divisors(x: Int) -> List<Int>:
 pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>:
     var out = [1]
     for (p, e) in factors:
+        assert e >= 0, "a prime's exponent is at least 0"
         let cur = out.len
         var pk = 1
         for _ in 0..e:
@@ -633,6 +634,7 @@ pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
 pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int):
     var (r, m) = (0, 1)
     for (ri, mi) in eqs:
+        assert mi >= 1, "every modulus is at least 1"
         let next = crt(r, m, ri, mi)
         if next == None: return None
         (r, m) = next!

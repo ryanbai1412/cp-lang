@@ -1543,7 +1543,9 @@ pub fn reflect(p: Vec, a: Vec, b: Vec) -> Vec:
 /// traps: when `a == b`
 /// example: `line_dist(Vec(1.0, 1.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == 1.0`
 /// example: `line_dist(Vec(5.0, 3.0), Vec(0.0, 0.0), Vec(2.0, 0.0)) == 3.0`
-pub fn line_dist(p: Vec, a: Vec, b: Vec) -> F64 = abs(vcross(b - a, p - a)) / (b - a).len
+pub fn line_dist(p: Vec, a: Vec, b: Vec) -> F64:
+    assert a != b, "a line needs two distinct points"
+    abs(vcross(b - a, p - a)) / (b - a).len
 
 /// The shortest distance from `p` to the closed segment `a b`: to the projection when it falls
 /// inside the segment, else to the nearer endpoint. A segment shorter than `eps` counts as the
