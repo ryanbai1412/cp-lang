@@ -1423,13 +1423,13 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
         for v in V:
             if done[v]: continue
             if let c = w[at, v]:
-                if best[v] == none or c < best[v]!:
+                if best[v] == None or c < best[v]!:
                     best[v] = Some(c)
                     parent[v] = Some(at)
         var next: ?V = None
         for v in V:
             if done[v] or best[v] == none: continue
-            if next == none or best[v]! < best[next!]!: next = Some(v)
+            if next == None or best[v]! < best[next!]!: next = Some(v)
         if next == none: break
         at = next!
         total = total + best[at]!
