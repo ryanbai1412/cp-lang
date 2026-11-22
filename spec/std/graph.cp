@@ -14,11 +14,13 @@
 //!
 //! Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt.
 //! Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
-use std.heap.{MinHeap}
+use std.heap.{Heap, MinHeap}
 use std.dsu.{Dsu}
 use std.seq.{reverse, count}
 use std.deque.{Deque}
 use std.bitset.{Bitset}
+use std.algebra.{Semiring}
+use std.math.{gcd}
 
 /// O(deg u) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by
@@ -2153,7 +2155,209 @@ pub fn reach_sets<V>(g: Next<V>) -> [V]Bitset<V>:
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 1)]; scc_times(es) == [Some(2), Some(2), Some(2), Some(3)]`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; scc_times(es) == [None]`
-pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int = todo
+pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
+    let n = V.K
+    let m = E.K
+    var ans: [E]?Int = None
+    if m == 0: return ans
+
+    var par = [i for i in 0..n]
+    var sz = [1 for _ in 0..n]
+    var hist_u = List<Int>()
+    var hist_v = List<Int>()
+    var adj = [List<Int>() for _ in 0..n]
+    var tin = [-1 for _ in 0..n]
+    var low = [0 for _ in 0..n]
+    var on_stk = [false for _ in 0..n]
+    var comp = [-1 for _ in 0..n]
+    var used = List<Int>()
+    var tstk = List<Int>()
+
+    fn find(x: Int) -> Int:
+        var r = x
+        while par[r] != r:
+            r = par[r]
+        r
+
+    fn unite(a: Int, b: Int):
+        var ra = find(a)
+        var rb = find(b)
+        if ra == rb: return
+        if sz[ra] < sz[rb]:
+            let tmp = ra
+            ra = rb
+            rb = tmp
+        par[rb] = ra
+        sz[ra] += sz[rb]
+        hist_u.push(ra)
+        hist_v.push(rb)
+
+    fn rollback(snap: Int):
+        while hist_u.len > snap:
+            let ra = hist_u.pop()!
+            let rb = hist_v.pop()!
+            par[rb] = rb
+            sz[ra] -= sz[rb]
+
+    fn solve(l: Int, r: Int, es: List<E>):
+        if es.len == 0: return
+        if l == r:
+            for e in es:
+                let ei = e.to_idx
+                let t = if l > ei: l else: ei
+                ans[e] = Some(t)
+            return
+        let mid = (l + r) / 2
+        used.clear()
+        for e in es:
+            if e.to_idx <= mid:
+                let ru = find(arcs[e].u.to_idx)
+                let rv = find(arcs[e].v.to_idx)
+                if ru != rv:
+                    if adj[ru].len == 0 and tin[ru] == -1:
+                        tin[ru] = -2
+                        used.push(ru)
+                    if adj[rv].len == 0 and tin[rv] == -1:
+                        tin[rv] = -2
+                        used.push(rv)
+                    adj[ru].push(rv)
+        for u in used:
+            tin[u] = -1
+            comp[u] = -1
+            on_stk[u] = false
+        var timer = 0
+        var ccnt = 0
+        tstk.clear()
+        for start in used:
+            if tin[start] != -1: continue
+            var dfs_u = [start]
+            var dfs_i = [0]
+            tin[start] = timer
+            low[start] = timer
+            timer += 1
+            on_stk[start] = true
+            tstk.push(start)
+            while dfs_u.len > 0:
+                let top = dfs_u.len - 1
+                let u = dfs_u[top]
+                let idx = dfs_i[top]
+                if idx < adj[u].len:
+                    dfs_i[top] = idx + 1
+                    let v = adj[u][idx]
+                    if tin[v] == -1:
+                        tin[v] = timer
+                        low[v] = timer
+                        timer += 1
+                        on_stk[v] = true
+                        tstk.push(v)
+                        dfs_u.push(v)
+                        dfs_i.push(0)
+                    else if on_stk[v]:
+                        if tin[v] < low[u]: low[u] = tin[v]
+                else:
+                    if low[u] == tin[u]:
+                        while true:
+                            let w = tstk.pop()!
+                            on_stk[w] = false
+                            comp[w] = ccnt
+                            if w == u: break
+                        ccnt += 1
+                    dfs_u.pop()
+                    dfs_i.pop()
+                    if dfs_u.len > 0:
+                        let p = dfs_u[dfs_u.len - 1]
+                        if low[u] < low[p]: low[p] = low[u]
+        var left_es = List<E>()
+        var right_es = List<E>()
+        var to_merge_u = List<Int>()
+        var to_merge_v = List<Int>()
+        for e in es:
+            let ru = find(arcs[e].u.to_idx)
+            let rv = find(arcs[e].v.to_idx)
+            if ru == rv:
+                left_es.push(e)
+            else if e.to_idx <= mid and comp[ru] != -1 and comp[ru] == comp[rv]:
+                left_es.push(e)
+                to_merge_u.push(ru)
+                to_merge_v.push(rv)
+            else:
+                right_es.push(e)
+        for u in used:
+            adj[u].clear()
+            tin[u] = -1
+            comp[u] = -1
+        solve(l, mid, left_es)
+        let snap = hist_u.len
+        for i in 0..to_merge_u.len:
+            unite(to_merge_u[i], to_merge_v[i])
+        solve(mid + 1, r, right_es)
+        rollback(snap)
+
+    var all_es = List<E>()
+    for e in E:
+        if arcs[e].u == arcs[e].v:
+            ans[e] = Some(e.to_idx)
+        else:
+            all_es.push(e)
+    // Filter to edges whose endpoints are in the same SCC after all m arcs.
+    if all_es.len > 0:
+        for e in all_es:
+            let u = arcs[e].u.to_idx
+            let v = arcs[e].v.to_idx
+            adj[u].push(v)
+        var timer = 0
+        var ccnt = 0
+        for s in 0..n:
+            if tin[s] != -1: continue
+            var dfs_u = [s]
+            var dfs_i = [0]
+            tin[s] = timer
+            low[s] = timer
+            timer += 1
+            on_stk[s] = true
+            tstk.push(s)
+            while dfs_u.len > 0:
+                let top = dfs_u.len - 1
+                let u = dfs_u[top]
+                let idx = dfs_i[top]
+                if idx < adj[u].len:
+                    dfs_i[top] = idx + 1
+                    let v = adj[u][idx]
+                    if tin[v] == -1:
+                        tin[v] = timer
+                        low[v] = timer
+                        timer += 1
+                        on_stk[v] = true
+                        tstk.push(v)
+                        dfs_u.push(v)
+                        dfs_i.push(0)
+                    else if on_stk[v]:
+                        if tin[v] < low[u]: low[u] = tin[v]
+                else:
+                    if low[u] == tin[u]:
+                        while true:
+                            let w = tstk.pop()!
+                            on_stk[w] = false
+                            comp[w] = ccnt
+                            if w == u: break
+                        ccnt += 1
+                    dfs_u.pop()
+                    dfs_i.pop()
+                    if dfs_u.len > 0:
+                        let p = dfs_u[dfs_u.len - 1]
+                        if low[u] < low[p]: low[p] = low[u]
+        var active = List<E>()
+        for e in all_es:
+            if comp[arcs[e].u.to_idx] == comp[arcs[e].v.to_idx]:
+                active.push(e)
+        for u in 0..n:
+            adj[u].clear()
+            tin[u] = -1
+            comp[u] = -1
+            on_stk[u] = false
+        tstk.clear()
+        solve(0, m - 1, active)
+    ans
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The block-cut tree of an undirected simple graph: `B` numbers the blocks as the DFS (roots
@@ -2163,7 +2367,71 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int = todo
 /// order: `links` by block, then the block's vertex order
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; let (domain B, links) = block_cut_tree(g); B.count == 2 and links == [(b: B(0), v: V(1)), (b: B(1), v: V(1))]`
-pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>) = todo
+pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
+    var adj: [V]List<V> = []
+    for u in V:
+        for a in g.out(u):
+            adj[u].push(a.to)
+    var tin: [V]Int = -1
+    var low: [V]Int = 0
+    var is_cut: [V]Bool = false
+    var timer = 0
+    var vstk = List<V>()
+    var raw_blocks = List<List<V>>()
+    for root in V:
+        if tin[root] != -1: continue
+        var root_children = 0
+        tin[root] = timer
+        low[root] = timer
+        timer += 1
+        var stk_u = [root]
+        var stk_i = [0]
+        var stk_p = [root]
+        while stk_u.len > 0:
+            let top = stk_u.len - 1
+            let u = stk_u[top]
+            let idx = stk_i[top]
+            let par = stk_p[top]
+            if idx < adj[u].len:
+                stk_i[top] = idx + 1
+                let v = adj[u][idx]
+                if v == u: continue
+                if tin[v] == -1:
+                    if u == root: root_children += 1
+                    tin[v] = timer
+                    low[v] = timer
+                    timer += 1
+                    vstk.push(v)
+                    stk_u.push(v)
+                    stk_i.push(0)
+                    stk_p.push(u)
+                else if v != par:
+                    if tin[v] < low[u]: low[u] = tin[v]
+            else:
+                stk_u.pop()
+                stk_i.pop()
+                stk_p.pop()
+                if stk_u.len > 0:
+                    let p = stk_u[stk_u.len - 1]
+                    if low[u] < low[p]: low[p] = low[u]
+                    if low[u] >= tin[p]:
+                        if p != root: is_cut[p] = true
+                        var blk = List<V>()
+                        while vstk.len > 0:
+                            let w = vstk.pop()!
+                            blk.push(w)
+                            if w == u: break
+                        blk.push(p)
+                        raw_blocks.push(blk)
+        if root_children >= 2:
+            is_cut[root] = true
+    domain B = 0..raw_blocks.len
+    var links = List<(b: B, v: V)>()
+    for bi in B:
+        for v in raw_blocks[bi.to_idx]:
+            if is_cut[v]:
+                links.push((b: bi, v: v))
+    (B:, links: links)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The biconnected block of every edge: edges, not vertices, are partitioned, so a cut
@@ -2588,7 +2856,34 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
 /// empty: an empty `V` gives total 0 and no edges
 /// traps: when `cheapest` returns a list whose length is not the number of components
 /// example: `domain V = 0..2; let r = boruvka(comp => [Some((u: V(0), v: V(1), w: 5)), Some((u: V(0), v: V(1), w: 5))]); r.total == 5 and r.edges == [(u: 0, v: 1)]`
-pub fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>) = todo
+pub fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>):
+    var total = W.zero
+    var edges = List<(u: V, v: V)>()
+    if V.K <= 1: return (total: total, edges: edges)
+    var dsu = Dsu<V>()
+    var num_comps = V.K
+    while num_comps > 1:
+        var comp_id: [V]Int = -1
+        var comp: [V]Int = 0
+        var next_c = 0
+        for v in V:
+            let r = dsu.find(v)
+            if comp_id[r] < 0:
+                comp_id[r] = next_c
+                next_c += 1
+            comp[v] = comp_id[r]
+        let chosen = cheapest(comp)
+        assert chosen.len == num_comps, "boruvka: cheapest returned wrong length"
+        var merged = false
+        for item in chosen:
+            if let e = item:
+                if dsu.unite(e.u, e.v):
+                    total += e.w
+                    edges.push((u: e.u, v: e.v))
+                    num_comps -= 1
+                    merged = true
+        if not merged: break
+    (total: total, edges: edges)
 
 /// A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with a skew heap):
 /// `parent[v]` is the edge entering `v`, `None` at `root`. `None` if some vertex is
@@ -2599,7 +2894,130 @@ pub fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (tot
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 1), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0)) == Some((total: 2, parent: [None, Some(2), Some(1)]))`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 1, v: 0, w: 1)]; arborescence(es, root: V(0)) == None`
-pub fn arborescence<V, E, W>(edges: [E](u: V, v: V, w: W, ..), root: V) -> ?(total: W, parent: [V]?E) = todo
+pub fn arborescence<V, E, W, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(total: W, parent: [V]?E):
+    let n0 = V.K
+    var cur_n = n0
+    var cur_root = root.to_idx
+    var cur_u = List<Int>()
+    var cur_v = List<Int>()
+    var cur_w = List<W>()
+    var cur_orig = List<E>()
+    for e in E:
+        let r = edges[e]
+        if r.u != r.v and r.v != root:
+            cur_u.push(r.u.to_idx)
+            cur_v.push(r.v.to_idx)
+            cur_w.push(r.w)
+            cur_orig.push(e)
+
+    var total = W.zero
+    var hist_n = List<Int>()
+    var hist_root = List<Int>()
+    var hist_id = List<List<Int>>()
+    var hist_in_idx = List<List<Int>>()
+    var hist_prev_idx = List<List<Int>>()
+    var hist_v_of = List<List<Int>>()
+    var hist_orig_e = List<List<E>>()
+
+    while true:
+        var has_in = [false for _ in 0..cur_n]
+        var in_w = [W.zero for _ in 0..cur_n]
+        var in_u = [-1 for _ in 0..cur_n]
+        var in_idx = [-1 for _ in 0..cur_n]
+        for i in 0..cur_u.len:
+            let v = cur_v[i]
+            if v == cur_root: continue
+            if not has_in[v] or cur_w[i] < in_w[v]:
+                has_in[v] = true
+                in_w[v] = cur_w[i]
+                in_u[v] = cur_u[i]
+                in_idx[v] = i
+        for v in 0..cur_n:
+            if v != cur_root and not has_in[v]:
+                return None
+        for v in 0..cur_n:
+            if v != cur_root:
+                total += in_w[v]
+        var vis = [-1 for _ in 0..cur_n]
+        var id = [-1 for _ in 0..cur_n]
+        var cnt = 0
+        for i in 0..cur_n:
+            var v = i
+            while vis[v] != i and id[v] == -1 and v != cur_root:
+                vis[v] = i
+                v = in_u[v]
+            if v != cur_root and id[v] == -1:
+                var x = in_u[v]
+                while x != v:
+                    id[x] = cnt
+                    x = in_u[x]
+                id[v] = cnt
+                cnt += 1
+        hist_n.push(cur_n)
+        hist_root.push(cur_root)
+        hist_in_idx.push(in_idx)
+        hist_v_of.push(cur_v)
+        hist_orig_e.push(cur_orig)
+        if cnt == 0:
+            hist_id.push([i for i in 0..cur_n])
+            hist_prev_idx.push(List<Int>())
+            break
+        for i in 0..cur_n:
+            if id[i] == -1:
+                id[i] = cnt
+                cnt += 1
+        hist_id.push(id)
+        var nxt_u = List<Int>()
+        var nxt_v = List<Int>()
+        var nxt_w = List<W>()
+        var nxt_orig = List<E>()
+        var prev_idx = List<Int>()
+        for i in 0..cur_u.len:
+            let nu = id[cur_u[i]]
+            let nv = id[cur_v[i]]
+            if nu != nv:
+                nxt_u.push(nu)
+                nxt_v.push(nv)
+                nxt_w.push(cur_w[i] - in_w[cur_v[i]])
+                nxt_orig.push(cur_orig[i])
+                prev_idx.push(i)
+        hist_prev_idx.push(prev_idx)
+        cur_n = cnt
+        cur_root = id[cur_root]
+        cur_u = nxt_u
+        cur_v = nxt_v
+        cur_w = nxt_w
+        cur_orig = nxt_orig
+
+    let rounds = hist_n.len
+    var chosen = List<Int>()
+    let last = rounds - 1
+    for v in 0..hist_n[last]:
+        if v != hist_root[last]:
+            chosen.push(hist_in_idx[last][v])
+    var r = last
+    while r > 0:
+        r -= 1
+        let prev_map = hist_prev_idx[r]
+        let id = hist_id[r]
+        let v_of = hist_v_of[r]
+        let in_idx = hist_in_idx[r]
+        var covered = [false for _ in 0..hist_n[r]]
+        var next_chosen = List<Int>()
+        for ci in chosen:
+            let pe = prev_map[ci]
+            next_chosen.push(pe)
+            covered[v_of[pe]] = true
+        for v in 0..hist_n[r]:
+            if v != hist_root[r] and not covered[v]:
+                next_chosen.push(in_idx[v])
+        chosen = next_chosen
+    var parent: [V]?E = None
+    let orig0 = hist_orig_e[0]
+    for ci in chosen:
+        let e = orig0[ci]
+        parent[edges[e].v] = Some(e)
+    Some((total: total, parent: parent))
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited
@@ -2790,14 +3208,65 @@ impl<V> Functional<V>:
 /// O(log n) amortized per edge: 2-edge-connectivity under edge insertions.
 pub struct IncrementalBridges<V>:
     bridges: Int
+    _par: List<Int>
+    _cc: List<Int>
+    _cc_sz: List<Int>
+    _ecc: List<Int>
+    _vis: List<Int>
+    _iter: Int
 
-impl<V> IncrementalBridges<V>:
+    fn _find_ecc(mut self, x: Int) -> Int:
+        if x == -1: return -1
+        var r = x
+        while _ecc[r] != r:
+            r = _ecc[r]
+        var cur = x
+        while cur != r:
+            let nxt = _ecc[cur]
+            _ecc[cur] = r
+            cur = nxt
+        r
+
+    fn _find_cc(mut self, x: Int) -> Int:
+        var r = self._find_ecc(x)
+        while _cc[r] != r:
+            r = self._find_ecc(_cc[r])
+        var cur = self._find_ecc(x)
+        while cur != r:
+            let nxt = self._find_ecc(_cc[cur])
+            _cc[cur] = r
+            cur = nxt
+        r
+
+    fn _make_root(mut self, x: Int):
+        var cur = x
+        var prev = -1
+        var root = x
+        while cur != -1:
+            let p = self._find_ecc(_par[cur])
+            _par[cur] = prev
+            _cc[cur] = x
+            prev = cur
+            root = cur
+            cur = p
+        _cc_sz[x] = _cc_sz[root]
+
     /// No edges yet: every vertex alone.
     ///
     /// cost: O(n)
     /// traps: never
     /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); not b.same(V(0), V(1))`
-    pub fn new() -> IncrementalBridges<V> = todo
+    pub fn new() -> IncrementalBridges<V>:
+        let n = V.K
+        IncrementalBridges<V>(
+            bridges: 0,
+            _par: [-1 for _ in 0..n],
+            _cc: [i for i in 0..n],
+            _cc_sz: [1 for _ in 0..n],
+            _ecc: [i for i in 0..n],
+            _vis: [0 for _ in 0..n],
+            _iter: 0,
+        )
 
     /// Adds the undirected edge `u - v`. A loop changes nothing; a parallel edge makes its
     /// ends two-edge-connected.
@@ -2805,21 +3274,73 @@ impl<V> IncrementalBridges<V>:
     /// cost: O(log n) amortized
     /// traps: never
     /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(0), V(1)); b.two_edge_same(V(0), V(1))`
-    pub fn add(mut self, u: V, v: V) = todo
+    pub fn add(mut self, u: V, v: V):
+        var a = self._find_ecc(u.to_idx)
+        var b = self._find_ecc(v.to_idx)
+        if a == b: return
+        var ca = self._find_cc(a)
+        var cb = self._find_cc(b)
+        if ca != cb:
+            bridges += 1
+            if _cc_sz[ca] > _cc_sz[cb]:
+                let ta = a
+                a = b
+                b = ta
+                let tca = ca
+                ca = cb
+                cb = tca
+            self._make_root(a)
+            _par[a] = b
+            _cc[a] = cb
+            _cc_sz[cb] += _cc_sz[a]
+        else:
+            _iter += 1
+            var pa = List<Int>()
+            var pb = List<Int>()
+            var x = a
+            var y = b
+            var lca = -1
+            while lca == -1:
+                if x != -1:
+                    x = self._find_ecc(x)
+                    pa.push(x)
+                    if _vis[x] == _iter:
+                        lca = x
+                        break
+                    _vis[x] = _iter
+                    x = _par[x]
+                if y != -1:
+                    y = self._find_ecc(y)
+                    pb.push(y)
+                    if _vis[y] == _iter:
+                        lca = y
+                        break
+                    _vis[y] = _iter
+                    y = _par[y]
+            for node in pa:
+                _ecc[node] = lca
+                if node == lca: break
+                bridges -= 1
+            for node in pb:
+                _ecc[node] = lca
+                if node == lca: break
+                bridges -= 1
 
     /// Are `u` and `v` joined by two edge-disjoint paths? True for `u == v`.
     ///
     /// cost: O(alpha)
     /// traps: never
     /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); let before = b.two_edge_same(V(0), V(2)); b.add(V(2), V(0)); not before and b.two_edge_same(V(0), V(2))`
-    pub fn two_edge_same(mut self, u: V, v: V) -> Bool = todo
+    pub fn two_edge_same(mut self, u: V, v: V) -> Bool =
+        self._find_ecc(u.to_idx) == self._find_ecc(v.to_idx)
 
     /// Are `u` and `v` connected?
     ///
     /// cost: O(alpha)
     /// traps: never
     /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); b.same(V(0), V(2))`
-    pub fn same(mut self, u: V, v: V) -> Bool = todo
+    pub fn same(mut self, u: V, v: V) -> Bool =
+        self._find_cc(u.to_idx) == self._find_cc(v.to_idx)
 
 /// O(1): one edge of a `Graph`: its id and its ends as given.
 pub struct Edge<V, E>(e: E, u: V, v: V)
