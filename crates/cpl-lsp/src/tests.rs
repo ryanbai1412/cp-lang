@@ -1111,6 +1111,14 @@ fn completion_after_a_trailing_dot_lists_fields_getters_and_methods() {
 }
 
 #[test]
+fn dot_completion_after_a_method_call_lists_what_it_returns() {
+    let items = completions("let xs = [3, 1]\nprint(xs.sorted().|)\n");
+    assert!(labels(&items).contains(&"len"), "{items:?}");
+    let items = completions("let xs = [3, 1]\nprint(xs.sorted().sorted().|)\n");
+    assert!(labels(&items).contains(&"len"), "{items:?}");
+}
+
+#[test]
 fn dot_completion_works_on_a_line_that_does_not_parse_yet() {
     // The item ends mid-expression: the checker still types `r`.
     let items = completions(&format!("{ROAD}let r = Road(1, 2)\nlet x = r.|\n"));
