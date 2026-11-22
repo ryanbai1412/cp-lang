@@ -37,3 +37,8 @@ Port 3/5; sent back. It checks with zero errors, and the header and BFS are the 
 
 Port 3 → 4/5, dream 3 → 4/5 (port = dream), rescored cold on current main. Both check with zero errors. The E0603 slice (dream line 23), the hand `-1` parent decoding, the index pairs, the unused `q`, and the output format (line 25) are all fixed.
 - Minor: `[(a, b) for (a, b) in picked.pairs]` (line 28) is an identity comprehension, and `ask_pairs[i.ord]` (line 40) indexes a `List` by an `Ask` position's `.ord`.
+
+
+## Spec change (477b2993)
+
+Scores unchanged. 477b2993 redefines `pairs` in the spec as every `i < j` pair; `adjacent` is the neighbour spelling (decisions.md §16). The compiler still yields neighbours, so the port passes today, but line 28 means neighbours and will silently ask every pair once the stdlib follows the spec. Owed: `picked.pairs` → `picked.adjacent` (checks clean today; the port has no tests to compare). This replaces my earlier advice to keep `.pairs`.
