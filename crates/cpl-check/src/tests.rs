@@ -781,6 +781,22 @@ fn check_with(modules: &[(&'static str, &'static str)], src: &str) -> Vec<Diagno
     db.diagnostics("a.cp")
 }
 
+#[test]
+fn editing_a_file_leaves_the_modules_it_imports_analyzed() {
+    let modules = [("lib.m", "pub fn one() -> Int = 1\n")];
+    let mut db = Database::with_loader(Box::new(Modules(modules.to_vec())));
+    db.set_file("a.cp", "use lib.m.{one}\nprint(one())\n");
+    assert!(db.diagnostics("a.cp").is_empty());
+    let before = db.stats().files_lexed;
+    db.set_file("a.cp", "use lib.m.{one}\nprint(one() + 1)\n");
+    assert!(db.diagnostics("a.cp").is_empty());
+    assert_eq!(db.stats().files_lexed - before, 1);
+
+    db.set_file("lib.m.cp", "pub fn two() -> Int = 2\n");
+    let diags = db.diagnostics("a.cp");
+    assert!(!diags.is_empty(), "an edit to an import reaches its users");
+}
+
 fn messages(diags: &[Diagnostic]) -> Vec<&str> {
     diags.iter().map(|d| d.message.as_str()).collect()
 }

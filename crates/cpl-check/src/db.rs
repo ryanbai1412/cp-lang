@@ -180,6 +180,13 @@ impl Analysis {
         &self.scope.modules
     }
 
+    /// Whether this analysis read `path` through its imports, at any depth.
+    pub fn depends_on(&self, path: &str) -> bool {
+        self.modules()
+            .iter()
+            .any(|m| m.path == path || m.analysis.depends_on(path))
+    }
+
     /// Names brought in directly by `use`, keyed by their local name.
     pub fn imports(&self) -> &HashMap<String, Import> {
         &self.scope.imports
@@ -287,10 +294,14 @@ impl Database {
             Some(file) => {
                 file.text = text;
                 file.loaded = loaded;
-                // Any file may import this one, and re-analyzing an
-                // unchanged file is a walk over memoized items.
+                file.analysis = None;
+                // Only the files that import this one, directly or not, see
+                // the change; keeping the rest spares relexing the stdlib on
+                // every keystroke.
                 for file in self.files.values_mut() {
-                    file.analysis = None;
+                    if file.analysis.as_ref().is_some_and(|a| a.depends_on(path)) {
+                        file.analysis = None;
+                    }
                 }
             }
             None => {
