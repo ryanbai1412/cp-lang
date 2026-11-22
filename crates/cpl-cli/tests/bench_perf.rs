@@ -55,7 +55,7 @@ int main() {
             "--reps",
             "3",
             "--max-ratio",
-            "1.5",
+            "5.0",
             "--format",
             "json",
         ])

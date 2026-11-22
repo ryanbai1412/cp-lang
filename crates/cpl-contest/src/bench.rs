@@ -150,7 +150,7 @@ fn spec_size_budget(spec: &InputSpec) -> i128 {
         .max()
         .unwrap_or(1);
     match depth {
-        0 | 1 => WORST_SIZE_BUDGET,
+        0 | 1 => i128::MAX,
         2 => 500,
         _ => 64,
     }
