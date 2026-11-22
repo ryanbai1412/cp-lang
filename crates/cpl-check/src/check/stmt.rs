@@ -137,20 +137,25 @@ impl<'a> Checker<'a> {
         last
     }
 
+    /// Binds the names a refutable `let ... else` pattern takes apart.
+    fn bind_refutable(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
+        let PatternKind::Tuple(items) = &pat.kind else {
+            return self.bind(pat, ty, mutable, keyword);
+        };
+        for (i, item) in items.iter().enumerate() {
+            let item_ty = match ty {
+                Ty::Tuple(tys) if tys.len() == items.len() => tys[i].clone(),
+                Ty::Record(fields) if fields.len() == items.len() => fields[i].1.clone(),
+                Ty::Error => Ty::Error,
+                _ => Ty::Unknown,
+            };
+            self.bind_refutable(item, &item_ty, mutable, keyword);
+        }
+    }
+
     /// Binds the names in `pat` to parts of a value of type `ty`.
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
-            PatternKind::Tuple(items) if refutable(pat) => {
-                for (i, item) in items.iter().enumerate() {
-                    let item_ty = match ty {
-                        Ty::Tuple(tys) if tys.len() == items.len() => tys[i].clone(),
-                        Ty::Record(fields) if fields.len() == items.len() => fields[i].1.clone(),
-                        Ty::Error => Ty::Error,
-                        _ => Ty::Unknown,
-                    };
-                    self.bind(item, &item_ty, mutable, keyword);
-                }
-            }
             PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Tuple(_) => {
                 let effective_ty;
                 let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
@@ -608,6 +613,9 @@ impl<'a> Checker<'a> {
                             ) =>
                     {
                         self.declare(name, pat.span, ty.clone(), is_mut, keyword);
+                    }
+                    _ if otherwise.is_some() && refutable(pat) => {
+                        self.bind_refutable(pat, &ty, is_mut, keyword)
                     }
                     _ => self.bind(pat, &ty, is_mut, keyword),
                 }
