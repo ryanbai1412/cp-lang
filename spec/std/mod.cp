@@ -467,10 +467,29 @@ fn values_stay_reduced():
     assert "{M(10)}" == "3"
 
 @test
-fn pow_and_inverse() = todo
+fn pow_and_inverse():
+    type M = Mod<998244353>
+    for x in [1, 2, 3, 12345, 998244352]:
+        assert M(x) * M(x).inv() == M.one
+        assert M(x) ** 998244352 == M.one
+        assert M(x) ** (-1) == M(x).inv()
+        var p = M.one
+        for e in 0..20:
+            assert M(x) ** e == p
+            p = p * M(x)
+    // a composite modulus still has inverses for coprime values
+    assert Mod<10>(3).inv() == Mod<10>(7)
 
 @test
-fn mod_values_work_in_generic_structures() = todo
+fn mod_values_work_in_generic_structures():
+    type M = Mod<1000000007>
+    let xs = [M(0), M(1), M(5), M(-3), M(123456789)]
+    assert laws_hold(Monoid<M>.of(+), xs)
+    assert laws_hold(Monoid<M>.of(*), xs)
+    domain V = 0..5
+    var f = Fenwick<V, M>()
+    for v in V: f.add(v, M(10) ** (9 + v.to_idx))
+    assert f.fold(V(0)..=V(4)) == M(1000000000) * M(11111)
 
 @test
 fn choose_matches_pascals_triangle():
@@ -503,7 +522,18 @@ fn try_inv_and_modulus_one():
     assert Mod<1>.zero == Mod<1>.one
 
 @test
-fn a_modulus_read_at_run_time() = todo
+fn a_modulus_read_at_run_time():
+    for p in [2, 12, 1_000_000_007]:
+        type Z = Mod<p>
+        assert Z(p) == Z(0) and Z(-1) + Z(1) == Z(0)
+        assert Z(5) ** 3 == Z(125 % p) and Z(7) ** 0 == Z(1)
+    let q = 1_000_000_007
+    type ZQ = Mod<q>
+    let cq = Comb<ZQ>(10)
+    assert cq.choose(10, 3) == ZQ(120)
+    type Z12 = Mod<12>
+    assert Z12(7) * Z12(7).inv() == Z12(1)
+    assert Z12(1) ** 0 == Z12(1)
 
 @test
 fn inv_is_one_over_i():
