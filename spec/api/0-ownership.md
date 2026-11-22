@@ -25,6 +25,38 @@ R12) say what each may do.
 6. Each call is checked as one access to everything it touches: its
    arguments and whatever the called fn or closure captures.
 
+### Six models
+
+1. **Values, not objects.** No two variables refer to the same list:
+   `let b = a` moves or copies, never aliases. Mutation is always to a
+   name you can see.
+2. **A lend is "I'm looking at it, so it holds still".** Read: many
+   lookers, no writers. `mut`: one looker, who may write.
+3. **Looking lasts until your last glance,** and never past the block it
+   started in.
+4. **A call looks at everything it touches** for its duration: arguments
+   and whatever its fn and closure arguments capture.
+5. **Fns and closures are code, not views.** They look only while running.
+6. **"Holds still" means the answers, not the bytes.** A `@cache` field
+   (§10a) may change how answers are stored, never what they are.
+
+The danger the rules prevent is a reader whose view a write breaks or
+changes underneath it (iterator invalidation, a slice summed while it
+changes, two names for one element). So the question is always: does
+anyone hold a live view this write would break?
+
+### Proved, promised, unsafe
+
+| Tier | Examples | Guaranteed by |
+|---|---|---|
+| Proved | moves, lends, R1 to R12 | the compiler |
+| Promised | `@cache`, `@law`, preconditions such as sortedness | the author; greppable; checked in debug builds where cheap |
+| Unsafe | inline C++ | nobody |
+
+A broken promise gives wrong answers, never undefined behaviour: codegen
+never optimizes on a promise (no `__restrict` from a `disjoint` law), and
+a `@cache` field can't be lent out, so no view of it can dangle.
+
 ### The picture
 
 Every live lent value points at the variables it borrows. A variable with

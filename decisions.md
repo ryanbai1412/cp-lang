@@ -4351,4 +4351,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   tag pushes) otherwise force `var` and block calls during walks. 19.10
   gave `Comb` interior mutability as a stdlib privilege; this makes it a
   general power. Sound because no outside lend can point into the field.
+- **Rule.** `@cache` and `@law` are promises, not `unsafe`: a broken one
+  gives wrong answers, never undefined behaviour, so codegen never
+  optimizes on a promise (no `__restrict` from a `disjoint` law).
 - **Reverse.** Drop `@cache`; `find` returns to `mut self`.
