@@ -49,13 +49,21 @@ def std_traits():
     return traits
 
 
+PUB_TYPE = re.compile(r"pub (?:struct|enum|type) (\w+)")
+
+
 def std_claims():
+    """(type, trait) for every impl in spec/std on a public type; test-only types are skipped."""
+    texts = [f.read_text() for f in sorted(STD.glob("*.cp"))]
+    public = {m.group(1) for t in texts for m in PUB_TYPE.finditer(t)}
     claims = set()
-    for f in sorted(STD.glob("*.cp")):
-        for line in f.read_text().split("\n"):
+    for t in texts:
+        for line in t.split("\n"):
             m = IMPL.match(line)
             if m:
-                claims.add((re.sub(r"<.*", "", m.group(2)).strip(), m.group(1)))
+                ty = re.sub(r"<.*", "", m.group(2)).strip()
+                if ty in public:
+                    claims.add((ty, m.group(1)))
     return claims
 
 

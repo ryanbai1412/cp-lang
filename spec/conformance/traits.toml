@@ -337,3 +337,338 @@ use std.math.{BigInt}
 print(BigInt.from_str("-000123"))
 """
 out = "-123"
+
+[case."BitOr/Subset/bitor"]
+code = """
+use std.subset.{Subset}
+domain B = 0..4
+let a = Subset<B>.single(B(0)) | Subset<B>.single(B(2))
+print(a.len, yes(B(2) in a))
+"""
+out = "2 YES"
+
+[case."BitAnd/Subset/bitand"]
+code = """
+use std.subset.{Subset}
+domain B = 0..4
+let a = Subset<B>.full & Subset<B>.single(B(1))
+print(a.len, yes(B(1) in a))
+"""
+out = "1 YES"
+
+[case."BitXor/Subset/bitxor"]
+code = """
+use std.subset.{Subset}
+domain B = 0..4
+let a = Subset<B>.full ^ Subset<B>.single(B(1))
+print(a.len, yes(B(1) in a))
+"""
+out = "3 NO"
+
+[case."Sub/Subset/sub"]
+code = """
+use std.subset.{Subset}
+domain B = 0..4
+let a = Subset<B>.full - Subset<B>.single(B(3))
+print(a.len, yes(B(3) in a))
+"""
+out = "3 NO"
+
+[case."Sub/Bitset/sub"]
+code = """
+use std.bitset.{Bitset}
+domain D = 0..10
+let b = Bitset<D>.of([D(1), D(3), D(5)]) - Bitset<D>.single(D(3))
+print(b.len, yes(b.contains(D(3))))
+"""
+out = "2 NO"
+
+[case."Show/Bitset/show"]
+code = """
+use std.bitset.{Bitset}
+domain D = 0..10
+print(Bitset<D>.of([D(5), D(1), D(3)]))
+"""
+out = "1 3 5"
+
+[case."Ord/ByAngle/lt"]
+code = """
+use std.geometry.{Pt, arg}
+print(yes(arg(Pt(1, 0)) < arg(Pt(0, 1))), yes(arg(Pt(0, -1)) < arg(Pt(-1, 0))))
+"""
+out = "YES NO"
+
+[case."Ord/ByAngleFrom/lt"]
+code = """
+use std.geometry.{Pt, ByAngleFrom}
+let (l, r) = (ByAngleFrom(Pt(0, 1), Pt(-1, 0)), ByAngleFrom(Pt(0, 1), Pt(1, 0)))
+print(yes(l < r), yes(r < l))
+"""
+out = "YES NO"
+
+[case."Add/MaxSub/add"]
+code = """
+use std.algebra.{MaxSub}
+print((MaxSub.of(2) + MaxSub.of(-5) + MaxSub.of(3) + MaxSub.of(1)).try_best!)
+"""
+out = "4"
+
+[case."Mul/MaxSub/mul"]
+code = """
+use std.algebra.{MaxSub}
+print((MaxSub.of(-3) * 2).try_best!, (MaxSub.of(-3) * 0).try_best!)
+"""
+out = "-6 0"
+
+[case."Reversible/MaxSub/rev"]
+code = """
+use std.algebra.{MaxSub}
+let a = MaxSub.of(3) + MaxSub.of(-5)
+print((a + MaxSub.of(4)).try_best!, (a.rev() + MaxSub.of(4)).try_best!)
+"""
+out = "4 7"
+
+[case."Add/Mat/add"]
+code = """
+use std.matrix.{Mat}
+let a = Mat<Int>.from_rows([[1, 2], [3, 4]])
+let s = a + a
+print(s.get(0, 1), s.get(1, 0))
+"""
+out = "4 6"
+
+[case."Sub/Mat/sub"]
+code = """
+use std.matrix.{Mat}
+let a = Mat<Int>.from_rows([[1, 2], [3, 4]])
+let s = a - Mat<Int>.identity(2)
+print(s.get(0, 0), s.get(1, 1), s.get(0, 1))
+"""
+out = "0 3 2"
+
+[case."Mul/Mat/mul"]
+code = """
+use std.matrix.{Mat}
+let a = Mat<Int>.from_rows([[1, 2], [3, 4]])
+let s = a * a
+print(s.get(0, 0), s.get(0, 1), s.get(1, 0), s.get(1, 1))
+"""
+out = "7 10 15 22"
+
+[case."Pow/Mat/pow"]
+code = """
+use std.matrix.{Mat}
+let a = Mat<Int>.from_rows([[1, 2], [3, 4]])
+let s = a ** 3
+let i = a ** 0
+print(s.get(0, 0), s.get(1, 1), i.get(0, 0), i.get(0, 1))
+"""
+out = "37 118 1 0"
+
+[case."Add/Poly/add"]
+code = """
+use std.poly.{Poly}
+let p = Poly<Int>([1, 2]) + Poly<Int>([3, 0, 5])
+print(p.at(0), p.at(1), p.at(2))
+"""
+out = "4 2 5"
+
+[case."Sub/Poly/sub"]
+code = """
+use std.poly.{Poly}
+let p = Poly<Int>([1, 2]) - Poly<Int>([3, 0, 5])
+print(p.at(0), p.at(1), p.at(2))
+"""
+out = "-2 2 -5"
+
+[case."Neg/Poly/neg"]
+code = """
+use std.poly.{Poly}
+let p = -Poly<Int>([1, -2])
+print(p.at(0), p.at(1))
+"""
+out = "-1 2"
+
+[case."Mul/Poly/mul"]
+code = """
+use std.poly.{Poly}
+let p = Poly<Int>([1, 1]) * Poly<Int>([1, 1])
+print(p.at(0), p.at(1), p.at(2))
+"""
+out = "1 2 1"
+
+[case."Div/Poly/div"]
+code = """
+use std.poly.{Poly}
+let p = Poly<Int>([1, 2, 1]) / Poly<Int>([1, 1])
+print(p.at(0), p.at(1))
+"""
+out = "1 1"
+
+[case."Undo/DsuOf/mark"]
+code = """
+use std.dsu.{DsuOf}
+domain V = 0..3
+var d = DsuOf<V, Int>(init: v => Int(v) + 1, join: (x, y) => x + y)
+d.unite(V(0), V(1))
+let m = d.mark()
+d.unite(V(1), V(2))
+d.undo_to(m)
+print(yes(d.same(V(0), V(1))), yes(d.same(V(1), V(2))))
+"""
+out = "YES NO"
+
+[case."Undo/DsuOf/undo_to"]
+code = """
+use std.dsu.{DsuOf}
+domain V = 0..3
+var d = DsuOf<V, Int>(init: v => Int(v) + 1, join: (x, y) => x + y)
+let m = d.mark()
+d.unite(V(0), V(2))
+d.undo_to(m)
+d.unite(V(1), V(2))
+print(yes(d.same(V(0), V(2))), yes(d.same(V(1), V(2))))
+"""
+out = "NO YES"
+
+[case."Undo/ParityDsu/mark"]
+code = """
+use std.dsu.{ParityDsu}
+domain V = 0..3
+var d = ParityDsu<V>()
+d.unite(V(0), V(1))
+let m = d.mark()
+d.unite(V(1), V(2))
+d.undo_to(m)
+print(yes(d.same(V(0), V(1))), yes(d.same(V(1), V(2))))
+"""
+out = "YES NO"
+
+[case."Undo/ParityDsu/undo_to"]
+code = """
+use std.dsu.{ParityDsu}
+domain V = 0..3
+var d = ParityDsu<V>()
+let m = d.mark()
+d.unite(V(0), V(2))
+d.undo_to(m)
+d.unite(V(1), V(2))
+print(yes(d.same(V(0), V(2))), yes(d.same(V(1), V(2))))
+"""
+out = "NO YES"
+
+[case."Undo/PotentialDsu/mark"]
+code = """
+use std.dsu.{PotentialDsu}
+domain V = 0..3
+var d = PotentialDsu<V>()
+d.unite(V(0), V(1), 5)
+let m = d.mark()
+d.unite(V(1), V(2), 5)
+d.undo_to(m)
+print(yes(d.same(V(0), V(1))), yes(d.same(V(1), V(2))))
+"""
+out = "YES NO"
+
+[case."Undo/PotentialDsu/undo_to"]
+code = """
+use std.dsu.{PotentialDsu}
+domain V = 0..3
+var d = PotentialDsu<V>()
+let m = d.mark()
+d.unite(V(0), V(2), 5)
+d.undo_to(m)
+d.unite(V(1), V(2), 5)
+print(yes(d.same(V(0), V(2))), yes(d.same(V(1), V(2))))
+"""
+out = "NO YES"
+
+[case."Add/Vec/add"]
+code = """
+use std.geometry.{Vec}
+let (a, b) = (Vec(1.0, 2.0), Vec(3.0, 4.0))
+let v = a + b
+print(yes(v.x == 4.0 and v.y == 6.0))
+"""
+out = "YES"
+
+[case."Sub/Vec/sub"]
+code = """
+use std.geometry.{Vec}
+let (a, b) = (Vec(1.0, 2.0), Vec(3.0, 4.0))
+let v = a - b
+print(yes(v.x == -2.0 and v.y == -2.0))
+"""
+out = "YES"
+
+[case."Neg/Vec/neg"]
+code = """
+use std.geometry.{Vec}
+let (a, b) = (Vec(1.0, 2.0), Vec(3.0, 4.0))
+let v = -a
+print(yes(v.x == -1.0 and v.y == -2.0))
+"""
+out = "YES"
+
+[case."Mul/Vec/mul"]
+code = """
+use std.geometry.{Vec}
+let (a, b) = (Vec(1.0, 2.0), Vec(3.0, 4.0))
+let v = a * 2.0
+print(yes(v.x == 2.0 and v.y == 4.0))
+"""
+out = "YES"
+
+[case."Div/Vec/div"]
+code = """
+use std.geometry.{Vec}
+let (a, b) = (Vec(1.0, 2.0), Vec(3.0, 4.0))
+let v = a / 2.0
+print(yes(v.x == 0.5 and v.y == 1.0))
+"""
+out = "YES"
+
+[case."Add/Vec3/add"]
+code = """
+use std.geometry.{Vec3}
+let (a, b) = (Vec3(1.0, 2.0, 3.0), Vec3(3.0, 4.0, 5.0))
+let v = a + b
+print(yes(v.x == 4.0 and v.y == 6.0 and v.z == 8.0))
+"""
+out = "YES"
+
+[case."Sub/Vec3/sub"]
+code = """
+use std.geometry.{Vec3}
+let (a, b) = (Vec3(1.0, 2.0, 3.0), Vec3(3.0, 4.0, 5.0))
+let v = a - b
+print(yes(v.x == -2.0 and v.y == -2.0 and v.z == -2.0))
+"""
+out = "YES"
+
+[case."Neg/Vec3/neg"]
+code = """
+use std.geometry.{Vec3}
+let (a, b) = (Vec3(1.0, 2.0, 3.0), Vec3(3.0, 4.0, 5.0))
+let v = -a
+print(yes(v.x == -1.0 and v.y == -2.0 and v.z == -3.0))
+"""
+out = "YES"
+
+[case."Mul/Vec3/mul"]
+code = """
+use std.geometry.{Vec3}
+let (a, b) = (Vec3(1.0, 2.0, 3.0), Vec3(3.0, 4.0, 5.0))
+let v = a * 2.0
+print(yes(v.x == 2.0 and v.y == 4.0 and v.z == 6.0))
+"""
+out = "YES"
+
+[case."Div/Vec3/div"]
+code = """
+use std.geometry.{Vec3}
+let (a, b) = (Vec3(1.0, 2.0, 3.0), Vec3(3.0, 4.0, 5.0))
+let v = a / 2.0
+print(yes(v.x == 0.5 and v.y == 1.0 and v.z == 1.5))
+"""
+out = "YES"
