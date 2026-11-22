@@ -1,7 +1,7 @@
 # ucup4s25c
 
-Score: 3/5
-Dream: 3/5
+Score: pending cold rescore (adopted std.marks.Interner<(Int, Int)>, bounded (a,b,c) to 1..=10**9, stated distinctness of triples, used rep[comp[u]] ??= u for first SCC vertex)
+Dream: pending cold rescore (std.marks.Interner, bounded triples, stated distinctness, first-vertex rep)
 
 Baseline review, cold, on main 53a08f6f (port = dream). Both files check with zero errors. SCC plus per-component BFS mod 3 is the right structure, and the header (lines 3-9) states the test. Lines 15-18 hand-write an interner where `std.marks.Interner<(Int, Int)>` exists (I probed `id`/`len`).
 
