@@ -1099,9 +1099,9 @@ fn opt_compare_hints_some_array_literal() {
     let src = "\
 domain X = 0..2
 let a: ?[X]Bool = Some([false, true])
-print(yes(a == Some([false, true])))
+print(if a == Some([false, true]): 1 else: 0)
 ";
     let (out, trap) = outcome(src, "");
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
-    assert_eq!(out, "YES\n");
+    assert_eq!(out, "1\n");
 }
