@@ -160,15 +160,16 @@ function live(group: string, items: { id: string; title: string; caption: string
   );
 }
 
-export const heroPrograms = () => live('hero', hero);
-// Programs the compiler runs lead, so the first tab a visitor sees has a Run button.
-export const libraryPrograms = async () => {
-  const all = await live('lib', lib);
+// Programs the compiler runs lead, so the first tab a visitor sees runs.
+const runsFirst = async <T extends { status: Status }>(items: Promise<T[]>) => {
+  const all = await items;
   return [...all.filter((p) => p.status === 'runs'), ...all.filter((p) => p.status !== 'runs')];
 };
 
-export const syntaxShowcases = () => load('syntax', syntax, false);
-export const libraryShowcases = () => load('library', library, true);
+export const heroPrograms = () => live('hero', hero);
+export const libraryPrograms = () => runsFirst(live('lib', lib));
+export const syntaxShowcases = () => runsFirst(load('syntax', syntax, false));
+export const libraryShowcases = () => runsFirst(load('library', library, true));
 
 export function debugDemo() {
   const read = (f: string) => readFileSync(join(dir, 'debug', f), 'utf8');
