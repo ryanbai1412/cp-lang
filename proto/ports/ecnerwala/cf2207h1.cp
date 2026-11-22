@@ -21,8 +21,8 @@ var nodes = [Node(i, i + 1, none) for i in 0..n]
 
 fn ask() -> Int:
     print("?", [v + 1 for v in x])
-    let shown = read::<Int>() - 1
-    first(i for i in 0..n if x[i] == shown)!
+    let shown = read<Int>() - 1
+    (0..n).first(i => x[i] == shown)!
 
 fn join(a: Int, b: Int, is_max: Bool) -> Int:
     nodes.push(Node(nodes[a].lo, nodes[b].hi, some((is_max, a, b))))
@@ -39,8 +39,8 @@ fn solve(l: Int, r: Int, is_max: Bool, known: ?Int = none) -> List<Int>:
     x[m..r].reverse()
     right.reverse()
     var mid = m
-    while not left.is_empty and not right.is_empty:
-        let outer = nodes[left.last!].lo..nodes[right.last!].hi
+    while let a = left.last and let b = right.last:
+        let outer = nodes[a].lo..nodes[b].hi
         x[outer].reverse()
         let moved_left = ask() < nodes[mid].lo
         x[outer].reverse()
@@ -66,5 +66,5 @@ print("!")
 while true:
     let first_v: Int = read()
     if first_v == 0: break
-    let vals = [first_v] + [read::<Int>() for _ in 1..n]
+    let vals = [first_v] + [read<Int>() for _ in 1..n]
     print(eval(vals, root))
