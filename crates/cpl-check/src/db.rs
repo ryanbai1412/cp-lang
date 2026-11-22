@@ -2102,37 +2102,6 @@ fn declare_with_var(
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct MapLoader(Vec<(String, String, String)>);
-
-    impl Loader for MapLoader {
-        fn load(&self, _from: &str, module: &[String]) -> Option<(String, String)> {
-            let key = module.join(".");
-            self.0
-                .iter()
-                .find(|(k, _, _)| k == &key)
-                .map(|(_, path, text)| (path.clone(), text.clone()))
-        }
-    }
-
-    #[test]
-    fn imported_module_still_checks_when_analyzed_directly() {
-        let mut db = Database::with_loader(Box::new(MapLoader(vec![(
-            "lib.bad".into(),
-            "lib/bad.cp".into(),
-            "pub fn f() -> Int:\n    let x: Int = \"oops\"\n    x\n".into(),
-        )])));
-        db.set_file("main.cp", "use lib.bad.{f}\nprint(f())\n");
-        let main = db.analyze("main.cp").unwrap();
-        assert!(main.diagnostics.is_empty(), "{:?}", main.diagnostics);
-        let direct = db.analyze("lib/bad.cp").unwrap();
-        assert!(!direct.diagnostics.is_empty());
-    }
-}
-
 /// What makes the top-level `let` at `index` walkable once: a lazy chain
 /// (L0602) or a call of one of the file's generators with a `mut` argument
 /// (L0604).
@@ -2291,4 +2260,35 @@ fn wide_array(
     let lo = *values.iter().min()?;
     let hi = *values.iter().max()?;
     (i64::try_from(lo).is_ok() && (hi - lo) < (1 << 31)).then(|| (name.clone(), ty.span, lo, hi))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MapLoader(Vec<(String, String, String)>);
+
+    impl Loader for MapLoader {
+        fn load(&self, _from: &str, module: &[String]) -> Option<(String, String)> {
+            let key = module.join(".");
+            self.0
+                .iter()
+                .find(|(k, _, _)| k == &key)
+                .map(|(_, path, text)| (path.clone(), text.clone()))
+        }
+    }
+
+    #[test]
+    fn imported_module_still_checks_when_analyzed_directly() {
+        let mut db = Database::with_loader(Box::new(MapLoader(vec![(
+            "lib.bad".into(),
+            "lib/bad.cp".into(),
+            "pub fn f() -> Int:\n    let x: Int = \"oops\"\n    x\n".into(),
+        )])));
+        db.set_file("main.cp", "use lib.bad.{f}\nprint(f())\n");
+        let main = db.analyze("main.cp").unwrap();
+        assert!(main.diagnostics.is_empty(), "{:?}", main.diagnostics);
+        let direct = db.analyze("lib/bad.cp").unwrap();
+        assert!(!direct.diagnostics.is_empty());
+    }
 }

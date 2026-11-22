@@ -142,10 +142,6 @@ impl<'a> Checker<'a> {
                     } else {
                         self.comparable(*op, tests_none, &left, left_expr, &right, right_expr);
                     }
-                    if matches!(
-                        op,
-                        ast::CmpOp::Lt | ast::CmpOp::Le | ast::CmpOp::Gt | ast::CmpOp::Ge
-                    ) {}
                     left = right;
                     left_expr = right_expr;
                 }
