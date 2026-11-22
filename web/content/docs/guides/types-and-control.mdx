@@ -70,7 +70,7 @@ fn next_value() -> ?Int:
     let x = opt!                    // unwrap (traps on none; elided when flow-proven)
     let y = maybe()?                // early-returns none from a fn returning ?U
     u + x + y
-print(next_value())
+print(next_value() ?? -1)
 ```
 
 ### Lifting rules and guardrails

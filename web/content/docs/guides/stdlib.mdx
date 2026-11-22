@@ -82,7 +82,7 @@ items.sort(by: x => (x.cost, desc(x.value)))
 ```cp
 let xs = [1, 2]
 var q = Deque.of(xs)
-print(q.pop_front(), q.pop_front()) // 1 2
+print(q.pop_front()!, q.pop_front()!) // 1 2
 print(xs.resized(4, 0))             // 1 2 0 0
 print(resized(xs, 1, 0), xs)        // 1, then the unchanged 1 2
 ```

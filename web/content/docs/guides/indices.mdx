@@ -56,7 +56,7 @@ Array endpoints are **values**, not domain indices: `a.first` and `a.last` retur
 domain V = 5..8
 let a: [V]Int = [V] v => 10 + v.to_idx
 let endpoints: (?Int, ?Int) = (a.first, a.last)
-print(V.first, V.last, endpoints.0, endpoints.1) // 5 7 10 12
+print(V.first, V.last, endpoints.0!, endpoints.1!) // 5 7 10 12
 domain Empty = 0..0
 let empty: [Empty]Int = 0
 print(empty.first ?? -1, empty.last ?? -1) // -1 -1
