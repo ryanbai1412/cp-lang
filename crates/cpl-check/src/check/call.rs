@@ -500,8 +500,9 @@ impl<'a> Checker<'a> {
     /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
     /// `var`, a `mut` parameter, or the `mut self` of the calling method.
     /// Without this the call works on a copy and the change is lost.
-    /// `p.swap()` on a type that declares its own non-`mut` `swap` calls
-    /// that method, not the built-in mutator of the same name (R05.4.1).
+    /// `p.swap()` on a type with its own non-`mut` `swap`, or `s.add(x, y)`
+    /// on an operation-value field `add`, is not the built-in mutator of
+    /// that name (R05.4.1).
     fn own_non_mutator(&mut self, callee: &Expr) -> bool {
         let ExprKind::Field { base, name } = &callee.kind else {
             return false;
@@ -513,7 +514,9 @@ impl<'a> Checker<'a> {
             return false;
         };
         self.members_of(&type_name).is_some_and(|m| {
-            m.members.iter().any(|(n, _)| *n == name.text) && !m.mutators.contains(&name.text)
+            m.fields.iter().any(|f| f.name == name.text)
+                || m.members.iter().any(|(n, _)| *n == name.text)
+                    && !m.mutators.contains(&name.text)
         })
     }
 

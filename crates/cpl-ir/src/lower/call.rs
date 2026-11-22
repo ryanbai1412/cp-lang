@@ -33,6 +33,47 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `op(a, b)` for an operation value `op` (`min`, `+`): the operation
+    /// itself, on `a` and `b`.
+    fn bare_op_call(
+        &mut self,
+        op: BareOp,
+        op_span: Span,
+        args: &[ast::Arg],
+        span: Span,
+        hint: Option<&Ty>,
+    ) -> Option<Expr> {
+        if args.len() != 2 || args.iter().any(|a| a.name.is_some() || a.mutable) {
+            return None;
+        }
+        let (lhs, rhs) = (args[0].value.clone(), args[1].value.clone());
+        let bin = |op| ast::ExprKind::Binary {
+            op,
+            op_span,
+            lhs: Box::new(lhs.clone()),
+            rhs: Box::new(rhs.clone()),
+        };
+        let named = |f: &str| ast::ExprKind::Call {
+            callee: Box::new(ast::Expr {
+                kind: ast::ExprKind::Name(f.into()),
+                span: op_span,
+            }),
+            args: args.to_vec(),
+        };
+        let kind = match op {
+            BareOp::Add => bin(ast::BinOp::Add),
+            BareOp::Mul => bin(ast::BinOp::Mul),
+            BareOp::BitXor => bin(ast::BinOp::BitXor),
+            BareOp::BitOr => bin(ast::BinOp::BitOr),
+            BareOp::BitAnd => bin(ast::BinOp::BitAnd),
+            BareOp::Max => named("max"),
+            BareOp::Min => named("min"),
+            BareOp::Gcd => named("gcd"),
+        };
+        let e = ast::Expr { kind, span };
+        Some(self.expr(&e, hint))
+    }
+
     fn call_fn_val(&mut self, callee: Expr, args: &[ast::Arg], span: Span) -> Expr {
         let Ty::Fn(param_tys, ret_ty) = callee.ty.clone() else {
             if callee.ty != Ty::Error {
@@ -118,33 +159,8 @@ impl<'a> Lowerer<'a> {
                     return self.call_local_gen_fn(&decl, args, span);
                 }
                 if let Some(&op) = self.cx.op_locals.get(name) {
-                    if args.len() == 2 && args.iter().all(|a| a.name.is_none() && !a.mutable) {
-                        let (lhs, rhs) = (args[0].value.clone(), args[1].value.clone());
-                        let bin = |op| ast::ExprKind::Binary {
-                            op,
-                            op_span: callee.span,
-                            lhs: Box::new(lhs.clone()),
-                            rhs: Box::new(rhs.clone()),
-                        };
-                        let named = |f: &str| ast::ExprKind::Call {
-                            callee: Box::new(ast::Expr {
-                                kind: ast::ExprKind::Name(f.into()),
-                                span: callee.span,
-                            }),
-                            args: args.to_vec(),
-                        };
-                        let kind = match op {
-                            BareOp::Add => bin(ast::BinOp::Add),
-                            BareOp::Mul => bin(ast::BinOp::Mul),
-                            BareOp::BitXor => bin(ast::BinOp::BitXor),
-                            BareOp::BitOr => bin(ast::BinOp::BitOr),
-                            BareOp::BitAnd => bin(ast::BinOp::BitAnd),
-                            BareOp::Max => named("max"),
-                            BareOp::Min => named("min"),
-                            BareOp::Gcd => named("gcd"),
-                        };
-                        let e = ast::Expr { kind, span };
-                        return self.expr(&e, hint);
+                    if let Some(e) = self.bare_op_call(op, callee.span, args, span, hint) {
+                        return e;
                     }
                 }
                 // Local variable, receiver field, or captured fn value?
@@ -7956,6 +7972,15 @@ impl<'a> Lowerer<'a> {
         // Check `lends` projection read before lowering `base` as a plain value.
         if let Some(proj) = self.find_projection_on(base, &name.text) {
             return self.lower_projection_read(proj, base, args, span);
+        }
+        let field = ast::ExprKind::Field {
+            base: Box::new(base.clone()),
+            name: name.clone(),
+        };
+        if let Some(op) = self.detect_bare_op(&ast::Expr { kind: field, span }) {
+            if let Some(e) = self.bare_op_call(op, name.span, args, span, hint) {
+                return e;
+            }
         }
         let value = self.expr(base, None);
         let ty = value.ty.clone();
