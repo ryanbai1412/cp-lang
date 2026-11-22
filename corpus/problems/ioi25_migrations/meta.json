@@ -5,7 +5,8 @@
  "cpp_ac": 0,
  "artifacts": {
   "dream": [
-   "corpus/gold/ioi25_migrations.cp"
+   "corpus/gold/ioi25_migrations.cp",
+   "corpus/problems/ioi25_migrations/dream.cp"
   ]
  },
  "tags": [],

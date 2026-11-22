@@ -10,8 +10,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PORTS_ROOT = ROOT / "proto" / "ports"
-IOI_DIR = ROOT / "design" / "sketches" / "ioi2025"
+PORTS_ROOT = ROOT / "corpus" / "problems"
 
 TOKEN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|[0-9]+|[^\s]")
 
@@ -73,15 +72,15 @@ def load_dream_pairs(root: Path = ROOT) -> list[dict]:
 
 
 def load_ioi_sketches(root: Path = ROOT) -> list[dict]:
-    ioi_dir = root / "design" / "sketches" / "ioi2025"
+    probs_dir = root / "corpus" / "problems"
     out: list[dict] = []
-    if not ioi_dir.is_dir():
+    if not probs_dir.is_dir():
         return out
-    for p in sorted(ioi_dir.glob("*.cp")):
+    for p in sorted(probs_dir.glob("ioi25_*/dream.cp")):
         src = p.read_text(encoding="utf-8").rstrip()
         out.append(
             {
-                "id": p.stem,
+                "id": p.parent.name.removeprefix("ioi25_"),
                 "path": str(p.relative_to(root)),
                 "src": src,
                 "tokens": _count_tokens(src),
@@ -106,7 +105,7 @@ def render_exemplars_html(highlight_fn, root: Path = ROOT) -> tuple[str, list[tu
         '<p class="lead">Generated from the dream corpus, each dream paired with its validated port, '
         'and from the IOI 2025 sketches. '
         'Each dream shows how the solution should read at the bar of '
-        '<code>design/EXEMPLARS-PORTS.md</code>; the port beside it is what runs and passes '
+        '<code>spec/</code> and <code>corpus/problems/</code>; the port beside it is what runs and passes '
         'today (sorted closest-to-dream first).</p>',
         '<div class="gallery-stats">'
         f'<span><strong>{len(pairs)}</strong> dream/port pairs</span>'
@@ -162,7 +161,7 @@ def render_exemplars_html(highlight_fn, root: Path = ROOT) -> tuple[str, list[tu
 
     parts.append(f'<h2 id="ioi-2025">IOI 2025 gold-standard sketches ({len(ioi)} problems)</h2>')
     parts.append(
-        '<p>Design-target sketches from <code>design/sketches/ioi2025/</code> showing how '
+        '<p>Design-target sketches from <code>corpus/problems/ioi25_*/dream.cp</code> showing how '
         'editorial-first CP Lang reads on Olympiad problems.</p>'
     )
     for sk in ioi:

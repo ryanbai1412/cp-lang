@@ -5,7 +5,8 @@
  "cpp_ac": 0,
  "artifacts": {
   "dream": [
-   "corpus/gold/ioi25_worldmap.cp"
+   "corpus/gold/ioi25_worldmap.cp",
+   "corpus/problems/ioi25_worldmap/dream.cp"
   ]
  },
  "tags": [],

@@ -20,7 +20,7 @@ core traits.
   its next steps.
 - [Decisions](decisions.md) and [retros](research/retros/): design calls with
   their reasons, and why the way we work changed.
-- [Target design](design/README.md): the spec and the goals it answers to.
+- [Normative spec](spec/README.md): the v0.3 language, library, tools, and conformance spec.
 - Working on the code? Start with [AGENTS.md](AGENTS.md), then
   [REPO.md](REPO.md) for the layout.
 
@@ -134,7 +134,7 @@ port:
 
 ```text
 $ target/debug/cpl test stdlib examples/local-lib
-$ target/debug/cpl build proto/ports/aac4p2.cp -o -          # the C++17 for one port
+$ target/debug/cpl build corpus/problems/aac4p2/port.cp -o - # the C++17 for one port
 ```
 
 Install the VS Code extension (highlighting, snippets and the `cpl lsp`
@@ -167,23 +167,23 @@ the sample library. `crates/cpl-cli/tests/corpus.rs` checks the corpus
 ports and the prototype's tests; the files it does not pass yet are listed
 there as `PENDING` or `NOT_BUILT`, and
 [`research/friction-queue.md`](research/friction-queue.md) says what each
-one waits on. The Python prototype (`proto/`) is frozen: new syntax lands
-in the Rust compiler. The example above runs in the interpreter and as
+one waits on. The example above runs in the interpreter and as
 emitted C++.
 The docs site labels every snippet as either runnable or specification.
 
 ## Repository map
 
-- `docs/one-page-cheat-sheet.md`: the 0.2.2 language on one page.
+- `spec/`: the normative 0.3 language, library, tools, and conformance spec.
 - `decisions.md`: every language decision, its status and its reason.
-- `plan/`: what we're building. Start with `plan/agent-context.md`, then
-  `plan/README.md` and `plan/00-vision.md`.
-- `research/`: the evidence behind the decisions (corpus mining, audits
-  and C++ benchmarks).
+- `plan/`: operating rules (`plan/OPERATING.md`), areas (`plan/DOMAINS.md`),
+  architecture (`plan/ARCHITECTURE.md`), and Ryan's notes (`plan/agent-context.md`).
+- `research/`: the evidence behind the decisions (corpus mining, audits,
+  design history, and C++ benchmarks).
 - `Cargo.toml`, `crates/`: the Rust compiler and tools.
   `crates/README.md` says which crate owns what.
-- `proto/`: the corpus ports (`proto/ports/`) and the frozen Python
-  prototype compiler they were first written against.
+- `corpus/`: canonical problem ports (`corpus/problems/<id>/port.cp`, `dream.cp`,
+  `meta.json`), shared libraries (`corpus/lib/`), and raw accepted submissions
+  (`corpus/submissions/`).
 - `research/friction-queue.md`: every open friction item from the ports,
   clustered, with the next syntax batches.
 - `stdlib/`: the standard library, written in CP Lang, with its tests.
@@ -192,11 +192,9 @@ The docs site labels every snippet as either runnable or specification.
 - `editors/vscode/`: the VS Code extension.
 - `site/`: the interactive course, reference and offline playground. See
   [the site README](site/README.md).
-- `bench/`, `tools/bench/`: the corpus registry and the harness that
-  measures every port against its original.
-- `corpus/`: Ryan's accepted submissions, used for ports,
-  benchmarks and design mining.
-- `archive/`: superseded design docs.
+- `bench/`: the corpus performance harness and results.
+- `mise.toml`, `justfile`, `pyproject.toml`, `pnpm-workspace.yaml`: unified
+  toolchain pins and task runner (`mise install && just check`).
 
 ## Contributing
 

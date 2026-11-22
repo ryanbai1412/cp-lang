@@ -34,15 +34,15 @@ ENV_PREFIXES = ("RUSTFLAGS", "RUSTDOCFLAGS", "CARGO_", "CPL_", "CHECK_", "CXX", 
 # (open/stat/exec of every path, followed into child processes): the stage
 # opened none of the excluded paths. Re-run that before adding one; grep is
 # not enough (the tests open design/spec/ through cpl-syntax's planned.rs).
-_PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "research/*", "archive/*"]
+_PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "research/*"]
 _TESTS = _PROSE + [
-    "corpus/submissions/*", "corpus/statements/*", "plan/*", "!plan/STDLIB.md", "!plan/1*.md", "!plan/stdlib*"
+    "corpus/submissions/*", "corpus/statements/*", "plan/*",
 ]
 STAGES = {
     # rustc reads only crates/, stdlib/ (cpl-check's build.rs) and the
     # include_str! targets; test_check_cache.py keeps those out of here.
     "clippy": _TESTS + [
-        "README.md", "design/*", "bench/*", "docs/*", "editors/*", "examples/*", "site/*",
+        "README.md", "bench/*", "docs/*", "editors/*", "examples/*", "site/*",
         "corpus/*", "tools/*",
         "!corpus/problems/cf2115c/dream.cp", "!corpus/problems/cf2183f/dream.cp",
         "!tools/trace/*",

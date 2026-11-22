@@ -4,21 +4,21 @@ Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
 
 Then read, in order:
-0. `spec/STATUS.md`: where the 0.3.0 work stands today, how the spec and
-   corpus fit together, the checks to run, and what is open. `spec/` is
-   the normative language; where anything below disagrees with it, `spec/`
-   wins.
+0. `spec/STATUS.md` and `spec/README.md`: where the 0.3.0 work stands today,
+   how the spec and corpus fit together, the checks to run, and what is open.
+   `spec/` (`spec/core/`, `spec/lib/`, `spec/tools/`, `spec/std/`) is the
+   only normative language source; where anything else disagrees with it,
+   `spec/` wins.
 1. `plan/OPERATING.md`: settled decisions and the loop we work in.
 2. `plan/DOMAINS.md`: each domain's north star, status and next steps;
    find yours.
-3. `design/README.md`: the target language (spec, goals with tests, core
-   mechanisms, exemplars) and `design/DELTA.md`, the gap from today.
+3. `plan/ARCHITECTURE.md`: compiler, IR, interpreter, and crate architecture.
 4. `decisions.md`: every design call, its reason and how to reverse it.
 5. `REPO.md`: where everything lives.
 6. `plan/PORTING.md`: if you port solutions, the bar and the review.
 
-`plan/agent-context.md` has Ryan's own words; `plan/1x-*.md` describes the
-language as implemented today.
+`plan/agent-context.md` has Ryan's own words; historical design debates live
+under `research/design-history/`.
 
 ## The mission
 

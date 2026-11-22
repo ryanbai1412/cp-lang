@@ -93,7 +93,7 @@ class CheckCacheTest(unittest.TestCase):
                     path = os.path.relpath(os.path.normpath(os.path.join(d, target)), root)
                     self.assertTrue(os.path.exists(os.path.join(root, path)), path)
                     reads.append(path)
-        self.assertIn("plan/STDLIB.md", reads)
+        self.assertIn("spec/std/README.md", reads)
         for stage, pats in cc.STAGES.items():
             for path in reads:
                 self.assertFalse(cc.excluded(path, pats), f"{stage} excludes {path}, which the build reads")

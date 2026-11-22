@@ -790,3 +790,112 @@ Migrated 2422 files from `proto/ports/` into `corpus/problems/<id>/`, `corpus/li
 ### Legacy proto/ports artifact superseded by corpus/problems/ (1 files)
 
 - `proto/ports/ecnerwala/math`
+
+## Old documentation migration (`design/`, `plan/`, `archive/`)
+
+Migrated/deleted 102 files from `design/`, `plan/`, and `archive/` per `plan/RESTRUCTURE.md`.
+
+| Old path | Destination | Notes |
+|---|---|---|
+| `design/sketches/ioi2025/festival.cp` | `corpus/problems/ioi25_festival/dream.cp` | IOI 2025 gold sketch moved to per-problem dream.cp |
+| `design/sketches/ioi2025/migrations.cp` | `corpus/problems/ioi25_migrations/dream.cp` | IOI 2025 gold sketch moved to per-problem dream.cp |
+| `design/sketches/ioi2025/obstacles.cp` | `corpus/problems/ioi25_obstacles/dream.cp` | IOI 2025 gold sketch moved to per-problem dream.cp |
+| `design/sketches/ioi2025/souvenirs.cp` | `corpus/problems/ioi25_souvenirs/dream.cp` | IOI 2025 gold sketch moved to per-problem dream.cp |
+| `design/sketches/ioi2025/triples.cp` | `corpus/problems/ioi25_triples/dream.cp` | IOI 2025 gold sketch moved to per-problem dream.cp |
+| `design/sketches/ioi2025/worldmap.cp` | `corpus/problems/ioi25_worldmap/dream.cp` | IOI 2025 gold sketch moved to per-problem dream.cp |
+| `design/sketches/ioi2025/README.md` | `research/design-history/ioi2025-sketches-README.md` | IOI 2025 sketches overview preserved verbatim |
+| `design/COST.md` | `spec/core/13-lowering.md (§13.8)` | Cost tables, debt list, and enforcement rules migrated verbatim |
+| `plan/80-validation.md` | `corpus/VALIDATION.md` | Corpus validation design moved verbatim |
+| `plan/STDLIB.md` | `spec/std/README.md` | Full stdlib surface design migrated verbatim; cpl-check test repointed |
+| `design/00-grounding.md` | `research/design-history/00-grounding.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/ACCEPT.md` | `research/design-history/ACCEPT.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/ALIGN.md` | `research/design-history/ALIGN.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/CORE-ALIGN.md` | `research/design-history/CORE-ALIGN.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/DELTA.md` | `research/design-history/DELTA.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/EXEMPLARS-PORTS.md` | `research/design-history/EXEMPLARS-PORTS.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/EXEMPLARS.md` | `research/design-history/EXEMPLARS.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/GOALS.md` | `research/design-history/GOALS.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/IDIOMS.md` | `research/design-history/IDIOMS.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/README.md` | `research/design-history/README.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/SHIP-PLAN.md` | `research/design-history/SHIP-PLAN.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/decisions-design.md` | `research/design-history/decisions-design.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/keyword-parameter-labels.md` | `research/design-history/keyword-parameter-labels.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/sketches/exemplars-11-15.md` | `research/design-history/sketches/exemplars-11-15.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/sketches/exemplars-16-25.md` | `research/design-history/sketches/exemplars-16-25.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/sketches/split-minimal-chunked.md` | `research/design-history/sketches/split-minimal-chunked.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/sketches/split-minimal.md` | `research/design-history/sketches/split-minimal.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/archive/LOG-v1.md` | `research/design-history/archive/LOG-v1.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/archive/SPEC-v1.md` | `research/design-history/archive/SPEC-v1.md` | Preserved verbatim in research/design-history/ (superseded/historical design doc) |
+| `design/spec/00-layers.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/10-syntax.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/11-types.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/12-scoped-types.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/13-arrays.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/14-functions-traits.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/15-control.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/16-state.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/17-contexts.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/18-checks-lowering.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/20-intrinsics.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/21-index-spaces.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/22-sequences.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/23-optionals.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/24-modular.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/25-io.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/26-containers.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/27-algebra-segtrees.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/28-graphs-trees.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/29-strings.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/30-stress.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/31-interaction.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/32-graders-bundling.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/33-debug-trace.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/40-signatures.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/90-open-questions.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/01-index-spaces.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/02-contexts-and-markers.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/03-sequences-and-optionals.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/04-stress-and-interaction.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/05-segment-trees.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/06-functions-state-control.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/07-numbers.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `design/spec/v2/08-strings-io-containers.md` | `spec/ (core/, lib/, tools/)` | Superseded by normative v0.3 spec/; git history preserves exact prior draft |
+| `archive/style-decisions.md` | `research/design-history/style-decisions.md` | Preserved verbatim in research/design-history/; archive/ removed |
+| `plan/00-vision.md` | `research/design-history/plan-v0.2/00-vision.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/10-language-tour.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/11-values-and-types.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/12-domains-and-sequences.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/13-abstraction.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/14-state.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/15-program-structure.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/16-io.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/17-syntax.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/18-key-features.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/19-index-and-lends.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/20-stdlib.md` | `spec/ (core/, lib/)` | 0.2.2 implementation chapter superseded by normative spec/; git history preserves exact text |
+| `plan/30-compiler.md` | `research/design-history/plan-v0.2/30-compiler.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/40-tooling.md` | `research/design-history/plan-v0.2/40-tooling.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/45-dev-tools.md` | `research/design-history/plan-v0.2/45-dev-tools.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/50-debugging.md` | `research/design-history/plan-v0.2/50-debugging.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/60-editor.md` | `research/design-history/plan-v0.2/60-editor.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/70-judges.md` | `research/design-history/plan-v0.2/70-judges.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/90-docs-and-playground.md` | `research/design-history/plan-v0.2/90-docs-and-playground.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/DREAM-BRIEF.md` | `research/design-history/plan-v0.2/DREAM-BRIEF.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/EXECUTION.md` | `research/design-history/plan-v0.2/EXECUTION.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/README.md` | `research/design-history/plan-v0.2/README.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/a0-migration.md` | `research/design-history/plan-v0.2/a0-migration.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/b0-distribution.md` | `research/design-history/plan-v0.2/b0-distribution.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/c0-llm.md` | `research/design-history/plan-v0.2/c0-llm.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/d0-roadmap.md` | `research/design-history/plan-v0.2/d0-roadmap.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/00-overview.md` | `research/design-history/plan-v0.2/site/00-overview.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/01-journey.md` | `research/design-history/plan-v0.2/site/01-journey.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/10-landing.md` | `research/design-history/plan-v0.2/site/10-landing.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/20-onboarding.md` | `research/design-history/plan-v0.2/site/20-onboarding.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/30-course.md` | `research/design-history/plan-v0.2/site/30-course.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/40-playground.md` | `research/design-history/plan-v0.2/site/40-playground.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/50-docs.md` | `research/design-history/plan-v0.2/site/50-docs.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/60-tools-setup.md` | `research/design-history/plan-v0.2/site/60-tools-setup.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/70-project.md` | `research/design-history/plan-v0.2/site/70-project.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/80-design-system.md` | `research/design-history/plan-v0.2/site/80-design-system.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/90-build.md` | `research/design-history/plan-v0.2/site/90-build.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+| `plan/site/README.md` | `research/design-history/plan-v0.2/site/README.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
