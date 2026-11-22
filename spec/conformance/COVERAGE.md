@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1202 (296 passing). Rules: 521.
+Cases: 1203 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -748,8 +748,8 @@ Every `pub` item in `spec/std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (33/46 named by a case)
-  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `assign`, `affine`
+- **algebra** (34/46 named by a case)
+  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `affine`
 - **bag** (142/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.add_many`, `SortedBag.remove_all`, `SortedBag.drain_range`, `SortedBag.cursor_first`, `SortedBag.cursor_last`, `SortedBag.cursor_at`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (16/25 named by a case)
@@ -757,19 +757,18 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **bitset** (89/92 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
 - **deque** (42/42 named by a case)
-- **dp** (34/39 named by a case)
-  - uncovered: `monotone_minima`, `dnc_layer`, `knuth`, `subset_sums`, `Step`
+- **dp** (35/39 named by a case)
+  - uncovered: `monotone_minima`, `dnc_layer`, `knuth`, `Step`
 - **dsu** (62/63 named by a case)
   - uncovered: `Mark`
 - **fenwick** (31/31 named by a case)
 - **flow** (44/65 named by a case)
   - uncovered: `CostFlow.cancel_cycles`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
-- **geometry** (120/158 named by a case)
-  - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.vertices`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `closest_pair`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `project`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`, `circumcenter`, `circles_union_area`, `polygon_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
+- **geometry** (122/158 named by a case)
+  - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.vertices`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `closest_pair`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`, `circumcenter`, `circles_union_area`, `polygon_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
 - **graph** (63/123 named by a case)
   - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `condense`, `two_edge_components`, `Paths.iter`, `Paths.tight`, `bfs01`, `fixed_cost_paths`, `closure`, `Walk`, `Walk.vertices`, `euler_walk`, `Lit.flip`, `TwoSat.add_or`, `TwoSat.implies`, `TwoSat.at_most_one`, `TwoSat.add_xor`, `TwoSat.add_eq`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `dominators`, `boruvka`, `arborescence`, `spanning_forest`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
-- **grid** (19/23 named by a case)
-  - uncovered: `ray`, `adj4`, `adj8`, `transposed`
+- **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
 - **heap** (74/74 named by a case)
 - **interval** (43/44 named by a case)
@@ -778,8 +777,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **lazy** (29/30 named by a case)
   - uncovered: `flip_action`
 - **marks** (46/46 named by a case)
-- **math** (55/83 named by a case)
-  - uncovered: `fixed`, `choose2`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `to_str`, `is_pow2`, `splitmix64`, `divisors_from_factors`, `crt_all`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
+- **math** (58/83 named by a case)
+  - uncovered: `fixed`, `choose2`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `splitmix64`, `divisors_from_factors`, `crt_all`, `primitive_root`, `mod_log`, `mod_sqrt`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
 - **matrix** (52/63 named by a case)
   - uncovered: `Mat.new`, `Mat.transpose`, `Mat.mul_vec`, `Mat.product`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (5/6 named by a case)
@@ -788,28 +787,27 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Comb.fact`, `Comb.inv_fact`
 - **ntt** (10/17 named by a case)
   - uncovered: `Curved`, `Disjoint`, `subset`, `convolve`, `SosOver`, `sos`, `fwht`
-- **opt** (0/2 named by a case)
-  - uncovered: `is_some_and`, `is_none_or`
+- **opt** (2/2 named by a case)
 - **pair** (5/5 named by a case)
 - **persistent** (34/38 named by a case)
   - uncovered: `RangeKth`, `RangeKth.new`, `PMultiset`, `PMultiset.cmp`
-- **poly** (27/57 named by a case)
-  - uncovered: `deriv`, `integral`, `log`, `exp`, `pow`, `sqrt`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
-- **prefix** (45/56 named by a case)
-  - uncovered: `scan`, `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
+- **poly** (31/57 named by a case)
+  - uncovered: `exp`, `pow`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
+- **prefix** (46/56 named by a case)
+  - uncovered: `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (6/10 named by a case)
   - uncovered: `Rng.float`, `Rng.shuffle`, `Rng.perm`, `Rng.sample`
 - **search** (8/9 named by a case)
   - uncovered: `split_best`
 - **segtree** (49/54 named by a case)
   - uncovered: `DynamicOrderTree`, `DynamicOrderTree.new`, `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
-- **seq** (106/215 named by a case)
-  - uncovered: `Perm`, `mean`, `is_sorted`, `filter`, `rev`, `items`, `rfind`, `deduped`, `distinct`, `partition`, `select`, `windows`, `chunks`, `adjacent`, `with_prev`, `cyclic_pairs`, `get_or_insert`, `get_or_insert_with`, `update`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `next_permutation`, `prev_permutation`, `buckets`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `with_domain`, `cycle`, `halve`, `clip`, `first_true`, `last_true`, `bsearch`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `resized`, `pop_if`, `pop_while`, `clone`, `take_all`, `insert`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `drop`, `drop_last`, `take_last`, `nth`, `rebase`, `Rebased`, `rekey`, `collect`, `keyed`, `Keys`, `take_while`, `drop_while`, `filter_map`, `flat_map`, `flatten`, `present`, `all_some`, `product`, `with_next`, `chunks_padded`, `reduce`, `max_count`, `min_count`, `majority`, `min_k`, `max_k`, `partition_in_place`, `stable_partition_in_place`, `adjacent_diff`, `radix_sort`, `counting_sort`, `is_subsequence`, `combinations`, `index_pairs`, `permutations`, `SubseqStep`, `subsequences`, `argmax`, `argmin`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`, `outermost`, `keys`
+- **seq** (176/215 named by a case)
+  - uncovered: `Perm`, `mean`, `partition`, `get_or_insert_with`, `rotated_left`, `prev_permutation`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `product`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
 - **slope** (32/39 named by a case)
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (23/23 named by a case)
-- **strings** (145/195 named by a case)
-  - uncovered: `starts_with`, `ends_with`, `search`, `rsearch`, `parse`, `prefix_matches`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `KmpAutomaton.link`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.link`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.link`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.link`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (150/195 named by a case)
+  - uncovered: `prefix_matches`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `KmpAutomaton.link`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.link`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.link`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.link`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (9/11 named by a case)
   - uncovered: `TimeTree.event`, `TimeTree.run`
@@ -818,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1672 of 2222 std items are named by a case.
+1765 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

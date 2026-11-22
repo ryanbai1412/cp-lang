@@ -124,7 +124,7 @@ def std_items():
 
 def mentions(label, name, corpus):
     if "." not in label:
-        return re.search(rf"(?<![\w.]){re.escape(name)}(?![\w])", corpus) is not None
+        return re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", corpus) is not None
     owner = label.split(".")[0]
     if name == "new":
         return re.search(rf"(?<![\w]){re.escape(owner)}(?:<[^>]*>)?(?:\.new)?\(", corpus) is not None
