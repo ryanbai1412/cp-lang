@@ -360,7 +360,56 @@ pub fn topo<V>(g: Next<V>) -> ?List<V>:
 /// order: `comp` is keyed by `V`
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0]]; let (domain C, comp) = scc(g); C.count == 2 and comp[0] == comp[1] and comp[2] < comp[0]`
-pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C) = todo
+pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
+    var adj: [V]List<V> = []
+    for u in V:
+        for a in g.out(u): adj[u].push(a.to)
+    var idx: [V]Int = -1
+    var low: [V]Int = 0
+    var done: [V]Int = 0
+    var ptr: [V]Int = 0
+    var on: [V]Bool = false
+    var st: List<V> = []
+    var call: List<V> = []
+    var t = 0
+    var k = 0
+    for s in V:
+        if idx[s] != -1: continue
+        idx[s] = t
+        low[s] = t
+        t += 1
+        st.push(s)
+        on[s] = true
+        call.push(s)
+        while call.len > 0:
+            let u = call[call.len - 1]
+            if ptr[u] < adj[u].len:
+                let v = adj[u][ptr[u]]
+                ptr[u] += 1
+                if idx[v] == -1:
+                    idx[v] = t
+                    low[v] = t
+                    t += 1
+                    st.push(v)
+                    on[v] = true
+                    call.push(v)
+                elif on[v]:
+                    low[u] = min(low[u], idx[v])
+            else:
+                call.pop()
+                if call.len > 0:
+                    let p = call[call.len - 1]
+                    low[p] = min(low[p], low[u])
+                if low[u] == idx[u]:
+                    while true:
+                        let w = st[st.len - 1]
+                        st.pop()
+                        on[w] = false
+                        done[w] = k
+                        if w == u: break
+                    k += 1
+    domain C = 0..k
+    (C:, comp: [V] v => C(k - 1 - done[v]))
 
 /// `Graph.directed` on a plain list of `(u, v)` pairs: no edge domain, and each arc is the
 /// target vertex itself.
