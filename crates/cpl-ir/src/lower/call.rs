@@ -6867,6 +6867,12 @@ impl<'a> Lowerer<'a> {
                         ast::StmtKind::Fn(f) if f.name.text == name.text => Some(f),
                         _ => None,
                     }) {
+                        let mut all_gen_names = gen_names.clone();
+                        for g in &mdecl.generics {
+                            if !all_gen_names.contains(&g.text) {
+                                all_gen_names.push(g.text.clone());
+                            }
+                        }
                         for (p, arg) in mdecl.params.iter().zip(args) {
                             if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
                                 if let Some(pty) = &p.ty {
@@ -6878,13 +6884,15 @@ impl<'a> Lowerer<'a> {
                                             pty,
                                             &probed.ty,
                                             tpl_mod,
-                                            &gen_names,
+                                            &all_gen_names,
                                             &mut inferred,
                                         );
                                     }
                                 }
                             }
                         }
+                        self.unify_bounds(&mdecl.bounds, tpl_mod, &all_gen_names, &mut inferred);
+                        self.unify_bounds(&decl.bounds, tpl_mod, &all_gen_names, &mut inferred);
                     }
                 }
                 let final_args: Vec<GenArg> = gen_names

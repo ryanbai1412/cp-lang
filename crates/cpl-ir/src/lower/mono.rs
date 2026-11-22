@@ -1347,7 +1347,12 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Resolves a generic function instantiation with concrete `args`, memoized.
-    pub(super) fn instantiate_fn(&mut self, gfid: GenFnId, args: Vec<GenArg>) -> FnId {
+    pub(super) fn instantiate_fn(
+        &mut self,
+        gfid: GenFnId,
+        args: Vec<GenArg>,
+        trait_params: &[(usize, Ty)],
+    ) -> FnId {
         let key = (gfid, args.clone());
         if let Some(&id) = self.fn_insts.get(&key) {
             if !self.sigs[id].returns_fresh_domain {
@@ -1361,6 +1366,9 @@ impl<'a> Lowerer<'a> {
         let decl = self.gen_fns[gfid].decl;
         for (p, a) in decl.generics.iter().zip(&args) {
             env.insert(p.text.clone(), a.clone());
+        }
+        for (idx, ty) in trait_params {
+            env.insert(format!("__trait_param_{idx}"), GenArg::Ty(ty.clone()));
         }
         let id = self.declare_fn_in(decl, tpl_mod, tpl_offset, owner, env);
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
@@ -1702,6 +1710,10 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        // Propagate bindings implied by row/trait bounds (e.g. `R: (u: V, v: V, ..)`,
+        // `G: Next<V>`).
+        self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
+
         // Propagate domain param `V` from a bound `Graph<V, E>` (or any struct with a domain param),
         // and arc element type `A` from a bound `next: N` when `N` is a `Graph<V, E>` or fn.
         for g in &gen_names {
@@ -2009,10 +2021,41 @@ impl<'a> Lowerer<'a> {
                 _ => false,
             }
         });
+        let mut trait_params: Vec<(usize, Ty)> = Vec::new();
+        for (decl_idx, param) in decl.params.iter().enumerate() {
+            let Some(pty) = &param.ty else { continue };
+            let ast::TypeKind::Named { name, .. } = &pty.kind else { continue };
+            if !matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_))) {
+                continue;
+            }
+            let pos = if decl.params.first().is_some_and(|p| p.name.text == "self") {
+                if decl_idx == 0 {
+                    continue;
+                }
+                decl_idx - 1
+            } else {
+                decl_idx
+            };
+            let matched_arg = args
+                .iter()
+                .find(|a| a.name.as_ref().is_some_and(|n| n.text == param.name.text))
+                .or_else(|| args.get(pos).filter(|a| a.name.is_none()));
+            if let Some(arg) = matched_arg {
+                let dlen = self.diags.len();
+                let probed = self.expr(&arg.value, None);
+                self.diags.truncate(dlen);
+                if probed.ty != Ty::Error {
+                    trait_params.push((decl_idx, probed.ty));
+                }
+            }
+        }
+        for (_, ty) in &trait_params {
+            final_args.push(GenArg::Ty(ty.clone()));
+        }
         if hashed.is_some() {
             final_args.push(GenArg::Int(1));
         }
-        let fn_id = self.instantiate_fn(gfid, final_args);
+        let fn_id = self.instantiate_fn(gfid, final_args, &trait_params);
         if let Some(ty) = hashed {
             self.sigs[fn_id].params[0].ty = ty;
         }
@@ -2548,6 +2591,31 @@ impl<'a> Lowerer<'a> {
 
     /// Unifies an AST type pattern `pat` against a concrete `Ty` to bind generic parameters.
     #[allow(clippy::only_used_in_recursion)]
+    pub(super) fn unify_bounds(
+        &self,
+        bounds: &[ast::Bound],
+        tpl_mod: ModId,
+        gen_names: &[String],
+        env: &mut GenEnv,
+    ) {
+        for _ in 0..2 {
+            let before = env.len();
+            for bound in bounds {
+                let concrete = match env.get(&bound.name.text) {
+                    Some(GenArg::Ty(t)) => t.clone(),
+                    Some(GenArg::Domain(d)) => Ty::Pos(*d),
+                    _ => continue,
+                };
+                for tr in &bound.traits {
+                    self.unify_ast_ty(tr, &concrete, tpl_mod, gen_names, env);
+                }
+            }
+            if env.len() == before {
+                break;
+            }
+        }
+    }
+
     pub(super) fn unify_ast_ty(
         &self,
         pat: &ast::Type,
@@ -2640,6 +2708,37 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
+                (_, Ty::Array { dims, elem })
+                    if !args.is_empty()
+                        && matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_))) =>
+                {
+                    let is_domain_indexed = matches!(
+                        (dims.as_slice(), elem.as_ref()),
+                        ([Dim::Pos(_) | Dim::Sym(_)], Ty::List(_))
+                    );
+                    let trait_takes_pos = match self.mod_syms[tpl_mod].get(&name.text) {
+                        Some(Sym::Trait(tid)) => self.traits[*tid]
+                            .methods
+                            .iter()
+                            .any(|m| m.params.len() >= 2),
+                        _ => false,
+                    };
+                    if is_domain_indexed && trait_takes_pos {
+                        if let [Dim::Pos(d) | Dim::Sym(d)] = dims.as_slice() {
+                            self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
+                        }
+                    } else if args.len() == 1 {
+                        self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
+                    }
+                }
+                (_, concrete_seq)
+                    if args.len() == 1
+                        && matches!(self.mod_syms[tpl_mod].get(&name.text), Some(Sym::Trait(_))) =>
+                {
+                    if let Some(elem) = concrete_seq.seq_elem() {
+                        self.unify_ast_ty(&args[0], &elem, tpl_mod, gen_names, env);
+                    }
+                }
                 _ => {}
             },
             ast::TypeKind::Array { index, elem } => {
@@ -2680,7 +2779,13 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::TypeKind::Record(fields) => {
-                if let Some(cfields) = concrete.fields() {
+                if let Ty::Record(cfields) = concrete {
+                    for (pname, p) in fields {
+                        if let Some((_, c)) = cfields.iter().find(|(cn, _)| cn == &pname.text) {
+                            self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
+                        }
+                    }
+                } else if let Some(cfields) = concrete.fields() {
                     for ((_, p), c) in fields.iter().zip(&cfields) {
                         self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
                     }

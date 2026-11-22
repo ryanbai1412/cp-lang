@@ -2204,9 +2204,12 @@ impl<'a> Lowerer<'a> {
                 self.sigs[id].receiver = Some(param.mutable || cached);
                 continue;
             }
-            let ty = match &param.ty {
-                Some(ty) => self.resolve_ty(ty),
-                None => {
+            let ty = if let Some(GenArg::Ty(t)) = self.gen_env.get(&format!("__trait_param_{i}")) {
+                t.clone()
+            } else {
+                match &param.ty {
+                    Some(ty) => self.resolve_ty(ty),
+                    None => {
                     if i == 1 {
                         if let Some(rt) = rhs_ty {
                             rt.clone()
@@ -2248,6 +2251,7 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     }
+                }
                 }
             };
             params.push(SigParam {
