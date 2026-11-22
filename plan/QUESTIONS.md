@@ -249,4 +249,12 @@ Recommendation: B. It answers "why is this slow/big" and keeps one source of tru
 How to reverse it: sections are independent records in `explain --json`; adding one later changes no other.
 Meanwhile: B; sections without data print `not shown yet`.
 
+### tools: which exit codes does `cpl` use (tools-4)
+`spec/tools/cli.md` says 0 success, 1 program or test failure, 2 compile error, 3 usage error. The binary (`crates/cpl-cli/src/lib.rs`, `EXIT_ERRORS`/`EXIT_USAGE`/`EXIT_FAILED`) uses 1 compile error, 2 usage error, 3 the program failed: `cpl run` on `print(xs[5])` exits 3 (`run_exits_3_where_the_program_fails_and_keeps_what_it_printed`), `cpl judges a b` exits 2, the emitted C++ exits 3 on a failed `assert`.
+Option A: change the spec to the binary. 2 for usage matches POSIX tools, getopt and clap; editors, `cpl test`, `cpl stress` and the emitted C++ already use these codes.
+Option B: renumber the binary and the emitted C++ to the spec.
+Recommendation: A. It costs one spec sentence. B changes three constants plus every script and editor that reads them, and gains nothing.
+How to reverse it: swap the three constants in `crates/cpl-cli/src/lib.rs` and the `exit(3)` in the C++ runtime; the tests name the constants, not numbers (`crates/cpl-cli/tests/golden.rs`).
+Meanwhile: the binary's codes; `spec/tools/cli.md` stays as written until answered.
+
 ## Answered
