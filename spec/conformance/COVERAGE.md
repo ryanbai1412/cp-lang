@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1413 (995 passing). Rules: 521.
+Cases: 1416 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
