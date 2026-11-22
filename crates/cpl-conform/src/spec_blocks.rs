@@ -6,7 +6,8 @@ use cpl_check::Database;
 use crate::runner;
 use crate::scoreboard::{CaseOutcome, SuiteReport};
 
-fn block_hash(text: &str) -> String {
+/// A short stable id for a block or example body: the first 10 hex digits of its FNV-1a hash.
+pub(crate) fn block_hash(text: &str) -> String {
     let mut h: u64 = 0xcbf29ce484222325;
     for b in text.as_bytes() {
         h ^= u64::from(*b);

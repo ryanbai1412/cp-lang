@@ -5,15 +5,7 @@ use cpl_check::Database;
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
-
-fn example_hash(text: &str) -> String {
-    let mut h: u64 = 0xcbf29ce484222325;
-    for b in text.as_bytes() {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(0x100000001b3);
-    }
-    format!("{h:012x}")[..10].to_string()
-}
+use crate::spec_blocks::block_hash;
 
 #[derive(Clone, Debug)]
 pub struct DocExample {
@@ -51,7 +43,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
                 continue;
             };
             let body = rest.trim();
-            let base = format!("{rel}#{}", example_hash(body));
+            let base = format!("{rel}#{}", block_hash(body));
             let occ = seen.entry(base.clone()).or_insert(0);
             *occ += 1;
             let id = if *occ == 1 {
