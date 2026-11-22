@@ -67,7 +67,7 @@ affine composition) just works.
 | `*` | `Monoid`, `Commutative`; `Group` on `Mod<P>` without zero | `T.one` |
 | `^` | `Group` (`inv` is itself), `Commutative` | `0` |
 | `\|`, `&` | `Monoid`, `Commutative`, `Idempotent` | `0`, all bits |
-| `min`, `max` | `Monoid`, `Commutative`, `Selective` | far end of `T`; `none` on `?T` |
+| `min`, `max` | `Monoid`, `Commutative`, `Selective` | far end of `T`; `None` on `?T` |
 | `gcd` | `Monoid`, `Commutative`, `Idempotent` | `0` |
 | `and`, `or` | `Monoid`, `Commutative`, `Selective` | `true`, `false` |
 
@@ -118,7 +118,7 @@ summary needs a hand-written struct unless it carries real logic.
 |---|---|---|
 | `each(+, max)`, `each(s: +, hi: max)` | one op per component, on tuples or records | those all parts share |
 | `op.rev()` | `(a, b) => op(b, a)` | all |
-| `op.opt()` | the op on `?T`, `none` as identity: any `Op` becomes a `Monoid` | all |
+| `op.opt()` | the op on `?T`, `None` as identity: any `Op` becomes a `Monoid` | all |
 | `Monoid(id:, op:)`, `Group(id:, op:, inv:)` | from lambdas | none until stated |
 | `.commutative()`, `.idempotent()` | state a law on an inline value | adds it |
 
@@ -148,7 +148,7 @@ That is free for a `Commutative` op. Otherwise the value type implements
 either is a compile error naming both fixes.
 
 **An `Op` without an identity** still builds every structure; its folds
-return `?T`, `none` for an empty range. The `?` is in the return type, so it
+return `?T`, `None` for an empty range. The `?` is in the return type, so it
 is visible, and it is exactly `op.opt()`.
 ## 3. Orders
 
@@ -163,7 +163,7 @@ pub trait Ord:
 ```
 
 - Ints, floats (NaN traps in debug), `Str` and `Bool` are `Ord`; `?T` is
-  not (chapter 2): sort optionals with a key such as `by: x => (x == none, x ?? 0)`. Tuples and records derive it lexicographically in field order.
+  not (chapter 2): sort optionals with a key such as `by: x => (x == None, x ?? 0)`. Tuples and records derive it lexicographically in field order.
 - **`by:` takes a key fn**, and that is the one way to pass an order:
   `sort(mut es, by: .w)`, `argmax(a, by: x => x.score)`, `Heap(by: .d)`.
   Omitted, it is the element's own `Ord`.
@@ -189,7 +189,7 @@ var seg = SegTree(lightest, es)            // range "lightest edge"
 let best = es.fold(max(by: e => (e.w, desc(e.id))))
 ```
 
-The identity is `none` on `?T` or the far end of a bounded key, the same as
+The identity is `None` on `?T` or the far end of a bounded key, the same as
 plain `min`. Ties keep the left operand, which matches "first of equal
 keys" above, so a segment tree of `min(by:)` returns the leftmost minimum
 with no index trick (this replaces `MinIdx`/`MaxIdx`).
@@ -312,7 +312,7 @@ The same values fold any `Seq`, with no structure:
 |---|---|---|
 | `xs.fold(op)` | left to right; `T` for a `Monoid`, `?T` for an `Op` | O(n) |
 | `xs.sum()`, `xs.prod()` | `fold(+)`, `fold(*)` | O(n) |
-| `xs.min()`, `xs.max()`, `xs.min(by:)` | `fold(min)` and friends; `?T`, `none` when empty | O(n) |
+| `xs.min()`, `xs.max()`, `xs.min(by:)` | `fold(min)` and friends; `?T`, `None` when empty | O(n) |
 | `xs.scan(op)` | the running folds, lazily: a generator | O(1) per item |
 | `pow(x, k, op = *)` | `x` folded with itself `k` times by squaring | O(log k) ops |
 

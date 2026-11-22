@@ -166,7 +166,7 @@ pub struct OnlineHull:
     /// O(log n). Point location against the current hull.
     pub fn locate(self, p: Pt) -> Location = todo
 
-    /// O(log n). Hull vertex maximizing `v.dot128(dir)`, or `none` if empty.
+    /// O(log n). Hull vertex maximizing `v.dot128(dir)`, or `None` if empty.
     pub fn extreme(self, dir: Pt) -> ?Pt = todo
 
     /// O(1). Twice the unsigned area of the current hull (0 if fewer than 3 non-collinear points).
@@ -270,7 +270,7 @@ pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int) = todo
 /// O(n). Minimum width (distance between parallel supporting lines) of a CCW convex hull.
 pub fn hull_width(hull: List<Pt>) -> F64 = todo
 
-/// O(log n). Indices of the two edges of a CCW convex hull crossed by line `a b`, or `none`.
+/// O(log n). Indices of the two edges of a CCW convex hull crossed by line `a b`, or `None`.
 pub fn hull_line_intersect(hull: List<Pt>, a: Pt, b: Pt) -> ?(Int, Int) = todo
 
 /// O(n log n), O(n) memory. Farthest pair of distinct handles in `pts` and their squared distance.
@@ -382,22 +382,22 @@ pub fn line_dist(p: Vec, a: Vec, b: Vec) -> F64 = todo
 /// O(1). Shortest distance from `p` to the closed segment `a b`.
 pub fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64 = todo
 
-/// O(1). Intersection of the infinite lines `a b` and `c d`, or `none` when parallel.
+/// O(1). Intersection of the infinite lines `a b` and `c d`, or `None` when parallel.
 pub fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec = todo
 
 /// O(1). Intersection of closed segments `a b` and `c d`: 0 disjoint, 1 crossing/touching,
 /// 2 collinear overlap endpoints.
 pub fn segment_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> List<Vec> = todo
 
-/// O(1). First intersection of ray `(o, dir)` with closed segment `a b`, or `none`.
+/// O(1). First intersection of ray `(o, dir)` with closed segment `a b`, or `None`.
 pub fn ray_hits_segment(o: Vec, dir: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> ?Vec = todo
 
-/// O(1). Circumcenter of triangle `(a, b, c)`, or `none` when collinear.
+/// O(1). Circumcenter of triangle `(a, b, c)`, or `None` when collinear.
 pub fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec = todo
 
 /// O(1) value type. A 2D circle with center `c` and non-negative radius `r`.
 pub struct Circle(c: Vec, r: F64):
-    /// O(1). Unique circumcircle through `a`, `b`, `c`, or `none` if collinear.
+    /// O(1). Unique circumcircle through `a`, `b`, `c`, or `None` if collinear.
     pub fn through(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle = todo
 
     /// O(1). Disk area `pi * r^2`.
@@ -409,7 +409,7 @@ pub struct Circle(c: Vec, r: F64):
     /// O(1). Point location relative to the disk.
     pub fn locate(self, p: Vec, eps: F64 = 1e-9) -> Location = todo
 
-/// O(1). Inscribed circle of triangle `a b c`, or `none` if collinear.
+/// O(1). Inscribed circle of triangle `a b c`, or `None` if collinear.
 pub fn incenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle = todo
 
 /// O(1). Intersection points (0, 1, or 2) of `circle` with the infinite line through `a` and `b`.
@@ -466,7 +466,7 @@ fn hp_cross(a: (p: Vec, dir: Vec, ang: F64), b: (p: Vec, dir: Vec, ang: F64)) ->
 /// (with optional `[-bound, bound]^2` clipping box), or `[]` when empty or unbounded.
 pub fn half_plane_intersect(
     planes: List<HalfPlane>,
-    bound: ?F64 = none,
+    bound: ?F64 = None,
     eps: F64 = 1e-9,
 ) -> List<Vec> = todo
 
@@ -540,12 +540,12 @@ fn sh_first_above_y(
 
 /// O(n log n), O(n) memory. Detect whether any two segments in `segs` intersect via
 /// Shamos-Hoey sweep line with exact `I128` comparisons (valid for `|x|, |y| <= 1e12`).
-/// Returns an intersecting index pair `some((i, j))` or `none`. Set `strict: true` to
+/// Returns an intersecting index pair `Some((i, j))` or `None`. Set `strict: true` to
 /// require a proper interior crossing.
 pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int) = todo
 
 /// O(n log n), O(n) memory. Domain-indexed Shamos-Hoey sweep; returns a pair of
-/// intersecting segment handles, or `none`.
+/// intersecting segment handles, or `None`.
 pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D) = todo
 
 // ---- axis-aligned rectangles, planar subdivisions, and Delaunay / Voronoi
@@ -561,7 +561,7 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// O(1). True when `p.x` is in `x` and `p.y` is in `y`.
     pub fn contains(self, p: Pt) -> Bool = todo
 
-    /// O(1). Non-empty intersection of two rectangles, or `none`.
+    /// O(1). Non-empty intersection of two rectangles, or `None`.
     pub fn intersect(self, o: Rect) -> ?Rect = todo
 
 /// O(n log n), O(n) memory. Total area of the union of axis-aligned integer rectangles via sweep line.
@@ -572,7 +572,7 @@ pub fn rects_union_area(rects: List<Rect>) -> Int = todo
 pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>> = todo
 
 /// O((n + m + q) log(n + m)), O(n + m + q) memory. Offline sweep-line point location in a planar
-/// subdivision; returns face index or `none`.
+/// subdivision; returns face index or `None`.
 pub fn point_location_planar<V>(
     pts: [V]Pt,
     edges: List<(V, V)>,
@@ -696,7 +696,7 @@ impl Div<F64> for Vec3:
 
 /// O(1) value type. A 3D plane `{ p | n.dot(p) == d }` with unit normal `n`.
 pub struct Plane3(n: Vec3, d: F64):
-    /// O(1). Plane through non-collinear points `a`, `b`, `c`, or `none`.
+    /// O(1). Plane through non-collinear points `a`, `b`, `c`, or `None`.
     pub fn through(a: Vec3, b: Vec3, c: Vec3, eps: F64 = 1e-9) -> ?Plane3 = todo
 
     /// O(1). Signed distance from `p` to the plane.
@@ -705,7 +705,7 @@ pub struct Plane3(n: Vec3, d: F64):
     /// O(1). Orthogonal projection of `p` onto the plane.
     pub fn project(self, p: Vec3) -> Vec3 = todo
 
-/// O(1). Intersection of line `a b` with `plane`, or `none` if parallel.
+/// O(1). Intersection of line `a b` with `plane`, or `None` if parallel.
 pub fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) -> ?Vec3 = todo
 
 /// O(1). Great-circle distance between directions `a` and `b` on a sphere of radius `r`.

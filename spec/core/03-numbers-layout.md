@@ -17,7 +17,7 @@ width comes from the type you already wrote for a different reason: a
 domain (`[V]T`, `V` positions), a range from the statement
 (`read<1..=1e9>`), a `Mod<P>`, a `Bool`. Every type also has a set of
 **spare values** it never holds (`Int.MIN`, `hi + 1` for a range, `P` for
-`Mod<P>`, 2 for `Bool`); `?T` stores `none` in one of them, so it is as
+`Mod<P>`, 2 for `Bool`); `?T` stores `None` in one of them, so it is as
 wide as `T`. A struct's spare values are its fields' spare values, so
 `?Edge` is as wide as `Edge` with no annotation. Both choices are
 automatic only because they never lose (same operations, never more
@@ -114,7 +114,7 @@ with the node and the value, release truncates.
   `[V]0..=4e9` stores 4 bytes.
 - **The editor shows the same facts** from the same computation:
   - hover on a type or variable gives its size, field storage order,
-    padding and where `none` lives (`?Edge 8 B: none = all-ones in to`);
+    padding and where `None` lives (`?Edge 8 B: None = all-ones in to`);
   - an inlay hint after each array or structure declaration gives element
     size and peak bytes at the input bounds (`8 B × 2e5 = 1.6 MB`);
   - a code lens on `main` gives total static peak against the profile's
@@ -126,7 +126,7 @@ Every type has a fixed set of **spare values**: bit patterns of its
 storage that no valid value uses. The set is a property of the type, never
 of a use, so two `?Edge`s always agree on layout.
 
-| Type | Spare values | `none` is |
+| Type | Spare values | `None` is |
 |---|---|---|
 | `Int` | `INT64_MIN` (`Int` is `-(2^63-1)..=2^63-1`) | `INT64_MIN` |
 | `lo..=hi` in width W | every W value outside `lo..=hi` | `hi + 1` if it fits, else `lo - 1` |
@@ -137,12 +137,12 @@ of a use, so two `?Edge`s always agree on layout.
 | `F64` | quiet-NaN payloads (NaN traps in checked runs) | one fixed payload |
 | `Char` | 128..=255 | 128 |
 | `U64`, `I128` | none | needs a flag |
-| `?T` | `T`'s spares minus the one `none` took | |
+| `?T` | `T`'s spares minus the one `None` took | |
 
 ### Structs, records and tuples
 
 **`?S` borrows the first field, in declaration order, that has a spare
-value.** It writes `none` into that field and leaves the others
+value.** It writes `None` into that field and leaves the others
 undefined. So a struct of `Int`s has a niche because `Int` has one:
 
 ```python
@@ -156,7 +156,7 @@ record (lo: Int, hi: Int)           // ?(lo, hi) is 16 B
 - Nesting is free while spares remain: `?(?Int)`, a `[V]?Edge` inside a
   `?Paths`, `Dsu` parents stored as `[V]?V`.
 - **No user `Niche` trait** (decision 28.10). A library could name a value
-  its own code later produces, turning a wrong `none` into silent
+  its own code later produces, turning a wrong `None` into silent
   corruption. Every struct that has a spare value already has one in a
   field, and a range type on one field is how you give it one:
   `struct H: h: U64; len: 0..=1e6` puts `?H` in `len`.
@@ -223,16 +223,16 @@ its element and names both fixes.
 
 ## 3. Operations on niche types
 
-- **Testing `none` is one compare** with the fixed pattern.
+- **Testing `None` is one compare** with the fixed pattern.
 - **`max=` on `?Int` is branch-free**: `INT64_MIN` is below every `Int`,
-  so `none` is already the identity of `max` (the tropical rule in
+  so `None` is already the identity of `max` (the tropical rule in
   decision 1.3). `min=` on `?Int` compiles to one compare and a
   conditional move.
 - **Producing a spare value is an overflow.** `Int` arithmetic that lands
   on `INT64_MIN` traps in debug like any overflow; in release it is part
-  of the wrap contract (a wrapped value may read as `none`). An
+  of the wrap contract (a wrapped value may read as `None`). An
   out-of-range store is the same: checked builds trap before it writes a
-  spare; release truncates, and the result may read as `none`.
+  spare; release truncates, and the result may read as `None`.
 - **Reading input** rejects a value equal to a spare (`read<Int>` of
   `-9223372036854775808` is an input error naming the bound).
 - **Generic code** sees no difference: `?T` inside `SegTree<T>` or a user

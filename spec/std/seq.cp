@@ -22,15 +22,15 @@ pub fn prod<S: Seq, T>(self: S) -> T = todo
 /// element first (`xs.sum(of: x => x * x)`). O(n).
 pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
 
-/// The average of `of` over the elements as `F64`; `none` when empty. O(n).
+/// The average of `of` over the elements as `F64`; `None` when empty. O(n).
 pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
 
-/// The least element by `by`, the first on ties; `none` when empty. A method call (`s.min()`)
+/// The least element by `by`, the first on ties; `None` when empty. A method call (`s.min()`)
 /// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
 /// is argmin. O(n).
 pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 
-/// The greatest element by `by`, the first on ties; `none` when empty. O(n).
+/// The greatest element by `by`, the first on ties; `None` when empty. O(n).
 pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 
 /// How many elements satisfy `p`. O(n).
@@ -47,7 +47,7 @@ pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool = todo
 
 /// O(n). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
-pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = none) = todo
+pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None) = todo
 
 /// O(n). Drop each value equal to the one before it, in place: a sorted list keeps one of each.
 pub fn dedup<T>(mut self: List<T>) = todo
@@ -75,7 +75,7 @@ pub fn select<S: IndexedMut, T, K>(
     mut self: S,
     k: Int,
     by: T -> K = x => x,
-    cmp: ?((T, T) -> Bool) = none,
+    cmp: ?((T, T) -> Bool) = None,
 ) = todo
 
 /// O(|a| + |b|), O(|a| + |b|) memory. Stable merge of two sorted sequences (keyed by `by:`),
@@ -100,8 +100,8 @@ pub @get fn adjacent<S: Seq, T>(self: S) -> yields (T, T) = todo
 /// `(20, 30)`. O(n²) to walk; for adjacent pairs use `adjacent`.
 pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 
-/// Every element paired with the one before it, starting with `(none, first)`:
-/// `[10, 20, 30].with_prev` gives `(none, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
+/// Every element paired with the one before it, starting with `(None, first)`:
+/// `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
 pub @get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
 
 /// Every element with the one after it, the last with the first: the
@@ -130,10 +130,10 @@ pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V) = todo
 /// Rotate `self` left by `k` in place (or only the subrange `range` when given):
 /// what was at offset `k % len` comes first. Signed Euclidean `k`: negative `k`
 /// rotates right. Works on any `IndexedMut` (`List<T>`, `[D]T`, `Str`). O(n), O(1) extra space.
-pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = none) = todo
+pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None) = todo
 
 /// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`. O(n).
-pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = none) = todo
+pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None) = todo
 
 /// A new list rotated left by `k`: what was at offset `k % len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right. Works on any `Seq`. O(n).
@@ -175,22 +175,22 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// The index of `val`, which must be one of the compressed values. O(log n).
     pub fn at(self, val: T) -> D = todo
 
-    /// The index of `val` if it was compressed, or `none`. O(log n).
+    /// The index of `val` if it was compressed, or `None`. O(log n).
     pub fn try_at(self, val: T) -> ?D = todo
 
     /// Whether `val` is one of the compressed values. O(log n).
     pub fn contains(self, val: T) -> Bool = todo
 
-    /// The first index whose value is `>= val`, or `none`. O(log n).
+    /// The first index whose value is `>= val`, or `None`. O(log n).
     pub fn first_ge(self, val: T) -> ?D = todo
 
-    /// The first index whose value is `> val`, or `none`. O(log n).
+    /// The first index whose value is `> val`, or `None`. O(log n).
     pub fn first_gt(self, val: T) -> ?D = todo
 
-    /// The last index whose value is `<= val`, or `none`. O(log n).
+    /// The last index whose value is `<= val`, or `None`. O(log n).
     pub fn last_le(self, val: T) -> ?D = todo
 
-    /// The last index whose value is `< val`, or `none`. O(log n).
+    /// The last index whose value is `< val`, or `None`. O(log n).
     pub fn last_lt(self, val: T) -> ?D = todo
 
 /// Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the
@@ -198,11 +198,11 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// index of one compression cannot be used in another. Works on any `Seq`. O(n log n).
 pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
 
-/// The first `f(x)` that is not `none`, stopping there; `none` if every one is.
+/// The first `f(x)` that is not `None`, stopping there; `None` if every one is.
 /// O(1) per element walked.
 pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
 
-/// The first element satisfying `p`, `none` if none does; stops there. `(1..=m).find(ok)` is the
+/// The first element satisfying `p`, `None` if none does; stops there. `(1..=m).find(ok)` is the
 /// least `ok` integer. O(position found).
 pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T = todo
 
@@ -222,7 +222,7 @@ pub @get fn l<D>(self: Range<D>) -> Cut<D> = todo
 /// Right boundary cut of a range (valid even when empty).
 pub @get fn r<D>(self: Range<D>) -> Cut<D> = todo
 
-/// O(1). `(r.l..r.mid, r.mid..r.r)`: two non-empty halves, or `none` when `self.len <= 1`, so
+/// O(1). `(r.l..r.mid, r.mid..r.r)`: two non-empty halves, or `None` when `self.len <= 1`, so
 /// `let (left, right) = r.halve() else: base` is the divide-and-conquer base case.
 pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>) = todo
 
@@ -234,11 +234,11 @@ pub @get fn mid<D>(self: Range<D>) -> Cut<D> = todo
 pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo
 
 /// O(log n) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
-/// `none` when it never does. Debug builds check `ok` on both sides of the answer.
+/// `None` when it never does. Debug builds check `ok` on both sides of the answer.
 pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
 
 /// O(log n) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
-/// `none` when it never does. Debug builds check `ok` on both sides of the answer.
+/// `None` when it never does. Debug builds check `ok` on both sides of the answer.
 pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
 
 /// O(log n) calls to `ok`. The cut where `ok` flips: false then true along `r` by default
@@ -252,10 +252,10 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D> =
 /// as if it were empty. `l..l` is in order and empty.
 pub @get fn ends<D>(self: Range<D>) -> (Int, Int) = todo
 
-/// First index in sorted `self` with `by(self[i]) > target`, or `none`. O(log n).
+/// First index in sorted `self` with `by(self[i]) > target`, or `None`. O(log n).
 pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = todo
 
-/// Last index in sorted `self` with `by(self[i]) < target`, or `none`. O(log n).
+/// Last index in sorted `self` with `by(self[i]) < target`, or `None`. O(log n).
 pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = todo
 
 // ---- Permutations, monotone stack, and sliding-window extrema
@@ -283,7 +283,7 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D) = todo
 /// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. Works on any `Indexed` sequence. O(n).
 pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = todo
 
-/// O(1). Pop the last element if `ok` holds for it, else leave `self` alone and give `none`.
+/// O(1). Pop the last element if `ok` holds for it, else leave `self` alone and give `None`.
 /// A monotonic stack is `while let top = st.pop_if(t => t.h >= h): ...`.
 pub fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T = todo
 
@@ -361,7 +361,7 @@ pub fn collect<S: Seq, T>(self: S) -> List<T> = todo
 /// gives `(key, x)`, and `argmax`/`find` answer with keys. By default the k-th element gets
 /// the k-th key of `keys` (`0..` is a counter: `for (i, x) in g.keyed().items`); with `by:`
 /// each key is `by(x)` (`dfs(s).keyed(by: v => v)`). Passing both is an error. O(1) to make.
-pub fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = none) -> Keys<S, I, K> = todo
+pub fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, K> = todo
 
 /// The view `keyed` returns.
 pub struct Keys<S, I, K>(src: S, keys: I, by: ?K)
@@ -372,7 +372,7 @@ pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T = todo
 /// O(1) per step. Skip leading elements while `drop(x)` holds, then yield the rest.
 pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T = todo
 
-/// O(1) per step. Lazily yield `f(x)` for each element where it is not `none`:
+/// O(1) per step. Lazily yield `f(x)` for each element where it is not `None`:
 /// `dag[c].filter_map(a => best(a.to)).max()`.
 pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U = todo
 
@@ -382,10 +382,10 @@ pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V = todo
 /// O(1) per yielded element. Lazily concatenate a sequence of sequences.
 pub fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T = todo
 
-/// O(1) per step. Yield the `some` values of a sequence of `?T`, skipping `none`.
+/// O(1) per step. Yield the `Some` values of a sequence of `?T`, skipping `None`.
 pub fn present<S: Seq, T>(self: S) -> yields T = todo
 
-/// O(n), O(n) memory. Unwrap every `?T` into a `List<T>`, or return `none` if any element is `none`.
+/// O(n), O(n) memory. Unwrap every `?T` into a `List<T>`, or return `None` if any element is `None`.
 pub fn all_some<S: Seq, T>(self: S) -> ?List<T> = todo
 
 /// O(1) per step. Lazily concatenate `a` then `b` without copying.
@@ -394,10 +394,10 @@ pub fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T = todo
 /// O(1) per step. Cartesian product `(x, y)` for `x in a`, `y in b` in lexicographic order.
 pub fn product<A: Seq, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
 
-/// O(1) per step. One-shot stream `from, step(from), step(step(from)), ...` until `none`.
+/// O(1) per step. One-shot stream `from, step(from), step(step(from)), ...` until `None`.
 pub fn iterate<T>(from: ?T, step: T -> ?T) -> yields T = todo
 
-/// O(1) per step. Every element paired with the next one, ending with `(last, none)`.
+/// O(1) per step. Every element paired with the next one, ending with `(last, None)`.
 pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T) = todo
 
 /// O(1) per step. Zero-alloc zipped view of equal-length sequences; traps if `a.len != b.len`.
@@ -408,19 +408,19 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T> =
 
 // --- Reductions, folds, frequencies, and selection ---
 
-/// O(n). Seedless left fold returning `none` on empty (never traps).
+/// O(n). Seedless left fold returning `None` on empty (never traps).
 pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T = todo
 
 /// O(n). Seeded left fold into an arbitrary accumulator `Acc`.
 pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc = todo
 
-/// O(n). Maximum element (under `by:`) together with its multiplicity, or `none` when empty.
+/// O(n). Maximum element (under `by:`) together with its multiplicity, or `None` when empty.
 pub fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int) = todo
 
-/// O(n). Minimum element (under `by:`) together with its multiplicity, or `none` when empty.
+/// O(n). Minimum element (under `by:`) together with its multiplicity, or `None` when empty.
 pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int) = todo
 
-/// The value held by more than half the elements, with its count, or `none`. Only `eq` is
+/// The value held by more than half the elements, with its count, or `None`. Only `eq` is
 /// asked, never order or hashing, so it works with an equality oracle (Boyer-Moore: one
 /// pass to find the candidate, one to count it). O(n) `eq` calls, O(1) memory.
 pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int) = todo
@@ -453,7 +453,7 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D> = todo
 
 // --- Sorted lookup, cut partition point, sorted set ops, and linear-time sorts ---
 
-/// O(log n). Cut between the false prefix and true suffix of monotone `ok` on `self` (total; never `none`).
+/// O(log n). Cut between the false prefix and true suffix of monotone `ok` on `self` (total; never `None`).
 pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D> = todo
 
 /// O(log n). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
@@ -497,10 +497,10 @@ pub fn perm_sign<V>(p: [V]V) -> Int = todo
 /// O(n), O(n) memory. Order of permutation `p` (LCM of disjoint cycle lengths).
 pub fn perm_order<V>(p: [V]V) -> Int = todo
 
-/// O(|I| + |V|), O(|I| + |V|) memory. Inverse of partial injection `self: [I]?V -> [V]?I` (traps on duplicate non-`none` images).
+/// O(|I| + |V|), O(|I| + |V|) memory. Inverse of partial injection `self: [I]?V -> [V]?I` (traps on duplicate non-`None` images).
 pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I = todo
 
-/// O(|I| + |V|), O(|I| + |V|) memory. Preimage buckets: for each `v in V`, all `i in I` with `self[i] == some(v)` in `I` order.
+/// O(|I| + |V|), O(|I| + |V|) memory. Preimage buckets: for each `v in V`, all `i in I` with `self[i] == Some(v)` in `I` order.
 pub fn preimages<I, V>(self: [I]?V) -> [V]List<I> = todo
 
 /// O(k) per combination. All `k`-element combinations in lexicographic index order (`k = 2` is unordered pairs).
@@ -510,7 +510,7 @@ pub fn combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T> = todo
 pub fn index_pairs<D>(self: Range<D>) -> yields (D, D) = todo
 
 /// O(k) per permutation. All `k`-permutations of `self` (default `k = self.len`).
-pub fn permutations<S: Indexed, T>(self: S, k: ?Int = none) -> yields List<T> = todo
+pub fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T> = todo
 
 /// O(1). Steerable item yielded by `subsequences` (decision 126, W6).
 pub struct SubseqStep<T>(items: List<T>):
@@ -552,9 +552,9 @@ pub struct OnlineLis<T>(strict: Bool = true):
 
 /// O(1) construction; O(1) amortized push and rollback. Online monotone stack returning nearest dominating index.
 pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
-    /// O(1) amortized. Push `(i, x)`, pop dominated entries, and return the nearest dominating index (or `none`).
+    /// O(1) amortized. Push `(i, x)`, pop dominated entries, and return the nearest dominating index (or `None`).
     pub fn push(mut self, i: D, x: T) -> ?D = todo
-    /// O(1). Current top `(index, val)`, or `none` when empty.
+    /// O(1). Current top `(index, val)`, or `None` when empty.
     @get pub fn top(self) -> ?(index: D, val: T) = todo
     /// O(1). Current stack depth.
     @get pub fn len(self) -> Int = todo
@@ -618,13 +618,13 @@ fn pairs_and_with_prev_yield_neighbours() = todo
 @test
 fn cyclic_pairs_close_the_ring() = todo
 
-/// The index of the first largest value (optionally under key `by:`), or `none` when empty:
-/// `[3, 9, 2, 9].argmax()` is `some(1)` and `words.argmax(by: w => w.len)` is the index of the
+/// The index of the first largest value (optionally under key `by:`), or `None` when empty:
+/// `[3, 9, 2, 9].argmax()` is `Some(1)` and `words.argmax(by: w => w.len)` is the index of the
 /// longest word. It is an index of `self`, so `a[a.argmax()!]` is the largest value of a
 /// `List<T>`, a `[1..=n]T`, a `[V]T` or a filtered view of one alike. O(n).
 pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
 
-/// The index of the first smallest value (optionally under key `by:`), or `none` when empty. O(n).
+/// The index of the first smallest value (optionally under key `by:`), or `None` when empty. O(n).
 pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
 
 @test
@@ -671,16 +671,16 @@ pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice
 pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S> = todo
 
 /// Which end of a piece a two-pointer result is keyed by.
-pub enum Anchor: start, end
+pub enum Anchor: Start, End
 
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
-/// `state: Track`. `ok` must be monotone under shrinking. `anchor: Anchor.start` keys by left
+/// `state: Track`. `ok` must be monotone under shrinking. `anchor: Anchor.Start` keys by left
 /// end instead: the longest piece starting at each position, as greedy jumps want. O(n) amortized.
-pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.end) -> [D]Slice<[D]T> = todo
+pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Slice<[D]T> = todo
 
 /// For each right end, the shortest piece ending there that is `ok`, or none, keyed by that
-/// end like the ring forms; `anchor: Anchor.start` keys by left end. O(n) amortized.
-pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.end) -> [D]?Slice<[D]T> = todo
+/// end like the ring forms; `anchor: Anchor.Start` keys by left end. O(n) amortized.
+pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Slice<[D]T> = todo
 
 /// O(1) to make. `a` read as a cycle: windows and two pointers wrap around the end, and every
 /// element is still a position of `a`. Replaces doubling the array.

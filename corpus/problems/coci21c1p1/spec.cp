@@ -3,7 +3,7 @@
 let n = read<1..=1_000>()
 enum Team: Home, Away
 domain Player = 1..=8
-var last: [Player]?Int = none
+var last: [Player]?Int = None
 var score: [Team]Int = 0
 for (t, x, _) in read<[n](Int, Player, Int)>():
     let points = if last[x].is_some_and(l => t - l <= 10): 150 else: 100

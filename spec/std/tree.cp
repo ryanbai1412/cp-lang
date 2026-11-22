@@ -23,7 +23,7 @@ use std.rand.{Rng}
 /// lists.
 pub struct Rooted<V, Pre>:
     root: V
-    /// The parent; `none` at the root.
+    /// The parent; `None` at the root.
     par: [V]?V
     dep: [V]0..=V.count
     /// The total edge length from the root; equal to the depth when the edges have no lengths.
@@ -34,7 +34,7 @@ pub struct Rooted<V, Pre>:
     bfs: List<V>
     k0: [V]0..=V.count
     k1: [V]0..=V.count
-    /// The child with the largest subtree; `none` at a leaf.
+    /// The child with the largest subtree; `None` at a leaf.
     heavy: [V]?V
     /// The highest vertex of the heavy chain through `v`.
     top: [V]V
@@ -53,7 +53,7 @@ pub struct Rooted<V, Pre>:
     /// count 1 per edge.
     pub fn new<N>(next: N, root: V) -> Rooted<V, _> = todo
 
-    /// O(n). Build a rooted tree from parents, keyed by vertex: `par: [V]?V` with `none` at the
+    /// O(n). Build a rooted tree from parents, keyed by vertex: `par: [V]?V` with `None` at the
     /// root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one
     /// missing key is the root.
     pub fn from_parents<P: Keyed>(par: P) -> Rooted<V, _> = todo
@@ -82,11 +82,11 @@ pub struct Rooted<V, Pre>:
     /// `at`.
     pub fn pos(self, v: V) -> Pre = todo
 
-    /// O(1). The parent of `v`; `none` at the root.
+    /// O(1). The parent of `v`; `None` at the root.
     pub fn parent(self, v: V) -> ?V = todo
 
     /// O(1). The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost`
-    /// on a tree read with a `cost` field); `none` at a root. Edge data stays on the arcs, so no
+    /// on a tree read with a `cost` field); `None` at a root. Edge data stays on the arcs, so no
     /// `[V]` side array is built from the edge list.
     pub fn up_arc<A>(self, v: V) -> ?A = todo
 
@@ -200,14 +200,14 @@ pub struct Rooted<V, Pre>:
     /// O(n). A longest simple path in the tree: `(len, u, v)` with `self.dist(u, v) == len`.
     pub fn diameter(self) -> (len: Int, u: V, v: V) = todo
 
-    /// O(log n). The ancestor `k` edges above `v`, or `none` if that is above the root.
+    /// O(log n). The ancestor `k` edges above `v`, or `None` if that is above the root.
     pub fn ancestor(self, v: V, k: Int) -> ?V = todo
 
-    /// O(log n). The vertex `k` edges from `a` on the path to `b`, or `none` if the path is
+    /// O(log n). The vertex `k` edges from `a` on the path to `b`, or `None` if the path is
     /// shorter.
     pub fn jump(self, a: V, b: V, k: Int) -> ?V = todo
 
-    /// O(log^2 n). The highest ancestor `u` of `v` such that `pred` holds for `u`, or `none` when
+    /// O(log^2 n). The highest ancestor `u` of `v` such that `pred` holds for `u`, or `None` when
     /// it does not hold for `v` itself. `pred` must be true and then false on the way up.
     pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V = todo
 
@@ -264,7 +264,7 @@ pub struct Rooted<V, Pre>:
     pub fn meet(self, a: V, b: V, c: V) -> V = todo
 
     /// O(n) calls of `lift` and `finish`. The other half of `reroot`: for `v` that is not a
-    /// root, the DP of the tree without `sub(v)`, rooted at `parent(v)`; `none` at a root.
+    /// root, the DP of the tree without `sub(v)`, rooted at `parent(v)`; `None` at a root.
     /// Takes the arguments of `reroot`, for answers that are per edge rather than per vertex.
     pub fn above<T, U, M>(
         self,
@@ -274,8 +274,8 @@ pub struct Rooted<V, Pre>:
     ) -> [V]?T = todo
 
     /// O(log n). The farthest pair among two vertex sets' farthest pairs, which is the
-    /// farthest pair of their union. An operation value with identity `none`:
-    /// `SegTree(op: (x, y) => t.farthest(x, y), id: none)` keeps the diameter of any range
+    /// farthest pair of their union. An operation value with identity `None`:
+    /// `SegTree(op: (x, y) => t.farthest(x, y), id: None)` keeps the diameter of any range
     /// of vertices under changes, and a running fold keeps it as vertices arrive.
     pub fn farthest(
         self,
@@ -331,7 +331,7 @@ pub struct Centroids<V>:
     /// or a fn).
     pub fn new<N>(next: N) -> Centroids<V> = todo
 
-    /// O(1). The parent of centroid `c` in the centroid tree; `none` at `cd.root`.
+    /// O(1). The parent of centroid `c` in the centroid tree; `None` at `cd.root`.
     pub fn parent(self, c: V) -> ?V = todo
 
     /// O(1). The depth of `c` in the centroid tree, at most log2 n.
@@ -438,7 +438,7 @@ pub struct JumpTree<V>:
     /// O(1). Hang `v`, a vertex not yet in any tree, below `p`.
     pub fn add(mut self, v: V, p: V) = todo
 
-    /// O(1). The parent of `v`, or `none` at a root.
+    /// O(1). The parent of `v`, or `None` at a root.
     pub fn parent(self, v: V) -> ?V = todo
 
     /// O(1). The number of edges from `v` up to its root.
@@ -447,20 +447,20 @@ pub struct JumpTree<V>:
     /// O(log n). The root of `v`'s tree.
     pub fn root_of(self, v: V) -> V = todo
 
-    /// O(log n). The ancestor `k` edges above `v`, or `none` if that is above the root.
+    /// O(log n). The ancestor `k` edges above `v`, or `None` if that is above the root.
     pub fn ancestor(self, v: V, k: Int) -> ?V = todo
 
-    /// O(log n). The lowest common ancestor of `a` and `b`, or `none` in different trees.
+    /// O(log n). The lowest common ancestor of `a` and `b`, or `None` in different trees.
     pub fn lca(self, a: V, b: V) -> ?V = todo
 
-    /// O(log n) calls. The highest ancestor `u` of `v` such that `pred` holds for `u`, or `none`
+    /// O(log n) calls. The highest ancestor `u` of `v` such that `pred` holds for `u`, or `None`
     /// when it does not hold for `v` itself. `pred` must be true and then false on the way up.
     pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V = todo
 
-    /// O(log n). The number of edges between `a` and `b`; `none` across trees.
+    /// O(log n). The number of edges between `a` and `b`; `None` across trees.
     pub fn dist(self, a: V, b: V) -> ?Int = todo
 
-    /// O(log n). The `k`-th vertex on the path from `a` to `b` (`a` is the 0th); `none` past
+    /// O(log n). The `k`-th vertex on the path from `a` to `b` (`a` is the 0th); `None` past
     /// `b` or across trees.
     pub fn jump(self, a: V, b: V, k: Int) -> ?V = todo
 
@@ -471,12 +471,12 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     up: [V]?V
     dep: [V]0..=V.count
 
-    /// O(n log n). `par[v]` is `v`'s parent with the value on the edge to it, `none` at a root.
+    /// O(n log n). `par[v]` is `v`'s parent with the value on the edge to it, `None` at a root.
     /// `op` must be associative; it need not commute, since folds run from the lower end up.
     pub fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T> = todo
 
     /// O(n log n). Lifting over any partial successor function, such as "the next interval a
-    /// greedy picks": `Lift.of(i => first_from(iv[i].r))`. `none` ends a chain; the links must
+    /// greedy picks": `Lift.of(i => first_from(iv[i].r))`. `None` ends a chain; the links must
     /// form a forest. Edge values are `()`, so `climb` and `jump` are what it is for.
     pub fn of(next: V -> ?V) -> Lift<V, ()> = todo
 
@@ -485,16 +485,16 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
     /// "jump while the next one still fits" counts are `Lift(next, ...).climb(v, ok).steps`.
     pub fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V) = todo
 
-    /// O(1). The parent of `v`, or `none` at a root.
+    /// O(1). The parent of `v`, or `None` at a root.
     pub fn parent(self, v: V) -> ?V = todo
 
     /// O(1). The number of edges from `v` up to its root.
     pub fn depth(self, v: V) -> Int = todo
 
-    /// O(log n). The ancestor `k` edges above `v`, or `none` if that is above the root.
+    /// O(log n). The ancestor `k` edges above `v`, or `None` if that is above the root.
     pub fn ancestor(self, v: V, k: Int) -> ?V = todo
 
-    /// O(log n). The lowest common ancestor of `a` and `b`, or `none` in different trees.
+    /// O(log n). The lowest common ancestor of `a` and `b`, or `None` in different trees.
     pub fn lca(self, a: V, b: V) -> ?V = todo
 
     /// O(log n). The fold of the edge values from `v` up to its ancestor `u`, lowest first;
@@ -519,7 +519,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     stk: List<V>
 
     /// O(n). `V.K` single-vertex trees holding `a` (the identity of `op` when `a` is absent).
-    pub fn new<M>(op: M, a: ?[V]T = none) -> LinkCut<V, T> = todo
+    pub fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T> = todo
 
     fn top(self, x: V) -> Bool = todo
 
@@ -554,7 +554,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     pub fn cut(mut self, u: V, v: V) = todo
 
     /// Amortized O(log n). The lowest common ancestor of `u` and `v` when their tree is rooted at
-    /// `root`, which becomes its root; `none` unless all three are connected.
+    /// `root`, which becomes its root; `None` unless all three are connected.
     pub fn lca(mut self, u: V, v: V, root: V) -> ?V = todo
 
     /// O(1). The value at `v`.
@@ -567,11 +567,11 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// becomes the root.
     pub fn fold_path(mut self, u: V, v: V) -> T = todo
 
-    /// Amortized O(log n). The number of edges between `a` and `b`; `none` across trees.
+    /// Amortized O(log n). The number of edges between `a` and `b`; `None` across trees.
     pub fn dist(mut self, a: V, b: V) -> ?Int = todo
 
     /// Amortized O(log n). The `k`-th vertex on the path from `a` to `b` (`a` is the 0th);
-    /// `none` past `b` or across trees.
+    /// `None` past `b` or across trees.
     pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
 
 /// `LinkCut` with updates along a path: `LazyLinkCut.new(+, add, a)` adds to every value on
@@ -603,7 +603,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     stk: List<V>
 
     /// O(n). `V.K` single-vertex trees holding `a` (the identity of `act.over` when `a` is absent).
-    pub fn new(act: Action<T, F>, a: ?[V]T = none) -> LazyLinkCut<V, T, F> = todo
+    pub fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyLinkCut<V, T, F> = todo
 
     fn top(self, x: V) -> Bool = todo
 
@@ -638,7 +638,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     pub fn cut(mut self, u: V, v: V) = todo
 
     /// Amortized O(log n). The lowest common ancestor of `u` and `v` when their tree is rooted at
-    /// `root`, which becomes its root; `none` unless all three are connected.
+    /// `root`, which becomes its root; `None` unless all three are connected.
     pub fn lca(mut self, u: V, v: V, root: V) -> ?V = todo
 
     /// Amortized O(log n). The value at `v`, with every update along paths through it applied.
@@ -655,11 +655,11 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// root.
     pub fn apply_path(mut self, u: V, v: V, f: F) = todo
 
-    /// Amortized O(log n). The number of edges between `a` and `b`; `none` across trees.
+    /// Amortized O(log n). The number of edges between `a` and `b`; `None` across trees.
     pub fn dist(mut self, a: V, b: V) -> ?Int = todo
 
     /// Amortized O(log n). The `k`-th vertex on the path from `a` to `b` (`a` is the 0th);
-    /// `none` past `b` or across trees.
+    /// `None` past `b` or across trees.
     pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
 
 @test
@@ -763,7 +763,7 @@ pub struct Events<V, P>:
 /// tallest child, so a DP indexed by depth below `v` lives in one shared buffer over `L`,
 /// inheriting `deep[v]`'s values is free, and merging the other children costs their heights.
 pub struct LongPaths<V, L>:
-    /// The child with the tallest subtree; `none` at a leaf.
+    /// The child with the tallest subtree; `None` at a leaf.
     deep: [V]?V
     /// The number of edges on the longest path down from `v`.
     height: [V]Int
@@ -797,8 +797,8 @@ pub struct LcaTable<V>:
 pub struct EulerTourTree<V, T>:
     val: [V]T
 
-    /// O(n). Lone vertices with values `a` (each `op`'s identity when `a` is `none`).
-    pub fn new<M>(op: M, a: ?[V]T = none) -> EulerTourTree<V, T> = todo
+    /// O(n). Lone vertices with values `a` (each `op`'s identity when `a` is `None`).
+    pub fn new<M>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T> = todo
 
     /// Expected O(log n). Join the trees of `u` and `v` by the edge `(u, v)`.
     pub fn link(mut self, u: V, v: V) = todo
@@ -829,7 +829,7 @@ pub struct LazyEulerTourTree<V, T, F>:
     val: [V]T
 
     /// O(n). Lone vertices with values `a`.
-    pub fn new(act: Action<T, F>, a: ?[V]T = none) -> LazyEulerTourTree<V, T, F> = todo
+    pub fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyEulerTourTree<V, T, F> = todo
 
     /// Expected O(log n). Join the trees of `u` and `v` by the edge `(u, v)`.
     pub fn link(mut self, u: V, v: V) = todo
@@ -872,7 +872,7 @@ pub fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D
 pub struct KruskalTree<V, N, W>:
     /// The leaf node of each vertex.
     leaf: [V]N
-    /// The merging weight of each node; `none` at a leaf.
+    /// The merging weight of each node; `None` at a leaf.
     w: [N]?W
 
     /// O(1). The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
@@ -891,7 +891,7 @@ pub struct KruskalTree<V, N, W>:
     /// the least walk home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`.
     pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T = todo
 
-    /// O(log n). The least possible largest edge weight on a path from `a` to `b`; `none`
+    /// O(log n). The least possible largest edge weight on a path from `a` to `b`; `None`
     /// when they are not connected, and at `a == b`.
     pub fn bottleneck(self, a: V, b: V) -> ?W = todo
 

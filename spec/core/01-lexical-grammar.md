@@ -61,10 +61,15 @@ fn dist(a: P, b: P) -> Int:
 
 Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
 
-- Types, domains, traits and type parameters are `PascalCase`.
-- Values, functions, fields, modules and enum variants are `snake_case`
-  or lower camel; a value binding with an uppercase first letter is an
-  error ("values are lowercase; `N` would read as a type").
+- Types, domains, traits, type parameters and enum variants are
+  `PascalCase`: `Some(x)`, `None`, `Ev.Add(v)`, `Dir.L` (decision 157).
+  `true` and `false` are lowercase literals.
+- Values, functions, fields and modules are `snake_case` or lower camel;
+  a value binding with an uppercase first letter is an error ("values are
+  lowercase; `N` would read as a type").
+- So a pattern needs no lookup to read: a capitalized name is a variant
+  or constant, a lowercase name binds. `match h: Big => ...` tests the
+  variant; `match h: big => ...` binds `big`.
 - In an expression, `Name<` opens type arguments only when `Name` is
   capitalized and what follows parses as type arguments closed by `>`.
   So `a < b` is a comparison and `SegTree<0..=4e9>(+, a)` needs no
@@ -74,13 +79,17 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
 
 ### Reserved words
 
-The 34 keywords are:
+The 33 keywords are:
 
 ```
 let var const fn struct enum domain type use pub if elif else for while
 in match return break continue and or not assert mut self unchecked
-true false none trait impl lends yield
+true false trait impl lends yield
 ```
+
+`Some` and `None` are not reserved: they are the variants of `?T`, in
+the prelude like any other name, so a user enum may also have a `None`
+variant (`Side.None`).
 
 Contextual words are keywords only in the position shown and ordinary
 names elsewhere:
@@ -116,7 +125,7 @@ in every build (chapter 9); it is a statement, never an expression.
   literal interpolates: `"Case #{t}: {ans}"`; `{{` and `}}` are literal
   braces; `r"..."` is raw (no escapes, no interpolation). Format specs
   follow a colon inside the braces: `"{x:.9}"`, `"{v: }"` (chapter 10).
-- `true`, `false`, `none`.
+- `true`, `false`, `None`.
 - **Lists** `[a, b, c]`, **maps** `[k: v, k2: v2]` (`[:]` is empty),
   **tuples** `(a, b)`, **records** `(lo: 1, hi: n)`.
 - **Literal-union types** use literals as types: `'+' | '-'`,
@@ -129,7 +138,7 @@ in every build (chapter 9); it is a statement, never an expression.
 Tightest first:
 
 1. postfix: `.f`, `.0`, calls `f(...)`, indexing `a[i]`, `!` (unwrap or
-   trap), `?` (propagate `none`)
+   trap), `?` (propagate `None`)
 2. `**` (right-associative; the right operand may start with unary `-`)
 3. unary `-`, `+` (numeric only), `~`
 4. `*`, `/`, `%`
@@ -173,7 +182,7 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   assignment `x op= e` for every binary operator and for `min=` /
   `max=`. Compound assignment is a statement, except that `min=` and
   `max=` used as a condition are `true` when the target strictly
-  improved, including from `none` (decision 129):
+  improved, including from `None` (decision 129):
   `if dist[v] min= dist[u] + w: parent[v] = u`.
 - `return e` exists for early exits; a block's value is its last
   expression. At top level `return` ends the program (or the test case
@@ -235,7 +244,7 @@ match d: L => -1, R => 1            // one-line match
   wherever a range is taken), steps `a..b by k`.
 - **Indexing** `a[i]`, `g[r, c]` (never `g[r][c]`); `a[i]` on `[I, J]T`
   is the row place. `a[l..r]` is a slice view keeping the source keys.
-- **Optional chaining**: `x?.f`, `f(x?)` propagate `none`; `x ?? y`
+- **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y`
   falls back lazily; `x!` unwraps or traps with the source location.
 - Members without parentheses are O(1) (`xs.len`, `t.parent[v]`);
   anything that does work has parentheses (`g.transpose()`), decision 140.

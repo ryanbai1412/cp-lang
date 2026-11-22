@@ -8,5 +8,5 @@ let by_rem = digits.group(by: d => d mod k)
 for x in read [q] Int:
     let paths = bfs(y => by_rem[y mod k].map(d => (to: (y - d) / k, digit: d)), from: [x], until: 0, hashed: true)
     match paths.arcs_to(0):
-        some(arcs) => print(arcs.rev.map(.digit))
-        none => print("IMPOSSIBLE")
+        Some(arcs) => print(arcs.rev.map(.digit))
+        None => print("IMPOSSIBLE")

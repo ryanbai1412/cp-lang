@@ -23,7 +23,7 @@ let answer: ?[Wire]Bool =
     elif k <= 3:
         tops.keys.find_map(s => spread(t => tops.ring.dist(s, t).is_even()))
     elif not covers(arc.values, Seg.ring.all):
-        none
+        None
     else:
         let alone = [tops.keys] t => covers(chain(nest.inside(t).map(w => arc[w]), [arc[tops.ring.prev(t)], arc[tops.ring.next(t)]]), arc[t])
         let good = alone.count()
@@ -32,8 +32,8 @@ let answer: ?[Wire]Bool =
             let pair = chain(nest.inside(b), nest.inside(c)).map(x => arc[x])
             if good - alone[b].int - alone[c].int == k - 2 and covers(chain(pair, [arc[a], arc[d]]), arc[b].hull(arc[c])):
                 spread(t => if t == c: tops.ring.dist(b, t).is_odd() else: tops.ring.dist(b, t).is_even())
-            else: none)
+            else: None)
 
 match answer:
-    some(dir) => print(dir.map(d => d.int), sep: "")
-    none => print("impossible")
+    Some(dir) => print(dir.map(d => d.int), sep: "")
+    None => print("impossible")

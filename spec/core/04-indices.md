@@ -25,14 +25,14 @@ enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir
 |---|---|---|
 | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step |
 | `V.count` | number of positions | O(1) |
-| `V.first`, `V.last` | `?V`, `none` when `V` is empty; write `V.first!` when you know it isn't | O(1) |
+| `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it isn't | O(1) |
 | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1) |
 | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the end | O(1) |
 | `x in V` | is integer `x` a position | O(1) |
 | `V(x)` | integer to position, trapping outside `V` | O(1) |
-| `V.at(x)` | integer to position, `?V`: `none` outside `V` | O(1) |
+| `V.at(x)` | integer to position, `?V`: `None` outside `V` | O(1) |
 | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` decodes a flat 0-based cell number and `for (r, c) in P` visits rows in order | O(1) |
-| `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `none` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | O(1) |
+| `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `None` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | O(1) |
 | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | O(1) |
 | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) |
@@ -155,7 +155,7 @@ the generic meaning comes to for each kind.
 | `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1) |
 | `r.l`, `r.r` | the bounding cuts, `V.cuts` | the bounds one level up (`V.cuts.cuts`); you rarely want them: use `r.first`/`r.last` | O(1) |
 | `r.clip(s)` | intersection | intersection | O(1) |
-| `r.halve()` | `?(r.l..r.mid, r.mid..r.r)`, two non-empty halves; `none` when `len <= 1` | same, over cuts | O(1) |
+| `r.halve()` | `?(r.l..r.mid, r.mid..r.r)`, two non-empty halves; `None` when `len <= 1` | same, over cuts | O(1) |
 | `r.mid` | middle cut, `V.cuts`, always present (`r.l` when empty) | the middle gap, one level up | O(1) |
 | `r.first_true(ok)`, `r.last_true(ok)` | first position where false→true `ok` holds; last where true→false `ok` holds; `?V` | same over cuts, `?V.cuts` | O(log n) calls |
 | `r.bsearch(ok)`, `r.bsearch(ok, last: true)` | the cut where `ok` flips (false→true; with `last:`, true→false), `V.cuts`; always exists | the gap between cuts, one level up; use `first_true` | O(log n) calls |
@@ -163,7 +163,7 @@ the generic meaning comes to for each kind.
 
 **Binary search: which element, or where it flips.** `first_true` and
 `last_true` return the element, so the predicate reads like the statement
-and is never negated; `none` when no element qualifies (an empty range is
+and is never negated; `None` when no element qualifies (an empty range is
 the case with no elements). `bsearch` returns the cut where `ok` turns true,
 which always exists, for answers that are boundaries: insertion points,
 counts, prefix lengths. They agree: `r.first_true(ok)` is `r.bsearch(ok).r`
@@ -237,12 +237,12 @@ for now (decision 137); `!` is one character and says the same thing.
 
 `r.mid` is the middle cut: ⌊n/2⌋ elements before it (C++'s `(l + r) / 2`
 on a half-open range), always present. `r.halve()` is
-`(r.l..r.mid, r.mid..r.r)`, `none` when either half would be empty.
+`(r.l..r.mid, r.mid..r.r)`, `None` when either half would be empty.
 
 | n | `r.halve()` | `r.mid` | `r.mid.r` |
 |---|---|---|---|
-| 0 | `none` | `r.l` | outside `r` (guard first) |
-| 1 | `none` | `r.l` | the element |
+| 0 | `None` | `r.l` | outside `r` (guard first) |
+| 1 | `None` | `r.l` | the element |
 | ≥ 2 | ⌊n/2⌋ and ⌈n/2⌉ elements | `left.r` | `right.first` |
 
 `halve` is for the merge-sort shape (stop at one element). The element shape
@@ -264,7 +264,7 @@ but the cut is what both shapes share, and `halve` reads as its definition).
   `Into`. A position-only reading was rejected: it broke
   `for j in ..i: dp[j] + cost(j..i)`.
 - `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only inside `[...]`.
-- `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `none` at length <= 1.
+- `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `None` at length <= 1.
 - Integer literals convert to positions and cuts of integer domains.
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
 

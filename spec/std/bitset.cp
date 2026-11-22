@@ -63,11 +63,11 @@ pub struct Bitset<D>:
     /// Whether the set has no members. O(1): the count is kept current by every update.
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The smallest position in the set satisfying `pred` (any, by default), or `none`.
+    /// The smallest position in the set satisfying `pred` (any, by default), or `None`.
     /// O(K / 64 + visited).
     pub fn first(self, pred: D -> Bool = d => true) -> ?D = todo
 
-    /// The largest position in the set satisfying `pred` (any, by default), or `none`.
+    /// The largest position in the set satisfying `pred` (any, by default), or `None`.
     /// O(K / 64 + visited).
     pub fn last(self, pred: D -> Bool = d => true) -> ?D = todo
 
@@ -108,10 +108,10 @@ pub struct Bitset<D>:
     /// The positions in the set, in increasing order.
     pub fn each(self) -> yields D = todo
 
-    /// The first position in the set at or after `i`, or `none`. O(K / 64).
+    /// The first position in the set at or after `i`, or `None`. O(K / 64).
     pub fn next(self, i: D) -> ?D = todo
 
-    /// The last position in the set strictly before `i`, or `none`. O(K / 64).
+    /// The last position in the set strictly before `i`, or `None`. O(K / 64).
     pub fn prev(self, i: D) -> ?D = todo
 
     /// Number of positions in the set strictly before `i`. O(K / 64).
@@ -133,7 +133,7 @@ pub struct Bitset<D>:
     /// Flip every bit in `r` in place. O(r.len / 64).
     pub fn flip_range(mut self, r: Range<D>) = todo
 
-    /// The `k`-th set position (0-based), or `none` if `k >= len`. O(K / 64).
+    /// The `k`-th set position (0-based), or `None` if `k >= len`. O(K / 64).
     pub fn nth(self, k: Int) -> ?D = todo
 
     /// Yield set positions in descending order. O(K / 64 + len).
@@ -183,16 +183,16 @@ pub struct DynBitset:
     /// Resize to `new_cap` bits, zero-filling any new high bits. O(new_cap / 64).
     pub fn resize(mut self, new_cap: Int) = todo
 
-    /// Smallest set bit index, or `none` if empty. O(cap / 64).
+    /// Smallest set bit index, or `None` if empty. O(cap / 64).
     pub fn first(self) -> ?Int = todo
 
-    /// Largest set bit index, or `none` if empty. O(cap / 64).
+    /// Largest set bit index, or `None` if empty. O(cap / 64).
     pub fn last(self) -> ?Int = todo
 
-    /// Smallest set bit `>= i`, or `none`. O(cap / 64).
+    /// Smallest set bit `>= i`, or `None`. O(cap / 64).
     pub fn next(self, i: Int) -> ?Int = todo
 
-    /// Largest set bit `<= i`, or `none`. O(cap / 64).
+    /// Largest set bit `<= i`, or `None`. O(cap / 64).
     pub fn prev(self, i: Int) -> ?Int = todo
 
     /// Number of set bits strictly below `i`. O(cap / 64).
@@ -201,7 +201,7 @@ pub struct DynBitset:
     /// Number of set bits in `r`. O(r.len / 64).
     pub fn count_range(self, r: Range<Int>) -> Int = todo
 
-    /// The `k`-th set bit index (0-based), or `none`. O(cap / 64).
+    /// The `k`-th set bit index (0-based), or `None`. O(cap / 64).
     pub fn nth(self, k: Int) -> ?Int = todo
 
     /// In-place bitwise OR (`self |= other`). O(cap / 64).
@@ -268,16 +268,16 @@ pub struct XorTrie:
     /// O(1). Apply a lazy global XOR mask (`y -> y ^ mask` for all stored elements).
     pub fn xor_all(mut self, mask: Int) = todo
 
-    /// O(bits). Maximum value of `x ^ y` over stored `y`, or `none` if empty.
+    /// O(bits). Maximum value of `x ^ y` over stored `y`, or `None` if empty.
     pub fn max_xor(self, x: Int) -> ?Int = todo
 
-    /// O(bits). Minimum value of `x ^ y` over stored `y`, or `none` if empty.
+    /// O(bits). Minimum value of `x ^ y` over stored `y`, or `None` if empty.
     pub fn min_xor(self, x: Int) -> ?Int = todo
 
     /// O(bits). Count of stored `y` with `(x ^ y) < limit`.
     pub fn count_xor_less(self, x: Int, limit: Int) -> Int = todo
 
-    /// O(bits). The `k`-th smallest value of `x ^ y` over stored `y` (0-based), or `none` if `k >= len`.
+    /// O(bits). The `k`-th smallest value of `x ^ y` over stored `y` (0-based), or `None` if `k >= len`.
     pub fn kth_xor(self, x: Int, k: Int) -> ?Int = todo
 
     /// O(bits). Smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`).

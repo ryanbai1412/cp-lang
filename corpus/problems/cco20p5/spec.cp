@@ -11,7 +11,7 @@ domain X = 1..=1e6
 struct Gap(end_l: ?X, start_r: ?X, span: ?Int)
 
 fn join(a: Gap, b: Gap) -> Gap:
-    let across = if a.end_l is some(l) and b.start_r is some(r): some(Int(r) - Int(l)) else: none
+    let across = if a.end_l is Some(l) and b.start_r is Some(r): Some(Int(r) - Int(l)) else: None
     Gap(
         end_l: [a.end_l, b.end_l].filter_map(x => x).max(),
         start_r: [a.start_r, b.start_r].filter_map(x => x).min(),
@@ -19,7 +19,7 @@ fn join(a: Gap, b: Gap) -> Gap:
     )
 
 let q = read<1..=5e5>()
-var gaps = SegTree(join, [X] _ => Gap(end_l: none, start_r: none, span: none))
+var gaps = SegTree(join, [X] _ => Gap(end_l: None, start_r: None, span: None))
 var lefts_ending = Map<X, SortedBag<X>>()
 var rights_starting = Map<X, SortedBag<X>>()
 var by_end = SortedBag<(r: X, l: Desc<X>)>()
@@ -28,9 +28,9 @@ var lens = SortedBag<Int>()
 
 fn refresh(l: X, r: X):
     let at_r = gaps.get(r)
-    gaps.set(r, Gap(end_l: lefts_ending.get(r).and_then(b => b.last), start_r: at_r.start_r, span: none))
+    gaps.set(r, Gap(end_l: lefts_ending.get(r).and_then(b => b.last), start_r: at_r.start_r, span: None))
     let at_l = gaps.get(l)
-    gaps.set(l, Gap(end_l: at_l.end_l, start_r: rights_starting.get(l).and_then(b => b.first), span: none))
+    gaps.set(l, Gap(end_l: at_l.end_l, start_r: rights_starting.get(l).and_then(b => b.first), span: None))
 
 for op in read<[q]Op>():
     match op:
@@ -48,7 +48,7 @@ for op in read<[q]Op>():
             by_start.remove((l: desc(l), r: r))
             lens.remove(Int(r) - Int(l))
             refresh(l, r)
-    if gaps.fold(X.range).span is some(s):
+    if gaps.fold(X.range).span is Some(s):
         print(s)
     else:
         let (a, b) = (by_end.first!, by_start.first!)

@@ -33,7 +33,7 @@ pub struct FlatMap<V>:
 
     fn rehash(mut self, new_cap: Int) = todo
 
-    /// Look up `k`, returning `none` if absent. O(1) expected.
+    /// Look up `k`, returning `None` if absent. O(1) expected.
     pub fn get(self, k: Int) -> ?V = todo
 
     /// Whether `k` is currently present. O(1) expected.
@@ -45,7 +45,7 @@ pub struct FlatMap<V>:
     /// Return the value for `k`, inserting `v` first if `k` is absent. O(1) expected amortized.
     pub fn get_or_insert(mut self, k: Int, v: V) -> V = todo
 
-    /// Remove `k` if present; returns its old value or `none`. O(1) expected.
+    /// Remove `k` if present; returns its old value or `None`. O(1) expected.
     pub fn remove(mut self, k: Int) -> ?V = todo
 
     /// Reserve space for at least `cap` entries without rehashing. O(cap).
@@ -64,7 +64,7 @@ pub struct FlatMap<V>:
     pub @get fn values(self) -> yields V = todo
 
     /// Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting. O(min(|self|, |other|)) expected.
-    pub fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = none) = todo
+    pub fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None) = todo
 
 /// Default-valued frequency / weight map over hashable keys `K`.
 /// `c[k]` reads `init` without inserting; `add`, `get`, `set`, `remove`, and `contains` are O(1) expected.
@@ -95,7 +95,7 @@ pub struct Counter<K, V>:
     /// Add `delta` to `k`'s value, removing `k` if the result equals `init`. O(1) expected amortized.
     pub fn add(mut self, k: K, delta: V) = todo
 
-    /// Remove `k` and return its previous value, or `none` if absent. O(1) expected.
+    /// Remove `k` and return its previous value, or `None` if absent. O(1) expected.
     pub fn remove(mut self, k: K) -> ?V = todo
 
     /// Reserve space for at least `cap` keys. O(cap).

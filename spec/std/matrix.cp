@@ -17,10 +17,10 @@ pub struct Mat<T>:
     /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
     /// `Mat(over: Semiring(min, +), d)`. `m * m2`, `pow(m, k)` and a `SegTree(*, ...)` of
     /// matrices all use it. O(rows * cols).
-    pub fn new<R, C, S>(a: [R, C]T, over: ?S = none) -> Mat<T> = todo
+    pub fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T> = todo
 
     /// A `rows x cols` matrix filled with `fill`. O(rows * cols).
-    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = none) -> Mat<T> = todo
+    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T> = todo
 
     /// A `rows x cols` zero matrix. O(rows * cols).
     pub fn zeros(rows: Int, cols: Int) -> Mat<T> = todo
@@ -59,14 +59,14 @@ pub struct Mat<T>:
     /// Rank over an exact field. O(rows * cols * min(rows, cols)).
     pub fn rank(self) -> Int = todo
 
-    /// Solve `self * x = b` over an exact field. Returns `(particular, nullspace_basis)` or `none`.
+    /// Solve `self * x = b` over an exact field. Returns `(particular, nullspace_basis)` or `None`.
     /// Every solution has the form `particular + sum(c_i * basis[i])`. O(rows * cols * min(rows, cols)).
     pub fn solve_space(self, b: List<T>) -> ?(List<T>, List<List<T>>) = todo
 
-    /// Solve `self * x = b` over an exact field. Returns one solution (free variables 0) or `none`.
+    /// Solve `self * x = b` over an exact field. Returns one solution (free variables 0) or `None`.
     pub fn solve(self, b: List<T>) -> ?List<T> = todo
 
-    /// Multiplicative inverse of a square matrix over an exact field, or `none` if singular. O(n^3).
+    /// Multiplicative inverse of a square matrix over an exact field, or `None` if singular. O(n^3).
     pub fn inverse(self) -> ?Mat<T> = todo
 
     /// O(n * m * min(n, m)). Reduced row echelon form `(rref_mat, rank, pivot_cols)` over a field.
@@ -103,10 +103,10 @@ pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64 = todo
 /// Rank of a floating-point matrix via partial pivoting with tolerance `eps`. O(r * c * min(r, c)).
 pub fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int = todo
 
-/// Solve `a * x = b` over `F64` via partial pivoting with tolerance `eps`. Returns `none` if inconsistent.
+/// Solve `a * x = b` over `F64` via partial pivoting with tolerance `eps`. Returns `None` if inconsistent.
 pub fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64> = todo
 
-/// Inverse of a floating-point square matrix via partial pivoting with tolerance `eps`, or `none` if singular.
+/// Inverse of a floating-point square matrix via partial pivoting with tolerance `eps`, or `None` if singular.
 pub fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64> = todo
 
 /// Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
@@ -136,7 +136,7 @@ pub struct XorBasis:
     /// Minimum value of `init ^ s` over all `s` in the span. O(W).
     pub fn min_xor(self, init: Int = 0) -> Int = todo
 
-    /// The 0-indexed `k`-th smallest value in the span, or `none` if `k < 0` or `k >= 2^rank`. O(W^2).
+    /// The 0-indexed `k`-th smallest value in the span, or `None` if `k < 0` or `k >= 2^rank`. O(W^2).
     pub fn kth(self, k: Int) -> ?Int = todo
 
     /// Merge another basis into `self`. O(W * o.rank).
@@ -184,13 +184,13 @@ pub struct BitMat(rows: Int, cols: Int):
     /// O(n * m * min(n, m) / 64). Rank over GF(2).
     pub fn rank(self) -> Int = todo
 
-    /// O(n * m * min(n, m) / 64). Any solution to `self * x == b` over GF(2), or `none`.
+    /// O(n * m * min(n, m) / 64). Any solution to `self * x == b` over GF(2), or `None`.
     pub fn solve(self, b: List<Bool>) -> ?List<Bool> = todo
 
-    /// O(n * m * min(n, m) / 64). One solution `x0` and nullspace basis over GF(2), or `none`.
+    /// O(n * m * min(n, m) / 64). One solution `x0` and nullspace basis over GF(2), or `None`.
     pub fn solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>) = todo
 
-    /// O(n^3 / 64). Inverse of a square GF(2) matrix, or `none`.
+    /// O(n^3 / 64). Inverse of a square GF(2) matrix, or `None`.
     pub fn inverse(self) -> ?BitMat = todo
 
     /// O(n * m * k / 64). Matrix product over GF(2).
@@ -221,7 +221,7 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P> = todo
 /// O(n * (entries.len + n)) expected. Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm.
 pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>> = todo
 
-/// O(poly(n, m)) typical (Simplex). Maximize `c . x` subject to `a * x <= b`, `x >= 0`; `none` if infeasible or unbounded.
+/// O(poly(n, m)) typical (Simplex). Maximize `c . x` subject to `a * x <= b`, `x >= 0`; `None` if infeasible or unbounded.
 pub fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>) = todo
 
 @test

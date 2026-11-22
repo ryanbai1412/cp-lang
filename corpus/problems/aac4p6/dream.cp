@@ -14,7 +14,7 @@ for (j, x) in a.rev().take(m).enumerate():
     if sum > 0: sum -= 1 else: marks.push_back(j)
 for (i, x) in a.items:
     marks.pop_back_while(j => j >= m - Int(i))
-    let ends_here = marks.back == some(m - Int(i) - 1)
+    let ends_here = marks.back == Some(m - Int(i) - 1)
     a[i] = max(x - marks.len, if ends_here: 0 else: 1)
     marks.push_front(-Int(i) - 1)
     repeat min(x, marks.len): marks.pop_front()

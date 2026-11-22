@@ -1418,3 +1418,11 @@ fn comprehension_clauses_may_chain_with_commas() {
     let ExprKind::Comprehension { clauses, .. } = &v.kind else { panic!("{:?}", v.kind) };
     assert_eq!(clauses.len(), 2);
 }
+
+#[test]
+fn pascal_case_some_and_none_read_as_the_optional_variants() {
+    assert!(matches!(expr("None").kind, ExprKind::None));
+    let src = "match x:\n    Some(v) => v\n    None => 0\nlet s = Side.None\n";
+    assert!(codes(&format!("enum Side: Left | None\n{src}")).is_empty());
+    assert_eq!(show(&expr("Some(3)")), show(&expr("some(3)")));
+}

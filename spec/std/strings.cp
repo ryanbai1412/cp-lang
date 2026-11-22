@@ -14,7 +14,7 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
 @allow(unproven_list_index)
 pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
 
-/// O(|self| + |p|). Where `p` first stands in `s`, or `none`: `"banana".find("nan")` is `2`. A key of `s`, so on a
+/// O(|self| + |p|). Where `p` first stands in `s`, or `None`: `"banana".find("nan")` is `2`. A key of `s`, so on a
 /// slice it is valid on the source: `s[l..].find(c)` needs no `+ l`. `p` is a `Str` or
 /// one `Char`: `"banana".find('n')` is `2`. O(s.len + p.len).
 pub fn find<P>(self: Str, p: P) -> ?Int = todo
@@ -22,7 +22,7 @@ pub fn find<P>(self: Str, p: P) -> ?Int = todo
 /// How many times `c` stands in `s`: `"banana".count('a')` is `3`. O(s.len).
 pub fn count(self: Str, c: Char) -> Int = todo
 
-/// O(|self| + |p|). Where `p` last stands in `s`, or `none`: `"banana".rfind("an")` is `3`. `p` is a `Str` or
+/// O(|self| + |p|). Where `p` last stands in `s`, or `None`: `"banana".rfind("an")` is `3`. `p` is a `Str` or
 /// one `Char`: `"banana".rfind('a')` is `5`. O(s.len + p.len).
 pub fn rfind<P>(self: Str, p: P) -> ?Int = todo
 
@@ -65,7 +65,7 @@ pub fn trim(self: Str) -> Str = todo
 /// O(|self|). Split `self` at every occurrence of `sep`.
 pub fn split(self: Str, sep: Char) -> List<Str> = todo
 
-/// O(|self|). Split `self` at the first occurrence of `sep` into `(before, after)`, or `none` if absent.
+/// O(|self|). Split `self` at the first occurrence of `sep` into `(before, after)`, or `None` if absent.
 pub fn split_first(self: Str, sep: Char) -> ?(Str, Str) = todo
 
 /// O(|self|). Split `self` into non-empty runs separated by ASCII whitespace.
@@ -78,11 +78,11 @@ pub fn join<S: Seq>(self: Str, parts: S) -> Str = todo
 pub fn replace(self: Str, from: Str, to: Str) -> Str = todo
 
 /// O(|self|). Parse a signed integer in `base` (2..=36; digits past 9 are letters in either
-/// case), or `none` if malformed or out of `Int` range. `"ff".parse_int(base: 16) == some(255)`.
+/// case), or `None` if malformed or out of `Int` range. `"ff".parse_int(base: 16) == Some(255)`.
 pub fn parse_int(self: Str, base: Int = 10) -> ?Int = todo
 
-/// O(|self|). `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `none` if a
-/// token is malformed, out of `T`'s range, or left over: `"-12".parse<Mod<7>>() == some(2)`.
+/// O(|self|). `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `None` if a
+/// token is malformed, out of `T`'s range, or left over: `"-12".parse<Mod<7>>() == Some(2)`.
 pub fn parse<T: Read>(self: Str) -> ?T = todo
 
 /// O(n). `z[i]` is the length of the longest common prefix of `s` and `s[i..]`; `z[0]` is `s.len`.
@@ -137,12 +137,12 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int = todo
 pub fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K> = todo
 
 /// O(n). Start index of the lexicographically least cyclic rotation of `s` (Duval/Booth).
-/// Ties go to the smallest key; `none` for an empty sequence. Works on any `Indexed` sequence. O(n).
+/// Ties go to the smallest key; `None` for an empty sequence. Works on any `Indexed` sequence. O(n).
 @allow(unproven_list_index)
 pub fn min_rotation<S: Indexed, K>(s: S) -> ?K = todo
 
 /// O(n). Start index of the lexicographically greatest cyclic rotation of `s` (Duval/Booth).
-/// Ties go to the smallest key; `none` for an empty sequence.
+/// Ties go to the smallest key; `None` for an empty sequence.
 pub fn max_rotation<S: Indexed, K>(s: S) -> ?K = todo
 
 /// O(|pat| * |A|). Prefix (KMP) automaton over alphabet domain `A`, for O(1) transitions in DP.
@@ -259,7 +259,7 @@ pub struct SuffixArray:
     /// O(1). Rank index `k in r` achieving the minimum adjacent LCP (for suffix-tree divide-and-conquer).
     pub fn split(self, r: Range<Int>) -> Int = todo
 
-    /// O(log n). The `k`-th lexicographically smallest distinct non-empty substring (0-based), or `none`.
+    /// O(log n). The `k`-th lexicographically smallest distinct non-empty substring (0-based), or `None`.
     pub fn kth_distinct(self, k: Int) -> ?Range<Int> = todo
 
 /// O(n) for `Str` or small alphabets, O(n log n) for general `Ord`. Build the suffix array (`sa`, `rank`, `lcp`, and RMQ) for `s`.
@@ -317,7 +317,7 @@ pub struct RollingHash:
 
     /// Build a double-modulus polynomial rolling hash over `seq`. O(n).
     @allow(unproven_list_index)
-    pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = none) -> RollingHash = todo
+    pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash = todo
 
     /// O(1) amortized. Append one element `x` to the hashed sequence.
     pub fn push<T: Hashable>(mut self, x: T) = todo
@@ -379,7 +379,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
 
     @allow(unproven_list_index)
     /// Build a 2D polynomial rolling hash over grid `(R, C)`. O(|R| * |C|).
-    pub fn new(code: (R, C) -> Int, bases: ?(Int, Int) = none) -> Hash2D<R, C> = todo
+    pub fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C> = todo
 
     /// Hash of the axis-aligned rectangle `rows` x `cols`. O(1).
     @allow(unproven_list_index)
@@ -395,7 +395,7 @@ pub struct RollingHash61:
     pow: List<U64>
 
     /// O(n). Build a mod `2^61 - 1` rolling hash over `seq` with random base unless `base:` is given.
-    pub fn new<S: Seq>(seq: S, base: ?U64 = none) -> RollingHash61 = todo
+    pub fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61 = todo
 
     /// O(1). Number of hashed elements.
     pub @get fn len(self) -> Int = todo
@@ -433,7 +433,7 @@ pub struct DynamicHash<D>:
     bases: (Int, Int)
 
     /// O(n). Build a mutable rolling hash over `seq` indexed by domain `D`.
-    pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = none) -> DynamicHash<D> = todo
+    pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D> = todo
 
     /// O(1). Number of hashed positions (`D.K`).
     pub @get fn len(self) -> Int = todo
@@ -491,11 +491,11 @@ pub struct SuffixAutomaton<A>:
     /// Number of states. O(1).
     pub @get fn len(self) -> Int = todo
 
-    /// Transition from `state` on `a`, or `none`. O(1).
+    /// Transition from `state` on `a`, or `None`. O(1).
     @allow(unproven_list_index)
     pub fn step(self, state: Int, a: A) -> ?Int = todo
 
-    /// Suffix link of `state`, or `none` at the root. O(1).
+    /// Suffix link of `state`, or `None` at the root. O(1).
     @allow(unproven_list_index)
     pub fn link(self, state: Int) -> ?Int = todo
 
@@ -514,7 +514,7 @@ pub struct SuffixAutomaton<A>:
     @allow(unproven_list_index)
     pub fn first_pos(self, state: Int) -> Int = todo
 
-    /// State of `word`, or `none` if `word` is not a substring. O(|word|).
+    /// State of `word`, or `None` if `word` is not a substring. O(|word|).
     @allow(unproven_list_index)
     pub fn find<S: Seq>(self, word: S) -> ?Int = todo
 
@@ -549,7 +549,7 @@ pub struct SuffixAutomaton<A>:
     /// O(states). Children lists of the suffix-link (endpos) tree, rooted at `0`.
     pub fn endpos_tree(self) -> List<List<Int>> = todo
 
-    /// O(states * |A|). The `k`-th lexicographically smallest non-empty substring (0-based), or `none`.
+    /// O(states * |A|). The `k`-th lexicographically smallest non-empty substring (0-based), or `None`.
     /// Set `distinct: false` to count substrings with multiplicity.
     pub fn kth_substring(self, k: Int, distinct: Bool = true) -> ?List<A> = todo
 
@@ -595,7 +595,7 @@ pub struct PalindromicTree<A>:
     @allow(unproven_list_index)
     pub fn link(self, state: Int) -> Int = todo
 
-    /// Transition from `state` wrapping with `a` on both ends, or `none`. O(1).
+    /// Transition from `state` wrapping with `a` on both ends, or `None`. O(1).
     @allow(unproven_list_index)
     pub fn step(self, state: Int, a: A) -> ?Int = todo
 
@@ -645,11 +645,11 @@ pub struct Trie<A>:
     /// O(1). True when no words are stored in the trie.
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// Child of `node` along edge `a`, or `none`. O(1).
+    /// Child of `node` along edge `a`, or `None`. O(1).
     @allow(unproven_list_index)
     pub fn step(self, node: Int, a: A) -> ?Int = todo
 
-    /// Node of `word`, or `none` if no added word starts with it. O(|word|).
+    /// Node of `word`, or `None` if no added word starts with it. O(|word|).
     @allow(unproven_list_index)
     pub fn find<S: Seq>(self, word: S) -> ?Int = todo
 
@@ -683,7 +683,7 @@ pub struct Trie<A>:
     /// O(1). Remove all words and reset to an empty root node.
     pub fn clear(mut self) = todo
 
-    /// O(depth * |A|). The `k`-th lexicographically smallest word in the trie (0-based, with multiplicity), or `none`.
+    /// O(depth * |A|). The `k`-th lexicographically smallest word in the trie (0-based, with multiplicity), or `None`.
     pub fn kth(self, k: Int) -> ?List<A> = todo
 
     /// O(|word| * |A|). Number of words in the trie strictly smaller than `word`.
@@ -738,7 +738,7 @@ pub struct AhoCorasick<A>:
     /// O(states). BFS order of states for bottom-up DP on the failure tree.
     pub fn fail_order(self) -> List<Int> = todo
 
-    /// O(1). Nearest strict ancestor in the failure tree where a pattern ends, or `none`.
+    /// O(1). Nearest strict ancestor in the failure tree where a pattern ends, or `None`.
     pub fn exit_link(self, state: Int) -> ?Int = todo
 
     /// O(1). Terminal state of `patterns[pattern]`.

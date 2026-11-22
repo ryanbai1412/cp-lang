@@ -29,7 +29,7 @@ Whether a value is owned or lent is not part of its type (chapter 5).
 
 | Type | Values | Notes |
 |---|---|---|
-| `Int` | `-(2^63 - 1) ..= 2^63 - 1` | the default integer; `Int.MIN` is one above `-2^63`, which is `?Int`'s `none` (decision 49) |
+| `Int` | `-(2^63 - 1) ..= 2^63 - 1` | the default integer; `Int.MIN` is one above `-2^63`, which is `?Int`'s `None` (decision 49) |
 | range types `lo..=hi`, `lo..hi`, `lo..`, `..=hi` | the integers in the range | an `Int` with a contract and a storage width (chapter 3) |
 | `U64` | `0 ..= 2^64 - 1`, wrapping | hashes, masks, bit tricks |
 | `I128` | signed 128-bit | products past `Int` |
@@ -63,11 +63,11 @@ keep source positions, as for every sequence (`04b-keys.md`).
 
 ## 2.4 Optionals
 
-`?T` is `T` or `none`.
+`?T` is `T` or `None`.
 
-- `x.is_some_and(p)` tests a value and a predicate at once (`false` on `none`);
-  `x.is_none_or(p)` is its dual (`true` on `none`). `x.map(f)` and `x.and_then(f)`
-  (for `f: T -> ?U`) transform the value and keep `none`.
+- `x.is_some_and(p)` tests a value and a predicate at once (`false` on `None`);
+  `x.is_none_or(p)` is its dual (`true` on `None`). `x.map(f)` and `x.and_then(f)`
+  (for `f: T -> ?U`) transform the value and keep `None`.
 - `T` converts to `?T` implicitly; the other way is explicit: `x ?? d`
   (lazy fallback), `x!` (unwrap or trap, naming the place), `if let`,
   `while let`, `let ... else`, `match`.
@@ -75,13 +75,13 @@ keep source positions, as for every sequence (`04b-keys.md`).
   (chapter 3). Otherwise it adds a flag byte, rounded to alignment.
   `?(?T)` is legal and adds a flag around `?T`.
 - **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`,
-  `none` if either side is. Lifting is three ordinary impls, not a
+  `None` if either side is. Lifting is three ordinary impls, not a
   language rule (`impl<T: Add> Add for ?T`).
 - **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best`
   with an optional left side is an error, never a silent `false`. `==` is
-  structural (`none == none`).
-- `min`, `max`, `min=` and `max=` treat `none` as the identity: a `none`
-  target takes the right side, a `none` right side changes nothing. With
+  structural (`None == None`).
+- `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None`
+  target takes the right side, a `None` right side changes nothing. With
   lifted arithmetic this is "skip unreachable states":
 
   ```
@@ -94,7 +94,7 @@ keep source positions, as for every sequence (`04b-keys.md`).
   lambda or `fn ... =` body, or statement right-hand side. A `?` in an
   `if` or `while` condition is an error (write `... ?? false`), and a `?`
   whose result is dropped is an error. `?` is never control flow; an
-  early exit is `let x = e else: return none` (chapter 6).
+  early exit is `let x = e else: return None` (chapter 6).
 - `x!` is the `Unwrap` trait. `?T`, `[D]?T` and `List<?T>` implement it;
   the array forms check every element in one pass and trap naming the
   first gap ("depth[17] is none"). This ends a fill phase:
@@ -165,9 +165,10 @@ enum Ev:
     fn is_query(self) -> Bool = self is Ask
 ```
 
-- Variants are lowercase or capitalized names in their enum's scope;
-  context resolves bare variant names in patterns and where the expected
-  type is the enum.
+- Variants are `PascalCase` names in their enum's scope, like `Some` and
+  `None` of `?T` (decision 157). Context resolves bare variant names in
+  patterns and where the expected type is the enum; a lowercase name in
+  a pattern always binds.
 - `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`,
   `@tag(1) Add(l: V, r: V)`); without it the token is the variant's name. Tags are distinct
   within the enum (E0407).
@@ -225,8 +226,8 @@ type Z = Mod(read<Prime>())         // runtime modulus
 
 - Inference is local. Siblings in one expression (list elements,
   `if`/`else` branches, `match` arms, comprehension results) are unified
-  before generics are fixed, with `none` joining `T` to `?T`. Inference
-  never looks at later statements: `var x = none` followed by `x = 3` is
+  before generics are fixed, with `None` joining `T` to `?T`. Inference
+  never looks at later statements: `var x = None` followed by `x = 3` is
   an error asking for `?Int` at the declaration (decision 131).
 - `let` keeps the computed range of its initializer; an unannotated
   `var` widens to `Int`; `var x: lo..=hi` checks each assignment.

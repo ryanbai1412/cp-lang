@@ -28,7 +28,7 @@ pub struct Subset<B>(bits: U64):
     /// The members of `B` not in `self`.
     pub fn complement(self) -> Subset<B> = todo
 
-    /// The least member, `none` for `{}`.
+    /// The least member, `None` for `{}`.
     pub fn first(self) -> ?B = todo
 
     /// The members in `B`'s order. O(1) per member.

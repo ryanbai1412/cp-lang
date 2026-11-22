@@ -8,7 +8,7 @@ let place = (v: Node) => (layer: Layer(Int(v) / k), slot: Slot(Int(v) % k))
 
 var hop = [Layer] _ => Mat<Slot, Slot>(over: Semiring(min, +))
 for (u, v, w) in read<[m](u: Node, v: Node, w: 1..=1e4)>():
-    hop[place(u).layer][place(u).slot, place(v).slot] = some(w)
+    hop[place(u).layer][place(u).slot, place(v).slot] = Some(w)
 let path = SegTree(*, hop)
 
 for (a, b) in read<[q](a: Node, b: Node)>():

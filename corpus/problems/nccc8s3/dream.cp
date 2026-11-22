@@ -8,7 +8,7 @@ var stack: List<K> = []
 var held: [K]Bool = false
 for (i, x) in a.items:
     if held[x]: continue
-    while stack.last is some(y) and y > x and last[y] > i:
+    while stack.last is Some(y) and y > x and last[y] > i:
         held[stack.pop()!] = false
     stack.push(x)
     held[x] = true

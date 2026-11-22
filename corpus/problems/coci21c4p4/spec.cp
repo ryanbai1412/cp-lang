@@ -11,7 +11,7 @@ fn centres(limit: Int) -> List<V>:
     // far: the farthest vertex below v still waiting for a centre; near: the nearest centre.
     fn visit(v: V) -> (far: ?Int, near: ?Int):
         var far = 0
-        var near: ?Int = none
+        var near: ?Int = None
         for c in t.children(v):
             let sub = visit(c)
             let w = t.up_arc(c)!.w
@@ -23,9 +23,9 @@ fn centres(limit: Int) -> List<V>:
                 else:
                     far max= f + w
         if near.map(d => far + d <= limit) ?? false:
-            return (none, near)
+            return (None, near)
         (far, near)
-    if visit(t.root).far != none:
+    if visit(t.root).far != None:
         open.push(t.root)
     open
 

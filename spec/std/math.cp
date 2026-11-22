@@ -99,8 +99,8 @@ pub fn digits(self: Int, base: Int = 10) -> List<Int> = todo
 pub fn to_str(self: Int, base: Int = 10) -> Str = todo
 
 /// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
-/// `-s` flips it and `max(s, .zero)` clamps it.
-pub enum Sign: neg = -1, zero = 0, pos = 1
+/// `-s` flips it and `max(s, Sign.Zero)` clamps it.
+pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 
 /// The side of zero `x` is on: `(b - a).sign`. O(1).
 pub @get fn sign(self: Int) -> Sign = todo
@@ -128,15 +128,15 @@ pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int> = todo
 
 fn ext_gcd_x(a: Int, b: Int) -> (Int, Int) = todo
 
-/// The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `none` if `gcd(a, m) != 1`. O(log m).
+/// The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `None` if `gcd(a, m) != 1`. O(log m).
 pub fn inv_mod(a: Int, m: Int) -> ?Int = todo
 
 /// The solution of `x = r1 (mod m1)`, `x = r2 (mod m2)` as `(r, m)` with
-/// `m = lcm(m1, m2)` and `0 <= r < m`, or `none` if there is none.
+/// `m = lcm(m1, m2)` and `0 <= r < m`, or `None` if there is none.
 pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int) = todo
 
 /// The solution of a system of congruences `x = r (mod m)` as `(r, m)` with `0 <= r < m`,
-/// or `none` if inconsistent. Empty input yields `(0, 1)`. O(eqs.len * log lcm).
+/// or `None` if inconsistent. Empty input yields `(0, 1)`. O(eqs.len * log lcm).
 pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int) = todo
 
 /// `a * b % m` without overflow, rounded down to `0..m` for `m >= 1`. O(1), through `I128`
@@ -165,11 +165,11 @@ pub fn phi(x: Int) -> Int = todo
 /// non-zero residue. O(p^(1/4) log p) expected to factor `p - 1`, then O(log^2 p) per try.
 pub fn primitive_root(p: Int) -> Int = todo
 
-/// The smallest non-negative `x` with `a^x = b (mod m)`, or `none` if none exists.
+/// The smallest non-negative `x` with `a^x = b (mod m)`, or `None` if none exists.
 /// Handles arbitrary `m >= 1` including non-coprime `a` and `m`. O(sqrt m).
 pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int = todo
 
-/// A square root `x` in `0..p` with `x * x = a (mod p)` for prime `p`, or `none`
+/// A square root `x` in `0..p` with `x * x = a (mod p)` for prime `p`, or `None`
 /// if `a` is a quadratic non-residue. Tonelli-Shanks, O(log^2 p).
 pub fn mod_sqrt(a: Int, p: Int) -> ?Int = todo
 
@@ -225,16 +225,16 @@ pub fn sum_mobius(n: Int) -> Int = todo
 pub fn sum_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T = todo
 
 /// O(log min(|a|, |b|)). One solution `(x0, y0)` and steps `(step_x, step_y)` to `a*x + b*y = c`
-/// (`x = x0 + k * step_x`, `y = y0 - k * step_y`), or `none` if `gcd(a, b)` does not divide `c`.
+/// (`x = x0 + k * step_x`, `y = y0 - k * step_y`), or `None` if `gcd(a, b)` does not divide `c`.
 pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x: Int, step_y: Int) = todo
 
-/// O(log m). Smallest `r in 0..step` and period `step` solving `a * x == b (mod m)`, or `none`.
+/// O(log m). Smallest `r in 0..step` and period `step` solving `a * x == b (mod m)`, or `None`.
 pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int) = todo
 
-/// O(p^(1/4) + sqrt p) expected. Any `x` with `x^k == a (mod p)` for prime `p`, or `none`.
+/// O(p^(1/4) + sqrt p) expected. Any `x` with `x^k == a (mod p)` for prime `p`, or `None`.
 pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int = todo
 
-/// O(m^(1/4) log m) expected. Multiplicative order of `a` modulo `m >= 1`, or `none` if `gcd(a, m) != 1`.
+/// O(m^(1/4) log m) expected. Multiplicative order of `a` modulo `m >= 1`, or `None` if `gcd(a, m) != 1`.
 pub fn mult_order(a: Int, m: Int) -> ?Int = todo
 
 /// O(log n). Jacobi symbol `(a / n)` in `{-1, 0, 1}` for odd `n > 0`.
@@ -243,7 +243,7 @@ pub fn jacobi(a: Int, n: Int) -> Int = todo
 /// O(n^(1/4) log n) expected. Carmichael's lambda function `lambda(n)` for `n >= 1`.
 pub fn carmichael(n: Int) -> Int = todo
 
-/// O(log m). Smallest `x >= 0` with `lo <= (a * x) % m <= hi` (`0 <= lo <= hi < m`), or `none`.
+/// O(log m). Smallest `x >= 0` with `lo <= (a * x) % m <= hi` (`0 <= lo <= hi < m`), or `None`.
 pub fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int = todo
 
 /// O(log min(|p|, |q|)). Continued fraction expansion `[a0, a1, ...]` of `p / q` (`q > 0`).
@@ -388,6 +388,6 @@ fn sieve_tables_and_multiplicative_agree() = todo
 @test
 fn mod_log_and_mod_sqrt_match_brute_force() = todo
 
-/// `Int.MAX`, for `Int` tables that start "unreached" when `?Int` with `none` is not wanted.
+/// `Int.MAX`, for `Int` tables that start "unreached" when `?Int` with `None` is not wanted.
 /// `min` treats it as its identity; adding to it overflows (a trap in checked builds).
 pub const inf: Int = 9_223_372_036_854_775_807

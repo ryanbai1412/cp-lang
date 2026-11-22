@@ -72,13 +72,13 @@ pub struct SortedBag<K>:
     /// Whether at least one copy of `x` is in the bag. O(log n) expected.
     pub fn contains(self, x: K) -> Bool = todo
 
-    /// The smallest element, or `none` when empty. O(1), kept current by every update.
+    /// The smallest element, or `None` when empty. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// The largest element, or `none` when empty. O(1), kept current by every update.
+    /// The largest element, or `None` when empty. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
-    /// Remove and return one copy of the smallest element, or `none` when empty. O(log n) expected.
+    /// Remove and return one copy of the smallest element, or `None` when empty. O(log n) expected.
     pub fn pop_first(mut self) -> ?K = todo
 
     /// O(log n). Removes and returns the least element satisfying monotone `ok` (false then
@@ -88,7 +88,7 @@ pub struct SortedBag<K>:
     /// O(log n + k). Removes the elements whose value lies in `r`, yielding them in order.
     pub fn drain(mut self, r: Range<K>) -> yields K = todo
 
-    /// Remove and return one copy of the largest element, or `none` when empty. O(log n) expected.
+    /// Remove and return one copy of the largest element, or `None` when empty. O(log n) expected.
     pub fn pop_last(mut self) -> ?K = todo
 
     /// Number of elements strictly less than `k` (counting duplicates). O(log n) expected.
@@ -110,41 +110,41 @@ pub struct SortedBag<K>:
 
     fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K = todo
 
-    /// 0-indexed `i`-th smallest element (counting duplicates), or `none` if out of bounds. O(log n) expected.
+    /// 0-indexed `i`-th smallest element (counting duplicates), or `None` if out of bounds. O(log n) expected.
     pub fn nth(self, i: Int) -> ?K = todo
 
-    /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `none`.
+    /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `None`.
     /// Checks monotonicity at the boundary. O(log n) expected.
     pub fn first_true(self, ok: K -> Bool) -> ?K = todo
 
-    /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `none`.
+    /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
     /// Checks monotonicity at the boundary. O(log n) expected.
     pub fn last_true(self, ok: K -> Bool) -> ?K = todo
 
     /// Remove and return the maximal run of elements strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest element (ascending)
     /// while `ok(k)` holds. O(k log n) expected for `k` removed elements.
-    pub fn drain(mut self; after: ?K = none, before: ?K = none, while ok: K -> Bool) -> List<K> = todo
+    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K> = todo
 
-    /// Cursor to the smallest key, or `none` when empty. O(log n) expected.
+    /// Cursor to the smallest key, or `None` when empty. O(log n) expected.
     pub fn cursor_first(self) -> ?BagCursor = todo
 
-    /// Cursor to the largest key, or `none` when empty. O(log n) expected.
+    /// Cursor to the largest key, or `None` when empty. O(log n) expected.
     pub fn cursor_last(self) -> ?BagCursor = todo
 
-    /// Cursor to exact key `k`, or `none` if absent. O(log n) expected.
+    /// Cursor to exact key `k`, or `None` if absent. O(log n) expected.
     pub fn cursor_at(self, k: K) -> ?BagCursor = todo
 
-    /// Cursor to smallest key `>= k`, or `none`. O(log n) expected.
+    /// Cursor to smallest key `>= k`, or `None`. O(log n) expected.
     pub fn cursor_ge(self, k: K) -> ?BagCursor = todo
 
-    /// Cursor to smallest key `> k`, or `none`. O(log n) expected.
+    /// Cursor to smallest key `> k`, or `None`. O(log n) expected.
     pub fn cursor_gt(self, k: K) -> ?BagCursor = todo
 
-    /// Cursor to largest key `<= k`, or `none`. O(log n) expected.
+    /// Cursor to largest key `<= k`, or `None`. O(log n) expected.
     pub fn cursor_le(self, k: K) -> ?BagCursor = todo
 
-    /// Cursor to largest key `< k`, or `none`. O(log n) expected.
+    /// Cursor to largest key `< k`, or `None`. O(log n) expected.
     pub fn cursor_lt(self, k: K) -> ?BagCursor = todo
 
     /// Key stored at cursor `c`. O(1).
@@ -153,10 +153,10 @@ pub struct SortedBag<K>:
     /// Multiplicity stored at cursor `c`. O(1).
     pub fn count_of(self, c: BagCursor) -> Int = todo
 
-    /// Cursor to the next larger distinct key, or `none`. O(1) amortized.
+    /// Cursor to the next larger distinct key, or `None`. O(1) amortized.
     pub fn next_cursor(self, c: BagCursor) -> ?BagCursor = todo
 
-    /// Cursor to the next smaller distinct key, or `none`. O(1) amortized.
+    /// Cursor to the next smaller distinct key, or `None`. O(1) amortized.
     pub fn prev_cursor(self, c: BagCursor) -> ?BagCursor = todo
 
     /// Visit every distinct `(key, count)` in ascending order. O(1) amortized per step.
@@ -233,38 +233,38 @@ pub struct SortedSet<K>:
     /// Whether `x` is in the set. O(log n) expected.
     pub fn contains(self, x: K) -> Bool = todo
 
-    /// Smallest key in the set, or `none`. O(1), kept current by every update.
+    /// Smallest key in the set, or `None`. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// Largest key in the set, or `none`. O(1), kept current by every update.
+    /// Largest key in the set, or `None`. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
-    /// Remove and return the smallest key, or `none`. O(log n) expected.
+    /// Remove and return the smallest key, or `None`. O(log n) expected.
     pub fn pop_first(mut self) -> ?K = todo
 
-    /// Remove and return the largest key, or `none`. O(log n) expected.
+    /// Remove and return the largest key, or `None`. O(log n) expected.
     pub fn pop_last(mut self) -> ?K = todo
 
     /// Number of keys strictly less than `k`. O(log n) expected.
     pub fn rank(self, k: K) -> Int = todo
 
-    /// 0-indexed `i`-th smallest key, or `none` if out of range. O(log n) expected.
+    /// 0-indexed `i`-th smallest key, or `None` if out of range. O(log n) expected.
     pub fn nth(self, i: Int) -> ?K = todo
 
     /// The sum of the elements in `keys` (all of them by default), for additive `K`:
     /// `set.sum(..b)` adds everything below `b`. O(log n): subtree sums are kept.
     pub fn sum(self, keys: Range<K> = ..) -> K = todo
 
-    /// Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `none`. O(log n) expected.
+    /// Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `None`. O(log n) expected.
     pub fn first_true(self, ok: K -> Bool) -> ?K = todo
 
-    /// Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `none`. O(log n) expected.
+    /// Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `None`. O(log n) expected.
     pub fn last_true(self, ok: K -> Bool) -> ?K = todo
 
     /// Remove and return the maximal run of keys strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest key (ascending)
     /// while `ok(k)` holds. O(k log n) expected for `k` removed keys.
-    pub fn drain(mut self; after: ?K = none, before: ?K = none, while ok: K -> Bool) -> List<K> = todo
+    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K> = todo
 
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K = todo
 
@@ -320,7 +320,7 @@ pub struct SortedMap<K, V>:
     /// Move contents out in O(1), leaving `self` empty.
     pub fn take(mut self) -> SortedMap<K, V> = todo
 
-    /// Look up `k`, returning `none` if absent. O(log n).
+    /// Look up `k`, returning `None` if absent. O(log n).
     pub fn get(self, k: K) -> ?V = todo
 
     /// Whether `k` is present. O(log n).
@@ -329,47 +329,47 @@ pub struct SortedMap<K, V>:
     /// Insert or overwrite `k -> v` (W8 `IndexSet` backing `m[k] = v`). O(log n).
     pub fn set(mut self, k: K, v: V) = todo
 
-    /// Remove `k` and return its previous value, or `none` if absent. O(log n).
+    /// Remove `k` and return its previous value, or `None` if absent. O(log n).
     pub fn remove(mut self, k: K) -> ?V = todo
 
-    /// Smallest `(key, val)` pair, or `none` if empty. O(1), kept current by every update.
+    /// Smallest `(key, val)` pair, or `None` if empty. O(1), kept current by every update.
     pub @get fn first(self) -> ?(K, V) = todo
 
-    /// Largest `(key, val)` pair, or `none` if empty. O(1), kept current by every update.
+    /// Largest `(key, val)` pair, or `None` if empty. O(1), kept current by every update.
     pub @get fn last(self) -> ?(K, V) = todo
 
-    /// Remove and return the smallest `(key, val)` pair, or `none`. O(log n).
+    /// Remove and return the smallest `(key, val)` pair, or `None`. O(log n).
     pub fn pop_first(mut self) -> ?(K, V) = todo
 
-    /// Remove and return the largest `(key, val)` pair, or `none`. O(log n).
+    /// Remove and return the largest `(key, val)` pair, or `None`. O(log n).
     pub fn pop_last(mut self) -> ?(K, V) = todo
 
-    /// Smallest entry with key `>= k`, or `none`. O(log n).
+    /// Smallest entry with key `>= k`, or `None`. O(log n).
     pub fn first_ge(self, k: K) -> ?(K, V) = todo
 
-    /// Smallest entry with key `> k`, or `none`. O(log n).
+    /// Smallest entry with key `> k`, or `None`. O(log n).
     pub fn first_gt(self, k: K) -> ?(K, V) = todo
 
-    /// Largest entry with key `<= k`, or `none`. O(log n).
+    /// Largest entry with key `<= k`, or `None`. O(log n).
     pub fn last_le(self, k: K) -> ?(K, V) = todo
 
-    /// Largest entry with key `< k`, or `none`. O(log n).
+    /// Largest entry with key `< k`, or `None`. O(log n).
     pub fn last_lt(self, k: K) -> ?(K, V) = todo
 
     /// Number of entries with key strictly less than `k`. O(log n).
     pub fn rank(self, k: K) -> Int = todo
 
-    /// The `i`-th entry in key order (0-based), or `none`. O(log n).
+    /// The `i`-th entry in key order (0-based), or `None`. O(log n).
     pub fn nth(self, i: Int) -> ?(K, V) = todo
 
-    /// Smallest entry where monotone `ok(k, v)` becomes true, or `none`. O(log n).
+    /// Smallest entry where monotone `ok(k, v)` becomes true, or `None`. O(log n).
     pub fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
 
-    /// Largest entry where monotone `ok(k, v)` still holds, or `none`. O(log n).
+    /// Largest entry where monotone `ok(k, v)` still holds, or `None`. O(log n).
     pub fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V) = todo
 
     /// Remove and return entries after `after` (ascending) or before `before` (descending) while `ok` holds. O(k log n).
-    pub fn drain(mut self; after: ?K = none, before: ?K = none, while ok: (K, V) -> Bool) -> List<(K, V)> = todo
+    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)> = todo
 
     /// Split off and return all entries with key `>= k`. O(log n).
     pub fn split_at(mut self, k: K) -> SortedMap<K, V> = todo
@@ -378,7 +378,7 @@ pub struct SortedMap<K, V>:
     pub fn join(mut self, other: SortedMap<K, V>) = todo
 
     /// Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting. O(min(n, m) log(n + m)).
-    pub fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = none) = todo
+    pub fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = None) = todo
 
     /// O(1) to make. Yields `(key, val)` pairs in ascending key order. O(n).
     pub @get fn items(self) -> yields (K, V) = todo
@@ -424,13 +424,13 @@ pub struct AugSortedBag<K, T>:
     /// Number of elements strictly less than `k`. O(log n).
     pub fn rank(self, k: K) -> Int = todo
 
-    /// The `i`-th smallest element (0-based), or `none`. O(log n).
+    /// The `i`-th smallest element (0-based), or `None`. O(log n).
     pub fn nth(self, i: Int) -> ?K = todo
 
-    /// Smallest element, or `none`. O(1), kept current by every update.
+    /// Smallest element, or `None`. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// Largest element, or `none`. O(1), kept current by every update.
+    /// Largest element, or `None`. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
     /// Fold elements with key `< hi`. O(log n).
@@ -483,13 +483,13 @@ pub struct AugSortedSet<K, T>:
     /// Number of keys strictly less than `k`. O(log n).
     pub fn rank(self, k: K) -> Int = todo
 
-    /// The `i`-th smallest key (0-based), or `none`. O(log n).
+    /// The `i`-th smallest key (0-based), or `None`. O(log n).
     pub fn nth(self, i: Int) -> ?K = todo
 
-    /// Smallest key, or `none`. O(1), kept current by every update.
+    /// Smallest key, or `None`. O(1), kept current by every update.
     pub @get fn first(self) -> ?K = todo
 
-    /// Largest key, or `none`. O(1), kept current by every update.
+    /// Largest key, or `None`. O(1), kept current by every update.
     pub @get fn last(self) -> ?K = todo
 
     /// Fold keys `< hi`. O(log n).

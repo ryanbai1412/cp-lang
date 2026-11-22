@@ -11,23 +11,23 @@ let must = read<[m1](child: V, parent: V)>()
 let banned = read<[m2](child: V, parent: V)>()
 
 fn solve() -> ?List<(child: V, parent: V)>:
-    var up: [V]?V = none
+    var up: [V]?V = None
     for e in must:
-        if up[e.child] != none:
-            return none
-        up[e.child] = some(e.parent)
+        if up[e.child] != None:
+            return None
+        up[e.child] = Some(e.parent)
     let (domain B, block) = components(Graph.undirected(must.map(e => (u: e.child, v: e.parent))))
-    var top: [B]?V = none
-    for v in V if up[v] == none:
-        top[block[v]] = some(v)
-    if B.any(b => top[b] == none):
-        return none
+    var top: [B]?V = None
+    for v in V if up[v] == None:
+        top[block[v]] = Some(v)
+    if B.any(b => top[b] == None):
+        return None
     let members = buckets(block)
     var bans = Counter<(B, B)>()
     var forbidden: [V]HashSet<V> = HashSet()
     for e in banned:
         forbidden[e.child].add(e.parent)
-        if top[block[e.child]] == some(e.child):
+        if top[block[e.child]] == Some(e.child):
             bans.add((block[e.child], block[e.parent]))
     let blocked: [B]List<B> = [B] k => B.filter(c => bans[(c, k)] == members[k].len).collect()
     let hang = complement(blocked)
@@ -40,7 +40,7 @@ fn solve() -> ?List<(child: V, parent: V)>:
             Exit(_) => depth -= 1
     let tree = bfs(hang, from: [root])
     if B.any(b => not tree.reached(b)):
-        return none
+        return None
     var out = List(must)
     for b in B if b != root:
         let k = tree.back[b]!.from

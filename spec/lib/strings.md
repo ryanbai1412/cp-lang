@@ -152,7 +152,7 @@ fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min
 
 Laws:
 - `s.repeat(0) == ""` and `s.repeat(a + b) == s.repeat(a) + s.repeat(b)`.
-- `s.find(p) == some(i)` implies `i` is the minimum index with `s[i..i + p.len] == p`.
+- `s.find(p) == Some(i)` implies `i` is the minimum index with `s[i..i + p.len] == p`.
 - `is_palindrome(s)` iff `s[i] == s[n - 1 - i]` for all `0 <= i < n`.
 
 ### 3.2 Pattern matching, borders, periods, and Lyndon words
@@ -237,7 +237,7 @@ trait Hashable:
     @get fn hash_token(self) -> Int = Int(self)
 
 struct RollingHash:
-    fn new<S>(seq: S, bases: ?(Int, Int) = none) -> RollingHash       // O(n)
+    fn new<S>(seq: S, bases: ?(Int, Int) = None) -> RollingHash       // O(n)
     fn with_bases<S>(seq: S, bases: (Int, Int)) -> RollingHash        // O(n)
     @get fn len(self) -> Int                                          // O(1)
     @get fn all(self) -> HashVal                                      // O(1)
@@ -249,7 +249,7 @@ struct RollingHash:
     fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int      // O(log n)
 
 struct Hash2D<R, C>:
-    fn new(code: (R, C) -> Int, bases: ?(Int, Int) = none) -> Hash2D<R, C>  // O(R * C)
+    fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>  // O(R * C)
     fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal                // O(1)
 ```
 
@@ -311,7 +311,7 @@ Laws:
 - `lcp_between(i, i) == n - i` and `lcp_between(i, j) == lcp_between(j, i)`.
 - `sa[j]` starts with `pat` iff `j in sa_obj.matches(pat)`.
 - `sa_obj.distinct == sam.distinct` for any string `s`.
-- `sam.contains(w)` iff `sa_obj.count(w) > 0`; when `sam.find(w) == some(v)`,
+- `sam.contains(w)` iff `sa_obj.count(w) > 0`; when `sam.find(w) == Some(v)`,
   `sam.occurrences()[v] == sa_obj.count(w)`.
 
 ### 3.6 Tries and Aho-Corasick
@@ -419,7 +419,7 @@ var groups = DsuOf<Rank, Span>(
     (a, b) => Span(min(a.lo, b.lo), max(a.hi, b.hi)),
 )
 
-var (pairs, best): (Int, ?Int) = (0, none)
+var (pairs, best): (Int, ?Int) = (0, None)
 let order = sorted(0..n - 1, by: j => -sa.lcp[j])
 var at = 0
 var ans: List<(Int, Int)> = []
@@ -578,7 +578,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 
 ### Renames and removals from `stdlib/strings.cp`
 
-- **`RollingHash.with_bases(s, bases)` -> removed / folded into `RollingHash.new(s, bases: ?(Int, Int) = none)`:** One constructor with an optional named argument `bases:` instead of two constructors (`new` + `with_bases`), matching `Hash2D.new(g, bases:)`, `RollingHash61.new(s, base:)`, and `DynamicHash.new(s, bases:)`.
+- **`RollingHash.with_bases(s, bases)` -> removed / folded into `RollingHash.new(s, bases: ?(Int, Int) = None)`:** One constructor with an optional named argument `bases:` instead of two constructors (`new` + `with_bases`), matching `Hash2D.new(g, bases:)`, `RollingHash61.new(s, base:)`, and `DynamicHash.new(s, bases:)`.
 - **`starts_with` / `ends_with`:** Generalized from `(Str, Str)` to `<S: Indexed, P: Indexed>` so `List<T>`, `[D]T`, `StrView`, and `ListView` share the same name with zero copies.
 
 ## Cross-area
@@ -604,7 +604,7 @@ Every power from `spec/core/12-powers.md` (and any gap beyond it) needed by `spe
 4. **W12 (Cost on first `///` line):**
    - Signatures: All 191 public declarations in `spec/std/strings.cp`.
 5. **Defaulted named arguments (Decision 134 / `spec/delta/parser-gaps.md`):**
-   - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = none)`, `RollingHash61.new(s, base: ?Int = none)`, `DynamicHash.new(s, bases: ?(Int, Int) = none)`, `find_all_wildcard(self, pat, wildcard: Char = '?')`.
+   - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = None)`, `RollingHash61.new(s, base: ?Int = None)`, `DynamicHash.new(s, bases: ?(Int, Int) = None)`, `find_all_wildcard(self, pat, wildcard: Char = '?')`.
    - Smallest example: `let h2 = RollingHash.new(t, bases: h1.bases)`.
 6. **Gaps beyond `spec/core/12-powers.md`:**
    - **Existential / struct-owned domains** (for `SuffixArray` rank domain `sa.Rank` and `SuffixAutomaton`/`PalindromicTree`/`AhoCorasick` state domains): today states and SA ranks are plain `Int`, so `sam.step(v, c)` and `sa.lcp_of_ranks(l, r)` cannot statically distinguish state IDs from string positions. Smallest example: `struct SuffixArray<T>: domain Rank = 0..s.len; sa: [Rank]Int`.

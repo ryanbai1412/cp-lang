@@ -57,13 +57,13 @@ pub struct MarkMap<D, T>:
     /// Whether `v` is present in the current round. O(1).
     pub fn contains(self, v: D) -> Bool = todo
 
-    /// Current value at `v`, or `none` if absent in the current round. O(1).
+    /// Current value at `v`, or `None` if absent in the current round. O(1).
     pub fn get(self, v: D) -> ?T = todo
 
     /// Set `v` to `val` in the current round. O(1).
     pub fn set(mut self, v: D, val: T) = todo
 
-    /// Remove `v` from the current round; returns its previous value or `none`. O(1).
+    /// Remove `v` from the current round; returns its previous value or `None`. O(1).
     pub fn remove(mut self, v: D) -> ?T = todo
 
     /// Clear every entry in O(1) without touching the value array.
@@ -90,7 +90,7 @@ pub struct Interner<K>:
     /// Return the ID of `k`, assigning the next contiguous ID if `k` is new. O(1) expected.
     pub fn id(mut self, k: K) -> Int = todo
 
-    /// Look up the ID of `k` without inserting, or `none` if unseen. O(1) expected.
+    /// Look up the ID of `k` without inserting, or `None` if unseen. O(1) expected.
     pub fn get(self, k: K) -> ?Int = todo
 
     /// Recover the key assigned to `i`. O(1).

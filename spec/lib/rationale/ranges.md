@@ -107,7 +107,7 @@ guess any method from its neighbours:
   `ok(fold(b..to))`. `Fenwick` keeps `lower_bound(target) -> ?Cut<D>`
   and `kth(k) -> ?D` (1-based) for prefix-sum descent.
 - **Options are named arguments, never `_by` or `_filled` variants.**
-  Constructors accept `a: ?[D]T = none` and `fill: ?T = none` so
+  Constructors accept `a: ?[D]T = None` and `fill: ?T = None` so
   `LazySegTree<Pos, Int>(AddMax, fill: 0)` and
   `SegTree<V, Int>(max, a)` share one constructor.
 - **Every function documents its time and memory cost.** O(1) vs O(log n)
@@ -125,7 +125,7 @@ guess any method from its neighbours:
 Algebra stays value-based (`Monoid<T>`, `Action<T, F>`) per decision 26.4
 until user traits gain associated constants. Bare operators (`+`, `*`,
 `^`, `|`, `&`, `min`, `max`, `gcd`) convert automatically via
-`Monoid<T>.of(op)` with exact identities (`none` for `min`/`max` over
+`Monoid<T>.of(op)` with exact identities (`None` for `min`/`max` over
 `?T`, never a magic `INF`).
 
 ```cp
@@ -265,7 +265,7 @@ suffices.
 ```cp
 // Existing
 struct Fenwick<D, T>                                // point add, range sum
-    fn new(a: ?[D]T = none) -> Fenwick<D, T>        // O(n)
+    fn new(a: ?[D]T = None) -> Fenwick<D, T>        // O(n)
     fn add(mut self, i: D, x: T)                    // O(log n)
     fn prefix(self, b: Cut<D>) -> T              // O(log n)
     fn sum(self, r: Range<D>) -> T                  // O(log n)
@@ -273,7 +273,7 @@ struct Fenwick<D, T>                                // point add, range sum
     fn kth(self, k: Int) -> ?D                      // O(log n), 1-based
 
 struct XorFenwick<D, T>                             // point xor, range xor
-    fn new(a: ?[D]T = none) -> XorFenwick<D, T>     // O(n)
+    fn new(a: ?[D]T = None) -> XorFenwick<D, T>     // O(n)
     fn flip(mut self, i: D, x: T)                   // O(log n)
     fn prefix(self, b: Cut<D>) -> T              // O(log n)
     fn xor(self, r: Range<D>) -> T                  // O(log n)
@@ -296,12 +296,12 @@ Additions to `std.fenwick`:
 
 ```cp
 struct DualFenwick<D, T>                            // range add, point get
-    fn new(a: ?[D]T = none) -> DualFenwick<D, T>    // O(n)
+    fn new(a: ?[D]T = None) -> DualFenwick<D, T>    // O(n)
     fn add(mut self, r: Range<D>, x: T)             // O(log n)
     fn get(self, i: D) -> T                         // O(log n)
 
 struct RangeFenwick<D>                              // range add, range sum (Int)
-    fn new(a: ?[D]Int = none) -> RangeFenwick<D>    // O(n)
+    fn new(a: ?[D]Int = None) -> RangeFenwick<D>    // O(n)
     fn add(mut self, r: Range<D>, x: Int)           // O(log n)
     fn prefix(self, b: Cut<D>) -> Int            // O(log n)
     fn sum(self, r: Range<D>) -> Int                // O(log n)
@@ -314,7 +314,7 @@ left-to-right fold order for non-commutative monoids.
 
 ```cp
 struct SegTree<D, T>(m: Monoid<T>)
-    fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> SegTree<D, T>  // O(n)
+    fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> SegTree<D, T>  // O(n)
     fn of<M>(op: M, f: D -> T) -> SegTree<D, T>     // O(n)
     fn refresh(mut self, i: D)                      // O(log n)
     fn get(self, i: D) -> T                         // O(1)
@@ -329,7 +329,7 @@ struct SegTree<D, T>(m: Monoid<T>)
 
 Law for `max_right(from, ok)`: `ok(m.id)` must hold, and
 `ok(fold(from..b))` must be monotone (true then false) as `b` increases.
-Symmetric law for `min_left(to, ok)`. Adding `fill: ?T = none` lets a
+Symmetric law for `min_left(to, ok)`. Adding `fill: ?T = None` lets a
 contestant write `SegTree<V, Int>(max, fill: 0)` without allocating a
 throwaway `[V]Int` array (if both `a` and `fill` are given, `new` traps).
 
@@ -341,8 +341,8 @@ range-apply + point-get with no monoid, no `pull`, and no `span` array
 
 ```cp
 struct LazySegTree<D, T, F>(act: Action<T, F>)
-    fn new(act: Action<T, F>, a: ?[D]T = none,
-           fill: ?T = none) -> LazySegTree<D, T, F> // O(n)
+    fn new(act: Action<T, F>, a: ?[D]T = None,
+           fill: ?T = None) -> LazySegTree<D, T, F> // O(n)
     fn get(mut self, i: D) -> T                     // O(log n)
     fn set(mut self, i: D, x: T)                    // O(log n)
     fn update(mut self, i: D, f: T -> T)            // O(log n)
@@ -358,7 +358,7 @@ struct LazySegTree<D, T, F>(act: Action<T, F>)
 /// Memory: `bit_ceil(n)` leaves + `bit_ceil(n)` internal tags.
 struct DualSegTree<D, T, F>
     fn new(id: F, compose: (F, F) -> F, apply: (F, T) -> T,
-           a: ?[D]T = none, fill: ?T = none) -> DualSegTree<D, T, F>  // O(n)
+           a: ?[D]T = None, fill: ?T = None) -> DualSegTree<D, T, F>  // O(n)
     fn apply(mut self, r: Range<D>, f: F)           // O(log n)
     fn get(mut self, i: D) -> T                     // O(log n)
     fn set(mut self, i: D, x: T)                    // O(log n)
@@ -475,7 +475,7 @@ indices or counts (closing `cf2135f.md` and promoting
 struct Version(id: Int)
 
 struct PersistentSegTree<D, T>(m: Monoid<T>)
-    fn new<M>(op: M, a: ?[D]T = none) -> (PersistentSegTree<D, T>, Version)  // O(n)
+    fn new<M>(op: M, a: ?[D]T = None) -> (PersistentSegTree<D, T>, Version)  // O(n)
     fn set(mut self, v: Version, i: D, x: T) -> Version     // O(log n) time & nodes
     fn update(mut self, v: Version, i: D, f: T -> T) -> Version  // O(log n)
     fn get(self, v: Version, i: D) -> T             // O(log n)
@@ -666,8 +666,8 @@ fn merge(a: ?Low, b: ?Low) -> ?Low:
 let act = Action<?Low, Int>(
     id: 0,
     compose: +,
-    apply: (d, x, _) => if let v = x: Low(v.cover + d, v.first, v.last, v.gaps) else: none,
-    over: Monoid(id: none, op: merge),
+    apply: (d, x, _) => if let v = x: Low(v.cover + d, v.first, v.last, v.gaps) else: None,
+    over: Monoid(id: None, op: merge),
 )
 var low = LazySegTree<Cut, ?Low>(act, [Cut] c => Low(0, c, c, 0))
 
@@ -706,7 +706,7 @@ struct Path(to: Sign, seen: MaxSub)
 struct Tag(neg: Path, zero: Path, pos: Path, set: ?Cell)
 
 fn path(f: Tag, s: Sign) -> Path = if s < 0: f.neg elif s == 0: f.zero else: f.pos
-fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.empty, set: ?Cell = none) -> Tag =
+fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.empty, set: ?Cell = None) -> Tag =
     Tag(Path(to(-1), seen(-1)), Path(to(0), seen(0)), Path(to(1), seen(1)), set)
 
 fn run(f: Tag, c: Cell) -> Cell:
@@ -840,8 +840,8 @@ for i in Q: print(ans[i])
   `monoid`).
 - `std.prefix`: `prefix_fold`, `suffix_fold`, `Diff`.
 - `std.fenwick`: `DualFenwick`, `RangeFenwick`.
-- `std.segtree`: `fill: ?T = none` on `SegTree.new`.
-- `std.lazy`: `DualSegTree`, `AffineSum`, `fill: ?T = none` on
+- `std.segtree`: `fill: ?T = None` on `SegTree.new`.
+- `std.lazy`: `DualSegTree`, `AffineSum`, `fill: ?T = None` on
   `LazySegTree.new`.
 - `std.sparse`: `DisjointSparseTable`.
 - `std.window`: `MonoDeque`, `WindowFold` (promoted from

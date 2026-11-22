@@ -31,8 +31,18 @@ impl<'a> Parser<'a> {
                 let name = self.expect_name("a domain name after `domain`");
                 PatternKind::Domain(name)
             }
+            T::Ident if self.text() == "None" && self.peek_n(1) != T::Dot => {
+                self.bump();
+                PatternKind::Literal(Box::new(Expr {
+                    kind: ExprKind::None,
+                    span: self.span_from(start),
+                }))
+            }
             T::Ident if self.text().starts_with(|c: char| c.is_ascii_uppercase()) => {
                 let mut path = vec![self.name()];
+                if path[0].text == "Some" && self.at(T::LParen) {
+                    path[0].text = "some".into();
+                }
                 while self.at(T::Dot) && self.peek_n(1) == T::Ident {
                     self.bump();
                     path.push(self.name());

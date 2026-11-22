@@ -9,7 +9,7 @@ pub struct Heap<T>:
     xs: List<T>
 
     /// Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7). O(1).
-    pub fn new<K>(by: ?(T -> K) = none) -> Heap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> Heap<T> = todo
 
     /// Build a `Heap<T>` from `xs` via Floyd heapify. O(n).
     pub fn of(xs: List<T>) -> Heap<T> = todo
@@ -19,7 +19,7 @@ pub struct Heap<T>:
     /// Whether the heap is empty. O(1).
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The smallest element, or `none` if the heap is empty.
+    /// The smallest element, or `None` if the heap is empty.
     pub @get fn peek(self) -> ?T = todo
 
     /// Remove all elements from the heap. O(1).
@@ -34,7 +34,7 @@ pub struct Heap<T>:
     /// Push `x` into the heap. O(log n).
     pub fn push(mut self, x: T) = todo
 
-    /// Remove and return the smallest element, or `none` if the heap is empty. O(log n).
+    /// Remove and return the smallest element, or `None` if the heap is empty. O(log n).
     pub fn pop(mut self) -> ?T = todo
 
     /// Reserve backing storage for at least `cap` elements. O(cap).
@@ -43,7 +43,7 @@ pub struct Heap<T>:
     /// Push `x` and pop the minimum in one sift. O(log n).
     pub fn push_pop(mut self, x: T) -> T = todo
 
-    /// Replace the minimum with `x` and return the old minimum (or `none` if empty). O(log n).
+    /// Replace the minimum with `x` and return the old minimum (or `None` if empty). O(log n).
     pub fn replace_top(mut self, x: T) -> ?T = todo
 
     /// Push all elements of `items`. O(k log n).
@@ -60,7 +60,7 @@ pub struct ErasableHeap<T>:
     dead: Heap<T>
 
     /// Create an empty `ErasableHeap<T>`, optionally ordered by key extractor `by:` (W7). O(1).
-    pub fn new<K>(by: ?(T -> K) = none) -> ErasableHeap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T> = todo
 
     /// Number of active elements in the heap. O(1).
     pub @get fn len(self) -> Int = todo
@@ -82,10 +82,10 @@ pub struct ErasableHeap<T>:
     /// Schedule one copy of `x` for lazy removal (`x` must be present). O(log n).
     pub fn remove(mut self, x: T) = todo
 
-    /// Return the smallest active element, or `none` if empty. O(log n) amortized.
+    /// Return the smallest active element, or `None` if empty. O(log n) amortized.
     pub fn peek(mut self) -> ?T = todo
 
-    /// Remove and return the smallest active element, or `none` if empty. O(log n) amortized.
+    /// Remove and return the smallest active element, or `None` if empty. O(log n) amortized.
     pub fn pop(mut self) -> ?T = todo
 
 /// Domain-keyed min-heap over `D` supporting O(log n) `set`, `decrease`, `increase`, `remove`,
@@ -107,10 +107,10 @@ pub struct IndexedHeap<D, K>:
     /// Whether `v` is currently in the heap. O(1).
     pub fn contains(self, v: D) -> Bool = todo
 
-    /// Current priority of `v`, or `none` if absent. O(1).
+    /// Current priority of `v`, or `None` if absent. O(1).
     pub fn get(self, v: D) -> ?K = todo
 
-    /// Pair `(v, key)` with the smallest key, or `none` if empty. O(1).
+    /// Pair `(v, key)` with the smallest key, or `None` if empty. O(1).
     pub @get fn peek(self) -> ?(D, K) = todo
 
     /// Remove all entries from the heap. O(len).
@@ -131,10 +131,10 @@ pub struct IndexedHeap<D, K>:
     /// Insert `v` with `k`, or raise its key to `k` if `k` is larger. Returns `true` if updated. O(log n).
     pub fn increase(mut self, v: D, k: K) -> Bool = todo
 
-    /// Remove `v` from the heap if present; returns its old key or `none`. O(log n).
+    /// Remove `v` from the heap if present; returns its old key or `None`. O(log n).
     pub fn remove(mut self, v: D) -> ?K = todo
 
-    /// Remove and return `(v, key)` with the smallest key, or `none` if empty. O(log n).
+    /// Remove and return `(v, key)` with the smallest key, or `None` if empty. O(log n).
     pub fn pop(mut self) -> ?(D, K) = todo
 
 /// Double-ended priority queue (min-max heap).
@@ -143,7 +143,7 @@ pub struct MinMaxHeap<T>:
     _xs: List<T>
 
     /// Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7). O(1).
-    pub fn new<K>(by: ?(T -> K) = none) -> MinMaxHeap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> MinMaxHeap<T> = todo
 
     /// Build a `MinMaxHeap<T>` from `xs` in linear time. O(n).
     pub fn of(xs: List<T>) -> MinMaxHeap<T> = todo
@@ -157,19 +157,19 @@ pub struct MinMaxHeap<T>:
     /// Whether the heap is empty. O(1).
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The smallest element, or `none` if empty. O(1).
+    /// The smallest element, or `None` if empty. O(1).
     pub @get fn first(self) -> ?T = todo
 
-    /// The largest element, or `none` if empty. O(1).
+    /// The largest element, or `None` if empty. O(1).
     pub @get fn last(self) -> ?T = todo
 
     /// Insert `x`. O(log n).
     pub fn push(mut self, x: T) = todo
 
-    /// Remove and return the smallest element, or `none` if empty. O(log n).
+    /// Remove and return the smallest element, or `None` if empty. O(log n).
     pub fn pop_first(mut self) -> ?T = todo
 
-    /// Remove and return the largest element, or `none` if empty. O(log n).
+    /// Remove and return the largest element, or `None` if empty. O(log n).
     pub fn pop_last(mut self) -> ?T = todo
 
     /// Remove all elements. O(1).
@@ -184,7 +184,7 @@ pub struct MeldHeap<T>:
     _len: Int
 
     /// Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7). O(1).
-    pub fn new<K>(by: ?(T -> K) = none) -> MeldHeap<T> = todo
+    pub fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T> = todo
 
     /// Build a `MeldHeap<T>` from `xs`. O(n).
     pub fn of(xs: List<T>) -> MeldHeap<T> = todo
@@ -195,10 +195,10 @@ pub struct MeldHeap<T>:
     /// Whether the heap is empty. O(1).
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The smallest element, or `none` if empty. O(1).
+    /// The smallest element, or `None` if empty. O(1).
     pub @get fn peek(self) -> ?T = todo
 
-    /// The smallest element, or `none` if empty (alias for `peek`). O(1).
+    /// The smallest element, or `None` if empty (alias for `peek`). O(1).
     pub @get fn top(self) -> ?T = todo
 
     /// Push `x` into the heap. O(log n).
@@ -207,7 +207,7 @@ pub struct MeldHeap<T>:
     /// Push all elements of `items`. O(k log n).
     pub fn push_all(mut self, items: List<T>) = todo
 
-    /// Remove and return the smallest element, or `none` if empty. O(log n).
+    /// Remove and return the smallest element, or `None` if empty. O(log n).
     pub fn pop(mut self) -> ?T = todo
 
     /// Meld `other` into `self` (consuming `other`). O(log n).

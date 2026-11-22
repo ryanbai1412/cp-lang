@@ -71,7 +71,7 @@ struct FlowGraph<V>                                   // Dinic
     fn cap(self, a: Arc) -> Int                       // O(1)
     fn source(self, a: Arc) -> V                      // O(1)
     fn target(self, a: Arc) -> V                      // O(1)
-    fn max_flow(mut self, s: V, t: V, limit: ?Int = none) -> Int
+    fn max_flow(mut self, s: V, t: V, limit: ?Int = None) -> Int
         // O(V^2 E); O(E sqrt V) on unit networks
     fn push_relabel(mut self, s: V, t: V) -> Int
         // the same flow, O(V^2 sqrt E); highest label, gap
@@ -86,10 +86,10 @@ struct CostFlow<V>                                    // successive shortest pat
     fn cost(self, a: Arc) -> Int
     fn source(self, a: Arc) -> V
     fn target(self, a: Arc) -> V
-    fn min_cost_flow(mut self, s: V, t: V, limit: ?Int = none)
+    fn min_cost_flow(mut self, s: V, t: V, limit: ?Int = None)
         -> (flow: Int, cost: Int)
         // O(F E log V) with potentials, plus O(V E) once if a cost is negative
-    fn slope(mut self, s: V, t: V, limit: ?Int = none)
+    fn slope(mut self, s: V, t: V, limit: ?Int = None)
         -> List<(flow: Int, cost: Int)>               // same cost
 
 fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int)
@@ -137,7 +137,7 @@ fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int))
   `source`, `target`, `rev`; `CostFlow` adds `cost`. `CostFlow.flow(a)` is
   the arc's flow, so the solver is `min_cost_flow`, not `flow(s, t)` (the
   earlier §4.12 sketch); one name, one meaning.
-- **Options are named arguments:** `limit:` on every solver, `cap: none`
+- **Options are named arguments:** `limit:` on every solver, `cap: None`
   for an unbounded arc. No `_with_limit`, `_inf` or `_by` variants.
 
 ### Why two network types and free functions
@@ -178,7 +178,7 @@ force on random small inputs.
   `max_closure`), and the cut value under a second name would be two ways
   to ask `max_flow` one question. `max_flow` then `min_cut(s)` stays the
   one spelling; revisit when two ports read the side.
-- **Unbounded arcs.** `cap: none` is 2^60: no finite cut chooses it, and a
+- **Unbounded arcs.** `cap: None` is 2^60: no finite cut chooses it, and a
   sum of 2^3 of them cannot overflow 63 bits. Finite capacities and their
   total stay below 2^60; the library asserts each `cap >= 0`.
 - **Closure.** `max_closure(before, profit)` returns `take` closed under
@@ -200,7 +200,7 @@ force on random small inputs.
   `(flow, cost)`; slopes are nondecreasing.
 - **Bounds.** A returned `flow` has `lo <= flow[e] <= hi` on every arc and
   conserves at every vertex (for `circulation`) or every vertex but `s`
-  and `t` (bounded flows), and `value` is the net flow out of `s`. `none`
+  and `t` (bounded flows), and `value` is the net flow out of `s`. `None`
   means no feasible flow exists.
 - **Gomory–Hu.** The result is a tree on `V` (`V.K - 1` edges, connected;
   components of the input are joined by `w = 0` edges), and for every

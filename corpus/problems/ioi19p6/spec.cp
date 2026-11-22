@@ -31,7 +31,7 @@ fn min_distance(x: List<Int>, h: List<Int>, l: List<Int>, r: List<Int>, y: List<
         for i in (starting.get(b) ?? List()) + (ending.get(b) ?? List()):
             stops.push((b: b, y: walks[i].y))
             on[i].push(b)
-            if let some(under) = active.last_true(a => a.y < walks[i].y):
+            if let Some(under) = active.last_true(a => a.y < walks[i].y):
                 stops.push((b: b, y: under.y))
                 on[under.walk].push(b)
         for i in ending.get(b) ?? List():
@@ -43,7 +43,7 @@ fn min_distance(x: List<Int>, h: List<Int>, l: List<Int>, r: List<Int>, y: List<
         for (p, q) in on[i].sorted().dedup().adjacent:
             links.push((u: at.at((b: p, y: walks[i].y)), v: at.at((b: q, y: walks[i].y)), w: x[Int(q)] - x[Int(p)]))
     for (p, q) in Stop.with_next:
-        if let some(q) = q:
+        if let Some(q) = q:
             if at.get(p).b == at.get(q).b:
                 links.push((u: p, v: q, w: at.get(q).y - at.get(p).y))
 

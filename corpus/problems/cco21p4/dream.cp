@@ -9,7 +9,7 @@ var need = Settle<roads.keys, Int>(best: max)
 for u in V:
     for a in g.out(u):
         need.offer(a.e, a.r)
-var ans: [V]?Int = none
+var ans: [V]?Int = None
 while let (road, x) = need.pop():
     let u = roads[road].u
     left[u] -= 1

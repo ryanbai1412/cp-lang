@@ -18,7 +18,7 @@ pub struct Monoid<T>(id: T, op: (T, T) -> T):
 
     /// What a structure was handed, as a monoid: a `Monoid` is itself, and a bare operator
     /// brings its identity (`+ ^ | gcd`: zero, `*`: one, `&`: all bits, `min` / `max`: the far
-    /// end of `T`, which is `none` for a `?T`). Any other fn needs `Monoid(id, op)`.
+    /// end of `T`, which is `None` for a `?T`). Any other fn needs `Monoid(id, op)`.
     pub fn of<M>(m: M) -> Monoid<T> = todo
 
 fn same<A, B>(a: A, b: B) -> Bool = todo
@@ -89,7 +89,7 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
     /// Scale every underlying value by `k >= 0`. O(1).
     pub fn scale(self, k: Int) -> MaxSub = todo
 
-    /// Best non-empty subarray sum, or `none` when empty. O(1).
+    /// Best non-empty subarray sum, or `None` when empty. O(1).
     pub @get fn try_best(self) -> ?Int = todo
 
     /// The `Monoid<MaxSub>` value for `SegTree` and `fold`. O(1).
@@ -218,7 +218,7 @@ pub struct Semiring<A, M>(add: A, mul: M)
 
 /// An associative operation, possibly without an identity (round 5). Bare operators
 /// (`+ * ^ | & min max gcd and or`) implement it. Folds over an `Op` of an empty range
-/// return `none`. Law (promised, sampled by stress): `op(op(a, b), c) == op(a, op(b, c))`.
+/// return `None`. Law (promised, sampled by stress): `op(op(a, b), c) == op(a, op(b, c))`.
 pub trait Op<T>:
     fn op(self, a: T, b: T) -> T
 
@@ -247,7 +247,7 @@ pub fn each<Ms>(..ms: Ms) -> Ms = todo
 /// `min`/`max` by `f`. Tags commute, so a `SegTree` with it never pushes down. O(1).
 pub const add = todo
 
-/// Stock action: assign a tag to every element (`?T` tags, `none` is no-op). O(1) on `+`,
+/// Stock action: assign a tag to every element (`?T` tags, `None` is no-op). O(1) on `+`,
 /// `min`, `max`; O(log n) folding `f` `n` times for other ops.
 pub const assign = todo
 

@@ -40,16 +40,16 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     pub fn clear(mut self) = todo
 
 /// O(log n).
-    /// The best value of a line at `x`, or `none` when no line covers `x`.
+    /// The best value of a line at `x`, or `None` when no line covers `x`.
     pub fn at(self, x: Int) -> ?K = todo
 
 /// O(log n).
-    /// The line that is best at `x`, or `none` when no line covers `x`.
+    /// The line that is best at `x`, or `None` when no line covers `x`.
     pub fn line_at(self, x: Int) -> ?L = todo
 
 /// O(log n), O(log^2 n) on a segment.
     /// Add `line` on all of `xs`, or only on the coordinates `on`.
-    pub fn add(mut self, line: L, on: ?Range<Int> = none) = todo
+    pub fn add(mut self, line: L, on: ?Range<Int> = None) = todo
 
     fn wins(self, a: K, b: K) -> Bool = todo
 
@@ -60,15 +60,15 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     fn settle(mut self, at: Int, lo: Int, hi: Int, line: L) = todo
 
 /// O((rows + cols) log rows) calls of `f`.
-/// For each row, the least `f(row, col)` and its leftmost `col`, or `none`
-/// where `f` is `none` on the whole row. Law: the leftmost argmin does not
+/// For each row, the least `f(row, col)` and its leftmost `col`, or `None`
+/// where `f` is `None` on the whole row. Law: the leftmost argmin does not
 /// decrease from row to row (true when `f` is Monge; `std.spec.monge_break`
 /// checks it). O((rows + cols) log rows) calls of `f`.
 pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)> = todo
 
 /// O(n log n) calls of `cost`.
 /// One layer of a partition DP: `next[i]` is the least `prev[j] + cost(j, i)`
-/// over `j < i` with `prev[j]` present, so `next[0]` is `none`. Indices are
+/// over `j < i` with `prev[j]` present, so `next[0]` is `None`. Indices are
 /// cuts `0..prev.len`. Law: `cost` satisfies the quadrangle inequality
 /// (`std.spec.dnc_break` checks it), so the best `j` moves right with `i`.
 /// O(n log n) calls of `cost` for n = `prev.len`.
@@ -91,7 +91,7 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>> = todo
 /// (the counts fall as `λ` grows). `L` is the value type (`Int`, `I128`).
 /// Without `lambdas` the range is found by doubling out from `-1..=1`
 /// (O(log |λ*|) more calls); pass it when `λ * k` could overflow `L`.
-pub fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = none) -> L = todo
+pub fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L = todo
 
 // The penalties around the answer: the counts fall as the penalty grows, so
 // double until the count is at most `k` above and at least `k` below.
@@ -139,7 +139,7 @@ pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
 /// O(rows + cols) calls of `f` (SMAWK). For each row, the least `f(row, col)`
 /// and its leftmost `col`. Law: `f` is totally monotone (true when Monge;
 /// `std.spec.monge_break` checks that). Prefer `monotone_minima` when `f` may
-/// be `none`: it needs only monotone argmins.
+/// be `None`: it needs only monotone argmins.
 pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)> = todo
 
 /// O(1) amortized per `add` and per `at_next`, O(log n) per `at`.
@@ -152,9 +152,9 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// O(1) amortized; the slope must not go back.
     pub fn add(mut self, line: Line, tag: P = ()) = todo
     /// O(1) amortized; the best value at an `x` that never decreases between calls, with the
-    /// tag of the line attaining it. `none` when empty.
+    /// tag of the line attaining it. `None` when empty.
     pub fn best_next(mut self, x: Int) -> ?(val: Int, tag: P) = todo
-    /// O(log n); the best value at `x`, `none` when empty.
+    /// O(log n); the best value at `x`, `None` when empty.
     pub fn at(self, x: Int) -> ?Int = todo
     /// O(1) amortized; `at(x)` for an `x` that never decreases between calls.
     pub fn at_next(mut self, x: Int) -> ?Int = todo
@@ -170,7 +170,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
 pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// O(log n) amortized.
     pub fn add(mut self, line: Line) = todo
-    /// O(log n); the best value at `x`, `none` when empty.
+    /// O(log n); the best value at `x`, `None` when empty.
     pub fn at(self, x: Int) -> ?Int = todo
     /// O(log n); the line that is best at `x`.
     pub fn line_at(self, x: Int) -> ?Line = todo

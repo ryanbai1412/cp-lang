@@ -50,7 +50,7 @@ print(p.dist[V.last!] ?? -1)
 Every fact is stated once: the vertex count bounds positions (4-byte
 storage), 1-based input converts at the reads, weights are validated and
 proven not to overflow a path sum of `2e5 * 1e9`, and an unreachable
-target is `none`, not `INF`.
+target is `None`, not `INF`.
 
 ## Layers
 
@@ -74,5 +74,5 @@ target is `none`, not `INF`.
 | view | a sequence built on another without copying (slice, `filter`) |
 | generator | a recipe that pushes elements to a loop body |
 | lend | a borrow of a value for as long as the borrower is used |
-| niche | a spare bit pattern of a type that encodes `none` or an enum tag |
+| niche | a spare bit pattern of a type that encodes `None` or an enum tag |
 | law | a promised property of an operation, sampled by stress |

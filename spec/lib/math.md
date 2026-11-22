@@ -235,7 +235,7 @@ fn convolve<T, O, R>(
     b: List<T>,
     on: O = (x, y) => x + y,      // ^ | & subset gcd lcm
     over: R = Semiring(+, *),     // Semiring(min, +) needs shape:
-    shape: ?Curved = none,        // Both | Right | Neither
+    shape: ?Curved = None,        // Both | Right | Neither
     cyclic: Bool = false,
 ) -> List<T>
     // The value type picks the algorithm: NTT for an NTT-prime Mod<P>, three
@@ -380,7 +380,7 @@ Every module enforces its mathematical laws in `@test`:
 
 - `std.math`: `gcd(a, b) >= 0`, `a * e.x + b * e.y == e.g == gcd(a, b)` for
   `e = ext_gcd(a, b)`; `crt(r1, m1, r2, m2)` returns `(r, lcm(m1, m2))` with
-  `r % m1 == r1 % m1` and `r % m2 == r2 % m2`, or `none` iff no solution
+  `r % m1 == r1 % m1` and `r % m2 == r2 % m2`, or `None` iff no solution
   exists; `is_prime(x)` agrees with `Sieve` and rejects Carmichael numbers
   and strong pseudoprimes; `factor(x) == s.factor(x)` and
   their product equals `x`; `pow_mod(a, mod_log(a, b, m)!, m) == b % m`;
@@ -397,7 +397,7 @@ Every module enforces its mathematical laws in `@test`:
 - `std.poly`: `convolve(a, inv(a, n))[0..n] == [1, 0, ...]`; `exp(log(a, n), n) == a[0..n]`
   for `a[0] == 1`; `log(exp(a, n), n) == a[0..n]` for `a[0] == 0`;
   `pow(a, k, n)` agrees with repeated `convolve` (including leading zeros and `k == 0`);
-  `convolve(g, g)[0..n] == a[0..n]` for `g = sqrt(a, n)!` and `sqrt(a, n) == none` for
+  `convolve(g, g)[0..n] == a[0..n]` for `g = sqrt(a, n)!` and `sqrt(a, n) == None` for
   odd leading zero count or quadratic non-residue leading term; `deriv(integral(a)) == a`.
 - `std.matrix`: `Mat<T>.product(n)` satisfies `laws_hold`; `(A * B).det() ==
   A.det() * B.det()`; `A * A.inverse()! == Mat.identity(n)`; for every `x0`
@@ -460,7 +460,7 @@ for i in 1..=m: pow2[i] = pow2[i - 1] * 2
 var ans: Z = 0
 'divisor: for f in divisors(m):
     let len = m / f
-    var s: [0..2][0..len]?Char = none
+    var s: [0..2][0..len]?Char = None
     for z in 0..2:
         for k in 0..f:
             for i in 0..len:
@@ -611,7 +611,7 @@ domain Pos = 0..n
 domain Val = 0..n
 let a: [Pos]Int = read()
 
-var pos: [Val]?Pos = none
+var pos: [Val]?Pos = None
 for i in Pos if a[i] >= 0: pos[Val(a[i])] = i
 
 let missing = prefix([Pos] i => if a[i] == -1: 1 else: 0)

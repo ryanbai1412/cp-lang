@@ -7,12 +7,12 @@ domain V = [n]
 let roads = read<[m](u: V, v: V, w: 1..=1_000_000_000)>()
 let paths = dijkstra(Graph.undirected(roads), from: [(V.first!, 0)])
 fn busiest() -> ?Int:
-    if roads.any(r => r.w > limit) or V.any(v => paths.dist[v] == none):
-        return none
+    if roads.any(r => r.w > limit) or V.any(v => paths.dist[v] == None):
+        return None
     let d = [V] v => paths.dist[v]!
     let total = d.sum()
     if d.max()! > limit or total > 4 * limit:
-        return none
+        return None
     domain Load = 0..=min(limit, total)
     domain Split = (Load, Load, Load)
     var can: [Split]Bool = false

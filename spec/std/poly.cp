@@ -29,7 +29,7 @@ pub fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>> = todo
 /// Formal power `a(x)^k mod x^n` (supports `k < 0` when `a[0] != 0`). O(n log n).
 pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>> = todo
 
-/// Formal square root `g(x)` with `g(x)^2 == a(x) (mod x^n)`, or `none` if none exists mod `P`.
+/// Formal square root `g(x)` with `g(x)^2 == a(x) (mod x^n)`, or `None` if none exists mod `P`.
 /// Requires `n >= 0`. O(n log n + log^2 P).
 pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>> = todo
 
@@ -129,7 +129,7 @@ pub struct Poly<T>(c: List<T>):
     /// O(n log n). Formal power `self(x)^k mod x^n`.
     pub fn pow(self, k: Int, n: Int) -> Poly<T> = todo
 
-    /// O(n log n + log^2 P). Formal square root mod `x^n`, or `none`.
+    /// O(n log n + log^2 P). Formal square root mod `x^n`, or `None`.
     pub fn sqrt(self, n: Int) -> ?Poly<T> = todo
 
     /// O(n). Evaluate at `x` by Horner's rule.

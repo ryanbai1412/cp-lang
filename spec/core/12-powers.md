@@ -226,7 +226,7 @@ Traits have `Self`, associated types and constants, and may state laws that
 Algebra stays operation values (decision 3.1): a structure takes a binary fn
 (`SegTree(+)`, `SparseTable(min)`, `scan(xs, gcd)`). Its identity comes from
 the element type: `+` uses `T.zero`, `*` uses `T.one`, `min`/`max` over `?T`
-use `none`; a user type supplies them as constants (`const zero = Low(...)`).
+use `None`; a user type supplies them as constants (`const zero = Low(...)`).
 Anything else passes `id:`: `SegTree(op: f, id: e)`. A missing identity is
 an error naming the constant to define. Lazy propagation takes an action
 value `act: (f, x) => ...` with `compose:`. Const generics: `Mod<P>`,

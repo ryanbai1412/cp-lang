@@ -10,7 +10,7 @@ pub struct Fenwick<D, T>:
     t: List<T>
 
     /// Create a Fenwick tree over `D`, optionally initialized from `a`. O(|D|).
-    pub fn new(a: ?[D]T = none) -> Fenwick<D, T> = todo
+    pub fn new(a: ?[D]T = None) -> Fenwick<D, T> = todo
 
     /// `a[i] += x`.
     pub fn add(mut self, i: D, x: T) = todo
@@ -22,11 +22,11 @@ pub struct Fenwick<D, T>:
     pub fn sum(self, r: Range<D>) -> T = todo
 
     /// The first boundary where the prefix sum reaches `target`, for non-negative values:
-    /// the smallest `b` with `prefix(b) >= target`, or `none`. O(log n).
+    /// the smallest `b` with `prefix(b) >= target`, or `None`. O(log n).
     pub fn first_ge(self, target: Int) -> ?Cut<D> = todo
 
     /// The `k`-th position, counting from 1, when each position stands for as many items as
-    /// its value: the first `d` with `prefix` through `d` at least `k`, or `none` when there
+    /// its value: the first `d` with `prefix` through `d` at least `k`, or `None` when there
     /// are fewer than `k` items. For non-negative values. O(log n).
     pub fn kth(self, k: Int) -> ?D = todo
 
@@ -42,7 +42,7 @@ pub struct Fenwick<D, T>:
     /// O(log |D|). Sum of everything right of boundary `b`.
     pub fn suffix(self, b: Cut<D>) -> T = todo
 
-    /// O(log |D|). Smallest boundary `b` with `prefix(b) > target`, for non-negative values, or `none`.
+    /// O(log |D|). Smallest boundary `b` with `prefix(b) > target`, for non-negative values, or `None`.
     pub fn first_gt(self, target: Int) -> ?Cut<D> = todo
 
     /// O(|D|). Reset all entries to zero without reallocating.
@@ -80,7 +80,7 @@ pub struct DualFenwick<D, T>:
     t: List<T>
 
     /// Create a range-add / point-query Fenwick tree over `D`. O(|D|).
-    pub fn new(a: ?[D]T = none) -> DualFenwick<D, T> = todo
+    pub fn new(a: ?[D]T = None) -> DualFenwick<D, T> = todo
 
     fn add_at(mut self, p0: Int, x: T) = todo
 

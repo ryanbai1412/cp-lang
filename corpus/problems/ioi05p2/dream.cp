@@ -20,6 +20,6 @@ for cmd in cmds:
         Ask(h):
             let (end, before) = track.max_right(Piece.first!, ok: r => r.peak <= h)
             let rails = before.len + match end.r:   // the piece where the car stops
-                some(p): (h - before.total) / max(1, track.slope_at(p))
+                Some(p): (h - before.total) / max(1, track.slope_at(p))
                 none: 0
             print(rails)

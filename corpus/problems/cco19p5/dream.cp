@@ -9,5 +9,5 @@ var edges = 0
 for i in V:
     out[i].remove(i)
     edges += out[i].len
-    if let some(f) = out[i].first: out[f].absorb(mut out[i])
+    if let Some(f) = out[i].first: out[f].absorb(mut out[i])
 print(edges)

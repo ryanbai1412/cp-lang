@@ -588,7 +588,7 @@ fn insert_barrel(v: Int):
     else:
         let prv = cur.prev_cursor(c)
         let nxt = cur.next_cursor(c)
-        if prv != none and nxt != none:
+        if prv != None and nxt != None:
             upd_gap(cur.key_of(prv!), cur.key_of(nxt!), false)
         if prv != none: upd_gap(cur.key_of(prv!), v, true)
         if nxt != none: upd_gap(v, cur.key_of(nxt!), true)
@@ -653,8 +653,8 @@ var segs = IntervalMap<tree.Pre, Time>(Time(1))
 for v in init_slime: segs.assign_point(tree.pos(v), Time(2))
 
 var bucket = DsuOf<Time, (prv: ?Time, cnt: Int)>(
-    _ => (prv: none, cnt: 0), (_, b) => b)
-bucket.set(Time(2), (prv: none, cnt: m))
+    _ => (prv: None, cnt: 0), (_, b) => b)
+bucket.set(Time(2), (prv: None, cnt: m))
 
 var tot_ans = 0
 var ans: List<Int> = []
@@ -677,7 +677,7 @@ for t_now in Time(3)..:
             w -= take
             bucket.set(u, (prv: prv, cnt: cnt - take))
             if take == cnt:
-                if let p = prv: bucket.unite(u, p) else: it = none
+                if let p = prv: bucket.unite(u, p) else: it = None
         cur_ans += w
     bucket.set(t_now, (prv: t_now - 1, cnt: cur_cnt))
     tot_ans += cur_ans

@@ -15,7 +15,7 @@ pub struct Dir4(k: Int):
     /// All four, clockwise from up. O(1).
     pub fn all() -> List<Dir4> = todo
     /// The direction a letter stands for, given the letters for up, right, down and left in that
-    /// order: `Dir4.from("URDL", ch)`, `Dir4.from("NESW", ch)`. `none` for another letter. O(1).
+    /// order: `Dir4.from("URDL", ch)`, `Dir4.from("NESW", ch)`. `None` for another letter. O(1).
     pub fn from(letters: Str, ch: Char) -> ?Dir4 = todo
     /// A quarter turn clockwise. O(1).
     pub @get fn cw(self) -> Dir4 = todo
@@ -39,7 +39,7 @@ pub struct Dir8(k: Int):
     /// The change in (row, column) of one step. O(1).
     pub @get fn delta(self) -> (Int, Int) = todo
 
-/// O(1). The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `none` off
+/// O(1). The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` off
 /// the grid.
 pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C) = todo
 

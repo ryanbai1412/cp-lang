@@ -19,7 +19,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// With `act:` the tree also applies tags to ranges (`apply`, `apply_all`); with `over:`
     /// it covers a huge integer range and makes nodes on first touch. With `act:` and no op it
     /// applies tags and reads points. Push-down is skipped when the tags commute.
-    pub fn new<M, A>(op: ?M = none, a: ?[D]T = none, fill: ?T = none, act: ?A = none, over: ?Range<Int> = none) -> SegTree<D, T> = todo
+    pub fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: ?A = None, over: ?Range<Int> = None) -> SegTree<D, T> = todo
 
     /// Apply tag `f` to every position in `r`. O(log n).
     pub fn apply(mut self, r: Range<D>, f: F) = todo
@@ -72,11 +72,11 @@ pub struct SegTree<D, T>(m: Monoid<T>):
 
 
 
-    /// O(log |D|). Fold of `r`, or `none` when `r` is empty (avoids sentinel identities for semigroups).
+    /// O(log |D|). Fold of `r`, or `None` when `r` is empty (avoids sentinel identities for semigroups).
     pub fn try_fold(self, r: Range<D>) -> ?T = todo
 
-    /// O(|D|). Reset all leaves to `fill` (or `m.id` when `none`) without reallocating.
-    pub fn clear(mut self, fill: ?T = none) = todo
+    /// O(|D|). Reset all leaves to `fill` (or `m.id` when `None`) without reallocating.
+    pub fn clear(mut self, fill: ?T = None) = todo
 
     /// O(log |D|). Yield the O(log |D|) canonical node aggregates covering `r` left to right.
     pub fn walk(self, r: Range<D>) -> yields T = todo
@@ -135,10 +135,10 @@ pub struct MergeSortTree<D, T>:
     /// O(log^2 |D|). Count elements in `r` greater than or equal to `x`.
     pub fn count_ge(self, r: Range<D>, x: T) -> Int = todo
 
-    /// O(log^2 |D|). Smallest element in `r` that is `>= x`, or `none`.
+    /// O(log^2 |D|). Smallest element in `r` that is `>= x`, or `None`.
     pub fn first_ge(self, r: Range<D>, x: T) -> ?T = todo
 
-    /// O(log^2 |D|). Largest element in `r` that is `<= x`, or `none`.
+    /// O(log^2 |D|). Largest element in `r` that is `<= x`, or `None`.
     pub fn last_le(self, r: Range<D>, x: T) -> ?T = todo
 
 /// O(|R| * |C|) space. Iterative 2D segment tree: point update and rectangle fold in O(log |R| * log |C|).
@@ -146,7 +146,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     t: List<T>
 
     /// O(|R| * |C|). Build a 2D segment tree over `(R, C)` from `a`, `fill`, or `m.id`.
-    pub fn new<M>(op: M, a: ?[R, C]T = none, fill: ?T = none) -> SegTree2D<R, C, T> = todo
+    pub fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T> = todo
 
     /// O(1). Read cell `(r, c)`.
     pub fn get(self, r: R, c: C) -> T = todo
@@ -171,7 +171,7 @@ pub struct WaveletMatrix<D>:
     /// O(|D| log V). Build a wavelet matrix over `a: [D]Int` (requires all values `>= 0`).
     pub fn new(a: [D]Int) -> WaveletMatrix<D> = todo
 
-    /// O(log V). `k`-th smallest value (0-based) in `r`, or `none` when `k >= r.len`.
+    /// O(log V). `k`-th smallest value (0-based) in `r`, or `None` when `k >= r.len`.
     pub fn kth(self, r: Range<D>, k: Int) -> ?Int = todo
 
     /// O(log V). Number of occurrences of `x` in `r`.
@@ -183,10 +183,10 @@ pub struct WaveletMatrix<D>:
     /// O(log V). Count elements in `r` within `[lo_v, hi_v]` inclusive.
     pub fn count_in(self, r: Range<D>, lo_v: Int, hi_v: Int) -> Int = todo
 
-    /// O(log V). Largest value in `r` strictly less than `x`, or `none`.
+    /// O(log V). Largest value in `r` strictly less than `x`, or `None`.
     pub fn prev_val(self, r: Range<D>, x: Int) -> ?Int = todo
 
-    /// O(log V). Smallest value in `r` strictly greater than `x`, or `none`.
+    /// O(log V). Smallest value in `r` strictly greater than `x`, or `None`.
     pub fn next_val(self, r: Range<D>, x: Int) -> ?Int = todo
 
     /// O(log V). Sum of the `k` smallest values in `r` (`0 <= k <= r.len`).
@@ -212,7 +212,7 @@ pub struct DynamicOrderTree<D, T>:
     /// O(log^2 |D|). Count elements in `r` within `[lo_v, hi_v]` inclusive.
     pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int = todo
 
-    /// O(log^2 |D|). `k`-th smallest value (0-based) in `r`, or `none` when `k >= r.len`.
+    /// O(log^2 |D|). `k`-th smallest value (0-based) in `r`, or `None` when `k >= r.len`.
     pub fn kth(self, r: Range<D>, k: Int) -> ?T = todo
 
 /// O(q log |D|) space. Mergeable sparse binary segment tree over domain `D` for lazily pruned

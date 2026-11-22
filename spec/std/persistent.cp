@@ -17,7 +17,7 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     base_root: Int
 
     /// Build version 0 from `a:`, a uniform `fill:`, or the monoid identity. O(n) when `a:` or `fill:` is given, O(1) otherwise.
-    pub fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> PersistentSegTree<D, T> = todo
+    pub fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T> = todo
 
     fn push_node(mut self, l: Int, r: Int, v: T) -> Int = todo
 
@@ -57,7 +57,7 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     pub fn left_while(self, v: Version, to: Cut<D>, ok: T -> Bool) -> Cut<D> = todo
 
     /// O(log |D|). Walk the difference of two count-tree versions (`hi - lo`) to find the `k`-th
-    /// position (1-based), or `none` when fewer than `k` items exist.
+    /// position (1-based), or `None` when fewer than `k` items exist.
     pub fn diff_kth(self, hi: Version, lo: Version, k: Int) -> ?D = todo
 
 /// Static range k-th smallest and range rank queries over `[D]T`.
@@ -98,7 +98,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     base_root: Int
 
     /// O(|D|) with `a`/`fill`, O(1) otherwise. Create version 0 over `D`.
-    pub fn new(act: Action<T, F>, a: ?[D]T = none, fill: ?T = none) -> PersistentLazySegTree<D, T, F> = todo
+    pub fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F> = todo
 
     /// O(1). The initial version created by `new`.
     pub @get fn base(self) -> Version = todo
@@ -123,7 +123,7 @@ pub struct PersistentArray<D, T>:
     base_root: Int
 
     /// O(|D|). Build version 0 from `a` or uniform `fill`.
-    pub fn new(a: ?[D]T = none, fill: ?T = none) -> PersistentArray<D, T> = todo
+    pub fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T> = todo
 
     /// O(1). Initial version.
     pub @get fn base(self) -> Version = todo

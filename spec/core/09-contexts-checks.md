@@ -74,7 +74,7 @@ compiler can prove, and what each build does.
 | `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with value and bounds | unchecked |
 | store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming value and range | truncates to the width |
 | `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wraps |
-| `x!` on `none` | flow proves `some` | trap naming the place | reads the niche as a value |
+| `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value |
 | division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 | trap | defined fallback (0) |
 | `assert c` | n/a | trap with the message | skipped |
 | `@cache` cold-mode check | n/a | stress compares cold and cached runs | none |

@@ -16,7 +16,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// The fold of a non-empty range. O(1). Asserts `not r.is_empty`.
     pub fn fold(self, r: Range<D>) -> T = todo
 
-    /// O(1). Fold of `r`, or `none` when `r` is empty.
+    /// O(1). Fold of `r`, or `None` when `r` is empty.
     pub fn try_fold(self, r: Range<D>) -> ?T = todo
 
     /// O(1). Original value at position `i`.
@@ -41,7 +41,7 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// Fold of a non-empty range `r`, left to right. O(1). Asserts `not r.is_empty`.
     pub fn fold(self, r: Range<D>) -> T = todo
 
-    /// O(1). Fold of `r`, or `none` when `r` is empty.
+    /// O(1). Fold of `r`, or `None` when `r` is empty.
     pub fn try_fold(self, r: Range<D>) -> ?T = todo
 
     /// O(1). Original value at position `i`.
@@ -61,7 +61,7 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// O(1). Fold of a non-empty rectangle `rows` by `cols`. Asserts both ranges are non-empty.
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T = todo
 
-    /// O(1). Fold of `rows` by `cols`, or `none` when either range is empty.
+    /// O(1). Fold of `rows` by `cols`, or `None` when either range is empty.
     pub fn try_fold(self, rows: Range<R>, cols: Range<C>) -> ?T = todo
 
     /// O(1). Original cell value `a[r, c]`.
@@ -81,7 +81,7 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// O(1). Value of the best element in non-empty range `r`.
     pub fn best(self, r: Range<D>) -> T = todo
 
-    /// O(1). Value of the best element in `r`, or `none` when `r` is empty.
+    /// O(1). Value of the best element in `r`, or `None` when `r` is empty.
     pub fn try_best(self, r: Range<D>) -> ?T = todo
 
 @test

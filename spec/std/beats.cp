@@ -19,7 +19,7 @@ pub struct BeatsSegTree<D>:
     n: Int
 
     /// Build from `a: [D]Int` or a uniform `fill:` value (default 0). O(n).
-    pub fn new(a: ?[D]Int = none, fill: ?Int = none) -> BeatsSegTree<D> = todo
+    pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D> = todo
 
     fn pull(mut self, u: Int) = todo
 
@@ -55,12 +55,12 @@ pub struct BeatsSegTree<D>:
 
     fn min_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int = todo
 
-    /// Minimum element in `r`, or `none` if `r` is empty. O(log n).
+    /// Minimum element in `r`, or `None` if `r` is empty. O(log n).
     pub fn min_val(mut self, r: Range<D>) -> ?Int = todo
 
     fn max_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int = todo
 
-    /// Maximum element in `r`, or `none` if `r` is empty. O(log n).
+    /// Maximum element in `r`, or `None` if `r` is empty. O(log n).
     pub fn max_val(mut self, r: Range<D>) -> ?Int = todo
 
     /// Value at a single position `i`. O(log n).
@@ -81,10 +81,10 @@ pub struct BeatsSegTree<D>:
     /// O(1). Sum of the entire domain.
     pub @get fn all_sum(self) -> Int = todo
 
-    /// O(1). Minimum of the entire domain, or `none` when empty.
+    /// O(1). Minimum of the entire domain, or `None` when empty.
     pub @get fn all_min(self) -> ?Int = todo
 
-    /// O(1). Maximum of the entire domain, or `none` when empty.
+    /// O(1). Maximum of the entire domain, or `None` when empty.
     pub @get fn all_max(self) -> ?Int = todo
 
 /// O(|D|) space. Segment Tree Beats with historic maximum and historic sum tracking under
@@ -93,7 +93,7 @@ pub struct HistoricBeatsSegTree<D>:
     n: Int
 
     /// O(|D|). Build from `a: [D]Int` or uniform `fill:` (default 0).
-    pub fn new(a: ?[D]Int = none, fill: ?Int = none) -> HistoricBeatsSegTree<D> = todo
+    pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D> = todo
 
     /// O(log |D|) amortized. Replace every `a[i]` in `r` with `min(a[i], x)`.
     pub fn chmin(mut self, r: Range<D>, x: Int) = todo
@@ -107,10 +107,10 @@ pub struct HistoricBeatsSegTree<D>:
     /// O(log |D|). Current sum of elements in `r`.
     pub fn sum(mut self, r: Range<D>) -> Int = todo
 
-    /// O(log |D|). Current maximum in `r`, or `none` when empty.
+    /// O(log |D|). Current maximum in `r`, or `None` when empty.
     pub fn max_val(mut self, r: Range<D>) -> ?Int = todo
 
-    /// O(log |D|). Historic maximum ever attained at any position in `r`, or `none` when empty.
+    /// O(log |D|). Historic maximum ever attained at any position in `r`, or `None` when empty.
     pub fn hist_max(mut self, r: Range<D>) -> ?Int = todo
 
     /// O(log |D|). Historic sum of all versions across `r`.

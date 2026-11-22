@@ -13,7 +13,7 @@ fn fit(gap: Range<X>) -> Int:
         return 0
     1 + chain.climb(u, ok: v => iv[v].r <= gap.r).steps
 
-var gaps = IntervalMap<X, ?Int>(init: none)
+var gaps = IntervalMap<X, ?Int>(init: None)
 gaps.assign(X.range, fit(X.range))
 var picked = List<I>()
 for i in I:
@@ -26,7 +26,7 @@ for i in I:
     if a + 1 + b == best:
         picked.push(i)
         gaps.assign(left, a)
-        gaps.assign(iv[i], none)
+        gaps.assign(iv[i], None)
         gaps.assign(right, b)
 print(picked.len)
 print(picked)

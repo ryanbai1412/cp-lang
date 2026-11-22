@@ -9,7 +9,7 @@ fn heights(s: S) -> Range<C> = xs.at(iv[s].l)..=xs.at(iv[s].r)
 let held = track(SegTree(max, [C] c => 0, act: add),
     add: (mut cover, s) => cover.apply(heights(s), 1),
     remove: (mut cover, s) => cover.apply(heights(s), -1))
-let group = iv.keys.maximal(held, ok: h => h.state.all <= 1, anchor: Anchor.start)
+let group = iv.keys.maximal(held, ok: h => h.state.all <= 1, anchor: Anchor.Start)
 let jumps = Lift.of(s => group[s].last!.next)
 for (l, r) in read<[read<1..=200_000>()](S, S)>():
     print(jumps.climb(l, ok: s => s <= r).steps + 1)

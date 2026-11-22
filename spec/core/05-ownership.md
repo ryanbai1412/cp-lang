@@ -352,7 +352,7 @@ state of its arguments.
   lent for one iteration (R8: keep one with `x.clone()`).
 - `break`, `continue` and `return` in `B` act on the loop and the
   enclosing fn, through recursive generators too. (`x?` never transfers
-  control: it propagates `none` within its expression, chapter 2.)
+  control: it propagates `None` within its expression, chapter 2.)
 - Walking a `mut`-lent generator value twice is legal and linted: the
   second walk sees what the first changed.
 

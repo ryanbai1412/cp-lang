@@ -115,14 +115,14 @@ pub fn prod<S, T>(it: S) -> T
 // O(n) time, O(1) space.
 pub fn is_sorted<D, T, K = T>(self: [D]T, by: T -> K = x => x) -> Bool
 
-// Index of the first maximum / minimum under `by`, or `none` when empty.
+// Index of the first maximum / minimum under `by`, or `None` when empty.
 // O(n) time, O(1) space. (Also @get argmax / argmin when called without args.)
 pub @get fn argmax<D, T>(self: [D]T) -> ?D
 pub @get fn argmin<D, T>(self: [D]T) -> ?D
 pub fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D   // [target: argmax(by:)]
 pub fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D   // [target: argmin(by:)]
 
-// Element with smallest / largest key (first on ties), or `none`.
+// Element with smallest / largest key (first on ties), or `None`.
 // O(n) time, O(1) space.
 pub fn min_by<S, T, K>(it: S, key: T -> K) -> ?T          // [target: min(it, by:)]
 pub fn max_by<S, T, K>(it: S, key: T -> K) -> ?T          // [target: max(it, by:)]
@@ -229,7 +229,7 @@ pub fn chunks<T>(self: List<T>, k: Int) -> yields List<T>
 // Adjacent pairs `(a[i-1], a[i])`; empty when len < 2. O(1) per step.
 pub fn pairs<D, T>(self: [D]T) -> yields (T, T)
 
-// Every element with the previous one, starting with `(none, first)`. O(1)/step.
+// Every element with the previous one, starting with `(None, first)`. O(1)/step.
 pub fn with_prev<D, T>(self: [D]T) -> yields (?T, T)
 
 // Adjacent pairs wrapping last to first. O(1) per step.
@@ -311,7 +311,7 @@ pub fn compress<T>(all: List<T>)
 
 Laws:
 - `xs.vals` is strictly increasing.
-- `xs.try_at(v) == some(i)` iff `xs[i] == v`.
+- `xs.try_at(v) == Some(i)` iff `xs[i] == v`.
 - `xs.first_ge(v)` and `xs.last_lt(v)` partition `xs.D` at `v`; `xs.first_gt(v)`
   and `xs.last_le(v)` partition `xs.D` after `v`.
 
@@ -357,7 +357,7 @@ Laws:
 ### 3.7 Binary search, unimodal search, and sorted lookup
 
 ```cp
-// First / last position in `r` where monotone `ok` holds, or `none`.
+// First / last position in `r` where monotone `ok` holds, or `None`.
 // O(log r.len) calls of `ok`, O(1) space.
 pub fn bsearch_first<I>(r: Range<I>, ok: I -> Bool) -> ?I
 pub fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I
@@ -399,7 +399,7 @@ Laws:
 
 ```cp
 // Nearest index strictly to the left / right with value strictly less than
-// (or strictly greater than) `self[i]`, or `none`.
+// (or strictly greater than) `self[i]`, or `None`.
 // With `strict: false`, matches `<=` / `>=`.
 // O(n) time and O(n) space via monotone stack.
 pub fn prev_less<D, T>(self: [D]T, strict: Bool = true) -> [D]?D
@@ -415,8 +415,8 @@ pub fn sliding_max<D, T>(self: [D]T, k: Int) -> List<T>
 ```
 
 Laws:
-- For `p = a.prev_less()`: if `p[i] == some(j)`, then `j < i`, `a[j] < a[i]`,
-  and every `m` with `j < m < i` has `a[m] >= a[i]`; if `p[i] == none`, every
+- For `p = a.prev_less()`: if `p[i] == Some(j)`, then `j < i`, `a[j] < a[i]`,
+  and every `m` with `j < m < i` has `a[m] >= a[i]`; if `p[i] == None`, every
   `j < i` has `a[j] >= a[i]`.
 - `a.sliding_min(k)[i] == min(a[i..i + k])!` and
   `a.sliding_max(k)[i] == max(a[i..i + k])!`.
@@ -577,7 +577,7 @@ expression:
 // The max weight outside r is combine(pref[r.start], suff[r.end]) over Cut<Pre>.
 use std.seq.{buckets, prefix_fold, suffix_fold}
 
-let empty_max = MaxInfo<t.Pre>(0, none, none, 0)
+let empty_max = MaxInfo<t.Pre>(0, None, None, 0)
 let mon = Monoid<MaxInfo<t.Pre>>(empty_max, combine)
 let leaf = [t.Pre] p => MaxInfo<t.Pre>(w[t.at[p]].ord + 1, p, p, 1)
 let pref = prefix_fold(leaf, mon)

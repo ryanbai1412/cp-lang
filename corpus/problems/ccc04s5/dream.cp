@@ -11,9 +11,9 @@ loop:
 
     let value = (r, c) => if g[r, c].is_digit(): Int(g[r, c].digit()) else: 0
     # here[r]: best collected so far when entering column c at row r.
-    var here: [R]?Int = [R] r => if r == R.last: some(0) else: none
+    var here: [R]?Int = [R] r => if r == R.last: Some(0) else: None
     for c in Col:
-        here = [R] r => if g[r, c] == '*': none else:
+        here = [R] r => if g[r, c] == '*': None else:
             max(for from in R if here[from].is_some() and R.span(from, r).all(q => g[q, c] != '*'):
                 here[from]! + R.span(from, r).sum(of: q => value(q, c)))
     print(here[R.last]!)

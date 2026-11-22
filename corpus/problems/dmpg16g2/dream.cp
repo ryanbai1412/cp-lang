@@ -19,15 +19,15 @@ struct ClearRuns(blocked: [Col]Int):
         if self.blocked[c] > 0: return
         self.pairs += 1
         for d in [c.prev, c.next]:
-            if d is some(d) and self.blocked[d] == 0 and not self.runs.same(c, d):
+            if d is Some(d) and self.blocked[d] == 0 and not self.runs.same(c, d):
                 self.pairs += self.runs.size(c) * self.runs.size(d)
                 self.runs.union(c, d)
 
 var total = 0
-var last: [Col, Letter]?R = none
+var last: [Col, Letter]?R = None
 for bottom in R:
-    for c in Col: if grid[bottom, c] is some(l): last[c, l] = some(bottom)
-    var count = [for S in Letter.subsets: ClearRuns([for c in Col: S.count(l => last[c, l] != none)])]
+    for c in Col: if grid[bottom, c] is Some(l): last[c, l] = Some(bottom)
+    var count = [for S in Letter.subsets: ClearRuns([for c in Col: S.count(l => last[c, l] != None)])]
     let leaving = R.group(last.items.filter_map(((c, l), r) => r.map(r => (r, (c, l)))))
     for top in ..=bottom:
         total += count.items.sum(of: (S, runs) => (-1) ** S.len * runs.pairs)

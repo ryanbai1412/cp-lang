@@ -13,7 +13,7 @@ fn clash(w: Head, wc: Head, c: F) -> Int:
 // eat(v)[w][x]: the cheapest for v's subtree when head w eats v and the big head eats x of its
 // fruits.
 fn eat(v: F) -> [Head]List<?Int>:
-    var best: [Head]List<?Int> = [Head] w => if w == Head.Big: [none, some(0)] else: [some(0), none]
+    var best: [Head]List<?Int> = [Head] w => if w == Head.Big: [None, Some(0)] else: [Some(0), None]
     for c in t.children(v):
         let sub = eat(c)
         let via = (w, wc) => convolve(best[w], sub[wc].map(x => x + clash(w, wc, c)).collect(), over: tropical, shape: Curved.Neither)

@@ -153,7 +153,7 @@ All return `Paths<V, W, A>`:
 
 | On `p` | Meaning |
 |---|---|
-| `p[v]` | distance, `?W` (`none` when unreachable) |
+| `p[v]` | distance, `?W` (`None` when unreachable) |
 | `p.back[v]` | `?(from: V, via: A)`, the step that reached `v` |
 | `p.path(t)`, `p.arcs(t)` | one shortest path, `?List` |
 | `p.order` | reached vertices in settling order |
@@ -164,7 +164,7 @@ All return `Paths<V, W, A>`:
 | `bfs01(g, from:, until:)` | 0 or 1 | O(n + m) |
 | `dial(g, from:, max_w:, until:)` | small ints | O(n · max_w + m) |
 | `dijkstra(g, from: [(s, d0)], until:)` | non-negative | O(m log n) |
-| `bellman_ford(g, from:)` | any; `none` on a negative cycle | O(n m) |
+| `bellman_ford(g, from:)` | any; `None` on a negative cycle | O(n m) |
 | `floyd_warshall(mut d, over: Semiring(min, +)) -> Bool` | dense, in place; `false` on a negative cycle; `over: Semiring(max, min)` gives widest paths | O(n³) |
 
 `until: t` stops once `t` is settled. `from:` is any `Seq`; multi-source is
@@ -203,8 +203,8 @@ Every grouping returns a fresh domain and the map into it:
 | `two_edge_components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
 | `blocks(g)` | `(domain B, block: [E]B)`, biconnected blocks of edges | O(n + m) |
 | `bridges(g)`, `cut_vertices(g)` | `[E]Bool`, `[V]Bool` | O(n + m) |
-| `topo(g)` | `?List<V>`, `none` on a cycle | O(n + m) |
-| `two_color(g)` | `?[V]Bool`, `none` when an odd cycle exists | O(n + m) |
+| `topo(g)` | `?List<V>`, `None` on a cycle | O(n + m) |
+| `two_color(g)` | `?[V]Bool`, `None` when an odd cycle exists | O(n + m) |
 | `find_cycle(g)` | `?List<V>` | O(n + m) |
 | `kruskal(edges)` (records with `w`) | `(total, take: [E]Bool)` | O(m log m) |
 | `euler_walk(edges, directed:)` | `?Walk<V, E>` | O(n + m) |

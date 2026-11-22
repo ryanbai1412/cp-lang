@@ -21,16 +21,16 @@ for p in Cell:
     if let d = board[p]:
         toggle(p, d)
         score += worth(p) * Int(d)
-var best: ?Int = none
+var best: ?Int = None
 fn fill(score: Int):
-    let p = Cell.filter(p => board[p] == none).min(by: p => free(p).len) else:
+    let p = Cell.filter(p => board[p] == None).min(by: p => free(p).len) else:
         best max= score
         return
     for d in free(p).items:
         toggle(p, d)
         board[p] = d
         fill(score + worth(p) * Int(d))
-        board[p] = none
+        board[p] = None
         toggle(p, d)
 fill(score)
 print(best ?? -1)

@@ -41,10 +41,10 @@ pub struct Deque<T>:
     /// Prepend `x` to the front of the deque. O(1) amortized.
     pub fn push_front(mut self, x: T) = todo
 
-    /// Remove and return the back, or `none` when empty.
+    /// Remove and return the back, or `None` when empty.
     pub fn pop(mut self) -> ?T = todo
 
-    /// Remove and return the front, or `none` when empty.
+    /// Remove and return the front, or `None` when empty.
     pub fn pop_front(mut self) -> ?T = todo
 
     /// O(k) for `k` removed. Remove and return the longest front run on which `ok` holds,
@@ -55,10 +55,10 @@ pub struct Deque<T>:
     /// O(popped).
     pub fn pop_while(mut self, ok: T -> Bool) -> List<T> = todo
 
-    /// The front, or `none` when empty.
+    /// The front, or `None` when empty.
     pub @get fn first(self) -> ?T = todo
 
-    /// The back, or `none` when empty. `dq.last(k)` is the element `k`
+    /// The back, or `None` when empty. `dq.last(k)` is the element `k`
     /// back from it, so `dq.last(1)` is the one before the back.
     pub @get fn last(self, k: Int = 0) -> ?T = todo
 
@@ -118,13 +118,13 @@ pub struct LinkedList<T>:
     /// Prepend `x` to the front. O(1).
     pub fn push_front(mut self, x: T) = todo
 
-    /// Remove and return the back element, or `none` if empty. O(1).
+    /// Remove and return the back element, or `None` if empty. O(1).
     pub fn pop(mut self) -> ?T = todo
 
     /// Remove and return the back element (alias for `pop`). O(1).
     pub fn pop_back(mut self) -> ?T = todo
 
-    /// Remove and return the front element, or `none` if empty. O(1).
+    /// Remove and return the front element, or `None` if empty. O(1).
     pub fn pop_front(mut self) -> ?T = todo
 
     /// Splice all elements of `other` onto the back of `self`, consuming `other`. O(1).

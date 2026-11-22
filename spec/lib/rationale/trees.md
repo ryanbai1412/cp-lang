@@ -148,7 +148,7 @@ a forest says so with `forest`.
 `step(a, b, 1)` is "the neighbour of `a` toward `b`" (ecnerwala's
 `get_next`, and `get_subtree` when `b` is below `a`), so neither gets a name.
 `lift_while(v, pred)` returns the highest ancestor `u` of `v` (possibly `v`)
-with `pred` true on the whole `v..u` path, or `none` if `pred(v)` is false.
+with `pred` true on the whole `v..u` path, or `None` if `pred(v)` is false.
 
 ### 3.5 Path and subtree structures (heavy-light)
 
@@ -229,7 +229,7 @@ pairs in the same branch".
 
 ```cp
 struct LinkCut<V, T>
-    fn new<M>(op: M, a: ?[V]T = none)             // O(n), like SegTree.new
+    fn new<M>(op: M, a: ?[V]T = None)             // O(n), like SegTree.new
     fn link(mut self, u: V, v: V)                 // amortized O(log n) each
     fn cut(mut self, u: V, v: V)
     fn connected(mut self, u: V, v: V) -> Bool
@@ -310,7 +310,7 @@ Every law is a property test in `stdlib/tree.cp`.
    `t.size(h) >= t.size(c)` for every child `c`.
 4. `t.dist(a, b) == t.depth(a) + t.depth(b) - 2 * t.depth(t.lca(a, b))`.
 5. `t.step(a, b, k)` is `t.path(a, b)[k]` for `0 <= k <= t.dist(a, b)`,
-   `none` past `b`; `t.ancestor(v, k) == t.step(v, t.root, k)`.
+   `None` past `b`; `t.ancestor(v, k) == t.step(v, t.root, k)`.
 6. `t.fold_path(a, b, ds)` equals folding `t.path(a, b)` in order (for
    `Reversible` or commutative monoids); `fold_path(b, a)` is its `rev`.
 7. The ranges of `t.chains(a, b)` partition `t.path(a, b)`; there are at
@@ -372,11 +372,11 @@ domain V = read(1..=4e5)
 let c: [V]1..=60 = read()
 let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)
 
-let assign = Action(none, (f, g) => f ?? g, (f, s, len) => f ?? s, over: |)
+let assign = Action(None, (f, g) => f ?? g, (f, s, len) => f ?? s, over: |)
 var colours = LazySegTree(assign, t.reorder([V] v => 1 << c[v]))
 for _ in 0..read(1..=4e5):
     match read(1..=2):
-        1 => colours.apply(t.sub(read<V>()), some(1 << read<1..=60>()))
+        1 => colours.apply(t.sub(read<V>()), Some(1 << read<1..=60>()))
         2 => print(colours.fold(t.sub(read<V>())).popcount)
 ```
 
@@ -411,14 +411,14 @@ domain V = read(1..=1e5)
 let q: 1..=1e5 = read()
 let cd = Centroids(Graph.undirected(read<Tree<V>>()))
 
-var near: [V]?Int = none
+var near: [V]?Int = None
 fn paint(v: V):
-    for (c, d) in cd.ancestors(v): near[c] = some(min(near[c] ?? d, d))
+    for (c, d) in cd.ancestors(v): near[c] = Some(min(near[c] ?? d, d))
 paint(V.first)
 for _ in 0..q:
     let (kind, v) = read<(1..=2, V)>()
     if kind == 1: paint(v)
-    else: print(min(near[c]! + d for (c, d) in cd.ancestors(v) if near[c] != none))
+    else: print(min(near[c]! + d for (c, d) in cd.ancestors(v) if near[c] != None))
 ```
 
 ### Codeforces 600E, Lomsat gelral (small-to-large)

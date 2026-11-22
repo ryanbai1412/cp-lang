@@ -96,7 +96,7 @@ one (AGENTS.md, "name the algorithm").
 **Results answer the follow-up question.** A search does not return a bare
 distance array that forces the contestant to rerun it with parents: it
 returns `Paths`, which indexes like the distance array and also knows how
-each vertex was reached. Failure is an optional (`topo` is `none` on a
+each vertex was reached. Failure is an optional (`topo` is `None` on a
 cycle), never a sentinel.
 
 **Costs are written on every function**, in terms of n = |V|, m = number of
@@ -160,22 +160,22 @@ struct Paths<V, W, A>       // the result of every single-pair-family search
     fn path(self, t: V) -> ?List<V>           // source .. t, O(len)
     fn arcs(self, t: V) -> ?List<A>           // arcs from source to t, O(len)
 
-fn bfs<V, N>(next: N, from: List<V>, until: ?V = none) -> Paths<V, Int, A>
+fn bfs<V, N>(next: N, from: List<V>, until: ?V = None) -> Paths<V, Int, A>
     // O(n + m)
-fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = none)
+fn bfs01<V, N, A>(next: N, from: List<V>, w: A -> Int, until: ?V = None)
     -> Paths<V, Int, A>
     // O(n + m); deque; traps unless w(a) is 0 or 1
-fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W, until: ?V = none)
+fn dijkstra<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W, until: ?V = None)
     -> Paths<V, W, A>
     // O((n + m) log m) binary heap with lazy deletion; traps on a negative weight
 fn fixed_cost_paths<S, M, W>(
-    from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S, until: ?S = none,
+    from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S, until: ?S = None,
 ) -> Paths<S, W, M>
     // O(|S| * |moves|) time, O(|S|) memory: one cursor per move, no heap
 
 `until: t` stops a search once `t` is settled: `p[t]` and every distance in
 `p.order` are exact, and `p.order` ends at `t`; a vertex outside `p.order`
-holds `none` or an upper bound. The cost bounds become the part of the space
+holds `None` or an upper bound. The cost bounds become the part of the space
 cheaper than `t`, which is what a hand-written loop that stops at the target
 pays (`cf2178h`).
 fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> ?Paths<V, W, A>
@@ -191,7 +191,7 @@ be one argument.
 
 Laws, for every search and every reached `v`:
 - `p[s] == 0` (or the given start) for a source `s` that no cheaper path
-  reaches; `p[v] == none` exactly when `v` is unreachable.
+  reaches; `p[v] == None` exactly when `v` is unreachable.
 - Optimality: for every arc `a` from reached `u`, `p[a.to]! <= p[u]! + w(a)`.
 - Witness: for non-source `v` with `b = p.back[v]!`, `p[v]! == p[b.from]! + w(b.via)`, so
   `path(t)` starts at a source, ends at `t`, and its weights sum to `p[t]!`.
@@ -224,7 +224,7 @@ fn find_cycle<V, N>(next: N) -> ?List<V>    // O(n + m) one directed cycle, in o
 ```
 
 Laws: in `topo(g)!` every arc goes from an earlier vertex to a later one;
-`topo(g) == none` iff `find_cycle(g) != none`; `peel(g)` is a prefix-closed
+`topo(g) == None` iff `find_cycle(g) != None`; `peel(g)` is a prefix-closed
 removal order and its complement is exactly the vertices on or downstream
 of a cycle (the vertices that keep an incoming arc forever). For a closed
 cycle `c = find_cycle(g)!`, each `c[i + 1]` is a successor of `c[i]` and
@@ -285,7 +285,7 @@ vertex, and an undirected edge may be walked either way (the arc says which
 way it was used, by its head). The walk is closed whenever every vertex is
 balanced, and then starts at the smallest vertex with an edge; otherwise it
 starts at the unique vertex with out-degree surplus (directed) or the smaller
-odd vertex (undirected). `none` iff the degree condition fails or the edges
+odd vertex (undirected). `None` iff the degree condition fails or the edges
 are not in one component.
 
 ### 3.7 2-SAT
@@ -302,7 +302,7 @@ struct TwoSat<X>                            // O(|X| + clauses) memory
     fn solve(self) -> ?[X]Bool              // O(|X| + clauses), SCC
 ```
 
-Laws: `solve()` is `none` iff no assignment satisfies every clause, and an
+Laws: `solve()` is `None` iff no assignment satisfies every clause, and an
 assignment satisfies every clause added. The variables are a domain `X`, so
 "variable 2i+1 means the negation of 2i" never appears in user code.
 
@@ -323,7 +323,7 @@ struct Functional<V>                        // O(n log n) build (jump table)
 
 Laws: `jump(v, a + b) == jump(jump(v, a), b)`; `jump(v, steps_to_ring(v))
 == root(v)`; `on_ring(v)` iff `jump(v, k) == v` for some `k >= 1`;
-`dist(a, b) == some(k)` iff `k` is the least `k` with `jump(a, k) == b`.
+`dist(a, b) == Some(k)` iff `k` is the least `k` with `jump(a, k) == b`.
 
 ### 3.9 Implicit and grid graphs
 

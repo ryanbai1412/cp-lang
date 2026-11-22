@@ -14,7 +14,7 @@ use std.seq.{ends, RingRange}
 ///     let pre = a.scan(+)
 ///     pre[r.r] - pre[r.l]          // sum over r; also pre.fold(r)
 ///     pre[v.l] + a[v] + suf[v.r]   // with suf = a.rev.scan(+)
-pub fn scan<D, T>(self: [D]T, f: (T, T) -> T, from: ?T = none) -> Prefix<D, T> = todo
+pub fn scan<D, T>(self: [D]T, f: (T, T) -> T, from: ?T = None) -> Prefix<D, T> = todo
 
 /// Fill direction for an append-only `Prefix.filling(...)` table.
 pub enum FillOrder = Forward | Reverse
@@ -66,10 +66,10 @@ pub struct Prefix<D, T>:
     /// O(1). Total sum of the entire domain.
     pub @get fn all(self) -> T = todo
 
-    /// O(log |D|). Smallest boundary `b` with `prefix(b) >= target`, for non-negative values, or `none`.
+    /// O(log |D|). Smallest boundary `b` with `prefix(b) >= target`, for non-negative values, or `None`.
     pub fn first_ge(self, target: T) -> ?Cut<D> = todo
 
-    /// O(log |D|). Smallest boundary `b` with `prefix(b) > target`, for non-negative values, or `none`.
+    /// O(log |D|). Smallest boundary `b` with `prefix(b) > target`, for non-negative values, or `None`.
     pub fn first_gt(self, target: T) -> ?Cut<D> = todo
 
 /// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.

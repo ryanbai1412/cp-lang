@@ -54,7 +54,7 @@ pub fn convolve<T, O, R>(
     b: List<T>,
     on: O = (x, y) => x + y,
     over: R = Semiring(+, *),
-    shape: ?Curved = none,
+    shape: ?Curved = None,
     cyclic: Bool = false,
 ) -> List<T> = todo
 

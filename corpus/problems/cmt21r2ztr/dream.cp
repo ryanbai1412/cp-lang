@@ -18,8 +18,8 @@ for v in V:
     for (x, y) in pins[v].with_next():
         sat.exactly_one(above[v][x], below[v][y])
 match sat.solve():
-    none => print("NO")
-    some(truth) =>
+    None => print("NO")
+    Some(truth) =>
         print("YES")
         print(V.map(v =>
             let lo = max(1, pins[v].filter(x => not truth[below[v][x]]).map(x => if truth[above[v][x]]: x + 1 else: x).max() ?? 1)

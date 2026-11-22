@@ -8,7 +8,7 @@ while true:
     domain R = 0..rows
     domain C = 0..cols
     let g = read<[R, C]Char>()
-    var best: [R]?Int = none
+    var best: [R]?Int = None
     best[R.last!] = 0
     for c in C.rev:
         fn reach<S: Seq>(path: S) -> yields (k: R, gold: Int):

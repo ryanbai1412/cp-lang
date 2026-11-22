@@ -178,7 +178,7 @@ pub struct Rope<D, T>:
     n: Int
 
     /// O(n). Build a rope over `D` initialized from `a`, `fill`, or a tag `merge` operation.
-    pub fn new(a: ?[D]T = none, fill: ?T = none, merge: ?((T, T) -> T) = none) -> Rope<D, T> = todo
+    pub fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T> = todo
 
     /// O(log n) expected. Apply tag `tag` to subrange `r`.
     pub fn apply(mut self, r: Range<D>, tag: T) = todo
@@ -186,7 +186,7 @@ pub struct Rope<D, T>:
     /// O(log n) expected. Reverse subrange `r` in place.
     pub fn reverse(mut self, r: Range<D>) = todo
 
-    /// O(log n) expected. Walk root-to-leaf to position `i` and return the first `some` result of `f` on path tags.
+    /// O(log n) expected. Walk root-to-leaf to position `i` and return the first `Some` result of `f` on path tags.
     pub fn query_path<R>(mut self, i: D, f: T -> ?R) -> ?R = todo
 
     /// O(log n) expected. Read the element currently at position `i`.

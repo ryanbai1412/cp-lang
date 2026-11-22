@@ -50,7 +50,7 @@ positions. Each works on any `Indexed` (`[D]T`, `List`, `Str`, a slice).
 | `a.split(sep: p)` | pieces between elements where `p` holds (separators excluded; empty pieces kept) | O(n) |
 | `a.maximal(state, ok:)` | for each right end, the longest piece ending there that is `ok` | O(n) amortized |
 | `a.minimal(state, ok:)` | for each right end, the shortest piece ending there that is `ok`, or none | O(n) amortized |
-| `a.maximal(state, ok:, anchor: Anchor.start)` | the same keyed by left end: the longest piece starting at each position | O(n) amortized |
+| `a.maximal(state, ok:, anchor: Anchor.Start)` | the same keyed by left end: the longest piece starting at each position | O(n) amortized |
 | `a.spans(by: key)` | for each position, the widest piece where it is the minimum | O(n) |
 
 ```python
@@ -108,10 +108,10 @@ pub trait Track<T>:
     fn push(mut self, x: T)       // x joins at the right end
     fn pop(mut self, x: T)        // x leaves at the left end (the oldest)
 
-pub enum Anchor: start, end
+pub enum Anchor: Start, End
 
 pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
-                                  anchor: Anchor = Anchor.end) -> [D]Slice<[D]T>
+                                  anchor: Anchor = Anchor.End) -> [D]Slice<[D]T>
 ```
 
 `Track` implementations that already exist:
@@ -143,7 +143,7 @@ let shortest = a.minimal(Window(+), ok: w => w.all >= S).present().min(by: .len)
 - **Results are keyed by the right end.** `maximal` and `minimal` return
   `[D]Slice` (`[D]?Slice`), like the ring forms, so "the group ending at
   `i`" is `g[i]` and the starts are `g.map(p => p.first!)`. With
-  `anchor: Anchor.start` the same pass keys each piece by its left end, so
+  `anchor: Anchor.Start` the same pass keys each piece by its left end, so
   "the longest group starting at `s`" is `g[s]`: the next pointer for greedy
   jumping, `Lift.of(s => g[s].last!.next)` (Osumnjičeni).
 - **The moving window over positions** (`Window<D>(enter, leave)` today,

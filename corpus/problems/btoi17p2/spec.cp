@@ -6,9 +6,9 @@ domain Layer = [n.ceil_div(k)]
 domain Slot = [k]
 let place = (v: Node) => (layer: Layer(Int(v) / k), slot: Slot(Int(v) % k))
 
-var hop = [Layer] _ => Mat<?Int>.filled(k, k, fill: none, over: Semiring(min, +))
+var hop = [Layer] _ => Mat<?Int>.filled(k, k, fill: None, over: Semiring(min, +))
 for (u, v, w) in read<[m](u: Node, v: Node, w: 1..=1e4)>():
-    hop[place(u).layer].at(Int(place(u).slot), Int(place(v).slot)) = some(w)
+    hop[place(u).layer].at(Int(place(u).slot), Int(place(v).slot)) = Some(w)
 let path = SegTree(*, hop)
 
 for (a, b) in read<[q](a: Node, b: Node)>():

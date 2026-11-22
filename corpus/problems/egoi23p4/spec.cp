@@ -6,12 +6,12 @@
 let (n, k) = read<(1..=500, 1..=1_000_000_000)>()
 domain V = [n]
 fn read_triangle(flip: Bool) -> [V, V]?Int:
-    var m: [V, V]?Int = none
+    var m: [V, V]?Int = None
     for i in V:
         for j in ..i:
             let x = read<0..=1_000_000_000>()
             let w = if flip: k - x else: x
-            (m[i, j], m[j, i]) = (some(w), some(w))
+            (m[i, j], m[j, i]) = (Some(w), Some(w))
     m
 let narrow = read_triangle(true)
 let wide = read_triangle(false)
@@ -19,8 +19,8 @@ fn closes_to(d: [V, V]?Int, over: Semiring, want: [V, V]?Int) -> Bool:
     var c = d.clone()
     floyd_warshall(mut c, over: over)
     V.all(u => V.all(v => u == v or c[u, v] == want[u, v]))
-var try_wide: [V, V]?Int = none
-var try_narrow: [V, V]?Int = none
+var try_wide: [V, V]?Int = None
+var try_narrow: [V, V]?Int = None
 var edges: List<(u: V, v: V, w: Int)> = []
 for u in V:
     for v in ..u:

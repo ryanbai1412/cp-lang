@@ -812,8 +812,17 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::Block(self.block("`do`"))
             }
+            // `Some` and `None` are the spec spelling (decision 157); `some` and
+            // `none` stay until the 0.2 ports migrate.
+            T::Ident if self.text() == "None" => {
+                self.bump();
+                ExprKind::None
+            }
             T::Ident => {
-                let name = self.name();
+                let mut name = self.name();
+                if name.text == "Some" {
+                    name.text = "some".into();
+                }
                 let type_like = name.is_type_like();
                 let expr = Expr {
                     kind: ExprKind::Name(name.text),

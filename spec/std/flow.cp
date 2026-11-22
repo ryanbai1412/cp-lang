@@ -27,7 +27,7 @@ pub struct FlowGraph<V>:
     pub fn new() -> FlowGraph<V> = todo
 
     /// Add an arc `u -> v` with capacity `cap` (and its reverse with capacity 0). O(1).
-    /// A `cap` of `none` is an arc no cut can afford: its capacity is 2^60.
+    /// A `cap` of `None` is an arc no cut can afford: its capacity is 2^60.
     pub fn add(mut self, u: V, v: V, cap: ?Int) -> Arc = todo
 
     /// Add an undirected edge: `cap` in both directions. O(1).
@@ -48,7 +48,7 @@ pub struct FlowGraph<V>:
     /// Push as much as possible from `s` to `t`, on top of the flow already there, but
     /// no more than `limit`. Returns the amount added. Dinic: O(V^2 E); O(E sqrt(V)) when
     /// every capacity is 1.
-    pub fn max_flow(mut self, s: V, t: V, limit: ?Int = none) -> Int = todo
+    pub fn max_flow(mut self, s: V, t: V, limit: ?Int = None) -> Int = todo
 
     /// The source side of a minimum cut, after `max_flow(s, t)` ran to completion: the
     /// vertices `s` still reaches in the residual network. Traps if no such `max_flow`
@@ -58,7 +58,7 @@ pub struct FlowGraph<V>:
     /// Clear all flow, restoring every arc to its initial capacity. O(E).
     pub fn reset(mut self) = todo
 
-    /// O(1). Change arc `a`'s capacity to `cap` (`none`: never cut), keeping its flow
+    /// O(1). Change arc `a`'s capacity to `cap` (`None`: never cut), keeping its flow
     /// when it still fits; a later `max_flow` re-solves from the current flow. Traps when
     /// the flow on `a` exceeds the new capacity (lower it with `reset` first).
     pub fn set_cap(mut self, a: Arc, cap: ?Int) = todo
@@ -115,7 +115,7 @@ pub struct CostFlow<V>:
     pub fn new() -> CostFlow<V> = todo
 
     /// Add an arc `u -> v` with capacity `cap` and cost `cost` per unit; its reverse has
-    /// capacity 0 and cost `-cost`. `cap: none` is 2^60. Costs may be negative as long
+    /// capacity 0 and cost `-cost`. `cap: None` is 2^60. Costs may be negative as long
     /// as no cycle of positive capacity has negative total cost. O(1).
     pub fn add(mut self, u: V, v: V, cap: ?Int, cost: Int) -> Arc = todo
 
@@ -149,13 +149,13 @@ pub struct CostFlow<V>:
     /// that amount, on top of the flow already there. Returns the amount and cost added.
     /// O(F E log V) for F augmenting paths, plus O(V E) once when a residual arc has a
     /// negative cost (the first call with negative costs, and every later call).
-    pub fn min_cost_flow(mut self, s: V, t: V, limit: ?Int = none) -> (flow: Int, cost: Int) = todo
+    pub fn min_cost_flow(mut self, s: V, t: V, limit: ?Int = None) -> (flow: Int, cost: Int) = todo
 
     /// The breakpoints of the cheapest cost of sending each amount from `s` to `t`, up to
     /// `limit`: `(0, 0)` first, then one `(flow, cost)` per change of slope; between
     /// breakpoints the cost is linear and the slopes never decrease. Same cost as
     /// `min_cost_flow`.
-    pub fn slope(mut self, s: V, t: V, limit: ?Int = none) -> List<(flow: Int, cost: Int)> = todo
+    pub fn slope(mut self, s: V, t: V, limit: ?Int = None) -> List<(flow: Int, cost: Int)> = todo
 
     /// Potentials under which every residual arc has a nonnegative reduced cost: all zero
     /// when no residual arc is negative, else Bellman-Ford from every vertex at once.
@@ -169,7 +169,7 @@ pub struct CostFlow<V>:
 pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool) = todo
 
 /// A maximum matching between `L` and `R`, where `adj[l]` lists the partners `l` may take:
-/// its `size`, and the partner of each vertex on either side (`none` when unmatched).
+/// its `size`, and the partner of each vertex on either side (`None` when unmatched).
 /// Hopcroft-Karp, O(E sqrt(V)) time, no recursion.
 pub fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]?L) = todo
 
@@ -259,11 +259,11 @@ pub fn max_weight_general_matching<V, E>(
 ) -> (total: Int, mate: [V]?V) = todo
 
 /// A flow `f` on every arc with `lo <= f[e] <= hi` that is conserved at every vertex, or
-/// `none` when there is none. One `max_flow` on V + 2 vertices and E + V arcs.
+/// `None` when there is none. One `max_flow` on V + 2 vertices and E + V arcs.
 pub fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int = todo
 
 /// The largest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every
-/// vertex but `s` and `t`, or `none` when no such flow exists. `value` is the net flow out
+/// vertex but `s` and `t`, or `None` when no such flow exists. `value` is the net flow out
 /// of `s`. Two `max_flow`s on V + 2 vertices and E + V + 1 arcs.
 pub fn max_bounded_flow<V, E>(
     arcs: [E](u: V, v: V, lo: Int, hi: Int),
@@ -273,7 +273,7 @@ pub fn max_bounded_flow<V, E>(
 
 /// The smallest `s -> t` flow with `lo <= flow[e] <= hi` on every arc, conserved at every
 /// vertex but `s` and `t`, never sending more back into `s` than leaves it (`value >= 0`),
-/// or `none` when no such flow exists. Same cost as
+/// or `None` when no such flow exists. Same cost as
 /// `max_bounded_flow`.
 pub fn min_bounded_flow<V, E>(
     arcs: [E](u: V, v: V, lo: Int, hi: Int),
@@ -392,9 +392,9 @@ pub struct Matching<L, R>:
     /// size; the matching stays maximum when it was before.
     pub fn remove(mut self, l: L) -> Int = todo
 
-    /// O(1). `l`'s partner, `none` when unmatched.
+    /// O(1). `l`'s partner, `None` when unmatched.
     pub fn mate(self, l: L) -> ?R = todo
-    /// O(1). `r`'s partner, `none` when unmatched.
+    /// O(1). `r`'s partner, `None` when unmatched.
     pub fn back(self, r: R) -> ?L = todo
     /// O(1). The number of matched pairs.
     pub @get fn len(self) -> Int = todo
@@ -405,8 +405,8 @@ pub struct Matching<L, R>:
 /// O(F E log V), F = matching size. The maximum (or, with `min`, minimum) total weight
 /// matching among the listed edges, not necessarily perfect: sparse weights through
 /// min-cost flow, where `max_weight_matching` needs every pair's weight.
-/// `size:` forces exactly that many pairs (`none` when impossible).
-pub fn best_matching<L, R, E>(edges: [E](l: L, r: R, w: Int), size: ?Int = none, min: Bool = false) -> ?(total: Int, mate: [L]?R, used: [E]Bool) = todo
+/// `size:` forces exactly that many pairs (`None` when impossible).
+pub fn best_matching<L, R, E>(edges: [E](l: L, r: R, w: Int), size: ?Int = None, min: Bool = false) -> ?(total: Int, mate: [L]?R, used: [E]Bool) = todo
 
 /// O(L R). Gale-Shapley stable matching, proposals from `L`: `pref_l[l]` lists the `R`s
 /// `l` accepts, best first, and likewise `pref_r`. Optimal for every `l` among stable
@@ -420,7 +420,7 @@ pub fn edge_coloring<L, R, E>(edges: [E](l: L, r: R)) -> (colors: Int, color: [E
 /// O(E^2 V) is not reached; O(r E (r + oracle)) for answer size r. A largest set of
 /// elements independent in both matroids; with `weight`, the largest-total among the
 /// largest (weighted intersection by shortest augmenting paths).
-pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> >(a: A, b: B, weight: ?(E -> Int) = none) -> [E]Bool = todo
+pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> >(a: A, b: B, weight: ?(E -> Int) = None) -> [E]Bool = todo
 
 /// An independence oracle for `matroid_intersection`. `rebuild(take)` sets the current
 /// independent set; `can_add(e)` asks whether `take + e` stays independent, and
@@ -445,6 +445,6 @@ pub struct ColorMatroid<E, C>:
     pub fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C> = todo
 
 /// O(V^2 E) worst case, like `max_flow`. The minimum cost circulation of arcs with lower
-/// and upper bounds and costs, negative cycles included (cost scaling); `none` when no
+/// and upper bounds and costs, negative cycles included (cost scaling); `None` when no
 /// circulation meets the bounds.
 pub fn min_cost_circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)) -> ?(cost: Int, flow: [E]Int) = todo

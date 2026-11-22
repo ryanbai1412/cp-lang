@@ -5,17 +5,17 @@ let (n, m) = read<(1..=100, 1..=4500)>()
 domain V = 1..=n
 var best: [V, V]?(d: Int, ways: Int) = [V, V] (s, t) => (s == t).then((d: 0, ways: 1))
 for (a, b, c) in read<[m](a: V, b: V, c: 1..=1000)>():
-    best[a, b] = some((d: c, ways: 1))
-    best[b, a] = some((d: c, ways: 1))
+    best[a, b] = Some((d: c, ways: 1))
+    best[b, a] = Some((d: c, ways: 1))
 for v in V:
     for s in V if s != v:
         for t in V if t != v and t != s:
             let (Some(sv), Some(vt)) = (best[s, v], best[v, t]) else: continue
             let via = (d: sv.d + vt.d, ways: sv.ways * vt.ways)
             best[s, t] = match best[s, t]:
-                some(st) if st.d < via.d => some(st)
-                some(st) if st.d == via.d => some((d: st.d, ways: st.ways + via.ways))
-                _ => some(via)
+                Some(st) if st.d < via.d => Some(st)
+                Some(st) if st.d == via.d => Some((d: st.d, ways: st.ways + via.ways))
+                _ => Some(via)
 for v in V:
     print(V.pairs_ordered().filter((s, t) => s != v and t != v).sum(of: (s, t) =>
         let (sv, vt, st) = (best[s, v]!, best[v, t]!, best[s, t]!)

@@ -51,7 +51,7 @@ pub struct IntervalMap<D, T>:
     /// O(runs). Yield every maximal run `(range, val)` in descending order.
     pub fn each_rev(self) -> yields (range: Range<D>, val: T) = todo
 
-    /// O(log runs + skipped). First position at or after `from` whose value satisfies `ok`, or `none`.
+    /// O(log runs + skipped). First position at or after `from` whose value satisfies `ok`, or `None`.
     pub fn first_where(self, from: Cut<D>, ok: T -> Bool) -> ?D = todo
 
 /// O(runs) space. Dynamic union of disjoint maximal half-open intervals over domain `D`
@@ -74,13 +74,13 @@ pub struct IntervalSet<D>:
     /// O(log runs). Whether every position in `r` is covered.
     pub fn contains_range(self, r: Range<D>) -> Bool = todo
 
-    /// O(log runs). The maximal covered run containing `i`, or `none`.
+    /// O(log runs). The maximal covered run containing `i`, or `None`.
     pub fn run_at(self, i: D) -> ?Range<D> = todo
 
-    /// O(log runs). First covered position at or after `from`, or `none`.
+    /// O(log runs). First covered position at or after `from`, or `None`.
     pub fn next_covered(self, from: D) -> ?D = todo
 
-    /// O(log runs). First uncovered position at or after `from` (dynamic MEX), or `none`.
+    /// O(log runs). First uncovered position at or after `from` (dynamic MEX), or `None`.
     pub fn next_gap(self, from: D) -> ?D = todo
 
     /// O(1). Total number of covered positions across all runs.

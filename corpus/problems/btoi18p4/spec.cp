@@ -25,25 +25,25 @@ fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
 
 let whole = (lo: 1, hi: n)
 var holder: [Wire]?Wire = []
-var reach: ?(end: Int, by: Wire) = none
+var reach: ?(end: Int, by: Wire) = None
 let copies = [(start: lo[w] + s, end: hi[w] + s, w: w) for w in Wire for s in [0, n]]
 for c in copies.sorted(by: c => (c.start, desc(c.end))):
     match reach:
-        some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? some(r.by)
-        _ => reach = some((end: c.end, by: c.w))
-fn top(w: Wire) -> Wire = iterate(from: some(w), step: v => holder[v]).last()!
+        Some(r) if c.end <= r.end and r.by != c.w => holder[c.w] = holder[c.w] ?? Some(r.by)
+        _ => reach = Some((end: c.end, by: c.w))
+fn top(w: Wire) -> Wire = iterate(from: Some(w), step: v => holder[v]).last()!
 let tops = Wire.filter(w => holder[w].is_none()).collect().sorted(by: w => lo[w])
 domain T = [tops.len]
 var rank: [Wire]?T = []
 for t in T:
-    rank[tops[Int(t)]] = some(t)
+    rank[tops[Int(t)]] = Some(t)
 let inside = Wire.filter(w => holder[w].is_some()).collect().group(by: w => top(w))
 fn kids(t: T) -> List<Wire> = inside.get(tops[Int(t)]) ?? List()
 
 fn spread(side: T -> Bool) -> ?[Wire]Bool:
     let dir = [Wire] w => if holder[w].is_none(): side(rank[w]!) else: not side(rank[top(w)]!)
     let both = [false, true].all(d => covers(Wire.filter(w => dir[w] == d).collect(), whole))
-    if both: some(dir) else: none
+    if both: Some(dir) else: None
 
 // Top t can share its neighbour's direction when its own nested wires and its two neighbouring
 // tops still cover it from the other side.
@@ -56,7 +56,7 @@ let answer: ?[Wire]Bool =
     elif T.len == 3:
         T.first_some(b => spread(t => T.ring.dist(b, t) % 2 == 0))
     elif not covers(Wire.collect(), whole):
-        none
+        None
     else:
         let free = [T] t => alone(t)
         let good = T.filter(t => free[t]).collect().len
@@ -67,8 +67,8 @@ let answer: ?[Wire]Bool =
             let others = [tops[Int(T.ring.prev(b))], tops[Int(T.ring.next(c))]]
             if good - free[b].int - free[c].int == T.len - 2 and covers(kids(b) + kids(c) + others, pair):
                 spread(t => T.ring.dist(c, t) % 2 == 0)
-            else: none)
+            else: None)
 
 match answer:
-    some(dir) => print(dir.map(d => d.int), sep: "")
-    none => print("impossible")
+    Some(dir) => print(dir.map(d => d.int), sep: "")
+    None => print("impossible")

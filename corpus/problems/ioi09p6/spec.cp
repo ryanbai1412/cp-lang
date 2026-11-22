@@ -10,5 +10,5 @@ let bees = bfs(p => p.adj4.filter(q => g[q] in "GM"), from: g.keys.filter(p => g
 fn escapes(w: Int) -> Bool:
     let safe = (p, k) => (bees.dist[p] ?? inf) > w + k / s
     let walk = bfs(p => p.adj4.filter(q => g[q] in "GD"), from: [honey], until: home, enter: safe)
-    safe(honey, 0) and walk.dist[home] != none
+    safe(honey, 0) and walk.dist[home] != None
 print((0..n * n).last_true(escapes) ?? -1)

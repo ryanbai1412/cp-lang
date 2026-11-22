@@ -30,14 +30,14 @@ struct FreeSpans:
                 self.total -= spans(self.runs.size(side))
                 self.runs.unite(side, c)
         self.total += spans(self.runs.size(c))
-var last: [Col, Letter]?Row = none
+var last: [Col, Letter]?Row = None
 var count = 0
 for bot in Row:
     for c in Col:
         if let ch = Letter.at(Int(g[bot, c]) - Int('A')):
             last[c, ch] = bot
     var free: [Letter.subsets]FreeSpans = [Letter.subsets] s =>
-        FreeSpans.new([Col] c => s.items.count(ch => last[c, ch] != none))
+        FreeSpans.new([Col] c => s.items.count(ch => last[c, ch] != None))
     var leaves: [Row]List<(Col, Letter)> = []
     for c in Col:
         for ch in Letter:

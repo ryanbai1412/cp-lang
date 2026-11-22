@@ -16,9 +16,9 @@ for ((r, c), v) in grid.items:
     base += v * weight(r, c)
 
 fn search(left: List<(D, D)>) -> ?Int:
-    let Some(cell) = left.min_by(cell => options(cell).len) else: return some(0)
+    let Some(cell) = left.min_by(cell => options(cell).len) else: return Some(0)
     let (r, c) = cell
-    var best: ?Int = none
+    var best: ?Int = None
     for v in options(r, c).items:
         place(r, c, v)
         best max= search(left.without(cell)).map(s => s + v * weight(r, c))

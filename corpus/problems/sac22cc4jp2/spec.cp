@@ -4,7 +4,7 @@ enum Shape:
     @tag("square") Square
     @tag("circle") Circle
     @tag("triangle") Triangle
-var at: [1..=n]?Shape = none
+var at: [1..=n]?Shape = None
 for _ in 0..q:
     let (cmd, s, i) = read<(Str, Shape, 1..=n)>()
     if cmd == "set":

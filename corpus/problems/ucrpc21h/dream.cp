@@ -15,5 +15,5 @@ for d in dist:
         or Load.at(Int(b) - d).is_some_and(b2 => can[a, b2, c])
         or Load.at(Int(c) - d).is_some_and(c2 => can[a, b, c2])
 let total = dist.sum()
-let best = can.items.filter_map(((a, b, c), ok) => if ok: some(max(a, b, c, total - a - b - c)) else: none).min()!
+let best = can.items.filter_map(((a, b, c), ok) => if ok: Some(max(a, b, c, total - a - b - c)) else: None).min()!
 print(if 2 * best <= 600: "{2 * best}" else: "Impossible!")

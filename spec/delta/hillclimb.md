@@ -249,7 +249,7 @@ Open questions raised by dreams:
     `HashMap`, so a missing key needs `get(k) ?? 0`.
 - Sixth blind batch (coci21c2p5, coci21c4p4, dmopc20c4p4, dmopc21c2p1, dmopc21c4p1, dmopc21c4p2,
   dmopc21c5p2, dmopc21c9p1, dmpg16g2, egoi23p4).
-  - Spec change, decision 155: `maximal`/`minimal` take `anchor: Anchor.start`, which keys the
+  - Spec change, decision 155: `maximal`/`minimal` take `anchor: Anchor.Start`, which keys the
     pieces by left end. The coci21c2p5 dream asked for `longest_from`. The port had recovered
     starts with a `partition_point` over the right-keyed results; it now reads
     `Lift.of(s => group[s].last!.next)`.
@@ -322,8 +322,9 @@ Open questions raised by dreams:
     ports recurse with a named fn; both are fine.
   - Parser gaps, already logged: `@tag` variants (etsr23r1p4, mccc4j4, sac22cc2p5,
     sac22cc4jp2), loop `else` (ucrpc21c), product-domain tuple `at` (ucrpc21h).
-  - Naming: several dreams and ports capitalise enum variants (`Big`, `Win`, `Reset`), which
-    chapter 01 says are `snake_case`. Pending Ryan's call before a sweep.
+  - Naming: dreams and ports mixed `Big`/`Win` with `some`/`Anchor.start`, and chapters 01
+    and 02 disagreed. Decision 157 makes every variant `PascalCase` (`Some`, `None`,
+    `Anchor.Start`, `Sign.Neg`); the spec, stubs, dreams and ports are swept.
 - aac4p6 (last dream, 100 of 100): the corpus has no statement, so the dream follows the C++'s
   idea instead of rethinking it, and the port matches it. Dream slip: `.enumerate()` where
   `a.rev().take(m)` keys already serve. No spec change.

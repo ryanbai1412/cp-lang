@@ -61,8 +61,8 @@ for i in Pos.cuts:
 - **The table's index type is the state.** `[V, K]?Int` for "best at v
   with k", `[Pos.cuts]` for prefixes, `[V.ranges]` for pieces,
   `[B.subsets]` for masks. A wrong-order index is a type error.
-- **Unreached is `none`, not a sentinel.** `?Int` tables start `none`;
-  `x min= y` on `none` takes `y`, and `x min= none` does nothing, so
+- **Unreached is `None`, not a sentinel.** `?Int` tables start `None`;
+  `x min= y` on `None` takes `y`, and `x min= None` does nothing, so
   impossible states never need `inf` guards. `inf` exists for `Int`
   tables when you'd rather; adding to it is an overflow error in debug.
 - **`min=` / `max=` return whether they improved**, so the argmin is kept
@@ -75,7 +75,7 @@ if dp[i] min= dp[j] + cost(j..i): from[i] = j
 - **Layers.** A DP over k layers keeps two tables and moves:
   `repeat k - 1: best = layer(best)`. Assigning a returned table is O(1).
 - **Reconstruction** walks the kept argmins: `for c in from.chain(Pos.cuts.last!)`
-  yields `c, from[c], from[from[c]], ...` until `none`. `chain` is an
+  yields `c, from[c], from[from[c]], ...` until `None`. `chain` is an
   `[D]?D` method (any parent array: DP choices, BFS back pointers, DSU).
 
 ### Interval DP: `V.ranges`
@@ -166,7 +166,7 @@ fn layer(prev: [Cut]?Int) -> [Cut]?Int =
     monotone_minima(Cut.range, Cut.range, (i, j) => if j <= i: prev[j] + cost(j..i)).map(.val)
 ```
 
-(`if` without `else` is `none` when false: the expression form of a
+(`if` without `else` is `None` when false: the expression form of a
 partial function.)
 
 ## Small patterns that recur
@@ -185,6 +185,6 @@ partial function.)
    table like any other. Alternative: `[V, V.cuts]Int` with `l <= r`
    checked by hand (C++'s way, half the table unused).
 2. **`if` without `else` as `?T`.** Makes partial cost functions one line.
-   Alternative: write `if c: x else: none`.
+   Alternative: write `if c: x else: None`.
 3. **`peak` / `valley`** for unimodal search, vs `ternary_max` /
    `ternary_min`. Picked for reading as the question, matching `first_true`.

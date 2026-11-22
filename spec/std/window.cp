@@ -20,7 +20,7 @@ pub struct Window<T, M>(op: M):
     /// Pop the front. O(1) amortized.
     pub fn pop(mut self) = todo
 
-    /// Fold of the current contents, `none` when empty. O(1).
+    /// Fold of the current contents, `None` when empty. O(1).
     pub @get fn all(self) -> ?T = todo
 
     /// Number of elements. O(1).
@@ -76,7 +76,7 @@ pub struct Sweep<D, S>(state: S):
     hi: Int
 
     /// A sweep over `state`, starting empty (or at `start`). O(1).
-    pub fn new(state: S, start: ?Range<D> = none) -> Sweep<D, S> = todo
+    pub fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S> = todo
 
     /// Slide to `to`. O(|dl| + |dr|).
     pub fn move(mut self, to: Range<D>) = todo

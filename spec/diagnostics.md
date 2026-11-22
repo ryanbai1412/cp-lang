@@ -74,7 +74,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0803 | question_in_condition *(0.3)* | `x?` in a condition; write `... ?? false` |
 | E0804 | dropped_question *(0.3)* | a `?` whose result is dropped |
 | E0805 | fresh_type_leaks_test *(0.3)* | a position of a per-test domain stored above `@!multitest` |
-| E0806 | inference_needs_annotation *(0.3)* | `var x = none`; annotate `?Int` |
+| E0806 | inference_needs_annotation *(0.3)* | `var x = None`; annotate `?Int` |
 | E0901 | no_u8 *(0.3)* | `U8` is not a type; use `0..=255` |
 | E0902 | range_store_unprovable_const *(0.3)* | a constant out of the range type |
 | E0903 | int128_unavailable *(0.3)* | `I128` on a judge without `__int128` |
@@ -128,7 +128,7 @@ binary_lifting, answer_search, prefix_sum}.
 | R0201 | range store out of range |
 | R0202 | overflow |
 | R0203 | division by zero |
-| R0301 | `x!` on `none` |
+| R0301 | `x!` on `None` |
 | R0401 | assertion failed |
 | R0402 | `todo` reached |
 | R0501 | bad input token (position and expected type) |

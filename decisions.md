@@ -3039,7 +3039,7 @@ The area's design is `spec/lib/flows.md`; these are its calls.
    Reason: parsed-but-ignored type annotations are a silent-wrongness trap. Reverse: revert `param_tys` checks.
 6. **`x is pat` (optionally chained with `and cond`) desugars to `if let pat = x: cond else: false` (and `Cond::Let` in `if`/`while` headers), and comparison operators (`<`, `>`, `<=`, `>=`, `==`, `!=`) are accepted as operator-section arguments (`by: <`).**
    Reason: reuses existing `Cond::Let` narrowing and lambda lowering with zero new IR ops. Reverse: remove `at_is_pattern` and comparison arms in `cpl-syntax/src/parser/expr.rs`.
-7. **Fieldless enums accept explicit integer discriminants (`enum Sign: neg = -1, zero = 0, pos = 1`) with `Int(e)` and `Enum(i)` conversions lowered via `IsVariant`/equality chains.**
+7. **Fieldless enums accept explicit integer discriminants (`enum Sign: Neg = -1, Zero = 0, Pos = 1`) with `Int(e)` and `Enum(i)` conversions lowered via `IsVariant`/equality chains.**
    Reason: supports signed/custom discriminants without changing enum tag representation (`0..n`). Reverse: remove `Variant.value` and `enum_discriminants`.
 8. **Named mutable aliases (`let st = mut a[i]`) bind to a frozen `Place` whose index subexpressions are evaluated once into temp locals.**
    Reason: preserves value semantics for ordinary `let` while giving zero-copy mutable element aliases (`st.lift += 1`) that agree across interpreter and C++17 codegen. Reverse: remove `ExprKind::Mut` and `FnCx.mut_aliases`.
@@ -3303,7 +3303,7 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   Reason: eliminates manual `Bitset<V>.full()` / `.each()` / odd-adjacency boilerplate (`cf2147h`, IOI sketches).
   Reverse: remove the `each`-based `element_ty`/`iter` path, `Range -> Bitset` coercion, and `adjacency` lowering.
 - **66.2 Fieldless enums as first-class array dimensions (`[Sign]T`, `[Sign] x => ...`, explicit variant values).**
-  Fieldless enum variants accept optional constant integer discriminants (`enum Sign: neg = -1, zero = 0, pos = 1`,
+  Fieldless enum variants accept optional constant integer discriminants (`enum Sign: Neg = -1, Zero = 0, Pos = 1`,
   read via `Int(s)`). Any fieldless enum `E` is a valid array dimension `Dim::Enum(E)` / `DimSpec::Enum(E)` of static
   length `E.variants.len`, supports `[E] x => expr` table comprehensions and `for x in E:` iteration, and indexes
   with `Cast::EnumOrd(E)` so distinct enums cannot index each other's tables.
@@ -4573,7 +4573,7 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
 
 ## 155. Two-pointer results can be keyed by the left end (2026-11-21)
 
-- **Decision.** `maximal` and `minimal` take `anchor: Anchor = Anchor.end`; `Anchor.start`
+- **Decision.** `maximal` and `minimal` take `anchor: Anchor = Anchor.End`; `Anchor.Start`
   returns the longest (shortest) piece starting at each position from the same O(n) pass.
 - **Why.** Greedy jumping over groups ("the next lineup starts after the longest good run from
   s") needs pieces by start. The coci21c2p5 port recovered them with a `partition_point` over
@@ -4591,3 +4591,18 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   (`Row((at[v] - 1) / m + 1)`), the C++ habit domains exist to remove. The blind dream wrote
   `Cell.nth(i)`.
 - **Reverse.** Drop the `P.nth` row from `spec/core/04-indices.md`.
+
+## 157. Enum variants are `PascalCase`, including `Some` and `None` (2026-11-21)
+
+- **Decision.** Every enum variant is `PascalCase`: `Some(x)`, `None`, `Ev.Add(v)`,
+  `Anchor.Start`, `Sign.Neg`. `true` and `false` stay lowercase literals. In a pattern a
+  capitalized name is a variant or constant and a lowercase name always binds.
+- **Why.** Case then settles patterns with no lookup, so a mistyped or out-of-scope variant
+  can't silently become a fresh binding (Rust lints for this; Haskell and OCaml make it
+  grammar). Payload variants are constructors, and constructors are already capitalized
+  (`Edge(u, v)`). It is the familiar spelling from Rust (`Some`/`None`) and Python (`None`).
+  Chapters 01 and 02 had contradicted each other, and the corpus mixed both styles.
+- **Reverse.** Make variants `snake_case` in chapters 01 and 02, rerun the sweep in reverse
+  over `spec/` and `corpus/problems/`, and drop the `Some`/`None` spellings from the lexer
+  and parser.
+

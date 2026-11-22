@@ -8,15 +8,15 @@ domain V = [n]
 var earliest: [V]?V = []
 for e in read<[m](u: V, v: V)>():
     let (lo, hi) = minmax(e.u, e.v)
-    earliest[hi] = min(earliest[hi], some(lo), none: last)
+    earliest[hi] = min(earliest[hi], Some(lo), none: last)
 let found_by = V.group(by: v => earliest[v])
 let later = earliest.suffix_min(none: last)
 
 var best = SegTree(min, [V.cuts] c => if c == V.cuts.last!: 0 else: inf, act: add)
 for i in V.drop(1).rev:
-    for v in found_by[some(i)]:
+    for v in found_by[Some(i)]:
         best.apply(v.r.., 1)
-    if earliest[i] == none:
+    if earliest[i] == None:
         best.apply(i.r.., 1)
     let next = V.cuts.first_true(c => later[c].is_none_or(e => e >= i))!
     best[i.l] = best.fold(max(next, i.r)..) 

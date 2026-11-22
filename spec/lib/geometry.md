@@ -370,7 +370,7 @@ let hull = convex_hull_idx(pts, collinear: true)
 let off_diag: ?Site = if hull.len == 4:
     first(s for s in Site if turn(pts[hull[0]], pts[hull[2]], pts[s]) != 0
         and turn(pts[hull[1]], pts[hull[3]], pts[s]) != 0)
-else: none
+else: None
 
 // Split hull into lower/upper x-monotone chains and test the local window.
 let hull_pts = [pts[s] for s in hull]

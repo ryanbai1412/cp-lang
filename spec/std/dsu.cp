@@ -38,7 +38,7 @@ pub struct Dsu<V>:
 
     /// As `unite`, but says which root stayed and which went under it, so data kept per
     /// set can follow: `if let (kept, merged) = d.merge(a, b): sum[kept] += sum[merged]`.
-    /// `none` if `a` and `b` were already one set.
+    /// `None` if `a` and `b` were already one set.
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V) = todo
 
     /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
@@ -91,7 +91,7 @@ pub struct DsuOf<V, T>:
     /// already one set (the value is left alone then).
     pub fn unite(mut self, a: V, b: V) -> Bool = todo
 
-    /// As `unite`, but says which root stayed and which went under it. `none` if `a` and
+    /// As `unite`, but says which root stayed and which went under it. `None` if `a` and
     /// `b` were already one set.
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V) = todo
 
@@ -141,7 +141,7 @@ pub struct ParityDsu<V>:
     /// `consistent` turns false until it is undone. An edge of a graph is `unite(u, v)`.
     pub fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool = todo
 
-    /// Are `a` and `b` on opposite sides? `none` when nothing relates them yet.
+    /// Are `a` and `b` on opposite sides? `None` when nothing relates them yet.
     pub fn diff(self, a: V, b: V) -> ?Bool = todo
 
     /// Whether `a` and `b` are in the same component. O(log n).
@@ -172,7 +172,7 @@ pub struct PotentialDsu<V>:
     log: List<(V, Bool)>
 
     /// [rename] Every position starts in its own set with identity potential, combined by W10 group operation `op` (default `+`; replaces `GroupPotentialDsu`). O(n).
-    pub fn new<G>(op: ?G = none) -> PotentialDsu<V> = todo
+    pub fn new<G>(op: ?G = None) -> PotentialDsu<V> = todo
 
     /// Root of `v`'s set and `val[v] - val[root]`. O(log n).
     pub fn find(self, v: V) -> (root: V, offset: Int) = todo
@@ -180,7 +180,7 @@ pub struct PotentialDsu<V>:
     /// Enforce `val[b] - val[a] == w`. Returns `false` and increments conflicts on contradiction. O(log n).
     pub fn unite(mut self, a: V, b: V, w: Int) -> Bool = todo
 
-    /// `val[b] - val[a]` if `a` and `b` are in the same component, else `none`. O(log n).
+    /// `val[b] - val[a]` if `a` and `b` are in the same component, else `None`. O(log n).
     pub fn diff(self, a: V, b: V) -> ?Int = todo
 
     /// Whether `a` and `b` are in the same component. O(log n).

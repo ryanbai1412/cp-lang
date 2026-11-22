@@ -29,7 +29,7 @@ the generated C++17: what each form becomes, what it costs, and what
 | `U64`, `I128`, `F64`, `Bool`, `Char` | `uint64_t`, `__int128`, `double`, `bool`, `char` |
 | position `v: V` | unsigned of `V`'s storage width |
 | cut | the same width, holding the count before it |
-| `?T` with a niche | `T`'s storage with the niche value as `none` |
+| `?T` with a niche | `T`'s storage with the niche value as `None` |
 | `?T` without one | `T` plus a flag byte, aligned |
 | tuple, record, struct | a C++ struct, fields in storage order |
 | enum | niche-filled payload, or tag beside the largest payload |

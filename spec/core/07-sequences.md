@@ -224,7 +224,7 @@ for d in divisors(n):
 | `chain(a, b)` | `Seq` | |
 | `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, O(1) per step |
 | `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | O(n²) to walk, so a call |
-| `s.with_prev` | `Seq<(?T, T)>`, starting `(none, first)` | path walks that treat the first step apart |
+| `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the first step apart |
 | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings |
 | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices |
 | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range |
@@ -264,7 +264,7 @@ since the second walk reruns against what the first wrote.
 |---|---|---|
 | `s.sum()`, `s.prod()` | `T`; empty is the identity | O(n) |
 | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | O(n) |
-| `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `none` when empty; first on ties | O(n) |
+| `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | O(n) |
 | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | O(n) |
 | `s.first(p)`, `s.last(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n) |
 
@@ -320,7 +320,7 @@ place) are different jobs, not twins.
 |---|---|---|
 | `s.drop_while(p)` | skip the leading elements where `p` holds, yield the rest | O(1) per step |
 | `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order | O(1) per element |
-| `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `none` | O(1) per step |
+| `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | O(1) per step |
 | `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | O(n) |
 | `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true; the range equal to `x` | O(log n) |
 | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in place; `false` past the end | amortized O(1) |

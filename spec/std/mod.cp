@@ -21,7 +21,7 @@ pub struct Mod<P>(v: 0..P):
     /// Any `Int`, reduced: `Mod<7>(-1)` is 6.
     pub fn new(x: Int) -> Mod<P> = todo
 
-    /// The multiplicative inverse when `gcd(v, P) == 1`, or `none` otherwise. O(log P).
+    /// The multiplicative inverse when `gcd(v, P) == 1`, or `None` otherwise. O(log P).
     pub fn try_inv(self) -> ?Mod<P> = todo
 
     /// O(log P). The multiplicative inverse, by the extended Euclidean algorithm (so `P` need not be prime).
@@ -30,10 +30,10 @@ pub struct Mod<P>(v: 0..P):
     /// O(1). Lift an `Int` literal to `Mod<P>`.
     pub fn from_int(x: Int) -> Mod<P> = todo
 
-    /// O(log^2 P). Square root mod prime `P` (Tonelli-Shanks), or `none`.
+    /// O(log^2 P). Square root mod prime `P` (Tonelli-Shanks), or `None`.
     pub fn sqrt(self) -> ?Mod<P> = todo
 
-    /// O(sqrt P). Discrete log `k >= 0` with `self ** k == target` (BSGS), or `none`.
+    /// O(sqrt P). Discrete log `k >= 0` with `self ** k == target` (BSGS), or `None`.
     pub fn log(self, target: Mod<P>) -> ?Int = todo
 
     /// O(n + log P). Batch modular inverses of all elements in `xs` (Montgomery's trick); traps on 0.

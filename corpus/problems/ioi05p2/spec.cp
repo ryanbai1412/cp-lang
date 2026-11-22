@@ -22,14 +22,14 @@ let (domain S, starts) = compress(cuts)
 type Rail = (rise: Int, peak: Int, len: Int)
 let track = Monoid<Rail>(id: (rise: 0, peak: 0, len: 0),
     op: (x, y) => (rise: x.rise + y.rise, peak: max(x.peak, x.rise + y.peak), len: x.len + y.len))
-let slope = Action<Rail, ?Int>(id: none, compose: (old, new) => new ?? old,
-    apply: (d, x, _) => if d is some(v): (rise: v * x.len, peak: max(0, v * x.len), len: x.len) else: x,
+let slope = Action<Rail, ?Int>(id: None, compose: (old, new) => new ?? old,
+    apply: (d, x, _) => if d is Some(v): (rise: v * x.len, peak: max(0, v * x.len), len: x.len) else: x,
     over: track)
 let lens = [S] s => if s == S.last!: 0 else: starts.get(s.next!) - starts.get(s)
 var t = SegTree(track, [S] s => (rise: 0, peak: 0, len: lens[s]), act: slope)
 for c in cmds:
     if c is Cmd.Set(a, b, d):
-        t.apply(starts.at(a)!..starts.at(b + 1)!, some(d))
+        t.apply(starts.at(a)!..starts.at(b + 1)!, Some(d))
     elif c is Cmd.Ask(h):
         let stop = t.right_while(S.cuts.first!, x => x.peak <= h)
         if stop == S.cuts.last!:

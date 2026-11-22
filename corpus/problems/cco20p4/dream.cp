@@ -7,7 +7,7 @@ domain V = [read Int]
 let road = read lower_triangle [V, V]Colour   # row v lists v's roads to earlier cities
 let tour = [Red, Blue].first_some(c =>
     let t = dfs(u => V.filter(v => v != u and road[u, v] == c), from: V.first).euler_tour()
-    if t.distinct().len == V.count: some(t.but_last) else: none)!
+    if t.distinct().len == V.count: Some(t.but_last) else: None)!
 for v in V:
     let walk = tour.rotated(to: tour.index_of(v)!)
     print(walk.len)

@@ -108,7 +108,7 @@ struct Line(k: Int, m: Int)
     fn at(self, x: Int) -> Int                  // k * x + m
 struct LiChao<L, K>
     fn new(pick: (K, K) -> K, xs: Range<Int>) -> LiChao<L, K>   // O(1)
-    fn add(mut self, l: L, on: ?Range<Int> = none)
+    fn add(mut self, l: L, on: ?Range<Int> = None)
         // O(log xs.len) for a whole line, O(log^2 xs.len) for a segment
     fn at(self, x: Int) -> ?K                   // O(log xs.len)
     fn line_at(self, x: Int) -> ?L              // O(log xs.len)
@@ -264,7 +264,7 @@ domain P = 0..n
 let u: [P, P]0..=9 = read()
 let pre = prefix(u)
 fn cost(j: Int, i: Int) -> Int = pre.sum(j..i, j..i) / 2
-var best: List<?Int> = [if i == 0: 0 else: none for i in 0..=n]
+var best: List<?Int> = [if i == 0: 0 else: None for i in 0..=n]
 for _ in 0..k: best = dnc_layer(best, cost)
 print(best[n]!)
 ```
