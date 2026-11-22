@@ -923,9 +923,9 @@
       }
     },
     "dream_scores": {
-      "scored": 269,
+      "scored": 286,
       "median": 4,
-      "under_4": 1,
+      "under_4": 0,
       "min": 3,
       "max": 5
     },
