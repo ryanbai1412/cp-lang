@@ -28,6 +28,7 @@ front end (parse and type check) first.
 | Alphabet strings | `read<Str of "01?">()`; its chars form a domain | 134 | E0504 |
 | Bounded strings | `Str(len: 1..=n)` | 134 | E0504 |
 | `Range<V>` as `V.ranges` | `best(r.first!.next!..=r.last!)` | hillclimb ioi96p1 | E0301 |
+| Fold and binary `min`/`max` share a name | `s.min(by: f)` beside `min(a, b)`; importing `std.seq.min` shadows the binary one | hillclimb fold stubs | E0303 |
 | Variant tags | `enum Cmd:⏎    @tag("Q") Ask(h: Int)` | hillclimb ioi05p2 | not parsed |
 | Multi-clause loop headers | `for i in V, j in V.after(i) if c:` | 135 | E0107 |
 | `and`/`or` as operation values | `(count: +, taken: or)` | 135 | E0102 |

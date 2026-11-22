@@ -18,6 +18,26 @@ pub type Perm<V> = [V]V
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
 pub fn prod<S: Seq, T>(self: S) -> T = todo
 
+/// Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`. O(n).
+pub fn sum<S: Seq, T>(self: S) -> T = todo
+
+/// The least element by `by`, the first on ties; `none` when empty. A method call (`s.min()`)
+/// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
+/// is argmin. O(n).
+pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
+
+/// The greatest element by `by`, the first on ties; `none` when empty. O(n).
+pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
+
+/// How many elements satisfy `p`. O(n).
+pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
+
+/// Whether some element satisfies `p`; stops at the first. O(n).
+pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
+
+/// Whether every element satisfies `p`; stops at the first that doesn't. O(n).
+pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
+
 /// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`. O(n).
 pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool = todo
 
