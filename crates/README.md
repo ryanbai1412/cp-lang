@@ -4,8 +4,7 @@ The front end and both back ends are built: `cpl check`, `cpl run`,
 `cpl build` and `cpl lsp` all go through one `cpl_check::Database`, and
 `cpl run` and `cpl build` share one typed lowering (`cpl-ir`), so the
 interpreter and the C++ cannot disagree about what a program means
-without a test saying so. `cpl-verify`, the verification harness, is
-built too, and so is the tooling around the compiler: `cpl-fmt`,
+without a test saying so. The tooling around the compiler: `cpl-fmt`,
 `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-contest` and `cpl-judge` (judge
 profiles: compiler, flags, stack and source limit). The
 split is a starting point so that work can go on in parallel without two
@@ -93,10 +92,6 @@ $ CPL_BLESS=1 cargo test -p cpl-cli --test differential
 
 Read the recorded `.out` before committing it: from then on it is what
 both back ends are held to.
-
-`cpl-verify fuzz` adds random programs to the fixed ones: it checks
-`cpl run` and the sanitized C++ against its own reference evaluator
-(`crates/cpl-verify/README.md` has the command).
 
 ## One front end, reused per item
 
@@ -224,12 +219,6 @@ dependency when the code first needs it):
   site and the playground: check, run, build and hover in the browser with
   no server (`plan/90-docs-and-playground.md`, `crates/cpl-wasm/README.md`).
   `scripts/build-wasm.sh` builds it into `dist/wasm/`.
-
-Beside the pipeline, **`cpl-verify`** is the verification harness: the
-differential fuzzer under ASan and UBSan, the `sizeof` audit, the raw and
-library-stripped line counts and the latency benchmark
-(`plan/80-validation.md`, `crates/cpl-verify/README.md`). It tests
-`proto/cpc/` today and the crates above as they land.
 
 **`cpl-prover`** (`crates/prover/`) is the prover for `invariant`, `law`
 and the range checker: index bounds, overflow freedom, `law disjoint` and

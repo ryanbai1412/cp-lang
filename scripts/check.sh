@@ -25,14 +25,12 @@
 #            gallery 150,000) warn
 #            and site/test_site.py passes (links, reader copy, documented
 #            programs compiled natively; about two minutes)
-# --full  8. proto_fuzz and proto_tools (the retired prototype), the shrinker
-#            fuzzer and the prover's products fuzzer
+# --full  8. the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
 #        11. the VS Code extension tests (editors/vscode: npm test, and its
 #            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
-#        12. proto/run_all.sh, in a throwaway clone because it stamps its sources
 #
 # Needs cargo with clippy, python3 with mistune (python3 -m pip install -r
 # site/requirements.txt) and the wasm target (rustup target add
@@ -219,18 +217,13 @@ cleanup() {
 trap cleanup EXIT
 
 # These run in --full instead:
-# - proto_fuzz and proto_tools check the retired Python prototype (over a
-#   minute, and 3 to 7 s per proto_tools test; with plain cargo test only
-#   proto_fuzz is left out);
-# - the shrinker and prover fuzzers take 21 s and 7 s, longer than the rest
-#   of the suite together;
+# - the prover fuzzer takes 7 s, longer than most of the suite together;
 # - budget and the 50 ms front-end latency test measure wall-clock time,
 #   which other tests running beside them skew;
 # - the recovery and fix-it scoreboards check thousands of broken ports on
 #   every core, which skews the LSP latency test beside them, so they run
 #   after the rest.
 slow_tests=(
-    shrinks_a_failing_program_to_a_few_lines
     products_and_variable_divisors_are_never_decided_wrongly
     front_end_check_is_under_50_ms
     recovery_scoreboard
@@ -242,7 +235,7 @@ if cache_hit nextest_doc; then
 else
     if cargo nextest --version >/dev/null 2>&1; then
         step "cargo nextest run --workspace (without the --full tests)"
-        filter='binary(proto_fuzz) or binary(proto_tools) or binary(budget)'
+        filter='binary(budget)'
         for t in "${slow_tests[@]}"; do filter+=" or test(/(^|::)$t\$/)"; done
         cargo nextest run --workspace --no-fail-fast -E "not ($filter)"
         step "cargo test --workspace --doc"
@@ -250,7 +243,7 @@ else
     else
         step "cargo test --workspace (without the --full tests)"
         skips=()
-        for t in "${slow_tests[@]}" prototype_agrees_with_the_reference_evaluator \
+        for t in "${slow_tests[@]}" \
             run_answers_within_200_ms build_takes_under_a_second_and_fits_64_kb; do
             skips+=(--skip "$t")
         done
@@ -374,15 +367,11 @@ fi
 if [ "$mode" = full ]; then
     need node "the wasm smoke test and the VS Code tests run on it"
     need npm "the VS Code tests run on it"
-    need python3 "proto/run_all.sh runs on it"
-    need g++ "proto/run_all.sh compiles the ports with it"
+    need g++ "the judge-profile test compiles the ports with it"
 
     tmp="$(mktemp -d)"
 
-    step "cargo test: proto_fuzz, proto_tools and the slow fuzzers"
-    cargo test -p cpl-verify --test proto_fuzz
-    cargo test -p cpl-verify --test proto_tools
-    cargo test -p cpl-verify --lib -- --exact fuzz::shrink::tests::shrinks_a_failing_program_to_a_few_lines
+    step "cargo test: the prover fuzzer"
     cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
 
     step "cargo test: every port compiled with every judge profile's flags"
@@ -412,15 +401,6 @@ if [ "$mode" = full ]; then
 
     step "editors/smoke.sh: the other editor setups against cpl lsp"
     editors/smoke.sh
-
-    step "proto/run_all.sh (in a throwaway clone)"
-    git clone -q --no-hardlinks "$root" "$tmp/repo"
-    git -C "$tmp/repo" checkout -q --detach "$(git rev-parse HEAD)"
-    # carry over uncommitted changes to tracked files, so the tree under test is the one on disk
-    if ! git diff --quiet HEAD; then
-        git diff --binary HEAD | git -C "$tmp/repo" apply
-    fi
-    bash "$tmp/repo/proto/run_all.sh"
 fi
 
 # The Trap Parity Gate's open register: wrong programs that `cpl run`, the
