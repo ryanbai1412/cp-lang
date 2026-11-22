@@ -3668,10 +3668,10 @@ impl<'p, 'o> Interp<'p, 'o> {
                     return trap(span, format!("isqrt({x}) of a negative number"));
                 }
                 let mut r = (x as f64).sqrt() as i64;
-                while r.saturating_add(1).saturating_mul(r.saturating_add(1)) <= x {
+                while (r as i128 + 1) * (r as i128 + 1) <= x as i128 {
                     r += 1;
                 }
-                while r.saturating_mul(r) > x {
+                while (r as i128) * (r as i128) > x as i128 {
                     r -= 1;
                 }
                 Value::Int(r)
