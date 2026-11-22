@@ -10,11 +10,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/noip09p4/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_12/noip09p4.cp"
+  ],
+  "spec": [
+   "corpus/problems/noip09p4/spec.cp"
   ]
  },
  "tags": [
@@ -23,7 +23,7 @@
   "bitmask"
  ],
  "difficulty": "medium",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Subset<Digit> per row/col/box; Cell.filter(..).min(by:) picks the branch; ?? for -1"
 }

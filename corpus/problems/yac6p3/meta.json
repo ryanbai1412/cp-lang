@@ -6,9 +6,6 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/yac6p3/dream.cp"
-  ],
   "original": [
    "proto/ports/yac6p3.cpp",
    "proto/ports/yac6p3_orig.cpp"
@@ -17,6 +14,9 @@
    "proto/ports/scout_batch_5/today/yac6p3.cp",
    "proto/ports/scout_batch_5/yac6p3.cp",
    "proto/ports/yac6p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/yac6p3/spec.cp"
   ]
  },
  "tags": [
@@ -24,7 +24,7 @@
   "math"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Wire, then print/read"
 }

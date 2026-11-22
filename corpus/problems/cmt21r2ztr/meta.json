@@ -16,11 +16,11 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "dream": [
-   "corpus/problems/cmt21r2ztr/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_9/cmt21r2ztr.cp"
+  ],
+  "spec": [
+   "corpus/problems/cmt21r2ztr/spec.cp"
   ]
  },
  "tags": [
@@ -28,7 +28,7 @@
   "constructive"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "TwoSat<(P, Side)> over a tuple of a list-key domain and an enum; at_most_one + add_xor; TwoSat and Lit join the prelude."
 }

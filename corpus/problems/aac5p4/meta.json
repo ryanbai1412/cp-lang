@@ -8,12 +8,12 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/aac5p4/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_46/aac5p4.cp",
    "proto/ports/scout_batch_46/today/aac5p4.cp"
+  ],
+  "spec": [
+   "corpus/problems/aac5p4/spec.cp"
   ]
  },
  "tags": [
@@ -21,7 +21,7 @@
   "math"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "print(range, sep:) covers 'one per line'."
 }

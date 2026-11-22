@@ -6,19 +6,19 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/sac22cc2p5/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_46/sac22cc2p5.cp",
    "proto/ports/scout_batch_46/today/sac22cc2p5.cp"
+  ],
+  "spec": [
+   "corpus/problems/sac22cc2p5/spec.cp"
   ]
  },
  "tags": [
   "fenwick"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "a table of two Fenwicks indexed by parity; Fenwick.set."
 }

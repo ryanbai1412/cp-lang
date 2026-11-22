@@ -8,9 +8,6 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/apio09p3/dream.cp"
-  ],
   "original": [
    "proto/ports/hillclimb_dp_graph/apio09p3.cpp",
    "proto/ports/hillclimb_dp_graph/apio09p3_orig.cpp"
@@ -19,6 +16,9 @@
    "proto/ports/hillclimb_dp_graph/apio09p3.cp",
    "proto/ports/hillclimb_dp_graph/before/apio09p3.cp",
    "proto/ports/scout_batch_2/apio09p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/apio09p3/spec.cp"
   ]
  },
  "tags": [
@@ -28,7 +28,7 @@
   "memo"
  ],
  "difficulty": "medium",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Added seq filter_map. No conditional expression in the spec; wrote statements."
 }

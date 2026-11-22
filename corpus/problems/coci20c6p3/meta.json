@@ -6,15 +6,15 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/coci20c6p3/dream.cp"
-  ],
   "original": [
    "proto/ports/coci20c6p3.cpp",
    "proto/ports/coci20c6p3_orig.cpp"
   ],
   "port": [
    "proto/ports/coci20c6p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/coci20c6p3/spec.cp"
   ]
  },
  "tags": [
@@ -23,7 +23,7 @@
   "mod"
  ],
  "difficulty": "medium",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "tally(by: s.sorted()).values(); Comb<Z>; @memo(array) over G.cuts and a range parameter."
 }

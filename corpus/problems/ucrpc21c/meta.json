@@ -6,8 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/ucrpc21c/dream.cp"
+  "spec": [
+   "corpus/problems/ucrpc21c/spec.cp"
   ]
  },
  "tags": [
@@ -15,7 +15,7 @@
   "simulation"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "loop else (parser gap); string interpolation."
 }

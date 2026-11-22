@@ -10,11 +10,11 @@
  ],
  "cpp_ac": 4,
  "artifacts": {
-  "dream": [
-   "corpus/problems/cco20p4/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_33/cco20p4.cp"
+  ],
+  "spec": [
+   "corpus/problems/cco20p4/spec.cp"
   ]
  },
  "tags": [
@@ -23,7 +23,7 @@
   "euler-tour"
  ],
  "difficulty": "medium",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Implicit colour graph as a Next closure; reachable() free fn (aligned earlier, stub was a Graph method); Rooted.euler_tour() added; keys.first(p) for position of a value."
 }

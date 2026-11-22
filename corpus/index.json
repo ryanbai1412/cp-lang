@@ -2,15 +2,15 @@
  "problems": 836,
  "with_cpp_ac": 710,
  "dream": {
-  "draft": 80,
-  "gold": 0,
-  "none": 756,
-  "reviewed": 0
- },
- "spec": {
   "draft": 0,
   "gold": 0,
   "none": 836,
+  "reviewed": 0
+ },
+ "spec": {
+  "draft": 81,
+  "gold": 0,
+  "none": 755,
   "reviewed": 0
  },
  "by_source": {

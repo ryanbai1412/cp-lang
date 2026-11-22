@@ -6,11 +6,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/ccc19s2/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_29/ccc19s2.cp"
+  ],
+  "spec": [
+   "corpus/problems/ccc19s2/spec.cp"
   ]
  },
  "tags": [
@@ -18,7 +18,7 @@
   "sieve"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Shared Sieve above @!multitest."
 }

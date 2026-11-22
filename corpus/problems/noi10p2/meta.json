@@ -14,13 +14,13 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/noi10p2/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_17/noi10p2.cp",
    "proto/ports/scout_batch_18/noi10p2.cp",
    "proto/ports/scout_batch_18/today/noi10p2.cp"
+  ],
+  "spec": [
+   "corpus/problems/noi10p2/spec.cp"
   ]
  },
  "tags": [
@@ -29,7 +29,7 @@
   "prefix-sums"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "SparseTable over (prefix, cut) pairs; heap of end-range groups split around the argmax."
 }

@@ -9,11 +9,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/coci21c2p4/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_11/coci21c2p4.cp"
+  ],
+  "spec": [
+   "corpus/problems/coci21c2p4/spec.cp"
   ]
  },
  "tags": [
@@ -22,7 +22,7 @@
   "combinatorics"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Connected-component DP as @memo(array) over four bounded params; a guarded inner fn replaces bounds checks."
 }

@@ -12,13 +12,13 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "dream": [
-   "corpus/problems/noi09p4/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_15/noi09p4.cp",
    "proto/ports/scout_batch_18/noi09p4.cp",
    "proto/ports/scout_batch_18/today/noi09p4.cp"
+  ],
+  "spec": [
+   "corpus/problems/noi09p4/spec.cp"
   ]
  },
  "tags": [
@@ -27,7 +27,7 @@
   "graph"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "peel::<Cell> on a closure graph; max_closure joins the prelude; grid step(Dir4.left())"
 }

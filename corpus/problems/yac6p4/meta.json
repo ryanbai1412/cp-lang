@@ -7,12 +7,12 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/yac6p4/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_46/today/yac6p4.cp",
    "proto/ports/scout_batch_46/yac6p4.cp"
+  ],
+  "spec": [
+   "corpus/problems/yac6p4/spec.cp"
   ]
  },
  "tags": [
@@ -20,7 +20,7 @@
   "grundy"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "map/fold xor; (1..=m).find(..) ?? -1"
 }

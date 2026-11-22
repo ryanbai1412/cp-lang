@@ -6,11 +6,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/noip18p3/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_2/noip18p3.cp"
+  ],
+  "spec": [
+   "corpus/problems/noip18p3/spec.cp"
   ]
  },
  "tags": [
@@ -19,7 +19,7 @@
   "greedy"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Rooted + nested recursive fn mutating a captured counter; SortedBag pairing."
 }

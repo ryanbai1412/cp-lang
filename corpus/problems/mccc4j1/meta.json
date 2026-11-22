@@ -6,15 +6,15 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/mccc4j1/dream.cp"
+  "spec": [
+   "corpus/problems/mccc4j1/spec.cp"
   ]
  },
  "tags": [
   "implementation"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "zip of two read arrays."
 }

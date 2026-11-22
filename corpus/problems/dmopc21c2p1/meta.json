@@ -7,15 +7,15 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/dmopc21c2p1/dream.cp"
-  ],
   "original": [
    "proto/ports/dmopc21c2p1.cpp",
    "proto/ports/dmopc21c2p1_orig.cpp"
   ],
   "port": [
    "proto/ports/dmopc21c2p1.cp"
+  ],
+  "spec": [
+   "corpus/problems/dmopc21c2p1/spec.cp"
   ]
  },
  "tags": [
@@ -24,7 +24,7 @@
   "convexity"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Convex piecewise-linear cost checked at breakpoints: sorted().scan(+) and first_gt(i) ?? n."
 }

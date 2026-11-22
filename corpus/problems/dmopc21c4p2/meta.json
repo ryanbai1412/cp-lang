@@ -7,12 +7,12 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/dmopc21c4p2/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_44/dmopc21c4p2.cp",
    "proto/ports/scout_batch_44/today/dmopc21c4p2.cp"
+  ],
+  "spec": [
+   "corpus/problems/dmopc21c4p2/spec.cp"
   ]
  },
  "tags": [
@@ -20,7 +20,7 @@
   "sieve"
  ],
  "difficulty": "medium",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Sieve.divisors became a zero-allocation generator so .any() over it costs what the C++ callback costs."
 }

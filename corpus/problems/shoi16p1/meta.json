@@ -7,19 +7,19 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "dream": [
-   "corpus/problems/shoi16p1/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_45/shoi16p1.cp",
    "proto/ports/scout_batch_45/today/shoi16p1.cp"
+  ],
+  "spec": [
+   "corpus/problems/shoi16p1/spec.cp"
   ]
  },
  "tags": [
   "tree-dp"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "@memo(array) over (V, -k..=k); Rooted.children yields, walked several times."
 }

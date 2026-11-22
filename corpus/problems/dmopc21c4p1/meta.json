@@ -6,8 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/dmopc21c4p1/dream.cp"
+  "spec": [
+   "corpus/problems/dmopc21c4p1/spec.cp"
   ]
  },
  "tags": [
@@ -15,7 +15,7 @@
   "brute-force"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "locate(poly, p) != Location.Outside; Location and locate join the prelude."
 }

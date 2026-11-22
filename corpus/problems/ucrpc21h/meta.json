@@ -39,12 +39,12 @@
  ],
  "cpp_ac": 11,
  "artifacts": {
-  "dream": [
-   "corpus/problems/ucrpc21h/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_45/today/ucrpc21h.cp",
    "proto/ports/scout_batch_45/ucrpc21h.cp"
+  ],
+  "spec": [
+   "corpus/problems/ucrpc21h/spec.cp"
   ]
  },
  "tags": [
@@ -53,7 +53,7 @@
   "knapsack"
  ],
  "difficulty": "medium",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "dijkstra.dist; product-domain knapsack with Split.rev and Split.at(tuple) (checker gap)"
 }

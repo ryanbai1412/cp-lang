@@ -7,12 +7,12 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/dmpg16g2/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_39/dmpg16g2.cp",
    "proto/ports/scout_batch_39/today/dmpg16g2.cp"
+  ],
+  "spec": [
+   "corpus/problems/dmpg16g2/spec.cp"
   ]
  },
  "tags": [
@@ -21,7 +21,7 @@
   "bitmask"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "[Letter.subsets]FreeSpans; Letter.at (both checker gaps)"
 }

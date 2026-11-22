@@ -13,11 +13,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/ioi16p6/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_28/ioi16p6.cp"
+  ],
+  "spec": [
+   "corpus/problems/ioi16p6/spec.cp"
   ]
  },
  "tags": [
@@ -26,7 +26,7 @@
   "aliens"
  ],
  "difficulty": "hard",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "MonotoneHull lines carry a photo-count tag for aliens tie-breaking."
 }

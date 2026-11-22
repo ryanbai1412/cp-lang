@@ -29,5 +29,14 @@ hill-climb:
 The dream and the spec-compliant solution for a problem live beside its
 record as `problems/<problem>/dream.cp` and `problems/<problem>/spec.cp`.
 
+- `dream.cp` is the ideal program, written from the accepted C++ and the
+  idea alone, without consulting the spec or running the checker. It may use
+  syntax and library calls that do not exist; that is the point.
+- `spec.cp` is written after comparing the dream with the spec. It must pass
+  `cpl check` against `spec/std` (failures only on forms listed in
+  `spec/delta/parser-gaps.md`).
+- Every difference between the two is logged in `spec/delta/hillclimb.md`
+  as a spec change, a rejected wish (with the reason), or a dream bug.
+
 `hillclimb.json` is the reproducible 100-problem set for the spec
 hill-climb; progress is the `dream` and `spec` fields of those records.

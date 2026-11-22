@@ -6,8 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/sac22cc3jp4/dream.cp"
+  "spec": [
+   "corpus/problems/sac22cc3jp4/spec.cp"
   ]
  },
  "tags": [
@@ -15,7 +15,7 @@
   "base-conversion"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Str.parse_int(base:) and Int.to_str(base:)."
 }

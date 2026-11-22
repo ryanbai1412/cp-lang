@@ -10,15 +10,15 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/cheerio1s3/dream.cp"
-  ],
   "original": [
    "proto/ports/cheerio1s3.cpp",
    "proto/ports/cheerio1s3_orig.cpp"
   ],
   "port": [
    "proto/ports/cheerio1s3.cp"
+  ],
+  "spec": [
+   "corpus/problems/cheerio1s3/spec.cp"
   ]
  },
  "tags": [
@@ -26,7 +26,7 @@
   "ratios"
  ],
  "difficulty": "easy",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Exact slopes as Ratio; ?Ratio min=/max= start from none."
 }

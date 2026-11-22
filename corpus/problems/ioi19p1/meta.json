@@ -6,11 +6,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "dream": [
-   "corpus/problems/ioi19p1/dream.cp"
-  ],
   "port": [
    "proto/ports/scout_batch_20/ioi19p1.cp"
+  ],
+  "spec": [
+   "corpus/problems/ioi19p1/spec.cp"
   ]
  },
  "tags": [
@@ -18,7 +18,7 @@
   "fenwick"
  ],
  "difficulty": "medium",
- "dream": "draft",
- "spec": "none",
+ "dream": "none",
+ "spec": "draft",
  "notes": "Per-value Deque of positions plus a Fenwick of standing shoes."
 }
