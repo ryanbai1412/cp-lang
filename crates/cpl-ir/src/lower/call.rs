@@ -348,10 +348,46 @@ impl<'a> Lowerer<'a> {
                         let fv = self.ensure_mod_const(mcid, callee.span);
                         self.call_fn_val(fv, args, span)
                     }
+                    Some(Sym::GenAlias(gaid)) => {
+                        let tpl_mod = self.gen_aliases[gaid].mod_id;
+                        let tpl_offset = self.gen_aliases[gaid].offset;
+                        let generics = self.gen_aliases[gaid].generics;
+                        let target_ty = self.gen_aliases[gaid].ty;
+                        let gen_names: Vec<String> =
+                            generics.iter().map(|g| g.text.clone()).collect();
+                        let mut env = HashMap::new();
+                        if let Some(h) = hint {
+                            self.unify_ast_ty(target_ty, h, tpl_mod, &gen_names, &mut env);
+                        }
+                        if env.len() == gen_names.len() {
+                            let sm = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                            let so = std::mem::replace(&mut self.offset, tpl_offset);
+                            let se = std::mem::replace(&mut self.gen_env, env);
+                            let resolved = self.resolve_ty(target_ty);
+                            self.cur_mod = sm;
+                            self.offset = so;
+                            self.gen_env = se;
+                            if let Ty::Struct(sid) = resolved {
+                                return self.construct_or_new(sid, args, span);
+                            }
+                        }
+                        if let ast::TypeKind::Named { name: tname, .. } = &target_ty.kind {
+                            if let Some(Sym::GenStruct(gsid)) =
+                                self.mod_syms[tpl_mod].get(&tname.text).copied()
+                            {
+                                return self.call_gen_struct(gsid, Vec::new(), args, hint, span);
+                            }
+                        }
+                        self.error(
+                            codes::NOT_CALLABLE,
+                            callee.span,
+                            format!("`{name}` is a type and can't be called"),
+                        );
+                        self.err_expr(span)
+                    }
                     Some(
                         Sym::Enum(_)
                         | Sym::GenEnum(_)
-                        | Sym::GenAlias(_)
                         | Sym::Trait(_)
                         | Sym::Mod(_)
                         | Sym::GenConst(_),
