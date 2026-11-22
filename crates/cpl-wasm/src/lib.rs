@@ -119,7 +119,12 @@ impl Playground {
                 let mut code = 0;
                 if let Err(trap) = interpret(&compiled.program, input, &mut stdout, stack) {
                     let lines = LineIndex::new(source);
-                    let failure = trap.to_diagnostic(name, &lines);
+                    let mut failure = trap.to_diagnostic(name, &lines);
+                    if let Some(locals) =
+                        trap_locals(&compiled.program, source, input, stack, &trap)
+                    {
+                        failure = failure.with_note(format!("locals: {locals}"));
+                    }
                     compiled.stderr += &cpl_diag::render(&failure, name, source, &lines);
                     compiled.diagnostics.push(failure);
                     code = EXIT_FAILED;
@@ -512,6 +517,22 @@ fn observe(
     config: cpl_interp::trace::TraceConfig,
 ) -> cpl_interp::Observed {
     cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), output, Some(config))
+}
+
+/// What `cpl run` notes on a trap: the innermost call's locals where it
+/// stopped, from a second run, recorded. The browser has no clock to skip
+/// a slow run by, so it always runs again.
+fn trap_locals(
+    program: &cpl_ir::Program,
+    source: &str,
+    input: &[u8],
+    stack: u32,
+    trap: &cpl_interp::Trap,
+) -> Option<String> {
+    let config = cpl_interp::trace::trap_config(source);
+    let observed = observe(program, input, &mut Vec::new(), stack, config);
+    (observed.trap?.message == trap.message).then_some(())?;
+    cpl_interp::trace::trap_locals(&observed.recording?)
 }
 
 /// The result every command shares: its exit status as `cpl` would exit,

@@ -15,7 +15,9 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 
 mod log;
+mod trap;
 pub use log::Steps;
+pub use trap::{shown, trap_config, trap_locals};
 
 /// How a run is recorded.
 #[derive(Clone, Debug, Default)]
@@ -467,6 +469,10 @@ pub(crate) struct Tracer {
     ordinals: HashMap<String, usize>,
     /// The index in `rec.calls` of each running call, if it is kept.
     open: Vec<Option<usize>>,
+    /// Calls entered so far.
+    entries: u64,
+    /// [`Self::entries`] and the call depth at the last step recorded.
+    last_step_at: (u64, usize),
     stop_after_call: Option<(String, usize)>,
     /// The depth of the call to stop after, while it runs.
     stopping_at: Option<usize>,
@@ -572,6 +578,8 @@ impl Tracer {
             },
             ordinals: HashMap::new(),
             open: Vec::new(),
+            entries: 0,
+            last_step_at: (0, 0),
             stop_after_call: config.stop_after_call,
             stopping_at: None,
             stopped: false,
@@ -599,6 +607,7 @@ impl Tracer {
 
     /// A call of `name` starts, with `args` (JSON, by name) when asked for.
     pub fn enter_call(&mut self, name: &str, args: impl FnOnce() -> String) {
+        self.entries += 1;
         let ordinal = self.ordinals.entry(name.to_string()).or_insert(0);
         *ordinal += 1;
         let ordinal = *ordinal;
@@ -806,6 +815,7 @@ impl Tracer {
                 return;
             }
         }
+        self.last_step_at = (self.entries, view.depth);
         self.rec.log.snapshot_if_due();
         let mut touched = std::mem::take(&mut self.touched);
         if std::mem::replace(&mut self.all_touched, false) {
@@ -1172,7 +1182,17 @@ impl Tracer {
         self.finishing = true;
         match failed {
             Some((message, span)) => {
-                self.step(view, span, Some(format!("failed: {message}")), None, None)
+                let label = Some(format!("failed: {message}"));
+                // The core has left the trapping call's frame by now: when
+                // the last step was in that same call, its locals stand.
+                if view.locals.is_empty()
+                    && view.depth > 0
+                    && self.last_step_at == (self.entries, view.depth)
+                {
+                    self.step_rest(view, span, label, None, None)
+                } else {
+                    self.step(view, span, label, None, None)
+                }
             }
             None if self.stopped => {}
             None => {

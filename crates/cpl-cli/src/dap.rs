@@ -820,27 +820,7 @@ impl Session {
     }
 }
 
-/// A recorded value as the source would write it: `(w: 1, v: 1)`, `None`.
-pub(crate) fn shown(json: &Json) -> String {
-    match json {
-        Json::Null => "None".into(),
-        Json::String(s) => s.clone(),
-        Json::Array(items) => format!(
-            "[{}]",
-            items.iter().map(shown).collect::<Vec<_>>().join(", ")
-        ),
-        Json::Object(map) => {
-            format!(
-                "({})",
-                map.iter()
-                    .map(|(k, v)| format!("{k}: {}", shown(v)))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-        }
-        other => other.to_string(),
-    }
-}
+pub(crate) use cpl_interp::trace::shown;
 
 #[derive(Clone)]
 struct Valued {

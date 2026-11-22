@@ -829,8 +829,21 @@ fn check_output(path: &str, input: &str, output: &str, stderr: &mut String) -> u
 }
 
 fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
+    render_trap_noting(path, text, trap, None)
+}
+
+/// The trap's diagnostic, with a note naming `locals` when there are some.
+fn render_trap_noting(
+    path: &str,
+    text: &str,
+    trap: &cpl_interp::Trap,
+    locals: Option<String>,
+) -> String {
     let lines = cpl_diag::LineIndex::new(text);
-    let diagnostic = trap.to_diagnostic(path, &lines);
+    let mut diagnostic = trap.to_diagnostic(path, &lines);
+    if let Some(locals) = locals {
+        diagnostic = diagnostic.with_note(format!("locals: {locals}"));
+    }
     cpl_diag::render(&diagnostic, path, text, &lines)
 }
 
@@ -1050,27 +1063,48 @@ fn run_file(
     // Standard input is read as the program asks for it, so a program
     // that answers a person or a judge at the other end of a pipe is not
     // left waiting for the input to end.
+    // What it read is kept, to run it again and name its locals if it traps.
+    let read = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let whole;
     let io = match input {
         Input::Whole(input) => {
             whole = input;
             cpl_interp::Io::fixed(&whole)
         }
-        Input::Live(more) => cpl_interp::Io::live(Box::new(move || {
-            let chunk = more();
-            (!chunk.is_empty()).then_some(chunk)
-        })),
+        Input::Live(more) => {
+            whole = Vec::new();
+            let read = std::sync::Arc::clone(&read);
+            cpl_interp::Io::live(Box::new(move || {
+                let chunk = more();
+                read.lock().unwrap().extend_from_slice(&chunk);
+                (!chunk.is_empty()).then_some(chunk)
+            }))
+        }
     };
+    let started = std::time::Instant::now();
     let observed = cpl_interp::run_observed(&compiled.program, io, stdout, None);
     *stderr += &String::from_utf8_lossy(&observed.debug);
     match observed.trap {
         None => 0,
         Some(trap) => {
-            *stderr += &render_trap(path, &compiled.text, &trap);
+            // The recorded run is several times slower: only a quick one is repeated.
+            let locals = (started.elapsed() < TRAP_RERUN).then(|| {
+                let read = read.lock().unwrap();
+                let input = if whole.is_empty() {
+                    &read[..]
+                } else {
+                    &whole[..]
+                };
+                trace::trap_locals(&compiled.program, &compiled.text, input, &trap)
+            });
+            *stderr += &render_trap_noting(path, &compiled.text, &trap, locals.flatten());
             EXIT_FAILED
         }
     }
 }
+
+/// The longest run whose trap is run again, recorded, to name its locals.
+const TRAP_RERUN: std::time::Duration = std::time::Duration::from_secs(1);
 
 /// `cpl run --trace --live`: the input is read once and pinned; with no
 /// input named, it is the case `cpl stress` last saved for the file.

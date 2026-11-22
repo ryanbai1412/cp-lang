@@ -83,7 +83,7 @@ target = "3/3, v0.3 spellings"
 [[metric]]
 name = "trap_terminal_locals"
 command = "target/release/cpl run plan/domains/debugger/probes/prefix_trap.cp < plan/domains/debugger/probes/prefix_trap.in"
-today = "0 locals named (R0101 says index 3, length 3; i = 3 only in the HTML trace)"
+today = "prefix_trap.cp prints note: locals: i = 3 (a_trap_names_the_locals_where_it_stopped)"
 target = "the offending locals and the call path printed with every trap"
 
 [[metric]]

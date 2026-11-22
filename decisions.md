@@ -5736,3 +5736,17 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   `plan/domains/infra/design/gate-tiers.md`.
 - **Reverse.** Point `.githooks/pre-commit` back at `check.sh --fast`.
 
+## 219. A trap's note names its locals from a second, recorded run (2026-11-22)
+
+- **Decision.** When `cpl run` (or the playground) traps within 1 s, it runs
+  the program again on what it read, recorded to its last step
+  (`trace::trap_config`), and adds `note: locals: i = 3`. The failing step
+  keeps the trapping call's locals when the core has already left its
+  frame. The ratchet allows `crates/cpl-cli/src/lib.rs` +34 and
+  `crates/cpl-interp/src/trace.rs` +20 lines for it; the helpers live in
+  the new `trace/trap.rs`, toward the `cpl-trace` split.
+- **Why.** Goal 4 promises traps show local values in source terms; the
+  trace had them and the terminal did not. A second run costs nothing on
+  the hot path; capturing locals during every run would.
+- **Reverse.** Drop the rerun in `run_file` and the `wasm` twin, and
+  `last_step_at` in `Tracer::finish`; shrink the ratchet back.

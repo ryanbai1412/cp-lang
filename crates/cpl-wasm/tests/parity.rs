@@ -236,7 +236,12 @@ fn error_and_trap_stderr_matches_cli_verbatim() {
     }
 
     // Runtime traps: `run` must match CLI stderr, stdout, and exit code 3 byte for byte.
-    let trap_cases: [(&str, &str, &[u8]); 3] = [
+    let trap_cases: [(&str, &str, &[u8]); 4] = [
+        (
+            "r0101_locals",
+            "fn at(xs: List<Int>, k: Int) -> Int:\n    let j = k + 1\n    return xs[j]\n\nprint(at([1, 2], 1))\n",
+            b"",
+        ),
         (
             "r0001_bounds",
             "let a: List<Int> = [10, 20]\nlet i: Int = read()\nprint(a[i])\n",

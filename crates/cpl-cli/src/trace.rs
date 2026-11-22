@@ -41,6 +41,22 @@ pub fn html(trace_json: &str) -> String {
     fill(&page, "trace-data", trace_json)
 }
 
+/// The innermost call's locals where `program` trapped on `input`, from a
+/// second run, recorded; `None` when it has none or stops elsewhere.
+pub fn trap_locals(
+    program: &cpl_ir::Program,
+    source: &str,
+    input: &[u8],
+    trap: &cpl_interp::Trap,
+) -> Option<String> {
+    let mut sink = Vec::new();
+    let config = cpl_interp::trace::trap_config(source);
+    let io = cpl_interp::Io::fixed(input);
+    let observed = cpl_interp::run_observed(program, io, &mut sink, Some(config));
+    (observed.trap?.message == trap.message).then_some(())?;
+    cpl_interp::trace::trap_locals(&observed.recording?)
+}
+
 fn file_name(path: &str) -> &str {
     Path::new(path)
         .file_name()

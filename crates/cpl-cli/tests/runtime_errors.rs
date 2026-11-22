@@ -201,6 +201,38 @@ print(outer(a))
 }
 
 #[test]
+fn a_trap_names_the_locals_where_it_stopped() {
+    // A loop one step too far, at the top level.
+    let source = "\
+let n: 1..=5 = read()
+let a: [0..n]Int = read()
+var pre: [0..=n]Int = 0
+for i in 0..=n:
+    pre[i + 1] = pre[i] + a[i]
+print(pre[n])
+";
+    let (code, err) = run_stderr(source, "3\n1 2 3\n");
+    assert_eq!(code, 3);
+    assert!(err.contains("note: locals: i = 3"), "got:\n{err}");
+    // Inside a call: the locals of the innermost one.
+    let source = "\
+fn inner(x: Int) -> Int:
+    let y = x * 2
+    return 100 / (x + y)
+
+let a: Int = read()
+print(inner(a))
+";
+    let (code, err) = run_stderr(source, "0\n");
+    assert_eq!(code, 3);
+    assert!(err.contains("note: locals: x = 0, y = 0"), "got:\n{err}");
+    assert!(
+        err.contains("note: call stack: inner (a.cp:3)"),
+        "got:\n{err}"
+    );
+}
+
+#[test]
 fn golden_multitest_reports_case_number_and_call_stack() {
     let source = "\
 @!multitest
