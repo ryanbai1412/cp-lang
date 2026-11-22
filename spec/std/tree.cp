@@ -1385,14 +1385,24 @@ pub struct JumpTree<V>:
     /// cost: O(log n) calls of `pred`
     /// traps: never
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.jump_while(2, v => v != 0) == Some(1) and j.jump_while(2, v => v == 0) == None`
-    pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V = todo
+    pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V:
+        if not pred(v): return None
+        var x = v
+        while par[x] != None:
+            if pred(jump[x]): x = jump[x]
+            elif pred(par[x]!): x = par[x]!
+            else: return Some(x)
+        Some(x)
 
     /// The number of edges between `a` and `b`; `None` across trees.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.dist(2, 3) == Some(2) and j.dist(0, 0) == Some(0)`
-    pub fn dist(self, a: V, b: V) -> ?Int = todo
+    pub fn dist(self, a: V, b: V) -> ?Int:
+        let c = self.lca(a, b)
+        if c == None: return None
+        Some(dep[a] + dep[b] - 2 * dep[c!])
 
     /// The `k`-th vertex on the path from `a` to `b` (`a` is the 0th); `None` past `b` or across
     /// trees.
@@ -1400,7 +1410,13 @@ pub struct JumpTree<V>:
     /// cost: O(log n)
     /// traps: when `k` is negative
     /// example: `domain V = 0..4; var j = JumpTree<V>(); j.add(1, 0); j.add(2, 1); j.add(3, 1); j.jump(2, 3, 1) == Some(1) and j.jump(2, 3, 2) == Some(3) and j.jump(2, 3, 3) == None`
-    pub fn jump(self, a: V, b: V, k: Int) -> ?V = todo
+    pub fn jump(self, a: V, b: V, k: Int) -> ?V:
+        assert k >= 0
+        let c = self.lca(a, b)
+        if c == None: return None
+        let up = dep[a] - dep[c!]
+        let len = up + dep[b] - dep[c!]
+        if k <= up: self.ancestor(a, k) elif k <= len: self.ancestor(b, len - k) else: None
 
 /// Binary lifting over a fixed forest given by parent links, each carrying a value on the edge
 /// up: O(n log n) build and memory, O(log n) queries. A forest that grows leaf by leaf is a
