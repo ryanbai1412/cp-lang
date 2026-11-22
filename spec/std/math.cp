@@ -285,7 +285,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 /// example: `(-5).sign == Sign.Neg`
 /// example: `0.sign == Sign.Zero`
 /// example: `Int(7.sign) == 1`
-pub @get fn sign(self: Int) -> Sign = todo
+@get pub fn sign(self: Int) -> Sign = todo
 
 /// Whether bit `i` of `self` is set, bit 0 the lowest, in two's complement.
 ///
@@ -308,7 +308,7 @@ pub fn bit(self: Int, i: Int) -> Bool = todo
 /// example: `1.is_pow2 == true`
 /// example: `6.is_pow2 == false`
 /// example: `0.is_pow2 == false`
-pub @get fn is_pow2(self: Int) -> Bool = todo
+@get pub fn is_pow2(self: Int) -> Bool = todo
 
 /// SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
 ///
@@ -776,7 +776,7 @@ pub struct Ratio(p: Int, q: Int):
     /// traps: when `p == 0`
     /// example: `Ratio(-2, 3).inv == Ratio(-3, 2)`
     /// example: `Ratio(1, 4).inv == Ratio.from_int(4)`
-    pub @get fn inv(self) -> Ratio = todo
+    @get pub fn inv(self) -> Ratio = todo
 
     /// The floor of `p / q` (Euclidean division).
     ///
@@ -784,7 +784,7 @@ pub struct Ratio(p: Int, q: Int):
     /// traps: never
     /// example: `Ratio(7, 2).floor == 3`
     /// example: `Ratio(-7, 2).floor == -4`
-    pub @get fn floor(self) -> Int = todo
+    @get pub fn floor(self) -> Int = todo
 
     /// The ceiling of `p / q`: `ceil_div(p, q)`.
     ///
@@ -792,14 +792,14 @@ pub struct Ratio(p: Int, q: Int):
     /// traps: never
     /// example: `Ratio(7, 2).ceil == 4`
     /// example: `Ratio(-7, 2).ceil == -3`
-    pub @get fn ceil(self) -> Int = todo
+    @get pub fn ceil(self) -> Int = todo
 
     /// The absolute value `|p| / q`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Ratio(-1, 2).abs == Ratio(1, 2)`
-    pub @get fn abs(self) -> Ratio = todo
+    @get pub fn abs(self) -> Ratio = todo
 
 impl Add for Ratio:
     fn add(a, b) = todo

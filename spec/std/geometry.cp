@@ -24,7 +24,7 @@ pub struct Pt(x: Int, y: Int):
     /// traps: when the result overflows `Int`
     /// example: `Pt(3, 4).norm2 == 25`
     /// example: `Pt(0, 0).norm2 == 0`
-    pub @get fn norm2(self) -> Int = todo
+    @get pub fn norm2(self) -> Int = todo
 
     /// The exact squared length `x*x + y*y`, computed in `I128`.
     ///
@@ -32,7 +32,7 @@ pub struct Pt(x: Int, y: Int):
     /// traps: when the result overflows `I128` (only for coordinates near `Int.MIN`)
     /// example: `Pt(3, 4).norm2_128 == 25`
     /// example: `Pt(3_000_000_000, 4_000_000_000).norm2_128 == 25_000_000_000_000_000_000`
-    pub @get fn norm2_128(self) -> I128 = todo
+    @get pub fn norm2_128(self) -> I128 = todo
 
     /// The Euclidean length `sqrt(x*x + y*y)` as `F64` (`hypot`, so no intermediate overflow).
     ///
@@ -40,21 +40,21 @@ pub struct Pt(x: Int, y: Int):
     /// traps: never
     /// example: `Pt(3, 4).len == 5.0`
     /// example: `Pt(0, 0).len == 0.0`
-    pub @get fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = todo
 
     /// `self` rotated 90 degrees counter-clockwise: `Pt(-y, x)`.
     ///
     /// cost: O(1)
     /// traps: when `y` is `Int.MIN`
     /// example: `Pt(1, 2).perp == Pt(-2, 1)`
-    pub @get fn perp(self) -> Pt = todo
+    @get pub fn perp(self) -> Pt = todo
 
     /// `self` rotated 90 degrees clockwise: `Pt(y, -x)`.
     ///
     /// cost: O(1)
     /// traps: when `x` is `Int.MIN`
     /// example: `Pt(1, 2).perp_cw == Pt(2, -1)`
-    pub @get fn perp_cw(self) -> Pt = todo
+    @get pub fn perp_cw(self) -> Pt = todo
 
     /// The polar angle `atan2(y, x)` in `(-pi, pi]`; 0 for the zero vector.
     ///
@@ -66,7 +66,7 @@ pub struct Pt(x: Int, y: Int):
     /// example: `Pt(0, -1).angle < 0.0`
     /// example: `Pt(-1, 0).angle > 3.14`
     /// example: `Pt(0, 0).angle == 0.0`
-    pub @get fn angle(self) -> F64 = todo
+    @get pub fn angle(self) -> F64 = todo
 
     /// The reduced integer direction `(x / g, y / g)` with `g = gcd(|x|, |y|)`; `Pt(0, 0)` for the
     /// zero vector.
@@ -86,7 +86,7 @@ pub struct Pt(x: Int, y: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `Pt(1, 2).to_vec == Vec(1.0, 2.0)`
-    pub @get fn to_vec(self) -> Vec = todo
+    @get pub fn to_vec(self) -> Vec = todo
 
     /// The dot product `x * o.x + y * o.y`, in `Int`.
     ///
@@ -400,14 +400,14 @@ pub struct OnlineHull:
     /// traps: when the value overflows `Int`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.area2 == 16`
     /// example: `OnlineHull().area2 == 0`
-    pub @get fn area2(self) -> Int = todo
+    @get pub fn area2(self) -> Int = todo
 
     /// The number of hull corners.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)); h.len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no point has been added since creation or the last `clear`.
     ///
@@ -415,7 +415,7 @@ pub struct OnlineHull:
     /// traps: never
     /// example: `OnlineHull().is_empty == true`
     /// example: `var h = OnlineHull(); h.add(Pt(1, 1)); h.is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The current hull corners, counter-clockwise from the least `(x, y)`.
     ///
@@ -778,28 +778,28 @@ pub struct Vec(x: F64, y: F64):
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(3.0, 4.0).norm2 == 25.0`
-    pub @get fn norm2(self) -> F64 = todo
+    @get pub fn norm2(self) -> F64 = todo
 
     /// The Euclidean length (`hypot(x, y)`, so no intermediate overflow).
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(3.0, 4.0).len == 5.0`
-    pub @get fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = todo
 
     /// `self` rotated 90 degrees counter-clockwise: `Vec(-y, x)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(1.0, 2.0).perp == Vec(-2.0, 1.0)`
-    pub @get fn perp(self) -> Vec = todo
+    @get pub fn perp(self) -> Vec = todo
 
     /// `self` rotated 90 degrees clockwise: `Vec(y, -x)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec(1.0, 2.0).perp_cw == Vec(2.0, -1.0)`
-    pub @get fn perp_cw(self) -> Vec = todo
+    @get pub fn perp_cw(self) -> Vec = todo
 
     /// The polar angle `atan2(y, x)` in `(-pi, pi]`; a `-0.0` `y` counts as `0.0`, so the negative x
     /// axis gives `PI`, and the zero vector gives 0.0.
@@ -809,7 +809,7 @@ pub struct Vec(x: F64, y: F64):
     /// example: `Vec(1.0, 0.0).angle == 0.0`
     /// example: `Vec(-1.0, 0.0).angle == PI`
     /// example: `Vec(0.0, 1.0).angle == PI / 2.0`
-    pub @get fn angle(self) -> F64 = todo
+    @get pub fn angle(self) -> F64 = todo
 
     /// The unit vector `Vec(cos(rad), sin(rad))`.
     ///
@@ -824,7 +824,7 @@ pub struct Vec(x: F64, y: F64):
     /// cost: O(1)
     /// traps: when `self.len == 0.0`
     /// example: `Vec(3.0, 4.0).unit == Vec(0.6, 0.8)`
-    pub @get fn unit(self) -> Vec = todo
+    @get pub fn unit(self) -> Vec = todo
 
     /// `self` rotated by the direction `by`, as the complex product `self * by`:
     /// `Vec(x * by.x - y * by.y, x * by.y + y * by.x)`. A unit `by` rotates without scaling; get
@@ -1001,14 +1001,14 @@ pub struct Circle(c: Vec, r: F64):
     /// cost: O(1)
     /// traps: never
     /// example: `Circle(Vec(0.0, 0.0), 1.0).area == PI`
-    pub @get fn area(self) -> F64 = todo
+    @get pub fn area(self) -> F64 = todo
 
     /// The circumference, computed as `2.0 * PI * r`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Circle(Vec(0.0, 0.0), 0.5).circumference == PI`
-    pub @get fn circumference(self) -> F64 = todo
+    @get pub fn circumference(self) -> F64 = todo
 
     /// Where `p` is relative to the disk, with `d = c.dist(p)`: `Boundary` when `|d - r| <= eps`,
     /// else `Inside` when `d < r`, else `Outside`.
@@ -1324,7 +1324,7 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// traps: when the product overflows `Int`
     /// example: `Rect(0..3, 0..2).area == 6`
     /// example: `Rect(3..1, 0..2).area == 0`
-    pub @get fn area(self) -> Int = todo
+    @get pub fn area(self) -> Int = todo
 
     /// Whether either axis range is empty.
     ///
@@ -1332,7 +1332,7 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// traps: never
     /// example: `Rect(0..0, 0..5).is_empty == true`
     /// example: `Rect(0..1, 0..1).is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Whether `p.x` is in `x` and `p.y` is in `y` (half-open, so the top and right edges are out).
     ///
@@ -1432,28 +1432,28 @@ pub struct Pt3(x: Int, y: Int, z: Int):
     /// cost: O(1)
     /// traps: when the result overflows `Int`
     /// example: `Pt3(1, 2, 2).norm2 == 9`
-    pub @get fn norm2(self) -> Int = todo
+    @get pub fn norm2(self) -> Int = todo
 
     /// The exact squared length, computed in `I128`.
     ///
     /// cost: O(1)
     /// traps: when the result overflows `I128`
     /// example: `Pt3(1, 2, 2).norm2_128 == 9`
-    pub @get fn norm2_128(self) -> I128 = todo
+    @get pub fn norm2_128(self) -> I128 = todo
 
     /// The Euclidean length as `F64`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Pt3(1, 2, 2).len == 3.0`
-    pub @get fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = todo
 
     /// `self` as a floating-point `Vec3`: the explicit way across.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Pt3(1, 2, 2).to_vec3 == Vec3(1.0, 2.0, 2.0)`
-    pub @get fn to_vec3(self) -> Vec3 = todo
+    @get pub fn to_vec3(self) -> Vec3 = todo
 
     /// The dot product `x * o.x + y * o.y + z * o.z`, in `Int`.
     ///
@@ -1569,21 +1569,21 @@ pub struct Vec3(x: F64, y: F64, z: F64):
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(1.0, 2.0, 2.0).norm2 == 9.0`
-    pub @get fn norm2(self) -> F64 = todo
+    @get pub fn norm2(self) -> F64 = todo
 
     /// The Euclidean length.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(1.0, 2.0, 2.0).len == 3.0`
-    pub @get fn len(self) -> F64 = todo
+    @get pub fn len(self) -> F64 = todo
 
     /// The unit vector in the direction of `self`: each coordinate divided by `self.len`.
     ///
     /// cost: O(1)
     /// traps: when `self.len == 0.0`
     /// example: `Vec3(0.0, 0.0, 2.0).unit == Vec3(0.0, 0.0, 1.0)`
-    pub @get fn unit(self) -> Vec3 = todo
+    @get pub fn unit(self) -> Vec3 = todo
 
     /// The dot product `x * o.x + y * o.y + z * o.z`.
     ///

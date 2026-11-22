@@ -131,21 +131,21 @@ pub struct Bitset<D>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// The same number as `len`, under the name C++ gives it.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count == 3`
-    pub @get fn count(self) -> Int = todo
+    @get pub fn count(self) -> Int = todo
 
     /// Whether the set has no members. O(1): the count is kept current by every update.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>().is_empty and not Bitset<D>.full().is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The smallest position in the set, or `None`.
     ///
@@ -383,21 +383,21 @@ pub struct DynBitset:
     /// cost: O(1)
     /// traps: never
     /// example: `DynBitset(10).cap == 10`
-    pub @get fn cap(self) -> Int = todo
+    @get pub fn cap(self) -> Int = todo
 
     /// The number of set bits, kept current by every update.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no bits are set, kept current by every update.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `DynBitset(10).is_empty and not DynBitset.full(1).is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Whether bit `i` is set.
     ///
@@ -619,14 +619,14 @@ pub struct XorTrie:
     /// cost: O(1)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when the trie holds no integers.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.remove(5); t.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Insert one copy of `x`. `x` is stored as given, after any earlier `xor_all`: the mask applies
     /// only to elements already present.

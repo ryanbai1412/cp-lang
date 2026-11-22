@@ -88,7 +88,7 @@ let n2 = walk2().count()
 ## 2. Plain and heap values (R1, R2)
 
 **R1. Plain values copy.** A value is plain when no part of it lives on the
-heap: `Int`, `Bool`, `Char`, `F64`, `Mint`, positions, cuts, ranges,
+heap: `Int`, `Bool`, `Char`, `F64`, `Mod<P>`, positions, cuts, ranges,
 optionals, tuples, records and enums of plain values, fn values that
 capture only plain values. Using a plain value never affects the original.
 
@@ -208,7 +208,7 @@ holds nothing of `t`.
 A fn whose result borrows from its arguments declares it:
 
 ```python
-fn window(xs: [V]Int, l: V) lends [V]Int = xs[l..]       // read lend
+fn window(xs: [V]Int, l: V) -> lends [V]Int = xs[l..]       // read lend
 pub fn at(mut self, i: D) lends mut T                    // a writable place
 fn pick(a: List<Int>, b: List<Int>) lends(a) List<Int>   // borrows only a
 ```

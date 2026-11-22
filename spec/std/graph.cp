@@ -683,7 +683,7 @@ pub struct Walk<V, E>:
     /// order: walking order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2]`
-    pub @get fn vertices(self) -> yields V = todo
+    @get pub fn vertices(self) -> yields V = todo
 
 /// A walk that uses every edge exactly once (Hierholzer's algorithm), or `None` if there is
 /// none. `directed` says whether `(u, v)` may only be walked from `u` to `v`.
@@ -709,7 +709,7 @@ pub struct Lit<X>(x: X, value: Bool):
     /// cost: O(1)
     /// traps: never
     /// example: `domain X = 0..2; Lit(X(1), true).flip == Lit(X(1), false)`
-    pub @get fn flip(self) -> Lit<X> = todo
+    @get pub fn flip(self) -> Lit<X> = todo
 
 /// A conjunction of two-literal clauses over the variables `X`. Every clause is O(1)
 /// to add; `solve` is O(|X| + clauses).

@@ -60,14 +60,14 @@ pub struct Marks<D>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(1); m.add(3); m.add(1); m.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no position is marked; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(0); m.remove(0); m.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
 /// Epoch-stamped map over domain `D` with O(1) `get`, `set`, `contains`, `remove`, and `clear()`.
 pub struct MarkMap<D, T>:
@@ -91,14 +91,14 @@ pub struct MarkMap<D, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(1, 7); m.set(1, 8); m.set(4, 0); m.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no key is present; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 1); m.remove(2); m.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Whether `v` has a value. A key set to `default_val` is present.
     ///
@@ -154,14 +154,14 @@ pub struct Interner<K>:
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.id("b"); t.id("a"); t.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no key has been interned; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.clear(); t.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Forget every key, so the next new key gets id `0` again.
     ///
@@ -224,14 +224,14 @@ pub struct SparseSet<D>:
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(1); s.add(4); s.add(1); s.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether the set has no elements; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(1); s.remove(1); s.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Whether `v` is in the set.
     ///
@@ -293,14 +293,14 @@ pub struct Arena<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.alloc(6); a.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no node is allocated; `len == 0`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.
     ///

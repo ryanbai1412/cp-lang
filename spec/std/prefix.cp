@@ -139,7 +139,7 @@ pub struct Prefix<D, T>:
     /// empty: zero
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
-    pub @get fn all(self) -> T = todo
+    @get pub fn all(self) -> T = todo
 
     /// The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.
     ///
@@ -430,7 +430,7 @@ pub struct SweepAdd<D, T>:
     /// cost: O(1)
     /// traps: when no position has been advanced yet
     /// example: `domain D = 0..3; var s = SweepAdd<D, Int>(); s.add(0..=0, 7); s.advance(0); s.current == 7`
-    pub @get fn current(self) -> T = todo
+    @get pub fn current(self) -> T = todo
 
 /// O(|D|) space. Second-order offline difference array for arithmetic-progression range adds:
 /// O(1) `add_arith`, O(|D|) `finish`.

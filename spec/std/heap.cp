@@ -41,13 +41,13 @@ pub struct Heap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `Heap.of([3, 1]).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Heap.of([3]).is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The smallest element, or `None` if the heap is empty.
     ///
@@ -57,7 +57,7 @@ pub struct Heap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `Heap.of([3, 1, 2]).peek == Some(1)`
-    pub @get fn peek(self) -> ?T = todo
+    @get pub fn peek(self) -> ?T = todo
 
     /// Remove all elements from the heap.
     ///
@@ -167,14 +167,14 @@ pub struct ErasableHeap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.push(1); h.remove(1); h.len == 1`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether no active elements remain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.remove(1); h.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Remove all elements from the heap.
     ///
@@ -253,14 +253,14 @@ pub struct IndexedHeap<D, K>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.set(V(1), 6); h.len == 1`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Whether `v` is currently in the heap.
     ///
@@ -282,7 +282,7 @@ pub struct IndexedHeap<D, K>:
     /// empty: `None`
     /// traps: never
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(3), 1); h.set(V(1), 1); h.peek == Some((V(1), 1))`
-    pub @get fn peek(self) -> ?(D, K) = todo
+    @get pub fn peek(self) -> ?(D, K) = todo
 
     /// Remove all entries from the heap.
     ///
@@ -374,14 +374,14 @@ pub struct MinMaxHeap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `MinMaxHeap.of([1, 1]).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MinMaxHeap.of([1]).is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The smallest element, or `None` if empty.
     ///
@@ -393,7 +393,7 @@ pub struct MinMaxHeap<T>:
     /// traps: never
     /// example: `MinMaxHeap.of([3, 1, 2]).first == Some(1)`
     /// example: `MinMaxHeap.of([7]).first == Some(7)`
-    pub @get fn first(self) -> ?T = todo
+    @get pub fn first(self) -> ?T = todo
 
     /// The largest element, or `None` if empty.
     ///
@@ -403,7 +403,7 @@ pub struct MinMaxHeap<T>:
     /// traps: never
     /// example: `MinMaxHeap.of([3, 1, 2]).last == Some(3)`
     /// example: `MinMaxHeap.of([7]).last == Some(7)`
-    pub @get fn last(self) -> ?T = todo
+    @get pub fn last(self) -> ?T = todo
 
     /// Insert `x`.
     ///
@@ -469,14 +469,14 @@ pub struct MeldHeap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `MeldHeap.of([4, 2]).len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// Whether the heap is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MeldHeap.of([4]).is_empty == false`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The smallest element, or `None` if empty.
     ///
@@ -486,7 +486,7 @@ pub struct MeldHeap<T>:
     /// empty: `None`
     /// traps: never
     /// example: `var h = MeldHeap.of([4, 2]); h.add_all(1); h.peek == Some(3)`
-    pub @get fn peek(self) -> ?T = todo
+    @get pub fn peek(self) -> ?T = todo
 
     /// The smallest element, or `None` if empty (alias for `peek`).
     ///
@@ -496,7 +496,7 @@ pub struct MeldHeap<T>:
     /// traps: never
     /// see: `peek`
     /// example: `MeldHeap.of([4, 2]).top == Some(2)`
-    pub @get fn top(self) -> ?T = todo
+    @get pub fn top(self) -> ?T = todo
 
     /// Push `x` into the heap.
     ///

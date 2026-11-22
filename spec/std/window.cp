@@ -43,14 +43,14 @@ pub struct Window<T, M>(op: M):
     /// traps: never
     /// example: `var w = Window(+); w.push(2); w.push(3); w.all == Some(5)`
     /// example: `var w = Window(+); w.push(2); w.pop(); w.all == None`
-    pub @get fn all(self) -> ?T = todo
+    @get pub fn all(self) -> ?T = todo
 
     /// The number of elements in the window: pushes minus pops.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var w = Window(+); w.push(2); w.push(3); w.pop(); w.len == 1`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
 /// State a window can add to at the back and remove from at the front. `pop(x)` is passed the
 /// element leaving the front. `Window(op)`, `Counter<K, Int>`, `Tracked` and `Undoing` implement it.
@@ -102,7 +102,7 @@ pub struct Tracked<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> 
     /// cost: O(1)
     /// traps: never
     /// example: `track(7, (mut s, x) => s += x, (mut s, x) => s -= x).state == 7`
-    pub @get fn state(self) -> S = todo
+    @get pub fn state(self) -> S = todo
 
 /// A structure that can return to an earlier state, newest change first: `Dsu`, `ParityDsu`,
 /// `WeightedDsu`, `DsuWith`, `RollbackArray`, and any user struct with these two methods.
@@ -137,7 +137,7 @@ pub struct Undoing<S, T>(state: S, add: (mut S, T) -> ()):
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..3; let u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); not u.state.same(V(0), V(1))`
-    pub @get fn state(self) -> S = todo
+    @get pub fn state(self) -> S = todo
 
 /// `Undoing` over `state`, holding no elements; see there. `state` is taken as the base: the
 /// window never undoes past it.
@@ -182,4 +182,4 @@ pub struct Sweep<D, S>(state: S):
     /// traps: never
     /// order: increasing positions of `D`
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.move(0..2); s.range.len == 2`
-    pub @get fn range(self) -> Range<D> = todo
+    @get pub fn range(self) -> Range<D> = todo

@@ -117,8 +117,8 @@ pub fn is_sorted<D, T, K = T>(self: [D]T, by: T -> K = x => x) -> Bool
 
 // Index of the first maximum / minimum under `by`, or `None` when empty.
 // O(n) time, O(1) space. (Also @get argmax / argmin when called without args.)
-pub @get fn argmax<D, T>(self: [D]T) -> ?D
-pub @get fn argmin<D, T>(self: [D]T) -> ?D
+@get pub fn argmax<D, T>(self: [D]T) -> ?D
+@get pub fn argmin<D, T>(self: [D]T) -> ?D
 pub fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D   // [target: argmax(by:)]
 pub fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D   // [target: argmin(by:)]
 
@@ -297,7 +297,7 @@ from any other compression:
 pub struct Compressed<D, T>(vals: [D]T):
     pub fn get<K>(self, i: K)                // O(1) element or O(r.len) slice
     pub fn slice(self, r: Range<D>) -> List<T>
-    pub @get fn len(self) -> Int             // O(1)
+    @get pub fn len(self) -> Int             // O(1)
     pub fn contains(self, val: T) -> Bool    // O(log n)
     pub fn try_at(self, val: T) -> ?D        // O(log n); None if absent
     pub fn at(self, val: T) -> D             // O(log n); traps if absent

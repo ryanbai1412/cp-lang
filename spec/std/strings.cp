@@ -84,7 +84,7 @@ pub fn rfind<P>(self: Str, p: P) -> ?Int = todo
 /// traps: never
 /// example: `'A'.lower == 'a'`
 /// example: `'7'.lower == '7'`
-pub @get fn lower(self: Char) -> Char = todo
+@get pub fn lower(self: Char) -> Char = todo
 
 /// The capital of an ASCII lowercase letter; any other character is returned as it is.
 ///
@@ -93,7 +93,7 @@ pub @get fn lower(self: Char) -> Char = todo
 /// traps: never
 /// example: `'a'.upper == 'A'`
 /// example: `'?'.upper == '?'`
-pub @get fn upper(self: Char) -> Char = todo
+@get pub fn upper(self: Char) -> Char = todo
 
 /// The value `0..=9` of an ASCII decimal digit: `'7'.digit` is `7`.
 ///
@@ -101,7 +101,7 @@ pub @get fn upper(self: Char) -> Char = todo
 /// traps: when `self` is not in `'0'..='9'` (test with `is_digit` first)
 /// example: `'7'.digit == 7`
 /// example: `'0'.digit == 0`
-pub @get fn digit(self: Char) -> Int = todo
+@get pub fn digit(self: Char) -> Int = todo
 
 /// True when `self` is an ASCII decimal digit, `'0'..='9'`.
 ///
@@ -109,7 +109,7 @@ pub @get fn digit(self: Char) -> Int = todo
 /// traps: never
 /// example: `'5'.is_digit == true`
 /// example: `'x'.is_digit == false`
-pub @get fn is_digit(self: Char) -> Bool = todo
+@get pub fn is_digit(self: Char) -> Bool = todo
 
 /// True when `self` is an ASCII lowercase letter, `'a'..='z'`.
 ///
@@ -117,7 +117,7 @@ pub @get fn is_digit(self: Char) -> Bool = todo
 /// traps: never
 /// example: `'q'.is_lower == true`
 /// example: `'Q'.is_lower == false`
-pub @get fn is_lower(self: Char) -> Bool = todo
+@get pub fn is_lower(self: Char) -> Bool = todo
 
 /// True when `self` is an ASCII capital letter, `'A'..='Z'`.
 ///
@@ -125,7 +125,7 @@ pub @get fn is_lower(self: Char) -> Bool = todo
 /// traps: never
 /// example: `'Q'.is_upper == true`
 /// example: `'q'.is_upper == false`
-pub @get fn is_upper(self: Char) -> Bool = todo
+@get pub fn is_upper(self: Char) -> Bool = todo
 
 /// True when `self` is an ASCII letter, `'a'..='z'` or `'A'..='Z'`.
 ///
@@ -133,7 +133,7 @@ pub @get fn is_upper(self: Char) -> Bool = todo
 /// traps: never
 /// example: `'Z'.is_alpha == true`
 /// example: `'_'.is_alpha == false`
-pub @get fn is_alpha(self: Char) -> Bool = todo
+@get pub fn is_alpha(self: Char) -> Bool = todo
 
 /// True when `self` is an ASCII letter or decimal digit.
 ///
@@ -141,7 +141,7 @@ pub @get fn is_alpha(self: Char) -> Bool = todo
 /// traps: never
 /// example: `'9'.is_alnum == true`
 /// example: `' '.is_alnum == false`
-pub @get fn is_alnum(self: Char) -> Bool = todo
+@get pub fn is_alnum(self: Char) -> Bool = todo
 
 /// True when `self` is one of the four ASCII whitespace characters `' '`, `'\t'`, `'\n'`, `'\r'`.
 ///
@@ -149,7 +149,7 @@ pub @get fn is_alnum(self: Char) -> Bool = todo
 /// traps: never
 /// example: `'\t'.is_space == true`
 /// example: `'x'.is_space == false`
-pub @get fn is_space(self: Char) -> Bool = todo
+@get pub fn is_space(self: Char) -> Bool = todo
 
 /// A copy of `self` with every ASCII capital replaced by its lowercase letter (`Char.lower`).
 ///
@@ -456,7 +456,7 @@ pub struct KmpAutomaton<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `KmpAutomaton<Char>("ab").len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// The matched prefix length after reading `a` in `state`. From the full-match state the
     /// automaton falls back along `link` first, so matching continues and overlaps are found.
@@ -523,14 +523,14 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// cost: O(1)
     /// traps: never
     /// example: `manacher("aba").len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when the sequence the radii were computed for is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `manacher("").is_empty == true`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     @allow(unproven_list_index)
     /// The length of the longest odd-length palindrome centred on position `i`, `2 * odd[i] - 1`.
@@ -622,14 +622,14 @@ pub struct SuffixArray:
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixArray("banana").len == 6`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when the suffix array was built over an empty sequence.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixArray("").is_empty == true`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The length of the longest common prefix of the suffixes starting at `i` and `j`. The
     /// empty suffix at `n` is allowed, and `lcp_between(i, i) == n - i`.
@@ -786,7 +786,7 @@ pub struct HashVal(h1: Int, h2: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `HashVal(1, 2).hash_token == 2147483650`
-    pub @get fn hash_token(self) -> Int = todo
+    @get pub fn hash_token(self) -> Int = todo
 
 /// O(1) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
 /// implementing `hash_token`.
@@ -859,21 +859,21 @@ pub struct RollingHash:
     /// cost: O(1)
     /// traps: never
     /// example: `RollingHash("abc").len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when no elements are hashed.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `RollingHash("").is_empty == true`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The hash of the whole sequence, `self.get(0..self.len)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `let h = RollingHash("abc"); h.all == h.get(0..3)`
-    pub @get fn all(self) -> HashVal = todo
+    @get pub fn all(self) -> HashVal = todo
 
     @allow(unproven_list_index)
     fn raw_slice(self, l: Int, r: Int) -> HashVal = todo
@@ -986,21 +986,21 @@ pub struct RollingHash61:
     /// cost: O(1)
     /// traps: never
     /// example: `RollingHash61("abc").len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when no elements are hashed.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `RollingHash61("").is_empty == true`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The hash of the whole sequence, `self.get(0..self.len)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `let h = RollingHash61("abc"); h.all == h.get(0..3)`
-    pub @get fn all(self) -> Hash61 = todo
+    @get pub fn all(self) -> Hash61 = todo
 
     /// The hash of a range of positions (`l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when
     /// built over a `[D]T`); an empty range hashes to `Hash61(0)`.
@@ -1076,21 +1076,21 @@ pub struct DynamicHash<D>:
     /// cost: O(1)
     /// traps: never
     /// example: `DynamicHash("abc").len == 3`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when there are no positions.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `DynamicHash("").is_empty == true`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// The hash of the whole sequence, `self.get(..)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `let h = DynamicHash("abab"); h.all == h.get(0..4)`
-    pub @get fn all(self) -> HashVal = todo
+    @get pub fn all(self) -> HashVal = todo
 
     /// Replaces the element at position `i` with `x`; `h[i] = x` means the same.
     ///
@@ -1175,14 +1175,14 @@ pub struct SuffixAutomaton<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("ab").root == 0`
-    pub @get fn root(self) -> Int = todo
+    @get pub fn root(self) -> Int = todo
 
     /// The number of states, the root included; at most `max(1, 2n - 1)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     @allow(unproven_list_index)
     /// The state reached from `state` by the letter `a`, or `None` when that extension is not a
@@ -1391,14 +1391,14 @@ pub struct PalindromicTree<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").len == 5`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// The number of distinct non-empty palindromic substrings, `len - 2`; at most `n`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
-    pub @get fn distinct(self) -> Int = todo
+    @get pub fn distinct(self) -> Int = todo
 
     @allow(unproven_list_index)
     /// The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.
@@ -1479,7 +1479,7 @@ pub struct PalindromicTree<A>:
     /// ties: none; the longest suffix is unique
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").last_state == 4`
-    pub @get fn last_state(self) -> Int = todo
+    @get pub fn last_state(self) -> Int = todo
 
     /// True when `word` is a palindrome occurring in the pushed string, that is, a state of the
     /// tree.
@@ -1520,7 +1520,7 @@ pub struct Trie<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `Trie<Char>().root == 0`
-    pub @get fn root(self) -> Int = todo
+    @get pub fn root(self) -> Int = todo
 
     /// The number of nodes, the root included. `remove` keeps nodes, so this never shrinks
     /// except by `clear`.
@@ -1528,14 +1528,14 @@ pub struct Trie<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.len == 4`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when no words are stored (every count is zero), whatever nodes remain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("a"); t.remove("a"); t.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     @allow(unproven_list_index)
     /// The child of `node` along `a`, or `None` when it was never created.
@@ -1670,14 +1670,14 @@ pub struct AhoCorasick<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `AhoCorasick<Char>(["a"]).root == 0`
-    pub @get fn root(self) -> Int = todo
+    @get pub fn root(self) -> Int = todo
 
     /// The number of states, the root included.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     @allow(unproven_list_index)
     /// The state after reading `a` in `state`: the longest pattern prefix that is a suffix of
@@ -1780,14 +1780,14 @@ pub struct DynamicAhoCorasick<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("a"); d.add("a"); d.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
     /// True when no patterns are stored.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("a"); d.remove("a"); d.is_empty`
-    pub @get fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = todo
 
     /// Stores one more copy of `pattern`.
     ///

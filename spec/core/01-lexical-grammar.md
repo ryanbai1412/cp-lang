@@ -88,6 +88,10 @@ in match return break continue and or not assert mut self unchecked
 true false trait impl lends yield
 ```
 
+`todo` is a primary expression and `context`, `marker` and `uses` are
+contextual words (R11.1.2, R09.1.3): each is a keyword only where the
+grammar expects it and an ordinary name elsewhere.
+
 `Some` and `None` are not reserved: they are the variants of `?T`, in
 the prelude like any other name, so a user enum may also have a `None`
 variant (`Side.None`). (R01.3.6)
@@ -139,7 +143,8 @@ in every build (chapter 9); it is a statement, never an expression. (R01.3.7)
 Tightest first:
 
 1. postfix: `.f`, `.0`, calls `f(...)`, indexing `a[i]`, `!` (unwrap or
-   trap), `?` (propagate `None`)
+   trap), `?` (propagate `None`), `is pattern` (so `a + b is P` is
+   `a + (b is P)`; parenthesize the left side)
 2. `**` (right-associative; the right operand may start with unary `-`)
 3. unary `-`, `+` (numeric only), `~`
 4. `*`, `/`, `%`
@@ -267,8 +272,8 @@ enum Ev:
     Add(v: V)
     Ask(l: V, r: V)
 trait Monoid<T>(Op<T>):
-    fn id() -> T
-    law left_id(x: T) = op(id(), x) == x
+    @get fn id(self) -> T
+    law left_id(x: T) = self.op(self.id, x) == x
 impl Monoid<Mat> for MatMul: ...
 type Grid = [R, C]Char
 domain V = 1..=n                          // a fresh index type

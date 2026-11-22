@@ -55,27 +55,27 @@ pub struct Dir4(k: Int):
     /// traps: never
     /// example: `Dir4.up().cw == Dir4.right()`
     /// example: `Dir4.left().cw == Dir4.up()`
-    pub @get fn cw(self) -> Dir4 = todo
+    @get pub fn cw(self) -> Dir4 = todo
     /// A quarter turn counter-clockwise, the inverse of `cw`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.up().ccw == Dir4.left()`
     /// example: `Dir4.down().cw.ccw == Dir4.down()`
-    pub @get fn ccw(self) -> Dir4 = todo
+    @get pub fn ccw(self) -> Dir4 = todo
     /// The opposite direction, a half turn: its delta is the negated delta.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.up().back == Dir4.down()`
     /// example: `Dir4.right().back == Dir4.left()`
-    pub @get fn back(self) -> Dir4 = todo
+    @get pub fn back(self) -> Dir4 = todo
     /// The change in (row, column) of one step.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.all().map(d => d.delta) == [(-1, 0), (0, 1), (1, 0), (0, -1)]`
-    pub @get fn delta(self) -> (Int, Int) = todo
+    @get pub fn delta(self) -> (Int, Int) = todo
 
 /// One of the eight directions, clockwise from up: the four of `Dir4` and the diagonals between.
 pub struct Dir8(k: Int):
@@ -107,25 +107,25 @@ pub struct Dir8(k: Int):
     /// traps: never
     /// example: `Dir8.all()[0].cw.delta == (-1, 1)`
     /// example: `Dir8.all()[7].cw == Dir8.all()[0]`
-    pub @get fn cw(self) -> Dir8 = todo
+    @get pub fn cw(self) -> Dir8 = todo
     /// An eighth of a turn counter-clockwise, the inverse of `cw`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir8.all()[0].ccw == Dir8.all()[7]`
-    pub @get fn ccw(self) -> Dir8 = todo
+    @get pub fn ccw(self) -> Dir8 = todo
     /// The opposite direction, four eighths round: its delta is the negated delta.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir8.all()[1].back.delta == (1, -1)`
-    pub @get fn back(self) -> Dir8 = todo
+    @get pub fn back(self) -> Dir8 = todo
     /// The change in (row, column) of one step; each part is `-1`, `0` or `1`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir8.all()[3].delta == (1, 1)`
-    pub @get fn delta(self) -> (Int, Int) = todo
+    @get pub fn delta(self) -> (Int, Int) = todo
 
 /// The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that
 /// step leaves the grid `(R, C)`.
@@ -161,7 +161,7 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C) = todo
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(0)).adj4.collect() == [(R(0), C(1)), (R(1), C(0))]`
-pub @get fn adj4<R, C>(self: (R, C)) -> yields (R, C) = todo
+@get pub fn adj4<R, C>(self: (R, C)) -> yields (R, C) = todo
 
 /// The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in
 /// `Dir8.all()`, skipping steps that leave the grid.
@@ -172,7 +172,7 @@ pub @get fn adj4<R, C>(self: (R, C)) -> yields (R, C) = todo
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj8.collect().len == 8`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(0)).adj8.collect() == [(R(0), C(1)), (R(1), C(1)), (R(1), C(0))]`
-pub @get fn adj8<R, C>(self: (R, C)) -> yields (R, C) = todo
+@get pub fn adj8<R, C>(self: (R, C)) -> yields (R, C) = todo
 
 /// A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every
 /// cell. The result is owned, not a view.

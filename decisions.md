@@ -5319,3 +5319,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Why.** The rebuild guessed at each of these (H-ARRAY-SCALAR-FILL, H-TABLE-VS-FILL, H-OPT-COMPARE, H-LITERAL-BOUND, H-DIJKSTRA-W, H-COUNTED-IS-DOMAIN, H-INT-RANGE-CUTS); they were half-stated across chapters 2, 4 and 4b. Cut `x` before position `x` matches the half-open `0..n` convention every contestant already uses, so `bsearch` on `1..=5` answers with the value, not a count.
 - **Reverse.** Drop an entry from the list (the fill is the most likely), or make integer-range cuts count positions before them as R04.2.16 does for declared domains.
 
+## 184. Rebuild contradictions, batch 2 (2026-11-21)
+
+- **Decision.** One spelling each: `-> lends T` (with the arrow); `@get pub fn` (decorators before `pub`); `cmp` returns `Ordering`; `Mod<P>`, never `Mint`; a block body after `-> T:`, never `-> T =` plus indent (decision 136); `is pattern` is a postfix operator at level 1; `todo` is a primary expression and `context`, `marker` and `uses` are contextual words; `Monoid.id` is a getter on the operation value (`self.id`). `argmin`/`argmax` stay, as the named form of `keys.min(by:)`/`keys.max(by:)`.
+- **Why.** The rebuild found each spelled two ways (H-LENDS-ARROW, H-DECORATOR-PUB-ORDER, H-ORDER-NAME, H-MINT, H-EQ-BLOCK, H-IS-PRECEDENCE, H-KEYWORDS, H-MONOID-ID, H-ARGMAX, H-DERIVE, H-SORTED-KEYS). The kept spelling is the one the grammar, the stubs or most examples already used; `argmin`/`argmax` stay because the stubs and a dozen examples use them and they are guessable.
+- **Reverse.** Per item: change the grammar line and rewrite the examples to the other spelling.
+

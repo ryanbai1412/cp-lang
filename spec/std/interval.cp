@@ -35,7 +35,7 @@ pub struct IntervalMap<D, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `IntervalMap.from([1, 2, 2, 1]).runs == 3`
-    pub @get fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int = todo
 
     /// The value at position `i`.
     ///
@@ -196,14 +196,14 @@ pub struct IntervalSet<D>:
     /// cost: O(1)
     /// traps: never
     /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(6..7); s.covered == 3`
-    pub @get fn covered(self) -> Int = todo
+    @get pub fn covered(self) -> Int = todo
 
     /// The number of maximal runs.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(6..7); s.runs == 2`
-    pub @get fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int = todo
 
     /// Every maximal run.
     ///
@@ -261,14 +261,14 @@ pub struct SparseIntervalSet:
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..3); s.add(10..12); s.covered == 5`
-    pub @get fn covered(self) -> Int = todo
+    @get pub fn covered(self) -> Int = todo
 
     /// The number of maximal intervals.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..3); s.add(10..12); s.runs == 2`
-    pub @get fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int = todo
 
     /// Every maximal interval.
     ///
@@ -305,7 +305,7 @@ pub struct SparseIntervalMap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.runs == 3`
-    pub @get fn runs(self) -> Int = todo
+    @get pub fn runs(self) -> Int = todo
 
     /// The value at coordinate `i`.
     ///

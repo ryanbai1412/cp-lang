@@ -92,7 +92,7 @@ pub struct Fenwick<D, T>:
     /// empty: zero on an empty domain
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).all == 6`
-    pub @get fn all(self) -> T = todo
+    @get pub fn all(self) -> T = todo
 
     /// The sum of every position right of the boundary `b`: `all - prefix(b)`. The end cut gives zero.
     ///

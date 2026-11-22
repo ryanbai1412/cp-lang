@@ -142,7 +142,7 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
     /// empty: `None`
     /// traps: never
     /// example: `MaxSub.join(MaxSub.of(-1), MaxSub.of(-2)).try_best == Some(-1)`
-    pub @get fn try_best(self) -> ?Int = todo
+    @get pub fn try_best(self) -> ?Int = todo
 
     /// `Monoid(MaxSub.empty(), MaxSub.join)`, for `SegTree` and `fold`.
     ///

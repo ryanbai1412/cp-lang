@@ -233,7 +233,7 @@ pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
     /// cost: O(1)
     /// traps: never
     /// example: `MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).len == 1`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
 /// For each row of the implicit `rows` x `cols` matrix `f`, the least `f(row, col)` and its
 /// leftmost `col`.
@@ -291,7 +291,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// cost: O(1)
     /// traps: never
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
     /// Remove every line and reset the `at_next` pointer, keeping `pick`.
     ///
     /// cost: O(1)
@@ -329,7 +329,7 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// cost: O(1)
     /// traps: never
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.len == 2`
-    pub @get fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = todo
 
 /// The length of the longest increasing subsequence ending at each position, compared by `by`;
 /// `strict: false` allows equal neighbours (non-decreasing). `xs.lis_ends().max()` is the LIS

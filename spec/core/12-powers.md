@@ -127,7 +127,7 @@ stubs need nothing more:
                 if self.keep(x): yield x
     pub fn filter<S: Seq<T>, T, P: T -> Bool>(self: S, keep: P) lends Filter<S, P> =
         Filter(self, keep)
-    fn window(xs: [V]Int, r: Range<V>) lends [V]Int = xs[r]
+    fn window(xs: [V]Int, r: Range<V>) -> lends [V]Int = xs[r]
     pub fn at(mut self, i: D) lends mut T       // a writable place: the same keyword
 
 A `for` over a generator pastes its body at the loop and each `yield x`

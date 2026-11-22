@@ -96,7 +96,7 @@ pub struct Dsu<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(0, 1); d.unite(1, 0); d.components == 3`
-    pub @get fn components(self) -> Int = todo
+    @get pub fn components(self) -> Int = todo
 
     /// The representative of each set, once each, lazily.
     ///
@@ -204,7 +204,7 @@ pub struct DsuOf<V, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 2); d.components == 2`
-    pub @get fn components(self) -> Int = todo
+    @get pub fn components(self) -> Int = todo
 
     /// The representative of each set, once each, lazily.
     ///
@@ -223,7 +223,7 @@ pub struct DsuOf<V, T>:
     /// order: by representative, increasing positions of `V`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v + 1, join: (x, y) => x + y); d.unite(2, 0); d.values.collect() == [2, 4]`
-    pub @get fn values(self) -> yields T = todo
+    @get pub fn values(self) -> yields T = todo
 
     /// The present, to return to with [`undo_to`](DsuOf.undo_to). The first call switches path
     /// shortening off for good.
@@ -322,7 +322,7 @@ pub struct ParityDsu<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = ParityDsu<0..3>(); d.unite(0, 1); d.unite(1, 2); d.unite(2, 0); not d.consistent`
-    pub @get fn consistent(self) -> Bool = todo
+    @get pub fn consistent(self) -> Bool = todo
 
     /// The present, to return to with [`undo_to`](ParityDsu.undo_to). Paths are never shortened,
     /// so marking changes nothing else.
@@ -406,14 +406,14 @@ pub struct PotentialDsu<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `var d = PotentialDsu<0..3>(); d.unite(0, 1, 5); d.components == 2`
-    pub @get fn components(self) -> Int = todo
+    @get pub fn components(self) -> Int = todo
 
     /// Whether no contradiction is in effect.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var d = PotentialDsu<0..2>(); d.unite(0, 1, 5); not d.unite(1, 0, 5) and not d.consistent`
-    pub @get fn consistent(self) -> Bool = todo
+    @get pub fn consistent(self) -> Bool = todo
 
     /// The present, to return to with [`undo_to`](PotentialDsu.undo_to).
     ///
@@ -489,7 +489,7 @@ pub struct PersistentDsu<V>:
     /// cost: O(1)
     /// traps: never
     /// example: `PersistentDsu<0..3>().base == 0`
-    pub @get fn base(self) -> Int = todo
+    @get pub fn base(self) -> Int = todo
 
     /// The representative of `v`'s set in version `ver`, chosen by union by size as in
     /// [`Dsu.find`](Dsu.find).
