@@ -754,11 +754,28 @@ pub struct SortedBag<K>:
     ///
     /// Every copy of a key goes to the same side.
     ///
-    /// cost: O(log n) expected
+    /// The larger side keeps the node array; the smaller side's keys move to a fresh one.
+    ///
+    /// cost: O(log n + s log n) expected, `s` the smaller side's distinct keys
     /// empty: both sides empty
     /// traps: never
     /// example: `var b = SortedBag.of([1, 3, 3, 5]); let hi = b.split_at(3); b.to_list() == [1] and hi.to_list() == [3, 3, 5]`
-    pub fn split_at(mut self, k: K) -> SortedBag<K> = todo
+    pub fn split_at(mut self, k: K) -> SortedBag<K>:
+        let (l, r) = self.split_lt(root, k)
+        unchecked:
+            if l >= 0: nodes[l].par = -1
+            if r >= 0: nodes[r].par = -1
+        var out = SortedBag<K>.new()
+        if self.sub_of(l) < self.sub_of(r):
+            out = self.take()
+            out.root = r
+            out.move_out(l, mut self)
+        else:
+            root = l
+            self.move_out(r, mut out)
+        self.refresh()
+        out.refresh()
+        out
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
     ///
@@ -940,6 +957,28 @@ pub struct SortedBag<K>:
                 nodes[b].left = self.merge(a, nodes[b].left)
                 self.pull(b)
                 return b
+
+    fn split_lt(mut self, t: Int, k: K) -> (Int, Int):
+        if t < 0: return (-1, -1)
+        unchecked:
+            if nodes[t].key < k:
+                let (a, b) = self.split_lt(nodes[t].right, k)
+                nodes[t].right = a
+                self.pull(t)
+                return (t, b)
+            let (a, b) = self.split_lt(nodes[t].left, k)
+            nodes[t].left = b
+            self.pull(t)
+            return (a, t)
+
+    fn move_out(mut self, t: Int, mut into: SortedBag<K>):
+        if t < 0: return
+        unchecked:
+            self.move_out(nodes[t].left, mut into)
+            into.add_many(nodes[t].key, nodes[t].cnt)
+            live -= 1
+            free.push(t)
+            self.move_out(nodes[t].right, mut into)
 
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
 /// O(1) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`). Backed by `SortedBag<K>`.
@@ -1202,11 +1241,11 @@ pub struct SortedSet<K>:
 
     /// Split off and return all keys `>= k`, keeping `< k` in `self`.
     ///
-    /// cost: O(log n) expected
+    /// cost: O(log n + s log n) expected, `s` the smaller side's size
     /// empty: both sides empty
     /// traps: never
     /// example: `var s = SortedSet.of([1, 3, 5]); let hi = s.split_at(3); s.to_list() == [1] and hi.to_list() == [3, 5]`
-    pub fn split_at(mut self, k: K) -> SortedSet<K> = todo
+    pub fn split_at(mut self, k: K) -> SortedSet<K> = SortedSet(bag.split_at(k))
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
     ///
