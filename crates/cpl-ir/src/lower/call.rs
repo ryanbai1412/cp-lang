@@ -3737,7 +3737,11 @@ impl<'a> Lowerer<'a> {
                     } else {
                         self.int_add((**hi).clone(), -1)
                     };
-                    return self.cast(Cast::Trust, end, (**cut).clone());
+                    let end = self.cast(Cast::Trust, end, (**cut).clone());
+                    if std::env::var_os("CPL_SPEC").is_some() {
+                        return self.spec_opt(None, end, span);
+                    }
+                    return end;
                 }
             }
         }
@@ -7472,6 +7476,19 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span)
     }
 
+    /// The `?T` a v0.3 `first`/`last` getter returns: `None` when `empty` holds.
+    fn spec_opt(&mut self, empty: Option<Expr>, value: Expr, span: Span) -> Expr {
+        let ty = Ty::Opt(Box::new(value.ty.clone()));
+        let some = self.mk(ExprKind::Some(Box::new(value)), ty.clone(), span);
+        match empty {
+            Some(empty) => {
+                let none = self.mk(ExprKind::None, ty.clone(), span);
+                self.mk(ExprKind::If(Box::new(empty), Box::new(none), Box::new(some)), ty, span)
+            }
+            None => some,
+        }
+    }
+
     fn domain_field(&mut self, id: DomainId, name: &ast::Name, hint: Option<&Ty>, span: Span) -> Expr {
         if let Some(info) = self.sum_enums.get(&id).cloned() {
             if let Some(tag) = info.variants.iter().position(|(v, _)| *v == name.text) {
@@ -7487,6 +7504,16 @@ impl<'a> Lowerer<'a> {
             }
         }
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
+        if matches!(name.text.as_str(), "first" | "last")
+            && self.subset_base(id).is_none()
+            && std::env::var_os("CPL_SPEC").is_some()
+        {
+            let ord = if name.text == "first" { self.int_lit(0, span) } else { self.int_add(len.clone(), -1) };
+            let pos = self.mk(ExprKind::Cast(Cast::FromOrd(id), Box::new(ord)), Ty::Pos(id), span);
+            let zero = self.int_lit(0, span);
+            let empty = self.mk(ExprKind::Cmp(CmpOp::Le, Box::new(len), Box::new(zero)), Ty::Bool, span);
+            return self.spec_opt(Some(empty), pos, span);
+        }
         // An empty domain has no first or last position: asking stops the
         // program in the built C++ as it does in `cpl run`.
         if matches!(name.text.as_str(), "first" | "last") && self.subset_base(id).is_none() {
