@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1435 (995 passing). Rules: 521.
+Cases: 1447 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 46 case(s)
+- R0401 Assertion failed: 48 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -766,8 +766,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (144/158 named by a case)
   - uncovered: `ByAngle`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.iter`, `minkowski_upper`, `PI`, `Vec.from_angle`, `circles_union_area`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (85/124 named by a case)
-  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `peel`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `dial`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
+- **graph** (86/124 named by a case)
+  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `peel`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `dial`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
 - **heap** (74/74 named by a case)
@@ -801,16 +801,16 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **slope** (36/39 named by a case)
   - uncovered: `Concave.suffix_max`, `Convex.prefix_min`, `Convex.suffix_min`
 - **sparse** (23/23 named by a case)
-- **strings** (173/195 named by a case)
-  - uncovered: `Palindromes`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (175/195 named by a case)
+  - uncovered: `Palindromes`, `SuffixTreeEdge`, `suffix_tree_edges`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `PalindromicTree.pal_len`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (99/171 named by a case)
-  - uncovered: `Rooted.forest`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids.piece`, `LinkCut.make_root`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
+- **tree** (105/171 named by a case)
+  - uncovered: `Rooted.forest`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids.piece`, `LinkCut.make_root`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`
 - **window** (17/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1943 of 2223 std items are named by a case.
+1952 of 2223 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
