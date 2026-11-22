@@ -411,7 +411,9 @@ fn dap_replays_one_call_with_the_edited_fn() {
         assert!(replay.contains("\"success\":true"), "{replay}");
         assert!(replay.contains("\"ordinal\":2") && replay.contains("\"call\":\"most_watched()\""), "the call at the cursor: {replay}");
         assert!(replay.contains("\"returned\":\"2\"") && replay.contains("\"before\":\"1\""), "{replay}");
-        assert!(replay.contains(&format!("\"changeLine\":{line}")) && !replay.contains("fallback"), "{replay}");
+        let sorted = source.lines().position(|l| l.trim() == "var free_at = 0").unwrap() + 1;
+        assert!(replay.contains(&format!("\"changeLine\":{sorted}")) && !replay.contains("fallback"), "{replay}");
+        assert!(replay.contains("`order` = [2, 1, 3] (before the edit: [1, 2, 3])"), "the edit's new order: {replay}");
     }
 
     let wider = source.replace("fn most_watched() -> Int:", "fn most_watched(from: Int) -> Int:");

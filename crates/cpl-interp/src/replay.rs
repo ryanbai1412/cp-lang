@@ -204,4 +204,17 @@ for i in 1..=3:
         assert!(replay.fallback.as_deref().is_some_and(|why| why.contains("past the recorded input")), "{:?}", replay.fallback);
         assert!(replay.earlier.is_some(), "call 1 already read the 5");
     }
+
+    #[test]
+    fn a_fns_locals_each_take_a_step_and_a_changed_local_is_the_first_change() {
+        let source = "fn sum(n: Int) -> Int:\n    var s = 0\n    for i in 1..=n:\n        s += i\n    return s\nprint(sum(2))\n";
+        let (recorded, _) = run(&program(source), b"", config(source));
+        let lines: Vec<u32> = recorded.steps.iter().map(|s| s.line).collect();
+        assert_eq!(lines, [2, 3, 4, 3, 4, 6, 6]);
+        assert!(recorded.steps[4].locals.contains("\"s\":3"), "{}", recorded.steps[4].locals);
+        let edit = source.replace("s += i", "s += 2 * i");
+        let (after, _) = run(&program(&edit), b"", config(&edit));
+        let change = crate::trace::first_change(&recorded, &after).unwrap();
+        assert_eq!((change.step, change.line, change.variable.as_deref()), (2, 4, Some("s")));
+    }
 }

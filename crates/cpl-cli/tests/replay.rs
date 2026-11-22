@@ -33,11 +33,11 @@ fn a_fixed_fn_replays_the_failing_call_alone() {
     let dir = recorded("fixed");
     edit(&dir, "by: i => shows[i].start)", "by: i => shows[i].start + shows[i].len)");
     let replay = ["replay", "shows.cp", "--trace", "shows.trace.html", "--input", "case.in", "--step"];
-    let (code, out, err) = cpl(&dir, &[&replay[..], &["6"]].concat());
+    let (code, out, err) = cpl(&dir, &[&replay[..], &["13"]].concat());
     assert_eq!(code, 0, "{err}");
-    assert!(out.contains("call 2 of `most_watched()`"), "{out}");
+    assert!(out.contains("call 2 of `most_watched()`, steps 13-23"), "{out}");
     assert!(out.contains("returns 2 (before the edit: 1)"), "{out}");
-    assert!(out.contains("first change: step 6 line 20"), "{out}");
+    assert!(out.contains("first change: step 17 line 12: `order` = [2, 1, 3] (before the edit: [1, 2, 3])"), "{out}");
     assert!(!out.contains("note:"), "no fallback: {out}");
     let (_, out, _) = cpl(&dir, &[&replay[..], &["3"]].concat());
     assert!(out.contains("call 1 of `most_watched()`") && out.contains("the call runs as recorded"), "{out}");
@@ -52,7 +52,7 @@ fn a_changed_signature_runs_the_whole_file_and_says_so() {
     edit(&dir, "fn most_watched() -> Int:", "fn most_watched(from: Int) -> Int:");
     edit(&dir, "print(most_watched())", "print(most_watched(0))");
     let (code, out, err) =
-        cpl(&dir, &["replay", "shows.cp", "--trace", "shows.trace.html", "--input", "case.in", "--step", "6"]);
+        cpl(&dir, &["replay", "shows.cp", "--trace", "shows.trace.html", "--input", "case.in", "--step", "13"]);
     assert_eq!(code, 0, "{err}");
     assert!(out.contains("note: the edit changes what `most_watched` takes or returns"), "{out}");
 }

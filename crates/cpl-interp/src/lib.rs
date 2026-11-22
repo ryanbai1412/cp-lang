@@ -851,6 +851,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             return;
         }
         let Some(global) = root_global(place) else {
+            if let Some(slot) = root_local(place) {
+                self.trace_local(slot, place.span);
+            }
             return;
         };
         if let PlaceKind::Global(id) = &place.kind {
@@ -881,6 +884,15 @@ impl<'p, 'o> Interp<'p, 'o> {
         } else if let Some(slot) = root_local(place) {
             self.trace_assigned_local(slot, span);
         }
+    }
+
+    /// A step for local `slot` of a running call, which just changed.
+    fn trace_local(&mut self, slot: usize, span: Span) {
+        if self.tracer.is_none() {
+            return;
+        }
+        let name = self.locals()[slot].name.as_str();
+        self.traced(|tracer, view| tracer.local_changed(view, span, name));
     }
 
     fn trace_assigned_local(&mut self, slot: usize, span: Span) {
@@ -923,6 +935,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let base = self.base;
                 self.stack[base + slot] = value;
                 if let Some(init) = init {
+                    self.trace_local(*slot, init.span);
                     self.trace_assigned_local(*slot, init.span);
                 }
             }
@@ -1024,6 +1037,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         macro_rules! round {
             ($value:expr) => {{
                 self.stack[base + slot] = $value;
+                self.trace_local(slot, span);
                 self.trace_assigned_local(slot, span);
                 match self.block(body)? {
                     Flow::Next | Flow::Continue(None) => {}
@@ -2286,6 +2300,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                         tracer.visible[global] = true;
                         tracer.step(view, span, None, None, None)
                     });
+                } else if let Some(slot) = root_local(place) {
+                    self.trace_local(slot, span);
                 }
                 self.trace_assigned(place);
                 value

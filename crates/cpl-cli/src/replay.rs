@@ -116,9 +116,18 @@ pub(crate) fn report(replay: &Replay) -> String {
     }
     match &replay.change {
         Some(change) => {
-            let was = change.before.as_deref().unwrap_or("the call had returned");
-            let now = change.after.as_deref().unwrap_or("the call has returned");
-            out += &format!("first change: step {} line {}: {now} (before the edit: {was})\n", change.step + 1, change.line);
+            let at = format!("first change: step {} line {}", change.step + 1, change.line);
+            out += &match &change.variable {
+                Some(var) => {
+                    let shown = |json: &Option<String>| json.as_deref().map_or("nothing".into(), value);
+                    format!("{at}: `{var}` = {} (before the edit: {})\n", shown(&change.after), shown(&change.before))
+                }
+                None => {
+                    let was = change.before.as_deref().unwrap_or("the call had returned");
+                    let now = change.after.as_deref().unwrap_or("the call has returned");
+                    format!("{at}: {now} (before the edit: {was})\n")
+                }
+            };
         }
         None if replay.replayed.is_some() => out += "the call runs as recorded\n",
         None => {}

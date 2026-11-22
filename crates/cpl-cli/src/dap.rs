@@ -961,7 +961,7 @@ fn describe_change(change: &Change) -> String {
     let was = change.before.as_deref().unwrap_or("the run had ended");
     let now = change.after.as_deref().unwrap_or("the run has ended");
     match &change.variable {
-        Some(var) => format!("first change at line {}: `{var}`: {now} (before the edit: {was})", change.line),
+        Some(var) => format!("first change at line {}: `{var}` = {now} (before the edit: {was})", change.line),
         None => format!("first change at line {}: {now} (before the edit: {was})", change.line),
     }
 }

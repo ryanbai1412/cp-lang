@@ -187,6 +187,8 @@ pub struct Change {
     pub line: u32,
     /// The variable that differs; `None` when one run ended first.
     pub variable: Option<String>,
+    /// The variable's JSON in each run, or the step's label when one run ended first.
+    /// `None`: the run had no such variable, or had ended.
     pub before: Option<String>,
     pub after: Option<String>,
 }
@@ -256,19 +258,54 @@ pub fn first_change_in(
                 after: label(after, a).filter(|_| i < new.len()),
             });
         }
-        let (was, now) = (before.values_at(b), after.values_at(a));
+        let (mut was, mut now) = (before.values_at(b), after.values_at(a));
+        was.extend(members(&before.steps[b].locals));
+        now.extend(members(&after.steps[a].locals));
         let differs = was.keys().chain(now.keys()).find(|id| was.get(*id) != now.get(*id));
         if let Some(id) = differs {
             return Some(Change {
                 step: a,
                 line: after.steps[a].line,
                 variable: Some(id.to_string()),
-                before: label(before, b),
-                after: label(after, a),
+                before: was.get(id).map(|v| v.to_string()),
+                after: now.get(id).map(|v| v.to_string()),
             });
         }
     }
     None
+}
+
+/// The members of a JSON object the tracer wrote, as written.
+fn members(object: &str) -> Vec<(&str, &str)> {
+    let mut out = Vec::new();
+    let (mut depth, mut quoted, mut escaped) = (0usize, false, false);
+    let (mut key, mut start) = (None, 1);
+    for (i, c) in object.char_indices() {
+        if quoted {
+            match c {
+                _ if escaped => escaped = false,
+                '\\' => escaped = true,
+                '"' => quoted = false,
+                _ => {}
+            }
+            continue;
+        }
+        match c {
+            '"' => quoted = true,
+            '{' | '[' => depth += 1,
+            '}' | ']' => depth -= 1,
+            ':' if depth == 1 && key.is_none() => key = Some(object[start..i].trim_matches('"')),
+            _ => {}
+        }
+        if (c == ',' && depth == 1) || (c == '}' && depth == 0) {
+            if let Some(name) = key.take() {
+                let value_start = object[start..i].find(':').map_or(i, |at| start + at + 1);
+                out.push((name, &object[value_start..i]));
+            }
+            start = i + 1;
+        }
+    }
+    out
 }
 
 pub(crate) struct Tracer {
@@ -771,6 +808,15 @@ impl Tracer {
             return;
         }
         self.step(view, span, None, None, Some((id, path)));
+    }
+
+    /// Local `name` of a running call changed. Top-level code has only
+    /// globals worth a step; its loop counters would double the trace.
+    pub fn local_changed(&mut self, view: &View, span: Span, name: &str) {
+        if view.depth == 0 || name.is_empty() || name.starts_with('_') || !self.watched(name) {
+            return;
+        }
+        self.step(view, span, None, None, None);
     }
 
     /// Local `name` of the innermost call was given a value.
@@ -1881,5 +1927,12 @@ mod tests {
         assert_eq!(d.brute, Some((6, "3".to_string())));
         // Names only one side has say nothing.
         assert_eq!(first_divergence(&run(&[(1, "a", "1")]), &run(&[(1, "b", "2")])), None);
+    }
+
+    #[test]
+    fn members_splits_a_written_object_at_its_top_level() {
+        let object = r#"{"a":1,"b":[1,{"c":2}],"s":"x,\"}y","e":{}}"#;
+        assert_eq!(members(object), [("a", "1"), ("b", "[1,{\"c\":2}]"), ("s", r#""x,\"}y""#), ("e", "{}")]);
+        assert!(members("{}").is_empty());
     }
 }
