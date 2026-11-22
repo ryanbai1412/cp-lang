@@ -92,7 +92,7 @@ fn dap_breakpoints_stack_variables_and_time_travel() {
         "\
 domain V = 1..=3
 var acc: Int = 0
-var last_v: V = V.first
+var last_v: V = V.first!
 fn add_vertex(v: V):
     acc += v.ord + 1
     last_v = v

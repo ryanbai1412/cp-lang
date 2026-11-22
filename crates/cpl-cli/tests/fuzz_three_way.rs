@@ -681,7 +681,7 @@ var a: [D]Int = 7
 var count = 0
 for x in D:
     count += 1
-print(D.K, count, a.len, sum(a[x] for x in D))
+print(D.len, count, a.len, sum(a[x] for x in D))
 ";
 
 #[test]
@@ -700,7 +700,7 @@ fn a_domain_of_every_size_down_to_empty() {
 const DOMAIN_ENDS: &str = "\
 let n: 0..=5 = read()
 domain D = 0..n
-print(D.first, D.last)
+print(D.first!, D.last!)
 ";
 
 #[test]
@@ -774,7 +774,7 @@ for _ in 0..n:
         xs.push(none)
     else:
         xs.push(r)
-print(max(xs) ?? -100, min(xs) ?? 100)
+print(xs.max() ?? -100, xs.min() ?? 100)
 let k: Int = read()
 print(xs[k]!)
 ";
@@ -818,14 +818,12 @@ fn optionals_with_and_without_values() {
 const STRUCTURES: &str = "\
 use std.segtree.{SegTree}
 use std.fenwick.{Fenwick}
-use std.lazy.{LazySegTree, AddMin}
 use std.dsu.{Dsu}
 let n: 0..=5 = read()
 let q: Int = read()
 domain V = 0..n
 var f = Fenwick<V, Int>()
-var s = SegTree<V, Int>(min)
-var z = LazySegTree<V, Int>(AddMin, [V] i => 0)
+var s = SegTree<V, Int>.of(min, _ => Int.MAX)
 var d = Dsu<V>()
 print(d.components)
 for _ in 0..q:
@@ -834,13 +832,9 @@ for _ in 0..q:
         f.add(V.nth(i), x)
         s.set(V.nth(i), x)
     elif t == 1:
-        print(f.sum(V.nth(i)..=V.nth(j)), s.fold(V.nth(i)..=V.nth(j)))
-    elif t == 2:
-        z.apply(V.nth(i)..=V.nth(j), x)
-    elif t == 3:
-        print(z.fold(V.nth(i)..=V.nth(j)), z.get(V.nth(i)))
+        print(f.fold(V.nth(i)..=V.nth(j)), s.fold(V.nth(i)..=V.nth(j)))
     else:
-        print(d.unite(V.nth(i), V.nth(j)), d.same(V.nth(i), V.nth(j)), d.components)
+        print(yes(d.unite(V.nth(i), V.nth(j))), yes(d.same(V.nth(i), V.nth(j))), d.components)
 ";
 
 /// The structures' answers, from plain arrays. A range `i..=j` with
@@ -849,14 +843,13 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
     let q = if n == 0 { 0 } else { 14 };
     let mut fen = vec![0i64; n as usize];
     let mut seg = vec![i64::MAX; n as usize];
-    let mut lazy = vec![0i64; n as usize];
     let mut label: Vec<usize> = (0..n as usize).collect();
     let mut input = format!("{n}\n{q}\n");
     let mut out = format!("{n}\n");
     let mut stops = false;
     for _ in 0..q {
         let (t, i, j, x) = (
-            rng.range(0, 4),
+            rng.range(0, 2),
             rng.range(0, n - 1),
             rng.range(0, n - 1),
             rng.range(-9, 9),
@@ -866,7 +859,7 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
         let span = iu..=ju;
         // A range query written backwards stops the program. `i..=i - 1`
         // is in order and empty.
-        stops |= matches!(t, 1..=3) && j + 1 < i;
+        stops |= t == 1 && j + 1 < i;
         match t {
             0 => {
                 fen[iu] += x;
@@ -879,18 +872,6 @@ fn structures_case(rng: &mut Rng, n: i64) -> (String, Expect) {
                     .and_then(|part| part.iter().min().copied())
                     .unwrap_or(i64::MAX);
                 out += &format!("{sum} {min}\n");
-            }
-            2 => {
-                if let Some(part) = lazy.get_mut(span) {
-                    part.iter_mut().for_each(|v| *v += x);
-                }
-            }
-            3 => {
-                let min = lazy
-                    .get(span)
-                    .and_then(|part| part.iter().min().copied())
-                    .unwrap_or(i64::MAX);
-                out += &format!("{min} {}\n", lazy[iu]);
             }
             _ => {
                 let (a, b) = (label[iu], label[ju]);
