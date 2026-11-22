@@ -3241,7 +3241,18 @@ pub struct Ring<D, T>(src: [D]T):
     /// traps: never
     /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
     /// ties: none: each last element has one longest piece
-    pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T> = todo
+    pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>:
+        let n = D.K
+        var st = state
+        var out: List<RingSlice<D, T>> = []
+        var l = 0
+        for t in 0..2 * n:
+            st.push(src[D.nth(t % n)])
+            while l <= t and (t - l + 1 > n or not ok(st)):
+                st.pop(src[D.nth(l % n)])
+                l += 1
+            if t >= n: out.push(RingSlice<D, T>(rr: self.span(D.nth(l % n), t - l + 1)))
+        [D] i => out[i.ord]
 
     /// For each position as the last element, the shortest wrapping piece ending there that is
     /// `ok`, or None. O(n) pushes and pops (two laps).
@@ -3250,9 +3261,26 @@ pub struct Ring<D, T>(src: [D]T):
     /// empty: an empty array
     /// order: keyed by `D`, by last element
     /// traps: never
-    /// example: `[2, 0, 1].ring.minimal(state: Window(+), ok: w => (w.all ?? 0) >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
+    /// example: `[2, 0, 1].ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
     /// ties: none: each last element has one shortest piece
-    pub fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T> = todo
+    pub fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>:
+        let n = D.K
+        var st = state
+        var out: [D]?RingSlice<D, T> = [D] _ => None
+        var l = 0
+        var best = -1
+        for t in 0..2 * n:
+            st.push(src[D.nth(t % n)])
+            while l <= t and t - l + 1 > n:
+                st.pop(src[D.nth(l % n)])
+                l += 1
+            while l <= t and ok(st):
+                best = l
+                st.pop(src[D.nth(l % n)])
+                l += 1
+            if t >= n and best >= 0 and t - best + 1 <= n:
+                out[D.nth(t - n)] = Some(RingSlice<D, T>(rr: self.span(D.nth(best % n), t - best + 1)))
+        out
 
 /// A run of positions of `D` read cyclically, possibly wrapping past the last position, at most
 /// `D.count` of them. The keys-only half of a `RingSlice`, so it needs no array.
