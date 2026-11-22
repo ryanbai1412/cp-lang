@@ -542,9 +542,6 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        if !args.is_empty() {
-            return None;
-        }
         let Ty::Named { name: type_name, .. } = self.quietly(|c| c.infer(base)) else {
             return None;
         };
@@ -560,7 +557,11 @@ impl<'a> Checker<'a> {
         }
         match self.infer(callee) {
             Ty::Fn { .. } => None,
-            ty => Some(ty),
+            // `p.shifted(by: 3)`: a `@get` method given its defaulted arguments.
+            ty => {
+                self.plain_args(args);
+                Some(ty)
+            }
         }
     }
 
