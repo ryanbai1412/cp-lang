@@ -104,7 +104,7 @@ print(best[I.last.r, cap])
 
 One `Range<I>` type covers half-open `l..r`, inclusive `l..=r`, and open-ended `..i`, `..=i`, `i..`, `i.r..`, and `l.r..r.l` (strictly between `l` and `r`). Every range provides `.first -> ?I`, `.last -> ?I`, `.mid -> ?I`, `.len`, `.is_empty`, `.rev`, `.step(k)`, and `(lo..=hi).clamp(D)`; `Range<Int>.sum()` and `(a..b).step(k).sum()` are O(1) closed forms.
 
-Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.sum(..i)`. Array slices use the array's own index base (`a[2..=4]` on a `[1..=4]Int` is its last three cells), and grid slices `g[r, ..]` / `g[.., c]` act as 1-D `[D]T` arrays that can be passed directly to generic functions such as `sum` and `argmax`. In-place slice mutation remains specification work; use the explicit [copy-and-writeback example](/docs/guides/course-index-slices#ranges-slices-and-compress-all) when sorting a window.
+Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.fold(..i)`. Array slices use the array's own index base (`a[2..=4]` on a `[1..=4]Int` is its last three cells), and grid slices `g[r, ..]` / `g[.., c]` act as 1-D `[D]T` arrays that can be passed directly to generic functions such as `sum` and `argmax`. In-place slice mutation remains specification work; use the explicit [copy-and-writeback example](/docs/guides/course-index-slices#ranges-slices-and-compress-all) when sorting a window.
 
 ```cp
 let one: [1..=4]Int = [10, 20, 30, 40]
@@ -223,7 +223,7 @@ let first_big = V.first(v => Int(v) > 2)
 print(vals[Sign.neg], rest.len, evens.len, odds.len, first_big!)
 ```
 
-Range structures (`SegTree<V.cuts, T>`, `LazySegTree<V.cuts, T>`, `Fenwick<V.cuts, T>`) also accept `V.cuts` directly as their index domain, so boundary updates (`seg.set(v.r, x)`, `seg.apply(..=v.l, 1)`) need no shadow `0..=n` domain. For divide-and-conquer over any `Range<I>`, `let (left, right) = r.halves()` splits `r` in O(1) with both halves non-empty whenever `r.len >= 2`.
+Range structures (`SegTree<V.cuts, T>`, `Fenwick<V.cuts, T>`) also accept `V.cuts` directly as their index domain, so boundary updates (`seg.set(v.r, x)`, `seg.apply(..=v.l, 1)`) need no shadow `0..=n` domain. For divide-and-conquer over any `Range<I>`, `let (left, right) = r.halves()` splits `r` in O(1) with both halves non-empty whenever `r.len >= 2`.
 
 ### Product domains
 
