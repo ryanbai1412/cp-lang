@@ -142,7 +142,11 @@ pub struct Prefix<D, T>:
     /// empty: zero for an empty span
     /// traps: never
     /// example: `domain D = 0..3; let a: [D]Int = [D] v => 1 + Int(v); Prefix<D, Int>(a).cyclic_sum(a.ring.span(2, 2)) == 4`
-    pub fn cyclic_sum(self, r: RingRange<D>) -> T = todo
+    pub fn cyclic_sum(self, r: RingRange<D>) -> T:
+        if r.len == 0: return T.zero
+        let (s, e) = (r.start, r.end)
+        if s.ord <= e.ord: return self.p[e.r] - self.p[s.l]
+        (self.p[D.cuts.nth(D.K)] - self.p[s.l]) + (self.p[e.r] - self.p[D.cuts.nth(0)])
 
     /// Recover the original element `a[i]`, as `prefix(i.r) - prefix(i.l)`.
     ///

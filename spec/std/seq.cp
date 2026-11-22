@@ -1530,7 +1530,14 @@ pub fn zip_exact<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U):
 /// order: left to right
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks_padded(2, 0).collect() == [[1, 2], [3, 0]]`
-pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T> = todo
+pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
+    assert k >= 1
+    var i = 0
+    while i < self.len:
+        var c: List<T> = []
+        for j in i..i + k: c.push(if j < self.len: self.nth(j) else: pad)
+        yield c
+        i += k
 
 // --- Reductions, folds, frequencies, and selection ---
 
@@ -2219,30 +2226,68 @@ pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, lef
 
 /// O(1) construction; O(log n) push, O(1) amortized rollback. Online patience-sorting LIS tracker.
 pub struct OnlineLis<T>(strict: Bool = true):
+    tails: List<T> = []
+    tail_at: List<Int> = []
+    vals: List<T> = []
+    prev: List<Int> = []
+    ends: List<Int> = []
+    // Per push: the tail slot it wrote, and what it replaced (`-1` when it appended).
+    log_slot: List<Int> = []
+    log_val: List<T> = []
+    log_at: List<Int> = []
+
     /// O(log n). Append `x` and return the length of the longest increasing subsequence ending at `x`.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); t.push(5); t.push(1); t.push(7) == 2`
-    pub fn push(mut self, x: T) -> Int = todo
+    pub fn push(mut self, x: T) -> Int:
+        var (lo, hi) = (0, tails.len)
+        while lo < hi:
+            let m = (lo + hi) / 2
+            if tails[m] < x or (not strict and tails[m] == x): lo = m + 1
+            else: hi = m
+        prev.push(if lo > 0: tail_at[lo - 1] else: -1)
+        ends.push(lo + 1)
+        vals.push(x)
+        log_slot.push(lo)
+        if lo == tails.len:
+            log_val.push(x)
+            log_at.push(-1)
+            tails.push(x)
+            tail_at.push(vals.len - 1)
+        else:
+            log_val.push(tails[lo])
+            log_at.push(tail_at[lo])
+            tails[lo] = x
+            tail_at[lo] = vals.len - 1
+        lo + 1
     /// O(1). Current global LIS length.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); t.push(1); t.push(3); t.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = tails.len
     /// O(1). Whether no elements have been pushed.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `OnlineLis<Int>().is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = vals.len == 0
     /// O(1). Reset all state.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); t.push(1); t.clear(); t.len == 0`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        tails.clear()
+        tail_at.clear()
+        vals.clear()
+        prev.clear()
+        ends.clear()
+        log_slot.clear()
+        log_val.clear()
+        log_at.clear()
     /// O(n), O(n) memory. Reconstruct one global LIS as 0-based push indices.
     ///
     /// cost: O(n), O(n) memory
@@ -2251,66 +2296,125 @@ pub struct OnlineLis<T>(strict: Bool = true):
     /// order: increasing push indices
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); for x in [3, 1, 2]: t.push(x); t.reconstruct() == [1, 2]`
-    pub fn reconstruct(self) -> List<Int> = todo
+    pub fn reconstruct(self) -> List<Int>:
+        if tails.len == 0: return []
+        var out = [0 for _ in 0..tails.len]
+        var i = tail_at[tails.len - 1]
+        var k = tails.len - 1
+        while i >= 0:
+            out[k] = i
+            i = prev[i]
+            k -= 1
+        out
     /// O(1). Save a rollback checkpoint for DFS-on-tree LIS.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); let m = t.mark(); t.push(1); t.undo_to(m); t.len == 0`
-    pub fn mark(self) -> Int = todo
+    pub fn mark(self) -> Int = vals.len
     /// O(1) amortized. Roll back all `push`es since checkpoint `m`.
     ///
     /// cost: O(1) amortized per undone push
     /// traps: when `m` is not a live mark of this tracker
     /// example: `var t = OnlineLis<Int>(); t.push(2); let m = t.mark(); t.push(5); t.undo_to(m); t.len == 1`
-    pub fn undo_to(mut self, m: Int) = todo
+    pub fn undo_to(mut self, m: Int):
+        assert 0 <= m and m <= vals.len  // `m` is a live mark
+        while vals.len > m:
+            let slot = log_slot.pop()!
+            let v = log_val.pop()!
+            let at = log_at.pop()!
+            if at < 0:
+                tails.pop()
+                tail_at.pop()
+            else:
+                tails[slot] = v
+                tail_at[slot] = at
+            vals.pop()
+            prev.pop()
+            ends.pop()
 
 /// O(1) construction; O(1) amortized push and rollback. Online monotone stack returning nearest dominating index.
 pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
+    idx: List<D> = []
+    vals: List<T> = []
+    // Per push: how many entries it popped; the popped entries, oldest pop first.
+    popped: List<Int> = []
+    out_idx: List<D> = []
+    out_val: List<T> = []
+
+    fn pops(self, top: T, x: T) -> Bool:
+        if top == x: return strict
+        if keep_smaller: top < x else: top > x
+
     /// O(1) amortized. Push `(i, x)`, pop dominated entries, and return the nearest dominating index (or `None`).
     ///
     /// cost: O(1) amortized
     /// ties: equal values pop unless `strict: false`
     /// traps: never
     /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); s.push(1, 3) == Some(0)`
-    pub fn push(mut self, i: D, x: T) -> ?D = todo
+    pub fn push(mut self, i: D, x: T) -> ?D:
+        var n = 0
+        while vals.len > 0 and self.pops(vals[vals.len - 1], x):
+            out_idx.push(idx.pop()!)
+            out_val.push(vals.pop()!)
+            n += 1
+        popped.push(n)
+        let below = if idx.len > 0: Some(idx[idx.len - 1]) else: None
+        idx.push(i)
+        vals.push(x)
+        below
     /// O(1). Current top `(index, val)`, or `None` when empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = MonoStack<Int, Int>(); s.push(3, 8); s.top == Some((index: 3, val: 8))`
     /// ties: none: the stack has one top
-    @get pub fn top(self) -> ?(index: D, val: T) = todo
+    @get pub fn top(self) -> ?(index: D, val: T):
+        if idx.len == 0: None else: Some((index: idx[idx.len - 1], val: vals[vals.len - 1]))
     /// O(1). Current stack depth.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); s.len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = idx.len
     /// O(1). Whether the stack is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MonoStack<Int, Int>().is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = idx.len == 0
     /// O(1). Empty the stack and rollback log.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = MonoStack<Int, Int>(); s.push(0, 1); s.clear(); s.is_empty`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        idx.clear()
+        vals.clear()
+        popped.clear()
+        out_idx.clear()
+        out_val.clear()
     /// O(1). Save a rollback checkpoint for DFS-on-tree monotone stacks.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var s = MonoStack<Int, Int>(); let m = s.mark(); s.push(0, 1); s.undo_to(m); s.is_empty`
-    pub fn mark(self) -> Int = todo
+    pub fn mark(self) -> Int = popped.len
     /// O(1) amortized. Roll back all `push`es since checkpoint `m`.
     ///
     /// cost: O(1) amortized per undone push
     /// traps: when `m` is not a live mark of this stack
     /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); let m = s.mark(); s.push(1, 9); s.undo_to(m); s.len == 1`
-    pub fn undo_to(mut self, m: Int) = todo
+    pub fn undo_to(mut self, m: Int):
+        assert 0 <= m and m <= popped.len  // `m` is a live mark
+        while popped.len > m:
+            idx.pop()
+            vals.pop()
+            var n = popped.pop()!
+            while n > 0:
+                idx.push(out_idx.pop()!)
+                vals.push(out_val.pop()!)
+                n -= 1
 
 @test
 fn scan_folds_every_prefix() = todo
@@ -2677,7 +2781,9 @@ fn scan_prod_and_rotate_method_syntax() = todo
 /// cost: O(1)
 /// traps: never
 /// example: `(u: 1, v: 2).swap == (u: 2, v: 1)`
-@get pub fn swap<A>(self: (A, A)) -> (A, A) = todo
+@get pub fn swap<A>(self: (A, A)) -> (A, A):
+    let (a, b) = self
+    (b, a)
 
 /// Maximal pieces where every adjacent pair links: `a.runs(link: (x, y) => y == x + 1)`.
 ///
@@ -2771,7 +2877,9 @@ pub struct Ring<D, T>(src: [D]T):
     /// empty: an empty span when `len == 0`
     /// traps: when `len` is not in `0..=n`
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
-    pub fn span(self, start: D, len: Int) -> RingRange<D> = todo
+    pub fn span(self, start: D, len: Int) -> RingRange<D>:
+        assert 0 <= len and len <= D.K
+        RingRange<D>(at: Some(start), n: len)
 
     /// The n windows of `k` elements, one starting at each position, wrapping. O(n) to walk.
     ///
@@ -2780,7 +2888,9 @@ pub struct Ring<D, T>(src: [D]T):
     /// order: by start position, increasing
     /// traps: when `k` is not in `1..=n`
     /// example: `[1, 2, 3].ring.windows(2).count() == 3`
-    pub fn windows(self, k: Int) -> yields RingSlice<D, T> = todo
+    pub fn windows(self, k: Int) -> yields RingSlice<D, T>:
+        assert 1 <= k and k <= D.K
+        for i in D: yield RingSlice<D, T>(rr: self.span(i, k))
 
     /// Two pointers round the cycle: for each position as the last element, the longest
     /// wrapping piece (at most n elements) ending there that is `ok`, fed through
@@ -2808,26 +2918,29 @@ pub struct Ring<D, T>(src: [D]T):
 /// A run of positions of `D` read cyclically, possibly wrapping past the last position, at most
 /// `D.count` of them. The keys-only half of a `RingSlice`, so it needs no array.
 pub struct RingRange<D>():
+    at: ?D = None
+    n: Int = 0
+
     ///
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = n
 
     /// O(1). The first position.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).start == 2`
-    @get pub fn start(self) -> D = todo
+    @get pub fn start(self) -> D = at!
 
     /// O(1). The last position.
     ///
     /// cost: O(1)
     /// traps: on an empty span
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
-    @get pub fn end(self) -> D = todo
+    @get pub fn end(self) -> D = D.nth((at!.ord + n - 1) % D.K)
 
     /// O(1) to make. Its positions in ring order.
     ///
@@ -2835,44 +2948,49 @@ pub struct RingRange<D>():
     /// order: ring order from `start`
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).keys.collect() == [2, 0]`
-    @get pub fn keys(self) -> yields D = todo
+    @get pub fn keys(self) -> yields D:
+        for k in 0..n: yield D.nth((at!.ord + k) % D.K)
 
     ///
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).contains(0) == true`
-    pub fn contains(self, i: D) -> Bool = todo
+    pub fn contains(self, i: D) -> Bool:
+        if n == 0: return false
+        (i.ord - at!.ord + D.K) % D.K < n
 
 /// A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
 pub struct RingSlice<D, T>():
+    rr: RingRange<D> = RingRange<D>()
+
     /// O(1). Its positions, without the array.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.range.len == 2`
-    @get pub fn range(self) -> RingRange<D> = todo
+    @get pub fn range(self) -> RingRange<D> = rr
 
     ///
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[w.len for w in [1, 2, 3].ring.windows(2)] == [2, 2, 2]`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = rr.len
 
     /// O(1). The first position.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.start == 0`
-    @get pub fn start(self) -> D = todo
+    @get pub fn start(self) -> D = rr.start
 
     /// O(1). The last position.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.end == 1`
-    @get pub fn end(self) -> D = todo
+    @get pub fn end(self) -> D = rr.end
 
     /// O(1) to make. Its positions in ring order.
     ///
@@ -2880,7 +2998,8 @@ pub struct RingSlice<D, T>():
     /// order: ring order from `start`
     /// traps: never
     /// example: `[1, 2, 3].ring.windows(2).first!.keys.collect() == [0, 1]`
-    @get pub fn keys(self) -> yields D = todo
+    @get pub fn keys(self) -> yields D:
+        for k in rr.keys: yield k
 
 /// The non-empty ranges whose every element is strictly below both elements just outside it
 /// (both must exist). At most 2n of them, left ends ascending, from one monotone-stack pass;
