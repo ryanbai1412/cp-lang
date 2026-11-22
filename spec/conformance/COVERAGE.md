@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1460 (995 passing). Rules: 521.
+Cases: 1470 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 1460 (995 passing). Rules: 521.
 - R05 (05-ownership.md): 41 rules, 79 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 89 cases; 0 uncovered, 2 happy-path only, 2 negative only
-- R08 (08-traits-generics.md): 29 rules, 56 cases; 0 uncovered, 2 happy-path only, 5 negative only
+- R08 (08-traits-generics.md): 29 rules, 57 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 41 cases; 4 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 45 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
@@ -468,7 +468,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.8 [0+ 1-] *negative only*: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
 - R08.2.1 [1+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
 - R08.2.2 [1+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
-- R08.2.3 [1+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
+- R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.4 [2+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
 - R08.2.5 [1+ 0-]: Type-parameter defaults fill omitted trailing arguments.
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 49 case(s)
+- R0401 Assertion failed: 50 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -764,13 +764,13 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **fenwick** (31/31 named by a case)
 - **flow** (46/65 named by a case)
   - uncovered: `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
-- **geometry** (144/158 named by a case)
-  - uncovered: `ByAngle`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.iter`, `minkowski_upper`, `PI`, `Vec.from_angle`, `circles_union_area`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (92/124 named by a case)
-  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.lists`, `Graph.dfs_tree`, `Graph.peel`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
+- **geometry** (151/158 named by a case)
+  - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
+- **graph** (94/124 named by a case)
+  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.lists`, `Graph.dfs_tree`, `Graph.peel`, `Paths.tight`, `fixed_cost_paths`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `scc_times`, `block_cut_tree`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
-- **heap** (74/74 named by a case)
+- **heap** (88/88 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
 - **lazy** (29/30 named by a case)
@@ -796,8 +796,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (194/215 named by a case)
-  - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`
+- **seq** (195/215 named by a case)
+  - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`
 - **slope** (36/39 named by a case)
   - uncovered: `Concave.suffix_max`, `Convex.prefix_min`, `Convex.suffix_min`
 - **sparse** (23/23 named by a case)
@@ -810,7 +810,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (17/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1965 of 2223 std items are named by a case.
+1989 of 2237 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
