@@ -1611,7 +1611,7 @@ impl<'a> Checker<'a> {
         let mut extra = 0usize;
         let mut misnamed = false;
         let mut pack: Vec<Ty> = Vec::new();
-        for arg in args {
+        for (i, arg) in args.iter().enumerate() {
             let param = match &arg.name {
                 Some(name) if labeled => match params.iter().find(|p| p.name == name.text) {
                     Some(param) => Some(param),
@@ -1626,6 +1626,16 @@ impl<'a> Checker<'a> {
                             codes::UNKNOWN_ARG_NAME
                         };
                         if let Some(diag) = self.error(code, name.span, message) {
+                            if let (true, Some(prev)) = (
+                                code == codes::LAW_UNSUPPORTED_SPECIALIZATION,
+                                i.checked_sub(1),
+                            ) {
+                                let cut = Span::new(args[prev].value.span.end, arg.value.span.end);
+                                diag.fixes.push(cpl_diag::Fix {
+                                    title: "remove `act:`".into(),
+                                    edits: vec![(cut, String::new())],
+                                });
+                            }
                             match suggestion {
                                 Some(s) => diag.suggest(name.span, s),
                                 None => {
