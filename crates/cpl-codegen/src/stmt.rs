@@ -5,8 +5,8 @@ use crate::expr::string_literal;
 use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
-    AssignOp, BinOp, Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, SortBy, Spec,
-    Stmt, Ty,
+    AssignOp, BinOp, Block, Builtin, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind,
+    SortBy, Spec, Stmt, Ty,
 };
 
 /// A block with a value that is statements and then the value, with no
@@ -916,6 +916,28 @@ impl<'p> Emitter<'p> {
 
     /// The `+`/`-` of `global += k`, an `Int` global stepped by a
     /// literal, which a guard can add as `0` instead of branching around.
+    /// The local list a returned `list.rekey(keys)` owns and reads for the
+    /// last time: a local of this fn, or a parameter it takes by value, that
+    /// the keys do not read.
+    fn rekeyed_local(&self, value: &Expr) -> Option<usize> {
+        let ExprKind::Builtin(Builtin::Rekey, args) = &value.kind else {
+            return None;
+        };
+        let ExprKind::Local(local) = args.first()?.kind else {
+            return None;
+        };
+        let id = self.fn_id?;
+        let owned = local >= self.program.fns[id].params.len() || self.sunk[id].contains(&local);
+        let read_again = args[1..].iter().any(|arg| {
+            let mut used = false;
+            crate::walk::deep_expr(arg, &mut |e| {
+                used |= matches!(e.kind, ExprKind::Local(s) if s == local);
+            });
+            used
+        });
+        (owned && !read_again && matches!(value.ty, Ty::Keyed(..))).then_some(local)
+    }
+
     fn counted_global(&self, place: &Place, op: AssignOp, value: &Expr) -> Option<&'static str> {
         let PlaceKind::Global(id) = &place.kind else {
             return None;
@@ -1495,6 +1517,11 @@ impl<'p> Emitter<'p> {
                         && self.closure_id.is_none()
                         && self.fn_id.is_some()
                         && matches!(value.kind, ExprKind::Call(..));
+                    self.rekey_last = if is_return && self.closure_id.is_none() {
+                        self.rekeyed_local(value)
+                    } else {
+                        None
+                    };
                     let text = if is_return && self.closure_id.is_none() {
                         if let ExprKind::Tuple(items) = &value.kind {
                             if !items.is_empty()
@@ -1611,6 +1638,7 @@ impl<'p> Emitter<'p> {
                         self.expr_with_elem_layout(value, ret_l.as_ref()).text
                     };
                     self.last_use_call = false;
+                    self.rekey_last = None;
                     self.line(out, &format!("return {text};"));
                 }
             }

@@ -1980,3 +1980,17 @@ fn a_guarded_step_of_a_global_counter_does_not_branch() {
     assert!(cpp.contains("distinct -= ("), "{cpp}");
     assert!(!cpp.contains("distinct += 1;"), "{cpp}");
 }
+
+#[test]
+fn a_returned_rekey_moves_its_local_list() {
+    let cpp = cpp(concat!(
+        "use std.strings.{z_function, prefix_function}\n",
+        "var a = List.filled(4, 0)\n",
+        "a[2] = 1\n",
+        "let z = z_function(a)\n",
+        "let p = prefix_function(a)\n",
+        "print(z[1] + p[1])\n",
+    ));
+    assert!(cpp.contains("cpl::rekey_own(std::move(z"), "{cpp}");
+    assert!(cpp.contains("cpl::rekey_own(std::move(cells"), "{cpp}");
+}
