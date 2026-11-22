@@ -1,5 +1,5 @@
 // expect: ok, output "1"
-// rule: L01.1
+// rule: std.segtree.SegTree
 use std.lazy.{Flip, flip_action}
 domain I = 0..4
 let act = flip_action<Int>(+)
