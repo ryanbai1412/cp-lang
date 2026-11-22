@@ -179,6 +179,11 @@ struct Proven {
     fns: Vec<FnCost>,
     /// The statement of each loop in `loops`, in the same order.
     loop_stmts: Vec<(u32, u32)>,
+    /// The counts of each loop in `loops` and of the loops around it,
+    /// outermost first, in the same order.
+    loop_factors: Vec<Vec<Factor>>,
+    /// The counts of the enclosing loops, while `around` is known.
+    factors: Vec<Factor>,
     /// How many times the innermost enclosing loops run in all.
     around: Option<u128>,
     /// Whether the fn being read has a loop with no proven count.
@@ -194,6 +199,8 @@ impl Default for Proven {
             indexes: Vec::new(),
             fns: Vec::new(),
             loop_stmts: Vec::new(),
+            loop_factors: Vec::new(),
+            factors: Vec::new(),
             around: Some(1),
             unbounded: false,
         }
@@ -217,6 +224,10 @@ fn proven(file: &File) -> Proven {
         };
         ranges_in(base, std::slice::from_ref(stmt), &top, scope, &mut out);
     }
+    for (l, chain) in out.loops.iter_mut().zip(&out.loop_factors) {
+        l.count = render_count(file, &chain[chain.len() - 1..]);
+        l.total_count = l.total.map(|_| render_count(file, chain));
+    }
     out.names.sort();
     out.names.dedup();
     out.exprs.sort_by_key(|e| e.op);
@@ -226,6 +237,56 @@ fn proven(file: &File) -> Proven {
     out.loops.sort_by_key(|l| l.head);
     out.loops.dedup_by_key(|l| l.head);
     out
+}
+
+/// How often one loop runs, in the source's terms where it can be.
+#[derive(Clone, Debug)]
+enum Factor {
+    /// The `n` of `0..n` or `1..=n`, as a span of the file.
+    Text(u32, u32),
+    /// A domain and its size.
+    Domain(String, u128),
+    Number(u128),
+}
+
+/// `n * q`: the product of `factors`, each a name or expression from the
+/// source when its range starts at `0..` or `1..=`, else its number.
+fn render_count(file: &File, factors: &[Factor]) -> String {
+    use cpl_syntax::ast::{ExprKind, StmtKind};
+    let text = |f: &Factor| match f {
+        Factor::Text(start, end) => file.src[*start as usize..*end as usize].to_string(),
+        Factor::Number(n) => n.to_string(),
+        Factor::Domain(name, size) => file
+            .top_level()
+            .find_map(|(base, s)| match &s.kind {
+                StmtKind::Domain { name: n, def } if n.text == *name => match &def.kind {
+                    ExprKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        inclusive,
+                        step: None,
+                    } if counts_from_start(lo, *inclusive) => {
+                        Some(file.src[(base + hi.span.start) as usize..(base + hi.span.end) as usize].to_string())
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .unwrap_or_else(|| size.to_string()),
+    };
+    let parts: Vec<String> = factors.iter().map(text).collect();
+    let simple = |t: &str| t.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.');
+    if parts.len() == 1 {
+        return parts[0].clone();
+    }
+    let parts: Vec<String> = parts.into_iter().map(|t| if simple(&t) { t } else { format!("({t})") }).collect();
+    parts.join(" * ")
+}
+
+/// Whether a range from `lo` has as many values as its end: `0..` or `1..=`.
+fn counts_from_start(lo: &cpl_syntax::ast::Expr, inclusive: bool) -> bool {
+    use cpl_syntax::ast::ExprKind;
+    matches!((&lo.kind, inclusive), (ExprKind::Int(0), false) | (ExprKind::Int(1), true))
 }
 
 /// The arithmetic in `expr` the bounds prove, without entering anything
@@ -589,8 +650,27 @@ fn ranges_of_stmt(
                         head: (base + stmt.span.start, base + pat.span.start),
                         times,
                         total,
+                        count: String::new(),
+                        total_count: None,
                     });
                     proven.loop_stmts.push((base + stmt.span.start, base + stmt.span.end));
+                    let own = match &iter.kind {
+                        ExprKind::Range {
+                            lo: Some(lo),
+                            hi: Some(hi),
+                            inclusive,
+                            step: None,
+                        } if counts_from_start(lo, *inclusive) => Factor::Text(base + hi.span.start, base + hi.span.end),
+                        ExprKind::Name(name) => Factor::Domain(name.clone(), times),
+                        _ => Factor::Number(times),
+                    };
+                    let mut chain = proven.factors.clone();
+                    chain.push(own);
+                    proven.loop_factors.push(chain);
+                }
+                let outer = proven.factors.clone();
+                if let Some(chain) = proven.loop_factors.last().filter(|_| times.is_some()) {
+                    proven.factors = chain.clone();
                 }
                 forget(pat, &mut inner);
                 if let (
@@ -620,6 +700,7 @@ fn ranges_of_stmt(
                 proven.around = total;
                 ranges_in(base, &body.stmts, &[], &mut inner, proven);
                 proven.around = around;
+                proven.factors = outer;
             }
             StmtKind::While {
                 cond,
@@ -718,6 +799,7 @@ fn ranges_of_stmt(
                 if let FnBody::Block(block) = &decl.body {
                     inner.declare_fn(&decl.name.text);
                     let around = proven.around.replace(1);
+                    let factors = std::mem::take(&mut proven.factors);
                     let (first, unbounded) = (proven.loops.len(), std::mem::take(&mut proven.unbounded));
                     ranges_in(base, &block.stmts, &[], &mut inner, proven);
                     let loops = &proven.loops[first..];
@@ -747,6 +829,7 @@ fn ranges_of_stmt(
                         calls,
                     });
                     proven.around = around;
+                    proven.factors = factors;
                     proven.unbounded = unbounded;
                 }
             }

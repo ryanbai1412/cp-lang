@@ -1772,6 +1772,14 @@ fn a_for_loop_knows_how_often_it_runs() {
     assert_eq!(loops(&in_while), [(199999, None)]);
     let unknown = format!("{head}let xs = [1, 2]\nfor x in xs:\n    for i in 0..q:\n        print(x, i)\n");
     assert_eq!(loops(&unknown), [(1000, None)]);
+    let counts = |src: &str| -> Vec<(String, Option<String>)> {
+        crate::proven_loops(src).into_iter().map(|l| (l.count, l.total_count)).collect()
+    };
+    let s = |t: &str| t.to_string();
+    assert_eq!(counts(&nested), [(s("n"), Some(s("n"))), (s("q"), Some(s("n * q")))]);
+    let shifted = format!("{head}for v in V:\n    for i in 2..q + 1:\n        for j in 1..=q - 1:\n            print(v, i, j)\n");
+    assert_eq!(counts(&shifted)[2], (s("q - 1"), Some(s("n * 999 * (q - 1)"))));
+    assert_eq!(counts(&in_fn)[0], (s("51"), Some(s("51"))));
 }
 
 #[test]

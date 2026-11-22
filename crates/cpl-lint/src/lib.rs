@@ -568,6 +568,11 @@ pub struct ProvenLoop {
     /// The most times its body runs in all, counting the `for` loops around
     /// it; `None` when one of them, or a `while` around it, has no bound.
     pub total: Option<u128>,
+    /// `times` in the source's terms: `q` for `0..q`, `n` for a domain
+    /// `1..=n`, else the number.
+    pub count: String,
+    /// `total` the same way, as a product: `n * q`.
+    pub total_count: Option<String>,
 }
 
 /// A fn with a loop in its body, and how many loop iterations one call

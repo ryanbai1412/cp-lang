@@ -820,10 +820,18 @@ impl Server {
         let proven = cpl_lint::proven_loops(&analysis.text)
             .into_iter()
             .find(|l| l.head.0 <= offset && offset < l.head.1)?;
-        let mut text = format!("for: runs at most {} times", count_text(proven.times));
+        let named = |count: &str| {
+            if count.chars().all(|c| c.is_ascii_digit()) {
+                String::new()
+            } else {
+                format!("{count} = ")
+            }
+        };
+        let mut text = format!("for: runs at most {}{} times", named(&proven.count), count_text(proven.times));
         match proven.total {
             Some(total) if total != proven.times => {
-                text += &format!("\n  {} times in all, with the loops around it", count_text(total));
+                let count = named(proven.total_count.as_deref().unwrap_or_default());
+                text += &format!("\n  {count}{} times in all, with the loops around it", count_text(total));
             }
             None => text += "\n  inside a loop with no proven count",
             _ => {}
