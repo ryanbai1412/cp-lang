@@ -343,6 +343,8 @@ pub enum Spec {
     /// `s.parse<T>()`: the inner spec read from the string `s` instead of
     /// the input, `none` on a bad or leftover token.
     Parse(Box<Expr>, Box<Spec>),
+    /// `read_line()`: the rest of the current line (skipping a trailing `\r?\n` after a token).
+    Line,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -382,6 +384,7 @@ impl Spec {
             Spec::Opt(inner, _) => Ty::opt(inner.ty()),
             Spec::Call(call) => call.ty.clone(),
             Spec::Parse(_, inner) => Ty::opt(inner.ty()),
+            Spec::Line => Ty::Str,
         }
     }
 }

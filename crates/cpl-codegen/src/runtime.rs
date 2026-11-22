@@ -298,6 +298,34 @@ inline std::string read_str() { std::string r; read_str_into(r); return r; }
 ",
     },
     Piece {
+        name: "read_line",
+        needs: &["in"],
+        code: "\
+inline std::string read_line() {
+    bool after_tok = in_at > 0 && in[in_at - 1] != '\\n';
+    if (after_tok) {
+        if (in_at >= in.size()) more();
+        if (in_at < in.size() && in[in_at] == '\\r') {
+            if (in_at + 1 >= in.size()) more();
+            if (in_at + 1 < in.size() && in[in_at + 1] == '\\n') in_at += 2;
+        } else if (in_at < in.size() && in[in_at] == '\\n') {
+            in_at++;
+        }
+    }
+    std::string r;
+    for (;;) {
+        if (in_at >= in.size() && !more()) break;
+        const char* p = in.data(); size_t n = in.size(), st = in_at;
+        while (in_at < n && p[in_at] != '\\n') in_at++;
+        r.append(p + st, in_at - st);
+        if (in_at < n) { in_at++; break; }
+    }
+    if (!r.empty() && r.back() == '\\r') r.pop_back();
+    return r;
+}
+",
+    },
+    Piece {
         name: "ediv",
         needs: &[],
         code: "\

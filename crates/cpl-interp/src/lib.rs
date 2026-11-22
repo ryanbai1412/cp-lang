@@ -5000,6 +5000,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             })
         };
         Ok(match spec {
+            Spec::Line => Value::Str(Rc::new(self.input.line().map_err(fail)?)),
             Spec::Plain(ty) => match ty {
                 Ty::Int => Value::Int(self.input.int().map_err(fail)?.0),
                 Ty::I128 => Value::I128(self.input.wide("an `I128`").map_err(fail)?),

@@ -462,6 +462,7 @@ pub const TRAIT_NAMES: &[&str] = &[
 pub const VALUE_NAMES: &[&str] = &[
     "print",
     "read",
+    "read_line",
     "debug",
     "read_output",
     "min",

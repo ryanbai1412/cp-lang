@@ -83,6 +83,29 @@ impl<'a> Input<'a> {
         self.byte(self.pos).is_none()
     }
 
+    /// The rest of the current line (or the next line when right after a token's newline).
+    pub fn line(&mut self) -> Result<Vec<u8>, InputError> {
+        if self.pos > 0 && self.data.get(self.pos - 1) != Some(&b'\n') {
+            if self.byte(self.pos) == Some(b'\r') && self.byte(self.pos + 1) == Some(b'\n') {
+                self.pos += 2;
+            } else if self.byte(self.pos) == Some(b'\n') {
+                self.pos += 1;
+            }
+        }
+        let mut out = Vec::new();
+        while let Some(b) = self.byte(self.pos) {
+            self.pos += 1;
+            if b == b'\n' {
+                break;
+            }
+            out.push(b);
+        }
+        if out.last() == Some(&b'\r') {
+            out.pop();
+        }
+        Ok(out)
+    }
+
     fn skip_space(&mut self) {
         while self.byte(self.pos).is_some_and(|b| b.is_ascii_whitespace()) {
             self.pos += 1;

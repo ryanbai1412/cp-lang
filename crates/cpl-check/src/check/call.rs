@@ -790,6 +790,7 @@ impl<'a> Checker<'a> {
                 name: "List".into(),
                 args: vec![first.clone()],
             }),
+            ("read_line", _) => Some(Ty::Str),
             ("print", _) if std::env::var_os("CPL_SPEC").is_some() => {
                 let allow_none = args
                     .iter()

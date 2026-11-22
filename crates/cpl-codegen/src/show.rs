@@ -354,6 +354,7 @@ impl<'p> Emitter<'p> {
             Code::primary(format!("cpl::{name}()"))
         };
         match spec {
+            Spec::Line => plain(self, "read_line"),
             Spec::Int { lo: None, hi: None, .. } | Spec::Plain(Ty::Int) => plain(self, "read_int"),
             Spec::Int { lo, hi, .. } => {
                 self.need("read_in");

@@ -5454,7 +5454,7 @@ fn collect_place_calls(place: &Place, out: &mut Vec<FnId>) {
 
 fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
     match spec {
-        Spec::Plain(_) => {}
+        Spec::Plain(_) | Spec::Line => {}
         Spec::Call(call) => collect_expr_calls(call, out),
         Spec::Parse(text, inner) => {
             collect_expr_calls(text, out);

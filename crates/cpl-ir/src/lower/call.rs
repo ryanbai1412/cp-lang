@@ -1762,6 +1762,12 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            "read_line" => {
+                if self.positional_any("read_line", args, 0, span).is_none() {
+                    return self.err_expr(span);
+                }
+                self.mk(ExprKind::Read(Box::new(Spec::Line)), Ty::Str, span)
+            }
             "min" | "max" => self.min_max(name == "max", args, span),
             "first" => {
                 if let Some(walk) = self.tested_walk(name, args, true) {
@@ -3138,7 +3144,7 @@ impl<'a> Lowerer<'a> {
                     Ty::Range(inner) if matches!(**inner, Ty::Int | Ty::Pos(_)) => None,
                     other => Some(other.clone()),
                 },
-                Spec::Int { .. } | Spec::Call(_) => None,
+                Spec::Int { .. } | Spec::Call(_) | Spec::Line => None,
                 Spec::Parse(_, inner) => unreadable(inner),
                 Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
                 Spec::Array { elem, .. } => unreadable(elem),
@@ -11723,7 +11729,7 @@ pub(super) fn is_place(e: &ast::Expr) -> bool {
 /// `?T`.
 pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
     match spec {
-        Spec::Plain(_) | Spec::Int { .. } | Spec::Call(_) | Spec::Parse(..) => false,
+        Spec::Plain(_) | Spec::Int { .. } | Spec::Call(_) | Spec::Parse(..) | Spec::Line => false,
         Spec::Fields(_, fields) => {
             let mut any = false;
             for field in fields {

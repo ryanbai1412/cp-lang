@@ -84,7 +84,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'last_lt', 'laws_hold', 'lcm', 'len', 'lis', 'locate', 'lower', 'max', 'max_closure', 'min', 'minmax',
     'next_permutation', 'pairs', 'partition', 'partition_point', 'peel', 'phi', 'popcount', 'pow_mod',
     'prefix', 'prev_permutation', 'print', 'prod', 'rand', 'ray', 'reach_sets', 'reachable', 'read', 'read_all',
-    'read_output', 'reduce', 'remove', 'repeat', 'reverse', 'rotate_left', 'rotate_right', 'rotated_left',
+    'read_line', 'read_output', 'reduce', 'remove', 'repeat', 'reverse', 'rotate_left', 'rotate_right', 'rotated_left',
     'rotated_right', 'round', 'runs', 'scan', 'scc', 'select', 'shuffle', 'sign', 'some', 'sort', 'sorted',
     'span', 'split_best', 'sqrt', 'starts_with', 'step', 'sum', 'swap', 'take_while', 'tally', 'ternary_max',
     'ternary_max_real', 'ternary_min', 'ternary_min_real', 'to_str', 'topo', 'track', 'trunc', 'undoing',

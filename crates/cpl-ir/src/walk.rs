@@ -152,7 +152,7 @@ pub fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
 
 fn spec_p<'p>(s: &'p Spec, f: &mut dyn FnMut(&'p Expr)) {
     match s {
-        Spec::Plain(_) => {}
+        Spec::Plain(_) | Spec::Line => {}
         Spec::Int { lo, hi, .. } => {
             for bound in [lo, hi].into_iter().flatten() {
                 f(bound);
