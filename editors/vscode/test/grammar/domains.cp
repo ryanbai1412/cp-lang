@@ -40,7 +40,7 @@ var grid: [Row, Col]Char = '.'
 
 var pre: [V.cuts]Int = 0
 //        ^ entity.name.type.cp
-//          ^^^^^^ variable.other.property.cp
+//          ^^^^ variable.other.property.cp
 
 var pq = MinHeap<(Int, V)>()
 //       ^^^^^^^ support.type.stdlib.cp
@@ -146,8 +146,8 @@ impl Index for V:
     type bounds = Cut<Self>
 //  ^^^^ storage.type.alias.cp
 //       ^^^^^^ entity.name.type.alias.cp
-//                ^^^^^^ support.type.builtin.cp
-//                       ^^^^ entity.name.type.cp
+//                ^^^ support.type.builtin.cp
+//                    ^^^^ entity.name.type.cp
 
 trait Seq: Index + Ord
 //    ^^^ entity.name.type.trait.cp
@@ -156,14 +156,14 @@ trait Seq: Index + Ord
     @get fn l(self) -> Cut<Self> = Bounds.from_idx(self.to_idx)
 //   ^^^ entity.name.function.decorator.cp
 //          ^ entity.name.function.cp
-//                                           ^^^^^^^^ entity.name.function.method.cp
-//                                                         ^^^^^^ variable.other.property.cp
+//                                        ^^^^^^^^ entity.name.function.method.cp
+//                                                      ^^^^^^ variable.other.property.cp
 
 pub struct Cut<I: Seq>(ord: 0..=I.K):
-//         ^^^^^^ entity.name.type.struct.cp
-//                   ^^^ entity.name.type.cp
-//                        ^^^ variable.parameter.label.cp
-//                                 ^ entity.name.type.cp
+//         ^^^ entity.name.type.struct.cp
+//                ^^^ support.type.builtin.cp
+//                     ^^^ variable.parameter.label.cp
+//                              ^ entity.name.type.cp
 
 fn longest_true<A>(a: A) -> Int:
 // ^^^^^^^^^^^^ entity.name.function.cp
