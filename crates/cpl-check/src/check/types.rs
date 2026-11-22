@@ -183,23 +183,25 @@ impl<'a> Checker<'a> {
     }
 
     /// `Dsu<0..n>`: a struct's type argument is a domain by name, and a
-    /// range written in place has none.
+    /// range written in place has none. Bounded integer types like `Cell<0..=9>`
+    /// are allowed when the corresponding generic parameter is not used as a domain.
     pub(crate) fn range_as_type_arg(&mut self, name: &str, args: &[ast::Type]) {
-        let Some(range) = args
+        let Some((arg_idx, range)) = args
             .iter()
-            .find(|a| {
-                matches!(&a.kind, TypeKind::Range { lo, hi, .. }
-                    if std::env::var_os("CPL_SPEC").is_none()
-                        || !matches!(
-                            (lo.as_deref().map(|e| &e.kind), hi.as_deref().map(|e| &e.kind)),
-                            (Some(ExprKind::Int(_)), Some(ExprKind::Int(_)))
-                        ))
-            })
+            .enumerate()
+            .find(|(_, a)| matches!(a.kind, TypeKind::Range { .. }))
         else {
             return;
         };
-        if !matches!(self.type_def(name).as_deref(), Some(Def::Struct { .. })) {
+        let Some(Def::Struct { generics, fields, .. }) = self.type_def(name).as_deref().cloned()
+        else {
             return;
+        };
+        if let Some(param) = generics.get(arg_idx) {
+            let used_as_domain = fields.iter().any(|f| ty_uses_as_domain(&f.ty, param));
+            if !used_as_domain {
+                return;
+            }
         }
         let written = self.quote(range.span).to_string();
         let message = format!("`{name}` takes a domain by name, and `{written}` is a range");
@@ -1457,7 +1459,6 @@ pub(crate) fn own_domains(ty: &ast::Type, f: &mut dyn FnMut(&ast::Name)) {
         _ => {}
     }
 }
-
 /// Extracts `(param_name, [trait_names])` from AST `bounds`.
 pub(crate) fn extract_bounds(bounds: &[ast::Bound]) -> Vec<(String, Vec<String>)> {
     bounds
@@ -1776,5 +1777,25 @@ impl<'a> Checker<'a> {
             }
             Ty::Domain(_) | Ty::TypeName(_) => true,
         }
+    }
+}
+
+fn ty_uses_as_domain(ty: &Ty, param: &str) -> bool {
+    match ty {
+        Ty::Pos(d) => d == param,
+        Ty::Array { index, elem } => {
+            index
+                .iter()
+                .any(|i| matches!(i, Ty::Pos(d) | Ty::Param(d) if d == param))
+                || ty_uses_as_domain(elem, param)
+        }
+        Ty::Optional(inner) => ty_uses_as_domain(inner, param),
+        Ty::Tuple(items) => items.iter().any(|i| ty_uses_as_domain(i, param)),
+        Ty::Record(fields) => fields.iter().any(|(_, t)| ty_uses_as_domain(t, param)),
+        Ty::Named { args, .. } => args.iter().any(|a| ty_uses_as_domain(a, param)),
+        Ty::Fn { params, ret } => {
+            params.iter().any(|p| ty_uses_as_domain(&p.ty, param)) || ty_uses_as_domain(ret, param)
+        }
+        _ => false,
     }
 }

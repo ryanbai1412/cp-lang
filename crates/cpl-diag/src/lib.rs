@@ -177,6 +177,8 @@ pub mod codes {
     pub const MOVED_WHILE_CAPTURED: Code = Code("E0607");
     /// A heap value read after `let b = a` moved it.
     pub const USE_AFTER_MOVE: Code = Code("E0608");
+    /// A bare tuple of operators like `(+, max)` instead of `each(+, max)` or `Semiring(max, +)`.
+    pub const BARE_OP_TUPLE: Code = Code("E0703");
 
     pub const AMBIGUOUS_METHOD: Code = Code("E0701");
     /// A context value that is not a compile-time constant. (R09.1.2)

@@ -248,7 +248,7 @@ impl<'a> Parser<'a> {
                 if name.text == "Bounds" {
                     name.text = "Cut".into();
                 }
-                let args = if self.at(T::Lt) {
+                let mut args = if self.at(T::Lt) {
                     self.type_args()
                 } else {
                     Vec::new()
@@ -265,6 +265,22 @@ impl<'a> Parser<'a> {
                     let member = self.name();
                     name.text = format!("{}.{}", name.text, member.text);
                     name.span = name.span.to(member.span);
+                }
+                // `Mod(p)`: runtime-modulus modular integer type (same as `Mod<p>`).
+                if name.text == "Mod"
+                    && args.is_empty()
+                    && self.at(T::LParen)
+                    && self.span().start == name.span.end
+                {
+                    self.bump();
+                    let arg_start = self.start();
+                    let mod_expr = self.expr();
+                    let arg_span = self.span_from(arg_start);
+                    self.expect(T::RParen, "`)` after the modulus");
+                    args.push(Type {
+                        kind: TypeKind::Value(Box::new(mod_expr)),
+                        span: arg_span,
+                    });
                 }
                 // `Str(len: …)`, `Mint(mod: p)`: a type built from values.
                 if args.is_empty() && self.at(T::LParen) && self.span().start == name.span.end {

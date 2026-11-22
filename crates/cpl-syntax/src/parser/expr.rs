@@ -881,6 +881,54 @@ impl<'a> Parser<'a> {
     fn primary(&mut self) -> Expr {
         let start = self.start();
         let kind = match self.peek() {
+            T::At
+                if self.peek_n(1) == T::Ident
+                    && self
+                        .tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| t.span.text(self.src) == "cpp") =>
+            {
+                self.bump();
+                self.bump();
+                self.expect(T::LParen, "`(` and the C++ snippet after `@cpp`");
+                let code = if self.at(T::Str) {
+                    let raw = self.text();
+                    let inner = raw.strip_prefix('"').and_then(|s| s.strip_suffix('"')).unwrap_or(raw);
+                    let s = unescape(inner);
+                    self.bump();
+                    s
+                } else {
+                    self.error(Diagnostic::error(
+                        codes::EXPECTED_EXPR,
+                        self.span(),
+                        "expected a string literal in `@cpp(...)`",
+                    ));
+                    String::new()
+                };
+                self.expect(T::RParen, "`)`");
+                let trimmed = code.trim();
+                let inner = trimmed
+                    .strip_prefix("return ")
+                    .and_then(|s| s.strip_suffix(';'))
+                    .map(str::trim);
+                if let Some(expr_src) = inner {
+                    let parsed = crate::parse_file(expr_src);
+                    if parsed.diagnostics.is_empty() && parsed.items.len() == 1 {
+                        if let Some(Stmt {
+                            kind: StmtKind::Expr(e),
+                            ..
+                        }) = parsed
+                            .items
+                            .into_iter()
+                            .next()
+                            .and_then(|(_, item)| item.stmts.into_iter().next())
+                        {
+                            return e;
+                        }
+                    }
+                }
+                ExprKind::Tuple(Vec::new())
+            }
             T::Dot if self.peek_n(1) == T::Int => {
                 self.bump();
                 let digits = self.text().to_string();
@@ -1004,7 +1052,21 @@ impl<'a> Parser<'a> {
             }
             T::LParen => {
                 self.bump();
-                if self.eat(T::DotDot) {
+                if matches!(self.peek(), T::Plus | T::Star | T::Caret | T::Amp | T::Pipe)
+                    && self.peek_n(1) == T::Comma
+                {
+                    let op_text = self.text().to_string();
+                    self.pos = super::after_group(self.tokens, self.pos.saturating_sub(1));
+                    let span = self.span_from(start);
+                    self.error(Diagnostic::error(
+                        codes::BARE_OP_TUPLE,
+                        span,
+                        format!(
+                            "`({op_text}, ...)` is not an operation; write `each({op_text}, ...)` or `Semiring(...)`"
+                        ),
+                    ));
+                    ExprKind::Error
+                } else if self.eat(T::DotDot) {
                     let base = self.expr();
                     if self.at_ident("without") {
                         self.bump();

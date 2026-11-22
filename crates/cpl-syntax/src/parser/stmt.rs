@@ -56,6 +56,26 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         let mut decorators = Vec::new();
+        // `@trusted:` block (opt out of runtime checks in this block).
+        if self.at(T::At)
+            && self.peek_n(1) == T::Ident
+            && self.peek_n(2) == T::Colon
+            && self
+                .tokens
+                .get(self.pos + 1)
+                .is_some_and(|t| t.span.text(self.src) == "trusted")
+        {
+            self.bump();
+            self.bump();
+            let block = self.colon_block("the `@trusted` block");
+            self.end_stmt(start);
+            return Stmt {
+                kind: StmtKind::Unchecked(block),
+                span: self.span_from(start),
+                decorators,
+                public,
+            };
+        }
         // `@law assoc(a, b, c) = op(op(a, b), c) == op(a, op(b, c))`.
         if self.at(T::At)
             && self.peek_n(1) == T::Ident
