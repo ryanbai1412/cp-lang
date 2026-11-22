@@ -2877,7 +2877,40 @@ struct DelQuads:
 /// example: `voronoi_cells([Pt(-1, 0), Pt(1, 0)], 2.0)[0] == [Vec(-2.0, -2.0), Vec(0.0, -2.0), Vec(0.0, 2.0), Vec(-2.0, 2.0)]`
 /// example: `voronoi_cells([Pt(-1, 0), Pt(1, 0)], 2.0)[1] == [Vec(0.0, -2.0), Vec(2.0, -2.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]`
 /// example: `voronoi_cells([Pt(0, 0)], 1.0)[0] == [Vec(-1.0, -1.0), Vec(1.0, -1.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)]`
-pub fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec> = todo
+@allow(unproven_list_index)
+pub fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>:
+    assert bound > 0.0, "`voronoi_cells` needs `bound > 0.0`"
+    let keys = [k for k in D]
+    let cells = voronoi_idx([pts[k] for k in keys], bound)
+    var out: [D]List<Vec> = []
+    for i in 0..keys.len: out[keys[i]] = cells[i]
+    out
+
+@allow(unproven_list_index)
+fn voronoi_idx(ps: List<Pt>, bound: F64) -> List<List<Vec>>:
+    let n = ps.len
+    var near: List<List<Int>> = [[] for _ in 0..n]
+    let tris = delaunay_idx(ps)
+    for (a, b, c) in tris:
+        for (u, v) in [(a, b), (b, c), (c, a)]:
+            near[u].push(v)
+            near[v].push(u)
+    if tris.is_empty and n > 1:
+        var order = [i for i in 0..n]
+        order.sort(by: i => (ps[i].x, ps[i].y))
+        for i in 1..n:
+            near[order[i - 1]].push(order[i])
+            near[order[i]].push(order[i - 1])
+    var cells: List<List<Vec>> = []
+    for i in 0..n:
+        let p = Vec(F64(ps[i].x), F64(ps[i].y))
+        var planes: List<HalfPlane> = []
+        for j in near[i]:
+            let q = Vec(F64(ps[j].x), F64(ps[j].y))
+            let d = q - p
+            planes.push(HalfPlane((p + q) * 0.5, Vec(-d.y, d.x)))
+        cells.push(half_plane_intersect(planes, bound: Some(bound)))
+    cells
 
 // ---- 3D exact & floating-point geometry
 
@@ -4021,3 +4054,26 @@ fn delaunay_is_a_ccw_empty_circle_triangulation_of_the_hull():
         assert total == area2(hull)
         assert used.all(u => u)
         assert tris == tris.sorted()
+
+@test
+fn voronoi_cells_tile_the_box_with_points_nearest_their_site():
+    for _ in 0..40:
+        var seen: List<Pt> = []
+        for _ in 0..rand(1, 25):
+            let q = Pt(rand(-5, 5), rand(-5, 5))
+            if not seen.contains(q): seen.push(q)
+        let cells = voronoi_cells(seen, 6.0)
+        var total = 0.0
+        for i in 0..seen.len:
+            let cell = cells[i]
+            assert cell.len >= 3
+            var a = 0.0
+            for k in 0..cell.len:
+                let u = cell[k]
+                let w = cell[(k + 1) % cell.len]
+                a += u.x * w.y - u.y * w.x
+                let own = (u - Vec(F64(seen[i].x), F64(seen[i].y))).norm2
+                for q in seen: assert own <= (u - Vec(F64(q.x), F64(q.y))).norm2 + 1e-6
+            assert a > 0.0
+            total += a / 2.0
+        assert abs(total - 144.0) < 1e-6
