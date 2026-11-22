@@ -5555,7 +5555,7 @@ impl<'a> Lowerer<'a> {
             (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
             (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
             (
-                Ty::List(_) | Ty::ListView(_) | Ty::MutView(_) | Ty::Str | Ty::StrView,
+                Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Str | Ty::StrView,
                 "keys",
             ) => {
                 let lo = match &value.kind {

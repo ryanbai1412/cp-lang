@@ -2183,7 +2183,7 @@ impl<'a> Lowerer<'a> {
         let self_item = format!("Self.{item}");
         let unwrap_seq = |seq_ty: &Ty| -> Option<Ty> {
             match seq_ty {
-                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) | Ty::Range(e) => {
+                Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) | Ty::Range(e) => {
                     Some((**e).clone())
                 }
                 Ty::Str | Ty::StrView => Some(Ty::Char),
@@ -2919,8 +2919,10 @@ impl<'a> Lowerer<'a> {
             "Str" => Ty::Str,
             "List" | "Iter" | "Seq" => Ty::list(arg(self, 0)),
             "Slice" => match arg(self, 0) {
-                Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => Ty::ListView(e),
+                Ty::List(e) | Ty::MutView(e) => Ty::ListView(e, Dim::Int),
+                Ty::ListView(e, d) => Ty::ListView(e, d),
                 Ty::Str | Ty::StrView => Ty::StrView,
+                Ty::Array { elem, dims } if dims.len() == 1 => Ty::ListView(elem, dims[0]),
                 Ty::Array { elem, .. } => Ty::List(elem),
                 other => other,
             },
