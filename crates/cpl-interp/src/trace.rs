@@ -827,6 +827,16 @@ impl Tracer {
             return;
         }
         let ty = &view.program.globals[id].ty;
+        if let (Kind::Scalar, Value::Int(v), Ty::Int) = (self.kinds[var], value, ty) {
+            if v.unsigned_abs() <= MAX_EXACT {
+                return self.rec.log.set_int(var, *v);
+            }
+        }
+        if let Some((i, v)) = item.filter(|_| self.kinds[var] == Kind::Array).and_then(|i| Some((i, int_item(value, ty, i)?))) {
+            if self.rec.log.set_int_item(var, i, v) {
+                return;
+            }
+        }
         if let Some(json) = item.filter(|_| self.kinds[var] == Kind::Array).and_then(|i| item_json(value, ty, i, view)) {
             if self.rec.log.set_item(var, item.unwrap_or_default(), &json) {
                 return;
@@ -1568,6 +1578,22 @@ fn parents_of(value: &Value) -> Option<Vec<Option<i64>>> {
             })
             .collect(),
     )
+}
+
+/// Past this a JSON number is no longer exact.
+const MAX_EXACT: u64 = 9_007_199_254_740_991;
+
+/// Item `index` of a one-dimensional array of `Int`s, when its JSON is
+/// the number itself.
+fn int_item(value: &Value, ty: &Ty, index: usize) -> Option<i64> {
+    let (Value::Array(array), Ty::Array { dims, elem }) = (value, ty) else { return None };
+    if dims.len() != 1 || !matches!(**elem, Ty::Int) || array.len() > MAX_CELLS {
+        return None;
+    }
+    match array.get(index)? {
+        Value::Int(v) if v.unsigned_abs() <= MAX_EXACT => Some(v),
+        _ => None,
+    }
 }
 
 /// Item `index` of a one-dimensional array or list, as JSON, as it is in

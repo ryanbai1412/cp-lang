@@ -153,6 +153,45 @@ fn each_test_case_prints_anew() {
     assert!(first.is_some(), "the first case printed its two lines");
 }
 
+const WIDE: &str = "\
+var x = 0
+var a: [0..4]Int = 0
+for i in 0..3000:
+    x = (i - 1500) * 3000000000000 + i
+    a[i % 4] = x * (i % 2) + i
+print(x, a[0])
+";
+
+/// `Int`s kept raw, in and past 32 bits and past what a JSON number holds
+/// exactly, read back as the run wrote them, from any step.
+#[test]
+fn raw_ints_read_back_as_written() {
+    let rec = record(WIDE, "", TraceConfig::default());
+    let var = |name: &str| rec.vars.iter().position(|v| v.id == name).unwrap();
+    let (x, a) = (var("x"), var("a"));
+    let value = |k: usize, var: usize| rec.step(k).unwrap().values.iter().find(|(v, _)| *v == var).map(|(_, v)| v.to_string());
+    let json = |v: i64| if v.unsigned_abs() > 9_007_199_254_740_991 { format!("\"{v}\"") } else { v.to_string() };
+    let mut xs = Vec::new();
+    for k in 0..rec.len() {
+        if let Some(got) = value(k, x) {
+            if xs.last() != Some(&got) {
+                xs.push(got);
+            }
+        }
+    }
+    let want: Vec<String> = std::iter::once("0".to_string())
+        .chain((0..3000i64).map(|i| json((i - 1500) * 3_000_000_000_000 + i)))
+        .collect();
+    assert_eq!(xs, want);
+    let last = (2996..3000i64).map(|i| json(((i - 1500) * 3_000_000_000_000 + i) * (i % 2) + i));
+    let cells: Vec<String> = last.collect();
+    assert_eq!(value(rec.len() - 1, a).unwrap(), format!("[{}]", cells.join(",")));
+    let walked: Vec<String> = rec.steps(0..rec.len()).map(|s| format!("{s:?}")).collect();
+    for k in (0..rec.len()).rev().step_by(7) {
+        assert_eq!(format!("{:?}", rec.step(k).unwrap()), walked[k], "step {k}");
+    }
+}
+
 /// The budgets of a debug session at 10^7 steps: stepping back answers
 /// in under 50 ms, recording makes the run at most 3x slower, and the
 /// recording takes a few hundred MB. `cargo test --release -p cpl-interp

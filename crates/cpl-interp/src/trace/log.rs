@@ -27,6 +27,10 @@ struct Piece {
 enum Slot {
     Whole(Text),
     Items(Arc<Vec<Piece>>),
+    /// An `Int`, kept raw and written as JSON when a step is shown.
+    Int(i64),
+    /// An array of `Int`s whose cells change one at a time, kept raw.
+    Ints(Arc<Vec<i64>>),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -36,6 +40,16 @@ pub(super) enum Delta {
     /// An item of an array variable has this value now: the text starts
     /// with the item's index, as LEB128.
     Item(Var, Text),
+    /// An `Int` variable holds this value now.
+    SmallInt(Var, i32),
+    /// An `Int` variable holds [`Log::ints`] at this index now.
+    Int(Var, u32),
+    /// An item of an array of `Int`s holds a new value: [`Log::ints`] at
+    /// this index holds the item's index in its high half and the value
+    /// in its low half.
+    SmallIntItem(Var, u32),
+    /// As [`Delta::SmallIntItem`], with the index and the value in two.
+    IntItem(Var, u32),
     /// A variable went out of scope.
     Unset(Var),
     /// The tree form of a `[V]?V` variable.
@@ -60,7 +74,14 @@ fn narrow(var: usize) -> Var {
 impl Delta {
     fn var(self) -> Option<u32> {
         match self {
-            Delta::Set(var, _) | Delta::Item(var, _) | Delta::Unset(var) | Delta::Tree(var, _) => Some(var as u32),
+            Delta::Set(var, _)
+            | Delta::Item(var, _)
+            | Delta::SmallInt(var, _)
+            | Delta::Int(var, _)
+            | Delta::SmallIntItem(var, _)
+            | Delta::IntItem(var, _)
+            | Delta::Unset(var)
+            | Delta::Tree(var, _) => Some(var as u32),
             _ => None,
         }
     }
@@ -128,6 +149,8 @@ pub(super) struct Log {
     entries: Vec<Entry>,
     changes: Vec<Delta>,
     text: Vec<u8>,
+    /// The raw values of [`Delta::Int`] and [`Delta::IntItem`].
+    ints: Vec<i64>,
     snapshots: Vec<Snapshot>,
     /// What the snapshots hold, in bytes.
     snapshot_bytes: usize,
@@ -165,6 +188,7 @@ impl Log {
     pub fn bytes(&self) -> usize {
         self.text.len()
             + self.changes.len() * std::mem::size_of::<Delta>()
+            + self.ints.len() * std::mem::size_of::<i64>()
             + self.entries.len() * std::mem::size_of::<Entry>()
             + self.out.len() * std::mem::size_of::<Text>()
             + self.snapshot_bytes
@@ -213,11 +237,12 @@ impl Log {
                     && next(b"]")
                     && at == json.len()
             }
+            Slot::Int(_) | Slot::Ints(_) => slot_json(&self.text, slot) == std::str::from_utf8(json).unwrap_or_default(),
         }
     }
 
     fn push(&mut self, delta: Delta) {
-        apply(&mut self.now, delta, &self.text);
+        apply(&mut self.now, delta, &self.text, &self.ints);
         self.changes.push(delta);
     }
 
@@ -226,6 +251,53 @@ impl Log {
         if !self.now.values.get(var).and_then(Option::as_ref).is_some_and(|slot| self.holds(slot, json)) {
             let text = self.keep(json);
             self.push(Delta::Set(narrow(var), text));
+        }
+    }
+
+    /// `var` holds the `Int` `value` now.
+    pub fn set_int(&mut self, var: usize, value: i64) {
+        if !matches!(self.now.values.get(var), Some(Some(Slot::Int(now))) if *now == value) {
+            let delta = match i32::try_from(value) {
+                Ok(small) => Delta::SmallInt(narrow(var), small),
+                Err(_) => {
+                    self.ints.push(value);
+                    Delta::Int(narrow(var), self.ints.len() as u32 - 1)
+                }
+            };
+            self.push(delta);
+        }
+    }
+
+    /// Item `index` of the array of `Int`s `var` holds `value` now. False
+    /// when `var` does not hold such an array with that item.
+    pub fn set_int_item(&mut self, var: usize, index: usize, value: i64) -> bool {
+        let (Ok(small), Ok(at)) = (Var::try_from(var), i64::try_from(index)) else { return false };
+        let Some(Some(slot)) = self.now.values.get_mut(var) else { return false };
+        if let Slot::Whole(text) = slot {
+            match ints_of(&self.text, piece_of(&self.text, *text)) {
+                Some(items) => *slot = Slot::Ints(Arc::new(items)),
+                None => return false,
+            }
+        }
+        let Slot::Ints(items) = slot else { return false };
+        match items.get(index) {
+            None => false,
+            Some(&now) if now == value => true,
+            Some(_) => {
+                let pos = self.ints.len() as u32;
+                let delta = match (u32::try_from(at), i32::try_from(value)) {
+                    (Ok(index), Ok(v)) => {
+                        self.ints.push(((index as i64) << 32) | (v as u32 as i64));
+                        Delta::SmallIntItem(small, pos)
+                    }
+                    _ => {
+                        self.ints.extend([at, value]);
+                        Delta::IntItem(small, pos)
+                    }
+                };
+                self.push(delta);
+                true
+            }
         }
     }
 
@@ -366,7 +438,8 @@ impl Log {
         }
         let items: usize = self.now.values.iter().flatten().map(|slot| match slot {
             Slot::Items(items) => items.len(),
-            Slot::Whole(_) => 0,
+            Slot::Ints(items) => items.len(),
+            Slot::Whole(_) | Slot::Int(_) => 0,
         }).sum();
         let bytes = (self.now.values.len() + self.now.trees.len()) * 8 + items * std::mem::size_of::<Piece>();
         if changes * std::mem::size_of::<Delta>() >= 4 * bytes {
@@ -400,6 +473,9 @@ impl Log {
     fn item_written(&self, changes: std::ops::Range<usize>) -> Option<(usize, usize)> {
         self.changes[changes].iter().rev().find_map(|delta| match *delta {
             Delta::Item(var, text) => Some((var as usize, item_of(&self.text, text).0 as usize)),
+            Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
+                Some((var as usize, int_item(*delta, &self.ints).0))
+            }
             _ => None,
         })
     }
@@ -409,6 +485,7 @@ impl Log {
         self.entries.shrink_to_fit();
         self.changes.shrink_to_fit();
         self.text.shrink_to_fit();
+        self.ints.shrink_to_fit();
         self.snapshots.shrink_to_fit();
         self.frame_runs.shrink_to_fit();
         self.notes.shrink_to_fit();
@@ -463,6 +540,8 @@ impl Log {
                         })
                         .collect(),
                 )),
+                Slot::Int(v) => Slot::Int(*v),
+                Slot::Ints(items) => Slot::Ints(items.clone()),
             });
             start.values.push(slot);
         }
@@ -482,12 +561,25 @@ impl Log {
                     let json = std::str::from_utf8(self.raw(item)).unwrap_or_default();
                     Delta::Item(var, log.keep_item(index, json))
                 }
+                Delta::Int(var, at) => {
+                    log.ints.push(self.ints[at as usize]);
+                    Delta::Int(var, log.ints.len() as u32 - 1)
+                }
+                Delta::SmallIntItem(var, at) => {
+                    log.ints.push(self.ints[at as usize]);
+                    Delta::SmallIntItem(var, log.ints.len() as u32 - 1)
+                }
+                Delta::IntItem(var, at) => {
+                    let at = at as usize;
+                    log.ints.extend_from_slice(&self.ints[at..at + 2]);
+                    Delta::IntItem(var, log.ints.len() as u32 - 2)
+                }
                 Delta::Tree(var, text) => Delta::Tree(var, moved(text, &mut log)),
                 Delta::Locals(text) => Delta::Locals(moved(text, &mut log)),
                 other => other,
             };
             log.changes.push(delta);
-            apply(&mut log.now, delta, &log.text);
+            apply(&mut log.now, delta, &log.text, &log.ints);
         }
         let shift = first as u32;
         for entry in &self.entries[drop..] {
@@ -526,7 +618,7 @@ impl Log {
 
     fn replay_into(&self, state: &mut State, from: usize, to: usize) {
         for delta in &self.changes[from..to] {
-            apply(state, *delta, &self.text);
+            apply(state, *delta, &self.text, &self.ints);
         }
     }
 
@@ -596,21 +688,7 @@ impl Log {
         if let Some(tree) = state.trees.get(var).copied().flatten().filter(|_| tree) {
             return Some(self.get(tree).to_string());
         }
-        match state.values.get(var)?.as_ref()? {
-            Slot::Whole(text) => Some(self.get(*text).to_string()),
-            Slot::Items(items) => {
-                let mut json = String::with_capacity(2 + items.iter().map(|i| i.len as usize + 1).sum::<usize>());
-                json.push('[');
-                for (i, item) in items.iter().enumerate() {
-                    if i > 0 {
-                        json.push(',');
-                    }
-                    json.push_str(std::str::from_utf8(self.raw(*item)).unwrap_or_default());
-                }
-                json.push(']');
-                Some(json)
-            }
-        }
+        Some(slot_json(&self.text, state.values.get(var)?.as_ref()?))
     }
 
     pub fn locals_in(&self, state: &State) -> &str {
@@ -738,7 +816,66 @@ fn split(bytes: &[u8], whole: Piece) -> Option<Vec<Piece>> {
     Some(items)
 }
 
-fn apply(state: &mut State, delta: Delta, bytes: &[u8]) {
+/// A slot's value as JSON.
+fn slot_json(bytes: &[u8], slot: &Slot) -> String {
+    let raw = |piece: &Piece| std::str::from_utf8(&bytes[piece.at as usize..(piece.at + piece.len) as usize]).unwrap_or_default();
+    match slot {
+        Slot::Whole(text) => raw(&piece_of(bytes, *text)).to_string(),
+        Slot::Int(v) => v.to_string(),
+        Slot::Items(items) => {
+            let mut json = String::with_capacity(2 + items.iter().map(|i| i.len as usize + 1).sum::<usize>());
+            json.push('[');
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    json.push(',');
+                }
+                json.push_str(raw(item));
+            }
+            json.push(']');
+            json
+        }
+        Slot::Ints(items) => {
+            use std::fmt::Write;
+            let mut json = String::with_capacity(2 + items.len() * 4);
+            json.push('[');
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    json.push(',');
+                }
+                let _ = write!(json, "{item}");
+            }
+            json.push(']');
+            json
+        }
+    }
+}
+
+/// The items of the JSON array `whole` when each is an integer that
+/// reads back as it is written.
+fn ints_of(bytes: &[u8], whole: Piece) -> Option<Vec<i64>> {
+    split(bytes, whole)?
+        .iter()
+        .map(|item| {
+            let text = std::str::from_utf8(&bytes[item.at as usize..(item.at + item.len) as usize]).ok()?;
+            let v: i64 = text.parse().ok()?;
+            (v.to_string() == text).then_some(v)
+        })
+        .collect()
+}
+
+/// The index and the value a [`Delta::SmallIntItem`] or [`Delta::IntItem`] writes.
+fn int_item(delta: Delta, ints: &[i64]) -> (usize, i64) {
+    match delta {
+        Delta::SmallIntItem(_, at) => {
+            let packed = ints[at as usize];
+            ((packed >> 32) as usize, packed as i32 as i64)
+        }
+        Delta::IntItem(_, at) => (ints[at as usize] as usize, ints[at as usize + 1]),
+        _ => unreachable!("not an item of Ints"),
+    }
+}
+
+fn apply(state: &mut State, delta: Delta, bytes: &[u8], ints: &[i64]) {
     let grow = |slots: &mut Vec<Option<Text>>, var: Var| {
         if slots.len() <= var as usize {
             slots.resize(var as usize + 1, None);
@@ -760,6 +897,28 @@ fn apply(state: &mut State, delta: Delta, bytes: &[u8]) {
             }
             if let Some(Slot::Items(items)) = slot {
                 Arc::make_mut(items)[index as usize] = item;
+            }
+        }
+        Delta::Int(var, at) => {
+            if state.values.len() <= var as usize {
+                state.values.resize(var as usize + 1, None);
+            }
+            state.values[var as usize] = Some(Slot::Int(ints[at as usize]));
+        }
+        Delta::SmallInt(var, value) => {
+            if state.values.len() <= var as usize {
+                state.values.resize(var as usize + 1, None);
+            }
+            state.values[var as usize] = Some(Slot::Int(value.into()));
+        }
+        Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
+            let (index, value) = int_item(delta, ints);
+            let slot = &mut state.values[var as usize];
+            if let Some(Slot::Whole(whole)) = slot {
+                *slot = Some(Slot::Ints(Arc::new(ints_of(bytes, piece_of(bytes, *whole)).expect("an array of Ints"))));
+            }
+            if let Some(Slot::Ints(items)) = slot {
+                Arc::make_mut(items)[index] = value;
             }
         }
         Delta::Stage(stage) => state.stage = stage,
