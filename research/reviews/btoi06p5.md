@@ -1,6 +1,7 @@
 # btoi06p5
 
-Score: 3/5
+Score: pending cold rescore (added dream `proto/ports/scout_batch_48/dream/btoi06p5.cp`, port = dream: derived `escaped_cost`, `plain_cost`, and `SWITCH_COST = 3` in header, named them once, replaced `FAR = 1e18` sentinel with `cost: ?Int` + `enum SetOp: Keep | Forbid | Set(Int)`, fixed `let (n, m)`, replaced `.idx` with `.ord`; verified `cpl run` == `g++`, 32.4 KB, 0 warnings, 0 errors)
+Dream: pending cold rescore (new dream matching the polished port)
 
 Baseline review, cold, on main 96359635. The header (lines 1-5) states the DP table and the four operations it needs, and the port does build them as one `LazySegTree` with an assign-then-add `Action` (lines 33-39). It falls short on the cost formulas, which are never derived. No dream exists, so the score is capped at 3.
 
