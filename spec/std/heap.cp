@@ -970,7 +970,53 @@ fn take_and_small_into_large_swap():
     assert hi.is_empty and hi_moved.pop() == 9 and hi_moved.pop() == 6
 
 @test
-fn heap_of_and_erasable_and_indexed_heaps() = todo
+fn heap_of_and_erasable_and_indexed_heaps():
+    let xs = [(i * 37 + 11) % 101 - 50 for i in 0..35]
+    var sorted_xs = copy(xs)
+    sorted_xs.sort()
+    var hmin: MinHeap<Int> = Heap.of(xs)
+    var hmax: MaxHeap<Int> = MaxHeap.of(xs)
+    for i in 0..xs.len:
+        assert hmin.pop() == sorted_xs[i]
+        assert hmax.pop() == sorted_xs[xs.len - 1 - i]
+
+    var emin = ErasableHeap<Int>()
+    var emax = ErasableHeap<Desc<Int>>()
+    for x in [5, 1, 9, 1, 7, 3]:
+        emin.push(x)
+        emax.push(desc(x))
+    emin.remove(1)
+    emin.remove(7)
+    emax.remove(desc(9))
+    emax.remove(desc(1))
+    assert emin.len == 4 and emin.peek() == 1 and emin.pop() == 1 and emin.pop() == 3
+    assert emax.len == 4 and emax.peek() == desc(7) and emax.pop() == desc(7) and emax.pop() == desc(5)
+    emin.clear()
+    assert emin.is_empty and emin.peek() == None and emin.pop() == None
+
+    domain V = 0..8
+    var ih = IndexedHeap<V, Int>()
+    assert ih.is_empty and ih.peek == None
+    assert ih.decrease(V(2), 10)
+    assert not ih.decrease(V(2), 15)
+    assert ih.decrease(V(2), 4)
+    ih.set(V(5), 2)
+    ih.set(V(1), 7)
+    assert ih.len == 3 and ih.contains(V(5)) and ih.get(V(2)) == 4
+    assert ih.peek == (V(5), 2)
+    assert ih.pop() == (V(5), 2)
+    assert not ih.contains(V(5)) and ih.get(V(5)) == None
+    assert ih.increase(V(2), 9) and ih.get(V(2)) == 9
+    assert ih.remove(V(1)) == 7 and ih.remove(V(1)) == None
+    assert ih.pop() == (V(2), 9) and ih.is_empty
+
+    var xh = IndexedHeap<V, Desc<Int>>()
+    xh.set(V(0), desc(3))
+    assert xh.decrease(V(0), desc(8))
+    assert not xh.decrease(V(0), desc(5))
+    xh.set(V(3), desc(12))
+    assert xh.peek == (V(3), desc(12)) and xh.pop() == (V(3), desc(12))
+    assert xh.pop() == (V(0), desc(8)) and xh.is_empty
 
 /// `Heap<T>()`: pops the smallest first.
 pub type MinHeap<T> = Heap<T>
