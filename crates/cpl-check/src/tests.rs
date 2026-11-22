@@ -3548,3 +3548,19 @@ fn integer_domain_positions_and_plain_enums_read_and_print_in_o1() {
     assert_eq!(cost(&mut db, 1, "print").as_deref(), Some("O(1)"));
     assert_eq!(cost(&mut db, 2, "read"), None);
 }
+
+#[test]
+fn segment_tree_methods_cost_log_of_the_receivers_domain() {
+    let src = "use std.segtree.SegTree\nuse std.lazy.{LazySegTree, AddMax}\ndomain V = 0..10\n\
+               fn f(s: SegTree<V, Int>, mut t: LazySegTree<V, Int, Int>, a: V) -> Int:\n    \
+               t.apply(a.., 1)\n    s.fold(..a) + t.fold(a..)\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let cost = |db: &mut Database, nth: usize, name: &str| {
+        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
+        db.hover("a.cp", at).and_then(|h| h.text.lines().find_map(|l| l.strip_prefix("cost: ")).map(str::to_string))
+    };
+    assert_eq!(cost(&mut db, 0, "apply(").as_deref(), Some("O(log |V|)"));
+    assert_eq!(cost(&mut db, 0, "fold(").as_deref(), Some("O(log |V|)"));
+    assert_eq!(cost(&mut db, 1, "fold(").as_deref(), Some("O(log |V|)"));
+}

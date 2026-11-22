@@ -20,7 +20,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
     size: 0..=2_000_000_000
     log: 0..=64
 
-    /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(n).
+    /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(|D|).
     pub fn new(act: Action<T, F>, a: ?[D]T = none, fill: ?T = none) -> LazySegTree<D, T, F>:
         let size = bit_ceil(D.K)
         var t = List.filled(2 * size, act.over.id)
@@ -76,7 +76,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
         t[p] = x
         for k in 1..=log: self.pull(p >> k)
 
-    /// Push down to leaf `i`, replace its value with `f(cur)`, and pull back up in one O(log n) traversal.
+    /// Push down to leaf `i`, replace its value with `f(cur)`, and pull back up in one traversal. O(log |D|).
     pub fn update(mut self, i: D, f: T -> T):
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)
@@ -104,7 +104,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
     pub @get fn monoid(self) -> Monoid<T> = act.over
 
     /// The fold of a range, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
-    /// An empty range gives the identity.
+    /// An empty range gives the identity. O(log |D|).
     pub fn fold(mut self, r: Range<D>) -> T:
         let m = act.over
         let (lo, hi) = r.ends
@@ -124,7 +124,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
                 h /= 2
         m.op(a, b)
 
-    /// Every position in the range takes the update `f`.
+    /// Every position in the range takes the update `f`. O(log |D|).
     pub fn apply(mut self, r: Range<D>, f: F):
         let (lo, hi) = r.ends
         if lo == hi: return
@@ -145,7 +145,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
             if ((h0 >> i) << i) != h0: self.pull((h0 - 1) >> i)
 
     /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
-    /// `ok` must hold for the identity and switch from true to false at most once.
+    /// `ok` must hold for the identity and switch from true to false at most once. O(log |D|).
     pub fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
         let m = act.over
         if from.ord == D.K: return from
@@ -167,7 +167,7 @@ pub struct LazySegTree<D, T, F>(act: Action<T, F>):
             if (l & -l) == l: break
         D.cuts.nth(D.K)
 
-    /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
+    /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`. O(log |D|).
     pub fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
         let m = act.over
         if to.ord == 0: return to
@@ -252,7 +252,7 @@ pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) ->
     size: Int
     log: Int
 
-    /// A dual tree over `a` or filled with `fill`. O(n).
+    /// A dual tree over `a` or filled with `fill`. O(|D|).
     pub fn new(
         id: F,
         compose: (F, F) -> F,
@@ -289,7 +289,7 @@ pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) ->
             if ((l >> i) << i) != l: self.push(l >> i)
             if ((h >> i) << i) != h: self.push((h - 1) >> i)
 
-    /// Apply tag `f` to every position in `r`. O(log n).
+    /// Apply tag `f` to every position in `r`. O(log |D|).
     pub fn apply(mut self, r: Range<D>, f: F):
         let (lo, hi) = r.ends
         if lo == hi: return
@@ -306,25 +306,25 @@ pub struct DualSegTree<D, T, F>(id: F, compose: (F, F) -> F, apply_fn: (F, T) ->
             l /= 2
             h /= 2
 
-    /// Current value at position `i`. O(log n).
+    /// Current value at position `i`. O(log |D|).
     pub fn get(mut self, i: D) -> T:
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)
         val[i.to_idx]
 
-    /// Overwrite position `i` with `x`. O(log n).
+    /// Overwrite position `i` with `x`. O(log |D|).
     pub fn set(mut self, i: D, x: T):
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)
         val[i.to_idx] = x
 
-    /// Position `i` as a writable place: `st.at(i) += x`, after pushing the tags above it. O(log n).
+    /// Position `i` as a writable place: `st.at(i) += x`, after pushing the tags above it. O(log |D|).
     pub fn at(mut self, i: D) lends mut T:
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)
         lend mut val[i.to_idx]
 
-    /// Replace position `i` with `f(cur)` in one O(log n) pass.
+    /// Replace position `i` with `f(cur)` in one pass. O(log |D|).
     pub fn update(mut self, i: D, f: T -> T):
         let p = i.to_idx + size
         for k in (1..=log).rev: self.push(p >> k)

@@ -15,7 +15,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// What each position holds, for a tree built with `of`.
     source: ?(D -> T)
 
-    /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(n).
+    /// A tree over `a`, filled with `fill`, or with the identity everywhere. O(|D|).
     pub fn new<M>(op: M, a: ?[D]T = none, fill: ?T = none) -> SegTree<D, T>:
         let m = Monoid<T>.of(op)
         let size = bit_ceil(D.K)
@@ -30,13 +30,13 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         SegTree(m, t, size, none)
 
     /// A tree whose position `i` holds `f(i)`. When something `f` reads changes, `refresh(i)`
-    /// brings position `i` up to date, so the formula is written once, not at every update. O(n).
+    /// brings position `i` up to date, so the formula is written once, not at every update. O(|D|).
     pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T>:
         var s = SegTree<D, T>.new(op, [D] i => f(i))
         s.source = f
         s
 
-    /// Recompute position `i` from the formula given to `of`. O(log n).
+    /// Recompute position `i` from the formula given to `of`. O(log |D|).
     pub fn refresh(mut self, i: D):
         assert source != none  // only a tree built with `of` has a formula
         let f = source!
@@ -63,12 +63,12 @@ pub struct SegTree<D, T>(m: Monoid<T>):
                 p /= 2
                 t[p] = m.op(t[2 * p], t[2 * p + 1])
 
-    /// Replace the value at `i` with `f` of it, as `LazySegTree.update` does. O(log n).
+    /// Replace the value at `i` with `f` of it, as `LazySegTree.update` does. O(log |D|).
     pub fn update(mut self, i: D, f: T -> T):
         self.set(i, f(self.get(i)))
 
     /// The fold of a range, left to right: `st.fold(l..=r)`, `st.fold(..i)`, `st.fold(i..)`.
-    /// An empty range gives the identity.
+    /// An empty range gives the identity. O(log |D|).
     pub fn fold(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
         var (l, h) = (lo + size, hi + size)
@@ -92,7 +92,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     pub @get fn monoid(self) -> Monoid<T> = m
 
     /// The furthest boundary `b` right of `from` such that `ok(fold(from..b))`.
-    /// `ok` must hold for the identity and switch from true to false at most once.
+    /// `ok` must hold for the identity and switch from true to false at most once. O(log |D|).
     pub fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
         var l = from.ord + size
         var acc = m.id
@@ -111,7 +111,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
             if (l & -l) == l: break
         D.cuts.nth(D.K)
 
-    /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`.
+    /// The furthest boundary `b` left of `to` such that `ok(fold(b..to))`. O(log |D|).
     pub fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
         var h = to.ord + size
         var acc = m.id

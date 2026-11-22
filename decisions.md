@@ -5411,3 +5411,17 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   1,613; `print` blocks 14 fns instead of 18, `read` and `ask` none.
 - **Reverse.** Make `io_fixed` in `cpl-check` return `ty.is_fixed_size()`
   and drop `fixed_read`.
+
+## 195. Segment tree methods document `O(log |D|)` (2026-11-22)
+
+- **Decision.** Every method of `SegTree`, `LazySegTree` and `DualSegTree`
+  states its cost over the tree's domain: building costs `O(|D|)`, and
+  `apply`, `fold`, `update`, `refresh`, `max_right`, `min_left` and the
+  rest cost `O(log |D|)`. Calls to the tree's own operation, action or
+  `ok` count as one step each, as an operator does (29.46).
+- **Why.** `apply` and `fold` stated no cost and the others said `O(n)`
+  or `O(log n)` without saying what `n` is, so a fn calling them had no
+  estimate. Fns in `corpus/problems` and the examples with an estimate:
+  26 to 27 of 1,613; `apply` no longer blocks any.
+- **Reverse.** Restore the old doc lines in `stdlib/segtree.cp` and
+  `stdlib/lazy.cp`.
