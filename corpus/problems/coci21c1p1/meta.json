@@ -6,14 +6,19 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/coci21c1p1/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_35/coci21c1p1.cp",
    "proto/ports/scout_batch_35/today/coci21c1p1.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "simulation"
+ ],
+ "difficulty": "easy",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "[1..=8]?Int last-scored table; ?? false on a mapped optional."
 }

@@ -24,6 +24,7 @@ and its notes in that record's `notes`.
   that are not bounded types; `Paths` documents both storages.
 - cco21p5: `inf` (the `Int.MAX` that search-dp promised) gets a stub and
   joins the prelude.
+- cmt21r2ztr: `TwoSat` and `Lit` join the prelude.
 - containers: `OrderedSet`/`OrderedMap` in prose renamed to the stubs'
   `SortedSet`/`SortedMap`.
 
