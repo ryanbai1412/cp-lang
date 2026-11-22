@@ -13,7 +13,9 @@ or `Group<T>`. `+`, `max`, `gcd` and `Monoid(id: e, op: f)` are all
 operation values. **Laws** (`Commutative`, `Idempotent`, `Selective`) are
 traits with no methods, implemented by the operation's type as a promise. An
 **action** is a monoid of tags plus how one tag changes a folded value.
-Every range structure takes operation values and offers only the methods
+An **order** is a key fn (`by:`), and a **semiring** is two ops. Sequence
+folds, fast powers, matrices, convolutions, tree DP and Dijkstra take these
+same values. Every range structure takes operation values and offers only the methods
 its operations support. It picks a faster strategy when a law holds,
 but only one that is never worse (the algorithm and its answers stay the
 same). `cpl explain` shows which strategy it picked. **You name
@@ -71,8 +73,8 @@ affine composition) just works.
 
 A bounded `Int` (`0..=1e9`) has a far end, so `min` and `max` are monoids
 on it with no sentinel. An unbounded `Int` has no far end, so `min` on it is
-only an `Op`, and a structure that needs an identity says
-`min needs an identity on Int: use ?Int or a bounded type`.
+only an `Op`: structures over it still build, and their folds return
+`?Int` (section 2).
 
 ### Your own operation
 
@@ -107,47 +109,41 @@ A record type can also be its own operation by implementing `Add`.
 `SegTree(+, a)` over `[D]MaxSub` then uses `MaxSub.zero` and `+`. Nothing
 special is needed, because `+` is generic over `T: Add`.
 
-## 2. Actions
+## 2. Combining operations
 
-An action is a monoid of tags (`F`) plus `apply`, which says what a tag does
-to a folded value of `n` leaves. Tags compose **in time order**,
-`tags.op(old, new)`, the same left-to-right rule as values, so there is no
-separate `compose(new, old)` convention to get backwards.
+Bigger operations are built from smaller ones with plain library fns, so no
+summary needs a hand-written struct unless it carries real logic.
 
-```python
-pub trait Action<M, F>:              # M is the fold op's type, e.g. type of `+`
-    type Tags: Monoid<F>
-    @get fn tags(self) -> Self.Tags
-    fn apply(self, f: F, x: M.T, n: Int) -> M.T
-    law hom(f, a, b) = apply(f, op(a, b), 2) == op(apply(f, a, 1), apply(f, b, 1))
-    law comp(f, g, x) = apply(tags.op(f, g), x, 1) == apply(g, apply(f, x, 1), 1)
-```
-
-**Stock actions are generic over the fold op**, so one name works on every
-fold it makes sense for, and the pairing is checked:
-
-| Action | On `+` | On `min` / `max` | On other ops |
-|---|---|---|---|
-| `add` | `x + f * n` | `x + f` | error: no `impl` |
-| `assign` | `f * n` | `f` | `f` folded `n` times with `op` (O(log n)) |
-| `affine` | `a * x + b * n` | error: not monotone | error |
-| `flip` | swaps `now` / `flipped` of a `Flip<T>` | same | same |
-
-`SegTree(gcd, a, act: add)` is a compile error, `add does not act on gcd`,
-not a wrong answer. Today's combined names (`AddMax`, `AddSum`,
-`AssignMin`) become `SegTree(max, act: add)` and so on.
-
-A custom action, written inline:
+| Form | Meaning | Laws kept |
+|---|---|---|
+| `(+, max)` | a tuple of ops is one op on tuples, field by field | those all parts share |
+| `op.rev()` | `(a, b) => op(b, a)` | all |
+| `op.opt()` | the op on `?T`, `none` as identity: any `Op` becomes a `Monoid` | all |
+| `Monoid(id:, op:)`, `Group(id:, op:, inv:)` | from lambdas | none until stated |
+| `.commutative()`, `.idempotent()` | state a law on an inline value | adds it |
 
 ```python
-let shift = Action(tags: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
-var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)
+var st = SegTree((+, max, min), a.map(x => (x, x, x)))   # sum, max, min at once
+let (s, hi, lo) = st.fold(l..r)
 ```
 
-`n` is computed from the node, never stored, so an action that ignores it
-costs nothing extra. A lambda that takes `(f, x)` without `n` is accepted.
+**Summaries with real logic stay named library types**, each one an `Add`
+(or `Op`) impl plus a constructor from one element: `MaxSub` (best
+subarray), `MinCount`/`MaxCount` (extreme and multiplicity), `Affine`
+(composition of `a x + b`), `Hash` (polynomial string hash, a `Group`), and
+`Mat` under a semiring. `MinIdx`/`MaxIdx` go: `min(by:)` keeps the left
+operand on ties, so it already returns the first minimum (section 3).
 
-## 2a. Orders
+**Reversal.** A fold along a path goes one way up and the other way down.
+That is free for a `Commutative` op. Otherwise the value type implements
+`Reversible` (`x.rev()`: the fold of the same elements read backwards), as
+`MaxSub` and `Hash` do. `fold_path` requires one of the two; asking without
+either is a compile error naming both fixes.
+
+**An `Op` without an identity** still builds every structure; its folds
+return `?T`, `none` for an empty range. The `?` is in the return type, so it
+is visible, and it is exactly `op.opt()`.
+## 3. Orders
 
 An order is the other operation value every contest program passes around:
 `sort`, `min`/`max`/`argmax`, heaps, ordered sets, `bsearch` over sorted
@@ -225,7 +221,101 @@ dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))])   # cost, then hops
   takes `step:` too; it needs `Commutative` only when the graph is
   undirected.
 
-## 3. One vocabulary
+## 4. Actions
+
+An action is a monoid of tags (`F`) plus `apply`, which says what a tag does
+to a folded value of `n` leaves. Tags compose **in time order**,
+`tags.op(old, new)`, the same left-to-right rule as values, so there is no
+separate `compose(new, old)` convention to get backwards.
+
+```python
+pub trait Action<M, F>:              # M is the fold op's type, e.g. type of `+`
+    type Tags: Monoid<F>
+    @get fn tags(self) -> Self.Tags
+    fn apply(self, f: F, x: M.T, n: Int) -> M.T
+    law hom(f, a, b) = apply(f, op(a, b), 2) == op(apply(f, a, 1), apply(f, b, 1))
+    law comp(f, g, x) = apply(tags.op(f, g), x, 1) == apply(g, apply(f, x, 1), 1)
+```
+
+**Stock actions are generic over the fold op**, so one name works on every
+fold it makes sense for, and the pairing is checked:
+
+| Action | On `+` | On `min` / `max` | On other ops |
+|---|---|---|---|
+| `add` | `x + f * n` | `x + f` | error: no `impl` |
+| `assign` | `f * n` | `f` | `f` folded `n` times with `op` (O(log n)) |
+| `affine` | `a * x + b * n` | error: not monotone | error |
+| `flip` | swaps `now` / `flipped` of a `Flip<T>` | same | same |
+
+`SegTree(gcd, a, act: add)` is a compile error, `add does not act on gcd`,
+not a wrong answer. Today's combined names (`AddMax`, `AddSum`,
+`AssignMin`) become `SegTree(max, act: add)` and so on.
+
+A custom action, written inline:
+
+```python
+let shift = Action(tags: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
+var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)
+```
+
+`n` is computed from the node, never stored, so an action that ignores it
+costs nothing extra. A lambda that takes `(f, x)` without `n` is accepted.
+
+## 5. Semirings
+
+Two ops, where `mul` distributes over `add`: what matrix products, path
+algebras and convolutions are generic over.
+
+```python
+pub trait Semiring<T>:
+    type Add: Monoid<T> + Commutative<T>
+    type Mul: Monoid<T>
+    law distrib(a, b, c) = mul(a, add(b, c)) == add(mul(a, b), mul(a, c))
+    law absorb(a) = mul(add.id, a) == add.id
+
+Semiring(+, *)            # counting; the default for numbers
+Semiring(min, +)          # shortest paths (tropical)
+Semiring(max, +)          # longest paths, best scores
+Semiring(or, and)         # reachability
+Semiring(max, min)        # bottleneck
+```
+
+The pair is written with the ops themselves, so the names
+`min_plus`/`max_plus`/`bool_ring` go. Every number type is a
+`Semiring(+, *)` by default, so `over:` is only ever written for the others.
+
+```python
+let m = Mat(over: Semiring(min, +), d)          # d: [V, V]?Int
+let k_steps = pow(m, k)                         # shortest walk of exactly k arcs
+let ways = pow(Mat(adj), k)                     # number of walks: (+, *)
+```
+
+- `Mat<T>(over: S)` multiplies under `S`; `m * m2` is `S.mul`-of-`S.add`.
+  `det`, `inverse` and `rank` need a field (`Mod<P>`, `F64`), and exist only
+  then.
+- Floyd–Warshall is the closure of a `(min, +)`-like semiring: `step:` is
+  its `mul`, `min(by:)` its `add`.
+## 6. Folds on plain sequences
+
+The same values fold any `Seq`, with no structure:
+
+| Form | Meaning | Cost |
+|---|---|---|
+| `xs.fold(op)` | left to right; `T` for a `Monoid`, `?T` for an `Op` | O(n) |
+| `xs.sum()`, `xs.prod()` | `fold(+)`, `fold(*)` | O(n) |
+| `xs.min()`, `xs.max()`, `xs.min(by:)` | `fold(min)` and friends; `?T`, `none` when empty | O(n) |
+| `xs.scan(op)` | the running folds, lazily: a generator | O(1) per item |
+| `pow(x, k, op = *)` | `x` folded with itself `k` times by squaring | O(log k) ops |
+
+`pow` is the one fast power: numbers, `Mod<P>`, matrices under any
+semiring, permutations (`op: compose`), `Affine` maps, and any user monoid.
+`k = 0` needs a `Monoid`; an `Op` traps on it.
+
+```python
+let f = pow(Affine(a, b), k, op: then)     # apply x -> a x + b, k times
+let p = pow(perm, 1e18, op: compose)       # a permutation applied 10^18 times
+```
+## 7. One vocabulary for range structures
 
 Every range structure uses these names, and has a method only when its
 operations support it:
@@ -236,7 +326,7 @@ operations support it:
 | `S(op, fill: x)`, `S(op, [D] i => ...)` | build filled, or from a fn | |
 | `s[i]` | the value at `i` | |
 | `s[i] = x`, `s[i] += y` | point write, through a `lends mut` place | point updates |
-| `s.fold(r)` | fold of `Range<D>` `r`, left to right | `Monoid` (`Op`: traps on empty `r`) |
+| `s.fold(r)` | fold of `Range<D>` `r`, left to right | `T` for a `Monoid`, `?T` for an `Op` |
 | `s.all` | fold of everything, O(1) | `Monoid` |
 | `s.prefix(c)` | fold of everything before cut `c` | |
 | `s.apply(r, f)`, `s.apply_all(f)` | apply tag `f` to every position in `r` | `act:` |
@@ -252,7 +342,7 @@ operations support it:
 - `t.fold_path(a, b, s)` and `t.apply_path(a, b, s, f)` from round 4 work on
   any structure that has `fold` and `apply`.
 
-## 4. The structures
+## 8. The structures
 
 | Job | Structure | Build | Query | Strategy picked by laws |
 |---|---|---|---|---|
@@ -287,7 +377,7 @@ determined by what you hand it: an op, an action, or both. The cost is
 still visible. `act:` in the constructor is where tag memory appears, and
 `cpl explain` shows the layout.
 
-## 5. Specialization
+## 9. Specialization
 
 Ryan's example is that lazy propagation is unnecessary when tags commute.
 
@@ -337,7 +427,128 @@ duplicate structures with one body.
    compile error. Today it silently assumes "its own reverse".
    `Fenwick(op)` without `Commutative` is an error that suggests `SegTree`.
 
-## 6. Examples from the dreams
+## 10. Groups: subtract instead of store
+
+An inverse turns "fold of `l..r`" into "fold up to `r` minus fold up to
+`l`". Every structure that can use this, does, under the same rule: the
+method exists when the op is a `Group`.
+
+| Structure | With a `Group` |
+|---|---|
+| `Prefix(op, a)` | `fold(r)` in O(1) |
+| `Fenwick(op, a)` | `fold(r)` in O(log n); `s[i] = x` (read, then add the difference) |
+| `Window(op)` | `drop` subtracts: O(1) worst case, no second stack |
+| `Diff(op)` | `apply(r, f)` offline in O(1), then `finish()` in O(n) |
+| `Potentials(op)` | union-find with relative values (below) |
+
+**Union-find with potentials.** "Value of `b` is value of `a` plus `w`"
+constraints, checked online, are a `Group` on a DSU:
+
+```python
+var p = Potentials<V>(+)
+if not p.relate(a, b, w): print("CONTRADICTION")   # val[b] = val[a] + w
+p.diff(a, b)                                       # ?Int: val[b] - val[a], none if unrelated
+```
+
+It works for any group: `^` for parity constraints, `Affine` for
+"`b = 2a + 3`" problems, permutations for orientation puzzles. The existing
+`DsuOf(join:)` stays for per-set summaries; its `join` is an `Op`.
+
+**Shared undo.** `Dsu`, `DsuOf`, `Potentials`, `Window` and the persistent
+structures that support stepping back share one pair: `mark() -> Mark` and
+`undo_to(m)`. Rollback Mo and offline dynamic connectivity take any
+structure with that pair.
+## 11. Offline and sqrt structures
+
+- **Mo's algorithm keeps closures, not op values.** Mo exists for answers
+  that are not decomposable folds (distinct count, mode); with a monoid you
+  would use a segment tree. Its signature stays `mo(queries, add:,
+  remove:, answer:)`, with `order: .hilbert` as an option instead of a second
+  fn. Rollback Mo is `mo(queries, add:, keep: s)` where `s` has
+  `mark`/`undo_to`, so no `remove` is needed.
+- **Sqrt blocks** are `Blocks(op, a, act:, size:)` with exactly the
+  `SegTree` vocabulary. They exist for operations with no cheap
+  composition (e.g. "sort this block", rebuild per block) and for the
+  O(1)-update, O(sqrt n)-query trade.
+- **Offline divide and conquer over time** (`timetree.cp`) takes any
+  structure with `mark`/`undo_to`.
+## 12. Trees and DP
+
+Every tree and DP facility takes the same values:
+
+| Facility | Takes | Needs |
+|---|---|---|
+| `t.fold_path(a, b, s)` | any structure with `fold` over `t.Pre` | `Commutative` or `Reversible` |
+| `t.up(op, lift:, finish:)` | children folded with `op` | `Monoid` |
+| `t.reroot(op, lift:, finish:)` | same, every root | `Monoid` (no inverse: prefix and suffix folds) |
+| `Lift(t, val, op)` | binary lifting of path folds | `Op`; non-commutative needs `Reversible` |
+| `LiChao(min, over:)` | lower envelope of lines | a `Selective` op (`min`, `max`, `min(by:)`) |
+| `Window(op)` | sliding window fold, monotone queue | `Selective` for the deque strategy |
+| `dijkstra(step:)` | path cost growth | `Monoid` + `Ord` on `W` |
+
+`Lift` changes from `(op, identity)` lambdas to one op value. `LiChao`'s
+`pick` becomes the same selective op used everywhere, so `min(by: c =>
+(c.cost, c.used))` breaks ties with no special support.
+## 13. Convolutions
+
+One fn, two choices: how indices combine, and which semiring values live in.
+
+```python
+convolve(a, b)                       # c[i + j] += a[i] * b[j]
+convolve(a, b, on: ^)                # c[i ^ j]  (Walsh–Hadamard)
+convolve(a, b, on: |)                # c[i | j]  (subset-sum transform)
+convolve(a, b, on: &)                # c[i & j]
+convolve(a, b, on: subset)           # i | j with i & j == 0
+convolve(a, b, on: gcd)              # c[gcd(i, j)]  (Dirichlet-style)
+convolve(a, b, over: Semiring(max, +), concave: .b)   # max-plus, b concave
+```
+
+- The index op is an operation value (`on:`), so the eight
+  `convolve_or`/`_and`/`_xor`/... names collapse to one.
+- The value type picks the algorithm, which is visible in its type: `Mod<P>`
+  with an NTT prime uses NTT; any other `Mod` or `Int` uses three primes and
+  CRT; `F64` uses FFT. `cpl explain` names it.
+- `over:` other than `Semiring(+, *)` has no fast transform in general, so
+  it requires a stated shape (`concave: .b` gives the O(n log n) SMAWK
+  path; debug checks the shape). Without one it is an error, not a hidden
+  O(n²).
+- `cyclic: true`, and `convolve_all(polys)` for many at once, stay.
+## 14. Cost model
+
+What a contestant can rely on, matching goal 3 (abstractions cost what C++
+costs):
+
+- **Operation values are free.** `+`, `max`, `gcd` are zero-size values of
+  their own types. A structure is monomorphized on the op's type, so the
+  op is inlined into the loop: no function pointers, no virtual calls. A
+  lambda passed to `Monoid(id:, op:)` is also a distinct type and inlines the
+  same way.
+- **Identities are constants** when the op's type knows them (`T.zero`, the
+  far end of `T`), and one stored field otherwise. They are never stored
+  per node.
+- **Spans are computed, not stored.** The node's span `n` comes from its
+  level in a power-of-two layout. An action that ignores `n` costs nothing.
+- **Tags cost memory only with `act:`**: one `F` per internal node, plus one
+  bit per node for "has a tag" only when `F` has no spare value for "no
+  tag" (a niche, as for `?T`).
+- **Laws cost nothing at run time.** They select code at compile time; only
+  stress and debug-mode checks evaluate them.
+- `cpl explain` on a structure prints its layout, bytes per element, and
+  each strategy chosen and why.
+## 15. Testing laws
+
+A law is a promise; the tools make it cheap to check:
+
+- `laws_hold(op, samples)` evaluates every law the value promises on sampled
+  inputs and returns the first failure: `"Lcm breaks assoc at (4, 6, 10)"`.
+- `cpl stress` samples the laws of every op and action used in the run,
+  drawing inputs from the values that actually flow through the structure,
+  so a law that fails only on real data is found too.
+- `--laws=off` disables every law-driven strategy, so a wrong answer that
+  disappears with it is a broken promise, not a broken algorithm.
+- Debug builds check the laws that are cheap per operation: Dijkstra's
+  `step(d, w) >= d`, `Ord`'s antisymmetry on the compared pair.
+## 16. Examples from the dreams
 
 ```python
 # cf2096f: range add, range min, test for zero
@@ -362,7 +573,7 @@ for i in I:
     ans[i] = w.fold
 ```
 
-## 7. What this needs from core
+## 17. What this needs from core
 
 - Trait aliases and associated types (W10a, already accepted).
 - Bodiless `impl` as a law promise (exists for field traits, W10a).
@@ -373,12 +584,14 @@ for i in I:
 
 ## Open
 
-1. **`Op` without identity.** Should `fold` on an empty range trap, or
-   should such structures return `?T`? This proposal traps (with a lint),
-   since nearly every op has an identity once bounded types count.
-2. **Range add, range sum on a `Fenwick`.** Two Fenwicks implement it today
+1. **Range add, range sum on a `Fenwick`.** Two Fenwicks implement it today
    (`RangeFenwick`). It could be `Fenwick(+, act: add)`, which is the same
    pattern as `SegTree`, or it could stay a named variant.
-3. **Heap names.** `Heap(by: desc)` reads well, but `MaxHeap` is what
+2. **Heap names.** `Heap(by: desc)` reads well, but `MaxHeap` is what
    everyone searches for. A doc alias (search and hover find it) costs
    nothing; a real second name would break "one way".
+3. **`convolve(on:)` for `subset`.** `subset` is not an operator, so it is
+   a named index op the library defines. That is fine as long as user
+   libraries can define more (they can: it's a value with a transform impl).
+4. **Tuple-of-ops syntax.** `(+, max)` as one op reads naturally but makes
+   a tuple of fn values mean two things. The alternative is `both(+, max)`.
