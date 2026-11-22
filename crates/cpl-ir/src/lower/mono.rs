@@ -1459,7 +1459,7 @@ impl<'a> Lowerer<'a> {
     ) -> FnId {
         let key = (gfid, args.clone());
         if let Some(&id) = self.fn_insts.get(&key) {
-            if !self.sigs[id].returns_fresh_domain {
+            if !self.sigs[id].returns_fresh_domain && self.sigs[id].new_domain_slots.is_empty() {
                 return id;
             }
         }

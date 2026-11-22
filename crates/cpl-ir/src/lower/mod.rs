@@ -10,6 +10,7 @@
 mod cache;
 mod call;
 mod expr;
+mod fresh;
 mod memo;
 mod mono;
 mod prefix;
@@ -4208,10 +4209,28 @@ impl<'a> Lowerer<'a> {
         self.gen_env = saved_env;
         self.self_struct = saved_self;
         self.asked_at = saved_asked;
-        if self.domains.len() > dom_start
-            && self.ty_uses_fresh_domain(&ret, dom_start, &mut HashSet::new(), &mut HashSet::new())
-        {
-            self.sigs[id].returns_fresh_domain = true;
+        if self.domains.len() > dom_start {
+            let mut fresh = Vec::new();
+            self.fresh_domains_in(
+                &ret,
+                dom_start,
+                &mut HashSet::new(),
+                &mut HashSet::new(),
+                &mut fresh,
+            );
+            self.sigs[id].returns_fresh_domain = !fresh.is_empty();
+            // `fn wrap(a): compress(a)` with no `->`: the `domain` slots of
+            // the tuple it returns are the fresh domains its body made.
+            let binders = match &ret {
+                Ty::Tuple(ts) => ts.iter().filter(|t| **t == Ty::DomainVal).count(),
+                _ => 0,
+            };
+            if self.sigs[id].new_domain_slots.is_empty() && binders > 0 && binders == fresh.len() {
+                self.sigs[id].new_domain_slots = fresh
+                    .into_iter()
+                    .map(|d| (self.domains[d].clone(), d))
+                    .collect();
+            }
         }
         self.sigs[id].ret = Some(ret.clone());
         self.sigs[id].state = State::Done;
@@ -4222,92 +4241,6 @@ impl<'a> Lowerer<'a> {
             locals: cx.locals,
             body: Block { stmts: out },
         });
-    }
-
-    fn ty_uses_fresh_domain(
-        &self,
-        ty: &Ty,
-        dom_start: usize,
-        seen_structs: &mut HashSet<StructId>,
-        seen_enums: &mut HashSet<EnumId>,
-    ) -> bool {
-        match ty {
-            Ty::Pos(d) | Ty::Bound(d) => *d >= dom_start,
-            Ty::Array { dims, elem } => {
-                dims.iter().any(|dim| match dim {
-                    Dim::Pos(d) | Dim::Bound(d) | Dim::Sym(d) => *d >= dom_start,
-                    Dim::Enum(_) | Dim::Int | Dim::IntFrom(_) => false,
-                }) || self.ty_uses_fresh_domain(elem, dom_start, seen_structs, seen_enums)
-            }
-            Ty::Range(t)
-            | Ty::Opt(t)
-            | Ty::List(t)
-            | Ty::ListView(t, _)
-            | Ty::Keyed(t, _)
-            | Ty::MutView(t)
-            | Ty::Set(t)
-            | Ty::HashSet(t)
-            | Ty::Mut(t) => self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums),
-            Ty::Map(k, v) | Ty::HashMap(k, v) => {
-                self.ty_uses_fresh_domain(k, dom_start, seen_structs, seen_enums)
-                    || self.ty_uses_fresh_domain(v, dom_start, seen_structs, seen_enums)
-            }
-            Ty::Tuple(ts) => ts
-                .iter()
-                .any(|t| self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums)),
-            Ty::Record(fs) => fs
-                .iter()
-                .any(|(_, t)| self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums)),
-            Ty::Fn(ps, r) => {
-                ps.iter()
-                    .any(|t| self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums))
-                    || self.ty_uses_fresh_domain(r, dom_start, seen_structs, seen_enums)
-            }
-            Ty::Struct(sid) => {
-                if !seen_structs.insert(*sid) {
-                    return false;
-                }
-                let info = &self.structs[*sid];
-                if let Some((_, gargs)) = &info.origin_gen {
-                    if gargs.iter().any(|a| match a {
-                        GenArg::Domain(d) => *d >= dom_start,
-                        GenArg::Ty(t) => {
-                            self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums)
-                        }
-                        _ => false,
-                    }) {
-                        return true;
-                    }
-                }
-                info.def
-                    .fields
-                    .iter()
-                    .any(|(_, t)| self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums))
-            }
-            Ty::Enum(eid) => {
-                if !seen_enums.insert(*eid) {
-                    return false;
-                }
-                self.enums[*eid].variants.iter().any(|(_, fields)| {
-                    fields
-                        .iter()
-                        .any(|t| self.ty_uses_fresh_domain(t, dom_start, seen_structs, seen_enums))
-                })
-            }
-            _ => false,
-        }
-    }
-
-    pub(super) fn clone_fresh_domain_fn(&mut self, orig: FnId) -> FnId {
-        let decl = self.sigs[orig].decl;
-        let mod_id = self.sigs[orig].mod_id;
-        let offset = self.sigs[orig].offset;
-        let owner = self.sigs[orig].owner;
-        let env = self.sigs[orig].env.clone();
-        let new_id = self.declare_fn_in(decl, mod_id, offset, owner, env);
-        self.sigs[new_id].name = format!("{}_{new_id}", self.sigs[new_id].name);
-        self.resolve_fn_sig(new_id, None);
-        new_id
     }
 
     /// The return type of fn `id`, reading its body now if it has no `->`.
