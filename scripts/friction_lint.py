@@ -334,7 +334,7 @@ def find_prototype_stamp(code, lines, raw):
 
 
 def prelude_names():
-    path = os.path.join(ROOT, "stdlib", "prelude.cp")
+    path = os.path.join(ROOT, "spec", "std", "prelude.cp")
     names = {}
     if os.path.exists(path):
         for mod, items in re.findall(r"^use std\.(\w+)\.\{([^}]*)\}", open(path).read(), re.M):
@@ -478,7 +478,7 @@ def rule_table():
            [(k, "metric", src, title, f) for k, src, title, f in METRICS]
 
 
-LIBRARY_DIRS = tuple(os.path.join(ROOT, d) + os.sep for d in ("examples/local-lib", "stdlib"))
+LIBRARY_DIRS = tuple(os.path.join(ROOT, d) + os.sep for d in ("examples/local-lib", "spec/std"))
 
 
 def is_library_module(path):

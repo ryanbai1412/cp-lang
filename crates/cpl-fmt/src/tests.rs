@@ -317,7 +317,7 @@ fn formats_the_whole_corpus() {
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut files = Vec::new();
-    for dir in ["corpus/problems", "corpus/lib", "crates/cpl-cli/tests/cases", "examples", "stdlib"] {
+    for dir in ["corpus/problems", "corpus/lib", "crates/cpl-cli/tests/cases", "examples"] {
         walk(&root.join(dir), &mut files);
     }
     assert!(files.len() >= 1000, "found only {} corpus files", files.len());

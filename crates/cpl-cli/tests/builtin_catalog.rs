@@ -92,7 +92,7 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
     for name in ["Interactor", "Subset"] {
         assert!(names.contains(&(name, PreludeKind::Type)), "`{name}` is a type");
     }
-    // Only what `stdlib/prelude.cp` lists, which `scripts/check.sh` holds to 80.
+    // Only what `spec/std/prelude.cp` lists, which `scripts/check.sh` holds to 80.
     let std = names.iter().filter(|(_, kind)| matches!(kind, PreludeKind::Std(_))).count();
     assert!((1..=80).contains(&std), "{std} names from the prelude");
     assert!(!names.iter().any(|(name, _)| *name == "INF"));
@@ -183,15 +183,15 @@ fn ordered_container_method_parity_and_range_len_guard() {
     assert!(set_names.contains("set"), "`Set` is missing `set(x, on: Bool)`");
     assert!(set_names.contains("drain"), "`Set` is missing `drain(after:/before:, while:)`");
 
-    // `SortedSet` and `SortedBag` in `stdlib/bag.cp` must expose the ordered API surface.
+    // `SortedSet` and `SortedBag` in `spec/std/bag.cp` must expose the ordered API surface.
     let bag_src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib/bag.cp"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/std/bag.cp"),
     )
     .unwrap();
     for required in ["fn bsearch_first(", "fn bsearch_last(", "fn drain(", "fn range_first(", "fn range_last(", "fn range_len("] {
-        assert!(bag_src.contains(required), "`stdlib/bag.cp` is missing `{required}`");
+        assert!(bag_src.contains(required), "`spec/std/bag.cp` is missing `{required}`");
     }
-    assert!(!bag_src.contains("fn first_where("), "`stdlib/bag.cp` must not expose removed `first_where`");
+    assert!(!bag_src.contains("fn first_where("), "`spec/std/bag.cp` must not expose removed `first_where`");
 
     // `Set.range(r).len` and `Map.range(r).len` must fail typecheck with help naming SortedSet/SortedBag.
     for (idx, (label, code)) in [

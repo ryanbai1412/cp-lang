@@ -1,11 +1,11 @@
-//! The names of the `stdlib/` modules, for `use std.` completion: the
+//! The names of the `spec/std/` modules, for `use std.` completion: the
 //! loader can read a module it is asked for but cannot list them.
 
 use std::path::PathBuf;
 
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
-    let stdlib = manifest.join("../../stdlib");
+    let stdlib = manifest.join("../../spec/std");
     println!("cargo:rerun-if-changed={}", stdlib.display());
     let mut names: Vec<String> = std::fs::read_dir(&stdlib)
         .map(|dir| {

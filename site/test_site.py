@@ -559,7 +559,7 @@ class SiteTests(unittest.TestCase):
         # A contestant who reads `orient(a, b, c)` next to `std.geometry` writes it.
         prelude = {"print", "isqrt", "bit_ceil"}
         modules = {}
-        for path in (REPO / "stdlib").glob("*.cp"):
+        for path in (REPO / "spec" / "std").glob("*.cp"):
             text = path.read_text()
             modules[path.stem] = set(re.findall(r"\bfn\s+(\w+)", text)) | set(
                 re.findall(r"^\s+(\w+):", text, flags=re.M))

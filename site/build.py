@@ -110,7 +110,7 @@ REFERENCE_PAGES = [
         "stdlib-api",
         "Stdlib API reference",
         "In practice",
-        "Generated per-function reference from /// doc comments in stdlib/*.cp (signatures, costs, laws).",
+        "Generated per-function reference from /// doc comments in spec/std/*.cp (signatures, costs, laws).",
         "generated",
     ),
     (

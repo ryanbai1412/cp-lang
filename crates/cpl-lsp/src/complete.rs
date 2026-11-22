@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-/// Every `stdlib/` module but the prelude.
+/// Every `spec/std/` module but the prelude.
 const STD_MODULES: &[&str] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
 /// The members every domain has (`V.first`) and every position has
@@ -73,7 +73,7 @@ impl StdLib {
             .clone()
     }
 
-    /// The names `stdlib/prelude.cp` brings in, with the module of each.
+    /// The names `spec/std/prelude.cp` brings in, with the module of each.
     pub fn prelude(&mut self, from: &str) -> Arc<Vec<(String, String)>> {
         if let Some(prelude) = &self.prelude {
             return prelude.clone();
@@ -797,7 +797,7 @@ fn scope_completion(
             add(&entry, 3, &mut items);
         }
     }
-    // The compiler's own names; the `stdlib/prelude.cp` ones came above
+    // The compiler's own names; the `spec/std/prelude.cp` ones came above
     // with their signatures and docs.
     for (name, kind) in prelude_names() {
         let (kind, detail) = match kind {

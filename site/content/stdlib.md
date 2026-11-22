@@ -4,7 +4,7 @@ The prelude auto-imports common types and helpers (capped at 80 names), includin
 
 ## Standard library modules
 
-Every module under `stdlib/` is plain CP Lang. Import individual names with `use std.<module>.{Name}`:
+Every module under `spec/std/` is plain CP Lang. Import individual names with `use std.<module>.{Name}`:
 
 | Module | Key exports | Purpose |
 | --- | --- | --- |

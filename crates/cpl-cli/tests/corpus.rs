@@ -110,7 +110,7 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         }
     }
     for (dir, nested) in [
-        ("stdlib", false),
+        ("spec/std", false),
         ("examples/local-lib", true),
         ("crates/cpl-cli/tests/cases/lend", false),
         ("crates/cpl-cli/tests/cases/ergo", false),
@@ -172,7 +172,7 @@ const REWORDED: &[(&str, &str)] = &[
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
 /// here (`tests/programs/semantics.cp`), and simultaneous tuple assignment
-/// `(a, b) = (b, a + b)` is supported across `stdlib/` and `examples/local-lib/`.
+/// `(a, b) = (b, a + b)` is supported across `spec/std/` and `examples/local-lib/`.
 const PROTOTYPE_ONLY: &[&str] = &["rt_minassign_twice", "tuple_assign"];
 
 /// The reason a failing test states on its first line: `// error: <text>`.

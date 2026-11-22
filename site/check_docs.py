@@ -244,17 +244,6 @@ def check_error_index():
                 )
                 combined = r.stdout + "\n" + r.stderr
                 if f"[{code}]" not in combined:
-                    # A 0.3-edition check fires only under CPL_SPEC, as in tests/catalogue.rs.
-                    r = subprocess.run(
-                        [str(CPL), "check", str(trig)],
-                        cwd=REPO,
-                        capture_output=True,
-                        text=True,
-                        timeout=15,
-                        env={**os.environ, "CPL_SPEC": "1"},
-                    )
-                    combined = r.stdout + "\n" + r.stderr
-                if f"[{code}]" not in combined:
                     sys.exit(
                         f"check_docs: error-index trigger for {code} did not emit [{code}]:\n{combined}"
                     )
@@ -393,9 +382,9 @@ def check_cookbook() -> tuple[int, int]:
 
 
 def check_stdlib_module_coverage() -> int:
-    """Every non-prelude stdlib/*.cp module must be documented in site/content/stdlib.md."""
+    """Every non-prelude spec/std/*.cp module must be documented in site/content/stdlib.md."""
     stdlib_md = (ROOT / "content/stdlib.md").read_text()
-    modules = sorted(p.stem for p in (REPO / "stdlib").glob("*.cp") if p.stem != "prelude")
+    modules = sorted(p.stem for p in (REPO / "spec" / "std").glob("*.cp") if p.stem != "prelude")
     missing = [m for m in modules if f"std.{m}" not in stdlib_md]
     if missing:
         sys.exit(
