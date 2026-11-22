@@ -9,5 +9,5 @@ enum Cmd:
 while true:
     match read<Cmd>():
         Add(x, y, a) => phones.add(x, y, a)
-        Ask(l, b, r, t) => print(phones.sum(l..=r, b..=t))
+        Ask(l, b, r, t) => print(phones.fold(l..=r, b..=t))
         Stop => break

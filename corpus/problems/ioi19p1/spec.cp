@@ -15,5 +15,5 @@ for (i, x) in s.items if not paired[i]:
     let j = next_of[-x].pop_front()!
     paired[j] = true
     standing.add(j, -1)
-    swaps += standing.sum(i.r..j.l) + (x > 0).int
+    swaps += standing.fold(i.r..j.l) + (x > 0).int
 print(swaps)
