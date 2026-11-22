@@ -340,7 +340,7 @@ impl<'a> Lowerer<'a> {
 
     /// Resolves a range bound expression without emitting errors if a dynamic name
     /// is not yet in scope (used when pre-scanning struct definitions).
-    fn resolve_bound_expr(&mut self, e: &ast::Expr) -> Expr {
+    pub(super) fn resolve_bound_expr(&mut self, e: &ast::Expr) -> Expr {
         if let Some(v) = self.eval_const_int(e) {
             return self.int_lit(v, e.span);
         }

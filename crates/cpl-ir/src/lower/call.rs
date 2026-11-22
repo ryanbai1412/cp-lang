@@ -657,6 +657,12 @@ impl<'a> Lowerer<'a> {
                 return self.read_with_args(spec, args, span);
             }
         }
+        // `gen<T>(...)`: stress generator wired to `rand` choice recording.
+        if name == "gen" && self.get_sym(name).is_none() {
+            if let [ty] = types {
+                return self.lower_gen_generic(ty, args, span);
+            }
+        }
         if matches!(name, "List" | "Set" | "HashSet" | "Map" | "HashMap") {
             let ty = ast::Type {
                 kind: ast::TypeKind::Named {
@@ -2160,6 +2166,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
+            "gen" => self.lower_gen_value(args, span),
             "shuffle" => {
                 if args.len() != 1 {
                     self.error(
@@ -13353,5 +13360,432 @@ impl<'a> Lowerer<'a> {
         });
         seq.ty = seq_ty;
         Some((Iter::Seq(seq, false), elem_ty))
+    }
+
+    /// Lowers `gen(lo..=hi)`, `gen(lo..hi)`, or `gen(range_expr)` into `Builtin::Rand`.
+    fn lower_gen_value(&mut self, args: &[ast::Arg], span: Span) -> Expr {
+        let Some(exprs) = self.positional_any("gen", args, 1, span) else {
+            return self.err_expr(span);
+        };
+        self.lower_gen_range_expr(exprs[0], span)
+    }
+
+    fn lower_gen_range_expr(&mut self, expr: &ast::Expr, span: Span) -> Expr {
+        match &expr.kind {
+            ast::ExprKind::Range {
+                lo,
+                hi,
+                inclusive,
+                ..
+            } => {
+                let lo_e = match lo {
+                    Some(e) => self.resolve_bound_expr(e),
+                    None => self.int_lit(0, span),
+                };
+                let hi_e = match hi {
+                    Some(e) => {
+                        let v = self.resolve_bound_expr(e);
+                        if *inclusive {
+                            v
+                        } else {
+                            self.int_add(v, -1)
+                        }
+                    }
+                    None => self.int_lit(8, span),
+                };
+                self.mk(
+                    ExprKind::Builtin(Builtin::Rand, vec![lo_e, hi_e]),
+                    Ty::Int,
+                    span,
+                )
+            }
+            _ => {
+                // Allow a fixed `Int` expression (constant value) or a `Range` value.
+                let v = self.expr(expr, None);
+                if v.ty == Ty::Int {
+                    return self.mk(
+                        ExprKind::Builtin(Builtin::Rand, vec![v.clone(), v]),
+                        Ty::Int,
+                        span,
+                    );
+                }
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    expr.span,
+                    "`gen(...)` expects a range such as `1..=8`",
+                );
+                self.err_expr(span)
+            }
+        }
+    }
+
+    /// Lowers `gen<T>(...)` by delegating structured shapes to CP Lang stdlib
+    /// (`gen_str`, `gen_perm`, `gen_rooted`, `gen_graph`, `gen_weighted_graph`)
+    /// and ranges/arrays/scalars to `Builtin::Rand`.
+    fn lower_gen_generic(&mut self, ty: &ast::Type, args: &[ast::Arg], span: Span) -> Expr {
+        match &ty.kind {
+            ast::TypeKind::Range { lo, hi, inclusive } => {
+                let lo_e = match lo {
+                    Some(e) => self.resolve_bound_expr(e),
+                    None => self.int_lit(0, span),
+                };
+                let hi_e = match hi {
+                    Some(e) => {
+                        let v = self.resolve_bound_expr(e);
+                        if *inclusive {
+                            v
+                        } else {
+                            self.int_add(v, -1)
+                        }
+                    }
+                    None => self.int_lit(8, span),
+                };
+                self.mk(
+                    ExprKind::Builtin(Builtin::Rand, vec![lo_e, hi_e]),
+                    Ty::Int,
+                    span,
+                )
+            }
+            ast::TypeKind::Array { index, elem } => {
+                let params: Vec<ast::Pattern> = index
+                    .iter()
+                    .map(|_| ast::Pattern {
+                        kind: ast::PatternKind::Wildcard,
+                        span,
+                    })
+                    .collect();
+                let elem_call = ast::Expr {
+                    kind: ast::ExprKind::Call {
+                        callee: Box::new(ast::Expr {
+                            kind: ast::ExprKind::Generic {
+                                base: Box::new(ast::Expr {
+                                    kind: ast::ExprKind::Name("gen".into()),
+                                    span,
+                                }),
+                                args: vec![(**elem).clone()],
+                            },
+                            span,
+                        }),
+                        args: args.to_vec(),
+                    },
+                    span,
+                };
+                let table = ast::Expr {
+                    kind: ast::ExprKind::Table {
+                        domains: index.clone(),
+                        params,
+                        body: Box::new(elem_call),
+                    },
+                    span,
+                };
+                self.expr(&table, None)
+            }
+            ast::TypeKind::ConstrainedStr(alphabet) => {
+                self.lower_gen_str(alphabet, args, span)
+            }
+            ast::TypeKind::Named { name, args: targs } if name.text == "Str" && targs.is_empty() => {
+                self.lower_gen_str("abcdefghijklmnopqrstuvwxyz", args, span)
+            }
+            ast::TypeKind::Named { name, args: targs } if name.text == "Bool" && targs.is_empty() => {
+                let lo = self.int_lit(0, span);
+                let hi = self.int_lit(1, span);
+                let draw = self.mk(ExprKind::Builtin(Builtin::Rand, vec![lo, hi]), Ty::Int, span);
+                let one = self.int_lit(1, span);
+                self.mk(
+                    ExprKind::Cmp(CmpOp::Eq, Box::new(draw), Box::new(one)),
+                    Ty::Bool,
+                    span,
+                )
+            }
+            ast::TypeKind::Named { name, args: targs } if name.text == "Int" && targs.is_empty() => {
+                let lo = self.int_lit(0, span);
+                let hi = self.int_lit(8, span);
+                self.mk(ExprKind::Builtin(Builtin::Rand, vec![lo, hi]), Ty::Int, span)
+            }
+            ast::TypeKind::Named { name, args: targs } if name.text == "Perm" && targs.len() == 1 => {
+                self.call_stdlib_generic("gen_perm", targs, &[], span)
+            }
+            ast::TypeKind::Named { name, args: targs }
+                if name.text == "Rooted" && !targs.is_empty() =>
+            {
+                let shape_arg = args.iter().find(|a| {
+                    a.name
+                        .as_ref()
+                        .is_some_and(|n| n.text == "shape")
+                });
+                let shape_expr = match shape_arg {
+                    Some(a) => match &a.value.kind {
+                        ast::ExprKind::Name(kw)
+                            if matches!(
+                                kw.as_str(),
+                                "random" | "path" | "star" | "caterpillar" | "binary"
+                            ) =>
+                        {
+                            ast::Expr {
+                                kind: ast::ExprKind::Str(vec![ast::StrPiece::Text(kw.clone())]),
+                                span: a.value.span,
+                            }
+                        }
+                        _ => a.value.clone(),
+                    },
+                    None => ast::Expr {
+                        kind: ast::ExprKind::Str(vec![ast::StrPiece::Text("random".into())]),
+                        span,
+                    },
+                };
+                let call_args = vec![ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value: shape_expr,
+                }];
+                self.call_stdlib_generic("gen_rooted", &targs[..1], &call_args, span)
+            }
+            ast::TypeKind::Named { name, args: targs }
+                if name.text == "Graph" && !targs.is_empty() =>
+            {
+                let mut forward: Vec<ast::Arg> = Vec::new();
+                for a in args {
+                    let aname = a.name.as_ref().map(|n| n.text.as_str());
+                    match aname {
+                        Some("simple" | "connected") => forward.push(a.clone()),
+                        Some("m" | "edges") => {
+                            let (lo, hi) = extract_ast_range_bounds(&a.value, span, 0, 16);
+                            forward.push(ast::Arg {
+                                name: Some(ast::Name {
+                                    text: "m_lo".into(),
+                                    span: a.value.span,
+                                }),
+                                mutable: false,
+                                value: lo,
+                            });
+                            forward.push(ast::Arg {
+                                name: Some(ast::Name {
+                                    text: "m_hi".into(),
+                                    span: a.value.span,
+                                }),
+                                mutable: false,
+                                value: hi,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+                if let Some((w_lo, w_hi)) = targs.get(1).and_then(|e| extract_graph_weight_bounds(e, span)) {
+                    let mut wargs = vec![
+                        ast::Arg {
+                            name: Some(ast::Name {
+                                text: "w_lo".into(),
+                                span,
+                            }),
+                            mutable: false,
+                            value: w_lo,
+                        },
+                        ast::Arg {
+                            name: Some(ast::Name {
+                                text: "w_hi".into(),
+                                span,
+                            }),
+                            mutable: false,
+                            value: w_hi,
+                        },
+                    ];
+                    wargs.extend(forward);
+                    self.call_stdlib_generic("gen_weighted_graph", &targs[..1], &wargs, span)
+                } else {
+                    self.call_stdlib_generic("gen_graph", &targs[..1], &forward, span)
+                }
+            }
+            _ => {
+                // Support generating a random element of a domain `V` (`gen<V>()`).
+                let resolved = self.resolve_ty(ty);
+                if let Ty::Pos(d) = resolved {
+                    let len_expr = ast::Expr {
+                        kind: ast::ExprKind::Field {
+                            base: Box::new(ast::Expr {
+                                kind: ast::ExprKind::Name(self.domains[d].clone()),
+                                span,
+                            }),
+                            name: ast::Name {
+                                text: "K".into(),
+                                span,
+                            },
+                        },
+                        span,
+                    };
+                    let n_ir = self.expr(&len_expr, Some(&Ty::Int));
+                    let lo = self.int_lit(0, span);
+                    let hi = self.int_add(n_ir, -1);
+                    let idx = self.mk(ExprKind::Builtin(Builtin::Rand, vec![lo, hi]), Ty::Int, span);
+                    return self.mk(idx.kind, Ty::Pos(d), span);
+                }
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    ty.span,
+                    "unsupported type in `gen<T>(...)`",
+                );
+                self.err_expr(span)
+            }
+        }
+    }
+
+    fn lower_gen_str(&mut self, alphabet: &str, args: &[ast::Arg], span: Span) -> Expr {
+        let len_arg = args
+            .iter()
+            .find(|a| a.name.as_ref().is_some_and(|n| n.text == "len"));
+        let (lo, hi) = match len_arg {
+            Some(a) => extract_ast_range_bounds(&a.value, span, 1, 8),
+            None => (
+                ast::Expr {
+                    kind: ast::ExprKind::Int(1),
+                    span,
+                },
+                ast::Expr {
+                    kind: ast::ExprKind::Int(8),
+                    span,
+                },
+            ),
+        };
+        let call_expr = ast::Expr {
+            kind: ast::ExprKind::Call {
+                callee: Box::new(ast::Expr {
+                    kind: ast::ExprKind::Name("gen_str".into()),
+                    span,
+                }),
+                args: vec![
+                    ast::Arg {
+                        name: None,
+                        mutable: false,
+                        value: ast::Expr {
+                            kind: ast::ExprKind::Str(vec![ast::StrPiece::Text(
+                                alphabet.to_string(),
+                            )]),
+                            span,
+                        },
+                    },
+                    ast::Arg {
+                        name: None,
+                        mutable: false,
+                        value: lo,
+                    },
+                    ast::Arg {
+                        name: None,
+                        mutable: false,
+                        value: hi,
+                    },
+                ],
+            },
+            span,
+        };
+        self.expr(&call_expr, Some(&Ty::Str))
+    }
+
+    fn call_stdlib_generic(
+        &mut self,
+        fn_name: &str,
+        targs: &[ast::Type],
+        args: &[ast::Arg],
+        span: Span,
+    ) -> Expr {
+        let call_expr = ast::Expr {
+            kind: ast::ExprKind::Call {
+                callee: Box::new(ast::Expr {
+                    kind: ast::ExprKind::Generic {
+                        base: Box::new(ast::Expr {
+                            kind: ast::ExprKind::Name(fn_name.into()),
+                            span,
+                        }),
+                        args: targs.to_vec(),
+                    },
+                    span,
+                }),
+                args: args.to_vec(),
+            },
+            span,
+        };
+        self.expr(&call_expr, None)
+    }
+}
+
+fn extract_ast_range_bounds(
+    expr: &ast::Expr,
+    span: Span,
+    default_lo: i128,
+    default_hi: i128,
+) -> (ast::Expr, ast::Expr) {
+    match &expr.kind {
+        ast::ExprKind::Range {
+            lo,
+            hi,
+            inclusive,
+            ..
+        } => {
+            let lo_e = lo.as_deref().cloned().unwrap_or(ast::Expr {
+                kind: ast::ExprKind::Int(default_lo),
+                span,
+            });
+            let hi_e = match hi {
+                Some(h) if *inclusive => (**h).clone(),
+                Some(h) => ast::Expr {
+                    kind: ast::ExprKind::Binary {
+                        op: ast::BinOp::Sub,
+                        op_span: h.span,
+                        lhs: h.clone(),
+                        rhs: Box::new(ast::Expr {
+                            kind: ast::ExprKind::Int(1),
+                            span: h.span,
+                        }),
+                    },
+                    span: h.span,
+                },
+                None => ast::Expr {
+                    kind: ast::ExprKind::Int(default_hi),
+                    span,
+                },
+            };
+            (lo_e, hi_e)
+        }
+        _ => (expr.clone(), expr.clone()),
+    }
+}
+
+fn extract_graph_weight_bounds(edge_ty: &ast::Type, span: Span) -> Option<(ast::Expr, ast::Expr)> {
+    let range_ty = match &edge_ty.kind {
+        ast::TypeKind::Record(fields) => fields
+            .iter()
+            .find(|(n, fty)| n.text == "w" || matches!(fty.kind, ast::TypeKind::Range { .. }))
+            .map(|(_, fty)| fty),
+        ast::TypeKind::Tuple(items) => items
+            .iter()
+            .find(|item| matches!(item.kind, ast::TypeKind::Range { .. })),
+        _ => None,
+    }?;
+    match &range_ty.kind {
+        ast::TypeKind::Range { lo, hi, inclusive } => {
+            let lo_e = lo.as_deref().cloned().unwrap_or(ast::Expr {
+                kind: ast::ExprKind::Int(1),
+                span,
+            });
+            let hi_e = match hi {
+                Some(h) if *inclusive => (**h).clone(),
+                Some(h) => ast::Expr {
+                    kind: ast::ExprKind::Binary {
+                        op: ast::BinOp::Sub,
+                        op_span: h.span,
+                        lhs: h.clone(),
+                        rhs: Box::new(ast::Expr {
+                            kind: ast::ExprKind::Int(1),
+                            span: h.span,
+                        }),
+                    },
+                    span: h.span,
+                },
+                None => ast::Expr {
+                    kind: ast::ExprKind::Int(9),
+                    span,
+                },
+            };
+            Some((lo_e, hi_e))
+        }
+        _ => None,
     }
 }

@@ -147,6 +147,9 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.sorted_legacy_bound_call(call, callee, args) {
             return ty;
         }
+        if let Some(ty) = self.gen_call(callee, args) {
+            return ty;
+        }
         let callee_ty = match self.list_form(callee, args) {
             Some(ty) => ty,
             None => {
@@ -264,6 +267,91 @@ impl<'a> Checker<'a> {
         }
         let ty = self.quietly(|c| c.type_arg(t));
         (!matches!(ty, Ty::Unknown | Ty::Error)).then_some(ty)
+    }
+
+    /// `gen(range)` and `gen<T>(...)` stress generators (spec/lib/random-stress.md).
+    fn gen_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        if self.local("gen").is_some() || self.global("gen").is_some() {
+            return None;
+        }
+        match &callee.kind {
+            ExprKind::Name(name) if name == "gen" => {
+                for arg in args {
+                    self.infer(&arg.value);
+                }
+                Some(Ty::Int)
+            }
+            ExprKind::Generic { base, args: tys } => {
+                let (ExprKind::Name(name), [t]) = (&base.kind, tys.as_slice()) else {
+                    return None;
+                };
+                if name != "gen" {
+                    return None;
+                }
+                for arg in args {
+                    // Allow bare shape keywords (`shape: random | path | star | caterpillar | binary`).
+                    let is_shape_kw = arg
+                        .name
+                        .as_ref()
+                        .is_some_and(|n| n.text == "shape")
+                        && matches!(
+                            &arg.value.kind,
+                            ExprKind::Name(s)
+                                if matches!(
+                                    s.as_str(),
+                                    "random" | "path" | "star" | "caterpillar" | "binary"
+                                )
+                        );
+                    if !is_shape_kw {
+                        self.infer(&arg.value);
+                    }
+                }
+                Some(self.gen_result_ty(t))
+            }
+            _ => None,
+        }
+    }
+
+    fn gen_result_ty(&mut self, t: &Type) -> Ty {
+        use cpl_syntax::ast::TypeKind;
+        match &t.kind {
+            TypeKind::ConstrainedStr(_) => Ty::Str,
+            TypeKind::Named { name, args } if name.text == "Str" && args.is_empty() => Ty::Str,
+            TypeKind::Named { name, args } if name.text == "Perm" && args.len() == 1 => {
+                let v = self.quietly(|c| c.type_arg(&args[0]));
+                Ty::Array {
+                    index: vec![v.clone()],
+                    elem: Box::new(v),
+                }
+            }
+            TypeKind::Named { name, args } if name.text == "Rooted" && !args.is_empty() => {
+                let v = self.quietly(|c| c.type_arg(&args[0]));
+                Ty::Named {
+                    name: "Rooted".into(),
+                    args: vec![v, Ty::Unknown],
+                }
+            }
+            TypeKind::Named { name, args } if name.text == "Graph" && !args.is_empty() => {
+                let v = self.quietly(|c| c.type_arg(&args[0]));
+                let weighted = args.get(1).is_some_and(graph_edge_is_weighted);
+                Ty::Named {
+                    name: if weighted {
+                        "GenWeightedGraph".into()
+                    } else {
+                        "GenGraph".into()
+                    },
+                    args: vec![v],
+                }
+            }
+            _ => {
+                let ty = self.quietly(|c| c.type_arg(t));
+                if matches!(ty, Ty::Unknown | Ty::Error) {
+                    Ty::Unknown
+                } else {
+                    ty
+                }
+            }
+        }
     }
 
     /// `List.filled(n, x)` is a list of what `x` is. A whole number
@@ -2270,5 +2358,18 @@ impl Checker<'_> {
             },
             span: callee.span,
         })
+    }
+}
+
+fn graph_edge_is_weighted(ty: &Type) -> bool {
+    use cpl_syntax::ast::TypeKind;
+    match &ty.kind {
+        TypeKind::Record(fields) => fields
+            .iter()
+            .any(|(n, fty)| n.text == "w" || matches!(fty.kind, TypeKind::Range { .. })),
+        TypeKind::Tuple(items) => items
+            .iter()
+            .any(|item| matches!(item.kind, TypeKind::Range { .. })),
+        _ => false,
     }
 }

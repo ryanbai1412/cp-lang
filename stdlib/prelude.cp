@@ -26,6 +26,7 @@ use std.marks.{Marks}
 use std.math.{Sieve, bit, ceil_div, digits, divmod, fixed, gcd, lcm}
 use std.mod.{Comb, Mod}
 use std.prefix.{Diff, Prefix}
+use std.rand.{Perm}
 use std.segtree.{SegTree}
 use std.seq.{
     bsearch_first,

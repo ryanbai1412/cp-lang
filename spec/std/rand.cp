@@ -119,3 +119,130 @@ pub struct Rng(s: U64):
         var pos = [i for i in 0..n]
         for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
         [from.at(pos[i]) for i in 0..k]
+
+/// A permutation of domain `V`: a bijection `[V]V`.
+pub type Perm<V> = [V]V
+
+/// A generated unweighted graph on `V` with both `edges` and adjacency `g[u]`.
+pub struct GenGraph<V>:
+    edges: List<(u: V, v: V)>
+    adj: [V]List<V>
+
+    pub fn get(self, u: V) -> List<V> = adj[u]
+
+    pub fn out(self, u: V) -> yields V:
+        for v in adj[u]:
+            yield v
+
+/// A generated weighted graph on `V` with both `edges` and adjacency `g[u]`.
+pub struct GenWeightedGraph<V>:
+    edges: List<(u: V, v: V, w: Int)>
+    adj: [V]List<(to: V, w: Int)>
+
+    pub fn get(self, u: V) -> List<(to: V, w: Int)> = adj[u]
+
+    pub fn out(self, u: V) -> yields (to: V, w: Int):
+        for a in adj[u]:
+            yield a
+
+/// A random string over `alphabet` of length in `len_lo..=len_hi`, choice-recorded for shrinking.
+pub fn gen_str(alphabet: Str, len_lo: Int, len_hi: Int) -> Str:
+    let n = rand(len_lo, len_hi)
+    var s = ""
+    let k = alphabet.len
+    if k == 0 or n <= 0: return s
+    for _ in 0..n:
+        s.push(alphabet[rand(0, k - 1)])
+    s
+
+/// A random permutation of `V`, choice-recorded for shrinking.
+pub fn gen_perm<V>() -> Perm<V>:
+    var p: [V]V = [V] i => i
+    for i in (1..V.K).rev:
+        p.swap_idx(i, rand(0, i))
+    p
+
+/// A random parent array `[V]?V` for a rooted tree of `shape` (`random`, `path`, `star`, `caterpillar`, `binary`).
+pub fn gen_parents<V>(shape: Str = "random") -> [V]?V:
+    var par: [V]?V = [V] _ => none
+    let n = V.K
+    if n <= 1: return par
+    if shape == "path":
+        for i in 1..n:
+            par[V.nth(i)] = V.nth(i - 1)
+    elif shape == "star":
+        for i in 1..n:
+            par[V.nth(i)] = V.nth(0)
+    elif shape == "binary":
+        for i in 1..n:
+            par[V.nth(i)] = V.nth((i - 1) / 2)
+    elif shape == "caterpillar":
+        let spine = rand(1, n)
+        for i in 1..spine:
+            par[V.nth(i)] = V.nth(i - 1)
+        for i in spine..n:
+            par[V.nth(i)] = V.nth(rand(0, spine - 1))
+    else:
+        for i in 1..n:
+            par[V.nth(i)] = V.nth(rand(0, i - 1))
+    par
+
+/// A random unweighted graph on `V`, choice-recorded for shrinking.
+pub fn gen_graph<V>(simple: Bool = true, connected: Bool = false, m_lo: Int = -1, m_hi: Int = -1) -> GenGraph<V>:
+    let n = V.K
+    var edges: List<(u: V, v: V)> = []
+    var adj: [V]List<V> = [V] _ => []
+    if n == 0: return GenGraph(edges, adj)
+    var seen: Set<(Int, Int)> = Set()
+    let min_m = if connected and n > 1: n - 1 else: 0
+    let max_possible = if simple: n * (n - 1) / 2 else: n * n
+    let lo = if m_lo >= 0: max(m_lo, min_m) else: min_m
+    let hi_raw = if m_hi >= 0: m_hi else: min(max_possible, max(min_m, 2 * n))
+    let hi = max(lo, min(hi_raw, max_possible))
+    let target = if lo <= hi: rand(lo, hi) else: lo
+    if connected and n > 1:
+        for i in 1..n:
+            let p = rand(0, i - 1)
+            let a = min(p, i)
+            let b = max(p, i)
+            seen.insert((a, b))
+            let (u, v) = (V.nth(p), V.nth(i))
+            edges.push((u:, v:))
+            adj[u].push(v)
+            adj[v].push(u)
+    var tries = 0
+    let max_tries = (target + 1) * 16 + 32
+    while edges.len < target and tries < max_tries:
+        tries += 1
+        let x = rand(0, n - 1)
+        let y = rand(0, n - 1)
+        if simple:
+            if x == y: continue
+            let a = min(x, y)
+            let b = max(x, y)
+            if (a, b) in seen: continue
+            seen.insert((a, b))
+        let (u, v) = (V.nth(x), V.nth(y))
+        edges.push((u:, v:))
+        adj[u].push(v)
+        if x != y: adj[v].push(u)
+    GenGraph(edges, adj)
+
+/// A random weighted graph on `V` with edge weights in `w_lo..=w_hi`, choice-recorded for shrinking.
+pub fn gen_weighted_graph<V>(
+    w_lo: Int,
+    w_hi: Int,
+    simple: Bool = true,
+    connected: Bool = false,
+    m_lo: Int = -1,
+    m_hi: Int = -1,
+) -> GenWeightedGraph<V>:
+    let base = gen_graph::<V>(simple:, connected:, m_lo:, m_hi:)
+    var edges: List<(u: V, v: V, w: Int)> = []
+    var adj: [V]List<(to: V, w: Int)> = [V] _ => []
+    for e in base.edges:
+        let w = rand(w_lo, w_hi)
+        edges.push((u: e.u, v: e.v, w:))
+        adj[e.u].push((to: e.v, w:))
+        if e.u != e.v: adj[e.v].push((to: e.u, w:))
+    GenWeightedGraph(edges, adj)

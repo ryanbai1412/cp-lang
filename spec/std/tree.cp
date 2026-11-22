@@ -16,7 +16,7 @@ use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.algebra.{add}
 use std.seq.{dedup}
-use std.rand.{Rng}
+use std.rand.{Rng, gen_parents}
 use std.dsu.{Dsu}
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
@@ -2516,6 +2516,10 @@ pub struct LazyEulerTourTree<V, T, F>:
 /// example: `cartesian_tree([3, 1, 2]) == [Some(1), None, Some(1)] and cartesian_tree([1, 1]) == [None, Some(0)]`
 /// example: `cartesian_tree([3, 1, 2], by: (x, y) => x > y) == [None, Some(2), Some(0)]`
 pub fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D]?D = todo
+
+/// A random rooted tree on `V` of `shape` (`random`, `path`, `star`, `caterpillar`, `binary`),
+/// choice-recorded for shrinking.
+pub fn gen_rooted<V>(shape: Str = "random") = Rooted.from_parents(gen_parents::<V>(shape))
 
 /// The Kruskal reconstruction tree: each edge that merges two components, in increasing
 /// weight, becomes a node above them. The leaves under a node are the vertices connected by

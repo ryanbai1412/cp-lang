@@ -1886,7 +1886,7 @@ fn names_a_type(ty: &crate::ast::Type) -> bool {
         TypeKind::Tuple(items) => items.iter().all(names_a_type),
         TypeKind::Optional(t) | TypeKind::Mut(t) => names_a_type(t),
         TypeKind::Array { elem, .. } => names_a_type(elem),
-        TypeKind::Range { .. } => true,
+        TypeKind::Range { .. } | TypeKind::ConstrainedStr(_) => true,
         TypeKind::Record(fields) => fields.iter().all(|(_, t)| names_a_type(t)),
         _ => false,
     }

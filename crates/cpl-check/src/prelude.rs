@@ -289,6 +289,14 @@ pub const BUILT_ON: &[(&str, &str)] = &[
 /// file uses the unified family name (`prefix`, `Prefix`, `Diff`), without
 /// spending prelude slots or exposing internal names to users.
 pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
+    ("gen", "rand", "gen_str"),
+    ("gen", "rand", "gen_perm"),
+    ("gen", "rand", "gen_parents"),
+    ("gen", "rand", "gen_graph"),
+    ("gen", "rand", "gen_weighted_graph"),
+    ("gen", "rand", "GenGraph"),
+    ("gen", "rand", "GenWeightedGraph"),
+    ("gen", "tree", "gen_rooted"),
     ("prefix", "prefix", "_Prefix2"),
     ("prefix", "prefix", "_PrefixList"),
     ("prefix", "prefix", "FillPrefix"),
@@ -355,6 +363,7 @@ pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'stati
         ("ask", _) => "Writes a query of its arguments, flushes and reads the judge's reply, in time linear in what it writes and reads, not counting the judge's own time.",
         ("Int" | "I128" | "U64" | "F64" | "Char" | "Bool", Some(1)) if fixed => "Converts a number, character or `Bool` to this type, in O(1).",
         ("rand", Some(0 | 2)) => "A random `Int`, from `lo` to `hi` when given, in O(1).",
+        ("gen", _) => "A random value from a range or type, recorded for stress shrinking.",
         ("abs", _) => "The absolute value, in O(1).",
         ("min", Some(1)) => "The smallest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
         ("max", Some(1)) => "The largest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
@@ -487,6 +496,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "swap",
     "copy",
     "rand",
+    "gen",
     "some",
     "laws_hold",
     "popcount",

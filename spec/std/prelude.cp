@@ -32,6 +32,7 @@ use std.math.{Ratio, Sieve, bit, ceil_div, digits, divmod, fixed, floor_quotient
 use std.mod.{Comb, Mod}
 use std.opt.{is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
+use std.rand.{Perm}
 use std.search.{bsearch_real, split_best, ternary_max, ternary_max_real, ternary_min, ternary_min_real}
 use std.segtree.{SegTree}
 use std.window.{Sweep, Track, Undo, Undoing, Window, track, undoing}

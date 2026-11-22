@@ -15,7 +15,7 @@ use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.lazy.{LazySegTree, AddMax, AddSum}
 use std.seq.{excl_fold, dedup}
-use std.rand.{Rng}
+use std.rand.{Rng, gen_parents}
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child lists.
@@ -603,6 +603,10 @@ fn slow_path<V, Pre>(r: Rooted<V, Pre>, a: V, b: V) -> List<V>:
             y = r.parent(y)!
     left.push(x)
     left + right.rev
+
+/// A random rooted tree on `V` of `shape` (`random`, `path`, `star`, `caterpillar`, `binary`),
+/// choice-recorded for shrinking.
+pub fn gen_rooted<V>(shape: Str = "random") = Rooted.from_parents(gen_parents::<V>(shape))
 
 @test
 fn subtrees_and_chains_are_contiguous():
