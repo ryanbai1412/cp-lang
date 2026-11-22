@@ -573,10 +573,13 @@ fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() 
     let mut cases: Vec<(String, String)> = files
         .into_iter()
         .map(|(_, path, src)| {
-            (
-                path.file_name().unwrap().to_string_lossy().into_owned(),
-                src,
-            )
+            let parent = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let file = path.file_name().unwrap().to_string_lossy();
+            (format!("{parent}/{file}"), src)
         })
         .collect();
     cases.push(("300-line file with errors".into(), broken));
@@ -606,4 +609,222 @@ fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() 
         );
     }
     println!("lsp: worst keystroke p95 {}", ms(worst));
+}
+
+fn p95(samples: &mut [Duration]) -> Duration {
+    samples.sort();
+    samples[(samples.len() - 1) * 95 / 100]
+}
+
+fn median(samples: &mut [Duration]) -> Duration {
+    samples.sort();
+    samples[samples.len() / 2]
+}
+
+fn line_col_of(src: &str, offset: usize) -> (u32, u32) {
+    let before = &src[..offset];
+    let line = before.bytes().filter(|&b| b == b'\n').count() as u32;
+    let col = before
+        .rsplit_once('\n')
+        .map_or(before.len(), |(_, tail)| tail.len()) as u32;
+    (line, col)
+}
+
+/// Goal benchmark: diagnostics, hover, and completion p95 are all under
+/// `LSP_BUDGET` (100 ms) on the largest corpus file (both by lines and by
+/// bytes).
+#[test]
+fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
+    let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
+    let mut files = Vec::new();
+    for problem in std::fs::read_dir(&ports).unwrap().flatten() {
+        let Ok(entries) = std::fs::read_dir(problem.path()) else {
+            continue;
+        };
+        for file in entries.flatten() {
+            let path = file.path();
+            if path.extension().is_some_and(|e| e == "cp") {
+                let src = std::fs::read_to_string(&path).unwrap();
+                files.push((src.lines().count(), src.len(), path, src));
+            }
+        }
+    }
+    assert!(!files.is_empty(), "corpus/problems has no .cp files");
+
+    let by_lines = files
+        .iter()
+        .max_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)).then_with(|| b.2.cmp(&a.2)))
+        .unwrap()
+        .clone();
+    let by_bytes = files
+        .iter()
+        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)).then_with(|| b.2.cmp(&a.2)))
+        .unwrap()
+        .clone();
+
+    let mut targets = vec![by_lines];
+    if by_bytes.2 != targets[0].2 {
+        targets.push(by_bytes);
+    }
+
+    let budget = p95_budget();
+    for (lines, bytes, path, src) in targets {
+        let label = format!(
+            "{}/{}",
+            path.parent()
+                .and_then(|p| p.file_name())
+                .unwrap_or_default()
+                .to_string_lossy(),
+            path.file_name().unwrap_or_default().to_string_lossy()
+        );
+        let uri = format!("file://{}", path.canonicalize().unwrap().display());
+        let mut server = Server::new();
+        server.handle(&message(Some(1), "initialize", obj([])));
+        server.handle(&message(None, "initialized", obj([])));
+        server.handle(&message(
+            None,
+            "textDocument/didOpen",
+            obj([(
+                "textDocument",
+                obj([
+                    ("uri", uri.as_str().into()),
+                    ("languageId", "cp".into()),
+                    ("version", 1.into()),
+                    ("text", src.as_str().into()),
+                ]),
+            )]),
+        ));
+
+        // 1. Diagnostics p95 across 40 warm edits in the middle of the file.
+        let middle = src.len() / 2;
+        let edit_at = middle
+            + src[middle..]
+                .find("\n    ")
+                .expect("an indented line after the middle")
+            + 5;
+        let mut diag_samples = Vec::with_capacity(40);
+        let mut version = 2usize;
+        for i in 0..40 {
+            let edited = if i % 2 == 0 {
+                format!("{}let _probe = {i}\n    {}", &src[..edit_at], &src[edit_at..])
+            } else {
+                src.clone()
+            };
+            let req = message(
+                None,
+                "textDocument/didChange",
+                obj([
+                    (
+                        "textDocument",
+                        obj([("uri", uri.as_str().into()), ("version", version.into())]),
+                    ),
+                    (
+                        "contentChanges",
+                        Value::Array(vec![obj([("text", edited.as_str().into())])]),
+                    ),
+                ]),
+            );
+            version += 1;
+            let (replies, took) = round_trip(&mut server, &req);
+            assert!(
+                replies.iter().any(|r| r.contains("publishDiagnostics")),
+                "no diagnostics on {label}"
+            );
+            diag_samples.push(took);
+        }
+        // Restore original text before hover/completion.
+        server.handle(&message(
+            None,
+            "textDocument/didChange",
+            obj([
+                (
+                    "textDocument",
+                    obj([("uri", uri.as_str().into()), ("version", version.into())]),
+                ),
+                (
+                    "contentChanges",
+                    Value::Array(vec![obj([("text", src.as_str().into())])]),
+                ),
+            ]),
+        ));
+
+        // 2. Hover p95 across 40 identifier positions spread through the file.
+        let mut hover_positions = Vec::new();
+        for (line_idx, line) in src.lines().enumerate() {
+            let trimmed = line.trim_start();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            if let Some(col) = line.find(|c: char| c.is_ascii_alphabetic()) {
+                hover_positions.push((line_idx as u32, col as u32));
+            }
+        }
+        assert!(!hover_positions.is_empty());
+        let mut hover_samples = Vec::with_capacity(40);
+        for i in 0..40 {
+            let (line, col) = hover_positions[i * hover_positions.len() / 40];
+            let req = message(
+                Some(100 + i as u32),
+                "textDocument/hover",
+                obj([
+                    ("textDocument", obj([("uri", uri.as_str().into())])),
+                    ("position", obj([("line", line.into()), ("character", col.into())])),
+                ]),
+            );
+            let (replies, took) = round_trip(&mut server, &req);
+            assert_eq!(replies.len(), 1);
+            hover_samples.push(took);
+        }
+
+        // 3. Completion p95 across 40 requests (alternating bare and dot positions).
+        let (edit_line, edit_col) = line_col_of(&src, edit_at);
+        let mut dot_positions: Vec<(u32, u32)> = src
+            .match_indices('.')
+            .filter_map(|(idx, _)| {
+                let next = src.as_bytes().get(idx + 1).copied()?;
+                next.is_ascii_alphabetic()
+                    .then(|| line_col_of(&src, idx + 1))
+            })
+            .collect();
+        if dot_positions.is_empty() {
+            dot_positions.push((edit_line, edit_col));
+        }
+        let mut comp_samples = Vec::with_capacity(40);
+        for i in 0..40 {
+            let (line, col) = if i % 2 == 0 {
+                (edit_line, edit_col)
+            } else {
+                dot_positions[i % dot_positions.len()]
+            };
+            let req = message(
+                Some(200 + i as u32),
+                "textDocument/completion",
+                obj([
+                    ("textDocument", obj([("uri", uri.as_str().into())])),
+                    ("position", obj([("line", line.into()), ("character", col.into())])),
+                ]),
+            );
+            let (replies, took) = round_trip(&mut server, &req);
+            assert_eq!(replies.len(), 1);
+            comp_samples.push(took);
+        }
+
+        let (d_med, d_p95) = (median(&mut diag_samples), p95(&mut diag_samples));
+        let (h_med, h_p95) = (median(&mut hover_samples), p95(&mut hover_samples));
+        let (c_med, c_p95) = (median(&mut comp_samples), p95(&mut comp_samples));
+        println!(
+            "lsp corpus {label} ({lines} lines, {bytes} bytes): \
+             diagnostics med={} p95={} | hover med={} p95={} | completion med={} p95={} (budget {})",
+            ms(d_med),
+            ms(d_p95),
+            ms(h_med),
+            ms(h_p95),
+            ms(c_med),
+            ms(c_p95),
+            ms(budget),
+        );
+        assert!(d_p95 < budget, "{label} diagnostics p95 {} >= {}", ms(d_p95), ms(budget));
+        assert!(h_p95 < budget, "{label} hover p95 {} >= {}", ms(h_p95), ms(budget));
+        assert!(c_p95 < budget, "{label} completion p95 {} >= {}", ms(c_p95), ms(budget));
+    }
 }
