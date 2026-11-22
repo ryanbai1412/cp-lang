@@ -302,7 +302,7 @@ for i in 1..=3:
 
     #[test]
     fn a_changed_signature_or_reading_past_the_input_runs_the_whole_file() {
-        let wider = RUN.replace("fn add(i: Int) -> Int:", "fn add(i: Int) -> Bool:\n    total += i\n    return total > 0\nfn old(i: Int) -> Int:");
+        let wider = RUN.replace("fn add(i: Int) -> Int:", "fn add(i: Int) -> Bool:\n    total += i\n    return total > 0\nfn old(i: Int) -> Int:").replace("print(add(i))", "print(yes(add(i)))");
         let replay = replayed(&wider, "", 2);
         assert!(replay.fallback.as_deref().is_some_and(|why| why.contains("takes or returns")), "{:?}", replay.fallback);
         let reads = RUN.replace("    total += i\n", "    let more: Int = read()\n    total += i + more\n");
