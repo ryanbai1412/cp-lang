@@ -580,6 +580,7 @@ pub fn diameter2(hull: List<Pt>) -> Int = todo
 ///
 /// cost: O(n)
 /// empty: `(0.0, 0.0)`
+/// ties: none; both results are values, not a chosen rectangle
 /// traps: never
 /// example: `min_bounding_box([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]) == (4.0, 8.0)`
 /// example: `min_bounding_box([Pt(0, 0), Pt(3, 0)]) == (0.0, 6.0)`
@@ -611,6 +612,7 @@ fn find_tangent(hull: List<Pt>, p: Pt, sign: Int) -> Int = todo
 ///
 /// cost: O(log n)
 /// ties: when two vertices qualify (`p` on an edge's line), the one nearer to `p`
+/// empty: traps (needs `hull.len >= 3`)
 /// traps: when `hull.len < 3` or `p` is not strictly outside
 /// example: `hull_tangents([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(4, 1)) == (1, 2)`
 pub fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int) = todo
@@ -1212,6 +1214,7 @@ pub fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec
 ///
 /// cost: O(n) expected for unadversarial order
 /// empty: `Circle(Vec(0.0, 0.0), 0.0)`
+/// ties: none; the smallest enclosing circle is unique
 /// traps: never
 /// example: `min_enclosing_circle([Vec(0.0, 0.0), Vec(2.0, 0.0)]) == Circle(Vec(1.0, 0.0), 1.0)`
 /// example: `min_enclosing_circle([Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0), Vec(1.0, 1.0)]) == Circle(Vec(3.0, 4.0), 5.0)`
@@ -1285,89 +1288,222 @@ fn sh_first_above_y(
     hi: List<Pt>,
 ) -> Int = todo
 
-/// O(n log n), O(n) memory. Detect whether any two segments in `segs` intersect via
-/// Shamos-Hoey sweep line with exact `I128` comparisons (valid for `|x|, |y| <= 1e12`).
-/// Returns an intersecting index pair `Some((i, j))` or `None`. Set `strict: true` to
-/// require a proper interior crossing.
+/// Whether any two segments of `segs` share a point, by a Shamos-Hoey sweep with exact `I128`
+/// comparisons (valid for `|x|, |y| <= 1e12`): `Some((i, j))` with `i < j` for a pair that
+/// meets, or `None`.
+///
+/// With `strict: true` only proper interior crossings count, as in `segments_meet`. When several
+/// pairs meet, the pair is the first one the sweep finds, not necessarily the least.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `None`
+/// ties: the first meeting pair found by the sweep, as `(i, j)` with `i < j`
+/// traps: never
+/// example: `any_segments_meet([(Pt(0, 0), Pt(2, 2)), (Pt(5, 5), Pt(6, 6)), (Pt(0, 2), Pt(2, 0))]) == Some((0, 2))`
+/// example: `any_segments_meet([(Pt(0, 0), Pt(1, 0)), (Pt(0, 1), Pt(1, 1))]) == None`
+/// example: `any_segments_meet([(Pt(0, 0), Pt(1, 1)), (Pt(1, 1), Pt(2, 0))], strict: true) == None`
 pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int) = todo
 
-/// O(n log n), O(n) memory. Domain-indexed Shamos-Hoey sweep; returns a pair of
-/// intersecting segment handles, or `None`.
+/// `any_segments_meet` over a domain-indexed array: `Some((a, b))` with `a` before `b` in key
+/// order for a pair of segments that meet, or `None`.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `None`
+/// ties: the first meeting pair found by the sweep, `a` before `b` in key order
+/// traps: never
+/// example: `any_segments_meet_idx([(Pt(0, 0), Pt(1, 1)), (Pt(1, 1), Pt(2, 0))]) == Some((0, 1))`
 pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D) = todo
 
 // ---- axis-aligned rectangles, planar subdivisions, and Delaunay / Voronoi
 
 /// O(1) value type. Half-open integer rectangle `x * y` (accepts cut ranges per decision 124).
 pub struct Rect(x: Range<Int>, y: Range<Int>):
-    /// O(1). Area of the rectangle (0 if empty).
+    /// The number of unit cells, `x.len * y.len`; 0 when either range is empty.
+    ///
+    /// cost: O(1)
+    /// traps: when the product overflows `Int`
+    /// example: `Rect(0..3, 0..2).area == 6`
+    /// example: `Rect(3..1, 0..2).area == 0`
     pub @get fn area(self) -> Int = todo
 
-    /// O(1). True when either axis range is empty.
+    /// Whether either axis range is empty.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Rect(0..0, 0..5).is_empty == true`
+    /// example: `Rect(0..1, 0..1).is_empty == false`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// O(1). True when `p.x` is in `x` and `p.y` is in `y`.
+    /// Whether `p.x` is in `x` and `p.y` is in `y` (half-open, so the top and right edges are out).
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Rect(0..3, 0..2).contains(Pt(2, 1)) == true`
+    /// example: `Rect(0..3, 0..2).contains(Pt(3, 1)) == false`
     pub fn contains(self, p: Pt) -> Bool = todo
 
-    /// O(1). Non-empty intersection of two rectangles, or `None`.
+    /// The common part of two rectangles, or `None` when it is empty (including rectangles that only
+    /// touch along an edge).
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Rect(0..3, 0..3).intersect(Rect(1..5, 2..4)) == Some(Rect(1..3, 2..3))`
+    /// example: `Rect(0..1, 0..1).intersect(Rect(1..2, 0..1)) == None`
     pub fn intersect(self, o: Rect) -> ?Rect = todo
 
-/// O(n log n), O(n) memory. Total area of the union of axis-aligned integer rectangles via sweep line.
+/// The area of the union of `rects`, by a sweep over x with a segment tree over the compressed y
+/// coordinates. Empty rectangles add nothing.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: 0
+/// traps: when the area overflows `Int`
+/// example: `rects_union_area([Rect(0..2, 0..2), Rect(1..3, 1..3)]) == 7`
+/// example: `rects_union_area([Rect(0..2, 0..2), Rect(0..2, 0..2)]) == 4`
+/// example: `rects_union_area([]) == 0`
 pub fn rects_union_area(rects: List<Rect>) -> Int = todo
 
-/// O((n + m) log m), O(n + m) memory. Faces (CCW interior cycles and CW outer cycle) of a planar
-/// straight-line graph.
+/// The faces of the planar straight-line graph with vertices `pts` and undirected `edges`, each
+/// as its cycle of vertices: bounded faces counter-clockwise, the outer face of each connected
+/// component clockwise.
+///
+/// Each face is traced by turning to the next edge clockwise at every vertex. A bridge edge
+/// appears twice in its face; isolated vertices form no face. The graph must be planar (edges
+/// meet only at shared endpoints); that is not checked.
+///
+/// cost: O((n + m) log m) time, O(n + m) memory
+/// empty: `[]` when `edges` is empty
+/// order: each cycle starts at its least vertex in key order; faces sorted by cycle; a new `List`
+/// traps: when an edge joins a vertex to itself, or an edge repeats
+/// example: `planar_faces([Pt(0, 0), Pt(1, 0), Pt(0, 1)], [(0, 1), (1, 2), (2, 0)]) == [[0, 1, 2], [0, 2, 1]]`
+/// example: `planar_faces([Pt(0, 0), Pt(1, 0)], [(0, 1)]) == [[0, 1]]`
 pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>> = todo
 
-/// O((n + m + q) log(n + m)), O(n + m + q) memory. Offline sweep-line point location in a planar
-/// subdivision; returns face index or `None`.
+/// For each query point, the index into `planar_faces(pts, edges)` of the bounded face that
+/// contains it, or `None` when it lies on an edge or vertex or in the unbounded region (offline
+/// sweep).
+///
+/// cost: O((n + m + q) log(n + m)) time, O(n + m + q) memory
+/// empty: `[]` when `queries` is empty
+/// order: one answer per query, in query order; a new `List`, keyed from 0
+/// traps: as `planar_faces`
+/// example: `point_location_planar([Pt(0, 0), Pt(4, 0), Pt(0, 4)], [(0, 1), (1, 2), (2, 0)], [Pt(1, 1), Pt(0, 0), Pt(5, 5)]) == [Some(0), None, None]`
 pub fn point_location_planar<V>(
     pts: [V]Pt,
     edges: List<(V, V)>,
     queries: List<Pt>,
 ) -> List<?Int> = todo
 
-/// O(n log n), O(n) memory. Exact Delaunay triangulation of distinct integer points
-/// (`|coords| <= 1e9`) as CCW handle triples.
+/// The Delaunay triangulation of distinct integer points (`|coords| <= 1e9`), exact in `I128`,
+/// as counter-clockwise handle triples.
+///
+/// Where four or more points are cocircular the triangulation is not unique; the algorithm picks
+/// one of the valid ones. Fewer than 3 points, or all collinear, give `[]`.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: `[]`
+/// order: each triple rotated to start at its least handle in key order; triples sorted; a new `List`
+/// traps: when two points are equal
+/// example: `delaunay([Pt(0, 0), Pt(4, 0), Pt(0, 4)]) == [(0, 1, 2)]`
+/// example: `delaunay([Pt(0, 0), Pt(4, 0), Pt(0, 4), Pt(1, 1)]) == [(0, 1, 3), (0, 3, 2), (1, 2, 3)]`
+/// example: `delaunay([Pt(0, 0), Pt(1, 1), Pt(2, 2)]) == []`
 pub fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)> = todo
 
-/// O(n log n), O(n) memory. Voronoi cells of `pts` clipped to `[-bound, bound]^2` via the Delaunay dual.
+/// The Voronoi cell of each point, clipped to the box `[-bound, bound]^2`, as a counter-clockwise
+/// polygon (from the Delaunay dual, then half-plane clipping).
+///
+/// The result keeps the domain of `pts`. A cell that misses the box is `[]`; a single point's
+/// cell is the whole box.
+///
+/// cost: O(n log n) time, O(n) memory
+/// empty: an empty array
+/// order: each cell counter-clockwise, starting at its least `(y, x)` corner
+/// traps: when two points are equal or `bound <= 0.0`
+/// example: `voronoi_cells([Pt(-1, 0), Pt(1, 0)], 2.0)[0] == [Vec(-2.0, -2.0), Vec(0.0, -2.0), Vec(0.0, 2.0), Vec(-2.0, 2.0)]`
+/// example: `voronoi_cells([Pt(-1, 0), Pt(1, 0)], 2.0)[1] == [Vec(0.0, -2.0), Vec(2.0, -2.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]`
+/// example: `voronoi_cells([Pt(0, 0)], 1.0)[0] == [Vec(-1.0, -1.0), Vec(1.0, -1.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)]`
 pub fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec> = todo
 
 // ---- 3D exact & floating-point geometry
 
 /// O(1) value type. A 3D point or vector with exact integer coordinates.
 pub struct Pt3(x: Int, y: Int, z: Int):
-    /// O(1). The squared Euclidean length (`x*x + y*y + z*z`).
+    /// The squared length `x*x + y*y + z*z`, in `Int`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt3(1, 2, 2).norm2 == 9`
     pub @get fn norm2(self) -> Int = todo
 
-    /// O(1). The exact 128-bit squared Euclidean length.
+    /// The exact squared length, computed in `I128`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `I128`
+    /// example: `Pt3(1, 2, 2).norm2_128 == 9`
     pub @get fn norm2_128(self) -> I128 = todo
 
-    /// O(1). The Euclidean length as `F64`.
+    /// The Euclidean length as `F64`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pt3(1, 2, 2).len == 3.0`
     pub @get fn len(self) -> F64 = todo
 
-    /// O(1). Explicit conversion to 3D floating-point `Vec3`.
+    /// `self` as a floating-point `Vec3`: the explicit way across.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pt3(1, 2, 2).to_vec3 == Vec3(1.0, 2.0, 2.0)`
     pub @get fn to_vec3(self) -> Vec3 = todo
 
-    /// O(1). 3D dot product of `self` and `o`.
+    /// The dot product `x * o.x + y * o.y + z * o.z`, in `Int`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result or a product overflows `Int`
+    /// example: `Pt3(1, 2, 3).dot(Pt3(4, 5, 6)) == 32`
     pub fn dot(self, o: Pt3) -> Int = todo
 
-    /// O(1). Exact 128-bit 3D dot product of `self` and `o`.
+    /// The exact dot product, computed in `I128`.
+    ///
+    /// cost: O(1)
+    /// traps: when the sum overflows `I128`
+    /// example: `Pt3(1, 2, 3).dot128(Pt3(4, 5, 6)) == 32`
     pub fn dot128(self, o: Pt3) -> I128 = todo
 
-    /// O(1). 3D cross product of `self` and `o`.
+    /// The cross product `Pt3(y*o.z - z*o.y, z*o.x - x*o.z, x*o.y - y*o.x)`, perpendicular to both by
+    /// the right-hand rule.
+    ///
+    /// cost: O(1)
+    /// traps: when a component overflows `Int`
+    /// example: `Pt3(1, 0, 0).cross(Pt3(0, 1, 0)) == Pt3(0, 0, 1)`
+    /// example: `Pt3(1, 2, 3).cross(Pt3(4, 5, 6)) == Pt3(-3, 6, -3)`
     pub fn cross(self, o: Pt3) -> Pt3 = todo
 
-    /// O(1). Squared 3D Euclidean distance from `self` to `o`.
+    /// The squared Euclidean distance from `self` to `o`, in `Int`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt3(0, 0, 0).dist2(Pt3(1, 2, 2)) == 9`
     pub fn dist2(self, o: Pt3) -> Int = todo
 
-    /// O(1). 3D Euclidean distance from `self` to `o` as `F64`.
+    /// The Euclidean distance from `self` to `o`, as `F64`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Pt3(0, 0, 0).dist(Pt3(1, 2, 2)) == 3.0`
     pub fn dist(self, o: Pt3) -> F64 = todo
 
-    /// O(1). 3D Manhattan (L1) distance `|x - o.x| + |y - o.y| + |z - o.z|`.
+    /// The Manhattan (L1) distance `|x - o.x| + |y - o.y| + |z - o.z|`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt3(1, 1, 1).manhattan(Pt3(2, -1, 4)) == 6`
     pub fn manhattan(self, o: Pt3) -> Int = todo
 
-    /// O(1). 3D Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|, |z - o.z|)`.
+    /// The Chebyshev (L-infinity) distance `max(|x - o.x|, |y - o.y|, |z - o.z|)`.
+    ///
+    /// cost: O(1)
+    /// traps: when the result overflows `Int`
+    /// example: `Pt3(1, 1, 1).chebyshev(Pt3(2, -1, 4)) == 3`
     pub fn chebyshev(self, o: Pt3) -> Int = todo
 
 impl Add for Pt3:
@@ -1389,41 +1525,104 @@ fn face_side128(a: Pt3, b: Pt3, c: Pt3, p: Pt3) -> I128 = todo
 
 fn col3(a: Pt3, b: Pt3, c: Pt3) -> Bool = todo
 
-/// O(n^2), O(n) memory. Exact 3D convex hull of `pts` via incremental hull in `I128`
-/// (valid for `|x|, |y|, |z| <= 1e12`). Returns outward-oriented triangular faces `(a, b, c)`.
+/// The 3D convex hull of `pts` as triangular faces of indices, each counter-clockwise seen from
+/// outside (so its normal points out), exact in `I128` (valid for `|x|, |y|, |z| <= 1e12`).
+///
+/// Only strict corners appear; a flat face with more than 3 corners is split as a fan from its
+/// least index. Of equal points the smallest index stands for them. Fewer than 4 non-coplanar
+/// points give `[]`.
+///
+/// cost: O(n^2) time, O(n) memory
+/// empty: `[]`
+/// order: each face rotated to start at its least index; faces sorted; a new `List`, keyed from 0
+/// traps: never
+/// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
+/// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(4, 0, 0), Pt3(0, 4, 0), Pt3(0, 0, 4), Pt3(1, 1, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
+/// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0)]) == []`
 pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)> = todo
 
-/// O(n^2), O(n) memory. Domain-indexed 3D convex hull returning outward-oriented
-/// triangular faces of `D` handles.
+/// `convex_hull_3d` over a domain-indexed array, with faces of handles; the same orientation,
+/// order and tie rules, in key order.
+///
+/// cost: O(n^2) time, O(n) memory
+/// empty: `[]`
+/// order: each face rotated to start at its least handle; faces sorted; a new `List`
+/// traps: never
+/// example: `convex_hull_3d_idx([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
 pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)> = todo
 
-/// O(|faces|). Six times the signed volume of a closed triangulated polyhedron.
+/// Six times the signed volume of the closed triangulated surface `faces` over `pts`: the sum of
+/// `pts[a].dot128(pts[b].cross(pts[c]))` over faces, computed in `I128`. Positive when faces are
+/// counter-clockwise seen from outside, as `convex_hull_3d` returns them.
+///
+/// cost: O(|faces|)
+/// empty: 0
+/// traps: when a face index is out of range
+/// example: `polyhedron_volume6([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)], [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]) == 1`
+/// example: `polyhedron_volume6([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)], [(0, 3, 1), (0, 1, 2), (0, 2, 3), (1, 3, 2)]) == -1`
 pub fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128 = todo
 
 /// O(1) value type. A 3D floating-point point or vector.
 pub struct Vec3(x: F64, y: F64, z: F64):
-    /// O(1). Squared Euclidean length.
+    /// The squared length `x*x + y*y + z*z`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec3(1.0, 2.0, 2.0).norm2 == 9.0`
     pub @get fn norm2(self) -> F64 = todo
 
-    /// O(1). Euclidean length.
+    /// The Euclidean length.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec3(1.0, 2.0, 2.0).len == 3.0`
     pub @get fn len(self) -> F64 = todo
 
-    /// O(1). Unit vector in the same direction (traps if `len == 0`).
+    /// The unit vector in the direction of `self`: each coordinate divided by `self.len`.
+    ///
+    /// cost: O(1)
+    /// traps: when `self.len == 0.0`
+    /// example: `Vec3(0.0, 0.0, 2.0).unit == Vec3(0.0, 0.0, 1.0)`
     pub @get fn unit(self) -> Vec3 = todo
 
-    /// O(1). 3D dot product of `self` and `o`.
+    /// The dot product `x * o.x + y * o.y + z * o.z`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec3(1.0, 2.0, 3.0).dot(Vec3(4.0, 5.0, 6.0)) == 32.0`
     pub fn dot(self, o: Vec3) -> F64 = todo
 
-    /// O(1). 3D cross product of `self` and `o`.
+    /// The cross product, by the right-hand rule, as for `Pt3.cross`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec3(1.0, 0.0, 0.0).cross(Vec3(0.0, 1.0, 0.0)) == Vec3(0.0, 0.0, 1.0)`
     pub fn cross(self, o: Vec3) -> Vec3 = todo
 
-    /// O(1). Squared 3D Euclidean distance from `self` to `o`.
+    /// The squared Euclidean distance from `self` to `o`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec3(0.0, 0.0, 0.0).dist2(Vec3(1.0, 2.0, 2.0)) == 9.0`
     pub fn dist2(self, o: Vec3) -> F64 = todo
 
-    /// O(1). 3D Euclidean distance from `self` to `o`.
+    /// The Euclidean distance from `self` to `o`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec3(0.0, 0.0, 0.0).dist(Vec3(1.0, 2.0, 2.0)) == 3.0`
     pub fn dist(self, o: Vec3) -> F64 = todo
 
-    /// O(1). Rodrigues rotation around unit `axis` by `rad` radians.
+    /// `self` rotated by `rad` radians counter-clockwise about the unit vector `axis` (seen with
+    /// `axis` pointing at the viewer), by Rodrigues' formula
+    /// `v cos t + axis.cross(v) sin t + axis * axis.dot(v) * (1 - cos t)`.
+    ///
+    /// `axis` must be a unit vector; that is not checked.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Vec3(1.0, 2.0, 3.0).rot(Vec3(0.0, 0.0, 1.0), 0.0) == Vec3(1.0, 2.0, 3.0)`
+    /// example: `let v = Vec3(1.0, 0.0, 0.0).rot(Vec3(0.0, 0.0, 1.0), PI / 2.0); close(v.x, 0.0) and close(v.y, 1.0) and close(v.z, 0.0)`
     pub fn rot(self, axis: Vec3, rad: F64) -> Vec3 = todo
 
 impl Add for Vec3:
@@ -1443,19 +1642,52 @@ impl Div<F64> for Vec3:
 
 /// O(1) value type. A 3D plane `{ p | n.dot(p) == d }` with unit normal `n`.
 pub struct Plane3(n: Vec3, d: F64):
-    /// O(1). Plane through non-collinear points `a`, `b`, `c`, or `None`.
+    /// The plane through `a`, `b` and `c`: `n = (b - a).cross(c - a).unit`, `d = n.dot(a)`; `None`
+    /// when `(b - a).cross(c - a).len <= eps` (collinear).
+    ///
+    /// The normal follows the right-hand rule, so `a -> b -> c` runs counter-clockwise seen from the
+    /// side `n` points to.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Plane3.through(Vec3(0.0, 0.0, 1.0), Vec3(1.0, 0.0, 1.0), Vec3(0.0, 1.0, 1.0)) == Some(Plane3(Vec3(0.0, 0.0, 1.0), 1.0))`
+    /// example: `Plane3.through(Vec3(0.0, 0.0, 0.0), Vec3(1.0, 1.0, 1.0), Vec3(2.0, 2.0, 2.0)) == None`
     pub fn through(a: Vec3, b: Vec3, c: Vec3, eps: F64 = 1e-9) -> ?Plane3 = todo
 
-    /// O(1). Signed distance from `p` to the plane.
+    /// The signed distance `n.dot(p) - d`: positive on the side `n` points to.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Plane3(Vec3(0.0, 0.0, 1.0), 1.0).dist(Vec3(5.0, 5.0, 3.0)) == 2.0`
+    /// example: `Plane3(Vec3(0.0, 0.0, 1.0), 1.0).dist(Vec3(5.0, 5.0, 0.0)) == -1.0`
     pub fn dist(self, p: Vec3) -> F64 = todo
 
-    /// O(1). Orthogonal projection of `p` onto the plane.
+    /// The orthogonal projection of `p` onto the plane: `p - n * self.dist(p)`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Plane3(Vec3(0.0, 0.0, 1.0), 1.0).project(Vec3(5.0, 5.0, 3.0)) == Vec3(5.0, 5.0, 1.0)`
     pub fn project(self, p: Vec3) -> Vec3 = todo
 
-/// O(1). Intersection of line `a b` with `plane`, or `None` if parallel.
+/// The point where the infinite line through `a` and `b` meets `plane`, or `None` when
+/// `|plane.n.dot(b - a)| <= eps` (parallel, including lying in the plane, or `a == b`).
+///
+/// The point is `a + (b - a) * t` with `t = (plane.d - plane.n.dot(a)) / plane.n.dot(b - a)`.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `line_plane_intersect(Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 2.0), Plane3(Vec3(0.0, 0.0, 1.0), 1.0)) == Some(Vec3(0.0, 0.0, 1.0))`
+/// example: `line_plane_intersect(Vec3(0.0, 0.0, 0.0), Vec3(1.0, 0.0, 0.0), Plane3(Vec3(0.0, 0.0, 1.0), 1.0)) == None`
 pub fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) -> ?Vec3 = todo
 
-/// O(1). Great-circle distance between directions `a` and `b` on a sphere of radius `r`.
+/// The great-circle distance between the directions of `a` and `b` on a sphere of radius `r`:
+/// `r * atan2(a.cross(b).len, a.dot(b))`. Lengths of `a` and `b` do not matter; 0.0 when either
+/// is the zero vector.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `sphere_dist(Vec3(1.0, 0.0, 0.0), Vec3(0.0, 1.0, 0.0)) == PI / 2.0`
+/// example: `sphere_dist(Vec3(1.0, 0.0, 0.0), Vec3(-3.0, 0.0, 0.0), r: 2.0) == 2.0 * PI`
 pub fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64 = todo
 
 // ---- tests

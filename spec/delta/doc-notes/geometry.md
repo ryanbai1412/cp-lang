@@ -46,3 +46,15 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `polygon_cut`: Sutherland-Hodgman walk from `poly[0]`; points within `eps` of the line are kept; result keeps the input orientation.
 - `min_enclosing_circle`: the stub says "deterministic Welzl" with "O(n) expected"; chose input order with no internal shuffle, which makes the expectation hold only for unadversarial order. Contradiction-adjacent: a fixed internal seed would give true expected O(n) and stay deterministic; logged for a decision.
 - `circle_polygon_area`: signed by the polygon's orientation; empty gives 0.0.
+- `any_segments_meet`, `any_segments_meet_idx`: returns `(i, j)` with `i < j`; when several pairs meet it is the first the sweep finds. Open: that pair depends on sweep details (event tie order), so two implementations can return different pairs; pinning "the lexicographically least pair" would cost more than O(n log n).
+- `Rect.intersect`: rectangles that only touch along an edge give `None` (half-open ranges, empty intersection). `Rect.area` traps on overflow.
+- `planar_faces`: chose clockwise-next-edge tracing, cycles starting at the least vertex, faces sorted; bridges appear twice; isolated vertices form no face; planarity is not checked; self-loops and repeated edges trap.
+- `point_location_planar`: chose `None` for points on an edge or vertex and for the unbounded region (the stub's "face index or `None`" does not say which); indices refer to `planar_faces(pts, edges)`.
+- `delaunay`: triples rotated to the least handle and sorted; fewer than 3 or all-collinear points give `[]`; duplicates trap. Open: with four or more cocircular points the triangulation is not unique and is left to the algorithm.
+- `voronoi_cells`: cells start at the least `(y, x)` corner; a cell missing the box is `[]`; traps on duplicates or `bound <= 0.0`.
+- `convex_hull_3d`, `_idx`: strict corners only; flat faces with more than 3 corners are fanned from the least index; faces rotated to the least index and sorted; fewer than 4 non-coplanar points give `[]`.
+- `polyhedron_volume6`: sum of `a . (b x c)` in `I128`, positive for outward counter-clockwise faces; traps on an out-of-range index.
+- `Vec3.rot`: `axis` must be unit and is not checked (the stub says "unit `axis`"); rotation is counter-clockwise seen from the tip of `axis`.
+- `Plane3.through`: normal by the right-hand rule; `None` when the cross product's length is at most `eps`.
+- `line_plane_intersect`: `None` when parallel, including a line lying in the plane.
+- `sphere_dist`: uses `atan2(|a x b|, a . b)` (stable at small angles, unlike `acos`); 0.0 for a zero vector.
