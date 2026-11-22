@@ -9,8 +9,8 @@ for e in 0..m:
     adj[u].push(v)
     adj[v].push(u)
 var dist: [V]?Int = none
-var queue: List<V> = [V.first]
-dist[V.first] = 0
+var queue: List<V> = [V.first!]
+dist[V.first!] = 0
 var head = 0
 while head < queue.len:
     let u = queue[head]
@@ -21,7 +21,7 @@ while head < queue.len:
             queue.push(v)
 for v in V:
     if let d = dist[v]:
-        print(v, d)
+        print(v.label, d)
     else:
-        print(v, "unreachable")
-print(queue)
+        print(v.label, "unreachable")
+print([v.label for v in queue])

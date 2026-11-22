@@ -8,13 +8,13 @@ var safe: [V]?Int = none
 var wild: [V]?Int = none
 var grid: [V, V]?Int = none
 var lst: List<?Int> = []
-safe[V.first] = 0
-wild[V.first] = Int.MIN
-wild[V.last] = Int.MAX
+safe[V.first!] = 0
+wild[V.first!] = Int.MIN
+wild[V.last!] = Int.MAX
 for v in V:
     lst.push(none)
     if v.idx % 2 == 1: lst.push(v.idx - 1)
-    if let w = v + 1:
+    if let w = v.next:
         if let d = safe[v]:
             safe[w] max= d + 3
             safe[w] min= d + 1
@@ -22,7 +22,7 @@ for v in V:
         grid[w, v] = Int.MAX
         if v.idx % 2 == 0: wild[w] = -1
 for v in V:
-    print(safe[v] ?? -1, safe[v] == none, wild[v] ?? 0, wild[v] == none, (wild[v] ?? 5) == Int.MIN, grid[v, V.first] ?? -7, grid[V.last, v] ?? -7)
+    print(safe[v] ?? -1, yes(safe[v] == none), wild[v] ?? 0, yes(wild[v] == none), yes((wild[v] ?? 5) == Int.MIN), grid[v, V.first!] ?? -7, grid[V.last!, v] ?? -7)
 print(lst.len, lst[0] ?? -1, lst[2] ?? -1, lst[lst.len - 1] ?? -1)
 var hi: ?Int = none
 var lo: ?Int = none
@@ -30,7 +30,7 @@ for v in V:
     hi max= wild[v]
     lo min= wild[v]
     hi max= safe[v]
-print(hi ?? 0, lo ?? 0, hi == Int.MAX, lo == Int.MIN)
+print(hi ?? 0, lo ?? 0, yes(hi == Int.MAX), yes(lo == Int.MIN))
 var top = Int.MIN
 var bottom = Int.MAX
 for v in V:

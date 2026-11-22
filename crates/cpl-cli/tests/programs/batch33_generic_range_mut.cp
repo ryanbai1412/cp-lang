@@ -2,10 +2,10 @@ fn bump_all<D>(mut a: [D]Int, by: Int):
     for i in D: a[i] += by
     a[0] += 100
 
-fn ends<D>(a: [D]Int) -> (Int, Int) = (a[D.first], a[D.last])
+fn ends<D>(a: [D]Int) -> (Int, Int) = (a[D.first!], a[D.last!])
 
 struct Acc:
-    cells: [0..4]Int
+    var cells: [0..4]Int
 
 let n: Int = read()
 var a: [0..n]Int = [0..n] i => i

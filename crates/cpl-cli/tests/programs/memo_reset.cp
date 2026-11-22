@@ -14,4 +14,4 @@ fn suffix(i: V) -> Int:
         return a[i] * scale + suffix(j)
     a[i] * scale
 
-print(suffix(V.first), suffix(V.first))
+print(suffix(V.first!), suffix(V.first!))

@@ -7,16 +7,16 @@ var pre: [V.cuts]Int = 0
 for v in V:
     pre[v.r] = pre[v.l] + a[v]
 print(pre)
-print(V.len, V.first, V.last)
-var best = V.first
+print(V.len, V.first!.label, V.last!.label)
+var best = V.first!
 for v in V:
     if a[v] > a[best]:
         best = v
-print("largest at", best, "=", a[best])
+print("largest at", best.label, "=", a[best])
 for v in V.rev:
-    print(v, a[v], v.to_idx, v.rank)
-print(sum(a[v] for v in V), sum(a), max(a), min(a))
-print(count(a[v] > 0 for v in V), any(a[v] == 4 for v in V), all(a[v] > -100 for v in V))
+    print(v.label, a[v], v.to_idx, v.rank)
+print(sum(a[v] for v in V), sum(a), a.max()!, a.min()!)
+print(count(v for v in V if a[v] > 0), yes(a.any(x => x == 4)), yes(a.all(x => x > -100)))
 let m: 1..=20 = read()
 domain R = 0..m
 var grid: [R, V]Int = 0
@@ -27,5 +27,5 @@ print(grid)
 var flags: [V]Bool = false
 for v in V:
     flags[v] = a[v] % 2 == 0
-print(flags)
-print(count(flags[v] for v in V))
+print([yes(x) for x in flags])
+print(count(v for v in V if flags[v]))

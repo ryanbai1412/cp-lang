@@ -19,7 +19,7 @@ for r in R:
         if let left = c.prev:
             here += ways[r, left]
         ways[r, c] = here % MOD
-print(ways[R.last, C.last])
+print(ways[R.last!, C.last!])
 print(ways)
 var region: [R, C]Int = 0
 var regions = 0

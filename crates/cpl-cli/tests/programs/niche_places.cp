@@ -10,10 +10,10 @@ var flag: ?Bool = none
 var ch: ?Char = none
 (ch ??= 'a') = s[1]
 var at: ?V = none
-(at ??= V.first) = V.last
+(at ??= V.first!) = V.last!
 var t: [V]?Int = none
-(t[V.first] ??= 1) = 42
+(t[V.first!] ??= 1) = 42
 var bytes: List<?Char> = [none]
 for c in s: bytes.push(c)
-print(flag ?? false, Int(ch ?? '-'), at ?? V.first, t[V.first] ?? 0, t[V.last] ?? -1, flag == none, bytes.len)
-print(Int(bytes[1] ?? 'x'), Int(bytes[2] ?? 'x'), bytes[0] == none, bytes[2] == none)
+print(yes(flag ?? false), Int(ch ?? '-'), (at ?? V.first!).ord, t[V.first!] ?? 0, t[V.last!] ?? -1, yes(flag == none), bytes.len)
+print(Int(bytes[1] ?? 'x'), Int(bytes[2] ?? 'x'), yes(bytes[0] == none), yes(bytes[2] == none))
