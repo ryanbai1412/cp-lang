@@ -10,7 +10,7 @@
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
 use std.algebra.{Reversible}
-use std.graph.{Neighbours, Target, Graph, Visit}
+use std.graph.{Next, Target, Graph, Visit}
 use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
@@ -59,7 +59,7 @@ pub struct Rooted<V, Pre>:
     /// cost: O(n + m) for m listed arcs, without recursion
     /// traps: when some vertex is not reachable from `root`
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(0).collect() == [1, 2] and t.children(1).collect() == [3, 4] and t.depth(4) == 2`
-    pub fn new<N>(next: N, root: V) -> Rooted<V, _> = todo
+    pub fn new(next: Next<V>, root: V) -> Rooted<V, _> = Rooted.build(next, [root])
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or
@@ -73,7 +73,7 @@ pub struct Rooted<V, Pre>:
     /// empty: a `par` with no root, empty or cyclic, traps
     /// traps: when the parents have a cycle; `try_from_parents` is for input that may
     /// example: `domain V = 0..3; let par: [V]?V = [None, Some(0), Some(1)]; let t = Rooted.from_parents(par); t.depth(2) == 2 and t.parent(1) == Some(0)`
-    pub fn from_parents<P: Keyed>(par: P) -> Rooted<V, _> = todo
+    pub fn from_parents(par: [V]?V) -> Rooted<V, _> = Rooted.try_from_parents(par)!
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// `from_parents` for parents that may not form a forest: `None` when they have a cycle.
@@ -84,7 +84,18 @@ pub struct Rooted<V, Pre>:
     /// empty: `None` when `par` has no root
     /// traps: never
     /// example: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.try_from_parents(par) == None`
-    pub fn try_from_parents<P: Keyed>(par: P) -> ?Rooted<V, _> = todo
+    pub fn try_from_parents(par: [V]?V) -> ?Rooted<V, _>:
+        var kids: [V]List<V> = []
+        var roots: List<V> = []
+        for v in V:
+            if let p = par[v]: kids[p].push(v)
+            else: roots.push(v)
+        var queue = roots.copy()
+        var i = 0
+        while i < queue.len:
+            for c in kids[queue[i]]: queue.push(c)
+            i += 1
+        if roots.len > 0 and queue.len == V.count: Some(Rooted.build(kids, roots)) else: None
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// One tree per root: `next` must reach every vertex from exactly one of `from`.
@@ -97,20 +108,77 @@ pub struct Rooted<V, Pre>:
     /// empty: `from` must be nonempty
     /// traps: when `from` is empty, or some vertex is reached from no root or from two
     /// example: `domain V = 0..4; let adj: [V]List<V> = [[1], [0], [3], [2]]; let t = Rooted.forest(adj, from: [2, 0]); t.roots.collect() == [2, 0] and t.root_of(1) == 0`
-    pub fn forest<N>(next: N, from: List<V>) -> Rooted<V, _> = todo
+    pub fn forest(next: Next<V>, from: List<V>) -> Rooted<V, _> = Rooted.build(next, from)
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
-    fn build<N, A>(next: N, roots: List<V>, len: A -> Int) = todo
-
-    fn finish(
-        roots: List<V>,
-        par: [V]?V,
-        dep: [V]0..=V.count,
-        far: [V]Int,
-        bfs: List<V>,
-        k0: [V]0..=V.count,
-        k1: [V]0..=V.count,
-    ) = todo
+    // Breadth-first from each root in turn, then sizes, heavy children and the heavy-first
+    // preorder. Traps when a root is reached twice or some vertex is never reached.
+    fn build(next: Next<V>, roots: List<V>) -> Rooted<V, _>:
+        var seen: [V]Bool = false
+        var par: [V]?V = None
+        var dep: [V]Int = 0
+        var bfs: List<V> = []
+        var k0: [V]Int = 0
+        var k1: [V]Int = 0
+        var i = 0
+        for r in roots:
+            assert not seen[r]
+            seen[r] = true
+            bfs.push(r)
+            while i < bfs.len:
+                let u = bfs[i]
+                i += 1
+                k0[u] = bfs.len
+                for a in next.out(u):
+                    let v = a.to
+                    if not seen[v]:
+                        seen[v] = true
+                        par[v] = Some(u)
+                        dep[v] = dep[u] + 1
+                        bfs.push(v)
+                k1[u] = bfs.len
+        assert roots.len > 0 and bfs.len == V.count
+        var sz: [V]Int = 1
+        for j in (0..bfs.len).rev:
+            if let p = par[bfs[j]]: sz[p] += sz[bfs[j]]
+        var heavy: [V]?V = None
+        for u in V:
+            var best = 0
+            for j in k0[u]..k1[u]:
+                if sz[bfs[j]] > best:
+                    best = sz[bfs[j]]
+                    heavy[u] = Some(bfs[j])
+        var top: [V]V = [V] v => v
+        var tin: [V]Int = 0
+        var order: List<V> = []
+        var stack: List<V> = []
+        for r in roots:
+            stack.push(r)
+            while stack.len > 0:
+                let v = stack[stack.len - 1]
+                stack.pop()
+                tin[v] = order.len
+                order.push(v)
+                if let p = par[v]:
+                    if heavy[p] == Some(v): top[v] = top[p]
+                for j in (k0[v]..k1[v]).rev:
+                    if heavy[v] != Some(bfs[j]): stack.push(bfs[j])
+                if let h = heavy[v]: stack.push(h)
+        domain Order = 0..V.count
+        Rooted::<V, Order>(
+            roots[0],
+            par,
+            [V] v => dep[v],
+            dep,
+            [V] v => sz[v],
+            bfs,
+            [V] v => k0[v],
+            [V] v => k1[v],
+            heavy,
+            top,
+            [V] v => Order.nth(tin[v]),
+            [Order] p => order[p.to_idx],
+        )
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The roots in the order given: one for `new`, one per tree for `forest`, key order for
@@ -120,7 +188,11 @@ pub struct Rooted<V, Pre>:
     /// order: as given at construction
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.roots.collect() == [0]`
-    @get pub fn roots(self) -> yields V = todo
+    @get pub fn roots(self) -> yields V:
+        var p = 0
+        while p < V.count:
+            yield at[Pre.nth(p)]
+            p += sz[at[Pre.nth(p)]]
 
     /// The position of `v` in this tree's own preorder domain `t.Pre`; the inverse of `at`.
     ///
@@ -323,7 +395,7 @@ pub struct Rooted<V, Pre>:
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.subtree_sizes == [5, 3, 1, 1, 1]`
-    @get pub fn subtree_sizes(self) -> [V]Int = todo
+    @get pub fn subtree_sizes(self) -> [V]Int = [V] v => sz[v]
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than
@@ -334,7 +406,16 @@ pub struct Rooted<V, Pre>:
     /// ties: of two centroids, the one nearer the root
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.centroid() == 1`
-    pub fn centroid(self) -> V = todo
+    pub fn centroid(self) -> V:
+        var c = root
+        var down = true
+        while down:
+            down = false
+            if let h = heavy[c]:
+                if 2 * sz[h] > sz[root]:
+                    c = h
+                    down = true
+        c
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Every centroid of the tree holding `t.root`, one or two. Two happen only when the number of
@@ -346,7 +427,12 @@ pub struct Rooted<V, Pre>:
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.centroids() == [1]`
     /// example: `domain P = 0..4; let adj: [P]List<P> = [[1], [0, 2], [1, 3], [2]]; Rooted(adj, root: 0).centroids() == [1, 2]`
-    pub fn centroids(self) -> List<V> = todo
+    pub fn centroids(self) -> List<V>:
+        let c = self.centroid()
+        var out = [c]
+        if let h = heavy[c]:
+            if 2 * sz[h] == sz[root]: out.push(h)
+        out
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: `Enter(v, via:)` when
@@ -359,7 +445,20 @@ pub struct Rooted<V, Pre>:
     /// order: `Enter` events in `t.Pre` order; `Exit(v, _)` right after the last event of `v`'s subtree
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.tour.collect() == [Enter(0, None), Enter(1, Some(0)), Enter(3, Some(1)), Exit(3, Some(1)), Enter(4, Some(1)), Exit(4, Some(1)), Exit(1, Some(0)), Enter(2, Some(0)), Exit(2, Some(0)), Exit(0, None)]`
-    @get pub fn tour(self) -> yields Visit<V, V> = todo
+    @get pub fn tour(self) -> yields Visit<V, V>:
+        var open: List<V> = []
+        for p in Pre:
+            let v = at[p]
+            while open.len > 0 and not self.is_anc(open[open.len - 1], v):
+                let u = open[open.len - 1]
+                open.pop()
+                yield Visit.Exit(u, via: par[u])
+            yield Visit.Enter(v, via: par[v])
+            open.push(v)
+        while open.len > 0:
+            let u = open[open.len - 1]
+            open.pop()
+            yield Visit.Exit(u, via: par[u])
 
     /// The positions of `v`'s subtree, `v` first: one contiguous range of `t.Pre`.
     ///
@@ -393,8 +492,10 @@ pub struct Rooted<V, Pre>:
     /// traps: when `u` and `v` are not joined by a tree edge
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.lower(0, 1) == 1 and t.lower(3, 1) == 3`
     pub fn lower(self, u: V, v: V) -> V:
-        assert par[u] == v or par[v] == u
-        if par[u] == v: u else: v
+        let (c, p) = if dep[u] > dep[v]: (u, v) else: (v, u)
+        if let q = par[c]: assert q == p
+        else: assert false
+        c
 
     /// The lowest common ancestor of `a` and `b`, by heavy-path climbing.
     ///
@@ -484,7 +585,13 @@ pub struct Rooted<V, Pre>:
     /// cost: O(log n)
     /// traps: when `k` is negative, or `a` and `b` are in different trees
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.jump(3, 2, 2) == Some(0) and t.jump(3, 2, 3) == Some(2) and t.jump(3, 2, 4) == None`
-    pub fn jump(self, a: V, b: V, k: Int) -> ?V = todo
+    pub fn jump(self, a: V, b: V, k: Int) -> ?V:
+        assert k >= 0
+        let c = self.lca(a, b)
+        let (da, db) = (dep[a] - dep[c], dep[b] - dep[c])
+        if k <= da: self.ancestor(a, k)
+        elif k <= da + db: self.ancestor(b, da + db - k)
+        else: None
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The highest ancestor `u` of `v` such that `pred(u)` holds, or `None` when `pred(v)` is false.
@@ -607,7 +714,8 @@ pub struct Rooted<V, Pre>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.w(3) == 1 and t.w(0) == 0`
-    pub fn w(self, v: V) -> Int = todo
+    pub fn w(self, v: V) -> Int:
+        if let p = par[v]: far[v] - far[p] else: 0
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// `v`, its parent, and so on up to its root.
@@ -617,7 +725,13 @@ pub struct Rooted<V, Pre>:
     /// order: from `v` up
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.ancestors(3).collect() == [3, 1, 0]`
-    pub fn ancestors(self, v: V) -> yields V = todo
+    pub fn ancestors(self, v: V) -> yields V:
+        var x = v
+        var more = true
+        while more:
+            yield x
+            if let p = par[x]: x = p
+            else: more = false
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The top of the heavy chain through `v`: the highest vertex reached by heavy edges.
@@ -626,7 +740,7 @@ pub struct Rooted<V, Pre>:
     /// ties: None; the heavy children fix the chain
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.top(3) == 0 and t.top(4) == 4 and t.top(2) == 2`
-    pub fn top(self, v: V) -> V = todo
+    pub fn top(self, v: V) -> V = top[v]
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The heavy chain through `v` as one range of positions, its top first.
@@ -656,7 +770,9 @@ pub struct Rooted<V, Pre>:
     /// cost: O(log n)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.on_path(1, 3, 2) and t.on_path(3, 3, 2) and not t.on_path(4, 3, 2)`
-    pub fn on_path(self, c: V, a: V, b: V) -> Bool = todo
+    pub fn on_path(self, c: V, a: V, b: V) -> Bool:
+        let m = self.lca(a, b)
+        self.is_anc(m, c) and (self.is_anc(c, a) or self.is_anc(c, b))
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The one vertex on all three paths between `a`, `b` and `c`: the deepest of their pairwise
@@ -665,7 +781,11 @@ pub struct Rooted<V, Pre>:
     /// cost: O(log n)
     /// traps: when the three are not in one tree
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.meet(3, 4, 2) == 1 and t.meet(3, 2, 0) == 0`
-    pub fn meet(self, a: V, b: V, c: V) -> V = todo
+    pub fn meet(self, a: V, b: V, c: V) -> V:
+        let (x, y, z) = (self.lca(a, b), self.lca(b, c), self.lca(a, c))
+        if dep[x] >= dep[y] and dep[x] >= dep[z]: x
+        elif dep[y] >= dep[z]: y
+        else: z
 
     /// The other half of `reroot`: for `v` that is not a root, the DP of the tree without `sub(v)`,
     /// rooted at `parent(v)`; `None` at a root. Takes the arguments of `reroot`, for answers that
@@ -696,7 +816,14 @@ pub struct Rooted<V, Pre>:
         self,
         x: ?(len: Int, u: V, v: V),
         y: ?(len: Int, u: V, v: V),
-    ) -> ?(len: Int, u: V, v: V) = todo
+    ) -> ?(len: Int, u: V, v: V):
+        let Some(p) = x else: return y
+        let Some(q) = y else: return x
+        var best = if q.len > p.len: q else: p
+        for (u, v) in [(p.u, q.u), (p.u, q.v), (p.v, q.u), (p.v, q.v)]:
+            let d = self.dist(u, v)
+            if d > best.len: best = (len: d, u: u, v: v)
+        Some(best)
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Every vertex ordered by depth, each depth in `t.Pre` order, over a fresh domain, so the
@@ -707,7 +834,20 @@ pub struct Rooted<V, Pre>:
     /// order: by depth, then `t.Pre`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.level(1).map(b => ly.at[b]).collect() == [1, 2]`
-    pub fn layers(self) -> Layers<V, _> = todo
+    pub fn layers(self) -> Layers<V, _>:
+        var start: List<Int> = List.filled(V.count + 1, 0)
+        for v in V: start[dep[v] + 1] += 1
+        for d in 1..start.len: start[d] += start[d - 1]
+        var fill = start.copy()
+        var order: List<V> = List.filled(V.count, root)
+        var slot: [V]Int = 0
+        for p in Pre:
+            let v = at[p]
+            slot[v] = fill[dep[v]]
+            order[slot[v]] = v
+            fill[dep[v]] += 1
+        domain Level = 0..V.count
+        Layers::<V, Level>([Level] b => order[b.to_idx], [V] v => Level.nth(slot[v]), start)
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The 2n enter and exit events of `tour` over a fresh domain, for Mo's algorithm on paths and
@@ -733,7 +873,26 @@ pub struct Rooted<V, Pre>:
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.euler_tour().collect() == [0, 1, 3, 1, 4, 1, 0, 2, 0]`
     /// example: `domain V = 0..3; let adj: [V]List<V> = [[1, 2], [0], [0]]; let t = Rooted(adj, root: 0); t.euler_tour(by: c => c == 1).collect() == [0, 2, 0, 1, 0]`
-    pub fn euler_tour<K: Ord>(self, by: V -> K = _ => ()) -> yields V = todo
+    pub fn euler_tour<K: Ord>(self, by: V -> K = _ => ()) -> yields V:
+        var kids: [V]List<V> = []
+        kids[root] = self.children(root).sorted(by: c => tin[c]).sorted(by: by)
+        var stack = [root]
+        var next: List<Int> = [0]
+        yield root
+        while stack.len > 0:
+            let v = stack[stack.len - 1]
+            let i = next[next.len - 1]
+            if i < kids[v].len:
+                next[next.len - 1] = i + 1
+                let c = kids[v][i]
+                kids[c] = self.children(c).sorted(by: x => tin[x]).sorted(by: by)
+                stack.push(c)
+                next.push(0)
+                yield c
+            else:
+                stack.pop()
+                next.pop()
+                if stack.len > 0: yield stack[stack.len - 1]
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The long-path decomposition, for DP indexed by depth merged in O(n) in total. The tallest
@@ -1197,9 +1356,11 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
         x = self.ancestor(x, dep[x] - dep[y])!
         if x == y: return Some(x)
         for k in (0..jmp.len).rev:
-            if jmp[k][x] != jmp[k][y]:
-                x = jmp[k][x]!
-                y = jmp[k][y]!
+            if let a = jmp[k][x]:
+                let b = jmp[k][y]!
+                if a != b:
+                    x = a
+                    y = b
         up[x]
 
     /// The fold with `op` of the edge values from `v` up to its ancestor `u`, lowest first;
@@ -1886,13 +2047,16 @@ fn perm_tree_of_a_small_permutation() = todo
 /// `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
 pub struct Layers<V, B>:
     at: [B]V
+    slot: [V]B
+    /// The layer of depth `d` is `start[d]..start[d + 1]` as ordinals of `B`.
+    start: List<Int>
 
     /// The position of `v` among the layers.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.at[ly.pos(2)] == 2`
-    pub fn pos(self, v: V) -> B = todo
+    pub fn pos(self, v: V) -> B = slot[v]
 
     /// Every vertex at depth `d`, in `t.Pre` order; empty past the deepest or below 0.
     ///
@@ -1901,7 +2065,9 @@ pub struct Layers<V, B>:
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.level(2).map(b => ly.at[b]).collect() == [3, 4] and ly.level(3).count() == 0`
-    pub fn level(self, d: Int) -> Range<B> = todo
+    pub fn level(self, d: Int) -> Range<B>:
+        if d < 0 or d + 1 >= start.len or start[d] == start[d + 1]: return B.nth(0).l..B.nth(0).l
+        B.nth(start[d]).l..B.nth(start[d]).r(start[d + 1] - start[d])
 
     /// The descendants of `v` at depth `d`, counted from the root as in `level`, by binary search
     /// in `level(d)`; `v` itself when `d == depth(v)`.
