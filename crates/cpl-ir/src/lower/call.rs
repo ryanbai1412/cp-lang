@@ -7249,7 +7249,8 @@ impl<'a> Lowerer<'a> {
             // `rev` of its own is its own reverse.
             (_, "rev") if args.is_empty() => value,
             _ => {
-                if let Some(&(_, _, fid)) = self.prim_methods.iter().find(|(t, m, _)| *t == ty && m == method) {
+                let prim = self.prim_methods.iter().find(|(t, m, _)| *t == ty && m == method).map(|p| p.2);
+                if let Some(fid) = prim.or_else(|| self.optional_impl_method(&ty, method)) {
                     let mut all_args = vec![ast::Arg { name: None, mutable: false, value: base.clone() }];
                     all_args.extend(args.iter().cloned());
                     return self.user_call(fid, None, &all_args, span);

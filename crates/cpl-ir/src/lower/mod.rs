@@ -1912,6 +1912,46 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `impl<T: Tr> Tr for ?T`: the method for one `?T`, made the first
+    /// time a value of that type calls it.
+    pub(super) fn optional_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
+        let Ty::Opt(inner) = ty else {
+            return None;
+        };
+        for idx in 0..self.impls.len() {
+            let (m, offset, target, body) =
+                (self.impls[idx].mod_id, self.impls[idx].offset, self.impls[idx].target, self.impls[idx].body);
+            let ast::TypeKind::Optional(param) = &target.kind else {
+                continue;
+            };
+            let ast::TypeKind::Named { name, args } = &param.kind else {
+                continue;
+            };
+            if !args.is_empty() || self.mod_syms[m].contains_key(&name.text) {
+                continue;
+            }
+            let Some(f) = body.stmts.iter().find_map(|item| match &item.kind {
+                ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
+                _ => None,
+            }) else {
+                continue;
+            };
+            let trait_name = self.impls[idx].trait_name.clone();
+            let env = GenEnv::from([(name.text.clone(), GenArg::Ty((**inner).clone()))]);
+            let saved = (std::mem::replace(&mut self.cur_mod, m), std::mem::replace(&mut self.offset, offset));
+            let fn_id = self.declare_fn_in(f, m, offset, None, env);
+            let suffix = self.prim_methods.len();
+            self.sigs[fn_id].name =
+                format!("{}_opt_{}_{suffix}", trait_name.as_deref().unwrap_or("impl"), f.name.text);
+            self.prim_self.insert(fn_id, ty.clone());
+            self.prim_methods.push((ty.clone(), method.to_string(), fn_id));
+            self.resolve_fn_sig(fn_id, trait_name.as_deref());
+            (self.cur_mod, self.offset) = saved;
+            return Some(fn_id);
+        }
+        None
+    }
+
     pub(super) fn declare_fn_in(
         &mut self,
         decl: &'a ast::FnDecl,
