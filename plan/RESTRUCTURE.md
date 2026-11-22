@@ -153,3 +153,19 @@ Language tools on our own code:
 - Open: Rename `stdlib/spec.cp` to `stdlib/brute.cp` (owned by stdlib session).
 - Open: Delete fully merged remote branches; stale unmerged ones need Ryan's yes.
 - Deferred (other sessions): `crates/cpl-conform` (session 71e45566), interpreter consolidation, removing stdlib privilege, splitting monolith files (`plan/ARCHITECTURE.md`).
+
+## Duplicated-helper audit
+
+All hand-rolled zero-dependency helpers audited across `crates/` and consolidated into single owners (zero third-party crates):
+
+| Helper | Copies before | Lines before | Lines after | New home / decision |
+| --- | --- | --- | --- | --- |
+| JSON value, parser, writer | 5 (`cpl-lsp/src/json.rs` 387, `cpl-conform/src/json.rs` 359, `cpl-contest/src/json.rs` 197, `cpl-doc/src/json.rs` 71, inline `enum Json` in `cpl-cli/src/dap.rs` ~240) | ~1,254 | 752 (incl. unit tests) | `crates/cpl-json` (`BTreeMap<String, Value>` for deterministic sorted-key output, O(log n) lookup, and structural equality; `cpl-doc` retains thin renderer delegating escaping to `cpl-json`) |
+| JSON string escaping & mini-decoders | 6 (`cpl-interp/src/trace.rs`, `cpl-cli/src/trace.rs`, `cpl-cli/src/profile.rs`, `cpl-stress/src/cli.rs`, `cpl-cli/tests/seeded_bugs.rs`, `cpl-cli/tests/stress_corpus.rs`) | ~95 | 17 (thin wrappers + `cpl_json::write_script_safe_string` / `cpl_json::parse`) | `crates/cpl-json` (`escape_string`, `write_script_safe_string`, `parse`) |
+| `Content-Length` stdio framing | 3 (`cpl-lsp/src/transport.rs`, `cpl-cli/src/dap.rs`, `cpl-cli/tests/dap.rs`) | ~138 | 84 (single impl in `transport.rs`) | `crates/cpl-lsp/src/transport.rs` (`read_message`, `write_raw_message`, `write_message`) |
+| CLI flag/arg parser (`Args`) | 2 (`cpl-contest/src/args.rs` 68, `cpl-stress/src/cli.rs` ~55) | ~123 | 105 (incl. unit tests) | `crates/cpl-stress/src/args.rs` (reused by `cpl-contest` and `cpl-stress`) |
+| Token/line "first difference" | 1 full diff (`cpl-stress/src/judge.rs::first_difference`, reused by `cpl-contest`); `cpl-conform` uses 1-line `split_whitespace().eq(...)` | 1 copy | unchanged | Kept in `cpl-stress/src/judge.rs` (no duplicate diff engine to merge) |
+| Subprocess with timeout | 1 single-process (`cpl-stress/src/program.rs`) + 1 dual-process interactor loop (`cpl-stress/src/judge.rs`) | 1 crate (`cpl-stress`) | unchanged | Kept in `cpl-stress` (single owner; `cpl-conform` uses plain `wait_with_output`) |
+| Scratch/temp dirs in tests | ~10 three-line `fn scratch(name)` test helpers across independent crates (`cpl-fmt`, `cpl-doc`, `cpl-lint`, `cpl-contest`, `cpl-stress`, `cpl-cli/tests`) | ~3 lines each | unchanged | Not consolidated — independent crates would require a new shared test-util crate for a 3-line `std::env::temp_dir().join(...)` |
+| HTML escaping / URI percent-decode / FNV-1a hex / hex literal | 1 each (`cpl-doc/src/highlight.rs`, `cpl-lsp/src/server.rs`, `cpl-conform/src/diff.rs`, `cpl-syntax/src/literal.rs`) | 1 copy each | unchanged | Already single-owner; no duplication |
+
