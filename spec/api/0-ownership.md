@@ -475,6 +475,67 @@ Earlier documents disagree with each other in places. This page picks:
 | `let row = rows[i]` on a heap element | unclear (move? copy?) | a read lend | `at` is a `lends` fn; no special case for `[]` |
 | Interior mutability | `Comb` alone had it (19.10) | `@cache` fields, for any struct | no stdlib privilege; `Dsu.find` needs it too |
 
+## 13a. Why, compared with Rust, and limits
+
+**Why mutation XOR access.** Every aliasing bug needs a writer and another
+live view of the same data at once; the rule forbids exactly that pair.
+It removes four classes:
+
+1. **Invalidation:** a view depends on length or storage and a write
+   moves it (`for x in v: v.push(x)`, holding `v[0]` across a push).
+2. **Stale reads:** a reader assumes the data holds still (a comparator
+   reading the array being sorted, a slice summed while a callee writes).
+3. **Self-aliasing:** two names for one thing where code assumed two
+   (`merge(mut a, mut b)` that clears `b` when `a` is `b`).
+4. **Lost locality:** without it, "nothing here touched `x`" needs
+   whole-program knowledge, for the reader and the optimizer.
+
+Two `mut` lends are banned because every `mut` lend also reads. Values,
+not objects, already removes most aliasing; XOR is checked only on lends.
+
+**Compared with Rust.** Our lends are second-class: never in a type, never
+past the caller's block.
+
+- No `&T`, `&mut T` or lifetimes; a fn says `lends` / `lends(x)` instead.
+- Parameters are lent or `mut`; a callee never takes ownership.
+- Plain values copy and heap values move by rule (no `derive(Copy)`).
+- One closure kind; captures are borrowed per call, not for the closure's
+  life, so `let inc = () => cnt += 1; inc(); print(cnt); inc()` compiles.
+- Projections are inline callbacks, so they can repair after a write.
+- `if i != j` proves disjoint `mut` places; no `split_at_mut`.
+- Push generators, so no lending-iterator problem.
+
+Closest relatives: Hylo (mutable value semantics, `inout`, yield
+subscripts), Swift (non-escaping closures, exclusivity, `_modify`), Mojo
+(`read`/`mut`/`owned`), and second-class values (Osvald et al., 2016).
+
+**Not expressible, on purpose:** closures that outlive their captures
+(returned counters, stored callbacks); two owners of one mutable value
+(pass `mut x` per call); a paused generator (use `List(g)` for lockstep);
+a callee that takes ownership (`mut xs` plus `xs.take()`); pointers
+between nodes (domain indices). Closures of different types in one
+container cost a visible `std::function`.
+
+**Sharp edges** (errors and hovers must carry these):
+
+1. `let` copies a plain element, lends a heap element, moves a variable.
+2. The mode is not in the type: `xs.filter(p)` is lent, `Filter(xs, p)`
+   owned; hover shows which.
+3. Passing `mut seen` freezes it for the value's life; capturing it
+   freezes it per walk.
+4. A later use extends a lend, so an added `print` can break a write
+   between; a nested fn that writes `a` conflicts at its calls.
+5. Declaration order matters for R8.
+6. A record gaining a heap field stops copying and starts moving; a lint
+   or hover badge for plain-ness is open.
+7. Re-walking a `mut`-lent generator reruns it against changed state
+   (linted).
+
+**Lowering, in one line** (the companion doc is paused): a struct's code
+is written once; in C++ each mix of owned and lent fields the program
+actually builds is one template instantiation (owned by value, lent by
+reference or span), so usually one or two per struct.
+
 ## 14. Exercises
 
 Does each snippet compile? `V`, `a: [V]Int`, `g: Graph<V, E>`, `rows:

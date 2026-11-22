@@ -4363,3 +4363,32 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   `@cpp`). Everything trusted without proof is an `@` attribute from that
   closed list, and `cpl explain` lists every site.
 - **Reverse.** Drop `@cache`; `find` returns to `mut self`.
+
+## 146. Graph traits: `Next` with arc capabilities (2026-11-21)
+
+- **Decision (agreed direction; stubs not yet rewritten).** Algorithms take
+  a trait, `Graph<V, E>` is one struct implementing it.
+  `trait Next<V>: type Arc: Target<V>; fn out(self, u: V) -> yields Arc`.
+  Implemented by `Graph` (arcs `(to, e, ...)`), any fn `V -> Seq`, and any
+  `Indexed<V, S>` of sequences. Arc capabilities are traits on `Arc`:
+  `Target<V>` (`.to`; a plain vertex is its own target), `Weighted<W>`
+  (`.w`), `Edged<E>` (`.e`). Trait aliases name bundles:
+  `WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>` and
+  `EdgedNext<V, E>`. `dijkstra<V, W, G: WeightedNext<V, W>>(g: G, ...)`.
+  Whole-graph algorithms bound `V: Domain`. Bridges, cut vertices, blocks
+  and two-edge components need `EdgedNext` (skip the same edge, not the
+  same vertex, so multi-edges are right; results are `[E]`); undirectedness
+  is a debug-checked precondition. Edge-list algorithms (Kruskal, Euler,
+  offline connectivity) take a `Seq` of `(u, v, ...)` records. Flows stay
+  their own mutable struct.
+- **New powers this needs.** Associated types (`type Arc`, `G.Arc`) and
+  trait aliases, both open to user libraries.
+- **Still open.** Arcs carrying edge fields (`carry:`) for cache locality;
+  `.weighted(f)` adapter replacing the `w:` parameter; `Source<V, W>` and
+  `from:` taking any `Seq`; inline bounds (`g: WeightedNext<V, W>`); the
+  weight algebra (`op:` monoid vs `Ord + Add`); storage format.
+- **Why.** Ryan asked whether `WeightedNext` could bundle the arc bounds
+  and called the long signature "a mouthful"; he accepted `Edged` once its
+  reason (multi-edge bridges, `[E]` results) was shown.
+- **Reverse.** Back to `Neighbours` with `w: A -> W` on each algorithm.
+
