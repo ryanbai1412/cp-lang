@@ -25,6 +25,31 @@ R12) say what each may do.
 6. Each call is checked as one access to everything it touches: its
    arguments and whatever the called fn or closure captures.
 
+### The picture
+
+Every live lent value points at the variables it borrows. A variable with
+a pointer at it is frozen: no writes under a read lend, no access at all
+under a `mut` lend. The pointer goes away at the value's last use, and it
+may never outlive the variable (R8). That is the whole checker.
+
+- **Values built from arguments hold pointers:** slices, views, projection
+  results, structs with a lent field, generator values. They lend from
+  when they are made to their last use.
+- **Fns and closures hold no lends.** A call acts as if everything they
+  capture were passed as extra arguments at that moment. They only hold
+  the captured variable's name: it can't move while they live, and they
+  can't outlive it.
+
+```python
+let walk = dfs(g, s, mut seen)   # seen lent `mut` from here...
+print(seen[x])                   # error: seen is lent to walk
+let n = walk.count()             # ...to here
+
+fn walk2() -> yields V: ...      # same DFS, using seen as a capture
+print(seen[x])                   # fine: walk2 touches seen only while it runs
+let n2 = walk2().count()
+```
+
 ## 2. Plain and heap values (R1, R2)
 
 **R1. Plain values copy.** A value is plain when no part of it lives on the
