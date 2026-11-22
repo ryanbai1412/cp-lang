@@ -550,7 +550,7 @@ fn generics_of(header: &str) -> Vec<String> {
     }
     header[start + 1..end]
         .split(',')
-        .map(|g| g.split(':').next().unwrap_or("").trim().to_string())
+        .map(|g| g.split([':', '=']).next().unwrap_or("").trim().to_string())
         .collect()
 }
 

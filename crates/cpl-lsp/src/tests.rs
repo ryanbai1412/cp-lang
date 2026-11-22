@@ -1213,7 +1213,7 @@ fn dot_completion_on_a_type_lists_what_it_has_without_a_value() {
 
 #[test]
 fn dot_completion_on_a_library_type_substitutes_its_type_arguments() {
-    let src = "domain V = 0..5\nvar t = SegTree<V, Int>.of(max, fn(v) -> 0)\nt.|\n";
+    let src = "domain V = 0..5\nvar t = SegTree(max, [V] v => 0)\nt.|\n";
     let items = completions(src);
     for method in ["get", "set", "fold", "update"] {
         assert!(

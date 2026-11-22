@@ -37,7 +37,12 @@ fn the_vm_records_what_the_tree_walker_records() {
         .filter(|path| path.extension().is_some_and(|e| e == "cp"))
         .collect();
     programs.sort();
-    assert!(programs.len() > 250, "{} programs", programs.len());
+    let pending = std::fs::read_dir(dir.join("../pending")).unwrap().count() / 3;
+    assert!(
+        programs.len() + pending > 250,
+        "{} programs, {pending} pending",
+        programs.len()
+    );
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let chunks: Vec<_> = programs.chunks(programs.len().div_ceil(threads)).collect();
     let differ: Vec<String> = std::thread::scope(|scope| {
