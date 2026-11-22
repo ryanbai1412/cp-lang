@@ -61,7 +61,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0407 | duplicate_variant_tag | two variants of one enum read as the same token; give one a different `@tag` |
 | E0501 | unsupported | `yield` outside a generator |
 | E0502 | non_ascii | `é` is not ASCII; a Str literal holds single-byte ASCII characters only |
-| E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`) |
+| E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`) |
 | E0504 | not_implemented | planned syntax this version reads but does not implement yet; the help names today's spelling |
 | E0601 | lent_twice | `a` is lent `mut` here while lent at line N |
 | E0602 | used_while_lent | `xs` is written while the view `w` (line N) still reads it |
