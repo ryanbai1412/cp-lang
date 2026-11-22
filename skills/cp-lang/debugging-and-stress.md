@@ -69,8 +69,10 @@ fn brute():
 Options: `--cases N` (default 1000), `--size N` (largest n, default 8),
 `--seed N`, `--trace` (saves both runs' traces on failure), `--brute PROG`,
 `--gen PROG`, `--checker PROG` for external programs, and `--interactor PROG`
-for interactive problems (the interactor talks to the solution over
-stdin/stdout and its exit code is the verdict).
+for interactive problems: `cpl` runs `PROG input` with the solution wired to
+the interactor's stdin/stdout (the interactor reads the test from the file
+named by its first argument, never spawns the solution) and its exit code is
+the verdict.
 
 Tight constraint types make better random inputs: `read<[V]-5..=5>()` already
 tells stress what to generate. (`@gen fn` with `gen(...)` for constraints

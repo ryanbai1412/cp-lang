@@ -59,10 +59,32 @@ fn brute():
 // output: 3
 ```
 
+## Core syntax
+
+Python-shaped blocks: `if`/`elif`/`else`, `for x in xs`, `while`, `and`/`or`/
+`not`, `match`. One-line `if c: a elif d: b else: e` is an expression.
+`x op= e` exists for every operator plus `min=`/`max=`, which as a condition
+are true when the target improved.
+
+```cp
+let n = read<1..=100>()
+let kind = if n % 15 == 0: "FizzBuzz" elif n % 3 == 0: "Fizz" else: "-"
+print(kind)
+var best = 0
+for x in [3, 9, 4]:
+    if not (x % 2 == 0) and best max= x: print(x)
+// input: 9
+// output: Fizz
+// output: 3
+// output: 9
+```
+
 ## Practices
 
 1. **Name the algorithm.** If the stdlib has it (`Prefix`, `SegTree`, `Dsu`,
    `first_true`, `compress`, `Graph`, `Mod<P>`), call it; don't hand-roll.
+   Each `stdlib/<module>.md` says what is "In prelude"; anything else needs
+   `use std.<module>.{name}` (the E0201 help names the line).
 2. **Whole-sequence ops for reductions, searches and builds** (`sum`, `max`,
    `count(p)`, `all`, `sorted`, `[V] v => ...`); plain loops for real algorithms.
 3. **Name an index space** (`domain V = 1..=n`) when arrays share it or two
@@ -79,7 +101,8 @@ fn brute():
 7. **One home per fact:** derive, don't duplicate (`V.count`, not `n` twice).
 8. **Values by default.** `let` unless reassigned; `mut` at both ends for
    in-place changes; heap values move, `.clone()` copies.
-9. **Per-test state lives under `@!multitest`** (first line; input starts with `t`).
+9. **Per-test state lives under `@!multitest`** (input starts with `t`); bindings
+   above it (a sieve, a `Comb` table) are built once and shared by every test.
 10. **Costs are visible:** no-paren members are O(1) (`a.len`, `v.next`);
     work has parens (`a.sorted()`, `a.sum()`).
 11. **Print what you mean:** `yes(b)` for Bool (`answers: ("Yes", "No")`, or
@@ -104,6 +127,7 @@ Clear beats short: never trade readability for tokens.
 | `p[find(a)] = find(b)` | `var d = Dsu<V>()`; `d.unite(a, b)`; `d.same(a, b)` |
 | `x % MOD` everywhere | `Mod<P>` values: `z ** k`, `z.inv` |
 | `for (i = 0; i < n; i++) cnt += p(a[i])` | `a.count(x => p(x))` |
+| `find_if(a.begin(), a.end(), p)` | `a.first(x => p(x))` (`?T`; sorted or monotone: `first_true`) |
 
 ## Traps that compile
 

@@ -86,12 +86,19 @@ print(dist, none: -1)
 
 Put `@!multitest` at the top of the file when stdin starts with a test count
 `t`. The compiler wraps the entire top-level body in a `t`-iteration loop so
-per-test variables cannot leak between test cases:
+per-test variables cannot leak between test cases. Bindings written above
+`@!multitest` run once and are shared by every test (precompute there):
 
 ```cp
+let sq = [100] i => i * i
 @!multitest
-let n = read<Int>()
-print(n * 2)
+let k = read<0..100>()
+print(sq[k])
+// input: 2
+// input: 3
+// input: 9
+// output: 9
+// output: 81
 ```
 
 For interactive problems, `print(...)` flushes before the next `read<T>()`,
