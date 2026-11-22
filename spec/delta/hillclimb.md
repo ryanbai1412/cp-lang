@@ -35,6 +35,13 @@ and its notes in that record's `notes`.
 - coci20c6p3 (follow-up): map and `SortedMap` `keys`, `values` and `items` are O(1)-to-make
   getters like `a.keys`/`a.items` on any keyed sequence (map `each()` became `items`); `Dsu.values`
   too. Two stale ports lost their `.last()`/`.values()` drift.
+- etsr23r1p4: `BeatsSegTree` joins the prelude.
+- ioi16p6: `MonotoneHull<P>` lines carry a tag and `best_next` returns the winner's tag, ties to
+  the smaller one, so an `aliens` DP knows its count; `MonotoneHull`, `LineContainer` and
+  `aliens` join the prelude.
+- ioi05p2: enums read by variant: `@tag("Q")` names a variant's token (default: its name), so a
+  command stream is `read<Cmd>()` in a loop. Grammar allows decorators on variants; recorded in
+  `parser-gaps.md`.
 - ioi09p6: `spec/std/grid.cp` now exists (the prelude imported `std.grid` with no spec stub);
   `adj4`, `adj8` and `ray` are generators, and `transposed` is a call because it is O(n²).
   `bfs` gained `enter: (V, Int) -> Bool`, so "the cell must still be safe at distance d" is a

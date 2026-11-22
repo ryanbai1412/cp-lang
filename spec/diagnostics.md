@@ -50,6 +50,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0404 | top_level_var_in_fn | |
 | E0405 | assign_fixed_field *(0.3)* | `e.w` is not `var`; declare `var w` or rebuild with `e with w: x` |
 | E0406 | var_lambda_recursion *(0.3)* | a `var`-bound lambda cannot call itself |
+| E0407 | duplicate_variant_tag *(0.3)* | two variants of one enum read as the same token; give one a different `@tag` |
 | E0501 | unsupported | |
 | E0502 | non_ascii | |
 | E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`) |

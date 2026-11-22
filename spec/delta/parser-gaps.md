@@ -27,6 +27,7 @@ front end (parse and type check) first.
 | Block lambdas | `[Sign] x =>⏎    let a = ...⏎    e` | 136 | not parsed |
 | Alphabet strings | `read<Str of "01?">()`; its chars form a domain | 134 | E0504 |
 | Bounded strings | `Str(len: 1..=n)` | 134 | E0504 |
+| Variant tags | `enum Cmd:⏎    @tag("Q") Ask(h: Int)` | hillclimb ioi05p2 | not parsed |
 | Multi-clause loop headers | `for i in V, j in V.after(i) if c:` | 135 | E0107 |
 | `and`/`or` as operation values | `(count: +, taken: or)` | 135 | E0102 |
 | `var` in patterns | `for (var left, v) in items:` | 135 | E0102 |

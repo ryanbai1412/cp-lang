@@ -165,6 +165,9 @@ enum Ev:
 - Variants are lowercase or capitalized names in their enum's scope;
   context resolves bare variant names in patterns and where the expected
   type is the enum.
+- `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`,
+  `@tag(1) Add(l: V, r: V)`); without it the token is the variant's name. Tags are distinct
+  within the enum (E0407).
 - A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir`
   walks it.
 - `match` is exhaustive. Patterns match only the stored shape; there are

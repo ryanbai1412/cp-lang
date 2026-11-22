@@ -307,7 +307,7 @@ fields      := field (',' field)*
 field       := 'var'? NAME (':' type)? ('=' expr)?
 enum_decl   := 'pub'? 'enum' TYPE_NAME generics? ('=' NAME ('|' NAME)* NL
              | ':' NL INDENT (variant NL | fn_decl)+ DEDENT)
-variant     := NAME ('(' fields ')')?
+variant     := decorator* NAME ('(' fields ')')?
 trait_decl  := 'pub'? 'trait' TYPE_NAME generics? ('(' bound ')')? ':'
                NL INDENT trait_item+ DEDENT
 trait_item  := 'type' TYPE_NAME (':' bound)? NL | field NL | fn_sig NL

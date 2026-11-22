@@ -161,9 +161,14 @@ pub fn max_plus_convolve(a: List<Int>, b: List<Int>, concave: Shape = Both) -> L
 /// The convex hull trick for lines added in slope order: falling slopes for
 /// `pick: min`, rising for `max` (an out-of-order slope traps). The online
 /// form of `LiChao` when slopes arrive sorted and no x-range is known.
-pub struct MonotoneHull(pick: (Int, Int) -> Int = min):
+/// Each line may carry a `tag` (a photo count, a parent index); `best_next` returns the winning
+/// line's tag, and equal values go to the smaller tag, which is the tie rule `aliens` needs.
+pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// O(1) amortized; the slope must not go back.
-    pub fn add(mut self, line: Line) = todo
+    pub fn add(mut self, line: Line, tag: P = ()) = todo
+    /// O(1) amortized; the best value at an `x` that never decreases between calls, with the
+    /// tag of the line attaining it. `none` when empty.
+    pub fn best_next(mut self, x: Int) -> ?(val: Int, tag: P) = todo
     /// O(log n); the best value at `x`, `none` when empty.
     pub fn at(self, x: Int) -> ?Int = todo
     /// O(1) amortized; `at(x)` for an `x` that never decreases between calls.

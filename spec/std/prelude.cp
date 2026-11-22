@@ -10,10 +10,11 @@
 //! checked or run gets the prelude.
 
 use std.algebra.{Action, Commutative, Desc, Group, Idempotent, Monoid, Op, Ordering, Selective, Semiring, add, affine, assign, cmp, desc, each, flip, fold}
+use std.beats.{BeatsSegTree}
 use std.bag.{BucketCount, SortedBag, SortedMap, SortedSet}
 use std.bitset.{Bitset}
 use std.deque.{Deque, LinkedList}
-use std.dp.{LiChao, Line}
+use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph}
