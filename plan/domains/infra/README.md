@@ -1,33 +1,81 @@
 # infra
 
-Segment: A. Service. Owns: CI results and workflows, the land queue, reverts, `scripts/` (gate, land, hooks, gen), `justfile`, `mise.toml`, Python tooling, setup docs, `scripts/release`, installers, public-repo hygiene. Worklog: [worklog.md](worklog.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
+Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), the land queue (`scripts/land.sh`), hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-22: warm gate 3.7 s unchanged / 77 s after a one-line crate edit; CI red; 0 releases; site deploy blocked on Actions secrets.
 
-Keeps every other lane moving: main green, a ~10 s warm gate, fast landing, and stable/edge/nightly releases that just work. Interrupts (red main, broken landing, broken release) beat roadmap work.
+Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md) · gate design: [design/gate-tiers.md](design/gate-tiers.md)
+
+## Mission
+Keep every other domain moving: main green at every commit, a gate fast enough that nobody batches around it, landing that never waits on a person, and `curl | sh` installs that just work. Interrupts (red main, broken landing, broken release) beat roadmap work.
 
 ## Covers
-**Main green.** Keeping main green and moving: lands the backlog (`BRANCHES.md`), runs the queue, triages any red within 15 min (fix or revert, never weaken a test), kills flaky tests, deletes merged/dead branches and lock refs (with Ryan's OK for unmerged).
+- **Main green**: CI results, triage of any red within 30 min (fix or revert, never weaken a test), flaky tests, stale `devin/*` branches and lock refs.
+- **Devex**: setup (mise, pnpm, uv, just), the gate and its cache, hooks, `just` tasks, CI speed, the land queue.
+- **Release**: release workflow, installers, versioning, the site deploy workflow, CONTRIBUTING/SECURITY/license, history hygiene.
+- **Status board**: `scripts/status.py`, running every domain's `metrics.toml` hourly.
 
-**Devex.** Everything a contributor (agent or person) touches before writing code: setup, the gate, hooks, `just` tasks, generated files, CI speed, the landing script's mechanics.
-
-**Release.** CI workflows, release pipeline, installers, versioning, the public-repo surface (CONTRIBUTING, SECURITY, license, history hygiene).
-
-## Improve
-**Main green.** 
-
-**Devex.** Warm gate 5.5 min on a warm 2-core VM today -> seconds (cache by input, not tree hash; split slow tests out of the commit gate); `land.sh` already lands trains of up to 8 queued lanes with one gate run (and bisects a failing train), so landing throughput is bounded by gate time: make the gate fast first; `just gen --check` as the one way to regenerate; uv everywhere; Devin snapshot warm and green.
-
-**Release.** First edge + nightly; install smoke on 3 OSes; CI on push/PR; commit-message + pushed-range scan in CI; `full.yml`; version 0.3.0; fresh public repo when Ryan says.
+Not covered (owner instead): what a gate step checks (the domain whose test it is); emitted-C++ bugs that CI finds (perf); the site's content and the Worker's code (site); `cpl self`/launcher code (tools); scripts that are another domain's tool, e.g. `review-check.py`, `spec-stub.py`, `debt-ratchet.py` (idioms, spec, tech-debt; infra keeps only their gate wiring); Cloudflare and GitHub secrets themselves (coordinator, until a token can write them).
 
 ## Success criteria
-**Main green.** CI green on 100% of main commits over a week; median time from red to green < 30 min; 0 branches older than 48 h without an owner; land queue wait < 30 min with all lanes running.
+The bar for v0.3:
+1. CI green on every main commit for 7 days; red-to-green median < 30 min.
+2. Commit gate (pre-commit) <= 10 s warm after a one-crate edit, 8 cores; land gate (`land.sh`, CI) catches everything the fast gate catches today, with the same test count (1116 + scripts).
+3. Every landing carries `Domain: <d>`; `land.sh` refuses without it and warns on paths outside the domain.
+4. Hourly status board for all 12 domains, generated, never hand-typed.
+5. `curl -fsSL https://cp-lang.org/install.sh | sh` installs a working `cpl` on Linux, macOS and Windows from edge and stable; nightly edge 7 days in a row; `v0.3.0` cut.
+6. A fresh clone reaches a green gate with the 5 documented commands.
 
-**Devex.** Warm `just check` ~10 s (Ryan's target; today 68 s on 8 cores, 52 s of it nextest, led by a handful of 10-33 s end-to-end tests), cold < 10 min on CI; land queue wait < 30 min with every lane running; a fresh VM goes from clone to green gate with the documented 5 commands.
+## Milestones
+- **M1 Main is green and accountable** — CI `gate` and `site build` green on main 10 commits in a row; `land.sh` requires the `Domain:` trailer and warns on foreign paths (tested in `scripts/test_check_cache.py`); `land.sh` appends each landing (queue wait, train size, gate time, bisects) to a log the board reads; superseded `devin/*` branches deleted; `scripts/status.py` writes `plan/STATUS-BOARD.md` from every `metrics.toml`.
+- **M2 10-second commit gate** — two tiers ([design/gate-tiers.md](design/gate-tiers.md)): pre-commit runs only what the change can affect (per-crate test selection from the cargo graph, cached by inputs), the full fast gate runs in `land.sh` and CI. Exit: `metrics.toml` `commit_gate_edit_s` <= 10 on 8 cores, `land_gate_warm_s` <= 60, test count unchanged.
+- **M3 Releases that install** — edge published nightly by the GitHub schedule; `install-smoke` job green on 3 OSes after publish; site deploys from CI; `v0.3.0` stable cut on Ryan's OK; CONTRIBUTING.md and SECURITY.md exist.
 
-**Release.** `curl -fsSL https://cp-lang.org/install.sh | sh` installs a working `cpl` on Linux/macOS/Windows from stable and edge; nightly edge 7 days in a row; `v0.3.0` cut.
+## Metrics
+All measured 2026-11-22 on main `4b8f504f`, 8-core VM; commands in [metrics.toml](metrics.toml).
+
+| Metric | Command (short) | Today | Target | M |
+|---|---|---|---|---|
+| Warm gate, nothing changed | `scripts/check.sh --fast` (2nd run) | 3.7 s | <= 5 s | M2 |
+| Warm gate, one-line edit in `cpl-fmt` | append a comment, `check.sh --fast` | 77 s (nextest 57 s) | <= 10 s | M2 |
+| Fast gate after a pull (build + tests) | `check.sh --fast` on a fresh tree | 101 s (nextest 79 s) | <= 60 s | M2 |
+| Slowest fast-gate test | nextest output | 40.4 s `stress_corpus` | <= 5 s in commit tier | M2 |
+| CI green on main, last 10 completed runs | GitHub Actions API | 0/6 (5 cancelled, 1 failed) | 10/10 | M1 |
+| Site deploy green, last 10 runs | GitHub Actions API | 0/6 (5 failed) | 10/10 | M3 |
+| Commits with `Domain:` trailer, last 50 | `git log` trailers | 0/50 | 50/50 | M1 |
+| Superseded `devin/*` branches (`git cherry` 0 ahead) | `git cherry` loop | 11 of 68 | 0 | M1 |
+| Unlanded `devin/*` branches > 48 h old | `git cherry` loop | 0 | 0 | M1 |
+| Releases published | GitHub releases API | 0 | edge daily + `v0.3.0` | M3 |
+| Live `install.sh` == repo file | `curl` + `cmp` | yes | yes | M3 |
+| Root CONTRIBUTING.md + SECURITY.md | `ls` | 0/2 | 2/2 | M3 |
+| Land queue wait p50 | `land.sh` log (M1) | not measurable: no log yet | <= 5 min | M1 |
+
+## Judgment rubric
+Numbers miss these; a cold agent scores 1-5 with a reason, on the probes below.
+1. When the gate fails, does its output name the failing check and the exact command to rerun it, without scrolling?
+2. Can a newcomer tell which tier a test belongs in, and move it, from `check.sh --help` and this folder alone?
+3. Does landing feel like one command that either lands or says precisely why not?
+4. Is every number on the status board reproducible by pasting its command?
+5. After a red main, does the history explain what broke and how it was fixed?
+
+Probes (cold agent, timed, files touched counted):
+- **Fresh clone**: from `README.md` "Setup" only, reach a green `just check`. Pass = green, < 30 min, no undocumented step.
+- **Add a gate step**: add a new fast check for a made-up script; must land in the right tier and cache stage.
+- **Planted red**: a commit that breaks one test is queued in a train of 3; the agent must explain from `land.sh` output who broke it and what happened to the others.
+- **Cut a release**: from docs only, dry-run an edge release and verify the artifacts.
+
+## Improve (highest impact first)
+1. Make CI green (std `<utility>` include via perf; timing tests deterministic or `--full`) — every other SLO measures against it.
+2. Two-tier gate with per-crate test selection — 77 s -> 10 s per commit for 12 lanes.
+3. `Domain:` trailer in `land.sh` + land event log + `scripts/status.py` board.
+4. Land `devin/repo-layout-doc`, `devin/consolidate-docs`; delete 11 superseded branches.
+5. First edge publish + `install-smoke` on 3 OSes; site deploy from CI once secrets exist.
+6. Split `check.sh` into a step registry so lanes stop editing one 376-line file (56 commits in 3 days).
+7. CONTRIBUTING.md, SECURITY.md; stale `check.sh` header.
+
+## Decisions for Ryan
+Each is in [plan/QUESTIONS.md](../../QUESTIONS.md) with options and a default I work on meanwhile.
+1. **Two gate tiers** — pre-commit runs affected-crate tests (<= 10 s); the full fast gate moves to `land.sh` and CI. Default: build it.
+2. **CI red blocks landing?** — when main's CI is red, `land.sh` admits only `CPL_LAND_URGENT=1` fixes. Default: warn only until CI has been green 24 h, then enforce.
+3. **Unlanded branches** — archive (`refs/archive/<name>`, restorable) then delete `devin/*` branches with no owner after 48 h. Default: delete only `git cherry`-superseded ones.
 
 ## Ryan's role
-**Main green.** None day to day. Approves deleting unmerged branches and anything that rewrites history.
-
-**Devex.** None day to day. Signs off the gate-time and setup targets once.
-
-**Release.** Approves cutting `v0.3.0` and the fresh public repo; otherwise none.
+None day to day. Signs the gate targets once (decision 1 above), approves cutting `v0.3.0` and the fresh public repo, and anything that rewrites history or deletes unlanded work.

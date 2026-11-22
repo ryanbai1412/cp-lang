@@ -204,4 +204,22 @@ Recommendation: minify first (the branch). The source is what a reader of the su
 How to reverse it: the order is one list in `crates/cpl-codegen/src/lib.rs`.
 Meanwhile: land the branch's order.
 
+### infra: split the gate into a commit tier and a land tier?
+Options: (a) keep one gate: pre-commit and `land.sh` both run `scripts/check.sh --fast`, 77 s after a one-line crate edit; (b) two tiers ([design](domains/infra/design/gate-tiers.md)): pre-commit runs the affected crates' tests (<= 10 s), `land.sh` and CI run today's full fast gate unchanged.
+Recommendation: (b). Same tests guard main; a lane learns of a cross-crate break at land time instead of commit time.
+How to reverse: point `.githooks/pre-commit` back at `check.sh --fast`.
+Meanwhile: build (b) behind `CPL_GATE_TIER=commit`; the hook keeps running the full fast gate until it measures <= 10 s.
+
+### infra: does red CI on main block landing?
+Options: (a) warn only; (b) `land.sh` refuses while the latest main CI run is red, except commits marked `CPL_LAND_URGENT=1` (fixes and reverts).
+Recommendation: (b) once CI has been green 24 h; today CI is red, so (b) would freeze every lane.
+How to reverse: one env default in `scripts/land.sh`.
+Meanwhile: (a), with the warning printed in every land.
+
+### infra: what happens to unlanded devin/* branches?
+Options: (a) delete only branches `git cherry` shows fully landed; (b) also archive to `refs/archive/<name>` and delete any branch with no owning lane after 48 h.
+Recommendation: (b); 68 branches today make the queue hard to read, and archive refs keep the work restorable.
+How to reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.
+Meanwhile: (a) only.
+
 ## Answered

@@ -1,0 +1,100 @@
+# infra metrics. Measured 2026-11-22 on main 4b8f504f, 8-core Linux VM.
+# Each command prints the value; GitHub commands need `gh` authenticated.
+
+[[metric]]
+name = "gate_warm_noop_s"
+command = "scripts/check.sh --fast >/dev/null && scripts/check.sh --fast | grep -o 'passed in [0-9]*s'"
+today = "3"
+target = "<= 5"
+milestone = "M2"
+
+[[metric]]
+name = "commit_gate_edit_s"
+command = "echo '// probe' >> crates/cpl-fmt/src/lib.rs; scripts/check.sh --fast | grep -o 'passed in [0-9]*s'; git checkout crates/cpl-fmt/src/lib.rs"
+today = "77"
+target = "<= 10"
+milestone = "M2"
+
+[[metric]]
+name = "land_gate_cold_build_s"
+command = "cargo clean -p cpl-cli && rm -rf target/check-cache && scripts/check.sh --fast | grep -o 'passed in [0-9]*s'"
+today = "101"
+target = "<= 60"
+milestone = "M2"
+
+[[metric]]
+name = "slowest_fast_gate_test_s"
+command = "cargo nextest run --workspace 2>&1 | grep -E '^ +(PASS|SLOW)' | sort -t[ -k2 -rn | head -1"
+today = "40.4 (cpl-cli::stress_corpus)"
+target = "<= 5 in the commit tier"
+milestone = "M2"
+
+[[metric]]
+name = "fast_gate_test_count"
+command = "cargo nextest run --workspace 2>&1 | grep -o '[0-9]* tests run'"
+today = "1116"
+target = ">= 1116 in the land tier (never falls)"
+milestone = "M2"
+
+[[metric]]
+name = "ci_green_last_10_main"
+command = "gh run list -R ryanbai1412/cp-lang -w ci -b main -s completed -L 10 --json conclusion -q '[.[]|select(.conclusion==\"success\")]|length'"
+today = "0 (of 6 completed: 5 cancelled by newer pushes, 1 failure)"
+target = "10"
+milestone = "M1"
+
+[[metric]]
+name = "site_deploy_green_last_10"
+command = "gh run list -R ryanbai1412/cp-lang -w site -b main -s completed -L 10 --json conclusion -q '[.[]|select(.conclusion==\"success\")]|length'"
+today = "0 (of 6 completed: 5 failure, 1 cancelled)"
+target = "10"
+milestone = "M3"
+
+[[metric]]
+name = "domain_trailer_last_50"
+command = "git log -50 --format='%(trailers:key=Domain,valueonly)' origin/main | grep -c ."
+today = "0"
+target = "50"
+milestone = "M1"
+
+[[metric]]
+name = "superseded_devin_branches"
+command = "for b in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/devin/); do [ $(git cherry origin/main $b | grep -c '^+') = 0 ] && echo $b; done | wc -l"
+today = "11 (of 68)"
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "unlanded_devin_branches_over_48h"
+command = "for b in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/devin/); do [ $(git cherry origin/main $b | grep -c '^+') != 0 ] && [ $(git log -1 --format=%ct $b) -lt $(( $(date +%s) - 172800 )) ] && echo $b; done | wc -l"
+today = "0"
+target = "0"
+milestone = "M1"
+
+[[metric]]
+name = "releases_published"
+command = "gh release list -R ryanbai1412/cp-lang --json tagName -q length"
+today = "0"
+target = "nightly edge 7 days running + v0.3.0"
+milestone = "M3"
+
+[[metric]]
+name = "live_installer_matches_repo"
+command = "curl -fsSL https://cp-lang.org/install.sh | cmp -s - web/public/install.sh && echo yes || echo no"
+today = "yes"
+target = "yes"
+milestone = "M3"
+
+[[metric]]
+name = "public_repo_docs"
+command = "ls CONTRIBUTING.md SECURITY.md 2>/dev/null | wc -l"
+today = "0"
+target = "2"
+milestone = "M3"
+
+[[metric]]
+name = "land_queue_wait_p50_s"
+command = "none: land.sh keeps no log yet (M1 adds one)"
+today = "not measurable"
+target = "<= 300"
+milestone = "M1"
