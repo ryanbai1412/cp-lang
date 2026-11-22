@@ -368,7 +368,7 @@ pub struct XorBasis:
     /// The independent basis vectors currently stored, fully reduced (no vector has another's highest
     /// bit set), so the list depends only on the span. One vector per rank.
     ///
-    /// cost: O(62) time and space
+    /// cost: O(W) time and space
     /// empty: `[]`
     /// order: decreasing (by highest set bit)
     /// traps: never
@@ -377,7 +377,7 @@ pub struct XorBasis:
 
     /// A new basis spanning the intersection of the two GF(2) vector subspaces.
     ///
-    /// cost: O(62^2)
+    /// cost: O(W^2)
     /// traps: never
     /// example: `var a = XorBasis.new(); a.add(6); a.add(5); var b = XorBasis.new(); b.add(3); b.add(8); let c = a.intersect(b); c.rank == 1 and c.contains(3)`
     pub fn intersect(self, o: XorBasis) -> XorBasis = todo

@@ -323,17 +323,6 @@ pub struct Rope<D, T>:
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..3); r.get(0) == 3`
     pub fn reverse(mut self, r: Range<D>) = todo
 
-    /// Walk from the root to the node holding position `i` and return the first `Some` that `f`
-    /// gives on a pending tag there, top-down, or `None` when no pending tag gives one. Pending
-    /// tags on the path all cover `i`, newer above older; which tags are still pending depends on
-    /// the tree's shape, so use an `f` whose first `Some` does not (such as "the latest tag").
-    ///
-    /// cost: O(log n) expected calls of `f`
-    /// traps: when `i` is outside `D`
-    /// example: `var r = Rope([1, 2, 3]); r.apply(0..3, 7); r.query_path(1, t => Some(t)) == Some(7)`
-    /// example: `Rope([1, 2, 3]).query_path(0, t => Some(t)) == None`
-    pub fn query_path<R>(mut self, i: D, f: T -> ?R) -> ?R = todo
-
     /// The value currently at position `i`, with pending tags merged in.
     ///
     /// cost: O(log n) expected

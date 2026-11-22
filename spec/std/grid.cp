@@ -87,6 +87,19 @@ pub struct Dir8(k: Int):
     /// traps: never
     /// example: `Dir8.all().map(d => d.delta) == [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]`
     pub fn all() -> List<Dir8> = todo
+
+    /// The direction whose letter is `ch` in `letters`, listed in `Dir8.all()` order, e.g.
+    /// `Dir8.from("NOEKSJWH", ch)` style alphabets. `None` for another letter.
+    ///
+    /// Matching is exact (case-sensitive). If a letter appears more than once in `letters`, the
+    /// first position wins.
+    ///
+    /// cost: O(1)
+    /// ties: a repeated letter maps to its first position in `letters`
+    /// traps: `letters.len != 8`
+    /// example: `Dir8.from("abcdefgh", 'c') == Some(Dir8.all()[2])`
+    /// example: `Dir8.from("abcdefgh", 'x') == None`
+    pub fn from(letters: Str, ch: Char) -> ?Dir8 = todo
     /// An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from
     /// up-left to up.
     ///

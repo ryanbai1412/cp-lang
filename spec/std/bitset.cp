@@ -14,7 +14,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.new().len == 0`
     pub fn new() -> Bitset<D> = todo
 
-    /// The empty set, matching `Subset<D>.empty`; the same as `new()`.
+    /// The empty set, matching `Subset<D>.empty` (a call here: it is O(K / 64)); the same as `new()`.
     ///
     /// cost: O(K / 64) time and space
     /// traps: never

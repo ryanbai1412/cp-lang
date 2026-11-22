@@ -43,23 +43,39 @@ pub struct Subset<B>(bits: U64):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain B = 0..4; Subset<B>.empty().with(B(1)).with(B(1)) == Subset<B>.single(B(1))`
+    /// example: `domain B = 0..4; Subset<B>.empty.with(B(1)).with(B(1)) == Subset<B>.single(B(1))`
     pub fn with(self, b: B) -> Subset<B> = todo
 
     /// `self` with `b` removed. Removing a non-member returns `self` unchanged.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain B = 0..4; Subset<B>.full().without(B(0)).len == 3`
-    /// example: `domain B = 0..4; Subset<B>.empty().without(B(2)) == Subset<B>.empty()`
+    /// example: `domain B = 0..4; Subset<B>.full.without(B(0)).len == 3`
+    /// example: `domain B = 0..4; Subset<B>.empty.without(B(2)) == Subset<B>.empty`
     pub fn without(self, b: B) -> Subset<B> = todo
+
+    /// Add `b` when `on`, remove it otherwise, in place (as `Bitset.set`).
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `domain B = 0..4; var s = Subset<B>.empty; s.set(B(2), true); s.set(B(0), false); s == Subset<B>.single(B(2))`
+    pub fn set(mut self, b: B, on: Bool) = todo
+
+    /// A new set with every member `k` places up (down for a negative `k`); members that leave `B`
+    /// are dropped (as `Bitset.shifted`).
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `domain B = 0..4; Subset<B>.single(B(1)).with(B(3)).shifted(1) == Subset<B>.single(B(2))`
+    /// example: `domain B = 0..4; Subset<B>.single(B(1)).shifted(-2) == Subset<B>.empty`
+    pub fn shifted(self, k: Int) -> Subset<B> = todo
 
     /// The members of `B` not in `self`; no bit at or above `|B|` is ever set.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(0)).complement().len == 3`
-    /// example: `domain B = 0..4; Subset<B>.empty().complement() == Subset<B>.full()`
+    /// example: `domain B = 0..4; Subset<B>.empty.complement() == Subset<B>.full`
     pub fn complement(self) -> Subset<B> = todo
 
     /// The least member in `B`'s order (the lowest set bit, by count-trailing-zeros), `None`
@@ -70,7 +86,7 @@ pub struct Subset<B>(bits: U64):
     /// ties: none possible; members are distinct, and the least in `B`'s order wins
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).first() == Some(B(1))`
-    /// example: `domain B = 0..4; Subset<B>.empty().first() == None`
+    /// example: `domain B = 0..4; Subset<B>.empty.first() == None`
     pub fn first(self) -> ?B = todo
 
     /// The members in `B`'s order; `for b in s` walks the same sequence.
@@ -98,7 +114,7 @@ pub struct Subset<B>(bits: U64):
     ///
     /// cost: O(1) per superset, `2^(|B| - s.len)` supersets
     /// empty: `{}.supersets` yields every subset of `B`, `{}` first
-    /// order: increasing as words: `self` first, `Subset<B>.full()` last
+    /// order: increasing as words: `self` first, `Subset<B>.full` last
     /// traps: never
     /// example: `domain B = 0..3; Subset<B>.single(B(1)).supersets.map(g => g.len).collect() == [1, 2, 2, 3]`
     pub @get fn supersets(self) -> yields Subset<B> = todo
