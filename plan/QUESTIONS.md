@@ -62,4 +62,18 @@ Recommendation: (a). It covers what a first contest needs and stays small enough
 How to reverse it: content only; chapters add or drop independently.
 Meanwhile: (a).
 
+### compiler: how does a product position lower?
+`domain P = (R, C)`; `for (r, c) in P: if let q = P.at((Int(r) - 1, Int(c))): n += 1` (`spec/conformance/core-04/prod-at-neighbour.cp`).
+Options: (a) in the IR a position of `P` is a tuple of factor positions `(R, C)`; `nth`, array offsets and `[P]T` indexing compute the row-major offset at the use. (b) a position is one packed row-major `Int`; factors are `div`/`mod` at the use.
+Recommendation: (a). Neighbour steps and `(r, c)` destructuring are the common uses and stay free; storage is two small ints, narrowed by their ranges; it matches the C++ a contestant writes. (b) only wins on storage.
+How to reverse it: the representation is one function in `crates/cpl-ir/src/lower/` plus the back ends' reading of it; switch there, rerun `cpl-conform all`.
+Meanwhile: (a), which `devin/wip-product-domain` implements.
+
+### compiler: one interpreter engine, no reference tree-walker?
+Today `crates/cpl-interp/src/vm.rs` falls back to the tree-walker in `crates/cpl-interp/src/lib.rs` for anything it doesn't lower (13 of 13 runnable corpus programs fall back; `CPL_VM_STATS=json`), and wasm runs only the tree-walker.
+Options: (a) lower everything into the VM, delete the tree-walker, run the VM on wasm; the C++ diff (`cpl-conform diff`) is the second opinion. (b) keep the tree-walker as a slow reference oracle.
+Recommendation: (a). Every semantic change is otherwise written three times (walker, VM, C++), and the playground runs different code from `cpl run`.
+How to reverse it: the tree-walker is in git history; restore it behind a flag.
+Meanwhile: keep both until the fallback count is 0 on corpus and conformance, then delete.
+
 ## Answered

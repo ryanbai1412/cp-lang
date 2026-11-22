@@ -1,0 +1,108 @@
+# compiler metrics. Every `today` was measured 2026-11-22 on main 4b8f504f
+# (release build: `cargo build --release -p cpl-cli -p cpl-conform`), from the repo root.
+
+[[metric]]
+name = "conformance pass"
+command = "./target/release/cpl-conform conformance"
+today = "1617/1711"
+target = "1711/1711"
+milestone = "M2"
+
+[[metric]]
+name = "interpreter == C++"
+command = "./target/release/cpl-conform diff"
+today = "1242/1336 pass, 94 skip"
+target = "1336/1336 pass, 0 skip"
+milestone = "M2"
+
+[[metric]]
+name = "distinct conformance failure causes"
+command = "./target/release/cpl-conform conformance --causes | grep 'causes ('"
+today = "47"
+target = "0"
+milestone = "M2"
+
+[[metric]]
+name = "VM fallback to tree-walker, corpus"
+command = "for d in corpus/problems/*/; do i=$(ls $d/tests/*.in 2>/dev/null | head -1); [ -n \"$i\" ] && CPL_VM_STATS=json timeout 10 ./target/release/cpl run $d/spec.cp $i 2>&1 >/dev/null | grep -o '\"total_fallbacks\":[0-9]*'; done"
+today = "13 of 13 runnable programs fall back; 4522 fallback executions"
+target = "0 programs, 0 executions; tree-walker deleted"
+milestone = "M3"
+
+[[metric]]
+name = "std type names as string literals in check/ir/interp"
+command = "for n in $(grep -rhoE '^(pub )?(struct|enum|trait) [A-Z][A-Za-z0-9]*' spec/std | awk '{print $NF}' | sort -u | grep -vxE 'List|Str|Map|Set|Int|Bool|Char|Float'); do grep -rF \"\\\"$n\\\"\" crates/cpl-check/src crates/cpl-ir/src crates/cpl-interp/src --include=*.rs | grep -v /tests; done | wc -l"
+today = "146 occurrences of 35 names"
+target = "0 outside one intrinsics table"
+milestone = "M3"
+
+[[metric]]
+name = "edition branches"
+command = "grep -rE 'is_v03\\(\\)|spec_edition\\(\\)' crates/cpl-syntax/src crates/cpl-check/src crates/cpl-ir/src crates/cpl-interp/src crates/prover/src | wc -l"
+today = "120"
+target = "0"
+milestone = "M3"
+
+[[metric]]
+name = "owned Rust files over 2000 lines"
+command = "python3 -c \"import json; d=json.load(open('scripts/debt-ratchet.json'))['rs_file_size_allowlist']; print(len([k for k in d if k.split('/')[1] in ('cpl-syntax','cpl-check','cpl-ir','cpl-interp','prover')]))\""
+today = "14 (1 is a test file)"
+target = "0 non-test"
+milestone = "M3"
+
+[[metric]]
+name = "owned #[ignore] tests"
+command = "grep -rE '#\\[ignore' crates/cpl-syntax crates/cpl-check crates/cpl-ir crates/cpl-interp crates/prover | wc -l"
+today = "9"
+target = "0"
+milestone = "M3"
+
+[[metric]]
+name = "owned-crate tests"
+command = "cargo nextest run --release -p cpl-syntax -p cpl-check -p cpl-ir -p cpl-interp -p cpl-prover"
+today = "429 passed, 9 skipped, 5 s"
+target = "all pass, 0 skipped"
+milestone = "all"
+
+[[metric]]
+name = "front-end latency, largest corpus spec.cp"
+command = "time ./target/release/cpl check corpus/problems/btoi18p4/spec.cp"
+today = "0.02 s (74 lines)"
+target = "< 0.5 s on every corpus program"
+milestone = "all"
+
+[[metric]]
+name = "full cpl-conform run time"
+command = "time ./target/release/cpl-conform all"
+today = "23.3 s"
+target = "< 30 s"
+milestone = "all"
+
+# Watched, owned elsewhere (compiler fixes failures whose cause is in its crates).
+[[metric]]
+name = "corpus (watched; idioms/stdlib own)"
+command = "./target/release/cpl-conform corpus"
+today = "12/100 (40 error, 1 trap, 46 untested, 1 wrong)"
+target = "set by owners"
+milestone = "watch"
+
+[[metric]]
+name = "docs examples (watched; stdlib owns)"
+command = "./target/release/cpl-conform docs"
+today = "2012/2699 (430 error, 146 todo, 109 trap, 2 skip)"
+target = "set by owners"
+milestone = "watch"
+
+[[metric]]
+name = "spec blocks (watched; spec owns)"
+command = "./target/release/cpl-conform spec-blocks"
+today = "19/185 (166 error)"
+target = "set by owners"
+milestone = "watch"
+
+[[metric]]
+name = "conformance rule coverage (watched; spec owns)"
+command = "./target/release/cpl-conform conformance --rules"
+today = "527 of 527 covered, 78 unknown rule refs"
+target = "0 unknown"
+milestone = "watch"
