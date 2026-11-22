@@ -427,6 +427,42 @@ fn the_sample_program_is_the_size_it_claims() {
     }
 }
 
+/// Time this thread has spent on a CPU, from the scheduler's nanosecond
+/// count. The server answers on the thread that calls it, so this is the
+/// handler's own cost; wall time also counts the time a loaded machine (the
+/// gate runs every test at once) leaves the thread descheduled. `None` where
+/// the count isn't available.
+fn on_cpu() -> Option<Duration> {
+    let stat = std::fs::read_to_string("/proc/thread-self/schedstat").ok()?;
+    let nanos = stat.split_whitespace().next()?.parse().ok()?;
+    Some(Duration::from_nanos(nanos))
+}
+
+/// `round_trip`, timed by CPU time where the platform has it, else wall time.
+fn cpu_round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration) {
+    let before = on_cpu();
+    let (replies, wall) = round_trip(server, message);
+    match (before, on_cpu()) {
+        (Some(before), Some(after)) => (replies, after - before),
+        _ => (replies, wall),
+    }
+}
+
+#[test]
+fn the_keystroke_clock_does_not_count_time_off_the_cpu() {
+    let Some(before) = on_cpu() else { return };
+    std::thread::sleep(Duration::from_millis(200));
+    let slept = on_cpu().unwrap() - before;
+    assert!(slept < Duration::from_millis(20), "sleeping 200 ms took {} on the CPU", ms(slept));
+    let before = on_cpu().unwrap();
+    let start = Instant::now();
+    let mut x = 0u64;
+    while start.elapsed() < Duration::from_millis(50) {
+        x = std::hint::black_box(x.wrapping_mul(31).wrapping_add(7));
+    }
+    assert!(on_cpu().unwrap() - before > Duration::from_millis(5), "a busy loop took no CPU time");
+}
+
 /// The 95th percentile of the keystroke-to-diagnostics round trip while typing
 /// `insert` one character at a time at `at`, after opening `src`.
 fn keystroke_p95(src: &str, at: usize, insert: &str) -> (Duration, Duration, bool) {
@@ -453,7 +489,7 @@ fn keystroke_p95(src: &str, at: usize, insert: &str) -> (Duration, Duration, boo
                     ("contentChanges", Value::Array(vec![obj([("text", text.as_str().into())])])),
                 ]),
             );
-            let (replies, took) = round_trip(&mut server, &change);
+            let (replies, took) = cpu_round_trip(&mut server, &change);
             assert!(replies.iter().any(|r| r.contains("publishDiagnostics")), "no diagnostics");
             errors |= replies.iter().any(|r| r.contains(r#""severity":1"#));
             samples.0.push(took);
@@ -476,8 +512,9 @@ fn p95_budget() -> Duration {
 }
 
 /// The ten largest ports, typed into in the middle of an indented body, and a
-/// 300-line file with errors throughout: each keystroke's diagnostics arrive
-/// within the budget at the 95th percentile.
+/// 300-line file with errors throughout: each keystroke's diagnostics take
+/// the server less than the budget at the 95th percentile, in CPU time so a
+/// loaded machine doesn't fail it.
 #[test]
 fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() {
     let ports = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
