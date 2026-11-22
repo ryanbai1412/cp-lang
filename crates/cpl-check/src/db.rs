@@ -536,7 +536,7 @@ impl Database {
         // gets it (spec 11.3); in 0.2 every module does. A `use` that failed
         // may have been meant to bring a name it lists, so the prelude
         // leaves those names alone (all of them for a glob).
-        let library = self.analyzing.len() > 1 && crate::edition::is_v03();
+        let library = self.analyzing.len() > 1;
         if !prelude_off && !library && !is_prelude(path) {
             let declared: std::collections::HashSet<&str> = items
                 .iter()
@@ -925,9 +925,8 @@ impl Database {
                 .iter()
                 .find(|d| d.name == decl.name);
             // R02.11.3, R06.1.6: a second `fn f` is an overload, which 0.3 has not.
-            let overload = crate::edition::is_v03()
-                && decl.kind == DeclKind::Fn
-                && first.is_some_and(|f| f.kind == DeclKind::Fn);
+            let overload =
+                decl.kind == DeclKind::Fn && first.is_some_and(|f| f.kind == DeclKind::Fn);
             let mut diag = if overload {
                 Diagnostic::error(
                     codes::OVERLOAD_BY_TYPE,
@@ -954,47 +953,43 @@ impl Database {
             }
             sink.push(diag);
         }
-        if crate::edition::is_v03() {
-            for (index, item) in items.iter().enumerate() {
-                for stmt in &item.parsed.stmts {
-                    if let StmtKind::Use { names, alias, .. } = &stmt.kind {
-                        let imported: Vec<(&str, Span)> = if let Some(a) = alias {
-                            vec![(&a.text, a.span)]
-                        } else {
-                            names.iter().map(|n| (n.text.as_str(), n.span)).collect()
-                        };
-                        for (iname, ispan) in imported {
-                            if let Some(&def_index) = scope.names.get(iname) {
-                                if let Some(decl) =
-                                    items[def_index].decls.iter().find(|d| d.name == iname)
-                                {
-                                    let dspan = decl.span.shift(ranges[def_index].span.start);
-                                    let diag = Diagnostic::error(
-                                        codes::DUPLICATE_DEFINITION,
-                                        dspan,
-                                        format!(
-                                            "`{iname}` is already imported by `use` in this file"
-                                        ),
-                                    )
-                                    .with_label(
-                                        ispan.shift(ranges[index].span.start),
-                                        format!("`{iname}` imported here"),
-                                    );
-                                    sink.push(diag);
-                                }
+        for (index, item) in items.iter().enumerate() {
+            for stmt in &item.parsed.stmts {
+                if let StmtKind::Use { names, alias, .. } = &stmt.kind {
+                    let imported: Vec<(&str, Span)> = if let Some(a) = alias {
+                        vec![(&a.text, a.span)]
+                    } else {
+                        names.iter().map(|n| (n.text.as_str(), n.span)).collect()
+                    };
+                    for (iname, ispan) in imported {
+                        if let Some(&def_index) = scope.names.get(iname) {
+                            if let Some(decl) =
+                                items[def_index].decls.iter().find(|d| d.name == iname)
+                            {
+                                let dspan = decl.span.shift(ranges[def_index].span.start);
+                                let diag = Diagnostic::error(
+                                    codes::DUPLICATE_DEFINITION,
+                                    dspan,
+                                    format!("`{iname}` is already imported by `use` in this file"),
+                                )
+                                .with_label(
+                                    ispan.shift(ranges[index].span.start),
+                                    format!("`{iname}` imported here"),
+                                );
+                                sink.push(diag);
                             }
                         }
                     }
                 }
             }
         }
-        if crate::ty::spec_edition() {
-            for (index, item) in items.iter().enumerate() {
-                let Some((name, span, lo, hi)) = wide_array(&items, &checks, index) else {
-                    continue;
-                };
-                let offset = ranges[index].span.start;
-                sink.push(
+
+        for (index, item) in items.iter().enumerate() {
+            let Some((name, span, lo, hi)) = wide_array(&items, &checks, index) else {
+                continue;
+            };
+            let offset = ranges[index].span.start;
+            sink.push(
                     Diagnostic::warning(
                         codes::WIDE_ARRAY,
                         span.shift(offset),
@@ -1009,12 +1004,11 @@ impl Database {
                             .map_or(String::new(), |(head, tail)| format!("{head}{lo}..={hi}{tail}"))
                     )),
                 );
-            }
         }
-        if crate::ty::spec_edition() {
-            for (index, range) in ranges.iter().enumerate().take(items.len()) {
-                if let Some((span, data, size, bytes)) = padded_array(&items, index) {
-                    sink.push(
+
+        for (index, range) in ranges.iter().enumerate().take(items.len()) {
+            if let Some((span, data, size, bytes)) = padded_array(&items, index) {
+                sink.push(
                         Diagnostic::warning(
                             codes::PADDING,
                             span.shift(range.span.start),
@@ -1026,10 +1020,10 @@ impl Database {
                         )
                         .with_help("store it as `Packed<S>` (data only, unaligned loads) or with `layout: columns` (one array per field)"),
                     );
-                }
-                if let Some((name, at, reads)) = map_recomputed(&items, index) {
-                    let at = at.shift(range.span.start);
-                    sink.push(
+            }
+            if let Some((name, at, reads)) = map_recomputed(&items, index) {
+                let at = at.shift(range.span.start);
+                sink.push(
                         Diagnostic::warning(
                             codes::MAP_RECOMPUTED,
                             at,
@@ -1037,17 +1031,13 @@ impl Database {
                         )
                         .with_help(format!("copy it once with `List(...)` so each `{name}[i]` is a plain read (R07.2.11)")),
                     );
-                }
             }
         }
+
         for (index, check) in checks.iter().enumerate() {
             let offset = ranges[index].span.start;
             // R05.10.6: a lambda's `let` name is not hoisted.
-            for r in check
-                .refs
-                .iter()
-                .filter(|r| r.in_lambda && crate::ty::spec_edition())
-            {
+            for r in check.refs.iter().filter(|r| r.in_lambda) {
                 let Some(&def_index) = scope.names.get(&r.name) else {
                     continue;
                 };
@@ -1071,11 +1061,7 @@ impl Database {
             }
             // R07.1.3, R05.9.4: a lazy chain or a `mut`-holding generator walks once.
             let mut warned: Vec<&str> = Vec::new();
-            for r in check
-                .refs
-                .iter()
-                .filter(|r| r.top_level && crate::ty::spec_edition())
-            {
+            for r in check.refs.iter().filter(|r| r.top_level) {
                 let Some(&def_index) = scope.names.get(&r.name) else {
                     continue;
                 };
@@ -1137,7 +1123,7 @@ impl Database {
                 } else {
                     format!("`{}` is used here before it is set on line {line}", r.name)
                 };
-                let code = if r.in_lambda && crate::edition::is_v03() {
+                let code = if r.in_lambda {
                     codes::UNRESOLVED_NAME
                 } else {
                     codes::USED_BEFORE_SET
@@ -1258,7 +1244,9 @@ impl Database {
             if diags.is_empty() {
                 let dotted = parts.join(".");
                 let help = match first.text.as_str() {
-                    "std" => "the standard library's modules are the files of `spec/std/`".to_string(),
+                    "std" => {
+                        "the standard library's modules are the files of `spec/std/`".to_string()
+                    }
                     lib => format!(
                         "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
                     ),

@@ -191,9 +191,6 @@ fn known_init(e: &Expr) -> bool {
 }
 
 fn ctor_move_args(e: &Expr) -> Vec<String> {
-    if !crate::edition::is_v03() {
-        return Vec::new();
-    }
     let ExprKind::Call { callee, args } = &unparen(e).kind else {
         return Vec::new();
     };
@@ -841,7 +838,7 @@ fn subst(e: &Expr, env: &[(&str, &Expr)]) -> Expr {
                                 },
                             },
                             span: e.span,
-                        }
+                        };
                     }
                     "end" => return (**hi).clone(),
                     _ => {}
@@ -1275,12 +1272,12 @@ impl<'a> Checker<'a> {
                     return Some(format!(
                         "`{}` and `{}` are different projections of the same value, and those always conflict",
                         a.who, b.who
-                    ))
+                    ));
                 }
                 _ => {
                     return Some(
                         "one is a field and the other a projection of the same value".to_string(),
-                    )
+                    );
                 }
             }
         }
@@ -1397,7 +1394,6 @@ impl<'a> Checker<'a> {
                     c.infer(init);
                     (c.const_range(init), c.walk_only_expr(init))
                 });
-                self.walk_only_calls.clear();
                 self.lends.view_exprs.clear();
                 self.lends.view_readonly.clear();
                 self.lends.proj_calls.clear();
@@ -1570,9 +1566,6 @@ impl<'a> Checker<'a> {
 
     /// Generated struct constructors move owned heap arguments (R2, R02.6.3).
     pub(crate) fn move_ctor_args(&mut self, args: &[Arg]) {
-        if !crate::edition::is_v03() {
-            return;
-        }
         for arg in args {
             if arg.mutable {
                 continue;
@@ -1601,7 +1594,7 @@ impl<'a> Checker<'a> {
     pub(crate) fn is_owned_movable_var(&mut self, name: &str) -> bool {
         if let Some(local) = self.local(name) {
             local.keyword != "param" && !self.lends.views.contains_key(&local.span)
-        } else if self.in_fn == 0 && crate::edition::is_v03() {
+        } else if self.in_fn == 0 {
             matches!(self.global(name).as_deref(), Some(Def::Value { .. }))
                 && !self.lends.global_views.contains_key(name)
         } else {
@@ -1696,10 +1689,9 @@ impl<'a> Checker<'a> {
                 Vec::new()
             }
             ExprKind::Index { base, indices }
-                if crate::edition::is_v03()
-                    && !indices
-                        .iter()
-                        .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
+                if !indices
+                    .iter()
+                    .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
             {
                 let ty = self.quietly(|c| c.infer(e));
                 if self.is_heap_type(&ty) {
@@ -2504,7 +2496,7 @@ impl<'a> Checker<'a> {
     /// Returning a lent parameter without `lends`, or returning a closure that
     /// captures a local variable, is E0603 (R05.7.5 / R05.7.8 / R05.10.2).
     pub(crate) fn no_escape_return(&mut self, e: &Expr, what: &str) {
-        if !crate::edition::is_v03() || self.fn_lends.last().copied().unwrap_or(false) {
+        if self.fn_lends.last().copied().unwrap_or(false) {
             return;
         }
         let e = unparen(e);
@@ -2549,9 +2541,6 @@ impl<'a> Checker<'a> {
     /// Assigning a lent param or heap `for`-loop variable into an outer `var`
     /// is E0603 (R05.7.4 / R05.7.10 / R05.9.2).
     pub(crate) fn no_escape_assign(&mut self, value: &Expr, target_depth: usize) {
-        if !crate::edition::is_v03() {
-            return;
-        }
         let e = unparen(value);
         let ExprKind::Name(src) = &e.kind else {
             return;
@@ -2753,8 +2742,6 @@ impl<'a> Checker<'a> {
                 }
                 return;
             }
-        } else if !crate::ty::spec_edition() {
-            return;
         }
         let Some(place) = self.place(base) else {
             return;

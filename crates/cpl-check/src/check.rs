@@ -153,7 +153,6 @@ pub(crate) struct Checker<'a> {
     pub(crate) let_ranges: HashMap<String, (i128, i128)>,
     /// `let`s bound to a walk-only sequence such as `filter` (R07.1.2).
     pub(crate) walk_only: std::collections::HashSet<String>,
-    pub(crate) walk_only_calls: std::collections::HashSet<Span>,
     /// Structs and enums declared inside a fn body, visible to the whole block.
     local_defs: HashMap<String, Arc<Def>>,
     /// The types a lambda passed to a built-in method gives its unwritten
@@ -224,7 +223,6 @@ impl<'a> Checker<'a> {
             local_product_domains: HashMap::new(),
             let_ranges: HashMap::new(),
             walk_only: Default::default(),
-            walk_only_calls: Default::default(),
             local_defs: HashMap::new(),
             lambda_params: Vec::new(),
             moved: HashMap::new(),

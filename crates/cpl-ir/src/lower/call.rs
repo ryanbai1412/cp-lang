@@ -5014,10 +5014,7 @@ impl<'a> Lowerer<'a> {
                         self.int_add((**hi).clone(), -1)
                     };
                     let end = self.cast(Cast::Trust, end, (**cut).clone());
-                    if cpl_check::edition::is_v03() {
-                        return self.spec_opt(None, end, span);
-                    }
-                    return end;
+                    return self.spec_opt(None, end, span);
                 }
             }
         }
@@ -5299,7 +5296,7 @@ impl<'a> Lowerer<'a> {
             (Ty::Pos(_), "prev") => {
                 builtin(self, Builtin::PosPrev, vec![value], Ty::opt(ty.clone()))
             }
-            (Ty::Pos(d), "before" | "after") if cpl_check::edition::is_v03() => {
+            (Ty::Pos(d), "before" | "after") => {
                 let d = *d;
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 let (lo, hi) = if name.text == "after" {
@@ -5319,8 +5316,8 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
-            (Ty::Pos(d), "before" | "l") => self.cast(Cast::Trust, value, Ty::Bound(*d)),
-            (Ty::Pos(d), "after" | "r") => {
+            (Ty::Pos(d), "l") => self.cast(Cast::Trust, value, Ty::Bound(*d)),
+            (Ty::Pos(d), "r") => {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 let next = self.int_add(ord, 1);
                 self.cast(Cast::Trust, next, Ty::Bound(*d))
@@ -5398,71 +5395,6 @@ impl<'a> Lowerer<'a> {
                     unreachable!()
                 };
                 self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span)
-            }
-            (Ty::Range(inner), "mid") if !cpl_check::edition::is_v03() => {
-                let inner_ty = (**inner).clone();
-                let res_ty = Ty::opt(inner_ty.clone());
-                let r_ty = value.ty.clone();
-                self.do_expr(Some(&res_ty.clone()), span, |lw, out| {
-                    let r_slot = lw.temp(r_ty);
-                    out.push(Stmt::Let(r_slot, Some(value)));
-                    let r_ref = lw.local(r_slot, span);
-                    let len = lw.mk(
-                        ExprKind::Builtin(Builtin::Len, vec![r_ref.clone()]),
-                        Ty::Int,
-                        span,
-                    );
-                    let empty = lw.mk(
-                        ExprKind::Cmp(
-                            CmpOp::Eq,
-                            Box::new(len.clone()),
-                            Box::new(lw.int_lit(0, span)),
-                        ),
-                        Ty::Bool,
-                        span,
-                    );
-                    let lo = lw.mk(
-                        ExprKind::Builtin(Builtin::RangeLo, vec![r_ref]),
-                        Ty::Int,
-                        span,
-                    );
-                    let half = lw.mk(
-                        ExprKind::Binary(
-                            BinOp::Div,
-                            Box::new(lw.int_add(len, -1)),
-                            Box::new(lw.int_lit(2, span)),
-                        ),
-                        Ty::Int,
-                        span,
-                    );
-                    let mid_int = lw.mk(
-                        ExprKind::Binary(BinOp::Add, Box::new(lo), Box::new(half)),
-                        Ty::Int,
-                        span,
-                    );
-                    let mid_val = match inner_ty {
-                        Ty::Pos(d) => lw.mk(
-                            ExprKind::Cast(Cast::FromOrd(d), Box::new(mid_int)),
-                            Ty::Pos(d),
-                            span,
-                        ),
-                        _ => mid_int,
-                    };
-                    let res = lw.mk(
-                        ExprKind::If(
-                            Box::new(empty),
-                            Box::new(lw.mk(ExprKind::None, res_ty.clone(), span)),
-                            Box::new(lw.mk(
-                                ExprKind::Some(Box::new(mid_val)),
-                                res_ty.clone(),
-                                span,
-                            )),
-                        ),
-                        res_ty,
-                        span,
-                    );
-                    out.push(Stmt::Give(res));
-                })
             }
             (Ty::Range(inner), "first") => {
                 let inner = (**inner).clone();
@@ -7365,16 +7297,6 @@ impl<'a> Lowerer<'a> {
                 return self.lower_partition(base, &test.value, span);
             }
         }
-        // `xs.group(by: x => key)` returns `List<List<T>>` in first-seen key order (v0.2;
-        // v0.3 dispatches to `std.seq.group` returning `HashMap<K, List<U>>`).
-        if let ([key], "group") = (args, name.text.as_str()) {
-            if !cpl_check::edition::is_v03()
-                && key.name.as_ref().is_none_or(|n| n.text == "by")
-                && base_is_seq
-            {
-                return self.lower_group_by(base, &key.value, span);
-            }
-        }
         // `xs.first(x => cond)` / `xs.last(x => cond)` returns `?T`.
         if let ([test], "first") = (args, name.text.as_str()) {
             if test.name.is_none() && base_is_seq {
@@ -7922,13 +7844,13 @@ impl<'a> Lowerer<'a> {
                         None => self.err_expr(span),
                     };
                 }
-                "at" if cpl_check::edition::is_v03() => {
+                "at" => {
                     return match self.one_arg("at", args, &Ty::Int, span) {
                         Some(label) => self.domain_try_label(id, label, span),
                         None => self.err_expr(span),
                     };
                 }
-                "at" | "nth" => {
+                "nth" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
                             ExprKind::Cast(Cast::FromOrd(id), Box::new(value)),
@@ -9112,9 +9034,7 @@ impl<'a> Lowerer<'a> {
                     },
                 };
                 match dom_id {
-                    Some(d) if method == "at" && cpl_check::edition::is_v03() => {
-                        self.domain_try_label(d, idx_expr, span)
-                    }
+                    Some(d) if method == "at" => self.domain_try_label(d, idx_expr, span),
                     Some(d) => self.mk(
                         ExprKind::Cast(Cast::Trust, Box::new(idx_expr)),
                         Ty::Pos(d),
@@ -10327,10 +10247,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-        if matches!(name.text.as_str(), "first" | "last")
-            && self.subset_base(id).is_none()
-            && cpl_check::edition::is_v03()
-        {
+        if matches!(name.text.as_str(), "first" | "last") && self.subset_base(id).is_none() {
             let ord = if name.text == "first" {
                 self.int_lit(0, span)
             } else {
@@ -11302,44 +11219,42 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        if cpl_check::edition::is_v03() {
-            if let ast::ExprKind::Call { callee, args } = &base.kind {
-                if let ast::ExprKind::Field { base: inner, name } = &callee.kind {
-                    if name.text == "map"
-                        && args.len() == 1
-                        && args[0].name.is_none()
-                        && !args[0].mutable
-                    {
-                        if let Some(inner_elem) = self.lower_map_view_index(inner, indices, span) {
-                            return Some(self.apply_map_fn(inner_elem, &args[0].value, span));
+        if let ast::ExprKind::Call { callee, args } = &base.kind {
+            if let ast::ExprKind::Field { base: inner, name } = &callee.kind {
+                if name.text == "map"
+                    && args.len() == 1
+                    && args[0].name.is_none()
+                    && !args[0].mutable
+                {
+                    if let Some(inner_elem) = self.lower_map_view_index(inner, indices, span) {
+                        return Some(self.apply_map_fn(inner_elem, &args[0].value, span));
+                    }
+                    if matches!(
+                        self.probe_ty_silent(inner),
+                        Some(
+                            Ty::List(_)
+                                | Ty::Array { .. }
+                                | Ty::ListView(..)
+                                | Ty::MutView(_)
+                                | Ty::Str
+                        )
+                    ) {
+                        let base_expr = self.expr(inner, None);
+                        let (idx_exprs, elem_ty) = self.index_args(&base_expr.ty, indices, span);
+                        if matches!(elem_ty, Ty::Error) {
+                            return Some(self.err_expr(span));
                         }
-                        if matches!(
-                            self.probe_ty_silent(inner),
-                            Some(
-                                Ty::List(_)
-                                    | Ty::Array { .. }
-                                    | Ty::ListView(..)
-                                    | Ty::MutView(_)
-                                    | Ty::Str
-                            )
-                        ) {
-                            let base_expr = self.expr(inner, None);
-                            let (idx_exprs, elem_ty) =
-                                self.index_args(&base_expr.ty, indices, span);
-                            if matches!(elem_ty, Ty::Error) {
-                                return Some(self.err_expr(span));
-                            }
-                            let elem = self.mk(
-                                ExprKind::Index(Box::new(base_expr), idx_exprs),
-                                elem_ty,
-                                span,
-                            );
-                            return Some(self.apply_map_fn(elem, &args[0].value, span));
-                        }
+                        let elem = self.mk(
+                            ExprKind::Index(Box::new(base_expr), idx_exprs),
+                            elem_ty,
+                            span,
+                        );
+                        return Some(self.apply_map_fn(elem, &args[0].value, span));
                     }
                 }
             }
         }
+
         None
     }
 
@@ -11661,166 +11576,6 @@ impl<'a> Lowerer<'a> {
             };
             out.push(Stmt::For(lid, item, iter, body));
             out.push(Stmt::Give(lw.local(found, span)));
-        })
-    }
-
-    fn lower_group_by(&mut self, base: &ast::Expr, key_ast: &ast::Expr, span: Span) -> Expr {
-        let (iter, elem_ty) = self.iter(base);
-        if matches!(elem_ty, Ty::Error) {
-            return self.err_expr(span);
-        }
-        let mut item = self.temp(elem_ty.clone());
-        // Evaluate the key expression for `item`: supports `x => expr`, a 1D array `a` (`a[x]`), or a callable `f` (`f(x)`).
-        let (pre_stmts, key_expr): (Vec<Stmt>, Expr) = match &key_ast.kind {
-            ast::ExprKind::Lambda { params, body, .. } if !params.is_empty() => {
-                self.cx.scopes.push(HashMap::new());
-                let mut bind_stmts = Vec::new();
-                item = self.loop_var(
-                    &ast::Pattern::single_param(params).expect("a parameter"),
-                    elem_ty.clone(),
-                    &mut bind_stmts,
-                );
-                let ke = self.expr(body, None);
-                self.cx.scopes.pop();
-                (bind_stmts, ke)
-            }
-            _ => {
-                let item_expr = self.local(item, span);
-                if matches!(self.probe_ty_silent(key_ast), Some(Ty::Array { dims, .. }) if dims.len() == 1)
-                {
-                    let arr = self.expr(key_ast, None);
-                    let arr_elem = match &arr.ty {
-                        Ty::Array { elem, .. } => (**elem).clone(),
-                        _ => Ty::Error,
-                    };
-                    let idx = match &arr.ty {
-                        Ty::Array { dims, .. } => match dims[0] {
-                            Dim::Enum(e) => {
-                                let ord = self.cast(Cast::EnumOrd(e), item_expr.clone(), Ty::Int);
-                                self.cast(Cast::Raw, ord, Ty::Int)
-                            }
-                            _ => item_expr.clone(),
-                        },
-                        _ => item_expr.clone(),
-                    };
-                    (
-                        Vec::new(),
-                        self.mk(ExprKind::Index(Box::new(arr), vec![idx]), arr_elem, span),
-                    )
-                } else {
-                    let f = self.expr(key_ast, None);
-                    let ret = match &f.ty {
-                        Ty::Fn(_, r) => (**r).clone(),
-                        _ => Ty::Error,
-                    };
-                    (
-                        Vec::new(),
-                        self.mk(
-                            ExprKind::CallExpr(Box::new(f), vec![Arg::Value(item_expr.clone())]),
-                            ret,
-                            span,
-                        ),
-                    )
-                }
-            }
-        };
-        let item_expr = self.local(item, span);
-        let key_ty = key_expr.ty.clone();
-        if matches!(key_ty, Ty::Error) {
-            return self.err_expr(span);
-        }
-        let group_ty = Ty::list(elem_ty.clone());
-        let groups_ty = Ty::list(group_ty.clone());
-        let map_ty = Ty::Map(Box::new(key_ty.clone()), Box::new(Ty::Int));
-        let opt_int = Ty::opt(Ty::Int);
-        self.do_expr(Some(&groups_ty), span, |lw, out| {
-            let groups = lw.temp(groups_ty.clone());
-            let seen = lw.temp(map_ty.clone());
-            out.push(Stmt::Let(
-                groups,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), groups_ty.clone(), span)),
-            ));
-            out.push(Stmt::Let(
-                seen,
-                Some(lw.mk(ExprKind::Tuple(Vec::new()), map_ty.clone(), span)),
-            ));
-            let lid = lw.fresh_loop();
-            let mut body_stmts = pre_stmts;
-            let k_slot = lw.temp(key_ty.clone());
-            body_stmts.push(Stmt::Let(k_slot, Some(key_expr)));
-            let k_expr = lw.local(k_slot, span);
-            let got = lw.mk(
-                ExprKind::Builtin(Builtin::MapGet, vec![lw.local(seen, span), k_expr.clone()]),
-                opt_int.clone(),
-                span,
-            );
-            let got_slot = lw.temp(opt_int.clone());
-            body_stmts.push(Stmt::Let(got_slot, Some(got)));
-            let is_some = lw.mk(
-                ExprKind::IsSome(Box::new(lw.local(got_slot, span))),
-                Ty::Bool,
-                span,
-            );
-            let idx = lw.mk(
-                ExprKind::Unwrap(Box::new(lw.local(got_slot, span)), false),
-                Ty::Int,
-                span,
-            );
-            let groups_place = Place {
-                kind: PlaceKind::Local(groups),
-                ty: groups_ty.clone(),
-                span: lw.span(span),
-            };
-            let cell_place = Place {
-                kind: PlaceKind::Index(Box::new(groups_place.clone()), vec![idx]),
-                ty: group_ty.clone(),
-                span: lw.span(span),
-            };
-            let push_existing = lw.mk(
-                ExprKind::Mutate(
-                    Mutation::Push,
-                    Box::new(cell_place),
-                    vec![item_expr.clone()],
-                ),
-                Ty::Unit,
-                span,
-            );
-            // Else branch: seen[k] = groups.len; groups.push([item])
-            let cur_len = lw.mk(
-                ExprKind::Builtin(Builtin::Len, vec![lw.local(groups, span)]),
-                Ty::Int,
-                span,
-            );
-            let seen_place = Place {
-                kind: PlaceKind::Index(
-                    Box::new(Place {
-                        kind: PlaceKind::Local(seen),
-                        ty: map_ty.clone(),
-                        span: lw.span(span),
-                    }),
-                    vec![k_expr],
-                ),
-                ty: Ty::Int,
-                span: lw.span(span),
-            };
-            let set_seen = Stmt::Assign(seen_place, AssignOp::Set, cur_len);
-            let new_group = lw.mk(ExprKind::Tuple(vec![item_expr]), group_ty.clone(), span);
-            let push_new = lw.mk(
-                ExprKind::Mutate(Mutation::Push, Box::new(groups_place), vec![new_group]),
-                Ty::Unit,
-                span,
-            );
-            body_stmts.push(Stmt::If(
-                is_some,
-                Block {
-                    stmts: vec![Stmt::Expr(push_existing)],
-                },
-                Block {
-                    stmts: vec![set_seen, Stmt::Expr(push_new)],
-                },
-            ));
-            out.push(Stmt::For(lid, item, iter, Block { stmts: body_stmts }));
-            out.push(Stmt::Give(lw.local(groups, span)));
         })
     }
 

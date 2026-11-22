@@ -736,9 +736,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
         };
-        if self.local(name).is_some()
-            || (self.global(name).is_some() && !(name == "zip" && crate::edition::is_v03()))
-        {
+        if self.local(name).is_some() || (self.global(name).is_some() && name != "zip") {
             return None;
         }
         let tys: Vec<Ty> = args
@@ -790,7 +788,7 @@ impl<'a> Checker<'a> {
                 args: vec![first.clone()],
             }),
             ("read_line", _) => Some(Ty::Str),
-            ("print", _) if crate::edition::is_v03() => {
+            ("print", _) => {
                 let allow_none = args
                     .iter()
                     .any(|a| a.name.as_ref().is_some_and(|n| n.text == "none"));
@@ -872,12 +870,7 @@ impl<'a> Checker<'a> {
                     args: vec![Ty::Pos(a.into())],
                 })
             }
-            ("max" | "min", [Ty::Array { elem, .. }])
-                if !crate::edition::is_v03() && is_slice(&args[0].value) =>
-            {
-                Some(Ty::Optional(Box::new(elem.widen())))
-            }
-            ("max" | "min", [_]) if crate::edition::is_v03() => {
+            ("max" | "min", [_]) => {
                 let message = format!(
                     "`{name}` takes 2 arguments, but 1 was given; use `.{name}()` on a sequence"
                 );
@@ -1025,7 +1018,7 @@ impl<'a> Checker<'a> {
             return None;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        if crate::ty::spec_edition() && self.ambiguous_method(&base_ty, base, name) {
+        if self.ambiguous_method(&base_ty, base, name) {
             return Some(Ty::Error);
         }
         // R04.2.17: `V.cuts(k)` is the cut numbered `k`, not the range of cuts.
@@ -1132,9 +1125,7 @@ impl<'a> Checker<'a> {
                                     ret
                                 })
                             }
-                            ExprKind::Lambda { params, .. }
-                                if crate::edition::is_v03() && params.len() > 1 =>
-                            {
+                            ExprKind::Lambda { params, .. } if params.len() > 1 => {
                                 let expected_arity = match &elem {
                                     Ty::Tuple(items) => items.len(),
                                     _ => 1,
@@ -1161,9 +1152,6 @@ impl<'a> Checker<'a> {
                 "partition" => {
                     return Some(Ty::Tuple(vec![Ty::list(elem.clone()), Ty::list(elem)]));
                 }
-                "group" if !crate::edition::is_v03() => {
-                    return Some(Ty::list(Ty::list(elem)));
-                }
                 "first" => {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
@@ -1177,19 +1165,16 @@ impl<'a> Checker<'a> {
                 {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
-                "filter" if crate::edition::is_v03() => {
+                "filter" => {
                     return Some(Ty::Named {
                         name: "Filter".into(),
                         args: vec![elem],
                     });
                 }
-                "filter" | "sorted" => {
-                    if name.text == "filter" {
-                        self.note_walk_only(call);
-                    }
+                "sorted" => {
                     return Some(Ty::list(elem));
                 }
-                "argmax" | "argmin" if crate::edition::is_v03() && !base_ty.is_keyed() => {
+                "argmax" | "argmin" if !base_ty.is_keyed() => {
                     let message = format!(
                         "`{}` requires `Keyed`, but `{}` has type `{base_ty}`",
                         name.text,
@@ -1198,9 +1183,7 @@ impl<'a> Checker<'a> {
                     self.error(codes::MISSING_IMPL, name.span, message);
                     return Some(Ty::Error);
                 }
-                "sort" | "reverse" | "shuffle"
-                    if crate::edition::is_v03() && !matches!(base_ty, Ty::Domain(_)) =>
-                {
+                "sort" | "reverse" | "shuffle" if !matches!(base_ty, Ty::Domain(_)) => {
                     if !base_ty.is_indexed_mut() {
                         let message = format!(
                             "`{}` requires `IndexedMut`, but `{}` has type `{base_ty}`",
@@ -1218,7 +1201,7 @@ impl<'a> Checker<'a> {
                 _ => {}
             }
         }
-        if crate::edition::is_v03() && name.text == "fold" {
+        if name.text == "fold" {
             if let ExprKind::Call { args, .. } = &call.kind {
                 if args.len() == 1
                     && args[0].name.is_none()
@@ -1363,27 +1346,24 @@ impl<'a> Checker<'a> {
                     },
                     _ => None,
                 };
-                if crate::edition::is_v03() {
-                    if let Some(fn_name) = callee_name {
-                        if let Some(Def::Fn { bounds, .. }) =
-                            self.global(fn_name).as_deref().cloned()
-                        {
-                            for (param, traits) in bounds {
-                                if let Some(bound_ty) = bindings.get(&param) {
-                                    let bound_ty = self.settle(bound_ty);
-                                    for trait_name in traits {
-                                        if !self.implements_trait(&bound_ty, &trait_name) {
-                                            let message = format!(
-                                                "`{bound_ty}` does not implement `{trait_name}` required by `{fn_name}`"
-                                            );
-                                            self.error(codes::MISSING_IMPL, call.span, message);
-                                        }
+                if let Some(fn_name) = callee_name {
+                    if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
+                        for (param, traits) in bounds {
+                            if let Some(bound_ty) = bindings.get(&param) {
+                                let bound_ty = self.settle(bound_ty);
+                                for trait_name in traits {
+                                    if !self.implements_trait(&bound_ty, &trait_name) {
+                                        let message = format!(
+                                            "`{bound_ty}` does not implement `{trait_name}` required by `{fn_name}`"
+                                        );
+                                        self.error(codes::MISSING_IMPL, call.span, message);
                                     }
                                 }
                             }
                         }
                     }
                 }
+
                 if let ExprKind::Name(fname) = &callee.kind {
                     if let Some(Def::Fn {
                         row_bounds,
@@ -1519,18 +1499,17 @@ impl<'a> Checker<'a> {
                     }
                     if args.len() == 1 && args[0].name.is_none() {
                         let arg_ty = self.infer(&args[0].value);
-                        if crate::edition::is_v03() {
-                            if let Ty::Tuple(elems) = &arg_ty {
-                                if elems.len() == factors.len()
-                                    && elems
-                                        .iter()
-                                        .zip(&factors)
-                                        .all(|(e, (_, f))| e.is_int() || self.fits(e, f))
-                                {
-                                    return Ty::Pos(name);
-                                }
+                        if let Ty::Tuple(elems) = &arg_ty {
+                            if elems.len() == factors.len()
+                                && elems
+                                    .iter()
+                                    .zip(&factors)
+                                    .all(|(e, (_, f))| e.is_int() || self.fits(e, f))
+                            {
+                                return Ty::Pos(name);
                             }
                         }
+
                         if matches!(arg_ty, Ty::Tuple(_) | Ty::Record(_)) {
                             let want = Ty::Pos(name.clone());
                             self.expect_fits(&arg_ty, &want, &args[0].value, |c, got, want| {
@@ -1613,8 +1592,9 @@ impl<'a> Checker<'a> {
             let ty = self.infer(&v.value);
             if let (Some((name, _)), Ty::Named { name: got, .. }) = (own, &ty) {
                 if got != name {
-                    let message =
-                        format!("`fields` here walks values of the type it builds, `{name}`; this is a `{ty}`");
+                    let message = format!(
+                        "`fields` here walks values of the type it builds, `{name}`; this is a `{ty}`"
+                    );
                     self.error(codes::TYPE_MISMATCH, v.value.span, message);
                 }
             }
@@ -1846,10 +1826,7 @@ impl<'a> Checker<'a> {
                         let suggestion = closest(&name.text, names.iter().map(String::as_str));
                         let what = if verb == "has" { "field" } else { "parameter" };
                         let message = format!("`{callee}` has no {what} named `{}`", name.text);
-                        let code = if crate::edition::is_v03()
-                            && callee == "Fenwick"
-                            && name.text == "act"
-                        {
+                        let code = if callee == "Fenwick" && name.text == "act" {
                             cpl_diag::Code("E0705")
                         } else {
                             codes::UNKNOWN_ARG_NAME
@@ -1944,8 +1921,7 @@ impl<'a> Checker<'a> {
                     continue;
                 }
             }
-            if crate::edition::is_v03()
-                && callee != "List"
+            if callee != "List"
                 && callee != "zip"
                 && matches!(slot, Ty::Named { name, .. } if name == "List")
                 && self.view_kind(&arg.value) == Some("slice")
@@ -2069,17 +2045,6 @@ impl<'a> Checker<'a> {
             };
             self.error(codes::WRONG_ARG_COUNT, call.span, message);
         }
-    }
-}
-
-/// `a[l..r]`: an array seen through a range.
-fn is_slice(expr: &Expr) -> bool {
-    match &expr.kind {
-        ExprKind::Paren(inner) => is_slice(inner),
-        ExprKind::Index { indices, .. } => indices
-            .iter()
-            .any(|i| matches!(i.kind, ExprKind::Range { .. })),
-        _ => false,
     }
 }
 

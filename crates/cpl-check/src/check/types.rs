@@ -902,12 +902,9 @@ impl<'a> Checker<'a> {
                         };
                         if let Some(rebased) = rebased {
                             rebased
-                        } else if *mutable
-                            && matches!(inferred, Ty::Range { .. })
-                            && crate::edition::is_v03()
-                        {
+                        } else if *mutable && matches!(inferred, Ty::Range { .. }) {
                             Ty::Int
-                        } else if !*mutable && inferred == Ty::Int && crate::edition::is_v03() {
+                        } else if !*mutable && inferred == Ty::Int {
                             let (lo, hi) = self.bounds(init);
                             if let (Some(l), Some(h)) = (lo, hi) {
                                 Ty::Range {
@@ -1848,9 +1845,9 @@ impl<'a> Checker<'a> {
             | Ty::Range { .. }
             | Ty::Pos(_)
             | Ty::Unit => true,
-            Ty::Bool => !crate::edition::is_v03(),
+            Ty::Bool => false,
             Ty::Optional(inner) => {
-                if !crate::edition::is_v03() || matches!(inner.as_ref(), Ty::Pos(_)) {
+                if matches!(inner.as_ref(), Ty::Pos(_)) {
                     return true;
                 }
                 allow_none && self.derives_print(inner, allow_none, seen)

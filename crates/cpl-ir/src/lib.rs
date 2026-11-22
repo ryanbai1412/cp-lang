@@ -87,14 +87,13 @@ pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
                     | cpl_syntax::ast::StmtKind::Context { .. }
             )
         });
-    let mut out = if runs || !cpl_check::edition::is_v03() {
+    let mut out = if runs {
         check(analysis)
     } else {
         analysis.diagnostics.clone()
     };
-    if cpl_check::edition::is_v03() {
-        out.retain(|d| !cites_spec(d));
-    }
+    out.retain(|d| !cites_spec(d));
+
     out
 }
 

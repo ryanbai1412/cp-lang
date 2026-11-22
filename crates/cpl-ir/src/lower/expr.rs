@@ -1357,11 +1357,7 @@ impl<'a> Lowerer<'a> {
         };
         let literal =
             |e: Option<&ast::Expr>| e.is_none_or(|e| matches!(e.kind, ast::ExprKind::Int(_)));
-        if !cpl_check::edition::is_v03()
-            || (lo.is_none() && hi.is_none())
-            || !literal(lo)
-            || !literal(hi)
-        {
+        if (lo.is_none() && hi.is_none()) || !literal(lo) || !literal(hi) {
             return None;
         }
         let ord = |lw: &mut Self, e: &ast::Expr| {
@@ -2406,7 +2402,7 @@ impl<'a> Lowerer<'a> {
                 let r = self.cast(Cast::Ord, r, Ty::Int);
                 (l, r, Ty::Int)
             }
-            (Ty::Pos(d), Ty::Int) if matches!(op, Add | Sub) && cpl_check::edition::is_v03() => {
+            (Ty::Pos(d), Ty::Int) if matches!(op, Add | Sub) => {
                 let d = *d;
                 (self.cast(Cast::Label(d), l, Ty::Int), r, Ty::Int)
             }
@@ -3264,9 +3260,7 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         // R04.8.8: an integer literal is the position it labels.
-                        if let (true, ExprKind::Int(_), Ty::Pos(d)) =
-                            (cpl_check::edition::is_v03(), &value.kind, &want)
-                        {
+                        if let (ExprKind::Int(_), Ty::Pos(d)) = (&value.kind, &want) {
                             let d = *d;
                             out.push(self.cast(Cast::FromLabel(d), value, want.clone()));
                             continue;
@@ -3296,7 +3290,7 @@ impl<'a> Lowerer<'a> {
             // `a[V(2)..=V(4)][V(3)]`: a slice of an array keeps its
             // positions, held as their ordinals.
             Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem)
-                if indices.len() == 1 && cpl_check::edition::is_v03() =>
+                if indices.len() == 1 =>
             {
                 let value = self.expr(&indices[0], None);
                 let key = match value.ty {
@@ -3544,7 +3538,6 @@ impl<'a> Lowerer<'a> {
     /// v0.3 a slice keeps its source's keys (R04b.1).
     pub(super) fn keyed_view(ty: &Ty) -> bool {
         matches!(ty, Ty::StrView | Ty::ListView(_, _) | Ty::Keyed(_, _))
-            && cpl_check::edition::is_v03()
     }
 
     /// `view` in a form that can be read more than once.
@@ -3583,7 +3576,7 @@ impl<'a> Lowerer<'a> {
     /// Whether a `for` over an open-ended range ending in `end` walks cuts:
     /// a range's elements are the kind of its ends in v0.3 (R04.4.10).
     fn walks_cuts(end: &Ty) -> bool {
-        matches!(end, Ty::Bound(_)) && cpl_check::edition::is_v03()
+        matches!(end, Ty::Bound(_))
     }
 
     /// Whether an open-ended range with a cut end of `d` walks cuts: always in
@@ -3591,11 +3584,7 @@ impl<'a> Lowerer<'a> {
     /// where cuts are expected.
     fn cut_range_wanted(expected: Option<&Ty>, d: DomainId) -> bool {
         let wants = |want: fn(&Ty, DomainId) -> bool| matches!(expected, Some(Ty::Range(inner)) if want(inner, d));
-        if cpl_check::edition::is_v03() {
-            !wants(|t, d| matches!(t, Ty::Pos(ed) if *ed == d))
-        } else {
-            wants(|t, d| matches!(t, Ty::Bound(ed) if *ed == d))
-        }
+        !wants(|t, d| matches!(t, Ty::Pos(ed) if *ed == d))
     }
 
     /// `base[lo..hi]` in key terms on a view and positions otherwise.
@@ -3642,8 +3631,7 @@ impl<'a> Lowerer<'a> {
 
     /// Lowers a slice by a runtime `Range<T>` value (`base[r]`) into a view or `List<T>`.
     fn slice_by_range_val(&mut self, base: Expr, range_val: Expr, span: Span) -> Expr {
-        let keyed_array = cpl_check::edition::is_v03()
-            && matches!(&base.ty, Ty::Array { dims, .. } if dims.len() == 1);
+        let keyed_array = matches!(&base.ty, Ty::Array { dims, .. } if dims.len() == 1);
         if keyed_array
             || matches!(
                 base.ty,
@@ -3967,7 +3955,7 @@ impl<'a> Lowerer<'a> {
         }
         // R04b.1.2: `a[V(2)..=V(4)]` keeps `a`'s positions as its keys.
         if let Ty::Array { dims, .. } = &base.ty {
-            if let ([Dim::Pos(d)], true) = (&dims[..], cpl_check::edition::is_v03()) {
+            if let [Dim::Pos(d)] = &dims[..] {
                 let d = *d;
                 let base = self.hoist_view_base(base, span);
                 let to_ord = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {

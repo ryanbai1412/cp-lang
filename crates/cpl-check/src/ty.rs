@@ -57,10 +57,6 @@ pub enum Ty {
     Error,
 }
 
-pub fn spec_edition() -> bool {
-    crate::edition::is_v03()
-}
-
 /// What each type parameter stands for at one use.
 pub type Bindings = std::collections::HashMap<String, Ty>;
 
@@ -245,7 +241,7 @@ impl Ty {
             // code is checked again with real types at each use.
             (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
             (a, b) if a.is_int() && b.is_int() => true,
-            (a, Ty::Float) if a.is_int() => !crate::edition::is_v03(),
+            (a, Ty::Float) if a.is_int() => false,
             (a, Ty::Named { name, .. }) if a.is_int() && number(name) => true,
             (Ty::Optional(a), Ty::Optional(b)) => a.fits_in(b, number),
             (a, Ty::Optional(inner)) => a.fits_in(inner, number),
@@ -277,7 +273,7 @@ impl Ty {
             (Ty::Record(a), Ty::Record(b)) => {
                 let open_b = b.last().is_some_and(|(n, _)| n == "..");
                 let b_fields = if open_b { &b[..b.len() - 1] } else { &b[..] };
-                if crate::edition::is_v03() && !open_b {
+                if !open_b {
                     a.len() == b_fields.len()
                         && a.iter()
                             .zip(b_fields)

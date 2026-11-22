@@ -18,7 +18,6 @@ mod builtins;
 mod check;
 mod db;
 mod def;
-pub mod edition;
 mod hover;
 mod modules;
 mod prelude;

@@ -65,9 +65,6 @@ impl<'a> Checker<'a> {
     /// R06.4.8: dropping what one of the file's fns returns is W0101
     /// unless the fn is `@droppable`.
     fn dropped_result(&mut self, expr: &Expr) {
-        if !crate::ty::spec_edition() {
-            return;
-        }
         let ExprKind::Call { callee, .. } = &expr.kind else {
             return;
         };
@@ -105,7 +102,7 @@ impl<'a> Checker<'a> {
 
     /// R07.9.2: `s.fold(f)` with a plain fn has no identity, so it is `?T`.
     fn fold_needs_identity(&mut self, init: &Expr, declared: &Ty) {
-        if !crate::ty::spec_edition() || matches!(declared, Ty::Optional(_) | Ty::Error) {
+        if matches!(declared, Ty::Optional(_) | Ty::Error) {
             return;
         }
         let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
@@ -141,9 +138,6 @@ impl<'a> Checker<'a> {
         trait_name: Option<&cpl_syntax::ast::Type>,
         target: &cpl_syntax::ast::Type,
     ) {
-        if !crate::ty::spec_edition() {
-            return;
-        }
         let shown = self.quote(target.span);
         match trait_name {
             None if shown.contains('.') => {
@@ -161,9 +155,6 @@ impl<'a> Checker<'a> {
 
     /// R03.1.4: storing a value proven outside `lo..=hi` is an error.
     fn range_store(&mut self, value: &Expr, target: &Ty) {
-        if !crate::ty::spec_edition() {
-            return;
-        }
         let Ty::Range { lo, hi, text } = target else {
             return;
         };
@@ -196,9 +187,6 @@ impl<'a> Checker<'a> {
 
     /// 0.3 writes `enum Dir = N | E`; `enum Dir: N, E` is gone.
     fn no_comma_variants(&mut self, variants: &[cpl_syntax::ast::Variant]) {
-        if !crate::ty::spec_edition() {
-            return;
-        }
         for pair in variants.windows(2) {
             let (a, b) = (&pair[0].name, &pair[1].name);
             if !pair[0].fields.is_empty() || pair[0].value.is_some() || pair[1].tag.is_some() {
@@ -222,9 +210,6 @@ impl<'a> Checker<'a> {
     /// `var x = None` and `let n = read()` give no type, and inference
     /// never looks at later statements (R02.10.1, R10.2.1).
     fn needs_annotation(&mut self, keyword: &str, pat: &Pattern, init: Option<&Expr>) -> bool {
-        if !crate::ty::spec_edition() {
-            return false;
-        }
         let (PatternKind::Name(name), Some(init)) = (&pat.kind, init) else {
             return false;
         };
@@ -249,7 +234,7 @@ impl<'a> Checker<'a> {
 
     /// R01.3.2: a `let`/`var` name is lowercase; `N` would read as a type.
     fn value_case(&mut self, keyword: &str, pat: &Pattern, init_ty: Option<&Ty>) {
-        if !crate::ty::spec_edition() || matches!(init_ty, Some(Ty::Domain(_) | Ty::Error)) {
+        if matches!(init_ty, Some(Ty::Domain(_) | Ty::Error)) {
             return;
         }
         let name = match &pat.kind {
@@ -863,7 +848,7 @@ impl<'a> Checker<'a> {
             }
         }
         if let StmtKind::Expr(expr) = &stmt.kind {
-            if let (ExprKind::Try(inner), true) = (&expr.kind, crate::edition::is_v03()) {
+            if let ExprKind::Try(inner) = &expr.kind {
                 let message = format!(
                     "the result of `{}` is dropped: `?` makes its expression `None`, it never returns early",
                     self.quote(expr.span)
@@ -1119,9 +1104,7 @@ impl<'a> Checker<'a> {
                     _ => false,
                 };
                 let view = match (&declared, init) {
-                    (Some(Ty::Named { name, .. }), Some(init))
-                        if name == "List" && crate::edition::is_v03() =>
-                    {
+                    (Some(Ty::Named { name, .. }), Some(init)) if name == "List" => {
                         self.view_kind(init)
                     }
                     _ => None,
@@ -1203,14 +1186,9 @@ impl<'a> Checker<'a> {
                 } else if declared.is_none()
                     && *mutable
                     && matches!(init_ty, Some(Ty::Range { .. }))
-                    && crate::edition::is_v03()
                 {
                     Ty::Int
-                } else if declared.is_none()
-                    && !*mutable
-                    && init_ty.as_ref() == Some(&Ty::Int)
-                    && crate::edition::is_v03()
-                {
+                } else if declared.is_none() && !*mutable && init_ty.as_ref() == Some(&Ty::Int) {
                     if let Some(init_expr) = init {
                         let (lo, hi) = self.bounds(init_expr);
                         if let (Some(l), Some(h)) = (lo, hi) {
@@ -1280,12 +1258,11 @@ impl<'a> Checker<'a> {
                                 Some(Def::Variant { .. })
                             ) =>
                     {
-                        if crate::edition::is_v03() {
-                            let message = format!(
-                                "value `{name}` starts with an uppercase letter; values are lowercase (`{name}` reads as a type)"
-                            );
-                            self.error(cpl_diag::Code("E0208"), pat.span, message);
-                        }
+                        let message = format!(
+                            "value `{name}` starts with an uppercase letter; values are lowercase (`{name}` reads as a type)"
+                        );
+                        self.error(cpl_diag::Code("E0208"), pat.span, message);
+
                         self.declare(name, pat.span, ty.clone(), is_mut, keyword);
                     }
                     _ if otherwise.is_some() && refutable(pat) => {
@@ -1532,37 +1509,34 @@ impl<'a> Checker<'a> {
                 self.self_ty = Some(self_ty.clone());
                 self.impl_home(trait_name.as_ref(), target);
                 self.bounds_exist(bounds);
-                if crate::edition::is_v03() {
-                    if trait_name.is_none() && self.quote(target.span).contains('.') {
+                if trait_name.is_none() && self.quote(target.span).contains('.') {
+                    self.error(
+                        codes::UNSUPPORTED,
+                        target.span,
+                        "inherent `impl` must be in the same module as the type".to_string(),
+                    );
+                } else if let Some(tr) = trait_name {
+                    let file_names = self.env.names();
+                    let target_head = type_head(target);
+                    let trait_head = type_head(tr);
+                    let target_local = target_head.as_ref().is_some_and(|t| file_names.contains(t));
+                    let trait_local = trait_head.as_ref().is_some_and(|t| file_names.contains(t));
+                    if !target_local
+                        && !trait_local
+                        && !matches!(&self_ty, Ty::Param(_) | Ty::Unknown | Ty::Error)
+                    {
                         self.error(
                             codes::UNSUPPORTED,
-                            target.span,
-                            "inherent `impl` must be in the same module as the type".to_string(),
+                            tr.span,
+                            format!(
+                                "orphan `impl`: neither `{}` nor `{}` is defined in this module",
+                                self.quote(tr.span),
+                                self.quote(target.span)
+                            ),
                         );
-                    } else if let Some(tr) = trait_name {
-                        let file_names = self.env.names();
-                        let target_head = type_head(target);
-                        let trait_head = type_head(tr);
-                        let target_local =
-                            target_head.as_ref().is_some_and(|t| file_names.contains(t));
-                        let trait_local =
-                            trait_head.as_ref().is_some_and(|t| file_names.contains(t));
-                        if !target_local
-                            && !trait_local
-                            && !matches!(&self_ty, Ty::Param(_) | Ty::Unknown | Ty::Error)
-                        {
-                            self.error(
-                                codes::UNSUPPORTED,
-                                tr.span,
-                                format!(
-                                    "orphan `impl`: neither `{}` nor `{}` is defined in this module",
-                                    self.quote(tr.span),
-                                    self.quote(target.span)
-                                ),
-                            );
-                        }
                     }
                 }
+
                 if let Some(trait_name) = trait_name {
                     self.impl_matches_trait(trait_name, target, &body.stmts);
                     if type_head(trait_name).as_deref() == Some("Index") {
@@ -1664,42 +1638,40 @@ impl<'a> Checker<'a> {
                 let before_mutable = self.sink.len();
                 self.require_mutable(target, "assigned");
                 let not_assignable = self.sink.len() > before_mutable;
-                if crate::edition::is_v03() {
-                    if let ExprKind::Field { base, name } = &target.kind {
-                        let base_ty = self.quietly(|c| c.infer(base));
-                        if let Ty::Named { name: sname, .. } = &base_ty {
-                            let fixed_field = match self.type_def(sname).as_deref() {
-                                Some(Def::Struct {
-                                    fields,
-                                    var_fields,
-                                    cached_fields,
-                                    ..
-                                }) => {
-                                    fields.iter().any(|f| f.name == name.text)
-                                        && !var_fields.iter().any(|f| f == &name.text)
-                                        && !cached_fields.iter().any(|f| f == &name.text)
-                                }
-                                _ => false,
-                            };
-                            if fixed_field {
-                                let base_text = self.quote(base.span);
-                                let message = format!(
-                                    "field `{sname}.{}` is fixed (not `var`) and cannot be assigned",
-                                    name.text
-                                );
-                                if let Some(diag) =
-                                    self.error(cpl_diag::Code("E0405"), target.span, message)
-                                {
-                                    diag.help = Some(format!(
-                                        "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
-                                        name.text,
-                                        name.text
-                                    ));
-                                }
+                if let ExprKind::Field { base, name } = &target.kind {
+                    let base_ty = self.quietly(|c| c.infer(base));
+                    if let Ty::Named { name: sname, .. } = &base_ty {
+                        let fixed_field = match self.type_def(sname).as_deref() {
+                            Some(Def::Struct {
+                                fields,
+                                var_fields,
+                                cached_fields,
+                                ..
+                            }) => {
+                                fields.iter().any(|f| f.name == name.text)
+                                    && !var_fields.iter().any(|f| f == &name.text)
+                                    && !cached_fields.iter().any(|f| f == &name.text)
+                            }
+                            _ => false,
+                        };
+                        if fixed_field {
+                            let base_text = self.quote(base.span);
+                            let message = format!(
+                                "field `{sname}.{}` is fixed (not `var`) and cannot be assigned",
+                                name.text
+                            );
+                            if let Some(diag) =
+                                self.error(cpl_diag::Code("E0405"), target.span, message)
+                            {
+                                diag.help = Some(format!(
+                                    "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
+                                    name.text, name.text
+                                ));
                             }
                         }
                     }
                 }
+
                 self.check_access(target, true);
                 if *op == AssignOp::Set && !not_assignable {
                     self.range_store(value, &target_ty);
@@ -1843,16 +1815,14 @@ impl<'a> Checker<'a> {
                     }
                 }
                 self.counter_over_slice(iter, stmt.span);
-                if crate::ty::spec_edition()
-                    && matches!(
-                        iter.kind,
-                        ExprKind::Range {
-                            lo: None,
-                            hi: None,
-                            ..
-                        }
-                    )
-                {
+                if matches!(
+                    iter.kind,
+                    ExprKind::Range {
+                        lo: None,
+                        hi: None,
+                        ..
+                    }
+                ) {
                     if let Some(diag) = self.error(
                         codes::EXPECTED_EXPR,
                         iter.span,
@@ -1969,15 +1939,14 @@ impl<'a> Checker<'a> {
                     self.declare(&param.name.text, param.name.span, ty, false, "param");
                 }
                 let ty = self.infer(body);
-                if crate::edition::is_v03() {
-                    self.expect_fits(&ty, &Ty::Bool, body, |c, got, _| {
-                        format!(
-                            "a `law` must return a `Bool`, but `{}` is {}",
-                            c.quote(body.span),
-                            got.with_article()
-                        )
-                    });
-                }
+                self.expect_fits(&ty, &Ty::Bool, body, |c, got, _| {
+                    format!(
+                        "a `law` must return a `Bool`, but `{}` is {}",
+                        c.quote(body.span),
+                        got.with_article()
+                    )
+                });
+
                 self.pop_scope();
             }
             StmtKind::Lend { place, .. } => {
@@ -2442,13 +2411,17 @@ impl<'a> Checker<'a> {
             let owner = owner.to_string();
             (
                 format!("`@memo` can't remember `{name}`: it is a fn of `{owner}`"),
-                format!("only a top-level or local fn keeps a table of its answers: move `{name}` out of `{owner}` and pass it what it reads"),
+                format!(
+                    "only a top-level or local fn keeps a table of its answers: move `{name}` out of `{owner}` and pass it what it reads"
+                ),
             )
         } else if let Some(param) = changed {
             let param = &param.name.text;
             (
                 format!("`@memo` can't remember `{name}`: it changes its argument `{param}`"),
-                format!("a remembered answer is given back without running the fn, so `{param}` would be left as it was: take `{param}` without `mut`, or drop `@memo`"),
+                format!(
+                    "a remembered answer is given back without running the fn, so `{param}` would be left as it was: take `{param}` without `mut`, or drop `@memo`"
+                ),
             )
         } else if generator {
             (
@@ -2458,7 +2431,9 @@ impl<'a> Checker<'a> {
         } else if !f.generics.is_empty() {
             (
                 format!("`@memo` can't remember the generic fn `{name}`"),
-                format!("there is one table of answers per fn, and `{name}` is a different fn for each type it is called with: write it for the type it is used with"),
+                format!(
+                    "there is one table of answers per fn, and `{name}` is a different fn for each type it is called with: write it for the type it is used with"
+                ),
             )
         } else if unit {
             (
@@ -2621,7 +2596,7 @@ impl<'a> Checker<'a> {
         }
         if let Some(lends) = &f.lends {
             self.resolve_type(&lends.ty);
-            if let Some(at) = lends.bare.filter(|_| crate::ty::spec_edition()) {
+            if let Some(at) = lends.bare {
                 if let Some(diag) = self.error(
                     codes::EXPECTED_TOKEN,
                     at,
