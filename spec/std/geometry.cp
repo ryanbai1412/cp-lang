@@ -1949,7 +1949,7 @@ pub fn invert(p: Vec, across: Circle) -> Vec:
 pub fn circles_union_area(circles: List<Circle>, eps: F64 = 1e-9) -> F64:
     let pi = 3.14159265358979323846
     let raw_n = circles.len
-    var cs: List<(c: Vec, r: F64)> = []
+    var cs: List<Circle> = []
     for i in 0..raw_n:
         if circles[i].r <= eps: continue
         var covered = false
