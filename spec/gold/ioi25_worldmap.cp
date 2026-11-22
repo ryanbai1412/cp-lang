@@ -8,9 +8,10 @@
 fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n, 2 * n]1..=n:
     domain V = 1..=n
     let g = Graph<V>.undirected([a.keys] e => (u: a[e], v: b[e]))
-    let tree = g.dfs_tree(root: V.first!)
+    let (tree, tree_edge) = g.dfs_tree(root: V.first!)
     let deep = tree.path(V.first!, V.range.max(by: v => tree.depth(v))!)
-    let up = adjacency(g.edges.filter(e => not tree.has(e)).map(e => tree.orient_down(e).rev))
+    let back = g.edges().filter(e => not tree_edge[e.e])
+    let up = adjacency(back.map(e => if tree.depth(e.u) > tree.depth(e.v): (u: e.u, v: e.v) else: (u: e.v, v: e.u)))
 
     var diags: List<List<V>> = []
     var expanded = Bitset<V>.empty

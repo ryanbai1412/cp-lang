@@ -581,15 +581,18 @@ pub struct Rooted<V, Pre>:
     pub fn events(self) -> Events<V, _> = todo
 
     /// The closed Euler walk: 2n - 1 visits from the root back to it, each pair of neighbours
-    /// joined by a tree edge, children in `t.Pre` order. A walk that visits every vertex of a
-    /// connected graph is `Rooted(g, root: r).euler_tour()`. A forest walks only the first tree.
+    /// joined by a tree edge, children in `t.Pre` order. `by:` reorders each vertex's children
+    /// by a key, stably, so `by: c => c in deep` walks the children in `deep` last. A walk that
+    /// visits every vertex of a connected graph is `Rooted(g, root: r).euler_tour()`. A forest
+    /// walks only the first tree.
     ///
     /// cost: O(1) per item
     /// empty: never empty; `[r]` for a single vertex
     /// order: walk order from the root
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.euler_tour().collect() == [0, 1, 3, 1, 4, 1, 0, 2, 0]`
-    pub fn euler_tour(self) -> yields V = todo
+    /// example: `domain V = 0..3; let adj: [V]List<V> = [[1, 2], [0], [0]]; let t = Rooted(adj, root: 0); t.euler_tour(by: c => c == 1).collect() == [0, 2, 0, 1, 0]`
+    pub fn euler_tour<K: Ord>(self, by: V -> K = _ => ()) -> yields V = todo
 
     /// The long-path decomposition, for DP indexed by depth merged in O(n) in total. The tallest
     /// child is the first in child order on ties.

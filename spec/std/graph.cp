@@ -264,14 +264,17 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 1, v: 0), (u: 0, v: 2)]; Graph.undirected(es).edges().collect() == [Edge(0, 1, 0), Edge(1, 0, 2)]`
     pub fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E> = todo
 
-    /// The DFS tree from `root` of the component holding it. The search takes arcs in input
-    /// order and descends at once (recursive order, run without recursion). On an undirected
-    /// graph every non-tree edge then joins a vertex to one of its ancestors.
+    /// The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the
+    /// edges it uses. The search takes arcs in input order and descends at once (recursive order,
+    /// run without recursion). On an undirected graph every edge with `tree_edge[e] == false`
+    /// then joins a vertex to one of its ancestors in `tree`, which is what bridges, cut vertices
+    /// and back-edge DPs need. Vertices outside the component are not in `tree`.
     ///
     /// cost: O(n + m)
+    /// order: children in the order the search reached them
     /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let t = Graph.undirected(es).dfs_tree(0); t.parent(2) == Some(1) and t.depth(2) == 2`
-    pub fn dfs_tree<E>(self, root: V) -> DfsTree<V, E> where A: Edged<E> = todo
+    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let (tree, tree_edge) = Graph.undirected(es).dfs_tree(0); tree.parent(2) == Some(1) and tree.depth(2) == 2 and tree_edge == [true, true, false]`
+    pub fn dfs_tree<E>(self, root: V) -> (tree: Rooted<V, V>, tree_edge: [E]Bool) where A: Edged<E> = todo
 
     /// `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
     ///
@@ -1353,59 +1356,6 @@ impl<V> IncrementalBridges<V>:
 
 /// O(1): one edge of a `Graph`: its id and its ends as given.
 pub struct Edge<V, E>(e: E, u: V, v: V)
-
-/// O(n) memory: a DFS tree of a stored graph, with the tree queries a DFS
-/// argument needs. `Rooted` in `std.tree` has the full set.
-pub struct DfsTree<V, E>:
-    par: [V]?V
-
-impl<V, E> DfsTree<V, E>:
-    /// The parent of `v`, `None` at the root and off the tree.
-    ///
-    /// cost: O(1)
-    /// traps: never
-    /// example: `domain V = 0..4; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let t = Graph.undirected(es).dfs_tree(0); t.parent(2) == Some(1) and t.parent(0) == None and t.parent(3) == None`
-    pub fn parent(self, v: V) -> ?V = todo
-
-    /// The arcs from the root to `v`.
-    ///
-    /// cost: O(1)
-    /// traps: when `v` is off the tree
-    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let t = Graph.undirected(es).dfs_tree(0); t.depth(2) == 2 and t.depth(0) == 0`
-    pub fn depth(self, v: V) -> Int = todo
-
-    /// Is `e` a tree edge? Decided by `e.e`, so a parallel copy of a tree edge is not one.
-    ///
-    /// cost: O(1)
-    /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let t = Graph.undirected(es).dfs_tree(0); t.has(Edge(E(1), V(1), V(2))) and not t.has(Edge(E(2), V(2), V(0)))`
-    pub fn has(self, e: Edge<V, E>) -> Bool = todo
-
-    /// The ends of `e` as (ancestor, descendant). Every edge of an undirected graph has such
-    /// an orientation in its DFS tree.
-    ///
-    /// cost: O(1)
-    /// traps: when neither end is an ancestor of the other, or an end is off the tree
-    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let t = Graph.undirected(es).dfs_tree(0); t.orient_down(Edge(E(2), V(2), V(0))) == (u: 0, v: 2)`
-    pub fn orient_down(self, e: Edge<V, E>) -> (u: V, v: V) = todo
-
-    /// The tree vertices from `a` to `b`, both included, through their lowest common ancestor.
-    ///
-    /// cost: O(path length)
-    /// order: from `a` to `b`
-    /// traps: when `a` or `b` is off the tree
-    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let t = Graph.undirected(es).dfs_tree(0); t.path(2, 0) == [2, 1, 0] and t.path(1, 1) == [1]`
-    pub fn path(self, a: V, b: V) -> List<V> = todo
-
-    /// The Euler tour from the root: `2k - 1` visits for `k` tree vertices, consecutive visits
-    /// joined by a tree edge; children are toured in ascending `by(c)`.
-    ///
-    /// cost: O(n log n) total, O(1) per item
-    /// ties: children with equal `by` keep vertex order
-    /// order: tour order
-    /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; Graph.undirected(es).dfs_tree(0).euler_tour(by: v => v).collect() == [0, 1, 2, 1, 0]`
-    pub fn euler_tour<K>(self, by: V -> K) -> yields V = todo
 
 /// `directed_of_pairs` on named `(u, v)` arcs: an adjacency table indexed by vertex.
 ///
