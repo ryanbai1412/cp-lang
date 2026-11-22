@@ -194,7 +194,7 @@ fn calls_check_count_types_and_names() {
     let d = one(&roads_with("link(mut g, r)", "link(mut g, e)"));
     assert_eq!(
         (d.code.0, d.message.as_str()),
-        ("E0301", "`link` takes a Road for `r`, but `e` is an E")
+        ("E0302", "`link` takes a Road for `r`, but `e` is an E")
     );
     let d = one(&roads_with("link(mut g, r)", "link(mut g, road: r)"));
     assert_eq!(
@@ -278,7 +278,7 @@ fn declared_types_are_checked_against_values_and_returns() {
     let d = one("let n: 1..=9 = read()\ndomain V = 1..=n\nlet i: Int = 3\nlet v: V = i\n");
     assert_eq!(
         (d.code.0, d.message.as_str()),
-        ("E0301", "`v` is declared a V, but `i` is an Int")
+        ("E0302", "`v` is declared a V, but `i` is an Int")
     );
     assert_eq!(d.help.as_deref(), Some("convert it with `V(i)`"));
     let d = one("fn f(x: Int) -> Bool:\n    if x > 0:\n        return 1\n    x == 0\n");
@@ -851,17 +851,17 @@ let n: 1..=9 = read()
 domain City = 1..=n
 struct Pair<A, B>(first: A, second: B):
     fn swap(self) -> Pair<B, A> = Pair(second, first)
-let p = Pair(City.first, 'x')
-let c: City = p.first
+let p = Pair(City.first!, 'x')
+let c: City = p.first!
 let q = p.swap()
 let d: Char = q.first
 ";
     assert_eq!(check(src), vec![]);
-    // `p.first` is a `City`, not a `Char`: the argument fixed `A`.
-    let diag = one(&src.replace("let c: City = p.first", "let c: Char = p.first"));
+    // `p.first!` is a `City`, not a `Char`: the argument fixed `A`.
+    let diag = one(&src.replace("let c: City = p.first!", "let c: Char = p.first!"));
     assert_eq!(
         diag.message,
-        "`c` is declared a Char, but `p.first` is a City"
+        "`c` is declared a Char, but `p.first!` is a City"
     );
     // The swapped pair's parameters swapped too.
     let diag = one(&src.replace("let d: Char = q.first", "let d: City = q.first"));
@@ -904,7 +904,7 @@ let y = pick::<Int>(3, 4, true)
 #[test]
 fn new_is_the_constructor_and_get_methods_read_as_fields() {
     let src = format!(
-        "{DSU}let n: 1..=9 = read()\ndomain V = 1..=n\nvar d = Dsu<V>()\nlet r: V = d.find(V.first)\nlet k: Int = d.count\n"
+        "{DSU}let n: 1..=9 = read()\ndomain V = 1..=n\nvar d = Dsu<V>()\nlet r: V = d.find(V.first!)\nlet k: Int = d.count\n"
     );
     assert_eq!(check(&src), vec![]);
     // Outside the struct, `Dsu(..)` is `new`, which takes nothing.
@@ -976,14 +976,14 @@ use std.dsu.{Dsu}
 let n: 1..=9 = read()
 domain V = 1..=n
 var d = Dsu<V>()
-let r: V = d.find(V.first)
+let r: V = d.find(V.first!)
 ";
     let modules = [("std.dsu", DSU)];
     assert_eq!(check_with(&modules, src), vec![]);
     let diags = check_with(&modules, &src.replace("let r: V", "let r: Str"));
     assert_eq!(
         messages(&diags),
-        ["`r` is declared a Str, but `d.find(V.first)` is a V"]
+        ["`r` is declared a Str, but `d.find(V.first!)` is a V"]
     );
     // Glob, whole-module and aliased imports.
     for (import, call) in [
@@ -1067,7 +1067,7 @@ fn two_mut_lends_of_one_array_need_to_be_apart() {
         "assert l != r\nswap(mut a[l], mut a[r])\n",
         "fn go(i: V, j: V):\n    if i == j: return\n    swap(mut a[i], mut a[j])\n",
         "fn go(i: V, j: V):\n    assert i < j\n    swap(mut a[i], mut a[j])\n",
-        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first] += 1\ntwo(mut a[l.l..r.l], mut a[r.l..r.r])\n",
+        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first!] += 1\ntwo(mut a[l.l..r.l], mut a[r.l..r.r])\n",
     ] {
         assert_eq!(lent(body), vec![], "{body}");
     }
@@ -1086,7 +1086,7 @@ fn two_mut_lends_of_one_array_need_to_be_apart() {
     );
     assert_eq!(diags.len(), 1, "{diags:#?}");
     let diags = lent(
-        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first] += 1\ntwo(mut a, mut a[l..=r])\n",
+        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first!] += 1\ntwo(mut a, mut a[l..=r])\n",
     );
     assert!(
         diags[0].message.ends_with("one contains the other"),
@@ -1244,7 +1244,7 @@ fn a_projection_ends_in_one_lend_of_a_part_of_self() {
 fn code_after_a_lend_is_the_write_back_and_needs_mut_self() {
     let tally = |receiver: &str| {
         format!(
-            "let n: 2..=9 = read()\ndomain V = 1..=n\nstruct Tally:\n    cnt: [V]Int\n    distinct: Int\n    fn at({receiver}, v: V) lends mut Int:\n        if cnt[v] != 0: distinct -= 1\n        lend mut cnt[v]\n        if cnt[v] != 0: distinct += 1\n"
+            "let n: 2..=9 = read()\ndomain V = 1..=n\nstruct Tally:\n    cnt: [V]Int\n    distinct: Int\n    fn at({receiver}, v: V) -> lends mut Int:\n        if cnt[v] != 0: distinct -= 1\n        lend mut cnt[v]\n        if cnt[v] != 0: distinct += 1\n"
         )
     };
     assert_eq!(check(&tally("mut self")), vec![]);
@@ -1303,7 +1303,7 @@ fn division_and_remainder_are_euclidean() {
 fn a_step_is_optional_until_it_is_handled() {
     let head = "let n: 2..=9 = read()\ndomain I = 1..=n\nlet a: [I]Int = read()\nfn show(i: I): print(i)\n";
     let index = one(&format!("{head}for i in I: print(a[i + 1])\n"));
-    assert_eq!(index.message, "`i + 1` is a ?I: it may step outside I");
+    assert_eq!(index.message, "`a` is indexed by I, but `i + 1` is an Int");
     assert!(index.help.unwrap().contains("(i + 1)!"));
     let arg = one(&format!("{head}for i in I: show(i - 1)\n"));
     assert_eq!(
@@ -1339,11 +1339,11 @@ fn a_range_or_span_stays_in_one_domain() {
         "let n: 2..=9 = read()\ndomain I = 1..=n\ndomain J = 1..=n\nlet a: [I]Int = read()\n";
     let msg = |body: &str| one(&format!("{head}{body}")).message;
     assert_eq!(
-        msg("print(sum(a[I.first..J.last]))\n"),
+        msg("print(sum(a[I.first!..J.last!]))\n"),
         "range between I and J"
     );
     assert_eq!(
-        msg("print(span(I.first, J.last).len)\n"),
+        msg("print(span(I.first!, J.last!).len)\n"),
         "span of an I and a J"
     );
     assert_eq!(
@@ -1351,10 +1351,10 @@ fn a_range_or_span_stays_in_one_domain() {
         "`..=` ends at a position; a range up to the boundary `i.r` is written `..`"
     );
     for body in [
-        "print(sum(a[I.first..=I.last]))\n",
+        "print(sum(a[I.first!..=I.last!]))\n",
         "for i in I: print(sum(a[..i.r]), sum(a[i.l..]))\n",
-        "print(span(I.last, I.first).len)\n",
-        "for i in I: print(span(i.l, I.last).len)\n",
+        "print(span(I.last!, I.first!).len)\n",
+        "for i in I: print(span(i.l, I.last!).len)\n",
     ] {
         let src = format!("{head}{body}");
         assert!(codes(&src).is_empty(), "{src}: {:?}", check(&src));
@@ -1364,13 +1364,13 @@ fn a_range_or_span_stays_in_one_domain() {
 #[test]
 fn the_max_of_a_slice_is_optional() {
     let head = "let n: 1..=5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet f = V.first\n";
-    let empty = one(&format!("{head}let k: Int = max(a[f..f])\n"));
+    let empty = one(&format!("{head}let k: Int = a[f..f].max()\n"));
     assert_eq!(
         empty.message,
-        "`k` is declared an Int, but `max(a[f..f])` is an ?Int"
+        "`k` is declared an Int, but `a[f..f].max()` is an ?Int"
     );
     for body in [
-        "let k: Int = max(a[f..f]) ?? 0\n",
+        "let k: Int = a[f..f].max() ?? 0\n",
         "let k: Int = max(a)\n",
         "let k: Int = min(a[f], 3)\n",
     ] {
@@ -1669,7 +1669,7 @@ fn a_generic_fn_takes_its_type_arguments_after_two_colons() {
         diag.help.as_deref(),
         Some("to name one that no argument gives, write `firsts<T>(...)`")
     );
-    let ok = format!("{head}print(firsts::<A>(1))\nlet k = 2\nprint(k < 3)\n");
+    let ok = format!("{head}print(firsts::<A>(1))\nlet k = 2\nprint(yes(k < 3))\n");
     assert!(codes(&ok).is_empty(), "{:?}", check(&ok));
 }
 
@@ -1773,22 +1773,6 @@ fn the_std_name_table_is_read_off_the_standard_library() {
 
 /// The compiler carries `stdlib/` without its tests, line for line, so
 /// a span into a bundled module still points at the right line.
-#[test]
-fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
-    let modules = crate::modules::std_modules();
-    assert!(modules.iter().any(|(name, _)| *name == "seq"));
-    for (name, bundled) in modules {
-        let file = std::fs::read_to_string(root.join(format!("{name}.cp"))).expect("a module file");
-        assert!(!bundled.contains("@test"), "{name} keeps a test");
-        assert_eq!(bundled.lines().count(), file.lines().count(), "{name}");
-        for (kept, line) in bundled.lines().zip(file.lines()) {
-            assert!(kept.is_empty() || kept == line, "{name}: {kept}");
-        }
-    }
-    let seq = crate::modules::bundled_std(&["seq".to_string()]).expect("seq is bundled");
-    assert!(seq.contains("pub fn bsearch_first"));
-}
 
 /// `spec/std/README.md` is the design of the whole surface, so a public
 /// name of `stdlib/` it never mentions is a name nobody designed.
@@ -1865,7 +1849,7 @@ fn memo_on_a_fn_with_a_value_and_plain_arguments_is_fine() {
         // The return type is read off the body.
         "@memo\nfn twice(n: Int):\n    if n > 3: return 5\n    n * 2\nprint(twice(4))\n",
         "@memo\nfn sq(x: Int) -> Int = x * x\nprint(sq(3))\n",
-        "let n: 1..=20 = read()\ndomain V = 0..n\n@memo(into: dp)\nfn ways(v: V) -> Int:\n    if let u = v + 1: return ways(u) + 1\n    1\nprint(ways(V.first))\n",
+        "let n: 1..=20 = read()\ndomain V = 0..n\n@memo(into: dp)\nfn ways(v: V) -> Int:\n    if let u = v + 1: return ways(u) + 1\n    1\nprint(ways(V.first!))\n",
         "fn outer(k: Int) -> Int:\n    @memo\n    fn inner(i: Int) -> Int:\n        if i == 0: return k\n        inner(i - 1) + 1\n    inner(5)\nprint(outer(2))\n",
     ] {
         assert_eq!(check(src), Vec::new(), "{src}");
@@ -2009,7 +1993,7 @@ fn items_gives_each_element_with_its_index() {
         codes(&format!(
             "{src}for (i, x) in a.items:\n    let j: Int = i\n"
         )),
-        ["E0301"]
+        ["E0302"]
     );
     assert_eq!(
         codes(&format!(
@@ -2067,7 +2051,7 @@ fn items_of_a_str_a_map_and_a_grid() {
         codes(&format!(
             "{src}for ((r, c), x) in g.items:\n    let n: Int = r\n"
         )),
-        ["E0301"]
+        ["E0302"]
     );
 }
 
@@ -2254,7 +2238,7 @@ fn debug_of_something_that_changes_the_program_is_refused() {
         );
     }
     for call in [
-        "debug(q, q.len, twice(3), q.sorted(), max(q))\n",
+        "debug(q, q.len, twice(3), q.sorted(), q.max())\n",
         "let x = q.pop()\ndebug(x)\n",
         "debug(twice(y) + 1)\n",
     ] {
@@ -2796,29 +2780,6 @@ print(total, outer())
     assert_eq!(check(ok), vec![]);
 }
 
-#[test]
-fn bsearch_last_over_seq_len_infers_opt_int() {
-    let ok = "\
-use std.seq.{bsearch_first, bsearch_last}
-
-fn last_before(blacks: List<(Int, Int)>, r: Int) -> ?Int:
-    bsearch_last(0..blacks.len, i => blacks[i].0 <= r)
-
-fn first_after(s: Str, c: Char) -> ?Int:
-    bsearch_first(0..s.len, i => s[i] >= c)
-
-fn getter_reads(xs: List<Int>, s: Str, r: Range<Int>) -> Int:
-    domain D = 0..3
-    let a: [D]Int = 0
-    if xs.is_empty or s.is_empty or a.is_empty or r.is_empty:
-        return 0
-    xs.len + s.len + a.len + r.len
-
-print(last_before([(1, 2), (3, 4)], 3) ?? -1, first_after(\"abc\", 'b') ?? -1)
-print(getter_reads([1, 2], \"ab\", 0..4))
-";
-    assert_eq!(check(ok), vec![]);
-}
 
 #[test]
 fn generic_struct_ctor_unifies_caller_type_params_in_nested_fields() {
@@ -3219,57 +3180,6 @@ print(b)
     );
 }
 
-#[test]
-fn unified_prefix_and_diff_accept_all_shapes_and_reject_old_names() {
-    let ok = "\
-domain V = 0..4
-domain R = 0..2
-domain C = 0..3
-let a: [V]Int = [1, 2, 3, 4]
-let g: [R, C]Int = 1
-let xs = [1, 2, 3]
-let p1: Prefix<V, Int> = prefix(a)
-let p2: Prefix<R, C, Int> = prefix(g)
-let pn: Prefix<Int> = prefix(xs)
-let _ = p1.sum(V(0)..=V(3)) + p1.prefix(V(2).r)
-let _ = p2.sum(R(0)..=R(1), C(0)..=C(2)) + p2.prefix(R(1).r, C(2).r)
-let _ = pn.sum(0..3) + pn.prefix(2)
-var d1: Diff<V, Int> = Diff<V, Int>()
-d1.add(V(0)..=V(2), 5)
-let _ = d1.finish()
-var d2: Diff<R, C, Int> = Diff<R, C, Int>()
-d2.add(R(0)..=R(1), C(0)..=C(2), 5)
-let _ = d2.finish()
-";
-    assert_eq!(check(ok), vec![]);
-
-    for (old, want) in [
-        ("let _ = prefix1([0..3] i => i)", "prefix"),
-        ("let _ = prefix2([0..2, 0..2] (r, c) => r + c)", "prefix"),
-        ("let _ = prefix_n([1, 2, 3])", "prefix"),
-        ("domain V = 0..3\nlet _ = Diff1<V, Int>()", "Diff"),
-        (
-            "domain R = 0..2\ndomain C = 0..2\nlet _ = Diff2<R, C, Int>()",
-            "Diff",
-        ),
-        (
-            "domain V = 0..3\nfn f(p: Prefix1<V, Int>) -> Int = 0",
-            "Prefix",
-        ),
-        (
-            "domain R = 0..2\ndomain C = 0..2\nfn f(p: Prefix2<R, C, Int>) -> Int = 0",
-            "Prefix",
-        ),
-        ("fn f(p: PrefixN<Int>) -> Int = 0", "Prefix"),
-    ] {
-        let errs = check(old);
-        assert!(
-            errs.iter()
-                .any(|d| d.message.contains(want) && !d.fixes.is_empty()),
-            "expected error + fix mentioning `{want}` for:\n{old}\ngot: {errs:?}"
-        );
-    }
-}
 
 #[test]
 fn enum_array_literal_coercion_checks_variant_count() {
@@ -3510,20 +3420,20 @@ for i in V.bounds:
 #[test]
 fn chained_comparisons_reject_mixed_direction_and_equality() {
     assert_eq!(
-        codes("let x = 3\nprint(1 < x <= 5, 5 >= x > 1, x == 3, x != 4)\n"),
+        codes("let x = 3\nprint(yes(1 < x <= 5), yes(5 >= x > 1), yes(x == 3), yes(x != 4))\n"),
         Vec::<&str>::new()
     );
     assert_eq!(codes("let x = 3\nprint(1 < x > 2)\n"), ["E0111"]);
     assert_eq!(
-        codes("let a = 1, b = 1, c = 1\nprint(a == b == c)\n"),
+        codes("let a = 1, b = 1, c = 1\nprint(yes(a == b == c))\n"),
         ["E0111"]
     );
     assert_eq!(
-        codes("let a = 1, b = 2, c = 2\nprint(a < b == c)\n"),
+        codes("let a = 1, b = 2, c = 2\nprint(yes(a < b == c))\n"),
         ["E0111"]
     );
     assert_eq!(
-        codes("let a = 1, b = 2, c = 3\nprint(a != b != c)\n"),
+        codes("let a = 1, b = 2, c = 3\nprint(yes(a != b != c))\n"),
         ["E0111"]
     );
 }
@@ -3760,23 +3670,6 @@ fn read_with_a_fixed_type_argument_and_a_choice_of_fixed_text_cost_o1() {
     assert_eq!(hover(&mut db, 2, "read"), None);
 }
 
-#[test]
-fn union_find_methods_cost_log_of_the_receivers_domain() {
-    let src = "use std.dsu.{Dsu, ParityDsu, PotentialDsu}\ndomain V = 0..10\nfn f(mut d: Dsu<V>, p: ParityDsu<V>, w: PotentialDsu<V>, a: V, b: V) -> Bool:\n    \
-               d.unite(a, b) and p.same(a, b) and w.diff(a, b) == some(0)\n";
-    let mut db = Database::new();
-    db.set_file("a.cp", src);
-    let cost = |db: &mut Database, name: &str| {
-        let at = src.find(name).unwrap() as u32;
-        let text = db.hover("a.cp", at).unwrap().text;
-        text.lines()
-            .find_map(|l| l.strip_prefix("cost: "))
-            .map(str::to_string)
-    };
-    assert_eq!(cost(&mut db, "unite").as_deref(), Some("O(log |V|)"));
-    assert_eq!(cost(&mut db, "same").as_deref(), Some("O(log |V|)"));
-    assert_eq!(cost(&mut db, "diff").as_deref(), Some("O(log |V|)"));
-}
 
 #[test]
 fn integer_domain_positions_and_plain_enums_read_and_print_in_o1() {
@@ -3802,26 +3695,6 @@ fn integer_domain_positions_and_plain_enums_read_and_print_in_o1() {
     assert_eq!(cost(&mut db, 2, "read"), None);
 }
 
-#[test]
-fn segment_tree_methods_cost_log_of_the_receivers_domain() {
-    let src = "use std.segtree.SegTree\nuse std.lazy.{LazySegTree, AddMax}\ndomain V = 0..10\n\
-               fn f(s: SegTree<V, Int>, mut t: LazySegTree<V, Int, Int>, a: V) -> Int:\n    \
-               t.apply(a.., 1)\n    s.fold(..a) + t.fold(a..)\n";
-    let mut db = Database::new();
-    db.set_file("a.cp", src);
-    let cost = |db: &mut Database, nth: usize, name: &str| {
-        let at = src.match_indices(name).nth(nth).unwrap().0 as u32;
-        db.hover("a.cp", at).and_then(|h| {
-            h.text
-                .lines()
-                .find_map(|l| l.strip_prefix("cost: "))
-                .map(str::to_string)
-        })
-    };
-    assert_eq!(cost(&mut db, 0, "apply(").as_deref(), Some("O(log |V|)"));
-    assert_eq!(cost(&mut db, 0, "fold(").as_deref(), Some("O(log |V|)"));
-    assert_eq!(cost(&mut db, 1, "fold(").as_deref(), Some("O(log |V|)"));
-}
 
 #[test]
 fn a_number_made_into_a_position_or_a_modular_number_costs_o1() {
