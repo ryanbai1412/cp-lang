@@ -721,7 +721,16 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// order: left to right; each run is a slice keeping the keys of `self`
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
-pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S> = todo
+pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S>:
+    let n = self.len
+    var i = 0
+    while i < n:
+        let k = by(self[i])
+        var j = i + 1
+        while j < n and by(self[j]) == k:
+            j += 1
+        yield self[i..j]
+        i = j
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 /// The result is keyed by the value domain, so group by any domain-valued key with
@@ -1388,7 +1397,11 @@ pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take_last(2).collect() == [2, 3]`
-pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = todo
+pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S>:
+    assert k >= 0, "take_last requires k >= 0"
+    let n = self.len
+    let start = if k >= n: 0 else: n - k
+    self[start..n]
 
 /// O(1). The element `k` steps from the start, 0-based whatever the keys: `s[l..].nth(k)` is
 /// `s[l + k]`, `w.nth(0)` is `w.first!`. Traps when `k` is outside `0..len`.
