@@ -1,11 +1,11 @@
-// expect: ok, output "none\n1 1 -4\nYES"
+// expect: ok, output "-1\n1 1 -4\nYES"
 use std.dp.{LiChao, Line}
 use std.rand.{Rng}
 var t = LiChao<Line, Int>(min, over: 0..=10)
-print(t.at(5))
+print(t.at(5) ?? -1)
 t.add(Line(1, 0))
 t.add(Line(-1, 6))
-print(t.at(1), t.at(5), t.at(10))
+print(t.at(1) ?? -1, t.at(5) ?? -1, t.at(10) ?? -1)
 var rng = Rng(2)
 var u = LiChao<Line, Int>(max, over: -50..50)
 var ls: List<(Int, Int)> = []

@@ -189,6 +189,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
 /// traps: when `rows < 0` or `cols < 0`
 /// example: `monotone_minima(2, 3, (i, j) => Some((j - i) * (j - i))) == [Some((val: 0, at: 0)), Some((val: 0, at: 1))]`
 pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>:
+    assert rows >= 0 and cols >= 0, "monotone_minima requires rows >= 0 and cols >= 0"
     var out: List<?(val: Int, at: Int)> = List.filled(rows, None)
     var todo = [(0, rows, 0, cols)]
     while let t = todo.pop():
@@ -257,6 +258,7 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
 /// example: `knuth(3, (i, j) => j - i)[0][3] == 5`
 /// example: `knuth(1, (i, j) => j - i) == [[0, 0], [0, 0]]`
 pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
+    assert n >= 0, "knuth requires n >= 0"
     var dp: List<List<Int>> = []
     var opt: List<List<0..2_147_483_648>> = []
     for _ in 0..=n:
@@ -314,10 +316,6 @@ pub fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = 
         if at.count < k: hi = mid
         else: lo = mid + 1
     solve(lo).val - lo * k
-
-// The penalties around the answer: the counts fall as the penalty grows, so
-// double until the count is at most `k` above and at least `k` below.
-fn penalties<L>(k: Int, solve: L -> (val: L, count: Int)) -> Range<L> = todo
 
 /// Every subset sum of `xs`, one per subset (repeats kept), sorted ascending: the half of a
 /// meet-in-the-middle. Built by merging, not by sorting.

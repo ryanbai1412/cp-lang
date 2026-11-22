@@ -3,11 +3,11 @@ use std.dp.{Line, LineContainer}
 var c = LineContainer(max)
 c.add(Line(1, 0))
 c.add(Line(-1, 4))
-print(c.at(0), c.at(3), c.line_at(3) == Some(Line(1, 0)), c.len)
+print(c.at(0) ?? -1, c.at(3) ?? -1, c.line_at(3) == Some(Line(1, 0)), c.len)
 var d = LineContainer(min)
 d.add(Line(1, 0))
 d.add(Line(-1, 4))
-print(d.at(0), d.at(3), LineContainer(min).at(5) == None)
+print(d.at(0) ?? -1, d.at(3) ?? -1, LineContainer(min).at(5) == None)
 var ok = true
 var seed = 5
 for t in 0..40:
