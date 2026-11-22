@@ -16,7 +16,7 @@
 //! Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
 use std.heap.{MinHeap}
 use std.dsu.{Dsu}
-use std.seq.{reverse}
+use std.seq.{reverse, count}
 use std.deque.{Deque}
 use std.bitset.{Bitset}
 
