@@ -25,3 +25,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Evidence: every metric in `metrics.toml` run on main `4b8f504f`. The 10^7 budget test fails: `examples/debugging/shortest_path.cp` E0301 on v0.3.
 - Next (phase 2): land the in-flight branches, starting with `devin/wip-v03-debug-demos`.
 - Lane opened.
+
+- Cold review round 2 from tech-debt (2026-11-22). `crates/cpl-cli/src/dap.rs` (1,158 lines, `cpl dap`) is a time-travel debugger: stepping, reverse-continue, variable snapshots on `cpl_interp::trace`. It lives in the CLI crate, which is now 7,260 lines across `src/*.rs`. So the debugger has no crate of its own, and `cpl-cli/src/lib.rs` (+34 lines from debugger commits since round 1) keeps growing. Proposal: a debugger-owned `crates/cpl-debug` holding `dap.rs` and the trace HTML. It depends on `cpl-interp` and `cpl-json`; `cpl-cli` keeps a one-line dispatch. That adds a new shipped edge, so land it together with `plan/ARCHITECTURE.md` A4 and `python3 scripts/debt-ratchet.py --update crate_edges`. `crates/cpl-interp/src/trace.rs` also grew by 20 lines; move trace rendering out of the interpreter when you touch it.
