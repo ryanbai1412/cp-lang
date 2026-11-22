@@ -1,6 +1,7 @@
 # ucup5s02f
 
-Score: 2/5
+Score: pending cold rescore (wrote dream + rewrote port with header deriving `covers` and 6/3/2 growth from `6 / gcd(6, v)`, bounded inputs, typed `[0..n0]`/`[0..n1]`/`[0..q]` reads with zero turbofish, `?Int` return, and hoisted `k6`/`t6`/`shift` — 0 lints; emitted C++ 8,122 -> 10,650 B (+2,528 B, < 48 KB) from typed table reads + `?Int` optional + input range checks; shared read helpers will trim it)
+Dream: pending cold rescore (new dream matching active port)
 
 Baseline review, cold, on main 8b49fa9d. A line-by-line translation with no header. The search over `k` (lines 12-18) is the whole idea, and nothing says why `k` grows by a factor of 6, 3 or 2. No dream exists, so the score is capped at 3.
 
