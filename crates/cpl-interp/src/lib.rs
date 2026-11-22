@@ -2308,10 +2308,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let value = self.mutate(*op, place, args, span)?;
                 if self.tracer.is_some() && root_global(place).is_some() {
                     let global = root_global(place).unwrap_or_default();
-                    self.traced(|tracer, view| {
-                        tracer.visible[global] = true;
-                        tracer.step(view, span, None, None, None)
-                    });
+                    self.traced(|tracer, view| tracer.mutated(global, view, span));
                 } else if let Some(slot) = root_local(place) {
                     self.trace_local(slot, span);
                 }

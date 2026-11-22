@@ -56,7 +56,7 @@ struct Session {
     source_name: String,
     recording: Recording,
     trap_message: Option<String>,
-    /// 0-based index into `recording.steps`.
+    /// 0-based index of the step it stands at.
     cursor: usize,
     /// 1-based line breakpoints for the launched file.
     breakpoints: HashSet<u32>,
@@ -165,10 +165,7 @@ impl Session {
     }
 
     fn current_depth(&self) -> usize {
-        self.recording
-            .steps
-            .get(self.cursor)
-            .map_or(1, |s| s.frames.len().max(1))
+        self.recording.depth(self.cursor)
     }
 
     fn handle(
@@ -259,7 +256,7 @@ impl Session {
             }
             "configurationDone" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
-                if !self.launched || self.recording.steps.is_empty() {
+                if !self.launched || self.recording.is_empty() {
                     self.send_terminated(writer)?;
                 } else if self.stop_on_entry {
                     self.cursor = 0;
@@ -280,7 +277,7 @@ impl Session {
             }
             "stackTrace" => {
                 let mut body = String::from("{\"stackFrames\":[");
-                let count = if let Some(step) = self.recording.steps.get(self.cursor) {
+                let count = if let Some(step) = self.recording.step(self.cursor) {
                     let frames: Vec<(&str, u32)> = if step.frames.is_empty() {
                         vec![("main", step.line)]
                     } else {
@@ -321,7 +318,7 @@ impl Session {
                     .and_then(Json::as_i64)
                     .unwrap_or(0);
                 let mut body = String::from("{\"variables\":[");
-                if let Some(step) = self.recording.steps.get(self.cursor) {
+                if let Some(step) = self.recording.step(self.cursor) {
                     let mut first = true;
                     if reference == 1 {
                         if let Ok(Json::Object(map)) = cpl_json::parse(&step.locals) {
@@ -388,39 +385,38 @@ impl Session {
             "next" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 let depth = self.current_depth();
-                let start_line = self.recording.steps.get(self.cursor).map_or(0, |s| s.line);
-                if self.cursor + 1 >= self.recording.steps.len() {
+                let start_line = self.recording.line(self.cursor).unwrap_or(0);
+                if self.cursor + 1 >= self.recording.len() {
                     self.send_terminated(writer)?;
                 } else {
                     let mut i = self.cursor + 1;
-                    while i < self.recording.steps.len() {
-                        let step = &self.recording.steps[i];
-                        let d = step.frames.len().max(1);
+                    while i < self.recording.len() {
+                        let (line, d) = (self.recording.line(i).unwrap_or(0), self.recording.depth(i));
                         if self.trap_step == Some(i) {
                             self.cursor = i;
                             let msg = self.trap_message.clone();
                             self.send_stopped(writer, "exception", msg.as_deref())?;
                             return Ok(false);
                         }
-                        if self.breakpoints.contains(&step.line) {
+                        if self.breakpoints.contains(&line) {
                             self.cursor = i;
                             self.send_stopped(writer, "breakpoint", None)?;
                             return Ok(false);
                         }
-                        if d <= depth && (step.line != start_line || i + 1 == self.recording.steps.len()) {
+                        if d <= depth && (line != start_line || i + 1 == self.recording.len()) {
                             self.cursor = i;
                             self.send_stopped(writer, "step", None)?;
                             return Ok(false);
                         }
                         i += 1;
                     }
-                    self.cursor = self.recording.steps.len() - 1;
+                    self.cursor = self.recording.len() - 1;
                     self.send_terminated(writer)?;
                 }
             }
             "stepIn" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
-                if self.cursor + 1 >= self.recording.steps.len() {
+                if self.cursor + 1 >= self.recording.len() {
                     self.send_terminated(writer)?;
                 } else {
                     self.cursor += 1;
@@ -436,15 +432,15 @@ impl Session {
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 let target_depth = self.current_depth().saturating_sub(1);
                 let mut found = None;
-                for i in (self.cursor + 1)..self.recording.steps.len() {
+                for i in (self.cursor + 1)..self.recording.len() {
                     if self.trap_step == Some(i) {
                         self.cursor = i;
                         let msg = self.trap_message.clone();
                         self.send_stopped(writer, "exception", msg.as_deref())?;
                         return Ok(false);
                     }
-                    let d = self.recording.steps[i].frames.len().max(1);
-                    if d <= target_depth || self.breakpoints.contains(&self.recording.steps[i].line) {
+                    let d = self.recording.depth(i);
+                    if d <= target_depth || self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
                         found = Some(i);
                         break;
                     }
@@ -452,7 +448,7 @@ impl Session {
                 match found {
                     Some(i) => {
                         self.cursor = i;
-                        let reason = if self.breakpoints.contains(&self.recording.steps[i].line) {
+                        let reason = if self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
                             "breakpoint"
                         } else {
                             "step"
@@ -479,7 +475,7 @@ impl Session {
                         self.send_stopped(writer, "divergence", Some(&text))?;
                         return Ok(false);
                     }
-                    if self.breakpoints.contains(&self.recording.steps[i].line) {
+                    if self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
                         self.cursor = i;
                         self.send_stopped(writer, "breakpoint", None)?;
                         return Ok(false);
@@ -513,7 +509,7 @@ impl Session {
                 self.cursor = place.map_or(0, |p| self.recording.find(p, at));
                 self.change = first_change(&before, &self.recording);
                 self.send_response(writer, req_seq, command, true, None, None)?;
-                if self.recording.steps.is_empty() {
+                if self.recording.is_empty() {
                     self.send_terminated(writer)?;
                     return Ok(false);
                 }
@@ -522,7 +518,7 @@ impl Session {
                     Some(change) => format!("re-ran: {}", describe_change(change)),
                 };
                 self.send_output(writer, "console", &format!("{note}\n"))?;
-                let line = self.recording.steps[self.cursor].line;
+                let line = self.recording.line(self.cursor).unwrap_or(0);
                 let kept = match place {
                     Some(p) if p.line == line => format!("kept your place: line {line}, visit {}", p.visit),
                     _ => format!("nearest step to where you were: line {line}"),
@@ -605,6 +601,7 @@ impl Session {
         let config = TraceConfig {
             source: compiled.text.clone(),
             record_frames: true,
+            max_steps: Some(MAX_STEPS),
             ..TraceConfig::default()
         };
         let mut printed = Vec::new();
@@ -620,7 +617,7 @@ impl Session {
         self.trap_step = observed
             .trap
             .as_ref()
-            .and_then(|_| self.recording.steps.len().checked_sub(1));
+            .and_then(|_| self.recording.len().checked_sub(1));
         self.change = None;
         if !printed.is_empty() {
             self.send_output(writer, "stdout", &String::from_utf8_lossy(&printed))?;
@@ -640,7 +637,7 @@ impl Session {
         } else {
             self.cursor + 1
         };
-        for i in start..self.recording.steps.len() {
+        for i in start..self.recording.len() {
             if self.trap_step == Some(i) {
                 self.cursor = i;
                 let msg = self.trap_message.clone();
@@ -650,12 +647,12 @@ impl Session {
                 self.cursor = i;
                 return self.send_stopped(writer, "divergence", Some(&text));
             }
-            if self.breakpoints.contains(&self.recording.steps[i].line) {
+            if self.breakpoints.contains(&self.recording.line(i).unwrap_or(0)) {
                 self.cursor = i;
                 return self.send_stopped(writer, "breakpoint", None);
             }
         }
-        self.cursor = self.recording.steps.len().saturating_sub(1);
+        self.cursor = self.recording.len().saturating_sub(1);
         self.send_terminated(writer)
     }
 
@@ -663,7 +660,7 @@ impl Session {
     /// names, integers, `a[i]` by the index's own labels, `a.field`, `len(a)`,
     /// arithmetic, comparisons, `and`, `or` and `not`.
     fn eval_expr(&self, expr: &str) -> Option<(String, String)> {
-        let step = self.recording.steps.get(self.cursor)?;
+        let step = self.recording.step(self.cursor)?;
         if let Some(var) = self.recording.vars.iter().find(|v| v.name == expr || v.id == expr) {
             let (_, value) = step.values.iter().find(|(i, _)| self.recording.vars[*i].id == var.id)?;
             let value = cpl_json::parse(value).ok()?;
@@ -680,7 +677,7 @@ impl Session {
     }
 
     fn evaluate(&self, expr: &str) -> Result<Valued, String> {
-        let step = self.recording.steps.get(self.cursor).ok_or("nothing is recorded here")?;
+        let step = self.recording.step(self.cursor).ok_or("nothing is recorded here")?;
         let mut names = BTreeMap::new();
         for (index, value) in &step.values {
             let var = &self.recording.vars[*index];
@@ -960,6 +957,9 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
         .map(|bytes| (bytes, note))
         .map_err(|err| format!("cannot read input `{}`: {err}", path.display()))
 }
+
+/// What a debug session records: a run of 10^7 steps fits in a few hundred MB.
+const MAX_STEPS: usize = 10_000_000;
 
 fn describe_change(change: &Change) -> String {
     let source = |json: &Option<String>, ended: &str| match json.as_deref().map(cpl_json::parse) {

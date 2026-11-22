@@ -1072,7 +1072,7 @@ fn observe_file(
                     *stderr += &format!(
                         "cpl: wrote {} ({} steps); open it in a browser\n",
                         target.display(),
-                        recording.steps.len()
+                        recording.len()
                     )
                 }
                 Err(error) => {

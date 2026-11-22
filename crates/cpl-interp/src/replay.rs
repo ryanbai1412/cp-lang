@@ -68,7 +68,7 @@ pub fn replay(
         replayed = find(&run.0, call);
     }
     let (recording, trap) = run;
-    let earlier = first_change_in(recorded, 0..call.entry, &recording, 0..replayed.as_ref().map_or(recording.steps.len(), |c| c.entry));
+    let earlier = first_change_in(recorded, 0..call.entry, &recording, 0..replayed.as_ref().map_or(recording.len(), |c| c.entry));
     let change = match &replayed {
         None => None,
         Some(new) => first_change_in(recorded, call.entry..call.exit, &recording, new.entry..new.exit).or_else(|| {
@@ -76,7 +76,7 @@ pub fn replay(
             // it returns into, which the replay stops before: the recorded
             // run is the same up to there.
             let step = if new.exit > new.entry { new.exit - 1 } else { new.exit };
-            let line = recording.steps.get(step).or(recorded.steps.get(call.exit)).map_or(0, |s| s.line);
+            let line = recording.line(step).or(recorded.line(call.exit)).unwrap_or(0);
             (new.returned != call.returned).then(|| Change {
                 step,
                 line,
@@ -121,8 +121,8 @@ fn effect(recording: &Recording, call: &Call) -> Effect {
         let end = recording.values_at(call.exit - 1);
         let start = call.entry.checked_sub(1).map(|i| recording.values_at(i)).unwrap_or_default();
         for (id, value) in end {
-            if start.get(id) != Some(&value) {
-                writes.push((id.to_string(), value.to_string()));
+            if start.get(&id) != Some(&value) {
+                writes.push((id, value));
             }
         }
     }
@@ -169,7 +169,7 @@ for i in 1..=3:
         assert_eq!(calls, [(1, "{\"i\":1}", Some("1")), (2, "{\"i\":2}", Some("3")), (3, "{\"i\":3}", Some("6"))]);
         let second = &recorded.calls[1];
         assert_eq!(recorded.call_at(second.entry, 0), Some(second));
-        assert_eq!(recorded.steps[second.entry].line, 3);
+        assert_eq!(recorded.line(second.entry).unwrap(), 3);
     }
 
     #[test]
@@ -209,7 +209,7 @@ for i in 1..=3:
     fn the_program_ends_at_its_last_statement_not_at_a_later_fn() {
         let source = "var x = 1\nprint(x)\n\nfn unused() -> Int:\n    return 2\n";
         let (recorded, _) = run(&program(source), b"", config(source));
-        let end = recorded.steps.last().unwrap();
+        let end = recorded.step(recorded.len() - 1).unwrap();
         assert_eq!((end.line, end.label.as_str()), (2, "the program ended"));
     }
 
@@ -217,9 +217,10 @@ for i in 1..=3:
     fn a_fns_locals_each_take_a_step_and_a_changed_local_is_the_first_change() {
         let source = "fn sum(n: Int) -> Int:\n    var s = 0\n    for i in 1..=n:\n        s += i\n    return s\nprint(sum(2))\n";
         let (recorded, _) = run(&program(source), b"", config(source));
-        let lines: Vec<u32> = recorded.steps.iter().map(|s| s.line).collect();
+        let lines: Vec<u32> = (0..recorded.len()).filter_map(|i| recorded.line(i)).collect();
         assert_eq!(lines, [2, 3, 4, 3, 4, 6, 6]);
-        assert!(recorded.steps[4].locals.contains("\"s\":3"), "{}", recorded.steps[4].locals);
+        let locals = recorded.step(4).unwrap().locals;
+        assert!(locals.contains("\"s\":3"), "{locals}");
         let edit = source.replace("s += i", "s += 2 * i");
         let (after, _) = run(&program(&edit), b"", config(&edit));
         let change = crate::trace::first_change(&recorded, &after).unwrap();

@@ -10,8 +10,12 @@
 use crate::value::{OptVal, TupleVal, Value};
 use cpl_diag::{LineIndex, Span};
 use cpl_ir::{Dim, Program, Ty};
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap};
+use std::fmt::Write as _;
 use std::sync::Arc;
+
+mod log;
+pub use log::Steps;
 
 /// How a run is recorded.
 #[derive(Clone, Debug, Default)]
@@ -37,6 +41,8 @@ pub struct TraceConfig {
     /// Stop the run when this call returns: the fn's name and which call
     /// of it, 1-based. What [`crate::replay`] runs.
     pub stop_after_call: Option<(String, usize)>,
+    /// Keep up to this many steps instead of what fits in a trace file.
+    pub max_steps: Option<usize>,
 }
 
 /// The message of the trap that ends a run at [`TraceConfig::stop_after_call`].
@@ -102,8 +108,6 @@ pub struct Step {
     pub focus: Option<(usize, Vec<usize>)>,
     /// Call stack at this step (innermost first), populated when `record_frames` is true.
     pub frames: Vec<(String, u32)>,
-    /// Tree-form snapshots for `[V]?V` variables that stayed trees.
-    tree_values: Vec<(usize, Arc<str>)>,
 }
 
 /// The value of one top-level variable when the run ended, for the
@@ -141,7 +145,8 @@ pub struct Assigned {
 #[derive(Clone, Debug, Default)]
 pub struct Recording {
     pub vars: Vec<Var>,
-    pub steps: Vec<Step>,
+    /// The steps, read one at a time: [`Recording::step`] and [`Recording::steps`].
+    log: log::Log,
     /// Steps past the limit were not kept.
     pub truncated: bool,
     pub lives: Vec<Live>,
@@ -194,9 +199,52 @@ pub struct Change {
 }
 
 impl Recording {
+    pub fn len(&self) -> usize {
+        self.log.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.log.len() == 0
+    }
+
+    /// Step `step`, rebuilt from the snapshot before it and the changes since.
+    pub fn step(&self, step: usize) -> Option<Step> {
+        (step < self.len()).then(|| self.log.step_of(step, &self.log.state_at(step), self.vars.len()))
+    }
+
+    /// The steps `range`, rebuilt one from the last.
+    pub fn steps(&self, range: std::ops::Range<usize>) -> Steps<'_> {
+        Steps::new(&self.log, range.start..range.end.min(self.len()), self.vars.len())
+    }
+
+    pub fn line(&self, step: usize) -> Option<u32> {
+        self.log.line(step)
+    }
+
+    /// How many frames are on the stack at `step`, the top level included.
+    pub fn depth(&self, step: usize) -> usize {
+        self.log.depth(step)
+    }
+
+    /// The checkpoints, with their steps, in the order they were reached.
+    pub fn checkpoints(&self) -> impl Iterator<Item = (usize, &str)> {
+        self.log.checkpoints()
+    }
+
+    /// Each variable's value at `step`, as JSON, by id.
+    pub(crate) fn values_at(&self, step: usize) -> BTreeMap<String, String> {
+        let Some(step) = self.step(step) else { return BTreeMap::new() };
+        step.values.into_iter().map(|(var, json)| (self.vars[var].id.clone(), json.to_string())).collect()
+    }
+
+    /// How many bytes the recording holds.
+    pub fn bytes(&self) -> usize {
+        self.log.bytes()
+    }
+
     pub fn place(&self, step: usize) -> Option<Place> {
-        let line = self.steps.get(step)?.line;
-        let visit = self.steps[..=step].iter().filter(|s| s.line == line).count();
+        let line = self.line(step)?;
+        let visit = (0..=step).filter(|&i| self.line(i) == Some(line)).count();
         Some(Place { line, visit })
     }
 
@@ -205,8 +253,8 @@ impl Recording {
     pub fn find(&self, place: Place, fallback: usize) -> usize {
         let mut last = None;
         let mut seen = 0;
-        for (i, step) in self.steps.iter().enumerate() {
-            if step.line == place.line {
+        for i in 0..self.len() {
+            if self.line(i) == Some(place.line) {
                 seen += 1;
                 last = Some(i);
                 if seen == place.visit {
@@ -214,7 +262,7 @@ impl Recording {
                 }
             }
         }
-        last.unwrap_or_else(|| fallback.min(self.steps.len().saturating_sub(1)))
+        last.unwrap_or_else(|| fallback.min(self.len().saturating_sub(1)))
     }
 
     /// The innermost call running at `step`, or the call `frame` levels out
@@ -225,16 +273,13 @@ impl Recording {
         open.into_iter().rev().find(|c| c.depth == depth)
     }
 
-    pub(crate) fn values_at(&self, step: usize) -> BTreeMap<&str, &str> {
-        self.steps[step].values.iter().map(|(var, json)| (self.vars[*var].id.as_str(), &**json)).collect()
-    }
 }
 
 /// Where `after`, a run recorded again after an edit, first parts from
 /// `before`. Steps are compared in order: the n-th change of one run against
 /// the n-th of the other, `stdout` included.
 pub fn first_change(before: &Recording, after: &Recording) -> Option<Change> {
-    first_change_in(before, 0..before.steps.len(), after, 0..after.steps.len())
+    first_change_in(before, 0..before.len(), after, 0..after.len())
 }
 
 /// [`first_change`] over the steps `old` of `before` and `new` of `after`.
@@ -244,32 +289,52 @@ pub fn first_change_in(
     after: &Recording,
     new: std::ops::Range<usize>,
 ) -> Option<Change> {
-    let label = |run: &Recording, i: usize| run.steps.get(i).map(|s| s.label.clone());
-    let last = new.end.saturating_sub(1).max(new.start).min(after.steps.len().saturating_sub(1));
+    let label = |run: &Recording, i: usize| run.step(i).map(|s| s.label);
+    let last = new.end.saturating_sub(1).max(new.start).min(after.len().saturating_sub(1));
+    let (mut was, mut now) = (before.log.start(old.start), after.log.start(new.start));
     for i in 0..old.len().max(new.len()) {
         let (b, a) = (old.start + i, new.start + i);
         if i >= old.len() || i >= new.len() {
             let step = a.min(last);
             return Some(Change {
                 step,
-                line: after.steps.get(step).map_or(0, |s| s.line),
+                line: after.line(step).unwrap_or(0),
                 variable: None,
                 before: label(before, b).filter(|_| i < old.len()),
                 after: label(after, a).filter(|_| i < new.len()),
             });
         }
-        let (mut was, mut now) = (before.values_at(b), after.values_at(a));
-        was.extend(members(&before.steps[b].locals));
-        now.extend(members(&after.steps[a].locals));
-        let differs = was.keys().chain(now.keys()).find(|id| was.get(*id) != now.get(*id));
-        if let Some(id) = differs {
-            return Some(Change {
-                step: a,
-                line: after.steps[a].line,
-                variable: Some(id.to_string()),
-                before: was.get(id).map(|v| v.to_string()),
-                after: now.get(id).map(|v| v.to_string()),
-            });
+        before.log.advance(&mut was, b);
+        after.log.advance(&mut now, a);
+        // Until now the two held the same: only what this step changed can differ.
+        let ids: Vec<&str> = match i {
+            0 => before.vars.iter().chain(&after.vars).map(|v| v.id.as_str()).collect(),
+            _ => {
+                let (old_vars, old_other) = before.log.touched(b);
+                let (new_vars, new_other) = after.log.touched(a);
+                let mut ids: Vec<&str> = old_vars.iter().map(|&v| before.vars[v].id.as_str()).collect();
+                ids.extend(new_vars.iter().map(|&v| after.vars[v].id.as_str()));
+                if old_other || new_other {
+                    ids.push("stdout");
+                }
+                ids
+            }
+        };
+        let value = |run: &Recording, state: &log::State, id: &str| {
+            run.vars.iter().position(|v| v.id == id).and_then(|var| run.log.value_in(state, var))
+        };
+        let differs = ids.into_iter().find_map(|id| {
+            let (b, a) = (value(before, &was, id), value(after, &now, id));
+            (b != a).then(|| (id.to_string(), b, a))
+        });
+        let differs = differs.or_else(|| {
+            let (b, a) = (members(before.log.locals_in(&was)), members(after.log.locals_in(&now)));
+            let (b, a): (BTreeMap<_, _>, BTreeMap<_, _>) = (b.into_iter().collect(), a.into_iter().collect());
+            let id = b.keys().chain(a.keys()).find(|id| b.get(*id) != a.get(*id))?;
+            Some((id.to_string(), b.get(id).map(|v| v.to_string()), a.get(id).map(|v| v.to_string())))
+        });
+        if let Some((variable, was, now)) = differs {
+            return Some(Change { step: a, line: after.line(a).unwrap_or(0), variable: Some(variable), before: was, after: now });
         }
     }
     None
@@ -330,18 +395,23 @@ pub(crate) struct Tracer {
     pub visible: Vec<bool>,
     /// Those declared above `@!multitest`.
     setup: Vec<bool>,
-    /// The last snapshot of each variable.
-    last: Vec<Option<Arc<str>>>,
     /// Whether every snapshot of a `[V]?V` was one rooted tree.
     tree: Vec<bool>,
-    steps: VecDeque<Step>,
     stdout: usize,
-    printed: Vec<String>,
     debug_vars: HashMap<String, usize>,
     counts: HashMap<String, usize>,
     prints: usize,
     pub case: Option<u64>,
-    bytes: usize,
+    max_steps: usize,
+    max_bytes: usize,
+    /// The stage of the test case it is in, interned in the log.
+    stage_of_case: Option<(Option<u64>, u32)>,
+    /// What the locals render to, kept between steps.
+    locals: String,
+    /// The globals written since the last step, each with the one item
+    /// written when only one was, unless `all` may have changed.
+    touched: Vec<(usize, Option<usize>)>,
+    all_touched: bool,
     pub assignments: bool,
     pub rec: Recording,
     /// How many times each fn has been called so far.
@@ -412,7 +482,7 @@ impl Tracer {
         }
         let mut tracer = Tracer {
             lines: LineIndex::new(&config.source),
-            source: config.source,
+            source: config.source.clone(),
             include_fns,
             exclude_fns,
             pos_inside: 0,
@@ -427,18 +497,20 @@ impl Tracer {
             of_global: vec![None; program.globals.len()],
             visible: vec![false; program.globals.len()],
             setup: vec![false; program.globals.len()],
-            last: Vec::new(),
             tree: Vec::new(),
-            steps: VecDeque::new(),
             stdout: 0,
-            printed: Vec::new(),
             debug_vars: HashMap::new(),
             counts: HashMap::new(),
             prints: 0,
             case: None,
-            bytes: 0,
+            max_steps: config.max_steps.unwrap_or(MAX_STEPS),
+            max_bytes: config.max_steps.map_or(MAX_BYTES, |steps| steps.saturating_mul(64).clamp(MAX_BYTES, u32::MAX as usize / 2)),
+            stage_of_case: None,
+            locals: String::new(),
+            touched: Vec::new(),
+            all_touched: true,
             assignments: config.assignments,
-            rec: Recording::default(),
+            rec: Recording { log: log::Log::new(&config.source, config.record_frames), ..Recording::default() },
             ordinals: HashMap::new(),
             open: Vec::new(),
             stop_after_call: config.stop_after_call,
@@ -462,7 +534,6 @@ impl Tracer {
     fn add_var(&mut self, var: Var, kind: Kind) -> usize {
         self.rec.vars.push(var);
         self.kinds.push(kind);
-        self.last.push(None);
         self.tree.push(kind == Kind::Parents);
         self.rec.vars.len() - 1
     }
@@ -481,8 +552,8 @@ impl Tracer {
             self.rec.calls.push(Call {
                 name: name.to_string(),
                 ordinal,
-                entry: self.steps.len(),
-                exit: self.steps.len(),
+                entry: self.rec.log.len(),
+                exit: self.rec.log.len(),
                 depth: self.open.len(),
                 args: args(),
                 returned: None,
@@ -499,7 +570,7 @@ impl Tracer {
     pub fn leave_call(&mut self, returned: Option<String>) {
         if let Some(Some(index)) = self.open.pop() {
             let call = &mut self.rec.calls[index];
-            call.exit = self.steps.len();
+            call.exit = self.rec.log.len();
             call.returned = returned;
         }
         if self.stopping_at == Some(self.open.len()) {
@@ -508,6 +579,7 @@ impl Tracer {
     }
 
     pub fn enter_fn(&mut self, name: &str) -> (bool, bool) {
+        self.touch_all();
         let pos = !self.include_fns.is_empty()
             && self.include_fns.iter().any(|p| glob_match(p, name));
         let neg = !self.exclude_fns.is_empty()
@@ -522,6 +594,7 @@ impl Tracer {
     }
 
     pub fn leave_fn(&mut self, (pos, neg): (bool, bool)) {
+        self.touch_all();
         if pos {
             self.pos_inside -= 1;
         }
@@ -557,13 +630,15 @@ impl Tracer {
         self.lines.line_of(span.start) + 1
     }
 
-    fn line_text(&self, line: u32) -> String {
-        let text = self.source.lines().nth(line as usize - 1).unwrap_or("").trim();
-        let mut short: String = text.chars().take(80).collect();
-        if short.len() < text.len() {
-            short.push('…');
+    fn stage_id(&mut self) -> u32 {
+        match self.stage_of_case {
+            Some((case, id)) if case == self.case => id,
+            _ => {
+                let id = self.rec.log.stage(&self.stage());
+                self.stage_of_case = Some((self.case, id));
+                id
+            }
         }
-        short
     }
 
     fn stage(&self) -> String {
@@ -577,16 +652,17 @@ impl Tracer {
     /// `@!multitest` is reached: what is declared so far stays in scope
     /// in every test case.
     pub fn divider(&mut self) {
+        self.touch_all();
         self.setup = self.visible.clone();
     }
 
     /// A test case starts: its variables and its output start anew.
     pub fn start_case(&mut self, case: u64) {
+        self.touch_all();
         self.case = Some(case);
         self.visible = self.setup.clone();
-        self.printed.clear();
         self.prints = 0;
-        self.last[self.stdout] = None;
+        self.rec.log.new_case();
     }
 
     fn checkpoint(&mut self, name: &str) -> String {
@@ -647,69 +723,32 @@ impl Tracer {
         }
         // What is above `@!multitest` is the same on every input: it gets
         // a share of the trace, and the test cases get the rest.
+        let len = self.rec.log.len();
         if self.last_steps.is_none() {
-            if self.case == Some(0)
-                && (self.steps.len() >= SETUP_STEPS || self.bytes >= MAX_BYTES / 16)
-            {
+            let bytes = self.rec.log.bytes();
+            if self.case == Some(0) && (len >= SETUP_STEPS.max(self.max_steps / 10) || bytes >= self.max_bytes / 16) {
                 return;
             }
-            if self.steps.len() >= MAX_STEPS || self.bytes >= MAX_BYTES {
+            if len >= self.max_steps || bytes >= self.max_bytes {
                 self.rec.truncated = true;
                 return;
             }
         }
         let line = self.line(span).max(1);
-        let mut values = Vec::new();
-        let mut tree_values = Vec::new();
-        for id in 0..view.globals.len() {
-            if !self.visible[id] {
-                continue;
-            }
-            let Some(var) = self.var_of(id, view) else {
-                continue;
-            };
-            let value = &view.globals[id];
-            // Lent to a call that is still running: it reads as it was.
-            if !matches!(value, Value::Moved | Value::Unit) {
-                let ty = &view.program.globals[id].ty;
-                let (json, tree) = snapshot(value, ty, self.kinds[var], view);
-                if self.kinds[var] == Kind::Parents {
-                    match tree {
-                        Some(tree) => {
-                            tree_values.push((var, tree.into()));
-                        }
-                        None => self.tree[var] = false,
-                    }
-                }
-                if self.last[var].as_deref() != Some(json.as_str()) {
-                    self.bytes += json.len();
-                    self.last[var] = Some(json.into());
-                }
-            }
-            if let Some(json) = &self.last[var] {
-                values.push((var, Arc::clone(json)));
-            }
+        self.rec.log.snapshot_if_due();
+        let mut touched = std::mem::take(&mut self.touched);
+        if std::mem::replace(&mut self.all_touched, false) {
+            (0..view.globals.len()).for_each(|id| self.record_global(id, view, None));
+        } else {
+            touched.iter().for_each(|&(id, item)| self.record_global(id, view, item));
+            #[cfg(debug_assertions)]
+            self.check_untouched(view);
         }
-        if self.last[self.stdout].is_none() {
-            let mut json = String::from("[");
-            for (i, line) in self.printed.iter().enumerate() {
-                if i > 0 {
-                    json.push(',');
-                }
-                string(&mut json, line);
-            }
-            json.push(']');
-            self.bytes += json.len();
-            self.last[self.stdout] = Some(json.into());
-        }
-        values.push((self.stdout, Arc::clone(self.last[self.stdout].as_ref().unwrap())));
-        for var in self.debug_vars.values() {
-            if let Some(json) = &self.last[*var] {
-                values.push((*var, Arc::clone(json)));
-            }
-        }
-        values.sort_by_key(|(var, _)| *var);
-        let mut locals = String::from("{");
+        touched.clear();
+        self.touched = touched;
+        let mut locals = std::mem::take(&mut self.locals);
+        locals.clear();
+        locals.push('{');
         for (name, ty, value) in &view.locals {
             if matches!(
                 value,
@@ -729,7 +768,8 @@ impl Tracer {
             }
         }
         locals.push('}');
-        self.bytes += locals.len();
+        self.rec.log.locals_changed(&locals);
+        self.locals = locals;
         let focus = focus.and_then(|(global, path)| {
             let var = self.of_global[global]?;
             let fits = match self.kinds[var] {
@@ -740,49 +780,94 @@ impl Tracer {
             fits.then_some((var, path))
         });
         let checkpoint = checkpoint.map(|name| self.checkpoint(name));
-        if let Some(limit) = self.last_steps {
-            if limit > 0 && self.steps.len() >= limit {
-                self.steps.pop_front();
+        let frame = self.record_frames.then(|| {
+            let stack: Vec<(&str, u32)> =
+                view.call_frames.iter().map(|(name, at)| (*name, self.line(*at).max(1))).collect();
+            self.rec.log.frame(&stack)
+        });
+        let stage = self.stage_id();
+        self.rec.log.step(line, frame, stage, log::Note { label, checkpoint, focus });
+        if let Some(limit) = self.last_steps.filter(|&limit| limit > 0) {
+            if self.rec.log.len() >= 2 * limit {
+                self.rec.log.keep_last(limit);
                 self.rec.truncated = true;
             }
         }
-        let frames = if self.record_frames {
-            let mut out = Vec::with_capacity(view.call_frames.len() + 1);
-            let current_fn = view
-                .call_frames
-                .last()
-                .map(|(name, _)| (*name).to_string())
-                .unwrap_or_else(|| "main".to_string());
-            out.push((current_fn, line));
-            for i in (0..view.call_frames.len()).rev() {
-                let caller = if i == 0 {
-                    "main".to_string()
-                } else {
-                    view.call_frames[i - 1].0.to_string()
-                };
-                let call_line = self.line(view.call_frames[i].1).max(1);
-                out.push((caller, call_line));
+    }
+
+    /// Global `id` was written, item `item` of it alone when that is known.
+    fn touch(&mut self, id: usize, item: Option<usize>) {
+        if self.touched.len() >= 16 {
+            self.touch_all();
+        } else if !self.all_touched {
+            self.touched.push((id, item));
+        }
+    }
+
+    /// Any global may have changed, e.g. through a call's `mut` parameter.
+    fn touch_all(&mut self) {
+        self.all_touched = true;
+        self.touched.clear();
+    }
+
+    /// Records the value of global `id`, or only its item `item`.
+    fn record_global(&mut self, id: usize, view: &View, item: Option<usize>) {
+        if !self.visible[id] {
+            if let Some(var) = self.of_global[id] {
+                self.rec.log.unset(var);
             }
-            out
-        } else {
-            Vec::new()
+            return;
+        }
+        let Some(var) = self.var_of(id, view) else {
+            return;
         };
-        self.steps.push_back(Step {
-            line,
-            label: label.unwrap_or_else(|| self.line_text(line)),
-            stage: self.stage(),
-            values,
-            locals,
-            checkpoint,
-            focus,
-            frames,
-            tree_values,
-        });
+        let value = &view.globals[id];
+        // Lent to a call that is still running: it reads as it was.
+        if matches!(value, Value::Moved | Value::Unit) {
+            return;
+        }
+        let ty = &view.program.globals[id].ty;
+        if let Some(json) = item.filter(|_| self.kinds[var] == Kind::Array).and_then(|i| item_json(value, ty, i, view)) {
+            if self.rec.log.set_item(var, item.unwrap_or_default(), &json) {
+                return;
+            }
+        }
+        let (json, tree) = snapshot(value, ty, self.kinds[var], view);
+        if self.kinds[var] == Kind::Parents {
+            match tree {
+                Some(tree) => self.rec.log.set_tree(var, &tree),
+                None => self.tree[var] = false,
+            }
+        }
+        self.rec.log.set(var, &json);
+    }
+
+    /// Debug builds check that the globals no write was seen to touch hold
+    /// what they held: a write the tracer is not told of would show a stale value.
+    #[cfg(debug_assertions)]
+    fn check_untouched(&self, view: &View) {
+        for id in 0..view.globals.len() {
+            let (Some(var), value) = (self.of_global[id], &view.globals[id]) else { continue };
+            if !self.visible[id] || matches!(value, Value::Moved | Value::Unit) {
+                continue;
+            }
+            let (json, _) = snapshot(value, &view.program.globals[id].ty, self.kinds[var], view);
+            let name = &view.program.globals[id].name;
+            assert_eq!(self.rec.log.value_now(var).as_deref(), Some(json.as_str()), "`{name}` changed unseen");
+        }
+    }
+
+    /// `mut` work on global `id` (`push`, `sort`, ...) is done.
+    pub fn mutated(&mut self, id: usize, view: &View, span: Span) {
+        self.visible[id] = true;
+        self.touch(id, None);
+        self.step(view, span, None, None, None);
     }
 
     /// A global was declared or set as a whole. Lines that declare
     /// several (`let (n, q) = read()`) are one step.
     pub fn declared(&mut self, id: usize, view: &View, span: Span) {
+        self.touch(id, None);
         let fresh = !self.visible[id];
         self.visible[id] = true;
         if view.program.globals[id].span.end == 0 {
@@ -792,18 +877,19 @@ impl Tracer {
             return;
         }
         let line = self.line(span).max(1);
-        if fresh
-            && self.steps.back().is_some_and(|last| {
-                last.line == line && last.checkpoint.is_none() && last.stage == self.stage()
-            })
-        {
-            self.steps.pop_back();
+        let stage = self.stage_id();
+        let same = self.rec.log.last().is_some_and(|(last, note, at)| {
+            last == line && note.is_none_or(|note| note.checkpoint.is_none()) && at == stage
+        });
+        if fresh && same {
+            self.rec.log.reopen();
         }
         self.step(view, span, None, None, None);
     }
 
     /// A part of global `id` changed (e.g. an array cell or struct field).
     pub fn changed(&mut self, id: usize, view: &View, span: Span, path: Vec<usize>) {
+        self.touch(id, (path.len() == 1).then(|| path[0]));
         if !self.watched(&view.program.globals[id].name) {
             return;
         }
@@ -813,6 +899,9 @@ impl Tracer {
     /// Local `name` of a running call changed. Top-level code has only
     /// globals worth a step; its loop counters would double the trace.
     pub fn local_changed(&mut self, view: &View, span: Span, name: &str) {
+        if view.depth > 0 {
+            self.touch_all();
+        }
         if view.depth == 0 || name.is_empty() || name.starts_with('_') || !self.watched(name) {
             return;
         }
@@ -858,8 +947,9 @@ impl Tracer {
         if !self.recording(view.depth) {
             return;
         }
-        self.printed.extend(text.lines().map(str::to_string));
-        self.last[self.stdout] = None;
+        for line in text.lines() {
+            self.rec.log.print(line);
+        }
         self.prints += 1;
         let shown: String = text.trim_end().chars().take(60).collect();
         let name = format!("print {}", self.prints);
@@ -891,11 +981,10 @@ impl Tracer {
                 var
             }
         };
-        self.bytes += json.len();
-        self.last[var] = Some(json.into());
+        self.rec.log.set(var, &json);
         let checkpoint = format!("debug {name}");
         self.step(view, span, Some(format!("debug: {text}")), Some(&checkpoint), None);
-        let name = match self.steps.back().and_then(|step| step.checkpoint.clone()) {
+        let name = match self.rec.log.last().and_then(|(_, note, _)| note?.checkpoint.clone()) {
             Some(checkpoint) => checkpoint,
             None => checkpoint,
         };
@@ -917,13 +1006,17 @@ impl Tracer {
                 self.step(view, end, Some("the program ended".to_string()), Some("end"), None)
             }
         }
-        if self.steps.is_empty() {
+        if self.rec.log.len() == 0 {
             self.step(view, Span::default(), Some("nothing was recorded".to_string()), None, None);
         }
         while !self.open.is_empty() {
             self.leave_call(None);
         }
-        self.rec.steps = std::mem::take(&mut self.steps).into_iter().collect();
+        if let Some(limit) = self.last_steps.filter(|&limit| limit > 0 && self.rec.log.len() > limit) {
+            self.rec.log.keep_last(limit);
+            self.rec.truncated = true;
+        }
+        self.rec.log.shrink();
         for id in 0..view.globals.len() {
             let global = &view.program.globals[id];
             let value = &view.globals[id];
@@ -954,18 +1047,7 @@ impl Tracer {
             if self.tree[var] {
                 self.rec.vars[var].kind = "tree";
                 self.rec.vars[var].extra = String::new();
-                for step in &mut self.rec.steps {
-                    if let Some((_, tree)) = step.tree_values.iter().find(|(at, _)| *at == var) {
-                        for (at, json) in &mut step.values {
-                            if *at == var {
-                                *json = Arc::clone(tree);
-                            }
-                        }
-                    }
-                    if step.focus.as_ref().is_some_and(|(at, _)| *at == var) {
-                        step.focus = None;
-                    }
-                }
+                self.rec.log.draw_as_tree(var);
             }
         }
         self.rec
@@ -1215,7 +1297,7 @@ fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
             if json && v.unsigned_abs() > 9_007_199_254_740_991 {
                 string(out, &v.to_string());
             } else {
-                out.push_str(&v.to_string());
+                let _ = write!(out, "{v}");
             }
         }
         // Wider than a JSON number holds exactly: as text.
@@ -1486,6 +1568,31 @@ fn parents_of(value: &Value) -> Option<Vec<Option<i64>>> {
     )
 }
 
+/// Item `index` of a one-dimensional array or list, as JSON, as it is in
+/// the JSON of the whole.
+fn item_json(value: &Value, ty: &Ty, index: usize, view: &View) -> Option<String> {
+    let (item, elem) = match (value, ty) {
+        (Value::Array(array), Ty::Array { dims, elem }) if dims.len() == 1 => (array.get(index)?, &**elem),
+        (Value::List(items), Ty::List(elem)) => (items.get(index)?.clone(), &**elem),
+        _ => return None,
+    };
+    let scalar = matches!(
+        elem,
+        Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Pos(_) | Ty::Bound(_)
+    );
+    let len = match value {
+        Value::Array(array) => array.len(),
+        Value::List(items) => items.len() + 1,
+        _ => unreachable!("matched above"),
+    };
+    if (if scalar { len } else { cells(value) }) > MAX_CELLS {
+        return None;
+    }
+    let mut json = String::new();
+    render(&mut json, &item, elem, view, Mode::Json);
+    Some(json)
+}
+
 /// The snapshot of a variable, and for a `[V]?V` its tree form when it
 /// is a tree.
 fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<String>) {
@@ -1630,7 +1737,7 @@ fn run_json(label: &str, rec: &Recording, ids: &[String], dropped: &dyn Fn(&str)
     let mut out = String::from("{\"label\":");
     string(&mut out, label);
     out.push_str(",\"steps\":[");
-    for (index, step) in rec.steps.iter().enumerate() {
+    for (index, step) in rec.steps(0..rec.len()).enumerate() {
         if index > 0 {
             out.push(',');
         }
@@ -1717,14 +1824,9 @@ pub fn document(
         }
         // Shared checkpoints must come in one order in both runs: one
         // that does not is left as a plain step.
-        let position: HashMap<&str, usize> = slow
-            .steps
-            .iter()
-            .enumerate()
-            .filter_map(|(i, step)| Some((step.checkpoint.as_deref()?, i)))
-            .collect();
+        let position: HashMap<&str, usize> = slow.checkpoints().map(|(i, name)| (name, i)).collect();
         let mut reached = None;
-        for name in fast.steps.iter().filter_map(|step| step.checkpoint.as_deref()) {
+        for (_, name) in fast.checkpoints() {
             match position.get(name) {
                 Some(at) if reached.is_none_or(|last| *at > last) => reached = Some(*at),
                 Some(_) => {
