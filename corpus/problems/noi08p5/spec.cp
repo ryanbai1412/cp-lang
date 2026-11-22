@@ -25,9 +25,9 @@ for op in read<[q]Op>():
             put(at, r - l, 1)
         Ask(t, l, r) =>
             let base = (-t).mod(cycle)
-            let up = rising.sum(span(base, base + r), span(base + l, base + l + cycle - 1))
+            let up = rising.fold(span(base, base + r), span(base + l, base + l + cycle - 1))
             let b = base + cycle
-            let down = falling.sum(span(b + max(r + 1, cycle - r), b + cycle - 1), span(b - l + 1, b + cycle - l))
+            let down = falling.fold(span(b + max(r + 1, cycle - r), b + cycle - 1), span(b - l + 1, b + cycle - l))
             print(up + down)
         Remove(c) =>
             let x = cloud.remove(c)!

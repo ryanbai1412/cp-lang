@@ -10,7 +10,7 @@ fn tracks(k: Int) -> Int:
     var made = 0
     fn up(v: V) -> Int:
         var chains = SortedBag.of(List(t.child_arcs(v).map(a => up(a.to) + a.w)))
-        made += chains.drain(k..).count()
+        made += chains.drain_range(k..).count()
         var spare = 0
         while let x = chains.pop_first():
             if chains.take_first(y => x + y >= k) is Some(_):
