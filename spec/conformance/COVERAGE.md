@@ -6,12 +6,12 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1493 (995 passing). Rules: 521.
+Cases: 1503 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 85 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R02 (02-values-types.md): 50 rules, 86 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 34 cases; 0 uncovered, 7 happy-path only, 4 negative only
 - R04 (04-indices.md): 59 rules, 71 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
@@ -21,7 +21,7 @@ Cases: 1493 (995 passing). Rules: 521.
 - R07 (07-sequences.md): 87 rules, 89 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 57 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 41 cases; 4 uncovered, 5 happy-path only, 0 negative only
-- R10 (10-io.md): 16 rules, 45 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 48 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 15 cases; 3 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 16 rules, 29 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 21 cases; 1 uncovered, 6 happy-path only, 0 negative only
@@ -125,7 +125,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.8.5 [1+ 0-] *happy-path only*: Large arrays never live on the C++ stack (chapter 13).
 - R02.9.1 [1+ 1-]: Two fresh types are never equal, even from the same expression.
 - R02.9.2 [1+ 1-]: A fresh type is block-scoped. A value whose type mentions it cannot leave the block by `re...
-- R02.9.3 [1+ 0-]: A function may return a fresh type existentially: `fn components(...) -> (domain P, [V]P)`...
+- R02.9.3 [2+ 0-]: A function may return a fresh type existentially: `fn components(...) -> (domain P, [V]P)`...
 - R02.9.4 [1+ 0-]: A fresh type carries runtime data (a domain's count, a modulus) in one static slot per dec...
 - R02.9.5 [1+ 0-]: `V.count` is typed by the declared range, which is where storage widths and overflow proof...
 - R02.9.6 [1+ 0-]: Product domains `domain State = (V, K)` and disjoint unions `domain Node = In + Out` are d...
@@ -522,15 +522,15 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.2 [2+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [3+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
-- R10.2.2 [5+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [5+ 2-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.2 [6+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
+- R10.2.3 [6+ 2-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [2+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
 - R10.3.1 [1+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
 - R10.3.2 [2+ 0-]: Interpolated strings format each piece through `Print`; positions print in the file's base...
-- R10.3.3 [1+ 1-]: `Bool` is not `Print`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word...
+- R10.3.3 [1+ 2-]: `Bool` is not `Print`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word...
 - R10.3.4 [1+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`.
 - R10.3.5 [1+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [1+ 0-] *happy-path only*: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
@@ -657,7 +657,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 11 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
-- E0606 Missing trait implementation for operator: 19 case(s)
+- E0606 Missing trait implementation for operator: 20 case(s)
 - E0607 Moved while captured by a closure: 2 case(s)
 - E0608 Use of moved value: 7 case(s)
 - E0701 Ambiguous trait method: 1 case(s)
@@ -669,7 +669,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0801 Context value is not a constant: 1 case(s)
 - E0802 Bare `with` after another statement: 2 case(s)
 - E0803 `?` used directly in a condition: 2 case(s)
-- E0804 dropped_question *(0.3)*: 1 case(s)
+- E0804 `?` whose result is dropped: 1 case(s)
 - E0805 fresh_type_leaks_test *(0.3)*: **no case**
 - E0806 Type annotation required for inference: 3 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
@@ -726,13 +726,13 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
-- R0101 Index out of range: 12 case(s)
+- R0101 Index out of range: 13 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 6 case(s)
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 50 case(s)
+- R0401 Assertion failed: 51 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -798,8 +798,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Perm`, `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Anchor`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
-- **strings** (177/195 named by a case)
-  - uncovered: `Palindromes`, `SuffixTreeEdge`, `suffix_tree_edges`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `PalindromicTree.pal_len`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (181/195 named by a case)
+  - uncovered: `Palindromes`, `SuffixTreeEdge`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
 - **tree** (120/171 named by a case)
@@ -807,7 +807,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (19/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`
 
-2011 of 2237 std items are named by a case.
+2015 of 2237 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
