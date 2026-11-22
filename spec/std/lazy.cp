@@ -650,7 +650,9 @@ pub struct Rope<D, T>:
     /// cost: O(log n) expected
     /// traps: when `i` is outside `D`
     /// example: `var r = Rope([1, 2, 3]); r.reverse(1..3); r.get(1) == 3`
-    pub fn get(mut self, i: D) -> T = val[self.find(i.ord)]
+    pub fn get(mut self, i: D) -> T:
+        let t = self.find(i.ord)
+        val[t]
 
     /// Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.
     ///
