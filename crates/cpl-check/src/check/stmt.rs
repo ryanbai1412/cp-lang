@@ -478,13 +478,9 @@ impl<'a> Checker<'a> {
                     }
                     return;
                 }
-                let fields = match path
-                    .last()
-                    .and_then(|name| self.global(&name.text))
-                    .as_deref()
-                {
-                    Some(Def::Variant { fields, .. }) => fields.clone(),
-                    _ => Vec::new(),
+                let fields = match path.last().and_then(|n| self.global(&n.text)) {
+                    Some(def) => def.payload_at(ty),
+                    None => Vec::new(),
                 };
                 for (i, arg) in args.iter().enumerate() {
                     let ty = fields.get(i).cloned().unwrap_or(Ty::Unknown);
@@ -1407,11 +1403,7 @@ impl<'a> Checker<'a> {
                         .iter()
                         .map(|(_, ty)| self.resolve_type(ty))
                         .collect();
-                    let ty = Def::Variant {
-                        of: e.name.text.clone(),
-                        fields,
-                    }
-                    .value_ty(&variant.name.text);
+                    let ty = Def::variant_value(&e.name.text, &fields);
                     self.hovers.push(HoverEntry {
                         span: variant.name.span,
                         name: variant.name.text.clone(),

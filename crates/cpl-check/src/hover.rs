@@ -563,8 +563,8 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
                 .collect();
             format!("enum {name} = {}", names.join(" | "))
         }
-        Def::Variant { of, fields } if fields.is_empty() => format!("{of}.{name}"),
-        Def::Variant { of, fields } => {
+        Def::Variant { of, fields, .. } if fields.is_empty() => format!("{of}.{name}"),
+        Def::Variant { of, fields, .. } => {
             format!(
                 "{of}.{name}({})",
                 fields

@@ -2737,11 +2737,7 @@ impl<'a> Checker<'a> {
             Ty::TypeName(type_name) => {
                 if let Some(Def::Enum { variants, .. }) = self.type_def(type_name).as_deref() {
                     if let Some((_, fields)) = variants.iter().find(|(v, _)| *v == name.text) {
-                        let def = Def::Variant {
-                            of: type_name.clone(),
-                            fields: fields.clone(),
-                        };
-                        return def.value_ty(&name.text);
+                        return Def::variant_value(type_name, fields);
                     }
                 }
                 if type_name == "Char" && matches!(name.text.as_str(), "count" | "len" | "K") {

@@ -1151,6 +1151,7 @@ impl<'a> Checker<'a> {
                             Def::Variant {
                                 of: e.name.text.clone(),
                                 fields: fields.clone(),
+                                generics: generics.clone(),
                             },
                         )
                     })

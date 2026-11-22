@@ -63,6 +63,8 @@ pub enum Def {
     Variant {
         of: String,
         fields: Vec<Ty>,
+        /// The enum's type parameters, which `fields` may name.
+        generics: Vec<String>,
     },
     Domain(DomainInfo),
     Alias {
@@ -145,6 +147,42 @@ pub struct DomainInfo {
 }
 
 impl Def {
+    /// The type of a variant of enum `of` used as a value.
+    pub fn variant_value(of: &str, fields: &[Ty]) -> Ty {
+        let (of, fields, generics) = (of.to_string(), fields.to_vec(), Vec::new());
+        Def::Variant {
+            of,
+            fields,
+            generics,
+        }
+        .value_ty("")
+    }
+
+    /// The payload a variant pattern binds against a scrutinee of type
+    /// `ty`: `One(k)` against a `Boxed<Int>` binds `k: Int`; against a
+    /// `Boxed` of unknown arguments, `k` is left open rather than the bare
+    /// parameter (R02.7.1). Not a variant: no payload.
+    pub fn payload_at(&self, ty: &Ty) -> Vec<Ty> {
+        let Def::Variant {
+            of,
+            fields,
+            generics,
+        } = self
+        else {
+            return Vec::new();
+        };
+        let args = match ty {
+            Ty::Named { name, args } if name == of => args.as_slice(),
+            _ => &[],
+        };
+        let bindings = generics
+            .iter()
+            .enumerate()
+            .map(|(i, g)| (g.clone(), args.get(i).cloned().unwrap_or(Ty::Unknown)))
+            .collect();
+        fields.iter().map(|f| f.subst(&bindings)).collect()
+    }
+
     /// The type of the name used as a value.
     pub fn value_ty(&self, name: &str) -> Ty {
         match self {
@@ -153,11 +191,11 @@ impl Def {
                 Ty::TypeName(name.to_string())
             }
             Def::Impl { .. } => Ty::Error,
-            Def::Variant { of, fields } if fields.is_empty() => Ty::Named {
+            Def::Variant { of, fields, .. } if fields.is_empty() => Ty::Named {
                 name: of.clone(),
                 args: Vec::new(),
             },
-            Def::Variant { of, fields } => Ty::Fn {
+            Def::Variant { of, fields, .. } => Ty::Fn {
                 params: fields
                     .iter()
                     .map(|ty| crate::ty::Param {
