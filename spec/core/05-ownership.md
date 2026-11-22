@@ -90,13 +90,15 @@ let n2 = walk2().count()
 **R1. Plain values copy.** A value is plain when no part of it lives on the
 heap: `Int`, `Bool`, `Char`, `F64`, `Mod<P>`, positions, cuts, ranges,
 optionals, tuples, records and enums of plain values, fn values that
-capture only plain values. Using a plain value never affects the original.
+capture only plain values. Using a plain value never affects the original. (R05.2.1)
 
 **R2. Heap values move.** `List`, `Map`, `Set`, `Str`, `[D]T`, `Graph`,
 `SegTree` and any struct, tuple or enum holding one move when bound,
 passed to a constructor, put in a container or returned. Using a variable
-after it moved is a compile error; `x.clone()` is the explicit O(n) copy.
-A move is O(1) (a few words), never a deep copy.
+after it moved on any path to that use is a compile error, including a
+move in one branch of an `if` or in an earlier iteration of a loop;
+`x.clone()` is the explicit O(n) copy. A move is O(1) (a few words), never
+a deep copy. (R05.2.2)
 
 ```python
 var xs = List(1, 2)
