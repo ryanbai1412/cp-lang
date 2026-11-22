@@ -11,19 +11,45 @@ use std.dsu.{Mark}
 pub struct Window<T, M>(op: M):
     q: List<T>
 
-    /// An empty window over `op`. O(1).
+    /// An empty window over `op`. The strategy comes from `op`'s laws: a `Group` keeps a running
+    /// total and subtracts on `pop`, a `Selective` op (`min`, `max`, `min(by:)`) keeps a monotone
+    /// deque, and anything else keeps two stacks.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var w = Window.new(+); w.all == None`
     pub fn new(op: M) -> Window<T, M> = todo
 
-    /// Push `x` at the back. O(1) amortized.
+    /// Push `x` at the back, as the newest element.
+    ///
+    /// cost: O(1) amortized calls of `op`
+    /// traps: never (beyond what `op` traps on)
+    /// example: `var w = Window.new(max); w.push(3); w.push(5); w.all == Some(5)`
     pub fn push(mut self, x: T) = todo
 
-    /// Pop the front. O(1) amortized.
+    /// Pop the front: remove the oldest element.
+    ///
+    /// cost: O(1) amortized calls of `op`
+    /// traps: on an empty window
+    /// example: `var w = Window.new(min); w.push(3); w.push(1); w.push(2); w.pop(); w.all == Some(1)`
+    /// example: `var w = Window.new(min); w.push(1); w.push(2); w.pop(); w.all == Some(2)`
     pub fn pop(mut self) = todo
 
-    /// Fold of the current contents, `None` when empty. O(1).
+    /// The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`,
+    /// `x3`), so a non-commutative op folds in push order; `None` when empty.
+    ///
+    /// cost: O(1)
+    /// empty: `None`
+    /// traps: never
+    /// example: `var w = Window.new(+); w.push(2); w.push(3); w.all == Some(5)`
+    /// example: `var w = Window.new(+); w.push(2); w.pop(); w.all == None`
     pub @get fn all(self) -> ?T = todo
 
-    /// Number of elements. O(1).
+    /// The number of elements in the window: pushes minus pops.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var w = Window.new(+); w.push(2); w.push(3); w.pop(); w.len == 1`
     pub @get fn len(self) -> Int = todo
 
 /// State a window can add to at the back and remove from at the front. `Window(op)`,
@@ -34,15 +60,37 @@ pub trait Track<T>:
 
 /// A `Track` over any structure: `add(mut state, x)` applies an element at the back and
 /// `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`. The same shape
-/// as `undoing`, for structures that can remove directly. O(1).
+/// as `undoing`, for structures that can remove directly.
+///
+/// `push(x)` calls `add(state, x)` and `pop(x)` calls `remove(state, x)`; the `Tracked` keeps no
+/// queue, so the caller passes the leaving element to `pop`.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.push(4); t.pop(3); t.state == 4`
 pub fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T> = todo
 
 /// A `Track` built from a structure and two closures.
 pub struct Tracked<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()):
+    /// Apply `x` at the back: one call of `add(state, x)`.
+    ///
+    /// cost: one call of `add`
+    /// traps: never (beyond what `add` traps on)
+    /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.state == 3`
     pub fn push(mut self, x: T) = todo
+    /// Take the front element `x` back out: one call of `remove(state, x)`. `x` is passed through
+    /// as given; nothing checks that it is the oldest element.
+    ///
+    /// cost: one call of `remove`
+    /// traps: never (beyond what `remove` traps on)
+    /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.push(4); t.pop(3); t.state == 4`
     pub fn pop(mut self, x: T) = todo
 
-    /// The structure with exactly the window's elements applied. O(1).
+    /// The structure with exactly the window's elements applied.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `track(7, (mut s, x) => s += x, (mut s, x) => s -= x).state == 7`
     pub @get fn state(self) -> S = todo
 
 /// A structure that can return to an earlier state, newest change first: `Dsu`, `ParityDsu`,
@@ -57,16 +105,35 @@ pub trait Undo:
 /// always holds exactly the window's elements. Each element is applied O(log n) times
 /// amortized, so a pass of n pushes and pops costs O(n log n) applications.
 pub struct Undoing<S, T>(state: S, add: (mut S, T) -> ()):
-    /// Push `x` at the back. O(1) applications amortized.
+    /// Push `x` at the back: one `add` on top of the current state.
+    ///
+    /// cost: O(1) applications of `add` amortized
+    /// traps: never (beyond what `add` traps on)
+    /// example: `domain V = 0..3; var u = undoing(Dsu<V>.new(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.state.same(V(0), V(1))`
     pub fn push(mut self, x: T) = todo
 
-    /// Drop the front element, which must be `x`. O(log n) applications amortized.
+    /// Drop the front element, which must be `x`. The element removed is the stored oldest one;
+    /// `x` names it for the `Track` protocol and is not compared. Undoes back past the oldest
+    /// change and re-applies the rest (the queue-undo trick).
+    ///
+    /// cost: O(log n) applications of `add` amortized
+    /// traps: on an empty `Undoing`
+    /// example: `domain V = 0..3; var u = undoing(Dsu<V>.new(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.push((V(1), V(2))); u.pop((V(0), V(1))); u.state.same(V(1), V(2)) and not u.state.same(V(0), V(1))`
     pub fn pop(mut self, x: T) = todo
 
-    /// The structure with exactly the window's elements applied. O(1).
+    /// The structure with exactly the window's elements applied.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `domain V = 0..3; let u = undoing(Dsu<V>.new(rollback: true), (mut d, e) => d.unite(e.0, e.1)); not u.state.same(V(0), V(1))`
     pub @get fn state(self) -> S = todo
 
-/// O(1). `Undoing` over `state`; see there.
+/// `Undoing` over `state`, holding no elements; see there. `state` is taken as the base: the
+/// window never undoes past it.
+///
+/// cost: O(1)
+/// traps: never
+/// example: `domain V = 0..3; var u = undoing(Dsu<V>.new(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(2))); u.state.same(V(2), V(0))`
 pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = todo
 
 /// A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
@@ -75,11 +142,33 @@ pub struct Sweep<D, S>(state: S):
     lo: Int
     hi: Int
 
-    /// A sweep over `state`, starting empty (or at `start`). O(1).
+    /// A sweep over `state`, starting empty (or at `start`). Empty means the range is empty at the
+    /// first cut of `D`; with `start`, each position of `start` is pushed in increasing order.
+    ///
+    /// cost: O(1), plus `start.len` pushes when `start` is given
+    /// empty: an empty `start` is the same as none, but sits at `start`'s cut
+    /// traps: never (beyond what `state.push` traps on)
+    /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>.new(Counter<D, Int>.new(0)); s.range.len == 0`
+    /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>.new(Counter<D, Int>.new(0), start: Some(1..3)); s.range == 1..3`
     pub fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S> = todo
 
-    /// Slide to `to`. O(|dl| + |dr|).
+    /// Slide to `to`, feeding `state` the positions that enter and leave. Moving expands before
+    /// shrinking, in this order: grow the right end (push each new position, increasing), grow the
+    /// left end (push, decreasing), shrink the right end (pop, decreasing), shrink the left end
+    /// (pop, increasing). The state never sees a negative-length interval, but growing on the left
+    /// and shrinking on the right touch the "wrong" end of the `Track`, so as with Mo the state's
+    /// answer must ignore order.
+    ///
+    /// cost: O(|dl| + |dr|) pushes and pops, where `dl` and `dr` are the moves of the two ends
+    /// empty: moving to an empty `to` pops everything
+    /// traps: never (beyond what the state traps on)
+    /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>.new(Counter<D, Int>.new(0)); s.move(1..4); s.move(2..5); s.range == 2..5`
     pub fn move(mut self, to: Range<D>) = todo
 
-    /// The current interval. O(1).
+    /// The current interval: the positions whose pushes the state holds.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// order: increasing positions of `D`
+    /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>.new(Counter<D, Int>.new(0)); s.move(0..2); s.range.len == 2`
     pub @get fn range(self) -> Range<D> = todo
