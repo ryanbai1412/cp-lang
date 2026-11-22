@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landing conflicts (phase 2, item 1): `merge=union` on `plan/QUESTIONS.md` and every `worklog.md` (decisions.md 217). `land.sh` now stops with the pre-push hook's own error instead of looping on "heartbeat failed", and the lock holder appends one JSON line per landed lane (queue wait, gate time, train size, splits) to `refs/notes/land`. CI on main runs one concurrency group per commit, so a newer push no longer cancels a landed tip's run. Evidence: `python3 -m unittest scripts.test_check_cache -k land -k append` (10 tests OK).
 - CI red, first cause: emitted C++ used `std::exchange` without `<utility>` (6 of 1116 tests on GitHub runners, run 45067797421). Trivial unblock in `crates/cpl-codegen/src/emit.rs` with a codegen test, noted in perf's worklog. Evidence: `cargo nextest run -p cpl-codegen` (89 passed).
 - Review packet: README, PLAN, metrics.toml, ARCHITECTURE, design/gate-tiers.md; 3 questions in plan/QUESTIONS.md. Measured: warm gate 3 s unchanged, 77 s after a one-line `cpl-fmt` edit (nextest 57 s, 1116 tests), 101 s after a fresh build; CI 0/6 green on main; 11 superseded `devin/*` branches.
 - Request for perf (filed in phase 2): emitted C++ uses `std::exchange` without `<utility>` (CI run 45067797421).

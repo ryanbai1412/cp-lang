@@ -15,6 +15,10 @@
 # lands it, and marks only the breaking rider refs/locks/solo/<ticket>.
 # Remote calls retry, so one dropped connection does not lose a turn.
 #
+# Each landing appends one JSON line per lane (queue wait, gate time, train
+# size, splits) to a git note on refs/notes/land, written by the lock holder
+# after its push; `git log --notes=land` or scripts/status.py read it.
+#
 # Usage: scripts/land.sh [remote]   (a remote name or URL; default origin)
 #        CPL_LANE names you in the lock (default: git user.name).
 #        CPL_LAND_GATE replaces the gate (tests only; pre-push still checks).
@@ -55,6 +59,9 @@ lock_hb_pid=""
 lock_t0=0
 queued=""
 back=""
+t0=$(date +%s)
+gate_s=0
+splits=0
 trap 'cleanup' EXIT
 trap 'exit 130' INT TERM HUP
 
@@ -84,12 +91,14 @@ for attempt in 1 2 3 4 5; do
     git checkout -q --detach "$tip"
     relock
     start_lock_heartbeat
+    gate_t0=$(date +%s)
     if [ ${#riders[@]} -gt 0 ]; then
         echo "land: gating a train of ${#riders[@]} rider(s): ${riders[*]}" >&2
         $gate || bisect
     else
         $gate
     fi
+    gate_s=$(( $(date +%s) - gate_t0 ))
     stop_lock_heartbeat
     refs=("$tip:refs/heads/main")
     for r in "${riders[@]}"; do
@@ -100,6 +109,7 @@ for attempt in 1 2 3 4 5; do
             git push -q "$remote" ":$queue/$r" 2>/dev/null || true
         done
         git push -q "$remote" ":refs/locks/solo/$name" 2>/dev/null || true
+        log_landing
         git checkout -q -f "$back"
         git merge -q --ff-only "$tip"
         back=""
@@ -210,11 +220,16 @@ live_tickets() {
 heartbeat() {
     local next
     next=$(git commit-tree "$empty" -p "$start" -m "land ticket: $me")
-    if git push -q --force-with-lease="$ticket:$queued" "$remote" "$next:$ticket" 2>/dev/null; then
+    local out
+    if out=$(git push -q --force-with-lease="$ticket:$queued" "$remote" "$next:$ticket" 2>&1); then
         queued=$next
+    elif grep -q '^pre-push:' <<<"$out"; then
+        printf '%s\n' "$out" >&2
+        echo "land: the pre-push hook rejects HEAD; fix it and rerun" >&2
+        exit 1
     elif ! carried; then
         queued=$(git ls-remote "$remote" "$ticket" 2>/dev/null | cut -f1) || queued=""
-        echo "land: heartbeat failed; still waiting" >&2
+        echo "land: heartbeat failed, still waiting: $(tail -n1 <<<"$out")" >&2
     fi
 }
 
@@ -293,6 +308,31 @@ sweep() {
     return 0
 }
 
+# One JSON line per lane in this push, as a note on the lane's last commit.
+# Best effort: a lost note never blocks or undoes a landing.
+log_landing() {
+    local now i r ns c lane_wait
+    now=$(date +%s)
+    git fetch -q "$remote" "+refs/notes/land:refs/notes/land" 2>/dev/null || true
+    note() {
+        git notes --ref=land append -m "$(printf '{"lane":"%s","landed":%s,"wait_s":%s,"gate_s":%s,"riders":%s,"splits":%s,"holder":"%s"}' \
+            "$1" "$now" "$2" "$gate_s" "${#riders[@]}" "$splits" "$me")" "$3" 2>/dev/null || true
+    }
+    note "$me" $(( now - t0 - gate_s )) "$own"
+    for i in "${!riders[@]}"; do
+        r=${riders[$i]}
+        ns=${r%%-*}
+        lane_wait=null
+        [ "$ns" != 0 ] && lane_wait=$(( now - ns / 1000000000 - gate_s ))
+        c=${prefix[$((i + 1))]}
+        r=${r#*-}
+        note "${r#*-}" "$lane_wait" "$c"
+    done
+    git push -q "$remote" refs/notes/land:refs/notes/land 2>/dev/null ||
+        echo "land: could not record the landing in refs/notes/land" >&2
+    return 0
+}
+
 mark() {
     local kind=$1 r
     shift
@@ -331,6 +371,7 @@ bisect() {
         relock
         start_lock_heartbeat
         echo "land: gating the holder with ${mid} rider(s)" >&2
+        splits=$((splits + 1))
         if $gate; then lo=$mid; else hi=$mid; fi
         stop_lock_heartbeat
     done

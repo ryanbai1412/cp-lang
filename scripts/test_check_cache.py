@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Unit tests for scripts/check_cache.py and .githooks/pre-push."""
 
+import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -253,6 +255,7 @@ class CheckCacheTest(unittest.TestCase):
             git("push", "-q", remote, ":refs/locks/land", cwd=seed)
             out = {lane: p.communicate(timeout=120) + (p.returncode,) for lane, p in procs.items()}
             files = git("ls-tree", "--name-only", "main", cwd=remote).split()
+            self.notes = git("log", "--notes=land", "--format=%N", "main", cwd=remote)
             return out, files, git("ls-remote", remote, "refs/locks/*")
 
     def test_land_carries_queued_lanes_in_one_gated_train(self):
@@ -263,6 +266,11 @@ class CheckCacheTest(unittest.TestCase):
         self.assertIn("carried to main in a train", out["rider"][0])
         self.assertEqual(sorted(files), ["one.md", "two.md"])
         self.assertEqual(locks, "")
+        logged = [json.loads(l) for l in self.notes.splitlines() if l.startswith("{")]
+        self.assertEqual(sorted(e["lane"] for e in logged), ["first", "rider"])
+        for e in logged:
+            self.assertEqual((e["riders"], e["splits"], e["holder"]), (1, 0, "first"))
+            self.assertGreaterEqual(e["wait_s"], 0)
 
     def test_land_drops_a_failing_train_and_lands_alone(self):
         out, files, locks = self._train("! test -e bad.md || exit 1\n", bad="rider")
@@ -388,6 +396,73 @@ class CheckCacheTest(unittest.TestCase):
             with open(order_log, encoding="utf-8") as f:
                 order = [line.strip() for line in f if line.strip()]
             self.assertEqual(order, ["docs: first", "docs: second"])
+
+    def test_land_stops_with_the_hook_error_when_pre_push_rejects_head(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
+            def git(*a, cwd=work):
+                return subprocess.run(["git", *a], cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "--bare", "-b", "main", remote, cwd=tmp)
+            git("init", "-q", "-b", "main", work, cwd=tmp)
+            git("config", "user.email", "t@example.com")
+            git("config", "user.name", "t")
+            git("commit", "-q", "--allow-empty", "-m", "docs: seed")
+            git("push", "-q", remote, "HEAD:main")
+            with open(os.path.join(work, "q.md"), "w", encoding="utf-8") as f:
+                f.write("mine\n" + "|" * 7 + " parent of abc\ntheirs\n")
+            git("add", "q.md")
+            git("commit", "-qm", "plan: q")
+            git("config", "core.hooksPath", os.path.join(root, ".githooks"))
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh"), remote], cwd=work,
+                               capture_output=True, text=True, timeout=60,
+                               env={**env, "CPL_LAND_GATE": "true", "CPL_LAND_POLL": "1"})
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("pre-push: merge conflict markers", r.stderr)
+            self.assertIn("pre-push hook rejects HEAD", r.stderr)
+            self.assertNotIn("heartbeat failed", r.stderr)
+            self.assertEqual(git("ls-remote", remote, "refs/locks/*"), "")
+
+    def test_append_only_shared_files_rebase_without_conflicts(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
+        with tempfile.TemporaryDirectory() as tmp:
+            def git(*a, cwd=tmp):
+                return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", *a],
+                                      cwd=cwd, check=True, env=env,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q", "-b", "main")
+            shutil.copy(os.path.join(root, ".gitattributes"), tmp)
+            paths = ["plan/QUESTIONS.md", "plan/domains/infra/worklog.md"]
+            for p in paths:
+                os.makedirs(os.path.join(tmp, os.path.dirname(p)), exist_ok=True)
+                with open(os.path.join(tmp, p), "w", encoding="utf-8") as f:
+                    f.write("# log\n\n## Open\n\n## Answered\n")
+            git("add", ".")
+            git("commit", "-qm", "plan: seed")
+            def append(branch, text):
+                git("checkout", "-q", "-b", branch, "main")
+                for p in paths:
+                    path = os.path.join(tmp, p)
+                    with open(path, encoding="utf-8") as f:
+                        body = f.read()
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.write(body.replace("## Answered", text + "\n\n## Answered"))
+                git("commit", "-qam", f"plan: {branch}")
+            append("a", "### a: first?")
+            append("b", "### b: second?")
+            git("checkout", "-q", "main")
+            git("merge", "-q", "--ff-only", "a")
+            git("checkout", "-q", "b")
+            git("rebase", "-q", "main")
+            for p in paths:
+                with open(os.path.join(tmp, p), encoding="utf-8") as f:
+                    body = f.read()
+                self.assertIn("### a: first?", body)
+                self.assertIn("### b: second?", body)
+                self.assertNotIn("<" * 7, body)
 
     def test_land_rejects_unformatted_rust_before_queuing(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

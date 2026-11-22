@@ -1,2 +1,7 @@
 # GitHub has no CP Lang grammar; Rust is the closest that knows // comments and ..= ranges.
 *.cp linguist-language=Rust
+
+# Append-only logs many lanes write at once: a rebase keeps both sides'
+# lines instead of conflicting (decisions.md 217).
+plan/QUESTIONS.md merge=union
+plan/domains/*/worklog.md merge=union

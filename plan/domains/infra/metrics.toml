@@ -94,7 +94,7 @@ milestone = "M3"
 
 [[metric]]
 name = "land_queue_wait_p50_s"
-command = "none: land.sh keeps no log yet (M1 adds one)"
-today = "not measurable"
+command = "git fetch -q origin +refs/notes/land:refs/notes/land && git log --notes=land --format=%N origin/main | python3 -c 'import sys,json,statistics as s; w=[json.loads(l)[\"wait_s\"] for l in sys.stdin if l.startswith(\"{\")]; print(s.median([x for x in w if x is not None]) if w else \"no landings logged\")'"
+today = "not measurable (log added 2026-11-22; no landings logged yet)"
 target = "<= 300"
 milestone = "M1"

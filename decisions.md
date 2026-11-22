@@ -5709,3 +5709,18 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   cascades or a wrong first error. The skipped ports are printed on every run.
 - **Reverse.** Drop the check in `broken_ports`, once every entry of
   `SPEC_PORTS` is clean again or the list is rebuilt from ports that are.
+
+## 217. Shared append-only logs merge with git's union driver (2026-11-22)
+
+- **Decision.** `.gitattributes` sets `merge=union` on `plan/QUESTIONS.md`
+  and `plan/domains/*/worklog.md`. Every lane appends to them, so `land.sh`
+  rebases kept stopping on conflicts where both sides only added lines; the
+  union driver keeps both sides' lines and never writes conflict markers.
+  Chosen over one file per question because it changes no file layout, no
+  reader and no habit: the question format at the top of `QUESTIONS.md`
+  stays the one place to look. The cost: two edits to the same line both
+  survive, so a reword of an existing entry that races another reword needs
+  a look. `scripts/test_check_cache.py` rebases two concurrent appends.
+- **Reverse.** Delete the two lines from `.gitattributes`; or, if duplicated
+  lines start to bite, split `QUESTIONS.md` into one file per question.
+
