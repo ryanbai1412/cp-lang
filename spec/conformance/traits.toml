@@ -29,6 +29,114 @@ methods = ["show"]
 [trait.Read]
 methods = ["read"]
 
+
+# Core traits (spec/core/12-powers.md W4) and the core types that claim them
+# (spec/core/07-sequences.md, capabilities table). Array is `[D]T`.
+[trait.Seq]
+methods = ["iter"]
+[trait.Keyed]
+methods = ["items"]
+[trait.Sized]
+methods = ["len"]
+[trait.Bidir]
+methods = ["iter_rev"]
+[trait.Indexed]
+methods = ["at", "keys"]
+[trait.IndexedMut]
+methods = ["at"]
+[trait.Contains]
+methods = ["contains"]
+[[claim]]
+type = "Array"
+trait = "Seq"
+[[claim]]
+type = "Array"
+trait = "Keyed"
+[[claim]]
+type = "Array"
+trait = "Sized"
+[[claim]]
+type = "Array"
+trait = "Bidir"
+[[claim]]
+type = "Array"
+trait = "Indexed"
+[[claim]]
+type = "Array"
+trait = "IndexedMut"
+[[claim]]
+type = "List"
+trait = "Seq"
+[[claim]]
+type = "List"
+trait = "Keyed"
+[[claim]]
+type = "List"
+trait = "Sized"
+[[claim]]
+type = "List"
+trait = "Bidir"
+[[claim]]
+type = "List"
+trait = "Indexed"
+[[claim]]
+type = "List"
+trait = "IndexedMut"
+[[claim]]
+type = "Str"
+trait = "Seq"
+[[claim]]
+type = "Str"
+trait = "Keyed"
+[[claim]]
+type = "Str"
+trait = "Sized"
+[[claim]]
+type = "Str"
+trait = "Bidir"
+[[claim]]
+type = "Str"
+trait = "Indexed"
+[[claim]]
+type = "Str"
+trait = "IndexedMut"
+[[claim]]
+type = "Range"
+trait = "Seq"
+[[claim]]
+type = "Range"
+trait = "Keyed"
+[[claim]]
+type = "Range"
+trait = "Sized"
+[[claim]]
+type = "Range"
+trait = "Bidir"
+[[claim]]
+type = "Range"
+trait = "Indexed"
+[[claim]]
+type = "Range"
+trait = "Contains"
+[[claim]]
+type = "Map"
+trait = "Seq"
+[[claim]]
+type = "Map"
+trait = "Keyed"
+[[claim]]
+type = "Map"
+trait = "Sized"
+[[claim]]
+type = "Map"
+trait = "Contains"
+[[claim]]
+type = "Domain"
+trait = "Seq"
+[[claim]]
+type = "Bitset"
+trait = "Contains"
+
 [case."Add/Pt/add"]
 code = """
 use std.geometry.{Pt}
@@ -672,3 +780,227 @@ let v = a / 2.0
 print(yes(v.x == 0.5 and v.y == 1.0 and v.z == 1.5))
 """
 out = "YES"
+
+[case."Seq/Array/iter"]
+code = """
+domain V = 0..3
+var a = [V] v => Int(v) * 10
+for x in a: print(x)
+"""
+out = "0\\n10\\n20"
+
+[case."Keyed/Array/items"]
+code = """
+domain V = 0..3
+var a = [V] v => Int(v) * 10
+for (k, x) in a.items: print(Int(k), x)
+"""
+out = "0 0\\n1 10\\n2 20"
+
+[case."Sized/Array/len"]
+code = """
+domain V = 0..3
+var a = [V] v => Int(v) * 10
+print(a.len)
+"""
+out = "3"
+
+[case."Bidir/Array/iter_rev"]
+code = """
+domain V = 0..3
+var a = [V] v => Int(v) * 10
+for x in a.rev: print(x)
+"""
+out = "20\\n10\\n0"
+
+[case."Indexed/Array/at"]
+code = """
+domain V = 0..3
+var a = [V] v => Int(v) * 10
+print(a[V(1)])
+"""
+out = "10"
+
+[case."Indexed/Array/keys"]
+code = """
+domain V = 0..3
+var a = [V] v => Int(v) * 10
+print(a.keys.len, Int(a.keys.nth(2)))
+"""
+out = "3 2"
+
+[case."IndexedMut/Array/at"]
+code = """
+domain V = 0..3
+var a = [V] v => Int(v) * 10
+a[V(1)] = 7
+print(a[V(1)])
+"""
+out = "7"
+
+[case."Seq/List/iter"]
+code = """
+var xs = [3, 1, 2]
+for x in xs: print(x)
+"""
+out = "3\\n1\\n2"
+
+[case."Keyed/List/items"]
+code = """
+var xs = [3, 1, 2]
+for (k, x) in xs.items: print(k, x)
+"""
+out = "0 3\\n1 1\\n2 2"
+
+[case."Sized/List/len"]
+code = """
+var xs = [3, 1, 2]
+print(xs.len)
+"""
+out = "3"
+
+[case."Bidir/List/iter_rev"]
+code = """
+var xs = [3, 1, 2]
+for x in xs.rev: print(x)
+"""
+out = "2\\n1\\n3"
+
+[case."Indexed/List/at"]
+code = """
+var xs = [3, 1, 2]
+print(xs[1])
+"""
+out = "1"
+
+[case."Indexed/List/keys"]
+code = """
+var xs = [3, 1, 2]
+print(xs.keys.len, xs.keys.nth(2))
+"""
+out = "3 2"
+
+[case."IndexedMut/List/at"]
+code = """
+var xs = [3, 1, 2]
+xs[0] = 9
+print(xs[0], xs.len)
+"""
+out = "9 3"
+
+[case."Seq/Str/iter"]
+code = """
+var s = "abc"
+for ch in s: print(ch)
+"""
+out = "a\\nb\\nc"
+
+[case."Keyed/Str/items"]
+code = """
+var s = "abc"
+for (k, ch) in s.items: print(k, ch)
+"""
+out = "0 a\\n1 b\\n2 c"
+
+[case."Sized/Str/len"]
+code = """
+var s = "abc"
+print(s.len)
+"""
+out = "3"
+
+[case."Bidir/Str/iter_rev"]
+code = """
+var s = "abc"
+for ch in s.rev: print(ch)
+"""
+out = "c\\nb\\na"
+
+[case."Indexed/Str/at"]
+code = """
+var s = "abc"
+print(s[1])
+"""
+out = "b"
+
+[case."Indexed/Str/keys"]
+code = """
+var s = "abc"
+print(s.keys.len, s.keys.nth(2))
+"""
+out = "3 2"
+
+[case."IndexedMut/Str/at"]
+code = """
+var s = "abc"
+s[0] = 'x'
+print(s)
+"""
+out = "xbc"
+
+[case."Seq/Range/iter"]
+code = """
+let r = 2..5
+for x in r: print(x)
+"""
+out = "2\\n3\\n4"
+
+[case."Sized/Range/len"]
+code = """
+let r = 2..5
+print(r.len)
+"""
+out = "3"
+
+[case."Bidir/Range/iter_rev"]
+code = """
+let r = 2..5
+for x in r.rev: print(x)
+"""
+out = "4\\n3\\n2"
+
+[case."Contains/Range/contains"]
+code = """
+let r = 2..5
+print(yes(3 in r), yes(5 in r), yes(1 in r))
+"""
+out = "YES NO NO"
+
+[case."Keyed/Map/items"]
+code = """
+let m = [1: 10, 2: 20]
+var t = 0
+for (k, v) in m.items: t += k * v
+print(t)
+"""
+out = "50"
+
+[case."Sized/Map/len"]
+code = """
+let m = [1: 10, 2: 20]
+print(m.len)
+"""
+out = "2"
+
+[case."Contains/Map/contains"]
+code = """
+let m = [1: 10, 2: 20]
+print(yes(2 in m), yes(20 in m))
+"""
+out = "YES NO"
+
+[case."Seq/Domain/iter"]
+code = """
+domain V = 1..=3
+for v in V: print(Int(v))
+"""
+out = "1\\n2\\n3"
+
+[case."Contains/Bitset/contains"]
+code = """
+use std.bitset.{Bitset}
+domain D = 0..10
+let b = Bitset<D>.of([D(1), D(3)])
+print(yes(D(3) in b), yes(D(2) in b))
+"""
+out = "YES NO"

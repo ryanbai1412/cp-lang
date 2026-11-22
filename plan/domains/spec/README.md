@@ -52,7 +52,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Spec code blocks passing | `cpl-conform spec-blocks` | 21/185 | all or spec-only | M2 |
 | Untagged code blocks (skipped) | `awk` in metrics.toml | 27 | 0 | M2 |
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
-| Trait methods without a case | `conformance-traits.py --check` | 0 of 76 (std claims; core claimers next) | 0 | M2 |
+| Trait methods without a case | `conformance-traits.py --check` | 4 of 110 (std and core claimers) | 0 | M2 |
 | Rebuild holes (cold agent) | probe P1 | 32 (round 2) | < 5 | M3 |
 | Reverted compiler fixes caught | probe P2 | not measured | >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |

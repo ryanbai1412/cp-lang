@@ -73,7 +73,7 @@ target = "0"
 [[metric]]
 name = "trait methods without a case"
 command = "uv run scripts/conformance-traits.py --check"
-today = "0 gaps of 76 (std claims only; core claimers not listed yet)"
+today = "4 gaps of 110 (std and core claimers)"
 target = "0, over std and core claimers"
 
 [[metric]]
