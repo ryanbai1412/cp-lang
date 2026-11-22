@@ -2771,7 +2771,7 @@ impl<'a> Lowerer<'a> {
             "Bool" => Ty::Bool,
             "Char" => Ty::Char,
             "Str" => Ty::Str,
-            "List" | "Iter" => Ty::list(arg(self, 0)),
+            "List" | "Iter" | "Seq" => Ty::list(arg(self, 0)),
             "Opt" => Ty::opt(arg(self, 0)),
             "Set" => Ty::Set(Box::new(arg(self, 0))),
             "HashSet" => Ty::HashSet(Box::new(arg(self, 0))),
