@@ -141,6 +141,9 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.filled(callee, args) {
             return ty;
         }
+        if let Some(ty) = self.grid_shape_call(callee, args) {
+            return ty;
+        }
         if let Some(ty) = self.sorted_range_call(call, callee, args) {
             return ty;
         }
@@ -732,6 +735,32 @@ impl<'a> Checker<'a> {
     /// What the checker knows about a prelude fn it otherwise takes on
     /// trust: `span(a, b)` covers two ends of one domain, and the `max` or
     /// `min` of a slice is optional, since `a[l..l]` is empty.
+    /// `Prefix(a)` on `a: [R, C]T` builds the family's 2-D shape.
+    fn grid_shape_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        let shape = prefix_shape_struct(name, 3)?;
+        if self.local(name).is_some()
+            || self.global(shape).is_none()
+            || args.len() != 1
+            || args[0].name.is_some()
+        {
+            return None;
+        }
+        let Ty::Array { index, elem } = self.quietly(|c| c.infer(&args[0].value)) else {
+            return None;
+        };
+        if index.len() != 2 || !index.iter().all(|d| matches!(d, Ty::Pos(_))) {
+            return None;
+        }
+        self.infer(&args[0].value);
+        Some(Ty::Named {
+            name: shape.to_string(),
+            args: vec![index[0].clone(), index[1].clone(), *elem],
+        })
+    }
+
     fn prelude_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;

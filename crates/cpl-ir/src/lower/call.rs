@@ -259,6 +259,17 @@ impl<'a> Lowerer<'a> {
                         self.call_gen_fn(gfid, Vec::new(), None, args, span)
                     }
                     Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
+                    Some(Sym::GenStruct(_))
+                        if prefix_shape_struct(name, 3).is_some()
+                            && args.len() == 1
+                            && args[0].name.is_none()
+                            && matches!(
+                                self.probe_ty_silent(&args[0].value),
+                                Some(Ty::Array { ref dims, .. }) if dims.len() == 2
+                            ) =>
+                    {
+                        self.grid_shape_ctor(prefix_shape_struct(name, 3).unwrap(), args, span)
+                    }
                     Some(Sym::GenStruct(gid)) => {
                         self.call_gen_struct(gid, Vec::new(), args, hint, span)
                     }
@@ -12341,6 +12352,37 @@ impl<'a> Lowerer<'a> {
     /// `prefix(a)` dispatches on the shape of `a`: `List<T>` / `[0..n]T`,
     /// `[D]T`, or `[R, C]T`, constructing the matching `Prefix` shape from
     /// `std.prefix`.
+    /// `Prefix(a)` on `a: [R, C]T`: the family's 2-D shape `new(a)`.
+    fn grid_shape_ctor(&mut self, shape: &str, args: &[ast::Arg], span: Span) -> Expr {
+        let src = self.expr(&args[0].value, None);
+        let Ty::Array { dims, elem } = &src.ty else {
+            return self.err_expr(span);
+        };
+        let (Dim::Pos(r), Dim::Pos(c)) = (&dims[0], &dims[1]) else {
+            self.error(
+                codes::TYPE_MISMATCH,
+                span,
+                format!("`{shape}` takes an array over two domains"),
+            );
+            return self.err_expr(span);
+        };
+        let gargs = vec![
+            GenArg::Domain(*r),
+            GenArg::Domain(*c),
+            GenArg::Ty((**elem).clone()),
+        ];
+        let Some(Sym::GenStruct(gid)) = self.get_sym(shape) else {
+            return self.err_expr(span);
+        };
+        let sid = self.instantiate_struct(gid, gargs);
+        let Some(&fn_id) = self.structs[sid].methods.get("new") else {
+            self.unsupported(span, "this 2-D shape has no `new` constructor");
+            return self.err_expr(span);
+        };
+        let ret = self.ret_of(fn_id, span);
+        self.mk(ExprKind::Call(fn_id, vec![Arg::Value(src)]), ret, span)
+    }
+
     fn lower_prefix(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         let Some(exprs) = self.positional_any("prefix", args, 1, span) else {
             return self.err_expr(span);
