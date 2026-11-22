@@ -124,11 +124,13 @@ impl<'p> Emitter<'p> {
             ExprKind::Read(_)
             | ExprKind::Parse(..)
             | ExprKind::Print(..)
-            | ExprKind::DomainLen(_)
-            | ExprKind::DomainLo(_)
-            | ExprKind::Cast(Cast::Label(_) | Cast::FromLabel(_) | Cast::FromOrd(_), _)
             | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => {
                 touch.io = true
+            }
+            ExprKind::DomainLen(d)
+            | ExprKind::DomainLo(d)
+            | ExprKind::Cast(Cast::Label(d) | Cast::FromLabel(d) | Cast::FromOrd(d), _) => {
+                touch.reads_domain.insert(*d);
             }
             ExprKind::CallExpr(_, args) => {
                 touch.io = true;
@@ -163,7 +165,11 @@ impl<'p> Emitter<'p> {
                 Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
                     touch.writes.insert((false, *slot));
                 }
-                Stmt::DefDomain { .. } | Stmt::Assert { .. } | Stmt::Trap(..) => touch.io = true,
+                Stmt::DefDomain { id, .. } => {
+                    touch.writes_domain.insert(*id);
+                    touch.io = true;
+                }
+                Stmt::Assert { .. } | Stmt::Trap(..) => touch.io = true,
                 _ => {}
             }),
             _ => {}
