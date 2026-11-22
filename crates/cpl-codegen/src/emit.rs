@@ -1395,7 +1395,8 @@ impl<'p> Emitter<'p> {
                 self.need("interval_assign");
                 let cb = if self.devirt.param_elidable(id, 3) {
                     if let Some(cid) = self.devirt.param_target(id, 3) {
-                        format!("cpl_fn{cid}")
+                        self.direct.insert(cid);
+                        crate::devirt::name(cid)
                     } else {
                         "[](const auto&, const auto&) {}".to_string()
                     }
