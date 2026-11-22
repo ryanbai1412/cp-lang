@@ -212,19 +212,14 @@ impl Def {
     /// (`let a: [V1..=n = read()`), which nothing downstream can trust.
     pub fn recovered(self, annotation_broken: bool) -> Def {
         match self {
-<<<<<<< HEAD
-            Def::Fn { generics, bounds, lends, row_bounds, .. } => Def::Fn {
-||||||| parent of e5e4bba (syntax: support field traits and if T: Trait conditional bounds)
-            Def::Fn { generics, bounds, row_bounds, .. } => Def::Fn {
-=======
             Def::Fn {
                 generics,
                 bounds,
+                lends,
                 row_bounds,
                 trait_bounds,
                 ..
             } => Def::Fn {
->>>>>>> e5e4bba (syntax: support field traits and if T: Trait conditional bounds)
                 ty: Ty::Error,
                 generics,
                 bounds,
