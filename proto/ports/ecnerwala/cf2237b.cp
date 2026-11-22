@@ -20,6 +20,8 @@ for i in 0..n:
     let j = (i..n).first(j => if let s = slots[j]: s <= i else: false) else:
         print(-1)
         return
+    // Hand shift instead of `slots.insert(i, slots.remove(j))` (dream:23):
+    // `List.insert`/`List.remove` fall back to the slower interpreter path (see friction).
     let x = slots[j]
     for k in (i + 1..=j).rev: slots[k] = slots[k - 1]
     slots[i] = x
