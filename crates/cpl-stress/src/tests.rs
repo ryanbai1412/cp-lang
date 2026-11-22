@@ -402,6 +402,16 @@ fn an_interactor_talks_to_the_solution_and_rules() {
 }
 
 #[test]
+fn an_accepted_interactive_solution_finishing_slowly_is_not_killed_as_re() {
+    let interactor = Judge::Interactor(sh("read ans; [ \"$ans\" = 42 ]"));
+    let slow_exit = sh("echo 42; sleep 0.08; exit 0");
+    let judged = interactor
+        .run(&slow_exit, "", None, Duration::from_secs(5))
+        .unwrap();
+    assert_eq!(judged.verdict, Verdict::Accepted);
+}
+
+#[test]
 fn declared_judges_are_found_with_their_lines() {
     let src = "@checker(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n\n@interactor(Guess)\nfn judge():\n    0\nfn plain() = 1\n";
     let found = declared(src);

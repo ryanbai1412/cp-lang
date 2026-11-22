@@ -42,7 +42,7 @@ fn stress(scratch: &Path, name: &str, flag: &str, judge: &Path, fast: Option<&Pa
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl"));
     cmd.arg("stress").arg(&copy).arg(flag).arg(judge);
     cmd.arg("--gen").arg(dir.join("gen.py"));
-    cmd.args(["--cases", "20", "--format", "json"]);
+    cmd.args(["--cases", "20", "--jobs", "1", "--format", "json"]);
     if NEEDS_ANSWER.contains(&name) {
         cmd.arg("--brute").arg(dir.join("orig.cpp"));
     }

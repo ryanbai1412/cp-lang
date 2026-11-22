@@ -267,18 +267,25 @@ fn interact(
         .stderr(Stdio::piped())
         .spawn()?;
     let mut timed_out = false;
+    let mut reject_deadline: Option<Instant> = None;
     let (solution_status, judge_status) = loop {
         let (a, b) = (contestant.try_wait()?, judge.try_wait()?);
         if let (Some(a), Some(b)) = (a, b) {
             break (a, b);
         }
-        // Once the interactor has ruled, a solution still waiting for an
-        // answer will never get one.
-        let grace = b.is_some() && a.is_none();
-        if start.elapsed() >= limit || grace {
-            if grace {
-                std::thread::sleep(Duration::from_millis(20));
-            } else {
+        // Once the interactor has rejected, a solution still waiting for an
+        // answer will never get one; give it a brief window to finish exiting
+        // before killing it. When the interactor accepted, wait up to `limit`
+        // so scheduling delay under load does not turn an accepted run into RE.
+        if let Some(status) = b {
+            if a.is_none() && !status.success() {
+                reject_deadline.get_or_insert_with(|| Instant::now() + Duration::from_millis(200));
+            }
+        }
+        let expired = start.elapsed() >= limit;
+        let grace_over = reject_deadline.is_some_and(|d| Instant::now() >= d);
+        if expired || grace_over {
+            if expired {
                 timed_out = true;
             }
             crate::program::kill_group(contestant.id());
