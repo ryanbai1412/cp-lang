@@ -5517,3 +5517,25 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Drop the `.len` term in `io_terms` in `cpl-check`'s
   `check/call.rs`, the `print`/`ask` arm of `arith` in `cpl-lint`'s
   `rules/mod.rs` and `lens_in` in `cpl-lsp`'s `server.rs`.
+
+## 204. A code lens shows the memory a file's arrays take (2026-11-22)
+
+- **Decision.** The editor's code lenses add `Memory: bounds allow 1.6 GB,
+  over the 256 MB limit on codeforces`: the sum of the most bytes each
+  top-level value takes with every input at its declared max, against the memory limit of the judge the file's build
+  is for (`cpl_judge::resolve`). Clicking it runs `cpl judges` on the file.
+  Values whose size nothing bounds, such as lists, are named as not counted
+  rather than guessed. Arrays indexed by a bounded range (`[0..=x]Int`) now
+  get a max storage in hover too, as domain arrays did. Files under 1 KB get
+  no lens.
+- **Why.** Memory limit exceeded is decided by the arrays declared at the top,
+  and their sizes follow from the input bounds; today a contestant
+  multiplies them by hand. Locals and heap growth are not counted, and the
+  lens says which values it left out. It says "bounds allow" because
+  independent maxima overcount when the statement bounds a product: of the
+  877 ports in `corpus/problems`, 434 get a lens (106 with every value
+  counted) and 2 come out over the limit, both `[Row, Col]` grids whose
+  statements bound `n * m` (`cco19p2`, `cf2159b`), which no type states yet.
+- **Reverse.** Drop `memory_lens` in `cpl-lsp`'s `server.rs` and
+  `Database::storage` in `cpl-check`'s `hover.rs`.
+

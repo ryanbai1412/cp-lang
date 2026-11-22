@@ -546,7 +546,11 @@ impl Server {
                 let uri = uri_of(params)?;
                 let text = self.docs.get(uri).map(String::as_str).unwrap_or("");
                 let lenses = match (self.lenses, path_of_uri(uri)) {
-                    (true, Some(path)) => code_lenses(&path, text),
+                    (true, Some(path)) => {
+                        let mut lenses = code_lenses(&path, text);
+                        lenses.extend(memory_lens(&mut self.db, uri, &path, text));
+                        lenses
+                    }
                     _ => Vec::new(),
                 };
                 let items = lenses
@@ -1764,6 +1768,34 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
         lenses.push(("Stress".into(), vec!["stress".into(), path.into()]));
     }
     lenses
+}
+
+/// The most memory the input bounds let the file's top-level values take,
+/// against the memory limit of the judge its build is for. Clicking it
+/// lists the judges. None under 1 KB.
+fn memory_lens(
+    db: &mut cpl_check::Database,
+    uri: &str,
+    path: &str,
+    text: &str,
+) -> Option<(String, Vec<String>)> {
+    let (bytes, unbounded) = db.storage(uri)?;
+    if bytes < 1024 {
+        return None;
+    }
+    let judge = cpl_judge::resolve(std::path::Path::new(path), text, None).ok()?;
+    let limit = u128::from(judge.memory_mb) << 20;
+    let (shown, mb, name) = (cpl_check::human_bytes(bytes), judge.memory_mb, judge.name);
+    let mut title = match bytes > limit {
+        true => format!("Memory: bounds allow {shown}, over the {mb} MB limit on {name}"),
+        false => format!("Memory: bounds allow {shown} of {mb} MB on {name}"),
+    };
+    match unbounded.as_slice() {
+        [] => {}
+        [one] => title += &format!(", not counting {one}"),
+        [one, rest @ ..] => title += &format!(", not counting {one} and {} more", rest.len()),
+    }
+    Some((title, vec!["judges".into(), path.into()]))
 }
 
 fn uri_of_path(path: &str) -> String {

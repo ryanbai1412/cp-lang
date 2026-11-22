@@ -11,6 +11,7 @@ cpl-check.workspace = true
 cpl-diag.workspace = true
 cpl-fmt.workspace = true
 cpl-json.workspace = true
+cpl-judge.workspace = true
 cpl-lint.workspace = true
 cpl-ir.workspace = true
 cpl-syntax.workspace = true

@@ -47,6 +47,29 @@ pub struct Symbol {
 
 impl Database {
     /// What to show when the cursor is at `offset`.
+    /// The most bytes the file's top-level values take at max input, and
+    /// the names of those whose size has no bound, such as lists.
+    pub fn storage(&mut self, path: &str) -> Option<(u128, Vec<String>)> {
+        let analysis = self.analyze(path)?;
+        let mut names: Vec<String> = analysis.scope.names.keys().cloned().collect();
+        names.sort();
+        let (mut total, mut unbounded) = (0u128, Vec::new());
+        for name in names {
+            let Some(def) = self.lookup(path, &analysis, &name) else {
+                continue;
+            };
+            let Def::Value { ty, .. } = &*def else {
+                continue;
+            };
+            let mut lookup = |n: &str| self.lookup(path, &analysis, n);
+            match value_bytes(ty, &mut lookup) {
+                Some(bytes) => total += bytes,
+                None => unbounded.push(name),
+            }
+        }
+        Some((total, unbounded))
+    }
+
     pub fn hover(&mut self, path: &str, offset: u32) -> Option<Hover> {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
@@ -552,6 +575,20 @@ fn render_value(name: &str, ty: &Ty, lookup: &mut Lookup) -> String {
     format!("{name}: {shown}{}", cost_lines(ty, lookup))
 }
 
+/// The most bytes a value of `ty` takes, an array's at its indexes' most
+/// values.
+fn value_bytes(ty: &Ty, lookup: &mut Lookup) -> Option<u128> {
+    match ty {
+        Ty::Array { index, elem } => {
+            let per = u128::from(size(elem, lookup)?);
+            index.iter().try_fold(per, |acc, i| {
+                acc.checked_mul(u128::try_from(index_size(i, lookup)?).ok()?)
+            })
+        }
+        _ => size(ty, lookup).map(u128::from),
+    }
+}
+
 fn size(ty: &Ty, lookup: &mut Lookup) -> Option<u64> {
     size_at_depth(ty, lookup, 0)
 }
@@ -618,6 +655,20 @@ fn structs_in(ty: &Ty, out: &mut Vec<String>) {
     }
 }
 
+/// How many values an array's index type has at most: a domain's
+/// positions or a range's numbers.
+fn index_size(index: &Ty, lookup: &mut Lookup) -> Option<i128> {
+    match index {
+        Ty::Pos(name) => domain_size(name, lookup),
+        Ty::Range {
+            lo: Some(lo),
+            hi: Some(hi),
+            ..
+        } => Some((hi - lo + 1).max(0)),
+        _ => None,
+    }
+}
+
 fn domain_size(name: &str, lookup: &mut Lookup) -> Option<i128> {
     match lookup(name).as_deref() {
         Some(Def::Domain(info)) => info.max_size,
@@ -664,10 +715,9 @@ fn cost_lines(ty: &Ty, lookup: &mut Lookup) -> String {
         Ty::Array { index, elem } => {
             if let Some(per) = size(elem, lookup) {
                 out += &format!("\n  storage: {} per element", human_bytes(per.into()));
-                let count = index.iter().try_fold(1i128, |acc, i| match i {
-                    Ty::Pos(name) => domain_size(name, lookup).and_then(|n| acc.checked_mul(n)),
-                    _ => None,
-                });
+                let count = index
+                    .iter()
+                    .try_fold(1i128, |acc, i| acc.checked_mul(index_size(i, lookup)?));
                 if let Some(count) = count {
                     out += &format!(", {} max", human_bytes(count as u128 * u128::from(per)));
                 }

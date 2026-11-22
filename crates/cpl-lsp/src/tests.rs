@@ -857,7 +857,9 @@ fn v22_optionals_hover_as_optionals_and_check_clean() {
     let hover = hover_at(&mut server, 2, 4);
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element (none is a spare value: no flag)\n```")
+        Some(
+            "```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element, 8 MB max (none is a spare value: no flag)\n```"
+        )
     );
 }
 
@@ -2625,4 +2627,69 @@ fn hover_shows_the_range_the_bounds_prove_after_an_edit() {
     assert!(range(&mut server).contains("t: Int in 2..=200"));
     server.handle(&did_change((1, 12), (1, 13), "3"));
     assert!(range(&mut server).contains("t: Int in 3..=300"), "{}", range(&mut server));
+}
+
+#[test]
+fn a_code_lens_shows_the_memory_the_arrays_take_against_the_judge_limit() {
+    let dir = std::env::temp_dir().join(format!("cpl-memory-lens-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("sum two.tests")).unwrap();
+    std::fs::write(dir.join("sum two.tests/2.in"), "1 2\n").unwrap();
+    std::fs::write(dir.join("sum two.tests/10.in"), "3 4\n").unwrap();
+    let file = dir.join("sum two.cp");
+    let path = file.display().to_string();
+    let uri = format!("file://{}", path.replace(' ', "%20"));
+    let src = "// judge: codeforces\nlet n: 1..=200000 = read()\ndomain V = 1..=n\n\
+        var dist: [V]Int = 0\nvar grid: [V, 0..1000]Int = 0\nvar seen: List<V> = []\n\
+        var order: List<V> = []\nprint(dist)\n";
+    let lenses = |options: Value| -> Vec<(String, Vec<String>)> {
+        let mut server = Server::new();
+        server.handle(&request(
+            1,
+            "initialize",
+            obj([("initializationOptions", options)]),
+        ));
+        server.handle(&notification("initialized", obj([])));
+        server.handle(&notification(
+            "textDocument/didOpen",
+            obj([(
+                "textDocument",
+                obj([
+                    ("uri", uri.as_str().into()),
+                    ("languageId", "cp".into()),
+                    ("version", 1.into()),
+                    ("text", src.into()),
+                ]),
+            )]),
+        ));
+        let reply = server.handle(&request(
+            2,
+            "textDocument/codeLens",
+            obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
+        ));
+        reply[0]
+            .at(&["result"])
+            .as_array().unwrap_or(&[])
+            .iter()
+            .map(|l| {
+                assert_eq!(l.at(&["command", "command"]).as_str(), Some("cpl.exec"));
+                (
+                    l.at(&["command", "title"]).as_str().unwrap().to_string(),
+                    l.at(&["command", "arguments"])
+                        .as_array().unwrap_or(&[])
+                        .iter()
+                        .map(|a| a.as_str().unwrap().to_string())
+                        .collect(),
+                )
+            })
+            .collect()
+    };
+    let s = |v: &[&str]| v.iter().map(|a| a.to_string()).collect::<Vec<_>>();
+    let memory: Vec<_> = lenses(obj([("codeLens", true.into())]))
+        .into_iter()
+        .filter(|(title, _)| title.starts_with("Memory"))
+        .collect();
+    let title = "Memory: bounds allow 1.6 GB, over the 256 MB limit on codeforces, \
+                 not counting order and 1 more";
+    assert_eq!(memory, [(title.to_string(), s(&["judges", &path]))]);
+    std::fs::remove_dir_all(dir).unwrap();
 }
