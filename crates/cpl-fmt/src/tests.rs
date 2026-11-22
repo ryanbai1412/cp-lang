@@ -114,6 +114,7 @@ fn keeps_max_assignment_together() {
 
 #[test]
 fn handles_calls_fields_ranges_and_postfix() {
+    assert_eq!(fmt("print(t.0, o!.1)\n"), "print(t.0, o!.1)\n");
     assert_eq!(
         fmt("print( max( best ) ! , j . prev ! )\n"),
         "print(max(best)!, j.prev!)\n"

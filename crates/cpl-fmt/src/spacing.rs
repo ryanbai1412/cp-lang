@@ -295,6 +295,11 @@ fn fuses(prev: &Tok, next: &Tok) -> bool {
     if single(prev.kind) || single(next.kind) {
         return false;
     }
+    // `t.0`: alone, `.0` lexes as a malformed float, but after a value it
+    // is a field.
+    if prev.kind == K::Dot && next.kind == K::Int {
+        return false;
+    }
     let joined = format!("{}{}", prev.text, next.text);
     let lexed = cpl_syntax::lex(&joined);
     let kinds: Vec<K> = lexed
