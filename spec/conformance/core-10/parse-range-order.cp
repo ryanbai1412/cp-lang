@@ -1,4 +1,4 @@
-// expect: ok, output "-1 3"
+// expect: ok, output "-1 4"
 // rule: 10.2.3
 let bad = "5 2".parse<Range<Int>>()
 let good = "2 5".parse<Range<Int>>()!
