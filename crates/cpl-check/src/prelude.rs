@@ -604,7 +604,7 @@ mod tests {
             }
             let scanned: Vec<String> = scan_top_level_methods(text)
                 .into_iter()
-                .map(str::to_string)
+                .map(|(n, _)| n.to_string())
                 .collect();
             assert_eq!(scanned, parsed, "method scan mismatch in std.{module}");
         }
