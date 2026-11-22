@@ -1,0 +1,93 @@
+# debugger metrics. Every command was run on 2026-11-22 against main 4b8f504f
+# (release build, 2-core VM, nothing else running). Timings are wall clock.
+# The trap probe input lives next to it: probes/prefix_trap.in.
+
+[[metric]]
+name = "seeded_bugs_minimal"
+command = "cargo test --release -p cpl-cli --test seeded_bugs -- --nocapture"
+today = "21/21 found and shrunk to the minimal input"
+target = "every seeded bug, one or more per P0 class"
+
+[[metric]]
+name = "seeded_bugs_median_s"
+command = "cargo test --release -p cpl-cli --test seeded_bugs -- --nocapture"
+today = "0.72 s median, 1.29 s max (midpoint-overflow); printed, not asserted"
+target = "median < 1 s, asserted"
+
+[[metric]]
+name = "stress_budget"
+command = "python3 bench/stress/budget.py"
+today = "3/3 pass, max 0.60 s"
+target = "every problem < 10 s"
+
+[[metric]]
+name = "ten_million_budget_test"
+command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
+today = "FAIL: examples/debugging/shortest_path.cp does not compile (E0301 V.first/V.last)"
+target = "pass"
+
+[[metric]]
+name = "trace_overhead_vs_untraced"
+command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
+today = "scalar 6.65x (150 ms -> 996 ms), array 8.28x (183 ms -> 1.51 s), knapsack demo 1.18x"
+target = "<= 3x (see plan/QUESTIONS.md: debugger, the 3x bar)"
+
+[[metric]]
+name = "trace_recording_vs_observed"
+command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
+today = "1.67x scalar, 1.67x array (observed-only alone is 3.98x / 4.95x untraced)"
+target = "<= 1.5x"
+
+[[metric]]
+name = "trace_memory_10m_steps"
+command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
+today = "230 MB scalar, 361 MB array"
+target = "< 500 MB"
+
+[[metric]]
+name = "step_back_max"
+command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
+today = "20.5 us scalar, 74.7 us array"
+target = "< 50 ms"
+
+[[metric]]
+name = "trace_engine_parity"
+command = "cargo test --release -p cpl-cli --test trace_engines"
+today = "pass, 169 programs (VM trace == CPL_TRACE_ENGINE=tree trace)"
+target = "pass until the tree engine is deleted, then a recorded-golden test"
+
+[[metric]]
+name = "debugger_suites"
+command = "cargo test --release -p cpl-cli --test debugger --test dap --test replay --test trace_live --test trace_filters --test runtime_errors --test stress_bench --test stress_corpus"
+today = "pass, 47 tests in 8 binaries, 41.7 s"
+target = "pass"
+
+[[metric]]
+name = "stress_unit"
+command = "cargo test --release -p cpl-stress"
+today = "pass, 83 tests"
+target = "pass"
+
+[[metric]]
+name = "viewer_unit"
+command = "node tools/trace/trace.test.cjs && node tools/trace/state.test.cjs"
+today = "62/62 pass; not run by scripts/check.sh or CI; no browser test"
+target = "pass, plus a browser test, both in the gate"
+
+[[metric]]
+name = "debug_demos_compile"
+command = "for f in examples/debugging/*.cp; do target/release/cpl check $f; done"
+today = "2/3 (shortest_path.cp: 4 x E0301); all 3 still spell @brute, not @alt(program)"
+target = "3/3, v0.3 spellings"
+
+[[metric]]
+name = "trap_terminal_locals"
+command = "target/release/cpl run plan/domains/debugger/probes/prefix_trap.cp < plan/domains/debugger/probes/prefix_trap.in"
+today = "0 locals named (R0101 says index 3, length 3; i = 3 only in the HTML trace)"
+target = "the offending locals and the call path printed with every trap"
+
+[[metric]]
+name = "wasm_gzip_bytes"
+command = "scripts/build-wasm.sh --out /tmp/wasmout && gzip -9c /tmp/wasmout/cpl.wasm | wc -c"
+today = "1761196 gzipped (5784283 raw); trace, replay and stress are in the one module"
+target = "<= 2100000 (site cap), trace/stress lazy-loadable"
