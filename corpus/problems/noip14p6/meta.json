@@ -16,6 +16,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noip14p6/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_8/noip14p6.cp"
   ],
@@ -28,7 +31,7 @@
   "hashing"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Str.parse<Mod<P>>() under two primes; coef.eval(x)"
 }

@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/btoi15p3/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_26/btoi15p3.cp"
   ],
@@ -19,7 +22,7 @@
   "dfs-order"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "Rethought: leaves in preorder, pair i with i + ceil(L/2)."
 }

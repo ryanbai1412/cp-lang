@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/sac22cc3jp2/dream.cp"
+  ],
   "spec": [
    "corpus/problems/sac22cc3jp2/spec.cp"
   ]
@@ -14,7 +17,7 @@
   "implementation"
  ],
  "difficulty": "easy",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "inline if/elif expression."
 }

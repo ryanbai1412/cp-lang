@@ -6,6 +6,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noip99p1/dream.cp"
+  ],
   "spec": [
    "corpus/problems/noip99p1/spec.cp"
   ]
@@ -15,7 +18,7 @@
   "dilworth"
  ],
  "difficulty": "medium",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "read_all for count-less input; one lis with by:."
 }

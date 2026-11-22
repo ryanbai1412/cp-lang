@@ -300,3 +300,27 @@ Open questions raised by dreams:
       started can reach everything; the port finds it and then BFSes from it.
     - ioi05p2 guarded the slope with `max(1, ..)`; the car can't stop on a non-rising piece.
   - Parser gaps, already logged: `@tag` variants (ioi01p1, ioi05p2).
+- Blind batches eight to eleven (20 dreams: aac5p4, btoi15p3, btoi17p6, etsr23r1p4, etsr23r4p2,
+  mccc4j1, mccc4j4, nccc8s3, noi02p3, noip14p6, noip99p1, sac22cc2p5, sac22cc3jp2, sac22cc3jp4,
+  sac22cc4jp2, ucrpc21c, ucrpc21h, yac6p3, yac6p4, yac7p3). Process slip: for the first five
+  I printed the existing `spec.cp` next to the C++ before drafting, so those dreams are not
+  fully blind. The other fifteen were drafted before their ports were read. No spec changes.
+  - Spec idiom bugs, fixed: mccc4j1 sums with `sum(of:)` instead of `map(..).sum()`. mccc4j4
+    sorts by `desc(pts[t])` instead of `-pts[t]`.
+  - Rejected:
+    - `SegTree.apply_beats(r, settled, shift)` (etsr23r1p4): a general beats hook needs a "break"
+      and a "tag" condition per operation. `BeatsSegTree` stays its own structure, as the
+      ops-ranges table says, until a second beats operation shows the shape.
+    - `a.last_index_of()` (nccc8s3): a `[V]` write in a loop over `a.items` is two lines.
+    - `query(prompt, read)` and `.then` (yac6p3): a plain fn with `print` and `read` under
+      `Wire()` already flushes before each read.
+    - `f.tail_len`, `f.cycle_entry`, `tree_from(c).depths()` (yac7p3): `Functional` already has
+      `depth`, `root_of`, `on_cycle` and `cycle_len`, which say the same thing.
+    - `iterate(x, f)` and an `Exp` value type (etsr23r4p2): one problem's power-tower helper.
+  - Dream bugs: ucrpc21h rebuilt the whole 301³ table per distance (O(n·300³) allocation);
+    the port updates in place in reverse order. noi02p3 and btoi17p6 fold with `t.up`, the
+    ports recurse with a named fn; both are fine.
+  - Parser gaps, already logged: `@tag` variants (etsr23r1p4, mccc4j4, sac22cc2p5,
+    sac22cc4jp2), loop `else` (ucrpc21c), product-domain tuple `at` (ucrpc21h).
+  - Naming: several dreams and ports capitalise enum variants (`Big`, `Win`, `Reset`), which
+    chapter 01 says are `snake_case`. Pending Ryan's call before a sweep.

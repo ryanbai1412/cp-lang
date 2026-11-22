@@ -18,5 +18,5 @@ for g in read<[(m - 1) * n / 2](u: Team, v: Team, res: Outcome)>():
         pts[g.v] += 1
 let k = read<1..=m>()
 for g in groups.keys.0:
-    groups[g].sort(by: t => (-pts[t], t))
+    groups[g].sort(by: t => (desc(pts[t]), t))
 print(groups.keys.0.map(g => groups[g, k - 1]))

@@ -22,6 +22,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/etsr23r4p2/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_43/etsr23r4p2.cp",
    "proto/ports/scout_batch_43/today/etsr23r4p2.cp"
@@ -36,7 +39,7 @@
   "euler"
  ],
  "difficulty": "hard",
- "dream": "none",
+ "dream": "draft",
  "spec": "draft",
  "notes": "SegTree of [Slot]Mod<p> nodes, shift action; totient chain"
 }
