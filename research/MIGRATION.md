@@ -899,3 +899,11 @@ Migrated/deleted 102 files from `design/`, `plan/`, and `archive/` per `plan/RES
 | `plan/site/80-design-system.md` | `research/design-history/plan-v0.2/site/80-design-system.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
 | `plan/site/90-build.md` | `research/design-history/plan-v0.2/site/90-build.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
 | `plan/site/README.md` | `research/design-history/plan-v0.2/site/README.md` | Preserved verbatim in research/design-history/plan-v0.2/ |
+
+## Replaced by `crates/cpl-conform`
+
+- `scripts/conformance.py` — replaced by `crates/cpl-conform` (`conformance` suite, matching 227/575 met)
+- `scripts/corpus-tests.py` (`run` subcommand) — replaced by `crates/cpl-conform` (`corpus` suite, matching 2/54 tested pass; `make` subcommand retained for test generation)
+- `scripts/scoreboard.py` — replaced by `crates/cpl-conform` unified ratcheted scoreboard (`research/scoreboard.json`)
+- `scripts/test_scoreboard.py` — unit tests for deleted `scripts/scoreboard.py`; ratchet unit tests now in `crates/cpl-conform/tests/ratchet.rs`
+- `research/scoreboard.ports.jsonl` — legacy per-port JSONL sidecar for deleted `scripts/scoreboard.py`

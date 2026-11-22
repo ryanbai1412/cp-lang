@@ -17,20 +17,118 @@ rewrites still land. The report gives the median score, the count under 4
 and the dream-token gap: port tokens over dream tokens, median over ports
 with a dream.
 """
-import argparse, json, os, re, statistics, subprocess, sys
+import argparse, glob, json, os, re, statistics, subprocess, sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import scoreboard as sb
-
-REVIEWS_DIR = os.path.join(sb.ROOT, "research", "reviews")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PORTS_DIR = os.path.join(ROOT, "corpus", "problems")
+SETS_DIR = os.path.join(ROOT, "corpus", "sets")
+REVIEWS_DIR = os.path.join(ROOT, "research", "reviews")
 BASELINE = os.path.join(REVIEWS_DIR, "baseline.json")
 SCORE_RE = re.compile(r"(?m)^Score:\s*(?:(\d)\s*/\s*5|(pending))\b")
 DREAM_RE = re.compile(r"(?m)^Dream:\s*(\d)\s*/\s*5\b")
 
+_REVIEW_PENDING_RE = re.compile(
+    r"(?im)^(?:[-*]\s*)?(?:#+\s*)?(?:\*\*)?(?:(?:port|taste)\s+)?score(?::)?(?:\*\*)?\s*(?:[:\-=—–]\s*)?(?:\*\*)?pending\b"
+)
+_REVIEW_SCORE_RE = re.compile(
+    r"(?im)^(?:[-*]\s*)?(?:#+\s*)?(?:\*\*)?(?:(?:port|taste)\s+)?score(?::)?(?:\*\*)?\s*(?:[:\-=—–]\s*)?(?:\*\*)?([1-5](?:\.\d+)?)(?:\s*(?:/|out\s+of)\s*5)?(?:\*\*)?(?:\b|$)"
+)
+_REVIEW_SCORE_HEADING_RE = re.compile(
+    r"(?im)^#+\s*(?:(?:port|taste)\s+)?score\s*\n+\s*(?:[-*]\s*)?(?:\*\*)?(pending|[1-5](?:\.\d+)?)(?:\s*(?:/|out\s+of)\s*5)?(?:\*\*)?(?:\b|$)"
+)
+_CP_TOKEN_RE = re.compile(
+    r"""
+      //[^\n]*
+    | /\*[\s\S]*?\*/
+    | "(?:\\.|[^"\\])*"
+    | '(?:\\.|[^'\\])*'
+    | 0[xXbBoO][0-9a-fA-F_]+
+    | \d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?
+    | [A-Za-z_]\w*
+    | \.\.=|\?\?=|<<=|>>=|::|\.\.|=>|->|\?\?|==|!=|<=|>=|<<|>>|\+=|-=|\*=|/=|%=|&=|\|=|\^=
+    | [^\s]
+    """,
+    re.VERBOSE,
+)
+
+
+def _read_text(path):
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
+def tokenize_cp(src):
+    tokens = []
+    for m in _CP_TOKEN_RE.finditer(src):
+        tok = m.group(0)
+        if tok.startswith("//") or tok.startswith("/*"):
+            continue
+        tokens.append(tok)
+    return tokens
+
+
+def parse_review_score_text(text):
+    candidates = []
+    m_pend = _REVIEW_PENDING_RE.search(text)
+    if m_pend:
+        candidates.append((m_pend.start(), "pending", None))
+    m_num = _REVIEW_SCORE_RE.search(text)
+    if m_num:
+        candidates.append((m_num.start(), "score", m_num.group(1)))
+    m_hdr = _REVIEW_SCORE_HEADING_RE.search(text)
+    if m_hdr:
+        raw = m_hdr.group(1)
+        if raw.lower() == "pending":
+            candidates.append((m_hdr.start(), "pending", None))
+        else:
+            candidates.append((m_hdr.start(), "score", raw))
+    if not candidates:
+        return None, False
+    candidates.sort(key=lambda c: c[0])
+    _, kind, raw = candidates[0]
+    if kind == "pending":
+        return None, True
+    val = float(raw)
+    if val.is_integer():
+        val = int(val)
+    return val, False
+
+
+def discover_ports():
+    set_path = os.path.join(SETS_DIR, "ecnerwala.txt")
+    if not os.path.isfile(set_path):
+        return []
+    stems = [
+        line.strip()
+        for line in _read_text(set_path).splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    ports = []
+    for stem in stems:
+        pdir = os.path.join(PORTS_DIR, stem)
+        cp_path = os.path.join(pdir, "port.cp")
+        orig_path = os.path.join(pdir, "orig.cpp")
+        if not os.path.isfile(cp_path) or not os.path.isfile(orig_path):
+            continue
+        dream_path = os.path.join(pdir, "dream.cp")
+        ports.append(
+            {
+                "id": f"ecnerwala/{stem}",
+                "group": "ecnerwala",
+                "name": stem,
+                "path": os.path.relpath(cp_path, ROOT),
+                "orig_path": os.path.relpath(orig_path, ROOT),
+                "abs_path": cp_path,
+                "abs_orig": orig_path,
+                "dream": dream_path if os.path.isfile(dream_path) else None,
+            }
+        )
+    return ports
+
 
 def parse_score(text):
     """1 to 5, "pending", or None when the review has no score line."""
-    score, is_pending = sb.parse_review_score_text(text)
+    score, is_pending = parse_review_score_text(text)
     if is_pending:
         return "pending"
     return int(round(score)) if score is not None else None
@@ -56,7 +154,7 @@ def load_reviews(ports):
     for p in ports:
         path = review_path(p["name"])
         if os.path.isfile(path):
-            out[p["name"]] = (parse_score(sb._read_text(path)), os.path.relpath(path, sb.ROOT))
+            out[p["name"]] = (parse_score(_read_text(path)), os.path.relpath(path, ROOT))
     return out
 
 
@@ -64,8 +162,8 @@ def dream_gap(port):
     path = dream_path(port)
     if not os.path.isfile(path):
         return None
-    dream = len(sb.tokenize_cp(sb._read_text(path)))
-    ours = len(sb.tokenize_cp(sb._read_text(port["abs_path"])))
+    dream = len(tokenize_cp(_read_text(path)))
+    ours = len(tokenize_cp(_read_text(port["abs_path"])))
     return ours / dream if dream else None
 
 
@@ -77,7 +175,7 @@ def touched_port_names(names):
         ["git", "diff", "--cached", "--name-status", "--diff-filter=AM", "--", "corpus/problems"],
         ["git", "diff", "--name-status", "--diff-filter=AM", "--", "corpus/problems"],
     ):
-        out = subprocess.run(cmd, cwd=sb.ROOT, capture_output=True, text=True).stdout
+        out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True).stdout
         for line in out.splitlines():
             parts = line.split("\t", 1)
             if len(parts) != 2:
@@ -144,13 +242,13 @@ def main():
     ap.add_argument("--quiet", action="store_true", help="print only the summary line and errors")
     args = ap.parse_args()
 
-    ports = sb.discover_ports()
+    ports = discover_ports()
     with open(BASELINE) as f:
         baseline = json.load(f)
     reviews = {n: s for n, (s, _) in load_reviews(ports).items()}
     dreams = {p["name"] for p in ports if os.path.isfile(dream_path(p))}
     new = {p["name"] for p in ports} - set(baseline["ports"])
-    dream_scores = {p["name"]: parse_dream_score(sb._read_text(review_path(p["name"])))
+    dream_scores = {p["name"]: parse_dream_score(_read_text(review_path(p["name"])))
                     for p in ports if os.path.isfile(review_path(p["name"]))}
     dream_scores = {n: s for n, s in dream_scores.items() if s is not None}
     sent_back = sorted(n for n, s in dream_scores.items() if s < 4)

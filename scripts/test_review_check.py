@@ -81,12 +81,12 @@ class AddedPortNamesTest(unittest.TestCase):
             (Path(d) / "corpus/problems/new").mkdir(parents=True)
             (Path(d) / "corpus/problems/new/port.cp").write_text("")
             git("add", ".")
-            root, rc.sb.ROOT = rc.sb.ROOT, Path(d)
+            root, rc.ROOT = rc.ROOT, Path(d)
             try:
                 with mock.patch.dict(os.environ, env, clear=True):
                     self.assertEqual(rc.added_port_names({"old", "new"}), {"new"})
             finally:
-                rc.sb.ROOT = root
+                rc.ROOT = root
 
 
 if __name__ == "__main__":

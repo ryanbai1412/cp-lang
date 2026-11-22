@@ -189,7 +189,7 @@ fi
 # printed after them. A .cp file directly in examples/local-lib/ would not be
 # in any subdirectory, so then the whole library runs as one process.
 # Never cached: another tree may have rebuilt the shared binary since.
-cargo build -q -p cpl-cli
+cargo build -q -p cpl-cli -p cpl-conform
 lib_logs="$(mktemp -d)"
 lib_dirs=(stdlib)
 if compgen -G "examples/local-lib/*.cp" >/dev/null; then
@@ -290,8 +290,8 @@ if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     (
-        python3 -m unittest scripts/test_scoreboard.py scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py >/dev/null \
-            && python3 scripts/scoreboard.py --fast --check --quiet --cpl "$cpl"
+        python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py >/dev/null \
+            && "$target/debug/cpl-conform" all --check
     ) >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
 fi
@@ -340,7 +340,7 @@ else
     cache_save docs_site
 fi
 
-step "validation scoreboard (--fast --check against research/scoreboard.json)"
+step "cpl-conform ratchet (all --check against research/scoreboard.json)"
 if [ "$scoreboard_cached" -eq 1 ]; then
     echo "cached (tree unchanged outside its excludes)"
 elif [ -n "${scoreboard_pid:-}" ]; then
@@ -348,7 +348,7 @@ elif [ -n "${scoreboard_pid:-}" ]; then
     wait "$scoreboard_pid" || sb_status=1
     cat "$lib_logs/scoreboard.log"
     scoreboard_pid=""
-    [ "$sb_status" -eq 0 ] || fail "scoreboard regression or unit test failure; rerun: python3 scripts/scoreboard.py --fast --check"
+    [ "$sb_status" -eq 0 ] || fail "cpl-conform ratchet or script unit test failure; rerun: cargo run -p cpl-conform -- all --check"
     cache_save scoreboard_fast
 fi
 

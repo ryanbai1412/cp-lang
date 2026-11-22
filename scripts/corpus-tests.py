@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""Make and run the corpus acceptance tests.
+"""Generate the corpus acceptance tests (`tests/NN.in` and `NN.ans`).
 
 `make` writes `corpus/problems/<id>/tests/NN.in` and `NN.ans` for every
 problem with a `spec.cp`: inputs from `corpus/problems/<id>/gen.py` or
 `bench/*` SPECS, answers from the problem's accepted C++ submission.
 
-`run` runs every `spec.cp` on its tests with `cpl run` and prints one
-line per problem plus a summary; `--json` writes the per-problem result.
+Running corpus acceptance tests now lives in `crates/cpl-conform`:
+    cargo run -p cpl-conform -- corpus [filter]
 
+Usage:
     python3 scripts/corpus-tests.py make [ids...] [--cases 8]
-    python3 scripts/corpus-tests.py run [ids...] [--json out.json]
 """
-import argparse, ast, glob, hashlib, inspect, json, os, random, subprocess, sys, tempfile
+import argparse, hashlib, inspect, json, os, random, subprocess, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
-CPL = os.environ.get("CPL", os.path.join(ROOT, "target", "release", "cpl"))
 CACHE = os.path.join(ROOT, "target", "corpus-cxx")
 
 
@@ -127,51 +126,13 @@ def make(args):
     print(f"corpus-tests: tests for {made} of {len(ids)} problems")
 
 
-def run(args):
-    env = dict(os.environ, CPL_SPEC="1", CPL_STD=os.path.join(ROOT, "spec", "std"))
-    results = {}
-    for p in problems(args.ids):
-        tests = sorted(glob.glob(os.path.join(PROBLEMS, p, "tests", "*.in")))
-        if not tests:
-            results[p] = {"status": "untested"}
-            continue
-        status, detail, passed = "pass", "", 0
-        for t in tests:
-            want = open(t[:-3] + ".ans").read().split()
-            try:
-                r = subprocess.run([CPL, "run", os.path.join(PROBLEMS, p, "spec.cp")], stdin=open(t),
-                                   capture_output=True, text=True, timeout=30, env=env)
-            except subprocess.TimeoutExpired:
-                status, detail = "timeout", os.path.basename(t)
-                break
-            if r.returncode:
-                err = (r.stderr or r.stdout).strip().splitlines()
-                first = err[0] if err else f"exit {r.returncode}"
-                status = "todo" if "`todo` reached" in first else ("error" if first.startswith("error[E") else "trap")
-                detail = first[:160]
-                break
-            if r.stdout.split() != want:
-                status, detail = "wrong", os.path.basename(t)
-                break
-            passed += 1
-        results[p] = {"status": status, "passed": passed, "cases": len(tests), "detail": detail}
-        print(f"{p:16} {status:8} {passed}/{len(tests)} {detail}")
-    counts = {}
-    for r in results.values():
-        counts[r["status"]] = counts.get(r["status"], 0) + 1
-    print("corpus-tests:", ", ".join(f"{v} {k}" for k, v in sorted(counts.items())))
-    if args.json:
-        json.dump(results, open(args.json, "w"), indent=1, sort_keys=True)
-
-
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["make", "run"])
+    ap.add_argument("cmd", choices=["make"])
     ap.add_argument("ids", nargs="*")
     ap.add_argument("--cases", type=int, default=8)
-    ap.add_argument("--json")
     args = ap.parse_args()
-    make(args) if args.cmd == "make" else run(args)
+    make(args)
 
 
 if __name__ == "__main__":
