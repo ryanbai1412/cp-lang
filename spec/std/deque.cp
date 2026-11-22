@@ -58,13 +58,15 @@ pub struct Deque<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `Deque.of([4, 5]).len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        n
     /// Whether the deque is empty.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Deque.of([7]).is_empty == false`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool:
+        n == 0
 
     /// Remove all elements from the deque.
     ///
@@ -170,7 +172,10 @@ pub struct Deque<T>:
     /// order: front first, the order the elements sat in; a new `List`, keyed from 0
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 5, 3]); q.pop_front_while(x => x < 4) == [1, 2] and q.to_list() == [5, 3]`
-    pub fn pop_front_while(mut self, ok: T -> Bool) -> List<T> = todo
+    pub fn pop_front_while(mut self, ok: T -> Bool) -> List<T>:
+        var out: List<T> = []
+        while n > 0 and ok(self.get(0)): out.push(self.pop_front()!)
+        out
 
     /// Pop from the back while `ok` holds; the popped values, back first.
     /// O(popped).
@@ -183,7 +188,10 @@ pub struct Deque<T>:
     /// order: back first, the order they were popped; a new `List`, keyed from 0
     /// traps: never
     /// example: `var q = Deque.of([5, 1, 2]); q.pop_while(x => x < 4) == [2, 1] and q.to_list() == [5]`
-    pub fn pop_while(mut self, ok: T -> Bool) -> List<T> = todo
+    pub fn pop_while(mut self, ok: T -> Bool) -> List<T>:
+        var out: List<T> = []
+        while n > 0 and ok(self.get(n - 1)): out.push(self.pop()!)
+        out
 
     /// The front, or `None` when empty.
     ///
@@ -192,7 +200,9 @@ pub struct Deque<T>:
     /// ties: none: there is one front
     /// traps: never
     /// example: `Deque.of([4, 5]).first == Some(4)`
-    @get pub fn first(self) -> ?T = todo
+    @get pub fn first(self) -> ?T:
+        if n == 0: return None
+        Some(self.get(0))
 
     /// The back, or `None` when empty. `dq.last(k)` is the element `k`
     /// back from it, so `dq.last(1)` is the one before the back.
@@ -206,7 +216,9 @@ pub struct Deque<T>:
     /// example: `Deque.of([4, 5, 6]).last == Some(6)`
     /// example: `Deque.of([4, 5, 6]).last(1) == Some(5)`
     /// example: `Deque.of([4]).last(1) == None`
-    @get pub fn last(self, k: Int = 0) -> ?T = todo
+    @get pub fn last(self, k: Int = 0) -> ?T:
+        if k < 0 or k >= n: return None
+        Some(self.get(n - 1 - k))
 
     /// Each element with its place from the front: `for (i, x) in dq.items`. O(1) to make,
     /// O(n) to walk.
@@ -216,7 +228,8 @@ pub struct Deque<T>:
     /// order: front to back; the places are `0..len`
     /// traps: never
     /// example: `Deque.of([7, 8]).items.collect() == [(0, 7), (1, 8)]`
-    @get pub fn items(self) -> yields (Int, T) = todo
+    @get pub fn items(self) -> yields (Int, T):
+        for i in 0..n: yield (i, self.get(i))
 
     /// The `i`-th element from the front.
     ///
@@ -236,7 +249,10 @@ pub struct Deque<T>:
     /// cost: O(1)
     /// traps: when `i` is not in `0..len`
     /// example: `var q = Deque.of([7, 8]); q[0] = 9; q.to_list() == [9, 8]`
-    pub fn set(mut self, i: Int, x: T) = todo
+    pub fn set(mut self, i: Int, x: T):
+        assert 0 <= i and i < n
+        unchecked:
+            buf[(head + i) & mask] = x
 
     /// Materialize the elements front to back as a `List<T>`.
     ///
@@ -245,7 +261,10 @@ pub struct Deque<T>:
     /// order: front to back; a new `List`, keyed from 0
     /// traps: never
     /// example: `var q = Deque.of([2]); q.push_front(1); q.to_list() == [1, 2]`
-    pub fn to_list(self) -> List<T> = todo
+    pub fn to_list(self) -> List<T>:
+        var out: List<T> = []
+        for i in 0..n: out.push(self.get(i))
+        out
 
     /// Yield elements front to back without allocating.
     ///
@@ -256,7 +275,8 @@ pub struct Deque<T>:
     /// order: front to back
     /// traps: never
     /// example: `Deque.of([1, 2]).each().collect() == [1, 2]`
-    pub fn each(self) -> yields T = todo
+    pub fn each(self) -> yields T:
+        for i in 0..n: yield self.get(i)
 
     /// Yield elements back to front without allocating.
     ///
@@ -265,7 +285,11 @@ pub struct Deque<T>:
     /// order: back to front
     /// traps: never
     /// example: `Deque.of([1, 2]).each_rev().collect() == [2, 1]`
-    pub fn each_rev(self) -> yields T = todo
+    pub fn each_rev(self) -> yields T:
+        var i = n
+        while i > 0:
+            i -= 1
+            yield self.get(i)
 
     /// Rotate elements left by `k` positions (`k` mod `len`).
     ///
@@ -277,7 +301,13 @@ pub struct Deque<T>:
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_left(1); q.to_list() == [2, 3, 4, 1]`
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_left(-1); q.to_list() == [4, 1, 2, 3]`
-    pub fn rotate_left(mut self, k: Int) = todo
+    pub fn rotate_left(mut self, k: Int):
+        if n == 0: return
+        let s = (k % n + n) % n
+        if s <= n - s:
+            for _ in 0..s: self.push(self.pop_front()!)
+        else:
+            for _ in 0..n - s: self.push_front(self.pop()!)
 
     /// Rotate elements right by `k` positions (`k` mod `len`).
     ///
@@ -289,7 +319,9 @@ pub struct Deque<T>:
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_right(1); q.to_list() == [4, 1, 2, 3]`
     /// example: `var q = Deque.of([1, 2, 3]); q.rotate_right(4); q.to_list() == [3, 1, 2]`
-    pub fn rotate_right(mut self, k: Int) = todo
+    pub fn rotate_right(mut self, k: Int):
+        if n == 0: return
+        self.rotate_left(-k)
 
 /// Doubly-linked list supporting O(1) end pushes/pops and O(1) splicing (`splice_back`, `splice_front`).
 pub struct LinkedList<T>:
