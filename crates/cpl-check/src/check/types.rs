@@ -889,6 +889,7 @@ impl<'a> Checker<'a> {
                 pat,
                 ty,
                 init,
+                otherwise,
                 ..
             } => {
                 let keyword = if *mutable { "var" } else { "let" };
@@ -920,6 +921,12 @@ impl<'a> Checker<'a> {
                         }
                     }
                     (None, None) => Ty::Error,
+                };
+                let value_ty = match (ty, init, otherwise) {
+                    (None, Some(init), Some(_)) => {
+                        self.quietly(|c| c.let_else(pat, init, value_ty))
+                    }
+                    _ => value_ty,
                 };
                 let mut out = Vec::new();
                 let is_mut = *mutable
