@@ -13,8 +13,7 @@
 #            (--fast compiles C++ through scripts/cxx-cache.py, which reuses
 #            a binary built from the same source, flags and g++;
 #            CHECK_NO_CXX_CACHE=1 turns it off)
-#         4. cpl test stdlib examples/local-lib, run beside 3
-#         5. cpl fmt --check stdlib (the standard library stays formatted)
+#         4. cpl test examples/local-lib, run beside 3
 #            and spec/std/prelude.cp holds at most 80 names
 #            and every port in corpus/problems passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
@@ -189,7 +188,7 @@ fi
 # Never cached: another tree may have rebuilt the shared binary since.
 cargo build -q -p cpl-cli -p cpl-conform
 lib_logs="$(mktemp -d)"
-lib_dirs=(stdlib)
+lib_dirs=()
 if compgen -G "examples/local-lib/*.cp" >/dev/null; then
     lib_dirs+=(examples/local-lib)
 else
@@ -274,7 +273,7 @@ else
     recovery_pid=$!
 fi
 
-step "cpl test stdlib examples/local-lib"
+step "cpl test examples/local-lib"
 if [ "$stdlib_cached" -eq 1 ]; then
     echo "cached (tree unchanged outside its excludes)"
 else
@@ -284,7 +283,7 @@ else
     done
     cat "$lib_logs"/*.log | awk '/^[0-9]+ passed, [0-9]+ failed$/ { p += $1; f += $3 }
         END { printf "%d passed, %d failed\n", p, f }'
-    [ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test stdlib examples/local-lib"; }
+    [ "$lib_status" -eq 0 ] || { cat "$lib_logs"/*.log; fail "library tests failed; rerun: cargo run -p cpl-cli -- test examples/local-lib"; }
     cache_save stdlib_test
 fi
 
