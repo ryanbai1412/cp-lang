@@ -3485,15 +3485,14 @@ impl<'a> Lowerer<'a> {
                 let mut dom_idx = 0usize;
                 let base = self.hold(value, out);
                 for (i, (p, ty)) in pats.iter().zip(fields).enumerate() {
-                    let mut field_ty = ty.clone();
-                    for &(from, to) in &remaps {
-                        field_ty = remap_domain_ty(&field_ty, from, to);
-                    }
-                    let field = Expr {
+                    let mut field = Expr {
                         kind: ExprKind::Field(Box::new(base.clone()), i),
-                        ty: field_ty.clone(),
+                        ty: ty.clone(),
                         span: base.span,
                     };
+                    for &(from, to) in &remaps {
+                        field = self.remap_domain_in_expr(field, from, to, out);
+                    }
                     if ty == Ty::DomainVal {
                         let dname_opt = match &p.kind {
                             ast::PatternKind::Domain(n) => Some(n.text.clone()),
@@ -3550,6 +3549,63 @@ impl<'a> Lowerer<'a> {
             ast::PatternKind::Error => {}
             _ => self.unsupported(pat.span, "this pattern outside a `match`"),
         }
+    }
+
+    fn remap_domain_in_expr(
+        &mut self,
+        expr: Expr,
+        from: DomainId,
+        to: DomainId,
+        out: &mut Vec<Stmt>,
+    ) -> Expr {
+        if from == to {
+            return expr;
+        }
+        if let Ty::Struct(old_sid) = expr.ty {
+            if let Some((gid, old_args)) = self.structs[old_sid].origin_gen.clone() {
+                let mut changed = false;
+                let mut new_args = Vec::with_capacity(old_args.len());
+                for ga in &old_args {
+                    let mapped = match ga {
+                        GenArg::Domain(d) if *d == from => {
+                            changed = true;
+                            GenArg::Domain(to)
+                        }
+                        GenArg::Ty(t) => {
+                            let nt = remap_domain_ty(t, from, to);
+                            if nt != *t {
+                                changed = true;
+                            }
+                            GenArg::Ty(nt)
+                        }
+                        other => other.clone(),
+                    };
+                    new_args.push(mapped);
+                }
+                if changed {
+                    let new_sid = self.instantiate_struct(gid, new_args);
+                    let new_fields = self.structs[new_sid].def.fields.clone();
+                    let span = expr.span;
+                    let held = self.hold(expr, out);
+                    let values = new_fields
+                        .into_iter()
+                        .enumerate()
+                        .map(|(fi, (_, fty))| Expr {
+                            kind: ExprKind::Field(Box::new(held.clone()), fi),
+                            ty: fty,
+                            span,
+                        })
+                        .collect();
+                    return Expr {
+                        kind: ExprKind::Tuple(values),
+                        ty: Ty::Struct(new_sid),
+                        span,
+                    };
+                }
+            }
+        }
+        let new_ty = remap_domain_ty(&expr.ty, from, to);
+        Expr { ty: new_ty, ..expr }
     }
 
     /// `value` as something cheap to mention twice: itself if it is a
