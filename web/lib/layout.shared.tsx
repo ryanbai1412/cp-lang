@@ -14,6 +14,7 @@ export function baseOptions(): BaseLayoutProps {
       { text: 'Docs', url: '/docs' },
       { text: 'Playground', url: '/play' },
       { text: 'Real problems', url: '/corpus' },
+      { text: 'Tools', url: '/tools' },
       { text: 'Performance', url: '/performance' },
     ],
   };
