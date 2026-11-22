@@ -781,6 +781,20 @@ impl<'a> Checker<'a> {
         };
         if let Some(diag) = self.error(code, span, message) {
             match suggestion {
+                _ if narrow => {
+                    let range = match name {
+                        "U8" => "0..=255",
+                        "I8" => "-128..=127",
+                        "U16" => "0..=65_535",
+                        "I16" => "-32_768..=32_767",
+                        "U32" => "0..=4_294_967_295",
+                        "I32" => "-2_147_483_648..=2_147_483_647",
+                        _ => "Int",
+                    };
+                    let title = format!("change to `{range}`");
+                    let edits = vec![(span, range.to_string())];
+                    diag.fixes.push(cpl_diag::Fix { title, edits });
+                }
                 _ if field_of_self.is_some() => {
                     let owner = field_of_self.map(|t| t.to_string()).unwrap_or_default();
                     diag.help = Some(format!(
