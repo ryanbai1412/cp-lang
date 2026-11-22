@@ -70,15 +70,20 @@ fn reported(mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec
     (codes("error"), codes("warning"))
 }
 
-/// The first diagnostic `cpl check` reports for `src`, in process, to see
-/// whether it carries a machine-applicable fix.
-fn first_has_fix(src: &str) -> bool {
+/// `src` with the fix-it of its first diagnostic applied, if it has one.
+fn apply_first_fix_it(src: &str) -> Option<String> {
     let mut db = cpl_check::Database::default();
     db.set_file("trigger.cp", src);
     let analysis = db.analyze("trigger.cp").unwrap();
     let mut diags = cpl_ir::check(&analysis);
     diags.sort_by_key(|d| d.span.start);
-    diags.first().is_some_and(|d| !d.fixes.is_empty())
+    let mut edits = diags.first()?.fixes.first()?.edits.clone();
+    edits.sort_by_key(|(span, _)| std::cmp::Reverse(span.start));
+    let mut out = src.to_string();
+    for (span, text) in edits {
+        out.replace_range(span.start as usize..span.end as usize, &text);
+    }
+    Some(out)
 }
 
 #[test]
@@ -139,10 +144,15 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
         }
         tested += 1;
         if mode == "check" {
-            if first_has_fix(info.trigger) {
-                with_fix_it += 1;
-            } else {
-                no_fix_it.push(code);
+            match apply_first_fix_it(info.trigger) {
+                Some(fixed) => {
+                    let (errors, _) = reported("check", &fixed, "", &format!("{code}_fix_it"));
+                    if errors.contains(&code) {
+                        failures.push(format!("{code}: its fix-it leaves the error:\n{fixed}"));
+                    }
+                    with_fix_it += 1;
+                }
+                None => no_fix_it.push(code),
             }
         }
     }

@@ -153,6 +153,10 @@ impl<'a> Checker<'a> {
                     let has_eq = rest
                         .iter()
                         .any(|(op, _)| matches!(op, ast::CmpOp::Eq | ast::CmpOp::Ne));
+                    let split = split_chain(self.src, first, rest).map(|text| cpl_diag::Fix {
+                        title: format!("write `{text}`"),
+                        edits: vec![(expr.span, text)],
+                    });
                     if has_eq {
                         if let Some(diag) = self.error(
                             codes::MIXED_COMPARISON_CHAIN,
@@ -160,6 +164,7 @@ impl<'a> Checker<'a> {
                             "chained comparisons cannot contain `==` or `!=`".to_string(),
                         ) {
                             diag.help = Some("join the comparisons with `and` instead".to_string());
+                            diag.fixes.extend(split);
                         }
                     } else if has_lt && has_gt {
                         if let Some(diag) = self.error(
@@ -170,6 +175,7 @@ impl<'a> Checker<'a> {
                             diag.help = Some(
                                 "split mixed `<` and `>` comparisons with `and`".to_string(),
                             );
+                            diag.fixes.extend(split);
                         }
                     }
                 }
@@ -2970,4 +2976,15 @@ fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
         Ty::Array { index, elem } if index.len() == 1 => Some(elem),
         _ => None,
     }
+}
+
+/// `a < b > c` as `a < b and b > c`.
+fn split_chain(src: &str, first: &Expr, rest: &[(ast::CmpOp, Expr)]) -> Option<String> {
+    let mut parts = Vec::with_capacity(rest.len());
+    let mut left = first;
+    for (_, right) in rest {
+        parts.push(src.get(left.span.start as usize..right.span.end as usize)?);
+        left = right;
+    }
+    Some(parts.join(" and "))
 }

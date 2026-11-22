@@ -604,13 +604,24 @@ impl<'a> Checker<'a> {
                         };
                         cpl_syntax::visit::walk_expr(body, &mut m);
                         if let Some(at) = m.found {
-                            self.error(
+                            let keyword = self.src[..pat.span.start as usize]
+                                .trim_end()
+                                .strip_suffix("var")
+                                .map(|before| Span::new(before.len() as u32, before.len() as u32 + 3));
+                            if let Some(diag) = self.error(
                                 codes::VAR_LAMBDA_RECURSION,
                                 at,
                                 format!(
                                     "`var {vname}` cannot refer to itself recursively; bind it with `let`"
                                 ),
-                            );
+                            ) {
+                                if let Some(keyword) = keyword {
+                                    diag.fixes.push(cpl_diag::Fix {
+                                        title: format!("declare `{vname}` with `let`"),
+                                        edits: vec![(keyword, "let".into())],
+                                    });
+                                }
+                            }
                         }
                     } else {
                         let rec_ty = if let Some(decl @ Ty::Fn { .. }) = &declared {
