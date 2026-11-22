@@ -457,7 +457,7 @@ Stress runs check P1 with a cold mode that undoes those writes at method
 exit and compares output with a normal run; P1 is exactly what makes the
 two comparable, so no struct needs its own checker.
 - Shared ownership (two owners of one mutable value) stays out: pass
-  `mut x` to each call, or capture `x`. (R05.10.15)
+  `mut x` to each call, or capture `x`.
 
 ```python
 let d = build_dsu(edges)            // a let
