@@ -451,9 +451,24 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// order: `C` by smallest vertex; `comp` keyed by `V`
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[2], [], [0], []]; let (domain C, comp) = components(g); C.count == 3 and comp[0] == comp[2] and Int(comp[3]) == 2`
-pub fn components<V>(g: Next<V>) -> (domain C, comp: [V]C) = todo
+pub fn components<V>(g: Next<V>) -> (domain C, comp: [V]C):
+    var cid: [V]Int = -1
+    var k = 0
+    var q = Deque<V>()
+    for s in V:
+        if cid[s] != -1: continue
+        cid[s] = k
+        q.push(s)
+        while let Some(u) = q.pop_front():
+            for a in g.out(u):
+                let v = a.to
+                if cid[v] == -1:
+                    cid[v] = k
+                    q.push(v)
+        k += 1
+    domain C = 0..k
+    (C:, comp: [V] v => C(cid[v]))
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The arcs between components: `out[comp[u]]` gets `(to: comp[a.to])` for every arc `a`
 /// of `u` that leaves its component. Arcs inside a component are dropped; repeats are kept.
 ///
@@ -462,7 +477,14 @@ pub fn components<V>(g: Next<V>) -> (domain C, comp: [V]C) = todo
 /// order: keyed by `C`; each list by source vertex in vertex order, then arc order
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0, 1]]; let (domain C, comp) = scc(g); let h = condense(g, comp); h[comp[2]] == [(to: comp[0]), (to: comp[0])] and h[comp[0]] == []`
-pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)> = todo
+pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>:
+    var out: [C]List<(to: C)> = []
+    for u in V:
+        let cu = comp[u]
+        for a in g.out(u):
+            let cv = comp[a.to]
+            if cu != cv: out[cu].push((to: cv))
+    out
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh
