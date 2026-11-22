@@ -799,6 +799,12 @@ impl<'a> Checker<'a> {
                 let ty = if guessed {
                     Ty::Error
                 } else if declared.is_none()
+                    && *mutable
+                    && matches!(init_ty, Some(Ty::Range { .. }))
+                    && std::env::var_os("CPL_SPEC").is_some()
+                {
+                    Ty::Int
+                } else if declared.is_none()
                     && !*mutable
                     && init_ty.as_ref() == Some(&Ty::Int)
                     && std::env::var_os("CPL_SPEC").is_some()

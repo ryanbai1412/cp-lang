@@ -138,7 +138,12 @@ impl<'a> Checker<'a> {
         }
         let callee_ty = match self.list_form(callee, args) {
             Some(ty) => ty,
-            None => self.infer(callee),
+            None => {
+                let prev = std::mem::replace(&mut self.in_call_callee, true);
+                let ty = self.infer(callee);
+                self.in_call_callee = prev;
+                ty
+            }
         };
         let receiver = self.receiver(call, callee, args);
         let given = self.lambda_params.len();
@@ -555,7 +560,10 @@ impl<'a> Checker<'a> {
         if !found {
             return None;
         }
-        match self.infer(callee) {
+        let prev = std::mem::replace(&mut self.in_call_callee, true);
+        let inferred_callee = self.infer(callee);
+        self.in_call_callee = prev;
+        match inferred_callee {
             Ty::Fn { .. } => None,
             // `p.shifted(by: 3)`: a `@get` method given its defaulted arguments.
             ty => {
@@ -689,7 +697,6 @@ impl<'a> Checker<'a> {
                                 | "Filter"
                                 | "Zip"
                                 | "Range"
-                                | "List"
                                 | "Slice"
                                 | "Rev"
                                 | "Map"
@@ -951,6 +958,22 @@ impl<'a> Checker<'a> {
                                     c.pop_scope();
                                     ret
                                 })
+                            }
+                            ExprKind::Lambda { params, .. }
+                                if std::env::var_os("CPL_SPEC").is_some() && params.len() > 1 =>
+                            {
+                                let expected_arity = match &elem {
+                                    Ty::Tuple(items) => items.len(),
+                                    _ => 1,
+                                };
+                                if params.len() != expected_arity {
+                                    let message = format!(
+                                        "lambda takes {} parameters, but `{elem}` has {expected_arity}",
+                                        params.len()
+                                    );
+                                    self.error(codes::WRONG_ARG_COUNT, arg.value.span, message);
+                                }
+                                Ty::Unknown
                             }
                             _ => match self.quietly(|c| c.infer(&arg.value)) {
                                 Ty::Fn { ret, .. } => (*ret).clone(),

@@ -2041,6 +2041,12 @@ impl<'a> Checker<'a> {
             }
             if let Ty::Array { index, elem } = &base_ty {
                 if index.len() == 1 {
+                    if name.text == "keys" && std::env::var_os("CPL_SPEC").is_some() {
+                        return Ty::Named {
+                            name: "Range".into(),
+                            args: vec![index[0].clone()],
+                        };
+                    }
                     let item = if name.text == "keys" {
                         index[0].clone()
                     } else {
@@ -2065,6 +2071,17 @@ impl<'a> Checker<'a> {
                 name: type_name,
                 args,
             } => {
+                if type_name == "Pair" && name.text == "count" {
+                    return Ty::Int;
+                }
+                if std::env::var_os("CPL_SPEC").is_some()
+                    && matches!(type_name.as_str(), "List" | "Str" | "Map" | "Set")
+                    && name.text == "buf"
+                {
+                    let message = format!("{base_ty} has no public field `{}`", name.text);
+                    self.error(codes::UNKNOWN_FIELD, name.span, message);
+                    return Ty::Error;
+                }
                 if args.is_empty() && self.finite_index_enum_size(type_name).is_some() {
                     match name.text.as_str() {
                         "ord" | "to_idx" | "idx" | "label" => return Ty::Int,
@@ -2161,7 +2178,14 @@ impl<'a> Checker<'a> {
                     if let Some(Def::Trait { methods, .. }) = self.type_def(&trait_name).as_deref()
                     {
                         if let Some(m) = methods.iter().find(|m| m.name == name.text) {
-                            return m.ty.clone();
+                            return match &m.ty {
+                                Ty::Fn { params, ret }
+                                    if !self.in_call_callee && params.is_empty() =>
+                                {
+                                    (**ret).clone()
+                                }
+                                other => other.clone(),
+                            };
                         }
                     }
                 }
@@ -2403,7 +2427,16 @@ impl<'a> Checker<'a> {
                 // `fn area(self: Sq) -> Int` at the top of the file is
                 // a method of `Sq`, and of no other struct.
                 None if self.own_method(&base_ty, &name.text).is_some() => {
-                    self.own_method(&base_ty, &name.text).unwrap_or(Ty::Unknown)
+                    match self.own_method(&base_ty, &name.text).unwrap_or(Ty::Unknown) {
+                        Ty::Fn { params, ret }
+                            if std::env::var_os("CPL_SPEC").is_some()
+                                && !self.in_call_callee
+                                && params.is_empty() =>
+                        {
+                            *ret
+                        }
+                        other => other,
+                    }
                 }
                 None => {
                     let known = field_names
@@ -2540,7 +2573,7 @@ impl<'a> Checker<'a> {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
             Ty::Array { index, elem }
-                if matches!(index.as_slice(), [Ty::Named { name, args }] if name == "Sym" && args.len() == 1) =>
+                if matches!(index.as_slice(), [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") && args.len() == 1) =>
             {
                 let Ty::Named { args, .. } = &index[0] else {
                     unreachable!()
@@ -2580,7 +2613,7 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
                 for (got, index_expr) in index_tys.iter().zip(indices) {
-                    if !self.fits(got, dom_ty) {
+                    if !self.fits(got, dom_ty) && !self.literal_position(index_expr, dom_ty) {
                         let message = format!(
                             "`{}` is indexed by {}, but `{}` is {}",
                             self.quote(base.span),
@@ -2591,6 +2624,14 @@ impl<'a> Checker<'a> {
                         self.error(codes::TYPE_MISMATCH, index_expr.span, message);
                     }
                 }
+                (**elem).clone()
+            }
+            // `[R, C]T` indexed by a single position `p: P` where `domain P = (R, C)`.
+            Ty::Array { index, elem }
+                if index.len() > 1
+                    && indices.len() == 1
+                    && matches!(&index_tys[0], Ty::Pos(dom) if self.product_factors(dom).is_some_and(|f| f.len() == index.len() && f.iter().zip(index).all(|((_, ft), want)| self.fits(ft, want)))) =>
+            {
                 (**elem).clone()
             }
             // `[State]T` where `domain State = (V, K)`: allow multi-index `dp[v, k]`
@@ -2732,7 +2773,10 @@ impl<'a> Checker<'a> {
                     if self.fits(got, want) {
                         continue;
                     }
-                    if self.literal_position(index_expr, want) {
+                    if self.literal_position(index_expr, want)
+                        && !(std::env::var_os("CPL_SPEC").is_some()
+                            && self.view_kind(base) == Some("slice"))
+                    {
                         if std::env::var_os("CPL_SPEC").is_some() {
                             if let (ExprKind::Int(v), Ty::Pos(d)) = (&index_expr.kind, want) {
                                 let is_cuts = d.ends_with(".cuts");
@@ -2918,6 +2962,34 @@ impl<'a> Checker<'a> {
                 if let (Ty::Pos(cut), Ty::Pos(dom)) = (&aa[0], &ba[0]) {
                     if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
                         return true;
+                    }
+                }
+                if std::env::var_os("CPL_SPEC").is_some()
+                    && matches!(&aa[0], Ty::Int | Ty::Range { .. })
+                    && matches!(&ba[0], Ty::Pos(_))
+                {
+                    return true;
+                }
+            }
+            (Ty::Array { index: a, elem: ae }, Ty::Array { index: b, elem: be })
+                if a.len() == 1 && b.len() > 1 =>
+            {
+                if let Ty::Pos(dom) = &a[0] {
+                    if let Some(factors) = self.product_factors(dom) {
+                        return factors.len() == b.len()
+                            && factors.iter().zip(b).all(|((_, f), w)| self.fits(f, w))
+                            && self.fits(ae, be);
+                    }
+                }
+            }
+            (Ty::Array { index: a, elem: ae }, Ty::Array { index: b, elem: be })
+                if b.len() == 1 && a.len() > 1 =>
+            {
+                if let Ty::Pos(dom) = &b[0] {
+                    if let Some(factors) = self.product_factors(dom) {
+                        return factors.len() == a.len()
+                            && a.iter().zip(&factors).all(|(g, (_, w))| self.fits(g, w))
+                            && self.fits(ae, be);
                     }
                 }
             }

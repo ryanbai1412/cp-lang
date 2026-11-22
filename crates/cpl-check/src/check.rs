@@ -141,6 +141,7 @@ pub(crate) struct Checker<'a> {
     expected_bounds_range: bool,
     /// A `Range<V>` is expected here, so a half-open cut-ended literal is the piece.
     expected_piece: bool,
+    in_call_callee: bool,
     /// A `for` over `j..i` with two cut ends iterates cuts (§124).
     iterating_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
@@ -205,6 +206,7 @@ impl<'a> Checker<'a> {
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             expected_piece: false,
+            in_call_callee: false,
             iterating_range: false,
             local_product_domains: HashMap::new(),
             local_defs: HashMap::new(),

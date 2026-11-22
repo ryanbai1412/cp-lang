@@ -2412,8 +2412,11 @@ impl<'a> Checker<'a> {
                 let fn_depth = self.fns.last().map(|f| f.3).unwrap_or(0);
                 let escaped = names_in(body).into_iter().find(|n| {
                     !param_names.iter().any(|p| p == n)
-                        && self.local(n).is_some()
                         && self.var_depth(n) >= fn_depth
+                        && self
+                            .local(n)
+                            .cloned()
+                            .is_some_and(|l| l.mutable || self.is_lent_param_ty(&l.ty))
                 });
                 if let Some(cap) = escaped {
                     let message = format!(

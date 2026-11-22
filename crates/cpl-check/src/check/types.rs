@@ -150,7 +150,14 @@ impl<'a> Checker<'a> {
     pub(crate) fn range_as_type_arg(&mut self, name: &str, args: &[ast::Type]) {
         let Some(range) = args
             .iter()
-            .find(|a| matches!(a.kind, TypeKind::Range { .. }))
+            .find(|a| {
+                matches!(&a.kind, TypeKind::Range { lo, hi, .. }
+                    if std::env::var_os("CPL_SPEC").is_none()
+                        || !matches!(
+                            (lo.as_deref().map(|e| &e.kind), hi.as_deref().map(|e| &e.kind)),
+                            (Some(ExprKind::Int(_)), Some(ExprKind::Int(_)))
+                        ))
+            })
         else {
             return;
         };
@@ -420,6 +427,10 @@ impl<'a> Checker<'a> {
                     _ => (None, None),
                 }
             }
+            ExprKind::Call { .. } => match self.quietly(|c| c.infer(expr)) {
+                Ty::Range { lo, hi, .. } => (lo, hi),
+                _ => (None, None),
+            },
             _ => (None, None),
         }
     }
@@ -763,7 +774,15 @@ impl<'a> Checker<'a> {
                     (Some(ty), _) => self.resolve_type(ty),
                     (None, Some(init)) => {
                         let inferred = self.infer(init);
-                        if !*mutable && inferred == Ty::Int && std::env::var_os("CPL_SPEC").is_some() {
+                        if *mutable
+                            && matches!(inferred, Ty::Range { .. })
+                            && std::env::var_os("CPL_SPEC").is_some()
+                        {
+                            Ty::Int
+                        } else if !*mutable
+                            && inferred == Ty::Int
+                            && std::env::var_os("CPL_SPEC").is_some()
+                        {
                             let (lo, hi) = self.bounds(init);
                             if let (Some(l), Some(h)) = (lo, hi) {
                                 Ty::Range {
@@ -1442,7 +1461,12 @@ impl<'a> Checker<'a> {
     ) -> bool {
         match ty {
             Ty::Error | Ty::Unknown => return true,
-            Ty::Param(p) => return self.param_has_bound(p, trait_name),
+            Ty::Param(p) => {
+                if !self.generics.iter().any(|g| g == p) {
+                    return true;
+                }
+                return self.param_has_bound(p, trait_name);
+            }
             _ => {}
         }
         let impl_key = match ty {
@@ -1507,11 +1531,20 @@ impl<'a> Checker<'a> {
             "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" | "Num" => ty.is_numeric(),
             "Index" => ty.is_int() || matches!(ty, Ty::Pos(_) | Ty::Char),
             "Target" => match ty {
+                Ty::Pos(_) | Ty::Int => true,
                 Ty::Record(fields) => fields.iter().any(|(n, _)| n == "to"),
                 _ => false,
             },
             "Weighted" => match ty {
                 Ty::Record(fields) => fields.iter().any(|(n, _)| n == "w"),
+                _ => false,
+            },
+            "Next" | "WeightedNext" | "EdgedNext" => match ty {
+                Ty::Array { .. } | Ty::Fn { .. } => true,
+                Ty::Named { name, .. } => matches!(
+                    name.as_str(),
+                    "Graph" | "Reweighted" | "RevGraph" | "FilteredGraph" | "Adj"
+                ),
                 _ => false,
             },
             _ => match ty {
