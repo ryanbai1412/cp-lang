@@ -1,6 +1,7 @@
 # noi09p4
 
-Score: 3/5
+Score: pending cold rescore (added dream `proto/ports/scout_batch_15/dream/noi09p4.cp` + `research/frictions/noi09p4.md`; `scout_batch_15/noi09p4.cp` now bounds `(n, m): (1..=20, 1..=30)`, uses `Row`/`Col`/`Cell.at`, derives the `protects` and `needs` edge directions in the header, and fixes `needs` to `(u: v, v: u)`; verified `cpl run` == `g++` on sample -> `25`, 18.7 KB, 0 warnings, 0 errors)
+Dream: pending cold rescore (new dream using product domain `domain Cell = (Row, Col)` and length-prefixed `read()`)
 
 Baseline review, cold, on main 2cca08a5. Two ports share the name: proto/ports/scout_batch_15/noi09p4.cp (27 lines) and proto/ports/scout_batch_18/noi09p4.cp (65 lines plus a brute). One of them should go; the review covers both. Both read as the editorial: peel the protection graph, then a max closure (batch_15 lines 22-27, batch_18 lines 65-70). No dream exists, so the score is capped at 3.
 
