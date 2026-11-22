@@ -266,6 +266,14 @@ pub struct Database {
     /// The files being analyzed, outermost first: a module that imports
     /// one of them is a cycle.
     analyzing: Vec<String>,
+    /// The outermost entry of `analyzing` a cycle reached while the current
+    /// file was analyzed; `usize::MAX` when none did.
+    cycle_floor: usize,
+    /// Every import cycle met, as the paths around it, first repeated last.
+    cycles: Vec<Vec<String>>,
+    /// How many times a cycle was met, and the last one met.
+    cycle_hits: usize,
+    last_cycle: Vec<String>,
 }
 
 impl Default for Database {
@@ -292,6 +300,10 @@ impl Database {
             stats: Stats::default(),
             loader,
             analyzing: Vec::new(),
+            cycle_floor: usize::MAX,
+            cycles: Vec::new(),
+            cycle_hits: 0,
+            last_cycle: Vec::new(),
         }
     }
 
@@ -365,13 +377,27 @@ impl Database {
         self.stats
     }
 
+    /// Every module import cycle met so far, as the paths around it with
+    /// the first repeated last, including those an implicit import of the
+    /// library skipped.
+    pub fn import_cycles(&self) -> &[Vec<String>] {
+        &self.cycles
+    }
+
     /// Lexes, parses and checks a file, reusing everything an edit did not
     /// affect. Asking again without an edit returns the same `Analysis`.
     pub fn analyze(&mut self, path: &str) -> Option<Arc<Analysis>> {
         let imported_module = !self.analyzing.is_empty();
         let file = self.files.get(path)?;
         if let Some(analysis) = &file.analysis {
-            if imported_module || file.analysis_checked {
+            // A module that reached a file now being analyzed would meet a
+            // cycle there today, so reusing it would depend on who asked first.
+            let reaches_open = analysis
+                .scope
+                .modules
+                .iter()
+                .any(|m| self.analyzing.contains(&m.path));
+            if (imported_module || file.analysis_checked) && !reaches_open {
                 return Some(analysis.clone());
             }
         }
@@ -441,6 +467,8 @@ impl Database {
         let mut failed_names: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut prelude_off = false;
         let mut used: Vec<(usize, ast::Name)> = Vec::new();
+        let depth = self.analyzing.len();
+        let outer_floor = std::mem::replace(&mut self.cycle_floor, usize::MAX);
         self.analyzing.push(path.to_string());
         for (index, item) in items.iter().enumerate() {
             for stmt in item.parsed.stmts.iter().filter(|_| item.has_use) {
@@ -458,6 +486,7 @@ impl Database {
                             .map(|n| (index, n.clone())),
                     );
                     let mut diags = Vec::new();
+                    let hits = self.cycle_hits;
                     self.import(
                         path,
                         module,
@@ -467,6 +496,28 @@ impl Database {
                         &mut scope,
                         &mut diags,
                     );
+                    // The cycle closed in a module this file imports, and a
+                    // program never sees an imported module's own errors.
+                    if let (true, true, Some(first), Some(last)) = (
+                        self.cycle_hits > hits,
+                        diags.is_empty(),
+                        module.first(),
+                        module.last(),
+                    ) {
+                        let dotted: Vec<&str> = module.iter().map(|n| n.text.as_str()).collect();
+                        diags.push(
+                            Diagnostic::error(
+                                codes::UNRESOLVED_MODULE,
+                                first.span.to(last.span),
+                                format!(
+                                    "`{}` is in an import cycle: {}",
+                                    dotted.join("."),
+                                    cycle_names(&self.last_cycle)
+                                ),
+                            )
+                            .with_help("move what the modules of the cycle share into one that imports none of them"),
+                        );
+                    }
                     if !diags.is_empty() {
                         match (glob, alias, names.split_last(), module.last()) {
                             (true, ..) => prelude_off = true,
@@ -586,6 +637,7 @@ impl Database {
                 }
                 let had_imports = scope.has_imports;
                 let mods_before = scope.modules.len();
+                let hits_before = self.cycle_hits;
                 let mut diags = Vec::new();
                 self.import(
                     path,
@@ -604,6 +656,7 @@ impl Database {
                         .any(|d| d.code == codes::UNRESOLVED_MODULE)
                 });
                 if cycled || !diags.is_empty() {
+                    self.cycle_hits = hits_before;
                     scope.modules.truncate(mods_before);
                     scope.imports.remove(&name.text);
                     continue;
@@ -630,6 +683,7 @@ impl Database {
                     }
                     let had_imports = scope.has_imports;
                     let mods_before = scope.modules.len();
+                    let hits_before = self.cycle_hits;
                     let mut diags = Vec::new();
                     let module = vec![bare("std"), bare(std_mod)];
                     let name = bare(sym);
@@ -650,6 +704,7 @@ impl Database {
                             .any(|d| d.code == codes::UNRESOLVED_MODULE)
                     });
                     if cycled || !diags.is_empty() {
+                        self.cycle_hits = hits_before;
                         scope.modules.truncate(mods_before);
                         scope.imports.remove(sym);
                     }
@@ -1096,7 +1151,11 @@ impl Database {
             scope,
         });
         self.collect_garbage(items.len());
-        if imports_ok {
+        // A cycle through a file that imports this one cut names out of it:
+        // right for this import, wrong for anyone else's.
+        let context_free = self.cycle_floor >= depth;
+        self.cycle_floor = outer_floor.min(self.cycle_floor);
+        if imports_ok && context_free {
             if let Some(file) = self.files.get_mut(path) {
                 file.analysis = Some(analysis.clone());
                 file.analysis_checked = !imported_module;
@@ -1240,8 +1299,28 @@ impl Database {
     ) -> Option<Module> {
         let (path, text) = self.loader.load(from, parts)?;
         let name = parts.join(".");
-        if self.analyzing.contains(&path) {
-            let message = format!("`{name}` imports this file, so they import each other");
+        if let Some(at) = self.analyzing.iter().position(|p| *p == path) {
+            self.cycle_floor = self.cycle_floor.min(at);
+            let mut cycle = self.analyzing[at..].to_vec();
+            cycle.push(path.clone());
+            let message = if cycle.len() == 3 {
+                format!("`{name}` imports this file, so they import each other")
+            } else {
+                format!("`{name}` imports this file back: {}", cycle_names(&cycle))
+            };
+            let ring = &cycle[..cycle.len() - 1];
+            let start = (0..ring.len()).min_by_key(|&i| &ring[i]).unwrap_or(0);
+            let mut around: Vec<String> = ring[start..]
+                .iter()
+                .chain(&ring[..start])
+                .cloned()
+                .collect();
+            around.push(around[0].clone());
+            self.cycle_hits += 1;
+            self.last_cycle = around.clone();
+            if !self.cycles.contains(&around) {
+                self.cycles.push(around);
+            }
             diags.push(
                 Diagnostic::error(codes::UNRESOLVED_MODULE, span, message)
                     .with_help("move what both need into a third module"),
@@ -1353,6 +1432,19 @@ impl Scope {
         }
         index
     }
+}
+
+/// `a -> b -> a`, by file name.
+fn cycle_names(cycle: &[String]) -> String {
+    cycle
+        .iter()
+        .map(|p| {
+            std::path::Path::new(p)
+                .file_stem()
+                .map_or(p.clone(), |s| s.to_string_lossy().into_owned())
+        })
+        .collect::<Vec<_>>()
+        .join(" -> ")
 }
 
 fn inside_own_init(item: &ItemSyntax, name: &str, span: Span) -> bool {
@@ -2414,5 +2506,39 @@ mod tests {
         assert!(main.diagnostics.is_empty(), "{:?}", main.diagnostics);
         let direct = db.analyze("lib/bad.cp").unwrap();
         assert!(!direct.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn an_import_cycle_is_an_error_naming_the_whole_cycle() {
+        let module = |name: &str, text: &str| {
+            (
+                format!("lib.{name}"),
+                format!("lib/{name}.cp"),
+                text.to_string(),
+            )
+        };
+        let mut db = Database::with_loader(Box::new(MapLoader(vec![
+            module("a", "use lib.b.{g}\npub fn f() -> Int: g()\n"),
+            module("b", "use lib.c.{h}\npub fn g() -> Int: h()\n"),
+            module("c", "use lib.a.{f}\npub fn h() -> Int: 1\n"),
+        ])));
+        db.set_file("main.cp", "use lib.a.{f}\nprint(f())\n");
+        let main = db.analyze("main.cp").unwrap();
+        let around = ["lib/a.cp", "lib/b.cp", "lib/c.cp", "lib/a.cp"].map(String::from);
+        assert_eq!(db.import_cycles(), [around.to_vec()]);
+        let messages = |a: &Analysis| {
+            a.diagnostics
+                .iter()
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            messages(&main),
+            ["`lib.a` is in an import cycle: a -> b -> c -> a"]
+        );
+        for file in ["lib/b.cp", "lib/c.cp", "lib/a.cp"] {
+            let direct = db.analyze(file).unwrap();
+            assert!(direct.has_errors(), "{file}: {:?}", direct.diagnostics);
+        }
     }
 }
