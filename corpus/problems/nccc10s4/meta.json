@@ -12,13 +12,16 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/nccc10s4/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_21/nccc10s4.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }

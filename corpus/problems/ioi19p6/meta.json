@@ -21,10 +21,14 @@
   {"id": "5664563", "language": "CPP17", "result": "AC", "time": 50.14678227, "memory_kb": 392688.0, "file": "corpus/submissions/5664563.cpp"}
  ],
  "cpp_ac": 7,
- "artifacts": {},
+ "artifacts": {
+  "dream": [
+   "corpus/problems/ioi19p6/dream.cp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }

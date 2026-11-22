@@ -19,6 +19,9 @@
  ],
  "cpp_ac": 12,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ioi22p5/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_52/ioi22p5.cp",
    "proto/ports/scout_batch_52/today/ioi22p5.cp"
@@ -26,7 +29,7 @@
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }

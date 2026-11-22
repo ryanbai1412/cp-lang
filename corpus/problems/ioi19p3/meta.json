@@ -6,10 +6,14 @@
   {"id": "5661960", "language": "CPP17", "result": "AC", "time": 35.587176347, "memory_kb": 623064.0, "file": "corpus/submissions/5661960.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "dream": [
+   "corpus/problems/ioi19p3/dream.cp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }

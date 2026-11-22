@@ -9,6 +9,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/noip20p3/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_52/noip20p3.cp",
    "proto/ports/scout_batch_52/today/noip20p3.cp"
@@ -16,7 +19,7 @@
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }

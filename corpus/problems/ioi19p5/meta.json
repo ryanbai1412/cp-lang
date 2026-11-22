@@ -9,13 +9,16 @@
   "draft": [
    "proto/ports/blind_critic_5/ioi19p5_draft.cp"
   ],
+  "dream": [
+   "corpus/problems/ioi19p5/dream.cp"
+  ],
   "port": [
    "proto/ports/blind_critic_5/ioi19p5.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }

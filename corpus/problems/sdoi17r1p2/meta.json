@@ -10,13 +10,16 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/sdoi17r1p2/dream.cp"
+  ],
   "port": [
    "proto/ports/scout_batch_26/sdoi17r1p2.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }

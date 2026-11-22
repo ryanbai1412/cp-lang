@@ -5,10 +5,14 @@
   {"id": "6567598", "language": "CPP17", "result": "AC", "time": 0.379221733, "memory_kb": 6380.0, "file": "corpus/submissions/6567598.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "dream": [
+   "corpus/problems/ioi14p5io/dream.cp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
  "notes": ""
 }
