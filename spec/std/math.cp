@@ -260,7 +260,7 @@ pub struct Sieve:
     /// example: `Sieve(100).mobius(1) == 1`
     pub fn mobius(self, x: Int) -> Int:
         let f = self.factor(x)
-        if any(e > 1 for (_, e) in f): 0 elif f.len % 2 == 0: 1 else: -1
+        if f.any(fe => fe.1 > 1): 0 elif f.len % 2 == 0: 1 else: -1
 
     /// Euler's totient of every `0..=n`, with `phi[0] == 0`.
     ///
@@ -758,7 +758,7 @@ pub fn primitive_root(p: Int) -> Int:
     if p == 2: return 1
     let parts = [q for (q, _) in factor(p - 1)]
     var g = 2
-    while any(pow_mod(g, (p - 1) / q, p) == 1 for q in parts): g += 1
+    while parts.any(q => pow_mod(g, (p - 1) / q, p) == 1): g += 1
     g
 
 /// The least `x >= 0` with `a^x = b (mod m)`, or `None` if there is None.
@@ -1572,7 +1572,7 @@ fn pow_mod_phi_and_primitive_roots():
         assert phi(x) == count(gcd(x, k) == 1 for k in 1..=x)
         assert s.phi(x) == phi(x)
         let f = factor(x)
-        let mu = if any(e > 1 for (_, e) in f): 0 elif f.len % 2 == 0: 1 else: -1
+        let mu = if f.any(fe => fe.1 > 1): 0 elif f.len % 2 == 0: 1 else: -1
         assert s.mobius(x) == mu
     assert primitive_root(998244353) == 3 and primitive_root(1_000_000_007) == 5 and primitive_root(2) == 1
     for p in [3, 5, 7, 11, 13, 41, 71]:
@@ -1632,7 +1632,7 @@ fn mod_log_and_mod_sqrt_match_brute_force():
     for p in [2, 3, 5, 7, 11, 13, 17, 29, 37, 41, 97]:
         for a in 0..p:
             let r = mod_sqrt(a, p)
-            let has = any(x * x % p == a for x in 0..p)
+            let has = (0..p).any(x => x * x % p == a)
             if has:
                 assert r != None and r! * r! % p == a
             else:

@@ -10,7 +10,6 @@
 //! - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`.
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-use std.algebra.{Monoid}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
@@ -246,7 +245,13 @@ pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None) = todo
 /// ties: keeps the first of each run of equal values
 /// traps: never
 /// example: `var a = [1, 1, 2, 1]; a.dedup(); a == [1, 2, 1]`
-pub fn dedup<T>(mut self: List<T>) = todo
+pub fn dedup<T>(mut self: List<T>):
+    var n = 0
+    for i in 0..self.len:
+        if n == 0 or self[i] != self[n - 1]:
+            self[n] = self[i]
+            n += 1
+    while self.len > n: let _ = self.pop()
 
 /// `self` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
 /// Works on any `Seq`. O(n) time without hashing.
@@ -272,7 +277,13 @@ pub fn deduped<S: Seq, T>(self: S) -> List<T>:
 /// order: increasing keys of `self`
 /// traps: never
 /// example: `[3, 1, 4, 4, 5].record_highs().collect() == [0, 2, 4]`
-pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D = todo
+pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D:
+    var best: ?K = None
+    for i in D:
+        let k = by(self[i])
+        if (if let b = best: k > b else: true):
+            best = k
+            yield i
 
 /// Distinct values of `self` in first-seen order (optionally keyed by `by:`).
 /// Works on any `Seq`. O(n) expected time, O(n) space via `HashSet`. Unlike
@@ -749,7 +760,11 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P> = todo
 /// ties: the first in sequence order
 /// traps: never
 /// example: `[1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)`
-pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
+pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U:
+    for x in self:
+        let y = f(x)
+        if y != None: return y
+    None
 
 /// The first element satisfying `p`, `None` if None does; stops there. `(1..=m).find(ok)` is the
 /// least `ok` integer. O(position found).
@@ -904,7 +919,12 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
 /// ties: the first key past every equal value
 /// traps: never; unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
-pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = todo
+pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
+    var (lo, hi) = (0, D.K)
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if by(self[D.nth(m)]) > target: hi = m else: lo = m + 1
+    if lo < D.K: Some(D.nth(lo)) else: None
 
 /// Last index in sorted `self` with `by(self[i]) < target`, or `None`.
 ///
@@ -913,7 +933,12 @@ pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = tod
 /// ties: the last key before every equal value
 /// traps: never; unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].last_lt(3) == Some(0)`
-pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = todo
+pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
+    var (lo, hi) = (0, D.K)
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if by(self[D.nth(m)]) < target: lo = m + 1 else: hi = m
+    if lo > 0: Some(D.nth(lo - 1)) else: None
 
 // ---- Permutations, monotone stack, and sliding-window extrema
 
@@ -1455,7 +1480,13 @@ pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(
 /// empty: an empty map
 /// traps: never
 /// example: `"abca".tally()['a'] == 2`
-pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int> = todo
+pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int>:
+    var out = HashMap<K, Int>()
+    for x in self:
+        let k = by(x)
+        let c = out.get(k)
+        out[k] = if c == None: 1 else: c! + 1
+    out
 
 /// O(n) expected, O(n) memory. Group elements by an arbitrary hashable key; `of:` keeps a projection of each element (`pairs.group(by: .0, of: .1)`). When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
 ///
@@ -1464,7 +1495,13 @@ pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int> = to
 /// order: each group keeps input order
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: .0, of: .1)[1] == ['a', 'c']`
-pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>> = todo
+pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>>:
+    var out = HashMap<K, List<U>>()
+    for x in self:
+        let k = by(x)
+        if out.get(k) == None: out[k] = []
+        out[k].push(of(x))
+    out
 
 /// O(n) expected, O(k) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).
 ///
@@ -1539,7 +1576,12 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D> = todo
 /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
 /// example: `[1, 3, 5].partition_point(x => x > 2).r == 1`
 /// ties: none: a monotone `ok` has one flip
-pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D> = todo
+pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
+    var (lo, hi) = (0, D.K)
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if ok(self[D.nth(m)]): hi = m else: lo = m + 1
+    D.cuts.nth(lo)
 
 /// O(log n). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
 ///
@@ -1548,7 +1590,16 @@ pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D> = todo
 /// order: the keys of `self` holding `target`, increasing
 /// traps: never; unsorted input gives an unspecified range
 /// example: `[1, 3, 3, 5].equal_range(3) == 1..3`
-pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D> = todo
+pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>:
+    var (lo, hi) = (0, D.K)
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if by(self[D.nth(m)]) < target: lo = m + 1 else: hi = m
+    var (a, b) = (lo, D.K)
+    while a < b:
+        let m = a + (b - a) / 2
+        if by(self[D.nth(m)]) > target: b = m else: a = m + 1
+    D.cuts.nth(lo)..D.cuts.nth(a)
 
 /// O(|a| + |b|), O(|a| + |b|) memory. Sorted deduplicated union of two sorted sequences.
 ///
@@ -1632,7 +1683,24 @@ pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, needle: N) -> Bool = todo
 /// empty: `0`
 /// traps: when `|V| > 20`; debug traps when `p` is not a permutation
 /// example: `perm_rank([1, 0, 2]) == 2`
-pub fn perm_rank<V>(p: [V]V) -> Int = todo
+pub fn perm_rank<V>(p: [V]V) -> Int:
+    let n = V.K
+    var bit: List<Int> = List.filled(n + 1, 0)
+    var rank = 0
+    var fact = 1
+    for k in (0..n).rev:
+        let v = p[V.nth(k)].ord
+        var (j, smaller) = (v, 0)
+        while j > 0:
+            smaller += bit[j]
+            j -= j & -j
+        rank += smaller * fact
+        fact *= n - k
+        j = v + 1
+        while j <= n:
+            bit[j] += 1
+            j += j & -j
+    rank
 
 /// O(n log n), O(n) memory. The `rank`-th lexicographic permutation of `V` (`0 <= rank < |V|!`).
 ///
@@ -1641,7 +1709,34 @@ pub fn perm_rank<V>(p: [V]V) -> Int = todo
 /// order: keyed by `V`
 /// traps: when `rank` is not in `0..|V|!`
 /// example: `perm_unrank<[3]>(2) == [1, 0, 2]`
-pub fn perm_unrank<V>(rank: Int) -> [V]V = todo
+pub fn perm_unrank<V>(rank: Int) -> [V]V:
+    let n = V.K
+    var digits: List<Int> = List.filled(n, 0)
+    var r = rank
+    for k in 1..=n:
+        digits[n - k] = r % k
+        r /= k
+    assert r == 0, "`rank` is at least |V|!"
+    var bit: List<Int> = List.filled(n + 1, 0)
+    for j in 1..=n:
+        bit[j] += 1
+        if j + (j & -j) <= n: bit[j + (j & -j)] += bit[j]
+    var top = 1
+    while top * 2 <= n: top *= 2
+    var out: [V]V = V.nth(0)
+    for k in 0..n:
+        var (pos, need, step) = (0, digits[k] + 1, top)
+        while step > 0:
+            if pos + step <= n and bit[pos + step] < need:
+                pos += step
+                need -= bit[pos]
+            step /= 2
+        out[V.nth(k)] = V.nth(pos)
+        var j = pos + 1
+        while j <= n:
+            bit[j] -= 1
+            j += j & -j
+    out
 
 /// O(n), O(n) memory. Sign/parity of permutation `p` (`+1` even, `-1` odd).
 ///
@@ -1649,7 +1744,18 @@ pub fn perm_unrank<V>(rank: Int) -> [V]V = todo
 /// empty: `1`
 /// traps: never in release; debug traps when `p` is not a permutation
 /// example: `perm_sign([1, 0, 2]) == -1`
-pub fn perm_sign<V>(p: [V]V) -> Int = todo
+pub fn perm_sign<V>(p: [V]V) -> Int:
+    var seen: [V]Bool = false
+    var sign = 1
+    for v in V:
+        if seen[v]: continue
+        var (u, len) = (v, 0)
+        while not seen[u]:
+            seen[u] = true
+            u = p[u]
+            len += 1
+        if len % 2 == 0: sign = -sign
+    sign
 
 /// O(n), O(n) memory. Order of permutation `p` (LCM of disjoint cycle lengths).
 ///
@@ -1657,7 +1763,18 @@ pub fn perm_sign<V>(p: [V]V) -> Int = todo
 /// empty: `1`
 /// traps: never; the order can overflow `Int` past about |V| = 400
 /// example: `perm_order([1, 0, 3, 4, 2]) == 6`
-pub fn perm_order<V>(p: [V]V) -> Int = todo
+pub fn perm_order<V>(p: [V]V) -> Int:
+    var seen: [V]Bool = false
+    var ord = 1
+    for v in V:
+        if seen[v]: continue
+        var (u, len) = (v, 0)
+        while not seen[u]:
+            seen[u] = true
+            u = p[u]
+            len += 1
+        ord = ord / gcd(ord, len) * len
+    ord
 
 /// O(|I| + |V|), O(|I| + |V|) memory. Inverse of partial injection `self: [I]?V -> [V]?I` (traps on duplicate non-`None` images).
 ///
@@ -1666,7 +1783,13 @@ pub fn perm_order<V>(p: [V]V) -> Int = todo
 /// order: keyed by `V`
 /// traps: when two keys map to the same value
 /// example: `[Some(2), None, Some(0)].partial_inverse() == [Some(2), None, Some(0)]`
-pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I = todo
+pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
+    var out: [V]?I = None
+    for i in I:
+        if let v = self[i]:
+            assert out[v] == None, "two positions map to the same value"
+            out[v] = i
+    out
 
 
 /// O(k) per combination. All `k`-element combinations in lexicographic index order (`k = 2` is unordered pairs).
@@ -1726,7 +1849,27 @@ pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T> = todo
 /// traps: never
 /// example: `[3, 1, 2, 2, 5].lis() == [1, 2, 4]`
 /// example: `[3, 1, 2, 2, 5].lis(strict: false).len == 4`
-pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D> = todo
+pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>:
+    var tails: List<D> = []
+    var prev: [D]?D = None
+    for i in D:
+        let k = by(self[i])
+        var (lo, hi) = (0, tails.len)
+        while lo < hi:
+            let m = lo + (hi - lo) / 2
+            let t = by(self[tails[m]])
+            if (if strict: t < k else: t <= k): lo = m + 1 else: hi = m
+        if strict and lo < tails.len and by(self[tails[lo]]) == k: continue
+        if lo > 0: prev[i] = tails[lo - 1]
+        if lo == tails.len: tails.push(i) else: tails[lo] = i
+    var out: List<D> = []
+    var cur: ?D = if tails.len > 0: Some(tails[tails.len - 1]) else: None
+    while let c = cur:
+        out.push(c)
+        cur = prev[c]
+    var res: List<D> = []
+    for i in (0..out.len).rev: res.push(out[i])
+    res
 
 /// O(|a| * |b|), O(|a| * |b|) memory. Longest common subsequence of `a` and `b` as matched `(i, j)` index pairs.
 ///
@@ -1746,7 +1889,24 @@ pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)> = todo
 /// order: arrays keyed by `D`
 /// traps: never
 /// example: `[3, 1, 2].cartesian_tree().root == Some(1)`
-pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D) = todo
+pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D):
+    var left: [D]?D = None
+    var right: [D]?D = None
+    var parent: [D]?D = None
+    var st: List<D> = []
+    for i in D:
+        var last: ?D = None
+        while st.len > 0 and (if min_root: self[st[st.len - 1]] > self[i] else: self[st[st.len - 1]] < self[i]):
+            last = st.pop()
+        if let l = last:
+            left[i] = l
+            parent[l] = i
+        if st.len > 0:
+            let t = st[st.len - 1]
+            right[t] = i
+            parent[i] = t
+        st.push(i)
+    (root: if st.len > 0: Some(st[0]) else: None, left: left, right: right, parent: parent)
 
 // --- Incremental / online sequence structures (with mark/undo_to rollback for tree DFS) ---
 
@@ -2246,7 +2406,7 @@ pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor =
 /// empty: a ring with no positions
 /// traps: never
 /// example: `[1, 2, 3].ring.next(2) == 0`
-@get pub fn ring<D, T>(self: [D]T) -> Ring<D, T> = todo
+@get pub fn ring<D, T>(self: [D]T) -> Ring<D, T> = Ring(self)
 
 /// `a.ring`; see `ring`.
 pub struct Ring<D, T>(src: [D]T):
@@ -2256,21 +2416,21 @@ pub struct Ring<D, T>(src: [D]T):
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.step(0, -1) == 2`
-    pub fn step(self, i: D, d: Int) -> D = todo
+    pub fn step(self, i: D, d: Int) -> D = D.nth(((i.ord + d) % D.K + D.K) % D.K)
 
     /// The position after `i`, wrapping.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.next(2) == 0`
-    pub fn next(self, i: D) -> D = todo
+    pub fn next(self, i: D) -> D = self.step(i, 1)
 
     /// The position before `i`, wrapping.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.prev(0) == 2`
-    pub fn prev(self, i: D) -> D = todo
+    pub fn prev(self, i: D) -> D = self.step(i, -1)
 
     /// All n positions, starting at `i` and wrapping. O(n) to walk.
     ///
@@ -2279,7 +2439,8 @@ pub struct Ring<D, T>(src: [D]T):
     /// order: `i`, then each next position, n in all
     /// traps: never
     /// example: `[1, 2, 3].ring.from(1).collect() == [1, 2, 0]`
-    pub fn from(self, i: D) -> yields D = todo
+    pub fn from(self, i: D) -> yields D:
+        for k in 0..D.K: yield self.step(i, k)
 
     /// The `len` positions from `start` on, wrapping (`len <= n`).
     ///
@@ -2418,7 +2579,10 @@ pub fn valleys<D, T>(self: [D]T) -> yields Range<D> = todo
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 1].spans() == [0..1, 0..3, 2..3]`
-pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D> = todo
+pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
+    let left = self.prev_smaller(by: by, strict: false)
+    let right = self.next_smaller(by: by, strict: true)
+    [D] i => (if let l = left[i]: l.r else: D.cuts.nth(0))..(if let r = right[i]: r.l else: D.cuts.nth(D.K))
 
 /// Nearest earlier position with a smaller key (`strict: false`: smaller or equal).
 ///
@@ -2428,7 +2592,15 @@ pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D> = todo
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 3].prev_smaller() == [None, None, Some(1)]`
-pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D = todo
+pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
+    var out: [D]?D = None
+    var st: List<D> = []
+    for i in D:
+        while st.len > 0 and (if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])):
+            let _ = st.pop()
+        if st.len > 0: out[i] = st[st.len - 1]
+        st.push(i)
+    out
 
 /// Nearest later position with a smaller key.
 ///
@@ -2438,7 +2610,16 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 3].next_smaller() == [Some(1), None, None]`
-pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D = todo
+pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
+    var out: [D]?D = None
+    var st: List<D> = []
+    for k in (0..D.K).rev:
+        let i = D.nth(k)
+        while st.len > 0 and (if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])):
+            let _ = st.pop()
+        if st.len > 0: out[i] = st[st.len - 1]
+        st.push(i)
+    out
 
 /// Nearest earlier position with an equal key.
 ///
@@ -2447,7 +2628,14 @@ pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 /// order: keyed by `D`
 /// traps: never
 /// example: `[1, 2, 1].prev_same() == [None, None, Some(0)]`
-pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
+pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
+    var out: [D]?D = None
+    var seen = HashMap<K, D>()
+    for i in D:
+        let k = by(self[i])
+        out[i] = seen.get(k)
+        seen[k] = i
+    out
 
 /// Nearest later position with an equal key.
 ///
@@ -2456,7 +2644,15 @@ pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
 /// order: keyed by `D`
 /// traps: never
 /// example: `[1, 2, 1].next_same() == [Some(2), None, None]`
-pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
+pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
+    var out: [D]?D = None
+    var seen = HashMap<K, D>()
+    for j in (0..D.K).rev:
+        let i = D.nth(j)
+        let k = by(self[i])
+        out[i] = seen.get(k)
+        seen[k] = i
+    out
 
 /// The ranges no other range contains, sorted by left end (ties: the first kept). Equal ranges
 /// keep one. The usual first step of interval DP over covers. O(n log n).
@@ -2477,3 +2673,27 @@ pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>> = todo
 /// traps: never
 /// example: `[5, 6, 7].keys == 0..3`
 @get pub fn keys<T>(self: List<T>) -> Range<Int> = 0..self.len
+
+@test
+fn dedup_first_some_tally_and_group():
+    var a = [1, 1, 2, 1, 1]
+    a.dedup()
+    assert a == [1, 2, 1]
+    var e: List<Int> = []
+    e.dedup()
+    assert e == []
+    assert [1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)
+    assert [1, 2].first_some(x => if x > 3: Some(x) else: None) == None
+    let t = [3, 1, 3, 3].tally()
+    assert t[3] == 3 and t[1] == 1 and t.get(2) == None
+    let g = [(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)
+    assert g[1] == ['a', 'c'] and g[2] == ['b']
+
+@test
+fn ring_steps_wrap_both_ways():
+    domain V = 0..3
+    let a: [V]Int = [1, 2, 3]
+    let r = a.ring
+    assert r.next(V(2)) == V(0) and r.prev(V(0)) == V(2)
+    assert r.step(V(1), 7) == V(2) and r.step(V(2), -8) == V(0)
+    assert r.from(V(1)).collect() == [V(1), V(2), V(0)]

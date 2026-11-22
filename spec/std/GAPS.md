@@ -43,7 +43,8 @@ line when the gap closes and the body lands.
 - window, `Window.new` examples (`Window(+)`, `Window(max)`): a bare operator is not accepted for the header parameter `op: M`, and `max`/`min` are unknown names to `cpl run`; `Window<Int, (Int, Int) -> Int>.new(f)` works.
 - window, `Window.pop`: `w.pop()` resolves to `Track.pop(x)` (`pop needs the argument x`) instead of the inherent zero-argument `pop`; the body is verified through its private helper.
 - prefix, most examples (`p.fold(1..=2)`, `p.prefix(2)`, `p.get(1)`): an integer literal is not converted to a `D` position, `Cut<D>` or `Range<D>` at a call; the bodies run when written with `D(1)` (see `spec/conformance/std-prefix`).
-- prefix, `scan` / `cyclic_sum`: left `todo`; `scan` returns `Prefix<D, T>` for any op, which has no field for a non-`+` fold yet, and `RingRange`'s accessors are themselves unimplemented.
+- prefix, `scan`: an operator passed as `f: (T, T) -> T` loses its identity (`same(f, +)` is false inside the body, and `Monoid<T>.of(f)` is E0302 "expected `Monoid<Int>`, found `(Int, Int) -> Int`"), so without `from:` the first cut has no value; needs `f: M` with an op bound (a signature change) or identity-carrying fn values.
+- prefix, `cyclic_sum`: `RingRange`'s accessors are themselves unimplemented.
 - heap, `MeldHeap` (all methods): `meld`/`absorb` in O(log n) need recursive node storage (a struct holding `?Box<Node>` or a shared arena); the stub has only `_len`, and adding a per-heap arena makes `meld` O(other.len).
 - hashmap, `Counter.reserve`: the builtin `HashMap` has no `reserve` in `cpl run` (waits on the `Map` stub).
 - hashmap, `Counter.get`/`set` index forms (`c[k]`, `c[k] = v`): structs cannot implement indexing (same as `Deque.set`).
@@ -66,4 +67,7 @@ line when the gap closes and the body lands.
 - bag, `SortedBag.range`/`drain_range`, `SortedSet.range`/`sum(keys:)`, `SortedRange.*`: no way to read an open bound of a generic `Range<K>` (`..b`, `a..`, `..`), and `..` alone is rejected by `cpl run`.
 - bag, `SortedBag.split_at`/`join`, `SortedSet.split_at`/`join`: each bag owns its node pool, so O(log n) split/join between two bags needs a shared pool (or node moves) the struct layout does not have.
 - bag, `SortedBag.reserve`/`SortedSet.reserve`: `List.reserve` is not available to stdlib bodies yet (waits on the `List` stub).
-- bag, `SortedMap`, `AugSortedBag`: the stubs have no storage fields (`SortedMap` only `_len`), so there is nothing to implement against without changing the declared layout.
+- bag, `AugSortedBag`: the stub has no storage fields, so there is nothing to implement against without changing the declared layout.
+- fenwick, test `xor_matches_a_plain_array`: `Fenwick<D, T>` sums with `+`/`-` on `T` and a struct cannot define `+`/`-`, so there is no xor Fenwick to test; needs operator overloading or an `op:` parameter.
+- seq, `RingRange` (`len`, `start`, `end`, `keys`, `contains`) and so `Ring.span`, `Ring.windows`, `Ring.maximal`, `Ring.minimal`: `RingRange<D>()` and `RingSlice` declare no fields, so a span has nothing to store its start and length in without changing the declared layout.
+- pair, `symmetric`: `cpl run` rejects `[Pair<V>]T` as an array type (E0204 "an array is indexed by a domain or a length"), so no program can build the argument.
