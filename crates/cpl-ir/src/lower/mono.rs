@@ -1979,12 +1979,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let (Some(ret_ast), Some(want)) = (decl.ret.as_ref(), hint.filter(|t| *t != Ty::Error)) {
-            if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
-                if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text)
-                {
-                    inferred.insert(rn.text.clone(), GenArg::Ty(want));
-                }
-            }
+            self.unify_ast_ty(ret_ast, &want, tpl_mod, &gen_names, &mut inferred);
         }
         if let Some(ret_ast) = decl.ret.as_ref() {
             if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
