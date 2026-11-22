@@ -10,4 +10,6 @@ emitted C++ on input alone, which measured I/O, not the language.
 `p06_labyrinth.cpp` also prints the path, in the stdlib `bfs` order (`adj4`: up, right,
 down, left), so its output is token-identical to the port's.
 
+`p10_matching.cpp` runs the port's tree DP (per vertex: best unmatched, best matched to a child, folded over the children in BFS order on a CSR adjacency), not the greedy leaf matching of `p10_matching_ref.cpp`.
+
 A problem without a file here falls back to its `_ref.cpp`.
