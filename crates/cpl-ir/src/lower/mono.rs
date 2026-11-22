@@ -1103,6 +1103,7 @@ impl<'a> Lowerer<'a> {
             name: mangled,
             variants: Vec::new(),
             values: Vec::new(),
+            tags: Vec::new(),
         });
         self.enum_insts.insert(key, id);
 
@@ -1122,6 +1123,7 @@ impl<'a> Lowerer<'a> {
             })
             .collect();
         self.enums[id].variants = variants;
+        self.enums[id].tags = decl.variants.iter().map(|v| self.variant_tag(v)).collect();
         self.cur_mod = saved_mod;
         self.offset = saved_offset;
         self.gen_env = saved_env;

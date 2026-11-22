@@ -59,6 +59,19 @@ impl<'a> Lowerer<'a> {
     /// A statement that only works out a value: `xs.sorted()`, `s.with(v)`,
     /// `a + b`. Nothing reads it and nothing was changed, so it is a
     /// mistake, most often for the form that changes in place.
+    /// The token of `@tag("Q")` or `@tag(1)` on a variant.
+    pub(super) fn variant_tag(&self, variant: &ast::Variant) -> Option<String> {
+        let tag = variant.tag.as_ref()?;
+        let text = self.source(tag.span);
+        let text = text.trim();
+        Some(
+            text.strip_prefix('"')
+                .and_then(|t| t.strip_suffix('"'))
+                .unwrap_or(text)
+                .to_string(),
+        )
+    }
+
     fn unused_value(&mut self, value: &Expr, span: Span) {
         if matches!(value.ty, Ty::Unit | Ty::Error) {
             return;

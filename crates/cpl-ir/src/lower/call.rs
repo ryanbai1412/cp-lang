@@ -2994,19 +2994,17 @@ impl<'a> Lowerer<'a> {
             let specs: Option<Vec<Spec>> = tys.iter().map(|ty| self.spec_of(ty)).collect();
             fields.push(specs?);
         }
-        let discs = self.enum_discriminants.get(id).cloned().unwrap_or_default();
-        let explicit = !discs.is_empty();
+        let tokens: Vec<String> = (0..variants.len())
+            .map(|tag| self.enums[id].token(tag).to_string())
+            .collect();
         let name = self.enums[id].name.clone();
         let ty = Ty::Enum(id);
         Some(self.do_expr(Some(&ty), span, |lw, out| {
             let token = lw.temp(Ty::Str);
             let read = lw.mk(ExprKind::Read(Box::new(Spec::Plain(Ty::Str))), Ty::Str, span);
             out.push(Stmt::Let(token, Some(read)));
-            for (tag, ((variant, _), specs)) in variants.iter().zip(fields).enumerate() {
-                let mut tags = vec![variant.clone()];
-                if explicit {
-                    tags.push(discs.get(tag).copied().unwrap_or(tag as i64).to_string());
-                }
+            for (tag, (_, specs)) in variants.iter().zip(fields).enumerate() {
+                let tags = [tokens[tag].clone()];
                 let mut cond: Option<Expr> = None;
                 for text in tags {
                     let lit = lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span);

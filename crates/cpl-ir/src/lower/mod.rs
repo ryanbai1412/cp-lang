@@ -1292,6 +1292,7 @@ impl<'a> Lowerer<'a> {
                                 name: ename,
                                 variants: Vec::new(),
                                 values: Vec::new(),
+                                tags: Vec::new(),
                             });
                             self.enum_discriminants.push(Vec::new());
                             self.enum_decls.push((m, offset, decl));
@@ -2159,6 +2160,7 @@ impl<'a> Lowerer<'a> {
                 .collect();
             self.enums[id].variants = variants;
             self.enums[id].values = values;
+            self.enums[id].tags = decl.variants.iter().map(|v| self.variant_tag(v)).collect();
             // §2.16: a payload enum whose every variant carries only finite-index
             // payloads is a finite index domain (sum domain), lowered as a flat `DomainId`.
             let has_payload = self.enums[id].variants.iter().any(|(_, fs)| !fs.is_empty());

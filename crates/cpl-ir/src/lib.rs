@@ -1077,6 +1077,19 @@ pub struct EnumDef {
     pub name: String,
     pub variants: Vec<(String, Vec<Ty>)>,
     pub values: Vec<Option<i64>>,
+    /// `@tag("Q") Ask`: the token a variant reads and prints as, when it
+    /// is not the variant's name. (R02.7.2)
+    pub tags: Vec<Option<String>>,
+}
+
+impl EnumDef {
+    /// The token variant `tag` reads and prints as.
+    pub fn token(&self, tag: usize) -> &str {
+        match self.tags.get(tag) {
+            Some(Some(token)) => token,
+            _ => &self.variants[tag].0,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]

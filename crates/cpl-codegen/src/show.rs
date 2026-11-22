@@ -195,10 +195,9 @@ impl<'p> Emitter<'p> {
                 }
             }
             Ty::Enum(id) if is_plain_enum(program, *id) => {
-                let names: Vec<String> = program.enums[*id]
-                    .variants
-                    .iter()
-                    .map(|(v, _)| string_literal(v.as_bytes()))
+                let def = &program.enums[*id];
+                let names: Vec<String> = (0..def.variants.len())
+                    .map(|tag| string_literal(def.token(tag).as_bytes()))
                     .collect();
                 b.push_str(&format!(
                     "    static const char* const names[] = {{{}}};\n",
@@ -209,12 +208,12 @@ impl<'p> Emitter<'p> {
             Ty::Enum(id) => {
                 let def = &program.enums[*id];
                 b.push_str("    switch (v.tag) {\n");
-                for (variant, tys) in &def.variants {
+                for (tag, (variant, tys)) in def.variants.iter().enumerate() {
                     let name = ident(variant);
                     b.push_str(&format!(
                         "    case {}::{name}:\n        cpl::put_str({});\n",
                         ident(&def.name),
-                        string_literal(variant.as_bytes())
+                        string_literal(def.token(tag).as_bytes())
                     ));
                     for (i, field_ty) in tys.iter().enumerate() {
                         let code = Code::primary(format!("v.{name}_{i}"));

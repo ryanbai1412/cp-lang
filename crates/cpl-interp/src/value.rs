@@ -1140,8 +1140,8 @@ pub(crate) fn show(
             }
         }
         (Value::Enum(tag, payload), Ty::Enum(id)) => {
-            let (name, tys) = &program.enums[*id].variants[*tag as usize];
-            out.extend_from_slice(name.as_bytes());
+            let tys = &program.enums[*id].variants[*tag as usize].1;
+            out.extend_from_slice(program.enums[*id].token(*tag as usize).as_bytes());
             for (field, field_ty) in payload.iter().zip(tys) {
                 out.push(b' ');
                 rec(out, field, field_ty);
