@@ -888,17 +888,56 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
-        }
-        for (f, arg) in decl.fields.iter().zip(args) {
-            self.bind_bare_op(&f.ty, &arg.value, &gen_names, &mut inferred);
-            if new_params.is_none() {
-                self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
+            for g in &gen_names {
+                if !inferred.contains_key(g) {
+                    let dom_from_arg = args.iter().find_map(|arg| {
+                        if matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                            return None;
+                        }
+                        match self.probe_ty_silent(&arg.value)? {
+                            Ty::Array { dims, elem } if matches!(*elem, Ty::List(_)) => {
+                                match dims.as_slice() {
+                                    [Dim::Pos(d)] => Some(*d),
+                                    _ => None,
+                                }
+                            }
+                            Ty::Struct(sid) => {
+                                let info = &self.structs[sid];
+                                info.env
+                                    .get(g)
+                                    .and_then(|a| match a {
+                                        GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d)) => Some(*d),
+                                        _ => None,
+                                    })
+                                    .or_else(|| {
+                                        info.origin_gen.as_ref().and_then(|(_, gargs)| {
+                                            gargs.iter().find_map(|a| match a {
+                                                GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d)) => {
+                                                    Some(*d)
+                                                }
+                                                _ => None,
+                                            })
+                                        })
+                                    })
+                            }
+                            _ => None,
+                        }
+                    });
+                    if let Some(d) = dom_from_arg {
+                        inferred.insert(g.clone(), GenArg::Domain(d));
+                    }
+                }
             }
-            if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
-                && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
-            {
-                if let Some(pty) = self.probe_ty_silent(&arg.value) {
-                    self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
+        } else {
+            for (f, arg) in decl.fields.iter().zip(args) {
+                self.bind_bare_op(&f.ty, &arg.value, &gen_names, &mut inferred);
+                self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
+                if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
+                    && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
+                {
+                    if let Some(pty) = self.probe_ty_silent(&arg.value) {
+                        self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
+                    }
                 }
             }
         }

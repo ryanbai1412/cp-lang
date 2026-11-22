@@ -1797,9 +1797,9 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        // Pass 2 (up to 3 rounds for chained lambdas like `dijkstra(adj, from, w)`):
+        // Pass 2 (up to 4 rounds for chained lambdas like `dijkstra(adj, from, w)`):
         // unify from lambda arguments whose parameter types are now known.
-        for _ in 0..3 {
+        for _ in 0..4 {
             let before = inferred.len();
             // If an unbound generic (e.g. `T` in `fold_path<S, T>(..., ds: S)`) is present in a bound
             // struct argument's generic environment (e.g. `SegTree<Pre, Word>` has `T -> Word`), inherit it.
@@ -1811,22 +1811,6 @@ impl<'a> Lowerer<'a> {
                     });
                     if let Some(ga) = from_struct {
                         inferred.insert(g.clone(), ga);
-                    }
-                }
-            }
-            // If an unbound generic `T` is used as a lambda parameter type (e.g. `min_by<S, T, K>(it: S, key: T -> K)`),
-            // deduce `T` from a bound container generic `S` (`List<Elem>`, `[D]Elem`, `Range<Elem>`, `Str`).
-            for g in &gen_names {
-                if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
-                    let elem_ty = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(t) => t.seq_elem().or_else(|| match t {
-                            Ty::Set(e) | Ty::HashSet(e) => Some((**e).clone()),
-                            _ => None,
-                        }),
-                        _ => None,
-                    });
-                    if let Some(ety) = elem_ty {
-                        inferred.insert(g.clone(), GenArg::Ty(ety));
                     }
                 }
             }
@@ -1980,7 +1964,25 @@ impl<'a> Lowerer<'a> {
                 }
             }
             if inferred.len() == before {
-                break;
+                // Only after ready lambdas have had a chance to infer `T` (e.g. `init: V -> T`),
+                // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.
+                for g in &gen_names {
+                    if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
+                        let elem_ty = inferred.values().find_map(|ga| match ga {
+                            GenArg::Ty(t) => t.seq_elem().or_else(|| match t {
+                                Ty::Set(e) | Ty::HashSet(e) => Some((**e).clone()),
+                                _ => None,
+                            }),
+                            _ => None,
+                        });
+                        if let Some(ety) = elem_ty {
+                            inferred.insert(g.clone(), GenArg::Ty(ety));
+                        }
+                    }
+                }
+                if inferred.len() == before {
+                    break;
+                }
             }
         }
 
@@ -2996,7 +2998,37 @@ impl<'a> Lowerer<'a> {
                         self.unify_ast_ty(&args[0], &elem, tpl_mod, gen_names, env);
                     }
                 }
-                _ => {}
+                _ => {
+                    if let Some(Sym::GenAlias(gaid)) = self
+                        .mod_syms
+                        .get(tpl_mod)
+                        .and_then(|m| m.get(&name.text).copied())
+                        .or_else(|| self.get_sym(&name.text))
+                    {
+                        let ga = &self.gen_aliases[gaid];
+                        let alias_names: Vec<String> =
+                            ga.generics.iter().map(|g| g.text.clone()).collect();
+                        let mut alias_env = HashMap::new();
+                        self.unify_ast_ty(ga.ty, concrete, ga.mod_id, &alias_names, &mut alias_env);
+                        for (param_name, arg_ast) in alias_names.iter().zip(args) {
+                            match alias_env.get(param_name) {
+                                Some(GenArg::Ty(t)) => {
+                                    self.unify_ast_ty(arg_ast, t, tpl_mod, gen_names, env);
+                                }
+                                Some(GenArg::Domain(d)) => {
+                                    self.unify_ast_ty(
+                                        arg_ast,
+                                        &Ty::Pos(*d),
+                                        tpl_mod,
+                                        gen_names,
+                                        env,
+                                    );
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
             },
             ast::TypeKind::Array { index, elem } => {
                 if let Ty::Array { dims, elem: ce } = concrete {
