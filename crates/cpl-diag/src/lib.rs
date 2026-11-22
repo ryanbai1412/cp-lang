@@ -130,6 +130,8 @@ pub mod codes {
     pub const WRONG_ARG_COUNT: Code = Code("E0303");
     pub const NOT_CALLABLE: Code = Code("E0304");
     pub const NOT_INDEXABLE: Code = Code("E0305");
+    /// Reserved: position arithmetic reports as E0309 and lint L0101 today.
+    pub const POSITION_ARITHMETIC: Code = Code("E0306");
     pub const CONDITION_NOT_BOOL: Code = Code("E0307");
     pub const OPTIONAL_COMPARE: Code = Code("E0308");
     pub const BAD_OPERANDS: Code = Code("E0309");

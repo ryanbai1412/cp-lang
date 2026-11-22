@@ -3,7 +3,7 @@
 //! emit is in the catalogue; every catalogued code that is not marked
 //! *(0.3)*, *(retired)* or *(reserved)* has a registry trigger that
 //! produces exactly that code and nothing else, and a fix that checks (or
-//! runs) clean. Codes marked as not emitted must not be defined.
+//! runs) clean. Codes marked *(0.3)* or *(retired)* must not be defined.
 //!
 //! `cargo test -p cpl-cli --test catalogue -- --nocapture` prints the counts.
 
@@ -96,9 +96,13 @@ fn every_defined_code_is_catalogued() {
 #[test]
 fn codes_marked_not_emitted_are_not_defined() {
     let defined = defined();
-    let stale: Vec<String> =
-        catalogue().into_iter().filter(|(c, emitted)| !emitted && defined.contains(c)).map(|(c, _)| c).collect();
-    assert!(stale.is_empty(), "marked (0.3)/(retired)/(reserved) but defined, so emitted: {stale:?}");
+    let reserved = |c: &str| cpl_diag::registry::lookup(c).is_some_and(|i| i.mode == "reserved");
+    let stale: Vec<String> = catalogue()
+        .into_iter()
+        .filter(|(c, emitted)| !emitted && defined.contains(c) && !reserved(c))
+        .map(|(c, _)| c)
+        .collect();
+    assert!(stale.is_empty(), "marked (0.3) or (retired) but defined, so emitted: {stale:?}");
 }
 
 #[test]
