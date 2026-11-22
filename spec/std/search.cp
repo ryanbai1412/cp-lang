@@ -280,8 +280,80 @@ pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) 
 /// traps: when `best` returns a position outside the range it was given
 /// example: `let a = [3, 1, 2]; split_best([0..3], range: g => g, best: (_, r) => r.map(i => (a[i], i)).max()!).collect() == [3, 2, 1]`
 /// example: `split_best([0..0], range: g => g, best: (_, r) => (0, r.start)).collect() == []`
+@allow(unproven_list_index)
 pub fn split_best<G, D, T: Ord>(
     groups: Seq<G>,
     range: G -> Range<D>,
     best: (G, Range<D>) -> (T, D),
-) -> yields T = todo
+) -> yields T:
+    var g_list: List<G> = []
+    var r_list: List<Range<D>> = []
+    var p_list: List<D> = []
+    var v_list: List<T> = []
+    var gi_list: List<Int> = []
+    var seq_list: List<Int> = []
+    var heap: List<Int> = []
+    var seq = 0
+
+    fn better(a: Int, b: Int) -> Bool:
+        if v_list[a] != v_list[b]: return v_list[a] > v_list[b]
+        if gi_list[a] != gi_list[b]: return gi_list[a] < gi_list[b]
+        seq_list[a] < seq_list[b]
+
+    fn push_entry(g: G, r: Range<D>, gi: Int):
+        if r.len == 0: return
+        let (val, pos) = best(g, r)
+        assert r.start <= pos and pos < r.end, "split_best: best returned position outside range"
+        let id = v_list.len
+        g_list.push(g)
+        r_list.push(r)
+        p_list.push(pos)
+        v_list.push(val)
+        gi_list.push(gi)
+        seq_list.push(seq)
+        seq += 1
+        heap.push(id)
+        var i = heap.len - 1
+        while i > 0:
+            let par = (i - 1) >> 1
+            if better(heap[i], heap[par]):
+                let tmp = heap[i]
+                heap[i] = heap[par]
+                heap[par] = tmp
+                i = par
+            else:
+                break
+
+    var gi = 0
+    for g in groups:
+        push_entry(g, range(g), gi)
+        gi += 1
+
+    while heap.len > 0:
+        let top = heap[0]
+        let last = heap.pop()!
+        if heap.len > 0:
+            heap[0] = last
+            var i = 0
+            let n = heap.len
+            while true:
+                let l = 2 * i + 1
+                let r = l + 1
+                var best_i = i
+                if l < n and better(heap[l], heap[best_i]): best_i = l
+                if r < n and better(heap[r], heap[best_i]): best_i = r
+                if best_i == i: break
+                let tmp = heap[i]
+                heap[i] = heap[best_i]
+                heap[best_i] = tmp
+                i = best_i
+        yield v_list[top]
+        let g = g_list[top]
+        let r = r_list[top]
+        let p = p_list[top]
+        let g_idx = gi_list[top]
+        if r.start < p:
+            push_entry(g, r.start..p, g_idx)
+        let after = p + 1
+        if after < r.end:
+            push_entry(g, after..r.end, g_idx)
