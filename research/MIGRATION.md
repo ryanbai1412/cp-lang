@@ -907,3 +907,4 @@ Migrated/deleted 102 files from `design/`, `plan/`, and `archive/` per `plan/RES
 - `scripts/scoreboard.py` — replaced by `crates/cpl-conform` unified ratcheted scoreboard (`research/scoreboard.json`)
 - `scripts/test_scoreboard.py` — unit tests for deleted `scripts/scoreboard.py`; ratchet unit tests now in `crates/cpl-conform/tests/ratchet.rs`
 - `research/scoreboard.ports.jsonl` — legacy per-port JSONL sidecar for deleted `scripts/scoreboard.py`
+- `scripts/fix-spelling-drift.py` — obsolete v0.2 codemod hardcoded to deleted `proto/ports/`; superseded by `cpl lint --fix`
