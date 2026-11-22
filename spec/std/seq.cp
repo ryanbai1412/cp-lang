@@ -87,10 +87,6 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
 
 /// How many elements satisfy `p` (every element without `p`).
 ///
-/// On a `Bool` sequence `count()` still counts every element, not the
-/// `true` ones: `count(a != b for (a, b) in xs.adjacent)` is the number of
-/// pairs. Count the trues with `count(b => b)`.
-///
 /// cost: O(n)
 /// empty: `0`
 /// traps: never
@@ -387,7 +383,7 @@ pub fn select<S: IndexedMut, T, K>(
     cmp: ?((T, T) -> Bool) = None,
 ):
     let n = self.len
-    let _ = self.nth(k)
+    assert 0 <= k and k < n, "select needs k in 0..len"
     let less = (a: T, b: T) => if let c = cmp: c(a, b) else: by(a) < by(b)
     var (lo, hi) = (0, n)
     var budget = 2
@@ -2552,9 +2548,6 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
                 n -= 1
 
 @test
-fn scan_folds_every_prefix() = todo
-
-@test
 fn sorted_lookup_and_linear_search():
     // Sequence first_ge / last_le return indices (?Int on List, ?D on [D]T)
     let xs = [1, 3, 3, 7, 10]
@@ -2635,7 +2628,14 @@ fn compress_gives_the_values_their_own_domain():
     assert xs.slice(xs.D.nth(1)..xs.D.nth(1)) == []
 
 @test
-fn min_max_by_tie_breaking() = todo
+fn min_max_by_tie_breaking():
+    let items = [(10, "first_min"), (5, "a"), (5, "b"), (20, "first_max"), (20, "second_max"), (5, "c")]
+    assert items.min(by: p => p.0) == Some((5, "a"))
+    assert items.max(by: p => p.0) == Some((20, "first_max"))
+    assert [("x", 1), ("y", 1), ("z", 1)].min(by: p => p.1) == Some(("x", 1))
+    assert [("x", 1), ("y", 1), ("z", 1)].max(by: p => p.1) == Some(("x", 1))
+    let empty: List<(Int, Str)> = []
+    assert empty.min(by: p => p.0) == None and empty.max(by: p => p.0) == None
 
 @test
 fn range_bounds_and_keyed_sorted_lookup():
@@ -2654,7 +2654,21 @@ fn range_bounds_and_keyed_sorted_lookup():
     assert pairs.last_le(0, by: p => p.0) == None
 
 @test
-fn list_insert_remove_take_and_swap_at() = todo
+fn list_insert_remove_take_and_swap_at():
+    domain I = 0..4
+    var a = [I] i => i.to_idx * 10
+    a.swap_at(I(1), I(3))
+    a.swap_at(I(2), I(2))
+    assert [a[i] for i in I] == [0, 30, 20, 10]
+    let p = [1, 2, 3]
+    assert p.resized(5, 0) == [1, 2, 3, 0, 0] and p.resized(2, 0) == [1, 2]
+    assert p.resized(0, 9).is_empty and p == [1, 2, 3]
+    for _ in 0..30:
+        let xs = [rand(-9, 9) for _ in 0..rand(0, 8)]
+        let n = rand(0, 10)
+        let r = xs.resized(n, 7)
+        assert r.len == n
+        for i in 0..n: assert r[i] == (if i < xs.len: xs[i] else: 7)
 
 @test
 fn map_entry_remove_and_four_lookups():
@@ -2710,7 +2724,17 @@ fn map_entry_remove_and_four_lookups():
             assert rm.last_lt(q) == want_lt
 
 @test
-fn deduped_and_partition_leave_the_list_alone() = todo
+fn deduped_and_partition_leave_the_list_alone():
+    let xs = [3, 1, 3, 2, 1]
+    assert sorted(xs).deduped() == [1, 2, 3]
+    assert xs.deduped() == xs
+    let (small, big) = xs.partition(x => x < 3)
+    assert small == [1, 2, 1] and big == [3, 3]
+    assert xs == [3, 1, 3, 2, 1]
+    for _ in 0..50:
+        let ys = [rand(0, 5) for _ in 0..rand(0, 12)]
+        let (even, odd) = ys.partition(y => y % 2 == 0)
+        assert even.len + odd.len == ys.len and even.all(y => y % 2 == 0) and odd.all(y => y % 2 == 1)
 
 @test
 fn get_or_insert_stores_only_what_is_missing():
@@ -2729,7 +2753,12 @@ fn get_or_insert_with_makes_a_value_only_when_missing():
     assert ids.get_or_insert_with("b", () => 7) == 7 and made == 1
 
 @test
-fn update_starts_from_init_and_then_from_the_value() = todo
+fn update_starts_from_init_and_then_from_the_value():
+    var best = Map<Str, Int>()
+    best.update("a", 0, c => c + 1)
+    best.update("a", 0, c => c + 1)
+    best.update("b", 10, c => if c < 4: c else: 4)
+    assert best["a"] == 2 and best["b"] == 4 and best.len == 2
 
 @test
 fn runs_with_by_groups_neighbours_with_the_same_key():
@@ -2807,19 +2836,64 @@ pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D:
     best
 
 @test
-fn argmax_and_argmin_give_the_first_best_index() = todo
+fn argmax_and_argmin_give_the_first_best_index():
+    assert [3, 9, 2, 9].argmax() == Some(1)
+    assert [3, 2, 9, 2].argmin() == Some(1)
+    let empty: List<Int> = []
+    assert empty.argmax() == None and empty.argmin() == None
+    for _ in 0..50:
+        let a = [rand(0, 5) for _ in 0..rand(1, 8)]
+        let hi = a.argmax()!
+        for i in 0..a.len: assert a[i] <= a[hi] and (i >= hi or a[i] < a[hi])
+        let lo = a.argmin()!
+        for i in 0..a.len: assert a[i] >= a[lo] and (i >= lo or a[i] > a[lo])
+    let words = ["pear", "fig", "banana", "kiwi", "orange"]
+    assert words.argmax(by: w => w.len) == Some(2)
+    assert words.argmin(by: w => w.len) == Some(1)
 
 @test
-fn prod_and_is_sorted_cover_sequences() = todo
+fn prod_and_is_sorted_cover_sequences():
+    assert prod([2, 3, 5]) == 30
+    let empty_int: List<Int> = []
+    assert prod(empty_int) == 1
+    assert prod([1.5, 2.0]) == 3.0
+    assert [1, 2, 2, 5].is_sorted() and not [1, 3, 2].is_sorted()
+    assert empty_int.is_sorted() and [42].is_sorted()
+    assert ["a", "bb", "ccc"].is_sorted(by: s => s.len)
+    assert not ["bb", "a", "ccc"].is_sorted(by: s => s.len)
 
 @test
-fn select_merge_sorted_and_rotate_right() = todo
+fn select_merge_sorted_and_rotate_right():
+    for _ in 0..50:
+        let n = rand(1, 10)
+        var a = [rand(-9, 9) for _ in 0..n]
+        let want = sorted(a.clone())
+        let k = rand(0, n - 1)
+        a.select(k)
+        assert a.nth(k) == want[k]
+        for i in 0..k: assert a[i] <= a[k]
+        for i in k + 1..n: assert a[i] >= a[k]
+        let x = sorted([rand(0, 9) for _ in 0..rand(0, 6)])
+        let y = sorted([rand(0, 9) for _ in 0..rand(0, 6)])
+        var both = x.clone()
+        for v in y: both.push(v)
+        assert merge_sorted(x, y) == sorted(both)
+        let r = rand(-12, 12)
+        var z = x.clone()
+        z.rotate_right(r)
+        var back = z.clone()
+        back.rotate_left(r)
+        assert back == x
 
 @test
-fn chunk_by_run_ranges_buckets_and_chunks() = todo
-
-@test
-fn suffix_scan_matches_right_to_left_fold() = todo
+fn chunk_by_run_ranges_buckets_and_chunks():
+    assert [p for p in [1, 2, 3].pairs()] == [(1, 2), (1, 3), (2, 3)]
+    assert [p for p in [1, 2].cyclic_pairs()] == [(1, 2), (2, 1)]
+    domain V = 1..=5
+    domain K = 0..3
+    let keys = [V] i => K([2, 0, 2, 1, 0][i.to_idx])
+    let b = keys.buckets()
+    assert b[K(0)] == [V(2), V(5)] and b[K(1)] == [V(4)] and b[K(2)] == [V(1), V(3)]
 
 @test
 fn first_gt_and_last_lt_match_linear_scan():
@@ -2889,10 +2963,42 @@ fn permutations_and_inversions():
         assert inversions(a) == brute
 
 @test
-fn monotone_stack_and_sliding_extrema() = todo
+fn monotone_stack_and_sliding_extrema():
+    for _ in 0..60:
+        let n = rand(0, 12)
+        let xs = [rand(0, 4) for _ in 0..n]
+        let ps = xs.prev_smaller()
+        let pn = xs.prev_smaller(strict: false)
+        let ns = xs.next_smaller()
+        let nn = xs.next_smaller(strict: false)
+        for i in 0..n:
+            var want_ps: ?Int = None
+            var want_pn: ?Int = None
+            for j in 0..i:
+                if xs[j] < xs[i]: want_ps = Some(j)
+                if xs[j] <= xs[i]: want_pn = Some(j)
+            var want_ns: ?Int = None
+            var want_nn: ?Int = None
+            for j in (i + 1..n).rev:
+                if xs[j] < xs[i]: want_ns = Some(j)
+                if xs[j] <= xs[i]: want_nn = Some(j)
+            assert ps[i] == want_ps and pn[i] == want_pn and ns[i] == want_ns and nn[i] == want_nn
 
 @test
-fn seq_and_indexed_traits_unify_sequences_and_views() = todo
+fn seq_and_indexed_traits_unify_sequences_and_views():
+    let xs = [1, 1, 2, 2, 2]
+    assert xs.first == Some(1) and xs.last == Some(2)
+    assert xs.is_sorted() and not [3, 1].is_sorted()
+    domain V = 1..=5
+    let arr: [V]Int = [10, 10, 20, 30, 30]
+    assert arr.is_sorted() and arr.first == Some(10) and arr.last == Some(30)
+    let r = 1..=5
+    assert r.is_sorted() and r.first == Some(1) and r.last == Some(5)
+    assert sum(r) == 15 and r.prod() == 120
+    let vs = [1, 3, 5, 2, 4, 6]
+    assert merge_sorted([1, 3, 5], [2, 4, 6]) == [1, 2, 3, 4, 5, 6]
+    assert [p for p in zip(vs, [10, 10, 20, 30, 30])] == [(1, 10), (3, 10), (5, 20), (2, 30), (4, 30)]
+    assert inversions(vs) == 3 and inversions(arr) == 0 and inversions(r) == 0
 
 @test
 fn distinct_with_by_key_keeps_first_seen():
@@ -2908,7 +3014,27 @@ fn distinct_with_by_key_keeps_first_seen():
     assert "aAbBcA".distinct(by: c => if c >= 'a': c - 'a' else: c - 'A') == ['a', 'b', 'c']
 
 @test
-fn scan_prod_and_rotate_method_syntax() = todo
+fn scan_prod_and_rotate_method_syntax():
+    let xs = [3, 1, 4, 1, 5]
+    assert xs.prod() == 60
+    assert xs.rotated_left(2) == [4, 1, 5, 3, 1]
+    assert xs.rotated_left(-1) == [5, 3, 1, 4, 1]
+    assert xs.rotated_right(2) == [1, 5, 3, 1, 4]
+    let empty: List<Int> = []
+    assert empty.rotated_left(3) == []
+    var m = [1, 2, 3, 4]
+    m.rotate_left(1)
+    assert m == [2, 3, 4, 1]
+    m.rotate_right(2)
+    assert m == [4, 1, 2, 3]
+    for _ in 0..30:
+        let ys = [rand(0, 9) for _ in 0..rand(1, 8)]
+        let k = rand(-10, 10)
+        let n = ys.len
+        assert ys.rotated_left(k) == [ys[((i + k) % n + n) % n] for i in 0..n]
+        var z = ys.clone()
+        z.rotate_right(k)
+        assert z == ys.rotated_right(k)
 
 /// O(1). The pair the other way round: `(a, b).swap` is `(b, a)`, and labels stay in place,
 /// so an edge `(u: a, v: b).swap` is `(u: b, v: a)`.
