@@ -5,7 +5,7 @@
 pub struct Mark(at: 0..=2_000_000_000)
 
 /// Union-find with path halving and union by size.
-/// `find`, `unite`, `same` and `size` are O(alpha(n)) amortized; memory is one `[V]` array (4 B/vertex).
+/// `find`, `unite`, `same` and `size` are O(log |V|), amortized O(alpha(|V|)) until the first `mark`; memory is one `[V]` array (4 B/vertex).
 ///
 /// It can also step back in time: `let snap = d.mark()` remembers the present and
 /// `d.undo_to(snap)` returns to it. From the first
@@ -18,7 +18,7 @@ pub struct Dsu<V>:
     joined: List<Int>
     marked: Bool
 
-    /// Every position starts in its own set. O(n).
+    /// Every position starts in its own set. O(|V|).
     pub fn new() -> Dsu<V>:
         Dsu(List.filled(V.K, -1), V.K, [], false)
 
@@ -32,7 +32,7 @@ pub struct Dsu<V>:
                 x = par
         x
 
-    /// The representative of `v`'s set.
+    /// The representative of `v`'s set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn find(mut self, v: V) -> V = V.at(self.find_ord(v.ord))
 
     /// The present, to return to with `undo_to`. O(1).
@@ -54,7 +54,7 @@ pub struct Dsu<V>:
                 parts += 1
         joined.truncate(snap.at)
 
-    /// Merge the sets of `a` and `b`. Returns false if they were already one set.
+    /// Merge the sets of `a` and `b`. Returns false if they were already one set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn unite(mut self, a: V, b: V) -> Bool:
         var x = self.find_ord(a.ord)
         var y = self.find_ord(b.ord)
@@ -72,7 +72,7 @@ pub struct Dsu<V>:
 
     /// As `unite`, but says which root stayed and which went under it, so data kept per
     /// set can follow: `if let (kept, merged) = d.merge(a, b): sum[kept] += sum[merged]`.
-    /// `none` if `a` and `b` were already one set.
+    /// `none` if `a` and `b` were already one set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
         var x = self.find_ord(a.ord)
         var y = self.find_ord(b.ord)
@@ -88,10 +88,10 @@ pub struct Dsu<V>:
                 joined.push(neg_sy)
         some((kept: V.at(x), merged: V.at(y)))
 
-    /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
+    /// Whether `a` and `b` are in the same component. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn same(mut self, a: V, b: V) -> Bool = self.find_ord(a.ord) == self.find_ord(b.ord)
 
-    /// The number of positions in `v`'s set.
+    /// The number of positions in `v`'s set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn size(mut self, v: V) -> Int:
         let r = self.find_ord(v.ord)
         unchecked:
@@ -137,11 +137,11 @@ pub struct DsuOf<V, T>:
     log: List<(V, V, T)>
     marked: Bool
 
-    /// Every position starts in its own set, with value `init(v)`. O(n).
+    /// Every position starts in its own set, with value `init(v)`. O(|V|).
     pub fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>:
         DsuOf([V] v => v, [V] v => 1, [V] v => init(v), join, V.K, [], false)
 
-    /// The representative of `v`'s set.
+    /// The representative of `v`'s set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn find(mut self, v: V) -> V:
         var x = v
         while up[x] != x:
@@ -149,19 +149,19 @@ pub struct DsuOf<V, T>:
             x = up[x]
         x
 
-    /// The value of `v`'s set.
+    /// The value of `v`'s set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn get(mut self, v: V) -> T:
         let r = self.find(v)
         val[r]
 
-    /// Replace the value of `v`'s set.
+    /// Replace the value of `v`'s set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn set(mut self, v: V, x: T):
         let r = self.find(v)
         if marked: log.push((r, r, val[r]))
         val[r] = x
 
     /// Merge the sets of `a` and `b`, joining their values. Returns false if they were
-    /// already one set (the value is left alone then).
+    /// already one set (the value is left alone then). O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn unite(mut self, a: V, b: V) -> Bool:
         let ra = self.find(a)
         let rb = self.find(b)
@@ -176,7 +176,7 @@ pub struct DsuOf<V, T>:
         true
 
     /// As `unite`, but says which root stayed and which went under it. `none` if `a` and
-    /// `b` were already one set.
+    /// `b` were already one set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
         let ra = self.find(a)
         let rb = self.find(b)
@@ -185,10 +185,10 @@ pub struct DsuOf<V, T>:
         self.unite(ra, rb)
         some((kept: x, merged: y))
 
-    /// Whether `a` and `b` are in the same component. O(alpha(n)) amortized.
+    /// Whether `a` and `b` are in the same component. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn same(mut self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
 
-    /// The number of positions in `v`'s set.
+    /// The number of positions in `v`'s set. O(log |V|), amortized O(alpha(|V|)) until the first `mark`.
     pub fn size(mut self, v: V) -> Int:
         let r = self.find(v)
         sz[r]
@@ -235,11 +235,11 @@ pub struct ParityDsu<V>:
     log: List<(V, Bool)>
     conflicts: 0..=2_000_000_000
 
-    /// Every position starts alone. O(n).
+    /// Every position starts alone. O(|V|).
     pub fn new() -> ParityDsu<V>:
         ParityDsu([V] v => v, [V] v => 1, [V] v => false, [], 0)
 
-    /// The representative of `v`'s set and whether `v` is on the other side from it.
+    /// The representative of `v`'s set and whether `v` is on the other side from it. O(log |V|).
     pub fn find(self, v: V) -> (root: V, flip: Bool):
         var (x, side) = (v, false)
         while up[x] != x:
@@ -249,7 +249,7 @@ pub struct ParityDsu<V>:
 
     /// Record that `a` and `b` are on opposite sides (`differ: false`: the same side).
     /// `false` if that contradicts what is already known; the contradiction is counted, so
-    /// `consistent` turns false until it is undone. An edge of a graph is `unite(u, v)`.
+    /// `consistent` turns false until it is undone. An edge of a graph is `unite(u, v)`. O(log |V|).
     pub fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool:
         let (ra, sa) = self.find(a)
         let (rb, sb) = self.find(b)
@@ -265,16 +265,16 @@ pub struct ParityDsu<V>:
         log.push((small, true))
         true
 
-    /// Are `a` and `b` on opposite sides? `none` when nothing relates them yet.
+    /// Are `a` and `b` on opposite sides? `none` when nothing relates them yet. O(log |V|).
     pub fn diff(self, a: V, b: V) -> ?Bool:
         let (ra, sa) = self.find(a)
         let (rb, sb) = self.find(b)
         if ra != rb: none else: sa != sb
 
-    /// Whether `a` and `b` are in the same component. O(log n).
+    /// Whether `a` and `b` are in the same component. O(log |V|).
     pub fn same(self, a: V, b: V) -> Bool = self.find(a).root == self.find(b).root
 
-    /// The number of positions in `v`'s set.
+    /// The number of positions in `v`'s set. O(log |V|).
     pub fn size(self, v: V) -> Int = sz[self.find(v).root]
 
     /// Has every `unite` so far agreed with the ones before it? For a graph: is it
@@ -306,11 +306,11 @@ pub struct PotentialDsu<V>:
     conflicts: 0..=2_000_000_000
     log: List<(V, Bool)>
 
-    /// Every position starts in its own set with potential 0. O(n).
+    /// Every position starts in its own set with potential 0. O(|V|).
     pub fn new() -> PotentialDsu<V>:
         PotentialDsu([V] v => v, [V] _ => 1, [V] _ => 0, V.K, 0, [])
 
-    /// Root of `v`'s set and `val[v] - val[root]`. O(log n).
+    /// Root of `v`'s set and `val[v] - val[root]`. O(log |V|).
     pub fn find(self, v: V) -> (root: V, offset: Int):
         var x = v
         var d = 0
@@ -319,7 +319,7 @@ pub struct PotentialDsu<V>:
             x = up[x]
         (root: x, offset: d)
 
-    /// Enforce `val[b] - val[a] == w`. Returns `false` and increments conflicts on contradiction. O(log n).
+    /// Enforce `val[b] - val[a] == w`. Returns `false` and increments conflicts on contradiction. O(log |V|).
     pub fn unite(mut self, a: V, b: V, w: Int) -> Bool:
         let (ra, da) = self.find(a)
         let (rb, db) = self.find(b)
@@ -342,16 +342,16 @@ pub struct PotentialDsu<V>:
             log.push((ra, true))
         true
 
-    /// `val[b] - val[a]` if `a` and `b` are in the same component, else `none`. O(log n).
+    /// `val[b] - val[a]` if `a` and `b` are in the same component, else `none`. O(log |V|).
     pub fn diff(self, a: V, b: V) -> ?Int:
         let (ra, da) = self.find(a)
         let (rb, db) = self.find(b)
         if ra != rb: none else: db - da
 
-    /// Whether `a` and `b` are in the same component. O(log n).
+    /// Whether `a` and `b` are in the same component. O(log |V|).
     pub fn same(self, a: V, b: V) -> Bool = self.find(a).root == self.find(b).root
 
-    /// Number of vertices in `v`'s component. O(log n).
+    /// Number of vertices in `v`'s component. O(log |V|).
     pub fn size(self, v: V) -> Int = sz[self.find(v).root]
 
     /// Number of connected components. O(1).

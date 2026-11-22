@@ -5381,3 +5381,17 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   `Str`. Fns in the ports and examples with an estimate: 40 of 2,183.
 - **Reverse.** Drop the `ExprKind::Generic` and `ExprKind::If` cases in
   `cpl-check`'s fixed-size checks.
+
+## 193. Union-find methods document `O(log |V|)` (2026-11-22)
+
+- **Decision.** `Dsu`, `DsuOf`, `ParityDsu` and `PotentialDsu` methods
+  state their cost over the receiver's domain: `find`, `unite`, `same`,
+  `size` and the rest cost `O(log |V|)`, `new` costs `O(|V|)`. `Dsu` and
+  `DsuOf` add "amortized `O(alpha(|V|))` until the first `mark`", since
+  `mark` turns off path halving. A fn's estimated cost uses the first
+  bound, which holds in every case thanks to union by size.
+- **Why.** The docs said `O(n)` or `O(alpha(n))` without saying what `n`
+  is, or nothing, so every fn calling a union-find had no estimate.
+  Fns in `corpus/problems` and the examples with an estimate: 24 to 25
+  of 1,613; `unite` and `size` no longer block any.
+- **Reverse.** Restore the old doc lines in `stdlib/dsu.cp`.

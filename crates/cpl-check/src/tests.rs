@@ -3513,3 +3513,19 @@ fn read_with_a_fixed_type_argument_and_a_choice_of_fixed_text_cost_o1() {
     assert_eq!(hover(&mut db, 1, "read").as_deref(), Some("O(1)"));
     assert_eq!(hover(&mut db, 2, "read"), None);
 }
+
+#[test]
+fn union_find_methods_cost_log_of_the_receivers_domain() {
+    let src = "use std.dsu.{Dsu, ParityDsu, PotentialDsu}\ndomain V = 0..10\nfn f(mut d: Dsu<V>, p: ParityDsu<V>, w: PotentialDsu<V>, a: V, b: V) -> Bool:\n    \
+               d.unite(a, b) and p.same(a, b) and w.diff(a, b) == some(0)\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let cost = |db: &mut Database, name: &str| {
+        let at = src.find(name).unwrap() as u32;
+        let text = db.hover("a.cp", at).unwrap().text;
+        text.lines().find_map(|l| l.strip_prefix("cost: ")).map(str::to_string)
+    };
+    assert_eq!(cost(&mut db, "unite").as_deref(), Some("O(log |V|)"));
+    assert_eq!(cost(&mut db, "same").as_deref(), Some("O(log |V|)"));
+    assert_eq!(cost(&mut db, "diff").as_deref(), Some("O(log |V|)"));
+}
