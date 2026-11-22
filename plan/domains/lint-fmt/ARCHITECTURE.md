@@ -35,7 +35,7 @@ Depends on `cpl-syntax`, `cpl-diag`, and, outside wasm only, `cpl-check` and
 | `src/rules/mod.rs` | 2,144 | `run`: calls each rule module in turn; shared helpers (scopes, names, spans) |
 | `src/rules/bounds.rs` | 1,089 | Value ranges from declared input bounds; a second copy of what the checker proves |
 | `src/rules/taste.rs` | 4,410 | L05xx idiom lints (search loop, folds, push loops, `hand_rolled_*`, ...) each as its own pattern match |
-| `src/rules/literals.rs` | 108 | L0506 repeated big literals, skipping input bounds |
+| `src/rules/literals.rs` | 110 | L0506 repeated big literals, skipping input bounds |
 | `src/rules/mod_div.rs` | 991 | L0415 loop-invariant `Mod` division |
 | `src/rules/types.rs` | 490 | L0204-L0207 spelling lints |
 | `src/rules/scopes.rs` | 291 | L0201, L0203 |
@@ -90,7 +90,7 @@ The `Proven*` API is the checker's job living in the wrong crate; it moves to
   `src/rules/*.rs` (`"Prefix"`, `"SortedSet"`, `"Mod"`, ...), against the spec's
   "no stdlib privilege".
 - **Browser lints differ.** The checker-backed lints and fixes are compiled
-  out on wasm (3 `target_arch = "wasm32"` gates).
+  out on wasm (8 `target_arch = "wasm32"` gates: `Cargo.toml` 1, `src/lib.rs` 2, `src/rules/bounds.rs` 5).
 - **Metadata drifts.** `LINTS` and `spec/diagnostics.md` disagree: L0601-L0609
   are specified and not implemented; L0209 and L0522 are implemented and not
   in the spec.

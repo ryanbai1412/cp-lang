@@ -42,6 +42,14 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     if file.top_level().any(|(_, stmt)| stmt.public) {
         return Vec::new();
     }
+    // A file of nothing but `use`s is a list of names, like the prelude
+    // itself, not a program the prelude is brought into.
+    if file
+        .top_level()
+        .all(|(_, stmt)| matches!(stmt.kind, StmtKind::Use { .. }))
+    {
+        return Vec::new();
+    }
     let declared: HashSet<&str> = file
         .top_level()
         .filter_map(|(_, stmt)| match &stmt.kind {
@@ -136,4 +144,17 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         });
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{lint, Config};
+
+    #[test]
+    fn the_prelude_file_is_not_its_own_redundant_import() {
+        let prelude = include_str!("../../../../spec/std/prelude.cp");
+        assert!(lint(prelude, &Config::default())
+            .iter()
+            .all(|d| d.code.0 != "L0208"));
+    }
 }
