@@ -2015,13 +2015,19 @@ impl<'a> Lowerer<'a> {
                 };
                 let ok = match tr_name.text.as_str() {
                     "Seq" | "Keyed" | "Sized" => {
-                        ty.is_seq() || self.implements(ty, tr_name.text.as_str())
+                        ty.is_seq()
+                            || (matches!(ty, Ty::Struct(_))
+                                && self.implements(ty, tr_name.text.as_str()))
                     }
                     "Indexed" | "Bidir" => {
-                        ty.is_indexed() || self.implements(ty, tr_name.text.as_str())
+                        ty.is_indexed()
+                            || (matches!(ty, Ty::Struct(_))
+                                && self.implements(ty, tr_name.text.as_str()))
                     }
                     "IndexedMut" => {
-                        ty.is_indexed_mut() || self.implements(ty, tr_name.text.as_str())
+                        ty.is_indexed_mut()
+                            || (matches!(ty, Ty::Struct(_))
+                                && self.implements(ty, tr_name.text.as_str()))
                     }
                     name => {
                         self.implements(ty, name)
