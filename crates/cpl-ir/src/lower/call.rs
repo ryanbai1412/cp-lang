@@ -9871,6 +9871,21 @@ impl<'a> Lowerer<'a> {
                     all_args.extend(args.iter().cloned());
                     return self.user_call(fid, None, &all_args, span);
                 }
+                // A domain is the sequence of its positions: `Cell.find(p)` is
+                // `Cell.all.find(p)`.
+                if ty == Ty::DomainVal && method != "all" {
+                    let all = ast::Expr {
+                        kind: ast::ExprKind::Field {
+                            base: Box::new(base.clone()),
+                            name: ast::Name {
+                                text: "all".to_string(),
+                                span: base.span,
+                            },
+                        },
+                        span: base.span,
+                    };
+                    return self.method(whole, &all, name, args, hint);
+                }
                 // UFCS free function with `self` first parameter (e.g. `p.step(d)`, `p.ray(d)`).
                 if let Some(res) = self.try_ufcs_call(method, base, args, span) {
                     return res;
