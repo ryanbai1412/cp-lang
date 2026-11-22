@@ -450,6 +450,10 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
         }
         ExprKind::Without { base, .. } => walk_expr(v, base),
         ExprKind::HasBound { .. } => {}
+        ExprKind::TableFill { domain, value } => {
+            walk_expr(v, domain);
+            walk_expr(v, value);
+        }
     }
 }
 
