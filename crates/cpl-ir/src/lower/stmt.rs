@@ -864,6 +864,20 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
+                // `let m = xs.map(f)` (v0.3): bind a lazy `MapView` so each read `m[i]`
+                // calls `f(xs[i])` without eagerly mapping the whole sequence.
+                if std::env::var_os("CPL_SPEC").is_some() && !*mutable && ty.is_none() {
+                    if let (Some(init_expr), ast::PatternKind::Name(vname)) = (init, &pat.kind) {
+                        if let Some(view) = self.map_view_from_expr(init_expr, out) {
+                            let slot = self.temp(Ty::Unit);
+                            if let Some(scope) = self.cx.scopes.last_mut() {
+                                scope.insert(vname.clone(), slot);
+                            }
+                            self.cx.map_views.insert(slot, view);
+                            return;
+                        }
+                    }
+                }
                 // Handle untyped `var m = Map()` / `HashMap()` by peeking subsequent uses in the block.
                 let inferred_map_ty = if ty.is_none() {
                     if let (

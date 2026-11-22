@@ -528,6 +528,8 @@ struct FnCx {
     recipes: HashMap<String, (usize, ast::Expr)>,
     /// Local zero-copy range views over `SortedBag<K>` / `SortedSet<K>`.
     sorted_views: HashMap<Slot, SortedView>,
+    /// Local lazy `xs.map(f)` views (v0.3): each read `m[i]` calls `f(xs[i])`.
+    map_views: HashMap<Slot, MapView>,
     /// Block-scoped `type Alias = ...` resolved to concrete types (e.g. `type Cell = (Row, Col)`).
     local_type_aliases: HashMap<String, Ty>,
     /// Local slots declared `var` or mutated, so closures capture them by reference.
@@ -576,6 +578,13 @@ pub(super) enum SortedViewKind {
     Bag(StructId),
     Set,
     Map,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct MapView {
+    pub base_slot: Slot,
+    pub func: ast::Expr,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]

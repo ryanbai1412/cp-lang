@@ -4887,6 +4887,29 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        if matches!(name.text.as_str(), "len" | "is_empty") {
+            if let ast::ExprKind::Name(n) = &base.kind {
+                if let Some(slot) = self.lookup(n) {
+                    if let Some(view) = self.cx.map_views.get(&slot).cloned() {
+                        let base_expr = self.local(view.base_slot, span);
+                        let len = self.mk(
+                            ExprKind::Builtin(Builtin::Len, vec![base_expr]),
+                            Ty::Int,
+                            span,
+                        );
+                        if name.text == "is_empty" {
+                            let zero = self.int_lit(0, span);
+                            return self.mk(
+                                ExprKind::Cmp(CmpOp::Eq, Box::new(len), Box::new(zero)),
+                                Ty::Bool,
+                                span,
+                            );
+                        }
+                        return len;
+                    }
+                }
+            }
+        }
         if matches!(name.text.as_str(), "first" | "last" | "len" | "is_empty")
             && self.is_sorted_range_expr(base)
         {
@@ -10759,6 +10782,10 @@ impl<'a> Lowerer<'a> {
 
     fn lower_array_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {
         let arr_val = self.expr(base, None);
+        self.lower_array_map_expr(arr_val, func_ast, span)
+    }
+
+    fn lower_array_map_expr(&mut self, arr_val: Expr, func_ast: &ast::Expr, span: Span) -> Expr {
         let Ty::Array { dims, elem } = arr_val.ty.clone() else {
             return self.err_expr(span);
         };
@@ -10903,8 +10930,168 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts: pre_stmts }), out_ty, span)
     }
 
+    pub(super) fn map_view_from_expr(
+        &mut self,
+        expr: &ast::Expr,
+        out: &mut Vec<Stmt>,
+    ) -> Option<MapView> {
+        let ast::ExprKind::Call { callee, args } = &expr.kind else {
+            return None;
+        };
+        let ast::ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        if name.text != "map" || args.len() != 1 || args[0].name.is_some() || args[0].mutable {
+            return None;
+        }
+        let base_ty = self.probe_ty_silent(base)?;
+        if !matches!(
+            base_ty,
+            Ty::List(_) | Ty::Array { .. } | Ty::ListView(_) | Ty::MutView(_) | Ty::Str
+        ) {
+            return None;
+        }
+        let base_val = self.expr(base, None);
+        if matches!(base_val.ty, Ty::Error) {
+            return None;
+        }
+        let base_slot = self.temp(base_val.ty.clone());
+        out.push(Stmt::Let(base_slot, Some(base_val)));
+        Some(MapView {
+            base_slot,
+            func: args[0].value.clone(),
+            span: expr.span,
+        })
+    }
+
+    pub(super) fn lower_map_view_index(
+        &mut self,
+        base: &ast::Expr,
+        indices: &[ast::Expr],
+        span: Span,
+    ) -> Option<Expr> {
+        if let ast::ExprKind::Name(n) = &base.kind {
+            if let Some(slot) = self.lookup(n) {
+                if let Some(view) = self.cx.map_views.get(&slot).cloned() {
+                    let base_expr = self.local(view.base_slot, span);
+                    let (idx_exprs, elem_ty) = self.index_args(&base_expr.ty, indices, span);
+                    if matches!(elem_ty, Ty::Error) {
+                        return Some(self.err_expr(span));
+                    }
+                    let elem = self.mk(
+                        ExprKind::Index(Box::new(base_expr), idx_exprs),
+                        elem_ty,
+                        span,
+                    );
+                    return Some(self.apply_map_fn(elem, &view.func, span));
+                }
+            }
+        }
+        if std::env::var_os("CPL_SPEC").is_some() {
+            if let ast::ExprKind::Call { callee, args } = &base.kind {
+                if let ast::ExprKind::Field { base: inner, name } = &callee.kind {
+                    if name.text == "map"
+                        && args.len() == 1
+                        && args[0].name.is_none()
+                        && !args[0].mutable
+                    {
+                        if let Some(inner_elem) = self.lower_map_view_index(inner, indices, span) {
+                            return Some(self.apply_map_fn(inner_elem, &args[0].value, span));
+                        }
+                        if matches!(
+                            self.probe_ty_silent(inner),
+                            Some(
+                                Ty::List(_)
+                                    | Ty::Array { .. }
+                                    | Ty::ListView(_)
+                                    | Ty::MutView(_)
+                                    | Ty::Str
+                            )
+                        ) {
+                            let base_expr = self.expr(inner, None);
+                            let (idx_exprs, elem_ty) =
+                                self.index_args(&base_expr.ty, indices, span);
+                            if matches!(elem_ty, Ty::Error) {
+                                return Some(self.err_expr(span));
+                            }
+                            let elem = self.mk(
+                                ExprKind::Index(Box::new(base_expr), idx_exprs),
+                                elem_ty,
+                                span,
+                            );
+                            return Some(self.apply_map_fn(elem, &args[0].value, span));
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub(super) fn apply_map_fn(&mut self, elem: Expr, func_ast: &ast::Expr, span: Span) -> Expr {
+        if matches!(elem.ty, Ty::Error) {
+            return self.err_expr(span);
+        }
+        if let ast::ExprKind::Lambda { params, body, .. } = &func_ast.kind {
+            if params.len() == 1 {
+                return self.do_expr(None, span, |lw, out| {
+                    lw.cx.scopes.push(HashMap::new());
+                    let mut bind_stmts = Vec::new();
+                    let item = lw.loop_var(&params[0], elem.ty.clone(), &mut bind_stmts);
+                    out.push(Stmt::Let(item, Some(elem)));
+                    out.extend(bind_stmts);
+                    let mapped = lw.expr(body, None);
+                    lw.cx.scopes.pop();
+                    out.push(Stmt::Give(mapped));
+                });
+            }
+        }
+        let fn_hint = Ty::Fn(vec![elem.ty.clone()], Box::new(Ty::Error));
+        let func = self.expr(func_ast, Some(&fn_hint));
+        let ret = match &func.ty {
+            Ty::Fn(_, ret) if !matches!(ret.as_ref(), Ty::Error) => (**ret).clone(),
+            Ty::Error => return self.err_expr(span),
+            other => {
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    func_ast.span,
+                    format!("`map` expects a function, not `{}`", self.show(other)),
+                );
+                return self.err_expr(span);
+            }
+        };
+        self.mk(
+            ExprKind::CallExpr(Box::new(func), vec![Arg::Value(elem)]),
+            ret,
+            span,
+        )
+    }
+
+    pub(super) fn lower_map_view_materialize(&mut self, view: &MapView, span: Span) -> Expr {
+        let base_expr = self.local(view.base_slot, view.span);
+        if matches!(base_expr.ty, Ty::Array { .. }) {
+            return self.lower_array_map_expr(base_expr, &view.func, span);
+        }
+        let elem_ty = match &base_expr.ty {
+            Ty::List(e) | Ty::ListView(e) | Ty::MutView(e) => (**e).clone(),
+            Ty::Str => Ty::Char,
+            _ => return self.err_expr(span),
+        };
+        self.lower_map_iter(Iter::Seq(base_expr, false), elem_ty, &view.func, span)
+    }
+
     fn lower_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {
         let (iter, elem_ty) = self.iter(base);
+        self.lower_map_iter(iter, elem_ty, func_ast, span)
+    }
+
+    fn lower_map_iter(
+        &mut self,
+        iter: Iter,
+        elem_ty: Ty,
+        func_ast: &ast::Expr,
+        span: Span,
+    ) -> Expr {
         if matches!(elem_ty, Ty::Error) {
             return self.err_expr(span);
         }

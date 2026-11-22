@@ -218,6 +218,11 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Call { callee, args } => self.call(e, callee, args, hint),
             ast::ExprKind::Index { base, indices } => {
+                if indices.len() == 1 && !matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
+                    if let Some(mapped) = self.lower_map_view_index(base, indices, span) {
+                        return mapped;
+                    }
+                }
                 let raw_base = self.expr(base, None);
                 let base_expr = match (&raw_base.kind, &raw_base.ty) {
                     (ExprKind::Builtin(Builtin::First, args), Ty::Opt(inner)) => Expr {
@@ -1049,6 +1054,9 @@ impl<'a> Lowerer<'a> {
 
     fn name_as_written(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
         if let Some(slot) = self.lookup(name) {
+            if let Some(view) = self.cx.map_views.get(&slot).cloned() {
+                return self.lower_map_view_materialize(&view, span);
+            }
             return self.local(slot, span);
         }
         if let Some((ref recv_place, owner)) = self.cx.inline_self.clone() {
