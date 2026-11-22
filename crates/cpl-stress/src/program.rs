@@ -522,8 +522,14 @@ fn split_command(line: &str) -> Result<Vec<String>, BuildError> {
     Ok(words)
 }
 
-/// The high-water mark of a running process's memory, in kilobytes.
+/// The high-water mark of a running process's memory, in kilobytes. None
+/// until the child has exec'd: a forked child still shares our executable
+/// and reports our own high-water mark, a false MLE when we are large.
 fn peak_memory(pid: u32) -> Option<u64> {
+    let exe = |pid: &str| std::fs::read_link(format!("/proc/{pid}/exe")).ok();
+    if exe(&pid.to_string()).is_none_or(|child| exe("self") == Some(child)) {
+        return None;
+    }
     let status = std::fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
     let line = status.lines().find(|line| line.starts_with("VmHWM:"))?;
     line.split_whitespace().nth(1)?.parse().ok()
@@ -544,7 +550,12 @@ pub(crate) fn kill_group(pid: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::starts_with_std;
+    use super::{peak_memory, starts_with_std};
+
+    #[test]
+    fn a_child_that_has_not_exec_d_yet_has_no_peak_of_its_own() {
+        assert_eq!(peak_memory(std::process::id()), None);
+    }
 
     #[test]
     fn the_standard_header_is_only_put_first_where_it_already_is() {
