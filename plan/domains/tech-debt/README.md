@@ -46,7 +46,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 - [x] A new crate edge fails the gate until the baseline and `plan/ARCHITECTURE.md` list it
 - [x] Round 1 cold review of the 11 other lanes, scores in the worklog, findings in owners' worklogs (2026-11-22)
 - [ ] Probe baseline P1-P4 recorded (files, crates, minutes, where stuck)
-- [ ] `plan/ARCHITECTURE.md` part B1 rewritten to measured current state
+- [x] `plan/ARCHITECTURE.md` part B1 rewritten to measured current state (2026-11-22)
 
 **M3. v0.3 shape** (exit = success criteria above).
 - [ ] `tree_walker` 0, `layer_violations` 0, `backend_std_names` 0, `dup_fn_bodies` 0
