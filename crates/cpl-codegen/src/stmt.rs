@@ -241,6 +241,28 @@ impl<'p> Emitter<'p> {
         lead: &str,
     ) {
         let fused = found_entry(cond, then);
+        // A profiled build counts the step's own line, so it keeps the branch.
+        if fused.is_none()
+            && otherwise.stmts.is_empty()
+            && lead.trim().is_empty()
+            && self.sites.is_none()
+        {
+            if let [Stmt::Assign(place, op, value)] = then.stmts.as_slice() {
+                if let Some(sym) = self.counted_global(place, *op, value) {
+                    // `if c: hits += 1` on a global: a conditional store
+                    // keeps `hits` in memory and the branch in the loop;
+                    // an unconditional one lets g++ keep it in a register
+                    // and add the condition without a branch.
+                    let (c, v, p) = (
+                        self.expr(cond).text,
+                        self.expr(value).text,
+                        self.place(place),
+                    );
+                    out.push_str(&format!("{lead}{p} {sym}= ({c}) ? {v} : 0;\n"));
+                    return;
+                }
+            }
+        }
         if let Some((map, key)) = fused {
             let (m, k, it) = (self.expr(map).text, self.expr(key).text, self.temp());
             out.push_str(&format!(
@@ -890,6 +912,24 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+    }
+
+    /// The `+`/`-` of `global += k`, an `Int` global stepped by a
+    /// literal, which a guard can add as `0` instead of branching around.
+    fn counted_global(&self, place: &Place, op: AssignOp, value: &Expr) -> Option<&'static str> {
+        let PlaceKind::Global(id) = &place.kind else {
+            return None;
+        };
+        let sym = match op {
+            AssignOp::Binary(BinOp::Add) => "+",
+            AssignOp::Binary(BinOp::Sub) => "-",
+            _ => return None,
+        };
+        (place.ty == Ty::Int
+            && matches!(value.kind, ExprKind::Int(_))
+            && !self.const_globals.contains(id)
+            && !self.dropped_store(place, op))
+        .then_some(sym)
     }
 
     /// A store into a dropped field or local (decision 178).

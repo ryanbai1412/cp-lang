@@ -1964,3 +1964,19 @@ fn optional_mut_param_does_not_emit_optional_of_reference() {
     assert!(!out.contains("std::optional<std::vector<char>&>"), "{out}");
     assert!(out.contains("std::optional<std::vector<char>>"), "{out}");
 }
+
+#[test]
+fn a_guarded_step_of_a_global_counter_does_not_branch() {
+    let cpp = cpp(
+        "let a: [0..8]Int = read()\nvar seen: [10]Int = 0\nvar distinct = 0\n\
+        fn add(i: Int):\n    if seen[a[i]] == 0: distinct += 1\n    seen[a[i]] += 1\n\
+        fn rem(i: Int):\n    seen[a[i]] -= 1\n    if seen[a[i]] == 0: distinct -= 1\n\
+        for i in 0..8: add(i)\nrem(0)\nprint(distinct)\n",
+    );
+    assert!(
+        cpp.contains("distinct += (") && cpp.contains(") ? 1 : 0;"),
+        "{cpp}"
+    );
+    assert!(cpp.contains("distinct -= ("), "{cpp}");
+    assert!(!cpp.contains("distinct += 1;"), "{cpp}");
+}
