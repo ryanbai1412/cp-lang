@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1113 (296 passing). Rules: 521.
+Cases: 1119 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -779,8 +779,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **lazy** (23/30 named by a case)
   - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_range`, `LazyTreap.append`
 - **marks** (46/46 named by a case)
-- **math** (51/83 named by a case)
-  - uncovered: `fixed`, `choose2`, `Sieve.is_prime`, `Sieve.factor`, `Sieve.phi`, `Sieve.mobius`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `to_str`, `is_pow2`, `splitmix64`, `divisors_from_factors`, `crt_all`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
+- **math** (55/83 named by a case)
+  - uncovered: `fixed`, `choose2`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `to_str`, `is_pow2`, `splitmix64`, `divisors_from_factors`, `crt_all`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
 - **matrix** (52/63 named by a case)
   - uncovered: `Mat.new`, `Mat.transpose`, `Mat.mul_vec`, `Mat.product`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (4/6 named by a case)
@@ -821,7 +821,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1606 of 2222 std items are named by a case.
+1610 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
