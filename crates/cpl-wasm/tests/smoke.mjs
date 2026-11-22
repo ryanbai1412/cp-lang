@@ -269,3 +269,40 @@ test("a loop of a few million steps finishes in seconds", () => {
   const ms = performance.now() - started;
   assert.ok(ms < 5_000, `took ${ms.toFixed(0)} ms`);
 });
+
+test("stress finds and shrinks a planted bug in wasm with first differing value", () => {
+  const buggy = [
+    "let n: 1..=10 = read()",
+    "let a: [0..n]1..=100 = read()",
+    "var best = 0",
+    "for i in 0..n:",
+    "    if i > 0: best max= a[i]",
+    "print(best)",
+    "",
+    "@alt(program)",
+    "fn slow():",
+    "    var best = 0",
+    "    for x in a: best max= x",
+    "    print(best)",
+    "",
+  ].join("\n");
+
+  const fail = cpl.stress(buggy, { cases: 50, seed: 1, size: 6 });
+  assert.equal(fail.status, "fail");
+  assert.equal(fail.counterexample.case, 2);
+  assert.equal(fail.counterexample.seed, 2);
+  assert.equal(fail.counterexample.raw_input, "1\n1\n");
+  assert.equal(fail.counterexample.expected, "1\n");
+  assert.equal(fail.counterexample.got, "0\n");
+  assert.equal(fail.counterexample.verdict, "WA");
+  assert.equal(fail.counterexample.saved, null);
+  assert.equal(fail.counterexample.explain.divergence.name, "best");
+  assert.equal(fail.counterexample.explain.divergence.nth, 2);
+  assert.equal(fail.counterexample.explain.divergence.fast, null);
+  assert.deepEqual(fail.counterexample.explain.divergence.brute, { line: 11, value: "1" });
+
+  const fixed = buggy.replace("if i > 0: best max= a[i]", "best max= a[i]");
+  const ok = cpl.stress(fixed, { cases: 25, seed: 1, size: 6 });
+  assert.deepEqual(ok, { status: "ok", cases: 25 });
+});
+

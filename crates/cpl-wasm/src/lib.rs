@@ -188,6 +188,53 @@ impl Playground {
         (stdout, json)
     }
 
+    /// `cpl stress --explain --format json`, running in-process on `cpl-interp`
+    /// with the same generator, shrinker and JSON report as the CLI.
+    pub fn stress(
+        &mut self,
+        name: &str,
+        source: &str,
+        cases: u32,
+        seed: u64,
+        size: u32,
+    ) -> String {
+        self.stress_with_stack(name, source, cases, seed, size, MAX_STACK)
+    }
+
+    /// [`stress`](Self::stress), stopping the interpreter when its calls take
+    /// more than `stack` bytes on WebAssembly.
+    pub fn stress_with_stack(
+        &mut self,
+        name: &str,
+        source: &str,
+        cases: u32,
+        seed: u64,
+        size: u32,
+        stack: u32,
+    ) -> String {
+        let options = cpl_stress::run::Options {
+            cases: cases.max(1) as usize,
+            size: i128::from(size.max(1)),
+            seed,
+            jobs: 1,
+            ..cpl_stress::run::Options::default()
+        };
+        #[cfg(target_family = "wasm")]
+        let stack_limit = Some(stack);
+        #[cfg(not(target_family = "wasm"))]
+        let stack_limit = {
+            let _ = stack;
+            None
+        };
+        match cpl_stress::stress_source(name, source, &options, stack_limit, true) {
+            Ok(result) => result.to_json(),
+            Err(error) => format!(
+                "{{\"status\":\"error\",\"error\":{}}}\n",
+                cpl_stress::cli::json_string(&error.0)
+            ),
+        }
+    }
+
     /// `cpl build`: checks `source`, then writes it as one C++17 file.
     /// `cpp` is `null` when there is none to show.
     pub fn build(&mut self, name: &str, source: &str) -> Value {

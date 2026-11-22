@@ -67,6 +67,50 @@ export interface Symbol extends Located {
   selection: Located;
 }
 
+export interface StressOptions extends Options {
+  /** How many cases to run. Default 200. */
+  cases?: number;
+  /** Starting seed; case `i` uses `seed + i`. Default 1. */
+  seed?: number;
+  /** Maximum size (`n`, `q`, ...) generated. Default 8. */
+  size?: number;
+}
+
+export interface StressStage {
+  name: string;
+  line: number;
+  fast: string;
+  brute: string;
+}
+
+export interface StressDivergence {
+  name: string;
+  nth: number;
+  fast: { line: number; value: string } | null;
+  brute: { line: number; value: string } | null;
+}
+
+export interface StressCounterexample {
+  case: number;
+  seed: number;
+  /** Human-readable input with the program's names (`n = 2  a = [1, 1]`). */
+  input: string;
+  /** Shrunk counterexample in input format. */
+  raw_input: string;
+  expected: string;
+  got: string;
+  verdict: "WA" | "RE" | "TLE" | "MLE";
+  stages: StressStage[];
+  saved: string | null;
+  trace: string | null;
+  explain?: { divergence: StressDivergence | null } | { error: string };
+}
+
+export type StressOutcome =
+  | { status: "ok"; cases: number }
+  | { status: "fail"; cases: number; counterexample: StressCounterexample }
+  | { status: "error"; error: string };
+
 export interface Options {
   /** The file's name in diagnostics and in the C++ header. Default `main.cp`. */
   name?: string;
@@ -92,6 +136,12 @@ export class Cpl {
    * brute's run too, as `runs.slow`. `debug` is what `debug(...)` showed.
    */
   trace(source: string, stdin?: string | Uint8Array, options?: Options): TraceOutcome;
+  /**
+   * `cpl stress --explain --format json`: generates inputs, compares against
+   * `@brute(main)` / `@alt(program)` / `@checker` / `@check`, and shrinks the
+   * first counterexample with the same Rust shrinker as the CLI.
+   */
+  stress(source: string, options?: StressOptions): StressOutcome;
   build(source: string, options?: Options): BuildOutcome;
   hover(source: string, offset: number, options?: Options): Hover | null;
   definition(source: string, offset: number, options?: Options): Located | null;
@@ -100,7 +150,7 @@ export class Cpl {
 }
 
 export type Worker = {
-  [Method in "check" | "run" | "trace" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
+  [Method in "check" | "run" | "trace" | "stress" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
     ...args: Parameters<Cpl[Method]>
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };

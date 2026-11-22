@@ -150,4 +150,5 @@ dependencies = [
  "cpl-ir",
  "cpl-judge",
  "cpl-lsp",
+ "cpl-stress",
 ]

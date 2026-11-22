@@ -152,6 +152,15 @@ pub extern "C" fn cpl_trace(stack: u32) {
     });
 }
 
+/// Runs `cpl stress --explain --format json` on `TEXT` in-process.
+#[no_mangle]
+pub extern "C" fn cpl_stress(cases: u32, seed_lo: u32, seed_hi: u32, size: u32, stack: u32) {
+    let seed = u64::from(seed_lo) | (u64::from(seed_hi) << 32);
+    command(|playground, name, text, _, _| {
+        playground.stress_with_stack(name, text, cases, seed, size, stack)
+    });
+}
+
 /// Builds `TEXT` into C++17.
 #[no_mangle]
 pub extern "C" fn cpl_build() {

@@ -264,3 +264,99 @@ fn error_and_trap_stderr_matches_cli_verbatim() {
         assert_eq!(exit_code(&run.result), cli.code, "{case}: trap exit status");
     }
 }
+
+#[test]
+fn stress_matches_cpl_stress_json() {
+    let dir = std::env::temp_dir().join(format!("cpl-wasm-stress-parity-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    let mut playground = Playground::new();
+
+    // 1. Failing planted bug: CLI and wasm must produce the exact same JSON
+    //    report on the same seed (apart from `saved`, which is filesystem-only).
+    let buggy = "\
+let n: 1..=10 = read()
+let a: [0..n]1..=100 = read()
+var best = 0
+for i in 0..n:
+    if i > 0: best max= a[i]
+print(best)
+
+@alt(program)
+fn slow():
+    var best = 0
+    for x in a: best max= x
+    print(best)
+";
+    let bug_path = dir.join("bug.cp");
+    std::fs::write(&bug_path, buggy).unwrap();
+    let bug_name = bug_path.to_str().unwrap();
+
+    let cli = cpl_cli::run(&[
+        "stress",
+        bug_name,
+        "--cases",
+        "50",
+        "--seed",
+        "1",
+        "--size",
+        "6",
+        "--jobs",
+        "1",
+        "--explain",
+        "--format",
+        "json",
+    ]);
+    assert_eq!(cli.code, 1, "CLI should find the bug: {}", cli.stderr);
+    let cli_json = String::from_utf8(cli.stdout).unwrap();
+    let wasm_json = playground.stress(bug_name, buggy, 50, 1, 6);
+
+    let mut cli_val = cpl_lsp::json::parse(&cli_json).expect("valid CLI JSON");
+    let wasm_val = cpl_lsp::json::parse(&wasm_json).expect("valid wasm JSON");
+    // Normalize `saved` (filesystem path on CLI, null in wasm).
+    if let Value::Object(members) = &mut cli_val {
+        if let Some((_, Value::Object(ce))) = members.iter_mut().find(|(k, _)| k == "counterexample")
+        {
+            if let Some((_, saved)) = ce.iter_mut().find(|(k, _)| k == "saved") {
+                *saved = Value::Null;
+            }
+        }
+    }
+    assert_eq!(wasm_val, cli_val, "wasm:\n{wasm_json}\ncli:\n{cli_json}");
+    assert_eq!(wasm_val.at(&["status"]).as_str(), Some("fail"));
+    assert_eq!(
+        wasm_val.at(&["counterexample", "raw_input"]).as_str(),
+        Some("1\n1\n")
+    );
+    assert_eq!(
+        wasm_val
+            .at(&["counterexample", "explain", "divergence", "name"])
+            .as_str(),
+        Some("best")
+    );
+
+    // 2. Clean solution: both agree on status "ok" and case count.
+    let clean = buggy.replace("if i > 0: best max= a[i]", "best max= a[i]");
+    let clean_path = dir.join("clean.cp");
+    std::fs::write(&clean_path, &clean).unwrap();
+    let clean_name = clean_path.to_str().unwrap();
+    let cli_ok = cpl_cli::run(&[
+        "stress",
+        clean_name,
+        "--cases",
+        "20",
+        "--seed",
+        "1",
+        "--size",
+        "6",
+        "--jobs",
+        "1",
+        "--format",
+        "json",
+    ]);
+    assert_eq!(cli_ok.code, 0, "{}", cli_ok.stderr);
+    let wasm_ok = playground.stress(clean_name, &clean, 20, 1, 6);
+    assert_eq!(wasm_ok, String::from_utf8(cli_ok.stdout).unwrap());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+

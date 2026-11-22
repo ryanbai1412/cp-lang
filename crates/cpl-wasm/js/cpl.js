@@ -92,6 +92,33 @@ export class Cpl {
     return this.#running("cpl_trace", source, stdin, options);
   }
 
+  /**
+   * `cpl stress --explain --format json`: generates typed inputs, runs the
+   * solution against its `@brute(main)` / `@alt(program)` / `@checker` /
+   * `@check` in-process, and shrinks the first failing case.
+   */
+  stress(source, options = {}) {
+    const { cases = 200, seed = 1, size = 8 } = options;
+    const seedLo = seed >>> 0;
+    const seedHi = Math.floor(seed / 0x100000000) >>> 0;
+    for (let maxStack = this.#maxStack; ; maxStack >>= 1) {
+      try {
+        return this.#call(
+          "cpl_stress",
+          { ...options, source },
+          cases,
+          seedLo,
+          seedHi,
+          size,
+          maxStack,
+        );
+      } catch (error) {
+        if (error.kind !== "stack" || maxStack < MIN_STACK) throw error;
+        if (maxStack === this.#maxStack) this.check(source, options);
+      }
+    }
+  }
+
   #running(command, source, stdin, options) {
     // The program's calls are the interpreter's, on the browser's stack,
     // and the module cannot see how much of it is left. A run that
@@ -197,7 +224,7 @@ export class Cpl {
   }
 }
 
-const METHODS = ["check", "run", "build", "hover", "definition", "symbols", "lsp"];
+const METHODS = ["check", "run", "trace", "stress", "build", "hover", "definition", "symbols", "lsp"];
 
 /**
  * The compiler in a Web Worker: the same methods as `Cpl`, each returning a
