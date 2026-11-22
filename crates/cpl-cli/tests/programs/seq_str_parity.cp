@@ -21,9 +21,9 @@ print(xs.first(x => x == 2)!, a.first(x => x == 2)!, xs[1..4].first(x => x == 2)
 // count, all, any, contains, find, first_ge, last_le
 print(xs.count(1), a.count(1), xs[1..4].count(1), s.count('a'), s[1..4].count('a'))
 print(xs.count(x => x > 1), s.count(c => c > 'a'), s[1..4].count(c => c > 'a'))
-print(xs.all(x => x > 0), s.all(c => c >= 'a'), s[1..4].all(c => c >= 'a'))
-print(xs.any(x => x == 2), s.any(c => c == 'b'), s[1..4].any(c => c == 'b'))
-print(xs.contains(2), a.contains(2), s.contains('b'), s[1..4].contains('b'))
+print(yes(xs.all(x => x > 0)), yes(s.all(c => c >= 'a')), yes(s[1..4].all(c => c >= 'a')))
+print(yes(xs.any(x => x == 2)), yes(s.any(c => c == 'b')), yes(s[1..4].any(c => c == 'b')))
+print(yes(xs.contains(2)), yes(a.contains(2)), yes(s.contains('b')), yes(s[1..4].contains('b')))
 print(xs.find(2)!, a.find(2)!, xs[1..4].find(2)!, s.find('b')!, s[1..4].find('b')!)
 
 let sxs = [1, 2, 2, 4]
@@ -35,8 +35,8 @@ print(sxs.last_le(2)!, sa.last_le(2)!, sxs[1..4].last_le(2)!, ss.last_le('b')!, 
 
 // fold, min, max, sum
 print(xs.sum(), a.sum(), xs[1..4].sum(), s.map(c => c.ord - 'a'.ord + 1).sum())
-print(xs.fold((x, y) => x * 10 + y), a.fold((x, y) => x * 10 + y), xs[1..4].fold((x, y) => x * 10 + y))
-print(s.fold(max), s[1..4].fold(max), s.min(), s.max(), s[1..4].min(), s[1..4].max())
+print(xs.fold((x, y) => x * 10 + y)!, a.fold((x, y) => x * 10 + y)!, xs[1..4].fold((x, y) => x * 10 + y)!)
+print(s.fold(max)!, s[1..4].fold(max)!, s.min()!, s.max()!, s[1..4].min()!, s[1..4].max()!)
 
 // sorted / sorted(by:) / sorted(desc:)
 print(xs.sorted(), a.sorted(), xs[1..4].sorted(), s.sorted(), s[1..4].sorted())
@@ -44,7 +44,7 @@ print(s.sorted(by: c => -c.ord), s[1..4].sorted(desc: true))
 
 // deduped, runs, is_sorted, windows, chunks, pairs, items (distinct covered in seq_fold_distinct.cp)
 print(ss.deduped(), ss[1..4].deduped())
-print(ss.runs(), ss[1..4].runs(), ss.is_sorted(), ss[1..4].is_sorted())
+print(ss.runs(), ss[1..4].runs(), yes(ss.is_sorted()), yes(ss[1..4].is_sorted()))
 print([w for w in s.windows(3)], [w for w in s[1..4].windows(2)], [c for c in s[1..4].chunks(2)])
 print([(p, q) for (p, q) in s[1..4].pairs()], [(i, c) for (i, c) in s[1..4].items])
 
