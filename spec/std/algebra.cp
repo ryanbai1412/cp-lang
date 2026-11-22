@@ -26,9 +26,18 @@ pub struct Monoid<T>(id: T, op: (T, T) -> T):
     /// example: `Monoid<Int>.of(+).id == 0`
     /// example: `Monoid<Int>.of(*).op(3, 4) == 12`
     /// example: `Monoid<?Int>.of(min).id == None`
-    pub fn of<M>(m: M) -> Monoid<T> = todo
+    pub fn of<M>(m: M) -> Monoid<T>:
+        if same(m, +): return Monoid(T.zero, (a, b) => a + b)
+        if same(m, *): return Monoid(T.one, (a, b) => a * b)
+        if same(m, ^): return Monoid(T.zero, (a, b) => a ^ b)
+        if same(m, |): return Monoid(T.zero, (a, b) => a | b)
+        if same(m, &): return Monoid(T.zero - T.one, (a, b) => a & b)
+        if same(m, max): return Monoid(T.MIN, (a, b) => max(a, b))
+        if same(m, min): return Monoid(T.MAX, (a, b) => min(a, b))
+        if same(m, gcd): return Monoid(T.zero, (a, b) => gcd(a, b))
+        m
 
-fn same<A, B>(a: A, b: B) -> Bool = todo
+fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// A lazy update `F` on values `T` folded with `over`. Name every argument, in any order, so
 /// the roles read at the call site:
@@ -61,16 +70,17 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
     /// traps: never (laws are not checked here; use `laws_hold`)
     /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).apply(2, 10, 3) == 16`
     /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).compose(2, 5) == 7`
-    pub fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F> = todo
+    pub fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F>:
+        Action(id, compose, apply, Monoid<T>.of(over))
 
 /// `x` with its order reversed. Build it with `desc(x)`.
 pub struct Desc<T>(x: T)
 
 impl Ord for Desc<T>:
-    fn lt(a, b) = todo
+    fn lt(a, b) = b.x < a.x
 
 impl Show for Desc<T>:
-    fn show(a) = todo
+    fn show(a) = "desc({a.x})"
 
 /// `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when
 /// `b < a`. For one component of a sort key or a heap entry; shows as `x` does.
@@ -79,13 +89,13 @@ impl Show for Desc<T>:
 /// traps: never
 /// example: `[3, 1, 2].max(by: x => desc(x)) == Some(1)`
 /// example: `(desc(3) < desc(5)) == false`
-pub fn desc<T>(x: T) -> Desc<T> = todo
+pub fn desc<T>(x: T) -> Desc<T> = Desc(x)
 
 /// A folded value that can be read from the other end. A fold along a tree path walks some
 /// stretches upwards; `Rooted.fold_path` reverses those with `rev`. A type that does not
 /// implement it is its own reverse, which is right for every commutative operation.
 pub trait Reversible:
-    fn rev(self) -> Self = todo
+    fn rev(self) -> Self = self
 
 /// `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m`
 /// sees elements in sequence order. `m` is anything `Monoid.of` accepts.
@@ -96,7 +106,12 @@ pub trait Reversible:
 /// example: `fold(+, [1, 2, 3]) == 6`
 /// example: `fold(+, 0..0) == 0`
 /// example: `fold(Affine.monoid(), [Affine(2, 0), Affine(1, 1)]).eval(5) == 11`
-pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T = todo
+pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
+    let k = Monoid<T>.of(m)
+    var acc = k.id
+    for x in xs:
+        acc = k.op(acc, x)
+    acc
 
 /// Maximum non-empty subarray summary (Kadane monoid).
 /// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.empty` in O(1);
@@ -108,14 +123,14 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `MaxSub.empty().try_best == None`
-    pub fn empty() -> MaxSub = todo
+    pub fn empty() -> MaxSub = MaxSub(false, 0, 0, 0, 0)
 
     /// The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `MaxSub.of(-3).try_best == Some(-3)`
-    pub fn of(v: Int) -> MaxSub = todo
+    pub fn of(v: Int) -> MaxSub = MaxSub(true, v, v, v, v)
 
     /// The summary of `a`'s elements followed by `b`'s (the same as `a + b`). Associative, with
     /// `MaxSub.empty()` as identity; the best subarray may cross the seam (`a.suf + b.pre`).
@@ -124,7 +139,16 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `MaxSub.join(MaxSub.of(2), MaxSub.of(-1)).try_best == Some(2)`
     /// example: `fold(MaxSub.monoid(), [MaxSub.of(v) for v in [2, -5, 3, 1]]).try_best == Some(4)`
-    pub fn join(a: MaxSub, b: MaxSub) -> MaxSub = todo
+    pub fn join(a: MaxSub, b: MaxSub) -> MaxSub:
+        if not a.has: return b
+        if not b.has: return a
+        MaxSub(
+            true,
+            max(a.best, b.best, a.suf + b.pre),
+            a.total + b.total,
+            max(a.pre, a.total + b.pre),
+            max(b.suf, a.suf + b.total),
+        )
 
     /// The summary of the same elements each multiplied by `k` (the same as `self * k`). Exact
     /// because every maximum scales by a non-negative factor; the empty summary stays empty.
@@ -133,7 +157,10 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
     /// traps: when `k < 0`
     /// example: `MaxSub.of(-3).scale(2).try_best == Some(-6)`
     /// example: `MaxSub.of(-3).scale(0).try_best == Some(0)`
-    pub fn scale(self, k: Int) -> MaxSub = todo
+    pub fn scale(self, k: Int) -> MaxSub:
+        assert k >= 0
+        if not has: self
+        else: MaxSub(true, best * k, total * k, pre * k, suf * k)
 
     /// The largest sum of a non-empty contiguous run of the summarized elements, or `None` for
     /// the empty summary.
@@ -149,17 +176,17 @@ pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `MaxSub.monoid().id.try_best == None`
-    pub fn monoid() -> Monoid<MaxSub> = todo
+    pub fn monoid() -> Monoid<MaxSub> = Monoid(MaxSub.empty(), (a, b) => MaxSub.join(a, b))
 
 impl Add for MaxSub:
-    fn add(a, b) = todo
+    fn add(a, b) = MaxSub.join(a, b)
 
 /// O(1). Scale every underlying value by `k >= 0`.
 impl Mul<Int> for MaxSub:
     fn mul(self, k: Int) -> MaxSub = todo
 
 impl Reversible for MaxSub:
-    fn rev(self) -> MaxSub = todo
+    fn rev(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
 
 /// O(1) construction. Associative operation without an identity, for non-empty folds
 /// (`SparseTable`, `DisjointSparseTable`, `SegTree.try_fold`).
@@ -282,30 +309,121 @@ pub struct Affine<T>(a: T, b: T):
     pub fn monoid() -> Monoid<Affine<T>> = todo
 
 @test
-fn bare_operators_bring_their_identity() = todo
+fn bare_operators_bring_their_identity():
+    assert Monoid<Int>.of(+).id == 0 and Monoid<Int>.of(*).id == 1
+    assert Monoid<Int>.of(^).id == 0 and Monoid<Int>.of(|).id == 0 and Monoid<Int>.of(gcd).id == 0
+    assert Monoid<Int>.of(&).id == -1
+    assert Monoid<Int>.of(max).id == Int.MIN and Monoid<Int>.of(min).id == Int.MAX
+    assert Monoid<?Int>.of(max).id == None and Monoid<?Int>.of(min).id == None
+    let xs = [-7, -1, 0, 2, 5, 9]
+    assert laws_hold(Monoid<Int>.of(+), xs)
+    assert laws_hold(Monoid<Int>.of(*), [-2, -1, 0, 1, 3])
+    assert laws_hold(Monoid<Int>.of(^), xs)
+    assert laws_hold(Monoid<Int>.of(&), xs)
+    assert laws_hold(Monoid<Int>.of(|), xs)
+    assert laws_hold(Monoid<Int>.of(max), xs)
+    assert laws_hold(Monoid<Int>.of(min), xs)
+    assert laws_hold(Monoid<Int>.of(gcd), [0, 4, 6, 9, 12])
+    assert laws_hold(Monoid<?Int>.of(max), [None, -3, 0, 8])
 
 @test
-fn a_monoid_of_your_own_is_a_pair() = todo
+fn a_monoid_of_your_own_is_a_pair():
+    let cat = Monoid<Str>("", (a, b) => a + b)
+    assert laws_hold(cat, ["", "ab", "c"])
+    assert fold::<Str>(cat, ["ab", "c", "de"]) == "abcde"
+    assert fold::<Int>(+, [1, 2, 3]) == 6
+    assert fold::<Int>(max, [1, 5, 3]) == 5
+    let xs = [12, 18, 30]
+    assert xs.fold(gcd) == 6
+    assert xs[1..].fold(gcd) == 6
+    let a: [0..3]Int = [12, 18, 30]
+    assert a.fold(gcd) == 6
+    assert (1..=4).fold(+) == 10
 
 @test
-fn affine_action_laws() = todo
+fn affine_action_laws():
+    // f = (mul, add) acting on a sum of `span` values as mul * x + add * span;
+    // compose(new_f, old_f) applies old_f first, then new_f.
+    let act = Action<Int, (Int, Int)>(
+        (1, 0),
+        (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+        (f, val, span) => f.0 * val + f.1 * span,
+        over: +,
+    )
+    assert laws_hold(act, T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5), (0, 7)])
+    assert act.over.id == 0
+    // Non-commutative check: old = (*2 + 1), new = (*3 + 5) => 3*(2x + 1) + 5 = 6x + 8
+    let combined = act.compose((3, 5), (2, 1))
+    assert combined == (6, 8) and act.apply(combined, 4, 1) == 32
+    assert act.apply(combined, 10, 3) == 6 * 10 + 8 * 3
 
 @test
-fn named_arguments_build_the_same_monoid_and_action() = todo
+fn named_arguments_build_the_same_monoid_and_action():
+    let cat = Monoid<Str>(op: (a, b) => a + b, id: "")
+    assert cat.id == "" and cat.op("ab", "c") == "abc"
+    let positional = Action<Int, (Int, Int)>(
+        (1, 0),
+        (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+        (f, val, span) => f.0 * val + f.1 * span,
+        over: +,
+    )
+    let named = Action<Int, (Int, Int)>(
+        apply: (f, val, span) => f.0 * val + f.1 * span,
+        over: +,
+        compose: (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
+        id: (1, 0),
+    )
+    assert laws_hold(named, T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5)])
+    for f in [(1, 0), (2, 3), (-1, 5)]:
+        for g in [(0, 7), (3, -2)]:
+            assert named.compose(f, g) == positional.compose(f, g)
+            assert named.apply(f, 6, 2) == positional.apply(f, 6, 2)
+    assert named.id == positional.id and named.over.id == 0
 
 @test
-fn desc_reverses_one_part_of_a_key() = todo
+fn desc_reverses_one_part_of_a_key():
+    var xs = [(3, 1), (1, 2), (3, 0), (2, 2)]
+    sort(mut xs, by: p => (p.0, desc(p.1)))
+    assert xs == [(1, 2), (2, 2), (3, 1), (3, 0)]
+    sort(mut xs, by: p => desc(p))
+    assert xs == [(3, 1), (3, 0), (2, 2), (1, 2)]
+    assert desc(2) < desc(1) and desc(1) == desc(1)
 
 struct Word(s: Str)
 
 impl Reversible for Word:
-    fn rev(self) -> Word = todo
+    fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
 
 @test
-fn plain_values_are_their_own_reverse() = todo
+fn plain_values_are_their_own_reverse():
+    assert 5.rev() == 5 and (3, 4).rev() == (3, 4)
+    assert Word("abc").rev() == Word("cba")
 
 @test
-fn max_sub_monoid_laws_and_kadane() = todo
+fn max_sub_monoid_laws_and_kadane():
+    let samples = [
+        MaxSub.empty(),
+        MaxSub.of(-5),
+        MaxSub.of(3),
+        MaxSub.of(-2) + MaxSub.of(4),
+        MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2),
+    ]
+    assert laws_hold(MaxSub.monoid(), samples)
+    assert MaxSub.empty().try_best == None
+    let xs = [-3, 4, -1, 2, -5, 3, 2, -1]
+    var got = MaxSub.empty()
+    for x in xs: got = got + MaxSub.of(x)
+    var want = Int.MIN
+    for l in 0..xs.len:
+        var s = 0
+        for r in l..xs.len:
+            s += xs[r]
+            want max= s
+    assert got.best == want and got.try_best == want
+    assert got.scale(3).best == want * 3
+    let a = MaxSub.of(2) + MaxSub.of(-1) + MaxSub.of(5)
+    let b = MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2)
+    assert a.rev() == b
 
 /// O(1). Three-way ordering result returned by `cmp`.
 pub enum Ordering:

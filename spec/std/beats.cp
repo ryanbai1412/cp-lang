@@ -28,21 +28,120 @@ pub struct BeatsSegTree<D>:
     /// traps: when both `a` and `fill` are given
     /// example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
     /// example: `BeatsSegTree<0..3>(fill: 2).all_sum == 6`
-    pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D> = todo
+    pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>:
+        let n = D.K
+        let sz = max(1, 4 * n)
+        var st = BeatsSegTree(
+            List.filled(sz, 0),
+            List.filled(sz, Int.MIN),
+            List.filled(sz, Int.MIN),
+            List.filled(sz, 0),
+            List.filled(sz, Int.MAX),
+            List.filled(sz, Int.MAX),
+            List.filled(sz, 0),
+            List.filled(sz, 0),
+            n,
+        )
+        if n == 0: return st
+        var vals: List<Int> = []
+        if let init = a:
+            assert fill == None, "pass either `a:` or `fill:`, not both"
+            vals = [init[i] for i in D]
+        elif let v = fill:
+            vals = List.filled(n, v)
+        else:
+            vals = List.filled(n, 0)
+        st.build(1, 0, n, vals)
+        st
 
-    fn pull(mut self, u: Int) = todo
+    fn pull(mut self, u: Int):
+        let (l, r) = (2 * u, 2 * u + 1)
+        s[u] = s[l] + s[r]
+        if mx1[l] == mx1[r]:
+            mx1[u] = mx1[l]
+            mx_c[u] = mx_c[l] + mx_c[r]
+            mx2[u] = max(mx2[l], mx2[r])
+        elif mx1[l] > mx1[r]:
+            mx1[u] = mx1[l]
+            mx_c[u] = mx_c[l]
+            mx2[u] = max(mx2[l], mx1[r])
+        else:
+            mx1[u] = mx1[r]
+            mx_c[u] = mx_c[r]
+            mx2[u] = max(mx1[l], mx2[r])
+        if mn1[l] == mn1[r]:
+            mn1[u] = mn1[l]
+            mn_c[u] = mn_c[l] + mn_c[r]
+            mn2[u] = min(mn2[l], mn2[r])
+        elif mn1[l] < mn1[r]:
+            mn1[u] = mn1[l]
+            mn_c[u] = mn_c[l]
+            mn2[u] = min(mn2[l], mn1[r])
+        else:
+            mn1[u] = mn1[r]
+            mn_c[u] = mn_c[r]
+            mn2[u] = min(mn1[l], mn2[r])
 
-    fn build(mut self, u: Int, nl: Int, nr: Int, vals: List<Int>) = todo
+    fn build(mut self, u: Int, nl: Int, nr: Int, vals: List<Int>):
+        if nr - nl == 1:
+            let v = vals[nl]
+            s[u] = v
+            mx1[u] = v
+            mx2[u] = Int.MIN
+            mx_c[u] = 1
+            mn1[u] = v
+            mn2[u] = Int.MAX
+            mn_c[u] = 1
+            return
+        let mid = (nl + nr) / 2
+        self.build(2 * u, nl, mid, vals)
+        self.build(2 * u + 1, mid, nr, vals)
+        self.pull(u)
 
-    fn apply_add(mut self, u: Int, len: Int, x: Int) = todo
+    fn apply_add(mut self, u: Int, len: Int, x: Int):
+        s[u] += x * len
+        mx1[u] += x
+        if mx2[u] != Int.MIN: mx2[u] += x
+        mn1[u] += x
+        if mn2[u] != Int.MAX: mn2[u] += x
+        lz_add[u] += x
 
-    fn apply_chmin(mut self, u: Int, x: Int) = todo
+    fn apply_chmin(mut self, u: Int, x: Int):
+        if x >= mx1[u]: return
+        s[u] += (x - mx1[u]) * mx_c[u]
+        if mn1[u] == mx1[u]: mn1[u] = x
+        elif mn2[u] == mx1[u]: mn2[u] = x
+        mx1[u] = x
 
-    fn apply_chmax(mut self, u: Int, x: Int) = todo
+    fn apply_chmax(mut self, u: Int, x: Int):
+        if x <= mn1[u]: return
+        s[u] += (x - mn1[u]) * mn_c[u]
+        if mx1[u] == mn1[u]: mx1[u] = x
+        elif mx2[u] == mn1[u]: mx2[u] = x
+        mn1[u] = x
 
-    fn push(mut self, u: Int, nl: Int, nr: Int) = todo
+    fn push(mut self, u: Int, nl: Int, nr: Int):
+        let mid = (nl + nr) / 2
+        let (l, r) = (2 * u, 2 * u + 1)
+        if lz_add[u] != 0:
+            self.apply_add(l, mid - nl, lz_add[u])
+            self.apply_add(r, nr - mid, lz_add[u])
+            lz_add[u] = 0
+        self.apply_chmin(l, mx1[u])
+        self.apply_chmin(r, mx1[u])
+        self.apply_chmax(l, mn1[u])
+        self.apply_chmax(r, mn1[u])
 
-    fn chmin_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int) = todo
+    fn chmin_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int):
+        if qr <= nl or nr <= ql or x >= mx1[u]: return
+        if ql <= nl and nr <= qr and x > mx2[u]:
+            self.apply_chmin(u, x)
+            return
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.chmin_rec(2 * u, nl, mid, ql, qr, x)
+        self.chmin_rec(2 * u + 1, mid, nr, ql, qr, x)
+        self.pull(u)
 
     /// Replace every `a[i]` in `r` with `min(a[i], x)`. Descends only into nodes whose maximum
     /// exceeds `x` and whose second maximum does not, where the update is a tag.
@@ -51,9 +150,21 @@ pub struct BeatsSegTree<D>:
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..3, 3); t.all_sum == 7`
-    pub fn chmin(mut self, r: Range<D>, x: Int) = todo
+    pub fn chmin(mut self, r: Range<D>, x: Int):
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.chmin_rec(1, 0, n, lo, hi, x)
 
-    fn chmax_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int) = todo
+    fn chmax_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int):
+        if qr <= nl or nr <= ql or x <= mn1[u]: return
+        if ql <= nl and nr <= qr and x < mn2[u]:
+            self.apply_chmax(u, x)
+            return
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.chmax_rec(2 * u, nl, mid, ql, qr, x)
+        self.chmax_rec(2 * u + 1, mid, nr, ql, qr, x)
+        self.pull(u)
 
     /// Replace every `a[i]` in `r` with `max(a[i], x)`; the mirror of `chmin`.
     ///
@@ -61,9 +172,21 @@ pub struct BeatsSegTree<D>:
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmax(0..2, 2); t.all_sum == 11`
-    pub fn chmax(mut self, r: Range<D>, x: Int) = todo
+    pub fn chmax(mut self, r: Range<D>, x: Int):
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.chmax_rec(1, 0, n, lo, hi, x)
 
-    fn add_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int) = todo
+    fn add_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, x: Int):
+        if qr <= nl or nr <= ql: return
+        if ql <= nl and nr <= qr:
+            self.apply_add(u, nr - nl, x)
+            return
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.add_rec(2 * u, nl, mid, ql, qr, x)
+        self.add_rec(2 * u + 1, mid, nr, ql, qr, x)
+        self.pull(u)
 
     /// Add `x` to every `a[i]` in `r`.
     ///
@@ -71,9 +194,17 @@ pub struct BeatsSegTree<D>:
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D` (overflow wraps in release, traps in debug)
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.add(1..3, 10); t.sum(0..3) == 30`
-    pub fn add(mut self, r: Range<D>, x: Int) = todo
+    pub fn add(mut self, r: Range<D>, x: Int):
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.add_rec(1, 0, n, lo, hi, x)
 
-    fn sum_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int = todo
+    fn sum_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int:
+        if qr <= nl or nr <= ql: return 0
+        if ql <= nl and nr <= qr: return s[u]
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        self.sum_rec(2 * u, nl, mid, ql, qr) + self.sum_rec(2 * u + 1, mid, nr, ql, qr)
 
     /// The sum of the current values in `r`. Takes `mut self` because it pushes pending tags.
     ///
@@ -82,9 +213,17 @@ pub struct BeatsSegTree<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `BeatsSegTree([5, 1, 4]).sum(1..3) == 5`
     /// example: `BeatsSegTree([5, 1, 4]).sum(1..1) == 0`
-    pub fn sum(mut self, r: Range<D>) -> Int = todo
+    pub fn sum(mut self, r: Range<D>) -> Int:
+        let (lo, hi) = r.ends
+        if lo == hi: return 0
+        self.sum_rec(1, 0, n, lo, hi)
 
-    fn min_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int = todo
+    fn min_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int:
+        if qr <= nl or nr <= ql: return Int.MAX
+        if ql <= nl and nr <= qr: return mn1[u]
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        min(self.min_rec(2 * u, nl, mid, ql, qr), self.min_rec(2 * u + 1, mid, nr, ql, qr))
 
     /// The least current value in `r`, or `None` when `r` is empty.
     ///
@@ -94,9 +233,17 @@ pub struct BeatsSegTree<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `BeatsSegTree([5, 1, 4]).min_val(0..3) == Some(1)`
     /// example: `BeatsSegTree([5, 1, 4]).min_val(2..2) == None`
-    pub fn min_val(mut self, r: Range<D>) -> ?Int = todo
+    pub fn min_val(mut self, r: Range<D>) -> ?Int:
+        let (lo, hi) = r.ends
+        if lo == hi: return None
+        self.min_rec(1, 0, n, lo, hi)
 
-    fn max_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int = todo
+    fn max_rec(mut self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> Int:
+        if qr <= nl or nr <= ql: return Int.MIN
+        if ql <= nl and nr <= qr: return mx1[u]
+        self.push(u, nl, nr)
+        let mid = (nl + nr) / 2
+        max(self.max_rec(2 * u, nl, mid, ql, qr), self.max_rec(2 * u + 1, mid, nr, ql, qr))
 
     /// The greatest current value in `r`, or `None` when `r` is empty.
     ///
@@ -105,14 +252,17 @@ pub struct BeatsSegTree<D>:
     /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..1, 2); t.max_val(0..3) == Some(4)`
-    pub fn max_val(mut self, r: Range<D>) -> ?Int = todo
+    pub fn max_val(mut self, r: Range<D>) -> ?Int:
+        let (lo, hi) = r.ends
+        if lo == hi: return None
+        self.max_rec(1, 0, n, lo, hi)
 
     /// The current value at position `i`.
     ///
     /// cost: O(log |D|)
     /// traps: when `i` is outside `D`
     /// example: `BeatsSegTree([5, 1, 4]).get(2) == 4`
-    pub fn get(mut self, i: D) -> Int = todo
+    pub fn get(mut self, i: D) -> Int = self.sum(i..=i)
 
     /// Assign `a[i] = x`, replacing whatever earlier updates left there.
     ///
@@ -255,4 +405,27 @@ pub struct HistoricBeatsSegTree<D>:
     pub fn hist_sum(mut self, r: Range<D>) -> Int = todo
 
 @test
-fn beats_segtree_chmin_chmax_add_matches_brute() = todo
+fn beats_segtree_chmin_chmax_add_matches_brute():
+    domain I = 1..=16
+    var ref = [I] _ => rand(-20, 20)
+    var st = BeatsSegTree<I>(ref)
+    for _ in 0..200:
+        let (a, b) = (rand(1, 16), rand(1, 16))
+        let rng = I(min(a, b))..=I(max(a, b))
+        let kind = rand(0, 3)
+        let x = rand(-25, 25)
+        if kind == 0:
+            st.chmin(rng, x)
+            for i in rng: ref[i] min= x
+        elif kind == 1:
+            st.chmax(rng, x)
+            for i in rng: ref[i] max= x
+        elif kind == 2:
+            st.add(rng, x)
+            for i in rng: ref[i] += x
+        else:
+            assert st.sum(rng) == sum(ref[i] for i in rng)
+            assert st.min_val(rng) == min(ref[i] for i in rng)
+            assert st.max_val(rng) == max(ref[i] for i in rng)
+    for i in I:
+        assert st.get(i) == ref[i]

@@ -63,9 +63,9 @@ compile: `conformance/`. What 0.2.x does not do yet: `delta/`.
 
 ## Checking
 
-- `std/` holds every stdlib module as the spec wants it. Bodies are
-  `todo` with a doc comment and a cost; `scripts/spec-stub.py --check`
-  keeps it so. A file here shadows `stdlib/` (`CPL_STD` is searched
+- `std/` holds every stdlib module as the spec wants it. Every fn has a doc comment and a cost; bodies are ported
+  from `stdlib/` where one exists (`scripts/port-bodies.py`) and are
+  `todo` otherwise. `scripts/spec-stub.py --check` checks the docs. A file here shadows `stdlib/` (`CPL_STD` is searched
   first).
 - `scripts/spec-check.sh` holds the gold dreams (`corpus/gold/`) and
   the port dreams to the stubs. A failing dream is either a spec gap (add

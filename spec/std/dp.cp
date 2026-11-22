@@ -18,7 +18,7 @@ pub struct Line(k: Int, m: Int):
     /// cost: O(1)
     /// traps: when `k * x + m` overflows `Int`
     /// example: `Line(2, 3).at(4) == 11`
-    pub fn at(self, x: Int) -> Int = todo
+    pub fn at(self, x: Int) -> Int = k * x + m
 
 /// O(log n) per `at`, O(log n) per whole-line `add`, O(log^2 n) on a segment.
 /// The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope
@@ -53,7 +53,8 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// cost: O(1) amortized
     /// traps: never
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.clear(); t.at(3) == None`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        (lines, left, right) = ([None], [0], [0])
 
     /// The best value at `x` over every line covering `x`, as chosen by `pick`, or `None` when no line
     /// covers `x` (nothing added yet, or only segments that miss `x`).
@@ -62,7 +63,24 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// ties: equal values are one value; which line produced it does not matter
     /// traps: when `x` is not in `over`
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.at(1) == Some(1) and t.at(5) == Some(1)`
-    pub fn at(self, x: Int) -> ?K = todo
+    pub fn at(self, x: Int) -> ?K:
+        assert lo <= x and x <= hi
+        var best: ?K = None
+        var (i, l, r) = (0, lo, hi)
+        unchecked:
+            while true:
+                if let c = lines[i]:
+                    let v = c.at(x)
+                    best = if let b = best: pick(b, v) else: v
+                let mid = l + (r - l) / 2
+                if x <= mid:
+                    i = left[i]
+                    r = mid
+                else:
+                    i = right[i]
+                    l = mid + 1
+                if i == 0: break
+        best
 
     /// The line attaining `at(x)`, or `None` when no line covers `x`.
     ///
@@ -73,7 +91,23 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// ties: unspecified among lines with equal values at `x`; break ties through `K`
     /// traps: when `x` is not in `over`
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.line_at(8) == Some(Line(-1, 6))`
-    pub fn line_at(self, x: Int) -> ?L = todo
+    pub fn line_at(self, x: Int) -> ?L:
+        assert lo <= x and x <= hi
+        var best: ?(line: L, val: K) = None
+        var (i, l, r) = (0, lo, hi)
+        while true:
+            if let c = lines[i]:
+                let v = c.at(x)
+                if best == None or self.wins(v, best!.val): best = (line: c, val: v)
+            let mid = l + (r - l) / 2
+            if x <= mid:
+                i = left[i]
+                r = mid
+            else:
+                i = right[i]
+                l = mid + 1
+            if i == 0: break
+        if let b = best: b.line else: None
 
     /// Add `line` on every coordinate of `over`, or only on the coordinates of `on`
     /// (`on: lo..=hi`). Later `at(x)` calls consider the line only where it was added.
@@ -85,15 +119,59 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// empty: an empty `on` adds nothing
     /// traps: when `on` reaches outside `over`
     /// example: `var t = LiChao(max, over: 0..=10); t.add(Line(0, 5), on: 2..=4); t.at(3) == Some(5) and t.at(5) == None`
-    pub fn add(mut self, line: L, on: ?Range<Int> = None) = todo
+    pub fn add(mut self, line: L, on: ?Range<Int> = None):
+        if on == none:
+            self.settle(0, lo, hi, line)
+            return
+        let s = on!
+        if s.is_empty: return
+        let (a, b) = (max(s.first!, lo), min(s.last!, hi))
+        if a > b: return
+        var todo = [(0, lo, hi)]
+        while let t = todo.pop():
+            let (i, l, r) = t
+            if a <= l and r <= b:
+                self.settle(i, l, r, line)
+                continue
+            let mid = l + (r - l) / 2
+            if a <= mid: todo.push((self.kid(i, false), l, mid))
+            if mid < b: todo.push((self.kid(i, true), mid + 1, r))
 
-    fn wins(self, a: K, b: K) -> Bool = todo
+    fn wins(self, a: K, b: K) -> Bool = pick(a, b) == a and a != b
 
-    fn kid(mut self, i: Int, right_side: Bool) -> Int = todo
+    fn kid(mut self, i: Int, right_side: Bool) -> Int:
+        let k = if right_side: right[i] else: left[i]
+        if k != 0: return k
+        lines.push(None)
+        left.push(0)
+        right.push(0)
+        let fresh = lines.len - 1
+        if right_side: right[i] = fresh else: left[i] = fresh
+        fresh
 
     // Keep the line better at the middle of `l..=r` here; the other one is
     // better on at most one half, and goes down into it.
-    fn settle(mut self, at: Int, lo: Int, hi: Int, line: L) = todo
+    fn settle(mut self, at: Int, lo: Int, hi: Int, line: L):
+        var (i, l, r, fresh) = (at, lo, hi, line)
+        unchecked:
+            while true:
+                if lines[i] == none:
+                    lines[i] = fresh
+                    return
+                let old = lines[i]!
+                let mid = l + (r - l) / 2
+                let left_wins = self.wins(fresh.at(l), old.at(l))
+                let mid_wins = self.wins(fresh.at(mid), old.at(mid))
+                if mid_wins:
+                    lines[i] = fresh
+                    fresh = old
+                if l == r: return
+                if left_wins != mid_wins:
+                    i = self.kid(i, false)
+                    r = mid
+                else:
+                    i = self.kid(i, true)
+                    l = mid + 1
 
 /// For each row of the implicit `rows` x `cols` matrix `f`, the least `f(row, col)` and its
 /// leftmost `col`, or `None` where `f` is `None` on the whole row.
@@ -108,7 +186,22 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
 /// order: one entry per row, row order
 /// traps: when `rows < 0` or `cols < 0`
 /// example: `monotone_minima(2, 3, (i, j) => Some((j - i) * (j - i))) == [Some((val: 0, at: 0)), Some((val: 0, at: 1))]`
-pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)> = todo
+pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(val: Int, at: Int)>:
+    var out: List<?(val: Int, at: Int)> = List.filled(rows, None)
+    var todo = [(0, rows, 0, cols)]
+    while let t = todo.pop():
+        let (lo, hi, from, to) = t
+        if lo >= hi: continue
+        let mid = (lo + hi) / 2
+        var best: ?(val: Int, at: Int) = None
+        for j in from..to:
+            if let v = f(mid, j):
+                if best == None or v < best!.val: best = (val: v, at: j)
+        out[mid] = best
+        let cut = if let b = best: b.at else: from
+        todo.push((lo, mid, from, if best == none: to else: cut + 1))
+        todo.push((mid + 1, hi, cut, to))
+    out
 
 /// One layer of a partition DP: `next[i]` is the least `prev[j] + cost(j, i)` over `j < i` with
 /// `prev[j]` present, or `None` when no such `j` exists, so `next[0]` is always `None`. Indices are
@@ -123,7 +216,27 @@ pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(va
 /// order: same length and index order as `prev`
 /// traps: never
 /// example: `dnc_layer([Some(0), None, None], (j, i) => (i - j) * (i - j)) == [None, Some(1), Some(4)]`
-pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int> = todo
+pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
+    let n = prev.len
+    var next: List<?Int> = List.filled(n, None)
+    var todo = [(1, n, 0, n)]
+    unchecked:
+        while let t = todo.pop():
+            let (lo, hi, from, to) = t
+            if lo >= hi: continue
+            let mid = (lo + hi) / 2
+            var best: ?Int = None
+            var at = from
+            for j in from..min(to, mid):
+                if let p = prev[j]:
+                    let v = p + cost(j, mid)
+                    if best == None or v < best!:
+                        best = v
+                        at = j
+            next[mid] = best
+            todo.push((lo, mid, from, if best == none: to else: at + 1))
+            todo.push((mid + 1, hi, at, to))
+    next
 
 /// The interval DP over cuts `0..=n`: `dp[i][i + 1] = 0` and `dp[i][j] = cost(i, j) + min over
 /// i < k < j of dp[i][k] + dp[k][j]`, returned as the full `(n + 1) x (n + 1)` table. Entries with
@@ -141,7 +254,29 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int> = todo
 /// example: `knuth(2, (i, j) => j - i)[0][2] == 2`
 /// example: `knuth(3, (i, j) => j - i)[0][3] == 5`
 /// example: `knuth(1, (i, j) => j - i) == [[0, 0], [0, 0]]`
-pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>> = todo
+pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
+    var dp: List<List<Int>> = []
+    var opt: List<List<0..2_147_483_648>> = []
+    for _ in 0..=n:
+        dp.push(List.filled(n + 1, 0))
+        opt.push(List.filled(n + 1, 0))
+    for i in 0..n: opt[i][i + 1] = i
+    unchecked:
+        for len in 2..=n:
+            for i in 0..=n - len:
+                let j = i + len
+                let from = max(opt[i][j - 1], i + 1)
+                let to = max(from, min(opt[i + 1][j], j - 1))
+                var best = dp[i][from] + dp[from][j]
+                var at = from
+                for k in from + 1..=to:
+                    let v = dp[i][k] + dp[k][j]
+                    if v < best:
+                        best = v
+                        at = k
+                dp[i][j] = best + cost(i, j)
+                opt[i][j] = at
+    dp
 
 /// `f(k)` for a convex `f` known only through its penalized form: `solve(λ)` returns the least
 /// `f(c) + λ * c` over every count `c`, and the least `c` attaining it.
@@ -173,10 +308,23 @@ fn penalties<L>(k: Int, solve: L -> (val: L, count: Int)) -> Range<L> = todo
 /// traps: when a sum overflows `Int`
 /// example: `subset_sums([1, 2]) == [0, 1, 2, 3]`
 /// example: `subset_sums([1, 1]) == [0, 1, 1, 2]`
-pub fn subset_sums(xs: List<Int>) -> List<Int> = todo
+pub fn subset_sums(xs: List<Int>) -> List<Int>:
+    var out = [0]
+    for x in xs:
+        var next: List<Int> = []
+        var (i, j) = (0, 0)
+        while i < out.len or j < out.len:
+            if j == out.len or i < out.len and out[i] <= out[j] + x:
+                next.push(out[i])
+                i += 1
+            else:
+                next.push(out[j] + x)
+                j += 1
+        out = next
+    out
 
 struct Counted(k: Int, m: Int, used: Int):
-    fn at(self, x: Int) -> (cost: Int, used: Int) = todo
+    fn at(self, x: Int) -> (cost: Int, used: Int) = (cost: k * x + m, used:)
 
 // Online LARSCH over nodes 0..n; the engine of `monge_path` and `monge_paths`.
 fn larsch<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>) = todo
@@ -398,13 +546,65 @@ pub struct Step<S>(state: S, depth: Int):
     pub fn prune(self) = todo
 
 @test
-fn li_chao_matches_a_scan_over_lines_and_segments() = todo
+fn li_chao_matches_a_scan_over_lines_and_segments():
+    for _ in 0..100:
+        let (lo, hi) = (rand(-20, 0), rand(1, 20))
+        var low = LiChao<Line, Int>(min, lo..=hi)
+        var high = LiChao<Line, Int>(max, lo..=hi)
+        var lines: List<(l: Line, a: Int, b: Int)> = []
+        for _ in 0..rand(1, 12):
+            let l = Line(rand(-5, 5), rand(-20, 20))
+            if rand(0, 1) == 0:
+                low.add(l)
+                high.add(l)
+                lines.push((l:, a: lo, b: hi))
+            else:
+                let (a, b) = (rand(lo - 3, hi), rand(lo, hi + 3))
+                low.add(l, on: a..=b)
+                high.add(l, on: a..=b)
+                lines.push((l:, a:, b:))
+            for x in lo..=hi:
+                let here = [e.l.at(x) for e in lines if e.a <= x and x <= e.b]
+                assert low.at(x) == min(here)
+                assert high.at(x) == max(here)
+    var ties = LiChao<Counted, (cost: Int, used: Int)>(min, 0..=10)
+    ties.add(Counted(1, 0, 3))
+    ties.add(Counted(1, 0, 2))
+    assert ties.at(4) == (cost: 4, used: 2)
 
 @test
-fn dnc_layers_match_the_quadratic_dp() = todo
+fn dnc_layers_match_the_quadratic_dp():
+    for _ in 0..30:
+        let n = rand(1, 12)
+        let a = [rand(0, 9) for _ in 0..n]
+        var pre = [0]
+        for x in a: pre.push(pre.last! + x)
+        let cost = (j, i) => (pre[i] - pre[j]) * (pre[i] - pre[j])
+        var fast: List<?Int> = [if i == 0: 0 else: None for i in 0..=n]
+        var slow = fast.copy()
+        for _ in 0..rand(1, 4):
+            fast = dnc_layer(fast, cost)
+            var next: List<?Int> = List.filled(n + 1, None)
+            for i in 1..=n:
+                for j in 0..i:
+                    if let v = slow[j]: next[i] min= v + cost(j, i)
+            slow = next
+            assert fast == slow
 
 @test
-fn knuth_matches_the_cubic_interval_dp() = todo
+fn knuth_matches_the_cubic_interval_dp():
+    for _ in 0..30:
+        let n = rand(1, 10)
+        let a = [rand(1, 9) for _ in 0..n]
+        var pre = [0]
+        for x in a: pre.push(pre.last! + x)
+        let dp = knuth(n, (l, r) => pre[r] - pre[l])
+        var slow = [[0 for _ in 0..=n] for _ in 0..=n]
+        for len in 2..=n:
+            for i in 0..=n - len:
+                let j = i + len
+                slow[i][j] = pre[j] - pre[i] + min(slow[i][k] + slow[k][j] for k in i + 1..j)
+        assert dp == slow
 
 @test
 fn aliens_finds_the_exact_count_optimum() = todo
@@ -413,7 +613,13 @@ fn aliens_finds_the_exact_count_optimum() = todo
 fn aliens_searches_a_wide_i128_slope_range() = todo
 
 @test
-fn subset_sums_are_every_sum_sorted() = todo
+fn subset_sums_are_every_sum_sorted():
+    for _ in 0..50:
+        let xs = [rand(-5, 9) for _ in 0..rand(0, 6)]
+        var want: List<Int> = []
+        for mask in 0..1 << xs.len:
+            want.push(sum(xs[i] for i in 0..xs.len if (mask >> i) & 1 == 1))
+        assert subset_sums(xs) == sorted(want)
 
 @test
 fn monge_paths_match_the_quadratic_dp() = todo

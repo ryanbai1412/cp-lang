@@ -21,7 +21,10 @@ pub type Perm<V> = [V]V
 /// empty: `T.one`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[2, 3, 4].prod() == 24`
-pub fn prod<S: Seq, T>(self: S) -> T = todo
+pub fn prod<S: Seq, T>(self: S) -> T:
+    var out = T.one
+    for x in self: out *= x
+    out
 
 /// Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each
 /// element first (`xs.sum(of: x => x * x)`). O(n).
@@ -91,7 +94,13 @@ pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 /// empty: `true`; a single element is sorted too
 /// traps: never
 /// example: `[1, 1, 2].is_sorted() == true`
-pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool = todo
+pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool:
+    var prev: ?K = None
+    for x in self:
+        let k = by(x)
+        if let p = prev, k < p: return false
+        prev = k
+    true
 
 // --- Adapters, ends, and sorting (R07.2.8, R07.4) ---
 
@@ -157,7 +166,7 @@ pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
 /// example: `[4, 5].last == Some(5)`
 @get pub fn last<S: Bidir, T>(self: S) -> ?T = todo
 
-/// The last element satisfying `p`, `None` if none does; walks backwards and stops there.
+/// The last element satisfying `p`, `None` if None does; walks backwards and stops there.
 ///
 /// cost: O(n) calls of `p` at most
 /// empty: `None`
@@ -215,7 +224,12 @@ pub fn dedup<T>(mut self: List<T>) = todo
 /// order: first of each run, in input order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 1, 2, 1].deduped() == [1, 2, 1]`
-pub fn deduped<S: Seq, T>(self: S) -> List<T> = todo
+pub fn deduped<S: Seq, T>(self: S) -> List<T>:
+    var out: List<T> = []
+    for x in self:
+        if out.is_empty or out.last! != x:
+            out.push(x)
+    out
 
 /// O(n). The positions holding a new strict maximum, left to right: the first position, then
 /// each one greater than everything before it. `record_highs(by: f)` compares `f(x)`.
@@ -239,7 +253,13 @@ pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D = todo
 /// order: first-seen order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 1, 3, 2, 1].distinct() == [3, 1, 2]`
-pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T> = todo
+pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>:
+    var seen = HashSet<K>()
+    var out: List<T> = []
+    for x in self:
+        if seen.add(by(x)):
+            out.push(x)
+    out
 
 /// The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
 ///
@@ -248,7 +268,12 @@ pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T> = todo
 /// order: each list keeps input order
 /// traps: never
 /// example: `[1, 2, 3, 4].partition(x => x % 2 == 0) == ([2, 4], [1, 3])`
-pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>) = todo
+pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
+    var (yes, no): (List<T>, List<T>) = ([], [])
+    for x in self:
+        if keep(x): yes.push(x)
+        else: no.push(x)
+    (yes, no)
 
 /// O(n) expected, O(n log n) worst case, O(1) extra space. Introselect partitioning `self` in place
 /// so `self.nth(k)` holds the element that would sit at `k` in sorted order (by `by:` or `cmp:`).
@@ -278,7 +303,23 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
     a: A,
     b: B,
     by: T -> K = x => x,
-) -> List<T> = todo
+) -> List<T>:
+    var out: List<T> = []
+    var (i, j) = (0, 0)
+    while i < a.len and j < b.len:
+        if b.at(j) < a.at(i):
+            out.push(b.at(j))
+            j += 1
+        else:
+            out.push(a.at(i))
+            i += 1
+    while i < a.len:
+        out.push(a.at(i))
+        i += 1
+    while j < b.len:
+        out.push(b.at(j))
+        j += 1
+    out
 
 /// O(1) per window. Borrowed length-`k` sliding slice views, left to right. Nothing when `k > self.len`.
 ///
@@ -287,7 +328,12 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
 /// order: left to right; each window keeps the keys of `self`
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].windows(2).map(w => w.sum()).collect() == [3, 5]`
-pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
+pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
+    assert k >= 1, "a window holds at least one element"
+    for i in 0..self.len - k + 1:
+        var w: List<T> = []
+        for j in i..i + k: w.push(self.at(j))
+        yield w
 
 /// O(1) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
 ///
@@ -317,7 +363,11 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 /// traps: never
 /// example: `[1, 2, 3].pairs().count() == 3`
 /// see: `adjacent` for neighbours, `Pair<V>` for a table keyed by unordered pairs
-pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
+pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
+    var prev: ?T = None
+    for x in self:
+        if let p = prev: yield (p, x)
+        prev = x
 
 /// Every element paired with the one before it, starting with `(None, first)`:
 /// `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
@@ -327,11 +377,15 @@ pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 /// order: left to right, starting with `(None, first)`
 /// traps: never
 /// example: `[10, 20].with_prev.collect() == [(None, 10), (Some(10), 20)]`
-@get pub fn with_prev<S: Seq, T>(self: S) -> yields (?T, T) = todo
+@get pub fn with_prev<S: Seq, T>(self: S) -> yields (?T, T):
+    var prev: ?T = None
+    for x in self:
+        yield (prev, x)
+        prev = x
 
 /// Every element with the one after it, the last with the first: the
 /// sides of a polygon, the links of a ring. One pair `(x, x)` for a
-/// single element, none for an empty sequence. Works on any `Seq`.
+/// single element, None for an empty sequence. Works on any `Seq`.
 ///
 ///     for (u, v) in poly.cyclic_pairs(): area += cross(u, v)
 ///
@@ -340,7 +394,15 @@ pub fn pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 /// order: left to right, then `(last, first)`
 /// traps: never
 /// example: `[1, 2, 3].cyclic_pairs().collect() == [(1, 2), (2, 3), (3, 1)]`
-pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
+pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
+    var first_val: ?T = None
+    var prev: ?T = None
+    for x in self:
+        if let p = prev: yield (p, x)
+        else: first_val = x
+        prev = x
+    if let p = prev, let f = first_val:
+        yield (p, f)
 
 /// The pairs `(a.at(i), b.at(i))`, as many as the shorter sequence has.
 /// Works on any `Indexed` sequences (`List`, `[D]T`, `Str`, `Range`, views). O(min(|a|, |b|)).
@@ -350,7 +412,7 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T) = todo
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
+pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = [(a.at(i), b.at(i)) for i in 0..min(a.len, b.len)]
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. O(log n).
@@ -358,15 +420,19 @@ pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = todo
 /// cost: O(log n)
 /// traps: never
 /// example: `var m: Map<Str, Int> = Map(); m.get_or_insert("a", 7) == 7 and m.get_or_insert("a", 9) == 7`
-pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V = todo
+pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
+    if not (k in self): self[k] = v
+    self[k]
 
-/// As `get_or_insert`, but the value is made by `f`, which runs only when `m` holds none
+/// As `get_or_insert`, but the value is made by `f`, which runs only when `m` holds None
 /// for `k`: `ids.get_or_insert_with(name, () => next_id())`. O(log n).
 ///
 /// cost: O(log n), plus `f` once when `k` is absent
 /// traps: never
 /// example: `var m: Map<Int, Int> = Map(); m.get_or_insert_with(1, () => 5) == 5`
-pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V = todo
+pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V:
+    if not (k in self): self[k] = f()
+    self[k]
 
 /// Replace the value under `k` by `f` of it, starting from `init` when `m` holds none:
 /// `cnt.update(x, 0, c => c + 1)`. O(log n).
@@ -374,7 +440,8 @@ pub fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V = 
 /// cost: O(log n), plus one call of `f`
 /// traps: never
 /// example: `var c: Map<Char, Int> = Map(); c.update('x', 0, v => v + 1); c['x'] == 1`
-pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V) = todo
+pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
+    self[k] = f(self.get(k) ?? init)
 
 /// Rotate `self` left by `k` in place (or only the subrange `range` when given):
 /// what was at offset `k % len` comes first. Signed Euclidean `k`: negative `k`
@@ -384,7 +451,20 @@ pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V) = todo
 /// empty: does nothing
 /// traps: when `range` falls outside the keys
 /// example: `var a = [1, 2, 3, 4]; a.rotate_left(1); a == [2, 3, 4, 1]`
-pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None) = todo
+pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None):
+    var lo = 0
+    var hi = self.len
+    if let r = range:
+        if r.is_empty: return
+        lo = r.first!
+        hi = r.last! + 1
+    let len = hi - lo
+    if len <= 1: return
+    let s = k % len
+    if s == 0: return
+    reverse(mut self, range: lo..lo + s)
+    reverse(mut self, range: lo + s..hi)
+    reverse(mut self, range: lo..hi)
 
 /// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`.
 ///
@@ -392,7 +472,8 @@ pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None
 /// empty: does nothing
 /// traps: when `range` falls outside the keys
 /// example: `var a = [1, 2, 3, 4]; a.rotate_right(1); a == [4, 1, 2, 3]`
-pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None) = todo
+pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None):
+    rotate_left(mut self, -k, range:)
 
 /// A new list rotated left by `k`: what was at offset `k % len` comes first.
 /// Signed Euclidean `k`: negative `k` rotates right. Works on any `Seq`. O(n).
@@ -402,7 +483,22 @@ pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = Non
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 3].rotated_left(-1) == [3, 1, 2]`
-pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T> = todo
+pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
+    let n = self.len
+    if n <= 1: return [x for x in self]
+    let s = k % n
+    if s == 0: return [x for x in self]
+    var out: List<T> = []
+    out.reserve(n)
+    var head: List<T> = []
+    head.reserve(s)
+    var idx = 0
+    for x in self:
+        if idx < s: head.push(x)
+        else: out.push(x)
+        idx += 1
+    for x in head: out.push(x)
+    out
 
 /// A new list rotated right by `k`. Works on any `Seq`.
 ///
@@ -411,7 +507,8 @@ pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T> = todo
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 3].rotated_right(1) == [3, 1, 2]`
-pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T> = todo
+pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>:
+    rotated_left(self, -k)
 
 /// Step `self` to the next arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted ascending, when it was the last one. Works on any `IndexedMut`. O(n), amortized O(1).
@@ -421,7 +518,21 @@ pub fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T> = todo
 /// ties: equal elements are one arrangement, so `[1, 1, 2]` has three
 /// traps: never
 /// example: `var a = [1, 2, 3]; a.next_permutation() and a == [1, 3, 2]`
-pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
+pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
+    var i = self.len - 2
+    while i >= 0 and not (self.at(i) < self.at(i + 1)): i -= 1
+    if i < 0:
+        reverse(mut self)
+        return false
+    var j = self.len - 1
+    while not (self.at(i) < self.at(j)): j -= 1
+    self.swap_idx(i, j)
+    var (l, r) = (i + 1, self.len - 1)
+    while l < r:
+        self.swap_idx(l, r)
+        l += 1
+        r -= 1
+    true
 
 /// Step `self` to the previous arrangement in sorted order, in place. Returns false, leaving `self`
 /// sorted descending, when it was the first (ascending) one. Works on any `IndexedMut`. O(n), amortized O(1).
@@ -431,7 +542,21 @@ pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 /// ties: equal elements are one arrangement
 /// traps: never
 /// example: `var a = [1, 3, 2]; a.prev_permutation() and a == [1, 2, 3]`
-pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
+pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
+    var i = self.len - 2
+    while i >= 0 and not (self.at(i + 1) < self.at(i)): i -= 1
+    if i < 0:
+        reverse(mut self)
+        return false
+    var j = self.len - 1
+    while not (self.at(j) < self.at(i)): j -= 1
+    self.swap_idx(i, j)
+    var (l, r) = (i + 1, self.len - 1)
+    while l < r:
+        self.swap_idx(l, r)
+        l += 1
+        r -= 1
+    true
 
 /// The stretches of equal neighbours (or equal `by:` keys), in order:
 /// each a slice of `self`: `"aabccc".runs()` walks `"aa"`, `"b"`, `"ccc"`, and
@@ -443,7 +568,15 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool = todo
 /// order: left to right; each run is a slice keeping the keys of `self`
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
-pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S> = todo
+pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S>:
+    var out: List<(val: K, len: Int)> = []
+    for x in self:
+        let k = by(x)
+        if out.len > 0 and out[out.len - 1].val == k:
+            out[out.len - 1] = (val: k, len: out[out.len - 1].len + 1)
+        else:
+            out.push((val: k, len: 1))
+    out
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 /// The result is keyed by the value domain, so group by any domain-valued key with
@@ -466,7 +599,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// cost: O(1)
     /// traps: never
     /// example: `let (domain C, xs) = compress([30, 10]); xs.get(C.first!) == 10`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T = vals[i]
 
     /// The compressed values over a range `r` of `xs.D`, as a list.
     ///
@@ -475,7 +608,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// order: increasing values; a new `List`, keyed from 0
     /// traps: never
     /// example: `let (domain C, xs) = compress([3, 1, 2]); xs.slice(C.all) == [1, 2, 3]`
-    pub fn slice(self, r: Range<D>) -> List<T> = todo
+    pub fn slice(self, r: Range<D>) -> List<T> = [vals[i] for i in r]
 
     /// How many distinct values there are.
     ///
@@ -490,21 +623,25 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// ties: none: values are distinct
     /// traps: when `val` was not compressed
     /// example: `let (domain C, xs) = compress([30, 10]); xs.at(30) == C.last!`
-    pub fn at(self, val: T) -> D = todo
+    pub fn at(self, val: T) -> D:
+        let i = vals.first_ge(val)
+        assert i != None and vals[i!] == val  // `at` is for a value that was compressed
+        i!
 
     /// The index of `val` if it was compressed, or `None`.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `compress([30, 10]).1.try_at(20) == None`
-    pub fn try_at(self, val: T) -> ?D = todo
+    pub fn try_at(self, val: T) -> ?D:
+        if let i = vals.first_ge(val), vals[i] == val: i else: None
 
     /// Whether `val` is one of the compressed values.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `compress([30, 10]).1.contains(10) == true`
-    pub fn contains(self, val: T) -> Bool = todo
+    pub fn contains(self, val: T) -> Bool = self.try_at(val) != None
 
     /// The first index whose value is `>= val`, or `None`.
     ///
@@ -512,7 +649,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// ties: none: values are distinct
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.first_ge(20) == Some(C.last!)`
-    pub fn first_ge(self, val: T) -> ?D = todo
+    pub fn first_ge(self, val: T) -> ?D = vals.first_ge(val)
 
     /// The first index whose value is `> val`, or `None`.
     ///
@@ -520,7 +657,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// ties: none: values are distinct
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.first_gt(30) == None`
-    pub fn first_gt(self, val: T) -> ?D = todo
+    pub fn first_gt(self, val: T) -> ?D = vals.first_gt(val)
 
     /// The last index whose value is `<= val`, or `None`.
     ///
@@ -528,7 +665,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// ties: none: values are distinct
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.last_le(20) == Some(C.first!)`
-    pub fn last_le(self, val: T) -> ?D = todo
+    pub fn last_le(self, val: T) -> ?D = vals.last_le(val)
 
     /// The last index whose value is `< val`, or `None`.
     ///
@@ -536,7 +673,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// ties: none: values are distinct
     /// traps: never
     /// example: `let (domain C, xs) = compress([10, 30]); xs.last_lt(10) == None`
-    pub fn last_lt(self, val: T) -> ?D = todo
+    pub fn last_lt(self, val: T) -> ?D = vals.last_lt(val)
 
 /// Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the
 /// duplicates and binds a fresh domain `C` for them, so an array over them is `[C]Int` and an
@@ -582,7 +719,7 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P> = todo
 /// example: `[1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)`
 pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
 
-/// The first element satisfying `p`, `None` if none does; stops there. `(1..=m).find(ok)` is the
+/// The first element satisfying `p`, `None` if None does; stops there. `(1..=m).find(ok)` is the
 /// least `ok` integer. O(position found).
 ///
 /// cost: O(position found) calls of `p`
@@ -727,7 +864,14 @@ pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = todo
 /// order: keyed by `V`
 /// traps: when `self` is not a bijection
 /// example: `[2, 0, 1].inverse() == [1, 2, 0]`
-pub fn inverse<I, V>(self: [I]V) -> [V]I = todo
+pub fn inverse<I, V>(self: [I]V) -> [V]I:
+    assert I.count == V.count, "inverse requires domains of equal size"
+    var inv: [V]?I = None
+    for i in I:
+        let v = self[i]
+        assert inv[v] == None, "inverse requires a bijection (duplicate image)"
+        inv[v] = i
+    [V] v => inv[v]!
 
 /// Function composition: `compose(f, g)[a] == g[f[a]]`.
 ///
@@ -736,7 +880,7 @@ pub fn inverse<I, V>(self: [I]V) -> [V]I = todo
 /// order: keyed by `A`
 /// traps: never
 /// example: `compose([1, 0], [5, 6]) == [6, 5]`
-pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = todo
+pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = [A] a => g[f[a]]
 
 /// Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.
 ///
@@ -745,7 +889,19 @@ pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = todo
 /// order: cycles by smallest element; each starts there and follows `p`
 /// traps: never in release; debug traps when `p` is not a permutation
 /// example: `perm_cycles([1, 0, 2]) == [[0, 1], [2]]`
-pub fn perm_cycles<V>(p: [V]V) -> List<List<V>> = todo
+pub fn perm_cycles<V>(p: [V]V) -> List<List<V>>:
+    var vis: [V]Bool = false
+    var out: List<List<V>> = []
+    for start in V:
+        if vis[start]: continue
+        var cyc: List<V> = []
+        var u = start
+        while not vis[u]:
+            vis[u] = true
+            cyc.push(u)
+            u = p[u]
+        out.push(cyc)
+    out
 
 /// `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.
 ///
@@ -754,7 +910,15 @@ pub fn perm_cycles<V>(p: [V]V) -> List<List<V>> = todo
 /// order: keyed by `V`
 /// traps: when `k < 0`
 /// example: `perm_pow([1, 2, 0], 2) == [2, 0, 1]`
-pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V = todo
+pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
+    assert k >= 0, "perm_pow requires k >= 0"
+    var out = [V] v => v
+    for cyc in perm_cycles(p):
+        let m = cyc.len
+        let shift = k % m
+        for j in 0..m:
+            out[cyc[j]] = cyc[(j + shift) % m]
+    out
 
 /// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. Works on any `Seq`.
 ///
@@ -771,7 +935,11 @@ pub fn inversions<S: Seq, T>(a: S) -> Int = todo
 /// traps: never
 /// example: `var a = [1, 2]; a.swap_at(0, 1); a == [2, 1]`
 /// empty: no key exists, so no call is possible
-pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D) = todo
+pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
+    if i == j: return
+    let t = self[i]
+    self[i] = self[j]
+    self[j] = t
 
 /// `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of
 /// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. Works on any `Indexed` sequence. O(n).
@@ -824,7 +992,13 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = todo
 /// traps: when `i` is not in `0..=self.len`
 /// example: `var a = [1, 3]; a.insert(1, 2); a == [1, 2, 3]`
 /// empty: `i` must be 0
-pub fn insert<T>(mut self: List<T>, i: Int, x: T) = todo
+pub fn insert<T>(mut self: List<T>, i: Int, x: T):
+    assert 0 <= i and i <= self.len
+    self.push(x)
+    var j = self.len - 1
+    while j > i:
+        self.swap(j - 1, j)
+        j -= 1
 
 /// O(n). Remove and return the element at index `i` (`0 <= i < self.len`), shifting `i + 1..` left.
 ///
@@ -832,7 +1006,11 @@ pub fn insert<T>(mut self: List<T>, i: Int, x: T) = todo
 /// traps: when `i` is not in `0..self.len`
 /// example: `var a = [1, 2, 3]; a.remove(1) == 2 and a == [1, 3]`
 /// empty: always traps
-pub fn remove<T>(mut self: List<T>, i: Int) -> T = todo
+pub fn remove<T>(mut self: List<T>, i: Int) -> T:
+    assert 0 <= i and i < self.len
+    for j in i..self.len - 1:
+        self.swap(j, j + 1)
+    self.pop()!
 
 // =============================================================================
 // Spec surface (`= todo` where not yet implemented)
@@ -1563,52 +1741,219 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
 fn scan_folds_every_prefix() = todo
 
 @test
-fn sorted_lookup_and_linear_search() = todo
+fn sorted_lookup_and_linear_search():
+    // Sequence first_ge / last_le return indices (?Int on List, ?D on [D]T)
+    let xs = [1, 3, 3, 7, 10]
+    assert xs.first_ge(3) == 1 and xs.first_ge(4) == 3 and xs.first_ge(11) == None
+    assert xs.last_le(3) == 2 and xs.last_le(0) == None and xs.last_le(99) == 4
+    assert xs.find(7) == 3 and xs.find(8) == None
+    domain V = 1..=5
+    let a = [V] v => xs[v.to_idx]
+    assert a.first_ge(4) == V(4) and a.last_le(3) == V(3) and a.find(10) == V(5)
+    assert first(x for x in xs if x > 3) == 7 and first(x for x in xs if x > 10) == None
+    let words = ["pear", "fig", "banana", "kiwi"]
+    assert words.min(by: w => w.len) == "fig" and words.max(by: w => w.len) == "banana"
+    let nothing: List<Str> = []
+    assert nothing.min(by: w => w.len) == None
+    domain D = 0..5
+    assert [w.len for w in D.windows(3)] == [3, 3, 3] and D.windows(3)[1] == (D(1)..=D(3))
 
 @test
-fn reorder_and_permutations_in_place() = todo
+fn reorder_and_permutations_in_place():
+    var a = [1, 1, 2, 3, 3, 3, 1]
+    dedup(mut a)
+    assert a == [1, 2, 3, 1]
+    rotate_left(mut a, 1)
+    assert a == [2, 3, 1, 1]
+    rotate_left(mut a, -1)
+    assert a == [1, 2, 3, 1]
+    // Negative k rotates right (Euclidean modulo)
+    var rot = [1, 2, 3, 4, 5]
+    rotate_left(mut rot, -2)
+    assert rot == [4, 5, 1, 2, 3]
+    rotate_left(mut rot, -7)
+    assert rot == [2, 3, 4, 5, 1]
+    reverse(mut a)
+    assert a == [1, 3, 2, 1]
+    // next_permutation and prev_permutation are exact mirrors
+    var p = [1, 2, 2]
+    var fwd = [p.copy()]
+    while next_permutation(mut p): fwd.push(p.copy())
+    assert fwd == [[1, 2, 2], [2, 1, 2], [2, 2, 1]] and p == [1, 2, 2]
+    var q = [2, 2, 1]
+    var bwd = [q.copy()]
+    while prev_permutation(mut q): bwd.push(q.copy())
+    assert bwd == [[2, 2, 1], [2, 1, 2], [1, 2, 2]] and q == [2, 2, 1]
+    // 4-element full round-trip forward and backward
+    var perm = [1, 2, 3, 4]
+    var up = [perm.copy()]
+    while next_permutation(mut perm): up.push(perm.copy())
+    assert up.len == 24 and perm == [1, 2, 3, 4]
+    var perm_down = [4, 3, 2, 1]
+    var down = [perm_down.copy()]
+    while prev_permutation(mut perm_down): down.push(perm_down.copy())
+    assert down.len == 24 and perm_down == [4, 3, 2, 1]
+    assert down == up.rev
+    // Edge cases: empty and singleton
+    var empty: List<Int> = []
+    assert not next_permutation(mut empty) and not prev_permutation(mut empty)
+    var one = [42]
+    assert not next_permutation(mut one) and not prev_permutation(mut one) and one == [42]
+    assert runs("aabccc") == [('a', 2), ('b', 1), ('c', 3)]
 
 @test
-fn compress_gives_the_values_their_own_domain() = todo
+fn compress_gives_the_values_their_own_domain():
+    let ys = [40, -7, 40, 1_000_000_000, 3]
+    let xs = compress(ys)
+    assert xs.len == 4 and xs.D.K == 4
+    assert [xs[i] for i in xs.D] == [-7, 3, 40, 1_000_000_000]
+    var cnt: [xs.D]Int = 0
+    for y in ys: cnt[xs.at(y)] += 1
+    assert [cnt[i] for i in xs.D] == [1, 1, 2, 1]
+    assert xs.first_ge(4) == xs.at(40) and xs.first_ge(2_000_000_000) == None
+    assert xs.last_le(4) == xs.at(3) and xs.last_le(-100) == None
+    let other = compress([5, 6])
+    assert other.D.K == 2 and xs.D.K == 4
+    // Compressed range slicing
+    let blk = xs.D.first..=xs.D.nth(2)
+    assert xs.slice(blk) == [-7, 3, 40]
+    assert xs[blk] == [-7, 3, 40]
+    assert xs.slice(xs.D.nth(1)..xs.D.nth(1)) == []
 
 @test
 fn min_max_by_tie_breaking() = todo
 
 @test
-fn range_bounds_and_keyed_sorted_lookup() = todo
+fn range_bounds_and_keyed_sorted_lookup():
+    domain D = 1..=10
+    // Range.l and Range.r boundary cuts even when empty
+    let empty = D(4)..D(4)
+    assert empty.l == D(4).l and empty.r == D(4).l and empty.l == empty.r
+    let seg = D(2)..=D(5)
+    assert seg.l == D(2).l and seg.r == D(5).r
+    // first_ge / last_le with by: return ?Int
+    let pairs = [(1, "a"), (3, "b"), (3, "c"), (7, "d")]
+    assert pairs.first_ge(3, by: p => p.0) == 1
+    assert pairs.first_ge(4, by: p => p.0) == 3
+    assert pairs.first_ge(9, by: p => p.0) == None
+    assert pairs.last_le(3, by: p => p.0) == 2
+    assert pairs.last_le(0, by: p => p.0) == None
 
 @test
 fn list_insert_remove_take_and_swap_at() = todo
 
 @test
-fn map_entry_remove_and_four_lookups() = todo
+fn map_entry_remove_and_four_lookups():
+    // Ordered Map 4-lookups return ?(K, V)
+    var m = Map<Int, Str>()
+    m[10] = "ten"
+    m[20] = "twenty"
+    m[30] = "thirty"
+    assert m.first_ge(20) == (20, "twenty") and m.first_ge(21) == (
+        30,
+        "thirty",
+    ) and m.first_ge(31) == None
+    assert m.first_gt(20) == (30, "thirty") and m.first_gt(10) == (
+        20,
+        "twenty",
+    ) and m.first_gt(30) == None
+    assert m.last_le(20) == (20, "twenty") and m.last_le(19) == (10, "ten") and m.last_le(5) == None
+    assert m.last_lt(20) == (10, "ten") and m.last_lt(30) == (
+        20,
+        "twenty",
+    ) and m.last_lt(10) == None
+    // Map.remove returns ?V (the removed value or None)
+    assert m.remove(20) == "twenty"
+    assert m.remove(20) == None
+    assert m.get(20) == None and m.len == 2
+    // Map compound assignment auto-inserts from operator identity; plain assign inserts/overwrites
+    var cnt = Map<Int, Int>()
+    cnt[5] += 3
+    cnt[5] += 2
+    cnt[8] min= 4
+    cnt[8] min= 9
+    cnt[9] max= -7
+    assert cnt[5] == 5 and cnt[8] == 4 and cnt[9] == -7
+    assert cnt.remove(5) == 5 and cnt.remove(5) == None
+    // Differential check against brute-force scans on random maps
+    for _ in 0..25:
+        var rm = Map<Int, Int>()
+        var ks: List<Int> = []
+        for _ in 0..rand(0, 12):
+            let k = rand(-10, 10)
+            let v = rand(0, 99)
+            rm[k] = v
+            if k not in ks: ks.push(k)
+        sort(mut ks)
+        for q in -12..=12:
+            let want_ge = first((k, rm[k]) for k in ks if k >= q)
+            let want_gt = first((k, rm[k]) for k in ks if k > q)
+            let want_le = [(k, rm[k]) for k in ks if k <= q].max(by: p => p.0)
+            let want_lt = [(k, rm[k]) for k in ks if k < q].max(by: p => p.0)
+            assert rm.first_ge(q) == want_ge
+            assert rm.first_gt(q) == want_gt
+            assert rm.last_le(q) == want_le
+            assert rm.last_lt(q) == want_lt
 
 @test
 fn deduped_and_partition_leave_the_list_alone() = todo
 
 @test
-fn get_or_insert_stores_only_what_is_missing() = todo
+fn get_or_insert_stores_only_what_is_missing():
+    var ids = Map<Str, Int>()
+    assert ids.get_or_insert("a", ids.len) == 0 and ids.get_or_insert("b", ids.len) == 1
+    assert ids.get_or_insert("a", 99) == 0 and ids.len == 2
 
 @test
-fn get_or_insert_with_makes_a_value_only_when_missing() = todo
+fn get_or_insert_with_makes_a_value_only_when_missing():
+    var ids = Map<Str, Int>()
+    var made = 0
+    fn fresh() -> Int:
+        made += 1
+        made * 10
+    assert ids.get_or_insert_with("a", fresh) == 10 and ids.get_or_insert_with("a", fresh) == 10
+    assert ids.get_or_insert_with("b", () => 7) == 7 and made == 1
 
 @test
 fn update_starts_from_init_and_then_from_the_value() = todo
 
 @test
-fn runs_with_by_groups_neighbours_with_the_same_key() = todo
+fn runs_with_by_groups_neighbours_with_the_same_key():
+    let rs = ["ab", "ac", "b", "ad"].runs(by: s => s[0])
+    assert rs == [('a', 2), ('b', 1), ('a', 1)]
+    let none_yet: List<Int> = []
+    assert none_yet.runs(by: x => x).len == 0
 
 @test
-fn excl_fold_folds_all_but_one() = todo
+fn excl_fold_folds_all_but_one():
+    assert [(x, rest) for (x, rest) in [2, 3, 5].excl_fold(*)] == [(2, 15), (3, 10), (5, 6)]
+    assert [
+        rest for (_, rest) in ["a", "b", "c"].excl_fold(Monoid("", (p, q) => p + q))
+    ] == ["bc", "ac", "ab"]
+    assert [rest for (_, rest) in [7].excl_fold(+)] == [0]
 
 @test
-fn windows_and_zip_walk_in_step() = todo
+fn windows_and_zip_walk_in_step():
+    assert [w for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
+    assert [w for w in [1, 2].windows(2)] == [[1, 2]] and [w for w in [1, 2].windows(3)].len == 0
+    assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
 
 @test
-fn pairs_and_with_prev_yield_neighbours() = todo
+fn pairs_and_with_prev_yield_neighbours():
+    assert [p for p in [10, 20, 30].pairs()] == [(10, 20), (20, 30)]
+    assert [p for p in [7].pairs()].len == 0
+    let empty: List<Int> = []
+    assert [p for p in empty.pairs()].len == 0
+    assert [(p ?? -1, x) for (p, x) in [10, 20, 30].with_prev()] == [(-1, 10), (10, 20), (20, 30)]
+    assert [(p ?? -1, x) for (p, x) in [7].with_prev()] == [(-1, 7)]
+    assert [p for p in empty.with_prev()].len == 0
 
 @test
-fn cyclic_pairs_close_the_ring() = todo
+fn cyclic_pairs_close_the_ring():
+    assert [p for p in [1, 2, 3].cyclic_pairs()] == [(1, 2), (2, 3), (3, 1)]
+    assert [p for p in [7].cyclic_pairs()] == [(7, 7)]
+    let empty: List<Int> = []
+    assert [p for p in empty.cyclic_pairs()].len == 0
 
 /// The index of the first largest value (optionally under key `by:`), or `None` when empty:
 /// `[3, 9, 2, 9].argmax()` is `Some(1)` and `words.argmax(by: w => w.len)` is the index of the
@@ -1647,10 +1992,71 @@ fn chunk_by_run_ranges_buckets_and_chunks() = todo
 fn suffix_scan_matches_right_to_left_fold() = todo
 
 @test
-fn first_gt_and_last_lt_match_linear_scan() = todo
+fn first_gt_and_last_lt_match_linear_scan():
+    let xs = [1, 3, 3, 7, 10]
+    assert xs.first_gt(3) == Some(3) and xs.first_gt(10) == None and xs.first_gt(0) == Some(0)
+    assert xs.last_lt(3) == Some(0) and xs.last_lt(1) == None and xs.last_lt(99) == Some(4)
+    let c = compress([10, 3, 7, 3, 1])
+    assert c.contains(7) and not c.contains(5)
+    assert c.try_at(7) == c.at(7) and c.try_at(5) == None
+    assert c.first_gt(3) == c.at(7) and c.first_gt(10) == None
+    assert c.last_lt(3) == c.at(1) and c.last_lt(1) == None
+    // Keyed lookup and domain array lookup
+    let pairs = [(1, "a"), (3, "b"), (3, "c"), (7, "d")]
+    assert pairs.first_gt(3, by: p => p.0) == Some(3)
+    assert pairs.last_lt(3, by: p => p.0) == Some(0)
+    domain V = 1..=5
+    let va = [V] i => xs[i.to_idx]
+    assert va.first_gt(3) == V(4) and va.last_lt(3) == V(1)
+    assert xs[1..4].first_gt(3) == Some(2) and xs[1..4].last_lt(3) == None
+    assert xs[0..4].last_lt(3) == Some(0) and xs[0..4].first_gt(7) == None
+    assert pairs[1..4].first_gt(3, by: p => p.0) == Some(2)
+    assert pairs[0..3].last_lt(3, by: p => p.0) == Some(0)
+    let s = "abccd"
+    assert s[1..4].first_gt('b') == Some(1) and s[1..4].last_lt('c') == Some(0)
+    for _ in 0..50:
+        let a = sorted([rand(-5, 5) for _ in 0..rand(0, 12)])
+        for q in -6..=6:
+            assert a.first_gt(q) == first(i for i in 0..a.len if a[i] > q)
+            assert a.last_lt(q) == max(i for i in 0..a.len if a[i] < q)
 
 @test
-fn permutations_and_inversions() = todo
+fn permutations_and_inversions():
+    domain I = 1..=5
+    let p = [I] i => I([3, 5, 4, 1, 2][i.to_idx])
+    let inv = p.inverse()
+    for i in I:
+        assert inv[p[i]] == i and p[inv[i]] == i
+    domain P = 0..5
+    let q = [P] i => I([3, 5, 4, 1, 2][i.to_idx])
+    let inv_q = q.inverse()
+    for i in P:
+        assert inv_q[q[i]] == i and q[inv_q[q[i]]] == q[i]
+    let id = compose(p, inv)
+    for i in I: assert id[i] == i
+    let cycs = perm_cycles(p)
+    assert cycs == [[I(1), I(3), I(4)], [I(2), I(5)]]
+    // perm_pow matches repeated compose and handles large k
+    let p0 = perm_pow(p, 0)
+    for i in I: assert p0[i] == i
+    let p2 = compose(p, p)
+    let p2_fast = perm_pow(p, 2)
+    for i in I: assert p2[i] == p2_fast[i]
+    let p6 = perm_pow(p, 6)
+    for i in I: assert p6[i] == i
+    let p_big = perm_pow(p, 1_000_000_000_004)
+    for i in I: assert p_big[i] == p2[i]
+    // Inversions against O(n^2) brute force
+    assert inversions([1, 2, 3]) == 0 and inversions([3, 2, 1]) == 3
+    let empty: List<Int> = []
+    assert inversions(empty) == 0 and inversions([5]) == 0
+    for _ in 0..60:
+        let a = [rand(0, 6) for _ in 0..rand(0, 15)]
+        var brute = 0
+        for i in 0..a.len:
+            for j in i + 1..a.len:
+                if a[i] > a[j]: brute += 1
+        assert inversions(a) == brute
 
 @test
 fn monotone_stack_and_sliding_extrema() = todo
@@ -1659,7 +2065,17 @@ fn monotone_stack_and_sliding_extrema() = todo
 fn seq_and_indexed_traits_unify_sequences_and_views() = todo
 
 @test
-fn distinct_with_by_key_keeps_first_seen() = todo
+fn distinct_with_by_key_keeps_first_seen():
+    let pairs = [(1, "a"), (2, "b"), (1, "c"), (3, "d"), (2, "e")]
+    assert pairs.distinct(by: p => p.0) == [(1, "a"), (2, "b"), (3, "d")]
+    let words = ["ant", "ape", "bat", "arc", "box"]
+    assert words.distinct(by: w => w[0]) == ["ant", "bat"]
+    let empty: List<(Int, Str)> = []
+    assert empty.distinct(by: p => p.0) == []
+    domain D = 0..5
+    let arr: [D]Int = [10, 21, 30, 41, 52]
+    assert arr.distinct(by: x => x % 10) == [10, 21, 52]
+    assert "aAbBcA".distinct(by: c => if c >= 'a': c - 'a' else: c - 'A') == ['a', 'b', 'c']
 
 @test
 fn scan_prod_and_rotate_method_syntax() = todo
@@ -1704,7 +2120,7 @@ pub enum Anchor = Start | End
 /// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
 pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Slice<[D]T> = todo
 
-/// For each right end, the shortest piece ending there that is `ok`, or none, keyed by that
+/// For each right end, the shortest piece ending there that is `ok`, or None, keyed by that
 /// end like the ring forms; `anchor: Anchor.Start` keys by left end. O(n) amortized.
 ///
 /// cost: O(n) amortized pushes and pops on `state`
@@ -1787,7 +2203,7 @@ pub struct Ring<D, T>(src: [D]T):
     pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T> = todo
 
     /// For each position as the last element, the shortest wrapping piece ending there that is
-    /// `ok`, or none. O(n) pushes and pops (two laps).
+    /// `ok`, or None. O(n) pushes and pops (two laps).
     ///
     /// cost: O(n) pushes and pops on `state`
     /// empty: an empty array

@@ -22,7 +22,7 @@ pub struct Marks<D>:
     /// empty: an empty `D` gives a set that can never hold a mark
     /// traps: never
     /// example: `Marks<0..5>().is_empty`
-    pub fn new() -> Marks<D> = todo
+    pub fn new() -> Marks<D> = Marks([D] _ => 0, 1, 0)
 
     /// Mark `v`. Returns `true` when `v` was unmarked, `false` when it was already marked (and
     /// nothing changes).
@@ -30,21 +30,29 @@ pub struct Marks<D>:
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var m = Marks<0..5>(); m.add(2) and not m.add(2)`
-    pub fn add(mut self, v: D) -> Bool = todo
+    pub fn add(mut self, v: D) -> Bool:
+        if stamp[v] == gen: return false
+        stamp[v] = gen
+        cnt += 1
+        true
 
     /// Unmark `v`. Returns `true` when `v` was marked, `false` when it was not (and nothing changes).
     ///
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var m = Marks<0..5>(); m.add(2); m.remove(2) and not m.remove(2)`
-    pub fn remove(mut self, v: D) -> Bool = todo
+    pub fn remove(mut self, v: D) -> Bool:
+        if stamp[v] != gen: return false
+        stamp[v] = 0
+        cnt -= 1
+        true
 
     /// Whether `v` is marked; also spelled `v in m`.
     ///
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var m = Marks<0..5>(); m.add(1); m.contains(1) and not m.contains(0)`
-    pub fn contains(self, v: D) -> Bool = todo
+    pub fn contains(self, v: D) -> Bool = stamp[v] == gen
 
     /// Unmark everything by moving to a new generation, without touching the stamp array. Once the
     /// generation counter reaches `2_000_000_000` the array is reset to zero, so the cost stays O(1)
@@ -53,7 +61,13 @@ pub struct Marks<D>:
     /// cost: O(1) amortized; O(|D|) on the call that wraps the counter
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(1); m.add(3); m.clear(); m.is_empty and not (1 in m)`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        if gen == MAX_GEN:
+            stamp.fill(0)
+            gen = 1
+        else:
+            gen += 1
+        cnt = 0
 
     /// The number of marked positions.
     ///
@@ -84,7 +98,8 @@ pub struct MarkMap<D, T>:
     /// empty: an empty `D` gives a map that can never hold an entry
     /// traps: never
     /// example: `MarkMap<0..5, Int>(0).is_empty`
-    pub fn new(default_val: T) -> MarkMap<D, T> = todo
+    pub fn new(default_val: T) -> MarkMap<D, T>:
+        MarkMap([D] _ => 0, [D] _ => default_val, default_val, 1, 0)
 
     /// The number of keys present.
     ///
@@ -105,28 +120,36 @@ pub struct MarkMap<D, T>:
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 0); m.contains(2) and not m.contains(3)`
-    pub fn contains(self, v: D) -> Bool = todo
+    pub fn contains(self, v: D) -> Bool = stamp[v] == gen
 
     /// The value at `v`, or `None` when `v` is absent.
     ///
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.get(2) == Some(9) and m.get(3) == None`
-    pub fn get(self, v: D) -> ?T = todo
+    pub fn get(self, v: D) -> ?T = if stamp[v] == gen: vals[v] else: None
 
     /// Give `v` the value `val`, adding `v` when it is absent and overwriting it otherwise.
     ///
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.set(2, 4); m.get(2) == Some(4)`
-    pub fn set(mut self, v: D, val: T) = todo
+    pub fn set(mut self, v: D, val: T):
+        if stamp[v] != gen:
+            stamp[v] = gen
+            cnt += 1
+        vals[v] = val
 
     /// Remove `v` and return the value it had, or `None` (and change nothing) when it was absent.
     ///
     /// cost: O(1)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.remove(2) == Some(9) and m.remove(2) == None`
-    pub fn remove(mut self, v: D) -> ?T = todo
+    pub fn remove(mut self, v: D) -> ?T:
+        if stamp[v] != gen: return None
+        stamp[v] = 0
+        cnt -= 1
+        vals[v]
 
     /// Remove every key by moving to a new generation, without touching the value array; the
     /// arrays are reset when the counter reaches `2_000_000_000`, as for `Marks.clear`.
@@ -134,7 +157,13 @@ pub struct MarkMap<D, T>:
     /// cost: O(1) amortized; O(|D|) on the call that wraps the counter
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.clear(); m.get(2) == None and m.is_empty`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        if gen == MAX_GEN:
+            stamp.fill(0)
+            gen = 1
+        else:
+            gen += 1
+        cnt = 0
 
 /// Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 /// `id`, `get`, and `key` are O(1) expected; `len`, `is_empty`, `clear` are O(1).
@@ -147,7 +176,7 @@ pub struct Interner<K>:
     /// cost: O(1)
     /// traps: never
     /// example: `Interner<Str>().is_empty`
-    pub fn new() -> Interner<K> = todo
+    pub fn new() -> Interner<K> = Interner(HashMap<K, Int>(), [])
 
     /// The number of distinct keys interned so far; ids are exactly `0..len`.
     ///
@@ -168,28 +197,35 @@ pub struct Interner<K>:
     /// cost: O(1)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.id("b"); t.clear(); t.id("b") == 0`
-    pub fn clear(mut self) = todo
+    pub fn clear(mut self):
+        to_id.clear()
+        keys = []
 
     /// The id of `k`. A new key gets the next id, `len`, so ids follow first-seen order.
     ///
     /// cost: O(1) expected
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("x") == 0 and t.id("y") == 1 and t.id("x") == 0`
-    pub fn id(mut self, k: K) -> Int = todo
+    pub fn id(mut self, k: K) -> Int:
+        if let i = to_id.get(k): return i
+        let i = keys.len
+        keys.push(k)
+        to_id[k] = i
+        i
 
     /// The id of `k`, or `None` when `k` has not been interned; never adds a key.
     ///
     /// cost: O(1) expected
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("x"); t.get("x") == Some(0) and t.get("y") == None and t.len == 1`
-    pub fn get(self, k: K) -> ?Int = todo
+    pub fn get(self, k: K) -> ?Int = to_id.get(k)
 
     /// The key whose id is `i`; the inverse of `id`.
     ///
     /// cost: O(1)
     /// traps: when `i` is outside `0..len`
     /// example: `var t = Interner<Str>(); t.id("x"); t.id("y"); t.key(1) == "y"`
-    pub fn key(self, i: Int) -> K = todo
+    pub fn key(self, i: Int) -> K = keys[i]
 
     /// Whether `k` has been interned; `get(k) != None`.
     ///
@@ -340,19 +376,73 @@ pub struct Arena<T>:
     pub fn clear(mut self) = todo
 
 @test
-fn mark_map_and_interner() = todo
+fn mark_map_and_interner():
+    domain V = 0..10
+    var mm = MarkMap<V, Int>(0)
+    assert mm.is_empty and mm.get(V(2)) == None
+    mm.set(V(2), 7)
+    mm.set(V(5), -3)
+    assert mm.len == 2 and mm.contains(V(2)) and mm.get(V(2)) == 7 and mm.get(V(5)) == -3
+    assert mm.remove(V(2)) == 7 and mm.remove(V(2)) == None and mm.len == 1
+    mm.clear()
+    assert mm.is_empty and mm.get(V(5)) == None
+    mm.set(V(5), 99)
+    assert mm.get(V(5)) == 99 and mm.len == 1
+
+    var intern = Interner<Str>()
+    assert intern.is_empty and intern.get("a") == None
+    assert intern.id("a") == 0 and intern.id("b") == 1 and intern.id("a") == 0
+    assert intern.len == 2 and intern.get("b") == 1 and intern.key(0) == "a" and intern.key(1) == "b"
+    intern.clear()
+    assert intern.is_empty and intern.id("c") == 0
 
 @test
-fn marks_basic_operations_and_clear() = todo
+fn marks_basic_operations_and_clear():
+    domain V = 1..=8
+    var m = Marks<V>()
+    assert m.is_empty and m.len == 0
+    assert m.add(V(3)) and not m.add(V(3))
+    assert m.add(V(7)) and m.len == 2 and not m.is_empty
+    assert V(3) in m and V(7) in m and V(1) not in m
+    assert m.remove(V(3)) and not m.remove(V(3))
+    assert V(3) not in m and m.len == 1
+    m.clear()
+    assert m.is_empty and m.len == 0 and V(7) not in m
+    // Re-adding after clear succeeds as fresh
+    assert m.add(V(7)) and V(7) in m and m.len == 1
 
 @test
 fn marks_matches_bool_array_across_many_rounds() = todo
 
 @test
-fn marks_over_char_and_one_based_domains() = todo
+fn marks_over_char_and_one_based_domains():
+    domain Letter = 'a'..='z'
+    var seen = Marks<Letter>()
+    assert seen.add(Letter('a')) and seen.add(Letter('z')) and seen.len == 2
+    assert Letter('a') in seen and Letter('m') not in seen
+    seen.clear()
+    assert Letter('a') not in seen and seen.is_empty
+    // Repeated O(1) clears over a larger domain
+    domain Big = 1..=200
+    var big = Marks<Big>()
+    for round in 1..=20:
+        let v = Big(round * 7 % 200 + 1)
+        assert big.add(v) and not big.add(v) and big.len == 1
+        big.clear()
+        assert big.is_empty and v not in big
 
 @test
-fn marks_wraps_cleanly_at_32bit_ceiling() = todo
+fn marks_wraps_cleanly_at_32bit_ceiling():
+    domain V = 0..6
+    var m = Marks<V>()
+    m.gen = MAX_GEN
+    assert m.add(V(2)) and m.add(V(5)) and m.len == 2
+    assert V(2) in m and V(5) in m
+    // Clearing at MAX_GEN resets the backing stamps and restarts generation at 1
+    m.clear()
+    assert m.is_empty and m.len == 0 and m.gen == 1
+    for v in V: assert v not in m and m.stamp[v] == 0
+    assert m.add(V(2)) and V(2) in m and V(5) not in m and m.len == 1
 
 @test
 fn interval_map_cross_module_assign() = todo

@@ -157,7 +157,7 @@ pub struct Sweep<D, S>(state: S):
     /// first cut of `D`; with `start`, each position of `start` is pushed in increasing order.
     ///
     /// cost: O(1), plus `start.len` pushes when `start` is given
-    /// empty: an empty `start` is the same as none, but sits at `start`'s cut
+    /// empty: an empty `start` is the same as None, but sits at `start`'s cut
     /// traps: never (beyond what `state.push` traps on)
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.range.len == 0`
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0), start: Some(1..3)); s.range == 1..3`

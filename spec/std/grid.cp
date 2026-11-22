@@ -9,25 +9,25 @@ pub struct Dir4(k: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.up().delta == (-1, 0)`
-    pub fn up() -> Dir4 = todo
+    pub fn up() -> Dir4 = Dir4(0)
     /// Right: one column higher, delta `(0, 1)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.right().delta == (0, 1)`
-    pub fn right() -> Dir4 = todo
+    pub fn right() -> Dir4 = Dir4(1)
     /// Down: one row higher (rows grow downwards), delta `(1, 0)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.down().delta == (1, 0)`
-    pub fn down() -> Dir4 = todo
+    pub fn down() -> Dir4 = Dir4(2)
     /// Left: one column lower, delta `(0, -1)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Dir4.left().delta == (0, -1)`
-    pub fn left() -> Dir4 = todo
+    pub fn left() -> Dir4 = Dir4(3)
     /// All four directions, clockwise from up. The list is fresh each call, but has a fixed
     /// length of four, so the cost is constant.
     ///
@@ -35,7 +35,7 @@ pub struct Dir4(k: Int):
     /// order: up, right, down, left
     /// traps: never
     /// example: `Dir4.all() == [Dir4.up(), Dir4.right(), Dir4.down(), Dir4.left()]`
-    pub fn all() -> List<Dir4> = todo
+    pub fn all() -> List<Dir4> = [Dir4(k) for k in 0..4]
     /// The direction a letter stands for, given the letters for up, right, down and left in that
     /// order: `Dir4.from("URDL", ch)`, `Dir4.from("NESW", ch)`. `None` for another letter.
     ///
@@ -48,7 +48,10 @@ pub struct Dir4(k: Int):
     /// example: `Dir4.from("URDL", 'D') == Some(Dir4.down())`
     /// example: `Dir4.from("NESW", 'W') == Some(Dir4.left())`
     /// example: `Dir4.from("URDL", 'x') == None`
-    pub fn from(letters: Str, ch: Char) -> ?Dir4 = todo
+    pub fn from(letters: Str, ch: Char) -> ?Dir4:
+        for k in 0..4:
+            if letters[k] == ch: return Dir4(k)
+        None
     /// A quarter turn clockwise: up to right, right to down, down to left, left to up.
     ///
     /// cost: O(1)
@@ -86,7 +89,7 @@ pub struct Dir8(k: Int):
     /// order: clockwise from up
     /// traps: never
     /// example: `Dir8.all().map(d => d.delta) == [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]`
-    pub fn all() -> List<Dir8> = todo
+    pub fn all() -> List<Dir8> = [Dir8(k) for k in 0..8]
 
     /// The direction whose letter is `ch` in `letters`, listed in `Dir8.all()` order, e.g.
     /// `Dir8.from("NOEKSJWH", ch)` style alphabets. `None` for another letter.
@@ -138,7 +141,11 @@ pub struct Dir8(k: Int):
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).step(Dir4.up()) == Some((R(0), C(1)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(1)).step(Dir4.up()) == None`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).step(Dir8.all()[3]) == Some((R(2), C(2)))`
-pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C) = todo
+pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
+    let (dr, dc) = d.delta
+    let r = self.0 + dr
+    let c = self.1 + dc
+    if r == None or c == none: None else: (r!, c!)
 
 /// The cells from `self` (not included) to the edge of the grid in direction `d`, nearest
 /// first: `p.step(d)`, then a step from that, until a step leaves the grid.
@@ -150,7 +157,13 @@ pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C) = todo
 /// example: `domain R = 0..4; domain C = 0..4; (R(1), C(2)).ray(Dir4.down()).collect() == [(R(2), C(2)), (R(3), C(2))]`
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(0)).ray(Dir8.all()[3]).collect() == [(R(1), C(1)), (R(2), C(2)), (R(3), C(3))]`
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(2)).ray(Dir4.up()).collect() == []`
-pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C) = todo
+pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
+    var out: List<(R, C)> = []
+    var p = step(self, d)
+    while p != none:
+        out.push(p!)
+        p = step(p!, d)
+    out
 
 /// The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in
 /// `Dir4.all()`, skipping steps that leave the grid.

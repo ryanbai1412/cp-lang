@@ -40,14 +40,20 @@ pub struct Mat<T>:
     /// cost: O(rows * cols) time and space
     /// traps: when `rows < 0` or `cols < 0`
     /// example: `Mat<Int>.zeros(2, 3).get(1, 2) == 0`
-    pub fn zeros(rows: Int, cols: Int) -> Mat<T> = todo
+    pub fn zeros(rows: Int, cols: Int) -> Mat<T>:
+        assert rows >= 0 and cols >= 0
+        Mat(rows, cols, List.filled(rows * cols, T.zero))
 
     /// The `n x n` identity matrix: `T.one` on the diagonal, `T.zero` elsewhere.
     ///
     /// cost: O(n^2) time and space
     /// traps: when `n < 0`
     /// example: `let m = Mat<Int>.identity(3); m.get(1, 1) == 1 and m.get(1, 2) == 0`
-    pub fn identity(n: Int) -> Mat<T> = todo
+    pub fn identity(n: Int) -> Mat<T>:
+        assert n >= 0
+        var d = List.filled(n * n, T.zero)
+        for i in 0..n: d[i * n + i] = T.one
+        Mat(n, n, d)
 
     /// Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`: entry `(r, c)`
     /// is `data[r * cols + c]`.
@@ -56,7 +62,9 @@ pub struct Mat<T>:
     /// empty: a matrix with zero rows or columns when `data` is empty
     /// traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
     /// example: `Mat<Int>.from_flat(2, 3, [1, 2, 3, 4, 5, 6]).get(1, 0) == 4`
-    pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T> = todo
+    pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
+        assert rows >= 0 and cols >= 0 and data.len == rows * cols
+        Mat(rows, cols, data)
 
     /// Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.
     ///
@@ -64,21 +72,30 @@ pub struct Mat<T>:
     /// empty: `[]` gives the `0 x 0` matrix
     /// traps: when the rows differ in length
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).get(1, 0) == 3`
-    pub fn from_rows(grid: List<List<T>>) -> Mat<T> = todo
+    pub fn from_rows(grid: List<List<T>>) -> Mat<T>:
+        let r = grid.len
+        if r == 0: return Mat(0, 0, List<T>())
+        let c = grid[0].len
+        var d = List<T>()
+        for row in grid:
+            assert row.len == c, "all matrix rows must have equal length"
+            for x in row: d.push(x)
+        Mat(r, c, d)
 
     /// The entry at `(r, c)`, 0-based.
     ///
     /// cost: O(1)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).get(0, 1) == 2`
-    pub fn get(self, r: Int, c: Int) -> T = todo
+    pub fn get(self, r: Int, c: Int) -> T = data[r * cols + c]
 
     /// Set the entry at `(r, c)` to `val`.
     ///
     /// cost: O(1)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
     /// example: `var m = Mat<Int>.zeros(2, 2); m.set(1, 0, 5); m.get(1, 0) == 5`
-    pub fn set(mut self, r: Int, c: Int, val: T) = todo
+    pub fn set(mut self, r: Int, c: Int, val: T):
+        data[r * cols + c] = val
 
     /// The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.
     ///
@@ -93,7 +110,11 @@ pub struct Mat<T>:
     /// cost: O(rows * cols) time and space
     /// traps: never
     /// example: `Mat<Int>.from_rows([[1, 2, 3], [4, 5, 6]]).transpose().get(2, 1) == 6`
-    pub fn transpose(self) -> Mat<T> = todo
+    pub fn transpose(self) -> Mat<T>:
+        var d = List.filled(rows * cols, T.zero)
+        for i in 0..rows:
+            for j in 0..cols: d[j * rows + i] = data[i * cols + j]
+        Mat(cols, rows, d)
 
     /// The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds
     /// `get(r, c) * v[c]` over `c` with the semiring's addition.
@@ -103,7 +124,15 @@ pub struct Mat<T>:
     /// order: indexed by row
     /// traps: when `v.len != cols`
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).mul_vec([1, 1]) == [3, 7]`
-    pub fn mul_vec(self, v: List<T>) -> List<T> = todo
+    pub fn mul_vec(self, v: List<T>) -> List<T>:
+        assert v.len == cols, "vector length must match matrix columns"
+        var out = List.filled(rows, T.zero)
+        for i in 0..rows:
+            var acc = T.zero
+            let off = i * cols
+            for j in 0..cols: acc = acc + data[off + j] * v[j]
+            out[i] = acc
+        out
 
     /// The matrix-multiplication monoid for `n x n` matrices (usable in `SegTree`): identity
     /// `Mat.identity(n)`, op `*`, which is associative but not commutative.
@@ -111,7 +140,7 @@ pub struct Mat<T>:
     /// cost: O(n^2) time and space (for the identity)
     /// traps: when `n < 0`
     /// example: `let m = Mat<Int>.product(2); m.op(m.id, Mat<Int>.from_rows([[1, 2], [3, 4]])).get(1, 1) == 4`
-    pub fn product(n: Int) -> Monoid<Mat<T>> = todo
+    pub fn product(n: Int) -> Monoid<Mat<T>> = Monoid(Mat<T>.identity(n), (x, y) => x * y)
 
     /// The determinant over an exact field (such as `Mod<P>` for prime `P`), by Gaussian elimination.
     /// The `0 x 0` determinant is `T.one`.
@@ -120,7 +149,27 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square, or an inverse it needs does not exist (a non-field `T`)
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).det() == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).det() == Mod<7>(0)`
-    pub fn det(self) -> T = todo
+    pub fn det(self) -> T:
+        assert rows == cols, "det requires a square matrix"
+        let n = rows
+        var m = [x for x in data]
+        var ans = T.one
+        for col in 0..n:
+            var piv = col
+            while piv < n and m[piv * n + col] == T.zero: piv += 1
+            if piv == n: return T.zero
+            if piv != col:
+                for c in col..n: m.swap(col * n + c, piv * n + c)
+                ans = T.zero - ans
+            let lead = m[col * n + col]
+            ans = ans * lead
+            let inv_l = T.one / lead
+            for r in col + 1..n:
+                let f = m[r * n + col]
+                if f == T.zero: continue
+                let scale = f * inv_l
+                for c in col..n: m[r * n + c] = m[r * n + c] - scale * m[col * n + c]
+        ans
 
     /// The rank over an exact field: the number of pivots elimination finds.
     ///
@@ -128,7 +177,24 @@ pub struct Mat<T>:
     /// empty: zero
     /// traps: never for a field `T`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).rank() == 1`
-    pub fn rank(self) -> Int = todo
+    pub fn rank(self) -> Int:
+        var m = [x for x in data]
+        var r = 0
+        for col in 0..cols:
+            if r == rows: break
+            var piv = r
+            while piv < rows and m[piv * cols + col] == T.zero: piv += 1
+            if piv == rows: continue
+            if piv != r:
+                for c in col..cols: m.swap(r * cols + c, piv * cols + c)
+            let inv_l = T.one / m[r * cols + col]
+            for i in r + 1..rows:
+                let f = m[i * cols + col]
+                if f == T.zero: continue
+                let scale = f * inv_l
+                for c in col..cols: m[i * cols + c] = m[i * cols + c] - scale * m[r * cols + c]
+            r += 1
+        r
 
     /// Solve `self * x = b` over an exact field. Returns `(particular, nullspace_basis)` or `None`.
     /// Every solution has the form `particular + sum(c_i * basis[i])`. O(rows * cols * min(rows, cols)).
@@ -144,7 +210,46 @@ pub struct Mat<T>:
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve_space([1, 2]) == Some(([Mod<7>(1), Mod<7>(0)], [[Mod<7>(5), Mod<7>(1)]]))`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve_space([1, 0]) == None`
-    pub fn solve_space(self, b: List<T>) -> ?(List<T>, List<List<T>>) = todo
+    pub fn solve_space(self, b: List<T>) -> ?(List<T>, List<List<T>>):
+        assert b.len == rows
+        let k = cols
+        let stride = k + 1
+        var aug = List.filled(rows * stride, T.zero)
+        for i in 0..rows:
+            for j in 0..k: aug[i * stride + j] = data[i * k + j]
+            aug[i * stride + k] = b[i]
+        var pivot_row = List.filled(k, -1)
+        var r = 0
+        for col in 0..k:
+            if r == rows: break
+            var piv = r
+            while piv < rows and aug[piv * stride + col] == T.zero: piv += 1
+            if piv == rows: continue
+            if piv != r:
+                for c in col..=k: aug.swap(r * stride + c, piv * stride + c)
+            let inv_l = T.one / aug[r * stride + col]
+            for c in col..=k: aug[r * stride + c] = aug[r * stride + c] * inv_l
+            for i in 0..rows:
+                if i == r: continue
+                let f = aug[i * stride + col]
+                if f == T.zero: continue
+                for c in col..=k: aug[i * stride + c] = aug[i * stride + c] - f * aug[r * stride + c]
+            pivot_row[col] = r
+            r += 1
+        for i in r..rows:
+            if aug[i * stride + k] != T.zero: return None
+        var part = List.filled(k, T.zero)
+        var basis = List<List<T>>()
+        for col in 0..k:
+            if pivot_row[col] != -1:
+                part[col] = aug[pivot_row[col] * stride + k]
+            else:
+                var v = List.filled(k, T.zero)
+                v[col] = T.one
+                for pcol in 0..k:
+                    if pivot_row[pcol] != -1: v[pcol] = T.zero - aug[pivot_row[pcol] * stride + col]
+                basis.push(v)
+        (part, basis)
 
     /// Solve `self * x = b` over an exact field. Returns one solution (free variables 0) or `None`.
     ///
@@ -157,7 +262,10 @@ pub struct Mat<T>:
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).solve([5, 6]) == Some([Mod<7>(3), Mod<7>(1)])`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve([1, 0]) == None`
-    pub fn solve(self, b: List<T>) -> ?List<T> = todo
+    pub fn solve(self, b: List<T>) -> ?List<T>:
+        let res = self.solve_space(b)
+        if res == none: return None
+        res!.0
 
     /// The multiplicative inverse of a square matrix over an exact field, or `None` if singular, by
     /// Gauss-Jordan elimination.
@@ -167,7 +275,31 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square
     /// example: `let inv = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).inverse()!; inv.get(0, 0) == Mod<7>(5) and inv.get(1, 1) == Mod<7>(3)`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).inverse() == None`
-    pub fn inverse(self) -> ?Mat<T> = todo
+    pub fn inverse(self) -> ?Mat<T>:
+        assert rows == cols, "inverse requires a square matrix"
+        let n = rows
+        let stride = 2 * n
+        var aug = List.filled(n * stride, T.zero)
+        for i in 0..n:
+            for j in 0..n: aug[i * stride + j] = data[i * n + j]
+            aug[i * stride + n + i] = T.one
+        for col in 0..n:
+            var piv = col
+            while piv < n and aug[piv * stride + col] == T.zero: piv += 1
+            if piv == n: return None
+            if piv != col:
+                for c in col..stride: aug.swap(col * stride + c, piv * stride + c)
+            let inv_l = T.one / aug[col * stride + col]
+            for c in col..stride: aug[col * stride + c] = aug[col * stride + c] * inv_l
+            for i in 0..n:
+                if i == col: continue
+                let f = aug[i * stride + col]
+                if f == T.zero: continue
+                for c in col..stride: aug[i * stride + c] = aug[i * stride + c] - f * aug[col * stride + c]
+        var out = List.filled(n * n, T.zero)
+        for i in 0..n:
+            for j in 0..n: out[i * n + j] = aug[i * stride + n + j]
+        Mat(n, n, out)
 
     /// The reduced row echelon form `(rref_mat, rank, pivot_cols)` over a field. Every pivot is
     /// `T.one`, every other entry of a pivot column is zero, the nonzero rows come first, and the
@@ -224,16 +356,41 @@ pub struct Mat<T>:
 
 
 impl Add for Mat<T>:
-    fn add(a, b) = todo
+    fn add(a, b):
+        assert a.rows == b.rows and a.cols == b.cols
+        Mat(a.rows, a.cols, [a.data[i] + b.data[i] for i in 0..a.data.len])
 
 impl Sub for Mat<T>:
-    fn sub(a, b) = todo
+    fn sub(a, b):
+        assert a.rows == b.rows and a.cols == b.cols
+        Mat(a.rows, a.cols, [a.data[i] - b.data[i] for i in 0..a.data.len])
 
 impl Mul for Mat<T>:
-    fn mul(a, b) = todo
+    fn mul(a, b):
+        assert a.cols == b.rows, "matrix dimensions do not match for multiplication"
+        let (r, m, c) = (a.rows, a.cols, b.cols)
+        var out = List.filled(r * c, T.zero)
+        unchecked:
+            for i in 0..r:
+                let ai = i * m
+                let oi = i * c
+                for k in 0..m:
+                    let f = a.data[ai + k]
+                    let bk = k * c
+                    for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
+        Mat(r, c, out)
 
 impl Pow for Mat<T>:
-    fn pow(a, e: Int) -> Mat<T> = todo
+    fn pow(a, e: Int) -> Mat<T>:
+        assert a.rows == a.cols and e >= 0
+        var base = a
+        var acc = Mat<T>.identity(a.rows)
+        var k = e
+        while k > 0:
+            if (k & 1) == 1: acc = acc * base
+            k >>= 1
+            if k > 0: base = base * base
+        acc
 
 /// The determinant of a floating-point square matrix via partial pivoting with tolerance `eps`.
 /// At each column the row with the largest `abs` entry becomes the pivot; if that entry is at most
@@ -244,7 +401,25 @@ impl Pow for Mat<T>:
 /// traps: when `a` is not square
 /// example: `abs(det_real(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]])) - 2.0) < 1e-9`
 /// example: `abs(det_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]))) < 1e-9`
-pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64 = todo
+pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64:
+    assert a.rows == a.cols, "det_real requires a square matrix"
+    let n = a.rows
+    var m = [x for x in a.data]
+    var ans = 1.0
+    for col in 0..n:
+        var piv = col
+        for r in col + 1..n:
+            if abs(m[r * n + col]) > abs(m[piv * n + col]): piv = r
+        if abs(m[piv * n + col]) <= eps: return 0.0
+        if piv != col:
+            for c in col..n: m.swap(col * n + c, piv * n + c)
+            ans = -ans
+        let lead = m[col * n + col]
+        ans *= lead
+        for r in col + 1..n:
+            let scale = m[r * n + col] / lead
+            for c in col..n: m[r * n + c] -= scale * m[col * n + c]
+    ans
 
 /// The rank of a floating-point matrix via partial pivoting with tolerance `eps`: a column has a
 /// pivot when its largest remaining `abs` entry exceeds `eps`.
@@ -254,7 +429,24 @@ pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64 = todo
 /// traps: never
 /// example: `rank_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]])) == 1`
 /// example: `rank_real(Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1e-12]])) == 1`
-pub fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int = todo
+pub fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int:
+    let (rows, cols) = (a.rows, a.cols)
+    var m = [x for x in a.data]
+    var r = 0
+    for col in 0..cols:
+        if r == rows: break
+        var piv = r
+        for i in r + 1..rows:
+            if abs(m[i * cols + col]) > abs(m[piv * cols + col]): piv = i
+        if abs(m[piv * cols + col]) <= eps: continue
+        if piv != r:
+            for c in col..cols: m.swap(r * cols + c, piv * cols + c)
+        let lead = m[r * cols + col]
+        for i in r + 1..rows:
+            let scale = m[i * cols + col] / lead
+            for c in col..cols: m[i * cols + c] -= scale * m[r * cols + c]
+        r += 1
+    r
 
 /// Solve `a * x = b` over `F64` via partial pivoting with tolerance `eps`. Returns `None` if
 /// inconsistent: some row reduces to all-zero coefficients (each at most `eps`) with a right-hand
@@ -266,7 +458,39 @@ pub fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int = todo
 /// traps: when `b.len != a.rows`
 /// example: `let x = solve_real(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]), [3.0, 7.0])!; abs(x[0] - 1.0) < 1e-9 and abs(x[1] - 1.0) < 1e-9`
 /// example: `solve_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]), [1.0, 0.0]) == None`
-pub fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64> = todo
+pub fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>:
+    assert b.len == a.rows
+    let (rows, k) = (a.rows, a.cols)
+    let stride = k + 1
+    var aug = List.filled(rows * stride, 0.0)
+    for i in 0..rows:
+        for j in 0..k: aug[i * stride + j] = a.data[i * k + j]
+        aug[i * stride + k] = b[i]
+    var pivot_row = List.filled(k, -1)
+    var r = 0
+    for col in 0..k:
+        if r == rows: break
+        var piv = r
+        for i in r + 1..rows:
+            if abs(aug[i * stride + col]) > abs(aug[piv * stride + col]): piv = i
+        if abs(aug[piv * stride + col]) <= eps: continue
+        if piv != r:
+            for c in col..=k: aug.swap(r * stride + c, piv * stride + c)
+        let lead = aug[r * stride + col]
+        for c in col..=k: aug[r * stride + c] /= lead
+        for i in 0..rows:
+            if i == r: continue
+            let f = aug[i * stride + col]
+            if abs(f) <= eps: continue
+            for c in col..=k: aug[i * stride + c] -= f * aug[r * stride + c]
+        pivot_row[col] = r
+        r += 1
+    for i in r..rows:
+        if abs(aug[i * stride + k]) > eps: return None
+    var x = List.filled(k, 0.0)
+    for col in 0..k:
+        if pivot_row[col] != -1: x[col] = aug[pivot_row[col] * stride + k]
+    x
 
 /// The inverse of a floating-point square matrix via partial pivoting with tolerance `eps`, or
 /// `None` if singular (some pivot is at most `eps` in absolute value).
@@ -276,7 +500,32 @@ pub fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64> = to
 /// traps: when `a` is not square
 /// example: `let inv = inverse_real(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]))!; abs(inv.get(0, 0) - 1.5) < 1e-9 and abs(inv.get(1, 0) + 2.0) < 1e-9`
 /// example: `inverse_real(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]])) == None`
-pub fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64> = todo
+pub fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>:
+    assert a.rows == a.cols, "inverse_real requires a square matrix"
+    let n = a.rows
+    let stride = 2 * n
+    var aug = List.filled(n * stride, 0.0)
+    for i in 0..n:
+        for j in 0..n: aug[i * stride + j] = a.data[i * n + j]
+        aug[i * stride + n + i] = 1.0
+    for col in 0..n:
+        var piv = col
+        for i in col + 1..n:
+            if abs(aug[i * stride + col]) > abs(aug[piv * stride + col]): piv = i
+        if abs(aug[piv * stride + col]) <= eps: return None
+        if piv != col:
+            for c in col..stride: aug.swap(col * stride + c, piv * stride + c)
+        let lead = aug[col * stride + col]
+        for c in col..stride: aug[col * stride + c] /= lead
+        for i in 0..n:
+            if i == col: continue
+            let f = aug[i * stride + col]
+            if abs(f) <= eps: continue
+            for c in col..stride: aug[i * stride + c] -= f * aug[col * stride + c]
+    var out = Mat<F64>.zeros(n, n)
+    for i in 0..n:
+        for j in 0..n: out.set(i, j, aug[i * stride + n + j])
+    out
 
 /// Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 /// Every operation is O(W) where W <= 63 (`merge` is O(W * rank)).
@@ -289,7 +538,7 @@ pub struct XorBasis:
     /// cost: O(W)
     /// traps: never
     /// example: `XorBasis().rank == 0`
-    pub fn new() -> XorBasis = todo
+    pub fn new() -> XorBasis = XorBasis(List.filled(63, 0), 0)
 
     /// The number of linearly independent vectors in the basis: the span has `2^rank` elements.
     ///
@@ -306,7 +555,19 @@ pub struct XorBasis:
     /// traps: when `x < 0`
     /// example: `var b = XorBasis(); let p = b.add(6); let q = b.add(5); let r = b.add(3); p and q and not r`
     /// example: `not XorBasis().add(0)`
-    pub fn add(mut self, x: Int) -> Bool = todo
+    pub fn add(mut self, x: Int) -> Bool:
+        assert x >= 0
+        var v = x
+        var b = 62
+        while b >= 0 and v > 0:
+            if ((v >> b) & 1) != 0:
+                if basis[b] == 0:
+                    basis[b] = v
+                    size += 1
+                    return true
+                v ^= basis[b]
+            b -= 1
+        false
 
     /// Reduce `x >= 0` against the basis: the minimum of `x ^ s` over `s` in the span, which is 0 iff
     /// `x` is in the span.
@@ -314,48 +575,86 @@ pub struct XorBasis:
     /// cost: O(W)
     /// traps: when `x < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.reduce(4) == 1 and b.reduce(3) == 0`
-    pub fn reduce(self, x: Int) -> Int = todo
+    pub fn reduce(self, x: Int) -> Int:
+        assert x >= 0
+        var v = x
+        var b = 62
+        while b >= 0 and v > 0:
+            if ((v >> b) & 1) != 0 and basis[b] != 0: v ^= basis[b]
+            b -= 1
+        v
 
     /// Whether `x >= 0` is a XOR-combination of basis vectors: `reduce(x) == 0`.
     ///
     /// cost: O(W)
     /// traps: when `x < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.contains(3) and not b.contains(4)`
-    pub fn contains(self, x: Int) -> Bool = todo
+    pub fn contains(self, x: Int) -> Bool = self.reduce(x) == 0
 
     /// The maximum value of `init ^ s` over all `s` in the span.
     ///
     /// cost: O(W)
-    /// ties: none possible; the maximum value is unique
+    /// ties: None possible; the maximum value is unique
     /// traps: when `init < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.max_xor() == 6 and b.max_xor(1) == 7`
-    pub fn max_xor(self, init: Int = 0) -> Int = todo
+    pub fn max_xor(self, init: Int = 0) -> Int:
+        assert init >= 0
+        var v = init
+        var b = 62
+        while b >= 0:
+            if basis[b] != 0 and (v ^ basis[b]) > v: v ^= basis[b]
+            b -= 1
+        v
 
     /// The minimum value of `init ^ s` over all `s` in the span: the same as `reduce(init)`, and 0 for
     /// the default `init`.
     ///
     /// cost: O(W)
-    /// ties: none possible; the minimum value is unique
+    /// ties: None possible; the minimum value is unique
     /// traps: when `init < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.min_xor(4) == 1 and b.min_xor() == 0`
-    pub fn min_xor(self, init: Int = 0) -> Int = todo
+    pub fn min_xor(self, init: Int = 0) -> Int:
+        assert init >= 0
+        var v = init
+        var b = 62
+        while b >= 0:
+            if basis[b] != 0 and (v ^ basis[b]) < v: v ^= basis[b]
+            b -= 1
+        v
 
     /// The 0-indexed `k`-th smallest value in the span, or `None` if `k < 0` or `k >= 2^rank`. `kth(0)`
     /// is 0, and `kth` over `0..2^rank` is strictly increasing and lists the whole span.
     ///
     /// cost: O(W^2)
     /// empty: only `kth(0) == Some(0)` for an empty basis
-    /// ties: none possible; span values are distinct
+    /// ties: None possible; span values are distinct
     /// traps: never
     /// example: `var b = XorBasis(); b.add(6); b.add(5); [b.kth(k) for k in 0..5] == [Some(0), Some(3), Some(5), Some(6), None]`
-    pub fn kth(self, k: Int) -> ?Int = todo
+    pub fn kth(self, k: Int) -> ?Int:
+        if k < 0: return None
+        if size < 63 and k >= (1 << size): return None
+        // Build reduced row echelon form (lowest bit first)
+        var rref = List<Int>()
+        for b in 0..63:
+            if basis[b] == 0: continue
+            var v = basis[b]
+            for prev in rref:
+                if (v ^ prev) < v: v ^= prev
+            rref.push(v)
+        var ans = 0
+        for i in 0..rref.len:
+            if ((k >> i) & 1) != 0: ans ^= rref[i]
+        ans
 
     /// Merge another basis into `self`, so `self` spans the union of both spans; `o` is unchanged.
     ///
     /// cost: O(W * o.rank)
     /// traps: never
     /// example: `var a = XorBasis(); a.add(6); var b = XorBasis(); b.add(8); a.merge(b); a.rank == 2 and a.contains(14)`
-    pub fn merge(mut self, o: XorBasis) = todo
+    pub fn merge(mut self, o: XorBasis):
+        for b in 0..63:
+            if o.basis[b] != 0:
+                let _ = self.add(o.basis[b])
 
     /// The monoid under basis merge (usable in `SegTree`): identity the empty basis, op the merged
     /// basis. Commutative and idempotent on spans.
@@ -363,7 +662,7 @@ pub struct XorBasis:
     /// cost: O(W) (for the identity)
     /// traps: never
     /// example: `let m = XorBasis.monoid(); m.id.rank == 0`
-    pub fn monoid() -> Monoid<XorBasis> = todo
+    pub fn monoid() -> Monoid<XorBasis> = Monoid(XorBasis.new(), merge_xor)
 
     /// The independent basis vectors currently stored, fully reduced (no vector has another's highest
     /// bit set), so the list depends only on the span. One vector per rank.
@@ -382,7 +681,11 @@ pub struct XorBasis:
     /// example: `var a = XorBasis(); a.add(6); a.add(5); var b = XorBasis(); b.add(3); b.add(8); let c = a.intersect(b); c.rank == 1 and c.contains(3)`
     pub fn intersect(self, o: XorBasis) -> XorBasis = todo
 
-fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis = todo
+fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis:
+    var out = XorBasis.new()
+    out.merge(a)
+    out.merge(b)
+    out
 
 /// O(n^3 log max_exp) build, O(n^2 log e) query. Precomputed binary powers of a square matrix
 /// for fast multi-query `A^e * v`.
@@ -513,7 +816,7 @@ pub struct PrefixXorBasis:
     ///
     /// cost: O(62)
     /// empty: `init` (the span of nothing is `{0}`)
-    /// ties: none possible; the maximum value is unique
+    /// ties: None possible; the maximum value is unique
     /// traps: when `r` is non-empty and reaches outside `0..len`, or `init < 0`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.max_xor(1..3) == 6 and p.max_xor(2..3) == 3`
     pub fn max_xor(self, r: Range<Int>, init: Int = 0) -> Int = todo
@@ -573,13 +876,73 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
 pub fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>) = todo
 
 @test
-fn matrix_arithmetic_and_pow() = todo
+fn matrix_arithmetic_and_pow():
+    type Z = Mod<1_000_000_007>
+    let fib = Mat<Z>.from_rows([[Z(1), Z(1)], [Z(1), Z(0)]])
+    let f10 = fib ** 10
+    assert f10.get(0, 1) == Z(55) and f10.get(0, 0) == Z(89)
+    let id = Mat<Z>.identity(2)
+    assert fib * id == fib and id * fib == fib
+    assert fib ** 0 == id
+    assert (fib + id).get(0, 0) == Z(2) and (fib - fib) == Mat<Z>.zeros(2, 2)
+    let rect = Mat<Int>.from_rows([[1, 2, 3], [4, 5, 6]])
+    assert rect.transpose().rows == 3 and rect.transpose().cols == 2
+    assert rect.mul_vec([1, 0, 2]) == [7, 16]
 
 @test
-fn exact_elimination_det_rank_solve_inverse() = todo
+fn exact_elimination_det_rank_solve_inverse():
+    type Z = Mod<998_244_353>
+    let a = Mat<Z>.from_rows([[Z(2), Z(1), Z(3)], [Z(1), Z(0), Z(2)], [Z(4), Z(1), Z(8)]])
+    let inv = a.inverse()!
+    assert a * inv == Mat<Z>.identity(3)
+    assert a.det() * inv.det() == Z(1)
+    assert a.rank() == 3
+    let b = [Z(10), Z(5), Z(25)]
+    let x = a.solve(b)!
+    assert a.mul_vec(x) == b
+    // Underdetermined system: verify particular + nullspace basis
+    let u = Mat<Z>.from_rows([[Z(1), Z(2), Z(3)], [Z(2), Z(4), Z(6)]])
+    assert u.rank() == 1
+    let sp = u.solve_space([Z(5), Z(10)])!
+    assert sp.1.len == 2
+    assert u.mul_vec(sp.0) == [Z(5), Z(10)]
+    for v in sp.1: assert u.mul_vec(v) == [Z(0), Z(0)]
+    assert u.solve([Z(5), Z(11)]) == None
 
 @test
-fn real_elimination_matches_exact() = todo
+fn real_elimination_matches_exact():
+    let a = Mat<F64>.from_rows([[2.0, 1.0], [5.0, 3.0]])
+    assert abs(det_real(a) - 1.0) < 1e-9
+    assert rank_real(a) == 2
+    let x = solve_real(a, [4.0, 11.0])!
+    assert abs(x[0] - 1.0) < 1e-9 and abs(x[1] - 2.0) < 1e-9
+    let inv = inverse_real(a)!
+    let prod = a * inv
+    assert abs(prod.get(0, 0) - 1.0) < 1e-9 and abs(prod.get(0, 1)) < 1e-9
+    assert abs(prod.get(1, 0)) < 1e-9 and abs(prod.get(1, 1) - 1.0) < 1e-9
+    let sing = Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]])
+    assert rank_real(sing) == 1 and inverse_real(sing) == None and solve_real(
+        sing,
+        [1.0, 3.0],
+    ) == None
 
 @test
-fn xor_basis_span_kth_and_merge() = todo
+fn xor_basis_span_kth_and_merge():
+    var xb = XorBasis.new()
+    assert xb.rank == 0 and xb.contains(0) and not xb.contains(1)
+    assert xb.add(3) and xb.add(5) and not xb.add(6)
+    assert xb.rank == 2
+    // Span of {3, 5} is {0, 3, 5, 6}
+    assert xb.max_xor() == 6 and xb.max_xor(1) == 7 and xb.min_xor(7) == 1
+    assert xb.kth(0) == 0 and xb.kth(1) == 3 and xb.kth(2) == 5 and xb.kth(3) == 6 and xb.kth(4) == None
+    var other = XorBasis.new()
+    assert other.add(8)
+    xb.merge(other)
+    assert xb.rank == 3 and xb.max_xor() == 14
+    let m = XorBasis.monoid()
+    var b1 = XorBasis.new()
+    let _ = b1.add(5)
+    var b2 = XorBasis.new()
+    let _ = b2.add(10)
+    let merged = m.op(b1, b2)
+    assert merged.rank == 2 and merged.max_xor() == 15

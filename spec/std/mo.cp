@@ -16,7 +16,20 @@ use std.seq.{ends}
 /// traps: never
 /// example: `mo_order([0..3, 2..4, 0..1, 3..4]) == [2, 0, 1, 3]`
 /// example: `mo_order([5..5]) == [0]`
-pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int> = todo
+pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int>:
+    let q = queries.len
+    if q == 0: return []
+    let b = max(1, D.K / max(1, isqrt(q)))
+    var pairs: List<(Int, Int)> = []
+    unchecked:
+        let span = D.K + 1
+        for i in 0..q:
+            let (l, r) = queries[i].ends
+            let blk = l / b
+            let k = blk * span + (if blk % 2 == 0: r else: D.K - r)
+            pairs.push((k, i))
+        pairs.sort()
+        return [p.1 for p in pairs]
 
 /// The positions that enter (`entering: true`) or leave (`entering: false`) a window as it
 /// moves from `from` to `to`, in the order a caller should apply them.
@@ -33,7 +46,23 @@ pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int> = todo
 /// example: `mo_steps(1..3, 0..2) == [(pos: 0, entering: true), (pos: 2, entering: false)]`
 /// example: `mo_steps(0..1, 2..3).len == 4`
 /// example: `mo_steps(0..1, 2..3) == [(pos: 1, entering: true), (pos: 2, entering: true), (pos: 0, entering: false), (pos: 1, entering: false)]`
-pub fn mo_steps<D>(from: Range<D>, to: Range<D>) -> List<(pos: D, entering: Bool)> = todo
+pub fn mo_steps<D>(from: Range<D>, to: Range<D>) -> List<(pos: D, entering: Bool)>:
+    var (l, r) = from.ends
+    let (nl, nr) = to.ends
+    var out: List<(pos: D, entering: Bool)> = []
+    while l > nl:
+        l -= 1
+        out.push((pos: D.nth(l), entering: true))
+    while r < nr:
+        out.push((pos: D.nth(r), entering: true))
+        r += 1
+    while l < nl:
+        out.push((pos: D.nth(l), entering: false))
+        l += 1
+    while r > nr:
+        r -= 1
+        out.push((pos: D.nth(r), entering: false))
+    out
 
 /// Answers offline range queries by moving one window through them in
 /// [`mo_order`](mo_order) and calling `add(pos)` / `remove(pos)` for each step of
@@ -53,7 +82,44 @@ pub fn mo<D, R>(
     add: D -> (),
     remove: D -> (),
     answer: Int -> R,
-) -> List<R> = todo
+) -> List<R>:
+    let q = queries.len
+    if q == 0: return []
+    let order = mo_order(queries)
+    var (l, r) = (0, 0)
+    unchecked:
+        let q0 = order[0]
+        let (nl0, nr0) = queries[q0].ends
+        while l > nl0:
+            l -= 1
+            add(D.nth(l))
+        while r < nr0:
+            add(D.nth(r))
+            r += 1
+        while l < nl0:
+            remove(D.nth(l))
+            l += 1
+        while r > nr0:
+            r -= 1
+            remove(D.nth(r))
+        var out = List.filled(q, answer(q0))
+        for i in 1..q:
+            let qi = order[i]
+            let (nl, nr) = queries[qi].ends
+            while l > nl:
+                l -= 1
+                add(D.nth(l))
+            while r < nr:
+                add(D.nth(r))
+                r += 1
+            while l < nl:
+                remove(D.nth(l))
+                l += 1
+            while r > nr:
+                r -= 1
+                remove(D.nth(r))
+            out[qi] = answer(qi)
+        return out
 
 /// The order in which to visit `queries`, by Hilbert-curve key: typically 1.5-2x fewer endpoint
 /// moves than [`mo_order`](mo_order) on dense queries.

@@ -42,7 +42,7 @@ pub trait Target<V>:
     /// traps: never
     /// example: `domain V = 0..3; V(2).to == 2`
     /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.to == 1`
-    @get fn to(self) -> V = todo
+    @get fn to(self) -> V = self
 
 /// O(1). The weight of an arc: a record with a `w` field, or `.weighted(f)`.
 pub trait Weighted<W>:
@@ -174,7 +174,10 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: input order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
-    pub fn out(self, u: V) -> yields A = todo
+    pub fn out(self, u: V) -> yields A:
+        unchecked:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                yield arcs[i]
 
     /// The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without
     /// one. The diagonal holds the least loop weight, or `None`; `floyd_warshall` starts it at
@@ -191,7 +194,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).deg(1) == 2`
-    pub fn deg(self, u: V) -> Int = todo
+    pub fn deg(self, u: V) -> Int = start[u.to_idx + 1] - start[u.to_idx]
 
     /// Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.
     ///
@@ -423,7 +426,25 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool = todo
 pub fn two_color<V>(g: Next<V>) -> ?[V]Bool = todo
 
 @test
-fn csr_keeps_edge_ids_and_order() = todo
+fn csr_keeps_edge_ids_and_order():
+    domain V = 1..=4
+    domain E = 1..=4
+    let edges = [E] e => [
+        (u: V(1), v: V(2)),
+        (u: V(1), v: V(3)),
+        (u: V(3), v: V(2)),
+        (u: V(4), v: V(1)),
+    ][e.to_idx]
+    let g = Graph.directed(edges)
+    assert [a.to.label for a in g.out(V(1))] == [2, 3]
+    assert [a.e.label for a in g.out(V(1))] == [1, 2]
+    assert g.deg(V(2)) == 0 and g.deg(V(4)) == 1
+    let t = g.transpose()
+    assert [a.to.label for a in t.out(V(2))] == [1, 3]
+    assert [a.e.label for a in t.out(V(2))] == [1, 3]
+    let u = Graph.undirected(edges)
+    assert [a.to.label for a in u.out(V(1))] == [2, 3, 4]
+    assert sum(u.deg(v) for v in V) == 8
 
 @test
 fn bfs_over_a_stored_graph_and_over_a_lambda() = todo
@@ -432,21 +453,66 @@ fn bfs_over_a_stored_graph_and_over_a_lambda() = todo
 fn dijkstra_matches_floyd_warshall() = todo
 
 @test
-fn topo_orders_a_dag_and_rejects_a_cycle() = todo
+fn topo_orders_a_dag_and_rejects_a_cycle():
+    domain V = 0..6
+    let out = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
+    let order = topo::<V>(v => out[v])!
+    var pos: [V]Int = 0
+    for (i, v) in [(i, order[i]) for i in 0..order.len]: pos[v] = i
+    for u in V:
+        for v in out[u]: assert pos[u] < pos[v]
+    assert topo::<V>(v => [v.cyc(1)]) == None
+    let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.to_idx]]
+    assert topo::<V>(v => stuck[v]) == None
 
 @test
-fn peel_leaves_what_a_cycle_reaches() = todo
+fn peel_leaves_what_a_cycle_reaches():
+    // 0 -> 1 -> 2 -> 3 -> 2 (a cycle) -> 4, and 5 -> 0
+    domain V = 0..6
+    let out = [V] v => [V(x) for x in [[1], [2], [3], [2, 4], [], [0]][v.to_idx]]
+    assert peel::<V>(v => out[v]) == [V(5), V(0), V(1)]
+    let dag = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
+    assert peel::<V>(v => dag[v]) == topo::<V>(v => dag[v])!
+    domain E = 0..6
+    let edges = [E] e => [
+        (u: V(0), v: V(1)),
+        (u: V(1), v: V(2)),
+        (u: V(2), v: V(3)),
+        (u: V(3), v: V(2)),
+        (u: V(3), v: V(4)),
+        (u: V(5), v: V(0)),
+    ][e.to_idx]
+    assert peel(Graph.directed(edges)) == [V(5), V(0), V(1)]
 
 @test
-fn scc_agrees_with_reachability() = todo
+fn scc_agrees_with_reachability():
+    domain V = 0..8
+    for _ in 0..25:
+        let out = [V] v => [V.nth(rand(0, 7)) for _ in 0..rand(0, 2)]
+        var reach: [V, V]Bool = false
+        for s in V:
+            let d = bfs(v => out[v], from: [s])
+            for t in V: reach[s, t] = d[t] != None
+        let (C, comp) = scc::<V>(v => out[v])
+        for a in V:
+            for b in V:
+                assert (comp[a] == comp[b]) == (reach[a, b] and reach[b, a])
+                if reach[a, b]: assert comp[a] <= comp[b]
+        let dag = condense(v => out[v], comp)
+        assert topo::<C>(c => dag[c]) != None
 
 @test
 fn components_of_an_undirected_graph() = todo
 
-fn random_edges<V, E>() -> [E](u: V, v: V) = todo
+fn random_edges<V, E>() -> [E](u: V, v: V):
+    [E] e => (u: V.nth(rand(0, V.K - 1)), v: V.nth(rand(0, V.K - 1)))
 
 /// Are `a` and `b` connected when edge `skip` and vertex `gone` are removed?
-fn linked<V, E>(edges: [E](u: V, v: V), a: V, b: V, skip: ?E, gone: ?V) -> Bool = todo
+fn linked<V, E>(edges: [E](u: V, v: V), a: V, b: V, skip: ?E, gone: ?V) -> Bool:
+    var d = Dsu<V>()
+    for e in E:
+        if e != skip and edges[e].u != gone and edges[e].v != gone: d.unite(edges[e].u, edges[e].v)
+    d.same(a, b)
 
 @test
 fn bridges_and_cut_vertices_match_removing_them() = todo
@@ -461,7 +527,13 @@ fn two_color_finds_a_colouring_or_an_odd_cycle() = todo
 fn vertexless_closure_graphs_with_turbofish() = todo
 
 @test
-fn a_plain_edge_list_needs_no_edge_domain() = todo
+fn a_plain_edge_list_needs_no_edge_domain():
+    domain V = 1..=4
+    let g = Graph.undirected([(V(1), V(2)), (V(2), V(3))])
+    assert [[v.to_idx for v in g[u]] for u in V] == [[1], [0, 2], [1], []]
+    let d = Graph.directed([(V(1), V(2), 5), (V(1), V(4), 7)])
+    assert [(v.to_idx, w) for (v, w) in d[V(1)]] == [(1, 5), (3, 7)]
+    assert d[V(2)].is_empty
 
 /// O(n) memory.
 /// What a search found: `p[v]` is the distance to `v` (`None` if unreachable),
@@ -488,7 +560,7 @@ pub struct Paths<V, W, A>:
     /// cost: O(1) dense, O(1) expected `hashed`
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)]); p[3] == Some(2) and p[0] == Some(0)`
-    pub fn get(self, v: V) -> ?W = todo
+    pub fn get(self, v: V) -> ?W = dist[v]
 
     /// The reached vertices with their distances, in settling order: `for (v, d) in bfs(g,
     /// from: [s])`.
@@ -514,7 +586,7 @@ pub struct Paths<V, W, A>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [], []]; let p = bfs(g, from: [V(0)]); p.reached(1) and not p.reached(2)`
-    pub fn reached(self, v: V) -> Bool = todo
+    pub fn reached(self, v: V) -> Bool = dist[v] != None
 
     /// The vertices of one shortest path from a source to `t`, both included, or `None` if
     /// `t` is unreachable; `[t]` when `t` is a source. Built from the back pointers, each set
@@ -526,7 +598,15 @@ pub struct Paths<V, W, A>:
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).path(3) == Some([0, 1, 3])`
     /// example: `domain V = 0..2; let g: [V]List<V> = [[], []]; let p = bfs(g, from: [V(0)]); p.path(0) == Some([0]) and p.path(1) == None`
-    pub fn path(self, t: V) -> ?List<V> = todo
+    pub fn path(self, t: V) -> ?List<V>:
+        if dist[t] == none: return None
+        var out = [t]
+        var at = t
+        while let b = back[at]:
+            out.push(b.from)
+            at = b.from
+        reverse(mut out)
+        out
 
     /// The arcs of `path(t)`, in walking order: `[]` when `t` is a source, `None` if it is
     /// unreachable.
@@ -536,7 +616,15 @@ pub struct Paths<V, W, A>:
     /// order: from the source to `t`
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).arcs(3) == Some([1, 3])`
-    pub fn arcs(self, t: V) -> ?List<A> = todo
+    pub fn arcs(self, t: V) -> ?List<A>:
+        if dist[t] == none: return None
+        var out = List<A>()
+        var at = t
+        while let b = back[at]:
+            out.push(b.via)
+            at = b.from
+        reverse(mut out)
+        out
 
 /// Fewest arcs from any vertex of `from` to each vertex, by breadth-first search.
 ///
@@ -604,7 +692,39 @@ pub fn fixed_cost_paths<S, M, W>(
     cost: M -> W,
     step: (M, S) -> ?S,
     until: ?S = None,
-) -> Paths<S, W, M> = todo
+) -> Paths<S, W, M>:
+    let price = [cost(mv) for mv in moves]
+    for p in price: assert p >= W.zero
+    var dist: [S]?W = None
+    var back: [S]?(from: S, via: M) = None
+    var order = List<S>()
+    for s in from:
+        if dist[s] == none:
+            dist[s] = W.zero
+            order.push(s)
+            if until == s: return Paths(dist, back, order)
+    var at = List.filled(moves.len, 0)
+    while true:
+        var best: ?(d: W, j: Int, t: S) = None
+        for j in 0..moves.len:
+            while at[j] < order.len:
+                let s = order[at[j]]
+                if let t = step(moves[j], s) and dist[t] == none:
+                    let d = dist[s]! + price[j]
+                    if let b = best:
+                        if d < b.d: best = (d:, j:, t:)
+                    else:
+                        best = (d:, j:, t:)
+                    break
+                at[j] += 1
+        if best == none: break
+        let (d, j, t) = best!
+        dist[t] = d
+        back[t] = (from: order[at[j]], via: moves[j])
+        order.push(t)
+        at[j] += 1
+        if until == t: break
+    Paths(dist, back, order)
 
 /// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or `None`
 /// when a source reaches a negative cycle (cycles no source reaches are ignored).
@@ -686,7 +806,7 @@ pub struct Walk<V, E>:
     @get pub fn vertices(self) -> yields V = todo
 
 /// A walk that uses every edge exactly once (Hierholzer's algorithm), or `None` if there is
-/// none. `directed` says whether `(u, v)` may only be walked from `u` to `v`.
+/// None. `directed` says whether `(u, v)` may only be walked from `u` to `v`.
 ///
 /// A closed walk starts at the smallest vertex with an edge; an open one at the vertex with
 /// an extra way out (directed) or the smaller odd vertex. The walk is the one Hierholzer's
@@ -699,7 +819,41 @@ pub struct Walk<V, E>:
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2, 0]`
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 2, v: 1), (u: 1, v: 0)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2]`
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2)]; euler_walk(es, directed: true) == None`
-pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E> = todo
+pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
+    let g = if directed: Graph.directed(edges) else: Graph.undirected(edges)
+    var surplus: [V]Int = 0
+    for e in E:
+        surplus[edges[e].u] += 1
+        if directed: surplus[edges[e].v] -= 1
+        else: surplus[edges[e].v] += 1
+    var start: ?V = None
+    var opens = 0
+    for v in V:
+        let extra = if directed: surplus[v] else: surplus[v] % 2
+        if extra > 1 or extra < -1: return None
+        if extra == 1:
+            opens += 1
+            if start == none: start = v
+    if opens > (if directed: 1 else: 2): return None
+    if start == none: start = first(v for v in V if g.deg(v) > 0)
+    if start == none: return Walk(V.first, List<(to: V, e: E)>())
+    let out = [V] v => [a for a in g.out(v)]
+    var at: [V]Int = 0
+    var used: [E]Bool = false
+    var stack: List<(v: V, came: ?(to: V, e: E))> = [(v: start!, came: None)]
+    var arcs = List<(to: V, e: E)>()
+    while not stack.is_empty:
+        let v = stack.last!.v
+        while at[v] < out[v].len and used[out[v][at[v]].e]: at[v] += 1
+        if at[v] < out[v].len:
+            let a = out[v][at[v]]
+            used[a.e] = true
+            stack.push((v: a.to, came: a))
+        else:
+            if let a = stack.pop()!.came: arcs.push(a)
+    if arcs.len != E.K: return None
+    reverse(mut arcs)
+    Walk(start!, arcs)
 
 /// O(1).
 /// A variable or its negation: `Lit(x, true)` is "x holds".
@@ -723,28 +877,32 @@ pub struct TwoSat<X>:
     /// cost: O(|X|)
     /// traps: never
     /// example: `domain X = 0..2; TwoSat<X>().solve() != None`
-    pub fn new() -> TwoSat<X> = todo
+    pub fn new() -> TwoSat<X>:
+        TwoSat([[] for _ in 0..2 * X.K])
 
     /// Adds the clause "at least one of `a`, `b` holds".
     ///
     /// cost: O(1) amortized
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_or(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), false)); s.solve() == Some([false, true])`
-    pub fn add_or(mut self, a: Lit<X>, b: Lit<X>) = todo
+    pub fn add_or(mut self, a: Lit<X>, b: Lit<X>):
+        self.clause(lit_node(a), lit_node(b))
 
     /// Adds the clause "`a` holds" (`add_or(a, a)`).
     ///
     /// cost: O(1) amortized
     /// traps: never
     /// example: `domain X = 0..1; var s = TwoSat<X>(); s.must(Lit(X(0), true)); s.must(Lit(X(0), false)); s.solve() == None`
-    pub fn must(mut self, a: Lit<X>) = todo
+    pub fn must(mut self, a: Lit<X>):
+        self.add_or(a, a)
 
     /// Adds "if `a` holds then `b` holds" (`add_or(a.flip, b)`).
     ///
     /// cost: O(1) amortized
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, true])`
-    pub fn implies(mut self, a: Lit<X>, b: Lit<X>) = todo
+    pub fn implies(mut self, a: Lit<X>, b: Lit<X>):
+        self.add_or(a.flip, b)
 
     /// Adds "at most one of `lits` holds". One helper variable per literal ("some literal so
     /// far holds") keeps it at O(k) clauses instead of O(k^2); helpers never appear in
@@ -754,7 +912,18 @@ pub struct TwoSat<X>:
     /// empty: `[]` adds nothing
     /// traps: never
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.at_most_one([Lit(X(0), true), Lit(X(1), true)]); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
-    pub fn at_most_one(mut self, lits: List<Lit<X>>) = todo
+    pub fn at_most_one(mut self, lits: List<Lit<X>>):
+        var prev: ?Int = None
+        for l in lits:
+            let x = lit_node(l)
+            let p = imp.len + 1
+            imp.push([])
+            imp.push([])
+            self.clause(x ^ 1, p)
+            if let q = prev:
+                self.clause(q ^ 1, p)
+                self.clause(q ^ 1, x ^ 1)
+            prev = p
 
     /// Adds "exactly one of `a`, `b` holds" (two clauses).
     ///
@@ -770,7 +939,7 @@ pub struct TwoSat<X>:
     /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_eq(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(1), false)); s.solve() == Some([false, false])`
     pub fn add_eq(mut self, a: Lit<X>, b: Lit<X>) = todo
 
-    /// An assignment satisfying every clause, or `None` if there is none.
+    /// An assignment satisfying every clause, or `None` if there is None.
     ///
     /// Runs `scc` on the implication graph (node `2i` is "variable `i` is false", `2i + 1` "is
     /// true"; clause `a or b` adds `not a -> b` then `not b -> a`, in the order added). A
@@ -781,11 +950,20 @@ pub struct TwoSat<X>:
     /// order: keyed by `X`
     /// traps: never
     /// example: `domain X = 0..1; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(0), false)); s.solve() == Some([false])`
-    pub fn solve(self) -> ?[X]Bool = todo
+    pub fn solve(self) -> ?[X]Bool:
+        domain N = 0..imp.len
+        let (C, comp) = scc::<N>(u => [N(v) for v in imp[u.to_idx]])
+        // components are in topological order: a literal is true when it comes after
+        // its negation
+        for i in 0..imp.len / 2:
+            if comp[N(2 * i)] == comp[N(2 * i + 1)]: return None
+        [X] x => comp[N(2 * x.to_idx + 1)] > comp[N(2 * x.to_idx)]
 
-    fn clause(mut self, a: Int, b: Int) = todo
+    fn clause(mut self, a: Int, b: Int):
+        imp[a ^ 1].push(b)
+        imp[b ^ 1].push(a)
 
-fn lit_node<X>(l: Lit<X>) -> Int = todo
+fn lit_node<X>(l: Lit<X>) -> Int = 2 * l.x.to_idx + Int(l.value)
 
 @test
 fn paths_witness_their_distances() = todo
@@ -800,19 +978,73 @@ fn until_stops_at_the_target_with_its_exact_distance() = todo
 fn bellman_ford_matches_floyd_warshall_and_finds_negative_cycles() = todo
 
 @test
-fn find_cycle_exists_exactly_when_topo_fails() = todo
+fn find_cycle_exists_exactly_when_topo_fails():
+    domain V = 0..7
+    for _ in 0..60:
+        let out = [V] v => [V.nth(rand(0, 6)) for _ in 0..rand(0, 2) if rand(0, 2) > 0]
+        let cyc = find_cycle::<V>(v => out[v])
+        assert (cyc == None) == (topo::<V>(v => out[v]) != None)
+        if let c = cyc:
+            for i in 0..c.len: assert out[c[i]].contains(c[(i + 1) % c.len])
+            assert sorted(c).len == c.len
 
 @test
-fn bridges_are_the_edges_whose_removal_disconnects() = todo
+fn bridges_are_the_edges_whose_removal_disconnects():
+    domain V = 0..6
+    domain E = 0..7
+    for _ in 0..40:
+        let edges = [E] e => (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)))
+        let bridge = bridges(Graph.undirected(edges))
+        for e in E:
+            let rest = [V] v => [x.v for f in E if f != e for x in [edges[f]] if x.u == v] + [
+                x.u for f in E if f != e for x in [edges[f]] if x.v == v
+            ]
+            let far = bfs::<V>(v => rest[v], from: [edges[e].u])
+            assert bridge[e] == (not far.reached(edges[e].v))
 
 @test
-fn euler_walks_use_every_edge_once_and_exist_when_brute_force_finds_one() = todo
+fn euler_walks_use_every_edge_once_and_exist_when_brute_force_finds_one():
+    domain V = 0..4
+    for _ in 0..200:
+        let directed = rand(0, 1) == 1
+        let k = rand(0, 6)
+        domain E = 0..k
+        let edges = [E] _ => (u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)))
+        let got = euler_walk(edges, directed:)
+        assert (got != None) == has_walk([(edges[e].u, edges[e].v) for e in E], directed)
+        if let w = got:
+            assert sorted([a.e for a in w.arcs]) == List(E)
+            var at = w.start
+            for a in w.arcs:
+                let x = edges[a.e]
+                assert (x.u == at and x.v == a.to) or (not directed and x.v == at and x.u == a.to)
+                at = a.to
+            assert w.vertices.len == w.arcs.len + 1
 /// Does `walk` trace connected edges, starting at `start`?
-fn follows<V>(edges: List<(V, V)>, walk: List<Int>, directed: Bool, start: V) -> Bool = todo
+fn follows<V>(edges: List<(V, V)>, walk: List<Int>, directed: Bool, start: V) -> Bool:
+    var at = start
+    for i in walk:
+        let (u, v) = edges[i]
+        if u == at: at = v
+        elif not directed and v == at: at = u
+        else: return false
+    true
 
 fn has_walk<V>(edges: List<(V, V)>, directed: Bool) -> Bool = todo
 
-fn extend<V>(edges: List<(V, V)>, directed: Bool, mut used: List<Bool>, at: V, done: Int) -> Bool = todo
+fn extend<V>(edges: List<(V, V)>, directed: Bool, mut used: List<Bool>, at: V, done: Int) -> Bool:
+    if done == edges.len: return true
+    for i in 0..edges.len:
+        if used[i]: continue
+        let (u, v) = edges[i]
+        var to: ?V = None
+        if u == at: to = v
+        elif not directed and v == at: to = u
+        if let w = to:
+            used[i] = true
+            if extend(edges, directed, mut used, w, done + 1): return true
+            used[i] = false
+    false
 
 @test
 fn at_most_one_forbids_every_pair_and_allows_each_single() = todo
@@ -917,7 +1149,7 @@ pub fn negative_cycle<V, W, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc> = todo
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 0, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 2, len: 1))`
 pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int) = todo
 
-/// The length of a shortest cycle (the girth), or `None` if there is none. With `directed:
+/// The length of a shortest cycle (the girth), or `None` if there is None. With `directed:
 /// false` the graph is read as undirected (every arc has its reverse) and a cycle counts
 /// only if it uses at least three edges, so loops and an arc's way back are not cycles.
 ///
@@ -1198,7 +1430,7 @@ impl<V> Functional<V>:
     pub fn after(self, v: V, k: Int) -> V = todo
 
     /// The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if
-    /// none appears. `pred` must be monotone along every walk (once true, true onward).
+    /// None appears. `pred` must be monotone along every walk (once true, true onward).
     ///
     /// cost: O(log n)
     /// traps: never
@@ -1281,7 +1513,7 @@ pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool
 
 /// `g.only(keep)`; see `only`. Implements every arc capability `G` has.
 pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
-    /// The arcs out of `u` the view keeps: none when `u` is dropped, else those whose `to` is
+    /// The arcs out of `u` the view keeps: None when `u` is dropped, else those whose `to` is
     /// kept.
     ///
     /// cost: O(1) to make, O(1) per arc of `g` walked

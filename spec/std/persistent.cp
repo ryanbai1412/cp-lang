@@ -23,11 +23,33 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// empty: an empty `D` gives a tree whose every fold is the identity
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.all(t.base) == 6`
-    pub fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T> = todo
+    pub fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>:
+        let m = Monoid<T>.of(op)
+        var pst = PersistentSegTree(m, [0], [0], [m.id], 0)
+        if let init = a:
+            assert fill == None, "pass either `a:` or `fill:`, not both"
+            if D.K > 0:
+                let vals = [init[i] for i in D]
+                pst.base_root = pst.build_list(vals, 0, D.K)
+        elif let v = fill:
+            if D.K > 0:
+                let vals = List.filled(D.K, v)
+                pst.base_root = pst.build_list(vals, 0, D.K)
+        pst
 
-    fn push_node(mut self, l: Int, r: Int, v: T) -> Int = todo
+    fn push_node(mut self, l: Int, r: Int, v: T) -> Int:
+        let id = val.len
+        left.push(l)
+        right.push(r)
+        val.push(v)
+        id
 
-    fn build_list(mut self, vals: List<T>, nl: Int, nr: Int) -> Int = todo
+    fn build_list(mut self, vals: List<T>, nl: Int, nr: Int) -> Int:
+        if nr - nl == 1: return self.push_node(0, 0, vals[nl])
+        let mid = (nl + nr) / 2
+        let lc = self.build_list(vals, nl, mid)
+        let rc = self.build_list(vals, mid, nr)
+        self.push_node(lc, rc, m.op(val[lc], val[rc]))
 
     /// The version built by `new`.
     ///
@@ -36,7 +58,17 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.get(t.base, 0) == 1`
     @get pub fn base(self) -> Version = todo
 
-    fn set_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, x: T) -> Int = todo
+    fn set_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, x: T) -> Int:
+        if nr - nl == 1: return self.push_node(0, 0, x)
+        let mid = (nl + nr) / 2
+        if idx < mid:
+            let lc = self.set_rec(left[u], nl, mid, idx, x)
+            let rc = right[u]
+            self.push_node(lc, rc, m.op(val[lc], val[rc]))
+        else:
+            let lc = left[u]
+            let rc = self.set_rec(right[u], mid, nr, idx, x)
+            self.push_node(lc, rc, m.op(val[lc], val[rc]))
 
     /// A new version equal to `v` with position `i` set to `x`. `v` and every other version are
     /// unchanged; the new version shares all but the O(log n) copied nodes with `v`.
@@ -44,9 +76,20 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// cost: O(log n) time and memory
     /// traps: when `i` is not in `D`, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 1, 10); t.all(v) == 14 and t.all(t.base) == 6`
-    pub fn set(mut self, v: Version, i: D, x: T) -> Version = todo
+    pub fn set(mut self, v: Version, i: D, x: T) -> Version:
+        Version(self.set_rec(v.root, 0, D.K, i.to_idx, x))
 
-    fn update_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, f: T -> T) -> Int = todo
+    fn update_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, f: T -> T) -> Int:
+        if nr - nl == 1: return self.push_node(0, 0, f(val[u]))
+        let mid = (nl + nr) / 2
+        if idx < mid:
+            let lc = self.update_rec(left[u], nl, mid, idx, f)
+            let rc = right[u]
+            self.push_node(lc, rc, m.op(val[lc], val[rc]))
+        else:
+            let lc = left[u]
+            let rc = self.update_rec(right[u], mid, nr, idx, f)
+            self.push_node(lc, rc, m.op(val[lc], val[rc]))
 
     /// A new version equal to `v` with position `i` replaced by `f` of its value in `v`. `f` is called
     /// once.
@@ -54,16 +97,31 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// cost: O(log n) time and memory, one call of `f`
     /// traps: when `i` is not in `D`, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.update(t.base, 2, x => x * 5); t.get(v, 2) == 15 and t.get(t.base, 2) == 3`
-    pub fn update(mut self, v: Version, i: D, f: T -> T) -> Version = todo
+    pub fn update(mut self, v: Version, i: D, f: T -> T) -> Version:
+        Version(self.update_rec(v.root, 0, D.K, i.to_idx, f))
 
     /// The value at position `i` in version `v`.
     ///
     /// cost: O(log n)
     /// traps: when `i` is not in `D`, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.get(t.base, 1) == 2`
-    pub fn get(self, v: Version, i: D) -> T = todo
+    pub fn get(self, v: Version, i: D) -> T:
+        var (u, nl, nr, idx) = (v.root, 0, D.K, i.to_idx)
+        while u != 0 and nr - nl > 1:
+            let mid = (nl + nr) / 2
+            if idx < mid:
+                u = left[u]
+                nr = mid
+            else:
+                u = right[u]
+                nl = mid
+        val[u]
 
-    fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> T = todo
+    fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int) -> T:
+        if u == 0 or qr <= nl or nr <= ql: return m.id
+        if ql <= nl and nr <= qr: return val[u]
+        let mid = (nl + nr) / 2
+        m.op(self.fold_rec(left[u], nl, mid, ql, qr), self.fold_rec(right[u], mid, nr, ql, qr))
 
     /// The fold of `r` in version `v`, left to right, so a non-commutative monoid sees its elements in
     /// position order.
@@ -73,7 +131,10 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.fold(t.base, 1..3) == 5`
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.fold(t.base, 2..2) == 0`
-    pub fn fold(self, v: Version, r: Range<D>) -> T = todo
+    pub fn fold(self, v: Version, r: Range<D>) -> T:
+        let (lo, hi) = r.ends
+        if lo == hi: return m.id
+        self.fold_rec(v.root, 0, D.K, lo, hi)
 
     /// The fold of every position in version `v`, read from its root.
     ///
@@ -81,7 +142,7 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     /// empty: the monoid identity when `D` is empty
     /// traps: when `v` did not come from this tree
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 0, 0); t.all(v) == 5`
-    pub fn all(self, v: Version) -> T = todo
+    pub fn all(self, v: Version) -> T = val[v.root]
 
     /// Preallocate room for `nodes` tree nodes in total, so later writes do not regrow the arena.
     /// Changes no version.
@@ -143,13 +204,60 @@ pub struct RangeKth<D, T>:
     /// order: queries take ranges of `a`'s domain
     /// traps: never
     /// example: `RangeKth([5, 1, 4, 2]).kth(0..4, 0) == 1`
-    pub fn new(a: [D]T) -> RangeKth<D, T> = todo
+    pub fn new(a: [D]T) -> RangeKth<D, T>:
+        let vals = deduped(sorted([a[i] for i in D]))
+        let m = vals.len
+        var rk = RangeKth(vals, [0], [0], [0], [0])
+        if m == 0:
+            for _ in 0..D.K: rk.roots.push(0)
+            return rk
+        for i in D:
+            let prev = rk.roots[rk.roots.len - 1]
+            let pos = rk.lower_val(a[i])
+            let nxt = rk.inc(prev, m, pos)
+            rk.roots.push(nxt)
+        rk
 
-    fn lower_val(self, x: T) -> Int = todo
+    fn lower_val(self, x: T) -> Int:
+        var (lo, hi) = (0, vals.len)
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if vals[mid] < x: lo = mid + 1
+                else: hi = mid
+        lo
 
-    fn upper_val(self, x: T) -> Int = todo
+    fn upper_val(self, x: T) -> Int:
+        var (lo, hi) = (0, vals.len)
+        unchecked:
+            while lo < hi:
+                let mid = (lo + hi) / 2
+                if vals[mid] <= x: lo = mid + 1
+                else: hi = mid
+        lo
 
-    fn inc(mut self, root: Int, m: Int, pos: Int) -> Int = todo
+    fn inc(mut self, root: Int, m: Int, pos: Int) -> Int:
+        unchecked:
+            let new_root = cnt.len
+            var (u, nl, nr) = (root, 0, m)
+            while true:
+                let id = cnt.len
+                let lu = left[u]
+                let ru = right[u]
+                left.push(lu)
+                right.push(ru)
+                cnt.push(cnt[u] + 1)
+                if nr - nl == 1: break
+                let mid = (nl + nr) / 2
+                if pos < mid:
+                    left[id] = id + 1
+                    u = lu
+                    nr = mid
+                else:
+                    right[id] = id + 1
+                    u = ru
+                    nl = mid
+            return new_root
 
     /// The `k`-th smallest element (0-based) of `a` over `r`, counting repeats.
     ///
@@ -158,9 +266,32 @@ pub struct RangeKth<D, T>:
     /// ties: equal values are indistinguishable; the value is returned
     /// traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).kth(1..4, 1) == 2`
-    pub fn kth(self, r: Range<D>, k: Int) -> T = todo
+    pub fn kth(self, r: Range<D>, k: Int) -> T:
+        let (lo, hi) = r.ends
+        assert 0 <= k and k < hi - lo, "RangeKth.kth index out of range"
+        unchecked:
+            var (u, v, nl, nr, rem) = (roots[lo], roots[hi], 0, vals.len, k)
+            while nr - nl > 1:
+                let mid = (nl + nr) / 2
+                let left_cnt = cnt[left[v]] - cnt[left[u]]
+                if rem < left_cnt:
+                    u = left[u]
+                    v = left[v]
+                    nr = mid
+                else:
+                    rem -= left_cnt
+                    u = right[u]
+                    v = right[v]
+                    nl = mid
+            return vals[nl]
 
-    fn count_prefix(self, u: Int, v: Int, nl: Int, nr: Int, limit: Int) -> Int = todo
+    fn count_prefix(self, u: Int, v: Int, nl: Int, nr: Int, limit: Int) -> Int:
+        if limit <= nl or (u == 0 and v == 0): return 0
+        if nr <= limit: return cnt[v] - cnt[u]
+        let mid = (nl + nr) / 2
+        let lc = self.count_prefix(left[u], left[v], nl, mid, limit)
+        let rc = self.count_prefix(right[u], right[v], mid, nr, limit)
+        lc + rc
 
     /// The number of elements of `a` over `r` that are at most `x`.
     ///
@@ -168,7 +299,11 @@ pub struct RangeKth<D, T>:
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_le(0..4, 4) == 3`
-    pub fn count_le(self, r: Range<D>, x: T) -> Int = todo
+    pub fn count_le(self, r: Range<D>, x: T) -> Int:
+        let (lo, hi) = r.ends
+        if lo == hi or vals.is_empty: return 0
+        let pos = self.upper_val(x)
+        self.count_prefix(roots[lo], roots[hi], 0, vals.len, pos)
 
     /// The number of elements of `a` over `r` that are less than `x`.
     ///

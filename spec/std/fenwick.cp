@@ -19,14 +19,26 @@ pub struct Fenwick<D, T>:
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).all == 6`
     /// example: `Fenwick<0..3, Int>().all == 0`
-    pub fn new(a: ?[D]T = None) -> Fenwick<D, T> = todo
+    pub fn new(a: ?[D]T = None) -> Fenwick<D, T>:
+        var t = List.filled(D.K + 1, T.zero)
+        if let init = a:
+            for i in D:
+                let p = i.to_idx + 1
+                t[p] = t[p] + init[i]
+                let q = p + (p & -p)
+                if q <= D.K: t[q] = t[q] + t[p]
+        Fenwick(t)
 
     /// Add `x` to the value at position `i`: `a[i] += x`.
     ///
     /// cost: O(log |D|)
     /// traps: when `i` is outside `D`
     /// example: `var f = Fenwick([1, 2, 3]); f.add(0, 5); f.fold(0..2) == 8`
-    pub fn add(mut self, i: D, x: T) = todo
+    pub fn add(mut self, i: D, x: T):
+        var p = i.to_idx + 1
+        while p < t.len:
+            t[p] = t[p] + x
+            p += p & -p
 
     /// The sum of every position left of the boundary `b`. For a position `v`, `prefix(v.r)`
     /// includes `v` and `prefix(v.l)` does not; the start cut gives zero.
@@ -35,7 +47,13 @@ pub struct Fenwick<D, T>:
     /// traps: never (`b` is a cut of `D` by type)
     /// example: `Fenwick([1, 2, 3]).prefix((0..2).r) == 3`
     /// example: `Fenwick([1, 2, 3]).prefix((0..0).r) == 0`
-    pub fn prefix(self, b: Cut<D>) -> T = todo
+    pub fn prefix(self, b: Cut<D>) -> T:
+        var p = b.ord
+        var acc = T.zero
+        while p > 0:
+            acc = acc + t[p]
+            p -= p & -p
+        acc
 
     /// The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`. Accepts every range form
     /// (`l..r`, `l..=r`, `..i`, `i..`).
@@ -57,7 +75,20 @@ pub struct Fenwick<D, T>:
     /// example: `Fenwick([1, 2, 3]).first_ge(3) == Some((0..2).r)`
     /// example: `Fenwick([1, 2, 3]).first_ge(7) == None`
     /// example: `Fenwick([1, 2, 3]).first_ge(0) == Some((0..0).r)`
-    pub fn first_ge(self, target: Int) -> ?Cut<D> = todo
+    pub fn first_ge(self, target: Int) -> ?Cut<D>:
+        if target <= 0: return D.cuts.nth(0)
+        var p = 0
+        var rest = target
+        var step = bit_ceil(D.K + 1) / 2
+        while step > 0:
+            if p + step <= D.K:
+                // The walk is a binary search, so it is wrong once a block sums below zero.
+                assert t[p + step] >= 0, "`first_ge` and `kth` need non-negative values"
+                if t[p + step] < rest:
+                    p += step
+                    rest -= t[p]
+            step /= 2
+        if p == D.K: None else: D.cuts.nth(p + 1)
 
     /// The `k`-th item counting from 1, when position `d` holds `a[d]` items: the first `d` with
     /// `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total. Positions with value
@@ -69,7 +100,10 @@ pub struct Fenwick<D, T>:
     /// example: `Fenwick([1, 0, 2]).kth(2) == Some(2)`
     /// example: `Fenwick([1, 0, 2]).kth(1) == Some(0)`
     /// example: `Fenwick([1, 0, 2]).kth(4) == None`
-    pub fn kth(self, k: Int) -> ?D = todo
+    pub fn kth(self, k: Int) -> ?D:
+        assert k >= 1, "`kth` counts from 1"
+        let b = self.first_ge(k)
+        if b == none: None else: b!.left
 
     /// The current value at position `i`: `sum(i..=i)`.
     ///
@@ -129,16 +163,32 @@ pub struct Fenwick2D<R, C, T>:
     /// cost: O(|R| |C|) time; memory (|R| + 1)(|C| + 1) values
     /// traps: never
     /// example: `Fenwick2D<0..2, 0..2, Int>().fold(0..2, 0..2) == 0`
-    pub fn new() -> Fenwick2D<R, C, T> = todo
+    pub fn new() -> Fenwick2D<R, C, T> = Fenwick2D(List.filled((R.K + 1) * (C.K + 1), T.zero))
 
     /// Add `x` to the cell `(r, c)`: `a[r, c] += x`.
     ///
     /// cost: O(log |R| log |C|)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 0, 5); f.fold(1..2, 0..1) == 5`
-    pub fn add(mut self, r: R, c: C, x: T) = todo
+    pub fn add(mut self, r: R, c: C, x: T):
+        var p = r.to_idx + 1
+        while p <= R.K:
+            var q = c.to_idx + 1
+            while q <= C.K:
+                t[p * (C.K + 1) + q] = t[p * (C.K + 1) + q] + x
+                q += q & -q
+            p += p & -p
 
-    fn corner(self, r: Int, c: Int) -> T = todo
+    fn corner(self, r: Int, c: Int) -> T:
+        var acc = T.zero
+        var p = r
+        while p > 0:
+            var q = c
+            while q > 0:
+                acc = acc + t[p * (C.K + 1) + q]
+                q -= q & -q
+            p -= p & -p
+        acc
 
     /// The sum over the rectangle `rows` by `cols`, by inclusion-exclusion over four prefixes.
     ///
@@ -184,9 +234,24 @@ pub struct DualFenwick<D, T>:
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: never
     /// example: `DualFenwick([1, 2, 3]).get(2) == 3`
-    pub fn new(a: ?[D]T = None) -> DualFenwick<D, T> = todo
+    pub fn new(a: ?[D]T = None) -> DualFenwick<D, T>:
+        var f = DualFenwick(List.filled(D.K + 1, T.zero))
+        if let init = a:
+            var prev = T.zero
+            for i in D:
+                let diff = init[i] - prev
+                prev = init[i]
+                let p = i.to_idx + 1
+                f.t[p] = f.t[p] + diff
+                let q = p + (p & -p)
+                if q <= D.K: f.t[q] = f.t[q] + f.t[p]
+        f
 
-    fn add_at(mut self, p0: Int, x: T) = todo
+    fn add_at(mut self, p0: Int, x: T):
+        var p = p0
+        while p < t.len:
+            t[p] = t[p] + x
+            p += p & -p
 
     /// Add `x` to every position of `r`.
     ///
@@ -195,7 +260,11 @@ pub struct DualFenwick<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(0..2, 10); d.get(1) == 12`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(0..2, 10); d.get(2) == 3`
-    pub fn add(mut self, r: Range<D>, x: T) = todo
+    pub fn add(mut self, r: Range<D>, x: T):
+        let (lo, hi) = r.ends
+        if lo == hi: return
+        self.add_at(lo + 1, x)
+        if hi < D.K: self.add_at(hi + 1, T.zero - x)
 
     /// The current value at position `i`: its initial value plus every `x` added over a range
     /// containing `i`.
@@ -203,7 +272,13 @@ pub struct DualFenwick<D, T>:
     /// cost: O(log |D|)
     /// traps: when `i` is outside `D`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(1..3, 5); d.get(1) == 7`
-    pub fn get(self, i: D) -> T = todo
+    pub fn get(self, i: D) -> T:
+        var p = i.to_idx + 1
+        var acc = T.zero
+        while p > 0:
+            acc = acc + t[p]
+            p -= p & -p
+        acc
 
     /// Reset every value to zero, keeping the domain and the allocation.
     ///
@@ -265,7 +340,18 @@ fn sums_match_a_plain_array() = todo
 fn empty_and_half_open_ranges() = todo
 
 @test
-fn first_ge_finds_the_kth() = todo
+fn first_ge_finds_the_kth():
+    domain V = 0..8
+    var f = Fenwick<V, Int>()
+    for v in [1, 4, 4, 6]: f.add(V(v), 1)
+    assert f.first_ge(1)!.left == V(1)
+    assert f.first_ge(3)!.left == V(4)
+    assert f.first_ge(4)!.left == V(6)
+    assert f.first_ge(5) == None
+    assert f.kth(1) == V(1)
+    assert f.kth(3) == V(4)
+    assert f.kth(4) == V(6)
+    assert f.kth(5) == None
 
 @test
 fn two_dimensions_match_a_plain_grid() = todo

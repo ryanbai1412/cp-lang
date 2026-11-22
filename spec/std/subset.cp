@@ -83,7 +83,7 @@ pub struct Subset<B>(bits: U64):
     ///
     /// cost: O(1)
     /// empty: `None`
-    /// ties: none possible; members are distinct, and the least in `B`'s order wins
+    /// ties: None possible; members are distinct, and the least in `B`'s order wins
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).first() == Some(B(1))`
     /// example: `domain B = 0..4; Subset<B>.empty.first() == None`
