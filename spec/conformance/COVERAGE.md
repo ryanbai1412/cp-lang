@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1257 (296 passing). Rules: 521.
+Cases: 1264 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 18 case(s)
+- R0401 Assertion failed: 20 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -757,8 +757,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **bitset** (89/92 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
 - **deque** (42/42 named by a case)
-- **dp** (35/39 named by a case)
-  - uncovered: `monotone_minima`, `dnc_layer`, `knuth`, `Step`
+- **dp** (38/39 named by a case)
+  - uncovered: `Step`
 - **dsu** (62/63 named by a case)
   - uncovered: `Mark`
 - **fenwick** (31/31 named by a case)
@@ -816,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1818 of 2222 std items are named by a case.
+1821 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
