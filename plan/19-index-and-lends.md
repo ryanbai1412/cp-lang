@@ -996,8 +996,9 @@ first ones a fresh agent tries to break:
     case; passing the position (`go(l)`) is the fix.
 14. `if i != r: step(); mv(mut a[i], mut a[r])` where `step` assigns the
     captured `i`: rejected, the call drops the fact `i != r`.
-15. `a[l] += inc(mut a[l])` and `xs[0] = xs.pop()!`: rejected, the right
-    side changes the place being assigned; bind it first with `let`.
+15. `a[l] += inc(mut a[l])` and `xs[0] = xs.pop()!`: accepted (decision
+    144): the right side runs before the target is lent, so the lends never
+    overlap; the compound case is linted.
 16. `a[next()] max= 4`: rejected, the target would be evaluated twice.
 17. `f(next(), next())` with a `next` that counts: prints in written
     order (3.4), also for methods, operators and `min`/`max`.

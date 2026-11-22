@@ -4334,7 +4334,9 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   ws)` works); lent structs can be built anywhere; closure captures are
   borrowed per call; 5.4's reuse of a callee's `mut` borrow by an inline
   closure is withdrawn; `let p = mut a[i]` is allowed; `let row = rows[i]`
-  on a heap element is a read lend (`at` is a `lends` fn).
+  on a heap element is a read lend (`at` is a `lends` fn). Assignments run the right side, then the target's indices, then the
+  write, so `a[l] += inc(mut a[l])` and `xs[0] = xs.pop()!` compile (the
+  first with a lint), reversing plan/19 red-team case 15.
 - **Why.** Ryan asked for one document from which any snippet can be judged
   at a glance; the older documents disagreed on these points.
 - **Reverse.** Restore 141 rule 3 (lent values only in `let`s), or hold
