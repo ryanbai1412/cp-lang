@@ -88,3 +88,17 @@ command = "wc -l crates/cpl-codegen/src/*.rs | awk '$1 > 2000 && $2 != \"total\"
 target = "0"
 today = "2 (expr.rs 2900, emit.rs 2233)"
 milestone = "M2"
+
+[[metric]]
+name = "perf set peak RSS vs matched C++ (p50, max)"
+command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # rss_ratio_p50, rss_ratio_max, rss_max_mb"
+target = "p50 <= 1.05, max <= 1.5; no program over the judge's 256 MB"
+today = "p50 1.000, max 2.006, largest 99.6 MB (n=164 ok rows, 2026-11-22 on a083b364)"
+milestone = "M1"
+
+[[metric]]
+name = "g++ -O2 time on emitted C++ (p50, max)"
+command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # compile_ms_p50, compile_ms_max"
+target = "p50 <= 1000 ms, max <= 3000 ms (judge compile limits are ~10 s)"
+today = "p50 516 ms, max 1126 ms (n=164 ok rows, 2026-11-22 on a083b364)"
+milestone = "M1"
