@@ -81,6 +81,74 @@ async function load(group: string, items: { id: string; title: string; caption: 
   );
 }
 
+export interface Live {
+  id: string;
+  title: string;
+  caption: string;
+  source: string;
+  stdin: string;
+  cpp?: string;
+}
+
+const hero = [
+  {
+    id: 'prefix',
+    title: 'Prefix sums',
+    caption:
+      'The array is 1-based because the statement is. Prefix sums live on the cuts between positions, so there is no l - 1 to get wrong.',
+  },
+  {
+    id: 'optional',
+    title: 'No sentinels',
+    caption: 'No answer yet is None, not -1 or INF. max= ignores it, and -1 appears once, where it is printed.',
+  },
+  {
+    id: 'grid',
+    title: 'Grids',
+    caption: 'The type reads the grid. Rows and columns are different index spaces, so g[c, r] does not compile.',
+  },
+  {
+    id: 'input',
+    title: 'Typed input',
+    caption:
+      'The limits from the statement are the types. Change 90 to 900 in the input and run: the run stops and names the value.',
+  },
+];
+
+const lib = [
+  {
+    id: 'segtree',
+    title: 'Segment tree',
+    caption: 'Point updates and range minimum. You give SegTree the operation; fold takes the range as the statement writes it.',
+  },
+  {
+    id: 'dijkstra',
+    title: 'Dijkstra',
+    caption: 'Shortest paths from vertex 1. Unreachable is None, so there is no INF to add to by mistake.',
+  },
+  { id: 'dsu', title: 'Union-find', caption: 'Dsu over the vertex domain: unite, same, size and the number of components.' },
+  {
+    id: 'mod',
+    title: 'Mod and memo',
+    caption: 'Counting paths in a DAG modulo 1e9 + 7. Mod carries the modulus in its type; @memo caches the recursion.',
+  },
+];
+
+function live(group: string, items: { id: string; title: string; caption: string }[]): Live[] {
+  return items.map((t) => {
+    const base = join(dir, group, t.id);
+    return {
+      ...t,
+      source: readFileSync(`${base}.cp`, 'utf8'),
+      stdin: readFileSync(`${base}.in`, 'utf8'),
+      cpp: existsSync(`${base}.cpp`) ? readFileSync(`${base}.cpp`, 'utf8').trimEnd() : undefined,
+    };
+  });
+}
+
+export const heroPrograms = () => live('hero', hero);
+export const libraryPrograms = () => live('lib', lib);
+
 export const syntaxShowcases = () => load('syntax', syntax, false);
 export const libraryShowcases = () => load('library', library, true);
 

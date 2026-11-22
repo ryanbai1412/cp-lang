@@ -9,7 +9,15 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { bench } from '@/lib/bench';
 import { corpus } from '@/lib/corpus';
-import { debugDemo, libraryShowcases, type Showcase, syntaxShowcases } from '@/lib/landing';
+import {
+  debugDemo,
+  heroPrograms,
+  libraryPrograms,
+  libraryShowcases,
+  type Live,
+  type Showcase,
+  syntaxShowcases,
+} from '@/lib/landing';
 
 const starts = [
   { href: '/learn/start', icon: GraduationCap, title: 'Solve your first problem', text: 'Two minutes, in the browser, no install.' },
@@ -22,6 +30,33 @@ const pillars = [
   { href: '#library', title: 'A powerful standard library', text: 'Hard problems in a dozen lines.' },
   { href: '#debugging', title: 'Easy debugging', text: 'Stress test, shrink, then step through time.' },
 ];
+
+function LiveTabs({ items }: { items: Live[] }) {
+  return (
+    <Tabs defaultValue={items[0].id} className="min-w-0">
+      <TabsList className="h-auto flex-wrap justify-start">
+        {items.map((s) => (
+          <TabsTrigger key={s.id} value={s.id}>
+            {s.title}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {items.map((s) => (
+        <TabsContent key={s.id} value={s.id} className="space-y-3">
+          <Runner source={s.source} stdin={s.stdin} status="runs" caption={s.caption} />
+          {s.cpp && (
+            <details className="rounded-xl border bg-muted/30">
+              <summary className="cursor-pointer px-4 py-2 text-sm text-muted-foreground">
+                Compare with the C++ ({s.cpp.split('\n').length} lines against {s.source.trimEnd().split('\n').length})
+              </summary>
+              <pre className="overflow-x-auto border-t p-4 font-mono text-xs leading-relaxed">{s.cpp}</pre>
+            </details>
+          )}
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+}
 
 function Showcases({ items }: { items: Showcase[] }) {
   return (
@@ -61,6 +96,8 @@ function Showcases({ items }: { items: Showcase[] }) {
 
 export default async function Home() {
   const [syntax, library] = await Promise.all([syntaxShowcases(), libraryShowcases()]);
+  const hero = heroPrograms();
+  const lib = libraryPrograms();
   const debug = debugDemo();
   const entries = corpus();
   const inGallery = new Set(entries.map((e) => e.problem));
@@ -80,7 +117,7 @@ export default async function Home() {
     <main className="container mx-auto max-w-6xl px-4">
       <section id="syntax" className="grid items-start gap-10 py-16 lg:grid-cols-[1fr_1.3fr]">
         <div className="space-y-6 lg:pt-10">
-          <p className="text-sm text-muted-foreground">Beta · CP Lang 0.3</p>
+          <p className="text-sm text-muted-foreground">Beta</p>
           <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
             Write the editorial, not the boilerplate.
           </h1>
@@ -109,25 +146,21 @@ export default async function Home() {
             </Button>
           </div>
         </div>
-        <Showcases items={syntax} />
+        <LiveTabs items={hero} />
       </section>
 
       <section id="library" className="border-t py-16">
         <div className="mb-8 max-w-2xl space-y-2">
           <h2 className="text-2xl font-semibold tracking-tight">A standard library built for contests</h2>
           <p className="text-muted-foreground">
-            Each tab is a complete solution to a real olympiad problem. The library has {modules} modules, and every
-            function documents its cost.{' '}
-            <Link href="/docs/ref/std" className="text-foreground hover:underline">
-              Browse the library <ArrowRight className="inline size-3.5" />
+            Segment trees, shortest paths, union-find and modular arithmetic are one line each. Every example here
+            runs in your browser.{' '}
+            <Link href="/docs/guides/stdlib" className="text-foreground hover:underline">
+              See what the library has <ArrowRight className="inline size-3.5" />
             </Link>
           </p>
         </div>
-        <Showcases items={library} />
-        <p className="mt-3 text-sm text-muted-foreground">
-          These are written in CP Lang 0.3. They type-check against the 0.3 spec and do not run yet; the examples below
-          and in the course run today.
-        </p>
+        <LiveTabs items={lib} />
       </section>
 
       <section id="debugging" className="border-t py-16">
@@ -160,6 +193,23 @@ export default async function Home() {
             </a>
           </div>
           <iframe src="/trace-demo.html" title="Trace of the failing case" className="h-[640px] w-full" loading="lazy" />
+        </div>
+      </section>
+
+      <section id="preview" className="border-t py-16">
+        <div className="mb-8 max-w-2xl space-y-2">
+          <h2 className="text-2xl font-semibold tracking-tight">Where it&apos;s going: CP Lang 0.3</h2>
+          <p className="text-muted-foreground">
+            A preview. These are written in CP Lang 0.3, the next version. They type-check against the 0.3 spec and
+            do not run yet. The library tabs are complete solutions to real olympiad problems.{' '}
+            <Link href="/docs/ref/std" className="text-foreground hover:underline">
+              Browse the 0.3 library ({modules} modules) <ArrowRight className="inline size-3.5" />
+            </Link>
+          </p>
+        </div>
+        <div className="grid gap-8 lg:grid-cols-2">
+          <Showcases items={syntax} />
+          <Showcases items={library} />
         </div>
       </section>
 
