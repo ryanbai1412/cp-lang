@@ -6,12 +6,12 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1432 (995 passing). Rules: 521.
+Cases: 1435 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 84 cases; 0 uncovered, 5 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 84 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R02 (02-values-types.md): 50 rules, 85 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 34 cases; 0 uncovered, 7 happy-path only, 4 negative only
 - R04 (04-indices.md): 59 rules, 71 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
@@ -100,7 +100,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.4.4 [1+ 2-]: **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`, `None` if either side i...
 - R02.4.5 [1+ 2-]: **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best` with an optional left...
 - R02.4.6 [2+ 0-]: `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None` target takes the ri...
-- R02.4.7 [1+ 2-]: **Postfix `x?`** propagates where operators don't reach: `a[x?]`, `f(x?)`, `x?.len`, `(dp[...
+- R02.4.7 [1+ 3-]: **Postfix `x?`** propagates where operators don't reach: `a[x?]`, `f(x?)`, `x?.len`, `(dp[...
 - R02.4.8 [1+ 1-]: `x!` is the `Unwrap` trait. `?T`, `[D]?T` and `List<?T>` implement it; the array forms che...
 - R02.5.1 [1+ 0-]: Tuples `(Int, V)` are positional; `.0`, `.1` and destructuring read them.
 - R02.5.2 [1+ 1-]: Records `(lo: Int, hi: V)` are anonymous structs with named fields. Two record types are e...
@@ -669,7 +669,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0801 Context value is not a constant: 1 case(s)
 - E0802 Bare `with` after another statement: 2 case(s)
 - E0803 `?` used directly in a condition: 2 case(s)
-- E0804 dropped_question *(0.3)*: **no case**
+- E0804 dropped_question *(0.3)*: 1 case(s)
 - E0805 fresh_type_leaks_test *(0.3)*: **no case**
 - E0806 Type annotation required for inference: 3 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
@@ -718,11 +718,11 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0522 Copy-mutate-writeback on a slice: 1 case(s)
 - L0601 Right side changes the place it assigns: 1 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
-- L0603 map_recomputed: **no case**
+- L0603 map_recomputed: 1 case(s)
 - L0604 Generator holding a `mut` lend walked twice: 1 case(s)
 - L0605 Literal index into a slice that keeps source keys: 3 case(s)
 - L0606 Wide array of `Int`: 1 case(s)
-- L0607 padding: **no case**
+- L0607 padding: 1 case(s)
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
@@ -740,7 +740,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: **no case**
 
-8 of 134 testable codes have no negative case.
+5 of 134 testable codes have no negative case.
 
 ## Standard library
 
