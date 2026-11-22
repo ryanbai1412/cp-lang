@@ -1,0 +1,22 @@
+// expect: ok, output "YES\nYES YES\nYES\nYES\nYES YES\nYES YES YES YES\nYES YES\nYES YES"
+use std.matrix.{Mat, XorBasis, MatPow}
+use std.mod.{Mod}
+type Z = Mod<7>
+let rr = Mat<Z>.from_rows([[Z(2), Z(4)], [Z(1), Z(2)]]).rref()
+print(rr.rank == 1 and rr.pivots == [0] and rr.mat.get(0, 1) == Z(2) and rr.mat.get(1, 1) == Z(0))
+print(Mat<Int>.from_rows([[1, 2], [3, 4]]).det_mod(6) == 4, Mat<Int>.from_rows([[2, 0], [0, 3]]).det_mod(6) == 0)
+print(Mat<Z>.from_rows([[Z(1), Z(2)], [Z(3), Z(4)]]).char_poly() == [Z(5), Z(2), Z(1)])
+print(Mat<Z>.from_rows([[Z(0), Z(3)], [Z(4), Z(0)]]).pfaffian() == Z(3))
+let a = Mat<Z>.from_rows([[Z(1), Z(2)], [Z(3), Z(4)]]).adjugate()
+print(a.get(0, 0) == Z(4) and a.get(0, 1) == Z(5), Mat<Z>.from_rows([[Z(5)]]).adjugate().get(0, 0) == Z(1))
+var b = XorBasis()
+let _ = b.add(6)
+let _ = b.add(5)
+print(b.rank == 2, b.basis_vecs() == [5, 3], b.contains(3), not b.contains(4))
+var c = XorBasis()
+let _ = c.add(3)
+let _ = c.add(8)
+let d = b.intersect(c)
+print(d.rank == 1, d.contains(3))
+let pw = MatPow.new(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10)
+print(pw.apply_pow(5, [1, 0]) == [8, 5], pw.apply_pow(0, [1, 0]) == [1, 0])

@@ -7,6 +7,7 @@
 //! `det_real`, `rank_real`, `solve_real`, and `inverse_real`.
 use std.algebra.{Monoid, Semiring}
 use std.mod.{Mod}
+use std.math.{mul_mod}
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
 pub struct Mat<T>:
@@ -310,7 +311,27 @@ pub struct Mat<T>:
     /// order: pivot columns increasing
     /// traps: never for a field `T`
     /// example: `let (mat: e, rank: k, pivots: p) = Mat<Mod<7>>.from_rows([[2, 4], [1, 2]]).rref(); k == 1 and p == [0] and e.get(0, 1) == Mod<7>(2) and e.get(1, 1) == Mod<7>(0)`
-    pub fn rref(self) -> (mat: Mat<T>, rank: Int, pivots: List<Int>) = todo
+    pub fn rref(self) -> (mat: Mat<T>, rank: Int, pivots: List<Int>):
+        var m = [x for x in data]
+        var pivots = List<Int>()
+        var r = 0
+        for col in 0..cols:
+            if r == rows: break
+            var piv = r
+            while piv < rows and m[piv * cols + col] == T.zero: piv += 1
+            if piv == rows: continue
+            if piv != r:
+                for c in col..cols: m.swap(r * cols + c, piv * cols + c)
+            let inv_l = T.one / m[r * cols + col]
+            for c in col..cols: m[r * cols + c] = m[r * cols + c] * inv_l
+            for i in 0..rows:
+                if i == r: continue
+                let f = m[i * cols + col]
+                if f == T.zero: continue
+                for c in col..cols: m[i * cols + c] = m[i * cols + c] - f * m[r * cols + c]
+            pivots.push(col)
+            r += 1
+        (mat: Mat(rows, cols, m), rank: r, pivots:)
 
     /// The determinant modulo any (possibly composite) `m >= 1`, in `0..m`, by Euclidean (gcd-style)
     /// row elimination, so no inverse is needed. Entries are reduced modulo `m` first, negative ones
@@ -321,7 +342,23 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square or `m < 1`
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).det_mod(6) == 4`
     /// example: `Mat<Int>.from_rows([[2, 0], [0, 3]]).det_mod(6) == 0`
-    pub fn det_mod(self, m: Int) -> Int = todo
+    pub fn det_mod(self, m: Int) -> Int:
+        assert rows == cols, "det_mod requires a square matrix"
+        assert m >= 1, "det_mod requires m >= 1"
+        let n = rows
+        var a = [((Int(x) % m) + m) % m for x in data]
+        var ans = 1 % m
+        for col in 0..n:
+            for r in col + 1..n:
+                while a[r * n + col] != 0:
+                    let q = a[col * n + col] / a[r * n + col]
+                    if q != 0:
+                        for c in col..n: a[col * n + c] = (a[col * n + c] - mul_mod(q, a[r * n + c], m) + m) % m
+                    for c in col..n: a.swap(col * n + c, r * n + c)
+                    ans = (m - ans) % m
+            if a[col * n + col] == 0: return 0
+            ans = mul_mod(ans, a[col * n + col], m)
+        ans
 
     /// The characteristic polynomial `det(xI - self)`, lowest degree first, via Hessenberg reduction:
     /// `n + 1` coefficients, the last one `T.one`.
@@ -331,7 +368,40 @@ pub struct Mat<T>:
     /// order: coefficient of `x^0` first
     /// traps: when the matrix is not square
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).char_poly() == [Mod<7>(5), Mod<7>(2), Mod<7>(1)]`
-    pub fn char_poly(self) -> List<T> = todo
+    pub fn char_poly(self) -> List<T>:
+        assert rows == cols, "char_poly requires a square matrix"
+        let n = rows
+        var h = [x for x in data]
+        for col in 0..n - 2:
+            var piv = col + 1
+            while piv < n and h[piv * n + col] == T.zero: piv += 1
+            if piv == n: continue
+            if piv != col + 1:
+                for c in 0..n: h.swap(piv * n + c, (col + 1) * n + c)
+                for r in 0..n: h.swap(r * n + piv, r * n + col + 1)
+            let inv_l = T.one / h[(col + 1) * n + col]
+            for r in col + 2..n:
+                let f = h[r * n + col] * inv_l
+                if f == T.zero: continue
+                for c in 0..n: h[r * n + c] = h[r * n + c] - f * h[(col + 1) * n + c]
+                for i in 0..n: h[i * n + col + 1] = h[i * n + col + 1] + f * h[i * n + r]
+        var ps = List<List<T>>()
+        ps.push([T.one])
+        for k in 0..n:
+            var next = List.filled(k + 2, T.zero)
+            let pk = ps[k]
+            for i in 0..k + 1:
+                next[i + 1] = next[i + 1] + pk[i]
+                next[i] = next[i] - h[k * n + k] * pk[i]
+            var t = T.one
+            for i in (0..k).rev:
+                t = t * h[(i + 1) * n + i]
+                let coef = h[i * n + k] * t
+                if coef == T.zero: continue
+                let pi = ps[i]
+                for j in 0..i + 1: next[j] = next[j] - coef * pi[j]
+            ps.push(next)
+        ps[n]
 
     /// The Pfaffian of an even-order skew-symmetric matrix over a field, with the sign convention
     /// `pf([[0, a], [-a, 0]]) == a`; `pf(A)^2 == det(A)`. Only the entries above the diagonal are read;
@@ -341,7 +411,39 @@ pub struct Mat<T>:
     /// empty: `T.one` for the `0 x 0` matrix
     /// traps: when the matrix is not square or `n` is odd
     /// example: `Mat<Mod<7>>.from_rows([[0, 3], [4, 0]]).pfaffian() == Mod<7>(3)`
-    pub fn pfaffian(self) -> T = todo
+    pub fn pfaffian(self) -> T:
+        assert rows == cols, "pfaffian requires a square matrix"
+        let n = rows
+        assert n % 2 == 0, "pfaffian requires an even order"
+        var a = List.filled(n * n, T.zero)
+        for i in 0..n:
+            for j in i + 1..n:
+                a[i * n + j] = data[i * n + j]
+                a[j * n + i] = T.zero - data[i * n + j]
+        var res = T.one
+        var k = 0
+        while k < n:
+            var piv = k + 1
+            while piv < n and a[k * n + piv] == T.zero: piv += 1
+            if piv == n: return T.zero
+            if piv != k + 1:
+                for c in 0..n: a.swap(piv * n + c, (k + 1) * n + c)
+                for r in 0..n: a.swap(r * n + piv, r * n + k + 1)
+                res = T.zero - res
+            let lead = a[k * n + k + 1]
+            res = res * lead
+            let inv_l = T.one / lead
+            for i in k + 2..n:
+                let f = a[k * n + i] * inv_l
+                if f != T.zero:
+                    for r in 0..n: a[r * n + i] = a[r * n + i] - f * a[r * n + k + 1]
+                    for c in 0..n: a[i * n + c] = a[i * n + c] - f * a[(k + 1) * n + c]
+                let g = T.zero - a[(k + 1) * n + i] * inv_l
+                if g != T.zero:
+                    for r in 0..n: a[r * n + i] = a[r * n + i] - g * a[r * n + k]
+                    for c in 0..n: a[i * n + c] = a[i * n + c] - g * a[k * n + c]
+            k += 2
+        res
 
     /// The adjugate matrix `adj(self)`, the transpose of the cofactor matrix, so
     /// `self * adj(self) == det(self) * I`. Defined even when `rank == n - 1` (and zero when
@@ -352,7 +454,35 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square
     /// example: `let a = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).adjugate(); a.get(0, 0) == Mod<7>(4) and a.get(0, 1) == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[5]]).adjugate().get(0, 0) == Mod<7>(1)`
-    pub fn adjugate(self) -> Mat<T> = todo
+    pub fn adjugate(self) -> Mat<T>:
+        assert rows == cols, "adjugate requires a square matrix"
+        let n = rows
+        if n == 0: return Mat(0, 0, List<T>())
+        if n == 1: return Mat(1, 1, [T.one])
+        let k = self.rank()
+        if k == n:
+            let d = self.det()
+            let inv = self.inverse()!
+            return Mat(n, n, [d * x for x in inv.data])
+        if k < n - 1: return Mat<T>.zeros(n, n)
+        let x = self.solve_space(List.filled(n, T.zero))!.1[0]
+        let y = self.transpose().solve_space(List.filled(n, T.zero))!.1[0]
+        var r = 0
+        while x[r] == T.zero: r += 1
+        var c = 0
+        while y[c] == T.zero: c += 1
+        var minor = List<T>()
+        for i in 0..n:
+            if i == c: continue
+            for j in 0..n:
+                if j != r: minor.push(data[i * n + j])
+        var cof = Mat(n - 1, n - 1, minor).det()
+        if (r + c) % 2 == 1: cof = T.zero - cof
+        let lam = cof / (x[r] * y[c])
+        var out = List.filled(n * n, T.zero)
+        for i in 0..n:
+            for j in 0..n: out[i * n + j] = lam * x[i] * y[j]
+        Mat(n, n, out)
 
 
 impl Add for Mat<T>:
@@ -545,7 +675,7 @@ pub struct XorBasis:
     /// cost: O(1)
     /// traps: never
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.add(3); b.rank == 2`
-    @get pub fn rank(self) -> Int = todo
+    @get pub fn rank(self) -> Int = size
 
     /// Insert `x >= 0` into the basis. Returns `true` iff the rank increased, that is, iff `x` was not
     /// already in the span (`0` never is new). The basis is kept fully reduced: no vector has another
@@ -672,14 +802,49 @@ pub struct XorBasis:
     /// order: decreasing (by highest set bit)
     /// traps: never
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.basis_vecs() == [5, 3]`
-    pub fn basis_vecs(self) -> List<Int> = todo
+    pub fn basis_vecs(self) -> List<Int>:
+        var red = List.filled(63, 0)
+        for b in 0..63:
+            var v = basis[b]
+            if v == 0: continue
+            for c in (0..b).rev:
+                if red[c] != 0 and ((v >> c) & 1) != 0: v ^= red[c]
+            red[b] = v
+            for d in b + 1..63:
+                if red[d] != 0 and ((red[d] >> b) & 1) != 0: red[d] ^= v
+        [red[b] for b in (0..63).rev if red[b] != 0]
 
     /// A new basis spanning the intersection of the two GF(2) vector subspaces.
     ///
     /// cost: O(W^2)
     /// traps: never
     /// example: `var a = XorBasis(); a.add(6); a.add(5); var b = XorBasis(); b.add(3); b.add(8); let c = a.intersect(b); c.rank == 1 and c.contains(3)`
-    pub fn intersect(self, o: XorBasis) -> XorBasis = todo
+    pub fn intersect(self, o: XorBasis) -> XorBasis:
+        var bx = List.filled(63, 0)
+        var by = List.filled(63, 0)
+        for b in 0..63:
+            if basis[b] != 0:
+                bx[b] = basis[b]
+                by[b] = basis[b]
+        var out = XorBasis.new()
+        for b in 0..63:
+            if o.basis[b] == 0: continue
+            var x = o.basis[b]
+            var y = 0
+            var bit = 62
+            while bit >= 0 and x != 0:
+                if ((x >> bit) & 1) != 0:
+                    if bx[bit] == 0:
+                        bx[bit] = x
+                        by[bit] = y
+                        x = 0
+                        y = -1
+                    else:
+                        x ^= bx[bit]
+                        y ^= by[bit]
+                bit -= 1
+            if y > 0: let _ = out.add(y)
+        out
 
 fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis:
     var out = XorBasis.new()
@@ -691,13 +856,23 @@ fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis:
 /// for fast multi-query `A^e * v`.
 pub struct MatPow<T>:
     n: Int
+    _pw: List<Mat<T>>
 
     /// Precompute `a^(2^k)` for every `k` with `2^k <= max_exp`, multiplied under `a`'s semiring.
     ///
     /// cost: O(n^3 log max_exp) time, O(n^2 log max_exp) space
     /// traps: when `a` is not square or `max_exp < 0`
     /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(5, [1, 0]) == [8, 5]`
-    pub fn new(a: Mat<T>, max_exp: Int) -> MatPow<T> = todo
+    pub fn new(a: Mat<T>, max_exp: Int) -> MatPow<T>:
+        assert a.rows == a.cols and max_exp >= 0
+        var pw = List<Mat<T>>()
+        var cur = a
+        var k = 1
+        while k <= max_exp:
+            pw.push(cur)
+            k *= 2
+            if k <= max_exp: cur = cur * cur
+        MatPow(a.rows, pw)
 
     /// Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers
     /// for the set bits of `e`. `e == 0` returns `v`.
@@ -707,7 +882,12 @@ pub struct MatPow<T>:
     /// order: indexed by row
     /// traps: when `e` is not in `0..=max_exp` or `v.len != n`
     /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(0, [1, 0]) == [1, 0]`
-    pub fn apply_pow(self, e: Int, v: List<T>) -> List<T> = todo
+    pub fn apply_pow(self, e: Int, v: List<T>) -> List<T>:
+        assert 0 <= e and (e == 0 or e < (1 << _pw.len))
+        var out = v
+        for k in 0.._pw.len:
+            if ((e >> k) & 1) == 1: out = _pw[k].mul_vec(out)
+        out
 
 /// O(n * m / 64) storage. Bit-packed dense matrix over GF(2) with word-parallel elimination.
 pub struct BitMat(rows: Int, cols: Int):
