@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 727 (296 passing). Rules: 521.
+Cases: 972 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -618,7 +618,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0108 Expected identifier: 1 case(s)
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
-- E0111 mixed_comparison_chain *(0.3)*: 2 case(s)
+- E0111 Mixed comparison chain: 2 case(s)
 - E0201 Unresolved name: 1 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 3 case(s)
@@ -643,10 +643,10 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0314 Match is not exhaustive: 4 case(s)
 - E0401 Assignment to immutable `let` binding: 1 case(s)
 - E0402 Missing `mut` at call site: 1 case(s)
-- E0403 Mutable borrow of immutable value (reserved): exempt (reserved in the registry)
-- E0404 Top-level `var` referenced inside `fn` (reserved): exempt (reserved in the registry)
+- E0403 `mut` of an immutable binding: 2 case(s)
+- E0404 top_level_var_in_fn *(retired)*: exempt (retired)
 - E0405 assign_fixed_field *(0.3)*: 1 case(s)
-- E0406 var_lambda_recursion *(0.3)*: 1 case(s)
+- E0406 Recursive `var` lambda: 1 case(s)
 - E0407 duplicate_variant_tag *(0.3)*: 1 case(s)
 - E0501 Unsupported construct in backend: 7 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
@@ -676,7 +676,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0902 range_store_unprovable_const *(0.3)*: 6 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
 - E0904 memory_over_profile *(0.3)*: **no case**
-- E9998 internal_unsupported: exempt (internal: a construct the compiler cannot lower)
+- E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
 - L0001 Unknown lint name: 1 case(s)
 - L0101 Position arithmetic via `.ord`: 1 case(s)
@@ -727,20 +727,20 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
 - R0101 Index out of range: 8 case(s)
-- R0102 `D(x)` out of the domain: 4 case(s)
-- R0201 range store out of range: 5 case(s)
+- R0102 Value outside a domain: 4 case(s)
+- R0201 Range store out of range: 5 case(s)
 - R0202 Integer overflow: 4 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 3 case(s)
-- R0401 assertion failed: 2 case(s)
+- R0401 Assertion failed: 2 case(s)
 - R0402 todo reached: 1 case(s)
-- R0501 bad input token (position and expected type): 5 case(s)
-- R0502 input out of its read contract: 2 case(s)
-- R0601 stack exhausted: 1 case(s)
+- R0501 Bad input token: 5 case(s)
+- R0502 Input outside its read contract: 2 case(s)
+- R0601 Stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: **no case**
 
-14 of 133 testable codes have no negative case.
+14 of 134 testable codes have no negative case.
 
 ## Standard library
 
@@ -748,22 +748,21 @@ Every `pub` item in `spec/std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (28/46 named by a case)
-  - uncovered: `Monoid`, `Action`, `Action.new`, `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Ordering`, `cmp`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `assign`, `affine`
-- **bag** (97/161 named by a case)
-  - uncovered: `BagCursor`, `SortedBag`, `SortedBag.new`, `SortedBag.add_many`, `SortedBag.remove_all`, `SortedBag.pop_first`, `SortedBag.take_first`, `SortedBag.drain_range`, `SortedBag.pop_last`, `SortedBag.drain`, `SortedBag.cursor_first`, `SortedBag.cursor_last`, `SortedBag.cursor_at`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedBag.to_list`, `SortedBag.split_at`, `SortedBag.absorb`, `SortedSet`, `SortedSet.new`, `SortedSet.pop_first`, `SortedSet.pop_last`, `SortedSet.drain`, `SortedSet.to_list`, `SortedSet.split_at`, `SortedSet.absorb`, `SortedMap`, `SortedMap.new`, `SortedMap.pop_first`, `SortedMap.pop_last`, `SortedMap.first_ge`, `SortedMap.first_gt`, `SortedMap.last_le`, `SortedMap.last_lt`, `SortedMap.drain`, `SortedMap.split_at`, `SortedMap.absorb`, `AugSortedBag`, `AugSortedBag.new`, `AugSortedBag.fold_lt`, `AugSortedBag.fold_le`, `AugSortedBag.fold_ge`, `AugSortedBag.fold_gt`, `AugSortedBag.fold_between`, `AugSortedSet`, `AugSortedSet.new`, `AugSortedSet.fold_lt`, `AugSortedSet.fold_le`, `AugSortedSet.fold_ge`, `AugSortedSet.fold_gt`, `AugSortedSet.fold_between`, `BucketCount`, `BucketCount.new`, `BucketCount.count_lt`, `BucketCount.kth`, `SortedRange`
-- **beats** (6/25 named by a case)
-  - uncovered: `BeatsSegTree`, `BeatsSegTree.new`, `BeatsSegTree.chmin`, `BeatsSegTree.chmax`, `BeatsSegTree.min_val`, `BeatsSegTree.max_val`, `BeatsSegTree.assign`, `BeatsSegTree.chdiv`, `BeatsSegTree.chmod`, `BeatsSegTree.all_sum`, `BeatsSegTree.all_min`, `BeatsSegTree.all_max`, `HistoricBeatsSegTree`, `HistoricBeatsSegTree.new`, `HistoricBeatsSegTree.chmin`, `HistoricBeatsSegTree.chmax`, `HistoricBeatsSegTree.max_val`, `HistoricBeatsSegTree.hist_max`, `HistoricBeatsSegTree.hist_sum`
-- **bitset** (86/92 named by a case)
-  - uncovered: `Bitset.single`, `Bitset.with`, `Bitset.without`, `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
-- **deque** (29/42 named by a case)
-  - uncovered: `Deque`, `Deque.new`, `Deque.pop_front`, `Deque.pop_front_while`, `Deque.pop_while`, `Deque.to_list`, `Deque.rotate_right`, `LinkedList`, `LinkedList.new`, `LinkedList.from_list`, `LinkedList.pop_front`, `LinkedList.splice_back`, `LinkedList.splice_front`
-- **dp** (15/39 named by a case)
-  - uncovered: `Line`, `LiChao`, `LiChao.new`, `LiChao.line_at`, `monotone_minima`, `dnc_layer`, `knuth`, `aliens`, `subset_sums`, `monge_path`, `monge_paths`, `MongePath`, `smawk`, `MonotoneHull`, `MonotoneHull.best_next`, `MonotoneHull.at_next`, `LineContainer`, `LineContainer.line_at`, `lis_ends`, `supermasks`, `masks_of_size`, `subset_folds`, `backtrack`, `Step`
-- **dsu** (57/63 named by a case)
-  - uncovered: `Mark`, `RollbackArray`, `RollbackArray.new`, `PersistentDsu`, `PersistentDsu.new`, `PersistentDsu.base`
-- **fenwick** (19/31 named by a case)
-  - uncovered: `Fenwick.first_ge`, `Fenwick.kth`, `Fenwick.suffix`, `Fenwick.first_gt`, `Fenwick2D`, `Fenwick2D.new`, `DualFenwick`, `DualFenwick.new`, `SparseFenwick2D`, `SparseFenwick2D.new`, `SparseFenwick2D.add_point`, `SparseFenwick2D.build`
+- **algebra** (33/46 named by a case)
+  - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `assign`, `affine`
+- **bag** (128/161 named by a case)
+  - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.add_many`, `SortedBag.remove_all`, `SortedBag.drain_range`, `SortedBag.cursor_first`, `SortedBag.cursor_last`, `SortedBag.cursor_at`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `AugSortedBag`, `AugSortedBag.new`, `AugSortedBag.fold_lt`, `AugSortedBag.fold_le`, `AugSortedBag.fold_ge`, `AugSortedBag.fold_gt`, `AugSortedBag.fold_between`, `AugSortedSet`, `AugSortedSet.new`, `AugSortedSet.fold_lt`, `AugSortedSet.fold_le`, `AugSortedSet.fold_ge`, `AugSortedSet.fold_gt`, `AugSortedSet.fold_between`, `SortedRange`
+- **beats** (16/25 named by a case)
+  - uncovered: `BeatsSegTree.chmax`, `BeatsSegTree.min_val`, `BeatsSegTree.max_val`, `HistoricBeatsSegTree`, `HistoricBeatsSegTree.new`, `HistoricBeatsSegTree.chmax`, `HistoricBeatsSegTree.max_val`, `HistoricBeatsSegTree.hist_max`, `HistoricBeatsSegTree.hist_sum`
+- **bitset** (89/92 named by a case)
+  - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
+- **deque** (40/42 named by a case)
+  - uncovered: `LinkedList.splice_back`, `LinkedList.splice_front`
+- **dp** (26/39 named by a case)
+  - uncovered: `LiChao.line_at`, `monotone_minima`, `dnc_layer`, `knuth`, `aliens`, `subset_sums`, `monge_path`, `monge_paths`, `MongePath`, `LineContainer`, `LineContainer.line_at`, `backtrack`, `Step`
+- **dsu** (58/63 named by a case)
+  - uncovered: `Mark`, `RollbackArray`, `RollbackArray.new`, `PersistentDsu`, `PersistentDsu.new`
+- **fenwick** (31/31 named by a case)
 - **flow** (37/65 named by a case)
   - uncovered: `FlowGraph.add_both`, `FlowGraph.target`, `FlowGraph.min_cut`, `FlowGraph.push_relabel`, `CostFlow.cost`, `CostFlow.target`, `CostFlow.cancel_cycles`, `CostFlow.min_cost_flow`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (112/158 named by a case)
@@ -772,62 +771,59 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.directed`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `topo`, `scc`, `components`, `condense`, `two_edge_components`, `cut_vertices`, `two_color`, `Paths.iter`, `Paths.tight`, `Paths.reached`, `Paths.path`, `bfs`, `bfs01`, `fixed_cost_paths`, `bellman_ford`, `floyd_warshall`, `closure`, `find_cycle`, `bridges`, `Walk`, `Walk.vertices`, `euler_walk`, `Lit`, `Lit.flip`, `TwoSat`, `TwoSat.new`, `TwoSat.add_or`, `TwoSat.must`, `TwoSat.implies`, `TwoSat.at_most_one`, `TwoSat.add_xor`, `TwoSat.add_eq`, `dfs`, `reachable`, `Visit`, `dial`, `johnson`, `k_shortest`, `negative_cycle`, `min_mean_cycle`, `girth`, `smallest_topo`, `dag_fold`, `count_paths`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `complement`, `odd_cycle`, `dominators`, `triangles`, `kruskal`, `boruvka`, `arborescence`, `spanning_forest`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
 - **grid** (17/23 named by a case)
   - uncovered: `Dir4.up`, `Dir4.down`, `ray`, `adj4`, `adj8`, `transposed`
-- **hashmap** (28/35 named by a case)
-  - uncovered: `FlatMap`, `FlatMap.new`, `FlatMap.absorb`, `Counter`, `Counter.new`, `Counter.absorb`, `Counter.most_common`
-- **heap** (42/74 named by a case)
-  - uncovered: `Heap`, `Heap.new`, `Heap.peek`, `Heap.push_pop`, `Heap.replace_top`, `Heap.push_all`, `Heap.drain`, `ErasableHeap`, `ErasableHeap.new`, `ErasableHeap.peek`, `IndexedHeap`, `IndexedHeap.new`, `IndexedHeap.peek`, `IndexedHeap.decrease`, `IndexedHeap.increase`, `MinMaxHeap`, `MinMaxHeap.new`, `MinMaxHeap.pop_first`, `MinMaxHeap.pop_last`, `MeldHeap`, `MeldHeap.new`, `MeldHeap.peek`, `MeldHeap.push_all`, `MeldHeap.meld`, `MeldHeap.absorb`, `MeldHeap.add_all`, `MeldHeap.drain`, `MinHeap`, `MaxHeap`, `Settle`, `Settle.offer`, `Settle.settled`
-- **interval** (22/44 named by a case)
-  - uncovered: `IntervalMap`, `IntervalMap.new`, `IntervalMap.run_at`, `IntervalMap.assign`, `IntervalMap.assign_point`, `IntervalMap.first_where`, `IntervalSet`, `IntervalSet.new`, `IntervalSet.contains_range`, `IntervalSet.run_at`, `IntervalSet.next_covered`, `IntervalSet.next_gap`, `IntervalSet.covered`, `SparseIntervalSet`, `SparseIntervalSet.new`, `SparseIntervalSet.next_gap`, `SparseIntervalSet.covered`, `SparseIntervalMap`, `SparseIntervalMap.new`, `SparseIntervalMap.run_at`, `SparseIntervalMap.assign`, `SparseIntervalMap.update`
+- **hashmap** (35/35 named by a case)
+- **heap** (68/74 named by a case)
+  - uncovered: `MeldHeap`, `MeldHeap.new`, `MeldHeap.meld`, `MeldHeap.add_all`, `MinHeap`, `MaxHeap`
+- **interval** (42/44 named by a case)
+  - uncovered: `IntervalMap.new`, `IntervalMap.assign_point`
 - **io** (2/5 named by a case)
   - uncovered: `Wire`, `Wire.new`, `Wire.ask`
-- **lazy** (11/30 named by a case)
-  - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap`, `LazyTreap.new`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_all`, `LazyTreap.apply_range`, `LazyTreap.apply`, `LazyTreap.erase_at`, `LazyTreap.erase_range`, `LazyTreap.split_at`, `LazyTreap.append`, `LazyTreap.to_list`, `Rope`, `Rope.new`, `Rope.apply`, `Rope.to_array`
-- **marks** (34/46 named by a case)
-  - uncovered: `Marks`, `Marks.new`, `MarkMap`, `MarkMap.new`, `Interner`, `Interner.new`, `Interner.key`, `SparseSet`, `SparseSet.new`, `Arena`, `Arena.new`, `Arena.alloc`
+- **lazy** (20/30 named by a case)
+  - uncovered: `Flip`, `Flip.op`, `flip_action`, `LazyTreap.insert`, `LazyTreap.insert_at`, `LazyTreap.apply_range`, `LazyTreap.append`, `Rope`, `Rope.new`, `Rope.to_array`
+- **marks** (46/46 named by a case)
 - **math** (36/83 named by a case)
   - uncovered: `lcm`, `fixed`, `choose`, `choose2`, `ext_gcd`, `ceil_div`, `divmod`, `Sieve.is_prime`, `Sieve.factor`, `Sieve.phi`, `Sieve.mobius`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `bit_len`, `digits`, `to_str`, `is_pow2`, `splitmix64`, `factor`, `divisors`, `divisors_from_factors`, `inv_mod`, `crt`, `crt_all`, `mul_mod`, `pow_mod`, `phi`, `primitive_root`, `mod_log`, `mod_sqrt`, `floor_sum`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `mod_kth_root`, `BigInt`, `BigInt.from_str`, `BigInt.divmod`, `BigInt.gcd`, `inf`
-- **matrix** (51/63 named by a case)
-  - uncovered: `Mat.new`, `Mat.transpose`, `Mat.mul_vec`, `Mat.product`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `XorBasis.kth`, `sparse_det`, `sparse_solve`, `simplex`
-- **mo** (0/6 named by a case)
-  - uncovered: `mo_order`, `mo_steps`, `mo`, `mo_order_hilbert`, `mo_rollback`, `mo_with_updates`
+- **matrix** (52/63 named by a case)
+  - uncovered: `Mat.new`, `Mat.transpose`, `Mat.mul_vec`, `Mat.product`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `sparse_det`, `sparse_solve`, `simplex`
+- **mo** (4/6 named by a case)
+  - uncovered: `mo_order`, `mo_steps`
 - **mod** (19/29 named by a case)
   - uncovered: `Mod.try_inv`, `Comb`, `Comb.new`, `Comb.fact`, `Comb.inv_fact`, `Comb.arrange`, `Comb.multichoose`, `Comb.catalan`, `Comb.derange`, `Comb.multinomial`
 - **ntt** (10/17 named by a case)
   - uncovered: `Curved`, `Disjoint`, `subset`, `convolve`, `SosOver`, `sos`, `fwht`
 - **opt** (0/2 named by a case)
   - uncovered: `is_some_and`, `is_none_or`
-- **pair** (4/5 named by a case)
-  - uncovered: `symmetric`
-- **persistent** (13/38 named by a case)
-  - uncovered: `Version`, `PersistentSegTree`, `PersistentSegTree.new`, `PersistentSegTree.base`, `PersistentSegTree.update`, `PersistentSegTree.right_while`, `PersistentSegTree.left_while`, `PersistentSegTree.diff_kth`, `RangeKth`, `RangeKth.new`, `RangeKth.kth`, `RangeKth.count_le`, `RangeKth.count_lt`, `RangeKth.count_in`, `PersistentLazySegTree`, `PersistentLazySegTree.new`, `PersistentLazySegTree.base`, `PersistentLazySegTree.apply`, `PersistentArray`, `PersistentArray.new`, `PersistentArray.base`, `PMultiset`, `PMultiset.with`, `PMultiset.without`, `PMultiset.cmp`
-- **poly** (26/57 named by a case)
-  - uncovered: `deriv`, `integral`, `log`, `exp`, `pow`, `sqrt`, `div_mod`, `prod_linear`, `compose`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
-- **prefix** (21/56 named by a case)
-  - uncovered: `scan`, `FillOrder`, `FillPrefix`, `Prefix`, `Prefix.new`, `Prefix.filling`, `Prefix.cyclic_sum`, `Prefix.suffix`, `Prefix.first_ge`, `Prefix.first_gt`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_Prefix2.filling`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `_PrefixList.filling`, `prefix_fold`, `suffix_fold`, `Diff`, `Diff.new`, `Diff.finish`, `_Diff2`, `_Diff2.new`, `_Diff2.finish`, `SweepAdd`, `SweepAdd.new`, `SweepAdd.advance`, `SweepAdd.current`, `ArithDiff`, `ArithDiff.new`, `ArithDiff.add_arith`, `ArithDiff.finish`, `prefix_excl`
-- **rand** (5/10 named by a case)
-  - uncovered: `Rng.int`, `Rng.float`, `Rng.shuffle`, `Rng.perm`, `Rng.sample`
-- **search** (0/9 named by a case)
-  - uncovered: `bsearch_real`, `ternary_max`, `ternary_min`, `ternary_max_real`, `ternary_min_real`, `parallel_bsearch`, `gallop_first`, `dinkelbach`, `split_best`
-- **segtree** (18/54 named by a case)
-  - uncovered: `SegTree.apply`, `SegTree.apply_all`, `SegTree.right_while`, `SegTree.left_while`, `SegTree.refresh`, `SegTree.update`, `SegTree.try_fold`, `SegTree.walk`, `MergeSortTree`, `MergeSortTree.new`, `MergeSortTree.count_lt`, `MergeSortTree.count_le`, `MergeSortTree.count_in`, `MergeSortTree.count_gt`, `MergeSortTree.count_ge`, `MergeSortTree.first_ge`, `MergeSortTree.last_le`, `SegTree2D`, `SegTree2D.new`, `SegTree2D.update`, `WaveletMatrix`, `WaveletMatrix.new`, `WaveletMatrix.kth`, `WaveletMatrix.count_lt`, `WaveletMatrix.count_in`, `WaveletMatrix.prev_val`, `WaveletMatrix.next_val`, `WaveletMatrix.quantile_sum`, `DynamicOrderTree`, `DynamicOrderTree.new`, `DynamicOrderTree.count_lt`, `DynamicOrderTree.count_in`, `DynamicOrderTree.kth`, `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
-- **seq** (59/215 named by a case)
-  - uncovered: `Perm`, `mean`, `all`, `is_sorted`, `filter`, `rev`, `items`, `rfind`, `sorted`, `reverse`, `dedup`, `deduped`, `record_highs`, `distinct`, `partition`, `select`, `merge_sorted`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `get_or_insert`, `get_or_insert_with`, `update`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `next_permutation`, `prev_permutation`, `runs`, `buckets`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `Compressed.first_ge`, `Compressed.first_gt`, `Compressed.last_le`, `Compressed.last_lt`, `pieces`, `covering`, `first_some`, `with_domain`, `cycle`, `halve`, `clip`, `first_true`, `last_true`, `bsearch`, `ends`, `first_gt`, `last_lt`, `compose`, `perm_cycles`, `perm_pow`, `inversions`, `swap_at`, `resized`, `pop_if`, `pop_while`, `clone`, `take_all`, `insert`, `remove`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `drop`, `drop_last`, `take`, `take_last`, `nth`, `rebase`, `Rebased`, `rekey`, `collect`, `keyed`, `Keys`, `take_while`, `drop_while`, `filter_map`, `flat_map`, `flatten`, `present`, `all_some`, `product`, `with_next`, `zip_exact`, `chunks_padded`, `reduce`, `max_count`, `min_count`, `majority`, `tally`, `group`, `min_k`, `max_k`, `partition_in_place`, `stable_partition_in_place`, `adjacent_diff`, `partition_point`, `equal_range`, `sorted_union`, `sorted_intersect`, `sorted_diff`, `kway_merge`, `radix_sort`, `counting_sort`, `is_permutation`, `is_subsequence`, `perm_rank`, `perm_unrank`, `perm_sign`, `perm_order`, `partial_inverse`, `combinations`, `index_pairs`, `permutations`, `SubseqStep`, `subsequences`, `lis`, `lcs`, `cartesian_tree`, `OnlineLis`, `OnlineLis.reconstruct`, `MonoStack`, `argmax`, `argmin`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `ring`, `Ring`, `Ring.span`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`, `spans`, `prev_smaller`, `next_smaller`, `prev_same`, `next_same`, `outermost`, `keys`
-- **slope** (31/39 named by a case)
-  - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`, `Convex.argmin`
-- **sparse** (9/23 named by a case)
-  - uncovered: `SparseTable`, `SparseTable.new`, `SparseTable.try_fold`, `idempotent`, `DisjointSparseTable`, `DisjointSparseTable.new`, `DisjointSparseTable.try_fold`, `SparseTable2D`, `SparseTable2D.new`, `SparseTable2D.try_fold`, `LinearRmq`, `LinearRmq.new`, `LinearRmq.argbest`, `LinearRmq.best`
-- **strings** (138/195 named by a case)
-  - uncovered: `repeat`, `starts_with`, `ends_with`, `search`, `rsearch`, `parse`, `find_all`, `common_prefix_len`, `common_suffix_len`, `is_palindrome`, `prefix_matches`, `overlap`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `KmpAutomaton.link`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.link`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.link`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `Trie.kth`, `AhoCorasick.link`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
-- **subset** (9/15 named by a case)
-  - uncovered: `Subset`, `Subset.single`, `Subset.with`, `Subset.without`, `Subset.subsets`, `Subset.supersets`
-- **timetree** (0/11 named by a case)
-  - uncovered: `TimeStep`, `TimeTree`, `TimeTree.new`, `TimeTree.add_interval`, `TimeTree.event`, `TimeTree.steps`, `TimeTree.run`, `TimeTree.add_range`, `TimeTree.walk`, `cdq`, `offline_over`
-- **tree** (56/171 named by a case)
-  - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.pos`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.down`, `Rooted.up`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.path`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.span`, `PermTree.vals`, `Layers`, `Layers.pos`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `Events.path`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `cartesian_tree`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.up`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
-- **window** (9/22 named by a case)
-  - uncovered: `Window`, `Window.new`, `Track`, `track`, `Tracked`, `Tracked.state`, `Undo`, `Undoing`, `Undoing.state`, `undoing`, `Sweep`, `Sweep.new`, `Sweep.move`
+- **pair** (5/5 named by a case)
+- **persistent** (33/38 named by a case)
+  - uncovered: `RangeKth`, `RangeKth.new`, `RangeKth.count_le`, `PMultiset`, `PMultiset.cmp`
+- **poly** (27/57 named by a case)
+  - uncovered: `deriv`, `integral`, `log`, `exp`, `pow`, `sqrt`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
+- **prefix** (42/56 named by a case)
+  - uncovered: `scan`, `FillPrefix`, `Prefix.cyclic_sum`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `prefix_fold`, `suffix_fold`, `Diff.new`, `_Diff2`, `_Diff2.new`
+- **rand** (6/10 named by a case)
+  - uncovered: `Rng.float`, `Rng.shuffle`, `Rng.perm`, `Rng.sample`
+- **search** (8/9 named by a case)
+  - uncovered: `split_best`
+- **segtree** (47/54 named by a case)
+  - uncovered: `SegTree.refresh`, `MergeSortTree.count_le`, `DynamicOrderTree`, `DynamicOrderTree.new`, `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
+- **seq** (100/215 named by a case)
+  - uncovered: `Perm`, `mean`, `is_sorted`, `filter`, `rev`, `items`, `rfind`, `deduped`, `distinct`, `partition`, `select`, `merge_sorted`, `windows`, `chunks`, `adjacent`, `with_prev`, `cyclic_pairs`, `get_or_insert`, `get_or_insert_with`, `update`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `next_permutation`, `prev_permutation`, `buckets`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `with_domain`, `cycle`, `halve`, `clip`, `first_true`, `last_true`, `bsearch`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `resized`, `pop_if`, `pop_while`, `clone`, `take_all`, `insert`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `drop`, `drop_last`, `take`, `take_last`, `nth`, `rebase`, `Rebased`, `rekey`, `collect`, `keyed`, `Keys`, `take_while`, `drop_while`, `filter_map`, `flat_map`, `flatten`, `present`, `all_some`, `product`, `with_next`, `chunks_padded`, `reduce`, `max_count`, `min_count`, `majority`, `min_k`, `max_k`, `partition_in_place`, `stable_partition_in_place`, `adjacent_diff`, `radix_sort`, `counting_sort`, `is_subsequence`, `combinations`, `index_pairs`, `permutations`, `SubseqStep`, `subsequences`, `OnlineLis`, `OnlineLis.reconstruct`, `MonoStack`, `argmax`, `argmin`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.span`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`, `outermost`, `keys`
+- **slope** (32/39 named by a case)
+  - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
+- **sparse** (22/23 named by a case)
+  - uncovered: `idempotent`
+- **strings** (139/195 named by a case)
+  - uncovered: `repeat`, `starts_with`, `ends_with`, `search`, `rsearch`, `parse`, `find_all`, `common_prefix_len`, `common_suffix_len`, `is_palindrome`, `prefix_matches`, `overlap`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `KmpAutomaton.link`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.link`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.link`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.link`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **subset** (12/15 named by a case)
+  - uncovered: `Subset`, `Subset.subsets`, `Subset.supersets`
+- **timetree** (8/11 named by a case)
+  - uncovered: `TimeTree.event`, `TimeTree.run`, `offline_over`
+- **tree** (59/171 named by a case)
+  - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.down`, `Rooted.up`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.path`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.span`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `Events.path`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.up`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
+- **window** (10/22 named by a case)
+  - uncovered: `Window.new`, `Track`, `track`, `Tracked`, `Tracked.state`, `Undo`, `Undoing`, `Undoing.state`, `undoing`, `Sweep`, `Sweep.new`, `Sweep.move`
 
-1193 of 2222 std items are named by a case.
+1508 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
