@@ -16,61 +16,152 @@ use std.algebra.{Monoid}
 pub type Perm<V> = [V]V
 
 /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
+///
+/// cost: O(n)
+/// empty: `T.one`
+/// traps: never (overflow wraps in release, traps in debug)
+/// example: `[2, 3, 4].prod() == 24`
 pub fn prod<S: Seq, T>(self: S) -> T = todo
 
 /// Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each
 /// element first (`xs.sum(of: x => x * x)`). O(n).
+///
+/// cost: O(n)
+/// empty: `U.zero`
+/// traps: never (overflow wraps in release, traps in debug)
+/// example: `[1, 2, 3].sum(of: x => x * x) == 14`
 pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
 
 /// The average of `of` over the elements as `F64`; `None` when empty. O(n).
+///
+/// cost: O(n)
+/// empty: `None`
+/// traps: never
+/// example: `[1, 2].mean() == Some(1.5)`
 pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
 
 /// The least element by `by`, the first on ties; `None` when empty. A method call (`s.min()`)
 /// picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
 /// is argmin. O(n).
+///
+/// cost: O(n)
+/// empty: `None`
+/// ties: the first in sequence order
+/// traps: never
+/// example: `[3, 1, 1].min() == Some(1)`
+/// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
 pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 
 /// The greatest element by `by`, the first on ties; `None` when empty. O(n).
+///
+/// cost: O(n)
+/// empty: `None`
+/// ties: the first in sequence order
+/// traps: never
+/// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
 pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 
 /// How many elements satisfy `p`. O(n).
+///
+/// cost: O(n)
+/// empty: `0`
+/// traps: never
+/// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
 pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
 
 /// Whether some element satisfies `p`; stops at the first. O(n).
+///
+/// cost: O(n), stopping at the first match
+/// empty: `false`
+/// traps: never
+/// example: `[1, 2].any(x => x > 1) == true`
 pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 
 /// Whether every element satisfies `p`; stops at the first that doesn't. O(n).
+///
+/// cost: O(n), stopping at the first failure
+/// empty: `true`
+/// traps: never
+/// example: `[1, 2].all(x => x > 1) == false`
 pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 
 /// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`. O(n).
+///
+/// cost: O(n)
+/// empty: `true`; a single element is sorted too
+/// traps: never
+/// example: `[1, 1, 2].is_sorted() == true`
 pub fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool = todo
 
 /// O(n). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
+///
+/// cost: O(n), O(1) extra space
+/// empty: does nothing
+/// traps: when `range` falls outside the keys
+/// example: `var a = [1, 2, 3]; a.reverse(); a == [3, 2, 1]`
 pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None) = todo
 
 /// O(n). Drop each value equal to the one before it, in place: a sorted list keeps one of each.
+///
+/// cost: O(n), O(1) extra space
+/// empty: does nothing
+/// ties: keeps the first of each run of equal values
+/// traps: never
+/// example: `var a = [1, 1, 2, 1]; a.dedup(); a == [1, 2, 1]`
 pub fn dedup<T>(mut self: List<T>) = todo
 
 /// `self` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
 /// Works on any `Seq`. O(n) time without hashing.
+///
+/// cost: O(n)
+/// empty: `[]`
+/// order: first of each run, in input order; a new `List`, keyed from 0
+/// traps: never
+/// example: `[1, 1, 2, 1].deduped() == [1, 2, 1]`
 pub fn deduped<S: Seq, T>(self: S) -> List<T> = todo
 
 /// O(n). The positions holding a new strict maximum, left to right: the first position, then
 /// each one greater than everything before it. `record_highs(by: f)` compares `f(x)`.
+///
+/// cost: O(1) per step
+/// empty: yields nothing
+/// ties: an equal value is not a new high
+/// order: increasing keys of `self`
+/// traps: never
+/// example: `[3, 1, 4, 4, 5].record_highs().collect() == [0, 2, 4]`
 pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D = todo
 
 /// Distinct values of `self` in first-seen order (optionally keyed by `by:`).
 /// Works on any `Seq`. O(n) expected time, O(n) space via `HashSet`. Unlike
 /// `dedup` / `deduped` (adjacent duplicates only, O(n) time without hashing),
 /// `distinct` drops duplicates anywhere in the sequence.
+///
+/// cost: O(n) expected, O(n) extra space
+/// empty: `[]`
+/// ties: keeps the first occurrence of each key
+/// order: first-seen order; a new `List`, keyed from 0
+/// traps: never
+/// example: `[3, 1, 3, 2, 1].distinct() == [3, 1, 2]`
 pub fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T> = todo
 
 /// The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
+///
+/// cost: O(n)
+/// empty: `([], [])`
+/// order: each list keeps input order
+/// traps: never
+/// example: `[1, 2, 3, 4].partition(x => x % 2 == 0) == ([2, 4], [1, 3])`
 pub fn partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>) = todo
 
 /// O(n) expected, O(n log n) worst case, O(1) extra space. Introselect partitioning `self` in place
 /// so `self.nth(k)` holds the element that would sit at `k` in sorted order (by `by:` or `cmp:`).
+///
+/// cost: O(n) expected, O(n log n) worst case, O(1) extra space
+/// empty: traps (no `k` is valid)
+/// ties: equal elements may land in any order on either side of `k`
+/// traps: when `k` is not in `0..self.len`
+/// example: `var a = [5, 1, 4, 2]; a.select(1); a.nth(1) == 2`
 pub fn select<S: IndexedMut, T, K>(
     mut self: S,
     k: Int,
@@ -80,6 +171,13 @@ pub fn select<S: IndexedMut, T, K>(
 
 /// O(|a| + |b|), O(|a| + |b|) memory. Stable merge of two sorted sequences (keyed by `by:`),
 /// taking from `a` before `b` on ties. Works on any `Indexed` sequences.
+///
+/// cost: O(|a| + |b|), O(|a| + |b|) memory
+/// empty: the other input, copied
+/// ties: `a` before `b`; within each input, input order (stable)
+/// order: non-decreasing by `by`; a new `List`, keyed from 0
+/// traps: never; unsorted inputs give an unspecified interleaving
+/// example: `merge_sorted([1, 3], [2, 3]) == [1, 2, 3, 3]`
 pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
     a: A,
     b: B,
@@ -87,9 +185,21 @@ pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
 ) -> List<T> = todo
 
 /// O(1) per window. Borrowed length-`k` sliding slice views, left to right. Nothing when `k > self.len`.
+///
+/// cost: O(1) per window
+/// empty: yields nothing; so does `k > self.len`
+/// order: left to right; each window keeps the keys of `self`
+/// traps: when `k < 1`
+/// example: `[1, 2, 3].windows(2).map(w => w.sum()).collect() == [3, 5]`
 pub fn windows<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 
 /// O(1) per chunk. Borrowed non-overlapping slice views of length `k` (the last may be shorter).
+///
+/// cost: O(1) per chunk
+/// empty: yields nothing
+/// order: left to right; each chunk keeps the keys of `self`, the last may be shorter
+/// traps: when `k < 1`
+/// example: `[1, 2, 3].chunks(2).map(c => c.len).collect() == [2, 1]`
 pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 
 /// Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives

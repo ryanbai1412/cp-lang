@@ -18,7 +18,7 @@ import glob, json, os, re, sys
 
 DOC_LABELS = ("cost", "traps", "example", "empty", "ties", "order")
 SEQ_INPUT = re.compile(r"\b(Seq|Indexed|IndexedMut|Keyed|List<|Range<|Domain)\b|\[[^\]]*\]\w|yields")
-CHOOSES = re.compile(r"^(arg)?(min|max)|best|first|last|find|sort|kth|nearest|lower|upper|mode|top|partition_point|search")
+CHOOSES = re.compile(r"^(?!is_)((arg)?(min|max)|best|first|last|find|sort|kth|nearest|lower|upper|mode|top|partition_point|search)|_(min|max)$")
 PUB_FN = re.compile(r"^\s*pub\s+(?:@\w+\s+)*fn\s+(\w+)")
 
 
