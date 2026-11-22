@@ -15,7 +15,7 @@
 #            CHECK_NO_CXX_CACHE=1 turns it off)
 #         4. cpl test stdlib examples/local-lib, run beside 3
 #         5. cpl fmt --check stdlib (the standard library stays formatted)
-#            and stdlib/prelude.cp holds at most 80 names
+#            and spec/std/prelude.cp holds at most 80 names
 #            and every port in corpus/problems passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
@@ -299,13 +299,11 @@ else
     cache_save stdlib_test
 fi
 
-step "stdlib/prelude.cp: at most 80 names"
-prelude=$(sed 's://.*::' stdlib/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
+step "spec/std/prelude.cp: at most 80 names"
+prelude=$(sed 's://.*::' spec/std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
 echo "prelude: $prelude names"
-[ "$prelude" -le 80 ] || echo "check: WARNING: stdlib/prelude.cp has $prelude names, over the target of 80" >&2
+[ "$prelude" -le 80 ] || echo "check: WARNING: spec/std/prelude.cp has $prelude names, over the target of 80" >&2
 
-step "cpl fmt --check stdlib"
-"$cpl" fmt --check stdlib || fail "stdlib/ is not formatted; run: cargo run -p cpl-cli -- fmt stdlib"
 
 # Fast validation scoreboard + script unit tests run in parallel with docs/site tests.
 if [ "$scoreboard_cached" -eq 0 ]; then

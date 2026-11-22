@@ -1,8 +1,6 @@
 //! The editor reports exactly what the command line reports on every v0.3
 //! file: the spec's conformance cases, the corpus's `spec.cp` ports and the
-//! examples. `cpl lsp` runs with no edition in its environment and picks
-//! 0.3 itself; `cpl check` and `cpl lint` run under `CPL_SPEC`, and the
-//! editor shows both.
+//! examples. The editor shows what `cpl check` and `cpl lint` both report.
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -40,13 +38,11 @@ fn v03_files() -> Vec<PathBuf> {
     files
 }
 
-/// What `cpl <command>` renders for `files` under edition 0.3, by file.
+/// What `cpl <command>` renders for `files`, by file.
 fn rendered(command: &str, files: &[PathBuf], out: &mut BTreeMap<String, Vec<Diag>>) {
     let run = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .arg(command)
         .args(files)
-        .env("CPL_SPEC", "1")
-        .env("CPL_STD", repo().join("spec/std"))
         .output()
         .expect("cpl runs");
     let text = String::from_utf8_lossy(&run.stderr).into_owned() + &String::from_utf8_lossy(&run.stdout);
@@ -82,8 +78,6 @@ fn frame(body: &str) -> Vec<u8> {
 fn published(files: &[PathBuf]) -> BTreeMap<String, Vec<Diag>> {
     let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["lsp", "--stdio"])
-        .env_remove("CPL_SPEC")
-        .env_remove("CPL_STD")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()

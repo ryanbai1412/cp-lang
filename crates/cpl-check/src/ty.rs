@@ -57,7 +57,6 @@ pub enum Ty {
     Error,
 }
 
-/// True when checking against the 0.3 spec (`CPL_SPEC`).
 pub fn spec_edition() -> bool {
     crate::edition::is_v03()
 }

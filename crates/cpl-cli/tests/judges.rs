@@ -192,13 +192,10 @@ fn passing_corpus_ports() -> Vec<PathBuf> {
         .collect()
 }
 
-/// `cpl build` the way `cpl-conform corpus` checks the file: against the
-/// 0.3 library in `spec/std`. A child process, since the setting is global.
+/// `cpl build` the way `cpl-conform corpus` checks the file.
 fn build_spec(file: &Path, judge: &str) -> Result<String, String> {
     let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["build", file.to_str().unwrap(), "--judge", judge, "-o", "-"])
-        .env("CPL_SPEC", "1")
-        .env("CPL_STD", root().join("spec/std"))
         .output()
         .unwrap();
     match out.status.success() {

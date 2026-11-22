@@ -21,7 +21,7 @@ def load_stdlib_docs(cpl_bin: Path = CPL) -> dict:
             capture_output=True,
         )
     res = subprocess.run(
-        [str(cpl_bin), "doc", "--format", "json", "stdlib"],
+        [str(cpl_bin), "doc", "--format", "json", "spec/std"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -97,7 +97,7 @@ def render_stdlib_api_html(cpl_bin: Path = CPL, root: Path = ROOT) -> tuple[str,
     headings: list[tuple[str, str]] = []
     parts = [
         '<p class="lead">Generated directly from <code>///</code> doc comments in '
-        '<code>stdlib/*.cp</code> via <code>cpl doc --format json stdlib</code>. '
+        '<code>spec/std/*.cp</code> via <code>cpl doc --format json spec/std</code>. '
         'Every public function documents its behavior, laws, and time/space cost, and the fast '
         'gate fails if any <code>pub fn</code> lacks documentation.</p>',
         '<div class="gallery-stats">'

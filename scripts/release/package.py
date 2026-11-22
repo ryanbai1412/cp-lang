@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Packs one release target: `cpl-<target>.tar.gz` (`.zip` on Windows) holding
-bin/cpl, stdlib/, README.md and the licenses.
+bin/cpl (the standard library is built in), README.md and the licenses.
 
 Archives are reproducible: entries are sorted, owned by 0:0 and stamped with
 $SOURCE_DATE_EPOCH (else the HEAD commit time), so a rebuild of the same
@@ -33,9 +33,6 @@ def entries(binary, windows):
     yield f"bin/{exe}", Path(binary).read_bytes(), True
     for name in ["README.md", "LICENSE-MIT", "LICENSE-APACHE"]:
         yield name, (ROOT / name).read_bytes(), False
-    for path in sorted((ROOT / "stdlib").rglob("*")):
-        if path.is_file():
-            yield path.relative_to(ROOT).as_posix(), path.read_bytes(), False
 
 
 def pack(target, binary, out_dir):

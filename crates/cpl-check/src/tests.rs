@@ -1677,7 +1677,7 @@ fn a_generic_fn_takes_its_type_arguments_after_two_colons() {
 #[test]
 fn a_heap_starts_empty() {
     let diag = one("var h = MinHeap<Int>(by: x => -x)\n");
-    // `MinHeap` is the prelude's: the struct of `stdlib/heap.cp`.
+    // `MinHeap` is the prelude's: the struct of `spec/std/heap.cp`.
     assert_eq!(diag.message, "`MinHeap<Int>` has no parameter named `by`");
     let ok = "var h = MinHeap<(Int, Int)>()\nh.push((-3, 3))\nvar xs = List<Int>()\nxs.push(1)\n";
     assert!(codes(ok).is_empty(), "{:?}", check(ok));
@@ -1761,7 +1761,7 @@ fn an_import_joins_its_module_line_or_the_file_header() {
 }
 
 /// `STD_NAMES` is what the hint for a missing `use` is read from. It is
-/// built from `stdlib/` itself, sorted for the binary search, without
+/// built from `spec/std/` itself, sorted for the binary search, without
 /// the names that more than one module declares.
 #[test]
 fn the_std_name_table_is_read_off_the_standard_library() {
@@ -1772,11 +1772,27 @@ fn the_std_name_table_is_read_off_the_standard_library() {
     assert_eq!(crate::prelude::std_module("runs"), Some("seq"));
 }
 
-/// The compiler carries `stdlib/` without its tests, line for line, so
+/// The compiler carries `spec/std/` without its tests, line for line, so
 /// a span into a bundled module still points at the right line.
+#[test]
+fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/std");
+    let modules = crate::modules::std_modules();
+    assert!(modules.iter().any(|(name, _)| *name == "seq"));
+    for (name, bundled) in modules {
+        let file = std::fs::read_to_string(root.join(format!("{name}.cp"))).expect("a module file");
+        assert!(!bundled.contains("@test"), "{name} keeps a test");
+        assert_eq!(bundled.lines().count(), file.lines().count(), "{name}");
+        for (kept, line) in bundled.lines().zip(file.lines()) {
+            assert!(kept.is_empty() || kept == line, "{name}: {kept}");
+        }
+    }
+    let seq = crate::modules::bundled_std(&["seq".to_string()]).expect("seq is bundled");
+    assert!(seq.contains("pub fn bsearch<D>"));
+}
 
 /// `spec/std/README.md` is the design of the whole surface, so a public
-/// name of `stdlib/` it never mentions is a name nobody designed.
+/// name of `spec/std/` it never mentions is a name nobody designed.
 #[test]
 fn the_stdlib_design_names_every_public_name() {
     let design = include_str!("../../../spec/std/README.md");

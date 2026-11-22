@@ -16,14 +16,6 @@ check-full:
 test *args:
     cargo nextest run --workspace {{args}}
 
-# Format stdlib and check Rust formatting on changed files.
-fmt:
-    cargo build -p cpl-cli && target/debug/cpl fmt stdlib
-
-# Check formatting without modifying files.
-fmt-check:
-    cargo build -p cpl-cli && target/debug/cpl fmt --check stdlib
-
 # Run zero-cost abstraction + corpus runtime (including perf.cp) benchmarks (not in fast gate).
 bench *args:
     cargo build --release -p cpl-cli

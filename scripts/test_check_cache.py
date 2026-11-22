@@ -82,7 +82,7 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_no_stage_excludes_a_file_the_rust_build_reads(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        reads = ["stdlib/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
+        reads = ["spec/std/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
         for d, _, names in os.walk(os.path.join(root, "crates")):
             for n in names:
                 if not n.endswith(".rs"):
@@ -144,7 +144,7 @@ class CheckCacheTest(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
 
 
-    def test_gate_env_pins_stdlib_and_target_to_the_checkout(self):
+    def test_gate_env_pins_target_to_the_checkout(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env_sh = os.path.join(root, "scripts", "gate-env.sh")
         with tempfile.TemporaryDirectory() as tmp:
@@ -153,12 +153,11 @@ class CheckCacheTest(unittest.TestCase):
                                      ("out", os.path.join(tmp, "out")),
                                      ("/abs/t", "/abs/t")]:
                 env = {k: v for k, v in os.environ.items() if k != "CARGO_TARGET_DIR"}
-                env["CPL_STD"] = "/elsewhere/stdlib"
                 if target_dir:
                     env["CARGO_TARGET_DIR"] = target_dir
-                r = subprocess.run(["bash", "-c", f'. "{env_sh}"; echo "$target"; echo "$CPL_STD"'],
+                r = subprocess.run(["bash", "-c", f'. "{env_sh}"; echo "$target"'],
                                    cwd=tmp, env=env, capture_output=True, text=True, check=True)
-                self.assertEqual(r.stdout.split("\n")[:2], [want, os.path.join(tmp, "stdlib")])
+                self.assertEqual(r.stdout.split("\n")[0], want)
 
     def test_land_takes_the_lock_gates_pushes_and_releases(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

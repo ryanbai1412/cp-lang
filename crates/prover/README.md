@@ -78,7 +78,7 @@ let window = Loop::new("a[r] - a[l] > k")?.invariant("l <= r")?.step(Step::assig
 ctx.check_loop(&window)?;   // proved when k >= 0; with a negative k: fails for n = 1, k = -1, r = 0, l = 1
 ```
 
-**Algebraic laws.** `Structure` holds the laws of `stdlib/algebra.cp` in
+**Algebraic laws.** `Structure` holds the laws of `spec/std/algebra.cp` in
 the words they are written in there: `semigroup`, `monoid`, `group`,
 `action`, `order`, plus `commutative`, `idempotent`, `distributive` and
 any law you add with `with_law`.

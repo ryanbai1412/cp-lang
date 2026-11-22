@@ -754,8 +754,8 @@ fn imported_module_symbols_hover_and_jump_to_definition() {
     ));
     let def_uri = def[0].at(&["result", "uri"]).as_str().unwrap_or("");
     assert!(
-        def_uri.ends_with("/stdlib/rand.cp"),
-        "expected definition in stdlib/rand.cp, got: {def_uri}"
+        def_uri.ends_with("std/rand.cp"),
+        "expected definition in std/rand.cp, got: {def_uri}"
     );
 }
 
@@ -804,8 +804,8 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         .at(&["result", "uri"])
         .as_str()
         .unwrap()
-        .ends_with("/stdlib/mod.cp"));
-    let choose_line = include_str!("../../../stdlib/mod.cp")
+        .ends_with("std/mod.cp"));
+    let choose_line = include_str!("../../../spec/std/mod.cp")
         .lines()
         .position(|l| l.trim_start().starts_with("pub fn choose("))
         .unwrap() as u32;

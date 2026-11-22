@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# Check every dream against the spec: the stubs in spec/std shadow stdlib/
-# module by module, so a dream passes when the spec, not the implementation,
-# covers everything it uses. With no arguments the gold dreams (corpus/gold/GOLD.txt)
+# Check every dream against the spec and its standard library, spec/std. With no arguments the gold dreams (corpus/gold/GOLD.txt)
 # are checked first: their pass rate is the headline; the rest is coverage.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-export CPL_SPEC=1 CPL_STD="$root/spec/std"
 if grep -lE "^(<<<<<<<|>>>>>>>|\|\|\|\|\|\|\|) " "$root"/spec/std/*.cp "$root"/corpus/gold/*.cp; then
     echo "spec-check: unresolved merge conflict markers in the files above" >&2; exit 1
 fi

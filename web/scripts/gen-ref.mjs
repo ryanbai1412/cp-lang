@@ -72,7 +72,6 @@ const std = JSON.parse(
     cwd: repo,
     encoding: 'utf8',
     maxBuffer: 64 << 20,
-    env: { ...process.env, CPL_STD: join(repo, 'spec/std') },
   }),
 );
 
