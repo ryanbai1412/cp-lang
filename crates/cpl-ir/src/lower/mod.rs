@@ -2886,7 +2886,7 @@ impl<'a> Lowerer<'a> {
                 Some(Sym::Struct(id)) if values => return self.struct_spec(id),
                 Some(Sym::Struct(id)) => Ty::Struct(id),
                 Some(Sym::GenStruct(gid)) => {
-                    let gargs = self.resolve_gen_args(args);
+                    let gargs = self.resolve_gen_args_for_struct(gid, args);
                     let sid = self.instantiate_struct(gid, gargs);
                     if values {
                         return self.struct_spec(sid);
