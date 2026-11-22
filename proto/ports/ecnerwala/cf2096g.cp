@@ -88,4 +88,4 @@ for r in Round:
             Side.Right => rounds[r].right
             Side.Off => rounds[r].off
         for c in coins: hits[Coin(c)] += 1
-print([c for c in Coin].first(c => hits[c] == known)!)
+print(Coin.first(c => hits[c] == known)!)
