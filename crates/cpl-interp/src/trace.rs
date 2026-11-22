@@ -756,19 +756,25 @@ impl Tracer {
         let shown = |value: &Value| {
             !matches!(value, Value::Unit | Value::Moved | Value::Closure(..) | Value::Alias(..) | Value::Part(_))
         };
-        let raw = view.locals.iter().filter(|(_, _, value)| shown(value)).all(|(_, ty, value)| {
-            matches!((ty, value), (Ty::Int, Value::Int(v)) if v.unsigned_abs() <= MAX_EXACT)
-        });
+        let (mut names, mut ints) = (std::mem::take(&mut self.local_names), std::mem::take(&mut self.local_ints));
+        ints.clear();
+        let (mut raw, mut same) = (true, true);
+        for (name, ty, value) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
+            match (ty, value) {
+                (Ty::Int, Value::Int(v)) if v.unsigned_abs() <= MAX_EXACT => ints.push(*v),
+                _ => {
+                    raw = false;
+                    break;
+                }
+            }
+            same &= self.local_name_at.get(ints.len() - 1) == Some(&(name.as_ptr() as usize, name.len()));
+        }
         if raw {
-            let (mut names, mut ints) = (std::mem::take(&mut self.local_names), std::mem::take(&mut self.local_ints));
-            ints.clear();
-            ints.extend(view.locals.iter().filter(|(_, _, value)| shown(value)).map(|(_, _, value)| value.int()));
-            let at = view.locals.iter().filter(|(_, _, value)| shown(value)).map(|(name, _, _)| (name.as_ptr() as usize, name.len()));
-            if !at.clone().eq(self.local_name_at.iter().copied()) {
+            if !same || ints.len() != self.local_name_at.len() {
                 self.local_name_at.clear();
-                self.local_name_at.extend(at);
                 names.clear();
                 for (name, _, _) in view.locals.iter().filter(|(_, _, value)| shown(value)) {
+                    self.local_name_at.push((name.as_ptr() as usize, name.len()));
                     names.push('\n');
                     string(&mut names, name);
                 }
@@ -776,6 +782,7 @@ impl Tracer {
             self.rec.log.locals_ints(&names, &ints);
             (self.local_names, self.local_ints) = (names, ints);
         } else {
+            (self.local_names, self.local_ints) = (names, ints);
             self.json_locals(view);
         }
         self.step_rest(view, span, label, checkpoint, focus);
