@@ -680,7 +680,7 @@ impl Database {
                         }
                     }
                 }
-                if diag.code == codes::WRONG_DOMAIN {
+                if diag.code == codes::WRONG_DOMAIN || diag.code == codes::TYPE_MISMATCH {
                     for label in &mut diag.labels {
                         if label.span.is_empty() {
                             label.span = global_decl(label.span, &text, &scope, &items, &ranges)

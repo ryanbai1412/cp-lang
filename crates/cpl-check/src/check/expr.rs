@@ -2733,9 +2733,39 @@ impl<'a> Checker<'a> {
             if let (true, Ty::Pos(domain)) = (got.is_int(), want) {
                 diag.help = Some(format!("convert it with `{domain}({quoted})`"));
                 diag.fixes.push(convert_to(domain, at.span));
+            } else if let Some(help) = rename_fields(got, want) {
+                diag.help = Some(help);
             }
         }
         false
+    }
+}
+
+/// `(a: V, b: V)` given where `(u: V, v: V)` is wanted, inside the same
+/// arrays, lists or optionals: the help names the fields to rename.
+fn rename_fields(got: &Ty, want: &Ty) -> Option<String> {
+    match (got, want) {
+        (Ty::Array { elem: got, .. }, Ty::Array { elem: want, .. })
+        | (Ty::Optional(got), Ty::Optional(want)) => rename_fields(got, want),
+        (Ty::Named { name, args: got }, Ty::Named { name: wanted, args: want })
+            if name == wanted && got.len() == want.len() =>
+        {
+            got.iter().zip(want).find_map(|(got, want)| rename_fields(got, want))
+        }
+        (Ty::Record(got), Ty::Record(want)) if got.len() >= want.len() => {
+            let has = |fields: &[(String, Ty)], name: &str| fields.iter().any(|(n, _)| n == name);
+            let missing: Vec<&str> =
+                want.iter().map(|(n, _)| n.as_str()).filter(|n| !has(got, n)).collect();
+            let spare: Vec<&str> =
+                got.iter().map(|(n, _)| n.as_str()).filter(|n| !has(want, n)).collect();
+            if missing.is_empty() || spare.len() < missing.len() {
+                return None;
+            }
+            let pairs: Vec<String> =
+                spare.iter().zip(&missing).map(|(from, to)| format!("`{from}` to `{to}`")).collect();
+            Some(format!("the fields are read by name: rename {}", pairs.join(", ")))
+        }
+        _ => None,
     }
 }
 

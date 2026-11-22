@@ -46,7 +46,7 @@ let dist = dijkstra(g, from: [(V.first, 0)], w: a => edges[a.e].w)
 print(dist[V.last] ?? -1)
 ```
 
-`from` is a list of `(vertex, starting distance)` pairs, so several sources are one call, and `w` gives the weight of an arc: `a.e` is the index of the edge it came from, `a.to` the vertex it leads to.
+`from` is a list of `(vertex, starting distance)` pairs, so several sources are one call, and `w` gives the weight of an arc: `a.e` is the index of the edge it came from, `a.to` the vertex it leads to. `Graph.directed` and `Graph.undirected` read the edge fields `u` and `v` by name (other fields, like `w`, ride along), and arcs carry `.e` when the edges are an array over a declared domain such as `[E]`; over a plain `[0..m]` an arc is just its target.
 
 Notice two contest conveniences:
 

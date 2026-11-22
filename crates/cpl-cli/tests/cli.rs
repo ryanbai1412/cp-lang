@@ -578,6 +578,21 @@ fn a_gen_fn_that_uses_the_input_is_an_error() {
     assert!(text.contains("`n` is read from the input, which a `@gen` fn is there to make"), "{text}");
 }
 
+/// research/dryrun/LOG.md p07: `(a: V, b: V)` edges gave no hint, and
+/// the call line twice where the declaration belonged.
+#[test]
+fn edges_with_other_field_names_are_told_which_to_rename() {
+    let source = "let (n, m): (1..=10, 1..=10) = read()\ndomain V = 1..=n\n\
+                  let flights: [0..m](a: V, b: V, c: 1..=1e9) = read()\nlet g = Graph.directed(flights)\nprint(n)\n";
+    let path = scratch("graph-field-names", "a.cp", source.as_bytes());
+    let out = cpl(&["check".as_ref(), path.as_os_str()], b"");
+    let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    assert_eq!(out.status.code(), Some(1), "{text}");
+    assert!(text.contains("help: the fields are read by name: rename `a` to `u`, `b` to `v`"), "{text}");
+    assert!(text.contains("3 | let flights"), "{text}");
+    assert_eq!(text.matches("4 | let g").count(), 1, "{text}");
+}
+
 const LAWS: &str = "\
 fn add(a: Int, b: Int) -> Int = a + b
 fn clamp(x: Int) -> Int:
