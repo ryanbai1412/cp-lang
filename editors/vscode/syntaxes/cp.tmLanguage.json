@@ -14,6 +14,7 @@
     { "include": "#declarations" },
     { "include": "#contracts" },
     { "include": "#labels" },
+    { "include": "#keyword-members" },
     { "include": "#keywords" },
     { "include": "#lambda-params" },
     { "include": "#compound-assign-words" },
@@ -387,6 +388,25 @@
         "1": { "name": "punctuation.accessor.dot.cp" },
         "2": { "name": "variable.other.property.boundary.cp" }
       }
+    },
+    "keyword-members": {
+      "comment": "`sat.var()`: after a dot a keyword is a member's name.",
+      "patterns": [
+        {
+          "match": "(?<!\\.)(\\.)(let|var|fn|for|while|if|elif|else|return|match|struct|enum|domain|type|trait|impl|use|mut|lends|pub|const|in|break|continue|assert|yield|and|or|not|unchecked)\\b(?=\\s*\\(|::<)",
+          "captures": {
+            "1": { "name": "punctuation.accessor.dot.cp" },
+            "2": { "name": "entity.name.function.method.cp" }
+          }
+        },
+        {
+          "match": "(?<!\\.)(\\.)(let|var|fn|for|while|if|elif|else|return|match|struct|enum|domain|type|trait|impl|use|mut|lends|pub|const|in|break|continue|assert|yield|and|or|not|unchecked)\\b",
+          "captures": {
+            "1": { "name": "punctuation.accessor.dot.cp" },
+            "2": { "name": "variable.other.property.cp" }
+          }
+        }
+      ]
     },
     "members": {
       "patterns": [

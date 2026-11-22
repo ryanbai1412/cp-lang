@@ -52,7 +52,7 @@ test('the grammar cleanly tokenizes every .cp program in corpus/problems/, cases
             if (row.length > 0 && /^\s*[A-Za-z_@]/.test(line)) {
                 assert.ok(!has(row[0], 'string.') && !has(row[0], 'comment.'), `starts inside a string: ${where(index)}`);
             }
-            for (const token of row) {
+            for (const [at, token] of row.entries()) {
                 assert.ok(!has(token, 'invalid.'), `invalid scope on \`${token.text}\`: ${where(index)}`);
                 if (!plain) {
                     continue;
@@ -61,7 +61,10 @@ test('the grammar cleanly tokenizes every .cp program in corpus/problems/, cases
                     assert.ok(has(token, 'constant.numeric.'), `number \`${token.text}\`: ${where(index)}`);
                 }
                 const keyword = /^(let|var|fn|for|while|if|elif|else|return|match|struct|enum|domain)$/.test(token.text);
-                if (keyword && !new RegExp(`[(,]\\s*${token.text}:`).test(line)) {
+                const member = at > 0 && row[at - 1].text === '.';
+                if (keyword && member) {
+                    assert.ok(has(token, 'entity.name.function.method.') || has(token, 'variable.other.property.'), `member \`${token.text}\`: ${where(index)}`);
+                } else if (keyword && !new RegExp(`[(,]\\s*${token.text}:`).test(line)) {
                     assert.ok(has(token, 'keyword.') || has(token, 'storage.'), `keyword \`${token.text}\`: ${where(index)}`);
                 }
             }

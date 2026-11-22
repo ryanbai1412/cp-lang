@@ -152,3 +152,8 @@ let from = as + invariant
 let first = xs.first
 //  ^^^^^ - support.function
 //             ^^^^^ variable.other.property.cp
+
+let x = sat.var() + s.type
+//         ^ punctuation.accessor.dot.cp
+//          ^^^ entity.name.function.method.cp
+//                    ^^^^ variable.other.property.cp
