@@ -849,9 +849,27 @@ impl<'a> Checker<'a> {
                 if place.root_mutable || place.via.is_some() {
                     return;
                 }
-                let message = format!("`{}` is not a var, so it can't be {action}", place.root);
+                let root = place.root;
+                let decl = self
+                    .local(&root)
+                    .filter(|l| l.keyword == "let")
+                    .map(|l| l.span);
+                let var_at = decl.and_then(|d| let_before(self.src, d));
+                let message = format!("`{root}` is not a var, so it can't be {action}");
                 if let Some(diag) = self.error(codes::ASSIGN_TO_LET, expr.span, message) {
-                    diag.help = Some(format!("declare it with `var {}` to change it", place.root));
+                    diag.help = Some(format!("declare it with `var {root}` to change it"));
+                    if let Some(decl) = decl {
+                        diag.labels.push(cpl_diag::Label {
+                            span: decl,
+                            message: "declared here".into(),
+                        });
+                        if let Some(at) = var_at {
+                            diag.fixes.push(cpl_diag::Fix {
+                                title: format!("declare `{root}` with `var`"),
+                                edits: vec![(at, "var".into())],
+                            });
+                        }
+                    }
                 }
                 return;
             }

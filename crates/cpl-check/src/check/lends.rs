@@ -2763,9 +2763,14 @@ impl<'a> Checker<'a> {
         if place.root_mutable || place.via.is_some() {
             return;
         }
+        let root = place.root;
+        let decl = self
+            .local(&root)
+            .filter(|l| l.keyword == "let")
+            .map(|l| l.span);
+        let var_at = decl.and_then(|d| super::let_before(self.src, d));
         let message = format!(
-            "`{}` is not a var, so `{}` can't change it",
-            place.root,
+            "`{root}` is not a var, so `{}` can't change it",
             show(call)
         );
         // R07.11.1: an in-place method needs a `var` source.
@@ -2775,7 +2780,19 @@ impl<'a> Checker<'a> {
             codes::MUT_OF_IMMUTABLE
         };
         if let Some(diag) = self.error(code, base.span, message) {
-            diag.help = Some(format!("declare it with `var {}`", place.root));
+            diag.help = Some(format!("declare it with `var {root}`"));
+            if let Some(decl) = decl {
+                diag.labels.push(cpl_diag::Label {
+                    span: decl,
+                    message: "declared here".into(),
+                });
+                if let Some(at) = var_at {
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("declare `{root}` with `var`"),
+                        edits: vec![(at, "var".into())],
+                    });
+                }
+            }
         }
     }
 

@@ -1,0 +1,3 @@
+let xs = [1, 2, 3, 4]
+xs[0..2].reverse()
+print(xs)

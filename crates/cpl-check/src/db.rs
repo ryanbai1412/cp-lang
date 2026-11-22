@@ -2225,7 +2225,11 @@ fn declare_with_var(
     items: &[Arc<ItemSyntax>],
     ranges: &[cpl_syntax::ItemRange],
 ) {
-    let name = diag.span.text(text);
+    let raw = diag.span.text(text);
+    let name = raw
+        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .next()
+        .unwrap_or(raw);
     let Some(&index) = scope.names.get(name) else {
         return;
     };
