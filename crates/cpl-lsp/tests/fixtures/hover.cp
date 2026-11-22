@@ -1,4 +1,5 @@
 // lsp: hover
+use std.math.{splitmix64}
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let xs: [V]Int = read()
@@ -89,6 +90,7 @@ print(pts.so$0rted().len)
 fn reor$0der(cells: [V]Int):
     for j in 0..k:
         order(cells)
+print(splitmi$0x64(U64(n)))
 fn coll$0ect() -> Int:
     var seen: List<Int> = []
     for v in V:

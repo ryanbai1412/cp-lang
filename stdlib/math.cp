@@ -218,6 +218,7 @@ pub @get fn is_pow2(self: Int) -> Bool = self > 0 and self & (self - 1) == 0
 
 /// SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart. The
 /// usual guard for `HashMap` keys and the step of a seeded generator; `U64` arithmetic wraps.
+/// O(1).
 pub fn splitmix64(x: U64) -> U64:
     var z: U64 = x + 0x9e3779b97f4a7c15
     z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9

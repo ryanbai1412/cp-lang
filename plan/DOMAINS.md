@@ -167,7 +167,7 @@ proven ranges, in-bounds proofs, overflow inputs, loop counts and a fn's
 estimated cost; VS Code, JetBrains, Zed, Neovim, Emacs and Helix setups,
 each tested in the gate.
 
-**Next.** Estimated cost for more fns (37 of the 1,332 fns in
+**Next.** Estimated cost for more fns (38 of the 1,332 fns in
 `corpus/problems` ports, now counting the fns each one calls); memory the bounds allow, as a code lens against
 the judge's limit, for locals and lists filled other than by counted
 `push`es too (top-level arrays and pushed lists only today);

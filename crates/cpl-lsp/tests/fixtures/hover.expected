@@ -1,27 +1,27 @@
 == diagnostics
-12:17-12:18 L0203 this binding hides the top-level `n`
+13:17-13:18 L0203 this binding hides the top-level `n`
 help: from here on `n` means the binding; give it another name if the top-level one is meant below
-15:1-18:1 L0504 a loop that only accumulates `best` is one `max`
+16:1-19:1 L0504 a loop that only accumulates `best` is one `max`
 help: write `max(min(n, 50) * 2 for v in V)`
-25:1-31:1 L0520 a hand-rolled binary search: this is `bsearch_first`
+26:1-32:1 L0520 a hand-rolled binary search: this is `bsearch_first`
 help: `let lo = bsearch_first(.., mid => ..)`: the predicate must be monotone along the range
-51:5-55:5 L0520 a hand-rolled binary search: this is `bsearch_first`
+52:5-56:5 L0520 a hand-rolled binary search: this is `bsearch_first`
 help: `let left = bsearch_first(.., at => ..)`: the predicate must be monotone along the range
-59:9-59:22 L0505 `u` is only used as `g[u]`
+60:9-60:22 L0505 `u` is only used as `g[u]`
 help: iterate the values: `for x in g:`
-99:5-102:5 L0504 a loop that only accumulates `best` is one `max`
+101:5-104:5 L0504 a loop that only accumulates `best` is one `max`
 help: write `max(cells[v] for v in V)`
-99:9-99:13 L0203 this local hides the top-level `best`
+101:9-101:13 L0203 this local hides the top-level `best`
 help: from here on `best` means the local; give it another name if the top-level one is meant below
-11:12-11:23 overflow `area * area` overflows Int when n = 55109
-11:12-11:30 overflow `area * area * area` overflows Int when n = 1448
+12:12-12:23 overflow `area * area` overflows Int when n = 55109
+12:12-12:30 overflow `area * area * area` overflows Int when n = 1448
 
-== hover @ 5:8
+== hover @ 6:8
 ```cp
 total: Int
 ```
 
-== hover @ 5:17
+== hover @ 6:17
 ```cp
 sum() -> T
 cost: O(n), about 200000 (2e5) steps: xs has at most n = 200000 (2e5) items
@@ -29,147 +29,147 @@ cost: O(n), about 200000 (2e5) steps: xs has at most n = 200000 (2e5) items
 
 The sum of the cells; `0` when empty. O(n).
 
-== hover @ 7:2
+== hover @ 8:2
 ```cp
 for: runs at most n = 200000 (2e5) times
 ```
 
-== hover @ 7:6
+== hover @ 8:6
 ```cp
 v: V
   domain V = 1..=n, n <= 2e5
   storage: 4 bytes
 ```
 
-== hover @ 8:11
+== hover @ 9:11
 ```cp
 half: Int in 0..=100000
 ```
 
-== hover @ 9:25
+== hover @ 10:25
 ```cp
 k: Int in 1..=7
 ```
 
-== hover @ 9:31
+== hover @ 10:31
 ```cp
 len: Int
 ```
 
 How many cells.
 
-== hover @ 10:14
+== hover @ 11:14
 ```cp
 n * n: Int in 1..=40000000000
 ```
 
-== hover @ 11:17
+== hover @ 12:17
 ```cp
 area * area: Int in 4..=1600016000040000000000
   overflows Int when n = 55109
 ```
 
-== hover @ 12:24
+== hover @ 13:24
 (none)
 
-== hover @ 13:20
+== hover @ 14:20
 ```cp
 (n - 1) ** 2: Int in 0..=39999600001
 ```
 
-== hover @ 13:32
+== hover @ 14:32
 ```cp
 area / 3: Int in 0..=13333400000
 ```
 
-== hover @ 14:18
+== hover @ 15:18
 ```cp
 area % 1000: Int in 0..=999
 ```
 
-== hover @ 14:30
+== hover @ 15:30
 ```cp
 n % 2: Int in 0..=1
 ```
 
-== hover @ 15:7
+== hover @ 16:7
 ```cp
 best: Int
 ```
 
-== hover @ 17:26
+== hover @ 18:26
 ```cp
 min(n, 50) * 2: Int in 2..=100
 ```
 
-== hover @ 18:37
+== hover @ 19:37
 ```cp
 best: Int
 ```
 
-== hover @ 20:13
+== hover @ 21:13
 ```cp
 n - 50: Int in 1..=199950
 ```
 
-== hover @ 22:13
+== hover @ 23:13
 ```cp
 n - 10: Int in -9..=40
 ```
 
-== hover @ 26:10
+== hover @ 27:10
 ```cp
 mid: Int in 0..=200000
 ```
 
-== hover @ 31:8
+== hover @ 32:8
 ```cp
 lo: Int in 0..=200001
 ```
 
-== hover @ 31:14
+== hover @ 32:14
 ```cp
 lo - hi: Int = 0
 ```
 
-== hover @ 35:7
+== hover @ 36:7
 ```cp
 small: Int in 3..=27
 ```
 
-== hover @ 38:6
+== hover @ 39:6
 ```cp
 for: runs at most k = 7 times
   n * k = 1400000 (1.4e6) times in all, with the loops around it
 ```
 
-== hover @ 44:13
+== hover @ 45:13
 ```cp
 b - c: Int in 1..=100000
 ```
 
-== hover @ 53:14
+== hover @ 54:14
 ```cp
 zs[at]: in bounds, 0 <= left <= at < right <= zs.len
 ```
 
-== hover @ 53:16
+== hover @ 54:16
 ```cp
 at: Int
   in bounds of zs[at]: 0 <= left <= at < right <= zs.len
 ```
 
-== hover @ 61:22
+== hover @ 62:22
 ```cp
 g[u][j]: in bounds, 0 <= j < g[u].len
 ```
 
-== hover @ 69:33
+== hover @ 70:33
 ```cp
 xs[v]: in bounds, v: V, the index space of xs
 ```
 
-== hover @ 70:24
+== hover @ 71:24
 ```cp
 domain Col = 0..4
   at most 4 positions
@@ -177,32 +177,32 @@ domain Col = 0..4
   in bounds of grid[Row.first, Col.last]: Row.first: Row, Col.last: Col, the index spaces of grid
 ```
 
-== hover @ 71:6
+== hover @ 72:6
 ```cp
 fn scan()
   estimated cost: O(n + n * k), about 3000000 (3e6) steps at max input
 ```
 
-== hover @ 75:4
+== hover @ 76:4
 ```cp
 fn scan()
   estimated cost: O(n + n * k), about 3000000 (3e6) steps at max input
 ```
 
-== hover @ 76:6
+== hover @ 77:6
 ```cp
 fn rescan()
   estimated cost: O(3 + 3 * n + 3 * n * k), about 9000003 (9e6) steps at max input
 ```
 
-== hover @ 79:6
+== hover @ 80:6
 ```cp
 fn ranked(ys: List<Int>) -> Int
   loops: at most n = 200000 (2e5) iterations per call, with the fns it calls
   documented costs: ys.sorted O(ys.len log ys.len) n = 200000 (2e5) times; ys.sorted O(ys.len log ys.len) an unknown number of times; ys.sorted O(ys.len log ys.len) once
 ```
 
-== hover @ 83:10
+== hover @ 84:10
 ```cp
 sorted() -> List<T>
 cost: O(n log n)
@@ -210,14 +210,14 @@ cost: O(n log n)
 
 A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
 
-== hover @ 85:7
+== hover @ 86:7
 ```cp
 fn order(cells: [V]Int)
   documented costs: pts.sorted O(k log k), about 20 steps each, k = 7 times; cells.sorted O(n log n), about 3521929 (3.5e6) steps each, k = 7 times
   estimated cost: O(k + k * (k log k) + k * (n log n)), about 24653649 (2.5e7) steps at max input
 ```
 
-== hover @ 87:41
+== hover @ 88:41
 ```cp
 sorted() -> List<T>
 cost: O(n log n), about 3521929 (3.5e6) steps: cells has at most n = 200000 (2e5) items
@@ -225,7 +225,7 @@ cost: O(n log n), about 3521929 (3.5e6) steps: cells has at most n = 200000 (2e5
 
 The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
 
-== hover @ 88:13
+== hover @ 89:13
 ```cp
 sorted() -> List<T>
 cost: O(n log n), about 20 steps: pts has at most k = 7 items
@@ -233,20 +233,30 @@ cost: O(n log n), about 20 steps: pts has at most k = 7 items
 
 The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
 
-== hover @ 89:8
+== hover @ 90:8
 ```cp
 fn reorder(cells: [V]Int)
   estimated cost: O(k + k * k + k * (k * (k log k) + k * (n log n))), about 172575545 (1.7e8) steps at max input
 ```
 
-== hover @ 92:8
+== hover @ 93:14
+```cp
+fn splitmix64(x: U64) -> U64
+cost: O(1)
+```
+
+SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart. The
+usual guard for `HashMap` keys and the step of a seeded generator; `U64` arithmetic wraps.
+O(1).
+
+== hover @ 94:8
 ```cp
 fn collect() -> Int
   documented costs: seen.sorted O((n * k) log (n * k)), about 28583794 (2.9e7) steps, once
   estimated cost: O(n + n * k + (n * k) log (n * k)), about 31583794 (3.2e7) steps at max input
 ```
 
-== hover @ 97:12
+== hover @ 99:12
 ```cp
 sorted() -> List<T>
 cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000 (1.4e6) items
@@ -254,39 +264,39 @@ cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000
 
 A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
 
-== hover @ 98:7
+== hover @ 100:7
 ```cp
 fn tally(cells: [V]Int) -> Int
   documented costs: cells.sorted O(n log n), about 3521929 (3.5e6) steps, once
   estimated cost: O(n + n log n), about 3721929 (3.7e6) steps at max input
 ```
 
-== hover @ 104:6
+== hover @ 106:6
 ```cp
 fn spread(cells: [V]Int) -> Int
   estimated cost: O(n), about 600001 (6e5) steps at max input
 ```
 
-== hover @ 114:6
+== hover @ 116:6
 ```cp
 fn widest(cells: [V]Int) -> Span
   estimated cost: O(n), about 800001 (8e5) steps at max input
 ```
 
-== hover @ 120:6
+== hover @ 122:6
 ```cp
 fn echo()
   estimated cost: O(n), about 600000 (6e5) steps at max input
 ```
 
-== hover @ 124:7
+== hover @ 126:7
 ```cp
 fn prefixes(bit: Fenwick<V, Int>)
   documented costs: bit.sum O(log |V|), about 18 steps each, n = 200000 (2e5) times
   estimated cost: O(n + n * (log |V|)), about 3921929 (3.9e6) steps at max input
 ```
 
-== hover @ 126:20
+== hover @ 128:20
 ```cp
 sum: fn(r: Range<V>) -> Int
 cost: O(log |V|)
@@ -294,14 +304,14 @@ cost: O(log |V|)
 
 The sum of a range: `f.sum(l..=r)`, `f.sum(..i)`, `f.sum(i..)`. An empty range is zero. O(log |D|).
 
-== hover @ 127:6
+== hover @ 129:6
 ```cp
 fn show(cells: [V]Int)
   documented costs: print O(|V|), about 200000 (2e5) steps each, k = 7 times
   estimated cost: O(k + k * (|V|)), about 1400007 (1.4e6) steps at max input
 ```
 
-== hover @ 129:10
+== hover @ 131:10
 ```cp
 print: built-in
 cost: O(|V|)
@@ -309,14 +319,14 @@ cost: O(|V|)
 
 Writes its arguments and a newline, lists space-separated and grids by row, in time linear in what it writes.
 
-== hover @ 130:6
+== hover @ 132:6
 ```cp
 fn gather()
   documented costs: print O(k), about 7 steps, once
   estimated cost: O(k + k), about 28 steps at max input
 ```
 
-== hover @ 135:6
+== hover @ 137:6
 ```cp
 print: built-in
 cost: O(got.len)
@@ -324,7 +334,7 @@ cost: O(got.len)
 
 Writes its arguments and a newline, lists space-separated and grids by row, in time linear in what it writes.
 
-== hover @ 136:10
+== hover @ 138:10
 ```cp
 struct Edge
   to: V  // at 0, 4 bytes
@@ -335,35 +345,35 @@ struct Edge
   storage: 24 bytes, aligned to 8
 ```
 
-== hover @ 140:6
+== hover @ 142:6
 ```cp
 es: [V]Edge
   domain V = 1..=n, n <= 2e5
   storage: 24 bytes per element, 4.8 MB max (fields at 0, 8, 16; 11 bytes padding)
 ```
 
-== hover @ 141:7
+== hover @ 143:7
 ```cp
 flag: [V]?Bool
   domain V = 1..=n, n <= 2e5
   storage: 2 bytes per element, 400 KB max (1 byte + 1 byte flag for none)
 ```
 
-== hover @ 142:7
+== hover @ 144:7
 ```cp
 pairs: [V](V, Int)
   domain V = 1..=n, n <= 2e5
   storage: 16 bytes per element, 3.2 MB max (fields at 0, 8; 4 bytes padding)
 ```
 
-== hover @ 143:7
+== hover @ 145:7
 ```cp
 adj: [V]List<V>
   domain V = 1..=n, n <= 2e5
   storage: grows on the heap; V: 4 bytes each
 ```
 
-== hover @ 144:10
+== hover @ 146:10
 ```cp
 struct Runs
   first: [V]Int
@@ -371,14 +381,14 @@ struct Runs
   storage: first: 8 bytes per element, seen: grows on the heap; V: 4 bytes each
 ```
 
-== hover @ 147:7
+== hover @ 149:7
 ```cp
 names: [V](name: Str, t: 1..=1000)
   domain V = 1..=n, n <= 2e5
   storage: per element, name: grows on the heap, t: 2 bytes
 ```
 
-== hover @ 148:7
+== hover @ 150:7
 ```cp
 dists: [V][V]?Int
   domain V = 1..=n, n <= 2e5

@@ -583,29 +583,29 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// How many distinct values there are.
     pub @get fn len(self) -> Int = D.K
 
-    /// The index of `val`, which must be one of the compressed values. O(log n).
+    /// The index of `val`, which must be one of the compressed values. O(log |D|).
     pub fn at(self, val: T) -> D:
         let i = vals.first_ge(val)
         assert i != none and vals[i!] == val  // `at` is for a value that was compressed
         i!
 
-    /// The index of `val` if it was compressed, or `none`. O(log n).
+    /// The index of `val` if it was compressed, or `none`. O(log |D|).
     pub fn try_at(self, val: T) -> ?D:
         if let i = vals.first_ge(val), vals[i] == val: i else: none
 
-    /// Whether `val` is one of the compressed values. O(log n).
+    /// Whether `val` is one of the compressed values. O(log |D|).
     pub fn contains(self, val: T) -> Bool = self.try_at(val) != none
 
-    /// The first index whose value is `>= val`, or `none`. O(log n).
+    /// The first index whose value is `>= val`, or `none`. O(log |D|).
     pub fn first_ge(self, val: T) -> ?D = vals.first_ge(val)
 
-    /// The first index whose value is `> val`, or `none`. O(log n).
+    /// The first index whose value is `> val`, or `none`. O(log |D|).
     pub fn first_gt(self, val: T) -> ?D = vals.first_gt(val)
 
-    /// The last index whose value is `<= val`, or `none`. O(log n).
+    /// The last index whose value is `<= val`, or `none`. O(log |D|).
     pub fn last_le(self, val: T) -> ?D = vals.last_le(val)
 
-    /// The last index whose value is `< val`, or `none`. O(log n).
+    /// The last index whose value is `< val`, or `none`. O(log |D|).
     pub fn last_lt(self, val: T) -> ?D = vals.last_lt(val)
 
 /// Coordinate compression: `let xs = compress(all)` sorts the values, drops the duplicates

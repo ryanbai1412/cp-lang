@@ -5572,3 +5572,16 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   states no cost) and none gain one, leaving 37.
 - **Reverse.** Drop the `helpers` loop in `fn_extra` in `cpl-lsp`'s
   `server.rs` and `ProvenFn::helpers` in `cpl-lint`.
+
+## 207. `splitmix64` and `Compressed`'s lookups state their cost (2026-11-22)
+
+- **Decision.** `splitmix64` documents `O(1)`, and `Compressed<D, T>`'s
+  `at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le` and
+  `last_lt` document `O(log |D|)` instead of `O(log n)`, so a fn's estimated
+  cost can count them with the size of `D`.
+- **Why.** A call whose doc states no cost, or a bare `n` on a struct
+  method (decision 29.51), blocks a fn's estimate. The
+  compressed values are exactly the positions of `D`. On the 1,332 fns in
+  `corpus/problems` ports, estimates go from 37 to 38.
+- **Reverse.** Restore the two doc lines in `stdlib/math.cp` and
+  `stdlib/seq.cp`.
