@@ -4817,6 +4817,14 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        if let ast::ExprKind::Name(n) = &base.kind {
+            if self.lookup(n).is_none()
+                && (n == "Char" || matches!(self.gen_env.get(n), Some(GenArg::Ty(Ty::Char))))
+                && matches!(name.text.as_str(), "K" | "len" | "size" | "count")
+            {
+                return self.int_lit(128, span);
+            }
+        }
         // Generic parameter bound to a `.cuts` domain (`D = V.cuts`):
         // `D.K` / `D.len` / `D.count` is `V.K + 1`, `D.first` is `0`, `D.last` is `V.K`.
         if let ast::ExprKind::Name(n) = &base.kind {
@@ -5523,7 +5531,7 @@ impl<'a> Lowerer<'a> {
                 let map_expr = self.mk(ExprKind::Field(Box::new(value), 0), map_ty, span);
                 self.len_of(map_expr, span)
             }
-            (Ty::Char, "ord") => self.cast(Cast::CharToInt, value, Ty::Int),
+            (Ty::Char, "ord" | "to_idx" | "idx") => self.cast(Cast::CharToInt, value, Ty::Int),
             (Ty::Char, "is_digit") => {
                 let ord = self.cast(Cast::CharToInt, value, Ty::Int);
                 let lo = self.int_lit(b'0' as i64, span);

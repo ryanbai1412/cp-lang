@@ -2731,6 +2731,12 @@ impl<'a> Checker<'a> {
                     _ => Ty::Unknown,
                 }
             }
+            Ty::Char => {
+                if matches!(name.text.as_str(), "ord" | "to_idx" | "idx") {
+                    return Ty::Int;
+                }
+                return Ty::Unknown;
+            }
             Ty::Pos(domain) => {
                 match name.text.as_str() {
                     "ord" | "to_idx" | "idx" | "label" => return Ty::Int,
@@ -2780,6 +2786,9 @@ impl<'a> Checker<'a> {
                         };
                         return def.value_ty(&name.text);
                     }
+                }
+                if type_name == "Char" && matches!(name.text.as_str(), "count" | "len" | "K") {
+                    return Ty::Int;
                 }
                 if self.finite_index_enum_size(type_name).is_some() {
                     let elem = Ty::Named {
