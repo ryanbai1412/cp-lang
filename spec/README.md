@@ -16,6 +16,8 @@ Core language, read in order:
 
 1. `core/00-overview.md`: the model in one page, the trust tiers, the
    build modes. *draft*
+   `GLOSSARY.md` fixes one term per concept, and `diagnostics.md` lists every
+   error code; both are normative.
 2. `core/01-lexical-grammar.md`: tokens, layout, the grammar. *draft*
 3. `core/02-values-types.md`: values, records, structs, enums, optionals,
    generics. *draft*
