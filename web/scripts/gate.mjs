@@ -3,7 +3,7 @@
 // (matching `.out` when given) and emits C++. `checks`: it passes the checker
 // but does not run yet. `spec`: it is written to spec/ and the compiler does
 // not accept it yet; only `*.spec.cp` files and `status=spec` fences may be
-// that. The page shows `checks` and `spec` without Run and without output.
+// that, and without an input file one is `checks` at best. The page shows `checks` and `spec` without Run and without output.
 // A practice problem's ref.cp must also pass every test in its tests.json.
 // Pages take their programs from content/, never from literals in TSX, so
 // everything a visitor can run is covered. Writes .gate/status.json and
@@ -90,7 +90,7 @@ for (const s of snippets) {
     note = first(check);
     if (s.declared === 'spec') status = 'spec';
   }
-  else if (build.status === 0 && run.status === 0 && matches) status = 'runs';
+  else if (build.status === 0 && run.status === 0 && matches) status = s.declared === 'spec' && !s.stdin ? 'checks' : 'runs';
   else {
     status = 'checks';
     note = run.status === 0 && build.status === 0 ? `output ${JSON.stringify(run.stdout)} != expected` : first(build.status === 0 ? run : build);

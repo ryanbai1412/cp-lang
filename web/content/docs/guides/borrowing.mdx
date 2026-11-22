@@ -5,7 +5,7 @@ description: "Value semantics, mut parameters, lends projections, and @law disjo
 
 Variables own their values. Function parameters borrow them for the call. A projection lets a caller work on part of a value—a row, a slice, or an element—without allocating a copy or keeping a reference for later.
 
-> **Implementation status.** Struct projections with `lends` / `lends mut` and explicit `mut` parameters run directly in `cpl` and the browser WebAssembly playground. Custom `@law disjoint` proofs and generic library projections are part of the 0.2.2 specification and are rolling out incrementally across the compiler.
+> **Implementation status.** Struct projections with `lends` / `lends mut` and explicit `mut` parameters run directly in `cpl` and the browser WebAssembly playground. Custom `@law disjoint` proofs and generic library projections are part of the specification and are rolling out incrementally across the compiler.
 
 ## Own it, borrow it, or copy it
 
@@ -65,7 +65,7 @@ The implementation model is an inlined callback (there is no `inline` keyword; `
 
 That is the tradeoff, not a promise that arbitrary Rust borrowing works without annotations. Structures that must remember identity use plain indices or `List.push_id` handles. Functions that find a useful sub-range return a `Range<V>`, then the caller reopens `a[span]` when needed. If you truly want independent storage, ask for `.copy()`.
 
-```cp status=checks
+```cp
 domain V = 1..=4
 let a: [V]Int = [V] v => v.to_idx + 1
 fn find_span(a: [V]Int) -> Range<V>:

@@ -36,7 +36,7 @@ print(a.max()! - a.min()!)
 
 ## Output
 
-```cp status=checks
+```cp
 let xs = [3, 1, 4, 1, 5]
 let dist: [0..3]?Int = [0, None, 2]
 let ok = xs.len > 3
@@ -74,7 +74,7 @@ print(total, k, 7 / 2, -7 % 3, 2 ** 10, min(3, 5))
 
 ## Arrays, domains and sequences
 
-```cp status=checks
+```cp
 let a = [5, 2, 8, 2]
 print(a.sum(), a.min()!, a.max()!, a.sorted(), a.count(x => x == 2))
 print(yes(a.any(x => x > 7)), yes(a.all(x => x > 1)))
@@ -91,7 +91,7 @@ print()
 
 ## Collections
 
-```cp status=checks
+```cp
 var xs: List<Int> = []
 xs.push(5)
 xs.push(2)
@@ -139,6 +139,6 @@ A function that changes an argument takes it as `mut`, and the caller writes `mu
 | `cpl check a.cp` | type-check only |
 | `cpl build a.cp -o a.cpp` | write one C++17 file to submit |
 | `cpl run a.cp --trace` | record the run to `a.trace.html`, the time-step viewer |
-| `cpl stress a.cp` | compare against `@brute` on random inputs and shrink the first failure |
+| `cpl stress a.cp` | compare against `@alt` on random inputs and shrink the first failure |
 
 The [playground](/play) has the same Run, Trace and Stress buttons. See the [stress guide](/docs/guides/stress) and the [CLI reference](/tools).

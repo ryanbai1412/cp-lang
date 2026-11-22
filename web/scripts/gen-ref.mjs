@@ -121,7 +121,7 @@ const modules = std.modules.filter((m) => m.items.some((i) => /^pub\b/.test(i.si
 for (const m of modules) {
   const fields = m.items.filter((i) => i.kind === 'field' || (i.kind !== 'impl' && !/^pub\b/.test(i.signature)));
   const body = [
-    `Generated from [spec/std/${m.name}.cp](${blob}/spec/std/${m.name}.cp) by \`cpl doc --format json\`. The 0.3 library is specified but not yet implemented by the 0.2 compiler.`,
+    `Generated from [spec/std/${m.name}.cp](${blob}/spec/std/${m.name}.cp) by \`cpl doc --format json\`.`,
     '',
     m.doc,
     '',

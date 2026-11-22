@@ -717,9 +717,48 @@ impl<'p> Emitter<'p> {
                     );
                     held
                 } else if opened {
-                    let seq_code = self.expr(seq);
                     self.line(out, "{");
                     self.indent += 1;
+                    // A view returned by a call over a temporary container (e.g. `nat().take(3)`)
+                    // borrows that container; pin the temporary in this block so it outlives the loop.
+                    let seq_text = if matches!(seq.ty, Ty::ListView(..) | Ty::StrView) {
+                        if let ExprKind::Call(fid, args) = &seq.kind {
+                            let needs_pin = args.iter().any(|a| match a {
+                                cpl_ir::Arg::Value(e) => {
+                                    matches!(e.ty, Ty::List(_) | Ty::Array { .. } | Ty::Str)
+                                        && walk::path_root(e).is_none()
+                                }
+                                cpl_ir::Arg::Mut(_) => false,
+                            });
+                            if needs_pin {
+                                let mut rendered = Vec::with_capacity(args.len());
+                                for arg in args {
+                                    match arg {
+                                        cpl_ir::Arg::Value(e)
+                                            if matches!(e.ty, Ty::List(_) | Ty::Array { .. } | Ty::Str)
+                                                && walk::path_root(e).is_none() =>
+                                        {
+                                            let owner = self.temp();
+                                            let owner_ty = self.ty(&e.ty);
+                                            let init = self.expr(e).text;
+                                            self.line(out, &format!("{owner_ty} {owner} = {init};"));
+                                            rendered.push(owner);
+                                        }
+                                        cpl_ir::Arg::Value(e) => rendered.push(self.expr(e).text),
+                                        cpl_ir::Arg::Mut(p) => rendered.push(self.place(p)),
+                                    }
+                                }
+                                let callee = ident(&self.program.fns[*fid].name);
+                                format!("{callee}({})", rendered.join(", "))
+                            } else {
+                                self.expr(seq).text
+                            }
+                        } else {
+                            self.expr(seq).text
+                        }
+                    } else {
+                        self.expr(seq).text
+                    };
                     let held = self.temp();
                     let holder_ty = if let Some(k) = self.expr_fixed_len(seq) {
                         self.fixed_array_cpp(&seq.ty, k)
@@ -729,10 +768,10 @@ impl<'p> Emitter<'p> {
                     if untouched {
                         self.line(
                             out,
-                            &format!("const {holder_ty}& {held} = {};", seq_code.text),
+                            &format!("const {holder_ty}& {held} = {seq_text};"),
                         );
                     } else {
-                        self.line(out, &format!("{holder_ty} {held} = {};", seq_code.text));
+                        self.line(out, &format!("{holder_ty} {held} = {seq_text};"));
                     }
                     held
                 } else {
@@ -1289,7 +1328,9 @@ impl<'p> Emitter<'p> {
             Stmt::Return(None) => self.line(out, "return;"),
             Stmt::Return(Some(value)) | Stmt::Give(value) => {
                 let value = self.flatten(value, out);
-                if value.ty == Ty::Unit {
+                if value.ty == Ty::Error {
+                    self.expr_stmt(value, out);
+                } else if value.ty == Ty::Unit {
                     self.expr_stmt(value, out);
                     self.line(out, "return;");
                 } else {

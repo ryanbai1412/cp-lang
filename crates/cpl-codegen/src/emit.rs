@@ -62,6 +62,8 @@ pub(crate) struct Touch {
     pub io: bool,
     pub reads: BTreeSet<(bool, usize)>,
     pub writes: BTreeSet<(bool, usize)>,
+    pub reads_domain: BTreeSet<usize>,
+    pub writes_domain: BTreeSet<usize>,
 }
 
 impl Touch {
@@ -73,6 +75,14 @@ impl Touch {
                 .iter()
                 .any(|v| later.reads.contains(v) || later.writes.contains(v))
             || later.writes.iter().any(|v| self.reads.contains(v))
+            || self
+                .writes_domain
+                .iter()
+                .any(|d| later.reads_domain.contains(d) || later.writes_domain.contains(d))
+            || later
+                .writes_domain
+                .iter()
+                .any(|d| self.reads_domain.contains(d))
     }
 }
 

@@ -66,7 +66,7 @@ print(empty.first ?? -1, empty.last ?? -1) // -1 -1
 
 Prefix sums, difference arrays, and knapsack tables live on the `n + 1` gaps around `n` elements. Every ordered domain `V` has a companion boundary space `V.cuts` with `V.K + 1` positions.
 
-```cp status=checks
+```cp
 let n: 1..=100 = read()
 domain V = 1..=n
 let a: [V]Int = read()
@@ -85,7 +85,7 @@ Every element `v: V` sits between two boundaries:
 
 The same `.l`/`.r` notation works directly in multi-dimensional DP tables such as 0/1 knapsack (`[I.cuts, 0..=cap]Int`):
 
-```cp status=checks
+```cp
 let n: 1..=50 = read()
 let cap: 1..=1000 = read()
 domain I = 1..=n
@@ -190,7 +190,7 @@ Standard-library functions that introduce a new index space (`components`, `scc`
 
 For undirected adjacency matrices and other symmetric relations over a domain `V`, `[Sym<V>]T` stores unordered pairs in a flat triangular array of `n * (n + 1) / 2` cells where `adj[u, v]` and `adj[v, u]` refer to the same entry. Domains also provide typed slicing and unordered pair iteration (`V.after(i)`, `V.before(i)`, `V.pairs`, and `domain P = V.pairs`):
 
-```cp status=checks
+```cp
 domain V = 1..=4
 var adj: [Sym<V>]Bool = false
 adj[V(1), V(3)] = true
@@ -246,7 +246,7 @@ print(dp[s], dp[V(2), K(2)], s.0.ord, State.len)
 
 `a.inverse()` inverts any 1D array whose elements are an index domain, fieldless enum, or bounded integer range. On a total bijection `a: [D]E` it returns `[E]D` (trapping if a value is repeated or missing); on a partial injection `a: [D]?E` it returns `[E]?D` (trapping if two positions map to the same value):
 
-```cp status=checks
+```cp
 domain P = 1..=4
 var a: [P]?(1..=4) = none
 a[P(2)] = 4

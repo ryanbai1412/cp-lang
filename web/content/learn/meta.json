@@ -1,1 +1,15 @@
-{ "title": "Learn", "pages": ["index", "read", "practice"] }
+{
+  "title": "Learn",
+  "pages": [
+    "index",
+    "---Start here---",
+    "[Your first program in five minutes](/learn/start)",
+    "[Coming from C++](/learn/from/cpp)",
+    "[Coming from Python](/learn/from/python)",
+    "[Coming from Java](/learn/from/java)",
+    "[Coming from Rust](/learn/from/rust)",
+    "---Course---",
+    "read",
+    "practice"
+  ]
+}

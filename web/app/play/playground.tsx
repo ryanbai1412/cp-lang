@@ -40,7 +40,7 @@ export function Playground({ examples }: { examples: Example[] }) {
       });
   }, [examples]);
   return (
-    <main className="container mx-auto max-w-5xl px-4 py-8">
+    <main className="container mx-auto max-w-6xl px-4 py-6">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Playground</h1>
@@ -71,7 +71,7 @@ export function Playground({ examples }: { examples: Example[] }) {
       </div>
       {notice && <p className="mb-3 text-sm text-muted-foreground">{notice}</p>}
       {initial && (
-        <Runner key={initial.src} source={initial.src} stdin={initial.in} editorHeight="320px" playgroundLink={false} shareMenu />
+        <Runner key={initial.src} source={initial.src} stdin={initial.in} editorHeight="max(320px, calc(100vh - 26rem))" playgroundLink={false} shareMenu />
       )}
     </main>
   );

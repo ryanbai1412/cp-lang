@@ -11,7 +11,6 @@ interface Item {
   source: string;
   tags: string[];
   difficulty: string;
-  notes: string;
   cppLines: number;
   cpLines: number;
 }
@@ -45,7 +44,7 @@ export function CorpusGrid({ entries }: { entries: Item[] }) {
                   <CardTitle className="font-mono text-base">{e.problem}</CardTitle>
                   <Badge variant="secondary">{e.difficulty}</Badge>
                 </div>
-                <CardDescription className="line-clamp-2">{e.notes || e.tags.join(', ')}</CardDescription>
+                <CardDescription className="line-clamp-2">{[e.source, ...e.tags].filter(Boolean).join(' · ')}</CardDescription>
                 <p className="pt-1 font-mono text-xs text-muted-foreground">
                   C++ {e.cppLines} lines → CP Lang {e.cpLines}
                 </p>

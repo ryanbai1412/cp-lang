@@ -1048,7 +1048,6 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = None, h
                 else: dq.push(v)
     Paths(dist:, back:, order:)
 
-// blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Shortest distances for non-negative weights, from `(vertex, starting distance)` pairs (a
 /// vertex given twice keeps the smaller start). A binary heap with lazy deletion; `until:
 /// t` stops once `t` is settled.
@@ -1064,7 +1063,33 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>>(
     from: Seq<(V, W)>,
     until: ?V = None,
     hashed: Bool = false,
-) -> Paths<V, W, G.Arc> = todo
+) -> Paths<V, W, G.Arc>:
+    var dist: [V]?W = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var done: [V]Bool = false
+    var order = List<V>()
+    var h = MinHeap<(W, V)>()
+    for (s, d0) in from:
+        let better = if let cur = dist[s]: d0 < cur else: true
+        if better:
+            dist[s] = Some(d0)
+            h.push((d0, s))
+    while let (du, u) = h.pop():
+        if done[u]: continue
+        done[u] = true
+        order.push(u)
+        if until == Some(u): break
+        for a in g.out(u):
+            let w = a.w
+            assert w >= W.zero, "dijkstra: negative edge weight"
+            let v = a.to
+            let nd = du + w
+            let better = if let dv = dist[v]: nd < dv else: true
+            if better:
+                dist[v] = Some(nd)
+                back[v] = Some((from: u, via: a))
+                h.push((nd, v))
+    Paths(dist:, back:, order:)
 
 /// Shortest distances over a state space `S` whose moves have fixed non-negative costs,
 /// from every state of `from` at distance 0. `step(mv, s)` is where move `mv` leads from

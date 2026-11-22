@@ -44,7 +44,6 @@ export default async function Page({ params }: Props) {
           </a>
         </Button>
       </div>
-      {e.notes && <p className="mt-3 max-w-3xl text-muted-foreground">{e.notes}</p>}
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Pane title="CP Lang" sub={`${lineCount(e.spec)} lines`} badge={<StatusBadge status={e.status} />} html={cp} />
         <Pane title="Accepted C++" sub={`${lineCount(e.cpp)} lines · ${e.cppTime.toFixed(2)} s on the judge`} html={cpp} />

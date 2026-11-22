@@ -38,14 +38,14 @@ export const PRELUDE_TYPES: readonly string[] = [
 
 /** Every public type and trait declared in `spec/std/*.cp`, whether `spec/std/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
-    'Action', 'Affine', 'AhoCorasick', 'Anchor', 'Arc', 'Arena', 'ArithDiff', 'AugSortedBag', 'AugSortedSet',
+    'Action', 'AddAction', 'Affine', 'AffineAction', 'AhoCorasick', 'Anchor', 'Arc', 'Arena', 'ArithDiff', 'AssignAction', 'AugSortedBag', 'AugSortedSet',
     'BagCursor', 'Barrett', 'BeatsSegTree', 'BigInt', 'BitMat', 'Bitset', 'BucketCount', 'ByAngle',
     'ByAngleFrom', 'Centroids', 'Circle', 'ColorMatroid', 'Comb', 'Commutative', 'Complement', 'Compressed',
     'Concave', 'ConnectedGraph', 'Convex', 'CostFlow', 'Counter', 'Curved', 'Dag', 'Deque', 'Desc', 'Diff',
     'Digraph', 'Dir4', 'Dir8', 'DirichletSum', 'Disjoint', 'DisjointSparseTable', 'Dsu', 'DsuOf',
     'DualFenwick', 'DynBitset', 'DynamicAhoCorasick', 'DynamicHash', 'DynamicOrderTree', 'Edge', 'EdgeArc',
     'Edged', 'EdgedNext', 'ErasableHeap', 'EulerTourTree', 'Events', 'Fenwick', 'Fenwick2D', 'FillOrder',
-    'FillPrefix', 'Filtered', 'FlatMap', 'Flip', 'FlowGraph', 'Functional', 'Graph', 'GraphicMatroid',
+    'FillPrefix', 'Filtered', 'FlatMap', 'Flip', 'FlipAction', 'FlowGraph', 'Functional', 'Graph', 'GraphicMatroid',
     'Group', 'HalfPlane', 'HasId', 'HasInv', 'Hash2D', 'Hash61', 'HashVal', 'Hashable', 'Heap',
     'HistoricBeatsSegTree', 'Id', 'Idempotent', 'IncrementalBridges', 'IndexedHeap', 'Interner',
     'IntervalMap', 'IntervalSet', 'Items', 'JumpTree', 'Keys', 'KmpAutomaton', 'KruskalTree', 'Layers',

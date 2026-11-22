@@ -103,8 +103,8 @@ with the node and the value, release truncates. (R03.1.7)
 - `cpl explain` lists every array, list and structure with its element
   layout and its peak bytes at the input bounds, e.g. `dist: [V]?Int, 8 B,
   1.6 MB at n = 2e5`.
-- `cpl build` warns when the static peak exceeds the judge profile's
-  memory limit, naming the three largest arrays.
+- A static peak above the judge profile's memory limit is an error
+  (E0904) naming the three largest arrays. (R03.1.9)
 - **Lint `wide_array`**: an array with a static size of at least 1e6
   whose element type is `Int` while every value written into it has a
   narrower static range (a read, a domain position, a constant, `min`/`max`

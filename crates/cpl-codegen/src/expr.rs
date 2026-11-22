@@ -127,6 +127,11 @@ impl<'p> Emitter<'p> {
             | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => {
                 touch.io = true
             }
+            ExprKind::DomainLen(d)
+            | ExprKind::DomainLo(d)
+            | ExprKind::Cast(Cast::Label(d) | Cast::FromLabel(d) | Cast::FromOrd(d), _) => {
+                touch.reads_domain.insert(*d);
+            }
             ExprKind::CallExpr(_, args) => {
                 touch.io = true;
                 for arg in args {
@@ -160,7 +165,11 @@ impl<'p> Emitter<'p> {
                 Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
                     touch.writes.insert((false, *slot));
                 }
-                Stmt::DefDomain { .. } | Stmt::Assert { .. } | Stmt::Trap(..) => touch.io = true,
+                Stmt::DefDomain { id, .. } => {
+                    touch.writes_domain.insert(*id);
+                    touch.io = true;
+                }
+                Stmt::Assert { .. } | Stmt::Trap(..) => touch.io = true,
                 _ => {}
             }),
             _ => {}
@@ -567,6 +576,10 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::None => Code::primary(format!("{}()", self.ty(&e.ty))),
+            ExprKind::Some(inner) if inner.ty == Ty::Unit => {
+                let inner = self.expr(inner).text;
+                Code::primary(format!("((void)({inner}), true)"))
+            }
             ExprKind::Some(inner) => {
                 let inner = self.expr(inner).text;
                 Code::primary(format!("{}({inner})", self.ty(&e.ty)))
@@ -598,8 +611,7 @@ impl<'p> Emitter<'p> {
             // there. Fns don't compare, so the optionals can't.
             ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), x, none)
             | ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), none, x)
-                if none.kind == ExprKind::None
-                    && matches!(&x.ty, Ty::Opt(inner) if matches!(**inner, Ty::Fn(..))) =>
+                if none.kind == ExprKind::None && matches!(&x.ty, Ty::Opt(_)) =>
             {
                 let code = self.expr(x);
                 let has = format!("{}.has_value()", code.at(PRIMARY));

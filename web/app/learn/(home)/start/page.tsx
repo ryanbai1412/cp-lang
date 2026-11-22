@@ -35,7 +35,7 @@ export default function Page() {
       <h2 className="mt-10 text-xl font-semibold">2. Break it on purpose</h2>
       <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
         <li>
-          In the Input tab, change the first <code>5</code> to <code>6</code>. The run stops and names the line that
+          In the Input box, change the first <code>5</code> to <code>6</code>. The run stops and names the line that
           expected six numbers.
         </li>
         <li>

@@ -13,9 +13,10 @@ export function baseOptions(): BaseLayoutProps {
       { text: 'Learn', url: '/learn' },
       { text: 'Docs', url: '/docs' },
       { text: 'Playground', url: '/play' },
-      { text: 'Real problems', url: '/corpus' },
+      { text: 'Problems', url: '/corpus' },
       { text: 'Tools', url: '/tools' },
       { text: 'Performance', url: '/performance' },
+      { text: 'Install', url: '/setup' },
     ],
   };
 }

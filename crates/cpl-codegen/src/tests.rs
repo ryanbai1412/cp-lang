@@ -1111,6 +1111,8 @@ fn global_stored_once_with_a_literal_is_constexpr() {
     assert!(!out.contains("  M = 1000000007;"), "constexpr M must not be stored again: {out}");
     let stored_twice = cpp(concat!("var m = 5\n", "m += read<Int>()\n", "print(m)\n"));
     assert!(!stored_twice.contains("constexpr ll m"), "{stored_twice}");
+    let closure_mut = cpp(concat!("var c = 0\n", "let inc = () => c += 1\n", "inc()\n", "print(c)\n"));
+    assert!(!closure_mut.contains("constexpr ll c"), "{closure_mut}");
 }
 
 #[test]

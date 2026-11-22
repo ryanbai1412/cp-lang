@@ -1,8 +1,11 @@
 //! Segment tree over a domain, for any associative operation.
-use std.algebra.{Monoid}
+use std.algebra.{Action, Monoid}
 use std.bag.{SortedBag}
 use std.math.{gcd}
 use std.seq.{ends}
+
+struct NoAction
+fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
 /// `min`, `max`, `gcd`) or your own `Monoid(id, op)`: `SegTree<V, Int>(max, a)`,
@@ -10,9 +13,14 @@ use std.seq.{ends}
 /// `set` and `fold` are O(log n), and so are `right_while` and `left_while`; memory is
 /// 2 * bit_ceil(n) values. The fold keeps the order of the positions, so
 /// non-commutative operations work.
-pub struct SegTree<D, T>(m: Monoid<T>):
-    t: List<T>
+pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
+    @cache t: List<T>
+    @cache lz: List<F>
+    @cache has_lz: List<Bool>
+    span: List<Int>
     size: Int
+    log: Int
+    act: ?Action<T, F>
     /// What each position holds, for a tree built with `of`.
     source: ?(D -> T)
 
@@ -33,11 +41,16 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: ?A = None, over: ?Range<Int> = None) -> SegTree<D, T>:
-        if act != None or over != None: todo
-        SegTree<D, T>.build(Monoid<T>.of(op!), a, fill)
+    pub fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>:
+        if over != None: todo
+        let m = Monoid<T>.of(op!)
+        if same(act, NoAction()):
+            return SegTree<D, T, F>.build(m, a, fill)
+        else:
+            let resolved = Action<T, F>.of(act, op!)
+            return SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
 
-    fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T>:
+    fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T, F>:
         let size = bit_ceil(D.K)
         var t = List.filled(2 * size, m.id)
         if let init = a:
@@ -46,7 +59,59 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         elif let v = fill:
             for i in 0..D.K: t[size + i] = v
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
-        SegTree(m, t, size, None)
+        SegTree(m, t, [], [], [], size, 0, None, None)
+
+    fn build_lazy(m: Monoid<T>, a: ?[D]T, fill: ?T, resolved: Action<T, F>) -> SegTree<D, T, F>:
+        let size = bit_ceil(D.K)
+        var t = List.filled(2 * size, m.id)
+        var span = List.filled(2 * size, 0)
+        for i in 0..D.K: span[size + i] = 1
+        if let init = a:
+            assert fill == None, "pass either `a` or `fill`, not both"
+            for i in D: t[size + i.to_idx] = init[i]
+        elif let v = fill:
+            for i in 0..D.K: t[size + i] = v
+        for p in (1..size).rev:
+            t[p] = m.op(t[2 * p], t[2 * p + 1])
+            span[p] = span[2 * p] + span[2 * p + 1]
+        SegTree(
+            m,
+            t,
+            List.filled(size, resolved.id),
+            List.filled(size, false),
+            span,
+            size,
+            ctz(size),
+            Some(resolved),
+            None,
+        )
+
+    fn put(self, p: Int, f: F):
+        let a = act!
+        unchecked:
+            if span[p] == 0: return
+            t[p] = a.apply(f, t[p], span[p])
+            if p < size:
+                lz[p] = a.compose(f, lz[p])
+                has_lz[p] = true
+
+    fn push(self, p: Int):
+        let a = act!
+        unchecked:
+            if not has_lz[p]: return
+            self.put(2 * p, lz[p])
+            self.put(2 * p + 1, lz[p])
+            lz[p] = a.id
+            has_lz[p] = false
+
+    fn open(self, l: Int, h: Int):
+        for i in (1..=log).rev:
+            if ((l >> i) << i) != l: self.push(l >> i)
+            if ((h >> i) << i) != h: self.push((h - 1) >> i)
+
+    fn pull_node(self, p: Int):
+        unchecked:
+            t[p] = m.op(t[2 * p], t[2 * p + 1])
 
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
@@ -56,7 +121,26 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(0..2, 10); s.all == 26`
     /// example: `var s = SegTree(max, [1, 2, 3], act: add); s.apply(0..1, 5); s.all == 6`
-    pub fn apply(mut self, r: Range<D>, f: F) = todo
+    pub fn apply(mut self, r: Range<D>, f: F):
+        assert act != None, "apply requires `act:` on SegTree"
+        let (lo, hi) = r.ends
+        if lo >= hi: return
+        let (l0, h0) = (lo + size, hi + size)
+        self.open(l0, h0)
+        var (l, h) = (l0, h0)
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    self.put(l, f)
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    self.put(h, f)
+                l /= 2
+                h /= 2
+        for i in 1..=log:
+            if ((l0 >> i) << i) != l0: self.pull_node(l0 >> i)
+            if ((h0 >> i) << i) != h0: self.pull_node((h0 - 1) >> i)
 
     /// Apply tag `f` to every position; `apply(D.all, f)`.
     ///
@@ -64,7 +148,9 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// empty: changes nothing for an empty `D`
     /// traps: never
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply_all(1); s.all == 9`
-    pub fn apply_all(mut self, f: F) = todo
+    pub fn apply_all(mut self, f: F):
+        assert act != None, "apply_all requires `act:` on SegTree"
+        if D.K > 0: self.put(1, f)
 
     /// The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.
     ///
@@ -74,7 +160,9 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..3, 1); s.fold(1..3) == 7`
     pub fn fold(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
+        if lo >= hi: return m.id
         var (l, h) = (lo + size, hi + size)
+        if act != None: self.open(l, h)
         var (a, b) = (m.id, m.id)
         unchecked:
             while l < h:
@@ -103,11 +191,13 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         let n = D.K
         if from.ord == n: return from
         var l = from.ord + size
+        if act != None: self.open(l, l + 1)
         var acc = m.id
         while true:
             while l % 2 == 0: l /= 2
             if not ok(m.op(acc, t[l])):
                 while l < size:
+                    if act != None: self.push(l)
                     l *= 2
                     if ok(m.op(acc, t[l])):
                         acc = m.op(acc, t[l])
@@ -131,12 +221,14 @@ pub struct SegTree<D, T>(m: Monoid<T>):
         assert ok(m.id), "`ok` must hold on the identity"
         if to.ord == 0: return to
         var r = to.ord + size
+        if act != None: self.open(r - 1, r)
         var acc = m.id
         while true:
             r -= 1
             while r > 1 and r % 2 == 1: r /= 2
             if not ok(m.op(t[r], acc)):
                 while r < size:
+                    if act != None: self.push(r)
                     r = 2 * r + 1
                     if ok(m.op(t[r], acc)):
                         acc = m.op(t[r], acc)
@@ -176,7 +268,11 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `SegTree(+, [4, 5, 6]).get(1) == 5`
     /// example: `var s = SegTree(act: assign, [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
-    pub fn get(self, i: D) -> T = t[size + i.to_idx]
+    pub fn get(self, i: D) -> T:
+        let p = size + i.to_idx
+        if act != None:
+            for k in (1..=log).rev: self.push(p >> k)
+        t[p]
 
     /// Make position `i` hold `x`, replacing any tags applied to it, and update its ancestors.
     ///
@@ -184,7 +280,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.set(0, 10); s.all == 15`
     pub fn set(mut self, i: D, x: T):
-        t[size + i.to_idx] = x
+        let p = size + i.to_idx
+        if act != None:
+            for k in (1..=log).rev: self.push(p >> k)
+        t[p] = x
         self.pull(i)
 
     /// Position `i` as a writable place: `st.at(i) += x`, `st.at(i) max= x`. The ancestors are
@@ -194,7 +293,10 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.at(0) += 5; s.all == 11`
     pub fn at(mut self, i: D) -> lends mut T:
-        lend mut t[size + i.to_idx]
+        let p = size + i.to_idx
+        if act != None:
+            for k in (1..=log).rev: self.push(p >> k)
+        lend mut t[p]
         self.pull(i)
 
     fn pull(mut self, i: D):

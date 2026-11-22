@@ -7762,33 +7762,62 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::LoadLArr1I { dst, arr_v, r_i } => {
                     let idx = regs_i[r_i as usize];
-                    if let Value::Array(arr) = &regs_v[arr_v as usize] {
-                        let len = arr.dims[0];
-                        if idx < 0 || idx >= len {
-                            return trap(
-                                spans[cur_pc],
-                                format!("index {idx} is outside an array dimension of length {len}"),
-                            );
+                    match &regs_v[arr_v as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            regs_i[dst as usize] = read_array_i(arr, idx as usize);
                         }
-                        regs_i[dst as usize] = read_array_i(arr, idx as usize);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_i[dst as usize] = ScalarKind::unbox_val(&list[idx as usize]);
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
                 }
                 Op::StoreLArr1I { arr_v, r_i, r_val } => {
                     let idx = regs_i[r_i as usize];
                     let val = regs_i[r_val as usize];
-                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
-                        let len = arr.dims[0];
-                        if idx < 0 || idx >= len {
-                            return trap(
-                                spans[cur_pc],
-                                format!("index {idx} is outside an array dimension of length {len}"),
-                            );
+                    match &mut regs_v[arr_v as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            write_array_i(Rc::make_mut(arr), idx as usize, val);
                         }
-                        write_array_i(Rc::make_mut(arr), idx as usize, val);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            let slot = &mut Rc::make_mut(list)[idx as usize];
+                            *slot = match slot {
+                                Value::Bool(_) => Value::Bool(val != 0),
+                                Value::Char(_) => Value::Char(val as u8),
+                                Value::Float(_) => Value::Float(f64::from_bits(val as u64)),
+                                Value::U64(_) => Value::U64(val as u64),
+                                _ => Value::Int(val),
+                            };
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
                 }
                 Op::LoadLArr2I { dst, arr_v, r_i, r_j } => {
@@ -8157,17 +8186,28 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::LoadLArr1V { dst, arr_v, r_i } => {
                     let idx = regs_i[r_i as usize];
-                    if let Value::Array(arr) = &regs_v[arr_v as usize] {
-                        let len = arr.dims[0];
-                        if idx < 0 || idx >= len {
-                            return trap(
-                                spans[cur_pc],
-                                format!("index {idx} is outside an array dimension of length {len}"),
-                            );
+                    match &regs_v[arr_v as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            regs_v[dst as usize] = arr.get(idx as usize).unwrap_or(Value::Unit);
                         }
-                        regs_v[dst as usize] = arr.get(idx as usize).unwrap_or(Value::Unit);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            regs_v[dst as usize] = list[idx as usize].clone();
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
                 }
                 Op::StoreLArr1V { arr_v, r_i, r_val } => {
@@ -8177,17 +8217,28 @@ impl<'p, 'io> Interp<'p, 'io> {
                     } else {
                         regs_v[r_val as usize].clone()
                     };
-                    if let Value::Array(arr) = &mut regs_v[arr_v as usize] {
-                        let len = arr.dims[0];
-                        if idx < 0 || idx >= len {
-                            return trap(
-                                spans[cur_pc],
-                                format!("index {idx} is outside an array dimension of length {len}"),
-                            );
+                    match &mut regs_v[arr_v as usize] {
+                        Value::Array(arr) => {
+                            let len = arr.dims[0];
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside an array dimension of length {len}"),
+                                );
+                            }
+                            Rc::make_mut(arr).set(idx as usize, val);
                         }
-                        Rc::make_mut(arr).set(idx as usize, val);
-                    } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        Value::List(list) => {
+                            let len = list.len() as i64;
+                            if idx < 0 || idx >= len {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!("index {idx} is outside a list of length {len}"),
+                                );
+                            }
+                            Rc::make_mut(list)[idx as usize] = val;
+                        }
+                        _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
                 }
                 Op::FieldI { dst, obj_v, field } => {

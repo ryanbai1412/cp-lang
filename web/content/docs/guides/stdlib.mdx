@@ -59,7 +59,7 @@ Construct empty `List<T>` and `Deque<T>` with `= []`; construct all other contai
 - **`Deque<T>`:** `.push(x)`, `.pop() -> ?T`, `.push_front(x)`, `.pop_front() -> ?T`, `.first -> ?T`, `.last -> ?T`, `q[i]`.
 - **`MinHeap<T>()` / `MaxHeap<T>()`:** `.push(x)`, `.pop() -> ?T`, `.peek -> ?T`. For mixed-order keys inside tuples or `sort(..., by:)`, wrap descending fields with `desc(x)` (type `Desc<T>`):
 
-```cp status=checks
+```cp
 use std.algebra.{desc}
 
 domain V = 0..4
@@ -89,7 +89,7 @@ print(resized(xs, 1, 0), xs)        // 1, then the unchanged 1 2
 
 Answer-space binary search uses two free functions (`F64` ranges take `steps: 80`), both returning `?I`:
 
-```cp status=checks
+```cp
 let n = 10
 let budget = 25
 fn feasible(x: Int) -> Bool: x >= 42

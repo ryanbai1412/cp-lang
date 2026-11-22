@@ -283,6 +283,10 @@ impl<'a> Lowerer<'a> {
     pub(super) fn detect_bare_op(&self, e: &ast::Expr) -> Option<BareOp> {
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.detect_bare_op(inner),
+            ast::ExprKind::Unwrap(inner) => match &inner.kind {
+                ast::ExprKind::Name(n) => self.cx.op_locals.get(n).copied(),
+                _ => None,
+            },
             ast::ExprKind::Name(n) => {
                 if let Some(&op) = self.cx.op_locals.get(n) {
                     return Some(op);
@@ -1740,7 +1744,12 @@ impl<'a> Lowerer<'a> {
                     op_params.push((param.name.text.clone(), op));
                 }
             }
-            if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+            // `op: ?M = None` binds `M` to a bare operator as `op: M` does.
+            let bare_ty = match &pty.kind {
+                ast::TypeKind::Optional(inner) => inner,
+                _ => pty,
+            };
+            if let ast::TypeKind::Named { name, args: targs } = &bare_ty.kind {
                 if targs.is_empty()
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
@@ -3411,13 +3420,21 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Wraps a named function `fn_id` as a `Ty::Fn` closure value.
-    pub(super) fn fn_as_closure(&mut self, fn_id: FnId, span: Span) -> Expr {
+    /// A named fn as a value. When the expected fn type takes fewer arguments
+    /// and the rest have defaults, the value takes only those (`xs.map(yes)`).
+    pub(super) fn fn_as_closure(&mut self, fn_id: FnId, hint: Option<&Ty>, span: Span) -> Expr {
         self.queue_fn(fn_id);
-        let params: Vec<Ty> = self.sigs[fn_id]
-            .params
-            .iter()
-            .map(|p| p.ty.clone())
-            .collect();
+        let all = self.sigs[fn_id].params.clone();
+        let keep = match hint {
+            Some(Ty::Fn(ps, _))
+                if ps.len() < all.len()
+                    && all[ps.len()..].iter().all(|p| p.default.is_some() && !p.mutable) =>
+            {
+                ps.len()
+            }
+            _ => all.len(),
+        };
+        let params: Vec<Ty> = all[..keep].iter().map(|p| p.ty.clone()).collect();
         let ret = self.ret_of(fn_id, span);
         let mut locals = Vec::new();
         let mut p_slots = Vec::new();
@@ -3433,6 +3450,17 @@ impl<'a> Lowerer<'a> {
                 ty: ty.clone(),
                 span: self.span(span),
             }));
+        }
+        for p in &all[keep..] {
+            let default = p.default.expect("trimmed params have defaults");
+            let sm = std::mem::replace(&mut self.cur_mod, self.sigs[fn_id].mod_id);
+            let so = std::mem::replace(&mut self.offset, self.sigs[fn_id].offset);
+            let se = std::mem::replace(&mut self.gen_env, self.sigs[fn_id].env.clone());
+            let value = self.expect(default, &p.ty);
+            self.cur_mod = sm;
+            self.offset = so;
+            self.gen_env = se;
+            call_args.push(Arg::Value(value));
         }
         let call = Expr {
             kind: ExprKind::Call(fn_id, call_args),

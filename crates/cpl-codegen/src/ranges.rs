@@ -87,6 +87,9 @@ impl<'p> Facts<'p> {
             }
             facts.block(Some(id), &f.body);
         }
+        for (cid, c) in program.closures.iter().enumerate() {
+            facts.block(Some(program.fns.len() + cid), &c.body);
+        }
         for (sid, s) in program.structs.iter().enumerate() {
             for (&fi, &w) in &s.narrow_ints {
                 if w == IntWidth::U32 {

@@ -26,6 +26,18 @@ An `L` code runs `cpl lint` (default levels) after the check. An optional
 header line `// input: "3\n1 2 3\n"` gives the run its standard input,
 escaped like `output "..."`; without it the input is empty.
 
+A case for a rule only a tool can show names the tool in a header line
+`// tool: build -o -`: the runner copies the case to a scratch directory
+and runs `cpl build <copy> -o -` there, twice, and fails the case when
+the two runs differ (tool output is deterministic). The `// expect:`
+line then reads against that run: `ok` is exit status 0, `ok, output
+"..."` also compares standard output, a code `at N` must appear with
+its line in the output, and `exit N` (tool cases only) wants that exit
+status (`spec/tools/cli.md`). Each `// has: "..."` line names text the
+output must contain and each `// lacks: "..."` line text it must not;
+the copy blanks those two kinds of line so a tool that echoes the source
+can't match them.
+
 They double as the spec's exercises and as the regression suite: the
 runner (`cpl-conform conformance`, in `crates/cpl-conform`) checks each expectation
 against `cpl check`/`cpl run`, and reports which cases 0.2.x does not

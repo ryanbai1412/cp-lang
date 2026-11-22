@@ -222,6 +222,17 @@ impl<'a> Lowerer<'a> {
                             span,
                         );
                     }
+                    if let (Some(ta), Some(tb)) = (
+                        self.probe_ty_silent(&args[0].value),
+                        self.probe_ty_silent(&args[1].value),
+                    ) {
+                        let is_marker = |t: &Ty| {
+                            matches!(t, Ty::Struct(s) if self.structs[*s].def.fields.is_empty())
+                        };
+                        if is_marker(&ta) || is_marker(&tb) {
+                            return self.mk(ExprKind::Bool(ta == tb), Ty::Bool, span);
+                        }
+                    }
                 }
                 // A plain call of two values is the core binary `min`/`max`, even
                 // where the `Seq` fold of that name is in scope (std.seq).
@@ -949,11 +960,63 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        if gen_names.iter().any(|g| g == "F") && !inferred.contains_key("F") {
+            if let Some(act_arg) =
+                args.iter().find(|a| a.name.as_ref().is_some_and(|n| n.text == "act"))
+            {
+                if let Some(Ty::Struct(sid)) = self.probe_ty_silent(&act_arg.value) {
+                    let sname = self.structs[sid].def.name.as_str();
+                    let elem_ty = match inferred.get("T") {
+                        Some(GenArg::Ty(t)) => t.clone(),
+                        _ => Ty::Int,
+                    };
+                    let inferred_f = if let Some((orig_gid, gargs)) = &self.structs[sid].origin_gen
+                    {
+                        if self.gen_structs[*orig_gid].decl.name.text == "Action"
+                            && gargs.len() == 2
+                        {
+                            match &gargs[1] {
+                                GenArg::Ty(t) => Some(t.clone()),
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        let base = sname
+                            .strip_prefix('m')
+                            .and_then(|rest| rest.split_once('_'))
+                            .map_or(sname, |(_, b)| b);
+                        match base {
+                            "AddAction" => Some(elem_ty),
+                            "AssignAction" => Some(Ty::opt(elem_ty)),
+                            "AffineAction" => Some(Ty::Tuple(vec![elem_ty.clone(), elem_ty])),
+                            "FlipAction" => Some(Ty::Bool),
+                            _ => None,
+                        }
+                    };
+                    if let Some(f_ty) = inferred_f {
+                        inferred.insert("F".to_string(), GenArg::Ty(f_ty));
+                    }
+                }
+            }
+        }
         let mut final_args = Vec::with_capacity(gen_names.len());
-        for g in &gen_names {
+        for (i, g) in gen_names.iter().enumerate() {
             match inferred.get(g) {
                 Some(a) => final_args.push(a.clone()),
-                None => final_args.push(GenArg::Ty(Ty::Int)),
+                None => {
+                    if let Some(Some(def_ty)) = decl.generic_defaults.get(i) {
+                        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                        let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+                        let resolved = self.resolve_ty(def_ty);
+                        self.gen_env = saved_env;
+                        self.cur_mod = saved_mod;
+                        final_args.push(GenArg::Ty(resolved));
+                    } else {
+                        final_args.push(GenArg::Ty(Ty::Int));
+                    }
+                }
             }
         }
         self.emit_anon_product_defs(&final_args, span);
@@ -1183,7 +1246,17 @@ impl<'a> Lowerer<'a> {
                         ok = false;
                     }
                     let mut place = place;
-                    if let Some((d, lo)) = self.range_domain_of(&param.ty, &place.ty) {
+                    let synthetic_dom = self.range_domain_of(&param.ty, &place.ty).or_else(|| {
+                        if self.list_given(&param.ty).is_some_and(|list| list == place.ty) {
+                            if let Ty::Array { dims, .. } = &param.ty {
+                                if let [Dim::Pos(d)] = dims.as_slice() {
+                                    return Some((*d, 0));
+                                }
+                            }
+                        }
+                        None
+                    });
+                    if let Some((d, lo)) = synthetic_dom {
                         let len = self.mk(
                             ExprKind::Builtin(
                                 Builtin::Len,
@@ -1205,18 +1278,7 @@ impl<'a> Lowerer<'a> {
                         pre_stmts.push(size);
                         place.ty = param.ty.clone();
                     }
-                    if self
-                        .list_given(&param.ty)
-                        .is_some_and(|list| list == place.ty)
-                    {
-                        let message = format!(
-                            "`{name}` changes `{}` in place, and a list is given to a `[D]T` as a copy; pass an array such as a `[0..n]T`",
-                            param.name
-                        );
-                        self.error(codes::TYPE_MISMATCH, arg.value.span, message);
-                        ok = false;
-                    } else if place.ty != param.ty && place.ty != Ty::Error && param.ty != Ty::Error
-                    {
+                    if place.ty != param.ty && place.ty != Ty::Error && param.ty != Ty::Error {
                         self.mismatch(arg.value.span, &param.ty, &place.ty);
                         ok = false;
                     }
@@ -1229,6 +1291,12 @@ impl<'a> Lowerer<'a> {
                             Ty::Unit,
                             arg.value.span,
                         )));
+                    } else if param.ty == Ty::Opt(Box::new(Ty::Unit))
+                        && self.detect_bare_op(&arg.value).is_some()
+                    {
+                        let unit = self.mk(ExprKind::Unit, Ty::Unit, arg.value.span);
+                        let some = ExprKind::Some(Box::new(unit));
+                        lowered.push(Arg::Value(self.mk(some, param.ty.clone(), arg.value.span)));
                     } else if let Some(list) = self.list_given(&param.ty) {
                         // A list where a `[D]T` is asked for is made as
                         // the list it is; passing it sizes `D`.
@@ -4951,6 +5019,19 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `Subset<D>.full` / `Subset<D>.empty` / `Subset<D>.len`, etc.
+        if let ast::ExprKind::Generic {
+            base: gb,
+            args: gargs,
+        } = &base.kind
+        {
+            if matches!(&gb.kind, ast::ExprKind::Name(n) if n == "Subset") && gargs.len() == 1 {
+                if let Ty::Pos(d) = self.resolve_ty(&gargs[0]) {
+                    let sub = self.subset_domain(d);
+                    return self.domain_field(sub, name, hint, span);
+                }
+            }
+        }
         // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
         if let ast::ExprKind::Generic {
             base: gbase,
@@ -4976,19 +5057,6 @@ impl<'a> Lowerer<'a> {
                             return self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                         }
                     }
-                }
-            }
-        }
-        // `Subset<D>.full` / `Subset<D>.empty` / `Subset<D>.len`, etc.
-        if let ast::ExprKind::Generic {
-            base: gb,
-            args: gargs,
-        } = &base.kind
-        {
-            if matches!(&gb.kind, ast::ExprKind::Name(n) if n == "Subset") && gargs.len() == 1 {
-                if let Ty::Pos(d) = self.resolve_ty(&gargs[0]) {
-                    let sub = self.subset_domain(d);
-                    return self.domain_field(sub, name, hint, span);
                 }
             }
         }
@@ -5039,7 +5107,7 @@ impl<'a> Lowerer<'a> {
                     Some(Sym::Global(id)) => {
                         return self.mk(ExprKind::Global(id), self.globals[id].ty.clone(), span);
                     }
-                    Some(Sym::Fn(id)) => return self.fn_as_closure(id, span),
+                    Some(Sym::Fn(id)) => return self.fn_as_closure(id, hint, span),
                     _ => {
                         self.error(
                             codes::UNKNOWN_FIELD,
@@ -6283,7 +6351,17 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Option<Expr> {
         let theirs = self.get_sym(&cpl_check::std_method(name));
-        let mut sym = self.get_sym(name).or(theirs)?;
+        let mut sym = match self.get_sym(name).or(theirs) {
+            Some(s) => s,
+            None => {
+                // Fall back to a UFCS free function declared in the receiver struct's defining module.
+                let Some(Ty::Struct(sid)) = self.probe_ty_silent(base) else {
+                    return None;
+                };
+                let mod_id = self.structs[sid].mod_id;
+                *self.mod_syms[mod_id].get(name)?
+            }
+        };
         // The program's own `find(self: List<Int>, ..)` is not what
         // `s.find(..)` on a `Str` means: that is the library's.
         if let Some(theirs) = theirs {
@@ -7964,6 +8042,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     Arg::Value(value)
                 };
+                self.call_hint = hint.cloned();
                 return self.call_gen_fn(gfid, Vec::new(), Some(recv), args, span);
             }
         }

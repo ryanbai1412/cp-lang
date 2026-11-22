@@ -3876,6 +3876,7 @@ impl<'a> Lowerer<'a> {
                     self.expect(value, &entry)
                 }
             },
+            ast::AssignOp::Binary(BinOp::Add) if place.ty == Ty::Str => self.expr(value, None),
             _ => self.expr(value, Some(&place.ty)),
         };
         self.emit_assign_place(place, op, rhs, target.span, out);

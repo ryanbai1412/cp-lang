@@ -12,6 +12,7 @@ pub enum Expect {
     OkOutput(String),
     Diag { code: String, line: usize },
     Trap { code: String, line: usize },
+    Exit(i32),
 }
 
 #[derive(Clone, Debug)]
@@ -39,6 +40,133 @@ pub fn header_input(text: &str) -> Vec<u8> {
     Vec::new()
 }
 
+/// Every `// <key> ...` header value, in order.
+fn header_values<'a>(text: &'a str, key: &str) -> Vec<&'a str> {
+    let mut out = Vec::new();
+    for line in text.lines() {
+        let Some(rest) = line.trim_start().strip_prefix("//") else {
+            break;
+        };
+        if let Some(v) = rest.trim_start().strip_prefix(key) {
+            out.push(v.trim());
+        }
+    }
+    out
+}
+
+fn unquote(v: &str) -> String {
+    let body = v.strip_prefix('"').and_then(|q| q.strip_suffix('"')).unwrap_or(v);
+    unescape_python_like(body)
+}
+
+struct ToolRun {
+    status: i32,
+    stdout: String,
+    stderr: String,
+}
+
+/// Runs `cpl <sub> <copy of the case> <rest>` on a copy in a scratch directory,
+/// so a tool that rewrites its input (`fmt`) never edits the case. The copy
+/// blanks the `// has:`/`// lacks:` lines so a tool that echoes the source
+/// (`build`) can't match them.
+fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, String> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let cpl = std::env::current_exe()
+        .map_err(|e| format!("cannot find cpl-conform: {e}"))?
+        .with_file_name(if cfg!(windows) { "cpl.exe" } else { "cpl" });
+    if !cpl.exists() {
+        return Err(format!("no `cpl` next to cpl-conform ({})", cpl.display()));
+    }
+    let dir = std::env::temp_dir().join(format!(
+        "cpl-conform-tool-{}-{}",
+        std::process::id(),
+        case.id.replace(['/', '\\', '.'], "_")
+    ));
+    std::fs::create_dir_all(&dir).map_err(|e| format!("cannot make {}: {e}", dir.display()))?;
+    let name = case.path.file_name().unwrap_or_default();
+    let copy = dir.join(name);
+    let shown: String = text
+        .split_inclusive('\n')
+        .map(|l| {
+            let rest = l.trim_start().strip_prefix("//").map(str::trim_start);
+            match rest {
+                Some(r) if r.starts_with("has:") || r.starts_with("lacks:") => {
+                    if l.ends_with('\n') { "//\n" } else { "//" }
+                }
+                _ => l,
+            }
+        })
+        .collect();
+    std::fs::write(&copy, shown).map_err(|e| format!("cannot write {}: {e}", copy.display()))?;
+    let mut words = args.split_whitespace();
+    let sub = words.next().ok_or("empty `// tool:` header")?;
+    let mut child = Command::new(&cpl)
+        .arg(sub)
+        .arg(&copy)
+        .args(words)
+        .current_dir(&dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("cannot run cpl: {e}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(&header_input(text));
+    }
+    let out = child.wait_with_output().map_err(|e| format!("cpl failed: {e}"))?;
+    let _ = std::fs::remove_dir_all(&dir);
+    Ok(ToolRun {
+        status: out.status.code().unwrap_or(-1),
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+    })
+}
+
+/// A `// tool:` case: runs the tool twice (tool output is deterministic),
+/// then checks the expectation and every `// has:` / `// lacks:` string.
+fn run_tool_case(case: &ConformanceCase, text: &str, args: &str, expect: Expect, offset: usize) -> CaseOutcome {
+    let fail = |detail: String| CaseOutcome {
+        status: "fail".into(),
+        detail,
+    };
+    let (first, second) = match (run_tool(case, text, args), run_tool(case, text, args)) {
+        (Ok(a), Ok(b)) => (a, b),
+        (Err(e), _) | (_, Err(e)) => return fail(e),
+    };
+    if first.status != second.status || first.stdout != second.stdout {
+        return fail(format!("`cpl {args}` gave different output on two runs"));
+    }
+    let all = format!("{}{}", first.stdout, first.stderr);
+    let got = || runner::truncate_chars(all.trim(), 200);
+    let met = match &expect {
+        Expect::Ok => first.status == 0,
+        Expect::OkOutput(want) => first.status == 0 && first.stdout.trim_end_matches('\n') == want,
+        Expect::Diag { code, line } => all.contains(code.as_str()) && all.contains(&format!(":{}:", line + offset)),
+        Expect::Trap { code, line } => all.contains(code.as_str()) && all.contains(&format!(":{}", line + offset)),
+        Expect::Exit(code) => first.status == *code,
+    };
+    if !met {
+        return fail(format!("wanted {expect:?} (exit {}); got: {}", first.status, got()));
+    }
+    for want in header_values(text, "has:") {
+        let want = unquote(want);
+        if !all.contains(&want) {
+            return fail(format!("wanted output with {want:?}; got: {}", got()));
+        }
+    }
+    for bad in header_values(text, "lacks:") {
+        let bad = unquote(bad);
+        if all.contains(&bad) {
+            return fail(format!("wanted output without {bad:?}; got: {}", got()));
+        }
+    }
+    CaseOutcome {
+        status: "pass".into(),
+        detail: String::new(),
+    }
+}
+
 /// Parses `// expect: ...` and computes the line offset after the `// expect:`, `// rule:` and `// input:` headers.
 pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
     let lines: Vec<&str> = text.split('\n').collect();
@@ -51,7 +179,10 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
                 let rest = rest.trim_start();
                 !(rest.starts_with("expect:")
                     || rest.starts_with("rule:")
-                    || rest.starts_with("input:"))
+                    || rest.starts_with("input:")
+                    || rest.starts_with("tool:")
+                    || rest.starts_with("has:")
+                    || rest.starts_with("lacks:"))
             } else {
                 true
             }
@@ -66,6 +197,11 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
     };
     let spec = spec.trim();
 
+    if let Some(n) = spec.strip_prefix("exit ") {
+        if let Ok(code) = n.trim().parse::<i32>() {
+            return Ok((Expect::Exit(code), offset));
+        }
+    }
     if spec == "ok" {
         return Ok((Expect::Ok, offset));
     }
@@ -187,10 +323,17 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             };
         }
     };
+    if let Some(args) = header_values(&text, "tool:").first() {
+        return run_tool_case(case, &text, args, expect, offset);
+    }
     let path_str = case.path.to_string_lossy();
     let (diag, check_failed) = runner::check_spec(db, &path_str, &text);
 
     match expect {
+        Expect::Exit(_) => CaseOutcome {
+            status: "bad".into(),
+            detail: "`// expect: exit N` needs a `// tool:` header".into(),
+        },
         Expect::Trap { code, line } => {
             if check_failed || diag.contains("error[") {
                 return CaseOutcome {

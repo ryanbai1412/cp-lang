@@ -106,7 +106,7 @@ print(y.best)
 `cpl build solve.cp -o solve.cpp` produces a single, self-contained, human-readable C++17 file for the target judge profile:
 
 - **Original `.cp` source included as a header comment** at the top of the `.cpp` file so judges and reviewers always see the clean source.
-- **Tree-shaken standard and local libraries:** only reachable data structures and helpers are emitted; `@brute`, `@checker`, `@interactor`, `@gen`, `@test`, and `@law` blocks are stripped so submissions stay well under 64 KB.
+- **Tree-shaken standard and local libraries:** only reachable data structures and helpers are emitted; `@alt`, `@check`, `@interactor`, `@gen`, `@test`, and `@law` blocks are stripped so submissions stay well under 64 KB.
 - **Zero-cost domains and indices:** `domain V = 1..=n` erases to a plain `int32_t` index; `[V]T` lowers to a contiguous flat `std::vector<T>` with zero bounds checks on valid `V` accesses.
 - **Niche-packed optionals:** `?Int` (`INT64_MIN`), `?F64` (quiet `NaN`), `?V`, `?Bool`, `?Char`, and `?Enum` take zero extra bytes — no `std::optional` padding overhead.
 - **Compact `Mod<P>`:** stored as a 4-byte `uint32_t` with compile-time modulus reduction when `P` is `const`.

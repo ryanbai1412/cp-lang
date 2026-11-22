@@ -5648,3 +5648,16 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** `cpl` checks, builds and runs CP Lang 0.3 by default, with `spec/std` built in as its standard library; `CPL_EDITION=0.2` selects the old language and `stdlib/`. The edition is read once, in `cpl-check/src/edition.rs`. The 0.2 test suites pin `CPL_EDITION=0.2` (`.cargo/config.toml`, `scripts/gate-env.sh`) until they move to 0.3; then the pin, `stdlib/` and the 0.2 paths are deleted.
 - **Why.** 0.3 is the only language we ship. A spec-only checker beside a 0.2 runtime let the site and editors show one language and run another.
 - **Reverse.** Make `Edition::V02` the default in `edition.rs`.
+
+## 213. `Indexed.at(k)` takes a key; positional walks use `nth` (2026-11-22)
+
+- **Decision.** R12's `Indexed.at(k: K)` is `s[k]`, and R05.6.3 says
+  `a[i] = 5` is `a.at(i) = 5`, but `std.seq` bodies (`select`, `zip`,
+  `merge_sorted`, `next_permutation`, the partitions, `radix_sort`) used
+  `.at(i)` as a 0-based walk offset. One meaning wins: `.at` is a key
+  everywhere (R12.4.13), and generic code that counts from 0 reads with
+  `.nth(i)`. On `w = s[2..]`, `w.at(2)` is `s[2]`
+  and `w.at(0)` traps, as `w[0]` does. A key-shaped name for a positional
+  read would make `w.at(k)` and `w[k]` disagree on every view.
+- **Reverse.** Define `at` as the walk offset, rename the trait method
+  (`get`), and rewrite R05.6.3 and R12.4.13.

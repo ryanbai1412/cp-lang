@@ -215,6 +215,8 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             format!("cpl::Grid<{}, {}>", elem_ty(program, niches, elem), dims.len())
         }
         Ty::Opt(inner) => match **inner {
+            // A bare operator the fn was specialized for holds no value; only presence is left.
+            Ty::Unit => "bool".into(),
             Ty::Pos(_) | Ty::Bound(_) => "cpl::OptPos".into(),
             // `Int` stops above INT64_MIN, which is left for `none`.
             Ty::Int => "cpl::OptInt".into(),

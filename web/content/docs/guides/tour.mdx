@@ -188,6 +188,6 @@ The code below the divider is the single-test program, unchanged and unindented.
 - A `@memo fn` below the divider belongs to its test case: the cache starts empty every time.
 - Below the divider, `return` ends the current test case only. Above it, `return` still ends the program.
 
-State that must outlive a test case (a sieve, precomputed factorials, a lookup table) is declared above the divider. `@brute` and `@checker` read the top-level input `let`s by name in both shapes: the program's inputs in a single-test file, or the current test case's inputs below the divider.
+State that must outlive a test case (a sieve, precomputed factorials, a lookup table) is declared above the divider. `@alt` and `@check` read the top-level input `let`s by name in both shapes: the program's inputs in a single-test file, or the current test case's inputs below the divider.
 
 `@!multitest(until_eof)` reads test cases until the input ends instead of reading a count. For any other shape, write a plain `for _ in 0..tests:` loop; a `@memo fn` nested in it resets on every iteration. Library modules contain only declarations—importing a helper never reads input or mutates hidden global state.

@@ -110,7 +110,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
 
   return (
     <div className={cn('not-prose overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm', className)}>
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
         <Button size="sm" onClick={run} disabled={result.kind === 'running'}>
           {result.kind === 'running' ? <Loader2 className="animate-spin" /> : <Play />}
           Run
@@ -144,15 +144,18 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
       <CodeEditor value={source} onChange={setSource} onRun={run} minHeight={editorHeight} className="border-b" />
       <Tabs value={tab} onValueChange={(v) => (v === 'cpp' ? showCpp() : setTab(v))} className="gap-0">
         <TabsList className="m-2">
-          <TabsTrigger value="output">Output</TabsTrigger>
-          <TabsTrigger value="input">Input</TabsTrigger>
+          <TabsTrigger value="output">Run</TabsTrigger>
           <TabsTrigger value="cpp">C++17</TabsTrigger>
         </TabsList>
-        <TabsContent value="output" className="px-3 pb-3">
-          <Output result={result} source={source} onUseInput={(input) => { setStdin(input); setTab('input'); }} />
-        </TabsContent>
-        <TabsContent value="input" className="px-3 pb-3">
-          <Textarea value={stdin} onChange={(e) => setStdin(e.target.value)} className="min-h-24 font-mono text-xs" spellCheck={false} />
+        <TabsContent value="output" className="grid gap-3 px-3 pb-3 sm:grid-cols-2">
+          <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
+            Input
+            <Textarea value={stdin} onChange={(e) => setStdin(e.target.value)} className="min-h-16 flex-1 font-mono text-xs text-foreground" spellCheck={false} />
+          </label>
+          <div className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
+            Output
+            <Output result={result} source={source} onUseInput={setStdin} />
+          </div>
         </TabsContent>
         <TabsContent value="cpp" className="px-3 pb-3">
           <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">{cpp}</pre>
