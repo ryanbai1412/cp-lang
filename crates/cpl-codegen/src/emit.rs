@@ -1456,7 +1456,11 @@ impl<'p> Emitter<'p> {
                 let name = fn_name(&f.name);
                 let params = signature.split_once(&format!(" {name}(")).map(|(_, p)| p.trim_end_matches(')')).unwrap_or("");
                 let sep = if params.is_empty() { "" } else { ", " };
-                let head = format!("template <class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)");
+                let tparams = signature
+                    .strip_prefix("template <")
+                    .and_then(|t| t.split_once(">\n"))
+                    .map_or(String::new(), |(t, _)| format!("{t}, "));
+                let head = format!("template <{tparams}class CplF> int cpl_each_{name}({params}{sep}CplF&& cpl_f)");
                 protos.push(Proto {
                     name: format!("cpl_each_{name}"),
                     line: format!("{head};\n"),
