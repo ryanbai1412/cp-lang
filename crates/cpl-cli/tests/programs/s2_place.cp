@@ -4,8 +4,8 @@ let primes: [Small]Int = [2, 3, 5]
 print(primes[Small(0)], primes[Small(1)], primes[Small(2)], sum(primes))
 
 struct St:
-    h: [Small]Int
-    k: Int
+    var h: [Small]Int
+    var k: Int
 var state: ?St = none
 state = St([Small] _ => 0, 1)
 state!.h[Small(1)] = 9             // writes the state in place, not a copy of it

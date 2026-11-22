@@ -2,12 +2,12 @@
 // inside the struct in the C++: indexing, length, copies, whole-row
 // assignment and comparison read the same as in `cpl run`.
 struct Node:
-    kid: [0..2]?Int
-    cnt: [1..=3]Int
+    var kid: [0..2]?Int
+    var cnt: [1..=3]Int
     total: Int
 
 struct Pt:
-    at: [0..3]Int
+    var at: [0..3]Int
 
 fn sum3(a: [1..=3]Int) -> Int: a[1] + a[2] + a[3]
 
@@ -33,9 +33,9 @@ for x in nodes[2].cnt: print(x)
 for (i, x) in nodes[0].kid.items: print(i, x ?? -1)
 var grow: [1..=3]Int = 9
 nodes[1].cnt = grow
-print(sum(nodes[1].cnt), max(nodes[1].cnt), [x * 2 for x in nodes[0].cnt])
+print(nodes[1].cnt.sum(), nodes[1].cnt.max()!, [x * 2 for x in nodes[0].cnt])
 let lit: [0..3]Int = [1, 2, 3]
-var a = Pt(lit)
+var a = Pt(lit.copy())
 var b = Pt(lit)
 b.at[2] = 0
 print(yes(a == b), b.at, a)
@@ -45,8 +45,8 @@ print(pts)
 
 // A row that is sorted, filled or handed to a fn as `mut` stays a list.
 struct Bag:
-    held: [0..4]Int
-    tag: [0..2]Int
+    var held: [0..4]Int
+    var tag: [0..2]Int
 
 fn bump(mut row: [0..2]Int):
     row[0] += 10

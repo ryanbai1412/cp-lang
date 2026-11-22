@@ -1,8 +1,8 @@
 // Structs with methods, enums with and without payloads, records,
 // tuples and optionals.
 struct Point:
-    x: Int
-    y: Int
+    var x: Int
+    var y: Int
 
     fn dist(self, other: Point) -> Int:
         abs(self.x - other.x) + abs(self.y - other.y)
@@ -37,11 +37,11 @@ fn name(c: Color) -> Str:
 
 let p = Point(x: 3, y: 4)
 var q = Point.origin()
-print(p, q, p.dist(q), p == q, p < q)
+print(p, q, p.dist(q), yes(p == q), yes(p < q))
 q.shift(5)
 q.y = -2
 print(q, p.dist(q))
-print(Color.Green, name(Color.Blue), Color.Red == Color.Red, Color.Red != Color.Blue)
+print(Color.Green, name(Color.Blue), yes(Color.Red == Color.Red), yes(Color.Red != Color.Blue))
 let shapes: List<Shape> = [Shape.Circle(2), Shape.Rect(3, 4), Shape.Dot]
 for s in shapes:
     print(s, area(s))
@@ -52,9 +52,9 @@ print(pair, num, word, pair.0, pair.1)
 let rec = (id: 7, tag: 'x')
 print(rec, rec.id, rec.tag)
 var maybe: ?Int = none
-print(maybe, maybe ?? 42, maybe.is_none)
+print(if let v = maybe: "{v}" else: "none", maybe ?? 42, yes(maybe.is_none))
 maybe = 5
-print(maybe, maybe ?? 42, maybe.is_some)
+print(if let v = maybe: "{v}" else: "none", maybe ?? 42, yes(maybe.is_some))
 if let v = maybe:
     print("holds", v)
 var points: List<Point> = []
@@ -69,4 +69,4 @@ var best: ?Point = none
 for pt in points:
     if pt.y > 3:
         best = pt
-print(best)
+print(best!)

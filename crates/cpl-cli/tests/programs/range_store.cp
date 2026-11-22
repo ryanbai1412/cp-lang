@@ -1,4 +1,6 @@
-struct S(a: 0..=1_000_000, b: Int)
+struct S:
+    var a: 0..=1_000_000
+    b: Int
 
 let n: 1..=10 = read()
 domain V = 0..n

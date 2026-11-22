@@ -24,8 +24,8 @@ print(xs, trace)
 
 // Assignment copies: arrays, lists and structs are values.
 struct Box:
-    items: List<Int>
-    tag: Int
+    var items: List<Int>
+    var tag: Int
 
 var a = Box(items: [1, 2], tag: 1)
 var b = Box(items: a.items.copy(), tag: a.tag)
@@ -84,8 +84,8 @@ fn loud(b: Bool, x: Int) -> Bool:
     b
 
 trace.clear()
-print(loud(false, 1) and loud(true, 2), loud(true, 3) or loud(false, 4), trace)
-print(not true or true and false, 1 + 2 * 3 - 4 / 2, -2 ** 2, (1 < 2) == (3 > 2), 1 < 2 < 3)
+print(yes(loud(false, 1) and loud(true, 2)), yes(loud(true, 3) or loud(false, 4)), trace)
+print(yes(not true or true and false), 1 + 2 * 3 - 4 / 2, -2 ** 2, yes((1 < 2) == (3 > 2)), yes(1 < 2 < 3))
 print(7 - 3 - 2, 100 / 10 / 5, 2 ** 3 ** 2, 5 - -3, - - 4, 10 - (4 - 3))
 // A value block as an expression.
 let big = do:

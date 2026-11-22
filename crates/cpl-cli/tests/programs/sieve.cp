@@ -28,4 +28,4 @@ for i in 2..=n:
     if is_prime[i]:
         for j in i * i..=n by i:
             is_prime[j] = false
-print(count(is_prime[i] for i in 0..=n))
+print(count(i for i in 0..=n if is_prime[i]))
