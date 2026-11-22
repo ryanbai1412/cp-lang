@@ -119,6 +119,7 @@ An integer literal is never a position into a domain slice: `blk[1..]` on
 | `zip(a, b)` | the shared `D`, gives `(a[i], b[i])` over `a.keys.clip(b.keys)` | in order | O(1) |
 | `w.drop(k)`, `w.take(k)`, `w.drop_last(k)`, `w.take_last(k)` | same as `w`, clamped: `w.drop(k)` is `w[w.l.next(k) ?? w.r..]` | in order | O(1) |
 | `grid[r]` | the column domain: row `r` of a `[R, C]T` | in order | O(1) |
+| `grid[rs, cs]` | `(R, C)` pairs inside `rs` × `cs`; `.items` gives `((x, y), v)` | row-major | O(1) |
 
 `zip` needs both sides indexed by the same domain, so zipping a `[V]T` with
 an `[E]T` is a type error. Two lists zip over the shorter one's indices.
