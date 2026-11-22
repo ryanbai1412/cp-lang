@@ -59,7 +59,7 @@ impl<'a> Lowerer<'a> {
         }
         let only_a_value = match &value.kind {
             ExprKind::Builtin(b, _) => {
-                !matches!(b, Builtin::Flush | Builtin::CountQuery | Builtin::SwapInput | Builtin::Rand)
+                !matches!(b, Builtin::Flush | Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof | Builtin::Rand)
             }
             // A library fn that takes nothing by `mut`. One of the
             // file's own may print or change a global.

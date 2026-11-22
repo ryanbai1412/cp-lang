@@ -568,6 +568,7 @@ struct Lowerer<'a> {
     path_to_mod: HashMap<String, ModId>,
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
+    io_mod: Option<ModId>,
     /// The module `std.prefix`, when the program uses `prefix(...)`.
     mod_syms: Vec<HashMap<String, Sym>>,
     cur_mod: ModId,
@@ -718,6 +719,7 @@ impl<'a> Lowerer<'a> {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,
+            io_mod: None,
             mod_syms: Vec::new(),
             cur_mod: 0,
             diags: Vec::new(),

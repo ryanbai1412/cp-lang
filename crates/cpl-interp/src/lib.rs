@@ -3738,6 +3738,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
                 Value::Unit
             }
+            Builtin::AtEof => Value::Bool(self.input.at_eof()),
             Builtin::SwapInput => {
                 match &mut self.peer {
                     Some(peer) => std::mem::swap(&mut self.input, peer),

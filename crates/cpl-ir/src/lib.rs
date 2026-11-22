@@ -631,6 +631,8 @@ pub enum Builtin {
     /// Switches `read()` between the hidden test and what the solution
     /// prints, around each `sol.recv()` of an `@interactor`.
     SwapInput,
+    /// True when only blanks are left on stdin: what `read_all` stops at.
+    AtEof,
     Popcount,
     Ctz,
     Clz,

@@ -435,6 +435,11 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
+        if let (Some(Sym::GenFn(gfid)), [ty]) = (self.get_sym(name), types) {
+            if name == "read_all" && self.io_mod == Some(self.gen_fns[gfid].mod_id) {
+                return self.read_all(ty, args, span);
+            }
+        }
         let lookup = prefix_shape_struct(name, types.len()).unwrap_or(name);
         match self.get_sym(lookup) {
             Some(Sym::GenStruct(gid)) => {
@@ -2342,6 +2347,56 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `read()` of a value shaped like `spec`.
+    /// `read_all<T>(until: f)`: reads `T`s until the input ends or `f` holds for one.
+    fn read_all(&mut self, ty: &ast::Type, args: &[ast::Arg], span: Span) -> Expr {
+        let elem = self.resolve_ty(ty);
+        let Some(spec) = self.spec_of(&elem) else {
+            let message = format!("`read_all()` can't tell how much a `{}` is", self.show(&elem));
+            self.error(codes::TYPE_MISMATCH, span, message);
+            return self.err_expr(span);
+        };
+        let test = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
+        let until = match args {
+            [] => None,
+            [a] if a.name.as_ref().is_none_or(|n| n.text == "until") => match &a.value.kind {
+                ast::ExprKind::Name(n) if n == "None" && self.lookup(n).is_none() => None,
+                _ => Some(self.expect(&a.value, &test)),
+            },
+            _ => {
+                self.error(codes::UNKNOWN_ARG_NAME, span, "`read_all` takes only `until:`".to_string());
+                return self.err_expr(span);
+            }
+        };
+        let list = Ty::List(Box::new(elem.clone()));
+        self.do_expr(Some(&list), span, |lw, out| {
+            let acc = lw.temp(list.clone());
+            out.push(Stmt::Let(acc, Some(lw.mk(ExprKind::Tuple(Vec::new()), list.clone(), span))));
+            let until = until.map(|f| {
+                let slot = lw.temp(test.clone());
+                out.push(Stmt::Let(slot, Some(f)));
+                slot
+            });
+            let lid = lw.open_loop(None);
+            let stop = || Block { stmts: vec![Stmt::Break(None)] };
+            let done = lw.mk(ExprKind::Builtin(Builtin::AtEof, Vec::new()), Ty::Bool, span);
+            let mut body = vec![Stmt::If(done, stop(), Block { stmts: Vec::new() })];
+            let value = lw.temp(elem.clone());
+            let read = lw.read(spec, span);
+            body.push(Stmt::Let(value, Some(read)));
+            if let Some(f) = until {
+                let call = ExprKind::CallExpr(Box::new(lw.local(f, span)), vec![Arg::Value(lw.local(value, span))]);
+                let hit = lw.mk(call, Ty::Bool, span);
+                body.push(Stmt::If(hit, stop(), Block { stmts: Vec::new() }));
+            }
+            let item = lw.local(value, span);
+            let place = Place { kind: PlaceKind::Local(acc), ty: list.clone(), span: lw.span(span) };
+            body.push(Stmt::Expr(lw.mk(ExprKind::Mutate(Mutation::Push, Box::new(place), vec![item]), Ty::Unit, span)));
+            lw.cx.loops.pop();
+            out.push(Stmt::While(lid, lw.mk(ExprKind::Bool(true), Ty::Bool, span), Block { stmts: body }));
+            out.push(Stmt::Give(lw.local(acc, span)));
+        })
+    }
+
     pub(super) fn read(&mut self, spec: Spec, span: Span) -> Expr {
         fn unreadable(spec: &Spec) -> Option<Ty> {
             match spec {

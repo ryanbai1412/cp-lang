@@ -123,7 +123,7 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Read(_)
             | ExprKind::Print(..)
-            | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput, _) => touch.io = true,
+            | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => touch.io = true,
             ExprKind::CallExpr(_, args) => {
                 touch.io = true;
                 for arg in args {
@@ -2009,6 +2009,10 @@ impl<'p> Emitter<'p> {
             Builtin::SwapInput => {
                 self.need("fail");
                 Code::primary("cpl::fail(\"an `@interactor` is not built to C++\")".to_string())
+            }
+            Builtin::AtEof => {
+                self.need("at_eof");
+                Code::primary("cpl::at_eof()".to_string())
             }
             Builtin::Popcount => {
                 self.need("bits");
