@@ -5,11 +5,7 @@
   {"id": "4143417", "language": "CPP17", "result": "AC", "time": 2.914454633, "memory_kb": 8176.0, "file": "corpus/submissions/4143417.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/coci21c2p2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

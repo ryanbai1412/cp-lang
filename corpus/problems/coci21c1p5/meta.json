@@ -9,9 +9,6 @@
  "artifacts": {
   "dream": [
    "corpus/problems/coci21c1p5/dream.cp"
-  ],
-  "port": [
-   "corpus/problems/coci21c1p5/port.cp"
   ]
  },
  "tags": [],

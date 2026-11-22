@@ -12,11 +12,7 @@
   {"id": "6415646", "language": "CPP17", "result": "AC", "time": 7.050097806, "memory_kb": 50888.0, "file": "corpus/submissions/6415646.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/oly23practice5/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

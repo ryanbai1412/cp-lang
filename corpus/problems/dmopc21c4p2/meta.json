@@ -10,9 +10,6 @@
   "dream": [
    "corpus/problems/dmopc21c4p2/dream.cp"
   ],
-  "port": [
-   "corpus/problems/dmopc21c4p2/port.cp"
-  ],
   "spec": [
    "corpus/problems/dmopc21c4p2/spec.cp"
   ]

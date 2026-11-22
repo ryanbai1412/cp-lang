@@ -8,11 +8,7 @@
   {"id": "4376742", "language": "CPP17", "result": "AC", "time": 7.054507317, "memory_kb": 14212.0, "file": "corpus/submissions/4376742.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/yac1p4/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

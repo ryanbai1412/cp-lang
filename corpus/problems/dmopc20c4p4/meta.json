@@ -11,9 +11,6 @@
   "dream": [
    "corpus/problems/dmopc20c4p4/dream.cp"
   ],
-  "port": [
-   "corpus/problems/dmopc20c4p4/port.cp"
-  ],
   "spec": [
    "corpus/problems/dmopc20c4p4/spec.cp"
   ]

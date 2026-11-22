@@ -43,11 +43,7 @@
   {"id": "4145494", "language": "CPP17", "result": "AC", "time": 14.004222802, "memory_kb": 9412.0, "file": "corpus/submissions/4145494.cpp"}
  ],
  "cpp_ac": 12,
- "artifacts": {
-  "port": [
-   "corpus/problems/nccc9s4/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

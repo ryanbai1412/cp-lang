@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/cf1943b/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/cf1943b/port.cp"
   ]
  },
  "tags": [],

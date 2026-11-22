@@ -19,11 +19,7 @@
   {"id": "5128873", "language": "RUST", "result": "AC", "time": 0.352217974, "memory_kb": 3484.0, "file": null}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/ccc21s2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

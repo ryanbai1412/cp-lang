@@ -13,11 +13,7 @@
   {"id": "3476383", "language": "CPP17", "result": "AC", "time": 10.898182288, "memory_kb": 336704.0, "file": "corpus/submissions/3476383.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/dmpg18s5/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

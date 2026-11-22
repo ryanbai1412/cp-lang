@@ -5,11 +5,7 @@
   {"id": "5593302", "language": "CPP17", "result": "AC", "time": 19.796610684, "memory_kb": 128716.0, "file": "corpus/submissions/5593302.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/apio23p2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

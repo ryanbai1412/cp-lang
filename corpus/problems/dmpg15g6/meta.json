@@ -7,11 +7,7 @@
   {"id": "4253124", "language": "CPP17", "result": "AC", "time": 1.921351342, "memory_kb": 41640.0, "file": "corpus/submissions/4253124.cpp"}
  ],
  "cpp_ac": 2,
- "artifacts": {
-  "port": [
-   "corpus/problems/dmpg15g6/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

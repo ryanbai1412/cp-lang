@@ -50,9 +50,6 @@
   "dream": [
    "corpus/problems/ccc03s4/dream.cp"
   ],
-  "port": [
-   "corpus/problems/ccc03s4/port.cp"
-  ],
   "spec": [
    "corpus/problems/ccc03s4/spec.cp"
   ]

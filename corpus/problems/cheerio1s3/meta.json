@@ -13,9 +13,6 @@
   "dream": [
    "corpus/problems/cheerio1s3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/cheerio1s3/port.cp"
-  ],
   "spec": [
    "corpus/problems/cheerio1s3/spec.cp"
   ]

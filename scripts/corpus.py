@@ -51,7 +51,7 @@ def artifacts():
         pdir = os.path.join(PROBLEMS, q)
         if not os.path.isdir(pdir):
             continue
-        for kind, fname in (("dream", "dream.cp"), ("spec", "spec.cp"), ("port", "port.cp"), ("original", "orig.cpp")):
+        for kind, fname in (("dream", "dream.cp"), ("spec", "spec.cp"), ("original", "orig.cpp")):
             f = os.path.join(pdir, fname)
             if os.path.exists(f):
                 found[q][kind].insert(0, rel(f))

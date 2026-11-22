@@ -6,9 +6,6 @@
  "artifacts": {
   "dream": [
    "corpus/problems/abc481g/dream.cp"
-  ],
-  "port": [
-   "corpus/problems/abc481g/port.cp"
   ]
  },
  "tags": [],

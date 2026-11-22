@@ -10,9 +10,6 @@
   "dream": [
    "corpus/problems/shoi16p1/dream.cp"
   ],
-  "port": [
-   "corpus/problems/shoi16p1/port.cp"
-  ],
   "spec": [
    "corpus/problems/shoi16p1/spec.cp"
   ]

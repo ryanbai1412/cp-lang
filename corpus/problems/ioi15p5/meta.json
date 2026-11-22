@@ -10,9 +10,6 @@
   "dream": [
    "corpus/problems/ioi15p5/dream.cp"
   ],
-  "port": [
-   "corpus/problems/ioi15p5/port.cp"
-  ],
   "spec": [
    "corpus/problems/ioi15p5/spec.cp"
   ]

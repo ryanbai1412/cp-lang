@@ -33,11 +33,7 @@
   {"id": "4340961", "language": "CPP17", "result": "WA", "time": 0.193169984, "memory_kb": 27084.0, "file": "corpus/submissions/4340961.cpp"}
  ],
  "cpp_ac": 18,
- "artifacts": {
-  "port": [
-   "corpus/problems/sac22cc3p5/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

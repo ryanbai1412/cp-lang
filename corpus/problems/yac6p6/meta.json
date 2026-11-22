@@ -15,9 +15,6 @@
  "artifacts": {
   "dream": [
    "corpus/problems/yac6p6/dream.cp"
-  ],
-  "port": [
-   "corpus/problems/yac6p6/port.cp"
   ]
  },
  "tags": [],

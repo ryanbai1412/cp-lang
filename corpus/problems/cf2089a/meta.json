@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/cf2089a/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/cf2089a/port.cp"
   ]
  },
  "tags": [],

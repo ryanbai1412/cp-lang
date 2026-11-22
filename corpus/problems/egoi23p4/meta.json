@@ -9,9 +9,6 @@
   "dream": [
    "corpus/problems/egoi23p4/dream.cp"
   ],
-  "port": [
-   "corpus/problems/egoi23p4/port.cp"
-  ],
   "spec": [
    "corpus/problems/egoi23p4/spec.cp"
   ]

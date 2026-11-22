@@ -7,11 +7,7 @@
   {"id": "4530006", "language": "CPP17", "result": "AC", "time": 5.133938065, "memory_kb": 28664.0, "file": "corpus/submissions/4530006.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/coci21c6p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

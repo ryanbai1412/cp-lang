@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/ucup4s25e/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/ucup4s25e/port.cp"
   ]
  },
  "tags": [],

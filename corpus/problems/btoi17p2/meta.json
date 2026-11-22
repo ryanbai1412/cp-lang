@@ -10,9 +10,6 @@
   "dream": [
    "corpus/problems/btoi17p2/dream.cp"
   ],
-  "port": [
-   "corpus/problems/btoi17p2/port.cp"
-  ],
   "spec": [
    "corpus/problems/btoi17p2/spec.cp"
   ]

@@ -8,9 +8,6 @@
  "artifacts": {
   "dream": [
    "corpus/problems/ioi08p1/dream.cp"
-  ],
-  "port": [
-   "corpus/problems/ioi08p1/port.cp"
   ]
  },
  "tags": [],

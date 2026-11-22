@@ -10,11 +10,7 @@
   {"id": "5635626", "language": "CPP17", "result": "AC", "time": 45.338101165, "memory_kb": 3444.0, "file": "corpus/submissions/5635626.cpp"}
  ],
  "cpp_ac": 2,
- "artifacts": {
-  "port": [
-   "corpus/problems/etsr23r4p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -9,11 +9,7 @@
   {"id": "5325567", "language": "CPP17", "result": "AC", "time": 0.594955217, "memory_kb": 5420.0, "file": "corpus/submissions/5325567.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/neerc10k/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

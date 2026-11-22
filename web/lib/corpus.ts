@@ -17,7 +17,7 @@ interface Meta {
   problem: string;
   source: string;
   submissions: Submission[];
-  artifacts: { dream?: string[]; port?: string[]; spec?: string[] };
+  artifacts: { dream?: string[]; spec?: string[] };
   tags?: string[];
   difficulty?: string;
   spec?: string;

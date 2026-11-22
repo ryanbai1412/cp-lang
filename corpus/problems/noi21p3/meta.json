@@ -14,11 +14,7 @@
   {"id": "5669954", "language": "CPP17", "result": "AC", "time": 17.684274423, "memory_kb": 158728.0, "file": "corpus/submissions/5669954.cpp"}
  ],
  "cpp_ac": 3,
- "artifacts": {
-  "port": [
-   "corpus/problems/noi21p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -14,11 +14,7 @@
   {"id": "5325518", "language": "CPP17", "result": "AC", "time": 2.645061404, "memory_kb": 21404.0, "file": "corpus/submissions/5325518.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/btoi08p6/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

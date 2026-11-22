@@ -11,9 +11,6 @@
   "dream": [
    "corpus/problems/cco19p5/dream.cp"
   ],
-  "port": [
-   "corpus/problems/cco19p5/port.cp"
-  ],
   "spec": [
    "corpus/problems/cco19p5/spec.cp"
   ]

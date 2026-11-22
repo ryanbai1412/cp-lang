@@ -22,9 +22,6 @@
  "artifacts": {
   "dream": [
    "corpus/problems/ceoi22p3/dream.cp"
-  ],
-  "port": [
-   "corpus/problems/ceoi22p3/port.cp"
   ]
  },
  "tags": [],

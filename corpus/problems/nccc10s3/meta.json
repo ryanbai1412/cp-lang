@@ -9,11 +9,7 @@
   {"id": "4214399", "language": "CPP17", "result": "AC", "time": 8.650881631, "memory_kb": 11592.0, "file": "corpus/submissions/4214399.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/nccc10s3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

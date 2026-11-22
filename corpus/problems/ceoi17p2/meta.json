@@ -9,9 +9,6 @@
   "dream": [
    "corpus/problems/ceoi17p2/dream.cp"
   ],
-  "port": [
-   "corpus/problems/ceoi17p2/port.cp"
-  ],
   "spec": [
    "corpus/problems/ceoi17p2/spec.cp"
   ]

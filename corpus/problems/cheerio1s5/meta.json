@@ -5,11 +5,7 @@
   {"id": "5339756", "language": "CPP17", "result": "AC", "time": 0.314395179, "memory_kb": 4644.0, "file": "corpus/submissions/5339756.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/cheerio1s5/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

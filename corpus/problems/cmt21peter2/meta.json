@@ -5,11 +5,7 @@
   {"id": "4041223", "language": "CPP17", "result": "AC", "time": 1.930815794, "memory_kb": 6712.0, "file": "corpus/submissions/4041223.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/cmt21peter2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

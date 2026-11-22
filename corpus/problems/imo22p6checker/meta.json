@@ -16,11 +16,7 @@
   {"id": "4955728", "language": "CPP17", "result": "AC", "time": 1.162707465, "memory_kb": 67888.0, "file": "corpus/submissions/4955728.cpp"}
  ],
  "cpp_ac": 4,
- "artifacts": {
-  "port": [
-   "corpus/problems/imo22p6checker/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

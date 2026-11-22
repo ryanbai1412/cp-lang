@@ -6,11 +6,7 @@
   {"id": "3578469", "language": "CPP17", "result": "TLE", "time": 8.104992728, "memory_kb": 138736.0, "file": "corpus/submissions/3578469.cpp"}
  ],
  "cpp_ac": 0,
- "artifacts": {
-  "port": [
-   "corpus/problems/occ19g4/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

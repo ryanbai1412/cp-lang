@@ -9,11 +9,7 @@
   {"id": "5673265", "language": "CPP17", "result": "RTE", "time": 10.783765171, "memory_kb": 27536.0, "file": "corpus/submissions/5673265.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/ccc14s4hard/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

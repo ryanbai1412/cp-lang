@@ -28,11 +28,7 @@
   {"id": "5876797", "language": "CPP17", "result": "WA", "time": 0.051596009, "memory_kb": 2888.0, "file": "corpus/submissions/5876797.cpp"}
  ],
  "cpp_ac": 5,
- "artifacts": {
-  "port": [
-   "corpus/problems/tle18p5/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

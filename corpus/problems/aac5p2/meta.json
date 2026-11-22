@@ -22,11 +22,7 @@
   {"id": "4239718", "language": "CPP17", "result": "AC", "time": 12.491533328, "memory_kb": 4936.0, "file": "corpus/submissions/4239718.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/aac5p2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

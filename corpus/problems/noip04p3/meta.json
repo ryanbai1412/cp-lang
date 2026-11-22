@@ -8,11 +8,7 @@
   {"id": "5117143", "language": "CPP17", "result": "AC", "time": 0.03294734, "memory_kb": 3404.0, "file": "corpus/submissions/5117143.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/noip04p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -13,9 +13,6 @@
   "dream": [
    "corpus/problems/shoi16p3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/shoi16p3/port.cp"
-  ],
   "spec": [
    "corpus/problems/shoi16p3/spec.cp"
   ]

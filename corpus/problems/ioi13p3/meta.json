@@ -14,9 +14,6 @@
  "artifacts": {
   "dream": [
    "corpus/problems/ioi13p3/dream.cp"
-  ],
-  "port": [
-   "corpus/problems/ioi13p3/port.cp"
   ]
  },
  "tags": [],

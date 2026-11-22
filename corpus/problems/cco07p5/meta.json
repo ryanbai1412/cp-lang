@@ -27,11 +27,7 @@
   {"id": "5120575", "language": "CPP17", "result": "AC", "time": 2.449831628, "memory_kb": 103608.0, "file": "corpus/submissions/5120575.cpp"}
  ],
  "cpp_ac": 3,
- "artifacts": {
-  "port": [
-   "corpus/problems/cco07p5/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

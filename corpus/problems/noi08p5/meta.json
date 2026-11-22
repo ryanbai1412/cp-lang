@@ -15,9 +15,6 @@
   "dream": [
    "corpus/problems/noi08p5/dream.cp"
   ],
-  "port": [
-   "corpus/problems/noi08p5/port.cp"
-  ],
   "spec": [
    "corpus/problems/noi08p5/spec.cp"
   ]

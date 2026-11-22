@@ -11,9 +11,6 @@
   "dream": [
    "corpus/problems/etsr23r3p3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/etsr23r3p3/port.cp"
-  ],
   "spec": [
    "corpus/problems/etsr23r3p3/spec.cp"
   ]

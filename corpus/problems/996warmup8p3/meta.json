@@ -20,11 +20,7 @@
   {"id": "5324670", "language": "CPP17", "result": "AC", "time": 9.393477207, "memory_kb": 26992.0, "file": "corpus/submissions/5324670.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/996warmup8p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

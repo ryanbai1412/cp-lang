@@ -13,11 +13,7 @@
   {"id": "5566900", "language": "CPP17", "result": "AC", "time": 78.324867124, "memory_kb": 3884.0, "file": "corpus/submissions/5566900.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/cco16p2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

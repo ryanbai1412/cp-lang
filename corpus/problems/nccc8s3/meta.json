@@ -27,9 +27,6 @@
   "dream": [
    "corpus/problems/nccc8s3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/nccc8s3/port.cp"
-  ],
   "spec": [
    "corpus/problems/nccc8s3/spec.cp"
   ]

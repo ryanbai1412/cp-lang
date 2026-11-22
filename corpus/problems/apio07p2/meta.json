@@ -10,11 +10,7 @@
   {"id": "5532752", "language": "CPP17", "result": "AC", "time": 1.241804842, "memory_kb": 6688.0, "file": "corpus/submissions/5532752.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/apio07p2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

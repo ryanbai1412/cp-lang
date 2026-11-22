@@ -12,9 +12,6 @@
   "dream": [
    "corpus/problems/noip20p3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/noip20p3/port.cp"
-  ],
   "spec": [
    "corpus/problems/noip20p3/spec.cp"
   ]

@@ -42,9 +42,6 @@
   "dream": [
    "corpus/problems/ucrpc21h/dream.cp"
   ],
-  "port": [
-   "corpus/problems/ucrpc21h/port.cp"
-  ],
   "spec": [
    "corpus/problems/ucrpc21h/spec.cp"
   ]

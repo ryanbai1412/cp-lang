@@ -1,22 +1,22 @@
 {
- "problems": 1160,
+ "problems": 1155,
  "with_cpp_ac": 1017,
  "dream": {
   "draft": 100,
   "gold": 0,
-  "none": 1060,
+  "none": 1055,
   "reviewed": 0
  },
  "spec": {
   "draft": 100,
   "gold": 0,
-  "none": 1060,
+  "none": 1055,
   "reviewed": 0
  },
  "by_source": {
   "996warmup8p3": 1,
   "aac": 13,
-  "abc": 6,
+  "abc": 1,
   "acc": 5,
   "agc": 5,
   "apio": 9,

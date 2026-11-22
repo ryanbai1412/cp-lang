@@ -19,9 +19,6 @@
   "dream": [
    "corpus/problems/noip14p6/dream.cp"
   ],
-  "port": [
-   "corpus/problems/noip14p6/port.cp"
-  ],
   "spec": [
    "corpus/problems/noip14p6/spec.cp"
   ]

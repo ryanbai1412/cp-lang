@@ -15,11 +15,7 @@
   {"id": "4742924", "language": "CPP17", "result": "TLE", "time": 19.452775295, "memory_kb": 10364.0, "file": "corpus/submissions/4742924.cpp"}
  ],
  "cpp_ac": 3,
- "artifacts": {
-  "port": [
-   "corpus/problems/ioi21p1/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

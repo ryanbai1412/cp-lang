@@ -19,9 +19,6 @@
   "dream": [
    "corpus/problems/cco04p4/dream.cp"
   ],
-  "port": [
-   "corpus/problems/cco04p4/port.cp"
-  ],
   "spec": [
    "corpus/problems/cco04p4/spec.cp"
   ]

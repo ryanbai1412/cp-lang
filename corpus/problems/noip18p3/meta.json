@@ -9,9 +9,6 @@
   "dream": [
    "corpus/problems/noip18p3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/noip18p3/port.cp"
-  ],
   "spec": [
    "corpus/problems/noip18p3/spec.cp"
   ]

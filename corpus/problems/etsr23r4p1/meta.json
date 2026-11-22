@@ -8,11 +8,7 @@
   {"id": "5521420", "language": "CPP17", "result": "AC", "time": 5.776223223, "memory_kb": 3484.0, "file": "corpus/submissions/5521420.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/etsr23r4p1/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

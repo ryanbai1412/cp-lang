@@ -15,9 +15,6 @@
   "dream": [
    "corpus/problems/nccc10s4/dream.cp"
   ],
-  "port": [
-   "corpus/problems/nccc10s4/port.cp"
-  ],
   "spec": [
    "corpus/problems/nccc10s4/spec.cp"
   ]

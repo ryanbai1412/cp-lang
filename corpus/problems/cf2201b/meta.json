@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/cf2201b/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/cf2201b/port.cp"
   ]
  },
  "tags": [],

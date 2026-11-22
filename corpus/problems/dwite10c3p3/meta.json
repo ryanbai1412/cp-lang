@@ -5,11 +5,7 @@
   {"id": "4804312", "language": "CPP17", "result": "AC", "time": 0.003736535, "memory_kb": 3480.0, "file": "corpus/submissions/4804312.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/dwite10c3p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

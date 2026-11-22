@@ -11,11 +11,7 @@
   {"id": "5481972", "language": "CPP17", "result": "AC", "time": 21.54466811, "memory_kb": 124264.0, "file": "corpus/submissions/5481972.cpp"}
  ],
  "cpp_ac": 2,
- "artifacts": {
-  "port": [
-   "corpus/problems/sdoi17r2p1/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -8,11 +8,7 @@
   {"id": "6103125", "language": "CPP17", "result": "AC", "time": 1.882454654, "memory_kb": 46088.0, "file": "corpus/submissions/6103125.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/mccc6s3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

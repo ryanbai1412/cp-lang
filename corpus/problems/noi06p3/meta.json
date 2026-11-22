@@ -20,9 +20,6 @@
   "dream": [
    "corpus/problems/noi06p3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/noi06p3/port.cp"
-  ],
   "spec": [
    "corpus/problems/noi06p3/spec.cp"
   ]

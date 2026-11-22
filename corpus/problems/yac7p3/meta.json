@@ -10,9 +10,6 @@
   "dream": [
    "corpus/problems/yac7p3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/yac7p3/port.cp"
-  ],
   "spec": [
    "corpus/problems/yac7p3/spec.cp"
   ]

@@ -14,9 +14,6 @@
   "dream": [
    "corpus/problems/egoi22p3/dream.cp"
   ],
-  "port": [
-   "corpus/problems/egoi22p3/port.cp"
-  ],
   "spec": [
    "corpus/problems/egoi22p3/spec.cp"
   ]

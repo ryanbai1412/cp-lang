@@ -13,11 +13,7 @@
   {"id": "3890337", "language": "CPP17", "result": "AC", "time": 3.298050084, "memory_kb": 310480.0, "file": "corpus/submissions/3890337.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/noi20p4/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

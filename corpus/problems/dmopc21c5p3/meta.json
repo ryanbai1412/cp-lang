@@ -14,11 +14,7 @@
   {"id": "5032791", "language": "CPP17", "result": "AC", "time": 33.310694655, "memory_kb": 3720.0, "file": "corpus/submissions/5032791.cpp"}
  ],
  "cpp_ac": 2,
- "artifacts": {
-  "port": [
-   "corpus/problems/dmopc21c5p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

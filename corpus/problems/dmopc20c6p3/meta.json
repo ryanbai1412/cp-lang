@@ -11,11 +11,7 @@
   {"id": "3917634", "language": "CPP17", "result": "AC", "time": 9.697014415, "memory_kb": 37328.0, "file": "corpus/submissions/3917634.cpp"}
  ],
  "cpp_ac": 2,
- "artifacts": {
-  "port": [
-   "corpus/problems/dmopc20c6p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

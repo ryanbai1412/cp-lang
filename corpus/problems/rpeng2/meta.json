@@ -5,11 +5,7 @@
   {"id": "4810287", "language": "CPP17", "result": "AC", "time": 0.025784977, "memory_kb": 3540.0, "file": "corpus/submissions/4810287.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/rpeng2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

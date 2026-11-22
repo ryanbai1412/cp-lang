@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/wtf26c/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/wtf26c/port.cp"
   ]
  },
  "tags": [],

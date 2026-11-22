@@ -12,11 +12,7 @@
   {"id": "5072008", "language": "CPP17", "result": "AC", "time": 1.795968836, "memory_kb": 3544.0, "file": "corpus/submissions/5072008.cpp"}
  ],
  "cpp_ac": 5,
- "artifacts": {
-  "port": [
-   "corpus/problems/iati21a23/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -16,9 +16,6 @@
   "dream": [
    "corpus/problems/ccc18s4/dream.cp"
   ],
-  "port": [
-   "corpus/problems/ccc18s4/port.cp"
-  ],
   "spec": [
    "corpus/problems/ccc18s4/spec.cp"
   ]

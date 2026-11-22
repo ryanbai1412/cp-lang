@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/cf2066e/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/cf2066e/port.cp"
   ]
  },
  "tags": [],

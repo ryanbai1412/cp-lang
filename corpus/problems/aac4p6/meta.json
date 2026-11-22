@@ -15,9 +15,6 @@
   "dream": [
    "corpus/problems/aac4p6/dream.cp"
   ],
-  "port": [
-   "corpus/problems/aac4p6/port.cp"
-  ],
   "spec": [
    "corpus/problems/aac4p6/spec.cp"
   ]

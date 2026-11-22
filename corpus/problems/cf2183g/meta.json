@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/cf2183g/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/cf2183g/port.cp"
   ]
  },
  "tags": [],

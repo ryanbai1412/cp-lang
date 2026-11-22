@@ -9,9 +9,6 @@
  "artifacts": {
   "original": [
    "corpus/problems/ioi11p2/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/ioi11p2/port.cp"
   ]
  },
  "tags": [],

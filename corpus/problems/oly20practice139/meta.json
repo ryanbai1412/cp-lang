@@ -6,11 +6,7 @@
   {"id": "6415690", "language": "CPP17", "result": "AC", "time": 43.398694989, "memory_kb": 28584.0, "file": "corpus/submissions/6415690.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/oly20practice139/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -9,11 +9,7 @@
   {"id": "5199888", "language": "CPP17", "result": "AC", "time": 0.245724807, "memory_kb": 6880.0, "file": "corpus/submissions/5199888.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/egoi22p2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

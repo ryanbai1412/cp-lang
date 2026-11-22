@@ -6,11 +6,7 @@
   {"id": "4852187", "language": "CPP17", "result": "WA", "time": 35.197270021, "memory_kb": 23900.0, "file": "corpus/submissions/4852187.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/saspeed/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

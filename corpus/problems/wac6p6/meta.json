@@ -5,11 +5,7 @@
   {"id": "5122020", "language": "CPP17", "result": "AC", "time": 16.09019769, "memory_kb": 3416.0, "file": "corpus/submissions/5122020.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/wac6p6/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

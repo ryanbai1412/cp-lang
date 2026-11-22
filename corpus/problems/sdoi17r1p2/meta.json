@@ -13,9 +13,6 @@
   "dream": [
    "corpus/problems/sdoi17r1p2/dream.cp"
   ],
-  "port": [
-   "corpus/problems/sdoi17r1p2/port.cp"
-  ],
   "spec": [
    "corpus/problems/sdoi17r1p2/spec.cp"
   ]

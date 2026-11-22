@@ -9,9 +9,6 @@
   "dream": [
    "corpus/problems/mccc4j4/dream.cp"
   ],
-  "port": [
-   "corpus/problems/mccc4j4/port.cp"
-  ],
   "spec": [
    "corpus/problems/mccc4j4/spec.cp"
   ]

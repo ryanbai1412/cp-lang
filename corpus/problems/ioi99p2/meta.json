@@ -17,11 +17,7 @@
   {"id": "4899454", "language": "TEXT", "result": "WA", "time": 0.041291884, "memory_kb": 1740.0, "file": null}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/ioi99p2/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

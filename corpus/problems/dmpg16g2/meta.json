@@ -10,9 +10,6 @@
   "dream": [
    "corpus/problems/dmpg16g2/dream.cp"
   ],
-  "port": [
-   "corpus/problems/dmpg16g2/port.cp"
-  ],
   "spec": [
    "corpus/problems/dmpg16g2/spec.cp"
   ]

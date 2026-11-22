@@ -6,11 +6,7 @@
   {"id": "4242407", "language": "CPP17", "result": "WA", "time": 0.002529034, "memory_kb": 3468.0, "file": "corpus/submissions/4242407.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "port": [
-   "corpus/problems/aac5p3/port.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

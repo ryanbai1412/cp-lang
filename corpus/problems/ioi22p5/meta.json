@@ -22,9 +22,6 @@
   "dream": [
    "corpus/problems/ioi22p5/dream.cp"
   ],
-  "port": [
-   "corpus/problems/ioi22p5/port.cp"
-  ],
   "spec": [
    "corpus/problems/ioi22p5/spec.cp"
   ]

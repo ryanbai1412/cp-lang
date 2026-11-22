@@ -9,9 +9,6 @@
   ],
   "original": [
    "corpus/problems/cf1984e/orig.cpp"
-  ],
-  "port": [
-   "corpus/problems/cf1984e/port.cp"
   ]
  },
  "tags": [],
