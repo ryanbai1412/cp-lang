@@ -3235,6 +3235,7 @@ impl<'a> Lowerer<'a> {
                     self.bind_mut(p, field, mutable, out);
                 }
             }
+            ast::PatternKind::Var(inner) => self.bind_mut(inner, value, true, out),
             ast::PatternKind::Error => {}
             _ => self.unsupported(pat.span, "this pattern outside a `match`"),
         }
@@ -5325,6 +5326,7 @@ impl<'a> Lowerer<'a> {
                 self.declare(name, value.clone(), false, binds);
                 None
             }
+            ast::PatternKind::Var(inner) => self.pattern(inner, value, binds),
             ast::PatternKind::Literal(lit) => {
                 if let (ast::ExprKind::None, Ty::Opt(_)) = (&lit.kind, &value.ty) {
                     let present = Expr {

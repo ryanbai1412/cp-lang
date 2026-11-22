@@ -199,25 +199,31 @@ impl<'a> Checker<'a> {
     /// Binds the names in `pat` to parts of a value of type `ty`.
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
-            PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Tuple(_) => {
+            PatternKind::Tuple(items) => {
                 let effective_ty;
-                let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
-                    if let Ty::Pos(dom) = ty {
-                        if let Some(factors) = self.product_factors(dom) {
-                            effective_ty =
-                                Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
-                            &effective_ty
-                        } else {
-                            ty
-                        }
+                let bind_ty = if let Ty::Pos(dom) = ty {
+                    if let Some(factors) = self.product_factors(dom) {
+                        effective_ty = Ty::Tuple(factors.into_iter().map(|(_, t)| t).collect());
+                        &effective_ty
                     } else {
                         ty
                     }
                 } else {
                     ty
                 };
+                for (i, item) in items.iter().enumerate() {
+                    let item_ty = match bind_ty {
+                        Ty::Tuple(tys) if tys.len() == items.len() => tys[i].clone(),
+                        Ty::Record(fields) if fields.len() == items.len() => fields[i].1.clone(),
+                        Ty::Error => Ty::Error,
+                        _ => Ty::Unknown,
+                    };
+                    self.bind(item, &item_ty, mutable, keyword);
+                }
+            }
+            PatternKind::Name(_) | PatternKind::Domain(_) => {
                 let mut names = Vec::new();
-                pattern_types(pat, bind_ty, &mut |name, ty| names.push((name.to_string(), ty)));
+                pattern_types(pat, ty, &mut |name, ty| names.push((name.to_string(), ty)));
                 let mut spans = Vec::new();
                 name_spans(pat, &mut spans);
                 for ((name, ty), span) in names.into_iter().zip(spans) {
@@ -261,6 +267,7 @@ impl<'a> Checker<'a> {
                     self.bind(first, ty, mutable, keyword);
                 }
             }
+            PatternKind::Var(inner) => self.bind(inner, ty, true, "var"),
             PatternKind::Wildcard | PatternKind::Error => {}
         }
     }

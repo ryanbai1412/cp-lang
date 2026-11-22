@@ -225,6 +225,7 @@ impl Bounds {
                     PatternKind::Domain(n) => self.0.push((n.text.clone(), pat.span.start)),
                     PatternKind::Tuple(parts) | PatternKind::Or(parts) => parts.iter().for_each(|p| self.pattern(p)),
                     PatternKind::Variant { args, .. } => args.iter().for_each(|p| self.pattern(p)),
+                    PatternKind::Var(inner) => self.pattern(inner),
                     PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
                 }
             }
@@ -267,6 +268,7 @@ impl Bounds {
                         parts.iter().for_each(|p| self.names(p))
                     }
                     PatternKind::Variant { args, .. } => args.iter().for_each(|p| self.names(p)),
+                    PatternKind::Var(inner) => self.names(inner),
                     PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
                 }
             }

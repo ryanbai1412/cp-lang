@@ -723,6 +723,7 @@ impl<'a> Checker<'a> {
                     Some(())
                 }
                 PatternKind::Or(pats) => pats.iter().try_for_each(|p| named(p, variants, out)),
+                PatternKind::Var(inner) => named(inner, variants, out),
                 PatternKind::Literal(_) | PatternKind::Tuple(_) | PatternKind::Variant { .. } => Some(()),
                 PatternKind::Wildcard
                 | PatternKind::Name(_)

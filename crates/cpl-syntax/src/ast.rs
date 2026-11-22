@@ -585,6 +585,8 @@ pub enum PatternKind {
     },
     Literal(Box<Expr>),
     Or(Vec<Pattern>),
+    /// `var x` inside a destructuring pattern: `for (var left, v) in ...:`.
+    Var(Box<Pattern>),
     Error,
 }
 

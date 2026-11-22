@@ -1168,6 +1168,7 @@ fn var_range(
                 parts.iter().for_each(|p| names(p, out))
             }
             PatternKind::Variant { args, .. } => args.iter().for_each(|p| names(p, out)),
+            PatternKind::Var(inner) => names(inner, out),
             PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
         }
     }

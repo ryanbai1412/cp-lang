@@ -249,6 +249,7 @@ pub(crate) fn walk_pattern(v: &mut dyn Visitor, pat: &Pattern, how: Bind) {
             }
         }
         PatternKind::Literal(expr) => walk_expr(v, expr),
+        PatternKind::Var(inner) => walk_pattern(v, inner, Bind::Var),
         PatternKind::Domain(_) | PatternKind::Wildcard | PatternKind::Error => {}
     }
 }

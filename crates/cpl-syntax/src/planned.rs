@@ -271,13 +271,6 @@ pub const OPERATOR_VALUE: Planned = Planned {
     example: "let ops = (count: +, n: 2)\nprint(ops.n)\n",
 };
 
-pub const VAR_PATTERN: Planned = Planned {
-    feature: "a `var` binding inside a pattern, `(var a, b)`",
-    see: None,
-    now: "bind the name with `let`, then copy it into a `var`",
-    example: "for (var a, b) in [(1, 2)]:\n    a += b\n    print(a)\n",
-};
-
 pub const PLANNED: &[&Planned] = &[
     &BOUNDED_STR,
     &FRESH_TYPE,
@@ -297,7 +290,6 @@ pub const PLANNED: &[&Planned] = &[
     &DOMAIN_VALUE,
     &CUT_DOMAIN,
     &OPERATOR_VALUE,
-    &VAR_PATTERN,
     &INLINE_MATCH,
     &LET_IN,
     &BRACE_MAP,
