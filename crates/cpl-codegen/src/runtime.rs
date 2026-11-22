@@ -1583,6 +1583,7 @@ template <class T> ll key_pos(ListView<T> v, ll k) noexcept { ll i = k - v.k0, n
 template <class T> ll pos_key(ListView<T> v, ll p) noexcept { return v.k0 + (v.rev ? (ll)v.n - 1 - p : p); }
 template <class T> ListView<T> key_slice(ListView<T> v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (lo - v.k0), (size_t)(hi - lo), v.rev, lo); }
 template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }
+template <class T> ListView<T> key_slice(const std::vector<T>& v, ll lo, ll hi) { return key_slice(ListView<T>(v), lo, hi); }
 template <class T> ListView<T> list_rev(const std::vector<T>& v) noexcept { return ListView<T>(v, true); }
 template <class T> ListView<T> list_rev(ListView<T> v) noexcept { return v.reversed(); }
 template <class T> std::vector<T> to_list(const std::vector<T>& v) { return v; }

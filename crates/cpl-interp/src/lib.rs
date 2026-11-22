@@ -4422,6 +4422,13 @@ impl<'p, 'o> Interp<'p, 'o> {
             Builtin::KeySlice => {
                 let lo = values.next().unwrap_or_default().int();
                 let hi = values.next().unwrap_or_default().int();
+                let first = match first {
+                    Value::List(items) => Value::ListView(Rc::new(ListViewVal::whole(items, false))),
+                    Value::Array(a) if a.dims.len() == 1 => {
+                        Value::ListView(Rc::new(ListViewVal::whole(Rc::new(a.to_values()), false)))
+                    }
+                    other => other,
+                };
                 let (first_key, len) = match &first {
                     Value::ListView(v) => (v.lo as i64, v.len as i64),
                     Value::StrView(v) => (v.lo as i64, v.len as i64),

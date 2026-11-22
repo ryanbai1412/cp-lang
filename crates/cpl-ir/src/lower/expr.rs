@@ -3272,6 +3272,18 @@ impl<'a> Lowerer<'a> {
                 }
                 (out, (**elem).clone())
             }
+            // `a[V(2)..=V(4)][V(3)]`: a slice of an array keeps its
+            // positions, held as their ordinals.
+            Ty::ListView(elem) | Ty::MutView(elem)
+                if indices.len() == 1 && cpl_check::edition::is_v03() =>
+            {
+                let value = self.expr(&indices[0], None);
+                let key = match value.ty {
+                    Ty::Pos(_) | Ty::Bound(_) => self.cast(Cast::Ord, value, Ty::Int),
+                    _ => self.coerce(value, &Ty::Int, indices[0].span),
+                };
+                (vec![key], (**elem).clone())
+            }
             Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem) => {
                 (one(self, &Ty::Int), (**elem).clone())
             }
@@ -3584,6 +3596,8 @@ impl<'a> Lowerer<'a> {
                 },
                 Ty::ListView(e.clone()),
             ),
+            // R04b.1.2: a slice of an array keeps its positions as keys.
+            Ty::Array { elem, .. } => (Builtin::KeySlice, Ty::ListView(elem.clone())),
             _ => unreachable!(),
         };
         self.mk(ExprKind::Builtin(op, vec![base, lo, hi]), ty, span)
@@ -3605,10 +3619,14 @@ impl<'a> Lowerer<'a> {
 
     /// Lowers a slice by a runtime `Range<T>` value (`base[r]`) into a view or `List<T>`.
     fn slice_by_range_val(&mut self, base: Expr, range_val: Expr, span: Span) -> Expr {
-        if matches!(
-            base.ty,
-            Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)
-        ) {
+        let keyed_array = cpl_check::edition::is_v03()
+            && matches!(&base.ty, Ty::Array { dims, .. } if dims.len() == 1);
+        if keyed_array
+            || matches!(
+                base.ty,
+                Ty::Str | Ty::StrView | Ty::List(_) | Ty::ListView(_) | Ty::MutView(_)
+            )
+        {
             let base = self.hoist_view_base(base, span);
             let range_ty = range_val.ty.clone();
             let range_inner = match &range_ty {
@@ -3913,6 +3931,39 @@ impl<'a> Lowerer<'a> {
                 }
             };
             return self.slice_builtin(base, lo_e, hi_e, span);
+        }
+        // R04b.1.2: `a[V(2)..=V(4)]` keeps `a`'s positions as its keys.
+        if let Ty::Array { dims, .. } = &base.ty {
+            if let ([Dim::Pos(d)], true) = (&dims[..], cpl_check::edition::is_v03()) {
+                let d = *d;
+                let base = self.hoist_view_base(base, span);
+                let to_ord = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
+                    let v = lw.expr(e, None);
+                    let ord = match v.ty {
+                        Ty::Int => {
+                            let first = lw.domain_first_label(d, e.span);
+                            lw.mk(
+                                ExprKind::Binary(BinOp::Sub, Box::new(v), Box::new(first)),
+                                Ty::Int,
+                                e.span,
+                            )
+                        }
+                        Ty::Pos(_) => lw.cast(Cast::Ord, v, Ty::Int),
+                        Ty::Bound(_) => return lw.cast(Cast::Ord, v, Ty::Int),
+                        _ => return lw.coerce(v, &Ty::Int, e.span),
+                    };
+                    lw.int_add(ord, i64::from(is_end && *inclusive))
+                };
+                let lo_e = match lo {
+                    Some(l) => to_ord(self, l, false),
+                    None => self.int_lit(0, span),
+                };
+                let hi_e = match hi {
+                    Some(h) => to_ord(self, h, true),
+                    None => self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                };
+                return self.slice_builtin(base, lo_e, hi_e, span);
+            }
         }
         let is_str = base.ty == Ty::Str;
         // `a[2..=4]` of a `[1..=4]T` is said in the array's own indices.
