@@ -545,11 +545,12 @@ impl Server {
             "textDocument/codeLens" => {
                 let uri = uri_of(params)?;
                 let text = self.docs.get(uri).map(String::as_str).unwrap_or("");
+                // VS Code draws its own Run lenses but not the memory one.
                 let lenses = match (self.lenses, path_of_uri(uri)) {
-                    (true, Some(path)) => {
-                        let mut lenses = code_lenses(&path, text);
-                        lenses.extend(memory_lens(&mut self.db, uri, &path, text));
-                        lenses
+                    (lenses, Some(path)) => {
+                        let mut all = if lenses { code_lenses(&path, text) } else { Vec::new() };
+                        all.extend(memory_lens(&mut self.db, uri, &path, text));
+                        all
                     }
                     _ => Vec::new(),
                 };

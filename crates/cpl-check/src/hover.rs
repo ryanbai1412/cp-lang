@@ -656,10 +656,13 @@ fn structs_in(ty: &Ty, out: &mut Vec<String>) {
 }
 
 /// How many values an array's index type has at most: a domain's
-/// positions or a range's numbers.
+/// positions or cuts, or a range's numbers.
 fn index_size(index: &Ty, lookup: &mut Lookup) -> Option<i128> {
     match index {
-        Ty::Pos(name) => domain_size(name, lookup),
+        Ty::Pos(name) => match name.strip_suffix(".cuts") {
+            Some(domain) => domain_size(domain, lookup).map(|n| n + 1),
+            None => domain_size(name, lookup),
+        },
         Ty::Range {
             lo: Some(lo),
             hi: Some(hi),

@@ -5526,8 +5526,10 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   is for (`cpl_judge::resolve`). Clicking it runs `cpl judges` on the file.
   Values whose size nothing bounds, such as lists, are named as not counted
   rather than guessed. Arrays indexed by a bounded range (`[0..=x]Int`) now
-  get a max storage in hover too, as domain arrays did. Files under 1 KB get
-  no lens.
+  get a max storage in hover too, as domain arrays did, and so do arrays over
+  `V.cuts`. Files under 1 KB get no lens. VS Code, which draws its own Run
+  lenses, still gets this one from the server and runs `cpl.exec` in a
+  terminal, as Neovim does.
 - **Why.** Memory limit exceeded is decided by the arrays declared at the top,
   and their sizes follow from the input bounds; today a contestant
   multiplies them by hand. Locals and heap growth are not counted, and the

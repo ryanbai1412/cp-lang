@@ -2639,7 +2639,7 @@ fn a_code_lens_shows_the_memory_the_arrays_take_against_the_judge_limit() {
     let path = file.display().to_string();
     let uri = format!("file://{}", path.replace(' ', "%20"));
     let src = "// judge: codeforces\nlet n: 1..=200000 = read()\ndomain V = 1..=n\n\
-        var dist: [V]Int = 0\nvar grid: [V, 0..1000]Int = 0\nvar seen: List<V> = []\n\
+        var dist: [V.cuts]Int = 0\nvar grid: [V, 0..1000]Int = 0\nvar seen: List<V> = []\n\
         var order: List<V> = []\nprint(dist)\n";
     let lenses = |options: Value| -> Vec<(String, Vec<String>)> {
         let mut server = Server::new();
@@ -2691,5 +2691,6 @@ fn a_code_lens_shows_the_memory_the_arrays_take_against_the_judge_limit() {
     let title = "Memory: bounds allow 1.6 GB, over the 256 MB limit on codeforces, \
                  not counting order and 1 more";
     assert_eq!(memory, [(title.to_string(), s(&["judges", &path]))]);
+    assert_eq!(lenses(Value::Null), memory, "VS Code draws only the others");
     std::fs::remove_dir_all(dir).unwrap();
 }

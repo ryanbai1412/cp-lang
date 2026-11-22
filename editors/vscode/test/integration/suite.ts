@@ -169,6 +169,7 @@ const tests: [string, () => Promise<void>][] = [
             assert.deepEqual(
                 lenses.map(lens => [lens.range.start.line, lens.command?.title, lens.command?.command]),
                 [
+                    [0, 'Memory: bounds allow 3.2 MB of 256 MB on generic', 'cpl.exec'],
                     [0, '$(play) Run on i1', 'cp.runSample'],
                     [0, 'Run on all 2 samples', 'cp.runAllSamples'],
                     [0, 'Stress', 'cp.stress'],
@@ -177,6 +178,23 @@ const tests: [string, () => Promise<void>][] = [
                     [8, 'Trace', 'cp.trace'],
                 ],
             );
+        },
+    ],
+    [
+        "the server's memory lens shows next to the extension's own",
+        async () => {
+            const document = await open('memory.cp');
+            const lenses = await until('the memory lens', async () => {
+                const all = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+                    'vscode.executeCodeLensProvider',
+                    document.uri,
+                );
+                return all.some(lens => lens.command?.command === 'cpl.exec') ? all : undefined;
+            });
+            const memory = lenses.find(lens => lens.command?.command === 'cpl.exec')!.command!;
+            assert.equal(memory.title, 'Memory: bounds allow 1.6 MB of 256 MB on codeforces');
+            assert.deepEqual(memory.arguments, ['judges', document.uri.fsPath]);
+            assert.ok((await vscode.commands.getCommands(true)).includes('cpl.exec'));
         },
     ],
     [

@@ -76,6 +76,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 void vscode.window.showErrorMessage(`Replay: ${error instanceof Error ? error.message : String(error)}`);
             }
         }),
+        // The server's lenses name `cpl` arguments; run them in a terminal.
+        command('cpl.exec', (...args: string[]) => {
+            const binary = serverBinary();
+            if (binary) {
+                vscode.window.createTerminal({ name: 'cpl', shellPath: binary, shellArgs: args }).show();
+            }
+        }),
         command('cp.restartServer', () => client.restart()),
         command('cp.showOutput', () => output.show()),
         command('cp.clearOverlays', () => {
