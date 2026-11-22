@@ -55,7 +55,7 @@ function declaredDomains(lines: readonly string[]): Set<string> {
     return domains;
 }
 
-/** Extracts a balanced generic type name like `SegTree<V, Int>` or `LazySegTree<t.Pre, Int>` at the start of `rhs`. */
+/** Extracts a balanced generic type name like `SegTree<V, Int>` or `LazyTreap<t.Pre, Int>` at the start of `rhs`. */
 function inferConstructorType(rhs: string): string | undefined {
     const trimmed = rhs.trim();
     // Static factory calls like `Graph.undirected(...)`, `Graph.directed(...)`, `Graph.tree(...)`.

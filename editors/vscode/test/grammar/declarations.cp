@@ -91,7 +91,7 @@ pub fn link(mut g: Dsu<V>, r: Road; strict: Bool = false):
 //    ^^ storage.type.function.cp
 //       ^^^^^^^^^^ entity.name.function.cp
 
-struct Edge(u: V, v: V, w: Int = 0):
+struct Road(u: V, v: V, w: Int = 0):
 // <------ storage.type.struct.cp
 //     ^^^^ entity.name.type.struct.cp
 //          ^ variable.parameter.label.cp
@@ -140,7 +140,7 @@ trait Monoid<T>:
 //             ^ variable.parameter.label.cp
 //                                 ^^ entity.name.function.call.cp
 
-impl Ord for Edge:
+impl Ord for Road:
 // <---- storage.type.impl.cp
 //   ^^^ entity.name.type.cp
 //       ^^^ keyword.control.for.cp

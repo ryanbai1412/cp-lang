@@ -133,10 +133,10 @@ const tests: [string, () => Promise<void>][] = [
             assert.ok(!decorators.includes('domain'));
             const words = await labels(document.lineCount - 1, 1);
             // Only names in scope: `prev_permutation` needs a `use`, so the server leaves it out.
-            for (const word of ['domain', 'unchecked', 'lends', 'assert', 'print', 'bsearch_first', 'Int', 'F64', 'Interactor', 'Mod', 'SegTree', 'Rooted']) {
+            for (const word of ['domain', 'unchecked', 'lends', 'assert', 'print', 'reachable', 'MinHeap', 'Int', 'F64', 'Interactor', 'Mod', 'SegTree', 'Rooted']) {
                 assert.ok(words.includes(word), `no \`${word}\` among the completions`);
             }
-            for (const stale of ['INF', 'Float', 'I32', 'U8', 'ModR', 'defer', 'assume', 'where', 'inline', 'lend']) {
+            for (const stale of ['INF', 'Float', 'I32', 'U8', 'ModR', 'defer', 'assume', 'where', 'inline', 'lend', 'bsearch_first', 'LazySegTree']) {
                 assert.ok(!words.includes(stale), `stale/removed token \`${stale}\` appeared in completions`);
             }
             await vscode.commands.executeCommand('workbench.action.files.revert');

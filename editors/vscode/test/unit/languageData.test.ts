@@ -1,6 +1,6 @@
-// The extension's word lists and TextMate grammar must match what CP Lang
-// 0.2.2 really ships: the compiler's prelude, `stdlib/*.cp` and
-// `stdlib/prelude.cp`, with zero stale v1/v2.1 tokens.
+// The extension's word lists and TextMate grammar must match edition 0.3,
+// the one the server checks against: the compiler's prelude, `spec/std/*.cp`
+// and `spec/std/prelude.cp`, with zero stale v1/v2.1/v0.2 tokens.
 
 import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
@@ -42,6 +42,8 @@ const REMOVED_V21_BUILTINS = [
     'topo_prefix',
 ];
 
+const REMOVED_V02_NAMES = ['LazySegTree', 'DualSegTree', 'bsearch_first', 'bsearch_last'];
+
 const STALE_V1_DECORATORS = ['local', 'derive', 'once', 'wire', 'invariant', 'sample'];
 
 test('keyword budget matches CP Lang 0.2.2 (30 contestant + 4 library = 34)', () => {
@@ -68,7 +70,7 @@ function rustStrings(source: string, from: RegExp, end: string): string[] {
     return [...body.matchAll(/"([A-Za-z_][A-Za-z0-9_]*)"/g)].map(m => m[1]);
 }
 
-/** What CP Lang 0.2.2 really ships, read from the compiler and the standard library. */
+/** What edition 0.3 ships, read from the compiler and `spec/std`. */
 function shipped() {
     const prelude = fs.readFileSync(path.join(REPO_ROOT, 'crates', 'cpl-check', 'src', 'prelude.rs'), 'utf8');
     const typeNames = rustStrings(prelude, /const TYPE_NAMES: &\[&str\] = &\[/, '];');
@@ -78,7 +80,7 @@ function shipped() {
         ...typeNames,
     ]);
     const builtinTypes = new Set([...rustStrings(prelude, /pub fn ty\(/, '\n}\n'), ...typeNames]);
-    const stdlib = path.join(REPO_ROOT, 'stdlib');
+    const stdlib = path.join(REPO_ROOT, 'spec', 'std');
     const imported = new Set<string>();
     for (const use of fs.readFileSync(path.join(stdlib, 'prelude.cp'), 'utf8').matchAll(/^use std\.\w+\.\{([^}]*)\}/gm)) {
         for (const name of use[1].split(',').map(name => name.trim()).filter(Boolean)) {
@@ -90,11 +92,12 @@ function shipped() {
     const declared = new Map<string, string>();
     for (const file of fs.readdirSync(stdlib).filter(name => name.endsWith('.cp'))) {
         for (const line of fs.readFileSync(path.join(stdlib, file), 'utf8').split('\n')) {
-            const decl = /^pub (@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
+            const decl = /^(?:@get )?pub (?:@get )?(?:@\w+ )*(fn|struct|enum|trait|type|const|domain) ([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
+            const getter = /^(?:@get )?pub @get |^@get pub /.test(line);
             // `<fn>_of_pairs`/`<fn>_of_triples` are what `T.fn(list)` resolves to, not names to type.
             // A `_` name is the stdlib's own helper, not one a contestant types.
-            if (decl && !decl[3].startsWith('_') && (!decl[1] || imported.has(decl[3])) && !/_of_(pairs|triples)$/.test(decl[3])) {
-                declared.set(decl[3], decl[2]);
+            if (decl && !decl[2].startsWith('_') && (!getter || imported.has(decl[2])) && !/_of_(pairs|triples)$/.test(decl[2])) {
+                declared.set(decl[2], decl[1]);
             }
         }
     }
@@ -122,16 +125,16 @@ const UNLISTED_BUILTINS: Record<string, string> = {
     take: 'checked as a builtin, but cpl run has no lowering yet (std.seq.take needs a use)',
 };
 
-test('every table entry is a name CP Lang 0.2.2 ships: no phantom symbols', () => {
+test('every table entry is a name edition 0.3 ships: no phantom symbols', () => {
     const real = shipped();
     const phantoms = (names: readonly string[], known: (name: string) => boolean) => names.filter(name => !known(name));
     const fromPrelude = (name: string) => real.imported.has(name);
     assert.deepEqual(phantoms(PRELUDE_TYPES, name => real.builtinTypes.has(name)), [], 'PRELUDE_TYPES not in prelude.rs');
-    assert.deepEqual(phantoms(STDLIB_TYPES, name => real.stdlibTypes.includes(name)), [], 'STDLIB_TYPES not declared in stdlib/');
+    assert.deepEqual(phantoms(STDLIB_TYPES, name => real.stdlibTypes.includes(name)), [], 'STDLIB_TYPES not declared in spec/std/');
     assert.deepEqual(
         phantoms(PRELUDE_VALUES, name => real.builtinValues.has(name) || (fromPrelude(name) && real.stdlibFns.includes(name))),
         [],
-        'PRELUDE_VALUES neither built in nor imported by stdlib/prelude.cp',
+        'PRELUDE_VALUES neither built in nor imported by spec/std/prelude.cp',
     );
     assert.deepEqual(
         phantoms(STDLIB_VALUES, name => real.stdlibFns.includes(name) && !fromPrelude(name)),
@@ -141,7 +144,7 @@ test('every table entry is a name CP Lang 0.2.2 ships: no phantom symbols', () =
     assert.deepEqual(
         phantoms(PRELUDE_CONSTANTS, name => real.stdlibConsts.includes(name) && fromPrelude(name)),
         [],
-        'PRELUDE_CONSTANTS not a stdlib const imported by stdlib/prelude.cp',
+        'PRELUDE_CONSTANTS not a stdlib const imported by spec/std/prelude.cp',
     );
     assert.deepEqual(
         phantoms(STDLIB_CONSTANTS, name => real.stdlibConsts.includes(name) && !fromPrelude(name)),
@@ -153,13 +156,13 @@ test('every table entry is a name CP Lang 0.2.2 ships: no phantom symbols', () =
     }
 });
 
-test('every name CP Lang 0.2.2 ships is in a table: no missing symbols', () => {
+test('every name edition 0.3 ships is in a table: no missing symbols', () => {
     const real = shipped();
     const listed = new Set([...PRELUDE_TYPES, ...STDLIB_TYPES, ...PRELUDE_VALUES, ...STDLIB_VALUES, ...PRELUDE_CONSTANTS, ...STDLIB_CONSTANTS]);
     const builtins = [...real.builtinTypes, ...real.builtinValues].filter(name => !(name in UNLISTED_BUILTINS));
     assert.deepEqual(builtins.filter(name => !listed.has(name)), [], 'prelude.rs names missing from the tables');
     const stdlib = [...real.stdlibFns, ...real.stdlibTypes, ...real.stdlibConsts, ...real.imported];
-    assert.deepEqual(stdlib.filter(name => !listed.has(name)), [], 'stdlib/ names missing from the tables');
+    assert.deepEqual(stdlib.filter(name => !listed.has(name)), [], 'spec/std/ names missing from the tables');
     for (const name of Object.keys(UNLISTED_BUILTINS)) {
         assert.ok(real.builtinValues.has(name) || real.builtinTypes.has(name), `UNLISTED_BUILTINS has ${name}, which prelude.rs no longer knows`);
     }
@@ -169,6 +172,10 @@ test('stale v1 and removed v2.1 names stay out of the tables; decorators match 0
     for (const stale of STALE_V1_TYPES) {
         assert.ok(!PRELUDE_TYPES.includes(stale), `stale v1 type in PRELUDE_TYPES: ${stale}`);
         assert.ok(!STDLIB_TYPES.includes(stale), `stale v1 type in STDLIB_TYPES: ${stale}`);
+    }
+    for (const removed of REMOVED_V02_NAMES) {
+        const tables = [...PRELUDE_TYPES, ...STDLIB_TYPES, ...PRELUDE_VALUES, ...STDLIB_VALUES];
+        assert.ok(!tables.includes(removed), `v0.2 name in the tables: ${removed}`);
     }
     for (const removed of REMOVED_V21_BUILTINS) {
         assert.ok(!PRELUDE_VALUES.includes(removed), `removed v2.1 builtin in PRELUDE_VALUES: ${removed}`);

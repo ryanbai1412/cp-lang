@@ -1,6 +1,6 @@
 //! The VS Code extension's symbol tables (`editors/vscode/src/languageData.ts`)
 //! and its grammar (`syntaxes/cp.tmLanguage.json`) name exactly what the
-//! compiler's prelude and `stdlib/*.cp` ship. `npm test` in `editors/vscode`
+//! compiler's prelude and `spec/std/*.cp` (edition 0.3) ship. `npm test` in `editors/vscode`
 //! checks the same and more, but only in the full suite; this runs in
 //! `scripts/check.sh --fast`, so a new stdlib name cannot leave them behind.
 
@@ -70,7 +70,7 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     builtins.extend(rust_strings(&prelude, "pub fn ty(", "\n}\n"));
 
     let mut imported = BTreeSet::new();
-    let prelude_cp = read("stdlib/prelude.cp");
+    let prelude_cp = read("spec/std/prelude.cp");
     let mut rest = prelude_cp.as_str();
     while let Some(pos) = rest.find("use std.") {
         rest = &rest[pos + "use std.".len()..];
@@ -88,17 +88,19 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     // A `@get` fn is read as a field, so it is a name of its own only when
     // the prelude imports it.
     let mut declared: BTreeMap<String, &str> = BTreeMap::new();
-    let mut files: Vec<PathBuf> = fs::read_dir(root().join("stdlib"))
-        .expect("stdlib/")
+    let mut files: Vec<PathBuf> = fs::read_dir(root().join("spec/std"))
+        .expect("spec/std/")
         .map(|entry| entry.expect("an entry").path())
         .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
         .collect();
     files.sort();
     for file in files {
         for line in fs::read_to_string(&file).expect("a stdlib file").lines() {
+            let leading_get = line.starts_with("@get pub ");
+            let line = line.strip_prefix("@get ").unwrap_or(line);
             let Some(rest) = line.strip_prefix("pub ") else { continue };
             let mut words = rest.split(' ').peekable();
-            let mut getter = false;
+            let mut getter = leading_get;
             while let Some(attr) = words.peek().filter(|word| word.starts_with('@')) {
                 getter |= *attr == "@get";
                 words.next();
@@ -138,7 +140,7 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     let phantom: Vec<&String> = listed.difference(&shipped).collect();
     assert!(
         phantom.is_empty(),
-        "editors/vscode/src/languageData.ts lists {phantom:?}, which neither prelude.rs nor stdlib/*.cp declares"
+        "editors/vscode/src/languageData.ts lists {phantom:?}, which neither prelude.rs nor spec/std/*.cp declares"
     );
 
     let grammar = read("editors/vscode/syntaxes/cp.tmLanguage.json");

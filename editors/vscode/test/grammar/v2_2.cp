@@ -32,10 +32,10 @@ var st = SegTree<V, Int>(+, a)
 //       ^^^^^^^ support.type.stdlib.cp
 //                  ^^^ support.type.builtin.cp
 
-var lazy = LazySegTree<t.Pre, Int>(AddSum, init)
-//         ^^^^^^^^^^^ support.type.stdlib.cp
-//                            ^^^ support.type.builtin.cp
-//                                 ^^^^^^ support.constant.stdlib.cp
+var lazy = LazyTreap<t.Pre, Int>(affine, init)
+//         ^^^^^^^^^ support.type.stdlib.cp
+//                          ^^^ support.type.builtin.cp
+//                               ^^^^^^ support.constant.stdlib.cp
 
 let rmq = SparseTable<V, Int>(min, a)
 //        ^^^^^^^^^^^ support.type.stdlib.cp
@@ -72,7 +72,7 @@ for d in D:
 //       ^^^^ keyword.operator.assignment.compound.cp
 
 while prev_permutation(mut perm):
-//    ^^^^^^^^^^^^^^^^ support.function.stdlib.cp
+//    ^^^^^^^^^^^^^^^^ support.function.builtin.cp
 //                     ^^^ storage.modifier.mut.cp
     let k = ceil_div(a, b) + rand(1..=10)
 //          ^^^^^^^^ support.function.builtin.cp

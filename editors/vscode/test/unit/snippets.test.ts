@@ -1,4 +1,4 @@
-// Validates `snippets/cp.json`: every required CP Lang 0.2.2 contest snippet
+// Validates `snippets/cp.json`: every required edition 0.3 contest snippet
 // exists, has valid structure, contains zero stale v1/v2.1 tokens, and tokenizes
 // cleanly with the TextMate grammar.
 
@@ -27,7 +27,7 @@ function expandSnippet(body: readonly string[]): string {
         .replace(/\$\d+/g, '');
 }
 
-test('snippets/cp.json includes all required CP Lang 0.2.2 contest snippets', () => {
+test('snippets/cp.json includes all required edition 0.3 contest snippets', () => {
     const allPrefixes = new Set(
         Object.values(snippets).flatMap(entry => (Array.isArray(entry.prefix) ? entry.prefix : [entry.prefix])),
     );
@@ -36,7 +36,7 @@ test('snippets/cp.json includes all required CP Lang 0.2.2 contest snippets', ()
         '@!multitest',
         'multitest',
         '@brute',
-        'bsearch_first',
+        'first_true',
         'compress',
         'segtree',
         'segtree-monoid',
@@ -63,11 +63,11 @@ test('snippets/cp.json includes all required CP Lang 0.2.2 contest snippets', ()
         '@!multitest',
         '@memo',
         '@brute(',
-        'bsearch_first',
+        'first_true(',
         'compress(',
         'SegTree<',
         'Monoid(',
-        'LazySegTree<',
+        'act: ',
         'Action(',
         'Rooted<',
         '?Int = none',

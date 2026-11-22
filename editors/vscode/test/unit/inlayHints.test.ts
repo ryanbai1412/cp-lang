@@ -6,7 +6,7 @@ test('computeInlayHints infers v2.1 container constructors, compress, and domain
     const source = [
         'domain V = 1..=n',
         'let xs = compress(vals)',
-        'var st = LazySegTree<V, Int>(AddSum, a)',
+        'var st = LazyTreap<V, Int>(affine, a)',
         'let t = Rooted<V>(g, V.first)',
         'var seen = Marks<V>()',
         'let g = Graph.undirected(V, edges)',
@@ -21,7 +21,7 @@ test('computeInlayHints infers v2.1 container constructors, compress, and domain
         computeInlayHints(source).map(h => [h.line, h.character, h.label]),
         [
             [1, 6, ': Compressed'],
-            [2, 6, ': LazySegTree<V, Int>'],
+            [2, 6, ': LazyTreap<V, Int>'],
             [3, 5, ': Rooted<V>'],
             [4, 8, ': Marks<V>'],
             [5, 5, ': Graph'],

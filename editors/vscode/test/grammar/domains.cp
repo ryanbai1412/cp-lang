@@ -103,7 +103,7 @@ link(mut g, roads[e])
     fn at(self, s: Range<I>) lends mut Slice<I, T>:
 //                           ^^^^^ storage.modifier.lends.cp
 //                                 ^^^ storage.modifier.mut.cp
-//                                     ^^^^^ entity.name.type.cp
+//                                     ^^^^^ support.type.stdlib.cp
 
         @law disjoint(s, t) = s.hi <= t.lo or t.hi <= s.lo
 //      ^ punctuation.definition.decorator.cp

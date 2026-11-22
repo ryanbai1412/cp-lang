@@ -117,9 +117,9 @@ let d = dist[v] ?? -1
 //              ^^ keyword.operator.coalesce.cp
 //                 ^ keyword.operator.arithmetic.cp
 
-let f = bsearch_first(0..=hi, ok)!
-//      ^^^^^^^^^^^^^ support.function.builtin.cp
-//                               ^ keyword.operator.unwrap.cp
+let f = first_true(0..=hi, ok)!
+//      ^^^^^^^^^^ support.function.stdlib.cp
+//                            ^ keyword.operator.unwrap.cp
 
 let g = a.find(x)?
 //        ^^^^ entity.name.function.method.cp

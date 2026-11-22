@@ -6,19 +6,19 @@
       "fn ${1:dp}(${2:i}: ${3:V}) -> ${4:Int}:",
       "    ${0}"
     ],
-    "description": "CP Lang 0.2.2 @memo DP function (auto-dispatches flat vs salted hash table)"
+    "description": "@memo DP function (auto-dispatches flat vs salted hash table)"
   },
   "Binary search first true": {
-    "prefix": ["bsearch_first", "bsfirst"],
+    "prefix": ["first_true", "bsfirst"],
     "body": [
-      "let ${1:ans} = bsearch_first(${2:lo..=hi}, ${3:x} => ${4:ok(x)})"
+      "let ${1:ans} = (${2:lo..=hi}).first_true(${3:x} => ${4:ok(x)})"
     ],
     "description": "Find the smallest value in a range satisfying a monotone predicate"
   },
   "Binary search last true": {
-    "prefix": ["bsearch_last", "bslast"],
+    "prefix": ["last_true", "bslast"],
     "body": [
-      "let ${1:ans} = bsearch_last(${2:lo..=hi}, ${3:x} => ${4:ok(x)})"
+      "let ${1:ans} = (${2:lo..=hi}).last_true(${3:x} => ${4:ok(x)})"
     ],
     "description": "Find the largest value in a range satisfying a monotone predicate"
   },
@@ -50,12 +50,12 @@
     "description": "SegTree with a custom Monoid(id, op)"
   },
   "Lazy segment tree": {
-    "prefix": ["lazysegtree", "LazySegTree"],
+    "prefix": ["lazysegtree", "lazy"],
     "body": [
-      "var ${1:st} = LazySegTree<${2:V}, ${3:Int}>(${4|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, ${5:a})",
+      "var ${1:st} = SegTree<${2:V}, ${3:Int}>(${4|+,min,max|}, ${5:a}, act: ${6|add,assign,affine|})",
       "${0}"
     ],
-    "description": "Domain-indexed LazySegTree with built-in range Action"
+    "description": "Domain-indexed SegTree with range updates through a built-in Action"
   },
   "Lazy segment tree with custom Action": {
     "prefix": ["lazysegtree-action", "action", "Action"],
@@ -66,10 +66,10 @@
       "    (f, val, span) => ${4:apply(f, val, span)},",
       "    over: ${5|+,min,max|},",
       ")",
-      "var ${6:st} = LazySegTree<${7:V}, ${8:Int}>(${1:act}, ${9:a})",
+      "var ${6:st} = SegTree<${7:V}, ${8:Int}>(a: ${9:a}, act: ${1:act})",
       "${0}"
     ],
-    "description": "LazySegTree with 0.2.2 custom Action(id, compose(new_f, old_f), apply(f, val, span), over: op)"
+    "description": "SegTree with a custom Action(id, compose(new_f, old_f), apply(f, val, span), over: op)"
   },
   "Sparse table": {
     "prefix": ["sparsetable", "SparseTable"],
@@ -83,12 +83,12 @@
     "prefix": ["rooted", "hld", "Rooted"],
     "body": [
       "let ${1:t} = Rooted<${2:V}>(${3:g}, ${4:V.first})",
-      "var ${5:st} = LazySegTree<${1:t}.Pre, ${6:Int}>(${7|AddSum,AddMin,AddMax,AssignSum,AssignMin,AssignMax|}, [${1:t}.Pre] p => ${8:a}[${1:t}.at[p]])",
+      "var ${5:st} = SegTree<${1:t}.Pre, ${6:Int}>(${7|+,min,max|}, [${1:t}.Pre] p => ${8:a}[${1:t}.at[p]], act: ${9|add,assign,affine|})",
       "// Path query: ${1:t}.fold_path(u, v, ${5:st})",
       "// Subtree query: ${5:st}.fold(${1:t}.sub(u))",
       "${0}"
     ],
-    "description": "Rooted<V> tree with HLD preorder domain t.Pre and LazySegTree"
+    "description": "Rooted<V> tree with HLD preorder domain t.Pre and a SegTree with range updates"
   },
   "DSU with rollback": {
     "prefix": ["dsu", "Dsu"],
@@ -142,7 +142,7 @@
       "let ${4:a}: [${3:V}]Int = read()",
       "${0}"
     ],
-    "description": "CP Lang 0.2.2 file-level @!multitest divider (code above precomputes once; code below runs per test case)"
+    "description": "File-level @!multitest divider (code above precomputes once; code below runs per test case)"
   },
   "Tropical optional DP / Dijkstra": {
     "prefix": ["tropical", "dist", "dijkstra"],
