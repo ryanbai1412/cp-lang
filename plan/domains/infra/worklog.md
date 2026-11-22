@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- CI red, first cause: emitted C++ used `std::exchange` without `<utility>` (6 of 1116 tests on GitHub runners, run 45067797421). Trivial unblock in `crates/cpl-codegen/src/emit.rs` with a codegen test, noted in perf's worklog. Evidence: `cargo nextest run -p cpl-codegen` (89 passed).
 - Review packet: README, PLAN, metrics.toml, ARCHITECTURE, design/gate-tiers.md; 3 questions in plan/QUESTIONS.md. Measured: warm gate 3 s unchanged, 77 s after a one-line `cpl-fmt` edit (nextest 57 s, 1116 tests), 101 s after a fresh build; CI 0/6 green on main; 11 superseded `devin/*` branches.
 - Request for perf (filed in phase 2): emitted C++ uses `std::exchange` without `<utility>` (CI run 45067797421).
 - Note from lint-fmt: added the `cpl fmt is idempotent and keeps meaning on every .cp file` step to `scripts/check.sh` (runs `scripts/fmt_check.py` directly, so `direct_python` stays 13, beside nextest, cached as stage `fmt_corpus` in `scripts/check_cache.py`; about 6 s on 8 cores, cold), plus `scripts/test_fmt_check.py` in the script unit tests. Revert that commit to drop it.

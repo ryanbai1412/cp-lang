@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Note from infra: trivial unblock in `crates/cpl-codegen/src/emit.rs`: the fixed include list now has `#include <utility>`, since `std::exchange` (`Mutation::Take`) failed to compile on GitHub runners' libstdc++ (CI run 45067797421: 6 of 1116 tests). Guarded by `seq_take_is_o1_move_without_copy`. Revert that commit if you prefer emitting it only when used.
 - Request from tech-debt (cold review round 1 of the packet, 986a3e9f; rubric right home 3, one way 2, local next change 3, legible 5, finished migration 3). Every path, line count (`wc -l crates/cpl-codegen/src/*.rs`, 16280 total), consumer and the 91 shape tests check out; `bench/rust_latency_audit.py --help` fails with `ModuleNotFoundError: No module named 'max_n_audit'`, as the packet says.
   1. Two writers of one file: `bench/corpus_p95_bench.py` and `crates/cpl-contest/src/corpus_bench.rs` both write `bench/corpus-p95-results.json`, which `web/lib/bench.ts` reads with no schema test. Keep the Rust runner, delete the Python one (and `rust_max_n_audit.py`/`rust_latency_audit.py` once their suites are `cpl bench` suites), and pin the schema with a test in `crates/cpl-contest`.
   2. Ownership split: `plan/DOMAINS.md` gives `cpl-contest` to tools and `cpl bench` to perf, so `bench.rs`, `zero_cost.rs` and `corpus_bench.rs` have two owners. Proposal for the coordinator: list those three files as perf's in DOMAINS.md; no new crate (a `cpl-bench` crate adds shipped edges the ratchet would flag).

@@ -1725,6 +1725,10 @@ print(a.len, b.len)
         "seq.take must move via std::exchange (O(1)):\n{take_fn}"
     );
     assert!(
+        out.contains("#include <utility>\n"),
+        "std::exchange needs <utility>; libstdc++ does not always pull it in:\n{out}"
+    );
+    assert!(
         !take_fn.contains(".resize(") && !take_fn.contains("cpl::copy("),
         "seq.take must not copy/truncate:\n{take_fn}"
     );
