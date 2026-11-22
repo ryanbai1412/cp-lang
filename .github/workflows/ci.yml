@@ -52,11 +52,14 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build cpl
+        run: cargo build --release --bin cpl
+      # The build generates content/generated/ (from cpl), which typecheck reads.
+      - name: Build
+        run: pnpm --filter cp-lang-web build
       - name: Typecheck
         run: pnpm --filter cp-lang-web typecheck
       - name: Unit tests
         run: pnpm --filter cp-lang-web test
-      - name: Build
-        run: pnpm --filter cp-lang-web build
       - name: Installers are served
         run: test -s web/out/install.sh && test -s web/out/install.ps1

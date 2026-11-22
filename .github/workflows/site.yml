@@ -33,6 +33,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build cpl
+        run: cargo build --release --bin cpl
       - name: Build
         run: pnpm --filter cp-lang-web build
       - name: Check the secrets are set
