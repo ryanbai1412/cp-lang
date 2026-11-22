@@ -167,7 +167,7 @@ cpl stress a.cp --trace                     # on a failure: a.tests/stress-<seed
 
 A step is recorded at every change to a top-level variable, every `print`
 and every `debug(...)`. `debug("name", x, y)` is a named checkpoint: the
-solution and the file's `@brute(main)` fn are lined up wherever both ran
+solution and the file's `@alt(program)` fn are lined up wherever both ran
 the same one, and `cpl stress` prints the first that differs. `cpl build`
 leaves `debug(...)` out of the C++ entirely.
 

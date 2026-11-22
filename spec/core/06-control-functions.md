@@ -123,6 +123,8 @@ library or by this spec:
 - `@trusted:` blocks and `@cpp` items: the unsafe tier (chapter 9).
 - `@grader(...)`: judge entry points (chapter 10).
 - `@laws(sample: n)`: stress sampling of a type's laws.
+- `@tag(lit)` on an enum variant: the token it reads and prints as
+  (chapter 2).
 - `@droppable`: the result may be dropped without the unused-result
   lint. Dropping a non-unit result is that lint (a warning); dropping a
   `?T` is an error (R02.4.7). (R06.4.8)

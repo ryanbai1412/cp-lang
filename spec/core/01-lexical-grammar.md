@@ -287,9 +287,7 @@ extern fn ask(i: Int) -> Int              // provided by the judge
 ```
 
 Decorators are `@name` or `@name(args)` on the next item; the set is
-closed and documented (`@memo`, `@get`, `@test`, `@brute`, `@cache`,
-`@trusted`, `@cpp`, `@grader`, `@interactor`, `@laws`, `@tag`), plus `@!multitest` as the one
-file directive. Types, domains and structs may be declared inside a
+closed and listed in §6.4, plus `@!multitest` as the one file directive. Types, domains and structs may be declared inside a
 function body and use its runtime domains (decision 136). (R01.9.1)
 
 ## 1.10 Grammar
