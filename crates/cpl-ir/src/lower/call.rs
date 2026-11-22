@@ -714,7 +714,9 @@ impl<'a> Lowerer<'a> {
                             None,
                         );
                     }
-                    if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                    if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
+                        && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
+                    {
                         if let Some(pty) = self.probe_ty_silent(&arg.value) {
                             if let Some(pat_ty) = &p.ty {
                                 self.unify_ast_ty(pat_ty, &pty, tpl_mod, &gen_names, &mut inferred);
@@ -728,7 +730,9 @@ impl<'a> Lowerer<'a> {
             if new_params.is_none() {
                 self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
             }
-            if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+            if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
+                && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
+            {
                 if let Some(pty) = self.probe_ty_silent(&arg.value) {
                     self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
                 }
