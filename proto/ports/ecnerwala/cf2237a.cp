@@ -1,5 +1,8 @@
-// Codeforces 2237 A: sum of prefix minima of the array.
+// Codeforces 2237 A — Prefix Minima Sum
+//
+// Print the sum of prefix minima of `a[0..n]`.
+
 @!multitest
-let n: Int = read()
-let a: [0..n]Int = read()
+let n: 1..=200_000 = read()
+let a: [0..n]1..=10 ** 9 = read()
 print(scan(a, min).sum())
