@@ -6224,7 +6224,7 @@ impl<'a> Lowerer<'a> {
 
     /// `xs.find(x => ..)`: the first of a range, list or array the test
     /// holds for, `none` when there is none.
-    fn find_first(&mut self, value: Expr, elem: Ty, test: &ast::Expr, span: Span) -> Expr {
+    fn find_first(&mut self, value: Expr, elem: Ty, test: &ast::Expr, rev: bool, span: Span) -> Expr {
         let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
         let test = self.expect(test, &test_ty);
         let found_ty = Ty::opt(elem.clone());
@@ -6265,11 +6265,11 @@ impl<'a> Lowerer<'a> {
                     lo: *lo,
                     hi: *hi,
                     step: None,
-                    rev: false,
+                    rev,
                     closed: false,
                 },
-                _ if matches!(value.ty, Ty::Range(_)) => Iter::RangeVal(value, false),
-                _ => Iter::Seq(value, false),
+                _ if matches!(value.ty, Ty::Range(_)) => Iter::RangeVal(value, rev),
+                _ => Iter::Seq(value, rev),
             };
             out.push(Stmt::For(lid, item, iter, body));
             out.push(Stmt::Give(lw.local(found, span)));
@@ -8360,9 +8360,11 @@ impl<'a> Lowerer<'a> {
             // `xs.find(x => x > 3)` is the first element the test holds
             // for; `xs.find(3)` is where the value 3 is. Handled uniformly across
             // every `Indexed` sequence (`List`, `ListView`, 1D `[D]T`, `Str`, `StrView`, `Range`).
-            (ty, "find") if ty.is_indexed() && args.len() == 1 && self.is_test(&args[0].value) => {
+            (ty, "find" | "rfind")
+                if ty.is_indexed() && args.len() == 1 && self.is_test(&args[0].value) =>
+            {
                 let elem = ty.seq_elem().unwrap();
-                self.find_first(value, elem, &args[0].value, span)
+                self.find_first(value, elem, &args[0].value, method == "rfind", span)
             }
             (ty, "find" | "rfind")
                 if matches!(ty, Ty::Str | Ty::StrView)
@@ -8939,7 +8941,7 @@ impl<'a> Lowerer<'a> {
             // and stops there.
             (Ty::Range(elem), "find") if args.len() == 1 => {
                 let elem = (**elem).clone();
-                self.find_first(value, elem, &args[0].value, span)
+                self.find_first(value, elem, &args[0].value, false, span)
             }
             (Ty::Array { dims, elem }, "rev") if dims.len() == 1 && args.is_empty() => {
                 let elem = (**elem).clone();
