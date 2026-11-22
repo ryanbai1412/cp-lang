@@ -15,7 +15,7 @@ use std.algebra.{Monoid}
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
-/// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`. O(n).
+/// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`.
 ///
 /// cost: O(n)
 /// empty: `T.one`
@@ -32,7 +32,7 @@ pub fn prod<S: Seq, T>(self: S) -> T = todo
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
 pub fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U = todo
 
-/// The average of `of` over the elements as `F64`; `None` when empty. O(n).
+/// The average of `of` over the elements as `F64`; `None` when empty.
 ///
 /// cost: O(n)
 /// empty: `None`
@@ -52,7 +52,7 @@ pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64 = todo
 /// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
 pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 
-/// The greatest element by `by`, the first on ties; `None` when empty. O(n).
+/// The greatest element by `by`, the first on ties; `None` when empty.
 ///
 /// cost: O(n)
 /// empty: `None`
@@ -61,7 +61,7 @@ pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 /// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
 pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 
-/// How many elements satisfy `p`. O(n).
+/// How many elements satisfy `p`.
 ///
 /// cost: O(n)
 /// empty: `0`
@@ -69,7 +69,7 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T = todo
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
 pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
 
-/// Whether some element satisfies `p`; stops at the first. O(n).
+/// Whether some element satisfies `p`; stops at the first.
 ///
 /// cost: O(n), stopping at the first match
 /// empty: `false`
@@ -77,7 +77,7 @@ pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int = todo
 /// example: `[1, 2].any(x => x > 1) == true`
 pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 
-/// Whether every element satisfies `p`; stops at the first that doesn't. O(n).
+/// Whether every element satisfies `p`; stops at the first that doesn't.
 ///
 /// cost: O(n), stopping at the first failure
 /// empty: `true`
@@ -85,7 +85,7 @@ pub fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 /// example: `[1, 2].all(x => x > 1) == false`
 pub fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool = todo
 
-/// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`. O(n).
+/// Whether `self` is non-decreasing (optionally under key `by:`). Works on any `Seq`.
 ///
 /// cost: O(n)
 /// empty: `true`; a single element is sorted too
@@ -290,7 +290,7 @@ pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V) = todo
 /// example: `var a = [1, 2, 3, 4]; a.rotate_left(1); a == [2, 3, 4, 1]`
 pub fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None) = todo
 
-/// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`. O(n).
+/// Rotate `self` right by `k` in place (or only the subrange `range` when given). Works on any `IndexedMut`.
 ///
 /// cost: O(n), O(1) extra space
 /// empty: does nothing
@@ -308,7 +308,7 @@ pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = Non
 /// example: `[1, 2, 3].rotated_left(-1) == [3, 1, 2]`
 pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T> = todo
 
-/// A new list rotated right by `k`. Works on any `Seq`. O(n).
+/// A new list rotated right by `k`. Works on any `Seq`.
 ///
 /// cost: O(n)
 /// empty: `[]` for any `k`
@@ -372,7 +372,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `let (domain C, xs) = compress([30, 10]); xs.get(C.first!) == 10`
     pub fn get(self, i: D) -> T = todo
 
-    /// The compressed values over a range `r` of `xs.D`, as a list. O(r.len).
+    /// The compressed values over a range `r` of `xs.D`, as a list.
     ///
     /// cost: O(r.len)
     /// empty: `[]` for an empty `r`
@@ -388,7 +388,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `compress([5, 5, 7]).1.len == 2`
     pub @get fn len(self) -> Int = todo
 
-    /// The index of `val`, which must be one of the compressed values. O(log n).
+    /// The index of `val`, which must be one of the compressed values.
     ///
     /// cost: O(log n)
     /// ties: none: values are distinct
@@ -396,21 +396,21 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `let (domain C, xs) = compress([30, 10]); xs.at(30) == C.last!`
     pub fn at(self, val: T) -> D = todo
 
-    /// The index of `val` if it was compressed, or `None`. O(log n).
+    /// The index of `val` if it was compressed, or `None`.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `compress([30, 10]).1.try_at(20) == None`
     pub fn try_at(self, val: T) -> ?D = todo
 
-    /// Whether `val` is one of the compressed values. O(log n).
+    /// Whether `val` is one of the compressed values.
     ///
     /// cost: O(log n)
     /// traps: never
     /// example: `compress([30, 10]).1.contains(10) == true`
     pub fn contains(self, val: T) -> Bool = todo
 
-    /// The first index whose value is `>= val`, or `None`. O(log n).
+    /// The first index whose value is `>= val`, or `None`.
     ///
     /// cost: O(log n)
     /// ties: none: values are distinct
@@ -418,7 +418,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `let (domain C, xs) = compress([10, 30]); xs.first_ge(20) == Some(C.last!)`
     pub fn first_ge(self, val: T) -> ?D = todo
 
-    /// The first index whose value is `> val`, or `None`. O(log n).
+    /// The first index whose value is `> val`, or `None`.
     ///
     /// cost: O(log n)
     /// ties: none: values are distinct
@@ -426,7 +426,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `let (domain C, xs) = compress([10, 30]); xs.first_gt(30) == None`
     pub fn first_gt(self, val: T) -> ?D = todo
 
-    /// The last index whose value is `<= val`, or `None`. O(log n).
+    /// The last index whose value is `<= val`, or `None`.
     ///
     /// cost: O(log n)
     /// ties: none: values are distinct
@@ -434,7 +434,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// example: `let (domain C, xs) = compress([10, 30]); xs.last_le(20) == Some(C.first!)`
     pub fn last_le(self, val: T) -> ?D = todo
 
-    /// The last index whose value is `< val`, or `None`. O(log n).
+    /// The last index whose value is `< val`, or `None`.
     ///
     /// cost: O(log n)
     /// ties: none: values are distinct
@@ -603,7 +603,7 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D> =
 /// example: `(2..5).ends == (2, 5)`
 pub @get fn ends<D>(self: Range<D>) -> (Int, Int) = todo
 
-/// First index in sorted `self` with `by(self[i]) > target`, or `None`. O(log n).
+/// First index in sorted `self` with `by(self[i]) > target`, or `None`.
 ///
 /// cost: O(log n)
 /// empty: `None`
@@ -612,7 +612,7 @@ pub @get fn ends<D>(self: Range<D>) -> (Int, Int) = todo
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
 pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = todo
 
-/// Last index in sorted `self` with `by(self[i]) < target`, or `None`. O(log n).
+/// Last index in sorted `self` with `by(self[i]) < target`, or `None`.
 ///
 /// cost: O(log n)
 /// empty: `None`
@@ -633,7 +633,7 @@ pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D = todo
 /// example: `[2, 0, 1].inverse() == [1, 2, 0]`
 pub fn inverse<I, V>(self: [I]V) -> [V]I = todo
 
-/// Function composition: `compose(f, g)[a] == g[f[a]]`. O(|A|).
+/// Function composition: `compose(f, g)[a] == g[f[a]]`.
 ///
 /// cost: O(|A|)
 /// empty: an empty array
@@ -642,7 +642,7 @@ pub fn inverse<I, V>(self: [I]V) -> [V]I = todo
 /// example: `compose([1, 0], [5, 6]) == [6, 5]`
 pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = todo
 
-/// Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element. O(|V|).
+/// Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.
 ///
 /// cost: O(|V|)
 /// empty: `[]`
@@ -651,7 +651,7 @@ pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = todo
 /// example: `perm_cycles([1, 0, 2]) == [[0, 1], [2]]`
 pub fn perm_cycles<V>(p: [V]V) -> List<List<V>> = todo
 
-/// `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition. O(|V|).
+/// `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.
 ///
 /// cost: O(|V|)
 /// empty: an empty array
@@ -660,7 +660,7 @@ pub fn perm_cycles<V>(p: [V]V) -> List<List<V>> = todo
 /// example: `perm_pow([1, 2, 0], 2) == [2, 0, 1]`
 pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V = todo
 
-/// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. Works on any `Seq`. O(n log n).
+/// Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`. Works on any `Seq`.
 ///
 /// cost: O(n log n)
 /// empty: `0`
@@ -722,7 +722,7 @@ pub fn clone<T>(self: T) -> T = todo
 /// example: `var a = [1, 2]; a.take_all() == [1, 2] and a == []`
 pub fn take_all<T>(mut self: List<T>) -> List<T> = todo
 
-/// Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one. O(n).
+/// Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.
 ///
 /// cost: O(n - i)
 /// traps: when `i` is not in `0..=self.len`
@@ -757,19 +757,19 @@ pub struct Slice<S>():
     /// example: `[5, 6, 7][1..].keys == 1..3`
     /// order: increasing
     @get pub fn keys<K>(self) -> Range<K> = todo
-    /// O(1).
+    ///
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3][1..].len == 2`
     @get pub fn len(self) -> Int = todo
-    /// O(1).
+    ///
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = todo
-    /// O(1) per step.
+    ///
     ///
     /// cost: O(1) per step
     /// empty: yields nothing
@@ -1141,7 +1141,7 @@ pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range
 /// example: `sorted_union([1, 3], [2, 3]) == [1, 2, 3]`
 pub fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T> = todo
 
-/// O(|a| + |b|), O(|a| + |b|) memory. Sorted intersection of two sorted sequences (preserving minimum multiplicity).
+///
 ///
 /// cost: O(|a| + |b|), O(|a| + |b|) memory
 /// empty: `[]`
@@ -1489,7 +1489,7 @@ fn cyclic_pairs_close_the_ring() = todo
 /// example: `[3, 9, 2, 9].argmax() == Some(1)`
 pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x) -> ?D = todo
 
-/// The index of the first smallest value (optionally under key `by:`), or `None` when empty. O(n).
+/// The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 ///
 /// cost: O(n)
 /// empty: `None`
@@ -1539,7 +1539,7 @@ fn scan_prod_and_rotate_method_syntax() = todo
 /// example: `(u: 1, v: 2).rev == (u: 2, v: 1)`
 pub @get fn rev<A>(self: (A, A)) -> (A, A) = todo
 
-/// Maximal pieces where every adjacent pair links: `a.runs(link: (x, y) => y == x + 1)`. O(n).
+/// Maximal pieces where every adjacent pair links: `a.runs(link: (x, y) => y == x + 1)`.
 ///
 /// cost: O(n)
 /// empty: yields nothing
@@ -1548,7 +1548,7 @@ pub @get fn rev<A>(self: (A, A)) -> (A, A) = todo
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs_linked((x, y) => y == x + 1)] == [2, 3]`
 pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice<S> = todo
 
-/// Pieces between elements where `sep` holds; separators excluded, empty pieces kept. O(n).
+/// Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
 ///
 /// cost: O(n)
 /// empty: yields one empty piece
@@ -1569,7 +1569,7 @@ pub enum Anchor: Start, End
 /// ties: none: each key has one longest piece
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never in release; debug traps when `ok` fails on a single element after a shrink
-/// example: `[1, 1, 2].maximal(state: Distinct(), ok: s => s.len <= 1).map(w => w.len) == [1, 2, 1]`
+/// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
 pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Slice<[D]T> = todo
 
 /// For each right end, the shortest piece ending there that is `ok`, or none, keyed by that
@@ -1580,7 +1580,7 @@ pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor =
 /// ties: none: each key has one shortest piece
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never
-/// example: `[1, 2, 3].minimal(state: Sum(), ok: s => s.sum >= 3).map(w => w.map(.len)) == [None, Some(2), Some(1)]`
+/// example: `[1, 2, 3].minimal(state: Window(+), ok: w => (w.all ?? 0) >= 3).map(w => w.map(.len)) == [None, Some(2), Some(1)]`
 pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Slice<[D]T> = todo
 
 /// O(1) to make. `a` read as a cycle: windows and two pointers wrap around the end, and every
@@ -1602,14 +1602,14 @@ pub struct Ring<D, T>(src: [D]T):
     /// example: `[1, 2, 3].ring.step(0, -1) == 2`
     pub fn step(self, i: D, d: Int) -> D = todo
 
-    /// The position after `i`, wrapping. O(1).
+    /// The position after `i`, wrapping.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `[1, 2, 3].ring.next(2) == 0`
     pub fn next(self, i: D) -> D = todo
 
-    /// The position before `i`, wrapping. O(1).
+    /// The position before `i`, wrapping.
     ///
     /// cost: O(1)
     /// traps: never
@@ -1625,7 +1625,7 @@ pub struct Ring<D, T>(src: [D]T):
     /// example: `[1, 2, 3].ring.from(1).collect() == [1, 2, 0]`
     pub fn from(self, i: D) -> yields D = todo
 
-    /// The `len` positions from `start` on, wrapping (`len <= n`). O(1).
+    /// The `len` positions from `start` on, wrapping (`len <= n`).
     ///
     /// cost: O(1)
     /// empty: an empty span when `len == 0`
@@ -1650,7 +1650,7 @@ pub struct Ring<D, T>(src: [D]T):
     /// empty: an empty array
     /// order: keyed by `D`, by last element
     /// traps: never
-    /// example: `[1, 1, 2].ring.maximal(state: Distinct(), ok: s => s.len <= 2).map(w => w.len) == [3, 3, 3]`
+    /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
     /// ties: none: each last element has one longest piece
     pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T> = todo
 
@@ -1661,14 +1661,14 @@ pub struct Ring<D, T>(src: [D]T):
     /// empty: an empty array
     /// order: keyed by `D`, by last element
     /// traps: never
-    /// example: `[2, 0, 1].ring.minimal(state: Sum(), ok: s => s.sum >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
+    /// example: `[2, 0, 1].ring.minimal(state: Window(+), ok: w => (w.all ?? 0) >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
     /// ties: none: each last element has one shortest piece
     pub fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T> = todo
 
 /// A run of positions of `D` read cyclically, possibly wrapping past the last position, at most
 /// `D.count` of them. The keys-only half of a `RingSlice`, so it needs no array.
 pub struct RingRange<D>():
-    /// O(1).
+    ///
     ///
     /// cost: O(1)
     /// traps: never
@@ -1697,7 +1697,7 @@ pub struct RingRange<D>():
     /// example: `[1, 2, 3].ring.span(2, 2).keys.collect() == [2, 0]`
     pub @get fn keys(self) -> yields D = todo
 
-    /// O(1).
+    ///
     ///
     /// cost: O(1)
     /// traps: never
@@ -1713,7 +1713,7 @@ pub struct RingSlice<D, T>():
     /// example: `[1, 2, 3].ring.windows(2).first!.range.len == 2`
     pub @get fn range(self) -> RingRange<D> = todo
 
-    /// O(1).
+    ///
     ///
     /// cost: O(1)
     /// traps: never
@@ -1764,7 +1764,7 @@ pub fn valleys<D, T>(self: [D]T) -> yields Range<D> = todo
 /// example: `[2, 1, 1].spans() == [0..1, 0..3, 2..3]`
 pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D> = todo
 
-/// Nearest earlier position with a smaller key (`strict: false`: smaller or equal). O(n).
+/// Nearest earlier position with a smaller key (`strict: false`: smaller or equal).
 ///
 /// cost: O(n)
 /// empty: an empty array
@@ -1774,7 +1774,7 @@ pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D> = todo
 /// example: `[2, 1, 3].prev_smaller() == [None, None, Some(1)]`
 pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D = todo
 
-/// Nearest later position with a smaller key. O(n).
+/// Nearest later position with a smaller key.
 ///
 /// cost: O(n)
 /// empty: an empty array
@@ -1784,7 +1784,7 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 /// example: `[2, 1, 3].next_smaller() == [Some(1), None, None]`
 pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D = todo
 
-/// Nearest earlier position with an equal key. O(n) expected.
+/// Nearest earlier position with an equal key.
 ///
 /// cost: O(n) expected
 /// empty: an empty array
@@ -1793,7 +1793,7 @@ pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 /// example: `[1, 2, 1].prev_same() == [None, None, Some(0)]`
 pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
 
-/// Nearest later position with an equal key. O(n) expected.
+/// Nearest later position with an equal key.
 ///
 /// cost: O(n) expected
 /// empty: an empty array

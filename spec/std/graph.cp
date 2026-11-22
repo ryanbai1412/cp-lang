@@ -722,28 +722,28 @@ pub struct TwoSat<X>:
     ///
     /// cost: O(|X|)
     /// traps: never
-    /// example: `domain X = 0..2; TwoSat<X>.new().solve() != None`
+    /// example: `domain X = 0..2; TwoSat<X>().solve() != None`
     pub fn new() -> TwoSat<X> = todo
 
     /// Adds the clause "at least one of `a`, `b` holds".
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `domain X = 0..2; var s = TwoSat<X>.new(); s.add_or(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), false)); s.solve() == Some([false, true])`
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_or(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), false)); s.solve() == Some([false, true])`
     pub fn add_or(mut self, a: Lit<X>, b: Lit<X>) = todo
 
     /// Adds the clause "`a` holds" (`add_or(a, a)`).
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `domain X = 0..1; var s = TwoSat<X>.new(); s.must(Lit(X(0), true)); s.must(Lit(X(0), false)); s.solve() == None`
+    /// example: `domain X = 0..1; var s = TwoSat<X>(); s.must(Lit(X(0), true)); s.must(Lit(X(0), false)); s.solve() == None`
     pub fn must(mut self, a: Lit<X>) = todo
 
     /// Adds "if `a` holds then `b` holds" (`add_or(a.flip, b)`).
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `domain X = 0..2; var s = TwoSat<X>.new(); s.implies(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, true])`
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, true])`
     pub fn implies(mut self, a: Lit<X>, b: Lit<X>) = todo
 
     /// Adds "at most one of `lits` holds". One helper variable per literal ("some literal so
@@ -753,21 +753,21 @@ pub struct TwoSat<X>:
     /// cost: O(k) amortized
     /// empty: `[]` adds nothing
     /// traps: never
-    /// example: `domain X = 0..2; var s = TwoSat<X>.new(); s.at_most_one([Lit(X(0), true), Lit(X(1), true)]); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.at_most_one([Lit(X(0), true), Lit(X(1), true)]); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
     pub fn at_most_one(mut self, lits: List<Lit<X>>) = todo
 
     /// Adds "exactly one of `a`, `b` holds" (two clauses).
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `domain X = 0..2; var s = TwoSat<X>.new(); s.add_xor(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_xor(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
     pub fn add_xor(mut self, a: Lit<X>, b: Lit<X>) = todo
 
     /// Adds "`a` and `b` hold together or not at all" (two clauses).
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `domain X = 0..2; var s = TwoSat<X>.new(); s.add_eq(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(1), false)); s.solve() == Some([false, false])`
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_eq(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(1), false)); s.solve() == Some([false, false])`
     pub fn add_eq(mut self, a: Lit<X>, b: Lit<X>) = todo
 
     /// An assignment satisfying every clause, or `None` if there is none.
@@ -780,7 +780,7 @@ pub struct TwoSat<X>:
     /// cost: O(|X| + clauses)
     /// order: keyed by `X`
     /// traps: never
-    /// example: `domain X = 0..1; var s = TwoSat<X>.new(); s.implies(Lit(X(0), true), Lit(X(0), false)); s.solve() == Some([false])`
+    /// example: `domain X = 0..1; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(0), false)); s.solve() == Some([false])`
     pub fn solve(self) -> ?[X]Bool = todo
 
     fn clause(mut self, a: Int, b: Int) = todo
@@ -1157,14 +1157,14 @@ impl<V> Functional<V>:
     /// cost: O(n log n)
     /// empty: an empty `V` gives an empty graph
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional.new(nx).cycle_len(4) == 3`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
     pub fn new(next: [V]V) -> Functional<V> = todo
 
     /// Does `v` lie on a cycle?
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional.new(nx); f.on_cycle(1) and not f.on_cycle(3)`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.on_cycle(1) and not f.on_cycle(3)`
     pub fn on_cycle(self, v: V) -> Bool = todo
 
     /// The first cycle vertex reached from `v` (`v` itself on a cycle): the root of the
@@ -1172,21 +1172,21 @@ impl<V> Functional<V>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional.new(nx); f.root_of(4) == 0 and f.root_of(1) == 1`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.root_of(4) == 0 and f.root_of(1) == 1`
     pub fn root_of(self, v: V) -> V = todo
 
     /// The steps from `v` to `root_of(v)`; `0` on a cycle.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional.new(nx); f.depth(4) == 2 and f.depth(0) == 0`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.depth(4) == 2 and f.depth(0) == 0`
     pub fn depth(self, v: V) -> Int = todo
 
     /// The length of the cycle `v` eventually reaches.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional.new(nx).cycle_len(4) == 3`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
     pub fn cycle_len(self, v: V) -> Int = todo
 
     /// The vertex `k` steps after `v`, by binary lifting: `after(v, 0) == v`. Never `None`,
@@ -1194,7 +1194,7 @@ impl<V> Functional<V>:
     ///
     /// cost: O(log k)
     /// traps: when `k < 0`
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional.new(nx); f.after(4, 5) == 0 and f.after(4, 0) == 4`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.after(4, 5) == 0 and f.after(4, 0) == 4`
     pub fn after(self, v: V, k: Int) -> V = todo
 
     /// The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if
@@ -1202,8 +1202,8 @@ impl<V> Functional<V>:
     ///
     /// cost: O(log n)
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional.new(nx); f.jump_while(4, u => f.on_cycle(u)) == Some(0)`
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional.new(nx); f.jump_while(0, u => u == 4) == None`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.jump_while(4, u => f.on_cycle(u)) == Some(0)`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.jump_while(0, u => u == 4) == None`
     pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V = todo
 
     /// The fewest steps from `a` to `b`, or `None` if the walk from `a` never reaches `b`;
@@ -1211,7 +1211,7 @@ impl<V> Functional<V>:
     ///
     /// cost: O(log n)
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional.new(nx); f.dist(4, 1) == Some(3) and f.dist(2, 0) == Some(1) and f.dist(1, 4) == None`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.dist(4, 1) == Some(3) and f.dist(2, 0) == Some(1) and f.dist(1, 4) == None`
     pub fn dist(self, a: V, b: V) -> ?Int = todo
 
     /// Every cycle once, each in walk order from its smallest vertex.
@@ -1219,8 +1219,8 @@ impl<V> Functional<V>:
     /// cost: O(n)
     /// order: cycles by smallest vertex
     /// traps: never
-    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional.new(nx).cycles() == [[0, 1, 2]]`
-    /// example: `domain V = 0..3; let nx: [V]V = [0, 2, 1]; Functional.new(nx).cycles() == [[0], [1, 2]]`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycles() == [[0, 1, 2]]`
+    /// example: `domain V = 0..3; let nx: [V]V = [0, 2, 1]; Functional(nx).cycles() == [[0], [1, 2]]`
     pub fn cycles(self) -> List<List<V>> = todo
 
 /// O(log n) amortized per edge: 2-edge-connectivity under edge insertions.
@@ -1232,7 +1232,7 @@ impl<V> IncrementalBridges<V>:
     ///
     /// cost: O(n)
     /// traps: never
-    /// example: `domain V = 0..2; var b = IncrementalBridges<V>.new(); not b.same(V(0), V(1))`
+    /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); not b.same(V(0), V(1))`
     pub fn new() -> IncrementalBridges<V> = todo
 
     /// Adds the undirected edge `u - v`. A loop changes nothing; a parallel edge makes its
@@ -1240,21 +1240,21 @@ impl<V> IncrementalBridges<V>:
     ///
     /// cost: O(log n) amortized
     /// traps: never
-    /// example: `domain V = 0..2; var b = IncrementalBridges<V>.new(); b.add(V(0), V(1)); b.add(V(0), V(1)); b.two_edge_same(V(0), V(1))`
+    /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(0), V(1)); b.two_edge_same(V(0), V(1))`
     pub fn add(mut self, u: V, v: V) = todo
 
     /// Are `u` and `v` joined by two edge-disjoint paths? True for `u == v`.
     ///
     /// cost: O(alpha)
     /// traps: never
-    /// example: `domain V = 0..3; var b = IncrementalBridges<V>.new(); b.add(V(0), V(1)); b.add(V(1), V(2)); let before = b.two_edge_same(V(0), V(2)); b.add(V(2), V(0)); not before and b.two_edge_same(V(0), V(2))`
+    /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); let before = b.two_edge_same(V(0), V(2)); b.add(V(2), V(0)); not before and b.two_edge_same(V(0), V(2))`
     pub fn two_edge_same(mut self, u: V, v: V) -> Bool = todo
 
     /// Are `u` and `v` connected?
     ///
     /// cost: O(alpha)
     /// traps: never
-    /// example: `domain V = 0..3; var b = IncrementalBridges<V>.new(); b.add(V(0), V(1)); b.add(V(1), V(2)); b.same(V(0), V(2))`
+    /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); b.same(V(0), V(2))`
     pub fn same(mut self, u: V, v: V) -> Bool = todo
 
 /// O(1): one edge of a `Graph`: its id and its ends as given.

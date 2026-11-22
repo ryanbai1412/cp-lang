@@ -589,6 +589,15 @@ impl<'a> Checker<'a> {
                 format!("no type or domain named `{name}`, and not in the stdlib (yet)")
             }
         };
+        let narrow = !value && matches!(name, "U8" | "I8" | "U16" | "I16" | "U32" | "I32" | "I64");
+        let (code, message) = if narrow {
+            (
+                codes::NO_NARROW_INT,
+                format!("`{name}` is not a type; storage width comes from a range such as `0..=255`"),
+            )
+        } else {
+            (code, message)
+        };
         if let Some(diag) = self.error(code, span, message) {
             match suggestion {
                 _ if field_of_self.is_some() => {

@@ -24,7 +24,7 @@ pub struct Mat<T>:
     /// cost: O(rows * cols) time and space
     /// empty: a matrix with zero rows or columns
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; Mat.new([R, C] (r, c) => 10 * Int(r) + Int(c)).get(1, 2) == 12`
+    /// example: `domain R = 0..2; domain C = 0..3; Mat([R, C] (r, c) => 10 * Int(r) + Int(c)).get(1, 2) == 12`
     pub fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T> = todo
 
     /// A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default
@@ -288,14 +288,14 @@ pub struct XorBasis:
     ///
     /// cost: O(W)
     /// traps: never
-    /// example: `XorBasis.new().rank == 0`
+    /// example: `XorBasis().rank == 0`
     pub fn new() -> XorBasis = todo
 
     /// The number of linearly independent vectors in the basis: the span has `2^rank` elements.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var b = XorBasis.new(); b.add(6); b.add(5); b.add(3); b.rank == 2`
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); b.add(3); b.rank == 2`
     pub @get fn rank(self) -> Int = todo
 
     /// Insert `x >= 0` into the basis. Returns `true` iff the rank increased, that is, iff `x` was not
@@ -304,8 +304,8 @@ pub struct XorBasis:
     ///
     /// cost: O(W)
     /// traps: when `x < 0`
-    /// example: `var b = XorBasis.new(); let p = b.add(6); let q = b.add(5); let r = b.add(3); p and q and not r`
-    /// example: `not XorBasis.new().add(0)`
+    /// example: `var b = XorBasis(); let p = b.add(6); let q = b.add(5); let r = b.add(3); p and q and not r`
+    /// example: `not XorBasis().add(0)`
     pub fn add(mut self, x: Int) -> Bool = todo
 
     /// Reduce `x >= 0` against the basis: the minimum of `x ^ s` over `s` in the span, which is 0 iff
@@ -313,14 +313,14 @@ pub struct XorBasis:
     ///
     /// cost: O(W)
     /// traps: when `x < 0`
-    /// example: `var b = XorBasis.new(); b.add(6); b.add(5); b.reduce(4) == 1 and b.reduce(3) == 0`
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); b.reduce(4) == 1 and b.reduce(3) == 0`
     pub fn reduce(self, x: Int) -> Int = todo
 
     /// Whether `x >= 0` is a XOR-combination of basis vectors: `reduce(x) == 0`.
     ///
     /// cost: O(W)
     /// traps: when `x < 0`
-    /// example: `var b = XorBasis.new(); b.add(6); b.add(5); b.contains(3) and not b.contains(4)`
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); b.contains(3) and not b.contains(4)`
     pub fn contains(self, x: Int) -> Bool = todo
 
     /// The maximum value of `init ^ s` over all `s` in the span.
@@ -328,7 +328,7 @@ pub struct XorBasis:
     /// cost: O(W)
     /// ties: none possible; the maximum value is unique
     /// traps: when `init < 0`
-    /// example: `var b = XorBasis.new(); b.add(6); b.add(5); b.max_xor() == 6 and b.max_xor(1) == 7`
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); b.max_xor() == 6 and b.max_xor(1) == 7`
     pub fn max_xor(self, init: Int = 0) -> Int = todo
 
     /// The minimum value of `init ^ s` over all `s` in the span: the same as `reduce(init)`, and 0 for
@@ -337,7 +337,7 @@ pub struct XorBasis:
     /// cost: O(W)
     /// ties: none possible; the minimum value is unique
     /// traps: when `init < 0`
-    /// example: `var b = XorBasis.new(); b.add(6); b.add(5); b.min_xor(4) == 1 and b.min_xor() == 0`
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); b.min_xor(4) == 1 and b.min_xor() == 0`
     pub fn min_xor(self, init: Int = 0) -> Int = todo
 
     /// The 0-indexed `k`-th smallest value in the span, or `None` if `k < 0` or `k >= 2^rank`. `kth(0)`
@@ -347,14 +347,14 @@ pub struct XorBasis:
     /// empty: only `kth(0) == Some(0)` for an empty basis
     /// ties: none possible; span values are distinct
     /// traps: never
-    /// example: `var b = XorBasis.new(); b.add(6); b.add(5); [b.kth(k) for k in 0..5] == [Some(0), Some(3), Some(5), Some(6), None]`
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); [b.kth(k) for k in 0..5] == [Some(0), Some(3), Some(5), Some(6), None]`
     pub fn kth(self, k: Int) -> ?Int = todo
 
     /// Merge another basis into `self`, so `self` spans the union of both spans; `o` is unchanged.
     ///
     /// cost: O(W * o.rank)
     /// traps: never
-    /// example: `var a = XorBasis.new(); a.add(6); var b = XorBasis.new(); b.add(8); a.merge(b); a.rank == 2 and a.contains(14)`
+    /// example: `var a = XorBasis(); a.add(6); var b = XorBasis(); b.add(8); a.merge(b); a.rank == 2 and a.contains(14)`
     pub fn merge(mut self, o: XorBasis) = todo
 
     /// The monoid under basis merge (usable in `SegTree`): identity the empty basis, op the merged
@@ -372,14 +372,14 @@ pub struct XorBasis:
     /// empty: `[]`
     /// order: decreasing (by highest set bit)
     /// traps: never
-    /// example: `var b = XorBasis.new(); b.add(6); b.add(5); b.basis_vecs() == [5, 3]`
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); b.basis_vecs() == [5, 3]`
     pub fn basis_vecs(self) -> List<Int> = todo
 
     /// A new basis spanning the intersection of the two GF(2) vector subspaces.
     ///
     /// cost: O(62^2)
     /// traps: never
-    /// example: `var a = XorBasis.new(); a.add(6); a.add(5); var b = XorBasis.new(); b.add(3); b.add(8); let c = a.intersect(b); c.rank == 1 and c.contains(3)`
+    /// example: `var a = XorBasis(); a.add(6); a.add(5); var b = XorBasis(); b.add(3); b.add(8); let c = a.intersect(b); c.rank == 1 and c.contains(3)`
     pub fn intersect(self, o: XorBasis) -> XorBasis = todo
 
 fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis = todo
@@ -393,7 +393,7 @@ pub struct MatPow<T>:
     ///
     /// cost: O(n^3 log max_exp) time, O(n^2 log max_exp) space
     /// traps: when `a` is not square or `max_exp < 0`
-    /// example: `let p = MatPow.new(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(5, [1, 0]) == [8, 5]`
+    /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(5, [1, 0]) == [8, 5]`
     pub fn new(a: Mat<T>, max_exp: Int) -> MatPow<T> = todo
 
     /// Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers
@@ -403,7 +403,7 @@ pub struct MatPow<T>:
     /// empty: `v` itself when `e == 0`
     /// order: indexed by row
     /// traps: when `e` is not in `0..=max_exp` or `v.len != n`
-    /// example: `let p = MatPow.new(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(0, [1, 0]) == [1, 0]`
+    /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(0, [1, 0]) == [1, 0]`
     pub fn apply_pow(self, e: Int, v: List<T>) -> List<T> = todo
 
 /// O(n * m / 64) storage. Bit-packed dense matrix over GF(2) with word-parallel elimination.
@@ -412,7 +412,7 @@ pub struct BitMat(rows: Int, cols: Int):
     ///
     /// cost: O(rows * cols / 64) time and space
     /// traps: when `rows < 0` or `cols < 0`
-    /// example: `BitMat.new(2, 3).rank() == 0`
+    /// example: `BitMat(2, 3).rank() == 0`
     pub fn new(rows: Int, cols: Int) -> BitMat = todo
 
     /// The `n x n` GF(2) identity matrix.
@@ -426,14 +426,14 @@ pub struct BitMat(rows: Int, cols: Int):
     ///
     /// cost: O(1)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
-    /// example: `var m = BitMat.new(2, 2); m.set(0, 1, true); m.get(0, 1) and not m.get(1, 0)`
+    /// example: `var m = BitMat(2, 2); m.set(0, 1, true); m.get(0, 1) and not m.get(1, 0)`
     pub fn get(self, r: Int, c: Int) -> Bool = todo
 
     /// Write bit `(r, c)`.
     ///
     /// cost: O(1)
     /// traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
-    /// example: `var m = BitMat.new(2, 2); m.set(0, 1, true); m.set(0, 1, false); not m.get(0, 1)`
+    /// example: `var m = BitMat(2, 2); m.set(0, 1, true); m.set(0, 1, false); not m.get(0, 1)`
     pub fn set(mut self, r: Int, c: Int, v: Bool) = todo
 
     /// The determinant over GF(2): `true` iff the matrix is invertible. The `0 x 0` determinant is
@@ -442,7 +442,7 @@ pub struct BitMat(rows: Int, cols: Int):
     /// cost: O(n^3 / 64)
     /// traps: when the matrix is not square
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); m.det()`
-    /// example: `var m = BitMat.new(2, 2); m.set(0, 0, true); m.set(1, 0, true); not m.det()`
+    /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(1, 0, true); not m.det()`
     pub fn det(self) -> Bool = todo
 
     /// The rank over GF(2).
@@ -450,7 +450,7 @@ pub struct BitMat(rows: Int, cols: Int):
     /// cost: O(rows * cols * min(rows, cols) / 64)
     /// empty: zero
     /// traps: never
-    /// example: `var m = BitMat.new(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.rank() == 1`
+    /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.rank() == 1`
     pub fn rank(self) -> Int = todo
 
     /// Any solution to `self * x == b` over GF(2), or `None`: the one with every free (non-pivot)
@@ -461,7 +461,7 @@ pub struct BitMat(rows: Int, cols: Int):
     /// order: indexed by column (variable)
     /// traps: when `b.len != rows`
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); m.solve([true, true]) == Some([false, true])`
-    /// example: `var m = BitMat.new(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve([true, false]) == None`
+    /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve([true, false]) == None`
     pub fn solve(self, b: List<Bool>) -> ?List<Bool> = todo
 
     /// One solution `x0` and a nullspace basis over GF(2), or `None`. `x0` is `solve(b)`'s solution;
@@ -472,7 +472,7 @@ pub struct BitMat(rows: Int, cols: Int):
     /// empty: with `cols == 0`, `Some(([], []))` when `b` is all `false`, else `None`
     /// order: basis vectors by increasing free column
     /// traps: when `b.len != rows`
-    /// example: `var m = BitMat.new(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve_space([true, true]) == Some((x0: [true, false], basis: [[true, true]]))`
+    /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve_space([true, true]) == Some((x0: [true, false], basis: [[true, true]]))`
     pub fn solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>) = todo
 
     /// The inverse of a square GF(2) matrix, or `None` when it is singular.
@@ -498,7 +498,7 @@ pub struct PrefixXorBasis:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `PrefixXorBasis.new().rank(0..0) == 0`
+    /// example: `PrefixXorBasis().rank(0..0) == 0`
     pub fn new() -> PrefixXorBasis = todo
 
     /// Append `x` at the next position (`0`, `1`, ...), keeping for each bit the basis vector with the
@@ -506,7 +506,7 @@ pub struct PrefixXorBasis:
     ///
     /// cost: O(62) time and space
     /// traps: when `x < 0` or `x >= 2^62`
-    /// example: `var p = PrefixXorBasis.new(); p.push(6); p.push(5); p.rank(0..2) == 2`
+    /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.rank(0..2) == 2`
     pub fn push(mut self, x: Int) = todo
 
     /// The maximum `init ^ s` for `s` in the span of the values at positions `r`.
@@ -515,7 +515,7 @@ pub struct PrefixXorBasis:
     /// empty: `init` (the span of nothing is `{0}`)
     /// ties: none possible; the maximum value is unique
     /// traps: when `r` is non-empty and reaches outside `0..len`, or `init < 0`
-    /// example: `var p = PrefixXorBasis.new(); p.push(6); p.push(5); p.push(3); p.max_xor(1..3) == 6 and p.max_xor(2..3) == 3`
+    /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.max_xor(1..3) == 6 and p.max_xor(2..3) == 3`
     pub fn max_xor(self, r: Range<Int>, init: Int = 0) -> Int = todo
 
     /// Whether `x` is in the span of the values at positions `r`.
@@ -523,7 +523,7 @@ pub struct PrefixXorBasis:
     /// cost: O(62)
     /// empty: `true` only for `x == 0`
     /// traps: when `r` is non-empty and reaches outside `0..len`, or `x < 0`
-    /// example: `var p = PrefixXorBasis.new(); p.push(6); p.push(5); p.push(3); p.contains(1..3, 6) and not p.contains(1..2, 3)`
+    /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.contains(1..3, 6) and not p.contains(1..2, 3)`
     pub fn contains(self, r: Range<Int>, x: Int) -> Bool = todo
 
     /// The rank (dimension) of the span of the values at positions `r`.
@@ -531,7 +531,7 @@ pub struct PrefixXorBasis:
     /// cost: O(62)
     /// empty: zero
     /// traps: when `r` is non-empty and reaches outside `0..len`
-    /// example: `var p = PrefixXorBasis.new(); p.push(6); p.push(5); p.push(3); p.rank(0..3) == 2 and p.rank(2..3) == 1`
+    /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.rank(0..3) == 2 and p.rank(2..3) == 1`
     pub fn rank(self, r: Range<Int>) -> Int = todo
 
 /// The determinant of a sparse `n x n` matrix via Wiedemann's algorithm. `entries` lists

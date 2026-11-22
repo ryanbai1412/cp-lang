@@ -44,7 +44,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// empty: an empty `over` traps
     /// order: no sequence is returned; coordinates run in `over`'s order
     /// traps: when `over` is empty
-    /// example: `LiChao.new(min, over: 0..=10).at(5) == None`
+    /// example: `LiChao(min, over: 0..=10).at(5) == None`
     pub fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K> = todo
 
     /// Forget every line, keeping `pick` and `over`, so the tree can be reused (between test cases,
@@ -52,7 +52,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `var t = LiChao.new(min, over: 0..=10); t.add(Line(1, 0)); t.clear(); t.at(3) == None`
+    /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.clear(); t.at(3) == None`
     pub fn clear(mut self) = todo
 
     /// The best value at `x` over every line covering `x`, as chosen by `pick`, or `None` when no line
@@ -61,7 +61,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// cost: O(log n) for n = `over.len`
     /// ties: equal values are one value; which line produced it does not matter
     /// traps: when `x` is not in `over`
-    /// example: `var t = LiChao.new(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.at(1) == Some(1) and t.at(5) == Some(1)`
+    /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.at(1) == Some(1) and t.at(5) == Some(1)`
     pub fn at(self, x: Int) -> ?K = todo
 
     /// The line attaining `at(x)`, or `None` when no line covers `x`.
@@ -72,7 +72,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// cost: O(log n) for n = `over.len`
     /// ties: unspecified among lines with equal values at `x`; break ties through `K`
     /// traps: when `x` is not in `over`
-    /// example: `var t = LiChao.new(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.line_at(8) == Some(Line(-1, 6))`
+    /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.line_at(8) == Some(Line(-1, 6))`
     pub fn line_at(self, x: Int) -> ?L = todo
 
     /// Add `line` on every coordinate of `over`, or only on the coordinates of `on`
@@ -84,7 +84,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// cost: O(log n) for a whole line, O(log^2 n) on a segment, for n = `over.len`; at most one new cell per level
     /// empty: an empty `on` adds nothing
     /// traps: when `on` reaches outside `over`
-    /// example: `var t = LiChao.new(max, over: 0..=10); t.add(Line(0, 5), on: 2..=4); t.at(3) == Some(5) and t.at(5) == None`
+    /// example: `var t = LiChao(max, over: 0..=10); t.add(Line(0, 5), on: 2..=4); t.at(3) == Some(5) and t.at(5) == None`
     pub fn add(mut self, line: L, on: ?Range<Int> = None) = todo
 
     fn wins(self, a: K, b: K) -> Bool = todo

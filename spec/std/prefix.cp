@@ -81,7 +81,7 @@ pub struct Prefix<D, T>:
     /// cost: O(|D|) time and space
     /// empty: a table whose every query is zero
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>.new([D] v => 1 + Int(v)); p.all == 6`
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
     pub fn new(a: [D]T) -> Prefix<D, T> = todo
 
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
@@ -98,8 +98,8 @@ pub struct Prefix<D, T>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>.new([D] v => 1 + Int(v)); p.prefix(2) == 3`
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>.new([D] v => 1 + Int(v)); p.prefix(0) == 0`
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(2) == 3`
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     pub fn prefix(self, b: Cut<D>) -> T = todo
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
@@ -107,7 +107,7 @@ pub struct Prefix<D, T>:
     /// cost: O(1)
     /// empty: zero
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>.new([D] v => 1 + Int(v)); p.sum(1..=2) == 5`
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.sum(1..=2) == 5`
     pub fn sum(self, r: Range<D>) -> T = todo
 
     /// The sum over a wrapping run of positions, e.g. `a.ring.span(i, k)`: the part from `r.start`
@@ -116,21 +116,21 @@ pub struct Prefix<D, T>:
     /// cost: O(1)
     /// empty: zero for an empty span
     /// traps: never
-    /// example: `domain D = 0..3; let a: [D]Int = [D] v => 1 + Int(v); Prefix<D, Int>.new(a).cyclic_sum(a.ring.span(2, 2)) == 4`
+    /// example: `domain D = 0..3; let a: [D]Int = [D] v => 1 + Int(v); Prefix<D, Int>(a).cyclic_sum(a.ring.span(2, 2)) == 4`
     pub fn cyclic_sum(self, r: RingRange<D>) -> T = todo
 
     /// Recover the original element `a[i]`, as `prefix(i.r) - prefix(i.l)`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>.new([D] v => 1 + Int(v)); p.get(1) == 2`
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.get(1) == 2`
     pub fn get(self, i: D) -> T = todo
 
     /// The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>.new([D] v => 1 + Int(v)); p.suffix(1) == 5`
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.suffix(1) == 5`
     pub fn suffix(self, b: Cut<D>) -> T = todo
 
     /// The sum of the entire domain: `prefix` at the last cut, zero for an empty domain.
@@ -138,7 +138,7 @@ pub struct Prefix<D, T>:
     /// cost: O(1)
     /// empty: zero
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>.new([D] v => 1 + Int(v)); p.all == 6`
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
     pub @get fn all(self) -> T = todo
 
     /// The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.
@@ -210,7 +210,7 @@ pub struct _Prefix2 < R, C, T >:
     /// cost: O(|R| * |C|) time and space
     /// empty: a table whose every query is zero
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>.new([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.sum(0..=1, 0..=2) == 21`
+    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.sum(0..=1, 0..=2) == 21`
     pub fn new(a: [R, C]T) -> Prefix<R, C, T> = todo
 
     /// Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major
@@ -226,8 +226,8 @@ pub struct _Prefix2 < R, C, T >:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>.new([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(1, 2) == 3`
-    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>.new([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(0, 3) == 0`
+    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(1, 2) == 3`
+    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.prefix(0, 3) == 0`
     pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T = todo
 
     /// The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty, by
@@ -236,7 +236,7 @@ pub struct _Prefix2 < R, C, T >:
     /// cost: O(1)
     /// empty: zero when `rows` or `cols` is empty
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>.new([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.sum(0..=1, 1..=2) == 16`
+    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.sum(0..=1, 1..=2) == 16`
     pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T = todo
 
 /// Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
@@ -276,7 +276,7 @@ pub struct _PrefixList < T >:
     /// cost: O(a.len) time and space
     /// empty: a table whose every query is zero
     /// traps: never
-    /// example: `Prefix<Int>.new([3, 1, 4]).prefix(3) == 8`
+    /// example: `Prefix<Int>([3, 1, 4]).prefix(3) == 8`
     pub fn new(a: List<T>) -> Prefix<T> = todo
 
     /// Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)`
@@ -291,8 +291,8 @@ pub struct _PrefixList < T >:
     ///
     /// cost: O(1)
     /// traps: when `k` is not in `0..=n`
-    /// example: `Prefix<Int>.new([3, 1, 4]).prefix(2) == 4`
-    /// example: `Prefix<Int>.new([3, 1, 4]).prefix(0) == 0`
+    /// example: `Prefix<Int>([3, 1, 4]).prefix(2) == 4`
+    /// example: `Prefix<Int>([3, 1, 4]).prefix(0) == 0`
     pub fn prefix(self, k: Int) -> T = todo
 
     /// The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.
@@ -300,8 +300,8 @@ pub struct _PrefixList < T >:
     /// cost: O(1)
     /// empty: zero, wherever `r` lies
     /// traps: when `r` is non-empty and reaches outside `0..n`
-    /// example: `Prefix<Int>.new([3, 1, 4]).sum(1..3) == 5`
-    /// example: `Prefix<Int>.new([3, 1, 4]).sum(2..2) == 0`
+    /// example: `Prefix<Int>([3, 1, 4]).sum(1..3) == 5`
+    /// example: `Prefix<Int>([3, 1, 4]).sum(2..2) == 0`
     pub fn sum(
         self,
         r: Range<Int>,
@@ -345,7 +345,7 @@ pub struct Diff<D, T>:
     ///
     /// cost: O(|D|) time and space
     /// traps: never
-    /// example: `domain D = 0..3; Diff<D, Int>.new().finish()[D(1)] == 0`
+    /// example: `domain D = 0..3; Diff<D, Int>().finish()[D(1)] == 0`
     pub fn new() -> Diff<D, T> = todo
 
     /// Add `x` to every position in `r`; an empty `r` changes nothing.
@@ -353,7 +353,7 @@ pub struct Diff<D, T>:
     /// cost: O(1)
     /// empty: no effect
     /// traps: never
-    /// example: `domain D = 0..4; var d = Diff<D, Int>.new(); d.add(1..3, 5); d.add(2..=3, 1); [d.finish()[v] for v in D] == [0, 5, 6, 1]`
+    /// example: `domain D = 0..4; var d = Diff<D, Int>(); d.add(1..3, 5); d.add(2..=3, 1); [d.finish()[v] for v in D] == [0, 5, 6, 1]`
     pub fn add(mut self, r: Range<D>, x: T) = todo
 
     /// The accumulated values across `D`: each position's total of the `add`s covering it. The
@@ -363,7 +363,7 @@ pub struct Diff<D, T>:
     /// empty: an empty array
     /// order: keyed by `D`
     /// traps: never
-    /// example: `domain D = 0..3; var d = Diff<D, Int>.new(); d.add(0..=1, 2); d.finish()[D(1)] == 2 and d.finish()[D(2)] == 0`
+    /// example: `domain D = 0..3; var d = Diff<D, Int>(); d.add(0..=1, 2); d.finish()[D(1)] == 2 and d.finish()[D(2)] == 0`
     pub fn finish(self) -> [D]T = todo
 
 /// Internal 2-D shape of `Diff<R, C, T>`: O(1) rectangle `add`, O(|R| * |C|) `finish`.
@@ -374,7 +374,7 @@ pub struct _Diff2 < R, C, T >:
     ///
     /// cost: O(|R| * |C|) time and space
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..2; Diff<R, C, Int>.new().finish()[R(1), C(1)] == 0`
+    /// example: `domain R = 0..2; domain C = 0..2; Diff<R, C, Int>().finish()[R(1), C(1)] == 0`
     pub fn new() -> Diff<R, C, T> = todo
 
     /// Add `x` to every cell in `rows` by `cols`; an empty side changes nothing.
@@ -382,7 +382,7 @@ pub struct _Diff2 < R, C, T >:
     /// cost: O(1)
     /// empty: no effect when `rows` or `cols` is empty
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; var d = Diff<R, C, Int>.new(); d.add(0..=1, 1..=2, 3); d.finish()[R(1), C(2)] == 3 and d.finish()[R(0), C(0)] == 0`
+    /// example: `domain R = 0..2; domain C = 0..3; var d = Diff<R, C, Int>(); d.add(0..=1, 1..=2, 3); d.finish()[R(1), C(2)] == 3 and d.finish()[R(0), C(0)] == 0`
     pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T) = todo
 
     /// The accumulated grid across `(R, C)`: each cell's total of the `add`s covering it. The
@@ -392,7 +392,7 @@ pub struct _Diff2 < R, C, T >:
     /// empty: an empty grid
     /// order: keyed by `(R, C)`, row-major
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..2; var d = Diff<R, C, Int>.new(); d.add(1..=1, 0..=1, 4); d.add(0..=1, 1..=1, 1); d.finish()[R(1), C(1)] == 5`
+    /// example: `domain R = 0..2; domain C = 0..2; var d = Diff<R, C, Int>(); d.add(1..=1, 0..=1, 4); d.add(0..=1, 1..=1, 1); d.finish()[R(1), C(1)] == 5`
     pub fn finish(self) -> [R, C]T = todo
 
 /// O(|D|) space. Online sweep-line difference accumulator: schedule future range adds in O(1)
@@ -405,7 +405,7 @@ pub struct SweepAdd<D, T>:
     ///
     /// cost: O(|D|) time and space
     /// traps: never
-    /// example: `domain D = 0..3; var s = SweepAdd<D, Int>.new(); s.advance(0) == 0`
+    /// example: `domain D = 0..3; var s = SweepAdd<D, Int>(); s.advance(0) == 0`
     pub fn new(order: FillOrder = FillOrder.Forward) -> SweepAdd<D, T> = todo
 
     /// Schedule `+x` across `r`, which must start at or ahead of the current sweep cursor: no
@@ -414,7 +414,7 @@ pub struct SweepAdd<D, T>:
     /// cost: O(1)
     /// empty: no effect
     /// traps: when `r` is non-empty and holds a position already advanced to
-    /// example: `domain D = 0..4; var s = SweepAdd<D, Int>.new(); s.add(1..=2, 5); let a = s.advance(0); let b = s.advance(1); a == 0 and b == 5`
+    /// example: `domain D = 0..4; var s = SweepAdd<D, Int>(); s.add(1..=2, 5); let a = s.advance(0); let b = s.advance(1); a == 0 and b == 5`
     pub fn add(mut self, r: Range<D>, x: T) = todo
 
     /// Advance the cursor to `i`, the next position in fill order, and return the accumulated
@@ -422,14 +422,14 @@ pub struct SweepAdd<D, T>:
     ///
     /// cost: O(1)
     /// traps: when `i` is not the next position in fill order
-    /// example: `domain D = 0..3; var s = SweepAdd<D, Int>.new(order: FillOrder.Reverse); s.add(1..=2, 4); let a = s.advance(2); s.add(0..=1, 1); let b = s.advance(1); a == 4 and b == 5`
+    /// example: `domain D = 0..3; var s = SweepAdd<D, Int>(order: FillOrder.Reverse); s.add(1..=2, 4); let a = s.advance(2); s.add(0..=1, 1); let b = s.advance(1); a == 4 and b == 5`
     pub fn advance(mut self, i: D) -> T = todo
 
     /// The accumulated value at the most recently advanced position, as `advance` returned it.
     ///
     /// cost: O(1)
     /// traps: when no position has been advanced yet
-    /// example: `domain D = 0..3; var s = SweepAdd<D, Int>.new(); s.add(0..=0, 7); s.advance(0); s.current == 7`
+    /// example: `domain D = 0..3; var s = SweepAdd<D, Int>(); s.add(0..=0, 7); s.advance(0); s.current == 7`
     pub @get fn current(self) -> T = todo
 
 /// O(|D|) space. Second-order offline difference array for arithmetic-progression range adds:
@@ -441,7 +441,7 @@ pub struct ArithDiff<D, T>:
     ///
     /// cost: O(|D|) time and space
     /// traps: never
-    /// example: `domain D = 0..3; ArithDiff<D, Int>.new().finish()[D(2)] == 0`
+    /// example: `domain D = 0..3; ArithDiff<D, Int>().finish()[D(2)] == 0`
     pub fn new() -> ArithDiff<D, T> = todo
 
     /// Add `start + step * (i.ord - r.start.ord)` to every position `i` in `r`: `start` at the
@@ -450,7 +450,7 @@ pub struct ArithDiff<D, T>:
     /// cost: O(1)
     /// empty: no effect
     /// traps: never
-    /// example: `domain D = 0..5; var d = ArithDiff<D, Int>.new(); d.add_arith(1..=3, 10, 2); [d.finish()[v] for v in D] == [0, 10, 12, 14, 0]`
+    /// example: `domain D = 0..5; var d = ArithDiff<D, Int>(); d.add_arith(1..=3, 10, 2); [d.finish()[v] for v in D] == [0, 10, 12, 14, 0]`
     pub fn add_arith(mut self, r: Range<D>, start: T, step: T) = todo
 
     /// Add a constant `x` to every position in `r`: `add_arith(r, x, 0)`.
@@ -458,7 +458,7 @@ pub struct ArithDiff<D, T>:
     /// cost: O(1)
     /// empty: no effect
     /// traps: never
-    /// example: `domain D = 0..5; var d = ArithDiff<D, Int>.new(); d.add_arith(1..=3, 10, 2); d.add(0..2, 1); [d.finish()[v] for v in D] == [1, 11, 12, 14, 0]`
+    /// example: `domain D = 0..5; var d = ArithDiff<D, Int>(); d.add_arith(1..=3, 10, 2); d.add(0..2, 1); [d.finish()[v] for v in D] == [1, 11, 12, 14, 0]`
     pub fn add(mut self, r: Range<D>, x: T) = todo
 
     /// The accumulated values across `D`. The structure is unchanged and can take more adds.
@@ -467,7 +467,7 @@ pub struct ArithDiff<D, T>:
     /// empty: an empty array
     /// order: keyed by `D`
     /// traps: never
-    /// example: `domain D = 0..3; var d = ArithDiff<D, Int>.new(); d.add_arith(0..=2, 1, 1); [d.finish()[v] for v in D] == [1, 2, 3]`
+    /// example: `domain D = 0..3; var d = ArithDiff<D, Int>(); d.add_arith(0..=2, 1, 1); [d.finish()[v] for v in D] == [1, 2, 3]`
     pub fn finish(self) -> [D]T = todo
 
 /// O(|D|). Exclusive monoid fold: `out[i]` is the fold of every element in `a` except `i`,

@@ -11,7 +11,7 @@ pub struct Bitset<D>:
     ///
     /// cost: O(K / 64) time and space
     /// traps: never
-    /// example: `domain D = 0..10; Bitset<D>.new().len == 0`
+    /// example: `domain D = 0..10; Bitset<D>().len == 0`
     pub fn new() -> Bitset<D> = todo
 
     /// The empty set, matching `Subset<D>.empty`; the same as `new()`.
@@ -63,7 +63,7 @@ pub struct Bitset<D>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain D = 0..10; var b = Bitset<D>.new(); let x = b.add(D(2)); let y = b.add(D(2)); x and not y and b.len == 1`
+    /// example: `domain D = 0..10; var b = Bitset<D>(); let x = b.add(D(2)); let y = b.add(D(2)); x and not y and b.len == 1`
     pub fn add(mut self, i: D) -> Bool = todo
 
     /// Clear the bit at position `i`; returns `true` if `i` was set (matches `Set.remove`).
@@ -99,7 +99,7 @@ pub struct Bitset<D>:
     /// cost: O(K / 64) time and space
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.single(D(1)).set(D(1), false).is_empty`
-    /// example: `domain D = 0..10; Bitset<D>.new().set(D(7), true).each().collect() == [D(7)]`
+    /// example: `domain D = 0..10; Bitset<D>().set(D(7), true).each().collect() == [D(7)]`
     pub fn set(self, i: D, on: Bool) -> Bitset<D> = todo
 
     /// The complement of `self` within `D`, matching `Subset<D>.complement`; bits past the last position
@@ -124,7 +124,7 @@ pub struct Bitset<D>:
     /// empty: `false`
     /// traps: never (beyond what `pred` traps on)
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).any(d => Int(d) > 5)`
-    /// example: `domain D = 0..10; not Bitset<D>.new().any(d => true)`
+    /// example: `domain D = 0..10; not Bitset<D>().any(d => true)`
     pub fn any(self, pred: D -> Bool) -> Bool = todo
     /// The number of positions in the set; the count is kept current by every update.
     ///
@@ -144,7 +144,7 @@ pub struct Bitset<D>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain D = 0..10; Bitset<D>.new().is_empty and not Bitset<D>.full().is_empty`
+    /// example: `domain D = 0..10; Bitset<D>().is_empty and not Bitset<D>.full().is_empty`
     pub @get fn is_empty(self) -> Bool = todo
 
     /// The smallest position in the set satisfying `pred` (any, by default), or `None`. Members are
@@ -360,7 +360,7 @@ pub struct DynBitset:
     ///
     /// cost: O(cap / 64) time and space
     /// traps: when `cap < 0`
-    /// example: `DynBitset.new(10).len == 0`
+    /// example: `DynBitset(10).len == 0`
     pub fn new(cap: Int) -> DynBitset = todo
 
     /// Create an all-one `DynBitset` of width `cap`; bits at or above `cap` stay clear.
@@ -374,56 +374,56 @@ pub struct DynBitset:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `DynBitset.new(10).cap == 10`
+    /// example: `DynBitset(10).cap == 10`
     pub @get fn cap(self) -> Int = todo
 
     /// The number of set bits, kept current by every update.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.len == 2`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.len == 2`
     pub @get fn len(self) -> Int = todo
 
     /// Whether no bits are set, kept current by every update.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `DynBitset.new(10).is_empty and not DynBitset.full(1).is_empty`
+    /// example: `DynBitset(10).is_empty and not DynBitset.full(1).is_empty`
     pub @get fn is_empty(self) -> Bool = todo
 
     /// Whether bit `i` is set.
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
-    /// example: `var d = DynBitset.new(10); d.add(3); d.contains(3) and not d.contains(4)`
+    /// example: `var d = DynBitset(10); d.add(3); d.contains(3) and not d.contains(4)`
     pub fn contains(self, i: Int) -> Bool = todo
 
     /// Set bit `i` to `on` in place (W8 `IndexSet` backing `b[i] = on`).
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
-    /// example: `var d = DynBitset.new(10); d.set(4); d.set(5, true); d.set(4, false); d.each().collect() == [5]`
+    /// example: `var d = DynBitset(10); d.set(4); d.set(5, true); d.set(4, false); d.each().collect() == [5]`
     pub fn set(mut self, i: Int, on: Bool = true) = todo
 
     /// Set bit `i` to 1; returns `true` if bit `i` was previously 0 (matches `Bitset.add`).
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
-    /// example: `var d = DynBitset.new(10); let x = d.add(2); let y = d.add(2); x and not y`
+    /// example: `var d = DynBitset(10); let x = d.add(2); let y = d.add(2); x and not y`
     pub fn add(mut self, i: Int) -> Bool = todo
 
     /// Clear bit `i` to 0; returns `true` if bit `i` was previously 1 (matches `Bitset.remove`).
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
-    /// example: `var d = DynBitset.new(10); d.add(2); let x = d.remove(2); let y = d.remove(2); x and not y and d.is_empty`
+    /// example: `var d = DynBitset(10); d.add(2); let x = d.remove(2); let y = d.remove(2); x and not y and d.is_empty`
     pub fn remove(mut self, i: Int) -> Bool = todo
 
     /// Flip bit `i`.
     ///
     /// cost: O(1)
     /// traps: when `i` is not in `0..cap`
-    /// example: `var d = DynBitset.new(10); d.toggle(6); d.toggle(6); d.toggle(7); d.each().collect() == [7]`
+    /// example: `var d = DynBitset(10); d.toggle(6); d.toggle(6); d.toggle(7); d.each().collect() == [7]`
     pub fn toggle(mut self, i: Int) = todo
 
     /// Clear all bits; the capacity is unchanged.
@@ -438,7 +438,7 @@ pub struct DynBitset:
     ///
     /// cost: O(new_cap / 64) time and space
     /// traps: when `new_cap < 0`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(8); d.resize(4); d.len == 1 and d.cap == 4`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(8); d.resize(4); d.len == 1 and d.cap == 4`
     /// example: `var d = DynBitset.full(2); d.resize(5); d.each().collect() == [0, 1]`
     pub fn resize(mut self, new_cap: Int) = todo
 
@@ -448,8 +448,8 @@ pub struct DynBitset:
     /// empty: `None`
     /// ties: none possible; the smallest index wins
     /// traps: never
-    /// example: `var d = DynBitset.new(10); d.add(8); d.add(3); d.first() == Some(3)`
-    /// example: `DynBitset.new(10).first() == None`
+    /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.first() == Some(3)`
+    /// example: `DynBitset(10).first() == None`
     pub fn first(self) -> ?Int = todo
 
     /// The largest set bit index, or `None` if empty.
@@ -458,7 +458,7 @@ pub struct DynBitset:
     /// empty: `None`
     /// ties: none possible; the largest index wins
     /// traps: never
-    /// example: `var d = DynBitset.new(10); d.add(8); d.add(3); d.last() == Some(8)`
+    /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.last() == Some(8)`
     pub fn last(self) -> ?Int = todo
 
     /// The smallest set bit `>= i`, or `None`.
@@ -466,7 +466,7 @@ pub struct DynBitset:
     /// cost: O(cap / 64)
     /// empty: `None`
     /// traps: when `i` is not in `0..=cap`
-    /// example: `var d = DynBitset.new(10); d.add(3); d.add(8); d.next(3) == Some(3) and d.next(4) == Some(8) and d.next(9) == None`
+    /// example: `var d = DynBitset(10); d.add(3); d.add(8); d.next(3) == Some(3) and d.next(4) == Some(8) and d.next(9) == None`
     pub fn next(self, i: Int) -> ?Int = todo
 
     /// The largest set bit `<= i`, or `None`. Unlike `Bitset.prev`, `i` itself counts.
@@ -474,7 +474,7 @@ pub struct DynBitset:
     /// cost: O(cap / 64)
     /// empty: `None`
     /// traps: when `i` is not in `0..cap`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.prev(3) == Some(3) and d.prev(2) == Some(1) and d.prev(0) == None`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.prev(3) == Some(3) and d.prev(2) == Some(1) and d.prev(0) == None`
     pub fn prev(self, i: Int) -> ?Int = todo
 
     /// The number of set bits strictly below `i`.
@@ -482,7 +482,7 @@ pub struct DynBitset:
     /// cost: O(cap / 64)
     /// empty: zero
     /// traps: when `i` is not in `0..=cap`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.add(8); d.count_below(8) == 2`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_below(8) == 2`
     pub fn count_below(self, i: Int) -> Int = todo
 
     /// The number of set bits in `r`.
@@ -490,7 +490,7 @@ pub struct DynBitset:
     /// cost: O(r.len / 64 + 1)
     /// empty: zero
     /// traps: when `r` is non-empty and reaches outside `0..cap`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.add(8); d.count_range(1..8) == 2`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_range(1..8) == 2`
     pub fn count_range(self, r: Range<Int>) -> Int = todo
 
     /// The `k`-th set bit index (0-based, in increasing order), or `None` if `k >= len`.
@@ -498,63 +498,63 @@ pub struct DynBitset:
     /// cost: O(cap / 64)
     /// empty: `None`
     /// traps: when `k < 0`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.add(8); d.nth(1) == Some(3) and d.nth(3) == None`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.nth(1) == Some(3) and d.nth(3) == None`
     pub fn nth(self, k: Int) -> ?Int = todo
 
     /// In-place bitwise OR (`self |= other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
-    /// example: `var a = DynBitset.new(4); a.add(0); var b = DynBitset.new(4); b.add(2); a.union(b); a.each().collect() == [0, 2]`
+    /// example: `var a = DynBitset(4); a.add(0); var b = DynBitset(4); b.add(2); a.union(b); a.each().collect() == [0, 2]`
     pub fn union(mut self, other: DynBitset) = todo
 
     /// In-place bitwise AND (`self &= other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
-    /// example: `var a = DynBitset.full(4); var b = DynBitset.new(4); b.add(2); a.intersect(b); a.each().collect() == [2]`
+    /// example: `var a = DynBitset.full(4); var b = DynBitset(4); b.add(2); a.intersect(b); a.each().collect() == [2]`
     pub fn intersect(mut self, other: DynBitset) = todo
 
     /// In-place set difference (`self &= ~other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
-    /// example: `var a = DynBitset.full(4); var b = DynBitset.new(4); b.add(2); a.subtract(b); a.each().collect() == [0, 1, 3]`
+    /// example: `var a = DynBitset.full(4); var b = DynBitset(4); b.add(2); a.subtract(b); a.each().collect() == [0, 1, 3]`
     pub fn subtract(mut self, other: DynBitset) = todo
 
     /// In-place bitwise XOR (`self ^= other`).
     ///
     /// cost: O(cap / 64)
     /// traps: when `other.cap != self.cap`
-    /// example: `var a = DynBitset.new(4); a.add(1); a.add(2); var b = DynBitset.new(4); b.add(2); b.add(3); a.symmetric(b); a.each().collect() == [1, 3]`
+    /// example: `var a = DynBitset(4); a.add(1); a.add(2); var b = DynBitset(4); b.add(2); b.add(3); a.symmetric(b); a.each().collect() == [1, 3]`
     pub fn symmetric(mut self, other: DynBitset) = todo
 
     /// Whether `self` and `other` share a set bit; stops at the first shared word.
     ///
     /// cost: O(cap / 64), less on an early hit
     /// traps: when `other.cap != self.cap`
-    /// example: `var a = DynBitset.new(4); a.add(1); var b = DynBitset.full(4); a.meets(b) and not a.meets(DynBitset.new(4))`
+    /// example: `var a = DynBitset(4); a.add(1); var b = DynBitset.full(4); a.meets(b) and not a.meets(DynBitset(4))`
     pub fn meets(self, other: DynBitset) -> Bool = todo
 
     /// Shift all bits up by `k >= 0` in place (`i -> i + k`); bits reaching `cap` or beyond drop.
     ///
     /// cost: O(cap / 64)
     /// traps: when `k < 0`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.add(8); d.shift_up(2); d.each().collect() == [3, 5]`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_up(2); d.each().collect() == [3, 5]`
     pub fn shift_up(mut self, k: Int) = todo
 
     /// Shift all bits down by `k >= 0` in place (`i -> i - k`); bits falling below 0 drop.
     ///
     /// cost: O(cap / 64)
     /// traps: when `k < 0`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.add(8); d.shift_down(2); d.each().collect() == [1, 6]`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_down(2); d.each().collect() == [1, 6]`
     pub fn shift_down(mut self, k: Int) = todo
 
     /// In-place `self |= (self << k)` for `k >= 0`, with zero allocation; bits reaching `cap` drop.
     ///
     /// cost: O(cap / 64)
     /// traps: when `k < 0`
-    /// example: `var d = DynBitset.new(10); d.add(1); d.add(3); d.add(8); d.shift_or(2); d.each().collect() == [1, 3, 5, 8]`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_or(2); d.each().collect() == [1, 3, 5, 8]`
     pub fn shift_or(mut self, k: Int) = todo
 
     /// The set bit indices in ascending order; `for i in d` walks the same sequence.
@@ -563,7 +563,7 @@ pub struct DynBitset:
     /// empty: yields nothing
     /// order: increasing
     /// traps: never
-    /// example: `var d = DynBitset.new(10); d.add(8); d.add(1); d.each().collect() == [1, 8]`
+    /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each().collect() == [1, 8]`
     pub fn each(self) -> yields Int = todo
 
     /// The set bit indices in descending order.
@@ -572,7 +572,7 @@ pub struct DynBitset:
     /// empty: yields nothing
     /// order: decreasing
     /// traps: never
-    /// example: `var d = DynBitset.new(10); d.add(8); d.add(1); d.each_rev().collect() == [8, 1]`
+    /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each_rev().collect() == [8, 1]`
     pub fn each_rev(self) -> yields Int = todo
 
     /// All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some
@@ -595,7 +595,7 @@ pub struct XorTrie:
     ///
     /// cost: O(1)
     /// traps: when `bits` is not in `1..=62`
-    /// example: `XorTrie.new(3).is_empty`
+    /// example: `XorTrie(3).is_empty`
     pub fn new(bits: Int = 60) -> XorTrie = todo
 
     /// Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the
@@ -603,21 +603,21 @@ pub struct XorTrie:
     ///
     /// cost: O(nodes) time and space
     /// traps: when `nodes < 0`
-    /// example: `var t = XorTrie.new(3); t.reserve(100); t.len == 0`
+    /// example: `var t = XorTrie(3); t.reserve(100); t.len == 0`
     pub fn reserve(mut self, nodes: Int) = todo
 
     /// The total number of stored integers, with multiplicity.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var t = XorTrie.new(3); t.add(5); t.add(5); t.len == 2`
+    /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.len == 2`
     pub @get fn len(self) -> Int = todo
 
     /// True when the trie holds no integers.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var t = XorTrie.new(3); t.add(5); t.remove(5); t.is_empty`
+    /// example: `var t = XorTrie(3); t.add(5); t.remove(5); t.is_empty`
     pub @get fn is_empty(self) -> Bool = todo
 
     /// Insert one copy of `x`. `x` is stored as given, after any earlier `xor_all`: the mask applies
@@ -625,28 +625,28 @@ pub struct XorTrie:
     ///
     /// cost: O(bits) time, up to `bits` new nodes
     /// traps: when `x` is not in `0..2^bits`
-    /// example: `var t = XorTrie.new(3); t.add(5); t.add(5); t.count(5) == 2`
+    /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.count(5) == 2`
     pub fn add(mut self, x: Int) = todo
 
     /// Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
     ///
     /// cost: O(bits)
     /// traps: never
-    /// example: `var t = XorTrie.new(3); t.add(5); let x = t.remove(5); let y = t.remove(5); x and not y`
+    /// example: `var t = XorTrie(3); t.add(5); let x = t.remove(5); let y = t.remove(5); x and not y`
     pub fn remove(mut self, x: Int) -> Bool = todo
 
     /// Whether `x` is present at least once.
     ///
     /// cost: O(bits)
     /// traps: never
-    /// example: `var t = XorTrie.new(3); t.add(5); t.contains(5) and not t.contains(4)`
+    /// example: `var t = XorTrie(3); t.add(5); t.contains(5) and not t.contains(4)`
     pub fn contains(self, x: Int) -> Bool = todo
 
     /// The multiplicity of `x` currently stored; zero when absent.
     ///
     /// cost: O(bits)
     /// traps: never
-    /// example: `var t = XorTrie.new(3); t.add(5); t.add(5); t.add(1); t.count(5) == 2 and t.count(2) == 0`
+    /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.add(1); t.count(5) == 2 and t.count(2) == 0`
     pub fn count(self, x: Int) -> Int = todo
 
     /// Apply a lazy global XOR mask: every stored `y` becomes `y ^ mask`. Masks compose (`xor_all(a)`
@@ -654,7 +654,7 @@ pub struct XorTrie:
     ///
     /// cost: O(1)
     /// traps: when `mask` is not in `0..2^bits`
-    /// example: `var t = XorTrie.new(3); t.add(1); t.add(5); t.xor_all(1); t.contains(0) and t.contains(4) and not t.contains(1)`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.xor_all(1); t.contains(0) and t.contains(4) and not t.contains(1)`
     pub fn xor_all(mut self, mask: Int) = todo
 
     /// The maximum value of `x ^ y` over stored `y`, or `None` if empty.
@@ -663,8 +663,8 @@ pub struct XorTrie:
     /// empty: `None`
     /// ties: none possible; the value is unique even when several `y` reach it
     /// traps: when `x` is not in `0..2^bits`
-    /// example: `var t = XorTrie.new(3); t.add(1); t.add(5); t.add(6); t.max_xor(2) == Some(7)`
-    /// example: `XorTrie.new(3).max_xor(2) == None`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.max_xor(2) == Some(7)`
+    /// example: `XorTrie(3).max_xor(2) == None`
     pub fn max_xor(self, x: Int) -> ?Int = todo
 
     /// The minimum value of `x ^ y` over stored `y`, or `None` if empty.
@@ -673,7 +673,7 @@ pub struct XorTrie:
     /// empty: `None`
     /// ties: none possible; the value is unique even when several `y` reach it
     /// traps: when `x` is not in `0..2^bits`
-    /// example: `var t = XorTrie.new(3); t.add(1); t.add(5); t.add(6); t.min_xor(2) == Some(3)`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.min_xor(2) == Some(3)`
     pub fn min_xor(self, x: Int) -> ?Int = todo
 
     /// The number of stored `y` (with multiplicity) with `(x ^ y) < limit`. A `limit <= 0` gives 0 and
@@ -681,7 +681,7 @@ pub struct XorTrie:
     ///
     /// cost: O(bits)
     /// traps: when `x` is not in `0..2^bits`
-    /// example: `var t = XorTrie.new(3); t.add(1); t.add(5); t.add(6); t.count_xor_less(2, 5) == 2`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.count_xor_less(2, 5) == 2`
     pub fn count_xor_less(self, x: Int, limit: Int) -> Int = todo
 
     /// The `k`-th smallest value of `x ^ y` over stored `y` (0-based, with multiplicity), or `None` if
@@ -691,8 +691,8 @@ pub struct XorTrie:
     /// empty: `None`
     /// ties: equal values `x ^ y` (copies of one `y`) each take their own rank
     /// traps: when `k < 0` or `x` is not in `0..2^bits`
-    /// example: `var t = XorTrie.new(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 1) == Some(4)`
-    /// example: `var t = XorTrie.new(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 3) == None`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 1) == Some(4)`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 3) == None`
     pub fn kth_xor(self, x: Int, k: Int) -> ?Int = todo
 
     /// The smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`); `2^bits`
@@ -701,14 +701,14 @@ pub struct XorTrie:
     /// cost: O(bits)
     /// empty: zero
     /// traps: when `x` is not in `0..2^bits`
-    /// example: `var t = XorTrie.new(3); t.add(1); t.add(5); t.add(6); t.mex_xor() == 0 and t.mex_xor(1) == 1`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.mex_xor() == 0 and t.mex_xor(1) == 1`
     pub fn mex_xor(self, x: Int = 0) -> Int = todo
 
     /// Remove all elements and the global mask, keeping `bits` and the reserved pool.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var t = XorTrie.new(3); t.add(5); t.clear(); t.is_empty and not t.contains(5)`
+    /// example: `var t = XorTrie(3); t.add(5); t.clear(); t.is_empty and not t.contains(5)`
     pub fn clear(mut self) = todo
 
 /// `a - b`: the positions in `a` that are not in `b`.

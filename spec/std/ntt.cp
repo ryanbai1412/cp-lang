@@ -139,7 +139,7 @@ pub struct RelaxedConvolve<P>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>.new(); rc.push(Z(0), Z(0)) == Z(0)`
+    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>(); rc.push(Z(0), Z(0)) == Z(0)`
     pub fn new() -> RelaxedConvolve<P> = todo
 
     /// Append `a[k] = ai` and `b[k] = bi` at the next index `k` and return `c[k] = sum_{i=0..=k}
@@ -150,8 +150,8 @@ pub struct RelaxedConvolve<P>:
     ///
     /// cost: O(log^2 k) amortized
     /// traps: when `k` reaches the largest NTT length `P` supports
-    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>.new(); rc.push(Z(1), Z(3)) == Z(3)`
-    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>.new(); rc.push(Z(1), Z(3)); rc.push(Z(2), Z(4)) == Z(10)`
+    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>(); rc.push(Z(1), Z(3)) == Z(3)`
+    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>(); rc.push(Z(1), Z(3)); rc.push(Z(2), Z(4)) == Z(10)`
     pub fn push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P> = todo
 
 /// O(log^2 n) amortized per step. Semi-relaxed NTT convolution against a fixed `b`
@@ -169,15 +169,15 @@ pub struct SemiRelaxedConvolve<P>:
     /// cost: O(b.len)
     /// empty: every pushed `c[k]` is zero
     /// traps: never
-    /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>.new([Z(1), Z(2)]); sc.push(Z(1)) == Z(1)`
-    /// example: `type Z = Mod<17>; let e: List<Z> = []; var sc = SemiRelaxedConvolve<17>.new(e); sc.push(Z(5)) == Z(0)`
+    /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>([Z(1), Z(2)]); sc.push(Z(1)) == Z(1)`
+    /// example: `type Z = Mod<17>; let e: List<Z> = []; var sc = SemiRelaxedConvolve<17>(e); sc.push(Z(5)) == Z(0)`
     pub fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P> = todo
 
     /// Append `a[k] = ai` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
     ///
     /// cost: O(log^2 k) amortized
     /// traps: when `k` reaches the largest NTT length `P` supports
-    /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>.new([Z(1), Z(2)]); sc.push(Z(1)); sc.push(Z(2)); sc.push(Z(5)) == Z(9)`
+    /// example: `type Z = Mod<17>; var sc = SemiRelaxedConvolve<17>([Z(1), Z(2)]); sc.push(Z(1)); sc.push(Z(2)); sc.push(Z(5)) == Z(9)`
     pub fn push(mut self, ai: Mod<P>) -> Mod<P> = todo
 
 /// The product of every polynomial in `polys`, multiplied as a balanced tree.

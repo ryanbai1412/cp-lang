@@ -1043,7 +1043,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.jump(0, 2, 1) == Some(1) and lc.jump(0, 2, 0) == Some(0) and lc.jump(0, 2, 3) == None`
     pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
 
-/// `LinkCut` with updates along a path: `LazyLinkCut.new(act, a)` with an add `Action` adds to every value on
+/// `LinkCut` with updates along a path: `LazyLinkCut(act, a)` with an add `Action` adds to every value on
 /// a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`. Reversing a path must not
 /// change how a tag acts, `apply(f, x.rev(), k) == apply(f, x, k).rev()`, which holds for every
 /// commutative `over`. Every operation is amortized O(log n). Memory is about twice `LinkCut`'s.

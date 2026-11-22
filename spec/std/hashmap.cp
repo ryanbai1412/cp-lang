@@ -17,7 +17,7 @@ pub struct FlatMap<V>:
     live: Int
     used: Int
 
-    /// [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`). O(cap).
+    /// [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`).
     ///
     /// `default_val` fills the value slots that hold no entry; no method returns it, so any
     /// value of `V` works. The table is a power of two at least twice `cap`, so `cap` entries
@@ -25,90 +25,90 @@ pub struct FlatMap<V>:
     ///
     /// cost: O(cap)
     /// traps: never
-    /// example: `var m: FlatMap<Int> = FlatMap.new(0); m.len == 0`
+    /// example: `var m: FlatMap<Int> = FlatMap(0); m.len == 0`
     pub fn new(default_val: V, cap: Int = 16) -> FlatMap<V> = todo
 
-    /// Number of live key-value pairs. O(1).
+    /// Number of live key-value pairs.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(1, 5); m.set(1, 6); m.len == 1`
+    /// example: `var m = FlatMap(0); m.set(1, 5); m.set(1, 6); m.len == 1`
     pub @get fn len(self) -> Int = todo
 
-    /// Whether the map has no live entries. O(1).
+    /// Whether the map has no live entries.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `FlatMap.new(0).is_empty == true`
+    /// example: `FlatMap(0).is_empty == true`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// Remove all entries while keeping allocated capacity. O(capacity).
+    /// Remove all entries while keeping allocated capacity.
     ///
     /// cost: O(capacity)
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(1, 5); m.clear(); m.get(1) == None`
+    /// example: `var m = FlatMap(0); m.set(1, 5); m.clear(); m.get(1) == None`
     pub fn clear(mut self) = todo
 
     fn slot(self, k: Int) -> Int = todo
 
     fn rehash(mut self, new_cap: Int) = todo
 
-    /// Look up `k`, returning `None` if absent. O(1) expected.
+    /// Look up `k`, returning `None` if absent.
     ///
     /// cost: O(1) expected
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(5, 50); m.get(5) == Some(50) and m.get(6) == None`
+    /// example: `var m = FlatMap(0); m.set(5, 50); m.get(5) == Some(50) and m.get(6) == None`
     pub fn get(self, k: Int) -> ?V = todo
 
-    /// Whether `k` is currently present. O(1) expected.
+    /// Whether `k` is currently present.
     ///
     /// cost: O(1) expected
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(-3, 1); m.contains(-3) and not m.contains(3)`
+    /// example: `var m = FlatMap(0); m.set(-3, 1); m.contains(-3) and not m.contains(3)`
     pub fn contains(self, k: Int) -> Bool = todo
 
-    /// Insert or overwrite `k -> v`. O(1) expected amortized.
+    /// Insert or overwrite `k -> v`.
     ///
     /// When the table would pass half full it doubles and every entry is rehashed.
     ///
     /// cost: O(1) expected amortized
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(1, 5); m.set(1, 6); m.get(1) == Some(6)`
+    /// example: `var m = FlatMap(0); m.set(1, 5); m.set(1, 6); m.get(1) == Some(6)`
     pub fn set(mut self, k: Int, v: V) = todo
 
-    /// Return the value for `k`, inserting `v` first if `k` is absent. O(1) expected amortized.
+    /// Return the value for `k`, inserting `v` first if `k` is absent.
     ///
     /// A present `k` keeps its value; `v` is then ignored.
     ///
     /// cost: O(1) expected amortized
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.get_or_insert(4, 7) == 7 and m.get_or_insert(4, 9) == 7`
+    /// example: `var m = FlatMap(0); m.get_or_insert(4, 7) == 7 and m.get_or_insert(4, 9) == 7`
     pub fn get_or_insert(mut self, k: Int, v: V) -> V = todo
 
-    /// Remove `k` if present; returns its old value or `None`. O(1) expected.
+    /// Remove `k` if present; returns its old value or `None`.
     ///
     /// cost: O(1) expected
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(2, 9); m.remove(2) == Some(9) and m.remove(2) == None`
+    /// example: `var m = FlatMap(0); m.set(2, 9); m.remove(2) == Some(9) and m.remove(2) == None`
     pub fn remove(mut self, k: Int) -> ?V = todo
 
-    /// Reserve space for at least `cap` entries without rehashing. O(cap).
+    /// Reserve space for at least `cap` entries without rehashing.
     ///
     /// Entries are kept; a `cap` the table already fits does nothing.
     ///
     /// cost: O(cap) when the table grows, O(1) otherwise
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(1, 2); m.reserve(1000); m.get(1) == Some(2)`
+    /// example: `var m = FlatMap(0); m.set(1, 2); m.reserve(1000); m.get(1) == Some(2)`
     pub fn reserve(mut self, cap: Int) = todo
 
     /// Move the map's contents out in O(1), leaving `self` empty.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(1, 2); let t = m.take(); m.is_empty and t.get(1) == Some(2)`
+    /// example: `var m = FlatMap(0); m.set(1, 2); let t = m.take(); m.is_empty and t.get(1) == Some(2)`
     pub fn take(mut self) -> FlatMap<V> = todo
 
-    /// O(1) to make. Yields every live `(key, val)` pair. O(capacity).
+    /// O(1) to make. Yields every live `(key, val)` pair.
     ///
     /// The order is the table's slot order, which depends on the per-map salt: it is fixed
     /// while the map is unchanged and agrees with `keys` and `values`, but no program should
@@ -118,28 +118,28 @@ pub struct FlatMap<V>:
     /// empty: yields nothing
     /// order: unspecified slot order, the same as `keys` and `values` while unchanged
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(2, 20); m.set(1, 10); m.items.sorted() == [(1, 10), (2, 20)]`
+    /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.items.sorted() == [(1, 10), (2, 20)]`
     pub @get fn items(self) -> yields (Int, V) = todo
 
-    /// O(1) to make. Yields every live key. O(capacity).
+    ///
     ///
     /// cost: O(1) to make, O(capacity) to walk
     /// empty: yields nothing
     /// order: unspecified slot order, the same as `items`
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(2, 20); m.set(1, 10); m.keys.sorted() == [1, 2]`
+    /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.keys.sorted() == [1, 2]`
     pub @get fn keys(self) -> yields Int = todo
 
-    /// O(1) to make. Yields every live value. O(capacity).
+    ///
     ///
     /// cost: O(1) to make, O(capacity) to walk
     /// empty: yields nothing
     /// order: unspecified slot order, the same as `items`
     /// traps: never
-    /// example: `var m = FlatMap.new(0); m.set(2, 20); m.set(1, 10); m.values.sorted() == [10, 20]`
+    /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.values.sorted() == [10, 20]`
     pub @get fn values(self) -> yields V = todo
 
-    /// Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting. O(min(|self|, |other|)) expected.
+    /// Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
     ///
     /// For a key in both maps the result is `join(self's value, other's value)`, or `other`'s
     /// value when `join` is `None`. The smaller map is drained into the larger, so the
@@ -148,8 +148,8 @@ pub struct FlatMap<V>:
     /// cost: O(min(|self|, |other|)) expected
     /// empty: an empty `other` leaves `self` unchanged
     /// traps: never
-    /// example: `var a = FlatMap.new(0); a.set(1, 10); var b = FlatMap.new(0); b.set(1, 5); b.set(2, 7); a.absorb(mut b, join: (x, y) => x + y); a.get(1) == Some(15) and a.get(2) == Some(7) and b.is_empty`
-    /// example: `var a = FlatMap.new(0); a.set(1, 10); var b = FlatMap.new(0); b.set(1, 5); a.absorb(mut b); a.get(1) == Some(5)`
+    /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); b.set(2, 7); a.absorb(mut b, join: (x, y) => x + y); a.get(1) == Some(15) and a.get(2) == Some(7) and b.is_empty`
+    /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); a.absorb(mut b); a.get(1) == Some(5)`
     pub fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None) = todo
 
 /// Default-valued frequency / weight map over hashable keys `K`.
@@ -161,14 +161,14 @@ pub struct FlatMap<V>:
 pub struct Counter<K, V>:
     _len: Int
 
-    /// Create an empty `Counter<K, V>` whose missing keys read as `init`. O(1).
+    /// Create an empty `Counter<K, V>` whose missing keys read as `init`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var c: Counter<Char, Int> = Counter.new(0); c.get('z') == 0 and c.len == 0`
+    /// example: `var c: Counter<Char, Int> = Counter(0); c.get('z') == 0 and c.len == 0`
     pub fn new(init: V) -> Counter<K, V> = todo
 
-    /// Count occurrences of each element in `xs`. O(n) expected.
+    /// Count occurrences of each element in `xs`.
     ///
     /// The result has `init` `0`, so a key that never occurs reads `0`.
     ///
@@ -178,21 +178,21 @@ pub struct Counter<K, V>:
     /// example: `let c = Counter.of(['a', 'b', 'a']); c.get('a') == 2 and c.get('c') == 0`
     pub fn of(xs: List<K>) -> Counter<K, Int> = todo
 
-    /// Number of keys with a stored entry. O(1).
+    /// Number of keys with a stored entry.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Counter.of([3, 1, 3]).len == 2`
     pub @get fn len(self) -> Int = todo
 
-    /// Whether no keys are stored. O(1).
+    /// Whether no keys are stored.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `Counter.of([1]).is_empty == false`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// Value stored for `k`, or `init` if absent (does not insert). O(1) expected.
+    /// Value stored for `k`, or `init` if absent (does not insert).
     ///
     /// `c[k]` calls this.
     ///
@@ -201,14 +201,14 @@ pub struct Counter<K, V>:
     /// example: `let c = Counter.of([5, 5]); c[5] == 2 and c[6] == 0 and c.len == 1`
     pub fn get(self, k: K) -> V = todo
 
-    /// Whether `k` currently has a stored entry. O(1) expected.
+    /// Whether `k` currently has a stored entry.
     ///
     /// cost: O(1) expected
     /// traps: never
     /// example: `let c = Counter.of([5]); c.contains(5) and not c.contains(6)`
     pub fn contains(self, k: K) -> Bool = todo
 
-    /// Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`). O(1) expected amortized.
+    /// Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`).
     ///
     /// Setting a key to `init` removes it.
     ///
@@ -218,31 +218,31 @@ pub struct Counter<K, V>:
     /// example: `var c = Counter.of(['a']); c['a'] = 0; c.contains('a') == false`
     pub fn set(mut self, k: K, v: V) = todo
 
-    /// Add `delta` to `k`'s value, removing `k` if the result equals `init`. O(1) expected amortized.
+    /// Add `delta` to `k`'s value, removing `k` if the result equals `init`.
     ///
     /// An absent key starts from `init`. `c[k] += d` is `c.add(k, d)`.
     ///
     /// cost: O(1) expected amortized
     /// traps: never (overflow wraps in release, traps in debug)
-    /// example: `var c: Counter<Char, Int> = Counter.new(0); c.add('x', 2); c['x'] == 2`
-    /// example: `var c: Counter<Char, Int> = Counter.new(0); c.add('x', 2); c.add('x', -2); c.len == 0`
+    /// example: `var c: Counter<Char, Int> = Counter(0); c.add('x', 2); c['x'] == 2`
+    /// example: `var c: Counter<Char, Int> = Counter(0); c.add('x', 2); c.add('x', -2); c.len == 0`
     pub fn add(mut self, k: K, delta: V) = todo
 
-    /// Remove `k` and return its previous value, or `None` if absent. O(1) expected.
+    /// Remove `k` and return its previous value, or `None` if absent.
     ///
     /// cost: O(1) expected
     /// traps: never
     /// example: `var c = Counter.of(['a', 'a']); c.remove('a') == Some(2) and c.remove('a') == None`
     pub fn remove(mut self, k: K) -> ?V = todo
 
-    /// Reserve space for at least `cap` keys. O(cap).
+    /// Reserve space for at least `cap` keys.
     ///
     /// cost: O(cap) when the table grows, O(1) otherwise
     /// traps: never
     /// example: `var c = Counter.of([1]); c.reserve(100); c[1] == 1`
     pub fn reserve(mut self, cap: Int) = todo
 
-    /// Remove all entries. O(n).
+    /// Remove all entries.
     ///
     /// cost: O(n)
     /// traps: never
@@ -258,7 +258,7 @@ pub struct Counter<K, V>:
     /// example: `var c = Counter.of([1]); let d = c.take(); c.is_empty and d[1] == 1`
     pub fn take(mut self) -> Counter<K, V> = todo
 
-    /// Merge all entries from `other` into `self` by adding values (emptying `other`). O(min(|self|, |other|)) expected.
+    /// Merge all entries from `other` into `self` by adding values (emptying `other`).
     ///
     /// Stored values are added: a key stored in both ends at the sum of the two, a key stored in
     /// one keeps that value, and a sum equal to `init` is removed. Absent keys contribute
@@ -270,7 +270,7 @@ pub struct Counter<K, V>:
     /// example: `var a = Counter.of(['x', 'y']); var b = Counter.of(['y', 'z']); a.absorb(mut b); a['y'] == 2 and a.len == 3 and b.len == 0`
     pub fn absorb(mut self, mut other: Counter<K, V>) = todo
 
-    /// Sum of all stored values. O(n).
+    /// Sum of all stored values.
     ///
     /// Only stored entries count; `init` is not added for absent keys.
     ///
@@ -280,7 +280,7 @@ pub struct Counter<K, V>:
     /// example: `Counter.of([1, 1, 2]).total() == 3`
     pub fn total(self) -> V = todo
 
-    /// Top `k` entries sorted by descending value. O(n log n).
+    /// Top `k` entries sorted by descending value.
     ///
     /// A `k` at least `len` returns every entry.
     ///
@@ -293,7 +293,7 @@ pub struct Counter<K, V>:
     /// example: `Counter.of(['b', 'a']).most_common(5) == [('a', 1), ('b', 1)]`
     pub fn most_common(self, k: Int) -> List<(K, V)> = todo
 
-    /// O(1) to make. Yields every stored `(key, val)` pair. O(n).
+    /// O(1) to make. Yields every stored `(key, val)` pair.
     ///
     /// cost: O(1) to make, O(1) per step
     /// empty: yields nothing
@@ -302,7 +302,7 @@ pub struct Counter<K, V>:
     /// example: `Counter.of([2, 1, 2]).items.sorted() == [(1, 1), (2, 2)]`
     pub @get fn items(self) -> yields (K, V) = todo
 
-    /// O(1) to make. Yields every stored key. O(n).
+    ///
     ///
     /// cost: O(1) to make, O(1) per step
     /// empty: yields nothing
@@ -311,7 +311,7 @@ pub struct Counter<K, V>:
     /// example: `Counter.of([2, 1, 2]).keys.sorted() == [1, 2]`
     pub @get fn keys(self) -> yields K = todo
 
-    /// O(1) to make. Yields every stored value. O(n).
+    ///
     ///
     /// cost: O(1) to make, O(1) per step
     /// empty: yields nothing

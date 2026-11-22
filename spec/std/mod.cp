@@ -24,9 +24,9 @@ pub struct Mod<P>(v: 0..P):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Mod<7>.new(-1) == Mod<7>(6)`
-    /// example: `Mod<7>.new(15) == Mod<7>(1)`
-    /// example: `Mod<1>.new(5) == Mod<1>(0)`
+    /// example: `Mod<7>(-1) == Mod<7>(6)`
+    /// example: `Mod<7>(15) == Mod<7>(1)`
+    /// example: `Mod<1>(5) == Mod<1>(0)`
     pub fn new(x: Int) -> Mod<P> = todo
 
     /// The multiplicative inverse when `gcd(v, P) == 1`, or `None` otherwise.
@@ -137,7 +137,7 @@ pub struct Comb<M>:
     ///
     /// cost: O(min(limit, P))
     /// traps: when `limit < 0`, or `P` is not prime
-    /// example: `type Z = Mod<7>; let c = Comb<Z>.new(3); c.fact(3) == Z(6)`
+    /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
     pub fn new(limit: Int = 0) -> Comb<M> = todo
 
     fn grow(self, want: Int) = todo
@@ -148,24 +148,24 @@ pub struct Comb<M>:
     ///
     /// cost: O(1) amortized
     /// traps: when `n < 0`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().fact(5) == Z(120)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().fact(6) == Z(6)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().fact(7) == Z(0)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().fact(5) == Z(120)`
+    /// example: `type Z = Mod<7>; Comb<Z>().fact(6) == Z(6)`
+    /// example: `type Z = Mod<7>; Comb<Z>().fact(7) == Z(0)`
     pub fn fact(self, n: Int) -> M = todo
 
     /// `1 / n!`, for `0 <= n < M.MOD`.
     ///
     /// cost: O(1) amortized
     /// traps: when `n` is outside `0..M.MOD`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().inv_fact(3) == Z(6)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().inv_fact(0) == Z(1)`
+    /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(3) == Z(6)`
+    /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(0) == Z(1)`
     pub fn inv_fact(self, n: Int) -> M = todo
 
     /// `1 / i`, for `1 <= i < M.MOD`, from the factorials: `(i - 1)! / i!`.
     ///
     /// cost: O(1) amortized
     /// traps: when `i` is outside `1..M.MOD`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().inv(3) == Z(5)`
+    /// example: `type Z = Mod<7>; Comb<Z>().inv(3) == Z(5)`
     pub fn inv(self, i: Int) -> M = todo
 
     fn choose_lucas(self, n: Int, k: Int) -> M = todo
@@ -177,10 +177,10 @@ pub struct Comb<M>:
     ///
     /// cost: O(1) amortized for `n < M.MOD`; O(log_P n) otherwise
     /// traps: never
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().choose(5, 2) == Z(10)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().choose(5, 6) == Z(0)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().choose(10, 3) == Z(1)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().choose(7, 1) == Z(0)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 2) == Z(10)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 6) == Z(0)`
+    /// example: `type Z = Mod<7>; Comb<Z>().choose(10, 3) == Z(1)`
+    /// example: `type Z = Mod<7>; Comb<Z>().choose(7, 1) == Z(0)`
     pub fn choose(self, n: Int, k: Int) -> M = todo
 
     /// The number of ordered selections of `k` out of `n` things, `n! / (n - k)!`; 0 when `k` is
@@ -192,9 +192,9 @@ pub struct Comb<M>:
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().arrange(5, 2) == Z(20)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().arrange(9, 2) == Z(2)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().arrange(8, 2) == Z(0)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().arrange(5, 2) == Z(20)`
+    /// example: `type Z = Mod<7>; Comb<Z>().arrange(9, 2) == Z(2)`
+    /// example: `type Z = Mod<7>; Comb<Z>().arrange(8, 2) == Z(0)`
     pub fn arrange(self, n: Int, k: Int) -> M = todo
 
     /// The number of ways to put `n` equal balls into `k` boxes (stars and bars): `choose(n + k - 1, n)`.
@@ -204,9 +204,9 @@ pub struct Comb<M>:
     ///
     /// cost: O(1) amortized
     /// traps: never
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().multichoose(3, 2) == Z(4)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().multichoose(2, 3) == Z(6)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().multichoose(0, 0) == Z(1)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(3, 2) == Z(4)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(2, 3) == Z(6)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(0, 0) == Z(1)`
     pub fn multichoose(self, n: Int, k: Int) -> M = todo
 
     /// The `n`-th Catalan number, `choose(2n, n) - choose(2n, n + 1)`.
@@ -216,9 +216,9 @@ pub struct Comb<M>:
     ///
     /// cost: O(1) amortized
     /// traps: when `n < 0`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().catalan(0) == Z(1)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().catalan(4) == Z(14)`
-    /// example: `type Z = Mod<7>; Comb<Z>.new().catalan(4) == Z(0)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(0) == Z(1)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(4) == Z(14)`
+    /// example: `type Z = Mod<7>; Comb<Z>().catalan(4) == Z(0)`
     pub fn catalan(self, n: Int) -> M = todo
 
     /// The number of derangements `!n`: permutations of `n` things with no fixed point.
@@ -228,9 +228,9 @@ pub struct Comb<M>:
     ///
     /// cost: O(1) amortized, O(n) table
     /// traps: when `n < 0`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().derange(0) == Z(1)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().derange(4) == Z(9)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().derange(5) == Z(44)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(0) == Z(1)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(4) == Z(9)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(5) == Z(44)`
     pub fn derange(self, n: Int) -> M = todo
 
     /// The multinomial coefficient `(sum ks)! / prod(k!)`; 0 if any `k < 0`.
@@ -241,10 +241,10 @@ pub struct Comb<M>:
     /// cost: O(ks.len) amortized
     /// empty: 1 (the empty multinomial)
     /// traps: never
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().multinomial([2, 1]) == Z(3)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().multinomial([1, 1, 1]) == Z(6)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().multinomial([2, -1]) == Z(0)`
-    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>.new().multinomial([]) == Z(1)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([2, 1]) == Z(3)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([1, 1, 1]) == Z(6)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([2, -1]) == Z(0)`
+    /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([]) == Z(1)`
     pub fn multinomial(self, ks: List<Int>) -> M = todo
 
 /// O(1) reduction. Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`.
@@ -254,24 +254,24 @@ pub struct Barrett(m: Int, im: U64):
     ///
     /// cost: O(1)
     /// traps: when `m` is outside `1..2^31`
-    /// example: `Barrett.new(7).mul(3, 5) == 1`
+    /// example: `Barrett(7).mul(3, 5) == 1`
     pub fn new(m: Int) -> Barrett = todo
 
     /// `(a * b) % m` without a hardware division, for `a, b` in `0..m`.
     ///
     /// cost: O(1)
     /// traps: when `a` or `b` is outside `0..m`
-    /// example: `Barrett.new(7).mul(3, 5) == 1`
-    /// example: `Barrett.new(1_000_000_007).mul(1_000_000_006, 1_000_000_006) == 1`
-    /// example: `Barrett.new(1).mul(0, 0) == 0`
+    /// example: `Barrett(7).mul(3, 5) == 1`
+    /// example: `Barrett(1_000_000_007).mul(1_000_000_006, 1_000_000_006) == 1`
+    /// example: `Barrett(1).mul(0, 0) == 0`
     pub fn mul(self, a: Int, b: Int) -> Int = todo
 
     /// `a % m`, for `a < m * m`.
     ///
     /// cost: O(1)
     /// traps: when `a >= m * m`
-    /// example: `Barrett.new(7).reduce(48) == 6`
-    /// example: `Barrett.new(7).reduce(0) == 0`
+    /// example: `Barrett(7).reduce(48) == 6`
+    /// example: `Barrett(7).reduce(0) == 0`
     pub fn reduce(self, a: U64) -> Int = todo
 
 /// O(p^e) build, O(log_p n) query. Binomial coefficients modulo a prime power `p^e` (Granville's theorem).
@@ -281,7 +281,7 @@ pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
     ///
     /// cost: O(p^e) time and memory
     /// traps: when `p` is not prime, or `e < 1`, or `p^e` overflows `Int`
-    /// example: `PrimePowerComb.new(2, 3).choose(6, 3) == 4`
+    /// example: `PrimePowerComb(2, 3).choose(6, 3) == 4`
     pub fn new(p: Int, e: Int) -> PrimePowerComb = todo
 
     /// `C(n, k) mod p^e`, by Granville's generalization of Lucas's theorem; 0 when `k` is outside
@@ -289,9 +289,9 @@ pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
     ///
     /// cost: O(log_p n)
     /// traps: never
-    /// example: `PrimePowerComb.new(2, 3).choose(6, 3) == 4`
-    /// example: `PrimePowerComb.new(3, 2).choose(9, 3) == 3`
-    /// example: `PrimePowerComb.new(3, 2).choose(5, 7) == 0`
+    /// example: `PrimePowerComb(2, 3).choose(6, 3) == 4`
+    /// example: `PrimePowerComb(3, 2).choose(9, 3) == 3`
+    /// example: `PrimePowerComb(3, 2).choose(5, 7) == 0`
     pub fn choose(self, n: Int, k: Int) -> Int = todo
 
 /// O(sum p_i^e_i) build, O(omega(m) log n) query. Binomial coefficients modulo any `m >= 1` via CRT.
@@ -301,7 +301,7 @@ pub struct ModComb(m: Int):
     ///
     /// cost: O(sum p_i^e_i)
     /// traps: when `m < 1`
-    /// example: `ModComb.new(12).choose(6, 3) == 8`
+    /// example: `ModComb(12).choose(6, 3) == 8`
     pub fn new(m: Int) -> ModComb = todo
 
     /// `C(n, k) mod m`, by CRT over the prime powers of `m`; 0 when `k` is outside `0..=n`.
@@ -310,9 +310,9 @@ pub struct ModComb(m: Int):
     ///
     /// cost: O(omega(m) log n)
     /// traps: never
-    /// example: `ModComb.new(12).choose(6, 3) == 8`
-    /// example: `ModComb.new(10).choose(5, 2) == 0`
-    /// example: `ModComb.new(1).choose(5, 2) == 0`
+    /// example: `ModComb(12).choose(6, 3) == 8`
+    /// example: `ModComb(10).choose(5, 2) == 0`
+    /// example: `ModComb(1).choose(5, 2) == 0`
     pub fn choose(self, n: Int, k: Int) -> Int = todo
 
 @test
