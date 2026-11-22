@@ -1,6 +1,6 @@
 # wtf26a
 
-Score: 3/5
+Score: pending cold rescore (adopted full Kruskal + overflow-clamp header, single `domain Node = 0..2 * n - 1`, `struct Cut(w, size, parent)`, `[Node]?Cut` eliminating `cut_ng[i] < m` sentinel, and `DsuOf<Node, Int>` toward the 4/5 dream; remaining gap is `KruskalTree`)
 Dream: 4/5
 
 The header (lines 1-3) states the plan. The Kruskal reconstruction tree is hand-built from three parallel `cut_*` arrays over raw `Int` node ids with `n + e` offsets, and the overflow clamp (line 40) is not derived. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
