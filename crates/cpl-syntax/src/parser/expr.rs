@@ -1106,13 +1106,16 @@ impl<'a> Parser<'a> {
                     let op_text = self.text().to_string();
                     self.pos = super::after_group(self.tokens, self.pos.saturating_sub(1));
                     let span = self.span_from(start);
-                    self.error(Diagnostic::error(
-                        codes::BARE_OP_TUPLE,
-                        span,
-                        format!(
-                            "`({op_text}, ...)` is not an operation; write `each({op_text}, ...)` or `Semiring(...)`"
-                        ),
-                    ));
+                    self.error(
+                        Diagnostic::error(
+                            codes::BARE_OP_TUPLE,
+                            span,
+                            format!(
+                                "`({op_text}, ...)` is not an operation; write `each({op_text}, ...)` or `Semiring(...)`"
+                            ),
+                        )
+                        .with_fix("insert `each`", Span::point(span.start), "each"),
+                    );
                     ExprKind::Error
                 } else if self.eat(T::DotDot) {
                     let base = self.expr();
@@ -1640,13 +1643,19 @@ impl<'a> Parser<'a> {
                     // `else if` reads as `elif`, and says so.
                     if self.at(T::If) {
                         let span = self.span();
+                        let both = Span::new(self.tokens[self.pos - 1].span.start, span.end);
                         self.error(
                             Diagnostic::error(
                                 codes::REMOVED_SYNTAX,
                                 span,
                                 "use `elif`, not `else if`",
                             )
-                            .with_help("write `elif cond:`"),
+                            .with_help("write `elif cond:`")
+                            .with_fix(
+                                "replace with `elif`",
+                                both,
+                                "elif",
+                            ),
                         );
                         continue;
                     }
