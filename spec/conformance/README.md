@@ -22,6 +22,9 @@ rule from elsewhere is written `(see Rnn.n.n)` so it is not read as a
 second definition. `COVERAGE.md` (from `scripts/conformance-coverage.py`)
 lists per chapter the rules, codes and std items each case covers. An `R` code
 expects the program to check, run and trap with that code on that line.
+An `L` code runs `cpl lint` (default levels) after the check. An optional
+header line `// input: "3\n1 2 3\n"` gives the run its standard input,
+escaped like `output "..."`; without it the input is empty.
 
 They double as the spec's exercises and as the regression suite: the
 runner (`cpl-conform conformance`, in `crates/cpl-conform`) checks each expectation

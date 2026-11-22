@@ -20,7 +20,26 @@ pub struct ConformanceCase {
     pub path: PathBuf,
 }
 
-/// Parses `// expect: ...` and computes the line offset after `// expect:` / `// rule:` headers.
+/// Standard input from an optional `// input: "..."` header line, escaped like `output "..."`.
+pub fn header_input(text: &str) -> Vec<u8> {
+    for line in text.lines() {
+        let Some(rest) = line.trim_start().strip_prefix("//") else {
+            break;
+        };
+        let Some(quoted) = rest.trim_start().strip_prefix("input:") else {
+            continue;
+        };
+        let quoted = quoted.trim();
+        let body = quoted
+            .strip_prefix('"')
+            .and_then(|q| q.strip_suffix('"'))
+            .unwrap_or(quoted);
+        return unescape_python_like(body).into_bytes();
+    }
+    Vec::new()
+}
+
+/// Parses `// expect: ...` and computes the line offset after the `// expect:`, `// rule:` and `// input:` headers.
 pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
     let lines: Vec<&str> = text.split('\n').collect();
     let head = lines.first().copied().unwrap_or("").trim();
@@ -30,7 +49,7 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
             let trimmed = l.trim_start();
             if let Some(rest) = trimmed.strip_prefix("//") {
                 let rest = rest.trim_start();
-                !(rest.starts_with("expect:") || rest.starts_with("rule:"))
+                !(rest.starts_with("expect:") || rest.starts_with("rule:") || rest.starts_with("input:"))
             } else {
                 true
             }
@@ -167,7 +186,11 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
         }
     };
     let path_str = case.path.to_string_lossy();
-    let (diag, check_failed) = runner::check_spec(db, &path_str, &text);
+    let (mut diag, check_failed) = runner::check_spec(db, &path_str, &text);
+    if matches!(&expect, Expect::Diag { code, .. } if code.starts_with('L')) {
+        let lints = cpl_lint::lint(&text, &cpl_lint::Config::default());
+        diag.push_str(&cpl_diag::render_all(&lints, &path_str, &text));
+    }
 
     match expect {
         Expect::Trap { code, line } => {
@@ -193,7 +216,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     };
                 }
             };
-            let run = runner::run_interp(&compiled.program, &path_str, &text, b"");
+            let run = runner::run_interp(&compiled.program, &path_str, &text, &header_input(&text));
             if run.trap.is_some()
                 && run.trap_rendered.contains(&code)
                 && run.trap_rendered.contains(&format!(":{target_line}"))
@@ -275,7 +298,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     };
                 }
             };
-            let run = runner::run_interp(&compiled.program, &path_str, &text, b"");
+            let run = runner::run_interp(&compiled.program, &path_str, &text, &header_input(&text));
             let stdout = String::from_utf8_lossy(&run.stdout);
             let actual = stdout.trim_end_matches('\n');
             if actual == want {
