@@ -4,6 +4,8 @@ import { Runner } from '@/components/runner';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { bench } from '@/lib/bench';
+import { corpus } from '@/lib/corpus';
 import { landingSnippets } from '@/lib/landing';
 
 const starts = [
@@ -20,6 +22,14 @@ const tools = [
 
 export default function Home() {
   const snippets = landingSnippets();
+  const { ports } = bench();
+  const ratios = ports
+    .filter((p) => p.above_floor && p.time_ratio != null)
+    .map((p) => p.time_ratio!)
+    .sort((a, b) => a - b);
+  const median = ratios[Math.floor(ratios.length / 2)];
+  const p95 = ratios[Math.ceil(0.95 * ratios.length) - 1];
+  const problems = corpus().length;
   return (
     <main className="container mx-auto max-w-6xl px-4">
       <section className="grid items-center gap-10 py-16 lg:grid-cols-[1fr_1.2fr]">
@@ -83,6 +93,41 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <section className="grid gap-4 border-t py-16 md:grid-cols-2">
+        <Link href="/performance" className="group">
+          <Card className="h-full transition-colors group-hover:bg-accent">
+            <CardHeader>
+              <CardTitle>How fast is it?</CardTitle>
+              <CardDescription>
+                Across {ratios.length} timed ports, the generated C++ runs at a median {median.toFixed(2)}x of matched
+                hand-written C++, and {p95.toFixed(2)}x at p95. The goal is 1.1x; it isn&apos;t met yet. See the full
+                distribution <ArrowRight className="inline size-3.5" />
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+        <Link href="/corpus" className="group">
+          <Card className="h-full transition-colors group-hover:bg-accent">
+            <CardHeader>
+              <CardTitle>{problems} real problems</CardTitle>
+              <CardDescription>
+                Accepted C++ next to its CP Lang rewrite, with notes, linking to each judge&apos;s statement. Browse the
+                gallery <ArrowRight className="inline size-3.5" />
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+      </section>
+
+      <footer className="flex flex-wrap gap-x-6 gap-y-2 border-t py-8 text-sm text-muted-foreground">
+        <span>CP Lang is in beta.</span>
+        <Link className="hover:underline" href="/setup">Set up</Link>
+        <Link className="hover:underline" href="/tools">Tools</Link>
+        <Link className="hover:underline" href="/docs/releases">Release notes</Link>
+        <Link className="hover:underline" href="/llms.txt">llms.txt</Link>
+        <a className="hover:underline" href="https://github.com/ryanbai1412/cp-lang">GitHub</a>
+      </footer>
     </main>
   );
 }
