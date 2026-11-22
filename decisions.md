@@ -5772,7 +5772,7 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Make `Prefix(a)` 1-D over the product domain and require
   `Prefix<R, C, T>(a)` for rectangles.
 
-## 221. Walking a `Map` yields `(k, v)` pairs in key order (2026-11-22)
+## 222. Walking a `Map` yields `(k, v)` pairs in key order (2026-11-22)
 
 - **Decision.** `for (k, v) in m` walks a `Map<K, V>`'s entries in ascending
   key order, the same pairs as `m.items`. Chapter 7 lists `Map` as `Keyed`
