@@ -124,6 +124,23 @@ def ir_builtin_names(root: Path) -> list[str]:
     return sorted(names)
 
 
+def prelude_privilege(root: Path) -> list[str]:
+    """Public std names the checker's prelude.rs tables also know: stdlib privilege."""
+    src = root / "crates/cpl-check/src/prelude.rs"
+    if not src.is_file():
+        return []
+    text = src.read_text()
+    tables: set[str] = set()
+    for t in ("TYPE_NAMES", "VALUE_NAMES", "TRAIT_NAMES"):
+        m = re.search(t + r": &\[&str\] = &\[(.*?)\];", text, re.S)
+        if m:
+            tables.update(re.findall(r'"(\w+)"', m.group(1)))
+    public: set[str] = set()
+    for p in sorted((root / "spec/std").glob("*.cp")):
+        public.update(re.findall(r"^\s*pub\s+(?:fn|struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
+    return sorted(tables & public)
+
+
 def backend_std_names(root: Path) -> list[str]:
     subdirs = [f"crates/{c}/src" for c in BACK_ENDS]
     return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *subdirs, tests=False)
@@ -266,6 +283,7 @@ COUNTERS = {
     "pending_tests": ("crates/cpl-cli/tests/pending/ files", pending_tests, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs", ir_builtin_names, True),
+    "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),

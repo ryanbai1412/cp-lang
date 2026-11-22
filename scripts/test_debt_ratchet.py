@@ -117,6 +117,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.layer_violations(root), ["cpl-lint -> cpl-prover"])
             self.assertEqual(dr.stale_arch_paths(root), ["plan/ARCHITECTURE.md:1 crates/gone/x.rs"])
 
+    def test_prelude_privilege(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "crates/cpl-check/src/prelude.rs",
+                        'pub const VALUE_NAMES: &[&str] = &[\n    "sum", "print",\n];\n'
+                        'pub const TYPE_NAMES: &[&str] = &["Counter"];\n')
+            self._write(root, "spec/std/seq.cp", "pub fn sum(xs: List<Int>) -> Int = todo\nfn print() = todo\n")
+            self._write(root, "spec/std/bag.cp", "pub struct Counter {}\n")
+            self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
+
     def test_stale_arch_paths_skips_ignored_and_known_debt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

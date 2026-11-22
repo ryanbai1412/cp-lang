@@ -31,6 +31,13 @@ target = "<= signed floor (Q1; proposed 30)"
 milestone = "M3"
 
 [[metric]]
+name = "prelude_privilege"
+command = "python3 scripts/debt-ratchet.py --show prelude_privilege"
+today = 27
+target = "only builtin-floor names (Q1)"
+milestone = "M2"
+
+[[metric]]
 name = "backend_std_names"
 command = "python3 scripts/debt-ratchet.py --show backend_std_names"
 today = 17

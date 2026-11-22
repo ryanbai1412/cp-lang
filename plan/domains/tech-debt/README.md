@@ -72,7 +72,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 | v0.2 `port.cp` files | `M v02_port_files` | 877 | 0 |
 | `spec/std` references | `M spec_std_refs` | 149 | 0 |
 | Direct `python3` in gate/just | `M direct_python` | 13 | 0 |
-| Stale paths in architecture docs (not gated yet) | `M stale_arch_paths` | 11 (diagnostics 1, site 10) | 0 |
+| Stale paths in architecture docs (not gated yet) | `M stale_arch_paths` | 10 (`--list stale_arch_paths`) | 0 |
 | Std TODO bodies (ratchet; stdlib drives) | `python3 scripts/debt-ratchet.py --check` | 294 | never up |
 | `devin/*` branches with unlanded commits | see metrics.toml | 57 of 68 | 0 |
 | Cold-review rubric median | review log in worklog.md | unmeasured | >= 4 |
