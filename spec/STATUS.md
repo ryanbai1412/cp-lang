@@ -11,7 +11,7 @@ Ryan's plan, in order (his words are in `plan/agent-context.md`):
 1. **Write the whole spec.** Done as a draft: `spec/README.md` indexes 14 core
    chapters, the library chapters in `lib/`, the tool contracts in `tools/`,
    and about 1,700 documented signatures in `std/` (bodies are `todo`).
-2. **One independent review.** Done: `review/0.3.0.md`. Its findings were
+2. **One independent review.** Done: `research/spec-review-0.3.0.md`. Its findings were
    folded in and logged in `decisions.md`.
 3. **Hill-climb against 100 problems.** Done once over all 100 in
    `corpus/hillclimb.json`. Each has a blind `dream.cp` and a `spec.cp`
@@ -41,7 +41,7 @@ and answers compile/output questions with few guesses.
 - `dream.cp` is written blind from the accepted C++ and the editorial idea,
   without reading the spec or running the checker. `spec.cp` is written after
   comparing the two, and must pass `cpl check`. Never write a dream against
-  the stubs. The brief is `DREAM-BRIEF.md`.
+  the stubs. The brief is `plan/DREAM-BRIEF.md`.
 - Each gap between the pair is one of: a spec change (a general mechanism,
   added to `decisions.md` and the stubs), a rejected wish (one-problem helpers
   are rejected, with the reason written down), a dream bug, a checker gap

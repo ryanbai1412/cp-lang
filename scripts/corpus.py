@@ -32,7 +32,7 @@ def source_of(problem):
 
 def artifacts():
     found = defaultdict(lambda: defaultdict(list))
-    for base in ("proto/ports", "spec/gold"):
+    for base in ("proto/ports", "corpus/gold"):
         for d, _, files in os.walk(os.path.join(ROOT, base)):
             for f in files:
                 m = re.match(r"([a-z0-9]+?)(_orig|_draft|_judge)?\.(cp|cpp)$", f)

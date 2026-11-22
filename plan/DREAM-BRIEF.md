@@ -98,7 +98,7 @@ syntax is allowed only when no library facility can say it; list it under
 For each problem NAME:
 
 - `proto/ports/ecnerwala/dream/NAME.cp`: the dream.
-- `spec/wishes/NAME.md`: every invented library name (signature, doc,
+- `corpus/wishes/NAME.md`: every invented library name (signature, doc,
   cost) and every syntax wish (snippet and reason), or "none".
 
 `scripts/spec-check.sh proto/ports/ecnerwala/dream/NAME.cp` shows what the
