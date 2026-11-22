@@ -9,8 +9,8 @@
 - `PersistentDsu.unite`: chose handles numbered in creation order (k-th call returns k) and a fresh handle even when nothing merges, so a handle count always equals the number of calls.
 - `PersistentDsu.find/same/size/unite`: chose to trap on a `ver` that is not a handle of this structure.
 - `PersistentDsu.reserve`, `RollbackArray`: trap on `nodes < 0`; `RollbackArray.set` logs every write, marked or not (the struct has no marked flag).
-- `RollbackArray.new` (contradiction): `spec/lib/containers.md` declares `new(init: [D]T)` and a `filled(val: T)` constructor; the stub has `new(init: D -> T)` and no `filled`. Left unchanged.
-- `RollbackArray.new` (contradiction): the old doc and `containers.md` give cost `O(D.K)`, an undefined name; documented O(n) for n = `D.count`.
-- `DsuOf.groups` (contradiction): `containers.md` asks for `groups()` on `DsuOf` to match `Dsu`; the stub has none. Left unchanged.
-- `PotentialDsu.new` (contradiction): its doc carries a `[rename]` marker and a generic `op: ?G` group operation, but `find`, `unite` and `diff` take and return `Int` offsets, so a non-`Int` group cannot be expressed. Left the signature; documented `+` on `Int` as the default.
+- `RollbackArray.new` (contradiction): `spec/lib/containers.md` declares `new(init: [D]T)` and a `filled(val: T)` constructor; the stub has `new(init: D -> T)` and no `filled`. Left unchanged. (resolved: kept stub (one `new(init: D -> T)`; `filled(v)` is `new(_ => v)`); containers.md §2.4 fixed)
+- `RollbackArray.new` (contradiction): the old doc and `containers.md` give cost `O(D.K)`, an undefined name; documented O(n) for n = `D.count`. (resolved: kept stub O(n); containers.md §2.4 fixed)
+- `DsuOf.groups` (contradiction): `containers.md` asks for `groups()` on `DsuOf` to match `Dsu`; the stub has none. Left unchanged. (resolved: added `DsuOf.groups()`, decision 166)
+- `PotentialDsu.new` (contradiction): its doc carries a `[rename]` marker and a generic `op: ?G` group operation, but `find`, `unite` and `diff` take and return `Int` offsets, so a non-`Int` group cannot be expressed. Left the signature; documented `+` on `Int` as the default. (resolved: `PotentialDsu.new()` is `Int`-only, `op:` dropped, decision 166)
 - `Dsu.find` / `DsuOf.find` take `self` while `same`/`size` take `mut self` although all shorten paths through `@cache`; harmless, left unchanged.

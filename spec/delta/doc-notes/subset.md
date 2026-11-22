@@ -13,12 +13,12 @@ Choices made where the spec is silent, and contradictions found, while bringing
 - `Subset.first`: needs a `ties:` label by the audit rule; members are distinct,
   so it says there are no ties and the least in `B`'s order wins.
 - Contradiction: `subset.cp` says `B` has at most 64 members (one `U64`);
-  lib/search-dp.md §Mask DP says at most 30. Left the stub; one should change.
+  lib/search-dp.md §Mask DP says at most 30. Left the stub; one should change. (resolved: kept stub (64); search-dp.md fixed)
 - Contradiction: decision 62 says `Subset<D>` has `empty` and `full` "as `@get`"
   and decisions 18.3 and 19.x write `Subset<D>.empty` / `.full` bare; the stub declares
-  `pub fn empty()` and `pub fn full()`, which need `()`. Left as is.
+  `pub fn empty()` and `pub fn full()`, which need `()`. Left as is. (resolved: decision 62 wins: `@get`, decision 166)
 - Contradiction: decision 62 cites `Subset<D>.set(i, on)` and decision 16.8
-  `Subset<D>.shifted(k)`; neither exists in `subset.cp` (Bitset has both).
+  `Subset<D>.shifted(k)`; neither exists in `subset.cp` (Bitset has both). (resolved: decisions win: added `set` and `shifted`)
 - Gap: decision 18.3 says `for s in Subset<D>` walks all masks in ascending
   integer order; the stub says `B.subsets` is the domain but nothing states its
   order. Not documented here because it is a domain fact, not a fn.

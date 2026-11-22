@@ -4723,3 +4723,46 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   print-then-read. With `ask`, a query function is one line.
 - **Reverse.** Remove `Wire.ask` from `spec/std/io.cp` and section 10.5 and the output-shape
   bullet from chapter 10, and restore the print-then-read bodies in the two ports.
+
+## 166. Library contradictions resolved (structures) (2026-11-21)
+
+Resolutions of the doc-note contradictions (`spec/delta/doc-notes/`) for the structure modules
+that change behaviour or a public name. Prose-only fixes are marked in the notes and not repeated.
+
+- **`IntervalMap.replace`, `SparseIntervalMap.replace` removed; `assign` takes `on_old:`.**
+  Decision 67 already chose the callback: a `mut self` generator can be abandoned half-way.
+  Reverse: restore `replace(...) -> yields (range, val)` and drop the `on_old` parameter.
+- **`MinIdx`/`MaxIdx` removed from `std.algebra`.** `min(by:)` keeps the left operand on ties, so
+  a tree of it already returns the first minimum (`lib/ops-ranges.md` §2); one name per idea.
+  Reverse: restore the two structs and their `join`.
+- **`Rope.query_path` removed.** Its result depended on which tags were still pending, i.e. on the
+  random tree shape, so two implementations could disagree. Reverse: restore it with a rule that
+  fixes the answer (e.g. the latest tag covering `i`).
+- **`PersistentSegTree.diff_kth` and `BucketCount.kth` are 0-based**, like `nth`, `RangeKth.kth`
+  and `WaveletMatrix.kth`. Reverse: make `k` 1-based again and trap on `k < 1`.
+- **`SortedBag.drain(r)` renamed `drain_range(r)`.** It shared a name with `drain(after:, before:,
+  while:)`, which returns a `List`; one name per result shape. Reverse: rename it back.
+- **`SortedBag.sum()` returns `K`**, as `SortedSet.sum` does, instead of `Int` for every `K`.
+  Reverse: return `Int`.
+- **`Bitset.prev(i)` counts `i` itself**, the mirror of `next` and the same as `DynBitset.prev`.
+  Reverse: make it strictly before `i` again.
+- **`Bitset.first(pred)` split into `first()` and `find(pred)`** (decision 66.1; `seq.find`).
+  Reverse: fold `find` back into `first` with a default predicate.
+- **`Subset.empty`/`full` are `@get`** (decision 62; O(1) on one word). `Bitset.empty()`/`full()`
+  stay calls: they are O(K / 64), and decision 140 (later) puts work behind `()`. Reverse: make
+  the `Subset` pair plain `fn` again.
+- **`LinkedList.first`/`last` return `?T` and `LinkedList.pop_back` is gone**, matching `Deque`
+  (`None` for absence; `pop` already removes the back). Reverse: return `T` with an empty trap and
+  restore the alias.
+- **`Heap.of(xs, by:)`.** Without `by:` there was no O(n) max-heap, and `MaxHeap.of` (an alias of
+  `Heap`) built a min-heap. Reverse: drop the `by:` parameter.
+- **`Heap<T>(by:)` kept against decisions 15.8 and 18**, which rejected it. Round 5
+  (`lib/ops-ranges.md`, Heaps) made it the one heap type with `MinHeap`/`MaxHeap` as aliases, and
+  named options are the library-wide rule; reverting would bring back the eight Min/Max types.
+  Reverse: restore `MinHeap`/`MaxHeap` and the Min/Max pairs of the other heaps without `by:`.
+- **`PotentialDsu.new()` drops `op:`.** `find`/`unite`/`diff` take `Int` offsets, so another group
+  could not be expressed. Reverse: restore `op: ?G` once offsets are generic (containers.md §5).
+- **`Poly.deg()` and `Poly.is_zero()` are calls**: stored trailing zeros make them more than O(1),
+  and `@get` is only for O(1). Reverse: trim trailing zeros on every write and make them `@get`.
+- **Added `DsuOf.groups()`, `Subset.set`/`shifted` and `Dir8.from`**, cited by containers.md §2.4
+  and decisions 62, 16.8 and 16.5. Reverse: delete them.

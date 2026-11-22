@@ -23,9 +23,9 @@ bringing `spec/std/deque.cp` to the doc standard (`spec/std/README.md`).
 - `LinkedList.first` / `last` keep their stated trap on empty, unlike
   `Deque.first` / `last`, which return `?T`. Logged as an inconsistency
   between the two types (the spec states both); `LinkedList` should
-  probably return `?T` too, with `!` at the call site.
+  probably return `?T` too, with `!` at the call site. (resolved: `LinkedList.first`/`last` return `?T`, `pop_back` removed, decision 166)
 - `LinkedList.pop_back` is an alias of `pop`; `Deque` has no `pop_back`.
   Two spellings for one job violates "one way per job"; left alone.
 - The struct doc of `Deque` says the literal `var q: Deque<Int> = []`
   works; nothing in `spec/core` defines list literals converting to a
-  library container. Examples use `Deque.new()` / `Deque.of(...)` instead.
+  library container. Examples use `Deque.new()` / `Deque.of(...)` instead. (resolved: stub no longer claims the literal)

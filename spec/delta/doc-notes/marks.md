@@ -1,10 +1,10 @@
 # marks doc notes
 
-- `MarkMap.get`: contradiction. `spec/lib/containers.md` §2.7 has `get(self, v) -> T` returning the default when unset; the stub has `-> ?T`. Followed the stub: absent reads `None`, and `default_val` only fills storage.
-- `MarkMap.remove`: contradiction. The library prose has `remove -> Bool`; the stub has `-> ?T` returning the old value. Followed the stub.
+- `MarkMap.get`: contradiction. `spec/lib/containers.md` §2.7 has `get(self, v) -> T` returning the default when unset; the stub has `-> ?T`. Followed the stub: absent reads `None`, and `default_val` only fills storage. (resolved: kept stub (`None` for absence); containers.md §2.7 fixed)
+- `MarkMap.remove`: contradiction. The library prose has `remove -> Bool`; the stub has `-> ?T` returning the old value. Followed the stub. (resolved: kept stub; containers.md §2.7 fixed)
 - `MarkMap.new`: the library prose names the parameter `default`; the stub names it `default_val`. Followed the stub.
 - `MarkMap.contains`: chose that a key explicitly set to `default_val` is present (presence is by stamp, not by value).
-- `Interner.id`, `Interner.get`: contradiction on cost. The library prose says O(log n); the stub says O(1) expected (it is backed by `HashMap`). Followed the stub.
+- `Interner.id`, `Interner.get`: contradiction on cost. The library prose says O(log n); the stub says O(1) expected (it is backed by `HashMap`). Followed the stub. (resolved: kept stub; containers.md §2.7 fixed)
 - `Interner`: the library prose lists `@get keys -> List<K>`; the stub has no `keys` but adds `clear`, `contains` and `reserve`. Documented the stub as is.
 - `Interner.clear`: the stub says O(1); clearing a `HashMap` is normally O(capacity). Left the stated cost; flag for the implementer.
 - `Interner.key`, `Arena.get`/`set`: chose a trap for an id or handle outside `0..len`.

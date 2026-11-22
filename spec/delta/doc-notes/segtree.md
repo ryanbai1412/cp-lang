@@ -1,7 +1,7 @@
 # segtree doc notes
 
 - `SegTree.fold`: the stub declared `fold` twice; the second copy is deleted (resolved).
-- `SegTree.clear`: contradiction. `spec/lib/ops-ranges.md` §7 says `s.clear()` goes "back to the build state"; the stub says "reset all leaves to `fill` (or `m.id`)". Followed the stub; chose that pending tags are dropped and an `of` tree keeps its formula.
+- `SegTree.clear`: contradiction. `spec/lib/ops-ranges.md` §7 says `s.clear()` goes "back to the build state"; the stub says "reset all leaves to `fill` (or `m.id`)". Followed the stub; chose that pending tags are dropped and an `of` tree keeps its formula. (resolved: kept stub; ops-ranges §7 row fixed)
 - `SegTree.fold`, `try_fold`: the prose table says `fold` returns `?T` for a plain `Op`; the stub only has `Monoid` trees (`fold -> T`, `try_fold -> ?T`). Followed the stub.
 - `SegTree.right_while`, `left_while`: chose a trap when `ok(identity)` is false (as ACL `max_right`/`min_left` assert), so the start cut always qualifies; the spec only says "`ok` monotone".
 - `SegTree.get`: the stub says O(1); on a tree with `act:` pending tags must be applied, so documented O(log |D|) there.

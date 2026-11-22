@@ -16,11 +16,11 @@
   `count_below` also accept `i == cap`.
 - `DynBitset.resize`: shrinking drops the bits at or above `new_cap`.
 - Contradiction: `Bitset.prev(i)` is strictly before `i`, while
-  `DynBitset.prev(i)` is `<= i`. Left both; documented the difference.
+  `DynBitset.prev(i)` is `<= i`. Left both; documented the difference. (resolved: `Bitset.prev` counts `i`, decision 166)
 - Contradiction: decision 62 says `Bitset` `empty`/`full` are `@get`; the stub
-  declares `pub fn empty()` / `pub fn full()`. Left the stub.
+  declares `pub fn empty()` / `pub fn full()`. Left the stub. (resolved: decision 140 (later) wins: O(K / 64) constructors keep `()`)
 - Contradiction: decision 66.1 adds `Bitset.find(pred)`; the stub has `first(pred)`
-  and no `find`.
+  and no `find`. (resolved: decision 66.1 wins: `first()` and `find(pred)`, decision 166)
 - `XorTrie.new`: chose to trap unless `bits` is in `1..=62` (`2^bits` must fit a
   signed 64-bit `Int`).
 - `XorTrie.add` / `xor_all` / queries: values outside `0..2^bits` trap;

@@ -5,7 +5,7 @@
 - `LiChao.line_at`, `LineContainer.line_at`: tie rule left unspecified among lines with equal value at `x`. A deterministic rule (say, first added) would force a different tree descent; the documented way to break ties is a `K` with a second field. Flagged as a determinism gap.
 - `LiChao.add`: chose a trap when `on` reaches outside `over` (domains are preserved, not clipped); an empty `on` adds nothing.
 - `monotone_minima`, `smawk`: chose `rows == 0` gives `[]`; `monotone_minima` with `cols == 0` gives `None` per row; `smawk` traps on `cols == 0` with rows, because its rows return a bare value.
-- `knuth`: contradiction. `spec/lib/search-dp.md` writes `knuth(V, w)` over an index space; the stub is `knuth(n, cost) -> List<List<Int>>`. Followed the stub. Chose the table to be `(n + 1) x (n + 1)` with 0 for `j <= i`, and a trap on `n < 0`.
+- `knuth`: contradiction. `spec/lib/search-dp.md` writes `knuth(V, w)` over an index space; the stub is `knuth(n, cost) -> List<List<Int>>`. Followed the stub. Chose the table to be `(n + 1) x (n + 1)` with 0 for `j <= i`, and a trap on `n < 0`. (resolved: kept stub; search-dp.md table fixed)
 - `aliens`: chose traps on `k < 0`, an empty `lambdas`, and a `lambdas` that never reaches a count of at most `k`. Documented the answer as `val - λ * k` at the least `λ` whose count is at most `k`.
 - `subset_sums`: chose to keep repeated sums (one per subset), so the result has exactly `2^n` entries.
 - `monge_path`, `monge_paths`, `MongePath`: chose a trap on empty `nodes`, and total `0` for a single node (`K` must have a `0`; the stub's generic `K` does not say so).

@@ -9,7 +9,7 @@
   `Window.pop` takes none. Left the signature; one side should change.
 - Contradiction: lib/ops-ranges.md §16 still shows the old API
   (`w.push(i, a[i])`, `w.drop_before(i - k)`, `w.fold`) and §10 a `drop` method;
-  the stub has `push(x)`, `pop()` and `all`. Documented the stub.
+  the stub has `push(x)`, `pop()` and `all`. Documented the stub. (resolved: kept stub; ops-ranges §10 and §16 fixed)
 - `Tracked.pop(x)`: passes `x` to `remove` as given; it does not check that `x`
   is the oldest element (it keeps no queue).
 - `Undoing.pop(x)`: chose that the element removed is the stored front and `x`
@@ -23,7 +23,7 @@
 - `Sweep.new`: an empty sweep sits at the first cut of `D` (`range` is empty
   there); with `start`, it pushes each position of `start` in increasing order.
 - Contradiction: `Sweep.new` says O(1), but starting at a non-empty `start`
-  must push its `start.len` positions; documented O(1) plus those pushes.
+  must push its `start.len` positions; documented O(1) plus those pushes. (resolved: kept the documented cost)
 - `undoing(state, add)`: chose that `state` as passed is the base the window
   never undoes past (its own `mark` is taken at creation).
 - `Window.all`, `Tracked.state` examples use an `Int` state; `track` closures

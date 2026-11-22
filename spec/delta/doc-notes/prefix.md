@@ -8,10 +8,10 @@
 - Contradiction: core/07-sequences.md and the `scan` doc index the table as
   `pre[c]`, `pre[v]` and call `pre.fold(r)`; `Prefix` declares no index
   operator and no `fold` (it has `prefix(b)` and `sum(r)`). Examples use
-  `prefix`/`sum`.
+  `prefix`/`sum`. (resolved: `scan` returns an indexed `[D.cuts]T`; core/07 uses `prefix(a).sum(r)` for the struct)
 - Contradiction: lib/ops-ranges.md §7–8 builds `Prefix(op, a)` and `Diff(op)`
   with `fold(r)`/`apply(r, f)`; the stub has `Prefix.new(a)` (no op, `+`
-  only), `prefix(a)`, `sum(r)` and `Diff.add(r, x)`.
+  only), `prefix(a)`, `sum(r)` and `Diff.add(r, x)`. (resolved: kept stub (`+` only); ops-ranges fixed)
 - `Prefix.first_ge` / `first_gt`: chose to trap when any element is negative
   (one flag recorded at build), rather than leave a non-monotone search
   unspecified; ties go to the first cut. `target <= 0` (`< 0`) gives the first cut.
@@ -33,4 +33,4 @@
   the parameter named `op`; `ArithDiff.add_arith` writes `i.ord` and
   `r.start.ord`. Core uses `r.l` / `r.r` and `Int(v)`. Left the wording.
 - Contradiction: decisions 41.3 and 42.4 say `prefix_fold` / `suffix_fold`
-  return `[D.bounds]T`; the stub says `[D.cuts]T` (cuts is the current name).
+  return `[D.bounds]T`; the stub says `[D.cuts]T` (cuts is the current name). (resolved: `cuts` is the current name for `bounds`; rename only)
