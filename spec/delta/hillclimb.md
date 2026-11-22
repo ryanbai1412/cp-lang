@@ -392,3 +392,6 @@ Open questions raised by dreams:
 - egoi23p4, cco20p4: `Pair<V>`, the unordered-pair domain (decision 164). egoi23p4's 9-line
   `read_triangle` becomes `read<[Pair<V>]...>().map(Some).symmetric(diag: None)`, and cco20p4
   reads `read<[Pair<V>]Char>()` and indexes `road[u, v]` instead of using `max`/`min` into rows.
+- cco18p4, yac6p3: `wire.ask(query)` prints, flushes and reads the answer (decision 165), which
+  both blind dreams wrote. Each query function goes from three lines to one. Chapter 10 also gained
+  the `read`/`print` signatures and output shapes, which Ryan's I/O question showed were missing.

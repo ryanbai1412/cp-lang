@@ -4706,3 +4706,20 @@ The child links stay `?Int`: a `?(0..2^31)` field is still an 8-byte
   order, and a triangle that includes its diagonal is not `Pair<V>`. Neither is in the corpus.
 - **Reverse.** Delete `spec/std/pair.cp` and its prelude line, the row in chapter 04 and the line
   in chapter 10, and restore the hand-written readers in the egoi23p4 and cco20p4 ports.
+
+## 165. `read`/`print` signatures are written down, output mirrors input, and `wire.ask` is one query (2026-11-21)
+
+- **Decision.** Chapter 10.5 gives the exact forms of the core `read`, `read_line` and `print`
+  (`sep:`, `end:`, `none:`, `precision:`), because those functions have no stub. Output mirrors
+  input shape for shape, but never writes counts for you: `[R, C]Char` prints rows without
+  separators, other 2-D shapes print one row per line, and `[Pair<V>]T` prints its lower
+  triangle. `?T` is not `Print`, so absent values print only through `none:`.
+  `Wire.ask<T>(query: Str) -> T` prints a query line, flushes, and reads the answer as the
+  expected type.
+- **Why.** Ryan asked how I/O works, and the answer showed holes: the signatures existed only in
+  prose, output shapes for grids and nested lists were unspecified, and both interactive
+  problems in the hill-climb (cco18p4, yac6p3) had blind dreams that wrote a one-call query
+  (`wire.ask("? {x} {y}", read Int)`, `query(...)`) while their ports spent three lines on
+  print-then-read. With `ask`, a query function is one line.
+- **Reverse.** Remove `Wire.ask` from `spec/std/io.cp` and section 10.5 and the output-shape
+  bullet from chapter 10, and restore the print-then-read bodies in the two ports.

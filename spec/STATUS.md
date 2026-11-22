@@ -72,6 +72,7 @@ commits.
 | 162 | `D.pieces(cuts:)` and `piece.covering(r)`: coordinate compression for intervals |
 | 163 | `Rooted.try_from_parents`: `?Rooted` for parent input that may have a cycle |
 | 164 | `Pair<V>`: the unordered-pair domain, packed, read as a lower triangle, `d[u, v] == d[v, u]` |
+| 165 | `read`/`print` signatures in chapter 10.5; output mirrors input shapes; `wire.ask("? {x}")` is one interactive query |
 
 ## Open
 
