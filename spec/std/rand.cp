@@ -2,21 +2,101 @@
 //! and in the built C++. `Rng(seed)` is a splitmix64 stream: O(1) per draw.
 
 pub struct Rng(s: U64):
-    /// O(1). A stream seeded by `seed`.
+    /// A deterministic stream of random bits seeded by `seed`.
+    ///
+    /// The state is `U64(seed)` (two's complement for negative seeds) and each `next()` is one
+    /// splitmix64 step, so equal seeds give equal streams on every build and target. There is no
+    /// time-seeded constructor: tests and stress runs replay exactly.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var r = Rng.new(0); r.next() == 0xE220A8397B1DCDAF`
+    /// example: `var a = Rng.new(7); var b = Rng.new(7); a.next() == b.next()`
     pub fn new(seed: Int) -> Rng = todo
-    /// O(1). The next 64 random bits.
+    /// The next 64 random bits: one splitmix64 step.
+    ///
+    /// The state advances by `0x9E3779B97F4A7C15` (wrapping) and the result is the splitmix64 mix of
+    /// the new state: `z ^= z >> 30; z *= 0xBF58476D1CE4E5B9; z ^= z >> 27; z *= 0x94D049BB133111EB;
+    /// z ^= z >> 31`, all wrapping. Every other `Rng` method draws its bits from `next`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var r = Rng.new(0); r.next(); r.next() == 0x6E789E6AA1B965F4`
+    /// example: `var r = Rng.new(1); r.next() == 10451216379200822465`
     pub fn next(mut self) -> U64 = todo
-    /// O(1). Uniform in `r`; traps on an empty range.
+    /// A uniformly random integer in `r`, from one `next()`.
+    ///
+    /// With `n = r.len`, the result is `r.start + ((U128(next()) * n) >> 64)`: Lemire's
+    /// multiply-high map, which uses exactly one draw (bias at most `n / 2^64`). Both `a..b` and
+    /// `a..=b` work.
+    ///
+    /// cost: O(1)
+    /// empty: traps
+    /// traps: when `r` is empty
+    /// example: `var r = Rng.new(1); let x = r.int(1..=6); 1 <= x and x <= 6`
+    /// example: `var r = Rng.new(5); r.int(4..5) == 4`
     pub fn int(mut self, r: Range<Int>) -> Int = todo
-    /// O(1). Uniform in [0, 1).
+    /// A uniformly random `F64` in `[0, 1)`: the top 53 bits of `next()` times `2^-53`.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var r = Rng.new(5); let x = r.float(); 0.0 <= x and x < 1.0`
     pub fn float(mut self) -> F64 = todo
-    /// O(1). True with probability `p`.
+    /// True with probability `p`: `float() < p`.
+    ///
+    /// `p <= 0` is always false and `p >= 1` always true; both still consume one draw so the
+    /// stream stays aligned whatever `p` is.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var r = Rng.new(3); r.chance(1.0) == true`
+    /// example: `var r = Rng.new(3); r.chance(0.0) == false`
     pub fn chance(mut self, p: F64) -> Bool = todo
-    /// O(1). A uniformly random element of `xs`; none when empty.
+    /// A uniformly random element of `xs`: `xs` at position `int(0..xs.len)`.
+    ///
+    /// The position is zero-based, so any key type works. An empty `xs` returns `None` without
+    /// drawing.
+    ///
+    /// cost: O(1)
+    /// empty: `None`, and no draw
+    /// traps: never
+    /// example: `var r = Rng.new(1); r.pick([7]) == Some(7)`
+    /// example: `var r = Rng.new(1); let x = r.pick([4, 5, 6]).unwrap(); 4 <= x and x <= 6`
+    /// example: `let e: List<Int> = []; var r = Rng.new(1); r.pick(e) == None`
     pub fn pick<S: Indexed, T>(mut self, xs: S) -> ?T = todo
-    /// O(n). Shuffle `a` in place (Fisher-Yates).
+    /// Shuffle `a` in place, uniformly (Fisher-Yates).
+    ///
+    /// For `i` from `a.len - 1` down to `1`, swap positions `i` and `int(0..=i)`. Positions are
+    /// zero-based, so this works on any `IndexedMut`: a `List`, a `[D]T` over any domain, a `Str`.
+    /// Keys stay where they are; only the values move.
+    ///
+    /// cost: O(n)
+    /// empty: no change, and no draw
+    /// traps: never
+    /// example: `var r = Rng.new(2); var a = [3, 1, 2]; r.shuffle(mut a); a.sorted() == [1, 2, 3]`
+    /// example: `var r = Rng.new(2); var a = [9]; r.shuffle(mut a); a == [9]`
     pub fn shuffle<S: IndexedMut>(mut self, mut a: S) = todo
-    /// O(n). A uniformly random permutation of `D`.
+    /// A uniformly random permutation of the domain `D`, as a `[D]D`.
+    ///
+    /// It is the identity `[D]D` shuffled with `shuffle`, so a seed fixes the result. Every element
+    /// of `D` appears exactly once among the values.
+    ///
+    /// cost: O(n)
+    /// order: keyed by `D`; the value at each key is uniformly random, each element of `D` once
+    /// traps: never
+    /// example: `domain V = 0..4; var r = Rng.new(4); let p = r.perm<V>(); p.distinct().len == 4`
     pub fn perm<D>(mut self) -> [D]D = todo
-    /// O(|from|). `k` distinct elements of `from`, uniformly, in random order.
+    /// `k` elements of `from` at distinct positions, chosen uniformly, in random order.
+    ///
+    /// It runs a partial Fisher-Yates over a copy of the positions: for `i` in `0..k`, swap
+    /// positions `i` and `int(i..n)`, then return the values at the first `k` positions. Equal
+    /// values at different positions can both be chosen.
+    ///
+    /// cost: O(|from|)
+    /// empty: `[]` when `k == 0`
+    /// order: the order drawn (random); a new `List`, keyed from 0
+    /// traps: when `k` is not in `0..=from.len`
+    /// example: `var r = Rng.new(9); r.sample(3, from: [5, 6, 7]).sorted() == [5, 6, 7]`
+    /// example: `var r = Rng.new(9); r.sample(0, from: [5, 6, 7]) == []`
+    /// example: `var r = Rng.new(9); r.sample(2, from: [1, 1, 1]) == [1, 1]`
     pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T> = todo
