@@ -24,7 +24,7 @@ Cases: 1686 (995 passing). Rules: 527.
 - R10 (10-io.md): 16 rules, 61 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 14 rules, 19 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R13 (13-lowering.md): 22 rules, 23 cases; 0 uncovered, 7 happy-path only, 0 negative only
+- R13 (13-lowering.md): 22 rules, 23 cases; 0 uncovered, 6 happy-path only, 0 negative only
 
 ## Rules
 
@@ -579,7 +579,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R13: 13-lowering.md
 
-- R13.1.1 [2+ 0-] *happy-path only*: One deterministic C++17 file: a stamp, the used runtime pieces, the used library instances...
+- R13.1.1 [1+ 1-]: One deterministic C++17 file: a stamp, the used runtime pieces, the used library instances...
 - R13.1.2 [1+ 0-]: `main` starts a thread with the profile's stack (default 1 GB, halving down to 8 MB) and r...
 - R13.1.3 [1+ 0-]: Input is one bulk `fread` and a hand-written parser; output is one buffer written at exit ...
 - R13.1.4 [1+ 0-] *happy-path only*: Release builds compile with the profile's flags and emit no checks (chapter 9). The loweri...
@@ -745,9 +745,9 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0502 Input outside its read contract: 2 case(s)
 - R0601 Stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
-- W0201 size_near_limit *(0.3)*: **no case**
+- W0201 size_near_limit *(0.3)*: 1 case(s)
 
-3 of 135 testable codes have no negative case.
+2 of 135 testable codes have no negative case.
 
 ## Standard library
 

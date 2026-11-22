@@ -1,7 +1,7 @@
-// expect: ok
+// expect: W0201 at 1
 // rule: 13.1.1
 // tool: build -o -
-// has: "W0201"
+// has: "32768-byte target"
 fn f0(x: Int) -> Int = x * 3 + 0
 fn f1(x: Int) -> Int = x * 4 + 1
 fn f2(x: Int) -> Int = x * 5 + 2
