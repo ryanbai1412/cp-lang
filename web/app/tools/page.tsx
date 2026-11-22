@@ -40,7 +40,9 @@ export default function Page() {
                   className="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-accent sm:flex-row sm:gap-4"
                 >
                   <code className="shrink-0 text-sm sm:w-64">cpl {c.usage}</code>
-                  <span className="text-sm text-muted-foreground">{c.summary}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {c.summary.split('`').map((part, i) => (i % 2 ? <code key={i}>{part}</code> : part))}
+                  </span>
                 </Link>
               ))}
           </div>

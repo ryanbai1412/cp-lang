@@ -35,7 +35,7 @@ const pillars = [
 function LiveTabs({ items }: { items: Live[] }) {
   return (
     <Tabs defaultValue={items[0].id} className="min-w-0">
-      <TabsList className="h-auto flex-wrap justify-start">
+      <TabsList className="h-auto max-w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((s) => (
           <TabsTrigger key={s.id} value={s.id}>
             {s.title}
@@ -79,7 +79,7 @@ function Static({ html, caption, bar }: { html: string; caption: string; bar: Re
 function Showcases({ items }: { items: Showcase[] }) {
   return (
     <Tabs defaultValue={items[0].id} className="min-w-0">
-      <TabsList className="h-auto flex-wrap justify-start">
+      <TabsList className="h-auto max-w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((s) => (
           <TabsTrigger key={s.id} value={s.id}>
             {s.title}
