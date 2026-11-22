@@ -46,4 +46,4 @@ fn count_pairs_with_disjoint_masks():
     var cnt = List.filled(8, 0)
     for x in a: cnt[x] += 1
     let below = sos_sub(cnt, 3)
-    assert sum(below[7 ^ x] for x in a) == count(x & y == 0 for x in a for y in a)
+    assert sum(below[7 ^ x] for x in a) == sum(1 for x in a for y in a if x & y == 0)

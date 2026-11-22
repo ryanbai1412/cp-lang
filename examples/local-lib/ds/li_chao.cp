@@ -184,14 +184,14 @@ fn minimum_matches_scanning_every_line():
             lines.push(l)
             tree.add(l)
             for x in [-40, -17, -1, 0, 3, 22, 40]:
-                assert tree.min_at(x) == min(m.at(x) for m in lines)
+                assert tree.min_at(x) == lines.map(m => m.at(x)).min()
 
 @test
 fn a_dp_with_the_convex_hull_trick():
     // dp[i] = min over j < i of dp[j] + (h[i] - h[j])^2, the classic frog jump with squared cost
     let h = [rand(0, 30) for _ in 0..40]
     var slow = List.filled(h.len, 0)
-    for i in 1..h.len: slow[i] = min(slow[j] + (h[i] - h[j]) ** 2 for j in 0..i)
+    for i in 1..h.len: slow[i] = (0..i).map(j => slow[j] + (h[i] - h[j]) ** 2).min()!
     var tree = LiChao(0, 30)
     var fast = [0]
     for i in 0..h.len:
@@ -212,7 +212,7 @@ fn tagged_and_float_li_chao_match_brute_force():
         tagged.add(l)
     for x in -20..=20:
         let (y, rec) = tagged.min_at(x)!
-        assert y == min(l.at(x) for l in lines)
+        assert y == lines.map(l => l.at(x)).min()!
         assert lines[rec.id].at(x) == y and rec.cost == rec.id * 10
     // Continuous F64 LiChao matches scanning over real points
     var flt = LiChaoF(-10.0, 10.0)
@@ -224,5 +224,5 @@ fn tagged_and_float_li_chao_match_brute_force():
     for k in -20..=20:
         let x = F64(k) / 2.0
         let got = flt.min_at(x)!
-        let want = min(l.at(x) for l in flines)
+        let want = flines.map(l => l.at(x)).min()!
         assert abs(got - want) <= 1e-6

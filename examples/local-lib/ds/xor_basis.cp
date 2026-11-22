@@ -53,9 +53,9 @@ fn matches_trying_every_subset():
         var b = XorBasis()
         for x in xs: b.add(x)
         for v in Val: assert (v.to_idx in b) == reach[v]
-        assert b.len == count(reach[v] for v in Val)
+        assert b.len == Val.count(v => reach[v])
         let start = rand(0, 63)
-        assert b.max_xor(start) == max(start ^ v.to_idx for v in Val if reach[v])
+        assert b.max_xor(start) == Val.filter(v => reach[v]).map(v => start ^ v.to_idx).max()
 
 @test
 fn add_reports_dependence():

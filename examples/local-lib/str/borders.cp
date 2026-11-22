@@ -37,10 +37,10 @@ fn borders_and_periods_match_their_definitions():
     for _ in 0..80:
         let s = [rand(0, 1) for _ in 0..rand(0, 10)]
         let n = s.len
-        let want = [k for k in (1..n).rev if all(s[i] == s[n - k + i] for i in 0..k)]
+        let want = [k for k in (1..n).rev if (0..k).all(i => s[i] == s[n - k + i])]
         assert borders(s) == want
         if n > 0:
-            assert period(s) == min(p for p in 1..=n if all(s[i] == s[i + p] for i in 0..n - p))
+            assert period(s) == (1..=n).find(p => (0..n - p).all(i => s[i] == s[i + p]))
 
 @test
 fn overlap_is_the_longest_suffix_prefix():
@@ -49,6 +49,6 @@ fn overlap_is_the_longest_suffix_prefix():
         let b = [rand(0, 1) for _ in 0..rand(0, 8)]
         var want = 0
         for k in 1..=min(a.len, b.len):
-            if all(a[a.len - k + i] == b[i] for i in 0..k): want = k
+            if (0..k).all(i => a[a.len - k + i] == b[i]): want = k
         assert overlaps(a, b) == want
     assert overlaps([c for c in "abcab"], [c for c in "cabx"]) == 3

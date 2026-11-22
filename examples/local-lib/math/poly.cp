@@ -620,18 +620,18 @@ fn conv_z(a: List<Z>, b: List<Z>, mode: Int) -> List<Z>:
 fn detect_sym_mode(a: List<Int>, b: List<Int>) -> Int:
     let n = a.len
     if n != b.len: return 0
-    let eq = all(not (a[i] != b[i]) for i in 0..n)
+    let eq = (0..n).all(i => a[i] == b[i])
     if eq: return 1
-    let rev = all(not (a[i] != b[n - 1 - i]) for i in 0..n)
+    let rev = (0..n).all(i => a[i] == b[n - 1 - i])
     if rev: return 2
     0
 
 fn detect_sym_mode_z(a: List<Z>, b: List<Z>) -> Int:
     let n = a.len
     if n != b.len: return 0
-    let eq = all(not (a[i].v != b[i].v) for i in 0..n)
+    let eq = (0..n).all(i => a[i].v == b[i].v)
     if eq: return 1
-    let rev = all(not (a[i].v != b[n - 1 - i].v) for i in 0..n)
+    let rev = (0..n).all(i => a[i].v == b[n - 1 - i].v)
     if rev: return 2
     0
 
@@ -753,7 +753,7 @@ pub fn inv_trunc(p: List<Z>, keep: Int) -> List<Z>:
     if keep == 0: return []
     assert p.len > 0 and p[0] != 0
     var g = List.filled(keep, Z.zero)
-    g[0] = p[0].inv
+    g[0] = p[0].inv()
     var m = 1
     while m < keep:
         let size = min(m << 1, keep)
@@ -816,7 +816,7 @@ pub fn pow_trunc(p: List<Z>, e: Int, keep: Int) -> List<Z>:
     let shift = first * e
     let rem = keep - shift
     let c = p[first]
-    let ic = c.inv
+    let ic = c.inv()
     let n = min(p.len - first, rem)
     var q = List.filled(n, Z.zero)
     for i in 0..n: q[i] = p[first + i] * ic
@@ -914,11 +914,11 @@ pub fn pow_rat_trunc(p: List<Z>, num: Int, den: Int, keep: Int) -> List<Z>:
         assert g == 1
         let e_root = ((inv_d % phi) + phi) % phi
         (c ** e_root) ** num
-    let ic = c.inv
+    let ic = c.inv()
     let n = min(p.len, keep)
     var q = List.filled(n, Z.zero)
     for i in 0..n: q[i] = p[i] * ic
-    let alpha = Z(num) * Z(den).inv
+    let alpha = Z(num) * Z(den).inv()
     let base = pow_mod_trunc(q, alpha, keep)
     var out = List.filled(keep, Z.zero)
     for i in 0..keep: out[i] = base[i] * c_scale
@@ -1073,7 +1073,7 @@ impl SubproductTree:
         for i in 0..n:
             assert derivs[i] != 0
             pref[i + 1] = pref[i] * derivs[i]
-        var inv_all = pref[n].inv
+        var inv_all = pref[n].inv()
         var up: List<List<Z>> = List.filled(2 * n, [])
         var i = n - 1
         while i >= 0:
@@ -1101,7 +1101,7 @@ pub fn interpolate_fast(xs: List<Z>, ys: List<Z>) -> List<Z>:
 /// Taylor shift `p(x + c)` in `O(n log n)`.
 pub fn taylor_shift(p: List<Z>, c: Z) -> List<Z>:
     let n = p.len
-    if n <= 1 or c == 0: return p
+    if n <= 1 or c == 0: return p.clone()
     let (fact, ifact) = build_facts(n)
     let mod_p = 998244353
     var a = List.filled(n, 0)
@@ -1234,7 +1234,7 @@ pub fn eval_gp(p: List<Z>, a: Z, r: Z, count: Int) -> List<Z>:
     // Bluestein: sum_{j=0}^{n-1} q[j] r^{k*j} = r^{C(k,2)} sum_j (q[j] r^{C(j,2)}) * r^{-C(k-j, 2)}?
     // Using r^{k*j} = r^{C(k+j,2) - C(k,2) - C(j,2)}:
     // ans[k] = r^{-C(k,2)} * sum_{j=0}^{n-1} (q[j] r^{-C(j,2)}) * r^{C(k+j, 2)}.
-    let ir = r.inv.v
+    let ir = r.inv().v
     let tot = n + count
     var r_tri = List.filled(tot, 1)
     var ir_tri = List.filled(tot, 1)
@@ -1429,7 +1429,7 @@ pub fn compose_inv_trunc(g: List<Z>, keep: Int) -> List<Z>:
     assert g.len >= 2 and g[0] == 0 and g[1] != 0
     let n = keep - 1
     let c = g[1]
-    let ic = c.inv
+    let ic = c.inv()
     let g_lim = min(g.len, keep)
     var g_norm = List.filled(g_lim, Z.zero)
     for i in 0..g_lim: g_norm[i] = g[i] * ic
@@ -1443,7 +1443,7 @@ pub fn compose_inv_trunc(g: List<Z>, keep: Int) -> List<Z>:
     for k in 1..n:
         let inv_k = (ifact[k] * fact[k - 1]) % mod_p
         f_ser[n - k] = proj[k] * Z((n * inv_k) % mod_p)
-    let alpha = -Z(n).inv
+    let alpha = -Z(n).inv()
     let h_div_x = pow_mod_trunc(f_ser, alpha, n)
     var out = List.filled(keep, Z.zero)
     var ic_pow = ic
@@ -1476,7 +1476,7 @@ pub fn kth_term(p: List<Z>, q: List<Z>, k: Int) -> Z:
         cur_q = [den[2 * j] for j in 0..nd]
         kk = kk >> 1
         if cur_p.len == 0: return 0
-    Z(cur_p[0]) * Z(cur_q[0]).inv
+    Z(cur_p[0]) * Z(cur_q[0]).inv()
 
 /// Convolution of arbitrary-modulus integer sequences modulo `m` via 3-prime NTT + Garner CRT.
 /// Works for any `m >= 1` up to `10^9 + 7` (and beyond, as long as `m * m < 2^62`).
@@ -1621,7 +1621,7 @@ fn slow_mul(a: List<Z>, b: List<Z>, keep: Int) -> List<Z>:
 fn slow_inv(p: List<Z>, keep: Int) -> List<Z>:
     var g = List.filled(keep, Z.zero)
     if keep == 0: return g
-    let inv0 = p[0].inv
+    let inv0 = p[0].inv()
     g[0] = inv0
     for k in 1..keep:
         let s = Z.zero + sum(coef(p, j) * g[k - j] for j in 1..=k)
@@ -1705,16 +1705,18 @@ fn slow_middle_product(a: List<Z>, b: List<Z>) -> List<Z>:
 fn lcg_next(seed: Int) -> Int:
     (seed * 1103515245 + 12345) & 2147483647
 
-fn table_matches<P>(rank2: Int) -> Bool:
+fn table_matches<const P: Int>(rank2: Int) -> Bool:
+    // `P - 1` on a const param is rejected (spec/conformance/core-08/const-param-arithmetic.cp)
+    let m: Int = P
     let r_mod = 4294967296 % P
     var rt = List.filled(rank2 + 1, 0)
     var irt = List.filled(rank2 + 1, 0)
-    rt[rank2] = pow_mod_i(3, (P - 1) >> rank2, P)
-    irt[rank2] = pow_mod_i(rt[rank2], P - 2, P)
+    rt[rank2] = pow_mod_i(3, (m - 1) >> rank2, P)
+    irt[rank2] = pow_mod_i(rt[rank2], m - 2, P)
     for k in (0..rank2).rev:
         rt[k] = (rt[k + 1] * rt[k + 1]) % P
         irt[k] = (irt[k + 1] * irt[k + 1]) % P
-    if rt[0] != 1 or rt[1] != P - 1: return false
+    if rt[0] != 1 or rt[1] != m - 1: return false
     var (prod, iprod) = (1, 1)
     var want: List<Int> = []
     var iwant: List<Int> = []
@@ -1821,7 +1823,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
     let one_minus_x: List<Z> = [1, -1]
     assert inv_trunc(one_minus_x, 40) == List.filled(40, Z.one)
     let two: Z = 2
-    assert inv_trunc([two], 3) == [two.inv, 0, 0] and inv_trunc([two], 0) == []
+    assert inv_trunc([two], 3) == [two.inv(), 0, 0] and inv_trunc([two], 0) == []
     var s = 123
     for (len, keep) in [(1, 8), (5, 20), (16, 16), (35, 70), (70, 45)]:
         var p: List<Z> = []
@@ -2085,7 +2087,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
     let one_m4x: List<Z> = [1, -4]
     let sq = sqrt_trunc(one_m4x, keep_c + 1)
     let two_c: Z = 2
-    let inv2 = two_c.inv
+    let inv2 = two_c.inv()
     let cat = [(Z.zero - sq[i + 1]) * inv2 for i in 0..keep_c]
     let x_cat = [if i == 0: Z.zero else: cat[i - 1] for i in 0..keep_c]
     // Compositional inverse of x * C(x) is x * (1 - x) = [0, 1, -1]!

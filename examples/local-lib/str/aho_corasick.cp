@@ -112,12 +112,12 @@ fn matches_and_counts_agree_with_checking_every_position():
         for i in 0..text.len:
             for w in 0..words.len:
                 let k = words[w].len
-                if i + k <= text.len and all(
-                    text[i + j] == words[w][j] for j in 0..k
+                if i + k <= text.len and (0..k).all(
+                    j => text[i + j] == words[w][j]
                 ): want.push((i, w))
         let got = [(m.at, m.word) for m in ac.matches(text)]
         assert got.sorted() == want.sorted()
-        assert ac.count_each(text) == [count(p.1 == w for p in want) for w in 0..words.len]
+        assert ac.count_each(text) == [want.count(p => p.1 == w) for w in 0..words.len]
         assert ac.len <= 1 + sum(w.len for w in words)
 
 @test

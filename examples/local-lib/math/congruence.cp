@@ -87,9 +87,9 @@ fn a_whole_system_and_its_first_solution():
         assert sys.holds(hidden)
         let from = rand(-600, 600)
         let x = sys.first(at_least: from)
-        assert x >= from and x - sys.m < from and all(p.holds(x) for p in parts)
+        assert x >= from and x - sys.m < from and parts.all(p => p.holds(x))
         let (lo, hi) = (rand(-80, 80), rand(-80, 80))
-        assert sys.count(lo, hi) == count(sys.holds(y) for y in lo..=hi)
+        assert sys.count(lo, hi) == (lo..=hi).count(y => sys.holds(y))
     assert Congruence.all([Congruence.new(1, 4), Congruence.new(2, 6)]) == none
     assert Congruence.any().first(at_least: -7) == -7
 
@@ -108,5 +108,5 @@ fn when_three_gears_line_up():
     let start = [3, 1, 7]
     let sys = Congruence.all([Congruence.new(start[i], period[i]) for i in 0..3])!
     var t = 7
-    while not all((t - start[i]) % period[i] == 0 for i in 0..3): t += 1
+    while not (0..3).all(i => (t - start[i]) % period[i] == 0): t += 1
     assert sys.first(at_least: 7) == t and sys.m == 36

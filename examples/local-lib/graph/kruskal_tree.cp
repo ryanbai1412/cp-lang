@@ -151,5 +151,5 @@ fn spanning_and_kruskal_tree_match_bfs_and_minimax_paths():
                     assert bn == none
                 else:
                     assert bn != none
-                    assert b in kt.reachable(a, bn!)
-                    if bn! > 0: assert b not in kt.reachable(a, bn! - 1)
+                    assert kt.reachable(a, bn!).contains(b)
+                    if bn! > 0: assert not kt.reachable(a, bn! - 1).contains(b)

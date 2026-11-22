@@ -94,7 +94,7 @@ fn substrings_and_their_counts_match_brute_force():
         for len in 1..=4:
             for code in 0..(1 << len):
                 let w = [A((code >> i) % 2) for i in 0..len]
-                let times = count(all(s[i + j] == w[j] for j in 0..len) for i in 0..=n - len)
+                let times = (0..=n - len).count(i => (0..len).all(j => s[i + j] == w[j]))
                 assert sam.contains(w) == (times > 0)
                 if let v = sam.find(w): assert occ[v] == times
         var distinct = 0

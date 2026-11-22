@@ -56,7 +56,7 @@ fn walks_are_valid_and_exist_exactly_when_brute_force_finds_one():
         assert (got != none) == has_walk(edges, directed)
         if let walk = got:
             assert walk.sorted() == List(0..edges.len)
-            assert any(follows(edges, walk, directed, s) for s in V)
+            assert V.any(s => follows(edges, walk, directed, s))
 
 /// Does `walk` trace connected edges, starting at `start`?
 fn follows<V>(edges: List<(V, V)>, walk: List<Int>, directed: Bool, start: V) -> Bool:
@@ -70,7 +70,7 @@ fn follows<V>(edges: List<(V, V)>, walk: List<Int>, directed: Bool, start: V) ->
 
 fn has_walk<V>(edges: List<(V, V)>, directed: Bool) -> Bool:
     var used = List.filled(edges.len, false)
-    edges.is_empty or any(extend(edges, directed, mut used, v, 0) for v in V)
+    edges.is_empty or V.any(v => extend(edges, directed, mut used, v, 0))
 
 fn extend<V>(edges: List<(V, V)>, directed: Bool, mut used: List<Bool>, at: V, done: Int) -> Bool:
     if done == edges.len: return true

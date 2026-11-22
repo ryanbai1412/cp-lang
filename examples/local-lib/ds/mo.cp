@@ -61,7 +61,7 @@ fn distinct_values_in_ranges():
             ans[qi] = distinct
         for qi in 0..queries.len:
             let (lo, hi) = queries[qi]
-            assert ans[qi] == count(any(a[i] == v for i in lo..hi) for v in 0..6)
+            assert ans[qi] == (0..6).count(v => (lo..hi).any(i => a[i] == v))
 
 @test
 fn the_order_visits_every_query_once_and_stays_cheap():

@@ -58,8 +58,8 @@ fn floyd_warshall_min_count_matches_exhaustive_dag_and_positive_graphs():
     // Differential test on random DAGs against DP path counting
     for _ in 0..15:
         var edges: List<(V, V, Int)> = []
-        for i in 0..V.K:
-            for j in i + 1..V.K:
+        for i in 0..V.count:
+            for j in i + 1..V.count:
                 for _ in 0..rand(0, 2):
                     edges.push((V(i), V(j), rand(1, 5)))
         let fw = floyd_warshall::<V, 1000000007>(edges)
@@ -68,7 +68,7 @@ fn floyd_warshall_min_count_matches_exhaustive_dag_and_positive_graphs():
             var cnt = [V] _ => Z.zero
             best[s] = 0
             cnt[s] = 1
-            for i in s.to_idx..V.K:
+            for i in s.to_idx..V.count:
                 let u = V(i)
                 if best[u] == none: continue
                 for (a, b, w) in edges:

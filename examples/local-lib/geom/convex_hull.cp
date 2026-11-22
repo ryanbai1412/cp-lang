@@ -35,7 +35,7 @@ fn hull_is_convex_and_contains_every_point():
         let h = convex_hull(pts)
         if h.len < 3: continue
         for i in 0..h.len:
-            assert h[i] in pts
+            assert pts.contains(h[i])
             assert turn(h[i], h[(i + 1) % h.len], h[(i + 2) % h.len]) == 1
         for p in pts:
             assert locate(h, p) != Location.Outside

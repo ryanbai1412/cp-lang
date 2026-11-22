@@ -19,14 +19,14 @@ pub struct RangeKth<D>:
             if uniq.is_empty or uniq.last! != v: uniq.push(v)
         var t = RangeKth<D>(uniq, [0], [0], [0], [0])
         for i in D:
-            let rank = uniq.first_ge(a[i])!
-            t.root.push(t.insert(t.root[t.root.len - 1], 0, uniq.len, rank))
+            let rank = t.vals.first_ge(a[i])!
+            t.root.push(t.insert(t.root[t.root.len - 1], 0, t.vals.len, rank))
         t
 
     /// The `k`-th smallest value (from 0) among the positions of `r`, or `none` if the
     /// range holds `k` values or fewer.
     pub fn kth(self, r: Range<D>, k: Int) -> ?Int:
-        var (a, b) = (root[r.start.ord], root[r.end.ord])
+        var (a, b) = (root[r.l.ord], root[r.r.ord])
         if k < 0 or k >= cnt[b] - cnt[a]: return none
         var (lo, hi, left_over) = (0, vals.len, k)
         while hi - lo > 1:
@@ -43,7 +43,7 @@ pub struct RangeKth<D>:
     pub fn count_below(self, r: Range<D>, x: Int) -> Int:
         // the values below x are the ranks 0..upto
         let upto = vals.first_ge(x) ?? vals.len
-        var (a, b) = (root[r.start.ord], root[r.end.ord])
+        var (a, b) = (root[r.l.ord], root[r.r.ord])
         var (lo, hi, total) = (0, vals.len, 0)
         while hi - lo > 1 and upto > lo:
             if upto >= hi: break
@@ -80,12 +80,12 @@ fn matches_sorting_each_range():
         let t = RangeKth<D>(a)
         for _ in 0..40:
             let (x, y) = (D.nth(rand(0, 16)), D.nth(rand(0, 16)))
-            let r = if rand(0, 6) == 0: x.l..x.l else: min(x, y)..=max(x, y)
+            let r: Range<D> = if rand(0, 6) == 0: x.l..x.l else: min(x, y)..=max(x, y)
             let part = sorted([a[i] for i in r])
             for k in -1..=part.len:
                 assert t.kth(r, k) == (if 0 <= k < part.len: part[k] else: none)
             let bound = rand(-8, 8)
-            assert t.count_below(r, bound) == count(v < bound for v in part)
+            assert t.count_below(r, bound) == part.count(v => v < bound)
 
 @test
 fn median_of_a_window():

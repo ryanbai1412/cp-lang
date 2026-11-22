@@ -75,5 +75,5 @@ fn sliding_window_min_and_max_match_brute_force():
             if i >= k - 1:
                 mins.push(qmin.best!)
                 maxs.push(qmax.best!)
-        assert mins == [min(a[j] for j in i..i + k)! for i in 0..=a.len - k]
-        assert maxs == [max(a[j] for j in i..i + k)! for i in 0..=a.len - k]
+        assert mins == [a[i..i + k].min()! for i in 0..=a.len - k]
+        assert maxs == [a[i..i + k].max()! for i in 0..=a.len - k]

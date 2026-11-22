@@ -99,7 +99,7 @@ fn exact_search_finds_small_integer_coefficients():
     assert rational_recurrence(fib) == [Frac(1, 1), Frac(1, 1)]
     assert integer_recurrence(fib) == [1, 1]
     // five terms fix a recurrence of length 2 but leave only one to confirm it
-    assert integer_recurrence(fib[0..5]) == none and integer_recurrence(fib[0..6]) == [1, 1]
+    assert integer_recurrence(fib[0..5].to_list()) == none and integer_recurrence(fib[0..6].to_list()) == [1, 1]
     assert integer_recurrence([3, 6, 12, 24]) == [2]
     assert integer_recurrence([0, 0, 0]) == [] and integer_recurrence([7, 7, 7, 7]) == [1]
     // negative and zero coefficients: a[n] = 4 a[n-1] - a[n-2], and a[n] = a[n-3] - 2 a[n-1]

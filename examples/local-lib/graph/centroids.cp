@@ -76,7 +76,7 @@ pub struct Centroids<V>:
     /// Parent of `v` in the centroid tree; `none` at the root centroid.
     pub fn parent(self, v: V) -> ?V = par[v]
 
-    /// Depth of `v` in the centroid tree (always `<= log2(V.K)`).
+    /// Depth of `v` in the centroid tree (always `<= log2(V.count)`).
     pub fn depth(self, v: V) -> Int = dep[v]
 
     /// All `(centroid, dist(v, centroid))` pairs from root centroid down to `(v, 0)`. O(log n) items.
@@ -97,7 +97,7 @@ pub fn reroot<V, T>(
     lift: (T, V, V) -> T,
     finish: (T, V) -> T,
 ) -> [V]T:
-    let r = Rooted(root: V.first, adj: adj)
+    let r = Rooted(root: V.first!, next: adj)
     var down = [V] _ => id
     var sub_val = [V] _ => id
     // 1. Bottom-up pass
@@ -110,7 +110,7 @@ pub fn reroot<V, T>(
     var up = [V] _ => id
     var ans = [V] _ => id
     for u in r.at:
-        let kids = r.children(u)
+        let kids = r.children(u).collect()
         let k = kids.len
         let contrib = [lift(down[c], c, u) for c in kids]
         var pref = List.filled(k + 1, id)
@@ -130,7 +130,7 @@ pub fn reroot<V, T>(
 
 fn rand_tree<V>() -> [V]List<V>:
     var adj: [V]List<V> = []
-    for i in 1..V.K:
+    for i in 1..V.count:
         let p = V.nth(rand(0, i - 1))
         let u = V.nth(i)
         adj[p].push(u)
@@ -142,7 +142,7 @@ fn centroid_tree_depth_and_nearest_marked_vertex():
     domain V = 0..16
     for _ in 0..15:
         let adj = rand_tree<V>()
-        let r = Rooted(root: V(0), adj: u => adj[u])
+        let r = Rooted(root: V(0), next: u => adj[u])
         let cd = Centroids<V>(u => adj[u])
         // Centroid tree depth is O(log n) and distances match true tree distances
         for v in V:
@@ -162,7 +162,7 @@ fn centroid_tree_depth_and_nearest_marked_vertex():
                     if best[c] != none:
                         let cand = best[c]! + d
                         if got == none or cand < got!: got = cand
-                let want = min(r.dist(q, p) for p in painted)
+                let want = painted.map(p => r.dist(q, p)).min()
                 assert got == want
 
 @test
@@ -170,7 +170,7 @@ fn reroot_computes_eccentricity_and_distance_sums():
     domain V = 0..14
     for _ in 0..15:
         let adj = rand_tree<V>()
-        let r = Rooted(root: V(0), adj: u => adj[u])
+        let r = Rooted(root: V(0), next: u => adj[u])
         // Non-invertible monoid: maximum distance from every vertex (eccentricity)
         let ecc = reroot<V, Int>(
             u => adj[u],
@@ -180,7 +180,7 @@ fn reroot_computes_eccentricity_and_distance_sums():
             (s, _v) => s,
         )
         for v in V:
-            assert ecc[v] == max(r.dist(v, u) for u in V)
+            assert ecc[v] == V.map(u => r.dist(v, u)).max()!
         // Sum of distances from every vertex using (sum, size) pairs
         let sums = reroot<V, (Int, Int)>(
             u => adj[u],
@@ -191,4 +191,4 @@ fn reroot_computes_eccentricity_and_distance_sums():
         )
         for v in V:
             assert sums[v].0 == sum(r.dist(v, u) for u in V)
-            assert sums[v].1 == V.K
+            assert sums[v].1 == V.count

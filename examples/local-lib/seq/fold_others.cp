@@ -51,7 +51,7 @@ fn every_position_sees_the_rest():
                     text += Str(xs[j])
             assert g[i] == want and cat[i] == text
             // with nothing else to fold, the answer is the identity: `Int.MAX` for `min`
-            assert lo[i] == (min(xs[j] for j in 0..xs.len if j != i) ?? Int.MAX)
+            assert lo[i] == ((0..xs.len).filter(j => j != i).map(j => xs[j]).min() ?? Int.MAX)
 
 @test
 fn balanced_fold_keeps_the_order():

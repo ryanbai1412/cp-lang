@@ -31,7 +31,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
 
     /// The hash of the cells in `rows` x `cols`.
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> Int:
-        let (r1, r2, c1, c2) = (rows.start.ord, rows.end.ord, cols.start.ord, cols.end.ord)
+        let (r1, r2, c1, c2) = (rows.l.ord, rows.r.ord, cols.l.ord, cols.r.ord)
         let (hr, hc) = (pow_r[r2 - r1], pow_c[c2 - c1])
         (pre[r2][c2] - pre[r1][c2] * hr - pre[r2][c1] * hc + pre[r1][c1] * hr * hc).v
 
@@ -50,8 +50,8 @@ fn equal_hashes_exactly_for_equal_rectangles():
                 rand(0, 6 - hgt),
                 rand(0, 7 - wid),
             )
-            let same = all(
-                g[R(r1 + i), C(c1 + j)] == g[R(r2 + i), C(c2 + j)] for i in 0..hgt for j in 0..wid
+            let same = (0..hgt).all(
+                i => (0..wid).all(j => g[R(r1 + i), C(c1 + j)] == g[R(r2 + i), C(c2 + j)])
             )
             let a = h.rect(R(r1)..=R(r1 + hgt - 1), C(c1)..=C(c1 + wid - 1))
             let b = h.rect(R(r2)..=R(r2 + hgt - 1), C(c2)..=C(c2 + wid - 1))

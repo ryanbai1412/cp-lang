@@ -33,4 +33,4 @@ fn mst_matches_trying_every_subset():
                     if not d.unite(edges[e].u, edges[e].v): cyclic = true
                     cost += edges[e].w
             if not cyclic and d.components == parts.components: best min= cost
-        assert got.total == best and got.used.len == V.K - parts.components
+        assert got.total == best and got.used.len == V.count - parts.components

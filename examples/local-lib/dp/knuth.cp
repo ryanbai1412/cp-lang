@@ -37,7 +37,7 @@ fn optimal_merge_matches_the_cubic_dp():
         for len in 2..=n:
             for i in 0..=n - len:
                 let j = i + len
-                slow[i][j] = min(slow[i][k] + slow[k][j] for k in i + 1..j)! + cost(i, j)
+                slow[i][j] = (i + 1..j).map(k => slow[i][k] + slow[k][j]).min()! + cost(i, j)
         for i in 0..n:
             for j in i + 1..=n: assert fast[i][j] == slow[i][j]
 

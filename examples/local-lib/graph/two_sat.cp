@@ -52,10 +52,10 @@ fn two_sat_solutions_satisfy_every_clause_and_unsat_is_detected():
             clauses.push((a, b))
         var possible = false
         for mask in 0..32:
-            if all(
-                (((mask >> c.0.x.to_idx) & 1) == 1) == c.0.value or (
+            if clauses.all(
+                c => (((mask >> c.0.x.to_idx) & 1) == 1) == c.0.value or (
                     ((mask >> c.1.x.to_idx) & 1) == 1
-                ) == c.1.value for c in clauses
+                ) == c.1.value
             ): possible = true
         let got = sat.solve()
         assert (got != none) == possible

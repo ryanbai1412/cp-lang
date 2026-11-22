@@ -49,10 +49,10 @@ fn every_pair_has_its_own_cell():
             for l in D:
                 if l > r: continue
                 let t = Tri<D>(l, r)
-                assert t.to_idx == at and Tri<D>.from_idx(at) == t
+                assert t.to_idx() == at and Tri<D>.from_idx(at) == t
                 seen[t] += 1
                 at += 1
-        assert at == Tri<D>.K and all(seen[t] == 1 for t in Tri<D>.pairs())
+        assert at == Tri<D>.K and Tri<D>.pairs().all(t => seen[t] == 1)
 
 @test
 fn pairs_by_length_and_their_splits():
@@ -60,7 +60,7 @@ fn pairs_by_length_and_their_splits():
     var total = 0
     for len in 1..=6:
         let ts = Tri<D>.of_len(len)
-        assert ts.len == 7 - len and all(t.len == len for t in ts)
+        assert ts.len == 7 - len and ts.all(t => t.len == len)
         total += ts.len
         for t in ts:
             assert t.splits.len == len - 1
@@ -93,8 +93,8 @@ fn merging_stones_as_an_interval_dp():
         var dp: [Tri<I>]Int = 0
         for len in 2..=n:
             for t in Tri<I>.of_len(len):
-                dp[t] = min(dp[x] + dp[y] for (x, y) in t.splits) + sum(a[i] for i in t.l..=t.r)
-        assert dp[Tri<I>(I.first, I.last)] == merge_cost([a[i] for i in I])
+                dp[t] = t.splits.map(((x, y)) => dp[x] + dp[y]).min()! + sum(a[i] for i in t.l..=t.r)
+        assert dp[Tri<I>(I.first!, I.last!)] == merge_cost([a[i] for i in I])
 
 /// The same answer by trying every merge of two neighbours.
 fn merge_cost(piles: List<Int>) -> Int:

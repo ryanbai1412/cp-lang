@@ -18,7 +18,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
     )
 
     /// The entry in row `i`, column `j`, lent in place: `m.at(i, j) += x` updates the matrix.
-    pub fn at(self, i: Int, j: Int) lends mut Mod<P>:
+    pub fn at(mut self, i: Int, j: Int) -> lends mut Mod<P>:
         lend mut a[i][j]
 
     /// Matrix multiplication as a monoid, so a `SegTree` can hold matrices.
@@ -44,7 +44,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
                 ans = -ans
             let lead = m[col][col]
             ans *= lead
-            let inv_l = lead.inv
+            let inv_l = lead.inv()
             for r in col + 1..n:
                 if m[r][col] == 0: continue
                 let f = m[r][col] * inv_l
@@ -61,7 +61,7 @@ pub struct Mat<P>(n: Int, a: List<List<Mod<P>>>):
             if piv == n: continue
             if piv != r:
                 m.swap(r, piv)
-            let inv_l = m[r][col].inv
+            let inv_l = m[r][col].inv()
             for i in r + 1..n:
                 if m[i][col] == 0: continue
                 let f = m[i][col] * inv_l
@@ -88,7 +88,7 @@ pub fn solve_linear<P>(rows: List<List<Mod<P>>>, b: List<Mod<P>>) -> ?List<Mod<P
         if piv == m: continue
         if piv != r:
             aug.swap(r, piv)
-        let inv_l = aug[r][col].inv
+        let inv_l = aug[r][col].inv()
         for c in col..=k: aug[r][c] *= inv_l
         for i in 0..m:
             if i == r or aug[i][col] == 0: continue

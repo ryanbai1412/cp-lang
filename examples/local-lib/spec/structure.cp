@@ -7,9 +7,6 @@
 //! finds periods, and names the optimizations that fit.
 use std.spec.{decrease, convexity_break, concavity_break, monge_break}
 
-/// A table read as a function, for the checks that take one: `at(t)(i, j) == t[i][j]`.
-pub fn at(t: List<List<Int>>) -> (Int, Int) -> Int = (i, j) => t[i][j]
-
 // ---- splitting a prefix into groups: dp[g][j] = min over i < j of dp[g-1][i] + cost(i, j)
 
 /// The quadratic DP that splits `0..n` into consecutive groups, where the group of
@@ -147,7 +144,7 @@ pub fn rolling_window(
     step: (List<List<Int>>) -> List<Int>,
 ) -> ?Int:
     for k in 1..=min(max_depth, t.len - 1):
-        if all(step([t[r] for r in i - k..i]) == t[i] for i in k..t.len): return k
+        if (k..t.len).all(i => step([t[r] for r in i - k..i]) == t[i]): return k
     none
 
 // ---- periods
@@ -219,9 +216,9 @@ fn squared_group_sums_fit_everything():
         // spot-check the table against a direct minimum
         for g in 1..=k:
             for j in g..=n:
-                assert dp[g][j]! == min(
-                    dp[g - 1][i]! + cost(i, j) for i in g - 1..j if dp[g - 1][i] != none
-                )!
+                assert dp[g][j]! == (g - 1..j).filter(i => dp[g - 1][i] != none).map(
+                    i => dp[g - 1][i]! + cost(i, j)
+                ).min()!
                 assert dp[g - 1][opt[g][j]]! + cost(opt[g][j], j) == dp[g][j]!
         assert dp[0][0] == 0 and dp[0][n] == none and dp[1][0] == none
     let pre = [0, 3, 4, 9, 11]
@@ -253,7 +250,7 @@ fn merging_piles_is_knuth_eligible():
         let (dp, opt) = interval_dp(cost, n)
         for i in 0..n:
             for j in i + 2..=n:
-                assert dp[i][j] == min(dp[i][k] + dp[k][j] for k in i + 1..j)! + cost(i, j)
+                assert dp[i][j] == (i + 1..j).map(k => dp[i][k] + dp[k][j]).min()! + cost(i, j)
                 assert i < opt[i][j] and opt[i][j] < j
     let pre = [0, 4, 5, 6, 10]
     let cost = (i, j) => pre[j] - pre[i]
@@ -278,7 +275,7 @@ fn interval_costs_that_break_knuth():
 @test
 fn tables_read_as_functions():
     let t = [[(i - j) ** 2 for j in 0..6] for i in 0..6]
-    assert monge_break(at(t), 6, 6) == none
+    assert monge_break((i, j) => t[i][j], 6, 6) == none
     assert row_convexity_break(t) == none and row_concavity_break(t) == (0, 0)
     let bumpy = [[0, 1, 2], [0, 5, 2, 9]]
     assert row_convexity_break(bumpy) == (1, 0) and row_concavity_break(bumpy) == (1, 1)

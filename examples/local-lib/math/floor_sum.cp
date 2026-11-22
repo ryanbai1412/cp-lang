@@ -20,7 +20,7 @@ fn agrees_with_the_loop_for_every_sign():
         assert mod_sum(n, m, a, b) == sum((a * i + b) % m for i in 0..n)
         let lo = rand(0, m)
         let hi = rand(lo, m)
-        assert count_residues(n, m, a, b, lo, hi) == count(lo <= (a * i + b) % m < hi for i in 0..n)
+        assert count_residues(n, m, a, b, lo, hi) == (0..n).count(i => lo <= (a * i + b) % m < hi)
 
 @test
 fn large_arguments_stay_exact():
@@ -31,5 +31,5 @@ fn large_arguments_stay_exact():
 @test
 fn lattice_points_in_a_triangle():
     // points with x >= 1, y >= 1 and 3x + 5y <= 100: for each x, floor((100 - 3x) / 5) of them
-    let inside = count(3 * x + 5 * y <= 100 for x in 1..=33 for y in 1..=20)
+    let inside = sum(1 for x in 1..=33 for y in 1..=20 if 3 * x + 5 * y <= 100)
     assert floor_sum(33, 5, -3, 97) == inside

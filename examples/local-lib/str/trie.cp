@@ -85,9 +85,9 @@ fn counts_match_a_list_of_words():
                 assert t.remove(w) == (i != none)
                 if i != none: words = [words[j] for j in 0..words.len if j != i!]
             let q = [A(rand(0, 2)) for _ in 0..rand(0, 3)]
-            assert t.count(q) == count(w == q for w in words)
-            assert t.count_prefix(q) == count(
-                w.len >= q.len and all(w[i] == q[i] for i in 0..q.len) for w in words
+            assert t.count(q) == words.count(w => w == q)
+            assert t.count_prefix(q) == words.count(
+                w => w.len >= q.len and (0..q.len).all(i => w[i] == q[i])
             )
 
 @test
@@ -108,4 +108,4 @@ fn largest_xor_with_a_set():
             else:
                 at = t.step(at, b)!
                 got = 2 * got
-        assert got == max(q ^ x for x in xs)
+        assert got == xs.map(x => q ^ x).max()

@@ -36,7 +36,7 @@ pub fn lagrange_at<P>(ys: List<Mod<P>>, n: Int) -> Mod<P>:
     var inv_fact = List.filled(k, one)
     var fact = one
     for i in 1..k: fact *= Mod<P>(i)
-    inv_fact[k - 1] = fact.inv
+    inv_fact[k - 1] = fact.inv()
     for i in (1..k).rev: inv_fact[i - 1] = inv_fact[i] * Mod<P>(i)
     var total: Mod<P> = 0
     for i in 0..k:

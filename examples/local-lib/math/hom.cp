@@ -6,7 +6,7 @@
 
 /// The map `x -> a * x + b` over any type with `+` and `*` (`Int`, `Mod<P>`).
 use std.algebra.{Monoid, Reversible}
-pub struct Hom<T>(a: T, b: T):
+pub struct Hom<T: Add + Mul>(a: T, b: T):
     /// The value of the map at `x`.
     pub fn at(self, x: T) -> T = a * x + b
 

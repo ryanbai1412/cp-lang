@@ -159,10 +159,10 @@ fn rings_and_trees_partition_the_graph():
         var done: [V]Bool = false
         for v in g.peel_order:
             // everything pointing at v was peeled before v
-            assert not g.on_ring(v) and all(done[u] for u in V if next[u] == v)
+            assert not g.on_ring(v) and V.all(u => next[u] != v or done[u])
             done[v] = true
             seen[v] += 1
-        assert all(seen[v] == 1 for v in V)
+        assert V.all(v => seen[v] == 1)
         for v in V:
             let path = walk(next, v)
             let k = g.steps_to_ring(v)

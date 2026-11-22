@@ -39,7 +39,7 @@ pub struct Fixed<D>(raw: Int):
                 return none
             i += 1
         if digits == 0: return none
-        acc *= 10 ** (D - after)
+        acc *= unit / 10 ** after
         Fixed(if neg: -acc else: acc)
 
     /// The largest whole number that is `<= self`, and the smallest that is `>= self`.

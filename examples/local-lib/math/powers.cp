@@ -36,5 +36,5 @@ fn subsets_with_a_given_minimum():
     let xs = [1, 3, 4, 9]
     let two = Powers<998244353>(2, xs.len)
     let total: M = sum(M(xs[i]) * two[xs.len - 1 - i] for i in 0..xs.len)
-    let want = sum(min(xs[i] for i in 0..4 if (mask >> i) % 2 == 1) for mask in 1..16)
+    let want = sum((0..4).filter(i => (mask >> i) % 2 == 1).map(i => xs[i]).min()! for mask in 1..16)
     assert total == M(want)

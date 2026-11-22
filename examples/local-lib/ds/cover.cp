@@ -17,7 +17,7 @@ pub struct Cover<Y>:
     /// after compression, or 1 for unit cells.
     pub fn new(width: [Y]Int) -> Cover<Y>:
         var size = 1
-        while size < Y.K: size *= 2
+        while size < Y.count: size *= 2
         var w = List.filled(2 * size, 0)
         for y in Y: w[size + y.to_idx] = width[y]
         for i in (1..size).rev: w[i] = w[2 * i] + w[2 * i + 1]
@@ -25,7 +25,7 @@ pub struct Cover<Y>:
 
     /// Add `k` copies of the range `r` (`k = -1` removes one).
     pub fn add(mut self, r: Range<Y>, k: Int):
-        self.walk(1, 0, size, r.start.ord, r.end.ord, k)
+        self.walk(1, 0, size, r.l.ord, r.r.ord, k)
 
     /// The total width of the cells covered by at least one range.
     pub @get fn covered(self) -> Int = len[1]
@@ -51,7 +51,7 @@ fn covered_width_matches_counting_cells():
         for _ in 0..30:
             if live.is_empty or rand(0, 2) > 0:
                 let (a, b) = (Y.nth(rand(0, 12)), Y.nth(rand(0, 12)))
-                let r = if rand(0, 5) == 0: a.l..a.l else: min(a, b)..=max(a, b)
+                let r: Range<Y> = if rand(0, 5) == 0: a.l..a.l else: min(a, b)..=max(a, b)
                 live.push(r)
                 c.add(r, 1)
                 for y in r: depth[y] += 1
@@ -76,5 +76,5 @@ fn area_of_a_union_of_rectangles():
     var want = 0
     for x in 0..6:
         for y in 0..6:
-            if any(x1 <= x < x2 and y1 <= y < y2 for (x1, x2, y1, y2) in rects): want += 1
+            if rects.any(((x1, x2, y1, y2)) => x1 <= x < x2 and y1 <= y < y2): want += 1
     assert area == want

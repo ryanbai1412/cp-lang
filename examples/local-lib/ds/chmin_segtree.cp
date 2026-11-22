@@ -117,4 +117,4 @@ fn matches_a_plain_array():
                 st.chmin(r, x)
                 for k in i..=j: plain[P(k)] min= x
             assert st.sum(r) == sum(plain[P(k)] for k in i..=j)
-            assert st.max_in(r) == max(plain[P(k)] for k in i..=j)
+            assert st.max_in(r) == (i..=j).map(k => plain[P(k)]).max()

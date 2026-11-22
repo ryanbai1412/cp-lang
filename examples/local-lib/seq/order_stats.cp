@@ -71,7 +71,7 @@ pub fn count_in_rects(pts: List<(Int, Int)>, rects: List<(Int, Int, Int, Int)>) 
         while pi < spts.len and spts[pi].0 <= x:
             bit.add(Y(ys.at(spts[pi].1).to_idx), 1)
             pi += 1
-        ans[qi] += sgn * bit.sum(Y(y1)..=Y(y2))
+        ans[qi] += sgn * bit.fold(Y(y1)..=Y(y2))
     ans
 
 @test
@@ -115,5 +115,5 @@ fn count_in_rects_matches_quadratic_scan():
         let got = count_in_rects(pts, rects)
         for i in 0..rects.len:
             let (x1, y1, x2, y2) = rects[i]
-            let want = count(x1 <= p.0 and p.0 <= x2 and y1 <= p.1 and p.1 <= y2 for p in pts)
+            let want = pts.count(p => x1 <= p.0 and p.0 <= x2 and y1 <= p.1 and p.1 <= y2)
             assert got[i] == want
