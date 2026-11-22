@@ -1,12 +1,12 @@
 # Execution plan: the next 12 hours and after
 
-Owner: Devin (parent session). Status: proposal, 2026-11-21 22:40 PST.
+Owner: Devin (parent session). Status: in progress, updated 2026-11-21 23:10 PST.
 Companion to `plan/ARCHITECTURE.md` (how the code is built) and
 `plan/DOMAINS.md` (each domain's north star).
 
 ## 1. The goal and what "ready" means
 
-Ryan's target: by about 10:30 PST tomorrow, a language and toolchain usable
+Ryan's target: by 8:00 PST tomorrow ("ideally 8AM actually"), a language and toolchain usable
 in a real contest with minimal bugs and friction.
 
 Measured, "contest-ready" means:
@@ -30,24 +30,38 @@ corpus failures. The compiler is usable at every step.
 Measured 2026-11-21: 97 of 100 `spec.cp` ports type-check against the
 stubs; 5 check against the implemented stdlib; none run in v0.3 form.
 
+Measured 23:05: with 954 ported bodies, 2 of 54 tested v0.3 ports pass. The
+blocker is not mostly missing bodies: `cpl run` re-types every program in
+`cpl-ir`'s lowering, which has no associated types (`G.Arc`), trait aliases,
+record rows (`..R without (u, v)`) or the implicit conversions of decision
+183, so it rejects the v0.3 stubs' signatures before any body runs.
+
+**Consequence for 8:00.** The contest path tomorrow is today's default
+`cpl` (no `CPL_SPEC`), which runs the language the site teaches; streams 8,
+10, 11 and 12 harden it. v0.3 runs end to end through a new reference
+interpreter in `cpl-core` (architecture step 5, pulled forward): it runs
+the checked program dynamically, so the stubs' type features need no
+monomorphization, and it becomes the engine the stdlib-body streams test
+against. The fast path follows it after `cpl-ty` (step 4).
+
 ## 2. Workstreams
 
 Each stream has an owner, a done-test, and its dependencies. "Me" means
-this session; "child" means a candidate for delegation once Ryan allows new
-child sessions.
+this session; "child" means a child session (allowed since 23:00), reviewed
+by me before its work counts.
 
 | # | Stream | Owner | Done when | Depends on |
 |---|---|---|---|---|
-| 0 | Tech-debt cleanup | existing child, then me | prototype gone, one test home per kind, `just check` under 1 min, merged branches deleted | none |
+| 0 | Tech-debt cleanup | child (`proto/ports` move, toolchain), me (review, docs migration) | prototype gone, one test home per kind, `just check` under 1 min, merged branches deleted | none |
 | 1 | Spec finalization | me | round-3 rebuild under 5 holes; 0 vocabulary hits; all blocks parse | 0 (paths) |
 | 2 | Spec safeguards | me | checks below run in `just check` | none |
 | 3 | Harness (`cpl-conform`) | me | one runner and scoreboard JSON for conformance, corpus, doc examples and differential | none |
 | 4 | One `std/`: v0.3 signatures with bodies; one mode | me | the corpus row of the table above | 3 |
 | 5 | Checker and IR to the target design | me | ch1–ch10 conformance; intrinsics table only in `call.rs` | 3 |
-| 6 | Stdlib bodies | children, one module each | module doc examples run | 4 |
+| 6 | Stdlib bodies | two children (sequences and ranges; graphs and math) | module doc examples run | 4 |
 | 7 | C++ codegen and perf | me | budget rows above; `just bench` report | 4 |
 | 8 | Diagnostics | child | every code in `spec/diagnostics.md` has a case and a fix | 1 |
-| 9 | Interpreter, traces, debugger | me (with 5) | one engine; traps show source values | 5 |
+| 9 | Reference interpreter (`cpl-core`), then traces | me | v0.3 corpus ports run on it; conformance runs on it | none |
 | 10 | Stress and contest tools | child | `cpl stress` with brute, generator and shrink on 10 corpus problems | 4 |
 | 11 | Judges and submission | child | profiles for Codeforces, AtCoder, DMOJ, CSES, USACO; size warning at 32 KB | 7 |
 | 12 | Editor and LSP | child | LSP row above; VS Code extension installs from `editors/` | 4 |
@@ -90,25 +104,22 @@ back:
 
 ## 5. Timeline (PST)
 
-| Time | Me | Others |
+| Time | Me | Children |
 |---|---|---|
-| 22:45–23:30 | tech-debt finish and verify; harness skeleton; spec hole batch 1 (stubs) | tech-debt child wraps up; site child |
-| 23:30–02:00 | merge `spec/std` and `stdlib` into `std/`; drop `CPL_SPEC`; port bodies by corpus usage; spec safeguards | children: diagnostics, judges, LSP (if allowed) |
-| 02:00–03:00 | spec holes batch 2; launch rebuild round 3 | rebuild child (if allowed) |
-| 03:00–07:00 | checker gaps by corpus failure count; library names out of `call.rs`; one interpreter | stdlib children once types and MIR are in (if allowed) |
-| 07:00–09:00 | codegen and perf pass; differential fuzz; corpus green | |
-| 09:00–10:30 | hardening: fix every red row; regenerate docs and scoreboard; morning report | |
+| 23:00–23:30 | plan update; children launched; tech-debt review | tech-debt (`proto/ports`, mise/just/uv/pnpm), judges, LSP, diagnostics, stress, stdlib x2, site |
+| 23:30–04:00 | `cpl-core` reference interpreter: v0.3 corpus ports and conformance on it | as above; I review each child's pushes as they land |
+| 04:00–06:00 | interpreter gaps by corpus failure count; spec holes found on the way; rebuild round 3 | contest dry-run child exercises today's `cpl` on fresh problems |
+| 06:00–08:00 | fix every red contest-path row; regenerate scoreboard; morning report | children wrap up |
 
 ## 6. Delegation
 
-Ryan asked for no new child sessions for now. Until that changes, I do
-everything above myself and the timeline stretches. When allowed, I'd
-delegate only streams with a fixed interface and a test that defines done:
-diagnostics (8), stress tools (10), judges (11), LSP (12), stdlib modules
-(6) and rebuild rounds. Each gets a 45–60 minute cap, a check-in every 15
-minutes, and my review of the diff before it lands on `main`.
+Ryan allowed child sessions at 23:00 ("you're the owner and you're on the
+line if things don't end up getting shipped"). Delegated: tech debt (0),
+stdlib bodies (6), diagnostics (8), stress (10), judges (11), LSP (12),
+site (13). Each has a fixed interface, a done-test and a time box; I review
+every push and own the result.
 
 ## 7. Morning report
 
-At 10:30 PST: the readiness table filled with measured numbers, what's red
+At 8:00 PST: the readiness table filled with measured numbers, what's red
 and why, the decisions made overnight, and the next three things to do.
