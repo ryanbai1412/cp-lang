@@ -2612,3 +2612,14 @@ fn rename_refuses_a_name_that_would_capture_or_be_captured() {
         assert!(matches!(reply.get("changes"), Value::Object(_)), "{src}: {reply:?}");
     }
 }
+
+/// What the bounds prove is kept between requests, and an edit replaces it.
+#[test]
+fn hover_shows_the_range_the_bounds_prove_after_an_edit() {
+    let (mut server, _) = open("let n: 1..=100 = read()\nlet t = n * 2\nprint(t)\n");
+    let range = |server: &mut Server| hover_at(server, 1, 4).at(&["contents", "value"]).as_str().unwrap().to_string();
+    assert!(range(&mut server).contains("t: Int in 2..=200"), "{}", range(&mut server));
+    assert!(range(&mut server).contains("t: Int in 2..=200"));
+    server.handle(&did_change((1, 12), (1, 13), "3"));
+    assert!(range(&mut server).contains("t: Int in 3..=300"), "{}", range(&mut server));
+}

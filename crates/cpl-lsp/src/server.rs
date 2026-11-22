@@ -10,8 +10,9 @@ use crate::json::{obj, Value};
 use crate::rename;
 use cpl_check::{Database, DeclKind, Definition};
 use cpl_diag::{codes, Diagnostic, LineCol, LineIndex, Severity, Span};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::{Arc, OnceLock};
 
 const METHOD_NOT_FOUND: i32 = -32601;
 const INVALID_PARAMS: i32 = -32602;
@@ -25,6 +26,8 @@ pub struct Server {
     docs: BTreeMap<String, String>,
     /// The standard library's declarations, for completion.
     std: StdLib,
+    /// What the declared bounds prove about each open document's text.
+    proven: HashMap<String, Arc<Proven>>,
     initialized: bool,
     /// The client asked for run, stress and trace lenses
     /// (`initializationOptions.codeLens`); VS Code draws its own.
@@ -45,6 +48,7 @@ impl Server {
             db: Database::new(),
             docs: BTreeMap::new(),
             std: StdLib::default(),
+            proven: HashMap::new(),
             initialized: false,
             lenses: false,
             shutdown: false,
@@ -177,6 +181,7 @@ impl Server {
             "textDocument/didClose" => {
                 let uri = uri_of(params)?;
                 self.docs.remove(uri);
+                self.proven.remove(uri);
                 self.db.remove_file(uri);
                 Ok(Reply::notify(publish(uri, Vec::new())))
             }
@@ -207,9 +212,11 @@ impl Server {
                     .db
                     .definition(&uri, offset)
                     .map_or(hover.span.start, |d| d.start);
-                let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
-                let proven = cpl_lint::proven_ranges(&analysis.text)
-                    .into_iter()
+                let facts = self.proven(&uri).expect("hover implies an analysis");
+                let proven = facts
+                    .ranges()
+                    .iter()
+                    .copied()
                     .find(|&(at, lo, hi)| at == declared && lo != hi)
                     .filter(|_| {
                         hover
@@ -231,11 +238,9 @@ impl Server {
                     hover.text = format!("{}\n  {}", hover.text, index.text);
                 }
                 let sized = hover.text.lines().find_map(|l| l.strip_prefix("cost: ")).and_then(|cost| {
-                    let size = cpl_lint::proven_sizes(&analysis.text)
-                        .into_iter()
-                        .find(|s| s.receiver.1 + 1 == hover.span.start)?;
+                    let size = facts.sizes().iter().find(|s| s.receiver.1 + 1 == hover.span.start)?;
                     let steps = steps_of(cost, size.max as f64)?;
-                    let receiver = &analysis.text[size.receiver.0 as usize..size.receiver.1 as usize];
+                    let receiver = &facts.text[size.receiver.0 as usize..size.receiver.1 as usize];
                     let named = if size.count.chars().all(|c| c.is_ascii_digit()) {
                         String::new()
                     } else {
@@ -253,11 +258,9 @@ impl Server {
                 if let Some((plain, sized)) = sized {
                     hover.text = hover.text.replacen(&plain, &sized, 1);
                 }
-                let proven = cpl_lint::proven_fns(&analysis.text)
-                    .into_iter()
-                    .find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
+                let proven = facts.fns().iter().find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
                 if let Some(f) = proven {
-                    let (calls, total) = fn_call_costs(&mut self.db, &uri, &f);
+                    let (calls, total) = fn_call_costs(&mut self.db, &uri, f, &facts);
                     let named = |count: Option<&str>| {
                         count
                             .filter(|c| !c.chars().all(|c| c.is_ascii_digit()))
@@ -729,15 +732,13 @@ impl Server {
             // literal argument fills.
             "textDocument/inlayHint" => {
                 let uri = uri_of(params)?;
-                let Some(analysis) = self.db.analyze(uri) else {
+                let Some(facts) = self.proven(uri) else {
                     return Ok(Reply::result(Value::Array(Vec::new())));
                 };
+                let analysis = self.db.analyze(uri).expect("proven implies an analysis");
                 let mut hints = Vec::new();
-                let proven: std::collections::HashMap<u32, (i128, i128)> =
-                    cpl_lint::proven_ranges(&analysis.text)
-                        .into_iter()
-                        .map(|(at, lo, hi)| (at, (lo, hi)))
-                        .collect();
+                let proven: HashMap<u32, (i128, i128)> =
+                    facts.ranges().iter().map(|&(at, lo, hi)| (at, (lo, hi))).collect();
                 for item in &analysis.items {
                     for entry in &item.check.hovers {
                         let declares = entry.decl == Some(entry.span)
@@ -821,15 +822,16 @@ impl Server {
 
     /// The `publishDiagnostics` notification for a document.
     fn diagnostics(&mut self, uri: &str) -> Value {
-        let Some(analysis) = self.db.analyze(uri) else {
+        let Some(facts) = self.proven(uri) else {
             return publish(uri, Vec::new());
         };
+        let analysis = self.db.analyze(uri).expect("proven implies an analysis");
         // The same answer as `cpl check`: the checker's diagnostics, then
         // what lowering rejects; then, as `cpl lint` reports them, the lints.
         let items = cpl_ir::reported(&analysis)
             .iter()
             .chain(&lints(uri, &analysis.text))
-            .chain(&overflows(&analysis.text))
+            .chain(&overflows(&facts))
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
         publish(uri, items)
@@ -859,13 +861,23 @@ impl Server {
         false
     }
 
+    /// What the declared bounds prove about `uri`'s current text, computed
+    /// once per edit and shared by every request until the next.
+    fn proven(&mut self, uri: &str) -> Option<Arc<Proven>> {
+        let analysis = self.db.analyze(uri)?;
+        if let Some(facts) = self.proven.get(uri).filter(|f| *f.text == *analysis.text) {
+            return Some(facts.clone());
+        }
+        let facts = Arc::new(Proven::new(analysis.text.to_string()));
+        self.proven.insert(uri.to_string(), facts.clone());
+        Some(facts)
+    }
+
     /// On the head of a `for` whose count the declared bounds prove: how
     /// many times its body runs, alone and with the loops around it.
     fn loop_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
-        let analysis = self.db.analyze(uri)?;
-        let proven = cpl_lint::proven_loops(&analysis.text)
-            .into_iter()
-            .find(|l| l.head.0 <= offset && offset < l.head.1)?;
+        let facts = self.proven(uri)?;
+        let proven = facts.loops().iter().find(|l| l.head.0 <= offset && offset < l.head.1)?;
         let named = |count: &str| {
             if count.chars().all(|c| c.is_ascii_digit()) {
                 String::new()
@@ -894,11 +906,13 @@ impl Server {
     fn index_hover(&mut self, uri: &str, offset: u32, on_index: bool) -> Option<cpl_check::Hover> {
         let analysis = self.db.analyze(uri)?;
         let inside = |(start, end): (u32, u32)| start <= offset && offset < end;
-        let proven = cpl_lint::proven_indexes(&analysis.text).into_iter().find(|p| {
-            inside(p.access) && !inside(p.seq) && inside(p.index) == on_index
-        });
+        let facts = self.proven(uri)?;
+        let proven = facts
+            .indexes()
+            .iter()
+            .find(|p| inside(p.access) && !inside(p.seq) && inside(p.index) == on_index);
         let proven = match proven {
-            Some(p) => p,
+            Some(p) => p.clone(),
             None => {
                 let typed = self.db.typed_index(uri, offset, on_index)?;
                 let span = |s: Span| (s.start, s.end);
@@ -928,9 +942,8 @@ impl Server {
     /// range of its value, and whether it can leave `Int`.
     fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
         let analysis = self.db.analyze(uri)?;
-        let proven = cpl_lint::proven_expr_ranges(&analysis.text)
-            .into_iter()
-            .find(|e| e.op.0 <= offset && offset < e.op.1)?;
+        let facts = self.proven(uri)?;
+        let proven = facts.exprs().iter().find(|e| e.op.0 <= offset && offset < e.op.1)?;
         let (start, end) = proven.expr;
         let source = analysis.text.get(start as usize..end as usize)?;
         let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -1465,24 +1478,25 @@ fn fn_call_costs(
     db: &mut cpl_check::Database,
     uri: &str,
     f: &cpl_lint::ProvenFn,
+    facts: &Proven,
 ) -> (Vec<String>, Option<(f64, Option<String>)>) {
     const MOST: usize = 4;
     const LONGEST: usize = 100;
     let mut out = Vec::new();
     let mut evaluated: Vec<(Span, f64, Option<String>)> = Vec::new();
     let costs = db.costs_in(uri, f.body.0, f.body.1);
-    let text = db.analyze(uri).map_or_else(String::new, |a| a.text.to_string());
-    let sizes = if costs.is_empty() { Vec::new() } else { cpl_lint::proven_sizes(&text) };
-    let domains = if costs.iter().any(|(_, _, c)| c.contains('|')) { cpl_lint::domain_sizes(&text) } else { Vec::new() };
+    let text = &facts.text;
+    let sizes = if costs.is_empty() { &[][..] } else { facts.sizes() };
+    let domains = if costs.iter().any(|(_, _, c)| c.contains('|')) { facts.domains() } else { &[][..] };
     for (span, name, cost) in &costs {
         let receiver = name
             .starts_with('.')
-            .then(|| receiver_before(&text, span.start as usize))
+            .then(|| receiver_before(text, span.start as usize))
             .flatten();
         let size = sizes.iter().find(|s| s.receiver.1 + 1 == span.start);
         let steps = match size {
             Some(s) => steps_of(cost, s.max as f64),
-            None => domain_steps(cost, &domains),
+            None => domain_steps(cost, domains),
         };
         let (name, cost) = match (receiver, size) {
             (Some(r), Some(s)) if s.count.chars().all(|c| c.is_alphanumeric() || c == '_') => {
@@ -1597,11 +1611,13 @@ pub(crate) fn count_text(n: u128) -> String {
 
 /// A soft note on each operation the prover shows leaves `Int` for inputs
 /// in their declared ranges, naming those inputs.
-fn overflows(text: &str) -> Vec<Diagnostic> {
-    cpl_lint::proven_expr_ranges(text)
-        .into_iter()
+fn overflows(facts: &Proven) -> Vec<Diagnostic> {
+    let text = &facts.text;
+    facts
+        .exprs()
+        .iter()
         .filter_map(|e| {
-            let inputs = e.overflow?;
+            let inputs = e.overflow.as_ref()?;
             let span = Span::new(e.expr.0, e.expr.1);
             let source = text.get(e.expr.0 as usize..e.expr.1 as usize)?;
             let source = source.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -1757,5 +1773,60 @@ fn panic_text(panic: &(dyn std::any::Any + Send)) -> String {
         text.clone()
     } else {
         "unknown panic".to_string()
+    }
+}
+
+/// The bounds prover's results on one text, each computed on first use.
+struct Proven {
+    text: String,
+    ranges: OnceLock<Vec<(u32, i128, i128)>>,
+    sizes: OnceLock<Vec<cpl_lint::ProvenSize>>,
+    domains: OnceLock<Vec<(String, u128)>>,
+    fns: OnceLock<Vec<cpl_lint::ProvenFn>>,
+    loops: OnceLock<Vec<cpl_lint::ProvenLoop>>,
+    indexes: OnceLock<Vec<cpl_lint::ProvenIndex>>,
+    exprs: OnceLock<Vec<cpl_lint::ProvenExpr>>,
+}
+
+impl Proven {
+    fn new(text: String) -> Proven {
+        Proven {
+            text,
+            ranges: OnceLock::new(),
+            sizes: OnceLock::new(),
+            domains: OnceLock::new(),
+            fns: OnceLock::new(),
+            loops: OnceLock::new(),
+            indexes: OnceLock::new(),
+            exprs: OnceLock::new(),
+        }
+    }
+
+    fn ranges(&self) -> &[(u32, i128, i128)] {
+        self.ranges.get_or_init(|| cpl_lint::proven_ranges(&self.text))
+    }
+
+    fn sizes(&self) -> &[cpl_lint::ProvenSize] {
+        self.sizes.get_or_init(|| cpl_lint::proven_sizes(&self.text))
+    }
+
+    fn domains(&self) -> &[(String, u128)] {
+        self.domains.get_or_init(|| cpl_lint::domain_sizes(&self.text))
+    }
+
+    fn fns(&self) -> &[cpl_lint::ProvenFn] {
+        self.fns.get_or_init(|| cpl_lint::proven_fns(&self.text))
+    }
+
+    fn loops(&self) -> &[cpl_lint::ProvenLoop] {
+        self.loops.get_or_init(|| cpl_lint::proven_loops(&self.text))
+    }
+
+    fn indexes(&self) -> &[cpl_lint::ProvenIndex] {
+        self.indexes.get_or_init(|| cpl_lint::proven_indexes(&self.text))
+    }
+
+    fn exprs(&self) -> &[cpl_lint::ProvenExpr] {
+        self.exprs.get_or_init(|| cpl_lint::proven_expr_ranges(&self.text))
     }
 }
