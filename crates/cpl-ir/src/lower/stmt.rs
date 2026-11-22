@@ -3648,7 +3648,15 @@ impl<'a> Lowerer<'a> {
             if let ast::ExprKind::Name(fname) = &callee.kind {
                 if self.lookup(fname).is_none() {
                     if let Some((offset, decl)) = self.free_lends_mut_fn(fname) {
-                        self.lower_free_lend_assign(decl, offset, args, op, value, target.span, out);
+                        self.lower_free_lend_assign(
+                            decl,
+                            offset,
+                            args,
+                            op,
+                            value,
+                            target.span,
+                            out,
+                        );
                         return;
                     }
                 }
@@ -4851,10 +4859,13 @@ impl<'a> Lowerer<'a> {
     }
 
     fn free_lends_mut_fn(&self, name: &str) -> Option<(u32, &'a ast::FnDecl)> {
-        self.mod_items(self.cur_mod).find_map(|(offset, stmt)| match &stmt.kind {
-            ast::StmtKind::Fn(d) if d.name.text == name && d.lends.is_some() => Some((offset, d)),
-            _ => None,
-        })
+        self.mod_items(self.cur_mod)
+            .find_map(|(offset, stmt)| match &stmt.kind {
+                ast::StmtKind::Fn(d) if d.name.text == name && d.lends.is_some() => {
+                    Some((offset, d))
+                }
+                _ => None,
+            })
     }
 
     /// `head(mut a) = 7` for `fn head(mut xs: List<Int>) lends mut Int = xs[0]`:
@@ -4873,7 +4884,11 @@ impl<'a> Lowerer<'a> {
     ) {
         let (pre, lent, post) = super::mono::split_projection_body(decl);
         let Some(lent) = lent else {
-            self.error(codes::UNSUPPORTED, span, "projection has no `lend` statement");
+            self.error(
+                codes::UNSUPPORTED,
+                span,
+                "projection has no `lend` statement",
+            );
             return;
         };
         let rhs_val = self.expr(rhs, None);

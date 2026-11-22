@@ -3942,7 +3942,9 @@ impl<'a> Lowerer<'a> {
     }
 }
 
-pub(super) fn split_projection_body(decl: &ast::FnDecl) -> (&[ast::Stmt], Option<&ast::Expr>, &[ast::Stmt]) {
+pub(super) fn split_projection_body(
+    decl: &ast::FnDecl,
+) -> (&[ast::Stmt], Option<&ast::Expr>, &[ast::Stmt]) {
     let block = match &decl.body {
         ast::FnBody::Block(block) => block,
         ast::FnBody::Expr(e) => return (&[], Some(e), &[]),

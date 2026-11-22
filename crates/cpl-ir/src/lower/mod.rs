@@ -3784,6 +3784,20 @@ impl<'a> Lowerer<'a> {
                 cx.op_locals.insert(ast_p.name.text.clone(), *op);
             }
         }
+        if let Some(gid) = self.sigs[id]
+            .owner
+            .and_then(|sid| self.structs[sid].origin_gen.as_ref().map(|(g, _)| *g))
+        {
+            for f in &self.gen_structs[gid].decl.fields {
+                if let ast::TypeKind::Named { name, args } = &f.ty.kind {
+                    if let (true, Some(GenArg::Op(op))) =
+                        (args.is_empty(), self.gen_env.get(&name.text))
+                    {
+                        cx.op_locals.entry(f.name.text.clone()).or_insert(*op);
+                    }
+                }
+            }
+        }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
         for ast_p in &decl.params {
             if let Some(ty_ast) = &ast_p.ty {

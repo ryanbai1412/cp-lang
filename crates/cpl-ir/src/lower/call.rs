@@ -117,6 +117,36 @@ impl<'a> Lowerer<'a> {
                 if let Some(decl) = self.cx.local_gen_fns.get(name).cloned() {
                     return self.call_local_gen_fn(&decl, args, span);
                 }
+                if let Some(&op) = self.cx.op_locals.get(name) {
+                    if args.len() == 2 && args.iter().all(|a| a.name.is_none() && !a.mutable) {
+                        let (lhs, rhs) = (args[0].value.clone(), args[1].value.clone());
+                        let bin = |op| ast::ExprKind::Binary {
+                            op,
+                            op_span: callee.span,
+                            lhs: Box::new(lhs.clone()),
+                            rhs: Box::new(rhs.clone()),
+                        };
+                        let named = |f: &str| ast::ExprKind::Call {
+                            callee: Box::new(ast::Expr {
+                                kind: ast::ExprKind::Name(f.into()),
+                                span: callee.span,
+                            }),
+                            args: args.to_vec(),
+                        };
+                        let kind = match op {
+                            BareOp::Add => bin(ast::BinOp::Add),
+                            BareOp::Mul => bin(ast::BinOp::Mul),
+                            BareOp::BitXor => bin(ast::BinOp::BitXor),
+                            BareOp::BitOr => bin(ast::BinOp::BitOr),
+                            BareOp::BitAnd => bin(ast::BinOp::BitAnd),
+                            BareOp::Max => named("max"),
+                            BareOp::Min => named("min"),
+                            BareOp::Gcd => named("gcd"),
+                        };
+                        let e = ast::Expr { kind, span };
+                        return self.expr(&e, hint);
+                    }
+                }
                 // Local variable, receiver field, or captured fn value?
                 if self.lookup(name).is_some() {
                     let fv = self.name(name, None, callee.span);
@@ -825,6 +855,7 @@ impl<'a> Lowerer<'a> {
                 };
                 if let Some(p) = param {
                     if let Some(pat_ty) = &p.ty {
+                        self.bind_bare_op(pat_ty, &arg.value, &gen_names, &mut inferred);
                         self.bind_range_domain(
                             pat_ty,
                             &arg.value,
@@ -847,6 +878,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         for (f, arg) in decl.fields.iter().zip(args) {
+            self.bind_bare_op(&f.ty, &arg.value, &gen_names, &mut inferred);
             if new_params.is_none() {
                 self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
             }
@@ -868,6 +900,25 @@ impl<'a> Lowerer<'a> {
         self.emit_anon_product_defs(&final_args, span);
         let sid = self.instantiate_struct(gid, final_args);
         self.construct_or_new(sid, args, span)
+    }
+
+    fn bind_bare_op(
+        &self,
+        pat: &ast::Type,
+        arg: &ast::Expr,
+        gen_names: &[String],
+        inferred: &mut GenEnv,
+    ) {
+        if let ast::TypeKind::Named { name, args } = &pat.kind {
+            if args.is_empty()
+                && gen_names.contains(&name.text)
+                && !inferred.contains_key(&name.text)
+            {
+                if let Some(op) = self.detect_bare_op(arg) {
+                    inferred.insert(name.text.clone(), GenArg::Op(op));
+                }
+            }
+        }
     }
 
     fn emit_anon_product_defs(&mut self, gargs: &[GenArg], span: Span) {
@@ -6467,7 +6518,14 @@ impl<'a> Lowerer<'a> {
 
     /// `xs.find(x => ..)`: the first of a range, list or array the test
     /// holds for, `none` when there is none.
-    fn find_first(&mut self, value: Expr, elem: Ty, test: &ast::Expr, rev: bool, span: Span) -> Expr {
+    fn find_first(
+        &mut self,
+        value: Expr,
+        elem: Ty,
+        test: &ast::Expr,
+        rev: bool,
+        span: Span,
+    ) -> Expr {
         let test_ty = Ty::Fn(vec![elem.clone()], Box::new(Ty::Bool));
         let test = self.expect(test, &test_ty);
         let found_ty = Ty::opt(elem.clone());
