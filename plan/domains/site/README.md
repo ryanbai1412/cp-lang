@@ -64,9 +64,9 @@ A cold agent scores fixed samples 1-5 with a reason; Ryan's review overrides it.
 Probes (cold agent, pass/fail + time):
 
 - **P1 docs-only solve:** with only cp-lang.org, solve 3 unseen Div 2 A/B problems in the playground. Tests 1, 3.
-- **P2 lookup:** find "what does `bsearch_last` return on an empty range" via the site. Tests 2.
+- **P2 lookup:** find "what does `r.last_true(ok)` return on an empty range" via the site. Tests 2. Baseline: fail, search finds only the `SortedBag` methods; the `Range` answer is a table row in core 04-indices.
 - **P3 add a practice problem** by following ARCHITECTURE.md; the gate judges it. Files touched, minutes.
-- **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4.
+- **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4. Baseline, mechanical half: `pnpm --dir web phone` -> 10/10 routes fit, nothing past the edge.
 
 ## Improve (highest impact first)
 
