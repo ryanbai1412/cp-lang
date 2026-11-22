@@ -20,6 +20,16 @@ fn fill(page: &str, id: &str, json: &str) -> String {
     format!("{}{json}{}", &page[..start], &page[end..])
 }
 
+/// The trace a page made by [`html`] holds, or `page` itself when it is
+/// the trace JSON.
+pub fn data(page: &str) -> &str {
+    let open = "<script id=\"trace-data\" type=\"application/json\">";
+    let Some(start) = page.find(open).map(|at| at + open.len()) else {
+        return page;
+    };
+    page[start..].find("</script>").map_or(page, |end| &page[start..start + end])
+}
+
 /// The viewer with one trace in it and no samples: a self-contained
 /// page. Trace JSON never holds a `<`, so it cannot end the element.
 pub fn html(trace_json: &str) -> String {

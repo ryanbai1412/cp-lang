@@ -657,7 +657,7 @@ impl Session {
 }
 
 /// A recorded value as the source would write it: `(w: 1, v: 1)`, `None`.
-fn shown(json: &Json) -> String {
+pub(crate) fn shown(json: &Json) -> String {
     match json {
         Json::Null => "None".into(),
         Json::Str(s) => s.clone(),
@@ -951,7 +951,7 @@ fn write_frame(writer: &mut dyn Write, body: &str) -> io::Result<()> {
 // ----- Minimal self-contained JSON parser -----
 
 #[derive(Clone, Debug, PartialEq)]
-enum Json {
+pub(crate) enum Json {
     Null,
     Bool(bool),
     Num(String),
@@ -961,7 +961,7 @@ enum Json {
 }
 
 impl Json {
-    fn parse(input: &str) -> Result<Json, ()> {
+    pub(crate) fn parse(input: &str) -> Result<Json, ()> {
         let mut p = Parser {
             bytes: input.as_bytes(),
             pos: 0,
@@ -975,14 +975,14 @@ impl Json {
         }
     }
 
-    fn get(&self, key: &str) -> Option<&Json> {
+    pub(crate) fn get(&self, key: &str) -> Option<&Json> {
         match self {
             Json::Object(map) => map.get(key),
             _ => None,
         }
     }
 
-    fn as_str(&self) -> Option<&str> {
+    pub(crate) fn as_str(&self) -> Option<&str> {
         match self {
             Json::Str(s) => Some(s.as_str()),
             _ => None,
@@ -996,7 +996,7 @@ impl Json {
         }
     }
 
-    fn as_i64(&self) -> Option<i64> {
+    pub(crate) fn as_i64(&self) -> Option<i64> {
         match self {
             Json::Num(n) => n.parse().ok(),
             _ => None,

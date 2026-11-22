@@ -6,6 +6,7 @@ mod interact;
 mod laws;
 mod live;
 mod profile;
+mod replay;
 mod report;
 mod trace;
 
@@ -70,6 +71,8 @@ commands:
   report <file>         write a paste-ready bug report (`--last` after an ICE)
   lsp                   serve the language server protocol on stdio
   dap                   serve the time-travel debug adapter (DAP) on stdio
+  replay <file> --trace <t.json> --step <n>
+                        run one recorded call again with the file's edited fn
 
 `cpl <command> --help` describes a command's options.
 
@@ -156,6 +159,7 @@ pub fn exec<S: AsRef<str>>(
             let _ = stdout.write_all(help.as_bytes());
             0
         }
+        Some("replay") => replay::cli(&rest, stdout, stderr),
         Some("profile") => profile::profile(&rest, stdout, stderr),
         Some("cover") => profile::cover(&rest, stdout, stderr),
         Some("report") => report::report(&rest, stdin, stdout, stderr),
@@ -609,6 +613,11 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
             return Err(EXIT_USAGE);
         }
     };
+    compile_text(path, text, side, stderr)
+}
+
+/// Checks and lowers `text` as the file at `path`.
+fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
     // One database per thread, as the language server keeps one: a process
     // that compiles many files (the test suites, `cpl watch`) checks the
     // standard library once. The loader rereads imports on every analysis.

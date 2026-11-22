@@ -72,9 +72,14 @@ pub fn replay(
     let change = match &replayed {
         None => None,
         Some(new) => first_change_in(recorded, call.entry..call.exit, &recording, new.entry..new.exit).or_else(|| {
+            // A call with no steps of its own shows its result in the step
+            // it returns into, which the replay stops before: the recorded
+            // run is the same up to there.
+            let step = if new.exit > new.entry { new.exit - 1 } else { new.exit };
+            let line = recording.steps.get(step).or(recorded.steps.get(call.exit)).map_or(0, |s| s.line);
             (new.returned != call.returned).then(|| Change {
-                step: new.exit.saturating_sub(1).min(recording.steps.len().saturating_sub(1)),
-                line: recording.steps.get(new.exit.saturating_sub(1)).map_or(0, |s| s.line),
+                step,
+                line,
                 variable: Some("returned".into()),
                 before: call.returned.clone(),
                 after: new.returned.clone(),

@@ -6,15 +6,18 @@ let n: 1..=6 = read()
 domain I = 1..=n
 let shows: [I](start: 0..=9, len: 1..=4) = read()
 
-var order = [i for i in I]
-sort(mut order, by: i => shows[i].start)
-var free_at = 0
-var watched = 0
-for i in order:
-    if shows[i].start >= free_at:
-        watched += 1
-        free_at = shows[i].start + shows[i].len
-print(watched)
+fn most_watched() -> Int:
+    var order = [i for i in I]
+    sort(mut order, by: i => shows[i].start)
+    var free_at = 0
+    var watched = 0
+    for i in order:
+        if shows[i].start >= free_at:
+            watched += 1
+            free_at = shows[i].start + shows[i].len
+    return watched
+
+print(most_watched())
 
 @brute(main)
 fn every_subset():
