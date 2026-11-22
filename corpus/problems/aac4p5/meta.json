@@ -14,8 +14,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_39/aac4p5.cp",
-   "proto/ports/scout_batch_39/today/aac4p5.cp"
+   "corpus/problems/aac4p5/port.cp"
   ]
  },
  "tags": [],

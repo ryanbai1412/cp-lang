@@ -12,12 +12,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/noi01p5.cpp",
-   "proto/ports/noi01p5_orig.cpp"
-  ],
   "port": [
-   "proto/ports/noi01p5.cp"
+   "corpus/problems/noi01p5/port.cp"
   ]
  },
  "tags": [],

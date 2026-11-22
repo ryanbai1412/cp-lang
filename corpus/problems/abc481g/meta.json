@@ -1,0 +1,19 @@
+{
+ "problem": "abc481g",
+ "source": "abc",
+ "submissions": [],
+ "cpp_ac": 0,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/abc481g/dream.cp"
+  ],
+  "port": [
+   "corpus/problems/abc481g/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

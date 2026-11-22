@@ -10,12 +10,8 @@
   "dream": [
    "corpus/problems/btoi17p6/dream.cp"
   ],
-  "original": [
-   "proto/ports/btoi17p6.cpp",
-   "proto/ports/btoi17p6_orig.cpp"
-  ],
   "port": [
-   "proto/ports/btoi17p6.cp"
+   "corpus/problems/btoi17p6/port.cp"
   ],
   "spec": [
    "corpus/problems/btoi17p6/spec.cp"

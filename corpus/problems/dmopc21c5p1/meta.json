@@ -7,14 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/dmopc21c5p1.cpp",
-   "proto/ports/hillclimb_dp_graph/dmopc21c5p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/before/dmopc21c5p1.cp",
-   "proto/ports/hillclimb_dp_graph/dmopc21c5p1.cp",
-   "proto/ports/wave2/dmopc21c5p1.cp"
+   "corpus/problems/dmopc21c5p1/port.cp"
   ]
  },
  "tags": [],

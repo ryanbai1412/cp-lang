@@ -15,7 +15,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_16/ioi07p2.cp"
+   "corpus/problems/ioi07p2/port.cp"
   ]
  },
  "tags": [],

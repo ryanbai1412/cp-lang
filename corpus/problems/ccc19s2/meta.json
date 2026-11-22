@@ -10,7 +10,7 @@
    "corpus/problems/ccc19s2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_29/ccc19s2.cp"
+   "corpus/problems/ccc19s2/port.cp"
   ],
   "spec": [
    "corpus/problems/ccc19s2/spec.cp"

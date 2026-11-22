@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/nccc10s2.cpp",
-   "proto/ports/nccc10s2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/nccc10s2.cp"
+   "corpus/problems/nccc10s2/port.cp"
   ]
  },
  "tags": [],

@@ -20,8 +20,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_23/noimps22p4.cp",
-   "proto/ports/scout_batch_23/today/noimps22p4.cp"
+   "corpus/problems/noimps22p4/port.cp"
   ]
  },
  "tags": [],

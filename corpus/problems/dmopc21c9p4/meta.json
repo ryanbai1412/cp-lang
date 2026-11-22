@@ -8,12 +8,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/dmopc21c9p4.cpp",
-   "proto/ports/dmopc21c9p4_orig.cpp"
-  ],
   "port": [
-   "proto/ports/dmopc21c9p4.cp"
+   "corpus/problems/dmopc21c9p4/port.cp"
   ]
  },
  "tags": [],

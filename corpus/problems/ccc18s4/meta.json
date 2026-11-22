@@ -16,15 +16,8 @@
   "dream": [
    "corpus/problems/ccc18s4/dream.cp"
   ],
-  "original": [
-   "proto/ports/ccc18s4.cpp",
-   "proto/ports/ccc18s4_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc18s4.cp",
-   "proto/ports/scout_batch_3/ccc18s4.cp",
-   "proto/ports/scout_batch_3/today/ccc18s4.cp",
-   "proto/ports/wave2/ccc18s4.cp"
+   "corpus/problems/ccc18s4/port.cp"
   ],
   "spec": [
    "corpus/problems/ccc18s4/spec.cp"

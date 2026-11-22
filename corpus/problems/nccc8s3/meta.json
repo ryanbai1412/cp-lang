@@ -28,8 +28,7 @@
    "corpus/problems/nccc8s3/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_6/nccc8s3.cp",
-   "proto/ports/scout_batch_6/today/nccc8s3.cp"
+   "corpus/problems/nccc8s3/port.cp"
   ],
   "spec": [
    "corpus/problems/nccc8s3/spec.cp"

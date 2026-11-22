@@ -1,18 +1,11 @@
 {
- "problem": "dpq",
- "source": "dpq",
+ "problem": "atcoder_dp_q",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131861", "language": "CPP17", "result": "AC", "time": 1.256864855, "memory_kb": 14128.0, "file": "corpus/submissions/4131861.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_2/dpq_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_2/dpq.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -10,7 +10,7 @@
    "corpus/problems/ceoi17p2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_13/ceoi17p2.cp"
+   "corpus/problems/ceoi17p2/port.cp"
   ],
   "spec": [
    "corpus/problems/ceoi17p2/spec.cp"

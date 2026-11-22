@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_45/rpeng2.cp",
-   "proto/ports/scout_batch_45/today/rpeng2.cp"
+   "corpus/problems/rpeng2/port.cp"
   ]
  },
  "tags": [],

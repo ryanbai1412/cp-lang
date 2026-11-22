@@ -8,8 +8,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_32/iati21a22.cp",
-   "proto/ports/scout_batch_32/today/iati21a22.cp"
+   "corpus/problems/iati21a22/port.cp"
   ]
  },
  "tags": [],

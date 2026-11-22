@@ -10,12 +10,8 @@
  ],
  "cpp_ac": 5,
  "artifacts": {
-  "original": [
-   "proto/ports/yac7p5.cpp",
-   "proto/ports/yac7p5_orig.cpp"
-  ],
   "port": [
-   "proto/ports/yac7p5.cp"
+   "corpus/problems/yac7p5/port.cp"
   ]
  },
  "tags": [],

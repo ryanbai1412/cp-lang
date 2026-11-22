@@ -12,8 +12,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_14/noip00p4.cp",
-   "proto/ports/scout_batch_14/today/noip00p4.cp"
+   "corpus/problems/noip00p4/port.cp"
   ]
  },
  "tags": [],

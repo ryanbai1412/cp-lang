@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/ccc22s3.cpp",
-   "proto/ports/hillclimb_dp_graph/ccc22s3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/ccc22s3.cp"
+   "corpus/problems/ccc22s3/port.cp"
   ]
  },
  "tags": [],

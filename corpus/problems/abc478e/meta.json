@@ -1,0 +1,16 @@
+{
+ "problem": "abc478e",
+ "source": "abc",
+ "submissions": [],
+ "cpp_ac": 0,
+ "artifacts": {
+  "port": [
+   "corpus/problems/abc478e/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

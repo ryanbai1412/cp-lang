@@ -8,13 +8,8 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/coi06p2.cpp",
-   "proto/ports/hillclimb_dp_graph/coi06p2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/before/coi06p2.cp",
-   "proto/ports/hillclimb_dp_graph/coi06p2.cp"
+   "corpus/problems/coi06p2/port.cp"
   ]
  },
  "tags": [],

@@ -1,0 +1,22 @@
+{
+ "problem": "cf2261a",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2261a/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2261a/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2261a/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

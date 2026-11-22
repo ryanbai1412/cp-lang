@@ -6,14 +6,7 @@
   {"id": "5339437", "language": "CPP17", "result": "AC", "time": 0.677390865, "memory_kb": 17928.0, "file": "corpus/submissions/5339437.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_3/cheerio1s4_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_3/cheerio1s4.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

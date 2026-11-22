@@ -1,0 +1,22 @@
+{
+ "problem": "ucup5s02h",
+ "source": "ucup",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/ucup5s02h/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/ucup5s02h/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/ucup5s02h/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

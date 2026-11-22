@@ -43,8 +43,7 @@
    "corpus/problems/ucrpc21h/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_45/today/ucrpc21h.cp",
-   "proto/ports/scout_batch_45/ucrpc21h.cp"
+   "corpus/problems/ucrpc21h/port.cp"
   ],
   "spec": [
    "corpus/problems/ucrpc21h/spec.cp"

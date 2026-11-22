@@ -8,8 +8,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_41/oly20practice139.cp",
-   "proto/ports/scout_batch_41/today/oly20practice139.cp"
+   "corpus/problems/oly20practice139/port.cp"
   ]
  },
  "tags": [],

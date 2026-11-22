@@ -20,7 +20,7 @@
    "corpus/problems/noip14p6/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_8/noip14p6.cp"
+   "corpus/problems/noip14p6/port.cp"
   ],
   "spec": [
    "corpus/problems/noip14p6/spec.cp"

@@ -12,7 +12,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_12/wossoly21s3.cp"
+   "corpus/problems/wossoly21s3/port.cp"
   ]
  },
  "tags": [],

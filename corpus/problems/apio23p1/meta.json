@@ -11,7 +11,7 @@
    "corpus/problems/apio23p1/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_21/apio23p1.cp"
+   "corpus/problems/apio23p1/port.cp"
   ],
   "spec": [
    "corpus/problems/apio23p1/spec.cp"

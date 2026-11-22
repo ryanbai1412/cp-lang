@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/ccc23s4.cpp",
-   "proto/ports/ccc23s4_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc23s4.cp"
+   "corpus/problems/ccc23s4/port.cp"
   ]
  },
  "tags": [],

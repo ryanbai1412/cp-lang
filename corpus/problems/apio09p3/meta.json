@@ -11,14 +11,8 @@
   "dream": [
    "corpus/problems/apio09p3/dream.cp"
   ],
-  "original": [
-   "proto/ports/hillclimb_dp_graph/apio09p3.cpp",
-   "proto/ports/hillclimb_dp_graph/apio09p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/apio09p3.cp",
-   "proto/ports/hillclimb_dp_graph/before/apio09p3.cp",
-   "proto/ports/scout_batch_2/apio09p3.cp"
+   "corpus/problems/apio09p3/port.cp"
   ],
   "spec": [
    "corpus/problems/apio09p3/spec.cp"

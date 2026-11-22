@@ -20,8 +20,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ceoi22p3/dream.cp"
+  ],
   "port": [
-   "proto/ports/scout_batch_26/ceoi22p3.cp"
+   "corpus/problems/ceoi22p3/port.cp"
   ]
  },
  "tags": [],

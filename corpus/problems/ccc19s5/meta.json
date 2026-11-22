@@ -12,13 +12,8 @@
  ],
  "cpp_ac": 3,
  "artifacts": {
-  "original": [
-   "proto/ports/ccc19s5.cpp",
-   "proto/ports/ccc19s5_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc19s5.cp",
-   "proto/ports/scout_batch_1/ccc19s5.cp"
+   "corpus/problems/ccc19s5/port.cp"
   ]
  },
  "tags": [],

@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_40/cheerio1s2.cp",
-   "proto/ports/scout_batch_40/today/cheerio1s2.cp"
+   "corpus/problems/cheerio1s2/port.cp"
   ]
  },
  "tags": [],

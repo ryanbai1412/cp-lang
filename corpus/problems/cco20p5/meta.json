@@ -15,8 +15,7 @@
    "corpus/problems/cco20p5/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_36/cco20p5.cp",
-   "proto/ports/scout_batch_36/today/cco20p5.cp"
+   "corpus/problems/cco20p5/port.cp"
   ],
   "spec": [
    "corpus/problems/cco20p5/spec.cp"

@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_6/joi16fp2.cp",
-   "proto/ports/scout_batch_6/today/joi16fp2.cp"
+   "corpus/problems/joi16fp2/port.cp"
   ]
  },
  "tags": [],

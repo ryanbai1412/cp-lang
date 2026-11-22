@@ -12,7 +12,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_11/sdoi17r1p1.cp"
+   "corpus/problems/sdoi17r1p1/port.cp"
   ]
  },
  "tags": [],

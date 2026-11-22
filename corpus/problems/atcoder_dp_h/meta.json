@@ -1,6 +1,6 @@
 {
- "problem": "dph",
- "source": "dph",
+ "problem": "atcoder_dp_h",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131647", "language": "CPP17", "result": "WA", "time": 0.029468557, "memory_kb": 8324.0, "file": "corpus/submissions/4131647.cpp"},
   {"id": "4131657", "language": "CPP17", "result": "AC", "time": 0.109383318, "memory_kb": 8376.0, "file": "corpus/submissions/4131657.cpp"},
@@ -10,12 +10,8 @@
  ],
  "cpp_ac": 3,
  "artifacts": {
-  "original": [
-   "proto/ports/dph.cpp",
-   "proto/ports/dph_orig.cpp"
-  ],
   "port": [
-   "proto/ports/dph.cp"
+   "corpus/problems/atcoder_dp_h/port.cp"
   ]
  },
  "tags": [],

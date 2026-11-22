@@ -10,9 +10,7 @@
    "corpus/problems/btoi20p3/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_15/btoi20p3.cp",
-   "proto/ports/scout_batch_18/btoi20p3.cp",
-   "proto/ports/scout_batch_18/today/btoi20p3.cp"
+   "corpus/problems/btoi20p3/port.cp"
   ],
   "spec": [
    "corpus/problems/btoi20p3/spec.cp"

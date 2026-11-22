@@ -1,0 +1,22 @@
+{
+ "problem": "cf2159c",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2159c/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2159c/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2159c/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

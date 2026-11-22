@@ -16,9 +16,7 @@
    "corpus/problems/noi09p4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_15/noi09p4.cp",
-   "proto/ports/scout_batch_18/noi09p4.cp",
-   "proto/ports/scout_batch_18/today/noi09p4.cp"
+   "corpus/problems/noi09p4/port.cp"
   ],
   "spec": [
    "corpus/problems/noi09p4/spec.cp"

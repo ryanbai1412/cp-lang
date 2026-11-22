@@ -20,7 +20,7 @@
    "corpus/problems/cmt21r2ztr/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_9/cmt21r2ztr.cp"
+   "corpus/problems/cmt21r2ztr/port.cp"
   ],
   "spec": [
    "corpus/problems/cmt21r2ztr/spec.cp"

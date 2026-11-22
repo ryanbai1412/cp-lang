@@ -1,19 +1,13 @@
 {
- "problem": "dpm",
- "source": "dpm",
+ "problem": "atcoder_dp_m",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131778", "language": "CPP17", "result": "AC", "time": 0.446384879, "memory_kb": 5044.0, "file": "corpus/submissions/4131778.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/dpm.cpp",
-   "proto/ports/dpm_orig.cpp"
-  ],
   "port": [
-   "proto/ports/dpm.cp",
-   "proto/ports/scout_batch_4/dpm.cp",
-   "proto/ports/wave2/dpm.cp"
+   "corpus/problems/atcoder_dp_m/port.cp"
   ]
  },
  "tags": [],

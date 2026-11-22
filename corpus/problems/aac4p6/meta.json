@@ -16,8 +16,7 @@
    "corpus/problems/aac4p6/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_39/aac4p6.cp",
-   "proto/ports/scout_batch_39/today/aac4p6.cp"
+   "corpus/problems/aac4p6/port.cp"
   ],
   "spec": [
    "corpus/problems/aac4p6/spec.cp"

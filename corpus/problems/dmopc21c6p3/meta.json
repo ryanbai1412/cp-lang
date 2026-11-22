@@ -7,7 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_12/dmopc21c6p3.cp"
+   "corpus/problems/dmopc21c6p3/port.cp"
   ]
  },
  "tags": [],

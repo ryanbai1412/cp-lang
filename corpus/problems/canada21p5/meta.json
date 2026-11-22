@@ -10,7 +10,7 @@
  "cpp_ac": 3,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_11/canada21p5.cp"
+   "corpus/problems/canada21p5/port.cp"
   ]
  },
  "tags": [],

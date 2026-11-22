@@ -23,8 +23,7 @@
    "corpus/problems/ioi22p5/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_52/ioi22p5.cp",
-   "proto/ports/scout_batch_52/today/ioi22p5.cp"
+   "corpus/problems/ioi22p5/port.cp"
   ],
   "spec": [
    "corpus/problems/ioi22p5/spec.cp"

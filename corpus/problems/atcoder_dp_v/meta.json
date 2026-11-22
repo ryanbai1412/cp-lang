@@ -1,20 +1,13 @@
 {
- "problem": "dpv",
- "source": "dpv",
+ "problem": "atcoder_dp_v",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4133644", "language": "CPP17", "result": "AC", "time": 1.605298925, "memory_kb": 21808.0, "file": "corpus/submissions/4133644.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/dpv.cpp",
-   "proto/ports/hillclimb_dp_graph/dpv_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/before/dpv.cp",
-   "proto/ports/hillclimb_dp_graph/dpv.cp",
-   "proto/ports/scout_batch_2/dpv.cp",
-   "proto/ports/wave2/dpv.cp"
+   "corpus/problems/atcoder_dp_v/port.cp"
   ]
  },
  "tags": [],

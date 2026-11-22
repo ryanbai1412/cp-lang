@@ -14,12 +14,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/cco16p2.cpp",
-   "proto/ports/cco16p2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/cco16p2.cp"
+   "corpus/problems/cco16p2/port.cp"
   ]
  },
  "tags": [],

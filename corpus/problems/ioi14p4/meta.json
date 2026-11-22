@@ -10,8 +10,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_49/ioi14p4.cp",
-   "proto/ports/scout_batch_49/today/ioi14p4.cp"
+   "corpus/problems/ioi14p4/port.cp"
   ]
  },
  "tags": [],

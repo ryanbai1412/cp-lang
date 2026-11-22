@@ -7,7 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_20/btoi19p2.cp"
+   "corpus/problems/btoi19p2/port.cp"
   ]
  },
  "tags": [],

@@ -11,8 +11,7 @@
    "corpus/problems/btoi17p2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_18/btoi17p2.cp",
-   "proto/ports/scout_batch_18/today/btoi17p2.cp"
+   "corpus/problems/btoi17p2/port.cp"
   ],
   "spec": [
    "corpus/problems/btoi17p2/spec.cp"

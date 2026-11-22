@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/aac4p2.cpp",
-   "proto/ports/aac4p2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/aac4p2.cp"
+   "corpus/problems/aac4p2/port.cp"
   ]
  },
  "tags": [],

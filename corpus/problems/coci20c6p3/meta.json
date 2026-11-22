@@ -9,12 +9,8 @@
   "dream": [
    "corpus/problems/coci20c6p3/dream.cp"
   ],
-  "original": [
-   "proto/ports/coci20c6p3.cpp",
-   "proto/ports/coci20c6p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/coci20c6p3.cp"
+   "corpus/problems/coci20c6p3/port.cp"
   ],
   "spec": [
    "corpus/problems/coci20c6p3/spec.cp"

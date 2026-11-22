@@ -7,14 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_4/ioi15p6_draft.cp"
-  ],
   "dream": [
    "corpus/problems/ioi15p6/dream.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_4/ioi15p6.cp"
   ],
   "spec": [
    "corpus/problems/ioi15p6/spec.cp"

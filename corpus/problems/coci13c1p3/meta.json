@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/coci13c1p3.cpp",
-   "proto/ports/coci13c1p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/coci13c1p3.cp"
+   "corpus/problems/coci13c1p3/port.cp"
   ]
  },
  "tags": [],

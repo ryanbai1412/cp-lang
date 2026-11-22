@@ -9,7 +9,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_14/ccc20s5.cp"
+   "corpus/problems/ccc20s5/port.cp"
   ]
  },
  "tags": [],

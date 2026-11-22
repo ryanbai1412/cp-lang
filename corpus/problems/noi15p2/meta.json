@@ -6,14 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/noi15p2.cpp",
-   "proto/ports/hillclimb_dp_graph/noi15p2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/before/noi15p2.cp",
-   "proto/ports/hillclimb_dp_graph/noi15p2.cp",
-   "proto/ports/scout_batch_2/noi15p2.cp"
+   "corpus/problems/noi15p2/port.cp"
   ]
  },
  "tags": [],

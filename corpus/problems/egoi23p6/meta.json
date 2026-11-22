@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_48/egoi23p6.cp",
-   "proto/ports/scout_batch_48/today/egoi23p6.cp"
+   "corpus/problems/egoi23p6/port.cp"
   ]
  },
  "tags": [],

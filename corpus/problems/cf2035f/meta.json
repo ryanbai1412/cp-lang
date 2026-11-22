@@ -1,0 +1,22 @@
+{
+ "problem": "cf2035f",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2035f/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2035f/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2035f/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

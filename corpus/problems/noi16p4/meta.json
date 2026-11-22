@@ -11,12 +11,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/noi16p4.cpp",
-   "proto/ports/noi16p4_orig.cpp"
-  ],
   "port": [
-   "proto/ports/noi16p4.cp"
+   "corpus/problems/noi16p4/port.cp"
   ]
  },
  "tags": [],

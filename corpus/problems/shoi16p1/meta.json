@@ -11,8 +11,7 @@
    "corpus/problems/shoi16p1/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_45/shoi16p1.cp",
-   "proto/ports/scout_batch_45/today/shoi16p1.cp"
+   "corpus/problems/shoi16p1/port.cp"
   ],
   "spec": [
    "corpus/problems/shoi16p1/spec.cp"

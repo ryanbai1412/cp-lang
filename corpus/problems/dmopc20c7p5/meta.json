@@ -8,10 +8,10 @@
  "cpp_ac": 1,
  "artifacts": {
   "dream": [
-   "proto/ports/scout_batch_15/dream/dmopc20c7p5.cp"
+   "corpus/problems/dmopc20c7p5/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_15/dmopc20c7p5.cp"
+   "corpus/problems/dmopc20c7p5/port.cp"
   ]
  },
  "tags": [],

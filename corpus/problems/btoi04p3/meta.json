@@ -10,8 +10,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_38/btoi04p3.cp",
-   "proto/ports/scout_batch_38/today/btoi04p3.cp"
+   "corpus/problems/btoi04p3/port.cp"
   ]
  },
  "tags": [],

@@ -10,8 +10,7 @@
    "corpus/problems/sac22cc2p5/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_46/sac22cc2p5.cp",
-   "proto/ports/scout_batch_46/today/sac22cc2p5.cp"
+   "corpus/problems/sac22cc2p5/port.cp"
   ],
   "spec": [
    "corpus/problems/sac22cc2p5/spec.cp"

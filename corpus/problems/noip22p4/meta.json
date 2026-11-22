@@ -28,8 +28,7 @@
  "cpp_ac": 7,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_24/noip22p4.cp",
-   "proto/ports/scout_batch_24/today/noip22p4.cp"
+   "corpus/problems/noip22p4/port.cp"
   ]
  },
  "tags": [],

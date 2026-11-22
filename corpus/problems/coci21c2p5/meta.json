@@ -10,14 +10,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_3/coci21c2p5_draft.cp"
-  ],
   "dream": [
    "corpus/problems/coci21c2p5/dream.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_3/coci21c2p5.cp"
   ],
   "spec": [
    "corpus/problems/coci21c2p5/spec.cp"

@@ -6,14 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_2/ccc02s4_draft.cp"
-  ],
   "dream": [
    "corpus/problems/ccc02s4/dream.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_2/ccc02s4.cp"
   ],
   "spec": [
    "corpus/problems/ccc02s4/spec.cp"

@@ -1,0 +1,22 @@
+{
+ "problem": "cf2096h",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2096h/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2096h/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2096h/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

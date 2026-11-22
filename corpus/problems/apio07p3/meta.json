@@ -7,13 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/apio07p3.cpp",
-   "proto/ports/hillclimb_dp_graph/apio07p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/apio07p3.cp",
-   "proto/ports/hillclimb_dp_graph/before/apio07p3.cp"
+   "corpus/problems/apio07p3/port.cp"
   ]
  },
  "tags": [],

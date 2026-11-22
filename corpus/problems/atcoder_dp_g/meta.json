@@ -1,17 +1,13 @@
 {
- "problem": "dpg",
- "source": "dpg",
+ "problem": "atcoder_dp_g",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131646", "language": "CPP17", "result": "AC", "time": 0.363804123, "memory_kb": 11304.0, "file": "corpus/submissions/4131646.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/dpg.cpp",
-   "proto/ports/dpg_orig.cpp"
-  ],
   "port": [
-   "proto/ports/dpg.cp"
+   "corpus/problems/atcoder_dp_g/port.cp"
   ]
  },
  "tags": [],

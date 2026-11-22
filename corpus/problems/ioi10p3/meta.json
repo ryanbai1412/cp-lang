@@ -7,11 +7,10 @@
  "cpp_ac": 1,
  "artifacts": {
   "original": [
-   "proto/ports/ioi10p3.cpp",
-   "proto/ports/ioi10p3_orig.cpp"
+   "corpus/problems/ioi10p3/orig.cpp"
   ],
   "port": [
-   "proto/ports/ioi10p3.cp"
+   "corpus/problems/ioi10p3/port.cp"
   ]
  },
  "tags": [],

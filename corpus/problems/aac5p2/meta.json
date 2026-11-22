@@ -23,12 +23,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/aac5p2.cpp",
-   "proto/ports/aac5p2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/aac5p2.cp"
+   "corpus/problems/aac5p2/port.cp"
   ]
  },
  "tags": [],

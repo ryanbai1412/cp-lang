@@ -8,8 +8,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_46/today/yac7p2.cp",
-   "proto/ports/scout_batch_46/yac7p2.cp"
+   "corpus/problems/yac7p2/port.cp"
   ]
  },
  "tags": [],

@@ -12,8 +12,7 @@
    "corpus/problems/etsr23r1p4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_43/etsr23r1p4.cp",
-   "proto/ports/scout_batch_43/today/etsr23r1p4.cp"
+   "corpus/problems/etsr23r1p4/port.cp"
   ],
   "spec": [
    "corpus/problems/etsr23r1p4/spec.cp"

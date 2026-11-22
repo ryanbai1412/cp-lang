@@ -15,8 +15,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_39/dmpg18s5.cp",
-   "proto/ports/scout_batch_39/today/dmpg18s5.cp"
+   "corpus/problems/dmpg18s5/port.cp"
   ]
  },
  "tags": [],

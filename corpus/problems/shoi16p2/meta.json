@@ -13,8 +13,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_45/shoi16p2.cp",
-   "proto/ports/scout_batch_45/today/shoi16p2.cp"
+   "corpus/problems/shoi16p2/port.cp"
   ]
  },
  "tags": [],

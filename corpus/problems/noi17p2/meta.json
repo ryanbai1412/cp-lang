@@ -10,7 +10,7 @@
    "corpus/problems/noi17p2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_10/noi17p2.cp"
+   "corpus/problems/noi17p2/port.cp"
   ],
   "spec": [
    "corpus/problems/noi17p2/spec.cp"

@@ -11,8 +11,7 @@
    "corpus/problems/dmopc21c4p2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_44/dmopc21c4p2.cp",
-   "proto/ports/scout_batch_44/today/dmopc21c4p2.cp"
+   "corpus/problems/dmopc21c4p2/port.cp"
   ],
   "spec": [
    "corpus/problems/dmopc21c4p2/spec.cp"

@@ -1,13 +1,13 @@
 {
- "problem": "dpj",
- "source": "dpj",
+ "problem": "atcoder_dp_j",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131649", "language": "CPP17", "result": "AC", "time": 5.023237333, "memory_kb": 447076.0, "file": "corpus/submissions/4131649.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_21/dpj.cp"
+   "corpus/problems/atcoder_dp_j/port.cp"
   ]
  },
  "tags": [],

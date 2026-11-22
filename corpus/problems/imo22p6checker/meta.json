@@ -18,8 +18,7 @@
  "cpp_ac": 4,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_31/imo22p6checker.cp",
-   "proto/ports/scout_batch_31/today/imo22p6checker.cp"
+   "corpus/problems/imo22p6checker/port.cp"
   ]
  },
  "tags": [],

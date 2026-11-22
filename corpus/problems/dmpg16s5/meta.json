@@ -7,16 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_2/dmpg16s5_draft.cp"
-  ],
-  "original": [
-   "proto/ports/dmpg16s5.cpp",
-   "proto/ports/dmpg16s5_orig.cpp"
-  ],
   "port": [
-   "proto/ports/blind_critic_2/dmpg16s5.cp",
-   "proto/ports/dmpg16s5.cp"
+   "corpus/problems/dmpg16s5/port.cp"
   ]
  },
  "tags": [],

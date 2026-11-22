@@ -1,6 +1,6 @@
 {
- "problem": "dpa",
- "source": "dpa",
+ "problem": "atcoder_dp_a",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131640", "language": "CPP17", "result": "AC", "time": 0.064179871, "memory_kb": 4264.0, "file": "corpus/submissions/4131640.cpp"}
  ],

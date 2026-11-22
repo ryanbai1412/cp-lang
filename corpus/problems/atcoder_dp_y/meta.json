@@ -1,19 +1,13 @@
 {
- "problem": "dpy",
- "source": "dpy",
+ "problem": "atcoder_dp_y",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4133511", "language": "CPP17", "result": "AC", "time": 0.883958689, "memory_kb": 6660.0, "file": "corpus/submissions/4133511.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/dpy.cpp",
-   "proto/ports/dpy_orig.cpp"
-  ],
   "port": [
-   "proto/ports/dpy.cp",
-   "proto/ports/scout_batch_8/dpy.cp",
-   "proto/ports/wave2/dpy.cp"
+   "corpus/problems/atcoder_dp_y/port.cp"
   ]
  },
  "tags": [],

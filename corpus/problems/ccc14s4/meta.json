@@ -7,7 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_21/ccc14s4.cp"
+   "corpus/problems/ccc14s4/port.cp"
   ]
  },
  "tags": [],

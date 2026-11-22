@@ -14,8 +14,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_41/oly23practice5.cp",
-   "proto/ports/scout_batch_41/today/oly23practice5.cp"
+   "corpus/problems/oly23practice5/port.cp"
   ]
  },
  "tags": [],

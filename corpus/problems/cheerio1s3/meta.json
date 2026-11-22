@@ -13,12 +13,8 @@
   "dream": [
    "corpus/problems/cheerio1s3/dream.cp"
   ],
-  "original": [
-   "proto/ports/cheerio1s3.cpp",
-   "proto/ports/cheerio1s3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/cheerio1s3.cp"
+   "corpus/problems/cheerio1s3/port.cp"
   ],
   "spec": [
    "corpus/problems/cheerio1s3/spec.cp"

@@ -10,7 +10,7 @@
    "corpus/problems/ioi19p1/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_20/ioi19p1.cp"
+   "corpus/problems/ioi19p1/port.cp"
   ],
   "spec": [
    "corpus/problems/ioi19p1/spec.cp"

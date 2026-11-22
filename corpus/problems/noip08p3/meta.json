@@ -7,7 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_28/noip08p3.cp"
+   "corpus/problems/noip08p3/port.cp"
   ]
  },
  "tags": [],

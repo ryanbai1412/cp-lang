@@ -12,9 +12,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_13/apio07p2.cp",
-   "proto/ports/scout_batch_13/today/apio07p2.cp",
-   "proto/ports/scout_batch_17/apio07p2.cp"
+   "corpus/problems/apio07p2/port.cp"
   ]
  },
  "tags": [],

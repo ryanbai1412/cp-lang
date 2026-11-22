@@ -9,8 +9,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_24/dmpg15g6.cp",
-   "proto/ports/scout_batch_24/today/dmpg15g6.cp"
+   "corpus/problems/dmpg15g6/port.cp"
   ]
  },
  "tags": [],

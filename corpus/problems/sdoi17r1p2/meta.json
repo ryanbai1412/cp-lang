@@ -14,7 +14,7 @@
    "corpus/problems/sdoi17r1p2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_26/sdoi17r1p2.cp"
+   "corpus/problems/sdoi17r1p2/port.cp"
   ],
   "spec": [
    "corpus/problems/sdoi17r1p2/spec.cp"

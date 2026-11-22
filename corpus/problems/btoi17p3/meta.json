@@ -7,12 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/btoi17p3.cpp",
-   "proto/ports/btoi17p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/btoi17p3.cp"
+   "corpus/problems/btoi17p3/port.cp"
   ]
  },
  "tags": [],

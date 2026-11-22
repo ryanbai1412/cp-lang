@@ -1,19 +1,13 @@
 {
- "problem": "dpo",
- "source": "dpo",
+ "problem": "atcoder_dp_o",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131780", "language": "CPP17", "result": "AC", "time": 1.074474333, "memory_kb": 11668.0, "file": "corpus/submissions/4131780.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/dpo.cpp",
-   "proto/ports/hillclimb_dp_graph/dpo_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/dpo.cp",
-   "proto/ports/scout_batch_4/dpo.cp",
-   "proto/ports/wave2/dpo.cp"
+   "corpus/problems/atcoder_dp_o/port.cp"
   ]
  },
  "tags": [],

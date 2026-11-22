@@ -14,12 +14,8 @@
   "dream": [
    "corpus/problems/noi02p1/dream.cp"
   ],
-  "original": [
-   "proto/ports/noi02p1.cpp",
-   "proto/ports/noi02p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/noi02p1.cp"
+   "corpus/problems/noi02p1/port.cp"
   ],
   "spec": [
    "corpus/problems/noi02p1/spec.cp"

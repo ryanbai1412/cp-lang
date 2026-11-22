@@ -8,12 +8,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/noip09p3.cpp",
-   "proto/ports/noip09p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/noip09p3.cp"
+   "corpus/problems/noip09p3/port.cp"
   ]
  },
  "tags": [],

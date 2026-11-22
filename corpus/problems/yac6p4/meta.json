@@ -11,8 +11,7 @@
    "corpus/problems/yac6p4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_46/today/yac6p4.cp",
-   "proto/ports/scout_batch_46/yac6p4.cp"
+   "corpus/problems/yac6p4/port.cp"
   ],
   "spec": [
    "corpus/problems/yac6p4/spec.cp"

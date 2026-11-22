@@ -11,8 +11,7 @@
    "corpus/problems/ioi15p5/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_49/ioi15p5.cp",
-   "proto/ports/scout_batch_49/today/ioi15p5.cp"
+   "corpus/problems/ioi15p5/port.cp"
   ],
   "spec": [
    "corpus/problems/ioi15p5/spec.cp"

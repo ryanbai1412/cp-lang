@@ -24,8 +24,7 @@
  "cpp_ac": 3,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_32/ioi04p2hard.cp",
-   "proto/ports/scout_batch_32/today/ioi04p2hard.cp"
+   "corpus/problems/ioi04p2hard/port.cp"
   ]
  },
  "tags": [],

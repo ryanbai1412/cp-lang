@@ -10,8 +10,7 @@
    "corpus/problems/egoi23p4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_38/egoi23p4.cp",
-   "proto/ports/scout_batch_38/today/egoi23p4.cp"
+   "corpus/problems/egoi23p4/port.cp"
   ],
   "spec": [
    "corpus/problems/egoi23p4/spec.cp"

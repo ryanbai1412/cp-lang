@@ -1,0 +1,22 @@
+{
+ "problem": "agc077c",
+ "source": "agc",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/agc077c/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/agc077c/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/agc077c/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

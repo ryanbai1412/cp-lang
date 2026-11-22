@@ -10,7 +10,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_30/cco16p6.cp"
+   "corpus/problems/cco16p6/port.cp"
   ]
  },
  "tags": [],

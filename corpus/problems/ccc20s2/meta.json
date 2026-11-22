@@ -7,13 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/ccc20s2.cpp",
-   "proto/ports/ccc20s2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc20s2.cp",
-   "proto/ports/wave2/ccc20s2.cp"
+   "corpus/problems/ccc20s2/port.cp"
   ]
  },
  "tags": [],

@@ -9,12 +9,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/ceoi09p3.cpp",
-   "proto/ports/ceoi09p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ceoi09p3.cp"
+   "corpus/problems/ceoi09p3/port.cp"
   ]
  },
  "tags": [],

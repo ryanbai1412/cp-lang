@@ -10,13 +10,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/ccc17s4.cpp",
-   "proto/ports/ccc17s4_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc17s4.cp",
-   "proto/ports/scout_batch_2/ccc17s4.cp"
+   "corpus/problems/ccc17s4/port.cp"
   ]
  },
  "tags": [],

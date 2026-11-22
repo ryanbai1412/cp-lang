@@ -13,8 +13,7 @@
    "corpus/problems/noip20p3/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_52/noip20p3.cp",
-   "proto/ports/scout_batch_52/today/noip20p3.cp"
+   "corpus/problems/noip20p3/port.cp"
   ],
   "spec": [
    "corpus/problems/noip20p3/spec.cp"

@@ -13,9 +13,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/yac6p6/dream.cp"
+  ],
   "port": [
-   "proto/ports/scout_batch_39/today/yac6p6.cp",
-   "proto/ports/scout_batch_39/yac6p6.cp"
+   "corpus/problems/yac6p6/port.cp"
   ]
  },
  "tags": [],

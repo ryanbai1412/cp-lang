@@ -10,8 +10,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_44/dmopc20c5p2.cp",
-   "proto/ports/scout_batch_44/today/dmopc20c5p2.cp"
+   "corpus/problems/dmopc20c5p2/port.cp"
   ]
  },
  "tags": [],

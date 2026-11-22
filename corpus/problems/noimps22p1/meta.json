@@ -14,7 +14,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_19/noimps22p1.cp"
+   "corpus/problems/noimps22p1/port.cp"
   ]
  },
  "tags": [],

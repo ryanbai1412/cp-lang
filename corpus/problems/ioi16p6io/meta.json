@@ -12,8 +12,7 @@
    "corpus/problems/ioi16p6io/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_14/ioi16p6io.cp",
-   "proto/ports/scout_batch_14/today/ioi16p6io.cp"
+   "corpus/problems/ioi16p6io/port.cp"
   ],
   "spec": [
    "corpus/problems/ioi16p6io/spec.cp"

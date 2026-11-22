@@ -10,8 +10,7 @@
    "corpus/problems/ceoi19pp1/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_48/ceoi19pp1.cp",
-   "proto/ports/scout_batch_48/today/ceoi19pp1.cp"
+   "corpus/problems/ceoi19pp1/port.cp"
   ],
   "spec": [
    "corpus/problems/ceoi19pp1/spec.cp"

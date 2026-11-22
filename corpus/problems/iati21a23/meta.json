@@ -14,8 +14,7 @@
  "cpp_ac": 5,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_45/iati21a23.cp",
-   "proto/ports/scout_batch_45/today/iati21a23.cp"
+   "corpus/problems/iati21a23/port.cp"
   ]
  },
  "tags": [],

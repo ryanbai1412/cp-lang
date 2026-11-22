@@ -10,14 +10,7 @@
   {"id": "4152932", "language": "CPP17", "result": "AC", "time": 39.131037491, "memory_kb": 106496.0, "file": "corpus/submissions/4152932.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_5/bsspc21s4_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_5/bsspc21s4.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

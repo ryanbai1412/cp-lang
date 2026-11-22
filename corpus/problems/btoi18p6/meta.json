@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/btoi18p6.cpp",
-   "proto/ports/btoi18p6_orig.cpp"
-  ],
   "port": [
-   "proto/ports/btoi18p6.cp"
+   "corpus/problems/btoi18p6/port.cp"
   ]
  },
  "tags": [],

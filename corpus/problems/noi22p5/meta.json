@@ -15,14 +15,7 @@
   {"id": "4832632", "language": "CPP17", "result": "AC", "time": 8.182126733, "memory_kb": 84188.0, "file": "corpus/submissions/4832632.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_5/noi22p5_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_5/noi22p5.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

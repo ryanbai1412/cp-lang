@@ -9,12 +9,8 @@
   "dream": [
    "corpus/problems/ceoi18p1/dream.cp"
   ],
-  "original": [
-   "proto/ports/ceoi18p1.cpp",
-   "proto/ports/ceoi18p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ceoi18p1.cp"
+   "corpus/problems/ceoi18p1/port.cp"
   ],
   "spec": [
    "corpus/problems/ceoi18p1/spec.cp"

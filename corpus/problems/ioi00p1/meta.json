@@ -9,13 +9,8 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "original": [
-   "proto/ports/ioi00p1.cpp",
-   "proto/ports/ioi00p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ioi00p1.cp",
-   "proto/ports/wave2/ioi00p1.cp"
+   "corpus/problems/ioi00p1/port.cp"
   ]
  },
  "tags": [],

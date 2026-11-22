@@ -9,14 +9,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/hillclimb_dp_graph/noip06p1.cpp",
-   "proto/ports/hillclimb_dp_graph/noip06p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/hillclimb_dp_graph/before/noip06p1.cp",
-   "proto/ports/hillclimb_dp_graph/noip06p1.cp",
-   "proto/ports/wave2/noip06p1.cp"
+   "corpus/problems/noip06p1/port.cp"
   ]
  },
  "tags": [],

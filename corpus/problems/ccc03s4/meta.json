@@ -50,14 +50,8 @@
   "dream": [
    "corpus/problems/ccc03s4/dream.cp"
   ],
-  "original": [
-   "proto/ports/ccc03s4.cpp",
-   "proto/ports/ccc03s4_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc03s4.cp",
-   "proto/ports/scout_batch_3/ccc03s4.cp",
-   "proto/ports/scout_batch_3/today/ccc03s4.cp"
+   "corpus/problems/ccc03s4/port.cp"
   ],
   "spec": [
    "corpus/problems/ccc03s4/spec.cp"

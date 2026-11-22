@@ -7,13 +7,8 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "original": [
-   "proto/ports/ccc10s4.cpp",
-   "proto/ports/ccc10s4_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc10s4.cp",
-   "proto/ports/scout_batch_12/ccc10s4.cp"
+   "corpus/problems/ccc10s4/port.cp"
   ]
  },
  "tags": [],

@@ -7,11 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/scout_batch_9/harness/ioi20p6.cpp"
-  ],
   "port": [
-   "proto/ports/scout_batch_9/ioi20p6.cp"
+   "corpus/problems/ioi20p6/port.cp"
   ]
  },
  "tags": [],

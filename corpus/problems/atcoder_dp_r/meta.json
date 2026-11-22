@@ -1,20 +1,13 @@
 {
- "problem": "dpr",
- "source": "dpr",
+ "problem": "atcoder_dp_r",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4131862", "language": "CPP17", "result": "AC", "time": 0.291867478, "memory_kb": 3560.0, "file": "corpus/submissions/4131862.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/dpr.cpp",
-   "proto/ports/dpr_orig.cpp"
-  ],
   "port": [
-   "proto/ports/dpr.cp",
-   "proto/ports/scout_batch_3/dpr.cp",
-   "proto/ports/scout_batch_3/today/dpr.cp",
-   "proto/ports/wave2/dpr.cp"
+   "corpus/problems/atcoder_dp_r/port.cp"
   ]
  },
  "tags": [],

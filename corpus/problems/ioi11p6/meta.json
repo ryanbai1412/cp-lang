@@ -14,14 +14,7 @@
   {"id": "3735613", "language": "CPP17", "result": "AC", "time": 0.144446468, "memory_kb": 3536.0, "file": "corpus/submissions/3735613.cpp"}
  ],
  "cpp_ac": 5,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_4/ioi11p6_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_4/ioi11p6.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

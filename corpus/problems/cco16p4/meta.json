@@ -10,7 +10,7 @@
    "corpus/problems/cco16p4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_8/cco16p4.cp"
+   "corpus/problems/cco16p4/port.cp"
   ],
   "spec": [
    "corpus/problems/cco16p4/spec.cp"

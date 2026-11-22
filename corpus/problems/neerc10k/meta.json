@@ -11,8 +11,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_45/neerc10k.cp",
-   "proto/ports/scout_batch_45/today/neerc10k.cp"
+   "corpus/problems/neerc10k/port.cp"
   ]
  },
  "tags": [],

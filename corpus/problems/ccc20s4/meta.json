@@ -26,7 +26,7 @@
    "corpus/problems/ccc20s4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_33/ccc20s4.cp"
+   "corpus/problems/ccc20s4/port.cp"
   ],
   "spec": [
    "corpus/problems/ccc20s4/spec.cp"

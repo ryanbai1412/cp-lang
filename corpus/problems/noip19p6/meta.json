@@ -9,7 +9,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_26/noip19p6.cp"
+   "corpus/problems/noip19p6/port.cp"
   ]
  },
  "tags": [],

@@ -10,8 +10,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_31/coci25c3p1.cp",
-   "proto/ports/scout_batch_31/today/coci25c3p1.cp"
+   "corpus/problems/coci25c3p1/port.cp"
   ]
  },
  "tags": [],

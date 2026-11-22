@@ -32,8 +32,7 @@
  "cpp_ac": 7,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_52/ctsc04p4.cp",
-   "proto/ports/scout_batch_52/today/ctsc04p4.cp"
+   "corpus/problems/ctsc04p4/port.cp"
   ]
  },
  "tags": [],

@@ -7,10 +7,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/coci21c1p5/dream.cp"
+  ],
   "port": [
-   "proto/ports/scout_batch_30/coci21c1p5.cp",
-   "proto/ports/scout_batch_35/coci21c1p5.cp",
-   "proto/ports/scout_batch_35/today/coci21c1p5.cp"
+   "corpus/problems/coci21c1p5/port.cp"
   ]
  },
  "tags": [],

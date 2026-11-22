@@ -1,0 +1,22 @@
+{
+ "problem": "cf2237g",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2237g/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2237g/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2237g/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

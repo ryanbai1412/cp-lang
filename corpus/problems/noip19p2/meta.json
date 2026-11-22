@@ -11,12 +11,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_3/noip19p2_draft.cp"
-  ],
   "port": [
-   "proto/ports/blind_critic_3/noip19p2.cp",
-   "proto/ports/scout_batch_26/noip19p2.cp"
+   "corpus/problems/noip19p2/port.cp"
   ]
  },
  "tags": [],

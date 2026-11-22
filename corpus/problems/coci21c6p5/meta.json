@@ -18,7 +18,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_16/coci21c6p5.cp"
+   "corpus/problems/coci21c6p5/port.cp"
   ]
  },
  "tags": [],

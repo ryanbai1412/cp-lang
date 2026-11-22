@@ -1,22 +1,13 @@
 {
- "problem": "dpz",
- "source": "dpz",
+ "problem": "atcoder_dp_z",
+ "source": "atcoder_dp",
  "submissions": [
   {"id": "4133674", "language": "CPP17", "result": "AC", "time": 1.481380601, "memory_kb": 16788.0, "file": "corpus/submissions/4133674.cpp"}
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_2/dpz_draft.cp"
-  ],
-  "original": [
-   "proto/ports/dpz.cpp",
-   "proto/ports/dpz_orig.cpp"
-  ],
   "port": [
-   "proto/ports/blind_critic_2/dpz.cp",
-   "proto/ports/dpz.cp",
-   "proto/ports/scout_batch_17/dpz.cp"
+   "corpus/problems/atcoder_dp_z/port.cp"
   ]
  },
  "tags": [],

@@ -30,8 +30,7 @@
  "cpp_ac": 5,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_40/tle18p5.cp",
-   "proto/ports/scout_batch_40/today/tle18p5.cp"
+   "corpus/problems/tle18p5/port.cp"
   ]
  },
  "tags": [],

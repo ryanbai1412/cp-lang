@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_31/today/ucrpc21f.cp",
-   "proto/ports/scout_batch_31/ucrpc21f.cp"
+   "corpus/problems/ucrpc21f/port.cp"
   ]
  },
  "tags": [],

@@ -1,0 +1,22 @@
+{
+ "problem": "cf2150c",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2150c/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2150c/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2150c/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

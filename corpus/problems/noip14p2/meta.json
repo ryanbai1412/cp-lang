@@ -7,13 +7,8 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "original": [
-   "proto/ports/noip14p2.cpp",
-   "proto/ports/noip14p2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/noip14p2.cp",
-   "proto/ports/wave2/noip14p2.cp"
+   "corpus/problems/noip14p2/port.cp"
   ]
  },
  "tags": [],

@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_26/ioi18p3.cp",
-   "proto/ports/scout_batch_27/ioi18p3.cp"
+   "corpus/problems/ioi18p3/port.cp"
   ]
  },
  "tags": [],

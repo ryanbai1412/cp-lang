@@ -1,0 +1,16 @@
+{
+ "problem": "ioi25_triples",
+ "source": "ioi",
+ "submissions": [],
+ "cpp_ac": 0,
+ "artifacts": {
+  "dream": [
+   "corpus/gold/ioi25_triples.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

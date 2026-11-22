@@ -14,7 +14,7 @@
    "corpus/problems/cco20p4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_33/cco20p4.cp"
+   "corpus/problems/cco20p4/port.cp"
   ],
   "spec": [
    "corpus/problems/cco20p4/spec.cp"

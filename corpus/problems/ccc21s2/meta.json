@@ -20,13 +20,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/ccc21s2.cpp",
-   "proto/ports/ccc21s2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc21s2.cp",
-   "proto/ports/wave2/ccc21s2.cp"
+   "corpus/problems/ccc21s2/port.cp"
   ]
  },
  "tags": [],

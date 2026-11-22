@@ -6,8 +6,11 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ioi08p1/dream.cp"
+  ],
   "port": [
-   "proto/ports/scout_batch_22/ioi08p1.cp"
+   "corpus/problems/ioi08p1/port.cp"
   ]
  },
  "tags": [],

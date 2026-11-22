@@ -16,12 +16,8 @@
  ],
  "cpp_ac": 3,
  "artifacts": {
-  "original": [
-   "proto/ports/noip14p3.cpp",
-   "proto/ports/noip14p3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/noip14p3.cp"
+   "corpus/problems/noip14p3/port.cp"
   ]
  },
  "tags": [],

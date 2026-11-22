@@ -10,14 +10,7 @@
   {"id": "4261177", "language": "CPP17", "result": "AC", "time": 12.53120512, "memory_kb": 3944.0, "file": "corpus/submissions/4261177.cpp"}
  ],
  "cpp_ac": 4,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_5/noiwc22p3_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_5/noiwc22p3.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

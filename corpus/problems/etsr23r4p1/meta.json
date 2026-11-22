@@ -10,8 +10,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_43/etsr23r4p1.cp",
-   "proto/ports/scout_batch_43/today/etsr23r4p1.cp"
+   "corpus/problems/etsr23r4p1/port.cp"
   ]
  },
  "tags": [],

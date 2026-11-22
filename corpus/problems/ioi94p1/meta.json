@@ -6,13 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/ioi94p1.cpp",
-   "proto/ports/ioi94p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ioi94p1.cp",
-   "proto/ports/wave2/ioi94p1.cp"
+   "corpus/problems/ioi94p1/port.cp"
   ]
  },
  "tags": [],

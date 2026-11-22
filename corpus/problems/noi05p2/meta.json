@@ -146,8 +146,7 @@
  "cpp_ac": 50,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_24/noi05p2.cp",
-   "proto/ports/scout_batch_24/today/noi05p2.cp"
+   "corpus/problems/noi05p2/port.cp"
   ]
  },
  "tags": [],

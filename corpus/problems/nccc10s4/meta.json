@@ -16,7 +16,7 @@
    "corpus/problems/nccc10s4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_21/nccc10s4.cp"
+   "corpus/problems/nccc10s4/port.cp"
   ],
   "spec": [
    "corpus/problems/nccc10s4/spec.cp"

@@ -1,0 +1,16 @@
+{
+ "problem": "ioi25_obstacles",
+ "source": "ioi",
+ "submissions": [],
+ "cpp_ac": 0,
+ "artifacts": {
+  "dream": [
+   "corpus/gold/ioi25_obstacles.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

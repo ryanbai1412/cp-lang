@@ -1,0 +1,22 @@
+{
+ "problem": "cf2062e1",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2062e1/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2062e1/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2062e1/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

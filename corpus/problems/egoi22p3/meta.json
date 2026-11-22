@@ -15,8 +15,7 @@
    "corpus/problems/egoi22p3/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_51/egoi22p3.cp",
-   "proto/ports/scout_batch_51/today/egoi22p3.cp"
+   "corpus/problems/egoi22p3/port.cp"
   ],
   "spec": [
    "corpus/problems/egoi22p3/spec.cp"

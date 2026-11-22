@@ -10,8 +10,7 @@
    "corpus/problems/coci21c1p1/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_35/coci21c1p1.cp",
-   "proto/ports/scout_batch_35/today/coci21c1p1.cp"
+   "corpus/problems/coci21c1p1/port.cp"
   ],
   "spec": [
    "corpus/problems/coci21c1p1/spec.cp"

@@ -1,0 +1,22 @@
+{
+ "problem": "cf2268e",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2268e/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2268e/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2268e/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

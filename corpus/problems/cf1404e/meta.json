@@ -1,0 +1,22 @@
+{
+ "problem": "cf1404e",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf1404e/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf1404e/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf1404e/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

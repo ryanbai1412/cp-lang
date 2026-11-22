@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/noip04p2.cpp",
-   "proto/ports/noip04p2_orig.cpp"
-  ],
   "port": [
-   "proto/ports/noip04p2.cp"
+   "corpus/problems/noip04p2/port.cp"
   ]
  },
  "tags": [],

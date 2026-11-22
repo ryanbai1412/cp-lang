@@ -23,7 +23,7 @@
    "corpus/problems/noi05p4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_14/noi05p4.cp"
+   "corpus/problems/noi05p4/port.cp"
   ],
   "spec": [
    "corpus/problems/noi05p4/spec.cp"

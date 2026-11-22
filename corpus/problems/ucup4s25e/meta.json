@@ -1,0 +1,22 @@
+{
+ "problem": "ucup4s25e",
+ "source": "ucup",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/ucup4s25e/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/ucup4s25e/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/ucup4s25e/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

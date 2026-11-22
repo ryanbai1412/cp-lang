@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_3/aac4p3.cp",
-   "proto/ports/scout_batch_3/today/aac4p3.cp"
+   "corpus/problems/aac4p3/port.cp"
   ]
  },
  "tags": [],

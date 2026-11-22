@@ -6,12 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/cco20p1.cpp",
-   "proto/ports/cco20p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/cco20p1.cp"
+   "corpus/problems/cco20p1/port.cp"
   ]
  },
  "tags": [],

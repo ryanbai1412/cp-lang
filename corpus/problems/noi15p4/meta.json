@@ -10,14 +10,8 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_2/noi15p4_draft.cp"
-  ],
   "dream": [
    "corpus/problems/noi15p4/dream.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_2/noi15p4.cp"
   ],
   "spec": [
    "corpus/problems/noi15p4/spec.cp"

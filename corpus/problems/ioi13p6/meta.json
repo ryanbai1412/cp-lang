@@ -8,14 +8,7 @@
   {"id": "4688844", "language": "CPP17", "result": "AC", "time": 87.183152661, "memory_kb": 228992.0, "file": "corpus/submissions/4688844.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_4/ioi13p6_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_4/ioi13p6.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -8,11 +8,10 @@
  "cpp_ac": 2,
  "artifacts": {
   "original": [
-   "proto/ports/ioi11p2.cpp",
-   "proto/ports/ioi11p2_orig.cpp"
+   "corpus/problems/ioi11p2/orig.cpp"
   ],
   "port": [
-   "proto/ports/ioi11p2.cp"
+   "corpus/problems/ioi11p2/port.cp"
   ]
  },
  "tags": [],

@@ -10,8 +10,7 @@
    "corpus/problems/mccc4j4/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_42/mccc4j4.cp",
-   "proto/ports/scout_batch_42/today/mccc4j4.cp"
+   "corpus/problems/mccc4j4/port.cp"
   ],
   "spec": [
    "corpus/problems/mccc4j4/spec.cp"

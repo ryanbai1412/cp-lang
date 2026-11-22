@@ -11,7 +11,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_9/utso15p5.cp"
+   "corpus/problems/utso15p5/port.cp"
   ]
  },
  "tags": [],

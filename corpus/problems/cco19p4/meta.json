@@ -12,8 +12,7 @@
  "cpp_ac": 2,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_36/cco19p4.cp",
-   "proto/ports/scout_batch_36/today/cco19p4.cp"
+   "corpus/problems/cco19p4/port.cp"
   ]
  },
  "tags": [],

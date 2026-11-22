@@ -1,0 +1,16 @@
+{
+ "problem": "ioi25_worldmap",
+ "source": "ioi",
+ "submissions": [],
+ "cpp_ac": 0,
+ "artifacts": {
+  "dream": [
+   "corpus/gold/ioi25_worldmap.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

@@ -8,8 +8,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_41/nccc9s3.cp",
-   "proto/ports/scout_batch_41/today/nccc9s3.cp"
+   "corpus/problems/nccc9s3/port.cp"
   ]
  },
  "tags": [],

@@ -35,7 +35,7 @@
  "cpp_ac": 18,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_10/sac22cc3p5.cp"
+   "corpus/problems/sac22cc3p5/port.cp"
   ]
  },
  "tags": [],

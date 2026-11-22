@@ -12,7 +12,7 @@
    "corpus/problems/cco21p5/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_30/cco21p5.cp"
+   "corpus/problems/cco21p5/port.cp"
   ],
   "spec": [
    "corpus/problems/cco21p5/spec.cp"

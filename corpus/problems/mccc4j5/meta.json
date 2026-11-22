@@ -7,12 +7,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/mccc4j5.cpp",
-   "proto/ports/mccc4j5_orig.cpp"
-  ],
   "port": [
-   "proto/ports/mccc4j5.cp"
+   "corpus/problems/mccc4j5/port.cp"
   ]
  },
  "tags": [],

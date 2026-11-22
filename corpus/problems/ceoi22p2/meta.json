@@ -7,8 +7,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_19/ceoi22p2.cp",
-   "proto/ports/scout_batch_19/today/ceoi22p2.cp"
+   "corpus/problems/ceoi22p2/port.cp"
   ]
  },
  "tags": [],

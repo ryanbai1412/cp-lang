@@ -12,9 +12,11 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "dream": [
+   "corpus/problems/btoi06p5/dream.cp"
+  ],
   "port": [
-   "proto/ports/scout_batch_48/btoi06p5.cp",
-   "proto/ports/scout_batch_48/today/btoi06p5.cp"
+   "corpus/problems/btoi06p5/port.cp"
   ]
  },
  "tags": [],

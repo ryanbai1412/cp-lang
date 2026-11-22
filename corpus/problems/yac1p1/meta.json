@@ -6,13 +6,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/yac1p1.cpp",
-   "proto/ports/yac1p1_orig.cpp"
-  ],
   "port": [
-   "proto/ports/wave2/yac1p1.cp",
-   "proto/ports/yac1p1.cp"
+   "corpus/problems/yac1p1/port.cp"
   ]
  },
  "tags": [],

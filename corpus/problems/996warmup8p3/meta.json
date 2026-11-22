@@ -22,8 +22,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_32/996warmup8p3.cp",
-   "proto/ports/scout_batch_32/today/996warmup8p3.cp"
+   "corpus/problems/996warmup8p3/port.cp"
   ]
  },
  "tags": [],

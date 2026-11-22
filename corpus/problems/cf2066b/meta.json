@@ -1,0 +1,22 @@
+{
+ "problem": "cf2066b",
+ "source": "cf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/cf2066b/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/cf2066b/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/cf2066b/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

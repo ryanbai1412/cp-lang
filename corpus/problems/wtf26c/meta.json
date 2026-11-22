@@ -1,0 +1,22 @@
+{
+ "problem": "wtf26c",
+ "source": "wtf",
+ "submissions": [],
+ "cpp_ac": 1,
+ "artifacts": {
+  "dream": [
+   "corpus/problems/wtf26c/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/wtf26c/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/wtf26c/port.cp"
+  ]
+ },
+ "tags": [],
+ "difficulty": null,
+ "dream": "none",
+ "spec": "none",
+ "notes": ""
+}

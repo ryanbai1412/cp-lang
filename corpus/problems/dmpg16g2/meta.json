@@ -11,8 +11,7 @@
    "corpus/problems/dmpg16g2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_39/dmpg16g2.cp",
-   "proto/ports/scout_batch_39/today/dmpg16g2.cp"
+   "corpus/problems/dmpg16g2/port.cp"
   ],
   "spec": [
    "corpus/problems/dmpg16g2/spec.cp"

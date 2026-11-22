@@ -9,12 +9,8 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
-  "original": [
-   "proto/ports/ccc20s3.cpp",
-   "proto/ports/ccc20s3_orig.cpp"
-  ],
   "port": [
-   "proto/ports/ccc20s3.cp"
+   "corpus/problems/ccc20s3/port.cp"
   ]
  },
  "tags": [],

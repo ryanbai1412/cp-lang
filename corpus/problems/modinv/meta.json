@@ -8,8 +8,7 @@
  "cpp_ac": 1,
  "artifacts": {
   "port": [
-   "proto/ports/scout_batch_3/modinv.cp",
-   "proto/ports/scout_batch_3/today/modinv.cp"
+   "corpus/problems/modinv/port.cp"
   ]
  },
  "tags": [],

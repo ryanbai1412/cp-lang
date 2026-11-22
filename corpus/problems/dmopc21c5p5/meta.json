@@ -18,14 +18,7 @@
   {"id": "4223999", "language": "CPP17", "result": "AC", "time": 30.171923788, "memory_kb": 7484.0, "file": "corpus/submissions/4223999.cpp"}
  ],
  "cpp_ac": 3,
- "artifacts": {
-  "draft": [
-   "proto/ports/blind_critic_4/dmopc21c5p5_draft.cp"
-  ],
-  "port": [
-   "proto/ports/blind_critic_4/dmopc21c5p5.cp"
-  ]
- },
+ "artifacts": {},
  "tags": [],
  "difficulty": null,
  "dream": "none",

@@ -11,8 +11,7 @@
    "corpus/problems/apio09p2/dream.cp"
   ],
   "port": [
-   "proto/ports/scout_batch_38/apio09p2.cp",
-   "proto/ports/scout_batch_38/today/apio09p2.cp"
+   "corpus/problems/apio09p2/port.cp"
   ],
   "spec": [
    "corpus/problems/apio09p2/spec.cp"

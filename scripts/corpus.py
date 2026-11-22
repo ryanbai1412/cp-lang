@@ -25,7 +25,15 @@ def rel(p):
     return os.path.relpath(p, ROOT)
 
 
+def canonical_id(problem):
+    if re.fullmatch(r"dp[a-z]", problem):
+        return f"atcoder_dp_{problem[2]}"
+    return problem
+
+
 def source_of(problem):
+    if problem.startswith("atcoder_dp_"):
+        return "atcoder_dp"
     m = re.match(r"[a-z]+", problem)
     return m.group(0) if m else problem
 
@@ -54,10 +62,12 @@ def generate():
     info = json.load(open(os.path.join(SUBS, "info.json")))
     by = defaultdict(list)
     for sid, e in info.items():
-        by[e["problem"]].append((sid, e))
+        by[canonical_id(e["problem"])].append((sid, e))
     arts = artifacts()
+    all_problems = sorted(set(by.keys()) | set(arts.keys()))
     out = {}
-    for problem, subs in sorted(by.items()):
+    for problem in all_problems:
+        subs = by.get(problem, [])
         rows = []
         for sid, e in sorted(subs, key=lambda x: x[1].get("date", "")):
             f = next((sid + x for x in (EXT.get(e.get("language", ""), ""), ".cpp", ".java", ".py")
@@ -65,12 +75,16 @@ def generate():
             rows.append({"id": sid, "language": e.get("language"), "result": e.get("result"),
                          "time": e.get("time"), "memory_kb": e.get("memory"),
                          "file": rel(os.path.join(SUBS, f)) if f else None})
+        p_arts = {k: sorted(v) for k, v in sorted(arts.get(problem, {}).items())}
+        cpp_ac = sum(1 for r in rows if r["result"] == "AC" and (r["file"] or "").endswith(".cpp"))
+        if not cpp_ac and p_arts.get("original"):
+            cpp_ac = len(p_arts["original"])
         out[problem] = {
             "problem": problem,
             "source": source_of(problem),
             "submissions": rows,
-            "cpp_ac": sum(1 for r in rows if r["result"] == "AC" and (r["file"] or "").endswith(".cpp")),
-            "artifacts": {k: sorted(v) for k, v in sorted(arts.get(problem, {}).items())},
+            "cpp_ac": cpp_ac,
+            "artifacts": p_arts,
         }
     return out
 
@@ -117,8 +131,8 @@ def main(mode):
             errors.append(f"{rel(path)}: stale; run scripts/corpus.py build")
     if os.path.isdir(PROBLEMS):
         for d in os.listdir(PROBLEMS):
-            if d not in gen:
-                errors.append(f"corpus/problems/{d}: no submissions in info.json")
+            if os.path.isdir(os.path.join(PROBLEMS, d)) and d not in gen:
+                errors.append(f"corpus/problems/{d}: no submissions or artifacts")
     ipath = os.path.join(ROOT, "corpus", "index.json")
     if mode == "build":
         open(ipath, "w").write(dump(index(metas)))
