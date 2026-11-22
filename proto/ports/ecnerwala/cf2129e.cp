@@ -60,7 +60,7 @@ fn relabel(u: V, by: V):
     values.add(f[u], 1)
 
 fn step(p: Arc, by: Int):
-    let (u, v, e) = arcs[p.to_idx]
+    let (u, v, e) = arcs[p.ord]
     let was_inside = arcs_in[e] == 2
     arcs_in[e] += by
     if was_inside != (arcs_in[e] == 2):
