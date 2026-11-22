@@ -243,7 +243,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: the arcs in input order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g[0].len == 2 and g[1].len == 0`
-    pub fn at(self, u: V) -> lends Slice<A> = todo
+    pub fn at(self, u: V) -> lends Slice<A> = arcs[start[u.to_idx]..start[u.to_idx + 1]]
 
     /// The arcs out of `u`, lazily: the `Next` implementation.
     ///
@@ -264,7 +264,18 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// ties: parallel arcs keep the least weight
     /// traps: never
     /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 1, w: 3), (u: 1, v: 0, w: 4)]; let d = Graph.directed(es).matrix(); d[0, 1] == Some(3) and d[1, 0] == Some(4) and d[0, 0] == None`
-    pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W> = todo
+    pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W>:
+        var d: [V, V]?W = None
+        for u in V:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                let a = arcs[i]
+                let v = a.to
+                let w = a.w
+                if let cur = d[u, v]:
+                    if w < cur: d[u, v] = Some(w)
+                else:
+                    d[u, v] = Some(w)
+        d
 
     /// The number of arcs out of `u`. An undirected loop counts twice.
     ///
@@ -279,7 +290,10 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: input order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).next(0).collect() == [2, 1]`
-    pub fn next(self, u: V) -> yields V = todo
+    pub fn next(self, u: V) -> yields V:
+        unchecked:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                yield arcs[i].to
 
     /// The induced view on the vertices `keep` accepts: arcs from or to a rejected vertex are
     /// skipped. `from` also skips the arcs leaving a vertex it rejects, so that vertex can be
@@ -289,7 +303,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).only(keep: v => v != 1).deg(0) == 1`
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; let h = Graph.directed(es).only(from: v => v != 1); h.deg(0) == 2 and h.deg(1) == 0`
-    pub fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self> = todo
+    pub fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self> =
+        Only(self, keep, from)
 
     /// The same graph with each arc's `.w` read as `f(a)`; `.to` and `.e` pass through, so it
     /// is a `WeightedNext` and stays `Edged`. On a weighted graph it reweights. Nothing is
@@ -326,7 +341,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: keyed by `V`; each list in input order, repeats kept
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).lists()[0] == [2, 1]`
-    pub fn lists(self) -> [V]List<V> = todo
+    pub fn lists(self) -> [V]List<V>:
+        [V] u => [arcs[i].to for i in start[u.to_idx]..start[u.to_idx + 1]]
 
     /// The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the
     /// diagonal. A graph with unreachable pairs wants `bfs`.
@@ -398,7 +414,42 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).peel() == [0, 1, 2, 3]`
     pub fn peel(
         self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None,
-    ) -> List<V> = todo
+    ) -> List<V>:
+        var indeg: [V]Int = 0
+        var removed: [V]Bool = false
+        for u in V:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                indeg[arcs[i].to] += 1
+        var q = List<V>()
+        for u in V:
+            if let r = ready:
+                if r(u):
+                    removed[u] = true
+                    q.push(u)
+            else:
+                if indeg[u] == 0:
+                    removed[u] = true
+                    q.push(u)
+        var head = 0
+        while head < q.len:
+            let u = q[head]
+            head += 1
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                let a = arcs[i]
+                let v = a.to
+                indeg[v] -= 1
+                if let cb = on_remove:
+                    cb(u, a)
+                if not removed[v]:
+                    if let r = ready:
+                        if r(v):
+                            removed[v] = true
+                            q.push(v)
+                    else:
+                        if indeg[v] == 0:
+                            removed[v] = true
+                            q.push(v)
+        q
 
     /// Every arc `u -> a.to` reversed to `a.to -> u`, its other fields kept (`(..a, to: u)`).
     ///
@@ -406,7 +457,27 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: each vertex's new arcs by original source in vertex order, then input order
     /// traps: never
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).transpose().out(3).collect() == [(to: 1, e: 2), (to: 2, e: 3)]`
-    pub fn transpose(self) -> Graph<V, A> where A: (to: V, ..) = todo
+    pub fn transpose(self) -> Graph<V, A> where A: (to: V, ..):
+        var indeg: [V]Int = 0
+        for u in V:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                indeg[arcs[i].to] += 1
+        var tstart: [V.cuts]Int = 0
+        var acc = 0
+        for v in V:
+            tstart[v.to_idx] = acc
+            acc += indeg[v]
+        tstart[V.K] = acc
+        var cur: [V]Int = [V] v => tstart[v.to_idx]
+        var tarcs = arcs.copy()
+        for u in V:
+            for i in start[u.to_idx]..start[u.to_idx + 1]:
+                let a = arcs[i]
+                let v = a.to
+                let pos = cur[v]
+                cur[v] = pos + 1
+                tarcs[pos] = (..a, to: u)
+        Graph<V, A>(start: tstart, arcs: tarcs)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
@@ -913,7 +984,15 @@ pub struct Paths<V, W, A>:
     /// order: keyed by `V`; each list in arc order; unreached vertices get `[]`
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let t = bfs(g, from: [V(0)]).tight(g); t[0] == [1, 2] and t[2] == [3] and t[3] == []`
-    pub fn tight<>(self, g: Next<V>) -> [V]List<A> = todo
+    pub fn tight<>(self, g: Next<V>) -> [V]List<A>:
+        var res: [V]List<A> = []
+        for u in V:
+            if let du = dist[u]:
+                for a in g.out(u):
+                    if let dv = dist[a.to]:
+                        if du + W.one == dv:
+                            res[u].push(a)
+        res
 
     /// Does some source reach `v`? `p[v] != None`.
     ///
@@ -2798,4 +2877,29 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
     /// cost: O(n + m)
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).transpose().next(2).collect() == [0]`
-    pub fn transpose(self) -> Graph<V, G.Arc> = todo
+    pub fn transpose(self) -> Graph<V, G.Arc>:
+        var indeg: [V]Int = 0
+        for u in V:
+            for a in self.out(u):
+                indeg[a.to] += 1
+        var tstart: [V.cuts]Int = 0
+        var acc = 0
+        for v in V:
+            tstart[v.to_idx] = acc
+            acc += indeg[v]
+        tstart[V.K] = acc
+        var cur: [V]Int = [V] v => tstart[v.to_idx]
+        var tarcs = List<G.Arc>()
+        if acc > 0:
+            var filled = false
+            for u in V:
+                for a in self.out(u):
+                    if not filled:
+                        for _ in 0..acc:
+                            tarcs.push(a)
+                        filled = true
+                    let v = a.to
+                    let pos = cur[v]
+                    cur[v] = pos + 1
+                    tarcs[pos] = u
+        Graph<V, G.Arc>(start: tstart, arcs: tarcs)
