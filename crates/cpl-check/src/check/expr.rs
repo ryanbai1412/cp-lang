@@ -661,6 +661,18 @@ impl<'a> Checker<'a> {
                         });
                     }
                 }
+                if let ExprKind::Name(base_name) = &base.kind {
+                    let moves_heap = match &ty {
+                        Ty::Record(fs) => fs.iter().any(|(fname, fty)| {
+                            !updates.iter().any(|(u, _)| u.text == *fname)
+                                && self.is_heap_type(fty)
+                        }),
+                        _ => self.is_heap_type(&ty),
+                    };
+                    if moves_heap {
+                        self.moved.insert(base_name.clone(), base.span);
+                    }
+                }
                 ty
             }
             ExprKind::Try(inner) if self.branch > 0 => {

@@ -257,6 +257,7 @@ impl<'a> Checker<'a> {
                     .any(|ft| self.is_heap_type_depth(ft, depth + 1))
             }
             Ty::Tuple(ts) => ts.iter().any(|t| self.is_heap_type_depth(t, depth + 1)),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| self.is_heap_type_depth(t, depth + 1)),
             Ty::Optional(inner) => self.is_heap_type_depth(inner, depth + 1),
             _ => false,
         }

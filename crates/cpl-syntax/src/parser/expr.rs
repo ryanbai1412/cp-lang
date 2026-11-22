@@ -989,7 +989,19 @@ impl<'a> Parser<'a> {
             }
             T::LParen => {
                 self.bump();
-                if self.at(T::Ident) && self.peek_n(1) == T::Colon {
+                if self.eat(T::DotDot) {
+                    let base = self.expr();
+                    let updates = if self.eat(T::Comma) {
+                        self.comma_list(T::RParen, "the record update", Self::record_field)
+                    } else {
+                        self.expect(T::RParen, "`)`");
+                        Vec::new()
+                    };
+                    ExprKind::With {
+                        base: Box::new(base),
+                        updates,
+                    }
+                } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {
                     let fields = self.comma_list(T::RParen, "the record", Self::record_field);
                     ExprKind::Record(fields)
                 } else if self.eat(T::RParen) {

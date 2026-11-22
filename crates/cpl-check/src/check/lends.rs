@@ -219,14 +219,19 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             if view {
                 Flow::View(name.clone())
             } else if otherwise.is_none() {
-                if let ExprKind::Name(src) = &unparen(init).kind {
-                    Flow::Move(vec![src.clone()])
-                } else {
-                    let moves = ctor_move_args(init);
-                    if !moves.is_empty() {
-                        Flow::Move(moves)
-                    } else {
-                        Flow::None
+                match &unparen(init).kind {
+                    ExprKind::Name(src) => Flow::Move(vec![src.clone()]),
+                    ExprKind::With { base, .. } => match &unparen(base).kind {
+                        ExprKind::Name(src) => Flow::Move(vec![src.clone()]),
+                        _ => Flow::None,
+                    },
+                    _ => {
+                        let moves = ctor_move_args(init);
+                        if !moves.is_empty() {
+                            Flow::Move(moves)
+                        } else {
+                            Flow::None
+                        }
                     }
                 }
             } else {
@@ -238,10 +243,13 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             init: Some(init),
             otherwise: None,
             ..
-        } => {
-            if let ExprKind::Name(src) = &unparen(init).kind {
-                Flow::Move(vec![src.clone()])
-            } else {
+        } => match &unparen(init).kind {
+            ExprKind::Name(src) => Flow::Move(vec![src.clone()]),
+            ExprKind::With { base, .. } => match &unparen(base).kind {
+                ExprKind::Name(src) => Flow::Move(vec![src.clone()]),
+                _ => Flow::None,
+            },
+            _ => {
                 let moves = ctor_move_args(init);
                 if !moves.is_empty() {
                     Flow::Move(moves)
@@ -249,7 +257,7 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                     Flow::None
                 }
             }
-        }
+        },
         StmtKind::Assign {
             target,
             op: ast::AssignOp::Set,
