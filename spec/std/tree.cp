@@ -1597,6 +1597,8 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     flip: [V]Bool
     val: [V]T
     agg: [V]T
+    /// The number of vertices in the splay subtree.
+    cnt: [V]0..=V.count
     stk: List<V>
 
     /// `V.count` single-vertex trees holding `a`, or the identity of `op` everywhere when `a` is
@@ -1609,7 +1611,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     pub fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T>:
         let m = Monoid<T>.of(op)
         let val = if let init = a: init else: [V] _ => m.id
-        LinkCut(m, [V] _ => None, [V] _ => None, [V] _ => None, [V] _ => false, val, val, [])
+        LinkCut(m, [V] _ => None, [V] _ => None, [V] _ => None, [V] _ => false, val, val, [V] _ => 1, [])
 
     fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
@@ -1630,9 +1632,15 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
 
     fn pull(mut self, x: V):
         var s = val[x]
-        if let c = lc[x]: s = m.op(agg[c], s)
-        if let c = rc[x]: s = m.op(s, agg[c])
+        var k = 1
+        if let c = lc[x]:
+            s = m.op(agg[c], s)
+            k += cnt[c]
+        if let c = rc[x]:
+            s = m.op(s, agg[c])
+            k += cnt[c]
         agg[x] = s
+        cnt[x] = k
 
     fn rotate(mut self, x: V):
         let p = pa[x]!
@@ -1784,7 +1792,11 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.dist(0, 2) == Some(2) and lc.dist(0, 3) == None`
-    pub fn dist(mut self, a: V, b: V) -> ?Int = todo
+    pub fn dist(mut self, a: V, b: V) -> ?Int:
+        if not self.connected(a, b): return None
+        self.make_root(a)
+        let _ = self.access(b)
+        Some(cnt[b] - 1)
 
     /// The `k`-th vertex on the path from `a` to `b` (`a` is the 0th); `None` past `b` or across
     /// trees.
@@ -1792,7 +1804,24 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// cost: amortized O(log n)
     /// traps: when `k` is negative
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var lc = LinkCut(+, a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.jump(0, 2, 1) == Some(1) and lc.jump(0, 2, 0) == Some(0) and lc.jump(0, 2, 3) == None`
-    pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
+    pub fn jump(mut self, a: V, b: V, k: Int) -> ?V:
+        assert k >= 0
+        if not self.connected(a, b): return None
+        self.make_root(a)
+        let _ = self.access(b)
+        if k >= cnt[b]: return None
+        var x = b
+        var r = k
+        while true:
+            self.push(x)
+            let left = if let c = lc[x]: cnt[c] else: 0
+            if r < left: x = lc[x]!
+            elif r == left: break
+            else:
+                r -= left + 1
+                x = rc[x]!
+        self.splay(x)
+        Some(x)
 
 /// `LinkCut` with updates along a path: `LazyLinkCut(act, a)` with an add `Action` adds to every value on
 /// a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`. Reversing a path must not
@@ -2051,7 +2080,11 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// cost: amortized O(log n)
     /// traps: never
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.dist(0, 2) == Some(2) and lc.dist(1, 1) == Some(0)`
-    pub fn dist(mut self, a: V, b: V) -> ?Int = todo
+    pub fn dist(mut self, a: V, b: V) -> ?Int:
+        if not self.connected(a, b): return None
+        self.make_root(a)
+        let _ = self.access(b)
+        Some(cnt[b] - 1)
 
     /// The `k`-th vertex on the path from `a` to `b` (`a` is the 0th); `None` past `b` or across
     /// trees.
@@ -2059,7 +2092,24 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// cost: amortized O(log n)
     /// traps: when `k` is negative
     /// example: `domain V = 0..3; let vals: [V]Int = [1, 2, 3]; var lc = LazyLinkCut(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); lc.link(0, 1); lc.link(1, 2); lc.jump(2, 0, 1) == Some(1) and lc.jump(2, 0, 3) == None`
-    pub fn jump(mut self, a: V, b: V, k: Int) -> ?V = todo
+    pub fn jump(mut self, a: V, b: V, k: Int) -> ?V:
+        assert k >= 0
+        if not self.connected(a, b): return None
+        self.make_root(a)
+        let _ = self.access(b)
+        if k >= cnt[b]: return None
+        var x = b
+        var r = k
+        while true:
+            self.push(x)
+            let left = if let c = lc[x]: cnt[c] else: 0
+            if r < left: x = lc[x]!
+            elif r == left: break
+            else:
+                r -= left + 1
+                x = rc[x]!
+        self.splay(x)
+        Some(x)
 
 @test
 fn link_cut_follows_a_changing_forest():
@@ -2116,7 +2166,57 @@ fn link_cut_matches_a_brute_forest_with_ordered_folds():
             for (x, y) in [(u, v), (v, u)]: adj[x].push(y)
 
 @test
-fn lazy_link_cut_matches_a_brute_forest() = todo
+fn lazy_link_cut_matches_a_brute_forest():
+    domain V = 1..=9
+    var rng = Rng(11)
+    var w = [V] _ => rng.int(-5, 5)
+    let add = Action<Int, Int>(0, (f, g) => f + g, (d, x, n) => x + d * n, Monoid<Int>(0, (a, b) => a + b))
+    var lct = LazyLinkCut<V, Int, Int>.new(add, Some(w))
+    var adj: [V]List<V> = []
+    for _ in 0..400:
+        let u = V(rng.int(1, 9))
+        let v = V(rng.int(1, 9))
+        var from: [V]?V = None
+        var seen: [V]Bool = false
+        seen[u] = true
+        var st = [u]
+        while let x = st.pop():
+            for y in adj[x]:
+                if not seen[y]:
+                    seen[y] = true
+                    from[y] = Some(x)
+                    st.push(y)
+        assert lct.connected(u, v) == seen[v]
+        if seen[v]:
+            var path = [v]
+            var x = v
+            while let p = from[x]:
+                path.push(p)
+                x = p
+            let ab = path.rev.collect()
+            assert lct.dist(u, v) == Some(ab.len - 1)
+            let k = rng.int(0, ab.len)
+            assert lct.jump(u, v, k) == (if k < ab.len: Some(ab[k]) else: None)
+            let op = rng.int(0, 3)
+            if op == 0:
+                let d = rng.int(-3, 3)
+                lct.apply_path(u, v, d)
+                for y in ab: w[y] += d
+            elif op == 1 and from[v] != None:
+                let p = from[v]!
+                lct.cut(v, p)
+                adj[v] = [y for y in adj[v] if y != p]
+                adj[p] = [y for y in adj[p] if y != v]
+            elif op == 2:
+                let s = rng.int(-5, 5)
+                lct.set(v, s)
+                w[v] = s
+            assert lct.fold_path(u, v) == sum([w[y] for y in ab]) or op == 1
+            assert lct.get(u) == w[u]
+        else:
+            assert lct.dist(u, v) == None and lct.jump(u, v, 0) == None
+            lct.link(u, v)
+            for (x, y) in [(u, v), (v, u)]: adj[x].push(y)
 
 @test
 fn lazy_link_cut_keeps_path_order_under_assignment():
@@ -2531,7 +2631,16 @@ pub struct LazyEulerTourTree<V, T, F>:
 /// traps: never
 /// example: `cartesian_tree([3, 1, 2]) == [Some(1), None, Some(1)] and cartesian_tree([1, 1]) == [None, Some(0)]`
 /// example: `cartesian_tree([3, 1, 2], by: (x, y) => x > y) == [None, Some(2), Some(0)]`
-pub fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D]?D = todo
+pub fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D]?D:
+    var par: [D]?D = None
+    var stack: List<D> = []
+    for i in D:
+        var last: ?D = None
+        while not stack.is_empty and by(a[i], a[stack.last!]): last = stack.pop()
+        if let l = last: par[l] = Some(i)
+        if not stack.is_empty: par[i] = Some(stack.last!)
+        stack.push(i)
+    par
 
 /// The Kruskal reconstruction tree: each edge that merges two components, in increasing
 /// weight, becomes a node above them. The leaves under a node are the vertices connected by
