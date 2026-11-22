@@ -7,10 +7,9 @@ domains, generics, operation values, borrows). If the library can express
 it, so can your own.
 
 ```text
-$ python3 proto/cp.py test stdlib              # every test in every module
-$ python3 proto/cp.py test stdlib/segtree.cp   # one module
-$ python3 proto/cp.py test stdlib -k lca       # tests whose name contains "lca"
-$ python3 proto/cp.py doc stdlib               # the API reference, as Markdown
+$ cpl test stdlib              # every test in every module
+$ cpl test stdlib/segtree.cp   # one module
+$ cpl doc stdlib               # the API reference, as HTML in target/doc
 ```
 
 A module is one file, and its tests live in the same file as `@test fn`s.

@@ -21,8 +21,8 @@ examples/local-lib/
 ```
 
 ```text
-$ python3 proto/cp.py test examples/local-lib
-$ printf '3 2\n1 2\n2 3\n' | python3 proto/cp.py lib-run examples/local-lib/solutions/road_reversal.cp
+$ cpl test examples/local-lib
+$ printf '3 2\n1 2\n2 3\n' | cpl run examples/local-lib/solutions/road_reversal.cp
 YES
 0 1 0
 ```
