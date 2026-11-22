@@ -1,0 +1,3 @@
+let xs: List<Int> = [1, 2, 3]
+for x in xs:
+    print(x)

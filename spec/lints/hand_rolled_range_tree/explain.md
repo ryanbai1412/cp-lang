@@ -1,0 +1,1 @@
+Hand-rolling a binary indexed tree (`p += p & -p` / `p -= p & -p`) or a segment tree (`2 * p` and `2 * p + 1` with halving or midpoint recursion) duplicates tested, domain-safe stdlib range structures. Use `Fenwick` / `DualFenwick` / `RangeFenwick` or `SegTree` / `LazySegTree` / `DualSegTree`.

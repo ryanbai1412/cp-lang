@@ -1,0 +1,1 @@
+A `Rooted` tree has one traversal order, its preorder domain `t.Pre` (decision 63). `for v in t.at` visits each vertex before its descendants, `for v in t.at.rev` after them, and `for (p, v) in t.at.items` gives the position too. `cpl lint --fix` rewrites `t.preorder` to `t.at` and `t.postorder` to `t.at.rev`.

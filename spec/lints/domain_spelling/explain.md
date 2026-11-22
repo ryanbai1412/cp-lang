@@ -1,0 +1,1 @@
+Domains follow the one-spelling sequence rules: sort a domain with `D.sort(by: key)` (matching `xs.sort(by: key)`), and pass the predicate to `.first(p)` positionally (without `where:`). `cpl fix` rewrites both.

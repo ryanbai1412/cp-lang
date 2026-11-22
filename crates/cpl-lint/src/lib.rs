@@ -72,6 +72,7 @@ pub struct Lint {
     pub explanation: &'static str,
     pub trigger: &'static str,
     pub fix: &'static str,
+    pub near_miss: &'static str,
 }
 
 pub const UNKNOWN_LINT: Lint = Lint {
@@ -80,9 +81,10 @@ pub const UNKNOWN_LINT: Lint = Lint {
     default: Level::Warn,
     title: "Unknown lint name",
     summary: "`@allow` or `cp.toml` names a lint that does not exist",
-    explanation: "An `@allow(...)` attribute or `[lints]` table entry names a lint that does not exist. Check the spelling against the lint catalog.",
-    trigger: "@allow(not_a_real_lint)\nlet x = 1\nprint(x)\n",
-    fix: "@allow(var_never_reassigned)\nvar x = 1\nprint(x)\n",
+    explanation: include_str!("../../../spec/lints/unknown_lint/explain.md"),
+    trigger: include_str!("../../../spec/lints/unknown_lint/before.cp"),
+    fix: include_str!("../../../spec/lints/unknown_lint/after.cp"),
+    near_miss: include_str!("../../../spec/lints/unknown_lint/near_miss.cp"),
 };
 pub const POSITION_ARITHMETIC: Lint = Lint {
     code: Code("L0101"),
@@ -90,9 +92,10 @@ pub const POSITION_ARITHMETIC: Lint = Lint {
     default: Level::Warn,
     title: "Position arithmetic via `.ord`",
     summary: "`V(v.ord + 1)` builds a position from a number",
-    explanation: "Converting a domain index to `.ord`, adding or subtracting an offset, and wrapping it back in `V(...)` bypasses checked neighbor operations. Use `v.next`, `v.prev`, or `v + k` (which return `?V`).",
-    trigger: "domain V = 1..=3\nfor v in V:\n    let _ = V(v.ord + 1)\n",
-    fix: "domain V = 1..=3\nfor v in V:\n    if let nxt = v.next:\n        print(nxt)\n",
+    explanation: include_str!("../../../spec/lints/position_arithmetic/explain.md"),
+    trigger: include_str!("../../../spec/lints/position_arithmetic/before.cp"),
+    fix: include_str!("../../../spec/lints/position_arithmetic/after.cp"),
+    near_miss: include_str!("../../../spec/lints/position_arithmetic/near_miss.cp"),
 };
 pub const VAR_NEVER_REASSIGNED: Lint = Lint {
     code: Code("L0201"),
@@ -100,9 +103,10 @@ pub const VAR_NEVER_REASSIGNED: Lint = Lint {
     default: Level::Warn,
     title: "Mutable binding never reassigned",
     summary: "a `var` that is never changed",
-    explanation: "A `var` binding is never mutated after initialization. Use `let` to signal immutability to readers and the compiler.",
-    trigger: "var x = 10\nprint(x)\n",
-    fix: "let x = 10\nprint(x)\n",
+    explanation: include_str!("../../../spec/lints/var_never_reassigned/explain.md"),
+    trigger: include_str!("../../../spec/lints/var_never_reassigned/before.cp"),
+    fix: include_str!("../../../spec/lints/var_never_reassigned/after.cp"),
+    near_miss: include_str!("../../../spec/lints/var_never_reassigned/near_miss.cp"),
 };
 pub const UNREAD_FIELD: Lint = Lint {
     code: Code("L0202"),
@@ -110,9 +114,10 @@ pub const UNREAD_FIELD: Lint = Lint {
     default: Level::Warn,
     title: "Struct field never read",
     summary: "a struct field that is never read",
-    explanation: "A field declared on a `struct` is never read anywhere in the file. Remove unused fields to keep structs compact and clear.",
-    trigger: "struct Pt:\n    x: Int\n    y: Int\nlet p = Pt(x: 1, y: 2)\nprint(p.x)\n",
-    fix: "struct Pt:\n    x: Int\nlet p = Pt(x: 1)\nprint(p.x)\n",
+    explanation: include_str!("../../../spec/lints/unread_field/explain.md"),
+    trigger: include_str!("../../../spec/lints/unread_field/before.cp"),
+    fix: include_str!("../../../spec/lints/unread_field/after.cp"),
+    near_miss: include_str!("../../../spec/lints/unread_field/near_miss.cp"),
 };
 pub const SHADOWS_TOP_LEVEL: Lint = Lint {
     code: Code("L0203"),
@@ -120,9 +125,10 @@ pub const SHADOWS_TOP_LEVEL: Lint = Lint {
     default: Level::Warn,
     title: "Local shadows top-level binding",
     summary: "a local name that hides a top-level `let`",
-    explanation: "A parameter or local variable inside a function has the same name as a top-level `let` binding, which can hide an unintended reference to global input.",
-    trigger: "let n = 5\nfn f() -> Int:\n    let n = 10\n    n\nprint(f())\n",
-    fix: "let n = 5\nfn f() -> Int:\n    let k = 10\n    k + n\nprint(f())\n",
+    explanation: include_str!("../../../spec/lints/shadows_top_level/explain.md"),
+    trigger: include_str!("../../../spec/lints/shadows_top_level/before.cp"),
+    fix: include_str!("../../../spec/lints/shadows_top_level/after.cp"),
+    near_miss: include_str!("../../../spec/lints/shadows_top_level/near_miss.cp"),
 };
 pub const TURBOFISH_TYPE_ARGS: Lint = Lint {
     code: Code("L0204"),
@@ -130,9 +136,10 @@ pub const TURBOFISH_TYPE_ARGS: Lint = Lint {
     default: Level::Warn,
     title: "Turbofish `::<...>` on generic call",
     summary: "`f::<T>(...)`: canonical generic call spelling is `f<T>(...)`",
-    explanation: "Generic calls write type arguments directly as `f<T>(...)` without `::`. `cpl fix` (or `cpl lint --fix`) removes the legacy `::`.",
-    trigger: "let x = read::<Int>()\nprint(x)\n",
-    fix: "let x = read<Int>()\nprint(x)\n",
+    explanation: include_str!("../../../spec/lints/turbofish_type_args/explain.md"),
+    trigger: include_str!("../../../spec/lints/turbofish_type_args/before.cp"),
+    fix: include_str!("../../../spec/lints/turbofish_type_args/after.cp"),
+    near_miss: include_str!("../../../spec/lints/turbofish_type_args/near_miss.cp"),
 };
 pub const POW_METHOD: Lint = Lint {
     code: Code("L0205"),
@@ -140,19 +147,22 @@ pub const POW_METHOD: Lint = Lint {
     default: Level::Warn,
     title: "Power written with `.pow(e)`",
     summary: "`a.pow(e)`: power is written `a ** e`",
-    explanation: "CP Lang spells exponentiation with `**` on numbers, `Mod<P>`, `Mat<T>`, and any type implementing `Pow`. `cpl fix` rewrites `a.pow(e)` to `a ** e`.",
-    trigger: "let x = 2\nprint(x.pow(10))\n",
-    fix: "let x = 2\nprint(x ** 10)\n",
+    explanation: include_str!("../../../spec/lints/pow_method/explain.md"),
+    trigger: include_str!("../../../spec/lints/pow_method/before.cp"),
+    fix: include_str!("../../../spec/lints/pow_method/after.cp"),
+    near_miss: include_str!("../../../spec/lints/pow_method/near_miss.cp"),
 };
 pub const GETTER_PARENS: Lint = Lint {
     code: Code("L0206"),
     name: "getter_parens",
     default: Level::Warn,
     title: "Built-in getter called with `()`",
-    summary: "`.len()`, `.is_empty()`, `.first()`, `.last()`, `.rev()`, `.items()` are read without `()`",
-    explanation: "Built-in getters (`len`, `is_empty`, `first`, `last`, `rev`, `items`) are read as properties without parentheses. `cpl fix` drops the empty `()`.",
-    trigger: "let xs = [1, 2, 3]\nprint(xs.len())\n",
-    fix: "let xs = [1, 2, 3]\nprint(xs.len)\n",
+    summary:
+        "`.len()`, `.is_empty()`, `.first()`, `.last()`, `.rev()`, `.items()` are read without `()`",
+    explanation: include_str!("../../../spec/lints/getter_parens/explain.md"),
+    trigger: include_str!("../../../spec/lints/getter_parens/before.cp"),
+    fix: include_str!("../../../spec/lints/getter_parens/after.cp"),
+    near_miss: include_str!("../../../spec/lints/getter_parens/near_miss.cp"),
 };
 pub const IS_IN_COND_HEADER: Lint = Lint {
     code: Code("L0207"),
@@ -160,9 +170,10 @@ pub const IS_IN_COND_HEADER: Lint = Lint {
     default: Level::Warn,
     title: "Pattern test `x is p` in `if`/`elif`/`while` header",
     summary: "`if`/`elif`/`while` headers bind with `let p = x`, not `x is p`",
-    explanation: "In `if`, `elif`, and `while` headers, bind with `if let p = x` / `while let p = x` and chain extra guards with `, cond`. Keep `x is pat` for value position where a `Bool` is wanted. `cpl fix` rewrites `if`/`elif`/`while` `is` headers to `let`.",
-    trigger: "let x: ?Int = some(3)\nif x is v and v > 0:\n    print(v)\n",
-    fix: "let x: ?Int = some(3)\nif let v = x, v > 0:\n    print(v)\n",
+    explanation: include_str!("../../../spec/lints/is_in_cond_header/explain.md"),
+    trigger: include_str!("../../../spec/lints/is_in_cond_header/before.cp"),
+    fix: include_str!("../../../spec/lints/is_in_cond_header/after.cp"),
+    near_miss: include_str!("../../../spec/lints/is_in_cond_header/near_miss.cp"),
 };
 pub const REDUNDANT_PRELUDE_IMPORT: Lint = Lint {
     code: Code("L0208"),
@@ -170,9 +181,10 @@ pub const REDUNDANT_PRELUDE_IMPORT: Lint = Lint {
     default: Level::Warn,
     title: "`use` of a name the prelude already provides",
     summary: "`use std.tree.{Rooted}` imports what the prelude gives every program",
-    explanation: "The prelude (`spec/std/prelude.cp`) brings in each of its names when a program uses it, so `use std.tree.{Rooted}` or `use std.mod.Mod` says nothing. `cpl fix` drops the name, and the `use` when nothing is left. An alias, a glob, a `pub use` and the imports of a library (a file with `pub` items) are left alone.",
-    trigger: "use std.tree.{Rooted}\ndomain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
-    fix: "domain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
+    explanation: include_str!("../../../spec/lints/redundant_prelude_import/explain.md"),
+    trigger: include_str!("../../../spec/lints/redundant_prelude_import/before.cp"),
+    fix: include_str!("../../../spec/lints/redundant_prelude_import/after.cp"),
+    near_miss: include_str!("../../../spec/lints/redundant_prelude_import/near_miss.cp"),
 };
 pub const REDUNDANT_ARG_NAME: Lint = Lint {
     code: Code("L0209"),
@@ -180,9 +192,10 @@ pub const REDUNDANT_ARG_NAME: Lint = Lint {
     default: Level::Warn,
     title: "Named argument or record field repeating its own name",
     summary: "`f(moves: moves)` or `(val: val)` can be punned as `f(moves:)` / `(val:)`",
-    explanation: "When a named call argument or record field passes a variable of the same name, write `name:` instead of `name: name`. `cpl fix` shortens `name: name` to `name:`.",
-    trigger: "fn f(moves: Int, cost: Int) -> Int = moves + cost\nlet moves = 3\nlet cost = 4\nprint(f(moves: moves, cost: cost))\n",
-    fix: "fn f(moves: Int, cost: Int) -> Int = moves + cost\nlet moves = 3\nlet cost = 4\nprint(f(moves:, cost:))\n",
+    explanation: include_str!("../../../spec/lints/redundant_arg_name/explain.md"),
+    trigger: include_str!("../../../spec/lints/redundant_arg_name/before.cp"),
+    fix: include_str!("../../../spec/lints/redundant_arg_name/after.cp"),
+    near_miss: include_str!("../../../spec/lints/redundant_arg_name/near_miss.cp"),
 };
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
@@ -190,9 +203,10 @@ pub const FLOAT_EQUALITY: Lint = Lint {
     default: Level::Warn,
     title: "Exact float equality comparison",
     summary: "`==` or `!=` on floats",
-    explanation: "Comparing `F64` values with `==` or `!=` is fragile under IEEE-754 rounding. Compare `abs(a - b) < eps` instead.",
-    trigger: "let a: F64 = 0.1 + 0.2\nprint(a == 0.3)\n",
-    fix: "let a: F64 = 0.1 + 0.2\nprint(abs(a - 0.3) < 1e-9)\n",
+    explanation: include_str!("../../../spec/lints/float_equality/explain.md"),
+    trigger: include_str!("../../../spec/lints/float_equality/before.cp"),
+    fix: include_str!("../../../spec/lints/float_equality/after.cp"),
+    near_miss: include_str!("../../../spec/lints/float_equality/near_miss.cp"),
 };
 pub const DOMAIN_KEYED_MAP: Lint = Lint {
     code: Code("L0412"),
@@ -200,9 +214,10 @@ pub const DOMAIN_KEYED_MAP: Lint = Lint {
     default: Level::Warn,
     title: "Map or Set keyed by a domain",
     summary: "a `Map` or `Set` keyed by a domain",
-    explanation: "A `Map<V, T>` or `Set<V>` keyed by a dense domain `V` pays hashing or tree overhead on every lookup. Use a flat `[V]?T` or `[V]Bool` array instead.",
-    trigger: "domain V = 1..=5\nvar m: Map<V, Int> = Map()\nm[V(1)] = 42\nprint(m[V(1)] ?? 0)\n",
-    fix: "domain V = 1..=5\nvar m: [V]?Int = none\nm[V(1)] = 42\nprint(m[V(1)] ?? 0)\n",
+    explanation: include_str!("../../../spec/lints/domain_keyed_map/explain.md"),
+    trigger: include_str!("../../../spec/lints/domain_keyed_map/before.cp"),
+    fix: include_str!("../../../spec/lints/domain_keyed_map/after.cp"),
+    near_miss: include_str!("../../../spec/lints/domain_keyed_map/near_miss.cp"),
 };
 pub const MEMO_KEY_SPACE: Lint = Lint {
     code: Code("L0413"),
@@ -210,9 +225,10 @@ pub const MEMO_KEY_SPACE: Lint = Lint {
     default: Level::Warn,
     title: "`@memo` table exceeds memory budget",
     summary: "a `@memo` whose table does not fit in memory at the input bounds",
-    explanation: "The product of the parameter domain sizes of a `@memo` function exceeds the flat-table memory budget, which can trigger TLE or MLE on contest judges. Narrow the state space or switch to iterative DP.",
-    trigger: "domain A = 0..100_000\ndomain B = 0..100_000\n@memo\nfn dp(a: A, b: B) -> Int: a.to_idx + b.to_idx\nprint(dp(A.first, B.first))\n",
-    fix: "domain A = 0..100\ndomain B = 0..100\n@memo\nfn dp(a: A, b: B) -> Int: a.to_idx + b.to_idx\nprint(dp(A.first, B.first))\n",
+    explanation: include_str!("../../../spec/lints/memo_key_space/explain.md"),
+    trigger: include_str!("../../../spec/lints/memo_key_space/before.cp"),
+    fix: include_str!("../../../spec/lints/memo_key_space/after.cp"),
+    near_miss: include_str!("../../../spec/lints/memo_key_space/near_miss.cp"),
 };
 pub const UNPROVEN_LIST_INDEX: Lint = Lint {
     code: Code("L0414"),
@@ -220,19 +236,22 @@ pub const UNPROVEN_LIST_INDEX: Lint = Lint {
     default: Level::Warn,
     title: "Unproven `List` index in nested loop",
     summary: "a `List` index inside nested loops that is checked on every access",
-    explanation: "Indexing a `List<T>` with an arbitrary `Int` inside nested loops emits a runtime bounds check on every iteration. Declare a `domain` and `[D]T` array so bounds are verified once.",
-    trigger: "let a: List<Int> = [1, 2, 3]\nvar s = 0\nfor i in 0..3:\n    for j in 0..3:\n        s += a[j]\nprint(s)\n",
-    fix: "domain D = 0..3\nlet a: [D]Int = [1, 2, 3]\nvar s = 0\nfor _ in D:\n    for j in D:\n        s += a[j]\nprint(s)\n",
+    explanation: include_str!("../../../spec/lints/unproven_list_index/explain.md"),
+    trigger: include_str!("../../../spec/lints/unproven_list_index/before.cp"),
+    fix: include_str!("../../../spec/lints/unproven_list_index/after.cp"),
+    near_miss: include_str!("../../../spec/lints/unproven_list_index/near_miss.cp"),
 };
 pub const LOOP_INVARIANT_MOD_DIV: Lint = Lint {
     code: Code("L0415"),
     name: "loop_invariant_mod_div",
     default: Level::Warn,
     title: "Loop-invariant `Mod` divisor inside loop",
-    summary: "a `Mod<P>` division by a loop-invariant value computes an O(log P) inverse every iteration",
-    explanation: "Dividing a `Mod<P>` value computes an O(log P) modular inverse on every iteration. When the divisor does not change inside the loop, hoist `let inv_d = d.inv` before the loop and multiply by `inv_d` instead.",
-    trigger: "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2), Z(3)]\nfor i in 0..xs.len:\n    xs[i] = xs[i] / d\nprint(xs)\n",
-    fix: "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2), Z(3)]\nlet inv_d = d.inv\nfor i in 0..xs.len:\n    xs[i] = xs[i] * inv_d\nprint(xs)\n",
+    summary:
+        "a `Mod<P>` division by a loop-invariant value computes an O(log P) inverse every iteration",
+    explanation: include_str!("../../../spec/lints/loop_invariant_mod_div/explain.md"),
+    trigger: include_str!("../../../spec/lints/loop_invariant_mod_div/before.cp"),
+    fix: include_str!("../../../spec/lints/loop_invariant_mod_div/after.cp"),
+    near_miss: include_str!("../../../spec/lints/loop_invariant_mod_div/near_miss.cp"),
 };
 pub const SEARCH_LOOP: Lint = Lint {
     code: Code("L0501"),
@@ -240,9 +259,10 @@ pub const SEARCH_LOOP: Lint = Lint {
     default: Level::Warn,
     title: "Flag-and-break search loop",
     summary: "a loop that sets a flag or `?T` and breaks: `first`, `any` or `all`",
-    explanation: "A loop that initializes a boolean flag or optional, updates it on a condition, and breaks can be written directly with `any`, `all`, or `first`.",
-    trigger: "let xs: List<Int> = [1, 4, 7]\nvar found = false\nfor x in xs:\n    if x > 3:\n        found = true\n        break\nprint(found)\n",
-    fix: "let xs: List<Int> = [1, 4, 7]\nlet found = any(x > 3 for x in xs)\nprint(found)\n",
+    explanation: include_str!("../../../spec/lints/search_loop/explain.md"),
+    trigger: include_str!("../../../spec/lints/search_loop/before.cp"),
+    fix: include_str!("../../../spec/lints/search_loop/after.cp"),
+    near_miss: include_str!("../../../spec/lints/search_loop/near_miss.cp"),
 };
 pub const DISCARDED_RESULT: Lint = Lint {
     code: Code("L0502"),
@@ -250,9 +270,10 @@ pub const DISCARDED_RESULT: Lint = Lint {
     default: Level::Warn,
     title: "Discarded function return value",
     summary: "`let _ =` throws away what a fn of this file returns",
-    explanation: "Binding the result of a local function to `let _ =` hides intent. Either use the returned value or change the function to return nothing when it is only called for side effects.",
-    trigger: "fn work(u: Int) -> Int:\n    print(u)\n    u\nlet _ = work(2)\n",
-    fix: "fn work(u: Int):\n    print(u)\nwork(2)\n",
+    explanation: include_str!("../../../spec/lints/discarded_result/explain.md"),
+    trigger: include_str!("../../../spec/lints/discarded_result/before.cp"),
+    fix: include_str!("../../../spec/lints/discarded_result/after.cp"),
+    near_miss: include_str!("../../../spec/lints/discarded_result/near_miss.cp"),
 };
 pub const SYMMETRIC_WRITE: Lint = Lint {
     code: Code("L0503"),
@@ -260,9 +281,10 @@ pub const SYMMETRIC_WRITE: Lint = Lint {
     default: Level::Warn,
     title: "Duplicate symmetric write",
     summary: "the same fact written for `(u, v)` and then `(v, u)`",
-    explanation: "Writing the same value to both `(u, v)` and `(v, u)` duplicates one fact. Use `Graph.undirected(...)`, `Sym<V>`, or a two-element loop so the fact lives in one place.",
-    trigger: "domain V = 1..=3\nvar adj: [V]List<V> = []\nlet (u, v) = (V(1), V(2))\nadj[u].push(v)\nadj[v].push(u)\nprint(adj[u].len)\n",
-    fix: "domain V = 1..=3\nvar adj: [V]List<V> = []\nlet (u, v) = (V(1), V(2))\nfor (a, b) in [(u, v), (v, u)]:\n    adj[a].push(b)\nprint(adj[u].len)\n",
+    explanation: include_str!("../../../spec/lints/symmetric_write/explain.md"),
+    trigger: include_str!("../../../spec/lints/symmetric_write/before.cp"),
+    fix: include_str!("../../../spec/lints/symmetric_write/after.cp"),
+    near_miss: include_str!("../../../spec/lints/symmetric_write/near_miss.cp"),
 };
 pub const LOOP_REDUCTION: Lint = Lint {
     code: Code("L0504"),
@@ -270,9 +292,10 @@ pub const LOOP_REDUCTION: Lint = Lint {
     default: Level::Warn,
     title: "Manual accumulation loop",
     summary: "a loop that only accumulates: `sum`, `count`, `max` or `min`",
-    explanation: "A loop that only sums, counts, or takes a running `min`/`max` over an iterable reads more clearly as `sum(...)`, `count(...)`, `min(...)`, or `max(...)`.",
-    trigger: "let xs: List<Int> = [1, 2, 3]\nvar total = 0\nfor x in xs:\n    total += x\nprint(total)\n",
-    fix: "let xs: List<Int> = [1, 2, 3]\nlet total = sum(x for x in xs)\nprint(total)\n",
+    explanation: include_str!("../../../spec/lints/loop_reduction/explain.md"),
+    trigger: include_str!("../../../spec/lints/loop_reduction/before.cp"),
+    fix: include_str!("../../../spec/lints/loop_reduction/after.cp"),
+    near_miss: include_str!("../../../spec/lints/loop_reduction/near_miss.cp"),
 };
 pub const INDEX_ONLY_LOOP: Lint = Lint {
     code: Code("L0505"),
@@ -280,9 +303,10 @@ pub const INDEX_ONLY_LOOP: Lint = Lint {
     default: Level::Warn,
     title: "Index loop that only reads `xs[i]`",
     summary: "`for i in 0..xs.len` that only reads `xs[i]`",
-    explanation: "Iterating `for i in 0..xs.len` solely to read `xs[i]` introduces an unnecessary index variable. Iterate directly with `for x in xs:`.",
-    trigger: "let xs: List<Int> = [1, 2, 3]\nfor i in 0..xs.len:\n    print(xs[i])\n",
-    fix: "let xs: List<Int> = [1, 2, 3]\nfor x in xs:\n    print(x)\n",
+    explanation: include_str!("../../../spec/lints/index_only_loop/explain.md"),
+    trigger: include_str!("../../../spec/lints/index_only_loop/before.cp"),
+    fix: include_str!("../../../spec/lints/index_only_loop/after.cp"),
+    near_miss: include_str!("../../../spec/lints/index_only_loop/near_miss.cp"),
 };
 pub const REPEATED_LITERAL: Lint = Lint {
     code: Code("L0506"),
@@ -290,9 +314,10 @@ pub const REPEATED_LITERAL: Lint = Lint {
     default: Level::Warn,
     title: "Repeated large literal",
     summary: "a big literal (a bound or modulus) written in several places",
-    explanation: "A big literal (a bound, a modulus, an infinity) is written on several lines: facts that must agree but are kept apart. Equal bounds in the types of different `read()` inputs are separate facts and do not count. Name it once (`const P = 998244353`, a domain, a type alias) and use the name.",
-    trigger: "let a = [3, 4]\nprint(a.sum() % 998244353)\nprint(a[0] * a[1] % 998244353)\n",
-    fix: "const P = 998244353\nlet a = [3, 4]\nprint(a.sum() % P)\nprint(a[0] * a[1] % P)\n",
+    explanation: include_str!("../../../spec/lints/repeated_literal/explain.md"),
+    trigger: include_str!("../../../spec/lints/repeated_literal/before.cp"),
+    fix: include_str!("../../../spec/lints/repeated_literal/after.cp"),
+    near_miss: include_str!("../../../spec/lints/repeated_literal/near_miss.cp"),
 };
 pub const PUSH_LOOP: Lint = Lint {
     code: Code("L0507"),
@@ -300,9 +325,10 @@ pub const PUSH_LOOP: Lint = Lint {
     default: Level::Warn,
     title: "Loop that only pushes",
     summary: "a list built by a loop that only pushes: a comprehension",
-    explanation: "A `var xs = [..]` followed by a loop whose only statement is `xs.push(e)`: a comprehension written as a loop. Write the list: `[e for x in xs]` (with `if c` for a filtered loop, `head + [..]` after a non-empty start). `cpl lint --fix` rewrites it.",
-    trigger: "let raw = [3, 1, 2]\nvar doubled: List<Int> = []\nfor x in raw: doubled.push(2 * x)\nprint(doubled)\n",
-    fix: "let raw = [3, 1, 2]\nlet doubled = [2 * x for x in raw]\nprint(doubled)\n",
+    explanation: include_str!("../../../spec/lints/push_loop/explain.md"),
+    trigger: include_str!("../../../spec/lints/push_loop/before.cp"),
+    fix: include_str!("../../../spec/lints/push_loop/after.cp"),
+    near_miss: include_str!("../../../spec/lints/push_loop/near_miss.cp"),
 };
 pub const NONE_CHECK_UNWRAP: Lint = Lint {
     code: Code("L0508"),
@@ -310,9 +336,10 @@ pub const NONE_CHECK_UNWRAP: Lint = Lint {
     default: Level::Warn,
     title: "Check for `none`, then unwrap",
     summary: "`x != none and .. x!`: the check and the unwrap say one thing twice",
-    explanation: "`x != none and .. x! ..` tests the option and then unwraps it: the same fact twice, and the `!` stays if the test is edited away. Bind the value once with `if let v = x:`, or compare the option itself (`x == some(e)`).",
-    trigger: "fn hit(p: ?Int, v: Int) -> Bool = p != none and v == p!\nprint(hit(none, 1))\n",
-    fix: "fn hit(p: ?Int, v: Int) -> Bool = p == some(v)\nprint(hit(none, 1))\n",
+    explanation: include_str!("../../../spec/lints/none_check_unwrap/explain.md"),
+    trigger: include_str!("../../../spec/lints/none_check_unwrap/before.cp"),
+    fix: include_str!("../../../spec/lints/none_check_unwrap/after.cp"),
+    near_miss: include_str!("../../../spec/lints/none_check_unwrap/near_miss.cp"),
 };
 pub const FREE_FOLD: Lint = Lint {
     code: Code("L0509"),
@@ -320,9 +347,10 @@ pub const FREE_FOLD: Lint = Lint {
     default: Level::Warn,
     title: "Fold or sort of a sequence written as a free function",
     summary: "`sum(xs)`, `count(xs, p)` or `sort(mut xs)`: the method reads on the sequence",
-    explanation: "A fold or sort of one sequence is a method on it: `xs.sum()`, `xs.count(p)`, `xs.all(p)`, `xs.first(p)`, `xs.max()`, `xs.sorted(by: k)`, `xs.sort()`. The free form stays where it reads as math: a generator (`sum(f(x) for x in xs)`) or two or more values (`min(a, b)`). `cpl lint --fix` rewrites it.",
-    trigger: "let xs = [3, 1, 4]\nprint(sum(xs), count(xs, x => x > 2))\n",
-    fix: "let xs = [3, 1, 4]\nprint(xs.sum(), xs.count(x => x > 2))\n",
+    explanation: include_str!("../../../spec/lints/free_fold/explain.md"),
+    trigger: include_str!("../../../spec/lints/free_fold/before.cp"),
+    fix: include_str!("../../../spec/lints/free_fold/after.cp"),
+    near_miss: include_str!("../../../spec/lints/free_fold/near_miss.cp"),
 };
 pub const BY_TWIN: Lint = Lint {
     code: Code("L0510"),
@@ -330,9 +358,10 @@ pub const BY_TWIN: Lint = Lint {
     default: Level::Warn,
     title: "`_by` twin instead of a `by:` option",
     summary: "`min_by`, `max_by`, `argmax_by`, `runs_by`, `group_by`, `first_ge_by`: pass `by:` to the base operation",
-    explanation: "Keyed sequence operations take a `by:` named option on the base function rather than a `_by` twin: `xs.min(by: k)`, `xs.max(by: k)`, `xs.argmax(by: k)`, `xs.group(by: k)`, `xs.is_sorted(by: k)`, `xs.runs(by: k)`, `xs.run_ranges(by: k)`, `xs.first_ge(x, by: k)`. `cpl lint --fix` rewrites both method and free `_by` calls.",
-    trigger: "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(min_by(xs, s => s.len))\n",
-    fix: "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(xs.min(by: s => s.len))\n",
+    explanation: include_str!("../../../spec/lints/by_twin/explain.md"),
+    trigger: include_str!("../../../spec/lints/by_twin/before.cp"),
+    fix: include_str!("../../../spec/lints/by_twin/after.cp"),
+    near_miss: include_str!("../../../spec/lints/by_twin/near_miss.cp"),
 };
 pub const DOMAIN_SPELLING: Lint = Lint {
     code: Code("L0512"),
@@ -340,9 +369,10 @@ pub const DOMAIN_SPELLING: Lint = Lint {
     default: Level::Warn,
     title: "Non-canonical domain/sequence method spelling",
     summary: "`D.sorted(by:)` -> `D.sort(by:)`; `xs.first(where: p)` -> `xs.first(p)`",
-    explanation: "Domains follow the one-spelling sequence rules: sort a domain with `D.sort(by: key)` (matching `xs.sort(by: key)`), and pass the predicate to `.first(p)` positionally (without `where:`). `cpl fix` rewrites both.",
-    trigger: "domain V = 1..=3\nlet a: [V]Int = [3, 1, 2]\nlet _ = V.sorted(by: a)\nlet _ = V.first(where: v => a[v] > 1)\n",
-    fix: "domain V = 1..=3\nlet a: [V]Int = [3, 1, 2]\nlet _ = V.sort(by: a)\nlet _ = V.first(v => a[v] > 1)\n",
+    explanation: include_str!("../../../spec/lints/domain_spelling/explain.md"),
+    trigger: include_str!("../../../spec/lints/domain_spelling/before.cp"),
+    fix: include_str!("../../../spec/lints/domain_spelling/after.cp"),
+    near_miss: include_str!("../../../spec/lints/domain_spelling/near_miss.cp"),
 };
 pub const PREFIX_TWIN: Lint = Lint {
     code: Code("L0513"),
@@ -350,9 +380,10 @@ pub const PREFIX_TWIN: Lint = Lint {
     default: Level::Warn,
     title: "Dimension-suffixed prefix or diff helper instead of `prefix`/`Prefix`/`Diff`",
     summary: "`prefix1`/`prefix2`/`prefix_n`, `Prefix1`/`Prefix2`/`PrefixN`, `Diff1`/`Diff2`: write `prefix`, `Prefix`, or `Diff`",
-    explanation: "`prefix(a)` dispatches by shape across `[D]T`, `[R, C]T`, and `List<T>` under one `Prefix` type family, and `Diff` covers both 1-D `Diff<D, T>` and 2-D `Diff<R, C, T>`. `cpl fix` rewrites the removed arity-suffixed names (`prefix1`, `prefix2`, `prefix_n`, `Prefix1`, `Prefix2`, `PrefixN`, `Diff1`, `Diff2`) to `prefix`, `Prefix`, and `Diff`.",
-    trigger: "let xs = [3, 1, 4]\nlet p = prefix_n(xs)\nprint(p.sum(0..3))\n",
-    fix: "let xs = [3, 1, 4]\nlet p = prefix(xs)\nprint(p.sum(0..3))\n",
+    explanation: include_str!("../../../spec/lints/prefix_twin/explain.md"),
+    trigger: include_str!("../../../spec/lints/prefix_twin/before.cp"),
+    fix: include_str!("../../../spec/lints/prefix_twin/after.cp"),
+    near_miss: include_str!("../../../spec/lints/prefix_twin/near_miss.cp"),
 };
 
 pub const TREE_ORDER: Lint = Lint {
@@ -361,9 +392,10 @@ pub const TREE_ORDER: Lint = Lint {
     default: Level::Warn,
     title: "`preorder` or `postorder` of a rooted tree",
     summary: "`t.preorder` / `t.postorder`: iterate the preorder array `t.at` (`t.at.rev` for children first)",
-    explanation: "A `Rooted` tree has one traversal order, its preorder domain `t.Pre` (decision 63). `for v in t.at` visits each vertex before its descendants, `for v in t.at.rev` after them, and `for (p, v) in t.at.items` gives the position too. `cpl lint --fix` rewrites `t.preorder` to `t.at` and `t.postorder` to `t.at.rev`.",
-    trigger: "use std.graph.{Graph}\nuse std.tree.{Rooted}\ndomain V = 0..2\nlet t = Rooted(Graph.undirected([(V(0), V(1))]), V(0))\nfor v in t.postorder: print(v)\n",
-    fix: "use std.graph.{Graph}\nuse std.tree.{Rooted}\ndomain V = 0..2\nlet t = Rooted(Graph.undirected([(V(0), V(1))]), V(0))\nfor v in t.at.rev: print(v)\n",
+    explanation: include_str!("../../../spec/lints/tree_order/explain.md"),
+    trigger: include_str!("../../../spec/lints/tree_order/before.cp"),
+    fix: include_str!("../../../spec/lints/tree_order/after.cp"),
+    near_miss: include_str!("../../../spec/lints/tree_order/near_miss.cp"),
 };
 pub const HAND_ROLLED_RANGE_TREE: Lint = Lint {
     code: Code("L0514"),
@@ -371,9 +403,10 @@ pub const HAND_ROLLED_RANGE_TREE: Lint = Lint {
     default: Level::Warn,
     title: "Hand-rolled Fenwick or segment tree",
     summary: "manual BIT (`p += p & -p`) or segment-tree (`2 * p` / `2 * p + 1`) loop: use `std.fenwick` / `std.segtree` / `std.lazy`",
-    explanation: "Hand-rolling a binary indexed tree (`p += p & -p` / `p -= p & -p`) or a segment tree (`2 * p` and `2 * p + 1` with halving or midpoint recursion) duplicates tested, domain-safe stdlib range structures. Use `Fenwick` / `DualFenwick` / `RangeFenwick` or `SegTree` / `LazySegTree` / `DualSegTree`.",
-    trigger: "var bit: [0..=8]Int = 0\nvar p = 3\nwhile p <= 8:\n    bit[p] += 1\n    p += p & -p\nprint(bit[4])\n",
-    fix: "domain Pos = 1..=8\nvar bit = Fenwick<Pos, Int>()\nbit.add(Pos(3), 1)\nprint(bit.prefix(Pos(4).r))\n",
+    explanation: include_str!("../../../spec/lints/hand_rolled_range_tree/explain.md"),
+    trigger: include_str!("../../../spec/lints/hand_rolled_range_tree/before.cp"),
+    fix: include_str!("../../../spec/lints/hand_rolled_range_tree/after.cp"),
+    near_miss: include_str!("../../../spec/lints/hand_rolled_range_tree/near_miss.cp"),
 };
 pub const SORTED_RANGE_METHOD: Lint = Lint {
     code: Code("L0515"),
@@ -381,9 +414,10 @@ pub const SORTED_RANGE_METHOD: Lint = Lint {
     default: Level::Warn,
     title: "Removed bound-query method on `SortedBag` or `SortedSet`",
     summary: "`first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` on `SortedBag`/`SortedSet`: use `.range(r)`",
-    explanation: "`SortedBag.range(r)` and `SortedSet.range(r)` return an O(1) view whose `.first`, `.last`, and `.len` cost O(log n) and whose iteration costs O(log n + k). `cpl fix` rewrites `first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` to `.range(...)` calls.",
-    trigger: "var s = SortedBag<Int>()\nprint(s.first_ge(3), s.last_lt(5), s.count_range(1, 5))\n",
-    fix: "var s = SortedBag<Int>()\nprint(s.range(3..).first, s.range(..5).last, s.range(1..5).len)\n",
+    explanation: include_str!("../../../spec/lints/sorted_range_method/explain.md"),
+    trigger: include_str!("../../../spec/lints/sorted_range_method/before.cp"),
+    fix: include_str!("../../../spec/lints/sorted_range_method/after.cp"),
+    near_miss: include_str!("../../../spec/lints/sorted_range_method/near_miss.cp"),
 };
 pub const HAND_ROLLED_STRING_ALGO: Lint = Lint {
     code: Code("L0516"),
@@ -391,9 +425,10 @@ pub const HAND_ROLLED_STRING_ALGO: Lint = Lint {
     default: Level::Warn,
     title: "Hand-rolled string algorithm",
     summary: "manual prefix-function, Z-function, polynomial hash, or trie loop: use `std.strings`",
-    explanation: "Hand-rolling a KMP prefix function, Z-function, polynomial rolling hash, or trie insertion loop duplicates tested, linear-time `std.strings` primitives (`prefix_function`, `z_function`, `RollingHash`, `Trie`, `AhoCorasick`).",
-    trigger: "let s = \"ababa\"\nvar pi = List.filled(s.len, 0)\nfor i in 1..s.len:\n    var j = pi[i - 1]\n    while j > 0 and s[i] != s[j]: j = pi[j - 1]\n    if s[i] == s[j]: j += 1\n    pi[i] = j\nprint(pi)\n",
-    fix: "use std.strings.{prefix_function}\nlet s = \"ababa\"\nprint(prefix_function(s))\n",
+    explanation: include_str!("../../../spec/lints/hand_rolled_string_algo/explain.md"),
+    trigger: include_str!("../../../spec/lints/hand_rolled_string_algo/before.cp"),
+    fix: include_str!("../../../spec/lints/hand_rolled_string_algo/after.cp"),
+    near_miss: include_str!("../../../spec/lints/hand_rolled_string_algo/near_miss.cp"),
 };
 pub const HAND_ROLLED_DSU: Lint = Lint {
     code: Code("L0517"),
@@ -401,9 +436,10 @@ pub const HAND_ROLLED_DSU: Lint = Lint {
     default: Level::Warn,
     title: "Hand-rolled union-find (DSU)",
     summary: "manual parent-pointer path compression: use `std.dsu`",
-    explanation: "Hand-rolling union-find path compression (`while par[x] != x: par[x] = par[par[x]]` or recursive `par[x] = find(par[x])`) duplicates domain-safe, path-halving `Dsu`, `DsuOf`, `ParityDsu`, and `PotentialDsu` in `std.dsu`.",
-    trigger: "domain V = 0..4\nvar par: [V]V = [V] v => v\nfn find(v: V) -> V:\n    var x = v\n    while par[x] != x:\n        par[x] = par[par[x]]\n        x = par[x]\n    x\nprint(find(V(0)))\n",
-    fix: "use std.dsu.{Dsu}\ndomain V = 0..4\nvar d = Dsu<V>.new()\nprint(d.find(V(0)))\n",
+    explanation: include_str!("../../../spec/lints/hand_rolled_dsu/explain.md"),
+    trigger: include_str!("../../../spec/lints/hand_rolled_dsu/before.cp"),
+    fix: include_str!("../../../spec/lints/hand_rolled_dsu/after.cp"),
+    near_miss: include_str!("../../../spec/lints/hand_rolled_dsu/near_miss.cp"),
 };
 pub const HAND_ROLLED_SIEVE: Lint = Lint {
     code: Code("L0518"),
@@ -411,9 +447,10 @@ pub const HAND_ROLLED_SIEVE: Lint = Lint {
     default: Level::Warn,
     title: "Hand-rolled prime or SPF sieve",
     summary: "manual Eratosthenes or linear sieve loop: use `std.math.Sieve`",
-    explanation: "Hand-rolling a prime or smallest-prime-factor sieve (`j = i * i; while j <= n: is_prime[j] = false; j += i` or linear `spf[i * p] = p`) duplicates `Sieve` and `sieve_multiplicative` in `std.math`.",
-    trigger: "let n = 20\nvar is_prime = List.filled(n + 1, true)\nfor i in 2..=n:\n    if is_prime[i]:\n        var j = i * i\n        while j <= n:\n            is_prime[j] = false\n            j += i\nprint(is_prime[7])\n",
-    fix: "use std.math.{Sieve}\nlet sv = Sieve.new(20)\nprint(sv.is_prime(7))\n",
+    explanation: include_str!("../../../spec/lints/hand_rolled_sieve/explain.md"),
+    trigger: include_str!("../../../spec/lints/hand_rolled_sieve/before.cp"),
+    fix: include_str!("../../../spec/lints/hand_rolled_sieve/after.cp"),
+    near_miss: include_str!("../../../spec/lints/hand_rolled_sieve/near_miss.cp"),
 };
 pub const HAND_ROLLED_BINARY_LIFTING: Lint = Lint {
     code: Code("L0519"),
@@ -421,9 +458,10 @@ pub const HAND_ROLLED_BINARY_LIFTING: Lint = Lint {
     default: Level::Warn,
     title: "Hand-rolled binary lifting table",
     summary: "manual `up[k][v] = up[k - 1][up[k - 1][v]]` table: use `std.tree`",
-    explanation: "Hand-rolling a binary lifting ancestor table (`up[k, v] = up[k - 1, up[k - 1, v]]`) duplicates `Rooted.lca` / `Rooted.kth_ancestor` and `JumpTree` in `std.tree`.",
-    trigger: "var up = [[0, 0, 1], [0, 0, 0]]\nfor k in 1..2:\n    for v in 0..3:\n        up[k][v] = up[k - 1][up[k - 1][v]]\nprint(up[1][2])\n",
-    fix: "use std.tree.{JumpTree}\ndomain V = 0..3\nvar jt = JumpTree<V>.new()\njt.add(V(1), V(0))\njt.add(V(2), V(1))\nprint(jt.ancestor(V(2), 2))\n",
+    explanation: include_str!("../../../spec/lints/hand_rolled_binary_lifting/explain.md"),
+    trigger: include_str!("../../../spec/lints/hand_rolled_binary_lifting/before.cp"),
+    fix: include_str!("../../../spec/lints/hand_rolled_binary_lifting/after.cp"),
+    near_miss: include_str!("../../../spec/lints/hand_rolled_binary_lifting/near_miss.cp"),
 };
 
 pub const HAND_ROLLED_ANSWER_SEARCH: Lint = Lint {
@@ -431,10 +469,12 @@ pub const HAND_ROLLED_ANSWER_SEARCH: Lint = Lint {
     name: "hand_rolled_answer_search",
     default: Level::Warn,
     title: "Hand-rolled binary search",
-    summary: "manual `while lo < hi` midpoint loop over a predicate: use `bsearch_first`/`bsearch_last`",
-    explanation: "A `while lo < hi` loop that halves with `let mid = (lo + hi) / 2` and sets `hi = mid` / `lo = mid + 1` (or `lo = mid` / `hi = mid - 1` with the rounded-up midpoint) on a predicate of `mid` is `bsearch_first` (or `bsearch_last`) in `std.seq`: O(log n) calls of the predicate, no off-by-one in the bounds, and the same midpoint that cannot overflow. `cpl fix` rewrites the loop and its `var (lo, hi)` when `hi` is not read after it. The predicate must be monotone along the range, which the loop already assumes.",
-    trigger: "let a = [1, 3, 5, 7]\nvar (lo, hi) = (0, a.len)\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if a[mid] >= 5: hi = mid else: lo = mid + 1\nprint(lo)\n",
-    fix: "let a = [1, 3, 5, 7]\nlet lo = bsearch_first(0..a.len, mid => a[mid] >= 5) ?? a.len\nprint(lo)\n",
+    summary:
+        "manual `while lo < hi` midpoint loop over a predicate: use `bsearch_first`/`bsearch_last`",
+    explanation: include_str!("../../../spec/lints/hand_rolled_answer_search/explain.md"),
+    trigger: include_str!("../../../spec/lints/hand_rolled_answer_search/before.cp"),
+    fix: include_str!("../../../spec/lints/hand_rolled_answer_search/after.cp"),
+    near_miss: include_str!("../../../spec/lints/hand_rolled_answer_search/near_miss.cp"),
 };
 pub const HAND_ROLLED_PREFIX_SUM: Lint = Lint {
     code: Code("L0521"),
@@ -442,19 +482,22 @@ pub const HAND_ROLLED_PREFIX_SUM: Lint = Lint {
     default: Level::Warn,
     title: "Hand-rolled prefix sum",
     summary: "manual `p[i + 1] = p[i] + x` or `p[i.r] = p[i.l] + x` loop: use `prefix(...)`",
-    explanation: "A loop that fills a prefix-sum array (`p[i + 1] = p[i] + x`, `p[i] = p[i - 1] + x`, `p[i.r] = p[i.l] + x`, or the 2D inclusion-exclusion recurrence) duplicates `prefix(...)` in `std.prefix` (prelude). `Prefix` owns the extra boundary slot and gives O(1) `.sum(range)` and `.prefix(cut)` without off-by-one indexing. `cpl fix` rewrites a zero-initialized declaration, its build loop, and subsequent `p[k]` reads into `let p = prefix(...)` and `p.prefix(k)` when `p` is not mutated again.",
-    trigger: "let a = [1, 2, 3, 4]\nvar p = List.filled(a.len + 1, 0)\nfor i in 0..a.len:\n    p[i + 1] = p[i] + a[i]\nprint(p[3] - p[1])\n",
-    fix: "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n",
+    explanation: include_str!("../../../spec/lints/hand_rolled_prefix_sum/explain.md"),
+    trigger: include_str!("../../../spec/lints/hand_rolled_prefix_sum/before.cp"),
+    fix: include_str!("../../../spec/lints/hand_rolled_prefix_sum/after.cp"),
+    near_miss: include_str!("../../../spec/lints/hand_rolled_prefix_sum/near_miss.cp"),
 };
 pub const COPY_SORT_WRITEBACK: Lint = Lint {
     code: Code("L0522"),
     name: "copy_sort_writeback",
     default: Level::Warn,
     title: "Copy-mutate-writeback on a slice",
-    summary: "copying `xs[l..r]` to sort/reverse/rotate and writing it back: mutate `xs[l..r]` in place",
-    explanation: "Copying a contiguous slice `xs[l..r]` into a temporary `List`, sorting/reversing/rotating it, and writing the elements back into `xs[l..r]` allocates an unnecessary copy. Mutable slice views lend `xs[l..r]` in O(1) via `IndexedMut`, so `xs[l..r].sort(...)` / `.reverse()` / `.rotate_left(...)` runs in place with no copy. `cpl fix` rewrites the copy-mutate-writeback sequence when the temporary is not read afterward.",
-    trigger: "var xs = [5, 4, 3, 2, 1]\nlet sub = xs[1..4].sorted()\nfor i in 1..4: xs[i] = sub[i - 1]\nprint(xs)\n",
-    fix: "var xs = [5, 4, 3, 2, 1]\nxs[1..4].sort()\nprint(xs)\n",
+    summary:
+        "copying `xs[l..r]` to sort/reverse/rotate and writing it back: mutate `xs[l..r]` in place",
+    explanation: include_str!("../../../spec/lints/copy_sort_writeback/explain.md"),
+    trigger: include_str!("../../../spec/lints/copy_sort_writeback/before.cp"),
+    fix: include_str!("../../../spec/lints/copy_sort_writeback/after.cp"),
+    near_miss: include_str!("../../../spec/lints/copy_sort_writeback/near_miss.cp"),
 };
 
 /// Every lint, in code order.
@@ -1044,3 +1087,6 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod record_tests;

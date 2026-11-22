@@ -1,0 +1,1 @@
+A fold or sort of one sequence is a method on it: `xs.sum()`, `xs.count(p)`, `xs.all(p)`, `xs.first(p)`, `xs.max()`, `xs.sorted(by: k)`, `xs.sort()`. The free form stays where it reads as math: a generator (`sum(f(x) for x in xs)`) or two or more values (`min(a, b)`). `cpl lint --fix` rewrites it.

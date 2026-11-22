@@ -1,0 +1,1 @@
+`prefix(a)` dispatches by shape across `[D]T`, `[R, C]T`, and `List<T>` under one `Prefix` type family, and `Diff` covers both 1-D `Diff<D, T>` and 2-D `Diff<R, C, T>`. `cpl fix` rewrites the removed arity-suffixed names (`prefix1`, `prefix2`, `prefix_n`, `Prefix1`, `Prefix2`, `PrefixN`, `Diff1`, `Diff2`) to `prefix`, `Prefix`, and `Diff`.

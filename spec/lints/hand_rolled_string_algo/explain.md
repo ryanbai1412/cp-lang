@@ -1,0 +1,1 @@
+Hand-rolling a KMP prefix function, Z-function, polynomial rolling hash, or trie insertion loop duplicates tested, linear-time `std.strings` primitives (`prefix_function`, `z_function`, `RollingHash`, `Trie`, `AhoCorasick`).

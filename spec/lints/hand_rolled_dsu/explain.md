@@ -1,0 +1,1 @@
+Hand-rolling union-find path compression (`while par[x] != x: par[x] = par[par[x]]` or recursive `par[x] = find(par[x])`) duplicates domain-safe, path-halving `Dsu`, `DsuOf`, `ParityDsu`, and `PotentialDsu` in `std.dsu`.

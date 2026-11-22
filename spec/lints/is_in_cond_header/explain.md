@@ -1,0 +1,1 @@
+In `if`, `elif`, and `while` headers, bind with `if let p = x` / `while let p = x` and chain extra guards with `, cond`. Keep `x is pat` for value position where a `Bool` is wanted. `cpl fix` rewrites `if`/`elif`/`while` `is` headers to `let`.
