@@ -43,6 +43,9 @@ and its notes in that record's `notes`.
   picks the fold over the binary form (parser gap).
 - etsr23r3p3: `kruskal_tree` binds its node domain at the call (`let (domain N, kt) = ...`), as
   `compress` does, and accepts edge records with more fields.
+- noi14p5: chapter 5's exercise named `a.swap(i, j)`; the stub is `swap_at`, so the doc now says
+  `a.swap_at(i, j)` (the free `swap` keeps its two-place meaning).
+- noi09p4: `max_closure` joins the prelude.
 - noi02p3: one `convolve(a, b, on:, over:, shape:, cyclic:)` as ops-ranges §13 already said;
   `convolve_mod`/`_int`/`_real`/`_or`/`_and`/`_xor`/`_subset`/`_gcd`/`_lcm` and
   `min_plus_convolve`/`max_plus_convolve` are gone. `Curved.Neither` names the O(n m) loop that

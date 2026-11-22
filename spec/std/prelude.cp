@@ -18,7 +18,7 @@ use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
 use std.ntt.{Curved, convolve}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
-use std.flow.{Arc, FlowGraph}
+use std.flow.{Arc, FlowGraph, max_closure}
 use std.geometry.{ByAngle, Location, Pt, locate}
 use std.graph.{Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, peel, reachable, scc, topo}
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}

@@ -158,7 +158,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// `(..a, to: u)`).
     pub fn transpose(self) -> Graph<V, A> where A: (to: V, ..) = todo
 
-/// O(n + m).
 /// Kahn's peeling: repeatedly remove a vertex with no arcs left coming in, and return the
 /// vertices in the order they were removed. What stays is every vertex on a cycle or
 /// reachable from one, so the order covers all of `V` exactly when the graph is acyclic.
@@ -168,7 +167,6 @@ pub fn peel<V, G: Next<V>>(
     g: G, ready: ?(V -> Bool) = none, on_remove: ?((V, G.Arc) -> ()) = none,
 ) -> List<V> = todo
 
-/// O(n + m).
 /// A topological order, or `none` if there is a cycle: a `peel` that removed every vertex.
 /// O(n + m). For a vertexless closure graph, pass the vertex domain via turbofish:
 /// `topo::<V>(u => ...)`.

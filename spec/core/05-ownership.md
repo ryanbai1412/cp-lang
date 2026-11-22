@@ -665,7 +665,7 @@ for k in rows[i].keys: rows[i].push(rows[i][k])
 ```python
 swap(mut a[i], mut a[j])
 ```
-<details><summary>Answer</summary>No. Nothing proves <code>i != j</code> (R9). Fix: <code>if i != j:</code> or <code>a.swap(i, j)</code>.</details>
+<details><summary>Answer</summary>No. Nothing proves <code>i != j</code> (R9). Fix: <code>if i != j:</code> or <code>a.swap_at(i, j)</code>.</details>
 
 **13.**
 ```python
