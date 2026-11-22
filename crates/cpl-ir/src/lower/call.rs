@@ -5339,6 +5339,8 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::Char, "ord") => self.cast(Cast::CharToInt, value, Ty::Int),
             (Ty::Int, "ord") => value,
+            // An `Int` range's cut before `x` is `x` itself (R04.4.28).
+            (Ty::Int, "r") => value,
             (Ty::Char, "is_digit") => {
                 let ord = self.cast(Cast::CharToInt, value, Ty::Int);
                 let lo = self.int_lit(b'0' as i64, span);
