@@ -97,3 +97,9 @@ fn tal$0ly(cells: [V]Int) -> Int:
     for v in V:
         best max= cells[v]
     cells.sorted().len + best
+
+fn sp$0read(cells: [V]Int) -> Int:
+    var least = 0
+    for v in V:
+        least = min(least, abs(cells[v]))
+    max(least, 1)

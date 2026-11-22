@@ -2458,6 +2458,18 @@ what it names. Operators and getters count as one step each: no doc states other
 `min` (33), `read` (31), `max` (30), `print` (27) and type constructors (`Node`, `Int`, `some`).
 Reverse by dropping `ProvenFn::callees` and `fn_total`.
 
+29.47. **The compiler's own prelude fns hover with a doc and the cost of their call's shape.**
+`abs`, `min`, `max`, `minmax`, `choose2`, `popcount`, `ctz`, `bit_width`, `bit_ceil`, `isqrt`,
+`swap` and `some` have no cp source, so they hovered nothing; `prelude::value_doc` now gives each a
+one-line doc with its cost, and `push` and `pop` document `O(1)` in the built-in catalog. The cost
+follows the call's shape: `min(a, b)` is `O(1)` per argument, `min(xs)` walks `xs` in `O(n)`. With
+these, `fn spread` in the hover fixture (a loop of `min(least, abs(cells[v]))`) gets `estimated
+cost: O(n), about 600001 (6e5) steps at max input`. Assumption: comparing two values counts as
+`O(1)`, like an operator, though `min` of two lists compares them element by element. `print`,
+`read` and type constructors still document no cost, since what they cost depends on the size of
+what they write, read or build. Reverse by dropping `value_doc` and its fallback in
+`Database::hover`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

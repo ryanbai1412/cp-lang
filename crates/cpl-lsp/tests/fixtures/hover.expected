@@ -253,3 +253,9 @@ fn tally(cells: [V]Int) -> Int
   documented costs: cells.sorted O(n log n), about 3521929 (3.5e6) steps, once
   estimated cost: O(n + n log n), about 3721929 (3.7e6) steps at max input
 ```
+
+== hover @ 101:6
+```cp
+fn spread(cells: [V]Int) -> Int
+  estimated cost: O(n), about 600001 (6e5) steps at max input
+```

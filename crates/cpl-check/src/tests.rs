@@ -3295,3 +3295,21 @@ print(dp[V.first, K.last])
     assert!(!codes(&wrong).is_empty());
     assert!(!proofs(&wrong).iter().any(|p| p.starts_with("xs[e]")));
 }
+
+#[test]
+fn a_prelude_call_hovers_its_doc_and_the_cost_of_its_shape() {
+    let src = "let n: 1..=10 = read()\nfn f(a: Int, xs: List<Int>) -> Int:\n    \
+               abs(a) + max(a, n) + min(xs) + isqrt(n)\n";
+    let at = |needle: &str| src.find(needle).unwrap() as u32;
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let abs = db.hover("a.cp", at("abs")).unwrap();
+    assert_eq!((abs.span.start, abs.span.end), (at("abs"), at("abs") + 3));
+    assert_eq!(abs.text, "abs: built-in\ncost: O(1)");
+    assert!(abs.doc.unwrap().starts_with("The absolute value"));
+    let cost = |db: &mut Database, needle| db.hover("a.cp", at(needle)).unwrap().text;
+    assert_eq!(cost(&mut db, "max("), "max: built-in\ncost: O(1)");
+    assert_eq!(cost(&mut db, "min("), "min: built-in\ncost: O(n)");
+    assert!(cost(&mut db, "isqrt").ends_with("\ncost: O(1)"));
+    assert!(db.hover("a.cp", at("read")).is_none());
+}

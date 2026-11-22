@@ -50,7 +50,9 @@ impl Database {
     pub fn hover(&mut self, path: &str, offset: u32) -> Option<Hover> {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
-        let entry = innermost(&item.check.hovers, at)?;
+        let Some(entry) = innermost(&item.check.hovers, at) else {
+            return prelude_value_hover(item, at);
+        };
         let span = entry.span.shift(item.offset);
         let mut lookup = |name: &str| self.lookup(path, &analysis, name);
         let builtin = (entry.keyword == "field")
@@ -295,6 +297,39 @@ fn cost_of(doc: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// A name of the compiler's own prelude at `at`, which the checker records
+/// no hover for, shown with its doc for the shape of its call.
+fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover> {
+    use cpl_syntax::ast::{Expr, ExprKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+    struct Find {
+        at: u32,
+        name: Option<(Span, String)>,
+        calls: Vec<(Span, usize)>,
+    }
+    impl Visitor for Find {
+        fn expr(&mut self, expr: &Expr) {
+            match &expr.kind {
+                ExprKind::Name(n) if expr.span.touches(self.at) => self.name = Some((expr.span, n.clone())),
+                ExprKind::Call { callee, args } => self.calls.push((callee.span, args.len())),
+                _ => {}
+            }
+        }
+    }
+    let mut find = Find { at, name: None, calls: Vec::new() };
+    for stmt in &item.syntax.parsed.stmts {
+        walk_stmt(stmt, &mut find);
+    }
+    let (span, name) = find.name?;
+    let args = find.calls.iter().find(|(callee, _)| *callee == span).map(|&(_, n)| n);
+    let doc = crate::prelude::value_doc(&name, args)?;
+    let text = match cost_of(doc) {
+        Some(cost) => format!("{name}: built-in\ncost: {cost}"),
+        None => format!("{name}: built-in"),
+    };
+    Some(Hover { span: span.shift(item.offset), text, doc: Some(doc.to_string()) })
 }
 
 fn innermost(hovers: &[HoverEntry], at: u32) -> Option<&HoverEntry> {

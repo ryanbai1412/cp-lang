@@ -158,6 +158,29 @@ pub fn value(name: &str) -> Option<Ty> {
     })
 }
 
+/// The doc of a prelude value the compiler defines, for a call with `args`
+/// arguments or, with `None`, the value itself: `min(xs)` walks `xs` where
+/// `min(a, b)` compares two values.
+pub fn value_doc(name: &str, args: Option<usize>) -> Option<&'static str> {
+    Some(match (name, args) {
+        ("abs", _) => "The absolute value, in O(1).",
+        ("min", Some(1)) => "The smallest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
+        ("max", Some(1)) => "The largest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
+        ("min", _) => "The smallest of its arguments, in O(1) per argument; `min(xs)` gives the smallest element of `xs`.",
+        ("max", _) => "The largest of its arguments, in O(1) per argument; `max(xs)` gives the largest element of `xs`.",
+        ("minmax", Some(2) | None) => "`(min(a, b), max(a, b))`, in O(1).",
+        ("choose2", _) => "`n * (n - 1) / 2` for `n >= 2`, else `0`. O(1).",
+        ("popcount", _) => "The number of 1 bits, in O(1).",
+        ("ctz", _) => "The number of 0 bits below the lowest 1 bit, in O(1).",
+        ("bit_width", _) => "The number of bits needed to write the value, in O(1).",
+        ("bit_ceil", _) => "The smallest power of two that is at least the value, in O(1).",
+        ("isqrt", _) => "The largest `r` with `r * r <= n`, in O(1).",
+        ("swap", _) => "Exchanges the values of two `mut` places, in O(1) whatever their size.",
+        ("some", _) => "The value as a present `?T`, in O(1).",
+        _ => return None,
+    })
+}
+
 /// A prelude type by name.
 pub fn ty(name: &str) -> Option<Ty> {
     Some(match name {
