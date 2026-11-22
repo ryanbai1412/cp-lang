@@ -24,6 +24,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0007 | bad_char_literal | `'é'` is not ASCII |
 | E0101-E0109 | parser structure | unclosed, expected expression/token/block/type/pattern/name, unmatched closer |
 | E0110 | unparenthesized_coalesce | `a ?? b + c` needs parentheses |
+| E0111 | mixed_comparison_chain *(0.3)* | `a < b > c` or a chain with `==`; split it with `and` |
 | E0201 | unresolved_name | with the nearest names and a `use` fix for stdlib names |
 | E0202 | duplicate_definition | |
 | E0203 | unknown_field | |
@@ -31,6 +32,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0205 | used_before_set | a capture used before it is initialized |
 | E0206 | unresolved_module | |
 | E0207 | private_name | |
+| E0208 | value_name_case *(0.3)* | `let N = 5`: values are lowercase; `N` would read as a type |
 | E0301 | wrong_domain | `deg` is indexed by `V`, but `e` is an `E` |
 | E0302 | type_mismatch | |
 | E0303 | wrong_arg_count | |
@@ -44,6 +46,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0311 | bad_memo | `@memo(array)` needs bounded parameter types; `n: Int` is unbounded; use `@memo(map)` or a range |
 | E0312 | debug_changes | `debug(...)` argument has side effects |
 | E0313 | domain_escapes | a value of fresh type `V` leaves its block |
+| E0314 | non_exhaustive_match *(0.3)* | this `match` has no arm for `R` |
 | E0401 | assign_to_let | |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | |
