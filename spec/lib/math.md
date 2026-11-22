@@ -122,7 +122,7 @@ fn splitmix64(x: U64) -> U64                        // O(1); 64-bit mixing final
 // Modular integer arithmetic (dynamic modulus without Mod<P>)
 fn mul_mod(a: Int, b: Int, m: Int) -> Int           // O(1); exact via I128 when needed, m >= 1
 fn pow_mod(a: Int, e: Int, m: Int) -> Int           // O(log e); e >= 0, m >= 1
-fn inv_mod(a: Int, m: Int) -> ?Int                  // O(log m); m >= 1, none if gcd(a, m) != 1
+fn inv_mod(a: Int, m: Int) -> ?Int                  // O(log m); m >= 1, None if gcd(a, m) != 1
 fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)
                                                     // O(log min(m1, m2)); non-coprime allowed
 fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int)
@@ -181,7 +181,7 @@ struct Mod<P>(v: 0..P):
     let one = Mod(1 % P)
     fn new(x: Int) -> Mod<P>                        // O(1); Euclidean reduction into 0..P
     // x ** e via `impl Pow`: O(log |e|); negative e uses inv
-    fn try_inv(self) -> ?Mod<P>                     // O(log P); none if gcd(v, P) != 1
+    fn try_inv(self) -> ?Mod<P>                     // O(log P); None if gcd(v, P) != 1
     fn inv(self) -> Mod<P>                          // O(log P); traps if non-invertible
     // also: from_int, sqrt, log, inv_all; Comb.derange, Barrett, PrimePowerComb,
     // ModComb (see the std.mod stub)
@@ -278,10 +278,10 @@ struct Mat<T>(n: Int, m: Int, a: List<T>):
     // Exact Gaussian elimination over any exact field (e.g. Mod<P> with prime P):
     fn det(self) -> T                               // O(n^3); square matrix
     fn rank(self) -> Int                            // O(n m min(n, m))
-    fn solve(self, b: List<T>) -> ?List<T>          // O(n m min(n, m)); one solution or none
+    fn solve(self, b: List<T>) -> ?List<T>          // O(n m min(n, m)); one solution or None
     fn solve_space(self, b: List<T>) -> ?(x0: List<T>, basis: List<List<T>>)
                                                     // O(n m min(n, m)); particular + nullspace
-    fn inverse(self) -> ?Mat<T>                     // O(n^3); square matrix, none if singular
+    fn inverse(self) -> ?Mat<T>                     // O(n^3); square matrix, None if singular
 
 // Floating-point elimination with partial pivoting (F64):
 fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64    // O(n^3)
@@ -353,7 +353,7 @@ fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>
 fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>
     // O(n log n + log^2 P) time (Tonelli-Shanks mod_sqrt for leading term + Newton doubling
     // g <- (g + a * g^(-1)) / 2 mod x^(2m), ~20n log n), O(n) memory.
-    // Returns some(g) with g(x)^2 == a(x) (mod x^n), or none if no square root exists mod P
+    // Returns Some(g) with g(x)^2 == a(x) (mod x^n), or None if no square root exists mod P
     // (odd leading zero count or non-residue leading coefficient).
     // Precondition: n >= 0.
 ```

@@ -16,7 +16,7 @@ domain Pos = 0..n                      // positions 0..n-1; Pos.cuts is cuts 0..
 let (domain C, comp) = compress(xs)    // fresh domain from a computation
 domain Cell = (Row, Col)               // product: [Cell]T and [Row, Col]T are one 2-D array type
 domain State = (comps: 0..=n, used: 0..l)  // named factors: s.comps, State.at((c, u)) -> ?State
-enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir]Int
+enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir]Int
 ```
 
 ## Domains
@@ -186,9 +186,10 @@ let below = Int(a.keys.bsearch(i => a[i] >= t))               // how many of sor
 
 `ok` must be monotone in the direction the name says: false→true for
 `first_true` and `bsearch`, true→false for `last_true` and
-`bsearch(ok, last: true)`. Debug builds check
-`ok` on both sides of the answer (O(1)), which catches most non-monotone
-predicates. Answer spaces that aren't a domain are integer ranges, an
+`bsearch(ok, last: true)`. Checked builds check that the
+probes already made agree with one boundary (every true probe after every
+false one, O(1) per probe), which catches most non-monotone predicates;
+they never call `ok` more often than release does (R09.2.3). Answer spaces that aren't a domain are integer ranges, an
 anonymous domain whose positions and cuts are both `Int`:
 `(0..=1e18).first_true(t => fits(t))`.
 
@@ -216,7 +217,7 @@ sentinel end when nothing qualifies (looks like a real answer).
 ## Arrays over domains
 
 ```python
-var dist: [V]?Int = none                 // fill
+var dist: [V]?Int = None                 // fill
 let deg = [V] v => g.deg(v)              // build from a fn
 let a: [Pos]Int = read()                 // read n values
 pre[i] - pre[j]       pre.fold(j..i)      // prefix sums are indexed by cuts

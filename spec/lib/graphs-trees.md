@@ -110,7 +110,7 @@ for Road`. Signatures use inline bounds and take the weakest capability
 they use:
 
 ```python
-pub fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>, until: ?V = none)
+pub fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>, until: ?V = None)
 ```
 
 | Takes | Algorithms |

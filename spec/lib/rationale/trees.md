@@ -92,7 +92,7 @@ struct Rooted<V, Pre>
     // O(n) time and memory, iterative (no recursion depth limit)
     fn new<N>(adj: N, root: V) -> Rooted<V, Pre>          // Rooted(adj, root: r)
     fn weighted<N, A>(adj: N, root: V, len: A -> Int)     // edge lengths for far()
-    fn from_parents(par: [V]?V)                            // exactly one none
+    fn from_parents(par: [V]?V)                            // exactly one None
     fn forest<N>(adj: N, roots: List<V>) [new]            // one tree per root
 ```
 
@@ -109,7 +109,7 @@ a forest says so with `forest`.
     root: V
     fn parent(self, v: V) -> ?V
     fn children(self, v: V) -> List<V>            // in the order adj listed them
-    heavy: [V]?V                                  // largest child, none at a leaf
+    heavy: [V]?V                                  // largest child, None at a leaf
     fn light(self, v: V) -> yields V [new]        // children except heavy[v]
     fn depth(self, v: V) -> Int                   // edges to the root
     far: [V]Int                                   // length to the root (weighted)
@@ -139,7 +139,7 @@ a forest says so with `forest`.
     fn lca(self, a: V, b: V) -> V                // O(log n), chain jumps
     fn dist(self, a: V, b: V) -> Int             // O(log n), edges
     fn far_dist(self, a: V, b: V) -> Int [new]   // O(log n), weighted length
-    fn ancestor(self, v: V, k: Int) -> ?V        // O(log n); none above the root
+    fn ancestor(self, v: V, k: Int) -> ?V        // O(log n); None above the root
     fn step(self, a: V, b: V, k: Int) -> ?V      // O(log n); k-th vertex a -> b
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V  // O(log^2 n), pred monotone
     fn path(self, a: V, b: V) -> List<V>         // O(dist), a first
@@ -260,7 +260,7 @@ struct JumpTree<V>
     fn depth(self, v: V) -> Int                   // O(1)
     fn root_of(self, v: V) -> V                   // O(log n)
     fn ancestor(self, v: V, k: Int) -> ?V         // O(log n) each
-    fn lca(self, a: V, b: V) -> ?V                // none across trees
+    fn lca(self, a: V, b: V) -> ?V                // None across trees
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V
 ```
 

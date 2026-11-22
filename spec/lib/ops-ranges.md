@@ -211,7 +211,7 @@ an `Ord`, the same two concepts:
 
 ```python
 pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M: Monoid<W> = Plus>(
-    g: G, from: Seq<(V, W)>, step: M = +, until: ?V = none,
+    g: G, from: Seq<(V, W)>, step: M = +, until: ?V = None,
 ) -> Paths<V, W, G.Arc>
 ```
 
@@ -463,7 +463,7 @@ constraints, checked online, are a `Group` on a DSU:
 ```python
 var p = Potentials<V>(+)
 if not p.relate(a, b, w): print("CONTRADICTION")   // val[b] = val[a] + w
-p.diff(a, b)                                       // ?Int: val[b] - val[a], none if unrelated
+p.diff(a, b)                                       // ?Int: val[b] - val[a], None if unrelated
 ```
 
 It works for any group: `^` for parity constraints, `Affine` for

@@ -5288,3 +5288,22 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Drop `drop_unread_fields`/`drop_dead_locals` in
   `crates/cpl-codegen/src/devirt.rs` (back to fn fields only) and the
   `dropped_store` skips in `crates/cpl-codegen/src/stmt.rs`.
+
+## 179. Lent values follow ch5 R8 everywhere (2026-11-21)
+
+- **Decision.** Chapter 7 no longer says a view is "never stored": a lent value is kept exactly where R05.7.8 to R05.7.10 allow (storage that dies no later than its sources), and returned only from a `lends` fn.
+- **Why.** The independent rebuild (`spec/delta/rebuild-1/HOLES.md`, H-LENT-IN-VAR) found ch5 and ch7 contradicting each other; ch5 is the detailed, newer rule and the conformance cases follow it.
+- **Reverse.** Restore "never stored" in R07.1.5 and narrow R05.7.8 to `let` bindings only.
+
+## 180. Checked builds never make extra calls to user code (2026-11-21)
+
+- **Decision.** R09.2.3: a checked build calls user functions, closures and input exactly as release does. Checks only inspect values already computed. The search check (`first_true`, `bsearch`) now verifies that the probes it made agree with one boundary instead of probing both sides of the answer.
+- **Why.** H-BSEARCH-DEBUG-PROBES: extra probes change an interactive dialogue and break "valid programs behave identically in both modes" (decision 148).
+- **Reverse.** Allow extra probes for predicates the checker proves pure, and restore the both-sides probe for those.
+
+## 181. One-line enums use `=` and `|`; variants with fields use the block form (2026-11-21)
+
+- **Decision.** The empty optional is `None` everywhere in the spec (lowercase `none` survives only as the `print` option `none:`). `not` is a prefix operator at precedence level 12, below comparisons, and is removed from the `unary` production. A one-line enum is `enum Dir = L | R | U | D`; an enum with payload variants uses the indented block. The comma form `enum Dir: N, E, S, W` is gone.
+- **Why.** The rebuild found each of these spelled two ways (H-NONE-CASE, H-NOT-PRECEDENCE, H-ENUM-ONE-LINE). `=` is what the grammar, the implementation and the conformance cases already use; the precedence follows Python, so `not a == b` is `not (a == b)`.
+- **Reverse.** Add `':' variant (',' variant)* NL` to `enum_decl`, or move `not` back into `unary`.
+

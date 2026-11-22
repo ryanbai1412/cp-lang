@@ -808,9 +808,9 @@ fn visit(v: V, from: ?V):
         if u != from:
             depth[u] = depth[v] + 1
             visit(u, v)
-visit(V.first!, none)
+visit(V.first!, None)
 print(depth.max())
-visit(V.first!, none)
+visit(V.first!, None)
 ```
 <details><summary>Answer</summary>Yes. A nested fn after a <code>var</code> may write it; the capture is borrowed only during each call (§10, R10).</details>
 
@@ -848,7 +848,7 @@ for x in a.filter(x => x > 0): a2[l] += x
 
 **35.**
 ```python
-var best: ?[V]Int = none
+var best: ?[V]Int = None
 for (l2, r2) in queries:
     best = a[l2..r2]
 print(best!.sum())
