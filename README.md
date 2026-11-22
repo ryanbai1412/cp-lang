@@ -115,6 +115,24 @@ Ryan's accepted contest submissions:
 - 30 ports are no shorter than their stripped original, and 56 hard
   problems are still unported.
 
+## Setup
+
+[mise](https://mise.jdx.dev) pins every tool in `mise.toml` (Rust, Python,
+Node, pnpm, uv, just, cargo-nextest). On Linux or macOS, with `g++` on the
+path:
+
+```text
+$ curl https://mise.run | sh && eval "$(~/.local/bin/mise activate bash)"
+$ mise trust && mise install   # the pinned tools
+$ pnpm install                 # web/ and editors/vscode/
+$ uv sync                      # the Python scripts
+$ just hooks                   # pre-commit runs the fast gate
+$ just check                   # the fast gate: clippy, tests, corpus, site snippets
+```
+
+On macOS some fast-gate tests fail (the emitted C++ leans on libstdc++);
+Linux is the reference.
+
 ## Quickstart
 
 Build the Rust toolchain and run a program in the debug interpreter:
@@ -185,14 +203,14 @@ The docs site labels every snippet as either runnable or specification.
   (`corpus/submissions/`).
 - `research/friction-queue.md`: every open friction item from the ports,
   clustered, with the next syntax batches.
-- `stdlib/`: the standard library, written in CP Lang, with its tests.
-  `stdlib/README.md` is the tour.
+- `spec/std/`: the standard library, written in CP Lang.
+  `spec/std/README.md` is the tour.
 - `editors/vscode/`: the VS Code extension.
 - `web/`: the website: landing page, course, guides, reference and
   playground. `web/scripts/gate.mjs` checks every program on it.
 - `bench/`: the corpus performance harness and results.
 - `mise.toml`, `justfile`, `pyproject.toml`, `pnpm-workspace.yaml`: unified
-  toolchain pins and task runner (`mise install && just check`).
+  toolchain pins and task runner (see [Setup](#setup)).
 
 ## Contributing
 
@@ -201,7 +219,7 @@ the checks run on your machine. Turn on the pre-commit hook once per
 clone:
 
 ```text
-$ scripts/install-hooks.sh            # git commit now runs scripts/check.sh --fast
+$ just hooks                          # git commit now runs scripts/check.sh --fast
 ```
 
 `scripts/check.sh --fast` takes under a minute on a warm build: it

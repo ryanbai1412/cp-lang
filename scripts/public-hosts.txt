@@ -11,3 +11,5 @@ xorshift\.di\.unimi\.it|(www\.)?daemonology\.net|(www\.)?cs\.berkeley\.edu|mathe
 (www\.)?patreon\.com|feross\.org|bevry\.me|opencollective\.com|tidelift\.com|paypal\.me
 vitepress\.dev|ui\.shadcn\.com|dejavu-fonts\.github\.io|cp-lang\.(dev|org)|(www\.)?example\.(com|org)|localhost|127\.0\.0\.1
 api\.anthropic\.com|api\.openai\.com
+mise\.jdx\.dev
+mise\.run
