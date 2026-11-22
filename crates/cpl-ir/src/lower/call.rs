@@ -2812,6 +2812,10 @@ impl<'a> Lowerer<'a> {
                 });
                 Spec::Call(Box::new(call))
             }
+            Spec::Plain(Ty::Enum(id)) => match self.enum_read(id) {
+                Some(call) => Spec::Call(Box::new(call)),
+                None => Spec::Plain(Ty::Enum(id)),
+            },
             Spec::Fields(ty, fields) => {
                 Spec::Fields(ty, fields.into_iter().map(|f| self.readable(f)).collect())
             }
@@ -2822,6 +2826,65 @@ impl<'a> Lowerer<'a> {
             Spec::Opt(inner, absent) => Spec::Opt(Box::new(self.readable(*inner)), absent),
             other => other,
         }
+    }
+
+    /// An enum read from its tag token, then that variant's fields. (R10.2.3)
+    fn enum_read(&mut self, id: EnumId) -> Option<Expr> {
+        let span = Span::default();
+        let variants = self.enums[id].variants.clone();
+        let mut fields = Vec::with_capacity(variants.len());
+        for (_, tys) in &variants {
+            let specs: Option<Vec<Spec>> = tys.iter().map(|ty| self.spec_of(ty)).collect();
+            fields.push(specs?);
+        }
+        let discs = self.enum_discriminants.get(id).cloned().unwrap_or_default();
+        let explicit = !discs.is_empty();
+        let name = self.enums[id].name.clone();
+        let ty = Ty::Enum(id);
+        Some(self.do_expr(Some(&ty), span, |lw, out| {
+            let token = lw.temp(Ty::Str);
+            let read = lw.mk(ExprKind::Read(Box::new(Spec::Plain(Ty::Str))), Ty::Str, span);
+            out.push(Stmt::Let(token, Some(read)));
+            for (tag, ((variant, _), specs)) in variants.iter().zip(fields).enumerate() {
+                let mut tags = vec![variant.clone()];
+                if explicit {
+                    tags.push(discs.get(tag).copied().unwrap_or(tag as i64).to_string());
+                }
+                let mut cond: Option<Expr> = None;
+                for text in tags {
+                    let lit = lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span);
+                    let tok = lw.local(token, span);
+                    let eq = lw.mk(
+                        ExprKind::Cmp(CmpOp::Eq, Box::new(tok), Box::new(lit)),
+                        Ty::Bool,
+                        span,
+                    );
+                    cond = Some(match cond {
+                        Some(prev) => lw.mk(
+                            ExprKind::Binary(BinOp::Or, Box::new(prev), Box::new(eq)),
+                            Ty::Bool,
+                            span,
+                        ),
+                        None => eq,
+                    });
+                }
+                let mut body = Vec::new();
+                let mut values = Vec::with_capacity(specs.len());
+                for spec in specs {
+                    let value = lw.read(spec, span);
+                    let slot = lw.temp(value.ty.clone());
+                    body.push(Stmt::Let(slot, Some(value)));
+                    values.push(lw.local(slot, span));
+                }
+                body.push(Stmt::Give(lw.mk(ExprKind::Variant(tag, values), ty.clone(), span)));
+                let cond = cond.expect("a variant has a name");
+                out.push(Stmt::If(cond, Block { stmts: body }, Block::default()));
+            }
+            out.push(Stmt::Trap(
+                format!("expected a `{name}` variant in the input"),
+                lw.span(span),
+            ));
+        }))
     }
 
     pub(super) fn read(&mut self, spec: Spec, span: Span) -> Expr {

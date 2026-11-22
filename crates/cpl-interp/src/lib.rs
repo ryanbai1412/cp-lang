@@ -75,7 +75,9 @@ impl Trap {
             codes::STACK_EXHAUSTED
         } else if m.contains(" is outside `") {
             codes::RANGE_STORE
-        } else if m.starts_with("expected a number, found") || m.starts_with("the input ended") {
+        } else if m.starts_with("expected a number, found")
+            || m.starts_with("the input ended")
+            || (m.starts_with("expected a `") && m.ends_with("variant in the input")) {
             codes::BAD_INPUT_TOKEN
         } else if m.starts_with("`todo` reached") {
             codes::TODO_REACHED
