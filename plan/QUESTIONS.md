@@ -257,4 +257,13 @@ Recommendation: A. It costs one spec sentence. B changes three constants plus ev
 How to reverse it: swap the three constants in `crates/cpl-cli/src/lib.rs` and the `exit(3)` in the C++ runtime; the tests name the constants, not numbers (`crates/cpl-cli/tests/golden.rs`).
 Meanwhile: the binary's codes; `spec/tools/cli.md` stays as written until answered.
 
+### spec: what are a range's keys, its own elements or positions from 0?
+Chapter 7 lists ranges as `Indexed<D, T>` (R07.3.5: `s[i]` in O(1), `s.keys: Range<D>`), but chapter 4's range methods (R04.4.12-21) never say what `r[i]`, `r.keys` or `r.items` mean. Today `let r = 2..5` gives `r[3]` = R0101 "index 3 is outside a range of length 3" (so `r[0]` is 2), and `r.keys`, `r.items` do not compile.
+Option A, identity: `r[x]` is `x` for `x in r` (traps outside), `r.keys` is `r`, `for (k, x) in r.items` walks `(2, 2) (3, 3) (4, 4)`. A range is `V.range[l..r]` without the source: the same keys a slice keeps (R07.2.14), so `Range<V>` stays `Indexed<V, V>` and never mixes positions of `V` with counts.
+Option B, positions: `r[0]` is 2, `r.keys` is `0..r.len`, items walk `(0, 2) (1, 3) (2, 4)`, as Python's `range(2, 5)[0]`. Familiar, but a `Range<V>` keyed by `Int` is the wrong-index-space bug the language exists to stop.
+Option C: drop ranges from the `Indexed` row (they stay `Seq` + `Sized` + `Bidir` + `Contains`); `r[i]` is E0305.
+Recommendation: A, or C if indexing a range has no use; B reintroduces the position-versus-value confusion.
+How to reverse it: the three cases are generated from `spec/conformance/traits.toml`; change their expected output, or drop the `Range` claim of `Indexed`/`Keyed` there and in R07.3.5.
+Meanwhile: the three `Range` lines stay in `spec/conformance/trait-gaps.txt`; no case asserts either reading.
+
 ## Answered
