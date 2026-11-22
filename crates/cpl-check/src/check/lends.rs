@@ -2769,10 +2769,7 @@ impl<'a> Checker<'a> {
             .filter(|l| l.keyword == "let")
             .map(|l| l.span);
         let var_at = decl.and_then(|d| super::let_before(self.src, d));
-        let message = format!(
-            "`{root}` is not a var, so `{}` can't change it",
-            show(call)
-        );
+        let message = format!("`{root}` is not a var, so `{}` can't change it", show(call));
         // R07.11.1: an in-place method needs a `var` source.
         let code = if viewed {
             codes::ASSIGN_TO_LET

@@ -1035,7 +1035,9 @@ impl<'a> Lowerer<'a> {
         const SEQ_EXTRA: [&str; 6] = [
             "adjacent", "inverse", "items", "resized", "reverse", "reversed",
         ];
-        const STR_EXTRA: [&str; 6] = ["adjacent", "count", "items", "reverse", "reversed", "to_str"];
+        const STR_EXTRA: [&str; 6] = [
+            "adjacent", "count", "items", "reverse", "reversed", "to_str",
+        ];
         const INT_MEMBERS: [&str; 6] = ["abs", "idx", "isqrt", "ord", "sqrt", "to_idx"];
         const FLOAT_MEMBERS: [&str; 6] = ["abs", "ceil", "floor", "round", "sqrt", "trunc"];
         let receiver = match ty {
@@ -1112,7 +1114,11 @@ impl<'a> Lowerer<'a> {
         // Auto-imported stdlib UFCS methods are only pulled into `mod_syms`
         // when spelled right, so include them as typo candidates too.
         if !matches!(ty, Ty::Struct(_) | Ty::Enum(_) | Ty::Record(_)) {
-            names.extend(cpl_check::std_methods().iter().map(|(_, m)| m.text.as_str()));
+            names.extend(
+                cpl_check::std_methods()
+                    .iter()
+                    .map(|(_, m)| m.text.as_str()),
+            );
         }
         let Some(s) = cpl_check::closest(name, names.into_iter()) else {
             return;
