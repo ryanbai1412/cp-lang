@@ -84,9 +84,9 @@ spec-check:
 conformance-coverage *args:
     python3 scripts/conformance-coverage.py {{args}}
 
-# Check the tech-debt ratchet (.rs file sizes, stdlib todo, #[ignore], pending tests).
+# Check the tech-debt ratchet (`--show` lists every counter).
 debt-ratchet *args:
-    python3 scripts/debt-ratchet.py --check {{args}}
+    uv run python scripts/debt-ratchet.py --check {{args}}
 
 # Create an isolated git worktree with its own Cargo target directory.
 worktree name:
