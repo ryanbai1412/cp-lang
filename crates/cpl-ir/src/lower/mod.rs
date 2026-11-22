@@ -2022,7 +2022,13 @@ impl<'a> Lowerer<'a> {
             let fields = decl
                 .fields
                 .iter()
-                .map(|f| (f.name.text.clone(), self.resolve_ty(&f.ty)))
+                .map(|f| {
+                    let ty = match (&f.ty.kind, &f.default) {
+                        (ast::TypeKind::Infer, Some(default)) => literal_ty(default),
+                        _ => self.resolve_ty(&f.ty),
+                    };
+                    (f.name.text.clone(), ty)
+                })
                 .collect();
             self.structs[id].def.fields = fields;
             self.structs[id].def.fixed = self.fixed_rows(decl);
@@ -4973,4 +4979,17 @@ fn returns_a_value(block: &ast::Block) -> bool {
         }
     }
     returns.0
+}
+
+/// The type of a field written `total = 0`, from its default.
+fn literal_ty(e: &ast::Expr) -> Ty {
+    match &e.kind {
+        ast::ExprKind::Int(_) => Ty::Int,
+        ast::ExprKind::Float(_) => Ty::Float,
+        ast::ExprKind::Bool(_) => Ty::Bool,
+        ast::ExprKind::Char(_) => Ty::Char,
+        ast::ExprKind::Str(_) => Ty::Str,
+        ast::ExprKind::Unary { expr, .. } | ast::ExprKind::Paren(expr) => literal_ty(expr),
+        _ => Ty::Error,
+    }
 }
