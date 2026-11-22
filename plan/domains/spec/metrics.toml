@@ -1,0 +1,101 @@
+# spec metrics. Every command runs from the repo root after
+# `cargo build --release -p cpl-cli -p cpl-conform`. `today` is the value the
+# command printed on 2026-11-22 at 4b8f504f. Read-only: the coverage commands
+# print COVERAGE.md to stdout instead of rewriting it; never hand-edit it without a run.
+# conformance-coverage.py rewrites spec/conformance/COVERAGE.md as a side effect.
+
+[[metric]]
+name = "conformance cases passing"
+command = "target/release/cpl-conform conformance | head -1"
+today = "1617/1711"
+target = "1711/1711 (pass count owned by compiler; the suite is spec's)"
+
+[[metric]]
+name = "conformance cases (ratchet up only)"
+command = "find spec/conformance -name '*.cp' | wc -l"
+today = "1711"
+target = "never decreases"
+
+[[metric]]
+name = "rules cited by at least one case"
+command = "target/release/cpl-conform --rules 2>&1 | tail -1"
+today = "527 of 527 covered"
+target = "100%"
+
+[[metric]]
+name = "forbidding rules with no reject case (happy-path only)"
+command = "python3 -c 'import pathlib,runpy,sys; pathlib.Path.write_text=lambda p,t: sys.stdout.write(t); sys.argv=[sys.argv[0]]; runpy.run_path(\"scripts/conformance-coverage.py\", run_name=\"__main__\")' 2>/dev/null | grep -c '\\] \\*happy-path only\\*'"
+today = "45"
+target = "0"
+
+[[metric]]
+name = "case cites to rules no chapter defines"
+command = "target/release/cpl-conform --rules 2>&1 | grep -c 'which no chapter defines'"
+today = "78"
+target = "0"
+
+[[metric]]
+name = "core cases with no rule line"
+command = "python3 -c 'import pathlib,runpy,sys; pathlib.Path.write_text=lambda p,t: sys.stdout.write(t); sys.argv=[sys.argv[0]]; runpy.run_path(\"scripts/conformance-coverage.py\", run_name=\"__main__\")' 2>/dev/null | awk '/^## Core cases without/{f=1;next} /^## /{f=0} f&&/^- /{n++} END{print n+0}'"
+today = "10"
+target = "0"
+
+[[metric]]
+name = "diagnostic codes with no reject case"
+command = "python3 -c 'import pathlib,runpy,sys; pathlib.Path.write_text=lambda p,t: sys.stdout.write(t); sys.argv=[sys.argv[0]]; runpy.run_path(\"scripts/conformance-coverage.py\", run_name=\"__main__\")' 2>/dev/null | grep 'testable codes have no negative case'"
+today = "2 of 135"
+target = "0"
+
+[[metric]]
+name = "std items named by a case"
+command = "python3 -c 'import pathlib,runpy,sys; pathlib.Path.write_text=lambda p,t: sys.stdout.write(t); sys.argv=[sys.argv[0]]; runpy.run_path(\"scripts/conformance-coverage.py\", run_name=\"__main__\")' 2>/dev/null | grep 'std items are named by a case'"
+today = "2037 of 2245"
+target = "2245 of 2245"
+
+[[metric]]
+name = "spec code blocks passing"
+command = "target/release/cpl-conform spec-blocks | head -1"
+today = "19/185"
+target = "every block a case or marked spec-only"
+
+[[metric]]
+name = "untagged code blocks in spec/core and spec/lib (spec-blocks skips them)"
+command = "awk 'FNR==1{inb=0} /^ *```/{if(!inb){if($0 ~ /^ *```$/)n++; inb=1} else inb=0} END{print n}' spec/core/*.md spec/lib/*.md"
+today = "27"
+target = "0 (tag each block cp, or mark it spec-only)"
+
+[[metric]]
+name = "matrix empty cells"
+command = "test -f scripts/conformance-matrix.py && python3 scripts/conformance-matrix.py --check || echo not on main"
+today = "not on main (branch devin/wip-conformance-matrix: 211 cases, 22 n/a cells; check passed per the resume notes, not rerun)"
+target = "0"
+
+[[metric]]
+name = "trait methods without a case"
+command = "test -f scripts/conformance-traits.py && python3 scripts/conformance-traits.py --check || echo not built"
+today = "not built"
+target = "0"
+
+[[metric]]
+name = "rebuild holes (probe P1, cold agent, spec/ only)"
+command = "grep -m1 'There are' spec/delta/rebuild-2/HOLES.md"
+today = "32 (round 2)"
+target = "< 5 (round 3)"
+
+[[metric]]
+name = "reverted compiler fixes caught (probe P2)"
+command = "not scripted yet"
+today = "not measured"
+target = ">= 90%"
+
+[[metric]]
+name = "banned spellings in spec"
+command = "python3 scripts/spec-vocab.py | tail -1"
+today = "0"
+target = "0"
+
+[[metric]]
+name = "suite wall time, 2 cores"
+command = "/usr/bin/time -f '%e s' target/release/cpl-conform conformance spec-blocks 2>&1 | tail -1"
+today = "8.7 s"
+target = "< 20 s"
