@@ -84,8 +84,6 @@ This complete sum program uses `print()` inside `@gen` to produce test input. Fo
 When you have a slow `@alt` solution and want to check whether a sequence obeys a linear recurrence or whether a DP transition satisfies monotonicity, convexity (Aliens/WQS), or the quadrangle inequality (Knuth / divide-and-conquer DP), `std.spec` and local spec helpers let you test hypotheses empirically on small inputs before writing the fast algorithm:
 
 ```cp
-use lib.spec.recurrence.{integer_recurrence, show_recurrence}
-
 @memo
 fn tilings(n: 0..=12) -> Int:
     if n == 0: return 1
@@ -94,8 +92,9 @@ fn tilings(n: 0..=12) -> Int:
     4 * tilings(n - 2) - tilings(n - 4)
 
 let small = [tilings(n) for n in 0..12]
-let coeffs = integer_recurrence(small)!
-print(show_recurrence(coeffs)) // "a[n] = 4 a[n-2] - a[n-4]"
+for n in 4..12:
+    assert small[n] == 4 * small[n - 2] - small[n - 4]
+print("a[n] = 4 a[n-2] - a[n-4] holds on 0..12")
 ```
 
 ## Visual debugging with Trace
