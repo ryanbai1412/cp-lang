@@ -1944,4 +1944,4 @@ pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D = todo
 /// order: by left end; a new `List`, keyed from 0
 /// traps: never
 /// example: `[0..5, 1..3, 4..8].outermost() == [0..5, 4..8]`
-pub fn outermost<S: Seq, D>(self: S) -> List<Range<D>> where S: Seq<Range<D>> = todo
+pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>> = todo

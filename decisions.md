@@ -5313,3 +5313,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Why.** The rebuild (H-MISSING-SEQ-STUBS, H-ONE-NAME-MANY-FORMS) found core names without stubs and `first`/`last` used both as getters and with a predicate, which R06.1.6 (one name and label set, one signature) forbids. Stable sorting makes tie order something the contestant never has to look up.
 - **Reverse.** Restore `first(p)`/`last(p)` by giving the predicate a label (`first(where: p)`), or make `sort` unstable with a separate `stable_sort`.
 
+## 183. Implicit conversions are one closed, numbered list (2026-11-21)
+
+- **Decision.** Chapter 4 now lists every implicit conversion with where it applies (R04.4.22 to R04.4.27): `T` to `?T` (also at `==` and comparisons), range widening (sums of range types are `Int`, which fixes Dijkstra's distance type), integer literals as positions (proven at the smallest count, a compile error past the largest), cut range to piece, and scalar fill of an expected `[D]T`. `[D]` followed by a value is always a type; tables are `[D] i => e` or `[D].filled(x)`. Integer ranges and counted dimensions are anonymous domains satisfying `Domain`, and the cut before position `x` of an integer range is `x` (R04.4.28).
+- **Why.** The rebuild guessed at each of these (H-ARRAY-SCALAR-FILL, H-TABLE-VS-FILL, H-OPT-COMPARE, H-LITERAL-BOUND, H-DIJKSTRA-W, H-COUNTED-IS-DOMAIN, H-INT-RANGE-CUTS); they were half-stated across chapters 2, 4 and 4b. Cut `x` before position `x` matches the half-open `0..n` convention every contestant already uses, so `bsearch` on `1..=5` answers with the value, not a count.
+- **Reverse.** Drop an entry from the list (the fill is the most likely), or make integer-range cuts count positions before them as R04.2.16 does for declared domains.
+

@@ -29,7 +29,7 @@ in user helpers and in library code.
    - `w.keys.nth(k)` is the k-th key, because a range is an indexed
      sequence too. (R04b.1.4)
 5. **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is
-   indexed by `K` and valid on `r`, so `[s.keys]0` is a table shaped like
+   indexed by `K` and valid on `r`, so `[s.keys].filled(0)` is a table shaped like
    `s`. A declared domain's array covers the whole domain, as before.
    `[0..=n]Int` is the case we already have, where `K` is `Int`. (R04b.1.5)
 6. **Materializing keeps keys when it can.**
@@ -152,7 +152,7 @@ fn first_drop<K>(a: [K]Int) -> ?K =
     a.keys.drop(1).find(i => a[i] < a[i.prev!])
 
 fn next_greater<K>(a: [K]Int) -> [K]?K =  // keyed like a
-    var res = [a.keys]None
+    var res = [a.keys].filled(None)
     var stack = List<K>()
     for i in a.keys:
         while let j = stack.last and a[j] < a[i]:
