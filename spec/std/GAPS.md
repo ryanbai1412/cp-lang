@@ -81,3 +81,4 @@ line when the gap closes and the body lands.
 - deque, `LinkedList.splice_back`/`splice_front`: each list owns its `nx`/`pv`/`val` pools, so an O(1) splice needs a shared pool the struct layout does not have.
 - seq, `Range.mid`: `(0..5).mid` resolves to another `mid` returning `?Int` (E0302 "a `?Int` can't be turned into a `Int`"), and `D.cuts` is not a value for the anonymous domain of an int range (E0201 "doesn't know the name `D`"), so the body has no cut constructor.
 - seq, `chunks`/`runs_linked`: slicing a generic `S: Indexed` (`self[i..j]`) indexes one element (E0302 "`Int` does not implement `Seq`"); needs `Slice<S>` construction for generic `S`.
+- beats, `BeatsSegTree`/`HistoricBeatsSegTree` query doc examples (`BeatsSegTree([5, 1, 4]).sum(1..3)`): `sum`/`min_val`/`get` take `mut self` (they push tags down), so calling them on a temporary is E0401; the examples need a `var` or the queries a non-pushing signature.

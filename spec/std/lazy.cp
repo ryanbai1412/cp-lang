@@ -26,7 +26,9 @@ pub struct Flip<T>(now: T, flipped: T):
     /// traps: never (an `m` without a known identity is a compile-time error)
     /// example: `Flip.op(+).op(Flip(1, 0), Flip(0, 1)).now == 1`
     /// example: `Flip.op(+).id.flipped == 0`
-    pub fn op<M>(m: M) -> Monoid<Flip<T>> = todo
+    pub fn op<M>(m: M) -> Monoid<Flip<T>>:
+        let b = Monoid<T>.of(m)
+        Monoid(Flip(b.id, b.id), (x, y) => Flip(b.op(x.now, y.now), b.op(x.flipped, y.flipped)))
 
 /// The range-toggle action on `Flip<T>` values over `m`: the tag is a `Bool`, `true` swaps
 /// `now` and `flipped`, `false` is the identity, and tags compose by exclusive or. The swap
