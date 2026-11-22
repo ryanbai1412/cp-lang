@@ -17,7 +17,80 @@
 /// example: `bsearch_real(0.0, 8.0, x => x >= 3.0, steps: 3) == Some(3.0)`
 /// example: `bsearch_real(0.0, 1.0, x => x > 2.0) == None`
 /// example: `close(bsearch_real(0.0, 2.0, x => x * x >= 2.0)!, 1.4142135623730951)`
-pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64 = todo
+pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64:
+    assert lo <= hi and steps >= 0
+    if not ok(hi): return None
+    var a = lo
+    var b = hi
+    for _ in 0..steps:
+        let m = (a + b) / 2.0
+        if ok(m): b = m
+        else: a = m
+    Some(b)
+
+fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
+    let n = r.len
+    if n == 0: return None
+    var fib = List<Int>()
+    fib.push(1)
+    fib.push(2)
+    while fib[fib.len - 1] < n + 1: fib.push(fib[fib.len - 1] + fib[fib.len - 2])
+    var k = fib.len - 1
+    var l = -1
+    if k > 2:
+        var x1 = l + fib[k - 2]
+        var x2 = l + fib[k - 1]
+        var v1: ?K = if x1 < n: Some(f(r[x1])) else: None
+        var v2: ?K = if x2 < n: Some(f(r[x2])) else: None
+        while k > 2:
+            var right = false
+            if let a = v1:
+                if let b = v2:
+                    right = if larger: a < b else: b < a
+            k -= 1
+            if right:
+                l = x1
+                x1 = x2
+                v1 = v2
+                x2 = l + fib[k - 1]
+                v2 = if x2 < n: Some(f(r[x2])) else: None
+            else:
+                x2 = x1
+                v2 = v1
+                x1 = l + fib[k - 2]
+                v1 = if x1 < n: Some(f(r[x1])) else: None
+    var best = max(l + 1, 0)
+    var bv = f(r[best])
+    for x in best + 1..min(l + fib[k], n):
+        let v = f(r[x])
+        if (larger and bv < v) or (not larger and v < bv):
+            best = x
+            bv = v
+    Some(r[best])
+
+fn golden_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int, larger: Bool) -> F64:
+    assert lo <= hi and steps >= 0
+    let g = 0.6180339887498949
+    var a = lo
+    var b = hi
+    var x1 = b - g * (b - a)
+    var x2 = a + g * (b - a)
+    var f1 = f(x1)
+    var f2 = f(x2)
+    for _ in 0..steps:
+        if (larger and f1 < f2) or (not larger and f2 < f1):
+            a = x1
+            x1 = x2
+            f1 = f2
+            x2 = a + g * (b - a)
+            f2 = f(x2)
+        else:
+            b = x2
+            x2 = x1
+            f2 = f1
+            x1 = b - g * (b - a)
+            f1 = f(x1)
+    (a + b) / 2.0
 
 /// The position of `r` where a discrete unimodal `f` is largest, or `None` when `r` is empty.
 ///
@@ -33,7 +106,8 @@ pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 /// example: `ternary_max(0..6, i => -(i - 3) * (i - 3)) == Some(3)`
 /// example: `let f = [0, 1, 2, 2, 1]; ternary_max(0..5, i => f[i]) == Some(2)`
 /// example: `ternary_max(0..0, i => i) == None`
-pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I = todo
+pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
+    golden_pick(r, f, larger: true)
 
 /// The position of `r` where a discrete unimodal `f` is smallest, or `None` when `r` is empty.
 ///
@@ -49,7 +123,8 @@ pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I = todo
 /// example: `ternary_min(0..6, i => (i - 4) * (i - 4)) == Some(4)`
 /// example: `let f = [3, 1, 1, 2]; ternary_min(0..4, i => f[i]) == Some(1)`
 /// example: `ternary_min(5..5, i => i) == None`
-pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I = todo
+pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
+    golden_pick(r, f, larger: false)
 
 /// A point of `[lo, hi]` where a continuous unimodal `f` is largest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the maximizer.
@@ -62,7 +137,8 @@ pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I = todo
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `close(ternary_max_real(0.0, 4.0, x => -(x - 1.0) * (x - 1.0)), 1.0, eps: 1e-6)`
 /// example: `ternary_max_real(2.0, 2.0, x => x) == 2.0`
-pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64 = todo
+pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
+    golden_real(lo, hi, f, steps, larger: true)
 
 /// A point of `[lo, hi]` where a continuous unimodal `f` is smallest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the minimizer.
@@ -75,7 +151,8 @@ pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F6
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `close(ternary_min_real(-3.0, 3.0, x => (x - 2.0) * (x - 2.0)), 2.0, eps: 1e-6)`
 /// example: `ternary_min_real(1.5, 1.5, x => x) == 1.5`
-pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64 = todo
+pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64:
+    golden_real(lo, hi, f, steps, larger: false)
 
 /// Many binary searches over one timeline `r` at once: `out[q]` is the first `t` of `r` such
 /// that `ok(q)` holds once every event of `r` up to and including `t` is applied, or `None`
@@ -98,7 +175,49 @@ pub fn parallel_bsearch<I>(
     reset: () -> (),
     apply: I -> (),
     ok: Int -> Bool,
-) -> List<?I> = todo
+) -> List<?I>:
+    assert queries >= 0
+    let n = r.len
+    var lo = List<Int>()
+    var hi = List<Int>()
+    for _ in 0..queries:
+        lo.push(0)
+        hi.push(n)
+    var cnt = List<Int>()
+    for _ in 0..n + 1: cnt.push(0)
+    var order = List<Int>()
+    for _ in 0..queries: order.push(0)
+    var open = true
+    while open:
+        open = false
+        for t in 0..n + 1: cnt[t] = 0
+        for q in 0..queries:
+            if lo[q] < hi[q]:
+                open = true
+                cnt[(lo[q] + hi[q]) / 2 + 1] += 1
+        if not open: break
+        for t in 0..n: cnt[t + 1] += cnt[t]
+        var placed = 0
+        for q in 0..queries:
+            if lo[q] < hi[q]:
+                let m = (lo[q] + hi[q]) / 2
+                order[cnt[m]] = q
+                cnt[m] += 1
+                placed += 1
+        reset()
+        var p = 0
+        for t in 0..n:
+            apply(r[t])
+            while p < placed and (lo[order[p]] + hi[order[p]]) / 2 == t:
+                let q = order[p]
+                if ok(q): hi[q] = t
+                else: lo[q] = t + 1
+                p += 1
+    var out = List<?I>()
+    for q in 0..queries:
+        if lo[q] < n: out.push(Some(r[lo[q]]))
+        else: out.push(None)
+    out
 
 /// The first `i >= from` with `ok(i)`, for a monotone `ok` (false then true) whose upper end is
 /// unknown, or `None` when `ok` stays false to the end of `I`.
@@ -123,7 +242,14 @@ pub fn gallop_first<I>(from: I, ok: I -> Bool) -> ?I = todo
 /// traps: when `solve` returns `den <= 0`
 /// example: `dinkelbach(0.0, solve: _ => (num: 3.0, den: 2.0)) == 1.5`
 /// example: `dinkelbach(0.0, solve: l => if l < 1.0: (num: 3.0, den: 2.0) else: (num: 2.0, den: 1.0)) == 2.0`
-pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64 = todo
+pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64:
+    var l = lo
+    while true:
+        let c = solve(l)
+        assert c.den > 0.0, "`solve` returned `den <= 0`"
+        if c.num - l * c.den <= eps: return l
+        l = c.num / c.den
+    l
 
 /// The values of a family of ranges, largest first, lazily. Each group `g` owns `range(g)`;
 /// `best(g, r)` is the top value over a non-empty `r` and the position of `r` that gives it.
