@@ -327,3 +327,10 @@ Open questions raised by dreams:
 - aac4p6 (last dream, 100 of 100): the corpus has no statement, so the dream follows the C++'s
   idea instead of rethinking it, and the port matches it. Dream slip: `.enumerate()` where
   `a.rev().take(m)` keys already serve. No spec change.
+- btoi18p4 port reworked to the accepted algorithm. `covers` sorts the given arcs (each repeated a
+  lap either way) and sweeps, O(s log s) instead of building an O(n) depth array per call, so
+  the per-top checks cost O(m log m) in total. The port now precomputes which tops can share a
+  direction (`alone`), handles k = 1 and k = 3, rejects early when all wires miss a segment,
+  and shifts the pair's end by n when the pair wraps past the last top. Both the old port and
+  the dream (`dist(b, t)` parity with c flipped) alternated from the wrong top; the shared pair
+  now alternates from c, as in the C++. Checked with `cpl check` only: spec-only stubs don't run.

@@ -21,5 +21,5 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": ""
+ "notes": "spec.cp follows the accepted C++ (O(m log m) checks); type-checked only, not run"
 }
