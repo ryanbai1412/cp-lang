@@ -8,3 +8,4 @@ uv = "0.11.8"
 pnpm = "12.21.0"
 just = "1.59.0"
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.152"
+"aqua:neovim/neovim" = "0.11.5"  # editors/smoke.sh, tier-1 editor in the --full gate

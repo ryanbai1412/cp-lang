@@ -70,6 +70,8 @@ local ts_file = dir .. '/b.cp'
 vim.fn.writefile({ 'fn walk(n: Int) -> Int:', '    xs.sort()', '    print("{n}", MOD)' }, ts_file)
 vim.cmd.edit(ts_file)
 check(vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()] ~= nil, 'tree-sitter is not highlighting')
+-- Neovim 0.11 parses off the main loop; parse now so the captures are there to read.
+vim.treesitter.get_parser(0):parse()
 local function captures(row, col)
     return vim.tbl_map(function(c) return c.capture end, vim.treesitter.get_captures_at_pos(0, row, col))
 end

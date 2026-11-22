@@ -53,6 +53,10 @@ else
 fi
 
 nvim="${NVIM:-nvim}"
+# mise.toml pins Neovim for the gate; a pinned Neovim that is not installed is an error, not a skip.
+if ! command -v "$nvim" >/dev/null && grep -q 'neovim/neovim' "$root/mise.toml" && command -v mise >/dev/null; then
+    nvim="$(cd "$root" && mise which nvim 2>/dev/null)" || { echo "editors: mise.toml pins neovim; run mise install" >&2; exit 1; }
+fi
 if command -v "$nvim" >/dev/null && "$nvim" --headless --clean -c 'if has("nvim-0.10") | qa! | else | cq | endif' >/dev/null 2>&1; then
     echo "editors: neovim"
     "$nvim" --headless --clean -l "$root/editors/neovim/test/smoke.lua" "$cpl" "$root"
