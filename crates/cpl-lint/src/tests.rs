@@ -2107,3 +2107,23 @@ fn a_bounded_list_passed_to_print_has_its_size() {
     let src = "let k: 1..=7 = read()\nfn g():\n    var got: List<Int> = []\n    for i in 0..k:\n        got.push(i * i)\n        print(i)\n    print(\"!\", got)\n";
     assert_eq!(sizes(src), vec![(s("got"), 7, s("k")); 2]);
 }
+
+#[test]
+fn parsed_entry_points_match_source_entry_points_and_isolate_local_fn_shadowing() {
+    let src = "let n: 1..=200000 = read()\nlet m = n * n\nfn helper(x: 1..=10) -> Int:\n    fn min(a: Int, b: Int) -> Int: a + b\n    let y = min(x, 5)\n    y\nlet ok = min(n, 10)\nprint(m * m, helper(1), ok)\n";
+    let parsed = cpl_syntax::parse_file(src);
+    assert!(parsed.diagnostics.is_empty());
+    let items: Vec<(u32, &cpl_syntax::ParsedItem)> =
+        parsed.items.iter().map(|(o, p)| (*o, p)).collect();
+    assert_eq!(
+        crate::lint_parsed(src, &items, &crate::Config::default()),
+        crate::lint(src, &crate::Config::default()),
+    );
+    assert_eq!(
+        crate::proven_expr_ranges_parsed(src, &items),
+        crate::proven_expr_ranges(src),
+    );
+    // `helper`'s local `fn min` shadows prelude `min` inside `helper`, not at top level.
+    assert_eq!(range_of(src, "let y"), None);
+    assert_eq!(range_of(src, "let ok"), Some((1, 10)));
+}

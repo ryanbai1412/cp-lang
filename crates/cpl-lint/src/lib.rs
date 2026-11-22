@@ -520,7 +520,16 @@ pub(crate) struct Finding {
 pub(crate) struct File<'a> {
     pub src: &'a str,
     /// Each top-level item with the offset its spans are relative to.
-    pub items: &'a [(u32, ParsedItem)],
+    pub items: &'a [(u32, &'a ParsedItem)],
+}
+
+fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return T::default();
+    }
+    let items: Vec<(u32, &ParsedItem)> = parsed.items.iter().map(|(o, p)| (*o, p)).collect();
+    f(&File { src, items: &items })
 }
 
 impl File<'_> {
@@ -628,14 +637,11 @@ pub struct Run {
 
 /// Each fn with a body; a file with a syntax error has none.
 pub fn proven_fns(src: &str) -> Vec<ProvenFn> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::proven_fns(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::proven_fns)
+}
+
+pub fn proven_fns_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenFn> {
+    rules::proven_fns(&File { src, items })
 }
 
 /// An index `i` in `xs[i]` the bounds and relations prove is in
@@ -664,78 +670,56 @@ pub struct ProvenSize {
 /// Each method call on an array of bounded size, and each such array
 /// passed to `print` or `ask`; a file with a syntax error has none.
 pub fn proven_sizes(src: &str) -> Vec<ProvenSize> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::proven_sizes(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::proven_sizes)
+}
+
+pub fn proven_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenSize> {
+    rules::proven_sizes(&File { src, items })
 }
 
 /// Each list only pushed to in counted loops, with the most elements it
 /// can hold: the number of pushes (decision 29.45).
 pub fn list_sizes(src: &str) -> Vec<(String, u128)> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::list_sizes(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::list_sizes)
 }
 
 /// The most positions each top-level domain can have, from the bounds of
 /// its range: `domain V = 0..n` after `let n: 1..=2e5 = read()` has 200000.
 pub fn domain_sizes(src: &str) -> Vec<(String, u128)> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::domain_sizes(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::domain_sizes)
+}
+
+pub fn domain_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(String, u128)> {
+    rules::domain_sizes(&File { src, items })
 }
 
 /// Each index proven in bounds; a file with a syntax error has none.
 pub fn proven_indexes(src: &str) -> Vec<ProvenIndex> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::proven_indexes(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::proven_indexes)
+}
+
+pub fn proven_indexes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenIndex> {
+    rules::proven_indexes(&File { src, items })
 }
 
 /// Each `for` over a bounded range or domain, with how often it runs.
 pub fn proven_loops(src: &str) -> Vec<ProvenLoop> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::proven_loops(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::proven_loops)
+}
+
+pub fn proven_loops_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenLoop> {
+    rules::proven_loops(&File { src, items })
 }
 
 /// What the declared bounds prove about each `+`, `-`, `*`, `/`, `%` and `**` outside
 /// lambdas, comprehensions and match arms; a file with a syntax error has
 /// none.
 pub fn proven_expr_ranges(src: &str) -> Vec<ProvenExpr> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::proven_expr_ranges(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::proven_expr_ranges)
+}
+
+pub fn proven_expr_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenExpr> {
+    rules::proven_expr_ranges(&File { src, items })
 }
 
 /// What the declared input bounds prove about each top-level `let` written
@@ -743,14 +727,11 @@ pub fn proven_expr_ranges(src: &str) -> Vec<ProvenExpr> {
 /// `1..=10000`. Each is the name's byte offset and the inclusive range; a file
 /// with a syntax error has none.
 pub fn proven_ranges(src: &str) -> Vec<(u32, i128, i128)> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    rules::proven_ranges(&File {
-        src,
-        items: &parsed.items,
-    })
+    with_parsed(src, rules::proven_ranges)
+}
+
+pub fn proven_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(u32, i128, i128)> {
+    rules::proven_ranges(&File { src, items })
 }
 
 /// Lints one file. Returns warnings (errors for `deny`), in source order.
@@ -758,17 +739,17 @@ pub fn proven_ranges(src: &str) -> Vec<(u32, i128, i128)> {
 /// A file with a syntax error gets no lints: what the parser could not read
 /// may hold the assignment or the read a lint would say is missing.
 pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
-    let parsed = cpl_syntax::parse_file(src);
-    if !parsed.diagnostics.is_empty() {
-        return Vec::new();
-    }
-    let file = File {
-        src,
-        items: &parsed.items,
-    };
-    let allows = Allows::collect(&file);
+    with_parsed(src, |file| lint_file(file, config))
+}
+
+pub fn lint_parsed(src: &str, items: &[(u32, &ParsedItem)], config: &Config) -> Vec<Diagnostic> {
+    lint_file(&File { src, items }, config)
+}
+
+fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
+    let allows = Allows::collect(file);
     let mut findings = allows.unknown;
-    findings.extend(rules::run(&file, config));
+    findings.extend(rules::run(file, config));
 
     let mut out: Vec<Diagnostic> = Vec::new();
     for Finding { lint, mut diag } in findings {

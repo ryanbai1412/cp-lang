@@ -51,6 +51,8 @@ pub struct ItemSyntax {
     pub text: String,
     /// Column of the item's first token.
     pub col: u32,
+    /// Relative end offset of the item's last token (including trailing layout tokens).
+    pub tail: u32,
     pub hash: u64,
     pub parsed: ParsedItem,
     pub decls: Vec<Decl>,
@@ -139,6 +141,8 @@ pub struct Module {
 pub struct Analysis {
     pub text: Arc<str>,
     pub lines: LineIndex,
+    /// True when lexing or parsing any item produced a diagnostic.
+    pub has_syntax_errors: bool,
     /// Every diagnostic, in file positions and source order.
     pub diagnostics: Vec<Diagnostic>,
     pub items: Vec<AnalyzedItem>,
@@ -384,24 +388,30 @@ impl Database {
         for range in &ranges {
             let item_text = range.span.text(&text);
             let col = lines.line_col(range.span.start).col;
-            let hash = hash_str(item_text) ^ u64::from(col).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+            let tokens = &lexed.tokens[range.tokens.0..range.tokens.1];
+            let tail = tokens
+                .last()
+                .map_or(0, |t| t.span.end.saturating_sub(range.span.start));
+            let hash = hash_str(item_text)
+                ^ u64::from(col).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+                ^ u64::from(tail).wrapping_mul(0x517c_c1b7_2722_0a95);
             let cached = self
                 .syntax
                 .get_mut(&hash)
-                .filter(|m| m.item.text == item_text && m.item.col == col);
+                .filter(|m| m.item.text == item_text && m.item.col == col && m.item.tail == tail);
             let item = match cached {
                 Some(memo) => {
                     memo.last_used = revision;
                     memo.item.clone()
                 }
                 None => {
-                    let tokens = &lexed.tokens[range.tokens.0..range.tokens.1];
                     let poison = cpl_syntax::poison_for_item(&lexed, range);
                     let parsed = cpl_syntax::parse_item(&text, tokens, range.span.start, poison);
                     self.stats.items_parsed += 1;
                     let item = Arc::new(ItemSyntax {
                         text: item_text.to_string(),
                         col,
+                        tail,
                         hash,
                         decls: decls_of(&parsed.stmts),
                         flow: flow_of(&parsed.stmts),
@@ -1036,9 +1046,12 @@ impl Database {
             }
         }
 
+        let has_syntax_errors =
+            !lexed.diagnostics.is_empty() || items.iter().any(|i| !i.parsed.diagnostics.is_empty());
         let analysis = Arc::new(Analysis {
             text: text.clone(),
             lines,
+            has_syntax_errors,
             diagnostics: sink.finish(),
             items: ranges
                 .iter()

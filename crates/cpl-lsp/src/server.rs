@@ -240,7 +240,7 @@ impl Server {
                 let sized = hover.text.lines().find_map(|l| l.strip_prefix("cost: ")).and_then(|cost| {
                     let size = facts.sizes().iter().find(|s| s.receiver.1 + 1 == hover.span.start)?;
                     let steps = steps_of(cost, size.max as f64)?;
-                    let receiver = &facts.text[size.receiver.0 as usize..size.receiver.1 as usize];
+                    let receiver = &facts.text()[size.receiver.0 as usize..size.receiver.1 as usize];
                     let named = if size.count.chars().all(|c| c.is_ascii_digit()) {
                         String::new()
                     } else {
@@ -664,7 +664,7 @@ impl Server {
                     analysis.lines.offset_utf16(end, &analysis.text),
                 );
                 let mut actions = Vec::new();
-                let lints = lints(uri, &analysis.text);
+                let lints = lints(uri, &analysis);
                 for diag in analysis.diagnostics.iter().chain(&lints) {
                     if diag.span.end < wanted.start || diag.span.start > wanted.end {
                         continue;
@@ -835,7 +835,7 @@ impl Server {
         // what lowering rejects; then, as `cpl lint` reports them, the lints.
         let items = cpl_ir::reported(&analysis)
             .iter()
-            .chain(&lints(uri, &analysis.text))
+            .chain(&lints(uri, &analysis))
             .chain(&overflows(&facts))
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
@@ -870,10 +870,14 @@ impl Server {
     /// once per edit and shared by every request until the next.
     fn proven(&mut self, uri: &str) -> Option<Arc<Proven>> {
         let analysis = self.db.analyze(uri)?;
-        if let Some(facts) = self.proven.get(uri).filter(|f| *f.text == *analysis.text) {
+        if let Some(facts) = self
+            .proven
+            .get(uri)
+            .filter(|f| Arc::ptr_eq(&f.analysis, &analysis) || *f.analysis.text == *analysis.text)
+        {
             return Some(facts.clone());
         }
-        let facts = Arc::new(Proven::new(analysis.text.to_string()));
+        let facts = Arc::new(Proven::new(analysis));
         self.proven.insert(uri.to_string(), facts.clone());
         Some(facts)
     }
@@ -1550,7 +1554,7 @@ fn fn_documented(
     let mut out = Vec::new();
     let mut evaluated: Vec<(Span, f64, Option<String>)> = Vec::new();
     let costs = db.costs_in(uri, f.body.0, f.body.1);
-    let text = &facts.text;
+    let text = facts.text();
     let sizes = if costs.is_empty() { &[][..] } else { facts.sizes() };
     let domains = if costs.iter().any(|(_, _, c)| c.contains('|')) { facts.domains() } else { &[][..] };
     for (span, name, cost) in &costs {
@@ -1692,7 +1696,7 @@ pub(crate) fn count_text(n: u128) -> String {
 /// A soft note on each operation the prover shows leaves `Int` for inputs
 /// in their declared ranges, naming those inputs.
 fn overflows(facts: &Proven) -> Vec<Diagnostic> {
-    let text = &facts.text;
+    let text = facts.text();
     facts
         .exprs()
         .iter()
@@ -1713,13 +1717,21 @@ fn overflows(facts: &Proven) -> Vec<Diagnostic> {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn lints(_uri: &str, _text: &str) -> Vec<Diagnostic> {
+fn lints(_uri: &str, _analysis: &cpl_check::Analysis) -> Vec<Diagnostic> {
     Vec::new()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn lints(uri: &str, text: &str) -> Vec<Diagnostic> {
-    cpl_lint::lint(text, &lint_config(uri))
+fn lints(uri: &str, analysis: &cpl_check::Analysis) -> Vec<Diagnostic> {
+    if analysis.has_syntax_errors {
+        return Vec::new();
+    }
+    let items: Vec<(u32, &cpl_syntax::ParsedItem)> = analysis
+        .items
+        .iter()
+        .map(|i| (i.offset, &i.syntax.parsed))
+        .collect();
+    cpl_lint::lint_parsed(&analysis.text, &items, &lint_config(uri))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1893,9 +1905,9 @@ fn panic_text(panic: &(dyn std::any::Any + Send)) -> String {
     }
 }
 
-/// The bounds prover's results on one text, each computed on first use.
+/// The bounds prover's results on one revision of a file, each computed on first use.
 struct Proven {
-    text: String,
+    analysis: Arc<cpl_check::Analysis>,
     ranges: OnceLock<Vec<(u32, i128, i128)>>,
     sizes: OnceLock<Vec<cpl_lint::ProvenSize>>,
     domains: OnceLock<Vec<(String, u128)>>,
@@ -1906,9 +1918,9 @@ struct Proven {
 }
 
 impl Proven {
-    fn new(text: String) -> Proven {
+    fn new(analysis: Arc<cpl_check::Analysis>) -> Proven {
         Proven {
-            text,
+            analysis,
             ranges: OnceLock::new(),
             sizes: OnceLock::new(),
             domains: OnceLock::new(),
@@ -1919,31 +1931,55 @@ impl Proven {
         }
     }
 
+    fn text(&self) -> &str {
+        &self.analysis.text
+    }
+
+    fn with_items<T: Default>(&self, f: impl FnOnce(&str, &[(u32, &cpl_syntax::ParsedItem)]) -> T) -> T {
+        if self.analysis.has_syntax_errors {
+            return T::default();
+        }
+        let items: Vec<(u32, &cpl_syntax::ParsedItem)> = self
+            .analysis
+            .items
+            .iter()
+            .map(|i| (i.offset, &i.syntax.parsed))
+            .collect();
+        f(&self.analysis.text, &items)
+    }
+
     fn ranges(&self) -> &[(u32, i128, i128)] {
-        self.ranges.get_or_init(|| cpl_lint::proven_ranges(&self.text))
+        self.ranges
+            .get_or_init(|| self.with_items(cpl_lint::proven_ranges_parsed))
     }
 
     fn sizes(&self) -> &[cpl_lint::ProvenSize] {
-        self.sizes.get_or_init(|| cpl_lint::proven_sizes(&self.text))
+        self.sizes
+            .get_or_init(|| self.with_items(cpl_lint::proven_sizes_parsed))
     }
 
     fn domains(&self) -> &[(String, u128)] {
-        self.domains.get_or_init(|| cpl_lint::domain_sizes(&self.text))
+        self.domains
+            .get_or_init(|| self.with_items(cpl_lint::domain_sizes_parsed))
     }
 
     fn fns(&self) -> &[cpl_lint::ProvenFn] {
-        self.fns.get_or_init(|| cpl_lint::proven_fns(&self.text))
+        self.fns
+            .get_or_init(|| self.with_items(cpl_lint::proven_fns_parsed))
     }
 
     fn loops(&self) -> &[cpl_lint::ProvenLoop] {
-        self.loops.get_or_init(|| cpl_lint::proven_loops(&self.text))
+        self.loops
+            .get_or_init(|| self.with_items(cpl_lint::proven_loops_parsed))
     }
 
     fn indexes(&self) -> &[cpl_lint::ProvenIndex] {
-        self.indexes.get_or_init(|| cpl_lint::proven_indexes(&self.text))
+        self.indexes
+            .get_or_init(|| self.with_items(cpl_lint::proven_indexes_parsed))
     }
 
     fn exprs(&self) -> &[cpl_lint::ProvenExpr] {
-        self.exprs.get_or_init(|| cpl_lint::proven_expr_ranges(&self.text))
+        self.exprs
+            .get_or_init(|| self.with_items(cpl_lint::proven_expr_ranges_parsed))
     }
 }

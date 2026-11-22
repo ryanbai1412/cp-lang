@@ -8,6 +8,7 @@
 use crate::File;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, StmtKind, Type, TypeKind, UnOp};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 /// An inclusive range of integers.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -34,27 +35,16 @@ impl Interval {
     }
 }
 
-/// What the top level of a file says about its names.
+/// File-wide tables computed once in [`Bounds::of`] and shared across scope clones.
 #[derive(Default, Clone)]
-pub(crate) struct Bounds {
-    values: HashMap<String, Interval>,
+struct FileFacts {
     /// The number of values of each domain, at most.
     domains: HashMap<String, u128>,
     aliases: HashMap<String, Type>,
-    /// Fns the program declares, which hide the prelude's `min`, `max`, `abs`.
-    fns: HashSet<String>,
-    /// How each name the prover can reason about got its value.
-    defs: HashMap<String, Def>,
     /// How many places in the file bind each value name.
     bindings: HashMap<String, u32>,
     /// Names a fn or lambda body assigns, which a call anywhere can change.
     fn_writes: HashSet<String>,
-    /// What a condition proves about `a - b` for two bounded names, which
-    /// their own intervals cannot say (`lo < hi` makes `hi - lo` positive).
-    diffs: HashMap<(String, String), Interval>,
-    /// The value a `var` holds where nothing has assigned it since it was
-    /// declared or last set, which its hull over the whole scope cannot say.
-    now: HashMap<String, Interval>,
     /// Sequences bound once whose length only statements of their own scope
     /// change, and `g[]` for the rows of such a `g`: their `.len` is a name
     /// the relations know until `assigned_in` finds a change. A change in a
@@ -64,12 +54,29 @@ pub(crate) struct Bounds {
     /// Names some binding or assignment of reads a `.len`: their intervals
     /// reach `LEN_MAX`, which says nothing worth showing.
     long: HashSet<String>,
-    /// Arrays bound with a type that bounds their cells: how many at most,
-    /// as a number and as factors of the source.
-    sizes: HashMap<String, (u128, Vec<super::Factor>)>,
     /// Lists that start empty and only `push` or `pop` change, all in their
     /// own scope: how many `push` calls the source has for each.
     pushed: HashMap<String, usize>,
+}
+
+/// What the top level of a file says about its names.
+#[derive(Default, Clone)]
+pub(crate) struct Bounds {
+    file: Rc<FileFacts>,
+    values: HashMap<String, Interval>,
+    /// Fns the program declares, which hide the prelude's `min`, `max`, `abs`.
+    fns: Rc<HashSet<String>>,
+    /// How each name the prover can reason about got its value.
+    defs: HashMap<String, Def>,
+    /// What a condition proves about `a - b` for two bounded names, which
+    /// their own intervals cannot say (`lo < hi` makes `hi - lo` positive).
+    diffs: HashMap<(String, String), Interval>,
+    /// The value a `var` holds where nothing has assigned it since it was
+    /// declared or last set, which its hull over the whole scope cannot say.
+    now: HashMap<String, Interval>,
+    /// Arrays bound with a type that bounds their cells: how many at most,
+    /// as a number and as factors of the source.
+    sizes: HashMap<String, (u128, Vec<super::Factor>)>,
 }
 
 /// The most a `.len` is taken to be: only relations bound it usefully.
@@ -162,7 +169,9 @@ impl Bounds {
                         _ => None,
                     };
                     if let Some(size) = size {
-                        bounds.domains.insert(name.text.clone(), size);
+                        Rc::make_mut(&mut bounds.file)
+                            .domains
+                            .insert(name.text.clone(), size);
                     }
                 }
                 StmtKind::Fn(decl) => bounds.declare_fn(&decl.name.text),
@@ -182,7 +191,9 @@ impl Bounds {
                     }
                 }
                 StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
-                    bounds.aliases.insert(name.text.clone(), ty.clone());
+                    Rc::make_mut(&mut bounds.file)
+                        .aliases
+                        .insert(name.text.clone(), ty.clone());
                 }
                 _ => {}
             }
@@ -307,8 +318,11 @@ impl Bounds {
                 self.names(pat);
             }
         }
-        let mut count = Count(&mut self.bindings, &mut self.fn_writes);
-        file.top_level().for_each(|(_, s)| walk_stmt(s, &mut count));
+        {
+            let file_facts = Rc::make_mut(&mut self.file);
+            let mut count = Count(&mut file_facts.bindings, &mut file_facts.fn_writes);
+            file.top_level().for_each(|(_, s)| walk_stmt(s, &mut count));
+        }
         self.find_fixed(file);
     }
 
@@ -322,7 +336,9 @@ impl Bounds {
             changes: Vec<(String, u32, u32)>,
             bodies: Vec<(u32, u32)>,
             decls: HashMap<String, u32>,
-            sources: Vec<(String, Expr)>,
+            /// `(target, directly_reads_len, referenced_names)` for each binding/assignment.
+            sources: Vec<(String, bool, Vec<String>)>,
+            has_len: bool,
             seqs: HashSet<String>,
             empty: HashSet<String>,
             pushes: HashMap<String, usize>,
@@ -341,7 +357,7 @@ impl Bounds {
                     StmtKind::Assign { target, value, .. } => {
                         if let Some(n) = root(target) {
                             self.change(n, at);
-                            self.sources.push((n.to_string(), value.clone()));
+                            self.record_source(n.to_string(), value);
                         }
                         self.change_row(target, at);
                     }
@@ -366,7 +382,7 @@ impl Bounds {
                     }
                     if let Some(init) = init {
                         if let PatternKind::Name(n) = &pat.kind {
-                            self.sources.push((n.clone(), init.clone()));
+                            self.record_source(n.clone(), init);
                             if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {
                                 self.empty.insert(n.clone());
                             }
@@ -374,7 +390,7 @@ impl Bounds {
                         if let (PatternKind::Tuple(ps), ExprKind::Tuple(es)) = (&pat.kind, &init.kind) {
                             for (p, e) in ps.iter().zip(es) {
                                 if let PatternKind::Name(n) = &p.kind {
-                                    self.sources.push((n.clone(), e.clone()));
+                                    self.record_source(n.clone(), e);
                                 }
                             }
                         }
@@ -424,6 +440,30 @@ impl Bounds {
             fn pattern(&mut self, _: &Pattern) {}
         }
         impl Scan {
+            fn record_source(&mut self, target: String, expr: &Expr) {
+                struct Refs {
+                    has_len: bool,
+                    names: Vec<String>,
+                }
+                impl Visitor for Refs {
+                    fn expr(&mut self, e: &Expr) {
+                        match &e.kind {
+                            ExprKind::Name(n) => self.names.push(n.clone()),
+                            ExprKind::Field { name, .. } if name.text == "len" => {
+                                self.has_len = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                let mut refs = Refs {
+                    has_len: false,
+                    names: Vec::new(),
+                };
+                cpl_syntax::visit::walk_expr(expr, &mut refs);
+                self.has_len |= refs.has_len;
+                self.sources.push((target, refs.has_len, refs.names));
+            }
             fn change(&mut self, name: &str, at: (u32, u32)) {
                 self.changed.insert(name.to_string());
                 self.changes.push((name.to_string(), at.0, at.1));
@@ -452,36 +492,46 @@ impl Bounds {
             scan.base = base;
             walk_stmt(stmt, &mut scan);
         }
-        self.tracked = scan
+        let tracked: HashSet<String> = scan
             .seqs
             .iter()
             .filter(|n| {
                 let seq = n.strip_suffix("[]").unwrap_or(n);
-                self.bound_once(seq) && !self.fn_writes.contains(seq) && scan.local(n)
+                self.bound_once(seq) && !self.file.fn_writes.contains(seq) && scan.local(n)
             })
             .cloned()
             .collect();
-        self.pushed = scan
+        let pushed: HashMap<String, usize> = scan
             .empty
             .iter()
-            .filter(|n| self.bound_once(n) && !self.fn_writes.contains(*n) && scan.local(n))
+            .filter(|n| self.bound_once(n) && !self.file.fn_writes.contains(*n) && scan.local(n))
             .filter_map(|n| {
                 let pushes = scan.pushes.get(n).copied().unwrap_or(0);
                 let changes = scan.changes.iter().filter(|c| c.0 == *n).count();
                 (changes == pushes + scan.pops.get(n).copied().unwrap_or(0)).then(|| (n.clone(), pushes))
             })
             .collect();
-        loop {
-            let more: Vec<String> = scan
-                .sources
-                .iter()
-                .filter(|(n, e)| !self.long.contains(n) && self.reads_len(e))
-                .map(|(n, _)| n.clone())
-                .collect();
-            if more.is_empty() {
-                break;
+        {
+            let file_facts = Rc::make_mut(&mut self.file);
+            file_facts.tracked = tracked;
+            file_facts.pushed = pushed;
+        }
+        if scan.has_len {
+            loop {
+                let more: Vec<String> = scan
+                    .sources
+                    .iter()
+                    .filter(|(n, direct, refs)| {
+                        !self.file.long.contains(n)
+                            && (*direct || refs.iter().any(|r| self.file.long.contains(r)))
+                    })
+                    .map(|(n, ..)| n.clone())
+                    .collect();
+                if more.is_empty() {
+                    break;
+                }
+                Rc::make_mut(&mut self.file).long.extend(more);
             }
-            self.long.extend(more);
         }
     }
 
@@ -491,13 +541,13 @@ impl Bounds {
             ExprKind::Name(n) => Some(n.clone()),
             ExprKind::Paren(inner) => self.atom(inner),
             ExprKind::Field { base, name } if name.text == "len" => match &base.kind {
-                ExprKind::Name(n) if self.tracked.contains(n) => {
+                ExprKind::Name(n) if self.file.tracked.contains(n) => {
                     Some(format!("{n}.len"))
                 }
                 ExprKind::Index { base, indices } => match (&base.kind, &indices[..]) {
                     (ExprKind::Name(g), [row]) => {
                         match &row.kind {
-                            ExprKind::Name(u) if self.tracked.contains(&format!("{g}[]")) => {
+                            ExprKind::Name(u) if self.file.tracked.contains(&format!("{g}[]")) => {
                                 Some(format!("{g}[{u}].len"))
                             }
                             _ => None,
@@ -518,7 +568,7 @@ impl Bounds {
         impl Visitor for Reads<'_> {
             fn expr(&mut self, e: &Expr) {
                 self.1 |= match &e.kind {
-                    ExprKind::Name(n) => self.0.long.contains(n),
+                    ExprKind::Name(n) => self.0.file.long.contains(n),
                     ExprKind::Field { name, .. } => name.text == "len",
                     _ => false,
                 };
@@ -530,7 +580,7 @@ impl Bounds {
     }
 
     pub(crate) fn is_long(&self, name: &str) -> bool {
-        self.long.contains(name)
+        self.file.long.contains(name)
     }
 
     /// Whether one place in the file binds `name`, so every use of it
@@ -538,13 +588,13 @@ impl Bounds {
     pub(crate) fn written_by_fn(&self, name: &str) -> bool {
         let seq = name.strip_suffix(".len").unwrap_or(name);
         match row_of(name) {
-            Some((g, u)) => self.fn_writes.contains(g) || self.fn_writes.contains(u),
-            None => self.fn_writes.contains(seq),
+            Some((g, u)) => self.file.fn_writes.contains(g) || self.file.fn_writes.contains(u),
+            None => self.file.fn_writes.contains(seq),
         }
     }
 
     pub(crate) fn bound_once(&self, name: &str) -> bool {
-        self.bindings.get(name) == Some(&1)
+        self.file.bindings.get(name) == Some(&1)
     }
 
     pub(crate) fn bind(&mut self, name: &str, value: Option<Interval>) {
@@ -568,7 +618,7 @@ impl Bounds {
 
     /// How many `push` calls build `name`, a list nothing else lengthens.
     pub(crate) fn pushes(&self, name: &str) -> Option<usize> {
-        self.pushed.get(name).copied()
+        self.file.pushed.get(name).copied()
     }
 
     /// A test proved `name` is in `value`: what was known about it stays.
@@ -722,8 +772,8 @@ impl Bounds {
     /// The interval a bounded name is in.
     pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
         match name.strip_suffix(".len") {
-            Some(seq) if self.tracked.contains(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
-            Some(_) if row_of(name).is_some_and(|(g, _)| self.tracked.contains(&format!("{g}[]"))) => {
+            Some(seq) if self.file.tracked.contains(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
+            Some(_) if row_of(name).is_some_and(|(g, _)| self.file.tracked.contains(&format!("{g}[]"))) => {
                 Some(Interval { lo: 0, hi: LEN_MAX })
             }
             _ => self.values.get(name).copied(),
@@ -890,18 +940,20 @@ impl Bounds {
 
     /// From here on `name` is a fn of the program's own, not the prelude's.
     pub(crate) fn declare_fn(&mut self, name: &str) {
-        self.fns.insert(name.to_string());
+        if !self.fns.contains(name) {
+            Rc::make_mut(&mut self.fns).insert(name.to_string());
+        }
     }
 
     /// How many values the domain `name` has, at most.
     pub(crate) fn domains(&self) -> Vec<(String, u128)> {
-        let mut out: Vec<(String, u128)> = self.domains.iter().map(|(d, n)| (d.clone(), *n)).collect();
+        let mut out: Vec<(String, u128)> = self.file.domains.iter().map(|(d, n)| (d.clone(), *n)).collect();
         out.sort();
         out
     }
 
     pub(crate) fn domain_size(&self, name: &str) -> Option<u128> {
-        self.domains.get(name).copied()
+        self.file.domains.get(name).copied()
     }
 
     /// How many values a type has, at most.
@@ -912,10 +964,11 @@ impl Bounds {
                 "Bool" => Some(2),
                 "Char" | "U8" => Some(256),
                 other => self
+                    .file
                     .domains
                     .get(other)
                     .copied()
-                    .or_else(|| self.type_size(self.aliases.get(other)?)),
+                    .or_else(|| self.type_size(self.file.aliases.get(other)?)),
             },
             TypeKind::Optional(inner) => self.type_size(inner)?.checked_add(1),
             TypeKind::Tuple(parts) => parts.iter().try_fold(1u128, |total, part| {
