@@ -1050,7 +1050,7 @@ pass 25.4% and R6 48/55 87.3% / 29/55 52.7%); all 7 remaining Round 9 failures
 are classified in `research/writable-from-docs.md` (2 doc gaps fixed post-R9, 3
 model syntax/output slips, 2 model algorithmic WAs). Enforced as a ratchet in
 `scripts/scoreboard.py --fast --check` (floors 89.5% compile / 82.3% pass) and
-scheduled weekly via `.github/workflows/writable-from-docs.yml`.
+run on demand via `.github/workflows/writable-from-docs.yml` (manual dispatch only).
 Gaps: `cpl doc stdlib` still has undocumented items and 0 doc-comment
 examples; playground does not yet have a generated C++17 diff view.
 **Bar.** A cold reader writes a correct solution from the docs alone; every

@@ -1563,6 +1563,8 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   gate over realistic contest difficulty.
   *Reversible:* delete `.github/workflows/writable-from-docs.yml`, `research/writable-from-docs.json`,
   `research/writable-from-docs-set.json`, and the `writable_from_docs` block in `scripts/scoreboard.py`.
+  *Update:* the workflow is `workflow_dispatch` only, like every workflow until Ryan turns
+  automatic runs on (Actions minutes); restore `schedule: cron "0 6 * * 1"` to run it weekly.
 
 - **24.10 Gold-standard `From C++` guide and `Idioms` page (`site/content/cpp-guide.md`, `site/content/idioms.md`).**
   Upgraded `site/content/cpp-guide.md` with an editorial-first side-by-side C++17 vs CP Lang
