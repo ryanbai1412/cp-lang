@@ -1,5 +1,12 @@
-// Codeforces 2222 E (interactive): binary-search the hidden mask v bit by bit,
-// then distinguish operation k in {1, 2, 3} with at most two extra queries.
+// Codeforces 2222 E — Interactive Bitwise Operation & Mask Recovery
+//
+// Starting from an empty set, inserting 0 leaves size 1 iff the hidden
+// operation is k == 1 (in which case we also insert `(1 << n) - 1` so `v`
+// becomes detectable). Next, recover the hidden n-bit mask `v` from MSB to
+// LSB via `ask('Q', v + (1 << b)) > 0`. Finally, when `k in {2, 3}`, one extra
+// insertion (using `v & (v - 1)` if `v` is not a power of 2, or `nv` = `3` /
+// `v + 1` plus a query if `v` is a power of 2) distinguishes `k == 2` from `3`.
+
 @!interactive
 
 fn ask(kind: Char, x: Int) -> Int:
@@ -7,7 +14,7 @@ fn ask(kind: Char, x: Int) -> Int:
     read()
 
 @!multitest
-let n: Int = read()
+let n: 1..=20 = read()
 print(0)
 
 let n_sz = ask('I', 0)
