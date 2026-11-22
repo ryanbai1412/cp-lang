@@ -1,6 +1,7 @@
 # ceoi22p3
 
-Score: 3/5
+Score: pending cold rescore (added dream `proto/ports/scout_batch_26/dream/ceoi22p3.cp`; port uses `Rooted.from_parents`, `proj` callback instead of `col: Int`, `Deque` BFS with `depth: [V]?Int` and `while let x = queue.pop_front()`, bounded `q: 1..=100_000`, dropped stale WISH comments; verified `cpl run` == `g++`, 28.6 KB, 0 errors, 0 lints)
+Dream: pending cold rescore (new dream using `read<[V]?V>(none: -1)`, `print(picked)`, and `picked.pairs`)
 
 Baseline review, cold, on main 96359635. Reads like the editorial. The header (lines 7-14) states the auxiliary-tree insight and why the ties are connected. But the trees are read by hand with a `-1` root sentinel, and depths come from a hand stack traversal with a `known` flag array. No dream exists, so the score is capped at 3.
 
