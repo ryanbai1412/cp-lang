@@ -73,6 +73,7 @@ pub fn bundled_std(module: &[String]) -> Option<&'static str> {
 
 /// Every module of the standard library that is built into the compiler,
 /// by name (`"segtree"`), with its text.
+#[cfg(test)]
 pub fn bundled_std_modules() -> &'static [(&'static str, &'static str)] {
     BUNDLED_STD
 }
