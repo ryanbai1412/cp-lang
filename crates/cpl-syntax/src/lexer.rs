@@ -919,14 +919,21 @@ impl<'a> Lexer<'a> {
         }
         let span = Span::new(start as u32, self.pos as u32);
         self.out.poisoned.push(span);
-        self.out.diagnostics.push(
-            Diagnostic::error(
-                codes::BAD_CHAR_LITERAL,
-                span,
-                "a character is written `'a'`, with exactly one character between the quotes",
-            )
-            .with_help("use double quotes for a string"),
-        );
+        let mut diag = Diagnostic::error(
+            codes::BAD_CHAR_LITERAL,
+            span,
+            "a character is written `'a'`, with exactly one character between the quotes",
+        )
+        .with_help("use double quotes for a string");
+        let text = &self.src[start..self.pos];
+        if let Some(inner) = text
+            .strip_prefix('\'')
+            .and_then(|t| t.strip_suffix('\''))
+            .filter(|t| t.len() > 1 && !t.contains('"'))
+        {
+            diag = diag.with_fix("make it a string", span, format!("\"{inner}\""));
+        }
+        self.out.diagnostics.push(diag);
         self.push(TokenKind::Error, start);
     }
 
