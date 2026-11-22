@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1264 (296 passing). Rules: 521.
+Cases: 1274 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 20 case(s)
+- R0401 Assertion failed: 23 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -766,8 +766,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `CostFlow.cancel_cycles`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (129/158 named by a case)
   - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `reflect`, `circles_union_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
-- **graph** (73/123 named by a case)
-  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `condense`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
+- **graph** (75/123 named by a case)
+  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `peel`, `condense`, `Paths.iter`, `Paths.tight`, `fixed_cost_paths`, `closure`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `boruvka`, `arborescence`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (35/35 named by a case)
 - **heap** (74/74 named by a case)
@@ -779,8 +779,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **marks** (46/46 named by a case)
 - **math** (65/83 named by a case)
   - uncovered: `fixed`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `splitmix64`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
-- **matrix** (52/63 named by a case)
-  - uncovered: `Mat.new`, `Mat.transpose`, `Mat.mul_vec`, `Mat.product`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `sparse_det`, `sparse_solve`, `simplex`
+- **matrix** (59/63 named by a case)
+  - uncovered: `Mat.new`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (5/6 named by a case)
   - uncovered: `mo_steps`
 - **mod** (27/29 named by a case)
@@ -801,8 +801,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `split_best`
 - **segtree** (51/54 named by a case)
   - uncovered: `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
-- **seq** (184/215 named by a case)
-  - uncovered: `Perm`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `ends`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `product`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
+- **seq** (185/215 named by a case)
+  - uncovered: `Perm`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `ends`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `Rebased`, `Keys`, `SubseqStep`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`
 - **slope** (32/39 named by a case)
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (23/23 named by a case)
@@ -816,7 +816,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1821 of 2222 std items are named by a case.
+1831 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
