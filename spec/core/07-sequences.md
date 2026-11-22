@@ -164,7 +164,7 @@ a[l..=r].rev.map(f)       // Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
 - **Lending: the rules of `mut a[i]`, over a range.** Any number of read
   views coexist with reads. A `mut` view excludes every other access to what
   it covers; two `mut` views not provably disjoint are a compile error
-  (E0602). Halves at one cut (`mut a[..c]` and `mut a[c..]`, or `halve`'s
+  (E0601). Halves at one cut (`mut a[..c]` and `mut a[c..]`, or `halve`'s
   two) are provably disjoint. A length change (`push`, `pop`, `clear`) while
   any view or place is alive is a compile error. (R07.5.9)
 - **Lifetime: second-class, no annotations.** A value is lent if any part
@@ -330,11 +330,11 @@ place) are different jobs, not twins.
 ## Answers to round 2's questions
 
 1. **In-place vs copy:** both, by rule: a verb mutates, its result-named
-   twin allocates. (R07.13.1)
+   twin allocates.
 2. **Folds on possibly-empty input:** `NonEmpty` is gone. Identity-backed
    folds (`sum`, `fold(+)`) are plain `T`; `min`/`max` are `?T` and you
-   write `a.max()!` when you know. (R07.13.2)
-3. **`scan`:** n + 1 values indexed by cuts; suffix folds come from `.rev`. (R07.13.3)
+   write `a.max()!` when you know.
+3. **`scan`:** n + 1 values indexed by cuts; suffix folds come from `.rev`.
 
 ## Open
 

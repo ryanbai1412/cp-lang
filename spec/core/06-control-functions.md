@@ -99,7 +99,7 @@ let s = divisors(n).filter(d => d % 2 == 0).sum()
   yield events (`Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)`). (R06.3.4)
 - Generators are push-only; there is no cursor. Lockstep over two
   generators is `List(g)` first, a visible allocation. (R06.3.5)
-- Sequences, views, chains and capabilities are chapter 7. (R06.3.6)
+- Sequences, views, chains and capabilities are chapter 7.
 
 ## 6.4 Decorators
 
@@ -120,9 +120,9 @@ library or by this spec:
   roles (`tools/stress.md`); the item is otherwise unchanged. (R06.4.3)
 - `@cache` on a struct field: compiler-safe interior mutability with an
   author promise of logical correctness (chapter 5 §10a). (R06.4.4)
-- `@trusted:` blocks and `@cpp` items: the unsafe tier (chapter 9). (R06.4.5)
-- `@grader(...)`: judge entry points (chapter 10). (R06.4.6)
-- `@laws(sample: n)`: stress sampling of a type's laws. (R06.4.7)
+- `@trusted:` blocks and `@cpp` items: the unsafe tier (chapter 9).
+- `@grader(...)`: judge entry points (chapter 10).
+- `@laws(sample: n)`: stress sampling of a type's laws.
 - `@droppable`: the result may be dropped without the unused-result
   lint. (R06.4.8)
 
@@ -137,4 +137,4 @@ functions over function types, and their own tool roles with `marker`
   types. (R06.5.1)
 - A nested function is the way to split a long solution: each chunk is a
   nested fn over the test's state. Any function is a *part* that stress
-  and `cpl locate` can test alone (`tools/stress.md`). (R06.5.2)
+  and `cpl locate` can test alone (`tools/stress.md`).

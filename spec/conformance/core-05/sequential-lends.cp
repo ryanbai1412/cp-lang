@@ -1,4 +1,5 @@
 // expect: ok, output "6\n6"
+// rule: 05.7.6
 var xs = [3, 1, 2]
 print(xs.map(x => x).sum())
 xs.sort()
