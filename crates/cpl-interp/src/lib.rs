@@ -74,7 +74,7 @@ impl Trap {
             codes::INPUT_OUT_OF_CONTRACT
         } else if m.contains(" is outside `") {
             codes::RANGE_STORE
-        } else if m.starts_with("expected a number, found") {
+        } else if m.starts_with("expected a number, found") || m.starts_with("the input ended") {
             codes::BAD_INPUT_TOKEN
         } else if m.starts_with("`todo` reached") {
             codes::TODO_REACHED

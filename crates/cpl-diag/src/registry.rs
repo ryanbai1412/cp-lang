@@ -399,7 +399,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         summary: "A lambda bound with `var` calls itself.",
         explanation: "A `var` can be reassigned, so the name inside the body would not reliably mean this lambda. Bind a recursive lambda with `let`, or write a `fn`.",
         trigger: "var f = (n: Int) => if n == 0: 0 else: f(n - 1)\nprint(f(3))\n",
-        fix: "let f = (n: Int) => if n == 0: 0 else: f(n - 1)\nprint(f(3))\n",
+        fix: "let f = (n: Int) -> Int => if n == 0: 0 else: f(n - 1)\nprint(f(3))\n",
         mode: "check",
     },
     CodeInfo {
