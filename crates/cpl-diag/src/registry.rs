@@ -551,9 +551,10 @@ pub const REGISTRY: &[CodeInfo] = &[
         title: "Moved while captured by a closure",
         summary: "A variable was moved while a closure or nested fn that captures it is still in use.",
         explanation: "A closure captures heap variables and `var`s by reference, so they cannot move while the closure is alive. Clone the value (`x.clone()`) or finish calling the closure first.",
-        trigger: "let xs = [1, 2]\nlet f = () => xs.len\nlet ys = xs\nprint(f() + ys.len)\n",
-        fix: "let xs = [1, 2]\nlet f = () => xs.len\nlet ys = xs.clone()\nprint(f() + ys.len)\n",
+        trigger: "fn demo():\n    let xs = [1, 2]\n    let f = () => xs.len\n    let ys = xs\n    print(f() + ys.len)\ndemo()\n",
+        fix: "fn demo():\n    let xs = [1, 2]\n    let f = () => xs.len\n    let ys = xs.copy()\n    print(f() + ys.len)\ndemo()\n",
         mode: "check",
+        input: "",
     },
     CodeInfo {
         code: Code("E0608"),

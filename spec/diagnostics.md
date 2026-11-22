@@ -68,7 +68,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0604 | bad_projection | |
 | E0605 | bad_index_impl | |
 | E0606 | missing_impl | with the trait's own message (`SegTree` needs `Op<T>`: an associative `fn (T, T) -> T`) |
-| E0607 | moved_while_captured *(0.3)* | `xs` is captured by `f` (line N) and cannot move |
+| E0607 | moved_while_captured | `xs` is captured by `f` (line N) and cannot move |
 | E0608 | heap_copy | `let b = a` moved `a`; use `a.clone()` to copy |
 | E0701 | ambiguous_method *(0.3)* | names both candidates; write `Trait.m(x)` |
 | E0702 | overload_by_type *(0.3)* | two `f` with the same labels |
