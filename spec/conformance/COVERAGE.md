@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1072 (296 passing). Rules: 521.
+Cases: 1078 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -750,16 +750,16 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 - **algebra** (33/46 named by a case)
   - uncovered: `Desc`, `Reversible`, `MaxSub.scale`, `Semigroup`, `Group`, `point_action`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `Selective`, `assign`, `affine`
-- **bag** (128/161 named by a case)
-  - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.add_many`, `SortedBag.remove_all`, `SortedBag.drain_range`, `SortedBag.cursor_first`, `SortedBag.cursor_last`, `SortedBag.cursor_at`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `AugSortedBag`, `AugSortedBag.new`, `AugSortedBag.fold_lt`, `AugSortedBag.fold_le`, `AugSortedBag.fold_ge`, `AugSortedBag.fold_gt`, `AugSortedBag.fold_between`, `AugSortedSet`, `AugSortedSet.new`, `AugSortedSet.fold_lt`, `AugSortedSet.fold_le`, `AugSortedSet.fold_ge`, `AugSortedSet.fold_gt`, `AugSortedSet.fold_between`, `SortedRange`
+- **bag** (142/161 named by a case)
+  - uncovered: `BagCursor`, `SortedBag.new`, `SortedBag.add_many`, `SortedBag.remove_all`, `SortedBag.drain_range`, `SortedBag.cursor_first`, `SortedBag.cursor_last`, `SortedBag.cursor_at`, `SortedBag.cursor_ge`, `SortedBag.cursor_gt`, `SortedBag.cursor_le`, `SortedBag.cursor_lt`, `SortedBag.key_of`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (16/25 named by a case)
   - uncovered: `BeatsSegTree.chmax`, `BeatsSegTree.min_val`, `BeatsSegTree.max_val`, `HistoricBeatsSegTree`, `HistoricBeatsSegTree.new`, `HistoricBeatsSegTree.chmax`, `HistoricBeatsSegTree.max_val`, `HistoricBeatsSegTree.hist_max`, `HistoricBeatsSegTree.hist_sum`
 - **bitset** (89/92 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
 - **deque** (40/42 named by a case)
   - uncovered: `LinkedList.splice_back`, `LinkedList.splice_front`
-- **dp** (28/39 named by a case)
-  - uncovered: `LiChao.line_at`, `monotone_minima`, `dnc_layer`, `knuth`, `subset_sums`, `monge_path`, `monge_paths`, `MongePath`, `LineContainer`, `LineContainer.line_at`, `Step`
+- **dp** (34/39 named by a case)
+  - uncovered: `monotone_minima`, `dnc_layer`, `knuth`, `subset_sums`, `Step`
 - **dsu** (58/63 named by a case)
   - uncovered: `Mark`, `RollbackArray`, `RollbackArray.new`, `PersistentDsu`, `PersistentDsu.new`
 - **fenwick** (31/31 named by a case)
@@ -798,16 +798,16 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RangeKth`, `RangeKth.new`, `RangeKth.count_le`, `PMultiset`, `PMultiset.cmp`
 - **poly** (27/57 named by a case)
   - uncovered: `deriv`, `integral`, `log`, `exp`, `pow`, `sqrt`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `Poly.pow`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
-- **prefix** (42/56 named by a case)
-  - uncovered: `scan`, `FillPrefix`, `Prefix.cyclic_sum`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `prefix_fold`, `suffix_fold`, `Diff.new`, `_Diff2`, `_Diff2.new`
+- **prefix** (43/56 named by a case)
+  - uncovered: `scan`, `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `prefix_fold`, `suffix_fold`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (6/10 named by a case)
   - uncovered: `Rng.float`, `Rng.shuffle`, `Rng.perm`, `Rng.sample`
 - **search** (8/9 named by a case)
   - uncovered: `split_best`
 - **segtree** (47/54 named by a case)
   - uncovered: `SegTree.refresh`, `MergeSortTree.count_le`, `DynamicOrderTree`, `DynamicOrderTree.new`, `MergeSeg`, `MergeSeg.singleton`, `MergeSeg.first_alive`
-- **seq** (101/215 named by a case)
-  - uncovered: `Perm`, `mean`, `is_sorted`, `filter`, `rev`, `items`, `rfind`, `deduped`, `distinct`, `partition`, `select`, `merge_sorted`, `windows`, `chunks`, `adjacent`, `with_prev`, `cyclic_pairs`, `get_or_insert`, `get_or_insert_with`, `update`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `next_permutation`, `prev_permutation`, `buckets`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `with_domain`, `cycle`, `halve`, `clip`, `first_true`, `last_true`, `bsearch`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `resized`, `pop_if`, `pop_while`, `clone`, `take_all`, `insert`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `drop`, `drop_last`, `take_last`, `nth`, `rebase`, `Rebased`, `rekey`, `collect`, `keyed`, `Keys`, `take_while`, `drop_while`, `filter_map`, `flat_map`, `flatten`, `present`, `all_some`, `product`, `with_next`, `chunks_padded`, `reduce`, `max_count`, `min_count`, `majority`, `min_k`, `max_k`, `partition_in_place`, `stable_partition_in_place`, `adjacent_diff`, `radix_sort`, `counting_sort`, `is_subsequence`, `combinations`, `index_pairs`, `permutations`, `SubseqStep`, `subsequences`, `OnlineLis`, `OnlineLis.reconstruct`, `MonoStack`, `argmax`, `argmin`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.span`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`, `outermost`, `keys`
+- **seq** (105/215 named by a case)
+  - uncovered: `Perm`, `mean`, `is_sorted`, `filter`, `rev`, `items`, `rfind`, `deduped`, `distinct`, `partition`, `select`, `merge_sorted`, `windows`, `chunks`, `adjacent`, `with_prev`, `cyclic_pairs`, `get_or_insert`, `get_or_insert_with`, `update`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `next_permutation`, `prev_permutation`, `buckets`, `Compressed`, `Compressed.slice`, `Compressed.try_at`, `pieces`, `covering`, `with_domain`, `cycle`, `halve`, `clip`, `first_true`, `last_true`, `bsearch`, `ends`, `perm_cycles`, `perm_pow`, `swap_at`, `resized`, `pop_if`, `pop_while`, `clone`, `take_all`, `insert`, `Filtered`, `Filtered.src`, `Mapped`, `Mapped.src`, `Rev`, `Rev.src`, `Items`, `Items.src`, `Slice`, `Slice.iter`, `drop`, `drop_last`, `take_last`, `nth`, `rebase`, `Rebased`, `rekey`, `collect`, `keyed`, `Keys`, `take_while`, `drop_while`, `filter_map`, `flat_map`, `flatten`, `present`, `all_some`, `product`, `with_next`, `chunks_padded`, `reduce`, `max_count`, `min_count`, `majority`, `min_k`, `max_k`, `partition_in_place`, `stable_partition_in_place`, `adjacent_diff`, `radix_sort`, `counting_sort`, `is_subsequence`, `combinations`, `index_pairs`, `permutations`, `SubseqStep`, `subsequences`, `argmax`, `argmin`, `runs_linked`, `Anchor`, `maximal`, `minimal`, `Ring`, `Ring.maximal`, `Ring.minimal`, `RingRange`, `RingSlice`, `valleys`, `outermost`, `keys`
 - **slope** (32/39 named by a case)
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (22/23 named by a case)
@@ -818,12 +818,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Subset`, `Subset.subsets`, `Subset.supersets`
 - **timetree** (8/11 named by a case)
   - uncovered: `TimeTree.event`, `TimeTree.run`, `offline_over`
-- **tree** (61/171 named by a case)
-  - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.down`, `Rooted.up`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.span`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.up`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
+- **tree** (62/171 named by a case)
+  - uncovered: `Rooted.from_parents`, `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.down`, `Rooted.up`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.subtree_sizes`, `Rooted.centroid`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.is_anc`, `Rooted.diameter`, `Rooted.jump`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.ancestors`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.ancestors`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `JumpTree.jump`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `LinkCut.jump`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `LazyLinkCut.jump`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.up`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
 - **window** (15/22 named by a case)
   - uncovered: `Window.new`, `Track`, `track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1548 of 2222 std items are named by a case.
+1574 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
