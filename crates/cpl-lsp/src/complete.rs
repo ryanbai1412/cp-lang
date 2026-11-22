@@ -27,7 +27,7 @@ pub(crate) const DOMAIN_MEMBERS: &[(&str, &str)] = &[
     ("first", "the first position"),
     ("last", "the last position"),
     ("rev", "the positions in reverse order"),
-    ("bounds", "the boundaries between and around positions"),
+    ("cuts", "the boundaries between and around positions"),
 ];
 pub(crate) const POS_MEMBERS: &[(&str, &str)] = &[
     ("ord", "the 0-based rank of the position"),
