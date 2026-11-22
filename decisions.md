@@ -5699,3 +5699,12 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Hug a last closure argument in `layout::seq`; sort `use`
   runs in `cpl_fmt::format` once the E0206 cascade is fixed; drop the
   `fmt_corpus` stage from `STAGES` and `check.sh`.
+
+## 216. The recovery scoreboards skip ports that are not clean before the edit (2026-11-22)
+
+- **Decision.** `crates/cpl-cli/tests/recovery.rs` breaks only ports with no
+  error under the full check. A port that already has errors cannot be
+  restored by any fix, and its errors would be counted against the edit as
+  cascades or a wrong first error. The skipped ports are printed on every run.
+- **Reverse.** Drop the check in `broken_ports`, once every entry of
+  `SPEC_PORTS` is clean again or the list is rebuilt from ports that are.
