@@ -146,6 +146,12 @@ pub enum StmtKind {
         iter: Expr,
         body: Block,
     },
+    /// `for ..: .. else: ..` or `while ..: .. else: ..`: `otherwise` runs
+    /// when no `break` left `looped`.
+    LoopElse {
+        looped: Box<Stmt>,
+        otherwise: Block,
+    },
     Return(Option<Expr>),
     Break(Option<Name>),
     Continue(Option<Name>),

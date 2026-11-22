@@ -485,6 +485,22 @@ impl<'a> Lowerer<'a> {
 
     fn stmt_inner(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {
         match &stmt.kind {
+            ast::StmtKind::LoopElse { looped, otherwise } => {
+                let flag = self.temp(Ty::Bool);
+                let unset = self.mk(ExprKind::Bool(false), Ty::Bool, stmt.span);
+                out.push(Stmt::Let(flag, Some(unset)));
+                self.cx.pending_else = Some(flag);
+                self.stmt_inner(looped, rest, out);
+                self.cx.pending_else = None;
+                let broke = self.local(flag, stmt.span);
+                let finished = Expr {
+                    kind: ExprKind::Unary(UnOp::Not, Box::new(broke)),
+                    ty: Ty::Bool,
+                    span: self.span(stmt.span),
+                };
+                let els = self.block(otherwise, Tail::Discard);
+                out.push(Stmt::If(finished, els, Block::default()));
+            }
             ast::StmtKind::Let {
                 mutable,
                 pat,
@@ -1090,6 +1106,15 @@ impl<'a> Lowerer<'a> {
                     Some(&outer) if is_break => Some(outer),
                     _ => (index + 1 != self.cx.loops.len()).then_some(to),
                 };
+                if let Some(&flag) = self.cx.else_flags.get(&to).filter(|_| is_break) {
+                    let span = self.span(stmt.span);
+                    let set = self.mk(ExprKind::Bool(true), Ty::Bool, stmt.span);
+                    out.push(Stmt::Assign(
+                        Place { kind: PlaceKind::Local(flag), ty: Ty::Bool, span },
+                        AssignOp::Set,
+                        set,
+                    ));
+                }
                 out.push(if is_break {
                     Stmt::Break(target)
                 } else {
@@ -1249,6 +1274,9 @@ impl<'a> Lowerer<'a> {
         let id = self.next_loop;
         self.next_loop += 1;
         self.cx.loops.push((label, id));
+        if let Some(flag) = self.cx.pending_else.take() {
+            self.cx.else_flags.insert(id, flag);
+        }
         id
     }
 

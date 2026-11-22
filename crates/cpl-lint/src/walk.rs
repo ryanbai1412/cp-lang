@@ -123,6 +123,10 @@ pub(crate) fn walk_stmt(v: &mut dyn Visitor, stmt: &Stmt) {
             walk_expr(v, target);
             walk_expr(v, value);
         }
+        StmtKind::LoopElse { looped, otherwise } => {
+            walk_stmt(v, looped);
+            walk_stmts(v, &otherwise.stmts);
+        }
         StmtKind::While { cond, body } => {
             v.enter(Scope::Loop);
             v.while_loop(cond);

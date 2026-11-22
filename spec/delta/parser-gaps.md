@@ -9,7 +9,6 @@ front end (parse and type check) first.
 
 | Form | Example | Decision | Today |
 |---|---|---|---|
-| Loop `else` | `for d in ds: ... else: print(-1)` | 125 | E0107 |
 | `{}` empty subset | `var s: Subset<D> = {}`, `best[{}] = 0` | search-dp (mask DP) | E0302 (`{}` reads as `()`); write `Subset.empty()` |
 | `[P]T` is `[A, B]T` for `P = (A, B)` | `c[p]` with `c: [V, V]?Int`, `p: Pair`; `[Pair] p => ...` as a `[V, V]T` | core 04 | E0305 / E0302; index with `p.0, p.1` |
 | `P.at((x, y))` on a product domain | `Split.at((a - w, b, c))` | core 04 | E0302 (`at` takes one Int); write `A.at(x)` per factor |
@@ -34,7 +33,6 @@ front end (parse and type check) first.
 | Bounded strings | `Str(len: 1..=n)` | 134 | E0504 |
 | `Range<V>` as `V.ranges` | `best(r.first!.next!..=r.last!)` | hillclimb ioi96p1 | E0301 |
 | Fold and binary `min`/`max` share a name | `s.min(by: f)` beside `min(a, b)`; importing `std.seq.min` shadows the binary one | hillclimb fold stubs | E0303 |
-| Variant tags | `enum Cmd:⏎    @tag("Q") Ask(h: Int)` | hillclimb ioi05p2 | not parsed |
 | Multi-clause loop headers | `for i in V, j in V.after(i) if c:` | 135 | E0107 |
 | `and`/`or` as operation values | `(count: +, taken: or)` | 135 | E0102 |
 | `var` in patterns | `for (var left, v) in items:` | 135 | E0102 |
@@ -55,8 +53,6 @@ front end (parse and type check) first.
 
 - Lambda parameter patterns: `(mut d, (u, v)) => d.unite(u, v)` (decision 153). Named product
   domain factors: `domain State = (comps: 0..=n, used: 0..l)`.
-- `mut` lambda parameters: `(mut d, e) => d.unite(e.0, e.1)`. The parser expects a name
-  after `(`; dreams use a nested `fn` meanwhile (`btoi20p3`).
 
 ## Rejected (a dream using one is fixed instead)
 

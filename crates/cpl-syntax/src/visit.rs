@@ -112,6 +112,10 @@ pub fn walk_stmt(stmt: &Stmt, v: &mut dyn Visitor) {
             walk_cond(cond, v);
             walk_block(body, v);
         }
+        StmtKind::LoopElse { looped, otherwise } => {
+            walk_stmt(looped, v);
+            walk_block(otherwise, v);
+        }
         StmtKind::For {
             pat, iter, body, ..
         } => {

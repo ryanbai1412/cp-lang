@@ -353,12 +353,17 @@ impl<'a> Parser<'a> {
             T::Impl => self.impl_decl(),
             T::Use => self.use_decl(),
             T::While => {
+                let start = self.start();
                 self.bump();
                 let cond = self.cond();
                 let body = self.colon_block("the `while` condition");
-                StmtKind::While { cond, body }
+                self.loop_else(start, StmtKind::While { cond, body })
             }
-            T::For => self.for_stmt(None),
+            T::For => {
+                let start = self.start();
+                let looped = self.for_stmt(None);
+                self.loop_else(start, looped)
+            }
             T::Label if self.peek_n(1) == T::Colon && self.peek_n(2) == T::For => {
                 let label = self.name();
                 self.bump();
@@ -852,6 +857,19 @@ impl<'a> Parser<'a> {
             name,
             params,
             body: self.expr(),
+        }
+    }
+
+    fn loop_else(&mut self, start: u32, looped: StmtKind) -> StmtKind {
+        if !(self.at(T::Else) && self.peek_n(1) == T::Colon) {
+            return looped;
+        }
+        let span = self.span_from(start);
+        self.bump();
+        let otherwise = self.colon_block("`else`");
+        StmtKind::LoopElse {
+            looped: Box::new(Stmt { kind: looped, span, decorators: Vec::new(), public: false }),
+            otherwise,
         }
     }
 

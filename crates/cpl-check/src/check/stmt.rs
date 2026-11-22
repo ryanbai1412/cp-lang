@@ -922,6 +922,14 @@ impl<'a> Checker<'a> {
                     });
                 }
             }
+            StmtKind::LoopElse { looped, otherwise } => {
+                self.stmt_kind(looped, top_level);
+                self.branch += 1;
+                self.push_scope();
+                self.block(otherwise);
+                self.pop_scope();
+                self.branch -= 1;
+            }
             StmtKind::While { cond, body } => {
                 self.push_scope();
                 self.drop_facts_written(body, None);
