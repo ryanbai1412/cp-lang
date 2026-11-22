@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1241 (296 passing). Rules: 521.
+Cases: 1246 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 15 case(s)
+- R0401 Assertion failed: 17 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -806,17 +806,17 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **slope** (32/39 named by a case)
   - uncovered: `Concave.max_convolve`, `Concave.prefix_max`, `Concave.suffix_max`, `Concave.slide_max`, `Convex.prefix_min`, `Convex.suffix_min`, `Convex.slide_min`
 - **sparse** (23/23 named by a case)
-- **strings** (150/195 named by a case)
-  - uncovered: `prefix_matches`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `KmpAutomaton.link`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.link`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.link`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.link`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (154/195 named by a case)
+  - uncovered: `prefix_matches`, `max_rotation`, `KmpAutomaton`, `KmpAutomaton.new`, `shift_and`, `find_all_wildcard`, `Palindromes`, `Palindromes.is_palindrome`, `SuffixArray.rank_range`, `SuffixTreeEdge`, `suffix_tree_edges`, `lyndon_runs`, `Hashable`, `RollingHash.slice`, `RollingHash.combine`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `RollingHash61`, `RollingHash61.new`, `RollingHash61.combine`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `DynamicHash.is_palindrome`, `SuffixAutomaton.shortest`, `SuffixAutomaton.first_pos`, `SuffixAutomaton.topo_order`, `SuffixAutomaton.kth_substring`, `lcs_all`, `PalindromicTree.pal_len`, `PalindromicTree.series_link`, `Trie.count_prefix`, `Trie.ends_at`, `Trie.pass_at`, `AhoCorasick.hit`, `AhoCorasick.words_at`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (9/11 named by a case)
   - uncovered: `TimeTree.event`, `TimeTree.run`
-- **tree** (76/171 named by a case)
-  - uncovered: `Rooted.try_from_parents`, `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `LinkCut`, `LinkCut.new`, `LinkCut.make_root`, `LinkCut.connected`, `LinkCut.link`, `LinkCut.cut`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.connected`, `LazyLinkCut.link`, `LazyLinkCut.cut`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.link`, `EulerTourTree.cut`, `EulerTourTree.connected`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.link`, `LazyEulerTourTree.cut`, `LazyEulerTourTree.connected`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
+- **tree** (91/171 named by a case)
+  - uncovered: `Rooted.forest`, `Rooted.up_arc`, `Rooted.reorder`, `Rooted.children`, `Rooted.child_arcs`, `Rooted.excl_fold`, `Rooted.light`, `Rooted.subtree`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.centroids`, `Rooted.tour`, `Rooted.sub`, `Rooted.below`, `Rooted.chains`, `Rooted.fold_path`, `Rooted.apply_path`, `Rooted.virtual`, `Rooted.chain`, `Rooted.sub_at`, `Rooted.on_path`, `Rooted.meet`, `Rooted.above`, `Rooted.farthest`, `Rooted.layers`, `Rooted.events`, `Rooted.euler_tour`, `Rooted.long_paths`, `Rooted.preorder`, `VirtualTree`, `Centroids`, `Centroids.new`, `Centroids.piece`, `JumpTree`, `JumpTree.new`, `LinkCut.make_root`, `LinkCut.fold_path`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut`, `LazyLinkCut.new`, `LazyLinkCut.make_root`, `LazyLinkCut.fold_path`, `LazyLinkCut.apply_path`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.leaf`, `PermTree.vals`, `Layers`, `Layers.level`, `Layers.below`, `Events`, `Events.enter`, `Events.exit`, `Events.sub`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `LcaTable`, `LcaTable.new`, `EulerTourTree`, `EulerTourTree.new`, `EulerTourTree.fold_tree`, `EulerTourTree.fold_sub`, `LazyEulerTourTree`, `LazyEulerTourTree.new`, `LazyEulerTourTree.fold_tree`, `LazyEulerTourTree.fold_sub`, `LazyEulerTourTree.apply_tree`, `LazyEulerTourTree.apply_sub`, `KruskalTree`, `KruskalTree.reach`, `KruskalTree.bottleneck`, `kruskal_tree`, `prufer`, `from_prufer`
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1789 of 2222 std items are named by a case.
+1808 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
