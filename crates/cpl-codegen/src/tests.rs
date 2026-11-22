@@ -88,6 +88,7 @@ fn the_file_opens_with_its_source_as_comments() {
     let source = "// ends in a backslash \\\nprint(1)\n";
     let cpp = cpp(source);
     assert!(cpp.starts_with("// t.cp: C++17 written by cpl "), "{cpp}");
+    assert!(cpp.lines().next().unwrap().contains("(https://cp-lang.org)"), "{cpp}");
     assert!(cpp.contains("//     print(1)\n"), "{cpp}");
     // A `\` at the end of a `//` line would make the next line a comment too.
     assert!(cpp.lines().all(|line| !line.ends_with('\\')), "{cpp}");

@@ -9,5 +9,5 @@ marketplace\.visualstudio\.com|code\.visualstudio\.com|plugins\.jetbrains\.com|(
 [a-z]+\.wikipedia\.org|arxiv\.org|stackoverflow\.com|codereview\.stackexchange\.com|cp-algorithms\.com|(www\.)?w3\.org|json-schema\.org
 xorshift\.di\.unimi\.it|(www\.)?daemonology\.net|(www\.)?cs\.berkeley\.edu|mathexp\.eu|martin\.ankerl\.com|xxccd\.glitch\.me
 (www\.)?patreon\.com|feross\.org|bevry\.me|opencollective\.com|tidelift\.com|paypal\.me
-vitepress\.dev|ui\.shadcn\.com|dejavu-fonts\.github\.io|cp-lang\.dev|(www\.)?example\.(com|org)|localhost|127\.0\.0\.1
+vitepress\.dev|ui\.shadcn\.com|dejavu-fonts\.github\.io|cp-lang\.(dev|org)|(www\.)?example\.(com|org)|localhost|127\.0\.0\.1
 api\.anthropic\.com|api\.openai\.com

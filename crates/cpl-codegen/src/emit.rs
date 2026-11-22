@@ -1811,16 +1811,21 @@ fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
 }
 
 fn header(name: &str, source: Option<&str>, stamp: Option<&str>) -> String {
-    let version = env!("CARGO_PKG_VERSION");
+    let version = match (option_env!("CPL_CHANNEL"), option_env!("CPL_COMMIT")) {
+        (Some(channel), Some(commit)) => {
+            format!("{} ({channel} {})", env!("CARGO_PKG_VERSION"), &commit[..commit.len().min(8)])
+        }
+        _ => env!("CARGO_PKG_VERSION").to_string(),
+    };
     let stamp = stamp.map(|stamp| format!("// For {stamp}.\n")).unwrap_or_default();
     let Some(source) = source else {
         return format!(
-            "// {name}: C++17 written by cpl {version} from CP Lang source, which is left out\n\
+            "// {name}: C++17 written by cpl {version} (https://cp-lang.org) from CP Lang source, which is left out\n\
              // here to keep this file within the size a judge accepts.\n{stamp}\n"
         );
     };
     let mut out =
-        format!("// {name}: C++17 written by cpl {version} from the CP Lang source below.\n{stamp}//\n");
+        format!("// {name}: C++17 written by cpl {version} (https://cp-lang.org) from the CP Lang source below.\n{stamp}//\n");
     for line in source.lines() {
         let line = line.trim_end();
         if line.is_empty() {
