@@ -148,7 +148,7 @@ decided at run time and nothing allocates.
 
 ```python
 a[l..=r]                  // Slice{src: &a, lo: Int(l.l), hi: Int(r.r)}
-a[l..=r].rev.map(f)       // Map<Rev<Slice<[V]T>>, F>, F the lambda's own type
+a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own type
 ```
 
 | Written | Lowers to |
@@ -274,7 +274,7 @@ positions. No `argmin`, `first_at` or `order` twins:
 
 ```python
 a.keys.min(by: i => a[i])!         // argmin, first on ties
-a.keys.first(i => a[i] > x)        // first position with a[i] > x, ?D
+a.keys.find(i => a[i] > x)         // first position with a[i] > x, ?D
 a.keys.sorted(by: i => a[i])       // argsort: List<D>
 a[l..r].keys.max(by: i => a[i])!   // argmax inside a piece, still a position of a
 ```

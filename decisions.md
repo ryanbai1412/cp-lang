@@ -5307,3 +5307,9 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Why.** The rebuild found each of these spelled two ways (H-NONE-CASE, H-NOT-PRECEDENCE, H-ENUM-ONE-LINE). `=` is what the grammar, the implementation and the conformance cases already use; the precedence follows Python, so `not a == b` is `not (a == b)`.
 - **Reverse.** Add `':' variant (',' variant)* NL` to `enum_decl`, or move `not` back into `unary`.
 
+## 182. `first` and `last` are getters only; predicate searches are `find` and `rfind` (2026-11-21)
+
+- **Decision.** `s.first` and `s.last` are O(1) getters returning `?T`. The predicate forms are `find(p)` and `rfind(p)` (on any `Seq` and `Bidir` respectively, and on `Bitset`). `filter`, `map`, `rev`, `items`, `sort` and `sorted` get stubs in `std/seq.cp`. `sort` and `sorted` are stable; `sorted` returns a new `List` keyed from 0. The adapter view types are `Filtered`, `Mapped`, `Rev` and `Items`, so they never collide with the container `Map`.
+- **Why.** The rebuild (H-MISSING-SEQ-STUBS, H-ONE-NAME-MANY-FORMS) found core names without stubs and `first`/`last` used both as getters and with a predicate, which R06.1.6 (one name and label set, one signature) forbids. Stable sorting makes tie order something the contestant never has to look up.
+- **Reverse.** Restore `first(p)`/`last(p)` by giving the predicate a label (`first(where: p)`), or make `sort` unstable with a separate `stable_sort`.
+
