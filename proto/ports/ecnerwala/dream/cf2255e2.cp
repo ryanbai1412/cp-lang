@@ -37,7 +37,7 @@ domain I = 1..=n
 let a: [I]-1e9..=1e9 = read()
 var st = SegTree<I>(a: [I] i => Cell(a[i], MaxSub.of(a[i])), act: Action(id: tag(), compose: then, apply: (f, c, _) => run(f, c)))
 var last: U64 = 0
-fn at(y: U64) -> I = I.at((y ^ last) % n)
+fn at(y: U64) -> I = I((y ^ last) % n)
 repeat q:
     match read<1..=4>():
         4 =>
