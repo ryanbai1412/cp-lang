@@ -59,7 +59,7 @@ built-in list. Rules:
   tables in step. The groups are: core types and traits; sequence
   vocabulary (`07-sequences.md`, `lib/sequence-patterns.md`); search and
   DP; graphs and trees; operations and range structures; containers;
-  math and `Mod`; strings; I/O. (R11.3.4)
+  math and `Mod`; strings; I/O.
 - The LSP offers an import quick fix for any non-prelude stdlib name,
   and `cpl fmt` sorts `use` lines. (R11.3.5)
 
