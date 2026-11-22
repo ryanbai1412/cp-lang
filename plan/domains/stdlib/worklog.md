@@ -11,6 +11,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   4. Stale debt: `CPL_SPEC`/`CPL_STD` are already gone from code (`git grep -n 'CPL_SPEC\|CPL_STD' -- crates scripts` gives 0); only the `spec/std` -> `std/` move remains. Tech-debt fixes the matching stale lines in `plan/ARCHITECTURE.md`.
   5. PLAN step "re-run `debt-ratchet.py --update` with each" is right: a lower count passes but leaves slack until `--update` tightens it, so tighten in the same commit that cuts the `todo`s.
 - Review packet: README, PLAN, metrics.toml (17 metrics, each run on main `4b8f504f`), ARCHITECTURE; `measure.py` for the todo split, privilege overlap, explicit-use cycles and module coverage. Questions Q1-Q3 filed in `plan/QUESTIONS.md`. Next (phase 2, on go): land the 4 in-flight branches in order.
-
 - Note from idioms: the skill landing fixes one doc line in `spec/std/graph.cp` (`p.adj4()` -> `p.adj4`, the property `spec/std/grid.cp` defines).
 - Lane opened.

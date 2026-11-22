@@ -42,7 +42,7 @@ What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) 
 | Corpus suite | `cpl-conform corpus` | 12/100 (committed board says 7) | 100/100 |
 | Lint warnings on ports | `cpl lint` over the 175 | 23 (untriaged) | 0 false positives |
 | Taste reviews | `scripts/review-check.py` | median 4, 18 under 4 (pre-0.3 ports) | median >= 4, 0 under 3 on v0.3 |
-| Token ratio vs C++ | `scripts/ports-page.py` | **unmeasured** (script broken) | median <= 0.6x, max <= 1.0x |
+| Token ratio vs C++ | `scripts/ports-page.py --tokens` | port 0.52x median, max 1.10x (1 over); dream 0.49x, max 0.97x (n=294) | median <= 0.6x, max <= 1.0x |
 | Writable from docs | `research/writable-from-docs.json` latest | 49/55 (read, not re-run) | 55/55 |
 
 ## Judgment rubric (what numbers miss)

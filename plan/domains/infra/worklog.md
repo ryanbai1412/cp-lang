@@ -11,7 +11,6 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Request from site: run `scripts/site-check.sh` (wasm build and size cap, site build, snippet gate, link check, browser smoke) in `.github/workflows/site.yml` before deploy; it needs pnpm and a Playwright Chromium.
 - Note from site: to wire `scripts/site-check.sh`, site touched infra files directly: `scripts/check.sh` (`--full` runs it), `scripts/check_cache.py` (`site_smoke` stage), `scripts/test_check_cache.py`, `justfile` (`just site`).
 - Note from site: `python3 -m unittest scripts.test_check_cache.CheckCacheTest.test_land_carries_queued_lanes_in_one_gated_train` fails on `origin/main` (a leftover `refs/locks/queue/*-rider` ref).
-
-
+- Note from idioms: `scripts/ports-page.py` no longer imports the deleted `scripts/scoreboard.py`; it loads port discovery and the CP tokenizer from `scripts/review-check.py` and keeps the C++ tokenizer, library stripping and friction parsing it needs. New `--tokens` prints the token-ratio summary. This closes the idioms token-count request.
 - Note from idioms: the skill landing adds `scripts/skill-gen.py` + `scripts/test_skill_gen.py` and a "bundled skill" step to `scripts/check.sh` (via `uv run python`, so `direct_python` stays 13). Request: `scripts/ports-page.py` imports `scoreboard`, deleted in ea2b88ff, so the token-ratio metric cannot run; idioms will restore a token counter unless infra prefers another home.
 - Lane opened.
