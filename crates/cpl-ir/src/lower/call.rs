@@ -11286,15 +11286,7 @@ impl<'a> Lowerer<'a> {
             if let Some(slot) = self.lookup(n) {
                 if let Some(view) = self.cx.map_views.get(&slot).cloned() {
                     let base_expr = self.local(view.base_slot, span);
-                    let (idx_exprs, elem_ty) = self.index_args(&base_expr.ty, indices, span);
-                    if matches!(elem_ty, Ty::Error) {
-                        return Some(self.err_expr(span));
-                    }
-                    let elem = self.mk(
-                        ExprKind::Index(Box::new(base_expr), idx_exprs),
-                        elem_ty,
-                        span,
-                    );
+                    let elem = self.mapped_elem(base_expr, indices, span);
                     return Some(self.apply_map_fn(elem, &view.func, span));
                 }
             }
@@ -11320,15 +11312,7 @@ impl<'a> Lowerer<'a> {
                         )
                     ) {
                         let base_expr = self.expr(inner, None);
-                        let (idx_exprs, elem_ty) = self.index_args(&base_expr.ty, indices, span);
-                        if matches!(elem_ty, Ty::Error) {
-                            return Some(self.err_expr(span));
-                        }
-                        let elem = self.mk(
-                            ExprKind::Index(Box::new(base_expr), idx_exprs),
-                            elem_ty,
-                            span,
-                        );
+                        let elem = self.mapped_elem(base_expr, indices, span);
                         return Some(self.apply_map_fn(elem, &args[0].value, span));
                     }
                 }
@@ -11336,6 +11320,25 @@ impl<'a> Lowerer<'a> {
         }
 
         None
+    }
+
+    /// The element of a mapped sequence's source that `m[indices]` reads:
+    /// a view is read by its source keys (R04a.9.4).
+    fn mapped_elem(&mut self, base: Expr, indices: &[ast::Expr], span: Span) -> Expr {
+        let base = if Self::keyed_view(&base.ty) && indices.len() == 1 {
+            self.hold_view(base, span)
+        } else {
+            base
+        };
+        let (mut idx_exprs, elem_ty) = self.index_args(&base.ty, indices, span);
+        if matches!(elem_ty, Ty::Error) {
+            return self.err_expr(span);
+        }
+        if Self::keyed_view(&base.ty) && idx_exprs.len() == 1 {
+            let key = idx_exprs.remove(0);
+            return self.key_index(base, key, elem_ty, span);
+        }
+        self.mk(ExprKind::Index(Box::new(base), idx_exprs), elem_ty, span)
     }
 
     pub(super) fn apply_map_fn(&mut self, elem: Expr, func_ast: &ast::Expr, span: Span) -> Expr {
@@ -11390,12 +11393,41 @@ impl<'a> Lowerer<'a> {
             Ty::Str => Ty::Char,
             _ => return self.err_expr(span),
         };
-        self.lower_map_iter(Iter::Seq(base_expr, false), elem_ty, &view.func, span)
+        self.map_seq(base_expr, elem_ty, &view.func, span)
     }
 
     fn lower_map(&mut self, base: &ast::Expr, func_ast: &ast::Expr, span: Span) -> Expr {
         let (iter, elem_ty) = self.iter(base);
-        self.lower_map_iter(iter, elem_ty, func_ast, span)
+        match iter {
+            Iter::Seq(seq, false) => self.map_seq(seq, elem_ty, func_ast, span),
+            iter => self.lower_map_iter(iter, elem_ty, func_ast, span),
+        }
+    }
+
+    /// `seq.map(f)` as a list, keyed like `seq` when `seq` is a view:
+    /// `a[1..3].map(f)[2]` is `f(a[2])` (R04a.9.4).
+    fn map_seq(&mut self, seq: Expr, elem_ty: Ty, func_ast: &ast::Expr, span: Span) -> Expr {
+        let dim = match &seq.ty {
+            Ty::ListView(_, dim) | Ty::Keyed(_, dim) => *dim,
+            Ty::StrView => Dim::Int,
+            _ => return self.lower_map_iter(Iter::Seq(seq, false), elem_ty, func_ast, span),
+        };
+        let seq = self.hold_view(seq, span);
+        let lo = self.key_lo(&seq, span);
+        let len = self.len_of(seq.clone(), span);
+        let hi = self.int_sum(lo.clone(), len);
+        let mapped = self.lower_map_iter(Iter::Seq(seq, false), elem_ty, func_ast, span);
+        let Ty::List(out_elem) = mapped.ty.clone() else {
+            return mapped;
+        };
+        let cells = self.new_slot("cells", mapped.ty.clone());
+        self.cx.pending.push(Stmt::Let(cells, Some(mapped)));
+        let cells = self.local(cells, span);
+        self.mk(
+            ExprKind::Builtin(Builtin::Rekey, vec![cells, lo, hi]),
+            Ty::Keyed(out_elem, dim),
+            span,
+        )
     }
 
     fn lower_map_iter(
