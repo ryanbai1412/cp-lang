@@ -397,14 +397,6 @@ pub struct SparseFenwick2D<T>:
                 j += j & -j
             i += i & -i
 
-    /// The total added at registered points with `x` in `xs` and `y` in `ys`. The ranges are over
-    /// raw coordinates; points outside them, or never registered, contribute nothing.
-    ///
-    /// cost: O(log^2 n)
-    /// empty: zero when either range is empty
-    /// traps: before `build`
-    /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.add_point(3, 4); f.build(); f.add(1, 2, 5); f.add(3, 4, 7); f.fold(0..10, 3..5) == 7`
-    /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.add(1, 2, 5); f.fold(2..2, 0..10) == 0`
     fn corner(self, x: Int, y: Int) -> T:
         var acc = T.zero
         var i = lower_bound(xs, x)
@@ -416,6 +408,14 @@ pub struct SparseFenwick2D<T>:
             i -= i & -i
         acc
 
+    /// The total added at registered points with `x` in `xs` and `y` in `ys`. The ranges are over
+    /// raw coordinates; points outside them, or never registered, contribute nothing.
+    ///
+    /// cost: O(log^2 n)
+    /// empty: zero when either range is empty
+    /// traps: before `build`
+    /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.add_point(3, 4); f.build(); f.add(1, 2, 5); f.add(3, 4, 7); f.fold(0..10, 3..5) == 7`
+    /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.add(1, 2, 5); f.fold(2..2, 0..10) == 0`
     pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T:
         assert built, "`fold` before `build`"
         if xs.start >= xs.end or ys.start >= ys.end: return T.zero

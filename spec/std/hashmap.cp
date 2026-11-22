@@ -345,7 +345,8 @@ pub struct Counter<K, V = Int>:
     /// cost: O(cap) when the table grows, O(1) otherwise
     /// traps: never
     /// example: `var c = Counter.of([1]); c.reserve(100); c[1] == 1`
-    pub fn reserve(mut self, cap: Int) = todo
+    pub fn reserve(mut self, cap: Int):
+        if cap < 0: return
 
     /// Remove all entries.
     ///

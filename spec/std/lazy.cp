@@ -458,6 +458,96 @@ pub struct LazyTreap<T, F>(
 /// reverse, range tag `apply`, path queries, and point `get`.
 pub struct Rope<D, T>:
     n: Int
+    mg: ?((T, T) -> T) = None
+    base: ?[D]T = None
+    val: List<T> = []
+    tg: List<T> = []
+    has: List<Bool> = []
+    rv: List<Bool> = []
+    pri: List<Int> = []
+    ls: List<Int> = []
+    rs: List<Int> = []
+    sz: List<Int> = []
+    root: Int = -1
+    seed: Int = 1
+
+    fn size(self, t: Int) -> Int = if t < 0: 0 else: sz[t]
+
+    fn pull(mut self, t: Int):
+        sz[t] = self.size(ls[t]) + 1 + self.size(rs[t])
+
+    fn tag_node(mut self, t: Int, x: T):
+        if t < 0: return
+        if let m = mg:
+            val[t] = m(x, val[t])
+            tg[t] = if has[t]: m(x, tg[t]) else: x
+        else:
+            val[t] = x
+            tg[t] = x
+        has[t] = true
+
+    fn down(mut self, t: Int):
+        if rv[t]:
+            let c = ls[t]
+            ls[t] = rs[t]
+            rs[t] = c
+            if ls[t] >= 0: rv[ls[t]] = not rv[ls[t]]
+            if rs[t] >= 0: rv[rs[t]] = not rv[rs[t]]
+            rv[t] = false
+        if has[t]:
+            self.tag_node(ls[t], tg[t])
+            self.tag_node(rs[t], tg[t])
+            has[t] = false
+
+    // (first k values, the rest)
+    fn split(mut self, t: Int, k: Int) -> (Int, Int):
+        if t < 0: return (-1, -1)
+        self.down(t)
+        let s = self.size(ls[t])
+        if s < k:
+            let (a, b) = self.split(rs[t], k - s - 1)
+            rs[t] = a
+            self.pull(t)
+            (t, b)
+        else:
+            let (a, b) = self.split(ls[t], k)
+            ls[t] = b
+            self.pull(t)
+            (a, t)
+
+    fn join(mut self, a: Int, b: Int) -> Int:
+        if a < 0: return b
+        if b < 0: return a
+        if pri[a] > pri[b]:
+            self.down(a)
+            rs[a] = self.join(rs[a], b)
+            self.pull(a)
+            a
+        else:
+            self.down(b)
+            ls[b] = self.join(a, ls[b])
+            self.pull(b)
+            b
+
+    fn find(mut self, k0: Int) -> Int:
+        var (t, k) = (root, k0)
+        while true:
+            self.down(t)
+            let s = self.size(ls[t])
+            if k < s: t = ls[t]
+            elif k == s: return t
+            else:
+                k -= s + 1
+                t = rs[t]
+        -1
+
+    fn emit(mut self, t: Int, mut out: [D]T, mut k: Int):
+        if t < 0: return
+        self.down(t)
+        self.emit(ls[t], mut out, mut k)
+        out[D.nth(k)] = val[t]
+        k += 1
+        self.emit(rs[t], mut out, mut k)
 
     /// A rope over `D` holding the values of `a`, or `fill` at every position. `merge(tag, x)` is
     /// how a tag from `apply` combines into a value; without it, a tag overwrites the values it covers.
@@ -469,7 +559,40 @@ pub struct Rope<D, T>:
     /// traps: when neither or both of `a` and `fill` are given
     /// example: `Rope([1, 2, 3]).to_array() == [1, 2, 3]`
     /// example: `Rope<0..2, Int>(fill: 7).get(1) == 7`
-    pub fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T> = todo
+    pub fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>:
+        var r = Rope<D, T>(n: 0, mg: merge)
+        if let x = a:
+            assert fill == None
+            r.base = Some(x)
+        else:
+            var arr: [D]T = fill!
+            r.base = Some(arr)
+        let src = r.base!
+        var stack: List<Int> = []
+        for i in D:
+            let t = r.val.len
+            r.seed = (r.seed * 1103515245 + 12345) % 2147483648
+            r.val.push(src[i])
+            r.tg.push(src[i])
+            r.has.push(false)
+            r.rv.push(false)
+            r.pri.push(r.seed)
+            r.ls.push(-1)
+            r.rs.push(-1)
+            r.sz.push(1)
+            var last = -1
+            while stack.len > 0 and r.pri[stack[stack.len - 1]] < r.seed:
+                last = stack.pop()!
+                r.pull(last)
+            r.ls[t] = last
+            if stack.len > 0: r.rs[stack[stack.len - 1]] = t
+            stack.push(t)
+        while stack.len > 0:
+            let t = stack.pop()!
+            r.pull(t)
+            r.root = t
+        r.n = r.val.len
+        r
 
     /// Apply `tag` to every value at positions `r`: each becomes `merge(tag, x)`, or `tag` when
     /// no `merge` was given. Stored lazily on the covering nodes.
@@ -479,7 +602,13 @@ pub struct Rope<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var r = Rope([1, 2, 3], merge: (t, x) => t + x); r.apply(1..3, 10); r.to_array() == [1, 12, 13]`
     /// example: `var r = Rope([1, 2, 3]); r.apply(0..2, 7); r.to_array() == [7, 7, 3]`
-    pub fn apply(mut self, r: Range<D>, tag: T) = todo
+    pub fn apply(mut self, r: Range<D>, tag: T):
+        if r.is_empty: return
+        let (lo, hi) = (r.first!.ord, r.last!.ord + 1)
+        let (a, bc) = self.split(root, lo)
+        let (b, c) = self.split(bc, hi - lo)
+        self.tag_node(b, tag)
+        root = self.join(self.join(a, b), c)
 
     /// Reverse the order of the values at positions `r`; pending tags stay with their values.
     ///
@@ -487,21 +616,29 @@ pub struct Rope<D, T>:
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..3); r.get(0) == 3`
-    pub fn reverse(mut self, r: Range<D>) = todo
+    pub fn reverse(mut self, r: Range<D>):
+        if r.is_empty: return
+        let (lo, hi) = (r.first!.ord, r.last!.ord + 1)
+        let (a, bc) = self.split(root, lo)
+        let (b, c) = self.split(bc, hi - lo)
+        rv[b] = not rv[b]
+        root = self.join(self.join(a, b), c)
 
     /// The value currently at position `i`, with pending tags merged in.
     ///
     /// cost: O(log n) expected
     /// traps: when `i` is outside `D`
     /// example: `var r = Rope([1, 2, 3]); r.reverse(1..3); r.get(1) == 3`
-    pub fn get(mut self, i: D) -> T = todo
+    pub fn get(mut self, i: D) -> T = val[self.find(i.ord)]
 
     /// Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.
     ///
     /// cost: O(log n) expected
     /// traps: when `i` is outside `D`
     /// example: `var r = Rope([1, 2, 3]); r.set(1, 9); r.to_array() == [1, 9, 3]`
-    pub fn set(mut self, i: D, x: T) = todo
+    pub fn set(mut self, i: D, x: T):
+        let t = self.find(i.ord)
+        val[t] = x
 
     /// The current values in position order, with every pending tag merged in.
     ///
@@ -510,7 +647,11 @@ pub struct Rope<D, T>:
     /// order: position order of `D`
     /// traps: never
     /// example: `var r = Rope([1, 2, 3]); r.reverse(0..2); r.to_array() == [2, 1, 3]`
-    pub fn to_array(mut self) -> [D]T = todo
+    pub fn to_array(mut self) -> [D]T:
+        var out = base!
+        var k = 0
+        self.emit(root, mut out, mut k)
+        out
 
 @test
 fn lazy_treap_slope_trick_and_implicit_ops_match_brute():

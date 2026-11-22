@@ -464,7 +464,11 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 /// order: left to right
 /// traps: never
 /// example: `[10, 20, 30].adjacent.collect() == [(10, 20), (20, 30)]`
-@get pub fn adjacent<S: Seq, T>(self: S) -> yields (T, T) = todo
+@get pub fn adjacent<S: Seq, T>(self: S) -> yields (T, T):
+    var prev: ?T = None
+    for x in self:
+        if let p = prev: yield (p, x)
+        prev = Some(x)
 
 /// Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`,
 /// `(20, 30)`. O(n²) to walk; for adjacent pairs use `adjacent`.
@@ -699,7 +703,10 @@ pub fn runs<S: Seq, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S>:
 /// order: each bucket lists keys of `self` in increasing order; the result is keyed by `K`
 /// traps: never
 /// example: `[1, 0, 1].buckets()` over values `0..2` is `[[1], [0, 2]]`
-pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D> = todo
+pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D>:
+    var out: [K]List<D> = []
+    for i in D: out[self[i]].push(i)
+    out
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
 /// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
@@ -726,7 +733,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// cost: O(1)
     /// traps: never
     /// example: `compress([5, 5, 7]).1.len == 2`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = vals.len
 
     /// The index of `val`, which must be one of the compressed values.
     ///
@@ -898,7 +905,10 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D:
 /// traps: never
 /// example: `(0..5).halve() == Some((0..2, 2..5))`
 /// order: left half first
-pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>) = todo
+pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
+    if self.len <= 1: return None
+    let m = self[self.len / 2]
+    Some((self.first!..m, m..=self.last!))
 
 /// O(1). The middle cut: ⌊len/2⌋ elements before it; `r.l` when empty. Its `.r` is the
 /// middle element only when `r` is non-empty, so guard with `if r.is_empty` first.
@@ -1748,7 +1758,9 @@ pub fn adjacent_diff<S: Seq, T>(self: S) -> List<T>:
 /// traps: when `lo > hi`
 /// example: `span(D.cuts.first!, D.cuts.last!) == D.all`
 /// order: increasing, from `lo` to `hi`
-pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D> = todo
+pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
+    assert Int(lo) <= Int(hi)
+    lo..hi
 
 // --- Sorted lookup, cut partition point, sorted set ops, and linear-time sorts ---
 
@@ -1901,7 +1913,25 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
 /// ties: stable
 /// traps: never
 /// example: `var a = ['b', 'a', 'b']; a.counting_sort(by: c => c); a == ['a', 'b', 'b']`
-pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K) = todo
+pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K):
+    let n = self.len
+    var start: [K]Int = 0
+    for i in 0..n: start[by(self.nth(i))] += 1
+    var acc = 0
+    for k in K:
+        let c = start[k]
+        start[k] = acc
+        acc += c
+    var pos: List<Int> = []
+    for i in 0..n:
+        let k = by(self.nth(i))
+        pos.push(start[k])
+        start[k] += 1
+    for i in 0..n:
+        while pos[i] != i:
+            let j = pos[i]
+            self.swap_idx(i, j)
+            pos.swap(i, j)
 
 /// O(n) expected, O(n) memory. Whether `a` and `b` have the same multiset of elements.
 ///
@@ -2134,7 +2164,18 @@ pub struct SubseqStep<T>(items: List<T>):
 /// order: lexicographic by position, the empty one first; `prune` skips every extension of the current one
 /// traps: never
 /// example: `[1, 2].subsequences().map(s => s.items).collect() == [[], [1], [1, 2], [2]]`
-pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T> = todo
+pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>:
+    let n = self.len
+    var pick: List<Int> = []
+    while true:
+        yield SubseqStep<T>([self.nth(i) for i in pick])
+        let next = if pick.len > 0: pick[pick.len - 1] + 1 else: 0
+        if next < n:
+            pick.push(next)
+        else:
+            pick.pop()
+            if pick.len == 0: return
+            pick[pick.len - 1] += 1
 
 /// O(n log n), O(n) memory. The positions of one longest increasing subsequence by `by`;
 /// `strict: false` allows equal neighbours. Longest non-increasing is `by: desc`-style `x => -x`
