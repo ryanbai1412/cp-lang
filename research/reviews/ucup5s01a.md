@@ -1,6 +1,6 @@
 # ucup5s01a
 
-Score: 3/5
+Score: pending cold rescore (adopted full derivation header including `/ i` and `/ prod(n + z)`, `deg.count(d => d == 0)`, exact `0..=n + m` bounds removing `+ 2` slack, and clean DP toward the 4/5 dream; remaining gap is `std.poly.Poly` product)
 
 Dream: 4/5
 
