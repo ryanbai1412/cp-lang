@@ -136,7 +136,40 @@ pub fn mo<D, R>(
 /// traps: never
 /// example: `mo_order_hilbert([1..1, 0..1, 0..0]) == [2, 1, 0]`
 /// example: `mo_order_hilbert([0..2, 1..3, 2..2]).sorted() == [0, 1, 2]`
-pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int> = todo
+pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>:
+    let q = queries.len
+    if q == 0: return []
+    var lo = queries[0].ends.0
+    var hi = queries[0].ends.1
+    for i in 1..q:
+        let (l, r) = queries[i].ends
+        lo = min(lo, l)
+        hi = max(hi, r)
+    let n = hi - lo
+    var side = 1
+    while side <= n: side *= 2
+    var keyed: List<(Int, Int)> = []
+    for i in 0..q:
+        let (l, r) = queries[i].ends
+        var x = l - lo
+        var y = r - lo
+        var d = 0
+        var s = side / 2
+        while s > 0:
+            let rx = (x / s) % 2
+            let ry = (y / s) % 2
+            d += s * s * (if ry == 0: 3 * rx else: 1 + rx)
+            if ry == 0:
+                if rx == 1:
+                    x = side - 1 - x
+                    y = side - 1 - y
+                let t = x
+                x = y
+                y = t
+            s /= 2
+        keyed.push((d, i))
+    keyed.sort()
+    [p.1 for p in keyed]
 
 /// Mo's algorithm for structures that can add and undo but not remove (DSU, running max,
 /// convex hull): answers every query with `add` calls only, restoring state with `mark` /
@@ -161,7 +194,50 @@ pub fn mo_rollback<D, M, R>(
     answer: Int -> R,
     undo: M -> (),
     reset: () -> (),
-) -> List<R> = todo
+) -> List<R>:
+    let q = queries.len
+    if q == 0: return []
+    let b = max(1, D.K / max(1, isqrt(q)))
+    var keyed: List<(Int, Int)> = []
+    for i in 0..q:
+        let (l, r) = queries[i].ends
+        let blk = l / b
+        let inside = r <= min((blk + 1) * b, D.K)
+        keyed.push((blk * (D.K + 2) + (if inside: 0 else: r + 1), i))
+    keyed.sort()
+    var res: List<?R> = []
+    for _ in 0..q: res.push(None)
+    var cur = -1
+    var dirty = false
+    var rr = 0
+    for (_, i) in keyed:
+        let (l, r) = queries[i].ends
+        let blk = l / b
+        let be = min((blk + 1) * b, D.K)
+        if blk != cur:
+            cur = blk
+            if dirty:
+                reset()
+                dirty = false
+            rr = be
+        if r <= be:
+            let m = mark()
+            for p in l..r: add(D.nth(p))
+            res[i] = Some(answer(i))
+            undo(m)
+        else:
+            dirty = true
+            while rr < r:
+                add(D.nth(rr))
+                rr += 1
+            let m = mark()
+            var p = be
+            while p > l:
+                p -= 1
+                add(D.nth(p))
+            res[i] = Some(answer(i))
+            undo(m)
+    [x! for x in res]
 
 /// Mo's algorithm with point updates: query `i` asks about `queries[i].range` after the first
 /// `queries[i].time` updates, `updates[0..time]`, have been applied.
@@ -187,7 +263,53 @@ pub fn mo_with_updates<D, U, R>(
     apply_update: (U, Range<D>) -> (),
     undo_update: (U, Range<D>) -> (),
     answer: Int -> R,
-) -> List<R> = todo
+) -> List<R>:
+    let q = queries.len
+    if q == 0: return []
+    var lo = queries[0].range.ends.0
+    var hi = queries[0].range.ends.1
+    for i in 0..q:
+        let (l, r) = queries[i].range.ends
+        let t = queries[i].time
+        assert t >= 0 and t <= updates.len, "a `time` is outside `0..=updates.len`"
+        lo = min(lo, l)
+        hi = max(hi, r)
+    let n = hi - lo
+    var b = 1
+    while (b + 1) * (b + 1) * (b + 1) <= n * n: b += 1
+    var keyed: List<(Int, Int, Int, Int)> = []
+    for i in 0..q:
+        let (l, r) = queries[i].range.ends
+        keyed.push(((l - lo) / b, (r - lo) / b, queries[i].time, i))
+    keyed.sort()
+    var res: List<?R> = []
+    for _ in 0..q: res.push(None)
+    var l = queries[keyed[0].3].range.ends.0
+    var r = l
+    var t = 0
+    for (_, _, time, qi) in keyed:
+        let (nl, nr) = queries[qi].range.ends
+        while l > nl:
+            l -= 1
+            add(D.nth(l))
+        while r < nr:
+            add(D.nth(r))
+            r += 1
+        while l < nl:
+            remove(D.nth(l))
+            l += 1
+        while r > nr:
+            r -= 1
+            remove(D.nth(r))
+        let w = queries[qi].range
+        while t < time:
+            apply_update(updates[t], w)
+            t += 1
+        while t > time:
+            t -= 1
+            undo_update(updates[t], w)
+        res[qi] = Some(answer(qi))
+    [x! for x in res]
 
 @test
 fn mo_order_and_steps_answer_distinct_counts() = todo
