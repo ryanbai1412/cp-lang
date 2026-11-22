@@ -68,6 +68,20 @@ impl<'a> Lowerer<'a> {
                 Ok(value) if inner_hint == Some(&Ty::Float) => {
                     self.mk(ExprKind::Float(value as f64), Ty::Float, span)
                 }
+                Ok(value)
+                    if matches!(
+                        inner_hint,
+                        Some(Ty::Pos(d))
+                            if !self.product_domains.contains_key(d)
+                                && !self.sum_enums.contains_key(d)
+                    ) =>
+                {
+                    let Some(Ty::Pos(d)) = inner_hint else {
+                        unreachable!()
+                    };
+                    let lit = self.mk(ExprKind::Int(value), Ty::Int, span);
+                    self.cast(Cast::FromLabel(*d), lit, Ty::Pos(*d))
+                }
                 Ok(value) => self.mk(ExprKind::Int(value), Ty::Int, span),
                 // `2**63` and up fits a `U64` where one is wanted: the
                 // same 64 bits.
@@ -2031,6 +2045,7 @@ impl<'a> Lowerer<'a> {
         let r_hint = match op {
             Shl | Shr | Pow => Some(&Ty::Int),
             _ if r_concat_hint.is_some() => r_concat_hint.as_ref(),
+            _ if matches!(l.ty, Ty::Pos(_) | Ty::Bound(_)) => None,
             _ => (!is_bare_read(rhs)).then_some(&l.ty),
         };
         let r = unwrap_first_last(self.expr(rhs, r_hint));

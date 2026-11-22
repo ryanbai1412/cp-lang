@@ -1046,3 +1046,17 @@ print(x, a[0])
     let traces = compiled.main.ops.iter().filter(|op| matches!(op, crate::vm::Op::Trace { .. })).count();
     assert!(traces >= 3, "the loop variable and both writes are reported: {traces}");
 }
+
+#[test]
+fn int_literal_coerces_to_domain_position() {
+    let src = "\
+domain V = 1..=4
+let a = [V] v => Int(v) * 2
+var pre: [V.cuts]Int = 0
+let v = V(2)
+print(a[3], pre[0], v + 1)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "6 0 3\n");
+}
