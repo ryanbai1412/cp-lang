@@ -34,7 +34,13 @@ pub struct TraceConfig {
     /// Log each value a named variable is given, in a fn too, in
     /// [`Recording::assigned`]: what `cpl stress --explain` compares.
     pub assignments: bool,
+    /// Stop the run when this call returns: the fn's name and which call
+    /// of it, 1-based. What [`crate::replay`] runs.
+    pub stop_after_call: Option<(String, usize)>,
 }
+
+/// The message of the trap that ends a run at [`TraceConfig::stop_after_call`].
+pub(crate) const STOPPED: &str = "the call to replay returned";
 
 /// The most steps one run keeps; the viewer reads up to 100,000.
 const MAX_STEPS: usize = 20_000;
@@ -142,6 +148,25 @@ pub struct Recording {
     pub shown: Vec<Shown>,
     /// With [`TraceConfig::assignments`], in the order they ran.
     pub assigned: Vec<Assigned>,
+    /// The calls, in the order they started; none with `--last`.
+    pub calls: Vec<Call>,
+}
+
+/// One call of a fn: the steps it took and what it returned.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Call {
+    pub name: String,
+    /// 1-based: the third call of `name` in the run is call 3.
+    pub ordinal: usize,
+    /// The steps taken while it ran are `entry..exit`.
+    pub entry: usize,
+    pub exit: usize,
+    /// Fns running around it; a fn called from the top level is at 1.
+    pub depth: usize,
+    /// Its arguments as JSON, by parameter name.
+    pub args: String,
+    /// Its result as JSON, unless it returns nothing or never returned.
+    pub returned: Option<String>,
 }
 
 /// A step in source terms: its line, and which visit to that line it is.
@@ -190,7 +215,15 @@ impl Recording {
         last.unwrap_or_else(|| fallback.min(self.steps.len().saturating_sub(1)))
     }
 
-    fn values_at(&self, step: usize) -> BTreeMap<&str, &str> {
+    /// The innermost call running at `step`, or the call `frame` levels out
+    /// from it.
+    pub fn call_at(&self, step: usize, frame: usize) -> Option<&Call> {
+        let open: Vec<&Call> = self.calls.iter().filter(|c| c.entry <= step && step < c.exit).collect();
+        let depth = open.iter().map(|c| c.depth).max()?.checked_sub(frame)?;
+        open.into_iter().rev().find(|c| c.depth == depth)
+    }
+
+    pub(crate) fn values_at(&self, step: usize) -> BTreeMap<&str, &str> {
         self.steps[step].values.iter().map(|(var, json)| (self.vars[*var].id.as_str(), &**json)).collect()
     }
 }
@@ -199,27 +232,39 @@ impl Recording {
 /// `before`. Steps are compared in order: the n-th change of one run against
 /// the n-th of the other, `stdout` included.
 pub fn first_change(before: &Recording, after: &Recording) -> Option<Change> {
+    first_change_in(before, 0..before.steps.len(), after, 0..after.steps.len())
+}
+
+/// [`first_change`] over the steps `old` of `before` and `new` of `after`.
+pub fn first_change_in(
+    before: &Recording,
+    old: std::ops::Range<usize>,
+    after: &Recording,
+    new: std::ops::Range<usize>,
+) -> Option<Change> {
     let label = |run: &Recording, i: usize| run.steps.get(i).map(|s| s.label.clone());
-    for i in 0..before.steps.len().max(after.steps.len()) {
-        if i >= before.steps.len() || i >= after.steps.len() {
-            let step = i.min(after.steps.len().saturating_sub(1));
+    let last = new.end.saturating_sub(1).max(new.start).min(after.steps.len().saturating_sub(1));
+    for i in 0..old.len().max(new.len()) {
+        let (b, a) = (old.start + i, new.start + i);
+        if i >= old.len() || i >= new.len() {
+            let step = a.min(last);
             return Some(Change {
                 step,
                 line: after.steps.get(step).map_or(0, |s| s.line),
                 variable: None,
-                before: label(before, i),
-                after: label(after, i),
+                before: label(before, b).filter(|_| i < old.len()),
+                after: label(after, a).filter(|_| i < new.len()),
             });
         }
-        let (old, new) = (before.values_at(i), after.values_at(i));
-        let differs = old.keys().chain(new.keys()).find(|id| old.get(*id) != new.get(*id));
+        let (was, now) = (before.values_at(b), after.values_at(a));
+        let differs = was.keys().chain(now.keys()).find(|id| was.get(*id) != now.get(*id));
         if let Some(id) = differs {
             return Some(Change {
-                step: i,
-                line: after.steps[i].line,
+                step: a,
+                line: after.steps[a].line,
                 variable: Some(id.to_string()),
-                before: label(before, i),
-                after: label(after, i),
+                before: label(before, b),
+                after: label(after, a),
             });
         }
     }
@@ -262,6 +307,15 @@ pub(crate) struct Tracer {
     bytes: usize,
     pub assignments: bool,
     pub rec: Recording,
+    /// How many times each fn has been called so far.
+    ordinals: HashMap<String, usize>,
+    /// The index in `rec.calls` of each running call, if it is kept.
+    open: Vec<Option<usize>>,
+    stop_after_call: Option<(String, usize)>,
+    /// The depth of the call to stop after, while it runs.
+    stopping_at: Option<usize>,
+    /// The call to stop after has returned.
+    pub stopped: bool,
 }
 
 /// What the interpreter shows the tracer of its state.
@@ -348,6 +402,11 @@ impl Tracer {
             bytes: 0,
             assignments: config.assignments,
             rec: Recording::default(),
+            ordinals: HashMap::new(),
+            open: Vec::new(),
+            stop_after_call: config.stop_after_call,
+            stopping_at: None,
+            stopped: false,
         };
         tracer.stdout = tracer.add_var(
             Var {
@@ -369,6 +428,46 @@ impl Tracer {
         self.last.push(None);
         self.tree.push(kind == Kind::Parents);
         self.rec.vars.len() - 1
+    }
+
+    /// A call of `name` starts, with `args` (JSON, by name) when asked for.
+    pub fn enter_call(&mut self, name: &str, args: impl FnOnce() -> String) {
+        let ordinal = self.ordinals.entry(name.to_string()).or_insert(0);
+        *ordinal += 1;
+        let ordinal = *ordinal;
+        if self.stop_after_call.as_ref().is_some_and(|(n, k)| n == name && *k == ordinal) {
+            self.stopping_at = Some(self.open.len());
+        }
+        let kept = self.last_steps.is_none() && self.rec.calls.len() < MAX_STEPS;
+        self.open.push(kept.then_some(self.rec.calls.len()));
+        if kept {
+            self.rec.calls.push(Call {
+                name: name.to_string(),
+                ordinal,
+                entry: self.steps.len(),
+                exit: self.steps.len(),
+                depth: self.open.len(),
+                args: args(),
+                returned: None,
+            });
+        }
+    }
+
+    /// Whether the call that runs now is kept, so its result is wanted.
+    pub fn keeps_call(&self) -> bool {
+        self.open.last().is_some_and(Option::is_some)
+    }
+
+    /// The running call ends, with what it returned (JSON) when kept.
+    pub fn leave_call(&mut self, returned: Option<String>) {
+        if let Some(Some(index)) = self.open.pop() {
+            let call = &mut self.rec.calls[index];
+            call.exit = self.steps.len();
+            call.returned = returned;
+        }
+        if self.stopping_at == Some(self.open.len()) {
+            self.stopped = true;
+        }
     }
 
     pub fn enter_fn(&mut self, name: &str) -> (bool, bool) {
@@ -764,6 +863,7 @@ impl Tracer {
             Some((message, span)) => {
                 self.step(view, span, Some(format!("failed: {message}")), None, None)
             }
+            None if self.stopped => {}
             None => {
                 let end = Span::new(self.source.trim_end().len() as u32, self.source.trim_end().len() as u32);
                 self.step(view, end, Some("the program ended".to_string()), Some("end"), None)
@@ -771,6 +871,9 @@ impl Tracer {
         }
         if self.steps.is_empty() {
             self.step(view, Span::default(), Some("nothing was recorded".to_string()), None, None);
+        }
+        while !self.open.is_empty() {
+            self.leave_call(None);
         }
         self.rec.steps = std::mem::take(&mut self.steps).into_iter().collect();
         for id in 0..view.globals.len() {
@@ -1247,6 +1350,21 @@ pub(crate) fn text_of(value: &Value, ty: &Ty, view: &View) -> String {
 }
 
 /// `value` as a JSON value.
+/// The named `params` among the locals, as a JSON object.
+pub(crate) fn args_json(view: &View, params: &[&str]) -> String {
+    let mut out = String::from("{");
+    for (name, ty, value) in view.locals.iter().filter(|(name, ..)| params.contains(name)) {
+        if out.len() > 1 {
+            out.push(',');
+        }
+        string(&mut out, name);
+        out.push(':');
+        out.push_str(&json_of(value, ty, view));
+    }
+    out.push('}');
+    out
+}
+
 pub(crate) fn json_of(value: &Value, ty: &Ty, view: &View) -> String {
     let mut out = String::new();
     if cells(value) > MAX_CELLS {

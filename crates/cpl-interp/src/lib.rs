@@ -10,6 +10,7 @@
 
 mod input;
 pub mod profile;
+pub mod replay;
 pub mod trace;
 mod value;
 #[cfg(not(target_arch = "wasm32"))]
@@ -390,7 +391,10 @@ fn run_io(
         #[cfg(not(target_arch = "wasm32"))]
         vm_stats: vm::VmStats::from_env(),
     };
-    let result = interp.main();
+    let result = match interp.main() {
+        Err(trap) if trap.message == trace::STOPPED => Ok(()),
+        result => result,
+    };
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(stats) = &interp.vm_stats {
         stats.emit_stderr();
@@ -2920,6 +2924,10 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
         let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
+        if self.tracer.is_some() {
+            let params: Vec<&str> = f.locals[..f.params.len()].iter().map(|l| l.name.as_str()).collect();
+            self.traced(|tracer, view| tracer.enter_call(&f.name, || trace::args_json(view, &params)));
+        }
         let feeding = fed.is_some();
         if let Some(fed) = fed {
             self.fed_loops.push(Fed {
@@ -2976,6 +2984,20 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.in_closure = in_closure;
         if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
             tracer.leave_fn(entered);
+        }
+        if self.tracer.is_some() {
+            self.traced(|tracer, view| {
+                let returned = match &flow {
+                    Ok(Flow::Return(value)) if tracer.keeps_call() && f.ret != Ty::Unit => {
+                        Some(trace::json_of(value, &f.ret, view))
+                    }
+                    _ => None,
+                };
+                tracer.leave_call(returned);
+            });
+            if flow.is_ok() && self.tracer.as_ref().is_some_and(|tracer| tracer.stopped) {
+                flow = trap(span, trace::STOPPED);
+            }
         }
         self.frame_locals.pop();
         self.base = saved;
