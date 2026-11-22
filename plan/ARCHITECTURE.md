@@ -221,6 +221,9 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap` |
 | `cpl-lsp`, `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries |
 | `cpl-conform` | one harness: conformance, corpus, doc examples, differential, fuzzing, scoreboard |
+| `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`) |
+| `cpl-json` | one dependency-free JSON value and printer, shared by every tool that speaks JSON |
+| `cpl-wasm` | browser bindings over `cpl-check`, `cpl-interp`, `cpl-codegen` and `cpl-lsp`; no logic of its own |
 
 ## A5. First-class concerns
 
@@ -322,12 +325,12 @@ files are either checked by a test or never committed.
 Measured 2026-11-22; commands in `plan/domains/tech-debt/metrics.toml`
 and `plan/domains/compiler/metrics.toml`.
 
-- About 201k lines of Rust in 19 crates
-  (`git ls-files 'crates/*.rs' | xargs cat | wc -l`): `cpl-syntax` ->
+- About 203k lines of Rust in 18 crates
+  (`git ls-files 'crates/*.rs' | xargs cat | wc -l`; `ls -d crates/*/`): `cpl-syntax` ->
   `cpl-check` (salsa-style database) -> `cpl-ir` (typed lowering) ->
   `cpl-interp` (a tree-walker plus a register VM that falls back to it)
-  and `cpl-codegen` (C++17). `cpl-contest`, `cpl-json` and `cpl-wasm` are
-  not in A4 yet; `prover` (package `cpl-prover`) is still its own crate.
+  and `cpl-codegen` (C++17). A4 now lists `cpl-contest`, `cpl-json` and
+  `cpl-wasm`; `prover` (package `cpl-prover`) is still its own crate.
 - One language: edition 0.2, its `stdlib/` and the `CPL_SPEC`/`CPL_STD`
   switches are deleted (`edition_refs` 0).
 - Conformance 1617/1711; interpreter == C++ on 1242 of 1336 (94 skipped);
