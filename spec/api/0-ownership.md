@@ -230,11 +230,12 @@ The effect is computed through any depth of calls (`outer` calling
 
 **R11. Evaluation order.** Operands run left to right. An assignment or
 compound assignment runs its right side first, then the target's index
-expressions, then lends the target for the write. So `a.push(a.len)`,
-`a[i] = a[j] + 1`, `cnt[a[i]] += 1` and `xs[0] = xs.pop()!` are fine: each
-lend ends before the next starts. `a[l] += inc(mut a[l])` also compiles
-(`inc` runs, then the new `a[l]` gets its result added), with a lint,
-because a reader may expect the old `a[l]` to be read first.
+expressions, then lends the target for the write, so each lend ends
+before the next starts. `a.push(a.len)`, `a[i] = a[j] + 1` and
+`cnt[a[i]] += 1` are fine. `xs[0] = xs.pop()!` and `a[l] += inc(mut a[l])`
+also compile, with a lint: a right side that writes the target's container
+is legal but easy to misread (`inc` runs first, then the new `a[l]` gets
+its result added).
 
 ## 9. Generators and views (R12)
 
