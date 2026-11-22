@@ -697,7 +697,6 @@ impl<'a> Checker<'a> {
                                 | "Filter"
                                 | "Zip"
                                 | "Range"
-                                | "List"
                                 | "Slice"
                                 | "Rev"
                                 | "Map"
