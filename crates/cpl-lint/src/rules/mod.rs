@@ -754,29 +754,35 @@ fn ranges_of_stmt(
             StmtKind::Let {
                 mutable,
                 pat: whole,
-                ty,
+                ty: whole_ty,
                 init: whole_init,
                 ..
             } => {
                 // `var (lo, hi) = (0, xs.len)` binds each name as its own `var`.
-                let parts: Vec<(&cpl_syntax::ast::Pattern, Option<&cpl_syntax::ast::Expr>)> =
-                    match (&whole.kind, whole_init.as_ref().map(|e| &e.kind), ty) {
+                // `let (n, q): (1..=N, 1..=Q) = read()` declares each name's type.
+                let declared = whole_ty.as_ref().or_else(|| whole_init.as_ref().and_then(bounds::read_type));
+                type Part<'p> = (&'p cpl_syntax::ast::Pattern, Option<&'p cpl_syntax::ast::Expr>, Option<&'p cpl_syntax::ast::Type>);
+                let parts: Vec<Part> =
+                    match (&whole.kind, whole_init.as_ref().map(|e| &e.kind), declared.map(|t| &t.kind)) {
                         (PatternKind::Tuple(ps), Some(ExprKind::Tuple(es)), None)
                             if ps.len() == es.len() && !reads_any(es, &declared_names(whole)) =>
                         {
-                            ps.iter().zip(es.iter().map(Some)).collect()
+                            ps.iter().zip(es.iter().map(Some)).map(|(p, e)| (p, e, None)).collect()
                         }
-                        _ => vec![(whole, whole_init.as_ref())],
+                        (PatternKind::Tuple(ps), _, Some(cpl_syntax::ast::TypeKind::Tuple(ts))) if ps.len() == ts.len() => {
+                            ps.iter().zip(ts).map(|(p, t)| (p, None, Some(t))).collect()
+                        }
+                        _ => vec![(whole, whole_init.as_ref(), whole_ty.as_ref())],
                     };
                 let siblings: Vec<(String, cpl_syntax::ast::Expr, bool)> = parts
                     .iter()
                     .filter(|_| parts.len() > 1)
-                    .filter_map(|(p, e)| match &p.kind {
+                    .filter_map(|(p, e, _)| match &p.kind {
                         PatternKind::Name(n) => Some((n.clone(), (*e)?.clone(), *mutable)),
                         _ => None,
                     })
                     .collect();
-                for (pat, init) in parts {
+                for (pat, init, ty) in parts {
                 let value = match (&pat.kind, ty) {
                     (PatternKind::Name(_), Some(ty)) => bounds.range(ty),
                     (PatternKind::Name(_), None) if !mutable => {

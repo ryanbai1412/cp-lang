@@ -132,14 +132,13 @@ impl Bounds {
                 }
                 StmtKind::Let {
                     pat, ty: Some(ty), ..
-                } => {
-                    if let (PatternKind::Name(name), Some(range)) = (&pat.kind, bounds.range(ty)) {
-                        bounds.input(name, range);
-                    }
-                    if let (PatternKind::Name(name), Some(size)) = (&pat.kind, super::array_size(base, ty, &bounds)) {
-                        bounds.set_size(name, size);
-                    }
-                }
+                } => bounds.declare(base, pat, ty),
+                StmtKind::Let {
+                    pat,
+                    ty: None,
+                    init: Some(init),
+                    ..
+                } if read_type(init).is_some() => bounds.declare(base, pat, read_type(init).unwrap()),
                 StmtKind::Let {
                     mutable: false,
                     pat,
@@ -189,6 +188,26 @@ impl Bounds {
             }
         }
         bounds
+    }
+
+    /// `pat` is bound to a value of type `ty`, part by part for a tuple.
+    fn declare(&mut self, base: u32, pat: &cpl_syntax::ast::Pattern, ty: &Type) {
+        match (&pat.kind, &ty.kind) {
+            (PatternKind::Name(name), _) => {
+                if let Some(range) = self.range(ty) {
+                    self.input(name, range);
+                }
+                if let Some(size) = super::array_size(base, ty, self) {
+                    self.set_size(name, size);
+                }
+            }
+            (PatternKind::Tuple(pats), TypeKind::Tuple(tys)) if pats.len() == tys.len() => {
+                for (pat, ty) in pats.iter().zip(tys) {
+                    self.declare(base, pat, ty);
+                }
+            }
+            _ => {}
+        }
     }
 
     /// From here on `name` is in `value`, or unknown: a local that
@@ -945,4 +964,18 @@ pub(crate) fn keeps_len(method: &str) -> bool {
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn keeps_len(_: &str) -> bool {
     false
+}
+
+/// `T` in `read<T>()`.
+pub(crate) fn read_type(init: &Expr) -> Option<&Type> {
+    let ExprKind::Call { callee, args, .. } = &init.kind else {
+        return None;
+    };
+    let ExprKind::Generic { base, args: tys } = &callee.kind else {
+        return None;
+    };
+    match (&base.kind, tys.as_slice()) {
+        (ExprKind::Name(n), [ty]) if n == "read" && args.is_empty() => Some(ty),
+        _ => None,
+    }
 }

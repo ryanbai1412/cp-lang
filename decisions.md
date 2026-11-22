@@ -5463,3 +5463,15 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   blocked by another call.
 - **Reverse.** Drop the `abs` arms in `prelude_call` in `cpl-check`'s
   `check/call.rs`.
+
+## 199. A tuple read bounds each name it binds (2026-11-22)
+
+- **Decision.** `let (n, q): (1..=N, 1..=Q) = read()` and
+  `let (n, q) = read<(1..=N, 1..=Q)>()` bound `n` and `q` for proven
+  ranges, loop counts and domain sizes, as `let n: 1..=N = read()` does.
+- **Why.** Only a single name took its declared range, so the common
+  one-line header left every loop over `0..n` or `domain V = 1..=n`
+  uncounted. Loops in the ports with a known total went from 849 to 984,
+  and fns with an estimated cost from 32 to 35.
+- **Reverse.** Drop `declare` and `read_type` in `cpl-lint`'s
+  `rules/bounds.rs` and the tuple-typed `parts` arm in `rules/mod.rs`.

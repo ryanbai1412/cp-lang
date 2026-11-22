@@ -1775,6 +1775,21 @@ fn a_comparison_of_two_names_bounds_their_difference() {
 }
 
 #[test]
+fn a_tuple_read_bounds_each_name_it_binds() {
+    let loops = |src: &str| -> Vec<(u128, Option<u128>)> {
+        crate::proven_loops(src).into_iter().map(|l| (l.times, l.total)).collect()
+    };
+    let body = "domain V = 1..=n\nfor v in V:\n    for i in 0..q:\n        print(v, i)\n";
+    let typed = format!("let (n, q): (1..=200000, 1..=1000) = read()\n{body}");
+    assert_eq!(loops(&typed), [(200000, Some(200000)), (1000, Some(200000000))]);
+    assert_eq!(crate::domain_sizes(&typed), [("V".to_string(), 200000)]);
+    let turbofish = format!("let (n, q) = read<(1..=200000, 1..=1000)>()\n{body}");
+    assert_eq!(loops(&turbofish), loops(&typed));
+    let unbounded = format!("let (n, q): (Int, 1..=1000) = read()\n{body}");
+    assert_eq!(loops(&unbounded), [(1000, None)]);
+}
+
+#[test]
 fn a_for_loop_knows_how_often_it_runs() {
     let loops = |src: &str| -> Vec<(u128, Option<u128>)> {
         crate::proven_loops(src).into_iter().map(|l| (l.times, l.total)).collect()
