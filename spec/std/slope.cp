@@ -6,7 +6,12 @@ use std.lazy.{LazyTreap}
 
 struct Slide(base: Int, step: Int)
 
-fn falling() -> LazyTreap<Int, Slide> = todo
+fn falling() -> LazyTreap<Int, Slide> = LazyTreap<Int, Slide>(
+    apply: (v, left, f) => v + f.base + left * f.step,
+    compose: (f, g) => Slide(f.base + g.base, f.step + g.step),
+    split: (f, left) => (f, Slide(f.base + (left + 1) * f.step, f.step)),
+    before: (x, y) => x >= y,
+)
 
 /// O(log n) expected per slope operation, for n slopes.
 /// A concave function on the integers `lo..=hi`: its value at `lo` and its
@@ -47,14 +52,14 @@ pub struct Concave(start: Int, base: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Concave.flat(0..=3); f.shift(-2); f.lo == -2`
-    @get pub fn lo(self) -> Int = todo
+    @get pub fn lo(self) -> Int = start
 
     /// The last point of the domain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Concave.flat(0..=3); f.max_convolve(Concave.flat(0..=2)); f.hi == 5`
-    @get pub fn hi(self) -> Int = todo
+    @get pub fn hi(self) -> Int = start + slopes.len
 
     /// Replace `f` with `c => max over a + b == c of f(a) + g(b)`. The domain becomes
     /// `lo + g.lo ..= hi + g.hi` and the two slope multisets merge, so the result stays concave.
@@ -203,14 +208,14 @@ pub struct Convex(neg: Concave):
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Convex.flat(0..=3); f.shift(-2); f.lo == -2`
-    @get pub fn lo(self) -> Int = todo
+    @get pub fn lo(self) -> Int = neg.lo
 
     /// The last point of the domain.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var f = Convex.flat(0..=3); f.min_convolve(Convex.flat(0..=2)); f.hi == 5`
-    @get pub fn hi(self) -> Int = todo
+    @get pub fn hi(self) -> Int = neg.hi
 
     /// Replace `f` with `c => min over a + b == c of f(a) + g(b)`. The domain becomes
     /// `lo + g.lo ..= hi + g.hi` and the slope multisets merge. Pass the smaller function as `g`.
@@ -219,7 +224,7 @@ pub struct Convex(neg: Concave):
     /// ties: only the value is kept; which point attains it does not matter
     /// traps: never
     /// example: `var f = Convex.point(0); f.add_const(3); f.min_convolve(Convex.flat(0..=2)); f.hi == 2 and f.at(1) == 3`
-    pub fn min_convolve(mut self, g: Convex) = todo
+    pub fn min_convolve(mut self, g: Convex) = neg.max_convolve(g.neg)
 
     /// `f(c) += q(c)` for a quadratic `q` with leading coefficient at least 0, so `f` stays convex;
     /// `q` is called at most four times, as in `Concave.add_quadratic`.
@@ -227,14 +232,14 @@ pub struct Convex(neg: Concave):
     /// cost: O(1)
     /// traps: when `q` is not a quadratic polynomial on the points read, or its leading coefficient is negative
     /// example: `var f = Convex.flat(0..=3); f.add_quadratic(x => x * x); f.at(3) == 9`
-    pub fn add_quadratic(mut self, q: Int -> Int) = todo
+    pub fn add_quadratic(mut self, q: Int -> Int) = neg.add_quadratic(c => -q(c))
 
     /// The value `f(c)`.
     ///
     /// cost: O(log n) expected (O(c - lo + log n) in the current implementation)
     /// traps: when `c` is outside `lo..=hi`
     /// example: `var f = Convex.flat(0..=4); f.add_abs(1); f.at(4) == 3`
-    pub fn at(mut self, c: Int) -> Int = todo
+    pub fn at(mut self, c: Int) -> Int = -neg.at(c)
 
     /// The smallest value of `f` over its domain.
     ///
