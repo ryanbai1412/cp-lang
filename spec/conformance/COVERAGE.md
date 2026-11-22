@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1336 (995 passing). Rules: 521.
+Cases: 1346 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 2 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 31 case(s)
+- R0401 Assertion failed: 35 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -777,15 +777,15 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **lazy** (29/30 named by a case)
   - uncovered: `flip_action`
 - **marks** (46/46 named by a case)
-- **math** (65/83 named by a case)
-  - uncovered: `fixed`, `Sieve.phi_table`, `Sieve.mobius_table`, `Sieve.div_count_table`, `Sieve.div_sum_table`, `sieve_multiplicative`, `splitmix64`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
+- **math** (69/83 named by a case)
+  - uncovered: `fixed`, `sieve_multiplicative`, `splitmix64`, `dirichlet_convolve`, `dirichlet_inv`, `DirichletSum`, `DirichletSum.new`, `sum_phi`, `sum_mobius`, `sum_multiplicative`, `BigInt`, `BigInt.from_str`, `BigInt.gcd`, `inf`
 - **matrix** (59/63 named by a case)
   - uncovered: `Mat.new`, `sparse_det`, `sparse_solve`, `simplex`
 - **mo** (5/6 named by a case)
   - uncovered: `mo_steps`
 - **mod** (29/29 named by a case)
-- **ntt** (10/17 named by a case)
-  - uncovered: `Curved`, `Disjoint`, `subset`, `convolve`, `SosOver`, `sos`, `fwht`
+- **ntt** (13/17 named by a case)
+  - uncovered: `Curved`, `Disjoint`, `subset`, `SosOver`
 - **opt** (2/2 named by a case)
 - **pair** (5/5 named by a case)
 - **persistent** (34/38 named by a case)
@@ -814,7 +814,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1874 of 2222 std items are named by a case.
+1881 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
