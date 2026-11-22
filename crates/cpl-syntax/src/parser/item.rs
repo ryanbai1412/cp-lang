@@ -186,16 +186,23 @@ impl<'a> Parser<'a> {
         let copies = std::mem::take(&mut self.var_params);
         let unpacked = std::mem::take(&mut self.param_patterns);
         let ret = self.eat(T::Arrow).then(|| self.ty());
-        // `fn at(self, i: V) lends mut Int`: a projection.
-        let lends =
-            self.at(T::Lends).then(|| {
-                self.bump();
-                let mutable = self.eat(T::Mut);
-                Lends {
-                    mutable,
-                    ty: self.ty(),
-                }
-            });
+        // `fn at(self, i: V) lends mut Int` or `fn pick(a, b) lends(a) List<Int>`.
+        let lends = self.at(T::Lends).then(|| {
+            self.bump();
+            let sources = if self.eat(T::LParen) {
+                self.comma_list(T::RParen, "the lent source names", |p| {
+                    p.expect_name("a parameter name")
+                })
+            } else {
+                Vec::new()
+            };
+            let mutable = self.eat(T::Mut);
+            Lends {
+                sources,
+                mutable,
+                ty: self.ty(),
+            }
+        });
         let mut uses = Vec::new();
         if self.at_ident("uses") {
             self.bump();

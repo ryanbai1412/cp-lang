@@ -56,9 +56,10 @@ pub struct Bound {
     pub traits: Vec<Type>,
 }
 
-/// `lends T` or `lends mut T` in a projection's signature.
+/// `lends T`, `lends mut T`, or `lends(a) T` in a projection's signature.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Lends {
+    pub sources: Vec<Name>,
     pub mutable: bool,
     pub ty: Type,
 }

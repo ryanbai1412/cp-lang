@@ -1021,6 +1021,12 @@ impl<'a> Checker<'a> {
                         mutators,
                         owned,
                         projections: self.projections(&s.methods),
+                        cached_fields: s
+                            .fields
+                            .iter()
+                            .filter(|f| f.cached)
+                            .map(|f| f.name.text.clone())
+                            .collect(),
                     },
                 )]
             }

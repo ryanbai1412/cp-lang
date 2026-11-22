@@ -48,6 +48,7 @@ pub enum Def {
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         projections: Vec<Projection>,
+        cached_fields: Vec<String>,
     },
     Enum {
         variants: Vec<(String, Vec<Ty>)>,

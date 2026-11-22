@@ -1230,6 +1230,43 @@ impl<'a> Checker<'a> {
             }
             StmtKind::Expr(expr) => return self.infer(expr),
             StmtKind::Assign { target, op, value } => {
+                // Check `@cache` field written from outside its struct (`L0609`).
+                {
+                    let mut root = target;
+                    while let ExprKind::Index { base: inner, .. } = &root.kind {
+                        root = inner;
+                    }
+                    if let ExprKind::Field {
+                        base: obj,
+                        name: field,
+                    } = &root.kind
+                    {
+                        let obj_ty = self.infer(obj);
+                        if let Ty::Named { name: sname, .. } = obj_ty {
+                            let inside_same = matches!(
+                                self.self_ty.as_ref(),
+                                Some(Ty::Named { name, .. }) if name == &sname
+                            );
+                            if !inside_same {
+                                let is_cached = matches!(
+                                    self.type_def(&sname).as_deref(),
+                                    Some(Def::Struct { cached_fields, .. })
+                                        if cached_fields.iter().any(|c| c == &field.text)
+                                );
+                                if is_cached {
+                                    self.sink.push(Diagnostic::warning(
+                                        codes::CACHE_WRITTEN_OUTSIDE,
+                                        target.span,
+                                        format!(
+                                            "`{}.{}` is a `@cache` field and should only be written inside `{sname}`",
+                                            sname, field.text
+                                        ),
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
                 let prev_assigning = self.assigning_name;
                 if *op == AssignOp::Set && matches!(target.kind, ExprKind::Name(_)) {
                     self.assigning_name = Some(target.span);
@@ -1418,6 +1455,17 @@ impl<'a> Checker<'a> {
                 else_body,
                 ..
             } => {
+                if let ExprKind::Field {
+                    base: obj,
+                    name: field,
+                } = &iter.kind
+                {
+                    if matches!(&obj.kind, ExprKind::SelfValue)
+                        && self.cached_fields.iter().any(|c| c == &field.text)
+                    {
+                        self.check_cache_lend_body(body, &field.text);
+                    }
+                }
                 let prev_iterating = std::mem::replace(
                     &mut self.iterating_range,
                     matches!(iter.kind, ExprKind::Range { .. }),
@@ -2025,6 +2073,56 @@ impl<'a> Checker<'a> {
         local: bool,
         memo: Option<(Span, bool)>,
     ) {
+        if let Some(lends) = &f.lends {
+            let mut returned = Vec::new();
+            match &f.body {
+                ast::FnBody::Expr(e) => returned.push(e),
+                ast::FnBody::Block(b) => Self::collect_returned_exprs(b, &mut returned),
+                ast::FnBody::None => {}
+            }
+            if !lends.sources.is_empty() {
+                for e in &returned {
+                    let root = Self::expr_root_name(e);
+                    let ok = root.is_some_and(|r| lends.sources.iter().any(|s| s.text == r));
+                    if !ok {
+                        self.error(
+                            codes::LENT_ESCAPES,
+                            e.span,
+                            format!(
+                                "lent value must come from `{}`",
+                                lends
+                                    .sources
+                                    .iter()
+                                    .map(|s| s.text.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        );
+                    }
+                }
+            }
+            if let Some(Ty::Named { name: sname, .. }) = self_ty {
+                let cached = match self.type_def(sname).as_deref() {
+                    Some(Def::Struct { cached_fields, .. }) => cached_fields.clone(),
+                    _ => Vec::new(),
+                };
+                if !cached.is_empty() {
+                    for e in &returned {
+                        if let Some(cf) = Self::expr_self_field(e) {
+                            if cached.iter().any(|c| c == cf) {
+                                self.error(
+                                    codes::BAD_PROJECTION,
+                                    e.span,
+                                    format!(
+                                        "cannot lend `@cache` field `self.{cf}` from `{sname}`"
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
         let saved_row_bounds = self.row_bounds.clone();
         let outer_for_row = self.generics.len();
         self.generics
@@ -2491,5 +2589,139 @@ fn context_constant(e: &Expr) -> bool {
         ExprKind::Unary { expr, .. } => context_constant(expr),
         ExprKind::Tuple(items) => items.iter().all(context_constant),
         _ => false,
+    }
+}
+
+impl<'a> Checker<'a> {
+    fn collect_returned_exprs<'b>(block: &'b ast::Block, out: &mut Vec<&'b Expr>) {
+        for (i, stmt) in block.stmts.iter().enumerate() {
+            match &stmt.kind {
+                StmtKind::Return(Some(e)) => out.push(e),
+                StmtKind::Expr(e) if i + 1 == block.stmts.len() => out.push(e),
+                StmtKind::Expr(Expr {
+                    kind: ExprKind::If { branches, otherwise },
+                    ..
+                }) => {
+                    for (_, b) in branches {
+                        Self::collect_returned_exprs(b, out);
+                    }
+                    if let Some(b) = otherwise {
+                        Self::collect_returned_exprs(b, out);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn expr_root_name(mut e: &Expr) -> Option<&str> {
+        loop {
+            match &e.kind {
+                ExprKind::Name(n) => return Some(n.as_str()),
+                ExprKind::Field { base, .. } | ExprKind::Index { base, .. } => e = base,
+                ExprKind::Paren(inner) => e = inner,
+                _ => return None,
+            }
+        }
+    }
+
+    fn expr_self_field(mut e: &Expr) -> Option<&str> {
+        loop {
+            match &e.kind {
+                ExprKind::Field { base, name }
+                    if matches!(&base.kind, ExprKind::SelfValue) =>
+                {
+                    return Some(name.text.as_str());
+                }
+                ExprKind::Field { base, .. } | ExprKind::Index { base, .. } => e = base,
+                ExprKind::Paren(inner) => e = inner,
+                _ => return None,
+            }
+        }
+    }
+
+    fn check_cache_lend_body(&mut self, block: &ast::Block, cache_field: &str) {
+        for stmt in &block.stmts {
+            self.check_cache_lend_stmt(stmt, cache_field);
+        }
+    }
+
+    fn check_cache_lend_stmt(&mut self, stmt: &Stmt, cache_field: &str) {
+        match &stmt.kind {
+            StmtKind::Expr(e) | StmtKind::Return(Some(e)) => {
+                self.check_cache_lend_expr(e, cache_field);
+            }
+            StmtKind::Let { init: Some(e), .. } => self.check_cache_lend_expr(e, cache_field),
+            StmtKind::Assign { target, value, .. } => {
+                self.check_cache_lend_expr(target, cache_field);
+                self.check_cache_lend_expr(value, cache_field);
+            }
+            StmtKind::For { iter, body, .. } => {
+                self.check_cache_lend_expr(iter, cache_field);
+                self.check_cache_lend_body(body, cache_field);
+            }
+            StmtKind::While { body, .. } => {
+                self.check_cache_lend_body(body, cache_field);
+            }
+            _ => {}
+        }
+    }
+
+    fn check_cache_lend_expr(&mut self, expr: &Expr, cache_field: &str) {
+        match &expr.kind {
+            ExprKind::Call { callee, args } => {
+                let bad_self_method = matches!(
+                    &callee.kind,
+                    ExprKind::Field { base, .. }
+                        if matches!(&base.kind, ExprKind::SelfValue)
+                );
+                let bad_fn_param = match &callee.kind {
+                    ExprKind::Name(n) => self
+                        .local(n)
+                        .is_some_and(|l| matches!(l.ty, Ty::Fn { .. })),
+                    _ => false,
+                };
+                if bad_self_method || bad_fn_param {
+                    self.error(
+                        codes::USED_WHILE_LENT,
+                        expr.span,
+                        format!(
+                            "cannot call `{}` while `@cache` field `self.{cache_field}` is lent",
+                            self.quote(callee.span)
+                        ),
+                    );
+                }
+                self.check_cache_lend_expr(callee, cache_field);
+                for a in args {
+                    self.check_cache_lend_expr(&a.value, cache_field);
+                }
+            }
+            ExprKind::Binary { lhs, rhs, .. } => {
+                self.check_cache_lend_expr(lhs, cache_field);
+                self.check_cache_lend_expr(rhs, cache_field);
+            }
+            ExprKind::Compare { first, rest } => {
+                self.check_cache_lend_expr(first, cache_field);
+                for (_, e) in rest {
+                    self.check_cache_lend_expr(e, cache_field);
+                }
+            }
+            ExprKind::Unary { expr: inner, .. }
+            | ExprKind::Paren(inner)
+            | ExprKind::Try(inner)
+            | ExprKind::Unwrap(inner) => self.check_cache_lend_expr(inner, cache_field),
+            ExprKind::If { branches, otherwise } => {
+                for (c, b) in branches {
+                    if let ast::Cond::Expr(e) | ast::Cond::Const(e) = c {
+                        self.check_cache_lend_expr(e, cache_field);
+                    }
+                    self.check_cache_lend_body(b, cache_field);
+                }
+                if let Some(b) = otherwise {
+                    self.check_cache_lend_body(b, cache_field);
+                }
+            }
+            _ => {}
+        }
     }
 }

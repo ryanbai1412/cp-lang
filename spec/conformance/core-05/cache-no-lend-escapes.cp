@@ -1,4 +1,4 @@
-// expect: E0604 at 9
+// expect: E0604 at 10
 // rule: 05.10.9
 struct Dsu:
     @cache parent: List<Int>
