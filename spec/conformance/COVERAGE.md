@@ -6,19 +6,19 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1206 (296 passing). Rules: 521.
+Cases: 1210 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 80 cases; 0 uncovered, 8 happy-path only, 1 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 81 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 84 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 33 cases; 0 uncovered, 8 happy-path only, 4 negative only
-- R04 (04-indices.md): 59 rules, 69 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R04 (04-indices.md): 59 rules, 70 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 79 cases; 0 uncovered, 2 happy-path only, 4 negative only
-- R06 (06-control-functions.md): 23 rules, 51 cases; 0 uncovered, 2 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 80 cases; 0 uncovered, 8 happy-path only, 3 negative only
+- R06 (06-control-functions.md): 23 rules, 52 cases; 0 uncovered, 1 happy-path only, 1 negative only
+- R07 (07-sequences.md): 87 rules, 81 cases; 0 uncovered, 7 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 32 cases; 4 uncovered, 6 happy-path only, 3 negative only
 - R10 (10-io.md): 16 rules, 42 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -38,7 +38,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.2.1 [1+ 2-]: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
 - R01.2.2 [1+ 2-]: A logical line ends at a newline outside brackets. Inside `( )`, `[ ]` and `{ }` newlines ...
 - R01.2.3 [1+ 2-]: A one-line body follows `:` or `=` on the same line. A deeper line after a one-line body i...
-- R01.2.4 [1+ 0-] *happy-path only*: **Continuation.** A line indented deeper than the previous logical line, where that line d...
+- R01.2.4 [1+ 1-]: **Continuation.** A line indented deeper than the previous logical line, where that line d...
 - R01.2.5 [1+ 1-]: `;` separates simple statements on one line (`if c: a.push(x); continue`). It never ends a...
 - R01.2.6 [1+ 0-]: Trailing commas are allowed in every comma-separated list.
 - R01.3.1 [1+ 0-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
@@ -178,7 +178,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.11 [1+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [1+ 0-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [1+ 0-]: | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1)
-- R04.2.14 [1+ 0-] *happy-path only*: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1)
+- R04.2.14 [2+ 0-] *happy-path only*: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1)
 - R04.2.15 [1+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
 - R04.2.16 [3+ 0-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
 - R04.2.17 [1+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1)
@@ -349,7 +349,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.5 [1+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
 - R06.1.6 [1+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [2+ 1-]: Functions hoist within their block; every capture must be initialized before the first cal...
-- R06.2.1 [4+ 0-] *happy-path only*: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
+- R06.2.1 [4+ 1-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [1+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
 - R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
@@ -412,7 +412,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.13 [1+ 0-]: | `grid[rs, cs]` | `(R, C)` pairs inside `rs` × `cs`; `.items` gives `((x, y), v)` | row-m...
 - R07.5.1 [1+ 0-]: | `a[l..=r]`, `.rev`, `.map(f)` | build the struct, O(1)
 - R07.5.2 [1+ 1-]: | `w[i]` | debug: check `lo <= i < hi`; then `a[i]` (no offset: indices are kept)
-- R07.5.3 [1+ 0-] *happy-path only*: | `w.rev[i]` | `a[i]`; only the walk order differs
+- R07.5.3 [1+ 1-]: | `w.rev[i]` | `a[i]`; only the walk order differs
 - R07.5.4 [2+ 0-]: | `a.map(f)[i]` | `f(a[i])`, inlined, per read
 - R07.5.5 [1+ 0-]: | `for x in w` | `for (i = lo; i < hi; ++i) body(a[i])`
 - R07.5.6 [1+ 0-]: | `for x in w.rev` | the same loop, `hi - 1` down to `lo`
@@ -606,7 +606,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0003 Unterminated string literal: 1 case(s)
 - E0004 Unknown character: 2 case(s)
 - E0005 Malformed number literal: 1 case(s)
-- E0006 Unexpected indentation: 1 case(s)
+- E0006 Unexpected indentation: 2 case(s)
 - E0007 Malformed character literal: 1 case(s)
 - E0101 Unclosed delimiter: 1 case(s)
 - E0102 Expected expression: 4 case(s)
@@ -653,7 +653,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0503 Removed syntax from an older version: 3 case(s)
 - E0504 Planned syntax, not implemented yet: **no case**
 - E0601 Aliased mutable lend: 8 case(s)
-- E0602 Variable mutated while lent: 17 case(s)
+- E0602 Variable mutated while lent: 18 case(s)
 - E0603 Lent value escapes its scope: 11 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
@@ -731,7 +731,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0201 Range store out of range: 6 case(s)
 - R0202 Integer overflow: 4 case(s)
 - R0203 Division by zero: 2 case(s)
-- R0301 Unwrap of None: 4 case(s)
+- R0301 Unwrap of None: 5 case(s)
 - R0401 Assertion failed: 8 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
