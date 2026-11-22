@@ -756,3 +756,72 @@ fn test_judges_memory_against_the_problems_limit() {
     assert_eq!(err, "");
     assert!(!out.contains("MLE"), "{out}");
 }
+
+#[test]
+fn test_discovers_sibling_tests_dir_and_ans_files_and_supports_tests_flag() {
+    let dir = scratch("sibling-ans");
+    let source = dir.join("sol.cp");
+    std::fs::write(&source, "let a: Int = read()\nlet b: Int = read()\nprint(a + b)\n").unwrap();
+    let tests = dir.join("tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    std::fs::write(tests.join("01.in"), "2 3\n").unwrap();
+    std::fs::write(tests.join("01.ans"), "5\n").unwrap();
+    std::fs::write(tests.join("02.in"), "10 20\n").unwrap();
+    std::fs::write(tests.join("02.ans"), "30\n").unwrap();
+
+    let found = cases(&source);
+    assert_eq!(
+        found.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
+        ["01", "02"]
+    );
+    assert!(found.iter().all(|c| c.expected.is_some()));
+
+    let path = source.to_str().unwrap();
+    let (code, out, err) = cli(test::run, &[path]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("2/2 passed"), "{out}");
+
+    // `--tests DIR` works from another directory too.
+    let other_dir = scratch("tests-flag");
+    let other_src = other_dir.join("other.cp");
+    std::fs::copy(&source, &other_src).unwrap();
+    let (code, out, err) = cli(
+        test::run,
+        &[other_src.to_str().unwrap(), "--tests", tests.to_str().unwrap()],
+    );
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("2/2 passed"), "{out}");
+
+    std::fs::remove_dir_all(dir).unwrap();
+    std::fs::remove_dir_all(other_dir).unwrap();
+}
+
+#[test]
+fn test_runs_multitest_program_against_in_and_ans() {
+    let dir = scratch("multitest-ans");
+    let source = dir.join("multi.cp");
+    std::fs::write(
+        &source,
+        "@!multitest\nlet n: 1..=100 = read()\nlet a: [0..n]Int = read()\nprint(a.sum())\n",
+    )
+    .unwrap();
+    let tests = dir.join("tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    std::fs::write(tests.join("01.in"), "3\n2\n1 2\n3\n4 5 6\n1\n10\n").unwrap();
+    std::fs::write(tests.join("01.ans"), "3\n15\n10\n").unwrap();
+
+    let (code, out, err) = cli(test::run, &[source.to_str().unwrap()]);
+    assert_eq!(code, 0, "{out}{err}");
+    assert!(out.contains("1/1 passed"), "{out}");
+
+    // A wrong answer in one subcase of a multitest is reported clearly.
+    std::fs::write(tests.join("02.in"), "2\n2\n1 2\n2\n3 4\n").unwrap();
+    std::fs::write(tests.join("02.ans"), "3\n99\n").unwrap();
+    let (code, out, err) = cli(test::run, &[source.to_str().unwrap()]);
+    assert_eq!(code, 1, "{out}{err}");
+    assert!(out.contains("02  WA"), "{out}");
+    assert!(out.contains("line 2"), "{out}");
+    assert!(out.contains("1/2 passed"), "{out}");
+
+    std::fs::remove_dir_all(dir).unwrap();
+}

@@ -1137,7 +1137,7 @@ fn submit(path: &str, copy: bool, stdout: &mut (dyn Write + Send), stderr: &mut 
     }
     let source = cpl_contest::problem::source_path(path);
     let cases = cpl_contest::problem::cases(&source);
-    let tests = cpl_contest::problem::tests_dir(&source);
+    let tests = cpl_contest::problem::find_tests_dir(&source);
     if cases.is_empty() {
         *stderr += &format!(
             "cpl: warning: {} has no cases, so only the build was checked; put the samples there as `1.in` and \
@@ -1345,7 +1345,13 @@ fn should_run_unit_tests(args: &[&str]) -> bool {
     if args.iter().any(|a| {
         matches!(
             *a,
-            "-h" | "--help" | "--fast" | "--checker" | "--interactor" | "--time-limit"
+            "-h" | "--help"
+                | "--tests"
+                | "--fast"
+                | "--checker"
+                | "--interactor"
+                | "--time-limit"
+                | "--memory-limit"
         )
     }) {
         return false;
@@ -1366,8 +1372,7 @@ fn should_run_unit_tests(args: &[&str]) -> bool {
         return true;
     }
     if p.extension().is_some_and(|e| e == "cp") && p.is_file() {
-        let tests_dir = p.with_extension("tests");
-        if tests_dir.is_dir() {
+        if cpl_contest::problem::find_tests_dir(p).is_dir() {
             return false;
         }
         if let Ok(text) = std::fs::read_to_string(p) {

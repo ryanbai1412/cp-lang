@@ -1,7 +1,7 @@
 //! `cpl watch`: check, lint and test on every save.
 
 use crate::args::Args;
-use crate::problem::{cases, source_path, tests_dir};
+use crate::problem::{cases_in, find_tests_dir, source_path};
 use crate::test::{ready, render, run_cases};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -31,7 +31,7 @@ impl Stamp {
     pub fn of(source: &Path, extra: &[PathBuf]) -> Stamp {
         let mut paths = vec![source.to_path_buf()];
         paths.extend(extra.iter().cloned());
-        if let Ok(entries) = std::fs::read_dir(tests_dir(source)) {
+        if let Ok(entries) = std::fs::read_dir(find_tests_dir(source)) {
             paths.extend(entries.filter_map(|entry| entry.ok().map(|e| e.path())));
         }
         paths.sort();
@@ -91,16 +91,16 @@ impl Watch {
             let _ = writeln!(out, "  lint: {}", plural(lints.len(), "warning"));
         }
 
-        let cases = cases(&self.source);
+        let args = Args::parse(args, VALUED, &["--once"])?;
+        let dir = args
+            .value("--tests")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| find_tests_dir(&self.source));
+        let cases = cases_in(&dir);
         if cases.is_empty() {
-            let _ = writeln!(
-                out,
-                "  test: no cases in {}",
-                tests_dir(&self.source).display()
-            );
+            let _ = writeln!(out, "  test: no cases in {}", dir.display());
             return Ok(true);
         }
-        let args = Args::parse(args, VALUED, &["--once"])?;
         let ready = match ready(&self.source, &text, &args) {
             Ok(ready) => ready,
             // A solution that can't be run yet is a state, not a failure

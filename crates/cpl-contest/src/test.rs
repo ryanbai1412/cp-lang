@@ -12,20 +12,22 @@
 //! ```
 
 use crate::args::Args;
-use crate::problem::{cases, source_path, Limits, TestCase};
+use crate::problem::{cases_in, find_tests_dir, source_path, Limits, TestCase};
 use cpl_stress::cli::{select_judge, solution};
 use cpl_stress::{Judge, Program, Verdict};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub const USAGE: &str = "\
 usage: cpl test <problem> [options]
 
-Runs the solution on every case in <problem>.tests/. A case is N.in with
-an optional N.out; without one, the output is shown instead of judged.
+Runs the solution on every case in <problem>.tests/ (or a sibling tests/
+folder). A case is N.in with an optional N.out or N.ans; without one, the
+output is shown instead of judged.
 
 options:
+  --tests DIR        read cases from DIR instead of <problem>.tests/
   --fast PROG        run this instead of building the problem
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
@@ -174,7 +176,14 @@ pub(crate) struct Ready {
 /// Resolves what the test, bench and watch commands all need.
 /// The options of `cpl test` (and `cpl watch`) that take a value; the
 /// first three name programs.
-pub(crate) const VALUED: &[&str] = &["--fast", "--checker", "--interactor", "--time-limit", "--memory-limit"];
+pub(crate) const VALUED: &[&str] = &[
+    "--tests",
+    "--fast",
+    "--checker",
+    "--interactor",
+    "--time-limit",
+    "--memory-limit",
+];
 
 pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, String> {
     let name = source.display().to_string();
@@ -219,11 +228,15 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let result = std::fs::read_to_string(&source)
         .map_err(|e| format!("can't read {}: {e}", source.display()))
         .and_then(|src| {
-            let cases = cases(&source);
+            let dir = args
+                .value("--tests")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| find_tests_dir(&source));
+            let cases = cases_in(&dir);
             if cases.is_empty() {
                 return Err(format!(
-                    "{} has no cases; put `1.in` and `1.out` there",
-                    crate::problem::tests_dir(&source).display()
+                    "{} has no cases; put `1.in` and `1.out` (or `1.ans`) there",
+                    dir.display()
                 ));
             }
             let ready = ready(&source, &src, &args)?;
