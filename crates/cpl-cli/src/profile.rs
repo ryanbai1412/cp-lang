@@ -207,18 +207,7 @@ fn read_input(path: Option<&str>) -> Result<Vec<u8>, String> {
 }
 
 fn json_string(text: &str) -> String {
-    let mut out = String::from("\"");
-    for c in text.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
+    cpl_json::escape_string(text)
 }
 
 fn millis(nanos: u64) -> String {

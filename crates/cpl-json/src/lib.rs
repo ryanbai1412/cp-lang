@@ -224,6 +224,36 @@ pub fn escape_string(s: &str) -> String {
     out
 }
 
+/// Writes `s` as a quoted JSON string safe to embed inside an HTML `<script>` tag
+/// (also escapes `<`, U+2028, and U+2029).
+pub fn write_script_safe_string(out: &mut impl fmt::Write, s: &str) -> fmt::Result {
+    out.write_char('"')?;
+    for c in s.chars() {
+        match c {
+            '"' => out.write_str("\\\"")?,
+            '\\' => out.write_str("\\\\")?,
+            '\x08' => out.write_str("\\b")?,
+            '\x0c' => out.write_str("\\f")?,
+            '\n' => out.write_str("\\n")?,
+            '\r' => out.write_str("\\r")?,
+            '\t' => out.write_str("\\t")?,
+            '<' => out.write_str("\\u003c")?,
+            '\u{2028}' => out.write_str("\\u2028")?,
+            '\u{2029}' => out.write_str("\\u2029")?,
+            c if (c as u32) < 0x20 => write!(out, "\\u{:04x}", c as u32)?,
+            c => out.write_char(c)?,
+        }
+    }
+    out.write_char('"')
+}
+
+/// Returns `s` as a quoted JSON string safe to embed inside an HTML `<script>` tag.
+pub fn escape_script_safe_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    let _ = write_script_safe_string(&mut out, s);
+    out
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -708,5 +738,15 @@ mod tests {
         assert_eq!(parse(&pretty).unwrap(), v);
         assert_eq!(v.at(&["a", "k"]).as_str(), Some("v"));
         assert!(v.at(&["a", "missing"]).is_null());
+    }
+
+    #[test]
+    fn script_safe_escaping_escapes_script_breakers_and_roundtrips() {
+        let s = "</script>\u{2028}\u{2029}\n\t\"\\";
+        let escaped = escape_script_safe_string(s);
+        assert!(!escaped.contains('<'));
+        assert!(!escaped.contains('\u{2028}'));
+        assert!(!escaped.contains('\u{2029}'));
+        assert_eq!(parse(&escaped).unwrap(), Value::String(s.to_string()));
     }
 }

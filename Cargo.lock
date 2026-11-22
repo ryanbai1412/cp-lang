@@ -95,6 +95,7 @@ dependencies = [
  "cpl-check",
  "cpl-diag",
  "cpl-ir",
+ "cpl-json",
 ]
 
 [[package]]
@@ -150,6 +151,7 @@ dependencies = [
  "cpl-diag",
  "cpl-interp",
  "cpl-ir",
+ "cpl-json",
  "cpl-judge",
  "cpl-syntax",
 ]

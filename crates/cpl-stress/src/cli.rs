@@ -275,19 +275,7 @@ pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result
 }
 
 pub fn json_string(text: &str) -> String {
-    let mut out = String::from("\"");
-    for c in text.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
+    cpl_json::escape_string(text)
 }
 
 /// The report in the shape the editor reads (`editors/vscode/README.md`).

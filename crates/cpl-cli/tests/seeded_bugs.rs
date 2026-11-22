@@ -36,25 +36,11 @@ fn bugs() -> Vec<PathBuf> {
 
 /// The JSON string value of `key` in `json`, unescaped.
 fn string_field(json: &str, key: &str) -> Option<String> {
-    let start = json.find(&format!("\"{key}\":\""))? + key.len() + 4;
-    let mut out = String::new();
-    let mut chars = json[start..].chars();
-    while let Some(c) = chars.next() {
-        match c {
-            '"' => return Some(out),
-            '\\' => match chars.next()? {
-                'n' => out.push('\n'),
-                't' => out.push('\t'),
-                'u' => {
-                    let hex: String = chars.by_ref().take(4).collect();
-                    out.push(char::from_u32(u32::from_str_radix(&hex, 16).ok()?)?);
-                }
-                other => out.push(other),
-            },
-            c => out.push(c),
-        }
-    }
-    None
+    cpl_json::parse(json)
+        .ok()?
+        .get(key)?
+        .as_str()
+        .map(str::to_string)
 }
 
 #[test]

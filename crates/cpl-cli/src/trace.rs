@@ -144,9 +144,7 @@ pub fn against_brute(path: &Path, input: &str, explain: bool) -> Result<cpl_stre
 
 /// `text` as a JSON string.
 pub fn json_string(text: &str) -> String {
-    let mut out = String::new();
-    cpl_interp::trace::string(&mut out, text);
-    out
+    cpl_json::escape_script_safe_string(text)
 }
 
 /// What `cpl run --format json` prints: the editor's inline values.
