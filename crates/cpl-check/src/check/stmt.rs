@@ -49,14 +49,17 @@ impl<'a> Checker<'a> {
             }
             (Ty::Array { elem, .. }, _) => {
                 let mut cell = &**elem;
-                let literal = matches!(
-                    init.kind,
-                    ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Float(_)
-                );
-                while let (true, Ty::Array { elem, .. }) = (literal, cell) {
-                    cell = elem;
+                let scalar = !matches!(init_ty, Ty::Array { .. })
+                    && !matches!(init_ty, Ty::Named { name, .. } if name == "List");
+                loop {
+                    if self.fits(init_ty, cell) {
+                        return true;
+                    }
+                    match (scalar, cell) {
+                        (true, Ty::Array { elem, .. }) => cell = elem,
+                        _ => return false,
+                    }
                 }
-                self.fits(init_ty, cell)
             }
             _ => false,
         }
@@ -551,9 +554,108 @@ impl<'a> Checker<'a> {
                     &mut self.expected_piece,
                     declared.as_ref().is_some_and(Self::expects_piece),
                 );
+                if let (Some(declared), Some(Expr { kind: ExprKind::Call { callee, args }, .. })) = (&declared, init) {
+                    let reads = match &callee.kind {
+                        ExprKind::Name(n) if n == "read" => args.is_empty(),
+                        ExprKind::Name(n) if n == "ask" => args.iter().all(|a| self.fixed_size(&a.value)),
+                        _ => false,
+                    };
+                    if reads && declared.is_fixed_size() {
+                        self.fixed_io.push(callee.span);
+                    }
+                }
+                // §127: `let f = (n: Int) -> Int => ...` may refer to `f` recursively.
+                // `var f = ...` cannot refer to itself recursively.
+                let mut rec_scope = false;
+                if let (
+                    PatternKind::Name(vname),
+                    Some(Expr {
+                        kind:
+                            ExprKind::Lambda {
+                                params,
+                                param_tys,
+                                ret_ty,
+                                body,
+                                ..
+                            },
+                        ..
+                    }),
+                ) = (&pat.kind, init)
+                {
+                    if *mutable {
+                        struct Mentions<'a> {
+                            target: &'a str,
+                            found: Option<Span>,
+                        }
+                        impl cpl_syntax::visit::Visitor for Mentions<'_> {
+                            fn expr(&mut self, expr: &Expr) {
+                                if self.found.is_none() {
+                                    if let ExprKind::Name(n) = &expr.kind {
+                                        if n == self.target {
+                                            self.found = Some(expr.span);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        let mut m = Mentions {
+                            target: vname,
+                            found: None,
+                        };
+                        cpl_syntax::visit::walk_expr(body, &mut m);
+                        if let Some(at) = m.found {
+                            self.error(
+                                codes::UNRESOLVED_NAME,
+                                at,
+                                format!(
+                                    "`var {vname}` cannot refer to itself recursively; bind it with `let`"
+                                ),
+                            );
+                        }
+                    } else {
+                        let rec_ty = if let Some(decl @ Ty::Fn { .. }) = &declared {
+                            decl.clone()
+                        } else {
+                            let sig_params = params
+                                .iter()
+                                .enumerate()
+                                .map(|(i, _)| {
+                                    let pty = param_tys
+                                        .get(i)
+                                        .and_then(|t| t.as_ref())
+                                        .map(|t| self.resolve_type(t))
+                                        .unwrap_or(Ty::Unknown);
+                                    crate::ty::Param {
+                                        name: String::new(),
+                                        ty: pty,
+                                        mutable: false,
+                                        has_default: false,
+                                        named_only: false,
+                                        variadic: false,
+                                        lazy: false,
+                                    }
+                                })
+                                .collect();
+                            let rty = ret_ty
+                                .as_ref()
+                                .map(|t| self.resolve_type(t))
+                                .unwrap_or(Ty::Unknown);
+                            Ty::Fn {
+                                params: sig_params,
+                                ret: Box::new(rty),
+                            }
+                        };
+                        self.push_scope();
+                        rec_scope = true;
+                        self.bind(pat, &rec_ty, false, "let");
+                    }
+                }
                 let mut init_ty = init.as_ref().map(|init| self.infer(init));
                 self.expected_bounds_range = prev_bounds_range;
                 self.expected_piece = prev_piece;
+                if rec_scope {
+                    self.pop_scope();
+                }
                 if let (Some(declared), Some(init)) = (&declared, init) {
                     self.readable(declared, init);
                 }
@@ -584,7 +686,25 @@ impl<'a> Checker<'a> {
                         )
                     });
                 }
-                let ty = declared.or(init_ty).unwrap_or(Ty::Error);
+                let ty = declared.or(init_ty.clone()).unwrap_or(Ty::Error);
+                // §128: `let b = a` / `var b = a` on a heap local moves `a`.
+                if otherwise.is_none() && !fills {
+                    if let Some(Expr {
+                        kind: ExprKind::Name(src),
+                        span: src_span,
+                    }) = init
+                    {
+                        let is_owned_local = self
+                            .local(src)
+                            .is_some_and(|l| l.keyword != "param");
+                        let src_is_heap = init_ty
+                            .as_ref()
+                            .is_some_and(|t| self.is_heap_type(t));
+                        if is_owned_local && src_is_heap {
+                            self.moved.insert(src.clone(), *src_span);
+                        }
+                    }
+                }
                 if let (true, Some(init)) = (*mutable, init) {
                     let what = format!("`var {}`", self.quote(pat.span));
                     self.no_escape(init, &what);
@@ -843,16 +963,34 @@ impl<'a> Checker<'a> {
             }
             StmtKind::Expr(expr) => return self.infer(expr),
             StmtKind::Assign { target, op, value } => {
+                let prev_assigning = self.assigning_name;
+                if *op == AssignOp::Set && matches!(target.kind, ExprKind::Name(_)) {
+                    self.assigning_name = Some(target.span);
+                }
                 let target_ty = self.infer(target);
                 let prev_bounds_range = self.expected_bounds_range;
                 if Self::expects_bounds_range(&target_ty) {
                     self.expected_bounds_range = true;
                 }
+                self.assigning_name = prev_assigning;
                 let value_ty = match self.part_map(target, *op, value) {
                     Some(ty) => ty,
                     None => self.infer(value),
                 };
                 self.expected_bounds_range = prev_bounds_range;
+                if *op == AssignOp::Set {
+                    if let ExprKind::Name(tname) = &target.kind {
+                        self.moved.remove(tname);
+                        if let ExprKind::Name(sname) = &value.kind {
+                            let is_owned_local = self
+                                .local(sname)
+                                .is_some_and(|l| l.keyword != "param");
+                            if tname != sname && is_owned_local && self.is_heap_type(&value_ty) {
+                                self.moved.insert(sname.clone(), value.span);
+                            }
+                        }
+                    }
+                }
                 self.optional_fold(target, &target_ty, *op);
                 self.map_fold(target, *op, value);
                 self.assign_alias(target, *op, value);
@@ -930,15 +1068,11 @@ impl<'a> Checker<'a> {
                     });
                 }
             }
-            StmtKind::LoopElse { looped, otherwise } => {
-                self.stmt_kind(looped, top_level);
-                self.branch += 1;
-                self.push_scope();
-                self.block(otherwise);
-                self.pop_scope();
-                self.branch -= 1;
-            }
-            StmtKind::While { cond, body } => {
+            StmtKind::While {
+                cond,
+                body,
+                else_body,
+            } => {
                 self.push_scope();
                 self.drop_facts_written(body, None);
                 // The test runs again each round, so a `?` in it is not
@@ -951,16 +1085,43 @@ impl<'a> Checker<'a> {
                 self.block(body);
                 self.lend_reset(mark);
                 self.pop_scope();
+                if let Some(else_body) = else_body {
+                    self.branch += 1;
+                    self.push_scope();
+                    self.block(else_body);
+                    self.pop_scope();
+                    self.branch -= 1;
+                }
             }
             StmtKind::For {
-                pat, iter, body, ..
+                pat,
+                iter,
+                body,
+                else_body,
+                ..
             } if self.reflected_values(iter).is_some() => {
                 self.fields_loop(pat, iter, body);
+                if let Some(else_body) = else_body {
+                    self.branch += 1;
+                    self.push_scope();
+                    self.block(else_body);
+                    self.pop_scope();
+                    self.branch -= 1;
+                }
             }
             StmtKind::For {
-                pat, iter, body, ..
+                pat,
+                iter,
+                body,
+                else_body,
+                ..
             } => {
+                let prev_iterating = std::mem::replace(
+                    &mut self.iterating_range,
+                    matches!(iter.kind, ExprKind::Range { .. }),
+                );
                 let iter_ty = self.infer(iter);
+                self.iterating_range = prev_iterating;
                 let elem = self.element_ty(&iter_ty);
                 self.push_scope();
                 self.drop_facts_written(body, Some(pat));
@@ -970,6 +1131,13 @@ impl<'a> Checker<'a> {
                 self.block(body);
                 self.lend_reset(mark);
                 self.pop_scope();
+                if let Some(else_body) = else_body {
+                    self.branch += 1;
+                    self.push_scope();
+                    self.block(else_body);
+                    self.pop_scope();
+                    self.branch -= 1;
+                }
             }
             StmtKind::Return(value) => {
                 let value_ty = value.as_ref().map(|v| self.infer(v));

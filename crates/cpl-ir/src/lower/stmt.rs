@@ -485,22 +485,6 @@ impl<'a> Lowerer<'a> {
 
     fn stmt_inner(&mut self, stmt: &ast::Stmt, rest: &[ast::Stmt], out: &mut Vec<Stmt>) {
         match &stmt.kind {
-            ast::StmtKind::LoopElse { looped, otherwise } => {
-                let flag = self.temp(Ty::Bool);
-                let unset = self.mk(ExprKind::Bool(false), Ty::Bool, stmt.span);
-                out.push(Stmt::Let(flag, Some(unset)));
-                self.cx.pending_else = Some(flag);
-                self.stmt_inner(looped, rest, out);
-                self.cx.pending_else = None;
-                let broke = self.local(flag, stmt.span);
-                let finished = Expr {
-                    kind: ExprKind::Unary(UnOp::Not, Box::new(broke)),
-                    ty: Ty::Bool,
-                    span: self.span(stmt.span),
-                };
-                let els = self.block(otherwise, Tail::Discard);
-                out.push(Stmt::If(finished, els, Block::default()));
-            }
             ast::StmtKind::Let {
                 mutable,
                 pat,
@@ -555,6 +539,150 @@ impl<'a> Lowerer<'a> {
                 init,
                 ..
             } => {
+                // §127: `let f = (n: Int) -> Int => ...` that refers to `f`
+                // recursively lowers like a local `fn` (self-passing generic
+                // lambda in C++, no `std::function`).
+                if !*mutable {
+                    if let (
+                        ast::PatternKind::Name(vname),
+                        Some(ast::Expr {
+                            kind:
+                                ast::ExprKind::Lambda {
+                                    params,
+                                    param_tys,
+                                    ret_ty,
+                                    body,
+                                    ..
+                                },
+                            span: lspan,
+                        }),
+                    ) = (&pat.kind, init)
+                    {
+                        if expr_mentions_name(body, vname)
+                            && params
+                                .iter()
+                                .all(|p| matches!(p.kind, ast::PatternKind::Name(_)))
+                        {
+                            let fn_ty_parts = match ty {
+                                Some(ast::Type {
+                                    kind: ast::TypeKind::Fn { params: fparams, ret: fret },
+                                    ..
+                                }) => Some((fparams.as_slice(), Some((**fret).clone()))),
+                                _ => None,
+                            };
+                            let synth_params: Vec<ast::Param> = params
+                                .iter()
+                                .enumerate()
+                                .map(|(i, p)| {
+                                    let pname = match &p.kind {
+                                        ast::PatternKind::Name(s) => s.clone(),
+                                        _ => unreachable!(),
+                                    };
+                                    let pty = param_tys
+                                        .get(i)
+                                        .and_then(|t| t.clone())
+                                        .or_else(|| {
+                                            fn_ty_parts
+                                                .as_ref()
+                                                .and_then(|(fps, _)| fps.get(i).cloned())
+                                        });
+                                    ast::Param {
+                                        label: None,
+                                        name: ast::Name {
+                                            text: pname,
+                                            span: p.span,
+                                        },
+                                        ty: pty,
+                                        mutable: false,
+                                        default: None,
+                                        named_only: false,
+                                        variadic: false,
+                                        lazy: false,
+                                        span: p.span,
+                                    }
+                                })
+                                .collect();
+                            let synth_ret = ret_ty
+                                .clone()
+                                .or_else(|| fn_ty_parts.and_then(|(_, r)| r));
+                            let synth_body = match &body.kind {
+                                ast::ExprKind::Block(b) => ast::FnBody::Block(b.clone()),
+                                _ => ast::FnBody::Expr((**body).clone()),
+                            };
+                            let synth = ast::FnDecl {
+                                name: ast::Name {
+                                    text: vname.clone(),
+                                    span: pat.span,
+                                },
+                                generics: Vec::new(),
+                                bounds: Vec::new(),
+                                params: synth_params,
+                                ret: synth_ret,
+                                lends: None,
+                                body: synth_body,
+                                sig_span: *lspan,
+                            };
+                            self.lower_local_fn(&synth, false, None, out);
+                            return;
+                        }
+                    }
+                }
+                // `let (n, c, m): (1..=100, 1..=100, c..=n * c) = read()`:
+                // read and bind each element in order so later element types
+                // (e.g. dependent ranges `c..=n * c`) can see earlier bindings.
+                if let (
+                    ast::PatternKind::Tuple(pats),
+                    Some(ast::Type {
+                        kind: ast::TypeKind::Tuple(tys),
+                        ..
+                    }),
+                    Some(init_expr),
+                ) = (&pat.kind, ty.as_ref(), init.as_ref())
+                {
+                    if pats.len() == tys.len()
+                        && tys.iter().all(|t| {
+                            matches!(
+                                t.kind,
+                                ast::TypeKind::Range { .. } | ast::TypeKind::Named { .. }
+                            )
+                        })
+                        && is_read_call(init_expr)
+                        && matches!(&init_expr.kind, ast::ExprKind::Call { args, .. } if args.is_empty())
+                    {
+                        for (p_i, t_i) in pats.iter().zip(tys) {
+                            let spec = self.resolve(t_i, true);
+                            let val = self.read(spec, init_expr.span);
+                            self.bind_mut(p_i, val, *mutable, out);
+                            if let (
+                                false,
+                                ast::PatternKind::Name(name),
+                                ast::TypeKind::Range { lo, hi: Some(hi), inclusive },
+                            ) = (*mutable, &p_i.kind, &t_i.kind)
+                            {
+                                if self.cx.is_main && self.cx.scopes.len() == 1 {
+                                    if let Some(Sym::Global(gid)) =
+                                        self.mod_syms[self.cur_mod].get(name).copied()
+                                    {
+                                        let least = match lo {
+                                            Some(lo) => self.ast_bounds(lo).map(|b| b.0),
+                                            None => Some(0),
+                                        };
+                                        let most = self
+                                            .ast_bounds(hi)
+                                            .map(|b| b.1 - i64::from(!*inclusive));
+                                        if let (Some(least), Some(most)) = (least, most) {
+                                            self.global_bounds.insert(gid, (least, most));
+                                        }
+                                    }
+                                }
+                            }
+                            if let Some(rinfo) = self.range_info_from_ast(t_i) {
+                                self.bind_range_info(p_i, &rinfo);
+                            }
+                        }
+                        return;
+                    }
+                }
                 // `let st = mut a[i]`: bind `st` as a mutable alias to the place `a[i]`,
                 // evaluating any index subexpressions once into temporary locals.
                 if let (
@@ -907,15 +1035,23 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::StmtKind::Assign { target, op, value } => self.assign(target, *op, value, out),
-            ast::StmtKind::While { cond, body } => self.while_stmt(cond, body, out),
+            ast::StmtKind::While {
+                cond,
+                body,
+                else_body,
+            } => self.while_stmt(cond, body, else_body.as_ref(), out),
             ast::StmtKind::For {
                 label,
                 pat,
                 iter,
                 body,
+                else_body,
             } => {
                 if let Some(values) = self.reflected_values(iter) {
                     self.fields_loop(pat, values, body, out);
+                    if let Some(else_body) = else_body {
+                        out.extend(self.block(else_body, Tail::Discard).stmts);
+                    }
                     return;
                 }
                 // `for (i, j) in V.pairs` and `for (r, c) in Square` over a
@@ -937,11 +1073,11 @@ impl<'a> Lowerer<'a> {
                         Ty::Tuple(vec![Ty::Pos(dom_id), Ty::Pos(dom_id)]),
                         span,
                     );
-                    self.nested_for(label.as_ref(), heads, pat, pair, body, out);
+                    self.nested_for(label.as_ref(), heads, pat, pair, body, else_body.as_ref(), out);
                     return;
                 }
                 if let Some((heads, cell)) = self.product_heads(pat, iter) {
-                    self.nested_for(label.as_ref(), heads, pat, cell, body, out);
+                    self.nested_for(label.as_ref(), heads, pat, cell, body, else_body.as_ref(), out);
                     return;
                 }
                 // Support compile-time unrolling of heterogeneous literal lists like
@@ -964,6 +1100,9 @@ impl<'a> Lowerer<'a> {
                                 self.cx.local_syms.pop();
                                 self.cx.scopes.pop();
                             }
+                            if let Some(else_body) = else_body {
+                                out.extend(self.block(else_body, Tail::Discard).stmts);
+                            }
                             return;
                         }
                     }
@@ -982,6 +1121,7 @@ impl<'a> Lowerer<'a> {
                     (None, None, None) => self.iter(iter),
                 };
                 let id = self.open_loop(label.as_ref().map(|l| l.text.clone()));
+                let else_flag = self.begin_loop_else(id, else_body.as_ref(), out);
                 self.cx.scopes.push(HashMap::new());
                 self.cx.local_syms.push(HashMap::new());
                 let mut stmts = Vec::new();
@@ -1031,6 +1171,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.scopes.pop();
                 self.cx.loops.pop();
                 out.push(Stmt::For(id, slot, iter, Block { stmts }));
+                self.end_loop_else(id, else_flag, else_body.as_ref(), out);
             }
             ast::StmtKind::Return(value) => {
                 if self.cx.dos.iter().any(|frame| !frame.open) {
@@ -1102,19 +1243,24 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 let to = self.cx.loops[index].1;
+                let break_id = self.cx.break_out.get(&to).copied().unwrap_or(to);
+                if is_break {
+                    if let Some(&flag) = self.cx.loop_else.get(&break_id) {
+                        out.push(Stmt::Assign(
+                            Place {
+                                kind: PlaceKind::Local(flag),
+                                ty: Ty::Bool,
+                                span: self.span(stmt.span),
+                            },
+                            AssignOp::Set,
+                            self.mk(ExprKind::Bool(false), Ty::Bool, stmt.span),
+                        ));
+                    }
+                }
                 let target = match self.cx.break_out.get(&to) {
                     Some(&outer) if is_break => Some(outer),
                     _ => (index + 1 != self.cx.loops.len()).then_some(to),
                 };
-                if let Some(&flag) = self.cx.else_flags.get(&to).filter(|_| is_break) {
-                    let span = self.span(stmt.span);
-                    let set = self.mk(ExprKind::Bool(true), Ty::Bool, stmt.span);
-                    out.push(Stmt::Assign(
-                        Place { kind: PlaceKind::Local(flag), ty: Ty::Bool, span },
-                        AssignOp::Set,
-                        set,
-                    ));
-                }
                 out.push(if is_break {
                     Stmt::Break(target)
                 } else {
@@ -1215,6 +1361,7 @@ impl<'a> Lowerer<'a> {
     /// Runs `body` with `pat` bound to `value` inside one loop per head,
     /// outermost first. `break` leaves them all; `continue` steps the
     /// innermost, so together they act as the one loop the user wrote.
+    #[allow(clippy::too_many_arguments)]
     fn nested_for(
         &mut self,
         label: Option<&ast::Name>,
@@ -1222,13 +1369,16 @@ impl<'a> Lowerer<'a> {
         pat: &ast::Pattern,
         value: Expr,
         body: &ast::Block,
+        else_body: Option<&ast::Block>,
         out: &mut Vec<Stmt>,
     ) {
         let mut ids: Vec<LoopId> = heads[1..].iter().map(|_| self.fresh_loop()).collect();
         let inner = self.open_loop(label.map(|l| l.text.clone()));
+        let break_id = ids.first().copied().unwrap_or(inner);
         if let Some(&outer) = ids.first() {
             self.cx.break_out.insert(inner, outer);
         }
+        let else_flag = self.begin_loop_else(break_id, else_body, out);
         self.cx.scopes.push(HashMap::new());
         self.cx.local_syms.push(HashMap::new());
         let mut stmts = Vec::new();
@@ -1268,15 +1418,43 @@ impl<'a> Lowerer<'a> {
             stmts = vec![Stmt::For(id, slot, iter, Block { stmts })];
         }
         out.extend(stmts);
+        self.end_loop_else(break_id, else_flag, else_body, out);
+    }
+
+    fn begin_loop_else(
+        &mut self,
+        loop_id: LoopId,
+        else_body: Option<&ast::Block>,
+        out: &mut Vec<Stmt>,
+    ) -> Option<Slot> {
+        let eb = else_body?;
+        let flag = self.temp(Ty::Bool);
+        let init = self.mk(ExprKind::Bool(true), Ty::Bool, eb.span);
+        out.push(Stmt::Let(flag, Some(init)));
+        self.cx.loop_else.insert(loop_id, flag);
+        Some(flag)
+    }
+
+    fn end_loop_else(
+        &mut self,
+        loop_id: LoopId,
+        flag: Option<Slot>,
+        else_body: Option<&ast::Block>,
+        out: &mut Vec<Stmt>,
+    ) {
+        let (Some(flag), Some(eb)) = (flag, else_body) else {
+            return;
+        };
+        self.cx.loop_else.remove(&loop_id);
+        let cond = self.local(flag, eb.span);
+        let then = self.block(eb, Tail::Discard);
+        out.push(Stmt::If(cond, then, Block::default()));
     }
 
     pub(super) fn open_loop(&mut self, label: Option<String>) -> LoopId {
         let id = self.next_loop;
         self.next_loop += 1;
         self.cx.loops.push((label, id));
-        if let Some(flag) = self.cx.pending_else.take() {
-            self.cx.else_flags.insert(id, flag);
-        }
         id
     }
 
@@ -1760,7 +1938,11 @@ impl<'a> Lowerer<'a> {
                             return Some(args);
                         }
                     }
-                    ast::StmtKind::While { cond, body } => {
+                    ast::StmtKind::While {
+                        cond,
+                        body,
+                        else_body,
+                    } => {
                         if let ast::Cond::Expr(e) = cond {
                             if let Some(args) = find_call_in_expr(fn_name, arity, e) {
                                 return Some(args);
@@ -1768,6 +1950,11 @@ impl<'a> Lowerer<'a> {
                         }
                         if let Some(args) = find_call(fn_name, arity, &body.stmts) {
                             return Some(args);
+                        }
+                        if let Some(eb) = else_body {
+                            if let Some(args) = find_call(fn_name, arity, &eb.stmts) {
+                                return Some(args);
+                            }
                         }
                     }
                     _ => {}
@@ -1840,7 +2027,11 @@ impl<'a> Lowerer<'a> {
                             return Some(found);
                         }
                     }
-                    ast::StmtKind::While { cond, body } => {
+                    ast::StmtKind::While {
+                        cond,
+                        body,
+                        else_body,
+                    } => {
                         if let ast::Cond::Expr(e) = cond {
                             if let Some(found) = find_passed_in_expr(fn_name, e) {
                                 return Some(found);
@@ -1848,6 +2039,11 @@ impl<'a> Lowerer<'a> {
                         }
                         if let Some(found) = find_passed(fn_name, &body.stmts) {
                             return Some(found);
+                        }
+                        if let Some(eb) = else_body {
+                            if let Some(found) = find_passed(fn_name, &eb.stmts) {
+                                return Some(found);
+                            }
                         }
                     }
                     _ => {}
@@ -2002,6 +2198,7 @@ impl<'a> Lowerer<'a> {
                         param_tys: ann_tys,
                         param_mut: _,
                         body,
+                        ..
                     },
                     span: lspan,
                 }),
@@ -2253,6 +2450,11 @@ impl<'a> Lowerer<'a> {
                     self.fill_with_index_domains(dims.clone(), Some(Box::new(value)), want, init.span)
                 }
                 Err(value) => {
+                    if matches!(elem.as_ref(), Spec::Array { .. })
+                        && !matches!(value.ty, Ty::Array { .. } | Ty::List(_))
+                    {
+                        return Some(self.fill_literal(&spec, init));
+                    }
                     self.mismatch(init.span, &want, &value.ty);
                     self.err_expr(init.span)
                 }
@@ -4284,17 +4486,26 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn while_stmt(&mut self, cond: &ast::Cond, body: &ast::Block, out: &mut Vec<Stmt>) {
+    fn while_stmt(
+        &mut self,
+        cond: &ast::Cond,
+        body: &ast::Block,
+        else_body: Option<&ast::Block>,
+        out: &mut Vec<Stmt>,
+    ) {
         match cond {
             ast::Cond::Expr(cond) => {
                 let cond = self.expect(cond, &Ty::Bool);
                 let id = self.open_loop(None);
+                let else_flag = self.begin_loop_else(id, else_body, out);
                 let body = self.block(body, Tail::Discard);
                 self.cx.loops.pop();
                 out.push(Stmt::While(id, cond, body));
+                self.end_loop_else(id, else_flag, else_body, out);
             }
             ast::Cond::Let { .. } | ast::Cond::Guard { .. } => {
                 let id = self.open_loop(None);
+                let else_flag = self.begin_loop_else(id, else_body, out);
                 self.cx.scopes.push(HashMap::new());
                 let mut stmts = Vec::new();
                 if self.while_clauses(cond, &mut stmts) {
@@ -4304,6 +4515,7 @@ impl<'a> Lowerer<'a> {
                 self.cx.loops.pop();
                 let always = self.mk(ExprKind::Bool(true), Ty::Bool, body.span);
                 out.push(Stmt::While(id, always, Block { stmts }));
+                self.end_loop_else(id, else_flag, else_body, out);
             }
             ast::Cond::Const(cond) => self.unsupported(cond.span, "`while const`"),
         }
@@ -4789,10 +5001,25 @@ fn uses_as_optional(name: &str, stmts: &[ast::Stmt]) -> bool {
         ast::StmtKind::Expr(e) => in_expr(name, e),
         ast::StmtKind::Let { init, .. } => init.as_ref().is_some_and(|e| in_expr(name, e)),
         ast::StmtKind::Assign { value, .. } => in_expr(name, value),
-        ast::StmtKind::While { cond, body } => {
-            in_cond(name, cond) || uses_as_optional(name, &body.stmts)
+        ast::StmtKind::While {
+            cond,
+            body,
+            else_body,
+        } => {
+            in_cond(name, cond)
+                || uses_as_optional(name, &body.stmts)
+                || else_body
+                    .as_ref()
+                    .is_some_and(|eb| uses_as_optional(name, &eb.stmts))
         }
-        ast::StmtKind::For { body, .. } => uses_as_optional(name, &body.stmts),
+        ast::StmtKind::For {
+            body, else_body, ..
+        } => {
+            uses_as_optional(name, &body.stmts)
+                || else_body
+                    .as_ref()
+                    .is_some_and(|eb| uses_as_optional(name, &eb.stmts))
+        }
         ast::StmtKind::Return(Some(e)) => in_expr(name, e),
         _ => false,
     })
@@ -4825,6 +5052,27 @@ pub(super) fn settled(e: &Expr) -> bool {
         }
         _ => false,
     }
+}
+
+fn expr_mentions_name(e: &ast::Expr, target: &str) -> bool {
+    struct Find<'a> {
+        target: &'a str,
+        found: bool,
+    }
+    impl cpl_syntax::visit::Visitor for Find<'_> {
+        fn expr(&mut self, expr: &ast::Expr) {
+            if !self.found {
+                if let ast::ExprKind::Name(n) = &expr.kind {
+                    if n == self.target {
+                        self.found = true;
+                    }
+                }
+            }
+        }
+    }
+    let mut f = Find { target, found: false };
+    cpl_syntax::visit::walk_expr(e, &mut f);
+    f.found
 }
 
 fn leaves(stmt: &ast::Stmt) -> bool {

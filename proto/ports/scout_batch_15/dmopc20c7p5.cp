@@ -1,34 +1,33 @@
-// DMOPC '20 C7 P5: n items with costs a[0..n], and m pairs (u, v, w) paying
-// reward w when both items u and v are chosen. Maximize total reward minus
-// total cost.
+// DMOPC '20 C7 P5: `n` items with costs `cost[i]`, and `m` pairs `(u, v, w)`
+// paying reward `w` when both items `u` and `v` are bought. Maximize total
+// reward minus total cost.
 //
-// Classic project-selection min-cut: take every reward up front, then pay
-// either to forfeit a pair (cut src -> pair) or to buy an item (cut item ->
-// snk), with infinite arcs tying each pair to its two items. Replaces the
-// original's 5000 x 5000 dense matrix and manual capacity-scaling DFS with
-// `std.flow.FlowGraph` (sparse Dinic).
-// original: corpus/submissions/4370353.cpp
+// Project selection: each item has profit `-cost[i]`, each pair has profit `w`
+// and depends on both its items `u` and `v`, so the maximum net gain is the
+// maximum-weight closure of the dependency graph (`std.flow.max_closure`).
 
-let (n, m): (Int, Int) = read()
-domain Item = 0..n
+use std.flow.{max_closure}
+
+let n: 1..=5_000 = read()
+let m: 0..=250_000 = read()
+domain Item = 1..=n
 domain Pair = 0..m
-
 let cost: [Item]Int = read()
-// Flatten `Item + Pair + Src + Snk` into one domain for `FlowGraph`.
-domain Node = 0..n + m + 2
-let (src, snk) = (Node(n + m), Node(n + m + 1))
+let pairs: [Pair](u: Item, v: Item, w: Int) = read()
 
-var net = FlowGraph<Node>.new()
-for i in Item:
-    net.add(Node(i.to_idx), snk, cost[i])
+// Flatten `Item + Pair` into `Node` until sum domains land; `max_closure` owns src/snk.
+domain Node = 0..n + m
+fn item_node(i: Item) -> Node = Node(i.ord)
+fn pair_node(p: Pair) -> Node = Node(n + p.ord)
 
-var total_reward = 0
-for e in Pair:
-    let (u, v, w): (Int, Int, Int) = read()
-    let pnode = Node(n + e.to_idx)
-    total_reward += w
-    net.add(src, pnode, w)
-    net.add(pnode, Node(u - 1), cap: none)
-    net.add(pnode, Node(v - 1), cap: none)
+var profit: [Node]Int = 0
+for i in Item: profit[item_node(i)] = -cost[i]
+for p in Pair: profit[pair_node(p)] = pairs[p].w
 
-print(total_reward - net.max_flow(src, snk))
+domain Need = 0..2 * m
+let needs: [Need](u: Node, v: Node) = [Need] k =>
+    let p = Pair(k.ord / 2)
+    let item = if k.ord % 2 == 0: pairs[p].u else: pairs[p].v
+    (u: pair_node(p), v: item_node(item))
+
+print(max_closure(profit, needs).value)

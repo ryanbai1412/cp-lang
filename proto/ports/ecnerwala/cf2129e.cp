@@ -60,7 +60,7 @@ fn relabel(u: V, by: V):
     values.add(f[u], 1)
 
 fn step(p: Arc, by: Int):
-    let (u, v, e) = arcs[p.to_idx]
+    let (u, v, e) = arcs[p.ord]
     let was_inside = arcs_in[e] == 2
     arcs_in[e] += by
     if was_inside != (arcs_in[e] == 2):
@@ -68,4 +68,4 @@ fn step(p: Arc, by: Int):
         relabel(v, by: u)
 
 let answer = qi => values.kth(asks[qi].k + n - (asks[qi].r - asks[qi].l + 1))
-print(mo(windows, add: p => step(p, 1), remove: p => step(p, -1), answer: answer), sep: "\n")
+print(mo(windows, add: p => step(p, 1), remove: p => step(p, -1), answer:), sep: "\n")

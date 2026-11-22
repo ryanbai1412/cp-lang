@@ -1,113 +1,64 @@
-struct Seg:
-    has: Bool
-    val: Int
-    tot: Int
-    pref: Int
-    suff: Int
+// Every version appends each position's value to that position's history, so a range tag
+// is a function on (value, history summary). Negate and clamp only look at the sign, and
+// scale with |value|: before the first assignment a tag maps each sign to a new sign and
+// a history per unit of |value|; after it, the value is a constant and the history is fixed.
+// Tags compose in O(1), so one DualSegTree (range apply, point get) handles every query.
+use std.algebra.MaxSub
+use std.lazy.DualSegTree
 
-fn empty_seg() -> Seg = Seg(false, 0, 0, 0, 0)
+type Sign = -1..=1
 
-fn single_seg(v: Int) -> Seg = Seg(true, v, v, v, v)
+fn sign(v: Int) -> Sign = if v < 0: -1 elif v == 0: 0 else: 1
 
-fn concat(a: Seg, b: Seg) -> Seg:
-    if not a.has: return b
-    if not b.has: return a
-    Seg(
-        true,
-        max(max(a.val, b.val), a.suff + b.pref),
-        a.tot + b.tot,
-        max(a.pref, a.tot + b.pref),
-        max(b.suff, b.tot + a.suff),
-    )
+type Cell = (val: Int, hist: MaxSub)
+type Path = (to: Sign, seen: MaxSub)
+type Tag = (neg: Path, zero: Path, pos: Path, set: ?Cell)
 
-fn scale(a: Seg, s: Int) -> Seg = Seg(a.has, a.val * s, a.tot * s, a.pref * s, a.suff * s)
+fn path(f: Tag, s: Sign) -> Path = if s < 0: f.neg elif s == 0: f.zero else: f.pos
 
-fn sgn(v: Int) -> Int = if v > 0: 1 elif v < 0: -1 else: 0
+fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = none) -> Tag =
+    ((to(-1), seen(-1)), (to(0), seen(0)), (to(1), seen(1)), set)
 
-struct Op:
-    has_set: Bool
-    set_val: Int
-    s0: Int
-    s1: Int
-    s2: Int
-    p0: Seg
-    p1: Seg
-    p2: Seg
-    tail: Seg
+fn run(f: Tag, c: Cell) -> Cell:
+    let p = path(f, sign(c.val))
+    let hist = c.hist + p.seen.scale(abs(c.val))
+    if let s = f.set: (s.val, hist + s.hist) else: (abs(c.val) * p.to, hist)
 
-fn id_op() -> Op = Op(false, 0, -1, 0, 1, empty_seg(), empty_seg(), empty_seg(), empty_seg())
+fn then(g: Tag, f: Tag) -> Tag:
+    if let s = f.set: return (f.neg, f.zero, f.pos, run(g, s))
+    fn via(p: Path) -> Path = (path(g, p.to).to, p.seen + path(g, p.to).seen)
+    (via(f.neg), via(f.zero), via(f.pos), g.set)
 
-fn op_sign(o: Op, z: Int) -> Int = if z < 0: o.s0 elif z == 0: o.s1 else: o.s2
-
-fn op_pref(o: Op, z: Int) -> Seg = if z < 0: o.p0 elif z == 0: o.p1 else: o.p2
-
-struct Leaf:
-    cur: Int
-    hist: Seg
-
-fn apply_leaf(b: Op, a: Leaf) -> Leaf:
-    let z = sgn(a.cur)
-    var hist = concat(a.hist, scale(op_pref(b, z), abs(a.cur)))
-    var cur = abs(a.cur) * op_sign(b, z)
-    if b.has_set:
-        cur = b.set_val
-        hist = concat(hist, b.tail)
-    Leaf(cur, hist)
-
-fn compose_op(b: Op, a: Op) -> Op:
-    if a.has_set:
-        let z = sgn(a.set_val)
-        var tail = concat(a.tail, scale(op_pref(b, z), abs(a.set_val)))
-        var sv = abs(a.set_val) * op_sign(b, z)
-        if b.has_set:
-            sv = b.set_val
-            tail = concat(tail, b.tail)
-        return Op(true, sv, a.s0, a.s1, a.s2, a.p0, a.p1, a.p2, tail)
-    let (ns0, ns1, ns2) = (op_sign(b, a.s0), op_sign(b, a.s1), op_sign(b, a.s2))
-    let (np0, np1, np2) = (
-        concat(a.p0, op_pref(b, a.s0)),
-        concat(a.p1, op_pref(b, a.s1)),
-        concat(a.p2, op_pref(b, a.s2)),
-    )
-    if b.has_set: Op(true, b.set_val, ns0, ns1, ns2, np0, np1, np2, b.tail)
-    else: Op(false, 0, ns0, ns1, ns2, np0, np1, np2, empty_seg())
+let identity = tag(s => s)
+let record = tag(s => s, s => MaxSub.of(s))
+let negate = tag(s => -s)
+let clamp = tag(s => max(s, 0))
+fn assign(x: Int) -> Tag = tag(s => s, set: (x, MaxSub.empty()))
 
 @!multitest
-let (n, q): (Int, Int) = read()
-let init_v: [0..n]Int = read()
-var leaves: [0..n]Leaf = Leaf(0, empty_seg())
-for i in 0..n: leaves[i] = Leaf(init_v[i], single_seg(init_v[i]))
-let act = Action(
-    id: id_op(),
-    compose: (b, a) => compose_op(b, a),
-    apply: (f, v, span) => apply_leaf(f, v),
-    over: Monoid(id: Leaf(0, empty_seg()), op: (a, b) => a),
+let (n, q): (1..=500_000, 1..=500_000) = read()
+domain I = 1..=n
+let a: [I]-1e9..=1e9 = read()
+var st = DualSegTree<I, Cell, Tag>(
+    id: identity,
+    compose: (g, f) => then(g, f),
+    apply: (f, c) => run(f, c),
+    a: [I] i => (a[i], MaxSub.of(a[i])),
 )
-var st = LazySegTree(act, leaves)
-let adv = Op(false, 0, -1, 0, 1, single_seg(-1), single_seg(0), single_seg(1), empty_seg())
-var last_ans: U64 = 0
-for _ in 0..q:
-    let op: Int = read()
-    if op == 1:
-        let (u1, u2): (U64, U64) = read()
-        let x: Int = read()
-        let (a, b) = (Int((u1 ^ last_ans) % U64(n)), Int((u2 ^ last_ans) % U64(n)))
-        let cur = Op(true, x, -1, 0, 1, empty_seg(), empty_seg(), empty_seg(), empty_seg())
-        st.apply(min(a, b)..=max(a, b), cur)
-    elif op == 2:
-        let (u1, u2): (U64, U64) = read()
-        let (a, b) = (Int((u1 ^ last_ans) % U64(n)), Int((u2 ^ last_ans) % U64(n)))
-        let cur = Op(false, 0, 1, 0, -1, empty_seg(), empty_seg(), empty_seg(), empty_seg())
-        st.apply(min(a, b)..=max(a, b), cur)
-    elif op == 3:
-        let (u1, u2): (U64, U64) = read()
-        let (a, b) = (Int((u1 ^ last_ans) % U64(n)), Int((u2 ^ last_ans) % U64(n)))
-        let cur = Op(false, 0, 0, 0, 1, empty_seg(), empty_seg(), empty_seg(), empty_seg())
-        st.apply(min(a, b)..=max(a, b), cur)
-    else:
-        let u: U64 = read()
-        let idx = Int((u ^ last_ans) % U64(n))
-        let ans = st.get(idx).hist.val
-        print(ans)
-        last_ans = U64(ans)
-    st.apply(0..n, adv)
+var last: U64 = 0
+fn at(y: U64) -> I = I(Int((y ^ last) % U64(n)) + 1)
+repeat q:
+    let kind: 1..=4 = read()
+    match kind:
+        4 =>
+            let ans = st.get(at(read())).hist.best
+            print(ans)
+            last = U64(ans)
+        _ =>
+            let (l, r) = (at(read()), at(read()))
+            let f = match kind:
+                1 => assign(read())
+                2 => negate
+                _ => clamp
+            st.apply(min(l, r)..=max(l, r), f)
+    st.apply(.., record)

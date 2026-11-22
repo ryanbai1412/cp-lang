@@ -1,4 +1,4 @@
-error[E0504]: not implemented yet: a context, `with io(base: 1)` (see design/spec/17-contexts.md §17.1)
+error[E0504]: not implemented yet, and deferred: a context, `with io(base: 1)` (see design/spec/17-contexts.md §17.1)
   --> planned_a_context_with_io_base_1.cp:1:1
   |
 1 | with io(base: 1)

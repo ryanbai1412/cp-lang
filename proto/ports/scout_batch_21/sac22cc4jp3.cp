@@ -24,5 +24,5 @@ for id in 1..=n:
     let x: F64 = read()
     let y: F64 = read()
     let g = gap(F64(aim), atan2(y, x) * 180 / PI)
-    if best == none or g < best!.gap: best = (gap: g, id: id)
+    if best == none or g < best!.gap: best = (gap: g, id:)
 print(best!.id)

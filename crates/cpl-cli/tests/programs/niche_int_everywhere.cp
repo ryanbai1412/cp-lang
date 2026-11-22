@@ -7,7 +7,7 @@ fn lo(xs: List<?Int>) -> ?Int:
     for x in xs: best min= x
     best
 let edges: List<?Int> = [none, Int.MIN, -1, 0, Int.MAX, none]
-var xs = edges
+var xs = edges.copy()
 xs.push(xs[1])
 print(xs, xs.len)
 print(pick(none, Int.MIN) ?? 0, pick(Int.MAX, none) ?? 0, pick(none, none) == none)

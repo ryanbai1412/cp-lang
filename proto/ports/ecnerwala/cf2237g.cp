@@ -1,64 +1,76 @@
+// Codeforces 2237 G: two runs. The first sees a and writes b; the second sees
+// only gcd(b_i, b_j) for pairs it asks about, and must rebuild a.
+//
+// Every a_i <= 1e6 < 2^20, so a is a stream of 20-bit words, recut into 18-bit
+// symbols. Symbol s is written as the s-th number at most V whose primes are all
+// among the first P = 150; more than 2^18 such numbers exist. After the symbols,
+// b holds q_p, the largest power of each of those primes that is at most V. For
+// such an x <= V, gcd(x, q_p) is exactly the p-part of x, so the product of the
+// P gcds is x itself, which the second run looks up.
 @!interactive
 const V = 1_000_000
-const NUM_P = 150
+const P = 150
+const WORD = 20
+const SYMBOL = 18
 
-fn repack(a: List<Int>, src_w: Int, dst_w: Int, dst_n: Int) -> List<Int>:
-    var bits = List<Int>()
-    for x in a:
-        for b in 0..src_w: bits.push((x >> b) & 1)
-    var out = [0 for _ in 0..dst_n]
-    for (pos, bit_v) in bits.items:
-        let idx = pos / dst_w
-        if idx < dst_n: out[idx] |= bit_v << (pos % dst_w)
+// Bits a[0] low to high, then a[1], ..., regrouped into `len` words of `to` bits.
+fn recut(a: List<Int>, from: Int, to: Int, len: Int) -> List<Int>:
+    let bits = [x.bit(b) for x in a for b in 0..from]
+    [sum(Int(bits[i * to + b]) << b for b in 0..to if i * to + b < bits.len) for i in 0..len]
+
+let sieve = Sieve(V)
+let primes = sieve.primes[..P]
+
+// Smooth numbers by count of prime factors; x grows only by primes up to its
+// smallest, so each is listed once (the C++ order, which the output depends on).
+fn grow(x: Int) -> List<Int>:
+    let cap = if x == 1: primes.last! else: sieve.spf[x]
+    var out = List<Int>()
+    for p in primes:
+        if p > cap or x * p > V: break
+        out.push(x * p)
     out
 
-let sv = Sieve(V)
-let max_p = sv.primes[NUM_P - 1]
-var smooth = [1]
-var zi = 0
-while zi < smooth.len:
-    let x = smooth[zi]
-    zi += 1
-    for p in sv.primes:
-        if p > max_p or x * p > V: break
-        smooth.push(x * p)
-        if p == sv.spf[x]: break
+var smooth = List<Int>()
+var layer = [1]
+while smooth.len < 1 << SYMBOL:
+    smooth += layer
+    layer = [y for x in layer for y in grow(x)]
+let symbols = smooth[..1 << SYMBOL]
+var symbol: [0..=V]?Int = none
+for (s, x) in symbols.items: symbol[x] = s
 
-var smooth_idx = [-1 for _ in 0..=V]
-for i in 0..(1 << 18): smooth_idx[smooth[i]] = i
-
-var p_pows = List<Int>()
-for i in 0..NUM_P:
-    let p = sv.primes[i]
+fn top_power(p: Int) -> Int:
     var q = p
     while q <= V / p: q *= p
-    p_pows.push(q)
+    q
+let powers = primes.map(top_power)
 
-fn encode(a: List<Int>, smooth: List<Int>, p_pows: List<Int>) -> List<Int>:
-    var b = [smooth[v] for v in repack(a, 20, 18, ceil_div(a.len * 20, 18))]
-    for q in p_pows: b.push(q)
-    b
+// The product of gcd(b_i, q_p) over all p, or none once the judge answers -1.
+fn decode(i: Int, k: Int) -> ?Int:
+    var x = 1
+    for j in 0..P:
+        print("?", i + 1, k + j + 1)
+        let g: Int = read()
+        if g == -1: return none
+        x *= g
+    symbol[x]
 
-let run: Str = read()
+let first_run = read<Str>() == "first"
 let t: Int = read()
 for _ in 0..t:
-    if run == "first":
+    if first_run:
         let n: Int = read()
-        let a = [read::<Int>() for _ in 0..n]
-        let b = encode(a, smooth, p_pows)
+        let a: [0..n]Int = read()
+        let b = [
+            symbols[s] for s in recut([x for x in a], WORD, SYMBOL, ceil_div(n * WORD, SYMBOL))
+        ] + powers
         print(b.len)
         print(b)
     else:
-        let (n, k_tot): (Int, Int) = read()
-        let k = k_tot - NUM_P
-        var b = [0 for _ in 0..k]
+        let (n, k_all): (Int, Int) = read()
+        let k = k_all - P
+        var b = List<Int>()
         for i in 0..k:
-            var val = 1
-            for j in 0..NUM_P:
-                print("?", i + 1, k + j + 1)
-                let g: Int = read()
-                if g == -1: return
-                val *= g
-            b[i] = smooth_idx[val]
-        let a = repack(b, 18, 20, n)
-        print("!", a)
+            if let s = decode(i, k): b.push(s) else: return
+        print("!", recut(b, SYMBOL, WORD, n))

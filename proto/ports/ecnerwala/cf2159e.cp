@@ -4,7 +4,9 @@
 // Split `n = i * B + j` with `B = 1200` (~sqrt(N) balancing O((N / B) * N)
 // big-table work against O(Q * B) query work for N, Q <= 3e5):
 //   p^n = p^(i * B) * p^j,
-//   answer(n, k) = sum_{z=0}^{min(2j, k)} [x^z] p^j * prefix(p^(i * B))[k - z].
+//   answer(n, k) = sum_{z=0}^{min(2j, k)} [x^z] p^j * prefix(p^(i * B))[min(2 * i * B, k - z)].
+// (Clamping `k - z` to `2 * i * B = deg(p^(i * B))` saturates at the full sum
+// of `p^(i * B)` when `k - z` exceeds its degree.)
 // Because p has degree 2, `p * f' = m * p' * f` gives every coefficient of
 // `f = p^m` in O(m) total time (faster than O(m log m) NTT):
 //   c * z * f[z] = b * (m - z + 1) * f[z - 1] + a * (2m - z + 2) * f[z - 2].
@@ -25,14 +27,16 @@ fn coeffs_of_power(m: Int) -> List<Z>:
         f.push(num * comb.inv(z) * inv_c)
     f
 
+// Lazily filled tables (`lazy[...]` in dream:25-26 is not yet supported, and
+// `?List<Z>` unwraps copy the 600k-element vector on every query).
 var small: [0..B]List<Z> = []
 var big: [0..=N / B]List<Z> = []
 
 var ans: Z = 0
 repeat read():
-    let (n, k): (0..=N, Int) = (read<Int>() ^ ans.v, read<Int>() ^ ans.v)
+    let (n, k): (0..=N, 0..=2 * N) = (read<Int>() ^ ans.v, read<Int>() ^ ans.v)
     let (i, j) = (n / B, n % B)
     if small[j].len == 0: small[j] = coeffs_of_power(j)
-    if big[i].len == 0: big[i] = scan(coeffs_of_power(i * B), +)
+    if big[i].len == 0: big[i] = coeffs_of_power(i * B).scan(+)
     ans = sum(small[j][z] * big[i][min(2 * i * B, k - z)] for z in 0..=min(2 * j, k))
     print(ans)

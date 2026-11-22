@@ -397,6 +397,59 @@ fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
     );
 }
 
+/// A stdlib name the port forgot to import is one quick fix away, and the
+/// `use` lands where the port had it.
+#[test]
+fn quick_fixes_import_a_stdlib_name_where_the_file_imports_its_module() {
+    assert_fixes_restore(
+        "cf2062e2",
+        &[(
+            "use std.seq.{buckets}\n",
+            "",
+            "E0201",
+            "add `use std.seq.{buckets}`",
+        )],
+    );
+    assert_fixes_restore(
+        "ucup5s05f",
+        &[(
+            "{suffix_array, lcp_array}",
+            "{suffix_array}",
+            "E0201",
+            "add `use std.strings.{lcp_array}`",
+        )],
+    );
+}
+
+#[test]
+fn completion_offers_unimported_stdlib_names_with_their_use() {
+    let src = "use std.math.{gcd}\nprint(floor_s|)\n";
+    let reply = ask_at("textDocument/completion", src);
+    let items = reply.get("items").as_array();
+    let item = items
+        .iter()
+        .find(|i| i.get("label").as_str() == Some("floor_sum"))
+        .unwrap_or_else(|| panic!("no floor_sum in {items:?}"));
+    assert_eq!(item.at(&["labelDetails", "description"]).as_str(), Some("std.math"));
+    assert!(item.get("detail").as_str().unwrap().starts_with("fn floor_sum"));
+    let edits = item.get("additionalTextEdits").as_array();
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0].get("newText").as_str(), Some(", floor_sum"));
+    assert_eq!(edits[0].at(&["range", "start", "line"]).as_u32(), Some(0));
+    assert_eq!(edits[0].at(&["range", "start", "character"]).as_u32(), Some(17));
+    // An imported name, or one the prelude brings, needs no `use`.
+    let src = "use std.math.{gcd}\nprint(gc|)\n";
+    let reply = ask_at("textDocument/completion", src);
+    let gcd: Vec<&Value> = reply
+        .get("items")
+        .as_array()
+        .iter()
+        .filter(|i| i.get("label").as_str() == Some("gcd"))
+        .collect();
+    assert_eq!(gcd.len(), 1);
+    assert!(gcd[0].get("additionalTextEdits").as_array().is_empty());
+}
+
 /// A closer dropped mid-line is put back where it was, before the `:` or
 /// `=` it can't enclose, not at the end of the file.
 #[test]
@@ -404,8 +457,8 @@ fn quick_fixes_close_a_bracket_where_it_was_dropped() {
     assert_fixes_restore(
         "cf2084c",
         &[(
-            "target[i] = I(n / 2 + 1)",
-            "target[i = I(n / 2 + 1)",
+            "target[mid] = I(n / 2 + 1)",
+            "target[mid = I(n / 2 + 1)",
             "E0101",
             "insert `]`",
         )],
@@ -456,6 +509,28 @@ fn assert_fixes_restore(port: &str, breaks: &[(&str, &str, &str, &str)]) {
             "the fix for `{bad}` did not restore the port"
         );
     }
+}
+
+#[test]
+fn quick_fixes_cover_c_spellings_and_mutation() {
+    let src = SOURCE.replace("var total", "let total").replace("for v in V:", "for v in V:\n    if v > 1 && v < n:\n        total += 0");
+    let (mut server, diagnostics) = open(&src);
+    let reply = server.handle(&request(
+        6,
+        "textDocument/codeAction",
+        obj([
+            ("textDocument", doc()),
+            ("range", obj([("start", pos(0, 0)), ("end", pos(12, 0))])),
+            ("context", obj([("diagnostics", diagnostics.into())])),
+        ]),
+    ));
+    let titles: Vec<&str> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .filter_map(|a| a.get("title").as_str())
+        .collect();
+    assert_eq!(titles, vec!["replace with `and`", "declare `total` with `var`"]);
 }
 
 #[test]
@@ -1375,6 +1450,20 @@ fn references_find_locals_params_fns_structs_domains_and_fields() {
     assert_eq!(references_at(src), [(0, 7), (1, 8), (2, 9)]);
 }
 
+/// A local of the same name in a fn, a `for` or a lambda is another
+/// binding, so references and rename leave it alone.
+#[test]
+fn references_skip_the_bindings_that_shadow_the_name() {
+    let src = "let x| = 1\nfn f() -> Int:\n    let x = 2\n    x\nprint(x)\n";
+    assert_eq!(references_at(src), [(0, 4), (4, 6)]);
+    let src = "let x = 1\nfn f() -> Int:\n    let x| = 2\n    x\nprint(x)\n";
+    assert_eq!(references_at(src), [(2, 8), (3, 4)]);
+    let src = "let x = 1\nfor x| in 0..3:\n    print(x)\nprint(x)\n";
+    assert_eq!(references_at(src), [(1, 4), (2, 10)]);
+    let src = "let x| = 1\nlet f = (x) => x + 1\nprint(f(x))\n";
+    assert_eq!(references_at(src), [(0, 4), (2, 8)]);
+}
+
 #[test]
 fn rename_edits_every_reference_and_refuses_library_names() {
     let src = "fn sq(n: Int) -> Int = n * n\nprint(sq(2) + s|q(3))\n";
@@ -1455,6 +1544,24 @@ fn rename_reaches_every_open_file_and_the_library_that_declares_the_name() {
     assert_eq!(lines(&reply, &a), [(0, 13), (1, 6)]);
     assert_eq!(lines(&reply, &b), [(0, 13), (1, 12), (2, 6)]);
     assert_eq!(lines(&reply, &geo), [(0, 7), (1, 31)]);
+    // A file of the project that is not open, from the declaration too.
+    std::fs::write(root.join("c.cp"), "use kit.geo.{area}\nprint(area(5, 5))\n").unwrap();
+    std::fs::write(root.join("d.cp"), "fn area() -> Int = 1\nprint(area())\n").unwrap();
+    let reply = rename(&mut server, &a, 1, 7);
+    let c = root.join("c.cp").display().to_string();
+    let c_uri = reply.at(&["result", "changes"]);
+    let Value::Object(changed) = c_uri else {
+        panic!("{reply:?}");
+    };
+    let c_key = changed
+        .iter()
+        .map(|(k, _)| k.clone())
+        .find(|k| k.ends_with("/c.cp"))
+        .unwrap_or_else(|| panic!("{c} not renamed: {reply:?}"));
+    assert_eq!(lines(&reply, &c_key), [(0, 13), (1, 6)]);
+    assert!(!changed.iter().any(|(k, _)| k.ends_with("/d.cp")), "{reply:?}");
+    std::fs::remove_file(root.join("c.cp")).unwrap();
+    std::fs::remove_file(root.join("d.cp")).unwrap();
     // From the declaration, once the library is open too: each file once.
     open_at(&mut server, &geo, lib);
     let reply = rename(&mut server, &geo, 0, 8);
@@ -1532,8 +1639,20 @@ fn bare_names_include_the_compiler_prelude() {
         labels(&items).contains(&"Int") && labels(&items).contains(&"I128"),
         "{items:?}"
     );
-    // A stdlib fn that needs a `use` is not in scope.
-    assert!(!labels(&completions("z_|\n")).contains(&"z_function"));
+    // A stdlib fn that needs a `use` comes with it, after what is in scope.
+    let reply = ask_at("textDocument/completion", "z_|\n");
+    let z = reply
+        .get("items")
+        .as_array()
+        .iter()
+        .find(|i| i.get("label").as_str() == Some("z_function"))
+        .cloned()
+        .expect("z_function is offered");
+    assert!(z.get("sortText").as_str().unwrap().starts_with('5'), "{z:?}");
+    assert_eq!(
+        z.at(&["additionalTextEdits"]).as_array()[0].get("newText").as_str(),
+        Some("use std.strings.{z_function}\n")
+    );
 }
 
 #[test]
@@ -2168,7 +2287,7 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
 /// shadows a bounded name hides its bound.
 #[test]
 fn inlay_hints_and_hover_show_ranges_inside_fns_and_loops() {
-    let src = "let n: 1..=100 = read()\nfn f(k: 1..=n) -> Int:\n    let t = k * 2\n    let n = k / 2\n    let u = n + 1\n    for i in 0..k:\n        let j = i + t\n        print(j)\n    t + u\nfor i in 1..=n:\n    let sq = i * i\n    print(sq, f(i))\n";
+    let src = "let n: 1..=100 = read()\nfn f(k: 1..=n) -> Int:\n    let t = k * 2\n    let n = k ^ 3\n    let u = n + 1\n    for i in 0..k:\n        let j = i + t\n        print(j)\n    t + u\nfor i in 1..=n:\n    let sq = i * i\n    print(sq, f(i))\n";
     let (mut server, diagnostics) = open(src);
     assert!(
         !format!("{diagnostics:?}").contains("\"E0"),
@@ -2403,4 +2522,79 @@ print(f(moves:, cost:))
     let hover = hover_at(&mut server, 3, 10);
     let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
     assert!(text.contains("Int"), "expected Int hover on punned arg, got: {hover:?}");
+}
+
+#[test]
+fn folding_ranges_cover_loop_else() {
+    let src = "\
+for x in 0..3:
+    if x == 2:
+        break
+else:
+    print(-1)
+";
+    let (mut server, diagnostics) = open(src);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let reply = server.handle(&request(
+        33,
+        "textDocument/foldingRange",
+        obj([("textDocument", doc())]),
+    ));
+    let ranges: Vec<(u32, u32)> = reply[0]
+        .get("result")
+        .as_array()
+        .iter()
+        .map(|r| {
+            (
+                r.get("startLine").as_u32().unwrap(),
+                r.get("endLine").as_u32().unwrap(),
+            )
+        })
+        .collect();
+    assert!(ranges.contains(&(0, 2)), "expected loop fold (0, 2), got {ranges:?}");
+    assert!(ranges.contains(&(3, 4)), "expected else fold (3, 4), got {ranges:?}");
+}
+
+#[test]
+fn loop_counts_read_as_a_number_and_its_size() {
+    let shown: Vec<String> = [7, 9999, 10000, 99999, 200000, 249999500000]
+        .into_iter()
+        .map(crate::server::count_text)
+        .collect();
+    assert_eq!(
+        shown,
+        ["7", "9999", "10000 (1e4)", "99999 (1e5)", "200000 (2e5)", "249999500000 (2.5e11)"]
+    );
+}
+
+/// A rename that would make a use resolve to a different binding (two
+/// locals merged, a local capturing a global, a global shadowed by a local)
+/// is refused; one that changes no resolution goes through.
+#[test]
+fn rename_refuses_a_name_that_would_capture_or_be_captured() {
+    let rename = |src: &str, to: &str| {
+        ask_at_with("textDocument/rename", src, obj([("newName", to.into())]))
+    };
+    let refused = [
+        ("fn f(n: Int) -> Int:\n    let a| = 1\n    let b = 2\n    a + b\nprint(f(1))\n", "b"),
+        ("fn f(n: Int) -> Int:\n    let a| = 1\n    a + n\nprint(f(1))\n", "n"),
+        ("let x| = 1\nfn f() -> Int:\n    let y = 2\n    x + y\nprint(f())\n", "y"),
+        ("let g = 5\nfn f() -> Int:\n    let a| = 1\n    a + g\nprint(f())\n", "g"),
+        ("let g = 5\nfor i| in 0..3:\n    print(i + g)\n", "g"),
+        ("let x| = 1\nlet f = (y) => x + y\nprint(f(2))\n", "y"),
+    ];
+    for (src, to) in refused {
+        let reply = rename(src, to);
+        let message = reply.get("message").as_str().unwrap_or_else(|| panic!("{src}: {reply:?}"));
+        assert!(message.contains(&format!("`{to}`")), "{src}: {message}");
+    }
+    let allowed = [
+        ("fn f() -> Int:\n    let a| = 1\n    a\nfn g() -> Int:\n    let b = 2\n    b\nprint(f() + g())\n", "b"),
+        ("fn f(n: Int) -> Int:\n    let a| = 1\n    a + n\nprint(f(1))\n", "c"),
+        ("let x = 1\nfn f() -> Int:\n    let a| = 2\n    a\nprint(f() + x)\n", "x"),
+    ];
+    for (src, to) in allowed {
+        let reply = rename(src, to);
+        assert!(matches!(reply.get("changes"), Value::Object(_)), "{src}: {reply:?}");
+    }
 }

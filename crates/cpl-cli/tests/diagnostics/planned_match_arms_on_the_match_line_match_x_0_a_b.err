@@ -1,0 +1,7 @@
+error[E0103]: expected `,` or `)` in the argument list, found `;`
+  --> planned_match_arms_on_the_match_line_match_x_0_a_b.cp:2:22
+  |
+2 | print(match x: 0 => 5; _ => 6)
+  |                      ^
+
+planned_match_arms_on_the_match_line_match_x_0_a_b.cp: 1 error

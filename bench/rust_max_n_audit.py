@@ -412,6 +412,7 @@ def main():
         specs = [s for s in SPECS + cg.ECNERWALA_SPECS if s[0] in want or s[0].split("/")[-1] in want]
         missing = want - {s[0] for s in specs} - {s[0].split("/")[-1] for s in specs}
         if missing: sys.exit(f"--ports: no spec for {', '.join(sorted(missing))}")
+    specs = [s for s in specs if s[4] is not None]
     if a.list:
         for s in specs: print(f"{s[0]:40s} {s[2]:20s} {s[3]}")
         return 0

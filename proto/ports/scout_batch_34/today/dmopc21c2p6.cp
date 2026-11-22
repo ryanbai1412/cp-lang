@@ -20,10 +20,10 @@ for qid in Q:
         passes += 1
     elif kind == 2:
         let idx: Int = read()
-        q1.push((passes: passes, pos: idx - 1, qid: qid))
+        q1.push((passes:, pos: idx - 1, qid:))
     else:
         let x: Int = read()
-        q2.push((passes: passes, val: x - 1, qid: qid))
+        q2.push((passes:, val: x - 1, qid:))
 
 var ans: [Q]?Int = [Q] _ => none
 

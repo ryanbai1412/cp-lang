@@ -16,7 +16,7 @@ for s in sorted(Seg, by: s => segs[s].l):
     if runs.len > 0 and l <= runs.last!.r + 1:
         runs.last!.r = max(runs.last!.r, r)
     else:
-        runs.push((l: l, r: r))
+        runs.push((l:, r:))
 
 for _ in 0..q:
     let (l, r): (Int, Int) = read()

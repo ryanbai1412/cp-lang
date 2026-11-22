@@ -34,7 +34,7 @@ fn rebuild(b: Block):
     var (rows, height) = ([], 0)
     for s in strips(b).sorted(by: s => -tint[s]):
         height += ys[s.to_idx + 1] - ys[s.to_idx]
-        rows.push((tint: tint[s], height: height))
+        rows.push((tint: tint[s], height:))
     darkest[b] = rows
 
 // The height of the strips of block b that are at or over `need`.

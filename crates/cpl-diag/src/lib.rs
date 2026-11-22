@@ -168,6 +168,9 @@ pub mod codes {
     /// A fixed-width integer type name; widths come from ranges.
     pub const NO_NARROW_INT: Code = Code("E0901");
 
+    /// A heap value read after `let b = a` moved it.
+    pub const USE_AFTER_MOVE: Code = Code("E0608");
+
     pub const RUNTIME: Code = Code("R0001");
     pub const INDEX_OUT_OF_RANGE: Code = Code("R0101");
     pub const OVERFLOW: Code = Code("R0202");
@@ -350,9 +353,22 @@ impl Sink {
         &self.poisoned
     }
 
-    /// The diagnostics in source order.
+    /// The diagnostics in source order. A feature that is not implemented
+    /// yet is one root cause however often the file uses it, so only its
+    /// first use is kept.
     pub fn finish(mut self) -> Vec<Diagnostic> {
         self.diags.sort_by_key(|d| (d.span.start, d.span.end));
+        let mut planned: Vec<String> = Vec::new();
+        self.diags.retain(|d| {
+            if d.code != codes::NOT_IMPLEMENTED {
+                return true;
+            }
+            if planned.contains(&d.message) {
+                return false;
+            }
+            planned.push(d.message.clone());
+            true
+        });
         self.diags
     }
 }

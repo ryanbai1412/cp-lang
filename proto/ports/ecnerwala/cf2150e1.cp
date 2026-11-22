@@ -35,21 +35,22 @@ var rng = Rng.new(SHUFFLE_SEED)
 @!multitest
 let n: 1..=300 = read()
 domain Val = 1..=n
+domain Pos = 0..2 * n - 1
 
-var perm = List(1..2 * n)
+var perm: [Pos]Int = [Pos] p => p.ord + 1
 rng.shuffle(mut perm)
 
-fn has(v: Val, lo: Int, hi: Int) -> Bool:
+fn has(v: Val, lo: Pos.bounds, hi: Pos.bounds) -> Bool:
     if lo == hi: return false
-    print("?", v, hi - lo, perm[lo..hi])
+    print("?", v, hi.ord - lo.ord, perm[lo..hi])
     read<Int>() == 1
 
 var copies: [Val]Copies = Copies.Both
-var (lo, hi) = (0, 2 * n - 1)
+var (lo, hi) = (Pos.bounds.first, Pos.bounds.last)
 var alive = [v for v in Val]
 
 while alive.len > 1:
-    let mid = (lo + hi) / 2
+    let mid = Pos.bounds.nth((lo.ord + hi.ord) / 2)
     var left: [Val]Copies = Copies.None
     for v in alive:
         left[v] = if not has(v, lo, mid):
@@ -62,7 +63,7 @@ while alive.len > 1:
         left[v] = if has(v, mid, hi): Copies.None else: Copies.One
 
     let left_weight = [weight(left[v]) for v in Val].sum()
-    if left_weight > mid - lo:
+    if left_weight > mid.ord - lo.ord:
         hi = mid
         copies = left
     else:

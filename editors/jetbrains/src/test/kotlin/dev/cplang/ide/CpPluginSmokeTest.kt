@@ -5,7 +5,9 @@ import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.xdebugger.ui.DebuggerColors
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.junit.Assume
 import java.io.File
@@ -97,6 +99,28 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         assertTrue(html.contains("total"))
         val failed = runCatching { CplTrace.render(File(dir, "missing.cp"), null, null) }.exceptionOrNull()
         assertTrue(failed is CplTrace.Failed)
+        val bridged = CplTrace.bridge(html, "post(json);")
+        assertTrue(bridged.indexOf("window.acquireVsCodeApi") < bridged.indexOf("<script id=\"trace-ui\">"))
+        assertTrue("the viewer posts through acquireVsCodeApi", html.contains("acquireVsCodeApi()"))
+    }
+
+    fun `test the editor marks the trace's step and a clicked line moves the caret`() {
+        myFixture.configureByText("a.cp", "<caret>fn main():\n    let x = 1\n    print(x)\n")
+        val follower = CplTraceFollower(project, myFixture.file.virtualFile)
+        Disposer.register(testRootDisposable, follower)
+        fun marked() = myFixture.editor.markupModel.allHighlighters
+            .filter { it.isValid && it.textAttributesKey == DebuggerColors.EXECUTIONPOINT_ATTRIBUTES }
+            .map { myFixture.editor.document.getLineNumber(it.startOffset) }
+        follower.follow(TraceMessage(false, 2))
+        assertEquals(listOf(1), marked())
+        assertEquals(0, myFixture.editor.caretModel.logicalPosition.line)
+        follower.follow(TraceMessage(true, 3))
+        assertEquals(listOf(2), marked())
+        assertEquals(2, myFixture.editor.caretModel.logicalPosition.line)
+        follower.follow(TraceMessage(false, 99))
+        assertEquals(listOf(3), marked())
+        Disposer.dispose(follower)
+        assertEquals(emptyList<Int>(), marked())
     }
 }
 

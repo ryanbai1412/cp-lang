@@ -55,4 +55,4 @@ bringing `spec/std/hashmap.cp` to the doc standard (`spec/std/README.md`).
   to `examples/local-lib/`. The stub is `Counter<K, V>` with `init`, no
   `distinct`, `push` or `pop`, and lives in `std.hashmap`. Needs one
   decision: which name, arity and module, and whether it implements
-  `Track`.
+  `Track`. (resolved: `Counter<K, V = Int>` in `std.hashmap`, `Track` via `std.window`; `.len` is the distinct count, chapters fixed; decision 168)

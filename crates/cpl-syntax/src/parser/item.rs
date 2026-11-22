@@ -3,13 +3,17 @@
 use super::*;
 
 impl<'a> Parser<'a> {
-    pub(super) fn fn_decl(&mut self) -> FnDecl {
+    pub(super) fn fn_stmt(&mut self) -> StmtKind {
         let start = self.start();
-        self.bump();
-        let operator = self.at(T::LParen)
+        let after_fn = self.pos + 1;
+        // Unary operator fn: `fn -(a: P) -> P = ...`
+        let is_unary_op = self.tokens.get(after_fn).is_some_and(|t| t.kind == T::Minus)
+            && self.tokens.get(after_fn + 1).is_some_and(|t| t.kind == T::LParen);
+        // Binary operator fn: `fn (a: P) + (b: P) -> P = ...`
+        let is_binary_op = self.tokens.get(after_fn).is_some_and(|t| t.kind == T::LParen)
             && self
                 .tokens
-                .get(super::after_group(self.tokens, self.pos))
+                .get(super::after_group(self.tokens, after_fn))
                 .is_some_and(|t| {
                     matches!(
                         t.kind,
@@ -18,57 +22,168 @@ impl<'a> Parser<'a> {
                             | T::Star
                             | T::Slash
                             | T::Percent
+                            | T::StarStar
                             | T::Lt
-                            | T::Gt
-                            | T::LtEq
-                            | T::GtEq
                             | T::EqEq
-                            | T::NotEq
                     )
                 });
-        let negation = self.at(T::Minus) && self.peek_n(1) == T::LParen;
-        let (name, generics, mut bounds, params) = if negation {
-            let name = Name {
-                text: "-".to_string(),
-                span: self.span(),
-            };
-            self.bump();
-            self.bump();
-            (name, Vec::new(), Vec::new(), self.params())
-        } else if operator {
-            let op_start = self.start();
-            self.bump();
+        if !is_unary_op && !is_binary_op {
+            return StmtKind::Fn(self.fn_decl());
+        }
+        self.bump(); // `fn`
+        let (op_kind, op_span, params) = if is_unary_op {
+            let op_span = self.span();
+            self.bump(); // `-`
+            self.bump(); // `(`
+            let params = self.params();
+            (T::Minus, op_span, params)
+        } else {
+            self.bump(); // `(`
             let mut params = self.params();
-            let name = Name {
-                text: self.text().to_string(),
-                span: self.span(),
-            };
-            self.bump();
+            let op_kind = self.peek();
+            let op_span = self.span();
+            self.bump(); // operator
             if self.eat(T::LParen) {
                 params.extend(self.params());
-            }
-            let span = self.span_from(op_start);
-            if !matches!(name.text.as_str(), "+" | "-" | "*" | "/" | "%") {
-                self.planned(span, &crate::planned::OPERATOR_FN);
-            }
-            (name, Vec::new(), Vec::new(), params)
-        } else {
-            let name = self.expect_name("a fn name after `fn`");
-            let (generics, bounds) = self.generic_params();
-            let params = if self.eat(T::LParen) {
-                self.params()
             } else {
                 self.error_expected(
                     codes::EXPECTED_TOKEN,
-                    "`(` to start the parameter list",
-                    Some("()"),
+                    "`(` for the right-hand parameter of the operator fn",
+                    Some("(b: T)"),
                 );
-                Vec::new()
-            };
-            (name, generics, bounds, params)
+            }
+            (op_kind, op_span, params)
+        };
+        let (trait_name, method_name) = if is_unary_op {
+            ("Neg", "neg")
+        } else {
+            match op_kind {
+                T::Plus => ("Add", "add"),
+                T::Minus => ("Sub", "sub"),
+                T::Star => ("Mul", "mul"),
+                T::Slash => ("Div", "div"),
+                T::Percent => ("Rem", "rem"),
+                T::StarStar => ("Pow", "pow"),
+                T::Lt => ("Ord", "lt"),
+                T::EqEq => ("Eq", "eq"),
+                _ => ("Add", "add"),
+            }
+        };
+        let name = Name {
+            text: method_name.to_string(),
+            span: op_span,
+        };
+        let _copies = std::mem::take(&mut self.var_params);
+        let ret = self.eat(T::Arrow).then(|| self.ty());
+        let mut bounds = Vec::new();
+        self.where_clause(&mut bounds);
+        let sig_span = self.span_from(start);
+        let body = if self.eat(T::Eq) {
+            FnBody::Expr(self.expr_body(&name))
+        } else if self.at(T::Colon) {
+            self.bump();
+            FnBody::Block(self.block(&format!("the signature of `{}`", name.text)))
+        } else if (self.in_trait || self.in_grader)
+            && self.at_line_end()
+            && self.peek() != T::Indent
+        {
+            FnBody::None
+        } else {
+            let at = self.error_span();
+            let found = self.peek().describe();
+            self.error(
+                Diagnostic::error(
+                    codes::EXPECTED_TOKEN,
+                    at,
+                    format!(
+                        "expected `:` or `=` to start the body of operator `{}`, found {found}",
+                        name.text
+                    ),
+                )
+                .with_help("use `:` for an indented body or `=` for a one-line expression"),
+            );
+            FnBody::Block(Block {
+                stmts: Vec::new(),
+                span: at,
+            })
+        };
+        let full_span = self.span_from(start);
+        let decl = FnDecl {
+            name,
+            generics: Vec::new(),
+            bounds: bounds.clone(),
+            params,
+            ret,
+            lends: None,
+            body,
+            sig_span,
+        };
+        if self.in_trait || self.in_impl {
+            return StmtKind::Fn(decl);
+        }
+        let Some(target) = decl.params.first().and_then(|p| p.ty.clone()) else {
+            self.error(
+                Diagnostic::error(
+                    codes::EXPECTED_TOKEN,
+                    sig_span,
+                    "an operator fn needs a type on its first parameter".to_string(),
+                ),
+            );
+            return StmtKind::Fn(decl);
+        };
+        let trait_args = if !is_unary_op
+            && matches!(trait_name, "Add" | "Sub" | "Mul" | "Div" | "Rem" | "Pow")
+        {
+            match decl.params.get(1).and_then(|p| p.ty.as_ref()) {
+                Some(rhs) if rhs != &target => vec![rhs.clone()],
+                _ => Vec::new(),
+            }
+        } else {
+            Vec::new()
+        };
+        let trait_ty = Type {
+            kind: TypeKind::Named {
+                name: Name {
+                    text: trait_name.to_string(),
+                    span: op_span,
+                },
+                args: trait_args,
+            },
+            span: op_span,
+        };
+        StmtKind::Impl {
+            trait_name: Some(trait_ty),
+            target,
+            bounds,
+            body: Block {
+                stmts: vec![Stmt {
+                    kind: StmtKind::Fn(decl),
+                    span: full_span,
+                    decorators: Vec::new(),
+                    public: false,
+                }],
+                span: full_span,
+            },
+        }
+    }
+
+    pub(super) fn fn_decl(&mut self) -> FnDecl {
+        let start = self.start();
+        self.bump();
+        let name = self.expect_name("a fn name after `fn`");
+        let (generics, mut bounds) = self.generic_params();
+        let params = if self.eat(T::LParen) {
+            self.params()
+        } else {
+            self.error_expected(
+                codes::EXPECTED_TOKEN,
+                "`(` to start the parameter list",
+                Some("()"),
+            );
+            Vec::new()
         };
         let copies = std::mem::take(&mut self.var_params);
-        let destructured = std::mem::take(&mut self.param_patterns);
+        let unpacked = std::mem::take(&mut self.param_patterns);
         let ret = self.eat(T::Arrow).then(|| self.ty());
         // `fn at(self, i: V) lends mut Int`: a projection.
         let lends =
@@ -125,8 +240,9 @@ impl<'a> Parser<'a> {
             }
         }
         // `fn grow(var b: Int)`: `b` is the fn's own copy, which it may
-        // assign. It is the body opening with `var b = b`.
-        if !copies.is_empty() || !destructured.is_empty() {
+        // assign. It is the body opening with `var b = b`. A pattern in
+        // place of a name is the body opening with `let (r, s) = param`.
+        if !copies.is_empty() || !unpacked.is_empty() {
             let mut block = match body {
                 FnBody::Block(block) => block,
                 FnBody::Expr(value) => Block {
@@ -162,9 +278,8 @@ impl<'a> Parser<'a> {
                     guard: None,
                 },
             };
-            // `fn f((a, b): (Int, Int))`: the body opens with `let (a, b) = <param>`.
-            let destructure = |(name, pat): (Name, Pattern)| Stmt {
-                span: pat.span,
+            let unpack = |(pat, name): (Pattern, Name)| Stmt {
+                span: name.span,
                 decorators: Vec::new(),
                 public: false,
                 kind: StmtKind::Let {
@@ -179,12 +294,8 @@ impl<'a> Parser<'a> {
                     guard: None,
                 },
             };
-            let lead: Vec<Stmt> = copies
-                .into_iter()
-                .map(copy)
-                .chain(destructured.into_iter().map(destructure))
-                .collect();
-            block.stmts.splice(0..0, lead);
+            let lets: Vec<Stmt> = unpacked.into_iter().map(unpack).collect();
+            block.stmts.splice(0..0, copies.into_iter().map(copy).chain(lets));
             body = FnBody::Block(block);
         }
         FnDecl {
@@ -294,10 +405,10 @@ impl<'a> Parser<'a> {
         } else if self.at(T::LParen) && !variadic && !lazy && !mutable && !copied {
             let pat = self.pattern();
             let name = Name {
-                text: format!("_arg{}", pat.span.start),
+                text: format!("__param{}", self.param_patterns.len()),
                 span: pat.span,
             };
-            self.param_patterns.push((name.clone(), pat));
+            self.param_patterns.push((pat, name.clone()));
             name
         } else {
             self.expect_name("a parameter name")
@@ -583,6 +694,32 @@ impl<'a> Parser<'a> {
             "`=` and the domain's range, as in `domain V = 1..=n`",
         );
         let def = self.expr();
+        if self.at(T::If) {
+            let start = self.start();
+            self.bump();
+            self.expr();
+            let span = self.span_from(start);
+            self.planned(span, &crate::planned::FILTERED_DOMAIN);
+        }
+        let list_start = self.start();
+        while self.at(T::Comma) && self.peek_n(1) == T::Ident && self.peek_n(2) == T::Eq {
+            self.bump();
+            let start = self.start();
+            let name = self.expect_name("a domain name");
+            self.bump();
+            let def = self.expr();
+            let span = self.span_from(start);
+            self.extra_stmts.push(Stmt {
+                kind: StmtKind::Domain { name, def },
+                span,
+                decorators: Vec::new(),
+                public: false,
+            });
+        }
+        if !self.extra_stmts.is_empty() {
+            let span = self.span_from(list_start);
+            self.planned(span, &crate::planned::DOMAIN_LIST);
+        }
         StmtKind::Domain { name, def }
     }
 
@@ -644,7 +781,9 @@ impl<'a> Parser<'a> {
             (None, first)
         };
         self.where_clause(&mut bounds);
+        let was_in_impl = std::mem::replace(&mut self.in_impl, true);
         let body = self.optional_body("the `impl` header");
+        self.in_impl = was_in_impl;
         for extra in extra_traits {
             self.extra_stmts.push(Stmt {
                 kind: StmtKind::Impl {

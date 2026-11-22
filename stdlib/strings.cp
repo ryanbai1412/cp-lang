@@ -58,13 +58,14 @@ pub fn z_function<S: Indexed>(s: S) -> List<Int>:
     let n = s.len
     var z = List.filled(n, 0)
     if n == 0: return z
-    z[0] = n
-    var (l, r) = (0, 0)
-    for i in 1..n:
-        var k = if i < r: min(r - i, z[i - l]) else: 0
-        while i + k < n and s.at(k) == s.at(i + k): k += 1
-        z[i] = k
-        if i + k > r: (l, r) = (i, i + k)
+    unchecked:
+        z[0] = n
+        var (l, r) = (0, 0)
+        for i in 1..n:
+            var k = if i < r: min(r - i, z[i - l]) else: 0
+            while i + k < n and s.at(k) == s.at(i + k): k += 1
+            z[i] = k
+            if i + k > r: (l, r) = (i, i + k)
     z
 
 /// `p[i]` is the length of the longest proper prefix of `s[..=i]` that is also its suffix.
@@ -72,11 +73,12 @@ pub fn z_function<S: Indexed>(s: S) -> List<Int>:
 @allow(unproven_list_index)
 pub fn prefix_function<S: Indexed>(s: S) -> List<Int>:
     var p = List.filled(s.len, 0)
-    for i in 1..s.len:
-        var k = p[i - 1]
-        while k > 0 and s.at(i) != s.at(k): k = p[k - 1]
-        if s.at(i) == s.at(k): k += 1
-        p[i] = k
+    unchecked:
+        for i in 1..s.len:
+            var k = p[i - 1]
+            while k > 0 and s.at(i) != s.at(k): k = p[k - 1]
+            if s.at(i) == s.at(k): k += 1
+            p[i] = k
     p
 
 /// The start of every occurrence of `pat` in `self`: `s.find_all(p)`, in increasing order (Knuth-Morris-Pratt).
@@ -584,7 +586,7 @@ pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
                 let right = if j == n: 0 else: sa.lcp_between(i, j)
                 let l = i - left
                 let r = j + right
-                if r - l >= 2 * p: raw.push((l: l, r: r, period: p))
+                if r - l >= 2 * p: raw.push((l:, r:, period: p))
     raw.sort()
     var out = List<(l: Int, r: Int, period: Int)>()
     for run in raw:
@@ -654,7 +656,7 @@ pub struct RollingHash:
     pub fn with_bases<S: Seq>(
         seq: S,
         bases: (Int, Int),
-    ) -> RollingHash = RollingHash.new(seq, bases: bases)
+    ) -> RollingHash = RollingHash.new(seq, bases:)
 
     /// Number of hashed elements.
     pub @get fn len(self) -> Int = p1.len - 1
@@ -729,12 +731,12 @@ pub struct RollingHash:
 /// Built in O(R * C); `rect(rows, cols)` is O(1) and returns a `HashVal`.
 pub struct Hash2D<R, C>(bases: (Int, Int)):
     stride: Int
-    pre1: List<Int>
-    pre2: List<Int>
-    pow_r1: List<Int>
-    pow_c1: List<Int>
-    pow_r2: List<Int>
-    pow_c2: List<Int>
+    pre1: List<0..=1_000_000_009>
+    pre2: List<0..=1_000_000_009>
+    pow_r1: List<0..=1_000_000_009>
+    pow_c1: List<0..=1_000_000_009>
+    pow_r2: List<0..=1_000_000_009>
+    pow_c2: List<0..=1_000_000_009>
 
     @allow(unproven_list_index)
     /// Build a 2D polynomial rolling hash over grid `(R, C)`. O(|R| * |C|).
@@ -745,8 +747,8 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
         let rows = R.K
         let cols = C.K
         let stride = cols + 1
-        var pre1 = List.filled((rows + 1) * stride, 0)
-        var pre2 = List.filled((rows + 1) * stride, 0)
+        var pre1: List<0..=1_000_000_009> = List.filled((rows + 1) * stride, 0)
+        var pre2: List<0..=1_000_000_009> = List.filled((rows + 1) * stride, 0)
         let brc1 = br1 * bc1 % RH_M1
         let brc2 = br2 * bc2 % RH_M2
         for r in R:
@@ -765,14 +767,14 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
                     pre2[row1 + j + 1] = (
                         pre2[row0 + j + 1] * br2 + pre2[row1 + j] * bc2 - pre2[row0 + j] * brc2 + v2
                     ) % RH_M2
-        var pow_r1 = List.filled(rows + 1, 1)
-        var pow_r2 = List.filled(rows + 1, 1)
+        var pow_r1: List<0..=1_000_000_009> = List.filled(rows + 1, 1)
+        var pow_r2: List<0..=1_000_000_009> = List.filled(rows + 1, 1)
         unchecked:
             for i in 0..rows:
                 pow_r1[i + 1] = pow_r1[i] * br1 % RH_M1
                 pow_r2[i + 1] = pow_r2[i] * br2 % RH_M2
-        var pow_c1 = List.filled(cols + 1, 1)
-        var pow_c2 = List.filled(cols + 1, 1)
+        var pow_c1: List<0..=1_000_000_009> = List.filled(cols + 1, 1)
+        var pow_c2: List<0..=1_000_000_009> = List.filled(cols + 1, 1)
         unchecked:
             for j in 0..cols:
                 pow_c1[j + 1] = pow_c1[j] * bc1 % RH_M1
@@ -1494,7 +1496,7 @@ fn manacher_and_is_palindrome_match_brute():
                 assert p.is_palindrome(l..r) == ok
                 if r > l and ok:
                     total += 1
-                    if r - l > best.r - best.l: best = (l: l, r: r)
+                    if r - l > best.r - best.l: best = (l:, r:)
         assert p.count == total
         assert p.longest == best
 
@@ -1767,7 +1769,7 @@ fn lyndon_runs_matches_brute():
                 if min_p == 0: continue
                 if l > 0 and s[l - 1] == s[l - 1 + min_p]: continue
                 if r < n and s[r] == s[r - min_p]: continue
-                out.push((l: l, r: r, period: min_p))
+                out.push((l:, r:, period: min_p))
         out
 
     assert lyndon_runs("").is_empty

@@ -52,7 +52,7 @@ fn suffix_tree_edges(s: Str) -> (below: List<Z>, above: List<Z>):
     for i in 0..n:
         let next = if i + 1 < n: lcp[i] else: 0
         var (depth, size) = (n - sa[i], 0)
-        while let top = open.last, top.depth > next:
+        while let top = open.last and top.depth > next:
             if depth > top.depth:
                 below.push(Z(size))
                 size += depth - top.depth
@@ -65,7 +65,7 @@ fn suffix_tree_edges(s: Str) -> (below: List<Z>, above: List<Z>):
             size += depth - next
             above.push(Z(size))
         if i + 1 < n:
-            if let top = open.last, top.depth == next:
+            if let top = open.last and top.depth == next:
                 open[open.len - 1] = OpenNode(top.depth, top.size + size)
             else:
                 open.push(OpenNode(next, size))

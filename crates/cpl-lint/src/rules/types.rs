@@ -4,7 +4,7 @@
 use crate::walk::{unparen, Visitor};
 use crate::{
     File, Finding, DOMAIN_KEYED_MAP, GETTER_PARENS, IS_IN_COND_HEADER, POSITION_ARITHMETIC,
-    POW_METHOD, TURBOFISH_TYPE_ARGS,
+    POW_METHOD, REDUNDANT_ARG_NAME, TURBOFISH_TYPE_ARGS,
 };
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
@@ -208,6 +208,28 @@ impl Types<'_> {
             Cond::Expr(_) | Cond::Const(_) => {}
         }
     }
+    fn check_pun(&mut self, label: &cpl_syntax::ast::Name, value: &Expr) {
+        if matches!(&value.kind, ExprKind::Name(v) if v == &label.text)
+            && value.span.start > label.span.end
+        {
+            let span = Span::new(label.span.start, value.span.end).shift(self.base);
+            let replacement = format!("{}:", label.text);
+            let mut diag = Diagnostic::warning(
+                REDUNDANT_ARG_NAME.code,
+                span,
+                format!("`{0}: {0}` can be shortened to `{0}:`", label.text),
+            )
+            .with_help(format!("write `{replacement}`"));
+            diag.fixes.push(cpl_diag::Fix {
+                title: format!("shorten to `{replacement}`"),
+                edits: vec![(span, replacement)],
+            });
+            self.findings.push(Finding {
+                lint: &REDUNDANT_ARG_NAME,
+                diag,
+            });
+        }
+    }
 }
 
 impl Visitor for Types<'_> {
@@ -292,8 +314,15 @@ impl Visitor for Types<'_> {
                     }
                 }
             }
-            // `a.pow(e)` -> `a ** e` and `V(v.ord + 1)`.
+            // `a.pow(e)` -> `a ** e`, `V(v.ord + 1)`, and `f(x: x)` -> `f(x:)`.
             ExprKind::Call { callee, args } => {
+                for arg in args {
+                    if !arg.mutable {
+                        if let Some(label) = &arg.name {
+                            self.check_pun(label, &arg.value);
+                        }
+                    }
+                }
                 if let ExprKind::Field { base, name } = &callee.kind {
                     if name.text == "pow" && args.len() == 1 && args[0].name.is_none() {
                         let lhs_raw = base.span.shift(self.base).text(self.src);
@@ -399,6 +428,11 @@ impl Visitor for Types<'_> {
                     lint: &POSITION_ARITHMETIC,
                     diag,
                 });
+            }
+            ExprKind::Record(fields) => {
+                for (label, value) in fields {
+                    self.check_pun(label, value);
+                }
             }
             _ => {}
         }

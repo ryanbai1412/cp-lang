@@ -456,6 +456,26 @@ running.)
 **Bar.** Per-port runtime and memory on max inputs, measured on every push.
 **Next.** Heap for runtime-sized
 arrays; niches; a matched-algorithm benchmark harness.
+**`std::function` debt.** Every fn value lowers to a monomorphized,
+inlinable C++ form except these, which keep `std::function` (26 of the
+1,781 corpus and test programs, one of them the intentional parity case of
+§174; a fn or `?fn` field nothing reads is dropped, §176; a block that gives
+one closure, such as the bound method in `sorted(by: tree.pos)`, is that
+closure's own lambda type). `cpl explain` names each one:
+- `Monoid<T>.op` when one program builds two monoids over the same `T`
+  (`+` and `max` trees): the struct is shared, so the field holds more than
+  one closure (8 programs). The static form is a monoid monomorphized per
+  op, which is the ranges lane's Monoid/Action work;
+- an optional fn field that is read, `SegTree.source` with `refresh`
+  (2 programs);
+- a fn value whose closure is chosen at run time (3 programs);
+- the wrapper of a local `@memo` fn, which its body calls before it is
+  assigned (3 programs; the body itself is an `auto` lambda);
+- a fn-typed parameter of a closure, a closure returning a closure and a
+  recursive closure inside another closure (4 programs);
+- a fn-typed parameter of the judge entry, and one of a recursive fn whose
+  recursion passes it a different closure (§174);
+- a reassigned or hoisted fn slot, and a top-level fn var (2 programs).
 
 ### 4. Standard library (`plan/STDLIB.md`, `plan/20`)
 **North star.** A standard library that covers everything ever asked at the hardest
@@ -522,26 +542,43 @@ always.
 **Where we are.** Statement recovery keeps the names a broken declaration
 declares (a broken fn header is bound with an unknown type), and an
 unreadable character no longer drops its line. Broken-ports benchmark
-(`cpl-cli/tests/recovery.rs`, six single edits per port): 0.03 cascades per
-copy (145 of 4319), first error on the right line 99.8%, ratchet at 0.05 per copy.
+(`cpl-cli/tests/recovery.rs`, six single edits per port): 0.034 cascades per
+copy (145 of 4306), first error on the right line 99.7%, 77% of errors carry a
+fix-it, ratchet at 0.05 per copy.
 Planned forms go through one table (`cpl-syntax/src/planned.rs`, `E0504`
 "not implemented yet: ... (see design/...)", or "(not in the design)" for
-forms only dreams use); 16 entries, each with a golden. Dreams are a corpus
-(`scripts/dream-gaps.py`, summary in the scoreboard): 41/44 first errors
-name their gap (the rest: a domain mismatch `PosA.Cut` vs `PosA.cuts`,
-an unknown `Max`, `read()` of a `[Int]?Int`), 135/243 errors named; top
-blockers are context lines (5 dreams), fresh value types and `record` (3
-each). Unknown names say "not
+forms only dreams use); 36 entries, each with a golden. Dreams are a corpus
+(`scripts/dream-gaps.py`, summary in the scoreboard): 144 dreams, 97 with
+errors; 78/97 first errors name their gap and 240/316 errors are named
+(contexts `with io(...)` as deferred, broken checker rules by the rule). Each
+unsupported construct class gets one `E0504` at its first use (later uses of
+the same feature are dropped as the same root cause): domain parameters, several domains on a line, indented values and continuation
+lines, `(a; b)`, `<..`, domains as values, `D.Cut`,
+operators as values (`compose: +`),
+`(var a, b)` patterns, `match` arms on the `match` line, `let … in`, brace
+maps and sets, `m default 0`, `lazy[D]`, filtered domains, patterns as
+parameters, `some x`, `[_]T`, `then` chains, `.member`, literal-value types.
+Unknown names say "not
 in the stdlib (yet)" with a did-you-mean against stdlib names and the `use`
 as a fix. Golden rendered diagnostics in `cpl-cli/tests/diagnostics/`.
+Fix-its: C spellings (`&&`, `||`, `!x`, `..<`), `let` for a `var`,
+did-you-mean on names, fields and methods (built-in, record and UFCS) and a
+plain number for a domain (`V(i)`) carry an edit, shown as LSP quick fixes
+and applied by `cpl fix`. Common-mistakes benchmark (`fix_it_scoreboard`):
+1,874 errors, 94.1% with a fix-it, `cpl fix` restores 91.2% of copies
+byte for byte (ratchet 88% and 95%); misspelled members are the gap. A
+domain or range mismatch names both index spaces and labels the
+declaration each comes from.
 **Bar.** Golden diagnostics for every error code; a broken-ports benchmark
 with first-error accuracy and cascade counts.
-**Next.** Name every dream error, not just the first (108 unnamed: list
-comprehensions with `=>`, calls with an `if` argument, value-parameterized
-statements); count cascades by root cause instead of "every error after the
+**Next.** Name the last 15 dream first errors (argument-count gaps such as
+`gcd` of a list, a missing field, a stdlib type that can't be indexed, `.inverse()`
+of a set), then every error (40 unnamed); restore 95% of common-mistake copies (members the back end
+knows by hand); count cascades by root cause instead of "every error after the
 first"; struct/enum headers that fail to parse should also bind with an
 unknown shape; fn stubs `-> T: ...` and the rest of `design/DELTA.md` into
-the planned table or implemented; quick fixes on every syntax error;
+the planned table or implemented; quick fixes on every syntax error and on members the back end knows by
+hand (`Str.count`, domain `before`/`after`);
 top-level tuple-destructured names in LSP completion.
 
 ### 6. Interpreter, debugger and traces (`plan/50`)
@@ -889,8 +926,8 @@ fuzzer proves the server never dies, and a latency benchmark guards 6.1.
 **Where we are** (audited 2026-11-21). `cpl lsp` (crates/cpl-lsp) answers
 diagnostics on open and on incremental change, hover, definition (into
 `stdlib/` files too: `Fenwick` jumps to `stdlib/fenwick.cp`), references,
-rename across every open file and the user library that declares the name
-(the stdlib's names refused, a name already declared refused), document symbols, document highlights, folding
+rename across every open file, the user library that declares the name and each file of the project on disk that imports it
+(the stdlib's names refused; refused too when, re-checked with the edits applied, any use of the old or new name would resolve to a different declaration: two locals merged, a use captured by a nearer binding, a top-level name shadowed), document symbols, document highlights, folding
 (blocks, comment runs, imports), semantic tokens (each resolved name as a
 type, fn, method, field, variable or parameter, marking declarations and
 immutable bindings), workspace symbols (fuzzy, over open files and the
@@ -911,7 +948,7 @@ no longer shows first as a wrong argument or index count); the lints
 `cpl lint` reports, each with its `cpl fix` fix as a quick fix, and
 `cpl fix` on the buffer as a `source.fixAll.cpl` action, removed syntax first (the replaced
 spellings, `where`, `--- multitest ---`, `.pow` and getter `()`, each a quick fix tested on a
-real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
+real port; a getter, built-in or `@get`, completes as a property and hovers its type; hover adds the `cost:` a stdlib or built-in member documents and the range the input bounds prove for a `let`, in a fn or loop too, at its declaration and at each use, and for a `var` the range every assignment in its scope keeps (`best max= 2 * a`; `c += 1` in a `for` loop has none, in `while c < n:` it keeps `0..=n`, since an assignment in a `while` body sees the names its condition bounds), solved together with the `var`s and `let`s it reads (a binary search's `lo`, `hi` and `mid`), and after a loop with no `break` by its failed condition (`while w > 9: w = w / 2` leaves `w` in `1..=9`), narrowed by the comparisons an `if`, `elif` or `while` condition makes, and by the ones each earlier branch failed (`if n > 50:` gives `n - 50: Int in 1..=199950`, its `else` `n - 10: Int in -9..=40`), and for a difference of two names by what a comparison of them proved (`if a < n:` gives `n - a` at least 1; inside a binary search `hi - mid` is at least 1 for `let mid = (lo + hi) / 2`; an assignment `x = y + c` carries `y`'s relations to `x`, the branches of an `if` keep what all of them prove, and a `while` keeps what its body preserves about the names its condition compares, so `lo = mid + 1` / `hi = mid` keep `lo <= hi` and after the search `lo - hi: Int = 0`; the same holds inside a fn for its own locals), and on an index `xs[i]` of a list or string, with its length known until a statement changes it (a breadth-first `while head < q.len: let u = q[head]` before its pushes), why it is in bounds (`ys[mid]: in bounds, 0 <= lo <= mid < hi <= ys.len`, also appended to the index's own hover; `for i in 0..xs.len` gives `0 <= i < xs.len`, and a row the same way, `for j in 0..g[u].len` gives `g[u][j]` `0 <= j < g[u].len` while no row of `g` changes length; 177 indexes in the ports and examples), and on an index of an array declared over a domain, that its type is that domain (`xs[v]: in bounds, v: V, the index space of xs`; `g[r, c]`, `dp[v, k]` over a product domain and `g[p]` with a tuple `p` name each), and on the head of a `for` over a bounded range or domain how often its body runs, alone and with the `for`s around it in the source's terms (`runs at most k = 7 times`, `n * k = 1400000 (1.4e6) times in all`), and on a fn whose loops all have a count, how many iterations one call makes with the fns it calls (`loops: at most n + n * k = 1600000 (1.6e6) iterations per call, with the fns it calls; methods and the stdlib not counted`), and each call in its body whose doc states a cost above `O(1)`, with that cost in the receiver's terms and how often it runs per call (`documented costs: ys.sorted O(ys.len log ys.len) n = 200000 (2e5) times`; 648 such calls in 355 of the 2,002 fns in the ports and examples, 480 with a known count), and for a receiver whose declared array type bounds its size, the steps at max input (`cells.sorted O(n log n), about 3521929 (3.5e6) steps each`), also on the call's own hover anywhere in the file; a list built only by pushes in counted loops is sized by them (`seen has at most n * k items`), so 56 of the 1,278 documented-cost calls get steps; when nothing in a fn is left uncounted, its hover sums these into `estimated cost: O(n + n log n), about 3721929 (3.7e6) steps at max input` (39 of 2,161 fns in the ports and examples; `print`, `read`, `ask` and conversions of numbers, characters and tuples, and `rand`, count one step, of lists and strings none yet; building a struct of the file counts one step; a method's `|D|` is its receiver's domain, `bit.sum O(log |V|)`), and a compiler prelude fn hovers its doc and the cost of its call's shape (`min(a, b)` `O(1)`, `min(xs)` `O(n)`), and on a `+`, `-`, `*`, `/`, `%` or `**`, or a call of `min`, `max` or `abs`, the range of its value (`n * n: Int in 1..=40000000000`) with, when it leaves `Int`, the inputs the prover finds that overflow it (`overflows Int when n = 55109`, also a soft note on the line) or else `may overflow Int`; a lambda passed to a built-in method, block body after `=>` included, hovers and hints its parameters and `let`s; sum domains fold, complete their variants and hover; `++` has its quick fix); a panic becomes an error reply plus an
 internal-error diagnostic. Unit tests in `src/tests.rs`; `tests/latency.rs`
 measures 6.1 (492 lines, debug build: keystroke to diagnostics median
 6 ms, hover 0.06 ms, completion 1.8 ms), and gates the 95th percentile of
@@ -921,26 +958,28 @@ TextMate grammar, snippets, the client, Run/Stress/Trace lenses, live
 sample values, counterexample overlays and a trace view (one panel per
 file over `cpl run --trace --format html`; the editor highlights the line
 of the step shown, and a click on a line in the viewer jumps there); its unit
-tests run in `--full`, its extension-host suite in no gate.
+tests and its extension-host suite (8 tests, under a virtual display) run in `--full`.
+Auto-import: completion offers a stdlib name the file does not import yet, after what is in scope, with its module (`std.math`) and the `use` as an extra edit, and the quick fix for an unresolved stdlib name adds the same `use`: into the file's `use std.<module>.{..}` when it has one, else below its last `use`, else above its first line of code.
 Hover shows the index space and its bound for arrays and positions
 (`xs: [V]Int`, `domain V = 0..n, n <= 100`, storage per element and in
 total), appends the declaration's `///` doc, which in the stdlib states the
 cost, and definition on a field or method jumps to it, in the stdlib too.
-Gaps against `plan/60`: no computed cost on hover; no proven range of an
-expression or a `var`; no cost or overflow
-warnings; rename sees open files, not the folder on disk, and misses
-local shadowing; no refactorings; no
-auto-import; Emacs (eglot draws no lenses) and Helix
-run from a shell command; no fixture tests or DAP. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter
+Gaps against `plan/60`: computed cost on hover covers `for` loops only (not fns or stdlib calls); overflow notes only on names the prover can follow (range-typed inputs and
+params and `let`s of arithmetic over them, not narrowed names, loop
+variables or `var`s); no cost warnings; no refactorings; Emacs (eglot draws no lenses) and Helix
+run from a shell command; no DAP. Fixture tests (`crates/cpl-lsp/tests/fixtures/`: a `.cp` with `$0` cursor markers and the requests to send, checked against a readable `.expected` snapshot, `BLESS=1` to rewrite) cover hover, completion, signature help, definition, references, highlights, rename, code actions, inlay hints, folding and the outline. A fuzz test (`crates/cpl-lsp/tests/fuzz.rs`) sends every request an editor sends on 360 cut, spliced and garbled ports and fails on any internal error. The tree-sitter
 grammar (`editors/tree-sitter-cp/`) is token-level: it highlights, but gives
 no tree for folding, indents or text objects (the server folds).
 The JetBrains plugin (`editors/jetbrains/`, IntelliJ Platform LSP API, 2024.3
 or later, commercial IDEs only) has a highlighting lexer, color settings,
 comments and braces, `cpl lsp` as its server, run configurations for
 `cpl run`, `test` and `stress` on the first sample with a marker on `fn main`,
-and the trace viewer in a JCEF editor tab; `--full` builds it and runs its 14
-platform tests (lexer, settings, and a headless IDE smoke test of the file type,
-highlighting, comments, server, run configuration, run marker and trace).
+and the trace viewer in a JCEF tool window, one tab per file, whose current step
+is marked in the file like the debugger's execution point and whose clicked
+lines move the caret; `--full` builds it and runs its 17 platform tests (lexer,
+settings, the viewer's messages, and a headless IDE smoke test of the file type,
+highlighting, comments, server, run configuration, run marker, trace and step
+marker).
 `editors/README.md` documents Neovim (runtime folder: filetype, Vim syntax or
 tree-sitter, `cpl lsp` autostart), Emacs (`cp-mode` with eglot and lsp-mode) and Helix
 (`languages.toml`, the grammar and its queries) and Zed (an extension in
@@ -959,9 +998,7 @@ the parser, parses every port and library without an error, and checks each
 editor's queries are the same patterns.
 **Bar.** LSP fixture tests per `plan/60` 6.7 for every request; each editor
 integration built and smoke-tested in `scripts/check.sh --full`.
-**Next.** Fixture tests; proven ranges of expressions and `var`s
-(needs the checker's own range analysis); the JetBrains trace's step sync in its
-tool window; publish the Zed extension; the VS Code extension-host suite in a gate.
+**Next.** Publish the Zed extension; more fns with an estimated cost, which needs a cost on the calls that state none (43 of the 152 built-in methods, most of them getters, which already count one step: §6), a cost for `print`, `read` and `ask` of lists and strings by their size, and sizes for lists filled by `read`, comprehensions or `while` loops. Waiting on §1: `Rooted` and graph helpers give their vertices the domain type, after which `white[tree.parent(v)!]` is proven by type with no editor change.
 
 ### 11. Docs, site and playground (`plan/90`)
 **North star.** The language is writable from the docs alone: a one-afternoon tour, a

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a value on the indented lines after `=` (not in the design)
+  --> planned_a_value_on_the_indented_lines_after.cp:1:8
+  |
+1 | let a =
+  |        ^
+  = help: start the value on the `=` line, as in `let x = if c:`
+
+planned_a_value_on_the_indented_lines_after.cp: 1 error

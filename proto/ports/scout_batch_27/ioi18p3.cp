@@ -46,7 +46,7 @@ domain Q = 0..q
 var trips: List<Trip> = []
 for _ in Q:
     let (s, e, l, r): (Int, Int, Int, Int) = read()
-    trips.push((s: s, e: e, l: l, r: r))
+    trips.push((s:, e:, l:, r:))
 
 // Sweep the human Euler order; `asks` are (position, query, sign): the
 // number of cities before `position` whose wolf position is in the query's

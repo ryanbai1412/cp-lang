@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a map literal in braces, `{k: v}` (not in the design)
+  --> planned_a_map_literal_in_braces_k_v.cp:1:9
+  |
+1 | let m = {1: 2}
+  |         ^^^^^^
+  = help: write a map literal in brackets, `[k: v]`
+
+planned_a_map_literal_in_braces_k_v.cp: 1 error

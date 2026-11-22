@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a lazily computed array, `lazy[D] i => …` (not in the design)
+  --> planned_a_lazily_computed_array_lazy_d_i.cp:2:9
+  |
+2 | let a = lazy[D] i => i.ord * 2
+  |         ^^^^
+  = help: build it eagerly, `[D] i => …`, or write a memoized fn
+
+planned_a_lazily_computed_array_lazy_d_i.cp: 1 error

@@ -6,7 +6,7 @@ let n: 1..=2e5 = read()
 let a = read<[n]0..=1e9>()
 let first = a.find(0) ?? return print(n)
 let b = [x for (i, x) in a.items if x != 0 or i == first]
-let low = scan(b, min)
+let low = b.scan(min)
 var seen: [0..=b.len]Bool = false
 var mex: [0..=b.len]Int = 0
 for i in (0..b.len).rev:

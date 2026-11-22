@@ -1,0 +1,7 @@
+error[E0302]: `Val` is a type, and a value is needed here
+  --> range_type_used_as_a_value.cp:2:10
+  |
+2 | for d in Val.rev:
+  |          ^^^
+
+range_type_used_as_a_value.cp: 1 error

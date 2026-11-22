@@ -1,0 +1,11 @@
+== diagnostics
+4:7-4:15 E0304 `len` is read without parentheses: `xs.len`
+help: write `xs.len` (or run `cpl fix` to drop `()`)
+5:9-5:10 E0101 this `(` is never closed
+help: add `)` at the end of the expression
+
+== codeAction @ 4:13
+drop `()` to read `xs.len`
+
+== codeAction @ 5:9
+insert `)`

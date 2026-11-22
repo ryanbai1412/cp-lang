@@ -152,13 +152,14 @@ pub struct FlatMap<V>:
     /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); a.absorb(mut b); a.get(1) == Some(5)`
     pub fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None) = todo
 
-/// Default-valued frequency / weight map over hashable keys `K`.
+/// Default-valued frequency / weight map over hashable keys `K`. `Counter<K>` counts with `Int`
+/// (`V = Int`) and is a `Track<K>` (`std.window`): `push(k)` adds 1, `pop(k)` takes 1 away.
 /// `c[k]` reads `init` without inserting; `add`, `get`, `set`, `remove`, and `contains` are O(1) expected.
 ///
 /// Invariant: no stored entry equals `init`. A write that leaves a key at `init` (`add`, `set`,
 /// `absorb`) removes it, so `len` is the number of keys whose value differs from `init` and
 /// `contains(k)` is `get(k) != init`.
-pub struct Counter<K, V>:
+pub struct Counter<K, V = Int>:
     _len: Int
 
     /// Create an empty `Counter<K, V>` whose missing keys read as `init`.

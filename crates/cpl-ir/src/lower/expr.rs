@@ -419,6 +419,7 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Lambda {
                 params,
                 param_tys,
+                ret_ty: _,
                 body,
                 ..
             } => self.lower_lambda(params, param_tys, body, inner_hint, span),
@@ -766,6 +767,14 @@ impl<'a> Lowerer<'a> {
             if *candidate == Ty::Float && ty == Ty::Int {
                 ty = Ty::Float;
             }
+            if let (Ty::Range(c_inner), Ty::Range(t_inner)) = (candidate, &ty) {
+                if matches!(
+                    (c_inner.as_ref(), t_inner.as_ref()),
+                    (Ty::Pos(d1), Ty::Bound(d2)) if d1 == d2
+                ) {
+                    ty = candidate.clone();
+                }
+            }
             if let Ty::Opt(inner) = candidate {
                 if **inner == ty {
                     ty = candidate.clone();
@@ -1002,7 +1011,9 @@ impl<'a> Lowerer<'a> {
                         return self.mk(ExprKind::Closure(cid), Ty::Fn(ps.clone(), r.clone()), span);
                     }
                 }
-                self.error(codes::UNRESOLVED_NAME, span, format!("`cpl run` doesn't know the name `{name}` here"));
+                if !self.reported_an_error() {
+                    self.error(codes::UNRESOLVED_NAME, span, format!("`cpl run` doesn't know the name `{name}` here"));
+                }
             }
             _ if name == "todo" => {
                 let at = self.span(span);
@@ -1027,7 +1038,7 @@ impl<'a> Lowerer<'a> {
                     let message = format!("an `@interactor` can't see the solution's `{name}`");
                     self.error(codes::UNRESOLVED_NAME, span, message);
                     self.help("the judge is a program of its own: it reads the hidden test with `read()` and shares only `const`s with the solution");
-                } else {
+                } else if !self.reported_an_error() {
                     let message = format!("`cpl run` doesn't know the name `{name}` here");
                     self.error(codes::UNRESOLVED_NAME, span, message);
                     self.help("a top-level `let` is visible only after the line that sets it");
@@ -1120,18 +1131,19 @@ impl<'a> Lowerer<'a> {
                 }
                 (Ty::Bound(d), Ty::Bound(d2)) if d == d2 => {
                     let d = *d;
-                    let want_bound = matches!(
-                        expected,
-                        Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Bound(ed) if *ed == d)
-                    );
+                    let convert_to_pos = !inclusive
+                        && matches!(
+                            expected,
+                            Some(Ty::Range(inner)) if matches!(inner.as_ref(), Ty::Pos(ed) if *ed == d)
+                        );
                     let lo_ord = self.cast(Cast::Ord, l, Ty::Int);
                     let hi_ord = self.cast(Cast::Ord, r, Ty::Int);
-                    let hi_ord = if want_bound && inclusive {
+                    let hi_ord = if !convert_to_pos && inclusive {
                         self.int_add(hi_ord, 1)
                     } else {
                         hi_ord
                     };
-                    let elem = if want_bound { Ty::Bound(d) } else { Ty::Pos(d) };
+                    let elem = if convert_to_pos { Ty::Pos(d) } else { Ty::Bound(d) };
                     self.mk(
                         ExprKind::Range {
                             lo: Box::new(lo_ord),
@@ -2603,15 +2615,15 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                     if value.ty != want && value.ty != Ty::Error {
-                        if let Ty::Pos(d) = want {
-                            if self.product_domains.contains_key(&d) {
-                                match self.try_coerce(value, &want) {
-                                    Ok(coerced) => {
-                                        out.push(coerced);
-                                        continue;
-                                    }
-                                    Err(orig) => value = orig,
+                        if matches!(want, Ty::Bound(_))
+                            || matches!(want, Ty::Pos(d) if self.product_domains.contains_key(&d))
+                        {
+                            match self.try_coerce(value, &want) {
+                                Ok(coerced) => {
+                                    out.push(coerced);
+                                    continue;
                                 }
+                                Err(orig) => value = orig,
                             }
                         }
                         let message = format!(

@@ -1,25 +1,50 @@
+// Universal Cup 5 Stage 2 F — Periodic Intervals
+//
+// For a query period t, we seek the smallest multiple 6 * k <= t (k >= 1) such
+// that every grid point (6 * i + 6) * t / (6 * k) (i in 0..k) falls in some
+// sorted interval [l, r] of p0, and for every residue v in 1..=5 every point
+// (6 * i + v) * t / (6 * k) falls in some interval of p1.
+//
+// Clearing denominators by 6 * k (using I128 since k * r can exceed 64 bits):
+//   l <= (6 * i + v) * t / (6 * k) <= r
+//   <=> 6 * k * l - t * v <= 6 * t * i <= 6 * k * r - t * v.
+// Scanning the sorted intervals advances the first uncovered index i greedily.
+//
+// Whenever residue v fails at k, any valid multiple k' = m * k must refine the
+// 6-grid enough that the failing point leaves residue class v mod 6, which
+// requires m to be a multiple of 6 / gcd(6, v):
+// - v in {1, 5} (gcd = 1) -> multiply k by 6;
+// - v in {2, 4} (gcd = 2) -> multiply k by 3;
+// - v = 3       (gcd = 3) -> multiply k by 2.
+// If residue 6 (p0) fails, no multiple of k can fix it (return none).
+
 fn covers(k: I128, v: I128, segs: List<(Int, Int)>, t: I128) -> Bool:
+    let k6 = I128(6) * k
+    let t6 = I128(6) * t
+    let shift = t * v
     var i: I128 = 0
     for (l, r) in segs:
         if i >= k: return true
-        let lo = I128(6) * k * I128(l) - t * v
-        let hi = I128(6) * k * I128(r) - t * v
-        if lo > t * I128(6) * i: return false
-        if hi >= t * I128(6) * i: i = hi / (t * I128(6)) + I128(1)
+        let lo = k6 * I128(l) - shift
+        let hi = k6 * I128(r) - shift
+        if lo > t6 * i: return false
+        if hi >= t6 * i: i = hi / t6 + I128(1)
     i >= k
 
-fn solve(t: I128, p0: List<(Int, Int)>, p1: List<(Int, Int)>) -> Int:
+fn solve(t: I128, p0: List<(Int, Int)>, p1: List<(Int, Int)>) -> ?Int:
     var k: I128 = 1
     while I128(6) * k <= t:
-        if not covers(k, I128(6), p0, t): return -1
+        if not covers(k, I128(6), p0, t): return none
         if not covers(k, I128(1), p1, t) or not covers(k, I128(5), p1, t): k *= I128(6)
         elif not covers(k, I128(2), p1, t) or not covers(k, I128(4), p1, t): k *= I128(3)
         elif not covers(k, I128(3), p1, t): k *= I128(2)
-        else: return Int(I128(6) * k)
-    -1
+        else: return some(Int(I128(6) * k))
+    none
 
-let (n0, n1): (Int, Int) = read()
-let p0 = [read::<(Int, Int)>() for _ in 0..n0]
-let p1 = [read::<(Int, Int)>() for _ in 0..n1]
-let q: Int = read()
-for _ in 0..q: print(solve(I128(read::<Int>()), p0, p1))
+let (n0, n1): (1..=200_000, 1..=200_000) = read()
+let p0: [0..n0](Int, Int) = read()
+let p1: [0..n1](Int, Int) = read()
+let q: 1..=200_000 = read()
+let queries: [0..q]1..=10 ** 18 = read()
+for t in queries:
+    print(solve(I128(t), p0, p1) ?? -1)

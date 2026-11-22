@@ -16,7 +16,7 @@ var at: [P](x: F64, y: F64) = (x: 0.0, y: 0.0)
 for p in P:
     let x: F64 = read()
     let y: F64 = read()
-    at[p] = (x: x, y: y)
+    at[p] = (x:, y:)
 
 var total: [P]F64 = 0.0
 for k in 0..K:

@@ -74,10 +74,10 @@ pub struct Graph<V, E>:
             var at: List<0..=2_000_000_000> = copy(start)
             for e in E:
                 let (u, v) = (edges[e].u, edges[e].v)
-                arcs[at[u.to_idx]] = (to: v, e: e)
+                arcs[at[u.to_idx]] = (to: v, e:)
                 at[u.to_idx] += 1
                 if both:
-                    arcs[at[v.to_idx]] = (to: u, e: e)
+                    arcs[at[v.to_idx]] = (to: u, e:)
                     at[v.to_idx] += 1
             return Graph(start, arcs)
 
@@ -172,7 +172,7 @@ pub fn scc<V, N>(next: N) -> (domain C, comp: [V]C):
                     k += 1
                 if not path.is_empty: low[path.last!.0] min= low[u]
     domain C = 0..k
-    (C: C, comp: [V] v => C(k - 1 - done[v]!))
+    (C:, comp: [V] v => C(k - 1 - done[v]!))
 
 /// Compressed sparse row adjacency table over `V` built from pairs or triples.
 /// O(n + m) time; memory is n + 1 32-bit offsets and one arc per directed edge.
@@ -274,7 +274,7 @@ pub fn components<V, N>(next: N) -> (domain C, comp: [V]C):
                     queue.push(a.to)
         k += 1
     domain C = 0..k
-    (C: C, comp: [V] v => C(id[v]!))
+    (C:, comp: [V] v => C(id[v]!))
 
 /// The condensation: the arcs between components, as adjacency lists (duplicates kept).
 pub fn condense<V, N, C>(next: N, comp: [V]C) -> [C]List<(to: C)>:
@@ -331,7 +331,7 @@ pub fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C):
                         if v == u: break
                     k += 1
     domain C = 0..k
-    (C: C, comp: [V] v => C(cid[v]!))
+    (C:, comp: [V] v => C(cid[v]!))
 
 /// Articulation points (cut vertices) of an undirected simple graph.
 
@@ -828,9 +828,9 @@ pub fn fixed_cost_paths<S, M, W>(
                 if let t = step(moves[j], s) and dist[t] == none:
                     let d = dist[s]! + price[j]
                     if let b = best:
-                        if d < b.d: best = (d: d, j: j, t: t)
+                        if d < b.d: best = (d:, j:, t:)
                     else:
-                        best = (d: d, j: j, t: t)
+                        best = (d:, j:, t:)
                     break
                 at[j] += 1
         if best == none: break
@@ -1069,9 +1069,9 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
     fn step(m: Int, s: S) -> ?S:
         let t = if m == 1: s.to_idx + 1 else: s.to_idx * m % 31
         if t < 30: S(t) else: none
-    let p = fixed_cost_paths(from: [S(1)], moves: moves, cost: price, step: step)
+    let p = fixed_cost_paths(from: [S(1)], moves:, cost: price, step:)
     let q = dijkstra::<S>(
-        s => [(to: t, m: m) for m in moves if let t = step(m, s)],
+        s => [(to: t, m:) for m in moves if let t = step(m, s)],
         from: [(S(1), 0)],
         w: a => price(a.m),
     )
@@ -1106,14 +1106,8 @@ fn until_stops_at_the_target_with_its_exact_distance():
         assert q[t] == cheap[t] and q.order.last == t
     domain S = 0..30
     fn step(m: Int, s: S) -> ?S = if s.to_idx + m < 30: S(s.to_idx + m) else: none
-    let all = fixed_cost_paths(from: [S(0)], moves: [1, 4], cost: m => 5 - m, step: step)
-    let one = fixed_cost_paths(
-        from: [S(0)],
-        moves: [1, 4],
-        cost: m => 5 - m,
-        step: step,
-        until: S(17),
-    )
+    let all = fixed_cost_paths(from: [S(0)], moves: [1, 4], cost: m => 5 - m, step:)
+    let one = fixed_cost_paths(from: [S(0)], moves: [1, 4], cost: m => 5 - m, step:, until: S(17))
     assert one[S(17)] == all[S(17)] and one.order.last == S(17) and one.order.len < all.order.len
 
 @test
@@ -1172,7 +1166,7 @@ fn euler_walks_use_every_edge_once_and_exist_when_brute_force_finds_one():
         let k = rand(0, 6)
         domain E = 0..k
         let edges = [E] _ => (u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)))
-        let got = euler_walk(edges, directed: directed)
+        let got = euler_walk(edges, directed:)
         assert (got != none) == has_walk([(edges[e].u, edges[e].v) for e in E], directed)
         if let w = got:
             assert sorted([a.e for a in w.arcs]) == List(E)

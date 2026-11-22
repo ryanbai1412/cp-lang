@@ -1,6 +1,7 @@
 # btoi06p5
 
-Score: 3/5
+Score: 4/5
+Dream: 4/5
 
 Baseline review, cold, on main 96359635. The header (lines 1-5) states the DP table and the four operations it needs, and the port does build them as one `LazySegTree` with an assign-then-add `Action` (lines 33-39). It falls short on the cost formulas, which are never derived. No dream exists, so the score is capped at 3.
 
@@ -20,3 +21,9 @@ Baseline review, cold, on main 96359635. The header (lines 1-5) states the DP ta
 ## Gaps that need the language
 
 - None found; the port has no friction report.
+
+## Cold review (HEAD)
+
+Dream 4/5 (new; port = dream), port 3 → 4/5, rescored cold on current main. Both check with zero errors. Every baseline item is addressed: the header (lines 4-12) derives `escaped_cost`, `plain_cost` and `SWITCH_COST`, each is named once (lines 20, 26, 28), `?Int` replaces `FAR`, and `.ord` replaces `.idx`.
+- Minor: the emitter (lines 108-118) still restates the take sizes `n` and `n + 2` that the cost functions encode. A shared `take` bound per case would say each one once.
+- Minor: `pick_min` (lines 58-61) is a hand min over `?Int` costs, and `runs[runs.len - 1].len += k` (line 33) re-indexes the `last` it just bound.

@@ -1,49 +1,61 @@
-// Codeforces 2229 G: compute earliest arrival times left and right from X,
-// keep only prefix-record houses on each side, and merge them by increasing V.
-struct House(x: Int, v: Int, d: Int, pref: Int, val: Int)
+// Codeforces 2229 G.
+//
+// Start at house X at time 0 and walk left or right; road i opens at
+// road_d[i], so `d` is the earliest arrival along each side. It only pays to
+// move on to a house worth more, so each side keeps its prefix records by
+// value, met in order of increasing v across both sides. A record's `val` makes
+// v * t + val the best total by time t >= d while staying at it. A record is
+// reached from the previous record on its own side, or from an already-met
+// record on the other side by walking back through X (whose value both prefix
+// sums count once each, hence `- v[x]`); either way every house passed is
+// collected once.
+use std.seq.{merge_sorted}
+
+enum Side: Left, Right
+fn flip(s: Side) -> Side = match s:
+    Left => Side.Right
+    Right => Side.Left
+
+struct House(x: Int, v: Int, d: Int, pref: Int)
 
 @!multitest
-let (n, k, x_raw): (Int, Int, Int) = read()
-let x = x_raw - 1
-let v: [0..n]Int = read()
+let (n, k): (1..=200_000, 1..=1_000_000_000) = read()
+domain Pos = 1..=n
+let x: Pos = read()
+let v: [Pos]Int = read()
 let road_d: [0..n - 1]Int = read()
 
-var d: [0..n]Int = 0
-for i in x + 1..n: d[i] = max(d[i - 1] + 1, road_d[i - 1])
-for i in (0..x).rev: d[i] = max(d[i + 1] + 1, road_d[i])
-
-fn collect(ord: List<Int>) -> List<House>:
+fn records(path: List<Pos>) -> List<House>:
     var out: List<House> = []
-    var pref = 0
-    for i in ord:
+    var (pref, d) = (0, 0)
+    for (s, i) in path.items:
         pref += v[i]
-        if out.is_empty or out.last!.v <= v[i]:
-            out.push(House(abs(i - x), v[i], d[i], pref, 0))
+        if s > 0: d = max(d + 1, road_d[min(i.ord, path[s - 1].ord)])
+        if out.is_empty or out.last!.v <= v[i]: out.push(House(s, v[i], d, pref))
     out
 
-var side: [0..2]List<House> = [collect(List((0..=x).rev)), collect(List(x..n))]
+let side: [Side]List<House> = [Side] s => match s:
+    Left => records([p for p in (Pos.first..=x).rev])
+    Right => records([p for p in x..=Pos.last])
+let order = merge_sorted(
+    [(h.v, Side.Left, i) for (i, h) in side[Side.Left].items if i > 0],
+    [(h.v, Side.Right, i) for (i, h) in side[Side.Right].items if i > 0],
+)
 
+var val: [Side]List<Int> = [Side] _ => [0]
+var crossed: [Side]Int = 0
 var ans = v[x] * k
-var proc_it: [0..2]Int = 1
-var ins_it: [0..2]Int = 0
-while proc_it[0] < side[0].len or proc_it[1] < side[1].len:
-    let z = Int(
-        proc_it[1] < side[1].len and (
-            proc_it[0] == side[0].len or side[1][proc_it[1]].v < side[0][proc_it[0]].v
-        )
-    )
-    let i = proc_it[z]
-    proc_it[z] += 1
-    let o = side[z][i - 1]
-    let h = side[z][i]
-    var val = o.val + o.v * (h.d - (h.x - o.x)) + (h.pref - o.pref)
-    let oz = 1 - z
-    while ins_it[oz] < proc_it[oz] and side[oz][ins_it[oz]].v <= h.v:
-        let op = side[oz][ins_it[oz]]
-        ins_it[oz] += 1
+for (_, z, i) in order:
+    let (o, h) = (side[z][i - 1], side[z][i])
+    var best = val[z][i - 1] + o.v * (h.d - (h.x - o.x)) + (h.pref - o.pref)
+    let opp = flip(z)
+    let met = val[opp].len
+    let upto = bsearch_first(crossed[opp]..met, j => side[opp][j].v > h.v) ?? met
+    for j in crossed[opp]..upto:
+        let op = side[opp][j]
         if op.d + h.x + op.x <= h.d:
-            val max= op.val + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x]
-    val -= h.d * h.v
-    side[z][i].val = val
-    if h.d <= k: ans max= val + h.v * k
+            best max= val[opp][j] + op.v * (h.d - (h.x + op.x + 1)) + op.pref + h.pref - v[x]
+    crossed[opp] = upto
+    val[z].push(best - h.d * h.v)
+    if h.d <= k: ans max= val[z][i] + h.v * k
 print(ans)

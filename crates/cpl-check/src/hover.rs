@@ -50,7 +50,9 @@ impl Database {
     pub fn hover(&mut self, path: &str, offset: u32) -> Option<Hover> {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
-        let entry = innermost(&item.check.hovers, at)?;
+        let Some(entry) = innermost(&item.check.hovers, at) else {
+            return prelude_value_hover(item, at);
+        };
         let span = entry.span.shift(item.offset);
         let mut lookup = |name: &str| self.lookup(path, &analysis, name);
         let builtin = (entry.keyword == "field")
@@ -75,13 +77,80 @@ impl Database {
             doc_above(&source, def.span.start)
         });
         let doc = doc.or_else(|| builtin.map(|m| m.doc.to_string()));
-        let text = match doc.as_deref().and_then(cost_of) {
+        let receiver = item.check.hovers.iter().find(|e| e.span.end + 1 == entry.span.start);
+        let generics = match (entry.keyword, entry.owner.as_deref(), receiver.map(|r| &r.ty)) {
+            ("field", Some(owner), Some(Ty::Named { name, args })) if name == owner => {
+                match self.lookup(path, &analysis, owner).as_deref() {
+                    Some(Def::Struct { generics, .. }) => {
+                        generics.iter().cloned().zip(args.iter().cloned()).collect()
+                    }
+                    _ => Vec::new(),
+                }
+            }
+            _ => Vec::new(),
+        };
+        let cost = doc.as_deref().and_then(cost_of).map(|c| in_receiver_domains(&c, &generics));
+        let text = match cost {
             Some(cost) if matches!(entry.ty, Ty::Fn { .. }) || entry.keyword == "field" => {
                 format!("{text}\ncost: {cost}")
             }
             _ => text,
         };
         Some(Hover { span, text, doc })
+    }
+
+    /// Each call in `start..end` whose doc states a cost above `O(1)`:
+    /// where its name is, the name as hovered (`.sorted`, `bfs`) and the
+    /// cost (`O(n log n)`), in file positions.
+    pub fn costs_in(&mut self, path: &str, start: u32, end: u32) -> Vec<(Span, String, String)> {
+        let Some(analysis) = self.analyze(path) else {
+            return Vec::new();
+        };
+        let Some((item, _)) = analysis.item_at(start) else {
+            return Vec::new();
+        };
+        let mut named: Vec<(Span, String)> = item
+            .check
+            .hovers
+            .iter()
+            .filter(|e| e.keyword == "field" || matches!(e.ty, Ty::Fn { .. }))
+            .filter(|e| e.decl != Some(e.span))
+            .map(|e| {
+                let name = if e.keyword == "field" { format!(".{}", e.name) } else { e.name.clone() };
+                (e.span.shift(item.offset), name)
+            })
+            .filter(|(span, _)| start <= span.start && span.end <= end)
+            .collect();
+        named.sort_by_key(|(span, _)| (span.start, span.end));
+        named.dedup_by_key(|(span, _)| *span);
+        named
+            .into_iter()
+            .filter_map(|(span, name)| {
+                let hover = self.hover(path, span.start)?;
+                let cost = hover.text.lines().find_map(|l| l.strip_prefix("cost: "))?;
+                (hover.span == span && cost.starts_with("O(") && !cost.starts_with("O(1)")).then(|| (span, name, cost.to_string()))
+            })
+            .collect()
+    }
+
+    /// The innermost index at `offset` that its types prove in bounds, in
+    /// file positions; with `on_index`, only when `offset` is on its indices.
+    pub fn typed_index(&mut self, path: &str, offset: u32, on_index: bool) -> Option<crate::TypedIndex> {
+        let analysis = self.analyze(path)?;
+        let (item, at) = analysis.item_at(offset)?;
+        let inside = |s: Span| s.start <= at && at < s.end;
+        let found = item
+            .check
+            .typed_indexes
+            .iter()
+            .filter(|t| inside(t.access) && !inside(t.seq) && inside(t.index) == on_index)
+            .min_by_key(|t| t.access.len())?;
+        Some(crate::TypedIndex {
+            access: found.access.shift(item.offset),
+            seq: found.seq.shift(item.offset),
+            index: found.index.shift(item.offset),
+            proof: found.proof.clone(),
+        })
     }
 
     /// Where the name at `offset` is declared, in the same file.
@@ -215,6 +284,20 @@ fn doc_above(text: &str, at: u32) -> Option<String> {
     (!doc.is_empty()).then_some(doc)
 }
 
+/// A method's documented cost with its struct's domain parameters written as
+/// the receiver's: `O(log |D|)` on a `Fenwick<V, Int>` is `O(log |V|)`, and so
+/// is `O(log D.K)`.
+fn in_receiver_domains(cost: &str, generics: &[(String, Ty)]) -> String {
+    let mut out = cost.to_string();
+    for (g, arg) in generics {
+        if let Ty::Pos(d) = arg {
+            out = out.replace(&format!("|{g}|"), &format!("|{d}|"));
+            out = out.replace(&format!("{g}.K"), &format!("|{d}|"));
+        }
+    }
+    out
+}
+
 /// The smallest entry under the cursor.
 /// The first `O(...)` a doc states, with what qualifies it: `O(log n)
 /// amortized`.
@@ -241,6 +324,40 @@ fn cost_of(doc: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// A name of the compiler's own prelude at `at`, which the checker records
+/// no hover for, shown with its doc for the shape of its call.
+fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover> {
+    use cpl_syntax::ast::{Expr, ExprKind};
+    use cpl_syntax::visit::{walk_stmt, Visitor};
+    struct Find {
+        at: u32,
+        name: Option<(Span, String)>,
+        calls: Vec<(Span, usize)>,
+    }
+    impl Visitor for Find {
+        fn expr(&mut self, expr: &Expr) {
+            match &expr.kind {
+                ExprKind::Name(n) if expr.span.touches(self.at) => self.name = Some((expr.span, n.clone())),
+                ExprKind::Call { callee, args } => self.calls.push((callee.span, args.len())),
+                _ => {}
+            }
+        }
+    }
+    let mut find = Find { at, name: None, calls: Vec::new() };
+    for stmt in &item.syntax.parsed.stmts {
+        walk_stmt(stmt, &mut find);
+    }
+    let (span, name) = find.name?;
+    let args = find.calls.iter().find(|(callee, _)| *callee == span).map(|&(_, n)| n);
+    let fixed = item.check.fixed_io.contains(&span);
+    let doc = crate::prelude::value_doc(&name, args, fixed)?;
+    let text = match cost_of(doc) {
+        Some(cost) => format!("{name}: built-in\ncost: {cost}"),
+        None => format!("{name}: built-in"),
+    };
+    Some(Hover { span: span.shift(item.offset), text, doc: Some(doc.to_string()) })
 }
 
 fn innermost(hovers: &[HoverEntry], at: u32) -> Option<&HoverEntry> {

@@ -225,10 +225,11 @@ struct Vec(x: F64, y: F64)                             // Add, Sub, Neg; intenti
     fn dist(self, o: Vec) -> F64                       // O(1)
     fn rot(self, by: Vec) -> Vec                      // O(1); rotate by unit vector `by`
 
-fn poly_area(poly: List<Vec>) -> F64                   // O(n); signed area (+ CCW, - CW)
+fn polygon_area(poly: List<Vec>) -> F64                // O(n); signed area (+ CCW, - CW)
 fn project(p: Vec, a: Vec, b: Vec) -> Vec              // O(1); orthogonal projection onto line ab
 fn reflect(p: Vec, a: Vec, b: Vec) -> Vec              // O(1); reflection across line ab
-fn dist_to_segment(p: Vec, a: Vec, b: Vec) -> F64      // O(1); distance from p to segment [a, b]
+fn line_dist(p: Vec, a: Vec, b: Vec) -> F64            // O(1); perpendicular distance from p to line ab
+fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64  // O(1); distance from p to segment [a, b]
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec
     // O(1); intersection of lines ab and cd, none if parallel
 fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
@@ -464,7 +465,7 @@ Classic ICPC / Library Checker task: given `n` directed half-planes inside
 `[-B, B]^2`, compute the area of their intersection.
 
 ```cp
-use std.geometry.{Vec, HalfPlane, half_plane_intersect, poly_area}
+use std.geometry.{Vec, HalfPlane, half_plane_intersect, polygon_area}
 
 let n: 1..=2e5 = read()
 let bound = 1e9
@@ -479,7 +480,7 @@ for _ in 0..n:
     planes.push(HalfPlane.through(a, b))
 
 let poly = half_plane_intersect(planes)
-print("{poly_area(poly):.10f}")
+print("{polygon_area(poly):.10f}")
 ```
 
 ## 10. Overflow bounds, Shamos–Hoey, float-free `arg`, and 3D hull
@@ -502,4 +503,133 @@ on `Pt`/`Pt3`) determine which width is overflow-free:
 - `arg(p: Pt) -> ByAngle` — float-free angular sort key (`sort(mut pts, by: arg)` or `sort(mut pts, by: p => arg(p - base))`).
 - `any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int)` — O(n log n) Shamos–Hoey sweep line using an exact `I128` comparator in a deterministic treap (handles vertical segments, shared endpoints, and both `strict: false` and `strict: true`).
 - `Pt3(x: Int, y: Int, z: Int)` with `Add`, `Sub`, `Neg`, `Show`, `norm2`, `norm2_128`, `len`, `scale`, `dot3`, `dot3_128`, `cross3`, `dist2_3`, and O(n^2) exact `I128` `convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>`.
+
+## Coverage
+
+Audit against AtCoder Library (which omits geometry), KACTL (`content/geometry/`), cp-algorithms (Geometry), and top competitors' personal templates (ecnerwala, tourist, benq, jiangly). Each topic is marked **have** (implemented and tested in `stdlib/geometry.cp`), **new** (specified in `plan/STDLIB.md` 4.14 `[new]`), or **out** (excluded with reason).
+
+| # | Topic | Status | Surface / Reason |
+| --- | --- | --- | --- |
+| 1 | Exact 2D point/vector arithmetic & `I128` predicates | **have** | `Pt`, `norm2`, `norm2_128`, `len`, `perp`, `perp_cw`, `angle`, `unit_dir`, `to_vec`, `dot`, `cross`, `dot128`, `cross128`, `dist2`, `dist2_128`, `dist`, `turn`, `same_dir` |
+| 2 | Exact angular sorting from `+x` | **have** | `ByAngle`, `arg`, `angle_less` |
+| 3 | Segment containment & pairwise intersection | **have** | `on_segment(..., strict:)`, `segments_meet(..., strict:)` |
+| 4 | Any-two-segments intersection (Shamos–Hoey sweep) | **have** | `any_segments_meet(..., strict:)` |
+| 5 | 2D convex hull & x-monotone chains (batch) | **have** | `lower_hull`, `upper_hull`, `convex_hull`, `convex_hull_idx` |
+| 6 | Minkowski sum (full & upper chain) | **have** | `minkowski_sum`, `minkowski_upper` |
+| 7 | Polygon signed area & point location (simple & convex) | **have** | `area2`, `area2_128`, `Location`, `locate`, `locate_convex`, `polygon_area` |
+| 8 | Rotating calipers (diameter & min bounding box) | **have** | `diameter2`, `min_bounding_box` |
+| 9 | Convex hull O(log n) queries (extreme & tangents) | **have** | `hull_extreme`, `hull_tangents` |
+| 10 | Closest pair of points (2D exact) | **have** | `closest_pair2`, `closest_pair<D>` |
+| 11 | Careful floating-point 2D vectors & lines | **have** | `Vec`, `close`, `sign_eps`, `vdot`, `vcross`, `vdist`, `vturn`, `project`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`, `circumcenter` |
+| 12 | Circle-line, circle-circle intersections & tangents | **have** | `circle_line_intersect`, `circle_intersect`, `circle_tangents`, `circle_circle_tangents` |
+| 13 | Circle-polygon intersection area & union of circles | **have** | `circle_polygon_area`, `circles_union_area` |
+| 14 | Minimum enclosing circle (Welzl) | **have** | `min_enclosing_circle` |
+| 15 | Half-plane intersection & Sutherland–Hodgman clip | **have** | `HalfPlane`, `half_plane_intersect`, `polygon_cut` |
+| 16 | 3D exact integer points & 3D convex hull | **have** | `Pt3`, `dot3`, `dot3_128`, `cross3`, `dist2_3`, `convex_hull_3d` |
+| 17 | L1 / L-infinity metrics & `Pt`/`Vec`/`Pt3` method parity | **new** | `manhattan`, `chebyshev`, `.dot`/`.cross`/`.dist2`/`.dist` on `Pt`, `Vec`, `Pt3`, `Vec.perp_cw`, `Vec.from_angle`, `angle_between`, `PI` |
+| 18 | Arbitrary-base exact angular sorting | **new** | `ByAngleFrom`, `angle_less(..., from:)` |
+| 19 | Segment/ray floating-point intersections | **new** | `segment_intersect`, `ray_hits_segment` |
+| 20 | Domain-indexed segment & half-hull twins | **new** | `any_segments_meet_idx<D>`, `lower_hull_idx<D>`, `upper_hull_idx<D>`, `convex_hull_3d_idx<D>` |
+| 21 | Online (incremental) 2D convex hull | **new** | `OnlineHull` (`add`, `locate`, `extreme`, `area2`, `len`, `is_empty`, `vertices`, `clear`) |
+| 22 | Minkowski lower chain & convex polygon overlap/intersection | **new** | `minkowski_lower`, `convex_polygons_overlap`, `convex_polygon_intersect` |
+| 23 | Convex hull width & O(log n) line-hull intersection | **new** | `hull_width`, `hull_line_intersect` |
+| 24 | Farthest pair & Manhattan (L1) MST candidates | **new** | `farthest_pair<D>`, `manhattan_mst<D>` |
+| 25 | Simple polygon centroid, kernel, triangulation & Pick's theorem | **new** | `polygon_centroid`, `polygon_kernel`, `polygon_triangulate`, `pick_interior`, `pick_boundary` |
+| 26 | First-class `Circle`, incenter, circle-circle area & inversion | **new** | `Circle` (`through`, `area`, `circumference`, `locate`), `incenter`, `circle_circle_area`, `invert` |
+| 27 | `HalfPlane` factories & optional bounding box | **new** | `HalfPlane.through`, `HalfPlane.from_line`, `HalfPlane.side`, `half_plane_intersect(..., bound:)` |
+| 28 | Axis-aligned integer rectangles & union area sweep | **new** | `Rect(x: Range<Int>, y: Range<Int>)`, `rects_union_area` |
+| 29 | Planar straight-line graph faces & offline point location | **new** | `planar_faces<V>`, `point_location_planar<V>` |
+| 30 | Exact Delaunay triangulation & Voronoi cells | **new** | `delaunay<D>`, `voronoi_cells<D>` |
+| 31 | 3D floating-point vectors, planes, polyhedron volume & spherical distance | **new** | `Vec3`, `Plane3`, `line_plane_intersect`, `sphere_dist`, `polyhedron_volume6` |
+| 32 | 1D convex hull trick / `LineContainer` / `LiChao` | **out** | Owned by `std.dp` (4.16): 1D linear envelopes `k*x + m` are DP optimizations, not 2D geometry. |
+| 33 | KD-tree / 2D orthogonal range tree | **out** | Problem-specific pruning and monoids belong in `std.ranges` or user code; static 2D sums are `Prefix<R, C, T>` / `Fenwick2D`. |
+| 34 | General non-convex polygon boolean ops (union/diff/intersection) | **out** | Rare in contests and edge-case heavy; `polygon_cut`, `convex_polygon_intersect`, `circles_union_area`, and `rects_union_area` cover contest needs. |
+| 35 | General 3D mesh boolean ops / CSG / 3D half-space intersection | **out** | Virtually absent from contests; `convex_hull_3d`, `Plane3`, and `polyhedron_volume6` cover 3D contest geometry. |
+| 36 | Exact homogeneous / rational points (`Hom(x, y, w)`) | **out** | Specialized to exact line-arrangement graphs; belongs in `std.math` (`Frac`) or `examples/local-lib/` rather than duplicating every 2D primitive. |
+| 37 | Generic sweep-line event framework | **out** | Sweep state transitions are problem-specific; concrete sweeps (`any_segments_meet`, `circles_union_area`, `rects_union_area`, `point_location_planar`) and exact keys (`ByAngle`, `turn`) stay composable. |
+| 38 | Spatial hashing / quadtrees / BVH | **out** | Heuristic acceleration structures; `closest_pair` and `delaunay` cover exact proximity. |
+| 39 | Ellipses, Bezier curves, and general conics | **out** | Rare in contests; affine scaling reduces ellipses to circles and ternary search handles general smooth curves. |
+| 40 | 3D dynamic convex hull / 3D Delaunay / 3D Voronoi | **out** | Outside standard contest scope; O(n^2) static `convex_hull_3d` suffices. |
+| 41 | Sub-polygon chord-area prefix structure | **out** | Two lines composing `Prefix<D, Int>` over `cross(poly[i], poly[i.next])`; no standalone type needed. |
+
+Totals: **16 have**, **15 new**, **10 out** (41 topics).
+
+## Cross-area
+
+### Construction and naming coherence
+- **Construction convention:** Plain positional constructors `T(...)` for all value types (`Pt(x, y)`, `Pt3(x, y, z)`, `Vec(x, y)`, `Vec3(x, y, z)`, `Circle(c, r)`, `HalfPlane(p, dir)`, `Plane3(n, d)`, `Rect(x, y)`, `ByAngle(p)`, `ByAngleFrom(base, p)`) and empty constructor `OnlineHull()` for stateful structures (matching `Dsu()`, `MinHeap()`, `IntervalMap()` in `plan/STDLIB.md` §2). Alternate representations use named factories (`HalfPlane.through`, `HalfPlane.from_line`, `Circle.through`, `Plane3.through`, `Vec.from_angle`).
+- **Argument vocabulary:** `strict: Bool = false`, `collinear: Bool = false`, `inner: Bool = false`, `from: Pt = Pt(1, 0)`, `by: Vec`, `bound: ?F64 = none`, `eps: F64 = 1e-9` — no `_by` or `_with` twins. Domain-indexed twins of `List<Pt>` functions consistently use `_idx` (`convex_hull_idx`, `lower_hull_idx`, `upper_hull_idx`, `any_segments_meet_idx`, `convex_hull_3d_idx`); domain-first functions (`closest_pair<D>`, `farthest_pair<D>`, `manhattan_mst<D>`, `delaunay<D>`, `voronoi_cells<D>`, `planar_faces<V>`) keep the base name.
+- **Method parity across vector types:** Adding `.dot(o)`, `.cross(o)`, `.dist2(o)`, `.dist(o)` on `Pt`, `Vec`, `Pt3`, and `Vec3` removes the `dot`/`vdot`/`dot3` split at method call sites while preserving short free functions `dot`/`cross`/`turn` for `Pt`.
+
+### Cross-area name boundaries and collisions
+- **`dist` (`std.geometry` vs `std.tree.Rooted.dist` / `std.graph`):** `std.geometry.dist(a: Pt, b: Pt) -> F64` is a free function (and `.dist(o)` method on `Pt`/`Vec`/`Pt3`/`Vec3`); `Rooted.dist(a: V, b: V) -> Int` is a method on `Rooted`. No collision when `dist` is called as a method or imported explicitly.
+- **`Line` / convex hull trick (`std.dp` vs `std.geometry`):** `std.dp` (4.16) owns `Line(k, m)` and `LiChao` for 1D linear DP envelopes. `std.geometry` deliberately omits a `Line` struct (using `HalfPlane` or endpoint pairs `(a, b)`) and restricts `OnlineHull` to 2D integer point hulls.
+- **`PI`, `close`, `sign_eps` (`std.geometry` vs `std.math`):** `PI` belongs canonically in `std.math` (also needed by FFT in `std.ntt`) and is re-exported by `std.geometry` to avoid duplication. `close` and `sign_eps` live in `std.geometry` today; if `std.math` adds floating-point root-finding or ternary search, they should move to `std.math` with re-exports here.
+- **`Range<Int>` (`core` / `std.interval` vs `std.geometry.Rect`):** `Rect(x: Range<Int>, y: Range<Int>)` reuses core `Range<Int>` (and cut-range conversion per decision 124) instead of defining a second interval type.
+- **`manhattan_mst` and `planar_faces` (`std.geometry` vs `std.graph`):** Owned by `std.geometry` because both are driven by geometric sweeps / angular sorting (`ByAngle`) and return plain edge lists or vertex cycles that compose directly with `std.graph` and `Dsu`.
+- **`std.prelude` slots:** Only `Pt` and `ByAngle` are in `std.prelude` (2 of 80 slots); all other names require `use std.geometry.{...}`.
+
+## Powers
+
+Language powers needed to write the full `std.geometry` spec without special cases or copies:
+
+1. **Trigonometric intrinsics (`sin`, `cos`, `acos`, `asin`)** (`decisions.md` §1.5; today only `atan2` exists).
+   - **Signatures:** `Vec.from_angle(rad: F64) -> Vec`, `Vec3.rot(self, axis: Vec3, rad: F64) -> Vec3`, `sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64`.
+   - **Smallest example:**
+     ```cp
+     let q = v.rot(by: Vec.from_angle(PI / 3.0))
+     ```
+2. **Protocols with associated types (`Indexed<Item = T>` / `Seq<Item = T>`).**
+   - **Signatures:** Generalizing read-only sequence inputs from `List<Pt>` / `List<Vec>` to `S: Indexed<Item = Pt>` / `S: Indexed<Item = Vec>` across `area2`, `area2_128`, `locate`, `locate_convex`, `lower_hull`, `upper_hull`, `convex_hull`, `minkowski_sum`, `minkowski_upper`, `minkowski_lower`, `hull_extreme`, `hull_tangents`, `hull_width`, `hull_line_intersect`, `diameter2`, `min_bounding_box`, `closest_pair2`, `polygon_area`, `polygon_cut`, `polygon_centroid`, `polygon_kernel`, `polygon_triangulate`, `circle_polygon_area`, `pick_interior`, `pick_boundary`.
+   - **Smallest example:**
+     ```cp
+     let left = upper_hull(pref[lo..md])   // zero-copy slice of [D]Pt or List<Pt>
+     ```
+3. **Range-parameterized structs with defaults (`struct Pt<R = Int>(x: R, y: R)`).**
+   - **Signatures:** `Pt<R = Int>`, `Pt3<R = Int>` (packing `Pt<-1e9..=1e9>` into 8 bytes and carrying coordinate bounds for compile-time overflow proofs on `dot`/`cross`/`dist2`).
+   - **Smallest example:**
+     ```cp
+     let p: [V]Pt<1..=100> = read()
+     ```
+4. **Wide multiplication intrinsic (`mulhi` / exact 256-bit sign)** (`plan/STDLIB.md` §3 `[new, core lane]`).
+   - **Signatures:** `delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>`, `voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>` (exact degree-4 `incircle` determinant reaches `1.92e38` for `|coords| <= 1e9`, exceeding `I128.MAX = 1.70e38`).
+   - **Smallest example:**
+     ```cp
+     let tris = delaunay(pts)   // exact incircle for |x|, |y| <= 1e9
+     ```
+5. **Public `Read` protocol (`impl Read for T`).**
+   - **Signatures:** `impl Read for Vec`, `impl Read for Pt3`, `impl Read for Vec3`, `impl Read for Circle`, `impl Read for HalfPlane`, `impl Read for Rect` (today only `Pt` has compiler-assisted `Read`).
+   - **Smallest example:**
+     ```cp
+     let cs: [C]Circle = read()
+     ```
+6. **Half-open cut-range conversion (`Range<D.bounds>` -> `Range<D>`, decision 124).**
+   - **Signatures:** `Rect(x: Range<Int>, y: Range<Int>)` and passing `poly[j..i]` (with `j, i: D.bounds`) into `area2`, `upper_hull`, `lower_hull`, `locate`.
+   - **Smallest example:**
+     ```cp
+     let a = area2(poly[j..i])
+     ```
+7. **User-defined optional niches (`?Vec`, `?Pt`, `?Circle`, `?Rect`, `?Plane3`).**
+   - **Signatures:** `line_intersect(...) -> ?Vec`, `circumcenter(...) -> ?Vec`, `ray_hits_segment(...) -> ?Vec`, `Circle.through(...) -> ?Circle`, `incenter(...) -> ?Circle`, `Rect.intersect(...) -> ?Rect`, `OnlineHull.extreme(...) -> ?Pt`, `Plane3.through(...) -> ?Plane3`, `line_plane_intersect(...) -> ?Vec3` (avoids an extra 8-byte discriminant word; e.g. NaN-niche keeps `?Vec` at 16 B instead of 24 B).
+   - **Smallest example:**
+     ```cp
+     let hit: ?Vec = line_intersect(a, b, c, d)
+     ```
+
+## Dreams
+
+Audit of every dream in `proto/ports/*/dream/` that touches `std.geometry`:
+
+1. **`proto/ports/ecnerwala/dream/cf1146h.cp`**
+   - Uses `use std.geometry.{Pt, turn}`, `[V]Pt = read()`, `turn(pts[i], pts[j], pts[k]) > 0`.
+   - **Status:** Every API is in the spec (`[have]`) with identical spelling.
+2. **`proto/ports/ecnerwala/dream/cf1284e.cp`**
+   - Uses `use std.geometry.{cross}`, `[V]Pt = read()`, `pts[v] - pts[c]`, `.sorted(by: ByAngle)`, `cross(r, s) > 0`.
+   - **Status:** Every API is in the spec (`[have]`) with identical spelling (`Pt` and `ByAngle` are in `std.prelude`).
+3. **`proto/ports/ecnerwala/dream/cf2138f.cp`**
+   - Uses `use std.geometry.Vec`, `Vec(p, q)`, `(a - b).len`, `t / k`, `d * (i - 1)`, `t.unit`, `Map<Vec, Int>`.
+   - **Status:** All geometry operations (`Vec`, `Add`, `Sub`, `Mul<F64>`, `Div<F64>`, `.len`, `.unit`) are in the spec (`[have]`). Two dream idioms differ intentionally by spec rule (§2): integer arguments to `Vec` / scalar ops require explicit `F64(...)` (or `Pt(p, q).to_vec`) so exact ints never silently widen to float, and `Vec` omits `Eq`/`Hash` (so the compiling port tracks integer point IDs instead of `Map<Vec, Int>`).
+4. **`proto/ports/ecnerwala/dream/cf2178i.cp`**
+   - Uses `let p: [V]Vec2<1..=100> = read()` and `(p[u] - p[v]).norm2 == k`.
+   - **Status:** Spelled `Pt` today (`[have]` in `std.prelude`, with `Sub` and `.norm2`), and `Pt<1..=100>` once range-parameterized structs (`## Powers` #3) land — `std.geometry` spells the integer 2D point type `Pt`, not `Vec2`.
 

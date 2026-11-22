@@ -70,6 +70,19 @@ pub struct HoverEntry {
     pub owner: Option<String>,
 }
 
+/// An index the types prove in bounds: each index is a position of the
+/// domain the array is declared over.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct TypedIndex {
+    /// `dist[v]` and `dist`.
+    pub access: Span,
+    pub seq: Span,
+    /// `v`, or every index of `g[r, c]`.
+    pub index: Span,
+    /// `v: V, the index space of dist`.
+    pub proof: String,
+}
+
 /// A use of a top-level name.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GlobalRef {
@@ -98,6 +111,8 @@ pub(crate) struct Checker<'a> {
     /// checked.
     steps: cpl_syntax::order::Steps,
     refs: Vec<GlobalRef>,
+    pub(crate) typed_indexes: Vec<TypedIndex>,
+    pub(crate) fixed_io: Vec<Span>,
     /// Name, return type, whether declared, and scope depth at fn entry.
     fns: Vec<(String, Ty, bool, usize)>,
     /// For each of `fns`: whether its body has given a value so far.
@@ -119,6 +134,8 @@ pub(crate) struct Checker<'a> {
     expected_bounds_range: bool,
     /// A `Range<V>` is expected here, so a half-open cut-ended literal is the piece.
     expected_piece: bool,
+    /// A `for` over `j..i` with two cut ends iterates cuts (§124).
+    iterating_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
     pub(crate) local_product_domains: HashMap<String, Vec<(Option<String>, Ty)>>,
     /// Structs and enums declared inside a fn body, visible to the whole block.
@@ -126,12 +143,20 @@ pub(crate) struct Checker<'a> {
     /// The types a lambda passed to a built-in method gives its unwritten
     /// parameters, from the method's catalog row, by the lambda's span.
     lambda_params: Vec<(Span, Vec<Ty>)>,
+    /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
+    /// mapped to the span of the move (§128).
+    pub(crate) moved: HashMap<String, Span>,
+    /// Span of the bare name on the LHS of a plain assignment `x = ...`,
+    /// which overwrites `x` rather than reading it.
+    pub(crate) assigning_name: Option<Span>,
 }
 
 pub(crate) struct Checked {
     pub diagnostics: Vec<Diagnostic>,
     pub hovers: Vec<HoverEntry>,
     pub refs: Vec<GlobalRef>,
+    pub typed_indexes: Vec<TypedIndex>,
+    pub fixed_io: Vec<Span>,
 }
 
 impl<'a> Checker<'a> {
@@ -148,6 +173,8 @@ impl<'a> Checker<'a> {
             mutators: narrow::Mutators::default(),
             steps: Default::default(),
             refs: Vec::new(),
+            typed_indexes: Vec::new(),
+            fixed_io: Vec::new(),
             fns: Vec::new(),
             gives: Vec::new(),
             in_fn: 0,
@@ -157,9 +184,48 @@ impl<'a> Checker<'a> {
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             expected_piece: false,
+            iterating_range: false,
             local_product_domains: HashMap::new(),
             local_defs: HashMap::new(),
             lambda_params: Vec::new(),
+            moved: HashMap::new(),
+            assigning_name: None,
+        }
+    }
+
+    /// True if `ty` is a heap-owning type whose binding `let b = a` moves `a` (§128).
+    pub(crate) fn is_heap_type(&mut self, ty: &Ty) -> bool {
+        self.is_heap_type_depth(ty, 0)
+    }
+
+    fn is_heap_type_depth(&mut self, ty: &Ty, depth: usize) -> bool {
+        if depth > 4 {
+            return false;
+        }
+        match ty {
+            Ty::Str | Ty::Array { .. } => true,
+            Ty::Named { name, .. }
+                if matches!(
+                    name.as_str(),
+                    "List" | "Map" | "Set" | "Deque" | "Heap" | "Counter"
+                ) =>
+            {
+                true
+            }
+            Ty::Named { name, .. } => {
+                let field_tys: Vec<Ty> = match self.env.global(name).as_deref() {
+                    Some(Def::Struct { fields, .. }) => {
+                        fields.iter().map(|f| f.ty.clone()).collect()
+                    }
+                    _ => Vec::new(),
+                };
+                field_tys
+                    .iter()
+                    .any(|ft| self.is_heap_type_depth(ft, depth + 1))
+            }
+            Ty::Tuple(ts) => ts.iter().any(|t| self.is_heap_type_depth(t, depth + 1)),
+            Ty::Optional(inner) => self.is_heap_type_depth(inner, depth + 1),
+            _ => false,
         }
     }
 
@@ -226,6 +292,8 @@ impl<'a> Checker<'a> {
             diagnostics: self.sink.finish(),
             hovers: self.hovers,
             refs: self.refs,
+            typed_indexes: self.typed_indexes,
+            fixed_io: self.fixed_io,
         }
     }
 
@@ -247,6 +315,14 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Reports syntax the parser read but the checker can't give a meaning
+    /// to yet, as `not implemented yet: <feature>`.
+    pub(crate) fn planned(&mut self, span: Span, planned: &cpl_syntax::planned::Planned) {
+        if let Some(diag) = self.error(codes::NOT_IMPLEMENTED, span, planned.message()) {
+            diag.help = Some(planned.now.into());
+        }
+    }
+
     fn error(&mut self, code: Code, span: Span, message: String) -> Option<&mut Diagnostic> {
         if self.sink.encloses_poison(span) {
             return None;
@@ -261,12 +337,15 @@ impl<'a> Checker<'a> {
     /// Runs `f` without keeping what it reports or records: for reading a
     /// type out of code that is checked, and reported, somewhere else.
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let (hovers, refs) = (self.hovers.len(), self.refs.len());
+        let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
+        let fixed = self.fixed_io.len();
         let sink = std::mem::replace(&mut self.sink, Sink::new());
         let out = f(self);
         self.sink = sink;
         self.hovers.truncate(hovers);
         self.refs.truncate(refs);
+        self.typed_indexes.truncate(typed);
+        self.fixed_io.truncate(fixed);
         out
     }
 
@@ -417,6 +496,7 @@ impl<'a> Checker<'a> {
             decl: Some(span),
             owner: None,
         });
+        self.moved.remove(name);
         self.scopes.last_mut().unwrap().insert(
             name.to_string(),
             Local {
@@ -432,6 +512,17 @@ impl<'a> Checker<'a> {
     /// The type of a name as a value. One that a test has shown to hold a
     /// value is the value it holds (see [`cpl_syntax::narrow`]).
     fn name_ty(&mut self, name: &str, span: Span) -> Ty {
+        if self.assigning_name != Some(span) && self.moved.contains_key(name) {
+            if let Some(diag) = self.error(
+                codes::USE_AFTER_MOVE,
+                span,
+                format!("`{name}` was already moved"),
+            ) {
+                diag.help = Some(format!(
+                    "use `{name}.copy()` where it was moved if you still need `{name}`"
+                ));
+            }
+        }
         let hover = self.hovers.len();
         let written = std::mem::take(&mut self.as_written);
         match self.name_ty_as_written(name, span) {
@@ -564,13 +655,23 @@ impl<'a> Checker<'a> {
             }
             _ => None,
         };
-        let suggestion = closest(name, candidates.iter().map(String::as_str));
+        // A capitalized name is a type or a variant, never a typo for a
+        // lowercase local (`Rope` for `rope`).
+        let capital = |s: &str| s.starts_with(|c: char| c.is_ascii_uppercase());
+        let suggestion = closest(name, candidates.iter().map(String::as_str))
+            .filter(|s| !capital(name) || capital(s));
         // Neither here nor in `stdlib/`: say so, and offer the closest
         // library name, since a program reaching for a helper that does not
         // exist yet usually means one that does under another name.
         // No stdlib export is one character long, and contest code is full
         // of one-letter locals, so "not in the stdlib" there is only noise.
-        let unknown = suggestion.is_none()
+        // A type only close to a built-in one (`Max` for `Map`) is more
+        // likely a library type that doesn't exist yet than a typo.
+        let near_builtin = !value
+            && suggestion.as_deref().is_some_and(|s| {
+                prelude::TYPE_NAMES.contains(&s) || prelude::STD_NAMES.iter().any(|(n, _)| *n == s)
+            });
+        let unknown = (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
             && name != "enumerate"
@@ -698,7 +799,9 @@ impl<'a> Checker<'a> {
                 _ => return,
             },
         };
-        if mutable {
+        // A binding the parser could not fully read, such as `(var a, b)`,
+        // says nothing reliable about whether it may change.
+        if mutable || decl.is_some_and(|d| self.sink.is_poisoned(d)) {
             return;
         }
         let (what, help) = match keyword {
@@ -729,6 +832,7 @@ impl<'a> Checker<'a> {
         } else {
             format!("{subject} is {what}, so it can't be {action}")
         };
+        let var_at = decl.filter(|_| keyword == "let").and_then(|d| let_before(self.src, d));
         if let Some(diag) = self.error(codes::ASSIGN_TO_LET, span, message) {
             diag.help = Some(help);
             if let Some(decl) = decl {
@@ -736,9 +840,26 @@ impl<'a> Checker<'a> {
                     span: decl,
                     message: "declared here".into(),
                 });
+                if let Some(at) = var_at {
+                    diag.fixes.push(cpl_diag::Fix {
+                        title: format!("declare `{name}` with `var`"),
+                        edits: vec![(at, "var".into())],
+                    });
+                }
             }
         }
     }
+}
+
+/// The `let` keyword on the line of `name` in `src`, before it: where
+/// "declare it with `var`" edits.
+pub(crate) fn let_before(src: &str, name: Span) -> Option<Span> {
+    let head = src.get(..name.start as usize)?;
+    let line = head.rfind('\n').map_or(0, |i| i + 1);
+    let at = line + head[line..].rfind("let")?;
+    let word = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric() && c != '_');
+    (word(head[..at].chars().last()) && word(head[at + 3..].chars().next()))
+        .then(|| Span::new(at as u32, at as u32 + 3))
 }
 
 /// `fn peel(s: [D]Bool)`: a single capital letter is a type parameter
@@ -748,7 +869,7 @@ pub(crate) fn is_implicit_generic(name: &str) -> bool {
 }
 
 /// The candidate closest to `name`, if it is close enough to be a typo.
-pub(crate) fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
+pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
     let limit = match name.chars().count() {
         0 | 1 => return None,
         2..=4 => 1,
@@ -758,7 +879,8 @@ pub(crate) fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>)
         .filter(|c| *c != name)
         .map(|c| (edit_distance(name, c), c))
         .filter(|(d, _)| *d <= limit)
-        .min_by_key(|(d, c)| (*d, c.to_string()))
+        // A word stopped short (`sorte`) means the longer name.
+        .min_by_key(|(d, c)| (*d, !c.starts_with(name), c.to_string()))
         .map(|(_, c)| c.to_string())
 }
 

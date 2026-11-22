@@ -12,6 +12,7 @@
 
 use std::sync::OnceLock;
 
+use cpl_diag::Span;
 use cpl_syntax::ast;
 
 use crate::ty::{Param, Ty};
@@ -190,6 +191,38 @@ pub fn value(name: &str) -> Option<Ty> {
     })
 }
 
+/// The doc of a prelude value the compiler defines, for a call with `args`
+/// arguments or, with `None`, the value itself: `min(xs)` walks `xs` where
+/// `min(a, b)` compares two values. `fixed` says the checker found the
+/// values a `print` or `read` handles are of a fixed size.
+pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'static str> {
+    Some(match (name, args) {
+        ("print", _) if fixed => "Writes its arguments and a newline, in O(1) for numbers, characters and tuples of them.",
+        ("print", _) => "Writes its arguments and a newline, lists space-separated and grids by row, in time linear in what it writes.",
+        ("read", _) if fixed => "Reads the next value of the type it is bound to, in O(1) for a number, a character or a tuple of them.",
+        ("read", _) => "Reads the next value of the type it is bound to, in time linear in what it reads.",
+        ("ask", _) if fixed => "Writes a query of its arguments, flushes and reads the judge's reply, in O(1) for numbers, characters and tuples of them, not counting the judge's own time.",
+        ("ask", _) => "Writes a query of its arguments, flushes and reads the judge's reply, in time linear in what it writes and reads, not counting the judge's own time.",
+        ("Int" | "I128" | "U64" | "F64" | "Char" | "Bool", Some(1)) if fixed => "Converts a number, character or `Bool` to this type, in O(1).",
+        ("rand", Some(0 | 2)) => "A random `Int`, from `lo` to `hi` when given, in O(1).",
+        ("abs", _) => "The absolute value, in O(1).",
+        ("min", Some(1)) => "The smallest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
+        ("max", Some(1)) => "The largest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
+        ("min", _) => "The smallest of its arguments, in O(1) per argument; `min(xs)` gives the smallest element of `xs`.",
+        ("max", _) => "The largest of its arguments, in O(1) per argument; `max(xs)` gives the largest element of `xs`.",
+        ("minmax", Some(2) | None) => "`(min(a, b), max(a, b))`, in O(1).",
+        ("choose2", _) => "`n * (n - 1) / 2` for `n >= 2`, else `0`. O(1).",
+        ("popcount", _) => "The number of 1 bits, in O(1).",
+        ("ctz", _) => "The number of 0 bits below the lowest 1 bit, in O(1).",
+        ("bit_width", _) => "The number of bits needed to write the value, in O(1).",
+        ("bit_ceil", _) => "The smallest power of two that is at least the value, in O(1).",
+        ("isqrt", _) => "The largest `r` with `r * r <= n`, in O(1).",
+        ("swap", _) => "Exchanges the values of two `mut` places, in O(1) whatever their size.",
+        ("some", _) => "The value as a present `?T`, in O(1).",
+        _ => return None,
+    })
+}
+
 /// A prelude type by name.
 pub fn ty(name: &str) -> Option<Ty> {
     Some(match name {
@@ -328,6 +361,39 @@ pub fn std_module(name: &str) -> Option<&'static str> {
         .binary_search_by(|(known, _)| (*known).cmp(name))
         .ok()
         .map(|at| STD_NAMES[at].1)
+}
+
+/// The edit that brings `name` in from `std.<module>`: into the braces of
+/// the file's `use std.<module>.{..}` when it has one, else as a line after
+/// its last top-level `use`, else above its first line of code.
+pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
+    let head = format!("use std.{module}.{{");
+    let mut after_uses = None;
+    let mut first_code = None;
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        let end = at + line.len();
+        let body = line.trim_end();
+        if let Some(close) = body.strip_prefix(&head).and_then(|_| body.rfind('}')) {
+            let inside = body[head.len()..close].trim();
+            let edit = if inside.is_empty() { name.to_string() } else { format!(", {name}") };
+            let close = (at + close) as u32;
+            return (Span::point(close), edit);
+        }
+        if body.starts_with("use ") {
+            after_uses = Some(end);
+        } else if first_code.is_none() && !body.trim_start().is_empty() && !body.trim_start().starts_with("//") {
+            first_code = Some(at);
+        }
+        at = end;
+    }
+    let line = format!("use std.{module}.{{{name}}}\n");
+    match (after_uses, first_code) {
+        (Some(end), _) if !text[..end].ends_with('\n') => (Span::point(end as u32), format!("\n{line}")),
+        (Some(end), _) => (Span::point(end as u32), line),
+        (None, Some(start)) => (Span::point(start as u32), line),
+        (None, None) => (Span::point(text.len() as u32), line),
+    }
 }
 
 /// Every public name of `stdlib/` and its module, sorted by name.

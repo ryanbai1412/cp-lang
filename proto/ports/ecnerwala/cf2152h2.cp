@@ -51,9 +51,7 @@ fn raise(h: ?Int, d: Int) -> ?Int:
     var rest = h
     var (pos, slope, val) = (br.at[h!], 0, 0)  // F(pos) = val, slope just right of pos
     while let b = rest and val + slope * (br.at[b] - pos) < br.at[b] - d:
-        val += slope * (br.at[b] - pos)
-        pos = br.at[b]
-        slope += br.cnt[b]
+        (val, pos, slope) = (val + slope * (br.at[b] - pos), br.at[b], slope + br.cnt[b])
         rest = br.rest(b)
     let (step, part) = ((pos - val - d) / (slope - 1), (pos - val - d) % (slope - 1))
     let cross = pos + step

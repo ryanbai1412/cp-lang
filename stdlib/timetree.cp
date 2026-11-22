@@ -138,7 +138,7 @@ pub fn offline_over<E, M, R>(
     for ev in items:
         let (lo, hi) = by(ev)
         tt.add_interval(lo, hi, ev)
-    tt.run(mark: mark, apply: apply, answer: answer, undo: undo)
+    tt.run(mark:, apply:, answer:, undo:)
 
 @test
 fn timetree_dynamic_connectivity_with_rollback_dsu():

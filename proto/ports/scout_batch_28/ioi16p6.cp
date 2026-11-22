@@ -14,7 +14,7 @@ let points: [n](r: 0..m, c: 0..m) = read()
 
 var spans: List<(lo: Int, hi: Int)> = []
 for (lo, far) in sorted([(min(r, c), -max(r, c)) for (r, c) in points]):
-    if spans.len == 0 or -far > spans.last!.hi: spans.push((lo: lo, hi: -far))
+    if spans.len == 0 or -far > spans.last!.hi: spans.push((lo:, hi: -far))
 let cnt = spans.len
 
 type Plan = (cost: Int, photos: Int)             // ordered by cost, then by photos

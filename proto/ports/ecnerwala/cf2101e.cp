@@ -31,16 +31,12 @@ struct Best<V>:
         let top = far ?? return none
         if top.branch == br: other else: some(top.depth)
 
-fn deeper(a: ?Int, b: ?Int) -> ?Int:
-    if let x = a, let y = b: return max(x, y)
-    a ?? b
-
 fn merge<V>(a: Best<V>, o: Best<V>) -> Best<V>:
     let x = a.far ?? return o
     let y = o.far ?? return a
-    if x.branch == y.branch: Best((max(x.depth, y.depth), x.branch), deeper(a.other, o.other))
-    elif y.depth > x.depth: Best(y, deeper(x.depth, o.other))
-    else: Best(x, deeper(a.other, y.depth))
+    if x.branch == y.branch: Best((max(x.depth, y.depth), x.branch), max(a.other, o.other))
+    elif y.depth > x.depth: Best(y, max(some(x.depth), o.other))
+    else: Best(x, max(a.other, some(y.depth)))
 
 @!multitest
 let n: 1..=70_000 = read()
@@ -55,13 +51,14 @@ var max_budget: [V]Int = [V] v => if s[v] == '1': n else: 0
 for round in 2..:
     var next_dist: [V]Int = 0
     for c in V:
-        let max_d = max(d for (_, d, _) in cd.piece(c)) ?? 0
+        let piece = cd.piece(c)
+        let max_d = max(d for (_, d, _) in piece) ?? 0
         var bests = List.filled(max_d + 1, Best<V>(none, none))
-        for (u, d, br) in cd.piece(c) if max_budget[u] > 0 and max_budget[u] >= d:
+        for (u, d, br) in piece if max_budget[u] > 0 and max_budget[u] >= d:
             let idx = min(max_d, max_budget[u] - d)
             bests[idx] = merge(bests[idx], Best((d, br), none))
         bests.suffix_scan_in_place((a, b) => merge(a, b))
-        for (u, d, br) in cd.piece(c) if s[u] == '1':
+        for (u, d, br) in piece if s[u] == '1':
             if let far = bests[d].best_other(br): next_dist[u] max= d + far
 
     let reached = [v for v in V if next_dist[v] > 0]

@@ -493,7 +493,7 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
         (none, none, 0),
         ccc_compose,
         ccc_apply,
-        over: over,
+        over:,
     )
     domain V = 0..11
     var a = [V] v => rand(-10, 10)
@@ -627,7 +627,7 @@ fn dual_segtree_non_commutative_tags_match_brute():
         id: (1, 0),
         compose: (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
         apply: (f, x) => f.0 * x + f.1,
-        a: a,
+        a:,
     )
     for _ in 0..100:
         let kind = rand(0, 3)

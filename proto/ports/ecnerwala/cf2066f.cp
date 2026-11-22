@@ -1,126 +1,117 @@
-// Greedily extract the maximum-sum subarray of still-unreplaced elements of a
-// (giving value v). Each extracted block can expand into any subarray of b with
-// max-subarray-sum <= v; one chosen block may instead hold [v] and expand into
-// any subarray of b as the final operation. DP checks if a splits into b.
+// Codeforces 2066 F: Curse.
+// The cool partition splits a at its widest maximum-sum segment and recurses on
+// the two sides. An operation only ever replaces one cool segment whole, and never
+// raises the sum the next operation may pick. So b is reachable iff, for some
+// threshold x among the segment sums, b is the cool segments in order where
+//   - a segment with sum < x stays as it is,
+//   - a segment with sum >= x becomes a non-empty array with max subarray sum <= x,
+//   - except one, the free segment, which becomes anything non-empty.
+// For each threshold, largest first, `came[k, j, spent]` is how the segments
+// before cut k make b[..j], the free segment spent or not. A tame piece that may
+// start at cut j may start at any later cut too (a subarray's max subarray sum is
+// no larger), so the latest reachable start is the only one to try.
+//
+// Output: replace the segments with sum >= x in decreasing sum order, the free one
+// by [x], then replace [x] by its piece. Each step replaces a maximum-sum segment.
 @!multitest
-struct Op(l: Int, r: Int, vals: List<Int>)
-struct Prev(i: Int, j: Int, after: Bool)
+use std.algebra.{MaxSub}
+domain PosA = read(1..=500)
+domain PosB = read(1..=500)
+let a: [PosA]-1e6..=1e6 = read()
+let b: [PosB]-1e6..=1e6 = read()
 
-let (n, m): (1..=500, 1..=500) = read()
-domain PosA = 0..n
-domain PosB = 0..m
-domain CutA = 0..=n
-domain CutB = 0..=m
+fn widest_max(r: Range<PosA>) -> Range<PosA>:
+    let f = r.first!
+    var best = (a[f], 1, f.l..f.r)
+    var (start, run) = (r.start, 0)
+    for i in r:
+        if run < 0: (start, run) = (i.l, 0)
+        run += a[i]
+        let key = (run, i.r.ord - start.ord, start..i.r)
+        if (key.0, key.1) >= (best.0, best.1): best = key
+    best.2
 
-type Val = -1_000_000..=1_000_000
-let a: [PosA]Val = read()
-let b: [PosB]Val = read()
+fn cool(r: Range<PosA>) -> List<Range<PosA>>:
+    if r.is_empty: return []
+    let m = widest_max(r)
+    cool(r.start..m.start) + [m] + cool(m.end..r.end)
 
-var max_sub: [CutB, CutB]Int = 0
-for i in 0..m:
-    var cur_sum = b[PosB(i)]
-    var best_sum = b[PosB(i)]
-    for j in i..m:
-        if j > i:
-            if cur_sum < 0: cur_sum = 0
-            cur_sum += b[PosB(j)]
-            best_sum max= cur_sum
-        max_sub[CutB(i), CutB(j + 1)] = best_sum
+let spans = cool(PosA.first..=PosA.last)
+domain Seg = 0..spans.len
+let span = [Seg] s => spans[s.ord]
+let total = [Seg] s => a[span[s]].sum()
 
-var alive: [PosA]Bool = true
-var block_end: [PosA]?Int = none
-var blocks: List<(Int, Int)> = []
-var valid_end: [PosB]Int = m
+var mss: [PosB.bounds, PosB.bounds]Int = 0
+for l in PosB:
+    var acc = MaxSub.empty()
+    for r in l..=PosB.last:
+        acc = acc + MaxSub.of(b[r])
+        mss[l.l, r.r] = acc.best
 
-fn next_block() -> ?(Int, Int, Int):
-    var best: ?(Int, Int, Int) = none
-    var cur_start: ?Int = none
-    var cur_sum = 0
-    for i in 0..n:
-        if not alive[PosA(i)]:
-            cur_start = none
-            continue
-        if cur_start == none or cur_sum < 0:
-            cur_start = i
-            cur_sum = 0
-        cur_sum += a[PosA(i)]
-        if best == none or cur_sum >= best!.2:
-            best = (cur_start!, i + 1, cur_sum)
-    best
+// agree[i, j]: how long a from cut i and b from cut j run equal.
+var agree: [PosA.bounds, PosB.bounds]Int = 0
+for p in PosA.rev:
+    for q in PosB.rev:
+        if a[p] == b[q]: agree[p.l, q.l] = agree[p.r, q.r] + 1
 
-fn try_match(best_sum: Int) -> ?List<Op>:
-    var dp0: [CutA, CutB]?Prev = none
-    var dp1: [CutA, CutB]?Prev = none
-    dp0[CutA(0), CutB(0)] = Prev(0, 0, false)
-    var i = 0
-    while i < n:
-        if let ni = block_end[PosA(i)]:
-            var nxt0 = 0
-            var nxt1 = 0
-            for j in 0..m:
-                nxt0 max= j + 1
-                nxt1 max= j + 1
-                let vend = valid_end[PosB(j)]
-                if dp0[CutA(i), CutB(j)] != none:
-                    while nxt0 <= vend:
-                        dp0[CutA(ni), CutB(nxt0)] = Prev(i, j, false)
-                        nxt0 += 1
-                    while nxt1 <= m:
-                        dp1[CutA(ni), CutB(nxt1)] = Prev(i, j, false)
-                        nxt1 += 1
-                if dp1[CutA(i), CutB(j)] != none:
-                    while nxt1 <= vend:
-                        dp1[CutA(ni), CutB(nxt1)] = Prev(i, j, true)
-                        nxt1 += 1
-            i = ni
+fn matches(j: PosB.bounds, s: Seg) -> ?PosB.bounds =
+    if agree[span[s].start, j] >= span[s].len: some(PosB.bounds.nth(j.ord + span[s].len)) else: none
+
+struct Back(from: PosB.bounds, spent: Bool)
+struct Plan(piece: [Seg]Range<PosB>, free: Seg)
+
+fn plan(x: Int) -> ?Plan:
+    var came: [Seg.bounds, PosB.bounds, Bool]?Back = none
+    fn fit(k: Seg.bounds, j: PosB.bounds, spent: Bool) -> Bool =
+        came[k, j, spent] != none or (
+            k == Seg.bounds.first and j == PosB.bounds.first and not spent
+        )
+    for s in Seg:
+        if total[s] < x:
+            for spent in [false, true]:
+                for j in PosB.bounds:
+                    if let k = matches(j, s) and fit(s.l, j, spent):
+                        came[s.r, k, spent] = Back(j, spent)
         else:
-            for j in 0..m if b[PosB(j)] == a[PosA(i)]:
-                if dp0[CutA(i), CutB(j)] != none:
-                    dp0[CutA(i + 1), CutB(j + 1)] = Prev(i, j, false)
-                if dp1[CutA(i), CutB(j)] != none:
-                    dp1[CutA(i + 1), CutB(j + 1)] = Prev(i, j, true)
-            i += 1
+            for spent in [false, true]:
+                var latest: ?PosB.bounds = none
+                for j in PosB.bounds:
+                    if let i = latest and mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
+                    if fit(s.l, j, spent): latest = j
+            if let i = PosB.bounds.first(j => fit(s.l, j, false)):
+                for j in PosB.bounds:
+                    if j > i: came[s.r, j, true] = Back(i, false)
+    var at = Back(PosB.bounds.last, true)
+    if not fit(Seg.bounds.last, at.from, true): return none
+    var piece: [Seg]Range<PosB> = PosB.bounds.first..PosB.bounds.first
+    var free: ?Seg = none
+    for s in Seg.rev:
+        let back = came[s.r, at.from, at.spent]!
+        piece[s] = back.from..at.from
+        if back.spent != at.spent: free = s
+        at = back
+    Plan(piece, free!)
 
-    if dp1[CutA(n), CutB(m)] == none: return none
-
-    var repl: [PosA]List<Int> = []
-    var cur = Prev(n, m, true)
-    var final_op = Op(0, 0, [])
-    while cur.i > 0:
-        let prv = if cur.after: dp1[CutA(cur.i), CutB(cur.j)]! else: dp0[CutA(cur.i), CutB(cur.j)]!
-        let slice = [b[PosB(k)] for k in prv.j..cur.j]
-        if not prv.after and cur.after:
-            repl[PosA(prv.i)] = [best_sum]
-            final_op = Op(prv.j, prv.j + 1, slice)
-        else:
-            repl[PosA(prv.i)] = slice
-        cur = prv
-
-    var delta: [PosA]Int = 0
-    var ops: List<Op> = []
-    for (l, r) in blocks:
-        let st = l + sum(delta[PosA(z)] for z in 0..l)
-        delta[PosA(l)] = repl[PosA(l)].len - (r - l)
-        ops.push(Op(st, st + (r - l), repl[PosA(l)]))
-    ops.push(final_op)
-    ops
-
-fn solve() -> ?List<Op>:
-    while let (bl, br, best_sum) = next_block():
-        blocks.push((bl, br))
-        for i in bl..br: alive[PosA(i)] = false
-        block_end[PosA(bl)] = br
-        for i in 0..m:
-            let pi = PosB(i)
-            while valid_end[pi] > i and max_sub[CutB(i), CutB(valid_end[pi])] > best_sum:
-                valid_end[pi] -= 1
-        if let ops = try_match(best_sum): return ops
+let thresholds = total.sorted(desc: true).distinct()
+fn first_plan() -> ?(Int, Plan):
+    for t in thresholds:
+        if let p = plan(t): return some((t, p))
     none
 
-if let ops = solve():
-    print(ops.len)
-    for op in ops:
-        print(op.l + 1, op.r, op.vals.len)
-        print(op.vals)
-else:
+let (x, plan_x) = first_plan() else:
     print(-1)
+    return
+
+var len = [Seg] s => span[s].len
+fn start(s: Seg) -> Int = sum(len[t] for t in Seg if t < s)
+var ops: List<(Int, Int, List<Int>)> = []
+for s in Seg.filter(s => total[s] >= x).sorted(by: s => desc(total[s])):
+    let into = if s == plan_x.free: [x] else: b[plan_x.piece[s]].to_list()
+    ops.push((start(s) + 1, start(s) + len[s], into))
+    len[s] = into.len
+ops.push((start(plan_x.free) + 1, start(plan_x.free) + 1, b[plan_x.piece[plan_x.free]].to_list()))
+
+print(ops.len)
+for (l, r, into) in ops:
+    print(l, r, into.len)
+    print(into)

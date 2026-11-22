@@ -37,7 +37,7 @@ struct Node:
 var arena: List<Node> = []
 
 fn make_node(is_e: Bool) -> Id:
-    let id: Id = arena.push_id(Node(is_e: is_e, pri: rand(0, 2_000_000_000), data: base_mat(is_e)))
+    let id: Id = arena.push_id(Node(is_e:, pri: rand(0, 2_000_000_000), data: base_mat(is_e)))
     id
 
 fn size_of(t: ?Id) -> Int = if let u = t: arena[u].sz else: 0

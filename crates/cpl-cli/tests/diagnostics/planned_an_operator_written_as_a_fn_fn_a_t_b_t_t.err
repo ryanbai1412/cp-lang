@@ -1,7 +1,0 @@
-error[E0108]: expected a fn name after `fn`, found `(`
-  --> planned_an_operator_written_as_a_fn_fn_a_t_b_t_t.cp:2:4
-  |
-2 | fn (a: P) ^ (b: P) -> P = P(a.x ^ b.x)
-  |    ^
-
-planned_an_operator_written_as_a_fn_fn_a_t_b_t_t.cp: 1 error

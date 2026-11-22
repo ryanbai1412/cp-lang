@@ -28,26 +28,25 @@ fn raise(l: 1..=31, x: Int) -> Int:
     l + 2 * y - (y >> (l - 1)) - popcount(y & ((1 << (l - 1)) - 1))
 
 // Convert a compressed cut run `r` into its `(a[s] * 2^(l - 1), a[s - 1] * 2^l]` X-range.
-fn x_range(first_cut: Int, next_idx: Int, l: 1..=31) -> (Int, Int):
-    let lo = (first_cut << (l - 1)) + 1
-    let hi = if next_idx < cuts.len: min(cap, cuts[cuts.D.nth(next_idx)] << (l - 1)) else: cap
-    (lo, hi)
+fn x_range(r: Range<cuts.D>, l: 1..=31) -> Range<Int>:
+    let lo = (cuts[r.first!] << (l - 1)) + 1
+    let hi = if let nxt = r.last!.next: min(cap, cuts[nxt] << (l - 1)) else: cap
+    lo..=hi
 
 var ans: [q]Int = a.max()
 for l in 1..=31:
     var saved = IntervalMap<cuts.D, ?Int>.new(none)
-    let windows = [(s, e) for s in Pos if let e = s + (l - 1)].sorted(by: w => window.sum(w.0..=w.1))
-    for (s, e) in windows:
+    let windows = [(s, window.sum(s..=e)) for s in Pos if let e = s + (l - 1)].sorted(by: w => w.1)
+    for (s, total) in windows:
         let end = if let p = s.prev: cuts.at(2 * a[p]).l else: cuts.D.last.r
-        saved.assign(cuts.at(a[s]).l..end, window.sum(s..=e))
+        saved.assign(cuts.at(a[s]).l..end, total)
     var waiting = by_k
     for (r, opt) in saved.each().rev:
         if let best = opt:
-            let (_, j) = r.ends
-            let (lo, hi) = x_range(cuts[r.first!], j, l)
-            if lo <= hi:
-                let floor = raise(l, lo)
+            let xr = x_range(r, l)
+            if not xr.is_empty:
+                let floor = raise(l, xr.first!)
                 while let x = waiting.last, ks[x] + best >= floor:
-                    ans[x] max= (lo..=hi).last_true(h => raise(l, h) <= ks[x] + best)!
+                    ans[x] max= bsearch_last(xr, h => raise(l, h) <= ks[x] + best)!
                     waiting.pop()
 print(ans)

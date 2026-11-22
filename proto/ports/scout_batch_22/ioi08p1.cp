@@ -5,9 +5,10 @@
 // fewest operations and then the operations, one to a line.
 //
 // The words form a trie and the printer walks it, typing on the way down and
-// deleting on the way up. Only the last word is never deleted, so the walk
-// ends on a longest word: at every node the branch towards that word goes
-// last.
+// deleting on the way up. Every trie edge is traversed twice (down + '-')
+// except the edges on the path to the final word, which are never deleted, so
+// minimizing operations leaves a longest word last: at every node, defer the
+// child on the longest word's path until after all other branches.
 // original: corpus/submissions/5034409.cpp
 use std.strings.{Trie}
 
@@ -15,20 +16,20 @@ domain Letter = 'a'..='z'
 
 var trie = Trie<Letter>.new()
 
-let n: Int = read()
+let n: 1..=25_000 = read()
 domain Word = 1..=n
 let words: [Word]Str = read()
 var longest = ""
 for w in Word:
     let word = words[w]
+    trie.add([Letter(c) for c in word])
     if word.len > longest.len: longest = word
-    let _ = trie.add([Letter(c) for c in word])
 
-var on_longest = List.filled(trie.len, false)
+var on_longest: Set<Int> = Set()
 var at = trie.root
 for c in longest:
     at = trie.step(at, Letter(c))!
-    on_longest[at] = true
+    on_longest.add(at)
 
 var ops = ""
 fn type_out(at: Int):
@@ -36,9 +37,10 @@ fn type_out(at: Int):
     var kept: ?(Char, Int) = none
     for c in Letter:
         if let next = trie.step(at, c):
-            if on_longest[next]: kept = some((Char(c.label), next))
+            let ch = Char(c.label)
+            if next in on_longest: kept = some((ch, next))
             else:
-                ops.push(Char(c.label))
+                ops.push(ch)
                 type_out(next)
                 ops.push('-')
     if let (c, next) = kept:

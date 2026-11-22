@@ -7,7 +7,7 @@ var fairs: List<(t: Int, at: Int, gain: Int)> = []
 var top = home
 for _ in 0..n:
     let (t, at, gain): (Int, Int, Int) = read()
-    fairs.push((t: t, at: at, gain: gain))
+    fairs.push((t:, at:, gain:))
     top max= at
 fairs.push((t: 1 << 19, at: home, gain: 0))     // the trip ends back home
 fairs.sort()

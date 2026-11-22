@@ -24,10 +24,26 @@
   const compiler = document.createElement("script");
   compiler.textContent = data.compiler;
   document.head.append(compiler);
-  // The pages, assets and search index arrive as one gzip+base64 blob (site/bundle.py).
-  const packed = Uint8Array.from(atob(data.docs), c => c.charCodeAt(0));
-  const unpacked = new Blob([packed]).stream().pipeThrough(new DecompressionStream("gzip"));
-  Object.assign(data, JSON.parse(await new Response(unpacked).text()));
+  // The pages, assets and search index arrive as gzip+base64 blobs (site/bundle.py).
+  async function unpackBlob(b64) {
+    const packed = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const unpacked = new Blob([packed]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return JSON.parse(await new Response(unpacked).text());
+  }
+  Object.assign(data, await unpackBlob(data.docs));
+  const galleryNames = new Set(["ports.html", "exemplars.html"]);
+  let galleryShares = [];
+  let galleryLoaded = !data.gallery;
+  async function ensureGallery() {
+    if (galleryLoaded) return;
+    const gallery = await unpackBlob(data.gallery);
+    Object.assign(data.pages, gallery.pages || {});
+    galleryShares = gallery.shares || [];
+    galleryLoaded = true;
+  }
+  function hasPage(name) {
+    return Object.hasOwn(data.pages, name) || galleryNames.has(name);
+  }
   const parser = new DOMParser();
   const index = JSON.parse(data.search);
   for (const entry of index) {
@@ -49,7 +65,7 @@
   }
   function route() {
     const parts = location.hash.slice(1).split("#");
-    const name = Object.hasOwn(data.pages, parts[0]) ? parts[0] : "index.html";
+    const name = hasPage(parts[0]) ? parts[0] : "index.html";
     return {name, anchor:parts.slice(1).join("#")};
   }
   function scrollToAnchor() {
@@ -72,7 +88,7 @@
       }
       const [path, anchor] = href.split("#");
       const name = path ? path.split("/").pop() : activePage;
-      if (!Object.hasOwn(data.pages, name)) return;
+      if (!hasPage(name)) return;
       event.preventDefault();
       doc.querySelector("dialog[open]")?.close();
       const next = name + (anchor ? "#" + anchor : "");
@@ -82,11 +98,14 @@
     scrollToAnchor();
     frame.contentWindow.focus();
   });
-  function render() {
+  async function render() {
     const {name} = route();
     if (name === activePage) { scrollToAnchor(); return; }
+    if (galleryNames.has(name)) await ensureGallery();
     activePage = name;
-    let page = data.pages[name].replace(/#share-ref=(\d+)/g, (_, i) => shareHash(data.shares[i]));
+    let page = data.pages[name]
+      .replace(/#share-ref=(\d+)/g, (_, i) => shareHash(data.shares[i]))
+      .replace(/#gallery-share-ref=(\d+)/g, (_, i) => shareHash(galleryShares[i]));
     if (data.sidebar) {
       const side = data.sidebar.replace('href="' + name + '"', 'href="' + name + '" aria-current="page"');
       page = page.replace("<!--sidebar-->", () => side);

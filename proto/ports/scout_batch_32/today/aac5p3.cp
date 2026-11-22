@@ -4,8 +4,8 @@ let (n, m): (Int, Int) = read()
 var adj: List<List<(w: Int, v: Int)>> = [[] for _ in 0..n]
 for _ in 0..n - 1:
     let (u, v, w): (Int, Int, Int) = read()
-    adj[u - 1].push((w: w, v: v - 1))
-    adj[v - 1].push((w: w, v: u - 1))
+    adj[u - 1].push((w:, v: v - 1))
+    adj[v - 1].push((w:, v: u - 1))
 var xs: List<Int> = []
 for _ in 0..m:
     let x: Int = read()

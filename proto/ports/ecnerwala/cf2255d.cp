@@ -1,44 +1,44 @@
-// Codeforces 2255 D: bucket the values by ceil(log2 a). A greedy over the
-// buckets gives an answer that is at most one too large; then check directly
-// whether one step fewer is enough, always spending step i on the largest
-// bucket and splitting its smallest value when it sits exactly at level i+1.
-const B = 30
+// Codeforces 2255 D: bucket the values by level(x) = ceil(log2 x). A greedy
+// over the buckets in level order bounds the answer: after bucket i, carry
+// values are still uncleared, so the steps reach at least carry + i, and one
+// value is retired per level. That bound is at most one too large; check
+// directly whether steps ans-2, .., 0 suffice, always spending step i on the
+// largest bucket and splitting its smallest value when it sits exactly at
+// level i + 1.
+let max_a = 1e9
 
-fn level(x: Int) -> Int = bit_width(x - 1)
+fn level(x: 1..=max_a) -> Int = bit_width(x - 1)
+let top_level = level(max_a)
 
 @!multitest
 let n: 1..=2e5 = read()
-let a: [0..n]Int = read()
-var freq: [0..=B]Int = 0
-var least: [0..=B]Int = 1 << B
-for x in a:
+var freq: [0..=top_level]Int = 0
+var least: [0..=top_level]?Int = none
+
+fn add(x: 1..=max_a):
     let b = level(x)
     freq[b] += 1
-    least[b] min= x
+    least[b] = min(least[b] ?? x, x)
+
+for x in read<[n]1..=max_a>(): add(x)
 
 var ans = 0
 var carry = 0
-for i in 0..=B:
+for i in 0..=top_level:
     carry += freq[i]
     if carry > 0:
         ans max= carry + i
         carry -= 1
 
-// Can everything be cleared with steps ans-2, ans-3, .., 0?
 fn fewer() -> Bool:
-    var l = B
-    var i = ans - 2
-    while true:
-        while l >= 0 and freq[l] == 0: l -= 1
-        if l < 0: return true
-        if i == -1 or l > i + 1: return false
-        freq[l] -= 1
-        if l == i + 1:
-            if freq[l] > 0: return false
-            let rest = least[l] - (1 << i)
-            let b = level(rest)
-            freq[b] += 1
-            least[b] min= rest
-        i -= 1
+    var top = top_level
+    for i in (0..ans - 1).rev:
+        top = (0..=top).rev.first(b => freq[b] > 0) ?? return true
+        if top > i + 1: return false
+        freq[top] -= 1
+        if top == i + 1:
+            if freq[top] > 0: return false
+            add(least[top]! - (1 << i))
+    freq.all(f => f == 0)
 
-print(ans - Int(fewer()))
+print(if fewer(): ans - 1 else: ans)

@@ -37,7 +37,7 @@ else:
             ans[qi] = vals[cur.1]
             for j in l..=r: cnt[id[j]] -= 1
         else:
-            buckets[ceil_div(l, B)].push((l: l, r: r, qi: qi))
+            buckets[ceil_div(l, B)].push((l:, r:, qi:))
 
     for bi in 0..=nb if not buckets[bi].is_empty:
         buckets[bi].sort(by: e => e.r)

@@ -1,0 +1,8 @@
+warning[L0601]: `a[l]` is changed on the right side of an assignment to `a[l]`, and the two may be the same storage: both are the same part of it; Array.at lends disjoint parts only when `i != j`
+  --> lint_same_place_compound_alias.cp:9:17
+  |
+9 | a[l] += inc(mut a[l])
+  |                 ^^^^
+  = help: compute the right side first (`let t = ...`), then assign
+
+lint_same_place_compound_alias.cp: 1 warning

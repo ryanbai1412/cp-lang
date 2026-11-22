@@ -60,6 +60,8 @@ pub fn parse_item(src: &str, tokens: &[Token], base: u32, lexer_poison: Vec<Span
 pub(crate) struct Parser<'a> {
     /// The `var` parameters of the fn whose signature is being read.
     var_params: Vec<Name>,
+    /// `fn f((a, b): P)`: each pattern and the name its parameter gets.
+    param_patterns: Vec<(Pattern, Name)>,
     src: &'a str,
     tokens: &'a [Token],
     pos: usize,
@@ -72,6 +74,8 @@ pub(crate) struct Parser<'a> {
     /// Depth of speculative parsing. Errors are counted, not reported.
     speculating: u32,
     speculation_failed: bool,
+    /// Planned syntax read while speculating, reported if the speculation holds.
+    speculative_planned: Vec<(Span, &'static crate::planned::Planned)>,
     /// Inside `{ ... }`, where `;` separates statements.
     brace_depth: u32,
     /// How many blocks deep the statement being read is: 0 at the top
@@ -79,6 +83,8 @@ pub(crate) struct Parser<'a> {
     block_depth: u32,
     /// Inside a trait body, where fns and consts may lack bodies.
     in_trait: bool,
+    /// Inside an `impl` body, where operator fns desugar directly to methods.
+    in_impl: bool,
     /// Inside a `@grader` statement, where a fn may have no body: the
     /// judge supplies it.
     in_grader: bool,
@@ -93,9 +99,6 @@ pub(crate) struct Parser<'a> {
     /// Statements that run before the one being read: the `m[k] ??= init`
     /// of `(m[k] ??= init).push(x)`.
     lead_stmts: Vec<crate::ast::Stmt>,
-    /// `fn f((a, b): (Int, Int))`: the hidden parameter name and the
-    /// pattern it is destructured into at the top of the body.
-    param_patterns: Vec<(crate::ast::Name, crate::ast::Pattern)>,
 }
 
 impl<'a> Parser<'a> {
@@ -108,17 +111,19 @@ impl<'a> Parser<'a> {
             sink,
             recovering: false,
             var_params: Vec::new(),
+            param_patterns: Vec::new(),
             speculating: 0,
             speculation_failed: false,
+            speculative_planned: Vec::new(),
             stmt_head: false,
             brace_depth: 0,
             block_depth: 0,
             in_trait: false,
+            in_impl: false,
             in_grader: false,
             half_shr: false,
             extra_stmts: Vec::new(),
             lead_stmts: Vec::new(),
-            param_patterns: Vec::new(),
         }
     }
 
@@ -149,6 +154,35 @@ impl<'a> Parser<'a> {
             Some(t) => self.rel(t.span),
             None => Span::point(self.prev_end()),
         }
+    }
+
+    /// The span of the token `n` ahead, relative to the item.
+    fn span_n(&self, n: usize) -> Span {
+        match self.tokens.get(self.pos + n) {
+            Some(t) => self.rel(t.span),
+            None => Span::point(self.prev_end()),
+        }
+    }
+
+    /// Past `..` or `..=`, and past a `<` written right after `..`, which
+    /// is reported with the fix to drop it.
+    fn range_op(&mut self) {
+        let inclusive = self.at(T::DotDotEq);
+        self.bump();
+        if !inclusive && self.at(T::Lt) && self.span().start == self.prev_end() {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`..<` is `..` in cp")
+                    .with_help("`lo..hi` already leaves out `hi`; `lo..=hi` keeps it")
+                    .with_fix("write `..`", span, ""),
+            );
+            self.bump();
+        }
+    }
+
+    /// `half` twice with nothing between: `&&` or `||`.
+    fn doubled(&self, half: TokenKind) -> bool {
+        self.at(half) && self.peek_n(1) == half && self.span().end == self.span_n(1).start
     }
 
     fn start(&self) -> u32 {
@@ -309,6 +343,7 @@ impl<'a> Parser<'a> {
     /// restored, if `f` hit one.
     fn speculate<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> Option<R> {
         let (pos, failed, half) = (self.pos, self.speculation_failed, self.half_shr);
+        let planned = self.speculative_planned.len();
         self.speculating += 1;
         self.speculation_failed = false;
         let result = f(self);
@@ -316,8 +351,14 @@ impl<'a> Parser<'a> {
         self.speculating -= 1;
         self.speculation_failed = failed;
         if ok {
+            if self.speculating == 0 {
+                for (span, p) in std::mem::take(&mut self.speculative_planned) {
+                    self.planned(span, p);
+                }
+            }
             Some(result)
         } else {
+            self.speculative_planned.truncate(planned);
             self.pos = pos;
             self.half_shr = half;
             None
@@ -416,16 +457,52 @@ impl<'a> Parser<'a> {
     /// Reports `span` as planned syntax. The parser has read it, so it is
     /// poisoned rather than recovered from: what it declares stays as
     /// written.
-    fn planned(&mut self, span: Span, planned: &crate::planned::Planned) {
-        if self.speculating == 0 {
-            let message = match planned.see {
-                Some(see) => format!("not implemented yet: {} (see {see})", planned.feature),
-                None => format!("not implemented yet: {} (not in the design)", planned.feature),
-            };
-            self.sink
-                .push(Diagnostic::error(codes::NOT_IMPLEMENTED, span, message).with_help(planned.now));
+    fn planned(&mut self, span: Span, planned: &'static crate::planned::Planned) {
+        if self.speculating > 0 {
+            self.speculative_planned.push((span, planned));
+        } else {
+            let message = planned.message();
+            self.sink.push(
+                Diagnostic::error(codes::NOT_IMPLEMENTED, span, message).with_help(planned.now),
+            );
             self.sink.poison(span);
         }
+    }
+
+    /// Skips the indented block that starts here, through its dedent.
+    fn skip_indented(&mut self) {
+        let mut depth = 0u32;
+        loop {
+            match self.peek() {
+                T::Indent => depth += 1,
+                T::Dedent => depth = depth.saturating_sub(1),
+                T::Eof => return,
+                _ => {}
+            }
+            self.bump();
+            if depth == 0 {
+                return;
+            }
+        }
+    }
+
+    /// `let x =` with the value on the indented lines below: read past it
+    /// as planned syntax, leaving an error value.
+    fn continued_value(&mut self) -> Option<Expr> {
+        if !(self.at(T::Newline) && self.peek_n(1) == T::Indent)
+            || matches!(self.peek_n(2), T::If | T::Match)
+        {
+            return None;
+        }
+        let start = self.start();
+        self.bump();
+        self.skip_indented();
+        let span = self.span_from(start);
+        self.planned(span, &crate::planned::VALUE_BLOCK);
+        Some(Expr {
+            kind: ExprKind::Error,
+            span,
+        })
     }
 
     /// Ends error recovery for a statement that began at `start`: later

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: an array type of any length, `[_]T` (not in the design)
+  --> planned_an_array_type_of_any_length_t.cp:1:10
+  |
+1 | fn f(a: [_]Int) -> Int = 0
+  |          ^
+  = help: take a `List<T>`, or name the index space, `[n]T`
+
+planned_an_array_type_of_any_length_t.cp: 1 error

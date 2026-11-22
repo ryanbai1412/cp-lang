@@ -1,15 +1,23 @@
-// Codeforces 2255 B: the number of maximal blocks of each digit is fixed, so
-// for each digit distribute its surplus characters over its blocks (stars
-// and bars) and multiply the two counts.
-let comb = Comb<Mod<998244353>>()
+// Codeforces 2255 B — Binary Block Redistribution
+//
+// The number of maximal runs (`blocks[d]`) and total occurrences (`total[d]`)
+// of each binary digit `d in Bit` are invariant. Distributing the `total[d]`
+// identical copies across `blocks[d]` non-empty runs has `C(total[d] - 1, blocks[d] - 1)`
+// ways by stars and bars, and the two digits are independent, so the answer
+// is the product over digits with `blocks[d] > 0`.
+
+type Z = Mod<998_244_353>
+let comb = Comb<Z>()
+domain Bit = 0..2
 
 @!multitest
-let _n: 1..=2e5 = read()
-let s: Str = read()
+let n: 1..=200_000 = read()
+let s: [0..n]Char = read()
 
-var total = [0, 0]
-var blocks = [0, 0]
+var total: [Bit]Int = 0
+var blocks: [Bit]Int = 0
 for (c, len) in runs(s):
-    total[c - '0'] += len
-    blocks[c - '0'] += 1
-print(fold(*, comb.choose(total[z] - 1, blocks[z] - 1) for z in 0..2 if blocks[z] > 0))
+    let d = Bit(c - '0')
+    total[d] += len
+    blocks[d] += 1
+print(fold(*, comb.choose(total[d] - 1, blocks[d] - 1) for d in Bit if blocks[d] > 0))

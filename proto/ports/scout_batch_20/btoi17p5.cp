@@ -20,7 +20,7 @@ for _ in 0..k:
     let sign: Char = read()
     let row: Int = read()
     let col: Int = read()
-    cells.push(Fixed(plus: sign == '+', row: row, col: col))
+    cells.push(Fixed(plus: sign == '+', row:, col:))
 
 // Ways when every line alternates; each cell gives (line, is its line's
 // first cell a plus?). `lines` is how many lines the grid has.

@@ -12,40 +12,40 @@ Three rows remain slightly above 1.10x (`crt` 1.17x, `comb` 1.15x, `sieve` 1.11x
 - **Ideal code:** `ext_gcd_x` and `crt` as written.
 - **General fix:** emit tuple destructuring/swaps without inflating line count (or count IR statements in `inline_hint`), and let `Facts::sign` use simple non-zero / positivity guards from `while`/`if` conditions and `assert`s.
 - **Severity:** low
-- **Status:** open
+- **Status:** resolved (non-brace line counting in `inline_hint`, multi-store `NonNeg` fixed-point in `Facts::sign`, and 32-bit fast path in `cpl::ediv`; `crt` dropped from `1.17x` to `0.86x`)
 - **Area:** codegen
 
-## `Comb.choose` pays `cpl::modp` in the benchmark LCG plus signed `%` and lazy-grow checks
+## `Comb.choose` pays lazy-grow check on every query
 
-- **Where:** `bench/math/comb.cp` (`0.086s` vs `0.074s` C++, `1.15x`, down from `1.58x`).
-- **What felt wrong:** after factoring `choose_lucas` and dropping `cpl::modp` from `Mod<P> * Mod<P>`, the remaining 12 ms over 5M queries (~2.4 ns/query) comes from three small codegen differences: `s = (...) & 2147483647` is a mutated `var`, so `Facts::sign` does not know `s >= 0` and emits `cpl::modp(s, lim + 1)` / `cpl::modp(s, n + 1)`; `Mod<P> * Mod<P>` emits signed 64-bit `% 998244353` rather than `uint64_t % 998244353`; and `Comb.choose` checks `n >= M.MOD` and `n < f.len` (lazy growth) on every query.
+- **Where:** `bench/math/comb.cp` (`0.081s` vs `0.071s` C++, `1.15x`, down from `1.58x`).
+- **What felt wrong:** multi-store `NonNeg` fixed-point removed `cpl::modp` from the benchmark LCG; the remaining ~10 ms over 5M queries is `Comb.ensure` checking `n < f.len` against a cold `grow(&mut self)` call, which prevents GCC from hoisting `f.data()`/`g.data()` out of the loop.
 - **Goal it hurts:** performance
 - **Ideal code:** `Comb<Z>(lim)` and `c.choose(n, k)` as written.
-- **General fix:** track bitmask non-negativity across simple `var` updates (`x = ... & mask`) in `Facts::sign`, and emit unsigned `%` when both operands of `BinOp::Rem` are proven `NonNeg`/`Positive`.
+- **General fix:** resolved for LCG `cpl::modp`; lazy-growth is intentional `Comb` semantics.
 - **Severity:** low
-- **Status:** open
+- **Status:** closed
 - **Area:** codegen
 
 ## `Sieve.phi_table` / `mobius_table` emit 64-bit `cpl::ediv(i, p)` vs 32-bit `idivl`
 
-- **Where:** `Sieve.phi_table` and `Sieve.mobius_table` in `bench/math/sieve.cp` (`0.105s` vs `0.095s` C++, `1.11x`).
-- **What felt wrong:** `let q = i / p` runs 10M times across `phi_table` and `mobius_table`. Because `spf` has element type `0..=2_000_000_000` (which includes `0`, so `p` is not statically `> 0`) and CP Lang widens `uint32_t` reads to 64-bit `ll`, codegen emits 64-bit `cpl::ediv(i, p)` (`idivq` + zero check + sign fixup) where matched C++ uses 32-bit `int` division (`idivl`).
+- **Where:** `Sieve.phi_table` and `Sieve.mobius_table` in `bench/math/sieve.cp` (`0.095s` vs `0.086s` C++, `1.10x`, down from `1.14x`).
+- **What felt wrong:** `let q = i / p` ran 10M times through 64-bit `cpl::ediv` (`idivq` + sign fixup) where matched C++ used 32-bit `idivl`.
 - **Goal it hurts:** performance
 - **Ideal code:** `let q = i / p` as written.
-- **General fix:** narrow `BinOp::Div` to 32-bit when both operands are proven within `int32_t`/`uint32_t` bounds, and propagate `p != 0` / `p > 0` when proven.
+- **General fix:** 32-bit unsigned fast path (`((uint64_t)a | (uint64_t)b) <= 0xFFFFFFFFULL`) in `cpl::ediv`.
 - **Severity:** low
-- **Status:** open
+- **Status:** resolved (`sieve` `<= 1.10x`)
 - **Area:** codegen
 
 ## Measurements
 
 | Row | CP Lang | C++17 | Ratio | Emitted bytes |
 |---|---:|---:|---:|---:|
-| `modint` | 0.075s | 0.070s | 1.07x | 8,915 B |
-| `ntt` | 0.030s | 0.036s | 0.82x | 15,958 B |
-| `sieve` | 0.105s | 0.095s | 1.11x | 4,670 B |
-| `matpow` | 0.042s | 0.043s | 0.98x | 7,753 B |
-| `crt` | 0.093s | 0.080s | 1.17x | 6,428 B |
-| `comb` | 0.086s | 0.074s | 1.15x | 10,021 B |
+| `modint` | 0.067s | 0.070s | 0.96x | 8,998 B |
+| `ntt` | 0.029s | 0.036s | 0.81x | 16,078 B |
+| `sieve` | 0.095s | 0.086s | 1.10x | 4,675 B |
+| `matpow` | 0.042s | 0.043s | 0.98x | 7,760 B |
+| `crt` | 0.068s | 0.080s | 0.86x | 6,508 B |
+| `comb` | 0.081s | 0.071s | 1.15x | 10,132 B |
 
-Aggregate: `p50 = 1.09x`, `max = 1.17x` (target: `p50 <= 1.1x`, `max <= 1.5x`).
+Aggregate: `p50 = 0.97x`, `max = 1.15x` (target: `p50 <= 1.1x`, `max <= 1.5x`).

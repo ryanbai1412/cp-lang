@@ -71,6 +71,16 @@ pub struct Param {
 }
 
 impl Ty {
+    /// A number, character or tuple of them: what `print` and `read` handle
+    /// in O(1). A position is not, since its label may be any value.
+    pub fn is_fixed_size(&self) -> bool {
+        match self {
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Range { .. } => true,
+            Ty::Tuple(items) => items.iter().all(Ty::is_fixed_size),
+            _ => false,
+        }
+    }
+
     pub fn list(elem: Ty) -> Ty {
         Ty::Named {
             name: "List".into(),
@@ -220,6 +230,14 @@ impl Ty {
             }
             (a, Ty::Named { name, args }) if name == "Indexed" && args.len() == 2 => {
                 a.is_indexed() && a.seq_elem().is_some_and(|e| e.fits_in(&args[1], number))
+            }
+            // A domain is the range, list or bitset of its positions:
+            // `tally(Pos, Pos, 1)` or `zip(I, I.rev)`.
+            (Ty::Domain(d), Ty::Named { name: bn, args: ba })
+                if matches!(bn.as_str(), "Range" | "List" | "Bitset") =>
+            {
+                ba.first()
+                    .is_none_or(|elem| Ty::Pos(d.clone()).fits_in(elem, number))
             }
             // A range written out is the list or bitset of what it goes over:
             // `place(D.all)` where a `List<D>` or `Bitset<D>` is wanted.

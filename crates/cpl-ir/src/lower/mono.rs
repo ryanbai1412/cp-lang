@@ -438,7 +438,12 @@ impl<'a> Lowerer<'a> {
                     BinOp::Mul => l.checked_mul(r),
                     BinOp::Div if r != 0 => l.checked_div_euclid(r),
                     BinOp::Rem if r != 0 => l.checked_rem_euclid(r),
-                    BinOp::Pow if r >= 0 => l.checked_pow(r as u32),
+                    BinOp::Pow if r >= 0 => l.checked_pow(u32::try_from(r).ok()?),
+                    BinOp::Shl if (0..63).contains(&r) => l.checked_mul(1 << r),
+                    BinOp::Shr if (0..64).contains(&r) => Some(l >> r),
+                    BinOp::BitAnd => Some(l & r),
+                    BinOp::BitOr => Some(l | r),
+                    BinOp::BitXor => Some(l ^ r),
                     _ => None,
                 }
             }
@@ -1434,13 +1439,42 @@ impl<'a> Lowerer<'a> {
                 self.probe_expr_ty(&arg.value, pty, tpl_mod, tpl_offset, &gen_names, &inferred)
             {
                 if concrete == Ty::DomainVal {
-                    if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
-                        if targs.is_empty() && gen_names.contains(&name.text) {
-                            let saved_err = self.diags.len();
-                            let ev = self.expr(&arg.value, None);
-                            self.diags.truncate(saved_err);
-                            if let ExprKind::DomainVal(d) = ev.kind {
+                    let dom_id = if let Some(Sym::Domain(d)) = self.sym(&arg.value) {
+                        Some(d)
+                    } else {
+                        let saved_err = self.diags.len();
+                        let ev = self.expr(&arg.value, None);
+                        self.diags.truncate(saved_err);
+                        if let ExprKind::DomainVal(d) = ev.kind {
+                            Some(d)
+                        } else {
+                            None
+                        }
+                    };
+                    if let Some(d) = dom_id {
+                        if let ast::TypeKind::Named { name, args: targs } = &pty.kind {
+                            if targs.is_empty() && gen_names.contains(&name.text) {
                                 inferred.entry(name.text.clone()).or_insert(GenArg::Domain(d));
+                                continue;
+                            }
+                            if name.text == "List" {
+                                self.unify_ast_ty(
+                                    pty,
+                                    &Ty::list(Ty::Pos(d)),
+                                    tpl_mod,
+                                    &gen_names,
+                                    &mut inferred,
+                                );
+                                continue;
+                            }
+                            if name.text == "Range" {
+                                self.unify_ast_ty(
+                                    pty,
+                                    &Ty::Range(Box::new(Ty::Pos(d))),
+                                    tpl_mod,
+                                    &gen_names,
+                                    &mut inferred,
+                                );
                                 continue;
                             }
                         }
@@ -2264,7 +2298,11 @@ impl<'a> Lowerer<'a> {
                     self.unify_ast_ty(&args[1], v, tpl_mod, gen_names, env);
                 }
                 ("Range", Ty::Range(inner)) if args.len() == 1 => {
-                    self.unify_ast_ty(&args[0], inner, tpl_mod, gen_names, env);
+                    let inner = match inner.as_ref() {
+                        Ty::Bound(d) => Ty::Pos(*d),
+                        other => other.clone(),
+                    };
+                    self.unify_ast_ty(&args[0], &inner, tpl_mod, gen_names, env);
                 }
                 ("Cut", Ty::Bound(d)) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
@@ -3143,6 +3181,7 @@ pub(super) fn thunk_lazy_args(params: &[&ast::Param], args: &[ast::Arg]) -> Opti
                         params: Vec::new(),
                         param_tys: Vec::new(),
                         param_mut: Vec::new(),
+                        ret_ty: None,
                         body: Box::new(arg.value),
                     },
                     span,

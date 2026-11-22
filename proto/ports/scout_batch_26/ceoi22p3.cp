@@ -1,70 +1,64 @@
 // CEOI '22 P3 - Prize (25pt, interactive): two rooted trees on the same n
-// vertices with hidden positive edge lengths. Pick k vertices, then ask k - 1
-// questions "? a b"; after "!" each is answered with four numbers: the
-// distances from a and from b to their lowest common ancestor, in tree 1
-// and in tree 2. Then t pairs of picked vertices arrive and the distance of
-// each pair in both trees must be printed.
+// vertices with hidden positive edge lengths. Pick k vertices (one per line),
+// then ask k - 1 questions "? a b"; after "!" each is answered with four
+// numbers: the distances from a and from b to their lowest common ancestor,
+// in tree 1 and in tree 2. Then t pairs of picked vertices arrive and the
+// distance of each pair in both trees must be printed.
+//
 // Pick the first k vertices of a preorder of tree 1 (closed under parents)
-// and ask about neighbours in tree 2's preorder. Those neighbours' common
-// ancestors are exactly the branching points of the auxiliary tree of the
-// picked set in tree 2, and each answer ties two of its vertices by a
-// known depth difference; in tree 1 the same answers tie picked vertices
-// to picked ancestors. Both sets of ties are connected, so one pass over
-// them fixes every depth up to a shift, and a distance is
-// depth a + depth b - 2 * depth lca.
+// and ask about adjacent pairs in tree 2's preorder. Those adjacent pairs'
+// LCAs are the branching points of the auxiliary tree of the picked set in
+// tree 2, and each answer ties two vertices by a known depth difference; in
+// tree 1 the same answers tie picked vertices to picked ancestors. Both tie
+// graphs are connected, so one BFS fixes every depth up to a shift, and each
+// query distance is `depth[a] + depth[b] - 2 * depth[lca(a, b)]`.
 // original: corpus/submissions/4728198.cpp
 
-let (n, k, q, t): (2..=1e6, 2..=1e5, Int, 1..=1e5) = read()
+let (n, k, _, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()
 domain V = 1..=n
-domain Pick = 0..k
-domain Ask = 0..(k - 1)
+domain Ask = 0..k - 1
 
-// WISH TR3: `let boss: [V]?V(none: -1) = read()`
-let boss_one: [V]Int = read()
-let one = Rooted.from_parents([V] v => if boss_one[v] == -1: none else: some(V(boss_one[v])))
-let boss_two: [V]Int = read()
-let two = Rooted.from_parents([V] v => if boss_two[v] == -1: none else: some(V(boss_two[v])))
+let one = Rooted.from_parents(read<[V]?V>(none: -1))
+let two = Rooted.from_parents(read<[V]?V>(none: -1))
 
-let one_pre = [v for v in one.at]
-var picked: List<V> = [one_pre[i.ord] for i in Pick]
-// WISH TR15: `print(picked)` should write the list on one line; the interpreter
-// shows `[1, 2]`, so the picks go out one per line (the judge reads tokens).
+var picked: List<V> = [one.at[one.Pre.at(i)] for i in 0..k]
+// CEOI '22 judge expects the k chosen vertices one per line before queries.
 for v in picked: print(v)
 picked.sort(by: v => two.tin[v].ord)
-for i in Ask: print("?", picked[i.ord], picked[i.ord + 1])
-// WISH TR16: an `interactor`/`ask` block would own the flush; the interpreter
-// has no `flush()`, and check.py runs it unbuffered instead.
+let ask_pairs = [(a, b) for (a, b) in picked.pairs]
+for (a, b) in ask_pairs: print("?", a, b)
 print("!")
 
 // ties[x]: (y, d) with depth[y] = depth[x] + d
-fn depths(lca: (V, V) -> V, col: Int, replies: [Ask](Int, Int, Int, Int)) -> [V]Int:
-    var ties: [V]List<(to: V, d: Int)> = [V] _ => []
+fn depths(
+    lca: (V, V) -> V,
+    replies: [Ask](Int, Int, Int, Int),
+    proj: ((Int, Int, Int, Int)) -> (Int, Int),
+) -> [V]Int:
+    var ties: [V]List<(to: V, d: Int)> = []
     for i in Ask:
-        let (a, b) = (picked[i.ord], picked[i.ord + 1])
+        let (a, b) = ask_pairs[i.ord]
         let top = lca(a, b)
-        let (da, db) = if col == 1: (replies[i].0, replies[i].1) else: (replies[i].2, replies[i].3)
+        let (da, db) = proj(replies[i])
         ties[top].push((to: a, d: da))
         ties[a].push((to: top, d: -da))
         ties[top].push((to: b, d: db))
         ties[b].push((to: top, d: -db))
-    var depth: [V]Int = 0
-    var known: [V]Bool = false
-    var stack: List<V> = [picked[0]]
-    known[picked[0]] = true
-    // WISH TR17: `while let x = stack.pop():` (the cheat sheet's `pop() -> ?T`);
-    // the interpreter's pop traps on an empty list.
-    while stack.len > 0:
-        let x = stack.pop()
+    var depth: [V]?Int = none
+    var queue: Deque<V> = Deque()
+    depth[picked[0]] = 0
+    queue.push(picked[0])
+    while let x = queue.pop_front():
+        let dx = depth[x]!
         for e in ties[x]:
-            if known[e.to]: continue
-            known[e.to] = true
-            depth[e.to] = depth[x] + e.d
-            stack.push(e.to)
-    depth
+            if depth[e.to] != none: continue
+            depth[e.to] = dx + e.d
+            queue.push(e.to)
+    [V] v => depth[v] ?? 0
 
 let replies: [Ask](Int, Int, Int, Int) = read()
-let d1 = depths((a, b) => one.lca(a, b), 1, replies)
-let d2 = depths((a, b) => two.lca(a, b), 2, replies)
+let d1 = depths((a, b) => one.lca(a, b), replies, r => (r.0, r.1))
+let d2 = depths((a, b) => two.lca(a, b), replies, r => (r.2, r.3))
 domain Query = 0..t
 let pairs: [Query](a: V, b: V) = read()
 for p in pairs:

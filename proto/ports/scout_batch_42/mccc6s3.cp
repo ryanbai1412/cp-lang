@@ -24,7 +24,7 @@ fn consider(diff: Int, i1: Pos, i2: ?Pos):
     let key = (diff, i1, i2 != none, i2 ?? Pos.first)
     if let cur = best:
         if key >= (cur.diff, cur.i1, cur.i2 != none, cur.i2 ?? Pos.first): return
-    best = (diff: diff, i1: i1, i2: i2)
+    best = (diff:, i1:, i2:)
 
 fn sweep(arr: [Pos]Int, prefer_first: Bool, emit: (Int, Pos, ?Pos) -> ()):
     var active = Set<Int>()

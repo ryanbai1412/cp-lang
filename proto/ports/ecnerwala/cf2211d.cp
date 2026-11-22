@@ -1,12 +1,21 @@
-// Codeforces 2211 D: recover bit counts from i = N down to 1 by subtracting
-// binomial contributions of already-active bits modulo 10^9 + 7.
+// Codeforces 2211 D — Binomial Bit-Count Recovery
+//
+// Each `b[i]` equals `sum_{bit=0..29} 2^bit * choose(cnts[bit], i) (mod 10^9 + 7)`,
+// where `cnts[bit]` is the number of elements in the reconstructed array having
+// `bit` set. Scanning `i` from `n` down to `1`:
+// - Subtract `2^bit * choose(cnts[bit], i)` for every bit already known to have
+//   `cnts[bit] > i`.
+// - Any remaining bit set in `val.v` must have `cnts[bit] == i` (since
+//   `choose(i, i) == 1` and all bits `< 29` sum to `< 2^29 < MOD`), so record
+//   `cnts[bit] = i` and include `2^bit` in the current element `a`.
+
 const MOD = 1_000_000_007
 const L = 29
 type Z = Mod<MOD>
 let comb = Comb<Z>()
 
 @!multitest
-let n: Int = read()
+let n: 1..=200_000 = read()
 let b: [1..=n]Z = read()
 
 var cnts: [0..L]Int = 0

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: the cuts of a domain spelled `D.Cut` (see design/spec/21-index-spaces.md §21.4)
+  --> planned_the_cuts_of_a_domain_spelled_d_cut.cp:2:11
+  |
+2 | var a: [P.Cut]Int = 0
+  |           ^^^
+  = help: the cuts of `D` are `D.bounds` today
+
+planned_the_cuts_of_a_domain_spelled_d_cut.cp: 1 error

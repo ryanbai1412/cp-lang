@@ -507,3 +507,11 @@ fn keeps_an_argument_after_a_block_lambda_outside_the_block() {
     let src = "let t = f(x =>\n    let y = x\n    y\n, 3)\n";
     assert_eq!(format(src).unwrap(), src);
 }
+
+#[test]
+fn formats_loop_else() {
+    let src = "for x in xs:\n  if x == 0:\n    break\nelse:\n  print(-1)\n";
+    let want = "for x in xs:\n    if x == 0:\n        break\nelse:\n    print(-1)\n";
+    assert_eq!(fmt(src), want);
+    assert_eq!(fmt(want), want);
+}

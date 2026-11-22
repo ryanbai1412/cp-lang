@@ -189,8 +189,8 @@ pub fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
     for p in s:
         if uniq.len == 0 or uniq[uniq.len - 1] != p: uniq.push(p)
     if uniq.len <= 1: return uniq
-    let lo = lower_hull(uniq, collinear: collinear)
-    let hi = upper_hull(uniq, collinear: collinear)
+    let lo = lower_hull(uniq, collinear:)
+    let hi = upper_hull(uniq, collinear:)
     if lo.len == uniq.len and hi.len == uniq.len:
         // all unique points are collinear
         return lo
@@ -708,12 +708,7 @@ pub fn vcross(a: Vec, b: Vec) -> F64 = a.x * b.y - a.y * b.x
 pub fn vdist(a: Vec, b: Vec) -> F64 = (a - b).len
 
 /// Tolerance-aware orientation of `a -> b -> c`: 1 left, -1 right, 0 straight. O(1).
-pub fn vturn(
-    a: Vec,
-    b: Vec,
-    c: Vec,
-    eps: F64 = 1e-9,
-) -> Int = sign_eps(vcross(b - a, c - a), eps: eps)
+pub fn vturn(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> Int = sign_eps(vcross(b - a, c - a), eps:)
 
 /// Orthogonal projection of `p` onto the line through `a` and `b`. O(1).
 pub fn project(p: Vec, a: Vec, b: Vec) -> Vec:
@@ -1001,7 +996,7 @@ pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> (center: Vec, ra
                     r = vdist(c, ps[i])
                     for k in 0..j:
                         if vdist(c, ps[k]) > r + eps:
-                            if let o = circumcenter(ps[i], ps[j], ps[k], eps: eps):
+                            if let o = circumcenter(ps[i], ps[j], ps[k], eps:):
                                 c = o
                                 r = vdist(c, ps[i])
     (center: c, radius: r)
@@ -1228,7 +1223,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
                     last_vert_hi = hi[id].y
                     last_vert_id = id
             let cand = sh_first_above_y(root, cur_x, lo[id].y, strict, left_ch, right_ch, lo, hi)
-            if cand != -1 and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict: strict):
+            if cand != -1 and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict:):
                 return some((id, cand))
         elif (not strict and ev.kind == 0) or (strict and ev.kind == 2):
             let lo_id = lo[id]
@@ -1247,9 +1242,9 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
             )
             let pred = sh_rightmost(l, right_ch)
             let succ = sh_leftmost(r, left_ch)
-            if pred != -1 and segments_meet(lo_id, hi_id, lo[pred], hi[pred], strict: strict):
+            if pred != -1 and segments_meet(lo_id, hi_id, lo[pred], hi[pred], strict:):
                 return some((id, pred))
-            if succ != -1 and segments_meet(lo_id, hi_id, lo[succ], hi[succ], strict: strict):
+            if succ != -1 and segments_meet(lo_id, hi_id, lo[succ], hi[succ], strict:):
                 return some((id, succ))
             let lm = sh_merge(l, id, mut left_ch, mut right_ch, prio)
             root = sh_merge(lm, r, mut left_ch, mut right_ch, prio)
@@ -1276,7 +1271,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
                 hi[pred],
                 lo[succ],
                 hi[succ],
-                strict: strict,
+                strict:,
             ):
                 return some((pred, succ))
             root = sh_merge(l, r, mut left_ch, mut right_ch, prio)
@@ -1826,7 +1821,7 @@ fn shamos_hoey_matches_brute():
         for _ in 0..m:
             let a = Pt(rand(-6, 6), rand(-6, 6))
             let b = Pt(rand(-6, 6), rand(-6, 6))
-            segs.push((a: a, b: b))
+            segs.push((a:, b:))
         for strict_mode in [false, true]:
             var brute = false
             for i in 0..m:
@@ -1977,7 +1972,7 @@ fn test_circle_tangents_and_circle_circle_tangents():
         let r1 = F64(rand(1, 25))
         let r2 = F64(rand(1, 25))
         for inner in [false, true]:
-            let segs = circle_circle_tangents(a, r1, b, r2, inner: inner)
+            let segs = circle_circle_tangents(a, r1, b, r2, inner:)
             for (p1, p2) in segs:
                 assert close((p1 - a).len, r1, eps: 1e-6)
                 assert close((p2 - b).len, r2, eps: 1e-6)

@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a set written in braces, `{x for x in xs}` (not in the design)
+  --> planned_a_set_written_in_braces_x_for_x_in_xs.cp:1:9
+  |
+1 | let s = {x * 2 for x in 0..3}
+  |         ^^^^^^^^^^^^^^^^^^^^^
+  = help: build a list, `[x for x in xs]`, or fill a `SortedSet`
+
+planned_a_set_written_in_braces_x_for_x_in_xs.cp: 1 error

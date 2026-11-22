@@ -1,0 +1,36 @@
+== diagnostics
+8:11-8:11 E0108 expected a field or method name after `.`
+9:12-9:12 E0108 expected a field or method name after `.`
+10:13-10:13 E0102 expected a value after `=`, found the end of the line
+
+== completion @ 8:11
+to [5] to: Int
+w [5] w: Int
+
+== completion @ 9:12
+len [10] len: Int
+is_empty [10] is_empty: Bool
+first [10] first: ?Edge
+last [10] last: ?Edge
+push [2] push(x: Edge)
+pop [2] pop() -> ?Edge
+get [2] get(i: Int) -> ?Edge
+insert [2] insert(i: Int, x: Edge)
+remove [2] remove(i: Int) -> Edge
+swap [2] swap(i: Int, j: Int)
+resize [2] resize(n: Int, x: Edge)
+truncate [2] truncate(n: Int)
+
+== completion @ 10:14
+c [6] c: Int
+Edge [22] struct Edge
+n [6] let n: 1..=10 = read()
+es [6] let es: List<Edge> = []
+e [6] let e = Edge(to: 1, w: 2)
+a [6] let a = e.
+b [6] let b = es.
+Action [22] pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)
+Desc [22] pub struct Desc<T>(x: T)
+Monoid [22] pub struct Monoid<T>(id: T, op: (T, T) -> T)
+desc [3] fn desc<T>(x: T) -> Desc<T>
+fold [3] fn fold<T, M, S: Seq>(m: M, xs: S) -> T

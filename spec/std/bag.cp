@@ -218,6 +218,16 @@ pub struct SortedBag<K>:
 
     fn hi_ok(self, x: K, hi: ?K, hi_inc: Bool) -> Bool = todo
 
+    /// The keys of `self` inside `r`, as an O(1) view; replaces `first_ge`, `first_gt`, `last_le`,
+    /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
+    /// `..=b`, `a..` or `..`. The view lends `self`, so `self` cannot change while it is in use.
+    ///
+    /// cost: O(1) to make; see `SortedRange` for each query
+    /// empty: a range with no keys gives an empty view
+    /// traps: never
+    /// example: `SortedBag.of([1, 3, 3, 7]).range(2..=7).len() == 3`
+    pub fn range(self, r: Range<K>) -> SortedRange<K> = todo
+
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K = todo
 
     fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K = todo
@@ -646,6 +656,16 @@ pub struct SortedSet<K>:
     /// example: `var s = SortedSet.of([1, 2, 5, 8]); s.drain(after: 1, while: x => x < 6) == [2, 5] and s.to_list() == [1, 8]`
     /// example: `var s = SortedSet.of([1, 2, 5, 8]); s.drain(before: 8, while: x => x > 1) == [5, 2]`
     pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K> = todo
+
+    /// The keys of `self` inside `r`, as an O(1) view; replaces `first_ge`, `first_gt`, `last_le`,
+    /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
+    /// `..=b`, `a..` or `..`. The view lends `self`, so `self` cannot change while it is in use.
+    ///
+    /// cost: O(1) to make; see `SortedRange` for each query
+    /// empty: a range with no keys gives an empty view
+    /// traps: never
+    /// example: `SortedSet.of([1, 3, 7]).range(..7).last() == Some(3)`
+    pub fn range(self, r: Range<K>) -> SortedRange<K> = todo
 
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K = todo
 
@@ -1391,3 +1411,65 @@ fn sorted_set_operations_range_and_bsearch() = todo
 
 @test
 fn sorted_set_and_bag_drain_after_before_and_random() = todo
+
+/// The keys of a `SortedBag` or `SortedSet` inside a range, made by `range(r)`. A view: it stores
+/// the bounds and lends the container, and allocates nothing. `for x in s.range(r)` iterates
+/// `each()`. Copies of one key in a `SortedBag` are all inside or all outside, so nothing here
+/// has a tie to break. `n` is the container's `len`, `k` the number of keys visited.
+pub struct SortedRange<K>:
+    lo: ?K
+    lo_inc: Bool
+    hi: ?K
+    hi_inc: Bool
+
+    /// The smallest key in the range.
+    ///
+    /// cost: O(log n) expected
+    /// empty: `None`
+    /// ties: copies of a key are equal, so any is the answer
+    /// traps: never
+    /// example: `SortedSet.of([1, 3, 7]).range(2..).first() == Some(3)`
+    pub fn first(self) -> ?K = todo
+
+    /// The largest key in the range.
+    ///
+    /// cost: O(log n) expected
+    /// empty: `None`
+    /// ties: copies of a key are equal, so any is the answer
+    /// traps: never
+    /// example: `SortedSet.of([1, 3, 7]).range(..=6).last() == Some(3)`
+    pub fn last(self) -> ?K = todo
+
+    /// The number of keys in the range, counting copies.
+    ///
+    /// cost: O(log n) expected
+    /// empty: 0
+    /// traps: never
+    /// example: `SortedBag.of([1, 3, 3, 7]).range(3..=3).len() == 2`
+    pub fn len(self) -> Int = todo
+
+    /// True when the range holds no key.
+    ///
+    /// cost: O(log n) expected
+    /// empty: `true`
+    /// traps: never
+    /// example: `SortedSet.of([1, 7]).range(2..7).is_empty()`
+    pub fn is_empty(self) -> Bool = todo
+
+    /// The keys in ascending order, copies included.
+    ///
+    /// cost: O(log n + k) expected for `k` keys visited
+    /// empty: yields nothing
+    /// order: ascending
+    /// traps: never
+    /// example: `SortedBag.of([1, 3, 3, 7]).range(2..).each().collect() == [3, 3, 7]`
+    pub fn each(self) -> yields K = todo
+
+    /// The keys in descending order, copies included.
+    ///
+    /// cost: O(log n + k) expected for `k` keys visited
+    /// empty: yields nothing
+    /// order: descending
+    /// traps: never
+    /// example: `SortedSet.of([1, 3, 7]).range(..7).rev().collect() == [3, 1]`
+    pub fn rev(self) -> yields K = todo

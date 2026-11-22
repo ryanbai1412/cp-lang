@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: several domains on one line, `domain A = …, B = …` (not in the design)
+  --> planned_several_domains_on_one_line_domain_a_b.cp:1:16
+  |
+1 | domain A = 0..3, B = 0..4
+  |                ^^^^^^^^^^
+  = help: declare each domain on its own `domain` line
+
+planned_several_domains_on_one_line_domain_a_b.cp: 1 error

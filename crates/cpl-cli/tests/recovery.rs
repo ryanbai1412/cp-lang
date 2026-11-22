@@ -86,6 +86,50 @@ const EDITS: &[(&str, Edit)] = &[
     }),
 ];
 
+/// Mistakes a contestant from C++ or Python makes, each with one right
+/// answer: the fix-it benchmark.
+const MISTAKES: &[(&str, Edit)] = &[
+    ("`&&` for `and`", |l| word_swap(l, " and ", " && ")),
+    ("`||` for `or`", |l| word_swap(l, " or ", " || ")),
+    ("`!x` for `not x`", |l| word_swap(l, "not ", "!")),
+    ("`..<` for `..`", |l| {
+        let at = l.match_indices("..").map(|(i, _)| i).find(|&i| {
+            !l[i + 2..].starts_with(['=', '.', '<']) && !l[..i].ends_with('.') && !l[..i].ends_with('"')
+        })?;
+        Some(format!("{}..<{}", &l[..at], &l[at + 2..]))
+    }),
+    ("`let` for a `var`", |l| {
+        let t = l.trim_start();
+        let at = l.len() - t.len();
+        t.starts_with("var ").then(|| format!("{}let {}", &l[..at], &t[4..]))
+    }),
+    ("misspell a field or method", |l| {
+        let t = l.trim_start();
+        if t.starts_with("fn ") || t.starts_with("struct ") || t.starts_with("use ") {
+            return None;
+        }
+        let (at, _) = l.match_indices('.').find(|&(i, _)| {
+            let name: String = l[i + 1..].chars().take_while(|c| c.is_ascii_lowercase() || *c == '_').collect();
+            name.len() >= 4 && !l[..i].ends_with(['.', ' ', '(', '[']) && !l[..i].ends_with(char::is_numeric)
+        })?;
+        let end = at + 1 + l[at + 1..].chars().take_while(|c| c.is_ascii_lowercase() || *c == '_').count();
+        Some(format!("{}{}", &l[..end - 1], &l[end..]))
+    }),
+];
+
+/// `from` in code (not in a string or comment) replaced by `to`, once.
+fn word_swap(l: &str, from: &str, to: &str) -> Option<String> {
+    let code = l.split("//").next().unwrap_or(l);
+    let at = code.find(from)?;
+    if code[..at].matches('"').count() % 2 == 1 {
+        return None;
+    }
+    if from == "not " && at > 0 && !code[..at].ends_with([' ', '(', '[']) {
+        return None;
+    }
+    Some(format!("{}{to}{}", &l[..at], &l[at + from.len()..]))
+}
+
 struct Broken {
     path: String,
     edit: &'static str,
@@ -96,7 +140,7 @@ struct Broken {
 
 /// Every port broken by every edit on up to three of its lines, picked
 /// the same way on every run.
-fn broken_ports() -> Vec<Broken> {
+fn broken_ports(edits: &'static [(&'static str, Edit)]) -> Vec<Broken> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(root().join("proto/ports/ecnerwala"))
         .unwrap()
         .map(|e| e.unwrap().path())
@@ -107,7 +151,7 @@ fn broken_ports() -> Vec<Broken> {
     for path in paths {
         let src = std::fs::read_to_string(&path).unwrap();
         let lines: Vec<&str> = src.lines().collect();
-        for (edit, apply) in EDITS {
+        for (edit, apply) in edits {
             let hits: Vec<(usize, String)> = lines
                 .iter()
                 .enumerate()
@@ -143,6 +187,10 @@ struct Tally {
     errors: u32,
     cascaded: u32,
     first_right: u32,
+    /// Errors that carry a fix.
+    fixable: u32,
+    /// Files that applying the fixes turns back into the port.
+    restored: u32,
 }
 
 impl Tally {
@@ -152,17 +200,25 @@ impl Tally {
         self.errors += other.errors;
         self.cascaded += other.cascaded;
         self.first_right += other.first_right;
+        self.fixable += other.fixable;
+        self.restored += other.restored;
     }
 
-    fn row(&self, name: &str) -> String {
+    fn row(&self, name: &str, restore: bool) -> String {
         let reported = (self.files - self.silent).max(1);
         format!(
-            "{name:<26} {:>5} {:>6} {:>6} {:>8} {:>7.1}%",
+            "{name:<28} {:>5} {:>6} {:>6} {:>8} {:>7.1}% {:>6.1}% {:>8}",
             self.files,
             self.silent,
             self.errors,
             self.cascaded,
-            100.0 * self.first_right as f64 / reported as f64
+            100.0 * self.first_right as f64 / reported as f64,
+            100.0 * self.fixable as f64 / self.errors.max(1) as f64,
+            if restore {
+                format!("{:.1}%", 100.0 * self.restored as f64 / self.files as f64)
+            } else {
+                "-".into()
+            }
         )
     }
 }
@@ -199,7 +255,7 @@ fn apply(src: &str, edits: &[(cpl_diag::Span, String)]) -> String {
 }
 
 /// How `b` scores, and the code of its first error with what its fix does.
-fn score(b: &Broken) -> (Tally, Option<(String, FirstFix)>) {
+fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     let errs = errors(&b.path, &b.src);
     if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == b.edit) && errs.len() > 1 {
         let index = LineIndex::new(&b.src);
@@ -237,13 +293,31 @@ fn score(b: &Broken) -> (Tally, Option<(String, FirstFix)>) {
         first.fixed = 1;
         let line = |src: &str| src.lines().nth(b.line as usize).map(str::to_string);
         first.restored = (line(&fixed) == line(&b.original)) as u32;
-        first.clean = errors(&b.path, &fixed).is_empty() as u32;
+        if !restore {
+            first.clean = errors(&b.path, &fixed).is_empty() as u32;
+        }
+    }
+    t.fixable = errs.iter().filter(|d| !d.fixes.is_empty()).count() as u32;
+    if !restore {
+        return (t, Some((errs[0].code.0.to_string(), first)));
+    }
+    let fixed = (t.fixable > 0).then(|| {
+        let (once, _) = cpl_lint::apply_fixes(&b.src, &errs);
+        cpl_cli::apply_error_fixes(&b.path, &once).0
+    });
+    t.restored = fixed.as_deref().is_some_and(|f| f == b.original) as u32;
+    if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unrestored") && t.restored == 0 {
+        let at = |s: &str| s.lines().nth(b.line as usize).unwrap_or("").to_string();
+        let got = fixed.as_deref().map_or("no fix".to_string(), at);
+        println!("--- {} {}: {}\n    {}\n    got {got}", b.path, b.edit, at(&b.original), errs[0].message);
     }
     (t, Some((errs[0].code.0.to_string(), first)))
 }
 
-fn scoreboard_broken_ports() -> Tally {
-    let broken = broken_ports();
+/// With `restore`, also applies every fix as `cpl fix` would and counts
+/// the copies that turn back into the port.
+fn scoreboard_broken_ports(title: &str, edits: &'static [(&'static str, Edit)], restore: bool) -> Tally {
+    let broken = broken_ports(edits);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let ports: Vec<&[Broken]> = broken.chunk_by(|a, b| a.path == b.path).collect();
     let next = std::sync::atomic::AtomicUsize::new(0);
@@ -257,7 +331,7 @@ fn scoreboard_broken_ports() -> Tally {
                     let ordering = std::sync::atomic::Ordering::Relaxed;
                     while let Some(port) = ports.get(next.fetch_add(1, ordering)) {
                         for b in *port {
-                            let (tally, first) = score(b);
+                            let (tally, first) = score(b, restore);
                             m.entry(b.edit).or_default().add(tally);
                             if let Some((code, fix)) = first {
                                 codes.entry(code).or_default().add(fix);
@@ -280,13 +354,13 @@ fn scoreboard_broken_ports() -> Tally {
             codes.entry(code).or_default().add(fix);
         }
     }
-    println!("\nbroken ports                 files silent errors cascaded first-right");
+    println!("\n{title:<30} files silent errors cascaded first-right fix-it restored");
     let mut total = Tally::default();
     for (edit, t) in &merged {
-        println!("  {}", t.row(edit));
+        println!("  {}", t.row(edit, restore));
         total.add(*t);
     }
-    println!("  {}", total.row("all"));
+    println!("  {}", total.row("all", restore));
     let mut by_count: Vec<(String, FirstFix)> = codes.into_iter().collect();
     by_count.sort_by_key(|(code, f)| (std::cmp::Reverse(f.count), code.clone()));
     println!("\nfirst error by code          count  with a fix  restores  clean");
@@ -420,7 +494,7 @@ fn scoreboard_plan() -> PlanTally {
 #[test]
 fn recovery_scoreboard() {
     let plan = scoreboard_plan();
-    let ports = scoreboard_broken_ports();
+    let ports = scoreboard_broken_ports("broken ports", EDITS, false);
     assert!(plan.blocks > 100, "the plan code blocks went missing");
     assert!(ports.files > 1000, "the broken ports went missing");
     assert_eq!(ports.silent, 0, "a broken port checked clean");
@@ -434,5 +508,25 @@ fn recovery_scoreboard() {
         "cascaded-error rate rose above 0.05 per broken port ({} / {})",
         ports.cascaded,
         ports.files
+    );
+}
+
+/// Each common mistake carries a fix, and applying the fixes gives back
+/// the program the mistake was made in.
+#[test]
+fn fix_it_scoreboard() {
+    let ports = scoreboard_broken_ports("common mistakes", MISTAKES, true);
+    assert!(ports.files > 500, "the mistake copies went missing");
+    let reported = (ports.files - ports.silent) as f64;
+    assert!(
+        ports.fixable as f64 >= 0.88 * ports.errors as f64,
+        "fewer than 88% of the errors from common mistakes carry a fix ({} / {})",
+        ports.fixable,
+        ports.errors
+    );
+    assert!(
+        ports.restored as f64 >= 0.95 * reported,
+        "fixes restored fewer than 95% of the copies with a mistake ({} / {reported})",
+        ports.restored
     );
 }

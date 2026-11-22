@@ -1,13 +1,24 @@
 // Codeforces 2157 F: Git Gud.
 // Merge `n` positions using `d` layers of jumps (`1 <= d <= n`). Each layer
-// switch costs `LAYER_COST = 1000` (`(d - 1) * 1000` total), and each position
-// assigned a `d`-tuple of layer counts summing to `w` costs `w`.
+// switch costs `LAYER_COST = 1000` (`(d - 1) * 1000` total), and assigning each
+// position a distinct `d`-tuple `c = (c_0, ..., c_{d-1})` of non-negative layer
+// counts with weight `w = sum(c)` costs `w` (the total jump count for that
+// position):
 //   - At `d = 1`, weights `0..n` cost `n * (n - 1) / 2`.
-//   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w` (stepped
-//     incrementally by `cnt * (d + w - 1) / w`). Picking the `n` smallest
-//     weights yields `Plan(d, cost, max_w, max_w_cnt)`; minimize `cost` over `d`.
-// Walking the `n` tuples in reverse lex order emits each jump `(cur, start - cur)`
-// into its layer; printing layers in reverse order gives the final sequence.
+//   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w`. Choosing
+//     the `n` smallest-weight tuples minimizes total cost; `plan_for(d)` sums
+//     each weight layer until `n` tuples are taken. Once `(d - 1) * LAYER_COST`
+//     reaches `best.cost`, no larger `d` can improve on `best`.
+//
+// Reverse-lex merge order: walk the `n` chosen `d`-tuples in reverse
+// lexicographic order, assigning them positions `n` down to `1`. Truncating
+// the last weight class `max_w` keeps the chosen set downward-closed because
+// every tuple of weight `< max_w` is already included in full. At each prefix
+// `t[..cl]`, the first position of every `t[..=cl]` sub-group after the first
+// jumps forward to the group's `start`; printing layers in reverse order
+// merges all `n` positions in exact budget.
+
+use std.math.{choose}
 
 const LAYER_COST = 1000
 
@@ -15,49 +26,49 @@ struct Plan(d: Int, cost: Int, max_w: Int, max_w_cnt: Int)
 
 let n: 1..=250_000 = read()
 
+fn tuples_of_weight(d: Int, w: Int) -> Int = choose(d + w - 1, w)
+
 fn plan_for(d: Int) -> Plan:
     var rem = n
-    var cnt = 1
     var cost = (d - 1) * LAYER_COST
-    var w = 0
-    while rem > 0:
-        if w > 0: cnt = cnt * (d + w - 1) / w
-        cnt min= rem
-        cost += cnt * w
-        if cnt == rem: break
-        rem -= cnt
-        w += 1
-    Plan(d, cost, w, rem)
+    for w in 0..n:
+        let take = min(rem, tuples_of_weight(d, w))
+        cost += take * w
+        if take == rem: return Plan(d, cost, w, take)
+        rem -= take
+    Plan(d, cost, n - 1, 0)
 
-var best = Plan(1, n * (n - 1) / 2, n - 1, 1)
-for d in 2..=n:
-    if (d - 1) * LAYER_COST >= best.cost: break
-    let cand = plan_for(d)
-    if cand.cost < best.cost: best = cand
+fn best_plan() -> Plan:
+    var res = Plan(1, n * (n - 1) / 2, n - 1, 1)
+    for d in 2..=n:
+        if (d - 1) * LAYER_COST >= res.cost: break
+        let cand = plan_for(d)
+        if cand.cost < res.cost: res = cand
+    res
 
-let d = best.d
-var layer_ops: [0..d]List<(Int, Int)> = []
-var lim_w = best.max_w
-var lim_cnt = best.max_w_cnt
+// Stream the reverse-lex prefix tree directly instead of materializing
+// `List<List<Int>>` + `chunk_by` slices (dream:55-84), which takes 6.5s at -O2
+// for n = 250_000 due to millions of small vector copies (see friction).
+fn emit_jumps(plan: Plan) -> List<(Int, Int)>:
+    var layer_ops: [0..plan.d]List<(Int, Int)> = []
+    var next_pos = n
+    var lim_w = plan.max_w
+    var max_w_left = plan.max_w_cnt
+    fn walk(layer: Int, used_w: Int):
+        if layer == plan.d or used_w == lim_w:
+            if used_w == plan.max_w:
+                max_w_left -= 1
+                if max_w_left == 0: lim_w -= 1
+            next_pos -= 1
+            return
+        let start = next_pos
+        for c in (0..=lim_w - used_w).rev:
+            if next_pos == 0: break
+            if next_pos != start: layer_ops[layer].push((next_pos, start - next_pos))
+            walk(layer + 1, used_w + c)
+    walk(0, 0)
+    [op for layer in layer_ops.rev for op in layer]
 
-var cur: ?Int = some(n - 1)
-
-fn go(cur_layer: Int, cur_w: Int):
-    let cl = if cur_w == lim_w: d else: cur_layer
-    if cl == d:
-        if cur_w == lim_w:
-            lim_cnt -= 1
-            if lim_cnt == 0: lim_w -= 1
-        if let pos = cur:
-            cur = if pos > 0: some(pos - 1) else: none
-        return
-    let start = cur ?? return
-    for i in (0..=(lim_w - cur_w)).rev:
-        let pos = cur ?? break
-        if pos != start: layer_ops[cl].push((pos, start - pos))
-        go(cl + 1, cur_w + i)
-
-go(0, 0)
-let ops = [op for layer in layer_ops.rev for op in layer]
+let ops = emit_jumps(best_plan())
 print(ops.len)
-for (x, l) in ops: print(x + 1, l)
+for (x, l) in ops: print(x, l)

@@ -6,6 +6,17 @@ impl<'a> Parser<'a> {
     /// Parses one statement into `out`. An unexpectedly indented run of
     /// lines is reported once and its statements are kept at this level.
     pub(super) fn stmt_into(&mut self, out: &mut Vec<Stmt>) {
+        let continues = |k: TokenKind| {
+            matches!(k, T::Dot | T::QuestionQuestion | T::And | T::Or)
+                || super::expr::BINARY_OPS.contains(&k)
+        };
+        if self.at(T::Indent) && continues(self.peek_n(1)) {
+            let start = self.start();
+            self.skip_indented();
+            let span = self.span_from(start);
+            self.planned(span, &crate::planned::CONTINUED_LINE);
+            return;
+        }
         if self.at(T::Indent) {
             let span = Span::point(self.span().start);
             self.error(
@@ -344,7 +355,7 @@ impl<'a> Parser<'a> {
                 self.struct_decl()
             }
             T::Const => self.const_stmt(),
-            T::Fn => operator_impl(self.fn_decl()),
+            T::Fn => self.fn_stmt(),
             T::Struct => self.struct_decl(),
             T::Enum => self.enum_decl(),
             T::Domain => self.domain_decl(),
@@ -353,17 +364,17 @@ impl<'a> Parser<'a> {
             T::Impl => self.impl_decl(),
             T::Use => self.use_decl(),
             T::While => {
-                let start = self.start();
                 self.bump();
                 let cond = self.cond();
                 let body = self.colon_block("the `while` condition");
-                self.loop_else(start, StmtKind::While { cond, body })
+                let else_body = self.loop_else();
+                StmtKind::While {
+                    cond,
+                    body,
+                    else_body,
+                }
             }
-            T::For => {
-                let start = self.start();
-                let looped = self.for_stmt(None);
-                self.loop_else(start, looped)
-            }
+            T::For => self.for_stmt(None),
             T::Label if self.peek_n(1) == T::Colon && self.peek_n(2) == T::For => {
                 let label = self.name();
                 self.bump();
@@ -410,13 +421,18 @@ impl<'a> Parser<'a> {
             T::Elif | T::Else => {
                 let word = self.text().to_string();
                 let span = self.span();
+                let target = if word == "else" {
+                    "`if` or loop"
+                } else {
+                    "`if`"
+                };
                 self.error(
                     Diagnostic::error(
                         codes::UNEXPECTED_TOKEN,
                         span,
-                        format!("this `{word}` has no `if` above it at the same indentation"),
+                        format!("this `{word}` has no {target} above it at the same indentation"),
                     )
-                    .with_help(format!("line `{word}` up with its `if`")),
+                    .with_help(format!("line `{word}` up with its {target}")),
                 );
                 self.skip_line();
                 StmtKind::Error
@@ -433,12 +449,14 @@ impl<'a> Parser<'a> {
                 let span = self.span();
                 self.bump();
                 let body = self.colon_block("`loop`");
+                let else_body = self.loop_else();
                 StmtKind::While {
                     cond: Cond::Expr(Expr {
                         kind: ExprKind::Bool(true),
                         span,
                     }),
                     body,
+                    else_body,
                 }
             }
             T::Ident
@@ -462,6 +480,7 @@ impl<'a> Parser<'a> {
                 let count = self.expr();
                 let span = self.span_from(word.start);
                 let body = self.colon_block("the `repeat` count");
+                let else_body = self.loop_else();
                 StmtKind::For {
                     label: None,
                     pat: Pattern {
@@ -481,6 +500,7 @@ impl<'a> Parser<'a> {
                         span,
                     },
                     body,
+                    else_body,
                 }
             }
             T::Ident
@@ -570,8 +590,17 @@ impl<'a> Parser<'a> {
 
     fn let_stmt(&mut self) -> StmtKind {
         let stmt_start = self.start();
-        let mutable = self.at(T::Var);
+        let mut mutable = self.at(T::Var);
         self.bump();
+        if !mutable && self.at(T::Mut) {
+            let span = Span::new(stmt_start, self.span().end);
+            self.error(
+                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`let mut` is `var` in cp")
+                    .with_fix("replace with `var`", span, "var"),
+            );
+            self.bump();
+            mutable = true;
+        }
         // `let (a: Int, b: Str) = ...`: typed tuple pattern desugars to
         // `let (a, b): (Int, Str) = ...`.
         let mut tuple_elem_tys: Option<Type> = None;
@@ -637,7 +666,9 @@ impl<'a> Parser<'a> {
             })
         });
         let init = if self.eat(T::Eq) {
-            if self.at(T::Mut) {
+            if let Some(value) = self.continued_value() {
+                Some(value)
+            } else if self.at(T::Mut) {
                 let mstart = self.start();
                 self.bump();
                 let inner = self.expr();
@@ -860,19 +891,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn loop_else(&mut self, start: u32, looped: StmtKind) -> StmtKind {
-        if !(self.at(T::Else) && self.peek_n(1) == T::Colon) {
-            return looped;
-        }
-        let span = self.span_from(start);
-        self.bump();
-        let otherwise = self.colon_block("`else`");
-        StmtKind::LoopElse {
-            looped: Box::new(Stmt { kind: looped, span, decorators: Vec::new(), public: false }),
-            otherwise,
-        }
-    }
-
     fn for_stmt(&mut self, label: Option<Name>) -> StmtKind {
         self.bump();
         if self.at(T::Mut) {
@@ -956,14 +974,29 @@ impl<'a> Parser<'a> {
                 };
             }
             let clause_label = if idx == 0 { label.clone() } else { None };
+            let clause_else = if idx == 0 { self.loop_else() } else { None };
             out_stmt = Some(StmtKind::For {
                 label: clause_label,
                 pat,
                 iter,
                 body: inner_body,
+                else_body: clause_else,
             });
         }
         out_stmt.unwrap()
+    }
+
+    /// Optional trailing `else:` on a `for` / `while` loop (decision 125),
+    /// at the loop's indentation.
+    fn loop_else(&mut self) -> Option<Block> {
+        if self.at(T::Newline) && self.peek_n(1) == T::Else {
+            self.bump();
+        }
+        if self.eat(T::Else) {
+            Some(self.colon_block("`else`"))
+        } else {
+            None
+        }
     }
 
     /// `?Col` where a `for` walks: every value of the type, `none` first.
@@ -1239,7 +1272,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.more_clauses()
             }))
-        } else if self.eat(T::And) {
+        } else if self.eat(T::And) || self.c_and() {
             Some(Box::new(if self.at(T::Let) {
                 self.bump();
                 self.let_cond()
@@ -1465,48 +1498,3 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// `fn (a: P) + (b: P) -> P = …` is `impl Add for P` with that `add`, so
-/// operators written as fns use the same machinery as trait impls.
-fn operator_impl(f: FnDecl) -> StmtKind {
-    let (trait_name, method) = match (f.name.text.as_str(), f.params.len()) {
-        ("+", 2) => ("Add", "add"),
-        ("-", 2) => ("Sub", "sub"),
-        ("-", 1) => ("Neg", "neg"),
-        ("*", 2) => ("Mul", "mul"),
-        ("/", 2) => ("Div", "div"),
-        ("%", 2) => ("Rem", "rem"),
-        _ => return StmtKind::Fn(f),
-    };
-    let Some(target) = f.params.first().and_then(|p| p.ty.clone()) else {
-        return StmtKind::Fn(f);
-    };
-    let span = f.sig_span;
-    let at = f.name.span;
-    let named = |text: &str| Name {
-        text: text.to_string(),
-        span: at,
-    };
-    let trait_ty = Type {
-        kind: TypeKind::Named {
-            name: named(trait_name),
-            args: Vec::new(),
-        },
-        span: at,
-    };
-    let mut f = f;
-    f.name = named(method);
-    StmtKind::Impl {
-        trait_name: Some(trait_ty),
-        target,
-        bounds: Vec::new(),
-        body: Block {
-            stmts: vec![Stmt {
-                kind: StmtKind::Fn(f),
-                span,
-                decorators: Vec::new(),
-                public: false,
-            }],
-            span,
-        },
-    }
-}

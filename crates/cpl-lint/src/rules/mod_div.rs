@@ -341,9 +341,16 @@ fn collect_stmt_writes(stmt: &Stmt, out: &mut HashSet<String>) {
             collect_expr_writes(iter, out);
             collect_block_writes(body, out);
         }
-        StmtKind::While { cond, body } => {
+        StmtKind::While {
+            cond,
+            body,
+            else_body,
+        } => {
             collect_cond_writes(cond, out);
             collect_block_writes(body, out);
+            if let Some(eb) = else_body {
+                collect_block_writes(eb, out);
+            }
         }
         StmtKind::Expr(e) | StmtKind::Return(Some(e)) => collect_expr_writes(e, out),
         StmtKind::Unchecked(b) => collect_block_writes(b, out),
@@ -584,7 +591,7 @@ impl<'a> Scanner<'a> {
                 self.mods = saved;
                 self.loops.pop();
             }
-            StmtKind::While { cond, body } => {
+            StmtKind::While { cond, body, .. } => {
                 self.branch_depth += 1;
                 self.scan_cond(cond);
                 self.branch_depth -= 1;

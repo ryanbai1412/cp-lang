@@ -1,121 +1,121 @@
-fn cmp(ax: Int, aq: Int, bx: Int, bq: Int, x: Int) -> Bool:
-    let (da, db) = (ax - x, bx - x)
-    da * da * bq <= db * db * aq
+// Universal Cup 5, stage 2 H: split charges on a line into two groups (some
+// charges are pinned to A or B) so that the weakest pull q * q' / d^2 between
+// two charges of one group is as strong as possible; print it as a fraction.
+//
+// As for any two-clustering that wants its weakest same-group pair strong, it
+// is enough to two-colour the spanning tree of weakest pulls: pinned charges
+// hang off a reference node `pin` on A's or B's side. Boruvka builds that tree.
+// Each round, a charge finds its weakest pull to another component among the
+// charges left of it (then, mirrored, right of it): a segment tree over
+// components keeps a `Hull` per node, and climbing from the charge's own leaf
+// queries every sibling, i.e. every other component.
+//
+// `Hull` holds charges added left to right and answers "which of them pulls
+// weakest on x" for increasing x. A charge no weaker than the newest and
+// farther away never wins, so charges strictly decrease, and the weakest one
+// only moves right as x does.
+use std.dsu.{ParityDsu}
 
-fn cmp3(ax: Int, aq: Int, bx: Int, bq: Int, cx: Int, cq: Int) -> Bool:
-    let (v1, v2, v3) = (cx - bx, cx - ax, bx - ax)
-    let (a1, a2, a3) = (v1 * v1 * aq, v2 * v2 * bq, v3 * v3 * cq)
+struct Pt(x: Int, q: Int, id: Int)
+
+fn no_stronger(b: Pt, a: Pt, x: Int) -> Bool:
+    let (da, db) = (a.x - x, b.x - x)
+    da * da * b.q <= db * db * a.q
+
+fn never_weakest(a: Pt, b: Pt, c: Pt) -> Bool:
+    let (v1, v2, v3) = (c.x - b.x, c.x - a.x, b.x - a.x)
+    let (a1, a2, a3) = (v1 * v1 * a.q, v2 * v2 * b.q, v3 * v3 * c.q)
     if a2 < a1 + a3: return false
     let d = I128(a2) - I128(a1) - I128(a3)
     d * d >= I128(4) * I128(a1) * I128(a3)
 
 struct Hull:
-    pts: List<(Int, Int, Int)>
+    pts: List<Pt>
     idx: Int
 
-    fn add(mut self, x: Int, q: Int, id: Int):
-        if pts.is_empty or q < pts.last!.1:
-            while idx + 1 < pts.len:
-                let p0 = pts[pts.len - 2]
-                let p1 = pts.last!
-                if not cmp3(p0.0, p0.1, p1.0, p1.1, x, q): break
-                pts.pop()
-            pts.push((x, q, id))
-        while idx + 1 < pts.len and cmp(pts[idx].0, pts[idx].1, pts[idx + 1].0, pts[idx + 1].1, x):
-            idx += 1
+    fn new() -> Hull = Hull([], 0)
 
-    fn query(mut self, cx: Int) -> ?(Int, Int, Int):
-        while idx + 1 < pts.len and cmp(pts[idx].0, pts[idx].1, pts[idx + 1].0, pts[idx + 1].1, cx):
-            idx += 1
+    fn advance(mut self, x: Int):
+        while idx + 1 < pts.len and no_stronger(pts[idx + 1], pts[idx], x): idx += 1
+
+    fn add(mut self, p: Pt):
+        if pts.is_empty or p.q < pts.last!.q:
+            while idx + 1 < pts.len and never_weakest(pts[pts.len - 2], pts.last!, p):
+                pts.pop()
+            pts.push(p)
+        self.advance(p.x)
+
+    fn query(mut self, x: Int) -> ?Pt:
+        self.advance(x)
         if idx == pts.len: none else: some(pts[idx])
 
-fn pick_best(a: ?(Int, Int, Int), b: ?(Int, Int, Int), x: Int) -> ?(Int, Int, Int):
+fn weaker(a: ?Pt, b: ?Pt, x: Int) -> ?Pt:
     let pa = a else: return b
     let pb = b else: return a
-    if cmp(pa.0, pa.1, pb.0, pb.1, x): b else: a
+    if no_stronger(pb, pa, x): b else: a
+
+// d^2 / (q * q'), compared by cross-multiplying; larger is weaker.
+fn gap(a: Pt, b: Pt) -> (num: Int, den: Int) = ((a.x - b.x) * (a.x - b.x), a.q * b.q)
+fn weaker_gap(
+    a: (num: Int, den: Int),
+    b: (num: Int, den: Int),
+) -> Bool = a.num * b.den >= a.den * b.num
 
 @!multitest
 let n: Int = read()
-var charges = List<(Int, Int, Char)>()
+var charges = List<(x: Int, q: Int, pin: Char)>()
 for _ in 0..n:
     let (q, x, c): (Int, Int, Char) = read()
     charges.push((x, q, c))
 charges.sort()
+let pts = [Pt(c.x, c.q, i) for (i, c) in charges.items]
 
-let xs = [c.0 for c in charges]
-let qs = [c.1 for c in charges]
 domain Node = 0..=n
-domain Bip = 0..2 * n + 2
-var uf = Dsu<Node>()
-var bip = Dsu<Bip>()
-var has_letter = false
-for i in 0..n:
-    let c = charges[i].2
-    if c == 'A':
-        let _ = bip.merge(Bip.at(2 * i), Bip.at(2 * n + 1))
-        let _ = bip.merge(Bip.at(2 * i + 1), Bip.at(2 * n))
-        let _ = uf.merge(Node.at(n), Node.at(i))
-        has_letter = true
-    elif c == 'B':
-        let _ = bip.merge(Bip.at(2 * i), Bip.at(2 * n))
-        let _ = bip.merge(Bip.at(2 * i + 1), Bip.at(2 * n + 1))
-        let _ = uf.merge(Node.at(n), Node.at(i))
-        has_letter = true
-if not has_letter:
-    let _ = bip.merge(Bip.at(0), Bip.at(2 * n))
-    let _ = bip.merge(Bip.at(1), Bip.at(2 * n + 1))
-    let _ = uf.merge(Node.at(0), Node.at(n))
+let pin = Node.at(n)
+var colour = ParityDsu<Node>()
+let pinned = [i for (i, c) in charges.items if c.pin == 'A' or c.pin == 'B']
+for i in pinned: let _ = colour.unite(Node.at(i), pin, differ: charges[i].pin == 'A')
+if pinned.is_empty: let _ = colour.unite(Node.at(0), pin, differ: false)
 
-while not all(uf.same(Node.at(i), Node.at(0)) for i in 0..n):
-    var cc_id: [Node]Int = -1
-    var v = 0
-    for u in Node:
-        if uf.find(u) == u:
-            cc_id[u] = v
-            v += 1
-    var best_per: [0..v]?(Int, Int, Int, Int) = none
-    for dir in 0..2:
-        var hulls = [Hull(List<(Int, Int, Int)>(), 0) for _ in 0..2 * v]
-        for it in 0..n:
-            let id = if dir == 0: it else: n - 1 - it
-            let x = if dir == 0: xs[id] else: -xs[id]
-            let cc = cc_id[uf.find(Node.at(id))]
-            var best: ?(Int, Int, Int) = none
-            var p = cc + v
-            while p > 1:
-                best = pick_best(best, hulls[p ^ 1].query(x), x)
-                p >>= 1
-            if let hit = best:
-                let j = hit.2
-                let (sx, sy) = ((xs[j] - xs[id]) * (xs[j] - xs[id]), qs[j] * qs[id])
-                let take = if let cur = best_per[cc]: sx * cur.1 >= sy * cur.0 else: true
-                if take: best_per[cc] = some((sx, sy, id, j))
-            var q = cc + v
-            while q > 1:
-                hulls[q].add(x, qs[id], id)
-                q >>= 1
-    for opt_e in best_per:
-        if let edge = opt_e:
-            let (i, j) = (edge.2, edge.3)
-            if uf.merge(Node.at(i), Node.at(j)) != none:
-                let _ = bip.merge(Bip.at(2 * i), Bip.at(2 * j + 1))
-                let _ = bip.merge(Bip.at(2 * i + 1), Bip.at(2 * j))
+fn link(i: Int, j: Int):
+    if not colour.same(Node.at(i), Node.at(j)): let _ = colour.unite(Node.at(i), Node.at(j))
 
-var side0 = List<(Int, Int)>()
-var side1 = List<(Int, Int)>()
-for i in 0..n:
-    if bip.same(Bip.at(2 * i), Bip.at(2 * n)): side1.push((xs[i], qs[i]))
-    else: side0.push((xs[i], qs[i]))
+while not all(colour.same(Node.at(i), Node.at(0)) for i in 0..n):
+    let roots = [u for u in Node if colour.find(u).root == u]
+    var comp: [Node]Int = 0
+    for (k, r) in roots.items: comp[r] = k
+    let v = roots.len
+    var best: [0..v]?(gap: (num: Int, den: Int), i: Int, j: Int) = none
+    fn sweep(order: List<Int>, sign: Int):
+        var hulls = [Hull.new() for _ in 0..2 * v]
+        for i in order:
+            let x = sign * pts[i].x
+            let cc = comp[colour.find(Node.at(i)).root]
+            var hit: ?Pt = none
+            var node = cc + v
+            while node > 1:
+                hit = weaker(hit, hulls[node ^ 1].query(x), x)
+                node >>= 1
+            if let h = hit:
+                let g = gap(pts[h.id], pts[i])
+                let wins = if let cur = best[cc]: weaker_gap(g, cur.gap) else: true
+                if wins: best[cc] = some((g, i, h.id))
+            node = cc + v
+            while node > 1:
+                hulls[node].add(Pt(x, pts[i].q, i))
+                node >>= 1
+    sweep([i for i in 0..n], 1)
+    sweep([i for i in (0..n).rev], -1)
+    for e in best if let edge = e: link(edge.i, edge.j)
 
-var (best_x, best_y) = (1, 226_000_000)
-for side in [side0, side1]:
-    var sh = Hull(List<(Int, Int, Int)>(), 0)
-    for (id, pt) in side.items:
-        let (x, q) = pt
-        if let prv = sh.query(x):
-            let (nx, ny) = ((x - prv.0) * (x - prv.0), q * prv.1)
-            if nx * best_y > ny * best_x: (best_x, best_y) = (nx, ny)
-        sh.add(x, q, id)
+var weakest = (num: 1, den: 226_000_000)
+for side in [false, true]:
+    var hull = Hull.new()
+    for p in pts if (colour.diff(Node.at(p.id), pin) == some(false)) == side:
+        if let prev = hull.query(p.x):
+            let g = gap(prev, p)
+            if not weaker_gap(weakest, g): weakest = g
+        hull.add(p)
 
-let g = gcd(best_y, best_x)
-print("{best_y / g}/{best_x / g}")
+let g = gcd(weakest.den, weakest.num)
+print("{weakest.den / g}/{weakest.num / g}")

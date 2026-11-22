@@ -174,6 +174,16 @@ pub const REDUNDANT_PRELUDE_IMPORT: Lint = Lint {
     trigger: "use std.tree.{Rooted}\ndomain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
     fix: "domain V = 1..=3\nlet t = Rooted(Graph.undirected(read<Tree<V>>()), V.first)\nprint(t.size(V.first))\n",
 };
+pub const REDUNDANT_ARG_NAME: Lint = Lint {
+    code: Code("L0209"),
+    name: "redundant_arg_name",
+    default: Level::Warn,
+    title: "Named argument or record field repeating its own name",
+    summary: "`f(moves: moves)` or `(val: val)` can be punned as `f(moves:)` / `(val:)`",
+    explanation: "When a named call argument or record field passes a variable of the same name, write `name:` instead of `name: name`. `cpl fix` shortens `name: name` to `name:`.",
+    trigger: "fn f(moves: Int, cost: Int) -> Int = moves + cost\nlet moves = 3\nlet cost = 4\nprint(f(moves: moves, cost: cost))\n",
+    fix: "fn f(moves: Int, cost: Int) -> Int = moves + cost\nlet moves = 3\nlet cost = 4\nprint(f(moves:, cost:))\n",
+};
 pub const FLOAT_EQUALITY: Lint = Lint {
     code: Code("L0301"),
     name: "float_equality",
@@ -436,6 +446,16 @@ pub const HAND_ROLLED_PREFIX_SUM: Lint = Lint {
     trigger: "let a = [1, 2, 3, 4]\nvar p = List.filled(a.len + 1, 0)\nfor i in 0..a.len:\n    p[i + 1] = p[i] + a[i]\nprint(p[3] - p[1])\n",
     fix: "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n",
 };
+pub const COPY_SORT_WRITEBACK: Lint = Lint {
+    code: Code("L0522"),
+    name: "copy_sort_writeback",
+    default: Level::Warn,
+    title: "Copy-mutate-writeback on a slice",
+    summary: "copying `xs[l..r]` to sort/reverse/rotate and writing it back: mutate `xs[l..r]` in place",
+    explanation: "Copying a contiguous slice `xs[l..r]` into a temporary `List`, sorting/reversing/rotating it, and writing the elements back into `xs[l..r]` allocates an unnecessary copy. Mutable slice views lend `xs[l..r]` in O(1) via `IndexedMut`, so `xs[l..r].sort(...)` / `.reverse()` / `.rotate_left(...)` runs in place with no copy. `cpl fix` rewrites the copy-mutate-writeback sequence when the temporary is not read afterward.",
+    trigger: "var xs = [5, 4, 3, 2, 1]\nlet sub = xs[1..4].sorted()\nfor i in 1..4: xs[i] = sub[i - 1]\nprint(xs)\n",
+    fix: "var xs = [5, 4, 3, 2, 1]\nxs[1..4].sort()\nprint(xs)\n",
+};
 
 /// Every lint, in code order.
 pub const LINTS: &[Lint] = &[
@@ -449,6 +469,7 @@ pub const LINTS: &[Lint] = &[
     GETTER_PARENS,
     IS_IN_COND_HEADER,
     REDUNDANT_PRELUDE_IMPORT,
+    REDUNDANT_ARG_NAME,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,
@@ -475,6 +496,7 @@ pub const LINTS: &[Lint] = &[
     HAND_ROLLED_BINARY_LIFTING,
     HAND_ROLLED_ANSWER_SEARCH,
     HAND_ROLLED_PREFIX_SUM,
+    COPY_SORT_WRITEBACK,
 ];
 
 /// The taste lints (`plan/PORTING.md`): code that works but reads like
@@ -518,6 +540,175 @@ impl File<'_> {
             .iter()
             .flat_map(|(base, item)| item.stmts.iter().map(move |stmt| (*base, stmt)))
     }
+}
+
+/// An arithmetic expression whose value the declared input bounds prove:
+/// `n * n` after `let n: 1..=100 = read()` is in `1..=10000`. Offsets are
+/// byte offsets in the file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenExpr {
+    /// The operator.
+    pub op: (u32, u32),
+    /// The whole expression.
+    pub expr: (u32, u32),
+    pub lo: i128,
+    pub hi: i128,
+    /// When the value can leave `Int`: inputs in their declared ranges for
+    /// which it does, found and checked by the prover (`n = 55110`).
+    pub overflow: Option<String>,
+}
+
+/// A `for` loop whose iteration count the declared bounds prove.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenLoop {
+    /// From `for` (or its label) up to the loop's pattern.
+    pub head: (u32, u32),
+    /// The most times its body runs each time the loop is reached.
+    pub times: u128,
+    /// The most times its body runs in all, counting the `for` loops around
+    /// it; `None` when one of them, or a `while` around it, has no bound.
+    pub total: Option<u128>,
+    /// `times` in the source's terms: `q` for `0..q`, `n` for a domain
+    /// `1..=n`, else the number.
+    pub count: String,
+    /// `total` the same way, as a product: `n * q`.
+    pub total_count: Option<String>,
+}
+
+/// A fn, and how many loop iterations one call makes at most, by the
+/// declared bounds.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenFn {
+    pub name: (u32, u32),
+    /// The whole fn, from `fn` to the end of its body.
+    pub body: (u32, u32),
+    /// The parts of its body that run other than once per call: each loop,
+    /// lambda, table or comprehension, and each nested fn.
+    pub runs: Vec<Run>,
+    /// The sum over its `for` loops of how often each body runs, nested
+    /// loops multiplied, plus each call of a fn in the file times that fn's
+    /// count; `None` when a `while`, an unbounded `for`, recursion or a call
+    /// in a lambda makes the count unknown.
+    pub steps: Option<u128>,
+    /// `steps` in the source's terms, a sum of loop counts as for
+    /// `ProvenLoop::total_count` (`n * q + n`); `None` past six terms.
+    pub count: Option<String>,
+    /// The callee of each call `steps` leaves out, outside nested fns: the
+    /// name of a call by name to no fn in the file, the member of a method
+    /// call, or the whole callee expression otherwise.
+    pub callees: Vec<(u32, u32)>,
+    /// Where it builds a struct declared in the file, one step each: the
+    /// fields only move in.
+    pub builds: Vec<(u32, u32)>,
+}
+
+/// A part of a fn's body and how often it runs per call of the fn: `None`
+/// when unknown, `Some(0)` for a nested fn, which runs only when called.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Run {
+    pub span: (u32, u32),
+    pub times: Option<u128>,
+    /// `times` in the source's terms, as `ProvenLoop::total_count`.
+    pub count: Option<String>,
+}
+
+/// Each fn with a body; a file with a syntax error has none.
+pub fn proven_fns(src: &str) -> Vec<ProvenFn> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_fns(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
+/// An index `i` in `xs[i]` the bounds and relations prove is in
+/// `0..xs.len`, for a sequence whose length never changes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenIndex {
+    /// `xs[i]`, `xs` and `i`.
+    pub access: (u32, u32),
+    pub seq: (u32, u32),
+    pub index: (u32, u32),
+    /// Why: `0 <= lo <= mid < hi <= xs.len`.
+    pub proof: String,
+}
+
+/// A method call's receiver, an array whose declared type bounds how many
+/// cells it has.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProvenSize {
+    pub receiver: (u32, u32),
+    pub max: u128,
+    /// `max` in the source's terms, as `ProvenLoop::total_count`: `n` for
+    /// `[0..n]Int`, `R * C` for `[R, C]Int`.
+    pub count: String,
+}
+
+/// Each method call on an array of bounded size; a file with a syntax error
+/// has none.
+pub fn proven_sizes(src: &str) -> Vec<ProvenSize> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_sizes(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
+/// The most positions each top-level domain can have, from the bounds of
+/// its range: `domain V = 0..n` after `let n: 1..=2e5 = read()` has 200000.
+pub fn domain_sizes(src: &str) -> Vec<(String, u128)> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::domain_sizes(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
+/// Each index proven in bounds; a file with a syntax error has none.
+pub fn proven_indexes(src: &str) -> Vec<ProvenIndex> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_indexes(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
+/// Each `for` over a bounded range or domain, with how often it runs.
+pub fn proven_loops(src: &str) -> Vec<ProvenLoop> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_loops(&File {
+        src,
+        items: &parsed.items,
+    })
+}
+
+/// What the declared bounds prove about each `+`, `-`, `*`, `/`, `%` and `**` outside
+/// lambdas, comprehensions and match arms; a file with a syntax error has
+/// none.
+pub fn proven_expr_ranges(src: &str) -> Vec<ProvenExpr> {
+    let parsed = cpl_syntax::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    rules::proven_expr_ranges(&File {
+        src,
+        items: &parsed.items,
+    })
 }
 
 /// What the declared input bounds prove about each top-level `let` written

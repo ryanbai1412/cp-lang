@@ -24,7 +24,7 @@ let a: [I]Int = read()
 let b: [I]Int = read()
 
 let pref = prefix([I] i => a[i] - b[i])
-let cut = [i for i in I].min(by: i => pref.prefix(i.r))!
+let cut = ([I] i => pref.prefix(i.r)).argmin!
 let order = [i for i in I].rotated_left(cut.ord + 1)
 
 var stk: List<Deposit> = []

@@ -25,8 +25,7 @@ fn split(v: V) -> ?(l: V, r: V):
 let tree = Rooted(root: V.first, adj: v => if let (l, r) = split(v): [l, r] else: List<V>())
 var gen: [V]Int = 0
 var by_gen: [0..n]List<V> = []
-for p in tree.Pre.rev:
-    let v = tree.at[p]
+for v in tree.at.rev:
     if let (l, r) = split(v): gen[v] = max(gen[l], gen[r] + 1)
     by_gen[gen[v]].push(v)
 
