@@ -5,7 +5,7 @@
 //! built-in `HashMap<Int, V>` overhead matters.
 use std.math.{splitmix64}
 
-// Slot states: 0 = empty, 1 = occupied, 2 = tombstone.
+// Slot states: 0 = empty, 1 = occupied; `remove` uses backward-shift deletion (no tombstones).
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
 /// `get`, `contains`, `set`, `remove`, and `get_or_insert` are O(1) expected.
 pub struct FlatMap<V>:

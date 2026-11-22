@@ -341,13 +341,13 @@ pub struct PotentialDsu<V>:
     conflicts: 0..=2_000_000_000
     log: List<(V, Bool)>
 
-    /// A potential union-find over `V` with every position alone at the identity potential.
-    /// Constraints combine with the group operation `op`, `+` on `Int` when it is `None`.
+    /// A potential union-find over `V` with every position alone at potential 0. Offsets are
+    /// `Int` and combine with `+`.
     ///
     /// cost: O(n); three `[V]` arrays
     /// traps: never
     /// example: `let d = PotentialDsu<0..3>(); d.components == 3 and d.consistent`
-    pub fn new<G>(op: ?G = None) -> PotentialDsu<V> = todo
+    pub fn new() -> PotentialDsu<V> = todo
 
     /// The representative of `v`'s set and `val[v] - val[root]`.
     ///

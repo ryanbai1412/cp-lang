@@ -190,8 +190,8 @@ pub struct SortedBag<K>:
     /// empty: yields nothing, for an empty bag or an empty `r`
     /// order: ascending
     /// traps: never
-    /// example: `var b = SortedBag.of([1, 3, 3, 5, 7]); b.drain(3..6).collect() == [3, 3, 5] and b.to_list() == [1, 7]`
-    pub fn drain(mut self, r: Range<K>) -> yields K = todo
+    /// example: `var b = SortedBag.of([1, 3, 3, 5, 7]); b.drain_range(3..6).collect() == [3, 3, 5] and b.to_list() == [1, 7]`
+    pub fn drain_range(mut self, r: Range<K>) -> yields K = todo
 
     /// Remove and return one copy of the largest element, or `None` when empty. O(log n) expected.
     ///
@@ -446,10 +446,10 @@ pub struct SortedBag<K>:
     /// the cost is O(n); `AugSortedBag` keeps sums.
     ///
     /// cost: O(n)
-    /// empty: `0`
+    /// empty: `K.zero`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `SortedBag.of([2, 2, 5]).sum() == 9`
-    pub fn sum(self) -> Int = todo
+    pub fn sum(self) -> K = todo
 
     fn sub_of(self, t: Int) -> Int = todo
 
@@ -1343,14 +1343,14 @@ pub struct BucketCount:
     /// example: `var b = BucketCount.new(0..10); b.add(3); b.add(7, 2); b.count_lt(7) == 1 and b.count_lt(8) == 3`
     pub fn count_lt(self, x: Int) -> Int = todo
 
-    /// O(sqrt(N)). The `k`-th smallest element (1-based).
+    /// O(sqrt(N)). The `k`-th smallest element, 0-based like `nth`: `kth(0)` is the smallest.
     ///
-    /// Copies count: with elements `3, 7, 7`, `kth(2)` and `kth(3)` are both `7`.
+    /// Copies count: with elements `3, 7, 7`, `kth(1)` and `kth(2)` are both `7`.
     ///
     /// cost: O(sqrt(N))
     /// ties: none: the `k`-th element is one value
-    /// traps: when `k` is not in `1..=len`
-    /// example: `var b = BucketCount.new(0..10); b.add(3); b.add(7, 2); b.kth(1) == 3 and b.kth(2) == 7 and b.kth(3) == 7`
+    /// traps: when `k` is not in `0..len`
+    /// example: `var b = BucketCount.new(0..10); b.add(3); b.add(7, 2); b.kth(0) == 3 and b.kth(1) == 7 and b.kth(2) == 7`
     pub fn kth(self, k: Int) -> Int = todo
 
     /// O(1). Total number of elements (with multiplicity).

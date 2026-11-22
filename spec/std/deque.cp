@@ -2,7 +2,7 @@
 
 use std.seq.{remove}
 
-/// A queue with both ends open: `var q: Deque<Int> = []`. `push` / `pop` work at the back,
+/// A queue with both ends open: `var q = Deque<Int>.new()`. `push` / `pop` work at the back,
 /// `push_front` / `pop_front` at the front, all amortized O(1); `q[i]` is the `i`-th element
 /// from the front in O(1). Memory is a ring of at most twice the largest length.
 pub struct Deque<T>:
@@ -274,21 +274,23 @@ pub struct LinkedList<T>:
     /// example: `LinkedList.of(1).is_empty == false`
     pub @get fn is_empty(self) -> Bool = todo
 
-    /// The front element (traps if empty). O(1).
+    /// The front element, or `None` when the list is empty (as `Deque.first`). O(1).
     ///
     /// cost: O(1)
+    /// empty: `None`
     /// ties: none: there is one front
-    /// traps: when the list is empty
-    /// example: `LinkedList.from_list([1, 2]).first == 1`
-    pub @get fn first(self) -> T = todo
+    /// traps: never
+    /// example: `LinkedList.from_list([1, 2]).first == Some(1)`
+    pub @get fn first(self) -> ?T = todo
 
-    /// The back element (traps if empty). O(1).
+    /// The back element, or `None` when the list is empty (as `Deque.last`). O(1).
     ///
     /// cost: O(1)
+    /// empty: `None`
     /// ties: none: there is one back
-    /// traps: when the list is empty
-    /// example: `LinkedList.from_list([1, 2]).last == 2`
-    pub @get fn last(self) -> T = todo
+    /// traps: never
+    /// example: `LinkedList.from_list([1, 2]).last == Some(2)`
+    pub @get fn last(self) -> ?T = todo
 
     /// Append `x` to the back. O(1).
     ///
@@ -312,14 +314,6 @@ pub struct LinkedList<T>:
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop() == Some(2) and l.len == 1`
     pub fn pop(mut self) -> ?T = todo
 
-    /// Remove and return the back element (alias for `pop`). O(1).
-    ///
-    /// cost: O(1)
-    /// empty: `None`
-    /// traps: never
-    /// see: `pop`
-    /// example: `var l = LinkedList.from_list([1, 2]); l.pop_back() == Some(2)`
-    pub fn pop_back(mut self) -> ?T = todo
 
     /// Remove and return the front element, or `None` if empty. O(1).
     ///

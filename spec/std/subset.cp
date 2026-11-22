@@ -8,15 +8,15 @@ pub struct Subset<B>(bits: U64):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain B = 0..4; Subset<B>.empty().len == 0`
-    pub fn empty() -> Subset<B> = todo
+    /// example: `domain B = 0..4; Subset<B>.empty.len == 0`
+    pub @get fn empty() -> Subset<B> = todo
 
     /// Every member of `B`: the word with its low `|B|` bits set.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `domain B = 0..4; Subset<B>.full().len == 4`
-    pub fn full() -> Subset<B> = todo
+    /// example: `domain B = 0..4; Subset<B>.full.len == 4`
+    pub @get fn full() -> Subset<B> = todo
 
     /// `{b}`: the subset whose only member is `b`.
     ///

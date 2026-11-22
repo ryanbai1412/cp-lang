@@ -54,26 +54,18 @@ pub struct IntervalMap<D, T>:
     pub fn run_at(self, i: D) -> (range: Range<D>, val: T) = todo
 
     /// Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all
-    /// runs stay maximal.
+    /// runs stay maximal. `on_old` is called with each overwritten piece (an old run overlapping
+    /// `r`, clipped to `r`) and its old value; the map is fully repainted when `assign` returns.
     ///
     /// cost: O((1 + overwritten) log runs) amortized
-    /// empty: changes nothing
+    /// empty: changes nothing and calls `on_old` never
+    /// order: `on_old` sees pieces in ascending positions
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); m.runs == 3`
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); m.assign(1..3, 0); m.runs == 1`
-    pub fn assign(mut self, r: Range<D>, val: T) = todo
+    /// example: `var m = IntervalMap.from([1, 1, 2, 2]); var old: List<Int> = []; m.assign(1..3, 9, on_old: (_, v) => old.push(v)); old == [1, 2]`
+    pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()) = todo
 
-    /// `assign(r, val)` that also yields the pieces it overwrote: each old run overlapping `r`,
-    /// clipped to `r`, with its old value. The map is repainted when the call is made, whether or
-    /// not the pieces are consumed.
-    ///
-    /// cost: O((1 + overwritten) log runs) amortized
-    /// empty: yields nothing and changes nothing
-    /// order: ascending positions
-    /// traps: when a non-empty `r` reaches outside `D`
-    /// example: `var m = IntervalMap.from([1, 1, 2, 2]); m.replace(1..3, 9).map(p => p.val).collect() == [1, 2]`
-    /// example: `var m = IntervalMap.from([1, 1, 2, 2]); m.replace(1..3, 9).map(p => p.range).collect() == [1..2, 2..3]`
-    pub fn replace(mut self, r: Range<D>, val: T) -> yields (range: Range<D>, val: T) = todo
 
     /// Give position `i` the value `val` and return the value it had.
     ///
@@ -297,7 +289,7 @@ fn interval_map_from_and_empty_domain() = todo
 fn interval_map_matches_dense_array() = todo
 
 /// Interval partition map over unbounded `Int` coordinates `[lo, hi)` (ODT without coordinate compression).
-/// Maintains maximal constant runs; `assign` / `replace` are O((1 + removed) log runs) amortized.
+/// Maintains maximal constant runs; `assign` is O((1 + removed) log runs) amortized.
 pub struct SparseIntervalMap<T>:
     _init: T
 
@@ -331,22 +323,17 @@ pub struct SparseIntervalMap<T>:
     pub fn run_at(self, i: Int) -> (range: Range<Int>, val: T) = todo
 
     /// Give every coordinate of `r` the value `val`, then merge with equal neighbouring runs.
+    /// `on_old` is called with each old run overlapping `r`, clipped to `r`, and its old value; the
+    /// map is fully repainted when `assign` returns.
     ///
     /// cost: O((1 + removed) log runs) amortized
-    /// empty: changes nothing
+    /// empty: changes nothing and calls `on_old` never
+    /// order: `on_old` sees pieces in ascending coordinates
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.assign(5..7, 1); m.runs == 3`
-    pub fn assign(mut self, r: Range<Int>, val: T) = todo
+    /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); var old: List<Int> = []; m.assign(4..6, 2, on_old: (_, v) => old.push(v)); old == [1, 0]`
+    pub fn assign(mut self, r: Range<Int>, val: T, on_old: (Range<Int>, T) -> () = (_, _) => ()) = todo
 
-    /// `assign(r, val)` that also yields each old run overlapping `r`, clipped to `r`, with its old
-    /// value. The map is repainted when the call is made, whether or not the pieces are consumed.
-    ///
-    /// cost: O((1 + removed) log runs) amortized
-    /// empty: yields nothing and changes nothing
-    /// order: ascending coordinates
-    /// traps: when a non-empty `r` reaches outside `lo..hi`
-    /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.replace(4..6, 2).map(p => p.val).collect() == [1, 0]`
-    pub fn replace(mut self, r: Range<Int>, val: T) -> yields (range: Range<Int>, val: T) = todo
 
     /// Replace the value `v` of every run overlapping `r`, clipped to `r`, with `f(v)`, then merge
     /// equal neighbours. `f` is called once per piece, in ascending order.
