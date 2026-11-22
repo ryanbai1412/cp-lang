@@ -4487,6 +4487,18 @@ impl<'a> Lowerer<'a> {
         }
         if let ast::ExprKind::Field { name: bounds, .. } = &base.kind {
             if matches!(bounds.text.as_str(), "bounds" | "cuts")
+                && matches!(name.text.as_str(), "count" | "len" | "size")
+            {
+                let cuts = self.expr(base, None);
+                if let (ExprKind::Range { lo, hi }, Ty::Range(_)) = (&cuts.kind, &cuts.ty) {
+                    return self.mk(
+                        ExprKind::Binary(BinOp::Sub, hi.clone(), lo.clone()),
+                        Ty::Int,
+                        span,
+                    );
+                }
+            }
+            if matches!(bounds.text.as_str(), "bounds" | "cuts")
                 && matches!(name.text.as_str(), "first" | "last")
             {
                 let cuts = self.expr(base, None);
