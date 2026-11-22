@@ -155,6 +155,10 @@ pub(crate) struct Checker<'a> {
     /// Outer `var`s captured by a `@memo` fn in the current block:
     /// `(var_name, memo_fn_name, memo_span)`. Writing one while the cache lives is E0311.
     pub(crate) memo_captured: Vec<(String, String, Span)>,
+    /// Effects of nested/local fns declared in the current block (for E0601 capture aliasing).
+    pub(crate) local_effects: HashMap<String, lends::Effects>,
+    /// Parallel to `fns`: true when the enclosing fn has a `lends` clause.
+    pub(crate) fn_lends: Vec<bool>,
 }
 
 pub(crate) struct Checked {
@@ -200,6 +204,8 @@ impl<'a> Checker<'a> {
             moved: HashMap::new(),
             assigning_name: None,
             memo_captured: Vec::new(),
+            local_effects: HashMap::new(),
+            fn_lends: Vec::new(),
         }
     }
 

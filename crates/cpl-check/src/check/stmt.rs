@@ -1032,6 +1032,10 @@ impl<'a> Checker<'a> {
                     if indices.iter().any(|index| matches!(index.kind, ExprKind::Range { step: None, .. })));
                 if *op == AssignOp::Set && !part {
                     self.no_escape(value, "this assignment");
+                    if let Some((root, _)) = Self::root_name(target) {
+                        let target_depth = self.var_depth(root);
+                        self.no_escape_assign(value, target_depth);
+                    }
                 }
                 if matches!(op, AssignOp::Max | AssignOp::Min) {
                     self.row_keep(target, &target_ty, value, &value_ty);
@@ -1187,6 +1191,7 @@ impl<'a> Checker<'a> {
                     if !(self.fns.is_empty() && matches!(value_ty, Ty::Unit)) {
                         self.returns(value, &value_ty);
                         self.no_escape(value, "`return`");
+                        self.no_escape_return(value, "`return`");
                     }
                 }
             }
@@ -1765,6 +1770,10 @@ impl<'a> Checker<'a> {
             f.ret.as_ref().map(|t| &t.kind),
             Some(ast::TypeKind::Yields(_))
         );
+        if self.scopes.len() > 1 {
+            self.local_effects
+                .insert(f.name.text.clone(), super::lends::own_effects(f));
+        }
         let fn_depth = self.scopes.len().saturating_sub(1);
         self.fns.push((
             f.name.text.clone(),
@@ -1772,6 +1781,7 @@ impl<'a> Checker<'a> {
             f.ret.is_some() && !generator,
             fn_depth,
         ));
+        self.fn_lends.push(f.lends.is_some());
         self.gives.push(false);
         // A fn body knows nothing of what is lent or known where the fn
         // is written: it runs when it is called.
@@ -1806,6 +1816,7 @@ impl<'a> Checker<'a> {
                         if !statement_like {
                             c.returns(last, &ty);
                             c.no_escape(last, "returning it");
+                            c.no_escape_return(last, "returning it");
                         }
                     }
                     c.lend_reset(mark);
@@ -1818,11 +1829,13 @@ impl<'a> Checker<'a> {
                     let ty = c.infer(expr);
                     c.returns(expr, &ty);
                     c.no_escape(expr, "returning it");
+                    c.no_escape_return(expr, "returning it");
                 }
                 FnBody::None => {}
             }
         });
         self.fns.pop();
+        self.fn_lends.pop();
         let gives = self.gives.pop().unwrap_or(false);
         if let Some((memo, is_array)) = memo {
             // Written `-> T`, or read off what the body gives.

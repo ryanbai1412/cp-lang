@@ -198,13 +198,19 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 return Flow::Capture(name.clone());
             }
             let view = match &unparen(init).kind {
-                ExprKind::Index { indices, .. } => indices
-                    .iter()
-                    .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })),
+                ExprKind::Mut(_) => true,
+                ExprKind::Index { .. } => true,
                 ExprKind::Field { name, .. } if name.text == "rev" => true,
-                ExprKind::Call { callee, .. } => {
-                    matches!(&callee.kind, ExprKind::Field { name, .. } if matches!(name.text.as_str(), "row" | "rev"))
-                }
+                ExprKind::Call { callee, .. } => match &unparen(callee).kind {
+                    ExprKind::Field { name, .. } => matches!(
+                        name.text.as_str(),
+                        "row" | "rev" | "filter" | "take" | "drop"
+                    ),
+                    ExprKind::Name(n) => {
+                        n.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+                    }
+                    _ => false,
+                },
                 _ => false,
             };
             if view {
@@ -1341,41 +1347,50 @@ impl<'a> Checker<'a> {
                 let found = self.quietly(|c| {
                     c.infer(init);
                     let ro = c.is_readonly_view(init);
-                    c.view_kind(init).zip(c.place(init)).map(|(k, p)| (k, p, ro))
+                    if let Some((k, p)) = c.view_kind(init).zip(c.place(init)) {
+                        vec![(k, p, ro, false)]
+                    } else {
+                        c.extra_holds(init)
+                    }
                 });
                 // Its spans are positions in another item's text.
                 self.lends.view_exprs.clear();
                 self.lends.view_readonly.clear();
                 self.lends.proj_calls.clear();
                 self.lends.covered.clear();
-                let Some((kind, place, read_only)) = found else {
+                if found.is_empty() {
                     return;
-                };
-                self.lends.global_views.insert(
-                    name.clone(),
-                    Lent {
-                        kind,
-                        root: place.root.clone(),
-                        root_mutable: place.root_mutable,
-                        read_only,
-                        steps: place.steps.clone(),
-                    },
-                );
+                }
+                if found.len() == 1 {
+                    let (kind, ref place, read_only, _) = found[0];
+                    self.lends.global_views.insert(
+                        name.clone(),
+                        Lent {
+                            kind,
+                            root: place.root.clone(),
+                            root_mutable: place.root_mutable,
+                            read_only,
+                            steps: place.steps.clone(),
+                        },
+                    );
+                }
                 let until = match current.iter().rev().find(|s| mentions(s, name)) {
                     _ if replay.live_after => ELSEWHERE,
                     Some(last) => last.span,
                     None => return,
                 };
-                self.lends.holds.push(Hold {
-                    name: name.clone(),
-                    root: place.root,
-                    steps: place.steps,
-                    mutable: replay.written,
-                    at: ELSEWHERE,
-                    until,
-                    in_loop: false,
-                    is_capture: false,
-                });
+                for (_, place, _, force_mut) in found {
+                    self.lends.holds.push(Hold {
+                        name: name.clone(),
+                        root: place.root,
+                        steps: place.steps,
+                        mutable: force_mut || replay.written,
+                        at: ELSEWHERE,
+                        until,
+                        in_loop: false,
+                        is_capture: false,
+                    });
+                }
             }
             _ => {}
         }
@@ -1525,6 +1540,102 @@ impl<'a> Checker<'a> {
 
     /// `let name = <view>`: the root stays lent until the last statement
     /// of `rest` that names `name`.
+    /// Additional lends introduced by `value` beyond slice/projection views:
+    /// - `mut a[i]` (mutable place bind, R05.3.4 / R05.8.4)
+    /// - `rows[0]` when element is a heap type (R05.3.5)
+    /// - `xs.filter(...)` / `.map(...)` / `.take(...)` / `.drop(...)` view adapters (R12.4.9)
+    /// - generator calls `evens(a)` / `mark(mut seen)` (R05.7.3 / R05.9.1)
+    /// - struct constructed with a lent parameter `Holder(xs)` (R05.7.2)
+    fn extra_holds(&mut self, value: &Expr) -> Vec<(&'static str, Place, bool, bool)> {
+        let e = unparen(value);
+        match &e.kind {
+            ExprKind::Mut(inner) => {
+                if let Some(mut place) = self.place(inner) {
+                    place.steps.clear();
+                    return vec![("mutable reference", place, false, true)];
+                }
+                Vec::new()
+            }
+            ExprKind::Index { base, indices }
+                if !indices
+                    .iter()
+                    .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
+            {
+                let ty = self.quietly(|c| c.infer(e));
+                if self.is_heap_type(&ty) {
+                    if let Some(mut place) = self.place(base) {
+                        place.steps.clear();
+                        return vec![("element", place, true, false)];
+                    }
+                }
+                Vec::new()
+            }
+            ExprKind::Call { callee, args } => {
+                if let ExprKind::Field { base, name } = &unparen(callee).kind {
+                    if matches!(
+                        name.text.as_str(),
+                        "filter" | "take" | "drop"
+                    ) {
+                        let base_ty = self.quietly(|c| c.infer(base));
+                        if base_ty.is_seq() {
+                            if let Some(mut place) = self.place(base) {
+                                place.steps.clear();
+                                return vec![("view", place, true, false)];
+                            }
+                        }
+                    }
+                }
+                // Generator call: holds all non-copy or `mut` args.
+                let ret_ty = self.quietly(|c| c.infer(e));
+                if matches!(&ret_ty, Ty::Named { name, .. } if name == "Gen") {
+                    let mut out = Vec::new();
+                    for arg in args {
+                        let is_mut = arg.mutable;
+                        let arg_ty = self.quietly(|c| c.infer(&arg.value));
+                        if is_mut || self.is_heap_type(&arg_ty) {
+                            if let Some(mut place) = self.place(&arg.value) {
+                                place.steps.clear();
+                                out.push(("generator argument", place, !is_mut, is_mut));
+                            }
+                        }
+                    }
+                    return out;
+                }
+                // Struct constructor given a lent parameter (`Holder(xs)`).
+                let is_struct = match &unparen(callee).kind {
+                    ExprKind::Name(n) => {
+                        matches!(self.type_def(n).as_deref(), Some(Def::Struct { .. }))
+                    }
+                    ExprKind::Generic { base, .. } => match &unparen(base).kind {
+                        ExprKind::Name(n) => {
+                            matches!(self.type_def(n).as_deref(), Some(Def::Struct { .. }))
+                        }
+                        _ => false,
+                    },
+                    _ => false,
+                };
+                if is_struct {
+                    let mut out = Vec::new();
+                    for arg in args {
+                        if let ExprKind::Name(arg_name) = &unparen(&arg.value).kind {
+                            if let Some(local) = self.local(arg_name).cloned() {
+                                if local.keyword == "param" && self.is_heap_type(&local.ty) {
+                                    if let Some(mut place) = self.place(&arg.value) {
+                                        place.steps.clear();
+                                        out.push(("lent field", place, true, false));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return out;
+                }
+                Vec::new()
+            }
+            _ => Vec::new(),
+        }
+    }
+
     pub(crate) fn begin_hold(&mut self, stmt: &Stmt, name: &str, value: &Expr, rest: &[Stmt]) {
         if matches!(unparen(value).kind, ExprKind::Lambda { .. }) {
             let Some(last) = rest.iter().rev().find(|s| mentions(s, name)) else {
@@ -1545,6 +1656,40 @@ impl<'a> Checker<'a> {
             return;
         }
         let Some(kind) = self.view_kind(value) else {
+            let extras = self.extra_holds(value);
+            if extras.is_empty() {
+                return;
+            }
+            let Some(last) = rest.iter().rev().find(|s| mentions(s, name)) else {
+                return;
+            };
+            if extras.len() == 1 {
+                if let Some(decl) = self.local(name).map(|local| local.span) {
+                    let (kind, ref place, read_only, _) = extras[0];
+                    self.lends.views.insert(
+                        decl,
+                        Lent {
+                            kind,
+                            root: place.root.clone(),
+                            root_mutable: place.root_mutable,
+                            read_only,
+                            steps: place.steps.clone(),
+                        },
+                    );
+                }
+            }
+            for (_, place, _, force_mut) in extras {
+                self.lends.holds.push(Hold {
+                    name: name.to_string(),
+                    root: place.root,
+                    steps: place.steps,
+                    mutable: force_mut,
+                    at: stmt.span,
+                    until: last.span,
+                    in_loop: false,
+                    is_capture: false,
+                });
+            }
             return;
         };
         let Some(place) = self.place(value) else {
@@ -1617,6 +1762,23 @@ impl<'a> Checker<'a> {
                 },
                 _ => break,
             };
+        }
+        if matches!(iter_ty, Ty::Named { name, .. } if name == "Gen") {
+            for (_, place, _, force_mut) in self.extra_holds(iter) {
+                if force_mut || place.root_mutable {
+                    self.lends.holds.push(Hold {
+                        name: String::new(),
+                        root: place.root,
+                        steps: place.steps,
+                        mutable: force_mut,
+                        at: iter.span,
+                        until: stmt.span,
+                        in_loop: true,
+                        is_capture: false,
+                    });
+                }
+            }
+            return;
         }
         let stored = match iter_ty {
             Ty::Array { .. } => true,
@@ -1828,16 +1990,27 @@ impl<'a> Checker<'a> {
         let ExprKind::Name(name) = &callee.kind else {
             return;
         };
-        if self.local(name).is_some()
-            || !matches!(self.global(name).as_deref(), Some(Def::Fn { .. }))
-        {
-            return;
-        }
-        let effects = self.env.effects(name);
-        // A local of the same name is another variable.
-        let does = |c: &Self, root: &str| match c.local(root) {
-            Some(_) => None,
-            None => effects.does(root),
+        let (effects, is_local_fn) = if self.local(name).is_some() {
+            let Some(eff) = self.local_effects.get(name).cloned() else {
+                return;
+            };
+            (std::sync::Arc::new(eff), true)
+        } else {
+            if !matches!(self.global(name).as_deref(), Some(Def::Fn { .. })) {
+                return;
+            }
+            (self.env.effects(name), false)
+        };
+        // A local of the same name is another variable (except for a local fn capturing it).
+        let does = |c: &Self, root: &str| {
+            if is_local_fn {
+                effects.does(root)
+            } else {
+                match c.local(root) {
+                    Some(_) => None,
+                    None => effects.does(root),
+                }
+            }
         };
         let writes: Vec<String> = effects
             .writes
@@ -2131,8 +2304,82 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// True when a parameter of type `ty` is passed by lend rather than copied.
+    fn is_lent_param_ty(&mut self, ty: &Ty) -> bool {
+        matches!(ty, Ty::Str | Ty::Fn { .. }) || self.is_heap_type(ty)
+    }
+
+    /// Returning a lent parameter without `lends`, or returning a closure that
+    /// captures a local variable, is E0603 (R05.7.5 / R05.7.8 / R05.10.2).
+    pub(crate) fn no_escape_return(&mut self, e: &Expr, what: &str) {
+        if self.fn_lends.last().copied().unwrap_or(false) {
+            return;
+        }
+        let e = unparen(e);
+        match &e.kind {
+            ExprKind::Name(name) => {
+                if let Some(local) = self.local(name).cloned() {
+                    if local.keyword == "param" && self.is_lent_param_ty(&local.ty) {
+                        let message = format!(
+                            "{what} would return lent parameter `{name}` without a `lends` clause"
+                        );
+                        self.error(codes::LENT_ESCAPES, e.span, message);
+                    }
+                }
+            }
+            ExprKind::Lambda { params, body, .. } => {
+                let mut param_names: Vec<String> = Vec::new();
+                for p in params {
+                    if let ast::PatternKind::Name(n) = &p.kind {
+                        param_names.push(n.clone());
+                    }
+                }
+                let fn_depth = self.fns.last().map(|f| f.3).unwrap_or(0);
+                let escaped = names_in(body).into_iter().find(|n| {
+                    !param_names.iter().any(|p| p == n)
+                        && self.local(n).is_some()
+                        && self.var_depth(n) >= fn_depth
+                });
+                if let Some(cap) = escaped {
+                    let message = format!(
+                        "{what} returns a closure that captures local `{cap}`, which does not outlive this fn"
+                    );
+                    self.error(codes::LENT_ESCAPES, e.span, message);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Assigning a lent param or heap `for`-loop variable into an outer `var`
+    /// is E0603 (R05.7.4 / R05.7.10 / R05.9.2).
+    pub(crate) fn no_escape_assign(&mut self, value: &Expr, target_depth: usize) {
+        let e = unparen(value);
+        let ExprKind::Name(src) = &e.kind else {
+            return;
+        };
+        let Some(local) = self.local(src).cloned() else {
+            return;
+        };
+        let src_depth = self.var_depth(src);
+        if local.keyword == "param" && self.is_lent_param_ty(&local.ty) && target_depth < src_depth
+        {
+            let message = format!(
+                "lent parameter `{src}` cannot be stored in an outer `var`"
+            );
+            self.error(codes::LENT_ESCAPES, e.span, message);
+        } else if local.keyword == "for" && self.is_heap_type(&local.ty) && target_depth < src_depth
+        {
+            let message = format!(
+                "loop item `{src}` is lent from the loop and cannot be stored in an outer `var`"
+            );
+            self.error(codes::LENT_ESCAPES, e.span, message);
+        }
+    }
+
     /// The arguments of a call that stores them must not be lent views.
     pub(crate) fn no_escape_args(&mut self, callee: &Expr, callee_ty: &Ty, args: &[Arg]) {
+        let mut receiver_is_mut_param = false;
         let what = match (&callee.kind, callee_ty) {
             (ExprKind::Field { base, name }, _) if STORES.contains(&name.text.as_str()) => {
                 // Only collection types store their `.push`/`.insert`/`.set`/`.add`
@@ -2161,6 +2408,11 @@ impl<'a> Checker<'a> {
                 if !stores_elem {
                     return;
                 }
+                if let ExprKind::Name(b) = &unparen(base).kind {
+                    if let Some(local) = self.local(b) {
+                        receiver_is_mut_param = local.keyword == "param" && local.mutable;
+                    }
+                }
                 format!("`.{}(...)`", name.text)
             }
             (_, Ty::TypeName(name) | Ty::Named { name, .. }) => {
@@ -2170,6 +2422,18 @@ impl<'a> Checker<'a> {
         };
         for arg in args {
             self.no_escape(&arg.value, &what);
+            if receiver_is_mut_param {
+                if let ExprKind::Name(src) = &unparen(&arg.value).kind {
+                    if let Some(local) = self.local(src).cloned() {
+                        if local.keyword == "param" && self.is_lent_param_ty(&local.ty) {
+                            let message = format!(
+                                "{what} cannot store lent parameter `{src}` into a `mut` parameter"
+                            );
+                            self.error(codes::LENT_ESCAPES, arg.value.span, message);
+                        }
+                    }
+                }
+            }
         }
     }
 

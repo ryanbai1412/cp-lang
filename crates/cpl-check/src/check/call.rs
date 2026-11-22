@@ -527,6 +527,31 @@ impl<'a> Checker<'a> {
             .map(|arg| self.quietly(|c| c.infer(&arg.value)))
             .collect();
         match (name.as_str(), tys.as_slice()) {
+            ("List", []) => Some(Ty::Named {
+                name: "List".into(),
+                args: vec![],
+            }),
+            ("List", [only]) => {
+                let elem = match only {
+                    Ty::Named { name, args }
+                        if matches!(
+                            name.as_str(),
+                            "Gen" | "Iter" | "Filter" | "Zip" | "Range"
+                        ) && args.len() == 1 =>
+                    {
+                        args[0].clone()
+                    }
+                    other => other.clone(),
+                };
+                Some(Ty::Named {
+                    name: "List".into(),
+                    args: vec![elem],
+                })
+            }
+            ("List", [first, ..]) => Some(Ty::Named {
+                name: "List".into(),
+                args: vec![first.clone()],
+            }),
             ("print", _) => {
                 let allow_none = args
                     .iter()
