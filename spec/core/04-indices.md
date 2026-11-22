@@ -30,6 +30,7 @@ enum Dir: N, E, S, W                   // a fieldless enum is a domain too: [Dir
 | `x in V` | is integer `x` a position | O(1) |
 | `V(x)` | integer to position, trapping outside `V` | O(1) |
 | `V.at(x)` | integer to position, `?V`: `none` outside `V` | O(1) |
+| `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `none` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | O(1) |
 | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free |

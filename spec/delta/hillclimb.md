@@ -43,6 +43,9 @@ and its notes in that record's `notes`.
   picks the fold over the binary form (parser gap).
 - etsr23r3p3: `kruskal_tree` binds its node domain at the call (`let (domain N, kt) = ...`), as
   `compress` does, and accepts edge records with more fields.
+- ucrpc21h: product domains convert from tuples (`P.at((x, y))`, core 04), so a 3-D knapsack
+  step is one `if let p = Split.at(from)`; `for (a, b, c) in Split.rev` is its reverse sweep.
+- yac6p4: `Seq.find(p)` was missing from `std.seq` though chapter 7 uses it; added.
 - noip09p4: `Subset<B>` (lib/search-dp.md's `B.subsets`) had prose but no stub; `std.subset` now
   declares it (one word, set algebra, `items`, `subsets`, `supersets`) and the prelude imports
   it. The duplicate `submasks` in `std.dp` is gone (`std.math` keeps the raw-`Int` one).

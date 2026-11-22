@@ -194,6 +194,10 @@ pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>) = todo
 /// O(1) per element walked.
 pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U = todo
 
+/// The first element satisfying `p`, `none` if none does; stops there. `(1..=m).find(ok)` is the
+/// least `ok` integer. O(position found).
+pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T = todo
+
 /// Gives the items of a list a fresh domain, so arrays over them are index-safe:
 /// `let (domain Arc, arcs) = [...].with_domain()`. Moves the list, O(1).
 pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T) = todo
