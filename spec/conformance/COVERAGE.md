@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1167 (296 passing). Rules: 521.
+Cases: 1176 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -766,8 +766,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `CostFlow.cancel_cycles`, `max_closure`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `circulation`, `max_bounded_flow`, `min_bounded_flow`, `gomory_hu`, `global_min_cut`, `best_matching`, `stable_matching`, `edge_coloring`, `matroid_intersection`, `Matroid`, `GraphicMatroid`, `GraphicMatroid.new`, `ColorMatroid`, `ColorMatroid.new`, `min_cost_circulation`
 - **geometry** (120/158 named by a case)
   - uncovered: `same_dir`, `ByAngle`, `upper_hull`, `OnlineHull`, `OnlineHull.new`, `OnlineHull.extreme`, `OnlineHull.area2`, `OnlineHull.vertices`, `OnlineHull.iter`, `minkowski_sum`, `minkowski_upper`, `area2_128`, `locate`, `locate_convex`, `min_bounding_box`, `hull_extreme`, `hull_tangents`, `closest_pair`, `polygon_triangulate`, `PI`, `sign_eps`, `Vec.from_angle`, `Vec.rot`, `project`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`, `circumcenter`, `circles_union_area`, `polygon_area`, `polygon_cut`, `min_enclosing_circle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`, `Vec3.rot`
-- **graph** (52/123 named by a case)
-  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `condense`, `two_edge_components`, `Paths.iter`, `Paths.tight`, `bfs01`, `fixed_cost_paths`, `closure`, `Walk`, `Walk.vertices`, `euler_walk`, `Lit`, `Lit.flip`, `TwoSat`, `TwoSat.new`, `TwoSat.add_or`, `TwoSat.must`, `TwoSat.implies`, `TwoSat.at_most_one`, `TwoSat.add_xor`, `TwoSat.add_eq`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `negative_cycle`, `min_mean_cycle`, `girth`, `smallest_topo`, `dag_fold`, `count_paths`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `complement`, `odd_cycle`, `dominators`, `triangles`, `boruvka`, `arborescence`, `spanning_forest`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
+- **graph** (63/123 named by a case)
+  - uncovered: `Next`, `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `Tree`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.only`, `Graph.weighted`, `Graph.spanning_tree`, `Graph.has`, `Graph.lists`, `Graph.hops`, `Graph.edges`, `Graph.dfs_tree`, `Graph.peel`, `Graph.transpose`, `peel`, `condense`, `two_edge_components`, `Paths.iter`, `Paths.tight`, `bfs01`, `fixed_cost_paths`, `closure`, `Walk`, `Walk.vertices`, `euler_walk`, `Lit.flip`, `TwoSat.add_or`, `TwoSat.implies`, `TwoSat.at_most_one`, `TwoSat.add_xor`, `TwoSat.add_eq`, `dfs`, `Visit`, `dial`, `johnson`, `k_shortest`, `min_mean_cycle`, `dag_fold`, `scc_times`, `block_cut_tree`, `blocks`, `Complement`, `dominators`, `boruvka`, `arborescence`, `spanning_forest`, `IncrementalBridges`, `IncrementalBridges.new`, `IncrementalBridges.two_edge_same`, `only`, `Only`, `Only.transpose`
 - **grid** (19/23 named by a case)
   - uncovered: `ray`, `adj4`, `adj8`, `transposed`
 - **hashmap** (35/35 named by a case)
@@ -821,7 +821,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (16/22 named by a case)
   - uncovered: `Window.new`, `Track`, `Tracked`, `Undo`, `Undoing`, `undoing`
 
-1638 of 2222 std items are named by a case.
+1649 of 2222 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
