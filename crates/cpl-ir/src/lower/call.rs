@@ -1151,7 +1151,15 @@ impl<'a> Lowerer<'a> {
                             sep = Some(self.expect(&arg.value, &Ty::Str));
                         }
                         Some(arg_name) if arg_name.text == "none" => {
-                            none_text = Some(self.expect(&arg.value, &Ty::Str));
+                            let value = self.expr(&arg.value, None);
+                            none_text = if value.ty == Ty::Str {
+                                Some(value)
+                            } else {
+                                let at = arg.value.span;
+                                self.fmt_arg(value, digits, at).map(|piece| {
+                                    self.mk(ExprKind::Format(vec![FmtPiece::Value(piece)]), Ty::Str, at)
+                                })
+                            };
                         }
                         Some(arg_name) if arg_name.text == "digits" => match arg.value.kind {
                             ast::ExprKind::Int(d) if (0..=18).contains(&d) => digits = d as u32,
