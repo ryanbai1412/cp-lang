@@ -1,0 +1,127 @@
+# stdlib metrics. Every value below is the output of its command, run on main
+# 4b8f504f on 2026-11-22 from the repo root, after
+# `cargo build --release -p cpl-cli -p cpl-conform`.
+# `measure.py` is plan/domains/stdlib/measure.py. Refresh: run each command.
+
+[[metric]]
+name = "stdlib_todo"
+command = "python3 scripts/debt-ratchet.py --check"
+value = 294
+target = "0 outside spec/std/GAPS.md"
+milestone = "M2"
+
+[[metric]]
+name = "todo_in_library_bodies"
+command = "python3 plan/domains/stdlib/measure.py todo-split"
+value = 189
+target = "only lines listed in spec/std/GAPS.md"
+milestone = "M2"
+
+[[metric]]
+name = "todo_in_test_fns"
+command = "python3 plan/domains/stdlib/measure.py todo-split"
+value = 105
+target = 0
+milestone = "M2"
+
+[[metric]]
+name = "doc_examples_pass"
+command = "./target/release/cpl-conform docs"
+value = "2012/2699"
+target = "2699/2699 (M2: >= 2430)"
+milestone = "M3"
+
+[[metric]]
+name = "doc_examples_top_causes"
+command = "./target/release/cpl-conform docs --causes"
+value = "174 E0204 range-for-domain, 146 R0402 todo, 89 R0001 list literal for [D]T"
+target = "no cause outside GAPS.md"
+milestone = "M2"
+
+[[metric]]
+name = "std_conformance_pass"
+command = "./target/release/cpl-conform conformance std-"
+value = "801/832"
+target = "832/832"
+milestone = "M2"
+
+[[metric]]
+name = "std_diff_interp_vs_cpp"
+command = "./target/release/cpl-conform diff std-"
+value = "735/757 (22 skip, 0 fail)"
+target = "757/757, 0 skip"
+milestone = "M2"
+
+[[metric]]
+name = "pub_fns_missing_doc_label"
+command = "python3 scripts/spec-stub.py --audit"
+value = "32 of 2003"
+target = 0
+milestone = "M2"
+
+[[metric]]
+name = "spec_stub_problems"
+command = "python3 scripts/spec-stub.py --check"
+value = 13
+target = 0
+milestone = "M2"
+
+[[metric]]
+name = "prelude_names"
+command = "scripts/check.sh --fast  # prints 'prelude: N names'"
+value = 192
+target = "80 (pending plan/QUESTIONS.md stdlib Q1)"
+milestone = "M3"
+
+[[metric]]
+name = "std_names_in_compiler_prelude_tables"
+command = "python3 plan/domains/stdlib/measure.py privilege"
+value = 27
+target = 0
+milestone = "M3"
+
+[[metric]]
+name = "std_names_as_literals_in_lower_call_rs"
+command = "python3 plan/domains/stdlib/measure.py privilege"
+value = 111
+target = "agreed intrinsics floor (plan/QUESTIONS.md stdlib Q3); upper bound, includes common words"
+milestone = "M3"
+
+[[metric]]
+name = "modules_pass_standalone_check"
+command = "n=0; for f in spec/std/*.cp; do ./target/release/cpl check $f >/dev/null 2>&1 && n=$((n+1)); done; echo $n"
+value = "12/40"
+target = "40/40"
+milestone = "M3"
+
+[[metric]]
+name = "gaps_entries"
+command = "grep -c '^- ' spec/std/GAPS.md"
+value = 88
+target = 0
+milestone = "M3"
+
+[[metric]]
+name = "import_cycles_explicit_use"
+command = "python3 plan/domains/stdlib/measure.py cycles"
+value = 0
+target = 0
+milestone = "M1"
+
+[[metric]]
+name = "modules_without_conformance_cases"
+command = "python3 plan/domains/stdlib/measure.py uncovered"
+value = 1
+target = 0
+milestone = "M3"
+
+[[metric]]
+name = "banned_spellings"
+command = "python3 scripts/spec-vocab.py"
+value = 0
+target = 0
+milestone = "-"
+
+# Not measured yet (no command exists): implicit auto-import cycles
+# (cpl-check/tests/std_acyclic.rs is on devin/wip-std-import-cycles), C++ time
+# of std fns vs a matched library (perf lane), rubric and probe scores.

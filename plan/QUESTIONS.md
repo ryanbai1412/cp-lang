@@ -113,4 +113,29 @@ Recommendation: (b) as the gate, (a) as a regression check.
 How to reverse it: gate on (a) only.
 Meanwhile: report both; gate on (a) until the first fresh set exists.
 
+### stdlib: Q1 what earns a prelude name
+Today 192 names are in every program (`spec/std/prelude.cp`); `scripts/check.sh` warns above 80.
+- (a) A fixed budget of 80, cut by judgment.
+- (b) A usage rule: a name stays if at least 5% of gold ports and hill-climb solutions use it; the rule sets the count (per-name usage not measured yet). A name like `ternary_max` (no spec chapter, `spec-stub.py --check`) is a candidate to go: `use std.search.{ternary_max}`.
+- (c) No budget: everything a contest uses often is in.
+Recommendation: (b). It ties the prelude to real code, keeps one way to get each name, and `cpl fix` (lint L0208) adds the `use` for anything cut.
+How to reverse it: a name moved out goes back with one line in `spec/std/prelude.cp`.
+Meanwhile: keep 192, measure usage per name, draft the cut list; nothing removed until answered.
+
+### stdlib: Q2 an int range where a type argument names a domain
+174 doc examples fail with E0204 "takes a domain by name, and `0..3` is a range", e.g. `spec/std/dsu.cp`: `let d = Dsu<0..3>(); d.components == 3`, `spec/std/beats.cp`: `BeatsSegTree<0..3>(fill: 2).all_sum == 6`.
+- (a) Accept the range as an anonymous domain argument (like decision 159's inline `(V, V)` domain). One-liners stay one line.
+- (b) Require a declared domain: `domain D = 0..3` then `Dsu<D>()`; rewrite the 174 examples.
+Recommendation: (a). It is how the examples and ports are written, and a named domain still works where the index space matters.
+How to reverse it: make E0204 fire again; `cpl fix` can name the domain.
+Meanwhile: examples stay as written and count as blocked; a compiler request is filed only after the answer.
+
+### stdlib: Q3 where the compiler/std line is
+27 public std names are also in `crates/cpl-check/src/prelude.rs` tables and up to 111 are special-cased by string in `crates/cpl-ir/src/lower/call.rs` (`plan/domains/stdlib/measure.py privilege`), e.g. `sort`, `sorted`, `first`, `sum`, `Counter`. A user library can't do what these do.
+- (a) Intrinsics only for storage, I/O, bit operations and numeric primitives; everything else (`sort`, `min`, `sum`, `first`, ...) is a std body, moved only once its C++ matches the builtin (perf gate).
+- (b) Keep a small blessed core vocabulary in the compiler, listed and frozen.
+Recommendation: (a), the "no privileged stdlib" rule in AGENTS.md; the perf gate keeps it zero-cost.
+How to reverse it: a moved name goes back into the builtin table; its std body stays as the reference.
+Meanwhile: move nothing; std bodies become the reference the builtins are tested against, and the list is classified with tech-debt.
+
 ## Answered
