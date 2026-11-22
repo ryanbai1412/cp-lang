@@ -13,7 +13,7 @@ import scripts.check_cache as cc
 
 class CheckCacheTest(unittest.TestCase):
     def git_tree(self, tmp, files):
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         subprocess.run(["git", "init", "-q"], cwd=tmp, check=True, env=env)
         for rel, text in files.items():
             os.makedirs(os.path.dirname(os.path.join(tmp, rel)) or tmp, exist_ok=True)
@@ -106,7 +106,7 @@ class CheckCacheTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(hook))
         self.assertTrue(os.access(hook, os.X_OK))
         # A commit hook exports GIT_DIR and GIT_INDEX_FILE; inherited, they aim these at the real repo.
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         with tempfile.TemporaryDirectory() as tmp:
             subprocess.run(["git", "init", "-q"], cwd=tmp, check=True, env=env)
             subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=tmp, check=True, env=env)
@@ -122,7 +122,7 @@ class CheckCacheTest(unittest.TestCase):
     def test_pre_push_hook_rejects_a_main_tip_that_never_passed_the_gate(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         hook = os.path.join(root, ".githooks", "pre-push")
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         with tempfile.TemporaryDirectory() as tmp:
             git = lambda *a: subprocess.run(["git", *a], cwd=tmp, check=True, env=env,
                                             capture_output=True, text=True).stdout.strip()
@@ -163,7 +163,7 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_land_takes_the_lock_gates_pushes_and_releases(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         with tempfile.TemporaryDirectory() as tmp:
             remote, work = os.path.join(tmp, "remote.git"), os.path.join(tmp, "work")
             def git(*a, cwd=work):
@@ -206,7 +206,7 @@ class CheckCacheTest(unittest.TestCase):
 
     def _train(self, gate_body, bad=None, names=("first", "rider")):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         with tempfile.TemporaryDirectory() as tmp:
             remote = os.path.join(tmp, "remote.git")
             def git(*a, cwd=tmp):
@@ -294,7 +294,7 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_land_lock_heartbeat_keeps_live_gate_and_expires_after_max_hold(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         with tempfile.TemporaryDirectory() as tmp:
             remote = os.path.join(tmp, "remote.git")
             def git(*a, cwd=tmp):
@@ -335,7 +335,7 @@ class CheckCacheTest(unittest.TestCase):
     def test_land_queues_fairly_in_arrival_order(self):
         # With CPL_LAND_TRAIN=0, two queued lanes must land in strict FIFO order.
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         with tempfile.TemporaryDirectory() as tmp:
             remote = os.path.join(tmp, "remote.git")
             def git(*a, cwd=tmp):
@@ -391,7 +391,7 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_land_rejects_unformatted_rust_before_queuing(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CPL_LAND"))}
         with tempfile.TemporaryDirectory() as tmp:
             work = os.path.join(tmp, "work")
             os.makedirs(os.path.join(work, "src"))
