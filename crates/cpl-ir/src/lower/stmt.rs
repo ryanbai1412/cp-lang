@@ -4345,6 +4345,17 @@ impl<'a> Lowerer<'a> {
         before: &mut Vec<Stmt>,
         binds: &mut Vec<Stmt>,
     ) -> Option<Expr> {
+        if let ast::PatternKind::Literal(lit) = &pat.kind {
+            if matches!(lit.kind, ast::ExprKind::None) {
+                let (present, _) = self.optional(value, what, before)?;
+                let span = present.span;
+                return Some(Expr {
+                    kind: ExprKind::Unary(UnOp::Not, Box::new(present)),
+                    ty: Ty::Bool,
+                    span,
+                });
+            }
+        }
         if let ast::PatternKind::Variant { path, args } = &pat.kind {
             if path.len() == 1 && path[0].text == "some" && args.len() == 1 {
                 let (present, inner) = self.optional(value, what, before)?;
