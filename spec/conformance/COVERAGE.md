@@ -6,18 +6,18 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1119 (296 passing). Rules: 521.
+Cases: 1122 (296 passing). Rules: 521.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 80 cases; 0 uncovered, 8 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 82 cases; 0 uncovered, 8 happy-path only, 1 negative only
 - R03 (03-numbers-layout.md): 23 rules, 33 cases; 0 uncovered, 8 happy-path only, 4 negative only
-- R04 (04-indices.md): 59 rules, 66 cases; 0 uncovered, 3 happy-path only, 0 negative only
+- R04 (04-indices.md): 59 rules, 68 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 39 cases; 0 uncovered, 2 happy-path only, 4 negative only
 - R04b (04b-keys.md): 27 rules, 43 cases; 0 uncovered, 0 happy-path only, 3 negative only
 - R05 (05-ownership.md): 41 rules, 77 cases; 0 uncovered, 3 happy-path only, 4 negative only
-- R06 (06-control-functions.md): 23 rules, 47 cases; 0 uncovered, 6 happy-path only, 1 negative only
+- R06 (06-control-functions.md): 23 rules, 48 cases; 0 uncovered, 5 happy-path only, 1 negative only
 - R07 (07-sequences.md): 87 rules, 79 cases; 0 uncovered, 9 happy-path only, 3 negative only
 - R08 (08-traits-generics.md): 29 rules, 53 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 32 cases; 4 uncovered, 6 happy-path only, 3 negative only
@@ -197,7 +197,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.22 [1+ 0-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
 - R04.4.23 [1+ 0-]: **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with `from`. Free.
 - R04.4.24 [1+ 0-]: **A range type to a wider one** (`1..=5` to `Int`, `0..=9` to `-5..=100`). Free. Arithmeti...
-- R04.4.25 [1+ 0-] *happy-path only*: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
+- R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [1+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [2+ 0-] *happy-path only*: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
 - R04.4.28 [1+ 0-]: **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`, or a counted `[n]`...
@@ -352,7 +352,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.2.1 [4+ 0-] *happy-path only*: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [1+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
-- R06.2.4 [1+ 0-] *happy-path only*: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
+- R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
 - R06.2.5 [2+ 0-] *happy-path only*: Function types are `(A, B) -> R`. Every call with a known function value is specialized; t...
 - R06.3.1 [3+ 1-]: A generator **value** is a recipe: a call with every argument but the loop body filled in....
 - R06.3.2 [0+ 1-] *negative only*: A generator value built from lent arguments holds those lends until its last use, like a s...
@@ -609,7 +609,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0006 Unexpected indentation: 1 case(s)
 - E0007 Malformed character literal: 1 case(s)
 - E0101 Unclosed delimiter: 1 case(s)
-- E0102 Expected expression: 3 case(s)
+- E0102 Expected expression: 4 case(s)
 - E0103 Expected token: 3 case(s)
 - E0104 Expected indented block: 1 case(s)
 - E0105 Expected type: 1 case(s)
@@ -673,7 +673,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0805 fresh_type_leaks_test *(0.3)*: **no case**
 - E0806 Type annotation required for inference: 3 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
-- E0902 range_store_unprovable_const *(0.3)*: 6 case(s)
+- E0902 range_store_unprovable_const *(0.3)*: 7 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
 - E0904 memory_over_profile *(0.3)*: **no case**
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
@@ -726,7 +726,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 parens_on_o1 / missing_parens: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
-- R0101 Index out of range: 9 case(s)
+- R0101 Index out of range: 10 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 6 case(s)
 - R0202 Integer overflow: 4 case(s)
