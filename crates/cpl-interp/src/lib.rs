@@ -475,6 +475,7 @@ enum Flow {
     Give(Value),
 }
 
+#[derive(Clone)]
 enum FastClosure {
     MinMax {
         is_max: bool,
@@ -2126,87 +2127,44 @@ impl<'p, 'o> Interp<'p, 'o> {
                 let fv = self.eval(callee)?;
                 if self.tracer.is_none()
                     && self.profiler.is_none()
+                    && args.len() <= 4
                     && args.iter().all(|a| matches!(a, Arg::Value(_)))
                 {
                     if let Value::Closure(cid, _) = &fv {
-                        if let Some(fast) = self.fast_closures[*cid].as_ref() {
-                            match fast {
+                        if let Some(fast) = self.fast_closures[*cid].clone() {
+                            let mut evaled = [Value::Unit, Value::Unit, Value::Unit, Value::Unit];
+                            for (slot, arg) in evaled.iter_mut().zip(args) {
+                                let Arg::Value(e) = arg else { unreachable!() };
+                                *slot = self.eval(e)?;
+                            }
+                            // A parameter may appear more than once in the body (`x => x + x`).
+                            let arg = |i: usize| evaled[i].clone();
+                            return match fast {
                                 FastClosure::MinMax { is_max, a, b, ty } => {
-                                    let (is_max, a, b, ty) = (*is_max, *a, *b, ty.clone());
-                                    let mut evaled: [Option<Value>; 4] = [None, None, None, None];
-                                    if args.len() <= 4 {
-                                        for (i, arg) in args.iter().enumerate() {
-                                            let Arg::Value(e) = arg else { unreachable!() };
-                                            evaled[i] = Some(self.eval(e)?);
-                                        }
-                                        let va = evaled[a].take().unwrap();
-                                        let vb = evaled[b].take().unwrap();
-                                        let ord = self.cmp_ty_val(&ty, &vb, &va, span)?;
-                                        let take_b = if is_max { ord.is_gt() } else { ord.is_lt() };
-                                        return Ok(if take_b { vb } else { va });
-                                    }
+                                    let (va, vb) = (arg(a), arg(b));
+                                    let ord = self.cmp_ty_val(&ty, &vb, &va, span)?;
+                                    let take_b = if is_max { ord.is_gt() } else { ord.is_lt() };
+                                    Ok(if take_b { vb } else { va })
                                 }
-                                FastClosure::Bin { op, a, b } => {
-                                    let (op, a, b) = (*op, *a, *b);
-                                    if args.len() <= 4 {
-                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
-                                        for (i, arg) in args.iter().enumerate() {
-                                            let Arg::Value(e) = arg else { unreachable!() };
-                                            evaled[i] = Some(self.eval(e)?);
-                                        }
-                                        let va = evaled[a].take().unwrap();
-                                        let vb = evaled[b].take().unwrap();
-                                        return binary(op, va, vb, span);
-                                    }
-                                }
+                                FastClosure::Bin { op, a, b } => binary(op, arg(a), arg(b), span),
                                 FastClosure::IntAddMul { x, f, w } => {
-                                    let (x, f, w) = (*x, *f, *w);
-                                    if args.len() <= 4 {
-                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
-                                        for (i, arg) in args.iter().enumerate() {
-                                            let Arg::Value(e) = arg else { unreachable!() };
-                                            evaled[i] = Some(self.eval(e)?);
-                                        }
-                                        let vx = evaled[x].take().unwrap();
-                                        let vf = evaled[f].take().unwrap();
-                                        let vw = evaled[w].take().unwrap();
-                                        let prod = binary(BinOp::Mul, vf, vw, span)?;
-                                        return binary(BinOp::Add, vx, prod, span);
-                                    }
+                                    let prod = binary(BinOp::Mul, arg(f), arg(w), span)?;
+                                    binary(BinOp::Add, arg(x), prod, span)
                                 }
                                 FastClosure::IntCmpConst { op, a, c } => {
-                                    let (op, a, c) = (*op, *a, *c);
-                                    if args.len() <= 4 {
-                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
-                                        for (i, arg) in args.iter().enumerate() {
-                                            let Arg::Value(e) = arg else { unreachable!() };
-                                            evaled[i] = Some(self.eval(e)?);
-                                        }
-                                        let va = evaled[a].take().unwrap().int();
-                                        let ok = match op {
-                                            CmpOp::Eq => va == c,
-                                            CmpOp::Ne => va != c,
-                                            CmpOp::Lt => va < c,
-                                            CmpOp::Le => va <= c,
-                                            CmpOp::Gt => va > c,
-                                            CmpOp::Ge => va >= c,
-                                            _ => false,
-                                        };
-                                        return Ok(Value::Bool(ok));
-                                    }
+                                    let va = arg(a).int();
+                                    Ok(Value::Bool(match op {
+                                        CmpOp::Eq => va == c,
+                                        CmpOp::Ne => va != c,
+                                        CmpOp::Lt => va < c,
+                                        CmpOp::Le => va <= c,
+                                        CmpOp::Gt => va > c,
+                                        CmpOp::Ge => va >= c,
+                                        _ => false,
+                                    }))
                                 }
-                                FastClosure::Identity(a) => {
-                                    let a = *a;
-                                    if args.len() <= 4 {
-                                        let mut evaled: [Option<Value>; 4] = [None, None, None, None];
-                                        for (i, arg) in args.iter().enumerate() {
-                                            let Arg::Value(e) = arg else { unreachable!() };
-                                            evaled[i] = Some(self.eval(e)?);
-                                        }
-                                        return Ok(evaled[a].take().unwrap());
-                                    }
-                                }
-                            }
+                                FastClosure::Identity(a) => Ok(arg(a)),
+                            };
                         }
                     }
                 }
