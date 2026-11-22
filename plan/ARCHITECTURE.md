@@ -236,13 +236,35 @@ that enforces it. A phase that drops what a concern needs is a bug.
 | Performance | layout facts, inlining and check elision visible in IR | runtime p50 at most 1.0x originals, max 1.5x, 1.1x always reachable by tuning | `just bench` against matched C++ |
 | Size | bytes per emitted item; runtime helpers only when used | under 32 KB per solution, 64 KB hard | corpus size report |
 | Interpreter and C++ agreement | one MIR meaning; checks as explicit ops | zero disagreements | differential runs on every test and fuzzing |
-| Source-level traces | names and spans on every IR value | traps show source values | trace snapshots |
+| Debugging | names and spans on every IR value; one source-level event stream (statement, write, print, trap) from every engine; one display rule per type | time-travel step back under 50 ms at 10^7 steps; trace overhead at most 3x; interpreter at most 10x C++; a planted bug diagnosed from the trace in minutes | event-stream agreement across engines; trace and DAP snapshots; trace viewer browser test; planted-bug drill |
 | Explain | why each layout, check and inline was chosen | `cpl explain` covers all of them | explain snapshots |
 | Judge targets | profile (standard, flags, stack, ISA) flows to codegen | one profile per supported judge | judge profile tests |
 | Determinism | no hash-order or address dependence | identical bytes on rebuild | build twice and compare |
-| Input generation | declared input types reach the stress tools | a generator for every input type | `cpl stress` cases |
+| Stress testing | declared input types become a typed input schema; test roles (`@brute`, `@alt`, `@check`, `@interactor`) are program-model queries; seeded determinism | a generator and constraint-respecting shrinker for every input type; first diverging event reported, not just output; counterexample to a false conjecture in under 10 s | `cpl stress` cases; time-to-counterexample drill |
 | Spec traceability | rule ID from spec to diagnostic, test and docs | every rule has a case | `conformance.py --rules` |
 | Library power | no name checks in the compiler | intrinsics table only | name-ban gate; no-privilege test |
+
+### Debugging and stress testing
+
+Both are designed in, not bolted onto the interpreter:
+
+1. **One event stream.** The reference interpreter, the VM and a trace build
+   of the emitted C++ emit the same source-level events. Traces, the
+   debugger, stress alignment and trap reports all consume it, so a
+   judge-size input too slow to interpret is traced from compiled C++.
+2. **Spans survive every lowering** (core IR, MIR, C++), so every event maps
+   to a source line and variable name.
+3. **Time travel by construction.** Runs are deterministic (seeded RNG, fixed
+   hash order, recorded input); periodic snapshots make stepping back cheap.
+4. **Values display in source terms.** One display rule per type serves
+   `print`, traces, the debugger and traps: domain labels on indices, `None`
+   for empty optionals, tables over domains as grids.
+5. **Input types are a schema.** The front end exports the typed input schema
+   from `read<...>` declarations; generators and shrinkers derive from it and
+   keep constraints valid while shrinking.
+6. **Test roles are queries.** Stress compares solution and brute event by
+   event and reports the first diverging state.
+7. **Incomplete programs run.** `todo` traps at its location.
 
 ## A6. Testing
 
