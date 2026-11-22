@@ -568,7 +568,7 @@ impl<'a> Checker<'a> {
     /// A tuple of values is taken apart, `let (x, y) = (a, b) else: ...`.
     /// A refutable pattern, `let (gap, Some(best)) = e else: ...`, is matched
     /// against `e` itself.
-    fn let_else(&mut self, pat: &ast::Pattern, init: &ast::Expr, ty: Ty) -> Ty {
+    pub(crate) fn let_else(&mut self, pat: &ast::Pattern, init: &ast::Expr, ty: Ty) -> Ty {
         if refutable(pat) {
             return ty;
         }
