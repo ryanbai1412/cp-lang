@@ -7,8 +7,7 @@ above all the user's own feedback, which is the strongest guide to what
 
 ## The user and the project
 
-Ryan Bai is a strong competitive programmer who writes C++. His accepted submissions are in `corpus/` (3,462 C++ files) and
-`subs/`; `submissions/info.json` has metadata. The project is his personal
+Ryan Bai is a strong competitive programmer who writes C++. His accepted submissions are in `corpus/` (3,462 C++ files); `submissions/info.json` has metadata. The project is his personal
 one: design and build the best language for competitive programming. It
 compiles to C++, and it comes with a full toolchain: CLI, debugger, LSP and
 editor plugin, docs site and playground.

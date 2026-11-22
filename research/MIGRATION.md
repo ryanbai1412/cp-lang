@@ -31,3 +31,10 @@ still on `main`. Restore one with `git push origin <sha>:refs/heads/<name>`.
 | `devin/spec-trees` | `71b31e63d033e997bb737797edd9cb3ab19bbe71` |
 | `devin/spec-window` | `53e31c34e50f3d9bdcad5b8214b379e61147bd09` |
 | `rewrite-c` | `ac17a3434e9411f86564bc7bf84139017d567bdf` |
+
+## Deleted paths
+
+| Path | Where its content is |
+|---|---|
+| `subs/submissions/` | byte-identical to `corpus/submissions/` |
+| `subs/body_*.cpp`, `subs/*.txt` | a 50-file sample of solution bodies, each contained in its `corpus/submissions/<id>.cpp` |
