@@ -90,6 +90,7 @@ pub struct BeatsSegTree<D>:
     ///
     /// cost: O(log |D|)
     /// empty: `None`
+    /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `BeatsSegTree([5, 1, 4]).min_val(0..3) == Some(1)`
     /// example: `BeatsSegTree([5, 1, 4]).min_val(2..2) == None`
@@ -101,6 +102,7 @@ pub struct BeatsSegTree<D>:
     ///
     /// cost: O(log |D|)
     /// empty: `None`
+    /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = BeatsSegTree([5, 1, 4]); t.chmin(0..1, 2); t.max_val(0..3) == Some(4)`
     pub fn max_val(mut self, r: Range<D>) -> ?Int = todo
@@ -159,6 +161,7 @@ pub struct BeatsSegTree<D>:
     ///
     /// cost: O(1)
     /// empty: `None`
+    /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_min == Some(1)`
     pub @get fn all_min(self) -> ?Int = todo
@@ -167,6 +170,7 @@ pub struct BeatsSegTree<D>:
     ///
     /// cost: O(1)
     /// empty: `None`
+    /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: never
     /// example: `BeatsSegTree([5, 1, 4]).all_max == Some(5)`
     pub @get fn all_max(self) -> ?Int = todo
@@ -224,6 +228,7 @@ pub struct HistoricBeatsSegTree<D>:
     ///
     /// cost: O(log |D|)
     /// empty: `None`
+    /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..2, 5); t.add(0..2, -10); t.max_val(0..1) == Some(-4)`
     pub fn max_val(mut self, r: Range<D>) -> ?Int = todo
@@ -233,6 +238,7 @@ pub struct HistoricBeatsSegTree<D>:
     ///
     /// cost: O(log |D|)
     /// empty: `None`
+    /// ties: returns a value, so equal candidates are indistinguishable
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..2, 5); t.add(0..2, -10); t.hist_max(0..1) == Some(6)`
     /// example: `HistoricBeatsSegTree([1, 2]).hist_max(1..1) == None`
