@@ -454,6 +454,18 @@ fn proven(file: &File) -> Proven {
     out
 }
 
+/// `let B = 7` parses its capitalized name as a variant pattern; as a whole
+/// `let` pattern it binds that name, as the checker reads it.
+pub(crate) fn binding(pat: &cpl_syntax::ast::Pattern) -> std::borrow::Cow<'_, cpl_syntax::ast::Pattern> {
+    use cpl_syntax::ast::{Pattern, PatternKind};
+    match &pat.kind {
+        PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+            std::borrow::Cow::Owned(Pattern { kind: PatternKind::Name(path[0].text.clone()), span: pat.span })
+        }
+        _ => std::borrow::Cow::Borrowed(pat),
+    }
+}
+
 /// How often one loop runs, in the source's terms where it can be.
 #[derive(Clone, Debug)]
 pub(crate) enum Factor {
@@ -800,6 +812,7 @@ fn ranges_of_stmt(
                 init: whole_init,
                 ..
             } => {
+                let whole = &*binding(whole);
                 // `var (lo, hi) = (0, xs.len)` binds each name as its own `var`.
                 // `let (n, q): (1..=N, 1..=Q) = read()` declares each name's type.
                 let declared = whole_ty.as_ref().or_else(|| whole_init.as_ref().and_then(bounds::read_type));
@@ -1189,7 +1202,7 @@ fn var_range(
                     init: Some(init),
                     ..
                 } => {
-                    match (&pat.kind, &init.kind) {
+                    match (&binding(pat).kind, &init.kind) {
                         (PatternKind::Name(n), _) => self.defs.push((n.clone(), init.clone(), *mutable)),
                         (PatternKind::Tuple(ps), ExprKind::Tuple(es)) if ps.len() == es.len() => {
                             for (p, e) in ps.iter().zip(es) {
@@ -1437,7 +1450,7 @@ fn declared_in(stmts: &[cpl_syntax::ast::Stmt]) -> std::collections::HashSet<Str
     let mut out = std::collections::HashSet::new();
     for stmt in stmts {
         match &stmt.kind {
-            StmtKind::Let { pat, .. } => names(pat, &mut out),
+            StmtKind::Let { pat, .. } => names(&binding(pat), &mut out),
             StmtKind::Const { name, .. } => {
                 out.insert(name.text.clone());
             }

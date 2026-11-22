@@ -1790,6 +1790,19 @@ fn a_tuple_read_bounds_each_name_it_binds() {
 }
 
 #[test]
+fn a_capitalized_let_bounds_loops_like_a_const() {
+    let loops = |src: &str| -> Vec<(u128, Option<u128>, String)> {
+        crate::proven_loops(src).into_iter().map(|l| (l.times, l.total, l.count)).collect()
+    };
+    let body = "for k in 1..=B:\n    print(k)\nfn f():\n    for j in 0..B:\n        print(j)\nf()\n";
+    let want = [(7, Some(7), "B".to_string()), (7, Some(7), "B".to_string())];
+    assert_eq!(loops(&format!("const B = 7\n{body}")), want);
+    assert_eq!(loops(&format!("let B = 7\n{body}")), want);
+    assert_eq!(loops(&format!("let B: 1..=7 = read()\n{body}")), want);
+    assert_eq!(loops(&format!("let B = 3 + 4\n{body}")), want);
+}
+
+#[test]
 fn a_for_loop_knows_how_often_it_runs() {
     let loops = |src: &str| -> Vec<(u128, Option<u128>)> {
         crate::proven_loops(src).into_iter().map(|l| (l.times, l.total)).collect()

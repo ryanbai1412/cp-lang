@@ -5585,3 +5585,16 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   `corpus/problems` ports, estimates go from 37 to 38.
 - **Reverse.** Restore the two doc lines in `stdlib/math.cp` and
   `stdlib/seq.cp`.
+
+## 208. A capitalized `let` bounds what reads it, as a `const` does (2026-11-22)
+
+- **Decision.** The bounds analysis reads `let B = 1_000_005`, whose whole
+  pattern the parser takes as a variant with no arguments, as binding the
+  name `B`, the way the checker and the lowering already do. A loop over
+  `0..B` gets its count and a fn's cost estimate can use it.
+- **Why.** Ports name constants in capitals with `let` as often as with
+  `const`, and before this only `const` bounded a loop. On the 877 ports in
+  `corpus/problems`, loops with a count go from 1,134 to 1,155; fns with an
+  estimated cost are unchanged, since their other loops still have none.
+- **Reverse.** Drop `rules::binding` in `cpl-lint` and its uses.
+

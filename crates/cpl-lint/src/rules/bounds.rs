@@ -132,13 +132,13 @@ impl Bounds {
                 }
                 StmtKind::Let {
                     pat, ty: Some(ty), ..
-                } => bounds.declare(base, pat, ty),
+                } => bounds.declare(base, &super::binding(pat), ty),
                 StmtKind::Let {
                     pat,
                     ty: None,
                     init: Some(init),
                     ..
-                } if read_type(init).is_some() => bounds.declare(base, pat, read_type(init).unwrap()),
+                } if read_type(init).is_some() => bounds.declare(base, &super::binding(pat), read_type(init).unwrap()),
                 StmtKind::Let {
                     mutable: false,
                     pat,
@@ -146,7 +146,7 @@ impl Bounds {
                     init: Some(init),
                     ..
                 } => {
-                    if let (PatternKind::Name(name), Some(value)) = (&pat.kind, bounds.expr(init)) {
+                    if let (PatternKind::Name(name), Some(value)) = (&super::binding(pat).kind, bounds.expr(init)) {
                         bounds.values.insert(name.clone(), value);
                         bounds.define(name, init);
                     }
@@ -286,6 +286,11 @@ impl Bounds {
                         self.1.extend(writes.iter().filter(|w| !local(w)).map(|(n, _)| n.clone()));
                     }
                     StmtKind::Const { name, .. } => self.add(&name.text),
+                    StmtKind::Let { pat, .. } if matches!(pat.kind, PatternKind::Variant { .. }) => {
+                        if let PatternKind::Name(n) = &super::binding(pat).kind {
+                            self.add(n);
+                        }
+                    }
                     _ => {}
                 }
             }
