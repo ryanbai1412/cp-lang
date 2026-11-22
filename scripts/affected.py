@@ -2,12 +2,14 @@
 """Pick what the commit tier of the gate runs for a set of changed paths.
 
     affected.py [--json] [path ...]     default: the staged paths
+    affected.py [--json] --base REV     the paths changed between REV and HEAD
 
 A path under a crate selects that crate and, through nextest's `rdeps()`,
 every crate that depends on it. Prose selects nothing. Any path this file
 does not know selects the whole fast gate, so a new kind of input can only
 make the commit tier slower, never let it miss a test. The land tier
-(`scripts/check.sh --fast` in scripts/land.sh and CI) always runs everything.
+(`scripts/check.sh --land`) selects the same way over a train's diff; CI's
+`--fast` on every main tip always runs everything.
 """
 
 import fnmatch
@@ -89,9 +91,19 @@ def staged():
     return [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
 
 
+def changed_since(base):
+    out = subprocess.run(["git", "diff", "--name-only", "-z", base, "HEAD"],
+                         cwd=ROOT, capture_output=True, check=True).stdout
+    return [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
+
+
 def main(argv):
     as_json = "--json" in argv
-    paths = [a for a in argv if a != "--json"] or staged()
+    argv = [a for a in argv if a != "--json"]
+    if argv[:1] == ["--base"]:
+        paths = changed_since(argv[1])
+    else:
+        paths = argv or staged()
     sel = select(paths, crate_dirs())
     if as_json:
         print(json.dumps(sel))

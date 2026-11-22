@@ -141,7 +141,7 @@ class CheckCacheTest(unittest.TestCase):
                                          text=True, env=env)
             r = run()
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn("has not passed scripts/check.sh --fast", r.stderr)
+            self.assertIn("has not passed scripts/check.sh --fast or --land", r.stderr)
             with open(os.path.join(tmp, ".git", "cpl-gate-passed"), "w", encoding="utf-8") as f:
                 f.write(tree + "\n")
             r = run()

@@ -38,7 +38,7 @@ queue=refs/locks/queue
 ttl="${CPL_LAND_TTL:-120}"
 lock_beat="${CPL_LAND_LOCK_BEAT:-30}"
 max_hold="${CPL_LAND_MAX_HOLD:-480}"
-gate="${CPL_LAND_GATE:-scripts/check.sh --fast}"
+gate="${CPL_LAND_GATE:-scripts/check.sh --land}"
 me="${CPL_LANE:-$(git config user.name || echo lander)}"
 beat="${CPL_LAND_BEAT:-60}"
 poll="${CPL_LAND_POLL:-10}"
@@ -77,6 +77,7 @@ for attempt in 1 2 3 4 5; do
     sweep
     retry git fetch -q "$remote" main
     base=$(git rev-parse FETCH_HEAD)
+    export CHECK_BASE=$base
     git rebase -q "$base" || {
         git rebase --abort
         echo "land: HEAD conflicts with main; rebase and resolve by hand, then rerun" >&2

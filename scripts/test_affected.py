@@ -56,5 +56,12 @@ class AffectedTest(unittest.TestCase):
         self.assertIn("all=0\n", out)
 
 
+    def test_base_selects_the_paths_changed_since_it(self):
+        out = subprocess.run([sys.executable, os.path.join(affected.ROOT, "scripts", "affected.py"),
+                              "--json", "--base", "HEAD"],
+                             capture_output=True, text=True, check=True, cwd=affected.ROOT).stdout
+        self.assertIn('"packages": []', out)
+        self.assertIn('"all": false', out)
+
 if __name__ == "__main__":
     unittest.main()

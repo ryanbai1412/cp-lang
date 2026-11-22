@@ -5,7 +5,10 @@
 #   scripts/check.sh           same as --fast
 #   scripts/check.sh --commit  what the pre-commit hook runs: the checks the
 #                              staged paths can reach (scripts/affected.py)
-#   scripts/check.sh --fast    what scripts/land.sh and CI run on every tip
+#   scripts/check.sh --land    what scripts/land.sh runs on a train: --fast,
+#                              but only the tests the train's paths reach
+#                              (since $CHECK_BASE, default origin/main)
+#   scripts/check.sh --fast    what CI runs on every tip
 #   scripts/check.sh --full    --fast, then the slow suites (15 minutes or more)
 #
 # --fast  1. nothing from dist/ and no secret is staged or in an unpushed commit
@@ -54,6 +57,7 @@ for arg in "$@"; do
     case "$arg" in
         --fast) mode=fast ;;
         --commit) mode=commit ;;
+        --land) mode=land ;;
         --full) mode=full ;;
         --no-cache) use_cache=0 ;;
         -h | --help) sed -n '2,25s/^# \{0,1\}//p' "$0"; exit 0 ;;
@@ -68,7 +72,7 @@ cache_dir="$target/check-cache"
 # binary built from the same bytes, flags, compiler and system headers. The
 # cache is per user, not per checkout, so a fresh worktree starts warm.
 # --full and CHECK_NO_CXX_CACHE=1 compile everything.
-if [ "$mode" = fast ] && [ "${CHECK_NO_CXX_CACHE:-0}" != "1" ] && command -v g++ >/dev/null; then
+if { [ "$mode" = fast ] || [ "$mode" = land ]; } && [ "${CHECK_NO_CXX_CACHE:-0}" != "1" ] && command -v g++ >/dev/null; then
     export CPL_CXX_SHIM_DIR="$target/cxx-shim"
     export CPL_CXX_CACHE_DIR="${CPL_CXX_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/cpl/cxx}"
     mkdir -p "$CPL_CXX_SHIM_DIR" "$CPL_CXX_CACHE_DIR"
@@ -191,6 +195,20 @@ slow_tests=(
 slow_filter='binary(budget)'
 for t in "${slow_tests[@]}"; do slow_filter+=" or test(/(^|::)$t\$/)"; done
 
+if [ "$mode" = land ]; then
+    land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || true)}"
+    sel_all=1
+    sel_reason="no base to diff the train against"
+    if [ -n "$land_base" ]; then
+        while IFS='=' read -r key value; do
+            printf -v "sel_$key" '%s' "$value"
+        done < <(uv run --quiet python scripts/affected.py --base "$land_base")
+    fi
+    if [ "$sel_all" = 1 ]; then
+        printf '\ncheck: %s is not mapped by scripts/affected.py; running --fast\n' "$sel_reason"
+        mode=fast
+    fi
+fi
 if [ "$mode" = commit ]; then
     while IFS='=' read -r key value; do
         printf -v "sel_$key" '%s' "$value"
@@ -283,6 +301,15 @@ trap cleanup EXIT
 if cache_hit nextest_doc; then
     step "cargo nextest + doctests"
     echo "cached (tree unchanged outside its excludes)"
+elif [ "$mode" = land ]; then
+    # Not cached: a partial run must not vouch for the whole tree.
+    step "cargo nextest of the crates the train reaches: ${sel_packages:-none}"
+    if [ -n "$sel_packages" ]; then
+        read -ra pkgs <<<"$sel_packages"
+        cargo nextest run --workspace --no-fail-fast -E "($sel_filter) & not ($slow_filter)"
+        step "cargo test --doc of the touched crates"
+        cargo test -q $(printf -- '-p %s ' "${pkgs[@]}") --doc
+    fi
 else
     if cargo nextest --version >/dev/null 2>&1; then
         step "cargo nextest run --workspace (without the --full tests)"
@@ -345,6 +372,8 @@ python3 scripts/review-check.py --check \
 step "site snippet gate (node web/scripts/gate.mjs)"
 if cache_hit site_gate; then
     echo "cached (tree unchanged outside its excludes)"
+elif [ "$mode" = land ] && [ "$sel_site" != 1 ] && [ -z "$sel_packages" ]; then
+    echo "skipped: the train touches no site, docs or crate path"
 else
     need node "the site's snippet gate runs on it"
     CPL="$cpl" node web/scripts/gate.mjs || fail "site snippet gate failed; rerun: CPL=$cpl node web/scripts/gate.mjs"
@@ -432,11 +461,11 @@ step_end
 printf '\nstep times (s):\n'
 printf '%s\n' "${step_times[@]}" | sort -rn | awk -F'\t' '$1 > 0 { printf "%5d  %s\n", $1, $2 }'
 gate_elapsed=$(( $(date +%s) - gate_t0 ))
-if [ "$mode" = fast ]; then
+if [ "$mode" = fast ] || [ "$mode" = land ]; then
     gate_time_file="$target/gate-fast-time.json"
     mkdir -p "$(dirname "$gate_time_file")"
-    printf '{"mode":"fast","elapsed_s":%d,"budget_s":180}\n' "$gate_elapsed" >"$gate_time_file"
-    printf '\ncheck: all fast checks passed in %ss (budget <= 180s)\n' "$gate_elapsed"
+    printf '{"mode":"%s","elapsed_s":%d,"budget_s":180}\n' "$mode" "$gate_elapsed" >"$gate_time_file"
+    printf '\ncheck: all %s checks passed in %ss (budget <= 180s)\n' "$mode" "$gate_elapsed"
     # .githooks/pre-push lands only trees recorded here, so a rebased tip must
     # pass again before it reaches main. Unstaged edits mean the checked tree
     # is not the index tree, so nothing is recorded.
