@@ -77,3 +77,5 @@ line when the gap closes and the body lands.
 - seq, `valleys`: the doc example `[3, 1, 2, 5].valleys() == [1..2, 1..3, 2..3]` contradicts the prose (position 2 holds 2, not below its left neighbour 1); needs the intended definition before a body.
 - seq, `zip_exact` doc example `zip_exact([1, 2], "ab")`: the checker binds `T` and `U` to one element type when both come from `Indexed` bounds ("expected `Int`, found `Char`"); the body works for equal element types.
 - seq, `cycle` doc example `[1, 2, 0].cycle(from: 0)`: a list literal passed as `[D]D` gets an empty domain (R0001); the body works on a declared domain.
+- dp, `Step.prune` (`backtrack`): same as seq `SubseqStep.prune`; the yielded step is a copy, so pruning needs item-steered generators (decision 126). `backtrack` itself walks without pruning.
+- window, `Sweep` doc examples over `Counter<D, Int>`: `impl Track<K> for Counter<K, Int>` in window.cp is not found when `Sweep.move` calls `state.push` (E0203), and `s.move(1..4)` needs int-literal ranges to convert to `Range<D>`; the body works for a state with its own `push`/`pop`.

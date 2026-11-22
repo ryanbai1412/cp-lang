@@ -295,7 +295,25 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// ties: among counts with equal penalized value, `solve` must report the least; `aliens` relies on it
 /// traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
 /// example: `aliens(5, lam => (0..=10).map(c => (val: (c - 3) * (c - 3) + lam * c, count: c)).min_by(p => (p.val, p.count))!) == 4`
-pub fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L = todo
+pub fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
+    assert k >= 0
+    var lo: L = -1
+    var hi: L = 1
+    if let r = lambdas:
+        assert not r.is_empty
+        lo = r.first!
+        hi = r.last!
+    else:
+        while solve(hi).count > k: hi = hi * 2
+        while solve(lo).count <= k: lo = lo * 2
+    assert solve(hi).count <= k
+    while lo < hi:
+        let mid = lo + (hi - lo) / 2
+        let at = solve(mid)
+        if at.count == k: return at.val - mid * k
+        if at.count < k: hi = mid
+        else: lo = mid + 1
+    solve(lo).val - lo * k
 
 // The penalties around the answer: the counts fall as the penalty grows, so
 // double until the count is at most `k` above and at least `k` below.
@@ -662,7 +680,17 @@ pub fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>:
 /// traps: never
 /// example: `backtrack(1, x => if x < 4: [2 * x, 2 * x + 1] else: []).map(s => s.state).collect() == [1, 2, 4, 5, 3, 6, 7]`
 /// example: `backtrack(1, x => if x < 4: [2 * x, 2 * x + 1] else: []).map(s => s.depth).collect() == [0, 1, 2, 2, 1, 2, 2]`
-pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S> = todo
+pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>:
+    var stack: List<(S, Int)> = [(start, 0)]
+    while stack.len > 0:
+        let (s, d) = stack.pop()!
+        yield Step(s, d)
+        var kids: List<S> = []
+        for c in next(s): kids.push(c)
+        var i = kids.len - 1
+        while i >= 0:
+            stack.push((kids[i], d + 1))
+            i -= 1
 
 /// One state reached by `backtrack`.
 pub struct Step<S>(state: S, depth: Int):

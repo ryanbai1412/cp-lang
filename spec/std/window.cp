@@ -196,7 +196,10 @@ pub struct Sweep<D, S>(state: S):
     /// traps: never (beyond what `state.push` traps on)
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.range.len == 0`
     /// example: `domain D = 0..5; let s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0), start: Some(1..3)); s.range == 1..3`
-    pub fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S> = todo
+    pub fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S>:
+        var s = Sweep<D, S>(state, lo: 0, hi: 0)
+        if let r = start: s.move(r)
+        s
 
     /// Slide to `to`, feeding `state` the positions that enter and leave. Moving expands before
     /// shrinking, in this order: grow the right end (push each new position, increasing), grow the
@@ -209,7 +212,24 @@ pub struct Sweep<D, S>(state: S):
     /// empty: moving to an empty `to` pops everything
     /// traps: never (beyond what the state traps on)
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.move(1..4); s.move(2..5); s.range == 2..5`
-    pub fn move(mut self, to: Range<D>) = todo
+    pub fn move(mut self, to: Range<D>):
+        let keys = [d for d in D]
+        var (l, r) = (0, 0)
+        if not to.is_empty:
+            l = Int(to.first!) - Int(keys[0])
+            r = Int(to.last!) - Int(keys[0]) + 1
+        while hi < r:
+            state.push(keys[hi])
+            hi += 1
+        while lo > l:
+            lo -= 1
+            state.push(keys[lo])
+        while hi > r:
+            hi -= 1
+            state.pop(keys[hi])
+        while lo < l:
+            state.pop(keys[lo])
+            lo += 1
 
     /// The current interval: the positions whose pushes the state holds.
     ///
@@ -217,4 +237,6 @@ pub struct Sweep<D, S>(state: S):
     /// traps: never
     /// order: increasing positions of `D`
     /// example: `domain D = 0..5; var s = Sweep<D, Counter<D, Int>>(Counter<D, Int>(0)); s.move(0..2); s.range.len == 2`
-    @get pub fn range(self) -> Range<D> = todo
+    @get pub fn range(self) -> Range<D>:
+        let keys = [d for d in D]
+        if lo < hi: keys[lo]..=keys[hi - 1] else: keys[0]..keys[0]

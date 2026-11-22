@@ -85,13 +85,14 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
         else: best = Some(x)
     best
 
-/// How many elements satisfy `p`.
+/// How many elements satisfy `p` (every element without `p`).
 ///
 /// cost: O(n)
 /// empty: `0`
 /// traps: never
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
-pub fn count<S: Seq, T>(self: S, p: T -> Bool) -> Int:
+/// example: `[1, 2, 3].pairs().count() == 3`
+pub fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int:
     var n = 0
     for x in self:
         if p(x): n += 1
@@ -475,10 +476,9 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S> = todo
 /// example: `[1, 2, 3].pairs().count() == 3`
 /// see: `adjacent` for neighbours, `Pair<V>` for a table keyed by unordered pairs
 pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
-    var prev: ?T = None
-    for x in self:
-        if let p = prev: yield (p, x)
-        prev = x
+    let xs: List<T> = [x for x in self]
+    for i in 0..xs.len:
+        for j in i + 1..xs.len: yield (xs[i], xs[j])
 
 /// Every element paired with the one before it, starting with `(None, first)`:
 /// `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`. O(1) per step.
