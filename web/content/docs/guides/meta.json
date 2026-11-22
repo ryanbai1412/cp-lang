@@ -9,6 +9,7 @@
     "borrowing",
     "strings",
     "testing",
+    "stress",
     "stdlib",
     "cpp-guide",
     "idioms"

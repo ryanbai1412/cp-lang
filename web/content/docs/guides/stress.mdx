@@ -1,0 +1,142 @@
+---
+title: "Stress testing"
+description: "Find and shrink counterexamples with @alt, @gen, @check, and @interactor — on the CLI or in the browser."
+---
+
+When a fast solution disagrees with your intuition, `cpl stress file.cp` generates small valid inputs, runs your solution against an oracle or checker, shrinks the first failing case to a minimal counterexample, and prints it in input format. All verification functions (`@alt`, `@gen`, `@check`, `@interactor`) live in the same `.cp` file and are stripped automatically by `cpl build`.
+
+For memoization, assertions, `debug(...)`, and the visual Trace debugger, see [Memoization, stress testing & Trace](/docs/guides/testing).
+
+## 1. Brute oracle with `@alt` (typed input generation)
+
+When every `read()` has a range or length type, you do not need a generator at all. Add an `@alt(program)` oracle (or `@alt(fn_name)` for a single function) and run `cpl stress solution.cp`:
+
+```cp status=runs input="3\n2 9 4\n"
+let n: 1..=10 = read()
+let a: [0..n]1..=100 = read()
+var best = 0
+for x in a: best max= x
+print(best)
+
+@alt(program)
+fn slow():
+    var best = 0
+    for i in 0..n:
+        if a[i] > best: best = a[i]
+    print(best)
+```
+
+`cpl stress` derives a generator and constraint-respecting shrinker from `n: 1..=10` and `a: [0..n]1..=100`, runs cases deterministically from `--seed 1`, and shrinks any failing case before saving it to `<file>.tests/stress-<seed>.in`.
+
+## 2. Custom generator with `@gen`
+
+When inputs have structure beyond independent ranges (sorted sequences, trees, graphs, or problem-specific invariants), write a `@gen fn` that prints one test case using `rand(...)` and `shuffle(...)`:
+
+```cp status=runs input="4\n0 1 1 2\n"
+fn solve(n: Int, a: List<Int>) -> Int:
+    var total = 0
+    for x in a: total += x
+    total
+
+@alt(solve)
+fn slow_solve(n: Int, a: List<Int>) -> Int:
+    var total = 0
+    for i in 0..n: total += a[i]
+    total
+
+@gen
+fn make_case(size: Int):
+    let n = rand(1, size)
+    print(n)
+    var a: List<Int> = []
+    for i in 0..n:
+        a.push(rand(0, i))
+    print(a)
+
+let n: 1..=12 = read()
+let a: [0..n]0..=12 = read()
+print(solve(n, a))
+```
+
+Every `rand` and `shuffle` call inside `@gen` draws from a replayable choice stream, so `cpl stress` shrinks generated inputs automatically without a hand-written shrinker.
+
+## 3. Constructive validator with `@check`
+
+For problems with multiple valid answers, write a `@check fn` that reads the solution's output with `read_output()` and asserts validity:
+
+```cp status=runs input="4\n"
+let n: 1..=20 = read()
+if n % 2 == 1:
+    print(-1)
+else:
+    var out: List<Int> = []
+    for i in 0..n:
+        out.push(if i % 2 == 0: 1 else: -1)
+    print(out)
+
+@check
+fn judge():
+    if n % 2 == 1:
+        let k: Int = read_output()
+        assert k == -1
+    else:
+        let a: [0..n]Int = read_output()
+        var s = 0
+        for x in a:
+            assert x == 1 or x == -1
+            s += x
+        assert s == 0
+```
+
+`@check` (alias `@checker`) runs on every generated input; an assertion failure reports `WA` with the shrunk input and your solution's output.
+
+## 4. Interactive judge with `@interactor`
+
+For interactive problems, declare `@!interactive` and write an `@interactor fn` taking `mut sol: Interactor`. Hidden test data is read inside `@interactor` using typed `read()`, so `cpl stress` generates and shrinks hidden inputs too:
+
+```cp status=runs
+@!interactive
+let n: 1..=20 = read()
+var lo = 1
+var hi = n
+while lo < hi:
+    let mid = (lo + hi) / 2
+    let ans: Int = ask("?", mid)
+    if ans == 1: hi = mid else: lo = mid + 1
+print("!", lo)
+
+@interactor
+fn judge(mut sol: Interactor):
+    let n: 1..=20 = read()
+    let secret: 1..=n = read()
+    sol.send(n)
+    var queries = 0
+    while true:
+        let kind: Str = sol.recv()
+        if kind == "?":
+            queries += 1
+            assert queries <= 6
+            let x: Int = sol.recv()
+            sol.send(if secret <= x: 1 else: 0)
+        else:
+            let guess: Int = sol.recv()
+            assert guess == secret
+            return
+```
+
+## Common CLI commands
+
+```bash
+# Stress with deterministic seed and size cap
+cpl stress solution.cp --cases 200 --seed 1 --size 8
+
+# Show the first variable assignment where fast and @alt diverge
+cpl stress solution.cp --explain
+
+# Machine-readable report (same JSON schema as browser stress)
+cpl stress solution.cp --format json
+
+# Run saved samples and stress counterexamples (supports .out and .ans)
+cpl test solution.cp
+cpl test solution.cp --tests corpus/problems/ccc03s4/tests
+```
