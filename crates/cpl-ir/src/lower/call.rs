@@ -4132,6 +4132,13 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Lambda { params, body, .. } if params.len() == 1 => {
                 (params[0].clone(), (**body).clone())
             }
+            ast::ExprKind::Lambda { params, body, .. } if params.len() > 1 => (
+                ast::Pattern {
+                    kind: ast::PatternKind::Tuple(params.clone()),
+                    span: at,
+                },
+                (**body).clone(),
+            ),
             _ => {
                 let var = "it\u{b7}".to_string();
                 let call = mk(ast::ExprKind::Call {

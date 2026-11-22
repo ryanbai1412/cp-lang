@@ -1497,6 +1497,13 @@ impl<'a> Lowerer<'a> {
                                     init: None,
                                     ..
                                 } => Some(fname.clone()),
+                                ast::StmtKind::Fn(f)
+                                    if s.decorators.iter().any(|d| d.name.text == "get")
+                                        && f.params.len() == 1
+                                        && f.params[0].name.text == "self" =>
+                                {
+                                    Some(f.name.text.clone())
+                                }
                                 _ => None,
                             })
                             .collect();
