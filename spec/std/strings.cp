@@ -670,7 +670,30 @@ pub struct KmpAutomaton<A>:
     /// empty: an empty `pat` gives one state, `0`, which matches everywhere
     /// traps: when an element of `pat` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").len == 4`
-    pub fn new<S: Seq>(pat: S) -> KmpAutomaton<A> = todo
+    @allow(unproven_list_index)
+    pub fn new<S: Seq>(pat: S) -> KmpAutomaton<A>:
+        let k = A.K
+        var p: List<Int> = []
+        for a in pat:
+            let c = a.to_idx
+            assert 0 <= c and c < k, "KmpAutomaton: character outside alphabet"
+            p.push(c)
+        let m = p.len
+        var pi: List<0..=2_000_000_000> = List.filled(m + 1, 0)
+        var goto: List<0..=2_000_000_000> = List.filled((m + 1) * k, 0)
+        unchecked:
+            for i in 1..m:
+                var j = pi[i]
+                while j > 0 and p[i] != p[j]: j = pi[j]
+                if p[i] == p[j]: j += 1
+                pi[i + 1] = j
+            for i in 0..=m:
+                for c in 0..k:
+                    if i > 0 and (i == m or c != p[i]):
+                        goto[i * k + c] = goto[pi[i] * k + c]
+                    else:
+                        goto[i * k + c] = if i < m and c == p[i]: i + 1 else: 0
+        KmpAutomaton(k, goto, pi)
 
     /// The number of states, `pat.len + 1`; the states are `0..=pat.len` and `pat.len` means a
     /// full match.
@@ -678,7 +701,7 @@ pub struct KmpAutomaton<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `KmpAutomaton<Char>("ab").len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = pi.len
 
     /// The matched prefix length after reading `a` in `state`. From the full-match state the
     /// automaton falls back along `link` first, so matching continues and overlaps are found.
@@ -686,7 +709,12 @@ pub struct KmpAutomaton<A>:
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let k = KmpAutomaton<Char>("aba"); k.step(3, 'b') == 2 and k.step(0, 'b') == 0`
-    pub fn step(self, state: Int, a: A) -> Int = todo
+    @allow(unproven_list_index)
+    pub fn step(self, state: Int, a: A) -> Int:
+        assert 0 <= state and state < pi.len, "KmpAutomaton.step: state out of range"
+        let c = a.to_idx
+        assert 0 <= c and c < alpha, "KmpAutomaton.step: character outside alphabet"
+        goto[state * alpha + c]
 
     /// The failure link of `state`: the length of the longest proper border of `pat[..state]`,
     /// and `0` at state `0`. It equals `prefix_function(pat)[state - 1]` for `state >= 1`.
@@ -694,7 +722,10 @@ pub struct KmpAutomaton<A>:
     /// cost: O(1)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let k = KmpAutomaton<Char>("aba"); k.link(3) == 1 and k.link(2) == 0`
-    pub fn link(self, state: Int) -> Int = todo
+    @allow(unproven_list_index)
+    pub fn link(self, state: Int) -> Int:
+        assert 0 <= state and state < pi.len, "KmpAutomaton.link: state out of range"
+        pi[state]
 
     /// The start position (0-based, counted in `text`'s iteration order) of every occurrence of
     /// `pat` in `text`, overlapping ones included.
@@ -705,7 +736,26 @@ pub struct KmpAutomaton<A>:
     /// order: increasing start
     /// traps: when an element of `text` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").find_all("ababa").collect() == [0, 2]`
-    pub fn find_all<S: Seq>(self, text: S) -> yields Int = todo
+    @allow(unproven_list_index)
+    pub fn find_all<S: Seq>(self, text: S) -> yields Int:
+        let m = pi.len - 1
+        if m == 0:
+            var pos = 0
+            yield 0
+            for a in text:
+                let c = a.to_idx
+                assert 0 <= c and c < alpha, "KmpAutomaton.find_all: character outside alphabet"
+                pos += 1
+                yield pos
+            return
+        var state = 0
+        var pos = 0
+        for a in text:
+            let c = a.to_idx
+            assert 0 <= c and c < alpha, "KmpAutomaton.find_all: character outside alphabet"
+            state = goto[state * alpha + c]
+            pos += 1
+            if state == m: yield pos - m
 
 /// The start position of every occurrence of `pat` in `self`, overlapping ones included,
 /// by bit-parallel Shift-And. Faster than `find_all` for short patterns on small alphabets.
@@ -1656,6 +1706,26 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
             ) % RH_M2
             return HashVal(h1, h2)
 
+const RH61_MOD: U64 = U64(2305843009213693951)
+
+fn rh61_add(a: U64, b: U64) -> U64:
+    let s = a + b
+    if s >= RH61_MOD: s - RH61_MOD else: s
+
+fn rh61_sub(a: U64, b: U64) -> U64:
+    if a >= b: a - b else: a + RH61_MOD - b
+
+fn rh61_mul(a: U64, b: U64) -> U64:
+    let p = I128(a) * I128(b)
+    let lo = U64(p & I128(RH61_MOD))
+    let hi = U64(p >> 61)
+    rh61_add(lo, hi)
+
+fn rh61_tok(t: Int) -> U64:
+    let m1: Int = 2305843009213693950
+    let r = t % m1
+    U64(r + 1)
+
 /// O(1) value. Single-modulus `2^61 - 1` (Mersenne prime) polynomial hash value (`Copy + Eq + Ord + Hash`).
 pub struct Hash61(v: U64)
 
@@ -1673,28 +1743,48 @@ pub struct RollingHash61:
     /// empty: an empty hash; `push` can grow it
     /// traps: when a given base is outside `2..2^61 - 1`
     /// example: `let h = RollingHash61("abab"); h.get(0..2) == h.get(2..4)`
-    pub fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61 = todo
+    @allow(unproven_list_index)
+    pub fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61:
+        let b = base ?? U64(rand(1 << 20, 1 << 29))
+        assert U64(2) <= b and b < RH61_MOD, "RollingHash61: base must be in 2..2^61 - 1"
+        var pre: List<U64> = [U64(0)]
+        var pow: List<U64> = [U64(1)]
+        var h = U64(0)
+        var w = U64(1)
+        for x in seq:
+            let tv = rh61_tok(x.hash_token)
+            h = rh61_add(rh61_mul(h, b), tv)
+            w = rh61_mul(w, b)
+            pre.push(h)
+            pow.push(w)
+        RollingHash61(b, pre, pow)
 
     /// The number of elements hashed.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `RollingHash61("abc").len == 3`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int = pre.len - 1
 
     /// True when no elements are hashed.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `RollingHash61("").is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get pub fn is_empty(self) -> Bool = pre.len == 1
+
+    @allow(unproven_list_index)
+    fn slice61(self, l: Int, r: Int) -> Hash61:
+        assert 0 <= l and l <= r and r <= pre.len - 1, "RollingHash61: range out of bounds"
+        if l == r: return Hash61(U64(0))
+        Hash61(rh61_sub(pre[r], rh61_mul(pre[l], pow[r - l])))
 
     /// The hash of the whole sequence, `self.get(0..self.len)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `let h = RollingHash61("abc"); h.all == h.get(0..3)`
-    @get pub fn all(self) -> Hash61 = todo
+    @get pub fn all(self) -> Hash61 = self.slice61(0, pre.len - 1)
 
     /// The hash of a range of positions (`l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when
     /// built over a `[D]T`); an empty range hashes to `Hash61(0)`.
@@ -1702,7 +1792,9 @@ pub struct RollingHash61:
     /// cost: O(1)
     /// traps: when the range reaches outside the hashed sequence
     /// example: `let h = RollingHash61("abab"); h.get(0..2) == h.get(2..=3)`
-    pub fn get<R>(self, r: R) -> Hash61 = todo
+    pub fn get<R>(self, r: R) -> Hash61:
+        if r.is_empty: return Hash61(U64(0))
+        self.slice61(r.start.ord, r.end.ord)
 
     /// The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`:
     /// `a * base^b_len + b` modulo `2^61 - 1`.
@@ -1710,21 +1802,39 @@ pub struct RollingHash61:
     /// cost: O(1) amortized (the power table grows past `len` on demand)
     /// traps: when `b_len < 0`
     /// example: `let h = RollingHash61("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
-    pub fn combine(self, a: Hash61, b: Hash61, b_len: Int) -> Hash61 = todo
+    @allow(unproven_list_index)
+    pub fn combine(self, a: Hash61, b: Hash61, b_len: Int) -> Hash61:
+        assert b_len >= 0, "RollingHash61.combine: negative length"
+        var p = if b_len < pow.len: pow[b_len] else: U64(1)
+        if b_len >= pow.len:
+            var e = b_len
+            var cur = base
+            while e > 0:
+                if e % 2 == 1: p = rh61_mul(p, cur)
+                cur = rh61_mul(cur, cur)
+                e /= 2
+        Hash61(rh61_add(rh61_mul(a.v, p), b.v))
 
     /// Appends `x` to the end of the hashed sequence.
     ///
     /// cost: O(1) amortized
     /// traps: never
     /// example: `var h = RollingHash61("ab"); h.push('a'); h.push('b'); h.get(0..2) == h.get(2..4)`
-    pub fn push<T: Hashable>(mut self, x: T) = todo
+    @allow(unproven_list_index)
+    pub fn push<T: Hashable>(mut self, x: T):
+        let tv = rh61_tok(x.hash_token)
+        let n = pre.len - 1
+        pre.push(rh61_add(rh61_mul(pre[n], base), tv))
+        if pow.len <= n + 1: pow.push(rh61_mul(pow[n], base))
 
     /// Removes the last element of the hashed sequence.
     ///
     /// cost: O(1)
     /// traps: when the hash is empty
     /// example: `var h = RollingHash61("abab"); h.pop(); h.len == 3`
-    pub fn pop(mut self) = todo
+    pub fn pop(mut self):
+        assert pre.len > 1, "RollingHash61.pop: empty hash"
+        let _ = pre.pop()
 
     /// The length of the longest common prefix of the suffixes starting at `a` and `b`, by
     /// binary search on hashes.
@@ -1732,7 +1842,15 @@ pub struct RollingHash61:
     /// cost: O(log n)
     /// traps: when `a` or `b` is outside `0..=self.len`
     /// example: `RollingHash61("abcabd").lcp(0, 3) == 2`
-    pub fn lcp(self, a: Int, b: Int) -> Int = todo
+    pub fn lcp(self, a: Int, b: Int) -> Int:
+        let n = pre.len - 1
+        assert 0 <= a and a <= n and 0 <= b and b <= n, "RollingHash61.lcp: index out of range"
+        var lo = 0
+        var hi = n - max(a, b)
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if self.slice61(a, a + mid) == self.slice61(b, b + mid): lo = mid else: hi = mid - 1
+        lo
 
     /// The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary
     /// search on hashes.
@@ -1740,7 +1858,15 @@ pub struct RollingHash61:
     /// cost: O(log n)
     /// traps: when `a` or `b` is outside `0..=self.len`
     /// example: `RollingHash61("xabyab").lcs(3, 6) == 2`
-    pub fn lcs(self, a: Int, b: Int) -> Int = todo
+    pub fn lcs(self, a: Int, b: Int) -> Int:
+        let n = pre.len - 1
+        assert 0 <= a and a <= n and 0 <= b and b <= n, "RollingHash61.lcs: index out of range"
+        var lo = 0
+        var hi = min(a, b)
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if self.slice61(a - mid, a) == self.slice61(b - mid, b): lo = mid else: hi = mid - 1
+        lo
 
     /// The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search
     /// on hashes. Both hashes must use the same base.
@@ -1748,7 +1874,17 @@ pub struct RollingHash61:
     /// cost: O(log min(|self| - a, |other| - b))
     /// traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
     /// example: `RollingHash61("abcd", base: Some(U64(131))).lcp_with(1, RollingHash61("xbcx", base: Some(U64(131))), 1) == 2`
-    pub fn lcp_with(self, a: Int, other: RollingHash61, b: Int) -> Int = todo
+    pub fn lcp_with(self, a: Int, other: RollingHash61, b: Int) -> Int:
+        assert base == other.base, "RollingHash61.lcp_with: hashes must use the same base"
+        let na = pre.len - 1
+        let nb = other.pre.len - 1
+        assert 0 <= a and a <= na and 0 <= b and b <= nb, "RollingHash61.lcp_with: index out of range"
+        var lo = 0
+        var hi = min(na - a, nb - b)
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if self.slice61(a, a + mid) == other.slice61(b, b + mid): lo = mid else: hi = mid - 1
+        lo
 
 /// O(n) build, O(log n) point update and range hash. Mutable double-mod rolling hash over domain `D`.
 /// Supports `h[i] = x` via W8 `IndexSet`.
@@ -2135,7 +2271,35 @@ pub struct SuffixAutomaton<A>:
 /// empty: `0` for no words; one word gives its length
 /// traps: never
 /// example: `lcs_all(["abcd", "xbcy", "bcz"]) == 2`
-pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int = todo
+@allow(unproven_list_index)
+pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
+    if words.is_empty: return 0
+    let b1 = rand(1 << 20, 1 << 29)
+    let b2 = rand(1 << 20, 1 << 29)
+    var hashes: List<RollingHash> = []
+    var hi = -1
+    for w in words:
+        let h = RollingHash(w, bases: Some((b1, b2)))
+        if hi == -1 or h.len < hi: hi = h.len
+        hashes.push(h)
+    if hashes.len == 1: return hi
+    if hi == 0: return 0
+    var lo = 0
+    while lo < hi:
+        let mid = (lo + hi + 1) / 2
+        var cur: Set<HashVal> = Set()
+        let h0 = hashes[0]
+        for i in 0..=h0.len - mid: cur.insert(h0.slice(i, i + mid))
+        for k in 1..hashes.len:
+            let hk = hashes[k]
+            var next: Set<HashVal> = Set()
+            for i in 0..=hk.len - mid:
+                let hv = hk.slice(i, i + mid)
+                if hv in cur: next.insert(hv)
+            cur = next
+            if cur.is_empty: break
+        if not cur.is_empty: lo = mid else: hi = mid - 1
+    lo
 
 /// O(n * |A|) space, O(1) amortized push. Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
 /// for O(n log n) palindromic partition DP.
