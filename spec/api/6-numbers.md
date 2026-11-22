@@ -52,6 +52,17 @@ bytes, never slower), and `cpl explain` prints every layout.
   unless the checker proves it (`a[i] = a[i] % 7` needs no check). A range
   type is a contract; `I32` is storage only (traps in debug, wraps in
   release).
+- **Narrow arithmetic when proven.** Semantically every operation is in
+  `Int`. When the range proof shows an expression and its operands fit in
+  32 bits (`a[i] + b[i]` with both `0..=1e9` is at most `2e9`, a u32), the
+  C++ computes it in 32 bits. Same answer, never slower, and twice the
+  lanes when the loop vectorizes, so it majorizes; `cpl explain` marks it.
+
+Why this split: in registers, 64-bit `+ - * < &` cost the same as 32-bit
+on every judge CPU; only division by a runtime value is slower on older
+Intel. Width costs in memory (half the values per cache line, MLE) and in
+SIMD (4 i64 lanes vs 8 i32 per 256-bit register). So locals stay `Int`,
+storage narrows, and vectorizable arithmetic narrows only when proven.
 
 ### Ops decide what a structure stores
 
