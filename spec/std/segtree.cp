@@ -122,7 +122,7 @@ pub struct SegTree<D, T>(m: Monoid<T>):
     /// cost: O(log |D|) per write
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.at(0) += 5; s.all == 11`
-    pub fn at(mut self, i: D) lends mut T:
+    pub fn at(mut self, i: D) -> lends mut T:
         lend mut t[size + i.to_idx]
         self.pull(i)
 

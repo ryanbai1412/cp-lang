@@ -267,7 +267,7 @@ struct Mat<T>(n: Int, m: Int, a: List<T>):
     fn identity(n: Int) -> Mat<T>                   // O(n^2)
     fn of(rows: List<List<T>>) -> Mat<T>            // O(n m)
     fn get(self, i: Int, j: Int) -> T               // O(1)
-    fn at(self, i: Int, j: Int) lends mut T         // O(1); writable cell: m.at(i, j) += x
+    fn at(self, i: Int, j: Int) -> lends mut T         // O(1); writable cell: m.at(i, j) += x
     fn pow(self, e: Int) -> Mat<T>                  // O(n^3 log e); square matrix, e >= 0
     fn apply(self, v: List<T>) -> List<T>           // O(n m); A * v
     fn transpose(self) -> Mat<T>                    // O(n m)

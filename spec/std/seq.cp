@@ -1691,8 +1691,7 @@ pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice
 pub fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S> = todo
 
 /// Which end of a piece a two-pointer result is keyed by.
-pub enum Anchor: Start, End
-
+pub enum Anchor = Start | End
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
 /// `state: Track`. `ok` must be monotone under shrinking. `anchor: Anchor.Start` keys by left
 /// end instead: the longest piece starting at each position, as greedy jumps want. O(n) amortized.
