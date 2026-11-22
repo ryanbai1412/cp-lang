@@ -1,0 +1,75 @@
+# One entry per metric; scripts/status.py runs each command hourly.
+# Commands run from the repo root. measure.py uses $CPL, else target/release/cpl
+# (cargo build --release -p cpl-cli first). Measured 2026-11-22 at 4e2de3cd, 2-core VM.
+
+[[metric]]
+name = "spec/CLI command mismatches"
+command = "python3 plan/domains/tools/measure.py spec-sync"
+target = "0"
+today = "14 (spec-only: debug fetch interact locate migrate selftest trace; cli-only: check dap fix judge replay report self)"
+
+[[metric]]
+name = "commands with --help"
+command = "python3 plan/domains/tools/measure.py help"
+target = "23/23"
+today = "23/23"
+
+[[metric]]
+name = "commands offering --json"
+command = "python3 plan/domains/tools/measure.py json"
+target = "every command that prints results (all but dap, lsp, self, watch)"
+today = "9/23"
+
+[[metric]]
+name = "cpl check wall time over corpus ports, p95"
+command = "python3 plan/domains/tools/measure.py corpus"
+target = "< 100 ms (spec bound 500 ms)"
+today = "78.5 ms (p50 26.7 ms, max 125.9 ms; 877 ports, 450 check clean, 449 build)"
+
+[[metric]]
+name = "corpus C++ files over 32 KB"
+command = "python3 plan/domains/tools/measure.py corpus"
+target = "0"
+today = "1 of 449 (max 48375 B, cf2255f); 0 over 64 KB"
+
+[[metric]]
+name = "LSP latency, 500-line file, median"
+command = "cargo test --release -p cpl-lsp --test latency -- --nocapture"
+target = "check < 50 ms; every request < 100 ms"
+today = "check 6 ms; open-to-diagnostics 8 ms; hover 3 ms; completion 1 ms; rename 2 ms"
+
+[[metric]]
+name = "LSP latency, 5,000-line file, median"
+command = "cargo test --release -p cpl-lsp --test latency -- --nocapture"
+target = "check < 50 ms; open-to-diagnostics < 100 ms; test green"
+today = "check 67 ms; open-to-diagnostics 161 ms; test fails (2 of 2 latency tests)"
+
+[[metric]]
+name = "LSP unit tests"
+command = "cargo test --release -p cpl-lsp --lib"
+target = "all pass"
+today = "77/77"
+
+[[metric]]
+name = "VS Code unit and grammar tests"
+command = "cd editors/vscode && npm test"
+target = "all pass"
+today = "36/37 (languageData: PRELUDE_VALUES has skip_while, reach_sets)"
+
+[[metric]]
+name = "editor smoke tests run on this VM"
+command = "CPL=target/release/cpl editors/smoke.sh"
+target = "tier 1 (VS Code, Neovim) pass in the gate; JetBrains in CI"
+today = "keyword parity ok; neovim emacs helix zed tree-sitter skipped (no binary); jetbrains build fails (Gradle artifacts: HTTP 429)"
+
+[[metric]]
+name = "tools .rs files over 2,000 lines"
+command = "find crates/cpl-cli crates/cpl-contest crates/cpl-doc crates/cpl-json crates/cpl-lsp -name '*.rs' | xargs wc -l | awk '$1>2000 && $2!=\"total\"'"
+target = "0"
+today = "3 (cpl-cli/src/lib.rs 2552, cpl-lsp/src/server.rs 2111, cpl-lsp/src/tests.rs 2868)"
+
+[[metric]]
+name = "unlanded commits on devin/wip-editor-lsp"
+command = "git cherry origin/main origin/devin/wip-editor-lsp | grep -c '^+'"
+target = "0"
+today = "5"

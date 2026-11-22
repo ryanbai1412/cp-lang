@@ -222,4 +222,31 @@ Recommendation: (b); 68 branches today make the queue hard to read, and archive 
 How to reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.
 Meanwhile: (a) only.
 
+### tools: which commands does v0.3 ship (tools-1)
+`spec/tools/cli.md` and `cpl --help` both list 23 commands, but 14 differ (`python3 plan/domains/tools/measure.py spec-sync`). Spec-only: `debug`, `fetch`, `interact`, `locate`, `migrate`, `selftest`, `trace`. Binary-only: `check`, `dap`, `fix`, `judge`, `replay`, `report`, `self`.
+- A. Spec follows the binary: drop `fetch`, `locate`, `migrate` from v0.3.
+- B. Binary follows the spec: add all 7, `cpl trace a in.txt` beside `cpl run a --trace`, `cpl debug a in.txt` beside `cpl dap`.
+- C. Mixed: the spec adopts `check`, `fix`, `judge`, `self`, `report`, `replay`, `dap`; `trace` stays `cpl run a --trace` (one verb for running, as today), `debug` stays the editor's debugger over `cpl dap`, `interact` stays `cpl run a` on a file with an `@interactor` (`crates/cpl-cli/src/interact.rs`), `selftest` is dropped (it is `scripts/check.sh`); `fetch`, `locate`, `migrate` are built for v0.3.
+Recommendation: C. One verb per job keeps the set guessable, and the three additions are real contest needs (samples, smallest failing input, library upgrades).
+How to reverse it: the command table is data; adding an alias (`cpl trace` → `cpl run --trace`) or dropping a command is a one-line change plus its golden test.
+Meanwhile: the tools lane works on C; the spec/CLI sync test records the remaining mismatches as a list that may only shrink.
+
+### tools: which editors are tier 1 (tools-2)
+`editors/` has VS Code, Neovim, Vim, Emacs, JetBrains, Helix, Zed. On a lane VM only keyword parity runs; the rest skip for lack of binaries, and JetBrains fails to fetch Gradle artifacts (`CPL=target/release/cpl editors/smoke.sh`).
+- A. All seven tier 1: every one in the gate (needs nvim, emacs, hx, Zed's wasm target and a JVM with network in the gate image).
+- B. VS Code and Neovim tier 1 (installed in one step, smoke-tested in the gate, broken = main is red); the rest tier 2 (smoke when installed, JetBrains in CI, fixed on report).
+- C. VS Code only.
+Recommendation: B. Covers most contestants, keeps the gate fast and offline; tier 2 still shares the one `cpl lsp`.
+How to reverse it: promote an editor by adding its smoke test to `scripts/check.sh`.
+Meanwhile: B.
+
+### tools: what `cpl explain` and hover show in v0.3 (tools-3)
+`spec/tools/explain.md` lists representation sizes, niches, storage, padding, memory, specializations, checks, contexts, generic instances and output bytes. Today `cpl explain corpus/problems/cf2268b/port.cp` prints only closure lowering (`[static: direct] fn m1_sum_Lst_Int_Int_Int_93 param of -> cpl_fn0`).
+- A. The whole spec for v0.3.
+- B. The four sections contestants ask about: types with bytes and niches, arrays and peak memory, specializations chosen, checks left per build; in both `cpl explain` and hover, from one shared-core query. Contexts, generic instances, unsafe-tier sites after v0.3.
+- C. Ship as is and fix the spec to match.
+Recommendation: B. It answers "why is this slow/big" and keeps one source of truth; A depends on queries the compiler does not have yet.
+How to reverse it: sections are independent records in `explain --json`; adding one later changes no other.
+Meanwhile: B; sections without data print `not shown yet`.
+
 ## Answered
