@@ -6,7 +6,7 @@ a trap. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 1509 (995 passing). Rules: 521.
+Cases: 1516 (995 passing). Rules: 521.
 
 ## Summary per chapter
 
@@ -718,11 +718,11 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0522 Copy-mutate-writeback on a slice: 1 case(s)
 - L0601 Right side changes the place it assigns: 1 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
-- L0603 map_recomputed: 1 case(s)
+- L0603 `.map` view read many times by index: 1 case(s)
 - L0604 Generator holding a `mut` lend walked twice: 1 case(s)
 - L0605 Literal index into a slice that keeps source keys: 3 case(s)
 - L0606 Wide array of `Int`: 1 case(s)
-- L0607 padding: 1 case(s)
+- L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
 - R0001 Runtime trap: 1 case(s)
@@ -732,7 +732,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 5 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 4 case(s)
-- R0401 Assertion failed: 53 case(s)
+- R0401 Assertion failed: 55 case(s)
 - R0402 todo reached: 1 case(s)
 - R0501 Bad input token: 8 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -787,8 +787,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **pair** (5/5 named by a case)
 - **persistent** (34/38 named by a case)
   - uncovered: `RangeKth`, `RangeKth.new`, `PMultiset`, `PMultiset.cmp`
-- **poly** (33/57 named by a case)
-  - uncovered: `exp`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_row`, `stirling2_row`, `stirling1_col`, `stirling2_col`, `bell_table`, `bernoulli_table`, `partition_table`
+- **poly** (38/57 named by a case)
+  - uncovered: `exp`, `div_mod`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`, `SubproductTree`, `SubproductTree.new`, `SubproductTree.eval_transposed`, `SubproductTree.interpolate`, `bostan_mori`, `transposed_mul`, `compose_inv`, `pow_mod_poly`, `gcd_poly`, `chirp_z`, `sample_points_shift`, `power_sums`, `stirling1_col`, `stirling2_col`
 - **prefix** (46/56 named by a case)
   - uncovered: `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
@@ -807,7 +807,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (19/22 named by a case)
   - uncovered: `Track`, `Tracked`, `Undo`
 
-2019 of 2237 std items are named by a case.
+2024 of 2237 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
