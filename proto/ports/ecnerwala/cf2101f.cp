@@ -23,7 +23,7 @@ type Z = Mod<998_244_353>
 @!multitest
 let n: Int = read()
 domain Node = 1..=2 * n - 1
-fn is_vertex(v: Node) -> Bool = v.to_idx < n
+fn is_vertex(v: Node) -> Bool = v.ord < n
 
 var adj: [Node]List<Node> = []
 for e in 1..n:
@@ -40,21 +40,21 @@ fn red_and_blue(c: Int) -> Z = pow3[c] - pow2[c] * 2 + 1
 
 var ans: Z = 0
 for centre in Node:
-    var total: [0..Node.K]Int = 0
+    var total: [0..Node.count]Int = 0
     if is_vertex(centre): total[0] = 1
-    var red: [0..Node.K]Z = 0
-    var both: [0..Node.K]Z = 0
+    var red: [0..Node.count]Z = 0
+    var both: [0..Node.count]Z = 0
     for c in adj[centre]:
-        var branch: [0..Node.K]Int = 0
+        var branch: [0..Node.count]Int = 0
         fn count(v: Node, from: Node, depth: Int):
             if is_vertex(v): branch[depth] += 1
             for w in adj[v] if w != from: count(w, v, depth + 1)
         count(c, centre, 1)
-        for d in 0..Node.K:
+        for d in 0..Node.count:
             total[d] += branch[d]
             red[d] -= some_red(branch[d])
             both[d] -= red_and_blue(branch[d])
-    for d in 0..Node.K:
+    for d in 0..Node.count:
         red[d] += some_red(total[d])
         both[d] += red_and_blue(total[d])
 
@@ -63,7 +63,7 @@ for centre in Node:
     var inside: Z = 1
     var blue_inside: Z = 0
     var blue_depths: Z = 0
-    for d in 0..Node.K:
+    for d in 0..Node.count:
         let c = total[d]
         ans += inside * both[d] * (2 * d)
         ans += (blue_depths + blue_inside * d) * red[d] * 2
