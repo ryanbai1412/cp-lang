@@ -1,17 +1,17 @@
 # agc079a
 
-Score: pending cold rescore (added dream matching active port, shortened size: size -> size:)
-Dream: pending cold rescore (new dream matching active port)
+Score: 4/5
+Dream: 4/5
 
-Baseline review, cold, on main 4cf4b2b1. The port checks with zero errors. No dream exists, so the port is capped at 3. The header (lines 1-3) derives the forest and the hook-length count; inputs are bounded.
+Rescore of the rewrite, cold, on main 70a4aec4. Port and dream are the same file and check with zero errors. The header (lines 1-3) derives the forest and the count; inputs are bounded.
 
 ## Checklist failures
 
-- None beyond the missing dream.
+- Minor: the header says `n!` (line 2), but the code divides `fact(n - 1)` (line 21); say which count the `n - 1` values of `p` give.
 
 ## Rewrites owed with today's language
 
-- Write a dream.
+- None beyond the minor notes.
 
 ## Gaps that need the language
 
