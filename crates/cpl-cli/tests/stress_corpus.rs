@@ -33,15 +33,17 @@ fn json_string_field(json: &str, key: &str) -> Option<String> {
 fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     let root = repo_root();
     let problems = [
-        ("sac22cc2p5", "corpus/problems/sac22cc2p5/port.cp"),
-        ("dmopc20c4p4", "corpus/problems/dmopc20c4p4/port.cp"),
-        ("ccc03s4", "corpus/problems/ccc03s4/port.cp"),
-        ("btoi17p6", "corpus/problems/btoi17p6/port.cp"),
-        ("shoi16p1", "corpus/problems/shoi16p1/port.cp"),
-        ("ucrpc21h", "corpus/problems/ucrpc21h/port.cp"),
-        ("yac7p3", "corpus/problems/yac7p3/port.cp"),
-        ("ccc04s5", "corpus/problems/ccc04s5/port.cp"),
-        ("aac5p4", "corpus/problems/aac5p4/port.cp"),
+        ("ccc03s4", "corpus/problems/ccc03s4/spec.cp"),
+        ("ccc18s4", "corpus/problems/ccc18s4/spec.cp"),
+        ("ccc19s2", "corpus/problems/ccc19s2/spec.cp"),
+        ("cco19p5", "corpus/problems/cco19p5/spec.cp"),
+        ("ceoi19pp1", "corpus/problems/ceoi19pp1/spec.cp"),
+        ("dmopc20c4p4", "corpus/problems/dmopc20c4p4/spec.cp"),
+        ("dmopc21c4p2", "corpus/problems/dmopc21c4p2/spec.cp"),
+        ("etsr23r1p4", "corpus/problems/etsr23r1p4/spec.cp"),
+        ("ioi01p1", "corpus/problems/ioi01p1/spec.cp"),
+        ("noip14p6", "corpus/problems/noip14p6/spec.cp"),
+        ("shoi16p3", "corpus/problems/shoi16p3/spec.cp"),
     ];
     for (id, rel_port) in problems {
         let port = root.join(rel_port);
@@ -75,7 +77,7 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     let tests_copy = scratch.join("tests");
     std::fs::create_dir_all(&tests_copy).unwrap();
     let sol = scratch.join("ccc03s4.cp");
-    std::fs::copy(root.join("corpus/problems/ccc03s4/port.cp"), &sol).unwrap();
+    std::fs::copy(root.join("corpus/problems/ccc03s4/spec.cp"), &sol).unwrap();
     for entry in std::fs::read_dir(root.join("corpus/problems/ccc03s4/tests")).unwrap() {
         let path = entry.unwrap().path();
         std::fs::copy(&path, tests_copy.join(path.file_name().unwrap())).unwrap();
@@ -124,7 +126,7 @@ for _ in 0..q:
     else:
         let l: 1..=n = read()
         let r: l..=n = read()
-        print(fen[Pos(l).ord % 2].sum(Pos(l)..=Pos(r)))
+        print(fen[Pos(l).ord % 2].fold(Pos(l)..=Pos(r)))
 
 @alt(program)
 fn brute():
@@ -171,7 +173,7 @@ for _ in 0..q:
     else:
         let l: 1..=n = read()
         let r: l..=n = read()
-        print(fen[Pos(r).ord % 2].sum(Pos(l)..=Pos(r)))
+        print(fen[Pos(r).ord % 2].fold(Pos(l)..=Pos(r)))
 
 @alt(program)
 fn brute():
@@ -365,7 +367,7 @@ var pick: [V]Pick = (1, 0)
 for k in Kid.rev:
     let below = pick[V(k.label)]
     pick[parent[k]] = join(pick[parent[k]], (below.count, below.near + 1))
-print(pick[V.first].count)
+print(pick[V.first!].count)
 
 @alt(program)
 fn brute():
@@ -416,7 +418,7 @@ var pick: [V]Pick = (1, 0)
 for k in Kid.rev:
     let below = pick[V(k.label)]
     pick[parent[k]] = join(pick[parent[k]], (below.count, below.near + 1))
-print(pick[V.first].count)
+print(pick[V.first!].count)
 
 @alt(program)
 fn brute():
@@ -467,8 +469,8 @@ for _ in 0..n - 1:
 var kids: [V]List<V> = []
 var seen: [V]Bool = false
 var order: List<V> = []
-order.push(V.first)
-seen[V.first] = true
+order.push(V.first!)
+seen[V.first!] = true
 var head = 0
 while head < order.len:
     let u = order[head]
@@ -506,7 +508,7 @@ for at in (0..n).rev:
             for v in kids[u]: below += need[v, k]
             best min= below
         need[u, d + k] = best
-print(need[V.first, k])
+print(need[V.first!, k])
 
 @alt(program)
 fn brute():
@@ -575,8 +577,8 @@ for _ in 0..n - 1:
 var kids: [V]List<V> = []
 var seen: [V]Bool = false
 var order: List<V> = []
-order.push(V.first)
-seen[V.first] = true
+order.push(V.first!)
+seen[V.first!] = true
 var head = 0
 while head < order.len:
     let u = order[head]
@@ -610,7 +612,7 @@ for at in (0..n).rev:
             for v in kids[u]: below += need[v, d + 1 + k]
             best min= below
         need[u, d + k] = best
-print(need[V.first, k])
+print(need[V.first!, k])
 
 @alt(program)
 fn brute():
@@ -677,8 +679,8 @@ for _ in 0..m:
 
 var dist: [V]Int = 1e18
 var pq = MinHeap<(Int, V)>()
-dist[V.first] = 0
-pq.push((0, V.first))
+dist[V.first!] = 0
+pq.push((0, V.first!))
 while pq.len > 0:
     let (d, u) = pq.pop()!
     if d == dist[u]:
@@ -774,8 +776,8 @@ for _ in 0..m:
 
 var dist: [V]Int = 1e18
 var pq = MinHeap<(Int, V)>()
-dist[V.first] = 0
-pq.push((0, V.first))
+dist[V.first!] = 0
+pq.push((0, V.first!))
 while pq.len > 0:
     let (d, u) = pq.pop()!
     if d == dist[u]:
@@ -902,7 +904,7 @@ fn run_cycles():
 run_cycles()
 
 var depth: [V]Int = -1
-var anchor: [V]V = V.first
+var anchor: [V]V = V.first!
 
 fn dfs_depth(u: V, root: V, d: Int):
     depth[u] = d
@@ -917,14 +919,14 @@ for v in V:
         dfs_depth(v, v, -1)
 
 var best_d = 0
-var u_nv = V.first
+var u_nv = V.first!
 for v in V:
     if depth[v] > best_d or (depth[v] == best_d and v.idx > u_nv.idx):
         best_d = depth[v]
         u_nv = v
 
 let target_root = anchor[u_nv]
-var u_ind = V.first
+var u_ind = V.first!
 for v in V:
     if on_cyc[v] and par[v] == target_root:
         u_ind = v
@@ -1005,7 +1007,7 @@ fn run_cycles():
 run_cycles()
 
 var depth: [V]Int = -1
-var anchor: [V]V = V.first
+var anchor: [V]V = V.first!
 
 fn dfs_depth(u: V, root: V, d: Int):
     depth[u] = d
@@ -1020,14 +1022,14 @@ for v in V:
         dfs_depth(v, v, -1)
 
 var best_d = 1
-var u_nv = V.first
+var u_nv = V.first!
 for v in V:
     if depth[v] > best_d or (depth[v] == best_d and v.idx > u_nv.idx):
         best_d = depth[v]
         u_nv = v
 
 let target_root = anchor[u_nv]
-var u_ind = V.first
+var u_ind = V.first!
 for v in V:
     if on_cyc[v] and par[v] == target_root:
         u_ind = v
@@ -1297,8 +1299,8 @@ let d_ur = ask_move('R', step)
 for _ in 0..3: ask_move('L', step)
 let d_ul = ask_move('L', step)
 
-let ur_pos = max(p.x + p.y for p in anchors)! + d_ur - 4 * step
-let ul_pos = max(-p.x + p.y for p in anchors)! + d_ul - 4 * step
+let ur_pos = [p.x + p.y for p in anchors].max()! + d_ur - 4 * step
+let ul_pos = [-p.x + p.y for p in anchors].max()! + d_ul - 4 * step
 print("!", (ur_pos - ul_pos) / 2, (ur_pos + ul_pos) / 2)
 
 @interactor
@@ -1353,8 +1355,8 @@ let d_ur = ask_move('R', step)
 for _ in 0..3: ask_move('L', step)
 let d_ul = ask_move('L', step)
 
-let ur_pos = max(p.x + p.y for p in anchors)! + d_ur - 3 * step
-let ul_pos = max(-p.x + p.y for p in anchors)! + d_ul - 4 * step
+let ur_pos = [p.x + p.y for p in anchors].max()! + d_ur - 3 * step
+let ul_pos = [-p.x + p.y for p in anchors].max()! + d_ul - 4 * step
 print("!", (ur_pos - ul_pos) / 2, (ur_pos + ul_pos) / 2)
 
 @interactor
