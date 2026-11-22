@@ -10,6 +10,8 @@ use std.dsu.{Mark}
 /// A sliding fold queue over `op`. `push` and `pop` are O(1) amortized; `all` is O(1).
 pub struct Window<T, M>(op: M):
     q: List<T>
+    front: List<T>
+    back: ?T
 
     /// An empty window over `op`. The strategy comes from `op`'s laws: a `Group` keeps a running
     /// total and subtracts on `pop`, a `Selective` op (`min`, `max`, `min(by:)`) keeps a monotone
@@ -18,14 +20,16 @@ pub struct Window<T, M>(op: M):
     /// cost: O(1)
     /// traps: never
     /// example: `var w = Window(+); w.all == None`
-    pub fn new(op: M) -> Window<T, M> = todo
+    pub fn new(op: M) -> Window<T, M>:
+        Window(op, [], [], None)
 
     /// Push `x` at the back, as the newest element.
     ///
     /// cost: O(1) amortized calls of `op`
     /// traps: never (beyond what `op` traps on)
     /// example: `var w = Window(max); w.push(3); w.push(5); w.all == Some(5)`
-    pub fn push(mut self, x: T) = todo
+    pub fn push(mut self, x: T):
+        self.push_back(x)
 
     /// Pop the front: remove the oldest element.
     ///
@@ -33,7 +37,8 @@ pub struct Window<T, M>(op: M):
     /// traps: on an empty window
     /// example: `var w = Window(min); w.push(3); w.push(1); w.push(2); w.pop(); w.all == Some(1)`
     /// example: `var w = Window(min); w.push(1); w.push(2); w.pop(); w.all == Some(2)`
-    pub fn pop(mut self) = todo
+    pub fn pop(mut self):
+        self.drop_front()
 
     /// The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`,
     /// `x3`), so a non-commutative op folds in push order; `None` when empty.
@@ -43,14 +48,38 @@ pub struct Window<T, M>(op: M):
     /// traps: never
     /// example: `var w = Window(+); w.push(2); w.push(3); w.all == Some(5)`
     /// example: `var w = Window(+); w.push(2); w.pop(); w.all == None`
-    @get pub fn all(self) -> ?T = todo
+    @get pub fn all(self) -> ?T:
+        if front.len == 0: return back
+        let f = front[front.len - 1]
+        if let b = back: return Some(op(f, b))
+        Some(f)
 
     /// The number of elements in the window: pushes minus pops.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `var w = Window(+); w.push(2); w.push(3); w.pop(); w.len == 1`
-    @get pub fn len(self) -> Int = todo
+    @get pub fn len(self) -> Int:
+        front.len + q.len
+
+    fn push_back(mut self, x: T):
+        q.push(x)
+        if let b = back: back = Some(op(b, x))
+        else: back = Some(x)
+
+    fn drop_front(mut self):
+        if front.len == 0:
+            assert q.len > 0, "`pop` on an empty window"
+            var k = q.len - 1
+            var acc = q[k]
+            front.push(acc)
+            while k > 0:
+                k -= 1
+                acc = op(q[k], acc)
+                front.push(acc)
+            q.clear()
+            back = None
+        front.pop()
 
 /// State a window can add to at the back and remove from at the front. `pop(x)` is passed the
 /// element leaving the front. `Window(op)`, `Counter<K, Int>`, `Tracked` and `Undoing` implement it.
@@ -61,13 +90,17 @@ pub trait Track<T>:
 /// `push(x)` adds 1 to `x`'s count and `pop(x)` takes 1 away, so `len` is the number of distinct
 /// values in the window.
 impl Track<K> for Counter<K, Int>:
-    fn push(mut self, x: K) = todo
-    fn pop(mut self, x: K) = todo
+    fn push(mut self, x: K):
+        self.add(x, 1)
+    fn pop(mut self, x: K):
+        self.add(x, -1)
 
 /// `push(x)` is `Window.push(x)`; `pop(x)` is `Window.pop()`, which already knows the front.
 impl Track<T> for Window<T, M>:
-    fn push(mut self, x: T) = todo
-    fn pop(mut self, x: T) = todo
+    fn push(mut self, x: T):
+        self.push_back(x)
+    fn pop(mut self, x: T):
+        self.drop_front()
 
 /// A `Track` over any structure: `add(mut state, x)` applies an element at the back and
 /// `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`. The same shape
