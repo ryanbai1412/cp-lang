@@ -361,7 +361,6 @@ operations support it:
 | static fold | `SparseTable(op, a)` | O(n log n) | O(1) | `Idempotent`: overlapping halves; else disjoint |
 | static prefix / range fold | `Prefix(op, a)` | O(n) | O(1) | `Group`: `fold(r)` by difference; else `prefix` only |
 | dynamic prefix / range fold | `Fenwick(op, a)` | O(n) | O(log n) | needs `Commutative`; `Group`: `fold(r)` |
-| range add, range sum | `Fenwick(+, a, act: add)` | O(n) | O(log n) | needs a commutative `Group` and a span-linear action; two arrays |
 | sliding window fold | `Window(op)` | | O(1) amortized | `Selective`: monotone deque; else two stacks |
 | offline range apply | `Diff(op)` | | O(1) per add, O(n) finish | needs `Group` |
 | old versions | `PersistentSegTree(op, a, act:)` | O(n) | O(log n) | as `SegTree` |
@@ -372,8 +371,9 @@ operations support it:
 - `LazySegTree` and `DualSegTree` become `SegTree` with `act:`.
 - `DisjointSparseTable` becomes `SparseTable`.
 - `GroupFenwick`, `PrefixFenwick` and `XorFenwick` become `Fenwick`.
-- `RangeFenwick` becomes `Fenwick(+, a, act: add)`. Any other `act:` on a
-  `Fenwick` is an error that names the requirement and suggests `SegTree`.
+- `RangeFenwick` goes: range add with range sum is `SegTree(+, a, act: add)`,
+  iterative and without push-down since `add` tags commute. `Fenwick` takes
+  no `act:`.
 - `MonoDeque`, `WindowFold` and `sliding_fold` become `Window`.
 - `SparseSegTree` and `SparseLazySegTree` become `SegTree(over:)`.
 - `AddMax` and the other combined action names become `act: add` and the
@@ -600,5 +600,5 @@ for i in I:
    a named index op the library defines. That is fine as long as user
    libraries can define more (they can: it's a value with a transform impl).
 
-Settled in review: `Fenwick(+, a, act: add)` for range add/sum, `MaxHeap`
+Settled in review: no `act:` on `Fenwick` (range add/sum is a `SegTree`), `MaxHeap`
 as an alias, `each(...)` for products of ops.
