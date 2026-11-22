@@ -36,8 +36,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - name: Compiler versions
+        run: g++ --version | head -1 && rustc --version
       - name: Fast gate
         run: scripts/check.sh --fast
+
+  # Timing budgets report here and never turn main red (decision 225).
+  timing:
+    name: wall-clock budgets (not blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: Wall-clock budgets
+        run: scripts/check.sh --timing
 
   site:
     name: site build

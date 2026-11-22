@@ -59,6 +59,7 @@ for arg in "$@"; do
         --commit) mode=commit ;;
         --land) mode=land ;;
         --full) mode=full ;;
+        --timing) mode=timing ;;
         --no-cache) use_cache=0 ;;
         -h | --help) sed -n '2,25s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) echo "check: unknown argument \`$arg\`" >&2; exit 2 ;;
@@ -194,6 +195,31 @@ slow_tests=(
 )
 slow_filter='binary(budget)'
 for t in "${slow_tests[@]}"; do slow_filter+=" or test(/(^|::)$t\$/)"; done
+
+# Wall-clock assertions (decision 225): a timing budget can fail on a loaded
+# machine with no code change, so no blocking tier runs one. CI reports them
+# in a job that never fails the workflow (--timing); --full runs them too.
+wall_clock_tests=(
+    lsp_requests_are_under_100_ms
+    keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95
+    largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms
+    the_checks_of_a_typical_function_fit_the_budget
+    a_segment_tree_monoid_is_checked_within_the_budget
+    ten_million_steps_fit_the_debugging_budgets
+)
+wall_filter='binary(budget) or test(/(^|::)front_end_check_is_under_50_ms$/)'
+for t in "${wall_clock_tests[@]}"; do
+    wall_filter+=" or test(/(^|::)$t\$/)"
+    slow_filter+=" or test(/(^|::)$t\$/)"
+done
+# Tests that mix a timing budget into a correctness check skip the budget.
+[ "$mode" = full ] || [ "$mode" = timing ] || export CPL_NO_WALL_CLOCK=1
+if [ "$mode" = timing ]; then
+    step "wall-clock budgets (reported, never blocking)"
+    cargo nextest run --workspace --no-fail-fast \
+        -E "$wall_filter or test(=every_corpus_program_and_conformance_case_is_served)"
+    exit
+fi
 
 if [ "$mode" = land ]; then
     land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || true)}"

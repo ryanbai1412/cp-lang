@@ -5809,3 +5809,18 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   "expected `:` ... found the end of the line" said nothing about recovery;
   it was 37 of the 75 generic first errors the M2 metric counts.
 - **Reverse.** Drop `!synopsis(&body)` from `plan_blocks`.
+
+## 225. Wall-clock assertions never block a landing or turn main red (2026-11-22)
+
+- **Decision.** A test that asserts elapsed time is listed in
+  `wall_clock_tests` in `scripts/check.sh` (or, when it mixes a budget into
+  a correctness check, skips the budget while `CPL_NO_WALL_CLOCK` is set).
+  `--commit`, `--land` and `--fast` skip them; `scripts/check.sh --timing`
+  runs them in a CI job marked `continue-on-error`, and `--full` runs them.
+  A new timing test joins the list in the commit that adds it.
+- **Why.** CI on 61e3d27c failed only because an LSP request took 1.006 s
+  against a 1 s budget on a loaded 4-core runner (run 45082394843); the
+  same code passes alone. A gate that fails without a code change stalls
+  every lane and trains people to rerun red.
+- **Reverse.** Empty `wall_clock_tests` and drop the `CPL_NO_WALL_CLOCK`
+  export in `scripts/check.sh`.
