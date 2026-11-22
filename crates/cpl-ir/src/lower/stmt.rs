@@ -2892,7 +2892,18 @@ impl<'a> Lowerer<'a> {
                 RangeInfo::Scalar(b) => Some(b),
                 _ => None,
             });
-            if is_literal(init) {
+            if is_literal(init)
+                && (!matches!(&init.kind, ast::ExprKind::List(items) if items.is_empty())
+                    || matches!(
+                        elem_ty,
+                        Ty::List(_)
+                            | Ty::Set(_)
+                            | Ty::HashSet(_)
+                            | Ty::Map(..)
+                            | Ty::HashMap(..)
+                            | Ty::Array { .. }
+                    ))
+            {
                 return Some(self.fill_literal(&spec, init));
             }
             if let Some(table) = self.comprehension_table(init, dims, &elem_ty, elem_range.as_ref())

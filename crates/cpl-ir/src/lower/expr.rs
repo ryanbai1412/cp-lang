@@ -2505,7 +2505,10 @@ impl<'a> Lowerer<'a> {
                 }
             } else if matches!(
                 &e.kind,
-                ast::ExprKind::If { .. } | ast::ExprKind::Paren(_) | ast::ExprKind::Block(_)
+                ast::ExprKind::If { .. }
+                    | ast::ExprKind::Paren(_)
+                    | ast::ExprKind::Block(_)
+                    | ast::ExprKind::Tuple(_)
             ) {
                 match operands.last() {
                     Some((prev, _)) => self.expr(e, Some(&prev.ty)),
