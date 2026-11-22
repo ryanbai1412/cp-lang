@@ -1,6 +1,6 @@
 # wtf26c
 
-Score: 3/5
+Score: pending cold rescore (adopted full 2D DP + binomial-inversion header, `convolve_2d` helper with stride invariant, and `Z(g - 1) ** i * Z(g) ** j` eliminating hand power tables; matches the 4/5 dream except `std.ntt.convolve_2d` & `binomial_inverse`)
 Dream: 4/5
 
 The header names the method (2D DP, NTT per step over flattened coordinates, two inclusion-exclusion passes) but not the recurrence; the flattening `i + stride * j` is hand bookkeeping, and the closing passes are unexplained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
