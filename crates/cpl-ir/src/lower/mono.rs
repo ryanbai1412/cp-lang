@@ -2865,6 +2865,21 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
+        // `(x, y) => ..` where a one-argument fn of a pair is expected unpacks that pair.
+        let pair_arity = match hint {
+            Some(Ty::Fn(ps, _)) => match ps.as_slice() {
+                [Ty::Tuple(items)] => items.len(),
+                _ => 0,
+            },
+            _ => 0,
+        };
+        if params.len() > 1 && pair_arity == params.len() && ann_tys.iter().all(Option::is_none) {
+            let whole = ast::Pattern {
+                kind: ast::PatternKind::Tuple(params.to_vec()),
+                span,
+            };
+            return self.lower_lambda(&[whole], &[None], body, hint, span);
+        }
         let (mut param_tys, ret_hint) = match hint {
             Some(Ty::Fn(ps, r)) if ps.len() == params.len() => {
                 let rh = if **r == Ty::Error {
