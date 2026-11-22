@@ -58,6 +58,13 @@ pub(crate) struct Bounds {
     /// Sequences whose `.len` names one value for as long as they live:
     /// bound once, never assigned, passed `mut` or a method's receiver.
     fixed: HashSet<String>,
+    /// Sequences whose length stops changing at an offset: past every change
+    /// to them, and past the loops around a change that their declaration is
+    /// outside of. A change in a fn or lambda body the sequence is declared
+    /// outside of could come from any call, so it gets no entry.
+    stable: HashMap<String, u32>,
+    /// The offset of the item being walked, which `stable` is compared in.
+    pub(crate) base: u32,
     /// Names some binding or assignment of reads a `.len`: their intervals
     /// reach `LEN_MAX`, which says nothing worth showing.
     long: HashSet<String>,
@@ -279,7 +286,12 @@ impl Bounds {
         use cpl_syntax::visit::{walk_stmt, Visitor};
         #[derive(Default)]
         struct Scan {
+            base: u32,
             changed: HashSet<String>,
+            changes: Vec<(String, u32, u32)>,
+            loops: Vec<(u32, u32)>,
+            bodies: Vec<(u32, u32)>,
+            decls: HashMap<String, u32>,
             sources: Vec<(String, Expr)>,
             seqs: HashSet<String>,
         }
@@ -292,19 +304,43 @@ impl Bounds {
         }
         impl Visitor for Scan {
             fn stmt(&mut self, stmt: &Stmt) {
+                let at = (self.base + stmt.span.start, self.base + stmt.span.end);
+                match &stmt.kind {
+                    StmtKind::While { .. } | StmtKind::For { .. } => self.loops.push(at),
+                    StmtKind::Fn(decl) => {
+                        self.bodies.push(at);
+                        for p in &decl.params {
+                            self.decls.insert(p.name.text.clone(), at.0);
+                        }
+                    }
+                    _ => {}
+                }
                 match &stmt.kind {
                     StmtKind::Assign { target, value, .. } => {
                         if let Some(n) = root(target) {
-                            self.changed.insert(n.to_string());
+                            self.change(n, at);
                             self.sources.push((n.to_string(), value.clone()));
                         }
                     }
                     StmtKind::Lend { place, .. } => {
                         if let Some(n) = root(place) {
-                            self.changed.insert(n.to_string());
+                            self.change(n, at);
                         }
                     }
-                    StmtKind::Let { pat, init: Some(init), .. } => {
+                    _ => {}
+                }
+                if let StmtKind::Let { pat, init, .. } = &stmt.kind {
+                    let mut names = vec![pat];
+                    while let Some(p) = names.pop() {
+                        match &p.kind {
+                            PatternKind::Name(n) => {
+                                self.decls.insert(n.clone(), self.base + p.span.start);
+                            }
+                            PatternKind::Tuple(ps) => names.extend(ps),
+                            _ => {}
+                        }
+                    }
+                    if let Some(init) = init {
                         if let PatternKind::Name(n) = &pat.kind {
                             self.sources.push((n.clone(), init.clone()));
                         }
@@ -316,20 +352,21 @@ impl Bounds {
                             }
                         }
                     }
-                    _ => {}
                 }
             }
             fn expr(&mut self, expr: &Expr) {
+                let at = (self.base + expr.span.start, self.base + expr.span.end);
                 match &expr.kind {
+                    ExprKind::Lambda { .. } => self.bodies.push(at),
                     ExprKind::Call { callee, args } => {
                         if let ExprKind::Field { base, .. } = &callee.kind {
                             if let Some(n) = root(base) {
-                                self.changed.insert(n.to_string());
+                                self.change(n, at);
                             }
                         }
                         for a in args.iter().filter(|a| a.mutable) {
                             if let Some(n) = root(&a.value) {
-                                self.changed.insert(n.to_string());
+                                self.change(n, at);
                             }
                         }
                     }
@@ -343,12 +380,38 @@ impl Bounds {
             }
             fn pattern(&mut self, _: &Pattern) {}
         }
+        impl Scan {
+            fn change(&mut self, name: &str, at: (u32, u32)) {
+                self.changed.insert(name.to_string());
+                self.changes.push((name.to_string(), at.0, at.1));
+            }
+            /// Where `name`'s length has changed for the last time.
+            fn stable(&self, name: &str) -> Option<u32> {
+                let decl = *self.decls.get(name)?;
+                let outside = |&&(s, e): &&(u32, u32), at: u32| s <= at && at < e && !(s <= decl && decl < e);
+                let mut from = 0;
+                for (_, start, end) in self.changes.iter().filter(|(n, ..)| n == name) {
+                    if self.bodies.iter().any(|b| outside(&b, *start)) {
+                        return None;
+                    }
+                    let around = self.loops.iter().filter(|l| outside(l, *start)).map(|l| l.1);
+                    from = from.max(around.max().unwrap_or(*end));
+                }
+                Some(from)
+            }
+        }
         let mut scan = Scan::default();
-        file.top_level().for_each(|(_, s)| walk_stmt(s, &mut scan));
-        self.fixed = scan
-            .seqs
-            .into_iter()
-            .filter(|n| self.bound_once(n) && !scan.changed.contains(n) && !self.fn_writes.contains(n))
+        for (base, stmt) in file.top_level() {
+            scan.base = base;
+            walk_stmt(stmt, &mut scan);
+        }
+        let seqs: Vec<&String> =
+            scan.seqs.iter().filter(|n| self.bound_once(n) && !self.fn_writes.contains(*n)).collect();
+        self.fixed = seqs.iter().filter(|n| !scan.changed.contains(**n)).map(|n| n.to_string()).collect();
+        self.stable = seqs
+            .iter()
+            .filter(|n| scan.changed.contains(**n))
+            .filter_map(|n| Some((n.to_string(), scan.stable(n)?)))
             .collect();
         loop {
             let more: Vec<String> = scan
@@ -370,7 +433,9 @@ impl Bounds {
             ExprKind::Name(n) => Some(n.clone()),
             ExprKind::Paren(inner) => self.atom(inner),
             ExprKind::Field { base, name } if name.text == "len" => match &base.kind {
-                ExprKind::Name(n) if self.fixed.contains(n) => Some(format!("{n}.len")),
+                ExprKind::Name(n) if self.fixed.contains(n) || self.stable_at(n, e.span.start) => {
+                    Some(format!("{n}.len"))
+                }
                 _ => None,
             },
             _ => None,
@@ -393,6 +458,10 @@ impl Bounds {
         let mut reads = Reads(self, false);
         walk_expr(e, &mut reads);
         reads.1
+    }
+
+    fn stable_at(&self, seq: &str, at: u32) -> bool {
+        self.stable.get(seq).is_some_and(|&from| from <= self.base + at)
     }
 
     pub(crate) fn is_long(&self, name: &str) -> bool {
@@ -568,7 +637,7 @@ impl Bounds {
     /// The interval a bounded name is in.
     pub(crate) fn expr_name(&self, name: &str) -> Option<Interval> {
         match name.strip_suffix(".len") {
-            Some(seq) if self.fixed.contains(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
+            Some(seq) if self.fixed.contains(seq) || self.stable.contains_key(seq) => Some(Interval { lo: 0, hi: LEN_MAX }),
             _ => self.values.get(name).copied(),
         }
     }

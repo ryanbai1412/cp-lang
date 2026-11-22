@@ -212,6 +212,7 @@ fn ranges_in(
     proven: &mut Proven,
 ) {
     use cpl_syntax::ast::{ExprKind, StmtKind};
+    bounds.base = base;
     for (i, stmt) in stmts.iter().enumerate() {
         let compound = match &stmt.kind {
             StmtKind::While { .. } => true,

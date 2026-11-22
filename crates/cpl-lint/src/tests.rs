@@ -1853,3 +1853,52 @@ fn an_index_below_a_fixed_length_is_proven_in_bounds() {
     // No hover or hint shows a range a `.len` bounds only by its type.
     assert!(crate::proven_ranges(search).is_empty(), "{:?}", crate::proven_ranges(search));
 }
+
+#[test]
+fn a_list_is_indexed_safely_once_nothing_changes_its_length() {
+    let proofs = |src: &str| -> Vec<String> { crate::proven_indexes(src).into_iter().map(|p| p.proof).collect() };
+    let built = "fn f(p: Int) -> Int:
+    var ys: List<Int> = []
+    for i in 0..5:
+        ys.push(i)
+    var (lo, hi) = (0, ys.len)
+    while lo < hi:
+        let mid = (lo + hi) / 2
+        if ys[mid] < p: lo = mid + 1
+        else: hi = mid
+    lo
+print(f(2))
+";
+    assert_eq!(proofs(built), ["0 <= lo <= mid < hi <= ys.len"]);
+    let popped = built.replace("else: hi = mid", "else:\n            hi = mid\n            ys.pop()");
+    assert_eq!(proofs(&popped), Vec::<String>::new());
+    let by_fn = built.replace("    lo\n", "    shrink()\n    lo\n").replace(
+        "    var (lo",
+        "    fn shrink():\n        ys.pop()\n    var (lo",
+    );
+    assert_eq!(proofs(&by_fn), Vec::<String>::new());
+    // A change later in a loop around the search reaches it on the next turn.
+    let again = "fn f(p: Int) -> Int:
+    var ys: List<Int> = [1]
+    var lo = 0
+    for t in 0..3:
+        var hi = ys.len
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if ys[mid] < p: lo = mid + 1
+            else: hi = mid
+        ys.pop()
+    lo
+print(f(2))
+";
+    assert_eq!(proofs(again), Vec::<String>::new());
+    let before = again.replace("        ys.pop()\n", "").replace("    var lo = 0\n", "    ys.pop()\n    var lo = 0\n");
+    assert_eq!(proofs(&before), ["0 <= lo <= mid < hi <= ys.len"]);
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/scout_batch_14/noi19p1.cp");
+    let port = &std::fs::read_to_string(path).unwrap();
+    let routes: Vec<String> = crate::proven_indexes(port)
+        .into_iter()
+        .map(|p| format!("{} {}", &port[p.access.0 as usize..p.access.1 as usize], p.proof))
+        .collect();
+    assert_eq!(routes[..2], ["routes[i] 0 <= i < routes.len", "routes[i] 0 <= i < routes.len"]);
+}

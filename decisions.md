@@ -2353,6 +2353,16 @@ name that fn declared earlier no longer counts as a write some call could make, 
 get relations; an `if` test is read before the branches' assignments clear relations. Reverse by
 dropping `Bounds::fixed`/`atom` (back to plain names), `in_bounds` and `index_hover`.
 
+29.37. **A list's length is fixed once nothing changes it any more.** A sequence bound once whose
+length some statement changes (`push`, assignment, `mut` argument, any method call on it) has its
+`.len` tracked from the end of its last change, or of the outermost loop around that change which
+its declaration is outside of, since the loop's next turn could change it again. A change inside a
+fn or lambda body declared outside the sequence's own scope could happen at any call, so that
+sequence gets no fixed length. A `.len` read before that point is not a name the relations know,
+so no fact about it is made where it could still move: `xs[i]` followed by `xs.push` gets no proof,
+even though the push comes after the use. Ports and examples with an index proof: 64 to 121, none
+lost. Reverse by dropping `Bounds::stable` (back to sequences no statement ever changes).
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:
