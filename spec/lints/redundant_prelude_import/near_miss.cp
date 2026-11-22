@@ -1,2 +1,2 @@
-use std.geometry.{turn}
-print(turn(Pt(0, 0), Pt(1, 0), Pt(1, 1)))
+use std.geometry.{same_dir}
+print(yes(same_dir(Pt(1, 0), Pt(2, 0))))
