@@ -4,5 +4,5 @@ domain I = 1..=n
 fn bump(mut a: [I]Int, i: I):
     a[i] += 10
 var xs: [I]Int = 0
-bump(mut xs, I.first)
+bump(mut xs, I.first!)
 print(xs)

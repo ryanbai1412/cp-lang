@@ -6,4 +6,4 @@ fn divisors(n: 1..=1000) -> yields Int:
         if n % d == 0:
             yield d
         d += 1
-print(any(d > 1 and d * d == x for d in divisors(x)), all(d <= 10 for d in divisors(x)), count(true for d in divisors(x)), max(d for d in divisors(x) if d < x))
+print(yes(divisors(x).any(d => d > 1 and d * d == x)), yes(divisors(x).all(d => d <= 10)), count(divisors(x)), [d for d in divisors(x) if d < x].max()!)
