@@ -47,6 +47,7 @@ for i in V:
     by_depth[i].push(Bucket(1, sz[i]))
     if i < V.last:
         let p = nxt[i]
+        assert p != i
         sz[p] += sz[i]
         if by_depth[p].len < by_depth[i].len:
             swap(mut by_depth[p], mut by_depth[i])
