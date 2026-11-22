@@ -2274,7 +2274,7 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Optional(inner) => inner,
             _ => pty,
         };
-        let ast::TypeKind::Array { index, .. } = &pty.kind else {
+        let ast::TypeKind::Array { index, elem } = &pty.kind else {
             return;
         };
         let [ast::Type {
@@ -2372,6 +2372,25 @@ impl<'a> Lowerer<'a> {
             }
         };
         inferred.insert(name.text.clone(), GenArg::Domain(d));
+        if let ast::TypeKind::Named {
+            name: ename,
+            args: eargs,
+        } = &elem.kind
+        {
+            if eargs.is_empty()
+                && gen_names.contains(&ename.text)
+                && !inferred.contains_key(&ename.text)
+                && matches!(
+                    self.probe_ty_silent(arg).and_then(|t| t.seq_elem()),
+                    Some(Ty::Int)
+                )
+                && of.is_some_and(|(_, ret)| {
+                    ret.is_some_and(|r| type_uses_as_index(r, &ename.text))
+                })
+            {
+                inferred.insert(ename.text.clone(), GenArg::Domain(d));
+            }
+        }
     }
 
     /// Evaluates a struct-associated constant (e.g. `Mod<P>.zero`, `Mod<P>.one`).
@@ -4107,6 +4126,24 @@ pub(super) fn let_const_name(pat: &ast::Pattern) -> Option<&str> {
             Some(&path[0].text)
         }
         _ => None,
+    }
+}
+
+fn type_uses_as_index(ty: &ast::Type, name: &str) -> bool {
+    match &ty.kind {
+        ast::TypeKind::Array { index, elem } => {
+            index.iter().any(|i| type_names(i, name)) || type_uses_as_index(elem, name)
+        }
+        ast::TypeKind::Named { args, .. } => args.iter().any(|a| type_uses_as_index(a, name)),
+        ast::TypeKind::Optional(inner)
+        | ast::TypeKind::Mut(inner)
+        | ast::TypeKind::OwnDomain { elem: inner, .. } => type_uses_as_index(inner, name),
+        ast::TypeKind::Tuple(ts) => ts.iter().any(|t| type_uses_as_index(t, name)),
+        ast::TypeKind::Record(fs) => fs.iter().any(|(_, t)| type_uses_as_index(t, name)),
+        ast::TypeKind::Fn { params, ret } => {
+            params.iter().any(|p| type_uses_as_index(p, name)) || type_uses_as_index(ret, name)
+        }
+        _ => false,
     }
 }
 

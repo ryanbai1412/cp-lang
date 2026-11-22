@@ -4542,8 +4542,9 @@ impl<'a> Lowerer<'a> {
             Ty::Pos(d) | Ty::Bound(d) if self.is_range_domain(*d) => Ty::Int,
             Ty::Opt(inner) => Ty::Opt(Box::new(self.plain_ty(inner))),
             Ty::Range(inner) => Ty::Range(Box::new(self.plain_ty(inner))),
+            Ty::List(inner) => Ty::List(Box::new(self.plain_ty(inner))),
             Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Pos(d)] if self.is_range_domain(*d) && self.list_domains.contains(d)) => {
-                Ty::List(elem.clone())
+                Ty::List(Box::new(self.plain_ty(elem)))
             }
             Ty::Array { dims, elem } => Ty::Array {
                 dims: dims
@@ -4556,7 +4557,7 @@ impl<'a> Lowerer<'a> {
                         other => *other,
                     })
                     .collect(),
-                elem: elem.clone(),
+                elem: Box::new(self.plain_ty(elem)),
             },
             other => other.clone(),
         }
@@ -4567,7 +4568,7 @@ impl<'a> Lowerer<'a> {
     pub(super) fn list_given(&self, want: &Ty) -> Option<Ty> {
         match want {
             Ty::Array { dims, elem } if matches!(dims.as_slice(), [Dim::Pos(d)] if self.list_domains.contains(d)) => {
-                Some(Ty::List(elem.clone()))
+                Some(Ty::List(Box::new(self.plain_ty(elem))))
             }
             _ => None,
         }
@@ -4623,6 +4624,44 @@ impl<'a> Lowerer<'a> {
         Stmt::If(differ, Block { stmts: vec![trap] }, Block::default())
     }
 
+    fn coerce_list_elems(
+        &mut self,
+        seq: Expr,
+        elem_ty: Ty,
+        want_elem_ty: Ty,
+        span: Span,
+        out: &mut Vec<Stmt>,
+    ) -> Expr {
+        let dst_ty = Ty::list(want_elem_ty.clone());
+        let dst = self.temp(dst_ty.clone());
+        let empty = self.mk(ExprKind::Tuple(Vec::new()), dst_ty.clone(), span);
+        out.push(Stmt::Let(dst, Some(empty)));
+        let item = self.temp(elem_ty);
+        let coerced = self.coerce(self.local(item, span), &want_elem_ty, span);
+        let push = Stmt::Expr(self.mk(
+            ExprKind::Mutate(
+                Mutation::Push,
+                Box::new(Place {
+                    kind: PlaceKind::Local(dst),
+                    ty: dst_ty,
+                    span: self.span(span),
+                }),
+                vec![coerced],
+            ),
+            Ty::Unit,
+            span,
+        ));
+        let id = self.next_loop;
+        self.next_loop += 1;
+        out.push(Stmt::For(
+            id,
+            item,
+            Iter::Seq(seq, false),
+            Block { stmts: vec![push] },
+        ));
+        self.local(dst, span)
+    }
+
     /// Between an array's plain range and the domain a generic fn knows
     /// it by: `[0..n]T` to `[D]T` (which sets the size of `D`), an `Int`
     /// to a position or boundary (checked), and each of those back.
@@ -4643,9 +4682,12 @@ impl<'a> Lowerer<'a> {
                     elem: want_elem,
                 },
                 Ty::List(elem) | Ty::ListView(elem) | Ty::MutView(elem),
-            ) if want_elem == elem => match dims.as_slice() {
+            ) if want_elem == elem || self.plain_ty(want_elem) == **elem => match dims.as_slice() {
                 [Dim::Pos(d)] if self.list_domains.contains(d) => {
                     let d = *d;
+                    let needs_elem_coerce = want_elem != elem;
+                    let want_elem_ty = (**want_elem).clone();
+                    let elem_ty = (**elem).clone();
                     // Passing the list sets the size of its domain.
                     return Ok(self.do_expr(Some(want), span, |lw, out| {
                         let held = lw.hold(e, out);
@@ -4657,18 +4699,47 @@ impl<'a> Lowerer<'a> {
                         let first = lw.range_domains.get(&d).copied().unwrap_or(0);
                         let size = lw.size_domain(d, first, len, span);
                         out.push(size);
-                        let array = ExprKind::Builtin(Builtin::ListToArray, vec![held]);
+                        let list_expr = if needs_elem_coerce {
+                            lw.coerce_list_elems(held, elem_ty, want_elem_ty, span, out)
+                        } else {
+                            held
+                        };
+                        let array = ExprKind::Builtin(Builtin::ListToArray, vec![list_expr]);
                         out.push(Stmt::Give(lw.mk(array, want.clone(), span)));
                     }));
                 }
                 _ => e,
             },
             (Ty::List(want_elem), Ty::Array { dims, elem })
-                if want_elem == elem
+                if (want_elem == elem || self.plain_ty(elem) == **want_elem)
                     && matches!(dims.as_slice(), [Dim::Pos(d)] if self.list_domains.contains(d)) =>
             {
-                let list = ExprKind::Builtin(Builtin::ArrayToList, vec![e]);
-                return Ok(self.mk(list, want.clone(), span));
+                if want_elem == elem {
+                    let list = ExprKind::Builtin(Builtin::ArrayToList, vec![e]);
+                    return Ok(self.mk(list, want.clone(), span));
+                }
+                let want_elem_ty = (**want_elem).clone();
+                let elem_ty = (**elem).clone();
+                return Ok(self.do_expr(Some(want), span, |lw, out| {
+                    let held = lw.hold(e, out);
+                    let raw = lw.mk(
+                        ExprKind::Builtin(Builtin::ArrayToList, vec![held]),
+                        Ty::list(elem_ty.clone()),
+                        span,
+                    );
+                    let dst = lw.coerce_list_elems(raw, elem_ty, want_elem_ty, span, out);
+                    out.push(Stmt::Give(dst));
+                }));
+            }
+            (Ty::List(want_elem), Ty::List(have_elem))
+                if want_elem != have_elem && self.plain_ty(have_elem) == **want_elem =>
+            {
+                let want_elem_ty = (**want_elem).clone();
+                let have_elem_ty = (**have_elem).clone();
+                return Ok(self.do_expr(Some(want), span, |lw, out| {
+                    let dst = lw.coerce_list_elems(e, have_elem_ty, want_elem_ty, span, out);
+                    out.push(Stmt::Give(dst));
+                }));
             }
             _ => e,
         };
