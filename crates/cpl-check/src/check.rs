@@ -1005,6 +1005,11 @@ pub(crate) fn leading_name(text: &str) -> &str {
 /// The member meant by `.name` of a `base` the spec has no such member on.
 pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
     use crate::builtins::{builtin_members, Receiver, BUILTIN_MEMBERS};
+    // A generator has only what std declares on sequences (R07.1.1).
+    if matches!(base, Ty::Named { name, .. } if name == "Gen") {
+        let methods = prelude::spec_receiver_method_names();
+        return closest(name, methods.iter().map(String::as_str));
+    }
     let receiver = match base {
         Ty::Str => Some(Receiver::Str),
         Ty::Array { .. } => Some(Receiver::Array),

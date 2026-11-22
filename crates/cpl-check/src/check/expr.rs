@@ -1927,10 +1927,10 @@ impl<'a> Checker<'a> {
             );
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-                if generator {
-                    diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
-                } else if let Some(s) = suggestion {
+                if let Some(s) = suggestion {
                     diag.suggest(name.span, s);
+                } else if generator {
+                    diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
                 }
             }
         }
