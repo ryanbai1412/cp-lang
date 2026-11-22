@@ -218,6 +218,11 @@ fn half(a: Pt) -> Int:
     if a.x == 0 and a.y == 0: return 0
     if a.y > 0 or (a.y == 0 and a.x > 0): 1 else: 2
 
+fn half_from(a: Pt, from: Pt) -> Int:
+    if a == Pt(0, 0): return 0
+    let c = from.cross128(a)
+    if c > I128(0) or (c == I128(0) and from.dot128(a) > I128(0)): 1 else: 2
+
 /// Whether `a` comes before `b` counter-clockwise, starting from the ray `from` (default `+x`).
 ///
 /// The order is exact in `I128`: the zero vector comes first, then directions by angle in
@@ -231,11 +236,6 @@ fn half(a: Pt) -> Int:
 /// example: `angle_less(Pt(0, 0), Pt(1, 0)) == true`
 /// example: `angle_less(Pt(2, 0), Pt(1, 0)) == false`
 /// example: `angle_less(Pt(-1, 0), Pt(1, 0), from: Pt(0, 1)) == true`
-fn half_from(a: Pt, from: Pt) -> Int:
-    if a == Pt(0, 0): return 0
-    let c = from.cross128(a)
-    if c > I128(0) or (c == I128(0) and from.dot128(a) > I128(0)): 1 else: 2
-
 pub fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool:
     assert from != Pt(0, 0), "`angle_less` needs a nonzero `from`"
     let ha = half_from(a, from)
@@ -1246,6 +1246,8 @@ pub const PI: F64 = 3.14159265358979323846
 /// example: `close(1.0, 1.25, eps: 0.25) == true`
 pub fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool = abs(a - b) <= eps
 
+fn pi() -> F64 = atan2(0.0, -1.0)
+
 /// The sign of `x` with tolerance: 1 if `x > eps`, -1 if `x < -eps`, else 0.
 ///
 /// cost: O(1)
@@ -1253,8 +1255,6 @@ pub fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool = abs(a - b) <= eps
 /// example: `sign_eps(2.0) == 1`
 /// example: `sign_eps(-0.5) == -1`
 /// example: `sign_eps(1e-12) == 0`
-fn pi() -> F64 = atan2(0.0, -1.0)
-
 pub fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int = if x > eps: 1 else: if x < -eps: -1 else: 0
 
 /// O(1) value type. A 2D floating-point point or vector. Kept distinct from `Pt` so exact

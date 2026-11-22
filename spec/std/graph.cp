@@ -1519,6 +1519,12 @@ impl<V> Functional<V>:
         let d = _depth[x] - _depth[y]
         if self.lift(x, d) == y: Some(d) else: None
 
+    fn lift(self, x: Int, k: Int) -> Int:
+        var y = x
+        for b in 0.._up.len:
+            if (k >> b) & 1 == 1: y = _up[b][y]
+        y
+
     /// Every cycle once, each in walk order from its smallest vertex.
     ///
     /// cost: O(n)
@@ -1526,12 +1532,6 @@ impl<V> Functional<V>:
     /// traps: never
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycles() == [[0, 1, 2]]`
     /// example: `domain V = 0..3; let nx: [V]V = [0, 2, 1]; Functional(nx).cycles() == [[0], [1, 2]]`
-    fn lift(self, x: Int, k: Int) -> Int:
-        var y = x
-        for b in 0.._up.len:
-            if (k >> b) & 1 == 1: y = _up[b][y]
-        y
-
     pub fn cycles(self) -> List<List<V>>:
         var done = List.filled(_cycles.len, false)
         var out: List<List<V>> = []

@@ -568,11 +568,6 @@ pub struct DynBitset:
     _cap: Int
     _n: Int
 
-    /// Create an all-zero `DynBitset` of width `cap`: bits `0..cap`.
-    ///
-    /// cost: O(cap / 64) time and space
-    /// traps: when `cap < 0`
-    /// example: `DynBitset(10).len == 0`
     fn recount(mut self):
         _n = 0
         for x in _w: _n += popcount(x)
@@ -581,6 +576,11 @@ pub struct DynBitset:
         let full_words = _cap / 64
         if _cap % 64 != 0: _w[full_words] &= low(_cap % 64)
 
+    /// Create an all-zero `DynBitset` of width `cap`: bits `0..cap`.
+    ///
+    /// cost: O(cap / 64) time and space
+    /// traps: when `cap < 0`
+    /// example: `DynBitset(10).len == 0`
     pub fn new(cap: Int) -> DynBitset:
         assert cap >= 0
         DynBitset(List.filled((cap + 63) / 64, U64(0)), cap, 0)
@@ -1160,11 +1160,6 @@ pub struct XorTrie:
             if node < 0: return res
         res
 
-    /// Remove all elements and the global mask, keeping `bits` and the reserved pool.
-    ///
-    /// cost: O(1)
-    /// traps: never
-    /// example: `var t = XorTrie(3); t.add(5); t.clear(); t.is_empty and not t.contains(5)`
     fn extreme_xor(self, x: Int, want: Int) -> ?Int:
         assert 0 <= x and x < 1 << _bits
         if _cnt[0] == 0: return None
@@ -1182,6 +1177,11 @@ pub struct XorTrie:
                 res |= (want ^ 1) << i
         Some(res)
 
+    /// Remove all elements and the global mask, keeping `bits` and the reserved pool.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.clear(); t.is_empty and not t.contains(5)`
     pub fn clear(mut self):
         _mask = 0
         _c0 = [-1]
