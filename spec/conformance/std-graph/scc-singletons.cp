@@ -1,0 +1,6 @@
+// expect: ok, output "3 YES"
+use std.graph.{scc}
+domain V = 0..3
+let g: [V]List<V> = [[V(1)], [V(2)], []]
+let (domain C, comp) = scc(g)
+print(C.count, yes(comp[0] != comp[1] and comp[1] != comp[2]))
