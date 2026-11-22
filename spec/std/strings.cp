@@ -3144,7 +3144,9 @@ pub struct DynamicAhoCorasick<A>:
 
 // ---- tests
 
-fn random_word(n: Int, letters: Int) -> List<Char> = todo
+fn random_word(n: Int, letters: Int) -> List<Char> = [
+    Char(Int('a') + rand(0, letters - 1)) for _ in 0..n
+]
 
 fn common_prefix<T>(s: List<T>, a: Int, b: Int) -> Int:
     var k = 0
@@ -3186,10 +3188,79 @@ fn find_all_matches_a_scan():
     assert [i for i in find_all([1, 2, 1, 2, 1], [1, 2, 1])] == [0, 2]
 
 @test
-fn suffix_array_and_lcp_match_sorting_the_suffixes() = todo
+fn suffix_array_and_lcp_match_sorting_the_suffixes():
+    assert SuffixArray("banana").sa == [5, 3, 1, 0, 4, 2]
+    assert SuffixArray("banana").lcp == [1, 3, 0, 0, 2]
+    assert SuffixArray("").sa == [] and SuffixArray("x").sa == [0] and SuffixArray("x").lcp == []
+    assert SuffixArray("aaaaa").sa == [4, 3, 2, 1, 0]
+    assert SuffixArray("abcdef").sa == [0, 1, 2, 3, 4, 5]
+    assert SuffixArray("fedcba").sa == [5, 4, 3, 2, 1, 0]
+    for _ in 0..40:
+        let s = random_word(rand(1, 18), rand(1, 3))
+        let sa = SuffixArray(s).sa
+        var want = [i for i in 0..s.len]
+        want.sort(by: i => [s[j] for j in i..s.len])
+        assert sa == want
+        let lcp = SuffixArray(s).lcp
+        for j in 0..s.len - 1: assert lcp[j] == common_prefix(s, sa[j], sa[j + 1])
+    // Large alphabet (>256 distinct values) and negative ints exercise the fallback path
+    let big_uniq = [300 - i for i in 0..270]
+    assert SuffixArray(big_uniq).sa == [269 - i for i in 0..270]
+    var big_dup = [i % 260 - 130 for i in 0..280]
+    big_dup.push(-130)
+    big_dup.push(-129)
+    let sa_big = SuffixArray(big_dup).sa
+    assert sa_big.len == big_dup.len
+    for j in 0..sa_big.len - 1: assert suffix_less(big_dup, sa_big[j], sa_big[j + 1])
 
 @test
-fn rolling_hash_over_str_list_and_domain_arrays() = todo
+fn rolling_hash_over_str_list_and_domain_arrays():
+    // 1. Str substring hashes match brute-force equality
+    for _ in 0..20:
+        let s = Str(random_word(rand(1, 16), 3))
+        let h = RollingHash(s)
+        assert h.len == s.len
+        for l in 0..s.len:
+            for r in l..=s.len:
+                let hv = h.get(l..r)
+                assert hv == h.slice(l, r)
+                if l < r: assert hv == h.get(l..=r - 1)
+        for _ in 0..30:
+            let len = rand(1, s.len)
+            let a = rand(0, s.len - len)
+            let b = rand(0, s.len - len)
+            assert (h.get(a..a + len) == h.get(b..b + len)) == (s[a..a + len] == s[b..b + len])
+        // combine matches full range for every split
+        for mid in 0..=s.len:
+            assert h.combine(h.get(..mid), h.get(mid..s.len), s.len - mid) == h.all
+    // 2. Domain-indexed [D]Int array (including negative values and zeros)
+    domain D = 1..=8
+    let arr = [D] i => [0, 0, -5, 7, 0, 0, -5, 7][i.to_idx]
+    let hd = RollingHash(arr)
+    assert hd.get(D(1)..=D(4)) == hd.get(D(5)..=D(8))
+    assert hd.get(D(1)..=D(1)) != hd.get(D(1)..=D(2))  // [0] vs [0, 0] never collide
+    assert hd.get(D(3)..D(3)) == HashVal(0, 0)
+    assert hd.get(..D(5)) == hd.get(D(5)..)
+    // 3. Shared bases compare across two distinct sequences
+    let h1 = RollingHash("abacaba")
+    let h2 = RollingHash("xxabayy", bases: h1.bases)
+    assert h1.get(0..3) == h2.get(2..5) and h1.get(4..7) == h2.get(2..5)
+    assert h1.get(0..3) != h2.get(0..3)
+    // 4. Nested 2D hashing: [R]HashVal fed into a second RollingHash with independent salted bases
+    domain R = 0..3
+    domain C = 0..3
+    let g = [R, C] (r, c) => [[1, 2, 3], [4, 5, 6], [7, 8, 9]][r.to_idx][c.to_idx]
+    let gt = [C, R] (c, r) => g[r, c]
+    let row_b = RollingHash([g[R(0), c] for c in C]).bases
+    let row_hashes = [R] r => RollingHash([g[r, c] for c in C], bases: row_b).all
+    let col_hashes = [C] c => RollingHash([gt[c, r] for r in R], bases: row_b).all
+    let h_grid = RollingHash(row_hashes)
+    let h_trans = RollingHash(col_hashes, bases: h_grid.bases)
+    assert h_grid.bases != row_b
+    assert h_grid.all != h_trans.all
+    // Same matrix hashes equal under matching row & outer bases
+    let row_hashes2 = [R] r => RollingHash([g[r, c] for c in C], bases: row_b).all
+    assert RollingHash(row_hashes2, bases: h_grid.bases).all == h_grid.all
 
 @test
 fn repeat_writes_a_string_over():
@@ -3310,22 +3381,226 @@ fn manacher_and_is_palindrome_match_brute():
         assert p.longest == best
 
 @test
-fn suffix_array_struct_queries_match_brute() = todo
+fn suffix_array_struct_queries_match_brute():
+    let empty = SuffixArray("")
+    assert empty.len == 0 and empty.distinct() == 0 and empty.count("a") == 0
+    for _ in 0..30:
+        let s = random_word(rand(1, 16), 3)
+        let n = s.len
+        let sa = SuffixArray(s)
+        assert sa.len == n
+        for i in 0..n:
+            for j in 0..n:
+                assert sa.lcp_between(i, j) == common_prefix(s, i, j)
+        // matches and count
+        for _ in 0..10:
+            let pat = random_word(rand(0, 4), 3)
+            let r = sa.rank_range(pat)
+            let want = if pat.is_empty: [i for i in 0..n] else: [
+                i for i in 0..=n - pat.len if s[i..i + pat.len] == pat
+            ]
+            assert sa.count(pat) == want.len
+            var got = [sa.sa[idx] for idx in r]
+            got.sort()
+            assert got == want
+        // lcp_range
+        for _ in 0..10:
+            let i = rand(0, n - 1)
+            let len = rand(0, n - i)
+            let r = sa.lcp_range(i, len)
+            var want: List<Int> = [sa.rank[j] for j in 0..n if common_prefix(s, i, j) >= len]
+            want.sort()
+            assert [idx for idx in r] == want
+        // compare
+        for _ in 0..20:
+            let l1 = rand(0, n)
+            let r1 = rand(l1, n)
+            let l2 = rand(0, n)
+            let r2 = rand(l2, n)
+            let a = [s[j] for j in l1..r1]
+            let b = [s[j] for j in l2..r2]
+            let want = if a < b: -1 elif a > b: 1 else: 0
+            assert sa.compare(l1, r1, l2, r2) == want
+        // distinct substrings
+        var seen = Set<List<Char>>()
+        for l in 0..n:
+            for r in l + 1..=n: seen.add([s[j] for j in l..r])
+        assert sa.distinct() == seen.len
 
 @test
-fn rolling_hash_lcp_lcs_and_hash2d_match_brute() = todo
+fn rolling_hash_lcp_lcs_and_hash2d_match_brute():
+    for _ in 0..25:
+        let s = random_word(rand(1, 14), 2)
+        let t = random_word(rand(1, 14), 2)
+        let hs = RollingHash(s)
+        let ht = RollingHash(t, bases: hs.bases)
+        for i in 0..=s.len:
+            for j in 0..=s.len:
+                assert hs.lcp(i, j) == common_prefix(s, i, j)
+                var cs = 0
+                while cs < i and cs < j and s[i - 1 - cs] == s[j - 1 - cs]: cs += 1
+                assert hs.lcs(i, j) == cs
+        for _ in 0..20:
+            let a = rand(0, s.len)
+            let b = rand(0, t.len)
+            var k = 0
+            while a + k < s.len and b + k < t.len and s[a + k] == t[b + k]: k += 1
+            assert hs.lcp_with(a, ht, b) == k
+    // Hash2D matches brute rectangle equality
+    domain R = 0..5
+    domain C = 0..6
+    let g = [R, C] (r, c) => rand(0, 1)
+    let h2 = Hash2D<R, C>((r, c) => g[r, c])
+    for _ in 0..100:
+        let (hgt, wid) = (rand(1, 3), rand(1, 3))
+        let (r1, c1, r2, c2) = (
+            rand(0, 5 - hgt),
+            rand(0, 6 - wid),
+            rand(0, 5 - hgt),
+            rand(0, 6 - wid),
+        )
+        let same = (0..hgt).all(i => (0..wid).all(j => g[R(r1 + i), C(c1 + j)] == g[R(r2 + i), C(c2 + j)]))
+        let a = h2.rect(R(r1)..=R(r1 + hgt - 1), C(c1)..=C(c1 + wid - 1))
+        let b = h2.rect(R(r2)..=R(r2 + hgt - 1), C(c2)..=C(c2 + wid - 1))
+        assert (a == b) == same
 
 @test
-fn suffix_automaton_matches_brute_and_linear_occurrences() = todo
+fn suffix_automaton_matches_brute_and_linear_occurrences():
+    domain A = 0..2
+    for _ in 0..30:
+        let n = rand(0, 10)
+        let s = [A(rand(0, 1)) for _ in 0..n]
+        let sam = SuffixAutomaton<A>.of(s)
+        let occ = sam.occ_counts()
+        let order = sam.topo_order()
+        assert order.len == sam.len
+        for i in 1..order.len: assert sam.longest(order[i - 1]) <= sam.longest(order[i])
+        for v in 1..sam.len:
+            assert sam.shortest(v) == sam.longest(sam.link(v)!) + 1
+            assert sam.shortest(v) <= sam.longest(v)
+        for len in 1..=4:
+            for code in 0..(1 << len):
+                let w = [A((code >> i) % 2) for i in 0..len]
+                let times = sum(Int((0..len).all(j => s[i + j] == w[j])) for i in 0..=n - len)
+                assert sam.contains(w) == (times > 0)
+                if let v = sam.find(w):
+                    assert occ[v] == times
+                    if len == sam.longest(v):
+                        var first = -1
+                        for i in 0..=n - len:
+                            if (0..len).all(j => s[i + j] == w[j]):
+                                first = i + len - 1
+                                break
+                        assert sam.first_pos(v) == first
+        var seen = Set<List<A>>()
+        for l in 0..n:
+            for r in l + 1..=n: seen.add([s[j] for j in l..r])
+        assert sam.distinct() == seen.len
+        assert sam.len <= max(2 * n, 1)
+        let m = rand(0, 10)
+        let t = [A(rand(0, 1)) for _ in 0..m]
+        let (lcs_len, lcs_end) = sam.lcs(t)
+        var brute_lcs = 0
+        for i in 0..m:
+            for j in i + 1..=m:
+                if [t[k] for k in i..j] in seen: brute_lcs max= j - i
+        assert lcs_len == brute_lcs
+        if lcs_len > 0: assert [t[k] for k in lcs_end - lcs_len..lcs_end] in seen
 
 @test
-fn palindromic_tree_distinct_occurrences_and_series_dp() = todo
+fn palindromic_tree_distinct_occurrences_and_series_dp():
+    domain A = 0..2
+    for _ in 0..30:
+        let n = rand(0, 12)
+        let s = [A(rand(0, 1)) for _ in 0..n]
+        var pt = PalindromicTree<A>.new()
+        let inf = 1_000_000
+        var dp: List<Int> = List.filled(n + 1, inf)
+        var series_dp: List<Int> = List.filled(n + 3, inf)
+        dp[0] = 0
+        for i in 0..n:
+            var v = pt.push(s[i])
+            while pt.pal_len(v) > 0:
+                series_dp[v] = dp[i + 1 - pt.pal_len(pt.series_link(v)) - pt.diff(v)]
+                if pt.diff(v) == pt.diff(pt.link(v)):
+                    series_dp[v] min= series_dp[pt.link(v)]
+                dp[i + 1] min= series_dp[v] + 1
+                v = pt.series_link(v)
+        // Brute distinct palindromes and total palindromic substrings
+        var pals = Set<List<A>>()
+        var total_pals = 0
+        for l in 0..n:
+            for r in l + 1..=n:
+                let sub = [s[j] for j in l..r]
+                if is_palindrome(sub):
+                    pals.add(sub)
+                    total_pals += 1
+        assert pt.distinct == pals.len
+        let occ = pt.occ_counts()
+        assert sum(occ[v] for v in 2..pt.len) == total_pals
+        // Brute minimum palindromic partition DP
+        var brute: List<Int> = List.filled(n + 1, inf)
+        brute[0] = 0
+        for r in 1..=n:
+            for l in 0..r:
+                if is_palindrome([s[j] for j in l..r]): brute[r] min= brute[l] + 1
+        assert dp[n] == brute[n]
 
 @test
-fn trie_add_remove_and_prefix_counts() = todo
+fn trie_add_remove_and_prefix_counts():
+    domain A = 0..3
+    for _ in 0..25:
+        var t = Trie<A>()
+        var words: List<List<A>> = []
+        for _ in 0..30:
+            let w = [A(rand(0, 2)) for _ in 0..rand(0, 4)]
+            if rand(0, 3) > 0:
+                let node = t.add(w)
+                assert t.ends_at(node) >= 1 and t.pass_at(node) >= 1
+                words.push(w)
+            else:
+                let i = words.find(w)
+                assert t.remove(w) == (i != none)
+                if i != none: words = [words[j] for j in 0..words.len if j != i!]
+            let q = [A(rand(0, 2)) for _ in 0..rand(0, 3)]
+            assert t.count(q) == sum(Int(w == q) for w in words)
+            assert t.count_prefix(q) == sum(
+                Int(w.len >= q.len and (0..q.len).all(i => w[i] == q[i])) for w in words
+            )
 
 @test
-fn aho_corasick_matches_counts_and_avoidance_dp() = todo
+fn aho_corasick_matches_counts_and_avoidance_dp():
+    domain A = 0..2
+    for _ in 0..30:
+        let patterns = [[A(rand(0, 1)) for _ in 0..rand(1, 4)] for _ in 0..rand(1, 5)]
+        let text = [A(rand(0, 1)) for _ in 0..rand(0, 14)]
+        let ac = AhoCorasick<A>(patterns)
+        var want: List<(Int, Int)> = []
+        for i in 0..text.len:
+            for w in 0..patterns.len:
+                let k = patterns[w].len
+                if i + k <= text.len and (0..k).all(j => text[i + j] == patterns[w][j]): want.push((i, w))
+        let got = [(m.at, m.pattern) for m in ac.find_all(text)]
+        assert got.sorted() == want.sorted()
+        assert ac.counts(text) == [sum(Int(p.1 == w) for p in want) for w in 0..patterns.len]
+        assert ac.len <= 1 + sum(w.len for w in patterns)
+    // Avoidance DP test
+    let pats = [[A(0), A(1)], [A(1), A(1)]]
+    let ac = AhoCorasick<A>(pats)
+    var ways = List.filled(ac.len, 0)
+    ways[ac.root] = 1
+    for _ in 0..6:
+        var nxt = List.filled(ac.len, 0)
+        for s in 0..ac.len:
+            for a in A:
+                let t = ac.step(s, a)
+                if not ac.hit(t): nxt[t] += ways[s]
+        ways = nxt
+    var brute = 0
+    for code in 0..(1 << 6):
+        let text = [A((code >> i) % 2) for i in 0..6]
+        if [m for m in ac.find_all(text)].is_empty: brute += 1
+    assert ways.sum() == brute
 
 @test
 fn indexed_views_and_common_prefix_suffix():
@@ -3356,7 +3631,131 @@ fn indexed_views_and_common_prefix_suffix():
     assert period(arr) == 2
 
 @test
-fn lyndon_runs_matches_brute() = todo
+fn lyndon_runs_matches_brute():
+    fn brute_runs(s: List<Int>) -> List<(l: Int, r: Int, period: Int)>:
+        let n = s.len
+        var out = List<(l: Int, r: Int, period: Int)>()
+        for l in 0..n:
+            for r in l + 2..=n:
+                var min_p = 0
+                for p in 1..=(r - l) / 2:
+                    if (l..r - p).all(i => s[i] == s[i + p]):
+                        min_p = p
+                        break
+                if min_p == 0: continue
+                if l > 0 and s[l - 1] == s[l - 1 + min_p]: continue
+                if r < n and s[r] == s[r - min_p]: continue
+                out.push((l:, r:, period: min_p))
+        out
+
+    assert lyndon_runs("").is_empty
+    assert lyndon_runs("a").is_empty
+    assert lyndon_runs("aa") == [(l: 0, r: 2, period: 1)]
+    assert lyndon_runs("ababa") == [(l: 0, r: 5, period: 2)]
+    var seed = 424242
+    for n in 1..=14:
+        for _ in 0..6:
+            var s = List<Int>()
+            for _ in 0..n:
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff
+                s.push((seed >> 16) % 3)
+            assert lyndon_runs(s) == brute_runs(s)
 
 @test
-fn sequence_generality_parity_across_list_array_and_views() = todo
+fn sequence_generality_parity_across_list_array_and_views():
+    let xs = [1, 2, 1, 3, 1, 2, 1]
+    let pat = [1, 2, 1]
+    domain P = 1..=7
+    domain Q = 1..=3
+    let arr: [P]Int = [P] i => xs[i.ord]
+    let parr: [Q]Int = [Q] i => pat[i.ord]
+    let padded = [9, 1, 2, 1, 3, 1, 2, 1, 9]
+    let view = padded[1..8]
+    let pview = padded[1..4]
+
+    // KMP / Z / structural helpers over List<Int>, [D]Int, ListView<Int>, Str, StrView
+    assert prefix_function(arr) == prefix_function(xs)
+    assert prefix_function(view) == prefix_function(xs)
+    assert z_function(arr) == z_function(xs)
+    assert z_function(view) == z_function(xs)
+    assert [i for i in find_all(arr, parr)] == [0, 4]
+    assert [i for i in find_all(view, pview)] == [0, 4]
+    assert prefix_matches(arr, parr) == prefix_matches(xs, pat)
+    assert prefix_matches(view, pview) == prefix_matches(xs, pat)
+    assert period(arr) == period(xs)
+    assert period(view) == period(xs)
+    assert borders(arr) == borders(xs)
+    assert borders(view) == borders(xs)
+    assert overlap(arr, [2, 1, 7]) == overlap(xs, [2, 1, 7])
+    assert common_prefix_len(arr, view) == 7
+    assert common_suffix_len(arr, view) == 7
+
+    // RollingHash over List<Int>, [D]Int, ListView<Int>, Str, StrView
+    let bases = (131, 137)
+    let hl = RollingHash(xs, bases: bases)
+    let ha = RollingHash(arr, bases: bases)
+    let hv = RollingHash(copy(view), bases: bases)
+    assert ha.all == hl.all and hv.all == hl.all
+    assert ha.get(P(2)..P(6)) == hl.get(1..5) and hv.get(1..5) == hl.get(1..5)
+    let hs = RollingHash(copy("xabacabay"[1..8]), bases: bases)
+    assert hs.all == RollingHash("abacaba", bases: bases).all
+
+    // Suffix array / LCP / SuffixArray.matches over List<Int>, [D]Int, ListView<Int>, Str, StrView
+    let sa_l = SuffixArray(xs).sa
+    assert SuffixArray(arr).sa == sa_l
+    assert SuffixArray(copy(view)).sa == sa_l
+    assert SuffixArray(arr).lcp == SuffixArray(xs).lcp
+    assert SuffixArray(copy(view)).lcp == SuffixArray(xs).lcp
+    let sa_s = SuffixArray("abacaba").sa
+    assert SuffixArray(copy("xabacabay"[1..8])).sa == sa_s
+    assert SuffixArray(copy("xabacabay"[1..8])).lcp == SuffixArray("abacaba").lcp
+    let sa_obj = SuffixArray.new(xs)
+    assert sa_obj.rank_range(parr) == sa_obj.rank_range(pat)
+    assert sa_obj.count(pview) == 2
+
+    // Manacher / Lyndon / runs over List<Int>, [D]Int, ListView<Int>, StrView
+    assert is_palindrome(arr) and is_palindrome(view)
+    assert manacher(arr).is_palindrome(P(1)..=P(7))
+    assert manacher(view).is_palindrome(0..7)
+    assert lyndon_factorization(arr) == lyndon_factorization(xs)
+    assert lyndon_factorization(view) == lyndon_factorization(xs)
+    assert min_rotation(arr) == min_rotation(xs)
+    assert min_rotation(view) == min_rotation(xs)
+    assert lyndon_runs(arr) == lyndon_runs(xs)
+    assert lyndon_runs(view) == lyndon_runs(xs)
+    assert lyndon_runs("xabababy"[1..7]) == lyndon_runs("ababab")
+
+    // Alphabet-domain automata over List<Sym>, [D]Sym, ListView<Sym>
+    domain Sym = 0..4
+    let syms = [Sym(x) for x in xs]
+    let sarr: [P]Sym = [P] i => syms[i.ord]
+    let spadded = [Sym(0), Sym(1), Sym(2), Sym(1), Sym(3), Sym(1), Sym(2), Sym(1), Sym(0)]
+    let sview = spadded[1..8]
+    let spat: [Q]Sym = [Q] i => Sym(pat[i.ord])
+    let spview = spadded[1..4]
+
+    let sam_l = SuffixAutomaton<Sym>.of(syms)
+    let sam_a = SuffixAutomaton<Sym>.of(sarr)
+    let sam_v = SuffixAutomaton<Sym>.of(sview)
+    assert sam_a.distinct() == sam_l.distinct() and sam_v.distinct() == sam_l.distinct()
+    assert sam_a.contains(spat) and sam_v.contains(spview)
+    assert sam_a.lcs(spview) == sam_l.lcs(spview)
+
+    let pt_l = PalindromicTree<Sym>.of(syms)
+    let pt_a = PalindromicTree<Sym>.of(sarr)
+    let pt_v = PalindromicTree<Sym>.of(sview)
+    assert pt_a.distinct == pt_l.distinct and pt_v.distinct == pt_l.distinct
+
+    var tr = Trie<Sym>.new()
+    let _ = tr.add(sarr)
+    let _ = tr.add(spview)
+    assert tr.count(sview) == 1
+    assert tr.count_prefix(spat) == 2
+    assert tr.remove(spview)
+    assert tr.count_prefix(spat) == 1
+
+    let ac = AhoCorasick<Sym>.new([spat])
+    assert ac.counts(sarr) == [2]
+    assert ac.counts(sview) == [2]
+    assert [m.at for m in ac.find_all(sarr)] == [0, 4]
+    assert [m.at for m in ac.find_all(sview)] == [0, 4]
