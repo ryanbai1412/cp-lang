@@ -1,7 +1,7 @@
 //! Prefix sums, prefix/suffix monoid folds, and offline difference arrays.
 //!
 //! Call `prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in O(n) or
-//! O(r * c), then answer any `.sum(...)` or `.prefix(...)` query in O(1).
+//! O(r * c), then answer any `.fold(...)` or `.prefix(...)` query in O(1).
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for O(1) offline range/rectangle adds and O(n) /
 //! O(r * c) `finish()`.
 use std.algebra.{Monoid}
@@ -26,7 +26,7 @@ use std.seq.{ends, RingRange}
 /// order: keyed by `D.cuts`, left to right
 /// traps: never (beyond what `f` traps on)
 /// example: `[3, 1, 4].scan(+).prefix(2) == 4`
-/// example: `[3, 1, 4].scan(+).sum(1..=2) == 5`
+/// example: `[3, 1, 4].scan(+).fold(1..=2) == 5`
 /// example: `[3, 1, 4].scan(+, from: 10).prefix(0) == 10`
 pub fn scan<D, T>(self: [D]T, f: (T, T) -> T, from: ?T = None) -> Prefix<D, T> = todo
 
@@ -64,15 +64,15 @@ pub struct FillPrefix<D, T>:
     /// cost: O(1)
     /// empty: zero, whatever has been written
     /// traps: when `r` is non-empty and contains a position not yet written
-    /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 5); f.set(1, 7); f.sum(0..2) == 12`
-    /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(order: FillOrder.Reverse); f.set(2, 4); f.set(1, 6); f.sum(1..) == 10`
-    pub fn sum(self, r: Range<D>) -> T = todo
+    /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 5); f.set(1, 7); f.fold(0..2) == 12`
+    /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(order: FillOrder.Reverse); f.set(2, 4); f.set(1, 6); f.fold(1..) == 10`
+    pub fn fold(self, r: Range<D>) -> T = todo
 
 /// Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s,
 /// `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
 /// Construct statically with `prefix(a)` in O(|D|) / O(|R| * |C|) / O(a.len), or incrementally
 /// with `Prefix<...>.filling(order: FillOrder.Forward | FillOrder.Reverse)` and O(1) `.set(...)`
-/// in fill order; `.sum(...)` and `.prefix(...)` are O(1) over the already-filled prefix or suffix.
+/// in fill order; `.fold(...)` and `.prefix(...)` are O(1) over the already-filled prefix or suffix.
 pub struct Prefix<D, T>:
     p: [D.cuts]T
 
@@ -91,7 +91,7 @@ pub struct Prefix<D, T>:
     ///
     /// cost: O(|D|) time and space
     /// traps: never
-    /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 2); f.sum(0..1) == 2`
+    /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 2); f.fold(0..1) == 2`
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> = todo
 
     /// The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
@@ -107,8 +107,8 @@ pub struct Prefix<D, T>:
     /// cost: O(1)
     /// empty: zero
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.sum(1..=2) == 5`
-    pub fn sum(self, r: Range<D>) -> T = todo
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.fold(1..=2) == 5`
+    pub fn fold(self, r: Range<D>) -> T = todo
 
     /// The sum over a wrapping run of positions, e.g. `a.ring.span(i, k)`: the part from `r.start`
     /// to `D.last` plus the part from `D.first` to `r.end` when it wraps.
@@ -197,9 +197,9 @@ pub struct _FillPrefix2 < R, C, T >:
     /// cost: O(1)
     /// empty: zero when `rows` or `cols` is empty
     /// traps: when the rectangle is non-empty and holds a cell not yet written
-    /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 1); f.set(0, 1, 2); f.set(1, 0, 3); f.sum(0..=1, 0..=0) == 4`
-    /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(order: FillOrder.Reverse); f.set(1, 1, 5); f.set(1, 0, 6); f.sum(1..=1, 0..=1) == 11`
-    pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T = todo
+    /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 1); f.set(0, 1, 2); f.set(1, 0, 3); f.fold(0..=1, 0..=0) == 4`
+    /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(order: FillOrder.Reverse); f.set(1, 1, 5); f.set(1, 0, 6); f.fold(1..=1, 0..=1) == 11`
+    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T = todo
 
 /// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 pub struct _Prefix2 < R, C, T >:
@@ -210,7 +210,7 @@ pub struct _Prefix2 < R, C, T >:
     /// cost: O(|R| * |C|) time and space
     /// empty: a table whose every query is zero
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.sum(0..=1, 0..=2) == 21`
+    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.fold(0..=1, 0..=2) == 21`
     pub fn new(a: [R, C]T) -> Prefix<R, C, T> = todo
 
     /// Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major
@@ -218,7 +218,7 @@ pub struct _Prefix2 < R, C, T >:
     ///
     /// cost: O(|R| * |C|) time and space
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 7); f.sum(0..=0, 0..=0) == 7`
+    /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 7); f.fold(0..=0, 0..=0) == 7`
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T> = todo
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
@@ -236,8 +236,8 @@ pub struct _Prefix2 < R, C, T >:
     /// cost: O(1)
     /// empty: zero when `rows` or `cols` is empty
     /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.sum(0..=1, 1..=2) == 16`
-    pub fn sum(self, rows: Range<R>, cols: Range<C>) -> T = todo
+    /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.fold(0..=1, 1..=2) == 16`
+    pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T = todo
 
 /// Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
 pub struct _FillPrefixList < T >:
@@ -264,8 +264,8 @@ pub struct _FillPrefixList < T >:
     /// cost: O(1)
     /// empty: zero, wherever `r` lies
     /// traps: when `r` is non-empty and reaches outside `0..n` or holds an index not yet written
-    /// example: `var f = Prefix<Int>.filling(3, order: FillOrder.Reverse); f.set(2, 4); f.set(1, 1); f.sum(1..3) == 5`
-    pub fn sum(self, r: Range<Int>) -> T = todo
+    /// example: `var f = Prefix<Int>.filling(3, order: FillOrder.Reverse); f.set(2, 4); f.set(1, 1); f.fold(1..3) == 5`
+    pub fn fold(self, r: Range<Int>) -> T = todo
 
 /// Internal list shape of `Prefix<T>`, constructed by `prefix(a)` or `Prefix<T>.filling(n, ...)`.
 pub struct _PrefixList < T >:
@@ -284,7 +284,7 @@ pub struct _PrefixList < T >:
     ///
     /// cost: O(n) time and space
     /// traps: when `n < 0`
-    /// example: `var f = Prefix<Int>.filling(2); f.set(0, 9); f.sum(0..1) == 9`
+    /// example: `var f = Prefix<Int>.filling(2); f.set(0, 9); f.fold(0..1) == 9`
     pub fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T> = todo
 
     /// The sum of the first `k` values; zero for `k == 0`.
@@ -300,9 +300,9 @@ pub struct _PrefixList < T >:
     /// cost: O(1)
     /// empty: zero, wherever `r` lies
     /// traps: when `r` is non-empty and reaches outside `0..n`
-    /// example: `Prefix<Int>([3, 1, 4]).sum(1..3) == 5`
-    /// example: `Prefix<Int>([3, 1, 4]).sum(2..2) == 0`
-    pub fn sum(
+    /// example: `Prefix<Int>([3, 1, 4]).fold(1..3) == 5`
+    /// example: `Prefix<Int>([3, 1, 4]).fold(2..2) == 0`
+    pub fn fold(
         self,
         r: Range<Int>,
     ) -> T = todo

@@ -82,7 +82,7 @@ pub struct Dsu<V>:
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// traps: never
     /// example: `var d = Dsu<0..3>(); d.unite(0, 2); d.same(2, 0) and not d.same(0, 1)`
-    pub fn same(mut self, a: V, b: V) -> Bool = todo
+    pub fn same(self, a: V, b: V) -> Bool = todo
 
     /// The number of positions in `v`'s set, `v` included.
     ///
@@ -190,7 +190,7 @@ pub struct DsuOf<V, T>:
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// traps: never
     /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 2); d.same(0, 2) and not d.same(1, 2)`
-    pub fn same(mut self, a: V, b: V) -> Bool = todo
+    pub fn same(self, a: V, b: V) -> Bool = todo
 
     /// The number of positions in `v`'s set, `v` included.
     ///

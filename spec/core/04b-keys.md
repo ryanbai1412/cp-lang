@@ -33,12 +33,12 @@ in user helpers and in library code.
    `s`. A declared domain's array covers the whole domain, as before.
    `[0..=n]Int` is the case we already have, where `K` is `Int`. (R04b.1.5)
 6. **Materializing keeps keys when it can.**
-   - `.collect()` of an indexed view gives `[w.keys]T`.
-   - `.collect()` of a walk-only sequence gives a `List` keyed from 0.
-   - `List(w)` and `Str(w)` always count from 0. They are the explicit way
-     to renumber. (R04b.1.6)
+   - `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a new
+     sequence keyed from 0 (decision 186), like any new order.
+   - To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
+     (R04b.1.6)
 7. **A sequence can get a domain of its own.**
-   - `w.rebase` is an O(1) view keyed by a fresh domain `0..w.len` that
+   - `w.rebase` is an O(1) getter returning a `Rebased<S>` view keyed by a fresh domain `0..w.len` that
      belongs to `w` alone (the `[domain]T` package of 2.14). Binding it with
      `let t = w.rebase` names the domain `t.Idx`.
    - `t.Idx` has every domain power: `Int(i)`, `t.Idx(k)`, `t.Idx.wrap(x)`,
@@ -76,7 +76,7 @@ fn solve(r: Range<V>) -> Int:
 ```python
 var l = 0
 while l < s.len:
-    let j = s[l..].find(',') ?? s.len    // a key of s
+    let j = s[l..].search(',') ?? s.len    // a key of s
     words.push(s[l..j])
     l = j + 1
 ```

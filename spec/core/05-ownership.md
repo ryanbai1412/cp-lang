@@ -271,7 +271,7 @@ sources or a block nested inside it, and after them. It may never be:
 
 ```python
 let ws = read<[V]Int>()
-var st = SegTree(V, op: (i, j) => if ws[i] <= ws[j]: i else: j)   // fine: st dies before ws
+var st = SegTree((i, j) => if ws[i] <= ws[j]: i else: j, [V] v => v)   // fine: st dies before ws
 ```
 ```python
 var best = List<Int>()
@@ -549,8 +549,9 @@ subscripts), Swift (non-escaping closures, exclusivity, `_modify`), Mojo
 (returned counters, stored callbacks); two owners of one mutable value
 (pass `mut x` per call); a paused generator (use `List(g)` for lockstep);
 a callee that takes ownership (`mut xs` plus `xs.take()`); pointers
-between nodes (domain indices). Closures of different types in one
-container cost a visible `std::function`.
+between nodes (domain indices). Closures of different types never share
+a container, since each closure has its own type and nothing lowers to
+`std::function` (R06.2.5): use an enum of the cases.
 
 **Sharp edges** (errors and hovers must carry these):
 
@@ -729,7 +730,7 @@ fn adder(k: Int) -> (Int -> Int) = x => x + k
 **20.**
 ```python
 let ws = read<[V]Int>()
-var st = SegTree(V, op: (x, y) => if ws[x] <= ws[y]: x else: y)
+var st = SegTree((x, y) => if ws[x] <= ws[y]: x else: y, [V] v => v)
 st[i] = i
 ```
 <details><summary>Answer</summary>Yes. <code>st</code> is lent from <code>ws</code> and declared after it in the same block (R8). (<code>SegTree</code>'s element type here is <code>V</code>.)</details>

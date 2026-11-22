@@ -40,7 +40,7 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
 
 /// The key where `p` first stands in `self`, or `None`. `p` is a `Str` or one `Char`.
 ///
-/// The result is a key of `self`, so on a slice it is valid on the source: `s[l..].find(c)`
+/// The result is a key of `self`, so on a slice it is valid on the source: `s[l..].search(c)`
 /// needs no `+ l`. An empty `p` stands at the first key of `self` (the end key when `self`
 /// is empty).
 ///
@@ -48,11 +48,11 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool = todo
 /// empty: an empty `p` gives `Some(first key)`; an empty `self` and non-empty `p` give `None`
 /// ties: the leftmost occurrence
 /// traps: never
-/// example: `"banana".find("nan") == Some(2)`
-/// example: `"banana".find('n') == Some(2)`
-/// example: `"banana"[2..].find('a') == Some(3)`
-/// example: `"banana".find("x") == None`
-pub fn find<P>(self: Str, p: P) -> ?Int = todo
+/// example: `"banana".search("nan") == Some(2)`
+/// example: `"banana".search('n') == Some(2)`
+/// example: `"banana"[2..].search('a') == Some(3)`
+/// example: `"banana".search("x") == None`
+pub fn search<P>(self: Str, p: P) -> ?Int = todo
 
 /// How many times the character `c` stands in `self`: `"banana".count('a')` is `3`.
 ///
@@ -72,10 +72,10 @@ pub fn count(self: Str, c: Char) -> Int = todo
 /// empty: an empty `p` gives `Some(end key)`; an empty `self` and non-empty `p` give `None`
 /// ties: the rightmost occurrence
 /// traps: never
-/// example: `"banana".rfind("an") == Some(3)`
-/// example: `"banana".rfind('a') == Some(5)`
-/// example: `"ab".rfind("") == Some(2)`
-pub fn rfind<P>(self: Str, p: P) -> ?Int = todo
+/// example: `"banana".rsearch("an") == Some(3)`
+/// example: `"banana".rsearch('a') == Some(5)`
+/// example: `"ab".rsearch("") == Some(2)`
+pub fn rsearch<P>(self: Str, p: P) -> ?Int = todo
 
 /// The lowercase letter of an ASCII capital; any other character is returned as it is.
 ///
