@@ -186,6 +186,27 @@ derives, `..R` rows) stays declaration order. Nothing in the language
 observes addresses, so reordering never changes behaviour, and it only
 removes padding. `cpl explain` shows the storage order.
 
+### Cache layout
+
+Width is half of cache behaviour; layout is the other half. The defaults
+already favour locality: narrow storage packs more values per 64-byte
+line, `Graph` is CSR (a vertex's arcs are contiguous), trees reorder by
+`t.Pre` (subtrees are ranges, heavy chains are runs), segment trees are
+one flat array, and niches mean `?T` never costs a second miss on a flag
+array.
+
+Padding stays when a struct's fields don't fill its alignment
+(`(d: Int, v: V)` is 12 bytes of data in 16), as in C++. Two explicit
+fixes, neither automatic because neither is never-worse:
+
+| Spelling | Bytes | Trade |
+|---|---|---|
+| `Packed<S>` (decision 1.2) | data only | unaligned loads; some elements straddle a line |
+| `layout: columns` on `[V]S`, `List<S>`, `Heap<S>` | data only | one array per field: a scan or sift touching one field reads only that column; touching all fields reads several lines |
+
+`cpl explain` flags any structure above 1 MB whose padding exceeds 20% of
+its element and names both fixes.
+
 ## 3. Operations on niche types
 
 - **Testing `none` is one compare** with the fixed pattern.
