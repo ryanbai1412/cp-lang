@@ -260,7 +260,11 @@ pub struct SortedBag<K>:
     /// order: ascending
     /// traps: never
     /// example: `var b = SortedBag.of([1, 3, 3, 5, 7]); b.drain_range(3..6).collect() == [3, 3, 5] and b.to_list() == [1, 7]`
-    pub fn drain_range(mut self, r: Range<K>) -> yields K = todo
+    pub fn drain_range(mut self, r: Range<K>) -> yields K:
+        if r.is_empty: return
+        while let x = self.range_first(Some(r.start), true, Some(r.end), false):
+            let _ = self.remove(x)
+            yield x
 
     /// Remove and return one copy of the largest element, or `None` when empty.
     ///
