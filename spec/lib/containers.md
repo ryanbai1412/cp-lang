@@ -1,5 +1,16 @@
 # Containers (`std.bitset`, `std.bag`, `std.interval`, `std.dsu`, `std.heap`, `std.deque`, `std.marks`, `std.hashmap`, `std.seq.Compressed`)
 
+> **0.3.0 status.** This chapter is the family's design survey and API.
+> Where it disagrees with the core chapters or the aligned rounds, they
+> win: `core/03-numbers-layout.md` (four number types, no `I32`/`U32`,
+> `Mod<P>` not `Mint`), `core/05-ownership.md` (constructors own their
+> results), `core/07-sequences.md` (capabilities, views keep keys),
+> `lib/ops-ranges.md` (`Op`/`Monoid`/laws, `each(...)`, no
+> `RangeFenwick`, `MinHeap`/`MaxHeap` as `Heap(by:)`) and
+> `lib/sequence-patterns.md`. The stubs in `std/` are the signatures of
+> record. Reconciliation of this text is tracked in `delta/`.
+
+
 Status: design for the CP Lang standard library containers area (`plan/STDLIB.md`
 §4.8–4.9). Every type here is ordinary CP Lang code using only the public
 language, documented intrinsics, and other stdlib modules — no compiler

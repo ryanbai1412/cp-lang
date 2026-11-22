@@ -70,7 +70,7 @@ solution, say so in the header rather than guessing silently.
 ## Inventing library
 
 You may use any stdlib name you wish existed. Check `stdlib/`,
-`design/stdlib/` and `spec/std/` first and reuse an existing name when one
+`spec/lib/` and `spec/std/` first and reuse an existing name when one
 fits. Every name you invent is listed in your wishes file with its full
 signature, a one-line doc and its cost, so the spec can adopt it:
 

@@ -44,14 +44,19 @@ Library design, one chapter per family (the stubs in `std/` are the
 signatures and costs; these chapters are the model and the examples):
 
 - `lib/search-dp.md` *aligned*, `lib/graphs-trees.md` *aligned*,
-  `lib/ops-ranges.md` *aligned*, `lib/sequence-patterns.md` *draft*;
-  containers, strings, math, flows and geometry, random and stress
-  *planned*.
+  `lib/ops-ranges.md` *aligned*, `lib/sequence-patterns.md` *aligned*.
+- `lib/containers.md`, `lib/strings.md`, `lib/math.md`, `lib/flows.md`,
+  `lib/geometry.md`: family surveys and APIs from the stdlib design
+  round, *draft*, each headed by the 0.3 rules that override it.
+- `lib/random-stress.md`: `Rng`, generators of typed inputs, brutes and
+  checkers. *draft*
+- `lib/rationale/`: the pre-round surveys for search, DP, graphs, trees,
+  ranges and sequences, superseded by the chapters above.
 
-Tools: `tools/` (CLI, judge profiles, LSP, stress, explain, trace and
-debugger, fmt and lint, bundler) *planned*. Errors and lints:
-`diagnostics.md` *planned*. Examples that must and must not compile:
-`conformance/` *planned*.
+Tools, one contract per tool (`tools/`): CLI, judge profiles, stress and
+shrinking, explain, trace and debugger, fmt and lint, LSP, bundler.
+Errors and lints: `diagnostics.md`. Examples that must and must not
+compile: `conformance/`. What 0.2.x does not do yet: `delta/`.
 
 ## Checking
 

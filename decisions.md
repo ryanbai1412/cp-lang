@@ -1923,7 +1923,7 @@ rollback DSU), link-cut trees with
 trees, the searches on answers with DP/search, the walk folds'
 compiler side in section 3 and their library side with sequences.
 Reason: one owner per name keeps one vocabulary reviewable. Reverse:
-edit the table; the routing rule in `design/stdlib/README.md` follows it.
+edit the table; the routing rule in `spec/lib/rationale/README.md` follows it.
 
 ## 27. Interpreter, debugger and traces
 
@@ -2668,7 +2668,7 @@ the count under 4 and the port/dream token ratio. The count of later ports scori
 ratcheted (`new_under_4_max`), and the ratchet only blocks commits that add a port, so a review
 that lowers a score never breaks main. Reason: taste was self-reviewed and nothing checked it.
 Reverse: delete the step from `scripts/check.sh`.
-## 38. Geometry standard library (`design/stdlib/geometry.md`, 2026-11-21)
+## 38. Geometry standard library (`spec/lib/geometry.md`, 2026-11-21)
 
 - **38.1 Two distinct point types: `Pt` (exact `Int`) and `Vec` (careful `F64`).**
   Integer and floating-point geometry have different safe operations: `Pt` has exact equality,
@@ -2698,7 +2698,7 @@ Reverse: delete the step from `scripts/check.sh`.
   String automata parameterize over an alphabet domain `A` (such as `'a'..='z'` or `0..2`) rather
   than hardcoding 26 lowercase letters. Reason: binary/digit/general alphabets avoid wasted memory
   and `c - 'a'` arithmetic while keeping `[A]?Int` / `[A]Int` inline and bounds-checked at domain
-  entry (`design/stdlib/strings.md` §2). Reverse: add a concrete `Str`-specialized wrapper if ports
+  entry (`spec/lib/strings.md` §2). Reverse: add a concrete `Str`-specialized wrapper if ports
   show repeated `[Letter(c) for c in s]` boilerplate.
 - **39.2 Layered suffix arrays: O(n) free functions plus O(n log n) `SuffixArray<T>`.**
   `suffix_array(s)` and `lcp_array(s, sa)` stay O(n) SA-IS + Kasai with no hidden RMQ build;
@@ -2715,7 +2715,7 @@ Reverse: delete the step from `scripts/check.sh`.
   `RollingHash` so 2D hashes are anti-hack safe on Codeforces. Reason: single 31-bit hashes collide
   easily at contest grid sizes. Reverse: revert to a single `Mod<2147483647>`.
 
-## 40. Number theory, combinatorics, NTT, and linear algebra (`design/stdlib/math.md`, 2026-11-21)
+## 40. Number theory, combinatorics, NTT, and linear algebra (`spec/lib/math.md`, 2026-11-21)
 
 - **40.1 `Mod<P>.comb(limit = 0)` ties `Comb<P>` to `Mod<P>` without repeating `P`.**
   After `type Z = Mod<998_244_353>`, `let comb = Z.comb(n)` constructs `Comb<998_244_353>(n)`
@@ -2737,7 +2737,7 @@ Reverse: delete the step from `scripts/check.sh`.
   lives in `std.matrix` with a `Monoid` combinator for segment trees. Reverse: unify behind a
   `Field` trait once traits support associated pivoting policies.
 
-## 41. `std.seq` complete surface (`design/stdlib/seq.md`, 2026-11-21)
+## 41. `std.seq` complete surface (`spec/lib/rationale/seq.md`, 2026-11-21)
 
 - **41.1 Sequence functions take `self: [D]T` whenever they read by index**, so one
   definition covers `List<T>`, `[V]T`, and `Str` with zero runtime dispatch
@@ -2763,7 +2763,7 @@ Reverse: delete the step from `scripts/check.sh`.
   universal, sentinel-prone patterns. Reverse: add or remove individual helpers
   in `stdlib/seq.cp`.
 
-## 42. Range structures stdlib (`design/stdlib/ranges.md`, §4.10, 2026-11-21)
+## 42. Range structures stdlib (`spec/lib/rationale/ranges.md`, §4.10, 2026-11-21)
 
 - **42.1 `DualSegTree<D, T, F>` is its own type, not a mode on `LazySegTree`.**
   Range-apply + point-get needs no fold monoid, no `pull`, and no `span`
@@ -2799,7 +2799,7 @@ Reverse: delete the step from `scripts/check.sh`.
 
 ## 43. Flows and matching (`std.flow`, 2026-11-21)
 
-The area's design is `design/stdlib/flows.md`; these are its calls.
+The area's design is `spec/lib/flows.md`; these are its calls.
 
 - **43.1 Two networks, one arc vocabulary.** `FlowGraph<V>` (Dinic) and `CostFlow<V>`
   (successive shortest paths with potentials) stay separate types sharing `Arc` and the
@@ -2890,7 +2890,7 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
   key sets without silently substituting for `HashMap`.
   Reverse: remove `stdlib/hashmap.cp`.
 
-## 45. Trees (`std.tree`, design/stdlib/trees.md, 2026-11-21)
+## 45. Trees (`std.tree`, spec/lib/rationale/trees.md, 2026-11-21)
 
 1. **One `Rooted` value stays the hub for every static-tree technique**:
    subtree ranges, LCA, k-th ancestor, heavy-light paths, rerooting and
@@ -2931,7 +2931,7 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
    once per query in the hot loop, and building the list cost 0.5 s of
    4.6 s at n = 10^6 in `bench/trees`. Reverse: return `List`.
 
-## 46. Graphs stdlib design (`design/stdlib/graphs.md`, 2026-11-21)
+## 46. Graphs stdlib design (`spec/lib/rationale/graphs.md`, 2026-11-21)
 
 1. **Searches return `Paths`, not a bare distance array.** `bfs`, `bfs01`,
    `dijkstra`, `fixed_cost_paths` and `bellman_ford` return
@@ -2988,7 +2988,7 @@ The area's design is `design/stdlib/flows.md`; these are its calls.
     targets or a predicate waits for a port that needs one. Reverse: drop
     the option; callers stopping at a target pay for the whole space.
 
-## 47. DP and search in the stdlib (`design/stdlib/dp.md`, 2026-11-21)
+## 47. DP and search in the stdlib (`spec/lib/rationale/dp.md`, 2026-11-21)
 
 1. **Searches stay in `std.seq`; the DP toolkit is a new `std.dp`.**
    Reason: `bsearch_real`, `ternary_*` and `parallel_bsearch` are searches
@@ -3165,7 +3165,7 @@ and keeps the signature. Reverse: return the pair list.
 ## 57. `Fenwick.first_ge` replaces `Fenwick.lower_bound` (2026-11-21)
 
 1. **Rename `Fenwick.lower_bound(target)` to `Fenwick.first_ge(target)`** and migrate all callers (6 ports + stdlib tests + docs).
-   Reason: `lower_bound` is the C++ name; `plan/STDLIB.md` §2 standardizes sorted/monotone prefix lookup on the four-name family `first_ge`/`first_gt`/`last_le`/`last_lt` (`first_ge(target)` returns the first boundary `b` with `prefix(b) >= target`, or `none`). Keeps `kth(k)` as the 1-based position convenience over `first_ge(k)`. Reverse: rename `first_ge` back to `lower_bound` in `stdlib/fenwick.cp`, `plan/STDLIB.md`, `design/stdlib/ranges.md`, and the 6 caller ports.
+   Reason: `lower_bound` is the C++ name; `plan/STDLIB.md` §2 standardizes sorted/monotone prefix lookup on the four-name family `first_ge`/`first_gt`/`last_le`/`last_lt` (`first_ge(target)` returns the first boundary `b` with `prefix(b) >= target`, or `none`). Keeps `kth(k)` as the 1-based position convenience over `first_ge(k)`. Reverse: rename `first_ge` back to `lower_bound` in `stdlib/fenwick.cp`, `plan/STDLIB.md`, `spec/lib/rationale/ranges.md`, and the 6 caller ports.
 
 ## 58. One owner for syntax; destructured domains are type names (2026-11-21)
 
@@ -3360,7 +3360,7 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
 
 1. **`std.poly` operates directly on `List<Mod<P>>` with explicit output length `n` (`inv`, `log`, `exp`, `pow`, `sqrt`, plus `deriv`, `integral`).**
    - **Reason:** Using plain `List<Mod<P>>` (lowest degree first) gives zero-overhead interop with `std.ntt.convolve<P>`, `Comb<M>`, and list comprehensions without introducing a wrapper `Poly<P>` type. Requiring explicit truncation length `n: Int` (modulo `x^n`) matches every contest FPS call site (`ucup5s06a`, `ucup5s03a`, `ucup5s05f`) and avoids sentinel defaults. `inv` uses half-size Newton doubling (5 NTTs of size `2m` per step), `integral` uses linear-time modular inverses `1..=m`, `pow` handles leading zeros and large `k` via `exp(k * log(...))`, and `sqrt` returns `?List<Mod<P>>` via Tonelli-Shanks + Newton doubling.
-   - **Reverse:** Remove `stdlib/poly.cp`, remove its rows from `stdlib/README.md`, `site/content/stdlib.md`, `editors/vscode/`, `design/stdlib/math.md` §2.5, and `plan/STDLIB.md`, and switch the four migrated ports back to `lib.math.poly`.
+   - **Reverse:** Remove `stdlib/poly.cp`, remove its rows from `stdlib/README.md`, `site/content/stdlib.md`, `editors/vscode/`, `spec/lib/math.md` §2.5, and `plan/STDLIB.md`, and switch the four migrated ports back to `lib.math.poly`.
 
 ## 70. Comprehension filters are `if`; power is `**` (2026-11-21)
 
@@ -3806,7 +3806,7 @@ costs no program. An arc id past 2^31 traps with "is outside
 - **Reverse.** Remove `pub fn mo` from `stdlib/mo.cp` and revert `cf2006d.cp` / `cf2129e.cp` to `mo_order` + manual loops.
 ## 116. Type arguments on a receiver fill a list-form fn's generics; they never pick another fn (2026-11-21)
 
-- **Decision.** `Graph<V>.undirected(pairs)` resolves to the same `undirected_of_pairs` / `_of_triples` fn as `Graph.undirected(pairs)`, in the checker (`list_form`) and in lowering (`list_form_call`). Type arguments on the receiver fill the fn's like-named generics (`V`), so `Graph<V>.undirected([(1, 2)])` is an error saying it wants a `List<(V, V)>`. A pattern form naming fields (`for (u, v, w: weight) in edges`) was considered and not added: names are written once where the data enters (`read<[m](u: V, v: V, w: Int)>()`), and no dream or friction report uses it (open question in `design/stdlib/graphs.md`).
+- **Decision.** `Graph<V>.undirected(pairs)` resolves to the same `undirected_of_pairs` / `_of_triples` fn as `Graph.undirected(pairs)`, in the checker (`list_form`) and in lowering (`list_form_call`). Type arguments on the receiver fill the fn's like-named generics (`V`), so `Graph<V>.undirected([(1, 2)])` is an error saying it wants a `List<(V, V)>`. A pattern form naming fields (`for (u, v, w: weight) in edges`) was considered and not added: names are written once where the data enters (`read<[m](u: V, v: V, w: Int)>()`), and no dream or friction report uses it (open question in `spec/lib/rationale/graphs.md`).
 - **Also (no new rule).** The checker's existing positional-to-named fit (`(V, V)` fits `(u: V, v: V)`) now reaches through optionals (`?(Int, Int)` fits `?(a: Int, b: Int)`), and lowering retypes in place a value whose type differs from the wanted one only in tuple field names (`same_cells`, through arrays, optionals and lists). Both back ends hold tuples and records the same way, as `std::tuple` in C++ and a tuple value in the interpreter, so this is free. `[n](Int, Int)` into `[n](a: Int, b: Int)` used to be rejected in lowering. Swapped field types still do not fit (`tests/diagnostics/named_tuple_cells_keep_their_order`). Reverse by dropping `same_cells` from `lower/mod.rs` and `lower/stmt.rs` and the `Optional`/`Optional` arm from `Ty::fits_in`.
 - **Why.** Four dreams (cf2035f, cf2057e2, cf2150f, cf2152g) write `Graph<V>.undirected(read<[n](V, V)>())`. That skipped the pair-list fn and fell through to the declared-edge-domain form, so writing a type argument changed which fn ran.
 - **Reverse.** Restore the bare-name-only `list_form` in `cpl-check/src/check/call.rs`, and inline `list_form_call` back into the unparameterized branch of `cpl-ir/src/lower/call.rs`.

@@ -1,5 +1,16 @@
 # Standard library design: `std.geometry`
 
+> **0.3.0 status.** This chapter is the family's design survey and API.
+> Where it disagrees with the core chapters or the aligned rounds, they
+> win: `core/03-numbers-layout.md` (four number types, no `I32`/`U32`,
+> `Mod<P>` not `Mint`), `core/05-ownership.md` (constructors own their
+> results), `core/07-sequences.md` (capabilities, views keep keys),
+> `lib/ops-ranges.md` (`Op`/`Monoid`/laws, `each(...)`, no
+> `RangeFenwick`, `MinHeap`/`MaxHeap` as `Heap(by:)`) and
+> `lib/sequence-patterns.md`. The stubs in `std/` are the signatures of
+> record. Reconciliation of this text is tracked in `delta/`.
+
+
 Status: design for `plan/STDLIB.md` section 4.14. Covers 2D competitive-
 programming geometry: exact integer points and vectors, orientation, angular
 sorting, segments, convex hulls and Minkowski sums, polygon area and

@@ -145,7 +145,7 @@ exact stdout match, and emitted C++ byte counts): `modint` arithmetic,
 `phi_table` + `mobius_table`), `matpow` (`80 x 80` `Mod` matrix to `10^18`),
 `crt` (`1,000,000` calls), and `comb` (`limit = 2,000,000`, `5,000,000`
 `choose` queries). Results and codegen profiling notes live in
-`design/stdlib/math.md` and `research/frictions/bench-math.md`.
+`spec/lib/math.md` and `research/frictions/bench-math.md`.
 
 ## Prefix sums and difference arrays (`bench/prefix/`)
 

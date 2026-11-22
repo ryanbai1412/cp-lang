@@ -1,5 +1,16 @@
 # `std.flow`: flows, cuts and matchings
 
+> **0.3.0 status.** This chapter is the family's design survey and API.
+> Where it disagrees with the core chapters or the aligned rounds, they
+> win: `core/03-numbers-layout.md` (four number types, no `I32`/`U32`,
+> `Mod<P>` not `Mint`), `core/05-ownership.md` (constructors own their
+> results), `core/07-sequences.md` (capabilities, views keep keys),
+> `lib/ops-ranges.md` (`Op`/`Monoid`/laws, `each(...)`, no
+> `RangeFenwick`, `MinHeap`/`MaxHeap` as `Heap(by:)`) and
+> `lib/sequence-patterns.md`. The stubs in `std/` are the signatures of
+> record. Reconciliation of this text is tracked in `delta/`.
+
+
 The top-down design of the flows-and-matching area: the contest patterns it
 must cover, one API that covers them, the laws each function keeps, how the
 area uses domains, and what stays user code. `plan/STDLIB.md` §4.12 is the

@@ -1,6 +1,10 @@
+> **Superseded for 0.3.0.** These are the per-area design surveys written
+> before rounds 1-7. Their decisions were folded into `spec/core/` and
+> `spec/lib/`; keep them for the survey and the reasoning, not the API.
+
 # Stdlib area designs
 
-One file per area, `design/stdlib/<area>.md`, written by the area's
+One file per area, `spec/lib/<area>.md`, written by the area's
 owner (the table in `plan/STDLIB.md`, "Who owns what"). The file is the
 design; the area's section of `plan/STDLIB.md` is the surface it lands
 as. The coordinator reviews each design before it lands; a design that

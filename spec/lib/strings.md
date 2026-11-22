@@ -1,5 +1,16 @@
 # `std.strings`: complete design
 
+> **0.3.0 status.** This chapter is the family's design survey and API.
+> Where it disagrees with the core chapters or the aligned rounds, they
+> win: `core/03-numbers-layout.md` (four number types, no `I32`/`U32`,
+> `Mod<P>` not `Mint`), `core/05-ownership.md` (constructors own their
+> results), `core/07-sequences.md` (capabilities, views keep keys),
+> `lib/ops-ranges.md` (`Op`/`Monoid`/laws, `each(...)`, no
+> `RangeFenwick`, `MinHeap`/`MaxHeap` as `Heap(by:)`) and
+> `lib/sequence-patterns.md`. The stubs in `std/` are the signatures of
+> record. Reconciliation of this text is tracked in `delta/`.
+
+
 This document designs the `std.strings` area of the CP Lang standard library
 top down: the contest patterns it must cover, one coherent API with costs and
 laws, how it uses domains and index spaces, what stays user code, and five real

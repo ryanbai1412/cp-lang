@@ -1,7 +1,7 @@
 # Search on answers (`std.seq`)
 
 Owner: DP and search lane. Surface: `plan/STDLIB.md` 4.2, the search
-block. The DP toolkit that calls these searches is `design/stdlib/dp.md`.
+block. The DP toolkit that calls these searches is `spec/lib/rationale/dp.md`.
 
 The job: "the answer is the first `t` where a monotone check flips" in one
 line, over any index space, integer or real, one query or a batch, without
@@ -17,7 +17,7 @@ Sources, and what they ask for:
   the rewrites in 6), mostly because the answer space was `0..=2e18` or
   real, or because the predicate needed scratch state. `cf2183h` needs a
   search over `I128` slopes; `cf2245g` over a suffix of a pool; AGC 002 D
-  (`design/stdlib/dp.md` 5.3) a batch of searches over one timeline.
+  (`spec/lib/rationale/dp.md` 5.3) a batch of searches over one timeline.
 - **ecnerwala's library** (`proto/ports/ecnerwala/*_orig.cpp`): binary
   search is always inline (`while (hi - lo > 1)`), with the half-open
   invariant in a comment; ternary search appears as golden section on reals.
@@ -122,7 +122,7 @@ own ordered queries cover it once a second problem needs it. A method form
 
 ## 5. Worked problem: AGC 002 D, Stamp Rally
 
-`design/stdlib/dp.md` 5.3 is the full program: one `Dsu` built by
+`spec/lib/rationale/dp.md` 5.3 is the full program: one `Dsu` built by
 `reset`/`join`, a `reaches(i)` check per query, and
 `for t in parallel_bsearch(q, E.all, reset, join, reaches): print(t!)`.
 The answer is an `E`, an edge of the timeline, with no `+ 1`.
