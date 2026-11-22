@@ -2696,6 +2696,20 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts }), Ty::Bool, span)
     }
 
+    /// `[V]T == [a, b]`: an array and a list of the same cells compare
+    /// as lists, cell by cell.
+    fn array_list_meet(a: &Ty, b: &Ty) -> Option<Ty> {
+        match (a, b) {
+            (Ty::Array { dims, elem }, Ty::List(e)) | (Ty::List(e), Ty::Array { dims, elem })
+                if dims.len() == 1 && elem == e =>
+            {
+                Some(Ty::List(e.clone()))
+            }
+            (Ty::Opt(a), Ty::Opt(b)) => Self::array_list_meet(a, b).map(|t| Ty::Opt(Box::new(t))),
+            _ => None,
+        }
+    }
+
     fn cmp(&mut self, op: CmpOp, l: Expr, l_span: Span, r: Expr, r_span: Span, span: Span) -> Expr {
         if l.ty == Ty::Error || r.ty == Ty::Error {
             return self.err_expr(span);
@@ -2744,6 +2758,9 @@ impl<'a> Lowerer<'a> {
             (bring(self, l), bring(self, r))
         } else {
             let want = match (&l.ty, &r.ty) {
+                (a, b) if Self::array_list_meet(a, b).is_some() => {
+                    Self::array_list_meet(a, b).expect("checked")
+                }
                 (Ty::Float, Ty::Int) | (Ty::Int, Ty::Float) => Ty::Float,
                 (Ty::Int, wide @ (Ty::I128 | Ty::U64)) => wide.clone(),
                 (Ty::Opt(_), _) => l.ty.clone(),
