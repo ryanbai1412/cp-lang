@@ -20,6 +20,17 @@ impl<'a> Checker<'a> {
         if uses_place {
             self.check_access(expr, false);
         }
+        if matches!(
+            expr.kind,
+            ExprKind::Call { .. }
+                | ExprKind::Index { .. }
+                | ExprKind::Paren(_)
+                | ExprKind::Range { .. }
+                | ExprKind::Unwrap(_)
+                | ExprKind::Try(_)
+        ) {
+            self.shapes.push((expr.span, ty.clone()));
+        }
         ty
     }
 

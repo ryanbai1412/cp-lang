@@ -1116,6 +1116,10 @@ fn dot_completion_after_a_method_call_lists_what_it_returns() {
     assert!(labels(&items).contains(&"len"), "{items:?}");
     let items = completions("let xs = [3, 1]\nprint(xs.sorted().sorted().|)\n");
     assert!(labels(&items).contains(&"len"), "{items:?}");
+    let items = completions("let m = 3\nprint((1..=m).|)\n");
+    assert!(labels(&items).contains(&"len"), "{items:?}");
+    let items = completions(&format!("{ROAD}fn f() -> List<Road> = [Road(1, 2)]\nprint(f()[0].|)\n"));
+    assert!(labels(&items).contains(&"twice"), "{items:?}");
 }
 
 #[test]

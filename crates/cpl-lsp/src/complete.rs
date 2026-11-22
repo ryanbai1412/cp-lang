@@ -374,105 +374,10 @@ fn dot_completion(cursor: &Cursor, std: &mut StdLib, dot: u32) -> Vec<(Entry, u8
                 .collect();
         }
     }
-    match receiver_type(cursor, dot).or_else(|| call_result(cursor, std, dot, 0)) {
+    match receiver_type(cursor, dot) {
         Some(ty) => members_of_ty(cursor, std, &ty),
         None => Vec::new(),
     }
-}
-
-/// For `xs.sorted().` the checker records no type for the call itself:
-/// what the member called returns, read from its signature.
-fn call_result(cursor: &Cursor, std: &mut StdLib, dot: u32, depth: u32) -> Option<Ty> {
-    let item = item_at(cursor.analysis, dot)?;
-    let mut finder = FieldBase {
-        dot: dot - item.offset,
-        base: None,
-    };
-    for stmt in &item.syntax.parsed.stmts {
-        walk_stmt(stmt, &mut finder);
-    }
-    let ExprKind::Call { callee, .. } = &finder.base?.kind else {
-        return None;
-    };
-    let ExprKind::Field { base, name } = &callee.kind else {
-        return None;
-    };
-    let inner_dot = item.offset + base.span.end;
-    let receiver = receiver_type(cursor, inner_dot).or_else(|| {
-        (depth < 8)
-            .then(|| call_result(cursor, std, inner_dot, depth + 1))
-            .flatten()
-    })?;
-    let (entry, _) = members_of_ty(cursor, std, &receiver)
-        .into_iter()
-        .find(|(e, _)| e.name == name.text)?;
-    ty_from_text(&type_of_entry(&entry)?)
-}
-
-/// A type as a signature spells it: `List<Int>`, `?V`, `(V, Int)`.
-fn ty_from_text(text: &str) -> Option<Ty> {
-    fn parse(s: &[u8], at: &mut usize) -> Option<Ty> {
-        let skip = |at: &mut usize| {
-            while s.get(*at) == Some(&b' ') {
-                *at += 1;
-            }
-        };
-        skip(at);
-        match *s.get(*at)? {
-            b'?' => {
-                *at += 1;
-                Some(Ty::Optional(Box::new(parse(s, at)?)))
-            }
-            b'(' => {
-                *at += 1;
-                let mut items = Vec::new();
-                loop {
-                    items.push(parse(s, at)?);
-                    skip(at);
-                    match *s.get(*at)? {
-                        b',' => *at += 1,
-                        b')' => break,
-                        _ => return None,
-                    }
-                }
-                *at += 1;
-                Some(Ty::Tuple(items))
-            }
-            c if c.is_ascii_alphabetic() => {
-                let start = *at;
-                while s.get(*at).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') {
-                    *at += 1;
-                }
-                let name = std::str::from_utf8(&s[start..*at]).ok()?.to_string();
-                let mut args = Vec::new();
-                if s.get(*at) == Some(&b'<') {
-                    *at += 1;
-                    loop {
-                        args.push(parse(s, at)?);
-                        skip(at);
-                        match *s.get(*at)? {
-                            b',' => *at += 1,
-                            b'>' => break,
-                            _ => return None,
-                        }
-                    }
-                    *at += 1;
-                }
-                Some(match (name.as_str(), args.is_empty()) {
-                    ("Int", true) => Ty::Int,
-                    ("Str", true) => Ty::Str,
-                    ("Bool", true) => Ty::Bool,
-                    ("Char", true) => Ty::Char,
-                    ("Float", true) => Ty::Float,
-                    _ => Ty::Named { name, args },
-                })
-            }
-            _ => None,
-        }
-    }
-    let mut at = 0;
-    let ty = parse(text.trim().as_bytes(), &mut at)?;
-    (at == text.trim().len()).then_some(ty)
 }
 
 /// The type of the expression that ends just before the `.` at `dot`.
@@ -546,6 +451,9 @@ fn hover_at(item: &AnalyzedItem, span: cpl_diag::Span) -> Option<&Ty> {
 
 /// What the checker found `expr` to be, from the types it left behind.
 fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
+    if let Some((_, ty)) = item.check.shapes.iter().rev().find(|(span, _)| *span == expr.span) {
+        return (!matches!(ty, Ty::Error | Ty::Unknown)).then(|| ty.clone());
+    }
     let ty = match &expr.kind {
         ExprKind::Paren(inner) => return type_of(item, inner),
         ExprKind::Field { name, .. } => hover_at(item, name.span)?.clone(),

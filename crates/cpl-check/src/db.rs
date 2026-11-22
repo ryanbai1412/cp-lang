@@ -26,6 +26,7 @@ use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, Repla
 use crate::check::{Checker, Env, GlobalRef, HoverEntry, TypedIndex};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::modules::{FsLoader, Loader};
+use crate::ty::Ty;
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
 use cpl_syntax::ast::{self, StmtKind};
 use cpl_syntax::ParsedItem;
@@ -78,6 +79,9 @@ pub struct ItemCheck {
     /// Where `print` or `read` is called with values of a fixed size (numbers,
     /// characters and tuples of them): the callee.
     pub fixed_io: Vec<Span>,
+    /// The type of each call, index, unwrap and parenthesised or range
+    /// expression: what no name's hover carries, for the editor's `.`.
+    pub shapes: Vec<(Span, Ty)>,
 }
 
 #[derive(Debug)]
@@ -1644,6 +1648,7 @@ impl FileCtx<'_> {
             refs: checked.refs,
             typed_indexes: checked.typed_indexes,
             fixed_io: checked.fixed_io,
+            shapes: checked.shapes,
         });
         self.db.checks.insert(
             key,

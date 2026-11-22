@@ -113,6 +113,7 @@ pub(crate) struct Checker<'a> {
     refs: Vec<GlobalRef>,
     pub(crate) typed_indexes: Vec<TypedIndex>,
     pub(crate) fixed_io: Vec<Span>,
+    shapes: Vec<(Span, Ty)>,
     /// Name, return type, whether declared, and scope depth at fn entry.
     fns: Vec<(String, Ty, bool, usize)>,
     /// For each of `fns`: whether its body has given a value so far.
@@ -157,6 +158,7 @@ pub(crate) struct Checked {
     pub refs: Vec<GlobalRef>,
     pub typed_indexes: Vec<TypedIndex>,
     pub fixed_io: Vec<Span>,
+    pub shapes: Vec<(Span, Ty)>,
 }
 
 impl<'a> Checker<'a> {
@@ -175,6 +177,7 @@ impl<'a> Checker<'a> {
             refs: Vec::new(),
             typed_indexes: Vec::new(),
             fixed_io: Vec::new(),
+            shapes: Vec::new(),
             fns: Vec::new(),
             gives: Vec::new(),
             in_fn: 0,
@@ -294,6 +297,7 @@ impl<'a> Checker<'a> {
             refs: self.refs,
             typed_indexes: self.typed_indexes,
             fixed_io: self.fixed_io,
+            shapes: self.shapes,
         }
     }
 
@@ -338,7 +342,7 @@ impl<'a> Checker<'a> {
     /// type out of code that is checked, and reported, somewhere else.
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
-        let fixed = self.fixed_io.len();
+        let (fixed, shapes) = (self.fixed_io.len(), self.shapes.len());
         let sink = std::mem::replace(&mut self.sink, Sink::new());
         let out = f(self);
         self.sink = sink;
@@ -346,6 +350,7 @@ impl<'a> Checker<'a> {
         self.refs.truncate(refs);
         self.typed_indexes.truncate(typed);
         self.fixed_io.truncate(fixed);
+        self.shapes.truncate(shapes);
         out
     }
 
