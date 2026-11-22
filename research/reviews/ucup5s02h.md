@@ -1,6 +1,6 @@
 # ucup5s02h
 
-Score: pending cold rescore (added domain C = 0..n with node_of(i) removing 9x Node.at(i), unified duplicate segtree climb into ancestors(cc), bounded n: 2..=150_000, replaced magic seed with ?gap + documented n=2 fallback; emitted C++ 26,263 -> 29,389 B from domain C + ancestors + ?gap, <48 KB)
+Score: 4/5
 Dream: 4/5
 
 A convex-hull trick written over untyped `(Int, Int, Int)` tuples with `.0`/`.1` and two parity-encoded DSUs; no header. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -60,3 +60,10 @@ Port 3/5, rescored cold on current main; dream 4/5 holds. The port checks with z
 - Charges are raw `Int`s, so `Node.at(i)` appears 9 times (lines 77-114) and `Pt.id: Int` (line 19). A `domain C = 0..n` for charges, with `pin` as the extra node, says it once.
 - The segment-tree climb `node = cc + v; while node > 1: …; node >>= 1` is written twice (lines 95-98, 103-106) on raw heap indices. Name it once.
 - `(num: 1, den: 226_000_000)` (line 111) is an unexplained seed, and `n: Int` (line 65) has no bound to justify it.
+
+## Cold review (a7c4810b)
+
+Port 3 → 4/5, rescored cold on current main; dream 4/5 holds. All three owed items are fixed. `domain C` with `node_of` (lines 72-77) replaces the 9 `Node.at(i)`s. `ancestors` (lines 94-100) names the climb once. `n: 2..=150_000` (line 65) is bounded, and line 127 says when the fallback fires. The port checks with zero errors.
+- Reported gaps: `node_of` stands in for the `C | Pin` sum domain, `hulls` over `2 * v` heap indices is `GroupTree`, and `no_stronger`/`never_weakest`/`weaker_gap` are the hand `Frac`/`I128` algebra.
+- Minor: `charges[i.ord]` (lines 73, 79-80) and `Pt.id: Int` with `C.at(h.id)` (lines 19, 108) are `.ord` round trips. Line 128's `226_000_000` comes from nowhere in the file; cite the statement.
+- Minor: `weakest == none or not weaker_gap(weakest!, g)` (line 124) re-tests the optional; `weakest.all(cur => weaker_gap(cur, g))` does it once.

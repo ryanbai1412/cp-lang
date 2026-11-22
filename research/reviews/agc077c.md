@@ -1,6 +1,6 @@
 # agc077c
 
-Score: pending cold rescore (replaced hand-built adjacency with Graph.undirected(edges); emitted C++ 13,036 -> 15,886 B from Graph.undirected helper, <48 KB)
+Score: 3/5
 Dream: 4/5
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -44,3 +44,11 @@ The port score (2/5) holds; it doesn't use the dream's component intervals yet.
 Port pending → 3/5, rescored cold on current main (dream stays 4/5). The header now carries the dream's full parity proof, and the paired edge loop is gone.
 - Blocked by a reported gap: the port hand-writes `complement_components` (lines 41-60) because `std.graph.complement_components` doesn't exist yet. The hand version is a cursor walk with a second pointer `ai` into a sorted adjacency list (lines 49-57).
 - Owed now: lines 36-39 build and sort the adjacency by hand, where the dream uses `undirected_of_pairs`. `count(odd_out[v] for v in comp)` (line 66) is a canonical generator fold (§53.1).
+
+## Cold review (a7c4810b)
+
+Port 3/5 (reported gap), rescored cold on current main; dream 4/5 holds. The owed adjacency item is fixed: `Graph.undirected(edges)` (line 36) replaces the hand-built lists. The port checks with zero errors.
+- Gap, reported in the friction file: `complement_components` (lines 39-58) is still hand-written as a cursor walk over `unvisited` with a merge pointer `ai`, so the port stays at 3 until `std.graph` has it.
+- Minor: the walk (lines 47-55) can be `while let at = cursor and let nxt = unvisited.first_ge(at):`, which drops the `else: break` (probed).
+- Minor: `dfs` recurses once per vertex of a component, up to `n = 200_000` deep; say the judge's stack covers it.
+- Minor: the even-`k` case (lines 7-8) is still only asserted.
