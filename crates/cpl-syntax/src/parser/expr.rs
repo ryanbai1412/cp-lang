@@ -141,7 +141,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn binary(
+    pub(super) fn binary(
         &mut self,
         start: u32,
         op: BinOp,
