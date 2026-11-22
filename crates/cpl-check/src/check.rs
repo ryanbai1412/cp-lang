@@ -70,6 +70,19 @@ pub struct HoverEntry {
     pub owner: Option<String>,
 }
 
+/// An index the types prove in bounds: each index is a position of the
+/// domain the array is declared over.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct TypedIndex {
+    /// `dist[v]` and `dist`.
+    pub access: Span,
+    pub seq: Span,
+    /// `v`, or every index of `g[r, c]`.
+    pub index: Span,
+    /// `v: V, the index space of dist`.
+    pub proof: String,
+}
+
 /// A use of a top-level name.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GlobalRef {
@@ -98,6 +111,7 @@ pub(crate) struct Checker<'a> {
     /// checked.
     steps: cpl_syntax::order::Steps,
     refs: Vec<GlobalRef>,
+    pub(crate) typed_indexes: Vec<TypedIndex>,
     /// Name, return type, whether declared, and scope depth at fn entry.
     fns: Vec<(String, Ty, bool, usize)>,
     /// For each of `fns`: whether its body has given a value so far.
@@ -134,6 +148,7 @@ pub(crate) struct Checked {
     pub diagnostics: Vec<Diagnostic>,
     pub hovers: Vec<HoverEntry>,
     pub refs: Vec<GlobalRef>,
+    pub typed_indexes: Vec<TypedIndex>,
 }
 
 impl<'a> Checker<'a> {
@@ -150,6 +165,7 @@ impl<'a> Checker<'a> {
             mutators: narrow::Mutators::default(),
             steps: Default::default(),
             refs: Vec::new(),
+            typed_indexes: Vec::new(),
             fns: Vec::new(),
             gives: Vec::new(),
             in_fn: 0,
@@ -216,6 +232,7 @@ impl<'a> Checker<'a> {
             diagnostics: self.sink.finish(),
             hovers: self.hovers,
             refs: self.refs,
+            typed_indexes: self.typed_indexes,
         }
     }
 
@@ -259,12 +276,13 @@ impl<'a> Checker<'a> {
     /// Runs `f` without keeping what it reports or records: for reading a
     /// type out of code that is checked, and reported, somewhere else.
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let (hovers, refs) = (self.hovers.len(), self.refs.len());
+        let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
         let sink = std::mem::replace(&mut self.sink, Sink::new());
         let out = f(self);
         self.sink = sink;
         self.hovers.truncate(hovers);
         self.refs.truncate(refs);
+        self.typed_indexes.truncate(typed);
         out
     }
 

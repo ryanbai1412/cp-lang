@@ -158,3 +158,16 @@ at: Int
 ```cp
 g[u][j]: in bounds, 0 <= j < g[u].len
 ```
+
+== hover @ 69:33
+```cp
+xs[v]: in bounds, v: V, the index space of xs
+```
+
+== hover @ 70:24
+```cp
+domain Col = 0..4
+  at most 4 positions
+  storage: 1 byte per position
+  in bounds of grid[Row.first, Col.last]: Row.first: Row, Col.last: Col, the index spaces of grid
+```

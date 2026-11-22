@@ -2382,6 +2382,13 @@ let u = q[head]` followed by pushes, and a search re-run after each pop. Every m
 a change, `contains` included. Ports and examples with an index proof: 137 to 177, none lost.
 Reverse by restoring `Bounds::stable` from 29.37.
 
+29.40. **A domain array's index is proven by its type.** The checker records each index of a
+`[V]T` or `[R, C]T` whose every index is a `V` (a domain position, or the same type parameter in a
+generic fn), and hover shows `xs[v]: in bounds, v: V, the index space of xs`. The type is the
+proof, so no range analysis is involved; an index whose type is unknown (`tree.parent(v)` today)
+or a slice gets nothing. The `[(V, K)]` multi-index and `g[p]` tuple forms are not recorded yet.
+Reverse by dropping `TypedIndex` and the fallback in the LSP's `index_hover`.
+
 ## 30. Front-end recovery (2026-11-21)
 
 - **28.8 `impl Trait for` a built-in type; `Hash` on it.** `impl Hash for Int:

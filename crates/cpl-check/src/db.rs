@@ -23,7 +23,7 @@
 //! the signature re-checks exactly the items that looked the fn up.
 
 use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, Replay};
-use crate::check::{Checker, Env, GlobalRef, HoverEntry};
+use crate::check::{Checker, Env, GlobalRef, HoverEntry, TypedIndex};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::modules::{FsLoader, Loader};
 use cpl_diag::{codes, Diagnostic, LineIndex, Sink, Span};
@@ -74,6 +74,7 @@ pub struct ItemCheck {
     pub diagnostics: Vec<Diagnostic>,
     pub hovers: Vec<HoverEntry>,
     pub refs: Vec<GlobalRef>,
+    pub typed_indexes: Vec<TypedIndex>,
 }
 
 #[derive(Debug)]
@@ -1627,6 +1628,7 @@ impl FileCtx<'_> {
             diagnostics: checked.diagnostics,
             hovers: checked.hovers,
             refs: checked.refs,
+            typed_indexes: checked.typed_indexes,
         });
         self.db.checks.insert(
             key,

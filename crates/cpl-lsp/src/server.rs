@@ -832,7 +832,20 @@ impl Server {
         let inside = |(start, end): (u32, u32)| start <= offset && offset < end;
         let proven = cpl_lint::proven_indexes(&analysis.text).into_iter().find(|p| {
             inside(p.access) && !inside(p.seq) && inside(p.index) == on_index
-        })?;
+        });
+        let proven = match proven {
+            Some(p) => p,
+            None => {
+                let typed = self.db.typed_index(uri, offset, on_index)?;
+                let span = |s: Span| (s.start, s.end);
+                cpl_lint::ProvenIndex {
+                    access: span(typed.access),
+                    seq: span(typed.seq),
+                    index: span(typed.index),
+                    proof: typed.proof,
+                }
+            }
+        };
         let (start, end) = if on_index { proven.index } else { proven.access };
         let access = analysis.text.get(proven.access.0 as usize..proven.access.1 as usize)?;
         let access = access.split_whitespace().collect::<Vec<_>>().join(" ");

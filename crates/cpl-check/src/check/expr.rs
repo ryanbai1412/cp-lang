@@ -2211,6 +2211,7 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
                 let mut slice = false;
+                let mut proofs = Vec::new();
                 // The indices a part keeps: `g[1, ..]` is a row, indexed by
                 // the columns alone.
                 let mut kept = Vec::new();
@@ -2249,6 +2250,13 @@ impl<'a> Checker<'a> {
                         continue;
                     }
                     if self.fits(got, want) {
+                        if let (Ty::Pos(got), Ty::Pos(want)) | (Ty::Param(got), Ty::Param(want)) = (got, want) {
+                            let index = self.quote(index_expr.span);
+                            proofs.push(match got == want {
+                                true => format!("{index}: {got}"),
+                                false => format!("{index}: {got}, inside {want}"),
+                            });
+                        }
                         continue;
                     }
                     let message = format!(
@@ -2296,6 +2304,15 @@ impl<'a> Checker<'a> {
                             format!("index with {}", want.with_article())
                         });
                     }
+                }
+                if !slice && proofs.len() == indices.len() {
+                    let spaces = if proofs.len() == 1 { "space" } else { "spaces" };
+                    self.typed_indexes.push(crate::check::TypedIndex {
+                        access: expr.span,
+                        seq: base.span,
+                        index: Span::new(indices[0].span.start, indices[indices.len() - 1].span.end),
+                        proof: format!("{}, the index {spaces} of {}", proofs.join(", "), self.quote(base.span)),
+                    });
                 }
                 if slice {
                     // A slice is its array seen through a range: lent,

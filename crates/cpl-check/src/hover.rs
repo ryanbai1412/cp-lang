@@ -84,6 +84,26 @@ impl Database {
         Some(Hover { span, text, doc })
     }
 
+    /// The innermost index at `offset` that its types prove in bounds, in
+    /// file positions; with `on_index`, only when `offset` is on its indices.
+    pub fn typed_index(&mut self, path: &str, offset: u32, on_index: bool) -> Option<crate::TypedIndex> {
+        let analysis = self.analyze(path)?;
+        let (item, at) = analysis.item_at(offset)?;
+        let inside = |s: Span| s.start <= at && at < s.end;
+        let found = item
+            .check
+            .typed_indexes
+            .iter()
+            .filter(|t| inside(t.access) && !inside(t.seq) && inside(t.index) == on_index)
+            .min_by_key(|t| t.access.len())?;
+        Some(crate::TypedIndex {
+            access: found.access.shift(item.offset),
+            seq: found.seq.shift(item.offset),
+            index: found.index.shift(item.offset),
+            proof: found.proof.clone(),
+        })
+    }
+
     /// Where the name at `offset` is declared, in the same file.
     pub fn definition(&mut self, path: &str, offset: u32) -> Option<Span> {
         let def = self.definition_location(path, offset)?;

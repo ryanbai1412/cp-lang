@@ -3224,3 +3224,53 @@ fn moved_from_heap_values_are_rejected() {
         ["E0607"]
     );
 }
+
+#[test]
+fn an_index_of_the_arrays_own_domain_is_proven_by_its_type() {
+    let proofs = |src: &str| {
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        let mut out = Vec::new();
+        for item in analysis.items.iter() {
+            for t in &item.check.typed_indexes {
+                let access = t.access.shift(item.offset);
+                out.push(format!("{} {}", &src[access.start as usize..access.end as usize], t.proof));
+            }
+        }
+        out
+    };
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../proto/ports/wave2/dpl.cp");
+    let port = std::fs::read_to_string(path).unwrap();
+    assert_eq!(
+        proofs(&port),
+        [
+            "a[l] l: I, the index space of a",
+            "a[l] l: I, the index space of a",
+            "a[r] r: I, the index space of a",
+        ]
+    );
+    let src = "let n: 1..=10 = read()
+domain V = 1..=n
+domain E = 1..n
+domain R = 0..3
+domain C = 0..4
+var g: [R, C]Int = 0
+let xs: [V]Int = read()
+let ys: [E]Int = read()
+for e in E:
+    g[R.first, C.last] += xs[V.first] + ys[e]
+print(xs[V.first..=V.last].sum())
+";
+    assert_eq!(
+        proofs(src),
+        [
+            "g[R.first, C.last] R.first: R, C.last: C, the index spaces of g",
+            "xs[V.first] V.first: V, the index space of xs",
+            "ys[e] e: E, the index space of ys",
+        ]
+    );
+    let wrong = src.replace("ys[e]", "xs[e]");
+    assert!(!codes(&wrong).is_empty());
+    assert!(!proofs(&wrong).iter().any(|p| p.starts_with("xs[e]")));
+}

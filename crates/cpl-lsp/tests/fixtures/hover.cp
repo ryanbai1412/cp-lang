@@ -61,3 +61,10 @@ fn sum_rows(g: List<List<Int>>) -> Int:
             s += g[u]$0[j]
     s
 print(sum_rows([[1], [2, 3]]))
+domain Row = 0..3
+domain Col = 0..4
+var grid: [Row, Col]Int = 0
+for v in V:
+    for r in Row:
+        grid[r, Col.first] += xs$0[v]
+print(grid[Row.first, C$0ol.last])
