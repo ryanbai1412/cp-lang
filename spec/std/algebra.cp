@@ -210,16 +210,11 @@ pub enum Ordering:
 /// O(1). Three-way comparison of `a` and `b`.
 pub fn cmp<T: Ord>(a: T, b: T) -> Ordering = todo
 
-/// O(1). Semiring `(zero, one, add, mul)` for generic matrix products and path algebras.
-pub struct Semiring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T):
-    /// O(1). Tropical `(min, +)` semiring on `Int`.
-    pub fn min_plus() -> Semiring<Int> = todo
-
-    /// O(1). Tropical `(max, +)` semiring on `Int`.
-    pub fn max_plus() -> Semiring<Int> = todo
-
-    /// O(1). Boolean `(or, and)` semiring.
-    pub fn bool_ring() -> Semiring<Bool> = todo
+/// O(1). A semiring from two operation values: `Semiring(min, +)`, `Semiring(or, and)`.
+/// `add` is a commutative monoid, `mul` a monoid that distributes over it; zero and one are
+/// their identities. Matrix products (`Mat(over:)`), path algebras and `convolve(over:)` take
+/// it. `Semiring(+, *)` is the default wherever one is accepted.
+pub struct Semiring<A, M>(add: A, mul: M)
 
 /// An associative operation, possibly without an identity (round 5). Bare operators
 /// (`+ * ^ | & min max gcd and or`) implement it. Folds over an `Op` of an empty range

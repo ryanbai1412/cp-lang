@@ -43,6 +43,11 @@ def artifacts():
                         "original" if suffix == "_orig" or ext == "cpp" else
                         "draft" if suffix == "_draft" else "port")
                 found[name][kind].append(rel(os.path.join(d, f)))
+    for q in os.listdir(PROBLEMS) if os.path.isdir(PROBLEMS) else []:
+        for kind in ("dream", "spec"):
+            f = os.path.join(PROBLEMS, q, kind + ".cp")
+            if os.path.exists(f):
+                found[q][kind].insert(0, rel(f))
     return found
 
 

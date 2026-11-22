@@ -51,7 +51,7 @@ Builtin `Set<T>` and `Map<K, V>` cover basic ordered sets/maps (lowering to
 observed), but they do not carry subtree sizes, cannot answer `rank`/`nth`/
 `bsearch_first`/`bsearch_last`, and are not multisets. `std.bag` owns the augmented ordered
 containers: `SortedBag<K>` (multiset with rank, cursors, monotone search, and
-recycled nodes) and `OrderedSet<K>` / `OrderedMap<K, V>` when distinct keys
+recycled nodes) and `SortedSet<K>` / `SortedMap<K, V>` when distinct keys
 with order statistics and cursors are needed.
 
 ### 1.2 Interval partition maps (ODT / Chtholly tree)
@@ -298,11 +298,11 @@ struct SortedBag<K>                           // O(log n) ops, O(distinct) mem
     fn to_list(self) -> List<K>               // O(n)
 ```
 
-`OrderedSet<K>` wraps the same treap invariant with uniqueness (`add(x) -> Bool`
+`SortedSet<K>` wraps the same treap invariant with uniqueness (`add(x) -> Bool`
 is false if already present) and exposes the exact same `first_ge`/`first_gt`/
 `range(r)` views, `rank`, `nth`, `bsearch_first`/`bsearch_last`, cursors, and
 `each`/`each_rev`. This directly solves `cf2262b.md` (collapsing `Set<I>`,
-`Map<Int, I>`, and `Fenwick<I, Int>` into one `OrderedSet<I>`).
+`Map<Int, I>`, and `Fenwick<I, Int>` into one `SortedSet<I>`).
 
 Why not mutate `SortedBag` through a cursor (`erase(c)`)? Because a treap
 `split`/`merge` is already O(log n) and invalidates structural paths; keeping

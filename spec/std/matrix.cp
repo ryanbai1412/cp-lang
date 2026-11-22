@@ -14,8 +14,13 @@ pub struct Mat<T>:
     cols: Int
     data: List<T>
 
+    /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
+    /// `Mat(over: Semiring(min, +), d)`. `m * m2`, `pow(m, k)` and a `SegTree(*, ...)` of
+    /// matrices all use it. O(rows * cols).
+    pub fn new<R, C, S>(a: [R, C]T, over: ?S = none) -> Mat<T> = todo
+
     /// A `rows x cols` matrix filled with `fill`. O(rows * cols).
-    pub fn new(rows: Int, cols: Int, fill: T) -> Mat<T> = todo
+    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = none) -> Mat<T> = todo
 
     /// A `rows x cols` zero matrix. O(rows * cols).
     pub fn zeros(rows: Int, cols: Int) -> Mat<T> = todo
@@ -79,8 +84,6 @@ pub struct Mat<T>:
     /// O(n^3). Adjugate matrix `adj(self)` (defined even when `rank == n - 1`).
     pub fn adjugate(self) -> Mat<T> = todo
 
-    /// O(n * m * k). Matrix product over an arbitrary `Semiring<T>` (e.g. `(min, +)` tropical product).
-    pub fn mul_semiring(self, o: Mat<T>, sr: Semiring<T>) -> Mat<T> = todo
 
 impl Add for Mat<T>:
     fn add(a, b) = todo

@@ -51,6 +51,10 @@ pub struct Deque<T>:
     /// in order: a queue sorted by key releases everything below a rising threshold.
     pub fn pop_front_while(mut self, ok: T -> Bool) -> List<T> = todo
 
+    /// Pop from the back while `ok` holds; the popped values, back first.
+    /// O(popped).
+    pub fn pop_while(mut self, ok: T -> Bool) -> List<T> = todo
+
     /// The front, or `none` when empty.
     pub @get fn first(self) -> ?T = todo
 

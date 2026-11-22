@@ -339,6 +339,10 @@ pub fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T = todo
 /// O(1) per step. Skip leading elements while `drop(x)` holds, then yield the rest.
 pub fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T = todo
 
+/// O(1) per step. Lazily yield `f(x)` for each element where it is not `none`:
+/// `dag[c].filter_map(a => best(a.to)).max()`.
+pub fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U = todo
+
 /// O(1) per yielded element. Lazily map each element to a sequence and yield all inner elements in order.
 pub fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V = todo
 

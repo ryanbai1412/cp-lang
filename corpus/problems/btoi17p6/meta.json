@@ -7,6 +7,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/btoi17p6/dream.cp"
+  ],
   "original": [
    "proto/ports/btoi17p6.cpp",
    "proto/ports/btoi17p6_orig.cpp"
@@ -15,9 +18,12 @@
    "proto/ports/btoi17p6.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "trees",
+  "greedy"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "Rooted.from_parents now takes any Keyed parents, so read<[V.drop(1)]V>() is the 'parents of 2..n' input shape."
 }

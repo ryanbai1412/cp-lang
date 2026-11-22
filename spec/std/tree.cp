@@ -51,9 +51,10 @@ pub struct Rooted<V, Pre>:
     /// With `w:`, edges have lengths `w(arc)` and `dist`, `w` and `diameter` use them.
     pub fn new<N, A>(next: N, root: V, w: A -> Int = a => 1) = todo
 
-    /// O(n). Build a rooted tree directly from a parent array `par: [V]?V` where the unique vertex
-    /// with `par[v] == none` is the root.
-    pub fn from_parents(par: [V]?V) = todo
+    /// O(n). Build a rooted tree from parents, keyed by vertex: `par: [V]?V` with `none` at the
+    /// root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one
+    /// missing key is the root.
+    pub fn from_parents<P: Keyed>(par: P) = todo
 
     /// O(n). One tree per root: `next` must reach every vertex from exactly one of `from`. The
     /// trees sit one after another in `t.Pre`, in the order of `from`; `t.root` is the first root.
