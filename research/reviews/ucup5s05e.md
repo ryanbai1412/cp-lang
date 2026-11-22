@@ -1,7 +1,9 @@
 # ucup5s05e
 
-Score: 3/5
+Score: pending cold rescore (adopted the 4/5 dream's local-window invariant header, `const WINDOW = 5`, `hull_edges`, and `repeat q:`; gated 150/150, 0 lints)
 Dream: 4/5
+
+Active port emitted size moved `24,877 -> 26,831 B` (+1,954 B, <48 KB) from updated checked-geometry/slice runtime helpers on current `main`, to be trimmed by dead-helper pruning.
 
 Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 3/5; awaiting rescore).
 
