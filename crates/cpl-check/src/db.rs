@@ -266,6 +266,14 @@ pub struct Database {
     /// The files being analyzed, outermost first: a module that imports
     /// one of them is a cycle.
     analyzing: Vec<String>,
+    /// The outermost entry of `analyzing` a cycle reached while the current
+    /// file was analyzed; `usize::MAX` when none did.
+    cycle_floor: usize,
+    /// Every import cycle met, as the paths around it, first repeated last.
+    cycles: Vec<Vec<String>>,
+    /// How many times a cycle was met, and the last one met.
+    cycle_hits: usize,
+    last_cycle: Vec<String>,
 }
 
 impl Default for Database {
@@ -292,6 +300,10 @@ impl Database {
             stats: Stats::default(),
             loader,
             analyzing: Vec::new(),
+            cycle_floor: usize::MAX,
+            cycles: Vec::new(),
+            cycle_hits: 0,
+            last_cycle: Vec::new(),
         }
     }
 
@@ -371,7 +383,7 @@ impl Database {
         let imported_module = !self.analyzing.is_empty();
         let file = self.files.get(path)?;
         if let Some(analysis) = &file.analysis {
-            if imported_module || file.analysis_checked {
+            if (imported_module || file.analysis_checked) && !self.reaches_open(analysis) {
                 return Some(analysis.clone());
             }
         }
@@ -441,6 +453,8 @@ impl Database {
         let mut failed_names: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut prelude_off = false;
         let mut used: Vec<(usize, ast::Name)> = Vec::new();
+        let depth = self.analyzing.len();
+        let outer_floor = std::mem::replace(&mut self.cycle_floor, usize::MAX);
         self.analyzing.push(path.to_string());
         for (index, item) in items.iter().enumerate() {
             for stmt in item.parsed.stmts.iter().filter(|_| item.has_use) {
@@ -458,6 +472,7 @@ impl Database {
                             .map(|n| (index, n.clone())),
                     );
                     let mut diags = Vec::new();
+                    let hits = self.cycle_hits;
                     self.import(
                         path,
                         module,
@@ -467,6 +482,9 @@ impl Database {
                         &mut scope,
                         &mut diags,
                     );
+                    if self.cycle_hits > hits && diags.is_empty() {
+                        diags.extend(self.cycle_error(module));
+                    }
                     if !diags.is_empty() {
                         match (glob, alias, names.split_last(), module.last()) {
                             (true, ..) => prelude_off = true,
@@ -633,6 +651,7 @@ impl Database {
                 }
                 let had_imports = scope.has_imports;
                 let mods_before = scope.modules.len();
+                let hits_before = self.cycle_hits;
                 let mut diags = Vec::new();
                 self.import(
                     path,
@@ -651,6 +670,7 @@ impl Database {
                         .any(|d| d.code == codes::UNRESOLVED_MODULE)
                 });
                 if cycled || !diags.is_empty() {
+                    self.cycle_hits = hits_before;
                     scope.modules.truncate(mods_before);
                     scope.imports.remove(&name.text);
                     continue;
@@ -677,6 +697,7 @@ impl Database {
                     }
                     let had_imports = scope.has_imports;
                     let mods_before = scope.modules.len();
+                    let hits_before = self.cycle_hits;
                     let mut diags = Vec::new();
                     let module = vec![bare("std"), bare(std_mod)];
                     let name = bare(sym);
@@ -697,6 +718,7 @@ impl Database {
                             .any(|d| d.code == codes::UNRESOLVED_MODULE)
                     });
                     if cycled || !diags.is_empty() {
+                        self.cycle_hits = hits_before;
                         scope.modules.truncate(mods_before);
                         scope.imports.remove(sym);
                     }
@@ -1187,7 +1209,11 @@ impl Database {
             scope,
         });
         self.collect_garbage(items.len());
-        if imports_ok {
+        // A cycle through a file that imports this one cut names out of it:
+        // right for this import, wrong for anyone else's.
+        let context_free = self.cycle_floor >= depth;
+        self.cycle_floor = outer_floor.min(self.cycle_floor);
+        if imports_ok && context_free {
             if let Some(file) = self.files.get_mut(path) {
                 file.analysis = Some(analysis.clone());
                 file.analysis_checked = !imported_module;
@@ -1331,8 +1357,8 @@ impl Database {
     ) -> Option<Module> {
         let (path, text) = self.loader.load(from, parts)?;
         let name = parts.join(".");
-        if self.analyzing.contains(&path) {
-            let message = format!("`{name}` imports this file, so they import each other");
+        if let Some(at) = self.analyzing.iter().position(|p| *p == path) {
+            let message = self.meet_cycle(at, &name, &path);
             diags.push(
                 Diagnostic::error(codes::UNRESOLVED_MODULE, span, message)
                     .with_help("move what both need into a third module"),
@@ -2487,33 +2513,6 @@ fn wide_array(
     (i64::try_from(lo).is_ok() && (hi - lo) < (1 << 31)).then(|| (name.clone(), ty.span, lo, hi))
 }
 
+mod cycles;
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct MapLoader(Vec<(String, String, String)>);
-
-    impl Loader for MapLoader {
-        fn load(&self, _from: &str, module: &[String]) -> Option<(String, String)> {
-            let key = module.join(".");
-            self.0
-                .iter()
-                .find(|(k, _, _)| k == &key)
-                .map(|(_, path, text)| (path.clone(), text.clone()))
-        }
-    }
-
-    #[test]
-    fn imported_module_still_checks_when_analyzed_directly() {
-        let mut db = Database::with_loader(Box::new(MapLoader(vec![(
-            "lib.bad".into(),
-            "lib/bad.cp".into(),
-            "pub fn f() -> Int:\n    let x: Int = \"oops\"\n    x\n".into(),
-        )])));
-        db.set_file("main.cp", "use lib.bad.{f}\nprint(f())\n");
-        let main = db.analyze("main.cp").unwrap();
-        assert!(main.diagnostics.is_empty(), "{:?}", main.diagnostics);
-        let direct = db.analyze("lib/bad.cp").unwrap();
-        assert!(!direct.diagnostics.is_empty());
-    }
-}
+mod tests;
