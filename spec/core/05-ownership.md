@@ -551,7 +551,7 @@ subscripts), Swift (non-escaping closures, exclusivity, `_modify`), Mojo
 a callee that takes ownership (`mut xs` plus `xs.take()`); pointers
 between nodes (domain indices). Closures of different types never share
 a container, since each closure has its own type and nothing lowers to
-`std::function` (R06.2.5): use an enum of the cases.
+`std::function` (see R06.2.5): use an enum of the cases.
 
 **Sharp edges** (errors and hovers must carry these):
 

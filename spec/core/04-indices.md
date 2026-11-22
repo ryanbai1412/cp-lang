@@ -225,7 +225,7 @@ let below = Int(a.keys.bsearch(i => a[i] >= t))               // how many of sor
 `bsearch(ok, last: true)`. Checked builds check that the
 probes already made agree with one boundary (every true probe after every
 false one, O(1) per probe), which catches most non-monotone predicates;
-they never call `ok` more often than release does (R09.2.3). Answer spaces that aren't a domain are integer ranges, an
+they never call `ok` more often than release does (see R09.2.3). Answer spaces that aren't a domain are integer ranges, an
 anonymous domain whose positions and cuts are both `Int`:
 `(0..=1e18).first_true(t => fits(t))`.
 
