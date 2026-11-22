@@ -40,9 +40,16 @@ impl Limits {
     }
 
     /// The limits of a problem: its `// limits: 2000 ms, 256 MB` line,
-    /// else `[limits]` in the nearest `cp.toml`, else 2 s and 256 MB.
+    /// else `[limits]` in the nearest `cp.toml`, else its judge's usual
+    /// limits (2 s and 256 MB for `generic`).
     pub fn of(source: &Path, src: &str) -> Limits {
-        let mut limits = Limits::default();
+        let mut limits = match cpl_judge::resolve(source, src, None) {
+            Ok(profile) => Limits {
+                time: Duration::from_millis(profile.time_ms),
+                memory_kb: profile.memory_mb * 1024,
+            },
+            Err(_) => Limits::default(),
+        };
         let mut dir = source.parent();
         while let Some(parent) = dir {
             if let Ok(text) = std::fs::read_to_string(parent.join("cp.toml")) {

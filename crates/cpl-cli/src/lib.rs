@@ -199,21 +199,17 @@ pub fn exec<S: AsRef<str>>(
         Some("build") => {
             let checked = rest.contains(&"--checked");
             let size = rest.contains(&"--size");
+            let copy = rest.contains(&"--copy");
             let mut rest: Vec<&str> =
-                rest.iter().copied().filter(|arg| !matches!(*arg, "--checked" | "--size")).collect();
-            let judge = match rest.iter().position(|arg| *arg == "--judge") {
-                Some(at) if at + 1 < rest.len() => {
-                    let name = rest[at + 1];
-                    rest.drain(at..at + 2);
-                    Some(name)
-                }
-                Some(_) => return usage_error("`--judge` takes a judge's name: `cpl build a.cp --judge codeforces`".into()),
-                None => None,
+                rest.iter().copied().filter(|arg| !matches!(*arg, "--checked" | "--size" | "--copy")).collect();
+            let judge = match take_judge(&mut rest, "build") {
+                Ok(judge) => judge,
+                Err(message) => return usage_error(message),
             };
             match rest.as_slice() {
-                [file] => build_file(file, None, judge, checked, size, stdout, stderr),
+                [file] => build_file(file, None, judge, checked, size, copy, stdout, stderr),
                 [file, "-o", out] | ["-o", out, file] => {
-                    build_file(file, Some(out), judge, checked, size, stdout, stderr)
+                    build_file(file, Some(out), judge, checked, size, copy, stdout, stderr)
                 }
                 _ => usage_error(
                     "`build` takes one file: `cpl build a.cp`, `cpl build a.cp -o a.cpp` or \
@@ -222,14 +218,18 @@ pub fn exec<S: AsRef<str>>(
                 ),
             }
         }
-        Some("submit") => match rest.as_slice() {
-            [file] => submit(file, stdout, stderr),
-            _ => usage_error(
-                "`submit` takes one file, for the judge it names: `cpl submit a.cp` \
-                 (a `// judge:` line or cp.toml says which)"
-                    .into(),
-            ),
-        },
+        Some("submit") => {
+            let copy = rest.contains(&"--copy");
+            let rest: Vec<&str> = rest.iter().copied().filter(|arg| *arg != "--copy").collect();
+            match rest.as_slice() {
+                [file] => submit(file, copy, stdout, stderr),
+                _ => usage_error(
+                    "`submit` takes one file, for the judge it names: `cpl submit a.cp` \
+                     (a `// judge:` line or cp.toml says which)"
+                        .into(),
+                ),
+            }
+        }
         Some("judges") => match rest.as_slice() {
             [] => list_judges(None, stdout, stderr),
             [file] => list_judges(Some(file), stdout, stderr),
@@ -279,6 +279,11 @@ options:
   --size            say where the bytes go: header, runtime, library fns,
                     your code, by part and by piece (said anyway when the
                     file is over the judge's limit)
+  --copy            also put the C++ on the clipboard (pbcopy, wl-copy, xclip,
+                    xsel or clip, else the command in CPL_CLIPBOARD)
+
+Over 32 KB it warns; over 64 KB, or the judge's own smaller limit, it fails
+and says where the bytes go. The same file and judge give the same bytes.
 ";
 
 const SUBMIT_USAGE: &str = "\
@@ -289,6 +294,14 @@ nearest cp.toml, else `generic`): writes the C++ as `cpl build` does, within
 the judge's source limit, then runs every case in <file>.tests/ on that C++
 built with the judge's flags on its stack, as `cpl test` does. Exits 0 when
 the file is ready: it built and no case failed.
+
+options:
+  --copy            when ready, also put the C++ on the clipboard, as
+                    `cpl build --copy` does
+
+Mid-contest: put `// judge: codeforces` (or another of `cpl judges`) at the
+top of the file once, save the samples as <file>.tests/1.in and 1.out, then
+`cpl submit a.cp --copy` and paste, or upload a.cpp.
 ";
 
 const JUDGE_USAGE: &str = "\
@@ -986,12 +999,14 @@ fn observe_file(
 
 /// `cpl build`: one C++17 file, next to the source unless `out` says
 /// where (`-` is standard output).
+#[allow(clippy::too_many_arguments)]
 fn build_file(
     path: &str,
     out: Option<&str>,
     judge: Option<&str>,
     checked: bool,
     size: bool,
+    copy: bool,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -1014,7 +1029,7 @@ fn build_file(
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(path);
-    let limit = profile.source_limit;
+    let limit = profile.limit();
     let target = cpl_codegen::Target {
         stamp: Some(profile.stamp()),
         thread_stack: profile.thread_stack,
@@ -1056,11 +1071,19 @@ fn build_file(
     }
     if cpp.len() > profile.warn_at() {
         *stderr += &format!(
-            "cpl: warning: the C++ for `{path}` is {} bytes, {}% of the {limit}-byte limit of judge `{}`\n",
+            "cpl: warning: the C++ for `{path}` is {} bytes, over the {}-byte target and {}% of the {limit}-byte \
+             limit of judge `{}`; `--size` says where the bytes go\n",
             cpp.len(),
+            profile.warn_at(),
             cpp.len() * 100 / limit,
             profile.name
         );
+    }
+    if copy {
+        match copy_to_clipboard(&cpp) {
+            Ok(tool) => *stderr += &format!("cpl: copied the C++ ({} bytes) to the clipboard with `{tool}`\n", cpp.len()),
+            Err(error) => *stderr += &format!("cpl: warning: {error}; the C++ is only in the file\n"),
+        }
     }
     if out == Some("-") {
         let _ = stdout.write_all(cpp.as_bytes());
@@ -1077,7 +1100,7 @@ fn build_file(
                 "wrote {} ({} bytes, {}% of the limit of judge `{}`)",
                 target.display(),
                 cpp.len(),
-                (cpp.len() * 100).div_ceil(profile.source_limit),
+                (cpp.len() * 100).div_ceil(limit),
                 profile.name
             );
             if checked {
@@ -1092,9 +1115,22 @@ fn build_file(
     }
 }
 
+/// Removes `--judge <name>` from `rest`, returning the name.
+fn take_judge<'a>(rest: &mut Vec<&'a str>, command: &str) -> Result<Option<&'a str>, String> {
+    match rest.iter().position(|arg| *arg == "--judge") {
+        Some(at) if at + 1 < rest.len() => {
+            let name = rest[at + 1];
+            rest.drain(at..at + 2);
+            Ok(Some(name))
+        }
+        Some(_) => Err(format!("`--judge` takes a judge's name: `cpl {command} a.cp --judge codeforces`")),
+        None => Ok(None),
+    }
+}
+
 /// `cpl submit`: `cpl build`, then `cpl test` on what it built.
-fn submit(path: &str, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
-    let code = build_file(path, None, None, false, false, stdout, stderr);
+fn submit(path: &str, copy: bool, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let code = build_file(path, None, None, false, false, false, stdout, stderr);
     if code != 0 {
         *stderr += &format!("cpl: `{path}` is not ready to send: it does not build\n");
         return code;
@@ -1108,7 +1144,7 @@ fn submit(path: &str, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u
              `1.out`\n",
             tests.display()
         );
-        return 0;
+        return ready_to_send(&source, copy, stdout, stderr);
     }
     let mut out = Vec::new();
     let mut errors = Vec::new();
@@ -1119,8 +1155,61 @@ fn submit(path: &str, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u
         *stderr += &format!("cpl: `{path}` is not ready to send: a case in {} fails\n", tests.display());
         return EXIT_ERRORS;
     }
-    let _ = writeln!(stdout, "ready to send: {}", source.with_extension("cpp").display());
+    ready_to_send(&source, copy, stdout, stderr)
+}
+
+fn ready_to_send(source: &std::path::Path, copy: bool, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let cpp = source.with_extension("cpp");
+    if copy {
+        match std::fs::read_to_string(&cpp).map_err(|e| e.to_string()).and_then(|text| copy_to_clipboard(&text)) {
+            Ok(tool) => *stderr += &format!("cpl: copied {} to the clipboard with `{tool}`\n", cpp.display()),
+            Err(error) => *stderr += &format!("cpl: warning: {error}; send the file instead\n"),
+        }
+    }
+    let _ = writeln!(stdout, "ready to send: {}", cpp.display());
     0
+}
+
+/// Puts `text` on the clipboard with the first tool this machine has, or
+/// the command in `CPL_CLIPBOARD`. Returns the tool's name.
+fn copy_to_clipboard(text: &str) -> Result<String, String> {
+    use std::process::{Command, Stdio};
+    let chosen = std::env::var("CPL_CLIPBOARD").ok().filter(|c| !c.trim().is_empty());
+    let candidates: Vec<Vec<String>> = match &chosen {
+        Some(command) => vec![vec!["sh".into(), "-c".into(), command.clone()]],
+        None => [
+            &["pbcopy"][..],
+            &["wl-copy"],
+            &["xclip", "-selection", "clipboard"],
+            &["xsel", "--clipboard", "--input"],
+            &["clip.exe"],
+            &["clip"],
+        ]
+        .iter()
+        .map(|words| words.iter().map(|w| w.to_string()).collect())
+        .collect(),
+    };
+    for words in &candidates {
+        let Ok(mut child) = Command::new(&words[0])
+            .args(&words[1..])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        else {
+            continue;
+        };
+        if let Some(mut input) = child.stdin.take() {
+            let _ = input.write_all(text.as_bytes());
+        }
+        if child.wait().is_ok_and(|status| status.success()) {
+            return Ok(chosen.clone().unwrap_or_else(|| words.join(" ")));
+        }
+    }
+    Err(match chosen {
+        Some(command) => format!("`CPL_CLIPBOARD` (`{command}`) failed"),
+        None => "no clipboard tool here (pbcopy, wl-copy, xclip, xsel or clip); set `CPL_CLIPBOARD` to one".into(),
+    })
 }
 
 /// Where the bytes of a built file go, by part, with the largest pieces of
@@ -1182,7 +1271,7 @@ fn list_judges(file: Option<&str>, stdout: &mut (dyn Write + Send), stderr: &mut
         let mark = if profile.name == chosen.name { "*" } else { " " };
         let _ = writeln!(
             stdout,
-            "{mark} {:<11}{}\n    {}\n    {}, {}, {}, source up to {} KB\n    from: {}",
+            "{mark} {:<11}{}\n    {}\n    {}, {}, {}, source up to {} KB\n    usual limits {} ms, {} MB\n    from: {}",
             profile.name,
             profile.title,
             profile.command(),
@@ -1192,7 +1281,9 @@ fn list_judges(file: Option<&str>, stdout: &mut (dyn Write + Send), stderr: &mut
                 Some(bytes) => format!("the program on a thread with {} MB", bytes >> 20),
                 None => "no threads".into(),
             },
-            profile.source_limit / 1024,
+            profile.limit() / 1024,
+            profile.time_ms,
+            profile.memory_mb,
             profile.evidence
         );
     }

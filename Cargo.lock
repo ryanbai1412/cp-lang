@@ -44,6 +44,7 @@ version = "0.2.2"
 dependencies = [
  "cpl-check",
  "cpl-diag",
+ "cpl-judge",
  "cpl-lint",
  "cpl-stress",
  "cpl-syntax",

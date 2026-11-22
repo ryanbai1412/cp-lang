@@ -61,6 +61,9 @@ pub struct Profile {
     pub source_limit: usize,
     /// Whether the compiler has `__int128`.
     pub int128: bool,
+    /// The judge's usual limits, for a problem that names none.
+    pub time_ms: u64,
+    pub memory_mb: u64,
     /// Where these facts come from, and which are unconfirmed.
     pub evidence: String,
 }
@@ -69,18 +72,31 @@ pub struct Profile {
 /// otherwise: the judge is assumed to give that much address space.
 pub const THREAD_STACK: u64 = 1 << 30;
 
+/// The size every solution aims under: past it `cpl build` warns.
+pub const TARGET_BYTES: usize = 32 * 1024;
+
+/// The most any build writes, whatever the judge accepts.
+pub const HARD_BYTES: usize = 64 * 1024;
+
 impl Profile {
-    /// The source size worth a warning: three quarters of the limit.
+    /// The longest file a build writes: the judge's limit, capped at
+    /// [`HARD_BYTES`].
+    pub fn limit(&self) -> usize {
+        self.source_limit.min(HARD_BYTES)
+    }
+
+    /// The source size worth a warning: [`TARGET_BYTES`], or half of a
+    /// smaller limit.
     pub fn warn_at(&self) -> usize {
-        self.source_limit / 2
+        TARGET_BYTES.min(self.limit() / 2)
     }
 
     /// What a contestant must know before submitting to a judge that
     /// allows no threads.
     pub fn thread_warning(&self) -> Option<String> {
-        match self.thread_stack {
-            Some(_) => None,
-            None => Some(format!(
+        match (self.thread_stack, self.stack) {
+            (Some(_), _) | (None, Stack::Unlimited) => None,
+            (None, _) => Some(format!(
                 "judge `{}` allows no threads, so the program runs on the {} the judge gives `main`; \
                  deep recursion may overflow it",
                 self.name,
@@ -327,7 +343,16 @@ fn profile(
         thread_stack: Some(THREAD_STACK),
         source_limit,
         int128: true,
+        time_ms: 2000,
+        memory_mb: 256,
         evidence: evidence.into(),
+    }
+}
+
+impl Profile {
+    fn limits(mut self, time_ms: u64, memory_mb: u64) -> Profile {
+        (self.time_ms, self.memory_mb) = (time_ms, memory_mb);
+        self
     }
 }
 
@@ -343,7 +368,8 @@ pub fn builtins() -> Vec<Profile> {
             Os::Linux,
             Stack::Bytes(8 * MB),
             64 * KB,
-            "the floor most judges clear: C++17, the 8 MB Linux default stack, a 64 KB source",
+            "the floor most judges clear: C++17, the 8 MB Linux default stack, a 64 KB source, 2 s and \
+             256 MB",
         ),
         profile(
             "codeforces",
@@ -353,7 +379,7 @@ pub fn builtins() -> Vec<Profile> {
             Stack::Bytes(256 * MB),
             64 * KB,
             "unconfirmed: the Codeforces compiler list and its 256 MB stack link flag are behind a \
-             browser check",
+             browser check; 2 s and 256 MB are the usual statement limits",
         ),
         profile(
             "atcoder",
@@ -365,9 +391,10 @@ pub fn builtins() -> Vec<Profile> {
             Stack::Unknown,
             512 * KB,
             "the compile command is from AtCoder's language list (the flags that change what \
-             compiles; its library and link flags are left out); the 512 KiB source limit and the \
-             stack are unconfirmed",
-        ),
+             compiles; its library and link flags are left out); 2 s and 1024 MB are the usual \
+             statement limits; the 512 KiB source limit and the stack are unconfirmed",
+        )
+        .limits(2000, 1024),
         profile(
             "cses",
             "C++17 (g++ 13.3.0)",
@@ -375,9 +402,10 @@ pub fn builtins() -> Vec<Profile> {
             Os::Linux,
             Stack::Unknown,
             128 * KB,
-            "compiler, flags and the 128 kB source limit are from cses.fi/howto; the stack is not \
-             documented",
-        ),
+            "compiler, flags and the 128 kB source limit are from cses.fi/howto; 1 s and 512 MB are \
+             the problem set's limits; the stack is not documented",
+        )
+        .limits(1000, 512),
         profile(
             "icpc",
             "DOMjudge's default C++ (g++)",
@@ -388,7 +416,8 @@ pub fn builtins() -> Vec<Profile> {
             "DOMjudge's default build script, its runguard (stack unlimited) and its default \
              256 KB source limit; a contest's own image sets the g++ version and so the default \
              standard",
-        ),
+        )
+        .limits(2000, 2048),
         profile(
             "kattis",
             "C++ (g++ 15.2.0)",
@@ -399,16 +428,29 @@ pub fn builtins() -> Vec<Profile> {
             128 * KB,
             "the compile command is from Kattis' C++ page; the stack and the 128 KB source limit \
              are unconfirmed",
-        ),
+        )
+        .limits(2000, 1024),
         profile(
             "dmoj",
             "C++17 (g++)",
-            "g++ -Wall -O2 -lm -march=native -std=c++17 -DONLINE_JUDGE -s",
+            "g++ -Wall -DONLINE_JUDGE -O2 -lm -march=native -std=c++17 -s",
             Os::Linux,
-            Stack::Unknown,
+            Stack::Unlimited,
             64 * KB,
-            "the command is from DMOJ's judge-server C++ executor; the g++ version, the stack and \
-             the 64 KB source limit are a site's own",
+            "DMOJ's judge-server: the command is its GCC executor's, the sandbox sets RLIMIT_STACK \
+             unlimited and RLIMIT_NPROC 0, so the thread runner falls back to `main` on that unlimited \
+             stack; the g++ version, the 64 KB source limit and 2 s / 256 MB are a site's own",
+        ),
+        profile(
+            "usaco",
+            "C++17 (g++)",
+            "g++ -std=c++17 -O2 -Wall",
+            Os::Linux,
+            Stack::Unlimited,
+            64 * KB,
+            "usaco.guide: C++17 with -O2 -Wall on Linux, about 2 s and 256 MB, no stack limit \
+             beyond memory, standard input and output; the exact command, the g++ version and the source limit are \
+             unconfirmed (usaco.org was not reachable)",
         ),
     ]
 }
@@ -584,6 +626,8 @@ const KEYS: &[(&str, &str)] = &[
     ("thread_stack_mb", "a whole number of MB, 0 for a judge that allows no threads"),
     ("source_kb", "a whole number of KB"),
     ("int128", "true or false"),
+    ("time_ms", "a whole number of milliseconds"),
+    ("memory_mb", "a whole number of MB"),
 ];
 
 fn check_key(key: &str, value: &Value) -> Result<(), String> {
@@ -599,6 +643,7 @@ fn check_key(key: &str, value: &Value) -> Result<(), String> {
             | ("stack_mb" | "thread_stack_mb", Value::Int(_))
             | ("source_kb", Value::Int(_))
             | ("int128", Value::Bool(_))
+            | ("time_ms" | "memory_mb", Value::Int(_))
     ) || matches!((key, value), ("stack_mb", Value::Str(s)) if s == "unlimited");
     let fits = fits && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows");
     match fits {
@@ -618,6 +663,8 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("thread_stack_mb", Value::Int(mb)) => profile.thread_stack = (*mb > 0).then(|| mb << 20),
         ("source_kb", Value::Int(kb)) => profile.source_limit = (*kb as usize) * 1024,
         ("int128", Value::Bool(b)) => profile.int128 = *b,
+        ("time_ms", Value::Int(ms)) => profile.time_ms = *ms,
+        ("memory_mb", Value::Int(mb)) => profile.memory_mb = *mb,
         _ => {}
     }
 }

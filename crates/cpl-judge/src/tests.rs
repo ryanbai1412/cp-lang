@@ -14,7 +14,7 @@ fn dir(name: &str, toml: Option<&str>) -> std::path::PathBuf {
 fn every_builtin_has_a_distinct_name_a_compiler_and_a_limit() {
     let profiles = builtins();
     assert_eq!(profiles[0].name, "generic");
-    for want in ["generic", "codeforces", "atcoder", "cses", "icpc", "kattis", "dmoj"] {
+    for want in ["generic", "codeforces", "atcoder", "cses", "icpc", "kattis", "dmoj", "usaco"] {
         assert!(builtin(want).is_some(), "{want}");
     }
     let mut names: Vec<&str> = profiles.iter().map(|p| p.name.as_str()).collect();
@@ -25,6 +25,35 @@ fn every_builtin_has_a_distinct_name_a_compiler_and_a_limit() {
         assert!(p.warn_at() < p.source_limit);
     }
     assert_eq!(builtin("generic").unwrap().warn_at(), 32 * 1024);
+}
+
+#[test]
+fn every_builtin_warns_past_32_kb_and_stops_past_64_kb() {
+    for p in builtins() {
+        assert_eq!((p.warn_at(), p.limit()), (32 * 1024, 64 * 1024), "{}", p.name);
+    }
+    let toml = "[judge.tiny]\nextends = \"generic\"\nsource_kb = 40\n";
+    let tiny = resolve(&dir("tiny-limit", Some(toml)).join("a.cp"), "// judge: tiny\n", None).unwrap();
+    assert_eq!((tiny.warn_at(), tiny.limit()), (20 * 1024, 40 * 1024));
+}
+
+#[test]
+fn the_contest_judges_have_their_compiler_stack_and_usual_limits() {
+    let want = [
+        ("codeforces", "-std=c++20", Stack::Bytes(256 << 20), 2000, 256),
+        ("atcoder", "-std=gnu++23", Stack::Unknown, 2000, 1024),
+        ("dmoj", "-std=c++17", Stack::Unlimited, 2000, 256),
+        ("cses", "-std=c++17", Stack::Unknown, 1000, 512),
+        ("usaco", "-std=c++17", Stack::Unlimited, 2000, 256),
+    ];
+    for (name, std, stack, time_ms, memory_mb) in want {
+        let p = builtin(name).unwrap();
+        assert!(p.flags.iter().any(|f| f == std) && p.flags.iter().any(|f| f == "-O2"), "{name}: {:?}", p.flags);
+        assert_eq!((p.stack, p.time_ms, p.memory_mb), (stack, time_ms, memory_mb), "{name}");
+    }
+    let toml = "[judge.cses]\ntime_ms = 3000\nmemory_mb = 64\n";
+    let p = resolve(&dir("judge-limits", Some(toml)).join("a.cp"), "// judge: cses\n", None).unwrap();
+    assert_eq!((p.time_ms, p.memory_mb), (3000, 64));
 }
 
 #[test]
