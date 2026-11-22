@@ -1435,7 +1435,11 @@ impl<'a> Lowerer<'a> {
         for (i, ((field, ty), arg)) in fields.iter().zip(given).enumerate() {
             match (arg, &decl.fields[i].default) {
                 (Some(arg), _) => {
-                    let v = self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty));
+                    let v = if *ty == Ty::Unit && self.detect_bare_op(&arg.value).is_some() {
+                        self.mk(ExprKind::Unit, Ty::Unit, arg.value.span)
+                    } else {
+                        self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))
+                    };
                     let v = match self
                         .struct_field_range(id, i)
                         .and_then(|r| r.scalar().cloned())

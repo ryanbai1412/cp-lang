@@ -1861,6 +1861,7 @@ impl<'a> Lowerer<'a> {
                 let Some(pty) = &param.ty else {
                     continue;
                 };
+                let is_default = arg.is_none();
                 let expr = match arg {
                     Some(a) => &a.value,
                     None => match &param.default {
@@ -1868,6 +1869,21 @@ impl<'a> Lowerer<'a> {
                         None => continue,
                     },
                 };
+                if is_default && !matches!(&expr.kind, ast::ExprKind::Lambda { .. }) {
+                    if self.ast_ty_has_unbound(pty, &gen_names, &inferred) {
+                        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                        let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+                        let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+                        let probed = self.probe_ty_silent(expr);
+                        self.cur_mod = saved_mod;
+                        self.offset = saved_offset;
+                        self.gen_env = saved_env;
+                        if let Some(dty) = probed {
+                            self.unify_ast_ty(pty, &dty, tpl_mod, &gen_names, &mut inferred);
+                        }
+                    }
+                    continue;
+                }
                 let ast::ExprKind::Lambda {
                     params: lparams,
                     body: lbody,
@@ -1880,34 +1896,56 @@ impl<'a> Lowerer<'a> {
                     if targs.is_empty()
                         && gen_names.contains(&name.text)
                         && !inferred.contains_key(&name.text)
-                        && lparams.len() == 1
                     {
-                        let dom_ty = inferred.get("V").or_else(|| inferred.get("D")).and_then(
-                            |ga| match ga {
-                                GenArg::Domain(d) => Some(Ty::Pos(*d)),
-                                GenArg::Ty(t) => Some(t.clone()),
-                                _ => None,
-                            },
-                        );
-                        // `peel(v => adj[v])`: with nothing else to say what a
-                        // vertex is, it is what the lambda indexes with `v`.
-                        let dom_ty = dom_ty.or_else(|| self.indexed_by_param(&lparams[0], lbody));
-                        if let (Some(Ty::Pos(d)), false) = (&dom_ty, inferred.contains_key("V")) {
-                            if gen_names.iter().any(|g| g == "V") {
-                                inferred.insert("V".to_string(), GenArg::Domain(*d));
-                            }
-                        }
-                        if let Some(vty) = dom_ty {
-                            if let Some(ret_ty) =
-                                self.probe_lambda_ret(lparams, std::slice::from_ref(&vty), lbody)
+                        if lparams.len() == 1 {
+                            let dom_ty = inferred.get("V").or_else(|| inferred.get("D")).and_then(
+                                |ga| match ga {
+                                    GenArg::Domain(d) => Some(Ty::Pos(*d)),
+                                    GenArg::Ty(t) => Some(t.clone()),
+                                    _ => None,
+                                },
+                            );
+                            // `peel(v => adj[v])`: with nothing else to say what a
+                            // vertex is, it is what the lambda indexes with `v`.
+                            let dom_ty =
+                                dom_ty.or_else(|| self.indexed_by_param(&lparams[0], lbody));
+                            if let (Some(Ty::Pos(d)), false) =
+                                (&dom_ty, inferred.contains_key("V"))
                             {
+                                if gen_names.iter().any(|g| g == "V") {
+                                    inferred.insert("V".to_string(), GenArg::Domain(*d));
+                                }
+                            }
+                            if let Some(vty) = dom_ty {
+                                if let Some(ret_ty) = self.probe_lambda_ret(
+                                    lparams,
+                                    std::slice::from_ref(&vty),
+                                    lbody,
+                                ) {
+                                    inferred.insert(
+                                        name.text.clone(),
+                                        GenArg::Ty(Ty::Fn(vec![vty], Box::new(ret_ty))),
+                                    );
+                                }
+                            }
+                            continue;
+                        } else if is_default && !lparams.is_empty() {
+                            let ptys = vec![Ty::Int; lparams.len()];
+                            let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                            let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+                            let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+                            let ret_ty = self.probe_lambda_ret(lparams, &ptys, lbody);
+                            self.cur_mod = saved_mod;
+                            self.offset = saved_offset;
+                            self.gen_env = saved_env;
+                            if let Some(ret_ty) = ret_ty {
                                 inferred.insert(
                                     name.text.clone(),
-                                    GenArg::Ty(Ty::Fn(vec![vty], Box::new(ret_ty))),
+                                    GenArg::Ty(Ty::Fn(ptys, Box::new(ret_ty))),
                                 );
                             }
+                            continue;
                         }
-                        continue;
                     }
                 }
                 if let ast::TypeKind::Fn {
