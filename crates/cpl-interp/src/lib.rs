@@ -3635,6 +3635,14 @@ impl<'p, 'o> Interp<'p, 'o> {
         let first = values.next().unwrap_or_default();
         let optional = |value: Option<Value>| Value::Opt(OptVal::from_option(value));
         Ok(match op {
+            Builtin::WrapAdd | Builtin::WrapSub | Builtin::WrapMul => {
+                let (a, b) = (first.int(), values.next().unwrap_or_default().int());
+                Value::Int(match op {
+                    Builtin::WrapAdd => a.wrapping_add(b),
+                    Builtin::WrapSub => a.wrapping_sub(b),
+                    _ => a.wrapping_mul(b),
+                })
+            }
             Builtin::Min => {
                 let mut best = first;
                 for v in values {

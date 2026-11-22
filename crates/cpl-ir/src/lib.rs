@@ -614,6 +614,10 @@ pub enum Builtin {
     Min,
     Max,
     Abs,
+    /// `Int` `+`, `-` and `*` inside `unchecked:`: wrap at 64 bits.
+    WrapAdd,
+    WrapSub,
+    WrapMul,
     Sqrt,
     Isqrt,
     Atan2,

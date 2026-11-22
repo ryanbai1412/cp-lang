@@ -1960,6 +1960,19 @@ impl<'p> Emitter<'p> {
                     Code::primary(format!("std::{name}<{ty}>({{{}}})", all.join(", ")))
                 }
             }
+            Builtin::WrapAdd | Builtin::WrapSub | Builtin::WrapMul => {
+                let sym = match op {
+                    Builtin::WrapAdd => "+",
+                    Builtin::WrapSub => "-",
+                    _ => "*",
+                };
+                let int = self.ty(&Ty::Int);
+                Code::primary(format!(
+                    "{int}(uint64_t({}) {sym} uint64_t({}))",
+                    text(0),
+                    text(1)
+                ))
+            }
             Builtin::Abs if e.ty == Ty::Float => Code::primary(format!("std::fabs({})", text(0))),
             Builtin::Abs if e.ty == Ty::I128 => {
                 self.need("abs128");

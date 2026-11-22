@@ -219,6 +219,9 @@ pub(crate) enum Op {
     MinI { dst: u16, a: u16, b: u16 },
     MaxI { dst: u16, a: u16, b: u16 },
     AbsI { dst: u16, a: u16 },
+    WrapAddI { dst: u16, a: u16, b: u16 },
+    WrapSubI { dst: u16, a: u16, b: u16 },
+    WrapMulI { dst: u16, a: u16, b: u16 },
 
     // Domain/Pos/Bound & Option superinstructions
     DomainLen { dst: u16, dom: u16 },
@@ -5035,6 +5038,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::MaxI { dst, a, b }, span);
                 dst
             }
+            ExprKind::Builtin(op @ (Builtin::WrapAdd | Builtin::WrapSub | Builtin::WrapMul), args)
+                if args.len() == 2 =>
+            {
+                let a = self.compile_expr_i(&args[0]);
+                let b = self.compile_expr_i(&args[1]);
+                let dst = self.alloc_i();
+                let op = match op {
+                    Builtin::WrapAdd => Op::WrapAddI { dst, a, b },
+                    Builtin::WrapSub => Op::WrapSubI { dst, a, b },
+                    _ => Op::WrapMulI { dst, a, b },
+                };
+                self.emit(op, span);
+                dst
+            }
             ExprKind::Builtin(Builtin::Abs, args)
                 if args.len() == 1 && matches!(expr.ty, Ty::Int) =>
             {
@@ -7122,6 +7139,15 @@ impl<'p, 'io> Interp<'p, 'io> {
                 }
                 Op::MaxI { dst, a, b } => {
                     regs_i[dst as usize] = regs_i[a as usize].max(regs_i[b as usize]);
+                }
+                Op::WrapAddI { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize].wrapping_add(regs_i[b as usize]);
+                }
+                Op::WrapSubI { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize].wrapping_sub(regs_i[b as usize]);
+                }
+                Op::WrapMulI { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize].wrapping_mul(regs_i[b as usize]);
                 }
                 Op::AbsI { dst, a } => {
                     let av = regs_i[a as usize];
