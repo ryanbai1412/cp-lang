@@ -24,7 +24,7 @@ var l = Pos(1)
 var r = Pos(n)
 var tot = ask(l, r)
 while l < r:
-    let mid = Pos(bsearch_first(l.ord + 1..r.ord + 1, md => 2 * ask(l, Pos(md)) >= tot) ?? r.ord)
+    let mid = bsearch_first(l..=r.prev!, md => 2 * ask(l, md) >= tot) ?? r.prev!
     tot /= 2
     if r.ord - mid.ord <= mid.ord - l.ord + 1:
         l = mid.next!
