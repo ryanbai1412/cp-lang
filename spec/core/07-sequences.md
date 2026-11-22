@@ -22,8 +22,9 @@ ends, `.first`/`.last` are optional.
    answer in the keys they were given. `first`, `nth(k)` and `rebase` cover
    relative access. (R07.1.4)
 5. **Views are lent values with the rules of `mut a[i]`.** A value built
-   from a lent part is lent; no lifetime annotations, never stored, returned
-   only by a fn declared `lends`. In-place verbs
+   from a lent part is lent; no lifetime annotations. It is kept only
+   where R05.7.8 to R05.7.10 allow (storage that dies before its sources)
+   and returned only by a fn declared `lends`. In-place verbs
    work on views (`a[l..=r].sort()`); each has a copying twin (`sorted`). (R07.1.5)
 6. **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`;
    `pre[v]` folds through `v`. (R07.1.6)

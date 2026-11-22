@@ -299,7 +299,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     pub fn slice(self, r: Range<D>) -> List<T>
     pub @get fn len(self) -> Int             // O(1)
     pub fn contains(self, val: T) -> Bool    // O(log n)
-    pub fn try_at(self, val: T) -> ?D        // O(log n); none if absent
+    pub fn try_at(self, val: T) -> ?D        // O(log n); None if absent
     pub fn at(self, val: T) -> D             // O(log n); traps if absent
     pub fn first_ge(self, val: T) -> ?D      // O(log n)
     pub fn first_gt(self, val: T) -> ?D      // O(log n)
@@ -364,7 +364,7 @@ pub fn bsearch_first<I>(r: Range<I>, ok: I -> Bool) -> ?I
 pub fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I
 
 // Smallest `x` in `[lo, hi]` with monotone `ok(x)` to within
-// `(hi - lo) / 2^steps`, or `hi` when none. O(steps) calls of `ok`.
+// `(hi - lo) / 2^steps`, or `hi` when None. O(steps) calls of `ok`.
 pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> F64
 
 // Position of a maximum / minimum of unimodal `f` on non-empty `r`

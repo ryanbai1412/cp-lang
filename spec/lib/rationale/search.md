@@ -47,18 +47,18 @@ Patterns, each one call:
 ```cp
 fn bsearch_first<I>(r: Range<I>, ok: I -> Bool) -> ?I
     // O(log r.len) calls of ok. The first i in r with ok(i); ok is false
-    // then true along r. none when ok fails everywhere.
+    // then true along r. None when ok fails everywhere.
 fn bsearch_last<I>(r: Range<I>, ok: I -> Bool) -> ?I
     // O(log r.len) calls of ok. The last i in r with ok(i); ok is true then
-    // false. none when ok fails everywhere.
+    // false. None when ok fails everywhere.
 fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
     // steps + 1 calls of ok. The least x in [lo, hi] with ok(x), to within
-    // (hi - lo) / 2^steps; ok is false then true. none when not ok(hi).
+    // (hi - lo) / 2^steps; ok is false then true. None when not ok(hi).
 fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I
 fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I
     // O(log r.len) calls of f. A position of the maximum (minimum) of f on
     // r; f strictly rises then strictly falls (falls then rises), with a
-    // plateau allowed only at the optimum. none for an empty r.
+    // plateau allowed only at the optimum. None for an empty r.
 fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
 fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
     // steps + 2 calls of f (golden section reuses one probe per round). An
@@ -69,7 +69,7 @@ fn parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (),
     // O((r.len + queries) log r.len) calls of apply and ok, O(queries)
     // memory: ceil(log2(r.len + 1)) rounds of one reset, r.len applies in
     // order and one ok per open query. out[q] is the first t in r such that
-    // ok(q) holds once apply ran on every t' <= t; none when it never
+    // ok(q) holds once apply ran on every t' <= t; None when it never
     // holds. ok(q) is monotone in the applied prefix.
 ```
 

@@ -563,7 +563,7 @@ pub @get fn mid<D>(self: Range<D>) -> Cut<D> = todo
 pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo
 
 /// O(log n) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
-/// `None` when it never does. Debug builds check `ok` on both sides of the answer.
+/// `None` when it never does. Checked builds check the probes agree (R09.2.3).
 ///
 /// cost: O(log n) calls of `ok`
 /// empty: `None`
@@ -573,7 +573,7 @@ pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D> = todo
 pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D = todo
 
 /// O(log n) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
-/// `None` when it never does. Debug builds check `ok` on both sides of the answer.
+/// `None` when it never does. Checked builds check the probes agree (R09.2.3).
 ///
 /// cost: O(log n) calls of `ok`
 /// empty: `None`

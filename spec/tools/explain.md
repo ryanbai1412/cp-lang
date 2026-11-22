@@ -7,11 +7,11 @@ defined by `core/13-lowering.md` §13.6; the LSP shows the same data.
 ```
 $ cpl explain d dist
 dist: [V]?Int
-  element  8 B, none = Int.MIN
+  element  8 B, None = Int.MIN
   count    V.count <= 2e5   peak 1.6 MB
 $ cpl explain d Ev
 Ev  8 B  (Ask: l @0 4 B, r @4 4 B; Add: v @0, r = 0xFFFFFFFF)
-?Ev 8 B  none = r 0xFFFFFFFE
+?Ev 8 B  None = r 0xFFFFFFFE
 $ cpl explain d st
 st: SegTree(max, a, act: add)   iterative, no push-down (add commutes)
   nodes 4 B x 2^19 = 2 MB       (max is Selective over 1..=1e9)

@@ -38,7 +38,7 @@ The answer-search idiom is just the range method, read as the statement:
 
 ```python
 let t = (0..=1e18).first_true(t => can_finish(by: t))!   // smallest feasible time
-let k = (1..=n).last_true(k => fits(k)) ?? 0             // largest k that fits, 0 if none
+let k = (1..=n).last_true(k => fits(k)) ?? 0             // largest k that fits, 0 if None
 ```
 
 Over reals the searches take a step count instead of an integer range:
@@ -105,7 +105,7 @@ domain `B` (at most 64 members, one `U64`): set algebra `s | t`, `s & t`, `s - t
 last) and `s.supersets`.
 
 ```python
-var best: [Group.subsets]?Int = none
+var best: [Group.subsets]?Int = None
 best[{}] = 0
 for s in Group.subsets:
     for g in s.subsets if g != {}: best[s] max= score[g] + best[s - g]

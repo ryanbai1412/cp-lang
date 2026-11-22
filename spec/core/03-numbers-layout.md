@@ -165,14 +165,14 @@ var span: ?(lo: Int, hi: Int) = None    // 16 B: None lives in lo
 
 The tag goes into a spare value when that is free; otherwise it is a
 byte:
-- **One payload variant plus k unit variants** (`Option`-like, `enum Cell:
-  Wall, Empty, Box(id: V)`): the unit variants take k spare values of the
+- **One payload variant plus k unit variants** (`Option`-like: `Cell` with variants `Wall`, `Empty` and
+  `Box(id: V)`): the unit variants take k spare values of the
   payload. `Cell` is 4 bytes. (R03.2.4)
 - **Several payload variants:** the largest variant (first on a tie) sets
   the layout. Every other variant is one spare value of a single field of
   it, the first field in declaration order with enough spares, provided
-  that variant's own fields fit in the bytes outside that field. `enum Ev:
-  Add(v: V), Ask(l: V, r: V)` is 8 bytes: `Add` keeps `v` in `l`'s slot and
+  that variant's own fields fit in the bytes outside that field. `Ev` with
+  variants `Add(v: V)` and `Ask(l: V, r: V)` is 8 bytes: `Add` keeps `v` in `l`'s slot and
   writes all-ones into `r`'s slot, so a valid `r` means `Ask`. `?Ev` takes
   another spare of `r` and is also 8. (R03.2.5)
 - **Otherwise a tag byte** beside the largest payload, rounded up to

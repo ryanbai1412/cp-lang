@@ -370,8 +370,9 @@ expr        := lambda | if_expr | binary
 lambda      := lparams '=>' (expr | assign | NL INDENT stmt* expr? DEDENT)
 lparams     := NAME | '_' | '(' (param (',' param)*)? ')' ('->' type)?
 if_expr     := 'if' cond ':' expr ('elif' cond ':' expr)* 'else' ':' expr
-binary      := the operators of 1.5 over unary
-unary       := ('-' | '+' | '~' | 'not') unary | power
+binary      := the operators of 1.5 over unary; `not` is the prefix
+               operator at level 12, so `not a == b` is `not (a == b)`
+unary       := ('-' | '+' | '~') unary | power
 power       := postfix ('**' unary)?
 postfix     := primary ('.' NAME | '.' INT | call_args | '[' args ']'
              | '!' | '?' | 'is' pattern | 'with' NAME ':' expr (',' NAME ':' expr)*)*

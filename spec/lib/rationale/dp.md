@@ -128,12 +128,12 @@ arrive, so memory is O(lines) words, not O(xs.len), and an array of trees
 fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int)
     -> List<?(val: Int, at: Int)>
     // O((rows + cols) log rows) calls of f. For each row the least f(row,
-    // col) and its leftmost col; none where f is none on the whole row.
+    // col) and its leftmost col; None where f is None on the whole row.
     // Law: the leftmost argmin is nondecreasing in row (true for a Monge
     // f, checkable with std.spec.monge_break).
 fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>
     // O(n log n) calls of cost, n = prev.len. next[i] = min over j < i of
-    // prev[j] + cost(j, i); next[0] = none. Law: cost satisfies the
+    // prev[j] + cost(j, i); next[0] = None. Law: cost satisfies the
     // quadrangle inequality (std.spec.dnc_break).
 fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>)
     // Online LARSCH: O(n) calls of w, O(n) memory. val[i] = least weight of

@@ -108,7 +108,7 @@ pub trait Track<T>:
     fn push(mut self, x: T)       // x joins at the right end
     fn pop(mut self, x: T)        // x leaves at the left end (the oldest)
 
-pub enum Anchor: Start, End
+pub enum Anchor = Start | End
 
 pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
                                   anchor: Anchor = Anchor.End) -> [D]Slice<[D]T>

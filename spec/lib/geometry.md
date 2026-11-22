@@ -231,7 +231,7 @@ fn reflect(p: Vec, a: Vec, b: Vec) -> Vec              // O(1); reflection acros
 fn line_dist(p: Vec, a: Vec, b: Vec) -> F64            // O(1); perpendicular distance from p to line ab
 fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64  // O(1); distance from p to segment [a, b]
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec
-    // O(1); intersection of lines ab and cd, none if parallel
+    // O(1); intersection of lines ab and cd, None if parallel
 fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
     // O(n); Sutherland-Hodgman clip to left half-plane of directed line a -> b
 fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
@@ -245,7 +245,7 @@ fn circle_circle_tangents(c1: Vec, r1: F64, c2: Vec, r2: F64, inner: Bool = fals
 fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64
     // O(n^2 log n); total area of the union of disks via Green's theorem arc sweep
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec
-    // O(1); circumcenter of triangle abc, none if collinear
+    // O(1); circumcenter of triangle abc, None if collinear
 
 struct HalfPlane(p: Vec, dir: Vec)                     // left side of ray p + t*dir (t in R)
     fn through(a: Vec, b: Vec) -> HalfPlane            // O(1); keep left of a -> b

@@ -377,7 +377,7 @@ struct PotentialDsu<V>                        // O(alpha(n)), O(log n) after mar
     fn find(mut self, v: V) -> (root: V, pot: Int) // pot(v) - pot(root)
     fn unite(mut self, a: V, b: V, diff: Int) -> Bool
         // Records pot(b) - pot(a) == diff; false on contradiction
-    fn diff(mut self, a: V, b: V) -> ?Int     // pot(b) - pot(a), or none
+    fn diff(mut self, a: V, b: V) -> ?Int     // pot(b) - pot(a), or None
     fn same(mut self, a: V, b: V) -> Bool
     fn size(mut self, v: V) -> Int
     @get fn components(self) -> Int

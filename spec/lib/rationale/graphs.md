@@ -179,9 +179,9 @@ holds `None` or an upper bound. The cost bounds become the part of the space
 cheaper than `t`, which is what a hand-written loop that stops at the target
 pays (`cf2178h`).
 fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W) -> ?Paths<V, W, A>
-    // O(n * m); none when a negative cycle is reachable from a source
+    // O(n * m); None when a negative cycle is reachable from a source
 fn floyd_warshall<V, W>(w: [V, V]?W) -> ?[V, V]?W
-    // O(n^3) time, O(n^2) memory; none on a negative cycle
+    // O(n^3) time, O(n^2) memory; None on a negative cycle
 ```
 
 Sources: unit and 0-1 searches start every source at distance 0;
@@ -218,7 +218,7 @@ space is large; for arbitrary per-arc weights use `dijkstra` on a closure.
 ### 3.3 Order and cycles
 
 ```cp
-fn topo<V, N>(next: N) -> ?List<V>          // O(n + m) Kahn; none on a cycle
+fn topo<V, N>(next: N) -> ?List<V>          // O(n + m) Kahn; None on a cycle
 fn peel<V, N>(next: N) -> List<V>           // O(n + m) repeatedly remove in-degree 0
 fn find_cycle<V, N>(next: N) -> ?List<V>    // O(n + m) one directed cycle, in order
 ```
@@ -261,7 +261,7 @@ on a path of 10^6 vertices.
 ### 3.5 Bipartiteness
 
 ```cp
-fn two_color<V, N>(next: N) -> ?[V]Bool     // O(n + m); none iff an odd cycle
+fn two_color<V, N>(next: N) -> ?[V]Bool     // O(n + m); None iff an odd cycle
 ```
 
 Law: for every arc `u -> v`, `colour[u] != colour[v]`; within each component
@@ -277,7 +277,7 @@ struct Walk<V, E>
     arcs: List<(to: V, e: E)>
     @get fn vertices(self) -> List<V>       // start then each arc's head, O(len)
 fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>
-    // O(n + m) Hierholzer; uses every edge once; none if no such walk
+    // O(n + m) Hierholzer; uses every edge once; None if no such walk
 ```
 
 Laws: the walk uses every `e` in `E` exactly once, consecutive arcs share a
@@ -391,7 +391,9 @@ of types started, so shortest path over a 2^4 * m state space needs no heap.
 
 ```cp
 domain T = 0..3
-enum Move: Create(T), Double(1..=3)
+enum Move:
+    Create(T)
+    Double(1..=3)
 
 @!multitest
 let x: [T]1..=5e5 = read()

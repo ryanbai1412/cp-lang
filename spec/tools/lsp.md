@@ -7,7 +7,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   domains, borrows, ranges); one error per root cause; each with its
   code, an index link and fixes as code actions. Cost and overflow
   warnings show the estimate on hover.
-- **Hover**: the type, where `none` lives, storage width and peak bytes,
+- **Hover**: the type, where `None` lives, storage width and peak bytes,
   proven ranges, the cost of a call, and representation choices
   (niche, width from a range, specialization chosen by a law).
 - **Storage sizes** (decision 149): hover on a type or variable gives its

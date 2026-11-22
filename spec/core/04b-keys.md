@@ -152,7 +152,7 @@ fn first_drop<K>(a: [K]Int) -> ?K =
     a.keys.drop(1).first(i => a[i] < a[i.prev!])
 
 fn next_greater<K>(a: [K]Int) -> [K]?K =  // keyed like a
-    var res = [a.keys]none
+    var res = [a.keys]None
     var stack = List<K>()
     for i in a.keys:
         while let j = stack.last and a[j] < a[i]:
@@ -180,7 +180,7 @@ costs a library author nothing.
 **Position queries return keys.**
 
 ```python
-/// O(n). A key of the largest element, the first on ties; `none` when empty.
+/// O(n). A key of the largest element, the first on ties; `None` when empty.
 pub fn argmax<K, T: Ord>(self: [K]T) -> ?K = self.keys.max(by: k => self[k])
 
 /// O(n·|p|). The first key where `p` starts, valid on the source of a slice.
@@ -208,7 +208,7 @@ pub fn z_function<K, T: Eq>(s: [K]T) -> [K]Int =
 `c` of `a`:
 
 ```python
-pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = none) -> Prefix<K, T> = todo
+pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> = todo
 ```
 
 **Getting a domain from what you were given (rule 7).**

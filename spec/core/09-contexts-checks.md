@@ -63,6 +63,12 @@ masked shifts, no uninitialized reads), so `-O2` cannot miscompile the
 valid code around a bug; it never adds a branch or a clamp to do so.
 To keep a check on the judge, opt in (§9.4).
 
+**Checks never call user code.** A checked build makes exactly the calls
+to user functions, closures and input that release makes, in the same
+order: a check may only inspect values the program already computed. So
+an interactive query, a counter in a closure or a `@cache` sees the same
+history in both modes. (R09.2.3)
+
 ## 9.3 What is checked
 
 Every checked operation answers three questions: what it means, what the
