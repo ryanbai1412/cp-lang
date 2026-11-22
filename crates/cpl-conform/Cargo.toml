@@ -15,3 +15,4 @@ cpl-codegen.workspace = true
 cpl-diag.workspace = true
 cpl-interp.workspace = true
 cpl-ir.workspace = true
+cpl-lint.workspace = true

@@ -39,6 +39,18 @@ pub fn check_spec(db: &mut Database, path: &str, text: &str) -> (String, bool) {
     (rendered, failed)
 }
 
+/// What `cpl lint` reports for `text` at `path`, rendered: an `L` code in
+/// a case header names a lint, not a check error.
+pub fn lint_spec(path: &str, text: &str) -> String {
+    let (config, _) = cpl_lint::Config::discover(Path::new(path));
+    let lints = cpl_lint::lint(text, &config);
+    if lints.is_empty() {
+        String::new()
+    } else {
+        cpl_diag::render_all(&lints, path, text)
+    }
+}
+
 pub enum CompileError {
     Diagnostics(String),
 }

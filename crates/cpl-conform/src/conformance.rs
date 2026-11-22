@@ -213,6 +213,11 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             }
         }
         Expect::Diag { code, line } => {
+            let diag = if code.starts_with('L') {
+                diag + &runner::lint_spec(&path_str, &text)
+            } else {
+                diag
+            };
             let target_line = line + offset;
             let line_needle = format!(":{target_line}:");
             if diag.contains(&code) && diag.contains(&line_needle) {

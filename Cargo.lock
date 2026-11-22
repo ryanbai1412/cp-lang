@@ -47,6 +47,7 @@ dependencies = [
  "cpl-diag",
  "cpl-interp",
  "cpl-ir",
+ "cpl-lint",
 ]
 
 [[package]]
